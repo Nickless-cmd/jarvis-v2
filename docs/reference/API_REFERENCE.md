@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-11-05 from app.routes (live) — 682 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-06 from app.routes (live) — 684 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -371,6 +371,8 @@
 | POST | `/files/link` | dict | files |
 | GET | `/files/{filename}` |  | files |
 | POST | `/flade-log` |  | flade_log |
+| GET | `/geo/reverse` | dict | geo |
+| GET | `/geo/search` | dict | geo |
 | GET | `/health` | HealthResponse | health |
 | GET | `/interlanguage-blind` |  | interlanguage_blind |
 | GET | `/interlanguage-blind/` |  | interlanguage_blind |

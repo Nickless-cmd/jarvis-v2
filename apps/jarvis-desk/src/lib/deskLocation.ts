@@ -2,6 +2,9 @@
 // adresse (geocodet via main → gemt lokalt), eller browser Geolocation API.
 // Nominatim/ip-api kaldes via jarvisDesk.geo-broen (main sætter User-Agent).
 
+import { apiFetch } from './api'
+import { readBrowserConfig } from './browserConfig'
+
 export type LocationMode = 'off' | 'ip' | 'manual' | 'browser'
 
 export interface DeskLocationPayload {
@@ -46,13 +49,38 @@ interface GeoBridge {
   reverse: (lat: number, lon: number, precise: boolean) => Promise<string>
   ip: () => Promise<{ lat: number; lon: number; label: string } | null>
 }
-function geoBridge(): GeoBridge | undefined {
+function electronBridge(): GeoBridge | undefined {
   return (window as unknown as { jarvisDesk?: { geo?: GeoBridge } }).jarvisDesk?.geo
+}
+
+/** Web/PWA: samme opslag via API'ets /geo-ruter. INGEN ip — ip-api uden
+ *  klient-IP giver serverens adresse, ikke klientens (separat opgave). */
+const webGeo: Pick<GeoBridge, 'geocode' | 'reverse'> = {
+  async geocode(address) {
+    try {
+      const r = await apiFetch<{ lat: number; lon: number; label: string }>(
+        readBrowserConfig(), `/geo/search?q=${encodeURIComponent(address)}`, { retries: 0 })
+      return typeof r?.lat === 'number' && typeof r?.lon === 'number'
+        ? { lat: r.lat, lon: r.lon, label: r.label ?? '' } : null
+    } catch { return null }
+  },
+  async reverse(lat, lon, precise) {
+    try {
+      const r = await apiFetch<{ label?: string }>(
+        readBrowserConfig(), `/geo/reverse?lat=${lat}&lon=${lon}&precise=${precise}`, { retries: 0 })
+      return r?.label ?? ''
+    } catch { return '' }
+  },
+}
+
+/** Kæde: Electron-broen når den findes (uændret sti), ellers API'et. */
+function geoBridge(): { geocode: GeoBridge['geocode']; reverse: GeoBridge['reverse']; ip?: GeoBridge['ip'] } {
+  return electronBridge() ?? webGeo
 }
 
 /** Geocode en adresse via main-broen og gem den som manuel lokation. */
 export async function geocodeAndSaveManual(address: string): Promise<{ lat: number; lon: number; label: string } | null> {
-  const r = await geoBridge()?.geocode(address)
+  const r = await geoBridge().geocode(address)
   if (r) saveManual(r)
   return r ?? null
 }
@@ -72,7 +100,7 @@ function browserPosition(): Promise<GeolocationPosition | null> {
 export async function getDesktopLocation(mode: LocationMode): Promise<DeskLocationPayload | null> {
   if (mode === 'off') return null
   if (mode === 'ip') {
-    const r = await geoBridge()?.ip()
+    const r = await geoBridge().ip?.()
     return r ? { ...r, source: 'ip', precision: 'city' } : null
   }
   if (mode === 'manual') {
@@ -91,7 +119,7 @@ export async function getDesktopLocation(mode: LocationMode): Promise<DeskLocati
   // kalder sig «precise» er værre end ingen lokation — samme fejlklasse som
   // IP-opslaget, der blev kasseret server-side.
   if (typeof accuracy === 'number' && accuracy > 50_000) return null
-  const label = (await geoBridge()?.reverse(latitude, longitude, true)) || ''
+  const label = (await geoBridge().reverse(latitude, longitude, true)) || ''
   if (!label) return null
   return { lat: latitude, lon: longitude, label, source: 'browser', precision: 'precise' }
 }

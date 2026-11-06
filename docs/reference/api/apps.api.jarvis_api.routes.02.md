@@ -199,6 +199,15 @@ _Klientlog ved renderbeslutningen — fire målepunkter, ingen guard._
 | function | `_antal_i_dag` | `()` | Antal linjer skrevet i dag. Læses kun når filen findes. | [src](../../../apps/api/jarvis_api/routes/flade_log.py#L77) |
 | function | `flade_log` | `(snapshot)` | Modtag ét snapshot og skriv det. Svarer altid 202. | [src](../../../apps/api/jarvis_api/routes/flade_log.py#L91) |
 
+## `apps/api/jarvis_api/routes/geo.py`
+_HTTP-indgang til Nominatim-opslagene (PWA har ingen Electron-bro)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_label` | `(res, precise)` | Samme label som Electron-broen: «vej, by» (præcis) eller «by». | [src](../../../apps/api/jarvis_api/routes/geo.py#L18) |
+| function | `geo_reverse` | `(lat=…, lon=…, precise=…)` | — | [src](../../../apps/api/jarvis_api/routes/geo.py#L27) |
+| function | `geo_search` | `(q=…)` | — | [src](../../../apps/api/jarvis_api/routes/geo.py#L40) |
+
 ## `apps/api/jarvis_api/routes/git_panel.py`
 _Git-panelets ruter: status, diff, stage, unstage, commit, log, push, worktrees._
 
@@ -594,86 +603,4 @@ _Mission Control: tool/skill/hardening/lab-hjælpere._
 ## `apps/api/jarvis_api/routes/mission_control_imports.py`
 
 _(no top-level classes or functions)_
-
-## `apps/api/jarvis_api/routes/mission_control_introspection.py`
-_Mission Control routes: kognitiv/relationel introspektion (personality, chronicle, decisions, meta-cognition, agency-map)_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `mc_cognitive_state_injection` | `()` | Show exactly what cognitive state was injected into the last visible prompt. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L14) |
-| function | `mc_personality_vector` | `()` | Return the current personality vector with version history. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L24) |
-| function | `mc_taste_profile` | `()` | Return the current taste profile (code/design/communication). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L34) |
-| function | `mc_chronicle` | `()` | Return chronicle entries (narrative autobiography). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L42) |
-| function | `mc_relationship_texture` | `()` | Return the relationship texture (trust, humor, corrections, etc). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L50) |
-| function | `mc_compass` | `()` | Return the current strategic compass bearing. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L60) |
-| function | `mc_rhythm` | `()` | Return the current rhythm/tidal state (phase, energy, initiative). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L68) |
-| function | `mc_habits` | `()` | Return habit patterns and friction signals. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L76) |
-| function | `mc_shared_language` | `()` | Return shared language terms with the user. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L84) |
-| function | `mc_mirror` | `()` | Return mirror self-reflection state. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L94) |
-| function | `mc_silence_signals` | `()` | Return silence detector state. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L102) |
-| function | `mc_decisions` | `()` | Return the decision log. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L110) |
-| function | `mc_counterfactuals` | `()` | Return counterfactual scenarios. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L118) |
-| function | `mc_paradoxes` | `()` | Return active paradox tensions. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L128) |
-| function | `mc_aesthetics` | `()` | Return aesthetic sense motifs. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L136) |
-| function | `mc_gut` | `()` | Return gut intuition calibration state. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L144) |
-| function | `mc_seeds` | `()` | Return prospective memory seeds. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L152) |
-| function | `mc_procedures` | `()` | Return learned procedures. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L160) |
-| function | `mc_temporal_context` | `()` | Return current temporal context. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L168) |
-| function | `mc_negotiations` | `()` | Return internal negotiation trades. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L178) |
-| function | `mc_forgetting_curve` | `()` | Return memory decay / forgetting curve state. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L188) |
-| function | `mc_conversation_rhythm` | `()` | Return conversation rhythm patterns. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L198) |
-| function | `mc_self_experiments` | `()` | Return self-experiment A/B test state. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L208) |
-| function | `mc_anticipatory_context` | `()` | Return anticipatory context predictions. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L218) |
-| function | `mc_contract_evolution` | `()` | Return identity contract evolution proposals. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L228) |
-| function | `mc_dream_carry_over` | `()` | Return dream carry-over state (active dreams, archive). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L238) |
-| function | `mc_apophenia_guard` | `()` | Return pattern skeptic state. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L248) |
-| function | `mc_user_emotional_resonance` | `()` | Return user mood detection state. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L258) |
-| function | `mc_experiential_memories` | `()` | Return experiential memories (lived experiences with emotion). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L268) |
-| function | `mc_living_heartbeat_cycle` | `()` | Return current life phase in heartbeat cycle. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L278) |
-| function | `mc_absence_awareness` | `()` | Return absence detection and return brief. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L288) |
-| function | `mc_flow_state` | `()` | Return flow-state detection surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L301) |
-| function | `mc_cross_signal_patterns` | `()` | Return cross-signal analysis surface (patterns across signals). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L311) |
-| function | `mc_self_surprises` | `()` | Return self-surprise detection surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L321) |
-| function | `mc_narrative_identity` | `()` | Return narrative-identity surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L331) |
-| function | `mc_gratitude` | `()` | Return gratitude-tracker surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L341) |
-| function | `mc_boundary_model` | `()` | Return boundary-awareness surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L349) |
-| function | `mc_emergent_goals` | `()` | Return emergent-goals surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L359) |
-| function | `mc_jarvis_agenda` | `()` | Return Jarvis' agenda wrapped under an "agenda" key. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L367) |
-| function | `mc_boredom` | `()` | Return boredom-engine surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L375) |
-| function | `mc_formed_values` | `()` | Return formed-values surface (value-formation). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L383) |
-| function | `mc_user_mental_model` | `()` | Return user theory-of-mind surface (Jarvis' mental model of the user). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L391) |
-| function | `mc_self_compassion` | `()` | Return self-compassion surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L401) |
-| function | `mc_regret` | `()` | Return the regret engine state — open/resolved regrets with lessons. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L411) |
-| function | `mc_rupture_repair` | `()` | Return rupture & repair state — relational tension tracking. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L419) |
-| function | `mc_silence_patterns` | `()` | Return silence pattern detection — what the user is NOT saying. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L427) |
-| function | `mc_blind_spots` | `()` | Return self-model blind spots — patterns Jarvis hasn't seen yet. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L435) |
-| function | `mc_dream_hypotheses` | `()` | Return surprising dream-phase hypotheses linking disparate signals. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L443) |
-| function | `mc_decisions_journal` | `()` | Return decisions journal — moralsk beslutnings-log. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L451) |
-| function | `mc_epistemics` | `()` | Return epistemic layers — i_know / i_believe / i_suspect / i_dont_know / i_was_wrong. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L459) |
-| function | `mc_emotional_controls` | `()` | Return emotional state + whether it would gate kernel actions right now. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L467) |
-| function | `mc_mood_dialer` | `()` | Return mood-dialed params: initiative_multiplier, confidence_threshold, style_preset. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L475) |
-| function | `mc_self_review_unified` | `()` | Return unified self-review — periodic LLM-generated Jarvis self-audit. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L483) |
-| function | `mc_habits_pipeline` | `()` | Return habits + friction + automation-suggestions pipeline. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L491) |
-| function | `mc_paradoxes_capture` | `()` | Return captured paradoxes: Speed/Quality, Autonomy/Approval, Explore/Stabilize. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L499) |
-| function | `mc_shared_language_extended` | `()` | Return extended shorthand/shared-vocabulary developed with user. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L507) |
-| function | `mc_procedure_bank_pipeline` | `()` | Return procedure bank — learned, pinned, trigger-matched routines. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L515) |
-| function | `mc_negotiation_pipeline` | `()` | Return internal trade-off negotiation outcomes. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L523) |
-| function | `mc_reflection_to_plan` | `()` | Return reflective plans — reflections converted to executable steps. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L531) |
-| function | `mc_missions_pipeline` | `()` | Return multi-session missions: researcher/implementer/reviewer flow. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L539) |
-| function | `mc_deep_analyzer` | `()` | Return deep analyzer capability — scoped codebase introspection. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L547) |
-| function | `mc_session_continuity` | `()` | Return felt-continuity surface: morning thread + echo themes + session gap. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L555) |
-| function | `mc_personal_project` | `()` | Return Jarvis' current personal project (his thing that grows with him). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L563) |
-| function | `mc_learning_curriculum` | `()` | Return the generated learning curriculum. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L571) |
-| function | `mc_cadence_producers` | `()` | Return cadence-producers surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L581) |
-| function | `mc_idle_thinking` | `()` | Return idle-thinking surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L591) |
-| function | `mc_experiments` | `()` | List all consciousness experiments with their enabled status. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L612) |
-| function | `mc_experiment_toggle` | `(experiment_id)` | Toggle a consciousness experiment on or off. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L623) |
-| function | `mc_recurrence_state` | `()` | Return recurrence-loop daemon surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L635) |
-| function | `mc_global_workspace` | `()` | Return global-workspace (broadcast daemon) surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L642) |
-| function | `mc_layer_tensions` | `()` | Return active inter-layer tensions — signals pulling in opposite directions. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L649) |
-| function | `mc_meta_cognition` | `()` | Return meta-cognition daemon surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L656) |
-| function | `mc_attention_profile` | `()` | Return attention-profile surface (attention-blink test). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L663) |
-| function | `mc_cognitive_core_experiments` | `()` | Unified cognitive-core experiment surface for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L670) |
-| function | `mc_living_executive` | `()` | Living Executive impulse/choice/action trace for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L679) |
-| function | `mc_agency_map` | `()` | Connected/missing agency bridges for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L686) |
 

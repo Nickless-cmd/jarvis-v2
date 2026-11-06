@@ -86,6 +86,9 @@ class QuotaReading:
     # True = «jeg VED den er doed» (udloebet token, usage limit), ikke
     # «jeg ved det ikke». Preflight blokerer paa den foerste.
     hard_block: bool = False
+    # Timer siden filen maalingen kommer fra sidst blev skrevet. Uden den ser
+    # en 13 timer gammel maaling frisk ud. -1.0 = ukendt/ingen maaling.
+    stale_hours: float = -1.0
 
     def get(self, key: str, default: Any = None) -> Any:
         return self.values.get(key, default)
@@ -110,6 +113,7 @@ def _cached(backend: str, loader: Callable[[], QuotaReading]) -> QuotaReading:
             # preflighten blokerer kun det FOERSTE kald — derefter siger
             # cachen «tillad» i CACHE_TTL_SECONDS. Maalt 4/11-2026.
             hard_block=prev.hard_block,
+            stale_hours=prev.stale_hours,
         )
     reading = loader()
     _CACHE[backend] = (time.monotonic(), reading)
@@ -313,20 +317,36 @@ def _codex_usage_limit_reset(tail: str) -> float | None:
     return parsed.timestamp()
 
 
-def _latest_rollout() -> Path | None:
+_ROLLOUT_LOOKBACK = 10
+
+
+def _recent_rollouts(limit: int = _ROLLOUT_LOOKBACK) -> list[Path]:
+    """De `limit` nyeste rollout-filer, nyeste foerst."""
     root = Path(os.path.expanduser(_CODEX_SESSIONS))
     if not root.is_dir():
-        return None
-    newest: Path | None = None
-    newest_mtime = -1.0
+        return []
+    dated: list[tuple[float, Path]] = []
     for candidate in root.glob("*/*/*/rollout-*.jsonl"):
         try:
-            mtime = candidate.stat().st_mtime
+            dated.append((candidate.stat().st_mtime, candidate))
         except OSError:  # filen kan vaere slettet midt i glob — spring over
             continue
-        if mtime > newest_mtime:
-            newest, newest_mtime = candidate, mtime
-    return newest
+    dated.sort(key=lambda item: item[0], reverse=True)
+    return [path for _, path in dated[:limit]]
+
+
+def _rate_limits_in(tail: str) -> dict[str, Any] | None:
+    for line in reversed(tail.splitlines()):
+        if '"rate_limits"' not in line:
+            continue
+        try:
+            event = json.loads(line)
+        except ValueError:  # ikke-JSON-linje i rollout — spring over
+            continue
+        limits = _find_key(event, "rate_limits")
+        if limits:
+            return limits
+    return None
 
 
 def _tail_text(path: Path, limit: int = 200_000) -> str:
@@ -357,37 +377,40 @@ def _find_key(node: Any, key: str) -> dict[str, Any] | None:
 
 
 def _load_codex_quota() -> QuotaReading:
-    path = _latest_rollout()
-    if path is None:
+    candidates = _recent_rollouts()
+    if not candidates:
         return QuotaReading(
             ok=False, backend="codex",
             error=f"ingen rollout-fil under {_CODEX_SESSIONS} — codex er ikke kørt her",
         )
-    try:
-        tail = _tail_text(path)
-    except OSError as e:  # filen kan vaere ryddet mellem glob og laesning
-        return QuotaReading(ok=False, backend="codex", error=f"kunne ikke læse {path}: {e}")
-    try:
-        mtime = path.stat().st_mtime
-    except OSError as e:  # samme kaploeb som ovenfor
-        return QuotaReading(ok=False, backend="codex", error=f"kunne ikke statte {path}: {e}")
-
+    # Den nyeste fil baerer ikke altid rate_limits (maalt 6/11-2026: nyeste
+    # var fra 09:44 uden feltet, den seneste MED var 13 timer gammel). Gaa
+    # baglaens til den foerste fil der faktisk har tallene.
+    path: Path | None = None
+    tail = ""
+    mtime = 0.0
     limits: dict[str, Any] | None = None
-    for line in reversed(tail.splitlines()):
-        if '"rate_limits"' not in line:
-            continue
+    unreadable: list[str] = []
+    for candidate in candidates:
         try:
-            event = json.loads(line)
-        except ValueError:  # ikke-JSON-linje i rollout — spring over
+            cand_tail = _tail_text(candidate)
+            cand_mtime = candidate.stat().st_mtime
+        except OSError as e:  # filen kan vaere ryddet mellem glob og laesning
+            unreadable.append(f"{candidate.name}: {e}")
             continue
-        limits = _find_key(event, "rate_limits")
-        if limits:
+        found = _rate_limits_in(cand_tail)
+        if found:
+            path, tail, mtime, limits = candidate, cand_tail, cand_mtime, found
             break
 
-    if not limits:
+    if path is None or not limits:
+        detail = f" ({len(unreadable)} ulæselige: {unreadable[0]})" if unreadable else ""
         return QuotaReading(
             ok=False, backend="codex",
-            error=f"ingen rate_limits i {path.name} — filen er muligvis fra før feltet fandtes",
+            error=(
+                f"ingen rate_limits i de {len(candidates)} nyeste rollout-filer "
+                f"(nyeste: {candidates[0].name}) — prøvede {len(candidates)} filer{detail}"
+            ),
         )
 
     now = time.time()
@@ -415,6 +438,7 @@ def _load_codex_quota() -> QuotaReading:
             },
             observed_at=_epoch_iso(mtime),
             hard_block=True,
+            stale_hours=round(max(0.0, now - mtime) / 3600, 2),
         )
 
     primary = limits.get("primary") or {}
@@ -450,6 +474,7 @@ def _load_codex_quota() -> QuotaReading:
     }
     return QuotaReading(
         ok=True, backend="codex", values=values, observed_at=_epoch_iso(mtime),
+        stale_hours=round(max(0.0, now - mtime) / 3600, 2),
     )
 
 

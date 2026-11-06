@@ -288,6 +288,71 @@ def test_codex_quota_uden_rate_limits_giver_grund(monkeypatch, tmp_path):
     assert "rate_limits" in reading.error
 
 
+def _write_plain_rollout(root, day, name) -> "Path":
+    path = root / "2026" / "11" / day
+    path.mkdir(parents=True, exist_ok=True)
+    f = path / name
+    f.write_text(json.dumps({"type": "session_meta"}) + "\n", encoding="utf-8")
+    return f
+
+
+def test_codex_quota_gaar_baglaens_forbi_nyeste_fil_uden_rate_limits(monkeypatch, tmp_path):
+    import os
+
+    now = time.time()
+    _write_rollout(tmp_path, (2.0, now + 3600), (90.0, now + 86400))
+    old = next(tmp_path.glob("*/*/*/rollout-*.jsonl"))
+    os.utime(old, (now - 13 * 3600, now - 13 * 3600))
+    newest = _write_plain_rollout(tmp_path, "06", "rollout-2026-11-06T09-44-23-new.jsonl")
+    os.utime(newest, (now - 60, now - 60))
+    monkeypatch.setattr(dispatch_quota, "_CODEX_SESSIONS", str(tmp_path))
+
+    reading = dispatch_quota.codex_quota()
+
+    assert reading.ok is True
+    assert reading.error == ""
+    assert reading.get("primary_pct") == 2.0
+    assert reading.get("secondary_pct") == 90.0
+    assert reading.get("source_file") == str(old)
+    assert reading.stale_hours == pytest.approx(13.0, abs=0.05)
+    # observed_at er filens egen tid, ikke «nu»
+    observed = datetime.fromisoformat(reading.observed_at).timestamp()
+    assert observed == pytest.approx(now - 13 * 3600, abs=1.0)
+
+
+def test_codex_quota_ingen_fil_har_rate_limits_naevner_antal_proevede(monkeypatch, tmp_path):
+    for i in range(3):
+        _write_plain_rollout(tmp_path, "06", f"rollout-2026-11-06T09-0{i}-00-x.jsonl")
+    monkeypatch.setattr(dispatch_quota, "_CODEX_SESSIONS", str(tmp_path))
+
+    reading = dispatch_quota.codex_quota()
+
+    assert reading.ok is False
+    assert reading.values == {}
+    assert reading.hard_block is False
+    assert "prøvede 3 filer" in reading.error
+    assert "rate_limits" in reading.error
+
+
+def test_codex_quota_baglaens_stopper_ved_graensen(monkeypatch, tmp_path):
+    """Kun de N nyeste filer proeves — en meget gammel fil med feltet tæller ikke."""
+    import os
+
+    now = time.time()
+    _write_rollout(tmp_path, (5.0, now + 3600), (6.0, now + 86400))
+    old = next(tmp_path.glob("*/*/*/rollout-*.jsonl"))
+    os.utime(old, (now - 99999, now - 99999))
+    for i in range(dispatch_quota._ROLLOUT_LOOKBACK):
+        f = _write_plain_rollout(tmp_path, "06", f"rollout-2026-11-06T09-{i:02d}-00-x.jsonl")
+        os.utime(f, (now - 10 - i, now - 10 - i))
+    monkeypatch.setattr(dispatch_quota, "_CODEX_SESSIONS", str(tmp_path))
+
+    reading = dispatch_quota.codex_quota()
+
+    assert reading.ok is False
+    assert f"prøvede {dispatch_quota._ROLLOUT_LOOKBACK} filer" in reading.error
+
+
 # ── Preflight ──────────────────────────────────────────────────────────────
 
 def test_preflight_blokerer_ved_hundrede_procent(monkeypatch):

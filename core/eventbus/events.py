@@ -337,6 +337,20 @@ ALLOWED_EVENT_FAMILIES = {
     #    Familien bærer sti, filnavn, session og udfald — governance-metadata
     #    om en vagt, ikke tanke-indhold → kun her, ikke i PRIVATE-ruter.
     "read_before_write_guard",  # read_before_write_guard.{blocked,allowed,new_file}
+    # ── 6. nov 2026: TIENDE gang samme moenster — og denne gang var det mig,
+    #    i samme tur hvor jeg byggede maalingen for at afskaffe tavshed.
+    #    `push_dispatcher._push_to_web` loggede kun FEJL: en vellykket web-push
+    #    efterlod intet spor, og «nul abonnementer» var helt tavst — saa
+    #    spoergsmaalet «fik hun den?» kunne ikke besvares af nogen, heller ikke
+    #    mig. Jeg tilfoejede events-skrivning, men `push` stod ikke her, saa HVERT
+    #    publish kastede «Unsupported event family», og min egen
+    #    `except Exception: pass` slugte det. MAALT: nul raekker i events efter en
+    #    ende-til-ende-proeve — mens koden saa rigtig ud, 12 tests var groenne og
+    #    mutationstesten faldt korrekt. Telemetri der ikke kan lande er vaerre end
+    #    ingen telemetri: den ser ud som om nogen maaler.
+    #    Payload er metadata-only (user_id, vaert, aarsagskode, kind, run_id) —
+    #    ALDRIG endpoint-URL, titel eller broedtekst.
+    "push",  # push_dispatcher — push.web_sent / push.web_failed / push.web_skipped
 }
 
 

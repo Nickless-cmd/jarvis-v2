@@ -35,28 +35,90 @@ def _push_to_user(user_id: str, data: dict) -> bool:
     return sent
 
 
+def _endpoint_host(endpoint: object) -> str:
+    """Bare vaerten af et push-endpoint (fx ``web.push.apple.com``).
+
+    Selve URL'en er en hemmelighed — den ER adgangen til at sende til enheden —
+    så den må ikke havne i events-tabellen. Vaerten er nok til at se hvilken
+    platform der blev leveret til.
+    """
+    try:
+        from urllib.parse import urlparse
+        return urlparse(str(endpoint or "")).hostname or ""
+    except Exception:  # self-safe: en uparserbar URL må ikke vælte pushet
+        return ""
+
+
+def _push_event(kind: str, payload: dict) -> None:
+    """Skriv ét push-udfald til events-tabellen (6/11-2026).
+
+    ``_push_to_web`` loggede før KUN fejl. En vellykket push efterlod intet
+    spor, og «nul abonnementer» var helt tavst — så spørgsmålet «fik hun den?»
+    kunne ikke besvares af nogen, heller ikke mig.
+
+    En log-linje er ikke nok: push kører i runtime-processen, og en INFO-linje
+    lander ikke nødvendigvis nogen steder. Events-tabellen kan forespørges
+    bagefter, uanset hvilken proces der sendte.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(kind, payload)
+    except Exception as e:
+        # IKKE `pass` (maalt 6/11-2026): en uregistreret familie kastede
+        # «Unsupported event family», og en tavs except gjorde maalingen blind
+        # uden at nogen fejl var synlig. Telemetri maa ikke vaelte leveringen,
+        # men den SKAL sige til naar den ikke kan lande.
+        logger.warning("web-push: kunne ikke skrive %s til events: %s", kind, e)
+
+
 def _push_to_web(user_id: str, data: dict) -> bool:
     """Web-push — fjerde udgang (side-67aea8c5b6). Additiv: FCM/routing røres ikke.
 
     Web-abonnementer er ikke med i device-rangeringen (en browser kan ikke melde
     presence som en app), så de får ALTID beskeden når en notifikation
     dispatches. Det er med vilje: et dobbelt-varsel er bedre end et tabt.
+
+    Hvert udfald skrives til events (``push.web_sent`` / ``push.web_failed`` /
+    ``push.web_skipped``), så en leverance kan efterprøves. Payloaden bærer
+    ALDRIG endpoint-URL, titel eller brødtekst.
     """
     try:
         from core.services import web_push_subscriptions as wps
         from core.services.web_push_gateway import send as _web_send
     except Exception as e:
         logger.warning("web-push: kunne ikke indlæse moduler: %s", e)
+        _push_event("push.web_failed", {
+            "user_id": user_id, "code": "import", "kind": str(data.get("kind") or ""),
+        })
+        return False
+    subs = wps.list_for_user(user_id)
+    if not subs:
+        # Tavshed her var den værste form for tavshed: ingen abonnement og en
+        # leveret push så ens ud i journalen — begge efterlod nul linjer.
+        _push_event("push.web_skipped", {
+            "user_id": user_id, "reason": "no_subscription",
+            "kind": str(data.get("kind") or ""),
+        })
         return False
     sent = False
-    for sub in wps.list_for_user(user_id):
+    for sub in subs:
+        host = _endpoint_host(sub.get("endpoint"))
         try:
             ok, code = _web_send(sub, data)
             sent = sent or bool(ok)
+            _push_event("push.web_sent" if ok else "push.web_failed", {
+                "user_id": user_id, "host": host, "code": code,
+                "kind": str(data.get("kind") or ""),
+                "run_id": str(data.get("run_id") or ""),
+            })
             if not ok and code == "invalid":
                 wps.delete(sub["endpoint"])
         except Exception as e:
             logger.warning("web-push: send-fejl for abonnement: %s", e)
+            _push_event("push.web_failed", {
+                "user_id": user_id, "host": host, "code": "exception",
+                "kind": str(data.get("kind") or ""),
+            })
     return sent
 
 

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9828/18306 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9830/18308 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 9828/18306 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 872 | 1586 | 54% |
-| `core.services` | 6555 | 12400 | 52% |
+| `core.services` | 6557 | 12402 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -314,10 +314,10 @@ Generated from source. 9828/18306 functions/methods documented (53%). The list b
 - `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L226)
 - `core/eventbus/bus.py` :: `EventBus.subscribe` (L248)
 - `core/eventbus/bus.py` :: `EventBus.unsubscribe` (L254)
-- `core/eventbus/events.py` :: `Event.create` (L354)
-- `core/eventbus/events.py` :: `Event.family` (L350)
-- `core/eventbus/events.py` :: `Event.from_record` (L360)
-- `core/eventbus/events.py` :: `Event.validate` (L371)
+- `core/eventbus/events.py` :: `Event.create` (L368)
+- `core/eventbus/events.py` :: `Event.family` (L364)
+- `core/eventbus/events.py` :: `Event.from_record` (L374)
+- `core/eventbus/events.py` :: `Event.validate` (L385)
 - `core/identity/candidate_workflow.py` :: `apply_approved_runtime_contract_candidates` (L343)
 - `core/identity/candidate_workflow.py` :: `apply_runtime_contract_candidate` (L118)
 - `core/identity/candidate_workflow.py` :: `approve_runtime_contract_candidate` (L50)
@@ -1705,9 +1705,9 @@ Generated from source. 9828/18306 functions/methods documented (53%). The list b
 - `core/services/proprioception_metrics.py` :: `recent_snapshots` (L143)
 - `core/services/proprioception_metrics.py` :: `reset_proprioception_metrics` (L216)
 - `core/services/proprioception_metrics.py` :: `tick` (L100)
-- `core/services/push_dispatcher.py` :: `on_approval_requested` (L193)
-- `core/services/push_dispatcher.py` :: `on_initiative` (L181)
-- `core/services/push_dispatcher.py` :: `on_reminder` (L187)
+- `core/services/push_dispatcher.py` :: `on_approval_requested` (L255)
+- `core/services/push_dispatcher.py` :: `on_initiative` (L243)
+- `core/services/push_dispatcher.py` :: `on_reminder` (L249)
 - `core/services/r2_5_haandhaevelse.py` :: `er_bagdoer` (L84)
 - `core/services/reasoning_classifier.py` :: `build_reasoning_classifier_surface` (L275)
 - `core/services/reasoning_escalation.py` :: `build_reasoning_escalation_surface` (L232)

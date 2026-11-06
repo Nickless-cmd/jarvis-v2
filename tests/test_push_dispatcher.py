@@ -138,3 +138,92 @@ def test_droppet_push_naevner_session_uden_ejer(monkeypatch, caplog):
     assert any("DROPPET" in m and "har ingen ejer" in m for m in beskeder), beskeder
     # ... og den maa IKKE paastaa at runnet var vaek.
     assert not any("findes ikke i run_event_log" in m for m in beskeder), beskeder
+
+
+def _web_setup(monkeypatch, subs, sender):
+    """Indsaml push-events uden at roere DB eller netvaerk."""
+    from core.services import web_push_subscriptions as wps
+    from core.services import web_push_gateway as gw
+    indsamlet: list[tuple[str, dict]] = []
+    slettede: list[str] = []
+    monkeypatch.setattr(
+        "core.eventbus.bus.event_bus.publish",
+        lambda kind, payload: indsamlet.append((kind, payload)),
+    )
+    monkeypatch.setattr(wps, "list_for_user", lambda uid: list(subs))
+    monkeypatch.setattr(wps, "delete", lambda endpoint: slettede.append(endpoint))
+    monkeypatch.setattr(gw, "send", sender)
+    return indsamlet, slettede
+
+
+def test_web_push_success_is_recorded(monkeypatch):
+    """En vellykket web-push efterlod FOER intet spor — nu skrives udfaldet.
+
+    Uden dette kunne hverken jeg eller Bjoern svare paa «fik hun den?»: kun fejl
+    blev logget, og en leverance og en manglende leverance saa ens ud.
+    """
+    subs = [{"endpoint": "https://web.push.apple.com/XYZ-hemmelig", "p256dh": "k", "auth": "a"}]
+    events, _ = _web_setup(monkeypatch, subs, lambda sub, data: (True, "ok"))
+
+    assert pd._push_to_web("u-1", {"kind": "answer_ready", "run_id": "run-9"}) is True
+
+    assert len(events) == 1
+    kind, payload = events[0]
+    assert kind == "push.web_sent"
+    assert payload["code"] == "ok"
+    assert payload["host"] == "web.push.apple.com"
+    assert payload["kind"] == "answer_ready"
+    assert payload["run_id"] == "run-9"
+    assert payload["user_id"] == "u-1"
+
+
+def test_web_push_endpoint_url_never_enters_the_payload(monkeypatch):
+    """Endpoint-URL'en ER adgangen til enheden og maa ikke ligge i events."""
+    subs = [{"endpoint": "https://fcm.googleapis.com/fcm/send/HEMMELIGT-TOKEN", "p256dh": "k", "auth": "a"}]
+    events, _ = _web_setup(monkeypatch, subs, lambda sub, data: (True, "ok"))
+
+    pd._push_to_web("u-1", {"kind": "initiative"})
+
+    tekst = repr(events)
+    assert "HEMMELIGT-TOKEN" not in tekst
+    assert "https://" not in tekst
+
+
+def test_web_push_failure_records_reason_and_drops_dead_subscription(monkeypatch):
+    subs = [{"endpoint": "https://web.push.apple.com/DOED", "p256dh": "k", "auth": "a"}]
+    events, slettede = _web_setup(monkeypatch, subs, lambda sub, data: (False, "invalid"))
+
+    assert pd._push_to_web("u-1", {"kind": "answer_ready"}) is False
+
+    kind, payload = events[0]
+    assert kind == "push.web_failed"
+    assert payload["code"] == "invalid"
+    assert slettede == ["https://web.push.apple.com/DOED"]
+
+
+def test_web_push_without_subscription_is_recorded(monkeypatch):
+    """Nul abonnementer var HELT tavst — samme spor som en leveret push."""
+    events, _ = _web_setup(monkeypatch, [], lambda sub, data: (True, "ok"))
+
+    assert pd._push_to_web("u-uden-abonnement", {"kind": "answer_ready"}) is False
+
+    kind, payload = events[0]
+    assert kind == "push.web_skipped"
+    assert payload["reason"] == "no_subscription"
+    assert payload["user_id"] == "u-uden-abonnement"
+
+
+def test_push_familien_er_registreret_i_eventbussen():
+    """Uden familien i ALLOWED kaster publish — og kaldestedets except sluger det.
+
+    MAALT 6/11-2026: praecis det skete. `_push_to_web` fik events-skrivning, men
+    `push` stod ikke i ALLOWED_EVENT_FAMILIES, saa hvert publish kastede
+    «Unsupported event family». Koden saa rigtig ud, 12 tests var groenne, og
+    mutationstesten faldt korrekt — men NUL raekker naaede events-tabellen.
+    Denne test er den vagt der manglede: den maaler at eventet KAN oprettes.
+    """
+    from core.eventbus.events import ALLOWED_EVENT_FAMILIES, Event
+
+    assert "push" in ALLOWED_EVENT_FAMILIES
+    for kind in ("push.web_sent", "push.web_failed", "push.web_skipped"):
+        Event.create(kind, {"user_id": "u-1"})  # maa ikke kaste

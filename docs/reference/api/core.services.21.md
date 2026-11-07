@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/process_identity.py`
+_Hvem koerer denne agent — og lever den proces stadig?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_starttid` | `(pid)` | Procesens starttid i clock ticks (felt 22 i /proc/<pid>/stat). | [src](../../../core/services/process_identity.py#L41) |
+| function | `denne_proces` | `()` | Maerket for den proces der kalder. | [src](../../../core/services/process_identity.py#L56) |
+| function | `lever` | `(maerke)` | Lever processen bag maerket? | [src](../../../core/services/process_identity.py#L75) |
+| function | `_cmdline` | `(pid)` | Procesens kommandolinje med NUL-bytes erstattet af mellemrum. | [src](../../../core/services/process_identity.py#L135) |
+| function | `_foraeldre` | `(pid)` | PPID for `pid` (felt 4 i /proc/<pid>/stat), 0 hvis ulaesbar. | [src](../../../core/services/process_identity.py#L144) |
+| function | `er_efterladt_api_proces` | `(*, pid, cmdline, main_pids, eget_pid, foraeldre_kæde)` | Er denne proces en API-proces som systemd ikke ejer? | [src](../../../core/services/process_identity.py#L154) |
+| function | `foraeldre_kæde` | `(pid=…)` | Pid'erne over `pid` (default: mig selv) op til init. | [src](../../../core/services/process_identity.py#L194) |
+| function | `efterladte_api_processer` | `(*, main_pids)` | Find API-processer som systemd ikke ejer. | [src](../../../core/services/process_identity.py#L207) |
+| function | `systemd_main_pids` | `(units=…)` | MainPID for hver unit, som systemd kender den lige nu. | [src](../../../core/services/process_identity.py#L251) |
+| function | `start_efterladt_vagt` | `(forsinkelse_s=…)` | Start vagten i en daemon-traad. Opdager og RAPPORTERER — draeber ikke. | [src](../../../core/services/process_identity.py#L286) |
+
 ## `core/services/process_supervisor.py`
 _Process supervisor — track long-running background processes Jarvis spawns._
 
@@ -629,28 +645,4 @@ _Hvilken model SVAREDE — ikke hvilken vi bad om._
 | function | `_row` | `(r)` | — | [src](../../../core/services/provider_model_epochs.py#L53) |
 | function | `current_model_epoch` | `(*, provider, requested_model)` | Den epoke der gaelder nu, eller `None` hvis vi aldrig har observeret noget. | [src](../../../core/services/provider_model_epochs.py#L69) |
 | function | `record_model_observation` | `(*, provider, requested_model, observed_model)` | Bogfoer hvad udbyderen FAKTISK svarede med. | [src](../../../core/services/provider_model_epochs.py#L92) |
-
-## `core/services/provider_registry_admin.py`
-_Registret over udbydere og modeller — nu med en skrivevej._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_fil` | `()` | — | [src](../../../core/services/provider_registry_admin.py#L43) |
-| function | `_nu` | `()` | — | [src](../../../core/services/provider_registry_admin.py#L48) |
-| function | `_laes` | `()` | — | [src](../../../core/services/provider_registry_admin.py#L52) |
-| function | `_backup` | `()` | Kopiér den nuvaerende fil til side. Returnerer stien, eller "" hvis intet. | [src](../../../core/services/provider_registry_admin.py#L58) |
-| function | `_skriv` | `(registry)` | Skriv registret. Backup FOERST — en fortrydelse skal kunne lade sig goere. | [src](../../../core/services/provider_registry_admin.py#L80) |
-| function | `_sig_det_hoejt` | `(handling, detalje)` | En aendring i registret er en driftsbeslutning. Den skal kunne ses bagefter. | [src](../../../core/services/provider_registry_admin.py#L95) |
-| function | `fuld_registrering` | `()` | HELE registret — ikke de foerste 8 og 12. | [src](../../../core/services/provider_registry_admin.py#L108) |
-| function | `_valider_kvote_vinduer` | `(windows)` | — | [src](../../../core/services/provider_registry_admin.py#L189) |
-| function | `saet_kvote_politik` | `(*, provider, auth_profile, windows, expected_revision=…)` | Gem deklarerede kvoter paa den konkrete provider-profil. | [src](../../../core/services/provider_registry_admin.py#L234) |
-| function | `saet_model_aktiv` | `(*, provider, model, aktiv, grund=…)` | Slaa én model til eller fra. Pladsen, lanen og historien bevares. | [src](../../../core/services/provider_registry_admin.py#L275) |
-| function | `saet_udbyder_aktiv` | `(*, provider, aktiv, grund=…)` | Slaa en HEL udbyder til eller fra. | [src](../../../core/services/provider_registry_admin.py#L303) |
-| function | `fjern_model` | `(*, provider, model)` | Fjern én model fra registret. Legitimationen roeres ikke. | [src](../../../core/services/provider_registry_admin.py#L328) |
-| function | `fjern_udbyder` | `(*, provider)` | Fjern en udbyder OG dens modeller fra registret. | [src](../../../core/services/provider_registry_admin.py#L342) |
-| function | `gendan_backup` | `(*, sti=…)` | Rul registret tilbage til en backup. Tom sti = den nyeste. | [src](../../../core/services/provider_registry_admin.py#L362) |
-| function | `backups` | `()` | Hvilke backups findes — nyeste foerst. | [src](../../../core/services/provider_registry_admin.py#L384) |
-| function | `tilfoej` | `(*, provider, model, lane=…, auth_mode=…, auth_profile=…, base_url=…, api_key=…)` | Tilfoej (eller gen-aktivér) en udbyder + model i registret. | [src](../../../core/services/provider_registry_admin.py#L398) |
-| function | `saet_lane` | `(*, provider, model, lane)` | Flyt en model til en anden lane (cheap, local, coding, visible …). | [src](../../../core/services/provider_registry_admin.py#L434) |
-| function | `saet_routing_bias` | `(*, provider, model, bias)` | Set a bounded, explicit soft routing factor on one Cheap Lane model. | [src](../../../core/services/provider_registry_admin.py#L457) |
 

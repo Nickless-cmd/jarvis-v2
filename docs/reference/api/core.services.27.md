@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/silence_patterns.py`
+_Silence Patterns — hvad brugeren IKKE siger._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SilenceSignal` | `` | — | [src](../../../core/services/silence_patterns.py#L27) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/silence_patterns.py#L35) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/silence_patterns.py#L39) |
+| function | `_topic_key` | `(text)` | — | [src](../../../core/services/silence_patterns.py#L52) |
+| function | `_load_recent_user_messages` | `(lookback_days)` | Load recent user messages from chat_messages table. | [src](../../../core/services/silence_patterns.py#L59) |
+| function | `_load_recent_events` | `(lookback_days)` | Pull recent events from event_bus — filtered for execution + tool signals. | [src](../../../core/services/silence_patterns.py#L81) |
+| function | `_load_open_loop_topics` | `(limit=…)` | Pull open loop titles/summaries for avoidance detection. | [src](../../../core/services/silence_patterns.py#L97) |
+| function | `detect_silence_patterns` | `(*, lookback_days=…)` | Detect silence signals from chat history + event stream. | [src](../../../core/services/silence_patterns.py#L119) |
+| function | `render_soft_question` | `(signal)` | Generate a natural Danish follow-up question for a silence signal. | [src](../../../core/services/silence_patterns.py#L253) |
+| function | `build_silence_patterns_surface` | `()` | MC surface for silence patterns. | [src](../../../core/services/silence_patterns.py#L277) |
+
 ## `core/services/silent_chain_break.py`
 _Detektor: en bash-kæde der brød tavst ved et ``&&``-led._
 
@@ -609,16 +625,4 @@ _Task worker — consumes queued runtime_tasks in heartbeat tick cadence._
 | function | `_suggested_observability_files` | `(*, scope, service)` | — | [src](../../../core/services/task_worker.py#L422) |
 | function | `_suggested_theater_files` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L436) |
 | function | `build_task_worker_surface` | `()` | Mission Control-surface: hvad ligger der i koeen, og hvad endte de i? | [src](../../../core/services/task_worker.py#L457) |
-
-## `core/services/taste_profile.py`
-_Taste Profile — accumulating aesthetic preferences for code, design, and communication._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `update_taste_from_run` | `(*, run_id, user_message, was_corrected, outcome_status)` | Update taste profile based on a visible run interaction. | [src](../../../core/services/taste_profile.py#L67) |
-| function | `update_taste_async` | `(*, run_id, user_message, was_corrected, outcome_status)` | — | [src](../../../core/services/taste_profile.py#L125) |
-| function | `get_crystallized_tastes` | `()` | Return taste dimensions that have moved decisively (>0.72 or <0.28). | [src](../../../core/services/taste_profile.py#L140) |
-| function | `build_taste_profile_surface` | `()` | — | [src](../../../core/services/taste_profile.py#L155) |
-| function | `_safe` | `(fn, **kwargs)` | — | [src](../../../core/services/taste_profile.py#L167) |
-| function | `_safe_json` | `(value, default)` | — | [src](../../../core/services/taste_profile.py#L174) |
 

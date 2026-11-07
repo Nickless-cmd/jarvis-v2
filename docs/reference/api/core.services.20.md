@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/paste_store.py`
+_Paste-store: eksternalisér store bruger-pastes med en kompakt reference._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_paste_dir` | `()` | — | [src](../../../core/services/paste_store.py#L32) |
+| function | `_paste_path` | `(paste_id)` | — | [src](../../../core/services/paste_store.py#L36) |
+| function | `_compute_id` | `(text)` | — | [src](../../../core/services/paste_store.py#L40) |
+| function | `_line_count` | `(text)` | — | [src](../../../core/services/paste_store.py#L45) |
+| function | `save_paste` | `(text, *, created_at=…, user_id=…)` | Gem en paste og returnér dens hash-baserede id (idempotent). | [src](../../../core/services/paste_store.py#L54) |
+| function | `get_paste` | `(paste_id, *, user_id=…)` | Slå en paste op. Returnér {id, text, line_count, created_at} eller None. | [src](../../../core/services/paste_store.py#L91) |
+| function | `build_paste_reference` | `(paste_id, *, line_count)` | Byg reference-strengen `[paste:<id> +N linjer]`. | [src](../../../core/services/paste_store.py#L116) |
+| function | `parse_paste_reference` | `(content)` | Find første paste-reference i `content`. Returnér {paste_id, line_count} eller None. | [src](../../../core/services/paste_store.py#L123) |
+| function | `expand_paste_references` | `(content)` | Erstat alle `[paste:<id> +N linjer]`-referencer med den fulde paste-tekst. | [src](../../../core/services/paste_store.py#L139) |
+| function | `paste_inline_to_model_enabled` | `()` | Flag: skal modellen se den FULDE paste-tekst (default ON) eller referencen (OFF)? | [src](../../../core/services/paste_store.py#L162) |
+| function | `project_paste_for_model` | `(content)` | Projicér en bruger-besked til modellen: ekspandér paste-referencer når flag ON. | [src](../../../core/services/paste_store.py#L182) |
+| function | `cleanup_old_pastes` | `(max_age_days=…)` | Slet pastes ældre end `max_age_days`. Returnér antal slettede (best-effort). | [src](../../../core/services/paste_store.py#L193) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/paste_store.py#L212) |
+
 ## `core/services/pattern_counterfactual_daemon.py`
 _Pattern counterfactual daemon — Phase 3.5 of causal graph._
 
@@ -668,20 +687,4 @@ _Procedure Bank Pipeline — lærte rutiner der kan pin'es og matches._
 | function | `match_procedures_for_text` | `(text, *, limit=…)` | Find procedures whose trigger-string matches given text. | [src](../../../core/services/procedure_bank_pipeline.py#L201) |
 | function | `maybe_record_procedure_from_run` | `(*, session_id, tool_calls)` | LivingNeuron Fase B (surface-only): udled en NAVNGIVEN kandidat-procedure fra en kørsel der | [src](../../../core/services/procedure_bank_pipeline.py#L242) |
 | function | `build_procedure_bank_surface` | `()` | — | [src](../../../core/services/procedure_bank_pipeline.py#L275) |
-
-## `core/services/process_identity.py`
-_Hvem koerer denne agent — og lever den proces stadig?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_starttid` | `(pid)` | Procesens starttid i clock ticks (felt 22 i /proc/<pid>/stat). | [src](../../../core/services/process_identity.py#L41) |
-| function | `denne_proces` | `()` | Maerket for den proces der kalder. | [src](../../../core/services/process_identity.py#L56) |
-| function | `lever` | `(maerke)` | Lever processen bag maerket? | [src](../../../core/services/process_identity.py#L75) |
-| function | `_cmdline` | `(pid)` | Procesens kommandolinje med NUL-bytes erstattet af mellemrum. | [src](../../../core/services/process_identity.py#L135) |
-| function | `_foraeldre` | `(pid)` | PPID for `pid` (felt 4 i /proc/<pid>/stat), 0 hvis ulaesbar. | [src](../../../core/services/process_identity.py#L144) |
-| function | `er_efterladt_api_proces` | `(*, pid, cmdline, main_pids, eget_pid, foraeldre_kæde)` | Er denne proces en API-proces som systemd ikke ejer? | [src](../../../core/services/process_identity.py#L154) |
-| function | `foraeldre_kæde` | `(pid=…)` | Pid'erne over `pid` (default: mig selv) op til init. | [src](../../../core/services/process_identity.py#L194) |
-| function | `efterladte_api_processer` | `(*, main_pids)` | Find API-processer som systemd ikke ejer. | [src](../../../core/services/process_identity.py#L207) |
-| function | `systemd_main_pids` | `(units=…)` | MainPID for hver unit, som systemd kender den lige nu. | [src](../../../core/services/process_identity.py#L251) |
-| function | `start_efterladt_vagt` | `(forsinkelse_s=…)` | Start vagten i en daemon-traad. Opdager og RAPPORTERER — draeber ikke. | [src](../../../core/services/process_identity.py#L286) |
 

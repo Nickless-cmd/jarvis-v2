@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-11-07 from app.routes (live) — 687 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-07 from app.routes (live) — 688 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -217,6 +217,7 @@
 | GET | `/central/healers` | dict | central_healers |
 | POST | `/central/healers/flag` | dict | central_healers |
 | GET | `/central/identity-canon` | dict | central_matrix |
+| GET | `/central/infra-state` | dict | central |
 | GET | `/central/initiative` | dict | central_absorb_routes |
 | GET | `/central/inner-life` | dict | central_self |
 | GET | `/central/integrity` | dict | central_absorb_routes |

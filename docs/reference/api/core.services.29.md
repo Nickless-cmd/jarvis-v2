@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_result_aging.py`
+_Provider-agnostic tool-result aging for the visible agentic loop._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `aging_trigger_tokens` | `()` | Configured full-content token trigger for aging. Default 120k. Self-safe. | [src](../../../core/services/tool_result_aging.py#L56) |
+| function | `tool_result_aging_mode` | `()` | Current aging mode: 'off' | 'shadow' | 'active'. Default 'shadow'. | [src](../../../core/services/tool_result_aging.py#L67) |
+| function | `_clear_placeholder` | `(n)` | — | [src](../../../core/services/tool_result_aging.py#L84) |
+| function | `_is_already_aged` | `(content)` | Er resultatet ALLEREDE aeldet? Baade ryddet og forkortet taeller. | [src](../../../core/services/tool_result_aging.py#L88) |
+| function | `age_tool_results` | `(exchanges, *, keep_full=…, mode, strength, round_index, compress_fn=…, trigger_tokens=…)` | Age tool-result content on exchanges older than the ``keep_full`` most recent. | [src](../../../core/services/tool_result_aging.py#L98) |
+
 ## `core/services/tool_result_store.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -598,17 +609,4 @@ _Observe chat-response quality without rewriting the user's text._
 | function | `_emoji_heading_signals` | `(prose)` | Mål om overskrifterne bærer emoji — den form Bjørn bad om 25/10-2026. | [src](../../../core/services/visible_chat_quality.py#L45) |
 | function | `analyse_chat_response` | `(text, *, wall_chars=…)` | Return measurable quality signals for a final chat response. | [src](../../../core/services/visible_chat_quality.py#L67) |
 | function | `observe_chat_response` | `(text, **context)` | Emit one metadata-only observation when, and only when, scope is chat. | [src](../../../core/services/visible_chat_quality.py#L117) |
-
-## `core/services/visible_first_pass_output.py`
-_Én synlig grænse for første modelsvar._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `FirstPassOutputFilter` | `` | Filtrér capability-markup, DSML og synlige runtime-markører — i den rækkefølge. | [src](../../../core/services/visible_first_pass_output.py#L50) |
-| method | `FirstPassOutputFilter.__init__` | `(self, kilder=…)` | — | [src](../../../core/services/visible_first_pass_output.py#L53) |
-| method | `FirstPassOutputFilter._dsml` | `(self, text)` | — | [src](../../../core/services/visible_first_pass_output.py#L70) |
-| method | `FirstPassOutputFilter._halv` | `(self, text)` | Fjern den halve DSL-form: navnet og de rå tags — men BEHOLD indholdet. | [src](../../../core/services/visible_first_pass_output.py#L82) |
-| method | `FirstPassOutputFilter.feed` | `(self, text)` | — | [src](../../../core/services/visible_first_pass_output.py#L117) |
-| method | `FirstPassOutputFilter.fundet` | `(self)` | Citation-markører fundet i strømmen. | [src](../../../core/services/visible_first_pass_output.py#L131) |
-| method | `FirstPassOutputFilter.flush` | `(self)` | — | [src](../../../core/services/visible_first_pass_output.py#L140) |
 

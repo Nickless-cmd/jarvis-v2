@@ -269,6 +269,7 @@ _Real-time Central-vindue til owner (jarvis-desk code mode)._
 | function | `central_nerve_toggle` | `(nerve, enabled=…)` | Owner kill-switch: tænd/sluk en nerve LIVE (Lag 5). Sikkerheds-nerver kan IKKE | [src](../../../apps/api/jarvis_api/routes/central.py#L332) |
 | function | `central_tool_infra` | `()` | De 12 værktøjs-lag der ellers er usynlige — hver med sine egne signaler. | [src](../../../apps/api/jarvis_api/routes/central.py#L349) |
 | function | `central_memory_state` | `()` | Hukommelses-lagene der ellers er usynlige — hver med sine egne signaler. | [src](../../../apps/api/jarvis_api/routes/central.py#L361) |
+| function | `central_infra_state` | `()` | Drifts- og infrastruktur-lagene der ellers er usynlige — hver med sine signaler. | [src](../../../apps/api/jarvis_api/routes/central.py#L372) |
 
 ## `apps/api/jarvis_api/routes/central_absorb_routes.py`
 _Central-absorb routes — MC-kategorier PROJICERET som levende central-nerver._

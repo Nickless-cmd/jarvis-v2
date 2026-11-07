@@ -150,6 +150,15 @@ _core/services/infra_sense.py_
 | function | `run_infra_sense_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: sans huset read-only. Bulletproof — kaster ALDRIG. | [src](../../../core/services/infra_sense.py#L620) |
 | function | `register_infra_sense_producer` | `()` | Registrér infra-sansningen som cadence-producer (~hvert 3 min). Read-only. | [src](../../../core/services/infra_sense.py#L636) |
 
+## `core/services/infra_state_surface.py`
+_Samlet flade for drifts- og infrastruktur-lagene — de build_*_surface ingen læser havde._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `producer_names` | `()` | Navnene i kald-raekkefoelge — til test og introspektion. | [src](../../../core/services/infra_state_surface.py#L53) |
+| function | `_is_live` | `(surface)` | — | [src](../../../core/services/infra_state_surface.py#L58) |
+| function | `build_infra_state_surface` | `()` | Kald alle producenter og returnér deres egne signaler. Kaster ALDRIG. | [src](../../../core/services/infra_state_surface.py#L66) |
+
 ## `core/services/infra_weather_daemon.py`
 _Infra Weather Daemon — "The atmosphere of my system"._
 
@@ -743,20 +752,4 @@ _Layer Tension daemon — detects when two or more cognitive layers pull in oppo
 | function | `_store_tension` | `(tension, now)` | — | [src](../../../core/services/layer_tension_daemon.py#L143) |
 | function | `get_active_tensions` | `()` | — | [src](../../../core/services/layer_tension_daemon.py#L190) |
 | function | `build_layer_tension_surface` | `()` | — | [src](../../../core/services/layer_tension_daemon.py#L194) |
-
-## `core/services/learning_pipeline_orchestrator.py`
-_Learning Pipeline Orchestrator — Phase 3 (Loop Closure)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/learning_pipeline_orchestrator.py#L44) |
-| function | `is_enabled` | `()` | Check killswitch. | [src](../../../core/services/learning_pipeline_orchestrator.py#L48) |
-| function | `set_enabled` | `(value)` | Toggle killswitch without restart. | [src](../../../core/services/learning_pipeline_orchestrator.py#L57) |
-| function | `_recent_events` | `(*, families, minutes=…)` | Fetch recent events from eventbus by family, ordered newest-first. | [src](../../../core/services/learning_pipeline_orchestrator.py#L66) |
-| function | `_route_self_evaluation` | `(event)` | self_evaluation outcome → learning_policy + reasoning_store. | [src](../../../core/services/learning_pipeline_orchestrator.py#L94) |
-| function | `_route_learning_policy_rule` | `(event)` | learning_policy.rule_created (conf ≥ 0.7 + evidence ≥ 2) → abstraction + reasoning_store. | [src](../../../core/services/learning_pipeline_orchestrator.py#L151) |
-| function | `_route_counterfactual_cycle` | `(event)` | counterfactual.cycle_complete → skill distiller + reasoning_store. | [src](../../../core/services/learning_pipeline_orchestrator.py#L212) |
-| function | `_route_agent_run` | `(event)` | agent_run.completed → reasoning_store. | [src](../../../core/services/learning_pipeline_orchestrator.py#L261) |
-| function | `run_pipeline` | `(*, force=…)` | Run one full pipeline routing cycle. | [src](../../../core/services/learning_pipeline_orchestrator.py#L296) |
-| function | `run_reflect_cycle` | `()` | Thin wrapper for REFLECT phase integration. | [src](../../../core/services/learning_pipeline_orchestrator.py#L418) |
 

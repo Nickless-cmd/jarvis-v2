@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/narrative_summary_daemon.py`
+_Narrative summary daemon — Phase 2.5 of causal graph._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fetch_recent_anchor` | `()` | — | [src](../../../core/services/narrative_summary_daemon.py#L54) |
+| function | `_already_summarised` | `(anchor_event_id)` | True if we have a recent narrative.summary for this anchor. | [src](../../../core/services/narrative_summary_daemon.py#L78) |
+| function | `_build_chain` | `(anchor_id)` | — | [src](../../../core/services/narrative_summary_daemon.py#L92) |
+| function | `_build_prompt` | `(anchor, chain)` | Return (system_prompt, user_message) for the LLM call. | [src](../../../core/services/narrative_summary_daemon.py#L103) |
+| function | `_persist_summary` | `(*, anchor_id, anchor_kind, summary, model)` | Insert narrative.summary event with caused_by = anchor_id. | [src](../../../core/services/narrative_summary_daemon.py#L129) |
+| function | `run_summary_cycle` | `()` | One cycle: find anchor, build chain, call LLM, persist event. | [src](../../../core/services/narrative_summary_daemon.py#L149) |
+| function | `tick_narrative_summary_daemon` | `()` | Daemon-manager entry: run one cycle if cadence elapsed. | [src](../../../core/services/narrative_summary_daemon.py#L227) |
+| function | `build_narrative_summary_surface` | `()` | Mission Control surface for the latest narrative summary. | [src](../../../core/services/narrative_summary_daemon.py#L246) |
+
 ## `core/services/negotiation_engine.py`
 _Negotiation Engine — internal trade offers between subsystems._
 
@@ -656,23 +670,4 @@ _Past-context cue router for visible prompts._
 |---|---|---|---|---|
 | function | `needs_past_context` | `(user_message)` | Return True when a user turn likely depends on prior conversation. | [src](../../../core/services/past_context_router.py#L20) |
 | function | `build_past_context_section` | `(user_message, *, session_id=…, limit=…)` | Compatibility no-op; the authoritative current-query bundle owns recall. | [src](../../../core/services/past_context_router.py#L28) |
-
-## `core/services/paste_store.py`
-_Paste-store: eksternalisér store bruger-pastes med en kompakt reference._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_paste_dir` | `()` | — | [src](../../../core/services/paste_store.py#L32) |
-| function | `_paste_path` | `(paste_id)` | — | [src](../../../core/services/paste_store.py#L36) |
-| function | `_compute_id` | `(text)` | — | [src](../../../core/services/paste_store.py#L40) |
-| function | `_line_count` | `(text)` | — | [src](../../../core/services/paste_store.py#L45) |
-| function | `save_paste` | `(text, *, created_at=…, user_id=…)` | Gem en paste og returnér dens hash-baserede id (idempotent). | [src](../../../core/services/paste_store.py#L54) |
-| function | `get_paste` | `(paste_id, *, user_id=…)` | Slå en paste op. Returnér {id, text, line_count, created_at} eller None. | [src](../../../core/services/paste_store.py#L91) |
-| function | `build_paste_reference` | `(paste_id, *, line_count)` | Byg reference-strengen `[paste:<id> +N linjer]`. | [src](../../../core/services/paste_store.py#L116) |
-| function | `parse_paste_reference` | `(content)` | Find første paste-reference i `content`. Returnér {paste_id, line_count} eller None. | [src](../../../core/services/paste_store.py#L123) |
-| function | `expand_paste_references` | `(content)` | Erstat alle `[paste:<id> +N linjer]`-referencer med den fulde paste-tekst. | [src](../../../core/services/paste_store.py#L139) |
-| function | `paste_inline_to_model_enabled` | `()` | Flag: skal modellen se den FULDE paste-tekst (default ON) eller referencen (OFF)? | [src](../../../core/services/paste_store.py#L162) |
-| function | `project_paste_for_model` | `(content)` | Projicér en bruger-besked til modellen: ekspandér paste-referencer når flag ON. | [src](../../../core/services/paste_store.py#L182) |
-| function | `cleanup_old_pastes` | `(max_age_days=…)` | Slet pastes ældre end `max_age_days`. Returnér antal slettede (best-effort). | [src](../../../core/services/paste_store.py#L193) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/paste_store.py#L212) |
 

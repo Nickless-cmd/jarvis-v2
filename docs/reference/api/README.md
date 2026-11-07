@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18379 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18383 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -46,22 +46,22 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18379 functions/
 - [`core.services.13`](core.services.13.md) — `emotion_concepts_positive_triggers` … `flade_korrektion`
 - [`core.services.14`](core.services.14.md) — `flow_state_detection` … `governance_bootstrap`
 - [`core.services.15`](core.services.15.md) — `graf_render` … `in_flight_runs`
-- [`core.services.16`](core.services.16.md) — `inbox_gate` … `learning_pipeline_orchestrator`
-- [`core.services.17`](core.services.17.md) — `learning_policy_engine` … `memory_hierarchy`
-- [`core.services.18`](core.services.18.md) — `memory_hygiene` … `narrative_summary_daemon`
-- [`core.services.19`](core.services.19.md) — `negotiation_engine` … `paste_store`
-- [`core.services.20`](core.services.20.md) — `pattern_counterfactual_daemon` … `process_identity`
-- [`core.services.21`](core.services.21.md) — `process_supervisor` … `provider_registry_admin`
-- [`core.services.22`](core.services.22.md) — `provider_retry_policy` … `repeated_requests`
-- [`core.services.23`](core.services.23.md) — `repetition_guard` … `run_follow`
-- [`core.services.24`](core.services.24.md) — `run_guard` … `security_guard`
-- [`core.services.25`](core.services.25.md) — `seed_system` … `session_boot_reconciler`
-- [`core.services.26`](core.services.26.md) — `session_context_resolve` … `silence_patterns`
-- [`core.services.27`](core.services.27.md) — `silent_chain_break` … `taste_profile`
-- [`core.services.28`](core.services.28.md) — `telegram_gateway` … `tool_result_aging`
-- [`core.services.29`](core.services.29.md) — `tool_result_store` … `visible_first_pass_output`
-- [`core.services.30`](core.services.30.md) — `visible_first_pass_pump` … `visible_runs_error_messaging`
-- [`core.services.31`](core.services.31.md) — `visible_runs_learning_signals` … `world_model_signal_tracking`
+- [`core.services.16`](core.services.16.md) — `inbox_gate` … `layer_tension_daemon`
+- [`core.services.17`](core.services.17.md) — `learning_pipeline_orchestrator` … `memory_graph`
+- [`core.services.18`](core.services.18.md) — `memory_hierarchy` … `narrative_identity`
+- [`core.services.19`](core.services.19.md) — `narrative_summary_daemon` … `past_context_router`
+- [`core.services.20`](core.services.20.md) — `paste_store` … `procedure_bank_pipeline`
+- [`core.services.21`](core.services.21.md) — `process_identity` … `provider_model_epochs`
+- [`core.services.22`](core.services.22.md) — `provider_registry_admin` … `remembered_fact_signal_tracking`
+- [`core.services.23`](core.services.23.md) — `repeated_requests` … `run_finding_accounting`
+- [`core.services.24`](core.services.24.md) — `run_follow` … `secret_redaction`
+- [`core.services.25`](core.services.25.md) — `security_guard` … `session_binding`
+- [`core.services.26`](core.services.26.md) — `session_boot_reconciler` … `silence_listener`
+- [`core.services.27`](core.services.27.md) — `silence_patterns` … `task_worker`
+- [`core.services.28`](core.services.28.md) — `taste_profile` … `tool_pattern_miner`
+- [`core.services.29`](core.services.29.md) — `tool_result_aging` … `visible_chat_quality`
+- [`core.services.30`](core.services.30.md) — `visible_first_pass_output` … `visible_runs_cognitive`
+- [`core.services.31`](core.services.31.md) — `visible_runs_error_messaging` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

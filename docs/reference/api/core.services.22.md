@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/provider_registry_admin.py`
+_Registret over udbydere og modeller — nu med en skrivevej._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fil` | `()` | — | [src](../../../core/services/provider_registry_admin.py#L43) |
+| function | `_nu` | `()` | — | [src](../../../core/services/provider_registry_admin.py#L48) |
+| function | `_laes` | `()` | — | [src](../../../core/services/provider_registry_admin.py#L52) |
+| function | `_backup` | `()` | Kopiér den nuvaerende fil til side. Returnerer stien, eller "" hvis intet. | [src](../../../core/services/provider_registry_admin.py#L58) |
+| function | `_skriv` | `(registry)` | Skriv registret. Backup FOERST — en fortrydelse skal kunne lade sig goere. | [src](../../../core/services/provider_registry_admin.py#L80) |
+| function | `_sig_det_hoejt` | `(handling, detalje)` | En aendring i registret er en driftsbeslutning. Den skal kunne ses bagefter. | [src](../../../core/services/provider_registry_admin.py#L95) |
+| function | `fuld_registrering` | `()` | HELE registret — ikke de foerste 8 og 12. | [src](../../../core/services/provider_registry_admin.py#L108) |
+| function | `_valider_kvote_vinduer` | `(windows)` | — | [src](../../../core/services/provider_registry_admin.py#L189) |
+| function | `saet_kvote_politik` | `(*, provider, auth_profile, windows, expected_revision=…)` | Gem deklarerede kvoter paa den konkrete provider-profil. | [src](../../../core/services/provider_registry_admin.py#L234) |
+| function | `saet_model_aktiv` | `(*, provider, model, aktiv, grund=…)` | Slaa én model til eller fra. Pladsen, lanen og historien bevares. | [src](../../../core/services/provider_registry_admin.py#L275) |
+| function | `saet_udbyder_aktiv` | `(*, provider, aktiv, grund=…)` | Slaa en HEL udbyder til eller fra. | [src](../../../core/services/provider_registry_admin.py#L303) |
+| function | `fjern_model` | `(*, provider, model)` | Fjern én model fra registret. Legitimationen roeres ikke. | [src](../../../core/services/provider_registry_admin.py#L328) |
+| function | `fjern_udbyder` | `(*, provider)` | Fjern en udbyder OG dens modeller fra registret. | [src](../../../core/services/provider_registry_admin.py#L342) |
+| function | `gendan_backup` | `(*, sti=…)` | Rul registret tilbage til en backup. Tom sti = den nyeste. | [src](../../../core/services/provider_registry_admin.py#L362) |
+| function | `backups` | `()` | Hvilke backups findes — nyeste foerst. | [src](../../../core/services/provider_registry_admin.py#L384) |
+| function | `tilfoej` | `(*, provider, model, lane=…, auth_mode=…, auth_profile=…, base_url=…, api_key=…)` | Tilfoej (eller gen-aktivér) en udbyder + model i registret. | [src](../../../core/services/provider_registry_admin.py#L398) |
+| function | `saet_lane` | `(*, provider, model, lane)` | Flyt en model til en anden lane (cheap, local, coding, visible …). | [src](../../../core/services/provider_registry_admin.py#L434) |
+| function | `saet_routing_bias` | `(*, provider, model, bias)` | Set a bounded, explicit soft routing factor on one Cheap Lane model. | [src](../../../core/services/provider_registry_admin.py#L457) |
+
 ## `core/services/provider_retry_policy.py`
 _Provider retry policy — exponential backoff for transient failures._
 
@@ -718,25 +742,4 @@ _Remembered-fact signal tracking — migrated onto signal_tracking_framework._
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/remembered_fact_signal_tracking.py#L356) |
 | function | `_contains_any` | `(text, needles)` | — | [src](../../../core/services/remembered_fact_signal_tracking.py#L368) |
 | function | `_rank_confidence` | `(confidence)` | — | [src](../../../core/services/remembered_fact_signal_tracking.py#L372) |
-
-## `core/services/repeated_requests.py`
-_Gentagne anmodninger → regel-forslag (lærings-sløjfe 2026-09-04, blok C)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/repeated_requests.py#L60) |
-| function | `_stems` | `(text)` | Betydningsbærende ord, forkortet til deres første `_STEM_CHARS` tegn. | [src](../../../core/services/repeated_requests.py#L64) |
-| function | `normalize` | `(text)` | Anmodningens stammer, sorteret — noeglen en anmodning gemmes under. | [src](../../../core/services/repeated_requests.py#L80) |
-| function | `similarity` | `(a, b)` | Jaccard mellem to anmodningers stammer (0-1). | [src](../../../core/services/repeated_requests.py#L85) |
-| function | `ensure_table` | `(conn)` | — | [src](../../../core/services/repeated_requests.py#L93) |
-| function | `_row` | `(r)` | — | [src](../../../core/services/repeated_requests.py#L117) |
-| function | `_sessions` | `(raw)` | — | [src](../../../core/services/repeated_requests.py#L121) |
-| function | `note_request` | `(*, text, session_id=…, kind=…)` | Tæl én anmodning. Returnerer rækken plus ``matured`` når den nu er en regel-kandidat. | [src](../../../core/services/repeated_requests.py#L125) |
-| function | `build_question` | `(*, text, mention_count, session_count, kind)` | Det ene spørgsmål Bjørn får at se. Konkret, med tallet der udløste det. | [src](../../../core/services/repeated_requests.py#L209) |
-| function | `mark_asked` | `(request_id)` | — | [src](../../../core/services/repeated_requests.py#L224) |
-| function | `record_decision` | `(*, request_id, accepted)` | Bjørns svar. Ja → linjen skrives i `## Kerne` med begrundelse. | [src](../../../core/services/repeated_requests.py#L236) |
-| function | `surface_matured` | `(result, *, kind=…, session_id=…)` | Læg et modnet regel-forslag i den proaktive kø. Ét spørgsmål, én gang. | [src](../../../core/services/repeated_requests.py#L273) |
-| function | `note_and_surface` | `(*, text, session_id=…, kind=…)` | Tæl, og stil spørgsmålet hvis anmodningen netop modnede. Self-safe. | [src](../../../core/services/repeated_requests.py#L303) |
-| function | `counts` | `()` | — | [src](../../../core/services/repeated_requests.py#L315) |
-| function | `build_repeated_requests_surface` | `()` | — | [src](../../../core/services/repeated_requests.py#L325) |
 

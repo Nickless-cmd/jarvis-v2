@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_boot_reconciler.py`
+_Boot-reconciler: crash-zombie runs → interrupted, så de genoptages._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_container_start` | `(nu=…)` | Hvornaar startede DENNE container? ``None`` naar det ikke kan afgoeres. | [src](../../../core/services/session_boot_reconciler.py#L48) |
+| function | `_uden_omkostning_graense` | `(nu=…)` | Graensen for den tredje gren — se `_UDEN_OMKOSTNING_MINUTTER`. | [src](../../../core/services/session_boot_reconciler.py#L81) |
+| function | `_drift_graense` | `(nu=…)` | Hvor gammel skal en `running`-raekke vaere, foer den er drift? | [src](../../../core/services/session_boot_reconciler.py#L87) |
+| function | `_observe` | `(payload)` | Fyr central-nerve ``session_persistence`` (cluster runtime). Best-effort, | [src](../../../core/services/session_boot_reconciler.py#L114) |
+| function | `reconcile_on_boot` | `(stale_after_s=…)` | Reconcile crash-zombie runs ved opstart. Fail-open. | [src](../../../core/services/session_boot_reconciler.py#L128) |
+| function | `_ryd_visible_drift` | `(enforced)` | `visible_runs`-rækker der står `running` og som INTET kender. | [src](../../../core/services/session_boot_reconciler.py#L228) |
+| function | `ryd_visible_drift_periodisk` | `()` | Periodisk oprydning — samme regel som ved opstart, men uden at vente på en. | [src](../../../core/services/session_boot_reconciler.py#L388) |
+
 ## `core/services/session_context_resolve.py`
 _Hvilken samtale kører vi i? — ét sted, frem for én kopi pr. værktøj._
 
@@ -562,20 +575,4 @@ _Silence Listener — experience of empty space._
 | function | `format_silence_for_prompt` | `()` | — | [src](../../../core/services/silence_listener.py#L118) |
 | function | `reset_silence_listener` | `()` | Nulstil. Rydder OGSÅ disken — ellers ville næste læsning hente det | [src](../../../core/services/silence_listener.py#L125) |
 | function | `build_silence_listener_surface` | `()` | — | [src](../../../core/services/silence_listener.py#L131) |
-
-## `core/services/silence_patterns.py`
-_Silence Patterns — hvad brugeren IKKE siger._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SilenceSignal` | `` | — | [src](../../../core/services/silence_patterns.py#L27) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/silence_patterns.py#L35) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/silence_patterns.py#L39) |
-| function | `_topic_key` | `(text)` | — | [src](../../../core/services/silence_patterns.py#L52) |
-| function | `_load_recent_user_messages` | `(lookback_days)` | Load recent user messages from chat_messages table. | [src](../../../core/services/silence_patterns.py#L59) |
-| function | `_load_recent_events` | `(lookback_days)` | Pull recent events from event_bus — filtered for execution + tool signals. | [src](../../../core/services/silence_patterns.py#L81) |
-| function | `_load_open_loop_topics` | `(limit=…)` | Pull open loop titles/summaries for avoidance detection. | [src](../../../core/services/silence_patterns.py#L97) |
-| function | `detect_silence_patterns` | `(*, lookback_days=…)` | Detect silence signals from chat history + event stream. | [src](../../../core/services/silence_patterns.py#L119) |
-| function | `render_soft_question` | `(signal)` | Generate a natural Danish follow-up question for a silence signal. | [src](../../../core/services/silence_patterns.py#L253) |
-| function | `build_silence_patterns_surface` | `()` | MC surface for silence patterns. | [src](../../../core/services/silence_patterns.py#L277) |
 

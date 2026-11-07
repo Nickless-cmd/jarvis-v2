@@ -366,3 +366,17 @@ async def central_memory_state() -> dict:
     _require_owner()
     from core.services.memory_state_surface import build_memory_state_surface
     return await asyncio.to_thread(build_memory_state_surface)
+
+
+@router.get("/infra-state")
+async def central_infra_state() -> dict:
+    """Drifts- og infrastruktur-lagene der ellers er usynlige — hver med sine signaler.
+
+    Målt 7/11-2026 på tværs af HELE repoet (ikke kun apps/): 24 flader blev
+    refereret fra ingen anden fil end deres egen. De 23 her er maskinrummet —
+    DB-helbred, cache, ressource-signaler, mail, vision, selv-reparation. Netop
+    den slags der kører forkert i månedsvis uden at nogen opdager det, fordi
+    ingen ser den. Owner-only, read-only, blokerende læsning via to_thread."""
+    _require_owner()
+    from core.services.infra_state_surface import build_infra_state_surface
+    return await asyncio.to_thread(build_infra_state_surface)

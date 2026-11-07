@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9890/18375 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9893/18379 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 9890/18375 functions/methods documented (53%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 738 | 1032 | 71% |
+| `apps.api.jarvis_api.routes` | 739 | 1033 | 71% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -26,7 +26,7 @@ Generated from source. 9890/18375 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 872 | 1586 | 54% |
-| `core.services` | 6605 | 12450 | 53% |
+| `core.services` | 6607 | 12453 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -53,7 +53,7 @@ Generated from source. 9890/18375 functions/methods documented (53%). The list b
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `HttpsRedirectMiddleware.dispatch` (L66)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SecurityHeadersMiddleware.dispatch` (L79)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SimpleRateLimitMiddleware.dispatch` (L196)
-- `apps/api/jarvis_api/routes/agent_approvals.py` :: `decide` (L66)
+- `apps/api/jarvis_api/routes/agent_approvals.py` :: `decide` (L82)
 - `apps/api/jarvis_api/routes/agent_contract_view.py` :: `acknowledge` (L166)
 - `apps/api/jarvis_api/routes/agent_contract_view.py` :: `agent` (L103)
 - `apps/api/jarvis_api/routes/agent_contract_view.py` :: `artifact` (L113)

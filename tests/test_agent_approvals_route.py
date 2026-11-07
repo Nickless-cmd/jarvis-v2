@@ -163,4 +163,39 @@ def test_the_routes_are_mounted_in_the_app():
     from apps.api.jarvis_api.app import app
 
     paths = {getattr(r, "path", "") for r in app.routes}
-    assert {"/agents/approvals", "/agents/approvals/{approval_id}/decision"} <= paths
+    assert {
+        "/agents/approvals",
+        "/agents/approvals/{approval_id}/decision",
+        # 7/11-2026: maskineriets tilstand bag godkendelserne. Otte flader
+        # (outbox, udloebs-daemon, feedback, notify, gate, samtykke, veto)
+        # havde nul laesere; listen over ventende kort viste hvad der venter,
+        # ikke om maskineriet bag det virker.
+        "/agents/approvals/state",
+    } <= paths
+
+
+def test_approval_state_route_exposes_the_aggregate(rt):
+    """Den aegte kobling: routen skal svare med aggregatets form og alle otte lag."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from core.services.approval_state_surface import producer_names
+
+    app = FastAPI()
+    app.include_router(R.router)
+    res = TestClient(app).get("/agents/approvals/state")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["mode"] == "approval-state-v1"
+    assert set(body["surfaces"]) == set(producer_names())
+
+
+def test_approval_state_route_is_owner_gated(rt):
+    """Uden en bundet bruger maa godkendelses-maskineriets tilstand ikke laekke."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    app = FastAPI()
+    app.include_router(R.router)
+    rt.som_("")
+    assert TestClient(app).get("/agents/approvals/state").status_code == 401

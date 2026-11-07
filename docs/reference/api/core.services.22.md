@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/provider_retry_policy.py`
+_Provider retry policy — exponential backoff for transient failures._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_transient` | `(exc)` | — | [src](../../../core/services/provider_retry_policy.py#L46) |
+| function | `retry_with_backoff` | `(fn, *, max_retries=…, base_delay=…, max_delay=…, only_transient=…, label=…)` | Run fn() with exponential backoff. Re-raises last exception on failure. | [src](../../../core/services/provider_retry_policy.py#L53) |
+| function | `_exec_test_retry` | `(args)` | Manual test handle — verify retry behaviour. Not for production use. | [src](../../../core/services/provider_retry_policy.py#L97) |
+
 ## `core/services/provider_self_heal.py`
 _Provider selvhelbredelse (spec Fase C). To sikre auto-handlinger:_
 
@@ -730,16 +739,4 @@ _Gentagne anmodninger → regel-forslag (lærings-sløjfe 2026-09-04, blok C)._
 | function | `note_and_surface` | `(*, text, session_id=…, kind=…)` | Tæl, og stil spørgsmålet hvis anmodningen netop modnede. Self-safe. | [src](../../../core/services/repeated_requests.py#L303) |
 | function | `counts` | `()` | — | [src](../../../core/services/repeated_requests.py#L315) |
 | function | `build_repeated_requests_surface` | `()` | — | [src](../../../core/services/repeated_requests.py#L325) |
-
-## `core/services/repetition_guard.py`
-_Gentagelses-vagt (5/11-2026) — fang "sagde det samme igen, intet er ændret"._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_fact_tokens` | `(text)` | Konkrete fakta i teksten: tal, filnavne, hashes (lowercased). | [src](../../../core/services/repetition_guard.py#L53) |
-| function | `_normaliser` | `(text)` | Tegnsætning væk, så «færdig.» og «færdig» ikke tæller som forskellige ord. | [src](../../../core/services/repetition_guard.py#L62) |
-| function | `is_repetition` | `(final_text, previous_texts, nudged_already=…, window=…, threshold=…, min_words=…)` | Gentagelse = svaret ligner et af de seneste svar + ingen ny information. | [src](../../../core/services/repetition_guard.py#L67) |
-| function | `previous_assistant_texts` | `(session_id, limit=…)` | Jarvis' seneste svar i sessionen, ældste først. Self-safe → [] ved fejl. | [src](../../../core/services/repetition_guard.py#L103) |
-| function | `should_nudge` | `(final_text, session_id)` | Produktions-indgangen: flag + sessionens seneste svar + is_repetition. | [src](../../../core/services/repetition_guard.py#L113) |
-| function | `repetition_guard_enabled` | `()` | Default TRUE. Env `JARVIS_REPETITION_GUARD` vinder; ellers runtime-state | [src](../../../core/services/repetition_guard.py#L119) |
 

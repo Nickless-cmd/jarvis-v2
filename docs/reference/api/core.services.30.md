@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_first_pass_pump.py`
+_Worker-thread pump for the first visible model stream._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `pump_first_pass` | `(run, *, controller, tool_scope, loop, queue, sentinel, stream_fn=…)` | — | [src](../../../core/services/visible_first_pass_pump.py#L10) |
+
 ## `core/services/visible_first_pass_results.py`
 _Publish first-pass tool outcomes before post-tool prompt assembly._
 
@@ -572,13 +579,4 @@ _User-facing error messages for visible runs (Jarvis voice)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `friendly_provider_error_message` | `(exc)` | Return a Jarvis-voice Danish message for a visible-model exception. | [src](../../../core/services/visible_runs_error_messaging.py#L15) |
-
-## `core/services/visible_runs_learning_signals.py`
-_Post-run learning signals for a visible run (extracted from visible_runs.py,_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `er_brugerafbrydelse` | `(fejl)` | True hvis fejlteksten beskriver en afbrydelse frem for en fejl. | [src](../../../core/services/visible_runs_learning_signals.py#L29) |
-| function | `tool_names` | `(collected_native_tool_calls)` | Names of the native tool calls in order (objects or OpenAI-style dicts). | [src](../../../core/services/visible_runs_learning_signals.py#L35) |
-| function | `record_visible_run_learning_signals` | `(*, run_ref, collected_native_tool_calls, outcome_status, outcome_error, followup_text, output_tokens)` | — | [src](../../../core/services/visible_runs_learning_signals.py#L53) |
 

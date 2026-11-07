@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/data_erasure.py`
+_GDPR Art. 17 (ret til at blive glemt) — orkestrering._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_user_id_tables` | `(conn)` | Tabeller der HAR en user_id-kolonne (minus beskyttede). Eksplicit opdaget, | [src](../../../core/services/data_erasure.py#L23) |
+| function | `_sweep_user_tables` | `(user_id, *, connect=…)` | — | [src](../../../core/services/data_erasure.py#L38) |
+| function | `_wipe_workspace` | `(user_id)` | Slet brugerens workspace-mappe — med STRAM sti-sikkerhed (kun en undermappe | [src](../../../core/services/data_erasure.py#L49) |
+| function | `erase_user` | `(user_id, *, mode=…, actor=…, connect=…)` | Slet en brugers data. mode='soft' (reversibel) | 'hard' (permanent). | [src](../../../core/services/data_erasure.py#L63) |
+
 ## `core/services/day_shape_memory.py`
 _Day Shape Memory — sensory depth over time._
 
@@ -607,20 +617,4 @@ _Discord gateway — runs discord.py in a dedicated daemon thread._
 | function | `_resolve_channel_for_session` | `(session_id)` | Look up the Discord channel that originated a given session. | [src](../../../core/services/discord_gateway.py#L1659) |
 | function | `start_discord_gateway` | `()` | Start gateway if config exists. Safe to call unconditionally. | [src](../../../core/services/discord_gateway.py#L1682) |
 | function | `stop_discord_gateway` | `()` | Stop the gateway gracefully. | [src](../../../core/services/discord_gateway.py#L1726) |
-
-## `core/services/discord_gateway_supervisor.py`
-_Vagthund der genrejser Discord-gatewayen naar dens klienttraad er doed._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_gateway_er_ejet` | `()` | Ejer DENNE proces gatewayen? Fejl regnes som «ja», saa en laesefejl | [src](../../../core/services/discord_gateway_supervisor.py#L89) |
-| function | `_discord_er_slaaet_til` | `()` | Er Discord konfigureret OG aktiveret? Ellers skal vi ikke rejse noget. | [src](../../../core/services/discord_gateway_supervisor.py#L103) |
-| function | `_skriv_tilstand` | `(**felter)` | Spejl supervisorens tilstand saa Centralen kan se den. | [src](../../../core/services/discord_gateway_supervisor.py#L114) |
-| function | `_vent_paa_at_traadene_doer` | `()` | Vent indtil klient- og subscriber-traaden er vaek. True hvis de doede. | [src](../../../core/services/discord_gateway_supervisor.py#L127) |
-| function | `_reparer` | `()` | Stop resterne og start gatewayen forfra. True hvis ejerskab blev vundet. | [src](../../../core/services/discord_gateway_supervisor.py#L157) |
-| function | `_loop` | `()` | Tjek med faste mellemrum; bak eksponentielt ud naar reparation fejler. | [src](../../../core/services/discord_gateway_supervisor.py#L212) |
-| function | `_sov` | `(sekunder)` | Sov i smaa bidder, saa et stop ikke skal vente et helt interval. | [src](../../../core/services/discord_gateway_supervisor.py#L235) |
-| function | `start_discord_gateway_supervisor` | `()` | Start vagthunden. Sikker at kalde ubetinget. | [src](../../../core/services/discord_gateway_supervisor.py#L243) |
-| function | `stop_discord_gateway_supervisor` | `()` | Stop vagthunden. SKAL kaldes FOER `stop_discord_gateway()` ved nedlukning, | [src](../../../core/services/discord_gateway_supervisor.py#L261) |
-| function | `supervisor_status` | `()` | Til Centralen: koerer vagthunden, og hvor mange gange har den maattet | [src](../../../core/services/discord_gateway_supervisor.py#L268) |
 

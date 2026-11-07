@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/process_supervisor.py`
+_Process supervisor — track long-running background processes Jarvis spawns._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/process_supervisor.py#L44) |
+| function | `_ensure_dirs` | `()` | — | [src](../../../core/services/process_supervisor.py#L48) |
+| function | `_safe_name` | `(name)` | Sanitize a process name for use in filenames. | [src](../../../core/services/process_supervisor.py#L52) |
+| function | `_load_registry` | `()` | — | [src](../../../core/services/process_supervisor.py#L58) |
+| function | `_save_registry` | `(reg)` | — | [src](../../../core/services/process_supervisor.py#L70) |
+| function | `_pid_alive` | `(pid)` | — | [src](../../../core/services/process_supervisor.py#L78) |
+| function | `_read_status` | `(entry)` | Snapshot of a registry entry's live status. | [src](../../../core/services/process_supervisor.py#L93) |
+| function | `spawn_process` | `(*, name, command, cwd=…, env=…, replace_if_running=…)` | Spawn a detached background process under supervision. | [src](../../../core/services/process_supervisor.py#L135) |
+| function | `list_processes` | `(*, include_stopped=…)` | — | [src](../../../core/services/process_supervisor.py#L229) |
+| function | `_egen_gruppe_vaern` | `(pid, name)` | Processens gruppe — eller None hvis vi ikke tør signalere den. | [src](../../../core/services/process_supervisor.py#L239) |
+| function | `_stop_locked` | `(reg, name, grace)` | Caller must hold _LOCK. Stops the named process gracefully. | [src](../../../core/services/process_supervisor.py#L271) |
+| function | `pause_process` | `(name)` | SIGSTOP hele proces-gruppen. Genoptages med `resume_process`. | [src](../../../core/services/process_supervisor.py#L309) |
+| function | `resume_process` | `(name)` | SIGCONT — koer videre hvor den slap. | [src](../../../core/services/process_supervisor.py#L330) |
+| function | `_signal_locked` | `(name, sig, *, paused)` | — | [src](../../../core/services/process_supervisor.py#L335) |
+| function | `stop_process` | `(name, *, grace=…)` | — | [src](../../../core/services/process_supervisor.py#L368) |
+| function | `tail_process_log` | `(name, *, lines=…)` | — | [src](../../../core/services/process_supervisor.py#L375) |
+| function | `read_process_log_since` | `(name, offset, max_bytes=…)` | Read one bounded byte range from a supervised process log. | [src](../../../core/services/process_supervisor.py#L407) |
+| function | `remove_process` | `(name)` | Remove an entry from the registry. Refuses if still alive. | [src](../../../core/services/process_supervisor.py#L440) |
+
 ## `core/services/process_watcher.py`
 _Process watcher — push-notification primitive for Jarvis._
 
@@ -629,13 +653,4 @@ _Registret over udbydere og modeller — nu med en skrivevej._
 | function | `tilfoej` | `(*, provider, model, lane=…, auth_mode=…, auth_profile=…, base_url=…, api_key=…)` | Tilfoej (eller gen-aktivér) en udbyder + model i registret. | [src](../../../core/services/provider_registry_admin.py#L398) |
 | function | `saet_lane` | `(*, provider, model, lane)` | Flyt en model til en anden lane (cheap, local, coding, visible …). | [src](../../../core/services/provider_registry_admin.py#L434) |
 | function | `saet_routing_bias` | `(*, provider, model, bias)` | Set a bounded, explicit soft routing factor on one Cheap Lane model. | [src](../../../core/services/provider_registry_admin.py#L457) |
-
-## `core/services/provider_retry_policy.py`
-_Provider retry policy — exponential backoff for transient failures._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_is_transient` | `(exc)` | — | [src](../../../core/services/provider_retry_policy.py#L46) |
-| function | `retry_with_backoff` | `(fn, *, max_retries=…, base_delay=…, max_delay=…, only_transient=…, label=…)` | Run fn() with exponential backoff. Re-raises last exception on failure. | [src](../../../core/services/provider_retry_policy.py#L53) |
-| function | `_exec_test_retry` | `(args)` | Manual test handle — verify retry behaviour. Not for production use. | [src](../../../core/services/provider_retry_policy.py#L97) |
 

@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-11-07 from app.routes (live) — 686 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-07 from app.routes (live) — 687 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -31,6 +31,7 @@
 | GET | `/account/quota` | dict | account |
 | GET | `/account/workspace` | dict | account |
 | GET | `/agents/approvals` | dict | agent_approvals |
+| GET | `/agents/approvals/state` | dict | agent_approvals |
 | POST | `/agents/approvals/{approval_id}/decision` | dict | agent_approvals |
 | GET | `/agents/contract/agents/{agent_id}` | dict | agent_contract_view |
 | GET | `/agents/contract/agents/{agent_id}/artifacts/{run_id}/{name}` | dict | agent_contract_view |

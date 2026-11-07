@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/emotion_concepts_positive_triggers.py`
+_Positive emotion concept bridges for living runtime signals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `on_heartbeat_quality` | `(payload)` | Trigger joy when heartbeat quality is clearly good. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L13) |
+| function | `on_goal_created` | `(payload)` | A new durable goal produces a small anticipation/excitement pulse. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L29) |
+| function | `on_goal_updated` | `(payload)` | Trigger pride when a goal is nearly done, without refiring constantly. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L42) |
+| function | `on_sensory_recorded` | `(record)` | Trigger wonder when a sensory memory explicitly looks novel/anomalous. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L80) |
+| function | `_float` | `(value)` | — | [src](../../../core/services/emotion_concepts_positive_triggers.py#L103) |
+
 ## `core/services/emotion_repair_bridge_daemon.py`
 _Emotion Repair Bridge Daemon — tovejskobling mellem emotion-signaler og selvreparation._
 
@@ -664,13 +675,4 @@ _Ret en ødelagt ``jarvis-ui``-blok FØR svaret vises — ikke efter._
 | function | `_mekanisk_reparation` | `(tekst)` | Ret det der kan rettes uden at spørge en model. | [src](../../../core/services/flade_korrektion.py#L72) |
 | function | `_blok_vinduer` | `(tekst)` | Uddrag af teksten omkring hver ``jarvis-ui``-blok. | [src](../../../core/services/flade_korrektion.py#L110) |
 | function | `korriger_flader` | `(tekst, fejl, *, stream_followup, provider, model, base_messages, run_id=…, session_id=…)` | Bed modellen rette defekte ``jarvis-ui``-blokke. Returnerer ny tekst. | [src](../../../core/services/flade_korrektion.py#L129) |
-
-## `core/services/flow_state_detection.py`
-_Flow State Detection — when everything clicks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `update_flow_detection` | `(*, recent_outcomes, correction_count=…, sustained_minutes=…)` | — | [src](../../../core/services/flow_state_detection.py#L11) |
-| function | `get_flow_state` | `()` | — | [src](../../../core/services/flow_state_detection.py#L33) |
-| function | `build_flow_state_surface` | `()` | — | [src](../../../core/services/flow_state_detection.py#L37) |
 

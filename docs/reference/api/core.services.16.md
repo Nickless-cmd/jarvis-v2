@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/inbox_gate.py`
+_Indbakkens to-trins forudsætning i mutationspunktet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_gate_tændt` | `()` | — | [src](../../../core/services/inbox_gate.py#L72) |
+| function | `_foer_blok` | `()` | — | [src](../../../core/services/inbox_gate.py#L84) |
+| function | `_aegte_kald` | `(vaerktoejsnavn, argumenter)` | Det ÆGTE navn OG de ægte argumenter, også ad en indpakket vej. | [src](../../../core/services/inbox_gate.py#L93) |
+| function | `_gaar_til_en_anden` | `(navn, argumenter)` | Er dette en udgående besked til en ANDEN bruger end Bjørn? | [src](../../../core/services/inbox_gate.py#L129) |
+| function | `_gatende_poster` | `(bruger_id)` | Åbne poster der MÅ gate. `None` = kunne ikke læses (fail-open). | [src](../../../core/services/inbox_gate.py#L151) |
+| function | `_system_maerke` | `()` | — | [src](../../../core/services/inbox_gate.py#L218) |
+| function | `_spor` | `(kind, payload)` | Publicér til eventbussen. Kaster aldrig. | [src](../../../core/services/inbox_gate.py#L231) |
+| function | `_varsel` | `(poster)` | — | [src](../../../core/services/inbox_gate.py#L249) |
+| function | `_naegtelse` | `(poster, navn)` | — | [src](../../../core/services/inbox_gate.py#L257) |
+| function | `evaluer_inbox_mutation` | `(bruger_id, vaerktoejsnavn, argumenter=…, *, tur=…)` | Skal `vaerktoejsnavn` nægtes, eller skal der bare påmindes? | [src](../../../core/services/inbox_gate.py#L266) |
+
 ## `core/services/inbox_idle_waker.py`
 _Indbakken skal kunne VÆKKE — ikke kun gate._
 
@@ -743,22 +759,4 @@ _Learning Pipeline Orchestrator — Phase 3 (Loop Closure)._
 | function | `_route_agent_run` | `(event)` | agent_run.completed → reasoning_store. | [src](../../../core/services/learning_pipeline_orchestrator.py#L261) |
 | function | `run_pipeline` | `(*, force=…)` | Run one full pipeline routing cycle. | [src](../../../core/services/learning_pipeline_orchestrator.py#L296) |
 | function | `run_reflect_cycle` | `()` | Thin wrapper for REFLECT phase integration. | [src](../../../core/services/learning_pipeline_orchestrator.py#L418) |
-
-## `core/services/learning_policy_engine.py`
-_Explicit learning policy engine._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `update_learning_policies_from_episode` | `(*, episode=…, source_run_id=…)` | Extract and reinforce active policy rules from a cognitive episode. | [src](../../../core/services/learning_policy_engine.py#L25) |
-| function | `reinforce_learning_policy` | `(rule)` | Insert or strengthen a learning policy rule. | [src](../../../core/services/learning_policy_engine.py#L50) |
-| function | `build_learning_policy_surface` | `(*, limit=…)` | Return active policy rules for prompt/conductor use. | [src](../../../core/services/learning_policy_engine.py#L101) |
-| function | `build_learning_policy_prompt_section` | `(*, limit=…)` | — | [src](../../../core/services/learning_policy_engine.py#L130) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/learning_policy_engine.py#L145) |
-| function | `_latest_episode` | `()` | — | [src](../../../core/services/learning_policy_engine.py#L152) |
-| function | `_decode_episode` | `(row)` | — | [src](../../../core/services/learning_policy_engine.py#L157) |
-| function | `_rule_from_episode` | `(*, episode, learning, attention, policy, source_run_id)` | — | [src](../../../core/services/learning_policy_engine.py#L167) |
-| function | `_classify_rule_key` | `(*, policy_update, next_behavior, lesson)` | — | [src](../../../core/services/learning_policy_engine.py#L194) |
-| function | `_target_context` | `(rule_key)` | — | [src](../../../core/services/learning_policy_engine.py#L209) |
-| function | `_initial_confidence` | `(*, episode, learning)` | — | [src](../../../core/services/learning_policy_engine.py#L219) |
-| function | `_surface_directive` | `(rules)` | — | [src](../../../core/services/learning_policy_engine.py#L233) |
 

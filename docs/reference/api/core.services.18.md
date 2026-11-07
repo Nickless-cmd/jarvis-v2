@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/memory_hygiene.py`
+_Measured, reversible hygiene for per-user ``MEMORY.md`` files._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/memory_hygiene.py#L45) |
+| function | `_section_key` | `(heading)` | — | [src](../../../core/services/memory_hygiene.py#L49) |
+| function | `_ensure_tables` | `(conn)` | — | [src](../../../core/services/memory_hygiene.py#L54) |
+| function | `record_section_selections` | `(workspace, headings, *, selected_at=…)` | Persist actual prompt selections; one transaction per prompt build. | [src](../../../core/services/memory_hygiene.py#L90) |
+| function | `auto_write_allowed` | `(workspace, *, path=…)` | Backpressure only: candidates remain proposed when the file is over cap. | [src](../../../core/services/memory_hygiene.py#L125) |
+| function | `_workspace_memory_path` | `(workspace)` | — | [src](../../../core/services/memory_hygiene.py#L152) |
+| function | `_parse_h2_sections` | `(text)` | — | [src](../../../core/services/memory_hygiene.py#L158) |
+| function | `_normalize_heading` | `(heading)` | — | [src](../../../core/services/memory_hygiene.py#L180) |
+| function | `_usage_summary` | `(workspace)` | — | [src](../../../core/services/memory_hygiene.py#L184) |
+| function | `_atomic_json` | `(path, payload)` | — | [src](../../../core/services/memory_hygiene.py#L204) |
+| function | `audit_workspace` | `(workspace, *, path=…, publish_inbox=…)` | Create a read-only hygiene report.  Never moves or rewrites memory. | [src](../../../core/services/memory_hygiene.py#L220) |
+| function | `_publish_inbox` | `(workspace, report)` | — | [src](../../../core/services/memory_hygiene.py#L310) |
+| function | `build_memory_hygiene_surface` | `()` | Mission Control-surface: hvad fandt hygiejne-auditten sidst, pr. workspace? | [src](../../../core/services/memory_hygiene.py#L341) |
+
 ## `core/services/memory_maintenance_daemon.py`
 _Memory maintenance daemon — periodic dedup and health of every user's MEMORY.md._
 
@@ -612,12 +631,4 @@ _Narrative summary daemon — Phase 2.5 of causal graph._
 | function | `run_summary_cycle` | `()` | One cycle: find anchor, build chain, call LLM, persist event. | [src](../../../core/services/narrative_summary_daemon.py#L149) |
 | function | `tick_narrative_summary_daemon` | `()` | Daemon-manager entry: run one cycle if cadence elapsed. | [src](../../../core/services/narrative_summary_daemon.py#L227) |
 | function | `build_narrative_summary_surface` | `()` | Mission Control surface for the latest narrative summary. | [src](../../../core/services/narrative_summary_daemon.py#L246) |
-
-## `core/services/negotiation_engine.py`
-_Negotiation Engine — internal trade offers between subsystems._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `propose_trade` | `(*, proposer, counterparty, requested_decision, confidence, rationale, evidence=…)` | Propose an internal trade between subsystems. | [src](../../../core/services/negotiation_engine.py#L22) |
-| function | `build_negotiation_surface` | `()` | — | [src](../../../core/services/negotiation_engine.py#L57) |
 

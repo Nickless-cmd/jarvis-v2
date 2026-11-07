@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/contradiction_engine.py`
+_Contradiction engine — detect semantic conflicts between commitments and reviews._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/contradiction_engine.py#L44) |
+| function | `_tokens` | `(text)` | — | [src](../../../core/services/contradiction_engine.py#L48) |
+| function | `_has_negation` | `(text)` | — | [src](../../../core/services/contradiction_engine.py#L52) |
+| function | `_fetch_active_decisions` | `(*, limit=…)` | Return active behavioral_decisions with their directive text. | [src](../../../core/services/contradiction_engine.py#L56) |
+| function | `_fetch_recent_self_reviews` | `(*, hours=…, limit=…)` | Return cognitive_self_reviews from the last `hours` hours. | [src](../../../core/services/contradiction_engine.py#L76) |
+| function | `_timedelta` | `(*, hours)` | — | [src](../../../core/services/contradiction_engine.py#L97) |
+| function | `_critique_texts_from_review` | `(review)` | Extract per-lesson + next_focus strings as candidate critique texts. | [src](../../../core/services/contradiction_engine.py#L102) |
+| function | `detect_contradictions` | `(*, max_findings=…)` | Find semantic contradictions between active decisions and recent reviews. | [src](../../../core/services/contradiction_engine.py#L121) |
+| function | `run_contradiction_tick` | `()` | One detection cycle. Publishes contradiction.detected events. | [src](../../../core/services/contradiction_engine.py#L178) |
+| function | `build_contradiction_engine_surface` | `(*, limit=…)` | Mission-control/read-surface for semantic contradiction detection. | [src](../../../core/services/contradiction_engine.py#L212) |
+
 ## `core/services/contradiction_resolver.py`
 _Contradiction resolver (spec 2026-07-10)._
 
@@ -606,14 +622,4 @@ _Dagbøger som rigtige brain-poster._
 | function | `_datoer` | `(spec)` | «YYYY-MM-DD» eller «YYYY-MM-DD..YYYY-MM-DD» → datoer. ValueError med en grund. | [src](../../../core/services/daily_journal_entry.py#L115) |
 | function | `_uddrag` | `(content)` | Dagbogens indhold uden de to meta-linjer foran; det er dét der fortæller dagen. | [src](../../../core/services/daily_journal_entry.py#L131) |
 | function | `find_journals` | `(spec, *, ceiling)` | Dagbøgerne for en dato eller et interval. Arkiverede tælles med; `ceiling` er | [src](../../../core/services/daily_journal_entry.py#L139) |
-
-## `core/services/data_erasure.py`
-_GDPR Art. 17 (ret til at blive glemt) — orkestrering._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_user_id_tables` | `(conn)` | Tabeller der HAR en user_id-kolonne (minus beskyttede). Eksplicit opdaget, | [src](../../../core/services/data_erasure.py#L23) |
-| function | `_sweep_user_tables` | `(user_id, *, connect=…)` | — | [src](../../../core/services/data_erasure.py#L38) |
-| function | `_wipe_workspace` | `(user_id)` | Slet brugerens workspace-mappe — med STRAM sti-sikkerhed (kun en undermappe | [src](../../../core/services/data_erasure.py#L49) |
-| function | `erase_user` | `(user_id, *, mode=…, actor=…, connect=…)` | Slet en brugers data. mode='soft' (reversibel) | 'hard' (permanent). | [src](../../../core/services/data_erasure.py#L63) |
 

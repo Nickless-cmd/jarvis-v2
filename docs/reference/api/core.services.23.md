@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/repetition_guard.py`
+_Gentagelses-vagt (5/11-2026) — fang "sagde det samme igen, intet er ændret"._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fact_tokens` | `(text)` | Konkrete fakta i teksten: tal, filnavne, hashes (lowercased). | [src](../../../core/services/repetition_guard.py#L53) |
+| function | `_normaliser` | `(text)` | Tegnsætning væk, så «færdig.» og «færdig» ikke tæller som forskellige ord. | [src](../../../core/services/repetition_guard.py#L62) |
+| function | `is_repetition` | `(final_text, previous_texts, nudged_already=…, window=…, threshold=…, min_words=…)` | Gentagelse = svaret ligner et af de seneste svar + ingen ny information. | [src](../../../core/services/repetition_guard.py#L67) |
+| function | `previous_assistant_texts` | `(session_id, limit=…)` | Jarvis' seneste svar i sessionen, ældste først. Self-safe → [] ved fejl. | [src](../../../core/services/repetition_guard.py#L103) |
+| function | `should_nudge` | `(final_text, session_id)` | Produktions-indgangen: flag + sessionens seneste svar + is_repetition. | [src](../../../core/services/repetition_guard.py#L113) |
+| function | `repetition_guard_enabled` | `()` | Default TRUE. Env `JARVIS_REPETITION_GUARD` vinder; ellers runtime-state | [src](../../../core/services/repetition_guard.py#L119) |
+
 ## `core/services/repo_index.py`
 _Separat søgeindeks over repoets DOKUMENTATION — ikke kildekoden._
 
@@ -611,13 +623,4 @@ _Follow-stream for runs → klienter kan token-streame dem live + liveness-kilde
 | function | `has_active_follow` | `(session_id)` | True hvis der findes en (ikke-afsluttet) follow-buffer for sessionen. | [src](../../../core/services/run_follow.py#L108) |
 | function | `session_is_live` | `(session_id, max_idle_s=…)` | Autoritativ: kører der et run i denne session LIGE NU? (ikke done OG | [src](../../../core/services/run_follow.py#L115) |
 | function | `live_sessions` | `(max_idle_s=…)` | Alle sessioner med et run der aktivt streamer lige nu (desktop-prikker + | [src](../../../core/services/run_follow.py#L126) |
-
-## `core/services/run_guard.py`
-_Én fælles vagt: kører der et run i denne session lige nu?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `levende_run_i_session` | `(session_id)` | Run-id på et LEVENDE run i sessionen — cross-proces. "" hvis ingen. | [src](../../../core/services/run_guard.py#L56) |
-| function | `blokeringsgrund` | `(origin, session_id)` | Årsag hvis et nyt BAGGRUNDS-run ikke må starte her. "" = fri bane. | [src](../../../core/services/run_guard.py#L89) |
-| function | `parker_forpligtelse` | `(*, origin, session_id, beskrivelse, kilde_id=…)` | Læg en AFVIST forpligtelse i indbakken i stedet for at tabe den. | [src](../../../core/services/run_guard.py#L109) |
 

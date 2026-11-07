@@ -62,6 +62,22 @@ async def list_approvals(status: str = "", session: str = "") -> dict:
     return out
 
 
+@router.get("/state")
+async def approval_state() -> dict:
+    """Maskineriets tilstand bag godkendelserne — de otte lag der ellers er usynlige.
+
+    7/11-2026: ``approval_runtime``, ``approval_outbox``, ``approval_expiry_daemon``,
+    ``approval_feedback_subscriber``, ``agent_approval_notify``, ``agent_approval_gate``,
+    ``consent_registry`` og ``veto_gate`` havde alle en ``build_*_surface`` og nul
+    læsere. Listen over ventende godkendelser viste hvad der venter — ikke om
+    udløbs-daemonen kører, om outbox'en kommer af sted, eller hvilke grænser der
+    er sat. Denne rute er indgangen til den tilstand.
+    """
+    _bruger()
+    from core.services.approval_state_surface import build_approval_state_surface
+    return await asyncio.to_thread(build_approval_state_surface)
+
+
 @router.post("/{approval_id}/decision")
 async def decide(approval_id: str, body: DecisionRequest) -> dict:
     uid = _bruger()

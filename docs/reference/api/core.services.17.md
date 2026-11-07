@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/learning_policy_engine.py`
+_Explicit learning policy engine._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `update_learning_policies_from_episode` | `(*, episode=…, source_run_id=…)` | Extract and reinforce active policy rules from a cognitive episode. | [src](../../../core/services/learning_policy_engine.py#L25) |
+| function | `reinforce_learning_policy` | `(rule)` | Insert or strengthen a learning policy rule. | [src](../../../core/services/learning_policy_engine.py#L50) |
+| function | `build_learning_policy_surface` | `(*, limit=…)` | Return active policy rules for prompt/conductor use. | [src](../../../core/services/learning_policy_engine.py#L101) |
+| function | `build_learning_policy_prompt_section` | `(*, limit=…)` | — | [src](../../../core/services/learning_policy_engine.py#L130) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/learning_policy_engine.py#L145) |
+| function | `_latest_episode` | `()` | — | [src](../../../core/services/learning_policy_engine.py#L152) |
+| function | `_decode_episode` | `(row)` | — | [src](../../../core/services/learning_policy_engine.py#L157) |
+| function | `_rule_from_episode` | `(*, episode, learning, attention, policy, source_run_id)` | — | [src](../../../core/services/learning_policy_engine.py#L167) |
+| function | `_classify_rule_key` | `(*, policy_update, next_behavior, lesson)` | — | [src](../../../core/services/learning_policy_engine.py#L194) |
+| function | `_target_context` | `(rule_key)` | — | [src](../../../core/services/learning_policy_engine.py#L209) |
+| function | `_initial_confidence` | `(*, episode, learning)` | — | [src](../../../core/services/learning_policy_engine.py#L219) |
+| function | `_surface_directive` | `(rules)` | — | [src](../../../core/services/learning_policy_engine.py#L233) |
+
 ## `core/services/ledger_canary.py`
 _Efterfyld en session i ledgeren og slå skyggen til._
 
@@ -599,23 +617,4 @@ _Memory hierarchy — explicit hot/warm/cold tiers + recall-before-act._
 | function | `_exec_hot_tier` | `(args)` | — | [src](../../../core/services/memory_hierarchy.py#L248) |
 | function | `_exec_warm_tier` | `(args)` | — | [src](../../../core/services/memory_hierarchy.py#L252) |
 | function | `_exec_cold_tier` | `(args)` | — | [src](../../../core/services/memory_hierarchy.py#L256) |
-
-## `core/services/memory_hygiene.py`
-_Measured, reversible hygiene for per-user ``MEMORY.md`` files._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/memory_hygiene.py#L45) |
-| function | `_section_key` | `(heading)` | — | [src](../../../core/services/memory_hygiene.py#L49) |
-| function | `_ensure_tables` | `(conn)` | — | [src](../../../core/services/memory_hygiene.py#L54) |
-| function | `record_section_selections` | `(workspace, headings, *, selected_at=…)` | Persist actual prompt selections; one transaction per prompt build. | [src](../../../core/services/memory_hygiene.py#L90) |
-| function | `auto_write_allowed` | `(workspace, *, path=…)` | Backpressure only: candidates remain proposed when the file is over cap. | [src](../../../core/services/memory_hygiene.py#L125) |
-| function | `_workspace_memory_path` | `(workspace)` | — | [src](../../../core/services/memory_hygiene.py#L152) |
-| function | `_parse_h2_sections` | `(text)` | — | [src](../../../core/services/memory_hygiene.py#L158) |
-| function | `_normalize_heading` | `(heading)` | — | [src](../../../core/services/memory_hygiene.py#L180) |
-| function | `_usage_summary` | `(workspace)` | — | [src](../../../core/services/memory_hygiene.py#L184) |
-| function | `_atomic_json` | `(path, payload)` | — | [src](../../../core/services/memory_hygiene.py#L204) |
-| function | `audit_workspace` | `(workspace, *, path=…, publish_inbox=…)` | Create a read-only hygiene report.  Never moves or rewrites memory. | [src](../../../core/services/memory_hygiene.py#L220) |
-| function | `_publish_inbox` | `(workspace, report)` | — | [src](../../../core/services/memory_hygiene.py#L310) |
-| function | `build_memory_hygiene_surface` | `()` | Mission Control-surface: hvad fandt hygiejne-auditten sidst, pr. workspace? | [src](../../../core/services/memory_hygiene.py#L341) |
 

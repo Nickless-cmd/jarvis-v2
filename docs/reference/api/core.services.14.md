@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/flow_state_detection.py`
+_Flow State Detection — when everything clicks._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `update_flow_detection` | `(*, recent_outcomes, correction_count=…, sustained_minutes=…)` | — | [src](../../../core/services/flow_state_detection.py#L11) |
+| function | `get_flow_state` | `()` | — | [src](../../../core/services/flow_state_detection.py#L33) |
+| function | `build_flow_state_surface` | `()` | — | [src](../../../core/services/flow_state_detection.py#L37) |
+
 ## `core/services/followup_observer.py`
 _Followup-cluster — gør den agentiske followup-loop synlig i Den Intelligente Central._
 
@@ -512,14 +521,4 @@ _Governance bootstrap — idempotent setup of default windows, jobs handlers, au
 | function | `ensure_default_automations` | `()` | Seed a couple of baseline automations so the DSL surface has examples. | [src](../../../core/services/governance_bootstrap.py#L346) |
 | function | `ensure_warmup_job` | `()` | Enqueue a single low-priority warmup job on first boot so the | [src](../../../core/services/governance_bootstrap.py#L410) |
 | function | `bootstrap_all` | `()` | Run all idempotent bootstrap helpers. Safe at any startup. | [src](../../../core/services/governance_bootstrap.py#L435) |
-
-## `core/services/graf_render.py`
-_Tegn en graf til PNG — saa den kan leveres som en almindelig billed-blok._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `GrafFejl` | `` | En spec vi ikke kan tegne. Baerer en besked der kan vises til Jarvis. | [src](../../../core/services/graf_render.py#L42) |
-| function | `_tal_liste` | `(v, navn)` | — | [src](../../../core/services/graf_render.py#L46) |
-| function | `_validér` | `(spec)` | — | [src](../../../core/services/graf_render.py#L58) |
-| function | `tegn_graf` | `(spec)` | Spec → PNG-bytes. Kaster `GrafFejl` paa en spec vi ikke kan tegne. | [src](../../../core/services/graf_render.py#L90) |
 

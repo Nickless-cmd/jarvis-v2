@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/autonomy_proposal_queue.py`
+_Autonomy proposal queue — Niveau 2 fundament._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `register_proposal_executor` | `(kind, fn)` | Register an executor for a proposal kind. | [src](../../../core/services/autonomy_proposal_queue.py#L49) |
+| function | `get_registered_proposal_kinds` | `()` | — | [src](../../../core/services/autonomy_proposal_queue.py#L54) |
+| function | `file_proposal` | `(*, kind, title, rationale=…, payload=…, created_by=…, session_id=…, run_id=…, tick_id=…, canonical_key=…)` | File a new proposal in the queue. | [src](../../../core/services/autonomy_proposal_queue.py#L58) |
+| function | `_notify_discord_proposal` | `(proposal_id, kind, title)` | Send a DM to the owner when a proposal is filed — fire and forget. | [src](../../../core/services/autonomy_proposal_queue.py#L109) |
+| function | `list_pending_proposals` | `(*, limit=…)` | — | [src](../../../core/services/autonomy_proposal_queue.py#L155) |
+| function | `list_recent_proposals` | `(*, limit=…)` | — | [src](../../../core/services/autonomy_proposal_queue.py#L159) |
+| function | `approve_proposal` | `(proposal_id, *, resolution_note=…)` | Bjørn approves a proposal — execute it immediately if we have an | [src](../../../core/services/autonomy_proposal_queue.py#L163) |
+| function | `reject_proposal` | `(proposal_id, *, resolution_note=…)` | — | [src](../../../core/services/autonomy_proposal_queue.py#L279) |
+| function | `build_autonomy_proposal_surface` | `(*, limit=…)` | MC-friendly view of the proposal queue. | [src](../../../core/services/autonomy_proposal_queue.py#L332) |
+| function | `_execute_memory_rewrite_proposal` | `(payload)` | Execute an approved memory-rewrite proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L355) |
+| function | `_execute_source_edit_proposal` | `(payload)` | Execute an approved source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L380) |
+| function | `_auto_commit_after_source_edit` | `(proposal, result)` | Auto-commit the file changed by a source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L507) |
+| function | `_execute_git_commit_proposal` | `(payload)` | Execute an approved git-commit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L598) |
+| function | `_execute_instrument_fix_proposal` | `(payload)` | Execute an approved instrument_fix proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L701) |
+| function | `_execute_prompt_evolution_proposal` | `(payload)` | Execute an approved prompt-evolution proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L747) |
+| function | `propose_prompt_evolution_apply` | `(proposal_id, *, target_file=…, created_by=…)` | Rejs et prompt-forslag til MENNESKETS godkendelse. | [src](../../../core/services/autonomy_proposal_queue.py#L859) |
+
 ## `core/services/avoidance_detector.py`
 _Avoidance Detector — unbidden self-observation of patterns over time._
 
@@ -573,26 +595,4 @@ _core/services/central_affect.py — affektiv tagging af Centralens nerver._
 | function | `classify_affect` | `(cluster, nerve, kind, value, flagged=…)` | Klassificér én nerve-observation til en affekt + intensitet. Self-safe. | [src](../../../core/services/central_affect.py#L77) |
 | function | `_recent_affect_records` | `(limit=…)` | Læs de seneste affekt-bærende records fra tidsserien (meta.affect). Self-safe. | [src](../../../core/services/central_affect.py#L131) |
 | function | `build_affect_surface` | `(records=…)` | Aggregér de seneste affekter til en fordeling + dominant. Self-safe. | [src](../../../core/services/central_affect.py#L155) |
-
-## `core/services/central_agenda.py`
-_core/services/central_agenda.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_agenda.py#L25) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_agenda.py#L34) |
-| function | `is_authoritative` | `()` | — | [src](../../../core/services/central_agenda.py#L42) |
-| function | `_read_goals` | `()` | Feed-LÆSNING af Jarvis' eksisterende mål — syntetiserer ALDRIG. | [src](../../../core/services/central_agenda.py#L47) |
-| function | `_read_plans` | `()` | — | [src](../../../core/services/central_agenda.py#L73) |
-| function | `_read_todos` | `()` | — | [src](../../../core/services/central_agenda.py#L83) |
-| function | `_read_initiatives` | `()` | — | [src](../../../core/services/central_agenda.py#L94) |
-| function | `render_want_text` | `(w)` | Et ønskes tekst, læst fra dets EGNE felter — aldrig fra dets repr. | [src](../../../core/services/central_agenda.py#L110) |
-| function | `_top_want` | `()` | — | [src](../../../core/services/central_agenda.py#L139) |
-| function | `build_agenda` | `()` | Konvergér de spredte kilder til Centralens ene ejede dagsorden. Self-safe. | [src](../../../core/services/central_agenda.py#L156) |
-| function | `choose_next_intention` | `(agenda)` | Centralens VALG: hvad skal Jarvis bevæge sig mod nu. Prioritet: aktiv plan-næste-trin > | [src](../../../core/services/central_agenda.py#L170) |
-| function | `run_agenda_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: byg + EJ dagsordenen durabelt + vælg næste-intention. Egress-frit observe (kun tællere + | [src](../../../core/services/central_agenda.py#L198) |
-| function | `get_agenda` | `()` | Centralens durable ejede dagsorden (overlever genstart). Self-safe. | [src](../../../core/services/central_agenda.py#L217) |
-| function | `authoritative_next_intention` | `()` | KONSUMENT-KONTRAKT: Centralens valgte næste-intention — KUN bag flag (default OFF → None → | [src](../../../core/services/central_agenda.py#L224) |
-| function | `register_agenda_producer` | `()` | Registrér agenda-ejerskabet som cadence-producer (~hvert 20 min). SHADOW medmindre flag ON. | [src](../../../core/services/central_agenda.py#L233) |
-| function | `build_agenda_surface` | `()` | Mission Control — read-only: Centralens ejede dagsorden + valgte næste-intention. | [src](../../../core/services/central_agenda.py#L245) |
 

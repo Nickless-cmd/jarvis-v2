@@ -109,6 +109,15 @@ _Én doer ind og ud af en godkendelse — Fase 4's sidste stykke._
 | function | `sweep_expired` | `()` | Fjern udloebne kort. Returnerer hvad der blev fejet. | [src](../../../core/services/approval_runtime.py#L375) |
 | function | `build_approval_runtime_surface` | `()` | Mission Control-surface: hvilke godkendelses-kort venter lige nu? | [src](../../../core/services/approval_runtime.py#L404) |
 
+## `core/services/approval_state_surface.py`
+_Samlet flade for godkendelses- og samtykke-lagene — de build_*_surface ingen rute kaldte._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `producer_names` | `()` | Navnene i kald-rækkefølge — til test og introspektion. | [src](../../../core/services/approval_state_surface.py#L36) |
+| function | `_is_live` | `(surface)` | — | [src](../../../core/services/approval_state_surface.py#L41) |
+| function | `build_approval_state_surface` | `()` | Kald alle producenter og returnér deres egne signaler. Kaster ALDRIG. | [src](../../../core/services/approval_state_surface.py#L51) |
+
 ## `core/services/arc_rule_extractor.py`
 _Arc rule extractor — turns narrative arcs into actionable rules._
 
@@ -613,26 +622,4 @@ _Dagligt budget for selvvalgte handlinger + tælling af stilheden (blok E, 4/9).
 | function | `_find_support_value` | `(support_summary, key, default)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L835) |
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L843) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L855) |
-
-## `core/services/autonomy_proposal_queue.py`
-_Autonomy proposal queue — Niveau 2 fundament._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `register_proposal_executor` | `(kind, fn)` | Register an executor for a proposal kind. | [src](../../../core/services/autonomy_proposal_queue.py#L49) |
-| function | `get_registered_proposal_kinds` | `()` | — | [src](../../../core/services/autonomy_proposal_queue.py#L54) |
-| function | `file_proposal` | `(*, kind, title, rationale=…, payload=…, created_by=…, session_id=…, run_id=…, tick_id=…, canonical_key=…)` | File a new proposal in the queue. | [src](../../../core/services/autonomy_proposal_queue.py#L58) |
-| function | `_notify_discord_proposal` | `(proposal_id, kind, title)` | Send a DM to the owner when a proposal is filed — fire and forget. | [src](../../../core/services/autonomy_proposal_queue.py#L109) |
-| function | `list_pending_proposals` | `(*, limit=…)` | — | [src](../../../core/services/autonomy_proposal_queue.py#L155) |
-| function | `list_recent_proposals` | `(*, limit=…)` | — | [src](../../../core/services/autonomy_proposal_queue.py#L159) |
-| function | `approve_proposal` | `(proposal_id, *, resolution_note=…)` | Bjørn approves a proposal — execute it immediately if we have an | [src](../../../core/services/autonomy_proposal_queue.py#L163) |
-| function | `reject_proposal` | `(proposal_id, *, resolution_note=…)` | — | [src](../../../core/services/autonomy_proposal_queue.py#L279) |
-| function | `build_autonomy_proposal_surface` | `(*, limit=…)` | MC-friendly view of the proposal queue. | [src](../../../core/services/autonomy_proposal_queue.py#L332) |
-| function | `_execute_memory_rewrite_proposal` | `(payload)` | Execute an approved memory-rewrite proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L355) |
-| function | `_execute_source_edit_proposal` | `(payload)` | Execute an approved source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L380) |
-| function | `_auto_commit_after_source_edit` | `(proposal, result)` | Auto-commit the file changed by a source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L507) |
-| function | `_execute_git_commit_proposal` | `(payload)` | Execute an approved git-commit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L598) |
-| function | `_execute_instrument_fix_proposal` | `(payload)` | Execute an approved instrument_fix proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L701) |
-| function | `_execute_prompt_evolution_proposal` | `(payload)` | Execute an approved prompt-evolution proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L747) |
-| function | `propose_prompt_evolution_apply` | `(proposal_id, *, target_file=…, created_by=…)` | Rejs et prompt-forslag til MENNESKETS godkendelse. | [src](../../../core/services/autonomy_proposal_queue.py#L859) |
 

@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/pattern_counterfactual_daemon.py`
+_Pattern counterfactual daemon — Phase 3.5 of causal graph._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fetch_top_patterns` | `()` | Reuse causal_patterns._fetch_patterns; take top N filtered. | [src](../../../core/services/pattern_counterfactual_daemon.py#L46) |
+| function | `_already_counterfactualized` | `(parent_kind, child_kind)` | — | [src](../../../core/services/pattern_counterfactual_daemon.py#L57) |
+| function | `_build_prompt` | `(pattern)` | — | [src](../../../core/services/pattern_counterfactual_daemon.py#L72) |
+| function | `_persist` | `(pattern, hypothesis)` | — | [src](../../../core/services/pattern_counterfactual_daemon.py#L89) |
+| function | `run_pattern_cf_cycle` | `()` | — | [src](../../../core/services/pattern_counterfactual_daemon.py#L105) |
+| function | `tick_pattern_counterfactual_daemon` | `()` | — | [src](../../../core/services/pattern_counterfactual_daemon.py#L145) |
+
 ## `core/services/pdf_connector.py`
 _PDF-connector (lokal) — læs/ekstraher tekst fra PDF-filer._
 
@@ -672,28 +684,4 @@ _Hvem koerer denne agent — og lever den proces stadig?_
 | function | `efterladte_api_processer` | `(*, main_pids)` | Find API-processer som systemd ikke ejer. | [src](../../../core/services/process_identity.py#L207) |
 | function | `systemd_main_pids` | `(units=…)` | MainPID for hver unit, som systemd kender den lige nu. | [src](../../../core/services/process_identity.py#L251) |
 | function | `start_efterladt_vagt` | `(forsinkelse_s=…)` | Start vagten i en daemon-traad. Opdager og RAPPORTERER — draeber ikke. | [src](../../../core/services/process_identity.py#L286) |
-
-## `core/services/process_supervisor.py`
-_Process supervisor — track long-running background processes Jarvis spawns._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/process_supervisor.py#L44) |
-| function | `_ensure_dirs` | `()` | — | [src](../../../core/services/process_supervisor.py#L48) |
-| function | `_safe_name` | `(name)` | Sanitize a process name for use in filenames. | [src](../../../core/services/process_supervisor.py#L52) |
-| function | `_load_registry` | `()` | — | [src](../../../core/services/process_supervisor.py#L58) |
-| function | `_save_registry` | `(reg)` | — | [src](../../../core/services/process_supervisor.py#L70) |
-| function | `_pid_alive` | `(pid)` | — | [src](../../../core/services/process_supervisor.py#L78) |
-| function | `_read_status` | `(entry)` | Snapshot of a registry entry's live status. | [src](../../../core/services/process_supervisor.py#L93) |
-| function | `spawn_process` | `(*, name, command, cwd=…, env=…, replace_if_running=…)` | Spawn a detached background process under supervision. | [src](../../../core/services/process_supervisor.py#L135) |
-| function | `list_processes` | `(*, include_stopped=…)` | — | [src](../../../core/services/process_supervisor.py#L229) |
-| function | `_egen_gruppe_vaern` | `(pid, name)` | Processens gruppe — eller None hvis vi ikke tør signalere den. | [src](../../../core/services/process_supervisor.py#L239) |
-| function | `_stop_locked` | `(reg, name, grace)` | Caller must hold _LOCK. Stops the named process gracefully. | [src](../../../core/services/process_supervisor.py#L271) |
-| function | `pause_process` | `(name)` | SIGSTOP hele proces-gruppen. Genoptages med `resume_process`. | [src](../../../core/services/process_supervisor.py#L309) |
-| function | `resume_process` | `(name)` | SIGCONT — koer videre hvor den slap. | [src](../../../core/services/process_supervisor.py#L330) |
-| function | `_signal_locked` | `(name, sig, *, paused)` | — | [src](../../../core/services/process_supervisor.py#L335) |
-| function | `stop_process` | `(name, *, grace=…)` | — | [src](../../../core/services/process_supervisor.py#L368) |
-| function | `tail_process_log` | `(name, *, lines=…)` | — | [src](../../../core/services/process_supervisor.py#L375) |
-| function | `read_process_log_since` | `(name, offset, max_bytes=…)` | Read one bounded byte range from a supervised process log. | [src](../../../core/services/process_supervisor.py#L407) |
-| function | `remove_process` | `(name)` | Remove an entry from the registry. Refuses if still alive. | [src](../../../core/services/process_supervisor.py#L440) |
 

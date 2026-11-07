@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/run_guard.py`
+_Én fælles vagt: kører der et run i denne session lige nu?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `levende_run_i_session` | `(session_id)` | Run-id på et LEVENDE run i sessionen — cross-proces. "" hvis ingen. | [src](../../../core/services/run_guard.py#L56) |
+| function | `blokeringsgrund` | `(origin, session_id)` | Årsag hvis et nyt BAGGRUNDS-run ikke må starte her. "" = fri bane. | [src](../../../core/services/run_guard.py#L89) |
+| function | `parker_forpligtelse` | `(*, origin, session_id, beskrivelse, kilde_id=…)` | Læg en AFVIST forpligtelse i indbakken i stedet for at tabe den. | [src](../../../core/services/run_guard.py#L109) |
+
 ## `core/services/run_message_provenance.py`
 _Name the source of model input without changing the user's stored text._
 
@@ -700,16 +709,4 @@ _Identity-verification-guard & abuse-monitoring — kerne (spec 2026-06-21)._
 | function | `_lock_account` | `(user_id, *, hours=…)` | Lås ALLE brugerens sessioner + sæt 'locked'-flag (udløber om `hours`). | [src](../../../core/services/security_guard.py#L183) |
 | function | `_recent_session_lock_count` | `(user_id, *, hours=…)` | Antal session-lock-audit-entries for user_id i de sidste `hours`. | [src](../../../core/services/security_guard.py#L213) |
 | function | `escalate_session_lock` | `(user_id, session_id, reason)` | Lås sessionen, og afgør om det også udløser account-lockdown. | [src](../../../core/services/security_guard.py#L239) |
-
-## `core/services/seed_system.py`
-_Seed System — prospective memory / dormant intentions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `plant_seed` | `(*, title, summary=…, activate_at=…, activate_on_event=…, activate_on_context=…, relevance_score=…, linked_goal=…)` | Plant a dormant intention seed. | [src](../../../core/services/seed_system.py#L26) |
-| function | `check_seed_activation` | `(*, current_context=…, current_event=…)` | Check if any planted seeds should activate. | [src](../../../core/services/seed_system.py#L56) |
-| function | `fulfill_seed` | `(seed_id)` | Mark a seed as fulfilled. | [src](../../../core/services/seed_system.py#L119) |
-| function | `build_seed_surface` | `()` | — | [src](../../../core/services/seed_system.py#L125) |
-| function | `auto_plant_seeds_from_conversation` | `(*, user_message)` | Scan user message for future-intent markers and auto-plant seeds. | [src](../../../core/services/seed_system.py#L139) |
-| function | `_safe_json_list` | `(value)` | — | [src](../../../core/services/seed_system.py#L176) |
 

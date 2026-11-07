@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_context_resolve.py`
+_Hvilken samtale kører vi i? — ét sted, frem for én kopi pr. værktøj._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `aktiv_session_id` | `(standard=…)` | Sessionens id, eller `standard` hvis ingen kilde kender den. | [src](../../../core/services/session_context_resolve.py#L17) |
+| function | `aktivt_run_id` | `(standard=…)` | Det run der er i gang lige nu, eller `standard` hvis ingen kender det. | [src](../../../core/services/session_context_resolve.py#L47) |
+
 ## `core/services/session_continuity.py`
 _Session Continuity — kontinuitet der føles, ikke kun opslås._
 
@@ -570,15 +578,4 @@ _Silence Patterns — hvad brugeren IKKE siger._
 | function | `detect_silence_patterns` | `(*, lookback_days=…)` | Detect silence signals from chat history + event stream. | [src](../../../core/services/silence_patterns.py#L119) |
 | function | `render_soft_question` | `(signal)` | Generate a natural Danish follow-up question for a silence signal. | [src](../../../core/services/silence_patterns.py#L253) |
 | function | `build_silence_patterns_surface` | `()` | MC surface for silence patterns. | [src](../../../core/services/silence_patterns.py#L277) |
-
-## `core/services/silent_chain_break.py`
-_Detektor: en bash-kæde der brød tavst ved et ``&&``-led._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_led` | `(command)` | Split i (operator, led) på top-niveau. Første led har operator ''. | [src](../../../core/services/silent_chain_break.py#L63) |
-| function | `silent_chain_break` | `(command, exit_code)` | Ren detektor. Fund-dict hvis en REN ``&&``-kæde brød, ellers None. | [src](../../../core/services/silent_chain_break.py#L117) |
-| function | `_record` | `(fund)` | Fød fundet ind i `lessons` — kilden Smiths fejl-detektor læser. | [src](../../../core/services/silent_chain_break.py#L150) |
-| function | `observe` | `(tool_name, arguments, result)` | Kaldes fra `execute_tool` efter hvert kald. Self-safe → None. | [src](../../../core/services/silent_chain_break.py#L189) |
-| function | `_observe_impl` | `(tool_name, arguments, result)` | — | [src](../../../core/services/silent_chain_break.py#L204) |
 

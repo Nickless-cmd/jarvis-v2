@@ -82,16 +82,36 @@ if [ "$API_START" -lt "$COMMIT_EPOCH" ] || [ "$RT_START" -lt "$COMMIT_EPOCH" ]; 
   exit 3
 fi
 
-# Trin 3: STIKPROEVE i den koerende kode. Kaldes uden argument og maaler kun
-# at modulet kan importeres og at den nye funktion findes — den skal udvides
-# pr. deploy med det konkrete symbol, ellers beviser den intet.
+# Trin 3: STIKPROEVE. Maalt 7/11-2026 fejlede den HVER gang: den importerede
+# `deferred_restart` fra `core.services`, men scriptet ligger i `scripts/` —
+# importen kunne aldrig lykkes. En vagt der altid fejler, og som alligevel blev
+# efterfulgt af «FAERDIG», maaler intet; den gjorde kun loggen utryg at laese.
+#
+# Nu maaler den det der faktisk kan vaere brudt: hvert `core/`-modul commit'en
+# aendrede skal kunne importeres af samme Python som tjenesten bruger. En
+# manglende afhaengighed eller syntaksfejl fanges her i stedet for foerst naar
+# tjenesten skal bruge modulet — og fejler den, faeldes deployet (exit 1).
 echo "--- stikproeve ---" >> "$LOG"
-"$PY" - <<'PY' >> "$LOG" 2>&1
-import sys
-sys.path.insert(0, "/media/projects/jarvis-v2")
-from core.services import deferred_restart  # noqa: F401  (importerbart = processen kan)
-print("moduler importerbare: True")
-PY
+CHANGED_CORE=$(git -C "$REPO" show --name-only --pretty=format: "$COMMIT_SHORT" \
+  | grep -E '^core/.*\.py$' | sort -u)
+if [ -z "$CHANGED_CORE" ]; then
+  echo "stikproeve: ingen core-moduler aendret i $COMMIT_SHORT — intet at importere" >> "$LOG"
+else
+  STIKPROEVE_RC=0
+  while IFS= read -r f; do
+    MOD=$(printf '%s' "$f" | sed 's#/#.#g; s#\.py$##')
+    if "$PY" -c "import sys; sys.path.insert(0, '$REPO'); import $MOD" >> "$LOG" 2>&1; then
+      echo "stikproeve OK: $MOD" >> "$LOG"
+    else
+      echo "stikproeve FEJL: $MOD kunne ikke importeres" >> "$LOG"
+      STIKPROEVE_RC=1
+    fi
+  done <<< "$CHANGED_CORE"
+  if [ "$STIKPROEVE_RC" -ne 0 ]; then
+    echo "$(date -Is) AFBRUDT — $COMMIT_SHORT koerer, men stikproeven fejlede" >> "$LOG"
+    exit 1
+  fi
+fi
 
 echo "$(date -Is) FAERDIG — $COMMIT_SHORT er levende" >> "$LOG"
 exit 0

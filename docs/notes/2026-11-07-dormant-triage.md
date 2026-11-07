@@ -1,6 +1,6 @@
 # Dormante systemer — triage og første tranche (7/11-2026)
 
-**Status:** tranche 1 koblet og verificeret; resten triageret, ikke udført
+**Status:** tranche 1 (tilkobling) og tranche 2 (værktøjs-indgange) koblet og verificeret; resten triageret, ikke udført
 **Slags:** undersøgelse + fejlretning (tilkobling)
 
 ## Hvad listen faktisk viste
@@ -23,7 +23,7 @@ kaldeformer end `f(...)`:
 
 ## Optælling (290 "kun testet" + 3 somatic)
 
-WIRE: 20 (6 udført: somatic ×3, relational_warmth ×2, abuse_monitor ×1; 14 ikke udført) ·
+WIRE: 20 (14 udført: somatic ×3, relational_warmth ×2, abuse_monitor ×1, værktøjs-indgange ×8 (tranche 2); 5 ikke udført) · Fravalg: 1 (self_compassion) ·
 REMOVE (kandidat, ingen slettet): 17 · KEEP: 256.
 
 ## Koblet (tranche 1)
@@ -41,6 +41,68 @@ kildeændringerne fjernet fejler 4 af 6 (de to negative skal bestå uden kobling
 Præeksisterende: `test_chat_sessions_owner.py::test_presence_afgoeres_af_stemplet_ikke_af_beskedtaelling`
 timeout'er identisk på ren HEAD.
 
+## Koblet (tranche 2) — værktøjs-indgange
+
+Fire handlings-værktøjer (`action=…`, samme form som `discord_channel`, så der kun
+koster fire skemaer i hver tur i stedet for tretten). Ét modul pr. ansvar:
+`core/tools/project_progress_tools.py` og `core/tools/thread_lifecycle_tools.py`,
+registreret som `decisions_tools` (`*_TOOL_DEFINITIONS` i
+`simple_tools_definitions.py`, `*_TOOL_HANDLERS` i `simple_tools.py`).
+
+| Funktion | Værktøj (`action`) | Vurdering |
+|---|---|---|
+| `sustained_attention.add_progress` | `sustained_project` (`progress`) | Meningsfuld: «hvad har jeg gjort på projektet»; et pauset projekt genoptages, og 7-dages auto-pause tæller fra `last_worked_at`. Prompt-sektionen læser tilstanden. |
+| `sustained_attention.create_project` | `sustained_project` (`create`) | Kobles med: INTET andet opretter et projekt, så `progress` kunne aldrig ramme noget. Servicens loft (5 aktive) gives videre som fejl. |
+| `creative_projects.add_progress_note` | `creative_project` (`progress`) | Meningsfuld. Projekterne oprettes allerede af `seed_system`, så der er ingen `create`-handling — kun `progress` og `list`. |
+| `cross_session_threads.pause_thread` | `thought_thread` (`pause`) | Meningsfuld: «jeg kan ikke følge den tråd nu». Trådene oprettes af `visible_runs_memory`; prompt-sektionen læser pausede tråde. |
+| `cross_session_threads.resume_thread` | `thought_thread` (`resume`) | som pause |
+| `cross_session_threads.close_thread` | `thought_thread` (`close`) | som pause |
+| `open_loop_signal_tracking.declare_open_loop_thread` | `open_loop_thread` (`declare`) | Servicens eget «bevidste valg-punkt». `declared_by` er fast `jarvis`. |
+| `…touch_open_loop_thread` | `open_loop_thread` (`touch`) | som declare |
+| `…close_open_loop_thread` | `open_loop_thread` (`close`) | Kræver bevis. |
+
+Hvert af de fire har også `list` (kun læsning), fordi trådene og projekterne ellers ikke har
+et id Jarvis kan pege på: prompt-sektionerne viser titler, ikke id'er.
+
+**`run_id` tages fra kørslens ContextVar (`current_run_id()`), aldrig fra et
+argument.** `close_runtime_thread` kræver at lukkende kørsel ≠ åbnende kørsel; lod man
+modellen opgive run-id'et, kunne den selv påstå at den var en anden kørsel. Uden
+run-identitet afvises `declare/touch/close` med en ærlig fejl (ingen tom-streng-default).
+
+Fejlmodel: `{"status": "error", "error": …}` som i `decisions_tools`. En service der
+returnerer `False` (fx pause af en lukket tråd) slås op bagefter, så fejlen navngiver
+den faktiske status i stedet for et generisk «mislykkedes». Servicens `ValueError`
+(tomt navn, ukendt tråd, manglende bevis, selv-lukning) returneres som fejl.
+
+Tests: `tests/test_project_progress_tools.py` + `tests/test_thread_lifecycle_tools.py` (39). De kalder `execute_tool` og læser
+tilstanden direkte fra JSON-filen / SQLite-tabellen bagefter. Mutationskørsel — hvert
+service-kald erstattet med en stub der blot melder «lykkedes»:
+
+| Mutant | Resultat |
+|---|---|
+| `add_progress` | 4 fejler |
+| `sustained create_project` | 5 fejler |
+| `add_progress_note` | 2 fejler |
+| `pause_thread` | 4 fejler |
+| `resume_thread` | 2 fejler |
+| `close_thread` | 2 fejler |
+| `declare_open_loop_thread` | 4 fejler |
+| `touch_open_loop_thread` | 2 fejler |
+| `close_open_loop_thread` | 4 fejler |
+
+Testen fandt en reel fejl under udviklingen: `touch` returnerer loop-rækken, som selv
+har et `status`-felt, og `{"status": "ok", **result}` lod det overskrive værktøjets
+«ok» med «open». Resultatet pakkes nu ind under en nøgle.
+
+**Synlighed — ikke undersøgt udover det der står her.** Værktøjerne er i
+dispatch-tabellen og i `TOOL_DEFINITIONS`, så owner/cowork (alt-scope) ser dem og
+`load_more_tools` kan hente dem. De er IKKE i `CHAT_MODE_TOOLS_BASE`,
+`TIER_1_ALWAYS_ON`, member-boksen i `permission_engine`, `tool_dansk_bro` eller
+`autonomous_tool_policy`; de to sidste og `permission_engine` ligger uden for denne
+opgaves scope. Det er samme stilling som `decision_*` (ikke i chat-scope), men mønstret
+«bygget, men usynligt» (madopskrift 25/10) er præcis det der kan ramme igen — mål om
+Jarvis faktisk kalder dem, før de regnes for levende.
+
 ## Fravalg
 
 - **jarvis_brain_daemon `record_proposal_acceptance/_rejection` — IKKE koblet.**
@@ -54,8 +116,16 @@ timeout'er identisk på ren HEAD.
   uigenkaldelig; de venter på ejer-ok. `pp_*`/`reset_*` er test-hjælpere (KEEP).
 - **Ikke koblet fordi hook ligger i `visible_runs.py` (7.7k linjer, Boy Scout kræver først udskilning):**
   `enforce_outgoing`, `detect_fabricated_work_claims`, `diagnosis_gate_enforce`.
-- **Ikke koblet fordi indgangen er et tool i `core/tools` (uden for scope):**
-  `sustained_attention`, `creative_projects`, `cross_session_threads`, `open_loop` trådlivscyklus.
+- **`self_compassion.process_failure_toward_acceptance` — INTET værktøj, med vilje.**
+  Funktionen har ingen tilstand: den tager to tal (`failure_count_recent`,
+  `regret_level`) og returnerer en etiket (`regret_band=… failures_recent=…`). Et
+  værktøj ville kræve at Jarvis selv opgiver tallene og får sine egne tal formateret
+  tilbage — ingen effekt lander noget sted, og der er intet at læse bagefter. Filens
+  egen kommentar (teater-pass 13/5-2026) og `central_soul_feel.py` (`self_compassion
+  DROPPET — ren transformation af inputs, ingen holdt tilstand`) når samme konklusion.
+  Funktionen er reelt død kode. Den bliver stående: sletning venter på ejer-ok som de
+  øvrige REMOVE-kandidater. Skulle den en dag få en indgang, er den rigtige form en
+  *producent* der regner tallene ud af målt fejlhistorik — ikke et værktøj.
 - **`spaced_repetition.complete_review`:** reviews kan planlægges men intet scorer dem — kræver design, ikke tilkobling.
 - De to parallelle livsprojekt-systemer (`initiative_queue` vs `personal_project`) er ikke
   undersøgt; det er en konsolideringsbeslutning, ikke en tilkobling.
@@ -180,10 +250,10 @@ timeout'er identisk på ren HEAD.
 | `core/services/council_deliberation_controller.py:70` | `build_witness_prompt` | REMOVE (kandidat, ikke udført) | læser-flade uden produktionslæser; slet sammen med test efter ejer-ok |
 | `core/services/counterfactual_self_simulation.py:28` | `simulate_from_episode` | KEEP | falsk positiv: levende reference (samme fil) |
 | `core/services/creative_journal_runtime.py:145` | `creative_journal_dir` | KEEP | falsk positiv: levende reference (samme fil) |
-| `core/services/creative_projects.py:86` | `add_progress_note` | WIRE (ikke udført) | creative_projects: samme mønster, indgang mangler i core/tools (uden for scope) |
-| `core/services/cross_session_threads.py:83` | `pause_thread` | WIRE (ikke udført) | cross_session_threads: livscyklus-API uden kalder; kræver tool i core/tools |
-| `core/services/cross_session_threads.py:96` | `resume_thread` | WIRE (ikke udført) | som pause_thread |
-| `core/services/cross_session_threads.py:112` | `close_thread` | WIRE (ikke udført) | som pause_thread |
+| `core/services/creative_projects.py:86` | `add_progress_note` | WIRE (udført) | tool `creative_project` (action=progress) i core/tools/project_progress_tools.py |
+| `core/services/cross_session_threads.py:83` | `pause_thread` | WIRE (udført) | tool `thought_thread` (action=pause) i core/tools/thread_lifecycle_tools.py |
+| `core/services/cross_session_threads.py:96` | `resume_thread` | WIRE (udført) | tool `thought_thread` (action=resume) |
+| `core/services/cross_session_threads.py:112` | `close_thread` | WIRE (udført) | tool `thought_thread` (action=close) |
 | `core/services/cross_user_share_guard.py:25` | `check_outbound` | KEEP | falsk positiv: levende reference (samme fil) |
 | `core/services/current_pull.py:360` | `build_current_pull_surface` | REMOVE (kandidat, ikke udført) | læser-flade uden produktionslæser; slet sammen med test efter ejer-ok |
 | `core/services/daily_journal_entry.py:64` | `ensure_frontmatter` | KEEP | falsk positiv: levende reference (samme fil) |
@@ -257,9 +327,9 @@ timeout'er identisk på ren HEAD.
 | `core/services/oauth_flow.py:85` | `sign_state` | KEEP | falsk positiv: levende reference (samme fil) |
 | `core/services/ollama_model_names.py:53` | `served_tags` | KEEP | falsk positiv: levende reference (samme fil) |
 | `core/services/open_loop_signal_tracking.py:89` | `refresh_runtime_open_loop_signal_statuses` | KEEP | falsk positiv: levende reference (samme fil) |
-| `core/services/open_loop_signal_tracking.py:1255` | `declare_open_loop_thread` | WIRE (ikke udført) | trådlivscyklus uden indgang; kræver tool i core/tools |
-| `core/services/open_loop_signal_tracking.py:1282` | `touch_open_loop_thread` | WIRE (ikke udført) | som declare |
-| `core/services/open_loop_signal_tracking.py:1295` | `close_open_loop_thread` | WIRE (ikke udført) | som declare |
+| `core/services/open_loop_signal_tracking.py:1255` | `declare_open_loop_thread` | WIRE (udført) | tool `open_loop_thread` (action=declare); run_id fra current_run_id() |
+| `core/services/open_loop_signal_tracking.py:1282` | `touch_open_loop_thread` | WIRE (udført) | tool `open_loop_thread` (action=touch) |
+| `core/services/open_loop_signal_tracking.py:1295` | `close_open_loop_thread` | WIRE (udført) | tool `open_loop_thread` (action=close) |
 | `core/services/outcome_learning.py:126` | `pattern_strength` | KEEP | falsk positiv: levende reference (samme fil) |
 | `core/services/pattern_counterfactual_daemon.py:105` | `run_pattern_cf_cycle` | KEEP | falsk positiv: levende reference (samme fil) |
 | `core/services/perceptual_event_engine.py:106` | `observe_recent_changes` | KEEP | falsk positiv: levende reference (samme fil) |
@@ -318,7 +388,7 @@ timeout'er identisk på ren HEAD.
 | `core/services/security_guard.py:114` | `lock_session` | KEEP | falsk positiv: levende reference (samme fil) |
 | `core/services/selective_attention.py:124` | `compute_selective_attention` | KEEP | falsk positiv: levende reference (samme fil) |
 | `core/services/selective_attention.py:249` | `get_attention_spotlight_detail` | KEEP | offentligt API/uafklaret; ingen sikker evidens for at slette |
-| `core/services/self_compassion.py:32` | `process_failure_toward_acceptance` | WIRE (ikke udført) | selv-medfølelses-flade har ingen læser eller skriver |
+| `core/services/self_compassion.py:32` | `process_failure_toward_acceptance` | Fravalg (intet værktøj) | tilstandsløs funktion; et værktøj ville kun formatere Jarvis' egne tal tilbage — se «Fravalg» |
 | `core/services/self_compassion.py:56` | `build_resilience_narrative` | REMOVE (kandidat, ikke udført) | læser-flade uden produktionslæser; slet sammen med test efter ejer-ok |
 | `core/services/self_model_predictive.py:111` | `build_predictive_self_model` | KEEP | falsk positiv: levende reference (samme fil) |
 | `core/services/self_model_predictive.py:311` | `record_prediction` | KEEP | falsk positiv: levende reference (samme fil) |
@@ -336,7 +406,7 @@ timeout'er identisk på ren HEAD.
 | `core/services/spaced_repetition.py:120` | `complete_review` | WIRE (ikke udført) | reviews planlægges men kan aldrig afsluttes (ingen scorer) — profil opdateres aldrig; kræver design af scorer |
 | `core/services/standing_orders_registry.py:25` | `add_standing_order` | KEEP | offentligt API/uafklaret; ingen sikker evidens for at slette |
 | `core/services/subjective_time.py:29` | `build_subjective_time_surface` | REMOVE (kandidat, ikke udført) | læser-flade uden produktionslæser; slet sammen med test efter ejer-ok |
-| `core/services/sustained_attention.py:105` | `add_progress` | WIRE (ikke udført) | sustained_attention har ingen indgang (create_project har heller ingen kalder); kræver tool i core/tools (uden for scope) |
+| `core/services/sustained_attention.py:105` | `add_progress` | WIRE (udført) | tool `sustained_project` (action=progress, + action=create fordi create_project heller ingen kalder havde) |
 | `core/services/telemetry_gate.py:227` | `nulstil_tab` | KEEP | test-/livscyklus-hjælper, kaldt fra tests bevidst |
 | `core/services/temporal_context.py:20` | `build_temporal_context` | KEEP | falsk positiv: levende reference (samme fil) |
 | `core/services/text_resonance.py:246` | `reset_text_resonance` | KEEP | test-/livscyklus-hjælper, kaldt fra tests bevidst |

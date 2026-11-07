@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/thread_lifecycle_tools.py`
+_Værktøjs-indgange til trådenes livscyklus._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_err` | `(message)` | — | [src](../../../core/tools/thread_lifecycle_tools.py#L26) |
+| function | `_exec_thought_thread` | `(args)` | — | [src](../../../core/tools/thread_lifecycle_tools.py#L30) |
+| function | `_exec_open_loop_thread` | `(args)` | — | [src](../../../core/tools/thread_lifecycle_tools.py#L72) |
+
+## `core/tools/tool_call_observation.py`
+_Alt hvad der KUN observerer et vaerktoejskald — efter det er kaldt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `observe_tool_call` | `(name, arguments, result)` | Observér et faerdigt vaerktoejskald. Kaster aldrig. | [src](../../../core/tools/tool_call_observation.py#L16) |
+
 ## `core/tools/tool_call_telemetry.py`
 _Hvem kaldte hvilket vaerktoej — gjort taelleligt._
 

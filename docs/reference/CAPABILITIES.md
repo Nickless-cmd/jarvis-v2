@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-11-05 — 528 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-07 — 532 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -72,6 +72,7 @@
 | `counterfactual_summary` | native | no |
 | `create_custom_tool` | native | no |
 | `create_event` | native | no |
+| `creative_project` | native | no |
 | `cross_agent_recall` | native | no |
 | `curiosity_list_skills` | native | no |
 | `curiosity_list_tools` | native | no |
@@ -258,6 +259,7 @@
 | `nudge_inspect` | native | no |
 | `nudge_send` | native | no |
 | `nudge_vent` | native | no |
+| `open_loop_thread` | native | no |
 | `open_ui_panel` | native | no |
 | `openrouter_image` | native | no |
 | `openrouter_image_edit` | native | no |
@@ -419,10 +421,12 @@
 | `stripe_transactions` | native | no |
 | `suggest_next_task` | native | no |
 | `surface_nudge` | native | no |
+| `sustained_project` | native | no |
 | `synthesize_arc` | native | no |
 | `tail_log` | native | no |
 | `test_retry_policy` | native | no |
 | `think_language` | native | no |
+| `thought_thread` | native | no |
 | `tick_quality_summary` | native | no |
 | `todo_add` | native | no |
 | `todo_list` | native | no |

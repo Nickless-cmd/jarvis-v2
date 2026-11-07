@@ -550,6 +550,8 @@ from core.tools.decisions_tools import (
     DECISION_TOOL_DEFINITIONS,
     DECISION_TOOL_HANDLERS,
 )
+from core.tools.project_progress_tools import PROJECT_PROGRESS_TOOL_HANDLERS
+from core.tools.thread_lifecycle_tools import THREAD_LIFECYCLE_TOOL_HANDLERS
 from core.tools.composites_tools import (
     COMPOSITE_TOOL_DEFINITIONS,
     COMPOSITE_TOOL_HANDLERS,
@@ -2329,6 +2331,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     **GOAL_TOOL_HANDLERS,
     # Behavioral decisions
     **DECISION_TOOL_HANDLERS,
+    # Projekt- og tråd-livscyklus (dormant-triage 7/11-2026)
+    **PROJECT_PROGRESS_TOOL_HANDLERS,
+    **THREAD_LIFECYCLE_TOOL_HANDLERS,
     # Self-extending composite tools
     **COMPOSITE_TOOL_HANDLERS,
     # Stripe financial tools (wallet, balance, cards)

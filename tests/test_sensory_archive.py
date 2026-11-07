@@ -488,3 +488,41 @@ def test_vision_vejen_klipper_ved_graense_ikke_blindt() -> None:
     # Fallback-linjen skal være bundet til `hel if hel else` — står den frit,
     # er den blevet den primære vej igen.
     assert "hel if hel else" in kilde, "den blinde klipning er tilbage som primær vej"
+
+
+def test_lyd_prompt_ekko_gemmes_ikke_som_indtryk(isolated_runtime) -> None:
+    """Lyd-kanalen (målt 7/11-2026): 16 af 99 poster i 30 dage var stillads.
+
+    `ambient_sound_daemon` sender sin EGEN prompt til en LLM og arkiverer
+    svaret som en sansning. Vagten kendte kun billed-prompter, så lyd-ekkoet
+    gik fri i månedsvis. Formerne herunder er ordrette fra arkivet.
+    """
+    from core.services.sensory_archive import record_audio
+
+    for tekst in (
+        '**Hvad øret ville bemærke i dette øjeblik (tid≈14 xx, kategori="talk"',
+        '**Hvad øret ville mærke ved "silence" med amplitude 0,0000**',
+        "Okay, lad os dykke ned i, hvad øret ville bemærke ved et akustisk snapshot",
+        "En akustisk snapshot med kategori **'silence'**, amplitude **0.0102**",
+        "**Akustisk \"snapshot\" – kategori = 'talk', amplitude = 0.0336**",
+        "Baseret på det akustiske snapshot med en amplitude på **0,0117**",
+    ):
+        with pytest.raises(ValueError):
+            record_audio(tekst)
+
+
+def test_aegte_lydbeskrivelse_bevares(isolated_runtime) -> None:
+    """Værn mod overblokering: en ægte beskrivelse må ikke rammes.
+
+    De tre nye mønstre måler FORM (metadata, ekko-header), ikke emnet. En
+    beskrivelse af et stille rum skal derfor stadig kunne arkiveres.
+    """
+    from core.services.sensory_archive import record_audio
+
+    post = record_audio(
+        "Der er en lav, jævn summen fra køleskabet og et enkelt klir fra en "
+        "kop der sættes ned på bordet."
+    )
+
+    assert post.get("skipped") is not True
+    assert "summen" in post["content"]

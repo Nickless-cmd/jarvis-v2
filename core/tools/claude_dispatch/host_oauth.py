@@ -34,6 +34,26 @@ logger = logging.getLogger(__name__)
 
 _TOKEN_ENV_KEY = "CLAUDE_CODE_OAUTH_TOKEN"
 _HOST_HINT_ENV_KEYS = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT")
+# Claude Code's egne OAuth-tokens. Formatet er vaernet naar miljoe-markoeren
+# mangler: en vilkaarlig shell kan ikke arve en vaerdi med dette praefiks.
+_OAUTH_TOKEN_PREFIXES = ("sk-ant-oat",)
+
+
+def _looks_like_claude_host(env_pairs: dict[str, str], token: str) -> bool:
+    """Baerer processen et Claude Code-token vi kan stole paa?
+
+    MAALT 7/11-2026: containeren havde 15 processer med et gyldigt
+    `CLAUDE_CODE_OAUTH_TOKEN` (108 tegn, praefiks `sk-ant-oat01`), men INGEN af
+    dem havde `CLAUDECODE` eller `CLAUDE_CODE_ENTRYPOINT` — de var Xvfb-soeskende
+    der havde arvet miljoeet fra den session der startede dem. Det gamle filter
+    kraevede hint-noeglen og kasserede dermed et token der beviseligt virkede
+    (`claude -p` svarede `OK` med det). Dispatch doede med «no host Claude Code
+    OAuth token available» — en fejl der ligner en manglende session, men var et
+    for snaevert filter.
+    """
+    if any(env_pairs.get(k) for k in _HOST_HINT_ENV_KEYS):
+        return True
+    return token.startswith(_OAUTH_TOKEN_PREFIXES)
 
 
 def _process_start_time(pid: str) -> float:
@@ -121,9 +141,9 @@ def find_host_oauth_token() -> str | None:
             continue
 
         # Defensive: only accept tokens from processes that actually look
-        # like Claude Code hosts. Avoids picking up a stale shell that
-        # inherited the var from a long-dead session.
-        if not any(env_pairs.get(k) for k in _HOST_HINT_ENV_KEYS):
+        # like Claude Code hosts — eller hvis tokenet baerer Claude Codes eget
+        # format. Se `_looks_like_claude_host` for den maalte grund.
+        if not _looks_like_claude_host(env_pairs, token):
             continue
 
         candidates.append((_process_start_time(pid), pid, token))

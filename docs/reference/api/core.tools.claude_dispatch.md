@@ -46,8 +46,9 @@ _Find a live host Claude Code OAuth token to inject into `claude -p` spawns._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_process_start_time` | `(pid)` | Return process start time (seconds since boot) from /proc/<pid>/stat. | [src](../../../core/tools/claude_dispatch/host_oauth.py#L39) |
-| function | `find_host_oauth_token` | `()` | Return a live host CLAUDE_CODE_OAUTH_TOKEN, or None if no host is running. | [src](../../../core/tools/claude_dispatch/host_oauth.py#L69) |
+| function | `_looks_like_claude_host` | `(env_pairs, token)` | Baerer processen et Claude Code-token vi kan stole paa? | [src](../../../core/tools/claude_dispatch/host_oauth.py#L42) |
+| function | `_process_start_time` | `(pid)` | Return process start time (seconds since boot) from /proc/<pid>/stat. | [src](../../../core/tools/claude_dispatch/host_oauth.py#L59) |
+| function | `find_host_oauth_token` | `()` | Return a live host CLAUDE_CODE_OAUTH_TOKEN, or None if no host is running. | [src](../../../core/tools/claude_dispatch/host_oauth.py#L89) |
 
 ## `core/tools/claude_dispatch/jail.py`
 

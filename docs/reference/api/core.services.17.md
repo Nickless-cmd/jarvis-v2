@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/ledger_canary.py`
+_Efterfyld en session i ledgeren og slå skyggen til._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kolonner` | `(conn)` | — | [src](../../../core/services/ledger_canary.py#L44) |
+| function | `backfill` | `(session_id)` | Skriv sessionens eksisterende beskeder ind i ledgeren. Idempotent. | [src](../../../core/services/ledger_canary.py#L49) |
+| function | `enable_shadow` | `(session_id)` | Efterfyld, slå skyggen til, og MÅL med det samme om det holdt. | [src](../../../core/services/ledger_canary.py#L119) |
+| function | `reseed` | `(session_id)` | Skriv sessionens ledger-hændelser HELT om, i tabellens rækkefølge. | [src](../../../core/services/ledger_canary.py#L154) |
+| function | `_arm_sti` | `()` | — | [src](../../../core/services/ledger_canary.py#L203) |
+| function | `arm_next_session` | `(*, note=…)` | Indrullér den NAESTE nye chat-session i skyggen. Én gang. | [src](../../../core/services/ledger_canary.py#L208) |
+| function | `is_armed` | `()` | — | [src](../../../core/services/ledger_canary.py#L224) |
+| function | `disarm` | `()` | — | [src](../../../core/services/ledger_canary.py#L232) |
+| function | `maybe_enroll_new_session` | `(session_id)` | Kaldes naar en ny session oprettes. Fejler ALDRIG opad. | [src](../../../core/services/ledger_canary.py#L239) |
+
 ## `core/services/ledger_recovery.py`
 _Afbrudte sessioner: se på dem uden at røre dem, og luk dem kun med skriveret._
 
@@ -600,20 +615,4 @@ _Measured, reversible hygiene for per-user ``MEMORY.md`` files._
 | function | `_atomic_json` | `(path, payload)` | — | [src](../../../core/services/memory_hygiene.py#L204) |
 | function | `audit_workspace` | `(workspace, *, path=…, publish_inbox=…)` | Create a read-only hygiene report.  Never moves or rewrites memory. | [src](../../../core/services/memory_hygiene.py#L220) |
 | function | `_publish_inbox` | `(workspace, report)` | — | [src](../../../core/services/memory_hygiene.py#L310) |
-
-## `core/services/memory_maintenance_daemon.py`
-_Memory maintenance daemon — periodic dedup and health of every user's MEMORY.md._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_memory_md` | `(workspace)` | Stien til ÉN brugers MEMORY.md. | [src](../../../core/services/memory_maintenance_daemon.py#L50) |
-| function | `_target_workspaces` | `()` | Alle registrerede brugeres workspace-navne. | [src](../../../core/services/memory_maintenance_daemon.py#L61) |
-| function | `tick_memory_maintenance_daemon` | `(now=…)` | Run the 12h maintenance cycle on EVERY registered user's MEMORY.md. | [src](../../../core/services/memory_maintenance_daemon.py#L97) |
-| function | `_maintain_workspace` | `(workspace)` | Tier A + Tier B for ÉN brugers MEMORY.md. Tom dict = intet at gøre. | [src](../../../core/services/memory_maintenance_daemon.py#L162) |
-| function | `build_memory_maintenance_surface` | `()` | — | [src](../../../core/services/memory_maintenance_daemon.py#L201) |
-| function | `_read_memory` | `(workspace)` | — | [src](../../../core/services/memory_maintenance_daemon.py#L213) |
-| function | `_parse_sections` | `(text)` | Parse MEMORY.md into sections: [{heading, level, content, start_line, end_line}]. | [src](../../../core/services/memory_maintenance_daemon.py#L220) |
-| function | `_jaccard` | `(a, b)` | Word-level Jaccard similarity between two strings. | [src](../../../core/services/memory_maintenance_daemon.py#L258) |
-| function | `_tier_a_duplicate_candidates` | `(sections)` | Find duplicate top-level headings without mutating ``MEMORY.md``. | [src](../../../core/services/memory_maintenance_daemon.py#L267) |
-| function | `_tier_b_flag_overlaps` | `(sections)` | Flag sections with different headings but overlapping content. | [src](../../../core/services/memory_maintenance_daemon.py#L320) |
 

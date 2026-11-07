@@ -420,3 +420,47 @@ def tick_causal_inference_daemon() -> dict[str, object]:
         logger.warning("causal_inference: cycle failed: %s", exc, exc_info=True)
         _last_tick_at = now
         return {"ran": False, "error": str(exc)}
+
+
+def build_causal_inference_daemon_surface() -> dict[str, object]:
+    """Mission Control-surface: hvilke kausale kanter har daemonen skrevet?
+
+    READ-ONLY: spoerger `causal_edges` direkte og kalder IKKE
+    `_ensure_table_ready`. Kanter fra bussen (`source` != daemonens) taelles med
+    pr. kilde, saa det er synligt hvem der skriver hvad.
+    """
+    daemon = {"last_tick_at": _last_tick_at.isoformat() if _last_tick_at else None,
+              "cadence_seconds": _CADENCE_SECONDS, "max_edges_per_tick": _MAX_EDGES_PER_TICK,
+              "retention_days": {"inferred": _RETENTION_DAYS_INFERRED, "explicit": _RETENTION_DAYS_EXPLICIT}}
+    base = {"mode": "causal-inference-daemon"}
+    try:
+        with connect() as c:
+            if c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='causal_edges'").fetchone() is None:
+                return {**base, "active": False, "reason": "tabellen causal_edges findes ikke endnu",
+                        "signals": {"daemon": daemon}, "summary": "ingen kausale kanter"}
+            total, avg_conf, newest, oldest = c.execute(
+                "SELECT COUNT(*), AVG(confidence), MAX(created_at), MIN(created_at) FROM causal_edges").fetchone()
+            by_source = c.execute(
+                "SELECT source, COUNT(*), AVG(confidence) FROM causal_edges GROUP BY source ORDER BY COUNT(*) DESC"
+            ).fetchall()
+            by_kind = c.execute(
+                "SELECT edge_kind, COUNT(*) FROM causal_edges GROUP BY edge_kind ORDER BY COUNT(*) DESC").fetchall()
+    except Exception as exc:  # surface skal melde aarsagen, ikke kaste ind i MC
+        return {**base, "active": False,
+                "reason": f"causal_edges kunne ikke laeses: {type(exc).__name__}: {exc}"[:300],
+                "signals": {"daemon": daemon}, "summary": "kant-lager ulaeseligt"}
+    total = int(total or 0)
+    return {
+        **base, "active": total > 0,
+        **({} if total else {"reason": "causal_edges er tom"}),
+        "signals": {"edges": total,
+                    "avg_confidence": round(float(avg_conf), 3) if avg_conf is not None else None,
+                    "newest_created_at": newest, "oldest_created_at": oldest,
+                    "by_source": [{"source": str(r[0]), "count": int(r[1]),
+                                   "avg_confidence": round(float(r[2] or 0.0), 3)} for r in by_source],
+                    "by_edge_kind": {str(r[0]): int(r[1]) for r in by_kind},
+                    "daemon": daemon},
+        "summary": (f"{total} kanter fra {len(by_source)} kilder; "
+                    f"gns. tillid {round(float(avg_conf), 2) if avg_conf is not None else 'ukendt'}; "
+                    f"seneste {newest or 'aldrig'}"),
+    }

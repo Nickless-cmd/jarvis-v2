@@ -329,3 +329,60 @@ def record_visible_cache(
                 pass
     except Exception:
         pass
+
+
+def build_cache_telemetry_surface(*, tail_bytes: int = 2 * 1024 * 1024) -> dict[str, Any]:
+    """Mission Control-surface: holder prefix-cachen, og hvornaar brød den sidst?
+
+    READ-ONLY: laeser kun de seneste `tail_bytes` af `cache_telemetry.jsonl`
+    (filen kan fylde 8 MB). Hit-raten er vaegtet efter tokens (sum hit / sum
+    hit+miss), ikke et gennemsnit af procenter.
+    """
+    home = Path(os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2"))
+    path = home / "logs" / "cache_telemetry.jsonl"
+    base = {"mode": "cache-telemetry", "path": str(path)}
+    if not path.exists():
+        return {**base, "active": False, "reason": "cache_telemetry.jsonl findes ikke",
+                "signals": {}, "summary": "ingen cache-telemetri skrevet"}
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as fh:
+            if size > tail_bytes:
+                fh.seek(size - tail_bytes)
+                fh.readline()  # første linje i halen er afskaaret
+            raw = fh.read().decode("utf-8", "replace")
+    except OSError as exc:  # filen findes men kan ikke laeses — meld aarsagen frem for et tomt svar
+        return {**base, "active": False, "reason": f"{type(exc).__name__}: {exc}"[:300],
+                "signals": {}, "summary": "cache-telemetri ulaeselig"}
+    lines: list[dict[str, Any]] = []
+    broken = 0
+    for ln in raw.splitlines():
+        try:
+            row = json.loads(ln)
+        except ValueError:  # afkortet/korrupt linje taelles, saa den ikke forsvinder tavst
+            broken += 1
+            continue
+        if isinstance(row, dict):
+            lines.append(row)
+    if not lines:
+        return {**base, "active": False, "reason": f"ingen laesbare linjer ({broken} korrupte)",
+                "signals": {"unreadable_lines": broken}, "summary": "ingen brugbar cache-telemetri"}
+    hit = sum(int(r.get("hit") or 0) for r in lines)
+    miss = sum(int(r.get("miss") or 0) for r in lines)
+    churn = home / "logs" / "tools_churn.jsonl"
+    last = lines[-1]
+    return {
+        **base, "active": True,
+        "signals": {"calls_read": len(lines), "unreadable_lines": broken, "log_bytes": size,
+                    "hit_tokens": hit, "miss_tokens": miss,
+                    "hit_pct": round(100.0 * hit / (hit + miss), 1) if (hit + miss) else None,
+                    "distinct_prefix_sha": len({r.get("prefix_sha") for r in lines if r.get("prefix_sha")}),
+                    "distinct_tools_sha": len({r.get("tools_sha") for r in lines if r.get("tools_sha")}),
+                    "last_timestamp": last.get("timestamp"), "last_pct": last.get("pct"),
+                    "last_lane": last.get("lane"),
+                    "rotated_file_present": path.with_suffix(path.suffix + ".1").exists(),
+                    "tools_churn_log_present": churn.exists()},
+        "summary": (f"{len(lines)} kald; hit {round(100.0 * hit / (hit + miss), 1) if (hit + miss) else 'ukendt'}%; "
+                    f"{len({r.get('prefix_sha') for r in lines if r.get('prefix_sha')})} forskellige prefix-hashes; "
+                    f"seneste {last.get('timestamp')}"),
+    }

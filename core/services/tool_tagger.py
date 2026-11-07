@@ -145,3 +145,46 @@ def bootstrap_tags(*, dry_run: bool = False) -> dict[str, list[str]]:
     return cleaned
 
 
+
+def build_tool_tagger_surface() -> dict:
+    """Mission Control-surface: hvor mange vaerktoejer er tagget, overstyret og pinnet?
+
+    READ-ONLY og FRISK: laeser de tre JSON-filer direkte i stedet for den
+    proces-cachede `_ensure_loaded`, saa en aendring paa disken er synlig uden
+    `invalidate_cache()`. Spejler `_ensure_loaded`s repo-fallback. En ulaeselig
+    fil gør surface'en active=False — `_load_json` ville svare «tom».
+    """
+    def _read(p: Path, key: str) -> tuple[object, str]:
+        try:
+            return (json.loads(p.read_text()).get(key) or ({} if key != "pinned" else [])), ""
+        except FileNotFoundError:  # manglende fil er et gyldigt «ingen data endnu»
+            return ({} if key != "pinned" else []), ""
+        except Exception as exc:  # korrupt fil skal meldes, ikke blive til «tom»
+            return ({} if key != "pinned" else []), f"{p.name}: {type(exc).__name__}: {exc}"
+
+    auto, e1 = _read(_TAGS_PATH, "tags")
+    overrides, e2 = _read(_OVERRIDES_PATH, "overrides")
+    if not overrides and _REPO_OVERRIDES.exists():
+        overrides, e2 = _read(_REPO_OVERRIDES, "overrides")
+    pinned, e3 = _read(_PINNED_PATH, "pinned")
+    if not pinned and _REPO_PINNED.exists():
+        pinned, e3 = _read(_REPO_PINNED, "pinned")
+    fejl = [e for e in (e1, e2, e3) if e]
+    base = {"mode": "tool-tagger"}
+    if fejl:
+        return {**base, "active": False, "reason": "ulaeselig kilde: " + "; ".join(fejl)[:300],
+                "signals": {}, "summary": "tag-kilder ulaeselige"}
+    domener: dict[str, int] = {}
+    for tags in dict(auto).values():
+        for t in tags or []:
+            domener[t] = domener.get(t, 0) + 1
+    tagged = len(set(dict(auto)) | set(dict(overrides)))
+    return {
+        **base, "active": tagged > 0 or bool(pinned),
+        **({} if (tagged or pinned) else {"reason": "hverken tags, overrides eller pinned findes"}),
+        "signals": {"auto_tagged": len(dict(auto)), "overrides": len(dict(overrides)),
+                    "tagged_total": tagged, "pinned": len(list(pinned)),
+                    "domains": dict(sorted(domener.items())),
+                    "cache_loaded": bool(_cache.get("loaded"))},
+        "summary": f"{tagged} tagget ({len(dict(overrides))} overstyret), {len(list(pinned))} pinnet",
+    }

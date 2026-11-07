@@ -142,3 +142,41 @@ def observe_stats(registered: list[str] | None = None) -> dict[str, Any]:
     except Exception:
         pass
     return summary
+
+
+def build_tool_usage_store_surface() -> dict[str, Any]:
+    """Mission Control-surface: hvad er der faktisk talt i `tool_usage`?
+
+    READ-ONLY: `usage_stats()` kalder `_ensure` (CREATE TABLE) og sluger alle
+    fejl til `{}` — begge dele ville goere en ulaeselig tabel til «ingen
+    forbrug». Her tjekkes tabellens eksistens foerst, og fejl bliver en aarsag.
+    """
+    base = {"mode": "tool-usage-store"}
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='tool_usage'").fetchone() is None:
+                return {**base, "active": False, "reason": "tabellen tool_usage findes ikke endnu",
+                        "signals": {}, "summary": "intet forbrug talt"}
+            rows = conn.execute(
+                "SELECT tool, call_count, error_count, last_used_at FROM tool_usage").fetchall()
+    except Exception as exc:  # surface skal melde aarsagen, ikke kaste ind i MC
+        return {**base, "active": False,
+                "reason": f"tool_usage kunne ikke laeses: {type(exc).__name__}: {exc}"[:300],
+                "signals": {}, "summary": "forbrugstaeller ulaeselig"}
+    calls = sum(int(r[1] or 0) for r in rows)
+    errors = sum(int(r[2] or 0) for r in rows)
+    buckets = {"most": 0, "often": 0, "sometimes": 0, "rare": 0, "never": 0}
+    for r in rows:
+        buckets[_bucket_for(int(r[1] or 0))] += 1
+    last = max((str(r[3]) for r in rows if r[3]), default=None)
+    top = sorted(rows, key=lambda r: (-int(r[1] or 0), str(r[0])))[:5]
+    return {
+        "active": calls > 0, **base,
+        **({} if calls else {"reason": "tool_usage har ingen talte kald"}),
+        "signals": {"tracked_tools": len(rows), "total_calls": calls, "total_errors": errors,
+                    "error_rate": round(errors / calls, 4) if calls else None,
+                    "last_used_at": last, "buckets": buckets,
+                    "top": [{"tool": str(r[0]), "count": int(r[1] or 0)} for r in top]},
+        "summary": f"{len(rows)} vaerktoejer, {calls} kald, {errors} fejl; seneste {last or 'aldrig'}",
+    }

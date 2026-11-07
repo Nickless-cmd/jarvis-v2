@@ -386,6 +386,7 @@ _Gate i agentens vaerktoejsdispatch: en handling der kraever godkendelse STOPPER
 | function | `_mandate_verdict` | `(*, mandate, assignment, name, arguments)` | Return (inside|child_exceeded|original_exceeded, mechanical reason). | [src](../../../core/services/agent_approval_gate.py#L147) |
 | function | `_parse` | `(tc)` | — | [src](../../../core/services/agent_approval_gate.py#L178) |
 | function | `gate` | `(*, agent, run_id, tc, resume_approval_id=…)` | Se modulbeskrivelsen. ``resume_approval_id`` er den approval det parkerede kald venter paa. | [src](../../../core/services/agent_approval_gate.py#L190) |
+| function | `build_agent_approval_gate_surface` | `()` | Mission Control-surface: hvad har gaten stoppet, og hvorfor blev noget afvist? | [src](../../../core/services/agent_approval_gate.py#L254) |
 
 ## `core/services/agent_approval_notify.py`
 _Hvem faar at vide at en approval venter, og hvornaar Jarvis vaekkes (agent-contract-v1 F4c, spec 8.2)._

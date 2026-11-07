@@ -456,6 +456,14 @@ _core/services/central_tone.py — Centralens sproglige TONE-PROFIL (rådets #5)
 | function | `build_tone_profile` | `()` | Producér Centralens sproglige tone-profil fra system-tilstand. Self-safe. | [src](../../../core/services/central_tone.py#L114) |
 | function | `build_tone_surface` | `()` | Mission Control / read-only surface for tone-profilen. Self-safe. | [src](../../../core/services/central_tone.py#L187) |
 
+## `core/services/central_tool_infra_surface.py`
+_Samlet flade for værktøjs-infrastrukturen — de 12 lag der ellers er usynlige._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `producer_names` | `()` | Navnene i kald-rækkefølge — til test og introspektion. | [src](../../../core/services/central_tool_infra_surface.py#L41) |
+| function | `build_tool_infra_surface` | `()` | Kald alle 12 producenter og returnér deres egne signaler. Kaster ALDRIG. | [src](../../../core/services/central_tool_infra_surface.py#L46) |
+
 ## `core/services/central_trace.py`
 _Trace-sink for Centralen (§3.2/§7). En trådsikker, volumen-tolerant ring-buffer_
 
@@ -606,14 +614,4 @@ _Kanal-plugin inbound-routing (spec §5.2/§5.3, Fase 5 Lag 1)._
 | function | `resolve_inbound_mode` | `(requested_mode=…, *, author_role=…, override_active=…)` | Afgør den effektive mode for en indkommende kanal-besked (§18.9). | [src](../../../core/services/channel_inbound.py#L64) |
 | function | `route_inbound` | `(**kwargs)` | Auth-cluster GENNEM Den Intelligente Central (observe). A2+A4: plugin-hardblock + | [src](../../../core/services/channel_inbound.py#L82) |
 | function | `_route_inbound_impl` | `(*, plugin_id, channel, author_role=…, author_user_id=…, text=…, hour=…, now=…, mode=…, override_active=…)` | Afgør om en indkommende kanal-besked må nå Jarvis (plugin_ruleset hardblock), | [src](../../../core/services/channel_inbound.py#L103) |
-
-## `core/services/chat_conversation_rules.py`
-_Samtale-reglerne for chat mode — med en LIVE killswitch._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `enabled` | `()` | Live switch. Læses pr. prompt-build, ikke ved import. | [src](../../../core/services/chat_conversation_rules.py#L26) |
-| function | `kill` | `(reason=…)` | Slå reglerne fra uden genstart. | [src](../../../core/services/chat_conversation_rules.py#L37) |
-| function | `revive` | `()` | Slå reglerne til igen uden genstart. | [src](../../../core/services/chat_conversation_rules.py#L43) |
-| function | `section` | `(*, compact=…)` | Reglerne som prompt-tekst — eller None når killswitchen er slået fra. | [src](../../../core/services/chat_conversation_rules.py#L49) |
 

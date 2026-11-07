@@ -447,8 +447,10 @@ def rapport(*, limit: int = 500) -> dict[str, Any]:
             pr = ud["pr_slags"].setdefault(slags, {"noter": 0, "ja": 0, "nej": 0})
             pr[noegle] += 1
             ud[noegle] += 1
-    except Exception:
+    except Exception as exc:
         logger.debug("tool_hunt_nudge: rapport fejlede", exc_info=True)
+        # Additiv: uden dette felt ligner en ulaeselig bus «ingen noter».
+        ud["laesefejl"] = f"{type(exc).__name__}: {exc}"[:300]
     svarede = ud["ja"] + ud["nej"]
     ud["andel_taget_imod"] = round(ud["ja"] / svarede, 3) if svarede else None
     return ud
@@ -627,3 +629,31 @@ def _log(vaerktoej: str, run_id: str | None, score: float, tekst: str) -> None:
         })
     except Exception:
         logger.debug("tool_hunt_nudge: event fejlede", exc_info=True)
+
+
+def build_tool_hunt_nudge_surface(*, limit: int = 500) -> dict[str, Any]:
+    """Mission Control-surface: sagde noterne noget, og tog han imod?
+
+    READ-ONLY: bygger paa `rapport()` (eventbussen) plus de to proces-lokale
+    taellere. Kan bussen ikke laeses, er svaret active=False med aarsagen.
+    """
+    r = rapport(limit=limit)
+    base = {"mode": "tool-hunt-nudge"}
+    if r.get("laesefejl"):
+        return {**base, "active": False, "reason": f"eventbussen kunne ikke laeses: {r['laesefejl']}",
+                "signals": {}, "summary": "ingen maaling — bussen ulaeselig"}
+    signals = {
+        "enabled": _taendt(), "notes": r["noter"], "hits": r["ja"], "misses": r["nej"],
+        "taken_up_share": r["andel_taget_imod"], "per_kind": r["pr_slags"],
+        "outstanding_in_process": len(_UDESTAAENDE), "miss_after_calls": MISS_EFTER,
+        "window_events": limit,
+    }
+    aktiv = r["noter"] > 0 or r["ja"] > 0 or r["nej"] > 0
+    return {
+        **base, "active": aktiv,
+        **({} if aktiv else {"reason": f"ingen tool_discovery.hunt_*-events i de seneste {limit}"}),
+        "signals": signals,
+        "summary": (f"{r['noter']} noter, {r['ja']} ja / {r['nej']} nej "
+                    f"(taget imod: {r['andel_taget_imod'] if r['andel_taget_imod'] is not None else 'ukendt'}); "
+                    f"{'taendt' if signals['enabled'] else 'SLUKKET'}"),
+    }

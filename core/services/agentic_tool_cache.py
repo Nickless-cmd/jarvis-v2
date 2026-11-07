@@ -127,3 +127,37 @@ def store_result(
     _save(records)
 
 
+
+
+def build_agentic_tool_cache_surface() -> dict[str, Any]:
+    """Mission Control-surface: hvad ligger der i cachen, og hvad er forældet?
+
+    READ-ONLY. VIGTIGT OM HVAD DEN IKKE VED: cachen taeller ikke hits —
+    `get_cached_result` skriver intet naar den rammer. Surface'en viser derfor
+    indhold (poster, friskhed, pr. vaerktoej), IKKE en hit-rate, og siger det.
+    """
+    base = {"mode": "agentic-tool-cache", "hit_rate": "ikke maalt — cachen registrerer ikke hits"}
+    try:
+        records = _load()
+    except Exception as exc:  # surface skal melde aarsagen, ikke kaste ind i MC
+        return {**base, "active": False, "reason": f"{type(exc).__name__}: {exc}"[:300],
+                "signals": {}, "summary": "cache ulaeselig"}
+    if not records:
+        return {**base, "active": False, "reason": "ingen poster (tom eller ulaeselig fil)",
+                "signals": {"records": 0}, "summary": "cachen er tom"}
+    stale = sum(1 for r in records.values() if _is_stale(r))
+    per_tool: dict[str, int] = {}
+    for r in records.values():
+        n = str(r.get("tool_name") or "?")
+        per_tool[n] = per_tool.get(n, 0) + 1
+    stamps = sorted(str(r.get("stored_at") or "") for r in records.values() if r.get("stored_at"))
+    return {
+        **base, "active": True,
+        "signals": {"records": len(records), "fresh": len(records) - stale, "stale": stale,
+                    "max_age_seconds": _MAX_AGE_SECONDS, "capacity": _MAX_RECORDS,
+                    "per_tool": dict(sorted(per_tool.items())),
+                    "result_chars": sum(len(str(r.get("result_text") or "")) for r in records.values()),
+                    "newest_stored_at": stamps[-1] if stamps else None,
+                    "oldest_stored_at": stamps[0] if stamps else None},
+        "summary": f"{len(records)} poster ({len(records) - stale} friske, {stale} forældede) af {_MAX_RECORDS}; hits måles ikke",
+    }

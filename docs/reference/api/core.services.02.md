@@ -513,6 +513,7 @@ _Small durable cache for read-only agentic tool results._
 | function | `_is_stale` | `(rec)` | True hvis posten er ældre end _MAX_AGE_SECONDS — eller uden brugbart tidsstempel. | [src](../../../core/services/agentic_tool_cache.py#L78) |
 | function | `get_cached_result` | `(tool_name, arguments)` | — | [src](../../../core/services/agentic_tool_cache.py#L92) |
 | function | `store_result` | `(*, tool_name, arguments, result_text, status)` | — | [src](../../../core/services/agentic_tool_cache.py#L106) |
+| function | `build_agentic_tool_cache_surface` | `()` | Mission Control-surface: hvad ligger der i cachen, og hvad er forældet? | [src](../../../core/services/agentic_tool_cache.py#L132) |
 
 ## `core/services/agentic_working_conclusions.py`
 _Durable working conclusions for interrupted agentic runs._

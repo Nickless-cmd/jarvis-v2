@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/report_claim_guard.py`
+_Efterproev det et barn PAASTAAR — Fase 6._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_opsloegere` | `(context)` | Vaelg den maskine paastanden skal efterproeves PAA. | [src](../../../core/services/report_claim_guard.py#L40) |
+| function | `tjek_rapport` | `(text, *, agent_id=…, role=…, run_id=…, context=…)` | Efterproev en barne-rapports filstier og linjenumre. Kaster ALDRIG. | [src](../../../core/services/report_claim_guard.py#L83) |
+
 ## `core/services/research_contract.py`
 _Typed contracts and source normalization for explicit research runs._
 
@@ -597,18 +605,4 @@ _Name the source of model input without changing the user's stored text._
 |---|---|---|---|---|
 | function | `current_run_source_notice` | `()` | Explicit system-level provenance for a scheduled model turn. | [src](../../../core/services/run_message_provenance.py#L7) |
 | function | `current_message_for_model` | `(message)` | A scheduled task uses a request slot, but it did not come from the user now. | [src](../../../core/services/run_message_provenance.py#L19) |
-
-## `core/services/run_stream_locator.py`
-_Locate replayable run streams across API/runtime process boundaries._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `RunStreamLocation` | `` | — | [src](../../../core/services/run_stream_locator.py#L14) |
-| function | `_role` | `(value)` | — | [src](../../../core/services/run_stream_locator.py#L23) |
-| function | `_local_role` | `()` | — | [src](../../../core/services/run_stream_locator.py#L28) |
-| function | `_unknown` | `(run_id)` | — | [src](../../../core/services/run_stream_locator.py#L37) |
-| function | `_from_record` | `(run_id, record)` | — | [src](../../../core/services/run_stream_locator.py#L48) |
-| function | `locate_run` | `(run_id)` | Resolve one stable run ID without mutating either authority. | [src](../../../core/services/run_stream_locator.py#L70) |
-| function | `active_locations` | `(max_idle_s=…)` | All currently running streams, de-duplicated by stable run ID. | [src](../../../core/services/run_stream_locator.py#L95) |
-| function | `live_run_for_session` | `(session_id)` | Newest authoritative live stream for a session, if one exists. | [src](../../../core/services/run_stream_locator.py#L119) |
 

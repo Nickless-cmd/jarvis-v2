@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/run_stream_locator.py`
+_Locate replayable run streams across API/runtime process boundaries._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RunStreamLocation` | `` | — | [src](../../../core/services/run_stream_locator.py#L14) |
+| function | `_role` | `(value)` | — | [src](../../../core/services/run_stream_locator.py#L23) |
+| function | `_local_role` | `()` | — | [src](../../../core/services/run_stream_locator.py#L28) |
+| function | `_unknown` | `(run_id)` | — | [src](../../../core/services/run_stream_locator.py#L37) |
+| function | `_from_record` | `(run_id, record)` | — | [src](../../../core/services/run_stream_locator.py#L48) |
+| function | `locate_run` | `(run_id)` | Resolve one stable run ID without mutating either authority. | [src](../../../core/services/run_stream_locator.py#L70) |
+| function | `active_locations` | `(max_idle_s=…)` | All currently running streams, de-duplicated by stable run ID. | [src](../../../core/services/run_stream_locator.py#L95) |
+| function | `live_run_for_session` | `(session_id)` | Newest authoritative live stream for a session, if one exists. | [src](../../../core/services/run_stream_locator.py#L119) |
+
 ## `core/services/run_stream_proxy.py`
 _Local replay and authenticated cross-process proxying for run streams._
 
@@ -707,19 +721,4 @@ _Selective Attention — metacognitive focus modulation._
 | function | `_compute_focus_width` | `(attention_weights, directive_count)` | Compute how narrow or broad the attention spotlight is. | [src](../../../core/services/selective_attention.py#L380) |
 | function | `build_selective_attention_surface` | `()` | Returns current attention spotlight if any. | [src](../../../core/services/selective_attention.py#L414) |
 | function | `_emit_spotlight_event` | `(label)` | — | [src](../../../core/services/selective_attention.py#L430) |
-
-## `core/services/selective_consolidation_daemon.py`
-_Selective Consolidation Daemon — D1._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_last_tick` | `()` | Laes sidste koersel fra disk. Fejler bloedt — en manglende fil maa ikke | [src](../../../core/services/selective_consolidation_daemon.py#L62) |
-| function | `_save_last_tick` | `(at)` | Gem sidste koersel. Best-effort: fejler skrivningen, koerer daemonen igen | [src](../../../core/services/selective_consolidation_daemon.py#L79) |
-| function | `tick_selective_consolidation_daemon` | `()` | Run selective consolidation if cadence elapsed. | [src](../../../core/services/selective_consolidation_daemon.py#L91) |
-| function | `_consolidate_sensory` | `(today_start)` | Rangér IKKE dagens sanseindtryk — og slet dem i hvert fald ikke. | [src](../../../core/services/selective_consolidation_daemon.py#L164) |
-| function | `_score_brain` | `(entry)` | Score a brain entry 0.0-1.0 — KUN efter salience. | [src](../../../core/services/selective_consolidation_daemon.py#L208) |
-| function | `_consolidate_brain` | `(today_start)` | Score and archive bottom (100-K)% of today's brain entries. | [src](../../../core/services/selective_consolidation_daemon.py#L219) |
-| function | `_score_private` | `(record)` | Score a private brain record 0.0-1.0 — KUN efter salience. | [src](../../../core/services/selective_consolidation_daemon.py#L291) |
-| function | `_consolidate_private` | `(today_start)` | Score and archive bottom (100-K)% of today's private brain records. | [src](../../../core/services/selective_consolidation_daemon.py#L301) |
-| function | `build_selective_consolidation_surface` | `()` | Build surface data for mission control. | [src](../../../core/services/selective_consolidation_daemon.py#L363) |
 

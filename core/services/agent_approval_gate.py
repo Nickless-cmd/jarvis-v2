@@ -249,3 +249,50 @@ def gate(*, agent: dict[str, Any], run_id: str, tc: dict[str, Any], resume_appro
     except Exception:
         logger.warning("kunne ikke notificere om approval %s", r["approval_id"], exc_info=True)
     raise ApprovalPending(r["approval_id"], tc_id)
+
+
+def build_agent_approval_gate_surface() -> dict[str, Any]:
+    """Mission Control-surface: hvad har gaten stoppet, og hvorfor blev noget afvist?
+
+    READ-ONLY: `appr.*` gaar gennem `_conn()` som ENSURER tabellerne, saa
+    surface'en laeser `agent_approvals` direkte efter at have set at den findes.
+    Afvisningsgrunde er brugerens `decision_note` — dem ingen ellers kan se
+    samlet.
+    """
+    policy = {"always_approve_tools": len(ALWAYS_APPROVE), "shell_tools": len(_SHELL_TOOLS)}
+    base = {"mode": "agent-approval-gate"}
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='agent_approvals'").fetchone() is None:
+                return {**base, "active": False, "reason": "tabellen agent_approvals findes ikke endnu",
+                        "signals": {"policy": policy}, "summary": "gaten har aldrig anmodet om en godkendelse"}
+            by_status = dict(conn.execute("SELECT status, COUNT(*) FROM agent_approvals GROUP BY status").fetchall())
+            by_risk = dict(conn.execute(
+                "SELECT risk_class, COUNT(*) FROM agent_approvals GROUP BY risk_class").fetchall())
+            top_tools = conn.execute(
+                "SELECT tool_name, COUNT(*) FROM agent_approvals GROUP BY tool_name "
+                "ORDER BY COUNT(*) DESC, tool_name LIMIT 5").fetchall()
+            denied = conn.execute(
+                "SELECT COALESCE(NULLIF(decision_note,''),'(ingen begrundelse)'), COUNT(*) "
+                "FROM agent_approvals WHERE status='denied' GROUP BY 1 ORDER BY COUNT(*) DESC LIMIT 5").fetchall()
+            oldest_pending = conn.execute(
+                "SELECT MIN(created_at) FROM agent_approvals WHERE status='pending'").fetchone()[0]
+            newest = conn.execute("SELECT MAX(created_at) FROM agent_approvals").fetchone()[0]
+    except Exception as exc:  # surface skal melde aarsagen, ikke kaste ind i MC
+        return {**base, "active": False,
+                "reason": f"agent_approvals kunne ikke laeses: {type(exc).__name__}: {exc}"[:300],
+                "signals": {"policy": policy}, "summary": "approval-lager ulaeseligt"}
+    total = sum(int(v) for v in by_status.values())
+    return {
+        **base, "active": total > 0,
+        **({} if total else {"reason": "agent_approvals er tom"}),
+        "signals": {"total": total, "by_status": {k: int(v) for k, v in by_status.items()},
+                    "by_risk_class": {k: int(v) for k, v in by_risk.items()},
+                    "top_tools": [{"tool": str(r[0]), "count": int(r[1])} for r in top_tools],
+                    "denied_reasons": [{"reason": str(r[0]), "count": int(r[1])} for r in denied],
+                    "oldest_pending_at": oldest_pending, "newest_request_at": newest,
+                    "policy": policy},
+        "summary": (f"{total} anmodninger; {int(by_status.get('pending', 0))} venter, "
+                    f"{int(by_status.get('denied', 0))} afvist, {int(by_status.get('expired', 0))} udløbet"),
+    }

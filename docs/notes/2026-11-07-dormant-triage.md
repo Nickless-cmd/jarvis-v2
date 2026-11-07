@@ -427,3 +427,59 @@ Jarvis faktisk kalder dem, før de regnes for levende.
 | `core/services/visible_run_terminal_recovery.py:82` | `resolve_agentic_exit` | KEEP | offentligt API/uafklaret; ingen sikker evidens for at slette |
 | `core/services/visible_runs.py:7232` | `register_visible_run` | KEEP | falsk positiv: levende reference (samme fil) |
 | `core/services/vision_backend.py:243` | `build_vision_backend_surface` | REMOVE (kandidat, ikke udført) | læser-flade uden produktionslæser; slet sammen med test efter ejer-ok |
+
+## Dark edges lukket (batch 1)
+
+Alle 12 værktøjs-infrastruktur-services fik én `build_<navn>_surface() -> dict` i SAMME fil som servicen
+(cartographeren leder efter `def build_*surface(` i filens egen tekst). Form som `build_identity_composer_surface`:
+`active` / `mode` / `signals` / `summary`; ved `active=False` desuden `reason`. Alle er read-only: ingen
+`CREATE TABLE`, ingen skrivning, og en ulæselig kilde giver `active=False` med årsagen — ikke et tomt tal.
+
+| service | surface | viser | før | efter |
+|---|---|---|---|---|
+| `tool_calling_evidence` | `build_tool_calling_evidence_surface` | kørsler/med kald pr. model, domme (kan/kan-ikke/umålt), spærrede modeller | dark | lukket |
+| `tool_embeddings` | `build_tool_embeddings_surface` | antal embeddede værktøjer, dimensioner, ældste/nyeste `computed_at` | dark | lukket |
+| `tool_hunt_nudge` | `build_tool_hunt_nudge_surface` | noter/ja/nej, andel taget imod, pr. slags, udestående | dark | lukket |
+| `tool_tagger` | `build_tool_tagger_surface` | auto-tags/overrides/pinned, domæne-fordeling (frisk fra disk) | dark | lukket |
+| `tool_usage_store` | `build_tool_usage_store_surface` | kald, fejl, fejlrate, buckets, top 5, senest brugt | dark | lukket |
+| `tool_router_runtime` | `build_tool_router_runtime_surface` | tråd oppe?, load-more-rate 7d, seneste daemon-kørsel | dark | lukket |
+| `agentic_tool_cache` | `build_agentic_tool_cache_surface` | poster, friske/forældede, pr. værktøj | dark | lukket |
+| `cache_telemetry` | `build_cache_telemetry_surface` | token-vægtet hit-%, antal prefix-hashes, seneste kald | dark | lukket |
+| `composite_tools` | `build_composite_tools_surface` | proposed/approved/revoked, kald, ventende forslag | dark | lukket |
+| `agent_approval_gate` | `build_agent_approval_gate_surface` | status, risikoklasse, afvisningsgrunde, ældste ventende | dark | lukket |
+| `task_worker` | `build_task_worker_surface` | status pr. kø, claimbare, followup-blokeringer + grunde | dark | lukket |
+| `causal_inference_daemon` | `build_causal_inference_daemon_surface` | kanter pr. kilde/art, gns. tillid, daemon-tilstand | dark | lukket |
+
+**Cartographer-tal.** `_dark_edges` afkortes i `_rank_dark_edges` med `ranked[:80]`
+(`system_cartographer.py:476`), så `summary.dark_edges` kan aldrig vise mere end 80 — den viste 80 både før og
+efter mit arbejde. Det er et LOFT, ikke en total. Målt uafkortet (`_dark_edges` over `_service_files()`, før-tallet
+fra en `git archive HEAD`-udtrækning):
+
+| mål | før | efter |
+|---|---|---|
+| `summary.dark_edges` (afkortet ved 80) | 80 | 80 |
+| uafkortet antal dark edges | 389 | **377** |
+| af de 12 batch-filer stadig dark | 12 | **0** |
+| `summary.surfaces` | 438 | 450 |
+
+Brugerens kommando giver altså stadig 80 — det er loftet, ikke fejl. Verifikationen skal læses som «de 12 er væk
+fra listen og den uafkortede total faldt med 12». Jeg har ikke rørt cartographeren (forbudt); at løfte/fjerne
+`[:80]` er en beslutning til ejeren.
+
+**Hvad surfaces IKKE kan vise (ærligt):**
+- `agentic_tool_cache`: cachen registrerer ikke hits (`get_cached_result` skriver intet), så der er INGEN hit-rate —
+  kun indhold og friskhed. Surfacen siger det i feltet `hit_rate`. At måle hits kræver en tæller i servicen.
+- `tool_router_runtime`: daemonen FORESLÅR kun en ny tærskel (`threshold_proposed`); den anvendes aldrig.
+  Surfacen markerer `threshold_applied_by_daemon: False`.
+- `task_worker`: alle followup-kinds ender `blocked` (`_FOLLOWUP_BLOCKED`) — surfacen tæller dem, så det ikke er skjult.
+
+**Fravalgt:** ingen. Alle 12 havde tilstand at vise.
+
+**Mutationstest** (`tests/test_tool_infra_surfaces.py`, 13 tests). Hver surface erstattet med `lambda: {}` →
+alle 12 testene fejler (`1 failed`, `tool_hunt_nudge` 2). Skarpere mutation (kun kildelæsningen fjernet, resten
+intakt) på `tool_usage_store`, `cache_telemetry`, `composite_tools`, `agent_approval_gate`,
+`causal_inference_daemon` → alle fejler. Uden mutation: 13 passed; 232 passed på de berørte modulers testsuiter.
+
+**Små ændringer i eksisterende kode (adfærdsbevarende):** `tool_calling_evidence._aggreger` udskilt fra
+`tool_calling_record` (delt med surfacen); `tool_hunt_nudge.rapport()` får et additivt `laesefejl`-felt, så en
+ulæselig bus ikke ligner «ingen noter».

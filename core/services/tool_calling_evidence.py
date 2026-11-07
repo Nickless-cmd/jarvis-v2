@@ -81,6 +81,36 @@ def _nulstil_cache_for_tests() -> None:
     _cache, _cache_tid, _cache_min, _cache_db = None, 0.0, -1, ""
 
 
+def _aggreger(raekker: Any, min_koersler: int) -> dict[str, dict[str, Any]]:
+    """Raa agent_runs-raekker -> (provider/model) -> {koersler, med_kald, andel, dom}.
+
+    Delt af `tool_calling_record` og surface'en, saa de to aldrig kan blive
+    uenige om hvad en «dom» er.
+    """
+    ud: dict[str, dict[str, Any]] = {}
+    for r in raekker:
+        n = f"{r['provider']}/{r['model']}"
+        p = ud.setdefault(n, {"provider": str(r["provider"]),
+                              "model": str(r["model"]),
+                              "koersler": 0, "med_kald": 0})
+        p["koersler"] += 1
+        try:
+            if int((json.loads(r["output_payload_json"] or "{}") or {}).get("tool_calls") or 0):
+                p["med_kald"] += 1
+        except Exception:  # raekke uden laesbar nyttelast taeller som «intet kald» — dommen kraever en maengde
+            pass
+
+    for p in ud.values():
+        p["andel"] = p["med_kald"] / max(p["koersler"], 1)
+        if p["koersler"] < int(min_koersler):
+            p["dom"] = "umaalt"
+        elif p["andel"] < MIN_ANDEL:
+            p["dom"] = "kan-ikke"
+        else:
+            p["dom"] = "kan"
+    return ud
+
+
 def tool_calling_record(*, min_koersler: int = MIN_KOERSLER) -> dict[str, dict[str, Any]]:
     """(provider, model) -> {koersler, med_kald, andel, dom}.
 
@@ -107,26 +137,7 @@ def tool_calling_record(*, min_koersler: int = MIN_KOERSLER) -> dict[str, dict[s
         logger.warning("kunne ikke laese vaerktoejs-historikken", exc_info=True)
         return ud
 
-    for r in raekker:
-        n = f"{r['provider']}/{r['model']}"
-        p = ud.setdefault(n, {"provider": str(r["provider"]),
-                              "model": str(r["model"]),
-                              "koersler": 0, "med_kald": 0})
-        p["koersler"] += 1
-        try:
-            if int((json.loads(r["output_payload_json"] or "{}") or {}).get("tool_calls") or 0):
-                p["med_kald"] += 1
-        except Exception:
-            pass
-
-    for p in ud.values():
-        p["andel"] = p["med_kald"] / max(p["koersler"], 1)
-        if p["koersler"] < int(min_koersler):
-            p["dom"] = "umaalt"
-        elif p["andel"] < MIN_ANDEL:
-            p["dom"] = "kan-ikke"
-        else:
-            p["dom"] = "kan"
+    ud = _aggreger(raekker, min_koersler)
     # Kun et VELLYKKET scan caches. En fejlet laesning maa ikke fastfryse et
     # tomt svar i et minut — da er det bedre at proeve igen med det samme.
     if raekker:
@@ -149,3 +160,43 @@ def kan_kalde_vaerktoejer(provider: str, model: str) -> bool:
         logger.warning("vaerktoejs-porten kunne ikke afgoere %s — lader den gaa",
                        n, exc_info=True)
         return True
+
+
+def build_tool_calling_evidence_surface() -> dict[str, Any]:
+    """Mission Control-surface: hvilke modeller har maalt bevis for at kalde vaerktoejer.
+
+    READ-ONLY og uden cache — surface'en laeser `agent_runs` friskt, saa den
+    viser hvad porten ville se uden en op til 60 sekunder gammel proces-cache.
+    Kan kilden ikke laeses, er svaret active=False med aarsagen — ikke et tomt
+    tal der ligner succes.
+    """
+    try:
+        from core.runtime.db_core import connect
+        with connect() as conn:
+            raekker = conn.execute(
+                "SELECT provider, model, output_payload_json FROM agent_runs "
+                "WHERE provider != ''"
+            ).fetchall()
+    except Exception as exc:  # surface skal melde aarsagen, ikke kaste ind i MC
+        return {"active": False, "mode": "tool-calling-evidence",
+                "reason": f"agent_runs kunne ikke laeses: {type(exc).__name__}: {exc}"[:300],
+                "signals": {}, "summary": "ingen maaling — agent_runs ulaeselig"}
+    record = _aggreger(raekker, MIN_KOERSLER)
+    domme = {"kan": 0, "kan-ikke": 0, "umaalt": 0}
+    for p in record.values():
+        domme[p["dom"]] += 1
+    spaerrede = sorted(n for n, p in record.items() if p["dom"] == "kan-ikke")
+    koersler = sum(p["koersler"] for p in record.values())
+    med_kald = sum(p["med_kald"] for p in record.values())
+    return {
+        "active": koersler > 0,
+        "mode": "tool-calling-evidence",
+        **({} if koersler else {"reason": "agent_runs har ingen raekker med provider"}),
+        "signals": {
+            "models": len(record), "runs": koersler, "runs_with_calls": med_kald,
+            "verdicts": domme, "blocked_models": spaerrede,
+            "min_runs": MIN_KOERSLER, "min_share": MIN_ANDEL,
+        },
+        "summary": (f"{len(record)} modeller over {koersler} koersler; {med_kald} med kald; "
+                    f"kan={domme['kan']} kan-ikke={domme['kan-ikke']} umaalt={domme['umaalt']}"),
+    }

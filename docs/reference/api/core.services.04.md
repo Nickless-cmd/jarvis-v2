@@ -377,6 +377,7 @@ _Per-request cache-telemetri for den synlige DeepSeek-lane (2026-06-30)._
 | function | `_note_tools_churn` | `(lane, tools_sha)` | Skriv ÉN linje naar værktøjssættet ændrer sig: hvad kom, hvad gik. | [src](../../../core/services/cache_telemetry.py#L165) |
 | function | `component_signatures` | `(messages, tools)` | Fingerprint prompt regions separately, without recording their contents. | [src](../../../core/services/cache_telemetry.py#L207) |
 | function | `record_visible_cache` | `(*, run_id=…, round_index=…, autonomous=…, lane=…, provider=…, model=…, prefix_sha=…, prefix_len=…, cache_hit=…, cache_miss=…, session_id=…, system_sha=…, tools_sha=…, tail_sha=…, system_len=…, tools_len=…, tools_n=…, tail_len=…, system_chunks=…, msg_shas=…, msg_lens=…, msg_count=…)` | Append én telemetri-linje. Self-safe (sluger alt). | [src](../../../core/services/cache_telemetry.py#L244) |
+| function | `build_cache_telemetry_surface` | `(*, tail_bytes=…)` | Mission Control-surface: holder prefix-cachen, og hvornaar brød den sidst? | [src](../../../core/services/cache_telemetry.py#L334) |
 
 ## `core/services/cadence_claims.py`
 _Ét krav ad gangen, og en nedkoeling der overlever en genstart._
@@ -526,6 +527,7 @@ _Causal inference daemon — three-tier matching against event allowlist._
 | function | `_prune_old_edges` | `()` | — | [src](../../../core/services/causal_inference_daemon.py#L299) |
 | function | `run_inference_cycle` | `(*, since_minutes=…)` | Run one inference tick. Returns stats dict. | [src](../../../core/services/causal_inference_daemon.py#L317) |
 | function | `tick_causal_inference_daemon` | `()` | Daemon-manager entry: run one cycle if cadence elapsed. | [src](../../../core/services/causal_inference_daemon.py#L408) |
+| function | `build_causal_inference_daemon_surface` | `()` | Mission Control-surface: hvilke kausale kanter har daemonen skrevet? | [src](../../../core/services/causal_inference_daemon.py#L425) |
 
 ## `core/services/central_absorb.py`
 _central_absorb — den fælles "fuld behandling"-absorption._

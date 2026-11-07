@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/inbox_idle_waker.py`
+_Indbakken skal kunne VÆKKE — ikke kun gate._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_wakeup_records` | `()` | Fyrede, sprangte vækninger — nøglet på `wakeup_id`. | [src](../../../core/services/inbox_idle_waker.py#L61) |
+| function | `_er_moden` | `(post, *, vaekninger)` | Er en dispatchbar post MODEN — melder kilden selv at den er klar? | [src](../../../core/services/inbox_idle_waker.py#L78) |
+| function | `_task_id_fra_kilde` | `(kilde_id)` | Udtræk opgave-id'et fra en recurring-posts `kilde_id`. | [src](../../../core/services/inbox_idle_waker.py#L122) |
+| function | `kandidater` | `(bruger_id)` | Åbne, gatende poster for brugeren — dem der må starte et run. | [src](../../../core/services/inbox_idle_waker.py#L133) |
+| function | `_noget_koerer` | `()` | Kører der et run lige nu? Sensorfejl blokerer konservativt en vækning. | [src](../../../core/services/inbox_idle_waker.py#L187) |
+| function | `_session_er_aktiv` | `(session_id)` | Tjek den konkrete målsamtale, ikke kun ejerens aktuelle standardsession. | [src](../../../core/services/inbox_idle_waker.py#L205) |
+| function | `_maal_session` | `(post)` | Hvilken SAMTALE hører denne post til? | [src](../../../core/services/inbox_idle_waker.py#L227) |
+| function | `_start_run` | `(tekst, *, session_id, user_id)` | Start det autonome run i den samtale posten hører til. Adskilt, så | [src](../../../core/services/inbox_idle_waker.py#L273) |
+| function | `_direktiv` | `(post)` | — | [src](../../../core/services/inbox_idle_waker.py#L307) |
+| function | `_dispatch_tekst` | `(post)` | Run-direktivet for posten. | [src](../../../core/services/inbox_idle_waker.py#L324) |
+| function | `vaek_paa_aabne_poster` | `(*, bruger_id)` | Væk ét run for de øverste gatende poster — hvis intet kører. | [src](../../../core/services/inbox_idle_waker.py#L348) |
+
 ## `core/services/inbox_importance.py`
 _Shared importance and delivery policy for Jarvis' inbox surfaces._
 
@@ -744,19 +761,4 @@ _Explicit learning policy engine._
 | function | `_target_context` | `(rule_key)` | — | [src](../../../core/services/learning_policy_engine.py#L209) |
 | function | `_initial_confidence` | `(*, episode, learning)` | — | [src](../../../core/services/learning_policy_engine.py#L219) |
 | function | `_surface_directive` | `(rules)` | — | [src](../../../core/services/learning_policy_engine.py#L233) |
-
-## `core/services/ledger_canary.py`
-_Efterfyld en session i ledgeren og slå skyggen til._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kolonner` | `(conn)` | — | [src](../../../core/services/ledger_canary.py#L44) |
-| function | `backfill` | `(session_id)` | Skriv sessionens eksisterende beskeder ind i ledgeren. Idempotent. | [src](../../../core/services/ledger_canary.py#L49) |
-| function | `enable_shadow` | `(session_id)` | Efterfyld, slå skyggen til, og MÅL med det samme om det holdt. | [src](../../../core/services/ledger_canary.py#L119) |
-| function | `reseed` | `(session_id)` | Skriv sessionens ledger-hændelser HELT om, i tabellens rækkefølge. | [src](../../../core/services/ledger_canary.py#L154) |
-| function | `_arm_sti` | `()` | — | [src](../../../core/services/ledger_canary.py#L203) |
-| function | `arm_next_session` | `(*, note=…)` | Indrullér den NAESTE nye chat-session i skyggen. Én gang. | [src](../../../core/services/ledger_canary.py#L208) |
-| function | `is_armed` | `()` | — | [src](../../../core/services/ledger_canary.py#L224) |
-| function | `disarm` | `()` | — | [src](../../../core/services/ledger_canary.py#L232) |
-| function | `maybe_enroll_new_session` | `(session_id)` | Kaldes naar en ny session oprettes. Fejler ALDRIG opad. | [src](../../../core/services/ledger_canary.py#L239) |
 

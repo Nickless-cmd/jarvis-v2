@@ -283,3 +283,48 @@ def _lookup(path: str, context: dict[str, Any]) -> Any:
         else:
             return None
     return current
+
+
+def build_composite_tools_surface() -> dict[str, Any]:
+    """Mission Control-surface: hvilke sammensatte vaerktoejer findes, og bruges de?
+
+    READ-ONLY: `count_composites` og `list_composites` kalder `_ensure_tables`
+    (CREATE TABLE), saa surface'en laeser tabellen direkte efter at have set at
+    den findes. Viser bl.a. forslag der venter paa et menneske.
+    """
+    base = {"mode": "composite-tools"}
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='composite_tools'").fetchone() is None:
+                return {**base, "active": False, "reason": "tabellen composite_tools findes ikke endnu",
+                        "signals": {}, "summary": "ingen sammensatte vaerktoejer er nogensinde foreslaaet"}
+            by_status = conn.execute(
+                "SELECT status, COUNT(*), COALESCE(SUM(invocation_count),0) FROM composite_tools GROUP BY status"
+            ).fetchall()
+            last_invoked = conn.execute("SELECT MAX(last_invoked_at) FROM composite_tools").fetchone()[0]
+            oldest_proposed = conn.execute(
+                "SELECT MIN(created_at) FROM composite_tools WHERE status='proposed'").fetchone()[0]
+            top = conn.execute(
+                "SELECT name, invocation_count FROM composite_tools WHERE invocation_count > 0 "
+                "ORDER BY invocation_count DESC, name LIMIT 5").fetchall()
+    except Exception as exc:  # surface skal melde aarsagen, ikke kaste ind i MC
+        return {**base, "active": False,
+                "reason": f"composite_tools kunne ikke laeses: {type(exc).__name__}: {exc}"[:300],
+                "signals": {}, "summary": "composite-lager ulaeseligt"}
+    counts = {"proposed": 0, "approved": 0, "revoked": 0}
+    invocations = 0
+    for status, n, inv in by_status:
+        counts[str(status)] = int(n)
+        invocations += int(inv)
+    total = sum(counts.values())
+    return {
+        **base, "active": total > 0,
+        **({} if total else {"reason": "tabellen er tom"}),
+        "signals": {"total": total, **counts, "invocations": invocations,
+                    "last_invoked_at": last_invoked,
+                    "oldest_pending_proposal_at": oldest_proposed,
+                    "top_invoked": [{"name": str(r[0]), "count": int(r[1])} for r in top]},
+        "summary": (f"{total} composites: {counts['approved']} godkendt, {counts['proposed']} venter, "
+                    f"{counts['revoked']} tilbagekaldt; {invocations} kald"),
+    }

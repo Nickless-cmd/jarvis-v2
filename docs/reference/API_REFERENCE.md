@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-11-06 from app.routes (live) — 684 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-07 from app.routes (live) — 685 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -260,6 +260,7 @@
 | POST | `/central/surgery/{pid}/{step}` | dict | central_matrix |
 | GET | `/central/timeseries` | dict | central |
 | GET | `/central/tone` | dict | central_absorb_routes |
+| GET | `/central/tool-infra` | dict | central |
 | GET | `/central/trainman` | dict | central_matrix |
 | GET | `/central/twins` | dict | central_matrix |
 | GET | `/central/users` | dict | central_users |

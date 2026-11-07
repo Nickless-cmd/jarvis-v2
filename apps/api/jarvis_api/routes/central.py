@@ -325,3 +325,15 @@ async def central_nerve_toggle(nerve: str, enabled: bool = True) -> dict:
             return {"ok": False, "nerve": str(nerve), "error": f"{type(exc).__name__}: {exc}"}
 
     return await asyncio.to_thread(_toggle)
+
+
+@router.get("/tool-infra")
+async def central_tool_infra() -> dict:
+    """De 12 værktøjs-lag der ellers er usynlige — hver med sine egne signaler.
+
+    Målt 7/11-2026: lagene havde en ``build_*_surface`` men ingen rute kaldte dem,
+    så Cartographer'en talte dem som dækkede mens ingen kunne se tallene. Owner-only,
+    read-only, blokerende fil-/DB-læsning via to_thread."""
+    _require_owner()
+    from core.services.central_tool_infra_surface import build_tool_infra_surface
+    return await asyncio.to_thread(build_tool_infra_surface)

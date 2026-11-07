@@ -452,3 +452,54 @@ def _suggested_theater_files(*, scope: str) -> list[str]:
     return list(dict.fromkeys(suggestions))
 
 
+
+
+def build_task_worker_surface() -> dict[str, Any]:
+    """Mission Control-surface: hvad ligger der i koeen, og hvad endte de i?
+
+    READ-ONLY: samme tabel som `claim_next_task` (`runtime_tasks`), men grupperet
+    — ingen task bliver claimet. Viser det der ellers er skjult: at followup-
+    kinds ALTID ender `blocked` (se `_FOLLOWUP_BLOCKED`), og hvor mange
+    `running` der aldrig blev afsluttet.
+    """
+    base = {"mode": "task-worker", "claimable_kinds": list(_DEFAULT_KINDS)}
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='runtime_tasks'").fetchone() is None:
+                return {**base, "active": False, "reason": "tabellen runtime_tasks findes ikke endnu",
+                        "signals": {}, "summary": "ingen tasks er nogensinde oprettet"}
+            rows = conn.execute("SELECT kind, status, COUNT(*) FROM runtime_tasks GROUP BY kind, status").fetchall()
+            oldest_queued = conn.execute(
+                "SELECT MIN(created_at) FROM runtime_tasks WHERE status='queued'").fetchone()[0]
+            oldest_running = conn.execute(
+                "SELECT MIN(updated_at) FROM runtime_tasks WHERE status='running'").fetchone()[0]
+            newest = conn.execute("SELECT MAX(updated_at) FROM runtime_tasks").fetchone()[0]
+            reasons = conn.execute(
+                "SELECT blocked_reason, COUNT(*) FROM runtime_tasks WHERE status='blocked' AND blocked_reason!='' "
+                "GROUP BY blocked_reason ORDER BY COUNT(*) DESC LIMIT 3").fetchall()
+    except Exception as exc:  # surface skal melde aarsagen, ikke kaste ind i MC
+        return {**base, "active": False,
+                "reason": f"runtime_tasks kunne ikke laeses: {type(exc).__name__}: {exc}"[:300],
+                "signals": {}, "summary": "task-koe ulaeselig"}
+    by_status: dict[str, int] = {}
+    claimable = 0
+    followup_blocked = 0
+    for kind, status, n in rows:
+        by_status[str(status)] = by_status.get(str(status), 0) + int(n)
+        if status == "queued" and kind in _DEFAULT_KINDS:
+            claimable += int(n)
+        if status == "blocked" and str(kind).endswith(("followup", "follow-up")):
+            followup_blocked += int(n)
+    total = sum(by_status.values())
+    return {
+        **base, "active": total > 0,
+        **({} if total else {"reason": "runtime_tasks er tom"}),
+        "signals": {"total": total, "by_status": by_status, "claimable_queued": claimable,
+                    "followup_blocked": followup_blocked,
+                    "blocked_reasons": [{"reason": str(r[0])[:160], "count": int(r[1])} for r in reasons],
+                    "oldest_queued_at": oldest_queued, "oldest_running_updated_at": oldest_running,
+                    "newest_update_at": newest},
+        "summary": (f"{total} tasks; {claimable} kan claimes, {by_status.get('running', 0)} kører, "
+                    f"{by_status.get('blocked', 0)} blokeret ({followup_blocked} followup)"),
+    }

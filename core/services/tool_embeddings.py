@@ -173,3 +173,36 @@ def warmup_all() -> int:
     return n
 
 
+
+def build_tool_embeddings_surface() -> dict:
+    """Mission Control-surface: hvor mange vaerktoejer har en embedding, og hvor frisk er den?
+
+    READ-ONLY: aabner databasen `mode=ro` og opretter den ALDRIG (`_connect`
+    goer begge dele). Mangler filen, er svaret active=False — routeren falder
+    da tilbage uden semantik, og det skal operatoeren kunne se.
+    """
+    base = {"mode": "tool-embeddings", "db_path": str(_DB_PATH)}
+    if not _DB_PATH.exists():
+        return {**base, "active": False, "reason": "tool_embeddings.sqlite findes ikke",
+                "signals": {}, "summary": "ingen embedding-lager — semantisk vaerktoejsvalg har intet at slaa op i"}
+    conn = None
+    try:
+        conn = sqlite3.connect(f"file:{_DB_PATH}?mode=ro", uri=True)
+        count, newest, oldest = conn.execute(
+            "SELECT COUNT(*), MAX(computed_at), MIN(computed_at) FROM tool_embeddings").fetchone()
+        blob = conn.execute("SELECT embedding FROM tool_embeddings LIMIT 1").fetchone()
+    except Exception as exc:  # surface skal melde aarsagen, ikke kaste ind i MC
+        return {**base, "active": False,
+                "reason": f"tool_embeddings kunne ikke laeses: {type(exc).__name__}: {exc}"[:300],
+                "signals": {}, "summary": "embedding-lager ulaeseligt"}
+    finally:
+        if conn is not None:
+            conn.close()
+    dim = (len(blob[0]) // 4) if blob and blob[0] else 0
+    return {
+        **base, "active": int(count) > 0,
+        **({} if count else {"reason": "tabellen er tom — warmup_all har ikke kørt"}),
+        "signals": {"embedded_tools": int(count), "dimensions": dim,
+                    "newest_computed_at": newest, "oldest_computed_at": oldest},
+        "summary": f"{int(count)} vaerktoejer embeddet ({dim} dim); seneste {newest or 'aldrig'}",
+    }

@@ -586,12 +586,12 @@ _Ambient Sound daemon — Layer 6½: background acoustic context._
 | function | `get_latest_ambient_sound_for_prompt` | `()` | Return a nuanced description of recent ambient sound for prompt injection. | [src](../../../core/services/ambient_sound_daemon.py#L320) |
 | function | `build_ambient_sound_surface` | `()` | — | [src](../../../core/services/ambient_sound_daemon.py#L357) |
 | function | `_interpret_sound` | `(*, category, amplitude_mean, amplitude_std, now)` | Generate a nuanced Danish description from acoustic metadata via LLM. | [src](../../../core/services/ambient_sound_daemon.py#L394) |
-| function | `_experiment_enabled` | `()` | — | [src](../../../core/services/ambient_sound_daemon.py#L421) |
-| function | `count_music_samples_last_hours` | `(hours=…)` | Return (music_count, total_count) for samples in the last `hours` hours. | [src](../../../core/services/ambient_sound_daemon.py#L430) |
-| function | `_select_music_influence_phrase` | `(*, ratio)` | 3-tier rotating phrase based on music-to-total ratio. | [src](../../../core/services/ambient_sound_daemon.py#L467) |
-| function | `get_music_accumulator_for_prompt` | `()` | Return prompt fragment if music threshold met, else empty string. | [src](../../../core/services/ambient_sound_daemon.py#L479) |
-| function | `_state` | `()` | — | [src](../../../core/services/ambient_sound_daemon.py#L502) |
-| function | `_parse_iso` | `(s)` | — | [src](../../../core/services/ambient_sound_daemon.py#L507) |
+| function | `_experiment_enabled` | `()` | — | [src](../../../core/services/ambient_sound_daemon.py#L437) |
+| function | `count_music_samples_last_hours` | `(hours=…)` | Return (music_count, total_count) for samples in the last `hours` hours. | [src](../../../core/services/ambient_sound_daemon.py#L446) |
+| function | `_select_music_influence_phrase` | `(*, ratio)` | 3-tier rotating phrase based on music-to-total ratio. | [src](../../../core/services/ambient_sound_daemon.py#L483) |
+| function | `get_music_accumulator_for_prompt` | `()` | Return prompt fragment if music threshold met, else empty string. | [src](../../../core/services/ambient_sound_daemon.py#L495) |
+| function | `_state` | `()` | — | [src](../../../core/services/ambient_sound_daemon.py#L518) |
+| function | `_parse_iso` | `(s)` | — | [src](../../../core/services/ambient_sound_daemon.py#L523) |
 
 ## `core/services/anthropic_identity.py`
 _Build Jarvis identity prefix from a workspace directory._

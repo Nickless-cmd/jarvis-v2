@@ -412,6 +412,22 @@ def _interpret_sound(
         raw = daemon_llm_call(prompt, max_len=80, fallback="", daemon_name="ambient_sound")
         text = str(raw or "").strip()
         if text:
+            # Lækage-værn (målt 7/11-2026): modellen gentager af og til sin egen
+            # instruktion eller gengiver promptens metadata i stedet for at
+            # beskrive lyden. Teksten ender to steder — i `last_description`,
+            # som `get_latest_ambient_sound_for_prompt()` injicerer i prompten
+            # (så Jarvis læser sin egen instruktion som en sansning), og i
+            # Sansernes Arkiv. Arkiv-gaten fangede det ikke, fordi dens mønstre
+            # er bygget på billed-prompter. Returnér tom tekst: så skriver
+            # arkivet «Lydbillede: <kategori>», som er ærlig metadata.
+            from core.services.sensory_archive import er_prompt_ekko
+
+            if er_prompt_ekko(text):
+                logger.warning(
+                    "ambient_sound: LLM echoed its own prompt, dropped: %s",
+                    text[:80],
+                )
+                return ""
             return text[:200]
     except Exception as exc:
         logger.debug("ambient_sound: LLM interpretation failed: %s", exc)

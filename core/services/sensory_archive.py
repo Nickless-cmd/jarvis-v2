@@ -366,6 +366,11 @@ def _record(
     #
     # Raekkefoelgen var fejlen, ikke moenstrene: en kvittering er en kvittering
     # uanset hvad der bagefter ville blive klippet vaek af den.
+    #
+    # ANDEN MAALING samme aften: gate-paa-raa var ikke nok. Med fuldtekst-
+    # moensteret forkastede den ogsaa blandet tekst — «Der er en svag summen …
+    # Klassifikation: silence …» — og et aegte indtryk gik tabt. Moenstret er
+    # derfor ankeret til producer-formen: kun HELE teksten er en kvittering.
     if not skal_arkiveres(content):
         return {
             "id": None,
@@ -531,7 +536,18 @@ _PLADSHOLDERE = (
 # Bevidst snævert: en BESKRIVELSE der nævner 'silence' («…kategori 'silence'
 # betyder, at der er en meget lav lydintensitet») er et indtryk og rammes ikke.
 _KVITTERING_MOENSTRE = (
-    re.compile(r"(?:klassifikation|lydbillede):\s*silence\b", re.IGNORECASE),
+    # MAALT 7/11-2026 (anden maaling samme aften): kun HELE teksten er en
+    # kvittering. silence-markoeren taeler kun, naar den folger den kendte
+    # producer-form fra `active_sensing_daemon` («Jeg lyttede til rummet.
+    # Klassifikation: silence …»). En blandet tekst — et aegte indtryk
+    # efterfulgt af en silence-klassifikation — arkiveres; indtrykket vinder
+    # over klassifikationen. `lydbillede:`-armen har ingen kendt producer i
+    # koden og beholdes fuldtekst som den var.
+    re.compile(
+        r"jeg lyttede til rummet\D*klassifikation:\s*silence\b"
+        r"|lydbillede:\s*silence\b",
+        re.IGNORECASE,
+    ),
 )
 
 # Hvornår en kvittering er en sansning. Ukendt værdi falder til «skip».
@@ -542,7 +558,9 @@ def er_kvittering(content: object) -> bool:
     """Er dette kvitteringen for at der blev sanset — ikke et indtryk?
 
     Fanger to familier: pladsholder-teksterne ("Intet mærkbart ændret.") og
-    lyd-klassifikationen `silence`, som betyder at der ikke var noget at høre.
+    lyd-klassifikationen `silence` i den kendte producer-form, som betyder at
+    der ikke var noget at høre. silence tæller kun når HELE teksten er
+    kvitteringen — en blandet tekst med et ægte indtryk arkiveres.
     """
     tekst = str(content or "").strip()
     if not tekst:

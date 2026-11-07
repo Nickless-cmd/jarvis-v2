@@ -450,3 +450,19 @@ async def central_daemon_state() -> dict:
     _require_owner()
     from core.services.daemon_state_surface import build_daemon_state_surface
     return await asyncio.to_thread(build_daemon_state_surface)
+
+
+@router.get("/central-state")
+async def central_central_state() -> dict:
+    """Centralens egne 72 tilstands-lag: sjael, kognition, rytme, drom, relation, maskinrum.
+
+    Maalt 7/11-2026: `central_hub._SURFACE_GROUPS` peger paa navne i
+    `cognitive_architecture_surface`, og den funktion kalder IKKE
+    `build_*_surface`-funktionerne. Navnene findes derfor to steder der ikke
+    taler sammen — de 72 flader saa synlige ud i een maaling og moerke i den
+    naeste. Her kaldes hver producent og resultatet taelles.
+    `build_layer_surface` er udeladt: den kraever et argument og er maskineri,
+    ikke tilstand. Owner-only, read-only, via to_thread."""
+    _require_owner()
+    from core.services.central_state_surface import build_central_state_surface
+    return await asyncio.to_thread(build_central_state_surface)

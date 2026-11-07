@@ -274,6 +274,7 @@ _Real-time Central-vindue til owner (jarvis-desk code mode)._
 | function | `central_relation_state` | `()` | Relation, bruger-model, drev, kreativitet og temporal tilstand — grupperet. | [src](../../../apps/api/jarvis_api/routes/central.py#L405) |
 | function | `central_self_state` | `()` | Selv- og drømme-tilstand: 34 flader der ellers var usynlige for operatøren. | [src](../../../apps/api/jarvis_api/routes/central.py#L428) |
 | function | `central_daemon_state` | `()` | Daemon- og runtime-lagene: 105 flader der ellers var usynlige for operatøren. | [src](../../../apps/api/jarvis_api/routes/central.py#L441) |
+| function | `central_central_state` | `()` | Centralens egne 72 tilstands-lag: sjael, kognition, rytme, drom, relation, maskinrum. | [src](../../../apps/api/jarvis_api/routes/central.py#L456) |
 
 ## `apps/api/jarvis_api/routes/central_absorb_routes.py`
 _Central-absorb routes — MC-kategorier PROJICERET som levende central-nerver._

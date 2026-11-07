@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/google_tasks_mirror.py`
+_Best-effort Google Tasks-spejl for Jarvis' lokale planlagte opgaver._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_token` | `(user_id)` | — | [src](../../../core/services/google_tasks_mirror.py#L26) |
+| function | `_headers` | `(token)` | — | [src](../../../core/services/google_tasks_mirror.py#L31) |
+| function | `_mapping` | `(user_id, local_task_id)` | — | [src](../../../core/services/google_tasks_mirror.py#L35) |
+| function | `_record` | `(user_id, local_task_id, remote_task_id)` | — | [src](../../../core/services/google_tasks_mirror.py#L42) |
+| function | `_forget` | `(user_id, local_task_id)` | — | [src](../../../core/services/google_tasks_mirror.py#L62) |
+| function | `_http_error` | `(status_code)` | — | [src](../../../core/services/google_tasks_mirror.py#L77) |
+| function | `create_task_mirror` | `(user_id, task)` | Opret en Google Task for en allerede gemt lokal opgave. | [src](../../../core/services/google_tasks_mirror.py#L85) |
+| function | `update_task_mirror` | `(user_id, task)` | Opdatér Google-kopien efter en vellykket lokal redigering. | [src](../../../core/services/google_tasks_mirror.py#L125) |
+| function | `cancel_task_mirror` | `(user_id, local_task_id)` | Slet Google-kopien efter en vellykket lokal annullering. | [src](../../../core/services/google_tasks_mirror.py#L157) |
+
 ## `core/services/governance_bootstrap.py`
 _Governance bootstrap — idempotent setup of default windows, jobs handlers, automations._
 
@@ -577,26 +592,4 @@ _Idle Thinking — Jarvis tænker frit når han er alene._
 |---|---|---|---|---|
 | function | `run_idle_thought` | `()` | Run a single idle thought when in appropriate phase. | [src](../../../core/services/idle_thinking.py#L18) |
 | function | `build_idle_thinking_surface` | `()` | — | [src](../../../core/services/idle_thinking.py#L83) |
-
-## `core/services/impulse_executor.py`
-_Impulse Executor — konverterer impulser til konkrete handlinger._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ExecutedAction` | `` | Record of an impulse that was executed as a concrete action. | [src](../../../core/services/impulse_executor.py#L96) |
-| function | `select_action` | `(direction, strength)` | Select the most appropriate action for a given direction and strength. | [src](../../../core/services/impulse_executor.py#L122) |
-| function | `execute_impulse` | `(impulse)` | Execute a single impulse — convert it to a concrete action. | [src](../../../core/services/impulse_executor.py#L145) |
-| function | `_perform_action` | `(action_type, direction, topic, strength)` | Actually perform the selected action. Returns (result, detail). | [src](../../../core/services/impulse_executor.py#L215) |
-| function | `_action_push_initiative` | `(direction, topic, strength)` | Push an initiative to the initiative queue. | [src](../../../core/services/impulse_executor.py#L246) |
-| function | `_action_search_memory` | `(topic)` | Search memory for related information. | [src](../../../core/services/impulse_executor.py#L262) |
-| function | `_action_deep_analyze` | `(topic)` | Trigger a deep analysis. | [src](../../../core/services/impulse_executor.py#L271) |
-| function | `_action_propose_edit` | `(topic)` | Propose a source edit. | [src](../../../core/services/impulse_executor.py#L280) |
-| function | `_action_notify` | `(action_type, direction, topic, strength)` | Notify the user about an impulse. | [src](../../../core/services/impulse_executor.py#L289) |
-| function | `_action_adjust_mood` | `(direction)` | Adjust mood based on retreat impulse. | [src](../../../core/services/impulse_executor.py#L300) |
-| function | `_action_journal` | `(topic, strength)` | Write a project journal entry. | [src](../../../core/services/impulse_executor.py#L309) |
-| function | `_action_compose_outreach` | `(direction, topic, strength)` | Spor-1: compose and send an outreach message via outreach_composer. | [src](../../../core/services/impulse_executor.py#L318) |
-| function | `_observe_impulse_tick` | `(*, pending, executed, starved)` | EGRESS-FRI liveness til Centralen (rettet 2026-07-01: var central().observe). Kaster aldrig. | [src](../../../core/services/impulse_executor.py#L344) |
-| function | `run_impulse_executor_tick` | `()` | Run one tick of the impulse executor. | [src](../../../core/services/impulse_executor.py#L355) |
-| function | `get_execution_log` | `(limit=…)` | Return recent execution log entries. | [src](../../../core/services/impulse_executor.py#L404) |
-| function | `snapshot` | `()` | Return serializable snapshot of executor state. | [src](../../../core/services/impulse_executor.py#L409) |
 

@@ -142,6 +142,29 @@ def test_silence_lyt_arkiveres_ikke(isolated_runtime) -> None:
     assert count() == foer
 
 
+def test_blandet_silence_arkiveres(isolated_runtime) -> None:
+    """Klassifikationen `silence` gør kun HELE teksten til en kvittering.
+
+    MAALT 7/11-2026 (anden måling samme aften): rettelsen der lod gaten se
+    den rå tekst, forkastede også blandet tekst — et ægte indtryk efterfulgt
+    af en silence-klassifikation. Indtrykket skal vinde: kun den kendte
+    producer-form («Jeg lyttede til rummet. Klassifikation: silence …») er
+    en kvittering.
+    """
+    from core.services.sensory_archive import count, record_audio
+
+    foer = count()
+    post = record_audio(
+        "Der er en svag summen fra køleskabet. "
+        "Klassifikation: silence (amplitude 0.1±0.0)."
+    )
+
+    assert "skipped" not in post, (
+        "et ægte indtryk blev forkastet pga. silence-markøren"
+    )
+    assert count() == foer + 1
+
+
 def test_kvittering_afgoeres_foer_stillads_fjernes(isolated_runtime) -> None:
     """Rækkefølgen ER værn: gaten skal se den RÅ tekst.
 

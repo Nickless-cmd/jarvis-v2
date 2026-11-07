@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-11-07 from app.routes (live) — 692 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-07 from app.routes (live) — 693 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -186,6 +186,7 @@
 | GET | `/central/belief-gap` | dict | central_matrix |
 | GET | `/central/body` | dict | central_affect |
 | POST | `/central/breakers/{nerve:path}/reset` | dict | central_breakers |
+| GET | `/central/central-state` | dict | central |
 | POST | `/central/command` | dict | central |
 | GET | `/central/connections` | dict | central_connections |
 | GET | `/central/construct` | dict | central_matrix |

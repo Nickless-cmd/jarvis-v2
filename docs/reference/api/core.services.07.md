@@ -374,6 +374,15 @@ _core/services/central_stance.py_
 | function | `register_stance_producer` | `()` | Registrér stance-aflæsningen som cadence-producer (~hvert 10 min). | [src](../../../core/services/central_stance.py#L129) |
 | function | `build_central_stance_surface` | `()` | Mission Control surface — read-only NUVÆRENDE stances + aktive tensions. | [src](../../../core/services/central_stance.py#L141) |
 
+## `core/services/central_state_surface.py`
+_Samlet flade for Centralens egne tilstands-lag._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_producenter` | `()` | Alle producenter på tværs af grupper, i definitions-rækkefølge. | [src](../../../core/services/central_state_surface.py#L120) |
+| function | `_call` | `(name, mod_path, fn_attr)` | Kald én producent. En defekt må ikke skjule de øvrige. | [src](../../../core/services/central_state_surface.py#L125) |
+| function | `build_central_state_surface` | `()` | Kald alle 72 central-producenter og returnér deres tilstand. | [src](../../../core/services/central_state_surface.py#L139) |
+
 ## `core/services/central_surgery.py`
 _Self-Surgery Kit — så Jarvis kan operere på sig selv uden at skære i blinde._
 
@@ -620,16 +629,4 @@ _Follow the White Rabbit — serendipitets-motoren._
 | function | `_observe` | `(door, total)` | — | [src](../../../core/services/central_white_rabbit.py#L49) |
 | function | `build_white_rabbit_surface` | `()` | — | [src](../../../core/services/central_white_rabbit.py#L58) |
 | function | `record_white_rabbit` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_white_rabbit.py#L62) |
-
-## `core/services/central_xproc.py`
-_Cross-proces trace-tee for Den Intelligente Central._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `process_role` | `()` | 'api' (visible-lane, JARVIS_ENABLE_RUNTIME_SERVICES=0) eller 'runtime' (daemons). | [src](../../../core/services/central_xproc.py#L37) |
-| function | `maybe_publish` | `()` | Throttled publish af denne proces' feed + sundhed. Kaldt fra trace-record (hot path) | [src](../../../core/services/central_xproc.py#L43) |
-| function | `_publish_now` | `()` | — | [src](../../../core/services/central_xproc.py#L70) |
-| function | `foreign_feeds` | `(own_role)` | Records fra ALLE andre processer end ens egen (ens egen har vi in-memory, friskere). | [src](../../../core/services/central_xproc.py#L120) |
-| function | `merged_timeseries` | `()` | Alle processers per-nerve tidsserie merget: nerve-key → {proces: {latest,count,meta,recent}}. | [src](../../../core/services/central_xproc.py#L139) |
-| function | `all_health` | `()` | Per-proces sundhed for hver kendt proces der har publiceret (ikke udløbet). Self-safe. | [src](../../../core/services/central_xproc.py#L161) |
 

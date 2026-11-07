@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/first_pass_recovery.py`
+_Hvad gør vi når FØRSTE pas kom tilbage ubrugelig?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `resend_target` | `(provider, model)` | (provider, model, thinking_mode) til ét gen-spørg efter et TOMT første pas. | [src](../../../core/services/first_pass_recovery.py#L35) |
+| function | `first_pass_is_hollow` | `(text, tool_calls)` | Lovede første pas en handling uden at kalde ét eneste værktøj? | [src](../../../core/services/first_pass_recovery.py#L57) |
+| function | `nudge_for_tool_calls` | `(*, message, provider, model, session_id, thinking_mode, tool_scope=…, local_exec=…)` | Spoerg ÉN gang mere, med nudget, ad en vej der ANNONCERER vaerktoejer. | [src](../../../core/services/first_pass_recovery.py#L79) |
+
 ## `core/services/flade_korrektion.py`
 _Ret en ødelagt ``jarvis-ui``-blok FØR svaret vises — ikke efter._
 
@@ -504,19 +513,4 @@ _Google app-login (§12) — kort-levende login-resultat-store + orkestrering._
 | function | `is_login_state` | `(state_uid)` | — | [src](../../../core/services/google_login.py#L70) |
 | function | `complete` | `(state_uid, google_email, *, now=…)` | Kaldt af callbacken med den VERIFICEREDE Google-email. Returnerer en kort | [src](../../../core/services/google_login.py#L74) |
 | function | `take_result` | `(nonce, *, now=…)` | Engangs-hent af login-resultatet (fjernes ved hentning når det er færdigt). | [src](../../../core/services/google_login.py#L118) |
-
-## `core/services/google_tasks_mirror.py`
-_Best-effort Google Tasks-spejl for Jarvis' lokale planlagte opgaver._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_token` | `(user_id)` | — | [src](../../../core/services/google_tasks_mirror.py#L26) |
-| function | `_headers` | `(token)` | — | [src](../../../core/services/google_tasks_mirror.py#L31) |
-| function | `_mapping` | `(user_id, local_task_id)` | — | [src](../../../core/services/google_tasks_mirror.py#L35) |
-| function | `_record` | `(user_id, local_task_id, remote_task_id)` | — | [src](../../../core/services/google_tasks_mirror.py#L42) |
-| function | `_forget` | `(user_id, local_task_id)` | — | [src](../../../core/services/google_tasks_mirror.py#L62) |
-| function | `_http_error` | `(status_code)` | — | [src](../../../core/services/google_tasks_mirror.py#L77) |
-| function | `create_task_mirror` | `(user_id, task)` | Opret en Google Task for en allerede gemt lokal opgave. | [src](../../../core/services/google_tasks_mirror.py#L85) |
-| function | `update_task_mirror` | `(user_id, task)` | Opdatér Google-kopien efter en vellykket lokal redigering. | [src](../../../core/services/google_tasks_mirror.py#L125) |
-| function | `cancel_task_mirror` | `(user_id, local_task_id)` | Slet Google-kopien efter en vellykket lokal annullering. | [src](../../../core/services/google_tasks_mirror.py#L157) |
 

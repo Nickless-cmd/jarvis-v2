@@ -354,22 +354,18 @@ def _record(
             "sensory memory content is model reasoning, not an impression"
         )
 
-    # Stillads-gaten — den tredje indgangsgraense (5/10-2026). Fjerner
-    # prompt-ekko og svar-preamble FOER kvitterings-gaten, fordi et ekko kan
-    # indeholde en pladsholder og omvendt. Er der intet indtryk tilbage, er
-    # posten rent stillads og afvises som raesonnement ovenfor.
-    content, var_stillads = _uden_stillads(content)
-    if var_stillads and len(content) < _MINDSTE_INDTRYK:
-        raise ValueError(
-            "sensory memory content is scaffolding (prompt echo or answer "
-            "preamble), not an impression"
-        )
-
-    # Kvitterings-gaten — den anden indgangsgrænse. Et sanseindtryk markerer at
-    # noget ÆNDREDE sig; «Intet mærkbart ændret.» og et lyt der endte i
-    # `silence` er svaret på at der ikke var noget at sanse. De arkiveres ikke,
-    # men returneres som en tydelig «sprunget over», så kalderen kan sige sandt
-    # i stedet for at bogføre et indtryk der aldrig blev skrevet.
+    # Kvitterings-gaten paa den RAA tekst — foer stillads fjernes.
+    #
+    # MAALT 7/11-2026: `active_sensing_daemon` skriver «Jeg lyttede til rummet.
+    # Klassifikation: silence (amplitude 0.0000±0.0000).» Det er kvitteringen
+    # for at der ikke var noget at hoere, og `_KVITTERING_MOENSTRE` fanger den.
+    # Men `_uden_stillads` klipper ved `amplitude \\d` (lyd-ekko-moenstret fra
+    # samme dag) og fjerner dermed praecis den markoer gaten leder efter. Tilbage
+    # stod «Jeg lyttede til rummet.» — 23 tegn, over `_MINDSTE_INDTRYK` — og den
+    # blev arkiveret som et indtryk. Posten findes i arkivet.
+    #
+    # Raekkefoelgen var fejlen, ikke moenstrene: en kvittering er en kvittering
+    # uanset hvad der bagefter ville blive klippet vaek af den.
     if not skal_arkiveres(content):
         return {
             "id": None,
@@ -379,6 +375,16 @@ def _record(
             "skipped": True,
             "reason": "kvittering",
         }
+
+    # Stillads-gaten — den tredje indgangsgraense (5/10-2026). Fjerner
+    # prompt-ekko og svar-preamble. Er der intet indtryk tilbage, er posten
+    # rent stillads og afvises som raesonnement ovenfor.
+    content, var_stillads = _uden_stillads(content)
+    if var_stillads and len(content) < _MINDSTE_INDTRYK:
+        raise ValueError(
+            "sensory memory content is scaffolding (prompt echo or answer "
+            "preamble), not an impression"
+        )
 
     # Auto-extract mood if not provided
     final_mood = mood_tone

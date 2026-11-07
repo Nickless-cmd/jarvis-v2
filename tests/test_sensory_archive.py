@@ -142,6 +142,51 @@ def test_silence_lyt_arkiveres_ikke(isolated_runtime) -> None:
     assert count() == foer
 
 
+def test_kvittering_afgoeres_foer_stillads_fjernes(isolated_runtime) -> None:
+    """Rækkefølgen ER værn: gaten skal se den RÅ tekst.
+
+    MÅLT 7/11-2026: `_uden_stillads` klipper ved `amplitude \\d` (lyd-ekko-
+    mønstret fra samme dag), og `active_sensing_daemon`s kvittering bærer
+    netop `amplitude` i sin `silence`-markør. Kørte stillads-fjernelsen først,
+    stod «Jeg lyttede til rummet.» tilbage — 23 tegn, over `_MINDSTE_INDTRYK` —
+    og posten blev arkiveret som et indtryk. Den findes i arkivet.
+
+    Testen måler `_record`s ADfærd, ikke funktionerne hver for sig: en test der
+    kun kalder `skal_arkiveres(raa)` er grøn uanset hvordan `_record` er skruet
+    sammen, og måler derfor intet om rækkefølgen. Målt 7/11-2026: den første
+    version af denne test overlevede mutationen, hvor gaten blev flyttet
+    tilbage — den var tautologisk.
+    """
+    from core.services.sensory_archive import (
+        _uden_stillads,
+        count,
+        er_kvittering,
+        record_audio,
+    )
+
+    raa = (
+        "Jeg lyttede til rummet. Klassifikation: silence "
+        "(amplitude 0.0000±0.0000)."
+    )
+    renset, roert = _uden_stillads(raa)
+
+    # Forudsætningen: efter rensning er markøren væk. Det er derfor rækkefølgen
+    # kan afgøres — en gate der læser den rensede tekst kan ikke fange den.
+    assert roert is True, "stillads-fjernelsen rørte ikke teksten — testen måler intet"
+    assert not er_kvittering(renset), (
+        "forudsætningen holder ikke: den rensede tekst er stadig en kvittering"
+    )
+
+    foer = count()
+    post = record_audio(raa)
+
+    assert post.get("skipped") is True, (
+        "kvitteringen blev arkiveret som et indtryk — gaten kørte efter "
+        "stillads-fjernelsen og kunne ikke se silence-markøren"
+    )
+    assert count() == foer, "arkivet voksede af et lyt uden indhold"
+
+
 def test_rigtigt_indtryk_arkiveres_uændret(isolated_runtime) -> None:
     """Gaten må ikke fange det den skal beskytte."""
     from core.services.sensory_archive import record_visual

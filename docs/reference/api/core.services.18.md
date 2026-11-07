@@ -94,17 +94,17 @@ _Proactive memory resurfacing — pull old MEMORY.md headings back into focus._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_memory_md` | `()` | — | [src](../../../core/services/memory_resurfacing.py#L40) |
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/memory_resurfacing.py#L48) |
-| function | `_normalize` | `(heading)` | — | [src](../../../core/services/memory_resurfacing.py#L66) |
-| function | `_list_memory_headings` | `()` | Return [(level_str, heading_text), ...] from MEMORY.md. | [src](../../../core/services/memory_resurfacing.py#L70) |
-| function | `_recently_touched_headings` | `()` | Headings touched in the last _FRESH_DAYS days — skip these for resurfacing. | [src](../../../core/services/memory_resurfacing.py#L86) |
-| function | `_recently_resurfaced_headings` | `()` | Last N resurfaced headings — don't repeat them. | [src](../../../core/services/memory_resurfacing.py#L104) |
-| function | `_content_for_heading` | `(heading)` | Return the content under the matching heading (up to next heading or EOF). | [src](../../../core/services/memory_resurfacing.py#L119) |
-| function | `_log_resurfacing` | `(heading, trigger=…)` | — | [src](../../../core/services/memory_resurfacing.py#L135) |
-| function | `pick_resurfacing_candidate` | `(*, trigger=…, seed=…)` | Choose a stale heading to surface, log the choice, return its detail. | [src](../../../core/services/memory_resurfacing.py#L150) |
-| function | `format_for_prompt` | `(candidate)` | Render a resurfacing candidate as a single soft prompt line. | [src](../../../core/services/memory_resurfacing.py#L201) |
-| function | `build_memory_resurfacing_surface` | `()` | Mission Control-surface: hvilke minder har der faktisk været resurfacet? | [src](../../../core/services/memory_resurfacing.py#L223) |
+| function | `_memory_md` | `()` | MEMORY.md for den kontekst der er bundet — ellers owner'ens. | [src](../../../core/services/memory_resurfacing.py#L40) |
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/memory_resurfacing.py#L58) |
+| function | `_normalize` | `(heading)` | — | [src](../../../core/services/memory_resurfacing.py#L76) |
+| function | `_list_memory_headings` | `()` | Return [(level_str, heading_text), ...] from MEMORY.md. | [src](../../../core/services/memory_resurfacing.py#L80) |
+| function | `_recently_touched_headings` | `()` | Headings touched in the last _FRESH_DAYS days — skip these for resurfacing. | [src](../../../core/services/memory_resurfacing.py#L96) |
+| function | `_recently_resurfaced_headings` | `()` | Last N resurfaced headings — don't repeat them. | [src](../../../core/services/memory_resurfacing.py#L114) |
+| function | `_content_for_heading` | `(heading)` | Return the content under the matching heading (up to next heading or EOF). | [src](../../../core/services/memory_resurfacing.py#L129) |
+| function | `_log_resurfacing` | `(heading, trigger=…)` | — | [src](../../../core/services/memory_resurfacing.py#L145) |
+| function | `pick_resurfacing_candidate` | `(*, trigger=…, seed=…)` | Choose a stale heading to surface, log the choice, return its detail. | [src](../../../core/services/memory_resurfacing.py#L160) |
+| function | `format_for_prompt` | `(candidate)` | Render a resurfacing candidate as a single soft prompt line. | [src](../../../core/services/memory_resurfacing.py#L211) |
+| function | `build_memory_resurfacing_surface` | `()` | Mission Control-surface: hvilke minder har der faktisk været resurfacet? | [src](../../../core/services/memory_resurfacing.py#L233) |
 
 ## `core/services/memory_search.py`
 _Semantic memory search — embeddings-based search over Jarvis's workspace memory files._

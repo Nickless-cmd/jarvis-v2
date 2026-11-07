@@ -553,6 +553,13 @@ def _memory_resurfacing_line() -> Optional[str]:
             body = "1 glemt minde er kommet tilbage"
         else:
             body = f"{distinct} glemte minder er kommet tilbage"
+        # Vis SELVE mindet, ikke kun en taelling. Et tal er en statistik; det er
+        # ikke et genfundet minde. 7/11-2026 stod der «3 glemte minder er kommet
+        # tilbage» — sandt, men ubrugeligt: jeg kunne ikke se HVILKE.
+        recent = sig.get("recent") or []
+        latest = str((recent[0] or {}).get("heading") or "").strip() if recent else ""
+        if latest:
+            return _truncate_clean(f"Genfundet: «{latest}» — {body}", 120)
         return _truncate_clean(f"Genfundet: {body}", 80)
     except Exception:  # tavs linje er sikker; en indre-liv-linje må aldrig kaste
         logger.debug("inner-life: resurfacing failed", exc_info=True)

@@ -222,6 +222,35 @@ def register_inner_life_producers(register_producer: Callable[[ProducerSpec], No
         depends_on=["finitude_runtime"],
     ))
 
+    def _run_memory_resurfacing(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """Traek et gammelt MEMORY.md-afsnit tilbage i fokus.
+
+        7/11-2026: `pick_resurfacing_candidate` havde NUL produktions-kaldere.
+        Dens egen docstring sagde «once an hour (when called from the heartbeat)»,
+        men hverken heartbeat eller initiativ-accumulatoren kaldte den — kun
+        `resurface_old_memory`-vaerktoejet, som jeg skulle huske at bruge.
+        Maalt efter seks maaneder: 3 poster i loggen. Evnen var aegte; koblingen
+        fandtes ikke. Det er praecis den fejlklasse vi fjerner: en funktion der
+        virker, men som intet bringer i spil.
+        """
+        from core.services.memory_resurfacing import pick_resurfacing_candidate
+
+        cand = pick_resurfacing_candidate(trigger="cadence")
+        if not cand:
+            # Ikke en fejl: alt kan vaere frisk, eller for nyligt genfundet.
+            return {"resurfaced": False,
+                    "reason": "ingen kandidat (alt er frisk eller for nyligt genfundet)"}
+        return {"resurfaced": True, "heading": str(cand.get("heading") or ""),
+                "trigger": "cadence"}
+
+    register_producer(ProducerSpec(
+        name="memory_resurfacing",
+        cooldown_minutes=60,
+        visible_grace_minutes=10,
+        run_fn=_run_memory_resurfacing,
+        priority=28,
+    ))
+
     def _run_world_model_ttl_sweep(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         from datetime import UTC as _UTC
         from datetime import datetime as _datetime

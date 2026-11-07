@@ -32,13 +32,23 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from core.runtime.db import connect
-from core.runtime.workspace_paths import workspace_dir
+from core.runtime.workspace_paths import workspace_dir_or_owner
 
 logger = logging.getLogger(__name__)
 
 
 def _memory_md() -> Path:
-    return workspace_dir() / "MEMORY.md"
+    """MEMORY.md for den kontekst der er bundet — ellers owner'ens.
+
+    7/11-2026: brugte `workspace_dir()`, som KASTER `NoUserContextError` naar
+    ingen bruger er bundet. Det er praecis tilstanden i en autonom kadence-
+    koersel, saa `pick_resurfacing_candidate` fejlede hver gang den blev kaldt
+    uden for en tur — og `_list_memory_headings` slugte fejlen til «ingen
+    kandidater». Evnen var derfor doed uden for en samtale.
+    `workspace_dir_or_owner()` er dokumenteret til netop entity-laesninger
+    uden kontekst (heartbeat, dreams, autonome koersler).
+    """
+    return workspace_dir_or_owner() / "MEMORY.md"
 
 _FRESH_DAYS = 7        # headings written/touched within this window are "fresh", skip
 _RECENT_RESURFACE_AVOID = 8   # don't repeat the last N resurfaced headings

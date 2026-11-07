@@ -17,27 +17,31 @@ _Jarvis Mind-hub — Centralen som ÉT samlingspunkt for alt MC viser._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_safe` | `(builder)` | — | [src](../../../core/services/central_hub.py#L102) |
-| function | `_build_overview` | `()` | Centralens egen puls = Jarvis Mind-rygraden (status/dækning/processer/clusters). | [src](../../../core/services/central_hub.py#L111) |
-| function | `_build_observability` | `()` | Det levende vindue: nerve-feed + incidents + anomalier + læring + breakers. | [src](../../../core/services/central_hub.py#L125) |
-| function | `_surface_group` | `(names)` | Projicerer et udsnit af `cognitive_architecture_surface()["surfaces"]`. | [src](../../../core/services/central_hub.py#L152) |
-| function | `_build_mind` | `()` | Sind — bevidstheds-gruppen (default undertab; se `_SECTION_TABS`). | [src](../../../core/services/central_hub.py#L184) |
-| function | `_build_proprioception` | `()` | Kroppen (gammel MC-fane 6): fil-overvågning, genstart-bevidsthed, | [src](../../../core/services/central_hub.py#L195) |
-| function | `_build_threads` | `()` | Tråde (gammel MC-fane 7): de kognitive overflader der løber på tværs af | [src](../../../core/services/central_hub.py#L201) |
-| function | `_build_relationship` | `()` | Relation (gammel MC-fane 10): den relationelle model — tillid over tid. | [src](../../../core/services/central_hub.py#L207) |
-| function | `_build_agency` | `()` | Agentur-kort: forbundne/manglende agency-broer (loops/agenter/kanaler). | [src](../../../core/services/central_hub.py#L212) |
-| function | `_build_skills` | `()` | Skills-motor + kontrakt-registry. | [src](../../../core/services/central_hub.py#L218) |
-| function | `_trim_agency_map` | `(m)` | Skær agency-kortet til det Agentur-fanen viser — og bevar totalerne. | [src](../../../core/services/central_hub.py#L234) |
-| function | `_build_agency_agents` | `()` | Agentur-fanen: agency-broer (loops/agenter/kanaler) + B3 agent-dispatch-udfald | [src](../../../core/services/central_hub.py#L278) |
-| function | `_build_council` | `()` | Council-fanen (B3): convocations/deadlocks/roller. Empty-safe. | [src](../../../core/services/central_hub.py#L301) |
-| function | `_build_decisions` | `()` | Hvad venter paa et menneske — samlet ét sted. | [src](../../../core/services/central_hub.py#L309) |
-| function | `_build_memory` | `()` | Hukommelse — hvad han husker, og hvad der er på vej til at blive glemt. | [src](../../../core/services/central_hub.py#L392) |
-| function | `_build_reflection` | `()` | Refleksion — dagens refleksions-slot og hvad den må røre. | [src](../../../core/services/central_hub.py#L427) |
-| function | `_build_lab` | `()` | Lab — hvad det koster, og hvad der er tilbage at købe for. | [src](../../../core/services/central_hub.py#L437) |
-| function | `_build_hardening` | `()` | Hærdning — governance-flag og hvad de værner. | [src](../../../core/services/central_hub.py#L445) |
-| function | `mind_index` | `()` | Alle Jarvis Mind-sektioner + om de er projiceret endnu. Til sub-navbaren. Self-safe. | [src](../../../core/services/central_hub.py#L480) |
-| function | `mind_section` | `(section, tab=…)` | Projektionen for ÉN sektion — eller ÉN undertab i den (læser den cachede | [src](../../../core/services/central_hub.py#L507) |
-| function | `mind_snapshot` | `(*, sections=…)` | Hub-snapshot: index + (valgfrit) fulde data for bestemte sektioner. Default = kun index | [src](../../../core/services/central_hub.py#L547) |
+| function | `_safe` | `(builder)` | — | [src](../../../core/services/central_hub.py#L113) |
+| function | `_build_overview` | `()` | Centralens egen puls = Jarvis Mind-rygraden (status/dækning/processer/clusters). | [src](../../../core/services/central_hub.py#L122) |
+| function | `_build_observability` | `()` | Det levende vindue: nerve-feed + incidents + anomalier + læring + breakers. | [src](../../../core/services/central_hub.py#L136) |
+| function | `_surface_group` | `(names)` | Projicerer et udsnit af `cognitive_architecture_surface()["surfaces"]`. | [src](../../../core/services/central_hub.py#L163) |
+| function | `state_group_names` | `()` | Undertab-navnene i Tilstand — til test og introspektion. | [src](../../../core/services/central_hub.py#L257) |
+| function | `_call_surface` | `(mod_path, fn_attr)` | Importér og kald ÉN flade. Bruges af `_state_group`. | [src](../../../core/services/central_hub.py#L262) |
+| function | `_state_group` | `(group)` | Projicerer ÉN undertab af Tilstand: hver flade kaldt, self-safe pr. producent. | [src](../../../core/services/central_hub.py#L271) |
+| function | `_build_state` | `()` | Tilstand — Centralens egen tilstand, ikke en brugerrelation. | [src](../../../core/services/central_hub.py#L288) |
+| function | `_build_mind` | `()` | Sind — bevidstheds-gruppen (default undertab; se `_SECTION_TABS`). | [src](../../../core/services/central_hub.py#L297) |
+| function | `_build_proprioception` | `()` | Kroppen (gammel MC-fane 6): fil-overvågning, genstart-bevidsthed, | [src](../../../core/services/central_hub.py#L308) |
+| function | `_build_threads` | `()` | Tråde (gammel MC-fane 7): de kognitive overflader der løber på tværs af | [src](../../../core/services/central_hub.py#L314) |
+| function | `_build_relationship` | `()` | Relation (gammel MC-fane 10): den relationelle model — tillid over tid. | [src](../../../core/services/central_hub.py#L320) |
+| function | `_build_agency` | `()` | Agentur-kort: forbundne/manglende agency-broer (loops/agenter/kanaler). | [src](../../../core/services/central_hub.py#L325) |
+| function | `_build_skills` | `()` | Skills-motor + kontrakt-registry. | [src](../../../core/services/central_hub.py#L331) |
+| function | `_trim_agency_map` | `(m)` | Skær agency-kortet til det Agentur-fanen viser — og bevar totalerne. | [src](../../../core/services/central_hub.py#L347) |
+| function | `_build_agency_agents` | `()` | Agentur-fanen: agency-broer (loops/agenter/kanaler) + B3 agent-dispatch-udfald | [src](../../../core/services/central_hub.py#L391) |
+| function | `_build_council` | `()` | Council-fanen (B3): convocations/deadlocks/roller. Empty-safe. | [src](../../../core/services/central_hub.py#L414) |
+| function | `_build_decisions` | `()` | Hvad venter paa et menneske — samlet ét sted. | [src](../../../core/services/central_hub.py#L422) |
+| function | `_build_memory` | `()` | Hukommelse — hvad han husker, og hvad der er på vej til at blive glemt. | [src](../../../core/services/central_hub.py#L505) |
+| function | `_build_reflection` | `()` | Refleksion — dagens refleksions-slot og hvad den må røre. | [src](../../../core/services/central_hub.py#L540) |
+| function | `_build_lab` | `()` | Lab — hvad det koster, og hvad der er tilbage at købe for. | [src](../../../core/services/central_hub.py#L550) |
+| function | `_build_hardening` | `()` | Hærdning — governance-flag og hvad de værner. | [src](../../../core/services/central_hub.py#L558) |
+| function | `mind_index` | `()` | Alle Jarvis Mind-sektioner + om de er projiceret endnu. Til sub-navbaren. Self-safe. | [src](../../../core/services/central_hub.py#L594) |
+| function | `mind_section` | `(section, tab=…)` | Projektionen for ÉN sektion — eller ÉN undertab i den (læser den cachede | [src](../../../core/services/central_hub.py#L621) |
+| function | `mind_snapshot` | `(*, sections=…)` | Hub-snapshot: index + (valgfrit) fulde data for bestemte sektioner. Default = kun index | [src](../../../core/services/central_hub.py#L670) |
 
 ## `core/services/central_hypothesis_generator.py`
 _core/services/central_hypothesis_generator.py_

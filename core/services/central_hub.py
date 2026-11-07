@@ -44,6 +44,9 @@ _SECTION_ORDER: list[tuple[str, str]] = [
     ("reflection", "Refleksion"),
     ("lab", "Lab"),
     ("hardening", "Hærdning"),
+    # 7/11-2026: 35 central/*-flader havde nul læsere. De findes ikke blandt
+    # cognitive_architecture's 72 overflader, så Sind-fanen kunne ikke vise dem.
+    ("state", "Tilstand"),
 ]
 
 # ── undertabs: det gamle MC's underfaner (3/11-2026) ─────────────────────────────
@@ -63,6 +66,14 @@ _SECTION_TABS: dict[str, list[tuple[str, str]]] = {
         ("bevidsthed", "Bevidsthed"),
         ("sjael", "Sjæl"),
         ("kognition", "Kognition"),
+    ],
+    "state": [
+        ("sjaelestilstand", "Sjælestilstand"),
+        ("krop", "Krop"),
+        ("rytme", "Rytme"),
+        ("drom", "Drøm"),
+        ("model", "Model"),
+        ("agenda", "Agenda"),
     ],
 }
 
@@ -179,6 +190,108 @@ def _surface_group(names: list[str]) -> dict[str, Any]:
     ud["active_count"] = hel.get("active_count")
     ud["total_count"] = hel.get("total_count")
     return ud
+
+
+# ── Tilstand: de 35 central/*-flader der ikke findes i cognitive_architecture ──
+# MÅLT 7/11-2026: 202 `build_*_surface` i core/services kaldes aldrig fra apps/.
+# 36 af dem er central/*. Jeg kaldte alle 36: 35 leverer en ikke-tom dict,
+# `central_layer_contract.build_layer_surface` kræver et argument og er maskineri,
+# ikke tilstand — den er udeladt med vilje.
+#
+# De er IKKE i `cognitive_architecture_surface()["surfaces"]` (målt: 0 af 35 findes
+# blandt de 72). Sind-fanen viste derfor 72 flader og ingen af dem der beskriver
+# hvordan Centralen faktisk har det. Denne gruppe er deres indgang.
+#
+# (navn, modul, funktion) — READ-ONLY, verificeret ved kald 7/11-2026.
+_STATE_PRODUCERS: dict[str, list[tuple[str, str, str]]] = {
+    "sjaelestilstand": [
+        ("self_state", "core.services.central_self_state", "build_self_state_surface"),
+        ("soul_feel", "core.services.central_soul_feel", "build_soul_feel_surface"),
+        ("valence", "core.services.central_valence", "build_valence_surface"),
+        ("tone", "core.services.central_tone", "build_tone_surface"),
+        ("mood_regulator", "core.services.central_mood_regulator", "build_mood_regulator_surface"),
+        ("existence_feel", "core.services.central_existence_feel", "build_existence_feel_surface"),
+        ("stance", "core.services.central_stance", "build_central_stance_surface"),
+        ("trinity", "core.services.central_trinity", "build_trinity_surface"),
+        ("adaptation", "core.services.central_adaptation", "build_central_adaptation_surface"),
+    ],
+    "krop": [
+        ("body_map", "core.services.central_body_map_pulse", "build_body_map_surface"),
+        ("body_mood_feel", "core.services.central_body_mood_feel", "build_body_mood_feel_surface"),
+    ],
+    "rytme": [
+        ("cadence_tempo", "core.services.central_cadence_conductor", "build_cadence_tempo_surface"),
+        ("loop_lag", "core.services.central_loop_lag", "build_loop_lag_surface"),
+        ("sequence", "core.services.central_sequence", "build_central_sequence_surface"),
+        ("membrane_watch", "core.services.central_membrane_watch", "build_membrane_watch_surface"),
+        ("output_conservation", "core.services.central_output_conservation", "build_output_conservation_surface"),
+    ],
+    "drom": [
+        ("oneiric_loop", "core.services.central_oneiric_loop", "build_oneiric_loop_surface"),
+        ("oneiric_sampler", "core.services.central_oneiric_sampler", "build_oneiric_sampler_surface"),
+        ("morpheus", "core.services.central_morpheus", "build_morpheus_surface"),
+    ],
+    "model": [
+        ("model_meta", "core.services.central_model_meta", "build_model_meta_surface"),
+        ("llm_egress", "core.services.central_llm_egress", "build_llm_egress_surface"),
+        ("router_adapt", "core.services.central_router_adapt", "build_router_adapt_surface"),
+        ("router_explore", "core.services.central_router_explore", "build_router_explore_surface"),
+        ("prompt_composer", "core.services.central_prompt_composer", "build_central_prompt_composer_surface"),
+        ("prompt_explore", "core.services.central_prompt_explore", "build_prompt_explore_surface"),
+    ],
+    "agenda": [
+        ("agenda", "core.services.central_agenda", "build_agenda_surface"),
+        ("todo", "core.services.central_todo", "build_central_todo_surface"),
+        ("coverage_action", "core.services.central_coverage_action", "build_central_coverage_action_surface"),
+        ("hypothesis_generator", "core.services.central_hypothesis_generator", "build_central_hypothesis_generator_surface"),
+        ("inner_salience", "core.services.central_inner_salience", "build_inner_salience_surface"),
+        ("brain_link", "core.services.central_brain_link", "build_brain_link_surface"),
+        ("self_model", "core.services.central_self_model", "build_self_model_mirror_surface"),
+        ("inner_life_ablation", "core.services.central_inner_life_ablation", "build_ablation_surface"),
+        ("lexicon", "core.services.central_lexicon", "build_central_lexicon_surface"),
+        ("notation", "core.services.central_notation", "build_central_notation_surface"),
+    ],
+}
+
+
+def state_group_names() -> list[str]:
+    """Undertab-navnene i Tilstand — til test og introspektion."""
+    return list(_STATE_PRODUCERS)
+
+
+def _call_surface(mod_path: str, fn_attr: str) -> dict[str, Any]:
+    """Importér og kald ÉN flade. Bruges af `_state_group`."""
+    import importlib
+
+    mod = importlib.import_module(mod_path)
+    out = getattr(mod, fn_attr)()
+    return out if isinstance(out, dict) else {"value": out}
+
+
+def _state_group(group: str) -> dict[str, Any]:
+    """Projicerer ÉN undertab af Tilstand: hver flade kaldt, self-safe pr. producent.
+
+    En kastende flade isoleres til `{"active": False, "error": …}` så én defekt
+    ikke skjuler de øvrige — samme kontrakt som `central_tool_infra_surface`.
+    `mangler` er ikke pynt: en flade der forsvinder fra sin modul-sti skal ses som
+    et navn, ikke bare blive et hul.
+    """
+    producenter = _STATE_PRODUCERS.get(group) or []
+    ud: dict[str, Any] = {"active": True, "surfaces": {}}
+    for navn, mod_path, fn_attr in producenter:
+        ud["surfaces"][navn] = _safe(lambda m=mod_path, f=fn_attr: _call_surface(m, f))
+    ud["antal"] = len(ud["surfaces"])
+    ud["mangler"] = [n for n, _m, _f in producenter if n not in ud["surfaces"]]
+    return ud
+
+
+def _build_state() -> dict[str, Any]:
+    """Tilstand — Centralens egen tilstand, ikke en brugerrelation.
+
+    Default-undertab er sjælestilstanden. Hver undertab hentes for sig (se
+    `mind_section`), så payloaden bliver få KB i stedet for alle 35 flader.
+    """
+    return _state_group("sjaelestilstand")
 
 
 def _build_mind() -> dict[str, Any]:
@@ -474,6 +587,7 @@ _BUILDERS: dict[str, Callable[[], dict[str, Any]]] = {
     "reflection": _build_reflection,
     "lab": _build_lab,
     "hardening": _build_hardening,
+    "state": _build_state,
 }
 
 
@@ -535,7 +649,16 @@ def mind_section(section: str, tab: str = "") -> dict[str, Any]:
         hit = _section_cache.get(cache_key)
         if hit and hit[0] > now:
             return hit[1]
-    data = _safe(lambda: _surface_group(_SURFACE_GROUPS[tab_key])) if tab_key else _safe(builder)
+    # 7/11-2026: en undertab kan bo i to registre. `_SURFACE_GROUPS` peger på
+    # navne i cognitive_architecture; `_STATE_PRODUCERS` peger på modul+funktion
+    # for de 35 central-flader der ikke findes der. Uden denne gren ville
+    # `_SURFACE_GROUPS[tab_key]` kaste KeyError og fanen svare tom.
+    if tab_key and tab_key in _STATE_PRODUCERS:
+        data = _safe(lambda: _state_group(tab_key))
+    elif tab_key:
+        data = _safe(lambda: _surface_group(_SURFACE_GROUPS[tab_key]))
+    else:
+        data = _safe(builder)
     data.setdefault("section", key)
     if tab_key:
         data.setdefault("tab", tab_key)

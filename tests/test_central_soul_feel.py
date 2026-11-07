@@ -243,8 +243,8 @@ def test_describe_self_safe_on_corrupt_hold(monkeypatch, isolated_runtime):
     assert isinstance(sf.describe_soul_feel(), list)
 
 
-# ── OP-registrering: otte lag registreres på cadence-motoren, egress PRIVATE, cluster cognition ──
-def test_register_wires_eight_layers(monkeypatch, isolated_runtime):
+# ── OP-registrering: ni lag registreres på cadence-motoren, egress PRIVATE, cluster cognition ──
+def test_register_wires_nine_layers(monkeypatch, isolated_runtime):
     from core.services import central_layer_contract as lc
     specs = []
     import core.services.internal_cadence as ic
@@ -253,7 +253,8 @@ def test_register_wires_eight_layers(monkeypatch, isolated_runtime):
     sf.register_soul_feel_layers()
     names = {s.name for s in specs}
     assert names == {sf._RELATIONAL, sf._GRATITUDE, sf._CALM_ANCHOR, sf._MODULATORS,
-                     sf._MEMORY_BREATHING, sf._SUSTAINED, sf._EMERGENCE, sf._DRIFT}
+                     sf._MEMORY_BREATHING, sf._MEMORY_RESURFACING, sf._SUSTAINED,
+                     sf._EMERGENCE, sf._DRIFT}
     for name in names:
         assert lc._CONTRACTS[name].egress is lc.Egress.PRIVATE
         assert lc._CONTRACTS[name].cluster == "cognition"

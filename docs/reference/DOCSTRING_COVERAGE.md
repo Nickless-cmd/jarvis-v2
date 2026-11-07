@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9867/18350 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9868/18352 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 9867/18350 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 872 | 1586 | 54% |
-| `core.services` | 6592 | 12436 | 53% |
+| `core.services` | 6593 | 12438 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 9867/18350 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2633)
+## Undocumented public functions (2634)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L231)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -994,14 +994,15 @@ Generated from source. 9867/18350 functions/methods documented (53%). The list b
 - `core/services/central_self_state.py` :: `is_prompt_authoritative` (L508)
 - `core/services/central_sentinel.py` :: `list_attacks` (L140)
 - `core/services/central_sequence.py` :: `ensure_schema` (L47)
-- `core/services/central_soul_feel.py` :: `get_calm_anchor_reading` (L303)
-- `core/services/central_soul_feel.py` :: `get_drift_reading` (L323)
-- `core/services/central_soul_feel.py` :: `get_emergence_reading` (L319)
-- `core/services/central_soul_feel.py` :: `get_gratitude_reading` (L299)
-- `core/services/central_soul_feel.py` :: `get_memory_breathing_reading` (L311)
-- `core/services/central_soul_feel.py` :: `get_modulators_reading` (L307)
-- `core/services/central_soul_feel.py` :: `get_relational_reading` (L295)
-- `core/services/central_soul_feel.py` :: `get_sustained_reading` (L315)
+- `core/services/central_soul_feel.py` :: `get_calm_anchor_reading` (L334)
+- `core/services/central_soul_feel.py` :: `get_drift_reading` (L358)
+- `core/services/central_soul_feel.py` :: `get_emergence_reading` (L354)
+- `core/services/central_soul_feel.py` :: `get_gratitude_reading` (L330)
+- `core/services/central_soul_feel.py` :: `get_memory_breathing_reading` (L342)
+- `core/services/central_soul_feel.py` :: `get_memory_resurfacing_reading` (L346)
+- `core/services/central_soul_feel.py` :: `get_modulators_reading` (L338)
+- `core/services/central_soul_feel.py` :: `get_relational_reading` (L326)
+- `core/services/central_soul_feel.py` :: `get_sustained_reading` (L350)
 - `core/services/central_surgery.py` :: `list_proposals` (L224)
 - `core/services/central_switches.py` :: `CircuitBreaker.is_open` (L79)
 - `core/services/central_switches.py` :: `CircuitBreaker.reset` (L90)

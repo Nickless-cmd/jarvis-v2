@@ -23,7 +23,8 @@ Otte lag på tværs af fem aspekter (hvert lag et LayerContract, cluster=cogniti
 
   HUKOMMELSE-SOM-VÆV (memory):
     memory_breathing   — recent_access_stats: hvor meget rører jeg min egen hukommelse (accesses/unikke)
-    (memory_resurfacing DROPPET — random pick-handling, surface er stub, ingen tilstands-aflæsning)
+    memory_resurfacing — memory_resurfacing_log: hvilke minder har jeg faktisk genfundet (total/unikke/seneste)
+                         (genindført 7/11-2026: dommen «surface er stub» var forældet — fladen læser nu ægte tilstand)
 
   OPMÆRKSOMHED & STILHED (attention):
     attention_sustained— sustained_attention: aktive/pausede vedvarende projekter (JSON-durabelt)
@@ -67,6 +68,7 @@ _CALM_ANCHOR = "warmth_calm_anchor"
 _MODULATORS = "witness_modulators"
 # HUKOMMELSE-SOM-VÆV
 _MEMORY_BREATHING = "memory_breathing"
+_MEMORY_RESURFACING = "memory_resurfacing"
 # OPMÆRKSOMHED
 _SUSTAINED = "attention_sustained"
 # EMERGENS
@@ -231,6 +233,35 @@ def _memory_breathing_signal() -> dict[str, Any] | None:
         return None
 
 
+def _memory_resurfacing_signal() -> dict[str, Any] | None:
+    """memory_resurfacing: hvilke minder har jeg faktisk genfundet (total/unikke/seneste).
+
+    Genindført 7/11-2026. Laget blev droppet med begrundelsen «random
+    pick-handling, surface er stub, ingen tilstands-aflæsning» — men fladen
+    læser nu `memory_resurfacing_log` (total, unikke overskrifter, seneste
+    tidspunkt, trigger-fordeling). Dommen var rigtig da den blev skrevet og
+    er forkert nu. None når loggen er tom: intet at aflæse er ikke en
+    tilstand på 0.
+    """
+    try:
+        from core.services.memory_resurfacing import build_memory_resurfacing_surface
+        surf = build_memory_resurfacing_surface() or {}
+        sig = surf.get("signals") or {}
+        total = int(sig.get("resurfaced_total") or 0)
+        if total <= 0:
+            return None
+        distinct = int(sig.get("distinct_headings") or 0)
+        reading = {
+            "resurfaced_total": total,
+            "distinct_headings": distinct,
+            "last_resurfaced_at": sig.get("last_resurfaced_at"),
+        }
+        _hold_reading(_MEMORY_RESURFACING, reading)
+        return {"value": float(total), "meta": {"distinct_headings": distinct}}
+    except Exception:  # én aflæsnings fejl må ikke fjerne de otte andre lag fra beskrivelsen
+        return None
+
+
 # ── OP: OPMÆRKSOMHED-signal-læser ──
 def _sustained_signal() -> dict[str, Any] | None:
     """sustained_attention: vedvarende projekter jeg holder fast i (aktive/pausede). None hvis ingen."""
@@ -312,6 +343,10 @@ def get_memory_breathing_reading() -> dict[str, Any]:
     return _read_held(_MEMORY_BREATHING)
 
 
+def get_memory_resurfacing_reading() -> dict[str, Any]:
+    return _read_held(_MEMORY_RESURFACING)
+
+
 def get_sustained_reading() -> dict[str, Any]:
     return _read_held(_SUSTAINED)
 
@@ -377,6 +412,15 @@ def describe_soul_feel() -> list[str]:
                          + ("r" if unique != 1 else "") + " på det seneste")
     except Exception:
         pass
+    try:
+        res = get_memory_resurfacing_reading()
+        total = int(res.get("resurfaced_total") or 0)
+        if total > 0:
+            parts.append(f"jeg har genfundet {total} glemt"
+                         + ("e" if total != 1 else "") + " minde"
+                         + ("r" if total != 1 else "") + " — de venter på at blive tænkt igen")
+    except Exception:  # NED-syntesen maa aldrig kaste: en ulæselig aflæsning tie'r, den vælter ikke beskrivelsen
+        pass
     # ── OPMÆRKSOMHED ──
     try:
         sus = get_sustained_reading()
@@ -421,6 +465,7 @@ def register_soul_feel_layers() -> None:
         (_MODULATORS, "modulator_witness", _modulators_signal),
         # HUKOMMELSE-SOM-VÆV
         (_MEMORY_BREATHING, "memory_breathing", _memory_breathing_signal),
+        (_MEMORY_RESURFACING, "memory_resurfacing", _memory_resurfacing_signal),
         # OPMÆRKSOMHED
         (_SUSTAINED, "sustained_attention", _sustained_signal),
         # EMERGENS

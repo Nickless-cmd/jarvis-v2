@@ -483,3 +483,25 @@ intakt) på `tool_usage_store`, `cache_telemetry`, `composite_tools`, `agent_app
 **Små ændringer i eksisterende kode (adfærdsbevarende):** `tool_calling_evidence._aggreger` udskilt fra
 `tool_calling_record` (delt med surfacen); `tool_hunt_nudge.rapport()` får et additivt `laesefejl`-felt, så en
 ulæselig bus ikke ligner «ingen noter».
+
+## De fem WIRE-punkter — domme (målt 7/11-2026, Jarvis)
+
+Triage-tabellen førte fem punkter som «WIRE (ikke udført)». To er siden koblet; de tre øvrige er
+**ikke** manglende koblinger, og det er den vigtigste rettelse i denne sektion.
+
+| Punkt | Dom | Bevis |
+|---|---|---|
+| `claim_scanner.detect_fabricated_work_claims` | **KOBLET** (52bc7d6cb) | skygge-gate `fabricated_claim` i `gate_shadow._GATES`, kører ved hvert run-slut |
+| `diagnosis_gate.diagnosis_gate_enforce` | **KOBLET** (0bd663460) | `diagnosis_adapter` publicerer nu `diagnosis.unverified` / `promise.unverified`, som `mood_regulator_subscriber` abonnerer på |
+| `communication_guard.enforce_outgoing` | **FRAVALGT — duplikat** | `guard_channel_text` → `scrub_outgoing` kører allerede på discord/telegram/notification. `enforce_outgoing` er samme logik med `blocked` i stedet for scrub; at kalde begge ville behandle ét svar to gange |
+| `communication_guard.consume_turn` + `add_trigger` | **REMOVE-kandidat — tomt system** | `_load()` viser **10 triggers, alle `kind: permanent`, nul TTL**. `consume_turn` tæller `ttl_turns` ned, men ingen trigger har feltet, og `add_trigger` har nul kaldesteder. Mekanikken har aldrig haft et input |
+| `spaced_repetition.complete_review` | **UDSKUDT — kræver design** | reviews kan planlægges, men intet scorer dem. En scorer er en produktbeslutning om hvordan Jarvis lærer, ikke en tilkobling |
+
+**Ægte hul fundet undervejs (ikke i tabellen):** `communication_guard` er koblet på discord,
+telegram og notification — men **ikke på webchat**, den kanal hvor Jarvis og Bjørn taler mest.
+`prompt_section()` dækker webchat blødt (reglen står i system-prompten), men der er ingen mekanisk
+scrub. Målt: 3 `communication.boundary_breach`-events i drift, senest 31/10-2026. At koble scrubben
+på webchat ændrer hvad Bjørn ser fra Jarvis, så det er hans beslutning — ikke en teknisk tilkobling.
+
+**Fravalgt i denne sektion:** at koble `enforce_outgoing` (duplikat) og `consume_turn` (tomt system).
+Begge ville være en gate mere der ser ud som om den virker, uden at den ændrede noget målbart.

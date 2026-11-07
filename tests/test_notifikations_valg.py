@@ -55,7 +55,13 @@ def test_standard_er_tavs_undtagen_det_der_haster(isolated_runtime) -> None:
     assert v.kanal_for("bjorn", "question") == "auto"
     assert v.kanal_for("bjorn", "run_failed") == "auto"
     assert v.kanal_for("bjorn", "release") == "ingen"
-    assert v.kanal_for("bjorn", "run_done") == "ingen"
+    # 7/11-2026 (Bjoerns beslutning): `run_done` stod paa "ingen" og naaede
+    # derfor ALDRIG telefonen — maalt samme dag var der 43 raekker i feeden,
+    # nul push til Mikkel og Michelle og kun 4 til Bjoern (alle fra
+    # rutine-stien). «Svar klar» er praecis den slags man gaar fra skaermen
+    # og venter paa. Stoejen haandteres i `_maaske_push`, som springer pushet
+    # over naar runnet allerede er set live.
+    assert v.kanal_for("bjorn", "run_done") == "auto"
 
 
 def test_eget_valg_slaar_standarden(isolated_runtime) -> None:

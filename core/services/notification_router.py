@@ -318,6 +318,17 @@ def _deliver_to_channel(uid: str, channel: str, payload: dict, ntype: str) -> bo
     kind = payload.get("kind") or ntype
     try:
         if channel in ("auto",):
+            # Web-abonnementer er ikke i device-rangeringen (en browser kan
+            # ikke melde presence som en app), så de skal have beskeden uanset
+            # hvilken enhed rangeringen vælger — samme politik som
+            # `_route_or_blast` (push_dispatcher.py), der kalder `_push_to_web`
+            # FØR routing. Uden dette kald nåede feed-stien ALDRIG web-push:
+            # målt 7/11 var der 43 `run_done` i feeden og 4 `push.web_sent`,
+            # alle fra rutine-stien — og nul `push.web_skipped`, hvilket
+            # beviser at funktionen aldrig blev kaldt, ikke at abonnementerne
+            # manglede (alle tre brugere havde et, målt samme dag).
+            from core.services import push_dispatcher as pd
+            pd._push_to_web(uid, {**payload, "kind": kind})
             route_device_aware(uid, payload, kind)  # inlined device-aware (Phase 5)
             return True
         if channel in ("mobile", "push"):
@@ -325,7 +336,19 @@ def _deliver_to_channel(uid: str, channel: str, payload: dict, ntype: str) -> bo
             # Returværdien blev ignoreret her også — en kanal der IKKE nåede
             # frem meldte succes, og eskaleringen til næste enhed skete
             # derfor aldrig. Nu bæres det ægte svar videre.
-            return bool(pd._push_to_user(uid, {**payload, "kind": kind}))
+            #
+            # Web-abonnementer er ikke i device-rangeringen (en browser kan
+            # ikke melde presence som en app), så de skal have beskeden
+            # UANSET om FCM nåede frem — samme politik som `_route_or_blast`.
+            # Uden dette kald nåede feed-stien ALDRIG web-push: målt 7/11 var
+            # der 43 `run_done` i feeden og 4 `push.web_sent`, alle fra
+            # rutine-stien. Nul `push.web_skipped`/`push.web_failed` beviste
+            # at funktionen aldrig blev kaldt — ikke at brugerne manglede
+            # abonnementer (alle tre havde et, målt samme dag).
+            med_kind = {**payload, "kind": kind}
+            fcm_ok = bool(pd._push_to_user(uid, med_kind))
+            web_ok = bool(pd._push_to_web(uid, med_kind))
+            return fcm_ok or web_ok
         if channel == "desktop":
             from core.services import desktop_notifications as dn
             dn.enqueue(uid, {"kind": kind, "title": payload.get("title", "Jarvis"),

@@ -221,8 +221,32 @@ def genaabn(slags: str, ref: str) -> bool:
     return bool(markoer.rowcount)
 
 
-def luk_foraeldede(dage: int = 2, *, slags: str = "run_done") -> int:
-    """Luk AABNE `run_done` aeldre end `dage`. Returnerer antal lukkede.
+#: Familier ingen kvitterer, og hvor gammel en aaben raekke maa vaere foer den
+#: flyttes fra klokken til historikken (dage).
+#:
+#: Maalt 7/11-2026 mod den levende DB: 0 af ~1.000 raekker i disse familier er
+#: nogensinde lukket (`seen` fra Desk, eller andet) — den aeldste har staaet
+#: aaben siden 14/10. De er hverken afgoerelser eller opgaver, kun stoej der
+#: samler sig. Med VILJE ikke med: `approval`/`proposal` (afgoeres hos
+#: ejeren), `keymaker_key_pending`, `reminder`, `approval_expired`, `drift`,
+#: `central_flag` — de kan vaere noget nogen skal handle paa.
+FORAELDES_EFTER_DAGE: dict[str, int] = {
+    "run_done": 2,
+    "infra_security": 2,
+    "session_inbox:genstart": 2,
+    "session_inbox:proactivity-bridge": 2,
+    "reach_out": 7,
+    "release": 7,
+}
+
+
+def luk_foraeldede(dage: int | None = None, *, slags: str | None = None) -> int:
+    """Luk AABNE raekker der er blevet foraeldede. Returnerer antal lukkede.
+
+    Uden argumenter daekkes alle familier i `FORAELDES_EFTER_DAGE`, hver med
+    sin egen graense. `slags` snaevrer ind til en enkelt familie; `dage`
+    tilsidesaetter graensen for de valgte familier. (Foer 7/11-2026 var
+    standard `slags="run_done"`, og de andre familier blev aldrig lukket.)
 
     Maalt 24/10-2026: **3.551 `run_done` stod aabne siden 25/9** — op mod
     130 i doegnet — fordi INTET lukker dem med mindre brugeren klikker dem
@@ -240,16 +264,27 @@ def luk_foraeldede(dage: int = 2, *, slags: str = "run_done") -> int:
     Et svar der er mere end `dage` gammelt er ikke laengere noget nogen
     laeser — det er historik. Raekken BEVARES (klaret + udfald saettes), saa
     intet gaar tabt; den flytter bare fra klokken til historikken, hvor
-    `tidligere()` viser den uden at hydrere noget.
+    `tidligere()` viser den uden at hydrere noget. Det gaelder ogsaa de
+    familier der kom til 7/11-2026.
     """
-    graense = (datetime.now(UTC) - timedelta(days=dage)).isoformat()
+    if slags is None:
+        familier = {s: (dage if dage is not None else d)
+                    for s, d in FORAELDES_EFTER_DAGE.items()}
+    else:
+        familier = {slags: dage if dage is not None
+                    else FORAELDES_EFTER_DAGE.get(slags, 2)}
+    lukket = 0
+    nu = datetime.now(UTC)
     with connect() as conn:
-        markoer = conn.execute(
-            "UPDATE notifikationer SET klaret=?, udfald='foraeldet'"
-            " WHERE klaret IS NULL AND slags=? AND oprettet < ?",
-            (_nu(), slags, graense))
+        for familie, graense_dage in familier.items():
+            graense = (nu - timedelta(days=graense_dage)).isoformat()
+            markoer = conn.execute(
+                "UPDATE notifikationer SET klaret=?, udfald='foraeldet'"
+                " WHERE klaret IS NULL AND slags=? AND oprettet < ?",
+                (_nu(), familie, graense))
+            lukket += int(markoer.rowcount or 0)
         conn.commit()
-        return int(markoer.rowcount or 0)
+    return lukket
 
 
 def ryd_gamle(dage: int = 7) -> int:

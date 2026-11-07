@@ -124,25 +124,25 @@ _Unified proactive notification routing (spec docs/specs/2026-06-20-...)._
 | function | `fire_due_delayed` | `(now_hm=…, *, max_per_run=…)` | Lever forfaldne udskudte notifikationer (kaldes af heartbeat-poll'en). | [src](../../../core/services/notification_router.py#L237) |
 | function | `_deliver_ntfy` | `(payload)` | — | [src](../../../core/services/notification_router.py#L306) |
 | function | `_deliver_to_channel` | `(uid, channel, payload, ntype)` | Lever til én konkret kanal. Returnerer True ved succes. | [src](../../../core/services/notification_router.py#L316) |
-| function | `_feed_titel_og_tekst` | `(notification_type, payload)` | Payloads er ikke ens — nogle sender title+body, andre title+preview+body, | [src](../../../core/services/notification_router.py#L373) |
-| function | `_foed_feed_raekke` | `(user_id, notification_type, payload)` | Læg én åben række i notifikations-feeden for en router-drevet slags. | [src](../../../core/services/notification_router.py#L387) |
-| function | `route_proactive_notification` | `(user_id, notification_type, payload, importance=…, *, _skip_quiet=…, feed=…)` | Samlet routing for alle proaktive notifikationer — B-batch 2: leverings-udfald | [src](../../../core/services/notification_router.py#L403) |
-| function | `_route_proactive_notification_impl` | `(user_id, notification_type, payload, importance=…, *, _skip_quiet=…)` | Samlet routing for alle proaktive notifikationer. | [src](../../../core/services/notification_router.py#L461) |
-| function | `reset_delivery` | `()` | — | [src](../../../core/services/notification_router.py#L520) |
-| function | `_new_id` | `()` | — | [src](../../../core/services/notification_router.py#L529) |
-| function | `_send_fcm` | `(user_id, device_key, data)` | — | [src](../../../core/services/notification_router.py#L533) |
-| function | `_send_desktop` | `(user_id, item)` | — | [src](../../../core/services/notification_router.py#L538) |
-| function | `_fallback_blast` | `(user_id, data)` | — | [src](../../../core/services/notification_router.py#L543) |
-| function | `_deliver` | `(user_id, target, notif_id, payload)` | — | [src](../../../core/services/notification_router.py#L548) |
-| function | `_arm_timer` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L570) |
-| function | `_ordn_efter_flade` | `(ranked, surface)` | Saet enhederne paa DEN flade turen blev skrevet fra forrest. | [src](../../../core/services/notification_router.py#L584) |
-| function | `route_device_aware` | `(user_id, payload, kind)` | Lever en notifikation til brugerens bedste enhed + arm eskalering. | [src](../../../core/services/notification_router.py#L609) |
-| function | `_escalate` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L635) |
-| function | `ack` | `(notif_id)` | Annullér eskalering for en leveret notifikation (kaldt af /notifications/ack). | [src](../../../core/services/notification_router.py#L647) |
-| function | `_discord_connected` | `()` | — | [src](../../../core/services/notification_router.py#L660) |
-| function | `_app_device_live` | `(uid)` | Er en app-enhed AKTIVT online (frisk ping), ikke bare en registreret token? | [src](../../../core/services/notification_router.py#L668) |
-| function | `_deliver_content` | `(uid, channel, text)` | — | [src](../../../core/services/notification_router.py#L685) |
-| function | `deliver_message` | `(user_id, text, ntype=…, importance=…)` | Lever proaktivt INDHOLD efter brugerens kanal-præference. | [src](../../../core/services/notification_router.py#L720) |
+| function | `_feed_titel_og_tekst` | `(notification_type, payload)` | Payloads er ikke ens — nogle sender title+body, andre title+preview+body, | [src](../../../core/services/notification_router.py#L396) |
+| function | `_foed_feed_raekke` | `(user_id, notification_type, payload)` | Læg én åben række i notifikations-feeden for en router-drevet slags. | [src](../../../core/services/notification_router.py#L410) |
+| function | `route_proactive_notification` | `(user_id, notification_type, payload, importance=…, *, _skip_quiet=…, feed=…)` | Samlet routing for alle proaktive notifikationer — B-batch 2: leverings-udfald | [src](../../../core/services/notification_router.py#L426) |
+| function | `_route_proactive_notification_impl` | `(user_id, notification_type, payload, importance=…, *, _skip_quiet=…)` | Samlet routing for alle proaktive notifikationer. | [src](../../../core/services/notification_router.py#L484) |
+| function | `reset_delivery` | `()` | — | [src](../../../core/services/notification_router.py#L543) |
+| function | `_new_id` | `()` | — | [src](../../../core/services/notification_router.py#L552) |
+| function | `_send_fcm` | `(user_id, device_key, data)` | — | [src](../../../core/services/notification_router.py#L556) |
+| function | `_send_desktop` | `(user_id, item)` | — | [src](../../../core/services/notification_router.py#L561) |
+| function | `_fallback_blast` | `(user_id, data)` | — | [src](../../../core/services/notification_router.py#L566) |
+| function | `_deliver` | `(user_id, target, notif_id, payload)` | — | [src](../../../core/services/notification_router.py#L571) |
+| function | `_arm_timer` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L593) |
+| function | `_ordn_efter_flade` | `(ranked, surface)` | Saet enhederne paa DEN flade turen blev skrevet fra forrest. | [src](../../../core/services/notification_router.py#L607) |
+| function | `route_device_aware` | `(user_id, payload, kind)` | Lever en notifikation til brugerens bedste enhed + arm eskalering. | [src](../../../core/services/notification_router.py#L632) |
+| function | `_escalate` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L658) |
+| function | `ack` | `(notif_id)` | Annullér eskalering for en leveret notifikation (kaldt af /notifications/ack). | [src](../../../core/services/notification_router.py#L670) |
+| function | `_discord_connected` | `()` | — | [src](../../../core/services/notification_router.py#L683) |
+| function | `_app_device_live` | `(uid)` | Er en app-enhed AKTIVT online (frisk ping), ikke bare en registreret token? | [src](../../../core/services/notification_router.py#L691) |
+| function | `_deliver_content` | `(uid, channel, text)` | — | [src](../../../core/services/notification_router.py#L708) |
+| function | `deliver_message` | `(user_id, text, ntype=…, importance=…)` | Lever proaktivt INDHOLD efter brugerens kanal-præference. | [src](../../../core/services/notification_router.py#L743) |
 
 ## `core/services/notifikationer.py`
 _Notifikations-feedens lager (spec docs/superpowers/specs/2026-09-21-...)._
@@ -158,20 +158,21 @@ _Notifikations-feedens lager (spec docs/superpowers/specs/2026-09-21-...)._
 | function | `opdater` | `(slags, ref, *, titel, tekst=…, data=…)` | Opdater den samme feed-post, fx mens et release gaar gennem CI. | [src](../../../core/services/notifikationer.py#L159) |
 | function | `luk` | `(notif_id, udfald)` | Klaret — vaek fra fladen. Raekken bliver liggende til `ryd_gamle`. | [src](../../../core/services/notifikationer.py#L178) |
 | function | `genaabn` | `(slags, ref)` | Genaabn en LUKKET raekke for (slags, ref). Returnerer True hvis en | [src](../../../core/services/notifikationer.py#L196) |
-| function | `luk_foraeldede` | `(dage=…, *, slags=…)` | Luk AABNE `run_done` aeldre end `dage`. Returnerer antal lukkede. | [src](../../../core/services/notifikationer.py#L224) |
-| function | `ryd_gamle` | `(dage=…)` | Fjern KLAREDE raekker aeldre end `dage`. Returnerer antal fjernede. | [src](../../../core/services/notifikationer.py#L255) |
+| function | `luk_foraeldede` | `(dage=…, *, slags=…)` | Luk AABNE raekker der er blevet foraeldede. Returnerer antal lukkede. | [src](../../../core/services/notifikationer.py#L243) |
+| function | `ryd_gamle` | `(dage=…)` | Fjern KLAREDE raekker aeldre end `dage`. Returnerer antal fjernede. | [src](../../../core/services/notifikationer.py#L290) |
 
 ## `core/services/notifikationer_hydrering.py`
 _Feedens laesning — den slaar op hos EJEREN, ikke i sin egen kopi._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_hydrer_approval` | `(raekke)` | None = ejeren er faerdig, luk raekken. Kaster = ejeren er utilgaengelig. | [src](../../../core/services/notifikationer_hydrering.py#L42) |
-| function | `_hydrer_run` | `(raekke)` | None = koerslen er ikke laengere i den tilstand der skabte raekken. | [src](../../../core/services/notifikationer_hydrering.py#L59) |
-| function | `_hydrer_proposal` | `(raekke)` | None = forslaget er afgjort, luk raekken. | [src](../../../core/services/notifikationer_hydrering.py#L96) |
-| function | `_hydrer` | `(raekke)` | (felter, foraeldet). felter=None betyder «luk raekken». | [src](../../../core/services/notifikationer_hydrering.py#L121) |
-| function | `feed` | `(user_id, *, er_owner, aktiv_session=…)` | Aabne notifikationer, hydreret hos deres ejere. | [src](../../../core/services/notifikationer_hydrering.py#L147) |
-| function | `tidligere` | `(user_id, *, er_owner, dage=…)` | KLAREDE notifikationer — ren laesning, ingen hydrering. | [src](../../../core/services/notifikationer_hydrering.py#L201) |
+| function | `_hydrer_approval` | `(raekke)` | None = ejeren er faerdig, luk raekken. Kaster = ejeren er utilgaengelig. | [src](../../../core/services/notifikationer_hydrering.py#L43) |
+| function | `_hydrer_run` | `(raekke)` | None = koerslen er ikke laengere i den tilstand der skabte raekken. | [src](../../../core/services/notifikationer_hydrering.py#L60) |
+| function | `_hydrer_proposal` | `(raekke)` | None = forslaget er afgjort, luk raekken. | [src](../../../core/services/notifikationer_hydrering.py#L97) |
+| function | `_hydrer` | `(raekke)` | (felter, foraeldet). felter=None betyder «luk raekken». | [src](../../../core/services/notifikationer_hydrering.py#L122) |
+| function | `_luk_foraeldede_throttlet` | `()` | Luk foraeldede raekker FOER hydreringen, hoejst hvert FORAELDET_INTERVAL_S. | [src](../../../core/services/notifikationer_hydrering.py#L155) |
+| function | `feed` | `(user_id, *, er_owner, aktiv_session=…)` | Aabne notifikationer, hydreret hos deres ejere. | [src](../../../core/services/notifikationer_hydrering.py#L173) |
+| function | `tidligere` | `(user_id, *, er_owner, dage=…)` | KLAREDE notifikationer — ren laesning, ingen hydrering. | [src](../../../core/services/notifikationer_hydrering.py#L228) |
 
 ## `core/services/notifikations_emittere.py`
 _Hvor notifikationer foedes (spec 2026-09-21)._
@@ -179,17 +180,17 @@ _Hvor notifikationer foedes (spec 2026-09-21)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_owner_id` | `()` | Ejeren. Systemraekker hoerer til ham — de handler om maskinen. | [src](../../../core/services/notifikations_emittere.py#L22) |
-| function | `_maaske_push` | `(user_id, slags, titel, tekst, *, session_id=…)` | — | [src](../../../core/services/notifikations_emittere.py#L44) |
-| function | `_foed` | `(*, user_id, slags, kilde, titel, tekst=…, ref=…, session_id=…, data=…)` | — | [src](../../../core/services/notifikations_emittere.py#L75) |
-| function | `paa_godkendelse` | `(approval_id, *, user_id, session_id, vaerktoej)` | — | [src](../../../core/services/notifikations_emittere.py#L84) |
-| function | `paa_koersel_fejlet` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L94) |
-| function | `paa_koersel_faerdig` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L100) |
-| function | `fra_jarvis` | `(user_id, slags, titel, tekst=…)` | Det Jarvis selv sender. Har ingen ejer — raekken ER sandheden. | [src](../../../core/services/notifikations_emittere.py#L106) |
-| function | `system` | `(slags, titel, tekst=…, *, ref=…, data=…)` | — | [src](../../../core/services/notifikations_emittere.py#L111) |
-| function | `_forslag_er_foraeldet` | `(forslag)` | Er forslagets anker stadig i koden? (Bjørn 2/11-2026) | [src](../../../core/services/notifikations_emittere.py#L120) |
-| function | `paa_forslag` | `(forslag, *, user_id)` | Én raekke pr. ventende forslag. `ref` = proposal_id, saa `opret()` | [src](../../../core/services/notifikations_emittere.py#L164) |
-| function | `afstem_forslag` | `(user_id)` | Laeg raekker for ALLE ventende forslag der mangler. Returnerer antal | [src](../../../core/services/notifikations_emittere.py#L185) |
-| function | `afstem_godkendelser` | `(user_id)` | Laeg raekker for ALLE ventende godkendelser der mangler. Returnerer | [src](../../../core/services/notifikations_emittere.py#L220) |
+| function | `_maaske_push` | `(user_id, slags, titel, tekst, *, session_id=…, ref=…)` | — | [src](../../../core/services/notifikations_emittere.py#L44) |
+| function | `_foed` | `(*, user_id, slags, kilde, titel, tekst=…, ref=…, session_id=…, data=…)` | — | [src](../../../core/services/notifikations_emittere.py#L94) |
+| function | `paa_godkendelse` | `(approval_id, *, user_id, session_id, vaerktoej)` | — | [src](../../../core/services/notifikations_emittere.py#L103) |
+| function | `paa_koersel_fejlet` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L113) |
+| function | `paa_koersel_faerdig` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L119) |
+| function | `fra_jarvis` | `(user_id, slags, titel, tekst=…)` | Det Jarvis selv sender. Har ingen ejer — raekken ER sandheden. | [src](../../../core/services/notifikations_emittere.py#L125) |
+| function | `system` | `(slags, titel, tekst=…, *, ref=…, data=…)` | — | [src](../../../core/services/notifikations_emittere.py#L130) |
+| function | `_forslag_er_foraeldet` | `(forslag)` | Er forslagets anker stadig i koden? (Bjørn 2/11-2026) | [src](../../../core/services/notifikations_emittere.py#L139) |
+| function | `paa_forslag` | `(forslag, *, user_id)` | Én raekke pr. ventende forslag. `ref` = proposal_id, saa `opret()` | [src](../../../core/services/notifikations_emittere.py#L183) |
+| function | `afstem_forslag` | `(user_id)` | Laeg raekker for ALLE ventende forslag der mangler. Returnerer antal | [src](../../../core/services/notifikations_emittere.py#L204) |
+| function | `afstem_godkendelser` | `(user_id)` | Laeg raekker for ALLE ventende godkendelser der mangler. Returnerer | [src](../../../core/services/notifikations_emittere.py#L239) |
 
 ## `core/services/notifikations_opstart.py`
 _Det notifikations-feeden skal have gjort ved hver opstart (spec 2026-09-21)._
@@ -203,10 +204,10 @@ _Push-valg per slags (spec 2026-09-21)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `kanal_for` | `(user_id, slags)` | — | [src](../../../core/services/notifikations_valg.py#L115) |
-| function | `saet` | `(user_id, slags, kanal)` | — | [src](../../../core/services/notifikations_valg.py#L132) |
-| function | `alle` | `(user_id)` | Alle slags med brugerens valg lagt oven paa standarden. | [src](../../../core/services/notifikations_valg.py#L143) |
-| function | `migrer_kolonner` | `()` | Baer de gamle kolonner over som raekker. Idempotent. | [src](../../../core/services/notifikations_valg.py#L154) |
+| function | `kanal_for` | `(user_id, slags)` | — | [src](../../../core/services/notifikations_valg.py#L129) |
+| function | `saet` | `(user_id, slags, kanal)` | — | [src](../../../core/services/notifikations_valg.py#L146) |
+| function | `alle` | `(user_id)` | Alle slags med brugerens valg lagt oven paa standarden. | [src](../../../core/services/notifikations_valg.py#L157) |
+| function | `migrer_kolonner` | `()` | Baer de gamle kolonner over som raekker. Idempotent. | [src](../../../core/services/notifikations_valg.py#L168) |
 
 ## `core/services/ntfy_gateway.py`
 _Ntfy gateway — send push notifications via ntfy.sh or self-hosted server._

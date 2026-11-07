@@ -66,7 +66,21 @@ STANDARD: dict[str, str] = {
     "approval": "auto",
     "question": "auto",
     "run_failed": "auto",
-    "run_done": "ingen",
+    # 7/11-2026 (Bjoerns ord: «giv den ene opgave til claude og tag den anden
+    # og deploy begge»). Stod paa "ingen" — men det er praecis den slags
+    # brugerne venter paa: «Svar klar i …» er den eneste notifikation der
+    # betyder noget naar man har stillet et spoergsmaal og gaar vaek fra
+    # skaermen. Maalt 7/11: 43 `run_done` i feeden gav NUL push til Mikkel og
+    # Michelle og kun 4 til Bjoern — alle fra rutine-stien, fordi
+    # `_maaske_push` returnerer FOER routeren ved "ingen".
+    #
+    # Stoej-indvendingen er aegte og haandteres et andet sted: 59 % af
+    # `run_done` er svar paa et spoergsmaal stillet under et minut foer
+    # (median 17 s). `_maaske_push` springer derfor pushet over naar runnet
+    # allerede er set live — samme `was_consumed_or_active`-tjek som
+    # `push_dispatcher._dispatch_run_done` bruger. Feeden faar raekken
+    # uanset; det er kun telefonen der ikke ringer til noget man kigger paa.
+    "run_done": "auto",
     "release": "ingen",
     "incident": "ingen",
     "quota": "ingen",

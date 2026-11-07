@@ -19,19 +19,69 @@ def test_godkendelse_giver_en_raekke_OG_et_push(isolated_runtime, monkeypatch) -
     assert sendt, "en godkendelse skal ogsaa naa telefonen"
 
 
-def test_faerdigt_svar_giver_en_raekke_men_INTET_push(isolated_runtime, monkeypatch) -> None:
-    """Standarden er at kun det der haster afbryder."""
+def test_faerdigt_svar_giver_en_raekke_OG_et_push(isolated_runtime, monkeypatch) -> None:
+    """7/11-2026: `run_done` stod paa "ingen" og naaede derfor ALDRIG telefonen.
+
+    Maalt samme dag: 43 raekker i feeden, nul push til Mikkel og Michelle, og
+    kun 4 til Bjoern — alle fra rutine-stien. «Svar klar» er praecis den slags
+    man gaar fra skaermen og venter paa, saa den skal pushe.
+    """
     from core.services import notifikationer as n
     from core.services import notifikations_emittere as e
     from core.services import notification_router
+    from core.services import run_event_log
 
+    # Ikke set live → pushet skal gaa igennem.
+    monkeypatch.setattr(run_event_log, "was_consumed_or_active", lambda rid: False)
     sendt = []
     monkeypatch.setattr(notification_router, "route_proactive_notification",
                         lambda *a, **kw: sendt.append(a) or {"ok": True})
 
     e.paa_koersel_faerdig("r-1", user_id="bjorn", session_id="s-1", titel="Kæledyret")
     assert len(n.aabne("bjorn", er_owner=True)) == 1
-    assert sendt == []
+    assert sendt, "et faerdigt svar skal naa telefonen — det er hele pointen"
+
+
+def test_faerdigt_svar_der_allerede_er_set_pusher_IKKE(isolated_runtime, monkeypatch) -> None:
+    """Stoej-vaernet. Maalt 6/11-2026: 59 % af dagens 81 `run_done` var svar
+    paa et spoergsmaal stillet under et minut foer (median 17 s) — brugeren
+    sad og kiggede paa svaret mens telefonen ringede.
+
+    Suppressionen er den SAMME `was_consumed_or_active` som
+    `push_dispatcher._dispatch_run_done` bruger, saa begge stier vurderer ens.
+    Raekken skal stadig i feeden — kun pushet springes over.
+    """
+    from core.services import notifikationer as n
+    from core.services import notifikations_emittere as e
+    from core.services import notification_router
+    from core.services import run_event_log
+
+    monkeypatch.setattr(run_event_log, "was_consumed_or_active", lambda rid: True)
+    sendt = []
+    monkeypatch.setattr(notification_router, "route_proactive_notification",
+                        lambda *a, **kw: sendt.append(a) or {"ok": True})
+
+    e.paa_koersel_faerdig("r-1", user_id="bjorn", session_id="s-1", titel="Kæledyret")
+    assert len(n.aabne("bjorn", er_owner=True)) == 1, "raekken hoerer i feeden uanset"
+    assert sendt == [], "et svar man sidder og ser paa skal ikke ogsaa ringe"
+
+
+def test_kan_suppressionen_ikke_maales_pusher_vi(isolated_runtime, monkeypatch) -> None:
+    """Et tabt svar er vaerre end et ekstra push. Kan tilstanden ikke laeses,
+    skal pushet gaa igennem — ikke falde tilbage til tavshed."""
+    from core.services import notifikations_emittere as e
+    from core.services import notification_router
+    from core.services import run_event_log
+
+    def sprang(rid):
+        raise RuntimeError("registry nede")
+    monkeypatch.setattr(run_event_log, "was_consumed_or_active", sprang)
+    sendt = []
+    monkeypatch.setattr(notification_router, "route_proactive_notification",
+                        lambda *a, **kw: sendt.append(a) or {"ok": True})
+
+    e.paa_koersel_faerdig("r-1", user_id="bjorn", session_id="s-1", titel="Kæledyret")
+    assert sendt, "en maale-fejl maa ikke blive til et tabt svar"
 
 
 def test_eget_valg_kan_taende_for_pushet(isolated_runtime, monkeypatch) -> None:

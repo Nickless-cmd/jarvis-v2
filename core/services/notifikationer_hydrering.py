@@ -11,6 +11,7 @@ ud som en klaret opgave — saa ville en nedetid tomme feeden.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 from core.services import notifikationer as _lager
@@ -144,6 +145,31 @@ def _hydrer(raekke: dict[str, Any]) -> tuple[dict[str, Any] | None, bool]:
         return {"titel": raekke["titel"], "tekst": raekke["tekst"]}, True
 
 
+#: Hvor ofte feed() maa lukke foraeldede raekker (sekunder). Desk poller hvert
+#: 8. sekund; en UPDATE pr. poll ville vaere en skrivelaas for ingenting, naar
+#: der hoejst kommer ~30 nye foraeldede raekker i doegnet.
+FORAELDET_INTERVAL_S = 600.0
+_sidst_foraeldet: float | None = None
+
+
+def _luk_foraeldede_throttlet() -> None:
+    """Luk foraeldede raekker FOER hydreringen, hoejst hvert FORAELDET_INTERVAL_S.
+
+    Opstarten gjorde det kun ved genstart, og en API der koerer i dagevis
+    lod run_done blive aaben i 3+ dage (maalt 7/11-2026). Raekkerne bevares
+    med udfald `foraeldet`. Fejl her maa ikke tomme feeden.
+    """
+    global _sidst_foraeldet
+    nu = time.monotonic()
+    if _sidst_foraeldet is not None and nu - _sidst_foraeldet < FORAELDET_INTERVAL_S:
+        return
+    _sidst_foraeldet = nu
+    try:
+        _lager.luk_foraeldede()
+    except Exception:
+        _log.warning("foraeldede notifikationer kunne ikke lukkes", exc_info=True)
+
+
 def feed(user_id: str, *, er_owner: bool,
          aktiv_session: str | None = None) -> list[dict[str, Any]]:
     """Aabne notifikationer, hydreret hos deres ejere.
@@ -157,6 +183,7 @@ def feed(user_id: str, *, er_owner: bool,
     man ikke kunne svare paa den flade man sidder i. Det er forskellen
     mellem «du har allerede set dette» og «du skal goere noget her».
     """
+    _luk_foraeldede_throttlet()
     # Afstemningen foerst: en ventende godkendelse uden raekke skal med i
     # SAMME laesning, ellers ville den foerst dukke op naeste gang.
     try:

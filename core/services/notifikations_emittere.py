@@ -42,10 +42,29 @@ def _owner_id() -> str | None:
 
 
 def _maaske_push(user_id: str, slags: str, titel: str, tekst: str,
-                 *, session_id: str | None = None) -> None:
+                 *, session_id: str | None = None,
+                 ref: str | None = None) -> None:
     kanal = _valg.kanal_for(user_id, slags)
     if kanal == "ingen":
         return
+    # `run_done` er den ene slags hvor modtageren ofte SIDDER og ser svaret
+    # allerede. Maalt 6/11-2026: 59 % af dagens 81 `run_done` var svar paa et
+    # spoergsmaal stillet under et minut foer (median 17 s). Et push der
+    # afbryder for noget man kigger paa, er stoej — men det er ikke en grund
+    # til at lade vaere at pushe naar man ER gaaet. Samme
+    # `was_consumed_or_active`-tjek som `push_dispatcher._dispatch_run_done`
+    # bruger, genbrugt her, saa BEGGE stier vurderer ens.
+    #
+    # Kan tilstanden ikke laeses, sender vi: et tabt svar er vaerre end et
+    # ekstra push.
+    if slags == "run_done" and ref:
+        try:
+            from core.services import run_event_log as _rel
+            if _rel.was_consumed_or_active(ref):
+                return
+        except Exception:
+            _log.warning("push: kunne ikke afgoere om run %s var set live",
+                         str(ref)[:12], exc_info=True)
     try:
         from core.services import notification_router
         # K1 (2026-09-22): payloaden brugte de DANSKE feltnavne (titel/tekst),
@@ -78,7 +97,7 @@ def _foed(*, user_id: str, slags: str, kilde: str, titel: str,
           data: dict[str, Any] | None = None) -> None:
     _lager.opret(user_id=user_id, slags=slags, kilde=kilde, titel=titel,
                  tekst=tekst, ref=ref, session_id=session_id, data=data)
-    _maaske_push(user_id, slags, titel, tekst, session_id=session_id)
+    _maaske_push(user_id, slags, titel, tekst, session_id=session_id, ref=ref)
 
 
 def paa_godkendelse(approval_id: str, *, user_id: str, session_id: str,

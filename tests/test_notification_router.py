@@ -344,7 +344,7 @@ def test_genudsendt_fra_stille_koe_dobler_ikke_feed_raekken(isolated_runtime, mo
     assert len(lager.aabne("bjorn", er_owner=True)) == 1
 
     monkeypatch.setattr(nr, "is_quiet_hours", lambda *a, **k: False)
-    udfald = nr.fire_due_delayed("12:00")
+    udfald = nr.fire_due_delayed()
     assert udfald["leveret"] == 1, "genudsendelsen skulle være sket — ellers beviser testen intet"
     assert len(lager.aabne("bjorn", er_owner=True)) == 1
 
@@ -389,7 +389,7 @@ def test_foraeldet_raekke_kasseres_frem_for_at_fyre(isolated_runtime, monkeypatc
     _indsaet_koe("bjorn", "infra_security", "gammel", timer_gammel=48)
     _indsaet_koe("bjorn", "infra_security", "frisk", timer_gammel=1)
 
-    udfald = nr.fire_due_delayed("12:00")
+    udfald = nr.fire_due_delayed()
 
     assert udfald["foraeldet"] == 1
     assert udfald["leveret"] == 1
@@ -405,7 +405,7 @@ def test_approval_har_kortere_levetid_end_andre(isolated_runtime, monkeypatch) -
     _indsaet_koe("bjorn", "approval", "gammel godkendelse", timer_gammel=3)
     _indsaet_koe("bjorn", "infra_security", "samme alder", timer_gammel=3)
 
-    udfald = nr.fire_due_delayed("12:00")
+    udfald = nr.fire_due_delayed()
 
     assert udfald["foraeldet"] == 1  # approval: 3t > 2t
     assert udfald["leveret"] == 1    # infra_security: 3t < 24t
@@ -423,7 +423,7 @@ def test_nattens_koe_bliver_en_digest_ikke_en_byge(isolated_runtime, monkeypatch
     for i in range(8):
         _indsaet_koe("bjorn", "reach_out", f"nr{i}", timer_gammel=1)
 
-    result = nr.fire_due_delayed("12:00")
+    result = nr.fire_due_delayed()
     assert result == {"leveret": 8, "digests": 1, "foraeldet": 0, "tilbage": 0}
     assert len(calls) == 1
     assert calls[0][1]["title"] == "8 hændelser i nat"

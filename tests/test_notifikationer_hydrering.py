@@ -320,3 +320,108 @@ def test_godkendelse_i_den_aktive_samtale_skjules_IKKE(isolated_runtime, monkeyp
     poster = h.feed("bjorn", er_owner=True, aktiv_session="chat-her")
     assert len(poster) == 1
     assert poster[0]["kan_afgoere"] is True
+
+
+# --- Foraeldede familier (maalt 7/11-2026) ---------------------------------
+# Ingen kvitterer infra_security / session_inbox / reach_out / release. De
+# stod aabne i op til 24 dage og blev loadet, JSON-parset og sendt til Desk
+# ved HVER poll (hvert 8. sekund).
+
+def _alder(nid: str, dage: int) -> None:
+    from datetime import UTC, datetime, timedelta
+    from core.runtime.db import connect
+    ts = (datetime.now(UTC) - timedelta(days=dage)).isoformat()
+    with connect() as conn:
+        conn.execute("UPDATE notifikationer SET oprettet=? WHERE id=?", (ts, nid))
+        conn.commit()
+
+
+def _frisk_feed(h, monkeypatch):
+    """Nulstil throttlen, saa feed() faktisk faar lov at lukke."""
+    monkeypatch.setattr(h, "_sidst_foraeldet", None)
+    return h.feed("bjorn", er_owner=True)
+
+
+def test_feed_lukker_aldrende_stoejfamilier_men_ikke_friske(isolated_runtime, monkeypatch) -> None:
+    from core.runtime.db import connect
+    from core.services import notifikationer as n
+    from core.services import notifikationer_hydrering as h
+
+    gamle = {}
+    for slags in ("infra_security", "session_inbox:genstart",
+                 "session_inbox:proactivity-bridge"):
+        gamle[slags] = n.opret(user_id="bjorn", slags=slags, kilde="egen",
+                               ref=f"{slags}-gammel", titel=f"{slags} gammel")
+        _alder(gamle[slags], 3)
+    frisk = n.opret(user_id="bjorn", slags="infra_security", kilde="egen",
+                    ref="infra-frisk", titel="frisk")
+
+    poster = _frisk_feed(h, monkeypatch)
+
+    assert [p["id"] for p in poster] == [frisk]
+    # Intet gaar tabt: raekkerne ligger i historikken med udfald «foraeldet».
+    with connect() as conn:
+        udfald = {r[0]: (r[1], r[2]) for r in conn.execute(
+            "SELECT id, klaret, udfald FROM notifikationer WHERE klaret IS NOT NULL")}
+    assert set(udfald) == set(gamle.values())
+    assert all(k is not None and u == "foraeldet" for k, u in udfald.values())
+    assert {t["id"] for t in h.tidligere("bjorn", er_owner=True)} == set(gamle.values())
+
+
+def test_reach_out_og_release_har_laengere_graense(isolated_runtime, monkeypatch) -> None:
+    from core.services import notifikationer as n
+    from core.services import notifikationer_hydrering as h
+
+    tre = n.opret(user_id="bjorn", slags="reach_out", kilde="egen", ref="r3", titel="3 dage")
+    otte = n.opret(user_id="bjorn", slags="reach_out", kilde="egen", ref="r8", titel="8 dage")
+    rel = n.opret(user_id="bjorn", slags="release", kilde="egen", ref="v8", titel="release 8 dage")
+    _alder(tre, 3)
+    _alder(otte, 8)
+    _alder(rel, 8)
+
+    assert [p["id"] for p in _frisk_feed(h, monkeypatch)] == [tre]
+
+
+def test_feed_lukker_aldrig_noget_der_kan_vaere_en_opgave(isolated_runtime, monkeypatch) -> None:
+    """Godkendelser afgoeres hos ejeren; keymaker/reminder/approval_expired kan
+    vaere noget nogen skal handle paa. Alder alene er ikke et skoen."""
+    from core.services import approval_runtime
+    from core.services import notifikationer as n
+    from core.services import notifikationer_hydrering as h
+
+    monkeypatch.setattr(approval_runtime, "alle_pending_for_owner", lambda uid: [])
+    monkeypatch.setattr(approval_runtime, "state",
+                        lambda aid: {"status": "pending", "tool_name": "bash"})
+    ids = [
+        n.opret(user_id="bjorn", slags="approval", kilde="approval", ref="a-1", titel="a"),
+        n.opret(user_id="bjorn", slags="keymaker_key_pending", kilde="egen", ref="k", titel="k"),
+        n.opret(user_id="bjorn", slags="reminder", kilde="egen", ref="rem", titel="rem"),
+        n.opret(user_id="bjorn", slags="approval_expired", kilde="egen", ref="ae", titel="ae"),
+    ]
+    for nid in ids:
+        _alder(nid, 30)
+
+    assert {p["id"] for p in _frisk_feed(h, monkeypatch)} == set(ids)
+
+
+def test_feed_throttler_lukningen_og_overlever_en_fejl(isolated_runtime, monkeypatch) -> None:
+    from core.services import notifikationer as n
+    from core.services import notifikationer_hydrering as h
+
+    kald = []
+    ægte = n.luk_foraeldede
+    monkeypatch.setattr(n, "luk_foraeldede", lambda *a, **k: kald.append(1) or ægte(*a, **k))
+    monkeypatch.setattr(h, "_sidst_foraeldet", None)
+
+    h.feed("bjorn", er_owner=True)
+    h.feed("bjorn", er_owner=True)
+    assert kald == [1], "anden poll inden for intervallet maa ikke skrive"
+
+    # En lukning der kaster maa ikke tomme feeden for det andet.
+    frisk = n.opret(user_id="bjorn", slags="infra_security", kilde="egen",
+                    ref="i-frisk", titel="frisk")
+    def sprang(*_a, **_k):
+        raise RuntimeError("db laast")
+    monkeypatch.setattr(n, "luk_foraeldede", sprang)
+    monkeypatch.setattr(h, "_sidst_foraeldet", None)
+    assert [p["id"] for p in h.feed("bjorn", er_owner=True)] == [frisk]

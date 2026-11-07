@@ -186,7 +186,32 @@ _PROMPT_EKKO_MOENSTRE = (
     # tankeraekke. Bevidst smalt: vendingen hoerer til en PLAN, ikke til en
     # beskrivelse af et rum.
     re.compile(r"\banaly[sz]er brugerens\b", re.I),
+    # Lyd-familien (målt 7/11-2026): `ambient_sound_daemon` sender sin EGEN
+    # prompt til en LLM og arkiverer svaret som en sansning. Gentager modellen
+    # instruktionen, står der et indtryk i arkivet som ingen nogensinde sansede.
+    # Målt: 16 af 99 lyd-poster i 30 dage var stillads. Ingen af de atten
+    # mønstre ovenfor er bygget på en lyd-prompt, så ingen af dem matcher —
+    # vagten var formet efter billeder og stod vagt om lyd.
+    #
+    # Den dominerende form er ikke ekko, men GENGIVELSE AF METADATA: «En
+    # akustisk snapshot med kategori 'silence', amplitude 0.0102 og tid 6:xx».
+    # Derfor rammer det tredje mønster `amplitude` efterfulgt af et tal —
+    # amplitude hører i `metadata_json`, aldrig i et indtryk.
+    re.compile(r"\bhvad øret ville (?:bemærke|mærke)\b", re.I),
+    re.compile(r"\bakustisk[e]?\s+[\"“']?snapshot", re.I),
+    re.compile(r"\bamplitude\s*(?:på\s*)?[=:]?\s*[*_]*\d", re.I),
 )
+
+
+def er_prompt_ekko(tekst: str) -> bool:
+    """True hvis teksten bærer modellens egen instruktion.
+
+    Bruges af daemons der gemmer et LLM-svar som en sansning, FØR svaret når
+    arkivet: `ambient_sound_daemon` lægger sit svar i `last_description`, som
+    `get_latest_ambient_sound_for_prompt()` injicerer i prompten. Uden dette
+    værn læser Jarvis sin egen instruktion ind som noget han hørte.
+    """
+    return any(m.search(tekst or "") for m in _PROMPT_EKKO_MOENSTRE)
 
 # Svar-preamble — modellen ANMELDER sit svar i stedet for at sanse.
 # «Her er en beskrivelse af rummet: **Atmosfæren og lyset** Der hersker …»

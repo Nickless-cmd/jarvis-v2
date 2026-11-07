@@ -181,16 +181,16 @@ _Hvor notifikationer foedes (spec 2026-09-21)._
 |---|---|---|---|---|
 | function | `_owner_id` | `()` | Ejeren. Systemraekker hoerer til ham — de handler om maskinen. | [src](../../../core/services/notifikations_emittere.py#L22) |
 | function | `_maaske_push` | `(user_id, slags, titel, tekst, *, session_id=…, ref=…)` | — | [src](../../../core/services/notifikations_emittere.py#L44) |
-| function | `_foed` | `(*, user_id, slags, kilde, titel, tekst=…, ref=…, session_id=…, data=…)` | — | [src](../../../core/services/notifikations_emittere.py#L94) |
-| function | `paa_godkendelse` | `(approval_id, *, user_id, session_id, vaerktoej)` | — | [src](../../../core/services/notifikations_emittere.py#L103) |
-| function | `paa_koersel_fejlet` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L113) |
-| function | `paa_koersel_faerdig` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L119) |
-| function | `fra_jarvis` | `(user_id, slags, titel, tekst=…)` | Det Jarvis selv sender. Har ingen ejer — raekken ER sandheden. | [src](../../../core/services/notifikations_emittere.py#L125) |
-| function | `system` | `(slags, titel, tekst=…, *, ref=…, data=…)` | — | [src](../../../core/services/notifikations_emittere.py#L130) |
-| function | `_forslag_er_foraeldet` | `(forslag)` | Er forslagets anker stadig i koden? (Bjørn 2/11-2026) | [src](../../../core/services/notifikations_emittere.py#L139) |
-| function | `paa_forslag` | `(forslag, *, user_id)` | Én raekke pr. ventende forslag. `ref` = proposal_id, saa `opret()` | [src](../../../core/services/notifikations_emittere.py#L183) |
-| function | `afstem_forslag` | `(user_id)` | Laeg raekker for ALLE ventende forslag der mangler. Returnerer antal | [src](../../../core/services/notifikations_emittere.py#L204) |
-| function | `afstem_godkendelser` | `(user_id)` | Laeg raekker for ALLE ventende godkendelser der mangler. Returnerer | [src](../../../core/services/notifikations_emittere.py#L239) |
+| function | `_foed` | `(*, user_id, slags, kilde, titel, tekst=…, ref=…, session_id=…, data=…)` | — | [src](../../../core/services/notifikations_emittere.py#L112) |
+| function | `paa_godkendelse` | `(approval_id, *, user_id, session_id, vaerktoej)` | — | [src](../../../core/services/notifikations_emittere.py#L121) |
+| function | `paa_koersel_fejlet` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L131) |
+| function | `paa_koersel_faerdig` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L137) |
+| function | `fra_jarvis` | `(user_id, slags, titel, tekst=…)` | Det Jarvis selv sender. Har ingen ejer — raekken ER sandheden. | [src](../../../core/services/notifikations_emittere.py#L143) |
+| function | `system` | `(slags, titel, tekst=…, *, ref=…, data=…)` | — | [src](../../../core/services/notifikations_emittere.py#L148) |
+| function | `_forslag_er_foraeldet` | `(forslag)` | Er forslagets anker stadig i koden? (Bjørn 2/11-2026) | [src](../../../core/services/notifikations_emittere.py#L157) |
+| function | `paa_forslag` | `(forslag, *, user_id)` | Én raekke pr. ventende forslag. `ref` = proposal_id, saa `opret()` | [src](../../../core/services/notifikations_emittere.py#L201) |
+| function | `afstem_forslag` | `(user_id)` | Laeg raekker for ALLE ventende forslag der mangler. Returnerer antal | [src](../../../core/services/notifikations_emittere.py#L222) |
+| function | `afstem_godkendelser` | `(user_id)` | Laeg raekker for ALLE ventende godkendelser der mangler. Returnerer | [src](../../../core/services/notifikations_emittere.py#L257) |
 
 ## `core/services/notifikations_opstart.py`
 _Det notifikations-feeden skal have gjort ved hver opstart (spec 2026-09-21)._

@@ -60,7 +60,18 @@ def _maaske_push(user_id: str, slags: str, titel: str, tekst: str,
     if slags == "run_done" and ref:
         try:
             from core.services import run_event_log as _rel
+            from core.services.push_dispatcher import _push_event
             if _rel.was_consumed_or_active(ref):
+                # Undertrykkelsen skal efterlade et spor. Maalt 7/11-2026:
+                # pushet kl. 13:41:14 havde TOMT `run_id`, saa det var
+                # umuligt at afgoere om suppressionen havde fyrret eller
+                # slet ikke var naaet — «undertrykt» og «aldrig kaldt» saa
+                # ens i journalen. Det er samme tavshed som fixet 6/11
+                # skulle afskaffe, blot et lag laengere inde.
+                _push_event("push.web_skipped", {
+                    "user_id": user_id, "reason": "seen_live",
+                    "kind": slags, "run_id": str(ref),
+                })
                 return
         except Exception:
             _log.warning("push: kunne ikke afgoere om run %s var set live",
@@ -82,8 +93,15 @@ def _maaske_push(user_id: str, slags: str, titel: str, tekst: str,
         # dubleres (dobbelt-fødsel).
         notification_router.route_proactive_notification(
             user_id, slags,
+            # `run_id` (7/11-2026): `_push_to_web` skriver `data["run_id"]`
+            # ind i hver `push.web_*`-raekke, men denne payload udelod den —
+            # saa hvert eneste push fra feed-stien fik tomt run_id og kunne
+            # ikke knyttes til det run det gjaldt. `ref` ER run-id'et for
+            # run_done/run_failed; for de andre slags er det et forslags-
+            # eller godkendelses-id, som ikke maa forveksles med et run.
             {"title": titel, "preview": tekst or titel, "body": tekst or titel,
-             "kind": slags, "session_id": session_id or ""},
+             "kind": slags, "session_id": session_id or "",
+             "run_id": (ref or "") if slags in ("run_done", "run_failed") else ""},
             importance="high" if slags in ("approval", "question") else "normal",
             feed=False)
     except Exception:

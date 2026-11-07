@@ -40,14 +40,19 @@ def main() -> int:
     a.add_argument("--toer", action="store_true",
                    help="Prøv modellerne, men skriv ikke i registret")
     a.add_argument("--stille", action="store_true", help="Send ingen push")
+    a.add_argument("--ingen-benchmark", action="store_true",
+                   help="Spring kvalitets-benchmarken over (den koster agent-kald)")
     a.add_argument("--json", action="store_true", help="Rå rapport i stedet for tekst")
     args = a.parse_args()
 
     from core.services.model_catalogue_sweep import sweep_alle
 
     skriv = (lambda **kw: False) if args.toer else None
+    # En tør kørsel må ikke spawn'e agenter: den skriver intet, så dommen ville
+    # alligevel ikke lande. --toer slår derfor benchmarken fra af sig selv.
+    bench = 0 if (args.ingen_benchmark or args.toer) else None
     ud = sweep_alle(providers=args.provider, underret=not (args.stille or args.toer),
-                    skriv=skriv)
+                    skriv=skriv, benchmark=bench)
 
     if args.json:
         print(json.dumps(ud, indent=2, ensure_ascii=False))

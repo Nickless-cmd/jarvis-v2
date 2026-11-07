@@ -41,6 +41,19 @@ MAKS_NYE_PR_UDBYDER = 6
 MIN_SCORE_LEVENDE = 25      # under dette: slå fra
 MIN_SCORE_AGENT = 60        # under dette: brugbar, men ikke til agent-arbejde
 
+# Hvor mange agent-egnede modeller vi BENCHMARKER pr. kørsel.
+#
+# Sonden siger KAN den (`probe_score`); benchmarken siger HVOR GODT
+# (`kvalitets_score`). Uden det andet står rotationen på en vilkårlig
+# rækkefølge blandt alle der fik 100 på sonden — målt 7/11-2026: 306 modeller i
+# registret, 276 med probe_score, kun 2 med en kvalitets-dom. `gem_kvalitet`
+# havde nul kaldere, så dommen blev aldrig skrevet.
+#
+# Loftet ER prisen: en benchmark spawner en rigtig explore-agent pr. model OG
+# fil. To modeller × to filer = fire agent-kald pr. uge, ikke 134. Sæt
+# `sweep_benchmark_per_run: 0` i runtime-config for at slå den fra uden deploy.
+MAKS_BENCHMARK_PR_KOERSEL = 2
+
 
 def _now() -> str:
     return datetime.now(UTC).isoformat()
@@ -465,8 +478,91 @@ def underret_ejeren(besked: str, *, send: Any = None) -> bool:
         return False
 
 
+def _benchmark_loft() -> int:
+    """Loft pr. kørsel, læst fra runtime-config. 0 = slået fra.
+
+    Ligger i config og ikke i koden, så koblingen kan standses uden deploy hvis
+    den viser sig dyrere end målt.
+    """
+    try:
+        from core.runtime.config import load_settings
+        v = load_settings().extra.get("sweep_benchmark_per_run")
+        if v is not None:
+            return max(0, int(v))
+    except Exception as exc:
+        logger.debug("sweep: kunne ikke læse benchmark-loft: %s", exc)
+    return MAKS_BENCHMARK_PR_KOERSEL
+
+
+def _modeller_uden_kvalitetsdom() -> set[tuple[str, str]]:
+    """Registrerede modeller der ikke har en kvalitets-dom endnu."""
+    import json
+    try:
+        from core.runtime.config import PROVIDER_ROUTER_FILE as F
+        d = json.loads(F.read_text(encoding="utf-8"))
+    except Exception as exc:
+        logger.warning("sweep: kunne ikke læse registret til benchmark-udvalg: %s", exc)
+        return set()
+    return {(str(m.get("provider") or ""), str(m.get("model") or ""))
+            for m in (d.get("models") or []) if m.get("kvalitets_score") is None}
+
+
+def _benchmark_umalte(
+    rapporter: list[dict[str, Any]],
+    *,
+    maks: int | None = None,
+    koer: Any = None,
+    gem: Any = None,
+) -> list[dict[str, Any]]:
+    """Giv op til `maks` agent-egnede modeller en kvalitets-dom.
+
+    Kun modeller sweep'en NETOP har målt som agent-egnede (de kan bruge et
+    værktøjsresultat), og som ikke har en dom i forvejen. Rækkefølgen følger
+    rapporterne, så samme model ikke vælges to uger i træk når den først har
+    fået sin dom. Kaster aldrig — en mislykket benchmark er ikke en fejl i
+    sweepet.
+    """
+    loft = _benchmark_loft() if maks is None else int(maks)
+    if loft <= 0:
+        return []
+    if koer is None or gem is None:
+        from core.services import model_benchmark as mb
+        koer = koer or mb.kør_benchmark
+        gem = gem or mb.gem_kvalitet
+    uden_dom = _modeller_uden_kvalitetsdom()
+    if not uden_dom:
+        return []
+    gjort: list[dict[str, Any]] = []
+    for r in rapporter:
+        p = str(r.get("provider") or "")
+        for model in r.get("agent_egnede") or []:
+            if len(gjort) >= loft:
+                return gjort
+            navn = str(model or "")
+            if not p or not navn or (p, navn) not in uden_dom:
+                continue
+            try:
+                res = koer(provider=p, model=navn) or {}
+            except Exception as exc:
+                logger.warning("benchmark: %s/%s væltede: %s", p, navn, exc)
+                continue
+            # Uden opgaver er der ingen dom at gemme — en score på 0 ville
+            # læse som «den er dårlig» når sandheden er «den blev ikke målt».
+            if not res.get("opgaver"):
+                continue
+            skrevet = False
+            try:
+                skrevet = bool(gem(provider=p, model=navn, resultat=res))
+            except Exception as exc:
+                logger.warning("benchmark: kunne ikke gemme dom for %s/%s: %s", p, navn, exc)
+            gjort.append({"provider": p, "model": navn,
+                          "score": int(res.get("score") or 0), "gemt": skrevet})
+    return gjort
+
+
 def sweep_alle(*, providers: list[str] | None = None, underret: bool = True,
-               proev: Any = None, skriv: Any = None) -> dict[str, Any]:
+               proev: Any = None, skriv: Any = None,
+               benchmark: int | None = None) -> dict[str, Any]:
     """Gennemgå hele cheap lane. Returnerer rapporter + den sendte besked."""
     from core.services.cheap_provider_catalogue import CHEAP_PROVIDER_DEFAULTS
     navne = providers if providers is not None else sorted(CHEAP_PROVIDER_DEFAULTS)
@@ -479,6 +575,10 @@ def sweep_alle(*, providers: list[str] | None = None, underret: bool = True,
             rapporter.append({"provider": p, "fejl": f"{type(exc).__name__}: {exc}",
                               "proevet": 0, "slaaet_fra": [], "nye": [],
                               "genoplivet": [], "agent_egnede": [], "uaendret": 0})
+    # Kvalitets-dommen hører EFTER sonden: først ved vi hvilke modeller der kan
+    # bruges, derefter hvor gode de er. Sonden alene giver 65 modeller med 100.
+    bench = _benchmark_umalte(rapporter, maks=benchmark)
     besked = sammendrag(rapporter)
     sendt = underret_ejeren(besked) if (underret and besked) else False
-    return {"rapporter": rapporter, "besked": besked, "underrettet": sendt}
+    return {"rapporter": rapporter, "besked": besked, "underrettet": sendt,
+            "benchmarked": bench}

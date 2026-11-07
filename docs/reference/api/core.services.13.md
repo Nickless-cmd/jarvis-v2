@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/emotion_concepts_channel_triggers.py`
+_Helper module for emotion concept triggers from channel messages._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `on_channel_message_appended` | `(payload)` | Fire emotion concept triggers based on user-message content. | [src](../../../core/services/emotion_concepts_channel_triggers.py#L22) |
+
 ## `core/services/emotion_concepts_positive_triggers.py`
 _Positive emotion concept bridges for living runtime signals._
 
@@ -666,13 +673,4 @@ _Hvad gør vi når FØRSTE pas kom tilbage ubrugelig?_
 | function | `resend_target` | `(provider, model)` | (provider, model, thinking_mode) til ét gen-spørg efter et TOMT første pas. | [src](../../../core/services/first_pass_recovery.py#L35) |
 | function | `first_pass_is_hollow` | `(text, tool_calls)` | Lovede første pas en handling uden at kalde ét eneste værktøj? | [src](../../../core/services/first_pass_recovery.py#L57) |
 | function | `nudge_for_tool_calls` | `(*, message, provider, model, session_id, thinking_mode, tool_scope=…, local_exec=…)` | Spoerg ÉN gang mere, med nudget, ad en vej der ANNONCERER vaerktoejer. | [src](../../../core/services/first_pass_recovery.py#L79) |
-
-## `core/services/flade_korrektion.py`
-_Ret en ødelagt ``jarvis-ui``-blok FØR svaret vises — ikke efter._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_mekanisk_reparation` | `(tekst)` | Ret det der kan rettes uden at spørge en model. | [src](../../../core/services/flade_korrektion.py#L72) |
-| function | `_blok_vinduer` | `(tekst)` | Uddrag af teksten omkring hver ``jarvis-ui``-blok. | [src](../../../core/services/flade_korrektion.py#L110) |
-| function | `korriger_flader` | `(tekst, fejl, *, stream_followup, provider, model, base_messages, run_id=…, session_id=…)` | Bed modellen rette defekte ``jarvis-ui``-blokke. Returnerer ny tekst. | [src](../../../core/services/flade_korrektion.py#L129) |
 

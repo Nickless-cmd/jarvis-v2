@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/flade_korrektion.py`
+_Ret en ødelagt ``jarvis-ui``-blok FØR svaret vises — ikke efter._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_mekanisk_reparation` | `(tekst)` | Ret det der kan rettes uden at spørge en model. | [src](../../../core/services/flade_korrektion.py#L72) |
+| function | `_blok_vinduer` | `(tekst)` | Uddrag af teksten omkring hver ``jarvis-ui``-blok. | [src](../../../core/services/flade_korrektion.py#L110) |
+| function | `korriger_flader` | `(tekst, fejl, *, stream_followup, provider, model, base_messages, run_id=…, session_id=…)` | Bed modellen rette defekte ``jarvis-ui``-blokke. Returnerer ny tekst. | [src](../../../core/services/flade_korrektion.py#L129) |
+
 ## `core/services/flow_state_detection.py`
 _Flow State Detection — when everything clicks._
 
@@ -510,15 +519,4 @@ _Best-effort Google Tasks-spejl for Jarvis' lokale planlagte opgaver._
 | function | `create_task_mirror` | `(user_id, task)` | Opret en Google Task for en allerede gemt lokal opgave. | [src](../../../core/services/google_tasks_mirror.py#L85) |
 | function | `update_task_mirror` | `(user_id, task)` | Opdatér Google-kopien efter en vellykket lokal redigering. | [src](../../../core/services/google_tasks_mirror.py#L125) |
 | function | `cancel_task_mirror` | `(user_id, local_task_id)` | Slet Google-kopien efter en vellykket lokal annullering. | [src](../../../core/services/google_tasks_mirror.py#L157) |
-
-## `core/services/governance_bootstrap.py`
-_Governance bootstrap — idempotent setup of default windows, jobs handlers, automations._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_default_windows` | `()` | Ensure default scheduled job windows exist. Returns list of window_ids | [src](../../../core/services/governance_bootstrap.py#L15) |
-| function | `ensure_default_job_handlers` | `()` | Register default job-type handlers. Returns list of job_type names registered. | [src](../../../core/services/governance_bootstrap.py#L73) |
-| function | `ensure_default_automations` | `()` | Seed a couple of baseline automations so the DSL surface has examples. | [src](../../../core/services/governance_bootstrap.py#L346) |
-| function | `ensure_warmup_job` | `()` | Enqueue a single low-priority warmup job on first boot so the | [src](../../../core/services/governance_bootstrap.py#L410) |
-| function | `bootstrap_all` | `()` | Run all idempotent bootstrap helpers. Safe at any startup. | [src](../../../core/services/governance_bootstrap.py#L435) |
 

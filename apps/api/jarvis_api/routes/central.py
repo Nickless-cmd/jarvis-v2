@@ -435,3 +435,18 @@ async def central_self_state() -> dict:
     _require_owner()
     from core.services.self_dream_state_surface import build_self_dream_state_surface
     return await asyncio.to_thread(build_self_dream_state_surface)
+
+
+@router.get("/daemon-state")
+async def central_daemon_state() -> dict:
+    """Daemon- og runtime-lagene: 105 flader der ellers var usynlige for operatøren.
+
+    Målt 7/11-2026: efter de seks første indgange stod 283 af 464 flader uden
+    nogen indgang. De 105 her er resten efter central/selv/drøm/privat-bunken —
+    det der KOERER: daemoner, rytmer, signal-tracking, refleksions-cyklusser,
+    vane- og maal-maskineri, værktøjs-routing, sansning. Grupperet efter hvad
+    laget gør, ikke efter mappenavn. relational_warmth udeladt — den kræver
+    bruger-kontekst og kaster uden. Owner-only, read-only, via to_thread."""
+    _require_owner()
+    from core.services.daemon_state_surface import build_daemon_state_surface
+    return await asyncio.to_thread(build_daemon_state_surface)

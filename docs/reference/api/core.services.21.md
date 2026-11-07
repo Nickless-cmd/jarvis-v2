@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/procedure_bank.py`
+_Procedure Bank — reusable procedures learned from experience._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `record_procedure` | `(*, name, trigger_pattern, procedure_text, success_count=…)` | Record or update a learned procedure. | [src](../../../core/services/procedure_bank.py#L19) |
+| function | `build_procedure_surface` | `()` | — | [src](../../../core/services/procedure_bank.py#L45) |
+
 ## `core/services/procedure_bank_pipeline.py`
 _Procedure Bank Pipeline — lærte rutiner der kan pin'es og matches._
 
@@ -629,26 +637,4 @@ _Provider-fejl-vagt — fang "providerens fejlbesked blev til Jarvis' svar"._
 | function | `describe` | `(text)` | Kort, sikker beskrivelse til incident-beskeden. Lækker ikke hele teksten. | [src](../../../core/services/provider_error_guard.py#L96) |
 | function | `looks_like_protocol_leak` | `(text)` | True hvis `text` bærer en models rå protokol-tokens. | [src](../../../core/services/provider_error_guard.py#L132) |
 | function | `looks_like_reasoning_leak` | `(text)` | True hvis `text` er modellens ræsonnement, ikke dens svar. | [src](../../../core/services/provider_error_guard.py#L169) |
-
-## `core/services/provider_health_check.py`
-_Provider health check — periodic ping to detect outages early._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_router_config_path` | `()` | — | [src](../../../core/services/provider_health_check.py#L89) |
-| function | `_router_providers` | `()` | provider → {base_url, auth_profile} fra provider_router.json. {} ved fejl. | [src](../../../core/services/provider_health_check.py#L95) |
-| function | `_load_provider_credentials` | `(provider, profile)` | Hent providerens nøgle ad samme vej som rigtige kald. {} når den ikke findes. | [src](../../../core/services/provider_health_check.py#L111) |
-| function | `_probe_request` | `(provider)` | Byg URL + headers som et RIGTIGT kald ville gøre. None = ingen base_url. | [src](../../../core/services/provider_health_check.py#L125) |
-| function | `classify_http_code` | `(code)` | HTTP-svar → hvad det BETYDER for om provideren kan bruges. | [src](../../../core/services/provider_health_check.py#L163) |
-| function | `_ping_host` | `(url, headers=…)` | HTTP GET med kort timeout. Returnerer ``status`` (klassificeret) + ``reachable``. | [src](../../../core/services/provider_health_check.py#L189) |
-| function | `health_check_all_providers` | `()` | Ping every cheap-lane provider once. Returns per-provider status. | [src](../../../core/services/provider_health_check.py#L220) |
-| function | `_cheap_dry_providers` | `()` | Providers i cheap-lane-cooldown (tør/quota-blokeret) — fra runtime-state. Self-safe. | [src](../../../core/services/provider_health_check.py#L304) |
-| function | `_model_drift` | `()` | Model-drift: en provider der FØR havde modeller men nu har 0 (model udfaset/omdøbt — den | [src](../../../core/services/provider_health_check.py#L324) |
-| function | `_spread_load_proactively` | `(reports, unreachable)` | Daemon-load-spredning (Jarvis-spec): sæt PROAKTIVT en kort cooldown på nede providers, så | [src](../../../core/services/provider_health_check.py#L359) |
-| function | `observe_and_flag` | `()` | Kadence-entry (Jarvis-spec 2026-06-23): ping + model-drift + cheap-dry → observe + FLAG | [src](../../../core/services/provider_health_check.py#L400) |
-| function | `build_provider_health_surface` | `()` | Read-only provider-helbreds-surface til Jarvis Mind / terminal: ÉT kald → ping + tør + | [src](../../../core/services/provider_health_check.py#L449) |
-| function | `latest_health_snapshot` | `()` | Read most-recent stored snapshot. | [src](../../../core/services/provider_health_check.py#L472) |
-| function | `health_section` | `()` | Awareness section listing providers that CANNOT be used — not just silent ones. | [src](../../../core/services/provider_health_check.py#L484) |
-| function | `_exec_run_health_check` | `(args)` | — | [src](../../../core/services/provider_health_check.py#L519) |
-| function | `_exec_get_health_snapshot` | `(args)` | — | [src](../../../core/services/provider_health_check.py#L523) |
 

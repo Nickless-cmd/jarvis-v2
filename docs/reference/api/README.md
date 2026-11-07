@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18398 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18403 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -40,28 +40,29 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18398 functions/
 - [`core.services.07`](core.services.07.md) — `central_prompt_explore` … `central_xproc`
 - [`core.services.08`](core.services.08.md) — `channel_inbound` … `clarification_classifier`
 - [`core.services.09`](core.services.09.md) — `cluster_daemon` … `contract_evolution`
-- [`core.services.10`](core.services.10.md) — `contradiction_engine` … `daily_journal_entry`
-- [`core.services.11`](core.services.11.md) — `data_erasure` … `discord_gateway`
-- [`core.services.12`](core.services.12.md) — `discord_gateway_supervisor` … `emotion_concepts_channel_triggers`
-- [`core.services.13`](core.services.13.md) — `emotion_concepts_positive_triggers` … `flade_korrektion`
-- [`core.services.14`](core.services.14.md) — `flow_state_detection` … `governance_bootstrap`
-- [`core.services.15`](core.services.15.md) — `graf_render` … `in_flight_runs`
-- [`core.services.16`](core.services.16.md) — `inbox_gate` … `klient_versioner`
-- [`core.services.17`](core.services.17.md) — `layer_tension_daemon` … `memory_emotional_context`
-- [`core.services.18`](core.services.18.md) — `memory_graph` … `my_projects`
-- [`core.services.19`](core.services.19.md) — `narrative_identity` … `parallel_selves`
-- [`core.services.20`](core.services.20.md) — `past_context_router` … `procedure_bank`
-- [`core.services.21`](core.services.21.md) — `procedure_bank_pipeline` … `provider_health_check`
-- [`core.services.22`](core.services.22.md) — `provider_model_epochs` … `relationship_texture`
-- [`core.services.23`](core.services.23.md) — `release_marker_signal_tracking` … `run_closure_gate`
-- [`core.services.24`](core.services.24.md) — `run_event_log` … `search_quality`
-- [`core.services.25`](core.services.25.md) — `search_quota` … `sensory_archive`
-- [`core.services.26`](core.services.26.md) — `sensory_perception_bridge` … `signal_surface_router`
-- [`core.services.27`](core.services.27.md) — `signal_tracking_framework` … `system_cartographer`
-- [`core.services.28`](core.services.28.md) — `tanke_resume` … `tool_lexical_match`
-- [`core.services.29`](core.services.29.md) — `tool_observer` … `veto_gate`
-- [`core.services.30`](core.services.30.md) — `visible_autonomous_run` … `visible_runs`
-- [`core.services.31`](core.services.31.md) — `visible_runs_approvals` … `world_model_signal_tracking`
+- [`core.services.10`](core.services.10.md) — `contradiction_engine` … `daily_journal`
+- [`core.services.11`](core.services.11.md) — `daily_journal_entry` … `discord_config`
+- [`core.services.12`](core.services.12.md) — `discord_gateway` … `emotion_concepts`
+- [`core.services.13`](core.services.13.md) — `emotion_concepts_channel_triggers` … `first_pass_recovery`
+- [`core.services.14`](core.services.14.md) — `flade_korrektion` … `google_tasks_mirror`
+- [`core.services.15`](core.services.15.md) — `governance_bootstrap` … `impulse_executor`
+- [`core.services.16`](core.services.16.md) — `in_flight_runs` … `keyring_store`
+- [`core.services.17`](core.services.17.md) — `klient_versioner` … `memory_density`
+- [`core.services.18`](core.services.18.md) — `memory_emotional_context` … `multi_signal_retrieval`
+- [`core.services.19`](core.services.19.md) — `my_projects` … `paradoxes_capture`
+- [`core.services.20`](core.services.20.md) — `parallel_selves` … `proactivity_bridge`
+- [`core.services.21`](core.services.21.md) — `procedure_bank` … `provider_error_guard`
+- [`core.services.22`](core.services.22.md) — `provider_health_check` … `relational_warmth`
+- [`core.services.23`](core.services.23.md) — `relationship_texture` … `run_autonomy_context`
+- [`core.services.24`](core.services.24.md) — `run_closure_gate` … `scout_inbox_delivery`
+- [`core.services.25`](core.services.25.md) — `search_quality` … `semantic_memory`
+- [`core.services.26`](core.services.26.md) — `sensory_archive` … `signal_surface_gc`
+- [`core.services.27`](core.services.27.md) — `signal_surface_router` … `svar_tempo`
+- [`core.services.28`](core.services.28.md) — `system_cartographer` … `tool_intent_runtime`
+- [`core.services.29`](core.services.29.md) — `tool_lexical_match` … `versioneret_json_svar`
+- [`core.services.30`](core.services.30.md) — `veto_gate` … `visible_run_trace`
+- [`core.services.31`](core.services.31.md) — `visible_runs` … `world_model_auto_extraction`
+- [`core.services.32`](core.services.32.md) — `world_model_signal_tracking` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

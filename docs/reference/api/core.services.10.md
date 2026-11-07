@@ -590,6 +590,16 @@ _Daemon memory safeguard — post-hoc check that Jarvis saved what mattered._
 | function | `build_memory_safeguard_surface` | `()` | Mission Control surface for the memory safeguard daemon. | [src](../../../core/services/daemon_memory_safeguard.py#L41) |
 | function | `run` | `(**kwargs)` | Check last assistant turn for missed saves. Called by heartbeat. | [src](../../../core/services/daemon_memory_safeguard.py#L101) |
 
+## `core/services/daemon_state_surface.py`
+_Samlet flade for daemon- og runtime-lagene — de build_*_surface ingen indgang havde._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `producer_names` | `()` | Navnene i kald-raekkefoelge, paa tvaers af grupperne — til test. | [src](../../../core/services/daemon_state_surface.py#L151) |
+| function | `group_names` | `()` | Gruppe-navnene i definitions-raekkefoelge. | [src](../../../core/services/daemon_state_surface.py#L156) |
+| function | `_call` | `(name, mod_path, fn_attr)` | Kald én producent. En defekt maa ikke skjule de oevrige. | [src](../../../core/services/daemon_state_surface.py#L161) |
+| function | `build_daemon_state_surface` | `()` | Kald alle producenter og returnér deres egne signaler, grupperet. Kaster ALDRIG. | [src](../../../core/services/daemon_state_surface.py#L175) |
+
 ## `core/services/daily_journal.py`
 _Daily journal synthesizer._
 
@@ -607,19 +617,4 @@ _Daily journal synthesizer._
 | function | `_daemon_loop` | `()` | Wakes hver time, syntesizer dagens journal hvis vi er i vinduet. | [src](../../../core/services/daily_journal.py#L275) |
 | function | `start_daily_journal_daemon` | `()` | Start daemon. Idempotent. | [src](../../../core/services/daily_journal.py#L294) |
 | function | `stop_daily_journal_daemon` | `()` | — | [src](../../../core/services/daily_journal.py#L311) |
-
-## `core/services/daily_journal_entry.py`
-_Dagbøger som rigtige brain-poster._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_dag` | `(path)` | — | [src](../../../core/services/daily_journal_entry.py#L28) |
-| function | `_oprettet` | `(tekst, path)` | Dagbogens egen stempel; ellers filens ændringstid. Aldrig «nu» — en gammel | [src](../../../core/services/daily_journal_entry.py#L38) |
-| function | `_markdown` | `(dag, tekst, oprettet, entry_id)` | — | [src](../../../core/services/daily_journal_entry.py#L51) |
-| function | `ensure_frontmatter` | `(path)` | Giv én dagbog frontmatter. «added» | «present» | «skipped:<grund>». Idempotent. | [src](../../../core/services/daily_journal_entry.py#L64) |
-| function | `write_journal` | `(path, dag, tekst, *, nu=…)` | Skriv en dagbog som brain-post. Overskriver (force) beholder det gamle id, så | [src](../../../core/services/daily_journal_entry.py#L82) |
-| function | `backfill` | `(directory=…)` | Giv alle dagbøger uden frontmatter en. Idempotent; reindex-løkken indekserer dem. | [src](../../../core/services/daily_journal_entry.py#L94) |
-| function | `_datoer` | `(spec)` | «YYYY-MM-DD» eller «YYYY-MM-DD..YYYY-MM-DD» → datoer. ValueError med en grund. | [src](../../../core/services/daily_journal_entry.py#L115) |
-| function | `_uddrag` | `(content)` | Dagbogens indhold uden de to meta-linjer foran; det er dét der fortæller dagen. | [src](../../../core/services/daily_journal_entry.py#L131) |
-| function | `find_journals` | `(spec, *, ceiling)` | Dagbøgerne for en dato eller et interval. Arkiverede tælles med; `ceiling` er | [src](../../../core/services/daily_journal_entry.py#L139) |
 

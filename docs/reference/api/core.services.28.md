@@ -2,6 +2,43 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/system_cartographer.py`
+_System Cartographer — broad map of Jarvis' runtime and inner layers._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_system_cartographer_surface` | `(*, auto_enqueue=…)` | — | [src](../../../core/services/system_cartographer.py#L47) |
+| function | `start_system_cartographer_daemon` | `()` | — | [src](../../../core/services/system_cartographer.py#L134) |
+| function | `stop_system_cartographer_daemon` | `()` | — | [src](../../../core/services/system_cartographer.py#L144) |
+| function | `_observe_to_central` | `(surface)` | System-cluster: MELD kartografens kort til Den Intelligente Central (self-safe). | [src](../../../core/services/system_cartographer.py#L148) |
+| function | `_observe_gaps_to_central` | `(surface)` | Jarvis' handlingsordre (docs/notes/2026-07-01-cartographer-to-central.md, P1): meld | [src](../../../core/services/system_cartographer.py#L181) |
+| function | `_loop` | `()` | — | [src](../../../core/services/system_cartographer.py#L245) |
+| function | `_service_files` | `()` | — | [src](../../../core/services/system_cartographer.py#L259) |
+| function | `_service_node` | `(path, text)` | — | [src](../../../core/services/system_cartographer.py#L275) |
+| function | `_daemon_nodes` | `()` | — | [src](../../../core/services/system_cartographer.py#L302) |
+| function | `_surface_nodes` | `(services)` | — | [src](../../../core/services/system_cartographer.py#L325) |
+| function | `_event_family_nodes` | `(services)` | — | [src](../../../core/services/system_cartographer.py#L337) |
+| function | `_edges` | `(*, services, daemons, surfaces, event_families, causal)` | — | [src](../../../core/services/system_cartographer.py#L349) |
+| function | `_causal_runtime_evidence` | `(limit=…)` | — | [src](../../../core/services/system_cartographer.py#L380) |
+| function | `_dark_edges` | `(services)` | — | [src](../../../core/services/system_cartographer.py#L439) |
+| function | `_rank_dark_edges` | `(dark_edges, *, causal, daemons)` | — | [src](../../../core/services/system_cartographer.py#L453) |
+| function | `_coverage_summary` | `(services)` | — | [src](../../../core/services/system_cartographer.py#L493) |
+| function | `_is_pure_utility` | `(service)` | Detect services that are pure helpers — no observable state, no IO, | [src](../../../core/services/system_cartographer.py#L516) |
+| function | `_coverage_score` | `(service)` | — | [src](../../../core/services/system_cartographer.py#L542) |
+| function | `_system_health_from_jarvis_perspective` | `(*, dark_edges, coverage, theater, recommended)` | — | [src](../../../core/services/system_cartographer.py#L572) |
+| function | `_dark_edge_score` | `(*, service, kind, is_daemon, has_causal_family)` | — | [src](../../../core/services/system_cartographer.py#L602) |
+| function | `_priority_label` | `(score)` | — | [src](../../../core/services/system_cartographer.py#L626) |
+| function | `_luk_opgaver_scanningen_ikke_flager` | `(surface)` | Luk reparations-opgaver hvis mål ikke længere står i scanningen. | [src](../../../core/services/system_cartographer.py#L634) |
+| function | `_observability_task_from_dark_edge` | `(edge)` | — | [src](../../../core/services/system_cartographer.py#L700) |
+| function | `_maybe_enqueue_observability_task` | `(candidate)` | — | [src](../../../core/services/system_cartographer.py#L718) |
+| function | `_find_existing_observability_task` | `(candidate)` | — | [src](../../../core/services/system_cartographer.py#L765) |
+| function | `_maybe_enqueue_theater_task` | `(candidate)` | — | [src](../../../core/services/system_cartographer.py#L782) |
+| function | `_find_existing_theater_task` | `(candidate)` | — | [src](../../../core/services/system_cartographer.py#L829) |
+| function | `_runtime_task_priority` | `(priority)` | — | [src](../../../core/services/system_cartographer.py#L847) |
+| function | `_theater_audit_surface` | `()` | — | [src](../../../core/services/system_cartographer.py#L854) |
+| function | `_tool_count` | `()` | — | [src](../../../core/services/system_cartographer.py#L867) |
+| function | `_classify_service` | `(*, name, text)` | — | [src](../../../core/services/system_cartographer.py#L876) |
+
 ## `core/services/tanke_resume.py`
 _Én linje om hvad Jarvis TÆNKTE i en runde — til visningstilstanden «Tænkning»._
 
@@ -599,18 +636,4 @@ _Han leder efter et værktøj med bash — og værktøjet findes allerede._
 | function | `_build_sudo_exec_proposal_surface` | `(mutating_exec_surface)` | — | [src](../../../core/services/tool_intent_runtime.py#L669) |
 | function | `_derive_intent_from_awareness` | `(*, awareness, repo_observation)` | — | [src](../../../core/services/tool_intent_runtime.py#L725) |
 | function | `_emit_tool_intent_runtime_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/tool_intent_runtime.py#L836) |
-
-## `core/services/tool_lexical_match.py`
-_Leksikalsk vaerktoejs-opslag: saerkende ord slaar semantisk lighed._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Traef` | `` | Et bud. ``ord`` er de saerkende ord det byggede paa, mest saerkende foerst. | [src](../../../core/services/tool_lexical_match.py#L78) |
-| function | `ord_i` | `(tekst)` | Saerkende ord i en tekst — smaa bogstaver, stopord ude. | [src](../../../core/services/tool_lexical_match.py#L87) |
-| class | `Korpus` | `` | IDF over vaerktoejskorpuset. Bygges én gang pr. vaerktoejssaet. | [src](../../../core/services/tool_lexical_match.py#L92) |
-| method | `Korpus.__init__` | `(self, tekster, *, tunge=…)` | — | [src](../../../core/services/tool_lexical_match.py#L99) |
-| method | `Korpus.idf` | `(self, ord_)` | Sjaeldne ord vejer tungt, paa en skala der ikke afhaenger af korpus-stoerrelsen. | [src](../../../core/services/tool_lexical_match.py#L121) |
-| method | `Korpus.slaa_op` | `(self, besked, kandidater=…, ekstra_stopord=…)` | Bedste bud, eller ``None`` naar intet staar klart nok over feltet. | [src](../../../core/services/tool_lexical_match.py#L133) |
-| function | `byg_korpus_fra_definitioner` | `(definitioner, *, dansk=…)` | Korpus ud fra ``get_tool_definitions()``-formen (baade rå og indpakket). | [src](../../../core/services/tool_lexical_match.py#L179) |
-| function | `hyppige_ord_hos_brugeren` | `(beskeder, *, graense=…)` | Ord brugeren siger HELE TIDEN — spaerret uanset hvor saerkende de er | [src](../../../core/services/tool_lexical_match.py#L206) |
 

@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/daily_journal_entry.py`
+_Dagbøger som rigtige brain-poster._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_dag` | `(path)` | — | [src](../../../core/services/daily_journal_entry.py#L28) |
+| function | `_oprettet` | `(tekst, path)` | Dagbogens egen stempel; ellers filens ændringstid. Aldrig «nu» — en gammel | [src](../../../core/services/daily_journal_entry.py#L38) |
+| function | `_markdown` | `(dag, tekst, oprettet, entry_id)` | — | [src](../../../core/services/daily_journal_entry.py#L51) |
+| function | `ensure_frontmatter` | `(path)` | Giv én dagbog frontmatter. «added» | «present» | «skipped:<grund>». Idempotent. | [src](../../../core/services/daily_journal_entry.py#L64) |
+| function | `write_journal` | `(path, dag, tekst, *, nu=…)` | Skriv en dagbog som brain-post. Overskriver (force) beholder det gamle id, så | [src](../../../core/services/daily_journal_entry.py#L82) |
+| function | `backfill` | `(directory=…)` | Giv alle dagbøger uden frontmatter en. Idempotent; reindex-løkken indekserer dem. | [src](../../../core/services/daily_journal_entry.py#L94) |
+| function | `_datoer` | `(spec)` | «YYYY-MM-DD» eller «YYYY-MM-DD..YYYY-MM-DD» → datoer. ValueError med en grund. | [src](../../../core/services/daily_journal_entry.py#L115) |
+| function | `_uddrag` | `(content)` | Dagbogens indhold uden de to meta-linjer foran; det er dét der fortæller dagen. | [src](../../../core/services/daily_journal_entry.py#L131) |
+| function | `find_journals` | `(spec, *, ceiling)` | Dagbøgerne for en dato eller et interval. Arkiverede tælles med; `ceiling` er | [src](../../../core/services/daily_journal_entry.py#L139) |
+
 ## `core/services/data_erasure.py`
 _GDPR Art. 17 (ret til at blive glemt) — orkestrering._
 
@@ -572,49 +587,4 @@ _Discord config — load/save ~/.jarvis-v2/config/discord.json._
 | function | `load_discord_config` | `()` | Return config dict or None if missing/invalid. | [src](../../../core/services/discord_config.py#L16) |
 | function | `save_discord_config` | `(config)` | Write config with chmod 600. Creates parent dir if needed. | [src](../../../core/services/discord_config.py#L29) |
 | function | `is_discord_configured` | `()` | Return True if config exists and has all required keys. | [src](../../../core/services/discord_config.py#L36) |
-
-## `core/services/discord_gateway.py`
-_Discord gateway — runs discord.py in a dedicated daemon thread._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `get_discord_channel_for_session` | `(session_id)` | Lookup which Discord channel (if any) ejer denne session. | [src](../../../core/services/discord_gateway.py#L77) |
-| function | `_persist_status` | `()` | Mirror current _status to runtime_state_kv for cross-process readers. | [src](../../../core/services/discord_gateway.py#L166) |
-| function | `_status_heartbeat_loop` | `()` | Refresh persisted status every _STATUS_HB_INTERVAL seconds. | [src](../../../core/services/discord_gateway.py#L183) |
-| function | `get_discord_status` | `()` | Return current gateway status. | [src](../../../core/services/discord_gateway.py#L198) |
-| function | `_is_gateway_owner` | `()` | True if the discord client thread is running in this process. | [src](../../../core/services/discord_gateway.py#L241) |
-| function | `_dispatch_to_runtime` | `(action, args)` | Forward a send intent to the runtime process via internal HTTP. | [src](../../../core/services/discord_gateway.py#L246) |
-| function | `send_discord_message` | `(channel_id, text)` | Thread-safe: queue a message to be sent to a Discord channel. | [src](../../../core/services/discord_gateway.py#L267) |
-| function | `start_discord_typing` | `(channel_id)` | Tænd «Jarvis skriver…» og hold den kørende indtil næste besked sendes. | [src](../../../core/services/discord_gateway.py#L295) |
-| function | `_download_attachment` | `(attachment, session_id)` | Download a single discord.Attachment via attachment_service. | [src](../../../core/services/discord_gateway.py#L315) |
-| function | `_build_attachment_prefix` | `(attachments, session_id)` | Build content prefix lines for all attachments in a Discord message. | [src](../../../core/services/discord_gateway.py#L328) |
-| function | `_validate_send_path` | `(path)` | — | [src](../../../core/services/discord_gateway.py#L348) |
-| function | `_normaliser_stier` | `(file_path)` | Én sti eller en liste af stier → altid en liste. Tom liste = ingen fil. | [src](../../../core/services/discord_gateway.py#L353) |
-| function | `send_discord_file` | `(channel_id, text, file_path, *, wait=…, timeout=…)` | Queue a file send to a Discord channel. Validates path(s) first. | [src](../../../core/services/discord_gateway.py#L368) |
-| function | `_open_dm_and_send` | `(recipient_discord_id, text, timeout, max_retries=…, retry_delay=…, file_path=…)` | Open DM channel with a Discord user and queue a message. Gateway-process only. | [src](../../../core/services/discord_gateway.py#L427) |
-| function | `send_dm_to_owner` | `(text, timeout=…, file_path=…)` | Send a DM directly to the owner via owner_discord_id. | [src](../../../core/services/discord_gateway.py#L533) |
-| function | `send_dm_to_user` | `(recipient_discord_id, text, timeout=…, file_path=…)` | DM a known Discord user by ID. | [src](../../../core/services/discord_gateway.py#L580) |
-| function | `_get_or_create_discord_session` | `(channel_id, is_dm, owner_discord_id, author_id=…)` | Return session_id for this Discord channel. Creates session if needed. | [src](../../../core/services/discord_gateway.py#L627) |
-| function | `_is_table_row` | `(line)` | En tabel-række: starter med `|` og har mindst to pipe-tegn (`| a | b |`). | [src](../../../core/services/discord_gateway.py#L670) |
-| function | `_is_table_separator` | `(line)` | True for GFM-separatorrækken (`| --- | :--: |`) der skelner header fra data. | [src](../../../core/services/discord_gateway.py#L676) |
-| function | `_wrap_tables_for_discord` | `(text)` | Pak GFM-tabeller i kode-fences — Discord tegner dem ikke ellers. | [src](../../../core/services/discord_gateway.py#L685) |
-| function | `_downgrade_unsupported_for_discord` | `(text)` | Nedgrader markdown Discord ikke tegner, så det ikke står som rå tegn. | [src](../../../core/services/discord_gateway.py#L736) |
-| function | `_split_message` | `(text, limit)` | Split text into chunks of at most `limit` characters. | [src](../../../core/services/discord_gateway.py#L766) |
-| function | `_typing_loop` | `(channel_id)` | Keep showing 'typing...' indicator until the outbound message is sent. | [src](../../../core/services/discord_gateway.py#L814) |
-| function | `_extract_text_deltas` | `(frames)` | Træk svarteksten ud af v2-SSE-frames. | [src](../../../core/services/discord_gateway.py#L840) |
-| function | `_tail_window` | `(text, limit)` | Vis HALEN af teksten når den overstiger Discord-loftet. | [src](../../../core/services/discord_gateway.py#L866) |
-| function | `_strip_fenced` | `(text)` | Fjern kodeblok-indhold — bruges når vi tæller inline-markører. | [src](../../../core/services/discord_gateway.py#L892) |
-| function | `_stabilize_stream_preview` | `(text)` | Luk uafsluttede markdown-markører i en STREAMENDE preview. | [src](../../../core/services/discord_gateway.py#L906) |
-| function | `_stream_run_to_discord` | `(channel_id, session_id)` | Send beskeden ved første tekst og redigér den mens runnet streamer. | [src](../../../core/services/discord_gateway.py#L926) |
-| function | `_sweep_stale_streams` | `()` | Ryd streamer-states der blev efterladt uden et finalize-kald. | [src](../../../core/services/discord_gateway.py#L1022) |
-| function | `_apply_edit_intent` | `(item)` | Redigér streamerens besked til den ENDELIGE tekst. | [src](../../../core/services/discord_gateway.py#L1040) |
-| function | `_finalize_stream_or_send` | `(session_id, channel_id, content)` | Ved run-slut: redigér streamerens besked til den endelige tekst, eller | [src](../../../core/services/discord_gateway.py#L1078) |
-| function | `_send_outbound_loop` | `()` | Asyncio coroutine that drains the outbound queue and sends to Discord. | [src](../../../core/services/discord_gateway.py#L1113) |
-| function | `_run_client` | `(config)` | Main coroutine: set up discord client and run until stopped. | [src](../../../core/services/discord_gateway.py#L1214) |
-| function | `_discord_thread_func` | `(config)` | Entry point for the daemon thread. | [src](../../../core/services/discord_gateway.py#L1545) |
-| function | `_announce_user_message_appended` | `(session_id, message)` | Udsend channel.chat_message_appended for en Discord-brugerbesked (Spor B). | [src](../../../core/services/discord_gateway.py#L1563) |
-| function | `_eventbus_subscriber_loop` | `()` | Background thread: watch eventbus for assistant responses in Discord sessions. | [src](../../../core/services/discord_gateway.py#L1583) |
-| function | `_resolve_channel_for_session` | `(session_id)` | Look up the Discord channel that originated a given session. | [src](../../../core/services/discord_gateway.py#L1659) |
-| function | `start_discord_gateway` | `()` | Start gateway if config exists. Safe to call unconditionally. | [src](../../../core/services/discord_gateway.py#L1682) |
-| function | `stop_discord_gateway` | `()` | Stop the gateway gracefully. | [src](../../../core/services/discord_gateway.py#L1726) |
 

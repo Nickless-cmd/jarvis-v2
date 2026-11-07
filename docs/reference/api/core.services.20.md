@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/parallel_selves.py`
+_Parallel Selves — internal sub-selves._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `get_active_self` | `()` | — | [src](../../../core/services/parallel_selves.py#L15) |
+| function | `set_active_self` | `(self_type)` | — | [src](../../../core/services/parallel_selves.py#L18) |
+| function | `describe_self_plural` | `()` | — | [src](../../../core/services/parallel_selves.py#L23) |
+| function | `format_self_for_prompt` | `()` | — | [src](../../../core/services/parallel_selves.py#L26) |
+| function | `build_parallel_selves_surface` | `()` | — | [src](../../../core/services/parallel_selves.py#L29) |
+
 ## `core/services/past_context_router.py`
 _Past-context cue router for visible prompts._
 
@@ -671,12 +682,4 @@ _Proaktivitets-broen — samler initiativer og konkrete proaktive signaler til_
 | function | `run_proactivity_bridge_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence run_fn. Hybrid: urgent straks / ellers digest / ellers observe suppressed. | [src](../../../core/services/proactivity_bridge.py#L334) |
 | function | `register_proactivity_bridge_producer` | `()` | Registrér broen som cadence-producer (~10 min, visible_grace 15 min). | [src](../../../core/services/proactivity_bridge.py#L402) |
 | function | `build_proactivity_bridge_surface` | `()` | Read-only surface til /central/proactivity + jc. Self-safe. | [src](../../../core/services/proactivity_bridge.py#L409) |
-
-## `core/services/procedure_bank.py`
-_Procedure Bank — reusable procedures learned from experience._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_procedure` | `(*, name, trigger_pattern, procedure_text, success_count=…)` | Record or update a learned procedure. | [src](../../../core/services/procedure_bank.py#L19) |
-| function | `build_procedure_surface` | `()` | — | [src](../../../core/services/procedure_bank.py#L45) |
 

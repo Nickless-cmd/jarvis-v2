@@ -190,3 +190,30 @@ def test_revurdering_lukker_projekt_med_gammelt_spor(isolated_runtime, monkeypat
     record = isolated_runtime.db.get_runtime_initiative(iid)
     assert udfald["lukket"] == 1, "et forsoeg fra i fjor blev laest som livstegn i dag"
     assert record["status"] == "expired"
+
+
+def test_visning_er_ikke_et_livstegn(isolated_runtime, monkeypatch) -> None:
+    """At blive VIST er ikke at blive LOEFTET.
+
+    Maalt 7/11-2026: `proactivity_bridge.py:321` kalder
+    `mark_acted(..., action_summary="surfaced via proactivity_bridge")`, og
+    `runtime_action_executor.py:526` kalder den med "promoted-to-visible-lane".
+    Begge skriver `last_action_at`. Da dommen laeste det felt som et spoer, fik
+    et projekt 14 nye dage for at blive vist — praecis den fejlklasse
+    `mark_acted`-fixet 1/11 skulle afskaffe.
+
+    Testen kalder den RIGTIGE `mark_acted` (ikke en haandskrevet raekke), saa
+    den maaler koblingen til den funktion der faktisk skriver feltet.
+    """
+    from core.services import initiative_queue, life_projects
+
+    _monkeypatch_decay(monkeypatch)
+    iid = initiative_queue.seed_long_term_intention(title="Kun vist", why="fordi")
+    initiative_queue.mark_acted(iid, action_summary="surfaced via proactivity_bridge")
+    isolated_runtime.db.update_runtime_initiative(iid, updated_at="2026-05-15T11:11:18+00:00")
+
+    udfald = life_projects.tick_life_projects_reassessment(trigger="test")
+
+    record = isolated_runtime.db.get_runtime_initiative(iid)
+    assert udfald["lukket"] == 1, "en visning blev laest som et livstegn"
+    assert record["status"] == "expired", "projektet overlevede paa at blive vist"

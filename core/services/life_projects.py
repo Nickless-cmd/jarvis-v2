@@ -79,8 +79,20 @@ def _har_spor(item: dict[str, object], *, now: datetime, threshold: timedelta) -
     Feltnavnene er laast til det faktiske skema: `mark_attempted` skriver
     `last_attempt_at`, mens `mark_acted` skriver `last_action_at` — ikke
     `acted_at`. At tjekke et felt der aldrig skrives ville gøre dommen blind.
+
+    MEN `last_action_at`/`acted_at` er UDELUKKET, og det er hele pointen.
+    Maalt 7/11-2026: `proactivity_bridge.py:321` kalder `mark_acted(...,
+    action_summary="surfaced via proactivity_bridge")`, og
+    `runtime_action_executor.py:526` kalder den med
+    "promoted-to-visible-lane". Begge skriver `last_action_at` — saa en
+    VISNING blev laest som et livstegn, og projektet fik 14 nye dage for at
+    blive vist. Det er samme fejlklasse som `mark_acted`-fixet 1/11 fjernede:
+    en status der ser ud som information, men beskriver noget andet.
+
+    Kun `last_attempt_at` tæller: det skrives udelukkende af
+    `mark_attempted`, som kaldes naar heartbeat faktisk griber projektet.
     """
-    for felt in ("last_attempt_at", "last_action_at", "acted_at"):
+    for felt in ("last_attempt_at",):
         raw = str(item.get(felt) or "").strip()
         if not raw:
             continue

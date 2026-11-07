@@ -15,6 +15,11 @@ from typing import Any
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _AUTO_TASK_MIN_SCORE = 75
+# 2026-11-07: 80 var ikke et maal, det var en VISNINGSGRAENSE — det faktiske antal
+# maalte vi til 382. Naar graensen blev rapporteret som "dark_edges" i summary, blev
+# problemet underdrevet 4,8x. Nu er de to tal adskilt: dark_edges = total,
+# dark_edges_shown = hvor mange der er med i payloaden.
+_MAX_DARK_EDGES_SHOWN = 80
 _AUTO_TASK_KIND = "observability_bridge_repair"
 _AUTO_TASK_ORIGIN = "system-cartographer"
 _THEATER_AUTO_TASK_MIN_SCORE = 120
@@ -35,7 +40,7 @@ _STOP = threading.Event()
 
 _PUBLISH_RE = re.compile(r"event_bus\.publish\(\s*f?[\"']([^\"']+)[\"']")
 _EMIT_RE = re.compile(r"emit\(\s*f?[\"']([^\"']+)[\"']")
-_SURFACE_RE = re.compile(r"def\s+(build_[a-zA-Z0-9_]*surface)\s*\(")
+_SURFACE_RE = re.compile(r"def\s+((?:build_)?[a-zA-Z][a-zA-Z0-9_]*_surface)\s*\(")
 _TOOL_RE = re.compile(r"[\"']name[\"']\s*:\s*[\"']([^\"']+)[\"']")
 
 
@@ -56,9 +61,10 @@ def build_system_cartographer_surface(*, auto_enqueue: bool = False) -> dict[str
         causal=causal,
     )
     theater = _theater_audit_surface()
-    dark_edges = _rank_dark_edges(_dark_edges(services), causal=causal, daemons=daemons)
+    dark_edges_all = _rank_dark_edges(_dark_edges(services), causal=causal, daemons=daemons)
+    dark_edges = dark_edges_all[:_MAX_DARK_EDGES_SHOWN]
     recommended_observability_task = (
-        _observability_task_from_dark_edge(dark_edges[0]) if dark_edges else None
+        _observability_task_from_dark_edge(dark_edges_all[0]) if dark_edges_all else None
     )
     auto_task = (
         _maybe_enqueue_observability_task(recommended_observability_task)
@@ -72,7 +78,7 @@ def build_system_cartographer_surface(*, auto_enqueue: bool = False) -> dict[str
     )
     coverage = _coverage_summary(services)
     system_health = _system_health_from_jarvis_perspective(
-        dark_edges=dark_edges,
+        dark_edges=dark_edges_all,
         coverage=coverage,
         theater=theater,
         recommended=recommended_observability_task,
@@ -86,7 +92,8 @@ def build_system_cartographer_surface(*, auto_enqueue: bool = False) -> dict[str
             "surfaces": len(surfaces),
             "event_families": len(event_families),
             "edges": len(edges),
-            "dark_edges": len(dark_edges),
+            "dark_edges": len(dark_edges_all),
+            "dark_edges_shown": len(dark_edges),
             "tools": tool_count,
             "observed_events": causal.get("event_count", 0),
             "observed_causal_edges": causal.get("edge_count", 0),
@@ -199,10 +206,16 @@ def _observe_gaps_to_central(surface: dict[str, Any]) -> None:
         # ── flag-regler (§3): sammenlign med sidst-kendte via shared_cache ──
         from core.services import shared_cache
         prev = shared_cache.get(_GAP_STATE_KEY) or {}
-        prev_dark = int(prev.get("dark_edges") or dark_n)
+        # 2026-11-07: "dark_edges" skiftede fra et KLIPPET tal (80) til det faktiske
+        # total (382). Uden denne vagt ville den foerste scanning efter rettelsen raabe
+        # "dark edges steg 80→382" — en falsk alarm skabt af min egen metrik-aendring.
+        # Sammenlign derfor kun som-for-som: en baseline uden dark_edges_total er en
+        # gammel-format-baseline og nulstilles uden flag.
+        prev_har_total = "dark_edges_total" in prev
+        prev_dark = int(prev.get("dark_edges_total") or dark_n)
         prev_theater = int(prev.get("theater_high_risk") or theater_hr)
         flags: list[tuple[str, str, str]] = []  # (nerve, severity, message)
-        if dark_n > prev_dark:
+        if prev_har_total and dark_n > prev_dark:
             flags.append(("cartographer_dark_edges", "warning",
                           f"dark edges steg {prev_dark}→{dark_n} (nye blinde vinkler)"))
         if theater_hr > prev_theater:
@@ -221,7 +234,8 @@ def _observe_gaps_to_central(surface: dict[str, Any]) -> None:
             except Exception:
                 pass
         shared_cache.set(_GAP_STATE_KEY,
-                         {"dark_edges": dark_n, "theater_high_risk": theater_hr,
+                         {"dark_edges": dark_n, "dark_edges_total": dark_n,
+                          "theater_high_risk": theater_hr,
                           "avg_coverage": avg_cov},
                          ttl_seconds=7 * 24 * 3600)
     except Exception:
@@ -430,7 +444,7 @@ def _dark_edges(services: list[dict[str, Any]]) -> list[dict[str, Any]]:
             dark.append({
                 "service": service["id"],
                 "path": service["path"],
-                "reason": "runtime/state/event influence with no local build_*surface marker",
+                "reason": "runtime/state/event influence with no local *_surface marker",
                 "kind": service["kind"],
             })
     return dark
@@ -473,7 +487,7 @@ def _rank_dark_edges(
             str(item.get("service") or ""),
         )
     )
-    return ranked[:80]
+    return ranked
 
 
 def _coverage_summary(services: list[dict[str, Any]]) -> dict[str, Any]:

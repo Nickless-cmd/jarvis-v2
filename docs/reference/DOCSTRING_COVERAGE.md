@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9837/18321 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9838/18321 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 9837/18321 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 872 | 1586 | 54% |
-| `core.services` | 6563 | 12408 | 52% |
+| `core.services` | 6564 | 12408 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -2182,9 +2182,9 @@ Generated from source. 9837/18321 functions/methods documented (53%). The list b
 - `core/services/sustained_attention.py` :: `set_autonomy` (L138)
 - `core/services/sustained_attention.py` :: `set_status` (L124)
 - `core/services/sustained_attention.py` :: `tick` (L187)
-- `core/services/system_cartographer.py` :: `build_system_cartographer_surface` (L42)
-- `core/services/system_cartographer.py` :: `start_system_cartographer_daemon` (L127)
-- `core/services/system_cartographer.py` :: `stop_system_cartographer_daemon` (L137)
+- `core/services/system_cartographer.py` :: `build_system_cartographer_surface` (L47)
+- `core/services/system_cartographer.py` :: `start_system_cartographer_daemon` (L134)
+- `core/services/system_cartographer.py` :: `stop_system_cartographer_daemon` (L144)
 - `core/services/tanke_resume.py` :: `byg_prompt` (L50)
 - `core/services/taste_profile.py` :: `build_taste_profile_surface` (L155)
 - `core/services/taste_profile.py` :: `update_taste_async` (L125)
@@ -2216,7 +2216,7 @@ Generated from source. 9837/18321 functions/methods documented (53%). The list b
 - `core/services/text_resonance.py` :: `build_text_resonance_surface` (L195)
 - `core/services/text_resonance.py` :: `recent_resonances` (L191)
 - `core/services/text_resonance.py` :: `reset_text_resonance` (L246)
-- `core/services/theater_audit.py` :: `build_theater_audit_surface` (L85)
+- `core/services/theater_audit.py` :: `build_theater_audit_surface` (L93)
 - `core/services/theory_of_mind.py` :: `recent_facts` (L297)
 - `core/services/theory_of_mind.py` :: `stop_theory_of_mind_tracker` (L482)
 - `core/services/theory_of_mind_engine.py` :: `build_theory_of_mind_prompt_section` (L53)

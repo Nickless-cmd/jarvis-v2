@@ -152,17 +152,17 @@ _Theater Audit -- find narrative-first inner-life patterns._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `build_theater_audit_surface` | `()` | — | [src](../../../core/services/theater_audit.py#L85) |
-| function | `_scan_findings` | `()` | — | [src](../../../core/services/theater_audit.py#L113) |
-| function | `_scan_files` | `()` | — | [src](../../../core/services/theater_audit.py#L160) |
-| function | `_python_line_state` | `(line, in_docstring)` | Track multi-line docstring state and decide whether to skip this line. | [src](../../../core/services/theater_audit.py#L178) |
-| function | `_skip_python_line` | `(line)` | Backwards-compatible wrapper. Use _python_line_state for new code. | [src](../../../core/services/theater_audit.py#L226) |
-| function | `_strip_trailing_inline_comment` | `(line)` | Drop trailing `  # ...` or `\t# ...` comment so its prose isn't scanned. | [src](../../../core/services/theater_audit.py#L232) |
-| function | `_rank_files` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L247) |
-| function | `_recommended_task` | `(files)` | — | [src](../../../core/services/theater_audit.py#L284) |
-| function | `_counts` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L309) |
-| function | `_priority_label` | `(score)` | — | [src](../../../core/services/theater_audit.py#L317) |
-| function | `_excerpt` | `(line)` | — | [src](../../../core/services/theater_audit.py#L325) |
+| function | `build_theater_audit_surface` | `()` | — | [src](../../../core/services/theater_audit.py#L93) |
+| function | `_scan_findings` | `()` | Return (findings, suppressed_by_kind). | [src](../../../core/services/theater_audit.py#L125) |
+| function | `_scan_files` | `()` | — | [src](../../../core/services/theater_audit.py#L184) |
+| function | `_python_line_state` | `(line, in_docstring)` | Track multi-line docstring state and decide whether to skip this line. | [src](../../../core/services/theater_audit.py#L202) |
+| function | `_skip_python_line` | `(line)` | Backwards-compatible wrapper. Use _python_line_state for new code. | [src](../../../core/services/theater_audit.py#L250) |
+| function | `_strip_trailing_inline_comment` | `(line)` | Drop trailing `  # ...` or `\t# ...` comment so its prose isn't scanned. | [src](../../../core/services/theater_audit.py#L256) |
+| function | `_rank_files` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L271) |
+| function | `_recommended_task` | `(files)` | — | [src](../../../core/services/theater_audit.py#L308) |
+| function | `_counts` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L333) |
+| function | `_priority_label` | `(score)` | — | [src](../../../core/services/theater_audit.py#L341) |
+| function | `_excerpt` | `(line)` | — | [src](../../../core/services/theater_audit.py#L349) |
 
 ## `core/services/theory_of_mind.py`
 _Theory of Mind — Step A.v1 of meta-evne stack._

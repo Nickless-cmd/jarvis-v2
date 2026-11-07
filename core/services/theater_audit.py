@@ -67,6 +67,14 @@ _PATTERNS: tuple[dict[str, Any], ...] = (
         "risk": "medium",
         "score": 18,
         "summary": "Identity context may prime daemon prose if not bounded by evidence contracts.",
+        # 2026-11-07: dette moenster matcher SYMBOLET, ikke om vaerdien er maalt — og
+        # maalt er den: build_identity_preamble() (identity_composer.py) bygger sin
+        # streng af navn fra IDENTITY.md, current_bearing fra personlighedsvektoren og
+        # energy_level fra body_state. 18 fund var derfor navne-artefakter, ikke teater.
+        # Undertrykkelsen er VERIFICERET, ikke antaget: tests/test_theater_audit_evidence.py
+        # fejler hvis preamblen holder op med at laese signaler. Den taelles stadig og
+        # rapporteres som suppressed_verified, saa den ikke forsvinder tavst.
+        "verified_signal_driven": True,
     },
     {
         "id": "private_inner_voice_prompt",
@@ -83,7 +91,7 @@ _PATTERNS: tuple[dict[str, Any], ...] = (
 
 
 def build_theater_audit_surface() -> dict[str, Any]:
-    findings = _scan_findings()
+    findings, suppressed = _scan_findings()
     files = _rank_files(findings)
     recommended = _recommended_task(files)
     counts = _counts(findings)
@@ -97,6 +105,10 @@ def build_theater_audit_surface() -> dict[str, Any]:
             "low_risk": counts["low"],
             "files": len(files),
             "top_risk_score": files[0]["risk_score"] if files else 0,
+            # Undertrykkede fund forsvinder ikke: de taelles og navngives, saa en
+            # fremtidig laeser kan se praecis hvad auditen valgte ikke at raabe op.
+            "suppressed_verified": sum(suppressed.values()),
+            "suppressed_by_kind": suppressed,
         },
         "findings": findings[:_MAX_FINDINGS],
         "files": files[:25],
@@ -110,8 +122,15 @@ def build_theater_audit_surface() -> dict[str, Any]:
     }
 
 
-def _scan_findings() -> list[dict[str, Any]]:
+def _scan_findings() -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """Return (findings, suppressed_by_kind).
+
+    ``suppressed_by_kind`` bærer de fund hvis mønster er verificeret signal-drevet
+    (se ``verified_signal_driven`` i ``_PATTERNS``). De udelades fra listen, men
+    tælles, så auditen kan vise hvad den valgte ikke at rapportere.
+    """
     findings: list[dict[str, Any]] = []
+    suppressed: dict[str, int] = {}
     for path in _scan_files():
         try:
             text = path.read_text(encoding="utf-8", errors="ignore")
@@ -134,18 +153,23 @@ def _scan_findings() -> list[dict[str, Any]]:
             else:
                 scan_line = line
             for pattern in _PATTERNS:
-                if pattern["regex"].search(scan_line):
-                    findings.append({
-                        "id": f"{rel}:{line_no}:{pattern['id']}",
-                        "path": rel,
-                        "line": line_no,
-                        "kind": pattern["id"],
-                        "label": pattern["label"],
-                        "risk": pattern["risk"],
-                        "risk_score": int(pattern["score"]),
-                        "summary": pattern["summary"],
-                        "excerpt": _excerpt(line),
-                    })
+                if not pattern["regex"].search(scan_line):
+                    continue
+                if pattern.get("verified_signal_driven"):
+                    key = str(pattern["id"])
+                    suppressed[key] = int(suppressed.get(key, 0)) + 1
+                    continue
+                findings.append({
+                    "id": f"{rel}:{line_no}:{pattern['id']}",
+                    "path": rel,
+                    "line": line_no,
+                    "kind": pattern["id"],
+                    "label": pattern["label"],
+                    "risk": pattern["risk"],
+                    "risk_score": int(pattern["score"]),
+                    "summary": pattern["summary"],
+                    "excerpt": _excerpt(line),
+                })
     findings.sort(
         key=lambda item: (
             -int(item["risk_score"]),
@@ -154,7 +178,7 @@ def _scan_findings() -> list[dict[str, Any]]:
             str(item["kind"]),
         )
     )
-    return findings
+    return findings, suppressed
 
 
 def _scan_files() -> list[Path]:

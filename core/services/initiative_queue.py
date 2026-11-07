@@ -725,9 +725,18 @@ def endorse_long_term_intention(initiative_id: str, *, note: str = "") -> dict[s
         existing = runtime_db.get_runtime_initiative(initiative_id)
         if not existing or str(existing.get("initiative_type") or "") != "long_term_intention":
             return None
+        # MÅLT 7/11-2026: her blev KUN `user_approved_at` sat. `_initiative_due`
+        # læser `next_attempt_at`, og `mark_attempted` skubber et livsprojekt
+        # `_LONG_TERM_REASSESS_DAYS` (14) frem — så en godkendelse forkortede
+        # ventetiden med nul. Feltet blev derefter kun læst i `central_hub`,
+        # hvor det SKJULER spørgsmålet for Bjørn. Han godkendte de samme tre
+        # livsprojekter mange gange, og det eneste der skete var at de holdt op
+        # med at blive vist, indtil de dukkede op igen 14 dage senere. En
+        # godkendelse er en instruks om at gå i gang nu, ikke en etiket.
         updated = runtime_db.update_runtime_initiative(
             initiative_id,
             user_approved_at=now,
+            next_attempt_at=now,
             outcome_note=note[:120],
             updated_at=now,
         )

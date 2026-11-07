@@ -771,9 +771,9 @@ _Persistence for the runtime-initiatives cluster._
 | function | `get_runtime_initiative` | `(initiative_id)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L188) |
 | function | `find_pending_runtime_initiative_by_focus` | `(focus, *, initiative_type=…)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L228) |
 | function | `list_runtime_initiatives` | `(*, status=…, initiative_type=…, limit=…)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L281) |
-| function | `update_runtime_initiative` | `(initiative_id, *, status=…, initiative_type=…, priority=…, detected_at=…, why_text=…, first_seeded_at=…, attempt_count=…, last_attempt_at=…, next_attempt_at=…, blocked_reason=…, acted_at=…, last_action_at=…, abandoned_at=…, action_summary=…, updated_at)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L341) |
-| function | `approve_runtime_initiative` | `(initiative_id, *, outcome_note=…, updated_at)` | Mark an initiative as user-approved. Sets user_approved_at and outcome='approved'. | [src](../../../core/runtime/db_runtime_initiatives.py#L404) |
-| function | `reject_runtime_initiative` | `(initiative_id, *, outcome_note=…, updated_at)` | Mark an initiative as user-rejected. Sets outcome='rejected' and expires it. | [src](../../../core/runtime/db_runtime_initiatives.py#L431) |
+| function | `update_runtime_initiative` | `(initiative_id, *, status=…, initiative_type=…, priority=…, detected_at=…, why_text=…, first_seeded_at=…, attempt_count=…, last_attempt_at=…, next_attempt_at=…, blocked_reason=…, acted_at=…, last_action_at=…, abandoned_at=…, action_summary=…, user_approved_at=…, outcome_note=…, updated_at)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L341) |
+| function | `approve_runtime_initiative` | `(initiative_id, *, outcome_note=…, updated_at)` | Mark an initiative as user-approved. Sets user_approved_at and outcome='approved'. | [src](../../../core/runtime/db_runtime_initiatives.py#L413) |
+| function | `reject_runtime_initiative` | `(initiative_id, *, outcome_note=…, updated_at)` | Mark an initiative as user-rejected. Sets outcome='rejected' and expires it. | [src](../../../core/runtime/db_runtime_initiatives.py#L440) |
 
 ## `core/runtime/db_runtime_misc.py`
 _Persistence for small self-contained runtime CRUD domains._

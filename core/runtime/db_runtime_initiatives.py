@@ -355,6 +355,13 @@ def update_runtime_initiative(
     last_action_at: str | None = None,
     abandoned_at: str | None = None,
     action_summary: str | None = None,
+    # MÅLT 7/11-2026: `endorse_long_term_intention` kaldte med `user_approved_at`
+    # og `outcome_note` — men ingen af dem fandtes her. Hvert eneste forsoeg paa
+    # at godkende et livsprojekt kastede derfor TypeError, og `user_approved_at`
+    # var tom i ALLE raekker. Det er grunden til at Bjoerns mange godkendelser
+    # ikke landede nogen steder. Kolonnerne fandtes hele tiden i skemaet.
+    user_approved_at: str | None = None,
+    outcome_note: str | None = None,
     updated_at: str,
 ) -> dict[str, object] | None:
     updates: list[str] = ["updated_at = ?"]
@@ -374,6 +381,8 @@ def update_runtime_initiative(
         "last_action_at": last_action_at,
         "abandoned_at": abandoned_at,
         "action_summary": action_summary,
+        "user_approved_at": user_approved_at,
+        "outcome_note": outcome_note,
     }
     for column, value in field_map.items():
         if value is None:

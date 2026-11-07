@@ -199,8 +199,8 @@ _Persistent initiative queue — bridges inner voice thoughts to heartbeat actio
 | function | `list_active_long_term_intentions` | `(*, limit=…)` | — | [src](../../../core/services/initiative_queue.py#L670) |
 | function | `abandon_long_term_intention` | `(initiative_id, *, note=…)` | — | [src](../../../core/services/initiative_queue.py#L685) |
 | function | `endorse_long_term_intention` | `(initiative_id, *, note=…)` | Bjørn siger «det er i orden» til et livsprojekt. | [src](../../../core/services/initiative_queue.py#L711) |
-| function | `_find_active_long_term_intention_by_title` | `(title)` | — | [src](../../../core/services/initiative_queue.py#L747) |
-| function | `initiatives_prompt_section` | `()` | Awareness-sektion: de impulser han SELV har rejst, men aldrig fik sagt. | [src](../../../core/services/initiative_queue.py#L770) |
+| function | `_find_active_long_term_intention_by_title` | `(title)` | — | [src](../../../core/services/initiative_queue.py#L756) |
+| function | `initiatives_prompt_section` | `()` | Awareness-sektion: de impulser han SELV har rejst, men aldrig fik sagt. | [src](../../../core/services/initiative_queue.py#L779) |
 
 ## `core/services/inner_dialectic_engine.py`
 _Compact inner critic / ally / synthesizer dialectic._

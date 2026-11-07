@@ -243,8 +243,15 @@ def register_inner_life_producers(register_producer: Callable[[ProducerSpec], No
         return {"resurfaced": True, "heading": str(cand.get("heading") or ""),
                 "trigger": "cadence"}
 
+    # Navnet er `memory_resurfacing_pick` og IKKE `memory_resurfacing` med vilje.
+    # Laget af samme navn registreres af `central_layer_contract.register_layer`
+    # (via central_soul_feel), og register_producer overskriver tavst ved
+    # navne-kollision — målt 7/11-2026: lagets lambda (cooldown 10, prio 8) vandt
+    # over denne (60/28), så denne producer var død kode mens den så registreret ud.
+    # De to gør også forskellige ting: laget LÆSER tilstand, denne VÆLGER og logger
+    # et minde. Derfor to navne.
     register_producer(ProducerSpec(
-        name="memory_resurfacing",
+        name="memory_resurfacing_pick",
         cooldown_minutes=60,
         visible_grace_minutes=10,
         run_fn=_run_memory_resurfacing,

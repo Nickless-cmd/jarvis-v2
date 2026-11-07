@@ -36,9 +36,9 @@ def test_produceren_er_registreret_med_kadence():
     from core.services.internal_cadence_inner_life import register_inner_life_producers
 
     register_inner_life_producers(ic.register_producer)
-    spec = ic._producers.get("memory_resurfacing")
+    spec = ic._producers.get("memory_resurfacing_pick")
     assert spec is not None, (
-        "memory_resurfacing er ikke registreret som producer — så kaldes "
+        "memory_resurfacing_pick er ikke registreret som producer — så kaldes "
         "pick_resurfacing_candidate aldrig af sig selv (målt: 3 poster på 6 mdr.)"
     )
     assert spec.cooldown_minutes == 60, (
@@ -65,7 +65,7 @@ def test_produceren_kalder_kandidaten_og_viderebringer_overskriften(monkeypatch)
         specs[spec.name] = spec
 
     il.register_inner_life_producers(_capture)
-    res = specs["memory_resurfacing"].run_fn(trigger="cadence", last_visible_at="")
+    res = specs["memory_resurfacing_pick"].run_fn(trigger="cadence", last_visible_at="")
 
     assert kaldt == ["cadence"], f"kandidaten blev ikke kaldt: {kaldt}"
     assert res.get("resurfaced") is True
@@ -83,7 +83,7 @@ def test_produceren_melder_aerligt_naar_der_ikke_er_en_kandidat(monkeypatch):
     specs = {}
     il.register_inner_life_producers(lambda s: specs.__setitem__(s.name, s))
 
-    res = specs["memory_resurfacing"].run_fn(trigger="cadence", last_visible_at="")
+    res = specs["memory_resurfacing_pick"].run_fn(trigger="cadence", last_visible_at="")
 
     assert res.get("resurfaced") is False
     assert "reason" in res and res["reason"]

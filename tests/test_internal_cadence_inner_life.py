@@ -110,9 +110,44 @@ def test_depends_on_peger_paa_registrerede_navne():
 
 def test_memory_resurfacing_koerer_hver_time():
     """Docstringen sagde «once an hour» — nu er det ogsaå kadencen i koden."""
-    spec = _specs().get("memory_resurfacing")
-    assert spec is not None, "memory_resurfacing er ikke registreret"
+    spec = _specs().get("memory_resurfacing_pick")
+    assert spec is not None, "memory_resurfacing_pick er ikke registreret"
     assert spec.cooldown_minutes == 60
+
+
+def test_resurfacing_producer_overlever_navne_kollision_med_laget():
+    """Regression 7/11-2026 — den fejl docstringen over advarer om, men paa tvaers af grupper.
+
+    Laget `memory_resurfacing` registreres af `central_layer_contract.register_layer`
+    (via central_soul_feel). Da produceren hed det SAMME navn, overskrev lagets
+    lambda (cooldown 10, prio 8) den tavst. Produceren var derfor doed kode mens
+    den saa registreret ud: loggen voksede kun naar `pick_resurfacing_candidate`
+    blev kaldt direkte, aldrig fra kadencen.
+
+    `test_navnene_er_unikke` kunne ikke fange det — den ser kun denne fils gruppe.
+    Denne test maaler i det FAKTISKE register, efter at alle grupper OG
+    lag-kontrakterne har registreret sig.
+    """
+    from core.services import internal_cadence as ic
+
+    register_inner_life_producers(ic.register_producer)
+    # Lagene registreres EFTER producer-gruppen i runtime — det er den raekkefoelge
+    # der gjorde skaden. At importere modulet er ikke nok: registreringen sker i
+    # `register_soul_feel_layers()`, saa den skal kaldes for at testen maaler det
+    # virkelige forloeb.
+    from core.services.central_soul_feel import register_soul_feel_layers
+    register_soul_feel_layers()
+
+    specs = ic._producers
+    assert "memory_resurfacing" in specs, "lagets producer forsvandt fra registeret"
+    vaar = specs["memory_resurfacing_pick"]
+    assert vaar.cooldown_minutes == 60, (
+        f"vaar producer er overskrevet — cooldown er {vaar.cooldown_minutes}, ikke 60"
+    )
+    assert vaar.priority == 28, f"prioritet er {vaar.priority}, ikke 28"
+    assert "register_inner_life_producers" in vaar.run_fn.__qualname__, (
+        f"run_fn er ikke vaar egen — den er {vaar.run_fn.__qualname__}"
+    )
 
 
 def test_memory_resurfacing_kalder_kandidaten_og_viderebringer_overskriften(monkeypatch):
@@ -126,7 +161,7 @@ def test_memory_resurfacing_kalder_kandidaten_og_viderebringer_overskriften(monk
         return {"heading": "En gammel tråd"}
 
     monkeypatch.setattr(mr, "pick_resurfacing_candidate", _fake)
-    res = _specs()["memory_resurfacing"].run_fn(trigger="cadence", last_visible_at="")
+    res = _specs()["memory_resurfacing_pick"].run_fn(trigger="cadence", last_visible_at="")
 
     assert kaldt == ["cadence"], f"kandidaten blev ikke kaldt: {kaldt}"
     assert res.get("resurfaced") is True
@@ -138,7 +173,7 @@ def test_memory_resurfacing_melder_aerligt_naar_der_intet_er_at_genfinde(monkeyp
     from core.services import memory_resurfacing as mr
 
     monkeypatch.setattr(mr, "pick_resurfacing_candidate", lambda **kw: None)
-    res = _specs()["memory_resurfacing"].run_fn(trigger="cadence", last_visible_at="")
+    res = _specs()["memory_resurfacing_pick"].run_fn(trigger="cadence", last_visible_at="")
 
     assert res.get("resurfaced") is False
     assert res.get("reason"), "en tom koersel skal sige HVORFOR den var tom"

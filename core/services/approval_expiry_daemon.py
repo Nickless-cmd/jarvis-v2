@@ -176,3 +176,46 @@ def tick_approval_expiry_daemon(now: datetime | None = None) -> dict[str, object
 def sidste_resultat() -> dict[str, object]:
     """Hvad fejeren sidst udrettede — så en læser kan se om den kører."""
     return dict(_last_result)
+
+
+def build_approval_expiry_daemon_surface() -> dict[str, object]:
+    """Mission Control-surface: hvad udløb, og kører fejeren overhovedet?
+
+    To kilder, bevidst adskilt: (1) processens egen `_last_result` — gælder KUN
+    den proces surface'en kaldes i, og er tom indtil fejeren har tikket her —
+    og (2) eventbussens ``approvals.expired``, som overlever på tværs af
+    processer. Fejeren publicerer kun når noget udløb, så (2) viser udløb, ikke
+    at fejeren lever.
+    """
+    base = {"mode": "approval-expiry-daemon"}
+    tick = {
+        "ticked_in_this_process": _last_tick_at is not None,
+        "last_tick_at": _last_tick_at.isoformat() if _last_tick_at else None,
+        "last_result": dict(_last_result),
+        "cadence_minutes": _CADENCE_MINUTES,
+    }
+    try:
+        from core.eventbus.bus import event_bus
+        expired_events = event_bus.recent_by_family("approvals", limit=500)
+    except Exception as exc:  # surface skal melde årsagen, ikke kaste ind i MC
+        return {**base, "active": False, "signals": {"tick": tick},
+                "reason": f"eventbussen kunne ikke læses: {type(exc).__name__}: {exc}"[:300],
+                "summary": "udløbs-events ulæselige"}
+    expired = [e for e in expired_events if e.get("kind") == "approvals.expired"]
+    expired_total = sum(int((e.get("payload") or {}).get("count") or 0) for e in expired)
+    last_expired_at = expired[0].get("created_at") if expired else None
+    if _last_tick_at is None and not expired:
+        return {**base, "active": False,
+                "signals": {"tick": tick, "expired_events": 0, "expired_total": 0},
+                "reason": ("fejeren har ikke tikket i denne proces og ingen approvals.expired "
+                           "findes blandt de seneste 500 approvals-events"),
+                "summary": "ingen tegn på at fejeren har kørt"}
+    return {
+        "active": True, **base,
+        "signals": {"tick": tick, "expired_events": len(expired),
+                    "expired_total": expired_total, "last_expired_at": last_expired_at},
+        "summary": (f"{expired_total} godkendelser udløbet i {len(expired)} events "
+                    f"(seneste {last_expired_at or 'aldrig'}); "
+                    + (f"sidste tick i denne proces {tick['last_tick_at']}" if _last_tick_at
+                       else "ikke tikket i denne proces")),
+    }

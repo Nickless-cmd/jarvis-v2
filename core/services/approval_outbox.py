@@ -173,3 +173,59 @@ def start_approval_outbox_dispatcher() -> bool:
             daemon=True,
         ).start()
     return True
+
+
+def build_approval_outbox_surface() -> dict[str, object]:
+    """Mission Control-surface: hvad står i notifikations-udbakken?
+
+    READ-ONLY. `pending_approval_notifications` kalder `ensure_*_table`
+    (CREATE TABLE) og filtrerer på forfaldstid — her tjekkes tabellen først og
+    ALLE rækker tælles, også dem der venter på næste forsøg.
+    """
+    base = {"mode": "approval-outbox"}
+    try:
+        with connect() as conn:
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                            "AND name='approval_notification_outbox'").fetchone() is None:
+                return {**base, "active": False, "signals": {},
+                        "reason": "tabellen approval_notification_outbox findes ikke endnu",
+                        "summary": "ingen notifikation nogensinde lagt i udbakken"}
+            by_state = conn.execute(
+                "SELECT state, COUNT(*) FROM approval_notification_outbox "
+                "GROUP BY state ORDER BY state").fetchall()
+            retrying, max_attempts = conn.execute(
+                "SELECT COUNT(*), COALESCE(MAX(attempts), 0) FROM approval_notification_outbox "
+                "WHERE state='pending' AND attempts > 0").fetchone()
+            oldest_pending = conn.execute(
+                "SELECT MIN(created_at) FROM approval_notification_outbox "
+                "WHERE state='pending'").fetchone()[0]
+            last_delivered = conn.execute(
+                "SELECT MAX(delivered_at) FROM approval_notification_outbox").fetchone()[0]
+            errors = conn.execute(
+                "SELECT last_error, COUNT(*) FROM approval_notification_outbox "
+                "WHERE state='pending' AND last_error IS NOT NULL "
+                "GROUP BY last_error ORDER BY COUNT(*) DESC, last_error LIMIT 3").fetchall()
+    except Exception as exc:  # surface skal melde årsagen, ikke kaste ind i MC
+        return {**base, "active": False, "signals": {},
+                "reason": f"udbakken kunne ikke læses: {type(exc).__name__}: {exc}"[:300],
+                "summary": "udbak ulæselig"}
+    states = {str(s): int(n) for s, n in by_state}
+    total = sum(states.values())
+    if not total:
+        return {**base, "active": False, "signals": {"total": 0},
+                "reason": "approval_notification_outbox er tom",
+                "summary": "ingen notifikation nogensinde lagt i udbakken"}
+    return {
+        "active": True, **base,
+        "signals": {
+            "total": total, "by_state": states,
+            "pending": states.get("pending", 0), "delivered": states.get("delivered", 0),
+            "retrying": int(retrying or 0), "max_attempts_pending": int(max_attempts or 0),
+            "oldest_pending_at": oldest_pending, "last_delivered_at": last_delivered,
+            "pending_errors": [{"error": str(e), "count": int(n)} for e, n in errors],
+            "dispatcher_started": _worker_started,
+        },
+        "summary": (f"{total} notifikationer: {states.get('delivered', 0)} leveret, "
+                    f"{states.get('pending', 0)} venter ({int(retrying or 0)} i genforsøg); "
+                    f"seneste leveret {last_delivered or 'aldrig'}"),
+    }

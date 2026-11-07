@@ -193,3 +193,53 @@ CROSS_AGENT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
 ]
+
+
+def build_cross_agent_memory_surface() -> dict[str, Any]:
+    """Mission Control-surface: hvad ligger der i den delte observations-log?
+
+    Kun TÆL og tidsstempler — aldrig indhold: loggen er privat pr. bruger
+    (`scoped_recall_policy`), og en operatør-flade må ikke omgå den. Læser
+    `agent_observations` direkte; `_all_observations` kræver en privat scope og
+    sluger fejl til «ingen rækker».
+    """
+    base = {"mode": "cross-agent-memory"}
+    try:
+        records = load_json("agent_observations", None)
+    except Exception as exc:  # load_json kaster normalt aldrig, men en ulæselig log skal melde sig
+        return {**base, "active": False, "signals": {},
+                "reason": f"agent_observations kunne ikke læses: {type(exc).__name__}: {exc}"[:300],
+                "summary": "observations-log ulæselig"}
+    if records is None:
+        return {**base, "active": False, "signals": {},
+                "reason": "state/agent_observations.json findes ikke (eller er korrupt — se state_store-loggen)",
+                "summary": "ingen observationer gemt"}
+    if not isinstance(records, list):
+        return {**base, "active": False, "signals": {},
+                "reason": f"agent_observations har uventet type {type(records).__name__}, forventet list",
+                "summary": "observations-log har forkert form"}
+    rows = [r for r in records if isinstance(r, dict)]
+    if not rows:
+        return {**base, "active": False, "signals": {"malformed": len(records)},
+                "reason": "agent_observations er tom", "summary": "ingen observationer gemt"}
+    cutoff_fresh = (datetime.now(UTC) - timedelta(days=_DEFAULT_LOOKBACK_DAYS)).isoformat()
+    roles: dict[str, int] = {}
+    for r in rows:
+        role = str(r.get("role") or "")
+        roles[role] = roles.get(role, 0) + 1
+    fresh = sum(1 for r in rows if str(r.get("recorded_at", "")) >= cutoff_fresh)
+    stale = sum(1 for r in rows if r.get("stale"))
+    last = max(str(r.get("recorded_at") or "") for r in rows) or None
+    return {
+        "active": True, **base,
+        "signals": {
+            "observations": len(rows), "malformed": len(records) - len(rows),
+            "users": len({str(r.get("user_id") or "") for r in rows}),
+            "roles": dict(sorted(roles.items(), key=lambda kv: (-kv[1], kv[0]))),
+            "fresh_in_lookback": fresh, "lookback_days": _DEFAULT_LOOKBACK_DAYS,
+            "marked_stale": stale, "last_recorded_at": last,
+            "recall_enabled": bool(scoped_recall_policy.recall_enabled()),
+        },
+        "summary": (f"{len(rows)} observationer fra {len(roles)} roller, {fresh} friske "
+                    f"({_DEFAULT_LOOKBACK_DAYS}d); seneste {last or 'aldrig'}"),
+    }

@@ -1016,3 +1016,55 @@ UNIFIED_RECALL_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
 ]
+
+
+_SURFACE_SCAN = 500  # hvor mange seneste memory.*-events surface'en kigger igennem
+
+
+def build_memory_recall_engine_surface() -> dict[str, Any]:
+    """Mission Control-surface: hvad har recall-motoren faktisk hentet frem?
+
+    Kilden er ``memory.recall``-eventet som `_observe_recall_quality` udsender
+    ved hvert multi-signal-recall (kun scalar-metadata, aldrig indhold). Familien
+    ``memory`` deles med andre tjenester, så tallene gælder de seneste
+    ``_SURFACE_SCAN`` memory.*-events — ikke al historik.
+    """
+    base = {"mode": "memory-recall-engine"}
+    try:
+        from core.eventbus.bus import event_bus
+        events = event_bus.recent_by_family("memory", limit=_SURFACE_SCAN)
+    except Exception as exc:  # surface skal melde årsagen, ikke kaste ind i MC
+        return {**base, "active": False, "signals": {},
+                "reason": f"eventbussen kunne ikke læses: {type(exc).__name__}: {exc}"[:300],
+                "summary": "recall-events ulæselige"}
+    recalls = [e for e in events if e.get("kind") == "memory.recall"]
+    if not recalls:
+        return {**base, "active": False, "signals": {"scanned_memory_events": len(events)},
+                "reason": f"ingen memory.recall blandt de seneste {len(events)} memory-events",
+                "summary": "ingen recall observeret"}
+    payloads = [e.get("payload") or {} for e in recalls]  # nyeste først
+    counts = [int(p.get("result_count") or 0) for p in payloads]
+    scores = [float(p.get("top_score") or 0.0) for p in payloads]
+    shares = [float(p.get("private_brain_share") or 0.0) for p in payloads]
+    sources: dict[str, int] = {}
+    for p in payloads:
+        for s in p.get("sources") or []:
+            sources[str(s)] = sources.get(str(s), 0) + 1
+    empty = sum(1 for c in counts if c == 0)
+    n = len(recalls)
+    last = recalls[0]
+    return {
+        "active": True, **base,
+        "signals": {
+            "recalls": n, "scanned_memory_events": len(events),
+            "empty_recalls": empty,
+            "mean_result_count": round(sum(counts) / n, 2),
+            "mean_top_score": round(sum(scores) / n, 4),
+            "mean_private_brain_share": round(sum(shares) / n, 3),
+            "sources": dict(sorted(sources.items(), key=lambda kv: (-kv[1], kv[0]))),
+            "last_recall_at": last.get("created_at"),
+            "last_result_count": counts[0], "last_top_score": scores[0],
+        },
+        "summary": (f"{n} recalls (seneste {_SURFACE_SCAN} memory-events), {empty} tomme; "
+                    f"middel top-score {round(sum(scores) / n, 3)}; seneste {last.get('created_at')}"),
+    }

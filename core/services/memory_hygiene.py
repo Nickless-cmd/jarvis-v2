@@ -336,3 +336,68 @@ def _publish_inbox(workspace: str, report: dict[str, Any]) -> dict[str, Any]:
     except Exception as exc:
         logger.warning("memory hygiene inbox projection failed for %s: %s", workspace, exc)
         return {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
+
+
+def build_memory_hygiene_surface() -> dict[str, Any]:
+    """Mission Control-surface: hvad fandt hygiejne-auditten sidst, pr. workspace?
+
+    READ-ONLY. `audit_workspace()` SKRIVER (snapshot-række + rapportfil) og
+    `_usage_summary()` kalder `_ensure_tables` — begge ville ændre det surface'en
+    skal vise. Her læses kun de to tabeller, og kun hvis de findes.
+    """
+    base = {"mode": "memory-hygiene"}
+    try:
+        with connect() as conn:
+            have = {r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name IN "
+                "('memory_hygiene_snapshots', 'memory_section_usage')").fetchall()}
+            if not have:
+                return {**base, "active": False, "signals": {},
+                        "reason": "hverken memory_hygiene_snapshots eller memory_section_usage findes endnu",
+                        "summary": "ingen audit eller brugstælling kørt"}
+            latest: dict[str, dict[str, Any]] = {}
+            snapshots = 0
+            if "memory_hygiene_snapshots" in have:
+                snapshots = int(conn.execute(
+                    "SELECT COUNT(*) FROM memory_hygiene_snapshots").fetchone()[0])
+                for r in conn.execute(
+                    "SELECT workspace, file_bytes, section_count, dated_sections, undated_sections, "
+                    "duplicate_groups, operational_sections, tracked_sections, created_at "
+                    "FROM memory_hygiene_snapshots WHERE id IN "
+                    "(SELECT MAX(id) FROM memory_hygiene_snapshots GROUP BY workspace) "
+                    "ORDER BY workspace").fetchall():
+                    file_bytes, sections = int(r[1]), int(r[2])
+                    latest[str(r[0])] = {
+                        "file_bytes": file_bytes, "sections": sections,
+                        "dated": int(r[3]), "undated": int(r[4]),
+                        "duplicate_groups": int(r[5]), "operational_sections": int(r[6]),
+                        "tracked_sections": int(r[7]), "audited_at": str(r[8]),
+                        "soft_cap_breached": file_bytes >= SOFT_CAP_BYTES or sections >= SOFT_CAP_SECTIONS,
+                    }
+            tracked = selections = 0
+            last_selected = None
+            if "memory_section_usage" in have:
+                tracked, selections, last_selected = conn.execute(
+                    "SELECT COUNT(*), COALESCE(SUM(selection_count), 0), MAX(last_selected_at) "
+                    "FROM memory_section_usage").fetchone()
+    except Exception as exc:  # surface skal melde årsagen, ikke kaste ind i MC
+        return {**base, "active": False, "signals": {},
+                "reason": f"hygiejne-tabellerne kunne ikke læses: {type(exc).__name__}: {exc}"[:300],
+                "summary": "hygiejne-tilstand ulæselig"}
+    breached = sorted(w for w, s in latest.items() if s["soft_cap_breached"])
+    last_audit = max((s["audited_at"] for s in latest.values()), default=None)
+    has_data = bool(snapshots or tracked)
+    return {
+        "active": has_data, **base,
+        **({} if has_data else {"reason": "tabellerne findes men er tomme"}),
+        "signals": {
+            "snapshots": snapshots, "workspaces_audited": len(latest),
+            "last_audit_at": last_audit, "latest_by_workspace": latest,
+            "soft_cap_breached": breached,
+            "usage": {"tracked_sections": int(tracked or 0), "selections": int(selections or 0),
+                      "last_selected_at": last_selected},
+        },
+        "summary": (f"{snapshots} audits over {len(latest)} workspaces, seneste {last_audit or 'aldrig'}; "
+                    f"{int(tracked or 0)} sektioner talt i brug"
+                    + (f"; loft brudt: {', '.join(breached)}" if breached else "")),
+    }

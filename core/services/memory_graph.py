@@ -349,3 +349,53 @@ def stats() -> dict:
     }
 
 
+
+
+def build_memory_graph_surface() -> dict:
+    """Mission Control-surface: hvad står der faktisk i vidensgrafen?
+
+    READ-ONLY. `stats()` kalder `_ensure_tables` (CREATE TABLE) og sluger alle
+    fejl til ``{"entities": 0, ...}`` — begge dele ville gøre en ulæselig graf
+    til «tom graf». Her tjekkes tabellernes eksistens først, og en fejl bliver
+    en årsag.
+    """
+    base = {"mode": "memory-graph"}
+    try:
+        with connect() as conn:
+            have = {r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' "
+                "AND name IN ('memory_entities', 'memory_edges')").fetchall()}
+            if have != {"memory_entities", "memory_edges"}:
+                return {**base, "active": False, "signals": {},
+                        "reason": "memory_entities/memory_edges findes ikke endnu",
+                        "summary": "ingen vidensgraf oprettet"}
+            ents, last_seen = conn.execute(
+                "SELECT COUNT(*), MAX(last_seen) FROM memory_entities").fetchone()
+            edges, last_edge = conn.execute(
+                "SELECT COUNT(*), MAX(created_at) FROM memory_edges").fetchone()
+            kinds = conn.execute(
+                "SELECT kind, COUNT(*) FROM memory_entities GROUP BY kind "
+                "ORDER BY COUNT(*) DESC, kind").fetchall()
+            relations = conn.execute(
+                "SELECT relation, COUNT(*) FROM memory_edges GROUP BY relation "
+                "ORDER BY COUNT(*) DESC, relation LIMIT 5").fetchall()
+            top = conn.execute(
+                "SELECT name_display, mention_count FROM memory_entities "
+                "ORDER BY mention_count DESC, name_display LIMIT 5").fetchall()
+    except Exception as exc:  # surface skal melde årsagen, ikke kaste ind i MC
+        return {**base, "active": False, "signals": {},
+                "reason": f"vidensgrafen kunne ikke læses: {type(exc).__name__}: {exc}"[:300],
+                "summary": "vidensgraf ulæselig"}
+    ents, edges = int(ents or 0), int(edges or 0)
+    return {
+        "active": ents > 0, **base,
+        **({} if ents else {"reason": "memory_entities er tom"}),
+        "signals": {
+            "entities": ents, "edges": edges,
+            "last_entity_seen_at": last_seen, "last_edge_at": last_edge,
+            "kinds": {str(k): int(n) for k, n in kinds},
+            "top_relations": {str(k): int(n) for k, n in relations},
+            "top_entities": [{"name": str(n), "mentions": int(m)} for n, m in top],
+        },
+        "summary": f"{ents} entiteter, {edges} kanter; seneste kant {last_edge or 'aldrig'}",
+    }

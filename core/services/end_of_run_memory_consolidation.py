@@ -692,3 +692,58 @@ def _daily_excerpt(value: str, *, limit: int) -> str:
     if len(normalized) <= limit:
         return normalized
     return clip_text(normalized, limit=limit)
+
+
+_SURFACE_SCAN = 500  # hvor mange seneste memory.*-events surface'en kigger igennem
+
+
+def build_end_of_run_memory_consolidation_surface() -> dict[str, object]:
+    """Mission Control-surface: hvad blev gemt ved run-slut?
+
+    Kilden er ``memory.end_of_run_consolidation`` (ét event pr. kald, også
+    ved skip) og ``memory.consolidation_model_fallback``. Familien ``memory``
+    deles med andre tjenester, så tallene gælder de seneste ``_SURFACE_SCAN``
+    memory.*-events — ikke al historik.
+    """
+    base = {"mode": "end-of-run-memory-consolidation"}
+    try:
+        events = event_bus.recent_by_family("memory", limit=_SURFACE_SCAN)
+    except Exception as exc:  # surface skal melde årsagen, ikke kaste ind i MC
+        return {**base, "active": False, "signals": {},
+                "reason": f"eventbussen kunne ikke læses: {type(exc).__name__}: {exc}"[:300],
+                "summary": "konsoliderings-events ulæselige"}
+    runs = [e for e in events if e.get("kind") == "memory.end_of_run_consolidation"]
+    fallbacks = [e for e in events if e.get("kind") == "memory.consolidation_model_fallback"]
+    if not runs:
+        return {**base, "active": False,
+                "signals": {"scanned_memory_events": len(events), "model_fallbacks": len(fallbacks)},
+                "reason": f"ingen konsolidering blandt de seneste {len(events)} memory-events",
+                "summary": "ingen konsolidering observeret"}
+    payloads = [e.get("payload") or {} for e in runs]  # nyeste først
+    skipped: dict[str, int] = {}
+    for p in payloads:
+        reason = p.get("skipped_reason")
+        if reason:
+            skipped[str(reason)] = skipped.get(str(reason), 0) + 1
+    consolidated = sum(1 for p in payloads if p.get("consolidated"))
+    candidates = sum(int(p.get("candidate_count") or 0) for p in payloads)
+    n = len(runs)
+    last = runs[0]
+    return {
+        "active": True, **base,
+        "signals": {
+            "runs": n, "consolidated": consolidated, "skipped": sum(skipped.values()),
+            "skipped_reasons": dict(sorted(skipped.items(), key=lambda kv: (-kv[1], kv[0]))),
+            "candidates_proposed": candidates,
+            "memory_updated": sum(1 for p in payloads if p.get("memory_updated")),
+            "user_updated": sum(1 for p in payloads if p.get("user_updated")),
+            "daily_memory_logged": sum(1 for p in payloads if p.get("daily_memory_logged")),
+            "auto_applied_memory": sum(int(p.get("auto_applied_memory_count") or 0) for p in payloads),
+            "auto_applied_user": sum(int(p.get("auto_applied_user_count") or 0) for p in payloads),
+            "rule_proposals": sum(int(p.get("rule_proposals") or 0) for p in payloads),
+            "model_fallbacks": len(fallbacks), "scanned_memory_events": len(events),
+            "last_run_at": last.get("created_at"),
+        },
+        "summary": (f"{n} run-slut, {consolidated} konsolideret, {candidates} kandidater; "
+                    f"{len(fallbacks)} model-fallbacks; seneste {last.get('created_at')}"),
+    }

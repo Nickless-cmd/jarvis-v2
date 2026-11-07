@@ -120,3 +120,50 @@ def enrich_headings_with_mood(text: str) -> str:
     return re.sub(r"^(#{1,4}\s+)(.+)$", _annotate, text, flags=re.MULTILINE)
 
 
+
+
+def build_memory_emotional_context_surface() -> dict:
+    """Mission Control-surface: hvilke MEMORY.md-overskrifter bærer en følelse?
+
+    Shim'en har ingen egen tabel (se modul-docstring) — dens tilstand ER
+    ankrene af typen ``memory_heading`` i emotional_memory_anchors, så det er
+    dem der tælles. `enrich_headings_with_mood` sluger læsefejl til «ingen
+    annotation»; her bliver en fejl en årsag.
+    """
+    base = {"mode": "memory-emotional-context"}
+    try:
+        rows = list_emotional_memory_anchors(anchor_type="memory_heading", limit=2000)
+    except Exception as exc:  # surface skal melde årsagen, ikke kaste ind i MC
+        return {**base, "active": False, "signals": {},
+                "reason": f"emotional_memory_anchors kunne ikke læses: {type(exc).__name__}: {exc}"[:300],
+                "summary": "følelsesankre ulæselige"}
+    if not rows:
+        return {**base, "active": False, "signals": {},
+                "reason": "ingen ankre af typen memory_heading",
+                "summary": "ingen overskrift har fået en følelse"}
+    moods: dict[str, int] = {}
+    intensities: list[float] = []
+    for r in rows:
+        mood = str(r.get("mood") or "")
+        if mood:
+            moods[mood] = moods.get(mood, 0) + 1
+        try:
+            intensities.append(float(r.get("intensity") or 0.0))
+        except (TypeError, ValueError):  # en ulæselig intensitet tæller ikke med i middelværdien
+            continue
+    last = max(str(r.get("captured_at") or "") for r in rows) or None
+    sources: dict[str, int] = {}
+    for r in rows:
+        s = str(r.get("source") or "")
+        sources[s] = sources.get(s, 0) + 1
+    avg = round(sum(intensities) / len(intensities), 3) if intensities else None
+    return {
+        "active": True, **base,
+        "signals": {
+            "anchored_headings": len(rows), "last_captured_at": last,
+            "moods": dict(sorted(moods.items(), key=lambda kv: (-kv[1], kv[0]))),
+            "sources": dict(sorted(sources.items(), key=lambda kv: (-kv[1], kv[0]))),
+            "mean_intensity": avg, "read_limit": 2000,
+        },
+        "summary": f"{len(rows)} overskrifter med følelse, middel-intensitet {avg}; seneste {last or 'aldrig'}",
+    }

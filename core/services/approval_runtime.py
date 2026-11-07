@@ -399,3 +399,46 @@ def sweep_expired() -> dict[str, int]:
     except Exception:
         logger.warning("approval_runtime: fejningen fejlede", exc_info=True)
     return ud
+
+
+def build_approval_runtime_surface() -> dict[str, Any]:
+    """Mission Control-surface: hvilke godkendelses-kort venter lige nu?
+
+    `godkendelser_nu()` falder stille tilbage på processens egen kopi hvis
+    disken ikke kan læses — så en ulæselig kortfil ville se ud som «processen
+    ved ingenting». Her læses disken direkte, og en fejl bliver en årsag.
+    """
+    base = {"mode": "approval-runtime"}
+    try:
+        import core.services.visible_runs as _vr
+        from core.services.visible_runs_approvals import _er_udloebet
+
+        kort = dict(_vr._load_approvals_state(_vr._APPROVALS_STATE_KEY, {}) or {})
+    except Exception as exc:  # surface skal melde årsagen, ikke kaste ind i MC
+        return {**base, "active": False, "signals": {},
+                "reason": f"godkendelses-kortene kunne ikke læses: {type(exc).__name__}: {exc}"[:300],
+                "summary": "godkendelses-kort ulæselige"}
+    if not kort:
+        return {**base, "active": False, "signals": {"pending": 0},
+                "reason": "ingen ventende godkendelses-kort på disken",
+                "summary": "ingen godkendelser venter"}
+    valid = {k: v for k, v in kort.items() if isinstance(v, dict)}
+    expired = sorted(k for k, v in valid.items() if _er_udloebet(v))
+    tools: dict[str, int] = {}
+    for v in valid.values():
+        t = str(v.get("tool_name") or "")
+        tools[t] = tools.get(t, 0) + 1
+    created = sorted(str(v.get("created_at") or "") for v in valid.values() if v.get("created_at"))
+    oldest = created[0] if created else None
+    return {
+        "active": True, **base,
+        "signals": {
+            "pending": len(valid), "malformed": len(kort) - len(valid),
+            "expired_not_swept": len(expired), "expired_ids": expired[:10],
+            "by_tool": dict(sorted(tools.items(), key=lambda kv: (-kv[1], kv[0]))),
+            "owners": len({str(v.get("owner_user_id") or "") for v in valid.values()}),
+            "oldest_created_at": oldest,
+        },
+        "summary": (f"{len(valid)} kort venter, {len(expired)} udløbet men ikke fejet; "
+                    f"ældste {oldest or 'ukendt'}"),
+    }

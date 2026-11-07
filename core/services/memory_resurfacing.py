@@ -218,3 +218,46 @@ def format_for_prompt(candidate: dict | None) -> str:
     return "\n".join(parts)
 
 
+
+
+def build_memory_resurfacing_surface() -> dict:
+    """Mission Control-surface: hvilke minder har der faktisk været resurfacet?
+
+    READ-ONLY. `_recently_resurfaced_headings()` kalder `_ensure_table` og
+    sluger fejl til tom mængde («intet at undgå») — her tjekkes tabellen først,
+    og en fejl bliver en årsag.
+    """
+    base = {"mode": "memory-resurfacing"}
+    try:
+        with connect() as conn:
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                            "AND name='memory_resurfacing_log'").fetchone() is None:
+                return {**base, "active": False, "signals": {},
+                        "reason": "tabellen memory_resurfacing_log findes ikke endnu",
+                        "summary": "intet minde resurfacet"}
+            total, last_at, distinct = conn.execute(
+                "SELECT COUNT(*), MAX(resurfaced_at), COUNT(DISTINCT heading_normalized) "
+                "FROM memory_resurfacing_log").fetchone()
+            triggers = conn.execute(
+                "SELECT COALESCE(trigger, ''), COUNT(*) FROM memory_resurfacing_log "
+                "GROUP BY COALESCE(trigger, '') ORDER BY COUNT(*) DESC, 1").fetchall()
+            recent = conn.execute(
+                "SELECT heading_display, resurfaced_at FROM memory_resurfacing_log "
+                "ORDER BY id DESC LIMIT ?", (_RECENT_RESURFACE_AVOID,)).fetchall()
+    except Exception as exc:  # surface skal melde årsagen, ikke kaste ind i MC
+        return {**base, "active": False, "signals": {},
+                "reason": f"resurfacing-loggen kunne ikke læses: {type(exc).__name__}: {exc}"[:300],
+                "summary": "resurfacing-log ulæselig"}
+    total = int(total or 0)
+    return {
+        "active": total > 0, **base,
+        **({} if total else {"reason": "memory_resurfacing_log er tom"}),
+        "signals": {
+            "resurfaced_total": total, "distinct_headings": int(distinct or 0),
+            "last_resurfaced_at": last_at,
+            "by_trigger": {str(t): int(n) for t, n in triggers},
+            "recent": [{"heading": str(h), "at": str(a)} for h, a in recent],
+            "avoid_window": _RECENT_RESURFACE_AVOID, "fresh_days": _FRESH_DAYS,
+        },
+        "summary": f"{total} resurfacinger over {int(distinct or 0)} overskrifter; seneste {last_at or 'aldrig'}",
+    }

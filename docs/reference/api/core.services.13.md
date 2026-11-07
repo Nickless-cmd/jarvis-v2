@@ -117,6 +117,7 @@ _End-of-run memory consolidation driven by the local model._
 | function | `_normalize_confidence` | `(value)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L676) |
 | function | `_summary_from_line` | `(line)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L683) |
 | function | `_daily_excerpt` | `(value, *, limit)` | — | [src](../../../core/services/end_of_run_memory_consolidation.py#L690) |
+| function | `build_end_of_run_memory_consolidation_surface` | `()` | Mission Control-surface: hvad blev gemt ved run-slut? | [src](../../../core/services/end_of_run_memory_consolidation.py#L700) |
 
 ## `core/services/endpoint_usage_store.py`
 _API-endpoint forbrugs-statistik (parallel til tool_usage_store). Centralen holder styr på_

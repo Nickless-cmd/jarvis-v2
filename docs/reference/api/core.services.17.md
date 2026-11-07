@@ -566,6 +566,7 @@ _Backwards-compatible shim — emotional memory now lives in emotional_memory_en
 | function | `capture_mood_for_heading` | `(heading, *, source=…, notes=…)` | Snapshot mood for a MEMORY.md heading. Returns legacy dict shape. | [src](../../../core/services/memory_emotional_context.py#L31) |
 | function | `get_mood_for_heading` | `(heading)` | — | [src](../../../core/services/memory_emotional_context.py#L61) |
 | function | `enrich_headings_with_mood` | `(text)` | Annotate MEMORY.md headings with [felt: mood, intensity X.X] suffixes. | [src](../../../core/services/memory_emotional_context.py#L85) |
+| function | `build_memory_emotional_context_surface` | `()` | Mission Control-surface: hvilke MEMORY.md-overskrifter bærer en følelse? | [src](../../../core/services/memory_emotional_context.py#L125) |
 
 ## `core/services/memory_graph.py`
 _Lightweight graph memory layer over MEMORY.md and chat history._
@@ -582,6 +583,7 @@ _Lightweight graph memory layer over MEMORY.md and chat history._
 | function | `neighbors` | `(name, *, limit=…)` | Return everything directly connected to the named entity. | [src](../../../core/services/memory_graph.py#L273) |
 | function | `related_facts` | `(name, *, limit=…)` | Return human-readable sentences for an entity's edges. | [src](../../../core/services/memory_graph.py#L316) |
 | function | `stats` | `()` | Quick health check — entity count, edge count, top entities. | [src](../../../core/services/memory_graph.py#L327) |
+| function | `build_memory_graph_surface` | `()` | Mission Control-surface: hvad står der faktisk i vidensgrafen? | [src](../../../core/services/memory_graph.py#L354) |
 
 ## `core/services/memory_hierarchy.py`
 _Memory hierarchy — explicit hot/warm/cold tiers + recall-before-act._
@@ -615,4 +617,5 @@ _Measured, reversible hygiene for per-user ``MEMORY.md`` files._
 | function | `_atomic_json` | `(path, payload)` | — | [src](../../../core/services/memory_hygiene.py#L204) |
 | function | `audit_workspace` | `(workspace, *, path=…, publish_inbox=…)` | Create a read-only hygiene report.  Never moves or rewrites memory. | [src](../../../core/services/memory_hygiene.py#L220) |
 | function | `_publish_inbox` | `(workspace, report)` | — | [src](../../../core/services/memory_hygiene.py#L310) |
+| function | `build_memory_hygiene_surface` | `()` | Mission Control-surface: hvad fandt hygiejne-auditten sidst, pr. workspace? | [src](../../../core/services/memory_hygiene.py#L341) |
 

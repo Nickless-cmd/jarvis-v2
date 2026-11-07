@@ -379,6 +379,7 @@ _Cross-agent memory — shared observations queryable across agents._
 | function | `cross_agent_recall` | `(*, query, requesting_role=…, exclude_roles=…, days_back=…, limit=…, min_score=…)` | Find relevant observations from OTHER agents matching the query. | [src](../../../core/services/cross_agent_memory.py#L71) |
 | function | `cross_agent_recall_section` | `(role, query)` | Format cross-agent recall as text for sub-agent system_prompt injection. | [src](../../../core/services/cross_agent_memory.py#L139) |
 | function | `_exec_cross_agent_recall` | `(args)` | — | [src](../../../core/services/cross_agent_memory.py#L155) |
+| function | `build_cross_agent_memory_surface` | `()` | Mission Control-surface: hvad ligger der i den delte observations-log? | [src](../../../core/services/cross_agent_memory.py#L198) |
 
 ## `core/services/cross_session_gate.py`
 _Kontekst fra ANDRE sessioner — Fase 10, kriterium 1._

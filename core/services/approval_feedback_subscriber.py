@@ -93,3 +93,54 @@ def _subscriber_loop(*, subscriber: queue.Queue[dict[str, Any] | None]) -> None:
                 pass
         except Exception as exc:
             logger.warning("approval_feedback_subscriber: failed to persist event: %s", exc)
+
+
+def build_approval_feedback_subscriber_surface() -> dict[str, Any]:
+    """Mission Control-surface: hvad svarede brugeren, og lytter abonnenten?
+
+    Tallene kommer fra ``approval_feedback_log`` — det abonnenten selv skriver.
+    ``subscriber_alive`` gælder KUN den proces surface'en kaldes i.
+    """
+    base = {"mode": "approval-feedback-subscriber"}
+    alive = bool(_SUBSCRIBER_THREAD and _SUBSCRIBER_THREAD.is_alive())
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                            "AND name='approval_feedback_log'").fetchone() is None:
+                return {**base, "active": False, "signals": {"subscriber_alive": alive},
+                        "reason": "tabellen approval_feedback_log findes ikke endnu",
+                        "summary": "intet brugersvar logget"}
+            total, last_at, sessions = conn.execute(
+                "SELECT COUNT(*), MAX(recorded_at), COUNT(DISTINCT session_id) "
+                "FROM approval_feedback_log").fetchone()
+            by_state = conn.execute(
+                "SELECT approval_state, COUNT(*) FROM approval_feedback_log "
+                "GROUP BY approval_state ORDER BY COUNT(*) DESC, approval_state").fetchall()
+            by_source = conn.execute(
+                "SELECT approval_source, COUNT(*) FROM approval_feedback_log "
+                "GROUP BY approval_source ORDER BY COUNT(*) DESC, approval_source").fetchall()
+            tools = conn.execute(
+                "SELECT tool_name, COUNT(*) FROM approval_feedback_log WHERE tool_name != '' "
+                "GROUP BY tool_name ORDER BY COUNT(*) DESC, tool_name LIMIT 5").fetchall()
+    except Exception as exc:  # surface skal melde årsagen, ikke kaste ind i MC
+        return {**base, "active": False, "signals": {"subscriber_alive": alive},
+                "reason": f"approval_feedback_log kunne ikke læses: {type(exc).__name__}: {exc}"[:300],
+                "summary": "feedback-log ulæselig"}
+    total = int(total or 0)
+    if not total:
+        return {**base, "active": False, "signals": {"total": 0, "subscriber_alive": alive},
+                "reason": "approval_feedback_log er tom", "summary": "intet brugersvar logget"}
+    return {
+        "active": True, **base,
+        "signals": {
+            "total": total, "sessions": int(sessions or 0), "last_recorded_at": last_at,
+            "by_state": {str(k): int(n) for k, n in by_state},
+            "by_source": {str(k): int(n) for k, n in by_source},
+            "top_tools": [{"tool": str(t), "count": int(n)} for t, n in tools],
+            "subscriber_alive": alive,
+        },
+        "summary": (f"{total} brugersvar ({', '.join(f'{k} {n}' for k, n in by_state)}); "
+                    f"seneste {last_at or 'aldrig'}"),
+    }

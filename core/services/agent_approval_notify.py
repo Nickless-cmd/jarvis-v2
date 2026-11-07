@@ -115,3 +115,52 @@ def cancel_wake(approval: dict[str, Any], reason: str) -> bool:
         return False
     from core.services.agent_wake_intentions import cancel_pending_wake
     return cancel_pending_wake(task, reason=reason)
+
+
+def build_agent_approval_notify_surface() -> dict[str, Any]:
+    """Mission Control-surface: hvilke agent-approvals er der varslet om?
+
+    READ-ONLY. Kilden er `agent_approvals`: ``wake_task_id`` er sat når en
+    væk-opgave er planlagt, ``announced_at`` når forælderen har omtalt den.
+    ``unstaged_overdue`` er præcis de rækker `ensure_wakes` ville samle op.
+    Tabellen tjekkes først, så surface'en ikke selv opretter skemaet.
+    """
+    base = {"mode": "agent-approval-notify"}
+    try:
+        from core.runtime import db_core
+
+        with db_core.connect() as conn:
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                            "AND name='agent_approvals'").fetchone() is None:
+                return {**base, "active": False, "signals": {},
+                        "reason": "tabellen agent_approvals findes ikke endnu",
+                        "summary": "ingen agent-approval nogensinde oprettet"}
+            by_status = conn.execute(
+                "SELECT status, COUNT(*) FROM agent_approvals GROUP BY status ORDER BY status").fetchall()
+            cutoff = (datetime.now(UTC) - GRACE).astimezone(UTC).isoformat().replace("+00:00", "Z")
+            pend, staged, announced, overdue, oldest = conn.execute(
+                "SELECT COUNT(*), "
+                "COALESCE(SUM(wake_task_id != ''), 0), COALESCE(SUM(announced_at != ''), 0), "
+                "COALESCE(SUM(wake_task_id = '' AND announced_at = '' AND created_at <= ?), 0), "
+                "MIN(created_at) FROM agent_approvals WHERE status = 'pending'", (cutoff,)).fetchone()
+    except Exception as exc:  # surface skal melde årsagen, ikke kaste ind i MC
+        return {**base, "active": False, "signals": {},
+                "reason": f"agent_approvals kunne ikke læses: {type(exc).__name__}: {exc}"[:300],
+                "summary": "agent-approvals ulæselige"}
+    statuses = {str(s): int(n) for s, n in by_status}
+    total = sum(statuses.values())
+    if not total:
+        return {**base, "active": False, "signals": {"total": 0},
+                "reason": "agent_approvals er tom", "summary": "ingen agent-approval nogensinde oprettet"}
+    return {
+        "active": True, **base,
+        "signals": {
+            "total": total, "by_status": statuses, "pending": int(pend or 0),
+            "pending_with_wake_staged": int(staged or 0),
+            "pending_announced": int(announced or 0),
+            "unstaged_overdue": int(overdue or 0),
+            "oldest_pending_at": oldest, "grace_seconds": int(GRACE.total_seconds()),
+        },
+        "summary": (f"{total} agent-approvals, {int(pend or 0)} venter "
+                    f"({int(staged or 0)} med væk-opgave, {int(overdue or 0)} varsel overskredet)"),
+    }

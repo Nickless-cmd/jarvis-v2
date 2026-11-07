@@ -66,6 +66,7 @@ _Fejeren for udløbne godkendelser — den kalder `expire_stale()`._
 | function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/approval_expiry_daemon.py#L51) |
 | function | `tick_approval_expiry_daemon` | `(now=…)` | Fej udløbne godkendelser hvis kadencen er gået. Selv-sikker. | [src](../../../core/services/approval_expiry_daemon.py#L57) |
 | function | `sidste_resultat` | `()` | Hvad fejeren sidst udrettede — så en læser kan se om den kører. | [src](../../../core/services/approval_expiry_daemon.py#L176) |
+| function | `build_approval_expiry_daemon_surface` | `()` | Mission Control-surface: hvad udløb, og kører fejeren overhovedet? | [src](../../../core/services/approval_expiry_daemon.py#L181) |
 
 ## `core/services/approval_feedback_subscriber.py`
 
@@ -74,6 +75,7 @@ _Fejeren for udløbne godkendelser — den kalder `expire_stale()`._
 | function | `start_approval_feedback_subscriber` | `()` | — | [src](../../../core/services/approval_feedback_subscriber.py#L19) |
 | function | `stop_approval_feedback_subscriber` | `()` | — | [src](../../../core/services/approval_feedback_subscriber.py#L36) |
 | function | `_subscriber_loop` | `(*, subscriber)` | — | [src](../../../core/services/approval_feedback_subscriber.py#L49) |
+| function | `build_approval_feedback_subscriber_surface` | `()` | Mission Control-surface: hvad svarede brugeren, og lytter abonnenten? | [src](../../../core/services/approval_feedback_subscriber.py#L98) |
 
 ## `core/services/approval_outbox.py`
 
@@ -87,6 +89,7 @@ _Fejeren for udløbne godkendelser — den kalder `expire_stale()`._
 | function | `dispatch_pending_approval_notifications` | `(*, limit=…, deliver=…)` | — | [src](../../../core/services/approval_outbox.py#L106) |
 | function | `_worker` | `()` | — | [src](../../../core/services/approval_outbox.py#L155) |
 | function | `start_approval_outbox_dispatcher` | `()` | — | [src](../../../core/services/approval_outbox.py#L164) |
+| function | `build_approval_outbox_surface` | `()` | Mission Control-surface: hvad står i notifikations-udbakken? | [src](../../../core/services/approval_outbox.py#L178) |
 
 ## `core/services/approval_runtime.py`
 _Én doer ind og ud af en godkendelse — Fase 4's sidste stykke._
@@ -104,6 +107,7 @@ _Én doer ind og ud af en godkendelse — Fase 4's sidste stykke._
 | function | `decide` | `(approval_id, *, approved, answered_by=…)` | Svar paa en godkendelse. Den ENE vej ind for enhver svarer. | [src](../../../core/services/approval_runtime.py#L339) |
 | function | `state` | `(approval_id)` | Hvad ved vi om dette kort? None hvis det ikke findes. | [src](../../../core/services/approval_runtime.py#L353) |
 | function | `sweep_expired` | `()` | Fjern udloebne kort. Returnerer hvad der blev fejet. | [src](../../../core/services/approval_runtime.py#L375) |
+| function | `build_approval_runtime_surface` | `()` | Mission Control-surface: hvilke godkendelses-kort venter lige nu? | [src](../../../core/services/approval_runtime.py#L404) |
 
 ## `core/services/arc_rule_extractor.py`
 _Arc rule extractor — turns narrative arcs into actionable rules._

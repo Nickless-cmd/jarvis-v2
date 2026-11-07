@@ -400,6 +400,7 @@ _Hvem faar at vide at en approval venter, og hvornaar Jarvis vaekkes (agent-cont
 | function | `on_requested` | `(approval)` | Kaldt naar en approval er oprettet/genfundet som ventende. Vaekker kun en INAKTIV, ikke-stoppet parent. | [src](../../../core/services/agent_approval_notify.py#L66) |
 | function | `ensure_wakes` | `(*, now=…)` | Supervisor-tik: ventende approvals uden vaekning, ældre end GRACE, hvis session er inaktiv og som ikke er | [src](../../../core/services/agent_approval_notify.py#L93) |
 | function | `cancel_wake` | `(approval, reason)` | Aflys en endnu ikke startet vaekning (approvalen er afgjort/annulleret). | [src](../../../core/services/agent_approval_notify.py#L111) |
+| function | `build_agent_approval_notify_surface` | `()` | Mission Control-surface: hvilke agent-approvals er der varslet om? | [src](../../../core/services/agent_approval_notify.py#L120) |
 
 ## `core/services/agent_bridge.py`
 _Agenter paa et klient-target: bro-invocations med ukendt udfald (agent-contract-v1 E, spec 8 + 8.1)._

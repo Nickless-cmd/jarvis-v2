@@ -256,6 +256,16 @@ _Compact inner critic / ally / synthesizer dialectic._
 | function | `_ally` | `(lower)` | — | [src](../../../core/services/inner_dialectic_engine.py#L65) |
 | function | `_synthesize` | `(critic, ally, context)` | — | [src](../../../core/services/inner_dialectic_engine.py#L76) |
 
+## `core/services/inner_state_surface.py`
+_Samlet flade for de indre tilstands-lag — de build_*_surface ingen læser havde._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `producer_names` | `()` | Navnene i kald-raekkefoelge, paa tvaers af grupperne — til test. | [src](../../../core/services/inner_state_surface.py#L74) |
+| function | `group_names` | `()` | Gruppe-navnene i definitions-raekkefoelge. | [src](../../../core/services/inner_state_surface.py#L79) |
+| function | `_call` | `(name, mod_path, fn_attr)` | Kald én producent. En defekt maa ikke skjule de oevrige. | [src](../../../core/services/inner_state_surface.py#L84) |
+| function | `build_inner_state_surface` | `()` | Kald alle producenter og returnér deres egne signaler, grupperet. Kaster ALDRIG. | [src](../../../core/services/inner_state_surface.py#L98) |
+
 ## `core/services/inner_visible_support_signal_tracking.py`
 _Inner-visible support signal tracking — migrated onto signal_tracking_framework._
 
@@ -741,15 +751,4 @@ _Hvilken udgave af appen sidder der i den anden ende?_
 | function | `_rent` | `(vaerdi, tilladte=…)` | — | [src](../../../core/services/klient_versioner.py#L44) |
 | function | `noter` | `(klient, version)` | Skriv den seneste version for én klient. True hvis noget blev skrevet. | [src](../../../core/services/klient_versioner.py#L53) |
 | function | `alle` | `()` | Hvad kører der lige nu, pr. klient. Tom dict hvis ingen har sagt det. | [src](../../../core/services/klient_versioner.py#L84) |
-
-## `core/services/layer_tension_daemon.py`
-_Layer Tension daemon — detects when two or more cognitive layers pull in opposite directions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_layer_tension_daemon` | `(snapshot)` | Detect layer tensions from runtime snapshot. | [src](../../../core/services/layer_tension_daemon.py#L35) |
-| function | `_detect_tensions` | `(snapshot)` | — | [src](../../../core/services/layer_tension_daemon.py#L61) |
-| function | `_store_tension` | `(tension, now)` | — | [src](../../../core/services/layer_tension_daemon.py#L143) |
-| function | `get_active_tensions` | `()` | — | [src](../../../core/services/layer_tension_daemon.py#L190) |
-| function | `build_layer_tension_surface` | `()` | — | [src](../../../core/services/layer_tension_daemon.py#L194) |
 

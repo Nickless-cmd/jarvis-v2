@@ -380,3 +380,22 @@ async def central_infra_state() -> dict:
     _require_owner()
     from core.services.infra_state_surface import build_infra_state_surface
     return await asyncio.to_thread(build_infra_state_surface)
+
+
+@router.get("/inner-state")
+async def central_inner_state() -> dict:
+    """De indre tilstands-lag der ellers er usynlige — grupperet efter hvem der ejer dem.
+
+    Målt 7/11-2026: efter de tre første aggregatorer (hukommelse, godkendelse,
+    drift) stod 31 flader tilbage med nul reference uden for deres egen fil.
+    Det er ikke maskinrummet — det er drev-arbitrering, emotions-tagging,
+    identitets-komposition, metakognitiv integration, selektiv opmærksomhed,
+    subjektiv tid, resonans-henfald, og de beslutnings-lag der afgør hvordan et
+    svar bliver til. Grupperet som indre/beslutning/verden, ikke efter mappenavn:
+    en fil i core/services/ siger hvor koden bor, ikke hvad den tilhører.
+
+    ``active=False`` med en grund tælles ikke som tavs — en flade der ærligt
+    melder at der intet er, er ikke død. Owner-only, read-only, via to_thread."""
+    _require_owner()
+    from core.services.inner_state_surface import build_inner_state_surface
+    return await asyncio.to_thread(build_inner_state_surface)

@@ -2,6 +2,32 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/task_worker.py`
+_Task worker — consumes queued runtime_tasks in heartbeat tick cadence._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `claim_next_task` | `(kinds=…)` | Claim the next queued task and mark it `running`. | [src](../../../core/services/task_worker.py#L33) |
+| function | `_followup_result` | `(kind, task)` | — | [src](../../../core/services/task_worker.py#L69) |
+| function | `_handle_initiative_followup` | `(task)` | — | [src](../../../core/services/task_worker.py#L79) |
+| function | `_handle_heartbeat_followup` | `(task)` | — | [src](../../../core/services/task_worker.py#L83) |
+| function | `_handle_open_loop_followup` | `(task)` | — | [src](../../../core/services/task_worker.py#L87) |
+| function | `_handle_agency_bridge_repair` | `(task)` | Prepare a repair brief for a weak agency bridge. | [src](../../../core/services/task_worker.py#L91) |
+| function | `_handle_observability_bridge_repair` | `(task)` | — | [src](../../../core/services/task_worker.py#L132) |
+| function | `_handle_theater_refactor` | `(task)` | — | [src](../../../core/services/task_worker.py#L163) |
+| function | `_execute_task` | `(task)` | Execute a single task and persist its final status. Never raises. | [src](../../../core/services/task_worker.py#L202) |
+| function | `tick_task_worker` | `(budget=…)` | Run one worker tick: claim and execute up to ``budget`` tasks. | [src](../../../core/services/task_worker.py#L280) |
+| function | `_matching_agency_edge` | `(*, scope, goal)` | — | [src](../../../core/services/task_worker.py#L318) |
+| function | `_edge_by_id` | `(edges, edge_id)` | — | [src](../../../core/services/task_worker.py#L340) |
+| function | `_store_agency_repair_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L347) |
+| function | `_store_observability_repair_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L355) |
+| function | `_store_theater_refactor_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L363) |
+| function | `_matching_theater_file` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L371) |
+| function | `_suggested_agency_files` | `(*, scope, edge)` | — | [src](../../../core/services/task_worker.py#L386) |
+| function | `_suggested_observability_files` | `(*, scope, service)` | — | [src](../../../core/services/task_worker.py#L422) |
+| function | `_suggested_theater_files` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L436) |
+| function | `build_task_worker_surface` | `()` | Mission Control-surface: hvad ligger der i koeen, og hvad endte de i? | [src](../../../core/services/task_worker.py#L457) |
+
 ## `core/services/taste_profile.py`
 _Taste Profile — accumulating aesthetic preferences for code, design, and communication._
 
@@ -585,15 +611,4 @@ _Bridge tool execution outcomes into durable runtime action evidence._
 | function | `classify_tool_family` | `(tool_name)` | — | [src](../../../core/services/tool_outcome_memory.py#L89) |
 | function | `_score_for_outcome` | `(*, status, family, result)` | — | [src](../../../core/services/tool_outcome_memory.py#L104) |
 | function | `_preview_arguments` | `(arguments)` | — | [src](../../../core/services/tool_outcome_memory.py#L128) |
-
-## `core/services/tool_pattern_miner.py`
-_Tool pattern miner — discover repeating tool sequences as composite candidates._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_recent_tool_invocations` | `(*, hours=…, limit=…)` | — | [src](../../../core/services/tool_pattern_miner.py#L30) |
-| function | `_extract_sequences` | `(invocations, *, min_len, max_len)` | Slide window over tool calls, count N-gram occurrences. | [src](../../../core/services/tool_pattern_miner.py#L57) |
-| function | `find_candidate_composites` | `(*, hours=…, min_repeat=…, max_results=…)` | Mine tool history for repeating sequences worth composing. | [src](../../../core/services/tool_pattern_miner.py#L82) |
-| function | `composite_candidates_section` | `()` | Awareness section listing top 3 candidate composites. | [src](../../../core/services/tool_pattern_miner.py#L124) |
-| function | `_exec_mine_tool_patterns` | `(args)` | — | [src](../../../core/services/tool_pattern_miner.py#L137) |
 

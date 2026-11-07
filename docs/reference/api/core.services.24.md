@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/run_finding_accounting.py`
+_Structured end-of-run findings and a conservative admission fallback._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_key` | `(kind, path, behavior)` | — | [src](../../../core/services/run_finding_accounting.py#L27) |
+| function | `_ledger` | `()` | — | [src](../../../core/services/run_finding_accounting.py#L32) |
+| function | `record_finding` | `(*, kind, disposition, path, behavior, evidence, title, next_step=…, reason=…, run_id=…, session_id=…, finding_key=…, existing_side_task_id=…, autonomy_mode=…, max_minutes=…, max_tool_calls=…)` | Account for one concrete finding; only deferred gaps create tasks. | [src](../../../core/services/run_finding_accounting.py#L37) |
+| function | `audit_final_response` | `(*, run_id, session_id, text)` | Catch only explicit self-admissions with one identifiable code file. | [src](../../../core/services/run_finding_accounting.py#L101) |
+
 ## `core/services/run_follow.py`
 _Follow-stream for runs → klienter kan token-streame dem live + liveness-kilde._
 
@@ -696,13 +706,4 @@ _Kvote-regnskab pr. søgeprovider — målt hos KILDEN, ikke gættet._
 | function | `varsle_hvis_over_loft` | `(status)` | Send ét varsel når en provider nærmer sig sit loft. True = sendt. | [src](../../../core/services/search_quota.py#L335) |
 | function | `bedste_provider` | `(foretrukken=…, *, brug_cache=…)` | Den foretrukne hvis den har plads — ellers den næstbedste med plads. | [src](../../../core/services/search_quota.py#L374) |
 | function | `rapport` | `()` | Menneskelæsbar linje pr. provider — til drift og til et værktøjssvar. | [src](../../../core/services/search_quota.py#L391) |
-
-## `core/services/secret_redaction.py`
-_Hemmeligheder ud af det der havner i PROMPTEN — ikke ud af det han redigerer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `contains_secret` | `(text)` | Ser det ud til at indeholde en hemmelighed? Ren, ingen mutation. | [src](../../../core/services/secret_redaction.py#L70) |
-| function | `redact` | `(text)` | Maskér hemmeligheder. Bevarer alt andet tegn for tegn. | [src](../../../core/services/secret_redaction.py#L77) |
-| function | `read_for_prompt` | `(path)` | Læs en workspace-fil TIL PROMPTEN, med hemmeligheder maskeret. | [src](../../../core/services/secret_redaction.py#L92) |
 

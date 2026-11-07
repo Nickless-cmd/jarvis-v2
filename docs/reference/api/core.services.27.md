@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/silence_listener.py`
+_Silence Listener — experience of empty space._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/silence_listener.py#L47) |
+| function | `_save` | `(oplevelser)` | — | [src](../../../core/services/silence_listener.py#L57) |
+| function | `_tekstur` | `(duration_seconds)` | (ord, grundlag) for hvordan stilheden var. | [src](../../../core/services/silence_listener.py#L61) |
+| function | `experience_silence` | `(duration_seconds)` | Optag en stilhed. Kaster aldrig. Returnerer posten, eller None. | [src](../../../core/services/silence_listener.py#L85) |
+| function | `describe_silence` | `()` | — | [src](../../../core/services/silence_listener.py#L109) |
+| function | `format_silence_for_prompt` | `()` | — | [src](../../../core/services/silence_listener.py#L118) |
+| function | `reset_silence_listener` | `()` | Nulstil. Rydder OGSÅ disken — ellers ville næste læsning hente det | [src](../../../core/services/silence_listener.py#L125) |
+| function | `build_silence_listener_surface` | `()` | — | [src](../../../core/services/silence_listener.py#L131) |
+
 ## `core/services/silence_patterns.py`
 _Silence Patterns — hvad brugeren IKKE siger._
 
@@ -599,30 +613,4 @@ _Opgave → værktøj-mapping: hvad vil denne opgave sandsynligvis røre?_
 | function | `_clause_tiers` | `(lav)` | (tier, ord) for hver sætningsdels ledende verbum. Tom liste = intet handlingsord. | [src](../../../core/services/task_tool_mapping.py#L233) |
 | function | `map_task_to_tools` | `(task_description)` | Svar på hvad denne opgave sandsynligvis vil røre, og hvor risikabel den er. | [src](../../../core/services/task_tool_mapping.py#L243) |
 | function | `_vaerste` | `(tiers)` | Den mest risikable tier vinder. En opgave er så farlig som sit farligste led. | [src](../../../core/services/task_tool_mapping.py#L321) |
-
-## `core/services/task_worker.py`
-_Task worker — consumes queued runtime_tasks in heartbeat tick cadence._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `claim_next_task` | `(kinds=…)` | Claim the next queued task and mark it `running`. | [src](../../../core/services/task_worker.py#L33) |
-| function | `_followup_result` | `(kind, task)` | — | [src](../../../core/services/task_worker.py#L69) |
-| function | `_handle_initiative_followup` | `(task)` | — | [src](../../../core/services/task_worker.py#L79) |
-| function | `_handle_heartbeat_followup` | `(task)` | — | [src](../../../core/services/task_worker.py#L83) |
-| function | `_handle_open_loop_followup` | `(task)` | — | [src](../../../core/services/task_worker.py#L87) |
-| function | `_handle_agency_bridge_repair` | `(task)` | Prepare a repair brief for a weak agency bridge. | [src](../../../core/services/task_worker.py#L91) |
-| function | `_handle_observability_bridge_repair` | `(task)` | — | [src](../../../core/services/task_worker.py#L132) |
-| function | `_handle_theater_refactor` | `(task)` | — | [src](../../../core/services/task_worker.py#L163) |
-| function | `_execute_task` | `(task)` | Execute a single task and persist its final status. Never raises. | [src](../../../core/services/task_worker.py#L202) |
-| function | `tick_task_worker` | `(budget=…)` | Run one worker tick: claim and execute up to ``budget`` tasks. | [src](../../../core/services/task_worker.py#L280) |
-| function | `_matching_agency_edge` | `(*, scope, goal)` | — | [src](../../../core/services/task_worker.py#L318) |
-| function | `_edge_by_id` | `(edges, edge_id)` | — | [src](../../../core/services/task_worker.py#L340) |
-| function | `_store_agency_repair_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L347) |
-| function | `_store_observability_repair_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L355) |
-| function | `_store_theater_refactor_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L363) |
-| function | `_matching_theater_file` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L371) |
-| function | `_suggested_agency_files` | `(*, scope, edge)` | — | [src](../../../core/services/task_worker.py#L386) |
-| function | `_suggested_observability_files` | `(*, scope, service)` | — | [src](../../../core/services/task_worker.py#L422) |
-| function | `_suggested_theater_files` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L436) |
-| function | `build_task_worker_surface` | `()` | Mission Control-surface: hvad ligger der i koeen, og hvad endte de i? | [src](../../../core/services/task_worker.py#L457) |
 

@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/narrative_identity.py`
+_Narrative Identity — periodisk "Hvem er jeg lige nu?" selvfortælling._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `generate_narrative_identity` | `()` | Generate a "who am I right now?" narrative from accumulated state. | [src](../../../core/services/narrative_identity.py#L21) |
+| function | `build_narrative_identity_surface` | `()` | — | [src](../../../core/services/narrative_identity.py#L85) |
+
 ## `core/services/narrative_summary_daemon.py`
 _Narrative summary daemon — Phase 2.5 of causal graph._
 
@@ -662,12 +670,4 @@ _Parallel Selves — internal sub-selves._
 | function | `describe_self_plural` | `()` | — | [src](../../../core/services/parallel_selves.py#L23) |
 | function | `format_self_for_prompt` | `()` | — | [src](../../../core/services/parallel_selves.py#L26) |
 | function | `build_parallel_selves_surface` | `()` | — | [src](../../../core/services/parallel_selves.py#L29) |
-
-## `core/services/past_context_router.py`
-_Past-context cue router for visible prompts._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `needs_past_context` | `(user_message)` | Return True when a user turn likely depends on prior conversation. | [src](../../../core/services/past_context_router.py#L20) |
-| function | `build_past_context_section` | `(user_message, *, session_id=…, limit=…)` | Compatibility no-op; the authoritative current-query bundle owns recall. | [src](../../../core/services/past_context_router.py#L28) |
 

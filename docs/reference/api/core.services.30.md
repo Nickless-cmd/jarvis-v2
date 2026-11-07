@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_chat_quality.py`
+_Observe chat-response quality without rewriting the user's text._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_hierarchy_signals` | `(prose, paragraphs)` | Mål om et langt svar har hierarki — ikke om det er pænt. | [src](../../../core/services/visible_chat_quality.py#L31) |
+| function | `_emoji_heading_signals` | `(prose)` | Mål om overskrifterne bærer emoji — den form Bjørn bad om 25/10-2026. | [src](../../../core/services/visible_chat_quality.py#L45) |
+| function | `analyse_chat_response` | `(text, *, wall_chars=…)` | Return measurable quality signals for a final chat response. | [src](../../../core/services/visible_chat_quality.py#L67) |
+| function | `observe_chat_response` | `(text, **context)` | Emit one metadata-only observation when, and only when, scope is chat. | [src](../../../core/services/visible_chat_quality.py#L117) |
+
 ## `core/services/visible_first_pass_output.py`
 _Én synlig grænse for første modelsvar._
 
@@ -575,14 +585,4 @@ _Workspace-capability planning + execution for visible runs._
 | function | `_extract_exec_command_from_user_message` | `(user_message)` | — | [src](../../../core/services/visible_runs_capabilities.py#L478) |
 | function | `_capability_visible_text` | `(*, capability_id, invocation)` | — | [src](../../../core/services/visible_runs_capabilities.py#L496) |
 | function | `_workspace_search_visible_text` | `(*, capability_id, execution_mode, result)` | — | [src](../../../core/services/visible_runs_capabilities.py#L518) |
-
-## `core/services/visible_runs_cognitive.py`
-_Per-turn cognitive/candidate tracking-pipeline for visible runs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_run_visible_cadence_updates` | `(*, run_id, session_id, user_message, assistant_response, outcome_status, user_mood)` | Run post-turn cadence producers without letting them block finalization. | [src](../../../core/services/visible_runs_cognitive.py#L25) |
-| function | `_legacy_regex_detectors_enabled` | `()` | Er de gamle ordmønster-detektorer stadig tændt? (default: nej) | [src](../../../core/services/visible_runs_cognitive.py#L58) |
-| function | `_track_step_failed` | `()` | En tracker i _track_runtime_candidates fejlede. | [src](../../../core/services/visible_runs_cognitive.py#L73) |
-| function | `_track_runtime_candidates` | `(run, assistant_text)` | — | [src](../../../core/services/visible_runs_cognitive.py#L99) |
 

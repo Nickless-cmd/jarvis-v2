@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/procedure_bank_pipeline.py`
+_Procedure Bank Pipeline — lærte rutiner der kan pin'es og matches._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/procedure_bank_pipeline.py#L35) |
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/procedure_bank_pipeline.py#L39) |
+| function | `upsert_procedure` | `(*, name, trigger=…, procedure, pinned=…)` | — | [src](../../../core/services/procedure_bank_pipeline.py#L64) |
+| function | `get_procedure` | `(*, procedure_id=…, procedure_name=…)` | — | [src](../../../core/services/procedure_bank_pipeline.py#L116) |
+| function | `list_procedures` | `(*, query=…, pinned_only=…, limit=…)` | — | [src](../../../core/services/procedure_bank_pipeline.py#L136) |
+| function | `set_procedure_pinned` | `(*, procedure_id=…, procedure_name=…, pinned)` | — | [src](../../../core/services/procedure_bank_pipeline.py#L155) |
+| function | `delete_procedure` | `(*, procedure_id=…, procedure_name=…)` | — | [src](../../../core/services/procedure_bank_pipeline.py#L179) |
+| function | `match_procedures_for_text` | `(text, *, limit=…)` | Find procedures whose trigger-string matches given text. | [src](../../../core/services/procedure_bank_pipeline.py#L201) |
+| function | `maybe_record_procedure_from_run` | `(*, session_id, tool_calls)` | LivingNeuron Fase B (surface-only): udled en NAVNGIVEN kandidat-procedure fra en kørsel der | [src](../../../core/services/procedure_bank_pipeline.py#L242) |
+| function | `build_procedure_bank_surface` | `()` | — | [src](../../../core/services/procedure_bank_pipeline.py#L275) |
+
 ## `core/services/process_identity.py`
 _Hvem koerer denne agent — og lever den proces stadig?_
 
@@ -635,14 +651,4 @@ _Provider health check — periodic ping to detect outages early._
 | function | `health_section` | `()` | Awareness section listing providers that CANNOT be used — not just silent ones. | [src](../../../core/services/provider_health_check.py#L484) |
 | function | `_exec_run_health_check` | `(args)` | — | [src](../../../core/services/provider_health_check.py#L519) |
 | function | `_exec_get_health_snapshot` | `(args)` | — | [src](../../../core/services/provider_health_check.py#L523) |
-
-## `core/services/provider_model_epochs.py`
-_Hvilken model SVAREDE — ikke hvilken vi bad om._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/provider_model_epochs.py#L31) |
-| function | `_row` | `(r)` | — | [src](../../../core/services/provider_model_epochs.py#L53) |
-| function | `current_model_epoch` | `(*, provider, requested_model)` | Den epoke der gaelder nu, eller `None` hvis vi aldrig har observeret noget. | [src](../../../core/services/provider_model_epochs.py#L69) |
-| function | `record_model_observation` | `(*, provider, requested_model, observed_model)` | Bogfoer hvad udbyderen FAKTISK svarede med. | [src](../../../core/services/provider_model_epochs.py#L92) |
 

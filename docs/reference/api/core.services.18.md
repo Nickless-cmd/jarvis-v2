@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/memory_graph.py`
+_Lightweight graph memory layer over MEMORY.md and chat history._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_tables` | `()` | — | [src](../../../core/services/memory_graph.py#L41) |
+| function | `_canonical` | `(name)` | — | [src](../../../core/services/memory_graph.py#L78) |
+| function | `_upsert_entity` | `(name, kind=…)` | Insert or refresh an entity. Returns its id, or None on failure. | [src](../../../core/services/memory_graph.py#L82) |
+| function | `_add_edge` | `(src_id, dst_id, relation, *, evidence=…, weight=…)` | Add a directed edge. Returns True on success. | [src](../../../core/services/memory_graph.py#L119) |
+| function | `record_triple` | `(src_name, relation, dst_name, *, src_kind=…, dst_kind=…, evidence=…)` | Convenience: upsert two entities and add the edge between them. | [src](../../../core/services/memory_graph.py#L154) |
+| function | `extract_from_text` | `(text, *, max_chars=…)` | Use the cheap LLM lane to extract entity triples from text. | [src](../../../core/services/memory_graph.py#L191) |
+| function | `ingest_text` | `(text, *, evidence_label=…)` | Extract triples from text and persist them. Returns count of edges added. | [src](../../../core/services/memory_graph.py#L255) |
+| function | `neighbors` | `(name, *, limit=…)` | Return everything directly connected to the named entity. | [src](../../../core/services/memory_graph.py#L273) |
+| function | `related_facts` | `(name, *, limit=…)` | Return human-readable sentences for an entity's edges. | [src](../../../core/services/memory_graph.py#L316) |
+| function | `stats` | `()` | Quick health check — entity count, edge count, top entities. | [src](../../../core/services/memory_graph.py#L327) |
+| function | `build_memory_graph_surface` | `()` | Mission Control-surface: hvad står der faktisk i vidensgrafen? | [src](../../../core/services/memory_graph.py#L354) |
+
 ## `core/services/memory_hierarchy.py`
 _Memory hierarchy — explicit hot/warm/cold tiers + recall-before-act._
 
@@ -624,12 +641,4 @@ _My Projects — auto-start + watchdog for Jarvis' own background processes._
 | function | `projekter_slaaet_til` | `()` | Skal mine egne baggrundsprojekter starte af sig selv? | [src](../../../core/services/my_projects.py#L27) |
 | function | `ensure_my_projects_running` | `()` | Called at runtime boot. Spawn any of my 4 projects that aren't running. | [src](../../../core/services/my_projects.py#L72) |
 | function | `tick_my_projects_watchdog` | `()` | Check all 4 projects are alive; restart any that died. | [src](../../../core/services/my_projects.py#L133) |
-
-## `core/services/narrative_identity.py`
-_Narrative Identity — periodisk "Hvem er jeg lige nu?" selvfortælling._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `generate_narrative_identity` | `()` | Generate a "who am I right now?" narrative from accumulated state. | [src](../../../core/services/narrative_identity.py#L21) |
-| function | `build_narrative_identity_surface` | `()` | — | [src](../../../core/services/narrative_identity.py#L85) |
 

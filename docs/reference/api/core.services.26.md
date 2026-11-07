@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_binding.py`
+_Hvilken SAMTALE hører et job til? — én definition, tre ure._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `er_auto_session` | `(session_id)` | Er dette en autonom silo (``auto-*``) og ikke en rigtig samtale? | [src](../../../core/services/session_binding.py#L16) |
+| function | `bind_session` | `(session_id=…)` | Den samtale et job blev bestilt i — eller ``''`` hvis ingen. | [src](../../../core/services/session_binding.py#L21) |
+
 ## `core/services/session_boot_reconciler.py`
 _Boot-reconciler: crash-zombie runs → interrupted, så de genoptages._
 
@@ -561,18 +569,4 @@ _Silence Detector — what is the user NOT saying?_
 |---|---|---|---|---|
 | function | `detect_silence_signals` | `(*, recent_topics, expected_topics, conversation_length=…, user_corrections=…)` | Detect what's missing from the conversation. | [src](../../../core/services/silence_detector.py#L17) |
 | function | `build_silence_surface` | `()` | — | [src](../../../core/services/silence_detector.py#L62) |
-
-## `core/services/silence_listener.py`
-_Silence Listener — experience of empty space._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/silence_listener.py#L47) |
-| function | `_save` | `(oplevelser)` | — | [src](../../../core/services/silence_listener.py#L57) |
-| function | `_tekstur` | `(duration_seconds)` | (ord, grundlag) for hvordan stilheden var. | [src](../../../core/services/silence_listener.py#L61) |
-| function | `experience_silence` | `(duration_seconds)` | Optag en stilhed. Kaster aldrig. Returnerer posten, eller None. | [src](../../../core/services/silence_listener.py#L85) |
-| function | `describe_silence` | `()` | — | [src](../../../core/services/silence_listener.py#L109) |
-| function | `format_silence_for_prompt` | `()` | — | [src](../../../core/services/silence_listener.py#L118) |
-| function | `reset_silence_listener` | `()` | Nulstil. Rydder OGSÅ disken — ellers ville næste læsning hente det | [src](../../../core/services/silence_listener.py#L125) |
-| function | `build_silence_listener_surface` | `()` | — | [src](../../../core/services/silence_listener.py#L131) |
 

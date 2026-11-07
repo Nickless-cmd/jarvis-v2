@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_pattern_miner.py`
+_Tool pattern miner — discover repeating tool sequences as composite candidates._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_recent_tool_invocations` | `(*, hours=…, limit=…)` | — | [src](../../../core/services/tool_pattern_miner.py#L30) |
+| function | `_extract_sequences` | `(invocations, *, min_len, max_len)` | Slide window over tool calls, count N-gram occurrences. | [src](../../../core/services/tool_pattern_miner.py#L57) |
+| function | `find_candidate_composites` | `(*, hours=…, min_repeat=…, max_results=…)` | Mine tool history for repeating sequences worth composing. | [src](../../../core/services/tool_pattern_miner.py#L82) |
+| function | `composite_candidates_section` | `()` | Awareness section listing top 3 candidate composites. | [src](../../../core/services/tool_pattern_miner.py#L124) |
+| function | `_exec_mine_tool_patterns` | `(args)` | — | [src](../../../core/services/tool_pattern_miner.py#L137) |
+
 ## `core/services/tool_result_aging.py`
 _Provider-agnostic tool-result aging for the visible agentic loop._
 
@@ -599,14 +610,4 @@ _Pragmatic conversation boundaries for the visible chat-only lane._
 | function | `_chat_style_contract` | `(message, session_id)` | Build a short, per-user/current-turn style contract for the cache tail. | [src](../../../core/services/visible_chat_pragmatics.py#L65) |
 | function | `build_chat_mode_dynamic_tail` | `(tail, *, message, session_id)` | Append the active mode's large contract after the cache boundary. | [src](../../../core/services/visible_chat_pragmatics.py#L136) |
 | function | `apply_chat_mode_conversation_contract` | `(instruction)` | Append the hierarchy only when the effective runtime scope is ``chat``. | [src](../../../core/services/visible_chat_pragmatics.py#L173) |
-
-## `core/services/visible_chat_quality.py`
-_Observe chat-response quality without rewriting the user's text._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_hierarchy_signals` | `(prose, paragraphs)` | Mål om et langt svar har hierarki — ikke om det er pænt. | [src](../../../core/services/visible_chat_quality.py#L31) |
-| function | `_emoji_heading_signals` | `(prose)` | Mål om overskrifterne bærer emoji — den form Bjørn bad om 25/10-2026. | [src](../../../core/services/visible_chat_quality.py#L45) |
-| function | `analyse_chat_response` | `(text, *, wall_chars=…)` | Return measurable quality signals for a final chat response. | [src](../../../core/services/visible_chat_quality.py#L67) |
-| function | `observe_chat_response` | `(text, **context)` | Emit one metadata-only observation when, and only when, scope is chat. | [src](../../../core/services/visible_chat_quality.py#L117) |
 

@@ -19,6 +19,7 @@ SELVE mindet — ikke kun et tal.
 """
 from __future__ import annotations
 
+import ast
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -195,3 +196,136 @@ def test_linjen_taaler_en_flade_uden_recent_felt(monkeypatch):
     )
     line = vil._memory_resurfacing_line()
     assert line and "2 glemte minder" in line
+
+
+# ── 4. sektionen: kontekst, ikke replik — og overlever chat-scope ─────────────
+#
+# MÅLT 7/11-2026: linjen stod i `[INDRE LIV]`, som har chat-vægt 0.1 mod
+# tærsklen 0.3 og derfor skæres HELT i en ren samtaletur. Det er præcis den
+# kanal hvor et gammelt minde er mest værd. Flyttet ud som egen sektion —
+# samme flytning oppositionen fik 4/11.
+
+def test_sektionen_overlever_chat_scope_hvor_indre_liv_skæres():
+    """Den ægte forskel: egen sektion slipper igennem, blokken gør ikke."""
+    from core.services import central_prompt_composer as cpc
+    from core.tools import tool_scoping
+
+    # Flaget er shadow i en testproces (intet skæres), men LIVE i drift. Uden
+    # denne patch måler testen ingenting: den ville være grøn uanset vægte.
+    tok = tool_scoping.set_tool_scope("chat")
+    try:
+        with patch.object(cpc, "is_live_enabled", return_value=True):
+            assert cpc.should_include("samtale", "genfundet minde") is True, (
+            "sektionen skæres i chat-scope — så er den ikke flyttet ud alligevel"
+        )
+            assert cpc.should_include("samtale", "indre liv") is False, (
+                "forudsætningen er ændret: «indre liv» bliver ikke længere skåret "
+                "i chat. Så er flytningen måske ikke nødvendig — mål det før du "
+                "ændrer testen."
+            )
+    finally:
+        tool_scoping.reset_tool_scope(tok)
+
+
+def test_sektionen_er_KONTEKST_ikke_en_replik():
+    """Et genfundet minde må ikke blive en mekanisk selvfortælling.
+
+    Formen skal give indholdet og en note om at det er kontekst — ikke
+    «jeg har genfundet …», som jeg så ville sige højt hver gang produceren kørte.
+    """
+    from core.services import visible_inner_life as vil
+
+    with patch.object(vil, "build_resurfaced_memory_section", wraps=vil.build_resurfaced_memory_section):
+        sec = vil.build_resurfaced_memory_section()
+    if sec is None:
+        pytest.skip("ingen resurfacing i loggen endnu")
+    assert "kontekst" in sec.lower(), "sektionen siger ikke at det er kontekst"
+    assert "lad det ligge" in sec.lower(), (
+        "sektionen giver ikke muligheden for at tie — så er den en replik"
+    )
+    assert not sec.lower().startswith("jeg har genfundet"), (
+        "sektionen er formuleret som noget jeg skal sige højt"
+    )
+
+
+def test_linjen_staar_IKKE_laengere_i_den_blok_der_skæres():
+    """Regression: flyttes den tilbage i `[INDRE LIV]`, forsvinder den i chat."""
+    from core.services import visible_inner_life as vil
+    import inspect
+
+    # AST, ikke grep: en kommentar der NÆVNER navnet er ikke et kald. Målt
+    # 7/11-2026 — en grep-vagt fældede sin egen forklarende kommentar.
+    tree = ast.parse(inspect.getsource(vil.build_inner_life_section).lstrip())
+    kaldte = {
+        n.func.id
+        for n in ast.walk(tree)
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+    }
+    assert "_memory_resurfacing_line" not in kaldte, (
+        "resurfacing-linjen kaldes igen fra [INDRE LIV], som skæres i chat-scope"
+    )
+
+
+def test_sektionen_springer_test_triggers_over():
+    """En test-trigger må ikke ende som kontekst i en rigtig prompt."""
+    from core.services import visible_inner_life as vil
+
+    fake = {
+        "active": True,
+        "signals": {"recent": [{"heading": "En test-overskrift", "at": "2026-11-07",
+                                "trigger": "test-uden-kontekst"}]},
+    }
+    with patch("core.services.memory_resurfacing.build_memory_resurfacing_surface",
+               return_value=fake):
+        assert vil.build_resurfaced_memory_section() is None, (
+            "en test-trigger blev injiceret i prompten som et ægte minde"
+        )
+
+
+def test_mindet_naar_FAKTISK_frem_til_modellen_i_en_chatprompt(isolated_runtime, monkeypatch):
+    """Den ægte sidste meter — ikke at funktionen findes eller at gaten tillader
+    sektionen, men at mindet står i den prompt modellen ser.
+
+    Målt 7/11-2026: mutationen der fjernede `_awareness_add`-kaldet i
+    prompt-bygningen blev IKKE fældet af de øvrige tests. De målte funktionen og
+    gaten — ikke koblingen. Det er præcis fejlklassen vi jager: formen bevaret,
+    indholdet tabt.
+    """
+    from core.services import central_prompt_composer as cpc
+    from core.services import prompt_contract as pc
+    from core.tools import tool_scoping
+
+    UNIK = "Et afsnit der kun findes i denne test — genfundet minde"
+    fake = {
+        "active": True,
+        "signals": {"recent": [{"heading": UNIK, "at": "2026-11-07",
+                                "trigger": "cadence"}]},
+    }
+    monkeypatch.setattr(
+        "core.services.memory_resurfacing.build_memory_resurfacing_surface",
+        lambda: fake,
+    )
+    # Prompt-bygningen slår brain-facts op, som embedder via fastembed og henter
+    # en model fra HuggingFace når Ollama ikke svarer. Det er ikke det denne test
+    # måler — den måler om mindet står i den sammensatte prompt.
+    monkeypatch.setattr(
+        "core.services.jarvis_brain._embed_text", lambda text: [0.0] * 8, raising=False
+    )
+    cpc._kv_set(cpc._LIVE_FLAG, True)
+    cpc._kv_set(cpc._WEIGHTS_KEY, {})
+
+    token = tool_scoping.set_tool_scope("chat")
+    try:
+        tekst = pc._build_visible_chat_prompt_assembly_impl(
+            provider="deepseek",
+            model="deepseek-v4-flash",
+            user_message="hvordan staar det til?",
+            session_id="s-genfundet-minde",
+        ).text
+    finally:
+        tool_scoping.reset_tool_scope(token)
+
+    assert UNIK in tekst, (
+        "mindet nåede ikke den byggede chat-prompt — sektionen er nomineret, "
+        "ikke koblet"
+    )

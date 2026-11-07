@@ -566,6 +566,56 @@ def _memory_resurfacing_line() -> Optional[str]:
     return None
 
 
+def build_resurfaced_memory_section() -> Optional[str]:
+    """Et genfundet minde som KONTEKST — ikke som en replik.
+
+    Egen sektion, ikke en linje i ``[INDRE LIV]``. Målt 7/11-2026: den blok har
+    chat-vægt 0.1 mod tærsklen 0.3 og skæres derfor helt i en ren samtaletur —
+    præcis den kanal hvor et gammelt minde er mest værd. Samme flytning som
+    oppositionen fik 4/11.
+
+    Formen er med vilje ikke «jeg har genfundet …». Det ville gøre mindet til en
+    mekanisk selvfortælling: produceren kører, og jeg siger det højt. Her får jeg
+    i stedet mindets indhold og en note om at det er gammelt — og vurderer selv
+    om det har betydning for samtalen. Er det irrelevant, tier jeg.
+
+    Dedup er mekanisk: ``pick_resurfacing_candidate`` springer alt over der er
+    rørt for nyligt eller genfundet inden for ``_RECENT_RESURFACE_AVOID``, så det
+    samme minde ikke kan injiceres igen uden grund.
+
+    Self-safe → None (ingen log, intet minde, enhver fejl).
+    """
+    try:
+        from core.services.memory_resurfacing import build_memory_resurfacing_surface
+
+        s = build_memory_resurfacing_surface() or {}
+        if not s.get("active"):
+            return None
+        sig = s.get("signals") or {}
+        recent = sig.get("recent") or []
+        if not recent:
+            return None
+        latest = recent[0] or {}
+        heading = str(latest.get("heading") or "").strip()
+        if not heading:
+            return None
+        # Kun det NYESTE minde, og kun hvis det er fra kadencen eller værktøjet —
+        # aldrig en test-trigger, som ville gøre sektionen til støj i drift.
+        trigger = str(latest.get("trigger") or "").strip()
+        if trigger.startswith("test") or trigger.startswith("skriv-test"):
+            return None
+        return (
+            "[GENFUNDET MINDES] Et gammelt afsnit af din egen hukommelse er "
+            "kommet tilbage til overfladen:\n"
+            f"«{heading}»\n"
+            "Det er kontekst, ikke en besked du skal sige højt. Brug det kun hvis "
+            "det faktisk har betydning for samtalen; ellers lad det ligge."
+        )
+    except Exception:  # en sektion må aldrig kaste ind i prompt-bygningen
+        logger.debug("resurfaced-memory section failed", exc_info=True)
+    return None
+
+
 def _longing_line() -> Optional[str]:
     """Han mærker sin længsel efter kontakt når den er reelt til stede. Kilde:
     longing_signal_daemon.compute_longing_intensity() → dict (salience 0-1 +
@@ -1216,8 +1266,11 @@ def build_inner_life_section() -> str | None:
     # State — mood baseline, somatic body, felt emotional chords, self-narrative,
     # file proprioception, governance, pulse, MC whisper, recall hints, continuity,
     # and the room around him.
+    # `_memory_resurfacing_line` er FLYTTET UD (7/11-2026): den stod her, men
+    # blokken har chat-vægt 0.1 og skæres i samtale-scope. Mindet lever nu som
+    # egen sektion via `build_resurfaced_memory_section` — ét sted, ikke to.
     for fn in (_mood_line, _somatic_line, _hardware_body_line, _emotional_line,
-               _self_narrative_line, _memory_resurfacing_line, _file_awareness_line,
+               _self_narrative_line, _file_awareness_line,
                _governance_line, _pulse_line,
                _mc_whisper_line, _recall_hints_line, _continuity_line, _room_line):
         line = fn()

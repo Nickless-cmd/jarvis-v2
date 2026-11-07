@@ -349,7 +349,12 @@ def _resurfacing_surface(total=3, distinct=2, active=True):
         "mode": "memory-resurfacing",
         "active": active,
         "signals": {"resurfaced_total": total, "distinct_headings": distinct,
-                    "last_resurfaced_at": "2026-11-07T19:00:00+00:00"},
+                    "last_resurfaced_at": "2026-11-07T19:00:00+00:00",
+                    # Sektionen viser SELVE mindet, ikke kun et tal — den læser
+                    # overskriften herfra. Uden feltet er sektionen tom.
+                    "recent": [{"heading": "Et gammelt afsnit om noget jeg byggede",
+                                "at": "2026-11-07T19:00:00+00:00",
+                                "trigger": "cadence"}]},
         "summary": f"{total} resurfacinger",
     }
 
@@ -363,7 +368,10 @@ def test_resurfacing_line_built_from_real_surface(monkeypatch):
     assert line is not None
     assert line.startswith("Genfundet: ")
     assert "2 glemte minder" in line
-    assert len(line) <= 80
+    # 7/11-2026: linjen viser nu SELVE mindet, ikke kun et tal — den er derfor
+    # laengere end de gamle 80 tegn. Loftet er 120 (jf. _truncate_clean i
+    # _memory_resurfacing_line); et tal alene var sandt men ubrugeligt.
+    assert len(line) <= 120
 
 
 def test_resurfacing_line_singular(monkeypatch):
@@ -396,16 +404,31 @@ def test_resurfacing_line_survives_producer_raising(monkeypatch):
     assert vil._memory_resurfacing_line() is None
 
 
-def test_resurfacing_line_reaches_the_prompt_block(monkeypatch):
-    """Den ægte kobling: linjen skal stå i build_inner_life_section(), som er
-    den blok prompt_contract lægger i den volatile hale. At funktionen virker
-    er ikke nok — det var præcis fejlen der blev målt 7/11."""
+def test_resurfacing_reaches_the_prompt_as_its_own_section(monkeypatch):
+    """Den ægte kobling — men i den form den har efter 7/11-2026.
+
+    Første version af denne test krævede at linjen stod i
+    ``build_inner_life_section()``. Det var rigtigt indtil samme dag, hvor det
+    blev målt at den blok har chat-vægt 0.1 mod tærsklen 0.3 og derfor skæres
+    HELT i en ren samtaletur. Linjen stod altså i en blok der ikke når den
+    kanal hvor et gammelt minde er mest værd.
+
+    Kontrakten er nu: mindet lever som EGEN sektion
+    (``build_resurfaced_memory_section``), og den må ikke samtidig stå i den
+    blok der skæres — ét sted, ikke to.
+    """
     _install_fake_module(
         monkeypatch, "core.services.memory_resurfacing",
         build_memory_resurfacing_surface=lambda: _resurfacing_surface(3, 2),
     )
+    # Sektionen importerer kilden inde i funktionen, saa fake-modulet skal
+    # installeres i sys.modules — det goer _install_fake_module.
+    sektion = vil.build_resurfaced_memory_section() or ""
+    assert sektion, (
+        "resurfacing-sektionen er tom — så når mindet ikke prompten i chat"
+    )
     block = vil.build_inner_life_section() or ""
-    assert "Genfundet:" in block, (
-        "resurfacing-linjen nåede ikke ind i den blok der går i prompten — "
-        "det var hele fejlen 7/11-2026"
+    assert "Genfundet:" not in block, (
+        "mindet står stadig i [INDRE LIV], som skæres i chat-scope — "
+        "det skal have ét sted, ikke to"
     )

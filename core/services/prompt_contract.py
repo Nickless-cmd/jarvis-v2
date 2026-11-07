@@ -1397,6 +1397,19 @@ def _build_visible_chat_prompt_assembly_impl(
         _awareness_add(1, "kryds-lag-indsigelse", build_opposition_line())
     except Exception as _e:
         _sec_err("kryds-lag-indsigelse", _e)
+    # Genfundet minde (7/11-2026): EGEN sektion, ikke en linje i «indre liv».
+    # Målt samme dag: den blok har chat-vægt 0.1 mod tærsklen 0.3 og skæres
+    # derfor helt i en ren samtaletur — den kanal hvor et gammelt minde er mest
+    # værd. Samme flytning som oppositionen fik 4/11. Indholdet er KONTEKST
+    # («brug det hvis det har betydning»), ikke en replik jeg skal sige højt:
+    # en mekanisk selvfortælling ville være teater. Dedup ligger i kilden —
+    # pick_resurfacing_candidate springer alt over der er rørt eller genfundet
+    # for nyligt, så det samme minde ikke injiceres igen uden grund.
+    try:
+        from core.services.visible_inner_life import build_resurfaced_memory_section
+        _awareness_add(1, "genfundet minde", build_resurfaced_memory_section())
+    except Exception as _e:
+        _sec_err("genfundet minde", _e)
     # Levende selvmodel (2026-09-19): hans træk med dato og kilde. Bag flaget
     # selvmodel_enabled og kun for ejeren; dynamisk → halen, ikke cache-præfikset.
     try:

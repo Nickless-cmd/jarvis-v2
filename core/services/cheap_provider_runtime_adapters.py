@@ -308,7 +308,18 @@ def _resolve_egress_proxy(*, provider: str, auth_profile: str) -> str | None:
     return _sel._resolve_proxy(egress)
 
 
-def _execute_provider_chat(
+def _execute_provider_chat(**kwargs) -> dict[str, object]:
+    """Alle udbyder-chatkald passerer her; kropslaget (somatic) måler dem.
+
+    Se ``somatic_daemon.track_request``: uden målingen stod kropslaget konstant
+    "steady", fordi ingen producent fodrede latens/aktive-kald-tællerne.
+    """
+    from core.services.somatic_daemon import track_request
+    with track_request():
+        return _execute_provider_chat_dispatch(**kwargs)
+
+
+def _execute_provider_chat_dispatch(
     *,
     provider: str,
     model: str,

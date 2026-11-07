@@ -1,6 +1,8 @@
 """Somatic daemon — LLM-generated body-state description from structured metrics."""
 from __future__ import annotations
 
+import time
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -54,6 +56,31 @@ def record_latency_sample(ms: float) -> None:
     _latency_samples.append(ms)
     if len(_latency_samples) > _MAX_LATENCY_SAMPLES:
         _latency_samples = _latency_samples[-_MAX_LATENCY_SAMPLES:]
+
+
+@contextmanager
+def track_request():
+    """Mål ét modelkald: aktiv-tæller op/ned + latenstid ind i kropslaget.
+
+    Uden denne omslutning blev ``record_request_start/end`` og
+    ``record_latency_sample`` aldrig kaldt (målt 7/11-2026), så snapshot'et stod
+    konstant på ``active_requests=0`` og ``latency_ms=0``. Latenstiden tælles
+    også ved fejl: et kald der timede ud er præcis den langsomme krop. Self-safe —
+    målingen må aldrig kunne vælte selve kaldet.
+    """
+    t0 = time.monotonic()
+    try:
+        record_request_start()
+    except Exception:  # maalingen maa aldrig vaelte det kald den maaler
+        pass
+    try:
+        yield
+    finally:
+        try:
+            record_request_end()
+            record_latency_sample((time.monotonic() - t0) * 1000.0)
+        except Exception:  # telemetri-fejl er ikke en fejl i modelkaldet
+            pass
 
 
 def get_latest_somatic_phrase() -> str:

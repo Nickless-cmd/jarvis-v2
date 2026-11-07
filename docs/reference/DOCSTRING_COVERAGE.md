@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9834/18312 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9836/18314 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 9834/18312 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 872 | 1586 | 54% |
-| `core.services` | 6560 | 12405 | 52% |
+| `core.services` | 6562 | 12407 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1024,12 +1024,12 @@ Generated from source. 9834/18312 functions/methods documented (53%). The list b
 - `core/services/chat_flow_preferences.py` :: `set_chat_flow_state` (L81)
 - `core/services/chat_session_private_metadata.py` :: `decrypt_session_text` (L23)
 - `core/services/chat_session_private_metadata.py` :: `encrypt_session_text` (L8)
-- `core/services/chat_sessions.py` :: `append_chat_message` (L945)
+- `core/services/chat_sessions.py` :: `append_chat_message` (L951)
 - `core/services/chat_sessions.py` :: `create_chat_session` (L67)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1791)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1407)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1728)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1760)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1822)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1438)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1759)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1791)
 - `core/services/cheap_lane_admission.py` :: `acquire_admission` (L123)
 - `core/services/cheap_lane_admission.py` :: `admission_snapshot` (L102)
 - `core/services/cheap_lane_admission.py` :: `release_admission` (L155)
@@ -2140,10 +2140,10 @@ Generated from source. 9834/18312 functions/methods documented (53%). The list b
 - `core/services/skill_security_scanner.py` :: `ScanResult.passed` (L71)
 - `core/services/skill_security_scanner.py` :: `ScanResult.summary` (L88)
 - `core/services/skill_security_scanner.py` :: `ScanResult.to_dict` (L105)
-- `core/services/somatic_daemon.py` :: `get_latest_somatic_phrase` (L59)
-- `core/services/somatic_daemon.py` :: `record_latency_sample` (L52)
-- `core/services/somatic_daemon.py` :: `record_request_end` (L47)
-- `core/services/somatic_daemon.py` :: `record_request_start` (L42)
+- `core/services/somatic_daemon.py` :: `get_latest_somatic_phrase` (L86)
+- `core/services/somatic_daemon.py` :: `record_latency_sample` (L54)
+- `core/services/somatic_daemon.py` :: `record_request_end` (L49)
+- `core/services/somatic_daemon.py` :: `record_request_start` (L44)
 - `core/services/somatic_runtime_body.py` :: `build_somatic_body_prompt_section` (L116)
 - `core/services/somatic_runtime_body.py` :: `build_somatic_body_surface` (L104)
 - `core/services/somatic_runtime_body.py` :: `update_somatic_body` (L53)

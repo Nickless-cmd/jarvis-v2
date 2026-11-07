@@ -942,6 +942,12 @@ def _ryd_komponist_forslag(session_id: str) -> None:
         ryd_forslag(session_id=session_id)
 
 
+# Værktøjer der henter indhold udefra og derfor kan bære indlejret injection.
+_EXTERNAL_CONTENT_TOOLS = frozenset({
+    "web_fetch", "web_scrape", "web_search", "web_fetch_exa", "web_search_exa",
+})
+
+
 def append_chat_message(
     *,
     session_id: str,
@@ -1046,6 +1052,22 @@ def append_chat_message(
         except Exception:
             pass
 
+    # Relationel varme: den følte kvalitet af relationen (tillid/legesyge/omsorg)
+    # blev aldrig fodret — observe_* havde ingen kaldere (målt 7/11-2026), så
+    # trust stod på 0.5 for evigt. Autonome sessioner tæller ikke: ingen partner
+    # er til stede, så Jarvis' egne monologer er ikke omsorg givet til nogen.
+    if normalized_role in ("user", "assistant"):
+        try:
+            from core.services.theory_of_mind import _is_autonomous_session
+            if not _is_autonomous_session(normalized_session):
+                from core.services import relational_warmth
+                if normalized_role == "user":
+                    relational_warmth.observe_incoming_text(normalized_content)
+                else:
+                    relational_warmth.observe_outgoing_text(normalized_content)
+        except Exception:  # varmen er en maaling; fejl maa ikke tabe beskeden
+            pass
+
     if normalized_role == "tool" and not parse_tool_result_reference(normalized_content):
         normalized_tool_name = (tool_name or _infer_tool_name_from_content(normalized_content) or "tool").strip()
         # 5/9-2026: STOREN faar hele resultatet, samtalen faar det klippede.
@@ -1053,6 +1075,15 @@ def append_chat_message(
         # inspect the full output»; indtil nu blev kun den klippede tekst gemt,
         # saa midten (i ét maalt tilfaelde 131.200 tegn) fandtes ingen steder.
         _stored = str(full_content or "").strip() or normalized_content
+        # Indlejret prompt-injection i eksternt indhold: scan_tool_output havde ingen
+        # kaldere (målt 7/11-2026), så fundne mønstre nåede aldrig audit-loggen.
+        # Kun scanning + registrering; teksten ændres IKKE.
+        if normalized_tool_name in _EXTERNAL_CONTENT_TOOLS:
+            try:
+                from core.services.abuse_monitor import scan_tool_output
+                scan_tool_output(_stored, source=normalized_tool_name)
+            except Exception:  # scanningen er en registrering; den maa ikke tabe resultatet
+                pass
         result_id = save_tool_result(
             normalized_tool_name,
             tool_arguments or {},

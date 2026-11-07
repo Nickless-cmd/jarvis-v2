@@ -253,20 +253,20 @@ _Real-time Central-vindue til owner (jarvis-desk code mode)._
 | function | `central_realtime` | `()` | Ét snapshot af Centralens live-tilstand (puls/feed/flag/læring). | [src](../../../apps/api/jarvis_api/routes/central.py#L49) |
 | function | `central_timeseries_merged` | `()` | Per-nerve tidsserie merget PÅ TVÆRS af processer (runtime+api). Lukker cross-proces- | [src](../../../apps/api/jarvis_api/routes/central.py#L63) |
 | function | `central_diagnostics` | `()` | Fuldt diagnostik-sted til Central-HUD'ens Diagnostik-mode (Bjørn 2026-06-23: 'mangler et | [src](../../../apps/api/jarvis_api/routes/central.py#L73) |
-| function | `central_providers` | `()` | Provider-helbred til Central-HUD'en — læser DET GEMTE ping-snapshot (billigt, ingen live | [src](../../../apps/api/jarvis_api/routes/central.py#L111) |
-| function | `central_cost` | `(window=…, provider=…)` | Cost-aggregat (WS3): today/7d/30d total $, tokens ind/ud, cache-hit%, fordelt på | [src](../../../apps/api/jarvis_api/routes/central.py#L120) |
-| function | `central_agents` | `(window=…)` | Agent-observabilitet (B3): costs-aggregat (lane in agent/council) + dispatch- | [src](../../../apps/api/jarvis_api/routes/central.py#L129) |
-| function | `central_agents_work` | `(limit=…)` | De sidste subagent-kørsler som arbejdskort. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L139) |
-| function | `central_agent_cancel` | `(agent_id, payload=…)` | Afbryd (abort) en kørende agent fra Central CLI Agents-fanen. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L150) |
-| function | `central_agent_pause` | `(agent_id)` | Pausér en kørende agent fra Central CLI Agents-fanen. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L174) |
-| function | `central_council` | `(window=…)` | Council-observabilitet (B3): convocations/deadlocks/roller/event-vs-ondemand- | [src](../../../apps/api/jarvis_api/routes/central.py#L200) |
-| function | `central_shadow_review` | `()` | Shadow-eksperiment-register: hvilke shadow-vinduer kører, og hvilke er MODNE | [src](../../../apps/api/jarvis_api/routes/central.py#L209) |
-| function | `central_command` | `(payload)` | Live owner-terminal ind i Centralen — skriv+test kommandoer (status/incidents/trace/nerve/ | [src](../../../apps/api/jarvis_api/routes/central.py#L220) |
-| function | `central_mind` | `(section=…, tab=…)` | Jarvis Mind-hub: Centralen som ÉT samlingspunkt for alt MC viser. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L231) |
-| function | `central_stream` | `()` | SSE-live-feed af nerve-fyringer (ægte realtid i stedet for 2s-poll). Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L247) |
-| function | `central_nerve_detail` | `(nerve)` | Lag 5: én nerves spor + kode-lokation + cluster + live tænd/sluk-tilstand. | [src](../../../apps/api/jarvis_api/routes/central.py#L277) |
-| function | `central_nerve_toggle` | `(nerve, enabled=…)` | Owner kill-switch: tænd/sluk en nerve LIVE (Lag 5). Sikkerheds-nerver kan IKKE | [src](../../../apps/api/jarvis_api/routes/central.py#L314) |
-| function | `central_tool_infra` | `()` | De 12 værktøjs-lag der ellers er usynlige — hver med sine egne signaler. | [src](../../../apps/api/jarvis_api/routes/central.py#L331) |
+| function | `central_providers` | `()` | Provider-helbred til Central-HUD'en — læser DET GEMTE ping-snapshot (billigt, ingen live | [src](../../../apps/api/jarvis_api/routes/central.py#L129) |
+| function | `central_cost` | `(window=…, provider=…)` | Cost-aggregat (WS3): today/7d/30d total $, tokens ind/ud, cache-hit%, fordelt på | [src](../../../apps/api/jarvis_api/routes/central.py#L138) |
+| function | `central_agents` | `(window=…)` | Agent-observabilitet (B3): costs-aggregat (lane in agent/council) + dispatch- | [src](../../../apps/api/jarvis_api/routes/central.py#L147) |
+| function | `central_agents_work` | `(limit=…)` | De sidste subagent-kørsler som arbejdskort. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L157) |
+| function | `central_agent_cancel` | `(agent_id, payload=…)` | Afbryd (abort) en kørende agent fra Central CLI Agents-fanen. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L168) |
+| function | `central_agent_pause` | `(agent_id)` | Pausér en kørende agent fra Central CLI Agents-fanen. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L192) |
+| function | `central_council` | `(window=…)` | Council-observabilitet (B3): convocations/deadlocks/roller/event-vs-ondemand- | [src](../../../apps/api/jarvis_api/routes/central.py#L218) |
+| function | `central_shadow_review` | `()` | Shadow-eksperiment-register: hvilke shadow-vinduer kører, og hvilke er MODNE | [src](../../../apps/api/jarvis_api/routes/central.py#L227) |
+| function | `central_command` | `(payload)` | Live owner-terminal ind i Centralen — skriv+test kommandoer (status/incidents/trace/nerve/ | [src](../../../apps/api/jarvis_api/routes/central.py#L238) |
+| function | `central_mind` | `(section=…, tab=…)` | Jarvis Mind-hub: Centralen som ÉT samlingspunkt for alt MC viser. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L249) |
+| function | `central_stream` | `()` | SSE-live-feed af nerve-fyringer (ægte realtid i stedet for 2s-poll). Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L265) |
+| function | `central_nerve_detail` | `(nerve)` | Lag 5: én nerves spor + kode-lokation + cluster + live tænd/sluk-tilstand. | [src](../../../apps/api/jarvis_api/routes/central.py#L295) |
+| function | `central_nerve_toggle` | `(nerve, enabled=…)` | Owner kill-switch: tænd/sluk en nerve LIVE (Lag 5). Sikkerheds-nerver kan IKKE | [src](../../../apps/api/jarvis_api/routes/central.py#L332) |
+| function | `central_tool_infra` | `()` | De 12 værktøjs-lag der ellers er usynlige — hver med sine egne signaler. | [src](../../../apps/api/jarvis_api/routes/central.py#L349) |
 
 ## `apps/api/jarvis_api/routes/central_absorb_routes.py`
 _Central-absorb routes — MC-kategorier PROJICERET som levende central-nerver._

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import ast
+import re
+import shlex
 import statistics
 import subprocess
 import time
 from collections import Counter, defaultdict, deque
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable, Mapping
+from typing import Iterable, Mapping, NamedTuple
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +26,17 @@ ENTRY_GLOBS = (
     "apps/api/jarvis_api/routes/*.py",
     "scripts/pipelines/jarvis_*_pipeline.py",
 )
+# Mapper med systemd-units. Repoets egne, plus den installerede mappe: vagten
+# jarvis-runtime-guard.service ligger KUN i /etc/systemd/system, ikke i repoet.
+SYSTEMD_INSTALLED_DIR = Path("/etc/systemd/system")
+SYSTEMD_UNIT_DIRS = (REPO_ROOT / "deploy", REPO_ROOT / "scripts", SYSTEMD_INSTALLED_DIR)
+# Installerede units tæller kun med hvis de har med dette repo at gøre.
+INSTALLED_UNIT_PREFIX = "jarvis-"
+# Filer hvor en `python -m`-linje er en faktisk kommando (ikke prosa).
+COMMAND_FILE_NAMES = ("Makefile", "makefile")
+COMMAND_FILE_SUFFIXES = (".sh", ".service", ".timer", ".mk")
+COMMAND_SCAN_ROOTS = ("scripts", "deploy", "core", "apps")
+PYTHON_M_RE = re.compile(r"\bpython[\d.]*\s+(?:-[A-Za-z]\S*\s+)*-m\s+([A-Za-z_][\w.]*)")
 SERVICES_MOVE_COMMIT_PREFIX = "refactor(services): flyt services/ fra apps/api/ til core/"
 EMIT_PATTERNS = (
     "emit_event(",
@@ -56,6 +69,7 @@ class ServiceSignals:
     has_daemon_hook: bool
     imports_count: int
     imported_by_count: int
+    entry_paths: list[str] = field(default_factory=list)
 
 
 def module_name_from_path(path: Path, repo_root: Path = REPO_ROOT) -> str:
@@ -342,6 +356,202 @@ def git_last_touch(path: Path, index: GitTouchIndex) -> tuple[int | None, str]:
     return age_days, commit
 
 
+class EntryRoot(NamedTuple):
+    """A labelled reachability root: ``label`` says WHICH way in, ``module`` where."""
+
+    label: str
+    module: str
+
+
+def static_entry_roots(repo_root: Path = REPO_ROOT) -> list[EntryRoot]:
+    """The original import-style roots (ENTRY_FILES + ENTRY_GLOBS) as ``import:<file>``."""
+    paths = [repo_root / entry for entry in ENTRY_FILES]
+    for pattern in ENTRY_GLOBS:
+        paths.extend(sorted(repo_root.glob(pattern)))
+    return [EntryRoot(f"import:{p.name}", module_name_from_path(p, repo_root)) for p in paths]
+
+
+def _resolve_script_module(token: str, repo_root: Path, known_modules: set[str]) -> str | None:
+    """Map a script path from an ExecStart to a known module.
+
+    The unit may name another checkout (``/media/projects/jarvis-v2/scripts/x.py``),
+    so try the longest path suffix that exists as a module in this repo.
+    """
+    parts = Path(token).parts
+    for start in range(len(parts)):
+        candidate = ".".join(parts[start:])
+        if candidate.endswith(".py"):
+            candidate = candidate[:-3]
+        if candidate in known_modules:
+            return candidate
+    return None
+
+
+def _module_from_execstart(command: str, repo_root: Path, known_modules: set[str]) -> str | None:
+    """Return the repo module an ExecStart command line starts, or None."""
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        tokens = command.split()
+    if tokens:
+        tokens[0] = tokens[0].lstrip("-@:+!")
+    for i, token in enumerate(tokens):
+        if token == "-m" and i + 1 < len(tokens):
+            return tokens[i + 1] if tokens[i + 1] in known_modules else None
+    for token in tokens:
+        if token.endswith(".py"):
+            return _resolve_script_module(token, repo_root, known_modules)
+        # uvicorn pkg.mod:app
+        if ":" in token and re.fullmatch(r"[A-Za-z_][\w.]*:[A-Za-z_]\w*", token):
+            module = token.split(":", 1)[0]
+            if module in known_modules:
+                return module
+    return None
+
+
+def discover_systemd_entries(
+    unit_dirs: Iterable[Path],
+    repo_root: Path,
+    known_modules: set[str],
+) -> list[EntryRoot]:
+    """Read ``*.service`` files and derive roots from their ExecStart lines.
+
+    Handles ``python3 -m pkg.mod``, ``python /path/script.py``, a bare executable
+    script, and ``uvicorn pkg.mod:app``. Backslash continuations are joined.
+    """
+    roots: list[EntryRoot] = []
+    seen: set[Path] = set()
+    for unit_dir in unit_dirs:
+        if not unit_dir.is_dir():
+            continue
+        for unit in sorted(unit_dir.glob("*.service")):
+            if unit_dir == SYSTEMD_INSTALLED_DIR and not unit.name.startswith(INSTALLED_UNIT_PREFIX):
+                continue
+            if unit in seen:
+                continue
+            seen.add(unit)
+            text = unit.read_text(encoding="utf-8", errors="replace").replace("\\\n", " ")
+            for line in text.splitlines():
+                line = line.strip()
+                if not line.startswith("ExecStart"):
+                    continue
+                _, _, command = line.partition("=")
+                module = _module_from_execstart(command.strip(), repo_root, known_modules)
+                if module:
+                    roots.append(EntryRoot(f"systemd:{unit.name}", module))
+    return roots
+
+
+def _is_command_file(path: Path) -> bool:
+    return path.name in COMMAND_FILE_NAMES or path.suffix in COMMAND_FILE_SUFFIXES
+
+
+def _docstring_nodes(tree: ast.AST) -> set[int]:
+    """ids of Constant nodes that are docstrings (prose, not commands)."""
+    ids: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            body = node.body
+            if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
+                ids.add(id(body[0].value))
+    return ids
+
+
+def discover_module_entries(repo_root: Path, known_modules: set[str]) -> list[EntryRoot]:
+    """Find real ``python3 -m <module>`` command paths.
+
+    Counted: shell/Makefile/unit lines (comments stripped) and Python string
+    literals that are not docstrings. NOT counted: docs, markdown, comments,
+    docstrings, and a module naming itself.
+    """
+    roots: list[EntryRoot] = []
+    seen: set[tuple[str, str]] = set()
+
+    def add(module: str, origin: str) -> None:
+        if module in known_modules and module != origin and (module, origin) not in seen:
+            seen.add((module, origin))
+            roots.append(EntryRoot(f"module:-m {module}", module))
+
+    for scan_root in COMMAND_SCAN_ROOTS:
+        base = repo_root / scan_root
+        if not base.is_dir():
+            continue
+        for path in sorted(base.rglob("*")):
+            if not path.is_file() or "__pycache__" in path.parts:
+                continue
+            origin = module_name_from_path(path, repo_root) if path.suffix == ".py" else ""
+            if path.suffix == ".py":
+                try:
+                    tree = ast.parse(path.read_text(encoding="utf-8"))
+                except (SyntaxError, UnicodeDecodeError):  # u-parsbar fil kan ikke indeholde et kald
+                    continue
+                skip = _docstring_nodes(tree)
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in skip:
+                        for match in PYTHON_M_RE.finditer(node.value):
+                            add(match.group(1), origin)
+            elif _is_command_file(path):
+                for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+                    if line.lstrip().startswith("#"):
+                        continue
+                    for match in PYTHON_M_RE.finditer(line):
+                        add(match.group(1), origin)
+    return roots
+
+
+def discover_registry_entries(repo_root: Path, known_modules: set[str]) -> list[EntryRoot]:
+    """Find ``("name", "core.services.mod", "function")`` tuples in core/services and apps."""
+    roots: list[EntryRoot] = []
+    for scan_root in ("core/services", "apps"):
+        base = repo_root / scan_root
+        if not base.is_dir():
+            continue
+        for path in sorted(base.rglob("*.py")):
+            if "__pycache__" in path.parts:
+                continue
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8"))
+            except (SyntaxError, UnicodeDecodeError):  # u-parsbar fil kan ikke indeholde et registry-tuple
+                continue
+            for node in ast.walk(tree):
+                if not (isinstance(node, ast.Tuple) and len(node.elts) == 3):
+                    continue
+                name, module, func = node.elts
+                if not all(isinstance(e, ast.Constant) and isinstance(e.value, str) for e in node.elts):
+                    continue
+                if module.value in known_modules and func.value.isidentifier():
+                    roots.append(EntryRoot(f"registry:{name.value}", module.value))
+    return roots
+
+
+TRANSITIVE_SUFFIX = " (transitive)"
+
+
+def compute_entry_paths(
+    graph: Mapping[str, set[str]],
+    roots: Iterable[EntryRoot],
+) -> dict[str, list[str]]:
+    """For every module reached from any root, list WHICH root labels reached it.
+
+    ``import:`` labels are reported for the whole import closure (as before).
+    Other labels are reported bare only on the root module itself; modules that
+    are merely imported further down get ``<label> (transitive)`` so a unit or
+    registry entry never reads as if it started that module directly.
+    """
+    by_label: dict[str, set[str]] = defaultdict(set)
+    for label, module in roots:
+        by_label[label].add(module)
+    paths: dict[str, set[str]] = defaultdict(set)
+    for label, modules in by_label.items():
+        reached, _ = compute_reachability(graph, modules)
+        for module in reached:
+            if label.startswith("import:") or module in modules:
+                paths[module].add(label)
+            else:
+                paths[module].add(label + TRANSITIVE_SUFFIX)
+    return {module: sorted(labels) for module, labels in paths.items()}
+
+
 def entry_modules() -> list[str]:
     """Return the dotted module names of the reachability entry points (ENTRY_FILES + ENTRY_GLOBS)."""
     modules = [module_name_from_path(REPO_ROOT / entry) for entry in ENTRY_FILES]
@@ -487,7 +697,14 @@ def analyze_services() -> list[ServiceSignals]:
         for dependency in imports:
             reverse_graph[dependency].add(module_name)
 
-    reachable, parents = compute_reachability(graph, entry_modules())
+    roots = (
+        static_entry_roots(REPO_ROOT)
+        + discover_systemd_entries(SYSTEMD_UNIT_DIRS, REPO_ROOT, known_modules)
+        + discover_module_entries(REPO_ROOT, known_modules)
+        + discover_registry_entries(REPO_ROOT, known_modules)
+    )
+    entry_paths = compute_entry_paths(graph, roots)
+    reachable, parents = compute_reachability(graph, [root.module for root in roots])
     service_paths = sorted(path for path in SERVICE_DIR.glob("*.py") if path.name != "__init__.py")
     test_modules = {name for name in module_map if name.startswith("tests.")}
     touch_index = build_git_touch_index(REPO_ROOT)
@@ -525,6 +742,7 @@ def analyze_services() -> list[ServiceSignals]:
                 has_daemon_hook=daemon_flag,
                 imports_count=len(graph.get(module_name, set())),
                 imported_by_count=len(imported_by),
+                entry_paths=entry_paths.get(module_name, []),
             )
         )
     return sorted(signals_list, key=lambda item: item.service)
@@ -542,9 +760,23 @@ def print_summary(signals_list: list[ServiceSignals]) -> None:
         print(f"{label}: {count} ({share:.1f}%)")
 
 
+def print_entry_paths(signals_list: list[ServiceSignals]) -> None:
+    """Show, per service reached by a non-import source, WHICH way made it reached."""
+    print("Services reached via non-import entry paths:")
+    for item in signals_list:
+        extra = [
+            p for p in item.entry_paths
+            if not p.startswith("import:") and not p.endswith(TRANSITIVE_SUFFIX)
+        ]
+        if extra:
+            print(f"  {item.service} [{score_service(item)}]: {', '.join(extra)}")
+    print()
+
+
 def main() -> int:
     """Run the audit, write the report to DOCS_OUTPUT, print the summary; return 0."""
     signals_list = analyze_services()
+    print_entry_paths(signals_list)
     report = render_markdown(signals_list)
     DOCS_OUTPUT.write_text(report, encoding="utf-8")
     print_summary(signals_list)

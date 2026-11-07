@@ -9,8 +9,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.capability_audit import (
     REPO_ROOT,
     SERVICES_MOVE_COMMIT_PREFIX,
+    EntryRoot,
     GitTouchIndex,
+    compute_entry_paths,
     compute_reachability,
+    discover_module_entries,
+    discover_registry_entries,
+    discover_systemd_entries,
     git_last_touch,
     parse_imports,
     score_service,
@@ -142,3 +147,106 @@ def test_git_last_touch_without_history_returns_none() -> None:
     index = GitTouchIndex(touches={}, renamed_from={})
 
     assert git_last_touch(REPO_ROOT / "core/services/never_tracked.py", index) == (None, "n/a")
+
+
+# --- indgangs-kilder: hver målt for sig mod en syntetisk repo-fixture -------------
+
+KNOWN = {
+    "core.services.guard",
+    "core.services.script_job",
+    "core.services.cron_job",
+    "core.services.shell_job",
+    "core.services.registered",
+    "core.services.documented_only",
+    "core.services.helper",
+    "scripts.runner",
+    "apps.api.jarvis_api.app",
+}
+
+
+def _write(root: Path, rel: str, text: str) -> None:
+    path = root / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+def test_systemd_execstart_both_forms_and_ignores_other_lines(tmp_path: Path) -> None:
+    _write(tmp_path, "deploy/guard.service", "[Service]\nExecStart=/opt/py/bin/python3 -m core.services.guard\n")
+    _write(
+        tmp_path,
+        "scripts/runner.service",
+        "[Service]\nExecStart=/elsewhere/checkout/scripts/runner.py --flag\n",
+    )
+    _write(
+        tmp_path,
+        "deploy/api.service",
+        "[Service]\nExecStart=/opt/py/bin/uvicorn apps.api.jarvis_api.app:app \\\n  --port 1\n",
+    )
+    _write(tmp_path, "deploy/other.service", "[Service]\nExecStart=/usr/bin/true\nDescription=python3 -m core.services.helper\n")
+    _write(tmp_path, "deploy/guard.timer", "ExecStart=python3 -m core.services.helper\n")
+
+    roots = discover_systemd_entries([tmp_path / "deploy", tmp_path / "scripts"], tmp_path, KNOWN)
+
+    assert sorted(roots) == [
+        EntryRoot("systemd:api.service", "apps.api.jarvis_api.app"),
+        EntryRoot("systemd:guard.service", "core.services.guard"),
+        EntryRoot("systemd:runner.service", "scripts.runner"),
+    ]
+
+
+def test_systemd_without_units_yields_nothing(tmp_path: Path) -> None:
+    assert discover_systemd_entries([tmp_path / "missing"], tmp_path, KNOWN) == []
+
+
+def test_module_entries_count_only_real_command_paths(tmp_path: Path) -> None:
+    _write(tmp_path, "scripts/job.sh", "#!/bin/sh\n# python3 -m core.services.helper\n/usr/bin/python3 -m core.services.shell_job\n")
+    _write(
+        tmp_path,
+        "core/services/launcher.py",
+        '"""Docs: python3 -m core.services.documented_only"""\n'
+        'CMD = "python3 -m core.services.cron_job --once"\n'
+        '# python3 -m core.services.helper\n',
+    )
+    _write(tmp_path, "docs/readme.md", "python3 -m core.services.documented_only\n")
+    _write(tmp_path, "core/services/cron_job.py", 'SELF = "python3 -m core.services.cron_job"\n')
+
+    roots = discover_module_entries(tmp_path, KNOWN)
+
+    assert sorted(roots) == [
+        EntryRoot("module:-m core.services.cron_job", "core.services.cron_job"),
+        EntryRoot("module:-m core.services.shell_job", "core.services.shell_job"),
+    ]
+
+
+def test_registry_tuples_found_in_services_and_apps_only(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "core/services/digest.py",
+        'ITEMS = (\n    ("dark_digest", "core.services.registered", "build_surface"),\n'
+        '    ("unknown", "core.services.nope", "build_surface"),\n'
+        '    ("two_only", "core.services.helper"),\n)\n',
+    )
+    _write(tmp_path, "tests/t.py", 'X = ("in_tests", "core.services.guard", "f")\n')
+
+    roots = discover_registry_entries(tmp_path, KNOWN)
+
+    assert roots == [EntryRoot("registry:dark_digest", "core.services.registered")]
+
+
+def test_entry_paths_name_the_way_in_and_mark_transitive() -> None:
+    graph = {
+        "scripts.runner": {"core.services.helper"},
+        "core.services.guard": {"core.services.helper"},
+        "core.services.helper": set(),
+        "core.services.dead": set(),
+    }
+    roots = [
+        EntryRoot("import:app.py", "scripts.runner"),
+        EntryRoot("systemd:guard.service", "core.services.guard"),
+    ]
+
+    assert compute_entry_paths(graph, roots) == {
+        "scripts.runner": ["import:app.py"],
+        "core.services.guard": ["systemd:guard.service"],
+        "core.services.helper": ["import:app.py", "systemd:guard.service (transitive)"],
+    }

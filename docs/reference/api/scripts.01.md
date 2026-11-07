@@ -153,23 +153,34 @@ _Generate docs/reference/CAPABILITIES.md from the live tool registry. Regenerabl
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `ServiceSignals` | `` | — | [src](../../../scripts/capability_audit.py#L45) |
-| function | `module_name_from_path` | `(path, repo_root=…)` | Return the dotted module name for a file path relative to repo_root. | [src](../../../scripts/capability_audit.py#L61) |
-| function | `find_python_files` | `(root)` | Return sorted .py files under the SCAN_ROOTS subdirs of root, skipping __pycache__. | [src](../../../scripts/capability_audit.py#L75) |
-| function | `resolve_relative_import` | `(current_module, module, level)` | Resolve a relative ``from ... import`` into an absolute dotted module name. | [src](../../../scripts/capability_audit.py#L89) |
-| function | `normalize_candidates` | `(candidates, known_modules)` | Reduce raw import candidates to modules that actually exist in the repo. | [src](../../../scripts/capability_audit.py#L112) |
-| function | `parse_imports` | `(path, *, current_module=…, known_modules=…)` | Parse a file's AST and return the set of modules it imports. | [src](../../../scripts/capability_audit.py#L138) |
-| function | `compute_reachability` | `(graph, entry_modules)` | BFS the import graph from entry_modules. | [src](../../../scripts/capability_audit.py#L191) |
-| function | `score_service` | `(signals)` | Classify a service into a colored liveness label from its signals. | [src](../../../scripts/capability_audit.py#L217) |
-| class | `GitTouchIndex` | `` | Repo-wide git history built from ONE ``git log`` call. | [src](../../../scripts/capability_audit.py#L249) |
-| function | `build_git_touch_index` | `(repo_root=…)` | Build the repo-wide touch index in a single ``git log --name-status -M`` pass. | [src](../../../scripts/capability_audit.py#L262) |
-| function | `git_last_touch` | `(path, index)` | Return (age in days, short commit) of the most recent git change to path. | [src](../../../scripts/capability_audit.py#L310) |
-| function | `entry_modules` | `()` | Return the dotted module names of the reachability entry points (ENTRY_FILES + ENTRY_GLOBS). | [src](../../../scripts/capability_audit.py#L345) |
-| function | `service_note` | `(signals, score)` | Build a short human note explaining why a service scored low. | [src](../../../scripts/capability_audit.py#L354) |
-| function | `render_markdown` | `(signals_list)` | Render the full capability matrix report as a Markdown string. | [src](../../../scripts/capability_audit.py#L372) |
-| function | `analyze_services` | `()` | Scan the repo and build ServiceSignals for every module in core/services/. | [src](../../../scripts/capability_audit.py#L471) |
-| function | `print_summary` | `(signals_list)` | Print the total service count and per-score counts/shares to stdout. | [src](../../../scripts/capability_audit.py#L533) |
-| function | `main` | `()` | Run the audit, write the report to DOCS_OUTPUT, print the summary; return 0. | [src](../../../scripts/capability_audit.py#L545) |
+| class | `ServiceSignals` | `` | — | [src](../../../scripts/capability_audit.py#L58) |
+| function | `module_name_from_path` | `(path, repo_root=…)` | Return the dotted module name for a file path relative to repo_root. | [src](../../../scripts/capability_audit.py#L75) |
+| function | `find_python_files` | `(root)` | Return sorted .py files under the SCAN_ROOTS subdirs of root, skipping __pycache__. | [src](../../../scripts/capability_audit.py#L89) |
+| function | `resolve_relative_import` | `(current_module, module, level)` | Resolve a relative ``from ... import`` into an absolute dotted module name. | [src](../../../scripts/capability_audit.py#L103) |
+| function | `normalize_candidates` | `(candidates, known_modules)` | Reduce raw import candidates to modules that actually exist in the repo. | [src](../../../scripts/capability_audit.py#L126) |
+| function | `parse_imports` | `(path, *, current_module=…, known_modules=…)` | Parse a file's AST and return the set of modules it imports. | [src](../../../scripts/capability_audit.py#L152) |
+| function | `compute_reachability` | `(graph, entry_modules)` | BFS the import graph from entry_modules. | [src](../../../scripts/capability_audit.py#L205) |
+| function | `score_service` | `(signals)` | Classify a service into a colored liveness label from its signals. | [src](../../../scripts/capability_audit.py#L231) |
+| class | `GitTouchIndex` | `` | Repo-wide git history built from ONE ``git log`` call. | [src](../../../scripts/capability_audit.py#L263) |
+| function | `build_git_touch_index` | `(repo_root=…)` | Build the repo-wide touch index in a single ``git log --name-status -M`` pass. | [src](../../../scripts/capability_audit.py#L276) |
+| function | `git_last_touch` | `(path, index)` | Return (age in days, short commit) of the most recent git change to path. | [src](../../../scripts/capability_audit.py#L324) |
+| class | `EntryRoot` | `` | A labelled reachability root: ``label`` says WHICH way in, ``module`` where. | [src](../../../scripts/capability_audit.py#L359) |
+| function | `static_entry_roots` | `(repo_root=…)` | The original import-style roots (ENTRY_FILES + ENTRY_GLOBS) as ``import:<file>``. | [src](../../../scripts/capability_audit.py#L366) |
+| function | `_resolve_script_module` | `(token, repo_root, known_modules)` | Map a script path from an ExecStart to a known module. | [src](../../../scripts/capability_audit.py#L374) |
+| function | `_module_from_execstart` | `(command, repo_root, known_modules)` | Return the repo module an ExecStart command line starts, or None. | [src](../../../scripts/capability_audit.py#L390) |
+| function | `discover_systemd_entries` | `(unit_dirs, repo_root, known_modules)` | Read ``*.service`` files and derive roots from their ExecStart lines. | [src](../../../scripts/capability_audit.py#L412) |
+| function | `_is_command_file` | `(path)` | — | [src](../../../scripts/capability_audit.py#L445) |
+| function | `_docstring_nodes` | `(tree)` | ids of Constant nodes that are docstrings (prose, not commands). | [src](../../../scripts/capability_audit.py#L449) |
+| function | `discover_module_entries` | `(repo_root, known_modules)` | Find real ``python3 -m <module>`` command paths. | [src](../../../scripts/capability_audit.py#L460) |
+| function | `discover_registry_entries` | `(repo_root, known_modules)` | Find ``("name", "core.services.mod", "function")`` tuples in core/services and apps. | [src](../../../scripts/capability_audit.py#L502) |
+| function | `compute_entry_paths` | `(graph, roots)` | For every module reached from any root, list WHICH root labels reached it. | [src](../../../scripts/capability_audit.py#L530) |
+| function | `entry_modules` | `()` | Return the dotted module names of the reachability entry points (ENTRY_FILES + ENTRY_GLOBS). | [src](../../../scripts/capability_audit.py#L555) |
+| function | `service_note` | `(signals, score)` | Build a short human note explaining why a service scored low. | [src](../../../scripts/capability_audit.py#L564) |
+| function | `render_markdown` | `(signals_list)` | Render the full capability matrix report as a Markdown string. | [src](../../../scripts/capability_audit.py#L582) |
+| function | `analyze_services` | `()` | Scan the repo and build ServiceSignals for every module in core/services/. | [src](../../../scripts/capability_audit.py#L681) |
+| function | `print_summary` | `(signals_list)` | Print the total service count and per-score counts/shares to stdout. | [src](../../../scripts/capability_audit.py#L751) |
+| function | `print_entry_paths` | `(signals_list)` | Show, per service reached by a non-import source, WHICH way made it reached. | [src](../../../scripts/capability_audit.py#L763) |
+| function | `main` | `()` | Run the audit, write the report to DOCS_OUTPUT, print the summary; return 0. | [src](../../../scripts/capability_audit.py#L776) |
 
 ## `scripts/central_connectivity_audit.py`
 _central_connectivity_audit.py — HOLDBART kort over hvad der er koblet til Centralen._

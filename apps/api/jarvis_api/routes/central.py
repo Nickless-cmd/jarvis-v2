@@ -102,6 +102,24 @@ async def central_diagnostics() -> dict:
             out["degrading"] = cl.degrading(incidents=inc)[:8]
         except Exception:
             pass
+        # Helbreds-fladerne. Hver sin måling: én der fejler må ikke fjerne de
+        # andre fra diagnostikken. En None betyder «ikke målt», ikke «alt ok».
+        from importlib import import_module
+
+        for noegle, modul, funktion in (
+            ("health", "core.services.central_health",
+             "build_central_health_surface"),
+            ("signal_health", "core.services.central_signal_health",
+             "build_central_signal_health_surface"),
+            ("coverage", "core.services.central_coverage",
+             "build_central_coverage_surface"),
+            ("causal_quality", "core.services.central_causal_quality",
+             "build_central_causal_quality_surface"),
+        ):
+            try:
+                out[noegle] = getattr(import_module(modul), funktion)()
+            except Exception as exc:  # fladen er valgfri; None bevarer ærlighed
+                out[noegle] = {"error": f"{type(exc).__name__}: {exc}"}
         return out
 
     return await asyncio.to_thread(_build)

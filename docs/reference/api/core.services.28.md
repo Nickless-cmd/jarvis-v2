@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/task_tool_mapping.py`
+_Opgave → værktøj-mapping: hvad vil denne opgave sandsynligvis røre?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_catalog` | `()` | Katalognavne, eller et tomt sæt hvis kataloget ikke kan læses. | [src](../../../core/services/task_tool_mapping.py#L142) |
+| function | `_tier_for_tool_name` | `(name)` | Klassificér et konkret værktøj ud fra dets navn. | [src](../../../core/services/task_tool_mapping.py#L167) |
+| function | `_matcher` | `(noegleord, tekst)` | Match et nøgleord mod teksten — enkeltord med ordgrænse, fraser som substring. | [src](../../../core/services/task_tool_mapping.py#L183) |
+| function | `_leading_tier` | `(lav)` | Tier for opgavens FØRSTE ord — verbet — og ordet selv. | [src](../../../core/services/task_tool_mapping.py#L196) |
+| function | `_clause_tiers` | `(lav)` | (tier, ord) for hver sætningsdels ledende verbum. Tom liste = intet handlingsord. | [src](../../../core/services/task_tool_mapping.py#L233) |
+| function | `map_task_to_tools` | `(task_description)` | Svar på hvad denne opgave sandsynligvis vil røre, og hvor risikabel den er. | [src](../../../core/services/task_tool_mapping.py#L243) |
+| function | `_vaerste` | `(tiers)` | Den mest risikable tier vinder. En opgave er så farlig som sit farligste led. | [src](../../../core/services/task_tool_mapping.py#L321) |
+
 ## `core/services/task_worker.py`
 _Task worker — consumes queued runtime_tasks in heartbeat tick cadence._
 
@@ -599,16 +612,4 @@ _Tools-cluster query-helpers (Phase 1) oven på tool_call-observe i execute_tool
 | function | `recent_tool_calls` | `(*, session_id=…, kind=…, status=…, limit=…)` | Læs tool_call-observe-records fra central_trace, filtreret. Nyeste først. | [src](../../../core/services/tool_observer.py#L14) |
 | function | `recent_tool_failures` | `(*, session_id=…, kind=…, limit=…)` | Kun FEJLEDE tool-kald — debugging-indgang når en bruger melder en fejl ude af huset. | [src](../../../core/services/tool_observer.py#L44) |
 | function | `tool_call_summary` | `()` | Aggregeret overblik (MC/debug): antal kald pr. kind + fejlrate. Self-safe. | [src](../../../core/services/tool_observer.py#L57) |
-
-## `core/services/tool_outcome_memory.py`
-_Bridge tool execution outcomes into durable runtime action evidence._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_tool_outcome_memory` | `(*, tool_name, arguments, result, mode=…)` | Persist a tool outcome as runtime action evidence. | [src](../../../core/services/tool_outcome_memory.py#L7) |
-| function | `_run_anchor` | `(arguments)` | Hvilken kørsel handlingen skete i — og hvilken session. | [src](../../../core/services/tool_outcome_memory.py#L54) |
-| function | `_summary_for_result` | `(tool_name, result)` | — | [src](../../../core/services/tool_outcome_memory.py#L81) |
-| function | `classify_tool_family` | `(tool_name)` | — | [src](../../../core/services/tool_outcome_memory.py#L89) |
-| function | `_score_for_outcome` | `(*, status, family, result)` | — | [src](../../../core/services/tool_outcome_memory.py#L104) |
-| function | `_preview_arguments` | `(arguments)` | — | [src](../../../core/services/tool_outcome_memory.py#L128) |
 

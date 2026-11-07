@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/silence_detector.py`
+_Silence Detector — what is the user NOT saying?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `detect_silence_signals` | `(*, recent_topics, expected_topics, conversation_length=…, user_corrections=…)` | Detect what's missing from the conversation. | [src](../../../core/services/silence_detector.py#L17) |
+| function | `build_silence_surface` | `()` | — | [src](../../../core/services/silence_detector.py#L62) |
+
 ## `core/services/silence_listener.py`
 _Silence Listener — experience of empty space._
 
@@ -600,17 +608,4 @@ _Én linje om hvad Jarvis TÆNKTE i en runde — til visningstilstanden «Tænkn
 | function | `byg_prompt` | `(tanke, hensigt=…)` | — | [src](../../../core/services/tanke_resume.py#L50) |
 | function | `_ryd` | `(s)` | — | [src](../../../core/services/tanke_resume.py#L61) |
 | function | `tanke_resume` | `(tanke, hensigt=…)` | Én linje om rundens tænkning, eller `""`. | [src](../../../core/services/tanke_resume.py#L75) |
-
-## `core/services/task_tool_mapping.py`
-_Opgave → værktøj-mapping: hvad vil denne opgave sandsynligvis røre?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_catalog` | `()` | Katalognavne, eller et tomt sæt hvis kataloget ikke kan læses. | [src](../../../core/services/task_tool_mapping.py#L142) |
-| function | `_tier_for_tool_name` | `(name)` | Klassificér et konkret værktøj ud fra dets navn. | [src](../../../core/services/task_tool_mapping.py#L167) |
-| function | `_matcher` | `(noegleord, tekst)` | Match et nøgleord mod teksten — enkeltord med ordgrænse, fraser som substring. | [src](../../../core/services/task_tool_mapping.py#L183) |
-| function | `_leading_tier` | `(lav)` | Tier for opgavens FØRSTE ord — verbet — og ordet selv. | [src](../../../core/services/task_tool_mapping.py#L196) |
-| function | `_clause_tiers` | `(lav)` | (tier, ord) for hver sætningsdels ledende verbum. Tom liste = intet handlingsord. | [src](../../../core/services/task_tool_mapping.py#L233) |
-| function | `map_task_to_tools` | `(task_description)` | Svar på hvad denne opgave sandsynligvis vil røre, og hvor risikabel den er. | [src](../../../core/services/task_tool_mapping.py#L243) |
-| function | `_vaerste` | `(tiers)` | Den mest risikable tier vinder. En opgave er så farlig som sit farligste led. | [src](../../../core/services/task_tool_mapping.py#L321) |
 

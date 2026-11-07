@@ -399,3 +399,26 @@ async def central_inner_state() -> dict:
     _require_owner()
     from core.services.inner_state_surface import build_inner_state_surface
     return await asyncio.to_thread(build_inner_state_surface)
+
+
+@router.get("/relation-state")
+async def central_relation_state() -> dict:
+    """Relation, bruger-model, drev, kreativitet og temporal tilstand — grupperet.
+
+    Målt 7/11-2026: 315 af 462 flader var usynlige for operatøren. De 35 her er
+    dem der beskriver HVEM JEG TALER MED og HVAD DER BEVÆGER MIG: relationen til
+    brugeren, min model af ham, mine drev og følelser, det kreative og det
+    tidslige. Alle kaldt før de blev skrevet ind.
+
+    ``relation_dynamics`` er udeladt med grund: den kaster ``NoUserContextError``
+    når ``workspace_dir()`` kaldes uden ``user_id`` — samme fejlform som
+    ``memory_write_policy``. At tvinge den ind ville gøre hele fladen tavs i
+    stedet for at isolere den ene.
+
+    ``active=False`` med en grund tælles ikke som tavs — en flade der ærligt
+    melder at der intet er, er ikke død. Owner-only, read-only, via to_thread."""
+    _require_owner()
+    from core.services.relation_creative_state_surface import (
+        build_relation_creative_state_surface,
+    )
+    return await asyncio.to_thread(build_relation_creative_state_surface)

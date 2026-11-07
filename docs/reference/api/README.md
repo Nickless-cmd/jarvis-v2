@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18388 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18393 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -52,16 +52,16 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18388 functions/
 - [`core.services.19`](core.services.19.md) — `narrative_identity` … `parallel_selves`
 - [`core.services.20`](core.services.20.md) — `past_context_router` … `procedure_bank`
 - [`core.services.21`](core.services.21.md) — `procedure_bank_pipeline` … `provider_health_check`
-- [`core.services.22`](core.services.22.md) — `provider_model_epochs` … `release_marker_signal_tracking`
-- [`core.services.23`](core.services.23.md) — `remembered_fact_signal_tracking` … `run_event_log`
-- [`core.services.24`](core.services.24.md) — `run_finding_accounting` … `search_quota`
-- [`core.services.25`](core.services.25.md) — `secret_redaction` … `sensory_source`
-- [`core.services.26`](core.services.26.md) — `session_binding` … `silence_detector`
-- [`core.services.27`](core.services.27.md) — `silence_listener` … `task_tool_mapping`
-- [`core.services.28`](core.services.28.md) — `task_worker` … `tool_outcome_memory`
-- [`core.services.29`](core.services.29.md) — `tool_pattern_miner` … `visible_chat_pragmatics`
-- [`core.services.30`](core.services.30.md) — `visible_chat_quality` … `visible_runs_capabilities`
-- [`core.services.31`](core.services.31.md) — `visible_runs_cognitive` … `world_model_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `provider_model_epochs` … `relationship_texture`
+- [`core.services.23`](core.services.23.md) — `release_marker_signal_tracking` … `run_closure_gate`
+- [`core.services.24`](core.services.24.md) — `run_event_log` … `search_quality`
+- [`core.services.25`](core.services.25.md) — `search_quota` … `sensory_perception_bridge`
+- [`core.services.26`](core.services.26.md) — `sensory_source` … `signal_tracking_framework`
+- [`core.services.27`](core.services.27.md) — `silence_detector` … `tanke_resume`
+- [`core.services.28`](core.services.28.md) — `task_tool_mapping` … `tool_observer`
+- [`core.services.29`](core.services.29.md) — `tool_outcome_memory` … `visible_autonomous_run`
+- [`core.services.30`](core.services.30.md) — `visible_chat_pragmatics` … `visible_runs_approvals`
+- [`core.services.31`](core.services.31.md) — `visible_runs_capabilities` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

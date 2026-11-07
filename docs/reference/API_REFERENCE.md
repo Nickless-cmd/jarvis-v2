@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-11-07 from app.routes (live) — 690 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-07 from app.routes (live) — 691 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -252,6 +252,7 @@
 | GET | `/central/runs` | dict | central_absorb_routes |
 | GET | `/central/runs/{run_id}` | dict | central_absorb_routes |
 | GET | `/central/self` | dict | central_self |
+| GET | `/central/self-state` | dict | central |
 | GET | `/central/sentinel` | dict | central_matrix |
 | POST | `/central/sentinel/{attack_id}/defend` | dict | central_matrix |
 | GET | `/central/seraph` | dict | central_matrix |

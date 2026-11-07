@@ -422,3 +422,16 @@ async def central_relation_state() -> dict:
         build_relation_creative_state_surface,
     )
     return await asyncio.to_thread(build_relation_creative_state_surface)
+
+
+@router.get("/self-state")
+async def central_self_state() -> dict:
+    """Selv- og drømme-tilstand: 34 flader der ellers var usynlige for operatøren.
+
+    Målt 7/11-2026: moduler med præfiks self/dream, hver kaldt før de blev
+    registreret. dreaming_session, dream_action_executor og self_model_predictive
+    udeladt — de er allerede i inner-state/infra-state. Grupperet selv/drom.
+    Owner-only, read-only, via to_thread."""
+    _require_owner()
+    from core.services.self_dream_state_surface import build_self_dream_state_surface
+    return await asyncio.to_thread(build_self_dream_state_surface)

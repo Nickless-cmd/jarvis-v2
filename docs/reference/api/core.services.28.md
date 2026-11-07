@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tanke_resume.py`
+_Én linje om hvad Jarvis TÆNKTE i en runde — til visningstilstanden «Tænkning»._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_klip` | `(s, n)` | — | [src](../../../core/services/tanke_resume.py#L45) |
+| function | `byg_prompt` | `(tanke, hensigt=…)` | — | [src](../../../core/services/tanke_resume.py#L50) |
+| function | `_ryd` | `(s)` | — | [src](../../../core/services/tanke_resume.py#L61) |
+| function | `tanke_resume` | `(tanke, hensigt=…)` | Én linje om rundens tænkning, eller `""`. | [src](../../../core/services/tanke_resume.py#L75) |
+
 ## `core/services/task_tool_mapping.py`
 _Opgave → værktøj-mapping: hvad vil denne opgave sandsynligvis røre?_
 
@@ -603,13 +613,4 @@ _Leksikalsk vaerktoejs-opslag: saerkende ord slaar semantisk lighed._
 | method | `Korpus.slaa_op` | `(self, besked, kandidater=…, ekstra_stopord=…)` | Bedste bud, eller ``None`` naar intet staar klart nok over feltet. | [src](../../../core/services/tool_lexical_match.py#L133) |
 | function | `byg_korpus_fra_definitioner` | `(definitioner, *, dansk=…)` | Korpus ud fra ``get_tool_definitions()``-formen (baade rå og indpakket). | [src](../../../core/services/tool_lexical_match.py#L179) |
 | function | `hyppige_ord_hos_brugeren` | `(beskeder, *, graense=…)` | Ord brugeren siger HELE TIDEN — spaerret uanset hvor saerkende de er | [src](../../../core/services/tool_lexical_match.py#L206) |
-
-## `core/services/tool_observer.py`
-_Tools-cluster query-helpers (Phase 1) oven på tool_call-observe i execute_tool._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `recent_tool_calls` | `(*, session_id=…, kind=…, status=…, limit=…)` | Læs tool_call-observe-records fra central_trace, filtreret. Nyeste først. | [src](../../../core/services/tool_observer.py#L14) |
-| function | `recent_tool_failures` | `(*, session_id=…, kind=…, limit=…)` | Kun FEJLEDE tool-kald — debugging-indgang når en bruger melder en fejl ude af huset. | [src](../../../core/services/tool_observer.py#L44) |
-| function | `tool_call_summary` | `()` | Aggregeret overblik (MC/debug): antal kald pr. kind + fejlrate. Self-safe. | [src](../../../core/services/tool_observer.py#L57) |
 

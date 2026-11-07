@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9906/18393 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9910/18398 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 9906/18393 functions/methods documented (53%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 742 | 1036 | 71% |
+| `apps.api.jarvis_api.routes` | 743 | 1037 | 71% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -26,7 +26,7 @@ Generated from source. 9906/18393 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 872 | 1586 | 54% |
-| `core.services` | 6617 | 12464 | 53% |
+| `core.services` | 6620 | 12468 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 9906/18393 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2634)
+## Undocumented public functions (2635)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L231)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2040,6 +2040,7 @@ Generated from source. 9906/18393 functions/methods documented (53%). The list b
 - `core/services/self_deception_guard.py` :: `DeceptionGuardTrace.has_blocks` (L54)
 - `core/services/self_deception_guard.py` :: `DeceptionGuardTrace.has_reframes` (L60)
 - `core/services/self_deception_guard.py` :: `DeceptionGuardTrace.to_dict` (L69)
+- `core/services/self_dream_state_surface.py` :: `group_names` (L83)
 - `core/services/self_experiments.py` :: `build_self_experiments_surface` (L456)
 - `core/services/self_model_blind_spots.py` :: `list_blind_spots` (L292)
 - `core/services/self_model_signal_tracking.py` :: `build_runtime_self_model_signal_surface` (L169)

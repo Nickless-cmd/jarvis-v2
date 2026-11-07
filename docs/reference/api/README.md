@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18393 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18398 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -55,13 +55,13 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18393 functions/
 - [`core.services.22`](core.services.22.md) — `provider_model_epochs` … `relationship_texture`
 - [`core.services.23`](core.services.23.md) — `release_marker_signal_tracking` … `run_closure_gate`
 - [`core.services.24`](core.services.24.md) — `run_event_log` … `search_quality`
-- [`core.services.25`](core.services.25.md) — `search_quota` … `sensory_perception_bridge`
-- [`core.services.26`](core.services.26.md) — `sensory_source` … `signal_tracking_framework`
-- [`core.services.27`](core.services.27.md) — `silence_detector` … `tanke_resume`
-- [`core.services.28`](core.services.28.md) — `task_tool_mapping` … `tool_observer`
-- [`core.services.29`](core.services.29.md) — `tool_outcome_memory` … `visible_autonomous_run`
-- [`core.services.30`](core.services.30.md) — `visible_chat_pragmatics` … `visible_runs_approvals`
-- [`core.services.31`](core.services.31.md) — `visible_runs_capabilities` … `world_model_signal_tracking`
+- [`core.services.25`](core.services.25.md) — `search_quota` … `sensory_archive`
+- [`core.services.26`](core.services.26.md) — `sensory_perception_bridge` … `signal_surface_router`
+- [`core.services.27`](core.services.27.md) — `signal_tracking_framework` … `system_cartographer`
+- [`core.services.28`](core.services.28.md) — `tanke_resume` … `tool_lexical_match`
+- [`core.services.29`](core.services.29.md) — `tool_observer` … `veto_gate`
+- [`core.services.30`](core.services.30.md) — `visible_autonomous_run` … `visible_runs`
+- [`core.services.31`](core.services.31.md) — `visible_runs_approvals` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_autonomous_run.py`
+_Autonome (heartbeat-startede) synlige runs: starter og observation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_trust_for_session` | `(session_id)` | Samtalens tilladelses-niveau — fail-closed til `ask`. | [src](../../../core/services/visible_autonomous_run.py#L22) |
+| function | `_observe_autonomous_run` | `(*, run, session_id, outcome, frames=…, error=…)` | #10 (Phase A): gør autonome runs (dream/idle/proaktiv) synlige som ENHED i Den | [src](../../../core/services/visible_autonomous_run.py#L37) |
+| function | `start_autonomous_run` | `(message, session_id=…, follow=…, origin=…, task_id=…, max_tool_calls=…, max_seconds=…, tool_scope=…, force_user_id=…, started_callback=…, completion_callback=…)` | Trigger an autonomous (heartbeat-initiated) visible run in a background thread. | [src](../../../core/services/visible_autonomous_run.py#L95) |
+
 ## `core/services/visible_chat_pragmatics.py`
 _Pragmatic conversation boundaries for the visible chat-only lane._
 
@@ -568,12 +577,4 @@ _Sporet gennem én synlig kørsel — og runde-grænserne i den._
 | function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L7337) |
 | function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L7354) |
 | function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7404) |
-
-## `core/services/visible_runs_approvals.py`
-_Pending tool-approval resolution for visible runs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_er_udloebet` | `(pending)` | Er godkendelsen for gammel til at maatte bruges? Returnerer grunden. | [src](../../../core/services/visible_runs_approvals.py#L34) |
-| function | `resolve_pending_approval` | `(approval_id, *, approved, answered_by=…)` | Resolve a pending tool approval. | [src](../../../core/services/visible_runs_approvals.py#L64) |
 

@@ -272,6 +272,7 @@ _Real-time Central-vindue til owner (jarvis-desk code mode)._
 | function | `central_infra_state` | `()` | Drifts- og infrastruktur-lagene der ellers er usynlige — hver med sine signaler. | [src](../../../apps/api/jarvis_api/routes/central.py#L372) |
 | function | `central_inner_state` | `()` | De indre tilstands-lag der ellers er usynlige — grupperet efter hvem der ejer dem. | [src](../../../apps/api/jarvis_api/routes/central.py#L386) |
 | function | `central_relation_state` | `()` | Relation, bruger-model, drev, kreativitet og temporal tilstand — grupperet. | [src](../../../apps/api/jarvis_api/routes/central.py#L405) |
+| function | `central_self_state` | `()` | Selv- og drømme-tilstand: 34 flader der ellers var usynlige for operatøren. | [src](../../../apps/api/jarvis_api/routes/central.py#L428) |
 
 ## `apps/api/jarvis_api/routes/central_absorb_routes.py`
 _Central-absorb routes — MC-kategorier PROJICERET som levende central-nerver._

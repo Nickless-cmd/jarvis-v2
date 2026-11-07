@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/sensory_perception_bridge.py`
+_Sensory perception bridge._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_shingle` | `(text, *, n=…)` | Tokenize lowercased text into overlapping n-grams of words. | [src](../../../core/services/sensory_perception_bridge.py#L21) |
+| function | `_jaccard` | `(a, b)` | Jaccard similarity between two token sets. Returns 0 if both empty. | [src](../../../core/services/sensory_perception_bridge.py#L29) |
+| function | `_mode` | `(values)` | Most common value. On tie, returns the value that appears first in the list. | [src](../../../core/services/sensory_perception_bridge.py#L38) |
+| function | `_aggregate_baseline` | `(records)` | Aggregate 1-N records into a single baseline. | [src](../../../core/services/sensory_perception_bridge.py#L50) |
+| function | `_parse_iso` | `(ts)` | Parse ISO timestamp; return None if malformed. Treats naive as UTC. | [src](../../../core/services/sensory_perception_bridge.py#L87) |
+| function | `_now` | `()` | Indirected for monkey-patching in tests. | [src](../../../core/services/sensory_perception_bridge.py#L100) |
+| function | `_recent_baseline` | `(modality, current_record)` | Latest N records of same modality excluding current. | [src](../../../core/services/sensory_perception_bridge.py#L105) |
+| function | `_time_of_day_baseline` | `(modality, current_record)` | Records inside ±N hours of current's time-of-day, over last M days. | [src](../../../core/services/sensory_perception_bridge.py#L122) |
+| function | `_build_baseline` | `(modality, current_record)` | Modality-aware baseline selection. | [src](../../../core/services/sensory_perception_bridge.py#L165) |
+| function | `_metadata_changed` | `(new_md, baseline_md, modality)` | Per-modality metadata change detection. | [src](../../../core/services/sensory_perception_bridge.py#L181) |
+| function | `_detect_change` | `(record, baseline, modality)` | Combined heuristic: mood_tone shift OR Jaccard < 0.4 OR metadata shift. | [src](../../../core/services/sensory_perception_bridge.py#L231) |
+| function | `_summary_for_change` | `(modality, new_mood, baseline_mood, kind, jaccard)` | Generate a short Danish summary line for the perceptual event. | [src](../../../core/services/sensory_perception_bridge.py#L313) |
+| function | `_salience_for_change` | `(change)` | Map change description to salience level (high/medium/normal). | [src](../../../core/services/sensory_perception_bridge.py#L348) |
+| function | `_bridge_enabled` | `()` | — | [src](../../../core/services/sensory_perception_bridge.py#L381) |
+| function | `_percept` | `(*, source_event_id, source_kind, change_type, salience, summary, observed_at, evidence)` | Build a percept dict in the shape expected by perceptual_event_engine._record_perceptual_event. | [src](../../../core/services/sensory_perception_bridge.py#L389) |
+| function | `classify_sensory_change` | `(event)` | Top-level entry. Returns a percept dict if the event represents a meaningful | [src](../../../core/services/sensory_perception_bridge.py#L411) |
+| function | `_classify_sensory_change_inner` | `(event)` | — | [src](../../../core/services/sensory_perception_bridge.py#L423) |
+
 ## `core/services/sensory_source.py`
 _Kilde-navne i Sansernes Arkiv — én liste, ét sted._
 
@@ -543,31 +566,4 @@ _Signal Surface Router — maps surface names to build functions._
 | function | `resolve_surface` | `(name)` | — | [src](../../../core/services/signal_surface_router.py#L272) |
 | function | `read_surface` | `(name)` | Read a named surface. Returns {"error": ..., "valid": [...]} for unknown names. | [src](../../../core/services/signal_surface_router.py#L276) |
 | function | `list_all_surfaces` | `()` | Call all registered surfaces. Per-surface exceptions caught and returned as errors. | [src](../../../core/services/signal_surface_router.py#L301) |
-
-## `core/services/signal_tracking_framework.py`
-_Spec-driven framework for the ``*_signal_tracking`` family._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `parse_dt` | `(value, *, z_normalize=…, tz_normalize=…)` | ISO → datetime, superset of the 12 original variants. | [src](../../../core/services/signal_tracking_framework.py#L50) |
-| function | `merge_fragments` | `(*parts, cap=…, sep=…)` | De-duplicated, whitespace-normalised join of text fragments (capped). | [src](../../../core/services/signal_tracking_framework.py#L70) |
-| function | `_default_early_retire` | `(_item)` | — | [src](../../../core/services/signal_tracking_framework.py#L86) |
-| class | `SignalTrackingSpec` | `` | Everything the framework needs to run one signal's lifecycle. | [src](../../../core/services/signal_tracking_framework.py#L91) |
-| method | `SignalTrackingSpec.ev` | `(self, leaf)` | — | [src](../../../core/services/signal_tracking_framework.py#L166) |
-| method | `SignalTrackingSpec.new_signal_id` | `(self)` | — | [src](../../../core/services/signal_tracking_framework.py#L169) |
-| function | `track_for_visible_turn` | `(spec, *, session_id, run_id, user_message=…, context=…)` | Extract candidates for this turn and persist them. Never raises. | [src](../../../core/services/signal_tracking_framework.py#L175) |
-| function | `refresh_statuses` | `(spec)` | Mark long-inactive signals stale. | [src](../../../core/services/signal_tracking_framework.py#L210) |
-| function | `_resolve_sweep_table` | `(spec)` | Table name for the sweep, verified against sqlite_master (never guessed). | [src](../../../core/services/signal_tracking_framework.py#L233) |
-| function | `_sweep_stale_signals` | `(spec)` | SQL set-operation: mark old *active* rows stale, bounded per call. | [src](../../../core/services/signal_tracking_framework.py#L265) |
-| function | `_sweep_older_than` | `(spec, table, days)` | — | [src](../../../core/services/signal_tracking_framework.py#L291) |
-| function | `sweep_stale_rows` | `(*, table, statuses, stale_after_days, stale_status=…, stale_reason=…, batch=…)` | Generisk stale-sweep for tabeller der IKKE er signal-specs. | [src](../../../core/services/signal_tracking_framework.py#L336) |
-| function | `_sweep_early_retire` | `(spec, table)` | Apply the early-retire predicate inside the narrow window between the two | [src](../../../core/services/signal_tracking_framework.py#L395) |
-| function | `_refresh_via_scan` | `(spec)` | Legacy bounded scan — only reached for early-retire specs or when the | [src](../../../core/services/signal_tracking_framework.py#L456) |
-| function | `build_surface` | `(spec, *, limit=…)` | Refresh, list, bucket by status, summarise — the read surface. | [src](../../../core/services/signal_tracking_framework.py#L494) |
-| function | `persist_signals` | `(spec, *, signals, session_id, run_id)` | Upsert candidates, supersede same-group siblings, publish events. | [src](../../../core/services/signal_tracking_framework.py#L532) |
-| function | `_supersede_and_publish` | `(spec, *, signal, item, now)` | — | [src](../../../core/services/signal_tracking_framework.py#L569) |
-| function | `_publish_lifecycle` | `(spec, *, item)` | — | [src](../../../core/services/signal_tracking_framework.py#L595) |
-| function | `make_candidate` | `(spec, *, signal_type, discriminator, key, status, title, summary, rationale, status_reason, source_items=…, confidence=…, group_value=…, source_kind=…, fragment_cap=…)` | Build a candidate dict with a spec-formatted canonical_key. | [src](../../../core/services/signal_tracking_framework.py#L619) |
-| function | `stronger_confidence` | `(*values, ranks=…)` | Highest-ranked confidence among ``values`` (S-family merge). | [src](../../../core/services/signal_tracking_framework.py#L673) |
-| function | `_publish` | `(event_name, payload)` | — | [src](../../../core/services/signal_tracking_framework.py#L685) |
 

@@ -291,13 +291,13 @@ def _generate_meta_insight(cross_snapshot: dict) -> str:
     prompt = (
         f"{build_identity_preamble()} Her er dine aktuelle signaler:\n\n"
         f"{context}\n\n"
-        "Ser du et mønster? Beskriv det i 1-2 sætninger.\n"
-        "Eksempler:\n"
-        "- Energien er lav men tankerne er aktive — der er en ubalance.\n"
-        "- Alt peger i samme retning: ro. Det er usædvanligt.\n"
-        "- Overraskelsen og konflikten hænger sammen — begge handler om kontrol."
+        "Ser du et mønster? Beskriv det i 1-2 sætninger."
     )
-    fallback = "Jeg ser et mønster, men det er endnu ikke tydeligt nok til at sætte ord på."
+    # 7/11-2026: tre forudskrevne mønstre stod her som "Eksempler" og formede
+    # svaret til én af dem. Fallbacken påstod et mønster der ikke blev fundet
+    # (16 poster i private_brain_records). Begge er fjernet: et mønster der
+    # ikke blev genereret findes ikke.
+    fallback = ""
     return daemon_llm_call(prompt, max_len=300, fallback=fallback, daemon_name="meta_reflection")
 
 

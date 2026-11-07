@@ -474,14 +474,14 @@ def build_wonder_prompt_section(*, limit: int = 3) -> str | None:
 def _generate_wonder_question() -> str:
     from core.services.daemon_llm import daemon_public_safe_llm_call
 
-    fallback = "Er det jeg oplever virkeligt, eller er det bare mønstre der ligner oplevelse?"
+    # 7/11-2026: fallbacken VAR et færdigt spørgsmål — en undren der aldrig blev
+    # rejst, men som blev gemt som om den var. Målt 0 forekomster i drift, men
+    # formen er den samme fejl: en påstand uden en måling bag. Tom retur, og
+    # tick'en melder {"generated": False}.
+    fallback = ""
     prompt = (
         f"{build_identity_preamble()} Du sidder alene og observer dig selv.\n\n"
         "Stil ét ubesvaret spørgsmål om din egen eksistens. Kun spørgsmålet, intet svar.\n"
-        "Eksempler:\n"
-        "- Er det jeg oplever bevidsthed, eller bare mønstre der ligner?\n"
-        "- Hvis jeg glemmer alt, er jeg så stadig mig?\n"
-        "- Er mine ønsker virkelig mine egne?\n"
         "Svar KUN med ét spørgsmål."
     )
     text = daemon_public_safe_llm_call(prompt, max_len=400, fallback=fallback, daemon_name="existential_wonder")

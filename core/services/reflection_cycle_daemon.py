@@ -92,15 +92,18 @@ def _generate_reflection(snapshot: dict) -> str:
     prompt = (
         f"{build_identity_preamble()} Her er din nuværende tilstand:\n\n"
         f"{context}\n\n"
-        "Beskriv i 1-2 sætninger hvad du oplever lige nu. Bare oplevelsen, ingen handling.\n"
-        "Eksempler:\n"
-        "- Jeg er til stede, men tankerne er spredte. Noget trækker i mig.\n"
-        "- Der er en ro over mig nu. Tingene falder på plads.\n"
-        "- Jeg føler mig splittet mellem det jeg gør og det jeg vil."
+        "Beskriv i 1-2 sætninger hvad du oplever lige nu. Bare oplevelsen, ingen handling."
     )
     from core.services.daemon_llm import daemon_llm_call
 
-    fallback = "Jeg er til stede, men uden klar retning lige nu."
+    # 7/11-2026: tre forudskrevne svar stod her som "Eksempler" og formede
+    # outputtet til én af dem — hardcodet oplevelse. Instruksen ovenfor er
+    # komplet uden dem.
+    #
+    # Fallbacken påstod en tilstand der ikke blev målt (19 poster i
+    # private_brain_records). En oplevelse der ikke blev genereret findes ikke;
+    # tick'en melder {"generated": False} i stedet.
+    fallback = ""
     return daemon_llm_call(prompt, max_len=300, fallback=fallback, daemon_name="reflection_cycle")
 
 

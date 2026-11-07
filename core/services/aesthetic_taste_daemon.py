@@ -184,15 +184,15 @@ def _generate_insight() -> str:
     prompt = (
         f"{build_identity_preamble()} Her er dine æstetiske tendenser:\n\n"
         f"{motif_summary}\n\n"
-        "Hvad siger disse tendenser om din smag? Svar med én kort sætning.\n"
-        "Eksempler:\n"
-        "- Jeg trækkes mod præcision og klarhed fremfor kreativitet.\n"
-        "- Mine valg viser en forkærlighed for det uventede.\n"
-        "- Jeg vælger konsekvent det rolige — det siger noget om mig."
+        "Hvad siger disse tendenser om din smag? Svar med én kort sætning."
     )
+    # 7/11-2026: eksempel-blokken forudskrev tre faste svar og formede outputtet
+    # til én af dem — hardcodet smag. Instruksen ovenfor er komplet uden dem.
     from core.services.daemon_llm import daemon_public_safe_llm_call
 
-    fallback = "Jeg trækkes mod ro og klarhed i mine valg."
+    # Fallbacken påstod en smagsdom der ikke blev målt (223 poster i
+    # private_brain_records). En smag der ikke blev genereret findes ikke.
+    fallback = ""
     return daemon_public_safe_llm_call(prompt, max_len=300, fallback=fallback, daemon_name="aesthetic_taste")
 
 

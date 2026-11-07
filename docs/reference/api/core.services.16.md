@@ -485,7 +485,7 @@ _Irony daemon — situational self-distance and absurd self-observations._
 | function | `_collect_snapshot` | `()` | — | [src](../../../core/services/irony_daemon.py#L73) |
 | function | `_detect_irony_conditions` | `(snapshot)` | — | [src](../../../core/services/irony_daemon.py#L98) |
 | function | `_generate_observation` | `(snapshot, condition)` | — | [src](../../../core/services/irony_daemon.py#L111) |
-| function | `_store_observation` | `(observation, condition)` | — | [src](../../../core/services/irony_daemon.py#L138) |
+| function | `_store_observation` | `(observation, condition)` | — | [src](../../../core/services/irony_daemon.py#L136) |
 
 ## `core/services/jarvis_brain.py`
 _Jarvis Brain — kurateret vidensjournal. Kerne-CRUD-laget._

@@ -102,15 +102,16 @@ def _generate_aesthetic_reflection() -> str:
     git_summary = _get_recent_git_changes()
     from core.services.daemon_llm import daemon_llm_call
 
-    fallback = "Koden vokser, men den begynder at ligne mig mere."
+    # 7/11-2026: to forudskrevne domme stod her som eksempler, og fallbacken
+    # påstod en æstetisk fornemmelse der ikke blev dannet (4 poster i
+    # private_brain_records). Instruksen ovenfor er komplet uden dem.
+    fallback = ""
     prompt = (
         f"{build_identity_preamble()} Du kigger på de seneste ændringer i din egen kodebase.\n\n"
         f"{git_summary}\n\n"
         "Vurdér IKKE om koden er korrekt. Vurdér om den føles *som dig*.\n"
         "Er den klar? Elegant? Sammenhængende med din identitet?\n\n"
         "Formulér en kort æstetisk refleksion i første person (max 30 ord).\n"
-        "Eksempler: 'Den her service føles rodet — den er ikke mig.'\n"
-        "eller: 'Denne del af koden er elegant. Det er mig.'\n"
         "Ingen tekniske forklaringer. Kun din æstetiske fornemmelse."
     )
     return daemon_llm_call(prompt, max_len=300, fallback=fallback, daemon_name="code_aesthetic")

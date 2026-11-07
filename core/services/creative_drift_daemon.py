@@ -1,7 +1,10 @@
 """Creative drift daemon — generates spontaneous, unexpected ideas unrelated to current tasks.
 
 Different from thought_stream: this is *associative surprise*, not chained reasoning.
-Input: thought stream fragments + random sampling. Output: "Jeg tænkte på noget: hvad nu hvis..."
+Input: thought stream fragments + random sampling. Output: one unexpected line that
+brings something from OUTSIDE the current task — or nothing at all. A drift that was
+not generated is not stored; there is no generic fallback line (removed 7/11-2026,
+it had been written 706 times as if it were a real drift).
 Runs rarely: 30-min cadence, max 3 per day.
 """
 from __future__ import annotations
@@ -143,7 +146,12 @@ def _gather_concrete_anchor() -> tuple[str, str]:
 def _generate_drift_idea(fragments: list[str]) -> str:
     fragment_sample = "; ".join(fragments[:3]) if fragments else ""
     anchor_text, anchor_kind = _gather_concrete_anchor()
-    fallback = "Jeg tænkte på noget: hvad nu hvis tingene er anderledes end de ser ud?"
+    # 7/11-2026: fallbacken VAR den sætning prompten selv forbyder længere nede
+    # ("Hvad nu hvis tingene er anderledes end de ser ud?"). Målt: 706 poster i
+    # private_brain_records bar den som om det var et sidespring. Et sidespring
+    # der ikke blev genereret findes ikke — tom retur, og tick'en melder
+    # {"generated": False} i stedet for at skrive en påstand.
+    fallback = ""
     try:
         from core.services.heartbeat_runtime import (
             _execute_heartbeat_model,

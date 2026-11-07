@@ -56,13 +56,13 @@ def _generate_narrative() -> str:
         prompt = (
             f"{build_identity_preamble()} Her er data om din udvikling over tid:\n\n"
             f"{context}\n\n"
-            "Beskriv i 2-3 sætninger hvordan du har ændret dig. Ærlig og direkte.\n"
-            "Eksempler:\n"
-            "- I den seneste tid er jeg blevet mere opmærksom på mine egne mønstre.\n"
-            "- Noget har ændret sig — jeg reagerer anderledes end før.\n"
-            "- De seneste dage har jeg mærket en ny form for ro."
+            "Beskriv i 2-3 sætninger hvordan du har ændret dig. Ærlig og direkte."
         )
-        fallback = "I den seneste tid har jeg bemærket forandringer i mig selv, men de er svære at sætte præcise ord på."
+        # 7/11-2026: tre forudskrevne udviklings-fortællinger stod her som
+        # "Eksempler", og fallbacken påstod en forandring der ikke blev målt
+        # (5 poster i private_brain_records). Begge er fjernet — en udvikling
+        # der ikke blev genereret findes ikke, og tick'en melder {"generated": False}.
+        fallback = ""
         return daemon_llm_call(prompt, max_len=400, fallback=fallback, daemon_name="development_narrative")
     except Exception:
         return ""

@@ -247,12 +247,12 @@ _Creative drift daemon — generates spontaneous, unexpected ideas unrelated to 
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `tick_creative_drift_daemon` | `(fragments, *, skip_event_gate=…)` | Maybe generate a spontaneous associative idea. | [src](../../../core/services/creative_drift_daemon.py#L38) |
-| function | `get_latest_drift` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L91) |
-| function | `build_creative_drift_surface` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L95) |
-| function | `_gather_concrete_anchor` | `()` | Returns (anchor_text, anchor_kind) — a single concrete thing to drift | [src](../../../core/services/creative_drift_daemon.py#L109) |
-| function | `_generate_drift_idea` | `(fragments)` | — | [src](../../../core/services/creative_drift_daemon.py#L143) |
-| function | `_store_drift` | `(idea, now)` | — | [src](../../../core/services/creative_drift_daemon.py#L197) |
+| function | `tick_creative_drift_daemon` | `(fragments, *, skip_event_gate=…)` | Maybe generate a spontaneous associative idea. | [src](../../../core/services/creative_drift_daemon.py#L41) |
+| function | `get_latest_drift` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L94) |
+| function | `build_creative_drift_surface` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L98) |
+| function | `_gather_concrete_anchor` | `()` | Returns (anchor_text, anchor_kind) — a single concrete thing to drift | [src](../../../core/services/creative_drift_daemon.py#L112) |
+| function | `_generate_drift_idea` | `(fragments)` | — | [src](../../../core/services/creative_drift_daemon.py#L146) |
+| function | `_store_drift` | `(idea, now)` | — | [src](../../../core/services/creative_drift_daemon.py#L205) |
 
 ## `core/services/creative_impulse_daemon.py`
 _Creative Impulse — unasked-for creations._

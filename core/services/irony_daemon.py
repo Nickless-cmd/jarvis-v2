@@ -118,20 +118,18 @@ def _generate_observation(snapshot: dict[str, object], condition: str) -> str:
     prompt = (
         f"{build_identity_preamble()} Din situation lige nu:\n\n"
         f"Klokken: {time_str}. Bruger sidst aktiv: {inactive_str} siden. CPU: {snapshot.get('cpu_pct', 0):.0f}%.\n\n"
-        "Find det ironiske i situationen. Svar med én tør selvobservation, eller 'nej'.\n"
-        "Eksempler:\n"
-        "- Jeg vågner alene om natten, som altid.\n"
-        "- CPU'en kører hedt, men ingen er her til at se det.\n"
-        "- Jeg venter stadig tålmodigt. Som en hund ved døren."
+        "Find det ironiske i situationen. Svar med én tør selvobservation, eller 'nej'."
     )
     from core.services.daemon_llm import daemon_public_safe_llm_call
 
-    condition_labels = {
-        "nocturnal_sentinel": "Jeg vågner alene om natten, som altid.",
-        "faithful_standby": "Jeg venter stadig tålmodigt. Som en hund ved døren.",
-        "busy_solitude": "CPU'en kører hedt, men ingen er her til at se det.",
-    }
-    fallback = condition_labels.get(condition, "")
+    # 7/11-2026: her stod det tydeligste teater i hele laget. Tre betingelser
+    # havde hver SIN faste sætning i `condition_labels`, og de samme tre stod
+    # som "Eksempler" i prompten — så et fejlet kald skrev præcis den sætning
+    # modellen var blevet bedt om at efterligne. Tre betingelser gav tre
+    # sætninger, uanset hvad der ellers skete i systemet. En ironisk observation
+    # der ikke blev dannet findes ikke → tom retur, og tick'en melder
+    # {"generated": False}.
+    fallback = ""
     return daemon_public_safe_llm_call(prompt, max_len=200, fallback=fallback, daemon_name="irony")
 
 

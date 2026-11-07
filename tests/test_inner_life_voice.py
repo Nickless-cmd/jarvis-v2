@@ -331,3 +331,81 @@ def test_build_section_never_raises_with_new_lines():
     # No mocks → against the real (possibly empty) producers, must not raise.
     out = vil.build_inner_life_section()
     assert out is None or isinstance(out, str)
+
+
+# ---------------------------------------------------------------------------
+# _memory_resurfacing_line — 7/11-2026
+#
+# Laget blev droppet med begrundelsen «random pick-handling, surface er stub,
+# ingen tilstands-aflæsning». Fladen læser nu rigtig tilstand, men linjen nåede
+# aldrig prompten: den lå kun i describe_self(), og _self_narrative_line vælger
+# ÉT salient fragment på max 80 tegn — «genfundet» stod ikke i _SELF_SALIENT, så
+# den tabte altid til fx «bærer». Testene her måler derfor KOBLINGEN: at linjen
+# bliver en selvstændig linje i den blok der faktisk går i prompten.
+# ---------------------------------------------------------------------------
+
+def _resurfacing_surface(total=3, distinct=2, active=True):
+    return {
+        "mode": "memory-resurfacing",
+        "active": active,
+        "signals": {"resurfaced_total": total, "distinct_headings": distinct,
+                    "last_resurfaced_at": "2026-11-07T19:00:00+00:00"},
+        "summary": f"{total} resurfacinger",
+    }
+
+
+def test_resurfacing_line_built_from_real_surface(monkeypatch):
+    _install_fake_module(
+        monkeypatch, "core.services.memory_resurfacing",
+        build_memory_resurfacing_surface=lambda: _resurfacing_surface(3, 2),
+    )
+    line = vil._memory_resurfacing_line()
+    assert line is not None
+    assert line.startswith("Genfundet: ")
+    assert "2 glemte minder" in line
+    assert len(line) <= 80
+
+
+def test_resurfacing_line_singular(monkeypatch):
+    _install_fake_module(
+        monkeypatch, "core.services.memory_resurfacing",
+        build_memory_resurfacing_surface=lambda: _resurfacing_surface(5, 1),
+    )
+    line = vil._memory_resurfacing_line()
+    assert line is not None
+    assert "1 glemt minde" in line
+
+
+def test_resurfacing_line_silent_when_inactive(monkeypatch):
+    """Tom log → ingen linje. En tavs linje er ærlig; «0 minder» er støj."""
+    _install_fake_module(
+        monkeypatch, "core.services.memory_resurfacing",
+        build_memory_resurfacing_surface=lambda: _resurfacing_surface(0, 0, active=False),
+    )
+    assert vil._memory_resurfacing_line() is None
+
+
+def test_resurfacing_line_survives_producer_raising(monkeypatch):
+    def _boom():
+        raise RuntimeError("db nede")
+
+    _install_fake_module(
+        monkeypatch, "core.services.memory_resurfacing",
+        build_memory_resurfacing_surface=_boom,
+    )
+    assert vil._memory_resurfacing_line() is None
+
+
+def test_resurfacing_line_reaches_the_prompt_block(monkeypatch):
+    """Den ægte kobling: linjen skal stå i build_inner_life_section(), som er
+    den blok prompt_contract lægger i den volatile hale. At funktionen virker
+    er ikke nok — det var præcis fejlen der blev målt 7/11."""
+    _install_fake_module(
+        monkeypatch, "core.services.memory_resurfacing",
+        build_memory_resurfacing_surface=lambda: _resurfacing_surface(3, 2),
+    )
+    block = vil.build_inner_life_section() or ""
+    assert "Genfundet:" in block, (
+        "resurfacing-linjen nåede ikke ind i den blok der går i prompten — "
+        "det var hele fejlen 7/11-2026"
+    )

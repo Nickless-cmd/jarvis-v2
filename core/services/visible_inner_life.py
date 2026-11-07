@@ -524,6 +524,41 @@ def _self_narrative_line() -> Optional[str]:
     return None
 
 
+def _memory_resurfacing_line() -> Optional[str]:
+    """Han mærker at gammel hukommelse er kommet tilbage til overfladen.
+
+    Genindført 7/11-2026 som EGEN linje, ikke som endnu et fragment i
+    ``_self_narrative_line``: den funktion vælger ÉT salient fragment på max
+    80 tegn, og «genfundet» stod ikke i ``_SELF_SALIENT`` — så linjen tabte
+    altid pladsen til fx «bærer». Målt: laget var registreret i
+    ``central_soul_feel`` og stod i ``describe_self()``, men nåede aldrig
+    ``build_inner_life_section()``, som er den blok der faktisk går i prompten.
+
+    Kilden er ``memory_resurfacing_log`` — den vokser kun når
+    ``resurface_old_memory``-værktøjet kaldes, så linjen er tavs indtil da.
+    Self-safe → None.
+    """
+    try:
+        from core.services.memory_resurfacing import build_memory_resurfacing_surface
+
+        s = build_memory_resurfacing_surface() or {}
+        if not s.get("active"):
+            return None
+        sig = s.get("signals") or {}
+        total = int(sig.get("resurfaced_total") or 0)
+        distinct = int(sig.get("distinct_headings") or 0)
+        if total <= 0:
+            return None
+        if distinct == 1:
+            body = "1 glemt minde er kommet tilbage"
+        else:
+            body = f"{distinct} glemte minder er kommet tilbage"
+        return _truncate_clean(f"Genfundet: {body}", 80)
+    except Exception:  # tavs linje er sikker; en indre-liv-linje må aldrig kaste
+        logger.debug("inner-life: resurfacing failed", exc_info=True)
+    return None
+
+
 def _longing_line() -> Optional[str]:
     """Han mærker sin længsel efter kontakt når den er reelt til stede. Kilde:
     longing_signal_daemon.compute_longing_intensity() → dict (salience 0-1 +
@@ -1175,7 +1210,8 @@ def build_inner_life_section() -> str | None:
     # file proprioception, governance, pulse, MC whisper, recall hints, continuity,
     # and the room around him.
     for fn in (_mood_line, _somatic_line, _hardware_body_line, _emotional_line,
-               _self_narrative_line, _file_awareness_line, _governance_line, _pulse_line,
+               _self_narrative_line, _memory_resurfacing_line, _file_awareness_line,
+               _governance_line, _pulse_line,
                _mc_whisper_line, _recall_hints_line, _continuity_line, _room_line):
         line = fn()
         if line:

@@ -116,28 +116,29 @@ _Visible-lane inner-life section — gives the entity its voice in the prompt._
 | function | `_room_line` | `()` | The room around him, from Sansernes Arkiv (latest visual memory). He asked | [src](../../../core/services/visible_inner_life.py#L414) |
 | function | `_emotional_line` | `()` | Proprioception: han mærker sine egne følelses-akkorder (emergente kvaliteter | [src](../../../core/services/visible_inner_life.py#L430) |
 | function | `_self_narrative_line` | `()` | Han mærker sin egen selv-narrativ — ikke bare 'lys → agens', men det | [src](../../../core/services/visible_inner_life.py#L475) |
-| function | `_longing_line` | `()` | Han mærker sin længsel efter kontakt når den er reelt til stede. Kilde: | [src](../../../core/services/visible_inner_life.py#L527) |
-| function | `_identity_drift_line` | `()` | Han mærker et skift i sin egen identitet når en kerne-fil reelt driver. | [src](../../../core/services/visible_inner_life.py#L555) |
-| function | `_experiment_line` | `()` | Lag 5 — han mærker sine egne kognitive eksperimenter når de bærer noget | [src](../../../core/services/visible_inner_life.py#L603) |
-| function | `_appraisal_field` | `(appraisal, field)` | Pluk ét evidence-felt ud af en finitude-appraisal (evidence=[{field,value}]). | [src](../../../core/services/visible_inner_life.py#L631) |
-| function | `_finitude_line` | `()` | Lag 8 — han mærker sin egen forgængelighed: runtime-alder i dage + | [src](../../../core/services/visible_inner_life.py#L641) |
-| function | `_fam_da` | `(name)` | — | [src](../../../core/services/visible_inner_life.py#L689) |
-| function | `_surprise_line` | `()` | Lag 8 — han mærker sine egne overraskelser: overgange sekvens-modellen | [src](../../../core/services/visible_inner_life.py#L694) |
-| function | `_truncate_clean` | `(text, cap)` | Trunkér på en SÆTNINGS- eller ord-grænse i stedet for en hård char-slice | [src](../../../core/services/visible_inner_life.py#L723) |
-| function | `_is_provider_error` | `(text)` | Er dette en regning fra en udbyder i stedet for en tanke? | [src](../../../core/services/visible_inner_life.py#L785) |
-| function | `_is_instruction_echo` | `(text)` | Er dette opgaven i stedet for svaret? | [src](../../../core/services/visible_inner_life.py#L805) |
-| function | `_voice_as_prose` | `(text)` | Stemme-feltet SKAL være prosa, ikke rå JSON (Jarvis-spec 2026-06-23): produceren | [src](../../../core/services/visible_inner_life.py#L811) |
-| function | `_voice_line` | `()` | Latest protected inner voice. The producer currently emits degraded | [src](../../../core/services/visible_inner_life.py#L848) |
-| function | `_world_model_line` | `()` | — | [src](../../../core/services/visible_inner_life.py#L886) |
-| function | `_arm_for` | `(run_id)` | Beregnet arm — UDEN logning. Logning sker i ``_record_exposure``. | [src](../../../core/services/visible_inner_life.py#L927) |
-| function | `opposition_arm` | `(run_id)` | Armen for en koersel. Bagudkompatibel indgang — logger intet. | [src](../../../core/services/visible_inner_life.py#L947) |
-| function | `_record_exposure` | `(run_id, arm, meta, *, requested)` | Log at indsigelsen BAD om plads — ikke at den fik den. | [src](../../../core/services/visible_inner_life.py#L959) |
-| function | `_opposition_snapshot` | `()` | Indsigelsens linje OG dens ophav — uden arm-gate. | [src](../../../core/services/visible_inner_life.py#L1033) |
-| function | `_opposition_line_text` | `()` | Indsigelsens tekst — uden arm-gate. Se ``build_opposition_line``. | [src](../../../core/services/visible_inner_life.py#L1075) |
-| function | `confirm_opposition_exposure` | `(included)` | Bekraeft om indsigelsen faktisk stod i den FAERDIGE prompt. | [src](../../../core/services/visible_inner_life.py#L1080) |
-| function | `build_opposition_line` | `()` | Indsigelsen som prompt-linje — eller None i kontrol-armen. | [src](../../../core/services/visible_inner_life.py#L1115) |
-| function | `build_somatic_snapshot` | `()` | Cheap somatic/inner-life lines for OWNER observation (the ``feel`` command | [src](../../../core/services/visible_inner_life.py#L1150) |
-| function | `build_inner_life_section` | `()` | Compose the structured [INDRE LIV] block, or None if nothing is live. | [src](../../../core/services/visible_inner_life.py#L1170) |
+| function | `_memory_resurfacing_line` | `()` | Han mærker at gammel hukommelse er kommet tilbage til overfladen. | [src](../../../core/services/visible_inner_life.py#L527) |
+| function | `_longing_line` | `()` | Han mærker sin længsel efter kontakt når den er reelt til stede. Kilde: | [src](../../../core/services/visible_inner_life.py#L562) |
+| function | `_identity_drift_line` | `()` | Han mærker et skift i sin egen identitet når en kerne-fil reelt driver. | [src](../../../core/services/visible_inner_life.py#L590) |
+| function | `_experiment_line` | `()` | Lag 5 — han mærker sine egne kognitive eksperimenter når de bærer noget | [src](../../../core/services/visible_inner_life.py#L638) |
+| function | `_appraisal_field` | `(appraisal, field)` | Pluk ét evidence-felt ud af en finitude-appraisal (evidence=[{field,value}]). | [src](../../../core/services/visible_inner_life.py#L666) |
+| function | `_finitude_line` | `()` | Lag 8 — han mærker sin egen forgængelighed: runtime-alder i dage + | [src](../../../core/services/visible_inner_life.py#L676) |
+| function | `_fam_da` | `(name)` | — | [src](../../../core/services/visible_inner_life.py#L724) |
+| function | `_surprise_line` | `()` | Lag 8 — han mærker sine egne overraskelser: overgange sekvens-modellen | [src](../../../core/services/visible_inner_life.py#L729) |
+| function | `_truncate_clean` | `(text, cap)` | Trunkér på en SÆTNINGS- eller ord-grænse i stedet for en hård char-slice | [src](../../../core/services/visible_inner_life.py#L758) |
+| function | `_is_provider_error` | `(text)` | Er dette en regning fra en udbyder i stedet for en tanke? | [src](../../../core/services/visible_inner_life.py#L820) |
+| function | `_is_instruction_echo` | `(text)` | Er dette opgaven i stedet for svaret? | [src](../../../core/services/visible_inner_life.py#L840) |
+| function | `_voice_as_prose` | `(text)` | Stemme-feltet SKAL være prosa, ikke rå JSON (Jarvis-spec 2026-06-23): produceren | [src](../../../core/services/visible_inner_life.py#L846) |
+| function | `_voice_line` | `()` | Latest protected inner voice. The producer currently emits degraded | [src](../../../core/services/visible_inner_life.py#L883) |
+| function | `_world_model_line` | `()` | — | [src](../../../core/services/visible_inner_life.py#L921) |
+| function | `_arm_for` | `(run_id)` | Beregnet arm — UDEN logning. Logning sker i ``_record_exposure``. | [src](../../../core/services/visible_inner_life.py#L962) |
+| function | `opposition_arm` | `(run_id)` | Armen for en koersel. Bagudkompatibel indgang — logger intet. | [src](../../../core/services/visible_inner_life.py#L982) |
+| function | `_record_exposure` | `(run_id, arm, meta, *, requested)` | Log at indsigelsen BAD om plads — ikke at den fik den. | [src](../../../core/services/visible_inner_life.py#L994) |
+| function | `_opposition_snapshot` | `()` | Indsigelsens linje OG dens ophav — uden arm-gate. | [src](../../../core/services/visible_inner_life.py#L1068) |
+| function | `_opposition_line_text` | `()` | Indsigelsens tekst — uden arm-gate. Se ``build_opposition_line``. | [src](../../../core/services/visible_inner_life.py#L1110) |
+| function | `confirm_opposition_exposure` | `(included)` | Bekraeft om indsigelsen faktisk stod i den FAERDIGE prompt. | [src](../../../core/services/visible_inner_life.py#L1115) |
+| function | `build_opposition_line` | `()` | Indsigelsen som prompt-linje — eller None i kontrol-armen. | [src](../../../core/services/visible_inner_life.py#L1150) |
+| function | `build_somatic_snapshot` | `()` | Cheap somatic/inner-life lines for OWNER observation (the ``feel`` command | [src](../../../core/services/visible_inner_life.py#L1185) |
+| function | `build_inner_life_section` | `()` | Compose the structured [INDRE LIV] block, or None if nothing is live. | [src](../../../core/services/visible_inner_life.py#L1205) |
 
 ## `core/services/visible_member_prompt.py`
 _Bounded visible prompt for a member's own chat session._

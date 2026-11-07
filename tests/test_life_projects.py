@@ -100,3 +100,93 @@ def test_mission_control_runtime_and_endpoint_expose_life_projects(
     assert runtime["life_projects"]["count"] == 2
     assert runtime["life_projects"]["items"][0]["initiative_type"] == "long_term_intention"
     assert endpoint["summary"] == "2 active life projects"
+
+
+# --- Re-vurderingens dom (7/11-2026) ---------------------------------------
+#
+# Målt 7/11-2026: livsprojekter var den ENESTE initiativ-type der hverken
+# udløber eller bliver grebet. `_expire_stale` springer dem bevidst over, og
+# `tick_life_projects_reassessment` publicerede `life_projects.reassessment_due`
+# — til en bus hvor nul abonnenter filtrerer paa det event. Saa et projekt
+# kunne staa `pending` i syv maaneder uden ét forsøg, og ingen sagde det.
+#
+# Testene her maaler den ene ting der betyder noget: at re-vurderingen ender i
+# en DOM. Ord doer, arbejde fornyes.
+
+_DECAY_SETTINGS = {"layer_life_projects_enabled": True, "layer_life_projects_decay_days": 14}
+
+
+def _monkeypatch_decay(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "core.runtime.secrets.read_runtime_key",
+        lambda key: _DECAY_SETTINGS.get(key),
+    )
+
+
+def test_revurdering_lukker_projekt_uden_spor(isolated_runtime, monkeypatch) -> None:
+    from core.services import initiative_queue, life_projects
+
+    _monkeypatch_decay(monkeypatch)
+    iid = initiative_queue.seed_long_term_intention(title="Ord, ikke projekt", why="fordi")
+    isolated_runtime.db.update_runtime_initiative(iid, updated_at="2026-05-15T11:11:18+00:00")
+
+    udfald = life_projects.tick_life_projects_reassessment(trigger="test")
+
+    record = isolated_runtime.db.get_runtime_initiative(iid)
+    assert udfald["lukket"] == 1, "dommen fyrede ikke paa et projekt uden spor"
+    assert record["status"] == "expired", "ord blev ikke lukket"
+    assert "ord, ikke projekt" in str(record["blocked_reason"])
+
+
+def test_revurdering_fornyer_projekt_med_spor(isolated_runtime, monkeypatch) -> None:
+    from core.services import initiative_queue, life_projects
+
+    _monkeypatch_decay(monkeypatch)
+    iid = initiative_queue.seed_long_term_intention(title="Reelt arbejde", why="fordi")
+    initiative_queue.mark_attempted(iid, blocked_reason="materialiseret i task")
+    isolated_runtime.db.update_runtime_initiative(iid, updated_at="2026-05-15T11:11:18+00:00")
+
+    udfald = life_projects.tick_life_projects_reassessment(trigger="test")
+
+    record = isolated_runtime.db.get_runtime_initiative(iid)
+    assert udfald["fornyet"] == 1, "et projekt med et forsoeg blev doemt som ord"
+    assert record["status"] == "pending", "arbejde blev lukket i stedet for fornyet"
+
+
+def test_revurdering_roerer_ikke_ferskt_projekt(isolated_runtime, monkeypatch) -> None:
+    from core.services import initiative_queue, life_projects
+
+    _monkeypatch_decay(monkeypatch)
+    iid = initiative_queue.seed_long_term_intention(title="Helt ny", why="fordi")
+
+    udfald = life_projects.tick_life_projects_reassessment(trigger="test")
+
+    record = isolated_runtime.db.get_runtime_initiative(iid)
+    assert udfald["reviewed"] == 0
+    assert udfald["skipped"] == 1
+    assert record["status"] == "pending"
+
+
+def test_revurdering_lukker_projekt_med_gammelt_spor(isolated_runtime, monkeypatch) -> None:
+    """Et spor fra i fjor holder ikke et projekt i live i dag.
+
+    Maalt 7/11-2026: trust-projektet havde `last_action_at` fra en
+    materialisering i oktober. Et «nogensinde»-kriterium ville goere det
+    udoedeligt — dommen kunne aldrig lukke noget der bare var roert én gang.
+    Spoergsmaalet er ikke om projektet nogensinde levede, men om det lever nu.
+    """
+    from core.services import initiative_queue, life_projects
+
+    _monkeypatch_decay(monkeypatch)
+    iid = initiative_queue.seed_long_term_intention(title="Gammelt spor", why="fordi")
+    isolated_runtime.db.update_runtime_initiative(
+        iid,
+        last_attempt_at="2026-05-15T11:11:18+00:00",
+        updated_at="2026-05-15T11:11:18+00:00",
+    )
+
+    udfald = life_projects.tick_life_projects_reassessment(trigger="test")
+
+    record = isolated_runtime.db.get_runtime_initiative(iid)
+    assert udfald["lukket"] == 1, "et forsoeg fra i fjor blev laest som livstegn i dag"
+    assert record["status"] == "expired"

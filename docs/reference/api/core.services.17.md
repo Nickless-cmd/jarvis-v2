@@ -55,7 +55,8 @@ _Life milestones — identity-defining moments surfaced in the prompt._
 | function | `build_life_projects_surface` | `()` | — | [src](../../../core/services/life_projects.py#L36) |
 | function | `abandon_life_project` | `(initiative_id, *, note=…)` | — | [src](../../../core/services/life_projects.py#L50) |
 | function | `endorse_life_project` | `(initiative_id, *, note=…)` | «Det er i orden» — projektet lever videre, nu med et menneskes ja bag sig. | [src](../../../core/services/life_projects.py#L57) |
-| function | `tick_life_projects_reassessment` | `(*, trigger=…, last_visible_at=…)` | Periodisk re-vurdering af aktive life projects. | [src](../../../core/services/life_projects.py#L66) |
+| function | `_har_spor` | `(item, *, now, threshold)` | Er projektet blevet LOEFTET inden for decay-vinduet — ikke bare rørt? | [src](../../../core/services/life_projects.py#L66) |
+| function | `tick_life_projects_reassessment` | `(*, trigger=…, last_visible_at=…)` | Periodisk re-vurdering af aktive life projects. | [src](../../../core/services/life_projects.py#L98) |
 
 ## `core/services/lifecycle_hooks.py`
 _Livscyklus-hooks server-side — paritet med jarvis-code._

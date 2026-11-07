@@ -63,6 +63,38 @@ def endorse_life_project(initiative_id: str, *, note: str = "") -> dict[str, obj
     return {"status": "ok", "life_project": item}
 
 
+def _har_spor(item: dict[str, object], *, now: datetime, threshold: timedelta) -> bool:
+    """Er projektet blevet LOEFTET inden for decay-vinduet — ikke bare rørt?
+
+    Et menneskes ja (`user_approved_at`) er tilladelse, ikke arbejde, og tæller
+    derfor ikke med: et projekt Bjørn har godkendt, og som jeg så ikke har rørt,
+    ER blevet ord.
+
+    Sporet skal være FERSKT. Målt 7/11-2026: trust-projektet havde et spor fra
+    en materialisering i oktober, og et «nogensinde»-kriterium ville gøre det
+    udødeligt — dommen ville aldrig kunne lukke noget der bare var blevet rørt
+    én gang. Spørgsmålet er ikke om projektet nogensinde levede, men om det
+    lever nu.
+
+    Feltnavnene er laast til det faktiske skema: `mark_attempted` skriver
+    `last_attempt_at`, mens `mark_acted` skriver `last_action_at` — ikke
+    `acted_at`. At tjekke et felt der aldrig skrives ville gøre dommen blind.
+    """
+    for felt in ("last_attempt_at", "last_action_at", "acted_at"):
+        raw = str(item.get(felt) or "").strip()
+        if not raw:
+            continue
+        try:
+            hvornaar = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except (ValueError, TypeError):  # et ulaeseligt tidsstempel er intet spor — det skal ikke goere projektet udoedeligt
+            continue
+        if hvornaar.tzinfo is None:
+            hvornaar = hvornaar.replace(tzinfo=UTC)
+        if (now - hvornaar) <= threshold:
+            return True
+    return False
+
+
 def tick_life_projects_reassessment(
     *, trigger: str = "heartbeat", last_visible_at: str = ""
 ) -> dict[str, object]:
@@ -89,8 +121,12 @@ def tick_life_projects_reassessment(
     threshold = timedelta(days=decay_days)
     now = datetime.now(UTC)
 
+    from core.runtime import db as runtime_db
+
     items = list_active_long_term_intentions(limit=20)
     reviewed = 0
+    fornyet = 0
+    lukket = 0
     skipped = 0
 
     for item in items:
@@ -107,20 +143,58 @@ def tick_life_projects_reassessment(
             continue
 
         if (now - last_reviewed) >= threshold:
-            # Markér som due for re-assessment via event
+            initiative_id = str(item.get("initiative_id") or "")
+            if _har_spor(item, now=now, threshold=threshold):
+                # Projektet er blevet løftet mindst én gang: det er arbejde, ikke
+                # ord. Levetiden fornyes ved at gøre det due, så heartbeat griber
+                # det i næste cyklus i stedet for at lade det ligge.
+                runtime_db.update_runtime_initiative(
+                    initiative_id,
+                    next_attempt_at=now.isoformat(),
+                    updated_at=now.isoformat(),
+                )
+                dom = "fornyet"
+                fornyet += 1
+            else:
+                # Aldrig forsøgt, aldrig handlet: rækken blev ikke løftet den dag
+                # den blev seedet, og den er ikke blevet det siden. Så er den ord.
+                # Målt 7/11-2026: tre projekter seedet 15. maj stod `pending` i
+                # syv måneder uden ét eneste forsøg — fordi `_expire_stale`
+                # bevidst springer long_term_intention over, og den her
+                # re-vurdering kun råbte om det til en bus uden lyttere.
+                runtime_db.update_runtime_initiative(
+                    initiative_id,
+                    status="expired",
+                    abandoned_at=now.isoformat(),
+                    blocked_reason=(
+                        f"aldrig loeftet paa {decay_days} dage — ord, ikke projekt"
+                    ),
+                    updated_at=now.isoformat(),
+                )
+                dom = "lukket"
+                lukket += 1
+
             from core.eventbus.bus import event_bus
             event_bus.publish(
                 "life_projects.reassessment_due",
                 {
-                    "initiative_id": str(item.get("initiative_id") or ""),
+                    "initiative_id": initiative_id,
                     "title": str(item.get("focus") or ""),
                     "last_reviewed_at": last_reviewed_raw,
                     "decay_days": decay_days,
                     "trigger": trigger,
+                    "dom": dom,
                 },
             )
             reviewed += 1
         else:
             skipped += 1
 
-    return {"status": "ok", "reviewed": reviewed, "skipped": skipped, "trigger": trigger}
+    return {
+        "status": "ok",
+        "reviewed": reviewed,
+        "fornyet": fornyet,
+        "lukket": lukket,
+        "skipped": skipped,
+        "trigger": trigger,
+    }

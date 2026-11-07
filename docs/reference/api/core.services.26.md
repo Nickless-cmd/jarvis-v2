@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_continuity.py`
+_Session Continuity — kontinuitet der føles, ikke kun opslås._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/session_continuity.py#L65) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/session_continuity.py#L69) |
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/session_continuity.py#L82) |
+| function | `detect_new_session` | `()` | Return whether current moment should be treated as 'new session'. | [src](../../../core/services/session_continuity.py#L105) |
+| function | `_gather_carry_context` | `()` | Collect what Jarvis might be carrying into today. | [src](../../../core/services/session_continuity.py#L155) |
+| function | `_build_morning_prompt` | `(carry, minutes_since_last)` | — | [src](../../../core/services/session_continuity.py#L255) |
+| function | `generate_morning_thread` | `(*, force=…)` | Generate and persist a morning thread if this is a new session. | [src](../../../core/services/session_continuity.py#L307) |
+| function | `get_latest_morning_thread` | `()` | — | [src](../../../core/services/session_continuity.py#L441) |
+| function | `_tokens` | `(text)` | — | [src](../../../core/services/session_continuity.py#L463) |
+| function | `detect_echo_themes` | `(*, lookback_days=…)` | Find recurring themes in recent inner voices + chat messages. | [src](../../../core/services/session_continuity.py#L470) |
+| function | `get_echo_signals_for_prompt` | `()` | Return a quiet one-liner of recurring themes for prompt injection. | [src](../../../core/services/session_continuity.py#L538) |
+| function | `build_session_continuity_surface` | `()` | — | [src](../../../core/services/session_continuity.py#L566) |
+
 ## `core/services/session_distillation.py`
 _Session distillation and private brain continuity._
 
@@ -563,15 +581,4 @@ _Detektor: en bash-kæde der brød tavst ved et ``&&``-led._
 | function | `_record` | `(fund)` | Fød fundet ind i `lessons` — kilden Smiths fejl-detektor læser. | [src](../../../core/services/silent_chain_break.py#L150) |
 | function | `observe` | `(tool_name, arguments, result)` | Kaldes fra `execute_tool` efter hvert kald. Self-safe → None. | [src](../../../core/services/silent_chain_break.py#L189) |
 | function | `_observe_impl` | `(tool_name, arguments, result)` | — | [src](../../../core/services/silent_chain_break.py#L204) |
-
-## `core/services/simple_tool_executor.py`
-_Native tool_calls executor (extracted from visible_runs.py, Boy-Scout 2026-07-08)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_prepare_call` | `(tc, *, force, run_id, session_id, user_message, controller, round_seen, user_present=…)` | Single-thread prep for one call: parse/stamp args, signature, dedup, cache, | [src](../../../core/services/simple_tool_executor.py#L27) |
-| function | `_finalize_call` | `(token, raw_result, *, controller, exec_fmt)` | Single-thread finalize for one executed call: soft-warn wrap, mark-seen on | [src](../../../core/services/simple_tool_executor.py#L265) |
-| function | `_tag_checkpoint_hvis_redigering` | `(calls, session_id)` | Self-safe: en fejl her maa aldrig forhindre selve redigeringen. | [src](../../../core/services/simple_tool_executor.py#L390) |
-| function | `_execute_simple_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…, output_buffer=…)` | Execute native tool_calls directly via simple_tools. Returns results. | [src](../../../core/services/simple_tool_executor.py#L408) |
-| function | `_execute_local_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…)` | Path B (local_tool_exec) executor — server-owned transcript, CLIENT-side run. | [src](../../../core/services/simple_tool_executor.py#L560) |
 

@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_round_label.py`
+_Én kort etiket for en afsluttet værktøjs-runde — «Rettede NPE i UserService»._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_model` | `()` | — | [src](../../../core/services/tool_round_label.py#L123) |
+| function | `_base_url` | `()` | — | [src](../../../core/services/tool_round_label.py#L134) |
+| function | `_klip` | `(v, maks)` | Kort, én linje, og aldrig `None` som teksten «None». | [src](../../../core/services/tool_round_label.py#L145) |
+| function | `_navn_og_input` | `(v)` | Navn og argumenter, uanset hvilken form kaldet har. | [src](../../../core/services/tool_round_label.py#L154) |
+| function | `byg_prompt` | `(vaerktoejer, hensigt=…)` | Det kompakte billede af runden som modellen får. | [src](../../../core/services/tool_round_label.py#L168) |
+| function | `_kald_model` | `(prompt)` | — | [src](../../../core/services/tool_round_label.py#L196) |
+| function | `_klip_haengende` | `(s, blev_klippet)` | Få en klippet etiket til at slutte hvor et led slutter. | [src](../../../core/services/tool_round_label.py#L233) |
+| function | `_ryd` | `(s)` | Én linje, uden instruktion, uden anførselstegn, uden punktum, klippet | [src](../../../core/services/tool_round_label.py#L257) |
+| function | `_opdigtet` | `(tekst, billede)` | Hvilket navn i etiketten står IKKE i kaldene? `""` når alt er dækket. | [src](../../../core/services/tool_round_label.py#L282) |
+| function | `_er_kommandolinje` | `(s)` | Er etiketten bare kommandoen igen? | [src](../../../core/services/tool_round_label.py#L325) |
+| function | `_verbum_lyver` | `(tekst, kald)` | Påstår etiketten en ændring i en runde der kun læste? | [src](../../../core/services/tool_round_label.py#L359) |
+| function | `_har_egen_beskrivelse` | `(kald)` | Er runden ÉT kald der bærer en brugbar `description`? | [src](../../../core/services/tool_round_label.py#L374) |
+| function | `etiket` | `(vaerktoejer, hensigt=…)` | Én kort etiket for runden, eller `""`. | [src](../../../core/services/tool_round_label.py#L394) |
+| function | `tool_use_ids` | `(vaerktoejer)` | Hvilke kald etiketten dækker. | [src](../../../core/services/tool_round_label.py#L433) |
+
 ## `core/services/tool_router.py`
 _Per-turn tool selection._
 
@@ -576,13 +596,4 @@ _Worker-thread pump for the first visible model stream._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `pump_first_pass` | `(run, *, controller, tool_scope, loop, queue, sentinel, stream_fn=…)` | — | [src](../../../core/services/visible_first_pass_pump.py#L10) |
-
-## `core/services/visible_first_pass_results.py`
-_Publish first-pass tool outcomes before post-tool prompt assembly._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `surface_tool_result` | `(sr, status=…)` | Close one measured call immediately before its terminal UI fact. | [src](../../../core/services/visible_first_pass_results.py#L18) |
-| function | `_ejer_kan_svare` | `(run)` | Er der et menneske i den anden ende af DENNE kørsel? | [src](../../../core/services/visible_first_pass_results.py#L42) |
-| function | `publish_first_pass_results` | `(results, *, run, step_counter, out)` | Resolve approvals and publish terminal UI facts; do not persist transcript. | [src](../../../core/services/visible_first_pass_results.py#L72) |
 

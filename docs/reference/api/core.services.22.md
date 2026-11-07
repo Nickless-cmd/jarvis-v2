@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/provider_self_heal.py`
+_Provider selvhelbredelse (spec Fase C). To sikre auto-handlinger:_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_notify_bjorn` | `(message)` | Eskalér via eksisterende notifikations-sti (Discord/ntfy). | [src](../../../core/services/provider_self_heal.py#L22) |
+| function | `_remove_from_router` | `(provider, model)` | Fjern (provider, model) fra provider_router.json. Self-safe. | [src](../../../core/services/provider_self_heal.py#L31) |
+| function | `_observe_central` | `(payload)` | — | [src](../../../core/services/provider_self_heal.py#L46) |
+| function | `check_and_heal` | `(*, down_providers)` | 3+ providers nede samtidig → eskalér til Bjørn. Returnér True hvis eskaleret. | [src](../../../core/services/provider_self_heal.py#L54) |
+| function | `_current_down_providers` | `()` | Providers der lige nu er uopnåelige (proaktiv ping). Self-safe → []. | [src](../../../core/services/provider_self_heal.py#L66) |
+| function | `tick_provider_self_heal_daemon` | `()` | Fase C daemon-tick: 60min self-heal. Samler nede providers og eskalerer til Bjørn | [src](../../../core/services/provider_self_heal.py#L76) |
+| function | `handle_model_drift` | `(*, provider, model, status_code)` | 404 på en model = model-drift → fjern auto fra pool + log. Returnér True hvis fjernet. | [src](../../../core/services/provider_self_heal.py#L91) |
+
 ## `core/services/published_files.py`
 _Filer Jarvis har udgivet i en tur — så de kan hæfte sig på svaret._
 
@@ -729,27 +742,4 @@ _Gentagelses-vagt (5/11-2026) — fang "sagde det samme igen, intet er ændret".
 | function | `previous_assistant_texts` | `(session_id, limit=…)` | Jarvis' seneste svar i sessionen, ældste først. Self-safe → [] ved fejl. | [src](../../../core/services/repetition_guard.py#L103) |
 | function | `should_nudge` | `(final_text, session_id)` | Produktions-indgangen: flag + sessionens seneste svar + is_repetition. | [src](../../../core/services/repetition_guard.py#L113) |
 | function | `repetition_guard_enabled` | `()` | Default TRUE. Env `JARVIS_REPETITION_GUARD` vinder; ellers runtime-state | [src](../../../core/services/repetition_guard.py#L119) |
-
-## `core/services/repo_index.py`
-_Separat søgeindeks over repoets DOKUMENTATION — ikke kildekoden._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_repo_root` | `()` | Repoets rod. Kan overstyres med JARVIS_REPO_ROOT (tests, worktrees). | [src](../../../core/services/repo_index.py#L97) |
-| function | `_index_path` | `()` | Global sti — dokumentationen er den samme for alle brugere. | [src](../../../core/services/repo_index.py#L105) |
-| function | `_is_excluded` | `(rel)` | — | [src](../../../core/services/repo_index.py#L110) |
-| function | `repo_files` | `(root=…)` | Alle dokumentationsfiler der skal indekseres, sorteret. | [src](../../../core/services/repo_index.py#L117) |
-| function | `_file_mtime` | `(path)` | — | [src](../../../core/services/repo_index.py#L143) |
-| function | `_chunk_files` | `(files, root)` | Læs + chunk. Kun fil-I/O — ingen embedding. | [src](../../../core/services/repo_index.py#L150) |
-| function | `_load_cached_vectors` | `(path)` | chunk-tekst → vektor fra eksisterende cache, til inkrementel reindeksering. | [src](../../../core/services/repo_index.py#L167) |
-| function | `build_index` | `(*, root=…, force=…)` | Byg indekset og skriv cachen. Blokerer indtil embeddings er færdige. | [src](../../../core/services/repo_index.py#L185) |
-| function | `_schedule_background_build` | `()` | Byg i baggrunden (fire-and-forget, kun én ad gangen). | [src](../../../core/services/repo_index.py#L261) |
-| function | `_load_or_build` | `()` | (chunks, embeddings, mtimes). Blokerer aldrig på en fuld embedding. | [src](../../../core/services/repo_index.py#L282) |
-| function | `_path_matches` | `(source, path_prefix)` | — | [src](../../../core/services/repo_index.py#L313) |
-| function | `_area_weight` | `(source)` | Vægt for en chunk-kilde. Første match vinder, mest specifikke først. | [src](../../../core/services/repo_index.py#L352) |
-| function | `_lexical_score` | `(query_terms, chunk)` | Andel af query-termer der optræder i chunk, sektion eller sti. | [src](../../../core/services/repo_index.py#L378) |
-| function | `search_repo` | `(query, *, limit=…, path_prefix=…)` | Semantisk søgning i repoets dokumentation. | [src](../../../core/services/repo_index.py#L386) |
-| function | `get_stats` | `()` | Indeksets tilstand uden at bygge noget. | [src](../../../core/services/repo_index.py#L456) |
-| function | `invalidate` | `()` | Slet cachen, så næste søgning genopbygger. | [src](../../../core/services/repo_index.py#L494) |
-| function | `_main` | `(argv=…)` | — | [src](../../../core/services/repo_index.py#L504) |
 

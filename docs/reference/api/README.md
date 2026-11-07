@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18371 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18375 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -48,20 +48,20 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18371 functions/
 - [`core.services.15`](core.services.15.md) — `gratitude_tracker` … `inbox_gate`
 - [`core.services.16`](core.services.16.md) — `inbox_idle_waker` … `learning_policy_engine`
 - [`core.services.17`](core.services.17.md) — `ledger_canary` … `memory_hygiene`
-- [`core.services.18`](core.services.18.md) — `memory_maintenance_daemon` … `negotiation_pipeline`
-- [`core.services.19`](core.services.19.md) — `nerve_registry` … `pdf_connector`
-- [`core.services.20`](core.services.20.md) — `peak_hours` … `process_watcher`
-- [`core.services.21`](core.services.21.md) — `producer_novelty` … `provider_self_heal`
-- [`core.services.22`](core.services.22.md) — `published_files` … `repo_index`
-- [`core.services.23`](core.services.23.md) — `report_claim_guard` … `run_message_provenance`
-- [`core.services.24`](core.services.24.md) — `run_stream_locator` … `selective_attention`
-- [`core.services.25`](core.services.25.md) — `selective_consolidation_daemon` … `session_continuity`
-- [`core.services.26`](core.services.26.md) — `session_distillation` … `simple_tool_executor`
-- [`core.services.27`](core.services.27.md) — `skill_autosurface` … `telemetry_gate`
-- [`core.services.28`](core.services.28.md) — `temperament_tendency_signal_tracking` … `tool_round_label`
-- [`core.services.29`](core.services.29.md) — `tool_router` … `visible_first_pass_results`
-- [`core.services.30`](core.services.30.md) — `visible_first_pass_text` … `visible_runs_memory`
-- [`core.services.31`](core.services.31.md) — `visible_runs_outcomes` … `world_model_signal_tracking`
+- [`core.services.18`](core.services.18.md) — `memory_maintenance_daemon` … `negotiation_engine`
+- [`core.services.19`](core.services.19.md) — `negotiation_pipeline` … `pattern_counterfactual_daemon`
+- [`core.services.20`](core.services.20.md) — `pdf_connector` … `process_supervisor`
+- [`core.services.21`](core.services.21.md) — `process_watcher` … `provider_retry_policy`
+- [`core.services.22`](core.services.22.md) — `provider_self_heal` … `repetition_guard`
+- [`core.services.23`](core.services.23.md) — `repo_index` … `run_guard`
+- [`core.services.24`](core.services.24.md) — `run_message_provenance` … `seed_system`
+- [`core.services.25`](core.services.25.md) — `selective_attention` … `session_context_resolve`
+- [`core.services.26`](core.services.26.md) — `session_continuity` … `silent_chain_break`
+- [`core.services.27`](core.services.27.md) — `simple_tool_executor` … `telegram_gateway`
+- [`core.services.28`](core.services.28.md) — `telemetry_gate` … `tool_result_store`
+- [`core.services.29`](core.services.29.md) — `tool_round_label` … `visible_first_pass_pump`
+- [`core.services.30`](core.services.30.md) — `visible_first_pass_results` … `visible_runs_learning_signals`
+- [`core.services.31`](core.services.31.md) — `visible_runs_memory` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

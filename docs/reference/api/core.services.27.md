@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/simple_tool_executor.py`
+_Native tool_calls executor (extracted from visible_runs.py, Boy-Scout 2026-07-08)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_prepare_call` | `(tc, *, force, run_id, session_id, user_message, controller, round_seen, user_present=…)` | Single-thread prep for one call: parse/stamp args, signature, dedup, cache, | [src](../../../core/services/simple_tool_executor.py#L27) |
+| function | `_finalize_call` | `(token, raw_result, *, controller, exec_fmt)` | Single-thread finalize for one executed call: soft-warn wrap, mark-seen on | [src](../../../core/services/simple_tool_executor.py#L265) |
+| function | `_tag_checkpoint_hvis_redigering` | `(calls, session_id)` | Self-safe: en fejl her maa aldrig forhindre selve redigeringen. | [src](../../../core/services/simple_tool_executor.py#L390) |
+| function | `_execute_simple_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…, output_buffer=…)` | Execute native tool_calls directly via simple_tools. Returns results. | [src](../../../core/services/simple_tool_executor.py#L408) |
+| function | `_execute_local_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…)` | Path B (local_tool_exec) executor — server-owned transcript, CLIENT-side run. | [src](../../../core/services/simple_tool_executor.py#L560) |
+
 ## `core/services/skill_autosurface.py`
 _Owner-approved allowlist governing jarvis-code skill auto-surfacing (Fase 3)._
 
@@ -623,18 +634,4 @@ _Telegram gateway — bidirectional messaging via Telegram Bot API._
 | function | `_eventbus_subscriber_loop` | `()` | Buffer assistant responses per session, flush when run completes. | [src](../../../core/services/telegram_gateway.py#L408) |
 | function | `start_telegram_gateway` | `()` | — | [src](../../../core/services/telegram_gateway.py#L464) |
 | function | `stop_telegram_gateway` | `()` | — | [src](../../../core/services/telegram_gateway.py#L495) |
-
-## `core/services/telemetry_gate.py`
-_Telemetri er ikke sandhed — Fase 10, kriterium 2._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `gaeldende_niveau` | `()` | `full` | `redacted` | `none` | `ubestemt` for den kørsel vi er i nu. | [src](../../../core/services/telemetry_gate.py#L89) |
-| function | `maa_afgoere` | `()` | Må telemetri autorisere eller afgøre arbejde? **Nej. Altid nej.** | [src](../../../core/services/telemetry_gate.py#L112) |
-| function | `er_kanonisk` | `(tabel)` | Hører `tabel` til den kanoniske sandhed? | [src](../../../core/services/telemetry_gate.py#L125) |
-| function | `beskaer` | `(poster, maks, *, navn)` | Behold de nyeste `maks` — og **tæl** det der ryger. | [src](../../../core/services/telemetry_gate.py#L135) |
-| function | `beskaer_efter_alder` | `(poster, dage, *, navn, maks=…, nu=…)` | Behold poster nyere end `dage` — og tæl **alt** der ryger. | [src](../../../core/services/telemetry_gate.py#L158) |
-| function | `tabt` | `(navn=…)` | Hvor mange poster er kastet væk? Uden navn: hele regnskabet. | [src](../../../core/services/telemetry_gate.py#L219) |
-| function | `nulstil_tab` | `()` | Kun til tests. Produktionen skal aldrig glemme hvad den tabte. | [src](../../../core/services/telemetry_gate.py#L227) |
-| function | `redigér_til_eksport` | `(vaerdi)` | Rens en **kopi** til eksport. Originalen røres aldrig. | [src](../../../core/services/telemetry_gate.py#L233) |
 

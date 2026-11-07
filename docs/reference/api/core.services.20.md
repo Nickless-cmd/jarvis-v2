@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/pdf_connector.py`
+_PDF-connector (lokal) — læs/ekstraher tekst fra PDF-filer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_bytes` | `(source)` | → (bytes, None) ved succes, ellers (None, fejlkode). | [src](../../../core/services/pdf_connector.py#L34) |
+| function | `read_pdf` | `(source, *, max_pages=…)` | — | [src](../../../core/services/pdf_connector.py#L58) |
+
 ## `core/services/peak_hours.py`
 _core/services/peak_hours.py_
 
@@ -688,26 +696,4 @@ _Process supervisor — track long-running background processes Jarvis spawns._
 | function | `tail_process_log` | `(name, *, lines=…)` | — | [src](../../../core/services/process_supervisor.py#L375) |
 | function | `read_process_log_since` | `(name, offset, max_bytes=…)` | Read one bounded byte range from a supervised process log. | [src](../../../core/services/process_supervisor.py#L407) |
 | function | `remove_process` | `(name)` | Remove an entry from the registry. Refuses if still alive. | [src](../../../core/services/process_supervisor.py#L440) |
-
-## `core/services/process_watcher.py`
-_Process watcher — push-notification primitive for Jarvis._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/process_watcher.py#L74) |
-| function | `_state_path` | `(state_file)` | Resolve a state file path. Accepts absolute, ~ expansion, or | [src](../../../core/services/process_watcher.py#L78) |
-| function | `_walk_field` | `(obj, path)` | Walk a dotted path through nested dicts. Returns None if any | [src](../../../core/services/process_watcher.py#L90) |
-| class | `Watch` | `` | — | [src](../../../core/services/process_watcher.py#L105) |
-| function | `_load_all` | `()` | — | [src](../../../core/services/process_watcher.py#L121) |
-| function | `_save_all` | `(watches)` | — | [src](../../../core/services/process_watcher.py#L158) |
-| function | `add_watch` | `(*, label, conditions, on_match, notify_text=…, cooldown_seconds=…, one_shot=…)` | Register a new watch. Returns the created Watch as dict, or error. | [src](../../../core/services/process_watcher.py#L172) |
-| function | `remove_watch` | `(watch_id)` | — | [src](../../../core/services/process_watcher.py#L224) |
-| function | `list_watches` | `()` | — | [src](../../../core/services/process_watcher.py#L234) |
-| function | `set_watch_enabled` | `(watch_id, enabled)` | — | [src](../../../core/services/process_watcher.py#L239) |
-| function | `_eval_condition` | `(cond, runtime_state)` | Evaluate a single condition. Returns (matched, reason). | [src](../../../core/services/process_watcher.py#L252) |
-| function | `_fire_action` | `(watch, reason)` | Execute the watch's on_match action. Errors are logged, not raised. | [src](../../../core/services/process_watcher.py#L436) |
-| function | `_evaluate_watches_once` | `()` | One pass: evaluate every enabled watch; fire matched ones. | [src](../../../core/services/process_watcher.py#L510) |
-| function | `_watcher_loop` | `()` | — | [src](../../../core/services/process_watcher.py#L580) |
-| function | `start_watcher_daemon` | `()` | Start the daemon if not already running. Called once at jarvis-api boot. | [src](../../../core/services/process_watcher.py#L597) |
-| function | `stop_watcher_daemon` | `()` | Signal the daemon to exit. For tests / shutdown hooks. | [src](../../../core/services/process_watcher.py#L609) |
 

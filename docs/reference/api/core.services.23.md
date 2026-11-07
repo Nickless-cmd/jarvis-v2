@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/repo_index.py`
+_Separat søgeindeks over repoets DOKUMENTATION — ikke kildekoden._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_repo_root` | `()` | Repoets rod. Kan overstyres med JARVIS_REPO_ROOT (tests, worktrees). | [src](../../../core/services/repo_index.py#L97) |
+| function | `_index_path` | `()` | Global sti — dokumentationen er den samme for alle brugere. | [src](../../../core/services/repo_index.py#L105) |
+| function | `_is_excluded` | `(rel)` | — | [src](../../../core/services/repo_index.py#L110) |
+| function | `repo_files` | `(root=…)` | Alle dokumentationsfiler der skal indekseres, sorteret. | [src](../../../core/services/repo_index.py#L117) |
+| function | `_file_mtime` | `(path)` | — | [src](../../../core/services/repo_index.py#L143) |
+| function | `_chunk_files` | `(files, root)` | Læs + chunk. Kun fil-I/O — ingen embedding. | [src](../../../core/services/repo_index.py#L150) |
+| function | `_load_cached_vectors` | `(path)` | chunk-tekst → vektor fra eksisterende cache, til inkrementel reindeksering. | [src](../../../core/services/repo_index.py#L167) |
+| function | `build_index` | `(*, root=…, force=…)` | Byg indekset og skriv cachen. Blokerer indtil embeddings er færdige. | [src](../../../core/services/repo_index.py#L185) |
+| function | `_schedule_background_build` | `()` | Byg i baggrunden (fire-and-forget, kun én ad gangen). | [src](../../../core/services/repo_index.py#L261) |
+| function | `_load_or_build` | `()` | (chunks, embeddings, mtimes). Blokerer aldrig på en fuld embedding. | [src](../../../core/services/repo_index.py#L282) |
+| function | `_path_matches` | `(source, path_prefix)` | — | [src](../../../core/services/repo_index.py#L313) |
+| function | `_area_weight` | `(source)` | Vægt for en chunk-kilde. Første match vinder, mest specifikke først. | [src](../../../core/services/repo_index.py#L352) |
+| function | `_lexical_score` | `(query_terms, chunk)` | Andel af query-termer der optræder i chunk, sektion eller sti. | [src](../../../core/services/repo_index.py#L378) |
+| function | `search_repo` | `(query, *, limit=…, path_prefix=…)` | Semantisk søgning i repoets dokumentation. | [src](../../../core/services/repo_index.py#L386) |
+| function | `get_stats` | `()` | Indeksets tilstand uden at bygge noget. | [src](../../../core/services/repo_index.py#L456) |
+| function | `invalidate` | `()` | Slet cachen, så næste søgning genopbygger. | [src](../../../core/services/repo_index.py#L494) |
+| function | `_main` | `(argv=…)` | — | [src](../../../core/services/repo_index.py#L504) |
+
 ## `core/services/report_claim_guard.py`
 _Efterproev det et barn PAASTAAR — Fase 6._
 
@@ -597,12 +620,4 @@ _Én fælles vagt: kører der et run i denne session lige nu?_
 | function | `levende_run_i_session` | `(session_id)` | Run-id på et LEVENDE run i sessionen — cross-proces. "" hvis ingen. | [src](../../../core/services/run_guard.py#L56) |
 | function | `blokeringsgrund` | `(origin, session_id)` | Årsag hvis et nyt BAGGRUNDS-run ikke må starte her. "" = fri bane. | [src](../../../core/services/run_guard.py#L89) |
 | function | `parker_forpligtelse` | `(*, origin, session_id, beskrivelse, kilde_id=…)` | Læg en AFVIST forpligtelse i indbakken i stedet for at tabe den. | [src](../../../core/services/run_guard.py#L109) |
-
-## `core/services/run_message_provenance.py`
-_Name the source of model input without changing the user's stored text._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `current_run_source_notice` | `()` | Explicit system-level provenance for a scheduled model turn. | [src](../../../core/services/run_message_provenance.py#L7) |
-| function | `current_message_for_model` | `(message)` | A scheduled task uses a request slot, but it did not come from the user now. | [src](../../../core/services/run_message_provenance.py#L19) |
 

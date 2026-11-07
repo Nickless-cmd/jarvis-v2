@@ -355,3 +355,14 @@ async def central_tool_infra() -> dict:
     _require_owner()
     from core.services.central_tool_infra_surface import build_tool_infra_surface
     return await asyncio.to_thread(build_tool_infra_surface)
+
+
+@router.get("/memory-state")
+async def central_memory_state() -> dict:
+    """Hukommelses-lagene der ellers er usynlige — hver med sine egne signaler.
+
+    Målt 7/11-2026: 19 hukommelses-flader havde en ``build_*_surface`` men ingen
+    læser i apps/. Owner-only, read-only, blokerende fil-/DB-læsning via to_thread."""
+    _require_owner()
+    from core.services.memory_state_surface import build_memory_state_surface
+    return await asyncio.to_thread(build_memory_state_surface)

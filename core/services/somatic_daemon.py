@@ -173,6 +173,7 @@ def _collect_snapshot(energy_level: str) -> dict[str, object]:
         round(sum(_latency_samples) / len(_latency_samples), 0)
         if _latency_samples else 0.0
     )
+    latency_sampled = bool(_latency_samples)
 
     resolved_energy = energy_level
     clock_phase = ""
@@ -190,6 +191,7 @@ def _collect_snapshot(energy_level: str) -> dict[str, object]:
         "ram_used_gb": ram_used_gb,
         "ram_total_gb": ram_total_gb,
         "latency_ms": latency_ms,
+        "latency_sampled": latency_sampled,
         "active_requests": _active_requests,
         "energy_level": resolved_energy,
         "clock_phase": clock_phase,
@@ -237,8 +239,15 @@ def _read_loadavg() -> float:
 def _build_raw_phrase(snapshot: dict[str, object]) -> str:
     """Byg frasen udelukkende fra rå metrics — ingen LLM.
 
-    Fx: ``cpu 8% · 56°C · 21.3GB fri · load 0.0``. Temp udelades pænt hvis
-    sensoren ikke svarer.
+    Fx: ``cpu 8% · 56°C · 21.3GB fri · load 0.0 · svar 340ms``. Temp udelades
+    pænt hvis sensoren ikke svarer.
+
+    Latens-båndet er med her fordi raw-mode er den gren der FAKTISK kører
+    (flaget ``raw_signal_mode`` er tændt). Uden det fodrede ``track_request``
+    sine samples ind i et snapshot som ingen frase læste — målingen fandtes,
+    men nåede aldrig en flade (målt 7/11-2026). Samples findes kun når der har
+    været et modelkald siden opstart; ellers udelades feltet frem for at
+    påstå ``0ms``.
     """
     cpu_pct = float(snapshot.get("cpu_pct") or 0.0)
     ram_used = float(snapshot.get("ram_used_gb") or 0.0)
@@ -246,12 +255,15 @@ def _build_raw_phrase(snapshot: dict[str, object]) -> str:
     ram_free = max(ram_total - ram_used, 0.0)
     temp_c = _read_cpu_temp_c()
     load = _read_loadavg()
+    latency_ms = float(snapshot.get("latency_ms") or 0.0)
 
     parts = [f"cpu {cpu_pct:.0f}%"]
     if temp_c is not None:
         parts.append(f"{temp_c:.0f}°C")
     parts.append(f"{ram_free:.1f}GB fri")
     parts.append(f"load {load:.1f}")
+    if snapshot.get("latency_sampled"):
+        parts.append(f"svar {latency_ms:.0f}ms")
     return " · ".join(parts)
 
 

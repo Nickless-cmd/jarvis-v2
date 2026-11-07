@@ -29,6 +29,40 @@ def claim_scanner_adapter(ctx: dict[str, Any]) -> Verdict:
     return Verdict("claim_scanner", Decision.GREEN, "ren")
 
 
+def fabricated_claim_adapter(ctx: dict[str, Any]) -> Verdict:
+    """detect_fabricated_work_claims: work-claim uden tool-evidens → YELLOW.
+
+    Dækker et hul de to andre truth-adaptere ikke har: `scan_response` og
+    `fact_gate_enforce` læser begge kun TEKSTEN. Denne adapter kobler påstanden
+    til de værktøjer der faktisk kørte i samme run — «jeg har committet X» uden
+    et commit-kald i runnet er en anden fejl end et forkert tal.
+
+    Målt 7/11-2026: funktionen havde nul kaldesteder i produktion (kun en
+    kommentar og sin egen definition), så hele evidens-koblingen var død kode.
+    Den kører nu som skygge-gate via ``gate_shadow._GATES`` — ren
+    observabilitet; den blokerer eller omskriver aldrig teksten.
+    """
+    text = str(ctx.get("text") or "")
+    if not text.strip():
+        return Verdict("fabricated_claim", Decision.GREEN, "empty")
+    tools = ctx.get("tool_names") or ctx.get("tools_used") or []
+    from core.services.claim_scanner import detect_fabricated_work_claims
+    claims = detect_fabricated_work_claims(text, list(tools)) or []
+    if not claims:
+        return Verdict("fabricated_claim", Decision.GREEN, "alle work-claims har tool-evidens")
+    lead = claims[0]
+    return Verdict(
+        "fabricated_claim",
+        Decision.YELLOW,
+        f"{len(claims)} work-claim(s) uden tool-evidens: {lead.pattern_name}",
+        action="warn",
+        detected_text=str(lead.matched_text)[:120],
+        trigger_pattern=str(lead.pattern_name),
+        session_id=str(ctx.get("session_id") or ""),
+        run_id=str(ctx.get("run_id") or ""),
+    )
+
+
 def fact_gate_adapter(ctx: dict[str, Any]) -> Verdict:
     """fact_gate_enforce: uverificerede tal-/status-påstande → YELLOW (warn/fodnote).
 

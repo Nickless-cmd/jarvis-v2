@@ -38,6 +38,7 @@ _GATES: tuple[tuple[str, str, str, str, GateClass], ...] = (
     ("verification", "core.services.gate_proactivity", "proactivity_gate", "proactivity", GateClass.COGNITIVE),
     ("self_review", "core.services.gate_review", "review_gate", "review", GateClass.COGNITIVE),
     ("fact_gate", "core.services.gate_adapters", "fact_gate_adapter", "truth", GateClass.COGNITIVE),
+    ("fabricated_claim", "core.services.gate_adapters", "fabricated_claim_adapter", "truth", GateClass.COGNITIVE),
     ("cross_user_share", "core.services.gate_privacy", "privacy_gate", "privacy", GateClass.SECURITY),
 )
 

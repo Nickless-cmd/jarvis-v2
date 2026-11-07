@@ -17,7 +17,8 @@ EXPECTED = [
     ("loop_control", "loop"),
     ("verification", "proactivity"),
     ("self_review", "review"),
-    ("fact_gate", "truth"),  # nerve = Verdict.gate fra fact_gate_adapter
+    ("fact_gate", "truth"),
+    ("fabricated_claim", "truth"),  # nerve = Verdict.gate fra fact_gate_adapter
 ]
 
 
@@ -40,7 +41,7 @@ def test_calls_decide_5_times_with_clusters():
         result = gs.run_post_output_shadow(_ctx())
 
     assert result is None
-    assert fake_central.decide.call_count == 6  # 5 cognitive + privacy (SECURITY)
+    assert fake_central.decide.call_count == len(gs._GATES)
 
     seen_clusters = []
     seen_nerves = []
@@ -73,8 +74,9 @@ def test_one_gate_import_failure_does_not_stop_others():
         result = gs.run_post_output_shadow(_ctx())
 
     assert result is None
-    # alle 5 forsøgt trods én der kastede
-    assert calls["n"] == 6  # 5 cognitive + privacy
+    # alle forsøgt trods én der kastede — antallet læses fra _GATES, så en ny gate
+    # ikke kræver at testen rettes igen (den blev rettet 7/11-2026 da fabricated_claim kom til)
+    assert calls["n"] == len(gs._GATES)
 
 
 def test_flag_off_skips_all():
@@ -184,3 +186,20 @@ def test_shadow_never_records_heed_surfaces():
     assert fake_central.decide.call_count == len(gs._GATES)
     for call in fake_central.decide.call_args_list:
         assert call.args[1].get("record_surface") is False
+
+
+def test_fabricated_claim_gate_er_koblet():
+    """Koblingen selv: gaten SKAL staa i _GATES, ellers koerer den aldrig.
+
+    Maalt 7/11-2026: detect_fabricated_work_claims havde nul kaldesteder i
+    produktion. Fjernes linjen fra _GATES, fejler denne test.
+    """
+    nerves = [n for (n, _m, _f, _c, _k) in gs._GATES]
+    assert "fabricated_claim" in nerves
+    clusters = dict(gs.POST_OUTPUT_GATES_CLUSTERS())
+    assert clusters["fabricated_claim"] == "truth"
+
+
+def test_fabricated_claim_er_ikke_enforced():
+    """Skygge foerst: den maa IKKE vaere i _ENFORCED foer false-positives er maalt."""
+    assert "fabricated_claim" not in gs._ENFORCED

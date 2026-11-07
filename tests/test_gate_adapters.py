@@ -71,3 +71,18 @@ def test_register_truthgate_adapters():
     # alle i post_output, kognitiv klasse:
     for g in k.gates_for("post_output"):
         assert g.phase == "post_output"
+
+
+def test_fabricated_claim_adapter():
+    """Work-claim uden tool-evidens → YELLOW; med evidens → GREEN."""
+    v = ga.fabricated_claim_adapter({"text": "Fixet er live nu.", "tool_names": []})
+    assert v.decision is Decision.YELLOW
+    assert v.gate == "fabricated_claim"
+    assert v.trigger_pattern == "fix_live"
+    assert v.detected_text
+
+    v2 = ga.fabricated_claim_adapter({"text": "Fixet er live nu.", "tool_names": ["bash"]})
+    assert v2.decision is Decision.GREEN
+
+    # tom tekst er ikke en claim
+    assert ga.fabricated_claim_adapter({"text": "   "}).decision is Decision.GREEN

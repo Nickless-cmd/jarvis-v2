@@ -40,6 +40,11 @@ _BUFFER_MAX = 50
 _TRANSCRIBE_AMPLITUDE_FLOOR = 0.015  # below this, never bother transcribing
 _SAMPLE_RATE = 44100
 
+#: Hvor meget af en lyd-beskrivelse der maa arkiveres. Samme graense som
+#: vision-vejen bruger (`visual_memory._MAX_DESC_CHARS`), saa de to kanaler
+#: klipper ens — det er samme slags indtryk og samme slags fejl.
+_MAX_DESC_CHARS = 300
+
 
 def tick_ambient_sound_daemon() -> dict[str, object]:
     """Sample ambient audio level and classify. Runs 4x/day."""
@@ -409,7 +414,12 @@ def _interpret_sound(
     )
     try:
         from core.services.daemon_llm import daemon_llm_call
-        raw = daemon_llm_call(prompt, max_len=80, fallback="", daemon_name="ambient_sound")
+        # `max_len` er TEGN, ikke tokens, og `daemon_llm_call` klipper haardt
+        # (`text[:max_len]`). Maalt 7/11-2026: 83 af 99 lyd-poster i 30 dage
+        # sluttede midt i et ord, og den laengste var praecis 80 tegn — fordi
+        # 80 ikke kan baere en dansk saetning. Graensen skal vaere over hvad en
+        # saetning fylder, ellers klipper vi foer der findes noget at klippe ved.
+        raw = daemon_llm_call(prompt, max_len=240, fallback="", daemon_name="ambient_sound")
         text = str(raw or "").strip()
         if text:
             # Lækage-værn (målt 7/11-2026): modellen gentager af og til sin egen
@@ -428,7 +438,17 @@ def _interpret_sound(
                     text[:80],
                 )
                 return ""
-            return text[:200]
+            # Klip ved en SAETNINGSGRAENSE — ikke blindt ved tegnet.
+            #
+            # Vision-vejen fik samme fejl rettet 7/10-2026, og detektoren sad
+            # samme sted: i daemonen, ikke i arkivet. `return text[:200]` var
+            # desuden DOED kode indtil nu, fordi `max_len=80` allerede havde
+            # klippet ved 80. Et halvt led LIGNER et indtryk — det har laengde
+            # — men det er et svar der aldrig blev faerdigt.
+            from core.services.sensory_archive import klip_ved_saetningsgraense
+
+            hel = klip_ved_saetningsgraense(text, _MAX_DESC_CHARS)
+            return hel if hel else text[:_MAX_DESC_CHARS].rstrip() + "…"
     except Exception as exc:
         logger.debug("ambient_sound: LLM interpretation failed: %s", exc)
     return ""

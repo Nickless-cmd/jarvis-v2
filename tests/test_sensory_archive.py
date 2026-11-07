@@ -526,3 +526,35 @@ def test_aegte_lydbeskrivelse_bevares(isolated_runtime) -> None:
 
     assert post.get("skipped") is not True
     assert "summen" in post["content"]
+
+
+def test_lyd_vejen_klipper_ved_graense_ikke_blindt() -> None:
+    """Værn: blind 80-tegns klipning af lyd-indtryk (målt 7/11-2026).
+
+    83 af 99 lyd-poster i 30 dage sluttede midt i et ord, og den længste var
+    præcis 80 tegn. Årsagen var `daemon_llm_call(..., max_len=80)`: `max_len`
+    er TEGN, ikke tokens, og klipper hårdt (`text[:max_len]`). `return
+    text[:200]` var død kode, fordi 80 allerede havde klippet.
+
+    Kilden læses — som for vision-vejen — fordi fejlen sad i daemonen, ikke i
+    arkivet. Et kald til `klip_ved_saetningsgraense` beviser intet; den skal
+    også BRUGES, og den blinde klipning må kun stå som fallback.
+    """
+    import inspect
+    import re
+
+    from core.services import ambient_sound_daemon
+
+    kilde = inspect.getsource(ambient_sound_daemon._interpret_sound)
+
+    assert "klip_ved_saetningsgraense(" in kilde, "lyd-vejen klipper blindt igen"
+    assert "hel if hel else" in kilde, "den blinde klipning er tilbage som primær vej"
+
+    # `max_len` skal kunne bære en sætning. 80 tegn gør det ikke — det var
+    # præcis den grænse der producerede halve ord i 83 af 99 poster.
+    traef = re.search(r"max_len\s*=\s*(\d+)", kilde)
+    assert traef, "max_len er ikke sat eksplicit — så arves en standard vi ikke kender"
+    assert int(traef.group(1)) >= 200, (
+        f"max_len={traef.group(1)} kan ikke bære en dansk sætning; "
+        "det var 80 der gav halve ord"
+    )

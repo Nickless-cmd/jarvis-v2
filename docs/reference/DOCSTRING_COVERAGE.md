@@ -842,7 +842,7 @@ Generated from source. 9833/18311 functions/methods documented (53%). The list b
 - `core/services/agentic_working_conclusions.py` :: `latest_for_session` (L55)
 - `core/services/agentic_working_conclusions.py` :: `update_working_conclusion` (L27)
 - `core/services/agentic_working_conclusions.py` :: `working_conclusion_prompt_section` (L73)
-- `core/services/ambient_sound_daemon.py` :: `build_ambient_sound_surface` (L357)
+- `core/services/ambient_sound_daemon.py` :: `build_ambient_sound_surface` (L362)
 - `core/services/anthropic_identity.py` :: `invalidate_cache` (L62)
 - `core/services/anthropic_sse_emitter.py` :: `AnthropicSSEEmitter.begin_message` (L38)
 - `core/services/anthropic_sse_emitter.py` :: `AnthropicSSEEmitter.end_message` (L137)

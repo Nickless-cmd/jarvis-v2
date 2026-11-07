@@ -80,9 +80,10 @@ _Gate-adaptere (unified-gate A.5) — wrapper EKSISTERENDE gates som Verdict-ret
 | function | `claim_scanner_adapter` | `(ctx)` | claim_scanner.scan_response: repareret tekst ≠ input → claims fanget (YELLOW). | [src](../../../core/services/gate_adapters.py#L17) |
 | function | `fabricated_claim_adapter` | `(ctx)` | detect_fabricated_work_claims: work-claim uden tool-evidens → YELLOW. | [src](../../../core/services/gate_adapters.py#L32) |
 | function | `fact_gate_adapter` | `(ctx)` | fact_gate_enforce: uverificerede tal-/status-påstande → YELLOW (warn/fodnote). | [src](../../../core/services/gate_adapters.py#L66) |
-| function | `diagnosis_adapter` | `(ctx)` | analyze_completion_claim: blocked→RED, ikke-verificeret completion→YELLOW. | [src](../../../core/services/gate_adapters.py#L108) |
-| function | `register_truthgate_adapters` | `(k)` | Registrér TruthGate-cluster-adapterne i kernen (post_output, kognitiv). | [src](../../../core/services/gate_adapters.py#L130) |
-| function | `register_truthgate_adapters_once` | `(k)` | Idempotent — registrér KUN hvis ikke allerede registreret (kaldes pr. run i | [src](../../../core/services/gate_adapters.py#L137) |
+| function | `_publish_diagnosis_event` | `(kind, result, session_id, run_id)` | Publicér det signal mood-regulatoren abonnerer på. | [src](../../../core/services/gate_adapters.py#L108) |
+| function | `diagnosis_adapter` | `(ctx)` | Uverificeret completion-claim ELLER diagnose → YELLOW 'warn'. | [src](../../../core/services/gate_adapters.py#L125) |
+| function | `register_truthgate_adapters` | `(k)` | Registrér TruthGate-cluster-adapterne i kernen (post_output, kognitiv). | [src](../../../core/services/gate_adapters.py#L167) |
+| function | `register_truthgate_adapters_once` | `(k)` | Idempotent — registrér KUN hvis ikke allerede registreret (kaldes pr. run i | [src](../../../core/services/gate_adapters.py#L174) |
 
 ## `core/services/gate_auth.py`
 _Auth-cluster gate 🔒 — tool-access (rolle-håndhævelse), SECURITY fail-CLOSED._

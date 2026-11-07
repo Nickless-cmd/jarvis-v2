@@ -86,3 +86,67 @@ def test_fabricated_claim_adapter():
 
     # tom tekst er ikke en claim
     assert ga.fabricated_claim_adapter({"text": "   "}).decision is Decision.GREEN
+
+
+def _capture_events(monkeypatch) -> list[dict]:
+    """Fang de events adapteren publicerer — uden tråd-race.
+
+    Subscriber-rutningen (event → mood-bump) er allerede bevist ende-til-ende i
+    tests/test_central_mood_regulator.py::test_subscriber_end_to_end_moves_mood_via_flush.
+    Her måles KUN den halvdel jeg ændrede: at adapteren faktisk udsender signalet
+    med det rigtige navn og den rigtige payload.
+    """
+    import core.services.gate_adapters as _ga
+    seen: list[dict] = []
+
+    def _fake_publish(kind, payload=None):
+        seen.append({"kind": kind, **(payload or {})})
+        return 0
+
+    monkeypatch.setattr("core.eventbus.bus.event_bus.publish", _fake_publish)
+    return seen
+
+
+def test_diagnosis_adapter_publishes_promise_signal(monkeypatch):
+    """Uverificeret completion-claim → promise.unverified → correction (mood).
+
+    Målt 7/11-2026: central_mood_regulator mapper signalet korrekt, men den eneste
+    publisher (diagnosis_gate_enforce) havde nul kaldesteder — så Jarvis' stemning
+    blev aldrig jordet når han påstod at have gjort noget uden at have gjort det.
+    """
+    seen = _capture_events(monkeypatch)
+    v = ga.diagnosis_adapter({
+        "text": "Jeg har fikset det og deployet det nu.",
+        "tools_used": [], "session_id": "s1", "run_id": "r1",
+    })
+    assert v.decision is Decision.YELLOW
+    kinds = [e["kind"] for e in seen]
+    assert kinds == ["promise.unverified"], f"forventede ét promise-signal, fik {kinds!r}"
+    assert seen[0]["session_id"] == "s1" and seen[0]["run_id"] == "r1"
+    assert seen[0]["claim"], "signalet skal bære den påstand der udløste det"
+
+
+def test_diagnosis_adapter_publishes_diagnosis_signal(monkeypatch):
+    """Uverificeret diagnose → diagnosis.unverified → confabulation (mood)."""
+    seen = _capture_events(monkeypatch)
+    v = ga.diagnosis_adapter({
+        "text": "Broen er zombie — den svarer ikke på ping.",
+        "tools_used": [], "session_id": "s2", "run_id": "r2",
+    })
+    assert v.decision is Decision.YELLOW
+    kinds = [e["kind"] for e in seen]
+    assert kinds == ["diagnosis.unverified"], f"forventede ét diagnose-signal, fik {kinds!r}"
+
+
+def test_diagnosis_adapter_is_silent_when_evidence_exists(monkeypatch):
+    """Modsat retning: med et tool i runnet er claimet verificeret → intet signal.
+
+    Uden denne ville testen ovenfor også bestå hvis adapteren publicerede ubetinget.
+    """
+    seen = _capture_events(monkeypatch)
+    v = ga.diagnosis_adapter({
+        "text": "Jeg har fikset det og deployet det nu.",
+        "tools_used": ["bash"], "session_id": "s3", "run_id": "r3",
+    })
+    assert v.decision is Decision.GREEN
+    assert seen == [], f"verificeret claim sendte signal: {seen!r}"

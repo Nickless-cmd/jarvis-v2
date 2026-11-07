@@ -105,17 +105,54 @@ def fact_gate_adapter(ctx: dict[str, Any]) -> Verdict:
     return Verdict("fact_gate", Decision.GREEN, "ok")
 
 
+def _publish_diagnosis_event(kind: str, result: Any, session_id: str, run_id: str) -> None:
+    """Publicér det signal mood-regulatoren abonnerer på.
+
+    Self-safe: et tabt signal er ikke et tabt output — gaten må ikke vælte turen.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(kind, {
+            "session_id": session_id, "run_id": run_id,
+            "claim": getattr(result, "claim_snippet", ""),
+            "pattern": getattr(result, "pattern", ""),
+            "blocked": False, "annotated": False,
+        })
+    except Exception:  # signal-tab maa ikke koste turens sandheds-verdict
+        pass
+
+
 def diagnosis_adapter(ctx: dict[str, Any]) -> Verdict:
-    """analyze_completion_claim: blocked→RED, ikke-verificeret completion→YELLOW."""
+    """Uverificeret completion-claim ELLER diagnose → YELLOW 'warn'.
+
+    Publicerer samtidig ``promise.unverified`` og ``diagnosis.unverified``, som
+    ``central_mood_regulator`` mapper til correction/confabulation. Uden dem var den
+    mapping død kode: den eneste publisher var ``diagnosis_gate_enforce``, som intet
+    kaldested har (målt 7/11-2026) — så Jarvis' stemning blev aldrig jordet når han
+    konfabulerede eller lovede noget han ikke havde gjort.
+    """
     text = str(ctx.get("text") or "")
     tools = ctx.get("tools_used") or ctx.get("tool_names") or []
-    from core.services.diagnosis_gate import analyze_completion_claim
-    r = analyze_completion_claim(text, tools_used=list(tools))
+    session_id = str(ctx.get("session_id") or "")
+    run_id = str(ctx.get("run_id") or "")
+    from core.services.diagnosis_gate import analyze_completion_claim, analyze_diagnosis
+
     # 2026-07-06: diagnosis blokerer aldrig mere → uverificeret completion-claim
     # bliver YELLOW 'warn' (fodnote i bunden), ikke RED 'block'.
-    if getattr(r, "detected", False) and not getattr(r, "verified", True):
+    promise = analyze_completion_claim(text, tools_used=list(tools))
+    if getattr(promise, "detected", False) and not getattr(promise, "verified", True):
+        _publish_diagnosis_event("promise.unverified", promise, session_id, run_id)
         return Verdict("diagnosis", Decision.YELLOW,
-                       getattr(r, "reason", "") or "uverificeret completion", action="warn")
+                       getattr(promise, "reason", "") or "uverificeret completion",
+                       action="warn")
+
+    diag = analyze_diagnosis(text, tools_used=list(tools))
+    if getattr(diag, "detected", False) and not getattr(diag, "verified", True):
+        _publish_diagnosis_event("diagnosis.unverified", diag, session_id, run_id)
+        return Verdict("diagnosis", Decision.YELLOW,
+                       getattr(diag, "reason", "") or "uverificeret diagnose",
+                       action="warn")
+
     return Verdict("diagnosis", Decision.GREEN, "ok")
 
 

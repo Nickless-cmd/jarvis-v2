@@ -169,6 +169,7 @@ def _dispatch_run_done(run_id: str) -> None:
     from core.services import run_event_log as rel
     if rel.was_consumed_or_active(run_id):
         logger.warning("push: answer_ready UNDERTRYKT (run %s set live)", run_id[:12])
+        _push_event("push.answer_ready_skipped", {"run_id": run_id, "gate": "seen_live"})
         return  # nogen saa det live
     sid = rel.session_for_run(run_id)
     owner = _owner_of_run(run_id)
@@ -189,11 +190,15 @@ def _dispatch_run_done(run_id: str) -> None:
                 "push: answer_ready DROPPET — run %s findes ikke i run_event_log "
                 "(pruned eller runtime genstartet)", run_id[:12],
             )
+            _push_event("push.answer_ready_skipped",
+                        {"run_id": run_id, "gate": "run_not_in_memory"})
         else:
             logger.warning(
                 "push: answer_ready DROPPET — session %s for run %s har ingen "
                 "ejer at sende til", sid[:12], run_id[:12],
             )
+            _push_event("push.answer_ready_skipped",
+                        {"run_id": run_id, "gate": "no_owner"})
         return
     # SPRING pushet over hvis runnet ikke producerede et synligt assistant-svar (rent
     # autonomt internt arbejde) → ingen tomme spam-notifikationer (Bjørn 3. jul).
@@ -206,6 +211,7 @@ def _dispatch_run_done(run_id: str) -> None:
     preview = _last_assistant_preview(sid)
     if not preview:
         logger.warning("push: answer_ready SPRUNGET OVER (run %s uden svar-tekst)", run_id[:12])
+        _push_event("push.answer_ready_skipped", {"run_id": run_id, "gate": "no_preview"})
         return
     logger.warning("push: answer_ready DISPATCH for run %s", run_id[:12])
     # preview MEDsendes som FALLBACK-tekst (mobil-appen bruger den hvis dens egen fetchLatest

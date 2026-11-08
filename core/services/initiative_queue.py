@@ -456,6 +456,64 @@ def mark_acted(
         return True
 
 
+def close_acted_without_outcome(*, limit: int = 5000) -> dict[str, object]:
+    """Luk `acted`-poster der aldrig fik et outcome.
+
+    HVORFOR (maalt 8/11-2026): 1.042 af 1.114 `acted`-poster havde tomt
+    `outcome` — de aeldste fra 10. april. `acted` er ikke en lukket tilstand:
+    `_expire_stale` roerer kun `pending`, og der fandtes ingen vej ud af
+    `acted`. Kommentaren i `initiatives_prompt_section` beskriver hvorfor
+    puljen voksede: «76 markeret `acted` = postet til en proaktivitets-kanal
+    ingen laeste» — impulsen blev genereret, aldrig laest tilbage, og derfor
+    genereret igen. `acted` betyder altsaa «sendt afsted», ikke «behandlet».
+
+    HVORFOR IKKE ET OUTCOME: domaenet er `approved`/`rejected`/`resolved`/
+    `completed`, og ingen af dem er sande om en impuls der blev postet uden
+    at nogen laeste den. At saette `completed` ville vaere den form for
+    teater hvor et felt ser rigtigt ud uden at vaere det.
+
+    HVAD DER SAETTES: `abandoned_at` (koden bruger den allerede som «ude af
+    spil» — se `_gentaget_paastand` og `list_active_long_term_intentions`),
+    status `expired` (den terminale status der findes), og den faktiske
+    `action_summary` bevaret i `blocked_reason` saa informationen ikke tabes.
+
+    Idempotent: kun poster med tomt `outcome` OG tom `abandoned_at` roeres.
+    """
+    now = datetime.now(UTC).isoformat()
+    lukket = 0
+    set_i_alt = 0
+    with _QUEUE_LOCK:
+        poster = runtime_db.list_runtime_initiatives(status="acted", limit=limit)
+        set_i_alt = len(poster or [])
+        for post in poster or []:
+            if str(post.get("outcome") or "").strip():
+                continue
+            if str(post.get("abandoned_at") or "").strip():
+                continue
+            iid = str(post.get("initiative_id") or "")
+            if not iid:
+                continue
+            handling = str(post.get("action_summary") or "").strip()
+            grund = (
+                f"lukket {now[:10]}: acted uden outcome"
+                + (f" — {handling}" if handling else "")
+            )[:120]
+            runtime_db.update_runtime_initiative(
+                iid,
+                status="expired",
+                abandoned_at=now,
+                blocked_reason=grund,
+                updated_at=now,
+            )
+            lukket += 1
+    if lukket:
+        event_bus.publish(
+            "heartbeat.initiatives_closed",
+            {"antal": lukket, "grund": "acted uden outcome"},
+        )
+    return {"status": "ok", "lukket": lukket, "set": set_i_alt}
+
+
 def mark_attempted(
     initiative_id: str,
     *,

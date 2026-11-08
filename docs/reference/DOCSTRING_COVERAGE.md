@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9925/18413 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9926/18414 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 9925/18413 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 872 | 1586 | 54% |
-| `core.services` | 6629 | 12477 | 53% |
+| `core.services` | 6630 | 12478 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1369,8 +1369,8 @@ Generated from source. 9925/18413 functions/methods documented (53%). The list b
 - `core/services/inbox_importance.py` :: `normalize_importance` (L11)
 - `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L297)
 - `core/services/infra_weather_daemon.py` :: `get_weather` (L275)
-- `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L685)
-- `core/services/initiative_queue.py` :: `list_active_long_term_intentions` (L670)
+- `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L743)
+- `core/services/initiative_queue.py` :: `list_active_long_term_intentions` (L728)
 - `core/services/inner_dialectic_engine.py` :: `build_inner_dialectic_prompt_section` (L42)
 - `core/services/inner_dialectic_engine.py` :: `build_inner_dialectic_surface` (L35)
 - `core/services/inner_dialectic_engine.py` :: `run_inner_dialectic` (L13)

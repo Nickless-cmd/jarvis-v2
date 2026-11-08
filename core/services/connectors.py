@@ -74,10 +74,15 @@ _CATALOG: list[dict] = [
         "tools": ["gmail_list", "gmail_search", "gmail_send"],
         "category": "Google", "icon": "mail", "status": "available",
         "desc": "Læs, søg og send mails",
-        "scopes": ["gmail.readonly", "gmail.send"],
+        "scopes": ["gmail.readonly", "gmail.send", "gmail.settings.basic"],
         "oauth_scopes": [
             "https://www.googleapis.com/auth/gmail.readonly",
             "https://www.googleapis.com/auth/gmail.send",
+            # Filtre og videresendelsesregler. Uden den kan Jarvis LÆSE postkassen
+            # men ikke rydde den op — og sletning uden et filter kommer igen næste
+            # dag (målt 8/11-2026: myawardwallet.com sendte tre mails samme dag
+            # under tre forskellige afsendernavne, samme domæne).
+            "https://www.googleapis.com/auth/gmail.settings.basic",
         ],
         "post_connect_hint": "Nu kan jeg kigge i din Gmail — skal jeg tjekke din indbakke?",
     },

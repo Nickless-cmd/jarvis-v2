@@ -1113,7 +1113,7 @@ Generated from source. 9920/18408 functions/methods documented (53%). The list b
 - `core/services/conflict_resolution.py` :: `ConflictTrace.to_dict` (L40)
 - `core/services/conflict_resolution.py` :: `QuietInitiative.to_dict` (L73)
 - `core/services/conflict_resolution.py` :: `build_conflict_resolution_surface` (L615)
-- `core/services/connectors.py` :: `set_enabled` (L191)
+- `core/services/connectors.py` :: `set_enabled` (L196)
 - `core/services/consent_registry.py` :: `build_consent_registry_surface` (L143)
 - `core/services/consent_registry.py` :: `get_active_consents` (L112)
 - `core/services/consolidation_judge_daemon.py` :: `now_date_str` (L412)

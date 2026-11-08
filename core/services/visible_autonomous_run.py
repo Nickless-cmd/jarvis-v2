@@ -279,6 +279,29 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
                     (message or "")[:80])
         return False
 
+    # EJEREN PAA RUN-OBJEKTET (8/11-2026). `force_user_id` er tom for alle
+    # autonome producenter — heartbeat, dream, recurring, wakeup kalder alle
+    # uden den. Ejeren blev bundet i ContextVar nedenfor, men det sker EFTER
+    # dette objekt og naar derfor aldrig `run.user_id` eller journalen.
+    #
+    # Maalt konsekvens: `in_flight_runs` skrev `force_user_id: ""` for hvert
+    # autonomt run, og `verificeret_jarvis_run` afviser netop den form («er
+    # den tom, er der intet bevis»). Derfor kunne en autonom koersel aldrig
+    # laegge sin rapport i ownerens indbakke — den blev afvist hver gang.
+    #
+    # Bindingen hoerer her og ikke hos hver kalder: naeste oprindelse ville
+    # ellers mangle den igen. En EKSPLICIT vaerdi vinder altid, saa et run
+    # discord_gateway har bundet til Michelle forbliver hendes.
+    if not str(force_user_id or "").strip():
+        try:
+            from core.identity.owner_resolver import owner_user_id as _owner_id
+
+            force_user_id = str(_owner_id() or "").strip()
+        except Exception:  # noqa: BLE001 — uden ejer falder vi tilbage til tom,
+            # som er den gamle adfaerd: runnet koerer, men kan ikke rapportere.
+            logger.warning("autonomt run: kunne ikke afgoere ejeren — "
+                           "rapporten kan ikke leveres", exc_info=True)
+
     run = _vr.VisibleRun(
         run_id=f"autonomous-{uuid4().hex}",
         lane=settings.primary_model_lane,

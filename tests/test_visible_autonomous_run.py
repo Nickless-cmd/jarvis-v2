@@ -39,3 +39,90 @@ def test_a_patch_on_visible_runs_still_steers_the_moved_starter(isolated_runtime
         time.sleep(0.05)
     assert seen == {"settings": 1, "frames": 1}
     assert {"runtime.autonomous_run_started", "runtime.autonomous_run_completed"} <= kinds
+
+
+def test_ejeren_saettes_paa_runnet_naar_kalderen_ikke_giver_den(monkeypatch):
+    """8/11-2026: `force_user_id` er tom for ALLE autonome producenter.
+
+    Maalt konsekvens foer rettelsen: `in_flight_runs` skrev `force_user_id: ""`
+    for hvert autonomt run, og `verificeret_jarvis_run` afviser netop den form
+    («er den tom, er der intet bevis»). Derfor kunne en autonom koersel aldrig
+    laegge sin rapport i ownerens indbakke — den blev afvist hver gang.
+
+    Testen maaler run-OBJEKTET, ikke indbakke-posten (den har sin egen suite).
+    """
+    from types import SimpleNamespace
+
+    from core.services import visible_runs as vr
+
+    kaldt: list[object] = []
+
+    def settings():
+        return SimpleNamespace(primary_model_lane="visible", visible_model_provider="p",
+                               visible_model_name="m", autonomous_model_provider="ap",
+                               autonomous_model_name="am")
+
+    async def stream(run, **kw):
+        kaldt.append(run)
+        yield "frame"
+
+    monkeypatch.setattr(vr, "load_settings", settings)
+    monkeypatch.setattr(vr, "_stream_visible_run", stream)
+    monkeypatch.setattr("core.identity.owner_resolver.owner_user_id",
+                        lambda: "owner-42")
+    monkeypatch.setattr("core.services.inbox_state.registrer_kilde",
+                        lambda **k: {"status": "ok", "post": {}})
+    monkeypatch.setattr("core.services.run_guard.blokeringsgrund",
+                        lambda *a, **k: "")
+
+    vr.start_autonomous_run("ejer-test", session_id="sess-ejer")
+    deadline = time.time() + 5.0
+    while time.time() < deadline and not kaldt:
+        time.sleep(0.05)
+
+    assert kaldt, "runnet blev aldrig startet"
+    assert kaldt[0].user_id == "owner-42", (
+        f"runnet baerer ikke ejeren: {kaldt[0].user_id!r}"
+    )
+
+
+def test_en_eksplicit_ejer_vinder_over_fallback(monkeypatch):
+    """Fallback'et maa kun fylde et HUL, aldrig overskrive en eksplicit binding.
+
+    discord_gateway binder Michelles id; et run for hende maa ikke loeftes til
+    owner — det er den anden halvdel af sikkerheden.
+    """
+    from types import SimpleNamespace
+
+    from core.services import visible_runs as vr
+
+    kaldt: list[object] = []
+
+    def settings():
+        return SimpleNamespace(primary_model_lane="visible", visible_model_provider="p",
+                               visible_model_name="m", autonomous_model_provider="ap",
+                               autonomous_model_name="am")
+
+    async def stream(run, **kw):
+        kaldt.append(run)
+        yield "frame"
+
+    monkeypatch.setattr(vr, "load_settings", settings)
+    monkeypatch.setattr(vr, "_stream_visible_run", stream)
+    monkeypatch.setattr("core.identity.owner_resolver.owner_user_id",
+                        lambda: "owner-42")
+    monkeypatch.setattr("core.services.inbox_state.registrer_kilde",
+                        lambda **k: {"status": "ok", "post": {}})
+    monkeypatch.setattr("core.services.run_guard.blokeringsgrund",
+                        lambda *a, **k: "")
+
+    vr.start_autonomous_run("michelle-test", session_id="sess-michelle",
+                            force_user_id="michelle-7")
+    deadline = time.time() + 5.0
+    while time.time() < deadline and not kaldt:
+        time.sleep(0.05)
+
+    assert kaldt, "runnet blev aldrig startet"
+    assert kaldt[0].user_id == "michelle-7", (
+        f"fallback overskrev en eksplicit ejer: {kaldt[0].user_id!r}"
+    )

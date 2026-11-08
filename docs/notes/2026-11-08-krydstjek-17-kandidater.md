@@ -61,3 +61,21 @@ Det er den samme målefælde som «202 flader uden læser»: analysen ser ikke v
 ## Ikke gjort
 
 Intet er slettet. Triage-noten kræver ejer-ok, og de ni levende viser hvorfor: en sletning på det oprindelige grundlag ville have fjernet ni funktioner der kaldes i produktion.
+
+---
+
+## Opfølgning: når deres indhold mig ad en anden vej?
+
+«Død» betyder ikke «tabt». Det afgørende spørgsmål er om indholdet leveres ad en anden vej — så jeg stillede det for de fire prompt-funktioner.
+
+**Afløst, intet tabt (2):**
+- `format_life_phase_for_prompt` → `prompt_sections/heartbeat_sections.py:220` skriver `life_phase=<phase>` direkte fra `determine_life_phase()`. Fasen når prompten, i kompakt form.
+- `stale_goals_section` → `detect_stale_goals()` bruges af værktøjet, `consolidation_judge_daemon.py`, `auto_improvement_proposer.py` og `veto_gate.py`. Dataene når mig som værktøj; sektions-formateringen er en dublet.
+
+**Påstand uden levering (2):**
+- `build_resilience_narrative` (`self_compassion.py:56`) — docstring: «Jarvis sees the band in awareness». `resilience_pressure_band` findes kun i funktionen selv, og `resilience` optræder **nul** gange i `prompt_sections/`, `prompt_contract.py` og `central_self_state.py`.
+- `format_boundary_for_prompt` (`boundary_awareness.py:31`) — docstring: «Compact boundary awareness for prompt injection». Strengen «Din bevidsthed er dette øjeblik» findes kun i funktionen.
+
+**Hvorfor de så grønne ud:** hver af de fire har præcis **én** reference ud over definitionen — sin egen smoke-test. `test_self_compassion_smoke.py:16`, `test_boundary_awareness_smoke.py:12`, `test_living_heartbeat_cycle_smoke.py:12`, `test_stale_goals_rigtig_tabel.py:129`. Testen beviser at funktionen *kan* kaldes, ikke at nogen kalder den.
+
+Det er samme fejlklasse som `runtime_guard`: en mekanisme der ser ud som om den virker, fordi noget grønt peger på den. Flagget som `side-eca8e661aa`.

@@ -110,3 +110,92 @@ def test_vaekning_arver_samtalens_permissions(isolated_runtime, monkeypatch) -> 
 
     assert fanget.get("trust_all") is True, "en vækning skal arve samtalens fulde adgang"
     assert fanget.get("autonomous") is True
+
+
+def _opsaet_ejer_test(monkeypatch, *, bundet: str, ejer: str):
+    """Fælles opstilling: fang run-objektet og journal-skrivningen.
+
+    Målt 8/11-2026: `visible_runs.user_id` var TOM for hvert eneste vækning-run,
+    og `in_flight_runs` skrev `force_user_id: ""`. `verificeret_jarvis_run`
+    afviser netop den form («er den tom, er der intet bevis»), så en vækning
+    kunne aldrig lægge sin rapport i ownerens indbakke — hver gang.
+    """
+    from types import SimpleNamespace
+
+    import core.identity.owner_resolver as owner_resolver
+    import core.identity.workspace_context as ws
+    import core.services.autonomous_stream_run as asr
+    import core.services.in_flight_runs as ifr
+    import core.services.visible_runs as visible_runs
+
+    fanget: dict = {}
+    journal: dict = {}
+
+    class _FakeRun:
+        def __init__(self, **kw):
+            fanget.update(kw)
+            self.run_id = str(kw.get("run_id") or "r")
+            self.session_id = str(kw.get("session_id") or "")
+            self.user_message = str(kw.get("user_message") or "")
+            self.autonomous = bool(kw.get("autonomous", False))
+            self.trust_all = bool(kw.get("trust_all", False))
+            self.origin = str(kw.get("origin") or "")
+            self.provider = str(kw.get("provider") or "")
+            self.model = str(kw.get("model") or "")
+            self.lane = str(kw.get("lane") or "")
+            self.user_id = str(kw.get("user_id") or "")
+
+    async def _tom_stream(run):
+        if False:  # pragma: no cover — gør den til en async generator
+            yield ""
+
+    monkeypatch.setattr(
+        visible_runs,
+        "load_settings",
+        lambda: SimpleNamespace(
+            primary_model_lane="visible",
+            autonomous_model_provider="p",
+            autonomous_model_name="m",
+        ),
+    )
+    monkeypatch.setattr(visible_runs, "VisibleRun", _FakeRun)
+    monkeypatch.setattr(visible_runs, "_stream_visible_run", _tom_stream)
+    monkeypatch.setattr(asr, "_trust_for_session", lambda sid: False)
+    monkeypatch.setattr(ws, "current_user_id", lambda: bundet)
+    monkeypatch.setattr(owner_resolver, "owner_user_id", lambda: ejer)
+    monkeypatch.setattr(
+        ifr, "mark_started", lambda **kw: journal.update(kw)
+    )
+    return asr, fanget, journal
+
+
+def test_vaekning_bruger_den_bundne_bruger(isolated_runtime, monkeypatch) -> None:
+    """Vækningens dispatcher binder brugeren FØR kaldet — den skal bruges.
+
+    En vækning for Michelle må ikke blive Bjørns, og omvendt.
+    """
+    asr, fanget, journal = _opsaet_ejer_test(
+        monkeypatch, bundet="michelle-7", ejer="owner-42"
+    )
+
+    asr.start_autonomous_stream_run("wake", session_id="s-m", origin="wakeup")
+
+    assert fanget.get("user_id") == "michelle-7", "den bundne bruger skal vinde"
+    assert journal.get("force_user_id") == "michelle-7"
+
+
+def test_vaekning_falder_tilbage_til_ejeren(isolated_runtime, monkeypatch) -> None:
+    """Uden en bundet bruger skal ejeren sættes — ellers afvises rapporten.
+
+    MUTATION: fjern `user_id=_ejer` fra run-oprettelsen → tom streng → testen
+    fejler. Fjern `force_user_id=_ejer` fra `mark_started` → journalen får
+    ingen ejer, og `verificeret_jarvis_run` afviser stadig.
+    """
+    asr, fanget, journal = _opsaet_ejer_test(
+        monkeypatch, bundet="", ejer="owner-42"
+    )
+
+    asr.start_autonomous_stream_run("wake", session_id="s-e", origin="wakeup")
+
+    assert fanget.get("user_id") == "owner-42", "ejeren skal sættes når ingen er bundet"
+    assert journal.get("force_user_id") == "owner-42", "journalen er det gaten slår op i"

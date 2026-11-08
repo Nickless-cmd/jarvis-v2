@@ -99,6 +99,32 @@ def start_autonomous_stream_run(
                     (message or "")[:80])
         return
 
+    # EJEREN PÅ RUN-OBJEKTET (8/11-2026). Samme fejl som i
+    # `visible_autonomous_run.start_autonomous_run`, målt her 20:40Z: vækningens
+    # dispatcher binder brugeren med `set_context` FØR dette kald, men funktionen
+    # læste den aldrig. Derfor blev `visible_runs.user_id` tom og
+    # `in_flight_runs` skrev `force_user_id: ""` — og `verificeret_jarvis_run`
+    # afviser netop den form («er den tom, er der intet bevis»). En vækning
+    # kunne derfor ALDRIG lægge sin rapport i ownerens indbakke.
+    #
+    # Rækkefølgen er bevidst: den BUNDNE bruger vinder (en vækning for Michelle
+    # skal forblive hendes), og først derefter ejeren som fallback.
+    _ejer = ""
+    try:
+        from core.identity.workspace_context import current_user_id
+
+        _ejer = str(current_user_id() or "").strip()
+    except Exception:  # noqa: BLE001 — kan konteksten ikke læses, prøver vi ejeren
+        logger.debug("autonomt stream-run: kunne ikke læse bundet bruger", exc_info=True)
+    if not _ejer:
+        try:
+            from core.identity.owner_resolver import owner_user_id
+
+            _ejer = str(owner_user_id() or "").strip()
+        except Exception:  # noqa: BLE001 — uden ejer kører runnet, men kan ikke rapportere
+            logger.warning("autonomt stream-run: kunne ikke afgøre ejeren — "
+                           "rapporten kan ikke leveres i indbakken")
+
     run = vr.VisibleRun(
         run_id=f"autonomous-{uuid4().hex}",
         lane=settings.primary_model_lane,
@@ -107,6 +133,7 @@ def start_autonomous_stream_run(
         user_message=(message or "").strip() or "Autonomous heartbeat check-in",
         session_id=sid,
         autonomous=True,
+        user_id=_ejer,
         trust_all=_trust_for_session(sid),
         # PERMISSIONS-ARVEN (21/10-2026, Bjørn: «wakeups skal arve sessions
         # permissions»). Niveauet læses fra samtalen selv, så en vækning i en
@@ -151,6 +178,9 @@ def start_autonomous_stream_run(
             kind="autonomous",
             provider=run.provider,
             model=run.model,
+            # Journalen er den `verificeret_jarvis_run` slår op i. Uden ejeren
+            # her er run-objektets user_id uden betydning for rapport-stien.
+            force_user_id=_ejer,
         )
     except Exception:
         # SPORET MÅ IKKE FORSVINDE I TAVSHED (20/9-2026). To autonome kørsler

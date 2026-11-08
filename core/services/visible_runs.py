@@ -1193,7 +1193,7 @@ def _handle_compact_command(run: "VisibleRun") -> str:
                 f"Jeg har netop komprimeret vores samtalehistorik. "
                 f"{cr.freed_tokens} tokens freed. Confirm briefly."
             )
-        return "Ingen historik at komprimere endnu — samtalen er stadig kort."
+        return "Intet nyt at komprimere — den seneste opsummering daekker allerede historikken."
     except Exception as exc:
         return f"Komprimering mislykkedes: {exc}"
 

@@ -2404,7 +2404,12 @@ def _exec_compact_context(args: dict[str, Any]) -> dict[str, Any]:
         return {
             "status": "ok",
             "freed_tokens": 0,
-            "message": "Ingen historik at komprimere — samtalen er stadig kort.",
+            "message": (
+                "Intet NYT at komprimere — den seneste opsummering daekker allerede "
+                "historikken, og at opsummere den igen ville skrumpe den uden at "
+                "flytte noget. (Sessionen kan sagtens vaere lang; det er overfladen "
+                "EFTER den forrige markoer der afgoer.)"
+            ),
         }
     return {
         "status": "ok",

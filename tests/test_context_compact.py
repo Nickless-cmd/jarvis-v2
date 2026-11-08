@@ -403,6 +403,15 @@ def test_compact_context_tool_no_compact_when_short(monkeypatch):
     result = simple_tools._exec_compact_context({})
     assert result["status"] == "ok"
     assert result["freed_tokens"] == 0
+    # Beskeden maa ikke paastaa at SAMTALEN er kort. `None` betyder «intet NYT
+    # at komprimere» — den forrige opsummering daekker allerede historikken —
+    # og en session paa 6.000 beskeder kan sagtens give praecis det svar.
+    # Maalt 8/11-2026: beskeden sagde «samtalen er stadig kort» om en session
+    # med 6.012 beskeder, hvilket ville faa en senere mig til at tro at
+    # komprimeringen ikke virkede.
+    besked = str(result.get("message") or "").lower()
+    assert "stadig kort" not in besked
+    assert "intet nyt" in besked
 
 
 def test_compact_context_tool_returns_freed_tokens(monkeypatch):

@@ -929,7 +929,72 @@ def resolve(side_task_id: str, *, decision: str,
         _save_all(items)
     if gammel_vaekning:
         _annuller_vaekning_id(gammel_vaekning)
-    return {"status": "ok", "side_task_id": side_task_id, "new_status": decision}
+    result: dict[str, Any] = {"status": "ok", "side_task_id": side_task_id,
+                              "new_status": decision}
+    if decision in _TERMINALE:
+        result["inbox"] = _luk_indbakke_poster(
+            side_task_id, decision,
+            bevis=str(bevis or "").strip(), reason=str(reason or "").strip(),
+        )
+    return result
+
+
+def _luk_indbakke_poster(side_task_id: str, decision: str, *,
+                         bevis: str, reason: str) -> dict[str, Any]:
+    """Luk de `background_attention`-poster der handler om DENNE sideopgave.
+
+    Målt 8/11-2026: post 10342 («stadig åben efter 3 autonome forsøg») stod
+    `aaben` 3 minutter efter at `side-61032568a1` var lukket med bevis, og
+    post 10348 på samme måde. Posten skrives af `_report_exhausted` med
+    `kilde_id = background-side-task-<id>`, men intet i lukke-stien kendte
+    den — så indbakken blev ved med at sige «stadig åben» om færdigt arbejde.
+
+    Der kan være flere poster pr. sideopgave: en lukket post får en ny
+    generation (`background-side-task-<id>-<generation>`, se
+    `report_background_outcome`). Derfor lukkes både det nøjagtige id og alle
+    `<id>-…`-poster, men kun dem der stadig er åbne.
+
+    Lukningen går gennem `db_inbox.afgoer` (den samme som `inbox_state` bruger),
+    og `afgjort_grund` peger på beviset/grunden. Fejl SLUGES IKKE: de returneres
+    i `fejl` og logges, for en post der ikke kan lukkes er en post der bliver
+    ved med at lyve. Sideopgavens egen lukning står fast — den er allerede gemt.
+    """
+    out: dict[str, Any] = {"lukket": [], "fejl": []}
+    try:
+        from core.runtime import db_inbox
+        from core.services import background_attention
+
+        owner = background_attention._owner_user_id()
+        if not owner:
+            out["fejl"].append("ingen ejer — indbakke-poster kunne ikke slås op")
+            logger.error("side_task %s lukket, men ejer mangler: indbakke-poster urørt",
+                         side_task_id)
+            return out
+        prefix = f"background-side-task-{side_task_id}"
+        if decision == "completed":
+            ny_status = db_inbox.STATUS_DONE
+            grund = f"sideopgave {side_task_id} lukket med bevis: {bevis}"[:500]
+        else:
+            ny_status = db_inbox.STATUS_DROP
+            grund = f"sideopgave {side_task_id} afvist: {reason}"[:500]
+        for post in db_inbox.liste(bruger_id=owner, kun_aabne=True, maks=5000):
+            kilde_id = str(post.get("kilde_id") or "")
+            if str(post.get("kildetype") or "") != "background_attention":
+                continue
+            if kilde_id != prefix and not kilde_id.startswith(prefix + "-"):
+                continue
+            r = db_inbox.afgoer(bruger_id=owner, kilde_id=kilde_id,
+                                ny_status=ny_status, grund=grund)
+            if r.get("status") in {"ok", "allerede"}:
+                out["lukket"].append(kilde_id)
+            else:
+                out["fejl"].append(f"{kilde_id}: {r.get('error') or r.get('status')}")
+    except Exception as exc:
+        out["fejl"].append(f"{type(exc).__name__}: {exc}")
+    if out["fejl"]:
+        logger.error("side_task %s: indbakke-poster kunne ikke lukkes: %s",
+                     side_task_id, out["fejl"])
+    return out
 
 
 def saet_skjult(side_task_id: str, *, skjult: bool = True) -> dict[str, Any]:

@@ -123,19 +123,55 @@ class TestAfvistForpligtelseLandet:
 
 class TestGraensen:
     def test_uden_verificeret_ejer_gater_posten_ikke(self, inbox_db, monkeypatch):
-        """`huset` kan informere, men ikke kræve — heller ikke her.
+        """`huset`/`ukendt` kan informere, men ikke kræve — heller ikke her.
 
-        Det er ikke en fejl i parkeringen: `bloker` bærer gatingen alene, og
-        `kraever_handling` afgør om vækkeren må røre posten. Testen pinner at
-        de to felter ikke smelter sammen.
+        8/11-2026 (post 10349): testen pinnede før `bloker in (1, True)` og
+        kaldte det «bærer gatingen alene». Det var løgnen: `inbox_gate` kræver
+        `kraever_handling`, så posten stod som blokerende uden at kunne gate.
+        Nu lander posten, men uden et flag den ikke kan indfri.
         """
         from core.services import inbox_state
+        from core.services.inbox_gate import evaluer_inbox_mutation
 
         monkeypatch.setattr(inbox_state, "verificeret_jarvis_run", lambda rid, uid: False)
         r = _parker()
         post = r.get("post") or {}
         assert post.get("verificeret_ejer") != db_inbox.EJER_JARVIS
-        assert post.get("bloker") in (1, True), post
+        assert post.get("kraever_handling") in (0, False), post
+        assert post.get("bloker") in (0, False), post
+        assert r.get("bloker_nedgraderet") is True, r
+        # Og adfærden, ikke kun feltet: den må ikke gate, uanset påmindelser.
+        kid = post["kilde_id"]
+        db_inbox.noter_paamindelse(bruger_id="bjorn", kilde_id=kid, tur="t1")
+        db_inbox.noter_paamindelse(bruger_id="bjorn", kilde_id=kid, tur="t2")
+        assert evaluer_inbox_mutation("bjorn", "edit_file", tur="t3")["blokeret"] is False
+
+    def test_bloker_uden_kraever_handling_registreres_ikke_som_blokerende(
+            self, inbox_db):
+        """Roden: `registrer_kilde(bloker=True)` med ukendt ejer må ikke efterlade
+        en post med `bloker=1` og `kraever_handling=0` — den påstår at spærre og
+        gater intet (målt post 10349)."""
+        from core.services import inbox_state
+
+        r = inbox_state.registrer_kilde(
+            bruger_id="bjorn", kildetype="afvist_run", kilde_id="afvist-x",
+            oprettende_run_id="", beskrivelse="Afklar om mailen blev sendt",
+            bloker=True)
+        post = r["post"]
+        assert post["verificeret_ejer"] == db_inbox.EJER_UKENDT
+        assert not (post["bloker"] and not post["kraever_handling"]), post
+
+    def test_bloker_med_verificeret_jarvis_gater_stadig(self, inbox_db):
+        """Rettelsen må ikke slukke den ægte vej: verificeret Jarvis + bloker."""
+        from core.services import inbox_state
+
+        r = inbox_state.registrer_kilde(
+            bruger_id="bjorn", kildetype="afvist_run", kilde_id="afvist-ok",
+            oprettende_run_id="visible-afvist-1", beskrivelse="ægte", bloker=True)
+        post = r["post"]
+        assert post["verificeret_ejer"] == db_inbox.EJER_JARVIS
+        assert post["kraever_handling"] and post["bloker"]
+        assert not r.get("bloker_nedgraderet")
 
     def test_parkeringen_vaelter_ikke_ved_fejl(self, inbox_db, monkeypatch):
         """Self-safe: en manglende post må ikke kunne vælte run-starteren."""

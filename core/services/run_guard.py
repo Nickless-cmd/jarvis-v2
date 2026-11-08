@@ -178,8 +178,9 @@ def parker_forpligtelse(
             kilde_id=kid,
             # Det KØRENDE run er beviset: `verificeret_jarvis_run` kræver at
             # run-id'et tilhører et run der kører nu. Er det tomt, falder posten
-            # til `ukendt` — og så bærer `bloker` gatingen alene, hvilket målt
-            # betyder at den hverken gater eller vækker.
+            # til `ukendt` — og `registrer_kilde` nedgraderer så `bloker` til
+            # falsk (8/11-2026, post 10349), fordi en `ukendt` post hverken
+            # gater eller vækker. Posten lander, men påstår ikke at spærre.
             oprettende_run_id=_bevis,
             beskrivelse=beskrivelse[:400],
             bloker=True,

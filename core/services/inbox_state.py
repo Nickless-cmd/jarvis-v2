@@ -512,6 +512,22 @@ def registrer_kilde(
     # kildetypen — en recurring-post er husets, uanset hvem der kaldte.
     kraever_handling = ejer == EJER_JARVIS and kildetype_n not in IKKE_GATENDE_KILDETYPER
 
+    # En post må ikke PÅSTÅ at spærre uden at kunne det (8/11-2026, post 10349).
+    # `inbox_gate._gatende_poster` kræver `kraever_handling`, og herfra er `bloker`
+    # aldrig vej (2) — den vej er `flag_fra_bruger`, hvor ejeren er `bruger`.
+    # Kom `bloker=True` hertil med `ukendt`/`huset` (eller en ikke-gatende
+    # kildetype), stod posten som blokerende uden at gate eller vække noget —
+    # det kommentaren her tidligere lovede, og som aldrig var sandt. Posten
+    # LANDER stadig (en afvist forpligtelse må ikke forsvinde sporløst), men
+    # uden et flag den ikke kan indfri; og nedgraderingen SES i svaret og loggen.
+    bloker_nedgraderet = bool(bloker) and not kraever_handling
+    if bloker_nedgraderet:
+        logger.warning(
+            "inbox_state: bloker=True nedgraderet for %s/%s (ejer=%s, "
+            "kraever_handling=False) — posten kunne ikke gate",
+            kildetype_n, kilde_id, ejer)
+        bloker = False
+
     r = db_inbox.opret_eller_hent(
         bruger_id=bruger_id,
         kildetype=kildetype_n,
@@ -526,11 +542,10 @@ def registrer_kilde(
         # afgør `db_inbox.opret_eller_hent` om posten skal have en: kun en post
         # der kan nægte en mutation får en, og reglen står ét sted.
         expires_at=expires_at,
-        # `bloker` (14/10-2026): den eksplicitte undtagelse fra «kun det du
-        # selv har lovet kan blokere». En afvist forpligtelse har kildetypen
-        # `afvist_run`, som ikke står i `IKKE_GATENDE_KILDETYPER` — men dens
-        # ejer kan være `huset`, og så ville `kraever_handling` være falsk.
-        # `bloker` gater uanset, og `opret_eller_hent` giver den en frist.
+        # `bloker` (14/10-2026) giver posten en frist i `opret_eller_hent`. Det
+        # gater KUN når `kraever_handling` også er sand — det er rettet 8/11-2026:
+        # kommentaren her lovede tidligere «gater uanset», hvilket gaten aldrig
+        # gjorde. Et `bloker` uden `kraever_handling` er nedgraderet ovenfor.
         bloker=bool(bloker),
         # Samtalen forpligtelsen hørte til, så vækkeren kan vække DEN og ikke
         # en `auto-*`-silo (se `inbox_idle_waker._maal_session`).
@@ -609,6 +624,8 @@ def registrer_kilde(
             if frisk is not None:
                 r = {**r, "post": frisk, "afsluttet": True}
                 post = frisk
+    if bloker_nedgraderet:
+        r = {**r, "bloker_nedgraderet": True}
     if int(post.get("paamindelser") or 0) == 0 and not post.get("afgjort_at"):
         _spor("inbox.registreret", {
             "bruger_id": bruger_id, "kildetype": kildetype_n, "kilde_id": kilde_id,

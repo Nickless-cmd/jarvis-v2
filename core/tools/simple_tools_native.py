@@ -2500,6 +2500,21 @@ def _exec_gmail_list(args: dict[str, Any]) -> dict[str, Any]:
     return list_inbox(uid, max_results=args.get("max_results", 10))
 
 
+def _exec_gmail_modify(args: dict[str, Any]) -> dict[str, Any]:
+    """Flyt/arkivér/gendan eksplicitte Gmail-id'er. dry_run er sand som standard."""
+    from core.services.gmail_connector import modify_messages
+    uid = _operator_user_id(args)
+    ids = args.get("message_ids")
+    if isinstance(ids, str):
+        ids = [ids]
+    return modify_messages(
+        uid,
+        list(ids or []),
+        action=str(args.get("action") or "trash"),
+        dry_run=bool(args.get("dry_run", True)),
+    )
+
+
 def _exec_gmail_send(args: dict[str, Any]) -> dict[str, Any]:
     """Send mail på brugerens vegne — bag approval-kort (som operator-tools)."""
     uid = _operator_user_id(args)
@@ -2778,6 +2793,7 @@ __all__ = [
     "_exec_github_list_prs",
     "_exec_gmail_search",
     "_exec_gmail_list",
+    "_exec_gmail_modify",
     "_exec_gmail_send",
     "_exec_calendar_list_events",
     "_exec_drive_search",

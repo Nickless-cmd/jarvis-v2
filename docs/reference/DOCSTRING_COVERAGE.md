@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9920/18408 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9922/18410 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,14 +26,14 @@ Generated from source. 9920/18408 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 872 | 1586 | 54% |
-| `core.services` | 6625 | 12473 | 53% |
+| `core.services` | 6626 | 12474 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 25 | 40 | 62% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 629 | 1219 | 51% |
+| `core.tools` | 630 | 1220 | 51% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
@@ -1321,8 +1321,8 @@ Generated from source. 9920/18408 functions/methods documented (53%). The list b
 - `core/services/git_actions.py` :: `commit_all_container` (L47)
 - `core/services/git_actions.py` :: `commit_all_workstation` (L187)
 - `core/services/git_actions.py` :: `parse_owner_repo` (L217)
-- `core/services/gmail_connector.py` :: `list_inbox` (L148)
-- `core/services/gmail_connector.py` :: `search` (L142)
+- `core/services/gmail_connector.py` :: `list_inbox` (L181)
+- `core/services/gmail_connector.py` :: `search` (L175)
 - `core/services/goal_signal_tracking.py` :: `build_runtime_goal_signal_surface` (L101)
 - `core/services/goal_signal_tracking.py` :: `refresh_runtime_goal_signal_statuses` (L64)
 - `core/services/goal_signal_tracking.py` :: `track_runtime_goal_signals_for_visible_turn` (L23)

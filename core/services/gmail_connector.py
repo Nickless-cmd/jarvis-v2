@@ -58,6 +58,39 @@ GMAIL_CONNECTOR_TOOL_DEFINITIONS: list[dict] = [
     {
         "type": "function",
         "function": {
+            "name": "gmail_modify",
+            "description": (
+                "Flyt, arkivér eller gendan EKSPLICITTE Gmail-beskeder via deres EGEN "
+                "forbundne konto. Kræver message-id'er fra gmail_search/gmail_list — "
+                "der er ingen søgestreng, så bred oprydning kræver at id'erne først er "
+                "listet. dry_run er sand som standard og ændrer intet; kald igen med "
+                "dry_run=false for at udføre. Maks 500 id'er pr. kald."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "message_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Liste af Gmail message-id'er (fra gmail_search)",
+                    },
+                    "action": {
+                        "type": "string",
+                        "enum": ["trash", "archive", "untrash"],
+                        "description": "trash = Papirkurv, archive = fjern fra indbakke, untrash = tilbage",
+                    },
+                    "dry_run": {
+                        "type": "boolean",
+                        "description": "Sand = vis kun hvad der ville ske (standard). Falsk = udfør.",
+                    },
+                },
+                "required": ["message_ids"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "gmail_list",
             "description": (
                 "List de nyeste mails i brugerens Gmail-indbakke via deres EGEN forbundne "
@@ -147,6 +180,79 @@ def search(user_id: str, query: str, *, max_results: int = 10) -> dict:
 
 def list_inbox(user_id: str, *, max_results: int = 10) -> dict:
     return _fetch_messages(user_id, None, max_results)
+
+
+_AKTIONER: dict[str, dict] = {
+    "trash": {"add": ["TRASH"], "remove": ["INBOX"]},
+    "archive": {"add": [], "remove": ["INBOX"]},
+    "untrash": {"add": ["INBOX"], "remove": ["TRASH"]},
+}
+
+# Gmail batchModify tager op til 1000 id'er. Vi holder os under og kræver
+# eksplicitte id'er — aldrig en søgestreng — så et kald ikke kan ramme bredt
+# ved et uheld i en formulering.
+_MAX_BATCH = 500
+
+
+def modify_messages(
+    user_id: str,
+    message_ids: list[str],
+    *,
+    action: str = "trash",
+    dry_run: bool = True,
+) -> dict:
+    """Flyt/arkivér/fortryd på EKSPLICITTE message-id'er.
+
+    `dry_run` er default: et kald uden `dry_run=false` ændrer intet, men viser
+    hvad der ville ske. Det er med vilje — den her funktion kan flytte tusinder
+    af mails, og et forkert argument må ikke kunne gøre det i ét hug.
+
+    Id'erne skal komme fra `search()`/`list_inbox()`. Der er ingen søgestreng i
+    signaturen, så bred sletning kræver at kalderen selv har listet dem.
+    """
+    token = _token(user_id)
+    if not token:
+        return {"status": "error", "error": "gmail_not_connected"}
+    plan = _AKTIONER.get((action or "").strip().lower())
+    if not plan:
+        return {"status": "error", "error": f"ukendt_handling: {action}",
+                "gyldige": sorted(_AKTIONER)}
+    ids = [str(i).strip() for i in (message_ids or []) if str(i).strip()]
+    if not ids:
+        return {"status": "error", "error": "message_ids_required"}
+    if len(ids) > _MAX_BATCH:
+        return {"status": "error",
+                "error": f"for_mange_ids: {len(ids)} > {_MAX_BATCH}",
+                "hint": "del op i flere kald"}
+    if dry_run:
+        return {
+            "status": "ok",
+            "dry_run": True,
+            "action": action,
+            "count": len(ids),
+            "would_add": plan["add"],
+            "would_remove": plan["remove"],
+            "sample_ids": ids[:5],
+            "note": "Intet ændret. Kald igen med dry_run=false for at udføre.",
+        }
+    try:
+        import httpx
+        r = httpx.post(
+            f"{_API}/messages/batchModify",
+            headers=_headers(token),
+            json={"ids": ids, "addLabelIds": plan["add"], "removeLabelIds": plan["remove"]},
+            timeout=60,
+        )
+        if r.status_code == 401:
+            return {"status": "error", "error": "gmail_not_connected"}
+        if r.status_code == 403:
+            return {"status": "error", "error": "gmail_scope_missing",
+                    "hint": "tokenet mangler gmail.modify — forbind Gmail igen"}
+        if r.status_code not in (200, 204):
+            return {"status": "error", "error": f"gmail_http_{r.status_code}"}
+        return {"status": "ok", "dry_run": False, "action": action, "modified": len(ids)}
+    except Exception as e:  # noqa: BLE001
+        return {"status": "error", "error": f"gmail_request_failed: {e}"}
 
 
 def send_message(user_id: str, to: str, subject: str, body: str) -> dict:

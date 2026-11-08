@@ -327,10 +327,18 @@ def _sense_audio(
             return {"ok": False, "preview": "no_audio_device", "reason": "audio_no_device"}
 
         preview = f"category={category} amplitude={amplitude_mean:.4f}"
-        content = (
-            f"Jeg lyttede til rummet. Klassifikation: {category} "
-            f"(amplitude {amplitude_mean:.4f}±{amplitude_std:.4f})."
-        )
+        # Amplituden hoerer i metadata — ikke i indtrykket.
+        #
+        # MAALT 8/11-2026: `_PROMPT_EKKO_MOENSTRE` fanger `amplitude \\d` for at
+        # afvise modellens gengivelse af sine egne metadata. Naar producenten
+        # skrev amplituden ind i `content` selv, ramte samme moenster hans egen
+        # tekst: `_uden_stillads` klippede ved naermeste saetningsgraense og
+        # efterlod «Jeg lyttede til rummet.» — 23 tegn, over `_MINDSTE_INDTRYK`,
+        # og derfor gemt som et indtryk uden klassifikation. To af 25 lyd-poster
+        # i 30 dage havde praecis den form; resten var skrevet foer moenstret
+        # landede 7/11. Klassifikationen er hele indholdet — amplituden er
+        # maalingen bag den, og den staar allerede i metadata nedenfor.
+        content = f"Jeg lyttede til rummet. Klassifikation: {category}."
 
         if arkiver:
             try:
@@ -375,6 +383,10 @@ def _sense_audio(
             "preview": preview,
             "reason": reason,
             "description": content,
+            # Kategorien foelger med, saa `_sense_mixed` kan skrive «Lyd: talk»
+            # uden at laane `preview`, der baerer amplitude-ekkoet.
+            "category": category,
+            "amplitude_mean": round(amplitude_mean, 4),
         }
     except Exception as exc:
         logger.warning("active_sensing: audio capture failed: %s", exc)
@@ -465,8 +477,26 @@ def _sense_mixed(state: dict[str, Any], now: datetime) -> dict[str, Any]:
             f"Visuelt: {visual_result.get('description') or visual_result.get('preview', '')}"
         )
     if audio_result.get("ok"):
-        dele.append(f"Lyd: {audio_result.get('preview', '')}")
-    combined = "Jeg så og lyttede samtidig. " + " | ".join(dele)
+        # Kategorien, ikke `preview`. Preview er «category=talk amplitude=0.0215»
+        # og blev klippet vaek af amplitude-moenstret i `_uden_stillads`.
+        dele.append(
+            f"Lyd: {audio_result.get('category') or audio_result.get('preview', '')}"
+        )
+
+    # Praefikset maa kun paastaa det der faktisk skete.
+    #
+    # MAALT 8/11-2026: 160 af 273 mixed-poster i 60 dage sagde «Jeg saa og
+    # lyttede samtidig», mens `audio_status` var `audio_silence_not_an_impression`
+    # — lyden var stilhed, blev korrekt udeladt af posten, og teksten paastod
+    # alligevel en sansning som metadata modsiger. Det er samme fejlform som
+    # resten af huset: ikke at knække, men at paastaa.
+    if visual_result.get("ok") and audio_result.get("ok"):
+        praefiks = "Jeg så og lyttede samtidig."
+    elif visual_result.get("ok"):
+        praefiks = "Jeg så på rummet."
+    else:
+        praefiks = "Jeg lyttede til rummet."
+    combined = f"{praefiks} " + " | ".join(dele)
 
     try:
         from core.services.sensory_archive import record_mixed
@@ -477,6 +507,8 @@ def _sense_mixed(state: dict[str, Any], now: datetime) -> dict[str, Any]:
                 "modality": "mixed",
                 "visual_status": visual_result.get("reason", ""),
                 "audio_status": audio_result.get("reason", ""),
+                "audio_category": audio_result.get("category", ""),
+                "audio_amplitude_mean": audio_result.get("amplitude_mean"),
             },
         )
     except Exception as exc:

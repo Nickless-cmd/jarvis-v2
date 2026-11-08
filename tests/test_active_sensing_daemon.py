@@ -263,3 +263,162 @@ def test_rigtig_lyd_arkiveres_som_foer(isolated_runtime, monkeypatch) -> None:
 
     assert svar["ok"] is True
     assert svar["reason"] == "audio_music"
+
+
+def test_mixed_post_beholder_lyd_halvdelen(isolated_runtime, monkeypatch) -> None:
+    """Mixed-posten skal bære BEGGE sanser — også efter stillads-gaten.
+
+    Målt 8/11-2026: 13 af 40 mixed-poster i 30 dage indeholdt «Jeg så og
+    lyttede samtidig» men IKKE «Lyd:». Aarsagen var at `_sense_mixed` byggede
+    lyd-delen af `preview` — «category=talk amplitude=0.0215» — og
+    `_PROMPT_EKKO_MOENSTRE` klipper ved `amplitude \\d`. Posten blev derfor
+    arkiveret som om begge sanser indgik, men bar kun den visuelle halvdel.
+
+    Gaten er det punkt hvor tabet skete, saa det er der vagten maaler.
+    """
+    from core.services import active_sensing_daemon as asd
+    import core.services.sensory_archive as arkiv
+
+    skrevet: list[str] = []
+    monkeypatch.setattr(
+        arkiv, "record_mixed",
+        lambda content, **kw: skrevet.append(content) or {"id": "x"},
+    )
+    monkeypatch.setattr(
+        asd, "_sense_visual",
+        lambda state, now, **kw: {
+            "ok": True, "description": "Rummet er stille og køligt.",
+            "preview": "Rummet er stille og køligt.", "reason": "visual_captured",
+        },
+    )
+    monkeypatch.setattr(
+        asd, "_sense_audio",
+        lambda state, now, **kw: {
+            "ok": True, "preview": "category=talk amplitude=0.0215",
+            "reason": "audio_talk", "category": "talk", "amplitude_mean": 0.0215,
+        },
+    )
+
+    asd._sense_mixed({}, datetime.now(UTC))
+
+    assert len(skrevet) == 1, "mixed skal give praecis én post"
+    tekst, _ = arkiv._uden_stillads(skrevet[0])
+    assert "Lyd: talk" in tekst, f"lyd-halvdelen blev klippet væk: {tekst!r}"
+    assert "Visuelt: Rummet er stille" in tekst, f"den visuelle halvdel forsvandt: {tekst!r}"
+
+
+def test_lyd_postens_klassifikation_overlever_stillads_gaten(
+    isolated_runtime, monkeypatch
+) -> None:
+    """Et lyt er sin KLASSIFIKATION — amplituden er maalingen bag den.
+
+    Målt 8/11-2026: to lyd-poster i arkivet stod som «Jeg lyttede til rummet.»
+    — 23 tegn, over `_MINDSTE_INDTRYK`, og derfor gemt som et indtryk uden
+    indhold. Amplituden i `content` blev klippet af samme moenster, og
+    klassifikationen forsvandt med den. Den hoerer i metadata.
+    """
+    from core.services import active_sensing_daemon as asd
+    from core.services import ambient_sound_daemon as amb
+    import core.services.sensory_archive as arkiv
+
+    monkeypatch.setattr(
+        amb, "_capture_sample",
+        lambda save_wav=True: ("talk", 0.0215, 0.0100, None),
+    )
+
+    svar = asd._sense_audio({}, datetime.now(UTC))
+
+    assert "amplitude" not in svar["description"], (
+        f"amplituden staar i indtrykket og bliver klippet væk: {svar['description']!r}"
+    )
+    tekst, _ = arkiv._uden_stillads(svar["description"])
+    assert "talk" in tekst, f"klassifikationen forsvandt gennem gaten: {tekst!r}"
+
+
+def test_lyd_postens_amplituden_naar_metadata(isolated_runtime, monkeypatch) -> None:
+    """Flyttet, ikke slettet: maalingen skal stadig kunne slas op."""
+    from core.services import active_sensing_daemon as asd
+    from core.services import ambient_sound_daemon as amb
+
+    monkeypatch.setattr(
+        amb, "_capture_sample",
+        lambda save_wav=True: ("music", 0.0312, 0.0081, None),
+    )
+
+    svar = asd._sense_audio({}, datetime.now(UTC))
+
+    assert svar["category"] == "music"
+    assert svar["amplitude_mean"] == 0.0312
+
+
+def test_mixed_paastaar_ikke_at_den_lyttede_naar_lyden_var_stilhed(
+    isolated_runtime, monkeypatch
+) -> None:
+    """Praefikset maa kun paastaa den sansning der faktisk gav et indtryk.
+
+    Maalt 8/11-2026: 160 af 273 mixed-poster i 60 dage sagde «Jeg saa og
+    lyttede samtidig», mens `audio_status` var `audio_silence_not_an_impression`
+    — lyden var stilhed, blev korrekt udeladt, og teksten paastod alligevel en
+    sansning som metadata modsiger.
+    """
+    from core.services import active_sensing_daemon as asd
+    import core.services.sensory_archive as arkiv
+
+    skrevet: list[str] = []
+    monkeypatch.setattr(
+        arkiv, "record_mixed",
+        lambda content, **kw: skrevet.append(content) or {"id": "x"},
+    )
+    monkeypatch.setattr(
+        asd, "_sense_visual",
+        lambda state, now, **kw: {
+            "ok": True, "description": "Rummet er stille og køligt.",
+            "preview": "Rummet er stille og køligt.", "reason": "visual_captured",
+        },
+    )
+    monkeypatch.setattr(
+        asd, "_sense_audio",
+        lambda state, now, **kw: {
+            "ok": False, "preview": "category=silence amplitude=0.0000",
+            "reason": "audio_silence_not_an_impression",
+        },
+    )
+
+    asd._sense_mixed({}, datetime.now(UTC))
+
+    assert len(skrevet) == 1
+    tekst = skrevet[0]
+    assert "lyttede" not in tekst, f"posten paastaar en sansning der ikke skete: {tekst!r}"
+    assert tekst.startswith("Jeg så på rummet."), tekst
+
+
+def test_mixed_siger_begge_dele_naar_begge_gav_indtryk(
+    isolated_runtime, monkeypatch
+) -> None:
+    """Den anden retning: naar lyden ER et indtryk, skal posten sige det."""
+    from core.services import active_sensing_daemon as asd
+    import core.services.sensory_archive as arkiv
+
+    skrevet: list[str] = []
+    monkeypatch.setattr(
+        arkiv, "record_mixed",
+        lambda content, **kw: skrevet.append(content) or {"id": "x"},
+    )
+    monkeypatch.setattr(
+        asd, "_sense_visual",
+        lambda state, now, **kw: {
+            "ok": True, "description": "Rummet er stille og køligt.",
+            "preview": "Rummet er stille og køligt.", "reason": "visual_captured",
+        },
+    )
+    monkeypatch.setattr(
+        asd, "_sense_audio",
+        lambda state, now, **kw: {
+            "ok": True, "preview": "category=talk amplitude=0.0215",
+            "reason": "audio_talk", "category": "talk", "amplitude_mean": 0.0215,
+        },
+    )
+
+    asd._sense_mixed({}, datetime.now(UTC))
+
+    assert skrevet[0].startswith("Jeg så og lyttede samtidig."), skrevet[0]

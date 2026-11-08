@@ -286,8 +286,14 @@ def _fjern_anmeldelse(tekst: str, traef: re.Match[str]) -> str:
 #: Maalt 5/10-2026: post `931e8920` var en ren tankeraekke, men klippet efterlod
 #: «Jeg så og lyttede samtidig. Visuelt: 1.» — 39 tegn wrapper og et listetal,
 #: over `_MINDSTE_INDTRYK`, og derfor gemt som om det var en sansning.
+#:
+#: `Jeg så på rummet.` er tilfoejet 8/11-2026, da praefikset begyndte at afspejle
+#: hvad der faktisk skete: naar lyden var `silence`, skriver mixed-posten ikke
+#: laengere at den lyttede. Uden det her ville en klippet visual-only-post kunne
+#: slippe igennem som indtryk paa sit eget praefiks.
 _WRAPPER_LAG = re.compile(
-    r"^\s*Jeg så og lyttede samtidig\.\s*|^\s*Visuelt:\s*|\s*\|\s*Lyd:\s*[^|]*",
+    r"^\s*Jeg så og lyttede samtidig\.\s*|^\s*Jeg så på rummet\.\s*"
+    r"|^\s*Visuelt:\s*|\s*\|\s*Lyd:\s*[^|]*",
     re.I,
 )
 

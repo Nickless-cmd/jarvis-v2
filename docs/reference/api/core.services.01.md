@@ -604,13 +604,14 @@ _Integration af en kodeagents arbejde - foerste forbruger af approval-flowet (ag
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_retained_worktree` | `(owner_user_id, assignment_id)` | — | [src](../../../core/services/agent_integration.py#L35) |
-| function | `_snapshot` | `(wt)` | Hvad der staar i worktree'et NU: diff-hash + filer. Samme beregning ved anmodning og ved udfoerelse. | [src](../../../core/services/agent_integration.py#L44) |
-| function | `request_integration` | `(*, owner_user_id, origin_session_id, assignment_id)` | Opret (eller genfind) approvalen. Kaster ``ContractError`` ved ukendt/ugyldigt worktree. | [src](../../../core/services/agent_integration.py#L53) |
-| function | `_result_message` | `(approval, payload)` | Fortael parenten hvordan det gik, via den samme udbakke som agentresultater (ét svar pr. approval). | [src](../../../core/services/agent_integration.py#L67) |
-| function | `execute_approved` | `(approval)` | Udfoer en GODKENDT integration. Bruger approvalen foerst (hoejst én gang). | [src](../../../core/services/agent_integration.py#L85) |
-| function | `_merge` | `(wt, approval, args)` | — | [src](../../../core/services/agent_integration.py#L113) |
-| function | `run_pending` | `()` | Supervisor-tik: godkendte, ubrugte integrationer (f.eks. besluttet lige foer en genstart) udfoeres. | [src](../../../core/services/agent_integration.py#L135) |
+| function | `_retained_worktree` | `(owner_user_id, assignment_id)` | — | [src](../../../core/services/agent_integration.py#L40) |
+| function | `_snapshot` | `(wt)` | Hvad der staar i worktree'et NU: diff-hash + filer. Samme beregning ved anmodning og ved udfoerelse. | [src](../../../core/services/agent_integration.py#L49) |
+| function | `request_integration` | `(*, owner_user_id, origin_session_id, assignment_id)` | Opret (eller genfind) approvalen. Kaster ``ContractError`` ved ukendt/ugyldigt worktree. | [src](../../../core/services/agent_integration.py#L58) |
+| function | `_result_message` | `(approval, payload)` | Fortael parenten hvordan det gik, via den samme udbakke som agentresultater (ét svar pr. approval). | [src](../../../core/services/agent_integration.py#L72) |
+| function | `execute_approved` | `(approval)` | Udfoer en GODKENDT integration. Bruger approvalen foerst (hoejst én gang). | [src](../../../core/services/agent_integration.py#L90) |
+| function | `_attributed_message` | `(message, approval)` | Saet de seks attribution-trailere paa en commit-besked fra integrations-flowet. | [src](../../../core/services/agent_integration.py#L118) |
+| function | `_merge` | `(wt, approval, args)` | — | [src](../../../core/services/agent_integration.py#L143) |
+| function | `run_pending` | `()` | Supervisor-tik: godkendte, ubrugte integrationer (f.eks. besluttet lige foer en genstart) udfoeres. | [src](../../../core/services/agent_integration.py#L167) |
 
 ## `core/services/agent_loop_core.py`
 _Agentens model-/vaerktoejsloekke som ren logik (agent-contract-v1 C6, spec 12.1)._

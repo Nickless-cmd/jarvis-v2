@@ -283,3 +283,29 @@ def test_the_tool_is_pinned_hidden_when_off_and_uses_the_authenticated_owner(ig)
     finally:
         w.reset_context(tok)
     assert "integrate_agent_work" in T.CONTRACT_TOOL_NAMES and "integrate_agent_work" in T._NEW_ONLY
+
+
+def test_begge_commits_baerer_de_seks_attribution_trailere(ig):
+    """Maalt 8/11-2026: en godkendt integration kunne strukturelt ikke pushes.
+
+    Agent-committene blev skrevet med en raa besked, saa pre-push-vagten
+    ``validate_commit_attribution.py`` afviste HELE rangen — arbejdet laaste sig
+    paa en lokal gren. Testen laeser beskeden fra GIT, ikke fra funktionen: det
+    er commit-objektet der skal baere trailerne, ikke returvaerdien.
+    """
+    from core.services.commit_attribution import MANAGED_TRAILERS, validate_commit_message
+
+    acc, _ = ig.finished()
+    out = ig.human(ig.ask(acc))
+    assert out["status"] == "ok" and out["integration"]["status"] == "integrated"
+
+    # Agent-committen er merge-committens ANDEN foraelder. Viewet udelader den,
+    # saa den laeses fra grafen — det er praecis de to commits vagten ser.
+    merge_sha = out["integration"]["commit"]
+    agent_sha = sh("git", "rev-parse", f"{merge_sha}^2", cwd=ig.repo_).strip()
+    for label, sha in (("agent", agent_sha), ("integrate", merge_sha)):
+        message = sh("git", "log", "-1", "--format=%B", sha, cwd=ig.repo_)
+        assert validate_commit_message(message) == (), f"{label}-commit {sha[:12]} mangler trailere"
+        for trailer in MANAGED_TRAILERS:
+            assert f"{trailer}: " in message, f"{label}-commit mangler {trailer}"
+        assert "Actor: jarvis" in message and "Actor-Type: agent" in message

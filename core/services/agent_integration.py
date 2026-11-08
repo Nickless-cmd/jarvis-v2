@@ -25,6 +25,11 @@ from core.runtime import db_agent_approvals as appr
 from core.runtime.db_agent_contract import ContractError, _conn, _now_iso
 from core.services import agent_worktree_git as g
 from core.services import agent_worktrees as wtm
+from core.services.commit_attribution import (
+    CommitAttribution,
+    new_manual_run_id,
+    render_attributed_message,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -110,11 +115,37 @@ def execute_approved(approval: dict[str, Any]) -> dict[str, Any]:
     return outcome
 
 
+def _attributed_message(message: str, approval: dict[str, Any]) -> str:
+    """Saet de seks attribution-trailere paa en commit-besked fra integrations-flowet.
+
+    Maalt 8/11-2026: begge commits paa ``agent/<asg>`` og ``integrate/<asg>`` blev
+    skrevet med en raa besked, saa pre-push-vagten afviste HELE rangen og en
+    godkendt integration strukturelt ikke kunne naa ``origin/main``. Arbejdet
+    laaste sig paa en lokal gren, hver gang.
+
+    ``Approved-By`` er ``policy:integration-approved`` og ikke et personnavn:
+    godkendelsen kom gennem approval-flowet, og traileren skal vaere sand ogsaa
+    naar ejeren ikke er Bjoern. Et personnavn ville kraeve medlemskab af
+    ``ACTOR_REGISTRY``, som kun har de faste aktorer.
+    """
+    run_id = str(approval.get("run_id") or approval.get("parent_run_id") or "").strip()
+    attribution = CommitAttribution(
+        actor="jarvis",
+        actor_type="agent",
+        run_id=run_id or new_manual_run_id(),
+        session_id=str(approval.get("origin_session_id") or "").strip() or "none",
+        origin="autonomous",
+        approved_by="policy:integration-approved",
+    )
+    return render_attributed_message(message, attribution)
+
+
 def _merge(wt: dict[str, Any], approval: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
     repo = wt["repo_path"]
     assignment = approval["assignment_id"]
-    agent_commit = g.commit_worktree_tree(wt["gitdir"], wt["path"], wt["base_commit"],
-                                          f"Agent {wt['agent_id']}: {assignment}")
+    agent_commit = g.commit_worktree_tree(
+        wt["gitdir"], wt["path"], wt["base_commit"],
+        _attributed_message(f"Agent {wt['agent_id']}: {assignment}", approval))
     g.set_ref(repo, f"refs/heads/{wt['branch']}", agent_commit, wt["base_commit"])
     target = g.current_head(repo)
     ref = f"refs/heads/integrate/{g.safe_name(assignment, 'assignment_id')}"
@@ -124,7 +155,8 @@ def _merge(wt: dict[str, Any], approval: dict[str, Any], args: dict[str, Any]) -
     if tree is None:
         return {"status": "conflict", "error_code": "MERGE_CONFLICT", "conflicts": conflicts,
                 "summary": f"konflikt i {len(conflicts)} fil(er) ift. repoets nuvaerende HEAD: {', '.join(conflicts[:10])}"}
-    merged = g.commit_tree(repo, tree, [target, agent_commit], f"Integrate agent work {assignment}")
+    merged = g.commit_tree(repo, tree, [target, agent_commit],
+                           _attributed_message(f"Integrate agent work {assignment}", approval))
     g.create_ref(repo, ref, merged)
     return {"status": "integrated", "integrate_branch": ref.removeprefix("refs/heads/"), "commit": merged,
             "agent_branch": wt["branch"], "agent_commit": agent_commit, "merged_into": target,

@@ -242,7 +242,34 @@ def _connected(user_id: str, c: dict) -> bool:
         logger.warning("connectors: kunne ikke laese scope for %s — doemmer som "
                        "forbundet paa token-tilstedevaerelse alene", prov, exc_info=True)
         return True
-    return kraevet.issubset(givet)
+    if not kraevet.issubset(givet):
+        return False
+    # Et token der FINDES men er udloebet og ikke kan fornyes, er ikke en
+    # forbindelse — det er en gravsten. Uden dette tjek kan Marketplace aldrig
+    # vise «Forbind» igen, fordi knappen skjules saa snart flaget er groent
+    # (MarketplacePane.tsx: statusPill). Brugeren kan da ikke komme ud af
+    # fejlen selv, og hvert varktoejskald svarer «*_not_connected».
+    #
+    # Maalt 8/11-2026: access-tokenet blev skrevet 09:23Z, virkede til 09:36Z,
+    # og derefter svarede hvert gmail-kald gmail_not_connected resten af dagen
+    # — mens fladen viste «● forbundet», fordi get_fresh_token falder tilbage
+    # til det udloebne token naar fornyelsen ikke kan lade sig goere.
+    #
+    # Tjekket er billigt: get_fresh_token fornyer kun naar tokenet er udloebet,
+    # saa det koster intet netvaerkskald i den raske tilstand.
+    try:
+        import time as _time
+        frisk = get_fresh_token(user_id, prov) or {}
+        udloeb = frisk.get("expires_at")
+        if udloeb and float(udloeb) <= _time.time():
+            logger.warning(
+                "connectors: %s har et udloebet token der ikke kan fornyes — "
+                "doemmer som IKKE forbundet, saa «Forbind» bliver synlig igen", prov)
+            return False
+    except Exception:
+        logger.warning("connectors: kunne ikke afgoere om tokenet for %s er "
+                       "levende — doemmer som forbundet", prov, exc_info=True)
+    return True
 
 
 def oauth_request_for(connector_id: str) -> tuple[str, list[str]] | None:

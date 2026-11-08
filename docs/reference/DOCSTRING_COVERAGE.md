@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9919/18407 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9917/18405 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 9919/18407 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 872 | 1586 | 54% |
-| `core.services` | 6627 | 12475 | 53% |
+| `core.services` | 6625 | 12473 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -924,7 +924,7 @@ Generated from source. 9919/18407 functions/methods documented (53%). The list b
 - `core/services/boredom_engine.py` :: `build_boredom_surface` (L53)
 - `core/services/boredom_engine.py` :: `get_boredom_state` (L49)
 - `core/services/boredom_engine.py` :: `update_boredom_state` (L11)
-- `core/services/boundary_awareness.py` :: `build_boundary_awareness_surface` (L40)
+- `core/services/boundary_awareness.py` :: `build_boundary_awareness_surface` (L31)
 - `core/services/bounded_action_continuity_runtime.py` :: `build_bounded_action_continuity_surface` (L12)
 - `core/services/bounded_mutation_intent_runtime.py` :: `build_bounded_mutation_intent_surface` (L25)
 - `core/services/bounded_repo_tools_runtime.py` :: `build_bounded_repo_tool_execution_surface` (L14)
@@ -2031,7 +2031,7 @@ Generated from source. 9919/18407 functions/methods documented (53%). The list b
 - `core/services/self_authored_prompt_proposal_tracking.py` :: `build_runtime_self_authored_prompt_proposal_surface` (L82)
 - `core/services/self_authored_prompt_proposal_tracking.py` :: `refresh_runtime_self_authored_prompt_proposal_statuses` (L51)
 - `core/services/self_authored_prompt_proposal_tracking.py` :: `track_runtime_self_authored_prompt_proposals_for_visible_turn` (L29)
-- `core/services/self_compassion.py` :: `build_self_compassion_surface` (L76)
+- `core/services/self_compassion.py` :: `build_self_compassion_surface` (L56)
 - `core/services/self_compassion.py` :: `process_failure_toward_acceptance` (L32)
 - `core/services/self_critique_runtime.py` :: `build_self_critique_surface` (L322)
 - `core/services/self_critique_runtime.py` :: `read_self_docs` (L69)

@@ -175,8 +175,7 @@ _Self-Compassion & Resilience — counterweight to regret._
 |---|---|---|---|---|
 | function | `_compassion_label` | `(failure_count, regret_level, compassion_level)` | Return a descriptive state label, not a self-compassion sentence. | [src](../../../core/services/self_compassion.py#L12) |
 | function | `process_failure_toward_acceptance` | `(*, failure_count_recent=…, regret_level=…, lesson_learned=…)` | — | [src](../../../core/services/self_compassion.py#L32) |
-| function | `build_resilience_narrative` | `(*, consecutive_failures=…, current_bearing=…)` | Return a descriptive resilience-state label. | [src](../../../core/services/self_compassion.py#L56) |
-| function | `build_self_compassion_surface` | `()` | — | [src](../../../core/services/self_compassion.py#L76) |
+| function | `build_self_compassion_surface` | `()` | — | [src](../../../core/services/self_compassion.py#L56) |
 
 ## `core/services/self_critique_runtime.py`
 

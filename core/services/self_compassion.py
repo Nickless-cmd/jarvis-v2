@@ -53,25 +53,5 @@ def process_failure_toward_acceptance(
             "failure_count": failure_count_recent, "regret_level": regret_level}
 
 
-def build_resilience_narrative(
-    *, consecutive_failures: int = 0, current_bearing: str = "",
-) -> str:
-    """Return a descriptive resilience-state label.
-
-    Teater-pass 2026-05-13: previously asked cheap-lane to "Skriv præcis
-    én sætning på dansk om at holde fast i sig selv under pres" — pure
-    confabulation. Now returns a stat band. Jarvis sees the band in
-    awareness; he forms (or skips) his own response.
-    """
-    if consecutive_failures < 3:
-        return ""
-    band = "sustained" if consecutive_failures >= 7 else "moderate"
-    bearing_str = f", bearing={current_bearing[:40]}" if current_bearing else ""
-    return (
-        f"resilience_pressure_band={band} "
-        f"consecutive_failures={consecutive_failures}{bearing_str}"
-    )
-
-
 def build_self_compassion_surface() -> dict[str, object]:
     return {"active": True, "summary": "Self-compassion activates when regret or failures accumulate"}

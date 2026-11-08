@@ -239,8 +239,7 @@ _Boundary Awareness — "Where do I end?"_
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `build_boundary_model` | `()` | Build Jarvis' sense of his own boundaries. | [src](../../../core/services/boundary_awareness.py#L8) |
-| function | `format_boundary_for_prompt` | `()` | Compact boundary awareness for prompt injection. | [src](../../../core/services/boundary_awareness.py#L31) |
-| function | `build_boundary_awareness_surface` | `()` | — | [src](../../../core/services/boundary_awareness.py#L40) |
+| function | `build_boundary_awareness_surface` | `()` | — | [src](../../../core/services/boundary_awareness.py#L31) |
 
 ## `core/services/bounded_action_continuity_runtime.py`
 

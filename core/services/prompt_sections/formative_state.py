@@ -74,7 +74,16 @@ def _graenser() -> str:
                              ("bevidsthed", "consciousness"))
         if str(m.get(noegle) or "").strip()
     ]
-    return ("Dine grænser — " + " · ".join(dele)) if dele else ""
+    if not dele:
+        return ""
+    linje = "Dine grænser — " + " · ".join(dele)
+    # Maalt 8/11-2026: `limits` stod i modellen men naaede aldrig prompten — de
+    # tre foerste felter blev laest, listen blev ikke. Det er de linjer der kan
+    # efterproeves, og de forklarer hvorfor jeg fejler paa bestemte maader.
+    graenser = [str(g).strip() for g in (m.get("limits") or []) if str(g).strip()]
+    if graenser:
+        linje += "\n  Det kan jeg ikke: " + " · ".join(_kort(g, 74) for g in graenser)
+    return linje
 
 
 def _uafsluttet() -> str:

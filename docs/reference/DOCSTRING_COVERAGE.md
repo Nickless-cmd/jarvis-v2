@@ -924,7 +924,7 @@ Generated from source. 9917/18405 functions/methods documented (53%). The list b
 - `core/services/boredom_engine.py` :: `build_boredom_surface` (L53)
 - `core/services/boredom_engine.py` :: `get_boredom_state` (L49)
 - `core/services/boredom_engine.py` :: `update_boredom_state` (L11)
-- `core/services/boundary_awareness.py` :: `build_boundary_awareness_surface` (L31)
+- `core/services/boundary_awareness.py` :: `build_boundary_awareness_surface` (L37)
 - `core/services/bounded_action_continuity_runtime.py` :: `build_bounded_action_continuity_surface` (L12)
 - `core/services/bounded_mutation_intent_runtime.py` :: `build_bounded_mutation_intent_surface` (L25)
 - `core/services/bounded_repo_tools_runtime.py` :: `build_bounded_repo_tool_execution_surface` (L14)

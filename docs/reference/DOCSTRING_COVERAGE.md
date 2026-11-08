@@ -1902,7 +1902,7 @@ Generated from source. 9926/18414 functions/methods documented (53%). The list b
 - `core/services/run_autonomy_context.py` :: `reset_user_present` (L134)
 - `core/services/run_autonomy_context.py` :: `set_autonomous_budget` (L79)
 - `core/services/run_autonomy_context.py` :: `set_run_identity` (L174)
-- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L874)
+- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L948)
 - `core/services/run_event_log.py` :: `active_run_for_session` (L370)
 - `core/services/run_event_log.py` :: `append` (L239)
 - `core/services/run_event_log.py` :: `create` (L102)

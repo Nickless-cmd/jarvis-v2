@@ -821,3 +821,72 @@ class TestRecurringTilIndbakken:
         assert [k for k in kald if k["kildetype"] == "run_closure"] == [], (
             f"en fejlet laesning maa ikke ligne tavshed: {kald}"
         )
+
+
+class TestAutonomRapportTilIndbakken:
+    """Autonome kørslers rapport skal i OWNERENS indbakke — og kun hans.
+
+    Bjørn 8/11-2026: «alle system og vores egne autonome runs [bør] ende i
+    inboksen som en rapport og så inboks faktisk osse holde dig op på at læse
+    dem». Målt før: referatet gik kun som chat-besked, og indbakken havde nul
+    poster fra autonome kørsler.
+    """
+
+    @staticmethod
+    def _kør(payload, *, ejer="owner-1", verificeret=True, referat="Jeg ryddede 16 mails."):
+        from core.services import run_closure_gate as g
+
+        kald = []
+
+        class FakeBus:
+            def publish(self, kind, payload):
+                pass
+
+        with patch(
+            "core.services.run_closure_gate._git_porcelain_status", return_value=set(),
+        ), patch(
+            "core.services.run_closure_gate._git_dirty_content_hashes", return_value={},
+        ), patch(
+            "core.services.run_closure_gate._pop_pre_run_state", return_value=(set(), {}),
+        ), patch(
+            "core.eventbus.bus.event_bus", FakeBus(),
+        ), patch(
+            "core.services.autonomous_run_digest.post_referat", return_value="sid",
+        ), patch(
+            "core.services.autonomous_run_digest.byg_referat", return_value=referat,
+        ), patch(
+            "core.services.inbox_state._ejer_id", return_value=ejer,
+        ), patch(
+            "core.services.inbox_state.verificeret_jarvis_run", return_value=verificeret,
+        ), patch(
+            "core.services.inbox_state.registrer_kilde",
+            side_effect=lambda **kw: kald.append(kw) or {"status": "ok"},
+        ):
+            g._on_run_completed(payload)
+        return kald
+
+    def test_autonomt_run_med_output_lander_i_indbakken(self):
+        kald = self._kør({"run_id": "run-abc", "session_id": "auto-heartbeat-20261108",
+                          "autonomous": True, "output": "Jeg ryddede 16 mails."})
+        assert len(kald) == 1, kald
+        assert kald[0]["kildetype"] == "autonomt_run"
+        assert kald[0]["bruger_id"] == "owner-1"
+        assert kald[0]["oprettende_run_id"] == "run-abc"
+        assert kald[0]["kilde_id"] == "autonomt-run-abc"
+        assert kald[0]["expires_at"], "en gatende post skal have en frist"
+
+    def test_tom_koersel_giver_ingen_post(self):
+        """«Jeg kørte og lavede ingenting» er støj — 3-4 gange i døgnet."""
+        kald = self._kør({"run_id": "run-tom", "session_id": "auto-heartbeat-x",
+                          "autonomous": True}, referat="")
+        assert kald == []
+
+    def test_run_for_en_anden_bruger_roerer_ikke_ownerens_indbakke(self):
+        kald = self._kør({"run_id": "run-michelle", "session_id": "auto-recurring-x",
+                          "autonomous": True, "output": "Noget"}, verificeret=False)
+        assert kald == []
+
+    def test_ikke_autonomt_run_giver_ingen_post(self):
+        kald = self._kør({"run_id": "run-visible", "session_id": "chat-1",
+                          "output": "Noget"})
+        assert kald == []

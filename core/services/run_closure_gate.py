@@ -480,6 +480,22 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
     session_id = str(payload.get("session_id") or "")
     if not run_id:
         return
+
+    # `auto_commit` INITIALISERES HER (8/11-2026). Den blev kun bundet inde i
+    # den betingede auto-commit-blok nedenfor, saa naar den blok ikke koerte
+    # (intet at committe, manglende baseline, eller et synligt run) var navnet
+    # UBUNDET — og baade referatet og den autonome indbakke-rapport laeser det.
+    #
+    # Maalt 8/11-2026: `UnboundLocalError: cannot access local variable
+    # 'auto_commit'`, slugt af `except Exception: logger.debug(...)` paa begge
+    # kald. Konsekvens: referatet til Bjoerns samtale blev ALDRIG sendt for de
+    # autonome koersler der ramte denne gren — mekanismen saa ud som om den
+    # virkede, og fejlen var tavs i ni uger (indfoert 8/9-2026).
+    #
+    # Det er samme fejlform som huset allerede har rettet for `output` nedenfor
+    # («Initialiseret FOER blokken»). Navnet skal bindes paa funktionsniveau
+    # naar en SENERE blok laeser det.
+    auto_commit: str | None = None
     # Clear in-flight pointer if this is the current run.
     if _get_current_run() == run_id:
         _set_current_run("")
@@ -706,6 +722,64 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
             )
         except Exception:
             logger.debug("run_closure_gate: referat fejlede", exc_info=True)
+
+    # AUTONOME KOERSLERS RAPPORT I OWNERENS INDBAKKE (8/11-2026). Bjoern: «alle
+    # system og vores egne autonome runs [boer] ende i inboksen som en rapport
+    # og saa inboks faktisk osse holde dig op paa at laese dem».
+    #
+    # Maalt foer aendringen: referatet gik KUN som chat-besked (`post_referat`
+    # ovenfor), og indbakken havde nul poster fra autonome koersler. Den eneste
+    # vej ind var `recurring_tasks.inbox_on_complete`, som var sat paa 1 af 88
+    # opgaver. Saa rapporten fandtes — den var bare ikke paa den flade der kan
+    # holde nogen op.
+    #
+    # KUN OWNERENS EGNE. `verificeret_jarvis_run` kraever at run-id'et staar i
+    # den DELTE journal som levende FOR DENNE BRUGER. Et run for Michelle
+    # returnerer False og efterlader derfor ingen post i Bjoerns indbakke —
+    # adskillelsen er ikke en regel her, den er funktionens egen betingelse.
+    #
+    # Kildetypen `autonomt_run` staar med vilje IKKE i IKKE_GATENDE_KILDETYPER:
+    # rapporten skal kunne naegte en mutation, ellers er den endnu en post han
+    # kan scrolle forbi. Fristen er sat, fordi en gatende post uden frist er en
+    # daarlig post (se db_inbox:320).
+    #
+    # `byg_referat` returnerer tom tekst naar koerslen hverken havde output
+    # eller aendringer. Den regel genbruges her: «jeg koerte og lavede
+    # ingenting» skal ikke fylde indbakken 3-4 gange i doegnet.
+    if bool(payload.get("autonomous")):
+        try:
+            from core.services.inbox_state import _ejer_id, registrer_kilde
+
+            _rapport_ejer = _ejer_id()
+            from core.services.inbox_state import verificeret_jarvis_run
+
+            if _rapport_ejer and verificeret_jarvis_run(run_id, _rapport_ejer):
+                from datetime import UTC as _UTC
+                from datetime import datetime as _dt
+                from datetime import timedelta as _td
+
+                from core.services.autonomous_run_digest import byg_referat
+
+                _rapport = byg_referat(
+                    session_id=session_id,
+                    tool_calls=tool_calls,
+                    output=output,
+                    aendrede_filer=sorted(touched_paths),
+                    committet=bool(auto_commit),
+                )
+                if _rapport:
+                    registrer_kilde(
+                        bruger_id=_rapport_ejer,
+                        kildetype="autonomt_run",
+                        kilde_id=f"autonomt-{run_id}",
+                        oprettende_run_id=run_id,
+                        beskrivelse=_rapport[:600],
+                        session_id=session_id,
+                        expires_at=(_dt.now(_UTC) + _td(days=14)).isoformat(),
+                    )
+        except Exception:  # noqa: BLE001 — en rapport maa ikke vaelte lukningen
+            logger.debug("run_closure_gate: autonom rapport til indbakken fejlede",
+                         exc_info=True)
 
     # RECURRING-OPGAVENS RESULTAT I INDBAKKEN (15/10-2026). Bjoern: «din daglige
     # runtime inspektion, lander den kun i en autonom session eller lander den

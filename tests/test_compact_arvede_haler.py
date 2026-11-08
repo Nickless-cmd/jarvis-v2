@@ -8,12 +8,35 @@ arvet hale.
 """
 from __future__ import annotations
 
+import pytest
+
 from core.context.compaction_policy import (
     HALE_OVERSKRIFT,
     render_transcript_for_summary,
     strip_embedded_tail,
 )
 from core.context.kompaktering import TIDLIGERE_RESUME, mekanisk_opsummering
+
+
+@pytest.fixture(autouse=True)
+def _ingen_identitets_sketch_llm(monkeypatch):
+    """`compact_session_history` kalder `update_identity_sketch` ved hver
+    komprimering (Memory Fix Phase 2), og den kalder `compact_llm` → en rigtig
+    provider.
+
+    Maalt 8/11-2026: `test_to_komprimeringer_giver_praecis_en_hale` timede ud
+    efter 45 s inde i `cheap_provider_runtime_adapters._execute_opencode_chat`,
+    som poller til sin egen deadline. Test-vagten stoppede netvaerket, men
+    poll-loekken ventede alligevel — saa fejlen saa ud som en logik-fejl i
+    komprimeringen. Fejlen er pre-eksisterende (identisk paa ren HEAD
+    f8b4e3d05 i en separat worktree).
+
+    Skitsen er ikke emnet for nogen test i denne fil; den mockes vaek. Samme
+    moenster som `tests/test_context_compact.py:12`.
+    """
+    monkeypatch.setattr(
+        "core.services.identity_sketch.update_identity_sketch", lambda **k: None
+    )
 
 
 def _markoer(resume: str, hale: str) -> str:

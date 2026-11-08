@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/daemon_state_surface.py`
+_Samlet flade for daemon- og runtime-lagene — de build_*_surface ingen indgang havde._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `producer_names` | `()` | Navnene i kald-raekkefoelge, paa tvaers af grupperne — til test. | [src](../../../core/services/daemon_state_surface.py#L151) |
+| function | `group_names` | `()` | Gruppe-navnene i definitions-raekkefoelge. | [src](../../../core/services/daemon_state_surface.py#L156) |
+| function | `_call` | `(name, mod_path, fn_attr)` | Kald én producent. En defekt maa ikke skjule de oevrige. | [src](../../../core/services/daemon_state_surface.py#L161) |
+| function | `build_daemon_state_surface` | `()` | Kald alle producenter og returnér deres egne signaler, grupperet. Kaster ALDRIG. | [src](../../../core/services/daemon_state_surface.py#L175) |
+
 ## `core/services/daily_journal.py`
 _Daily journal synthesizer._
 
@@ -585,15 +595,4 @@ _Diagnosis-gate (spec 2026-06-14) — fanger uverificerede diagnostiske konklusi
 | function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/diary_synthesis_signal_tracking.py#L413) |
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/diary_synthesis_signal_tracking.py#L437) |
 | function | `_diary_synthesis_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/diary_synthesis_signal_tracking.py#L449) |
-
-## `core/services/dictation.py`
-_Dictation-transskription til jarvis-desk's mic-knap._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_resolve_model_size` | `(explicit)` | — | [src](../../../core/services/dictation.py#L41) |
-| function | `_resolve_initial_prompt` | `(explicit)` | — | [src](../../../core/services/dictation.py#L54) |
-| function | `_get_model` | `(model_size, device=…, compute_type=…)` | — | [src](../../../core/services/dictation.py#L67) |
-| function | `_join_segments` | `(segments)` | Saml whisper-segmenter til én streng. Ren funktion (testbar). | [src](../../../core/services/dictation.py#L77) |
-| function | `transcribe_file` | `(path, *, model_size=…, language=…, initial_prompt=…)` | Transskribér en lydfil. Returnerer {status, text, language}. | [src](../../../core/services/dictation.py#L82) |
 

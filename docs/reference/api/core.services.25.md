@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/scoped_recall_policy.py`
+_Fail-closed policy and independent kill switches for private recall._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `MissingRecallScope` | `` | A private recall path has no authoritative user principal. | [src](../../../core/services/scoped_recall_policy.py#L13) |
+| function | `recall_enabled` | `()` | — | [src](../../../core/services/scoped_recall_policy.py#L17) |
+| function | `recall_migration_enabled` | `()` | — | [src](../../../core/services/scoped_recall_policy.py#L21) |
+| function | `set_recall_enabled` | `(enabled)` | — | [src](../../../core/services/scoped_recall_policy.py#L25) |
+| function | `set_recall_migration_enabled` | `(enabled)` | — | [src](../../../core/services/scoped_recall_policy.py#L29) |
+| function | `require_private_scope` | `(session_id=…)` | — | [src](../../../core/services/scoped_recall_policy.py#L33) |
+| function | `disabled_result` | `(path)` | Svar fra et recall-vaerktoej naar den private soegning er slaaet fra. | [src](../../../core/services/scoped_recall_policy.py#L51) |
+
 ## `core/services/scout_inbox_delivery.py`
 _Deliver terminal scout runs to Jarvis' durable inbox._
 
@@ -662,24 +675,24 @@ _Self-wakeup — Jarvis' equivalent of Claude Code's ScheduleWakeup._
 | function | `_load` | `()` | Laes lageret. Dette er den ENESTE laese-søm — ogsaa for skrive-stierne. | [src](../../../core/services/self_wakeup.py#L102) |
 | function | `_save` | `(records)` | — | [src](../../../core/services/self_wakeup.py#L118) |
 | function | `schedule_self_wakeup` | `(*, delay_seconds, prompt, reason=…, extra=…, channel=…, session_id=…, user_id=…, workspace_name=…, user_display_name=…, role=…, context_channel=…, task_id=…)` | Queue a self-wakeup. Returns the wakeup record. | [src](../../../core/services/self_wakeup.py#L122) |
-| function | `bookinger_seneste_doegn` | `(records, session_id, *, nu=…)` | Hvor mange vaekninger er booket fra DENNE samtale det seneste doegn. | [src](../../../core/services/self_wakeup.py#L275) |
-| function | `due_wakeups` | `(*, include_fired_unconsumed=…)` | Return wakeups whose fire_at has passed and not yet consumed. | [src](../../../core/services/self_wakeup.py#L320) |
-| function | `ventende_efter_skip` | `()` | Fyrede vækninger som dispatcheren sprang over — klar til indbakken. | [src](../../../core/services/self_wakeup.py#L394) |
-| function | `direktiv_for` | `(record)` | Run-direktivet for ÉN fyret vækning — ÉN definition (13/10-2026). | [src](../../../core/services/self_wakeup.py#L427) |
-| function | `mark_wakeup_consumed` | `(wakeup_id)` | Clear a fired wakeup once Jarvis has acted on it. | [src](../../../core/services/self_wakeup.py#L468) |
-| function | `add_wakeup_extra` | `(wakeup_id, extra)` | Læg en tilføjelse på en booket wakeup — så den følger med i noten. | [src](../../../core/services/self_wakeup.py#L523) |
-| function | `cancel_wakeup` | `(wakeup_id)` | Cancel a pending wakeup before it fires. | [src](../../../core/services/self_wakeup.py#L560) |
-| function | `marker_dispatch` | `(wakeup_id, *, dispatched, skip_reason=…)` | Skriv dispatch-markøren på ÉN vækning — under lås, med det samme. | [src](../../../core/services/self_wakeup.py#L587) |
-| function | `list_wakeups` | `(*, status=…, limit=…)` | — | [src](../../../core/services/self_wakeup.py#L638) |
-| function | `cleanup_old_wakeups` | `(*, consumed_age_hours=…, cancelled_age_hours=…, stale_fired_age_hours=…)` | Ryd op i gamle consumed/cancelled/stale-fired wakeups. | [src](../../../core/services/self_wakeup.py#L646) |
-| function | `tick_wakeup_cleanup` | `()` | Daemon tick — ryd op i gamle wakeups. | [src](../../../core/services/self_wakeup.py#L714) |
-| function | `_kun_denne_samtale` | `(records)` | De fyrede vækninger der hører til den AKTUELLE samtale — eller til ingen. | [src](../../../core/services/self_wakeup.py#L723) |
-| function | `self_wakeup_section` | `()` | Awareness section showing fired-but-not-consumed wakeups. | [src](../../../core/services/self_wakeup.py#L760) |
-| function | `_exec_schedule_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L821) |
-| function | `_exec_list_self_wakeups` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L850) |
-| function | `_exec_cancel_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L860) |
-| function | `_exec_mark_wakeup_consumed` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L864) |
-| function | `_exec_add_wakeup_extra` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L868) |
+| function | `bookinger_seneste_doegn` | `(records, session_id, *, nu=…)` | Hvor mange vaekninger er booket fra DENNE samtale det seneste doegn. | [src](../../../core/services/self_wakeup.py#L321) |
+| function | `due_wakeups` | `(*, include_fired_unconsumed=…)` | Return wakeups whose fire_at has passed and not yet consumed. | [src](../../../core/services/self_wakeup.py#L366) |
+| function | `ventende_efter_skip` | `()` | Fyrede vækninger som dispatcheren sprang over — klar til indbakken. | [src](../../../core/services/self_wakeup.py#L440) |
+| function | `direktiv_for` | `(record)` | Run-direktivet for ÉN fyret vækning — ÉN definition (13/10-2026). | [src](../../../core/services/self_wakeup.py#L473) |
+| function | `mark_wakeup_consumed` | `(wakeup_id)` | Clear a fired wakeup once Jarvis has acted on it. | [src](../../../core/services/self_wakeup.py#L514) |
+| function | `add_wakeup_extra` | `(wakeup_id, extra)` | Læg en tilføjelse på en booket wakeup — så den følger med i noten. | [src](../../../core/services/self_wakeup.py#L569) |
+| function | `cancel_wakeup` | `(wakeup_id)` | Cancel a pending wakeup before it fires. | [src](../../../core/services/self_wakeup.py#L606) |
+| function | `marker_dispatch` | `(wakeup_id, *, dispatched, skip_reason=…)` | Skriv dispatch-markøren på ÉN vækning — under lås, med det samme. | [src](../../../core/services/self_wakeup.py#L633) |
+| function | `list_wakeups` | `(*, status=…, limit=…)` | — | [src](../../../core/services/self_wakeup.py#L684) |
+| function | `cleanup_old_wakeups` | `(*, consumed_age_hours=…, cancelled_age_hours=…, stale_fired_age_hours=…)` | Ryd op i gamle consumed/cancelled/stale-fired wakeups. | [src](../../../core/services/self_wakeup.py#L692) |
+| function | `tick_wakeup_cleanup` | `()` | Daemon tick — ryd op i gamle wakeups. | [src](../../../core/services/self_wakeup.py#L760) |
+| function | `_kun_denne_samtale` | `(records)` | De fyrede vækninger der hører til den AKTUELLE samtale — eller til ingen. | [src](../../../core/services/self_wakeup.py#L769) |
+| function | `self_wakeup_section` | `()` | Awareness section showing fired-but-not-consumed wakeups. | [src](../../../core/services/self_wakeup.py#L806) |
+| function | `_exec_schedule_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L867) |
+| function | `_exec_list_self_wakeups` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L896) |
+| function | `_exec_cancel_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L906) |
+| function | `_exec_mark_wakeup_consumed` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L910) |
+| function | `_exec_add_wakeup_extra` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L914) |
 
 ## `core/services/selfhood_proposal_tracking.py`
 
@@ -757,17 +770,4 @@ _Selvmodellens første lodrette skive: fra hans svar til hans prompt._
 | function | `poll_en_gang` | `(*, limit=…)` | Behandl nye assistant-svar fra eventbussens tabel. Returnerer antal svar set. | [src](../../../core/services/selvmodel_kobling.py#L161) |
 | function | `_loop` | `()` | — | [src](../../../core/services/selvmodel_kobling.py#L194) |
 | function | `start_lytter` | `()` | Idempotent. Startes KUN i runtime-processen (én poller, ingen dobbelt-behandling). | [src](../../../core/services/selvmodel_kobling.py#L208) |
-
-## `core/services/semantic_indexer.py`
-_Semantic indexer — auto-embedding of new memory records._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `start_semantic_indexer` | `()` | — | [src](../../../core/services/semantic_indexer.py#L34) |
-| function | `stop_semantic_indexer` | `()` | — | [src](../../../core/services/semantic_indexer.py#L62) |
-| function | `_sweeper_loop` | `()` | Every N minutes, run backfill_all to catch new rows without events. | [src](../../../core/services/semantic_indexer.py#L81) |
-| function | `_subscriber_loop` | `(*, subscriber)` | — | [src](../../../core/services/semantic_indexer.py#L109) |
-| function | `_handle_sensory` | `(payload)` | — | [src](../../../core/services/semantic_indexer.py#L140) |
-| function | `_handle_private_brain` | `(payload)` | — | [src](../../../core/services/semantic_indexer.py#L163) |
-| function | `build_semantic_indexer_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/semantic_indexer.py#L193) |
 

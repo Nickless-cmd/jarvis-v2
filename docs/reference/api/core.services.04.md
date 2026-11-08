@@ -202,6 +202,15 @@ _Body Memory — Jarvis' kropslige erindringer._
 | function | `build_body_memory_surface` | `()` | — | [src](../../../core/services/body_memory.py#L142) |
 | function | `tick` | `(_seconds=…)` | Hjerteslags-krog: gem en erindring naar kroppen SKIFTER. | [src](../../../core/services/body_memory.py#L152) |
 
+## `core/services/booking_dedup.py`
+_Én nøgle for «er dette allerede booket?»._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `noegle` | `(tekst)` | Indholdet uden form: små bogstaver, ingen tegnsætning, ét mellemrum. | [src](../../../core/services/booking_dedup.py#L36) |
+| function | `til_tid` | `(vaerdi)` | ISO-streng eller datetime → tidszone-bevidst datetime. Ellers ``None``. | [src](../../../core/services/booking_dedup.py#L43) |
+| function | `find_dublet` | `(*, tekst, tid, eksisterende, tekst_felt, tid_felt, vindue_minutter=…, session=…, session_felt=…)` | Returnér den post der allerede DÆKKER denne booking, eller ``None``. | [src](../../../core/services/booking_dedup.py#L56) |
+
 ## `core/services/boredom_curiosity_bridge.py`
 _Boredom to Curiosity Bridge — transforms boredom into curiosity._
 
@@ -582,16 +591,4 @@ _core/services/central_adaptation.py_
 | function | `run_adaptation_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: iterér REGISTRET. For den ENESTE gut-klasse er adfærden IDENTISK med før | [src](../../../core/services/central_adaptation.py#L338) |
 | function | `register_adaptation_producer` | `()` | Registrér Lag 4-adaptationen som cadence-producer (~hvert 60 min). SHADOW medmindre live-flag ON. | [src](../../../core/services/central_adaptation.py#L362) |
 | function | `build_central_adaptation_surface` | `()` | Mission Control surface — read-only: nuværende bias, foreslået, live/shadow/paused. | [src](../../../core/services/central_adaptation.py#L374) |
-
-## `core/services/central_affect.py`
-_core/services/central_affect.py — affektiv tagging af Centralens nerver._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_clamp01` | `(x)` | — | [src](../../../core/services/central_affect.py#L44) |
-| function | `_numeric` | `(value)` | Uddrag en float hvis value er numerisk (og ikke bool). Ellers None. | [src](../../../core/services/central_affect.py#L52) |
-| function | `_magnitude_intensity` | `(value, *, default)` | Afled intensitet fra en numerisk værdi (klemt 0-1). Ikke-numerisk → default. | [src](../../../core/services/central_affect.py#L64) |
-| function | `classify_affect` | `(cluster, nerve, kind, value, flagged=…)` | Klassificér én nerve-observation til en affekt + intensitet. Self-safe. | [src](../../../core/services/central_affect.py#L77) |
-| function | `_recent_affect_records` | `(limit=…)` | Læs de seneste affekt-bærende records fra tidsserien (meta.affect). Self-safe. | [src](../../../core/services/central_affect.py#L131) |
-| function | `build_affect_surface` | `(records=…)` | Aggregér de seneste affekter til en fordeling + dominant. Self-safe. | [src](../../../core/services/central_affect.py#L155) |
 

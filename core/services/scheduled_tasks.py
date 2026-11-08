@@ -19,6 +19,18 @@ _POLL_INTERVAL_SECONDS = 60
 _poller_thread: threading.Thread | None = None
 _poller_stop = threading.Event()
 
+#: Loft paa SAMTIDIGE ventende påmindelser — en ring, som vækningerne.
+#:
+#: Bjørn 8/11-2026: «Dit wakeup loft skal være max 20 men rullende inden for
+#: de 20.. sådan den køre i ring» — og derefter: «De må kun falde ud hvis de er
+#: markeret færdige».
+#:
+#: Ringen tømmes derfor af FÆRDIGGØRELSE: en påmindelse der har fyret, giver
+#: sin plads videre til den næste. En ventende påmindelse fjernes aldrig
+#: automatisk. En påmindelse der forsvinder i stilhed opdager man først når den
+#: ikke fyrer — og så er fristen måske passeret.
+_MAX_PENDING_TASKER = 20
+
 
 def push_scheduled_task(
     *,
@@ -39,8 +51,56 @@ def push_scheduled_task(
     task_id = f"sched-{uuid4().hex[:10]}"
     normalized_focus = focus[:300].strip() or "Follow up"
 
+    from core.services.booking_dedup import find_dublet
+
+    # Samtalen skal kendes FOER dedup: en påmindelse tilhører den samtale der
+    # bad om den, og to samtaler der hver bestiller det samme har to
+    # forpligtelser — ikke én.
     from core.services.session_binding import bind_session
     sid = bind_session(session_id)
+
+    eksisterende = runtime_db.list_scheduled_tasks(limit=200, status="pending")
+
+    # ── 1. DUBLET (8/11-2026) ──────────────────────────────────────────────
+    # Den konkrete anledning stod i `scheduled_tasks` selv: to opfølgninger til
+    # 8/12 om samme sag, oprettet 17 minutter fra hinanden, fordi denne
+    # funktion skrev uden at læse først. Bjørn: «læser de eksisterende først
+    # så du ikk ender med dobbelt bookninger».
+    dublet = find_dublet(
+        tekst=normalized_focus, tid=run_at.isoformat(), eksisterende=eksisterende,
+        tekst_felt="focus", tid_felt="run_at", session=sid,
+    )
+    if dublet is not None:
+        logger.info("scheduled_tasks: dublet af %s — intet booket",
+                    dublet.get("task_id"))
+        return {
+            "task_id": dublet.get("task_id"),
+            "focus": dublet.get("focus"),
+            "run_at": dublet.get("run_at"),
+            "delay_minutes": delay_minutes,
+            "session_id": dublet.get("session_id"),
+            "deduplicated": True,
+            "text": (f"Findes allerede som {dublet.get('task_id')} til "
+                     f"{str(dublet.get('run_at') or '')[:16]}Z — intet nyt booket."),
+        }
+
+    # ── 2. LOFTET (8/11-2026) ──────────────────────────────────────────────
+    # Ringen drives af FÆRDIGGØRELSE: en påmindelse forlader køen når den har
+    # fyret, og den plads går til den næste. En VENTENDE påmindelse fjernes
+    # aldrig automatisk — Bjørn 8/11-2026: «De må kun falde ud hvis de er
+    # markeret færdige». Er alle 20 stadig ventende, afvises bookingen, så jeg
+    # selv kan vælge hvilken forpligtelse der må opgives.
+    if len(eksisterende) >= _MAX_PENDING_TASKER:
+        return {
+            "status": "error",
+            "error": (
+                f"{len(eksisterende)} ventende påmindelser — loftet er "
+                f"{_MAX_PENDING_TASKER}, og en ventende booking fjernes ikke "
+                "automatisk. Annullér en med cancel_task, eller lad den fyre "
+                "først."
+            ),
+            "pending": len(eksisterende),
+        }
 
     runtime_db.create_scheduled_task(
         task_id=task_id,

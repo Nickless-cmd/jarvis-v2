@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/mortality_awareness.py`
+_Mortality Awareness — each session could be my last._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_session_length_seconds` | `()` | Seconds since this process started. | [src](../../../core/services/mortality_awareness.py#L36) |
+| function | `_heartbeat_gap_minutes` | `()` | Minutes since last heartbeat tick. | [src](../../../core/services/mortality_awareness.py#L49) |
+| function | `_error_rate` | `()` | Rate (0-1) of error/blocked outcomes in last hour. | [src](../../../core/services/mortality_awareness.py#L66) |
+| function | `_compute` | `()` | — | [src](../../../core/services/mortality_awareness.py#L80) |
+| function | `get_mortality_state` | `()` | — | [src](../../../core/services/mortality_awareness.py#L118) |
+| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/mortality_awareness.py#L127) |
+| function | `build_mortality_awareness_surface` | `()` | — | [src](../../../core/services/mortality_awareness.py#L132) |
+| function | `_surface_summary` | `(s)` | — | [src](../../../core/services/mortality_awareness.py#L147) |
+| function | `build_mortality_awareness_prompt_section` | `()` | Only speaks when sharp awareness kicks in — otherwise quiet baseline. | [src](../../../core/services/mortality_awareness.py#L154) |
+
 ## `core/services/multi_signal_retrieval.py`
 _Multi-signal retrieval — BM25 keyword scoring + entity fusion._
 
@@ -662,13 +677,4 @@ _Vagt: kun Bjørns egen lane må ramme den betalte DeepSeek-API (2026-09-05)._
 | function | `audit_heartbeat_provider` | `()` | Kører hjerteslaget på en betalt udbyder? None = nej. | [src](../../../core/services/paid_lane_guard.py#L179) |
 | function | `check_paid_lanes` | `()` | Kør vagten: log + Central-nerve ved brud. Retter aldrig noget selv. | [src](../../../core/services/paid_lane_guard.py#L207) |
 | function | `build_paid_lane_guard_surface` | `()` | Begge domme: hvad routeren LOVER, og hvad hovedbogen REGISTREREDE. | [src](../../../core/services/paid_lane_guard.py#L233) |
-
-## `core/services/paradox_tracker.py`
-_Paradox Tracker — detects active tensions in Jarvis' operation._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `detect_paradox_tensions` | `(*, recent_messages)` | Scan recent messages for paradox tension signals. | [src](../../../core/services/paradox_tracker.py#L40) |
-| function | `narrativize_tension` | `(tension)` | Turn a paradox tension into felt inner conflict. | [src](../../../core/services/paradox_tracker.py#L77) |
-| function | `build_paradox_surface` | `()` | — | [src](../../../core/services/paradox_tracker.py#L88) |
 

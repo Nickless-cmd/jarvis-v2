@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18410 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18413 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -34,35 +34,35 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18410 functions/
 - [`core.services.01`](core.services.01.md) — `__init__` … `agent_outcomes_log`
 - [`core.services.02`](core.services.02.md) — `agent_parking` … `anticipatory_action_daemon`
 - [`core.services.03`](core.services.03.md) — `anticipatory_context` … `autonomy_pressure_signal_tracking`
-- [`core.services.04`](core.services.04.md) — `autonomy_proposal_queue` … `central_affect`
-- [`core.services.05`](core.services.05.md) — `central_agenda` … `central_governance`
-- [`core.services.06`](core.services.06.md) — `central_growth_observe` … `central_prompt_composer`
-- [`core.services.07`](core.services.07.md) — `central_prompt_explore` … `central_white_rabbit`
-- [`core.services.08`](core.services.08.md) — `central_xproc` … `claim_scanner`
-- [`core.services.09`](core.services.09.md) — `clarification_classifier` … `continuity_kernel`
-- [`core.services.10`](core.services.10.md) — `contract_evolution` … `daemon_state_surface`
-- [`core.services.11`](core.services.11.md) — `daily_journal` … `dictation`
-- [`core.services.12`](core.services.12.md) — `discord_config` … `emitted_prefix`
-- [`core.services.13`](core.services.13.md) — `emotion_concepts` … `finitude_runtime`
-- [`core.services.14`](core.services.14.md) — `first_pass_recovery` … `google_login`
-- [`core.services.15`](core.services.15.md) — `google_tasks_mirror` … `idle_thinking`
-- [`core.services.16`](core.services.16.md) — `impulse_executor` … `kerne_curator`
-- [`core.services.17`](core.services.17.md) — `keyring_store` … `memory_decay_daemon`
-- [`core.services.18`](core.services.18.md) — `memory_density` … `mortality_awareness`
-- [`core.services.19`](core.services.19.md) — `multi_signal_retrieval` … `paradox_tracker`
-- [`core.services.20`](core.services.20.md) — `paradoxes_capture` … `proactive_question_gate_tracking`
-- [`core.services.21`](core.services.21.md) — `proactivity_bridge` … `provider_circuit_breaker`
-- [`core.services.22`](core.services.22.md) — `provider_error_guard` … `relation_state_signal_tracking`
-- [`core.services.23`](core.services.23.md) — `relational_warmth` … `rule_engine`
-- [`core.services.24`](core.services.24.md) — `run_autonomy_context` … `scoped_recall_policy`
-- [`core.services.25`](core.services.25.md) — `scout_inbox_delivery` … `semantic_indexer`
-- [`core.services.26`](core.services.26.md) — `semantic_memory` … `signal_pressure_accumulator`
-- [`core.services.27`](core.services.27.md) — `signal_surface_gc` … `sustained_attention`
-- [`core.services.28`](core.services.28.md) — `svar_tempo` … `tool_intent_approval_runtime`
-- [`core.services.29`](core.services.29.md) — `tool_intent_runtime` … `verification_gate_telemetry`
-- [`core.services.30`](core.services.30.md) — `versioneret_json_svar` … `visible_run_terminal_recovery`
-- [`core.services.31`](core.services.31.md) — `visible_run_trace` … `world_facts`
-- [`core.services.32`](core.services.32.md) — `world_model_auto_extraction` … `world_model_signal_tracking`
+- [`core.services.04`](core.services.04.md) — `autonomy_proposal_queue` … `central_adaptation`
+- [`core.services.05`](core.services.05.md) — `central_affect` … `central_glitch`
+- [`core.services.06`](core.services.06.md) — `central_governance` … `central_projection_cache`
+- [`core.services.07`](core.services.07.md) — `central_prompt_composer` … `central_watch`
+- [`core.services.08`](core.services.08.md) — `central_white_rabbit` … `citation_markorer`
+- [`core.services.09`](core.services.09.md) — `claim_scanner` … `continuity`
+- [`core.services.10`](core.services.10.md) — `continuity_kernel` … `daemon_memory_safeguard`
+- [`core.services.11`](core.services.11.md) — `daemon_state_surface` … `diary_synthesis_signal_tracking`
+- [`core.services.12`](core.services.12.md) — `dictation` … `emergent_signal_tracking`
+- [`core.services.13`](core.services.13.md) — `emitted_prefix` … `finalize_tool_policy`
+- [`core.services.14`](core.services.14.md) — `finitude_runtime` … `google_connector`
+- [`core.services.15`](core.services.15.md) — `google_login` … `idle_consolidation`
+- [`core.services.16`](core.services.16.md) — `idle_thinking` … `jobs_engine`
+- [`core.services.17`](core.services.17.md) — `kerne_curator` … `memory_consolidation_nudge`
+- [`core.services.18`](core.services.18.md) — `memory_decay_daemon` … `mood_regulator_subscriber`
+- [`core.services.19`](core.services.19.md) — `mortality_awareness` … `paid_lane_guard`
+- [`core.services.20`](core.services.20.md) — `paradox_tracker` … `proactive_outbound_substrate`
+- [`core.services.21`](core.services.21.md) — `proactive_question_gate_tracking` … `provider_autodiscovery`
+- [`core.services.22`](core.services.22.md) — `provider_circuit_breaker` … `relation_map`
+- [`core.services.23`](core.services.23.md) — `relation_state_signal_tracking` … `rule_definitions`
+- [`core.services.24`](core.services.24.md) — `rule_engine` … `scheduled_tasks`
+- [`core.services.25`](core.services.25.md) — `scoped_recall_policy` … `selvmodel_kobling`
+- [`core.services.26`](core.services.26.md) — `semantic_indexer` … `signal_noise_guard`
+- [`core.services.27`](core.services.27.md) — `signal_pressure_accumulator` … `surprise_detector`
+- [`core.services.28`](core.services.28.md) — `sustained_attention` … `tool_hunt_nudge`
+- [`core.services.29`](core.services.29.md) — `tool_intent_approval_runtime` … `verification_gate`
+- [`core.services.30`](core.services.30.md) — `verification_gate_telemetry` … `visible_run_steers`
+- [`core.services.31`](core.services.31.md) — `visible_run_terminal_recovery` … `workspace_trust`
+- [`core.services.32`](core.services.32.md) — `world_facts` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

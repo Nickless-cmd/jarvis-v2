@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/google_login.py`
+_Google app-login (§12) — kort-levende login-resultat-store + orkestrering._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_resolve_role` | `(user_id)` | Find brugerens faktiske rolle (SQLite-user_db → ellers users.json → member). | [src](../../../core/services/google_login.py#L28) |
+| function | `_gc` | `(now)` | — | [src](../../../core/services/google_login.py#L47) |
+| function | `begin_login` | `(app_id=…, *, now=…)` | Start et login. Returnerer (nonce, state_uid) — state_uid lægges i OAuth-state. | [src](../../../core/services/google_login.py#L52) |
+| function | `begin_link` | `(user_id, *, now=…)` | Start en Google-linking for en EKSISTERENDE (indlogget) bruger. | [src](../../../core/services/google_login.py#L61) |
+| function | `is_login_state` | `(state_uid)` | — | [src](../../../core/services/google_login.py#L70) |
+| function | `complete` | `(state_uid, google_email, *, now=…)` | Kaldt af callbacken med den VERIFICEREDE Google-email. Returnerer en kort | [src](../../../core/services/google_login.py#L74) |
+| function | `take_result` | `(nonce, *, now=…)` | Engangs-hent af login-resultatet (fjernes ved hentning når det er færdigt). | [src](../../../core/services/google_login.py#L118) |
+
 ## `core/services/google_tasks_mirror.py`
 _Best-effort Google Tasks-spejl for Jarvis' lokale planlagte opgaver._
 
@@ -584,12 +597,4 @@ _Bounded sleep / idle consolidation light._
 | function | `_is_near_duplicate` | `(summary, recent_records)` | — | [src](../../../core/services/idle_consolidation.py#L471) |
 | function | `_blocked` | `(*, reason, cadence_state, trigger, now, reference)` | — | [src](../../../core/services/idle_consolidation.py#L487) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/idle_consolidation.py#L512) |
-
-## `core/services/idle_thinking.py`
-_Idle Thinking — Jarvis tænker frit når han er alene._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `run_idle_thought` | `()` | Run a single idle thought when in appropriate phase. | [src](../../../core/services/idle_thinking.py#L18) |
-| function | `build_idle_thinking_surface` | `()` | — | [src](../../../core/services/idle_thinking.py#L83) |
 

@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/continuity_kernel.py`
+_Bounded Continuity Kernel — existence feel between ticks._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_synk` | `()` | Hent fra disk hvis filen er aendret siden sidste laesning. | [src](../../../core/services/continuity_kernel.py#L46) |
+| function | `_gem` | `()` | — | [src](../../../core/services/continuity_kernel.py#L59) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/continuity_kernel.py#L65) |
+| function | `record_tick_elapsed` | `(seconds)` | Record elapsed time since last tick and update existence feel. | [src](../../../core/services/continuity_kernel.py#L69) |
+| function | `_compute_existence_feeling` | `(gap_seconds)` | Compute existence feeling based on gap duration. | [src](../../../core/services/continuity_kernel.py#L99) |
+| function | `_compute_narrative` | `(gap_seconds)` | Compute a narrative description of the gap. | [src](../../../core/services/continuity_kernel.py#L115) |
+| function | `get_existence_narrative` | `()` | Get the current existence narrative. | [src](../../../core/services/continuity_kernel.py#L134) |
+| function | `get_existence_feeling` | `()` | Get the current existence feeling (0-1). | [src](../../../core/services/continuity_kernel.py#L140) |
+| function | `should_express_continuity` | `()` | Determine if continuity should be expressed in visible prompt. | [src](../../../core/services/continuity_kernel.py#L146) |
+| function | `get_continuity_state` | `()` | Get full continuity state for debugging/MC. | [src](../../../core/services/continuity_kernel.py#L153) |
+| function | `reset_continuity_state` | `()` | Reset continuity state (for testing). | [src](../../../core/services/continuity_kernel.py#L159) |
+| function | `format_continuity_for_prompt` | `()` | Format continuity info for heartbeat prompt injection. | [src](../../../core/services/continuity_kernel.py#L170) |
+| function | `build_continuity_kernel_surface` | `()` | Build MC surface for continuity kernel. | [src](../../../core/services/continuity_kernel.py#L179) |
+
 ## `core/services/contract_evolution.py`
 _Contract Evolution — Jarvis proposes changes to his own identity._
 
@@ -600,14 +619,4 @@ _Daemon memory safeguard — post-hoc check that Jarvis saved what mattered._
 |---|---|---|---|---|
 | function | `build_memory_safeguard_surface` | `()` | Mission Control surface for the memory safeguard daemon. | [src](../../../core/services/daemon_memory_safeguard.py#L41) |
 | function | `run` | `(**kwargs)` | Check last assistant turn for missed saves. Called by heartbeat. | [src](../../../core/services/daemon_memory_safeguard.py#L101) |
-
-## `core/services/daemon_state_surface.py`
-_Samlet flade for daemon- og runtime-lagene — de build_*_surface ingen indgang havde._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `producer_names` | `()` | Navnene i kald-raekkefoelge, paa tvaers af grupperne — til test. | [src](../../../core/services/daemon_state_surface.py#L151) |
-| function | `group_names` | `()` | Gruppe-navnene i definitions-raekkefoelge. | [src](../../../core/services/daemon_state_surface.py#L156) |
-| function | `_call` | `(name, mod_path, fn_attr)` | Kald én producent. En defekt maa ikke skjule de oevrige. | [src](../../../core/services/daemon_state_surface.py#L161) |
-| function | `build_daemon_state_surface` | `()` | Kald alle producenter og returnér deres egne signaler, grupperet. Kaster ALDRIG. | [src](../../../core/services/daemon_state_surface.py#L175) |
 

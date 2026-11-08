@@ -139,12 +139,96 @@ def test_tool_schedule_er_tav_naar_den_lander_i_off_peak(monkeypatch):
 
 
 def test_max_pending_limit(monkeypatch):
+    """Loftet paa 20 ventende staar stadig — og beskeden siger HVORFOR.
+
+    Rettet 8/11-2026: teksten er nu «ventende vækninger … loftet er 20», fordi
+    loftet ikke længere evakuere nogen (se testen nedenfor).
+    """
     state = [{"wakeup_id": f"w{i}", "status": "pending"} for i in range(20)]
     monkeypatch.setattr(sw, "_load", lambda: list(state))
     monkeypatch.setattr(sw, "_save", lambda r: None)
     result = sw.schedule_self_wakeup(delay_seconds=120, prompt="x")
     assert result["status"] == "error"
-    assert "max 20" in result["error"]
+    assert "loftet er 20" in result["error"]
+    assert result["pending"] == 20
+
+
+def test_ventende_falder_ALDRIG_ud_automatisk(monkeypatch):
+    """Bjørn 8/11-2026: «De må kun falde ud hvis de er markeret færdige».
+
+    Min første version evakuerede den ældste VENTENDE for at gøre plads. Det
+    smed levende arbejde væk: en paamindelse der forsvinder i stilhed opdager
+    man foerst naar den ikke fyrer — og saa er fristen maaske passeret.
+    """
+    state = [{"wakeup_id": f"w{i}", "status": "pending",
+              "scheduled_at": f"2026-11-08T10:{i:02d}:00+00:00",
+              "fire_at": f"2026-11-08T11:{i:02d}:00+00:00",
+              "prompt": f"p{i}"} for i in range(20)]
+    skrevet: list = []
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: skrevet.extend(r))
+    result = sw.schedule_self_wakeup(delay_seconds=120, prompt="ny")
+
+    assert result["status"] == "error"
+    assert not skrevet, "der blev skrevet til lageret — en ventende blev fjernet"
+    assert all(r["status"] == "pending" for r in state), "en ventende blev annulleret"
+
+
+def test_ringen_toemmes_af_FAERDIGE_poster(monkeypatch):
+    """Ringen er drevet af faerdiggoerelse: færdige poster optager ingen plads.
+
+    Tyve poster i lageret, men kun tre ventende — der ER plads til en ny, fordi
+    de sytten forbrugte allerede har givet deres plads videre.
+    """
+    poster = ([{"wakeup_id": f"p{i}", "status": "pending",
+                "fire_at": f"2026-11-08T11:{i:02d}:00+00:00", "prompt": f"p{i}"}
+               for i in range(3)]
+              + [{"wakeup_id": f"c{i}", "status": "consumed"} for i in range(17)])
+    monkeypatch.setattr(sw, "_load", lambda: list(poster))
+    monkeypatch.setattr(sw, "_save", lambda r: None)
+    res = sw.schedule_self_wakeup(delay_seconds=120, prompt="ny")
+    assert res["status"] == "ok"
+
+
+# ── Dublet-tjek (8/11-2026) ────────────────────────────────────────────────
+#
+# Bjoern: «dine bookninger uanset hvad det er kraever du eller systemet laeser
+# de eksisterende foerst saa du ikk ender med dobbelt bookninger». Den konkrete
+# anledning: to opfoelgninger til samme dato, 17 minutter fra hinanden.
+
+def test_dublet_bookes_ikke_to_gange(monkeypatch):
+    """Samme indhold til nogenlunde samme tid er ÉN booking."""
+    fire = (datetime.now(UTC) + timedelta(seconds=120)).isoformat()
+    state = [{"wakeup_id": "w1", "status": "pending", "prompt": "tjek deploy",
+              "fire_at": fire, "scheduled_at": datetime.now(UTC).isoformat()}]
+    skrevet: list = []
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: skrevet.extend(r))
+
+    result = sw.schedule_self_wakeup(delay_seconds=120, prompt="TJEK: deploy!")
+
+    assert result["status"] == "ok"
+    assert result["deduplicated"] is True
+    assert result["wakeup"]["wakeup_id"] == "w1"
+    assert not skrevet, "der blev booket en dublet"
+
+
+def test_samme_indhold_paa_en_ANDEN_tid_er_ikke_en_dublet(monkeypatch):
+    """Modprøven: to bevidste kontrolpunkter med samme tekst skal BEGGE bookes.
+
+    Vinduet er 60 minutter. Her ligger den eksisterende tre timer ude, saa det
+    er to forskellige kontroller — ikke en dublet.
+    """
+    fire = (datetime.now(UTC) + timedelta(hours=3)).isoformat()
+    state = [{"wakeup_id": "w1", "status": "pending", "prompt": "tjek deploy",
+              "fire_at": fire, "scheduled_at": datetime.now(UTC).isoformat()}]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: None)
+
+    result = sw.schedule_self_wakeup(delay_seconds=120, prompt="tjek deploy")
+
+    assert result["status"] == "ok"
+    assert "deduplicated" not in result
 
 
 def test_due_wakeups_marks_fired(monkeypatch):

@@ -186,11 +186,29 @@ def schedule_self_wakeup(
             _sikker_skrivning()
             records = _load()
             pending = [r for r in records if r.get("status") == "pending"]
-            if len(pending) >= _MAX_PENDING:
+
+            # ── 1. DUBLET (8/11-2026) ───────────────────────────────────────
+            # Bjørn: «læser de eksisterende først så du ikk ender med dobbelt
+            # bookninger». Ligger den samme vækning allerede i køen til
+            # nogenlunde samme tid, er der intet at booke — vi svarer med den
+            # eksisterende. Uden dette kunne samme forpligtelse ligge to gange,
+            # og BEGGE ville fyre.
+            from core.services.booking_dedup import find_dublet
+            dublet = find_dublet(
+                tekst=prompt, tid=fire_at.isoformat(), eksisterende=pending,
+                tekst_felt="prompt", tid_felt="fire_at", session=sid,
+            )
+            if dublet is not None:
                 return {
-                    "status": "error",
-                    "error": f"max {_MAX_PENDING} pending wakeups; cancel one first",
+                    "status": "ok",
+                    "wakeup": dublet,
+                    "deduplicated": True,
+                    "text": (f"Vækning findes allerede ({dublet.get('wakeup_id')}) "
+                             f"til {str(dublet.get('fire_at') or '')[:16]}Z — "
+                             "intet nyt booket."),
                 }
+
+            # ── 2. DAGSKVOTEN (uændret, 5/10-2026) ─────────────────────────
             i_doegnet = bookinger_seneste_doegn(records, sid)
             if sid and i_doegnet >= _MAX_PR_SAMTALE_PR_DOEGN:
                 return {
@@ -203,6 +221,34 @@ def schedule_self_wakeup(
                         "whether the watch is still wanted."
                     ),
                     "bookinger_seneste_doegn": i_doegnet,
+                }
+
+            # ── 3. LOFTET (8/11-2026) ──────────────────────────────────────
+            # Bjørn: «max 20 men rullende inden for de 20, sådan den kører i
+            # ring» — og derefter, som rettelse til min første version:
+            # «De må kun falde ud hvis de er markeret færdige».
+            #
+            # Ringen drives derfor af FÆRDIGGØRELSE, ikke af alder: en post
+            # forlader køen når den er consumed eller cancelled, og den plads
+            # går til den næste. En VENTENDE forpligtelse fjernes ALDRIG
+            # automatisk — heller ikke når loftet er nået. Min første version
+            # evakuerede den ældste ventende, og det smed levende arbejde væk
+            # for at gøre plads: en påmindelse der forsvinder i stilhed er
+            # værre end en booking der bliver afvist med en besked.
+            #
+            # Er alle 20 stadig ventende, afvises bookingen. Kun jeg kan afgøre
+            # hvilken forpligtelse der må opgives, og et loft der selv valgte,
+            # ville skjule den beslutning.
+            if len(pending) >= _MAX_PENDING:
+                return {
+                    "status": "error",
+                    "error": (
+                        f"{len(pending)} ventende vækninger — loftet er "
+                        f"{_MAX_PENDING}, og en ventende booking fjernes ikke "
+                        "automatisk. Annullér en med cancel_self_wakeup, eller "
+                        "lad den fyre og blive kvitteret først."
+                    ),
+                    "pending": len(pending),
                 }
             records.append(record)
             _save(records)

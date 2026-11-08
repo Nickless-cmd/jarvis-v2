@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/idle_thinking.py`
+_Idle Thinking — Jarvis tænker frit når han er alene._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `run_idle_thought` | `()` | Run a single idle thought when in appropriate phase. | [src](../../../core/services/idle_thinking.py#L18) |
+| function | `build_idle_thinking_surface` | `()` | — | [src](../../../core/services/idle_thinking.py#L83) |
+
 ## `core/services/impulse_executor.py`
 _Impulse Executor — konverterer impulser til konkrete handlinger._
 
@@ -783,19 +791,4 @@ _Jobs Engine — proper async job queue with provider selection and cost trackin
 | function | `all_jobs` | `()` | ALLE jobs — ingen hale klippet af. | [src](../../../core/services/jobs_engine.py#L534) |
 | function | `list_jobs` | `(*, status=…, limit=…)` | — | [src](../../../core/services/jobs_engine.py#L551) |
 | function | `build_jobs_engine_surface` | `()` | — | [src](../../../core/services/jobs_engine.py#L558) |
-
-## `core/services/kerne_curator.py`
-_Kerne-kurator — holder USER.md `## Kerne` kort og levende (blok A, 2026-09-04)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_should_run` | `(last_run_iso, now)` | — | [src](../../../core/services/kerne_curator.py#L33) |
-| function | `_workspace_dir` | `()` | — | [src](../../../core/services/kerne_curator.py#L45) |
-| function | `promotion_candidates` | `(workspace_dir)` | Lært-linjer der er brugt tit nok til at høre hjemme i Kerne. | [src](../../../core/services/kerne_curator.py#L54) |
-| function | `demotion_candidates` | `(workspace_dir)` | De ældste Kerne-linjer der ligger ud over loftet (tomt når under). | [src](../../../core/services/kerne_curator.py#L74) |
-| function | `_move_line` | `(*, text, to_core)` | Flyt én linje mellem `## Kerne` og `## Lært` i USER.md. Atomisk. | [src](../../../core/services/kerne_curator.py#L83) |
-| function | `promote_to_kerne` | `(text)` | Flyt en Lært-linje op i Kerne (altid i prompten). | [src](../../../core/services/kerne_curator.py#L115) |
-| function | `demote_from_kerne` | `(text)` | Flyt en Kerne-linje ned i Lært (kun når den er relevant). | [src](../../../core/services/kerne_curator.py#L120) |
-| function | `build_proposal_text` | `(workspace_dir)` | Ugens ÉNE forslag — "" når Kerne er sund og intet er modnet. | [src](../../../core/services/kerne_curator.py#L125) |
-| function | `run_kerne_curator` | `(*, force=…, now=…)` | Ugentlig kuratering. Self-throttlende og self-safe — kaster aldrig. | [src](../../../core/services/kerne_curator.py#L149) |
 

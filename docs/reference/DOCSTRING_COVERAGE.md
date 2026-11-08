@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9922/18410 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9925/18413 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 9922/18410 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 872 | 1586 | 54% |
-| `core.services` | 6626 | 12474 | 53% |
+| `core.services` | 6629 | 12477 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -2013,8 +2013,8 @@ Generated from source. 9922/18410 functions/methods documented (53%). The list b
 - `core/services/scheduled_job_windows.py` :: `build_scheduled_job_windows_surface` (L204)
 - `core/services/scheduled_job_windows.py` :: `list_windows` (L194)
 - `core/services/scheduled_job_windows.py` :: `set_window_active` (L103)
-- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L488)
-- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L497)
+- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L548)
+- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L557)
 - `core/services/scoped_recall_policy.py` :: `recall_enabled` (L17)
 - `core/services/scoped_recall_policy.py` :: `recall_migration_enabled` (L21)
 - `core/services/scoped_recall_policy.py` :: `require_private_scope` (L33)
@@ -2073,7 +2073,7 @@ Generated from source. 9922/18410 functions/methods documented (53%). The list b
 - `core/services/self_review_unified.py` :: `build_self_review_surface` (L384)
 - `core/services/self_review_unified.py` :: `list_self_reviews` (L365)
 - `core/services/self_system_code_awareness.py` :: `build_self_system_code_awareness_surface` (L16)
-- `core/services/self_wakeup.py` :: `list_wakeups` (L638)
+- `core/services/self_wakeup.py` :: `list_wakeups` (L684)
 - `core/services/selfhood_proposal_tracking.py` :: `build_runtime_selfhood_proposal_surface` (L83)
 - `core/services/selfhood_proposal_tracking.py` :: `refresh_runtime_selfhood_proposal_statuses` (L52)
 - `core/services/selfhood_proposal_tracking.py` :: `track_runtime_selfhood_proposals_for_visible_turn` (L30)

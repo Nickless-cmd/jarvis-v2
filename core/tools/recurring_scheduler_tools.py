@@ -63,6 +63,7 @@ def _exec_schedule_recurring(args: dict[str, Any]) -> dict[str, Any]:
             gentagelse_rammer_vindue,
             tilfoej_booking_varsel,
         )
+        from core.util.timezone import dk_label
         svar = tilfoej_booking_varsel({
             "status": "ok",
             "task_id": task["task_id"],
@@ -71,7 +72,7 @@ def _exec_schedule_recurring(args: dict[str, Any]) -> dict[str, Any]:
             "interval_minutes": interval_minutes,
             "weekdays": task.get("weekdays", ""),
             "next_fire_at": task["next_fire_at"],
-            "text": f"Recurring task scheduled: '{focus}' every {unit_display} ({ug_display}). First fire: {task['next_fire_at'][:16]}Z",
+            "text": f"Recurring task scheduled: '{focus}' every {unit_display} ({ug_display}). First fire: {dk_label(task['next_fire_at'])}",
         }, task["next_fire_at"])
         # En rutine der gentages hurtigere end vinduet er langt kan ikke undgaa
         # myldretiden. Foerste gennemloeb kan ligge i off-peak og saa ville

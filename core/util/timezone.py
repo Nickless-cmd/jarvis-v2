@@ -26,6 +26,7 @@ __all__ = [
     "is_dk_quiet_hours",
     "from_utc_iso",
     "time_label_dk",
+    "dk_label",
 ]
 
 DK_ZONE = ZoneInfo("Europe/Copenhagen")
@@ -112,3 +113,31 @@ def time_label_dk(iso_str: str) -> str:
         return dt.strftime("%H:%M")
     except (ValueError, TypeError):
         return iso_str
+
+
+def dk_label(iso_str: str) -> str:
+    """Dato + klokkeslæt i dansk tid, f.eks. 'ons 11/11 09:59'.
+
+    Bjoern 8/11-2026: «Tilføj klokkeslæt til sheduled». Visningen skrev
+    ``run_at[:16] + 'Z'`` — rå UTC — saa et tidspunkt booket til kl. 09:59
+    dansk stod som 08:59Z, og han maatte regne om i hovedet hver gang.
+
+    Ugedagen er med fordi en dato som «11/11» ikke siger om det er i morgen
+    eller om tre dage; «ons» goer.
+
+    En ulaeselig tid giver den RAA streng tilbage — ikke «nu». ``from_utc_iso``
+    falder tilbage til ``dk_now()``, og brugt her ville et i stykker tidsstempel
+    blive vist som et tidspunkt der ser rigtigt ud. En forkert tid er vaerre
+    end en synligt ulaeselig en, naar det er en forpligtelse der skal indfries.
+    """
+    if not iso_str:
+        return ""
+    try:
+        dt = datetime.fromisoformat(str(iso_str).replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        lokal = dt.astimezone(DK_ZONE)
+    except (ValueError, TypeError):  # ulaeselig tid ER svaret: vis den raa streng
+        return str(iso_str)
+    ugedag = _WEEKDAY_DA[lokal.weekday()][:3]
+    return f"{ugedag} {lokal.strftime('%d/%m %H:%M')}"

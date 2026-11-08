@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9926/18414 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9927/18415 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,7 +37,7 @@ Generated from source. 9926/18414 functions/methods documented (53%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
-| `core.util` | 9 | 10 | 90% |
+| `core.util` | 10 | 11 | 90% |
 | `scripts` | 316 | 651 | 48% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
@@ -2013,8 +2013,8 @@ Generated from source. 9926/18414 functions/methods documented (53%). The list b
 - `core/services/scheduled_job_windows.py` :: `build_scheduled_job_windows_surface` (L204)
 - `core/services/scheduled_job_windows.py` :: `list_windows` (L194)
 - `core/services/scheduled_job_windows.py` :: `set_window_active` (L103)
-- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L548)
-- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L557)
+- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L550)
+- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L559)
 - `core/services/scoped_recall_policy.py` :: `recall_enabled` (L17)
 - `core/services/scoped_recall_policy.py` :: `recall_migration_enabled` (L21)
 - `core/services/scoped_recall_policy.py` :: `require_private_scope` (L33)
@@ -2073,7 +2073,7 @@ Generated from source. 9926/18414 functions/methods documented (53%). The list b
 - `core/services/self_review_unified.py` :: `build_self_review_surface` (L384)
 - `core/services/self_review_unified.py` :: `list_self_reviews` (L365)
 - `core/services/self_system_code_awareness.py` :: `build_self_system_code_awareness_surface` (L16)
-- `core/services/self_wakeup.py` :: `list_wakeups` (L684)
+- `core/services/self_wakeup.py` :: `list_wakeups` (L685)
 - `core/services/selfhood_proposal_tracking.py` :: `build_runtime_selfhood_proposal_surface` (L83)
 - `core/services/selfhood_proposal_tracking.py` :: `refresh_runtime_selfhood_proposal_statuses` (L52)
 - `core/services/selfhood_proposal_tracking.py` :: `track_runtime_selfhood_proposals_for_visible_turn` (L30)
@@ -2465,7 +2465,7 @@ Generated from source. 9926/18414 functions/methods documented (53%). The list b
 - `core/tools/workspace_capabilities.py` :: `invoke_workspace_capability` (L403)
 - `core/tools/workspace_capabilities.py` :: `load_workspace_capabilities` (L144)
 - `core/undo/message_edits.py` :: `capture_after` (L168)
-- `core/util/timezone.py` :: `dk_weekday_en` (L69)
+- `core/util/timezone.py` :: `dk_weekday_en` (L70)
 - `scripts/acceptance/migration_gate.py` :: `main` (L203)
 - `scripts/acceptance/migration_gate.py` :: `run_suites` (L99)
 - `scripts/api_reference_gen.py` :: `main` (L74)

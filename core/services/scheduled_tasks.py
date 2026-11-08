@@ -71,6 +71,7 @@ def push_scheduled_task(
         tekst_felt="focus", tid_felt="run_at", session=sid,
     )
     if dublet is not None:
+        from core.util.timezone import dk_label
         logger.info("scheduled_tasks: dublet af %s — intet booket",
                     dublet.get("task_id"))
         return {
@@ -81,7 +82,7 @@ def push_scheduled_task(
             "session_id": dublet.get("session_id"),
             "deduplicated": True,
             "text": (f"Findes allerede som {dublet.get('task_id')} til "
-                     f"{str(dublet.get('run_at') or '')[:16]}Z — intet nyt booket."),
+                     f"{dk_label(str(dublet.get('run_at') or ''))} — intet nyt booket."),
         }
 
     # ── 2. LOFTET (8/11-2026) ──────────────────────────────────────────────
@@ -156,7 +157,8 @@ def edit_scheduled_task(task_id: str, *, focus: str | None = None, delay_minutes
     if not updated:
         return {"status": "error", "error": "Update failed — task may no longer be pending"}
     logger.info("scheduled_tasks: edited %s focus=%r run_at=%r", task_id, new_focus, new_run_at)
-    return {"status": "ok", "task": updated, "text": f"Updated task {task_id}: {updated.get('focus')} — fires at {str(updated.get('run_at',''))[:16]}Z"}
+    from core.util.timezone import dk_label
+    return {"status": "ok", "task": updated, "text": f"Updated task {task_id}: {updated.get('focus')} — fires {dk_label(str(updated.get('run_at','')))}"}
 
 
 def list_pending_for_current_user() -> list[dict]:

@@ -199,12 +199,13 @@ def schedule_self_wakeup(
                 tekst_felt="prompt", tid_felt="fire_at", session=sid,
             )
             if dublet is not None:
+                from core.util.timezone import dk_label
                 return {
                     "status": "ok",
                     "wakeup": dublet,
                     "deduplicated": True,
                     "text": (f"Vækning findes allerede ({dublet.get('wakeup_id')}) "
-                             f"til {str(dublet.get('fire_at') or '')[:16]}Z — "
+                             f"til {dk_label(str(dublet.get('fire_at') or ''))} — "
                              "intet nyt booket."),
                 }
 
@@ -894,12 +895,20 @@ def _exec_schedule_self_wakeup(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_list_self_wakeups(args: dict[str, Any]) -> dict[str, Any]:
+    from core.util.timezone import dk_label
+    wakeups = list_wakeups(
+        status=args.get("status"),
+        limit=int(args.get("limit") or 30),
+    )
+    # `fire_at_dk` er en VISNINGS-kolonne, ikke en ændring af posten: den
+    # rå `fire_at` bliver stående, fordi det er den værdi fyringen sammenligner
+    # med. Uden den danske label skulle jeg regne UTC om i hovedet hver gang —
+    # det var hele anledningen (Bjørn 8/11-2026).
+    for w in wakeups:
+        w["fire_at_dk"] = dk_label(str(w.get("fire_at") or ""))
     return {
         "status": "ok",
-        "wakeups": list_wakeups(
-            status=args.get("status"),
-            limit=int(args.get("limit") or 30),
-        ),
+        "wakeups": wakeups,
     }
 
 

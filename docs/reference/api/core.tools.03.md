@@ -87,11 +87,11 @@ _Recurring scheduler tools — Jarvis can schedule repeating tasks._
 |---|---|---|---|---|
 | function | `_parse_interval` | `(interval, unit)` | Return interval in minutes, or None on bad input. | [src](../../../core/tools/recurring_scheduler_tools.py#L13) |
 | function | `_exec_schedule_recurring` | `(args)` | — | [src](../../../core/tools/recurring_scheduler_tools.py#L27) |
-| function | `_exec_list_recurring` | `(args)` | — | [src](../../../core/tools/recurring_scheduler_tools.py#L89) |
-| function | `_exec_cancel_recurring` | `(args)` | — | [src](../../../core/tools/recurring_scheduler_tools.py#L109) |
-| function | `_exec_set_recurring_channel` | `(args)` | Sæt leverings-kanal på en recurring task (notif-routing spec §3.5). | [src](../../../core/tools/recurring_scheduler_tools.py#L284) |
-| function | `_exec_set_recurring_weekday_times` | `(args)` | Forskellige klokkeslaet paa forskellige ugedage. | [src](../../../core/tools/recurring_scheduler_tools.py#L304) |
-| function | `_exec_set_recurring_weekdays` | `(args)` | Begræns en recurring task til bestemte ugedage. | [src](../../../core/tools/recurring_scheduler_tools.py#L338) |
+| function | `_exec_list_recurring` | `(args)` | — | [src](../../../core/tools/recurring_scheduler_tools.py#L90) |
+| function | `_exec_cancel_recurring` | `(args)` | — | [src](../../../core/tools/recurring_scheduler_tools.py#L110) |
+| function | `_exec_set_recurring_channel` | `(args)` | Sæt leverings-kanal på en recurring task (notif-routing spec §3.5). | [src](../../../core/tools/recurring_scheduler_tools.py#L285) |
+| function | `_exec_set_recurring_weekday_times` | `(args)` | Forskellige klokkeslaet paa forskellige ugedage. | [src](../../../core/tools/recurring_scheduler_tools.py#L305) |
+| function | `_exec_set_recurring_weekdays` | `(args)` | Begræns en recurring task til bestemte ugedage. | [src](../../../core/tools/recurring_scheduler_tools.py#L339) |
 
 ## `core/tools/repo_recall_tool.py`
 _`repo_recall` — søgning i repoets DOKUMENTATION (ikke kildekoden)._
@@ -125,9 +125,9 @@ _Tool-handlere for lokale planlagte opgaver og deres eksterne spejl._
 | function | `_mirror_text` | `(result)` | — | [src](../../../core/tools/scheduled_task_tools.py#L22) |
 | function | `_safe_mirror` | `(call, tool_args, *args)` | Et spejl må aldrig ændre udfaldet af den allerede udførte lokale handling. | [src](../../../core/tools/scheduled_task_tools.py#L36) |
 | function | `_exec_schedule_task` | `(args)` | Planlæg en lokal opgave efter ``delay_minutes``. | [src](../../../core/tools/scheduled_task_tools.py#L49) |
-| function | `_exec_list_scheduled_tasks` | `(_args)` | List lokale planlagte opgaver (ventende og nyligt fyrede). | [src](../../../core/tools/scheduled_task_tools.py#L84) |
-| function | `_exec_cancel_task` | `(args)` | Annullér en ventende lokal opgave. | [src](../../../core/tools/scheduled_task_tools.py#L121) |
-| function | `_exec_edit_task` | `(args)` | Redigér fokus og/eller tidspunkt på en ventende lokal opgave. | [src](../../../core/tools/scheduled_task_tools.py#L144) |
+| function | `_exec_list_scheduled_tasks` | `(_args)` | List lokale planlagte opgaver (ventende og nyligt fyrede). | [src](../../../core/tools/scheduled_task_tools.py#L85) |
+| function | `_exec_cancel_task` | `(args)` | Annullér en ventende lokal opgave. | [src](../../../core/tools/scheduled_task_tools.py#L123) |
+| function | `_exec_edit_task` | `(args)` | Redigér fokus og/eller tidspunkt på en ventende lokal opgave. | [src](../../../core/tools/scheduled_task_tools.py#L146) |
 
 ## `core/tools/screen_tool.py`
 _Screen control — turn Bjørn's monitors on/off/standby, or read their state._

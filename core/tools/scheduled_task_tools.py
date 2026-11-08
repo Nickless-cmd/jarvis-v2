@@ -64,6 +64,7 @@ def _exec_schedule_task(args: dict[str, Any]) -> dict[str, Any]:
         from core.services.google_tasks_mirror import create_task_mirror
         mirror = _safe_mirror(create_task_mirror, args, task)
         from core.services.peak_hours import tilfoej_booking_varsel
+        from core.util.timezone import dk_label
         return tilfoej_booking_varsel({
             "status": "ok",
             "task_id": task.get("task_id"),
@@ -72,7 +73,7 @@ def _exec_schedule_task(args: dict[str, Any]) -> dict[str, Any]:
             "run_at": run_at,
             "google_tasks": mirror,
             "text": (
-                f"Scheduled in {delay_minutes} min: {focus} (fires at {run_at[:16]}Z)"
+                f"Scheduled in {delay_minutes} min: {focus} (fires {dk_label(run_at)})"
                 f"{_mirror_text(mirror)}"
             ),
         }, run_at)
@@ -92,13 +93,14 @@ def _exec_list_scheduled_tasks(_args: dict[str, Any]) -> dict[str, Any]:
 
     pending = state.get("pending") or []
     fired = state.get("recently_fired") or []
+    from core.util.timezone import dk_label
     lines = []
     if pending:
         lines.append(f"Pending ({len(pending)}):")
         for task in pending:
             lines.append(
                 f"  [{task.get('task_id','')}] {task.get('focus','')} — "
-                f"fires at {str(task.get('run_at',''))[:16]}Z"
+                f"fires {dk_label(str(task.get('run_at','')))}"
             )
     else:
         lines.append("No pending scheduled tasks.")
@@ -107,7 +109,7 @@ def _exec_list_scheduled_tasks(_args: dict[str, Any]) -> dict[str, Any]:
         for task in fired:
             lines.append(
                 f"  [{task.get('task_id','')}] {task.get('focus','')} — "
-                f"fired at {str(task.get('fired_at',''))[:16]}Z"
+                f"fired {dk_label(str(task.get('fired_at','')))}"
             )
     return {
         "status": "ok",

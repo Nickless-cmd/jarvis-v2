@@ -4,7 +4,7 @@ from __future__ import annotations
 from core.util.timezone import (
     DK_ZONE, dk_now, dk_timestamp, dk_hour, dk_date_str,
     dk_time_str, dk_weekday_da, dk_weekday_en,
-    is_dk_quiet_hours, from_utc_iso, time_label_dk,
+    is_dk_quiet_hours, from_utc_iso, time_label_dk, dk_label,
 )
 
 
@@ -110,3 +110,41 @@ class TestTimeLabelDk:
     def test_empty_fallback(self):
         label = time_label_dk("")
         assert label is not None
+
+
+class TestDkLabel:
+    """Dato + klokkeslæt i dansk tid — til booknings-visninger.
+
+    Bjoern 8/11-2026: «Tilføj klokkeslæt til sheduled». Visningerne skrev
+    ``run_at[:16] + 'Z'``, altsaa rå UTC, saa en booking til kl. 09:59 dansk
+    stod som 08:59Z og han maatte regne om i hovedet.
+    """
+
+    def test_vintertid_er_plus_et(self):
+        # November = CET (+1). 08:59Z skal blive 09:59 dansk.
+        assert dk_label("2026-11-11T08:59:05.799171+00:00") == "ons 11/11 09:59"
+
+    def test_sommertid_er_plus_to(self):
+        # Juli = CEST (+2). Samme UTC-streng giver en ANDEN dansk tid —
+        # det er netop fejlen en fast offset ville lave.
+        assert dk_label("2026-07-11T08:59:00+00:00") == "lør 11/07 10:59"
+
+    def test_z_suffiks_forstaas(self):
+        assert dk_label("2026-12-08T17:58:30Z") == "tir 08/12 18:58"
+
+    def test_ugedag_er_med(self):
+        # Uden ugedag siger «11/11» ikke om det er i morgen eller om tre dage.
+        assert dk_label("2026-11-11T08:59:00+00:00").startswith("ons ")
+
+    def test_skrald_giver_raa_streng_ikke_nu(self):
+        # Dette er forskellen paa dk_label og from_utc_iso: sidstnaevnte falder
+        # tilbage til dk_now(), saa et i stykker tidsstempel ville blive vist
+        # som et tidspunkt der SER rigtigt ud. En forkert tid er vaerre end en
+        # synligt ulaeselig en, naar det er en forpligtelse der skal indfries.
+        assert dk_label("ikke-en-tid") == "ikke-en-tid"
+
+    def test_tom_giver_tom(self):
+        assert dk_label("") == ""
+
+    def test_naiv_streng_behandles_som_utc(self):
+        assert dk_label("2026-11-11T08:59:00") == "ons 11/11 09:59"

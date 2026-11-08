@@ -126,3 +126,48 @@ def test_en_eksplicit_ejer_vinder_over_fallback(monkeypatch):
     assert kaldt[0].user_id == "michelle-7", (
         f"fallback overskrev en eksplicit ejer: {kaldt[0].user_id!r}"
     )
+
+
+def test_modulet_kan_importeres_isoleret():
+    """Den cirkulære import maa ikke komme tilbage (8/11-2026).
+
+    `visible_runs` re-eksporterede de autonome symboler med en HAARD import paa
+    modulniveau, mens `visible_autonomous_run` importerer `visible_runs` i
+    toppen. De to moduler kunne derfor ikke importeres ISOLERET — maalt:
+    `import core.services.visible_autonomous_run` fejlede med «partially
+    initialized module», mens den omvendte raekkefoelge virkede.
+
+    Fejlen var usynlig i drift, fordi tjenesten altid importerer den anden vej
+    foerst. Den blev foerst fanget af deployets stikproeve, som importerer hvert
+    aendret modul ALENE — og den faeldede deployet 8/11 kl. 20:17.
+
+    Testen koerer i en frisk subprocess: cirklen opstaar kun ved kold start, saa
+    en in-process import ville se det allerede-indlaeste modul og bestaa.
+    """
+    import subprocess
+    import sys
+
+    for modul in (
+        "core.services.visible_autonomous_run",
+        "core.services.visible_runs",
+    ):
+        res = subprocess.run(
+            [sys.executable, "-c", f"import {modul}"],
+            capture_output=True, text=True, timeout=120,
+        )
+        assert res.returncode == 0, (
+            f"{modul} kunne ikke importeres isoleret:\n{res.stderr[-800:]}"
+        )
+
+
+def test_re_eksporten_er_doven_men_virker():
+    """Navnene skal stadig kunne hentes gennem `visible_runs` (PEP 562)."""
+    from core.services import visible_runs as vr
+
+    assert callable(vr.start_autonomous_run)
+    assert callable(vr._observe_autonomous_run)
+    # Ukendte navne skal fejle som normalt — ellers skjuler __getattr__ slaa-fejl.
+    import pytest
+
+    with pytest.raises(AttributeError):
+        vr.findes_ikke_her

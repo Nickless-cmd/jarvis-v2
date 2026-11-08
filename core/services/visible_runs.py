@@ -1147,10 +1147,28 @@ def start_visible_run(
 # Autonome runs (starter + observation) er flyttet til core/services/visible_autonomous_run.py
 # (Boy Scout, 2026-10-07; filen var 7.539 linjer). Re-eksporteret under de gamle navne, saa kaldere og
 # tests der importerer/monkeypatcher dem her virker uaendret.
-from core.services.visible_autonomous_run import (  # noqa: E402,F401
-    _observe_autonomous_run,
-    start_autonomous_run,
-)
+# DOVEN RE-EKSPORT (8/11-2026). Blokken var en haard import paa modulniveau,
+# men `visible_autonomous_run` importerer selv `visible_runs` i toppen — saa de
+# to moduler kunne ikke importeres ISOLERET. Maalt: `import
+# core.services.visible_autonomous_run` fejlede med «partially initialized
+# module», mens `import core.services.visible_runs` virkede. Fejlen var derfor
+# usynlig i drift (tjenesten importerer altid den anden vej foerst) og blev
+# foerst fanget af deployets stikproeve, som importerer hvert aendret modul
+# alene — den faeldede deployet 8/11 kl. 20:17.
+#
+# PEP 562 `__getattr__` bevarer begge navne for alle kaldere
+# (`from core.services.visible_runs import start_autonomous_run`) uden at
+# kraeve importen ved modul-load.
+_LAZY_AUTONOM = ("_observe_autonomous_run", "start_autonomous_run")
+
+
+def __getattr__(name: str):
+    """Doven re-eksport af de autonome run-symboler (se note ovenfor)."""
+    if name in _LAZY_AUTONOM:
+        from core.services import visible_autonomous_run as _va
+
+        return getattr(_va, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def _compact_llm_for_run(prompt: str) -> str:

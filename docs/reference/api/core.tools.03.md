@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/process_tools.py`
+_Process and system health monitoring tools._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_service_status` | `(args)` | — | [src](../../../core/tools/process_tools.py#L8) |
+| function | `_exec_process_list` | `(args)` | — | [src](../../../core/tools/process_tools.py#L28) |
+| function | `_exec_disk_usage` | `(args)` | — | [src](../../../core/tools/process_tools.py#L55) |
+| function | `_exec_memory_usage` | `(args)` | — | [src](../../../core/tools/process_tools.py#L88) |
+| function | `_exec_tail_log` | `(args)` | Read recent journalctl lines for a systemd service. | [src](../../../core/tools/process_tools.py#L112) |
+| function | `_exec_gpu_status` | `(_args)` | Snapshot of NVIDIA GPU state (memory, utilization, processes). | [src](../../../core/tools/process_tools.py#L142) |
+| function | `_exec_run_pytest` | `(args)` | Run a specific pytest target so the model can verify behavior by test. | [src](../../../core/tools/process_tools.py#L177) |
+
 ## `core/tools/process_watcher_tools.py`
 _Tool wrappers for the process_watcher service._
 
@@ -177,21 +190,21 @@ _Simple, general-purpose tools for Jarvis visible lane._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `canonical_identity_file_path` | `(name)` | Den ENE fil `name` bor i — samme opslag som prompten bruger til at LÆSE. | [src](../../../core/tools/simple_tools.py#L703) |
-| function | `_canonicalize_workspace_target` | `(target)` | If target's basename is a canonical workspace file, force it to the | [src](../../../core/tools/simple_tools.py#L745) |
-| function | `_emit_security_check` | `(hit, *, target)` | Self-safe audit-emit: et deny/destructive bæres nu med sit nummererede | [src](../../../core/tools/simple_tools.py#L887) |
-| function | `_uden_for_quotes` | `(command)` | Fjern quotede strenge, så en ``>`` inde i en streng ikke tælles som redirect. | [src](../../../core/tools/simple_tools.py#L919) |
-| function | `_har_skrivende_redirect` | `(command)` | ``>`` eller ``>>`` uden for quotes gør kommandoen muterende. | [src](../../../core/tools/simple_tools.py#L928) |
-| function | `_segment_er_laesende` | `(segment)` | Er ÉT pipe-segment en ren læsning? Fail-closed ved tvivl. | [src](../../../core/tools/simple_tools.py#L944) |
-| function | `classify_command` | `(command)` | Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L963) |
-| function | `classify_file_write` | `(path)` | Classify a file write: 'auto', 'approval', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L1119) |
-| function | `execute_tool` | `(name, arguments)` | Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1). | [src](../../../core/tools/simple_tools.py#L1141) |
-| function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L1180) |
-| function | `execute_tool_force` | `(name, arguments, *, owner_approved=…)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1495) |
-| function | `_execute_tool_force_impl` | `(name, arguments)` | — | [src](../../../core/tools/simple_tools.py#L1545) |
-| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1652) |
-| function | `_med_samtykke` | `(navn, fn)` | — | [src](../../../core/tools/simple_tools.py#L2398) |
-| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2492) |
+| function | `canonical_identity_file_path` | `(name)` | Den ENE fil `name` bor i — samme opslag som prompten bruger til at LÆSE. | [src](../../../core/tools/simple_tools.py#L707) |
+| function | `_canonicalize_workspace_target` | `(target)` | If target's basename is a canonical workspace file, force it to the | [src](../../../core/tools/simple_tools.py#L749) |
+| function | `_emit_security_check` | `(hit, *, target)` | Self-safe audit-emit: et deny/destructive bæres nu med sit nummererede | [src](../../../core/tools/simple_tools.py#L891) |
+| function | `_uden_for_quotes` | `(command)` | Fjern quotede strenge, så en ``>`` inde i en streng ikke tælles som redirect. | [src](../../../core/tools/simple_tools.py#L923) |
+| function | `_har_skrivende_redirect` | `(command)` | ``>`` eller ``>>`` uden for quotes gør kommandoen muterende. | [src](../../../core/tools/simple_tools.py#L932) |
+| function | `_segment_er_laesende` | `(segment)` | Er ÉT pipe-segment en ren læsning? Fail-closed ved tvivl. | [src](../../../core/tools/simple_tools.py#L948) |
+| function | `classify_command` | `(command)` | Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L967) |
+| function | `classify_file_write` | `(path)` | Classify a file write: 'auto', 'approval', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L1123) |
+| function | `execute_tool` | `(name, arguments)` | Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1). | [src](../../../core/tools/simple_tools.py#L1145) |
+| function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L1184) |
+| function | `execute_tool_force` | `(name, arguments, *, owner_approved=…)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1499) |
+| function | `_execute_tool_force_impl` | `(name, arguments)` | — | [src](../../../core/tools/simple_tools.py#L1549) |
+| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1656) |
+| function | `_med_samtykke` | `(navn, fn)` | — | [src](../../../core/tools/simple_tools.py#L2403) |
+| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2497) |
 
 ## `core/tools/simple_tools_agent_spawn.py`
 _spawn_agent_task som modelvendt vaerktoej._
@@ -206,8 +219,8 @@ _Tool definitions catalog for Jarvis' visible-lane tools._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3744) |
-| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3761) |
+| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3746) |
+| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3763) |
 
 ## `core/tools/simple_tools_enforcement.py`
 _Commit-enforcement (repo-state attachment) for Jarvis' tool results._
@@ -603,11 +616,4 @@ _`vaelg_flade` — fladebeslutningen, truffet før formuleringen._
 |---|---|---|---|---|
 | function | `_as_int` | `(value)` | Negative og ikke-numeriske tal betyder «ved det ikke», ikke en fejl. | [src](../../../core/tools/surface_tools.py#L26) |
 | function | `_exec_vaelg_flade` | `(args)` | Afgør fladen. Kaster aldrig — en fejl her må ikke vælte turen. | [src](../../../core/tools/surface_tools.py#L34) |
-
-## `core/tools/think_language_tools.py`
-_Værktøj: skift tænke-sprog uden genstart (killswitch, 30/9-2026)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_think_language` | `(args)` | — | [src](../../../core/tools/think_language_tools.py#L17) |
 

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18405 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18408 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -71,10 +71,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18405 functions/
 - [`core.services.visible_runs_sections`](core.services.visible_runs_sections.md)
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
-- [`core.tools.01`](core.tools.01.md) — `__init__` … `geolocation_tools`
-- [`core.tools.02`](core.tools.02.md) — `github_tools` … `process_tools`
-- [`core.tools.03`](core.tools.03.md) — `process_watcher_tools` … `think_language_tools`
-- [`core.tools.04`](core.tools.04.md) — `thread_lifecycle_tools` … `world_model_tools`
+- [`core.tools.01`](core.tools.01.md) — `__init__` … `gate_override_tools`
+- [`core.tools.02`](core.tools.02.md) — `geolocation_tools` … `process_supervisor_tools`
+- [`core.tools.03`](core.tools.03.md) — `process_tools` … `surface_tools`
+- [`core.tools.04`](core.tools.04.md) — `think_language_tools` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/think_language_tools.py`
+_Værktøj: skift tænke-sprog uden genstart (killswitch, 30/9-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_think_language` | `(args)` | — | [src](../../../core/tools/think_language_tools.py#L17) |
+
 ## `core/tools/thread_lifecycle_tools.py`
 _Værktøjs-indgange til trådenes livscyklus._
 

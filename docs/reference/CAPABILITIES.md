@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-11-07 — 532 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-08 — 534 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -44,7 +44,9 @@
 | `cancel_task` | native | no |
 | `capture_emotion_tag` | native | no |
 | `central_query` | native | no |
+| `check_email_breach` | native | no |
 | `check_good_enough` | native | no |
+| `check_password_breach` | native | no |
 | `check_surprises` | native | no |
 | `checkpoint` | native | no |
 | `classify_clarification` | native | no |

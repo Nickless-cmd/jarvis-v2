@@ -98,7 +98,8 @@ _Kontekst-komprimering: ÉN sti, med de garantier den manglede._
 | function | `log_komprimering` | `(session_id, *, udloeser, vej, tokens_foer, tokens_efter, fremdrift, marker_id=…, fejl=…)` | — | [src](../../../core/context/kompaktering.py#L225) |
 | function | `staar_fast` | `(session_id)` | Sidste forsoeg gav ingen fremdrift, og der er ikke kommet noget nyt siden. | [src](../../../core/context/kompaktering.py#L257) |
 | function | `seneste_log` | `(session_id)` | — | [src](../../../core/context/kompaktering.py#L279) |
-| function | `komprimer_session` | `(session_id, *, udloeser, focus=…, low_water_tokens=…)` | Komprimér sessionen. Returnerer `CompactResult`, eller None hvis der | [src](../../../core/context/kompaktering.py#L298) |
+| function | `_hale_budget` | `(low_water_tokens)` | Hvor mange tokens af de NYESTE runder der beholdes ordret i markøren. | [src](../../../core/context/kompaktering.py#L298) |
+| function | `komprimer_session` | `(session_id, *, udloeser, focus=…, low_water_tokens=…)` | Komprimér sessionen. Returnerer `CompactResult`, eller None hvis der | [src](../../../core/context/kompaktering.py#L334) |
 
 ## `core/context/microcompact.py`
 _Cache-bevidst microcompact af gamle tool-resultater i det synlige transcript._
@@ -141,9 +142,9 @@ _Session-level context compaction._
 |---|---|---|---|---|
 | class | `CompactResult` | `` | — | [src](../../../core/context/session_compact.py#L18) |
 | function | `compact_session_history` | `(session_id, *, keep_recent=…, keep_recent_tokens=…, summarise_fn, git_sha=…, kraev_fremdrift=…)` | Compact old session history for session_id. | [src](../../../core/context/session_compact.py#L33) |
-| function | `_estimer` | `(m)` | — | [src](../../../core/context/session_compact.py#L225) |
-| function | `_get_all_session_messages` | `(session_id)` | Det Jarvis SER: den forrige markoer + alle beskeder efter den. | [src](../../../core/context/session_compact.py#L229) |
-| function | `_store_marker` | `(session_id, summary_text, git_sha=…)` | — | [src](../../../core/context/session_compact.py#L254) |
+| function | `_estimer` | `(m)` | — | [src](../../../core/context/session_compact.py#L239) |
+| function | `_get_all_session_messages` | `(session_id)` | Det Jarvis SER: den forrige markoer + alle beskeder efter den. | [src](../../../core/context/session_compact.py#L243) |
+| function | `_store_marker` | `(session_id, summary_text, git_sha=…)` | — | [src](../../../core/context/session_compact.py#L275) |
 
 ## `core/context/token_estimate.py`
 _Token estimation utilities — heuristic only, no tokenizer required._

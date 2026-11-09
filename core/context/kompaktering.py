@@ -295,6 +295,42 @@ def seneste_log(session_id: str) -> dict[str, Any] | None:
 
 # ── Indgangen ──────────────────────────────────────────────────────────────
 
+def _hale_budget(low_water_tokens: int) -> int:
+    """Hvor mange tokens af de NYESTE runder der beholdes ordret i markøren.
+
+    ## Hvorfor den er eksplicit (målt 9/11-2026)
+
+    Før var den `low_water * 0,8`, og `low_water` blev sendt inkonsistent:
+    auto-komprimeringen sendte de konfigurerede 35.000 videre (hale 28.000),
+    mens `/compact` og de to compact-værktøjer kaldte `komprimer_session` uden
+    parameter og fik default 15.000 (hale 12.000). Samme session komprimerede
+    altså forskelligt alt efter hvem der bad om det.
+
+    Målt på markøren i `chat-52d75bf8606c400f9c4fac6e1682a579` før ændringen:
+    28.584 tokens i alt, hvoraf **27.986 var rå hale** (126 tool-linjer, 720
+    linjer, 97.954 tegn) og kun **597 var resumé**. Halen åd budgettet;
+    kontinuiteten lå i de 2%. Efter hver komprimering stod 35% af
+    opmærksomheds-budgettet (80.000) derfor optaget af rå tekst, og næste
+    trigger kom tilsvarende hurtigt.
+
+    Halen er stadig rå og ukappet — den er arbejdsmaterialet i code mode, hvor
+    fil-indhold og diffs skal stå ordret. Den er bare ikke længere 28.000.
+    """
+    try:
+        from core.runtime.settings import load_settings
+        v = int(getattr(load_settings(), "context_compact_tail_tokens", 0) or 0)
+        if v > 0:
+            return max(v, 2_000)
+    except Exception:  # indstillingen kan ikke laeses — reserven nedenfor er svaret
+        pass
+    # Fast reserve. Den maa IKKE udledes af `low_water_tokens`: parameteren
+    # sendes inkonsistent (35.000 fra auto, 15.000 fra de tre andre), saa en
+    # udledt hale arver den inkonsistens. 14.000 er valgt saa code mode stadig
+    # beholder flere hele tool-runder ordret, mens chat faar ~65.000 tokens
+    # luft under 80.000-tærsklen i stedet for ~50.000.
+    return 14_000
+
+
 def komprimer_session(
     session_id: str,
     *,
@@ -317,8 +353,7 @@ def komprimer_session(
         logger.info("kompaktering: %s staar fast uden fremdrift — venter paa nye beskeder", sid)
         return None
 
-    # Halen: lidt under low-water, saa resumé + hale ≈ low-water.
-    hale = max(int(low_water_tokens * 0.8), 4_000)
+    hale = _hale_budget(low_water_tokens)
     opsummering = StruktureretOpsummering(focus, session_id=sid)
     try:
         res = compact_session_history(

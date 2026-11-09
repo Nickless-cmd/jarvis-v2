@@ -172,6 +172,20 @@ def compact_session_history(
             "kasserer markoeren",
             session_id,
         )
+        # Sporet manglede (maalt 9/11-2026: 32 kasseringer paa 14 dage og NUL
+        # raekker i compaction_log). Uden en raekke var de usynlige i den eneste
+        # tabel der beskriver komprimeringer — og «compacter oftere og oftere»
+        # kunne ikke ses som det den var: forsoeg der aldrig landede, fordi en
+        # levende tur skriver tool-raekker mens opsummeringen koerer.
+        try:
+            from core.context.kompaktering import log_komprimering as _log_k
+            _log_k(
+                session_id, udloeser="ukendt", vej="", tokens_foer=tokens_foer,
+                tokens_efter=tokens_efter, fremdrift=False,
+                fejl="foraeldet-snapshot: beskeder landede under opsummeringen",
+            )
+        except Exception:  # logningen maa ikke kunne vaelte kasseringen den beskriver
+            pass
         return None
 
     marker_id = _store_marker(session_id, marker_content, git_sha=git_sha)
@@ -245,6 +259,13 @@ def _get_all_session_messages(session_id: str) -> list[dict]:
         get_compact_marker,
     )
     efter = chat_session_messages_since_last_compact(session_id, max_total=4000)
+    # `approval_request` er en UI-raekke — godkendelses-kortet — ikke noget nogen
+    # sagde. Model-transcriptet springer den allerede over
+    # (`transcript_sections.py:400`), men komprimeringen laeste RAA DB-raekker og
+    # tog den med, og skrev den ordret ind i markoerens hale. Maalt 9/11-2026: 6
+    # approval-linjer i halen paa én markoer. Et kort der aldrig maa naa modellen
+    # kunne altsaa komme ind ad bagvejen gennem en markoer.
+    efter = [m for m in efter if str(m.get("role") or "") != "approval_request"]
     forrige = get_compact_marker(session_id)
     if forrige and str(forrige).strip():
         return [{"role": TIDLIGERE_RESUME, "content": str(forrige)}] + list(efter)

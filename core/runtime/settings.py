@@ -447,6 +447,24 @@ class RuntimeSettings:
     legacy_regex_learning_detectors_enabled: bool = False
     context_attention_budget_tokens: int = 80_000     # high-water: trigger her
     context_attention_low_water_tokens: int = 35_000  # compact ned til ~dette
+    #: Hvor mange tokens af de NYESTE runder der beholdes ORDRET i markøren
+    #: (målt 9/11-2026). Før blev halen udledt som `low_water × 0,8` = 28.000,
+    #: og markøren blev dermed 98% rå hale og 2% resumé: målt 28.584 tokens i
+    #: alt, hvoraf 27.986 var hale med 126 tool-linjer og kun 597 var resumé.
+    #: Efter hver komprimering stod 35% af opmærksomheds-budgettet (80.000)
+    #: derfor optaget af rå tekst — derfor «aldrig helt ned hvor den burde».
+    #:
+    #: Værdien er EKSPLICIT og fælles for alle fire indgange (auto, /compact og
+    #: de to compact-værktøjer). Før fik de hver sin hale, fordi `low_water`
+    #: blev sendt inkonsistent: auto sendte 35.000 (hale 28.000), de tre andre
+    #: kaldte uden parameter og fik default 15.000 (hale 12.000). Samme session
+    #: komprimerede altså forskelligt alt efter hvem der bad om det.
+    #:
+    #: Halen er stadig RÅ og ukappet — den er arbejdsmaterialet i code mode,
+    #: hvor fil-indhold og diffs skal stå ordret. 14.000 giver ~65.000 tokens
+    #: luft under 80.000-tærsklen mod ~50.000 før, og beholder flere hele
+    #: tool-runder end en ren halvering ville. 0 = brug den faste reserve.
+    context_compact_tail_tokens: int = 14_000
     # Model-BEVIDST sikkerhedsloft (backstop). Hvis transcript på trods af budgettet
     # nærmer sig det AKTIVE models reelle vindue (glm-5.1 256k / glm-5.2·deepseek 1M),
     # tving compaction. Skalerer med modellen; fanger kun ekstreme tilfælde.
@@ -1168,6 +1186,7 @@ def load_settings() -> RuntimeSettings:
         context_keep_recent=int(data.get("context_keep_recent", defaults.context_keep_recent)),
         context_attention_budget_tokens=int(data.get("context_attention_budget_tokens", defaults.context_attention_budget_tokens)),
         context_attention_low_water_tokens=int(data.get("context_attention_low_water_tokens", defaults.context_attention_low_water_tokens)),
+        context_compact_tail_tokens=int(data.get("context_compact_tail_tokens", defaults.context_compact_tail_tokens)),
         context_compact_safety_fraction=float(data.get("context_compact_safety_fraction", defaults.context_compact_safety_fraction)),
         server_authoritative_runs=_som_bool(data.get("server_authoritative_runs", defaults.server_authoritative_runs)),
         device_awareness_enabled=_som_bool(data.get("device_awareness_enabled", defaults.device_awareness_enabled)),

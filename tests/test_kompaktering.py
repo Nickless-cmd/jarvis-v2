@@ -318,3 +318,103 @@ def test_komprimatoren_er_naabar_fra_de_konfigurerede_indgange() -> None:
 
     assert "core.context.kompaktering" in naabare
     assert "core.context.session_compact" in naabare
+
+
+# ── 5. Hale-budgettet: eksplicit og faelles (9/11-2026) ──────────────────
+#
+# Maalt foer aendringen paa markoeren i chat-52d75bf8606c400f9c4fac6e1682a579:
+# 28.584 tokens i alt, hvoraf 27.986 var RAA hale (126 tool-linjer) og kun 597
+# var resumé. Halen blev udledt som `low_water * 0,8`, og `low_water` blev sendt
+# inkonsistent: auto sendte 35.000 videre (hale 28.000), mens `/compact` og de to
+# compact-vaerktoejer kaldte uden parameter og fik default 15.000 (hale 12.000).
+
+def test_hale_budgettet_er_faelles_for_alle_indgange() -> None:
+    """Samme session maa ikke komprimere forskelligt alt efter hvem der bad.
+
+    Uden dette arver halen den inkonsistens der laa i `low_water_tokens`-
+    parameteren, og resultatet afhaenger af udloeseren.
+    """
+    assert kp._hale_budget(35_000) == kp._hale_budget(15_000)
+    assert kp._hale_budget(35_000) == kp._hale_budget(0)
+
+
+def test_hale_budgettet_er_14k_naar_indstillingen_mangler(monkeypatch) -> None:
+    """Reserven maa ikke udledes af low_water — den baerer inkonsistensen videre."""
+    import core.runtime.settings as st
+
+    class _S:
+        context_compact_tail_tokens = 0
+
+    monkeypatch.setattr(st, "load_settings", lambda: _S())
+    assert kp._hale_budget(35_000) == 14_000
+
+
+def test_hale_budgettet_kan_saettes_uden_deploy(monkeypatch) -> None:
+    import core.runtime.settings as st
+
+    class _S:
+        context_compact_tail_tokens = 9_000
+
+    monkeypatch.setattr(st, "load_settings", lambda: _S())
+    assert kp._hale_budget(35_000) == 9_000
+
+
+# ── 6. Komprimerings-fladen: UI-raekker og tavse kasseringer ─────────────
+
+def test_approval_request_naar_ikke_komprimeringsfladen(monkeypatch) -> None:
+    """Godkendelses-kortet er en UI-raekke, ikke noget nogen sagde.
+
+    Model-transcriptet springer den over, men komprimeringen laeste RAA
+    DB-raekker og skrev den ordret ind i markoerens hale. Maalt 9/11-2026:
+    6 approval-linjer i halen paa én markoer — et kort der aldrig maa naa
+    modellen kunne altsaa komme ind ad bagvejen.
+    """
+    import core.services.chat_sessions as cs
+
+    monkeypatch.setattr(
+        cs, "chat_session_messages_since_last_compact",
+        lambda sid, max_total=4000: [
+            {"role": "approval_request", "content": "GODKEND: bash — rm -rf /tmp/x"},
+            {"role": "user", "content": "hej"},
+        ],
+    )
+    monkeypatch.setattr(cs, "get_compact_marker", lambda sid: None)
+
+    msgs = sc._get_all_session_messages("s-approval")
+
+    assert [m["role"] for m in msgs] == ["user"]
+    assert "GODKEND" not in str(msgs)
+
+
+def test_kasseret_snapshot_faar_et_spor_i_loggen(isolated_runtime, monkeypatch) -> None:
+    """Maalt 9/11-2026: 32 kasseringer paa 14 dage og NUL raekker i loggen.
+
+    En levende tur skriver tool-raekker mens opsummeringen koerer, saa
+    snapshottet bliver foraeldet og markoeren kasseres. Uden et spor var det
+    usynligt — og «compacter oftere» kunne ikke ses som det den var: forsoeg
+    der aldrig landede.
+    """
+    sid = _session()
+    for i in range(6):
+        _besked(sid, "user", f"q{i} " + "x" * 8000)
+        _besked(sid, "assistant", f"a{i} " + "y" * 8000)
+
+    rigtige = sc._get_all_session_messages(sid)
+    svar = [rigtige, [{"role": "user", "content": "noget der landede imens"}]]
+    monkeypatch.setattr(sc, "_get_all_session_messages",
+                        lambda s: svar.pop(0) if svar else [])
+
+    kaldt: list[dict] = []
+    monkeypatch.setattr(kp, "log_komprimering", lambda *a, **kw: kaldt.append(kw))
+    gemt: list[str] = []
+    monkeypatch.setattr(sc, "_store_marker", lambda s, t, git_sha="": gemt.append(t) or "m")
+
+    res = sc.compact_session_history(sid, keep_recent_tokens=200,
+                                     summarise_fn=lambda m: "kort")
+
+    assert res is None, "en foraeldet markoer maa ikke gemmes"
+    assert gemt == []
+    assert kaldt, "kasseringen skal efterlade en raekke i compaction_log"
+    assert kaldt[0]["fejl"].startswith("foraeldet-snapshot")
+    assert kaldt[0]["fremdrift"] is False
+

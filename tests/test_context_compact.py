@@ -236,12 +236,54 @@ def test_compact_session_history_compresses_only_old_messages(monkeypatch):
     assert len(captured_input["msgs"]) == 5
 
 
-def test_compact_session_history_does_not_shadow_message_added_while_summarising(monkeypatch):
-    """En baggrundskomprimering må vige for en ny composer-besked."""
+def test_ny_besked_under_opsummering_reddes_ind_i_halen(monkeypatch):
+    """En ny række under opsummeringen må hverken forsvinde ELLER blokere markøren.
+
+    Ændret 9/11-2026. Den tidligere regel kasserede markøren ved enhver ændring,
+    fordi markøren appendes sidst og den nye række derfor ville få en id FØR den
+    og falde ud af næste prompt. Men i en aktiv session lander der altid en række
+    i de op til 45 sekunder opsummeringen tager: målt 32 kasseringer på 14 dage og
+    nul markører. Række 272 bar et færdigt resultat på 13.753 tokens fra 81.073 —
+    og smed det væk. Det er «compacter oftere og oftere uden at komme ned».
+
+    Rene tilføjelser indlejres derfor i den hale markøren alligevel bærer: intet
+    går tabt, og komprimeringen lander.
+    """
+    from core.context import session_compact
+    stored = {}
+
+    messages = []
+    for k in range(6):
+        messages.append({"role": "user", "content": f"BRUGERTEKST-{k} " + "x" * 300})
+        messages.append({"role": "assistant", "content": f"SVAR-{k} " + "z" * 300})
+    ny = {"role": "tool", "name": "bash", "content": "NY-RAEKKE-UNDER-COMPACT"}
+
+    reads = iter([messages, [*messages, ny]])
+    monkeypatch.setattr(session_compact, "_get_all_session_messages", lambda sid: next(reads))
+    monkeypatch.setattr(
+        session_compact, "_store_marker",
+        lambda sid, text, git_sha="": stored.update(content=text) or "m",
+    )
+
+    result = session_compact.compact_session_history(
+        "s", keep_recent_tokens=200, summarise_fn=lambda m: "SUMMARY-OF-OLD",
+    )
+
+    assert result is not None
+    assert "NY-RAEKKE-UNDER-COMPACT" in stored["content"]
+
+
+def test_fjernet_besked_under_opsummering_kasserer_markoeren(monkeypatch):
+    """Kan halen ikke reparere tabet, må markøren ikke skrives.
+
+    Er en række FJERNET eller omskrevet (rewind, sletning), dækker markøren over
+    en besked der ikke findes — det er værre end ingen markør. Her kasseres som
+    før.
+    """
     from core.context import session_compact
 
     messages = [{"role": "user", "content": f"msg {i}"} for i in range(25)]
-    reads = iter([messages, [*messages, {"role": "user", "content": "ny mens compact kører"}]])
+    reads = iter([messages, messages[:20]])
     store = Mock(return_value="should-not-be-written")
     monkeypatch.setattr(session_compact, "_get_all_session_messages", lambda sid: next(reads))
     monkeypatch.setattr(session_compact, "_store_marker", store)

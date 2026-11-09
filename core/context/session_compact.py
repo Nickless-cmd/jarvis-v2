@@ -138,6 +138,61 @@ def compact_session_history(
     # To keep the recent exchange VERBATIM after compaction (Codex/Cline "summary + recent
     # tail" model — avoids post-compaction thread loss), the kept rounds are embedded in the
     # marker blob itself, right after the summary. The prepended marker then carries both.
+    # ── Friskhed: rene TILFOEJELSER reddes, aendringer kasseres ───────────
+    #
+    # Komprimeringen koerer i baggrunden (op til 45 s), og en levende tur
+    # skriver tool-raekker imens. Markoeren appendes SIDST, saa alt der landede
+    # under opsummeringen faar en id FOER markoeren — og
+    # `chat_session_messages_since_last_compact` returnerer kun id > markoerens
+    # id. De nye raekker ville derfor forsvinde fra naeste prompt.
+    #
+    # Maalt 9/11-2026 var svaret at KASSERE. Men i en aktiv session lander der
+    # altid noget i de 45 sekunder: 32 kasseringer paa 14 dage, nul markoerer.
+    # Raekke 272 bar et faerdigt resultat paa 13.753 tokens fra 81.073 — og
+    # smed det vaek. Det er derfor sessionen «compacter oftere og oftere uden
+    # at komme ned»: hvert forsoeg landede aldrig.
+    #
+    # Derfor: er aendringen en REN tilfoejelse (samme praefiks, blot flere
+    # raekker), tages de nye raekker med i den hale der alligevel indlejres, og
+    # intet gaar tabt. Er der derimod fjernet eller omskrevet noget (rewind,
+    # sletning, ny forrige-markoer), kasseres som foer — det kan halen ikke
+    # reparere, og en markoer der dækker over en fjernet besked er vaerre end
+    # ingen markoer.
+    friske = _get_all_session_messages(session_id)
+    if friske != messages:
+        ren_tilfoejelse = (
+            len(friske) > len(messages) and friske[: len(messages)] == messages
+        )
+        if ren_tilfoejelse:
+            nye = friske[len(messages):]
+            _kept = list(_kept) + list(nye)
+            logger.info(
+                "session_compact: session=%s fik %d nye raekker under "
+                "opsummeringen — de indlejres i halen, markoeren lander",
+                session_id,
+                len(nye),
+            )
+        else:
+            logger.info(
+                "session_compact: session=%s aendrede sig under "
+                "baggrundskomprimering — kasserer markoeren",
+                session_id,
+            )
+            # Sporet manglede (maalt 9/11-2026: 32 kasseringer paa 14 dage og
+            # NUL raekker i compaction_log). Uden en raekke var de usynlige i
+            # den eneste tabel der beskriver komprimeringer.
+            try:
+                from core.context.kompaktering import log_komprimering as _log_k
+                _log_k(
+                    session_id, udloeser="ukendt", vej="", tokens_foer=0,
+                    tokens_efter=0, fremdrift=False,
+                    fejl="foraeldet-snapshot: beskeder fjernet eller omskrevet "
+                         "under opsummeringen",
+                )
+            except Exception:  # logningen maa ikke kunne vaelte kasseringen den beskriver
+                pass
+            return None
+
     marker_content = summary_text
     if _kept:
         try:
@@ -159,34 +214,6 @@ def compact_session_history(
         exc = NotAdvancing(f"markoeren ({tokens_efter}) er ikke mindre end overfladen ({tokens_foer})")
         exc.tokens = (tokens_foer, tokens_efter)  # type: ignore[attr-defined]
         raise exc
-
-    # Komprimeringen koerer i baggrunden, og Desk maa ikke holde composeren
-    # tilbage imens. Hvis en ny besked landede mens opsummeringsmodellen
-    # arbejdede, maa den derfor vinde: en markoer appendes sidst og ville ellers
-    # faa den nye besked til at ligge FOER markoeren og dermed forsvinde fra
-    # naeste prompt. Kassér dette snapshot; en senere tur kan komprimere den
-    # friske overflade.
-    if _get_all_session_messages(session_id) != messages:
-        logger.info(
-            "session_compact: session=%s aendrede sig under baggrundskomprimering — "
-            "kasserer markoeren",
-            session_id,
-        )
-        # Sporet manglede (maalt 9/11-2026: 32 kasseringer paa 14 dage og NUL
-        # raekker i compaction_log). Uden en raekke var de usynlige i den eneste
-        # tabel der beskriver komprimeringer — og «compacter oftere og oftere»
-        # kunne ikke ses som det den var: forsoeg der aldrig landede, fordi en
-        # levende tur skriver tool-raekker mens opsummeringen koerer.
-        try:
-            from core.context.kompaktering import log_komprimering as _log_k
-            _log_k(
-                session_id, udloeser="ukendt", vej="", tokens_foer=tokens_foer,
-                tokens_efter=tokens_efter, fremdrift=False,
-                fejl="foraeldet-snapshot: beskeder landede under opsummeringen",
-            )
-        except Exception:  # logningen maa ikke kunne vaelte kasseringen den beskriver
-            pass
-        return None
 
     marker_id = _store_marker(session_id, marker_content, git_sha=git_sha)
 

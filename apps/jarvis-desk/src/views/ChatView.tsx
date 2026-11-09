@@ -15,7 +15,7 @@ import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { paaAendringsFokus } from '../lib/aendringsFokus'
 import { useRefPanelLytting } from '../lib/refAabn'
 import { registrerSkaerm } from '../lib/skaermRegister'
-import { onPauseSvar } from '../lib/pauseAsk'
+import { onPauseSvar, withoutPauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState, liveChatBlokke } from '../lib/streamReducer'
 import { varighedFraTider } from '../lib/turTid'
@@ -70,6 +70,7 @@ import { useRailAnkre } from '../lib/useRailAnkre'
 import { skalGenhente } from '../lib/komprimeringsVagt'
 import { useFastgjorte } from '../hooks/useFastgjorte'
 import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
+import { PauseAskKort } from '../components/feedback/PauseAskKort'
 import { findesGodkendelseIRækken } from '../lib/ventendeGodkendelse'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { useChatFlow } from '../hooks/useChatFlow'
@@ -1121,7 +1122,7 @@ export function ChatView({
             <MessageRow presentation="chat" chatMode={primaryChatMode} status={stream.status}
               workingStep={stream.workingStep} runId={stream.activeRunId} turStart={stream.turStart} turSlut={stream.turSlut}
               onWorkExpanded={() => { if (stream.activeRunId) expandedChatRuns.current.add(stream.activeRunId) }}
-              role="assistant" blocks={liveChatBlokke(stream)} density="compact" streaming={streaming}
+              role="assistant" blocks={withoutPauseAsk(liveChatBlokke(stream))} density="compact" streaming={streaming}
               finalAnswerStarted={stream.finalAnswerStarted || stream.svarLaast} arbejdeEfterSvar={stream.arbejdeEfterSvar} rundeEtiketter={stream.rundeEtiketter}
               tankeResumeer={stream.tankeResumeer} config={raekkeConfig}
               tokens={stream.usage.output}
@@ -1163,6 +1164,10 @@ export function ChatView({
           {stream.pendingApproval && !pendingIRækken && (
             <GodkendelsesKort sessionId={sessionId ?? null} />
           )}
+          {/* pause_and_ask hører HER, ikke i tråden (9/11-2026). Bjørn: «det er
+              inline så det ruller med transcriptet». Spørgsmålet skal stå fast
+              over composeren indtil han svarer — se `PauseAskKort`. */}
+          <PauseAskKort />
           {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
           {stream.status === 'hung' && (
             <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />

@@ -366,7 +366,12 @@ describe('ChatView integration', () => {
     }
   }, 6000)
 
-  it('viser pause_and_ask inline i transcriptet og ikke over composeren', async () => {
+  it('viser pause_and_ask over composeren og IKKE inline i transcriptet', async () => {
+    // Ændret 9/11-2026. FØR krævede denne test det modsatte: at spørgsmålet
+    // stod inline i transcriptet. Bjørns symptom: «problemet med pause and ask
+    // er det er inline så det ruller med transcriptet» — og et spørgsmål der
+    // ruller væk er et spørgsmål han ikke kan svare på. Spørgsmålet hører over
+    // composeren, hvor det står fast indtil han svarer.
     const { container } = render(
       <SettingsProvider initialConfig={cfg}>
         <SessionProvider config={cfg}>
@@ -395,9 +400,8 @@ describe('ChatView integration', () => {
     // Stream-events anvendes én gang pr. frame (lib/useRammeReducer).
     await act(() => new Promise<void>((r) => setTimeout(r, 120)))
 
-    const pauseCard = container.querySelector('.transcript .pauseask')
-    expect(pauseCard).toBeInTheDocument()
-    expect(container.querySelector('.composer-notices .pauseask')).not.toBeInTheDocument()
+    expect(container.querySelector('.composer-notices .pauseask')).toBeInTheDocument()
+    expect(container.querySelector('.transcript .pauseask')).not.toBeInTheDocument()
     expect(container.querySelector('.composer-area .liveness')).not.toBeInTheDocument()
     expect(screen.getByText('Hvilken vej skal jeg tage?')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'A' }))

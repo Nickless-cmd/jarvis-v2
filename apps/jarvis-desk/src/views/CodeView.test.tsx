@@ -200,7 +200,9 @@ describe('CodeView', () => {
     expect(screen.queryByText('Min computer')).not.toBeInTheDocument()
   })
 
-  it('viser pause_and_ask inline i Code-transcriptet og styrer svaret ind i runet', async () => {
+  it('viser pause_and_ask over composeren og styrer svaret ind i runet', async () => {
+    // Ændret 9/11-2026 — samme grund som i ChatView: spørgsmålet skal stå fast
+    // over composeren, ikke rulle med transcriptet.
     const { container } = wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
     await userEvent.type(screen.getByRole('textbox'), 'fortsæt{Enter}')
     const result = JSON.stringify({
@@ -217,9 +219,8 @@ describe('CodeView', () => {
     // Stream-events anvendes én gang pr. frame (lib/useRammeReducer).
     await act(() => new Promise<void>((r) => setTimeout(r, 120)))
 
-    const pauseCard = container.querySelector('.transcript .pauseask')
-    expect(pauseCard).toBeInTheDocument()
-    expect(container.querySelector('.composer-notices .pauseask')).not.toBeInTheDocument()
+    expect(container.querySelector('.composer-notices .pauseask')).toBeInTheDocument()
+    expect(container.querySelector('.transcript .pauseask')).not.toBeInTheDocument()
     expect(container.querySelector('.composer-area .liveness')).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'A' }))
     await userEvent.click(screen.getByRole('button', { name: 'Send svar' }))

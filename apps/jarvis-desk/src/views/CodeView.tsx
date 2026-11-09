@@ -4,7 +4,7 @@ import { useRammeReducer } from '../lib/useRammeReducer'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useVoiceConversation } from '../hooks/useVoiceConversation'
 import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff, Bot, Globe, ListTodo, Monitor } from 'lucide-react'
-import { onPauseSvar } from '../lib/pauseAsk'
+import { onPauseSvar, withoutPauseAsk } from '../lib/pauseAsk'
 import { useStream } from '../hooks/useStream'
 import { usePermission } from '../hooks/usePermission'
 import { useSettings } from '../hooks/useSettings'
@@ -23,6 +23,7 @@ import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { HistoriskGodkendelse, type GodkendelsesHaendelse } from '../components/rich/HistoriskGodkendelse'
 import { fletGodkendelser, forsteGodkendelse } from '../lib/godkendelseIFolden'
 import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
+import { PauseAskKort } from '../components/feedback/PauseAskKort'
 import { findesGodkendelseIRækken } from '../lib/ventendeGodkendelse'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
@@ -1361,7 +1362,7 @@ export function CodeView({
             </Fragment>
           ))}
           {visLevendeTur && (
-            <MessageRow presentation="code" role="assistant" blocks={liveBlokke(stream)} density="compact" streaming={stream.status === 'working'} finalAnswerStarted={stream.finalAnswerStarted || stream.svarLaast} arbejdeEfterSvar={stream.arbejdeEfterSvar} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} config={config}
+            <MessageRow presentation="code" role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming={stream.status === 'working'} finalAnswerStarted={stream.finalAnswerStarted || stream.svarLaast} arbejdeEfterSvar={stream.arbejdeEfterSvar} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} config={config}
               runId={stream.activeRunId} onAnswerPaced={markerSvarPacet}
               elapsedMs={stream.elapsedMs} tokens={stream.usage.output} />
           )}
@@ -1388,6 +1389,8 @@ export function CodeView({
             {stream.pendingApproval && !pendingIRækken && (
               <GodkendelsesKort sessionId={sessionId ?? null} />
             )}
+            {/* pause_and_ask hører HER, ikke i tråden (9/11-2026) — se ChatView. */}
+            <PauseAskKort />
             {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
             {stream.status === 'hung' && (
               <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />

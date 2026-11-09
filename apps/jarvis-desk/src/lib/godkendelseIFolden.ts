@@ -95,18 +95,38 @@ export function fletGodkendelser<T extends ChatMessage>(messages: readonly T[]):
     const sidste = gruppe.indeks[gruppe.indeks.length - 1]
     if (sidste === undefined) continue
 
+    // ── Kun den SIDSTE række pr. godkendelse bliver stående (9/11-2026) ──
+    //
+    // FØR blev ALLE rækker i gruppen fjernet når turen var skrevet, og ALLE
+    // blev stående når den ikke var. Serveren skriver to pr. godkendelse
+    // (`pending` og `approved`/`denied`), så midt i en igangværende tur — hvor
+    // der ingen assistant-række er efter dem — stod BEGGE og blev tegnet.
+    // Bjørn så to kort for én godkendelse, både i desk og i PWA.
+    //
+    // MÅLT 9/11-2026 mod `chat_messages`: alle 17 godkendelser i den aktive
+    // session har 2 rækker, omgivet af `tool`-rækker uden assistant imellem.
+    //
+    // Reglen er nu: den sidste række bærer afgørelsen og bliver stående, de
+    // øvrige fjernes. Det holder antallet på ÉT kort pr. godkendelse uanset om
+    // turen er skrevet, og lader `findesGodkendelseIRækken` se rækken — så
+    // fallback-kortet over composeren ikke dublerer den.
+    for (const i of gruppe.indeks) {
+      if (i !== sidste) fjern.add(i)
+    }
+
     let maal = -1
     for (let i = sidste + 1; i < ind.length; i += 1) {
       if (ind[i]?.role === 'assistant') { maal = i; break }
     }
-    // Turen kører stadig: rækken bliver stående, så kortet kan besvares.
+    // Turen kører stadig: den sidste række bliver stående, så kortet kan
+    // besvares nu — men de ældre rækker i samme gruppe er allerede fjernet.
     if (maal < 0) continue
 
     const liste = tilfoej.get(maal)
     if (liste) liste.push(gruppe.haendelse)
     else tilfoej.set(maal, [gruppe.haendelse])
 
-    for (const i of gruppe.indeks) fjern.add(i)
+    fjern.add(sidste)
   }
 
   // ── 2. Læg blokken VED DET KALD DEN GJALDT (2/11-2026).

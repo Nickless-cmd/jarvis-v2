@@ -414,7 +414,9 @@ def test_round_atomic_hale_over_loftet_blokerer_ikke(monkeypatch):
     # på 1.200 (budget 1.000 × 1,2).
     messages[-2] = {"role": "user", "content": "KÆMPE-" + "x" * 12_000}
     messages[-1] = {"role": "assistant", "content": "KÆMPE-SVAR-" + "z" * 12_000}
-    ny = _runder(1)
+    # Unikt mærke: `_runder(1)` starter selv på BRUGER-0-, så en assertion på
+    # det navn ville også matche den GAMLE del og bevise intet (review 9/11).
+    ny = [{"role": "user", "content": "NY-RAEKKE-EFTER-COMPACT"}]
     reads = iter([messages, [*messages, *ny]])
     monkeypatch.setattr(session_compact, "_get_all_session_messages", lambda sid: next(reads))
     monkeypatch.setattr(
@@ -431,7 +433,7 @@ def test_round_atomic_hale_over_loftet_blokerer_ikke(monkeypatch):
         "de nye rækker forårsagede ikke overskridelsen"
     )
     assert "content" in stored
-    assert "BRUGER-0-" in stored["content"], "den nye række skal være i halen"
+    assert "NY-RAEKKE-EFTER-COMPACT" in stored["content"], "den nye række skal være i halen"
 
 
 def test_fjernet_besked_under_opsummering_kasserer_markoeren(monkeypatch):

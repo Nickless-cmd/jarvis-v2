@@ -74,51 +74,65 @@ def test_cli_non_quota_failure_stays_a_backend_failure():
     assert exc.provider_status == "failed"
 
 
-def test_et_udloebet_claude_token_afvises_foer_dispatch(tmp_path, monkeypatch):
-    """Binæren kan være der og alligevel være ubrugelig.
+def test_spawn_env_baerer_det_levende_claude_token(monkeypatch):
+    """Headless `claude -p` autentificerer via CLAUDE_CODE_OAUTH_TOKEN, ikke credentials-filen.
 
-    Målt 9/11-2026: `resolve_executable` fandt `~/.local/bin/claude` (2.1.318) og
-    `claude auth status` svarede `loggedIn: true` — men `claude --print` gav
-    `401 OAuth access token is invalid`. Tokenet udløb 20/5-2026 og
-    `refreshToken` er tom, så den kan ikke forny sig selv. Uden denne kontrol
-    melder `admission_reason` «klar» og sender en Task af sted der fejler på
-    provider-siden.
+    Målt 9/11-2026: spawn'en arvede `os.environ` uden variablen, faldt tilbage på
+    `~/.claude/.credentials.json` (udløbet 20/5-2026) og svarede
+    `401 OAuth access token is invalid` — mens tokenet i `claude_dispatch.env`
+    virkede (samme kommando svarede `hej`, exit 0). Uden denne linje er lane'en
+    død uanset hvad preflighten siger.
+    """
+    import core.services.agent_cli_backend as b
+    import core.services.dispatch_quota as q
+
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setattr(q, "_claude_token", lambda: ("sk-ant-oat01-live", "env_file"))
+    env = b._claude_spawn_env("claude-cli")
+    assert env["CLAUDE_CODE_OAUTH_TOKEN"] == "sk-ant-oat01-live"
+
+
+def test_spawn_env_overskriver_ikke_miljoeets_token(monkeypatch):
+    """Miljøet vinder: et token der allerede er sat må ikke erstattes af filens."""
+    import core.services.agent_cli_backend as b
+    import core.services.dispatch_quota as q
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "sk-ant-oat01-fra-miljoe")
+    monkeypatch.setattr(q, "_claude_token", lambda: ("sk-ant-oat01-fra-fil", "env_file"))
+    assert b._claude_spawn_env("claude-cli")["CLAUDE_CODE_OAUTH_TOKEN"] == "sk-ant-oat01-fra-miljoe"
+
+
+def test_codex_spawn_env_roerer_ikke_claude_tokenet(monkeypatch):
+    """Codex autentificerer selv; den skal ikke have Claudes token ind i miljøet."""
+    import core.services.agent_cli_backend as b
+    import core.services.dispatch_quota as q
+
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setattr(q, "_claude_token", lambda: ("sk-ant-oat01-live", "env_file"))
+    assert "CLAUDE_CODE_OAUTH_TOKEN" not in b._claude_spawn_env("codex-cli")
+
+
+def test_admission_slipper_igennem_naar_preflight_tillader(monkeypatch):
+    """Dommen om et dødt token ligger i quota_preflight, ikke i en lokal kopi.
+
+    Den tidligere kontrol læste `.credentials.json` og erklærede en lane død der
+    faktisk svarede (målt 9/11-2026). Preflighten bruger `_claude_token()`s fulde
+    kæde og er derfor den eneste dommer.
     """
     import core.services.agent_cli_backend as b
 
-    creds = tmp_path / "creds.json"
-    creds.write_text(json.dumps({
-        "claudeAiOauth": {"accessToken": "sk-ant-oat01-x", "refreshToken": "",
-                          "expiresAt": 1779292842159},
-    }), encoding="utf-8")
     monkeypatch.setattr(b, "resolve_executable", lambda p: "/bin/claude")
-    assert b._claude_auth_doed(creds) is True
-    monkeypatch.setattr(b, "_claude_auth_doed", lambda credentials=None: True)
-    assert b.admission_reason("claude-cli") == "claude_oauth_udloebet"
-
-
-def test_et_gyldigt_claude_token_slipper_igennem(tmp_path, monkeypatch):
-    import time
-
-    import core.services.agent_cli_backend as b
-
-    creds = tmp_path / "creds.json"
-    creds.write_text(json.dumps({
-        "claudeAiOauth": {"accessToken": "sk-ant-oat01-x", "refreshToken": "r",
-                          "expiresAt": int((time.time() + 86400) * 1000)},
-    }), encoding="utf-8")
-    assert b._claude_auth_doed(creds) is False
-    monkeypatch.setattr(b, "resolve_executable", lambda p: "/bin/claude")
-    monkeypatch.setattr(b, "_claude_auth_doed", lambda credentials=None: False)
     monkeypatch.setattr("core.services.dispatch_quota.quota_preflight",
                         lambda backend: {"allow": True, "reason": ""})
     assert b.admission_reason("claude-cli") == ""
 
 
-def test_en_manglende_credentials_fil_antager_brugbar(tmp_path):
-    """Tvivl må ikke blokere: findes filen ikke, melder preflight-ens egne fejl i stedet."""
-    from core.services.agent_cli_backend import _claude_auth_doed
+def test_admission_afviser_naar_preflight_blokerer(monkeypatch):
+    import core.services.agent_cli_backend as b
 
-    assert _claude_auth_doed(tmp_path / "findes-ikke.json") is False
+    monkeypatch.setattr(b, "resolve_executable", lambda p: "/bin/claude")
+    monkeypatch.setattr("core.services.dispatch_quota.quota_preflight",
+                        lambda backend: {"allow": False, "reason": "tokenet blev afvist (HTTP 401)"})
+    assert b.admission_reason("claude-cli").startswith("quota:")
 
 

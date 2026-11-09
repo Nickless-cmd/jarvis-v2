@@ -93,40 +93,44 @@ def resolve_executable(provider: str) -> str | None:
     return str(candidate) if candidate.is_file() and os.access(candidate, os.X_OK) else None
 
 
-def _claude_auth_doed(credentials: Path | None = None) -> bool:
-    """Er Claudes OAuth-token udloebet? Binæren kan vaere der og alligevel vaere ubrugelig.
+def _claude_spawn_env(provider: str) -> dict[str, str]:
+    """Miljoeet CLI-processen startes med. Claude skal have SIT EGET token med.
 
-    Maalt 9/11-2026: ``resolve_executable`` fandt ``~/.local/bin/claude`` (2.1.318),
-    ``claude auth status`` svarede ``loggedIn: true`` — og ``claude --print`` gav
-    ``401 OAuth access token is invalid``. Tokenet udloeb 20/5-2026 og
-    ``refreshToken`` er tom, saa den kan ikke forny sig selv. ``auth status``
-    laeser kun konfigurationen; den siger intet om hvorvidt tokenet virker.
+    MAALT 9/11-2026, to fejl der tilsammen gjorde en levende lane ubrugelig:
 
-    Uden denne kontrol melder ``admission_reason`` «klar» og sender en Task af
-    sted, der fejler paa provider-siden — praecis den teater-form hvor en
-    indgangsbetingelse ser ud som om den virker.
+    1. Spawn'en arvede ``os.environ`` uden ``CLAUDE_CODE_OAUTH_TOKEN``. Headless
+       ``claude -p`` autentificerer via den env-var; uden den falder den tilbage
+       paa ``~/.claude/.credentials.json``, hvis token udloeb 20/5-2026 — og
+       svarede ``401 OAuth access token is invalid``.
+    2. En tidligere kontrol her laeste netop den udloebne fil og erklaerede
+       lanen doed. Det levende token ligger i ``claude_dispatch.env`` og virker
+       (bevist samme dag: samme kommando svarede ``hej``, exit 0), saa kontrollen
+       blokerede en lane der kørte fint.
+
+    ``dispatch_quota._claude_token()`` ejer allerede den korrekte kaede
+    (miljoe -> env-fil -> credentials) og genbruges her. To kopier af samme
+    opslag drev fra hinanden, og den ene pegede paa en udloebet fil.
     """
-    path = credentials or (Path.home() / ".claude" / ".credentials.json")
-    try:
-        if not path.is_file():
-            return False
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        logger.warning("kunne ikke laese Claudes credentials - antager brugbar", exc_info=True)
-        return False                       # tvivl -> lad preflight-ens egne fejl melde
-    oauth = data.get("claudeAiOauth") or {}
-    expires_at = oauth.get("expiresAt")
-    if not isinstance(expires_at, (int, float)):
-        return False
-    return expires_at / 1000.0 <= time.time()
+    env = os.environ.copy()
+    if provider != "claude-cli" or env.get("CLAUDE_CODE_OAUTH_TOKEN"):
+        return env
+    from core.services.dispatch_quota import _claude_token
+
+    token, _source = _claude_token()
+    if token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    return env
 
 
 def admission_reason(provider: str) -> str:
-    """Tom streng betyder at CLI-ruten kan optages i Task-rutekæden."""
+    """Tom streng betyder at CLI-ruten kan optages i Task-rutekæden.
+
+    Doed-token-kontrollen ligger bevidst i ``quota_preflight`` og ikke her:
+    den bruger ``_claude_token()``s fulde kaede, mens en lokal kopi laeste
+    ``.credentials.json`` og erklaerede en virkende lane doed (maalt 9/11-2026).
+    """
     if not resolve_executable(provider):
         return "cli_ikke_installeret"
-    if provider == "claude-cli" and _claude_auth_doed():
-        return "claude_oauth_udloebet"
     from core.services.dispatch_quota import quota_preflight
 
     backend = "claude" if provider == "claude-cli" else "codex"
@@ -256,7 +260,7 @@ def run_task_cli(*, agent: dict[str, Any], prompt: str, run_id: str,
     started = time.monotonic()
     proc = subprocess.Popen(
         cmd, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        text=True, start_new_session=True, env=os.environ.copy(),
+        text=True, start_new_session=True, env=_claude_spawn_env(provider),
     )
     stdout = stderr = ""
     try:

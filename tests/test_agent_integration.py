@@ -186,6 +186,28 @@ def test_if_the_work_changed_after_the_approval_nothing_is_integrated(ig):
     assert again["approval_id"] != r["approval_id"]
 
 
+def test_grenen_kan_vaere_flyttet_siden_anmodningen(ig):
+    """Maalt 9/11-2026: en agent (eller en operatoer) der committer i worktree'et EFTER
+    anmodningen flyttede grenen vaek fra den frosne base. ``set_ref`` er en compare-and-swap,
+    saa integrationen fejlede med "is at X but expected Y" — og godkendelsen stod ``consumed``,
+    saa der var intet at proeve igen, selv om indholdet var praecis det godkendte.
+    """
+    acc, wt = ig.finished()
+    r = ig.ask(acc)
+    sh("git", "add", "-A", cwd=wt["path"])
+    sh("git", "commit", "-q", "-m", "agenten committer selv", cwd=wt["path"])
+    assert sh("git", "rev-parse", wt["branch"], cwd=ig.repo_).strip() != wt["base_commit"]
+
+    out = ig.human(r)
+    assert out["status"] == "ok" and out["integration"]["status"] == "integrated"
+    branch = out["integration"]["integrate_branch"]
+    assert sh("git", "show", f"{branch}:a.txt", cwd=ig.repo_) == "linje 1\nAGENTENS linje 2\nlinje 3\n"
+    assert sh("git", "show", f"{branch}:ny.py", cwd=ig.repo_) == "print('ny')\n"
+    # arbejdet skrives fortsat som ÉT commit ovenpaa basen: agentens egen commit squashes vaek,
+    # saa attributionen bliver i rangen og pre-push-vagten har intet at indvende
+    assert sh("git", "log", "-1", "--format=%P", wt["branch"], cwd=ig.repo_).strip() == wt["base_commit"]
+
+
 def test_a_conflict_creates_no_branch_and_reports_the_files(ig):
     acc, wt = ig.finished()
     open(os.path.join(ig.repo_, "a.txt"), "w").write("linje 1\nMAINS linje 2\nlinje 3\n")

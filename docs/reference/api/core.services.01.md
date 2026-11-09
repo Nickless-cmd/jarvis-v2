@@ -611,7 +611,7 @@ _Integration af en kodeagents arbejde - foerste forbruger af approval-flowet (ag
 | function | `execute_approved` | `(approval)` | Udfoer en GODKENDT integration. Bruger approvalen foerst (hoejst én gang). | [src](../../../core/services/agent_integration.py#L90) |
 | function | `_attributed_message` | `(message, approval)` | Saet de seks attribution-trailere paa en commit-besked fra integrations-flowet. | [src](../../../core/services/agent_integration.py#L118) |
 | function | `_merge` | `(wt, approval, args)` | — | [src](../../../core/services/agent_integration.py#L143) |
-| function | `run_pending` | `()` | Supervisor-tik: godkendte, ubrugte integrationer (f.eks. besluttet lige foer en genstart) udfoeres. | [src](../../../core/services/agent_integration.py#L167) |
+| function | `run_pending` | `()` | Supervisor-tik: godkendte, ubrugte integrationer (f.eks. besluttet lige foer en genstart) udfoeres. | [src](../../../core/services/agent_integration.py#L174) |
 
 ## `core/services/agent_loop_core.py`
 _Agentens model-/vaerktoejsloekke som ren logik (agent-contract-v1 C6, spec 12.1)._

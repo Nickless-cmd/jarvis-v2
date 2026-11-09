@@ -143,10 +143,17 @@ def _attributed_message(message: str, approval: dict[str, Any]) -> str:
 def _merge(wt: dict[str, Any], approval: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
     repo = wt["repo_path"]
     assignment = approval["assignment_id"]
+    # Grenen kan vaere flyttet frem siden anmodningen: agenten (eller en operatoer) kan selv have
+    # committet i worktree'et. ``set_ref`` er en compare-and-swap, saa en frossen ``old`` afviste
+    # arbejdet selv om indholdet var praecis det godkendte — maalt 9/11-2026, hvor godkendelsen
+    # stod ``consumed`` og intet blev merget. Diff-hashen er allerede bekraeftet i
+    # ``execute_approved``, saa her laeses grenens faktiske HEAD; arbejdet skrives fortsat som ÉT
+    # commit ovenpaa basen, saa attributionen bliver i rangen.
+    frem = g.commits_since(wt["gitdir"], wt["path"], wt["base_commit"])
     agent_commit = g.commit_worktree_tree(
         wt["gitdir"], wt["path"], wt["base_commit"],
         _attributed_message(f"Agent {wt['agent_id']}: {assignment}", approval))
-    g.set_ref(repo, f"refs/heads/{wt['branch']}", agent_commit, wt["base_commit"])
+    g.set_ref(repo, f"refs/heads/{wt['branch']}", agent_commit, frem[0] if frem else wt["base_commit"])
     target = g.current_head(repo)
     ref = f"refs/heads/integrate/{g.safe_name(assignment, 'assignment_id')}"
     if g.ref_exists(repo, ref):

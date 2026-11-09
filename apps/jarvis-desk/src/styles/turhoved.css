@@ -32,7 +32,7 @@
   position: absolute; left: 0; right: 0; bottom: -1px;
   height: 1px; background: var(--rv-skillelinje, var(--line, rgb(255 255 255 / 12%)));
   opacity: 0; transform: scaleX(0); transform-origin: left center;
-  transition: transform 260ms cubic-bezier(.22, .61, .36, 1), opacity 120ms ease-out;
+  transition: transform var(--dur-sheet) var(--ease-out), opacity var(--dur-snap) var(--ease-out);
   pointer-events: none;
 }
 

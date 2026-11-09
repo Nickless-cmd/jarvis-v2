@@ -17,7 +17,7 @@ html.figur-flade, html.figur-flade body, html.figur-flade #root {
 
 .figur-rod {
   --figur-farve: #3fc7b4;
-  transition: --figur-farve 420ms ease;
+  transition: --figur-farve var(--dur-slow) var(--ease-out);
   position: absolute; left: 0; bottom: 0;
   width: 300px;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
@@ -145,7 +145,7 @@ html.figur-flade, html.figur-flade body, html.figur-flade #root {
 }
 
 /* ── Codex' tre ikoner under figuren + «Start ny chat» ──────────────── */
-.figur-ikoner { display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
+.figur-ikoner { display: flex; gap: 4px; opacity: 0; transition: opacity var(--dur-fast); }
 .figur-rod:hover .figur-ikoner, .figur-ikoner.synlige { opacity: 1; }
 .figur-ikoner button {
   all: unset; cursor: pointer; width: 28px; height: 28px; display: grid; place-items: center;

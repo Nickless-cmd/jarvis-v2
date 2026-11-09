@@ -18,7 +18,7 @@
 .chat-flow-round {
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 220ms ease-out, transform 220ms ease-out;
+  transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
 }
 
 .chat-flow-round[data-pacing-skjult] {
@@ -95,7 +95,7 @@
 .chat-flow-gruppe-ydre {
   display: grid;
   grid-template-rows: 1fr;
-  transition: grid-template-rows 260ms cubic-bezier(.22, .61, .36, 1);
+  transition: grid-template-rows var(--dur-sheet) var(--ease-out);
 }
 
 .chat-flow-gruppe-ydre[data-aaben='false'] { grid-template-rows: 0fr; }
@@ -109,7 +109,7 @@
      `overflow: clip` fjerner indholdet, men ikke gruppens egen `padding-top`
      (0.2rem). Et 3 px-residual er præcis det hop vi er ved at fjerne, så
      luften skal animeres væk sammen med højden. */
-  transition: padding-top 260ms cubic-bezier(.22, .61, .36, 1);
+  transition: padding-top var(--dur-sheet) var(--ease-out);
 }
 
 .chat-flow-gruppe-ydre[data-aaben='false'] > .chat-flow-gruppe { padding-top: 0; }

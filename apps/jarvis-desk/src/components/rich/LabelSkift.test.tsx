@@ -191,6 +191,9 @@ describe('syntese-linjen (chat mode)', () => {
 // Kildens tal, pinnet mod den CSS der faktisk leveres.
 describe('værdierne i app.css er Claude Desktops', () => {
   const css = readFileSync(join(__dirname, '../../styles/app.css'), 'utf8')
+  // Token-definitionerne. Flyttet herind 9/11-2026, da varigheder og kurver
+  // blev tokens: pinnen skal følge værdien, ikke literalen i app.css.
+  const tokens = readFileSync(join(__dirname, '../../styles/tokens.css'), 'utf8')
 
   it('entréen: 430 ms backwards, to-faset med 30 %-stop og kurver pr. fase', () => {
     expect(css).toMatch(/\.toolgroup\.er-koerende \{ animation: toolgroup-ind 430ms backwards;/)
@@ -213,8 +216,14 @@ describe('værdierne i app.css er Claude Desktops', () => {
   })
 
   it('folden: .2 s cubic-bezier(.19,1,.22,1), og indholdet højst 200 px', () => {
-    expect(css).toMatch(/grid-template-rows \.2s cubic-bezier\(\.19, 1, \.22, 1\)/)
+    expect(css).toMatch(/grid-template-rows var\(--dur-base\) var\(--ease-snap\)/)
     expect(css).toMatch(/max-height: 200px; overflow-y: auto;/)
+    // 9/11-2026: vaerdierne flyttede ned i tokens, saa 60 transition-regler
+    // kan dele fem varigheder. 1:1-forpligtelsen flyttede MED — pinnet her
+    // kontrollerer nu at token'et selv baerer Claude Desktops tal, saa en
+    // "forbedring" af kurven stadig faeldes af en test.
+    expect(tokens).toMatch(/--dur-base: 200ms/)
+    expect(tokens).toMatch(/--ease-snap: cubic-bezier\(0\.19, 1, 0\.22, 1\)/)
   })
 
   it('careten er altid synlig hvor hover ikke findes', () => {

@@ -817,3 +817,50 @@ describe('railens streger — hvile, hover og den nederste (4/10-2026)', () => {
     expect(sidsteHover, 'er-sidste:hover-override mangler').toBe(sidste)
   })
 })
+
+/**
+ * Bevaegelsen skal blive i tokens.
+ *
+ * Maalt 9/11-2026: 58 transition-regler bar 12 forskellige varigheder og 9
+ * kurver — .13s og .15s laa ved siden af hinanden i samme fil uden at betyde
+ * noget bestemt. De blev migreret til fem varigheder og fire kurver. Uden en
+ * vagt her driver de tilbage: den naeste der skriver `transition: .15s ease`
+ * maerker ingen fejl, og om tre maaneder er der tolv tal igen.
+ */
+describe('bevaegelses-tokens', () => {
+  const FILER = (() => {
+    const ud: string[] = []
+    const gaa = (d: string) => {
+      for (const n of readdirSync(d)) {
+        const p = join(d, n)
+        if (statSync(p).isDirectory()) gaa(p)
+        else if (n.endsWith('.css') && n !== 'tokens.css') ud.push(p)
+      }
+    }
+    gaa(__dirname)
+    gaa(join(__dirname, '..'))
+    return [...new Set(ud)]
+  })()
+
+  it('definerer fem varigheder og fire kurver', () => {
+    for (const t of ['--dur-snap', '--dur-fast', '--dur-base', '--dur-sheet', '--dur-slow'])
+      expect(tokens, `${t} mangler`).toMatch(new RegExp(`${t}:\\s*\\d+ms`))
+    for (const t of ['--ease-out', '--ease-snap', '--ease-soft', '--ease-overshoot'])
+      expect(tokens, `${t} mangler`).toMatch(new RegExp(`${t}:\\s*cubic-bezier\\(`))
+  })
+
+  it('ingen transition maa baere en hardkodet varighed eller kurve', () => {
+    const synder: string[] = []
+    for (const f of FILER) {
+      const css = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      for (const m of css.matchAll(/transition:\s*([^;}]+)/g)) {
+        const b = (m[1] ?? '').trim()
+        const hvor = f.slice(f.indexOf('src/'))
+        if (/(?<![\w.])[\d.]+m?s(?![\w])/.test(b)) synder.push(`${hvor}: varighed i «${b}»`)
+        if (/cubic-bezier\(/.test(b)) synder.push(`${hvor}: kurve-literal i «${b}»`)
+        if (/(?<![-\w])ease(-in-out|-out|-in)?(?![-\w])/.test(b)) synder.push(`${hvor}: ease-noegleord i «${b}»`)
+      }
+    }
+    expect(synder).toEqual([])
+  })
+})

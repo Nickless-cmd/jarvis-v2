@@ -10,7 +10,7 @@
 .greeting-connectors-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .greeting-connector { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px 4px 6px;
   border: 1px solid var(--border); border-radius: 999px; background: transparent;
-  color: var(--fg-2); cursor: pointer; font-size: 12px; transition: border-color .15s, color .15s; }
+  color: var(--fg-2); cursor: pointer; font-size: 12px; transition: border-color var(--dur-fast), color var(--dur-fast); }
 .greeting-connector:hover { color: var(--fg-1); border-color: var(--fg-3); }
 .greeting-connector-icon { width: 16px; height: 16px; display: grid; place-items: center;
   flex-shrink: 0; opacity: .75; }

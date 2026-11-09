@@ -84,10 +84,10 @@
 }
 /* Hover: ikonet falmer ud, chevronen ind — 100ms, ingen række-fill.
    Samme affordance som forlægget (DisclosureRow.module.css:57-77). */
-.raekkevisning .rv-glyf { transition: opacity 100ms ease; }
+.raekkevisning .rv-glyf { transition: opacity var(--dur-snap) var(--ease-out); }
 .raekkevisning .rv-hoverChev {
   position: absolute; inset: 0; margin: auto;
-  opacity: 0; transition: opacity 100ms ease;
+  opacity: 0; transition: opacity var(--dur-snap) var(--ease-out);
 }
 .raekkevisning .rv-r[data-foldbar]:hover .rv-glyf { opacity: 0; }
 .raekkevisning .rv-r[data-foldbar]:hover .rv-glyf-glimt { opacity: 0; }
@@ -110,7 +110,7 @@
    titlen med. Ingen række-fill — det er teksten der vågner, ikke fladen.
    Det er den affordans der manglede: uden den er der ingen grund til at tro
    at rækken kan foldes ud. */
-.raekkevisning .rv-sum { transition: color 120ms ease; }
+.raekkevisning .rv-sum { transition: color var(--dur-snap) var(--ease-out); }
 .raekkevisning .rv-r[data-foldbar]:hover .rv-sum,
 .raekkevisning .rv-r[data-foldbar]:hover .rv-slags { color: var(--fg-1); }
 /* Målt: separatoren er IKKE et tegn — en tom 2×2px prik med 8px til hver side. */
@@ -128,7 +128,7 @@
   flex: none; margin-left: 4px; width: 16px; height: 16px;
   display: flex; align-items: center; justify-content: center;
   position: relative;
-  color: var(--fg-3); transition: color 100ms ease;
+  color: var(--fg-3); transition: color var(--dur-snap) var(--ease-out);
 }
 .raekkevisning .rv-r[data-foldbar] { cursor: pointer; }
 .raekkevisning .rv-r[data-foldbar]:hover .rv-chev { color: var(--fg-2); }
@@ -256,7 +256,7 @@
 .raekkevisning .rv-arbejdsrunde[data-aktiv-runde] {
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 220ms ease-out, transform 220ms ease-out;
+  transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
 }
 .raekkevisning .rv-arbejdsrunde[data-pacing-skjult] {
   opacity: 0;

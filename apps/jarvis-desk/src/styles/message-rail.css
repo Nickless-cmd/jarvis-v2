@@ -13,7 +13,7 @@
   max-height: calc(100vh - 200px);
   overflow-y: auto;
   scrollbar-width: none;
-  transition: background .12s ease, border-color .12s ease;
+  transition: background var(--dur-snap) var(--ease-out), border-color var(--dur-snap) var(--ease-out);
 }
 .msg-rail-panel::-webkit-scrollbar { display: none; }
 
@@ -38,7 +38,7 @@
   border-radius: 2px;
   background: var(--fg-1);
   opacity: .5;
-  transition: width .14s ease, opacity .14s ease;
+  transition: width var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
 }
 .msg-rail-row:hover .msg-rail-dash,
 .msg-rail-row:focus-visible .msg-rail-dash { opacity: 1; width: 26px; }

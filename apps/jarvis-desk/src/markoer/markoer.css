@@ -61,7 +61,7 @@ body,
 .markoer-kant.markoer-kant--slukket {
   opacity: 0;
   animation: none;
-  transition: opacity 180ms ease-out;
+  transition: opacity var(--dur-base) var(--ease-out);
 }
 
 @keyframes markoer-kant-aande {

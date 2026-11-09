@@ -56,7 +56,7 @@
   color: var(--fg-3);
   border-radius: 999px;
   cursor: pointer;
-  transition: 0.14s ease;
+  transition: var(--dur-fast) var(--ease-out);
   background: transparent;
   border: none;
 }
@@ -91,7 +91,7 @@
   font-size: 13.5px;
   border-radius: 7px;
   cursor: pointer;
-  transition: 0.12s ease;
+  transition: var(--dur-snap) var(--ease-out);
   background: transparent;
   border: none;
   width: 100%;
@@ -313,7 +313,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   width: 20px; height: 20px; margin-right: 8px;
   padding: 0; background: none; border: 0; border-radius: 4px;
   color: var(--fg-3); cursor: pointer;
-  opacity: 0; transition: opacity 100ms ease, color 100ms ease;
+  opacity: 0; transition: opacity var(--dur-snap) var(--ease-out), color var(--dur-snap) var(--ease-out);
 }
 /* Vises når man er i nærheden af rækken — eller ved tastatur-fokus, så den
    ikke er usynlig for den der ikke bruger mus. */
@@ -335,7 +335,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   border-radius: 7px;
   color: var(--fg-2);
   font-size: 13.5px;
-  transition: 0.12s ease;
+  transition: var(--dur-snap) var(--ease-out);
   line-height: 1.35;
   position: relative;
 }
@@ -519,7 +519,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   border-radius: 6px;
   color: var(--fg-3);
   cursor: pointer;
-  transition: 0.12s ease;
+  transition: var(--dur-snap) var(--ease-out);
   background: transparent;
   border: none;
 }
@@ -732,7 +732,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   gap: 6px;
   padding: 0 6px;
   opacity: 0;
-  transition: 0.15s ease;
+  transition: var(--dur-fast) var(--ease-out);
 }
 .msg-user-wrap:hover .msg-actions,
 .msg-jarvis-wrap:hover .msg-actions { opacity: 1; }
@@ -742,7 +742,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   border-radius: 5px;
   color: var(--fg-3);
   cursor: pointer;
-  transition: 0.12s ease;
+  transition: var(--dur-snap) var(--ease-out);
   background: transparent;
   border: none;
 }
@@ -1002,7 +1002,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   background: var(--field-bg, var(--bg-2));
   border: 1px solid var(--line);
   border-radius: 12px;
-  transition: 0.15s ease;
+  transition: var(--dur-fast) var(--ease-out);
   overflow: visible;   /* tillad +/permissions-popovers at folde OP udenfor rammen */
 }
 /* Teal, ikke blå (Bjørn 17/9-2026). Blandet med linjefarven, så kanten er
@@ -1100,7 +1100,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   border-radius: 7px;
   cursor: pointer;
   font-size: 12.5px;
-  transition: 0.12s ease;
+  transition: var(--dur-snap) var(--ease-out);
 }
 .add-context:hover {
   background: var(--bg-3);
@@ -1119,7 +1119,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   color: var(--fg-2);
   font-size: 12.5px;
   cursor: pointer;
-  transition: 0.12s ease;
+  transition: var(--dur-snap) var(--ease-out);
   border: none;
 }
 .model-pill:hover { background: var(--bg-3); color: var(--fg-1); }
@@ -1145,7 +1145,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   color: var(--bg-0);
   border-radius: 50%;
   cursor: pointer;
-  transition: 0.15s ease;
+  transition: var(--dur-fast) var(--ease-out);
   margin-left: 6px;
 }
 .composer-send:hover {
@@ -1241,7 +1241,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .split-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .split-handle {
   width: 5px; cursor: col-resize; flex: 0 0 auto; background: transparent;
-  border-left: 1px solid var(--line); transition: background 0.12s;
+  border-left: 1px solid var(--line); transition: background var(--dur-snap);
 }
 .split-handle:hover, .split-handle.dragging { background: var(--accent); border-left-color: var(--accent-text); }
 .split-panel {
@@ -1513,7 +1513,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .panel-toggle {
   display: grid; place-items: center; width: 26px; height: 26px;
   background: transparent; border: none; color: var(--fg-3); cursor: pointer;
-  border-radius: 6px; transition: 0.12s ease;
+  border-radius: 6px; transition: var(--dur-snap) var(--ease-out);
 }
 .panel-toggle:hover { background: var(--bg-2); color: var(--fg-1); }
 .panel-toggle.active { color: var(--accent-text); background: color-mix(in srgb, var(--accent) 10%, transparent); }
@@ -1625,14 +1625,14 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    styrke på hver fil ville gøre tråden til et værktøjsbælte. */
 .fil-raekke-handlinger {
   flex: none; display: inline-flex; gap: 2px; margin-left: 10px;
-  opacity: .55; transition: opacity 100ms ease;
+  opacity: .55; transition: opacity var(--dur-snap) var(--ease-out);
 }
 .fil-raekke-handlinger button {
   width: 16px; height: 16px; padding: 0; margin: 0;
   display: inline-flex; align-items: center; justify-content: center;
   background: none; border: 0; border-radius: 4px;
   color: var(--fg-3); cursor: pointer;
-  transition: color 100ms ease;
+  transition: color var(--dur-snap) var(--ease-out);
 }
 /* Teksten vågner, handlingerne lyser op — samme affordans som en foldbar
    række, og med rækkens egne 100/120 ms. */
@@ -1860,7 +1860,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   padding: 4px 10px; border-radius: 999px;
   font-size: 11.5px; font-family: "SF Mono", Menlo, monospace; color: var(--fg-2);
   background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
-  user-select: none; transition: background 0.15s ease, border-color 0.15s ease;
+  user-select: none; transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 .central-badge.owner { cursor: pointer; }
 .central-badge.owner:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); }
@@ -1907,7 +1907,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   padding: 4px 10px; border-radius: 999px;
   font-size: 11.5px; font-family: "SF Mono", Menlo, monospace; color: var(--fg-2);
   background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
-  user-select: none; transition: background 0.15s ease, border-color 0.15s ease;
+  user-select: none; transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 .peak-badge .peak-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-3); flex: 0 0 auto; }
 .peak-badge .peak-label { color: var(--fg-2); }
@@ -2276,10 +2276,10 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    drejningen tager 150 ms. */
 .toolgroup-celle { display: inline-grid; place-items: center; flex: 0 0 auto; }
 .toolgroup-celle > * { grid-area: 1 / 1; }
-.toolgroup-celle .prikker { transition: opacity 200ms; }
+.toolgroup-celle .prikker { transition: opacity var(--dur-base); }
 .toolgroup-chevron {
   color: var(--fg-2); opacity: 0; transform: rotate(-90deg);
-  transition: opacity 200ms, transform 150ms;
+  transition: opacity var(--dur-base), transform var(--dur-fast);
 }
 .toolgroup.er-aaben .toolgroup-chevron { opacity: 1; transform: none; }
 .toolgroup-head:hover .toolgroup-chevron,
@@ -2311,7 +2311,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    en kontrakt tre steder. Varigheden skal stemme med FOLD_MS. */
 .linje-fold {
   display: grid; grid-template-rows: 0fr; opacity: 0;
-  transition: grid-template-rows .2s cubic-bezier(.19, 1, .22, 1), opacity .2s cubic-bezier(.19, 1, .22, 1);
+  transition: grid-template-rows var(--dur-base) var(--ease-snap), opacity var(--dur-base) var(--ease-snap);
 }
 .linje-fold.aaben { grid-template-rows: 1fr; opacity: 1; }
 .linje-fold-indre { overflow: hidden; min-height: 0; min-width: 0; align-self: start; }
@@ -2468,7 +2468,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
  * nødvendigt: uden det på det indre element kollapser rækken ikke. */
 .approvallinje-krop {
   display: grid; grid-template-rows: 0fr;
-  transition: grid-template-rows 180ms ease;
+  transition: grid-template-rows var(--dur-base) var(--ease-out);
 }
 .approvallinje-krop[data-aaben="true"] { grid-template-rows: 1fr; }
 .approvallinje-indre { overflow: hidden; min-height: 0; }
@@ -2908,12 +2908,12 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 /* toggle-switch (planlægningstilstand) */
 .toggle {
   margin-left: auto; width: 32px; height: 18px; border-radius: 9px;
-  background: var(--bg-4); position: relative; transition: 0.15s; flex: 0 0 auto;
+  background: var(--bg-4); position: relative; transition: var(--dur-fast); flex: 0 0 auto;
 }
 .toggle.on { background: var(--accent); }
 .toggle .knob {
   position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
-  border-radius: 50%; background: var(--fg-1); transition: 0.15s;
+  border-radius: 50%; background: var(--fg-1); transition: var(--dur-fast);
 }
 .toggle.on .knob { left: 16px; background: var(--bg-0); }
 
@@ -2949,7 +2949,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .scroll-bottom-btn:hover { background: var(--bg-4); }
 /* Claude Desktops jump-to-latest: altid i DOM'en, toner på 200 ms, accent-kant
    mens svaret strømmer. `inert` (sat i komponenten) gør den utabbar i bund. */
-.jump-to-latest { opacity: 0; pointer-events: none; transition: opacity 200ms, box-shadow 200ms, border-color 200ms; }
+.jump-to-latest { opacity: 0; pointer-events: none; transition: opacity var(--dur-base), box-shadow var(--dur-base), border-color var(--dur-base); }
 .jump-to-latest.er-synlig { opacity: 1; pointer-events: auto; }
 .jump-to-latest.er-live { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 .jump-to-latest:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.45); }
@@ -3067,7 +3067,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 /* Trækbart håndtag mellem fil-træ og fil-visning. */
 .codepanel-handle {
   width: 5px; flex: 0 0 auto; cursor: col-resize; background: transparent;
-  border-right: 1px solid var(--line); transition: background 0.12s;
+  border-right: 1px solid var(--line); transition: background var(--dur-snap);
 }
 .codepanel-handle:hover, .codepanel-handle.dragging { background: var(--accent); border-right-color: var(--accent-text); }
 .codepanel-view { flex: 1; overflow: auto; padding: 10px; min-width: 0; display: flex; flex-direction: column; }
@@ -3085,7 +3085,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 /* Trækbart håndtag i venstre kant af fil-/preview-panelet. */
 .codeview-panel-handle {
   width: 5px; flex: 0 0 auto; cursor: col-resize; background: transparent;
-  border-left: 1px solid var(--line); transition: background 0.12s;
+  border-left: 1px solid var(--line); transition: background var(--dur-snap);
 }
 .codeview-panel-handle:hover, .codeview-panel-handle.dragging { background: var(--accent); border-left-color: var(--accent-text); }
 /* Code-mode deler transcriptets viewport med Chat i chat-viewport.css. */
@@ -3255,7 +3255,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .ch-flagrow { font-size:12px; color:#e8c89a; line-height:1.6; } .ch-flagrow b{ color:var(--ch-amber); font-weight:400; }
 .ch-flagcount { color:var(--ch-dry); font-size:14px; }
 .ch-ctrl { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
-.ch-btn { background:var(--ch-panel); border:1px solid var(--ch-line-2); color:var(--ch-fg-term); font-family:var(--font-mono); font-size:12px; padding:8px 12px; border-radius:7px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all .15s; }
+.ch-btn { background:var(--ch-panel); border:1px solid var(--ch-line-2); color:var(--ch-fg-term); font-family:var(--font-mono); font-size:12px; padding:8px 12px; border-radius:7px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition: all var(--dur-fast); }
 .ch-btn:hover:not(:disabled){ border-color:var(--ch-cyan); color:var(--ch-fg-bright); }
 .ch-btn.busy{ border-color:var(--ch-cyan); color:var(--ch-fg-bright); }
 /* Konsol: mode-nav (terminal/diagnostik) + indhold */
@@ -3532,7 +3532,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .mc-summary-cell { flex: 1; min-width: 84px; border: 1px solid var(--line); border-radius: 13px;
   padding: 11px 13px; display: flex; flex-direction: column; gap: 3px; cursor: pointer; text-align: left;
   background: linear-gradient(160deg, var(--bg-2), var(--bg-1));
-  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
 .mc-summary-cell:disabled { cursor: default; }
 .mc-summary-cell:not(:disabled):hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
   box-shadow: 0 6px 18px rgba(0,0,0,.28); }
@@ -3549,7 +3549,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   background: var(--bg-1); border: 1px solid var(--line); overflow-x: auto; }
 .mc-tab { background: transparent; border: none; border-radius: 9px; cursor: pointer;
   color: var(--fg-3); font-size: 13px; font-weight: 550; padding: 7px 14px; display: inline-flex;
-  align-items: center; gap: 7px; white-space: nowrap; transition: color .15s ease, background .15s ease; }
+  align-items: center; gap: 7px; white-space: nowrap; transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
 .mc-tab:hover { color: var(--fg-2); }
 .mc-tab.active { color: var(--bg-0);
   background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 92%, white), var(--accent));
@@ -3615,17 +3615,17 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   box-shadow: 0 2px 10px rgba(0,0,0,.14); }
 .mc .cowork-pane-head { letter-spacing: .2px; }
 .mc-row { background: linear-gradient(165deg, var(--bg-2), var(--bg-1)); border-radius: 11px;
-  transition: transform .13s ease, border-color .13s ease, box-shadow .13s ease; }
+  transition: transform var(--dur-snap) var(--ease-out), border-color var(--dur-snap) var(--ease-out), box-shadow var(--dur-snap) var(--ease-out); }
 .mc-row:hover { transform: translateX(2px); box-shadow: 0 4px 14px rgba(0,0,0,.22); }
 .mc-agent-card { background: linear-gradient(165deg, var(--bg-2), var(--bg-1)); border-radius: 13px;
-  transition: transform .13s ease, border-color .13s ease, box-shadow .13s ease; }
+  transition: transform var(--dur-snap) var(--ease-out), border-color var(--dur-snap) var(--ease-out), box-shadow var(--dur-snap) var(--ease-out); }
 .mc-agent-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
   box-shadow: 0 6px 18px rgba(0,0,0,.26); }
 .mc-schedule-row { background: linear-gradient(165deg, var(--bg-2), var(--bg-1)); border-radius: 11px; }
 .mc-rundetail { background: linear-gradient(165deg, var(--bg-2), var(--bg-1)); border-radius: 13px;
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent) 10%, transparent), 0 4px 16px rgba(0,0,0,.24); }
 .mc-step-dot { box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent); }
-.mc-filter { transition: color .13s ease, border-color .13s ease; }
+.mc-filter { transition: color var(--dur-snap) var(--ease-out), border-color var(--dur-snap) var(--ease-out); }
 .mc-filter.active { border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
   color: var(--accent-text); background: color-mix(in srgb, var(--accent) 10%, var(--bg-2)); }
 
@@ -3893,7 +3893,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    samme sted som sidepanelets streg ligger paa dets hoejre kant. */
 .code-right-stack > .skinne-greb::after {
   content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 1px;
-  background: transparent; transition: background .12s;
+  background: transparent; transition: background var(--dur-snap);
 }
 .code-right-stack > .skinne-greb:hover::after,
 .code-right-stack > .skinne-greb.er-aktiv::after,
@@ -4355,7 +4355,7 @@ p.central-flag { margin: 0 0 6px; }
   margin: 10px 0 4px; }
 .greeting-starter { font-size: 12px; padding: 5px 12px; border-radius: 999px;
   border: 1px solid var(--border); background: transparent; color: var(--fg-2);
-  cursor: pointer; transition: border-color .15s, color .15s; }
+  cursor: pointer; transition: border-color var(--dur-fast), color var(--dur-fast); }
 .greeting-starter:hover { color: var(--fg-1); border-color: var(--fg-3); }
 
 /* Palette-grupper: «Gå til» over samtaler, saa destinationer ikke drukner. */
@@ -4377,7 +4377,7 @@ p.central-flag { margin: 0 0 6px; }
   padding: 6px 9px; border: none; border-radius: var(--radius-sm);
   background: transparent; color: var(--fg-1);
   font: inherit; text-align: left; cursor: pointer;
-  transition: background 120ms ease;
+  transition: background var(--dur-snap) var(--ease-out);
 }
 .mention-rk:hover, .mention-rk.valgt { background: var(--bg-3); }
 .mention-rk.valgt { box-shadow: inset 2px 0 0 var(--accent); }
@@ -4459,7 +4459,7 @@ p.central-flag { margin: 0 0 6px; }
   color: var(--fg-3); font: inherit; font-size: 12px; text-align: left;
 }
 .runtl-head:hover { color: var(--fg-2); }
-.runtl-pil { flex: 0 0 auto; transition: transform 140ms ease; }
+.runtl-pil { flex: 0 0 auto; transition: transform var(--dur-fast) var(--ease-out); }
 .runtl-pil.aaben { transform: rotate(90deg); }
 .runtl-resume { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .runtl.har-fejl .runtl-resume { color: var(--warn-fg); }
@@ -4505,7 +4505,7 @@ p.central-flag { margin: 0 0 6px; }
   background: transparent; color: var(--fg-2);
   border: 1px solid var(--line); border-radius: var(--radius-sm);
   font: inherit; font-size: 12.5px; cursor: pointer;
-  transition: border-color 120ms ease, color 120ms ease;
+  transition: border-color var(--dur-snap) var(--ease-out), color var(--dur-snap) var(--ease-out);
 }
 .errorcard-alt:hover:not(:disabled) { color: var(--fg-1); border-color: var(--fg-3); }
 .errorcard-alt:disabled { opacity: .6; cursor: default; }
@@ -4595,7 +4595,7 @@ p.central-flag { margin: 0 0 6px; }
   color: var(--fg-3); font: inherit; font-size: 12px;
 }
 .rv-diffknap:hover { color: var(--fg-2); }
-.rv-pil { transition: transform 140ms ease; }
+.rv-pil { transition: transform var(--dur-fast) var(--ease-out); }
 .rv-pil.aaben { transform: rotate(90deg); }
 .rv-diff {
   margin: 7px 0 0; padding: 10px; max-height: 26rem; overflow: auto;
@@ -4631,7 +4631,7 @@ p.central-flag { margin: 0 0 6px; }
   padding: 4px 9px; border-radius: var(--radius-sm);
   background: transparent; border: 1px solid var(--line);
   font: inherit; font-size: 11.5px; cursor: pointer;
-  transition: border-color 120ms ease, color 120ms ease;
+  transition: border-color var(--dur-snap) var(--ease-out), color var(--dur-snap) var(--ease-out);
 }
 .lk-ja { color: var(--ok); margin-left: auto; }
 .lk-ja:hover:not(:disabled) { border-color: var(--ok); }
@@ -5401,7 +5401,7 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
   /* Indgang: skub fra hoejre OG lidt mindre. cubic-bezier(.16,.84,.44,1) er
      haard start og bloed landing — feltet bliver SKUBBET ind. */
   transform: translateX(120%) scale(.96); opacity: 0;
-  transition: transform .42s cubic-bezier(.16,.84,.44,1), opacity .28s ease;
+  transition: transform var(--dur-slow) var(--ease-soft), opacity var(--dur-sheet) var(--ease-out);
 }
 /* Blur OVENPAA den solide farve, ikke i stedet for den. Kan GPU'en ikke
    blur, staar den fladtloennede baggrund tilbage og teksten er stadig
@@ -5417,7 +5417,7 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
    underholde, den skal væk. */
 .notif-toast.er-ude {
   transform: translateX(0) scale(.98); opacity: 0;
-  transition: transform .46s cubic-bezier(.4,0,.7,.2), opacity .46s cubic-bezier(.4,0,.7,.2);
+  transition: transform var(--dur-slow) var(--ease-out), opacity var(--dur-slow) var(--ease-out);
 }
 .notif-toast.er-fejl { --toast-ring: var(--error-fg); }
 .notif-toast.er-ok { --toast-ring: var(--accent); }
@@ -5493,7 +5493,7 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
   padding: 2px 0; border-radius: 3px;
   border: none; background: none;
   color: var(--fg-3);
-  transition: color .15s;
+  transition: color var(--dur-fast);
 }
 .notif-toast-knapper button:hover {
   color: var(--fg-1);

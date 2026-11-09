@@ -45,7 +45,7 @@
 .notif-release-progress { grid-column: 1 / -1; height: 5px; overflow: hidden; border-radius: 999px;
   background: var(--bg-4); }
 .notif-release-progress > span { display: block; height: 100%; border-radius: inherit;
-  background: var(--accent); transition: width .35s ease; }
+  background: var(--accent); transition: width var(--dur-sheet) var(--ease-out); }
 @keyframes klokke-ring {
   0%, 8%, 17%, 100% { transform: rotate(0); }
   10% { transform: rotate(-17deg); }
@@ -59,7 +59,7 @@
 }
 
 .notif-liste .notif-swipe { position: relative; overflow: hidden; padding: 0; touch-action: pan-y; }
-.notif-swipe-content { position: relative; padding: 10px; background: var(--bg-1); transition: transform .16s ease-out, background .16s; }
+.notif-swipe-content { position: relative; padding: 10px; background: var(--bg-1); transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast); }
 .notif-swipe:hover .notif-swipe-content { background: var(--bg-3); }
 .notif-liste .notif-swipe.er-laest { border-left-color: var(--line); }
 .notif-swipe.er-laest .notif-titel { color: var(--fg-2); }
@@ -70,7 +70,7 @@
   position: absolute; z-index: 1; top: 4px; right: 4px;
   width: 24px; height: 24px; display: grid; place-items: center;
   border: 0; border-radius: 5px; background: transparent; color: var(--fg-3);
-  opacity: 0; transition: opacity .14s, background .14s;
+  opacity: 0; transition: opacity var(--dur-fast), background var(--dur-fast);
 }
 .notif-swipe:hover .notif-dismiss, .notif-swipe:focus-within .notif-dismiss { opacity: 1; }
 .notif-dismiss:hover, .notif-dismiss:focus-visible { background: var(--bg-4); color: var(--fg-1); }

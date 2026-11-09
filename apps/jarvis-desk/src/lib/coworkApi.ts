@@ -1,4 +1,5 @@
 import { apiFetch, type ApiConfig } from './api'
+import { sharedRead } from './sharedRead'
 
 export interface QueueItem {
   id: string
@@ -68,7 +69,15 @@ export interface UiPanelRequest {
 }
 
 export async function getUiPanelPending(config: ApiConfig): Promise<UiPanelRequest[]> {
-  const d = await apiFetch<{ pending: UiPanelRequest[] }>(config, '/cowork/ui-panel/pending')
+  // Gennem det delte læse-lag (9/11-2026). Målt samme dag: desk'en sendte
+  // 140 kald/min til denne rute fra 12 faner, fordi hver fane har sin egen
+  // UiPanelWatcher. Ruten er en ren læsning (`list_pending`), så et delt svar
+  // indenfor TTL kan ikke skjule noget — ack'en er en separat POST.
+  const d = await sharedRead(
+    `ui-panel-pending:${config.apiBaseUrl}`,
+    () => apiFetch<{ pending: UiPanelRequest[] }>(config, '/cowork/ui-panel/pending'),
+    { ttlMs: 3_000, streamingTtlMs: 3_000 },
+  )
   return d.pending ?? []
 }
 

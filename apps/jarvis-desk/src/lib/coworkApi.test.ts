@@ -58,3 +58,25 @@ describe('activeAgentsToView', () => {
     expect(activeAgentsToView([]).mode).toBe('inline')
   })
 })
+
+describe('getUiPanelPending — går gennem det delte læse-lag (9/11-2026)', () => {
+  // Målt samme dag: 140 kald/min til /cowork/ui-panel/pending fra 12 faner,
+  // fordi hver fane har sin egen UiPanelWatcher. Ruten er en ren læsning
+  // (`list_pending`), så et delt svar indenfor TTL kan ikke skjule noget.
+  it('to uafhængige komponenter deler ÉT netværkskald', async () => {
+    const { __resetSharedRead } = await import('./sharedRead')
+    __resetSharedRead()
+    const fetchMock = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ pending: [{ id: 'p1', panel: 'files', session_id: 's', detail: '', status: 'pending', created_at: '' }] }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    ))
+    vi.stubGlobal('fetch', fetchMock)
+    const { getUiPanelPending } = await import('./coworkApi')
+    const cfg = { apiBaseUrl: 'http://t', authToken: 't' }
+    const [a, b] = await Promise.all([getUiPanelPending(cfg), getUiPanelPending(cfg)])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(a).toEqual(b)
+    expect(a[0]?.id).toBe('p1')
+    __resetSharedRead()
+  })
+})

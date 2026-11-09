@@ -291,3 +291,47 @@ describe('gentagelse maa aldrig gentage en HANDLING', () => {
     expect(f).toHaveBeenCalledTimes(3)
   })
 })
+
+describe('hentVentendeGodkendelseOveralt — delt læse-lag (9/11-2026)', () => {
+  // Målt samme dag: 115 kald/min til /chat/approvals/pending fra 12 faner.
+  // StreamContext poller hvert 4. sekund i hver fane. TTL er 2 s — halv
+  // poll-kadence — så et kort aldrig kan ligge skjult i mere end ét tick.
+  it('to faner deler ÉT kald, og kortet er stadig med', async () => {
+    const { __resetSharedRead } = await import('./sharedRead')
+    __resetSharedRead()
+    const fetchMock = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ approval: { approval_id: 'a1', tool: 'bash', arguments: { command: 'ls' }, session_id: 's1', expires_at: '2026-11-09T16:00:00Z' } }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    ))
+    vi.stubGlobal('fetch', fetchMock)
+    const { hentVentendeGodkendelseOveralt } = await import('./api')
+    const [a, b] = await Promise.all([
+      hentVentendeGodkendelseOveralt(cfg),
+      hentVentendeGodkendelseOveralt(cfg),
+    ])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(a?.approvalId).toBe('a1')
+    expect(b?.approvalId).toBe('a1')
+    __resetSharedRead()
+  })
+
+  it('en fejlet hentning caches ikke — næste kald prøver igen', async () => {
+    const { __resetSharedRead } = await import('./sharedRead')
+    __resetSharedRead()
+    // MAALT 9/11-2026: med `retries: 0` bruger hvert kald praecis ÉT fetch.
+    // Jeg gættede foerst paa tre (apiFetchs standard-retry) og fik en test der
+    // fejlede paa sin egen antagelse, ikke paa koden. Ét fejl-svar, ét godt.
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new Error('nede'))
+      .mockResolvedValueOnce(new Response(
+        JSON.stringify({ approval: { approval_id: 'a2', tool: 'bash', session_id: 's1' } }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ))
+    vi.stubGlobal('fetch', fetchMock)
+    const { hentVentendeGodkendelseOveralt } = await import('./api')
+    expect(await hentVentendeGodkendelseOveralt(cfg)).toBeNull()
+    const andet = await hentVentendeGodkendelseOveralt(cfg)
+    expect(andet?.approvalId).toBe('a2')
+    __resetSharedRead()
+  })
+})

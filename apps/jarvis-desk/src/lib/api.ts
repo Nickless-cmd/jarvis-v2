@@ -1404,8 +1404,22 @@ export async function hentVentendeGodkendelseOveralt(
   config: ApiConfig,
 ): Promise<{ approvalId: string; tool: string; action: string; sessionId: string; expiresAt: string } | null> {
   try {
-    const r = await apiFetch<{ approval?: { approval_id?: string; tool?: string; arguments?: Record<string, unknown>; session_id?: string; expires_at?: string } | null }>(
-      config, '/chat/approvals/pending', { retries: 0 },
+    const r = await sharedRead(
+      `approvals-pending:${config.apiBaseUrl}`,
+      // Kast videre ved fejl i stedet for at returnere et tomt svar: `null` er
+      // en GYLDIG vaerdi for sharedRead og bliver derfor cachet — saa en enkelt
+      // netvaerksfejl frøs «intet kort» i hele TTL-vinduet. Maalt 9/11-2026.
+      async () => {
+        const svar = await apiFetch<{ approval?: { approval_id?: string; tool?: string; arguments?: Record<string, unknown>; session_id?: string; expires_at?: string } | null }>(
+          config, '/chat/approvals/pending', { retries: 0 },
+        )
+        if (!svar || typeof svar !== 'object') throw new Error('tomt svar fra /chat/approvals/pending')
+        return svar
+      },
+      // Kortere TTL end StreamContexts 4-sekunders poll (9/11-2026): kollapser
+      // kun overlap mellem faner. Et kort der venter må aldrig skjules af en
+      // cache — derfor halv TTL og ingen forlængelse under streaming.
+      { ttlMs: 2_000, streamingTtlMs: 2_000 },
     )
     const a = r?.approval
     if (!a?.approval_id) return null

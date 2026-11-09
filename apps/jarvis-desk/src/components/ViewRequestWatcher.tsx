@@ -1,6 +1,7 @@
 import { maaPolle } from '../lib/ro'
 import { useEffect, useRef } from 'react'
 import { apiFetch, type ApiConfig } from '../lib/api'
+import { sharedRead } from '../lib/sharedRead'
 import { skaermFor, type Panel } from '../lib/skaermRegister'
 
 const POLL_MS = 1500
@@ -26,7 +27,13 @@ export function ViewRequestWatcher({ config }: { config: ApiConfig | null }) {
       if (!maaPolle('view-requests', POLL_MS)) return  // ingen kigger → sjældnere (ro.ts)
       optaget.current = true
       try {
-        const { requests } = await apiFetch<{ requests: ViewRequest[] }>(config, '/ui/view-requests/pending')
+        const { requests } = await sharedRead(
+          `view-requests:${config.apiBaseUrl}`,
+          () => apiFetch<{ requests: ViewRequest[] }>(config, '/ui/view-requests/pending'),
+          // Kortere TTL end POLL_MS: kollapser kun overlap mellem faner, så
+          // en forespørgsel aldrig kan ligge uset hen i mere end ét tick.
+          { ttlMs: 1_000, streamingTtlMs: 1_000 },
+        )
         for (const r of requests ?? []) {
           const skaerm = skaermFor(r.session_id)
           if (!skaerm) continue

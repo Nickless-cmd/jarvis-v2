@@ -191,3 +191,90 @@ def test_ingen_lazy_import_peger_paa_et_navn_der_ikke_findes():
                 )
 
     assert not fejl, "lazy import peger paa et navn der ikke findes:\n" + "\n".join(fejl)
+
+
+# --- 9/11-2026: dommeren ABANDONEDE alle stale mål i ét sving ---------------
+#
+# `_enforce_reject` kaldte `update_goal(new_status="abandoned")` for HVERT
+# stale mål, så snart dommen var reject + «abandon». Målt: tre mål fik samme
+# millisekund som `updated_at` (29/10 06:10:13), og systemet stod tilbage med
+# NUL aktive mål. Uden et mål kan reaktion-leddet i tick-scoren ikke fyres
+# (max 20 af 45), så scoren låste på 40 — dommeren fjernede den retning den
+# dømte om. «pause_stale» havde slet ingen gren (tavs no-op).
+#
+# Kontrakten er nu: flag, mutér ikke. Testen måler BEGGE valg, fordi begge er
+# tilstandsmutationer og begge skal gå gennem samme flag-sti.
+
+
+def _stale_goal_stub() -> list[dict]:
+    return [{"goal_id": "goal_a", "title": "Bevis pålidelighed over tid"}]
+
+
+def test_stale_goals_flagges_uden_at_mutere_maalet(monkeypatch):
+    """Dommerens stale-valg må IKKE ændre målstatus — kun efterlade et flag."""
+    from core.runtime import db_central_incidents as dci
+    from core.services import agent_self_evaluation as ase
+    from core.services import consolidation_judge_daemon as cjd
+    from core.services import long_horizon_goals as lhg
+
+    muteret: list[dict] = []
+    flagget: list[str] = []
+
+    monkeypatch.setattr(ase, "detect_stale_goals", _stale_goal_stub)
+    monkeypatch.setattr(
+        lhg, "update_goal", lambda **kw: muteret.append(kw) or {}
+    )
+    monkeypatch.setattr(
+        dci, "record_central_incident",
+        lambda **kw: flagget.append(str(kw.get("message") or "")) or 1,
+    )
+    _stille_bus(monkeypatch)
+
+    cjd._enforce_reject({"item_type": "stale_goals", "choice": "abandon_stale"})
+
+    assert not muteret, (
+        "dommeren muterede målstatus — den fjerner den retning den dømmer om: "
+        f"{muteret}"
+    )
+    assert flagget, "målet blev hverken muteret eller flagget — tavs no-op"
+    assert "goal_a" in flagget[0], flagget
+
+
+def test_pause_stale_flaggger_ogsaa(monkeypatch):
+    """«pause_stale» havde ingen gren. Den skal gå gennem samme flag-sti."""
+    from core.runtime import db_central_incidents as dci
+    from core.services import agent_self_evaluation as ase
+    from core.services import consolidation_judge_daemon as cjd
+    from core.services import long_horizon_goals as lhg
+
+    muteret: list[dict] = []
+    flagget: list[str] = []
+
+    monkeypatch.setattr(ase, "detect_stale_goals", _stale_goal_stub)
+    monkeypatch.setattr(
+        lhg, "update_goal", lambda **kw: muteret.append(kw) or {}
+    )
+    monkeypatch.setattr(
+        dci, "record_central_incident",
+        lambda **kw: flagget.append(str(kw.get("message") or "")) or 1,
+    )
+    _stille_bus(monkeypatch)
+
+    cjd._enforce_reject({"item_type": "stale_goals", "choice": "pause_stale"})
+
+    assert not muteret, f"pause_stale muterede målet: {muteret}"
+    assert flagget, "pause_stale er stadig en tavs no-op"
+
+
+def test_stale_goal_titel_bruger_den_faktiske_taerskel():
+    """Prompten sagde «3+ dage» mens tærsklen er 14 — dommeren dømte på et forkert grundlag."""
+    from core.services import agent_self_evaluation as ase
+    from core.services import consolidation_judge_daemon as cjd
+
+    items = cjd._build_stillingtagen({"stale_goals": _stale_goal_stub()})
+    stale_items = [i for i in items if i["type"] == "stale_goals"]
+    assert stale_items, items
+    titel = stale_items[0]["title"]
+    assert f"{ase._GOAL_STALE_DAYS}+ dage" in titel, (
+        f"titlen lyver om tærsklen: {titel!r} (faktisk {ase._GOAL_STALE_DAYS})"
+    )

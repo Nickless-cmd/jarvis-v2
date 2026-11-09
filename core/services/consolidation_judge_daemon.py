@@ -155,10 +155,13 @@ def _build_stillingtagen(evidence: dict[str, Any]) -> list[dict[str, Any]]:
     # ── 2. Stale goals confrontation ──────────────────────────────
     stale = evidence.get("stale_goals", [])
     if stale:
+        # 9/11-2026: titlen sagde «3+ dage», men taersklen er _GOAL_STALE_DAYS = 14
+        # (sat 28/10). Dommeren fik altsaa et forkert grundlag at doemme ud fra.
+        from core.services.agent_self_evaluation import _GOAL_STALE_DAYS
         stale_titles = ", ".join(g.get("title", "?")[:40] for g in stale[:3])
         items.append({
             "type": "stale_goals",
-            "title": f"{len(stale)} mål uden fremgang i 3+ dage",
+            "title": f"{len(stale)} mål uden fremgang i {_GOAL_STALE_DAYS}+ dage",
             "evidence": f"Mål: {stale_titles}",
             "options": ["pause_stale", "abandon_stale", "commit_action", "defer"],
             "severity": "medium",
@@ -320,29 +323,37 @@ def _enforce_reject(j: dict[str, Any]) -> None:
         except Exception as e:
             logger.warning("consolidation_judge: revoke failed: %s", e)
 
-    elif item_type == "stale_goals" and "abandon" in choice:
+    elif item_type == "stale_goals":
+        # 9/11-2026: denne gren ABANDONEDE foer ALLE maal uden fremdrift i 14 dage,
+        # i eet sving, uden at nogen havde set listen. Maalt: tre maal fik samme
+        # millisekund som `updated_at` (29/10 06:10:13), og systemet stod tilbage
+        # med NUL aktive maal. Det laaser i sig selv tick-scoren paa 40, fordi
+        # reaktion-leddet ikke kan fyres uden et maal — dommeren forbedrede altsaa
+        # ikke noget, den fjernede den retning den doemte om.
+        #
+        # Et «pause_stale»-valg havde slet ingen gren (tavs no-op). Begge valg er
+        # tilstandsmutationer, og begge flagger nu i stedet: maalet bliver staaende,
+        # og mennesket beslutter. Samme regel som `agent_self_evaluation`s kontrakt
+        # — observer og flag, mutér ikke.
         try:
-            # 28/10-2026: `detect_stale_goals` laeser nu `long_horizon_goals`,
-            # men abandon-kaldet pegede stadig paa `autonomous_goals`. Maalt
-            # samme dag: den tabel havde 0 raekker, saa valget «abandon» ville
-            # ramme et id der ikke findes der og gøre INTET — en tavs handling
-            # der ser ud som om den blev udfoert. Begge ender skal pege samme
-            # sted hen, ellers er dommen og handlingen uenige om hvad et maal er.
-            from core.services.long_horizon_goals import update_goal as _update_lh_goal
             from core.services.agent_self_evaluation import detect_stale_goals
+            from core.runtime.db_central_incidents import record_central_incident
             for g in detect_stale_goals():
-                _update_lh_goal(
-                    goal_id=str(g.get("goal_id") or ""),
-                    note="forladt af konsoliderings-dommeren: ingen fremdrift",
-                    new_status="abandoned",
-                    source="consolidation_judge",
-                )
-                event_bus.publish("consolidation_judge.abandoned_goal", {
-                    "goal_id": g["goal_id"],
-                    "title": g.get("title", ""),
+                gid = str(g.get("goal_id") or "")
+                titel = str(g.get("title") or "")
+                event_bus.publish("consolidation_judge.stale_goal_flagged", {
+                    "goal_id": gid, "title": titel, "choice": choice,
                 })
+                record_central_incident(
+                    cluster="goals", nerve="stale_goal", kind="stale_goal_flagged",
+                    severity="info", dedup=True,
+                    message=(
+                        f"stale maal uden fremdrift: «{titel}» ({gid}) — dommerens valg "
+                        f"var «{choice}»; status er IKKE aendret, menneskelig beslutning kraves"
+                    ),
+                )
         except Exception as e:
-            logger.warning("consolidation_judge: abandon goals failed: %s", e)
+            logger.warning("consolidation_judge: stale-goal flag failed: %s", e)
 
 
 def _enforce_accept(j: dict[str, Any]) -> None:

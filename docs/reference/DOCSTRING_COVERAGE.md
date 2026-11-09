@@ -1116,7 +1116,7 @@ Generated from source. 9938/18427 functions/methods documented (53%). The list b
 - `core/services/connectors.py` :: `set_enabled` (L196)
 - `core/services/consent_registry.py` :: `build_consent_registry_surface` (L143)
 - `core/services/consent_registry.py` :: `get_active_consents` (L112)
-- `core/services/consolidation_judge_daemon.py` :: `now_date_str` (L412)
+- `core/services/consolidation_judge_daemon.py` :: `now_date_str` (L423)
 - `core/services/consolidation_target_signal_tracking.py` :: `build_runtime_consolidation_target_signal_surface` (L55)
 - `core/services/consolidation_target_signal_tracking.py` :: `refresh_runtime_consolidation_target_signal_statuses` (L51)
 - `core/services/consolidation_target_signal_tracking.py` :: `track_runtime_consolidation_target_signals_for_visible_turn` (L41)

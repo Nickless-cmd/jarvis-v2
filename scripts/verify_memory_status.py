@@ -140,6 +140,10 @@ _QF_SEKTIONER = (
     "home assistant",
     "paths",
     "priser",
+    # 9/11-2026: hvilken tjeneste der laver hvad (api 8080 vs runtime 8011) er
+    # et OPSLAG — og det kostede tre forkerte genstarter samme dag at have det
+    # forkert. Det hører her, ikke i MEMORY.
+    "tjenester",
     # 5/11-2026: cache-tallene er et OPSLAG — hvilken tabel, hvilke kolonner,
     # hvilke to akser, og hvorfor et gennemsnit hen over dem lyver. Det er
     # præcis den slags fakta der ellers skulle genopdages hver gang, og det var

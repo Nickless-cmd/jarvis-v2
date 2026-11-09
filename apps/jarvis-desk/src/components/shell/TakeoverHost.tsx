@@ -61,7 +61,11 @@ export function TakeoverHost({
   // 1) Find en cross-device-aktiv session — med 6s-latch (som ChatView) så korte
   //    runs ikke forsvinder mellem to polls.
   useEffect(() => {
-    if (!settings) { setActiveSid(null); return }
+    // Panelet kan ikke vises på chat- og code-fladerne — `tick` returnerer
+    // tidligt for dem. Uden denne retur FØR kaldet hentede vi alligevel
+    // /chat/active-runs hvert 1,5 sekund og kastede svaret væk. Målt 9/11-2026:
+    // 337 kald på 15 min fra én klient, på den flade man er på næsten hele tiden.
+    if (!settings || surface === 'chat' || surface === 'code') { setActiveSid(null); return }
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     let cancelled = false
     let bgUntil = 0

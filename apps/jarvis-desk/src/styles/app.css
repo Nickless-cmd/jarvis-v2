@@ -2001,24 +2001,42 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   66.67% { background-position: 200% 0; }
   100%   { background-position: 200% 0; }
 }
-.live-dots { display: inline-flex; align-items: flex-end; gap: 2px; margin-left: 3px; padding-bottom: 1px; }
-.live-dots span {
-  width: 3px; height: 3px; border-radius: var(--radius-cirkel); background: var(--accent);
-  /* HOPPER nu som prikkerne i enden af tool-results (Bjørn 20/9-2026).
-     `dot-wave` var ren opacitet — de blinkede på stedet. `prikke-boelge` er
-     den bevægelse han allerede kender fra chatview, og de to steder betyder
-     det samme: «her arbejdes der». Samme kurve, samme forskydninger. */
-  opacity: 0; animation: 1.9s cubic-bezier(.4, 0, .2, 1) infinite prikke-boelge;
-  /* Gløden står fast og følger opaciteten. Før animerede den box-shadow,
-     som ikke kan køre på compositoren — tre prikker tvang en maling af
-     render-tråden ved hver frame (19/9-2026). Nu kun opacity: compositoren. */
-  box-shadow: 0 0 5px var(--accent);
-  /* Teal, ikke warn-gul (Bjørn 20/9-2026). Gul betød «venter» i paletten;
-     prikkerne betyder «Jarvis arbejder her» — samme sprog som ringen i samme
+/* Husets eget mærke: tre streger der ånder (9/11-2026).
+   Bjørn pegede på Claude Codes fire bolde som det der FØLES levende, og på
+   vores tre prikker som det der bare blinker. Forskellen var ikke antallet:
+   1) Vores prikker gik til `opacity: 0` i hver cyklus — linjen slukkede og
+      tændte. CC's går aldrig i nul. Her er gulvet .5: stregerne dæmpes, de
+      forsvinder ikke.
+   2) Bevægelsen er strukturel (`scaleY`), ikke kun lysstyrke. En streg der
+      vokser fra midten flytter sig i rummet; en prik der skifter opacitet
+      blinker på stedet.
+   Cyklussen er 1,4 s — kortere end CC's målte ~2,4 s, fordi tre streger i en
+   20 px linje skal læse som ÉT tegn, ikke som fire bolde i et gitter.
+   `transform` og `opacity` kører begge på compositoren: ingen maling pr.
+   frame (modsat den gamle box-shadow-animation, 19/9-2026). */
+.live-streger { display: inline-flex; align-items: center; gap: 2.5px; margin-left: 5px; height: 11px; }
+.live-streger span {
+  width: 2px; height: 11px; border-radius: 1px; background: var(--accent);
+  /* Teal, ikke warn-gul (Bjørn 20/9-2026): gul betød «venter» i paletten;
+     stregerne betyder «Jarvis arbejder her» — samme sprog som ringen i samme
      linje, og som Puls-mærket i sidebaren. */
+  box-shadow: 0 0 5px var(--accent);
+  transform-origin: 50% 50%;
+  animation: streg-aande 1.4s ease-in-out infinite;
+  /* Negativ delay på de to sidste: bølgen ruller allerede ved første frame.
+     Uden den starter linjen som tre døde streger der først skal i gang —
+     samme «resetter»-fornemmelse Bjørn har klaget over i shimmeret. */
 }
-.live-dots span:nth-child(2) { animation-delay: .15s; }
-.live-dots span:nth-child(3) { animation-delay: .3s; }
+.live-streger span:nth-child(2) { animation-delay: -.16s; }
+.live-streger span:nth-child(3) { animation-delay: -.32s; }
+@keyframes streg-aande {
+  0%, 100% { transform: scaleY(.32); opacity: .5; }
+  38%      { transform: scaleY(1);   opacity: 1; }
+  68%      { transform: scaleY(.55); opacity: .72; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-streger span { animation: none; transform: scaleY(.6); opacity: .8; }
+}
 @keyframes dot-wave {
   0%, 100% { opacity: 0.2; }
   50% { opacity: 1; }

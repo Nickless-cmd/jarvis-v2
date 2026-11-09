@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9938/18427 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9943/18432 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 9938/18427 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 875 | 1590 | 55% |
-| `core.services` | 6638 | 12486 | 53% |
+| `core.services` | 6643 | 12491 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -749,7 +749,7 @@ Generated from source. 9938/18427 functions/methods documented (53%). The list b
 - `core/services/agent_contract_projection.py` :: `close` (L565)
 - `core/services/agent_contract_projection.py` :: `followup` (L542)
 - `core/services/agent_contract_projection.py` :: `mark_read` (L486)
-- `core/services/agent_contract_service.py` :: `list_approvals` (L714)
+- `core/services/agent_contract_service.py` :: `list_approvals` (L715)
 - `core/services/agent_council.py` :: `synthesis_goal` (L151)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L322)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L320)

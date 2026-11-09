@@ -397,10 +397,14 @@ _Hvem faar at vide at en approval venter, og hvornaar Jarvis vaekkes (agent-cont
 | function | `_stopped` | `(parent_run_id)` | — | [src](../../../core/services/agent_approval_notify.py#L34) |
 | function | `_session_busy` | `(session_id)` | — | [src](../../../core/services/agent_approval_notify.py#L41) |
 | function | `stage` | `(approval)` | Planlaeg vaekningen for en approval (idempotent: ét wake-task-id pr. approval). Returnerer task-id eller "". | [src](../../../core/services/agent_approval_notify.py#L50) |
-| function | `on_requested` | `(approval)` | Kaldt naar en approval er oprettet/genfundet som ventende. Vaekker kun en INAKTIV, ikke-stoppet parent. | [src](../../../core/services/agent_approval_notify.py#L66) |
-| function | `ensure_wakes` | `(*, now=…)` | Supervisor-tik: ventende approvals uden vaekning, ældre end GRACE, hvis session er inaktiv og som ikke er | [src](../../../core/services/agent_approval_notify.py#L93) |
-| function | `cancel_wake` | `(approval, reason)` | Aflys en endnu ikke startet vaekning (approvalen er afgjort/annulleret). | [src](../../../core/services/agent_approval_notify.py#L111) |
-| function | `build_agent_approval_notify_surface` | `()` | Mission Control-surface: hvilke agent-approvals er der varslet om? | [src](../../../core/services/agent_approval_notify.py#L120) |
+| function | `jarvis_kan_afgoere` | `(approval)` | Kan Jarvis afgoere denne selv? Praecis lagerets graense, ikke en kopi af den. | [src](../../../core/services/agent_approval_notify.py#L72) |
+| function | `_notifikation` | `(approval)` | Foed den durable raekke + WS-signalet for et kort der skal til Bjorn. | [src](../../../core/services/agent_approval_notify.py#L89) |
+| function | `on_requested` | `(approval)` | Kaldt naar en approval er oprettet/genfundet som ventende. Vaekker kun en INAKTIV, ikke-stoppet parent. | [src](../../../core/services/agent_approval_notify.py#L104) |
+| function | `_allerede_varslet` | `(approval_id)` | Er der allerede foedt en notifikations-raekke for denne approval? | [src](../../../core/services/agent_approval_notify.py#L133) |
+| function | `eskaler` | `(*, now=…)` | Send kortet til Bjorn for en afgoerelse Jarvis selv skulle have taget. | [src](../../../core/services/agent_approval_notify.py#L146) |
+| function | `ensure_wakes` | `(*, now=…)` | Supervisor-tik: ventende approvals uden vaekning, ældre end GRACE, hvis session er inaktiv og som ikke er | [src](../../../core/services/agent_approval_notify.py#L172) |
+| function | `cancel_wake` | `(approval, reason)` | Aflys en endnu ikke startet vaekning (approvalen er afgjort/annulleret). | [src](../../../core/services/agent_approval_notify.py#L190) |
+| function | `build_agent_approval_notify_surface` | `()` | Mission Control-surface: hvilke agent-approvals er der varslet om? | [src](../../../core/services/agent_approval_notify.py#L199) |
 
 ## `core/services/agent_bridge.py`
 _Agenter paa et klient-target: bro-invocations med ukendt udfald (agent-contract-v1 E, spec 8 + 8.1)._
@@ -450,15 +454,16 @@ _Claude Code og Codex CLI som eksekveringsbackends for ``Task``._
 | function | `parse_preference` | `(value)` | Returner en CLI-rute for de dokumenterede aliases, ellers ``None``. | [src](../../../core/services/agent_cli_backend.py#L68) |
 | function | `is_cli_provider` | `(provider)` | — | [src](../../../core/services/agent_cli_backend.py#L81) |
 | function | `resolve_executable` | `(provider)` | — | [src](../../../core/services/agent_cli_backend.py#L85) |
-| function | `admission_reason` | `(provider)` | Tom streng betyder at CLI-ruten kan optages i Task-rutekæden. | [src](../../../core/services/agent_cli_backend.py#L96) |
-| function | `_assignment` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L109) |
-| function | `_working_root` | `(agent, assignment)` | — | [src](../../../core/services/agent_cli_backend.py#L118) |
-| function | `_prompt` | `(prompt, *, writes)` | — | [src](../../../core/services/agent_cli_backend.py#L136) |
-| function | `_command` | `(provider, executable, model, root, prompt, *, writes, output_path)` | — | [src](../../../core/services/agent_cli_backend.py#L153) |
-| function | `_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L174) |
-| function | `_stop` | `(proc)` | — | [src](../../../core/services/agent_cli_backend.py#L181) |
-| function | `_claude_text` | `(stdout)` | — | [src](../../../core/services/agent_cli_backend.py#L192) |
-| function | `run_task_cli` | `(*, agent, prompt, run_id, timeout_s=…)` | Koer den valgte CLI én gang og returner agent-runtimens resultatform. | [src](../../../core/services/agent_cli_backend.py#L202) |
+| function | `_claude_auth_doed` | `(credentials=…)` | Er Claudes OAuth-token udloebet? Binæren kan vaere der og alligevel vaere ubrugelig. | [src](../../../core/services/agent_cli_backend.py#L96) |
+| function | `admission_reason` | `(provider)` | Tom streng betyder at CLI-ruten kan optages i Task-rutekæden. | [src](../../../core/services/agent_cli_backend.py#L124) |
+| function | `_assignment` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L139) |
+| function | `_working_root` | `(agent, assignment)` | — | [src](../../../core/services/agent_cli_backend.py#L148) |
+| function | `_prompt` | `(prompt, *, writes)` | — | [src](../../../core/services/agent_cli_backend.py#L166) |
+| function | `_command` | `(provider, executable, model, root, prompt, *, writes, output_path)` | — | [src](../../../core/services/agent_cli_backend.py#L183) |
+| function | `_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L204) |
+| function | `_stop` | `(proc)` | — | [src](../../../core/services/agent_cli_backend.py#L211) |
+| function | `_claude_text` | `(stdout)` | — | [src](../../../core/services/agent_cli_backend.py#L222) |
+| function | `run_task_cli` | `(*, agent, prompt, run_id, timeout_s=…)` | Koer den valgte CLI én gang og returner agent-runtimens resultatform. | [src](../../../core/services/agent_cli_backend.py#L232) |
 
 ## `core/services/agent_contract_bridge.py`
 _Binder spawn_agent_task til agent-contract-v1 (leverance A2)._
@@ -544,11 +549,11 @@ _agent-contract-v1: den ene motor bag dispatch og styring af agenter (leverance 
 | function | `wait_agents` | `(*, owner_user_id, origin_session_id, assignment_ids, condition=…, timeout_seconds=…, wake_if_run_ends=…, parent_run_id=…, include_output=…, output_offset=…)` | Vent paa assignments. `timeout_seconds` blokerer kortvarigt (max 120 s); er betingelsen | [src](../../../core/services/agent_contract_service.py#L585) |
 | function | `_attach_outputs` | `(view, owner_user_id, offset)` | Fuldt output (``final.txt``) for terminale assignments, via den ejer-kontrollerede | [src](../../../core/services/agent_contract_service.py#L635) |
 | function | `supervise` | `()` | Supervisor-taek: udloeb approvals, genoptag parkerede agenter hvis approval er afgjort, overtag udloebne | [src](../../../core/services/agent_contract_service.py#L660) |
-| function | `approval_view` | `(r)` | Det en klient/en model maa se: sikker visning + digest, ALDRIG de raa argumenter. | [src](../../../core/services/agent_contract_service.py#L706) |
-| function | `list_approvals` | `(*, owner_user_id, status=…, origin_session_id=…)` | — | [src](../../../core/services/agent_contract_service.py#L714) |
-| function | `decide_approval` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…, actor_session_id=…)` | Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede | [src](../../../core/services/agent_contract_service.py#L724) |
-| function | `decide_approval_as_parent` | `(*, approval_id, decision, digest, note=…)` | Jarvis afgoer en af SINE EGNE agenters vaerktoejskald - uden et menneske imellem (14/10-2026). | [src](../../../core/services/agent_contract_service.py#L759) |
-| function | `request_integration` | `(*, owner_user_id, origin_session_id, assignment_id)` | Jarvis beder om integration af et kodeassignments arbejde. Opretter KUN en approval - han kan ikke | [src](../../../core/services/agent_contract_service.py#L785) |
+| function | `approval_view` | `(r)` | Det en klient/en model maa se: sikker visning + digest, ALDRIG de raa argumenter. | [src](../../../core/services/agent_contract_service.py#L707) |
+| function | `list_approvals` | `(*, owner_user_id, status=…, origin_session_id=…)` | — | [src](../../../core/services/agent_contract_service.py#L715) |
+| function | `decide_approval` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…, actor_session_id=…)` | Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede | [src](../../../core/services/agent_contract_service.py#L725) |
+| function | `decide_approval_as_parent` | `(*, approval_id, decision, digest, note=…)` | Jarvis afgoer en af SINE EGNE agenters vaerktoejskald - uden et menneske imellem (14/10-2026). | [src](../../../core/services/agent_contract_service.py#L760) |
+| function | `request_integration` | `(*, owner_user_id, origin_session_id, assignment_id)` | Jarvis beder om integration af et kodeassignments arbejde. Opretter KUN en approval - han kan ikke | [src](../../../core/services/agent_contract_service.py#L786) |
 
 ## `core/services/agent_council.py`
 _Raad og review-kaede paa agentmotoren (agent-contract-v1 F5, spec 5.1 / 7.1 / 11)._

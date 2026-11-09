@@ -63,17 +63,31 @@ def stage(approval: dict[str, Any]) -> str:
     return out["task_id"]
 
 
-def on_requested(approval: dict[str, Any]) -> str:
-    """Kaldt naar en approval er oprettet/genfundet som ventende. Vaekker kun en INAKTIV, ikke-stoppet parent."""
-    # FØD EN NOTIFIKATION (25/10-2026). Uden dette har et agent-approval-kort
-    # INTET live-signal: `notifikation.ny` udsendes naar en notifikations-raekke
-    # foedes, og denne vej foedte ingen. Maalt: toasten faldt derfor tilbage paa
-    # 8-sekunders-polling, og testen skrev det selv — «Der findes intet
-    # WS-signal for agent-approvals».
-    #
-    # Raekken er ikke pynt: den ER baade signalet (bussen) og den durable post
-    # Bjørn kan se i feeden. Fejler den, maa vaekningen stadig planlaegges —
-    # derfor kun log, ingen raise.
+#: Hvor laenge Jarvis' egen afgoerelse maa vente foer kortet eskaleres til Bjorn.
+#: Uden dette ville et kort der aldrig blev afgjort hverken vaekke nogen eller
+#: staa nogen steder — agenten ville haenge i det uendelige.
+ESKALERING = timedelta(minutes=15)
+
+
+def jarvis_kan_afgoere(approval: dict[str, Any]) -> bool:
+    """Kan Jarvis afgoere denne selv? Praecis lagerets graense, ikke en kopi af den.
+
+    ``db_agent_approvals.PARENT_KINDS`` er autoriteten: kun hans EGEN agents
+    vaerktoejskald (``kind == "tool_call"``). En ``integration`` aendrer husets
+    kode og kraever Bjorns haand - den graense flyttes ikke her.
+
+    Grunden til at spoerge (Bjorn 9/11-2026): «de arbejder for dig og du boer
+    styre deres permissions ikke mig». Et kort paa hans telefon for en handling
+    Jarvis selv maatte afgoere er arbejde flyttet det forkerte sted hen.
+    """
+    from core.runtime.db_agent_approvals import PARENT, PARENT_KINDS
+
+    return (str(approval.get("parent_agent_id") or "") == PARENT
+            and str(approval.get("kind") or "") in PARENT_KINDS)
+
+
+def _notifikation(approval: dict[str, Any]) -> None:
+    """Foed den durable raekke + WS-signalet for et kort der skal til Bjorn."""
     try:
         from core.services import notifikations_emittere
         notifikations_emittere.paa_godkendelse(
@@ -85,9 +99,74 @@ def on_requested(approval: dict[str, Any]) -> str:
     except Exception:
         logger.warning("agent-approval: kunne ikke foede notifikationen",
                        exc_info=True)
+
+
+def on_requested(approval: dict[str, Any]) -> str:
+    """Kaldt naar en approval er oprettet/genfundet som ventende. Vaekker kun en INAKTIV, ikke-stoppet parent.
+
+    ## Hvem faar kortet (9/11-2026)
+
+    Et vaerktoejskald fra Jarvis' egen agent afgoer HAN selv
+    (``decide_agent_approval`` → ``decide_as_parent``). Derfor foedes ingen
+    notifikations-raekke til Bjorn for den slags: han bliver vaekket i stedet,
+    og kortet dukker foerst op hos Bjorn hvis Jarvis ikke har afgjort det inden
+    ``ESKALERING`` (se ``ensure_wakes``). En ``integration`` gaar direkte til
+    Bjorn som foer - den aendrer husets kode.
+
+    # FØD EN NOTIFIKATION (25/10-2026). Uden dette har et agent-approval-kort
+    # INTET live-signal: `notifikation.ny` udsendes naar en notifikations-raekke
+    # foedes, og denne vej foedte ingen. Maalt: toasten faldt derfor tilbage paa
+    # 8-sekunders-polling, og testen skrev det selv — «Der findes intet
+    # WS-signal for agent-approvals».
+    #
+    # Raekken er ikke pynt: den ER baade signalet (bussen) og den durable post
+    # Bjørn kan se i feeden. Fejler den, maa vaekningen stadig planlaegges —
+    # derfor kun log, ingen raise.
+    """
+    if not jarvis_kan_afgoere(approval):
+        _notifikation(approval)
     if _session_busy(approval["origin_session_id"]):
         return ""
     return stage(approval)
+
+
+def _allerede_varslet(approval_id: str) -> bool:
+    """Er der allerede foedt en notifikations-raekke for denne approval?"""
+    try:
+        row = _conn().execute(
+            "SELECT 1 FROM notifikationer WHERE ref=? AND slags='approval' LIMIT 1",
+            (approval_id,)).fetchone()
+        return row is not None
+    except Exception:
+        logger.warning("kunne ikke se om approval %s er varslet - antager varslet",
+                       approval_id, exc_info=True)
+        return True                       # tvivl -> ingen dublet til Bjorn
+
+
+def eskaler(*, now: datetime | None = None) -> list[str]:
+    """Send kortet til Bjorn for en afgoerelse Jarvis selv skulle have taget.
+
+    Et vaerktoejskald fra hans egen agent lander IKKE hos Bjorn med det samme
+    (se ``on_requested``). Men bliver den ikke afgjort, maa agenten ikke haenge
+    for evigt: efter ``ESKALERING`` gaar kortet til Bjorn som enhver anden
+    godkendelse. Idempotent - raekken foedes kun hvis der ikke allerede er en
+    notifikation for samme approval, saa et supervisor-tik hvert minut ikke
+    spammer ham.
+    """
+    t = now or datetime.now(UTC)
+    cutoff = (t - ESKALERING).astimezone(UTC).isoformat().replace("+00:00", "Z")
+    rows = [dict(r) for r in _conn().execute(
+        "SELECT * FROM agent_approvals WHERE status='pending' AND created_at <= ?",
+        (cutoff,)).fetchall()]
+    escalated = []
+    for r in rows:
+        if not jarvis_kan_afgoere(r):
+            continue                      # integration gaar allerede direkte til Bjorn
+        if _allerede_varslet(str(r["approval_id"])):
+            continue
+        _notifikation(r)
+        escalated.append(str(r["approval_id"]))
+    return escalated
 
 
 def ensure_wakes(*, now: datetime | None = None) -> list[str]:

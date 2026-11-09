@@ -74,3 +74,51 @@ def test_cli_non_quota_failure_stays_a_backend_failure():
     assert exc.provider_status == "failed"
 
 
+def test_et_udloebet_claude_token_afvises_foer_dispatch(tmp_path, monkeypatch):
+    """Binæren kan være der og alligevel være ubrugelig.
+
+    Målt 9/11-2026: `resolve_executable` fandt `~/.local/bin/claude` (2.1.318) og
+    `claude auth status` svarede `loggedIn: true` — men `claude --print` gav
+    `401 OAuth access token is invalid`. Tokenet udløb 20/5-2026 og
+    `refreshToken` er tom, så den kan ikke forny sig selv. Uden denne kontrol
+    melder `admission_reason` «klar» og sender en Task af sted der fejler på
+    provider-siden.
+    """
+    import core.services.agent_cli_backend as b
+
+    creds = tmp_path / "creds.json"
+    creds.write_text(json.dumps({
+        "claudeAiOauth": {"accessToken": "sk-ant-oat01-x", "refreshToken": "",
+                          "expiresAt": 1779292842159},
+    }), encoding="utf-8")
+    monkeypatch.setattr(b, "resolve_executable", lambda p: "/bin/claude")
+    assert b._claude_auth_doed(creds) is True
+    monkeypatch.setattr(b, "_claude_auth_doed", lambda credentials=None: True)
+    assert b.admission_reason("claude-cli") == "claude_oauth_udloebet"
+
+
+def test_et_gyldigt_claude_token_slipper_igennem(tmp_path, monkeypatch):
+    import time
+
+    import core.services.agent_cli_backend as b
+
+    creds = tmp_path / "creds.json"
+    creds.write_text(json.dumps({
+        "claudeAiOauth": {"accessToken": "sk-ant-oat01-x", "refreshToken": "r",
+                          "expiresAt": int((time.time() + 86400) * 1000)},
+    }), encoding="utf-8")
+    assert b._claude_auth_doed(creds) is False
+    monkeypatch.setattr(b, "resolve_executable", lambda p: "/bin/claude")
+    monkeypatch.setattr(b, "_claude_auth_doed", lambda credentials=None: False)
+    monkeypatch.setattr("core.services.dispatch_quota.quota_preflight",
+                        lambda backend: {"allow": True, "reason": ""})
+    assert b.admission_reason("claude-cli") == ""
+
+
+def test_en_manglende_credentials_fil_antager_brugbar(tmp_path):
+    """Tvivl må ikke blokere: findes filen ikke, melder preflight-ens egne fejl i stedet."""
+    from core.services.agent_cli_backend import _claude_auth_doed
+
+    assert _claude_auth_doed(tmp_path / "findes-ikke.json") is False
+
+

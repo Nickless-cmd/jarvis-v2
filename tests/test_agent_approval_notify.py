@@ -36,6 +36,12 @@ def nt(isolated_runtime, monkeypatch):
         def wakes(self):
             return {k: v for k, v in ifr._load().items() if v.get("wake_kind") == "agent_approval"}
 
+        def varslet(self, r):
+            """Antal notifikations-raekker (kort) foedt for denne approval — det Bjorn ser."""
+            return self.c_._conn().execute(
+                "SELECT COUNT(*) FROM notifikationer WHERE ref=? AND slags='approval'",
+                (r["approval_id"],)).fetchone()[0]
+
         def fresh(self, r):
             return appr.get(approval_id=r["approval_id"])
 
@@ -192,3 +198,55 @@ def test_deciding_through_the_service_cancels_the_planned_wake(nt):
     assert out["status"] == "ok"
     (rec,) = nt.wakes().values()
     assert rec["status"] == "cancelled"
+
+
+# ── Hvem kortet lander hos (9/11-2026) ───────────────────────────────────────
+#
+# Bjoern: «de arbejder for dig og du boer styre deres permissions ikke mig. Saa
+# skal noget godkendes skal det lande ved dig eftersom det er dine agenter».
+# Graensen er ``db_agent_approvals.PARENT_KINDS``: Jarvis afgoer sin EGEN agents
+# vaerktoejskald; en integration aendrer husets kode og gaar stadig til Bjoern.
+
+
+def test_jarvis_afgoer_selv_et_vaerktoejskald_fra_sin_egen_agent(nt):
+    r = nt.req()
+    assert nt.N_.jarvis_kan_afgoere(r) is True
+    nt.N_.on_requested(r)
+    assert nt.varslet(r) == 0                                          # intet kort til Bjoern
+    assert len(nt.wakes()) == 1                                        # men Jarvis bliver vaekket
+
+
+def test_en_integration_gaar_stadig_til_bjoern(nt):
+    """Integration er en aendring af husets kode — den graense flyttes ikke her."""
+    r = nt.req()
+    integ = {**r, "kind": "integration"}
+    assert nt.N_.jarvis_kan_afgoere(integ) is False
+    nt.N_.on_requested(integ)
+    assert nt.varslet(integ) == 1
+
+
+def test_en_agent_startet_af_en_anden_agent_gaar_til_bjoern(nt):
+    """Kun ``parent_agent_id == 'jarvis'``. Et barnebarn er ikke hans egen uddelegering."""
+    r = nt.req()
+    assert nt.N_.jarvis_kan_afgoere({**r, "parent_agent_id": "agent-anden"}) is False
+
+
+def test_eskaleringen_sender_kortet_naar_jarvis_ikke_har_afgjort_det(nt):
+    """Uden eskalering ville et uafgjort kort hverken vaekke nogen eller staa nogen steder."""
+    r = nt.req()
+    soon = datetime.now(UTC) + timedelta(minutes=1)
+    late = datetime.now(UTC) + timedelta(minutes=30)
+    assert nt.N_.eskaler(now=soon) == []                               # inden for vinduet
+    assert nt.varslet(r) == 0
+    assert nt.N_.eskaler(now=late) == [r["approval_id"]]
+    assert nt.varslet(r) == 1
+    assert nt.N_.eskaler(now=late) == []                               # idempotent: ingen spam
+    assert nt.varslet(r) == 1
+
+
+def test_en_afgjort_approval_eskaleres_ikke(nt):
+    r = nt.req()
+    nt.appr_.decide(approval_id=r["approval_id"], decision="deny", actor_user_id=O, actor_kind="human",
+                    digest=r["args_digest"])
+    assert nt.N_.eskaler(now=datetime.now(UTC) + timedelta(minutes=30)) == []
+    assert nt.varslet(r) == 0

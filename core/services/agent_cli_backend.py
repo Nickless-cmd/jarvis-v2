@@ -93,10 +93,40 @@ def resolve_executable(provider: str) -> str | None:
     return str(candidate) if candidate.is_file() and os.access(candidate, os.X_OK) else None
 
 
+def _claude_auth_doed(credentials: Path | None = None) -> bool:
+    """Er Claudes OAuth-token udloebet? Binæren kan vaere der og alligevel vaere ubrugelig.
+
+    Maalt 9/11-2026: ``resolve_executable`` fandt ``~/.local/bin/claude`` (2.1.318),
+    ``claude auth status`` svarede ``loggedIn: true`` — og ``claude --print`` gav
+    ``401 OAuth access token is invalid``. Tokenet udloeb 20/5-2026 og
+    ``refreshToken`` er tom, saa den kan ikke forny sig selv. ``auth status``
+    laeser kun konfigurationen; den siger intet om hvorvidt tokenet virker.
+
+    Uden denne kontrol melder ``admission_reason`` «klar» og sender en Task af
+    sted, der fejler paa provider-siden — praecis den teater-form hvor en
+    indgangsbetingelse ser ud som om den virker.
+    """
+    path = credentials or (Path.home() / ".claude" / ".credentials.json")
+    try:
+        if not path.is_file():
+            return False
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        logger.warning("kunne ikke laese Claudes credentials - antager brugbar", exc_info=True)
+        return False                       # tvivl -> lad preflight-ens egne fejl melde
+    oauth = data.get("claudeAiOauth") or {}
+    expires_at = oauth.get("expiresAt")
+    if not isinstance(expires_at, (int, float)):
+        return False
+    return expires_at / 1000.0 <= time.time()
+
+
 def admission_reason(provider: str) -> str:
     """Tom streng betyder at CLI-ruten kan optages i Task-rutekæden."""
     if not resolve_executable(provider):
         return "cli_ikke_installeret"
+    if provider == "claude-cli" and _claude_auth_doed():
+        return "claude_oauth_udloebet"
     from core.services.dispatch_quota import quota_preflight
 
     backend = "claude" if provider == "claude-cli" else "codex"

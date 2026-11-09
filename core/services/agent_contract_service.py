@@ -668,8 +668,9 @@ def supervise() -> list[dict[str, Any]]:
     queue_expired = expire_due_queues()
     appr.expire_due()
     try:
-        from core.services.agent_approval_notify import ensure_wakes
+        from core.services.agent_approval_notify import ensure_wakes, eskaler
         ensure_wakes()
+        eskaler()
     except Exception:
         logger.warning("ensure_wakes fejlede", exc_info=True)
     resumed = resume_decided(_start_execution)

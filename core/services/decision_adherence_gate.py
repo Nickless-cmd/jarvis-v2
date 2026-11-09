@@ -92,28 +92,56 @@ def decision_adherence_section() -> str:
     # sorteringen ville loftet kunne skjule en kritisk beslutning bag
     # advisory-støj — præcis den fejlklasse fixet 2026-09-21 retter.
     raekker: list[tuple[float, str, str]] = []
+    umalte: list[str] = []
     for d in active:
         directive = d.get("directive", "")
         # Fix 2026-09-21: `d.get("adherence_score", 1.0) or 1.0` behandlede en
         # score på PRÆCIS 0.0 som falsy og løftede den til 1.0 — den værste
         # beslutning af alle blev læst som «doing fine» og sprunget over.
-        # Kun None betyder «aldrig reviewet».
+        #
+        # Rettet 9/11-2026: NULL blev STADIG løftet til 1.0. Det var samme
+        # fejlklasse et niveau længere inde — og den ramte 22 af 70 aktive
+        # beslutninger (målt i drift samme dag).
+        #
+        # Kæden var: `append_review` → `_verified_adherence` returnerer None
+        # når der er under `_MIN_VERDICTS` (3) TÆLLENDE domme. `unknown` tæller
+        # ikke, og 986 af 2.592 domme er `unknown` fordi `evidence_permits_verdict`
+        # korrekt nedgraderer en dom uden spor i vinduet. De 22 havde 79 domme
+        # tilsammen, men kun 29 tællende — altså var de fleste reelt bedømt,
+        # uden at nogen kunne sige hvordan.
+        #
+        # `_MIN_VERDICTS` og nedgraderingen er BEGGE rigtige: en ung beslutning
+        # må ikke stemplés som brudt på to domme, og en dom uden spor må ikke
+        # tælle. Fejlen var kun hvordan gaten LÆSTE resultatet: «ukendt» blev
+        # til «perfekt». En blind plet der meldes som sundhed, er værre end en
+        # lav score — den kan ikke opdages.
+        #
+        # Nu er der tre tilstande: målt lav (eskalerer), målt god (tavs) og
+        # IKKE MÅLT (nævnes som blind plet, ikke som anklage).
         raa = d.get("adherence_score")
-        stored_score = float(raa) if raa is not None else 1.0
         dec_id = d.get("decision_id", "?")
 
-        # Overlay R2 telemetry where applicable
-        if r2_rate is not None and dec_id in _R2_LINKED_DECISIONS:
-            score = min(stored_score, r2_rate)
+        if raa is None:
+            # R2-telemetri kan stadig måle en beslutning uden en gemt score.
+            if r2_rate is not None and dec_id in _R2_LINKED_DECISIONS:
+                score = r2_rate
+            else:
+                umalte.append(dec_id)
+                continue
         else:
-            score = stored_score
+            stored_score = float(raa)
+            # Overlay R2 telemetry where applicable
+            if r2_rate is not None and dec_id in _R2_LINKED_DECISIONS:
+                score = min(stored_score, r2_rate)
+            else:
+                score = stored_score
 
         if score >= _GOOD_THRESHOLD:
             continue  # doing fine, no nudge needed
 
         raekker.append((score, dec_id, directive))
 
-    if not raekker:
+    if not raekker and not umalte:
         return ""
 
     raekker.sort(key=lambda r: r[0])
@@ -181,6 +209,19 @@ def decision_adherence_section() -> str:
         # Aldrig tavs: hellere sige hvor mange der ligger under tærsklen end
         # at lade dem forsvinde ud af prompten uden et spor.
         lines.append(f"… og {skjulte} flere under tærsklen (ikke vist her).")
+
+    if umalte:
+        # Blinde pletter nævnes ÉN gang, ikke én linje pr. beslutning.
+        #
+        # Målt 9/11-2026: 22 af 70 var umålte. Skrev jeg dem alle, ville
+        # gaten vokse med 22 linjer for at sige «jeg ved det ikke» — og
+        # `_MAKS_LINJER` findes netop fordi den slags fortrænger det
+        # kritiske bånd. Tallet hører i prompten; ADRESSERNE hører i
+        # indbakken, som bærer dem alle fordi den er et værktøj jeg kalder.
+        lines.append(
+            f"{len(umalte)} beslutninger er IKKE MÅLT endnu (under 3 tællende "
+            "domme): hverken fulgt eller brudt. Id'erne ligger i indbakken."
+        )
 
     lines.append("[/DECISION-ADHERENCE-GATE]\n")
     return "\n".join(lines)
@@ -269,13 +310,24 @@ def registrer_i_indbakken(bruger_id: str) -> dict[str, Any]:
     fejl = 0
     for d in active:
         raa = d.get("adherence_score")
-        score = float(raa) if raa is not None else 1.0
-        if score >= _GOOD_THRESHOLD:
-            continue
+        if raa is None:
+            # Umålt er sin EGEN tilstand (9/11-2026), ikke «perfekt».
+            #
+            # Gaten kan ikke skrive 22 linjer, så den skriver ét tal og
+            # henviser hertil. Uden denne gren ville henvisningen pege på
+            # ingenting: `score = 1.0` sprang dem over, og adresserne fandtes
+            # dermed hverken i prompten eller i indbakken. En beslutning ingen
+            # kan navngive, kan hverken omformuleres eller lukkes.
+            score = None
+        else:
+            score = float(raa)
+            if score >= _GOOD_THRESHOLD:
+                continue
         dec_id = str(d.get("decision_id") or "").strip()
         if not dec_id:
             continue
-        baand = ("kritisk" if score < _CRITICAL_THRESHOLD
+        baand = ("umaalt" if score is None
+                 else "kritisk" if score < _CRITICAL_THRESHOLD
                  else "imperativ" if score < _ADVISORY_THRESHOLD else "advisory")
         r = registrer_kilde(
             bruger_id=bruger_id,
@@ -286,7 +338,10 @@ def registrer_i_indbakken(bruger_id: str) -> dict[str, Any]:
             # i stedet fra KILDENS egen række — `created_by` — og kildetypen
             # `decision` kan ikke gate, så det flytter etiketten og intet andet.
             kilde_ejer=str(d.get("created_by") or ""),
-            beskrivelse=f"[{baand} {score:.0%}] {str(d.get('directive') or '')}",
+            beskrivelse=(
+                f"[{baand}] {str(d.get('directive') or '')}" if score is None
+                else f"[{baand} {score:.0%}] {str(d.get('directive') or '')}"
+            ),
             # Posten er ikke et stykke arbejde der venter (målt 14/10-2026).
             # Den lever i dec_*-registret og vises i BESLUTNINGER-sektionen;
             # spejlingen her bevarer sporet uden at påstå at der venter en

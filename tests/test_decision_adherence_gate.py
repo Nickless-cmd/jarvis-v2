@@ -399,3 +399,69 @@ def test_kildetypen_er_et_SELVSTAENDIGT_vaern(monkeypatch, tmp_path):
         "en beslutning kan gate — to gater skubber nu til det samme")
     assert dbi.hent(bruger_id="bjorn",
                     kilde_id="dec_levende")["kraever_handling"] is False
+
+
+def test_en_ikke_maalt_beslutning_er_ikke_det_samme_som_en_fulgt(monkeypatch):
+    """NULL betyder UKENDT — ikke 100 % efterlevelse.
+
+    Målt 9/11-2026 i drift: 22 af 70 aktive beslutninger stod med
+    `adherence_score = NULL`, og gaten løftede dem til 1.0 og sprang dem
+    over. De var dermed hverken i prompten eller i indbakken — en blind plet
+    der blev meldt som sundhed.
+
+    Kæden bag var ikke en fejl: `unknown` tæller ikke i adherence (en dom uden
+    spor må ikke vægte), og `_MIN_VERDICTS = 3` kræver tre tællende domme (en
+    ung beslutning må ikke stemplés som brudt). De 22 havde 79 domme
+    tilsammen, men kun 29 tællende. Begge regler er rigtige — det var KUN
+    gaten der læste deres fravær som perfektion.
+
+    Testen pinner at tilstanden nu nævnes som «ikke målt», ikke som anklage
+    og ikke som tavshed.
+    """
+    from core.services import decision_adherence_gate as gate
+
+    _fake_behavioral(monkeypatch, [
+        {"decision_id": "umalt1", "directive": "slå op først", "adherence_score": None},
+        {"decision_id": "umalt2", "directive": "mål før du kalder", "adherence_score": None},
+        {"decision_id": "fin", "directive": "gør det godt", "adherence_score": 0.95},
+    ])
+
+    section = gate.decision_adherence_section()
+
+    assert section != "", "en umålt beslutning må ikke gøre gaten tavs"
+    assert "IKKE MÅLT" in section
+    assert "2 beslutninger" in section, "tallet skal stå i prompten"
+    # Adresserne hører i indbakken, ikke i prompten: 22 linjer ville fortrænge
+    # det kritiske bånd, som er hele grunden til _MAKS_LINJER.
+    assert "umalt1" not in section and "umalt2" not in section
+    assert "fin" not in section, "en målt-god beslutning skal stadig være tavs"
+
+
+def test_en_umalt_beslutning_faar_en_adresse_i_indbakken(monkeypatch, tmp_path):
+    """«Se indbakken» må ikke pege på ingenting.
+
+    Gaten skriver ét tal og henviser til indbakken. Uden denne gren fandtes
+    id'et hverken i prompten eller i indbakken — og en beslutning ingen kan
+    navngive, kan hverken omformuleres eller lukkes.
+    """
+    from core.services import decision_adherence_gate as gate
+
+    _fake_behavioral(monkeypatch, [
+        {"decision_id": "umalt1", "directive": "slå op først", "adherence_score": None},
+    ])
+
+    sette: list[dict] = []
+
+    def _fake_registrer(**kwargs):
+        sette.append(kwargs)
+        return {"status": "ok"}
+
+    inbox = ModuleType("core.services.inbox_state")
+    inbox.registrer_kilde = _fake_registrer
+    monkeypatch.setitem(sys.modules, "core.services.inbox_state", inbox)
+
+    result = gate.registrer_i_indbakken("bjorn")
+
+    assert result["registreret"] == 1
+    assert sette and sette[0]["kilde_id"] == "umalt1"
+    assert "[umaalt]" in sette[0]["beskrivelse"]

@@ -111,7 +111,7 @@ _Gate 1: Decision-adherence gate._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `decision_adherence_section` | `()` | Build an escalation prompt section based on current decision adherence. | [src](../../../core/services/decision_adherence_gate.py#L32) |
-| function | `registrer_i_indbakken` | `(bruger_id)` | Giv hver beslutning under tærsklen en post i indbakken. | [src](../../../core/services/decision_adherence_gate.py#L190) |
+| function | `registrer_i_indbakken` | `(bruger_id)` | Giv hver beslutning under tærsklen en post i indbakken. | [src](../../../core/services/decision_adherence_gate.py#L231) |
 
 ## `core/services/decision_breach_reader.py`
 _Læseren for breach-events — den manglende anden halvdel af sløjfen._

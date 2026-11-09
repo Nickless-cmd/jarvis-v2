@@ -1255,8 +1255,26 @@ def _build_influence_trace(
     if _dm.is_enabled("decision_review"):
         try:
             from core.services.decision_review_daemon import tick as _dr_tick
+            # 30 s → 90 s (9/11-2026).
+            #
+            # `_MAX_REVIEW_PER_TICK` er 5, og hver dom er et LLM-kald på ~9 s
+            # — altså ~45 s for en fuld tick. Med 30 s ramte deadlinen HVER
+            # gang: tråden blev orphandet og `_dr_result` var None, så
+            # `last_result_summary` stod tom.
+            #
+            # Det er OBSERVABILITY, ikke funktion. Den nemme slutning er
+            # forkert: dommene blev skrevet alligevel, fordi en orphandet
+            # tråd fortsætter til den er færdig. Målt samme dag: 2.592 domme,
+            # den nyeste få minutter gammel. «Scoren blev aldrig skrevet» var
+            # min egen forkerte diagnose.
+            #
+            # Det der VAR brudt: 22 af 70 beslutninger stod med
+            # `adherence_score = NULL` — ikke fordi de ikke blev bedømt (de
+            # havde 79 domme), men fordi `unknown` ikke tæller og
+            # `_MIN_VERDICTS` kræver 3. Rettet i gaten, som nu læser NULL som
+            # «ikke målt» i stedet for «perfekt».
             _dr_result = _hb._daemon_tick_with_deadline(
-                "decision_review", _dr_tick, deadline_seconds=30.0,
+                "decision_review", _dr_tick, deadline_seconds=90.0,
             )
             if _dr_result is not None:
                 # None = deadlinen ramte og tråden blev orphandet. Daemonen

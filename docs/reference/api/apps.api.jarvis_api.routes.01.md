@@ -628,9 +628,9 @@ _Kontekstforbrug og komprimeringsstatus til Desk._
 | function | `_compactions_for_session` | `(session_id)` | Successful marker savings from the compaction log, never summary text. | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L13) |
 | function | `chat_context_info` | `()` | Kontekst-tærskler til composer-ringen (#9). Kun ægte config-tal: | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L39) |
 | function | `chat_context_usage` | `(session_id=…, provider=…, model=…)` | ÆGTE kontekst-fyld for en session — backend-autoritativt. | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L53) |
-| function | `_system_overhead_tokens` | `(provider, model, session_id)` | Estimér tokens i den STABILE system-prefix (identitet + regler + tool-katalog) — det | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L142) |
-| class | `_CompactNowBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L172) |
-| function | `chat_compact_now` | `(body)` | Manuel compaction (som Claude Codes /compact). Udløser den SAMME baggrunds-motor som | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L178) |
+| function | `_system_overhead_tokens` | `(provider, model, session_id)` | Tokens i den STABILE system-prefix — nu et kald til den DELTE kilde. | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L138) |
+| class | `_CompactNowBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L152) |
+| function | `chat_compact_now` | `(body)` | Manuel compaction (som Claude Codes /compact). Udløser den SAMME baggrunds-motor som | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L158) |
 
 ## `apps/api/jarvis_api/routes/chat_flow_preferences.py`
 _Self-scoped API for Desk Chat Flow presentation preferences._

@@ -135,38 +135,18 @@ async def chat_context_usage(
     }
 
 
-# System-overhead-cache (stabil prefix ændrer sig kun ved workspace-edit → 60s TTL nok).
-_overhead_cache: dict[tuple, tuple[float, int]] = {}
-
-
 def _system_overhead_tokens(provider: str, model: str, session_id: str) -> int:
-    """Estimér tokens i den STABILE system-prefix (identitet + regler + tool-katalog) — det
-    faste overhead udover samtalen. Memoiseret pr. (provider, model). Self-safe → 0."""
-    import time as _t
-    key = (str(provider or ""), str(model or ""))
-    now = _t.monotonic()
-    hit = _overhead_cache.get(key)
-    if hit and (now - hit[0]) < 60:
-        return hit[1]
-    try:
-        from core.services.prompt_contract import build_visible_stable_prefix
-        from core.context.token_estimate import estimate_tokens
-        name = "default"
-        try:
-            from core.services.chat_sessions import get_session_owner
-            from core.identity.users import find_user_by_discord_id
-            oid = get_session_owner(session_id) or "" if session_id else ""
-            u = find_user_by_discord_id(oid) if oid else None
-            if u and getattr(u, "workspace", ""):
-                name = u.workspace
-        except Exception:  # Workspace-opslag er valgfrit; brug standardnavnet ved fejl.
-            pass
-        prefix = build_visible_stable_prefix(provider=provider, model=model, name=name)
-        val = int(estimate_tokens(prefix))
-        _overhead_cache[key] = (now, val)
-        return val
-    except Exception:  # Ringens ekstra overhead-estimat må ikke blokere statusruten.
-        return 0
+    """Tokens i den STABILE system-prefix — nu et kald til den DELTE kilde.
+
+    Funktionen boede her med sin egen cache og sit eget workspace-opslag, mens
+    compaction-triggeren i `transcript_sections` slet ikke målte prefixen. To
+    steder der beskriver den samme størrelse driver fra hinanden; målt 9/11-2026
+    undervurderede triggeren konteksten med ~17.400 tokens (22 % af budgettet),
+    fordi den kun så transcriptet. Kilden er nu `core.services.prompt_overhead`.
+    """
+    from core.services.prompt_overhead import stable_prefix_tokens
+
+    return stable_prefix_tokens(provider=provider, model=model, session_id=session_id)
 
 
 class _CompactNowBody(BaseModel):

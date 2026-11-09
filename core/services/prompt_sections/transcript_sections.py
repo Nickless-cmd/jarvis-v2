@@ -781,8 +781,26 @@ def _maybe_auto_compact_session(
     _budget = int(getattr(settings, "context_attention_budget_tokens", 35_000) or 35_000)
     _low = int(getattr(settings, "context_attention_low_water_tokens", 15_000) or 15_000)
     _safety = float(getattr(settings, "context_compact_safety_fraction", 0.85) or 0.85)
+    # Den faste system-prefix tælles MED (målt 9/11-2026).
+    #
+    # Triggeren målte kun det rendrede transcript, mens requesten også bærer
+    # identitet, regler, værktøjskatalog og hukommelses-sektioner. Målt på en
+    # levende kørsel: assembly 25.623 tokens, request 442.449 tegn ≈ 110.000
+    # tokens — triggeren så 77 % af konteksten og fyrede ved «80k» når den
+    # reelle kontekst var ~105k. Derfor faldt konteksten aldrig til det niveau
+    # budgettet lover: efter komprimering stod den på fast-prefix + markør.
+    #
+    # `stable_prefix_tokens` er self-safe og giver 0 ved fejl, så et manglende
+    # estimat falder tilbage til den gamle adfærd frem for at blokere turen.
+    from core.services.prompt_overhead import stable_prefix_tokens
+
+    _prefix_tokens = stable_prefix_tokens(
+        provider=str(getattr(settings, "visible_model_provider", "") or ""),
+        model=str(getattr(settings, "visible_model_name", "") or ""),
+        session_id=session_id,
+    )
     decision = compaction_decision(
-        estimate_messages_tokens(current_messages),
+        estimate_messages_tokens(current_messages) + int(_prefix_tokens),
         provider=str(getattr(settings, "visible_model_provider", "") or ""),
         model=str(getattr(settings, "visible_model_name", "") or ""),
         attention_budget=_budget,

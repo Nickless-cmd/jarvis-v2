@@ -116,8 +116,16 @@ export function SettingsProvider({
     setSettings(next)
     if (browser) {
       writeBrowserConfig(next)
-      setAuth(null)
-      setAuthStatus(next.authToken ? 'checking' : 'idle')
+      // Kun et SKIFT i tokenet kraever en ny login-kontrol. `fornyOmNoedvendigt`
+      // kalder `update` med det token serveren svarede — og svarer serveren det
+      // SAMME token, er der intet nyt at tjekke. Satte vi `checking` alligevel,
+      // stod fladen fast: whoami-effekten fyrer kun naar `authToken` aendrer
+      // sig, saa «Kontrollerer login…» blev aldrig afloest af «ready».
+      // Maalt 9/11-2026: det var praecis hvad der skete i syntesten.
+      if (next.authToken !== settings?.authToken) {
+        setAuth(null)
+        setAuthStatus(next.authToken ? 'checking' : 'idle')
+      }
     }
     const w = deskBridge()
     if (w && settings) {

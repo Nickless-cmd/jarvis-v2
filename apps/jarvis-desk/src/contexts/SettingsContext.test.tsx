@@ -29,6 +29,34 @@ describe('SettingsContext', () => {
     expect(result.current.settings?.authToken).toBe('test-token')
   })
 
+  it('bliver ikke hængende i «checking» når fornyelsen giver samme token', async () => {
+    // MÅLT 9/11-2026: `fornyOmNoedvendigt` kalder `update` med det token
+    // serveren svarede. Er svaret det SAMME token, satte `update` alligevel
+    // `checking` — men whoami-effekten fyrer kun når `authToken` ÆNDRER sig,
+    // så «Kontrollerer login…» blev aldrig afløst. Fladen stod fast.
+    const apiBaseUrl = new URL('/', window.location.origin).toString()
+    writeBrowserConfig({ apiBaseUrl, authToken: 'test-token' })
+    const wrapper = ({ children }: { children: ReactNode }) => <SettingsProvider>{children}</SettingsProvider>
+    const { result } = renderHook(() => useSettings(), { wrapper })
+    await waitFor(() => expect(result.current.authStatus).toBe('ready'))
+    await act(async () => { await result.current.update({ authToken: 'test-token' }) })
+    expect(result.current.authStatus).toBe('ready')
+    expect(result.current.auth?.role).toBe('owner')
+  })
+
+  it('tjekker login igen når tokenet faktisk skifter', async () => {
+    const apiBaseUrl = new URL('/', window.location.origin).toString()
+    writeBrowserConfig({ apiBaseUrl, authToken: 'test-token' })
+    const wrapper = ({ children }: { children: ReactNode }) => <SettingsProvider>{children}</SettingsProvider>
+    const { result } = renderHook(() => useSettings(), { wrapper })
+    await waitFor(() => expect(result.current.authStatus).toBe('ready'))
+    const foer = vi.mocked(whoami).mock.calls.length
+    await act(async () => { await result.current.update({ authToken: 'andet-token' }) })
+    expect(readBrowserConfig().authToken).toBe('andet-token')
+    await waitFor(() => expect(vi.mocked(whoami).mock.calls.length).toBeGreaterThan(foer))
+    await waitFor(() => expect(result.current.authStatus).toBe('ready'))
+  })
+
   it('rydder gamle private PWA-kladden ved medlemslogin', async () => {
     localStorage.setItem(draftKeyFor('chat'), JSON.stringify('gammel privat tekst'))
     localStorage.setItem('jarvis-desk:composerHistory', JSON.stringify(['tidligere besked']))

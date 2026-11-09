@@ -83,7 +83,13 @@ def test_dispatch_starts_wakeup_with_server_stream_relay():
         result = dispatch_due_wakeups()
 
     assert result["dispatched"] == 1
-    assert fake_start.call_args.kwargs == {
+    _kwargs = dict(fake_start.call_args.kwargs)
+    # PERMISSIONS-KILDEN (9/11-2026): vækningen skal bære sin oprindelses-
+    # samtale, saa niveauet læses der og ikke fra `auto-*`-siloen.
+    assert _kwargs.pop("permission_session", ""), (
+        "vækningen skal sende sin oprindelses-samtale som permissions-kilde"
+    )
+    assert _kwargs == {
         "session_id": "chat-origin",
         "origin": "wakeup",
         "task_id": "",
@@ -182,7 +188,7 @@ def test_dispatch_restores_recorded_user_context_before_starting_run():
     fired = state
     captured = {}
 
-    def _start(_message, *, session_id, origin, task_id=""):
+    def _start(_message, *, session_id, origin, task_id="", permission_session=None):
         captured.update({
             "session_id": session_id,
             "context_session_id": current_session_id(),

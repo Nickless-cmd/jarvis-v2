@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "GYLDIGE", "STANDARD", "arv_permission", "hent_permission", "saet_permission",
-    "trust_for_session",
+    "trust_for_autonomous", "trust_for_session",
 ]
 
 GYLDIGE: Final[frozenset[str]] = frozenset({"ask", "trust"})
@@ -117,6 +117,58 @@ def trust_for_session(session_id: str) -> bool:
     Fail-closed: en ukendt samtale eller en læsefejl giver `ask`.
     """
     return hent_permission(session_id) == "trust"
+
+
+def trust_for_autonomous(session_id: str) -> bool:
+    """Skal et AUTONOMT run arve fuld adgang? (Bjørn 9/11-2026)
+
+    ## Hvorfor den findes
+
+    Bjørn: «så snart din inbox vækker dig eller wakeup så skal jeg sidde og
+    godkende alle bash kommandoer … denne session køre allerede med fuld
+    adgang, det burde fortsætte sådan».
+
+    `trust_for_session` gør det rigtige — den læser niveauet fra samtalen. Men
+    et autonomt run lander ofte i en SYSTEM-SILO (`auto-heartbeat-…`,
+    `auto-inbox-…`, `auto-wakeup-…`). Målt 9/11-2026: siloerne stod `ask`
+    (født sådan, fordi `resolve_autonomous_session` opretter dem uden en
+    forælder), mens Bjørns samtale stod `trust`. Hver enkelt vækning rejste
+    derfor et godkendelses-kort som ingen sad og svarede på.
+
+    En silo er ikke et sted et menneske er — dens eget niveau er meningsløst.
+    Niveauet lånes derfor fra ejerens app-samtale, som er det eneste sted
+    nogen faktisk HAR sat et niveau.
+
+    ## Hvad den ikke gør
+
+    Den rører ikke værktøjssættet: `autonomous_tool_policy.presence_for_run`
+    afgør fortsat hvilke værktøjer et autonomt run må se, og den grænse står.
+    Dette er alene spørgsmålet «skal der rejses et kort».
+
+    Fail-closed hele vejen: en ukendt silo, en manglende ejer-samtale eller en
+    læsefejl giver `ask` — en tvivl skal koste et spørgsmål, ikke en mutation.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return False
+    try:
+        from core.services.autonomous_sessions import is_system_session
+    except Exception:  # uden klassifikationen gælder samtalens eget svar
+        logger.debug("session_permission: kunne ikke klassificere %s", sid, exc_info=True)
+        return trust_for_session(sid)
+    if not is_system_session(sid):
+        return trust_for_session(sid)
+    try:
+        from core.identity.owner_resolver import resolve_owner_app_session
+
+        ejer = str(resolve_owner_app_session() or "").strip()
+    except Exception:
+        logger.debug("session_permission: kunne ikke finde ejerens samtale",
+                     exc_info=True)
+        return False
+    if not ejer or ejer == sid:
+        return False
+    return trust_for_session(ejer)
 
 
 def arv_permission(ny_session: str, fra_session: str) -> dict[str, object]:

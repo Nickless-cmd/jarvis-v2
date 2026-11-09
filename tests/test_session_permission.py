@@ -195,3 +195,90 @@ def test_trust_for_session_ukendt_er_ask(db):
     """Fail-closed: en samtale vi ikke kender maa ikke aabne for fuld adgang."""
     assert sp.trust_for_session("findes-ikke") is False
     assert sp.trust_for_session("") is False
+
+
+# ── Silo-arven (9/11-2026) ────────────────────────────────────────────────
+#
+# Bjørn: «så snart din inbox vækker dig eller wakeup så skal jeg sidde og
+# godkende alle bash kommandoer … denne session køre allerede med fuld
+# adgang, det burde fortsætte sådan».
+#
+# Målt: autonome runs lander i `auto-*`-siloer, som er FØDT `ask` (de oprettes
+# uden en forælder). Bjørns egen samtale stod `trust`. Så hver vækning rejste
+# et kort han ikke sad og svarede på.
+
+
+def _silo_opsaet(monkeypatch, *, ejer_session: str | None):
+    """Gør `auto-*` til en silo og peg ejerens app-samtale hvor vi vil."""
+    monkeypatch.setattr(
+        "core.services.autonomous_sessions.is_system_session",
+        lambda sid: str(sid or "").startswith("auto-"),
+    )
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.resolve_owner_app_session",
+        lambda: ejer_session,
+    )
+
+
+def test_en_silo_laaner_ejerens_niveau(db, monkeypatch):
+    """Siloen staar selv `ask`, men ejerens samtale staar `trust` → fuld adgang.
+
+    MUTATION: fjern silo-grenen i `trust_for_autonomous` (saa den altid kalder
+    `trust_for_session(sid)`) → siloen svarer False → testen fejler.
+    """
+    sp.saet_permission("s1", "trust")
+    _silo_opsaet(monkeypatch, ejer_session="s1")
+    assert sp.trust_for_session("auto-heartbeat-20261109") is False, "siloen selv er ask"
+    assert sp.trust_for_autonomous("auto-heartbeat-20261109") is True
+
+
+def test_en_silo_uden_trust_hos_ejeren_er_stadig_ask(db, monkeypatch):
+    """Arven maa ikke OPFINDES: staar ejerens samtale paa `ask`, er svaret nej."""
+    _silo_opsaet(monkeypatch, ejer_session="s1")
+    assert sp.trust_for_autonomous("auto-inbox-20261109") is False
+
+
+def test_en_rigtig_samtale_foelger_sig_selv(db, monkeypatch):
+    """Uændret adfærd: en samtale der IKKE er en silo læses som før, ogsaa
+    naar ejerens anden samtale staar paa `trust`."""
+    sp.saet_permission("s1", "trust")
+    _silo_opsaet(monkeypatch, ejer_session="s1")
+    assert sp.trust_for_autonomous("s1") is True
+    _opret(db, "s2")                                  # s2 er ask
+    assert sp.trust_for_autonomous("s2") is False, "ejerens trust maa ikke smitte en ask-samtale"
+
+
+def test_silo_uden_ejer_samtale_er_ask(db, monkeypatch):
+    """Fail-closed: kan vi ikke finde ejerens samtale, arves intet."""
+    _silo_opsaet(monkeypatch, ejer_session="")
+    assert sp.trust_for_autonomous("auto-heartbeat-20261109") is False
+    _silo_opsaet(monkeypatch, ejer_session=None)
+    assert sp.trust_for_autonomous("auto-heartbeat-20261109") is False
+
+
+def test_silo_der_er_sin_egen_ejer_er_ask(db, monkeypatch):
+    """En resolver der peger tilbage paa siloen selv maa ikke give fuld adgang —
+    ellers kunne et svar fra siloen loefte sig selv."""
+    sp.saet_permission("auto-heartbeat-20261109", "trust")
+    _silo_opsaet(monkeypatch, ejer_session="auto-heartbeat-20261109")
+    assert sp.trust_for_autonomous("auto-heartbeat-20261109") is False
+
+
+def test_silo_arven_kaster_ALDRIG(db, monkeypatch):
+    """En braekket resolver skal give `ask`, ikke en undtagelse op i run-oprettelsen."""
+    def _braek():
+        raise RuntimeError("i stykker")
+
+    monkeypatch.setattr(
+        "core.services.autonomous_sessions.is_system_session",
+        lambda sid: str(sid or "").startswith("auto-"),
+    )
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.resolve_owner_app_session", _braek,
+    )
+    assert sp.trust_for_autonomous("auto-heartbeat-20261109") is False
+
+
+def test_tomt_id_er_ask_i_silo_arven(db):
+    assert sp.trust_for_autonomous("") is False
+    assert sp.trust_for_autonomous(None) is False

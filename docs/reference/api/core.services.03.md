@@ -545,7 +545,8 @@ _Server-authoritative streaming lifecycle for autonomous visible runs._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_trust_for_session` | `(session_id)` | Samtalens tilladelses-niveau — fail-closed til `ask`. | [src](../../../core/services/autonomous_stream_run.py#L9) |
-| function | `start_autonomous_stream_run` | `(message, *, session_id, origin=…, task_id=…)` | Start autonomous work and relay its v2 frames through ``run_event_log``. | [src](../../../core/services/autonomous_stream_run.py#L25) |
+| function | `_trust_for_autonomous` | `(session_id)` | Arv for et AUTONOMT run — en silo låner ejerens niveau (9/11-2026). | [src](../../../core/services/autonomous_stream_run.py#L25) |
+| function | `start_autonomous_stream_run` | `(message, *, session_id, origin=…, task_id=…, permission_session=…)` | Start autonomous work and relay its v2 frames through ``run_event_log``. | [src](../../../core/services/autonomous_stream_run.py#L42) |
 
 ## `core/services/autonomous_supervisor.py`
 _Autonom run-supervision (#3) — Centralen følger HVERT autonomt run, korrelerer det på tværs_

@@ -22,18 +22,43 @@ def _trust_for_session(session_id: str) -> bool:
         return False
 
 
+def _trust_for_autonomous(session_id: str) -> bool:
+    """Arv for et AUTONOMT run — en silo låner ejerens niveau (9/11-2026).
+
+    Se `session_permission.trust_for_autonomous`: en `auto-*`-silo er født
+    `ask` og har ingen bruger bag sig, så dens eget svar er meningsløst.
+    Fail-closed til `ask`.
+    """
+    try:
+        from core.services.session_permission import trust_for_autonomous
+
+        return bool(trust_for_autonomous(session_id))
+    except Exception:  # noqa: BLE001 — en læsefejl må ikke åbne adgang
+        logger.debug("kunne ikke læse autonom-permissions for %s",
+                     session_id, exc_info=True)
+        return False
+
+
 def start_autonomous_stream_run(
     message: str,
     *,
     session_id: str | None,
     origin: str = "autonomous",
     task_id: str = "",
+    permission_session: str | None = None,
 ) -> None:
     """Start autonomous work and relay its v2 frames through ``run_event_log``.
 
     Governance jobs, including wakeup dispatch, run in the API process. Registering
     before the worker starts makes the run immediately visible to ``/active-runs``
     and attachable through ``/sessions/{id}/live``.
+
+    ``permission_session`` er hvor tilladelses-niveauet læses fra, når det ikke
+    er ``session_id``. En vækning lander i en `auto-*`-silo (som er født `ask`),
+    men blev BOOKET i Bjørns samtale — og det er den samtales niveau, han gav
+    (målt 9/11-2026: alle hans vækninger bærer `chat-52d75bf…` = `trust`, mens
+    siloen stod `ask`, så hver vækning rejste et kort han ikke sad og svarede
+    på). Tom = samme session som før; adfærden er uændret for alle andre.
     """
     import contextvars
     import threading
@@ -134,11 +159,21 @@ def start_autonomous_stream_run(
         session_id=sid,
         autonomous=True,
         user_id=_ejer,
-        trust_all=_trust_for_session(sid),
+        trust_all=(
+            _trust_for_session(_pk) if (_pk := str(permission_session or "").strip())
+            else _trust_for_autonomous(sid)
+        ),
         # PERMISSIONS-ARVEN (21/10-2026, Bjørn: «wakeups skal arve sessions
         # permissions»). Niveauet læses fra samtalen selv, så en vækning i en
         # `trust`-samtale fortsætter med fuld adgang i stedet for at rejse et
         # godkendelses-kort som ingen sad og svarede på. `ask` er uændret.
+        #
+        # KILDEN ER ``permission_session``, ikke ``sid`` (9/11-2026). Arven var
+        # rigtig i sin hensigt men læste den forkerte række: en vækning lander i
+        # `auto-wakeup-…`/`auto-heartbeat-…`, som er en SYSTEM-SILO født `ask`.
+        # Målt: alle Bjørns vækninger bærer `chat-52d75bf…` = `trust`, mens
+        # siloen stod `ask` — så hver enkelt rejste et kort han ikke sad og
+        # svarede på. Dispatcheren sender nu vækningens oprindelses-samtale her.
         # Oprindelsen SKAL med på run-objektet (målt 10/10-2026): uden den læste
         # `set_run_identity` en tom origin, og self-wakeup faldt tilbage til
         # bund-sættet i stedet for sit eget. Samme felt som start_autonomous_run.

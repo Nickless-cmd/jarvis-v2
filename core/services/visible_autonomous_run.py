@@ -34,6 +34,23 @@ def _trust_for_session(session_id: str) -> bool:
         return False
 
 
+def _trust_for_autonomous(session_id: str) -> bool:
+    """Arv for et AUTONOMT run — en silo låner ejerens niveau (9/11-2026).
+
+    Se `session_permission.trust_for_autonomous`: en `auto-*`-silo er født
+    `ask` og har ingen bruger bag sig, så dens eget svar er meningsløst.
+    Fail-closed til `ask`.
+    """
+    try:
+        from core.services.session_permission import trust_for_autonomous
+
+        return bool(trust_for_autonomous(session_id))
+    except Exception:  # noqa: BLE001 — en læsefejl må ikke åbne adgang
+        logger.debug("kunne ikke læse autonom-permissions for %s",
+                     session_id, exc_info=True)
+        return False
+
+
 def _observe_autonomous_run(*, run, session_id: str, outcome: str,
                             frames: int = 0, error: str = "") -> None:
     """#10 (Phase A): gør autonome runs (dream/idle/proaktiv) synlige som ENHED i Den
@@ -315,9 +332,16 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
         # kunne svare forskelligt om hvad en vækning arver.
         # A routine's persisted permission policy wins over a session's
         # interactive "trust" toggle.  A wakeup is still unattended.
+        #
+        # SILO-ARVEN (9/11-2026): `_trust_for_autonomous` læser ejerens
+        # app-samtale når dette run lander i en `auto-*`-silo. Uden den stod
+        # hver indbakke-vækning og hver heartbeat i `ask` (siloen fødes sådan)
+        # og rejste et kort Bjørn ikke sad og svarede på — selv om hans egen
+        # samtale stod på `trust`. `routine` er undtaget som før: dens
+        # vedvarende policy vinder over samtalens kontakt-flag.
         trust_all=(
             False if str(origin or "").strip().lower() == "routine"
-            else _trust_for_session(resolved_session)
+            else _trust_for_autonomous(resolved_session)
         ),
         user_id=str(force_user_id or ""),
         origin=_origin,

@@ -104,7 +104,11 @@ def test_vaekning_arver_samtalens_permissions(isolated_runtime, monkeypatch) -> 
     )
     monkeypatch.setattr(visible_runs, "VisibleRun", _FakeRun)
     monkeypatch.setattr(visible_runs, "_stream_visible_run", _tom_stream)
-    monkeypatch.setattr(asr, "_trust_for_session", lambda sid: True)
+    # SØMMEN FLYTTEDE (9/11-2026): koden læser nu `_trust_for_autonomous`, som
+    # for en rigtig samtale videresender til `trust_for_session`, men for en
+    # `auto-*`-silo låner ejerens niveau. Testen beskriver den samme adfærd —
+    # at en vækning arver — så den patcher den funktion koden faktisk kalder.
+    monkeypatch.setattr(asr, "_trust_for_autonomous", lambda sid: True)
 
     asr.start_autonomous_stream_run("wake", session_id="s-trust", origin="wakeup")
 
@@ -160,7 +164,7 @@ def _opsaet_ejer_test(monkeypatch, *, bundet: str, ejer: str):
     )
     monkeypatch.setattr(visible_runs, "VisibleRun", _FakeRun)
     monkeypatch.setattr(visible_runs, "_stream_visible_run", _tom_stream)
-    monkeypatch.setattr(asr, "_trust_for_session", lambda sid: False)
+    monkeypatch.setattr(asr, "_trust_for_autonomous", lambda sid: False)
     monkeypatch.setattr(ws, "current_user_id", lambda: bundet)
     monkeypatch.setattr(owner_resolver, "owner_user_id", lambda: ejer)
     monkeypatch.setattr(

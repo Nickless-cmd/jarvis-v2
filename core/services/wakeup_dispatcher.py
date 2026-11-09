@@ -370,6 +370,14 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                                 # hele vejen til stemplet — så starteren VED
                                 # hvad den fortsætter i stedet for at gætte.
                                 task_id=str(record.get("task_id") or ""),
+                                # PERMISSIONS-KILDEN (9/11-2026). ``target_session``
+                                # er hvor runnet LANDER, og den kan være en
+                                # `auto-*`-silo født `ask`. Niveauet skal læses
+                                # fra den samtale vækningen blev BOOKET i: det er
+                                # der Bjørn satte «fuld adgang», og hans egen
+                                # regel fra 21/10 siger at en vækning skal
+                                # fortsætte som samtalen allerede er sat.
+                                permission_session=str(wakeup_session or ""),
                             )
                             run_started = True
                         finally:

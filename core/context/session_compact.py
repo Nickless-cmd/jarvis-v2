@@ -197,7 +197,16 @@ def compact_session_history(
             # 2.000 nye rækker slap igennem selvom summen var 15.800 mod et
             # budget paa 14.000 (review 9/11-2026).
             _loft = int(int(keep_recent_tokens) * HALE_LOFT_FAKTOR)
-            if _kept_vaegt + _nye_vaegt > _loft:
+            # Kun naar de NYE raekker er det der vaelter budgettet. Er `_kept`
+            # allerede over loftet, er aarsagen round-atomic udvaelgelse (en
+            # runde kan ikke splittes) — maalt 9/11-2026 paa 13 af 39
+            # sessioner, op til 562 % af loftet, alle auto-heartbeat. Uden
+            # denne graense blev betingelsen ALTID sand for dem, og markoeren
+            # blev kasseret ved hver komprimering: praecis den sygdom fixet
+            # findes for at kurere, genindfoert for de haardest ramte.
+            # At markoeren saa stadig er et fremskridt er `kraev_fremdrift`s
+            # sag, ikke loftets.
+            if _kept_vaegt <= _loft and _kept_vaegt + _nye_vaegt > _loft:
                 ren_tilfoejelse = False
                 _kasser_grund = (
                     f"nye-raekker-over-budget: halen blev {_kept_vaegt + _nye_vaegt} "

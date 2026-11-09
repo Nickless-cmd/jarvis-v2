@@ -389,6 +389,51 @@ def test_normal_variation_i_nye_raekker_reddes(monkeypatch):
     assert "BRUGER-11-" in stored["content"], "den nye række skal være i halen"
 
 
+def test_round_atomic_hale_over_loftet_blokerer_ikke(monkeypatch):
+    """En hale der ALENE er over loftet må ikke koste markøren.
+
+    Målt 9/11-2026 efter loft-fixet: `select_for_compaction` er round-atomic og
+    kan ikke splitte en runde. Er den nyeste runde stor, bliver `_kept` større
+    end budgettet — målt i drift på 13 af 39 sessioner, op til 562 % af loftet
+    (auto-heartbeat-sessionerne, som komprimeres oftest).
+
+    Målte loftet `_kept + _nye` uden at se på hvorfor, blev betingelsen ALTID
+    sand for dem: én ny række på ~230 tokens oven på en hale på ~6.800 vælter
+    et loft på 1.200. Så blev markøren kasseret hver gang — præcis den sygdom
+    fixet findes for at kurere, genindført for de hårdest ramte sessioner.
+
+    Årsagen til en hale over loftet er round-atomic udvælgelse, ikke de nye
+    rækker. De skal ikke straffes for den.
+    """
+    from core.context import session_compact
+    stored = {}
+
+    messages = _runder(12)
+    # Sidste runde er kæmpe: 24.000 tegn ≈ 6.800 tokens. Round-atomic kan
+    # ikke splitte den, så `_kept` bliver hele runden — langt over loftet
+    # på 1.200 (budget 1.000 × 1,2).
+    messages[-2] = {"role": "user", "content": "KÆMPE-" + "x" * 12_000}
+    messages[-1] = {"role": "assistant", "content": "KÆMPE-SVAR-" + "z" * 12_000}
+    ny = _runder(1)
+    reads = iter([messages, [*messages, *ny]])
+    monkeypatch.setattr(session_compact, "_get_all_session_messages", lambda sid: next(reads))
+    monkeypatch.setattr(
+        session_compact, "_store_marker",
+        lambda sid, text, git_sha="": stored.update(content=text) or "m",
+    )
+
+    result = session_compact.compact_session_history(
+        "s", keep_recent_tokens=1000, summarise_fn=lambda m: "SUMMARY-OF-OLD",
+    )
+
+    assert result is not None, (
+        "en round-atomic hale over loftet må ikke blokere markøren — "
+        "de nye rækker forårsagede ikke overskridelsen"
+    )
+    assert "content" in stored
+    assert "BRUGER-0-" in stored["content"], "den nye række skal være i halen"
+
+
 def test_fjernet_besked_under_opsummering_kasserer_markoeren(monkeypatch):
     """Kan halen ikke reparere tabet, må markøren ikke skrives.
 

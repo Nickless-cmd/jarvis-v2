@@ -172,6 +172,24 @@ python field_theory/experiments/exp_005_learning/audit.py \
   --run /tmp/<exp005-run>
 ```
 
+## Run transfer Investigation 6
+
+Investigation 6 applies the Investigation 5 mechanism unchanged to NOAA Mauna
+Loa CO₂. The run refuses to overwrite an existing directory. Fetch the source
+anew, or replay offline from a preserved copy of the exact bytes:
+
+```bash
+python field_theory/experiments/exp_006_order/run.py \
+  --output /tmp/<exp006-run>
+python field_theory/experiments/exp_006_order/run.py \
+  --output /tmp/<exp006-run> \
+  --source field_theory/artifacts/exp_006_order/noaa_20261030_v2/noaa_co2_mm_mlo.csv
+```
+
+Preserved runs are `artifacts/exp_006_order/noaa_20261030/` (superseded: its
+reset branch was faulty) and `noaa_20261030_v2/`. A fresh fetch may differ,
+since NOAA revises its record.
+
 WDC-SILSO data are credited to the Royal Observatory of Belgium, Brussels,
 DOI `10.24414/qnza-ac80`, and distributed under CC BY-NC 4.0. The source bytes,
 license, retrieval time, and digest are recorded in the run manifest.

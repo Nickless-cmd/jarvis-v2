@@ -17,7 +17,7 @@
   cursor: pointer;
 }
 .liveness-jobs-button:hover { color: var(--fg-1); -webkit-text-fill-color: var(--fg-1); }
-.liveness-jobs-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+.liveness-jobs-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-xs); }
 .liveness-label {
   color: var(--fg-3); -webkit-text-fill-color: var(--fg-3);
   flex: 1; min-width: 0; line-height: 1.45;
@@ -36,7 +36,7 @@
   text-decoration: line-through;
 }
 .liveness-dot {
-  width: 7px; height: 7px; border-radius: 50%; background: var(--warn-fg);
+  width: 7px; height: 7px; border-radius: var(--radius-cirkel); background: var(--warn-fg);
   animation: liveness-pulse 1.4s ease-in-out infinite;
 }
 @keyframes liveness-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }

@@ -24,7 +24,7 @@
   padding: 9px 11px;
   background: var(--bg-2);
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: var(--radius-md);
 }
 .cl-kpi-label { font-size: 11px; color: var(--fg-3); letter-spacing: 0.02em; }
 .cl-kpi-tal { font-size: 19px; color: var(--fg-1); font-variant-numeric: tabular-nums; }
@@ -45,7 +45,7 @@
   color: var(--fg-2);
   background: color-mix(in srgb, var(--error-fg, #d9534f) 8%, var(--bg-2));
   border: 1px solid color-mix(in srgb, var(--error-fg, #d9534f) 28%, var(--line));
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 .cl-sektionsfejl strong { color: var(--fg-1); font-weight: 500; }
 
@@ -72,7 +72,7 @@
   padding: 9px 11px;
   background: var(--bg-2);
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: var(--radius-md);
 }
 .cl-kvote-hoved {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -83,7 +83,7 @@
 
 .cl-kilde {
   font-size: 10px; letter-spacing: 0.04em; padding: 1px 6px;
-  border: 1px solid var(--line); border-radius: 4px; color: var(--fg-3);
+  border: 1px solid var(--line); border-radius: var(--radius-xs); color: var(--fg-3);
 }
 /* Kilden er ikke pynt: «provider» er målt hos udbyderen, «estimated» er vores
    eget gæt. Den forskel skal kunne ses uden at læse hjælpeteksten. */
@@ -92,7 +92,7 @@
 .cl-kilde-unknown { opacity: 0.7; }
 
 .cl-bar {
-  height: 7px; border-radius: 4px; background: var(--bg-3);
+  height: 7px; border-radius: var(--radius-xs); background: var(--bg-3);
   overflow: hidden; margin-bottom: 5px;
 }
 .cl-bar-fyld { height: 100%; background: var(--accent); }
@@ -150,7 +150,7 @@
 }
 .cl-soeg-raekke label { display: flex; align-items: center; gap: 6px; color: var(--fg-3); }
 .cl-soeg-raekke input {
-  background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 4px 8px; color: var(--fg-1); font: inherit; font-size: 12px; min-width: 200px;
 }
 
@@ -170,7 +170,7 @@
 
 .cl-handlinger { display: flex; gap: 5px; flex-wrap: wrap; }
 .cl-handling {
-  background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 2px 8px; font: inherit; font-size: 11px; color: var(--fg-2); cursor: pointer;
 }
 .cl-handling:hover:not(:disabled) { color: var(--fg-1); border-color: var(--fg-3); }
@@ -187,7 +187,7 @@
   background: rgba(0, 0, 0, 0.45);
 }
 .cl-dialog {
-  width: min(420px, 90vw); padding: 16px; border-radius: 12px;
+  width: min(420px, 90vw); padding: 16px; border-radius: var(--radius-lg);
   background: var(--bg-2); border: 1px solid var(--line);
   display: flex; flex-direction: column; gap: 10px;
 }
@@ -199,12 +199,12 @@
 }
 .cl-dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-3); }
 .cl-dialog input {
-  background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 6px 9px; color: var(--fg-1); font: inherit; font-size: 12px;
 }
 .cl-dialog-knapper { display: flex; justify-content: flex-end; gap: 8px; }
 .cl-dialog-knapper button {
-  background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 5px 12px; font: inherit; font-size: 12px; color: var(--fg-2); cursor: pointer;
 }
 .cl-dialog-knapper .cl-primaer { background: var(--accent); color: var(--accent-text, #06130d); border-color: transparent; }
@@ -226,7 +226,7 @@
 .cl-med-inspektor > .cl-forklaring { flex: 0 1 300px; min-width: 260px; }
 
 .cl-inspektor {
-  background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius-md);
   padding: 12px; align-self: start;
 }
 .cl-inspektor:focus { outline: 1px solid var(--accent); outline-offset: 2px; }
@@ -244,7 +244,7 @@
 /* ── balancerens forklaring ─────────────────────────────────────────── */
 
 .cl-forklaring {
-  background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius-md);
   padding: 12px; align-self: start;
 }
 .cl-forklaring h4 { margin: 0 0 2px; font-size: 13px; color: var(--fg-1); }
@@ -263,7 +263,7 @@
 
 .cl-simulering {
   margin: 8px 0; padding: 9px 11px; font-size: 12px;
-  background: var(--bg-2); border: 1px solid var(--line); border-radius: 9px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius-md);
 }
 .cl-simulering p { margin: 0 0 4px; color: var(--fg-2); }
 .cl-simulering ul { margin: 0; padding-left: 16px; color: var(--fg-3); }
@@ -281,14 +281,14 @@
    siden må ikke rulle sidelæns af den grund. */
 .cl-payload {
   margin: 4px 0; padding: 8px; max-height: 220px; overflow: auto;
-  background: var(--bg-3); border: 1px solid var(--line); border-radius: 7px;
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--radius-sm);
   font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
   font-size: 11px; color: var(--fg-2); white-space: pre-wrap; word-break: break-word;
 }
 
 .cl-fund-liste { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 7px; }
 .cl-fund {
-  padding: 8px 11px; border-radius: 9px;
+  padding: 8px 11px; border-radius: var(--radius-md);
   background: var(--bg-2); border: 1px solid var(--line);
 }
 /* Alvorligheden skal ses før den læses — de høje står øverst OG markeret. */
@@ -308,11 +308,11 @@
 .cl-indstillinger {
   display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap;
   margin-top: 8px; padding: 10px 12px;
-  background: var(--bg-2); border: 1px solid var(--line); border-radius: 9px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius-md);
 }
 .cl-indstillinger label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-3); }
 .cl-indstillinger input {
-  width: 90px; background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
+  width: 90px; background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 5px 8px; color: var(--fg-1); font: inherit; font-size: 12px;
 }
 
@@ -326,7 +326,7 @@
 
 .cl-tilfoej {
   margin-bottom: 10px; padding: 11px 13px;
-  background: var(--bg-2); border: 1px solid var(--line); border-radius: 9px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius-md);
 }
 .cl-tilfoej-felter {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -334,7 +334,7 @@
 }
 .cl-tilfoej-felter label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-3); }
 .cl-tilfoej-felter input {
-  background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 5px 8px; color: var(--fg-1); font: inherit; font-size: 12px; min-width: 0;
 }
 

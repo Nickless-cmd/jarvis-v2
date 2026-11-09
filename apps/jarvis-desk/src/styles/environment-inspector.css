@@ -6,7 +6,7 @@
      miljø feltet osse have». Sticky-noten står på --overlay-bg (#20201f),
      ét trin lysere end --bg-2 (#1a1a19), og den flade deler nu HELE
      højre-stakken. Reglen bor her, ikke i app.css (tokens.test.ts vogter). */
-  background: var(--overlay-bg); border: 1px solid var(--overlay-line); border-radius: 12px;
+  background: var(--overlay-bg); border: 1px solid var(--overlay-line); border-radius: var(--radius-lg);
   padding: 12px 14px; box-shadow: var(--overlay-shadow); font-size: 13px; }
 .code-right-stack .env-panel { position: static; top: auto; right: auto; width: 100%;
   /* Feltet er den ØVERSTE rude i stakken og beholder sin EGEN højde — ruden
@@ -18,7 +18,7 @@
   flex: 0 1 auto; }
 
 .env-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; letter-spacing: .04em; color: var(--fg-3, var(--fg)); margin-bottom: 8px; }
-.env-gear { display: inline-flex; background: none; border: none; padding: 2px; color: var(--fg-3, var(--fg)); opacity: .7; cursor: pointer; border-radius: 6px; }
+.env-gear { display: inline-flex; background: none; border: none; padding: 2px; color: var(--fg-3, var(--fg)); opacity: .7; cursor: pointer; border-radius: var(--radius-sm); }
 .env-gear:hover { opacity: 1; background: var(--bg-2, var(--bg)); }
 .env-divider { height: 1px; background: var(--line); margin: 10px 0; }
 .env-section-head { font-size: 11px; letter-spacing: .04em; color: var(--fg-3, var(--fg)); opacity: .8; margin-bottom: 6px; }
@@ -38,7 +38,7 @@
 .env-action { padding: 0; }
 .env-actbtn { display: inline-flex; align-items: center; gap: 6px; width: 100%; background: none;
   border: none; padding: 2px 0; font: inherit; font-size: 13px; color: var(--fg-2, var(--fg));
-  cursor: pointer; border-radius: 6px; }
+  cursor: pointer; border-radius: var(--radius-sm); }
 .env-actbtn:hover:not(:disabled) { color: var(--accent-text); }
 .env-actbtn:disabled { opacity: .55; cursor: default; }
 .env-note { margin-top: 8px; font-size: 11.5px; color: var(--fg-3, var(--fg)); }
@@ -84,11 +84,11 @@
 .inspector-facts dd { min-width: 0; margin: 0; overflow-wrap: anywhere; color: var(--fg-1); }
 .inspector-block { margin-top: 14px; color: var(--fg-1); line-height: 1.45; overflow-wrap: anywhere; }
 .inspector-pre { max-height: 360px; margin: 0; overflow: auto; padding: 10px 12px; border: 1px solid var(--line);
-  border-radius: 6px; background: var(--bg-0); color: var(--fg-2); font: 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  border-radius: var(--radius-sm); background: var(--bg-0); color: var(--fg-2); font: 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
   white-space: pre-wrap; overflow-wrap: anywhere; }
 .inspector-empty { color: var(--fg-3); font-size: 12px; }
 .inspector-primary, .inspector-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  min-height: 30px; margin-top: 12px; border-radius: 6px; padding: 5px 10px; cursor: pointer; font: inherit; }
+  min-height: 30px; margin-top: 12px; border-radius: var(--radius-sm); padding: 5px 10px; cursor: pointer; font: inherit; }
 .inspector-primary { border: 1px solid var(--accent); background: var(--accent); color: var(--bg-0); }
 .inspector-secondary { border: 1px solid var(--line); background: var(--bg-2); color: var(--fg-1); }
 .inspector-primary:hover, .inspector-secondary:hover { filter: brightness(1.08); }
@@ -111,16 +111,16 @@
 .agent-status-error, .agent-feedback.is-error { color: var(--error-fg); }
 .agent-refreshing { margin-top: 10px; color: var(--fg-3); font-size: 11px; }
 .agent-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-.agent-actions button, .agent-composer button { min-height: 30px; border: 1px solid var(--line); border-radius: 6px;
+.agent-actions button, .agent-composer button { min-height: 30px; border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 5px 9px; background: var(--bg-2); color: var(--fg-1); cursor: pointer; font: inherit; }
 .agent-actions button:disabled, .agent-composer button:disabled { opacity: .5; cursor: default; }
 .agent-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
-.agent-composer input { min-width: 0; min-height: 32px; border: 1px solid var(--line); border-radius: 6px;
+.agent-composer input { min-width: 0; min-height: 32px; border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 5px 8px; background: var(--bg-0); color: var(--fg-1); font: inherit; }
 .agent-feedback, .agent-finished { margin: 12px 0 0; padding: 8px 10px; border: 1px solid var(--line);
-  border-radius: 6px; background: var(--bg-2); color: var(--fg-2); font-size: 12px; }
+  border-radius: var(--radius-sm); background: var(--bg-2); color: var(--fg-2); font-size: 12px; }
 .agent-run-list, .agent-message-list { display: flex; flex-direction: column; gap: 7px; }
-.agent-run-list article, .agent-message-list article { border: 1px solid var(--line); border-radius: 6px;
+.agent-run-list article, .agent-message-list article { border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 8px 9px; background: var(--bg-0); }
 .agent-run-list article > div, .agent-message-list article > div { display: flex; justify-content: space-between; gap: 8px;
   color: var(--fg-3); font-size: 11px; }
@@ -135,14 +135,14 @@
    blindgyde, og knappen skal staa hvor fejlen staar. */
 .agent-feedback.is-error { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
 .agent-retry {
-  flex: 0 0 auto; background: none; border: 1px solid currentColor; border-radius: 6px;
+  flex: 0 0 auto; background: none; border: 1px solid currentColor; border-radius: var(--radius-sm);
   color: inherit; font-size: 11px; padding: 3px 8px; cursor: pointer;
 }
 .agent-retry:disabled { opacity: .5; cursor: default; }
 
 /* Agentens sidste fejl — var med i Agent Pool foer refaktoren. */
 .agent-last-error {
-  margin-top: 10px; padding: 7px 9px; border-radius: 6px;
+  margin-top: 10px; padding: 7px 9px; border-radius: var(--radius-sm);
   background: var(--bg-2); color: var(--error-fg); font-size: 11.5px;
 }
 
@@ -171,7 +171,7 @@
   color: var(--fg-3); font-size: 11px; text-align: left;
 }
 .env-vis-alle:hover { color: var(--accent-text); }
-.env-vis-alle:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.env-vis-alle:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-xs); }
 
 /* MILJOE-FELTET STRAEKKES IKKE i hoejre skinne (Bjoern 16/9-2026: «miljø
    feltet skal ikk være fuld længde»). Det er en oversigt paa faa raekker —

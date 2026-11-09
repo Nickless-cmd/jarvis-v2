@@ -5,7 +5,7 @@
   right: 1px;
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--radius-cirkel);
   background: var(--accent);
   box-shadow: 0 0 0 2px var(--bg-0);
 }
@@ -14,11 +14,11 @@
   content: '';
   position: absolute;
   inset: 2px;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   animation: klokke-glow 3.8s ease-out infinite;
 }
 .notif-clear-read {
-  border: 1px solid var(--line); border-radius: 6px; padding: 3px 7px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 3px 7px;
   background: var(--bg-2); color: var(--fg-2); font-size: 11px;
   white-space: nowrap; cursor: pointer;
 }
@@ -27,12 +27,12 @@
 .notif-clear-all-row { display: flex; justify-content: flex-end; margin: -2px 0 8px; }
 .notif-clear-confirm {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
-  padding: 8px; border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px; border: 1px solid var(--line); border-radius: var(--radius-md);
   background: var(--bg-1); color: var(--fg-2); font-size: 11px;
 }
 .notif-clear-confirm span { flex-basis: 100%; line-height: 1.4; }
 .notif-clear-confirm button, .notif-install {
-  border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 4px 8px;
   background: var(--bg-3); color: var(--fg-1); font-size: 11px; cursor: pointer;
 }
 .notif-clear-confirm button:hover, .notif-install:hover { background: var(--bg-4); }
@@ -42,7 +42,7 @@
   color: var(--fg-2); font-size: 10.5px; }
 .notif-release-status > span { min-width: 0; }
 .notif-release-status > a { color: var(--accent-text); }
-.notif-release-progress { grid-column: 1 / -1; height: 5px; overflow: hidden; border-radius: 999px;
+.notif-release-progress { grid-column: 1 / -1; height: 5px; overflow: hidden; border-radius: var(--radius-pill);
   background: var(--bg-4); }
 .notif-release-progress > span { display: block; height: 100%; border-radius: inherit;
   background: var(--accent); transition: width var(--dur-sheet) var(--ease-out); }
@@ -69,7 +69,7 @@
 .notif-dismiss {
   position: absolute; z-index: 1; top: 4px; right: 4px;
   width: 24px; height: 24px; display: grid; place-items: center;
-  border: 0; border-radius: 5px; background: transparent; color: var(--fg-3);
+  border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--fg-3);
   opacity: 0; transition: opacity var(--dur-fast), background var(--dur-fast);
 }
 .notif-swipe:hover .notif-dismiss, .notif-swipe:focus-within .notif-dismiss { opacity: 1; }
@@ -84,7 +84,7 @@
   position: fixed; z-index: 65; top: 42px; right: calc(10px + var(--inspektor-bredde, 0px)); bottom: 10px;
   width: min(var(--skinne-bredde, 360px), calc(100vw - 320px - var(--inspektor-bredde, 0px)));
   display: flex; flex-direction: column; min-width: 290px; overflow: hidden;
-  border: 1px solid var(--overlay-line); border-radius: 12px;
+  border: 1px solid var(--overlay-line); border-radius: var(--radius-lg);
   background: var(--bg-2); color: var(--fg-1);
   box-shadow: -12px 0 36px rgba(0,0,0,.35);
   animation: notif-panel-in .25s ease-out both;
@@ -98,9 +98,9 @@
 .notif-session-messages .msg-user-wrap, .notif-session-messages .msg-jarvis-wrap { max-width: 100%; }
 .notif-session-hint { margin: auto; color: var(--fg-3); font-size: 12px; }
 .notif-session-error { color: var(--error-fg); font-size: 12px; }
-.notif-session-approval { margin: 0 10px 8px; padding: 9px; border: 1px solid var(--warn-fg); border-radius: 8px; font-size: 11px; }
+.notif-session-approval { margin: 0 10px 8px; padding: 9px; border: 1px solid var(--warn-fg); border-radius: var(--radius-md); font-size: 11px; }
 .notif-session-approval p { margin: 0 0 8px; white-space: pre-wrap; }
-.notif-session-approval button { margin-right: 6px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg-3); color: var(--fg-1); cursor: pointer; }
+.notif-session-approval button { margin-right: 6px; padding: 3px 9px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg-3); color: var(--fg-1); cursor: pointer; }
 .notif-session-composer { padding: 0 10px 8px; }
 .notif-session-composer .composer-shell { max-width: 100%; }
 .notif-session-composer .composer { min-width: 0; }

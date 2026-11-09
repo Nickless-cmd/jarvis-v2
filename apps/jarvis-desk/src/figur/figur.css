@@ -38,7 +38,7 @@ html.figur-flade, html.figur-flade body, html.figur-flade #root {
   position: relative; max-width: 270px; display: flex; align-items: flex-start;
   background: rgba(22, 24, 23, 0.94); color: #eeede9;
   border: 1px solid color-mix(in srgb, var(--figur-farve) 55%, transparent);
-  border-radius: 14px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  border-radius: var(--radius-lg); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 /* Halen peger ned mod figuren. */
 .figur-boble::after {
@@ -54,7 +54,7 @@ html.figur-flade, html.figur-flade body, html.figur-flade #root {
   all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 2px;
   padding: 9px 4px 9px 12px; min-width: 0; flex: 1;
 }
-.figur-boble-indhold:focus-visible { outline: 2px solid var(--figur-farve); border-radius: 12px; }
+.figur-boble-indhold:focus-visible { outline: 2px solid var(--figur-farve); border-radius: var(--radius-lg); }
 .figur-boble-etiket { font-weight: 650; color: var(--figur-farve); }
 .figur-boble-titel { color: #d8d6d0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .figur-boble-tekst {
@@ -77,7 +77,7 @@ html.figur-flade, html.figur-flade body, html.figur-flade #root {
   animation: figur-gloed 4.6s ease-in-out infinite;
 }
 .figur-skygge {
-  position: absolute; left: 30px; right: 30px; bottom: 2px; height: 8px; border-radius: 50%;
+  position: absolute; left: 30px; right: 30px; bottom: 2px; height: 8px; border-radius: var(--radius-cirkel);
   background: rgba(0, 0, 0, 0.28); filter: blur(3px);
 }
 .figur-ring { transform-origin: 60px 60px; animation: figur-drej 14s linear infinite; }
@@ -149,14 +149,14 @@ html.figur-flade, html.figur-flade body, html.figur-flade #root {
 .figur-rod:hover .figur-ikoner, .figur-ikoner.synlige { opacity: 1; }
 .figur-ikoner button {
   all: unset; cursor: pointer; width: 28px; height: 28px; display: grid; place-items: center;
-  border-radius: 8px; color: #c9c7c1; background: rgba(22, 24, 23, 0.82);
+  border-radius: var(--radius-md); color: #c9c7c1; background: rgba(22, 24, 23, 0.82);
 }
 .figur-ikoner button:hover, .figur-ikoner button.aktiv { color: #fff; background: rgba(40, 43, 42, 0.95); }
 .figur-ikoner button:focus-visible { outline: 2px solid var(--figur-farve); }
 .figur-hurtig {
   display: flex; align-items: center; gap: 6px; width: 270px; box-sizing: border-box;
   background: rgba(22, 24, 23, 0.94); border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px; padding: 5px 5px 5px 12px;
+  border-radius: var(--radius-lg); padding: 5px 5px 5px 12px;
 }
 .figur-hurtig input {
   all: unset; flex: 1; min-width: 0; color: #eeede9; font-size: 13px;
@@ -164,6 +164,6 @@ html.figur-flade, html.figur-flade body, html.figur-flade #root {
 .figur-hurtig input::placeholder { color: #8a8883; }
 .figur-hurtig button {
   all: unset; cursor: pointer; width: 26px; height: 26px; display: grid; place-items: center;
-  border-radius: 50%; background: var(--figur-farve); color: #0d1413;
+  border-radius: var(--radius-cirkel); background: var(--figur-farve); color: #0d1413;
 }
 .figur-hurtig button:disabled { opacity: .35; cursor: default; }

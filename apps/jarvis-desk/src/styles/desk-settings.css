@@ -11,19 +11,19 @@
 .category-page .accent-btn:hover:not(:disabled) { background: var(--bg-2); color: var(--fg-1); }
 .category-page .accent-btn.active { color: var(--fg-1); font-weight: 600; }
 .accent-swatch {
-  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--radius-cirkel);
   color: var(--on-accent); outline: 2px solid transparent; outline-offset: 2px;
 }
 .accent-btn.active .accent-swatch { outline-color: var(--accent); }
 .category-page button, .settings-feedback button, .desk-introduction button {
-  min-height: 34px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px;
+  min-height: 34px; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--radius-md);
   background: var(--bg-3); color: var(--fg-1); font: inherit; cursor: pointer;
 }
 .category-page button:hover:not(:disabled), .settings-feedback button:hover, .desk-introduction button:hover { background: var(--bg-4); }
 .category-page button:disabled { opacity: .55; cursor: default; }
 .category-page :is(input:not([type=checkbox]):not([type=radio]), select, textarea) {
   box-sizing: border-box; min-width: 0; max-width: 100%; min-height: 36px;
-  padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px;
+  padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--radius-md);
   background: var(--bg-1); color: var(--fg-1); font: inherit;
 }
 .category-page :is(input, textarea)::placeholder { color: var(--fg-2); opacity: .8; }
@@ -52,7 +52,7 @@
 .category-page .plugins-quiet label { display: grid; gap: 5px; }
 .category-page .totp-note { max-width: 65ch; color: var(--fg-2); line-height: 1.6; }
 .category-page .totp-secret { overflow-wrap: anywhere; white-space: pre-wrap; }
-.settings-feedback { padding: 14px 16px; margin: 10px 0; border: 1px solid var(--line); border-radius: 9px; background: var(--bg-2); color: var(--fg-2); font-size: 14px; line-height: 1.5; }
+.settings-feedback { padding: 14px 16px; margin: 10px 0; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg-2); color: var(--fg-2); font-size: 14px; line-height: 1.5; }
 .settings-feedback p { margin: 0; }
 .settings-feedback button { margin-top: 10px; }
 .settings-feedback.error { border-color: var(--error-fg); color: var(--fg-1); }
@@ -73,7 +73,7 @@
 .desk-introduction {
   position: fixed; inset: 0; margin: auto; box-sizing: border-box;
   width: min(920px, calc(100vw - 40px)); max-height: calc(100vh - 40px); overflow: auto;
-  padding: 34px; border: 1px solid var(--line); border-radius: 18px;
+  padding: 34px; border: 1px solid var(--line); border-radius: var(--radius-xl);
   background: var(--bg-1); color: var(--fg-1); box-shadow: 0 20px 80px #0005;
 }
 .desk-introduction::backdrop { background: #0009; }
@@ -82,7 +82,7 @@
 .desk-introduction .intro-eyebrow { color: var(--accent-text); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
 .desk-introduction .intro-close { position: absolute; top: 14px; right: 14px; padding: 7px; line-height: 0; }
 .intro-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-block: 24px; }
-.intro-options section { display: flex; flex-direction: column; padding: 19px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-2); }
+.intro-options section { display: flex; flex-direction: column; padding: 19px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-2); }
 .intro-options section > svg { color: var(--accent-text); }
 .intro-options h3 { font-size: 18px; margin: 12px 0 6px; }
 .intro-options p { color: var(--fg-2); line-height: 1.55; font-size: 14px; margin: 6px 0; }
@@ -105,7 +105,7 @@
   margin: 14px 0 18px;
   padding: 14px;
   border: 1px solid var(--border-subtle, rgb(255 255 255 / 10%));
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .notif-web-push .settings-hint {

@@ -15,15 +15,15 @@
 .gitpanel-sektion h4 { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-3); }
 .gitpanel-sektion ul { list-style: none; margin: 0; padding: 0; }
 .gitpanel-antal { color: var(--fg-2); }
-.gitpanel-fil { display: flex; align-items: center; border-radius: 6px; }
+.gitpanel-fil { display: flex; align-items: center; border-radius: var(--radius-sm); }
 .gitpanel-fil:hover, .gitpanel-fil.active { background: var(--bg-2); }
 .gitpanel-fil-navn { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 6px; background: transparent; border: 0; color: inherit; padding: 3px 6px; text-align: left; cursor: pointer; font: inherit; }
 .gitpanel-sti { white-space: nowrap; }
 .gitpanel-mappe { color: var(--fg-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: 4px; }
-.gitpanel-kode { font-size: 10px; color: var(--fg-3); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 4px; }
+.gitpanel-kode { font-size: 10px; color: var(--fg-3); border: 1px solid var(--line); border-radius: var(--radius-xs); padding: 0 4px; margin-left: 4px; }
 .gitpanel-kode.kode-nye, .gitpanel-kode.kode-staged { color: var(--diff-add); }
 .gitpanel-kode.kode-konflikt { color: var(--error-fg); }
-.gitpanel-ikon, .gitpanel-knap, .gitpanel-lille { display: inline-flex; align-items: center; gap: 4px; background: transparent; color: var(--fg-2); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font: inherit; }
+.gitpanel-ikon, .gitpanel-knap, .gitpanel-lille { display: inline-flex; align-items: center; gap: 4px; background: transparent; color: var(--fg-2); border: 1px solid var(--line); border-radius: var(--radius-sm); cursor: pointer; font: inherit; }
 .gitpanel-ikon { padding: 3px 5px; }
 .gitpanel-knap { padding: 3px 8px; }
 .gitpanel-lille { padding: 0 6px; font-size: 10px; text-transform: none; letter-spacing: 0; }
@@ -31,7 +31,7 @@
 .gitpanel-ikon:disabled, .gitpanel-knap:disabled, .gitpanel-lille:disabled { opacity: 0.5; cursor: default; }
 .gitpanel-knap.primary { color: var(--fg-1); border-color: var(--fg-3); }
 .gitpanel-commit { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 14px; align-items: flex-start; }
-.gitpanel-commit textarea { width: 100%; box-sizing: border-box; resize: vertical; background: var(--bg-2); color: var(--fg-1); border: 1px solid var(--line); border-radius: 6px; padding: 6px; font: inherit; }
+.gitpanel-commit textarea { width: 100%; box-sizing: border-box; resize: vertical; background: var(--bg-2); color: var(--fg-1); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 6px; font: inherit; }
 .gitpanel-hint { color: var(--fg-3); font-size: 11px; }
 .gitpanel-fejl { color: var(--error-fg); padding: 6px 10px; }
 .gitpanel-info { color: var(--ok); padding: 6px 10px; }
@@ -40,7 +40,7 @@
 .gitpanel-log li { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gitpanel-trae li.current { color: var(--fg-1); }
 .gitpanel-nytrae { display: flex; gap: 6px; margin-top: 6px; }
-.gitpanel-nytrae input { flex: 1; min-width: 0; background: var(--bg-2); color: var(--fg-1); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; font: inherit; }
+.gitpanel-nytrae input { flex: 1; min-width: 0; background: var(--bg-2); color: var(--fg-1); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 3px 6px; font: inherit; }
 .gitpanel-diff-hoved { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; color: var(--fg-2); }
 .gitpanel-diff { margin: 0; overflow: auto; font-family: var(--mono, monospace); font-size: 11.5px; line-height: 1.45; }
 .gitpanel-diff .dl { white-space: pre; padding: 0 6px; }

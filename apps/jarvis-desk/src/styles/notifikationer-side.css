@@ -140,7 +140,7 @@
   color: var(--fg-3);
   padding: 1px 6px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .notifside-handlinger { display: inline-flex; gap: 6px; }
@@ -149,7 +149,7 @@
 .notifside-klar {
   padding: 3px 9px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--bg-3);
   color: var(--fg-1);
   font-size: 12px;

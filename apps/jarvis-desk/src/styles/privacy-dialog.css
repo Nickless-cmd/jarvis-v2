@@ -19,7 +19,7 @@
   max-height: min(760px, calc(100vh - 32px));
   padding: 0;
   border: 1px solid var(--overlay-line);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   background: var(--overlay-bg);
   color: var(--fg-1);
   box-shadow: 0 24px 80px rgb(0 0 0 / 50%);
@@ -31,7 +31,7 @@
 .privacy-dialog-close {
   position: sticky; top: 0; float: right; z-index: 1;
   display: grid; place-items: center; width: 30px; height: 30px;
-  border: 0; border-radius: 7px; background: var(--bg-3); color: var(--fg-1);
+  border: 0; border-radius: var(--radius-sm); background: var(--bg-3); color: var(--fg-1);
   cursor: pointer;
 }
 .privacy-dialog-close:hover { background: var(--bg-4); }

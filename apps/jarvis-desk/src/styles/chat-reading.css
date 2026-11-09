@@ -60,7 +60,7 @@
   margin-block: 1.1em 1.35em;
   padding: 0.55em 0.8em;
   border: 1px dashed var(--border-1, rgba(255, 255, 255, 0.14));
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .flade-pending-tekst {

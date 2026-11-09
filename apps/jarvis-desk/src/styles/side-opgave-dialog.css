@@ -11,7 +11,7 @@
   max-height: min(760px, calc(100vh - 32px));
   padding: 0;
   border: 1px solid var(--overlay-line);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   background: var(--overlay-bg);
   color: var(--fg-1);
   box-shadow: var(--modal-shadow);
@@ -36,7 +36,7 @@
   width: 30px;
   height: 30px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   background: var(--bg-3);
   color: var(--fg-1);
   cursor: pointer;
@@ -59,7 +59,7 @@
   box-sizing: border-box;
   padding: 9px 11px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--bg-2);
   color: var(--fg-1);
   font: inherit;
@@ -74,7 +74,7 @@
 .sod-knap {
   padding: 8px 14px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--bg-3);
   color: var(--fg-1);
   font: inherit;
@@ -98,7 +98,7 @@
   box-sizing: border-box;
   padding: 9px 11px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--bg-2);
   color: var(--fg-1);
   font: inherit;
@@ -121,6 +121,6 @@
 .sod::-webkit-scrollbar-track { background: transparent; }
 .sod::-webkit-scrollbar-thumb {
   background: var(--line);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 .sod::-webkit-scrollbar-thumb:hover { background: var(--bg-4); }

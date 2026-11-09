@@ -480,7 +480,12 @@ describe('vinduets egen titelbjælke', () => {
     expect(app).toMatch(/--vk-mellemrum:\s*13px/)
     expect(app).toMatch(/--vk-hoejre:\s*10px/)
     const knap = app.match(/^\.vinduesknapper button \{([^}]*)\}/m)?.[1] ?? ''
-    expect(knap).toContain('border-radius: 50%')
+    // Cirklen er en FORM, ikke et trin i skalaen: 50 % uanset knappens
+    // stoerrelse. Den skal derfor laese `--radius-cirkel` — en hardkodet
+    // px-vaerdi ville goere knappen firkantet, og et skala-trin (fx 12px)
+    // ville goere den til en pille. Kravet er strammet 9/11-2026: foer stod
+    // der `50%` som literal, saa en fremtidig px-vaerdi slap igennem.
+    expect(knap).toContain('border-radius: var(--radius-cirkel)')
   })
 
   it('headeren gør IKKE plads til skinnen — kun til vinduesknapperne', () => {
@@ -859,6 +864,36 @@ describe('bevaegelses-tokens', () => {
         if (/(?<![\w.])[\d.]+m?s(?![\w])/.test(b)) synder.push(`${hvor}: varighed i «${b}»`)
         if (/cubic-bezier\(/.test(b)) synder.push(`${hvor}: kurve-literal i «${b}»`)
         if (/(?<![-\w])ease(-in-out|-out|-in)?(?![-\w])/.test(b)) synder.push(`${hvor}: ease-noegleord i «${b}»`)
+      }
+    }
+    expect(synder).toEqual([])
+  })
+
+  it('definerer fem radius-trin og to former', () => {
+    for (const t of ['--radius-xs', '--radius-sm', '--radius-md', '--radius-lg', '--radius-xl'])
+      expect(tokens, `${t} mangler`).toMatch(new RegExp(`${t}:\\s*\\d+px`))
+    // Formerne er ikke trin: pillen er uendeligt rund, cirklen er 50 %.
+    expect(tokens).toMatch(/--radius-pill:\s*999px/)
+    expect(tokens).toMatch(/--radius-cirkel:\s*50%/)
+  })
+
+  // Uden denne vagt driver de 453 migrerede regler tilbage til spredte tal,
+  // praecis som varighederne gjorde foer 9/11-2026. Undtagelsen er 1px: den
+  // bruges paa en 2x2 px prik, hvor intet trin i skalaen giver mening — en
+  // 4 px-radius paa en 2 px prik er ikke en afrunding, det er en cirkel.
+  it('ingen border-radius maa baere en hardkodet vaerdi', () => {
+    const synder: string[] = []
+    for (const f of FILER) {
+      const css = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      for (const m of css.matchAll(/border-radius:\s*([^;}]+)/g)) {
+        const b = (m[1] ?? '').trim()
+        const hvor = f.slice(f.indexOf('src/'))
+        // Fjern de tilladte former foer der ledes efter tal.
+        const rest = b.replace(/var\(--radius-[a-z]+\)/g, '').replace(/\b0\b/g, '').replace(/\binherit\b/g, '')
+        if (/(?<![\w.])\d+px(?![\w])/.test(rest) && !/^\s*1px\s*$/.test(rest.trim()))
+          synder.push(`${hvor}: px-vaerdi i «${b}»`)
+        if (/(?<![\w.])50%(?![\w])/.test(rest)) synder.push(`${hvor}: 50% i «${b}» — brug --radius-cirkel`)
+        if (/(?<![\w.])999px(?![\w])/.test(rest)) synder.push(`${hvor}: 999px i «${b}» — brug --radius-pill`)
       }
     }
     expect(synder).toEqual([])

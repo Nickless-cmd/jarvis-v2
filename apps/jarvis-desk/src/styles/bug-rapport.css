@@ -16,7 +16,7 @@
   max-height: min(560px, calc(100vh - 32px));
   padding: 0;
   border: 1px solid var(--overlay-line);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   background: var(--overlay-bg);
   color: var(--fg-1);
   box-shadow: 0 24px 80px rgb(0 0 0 / 50%);
@@ -35,7 +35,7 @@
 .bug-rapport-close {
   position: sticky; top: 0; float: right; z-index: 1;
   display: grid; place-items: center; width: 30px; height: 30px;
-  border: 0; border-radius: 7px; background: var(--bg-3); color: var(--fg-1);
+  border: 0; border-radius: var(--radius-sm); background: var(--bg-3); color: var(--fg-1);
   cursor: pointer;
 }
 .bug-rapport-close:hover { background: var(--bg-4); }
@@ -45,20 +45,20 @@
 .bug-rapport-felt,
 .bug-rapport-tekst {
   width: 100%; background: var(--bg-3); color: var(--fg-1);
-  border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px;
+  border: 1px solid var(--line); border-radius: var(--radius-md); padding: 7px 9px;
   font: inherit; font-size: 13px;
 }
 .bug-rapport-tekst { resize: vertical; }
 .bug-rapport-note { margin: 0; font-size: 13px; color: var(--fg-2); }
 .bug-rapport-fejl {
-  margin: 0; padding: 7px 9px; border-radius: 8px; font-size: 12.5px;
+  margin: 0; padding: 7px 9px; border-radius: var(--radius-md); font-size: 12.5px;
   background: color-mix(in srgb, var(--danger, #e5534b) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--danger, #e5534b) 40%, transparent);
 }
 
 .bug-rapport-handlinger { display: flex; justify-content: flex-end; gap: 6px; margin-top: 4px; }
 .bug-rapport-handlinger button {
-  border: 1px solid var(--line); border-radius: 6px; background: var(--bg-3);
+  border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg-3);
   color: var(--fg-1); padding: 5px 12px; font-size: 12.5px; cursor: pointer;
 }
 .bug-rapport-handlinger button:disabled { opacity: .5; cursor: default; }

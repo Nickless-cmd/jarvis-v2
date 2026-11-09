@@ -21,7 +21,7 @@
 .pauseask-pulse {
   width: 7px;
   height: 7px;
-  border-radius: 50%;
+  border-radius: var(--radius-cirkel);
   background: var(--accent);
   box-shadow: 0 0 8px var(--accent);
 }
@@ -78,7 +78,7 @@
   width: 17px;
   height: 17px;
   border: 1px solid var(--fg-3);
-  border-radius: 50%;
+  border-radius: var(--radius-cirkel);
   color: var(--accent-text);
   font-size: 13px;
   line-height: 1;

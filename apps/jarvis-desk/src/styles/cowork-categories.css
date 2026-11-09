@@ -42,7 +42,7 @@
   padding: 8px 20px;
   background: var(--bg-2);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
 }
 .category-section-body > .settings-section {
   padding: 17px 0;
@@ -107,7 +107,7 @@
 .category-page--wide .mc-tom {
   padding: 20px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--bg-2);
 }
 .category-page .marketplace { max-width: none; margin: 0; }
@@ -119,7 +119,7 @@
 .category-page .mc-top-right select {
   padding: 7px 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--bg-2);
   color: var(--fg-1);
   font-size: 12.5px;
@@ -154,7 +154,7 @@
 .mc-control-btn {
   padding: 7px 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--bg-2);
   color: var(--fg-1);
   font-size: 12.5px;
@@ -181,7 +181,7 @@
 .mc .mc-summary { gap: 8px; margin-bottom: 22px; }
 .mc .mc-summary-cell {
   background: var(--bg-2);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   box-shadow: none;
 }
 .mc .mc-summary-cell:not(:disabled):hover { transform: none; box-shadow: none; }
@@ -204,7 +204,7 @@
 .mc .mc-schedule-row,
 .mc .mc-rundetail {
   background: var(--bg-2);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   box-shadow: none;
 }
 .mc .mc-row:hover,
@@ -214,7 +214,7 @@
 .mc .cowork-pane-head { font-size: 15px; letter-spacing: 0; margin-bottom: 14px; }
 .mc .cowork-item {
   padding: 13px 14px;
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   background: var(--bg-1);
 }
 .mc .cowork-item-title { font-size: 13.5px; font-weight: 600; line-height: 1.4; }

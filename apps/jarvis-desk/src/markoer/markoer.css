@@ -85,7 +85,7 @@ body,
 
 .markoer-prik {
   position: absolute;
-  border-radius: 50%;
+  border-radius: var(--radius-cirkel);
   background: #3fc7b4;
   box-shadow: 0 0 6px rgba(63, 199, 180, 0.8);
   transform: translate(-50%, -50%);
@@ -104,7 +104,7 @@ body,
   position: absolute;
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: var(--radius-cirkel);
   border: 2px solid #3fc7b4;
   /* To ringe: en mørk udenom, så mærket også ses på en hvid baggrund, og en
      blød glød, så det læses som lys og ikke som en UI-ramme. */
@@ -131,7 +131,7 @@ body,
   width: 6px;
   height: 6px;
   margin: -3px 0 0 -3px;
-  border-radius: 50%;
+  border-radius: var(--radius-cirkel);
   background: #eafffb;
   box-shadow: 0 0 6px rgba(63, 199, 180, 0.9);
 }

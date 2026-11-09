@@ -42,7 +42,10 @@ GMAIL_CONNECTOR_TOOL_DEFINITIONS: list[dict] = [
             "description": (
                 "Send en mail på brugerens vegne via deres EGEN forbundne Gmail. "
                 "KRÆVER brugerens godkendelse (approval-kort) før afsendelse — kald bare "
-                "værktøjet direkte, runtime håndterer godkendelsen. Kræver forbundet Gmail."
+                "værktøjet direkte, runtime håndterer godkendelsen. Kræver forbundet Gmail. "
+                "En identisk mail (samme til, emne og tekst) der allerede er sendt inden "
+                "for 10 minutter afvises med 'already_sent' — det er et værn mod dubletter, "
+                "ikke en fejl. Skal den bevidst gentages, sæt allow_resend=true."
             ),
             "parameters": {
                 "type": "object",
@@ -50,6 +53,13 @@ GMAIL_CONNECTOR_TOOL_DEFINITIONS: list[dict] = [
                     "to": {"type": "string", "description": "Modtagerens email-adresse"},
                     "subject": {"type": "string", "description": "Emnelinje"},
                     "body": {"type": "string", "description": "Mailens tekst (ren tekst)"},
+                    "allow_resend": {
+                        "type": "boolean",
+                        "description": (
+                            "Send alligevel selv om en identisk mail gik ud inden for "
+                            "10 minutter. Kun når gentagelsen er en bevidst beslutning."
+                        ),
+                    },
                 },
                 "required": ["to", "subject", "body"],
             },

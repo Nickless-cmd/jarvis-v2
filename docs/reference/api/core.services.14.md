@@ -446,14 +446,14 @@ _Gmail-connector — API-klient + tool-handlers (vertical: search + list)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_token` | `(user_id)` | — | [src](../../../core/services/gmail_connector.py#L111) |
-| function | `_headers` | `(token)` | — | [src](../../../core/services/gmail_connector.py#L118) |
-| function | `_clamp` | `(n, lo, hi, default)` | — | [src](../../../core/services/gmail_connector.py#L122) |
-| function | `_fetch_messages` | `(user_id, query, max_results)` | Fælles kerne for search/list: hent id-liste → berig med headers/snippet. | [src](../../../core/services/gmail_connector.py#L130) |
-| function | `search` | `(user_id, query, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L175) |
-| function | `list_inbox` | `(user_id, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L181) |
-| function | `modify_messages` | `(user_id, message_ids, *, action=…, dry_run=…)` | Flyt/arkivér/fortryd på EKSPLICITTE message-id'er. | [src](../../../core/services/gmail_connector.py#L197) |
-| function | `send_message` | `(user_id, to, subject, body)` | Send en mail på brugerens vegne. KRÆVER approval-flow før den eksponeres som tool. | [src](../../../core/services/gmail_connector.py#L258) |
+| function | `_token` | `(user_id)` | — | [src](../../../core/services/gmail_connector.py#L121) |
+| function | `_headers` | `(token)` | — | [src](../../../core/services/gmail_connector.py#L128) |
+| function | `_clamp` | `(n, lo, hi, default)` | — | [src](../../../core/services/gmail_connector.py#L132) |
+| function | `_fetch_messages` | `(user_id, query, max_results)` | Fælles kerne for search/list: hent id-liste → berig med headers/snippet. | [src](../../../core/services/gmail_connector.py#L140) |
+| function | `search` | `(user_id, query, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L185) |
+| function | `list_inbox` | `(user_id, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L191) |
+| function | `modify_messages` | `(user_id, message_ids, *, action=…, dry_run=…)` | Flyt/arkivér/fortryd på EKSPLICITTE message-id'er. | [src](../../../core/services/gmail_connector.py#L207) |
+| function | `send_message` | `(user_id, to, subject, body)` | Send en mail på brugerens vegne. KRÆVER approval-flow før den eksponeres som tool. | [src](../../../core/services/gmail_connector.py#L268) |
 
 ## `core/services/goal_reporter.py`
 _Goal reporter — fører systemets egne målinger tilbage til målet der bad om dem._

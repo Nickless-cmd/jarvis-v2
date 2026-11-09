@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9935/18423 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9938/18427 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9935/18423 functions/methods documented (53%). The list b
 | `core.identity` | 80 | 173 | 46% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 872 | 1586 | 54% |
+| `core.runtime` | 875 | 1590 | 55% |
 | `core.services` | 6638 | 12486 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
@@ -1321,8 +1321,8 @@ Generated from source. 9935/18423 functions/methods documented (53%). The list b
 - `core/services/git_actions.py` :: `commit_all_container` (L47)
 - `core/services/git_actions.py` :: `commit_all_workstation` (L187)
 - `core/services/git_actions.py` :: `parse_owner_repo` (L217)
-- `core/services/gmail_connector.py` :: `list_inbox` (L181)
-- `core/services/gmail_connector.py` :: `search` (L175)
+- `core/services/gmail_connector.py` :: `list_inbox` (L191)
+- `core/services/gmail_connector.py` :: `search` (L185)
 - `core/services/goal_signal_tracking.py` :: `build_runtime_goal_signal_surface` (L101)
 - `core/services/goal_signal_tracking.py` :: `refresh_runtime_goal_signal_statuses` (L64)
 - `core/services/goal_signal_tracking.py` :: `track_runtime_goal_signals_for_visible_turn` (L23)

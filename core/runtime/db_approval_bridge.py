@@ -497,3 +497,93 @@ def prior_unknown_outcome(tool_name: str,
             "WHERE invocation_digest = ? AND state = ? "
             "ORDER BY created_at DESC LIMIT 20",
             (d, OUTCOME_UNKNOWN))]
+
+
+# ── SEND-DEDUP (9/11-2026) ────────────────────────────────────────────────
+#
+# `gmail_send` er grandfathered (`core/tools/approval_rollout_gate.py:47`) og
+# ligger UDEN for den invokations-bundne bro. `approval_claims` har derfor nul
+# rækker for den, og `prior_unknown_outcome` dækker den ikke: den ser kun
+# `outcome_unknown`, mens et kald der endte `completed` intet blokerer.
+#
+# MÅLT 8/11-2026: tre identiske indsigelser gik ud kl. 11:41:28, :29 og :39 —
+# elleve sekunder fra hinanden. `send_message` har ingen retry og ingen
+# idempotens-noegle, så hvert kald er en ny mail. Den sandsynlige kilde er et
+# timeout EFTER serveren accepterede: funktionen svarer `error`, modellen
+# proever igen, og mailen er allerede sendt.
+#
+# Tabellen her er ikke en godkendelse — den er et VARSLINGSSPOR: «denne
+# noegle blev sendt paa dette tidspunkt». Den ligger i samme DB som broen,
+# fordi det er samme slags levetid og samme backup-vej.
+
+#: Hvor laenge et sendt kald blokerer et identisk nyt. Ti minutter er valgt
+#: fordi dubletterne blev maalt inden for elleve SEKUNDER; vinduet skal daekke
+#: et genforsoeg efter timeout (20 s) med rigelig margin, uden at spaerre en
+#: legitim gensendelse samme formiddag.
+SEND_DEDUP_VINDUE_MINUTTER = 10
+
+
+def _ensure_send_dedup(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS send_dedup (
+            dedup_key   TEXT PRIMARY KEY,
+            tool_name   TEXT NOT NULL,
+            sent_at     TEXT NOT NULL,
+            message_id  TEXT NOT NULL DEFAULT ''
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS ix_send_dedup_sent_at "
+                 "ON send_dedup(sent_at)")
+
+
+def send_dedup_key(tool_name: str, arguments: dict[str, Any] | None) -> str:
+    """Noeglen for «det samme send». Samme form som `invocation_digest`."""
+    return invocation_digest(tool_name, arguments)
+
+
+def allerede_sendt(tool_name: str, arguments: dict[str, Any] | None, *,
+                   vindue_minutter: int = SEND_DEDUP_VINDUE_MINUTTER
+                   ) -> dict[str, Any] | None:
+    """Er PRAECIS dette send allerede gennemfoert inden for vinduet?
+
+    Returnerer posten (saa kalderen kan sige HVORNAAR og med hvilket id), eller
+    `None`. En ulæselig tid behandles som «inden for vinduet»: tvivlen skal
+    koste ét afslag, ikke en dublet til en modtager.
+    """
+    noegle = send_dedup_key(tool_name, arguments)
+    graense = (datetime.now(UTC)
+               - timedelta(minutes=max(1, int(vindue_minutter)))).isoformat()
+    with connect() as conn:
+        _ensure_send_dedup(conn)
+        row = conn.execute(
+            "SELECT dedup_key, sent_at, message_id FROM send_dedup "
+            "WHERE dedup_key = ? AND sent_at >= ? "
+            "ORDER BY sent_at DESC LIMIT 1",
+            (noegle, graense)).fetchone()
+    if row is None:
+        return None
+    return {"dedup_key": str(row[0]), "sent_at": str(row[1]),
+            "message_id": str(row[2])}
+
+
+def registrer_send(tool_name: str, arguments: dict[str, Any] | None, *,
+                   message_id: str = "") -> str:
+    """Skriv at dette send gik ud. Returnerer noeglen.
+
+    Kaldes EFTER udbyderen har accepteret. Fejler den, maa det ikke vaelte
+    afsendelsen — men det skal logges, for et tavst hul her er praecis den
+    dublet-vej tabellen findes for at lukke.
+    """
+    noegle = send_dedup_key(tool_name, arguments)
+    nu = datetime.now(UTC).isoformat()
+    with connect() as conn:
+        _ensure_send_dedup(conn)
+        conn.execute(
+            "INSERT INTO send_dedup (dedup_key, tool_name, sent_at, message_id) "
+            "VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(dedup_key) DO UPDATE SET sent_at = excluded.sent_at, "
+            "message_id = excluded.message_id",
+            (noegle, str(tool_name or ""), nu, str(message_id or "")))
+    return noegle

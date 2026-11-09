@@ -428,6 +428,10 @@ _Godkendelses-broen — én beslutning, bundet til ÉT kald, brugt ÉN gang._
 | function | `abandon_orphaned_dispatching` | `(now=…, *, older_than_s=…)` | Afslut `dispatching`-poster hvis afsender er vaek. → `outcome_unknown`. | [src](../../../core/runtime/db_approval_bridge.py#L416) |
 | function | `abandon_run` | `(run_id, *, detail=…)` | Opgiv ALLE uafklarede poster for et doedt run — K6. | [src](../../../core/runtime/db_approval_bridge.py#L451) |
 | function | `prior_unknown_outcome` | `(tool_name, arguments)` | Har PRAECIS dette kald allerede efterladt et ukendt udfald? | [src](../../../core/runtime/db_approval_bridge.py#L481) |
+| function | `_ensure_send_dedup` | `(conn)` | — | [src](../../../core/runtime/db_approval_bridge.py#L526) |
+| function | `send_dedup_key` | `(tool_name, arguments)` | Noeglen for «det samme send». Samme form som `invocation_digest`. | [src](../../../core/runtime/db_approval_bridge.py#L541) |
+| function | `allerede_sendt` | `(tool_name, arguments, *, vindue_minutter=…)` | Er PRAECIS dette send allerede gennemfoert inden for vinduet? | [src](../../../core/runtime/db_approval_bridge.py#L546) |
+| function | `registrer_send` | `(tool_name, arguments, *, message_id=…)` | Skriv at dette send gik ud. Returnerer noeglen. | [src](../../../core/runtime/db_approval_bridge.py#L571) |
 
 ## `core/runtime/db_artifact_index.py`
 _Artefakter: de filer Jarvis har skrevet og rettet i en mappe, paa tvaers af samtaler._

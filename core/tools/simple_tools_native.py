@@ -2537,8 +2537,43 @@ def _exec_gmail_send(args: dict[str, Any]) -> dict[str, Any]:
             "message": f"Jarvis vil sende en mail til {to} med emnet \"{subject}\".",
             "command": f"Til: {to} · Emne: {subject}\n\n{preview}",
         }
+    # DUBLET-VAERN (9/11-2026). `gmail_send` ligger uden for godkendelses-broen
+    # (`approval_rollout_gate.py:47`), saa broens dedup daekker den ikke.
+    # Maalt 8/11: tre identiske indsigelser gik ud inden for elleve sekunder.
+    # `send_message` har ingen retry og ingen idempotens-noegle, saa hvert kald
+    # er en ny mail. Den sandsynlige kilde er et timeout EFTER serveren
+    # accepterede: funktionen svarer `error`, modellen proever igen, og mailen
+    # ER sendt.
+    #
+    # Noeglen er (til, emne, broedtekst). Et legitimt gensend kraever
+    # `allow_resend: true` — saa er gentagelsen en BESLUTNING nogen har taget,
+    # ikke noget der sker fordi et kald blev gentaget.
+    from core.runtime.db_approval_bridge import allerede_sendt, registrer_send
+    send_args = {"to": to, "subject": subject, "body": body}
+    if not bool(args.get("allow_resend")):
+        forsoeg = allerede_sendt("gmail_send", send_args)
+        if forsoeg is not None:
+            return {
+                "status": "error",
+                "error": "already_sent",
+                "sent_at": forsoeg["sent_at"],
+                "message_id": forsoeg["message_id"],
+                "message": (
+                    f"En identisk mail til {to} blev allerede sendt "
+                    f"{forsoeg['sent_at'][:16]}Z. Intet nyt sendt. "
+                    "Brug allow_resend=true hvis den bevidst skal gentages."
+                ),
+            }
+
     from core.services.gmail_connector import send_message
-    return send_message(uid, to, subject, body)
+    svar = send_message(uid, to, subject, body)
+    if isinstance(svar, dict) and svar.get("status") == "ok":
+        try:
+            registrer_send("gmail_send", send_args,
+                           message_id=str(svar.get("id") or ""))
+        except Exception as exc:  # noqa: BLE001 — et sporskrift maa ikke vaelte en sendt mail
+            logger.warning("gmail_send: kunne ikke registrere send: %s", exc)
+    return svar
 
 
 def _exec_calendar_list_events(args: dict[str, Any]) -> dict[str, Any]:

@@ -126,10 +126,17 @@ def _kald_med_timeout(fn, *args, **kwargs) -> tuple[str, str]:
     at vente; traaden faar lov at doe af sig selv.
     """
     import concurrent.futures as cf
+    import contextvars
 
     ex = cf.ThreadPoolExecutor(max_workers=1, thread_name_prefix="kompakt-llm")
     try:
-        fut = ex.submit(fn, *args, **kwargs)
+        # `Executor.submit` kopierer IKKE ContextVars. Uden dette ser
+        # `compact_llm._er_hans_tur()` ingen kørsel i worker-tråden og
+        # komprimeringen falder til cheap lane (målt 9/11-2026: tråden
+        # `kompakt-llm_0` stod lige før hver advarsel). En tom forældre-
+        # kontekst (post-run) forbliver tom — der opfindes ingen kørsel.
+        ctx = contextvars.copy_context()
+        fut = ex.submit(ctx.run, fn, *args, **kwargs)
         return str(fut.result(timeout=_TIMEOUT_SEK) or ""), ""
     except cf.TimeoutError:
         logger.warning("kompaktering: opsummering over %ds — mekanisk fallback", _TIMEOUT_SEK)

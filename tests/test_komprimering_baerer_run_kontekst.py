@@ -130,3 +130,35 @@ def test_er_hans_tur_er_sand_inde_i_traaden(isolated_runtime, monkeypatch) -> No
     assert set_undervejs == [True], (
         "_er_hans_tur() var falsk i komprimeringstråden — "
         f"komprimeringen falder til cheap lane: {set_undervejs!r}")
+
+
+# ── Det indre trin: `_kald_med_timeout` (målt 9/11-2026) ──────────────────
+#
+# Rettelsen 10/10 bar konteksten ind i den ydre baggrundstråd. Men
+# `StruktureretOpsummering.__call__` kalder `call_compact_llm` gennem
+# `_kald_med_timeout`, der selv starter en `ThreadPoolExecutor` — og
+# `Executor.submit` kopierer IKKE ContextVars. Journalen viste tråden
+# `kompakt-llm_0` lige før hver «fandt ingen synlig koersel»-advarsel.
+
+def test_kald_med_timeout_baerer_run_id_ind_i_executor_traaden() -> None:
+    from core.context.kompaktering import _kald_med_timeout
+    from core.services.run_autonomy_context import current_run_id, set_run_identity
+
+    set_run_identity("visible-timeout-test", "interactive")
+    try:
+        ud, fejl = _kald_med_timeout(lambda: current_run_id())
+    finally:
+        set_run_identity("")
+
+    assert (ud, fejl) == ("visible-timeout-test", "")
+
+
+def test_kald_med_timeout_opfinder_ingen_koersel() -> None:
+    """Modprøve: uden forælder-kørsel (post-run) forbliver konteksten tom."""
+    from core.context.kompaktering import _kald_med_timeout
+    from core.services.run_autonomy_context import current_run_id, set_run_identity
+
+    set_run_identity("")
+    ud, fejl = _kald_med_timeout(lambda: current_run_id() or "tom")
+
+    assert (ud, fejl) == ("tom", "")

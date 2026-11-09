@@ -91,15 +91,15 @@ _Kontekst-komprimering: ÉN sti, med de garantier den manglede._
 | method | `StruktureretOpsummering.__init__` | `(self, focus=…, *, session_id=…)` | — | [src](../../../core/context/kompaktering.py#L73) |
 | method | `StruktureretOpsummering.__call__` | `(self, old_msgs)` | — | [src](../../../core/context/kompaktering.py#L82) |
 | function | `_kald_med_timeout` | `(fn, *args, **kwargs)` | Kald `fn` med en timeout der FAKTISK afbryder ventetiden. | [src](../../../core/context/kompaktering.py#L116) |
-| function | `mekanisk_opsummering` | `(old_msgs)` | Deterministisk opsummering naar modellen ikke leverede. Aldrig tom. | [src](../../../core/context/kompaktering.py#L144) |
-| function | `_ground_truth_for` | `(session_id)` | — | [src](../../../core/context/kompaktering.py#L184) |
-| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/context/kompaktering.py#L196) |
-| function | `_sidste_besked_id` | `(conn, session_id)` | — | [src](../../../core/context/kompaktering.py#L217) |
-| function | `log_komprimering` | `(session_id, *, udloeser, vej, tokens_foer, tokens_efter, fremdrift, marker_id=…, fejl=…)` | — | [src](../../../core/context/kompaktering.py#L225) |
-| function | `staar_fast` | `(session_id)` | Sidste forsoeg gav ingen fremdrift, og der er ikke kommet noget nyt siden. | [src](../../../core/context/kompaktering.py#L257) |
-| function | `seneste_log` | `(session_id)` | — | [src](../../../core/context/kompaktering.py#L279) |
-| function | `_hale_budget` | `(low_water_tokens)` | Hvor mange tokens af de NYESTE runder der beholdes ordret i markøren. | [src](../../../core/context/kompaktering.py#L298) |
-| function | `komprimer_session` | `(session_id, *, udloeser, focus=…, low_water_tokens=…)` | Komprimér sessionen. Returnerer `CompactResult`, eller None hvis der | [src](../../../core/context/kompaktering.py#L334) |
+| function | `mekanisk_opsummering` | `(old_msgs)` | Deterministisk opsummering naar modellen ikke leverede. Aldrig tom. | [src](../../../core/context/kompaktering.py#L151) |
+| function | `_ground_truth_for` | `(session_id)` | — | [src](../../../core/context/kompaktering.py#L191) |
+| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/context/kompaktering.py#L203) |
+| function | `_sidste_besked_id` | `(conn, session_id)` | — | [src](../../../core/context/kompaktering.py#L224) |
+| function | `log_komprimering` | `(session_id, *, udloeser, vej, tokens_foer, tokens_efter, fremdrift, marker_id=…, fejl=…)` | — | [src](../../../core/context/kompaktering.py#L232) |
+| function | `staar_fast` | `(session_id)` | Sidste forsoeg gav ingen fremdrift, og der er ikke kommet noget nyt siden. | [src](../../../core/context/kompaktering.py#L264) |
+| function | `seneste_log` | `(session_id)` | — | [src](../../../core/context/kompaktering.py#L286) |
+| function | `_hale_budget` | `(low_water_tokens)` | Hvor mange tokens af de NYESTE runder der beholdes ordret i markøren. | [src](../../../core/context/kompaktering.py#L305) |
+| function | `komprimer_session` | `(session_id, *, udloeser, focus=…, low_water_tokens=…)` | Komprimér sessionen. Returnerer `CompactResult`, eller None hvis der | [src](../../../core/context/kompaktering.py#L341) |
 
 ## `core/context/microcompact.py`
 _Cache-bevidst microcompact af gamle tool-resultater i det synlige transcript._

@@ -41,7 +41,7 @@ describe('LiveVerb — husets mærke, tre streger', () => {
   })
 
   it('respekterer reduced motion', () => {
-    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\n  \.live-streger span \{ animation: none;/)
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\n {2}\.live-streger span \{ animation: none;/)
   })
 
   it('lader tool-result-prikkerne være: prikke-boelge er urørt', () => {

@@ -98,4 +98,27 @@ export default tseslint.config(
     },
     rules: { '@typescript-eslint/no-this-alias': 'off' },
   },
+  {
+    // Standalone Node-scripts (fx `scripts/syntest.mjs`) koerer uden for
+    // bundleren, men refererer ogsaa browser-globaler inde i `page.evaluate`-
+    // callbacks, fordi koden eksekveres i den side der testes.
+    //
+    // MAALT 9/11-2026: uden denne blok faldt ci med 23 `no-undef`-fejl paa
+    // `process`, `console`, `document`, `window`, `localStorage` og `URL` —
+    // alle i `scripts/syntest.mjs`, som blev tilfoejet i 070310cff. Blokken er
+    // valgt frem for et ignore, saa scriptet stadig bliver laest igennem.
+    files: ['scripts/**/*.{mjs,js}'],
+    languageOptions: {
+      sourceType: 'module',
+      globals: {
+        process: 'readonly', console: 'readonly', URL: 'readonly',
+        Buffer: 'readonly', __dirname: 'readonly', __filename: 'readonly',
+        setTimeout: 'readonly', clearTimeout: 'readonly',
+        setInterval: 'readonly', clearInterval: 'readonly',
+        fetch: 'readonly', performance: 'readonly',
+        document: 'readonly', window: 'readonly', localStorage: 'readonly',
+        navigator: 'readonly',
+      },
+    },
+  },
 )

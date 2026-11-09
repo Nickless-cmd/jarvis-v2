@@ -60,21 +60,66 @@ def _slags_af(session_id: str) -> str:
     return "Autonom"
 
 
+_MIN_SAETNING = 60
+
+
+def _luk_markdown(t: str) -> str:
+    """Fjern en uafsluttet markdown-token fra halen.
+
+    Maalt 9/11-2026: de referater Bjoern fik, indeholdt `**` og backtick der
+    aldrig blev lukket («Posten `visib», «Felt-te…»), fordi klippet faldt inde
+    i markdown'en. En aaben token er ikke et forkortet citat — den er en
+    skaaret konstruktion, og den skal fjernes, ikke vises.
+    """
+    while True:
+        if t.count("`") % 2 == 1:
+            t = t[: t.rfind("`")].rstrip()
+            continue
+        if t.count("**") % 2 == 1:
+            t = t[: t.rfind("**")].rstrip()
+            continue
+        return t
+
+
+def _klippet_paent(t: str) -> str:
+    """Trim halen til sidste HELE ord og markér at noget blev skaaret."""
+    mellemrum = t.rfind(" ")
+    if mellemrum > _MIN_SAETNING:
+        t = t[:mellemrum]
+    t = t.rstrip(" ,;:—–-")
+    return (t + " …") if t else t
+
+
 def _foerste_afsnit(tekst: str) -> str:
     """Hans egen konklusion, ikke hele udskriften.
 
-    Foerste hele saetning(er) op til `_MAKS_UDDRAG` tegn — klippet ved et
-    saetningsskel, saa referatet ikke selv ender midt i et ord. Det var én af
-    de laekager der stod i den proaktive kanal.
+    Klippet ved et saetningsskel; findes der intet saadant efter
+    `_MIN_SAETNING`, klippes der ved sidste hele ord. Aldrig midt i et ord, og
+    aldrig inde i en markdown-token.
+
+    Maalt 9/11-2026 (fix): den gamle fallback klippede raat ved 220 tegn. Alle
+    seks seneste referater endte midt i et ord, og `**`/backtick stod aabent.
     """
     t = " ".join(str(tekst or "").split()).strip()
     if not t:
         return ""
-    if len(t) <= _MAKS_UDDRAG:
-        return t
-    klip = t[:_MAKS_UDDRAG]
-    skel = max(klip.rfind(". "), klip.rfind("! "), klip.rfind("? "))
-    return (klip[:skel + 1] if skel > 60 else klip.rstrip()) + ("" if skel > 60 else " …")
+    klippet = False
+    if len(t) > _MAKS_UDDRAG:
+        klip = t[:_MAKS_UDDRAG]
+        skel = max(klip.rfind(". "), klip.rfind("! "), klip.rfind("? "))
+        if skel > _MIN_SAETNING:
+            t = klip[: skel + 1]
+        else:
+            t = _klippet_paent(klip)
+            klippet = True
+    foer = t
+    t = _luk_markdown(t)
+    if t != foer:
+        t = _klippet_paent(t)
+        klippet = True
+    if klippet and not t.endswith("…"):
+        t = t + " …"
+    return t
 
 
 def _pænt_vaerktoej(navn: str) -> str:

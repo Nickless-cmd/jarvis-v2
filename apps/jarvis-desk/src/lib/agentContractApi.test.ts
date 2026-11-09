@@ -3,15 +3,21 @@ import fixture from './__fixtures__/agentContract.json'
 import {
   afgoerAgentApproval, bucketLabel, erKontraktAaben, erKontraktAktiv, getKontraktAgent,
   aeldsteVentende, hentVentendeAgentGodkendelse, kontraktBesked, ventendeGodkendelser,
-  kontraktVarighed, kvitteringTekst,
+  kontraktVarighed, kvitteringTekst, getKontraktFeed,
   type ContractAgentRow, type ContractApproval, type ContractCounts, type ContractDetail, type ContractReceipt,
   type FeedCard,
 } from './agentContractApi'
+import { __resetSharedRead } from './sharedRead'
 import { StreamError } from './streamClient'
 
 const cfg = { apiBaseUrl: 'http://test', authToken: 't' }
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  // Cachen lever på modulniveau og lækker ellers mellem tests: en test der har
+  // hentet feedet lader den næste ramme cachen i stedet for `fetch` (målt 9/11-2026).
+  __resetSharedRead()
+})
 
 // ── Feltnavne pinnet mod den RIGTIGE rute-respons (fixturen genereres af backend-testen) ────────────────────
 // `Record<keyof T, true>` tvinger en post pr. felt: tilføjes eller fjernes et felt i typen, fejler tsc her, og
@@ -169,5 +175,40 @@ describe('fejloversættelse', () => {
     await kontraktBesked(cfg, 'a1', 'hej')
     const body = JSON.parse(f.mock.calls[0]![1].body)
     expect(body).toEqual({ content: 'hej' })
+  })
+})
+
+// ── Poll-stormen (9/11-2026) ────────────────────────────────────────────────
+// Målt i drift: 369 kald/min til `/agents/contract/feed` fra ÉN klient (12 faner),
+// 5.419 kald på 15 minutter. To komponenter (NotifikationsToast, NotifikationsFeed)
+// spørger uafhængigt om præcis det samme, og `getKontraktFeed` kaldte `apiFetch`
+// direkte — så det delte læse-lag kunne ikke kollapse dem. Samme storm som 17/8
+// (536 req/min) sulter desk'ens SSE-læser og kasserer Jarvis' run midt-flugt.
+describe('getKontraktFeed — går gennem det delte læse-lag', () => {
+  afterEach(() => __resetSharedRead())
+
+  it('to uafhængige komponenter deler ÉT netværkskald', async () => {
+    const f = vi.fn().mockResolvedValue(
+      new Response('{"status":"ok","cards":[],"counts":{"venter":0,"svar":0,"aktiv":0,"unread":0}}', { status: 200 }),
+    )
+    vi.stubGlobal('fetch', f)
+    // Toasten og feedet henter samtidig — som de gør i drift
+    await Promise.all([getKontraktFeed(cfg), getKontraktFeed(cfg)])
+    expect(f).toHaveBeenCalledTimes(1)
+  })
+
+  it('en fejlet hentning caches ikke — næste kald prøver igen', async () => {
+    // `apiFetch` retry'er en GET to gange, så et enkelt kald bruger tre forsøg.
+    // Fejler alle tre, kastes fejlen — og den må ikke blive hængende i cachen.
+    const f = vi.fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(new Response('{"status":"ok","cards":[]}', { status: 200 }))
+    vi.stubGlobal('fetch', f)
+    await expect(getKontraktFeed(cfg)).rejects.toBeTruthy()
+    const andet = await getKontraktFeed(cfg)
+    expect(andet.status).toBe('ok')
+    expect(f).toHaveBeenCalledTimes(4)
   })
 })

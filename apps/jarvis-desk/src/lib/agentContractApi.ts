@@ -12,6 +12,7 @@
  *  Status afledes ALDRIG af tekst — `bucket` kommer færdig fra serveren.
  */
 import { apiFetch, type ApiConfig } from './api'
+import { sharedRead } from './sharedRead'
 import { StreamError } from './streamClient'
 
 export type Bucket =
@@ -218,8 +219,22 @@ async function handling<T>(kald: Promise<T>): Promise<T> {
   }
 }
 
+/** Kontrakt-feedet — den mest kaldte rute i desk'en, og den gik uden om det delte læse-lag.
+ *
+ *  Målt 9/11-2026: 369 kald/min fra én klient (12 faner), 5.419 kald på 15 minutter.
+ *  To komponenter (NotifikationsToast, NotifikationsFeed) spørger uafhængigt om præcis
+ *  det samme, og `apiFetch` blev kaldt direkte — så `sharedRead` kunne ikke kollapse dem.
+ *  Det er samme storm som 17/8 (536 req/min), der sulter desk'ens SSE-læser og får
+ *  Starlette til at cancellere server-tasken midt i et run.
+ *
+ *  TTL som `active-runs`: 3 s under normal drift, 15 s mens et run streamer — netop når
+ *  baggrundsstøj gør mest skade. Fejl caches aldrig (se sharedRead). */
 export async function getKontraktFeed(config: ApiConfig): Promise<ContractFeed> {
-  return apiFetch(config, `${BASE}/feed`)
+  return sharedRead(
+    `kontrakt-feed:${config.apiBaseUrl}`,
+    () => apiFetch<ContractFeed>(config, `${BASE}/feed`),
+    { ttlMs: 3_000, streamingTtlMs: 15_000 },
+  )
 }
 
 export async function laesArtefakt(

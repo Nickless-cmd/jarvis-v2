@@ -315,6 +315,80 @@ def test_nye_raekker_over_hale_budgettet_kasserer_markoeren(monkeypatch):
     assert "nye-raekker-over-budget" in str(logged[-1].get("fejl") or ""), logged[-1]
 
 
+def _runder(n: int, tegn_per_besked: int = 400) -> list[dict]:
+    """n hele runder à (user + assistant). 800 tegn pr. runde ≈ 200 tokens."""
+    out = []
+    for k in range(n):
+        out.append({"role": "user", "content": f"BRUGER-{k}-" + "x" * tegn_per_besked})
+        out.append({"role": "assistant", "content": f"SVAR-{k}-" + "z" * tegn_per_besked})
+    return out
+
+
+def test_samlet_hale_over_loftet_kasserer_markoeren(monkeypatch):
+    """Loftet skal måle den SAMLEDE hale, ikke kun de nye rækker.
+
+    Målt 9/11-2026 (review): loftet sammenlignede `_nye` isoleret med
+    budgettet. `_kept` vælges round-atomic op til det samme budget, så
+    `_kept` + `_nye` kunne blive op til det dobbelte, mens loftet sagde god
+    for det — 2.000 nye rækker er ikke et problem i sig selv, men 13.800
+    gamle plus 2.000 nye er 15.800 mod et budget på 14.000.
+
+    Her: budget 1.000, `_kept` fylder 1.000 (5 runder), og der lander 2 nye
+    runder (400 tokens) under opsummeringen. Summen 1.400 bryder loftet.
+    """
+    from core.context import session_compact
+    stored = {}
+    logged = []
+
+    messages = _runder(12)  # 12 runder à 200 tokens = 2.400
+    ny = _runder(2)
+    reads = iter([messages, [*messages, *ny]])
+    monkeypatch.setattr(session_compact, "_get_all_session_messages", lambda sid: next(reads))
+    monkeypatch.setattr(
+        session_compact, "_store_marker",
+        lambda sid, text, git_sha="": stored.update(content=text) or "m",
+    )
+    import core.context.kompaktering as komp
+    monkeypatch.setattr(komp, "log_komprimering", lambda *a, **k: logged.append(k))
+
+    result = session_compact.compact_session_history(
+        "s", keep_recent_tokens=1000, summarise_fn=lambda m: "SUMMARY-OF-OLD",
+    )
+
+    assert result is None, "en samlet hale over loftet må ikke skrives"
+    assert "content" not in stored
+    assert logged, "afslaget skal stå i compaction_log"
+    assert "nye-raekker-over-budget" in str(logged[-1].get("fejl") or ""), logged[-1]
+
+
+def test_normal_variation_i_nye_raekker_reddes(monkeypatch):
+    """Den modsatte kant: almindelig trafik under opsummeringen må IKKE kasseres.
+
+    Kasserede vi hver gang der landede en enkelt række, ville vi genindføre
+    det problem fixet løser (32 kasseringer på 14 dage, nul markører). Én ny
+    runde oven på en fuld hale skal derfor stadig give en markør.
+    """
+    from core.context import session_compact
+    stored = {}
+
+    messages = _runder(12)
+    ny = _runder(1)  # 200 tokens — inden for loftets margin
+    reads = iter([messages, [*messages, *ny]])
+    monkeypatch.setattr(session_compact, "_get_all_session_messages", lambda sid: next(reads))
+    monkeypatch.setattr(
+        session_compact, "_store_marker",
+        lambda sid, text, git_sha="": stored.update(content=text) or "m",
+    )
+
+    result = session_compact.compact_session_history(
+        "s", keep_recent_tokens=1000, summarise_fn=lambda m: "SUMMARY-OF-OLD",
+    )
+
+    assert result is not None, "normal trafik må ikke koste markøren"
+    assert "content" in stored
+    assert "BRUGER-11-" in stored["content"], "den nye række skal være i halen"
+
+
 def test_fjernet_besked_under_opsummering_kasserer_markoeren(monkeypatch):
     """Kan halen ikke reparere tabet, må markøren ikke skrives.
 

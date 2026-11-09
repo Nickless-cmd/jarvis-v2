@@ -13,6 +13,21 @@ from core.context.token_estimate import estimate_tokens
 
 logger = logging.getLogger(__name__)
 
+# ── Loft over den SAMLEDE hale (maalt 9/11-2026) ────────────────────────────
+# `keep_recent_tokens` er et budget for halen, men de rækker der lander UNDER
+# opsummeringen kommer oveni, og de kan ikke undgaas (en levende tur skriver
+# imens). Derfor er budgettet et maal og loftet er budgettet plus en margin.
+#
+# Marginen er 20 % fordi den maalte p90 for nye rækker under opsummeringen er
+# 2.049 tokens mod et budget paa 14.000 — altsaa 14,6 %. En margin paa 20 %
+# dækker den normale variation med luft og fanger samtidig det tilfælde hvor
+# summen eksploderer (fx 13.800 gamle + 5.000 nye = 18.800).
+#
+# Uden marginen ville loftet kassere næsten hver gang, fordi `_kept` i praksis
+# ligger lige under budgettet — og det er praecis den fejl (32 kasseringer paa
+# 14 dage, nul markoerer) som redningen findes for at fjerne.
+HALE_LOFT_FAKTOR = 1.2
+
 
 @dataclass
 class CompactResult:
@@ -176,16 +191,23 @@ def compact_session_history(
         if ren_tilfoejelse and keep_recent_tokens is not None:
             _nye = friske[len(messages):]
             _nye_vaegt = sum(_estimer(m) for m in _nye)
-            if _nye_vaegt > int(keep_recent_tokens):
+            _kept_vaegt = sum(_estimer(m) for m in _kept)
+            # Loftet maaler den SAMLEDE hale. Et loft paa `_nye` alene var
+            # for svagt: `_kept` er allerede valgt op til budgettet, saa
+            # 2.000 nye rækker slap igennem selvom summen var 15.800 mod et
+            # budget paa 14.000 (review 9/11-2026).
+            _loft = int(int(keep_recent_tokens) * HALE_LOFT_FAKTOR)
+            if _kept_vaegt + _nye_vaegt > _loft:
                 ren_tilfoejelse = False
                 _kasser_grund = (
-                    f"nye-raekker-over-budget: {_nye_vaegt} tokens landede under "
-                    f"opsummeringen, mere end hale-budgettet ({int(keep_recent_tokens)})"
+                    f"nye-raekker-over-budget: halen blev {_kept_vaegt + _nye_vaegt} "
+                    f"tokens ({_kept_vaegt} beholdt + {_nye_vaegt} nye), over loftet "
+                    f"paa {_loft} (budget {int(keep_recent_tokens)} x {HALE_LOFT_FAKTOR})"
                 )
                 logger.info(
-                    "session_compact: session=%s fik %d nye raekker (%d tokens) — "
-                    "mere end hale-budgettet (%d); markoeren kan ikke baere dem",
-                    session_id, len(_nye), _nye_vaegt, int(keep_recent_tokens),
+                    "session_compact: session=%s halen blev %d tokens (%d beholdt "
+                    "+ %d nye) — over loftet paa %d",
+                    session_id, _kept_vaegt + _nye_vaegt, _kept_vaegt, _nye_vaegt, _loft,
                 )
         if ren_tilfoejelse:
             nye = friske[len(messages):]

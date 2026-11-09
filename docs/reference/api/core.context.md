@@ -140,11 +140,11 @@ _Session-level context compaction._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `CompactResult` | `` | — | [src](../../../core/context/session_compact.py#L18) |
-| function | `compact_session_history` | `(session_id, *, keep_recent=…, keep_recent_tokens=…, summarise_fn, git_sha=…, kraev_fremdrift=…)` | Compact old session history for session_id. | [src](../../../core/context/session_compact.py#L33) |
-| function | `_estimer` | `(m)` | — | [src](../../../core/context/session_compact.py#L289) |
-| function | `_get_all_session_messages` | `(session_id)` | Det Jarvis SER: den forrige markoer + alle beskeder efter den. | [src](../../../core/context/session_compact.py#L293) |
-| function | `_store_marker` | `(session_id, summary_text, git_sha=…)` | — | [src](../../../core/context/session_compact.py#L325) |
+| class | `CompactResult` | `` | — | [src](../../../core/context/session_compact.py#L33) |
+| function | `compact_session_history` | `(session_id, *, keep_recent=…, keep_recent_tokens=…, summarise_fn, git_sha=…, kraev_fremdrift=…)` | Compact old session history for session_id. | [src](../../../core/context/session_compact.py#L48) |
+| function | `_estimer` | `(m)` | — | [src](../../../core/context/session_compact.py#L311) |
+| function | `_get_all_session_messages` | `(session_id)` | Det Jarvis SER: den forrige markoer + alle beskeder efter den. | [src](../../../core/context/session_compact.py#L315) |
+| function | `_store_marker` | `(session_id, summary_text, git_sha=…)` | — | [src](../../../core/context/session_compact.py#L347) |
 
 ## `core/context/token_estimate.py`
 _Token estimation utilities — heuristic only, no tokenizer required._

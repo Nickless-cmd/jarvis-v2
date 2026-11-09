@@ -273,6 +273,48 @@ def test_ny_besked_under_opsummering_reddes_ind_i_halen(monkeypatch):
     assert "NY-RAEKKE-UNDER-COMPACT" in stored["content"]
 
 
+def test_nye_raekker_over_hale_budgettet_kasserer_markoeren(monkeypatch):
+    """Redningen må ikke gøre markøren STØRRE end den hale den afløser.
+
+    Målt 9/11-2026: `_kept` vælges op til `keep_recent_tokens`, og de nye
+    rækker blev lagt UBEGRÆNSET ovenpå. I den aktive session landede der pr.
+    45-sekunders vindue median +795 tokens over budgettet, p90 +2.049, og i
+    værste vindue +16.822 — altså en markør på op mod 30.000 tokens, større
+    end den 28.000-hale der netop var halveret. En markør der ikke er et
+    fremskridt udskyder bare næste komprimering.
+
+    Er de nye rækker alene større end budgettet, kasseres derfor som før.
+    """
+    from core.context import session_compact
+    stored = {}
+    logged = []
+
+    messages = []
+    for k in range(6):
+        messages.append({"role": "user", "content": f"BRUGERTEKST-{k} " + "x" * 300})
+        messages.append({"role": "assistant", "content": f"SVAR-{k} " + "z" * 300})
+    # ~3.000 tegn ≈ 900 tokens: alene mere end keep_recent_tokens=200.
+    ny = {"role": "tool", "name": "bash", "content": "KÆMPE-" + "y" * 3000}
+
+    reads = iter([messages, [*messages, ny]])
+    monkeypatch.setattr(session_compact, "_get_all_session_messages", lambda sid: next(reads))
+    monkeypatch.setattr(
+        session_compact, "_store_marker",
+        lambda sid, text, git_sha="": stored.update(content=text) or "m",
+    )
+    import core.context.kompaktering as komp
+    monkeypatch.setattr(komp, "log_komprimering", lambda *a, **k: logged.append(k))
+
+    result = session_compact.compact_session_history(
+        "s", keep_recent_tokens=200, summarise_fn=lambda m: "SUMMARY-OF-OLD",
+    )
+
+    assert result is None, "en markør større end budgettet må ikke skrives"
+    assert "content" not in stored
+    assert logged, "afslaget skal stå i compaction_log"
+    assert "nye-raekker-over-budget" in str(logged[-1].get("fejl") or ""), logged[-1]
+
+
 def test_fjernet_besked_under_opsummering_kasserer_markoeren(monkeypatch):
     """Kan halen ikke reparere tabet, må markøren ikke skrives.
 

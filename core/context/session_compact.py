@@ -159,10 +159,34 @@ def compact_session_history(
     # reparere, og en markoer der dækker over en fjernet besked er vaerre end
     # ingen markoer.
     friske = _get_all_session_messages(session_id)
+    _kasser_grund = "foraeldet-snapshot: beskeder fjernet eller omskrevet under opsummeringen"
     if friske != messages:
         ren_tilfoejelse = (
             len(friske) > len(messages) and friske[: len(messages)] == messages
         )
+        # ── Loft over de nye raekker (maalt 9/11-2026) ────────────────────
+        # `_kept` er valgt op til `keep_recent_tokens`, og `nye` blev lagt
+        # UBEGRAENSET ovenpaa. Maalt i den aktive session pr. 45-sekunders
+        # vindue: median +795 tokens over budgettet, p90 +2.049, vaerste
+        # vindue +16.822 — altsaa en markoer paa op mod 30.000 tokens, som er
+        # stoerre end den hale den skulle afloese. En markoer der ikke er et
+        # fremskridt er ikke en redning; den udskyder bare naeste komprimering.
+        # Er de nye raekker alene stoerre end budgettet, kasseres derfor som
+        # foer — naeste forsoeg paa en roligere session lykkes.
+        if ren_tilfoejelse and keep_recent_tokens is not None:
+            _nye = friske[len(messages):]
+            _nye_vaegt = sum(_estimer(m) for m in _nye)
+            if _nye_vaegt > int(keep_recent_tokens):
+                ren_tilfoejelse = False
+                _kasser_grund = (
+                    f"nye-raekker-over-budget: {_nye_vaegt} tokens landede under "
+                    f"opsummeringen, mere end hale-budgettet ({int(keep_recent_tokens)})"
+                )
+                logger.info(
+                    "session_compact: session=%s fik %d nye raekker (%d tokens) — "
+                    "mere end hale-budgettet (%d); markoeren kan ikke baere dem",
+                    session_id, len(_nye), _nye_vaegt, int(keep_recent_tokens),
+                )
         if ren_tilfoejelse:
             nye = friske[len(messages):]
             _kept = list(_kept) + list(nye)
@@ -186,8 +210,7 @@ def compact_session_history(
                 _log_k(
                     session_id, udloeser="ukendt", vej="", tokens_foer=0,
                     tokens_efter=0, fremdrift=False,
-                    fejl="foraeldet-snapshot: beskeder fjernet eller omskrevet "
-                         "under opsummeringen",
+                    fejl=_kasser_grund,
                 )
             except Exception:  # logningen maa ikke kunne vaelte kasseringen den beskriver
                 pass

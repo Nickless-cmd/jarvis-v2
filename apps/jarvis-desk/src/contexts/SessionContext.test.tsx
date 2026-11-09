@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { ReactNode } from 'react'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { SessionProvider, mergeServer } from './SessionContext'
-import { getSession } from '../lib/api'
+import { getSession, createSession } from '../lib/api'
 import { useSessions } from '../hooks/useSessions'
 
 const userMsg = (id: string, text: string) => ({ id, role: 'user' as const, content: [{ type: 'text' as const, text }], created_at: 'now', parent_id: null })
@@ -245,6 +245,32 @@ describe('SessionContext reconcile', () => {
   it('loads sessions on mount', async () => {
     const { result } = renderHook(() => useSessions(), { wrapper })
     await waitFor(() => expect(result.current.sessions.length).toBe(1))
+  })
+})
+
+// ── Tilladelses-arven ved «ny samtale» (9/11-2026) ───────────────────────
+//
+// Maalt i drift: en code-samtale oprettet 13:01:33 stod `ask`, selv om den
+// forrige var sat til `trust` to minutter tidligere. Den rejste syv
+// godkendelses-kort for rene laesekald. Aarsagen var ikke serveren — den læser
+// `inherit_from` korrekt — men at `create()` kaldte `createSession` uden
+// foraelderen, saa feltet var tomt og arven (som findes og er testet i
+// `test_session_permission.py`) aldrig blev brugt. En mekanisme hvis
+// indgangsbetingelse intet kunne opfylde.
+describe('SessionContext create — tilladelses-arven', () => {
+  beforeEach(() => { vi.clearAllMocks() })
+
+  it('sender den aktive samtale med, saa den nye kan arve fuld adgang', async () => {
+    const { result } = renderHook(() => useSessions(), { wrapper })
+    await act(async () => { result.current.select('s1') })
+    await act(async () => { await result.current.create('Ny', 'code') })
+    expect(createSession).toHaveBeenCalledWith(cfg, 'Ny', 'code', 's1')
+  })
+
+  it('sender ingen foraelder naar ingen samtale er valgt — serveren svarer saa ask', async () => {
+    const { result } = renderHook(() => useSessions(), { wrapper })
+    await act(async () => { await result.current.create('Ny', 'chat') })
+    expect(createSession).toHaveBeenCalledWith(cfg, 'Ny', 'chat', null)
   })
 })
 

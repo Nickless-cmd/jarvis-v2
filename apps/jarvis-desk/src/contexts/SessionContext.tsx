@@ -322,14 +322,21 @@ export function SessionProvider({
   }, [loadSessions, refreshActiveSession])
 
   const create = useCallback(async (title: string, kind: 'chat' | 'code' = 'chat') => {
-    const sess = await createSession(config, title, kind)
+    // Ny samtale arver tilladelses-niveauet fra den man staar i. Serveren har
+    // ingen anden kilde: uden `activeId` foedes samtalen som `ask`, og desks
+    // PermissionContext overskriver dermed «fuld adgang» i det oejeblik den
+    // vaelges. Maalt 9/11-2026: en code-samtale oprettet to minutter efter at
+    // den forrige var sat til trust, stod `ask` og rejste syv kort for rene
+    // laesekald. Arven er fail-closed i serveren (ukendt foraelder → `ask`),
+    // saa et tomt `activeId` giver praecis den gamle adfaerd.
+    const sess = await createSession(config, title, kind, activeId)
     const titled = { ...sess, title: sess.title || title } // server kan returnere tom titel
     loadedRef.current = titled.id // markér som loaded (tom) FØR activeId-skift → select skipper fetch
     setSessions((prev) => [titled, ...prev])
     setActiveId(titled.id)
     setMessages([])
     return titled
-  }, [config])
+  }, [config, activeId])
 
   const rename = useCallback(async (id: string, title: string) => {
     await renameSession(config, id, title)

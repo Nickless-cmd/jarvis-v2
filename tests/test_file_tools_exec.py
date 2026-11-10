@@ -312,3 +312,119 @@ def test_en_FEJLET_edit_baerer_ingen_tal(tmp_path) -> None:
     res = fx._exec_edit_file({"path": str(p), "old_text": "findes-ikke", "new_text": "x"})
     assert res["status"] == "error"
     assert "linjer_tilfoejet" not in res
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Linjeinterval i read_file (10/11-2026)
+#
+# MAALT i drift: en researcher fik opgaven «citer filnavn og linjenummer for
+# hvert fund». Den bad om linje 418-650, fik hele filen fra toppen (klippet
+# ved MAX_READ_CHARS) og svarede: «jeg kan ikke citere betingelser uden at
+# gætte». Værktøjet IGNOREREDE argumentet — skemaet havde kun `path`, og
+# ukendte argumenter blev ikke afvist, bare kastet væk.
+#
+# Det er den samme fejlform som resten af dagen: en kapacitet modellen
+# forventer, som værktøjet tier om. Testene her binder BEGGE halvdele —
+# at skemaet annoncerer intervallet, og at det bliver laest.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def test_read_file_honours_a_line_range(tmp_path) -> None:
+    """Et interval giver praecis de linjer — ikke hele filen fra toppen."""
+    from core.tools import file_tools_exec as fx
+    p = tmp_path / "f.txt"
+    p.write_text("en\nto\ntre\nfire\nfem\n", encoding="utf-8")
+
+    res = fx._exec_read_file({"path": str(p), "start_line": 2, "end_line": 4})
+
+    assert res["status"] == "ok"
+    assert res["text"] == "to\ntre\nfire"
+    # Agenten skal kunne CITERE det den laeste: linje N i teksten er
+    # start_line + N - 1.
+    assert res["start_line"] == 2
+    assert res["end_line"] == 4
+    assert res["total_lines"] == 6  # fem linjer + den afsluttende tomme
+
+
+def test_read_file_without_a_range_is_unchanged(tmp_path) -> None:
+    """Uden interval opfoerer værktøjet sig praecis som før — ingen regression."""
+    from core.tools import file_tools_exec as fx
+    p = tmp_path / "f.txt"
+    p.write_text("en\nto\ntre\n", encoding="utf-8")
+
+    res = fx._exec_read_file({"path": str(p)})
+
+    assert res["status"] == "ok"
+    assert res["text"] == "en\nto\ntre\n"
+    assert "start_line" not in res
+    assert "truncated" not in res
+
+
+def test_read_file_reaches_the_middle_of_a_file_it_could_not_read_whole(tmp_path) -> None:
+    """Kernen i fixet: midten af en stor fil var UTILGAENGELIG for en agent.
+
+    Uden intervallet fik den de foerste MAX_READ_CHARS tegn og havde ingen vej
+    til resten — praecis den tilstand agenten beskrev som sin blocker.
+    """
+    from core.tools import file_tools_exec as fx
+    from core.tools.simple_tools import MAX_READ_CHARS
+
+    p = tmp_path / "big.txt"
+    linjer = [f"linje {i} " + "x" * 100 for i in range(1, 1000)]
+    p.write_text("\n".join(linjer), encoding="utf-8")
+    assert p.stat().st_size > MAX_READ_CHARS, "testen kraever en fil over graensen"
+
+    hel = fx._exec_read_file({"path": str(p)})
+    assert hel["truncated"] is True
+    assert "linje 900" not in hel["text"], "hele filen kan pr. definition ikke laeses"
+
+    interval = fx._exec_read_file({"path": str(p), "start_line": 900, "end_line": 902})
+
+    assert interval["status"] == "ok"
+    assert "linje 900" in interval["text"]
+    assert interval["start_line"] == 900
+    assert "truncated" not in interval
+
+
+def test_read_file_clamps_an_end_line_past_the_file(tmp_path) -> None:
+    """En slutlinje forbi filens ende er ikke en fejl — den klippes."""
+    from core.tools import file_tools_exec as fx
+    p = tmp_path / "f.txt"
+    p.write_text("en\nto\n", encoding="utf-8")
+
+    res = fx._exec_read_file({"path": str(p), "start_line": 2, "end_line": 9999})
+
+    assert res["status"] == "ok"
+    assert res["text"] == "to\n"
+
+
+def test_read_file_rejects_a_range_that_runs_backwards(tmp_path) -> None:
+    """En baglaens interval er en fejl — ikke et tomt svar der ligner «ingen fund»."""
+    from core.tools import file_tools_exec as fx
+    p = tmp_path / "f.txt"
+    p.write_text("en\nto\ntre\n", encoding="utf-8")
+
+    res = fx._exec_read_file({"path": str(p), "start_line": 3, "end_line": 1})
+
+    assert res["status"] == "error"
+    assert "after end_line" in res["error"]
+
+
+def test_the_schema_ANNOUNCES_the_range() -> None:
+    """Vagten mod den oprindelige fejl: kapaciteten skal vaere ANNONCERET.
+
+    En implementeret men uannonceret parameter er stadig usynlig for modellen —
+    og det var praecis fejlen: agenten bad om et interval, værktøjet tav.
+    """
+    from core.tools.simple_tools import get_tool_definitions
+
+    katalog = {t["function"]["name"]: t for t in get_tool_definitions()}
+    props = katalog["read_file"]["function"]["parameters"]["properties"]
+
+    assert "start_line" in props
+    assert "end_line" in props
+    assert props["start_line"]["type"] == "integer"
+    assert props["end_line"]["type"] == "integer"
+    # `path` er stadig det eneste paakraevede felt.
+    assert katalog["read_file"]["function"]["parameters"]["required"] == ["path"]
+

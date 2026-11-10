@@ -471,12 +471,12 @@ _Fil-tool executors (read_file / write_file / edit_file / read_tool_result /_
 | function | `_safe_readback` | `(path)` | Læs filen tilbage — selv-sikker. None = den kunne ikke læses. | [src](../../../core/tools/file_tools_exec.py#L73) |
 | function | `_disk_readback` | `(path, *, start_line, span=…, mark=…)` | Nummereret udsnit af filen som den står på disken EFTER skrivningen. | [src](../../../core/tools/file_tools_exec.py#L86) |
 | function | `_exec_read_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L112) |
-| function | `_exec_read_tool_result` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L154) |
-| function | `_exec_read_self_docs` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L177) |
-| function | `_trust_giver_adgang` | `(args)` | Har dette kald adgang til at springe «uden for workspace»-kortet over? | [src](../../../core/tools/file_tools_exec.py#L193) |
-| function | `_exec_write_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L234) |
-| function | `linjetal` | `(gammel, ny, erstatninger)` | (tilføjet, fjernet) for én erstatning ganget op — git-diff-semantik. | [src](../../../core/tools/file_tools_exec.py#L321) |
-| function | `_exec_edit_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L353) |
+| function | `_exec_read_tool_result` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L212) |
+| function | `_exec_read_self_docs` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L235) |
+| function | `_trust_giver_adgang` | `(args)` | Har dette kald adgang til at springe «uden for workspace»-kortet over? | [src](../../../core/tools/file_tools_exec.py#L251) |
+| function | `_exec_write_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L292) |
+| function | `linjetal` | `(gammel, ny, erstatninger)` | (tilføjet, fjernet) for én erstatning ganget op — git-diff-semantik. | [src](../../../core/tools/file_tools_exec.py#L379) |
+| function | `_exec_edit_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L411) |
 
 ## `core/tools/force_handlers.py`
 _Force-handlere — værktøjer der kører EFTER et menneske har godkendt._

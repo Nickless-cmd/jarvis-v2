@@ -201,13 +201,28 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "read_file",
-            "description": "Read any file on the system by absolute path. Use for code, config, logs, workspace files — anything.",
+            "description": (
+                "Read any file on the system by absolute path. Use for code, config, logs, "
+                "workspace files — anything. Large files are truncated; pass start_line and "
+                "end_line to read a specific range instead of guessing."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
                         "description": "Absolute file path to read",
+                    },
+                    "start_line": {
+                        "type": "integer",
+                        "description": (
+                            "Optional 1-based first line to return. Use with end_line to read "
+                            "the middle of a large file — the whole file is otherwise truncated."
+                        ),
+                    },
+                    "end_line": {
+                        "type": "integer",
+                        "description": "Optional 1-based last line to return (inclusive).",
                     },
                 },
                 "required": ["path"],

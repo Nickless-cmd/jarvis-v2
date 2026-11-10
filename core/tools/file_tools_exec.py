@@ -129,8 +129,47 @@ def _exec_read_file(args: dict[str, Any]) -> dict[str, Any]:
     if text is None:
         return {"error": f"File not found: {path}", "status": "error"}
 
-    if len(text) > MAX_READ_CHARS:
+    # ── Linjeinterval (10/11-2026) ────────────────────────────────────────
+    #
+    # MAALT i drift: en researcher bad om linje 418-650, fik hele filen fra
+    # toppen (klippet ved MAX_READ_CHARS) og svarede «jeg kan ikke citere
+    # betingelser uden at gætte». Værktøjet IGNOREREDE argumentet, fordi
+    # skemaet kun havde `path` — ukendte argumenter blev ikke afvist, bare
+    # kastet væk. Det er samme fejlform som resten af dagen: en kapacitet
+    # modellen forventer, som værktøjet tier om.
+    #
+    # Det forklarer den dominerende stop-form: «Nu linjerne omkring 187-320»,
+    # «Output blev afkortet; læser relevante linjer», «Truncated; read the
+    # rest». Agenten narrer ikke — den leder efter et værktøj der kan læse et
+    # interval. 7 % af repoets Python-filer er over grænsen, og de vigtige
+    # (visible_runs.py 436 KB) er 13× over den.
+    all_lines = text.split("\n")
+    total_lines = len(all_lines)
+    _start = args.get("start_line")
+    _end = args.get("end_line")
+    ranged = _start is not None or _end is not None
+    truncated = False
+
+    if ranged:
+        try:
+            lo = max(1, int(_start)) if _start is not None else 1
+        except (TypeError, ValueError):  # ikke et tal = kaldets fejl, sig det eksplicit
+            return {"error": "start_line must be an integer", "status": "error"}
+        try:
+            hi = int(_end) if _end is not None else total_lines
+        except (TypeError, ValueError):  # samme: et ugyldigt interval maa ikke blive "tomt"
+            return {"error": "end_line must be an integer", "status": "error"}
+        hi = min(hi, total_lines)
+        if lo > hi:
+            return {"error": f"start_line {lo} is after end_line {hi} "
+                             f"(file has {total_lines} lines)", "status": "error"}
+        text = "\n".join(all_lines[lo - 1:hi])
+        if len(text) > MAX_READ_CHARS:
+            text = text[:MAX_READ_CHARS - 1] + "…"
+            truncated = True
+    elif len(text) > MAX_READ_CHARS:
         text = text[:MAX_READ_CHARS - 1] + "…"
+        truncated = True
 
     # Record read for read-before-write guard
     # Note: tools receive _runtime_session_id (not _session_id) — fall back
@@ -148,7 +187,26 @@ def _exec_read_file(args: dict[str, Any]) -> dict[str, Any]:
         pass
 
     _record_active_file(str(target), "read", args)
-    return {"text": text, "path": str(target), "size": len(text), "status": "ok"}
+    result: dict[str, Any] = {
+        "text": text, "path": str(target), "size": len(text), "status": "ok",
+        "total_lines": total_lines,
+    }
+    if ranged:
+        # Agenten skal kunne CITERE det den læste. `start_line` er nummeret på
+        # den første linje i `text`, så linje N i svaret er `start_line + N - 1`.
+        result["start_line"] = lo
+        result["end_line"] = lo + text.rstrip("…").count("\n")
+        if truncated:
+            result["truncated"] = True
+            result["note"] = (
+                f"intervallet blev klippet ved {MAX_READ_CHARS} tegn — læs videre "
+                f"fra start_line={result['end_line'] + 1}")
+    elif truncated:
+        result["truncated"] = True
+        result["note"] = (
+            f"filen har {total_lines} linjer og blev klippet ved {MAX_READ_CHARS} tegn — "
+            "brug start_line/end_line for at læse resten")
+    return result
 
 
 def _exec_read_tool_result(args: dict[str, Any]) -> dict[str, Any]:

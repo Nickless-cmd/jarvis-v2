@@ -117,8 +117,12 @@ def test_kolonnen_er_idempotent(tmp_path):
         "priority INTEGER DEFAULT 50, scope_tools TEXT)"
     )
     conn.execute(
+        "INSERT INTO behavioral_decisions (decision_id, directive, scope_tools) VALUES (?, ?, ?)",
+        ("dec_eksisterende", "Undgå researcher til git-historik", '["Task"]'),
+    )
+    conn.execute(
         "INSERT INTO behavioral_decisions (decision_id, directive) VALUES (?, ?)",
-        ("dec_6a234cd30460", "Undgå researcher til git-historik"),
+        ("dec_uden_scope", "Undgå researcher til git-historik"),
     )
     conn.commit()
 
@@ -128,8 +132,16 @@ def test_kolonnen_er_idempotent(tmp_path):
     cols = {r[1] for r in conn.execute("PRAGMA table_info(behavioral_decisions)")}
     assert "scope_tools" in cols
 
-    scope = conn.execute(
-        "SELECT scope_tools FROM behavioral_decisions WHERE decision_id='dec_6a234cd30460'"
+    # Migreringen opretter kolonnen — den må ikke selv tildele scope. Hvilke
+    # beslutninger der har et scope hører på beslutningen. 10/11-2026 stod der
+    # en hardkodet UPDATE på et bestemt id; den er fjernet sammen med beslutningen.
+    bevaret = conn.execute(
+        "SELECT scope_tools FROM behavioral_decisions WHERE decision_id='dec_eksisterende'"
     ).fetchone()[0]
-    assert "Task" in scope, "beslutningen blev ikke scopet til dispatch"
+    assert bevaret == '["Task"]', "migreringen overskrev et eksisterende scope"
+
+    urørt = conn.execute(
+        "SELECT scope_tools FROM behavioral_decisions WHERE decision_id='dec_uden_scope'"
+    ).fetchone()[0]
+    assert urørt is None, "migreringen tildelte et scope som beslutningen ikke selv har"
     conn.close()

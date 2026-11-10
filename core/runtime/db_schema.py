@@ -1212,12 +1212,11 @@ def _ensure_decision_scope_column(conn: sqlite3.Connection) -> None:
         except sqlite3.OperationalError as exc:
             if "duplicate column" not in str(exc).lower():
                 raise
-    # Beslutningen handler om DISPATCH — ikke om at skrive kode der nævner rollen.
-    conn.execute(
-        "UPDATE behavioral_decisions SET scope_tools = ? "
-        "WHERE decision_id = 'dec_6a234cd30460' AND (scope_tools IS NULL OR scope_tools = '')",
-        ('["Task", "dispatch_agent", "spawn_agent_task", "followup_agent"]',),
-    )
+    # Intet scope sættes her. Kolonnen er generel infrastruktur; hvilke
+    # beslutninger der har et scope hører på beslutningen, ikke i en migrering.
+    # 10/11-2026 stod der en hardkodet UPDATE på `dec_6a234cd30460` — den
+    # beslutning er nu tilbagekaldt, og en migrering der peger på et dødt id
+    # genopliver den ikke, men den bærer den heller ikke længere.
     conn.commit()
 
 

@@ -207,11 +207,16 @@ def _cli_tools_for_policy(policy: str) -> str:
     ## Shell er BEVIDST udeladt
 
     ``_READ_ONLY_TOOLS`` indeholder ``bash``, saa ``read-only-runtime`` lover
-    shell i tabellen. CLI-agenter faar den ikke her:
-    ``dec_6a234cd30460`` (Bjoern, 5/11-2026) indskraenkede netop det med
-    ordene «den har ingen shell», og den beslutning er hans at ophaeve.
-    Forskellen er nu EKSPLICIT i koden frem for tavs, og
-    ``tests/test_agent_cli_policy.py`` fæstner den.
+    shell i tabellen. CLI-agenter faar den ikke her — og det er nu en
+    STRUKTUREL egenskab ved denne funktion, ikke en regel der håndhæver den:
+    ingen policy giver shell, heller ikke ``worktree-write``.
+
+    Historik: indtil 10/11-2026 stod der at ``dec_6a234cd30460`` (Bjoern,
+    5/11-2026) indskraenkede det. Den beslutning er tilbagekaldt — maalt var
+    den overfloedig, fordi koden aldrig gav shell, og den ramte samtidig
+    fil-redigeringer der blot naevnte rollenavnet. Det der stod tilbage var
+    forskellen mellem tabellen og denne funktion, og den fæstnes stadig af
+    ``tests/test_agent_cli_policy.py``.
 
     Ukendt eller tom policy giver laeseadgang, ikke nul: en CLI der starter
     uden værktøjer kan ikke engang laese den fil den blev bedt om at vurdere,

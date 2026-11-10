@@ -86,17 +86,20 @@ def test_cli_afviger_fra_tabellen_paa_shell():
     """Den kendte afvigelse — fæstnet, saa den ikke forsvinder tavst.
 
     `_READ_ONLY_TOOLS` indeholder `bash`, saa tabellen lover shell for
-    `read-only-runtime`. CLI-ruten giver det ikke (dec_6a234cd30460). Fejler
-    denne test, er en af de to sider aendret — og saa skal beslutningen tages
-    om igen frem for at glide.
+    `read-only-runtime`. CLI-ruten giver det ikke. Det er en STRUKTUREL
+    egenskab ved `_cli_tools_for_policy`, ikke en beslutning der håndhæver
+    den: ingen policy giver shell, heller ikke `worktree-write`. Fejler
+    denne test, er en af de to sider aendret — og saa skal forskellen
+    forklares eksplicit frem for at glide.
     """
     tabel = set(tools_for_policy("read-only-runtime"))
-    cli = _cli_tools("read-only-runtime")
     assert "bash" in tabel, "tabellen lover ikke laengere shell — opdatér denne vagt"
-    assert "Bash" not in cli, (
-        "CLI-agenter har nu shell. Det ophaever dec_6a234cd30460 — traef "
-        "beslutningen eksplicit i stedet for at lade den glide."
-    )
+    for policy in ("none", "read-only-runtime", "can-spawn", "worktree-write"):
+        cli = _cli_tools(policy)
+        assert "Bash" not in cli, (
+            f"CLI-ruten giver nu shell for policy {policy!r}. Det er en ny "
+            "egenskab ved backenden — afgoer eksplicit om den skal have det."
+        )
 
 
 def test_command_sender_policyens_vaerktoejer_til_cli():

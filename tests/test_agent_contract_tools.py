@@ -73,8 +73,12 @@ def test_definitions_are_wellformed_and_required_fields_exist():
         assert d["type"] == "function" and d["function"]["description"]
         assert set(p["required"]) <= set(p["properties"])
     by = {d["function"]["name"]: d["function"]["parameters"] for d in defs}
-    # Task er den ENESTE modelvendte dispatch-flade og har Claudes fem felter.
-    assert by["Task"]["required"] == ["description", "prompt", "subagent_type"]
+    # Task er den ENESTE modelvendte dispatch-flade. `subagent_type` er bevidst
+    # VALGFRI (10/11-2026): som paakraevet felt var den en port — hvert dispatch
+    # skulle vaelge en rolle foer det kunne maale opgaven. Udeladt type giver
+    # laeseret, aldrig skriveret; skrivning kraever stadig et bevidst valg.
+    assert by["Task"]["required"] == ["description", "prompt"]
+    assert "subagent_type" in by["Task"]["properties"]
     assert len(by["Task"]["properties"]) == 5
     # Alle autoritetsbaerende valg udledes af runtimen.
     for fjernet in ("target", "tool_policy", "writes", "budget_tokens", "max_turns",

@@ -19,11 +19,11 @@ from core.services.agent_task_requirements import ufuldstaendige_vaerktoejer
 logger = logging.getLogger(__name__)
 
 
-_READ_TOOLS = (
-    "read_file", "find_files", "search", "semantic_search_code", "find_symbol",
-    "find_usages", "read_tool_result", "web_search", "web_fetch", "agent_note",
-)
-_WORKTREE_TOOLS = ("wt_bash", "wt_write_file", "agent_note")
+_AGENT_ONLY_TOOLS = ("agent_note",)
+# ``bash`` fjernes bevidst: den kører i containeren (eller på Bjørns maskine gennem
+# operator-kanalen), ikke i agentens sandkasse. Målt 8/10-2026 valgte en kodeagent
+# den usikre flade til at læse tre filer og udløste et godkendelses-kort for en `sed -n`.
+_UDELADTE_TOOLS = frozenset({"bash"})
 _READ_TYPES = frozenset({"researcher", "scout", "critic", "reviewer", "planner", "watcher"})
 _WRITE_TYPES = frozenset({"executor", "builder", "coder", "code"})
 _ROLE = {"scout": "researcher", "reviewer": "critic", "builder": "executor", "coder": "executor",
@@ -39,6 +39,29 @@ def _kendte_vaerktoejer() -> frozenset[str]:
     except Exception:  # noqa: BLE001 — vagten er additiv; uden register afviser den intet
         logger.warning("agent_task_facade: værktøjsregisteret kunne ikke læses", exc_info=True)
         return frozenset()
+
+
+def _vaerktoejer_for(policy: str) -> list[str]:
+    """Agentens værktøjer = policyens sæt + agent-kun-værktøjerne.
+
+    Sættet UDLEDES af ``tool_policy``; det er ikke en literal her. Målt 10/11-2026:
+    facaden gav en executor tre værktøjer (wt_bash, wt_write_file, agent_note) mens
+    dens egen ``tool_policy: "worktree-write"`` lovede elleve — den kunne ikke engang
+    ``read_file`` og måtte catte gennem wt_bash. Samme fejlform som
+    ``_TOOL_USING_ROLES``: en håndholdt kopi der påstår noget andet end beslutningen.
+
+    En tom liste er farligere end en bred: en agent uden værktøjer finder på sit
+    output (målt 23/7-2026). Kan policyen ikke læses, annoncerer vi intet nyt.
+    """
+    try:
+        from core.services.agent_runtime_base import tools_for_policy
+        navne = [n for n in tools_for_policy(policy) if n not in _UDELADTE_TOOLS]
+    except Exception:  # noqa: BLE001 — en agent uden værktøjer hallucinerer
+        logger.warning("agent_task_facade: kunne ikke læse policy %r", policy, exc_info=True)
+        navne = []
+    if not navne:
+        return []
+    return [*navne, *[t for t in _AGENT_ONLY_TOOLS if t not in navne]]
 
 
 def _session_scope(owner: str, session: str) -> tuple[str, str]:
@@ -85,6 +108,13 @@ def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
     kind = subagent_type.strip().lower()
     if not description or not prompt:
         raise ValueError("description og prompt er obligatoriske")
+    if not kind:
+        # Udledning maa kun NEDGRADERE. En udeladt type bliver den sikre side —
+        # laeseretten — aldrig skrivning: skrivning kraever et bevidst valg,
+        # praecis som never-escalate-kontrakten kraever. Anthropic loeser det
+        # modsatte: deres udeladte type faar hele kataloget. Vi vaelger den anden
+        # side af samme moent, fordi en agent der ikke kan skrive er harmloes.
+        kind = "researcher"
     if kind not in _READ_TYPES | _WRITE_TYPES:
         raise ValueError("ukendt subagent_type; brug researcher, critic, planner, watcher eller executor")
     workspace_kind, workspace = _session_scope(owner_user_id, origin_session_id)
@@ -101,7 +131,7 @@ def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
     budget_tokens = 12_000 if writes else 8_000
     max_turns = 12 if writes else 8
     deadline = (datetime.now(UTC) + timedelta(minutes=45 if writes else 30)).isoformat()
-    tools = list(_WORKTREE_TOOLS if writes else _READ_TOOLS)
+    tools = _vaerktoejer_for("worktree-write" if writes else "read-only-runtime")
     if not workspace:
         tools = [t for t in tools if t in {"web_search", "web_fetch", "read_tool_result", "agent_note"}]
     mangler = ufuldstaendige_vaerktoejer(prompt, tools, _kendte_vaerktoejer())

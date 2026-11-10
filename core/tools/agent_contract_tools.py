@@ -67,7 +67,7 @@ AGENT_CONTRACT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                                   "For the owner's installed agent CLIs use claude-cli or codex-cli."},
          "run_in_background": {"type": "boolean",
                                "description": "True returns after acceptance; false waits up to 120 seconds."}},
-        ["description", "prompt", "subagent_type"]),
+        ["description", "prompt"]),
     _fn("followup_agent",
         "Give an existing agent a NEW task (new assignment and run, same agent_id). Not allowed "
         "while it still has an active task or after close_agent.",

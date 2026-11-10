@@ -115,7 +115,8 @@ def test_execute_giver_stabil_fejlform_og_opretter_ingen_assignment(monkeypatch)
 
 def test_facaden_lader_en_opgave_uden_krav_passere(monkeypatch):
     plan = _derive(monkeypatch, prompt="Ret funktionen `read_file` så den håndterer tomme filer")
-    assert plan["allowed_tools"] == list(_EXECUTOR)
+    assert {"wt_bash", "wt_write_file", "read_file"} <= set(plan["allowed_tools"])
+    assert "bash" not in plan["allowed_tools"]
 
 
 def test_facaden_afviser_ikke_hvis_registeret_ikke_kan_hentes(monkeypatch):
@@ -128,4 +129,5 @@ def test_facaden_afviser_ikke_hvis_registeret_ikke_kan_hentes(monkeypatch):
         parent_agent_id="jarvis", description="x", prompt="Kald `restart_self`",
         subagent_type="executor", model="", run_in_background=True,
     )
-    assert plan["allowed_tools"] == list(_EXECUTOR)
+    # Kaldet gik igennem uden ValueError — vagten er additiv, og sættet er det udledte.
+    assert {"wt_bash", "wt_write_file"} <= set(plan["allowed_tools"])

@@ -1,12 +1,13 @@
 ---
 status: til implementering
 dato: 2026-11-10
-version: 4
+version: 5
 ejer: bjorn
 forfatter: jarvis
 review: Jarvis (self-review) → Claude (opus) ×2 → Codex ×2. Runde 1 dømte v1, runde 2 dømte v2,
          runde 3 dømte v3. v4 er skrevet efter runde 3, og alle fund er efterprøvet mod kilden
-         af forfatteren selv. Se §0.
+         af forfatteren selv. v5 tilføjer testmatrix, kanttilfælde og e2e-verifikation på Bjørns
+         krav (10/11-2026). Se §0.
 ---
 
 # Spec: `Task` som eneste generelle agentdør — og team som tilstand, ikke som system
@@ -49,6 +50,21 @@ faktuelle påstande der var forkerte, og lukker de kontraktfejl der var ægte. K
 pensioneret i samme leverance som spec'en (commit `0b87e7075`). Codex anbefalede tilbagerulning i
 runde 1; forfatteren afviste det, fordi prompt-løftet blev fjernet i samme commit, så der ikke er
 en løgn tilbage — kun et vindue uden rådsvej, og den vej havde nul kald.
+
+**Runde 4 (v4 → v5) — ikke et review, et krav fra Bjørn.** v4 beskrev hvad der skal være sandt, men
+sagde intet om *hvordan det bevises*. Otte accepttests er ikke en teststrategi: de siger hvad der
+skal gælde, ikke hvilken fil der beviser det, hvilke kanttilfælde der kan vælte det, eller hvordan
+man ser forskel på «grøn test» og «virker i drift». v5 tilføjer derfor tre ting:
+
+- **§13** får en testmatrix: hver accepttest mappes til en konkret testfil og et konkret niveau
+  (unit · service · e2e), med en note om hvad der allerede findes og hvad der skal skrives.
+- **§13.5** tilføjer de kanttilfælde som accepttesterne ikke fanger, fordi de er *uden for* det
+  normale forløb: nul medlemmer midt i provisioning, syv medlemmer, to supervisere samtidigt,
+  genstart midt i et team, kapacitet der forsvinder mellem medlem 1 og 3.
+- **§17** tilføjer e2e-verifikation efter husets mønster (`tests/e2e/`, `isolated_runtime`):
+  seed → bestil et team → verificér at N assignments findes med N mandater → gør dem terminale →
+  verificér at syntesen oprettes → verificér at parenten vågner. Plus den drift-verifikation der
+  skal køre *efter* deploy, fordi en grøn unit-test ikke er bevis for den kørende proces.
 
 ---
 
@@ -370,40 +386,143 @@ medlemmerne skal selv terminale. v1's påstand om at "én kolonne" løste dette 
 
 ---
 
-## 13. Accepttests
+## 13. Testmatrix — hver accepttest har en fil og et niveau
 
-1. **Byte-identisk single-agent:** hashen af `canonical` for et givent input er identisk før og
-   efter ændringen (§5.2).
-2. **N medlemmer, N mandater:** et team med 3 medlemmer giver 3 forskellige `mandate_id`, alle med
-   `max_fanout: 0` (§5.3, §7.1).
-3. **Retry er idempotent:** samme `Task(team=…)` to gange giver `replayed: true` og samme `team_id`
-   (§5.3).
-4. **`executor` afvises uanset rollenavn:** `Task(subagent_type="executor", team={…})` afvises (§7.2).
-5. **Medlemscitat dræber ikke syntesen:** et medlem der svarer "kør `bash`" giver stadig en syntese
-   (§6.4).
-6. **Ingen åben tilstand hænger:** en syntese der aldrig bliver terminal går til `STALLED` og vækker
-   parenten (§8.5).
-7. **Dobbelt vækning umulig:** to kald til `register_wait` med samme (parent_run, assignments) giver
-   én kontrakt (§8.4).
-8. **Prompten lyver ikke:** intet felt nævnes i prompten som `Task`-skemaet ikke har (§11).
+Otte accepttests er ikke en strategi. Tabellen nedenfor mapper hver test til **hvor** den hører
+hjemme, **hvilket niveau** den beviser noget på, og **om den findes i dag**. Niveau er ikke
+kosmetik: en unit-test beviser en funktion, en service-test beviser samspillet mellem funktioner i
+en isoleret runtime, og kun en e2e-test beviser at kæden hænger sammen fra modelkald til vækning.
 
-Bemærk: test 2 kræver **ikke** `member_index` i `agent_assignment_mandates` — tabellen er uændret
-(`core/runtime/db_agent_mandate.py:29-49`). v3's test krævede det og modsagde samtidig "uændret
-skema".
+| # | Accepttest | Fil | Niveau | Findes |
+|---|---|---|---|---|
+| 1 | Byte-identisk single-agent-hash | `tests/test_agent_task_facade.py` | unit | Nej — tilføjes |
+| 2 | N medlemmer → N forskellige `mandate_id`, alle `max_fanout: 0` | `tests/test_agent_council.py` | service | Delvist (3-medlems-råd findes; mandat-assert tilføjes) |
+| 3 | Retry giver `replayed: true` og samme `team_id` | `tests/test_agent_council.py` | service | Delvist (idempotens findes for råd; team-vej tilføjes) |
+| 4 | `executor` afvises uanset rollenavn | `tests/test_agent_task_facade.py` | unit | Nej — tilføjes |
+| 5 | Medlemscitat ("kør `bash`") dræber ikke syntesen | `tests/test_agent_council.py` | service | Nej — tilføjes |
+| 6 | Syntese der aldrig bliver terminal → `STALLED` + vækning | `tests/test_agent_council.py` | service | Nej — tilføjes |
+| 7 | Dobbelt `register_wait` giver én kontrakt | `tests/test_db_agent_wait.py` | unit | Nej — tilføjes |
+| 8 | Prompten nævner intet felt `Task` ikke har | `tests/test_agent_orchestration.py` | unit | Ja (`test_agent_orchestration.py:58`) — udvides med `team` |
+
+**Supplerende tests der ikke er accepttests, men som skal med i samme leverance:**
+
+| Test | Fil | Hvorfor |
+|---|---|---|
+| `create()` starter i `PROVISIONING` og `advance()` springer den over | `tests/test_db_agent_council.py` | R0 — den ene fejl der kan give et svar uden grundlag |
+| `_abandon(frm)` virker fra `PROVISIONING` | `tests/test_agent_council.py` | Ellers efterlades et team fast ved første afvisning |
+| `OPEN_STATUSES` dækker alle tre åbne tilstande | `tests/test_db_agent_council.py` | En hårdkodet toerliste er præcis v3's fejl |
+| `stalled_after_at` sættes ved **hver** indgang til en åben tilstand | `tests/test_agent_council.py` | §8.5 — ikke kun `GATHERING` |
+| `DONE` nægtes når `synthesis_wake_registered_at` mangler og `parent_run_id` er sat | `tests/test_agent_council.py` | §8.4 — ellers forsvinder teamet fra `OPEN_STATUSES` uden vækning |
+| `_wake_parent_on()` svarer succes når `parent_run_id` er tom | `tests/test_agent_council.py` | Ellers kører løkken evigt på en betingelse der aldrig kan opfyldes |
+| `derive_team()` validerer **før** første dispatch | `tests/test_agent_task_facade.py` | §6.2 — et afvist team må ikke efterlade halve medlemmer |
+| `additionalProperties: false` afviser et ukendt felt | `tests/test_agent_contract_tools.py` | §4 — uden den er reglen kun en påstand |
+| `relay_to_agent`, `cancel_agent`, `convene_agent_council` i `RETIRED_AGENT_CREATION_TOOLS` | `tests/test_copilot_tool_pruning.py` | §10 — selvstændig lille opgave |
+
+**Regel for hele matrixen:** hver række skal kunne fejle. En test der er grøn fordi dens assertion
+matcher alt — fx `assert result` på et svar der altid er sandt — beviser intet og tæller ikke.
+Test 1 er den vigtigste af slagsen: den skal sammenligne en **gemt hash-værdi** fra før ændringen,
+ikke genberegne den samme formel to gange i samme kørsel.
+
+---
+
+## 13.5 Kanttilfælde — det der ligger uden for det normale forløb
+
+Accepttesterne dækker det forventede forløb. Nedenstående kan vælte det, og de er ikke dækket af
+nogen af testene ovenfor.
+
+**Provisionering og race**
+
+1. **Nul medlemmer midt i provisioning.** `create()` har indsat rækken, `set_members()` er ikke
+   kørt, og `advance()` ser den. Skal springes over — ikke give en syntese. (§8.2)
+2. **To supervisere samtidigt.** `supervise()` kører i både api og runtime. Begge ser samme team i
+   `GATHERING`, begge forsøger at oprette syntesen. `transition()` er en CAS — den ene skal tabe,
+   og der må ikke oprettes to syntese-assignments.
+3. **Genstart midt i et team.** Processen dør efter medlem 2 af 4 er dispatchet. Ved genstart skal
+   teamet stadig være i `PROVISIONING` eller `GATHERING` (ikke `DONE`), og `advance()` skal kunne
+   fortsætte. `members_json` må ikke indeholde medlemmer der aldrig blev accepteret.
+4. **Kapacitet forsvinder mellem medlem 1 og 3.** `_room_for()` tjekker før dispatch, men et andet
+   team kan tage pladserne undervejs. Medlem 3 afvises med `CAPACITY` → `_abandon()` → `CANCELLED`.
+   Testen i dag (`test_a_failing_dispatch_midway_stops_the_started_members_and_cancels_the_council`)
+   dækker dette for råd; team-vejen skal have samme garanti.
+
+**Grænser**
+
+5. **Syv medlemmer.** `MAX_MEMBERS = 6`. Syv skal afvises **før** første dispatch, ikke efter seks
+   er startet.
+6. **Ét medlem.** `MIN_MEMBERS = 2`. Ét medlem er ikke et team — det er en almindelig `Task`, og
+   skal afvises med en henvisning til det, ikke med en generisk fejl.
+7. **Tomt `team.name`.** Navnet er en etiket, ikke en nøgle. Skal det afvises, eller må det være
+   tomt? Kontrakten i §4 siger fri etiket — men et tomt navn gør teamet uskelneligt i Desk. **Valg:
+   afvises**, fordi navnet er det eneste mennesket ser, og et tomt navn gør `team_id` til den eneste
+   identitet. Begrundelsen skal stå i fejlmeddelelsen.
+8. **To medlemmer med samme `task`.** Afvises (§4). Men hvad med samme `role` og forskellig `task`?
+   Tillades — rollen er en etiket, og to kritikere med forskellige angrebsvinkler er netop pointen.
+
+**Medlemmernes udfald**
+
+9. **Et medlem fejler, resten lykkes.** Syntesen oprettes og skal **navngive** den fejlende (§8.1).
+   Dette er allerede testet for råd — team-vejen skal arve garantien, ikke genopfinde den.
+10. **Alle medlemmer fejler.** Syntesen oprettes stadig, men med et grundlag der udelukkende er
+    fejl. Skal den oprettes? **Valg: ja** — den kan stadig sige hvad der mangler, og et svar om at
+    intet kunne hentes er mere værd end stilhed. Men syntesen skal ikke kunne påstå enighed.
+11. **Et medlem svarer med tomt `summary`.** `synthesis_goal()` skelner allerede mellem "svarede" og
+    "blev afsluttet uden brugbart svar". Team-vejen skal bevare den skelnen.
+12. **Syntesen fejler.** Teamet skal gå til `DONE` (syntesen er terminal) — ikke blive hængende. Men
+    parenten skal have udfaldet, ikke kun en tom vækning.
+
+**Vækning**
+
+13. **`register_wait` kaldes to gange efter crash.** Skal ramme samme kontrakt (§8.4). Uden unik
+    nøgle får parenten to vækninger for ét svar.
+14. **`parent_run_id` er tom** (fx et team startet fra en baggrundsjobb uden synligt run). Ingen
+    vækning er mulig — `_wake_parent_on()` skal svare succes, ikke fejle i det uendelige.
+15. **Brugeren stopper parentens run mens teamet kører.** `block_wakes_for_run` spærrer vækningen;
+    resultatet skal lande i inbox. Teamet må ikke gå i `STALLED` af den grund — det er en bevidst
+    spærring, ikke en hængning.
+
+**Dataintegritet**
+
+16. **`mandate_id`-kollision.** To medlemmer med identisk `canonical` (samme rolle, samme task) ville
+    give samme `mandate_id` og kollidere på PRIMARY KEY. `member_index` i `canonical` forhindrer det
+    (§5.3) — men rækkefølgen skal være **den bestilte**, ikke en sorteret, ellers får en retry med
+    ombyttede medlemmer nye id'er.
+17. **DB låst under `set_members()`.** `database is locked (5)` er målt i huset. Transitionen fra
+    `PROVISIONING` til `GATHERING` skal enten lykkes eller fejle synligt — ikke efterlade teamet i
+    `PROVISIONING` uden at nogen ved det.
+18. **`team_id` kolliderer med et `council_id`.** Umuligt med `team-`-præfiks (§15.3), men testen
+    skal bevise at præfikset faktisk sættes — ikke kun at det står i spec'en.
 
 ---
 
 ## 14. Rækkefølge — ikke til forhandling
 
-1. **R0:** `PROVISIONING` + `create()` + `set_members()` + `_abandon(frm)` + `OPEN_STATUSES`.
-2. **§5.2:** betinget `canonical` + test 1. Uden den brækker replay.
-3. **§5.3:** deterministisk `team_id` + idempotens + test 3.
-4. **§6.2/§6.3:** `derive_team()` + syntese gennem `execute()`-mønstret.
-5. **§6.4:** vagten læser kun instruktionen.
-6. **§8.5:** tærskel for alle åbne tilstande + `STALLED` vækker.
-7. **§8.4:** idempotent `register_wait` + `DONE`-kravet.
-8. **§4/§11:** `Task`-skemaet + `additionalProperties: false` + prompten i samme commit.
-9. **§10:** de tre navne i `RETIRED_AGENT_CREATION_TOOLS`.
+Hvert trin er en **selvstændig leverance**: den har filer, en test der skal grønnes, og en review-port
+før det næste trin starter. Rækkefølgen er ikke kosmetisk — trin 1 lukker den ene fejl der kan give
+et svar uden grundlag, og trin 2 skal være på plads før nogen idempotens kan testes, fordi en ændret
+`canonical` giver nye id'er til alt.
+
+| # | Leverance | Filer | Test der skal grønnes | Review-port |
+|---|---|---|---|---|
+| 1 | **R0:** `PROVISIONING`, `create()`, `set_members()`, `_abandon(frm)`, `OPEN_STATUSES` | `core/runtime/db_agent_council.py`, `core/services/agent_council.py`, `tests/test_db_agent_council.py`, `tests/test_agent_council.py` | `create()` starter i `PROVISIONING`; `advance()` springer den over; `_abandon` virker fra `PROVISIONING`; `OPEN_STATUSES` dækker tre tilstande | Ja — dette er den ene fejl der giver et svar uden grundlag |
+| 2 | **§5.2:** betinget `canonical` | `core/services/agent_task_facade.py`, `tests/test_agent_task_facade.py` | Test 1: gemt hash fra før ændringen er byte-identisk | Ja — brækker replay hvis den er forkert |
+| 3 | **§5.3:** deterministisk `team_id` + `member_index` | `core/services/agent_task_facade.py`, `core/services/agent_council.py` | Test 3: retry giver samme `team_id`; test 2: N medlemmer → N `mandate_id` | Ja |
+| 4 | **§6.2/§6.3:** `derive_team()`, syntese gennem `execute()`-mønstret | `core/services/agent_task_facade.py`, `core/services/agent_council.py` | Test 2 fuldt; syntesen har gemt mandat med `max_fanout: 0` | Ja — dette er autoritetsgrænsen |
+| 5 | **§6.4:** vagten læser kun instruktionen | `core/services/agent_council.py`, `core/services/agent_task_requirements.py` | Test 5: medlemscitat "kør `bash`" giver stadig syntese | Nej — lille, men testen skal fejle uden rettelsen |
+| 6 | **§8.5:** tærskel for alle åbne tilstande + `STALLED` vækker | `core/runtime/db_agent_council.py`, `core/services/agent_council.py` | Test 6: syntese der aldrig bliver terminal → `STALLED` + vækning | Ja |
+| 7 | **§8.4:** idempotent `register_wait` + `DONE`-kravet | `core/runtime/db_agent_wait.py`, `core/services/agent_council.py`, `tests/test_db_agent_wait.py` | Test 7: to kald → én kontrakt; `DONE` nægtes uden registrering | Ja |
+| 8 | **§4/§11:** `Task`-skemaet + `additionalProperties: false` + prompten | `core/tools/agent_contract_tools.py`, `core/services/prompt_sections/agent_orchestration.py`, `tests/test_agent_orchestration.py` | Test 8: prompten nævner intet felt `Task` ikke har; ukendt felt afvises | Ja — samme commit, ellers lyver prompten |
+| 9 | **§10:** de tre navne i `RETIRED_AGENT_CREATION_TOOLS` | `core/tools/tool_scoping.py`, `tests/test_copilot_tool_pruning.py` | Navnene er i listen og afvises af `is_tool_allowed()` | Nej — selvstændig lille opgave |
+| 10 | **§17.1:** e2e-testen | `tests/e2e/test_team_e2e.py` | Hele kæden: bestil → 3 mandater → terminale → syntese → `DONE` → én `fired` kontrakt | Ja — dette er den samlede bevisførelse |
+| 11 | **§17.2:** drift-verifikation | `jarvis.db`, journal på CT105 | De fem målinger i §17.2 taget på kørende runtime | Ja — og dette er den **eneste** port der beviser at det virker |
+
+**Regel for review-portene:** en port er ikke «læs koden igennem». Den er en uafhængig reviewer der
+får kravet (rækken ovenfor), den faktiske diff, og den grønne test — og som skal svare *godkendt* eller
+*navngive hvad der mangler*. Er porten ikke bestået, starter næste trin ikke. Det er den samme
+`review_agent_work`-mekanisme huset allerede har.
+
+**Undtagelse, og den skal siges højt:** trin 11 kan ikke køres af en agent i en isoleret runtime. Den
+kræver en rigtig kørsel på CT105 med en rigtig model. Indtil den er taget, er status «implementeret,
+ikke verificeret i drift» — og det er en anden status end «færdig».
 
 ---
 
@@ -430,3 +549,56 @@ koster claim-konflikter og rækkefølge, og den pris betales kun når arbejdet e
    under alle grænser, men det er også 9.000 tegn der aldrig kan caches. Måles.
 3. **Om `STALLED` skal kunne genoptages** eller kun rapporteres. v4 rapporterer og vækker; genoptagelse
    er en ny beslutning.
+
+---
+
+## 17. E2E-verifikation — forskellen på «grøn test» og «virker»
+
+Husets mønster for e2e er service-niveau i `tests/e2e/` med `isolated_runtime`-fixturen: seed →
+handling → verificér tilstand → udfald, uden en live model eller klient (se
+`tests/e2e/test_override_e2e.py`). Team-kæden skal have samme behandling, fordi dens fejlform er
+**tavshed**: et team der hænger, svarer ikke med en fejl — det svarer slet ikke.
+
+### 17.1 E2E-testen (skal køre i CI)
+
+`tests/e2e/test_team_e2e.py` — én sammenhængende kørsel gennem den ægte service-kæde:
+
+1. **Bestil** et team med 3 medlemmer gennem `Task`-facaden (ikke gennem `convene`).
+2. **Verificér** at der findes 3 assignments, 3 forskellige `mandate_id`, alle med `max_fanout: 0`,
+   og at teamet står i `GATHERING` — ikke `PROVISIONING`.
+3. **Gør** medlemmerne terminale (én `completed` med svar, én `completed` uden, én `failed`).
+4. **Kør** `supervise()` én gang. **Verificér** at syntesen er oprettet, at den har et gemt mandat,
+   og at dens prompt navngiver den fejlende.
+5. **Gør** syntesen terminal. **Kør** `supervise()` igen. **Verificér** at teamet er `DONE` og at
+   der findes præcis **én** ventekontrakt der er `fired`.
+6. **Verificér negativt:** at der ikke blev oprettet mere end ét syntese-assignment, og at intet
+   medlem fik `max_fanout > 0`.
+
+Testen skal fejle hvis nogen af de seks trin giver det rigtige svar af den forkerte grund — fx hvis
+syntesen oprettes fordi `advance()` sprang `PROVISIONING` over i stedet for fordi medlemmerne var
+terminale. Derfor asserteres **rækkefølgen**, ikke kun sluttilstanden.
+
+### 17.2 Drift-verifikation (skal køre efter deploy — ikke i CI)
+
+En grøn e2e-test beviser at koden kan, ikke at processen gør. Efter deploy af §14's trin skal disse
+målinger tages på den kørende runtime, og resultatet skal skrives i §0 med tal:
+
+| Måling | Hvor | Bevis for |
+|---|---|---|
+| `SELECT status, COUNT(*) FROM agent_councils GROUP BY status` | `jarvis.db` | At intet team står fast i `PROVISIONING` |
+| Antal teams med `stalled_after_at < now()` og status i `OPEN_STATUSES` | `jarvis.db` | At sweepen faktisk fanger forfaldne teams |
+| `SELECT COUNT(*) FROM agent_wait_contracts WHERE status='fired'` før/efter et team | `jarvis.db` | At vækningen fyrer præcis én gang |
+| Antal `mandate_id` per team i `agent_assignment_mandates` | `jarvis.db` | At N medlemmer giver N mandater — i drift, ikke kun i test |
+| `journalctl -u jarvis-runtime` for `raad kunne ikke avanceres` | CT105 | At supervisor-løkken ikke fejler tavst |
+
+**Kravet for at kalde leverancen færdig:** mindst ét rigtigt team skal have kørt gennem
+`Task(team=…)` i drift, og de fem målinger skal være taget. Indtil da er status «implementeret,
+ikke verificeret i drift» — og det er en anden status end «færdig».
+
+### 17.3 Hvad e2e ikke kan bevise
+
+E2e-testen kører i en isoleret runtime. Den kan ikke bevise at vækningen når **Bjørns** session, at
+Desk viser teamet, eller at en rigtig model leverer et brugbart medlemssvar. De tre ting kræver en
+rigtig kørsel, og de hører i §17.2 — ikke i CI.
+
+---

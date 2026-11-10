@@ -243,6 +243,16 @@ def run_agent_in_worker(
     provider, model = str(agent.get("provider") or ""), str(agent.get("model") or "")
     scout = (str(agent.get("role") or "") == "researcher"
              and str(agent.get("tool_policy") or "") in {"read-only-runtime", "read-only-workstation"})
+    # 10/11-2026: kontrakten skal med til den sandkassede worker, ellers gaelder
+    # `_delivery_gap` kun den ene af de to ruter — og de to skal have SAMME adfaerd.
+    expected_result = ""
+    try:
+        from core.runtime.db_agent_contract import open_assignment_for_agent
+        _a = open_assignment_for_agent(str(agent.get("agent_id") or ""))
+        if _a:
+            expected_result = str(_a.get("expected_result") or _a.get("goal") or "")
+    except Exception:
+        logger.debug("kunne ikke laese expected_result for agenten", exc_info=True)
     broker = _Broker(agent=agent, run_id=run_id, prompt=prompt, tools_payload=tools_payload,
                      provider=provider, model=model, max_tool_calls=max_tool_calls, resume=resume)
     parent, child = socket.socketpair()
@@ -267,6 +277,7 @@ def run_agent_in_worker(
                             "provider": provider, "model": model, "scout": scout,
                             "max_rounds": base._AGENT_TOOL_LOOP_MAX_ROUNDS,
                             "synthesis_directive": base._AGENT_SYNTHESIS_DIRECTIVE,
+                            "expected_result": expected_result,
                             "limits": {"address_space": address_space}, "resume": resume})
         started, last_cancel = time.monotonic(), 0.0
         outcome: dict[str, Any] | None = None

@@ -100,6 +100,7 @@ def main(argv: list[str]) -> int:
                 model=job.get("model", ""), scout=bool(job.get("scout")),
                 max_rounds=int(job.get("max_rounds") or 8),
                 synthesis_directive=str(job.get("synthesis_directive") or ""),
+                expected_result=str(job.get("expected_result") or ""),
                 resume=job.get("resume") or None)
         send(sock, {"op": "result", "outcome": outcome})
         return 0

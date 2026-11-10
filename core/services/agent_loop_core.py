@@ -303,6 +303,74 @@ def _unanswered_detail(prompt: str, final_text: str) -> tuple[int, str]:
     return len(qs - answered), "spørgsmål uden nummereret svar"
 
 
+#: Kontrakten (`expected_result`) kan selv bestille et bevis af en bestemt FORM. Staar der
+#: at svaret skal indeholde filnavne eller linjenumre, er det et maalbart vilkaar — ikke en
+#: vurdering af om teksten lyder faerdig.
+_REF_REQUEST_RE = re.compile(
+    r"filnavn|filnavne|linjenummer|linjenumre|linje\s*\d|"
+    r"file\s*name|line\s*number|file:line", re.IGNORECASE)
+#: Det bevis kontrakten i saa fald bestiller. Matcher et filnavn med en kode-endelse (med
+#: valgfrit `:linje`) eller en eksplicit `linje N`-reference.
+_REF_EVIDENCE_RE = re.compile(
+    r"[\w./-]+\.(?:py|ts|tsx|js|jsx|md|json|ya?ml|toml|sql)\b(?::\d+)?"
+    r"|\b(?:linje|line)\s*\d+", re.IGNORECASE)
+
+#: Et svar der er kortere end dette, efter at agenten HAR brugt værktøjer, kan ikke være
+#: en undersøgelse der er blevet afleveret. Tærsklen er lav med vilje: den skal fange det
+#: åbenlyst tomme, ikke dømme et kortfattet svar.
+_DELIVERY_MIN_CHARS = 160
+
+
+def _delivery_gap(expected_result: str, final_text: str, total_tool_calls: int) -> str:
+    """Grunden til at leverancen ikke kan accepteres — eller ``""`` hvis den kan.
+
+    MAALT 10/11-2026 i drift, raad `council-92089f9dc9a842f2` (team-6096a3fb53c51a2c):
+    to medlemmer blev meldt ``completed`` med **28 og 56 tegn** efter 3-4 vaerktoejskald:
+    "Nu linjerne omkring 187-320." og "Nu skal jeg se linjer omkring 670-720 for fuld
+    kontekst." Begge havde `max_turns: 8`, brugte 3-4 kald, sluttede 30 min foer deres
+    deadline, og hvert kald var `ok` — ingen budgetgraense, ingen fejl. Modellen stoppede
+    selv midt i laesningen.
+
+    Hvorfor ingen eksisterende vagt fangede dem: stop-grenen har praecis tre indgange —
+    ``scout`` (research-rollen), ``must_write`` (agenten KAN skrive) og ``unanswered``
+    (tal i opgaven). Et laese-medlem i et raad rammer nul af dem. ``_promises_action``
+    kender kun verber ("lad mig", "tjekker"), og "Nu skal jeg se" har futurum uden et af
+    dem.
+
+    Kilden er derfor ikke en ny ordliste men KONTRAKTEN: ``expected_result`` er allerede
+    skrevet ned for hver opgave (fx "Præcis forskel mellem worktree-write på worker-ruten
+    og CLI-ruten", med "citer linjenumre, gæt ikke" i goal'en). Den blev hidtil kun sendt
+    TIL agenten som tekst i prompten — aldrig laest som et vilkaar TIL agenten. Det er den
+    samme fejlform som resten af dagen: kontrakten findes, men ingen laeser den.
+
+    To maalbare fakta, begge uden en model:
+      1. Et svar kortere end ``_DELIVERY_MIN_CHARS`` efter >=1 vaerktoejskald kan ikke
+         baere en undersøgelse.
+      2. Bestiller kontrakten filnavne/linjenumre, skal svaret indeholde mindst ét.
+    """
+    contract = (expected_result or "").strip()
+    if not contract:
+        return ""                      # ingen kontrakt = intet at maale imod
+    if total_tool_calls < 1:
+        return ""                      # agenten undersøgte ikke; en anden gren ejer det
+    text = (final_text or "").strip()
+    if len(text) < _DELIVERY_MIN_CHARS:
+        return (f"svaret er {len(text)} tegn efter {total_tool_calls} værktøjskald — "
+                "undersøgelsen blev ikke afleveret")
+    if _REF_REQUEST_RE.search(contract) and not _REF_EVIDENCE_RE.search(text):
+        return "kontrakten bestiller filnavne og linjenumre, og svaret indeholder ingen"
+    return ""
+
+
+def _delivery_nudge(gap: str) -> str:
+    """Ordre til en agent hvis leverance ikke kan accepteres. Navngiver hullet, ikke dommen."""
+    return (
+        f"Din leverance kan ikke accepteres endnu: {gap}. "
+        "Fortsæt undersøgelsen med dine værktøjer og afslut med det KONKRETE resultat "
+        "kontrakten bestiller — ikke en beskrivelse af hvad du skal gøre. "
+        "Kan opgaven ikke løses, så sig det eksplicit med grunden.")
+
+
 class ApprovalPending(Exception):
     """Et vaerktoejskald kraever en menneskelig godkendelse: loekken PARKERER (checkpoint) i stedet for at
     udfoere det. ``approval_id`` er den varige approval; ``tool_call_id`` det kald der venter."""
@@ -325,7 +393,8 @@ class LoopIO(Protocol):
 
 def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], requires_tools: bool,
                   provider: str, model: str, scout: bool, max_rounds: int,
-                  synthesis_directive: str, resume: dict[str, Any] | None = None) -> dict[str, Any]:
+                  synthesis_directive: str, resume: dict[str, Any] | None = None,
+                  expected_result: str = "") -> dict[str, Any]:
     """Koer loekken og returner raa tal + tekst. Kaster aldrig: en fejl bliver ``error_str``.
 
     Kraever et kald en godkendelse (``ApprovalPending`` fra ``io.tool``), STOPPER loekken og returnerer
@@ -441,7 +510,13 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                 # strukturelt umulig - mens der var 4 af 12 runder tilbage. Svar-grenen maa
                 # ikke vinde over skrivningen, saa laenge der er runder tilbage at skrive i.
                 must_write = write_capable and write_calls == 0
-                if not scout and action_retries < 1 and (promised or unanswered or must_write):
+                # 10/11-2026: den fjerde indgang. En LAESE-agent i et raad ramte ingen af
+                # de tre andre, fordi dens leverance hverken er en aendring (must_write),
+                # et loefte (_promises_action) eller et svar paa et tal i opgaven
+                # (unanswered). Kontrakten `expected_result` siger hvad der SKULLE leveres;
+                # se `_delivery_gap` for den maalte fejlform.
+                gap = "" if scout else _delivery_gap(expected_result, final_text, total_tool_calls)
+                if not scout and action_retries < 1 and (promised or unanswered or must_write or gap):
                     action_retries += 1
                     # 26/10-2026: nudgen maa ikke forbruge den SIDSTE tilladte runde. Goer den
                     # det, udloeb loekken paa `while rounds < max_rounds` uden at naa ned til
@@ -450,10 +525,11 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                     if rounds >= max_rounds:
                         incomplete = True
                         unanswered_total = unanswered
-                        stop_reason = f"rundebudgettet løb ud efter {rounds} runder"
+                        stop_reason = gap or f"rundebudgettet løb ud efter {rounds} runder"
                         break
                     messages.append({"role": "assistant", "content": final_text})
-                    messages.append({"role": "user", "content": _ACTION_NUDGE})
+                    messages.append({"role": "user",
+                                     "content": _delivery_nudge(gap) if gap else _ACTION_NUDGE})
                     continue
                 # Nudgen blev givet, og svaret er STADIG et loefte uden en eneste skrivning.
                 # Det er ikke en fuldfoert opgave - kalderen skal kunne se forskel.
@@ -465,6 +541,11 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                 if must_write:
                     incomplete = True
                     stop_reason = stop_reason or "agenten kunne skrive men skrev intet"
+                # Nudgen er givet, og leverancen kan STADIG ikke accepteres. Grunden baeres
+                # med ud, saa kalderen kan se HVAD der manglede — ikke bare at noget gjorde.
+                if gap:
+                    incomplete = True
+                    stop_reason = stop_reason or gap
                 # 26/10-2026: ubesvarede nummererede spoergsmaal er et MAALELIGT faktum, ikke
                 # en vurdering af teksten. Staar der stadig huller efter nudgen, er leverancen
                 # ufuldstaendig — ogsaa for en laese-agent, og ogsaa naar teksten lyder faerdig.

@@ -533,3 +533,57 @@ def test_en_syntese_der_aldrig_bliver_terminal_gaar_i_stalled_og_vaekker_parente
 
     # Anden runde: raadet er ikke laengere aabent, saa der sker intet nyt.
     assert cn.A_.advance() == []
+
+
+def test_done_naegtes_naar_parenten_ikke_er_vaekket(cn, monkeypatch):
+    """``SYNTHESIZING -> DONE`` kraever at ventepunktet er registreret.
+
+    Uden kravet kunne raadet blive lukket mens parenten stadig ventede paa et svar der
+    aldrig kom — og et ``done`` raad bliver ikke kigget paa igen, saa ventepunktet ville
+    aldrig blive oprettet. Registreringen proeves igen ved naeste sweep.
+    """
+    out = cn.convene()
+    cn.run_all()
+    assert [d["action"] for d in cn.A_.advance()] == ["synthesis_started"]
+    cid = out["council_id"]
+
+    # Simulér at registreringen fejlede ved overgangen til synthesizing: stemplet er
+    # ikke sat. ``_wake_parent_on`` importerer ``register_wait`` LOKALT, saa patchen
+    # skal ramme modulet — ikke et navn i agent_council.
+    conn = cn.c_._conn()
+    conn.execute("UPDATE agent_councils SET synthesis_wake_registered_at='' WHERE council_id=?", (cid,))
+    conn.commit()
+
+    import core.runtime.db_agent_wait as wait_mod
+    real = wait_mod.register_wait
+    state = {"fail": True}
+
+    def flaky(**kw):
+        if state["fail"]:
+            raise cn.svc_.ContractError("INVALID_SCOPE", "kan ikke registrere nu")
+        return real(**kw)
+    monkeypatch.setattr(wait_mod, "register_wait", flaky)
+    cn.run_all()
+
+    assert cn.A_.advance() == [], "raadet blev lukket uden at parenten var vaekket"
+    assert cn.store_.get(cid, O)["status"] == "synthesizing"
+    assert not cn.store_.get(cid, O)["synthesis_wake_registered_at"]
+
+    # Virker registreringen igen, bliver raadet faerdigt.
+    state["fail"] = False
+    done = cn.A_.advance()
+    assert [d["action"] for d in done] == ["done"], done
+    assert cn.store_.get(cid, O)["status"] == "done"
+    assert cn.store_.get(cid, O)["synthesis_wake_registered_at"]
+
+
+def test_et_raad_uden_parent_kan_godt_blive_done(cn):
+    """Tom ``parent_run_id`` = der er ingen at vaekke. Saa maa DONE ikke blokere —
+    ellers ville raadet forsoege igen for evigt paa en betingelse der aldrig kan opfyldes."""
+    out = cn.convene(parent_run_id="")
+    cn.run_all()
+    assert [d["action"] for d in cn.A_.advance()] == ["synthesis_started"]
+    cn.run_all()
+    done = cn.A_.advance()
+    assert [d["action"] for d in done] == ["done"], done
+    assert cn.store_.get(out["council_id"], O)["status"] == "done"

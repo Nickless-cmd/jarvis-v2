@@ -4521,7 +4521,7 @@
       ]
     },
     "agent_wait_contracts": {
-      "digest": "79:d4:e8:92:c7:62:9c:eb:6d:66:25:a1:72:88:8f:3b:8a:55:e8:3f:ac:19:cc:73:f9:0e:96:cf:ef:78:34:27",
+      "digest": "42:9b:76:e1:9a:55:e9:51:52:31:c8:5f:88:bb:77:ac:dc:48:d9:3d:5e:e2:6a:4d:5a:e9:14:0f:9f:5f:7f:a2",
       "schema": {
         "columns": [
           {
@@ -4664,6 +4664,35 @@
               }
             ],
             "sql": null
+          },
+          {
+            "name": "uq_agent_wait_identity",
+            "unique": true,
+            "origin": "c",
+            "partial": true,
+            "parts": [
+              {
+                "column": "parent_run_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "condition",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "assignment_ids_json",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE UNIQUE INDEX uq_agent_wait_identity ON agent_wait_contracts(parent_run_id, condition, assignment_ids_json) WHERE parent_run_id != ''"
           }
         ]
       },
@@ -9927,7 +9956,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "cheap_lane_admission_state": {

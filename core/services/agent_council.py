@@ -314,8 +314,16 @@ def advance() -> list[dict[str, Any]]:
             elif c["status"] == store.SYNTHESIZING:
                 a = _conn().execute("SELECT status FROM agent_assignments WHERE assignment_id=?",
                                     (c["synthesis_assignment_id"],)).fetchone()
-                if a is not None and a["status"] in ASSIGNMENT_TERMINAL and store.transition(
-                        c["council_id"], frm=store.SYNTHESIZING, to=store.DONE):
+                if a is None or a["status"] not in ASSIGNMENT_TERMINAL:
+                    continue
+                # DONE kraever at parenten er vaekket. Ellers kunne raadet blive lukket mens
+                # parenten stadig ventede paa et svar der aldrig kom — og et ``done`` raad
+                # bliver ikke kigget paa igen, saa ventepunktet ville aldrig blive oprettet.
+                # Registreringen proeves igen ved hvert sweep indtil den lykkes.
+                if not _wake_parent_on(c, c["synthesis_assignment_id"]):
+                    logger.warning("raad %s kan ikke lukkes: parenten er ikke vaekket endnu", c["council_id"])
+                    continue
+                if store.transition(c["council_id"], frm=store.SYNTHESIZING, to=store.DONE):
                     done.append({"council_id": c["council_id"], "action": "done", "synthesis_status": a["status"]})
         except Exception:
             logger.warning("raad %s kunne ikke avanceres", c["council_id"], exc_info=True)
@@ -344,10 +352,18 @@ def _wake_parent_on_stalled(c: dict[str, Any]) -> None:
     store.mark_wake_registered(c["council_id"])
 
 
-def _wake_parent_on(c: dict[str, Any], synthesis_assignment_id: str) -> None:
-    """Parenten vaekkes naar SYNTESEN er terminal (ikke ved hvert medlem)."""
+def _wake_parent_on(c: dict[str, Any], synthesis_assignment_id: str) -> bool:
+    """Parenten vaekkes naar SYNTESEN er terminal (ikke ved hvert medlem).
+
+    Returnerer ``True`` naar der ikke er noget at vente paa — enten fordi raadet ikke har
+    en parent, eller fordi ventepunktet nu er registreret. ``advance()`` kraever dette foer
+    ``SYNTHESIZING -> DONE``: ellers kunne et raad blive ``done`` mens parenten stadig
+    ventede paa et svar der aldrig kom.
+    """
     if not c["parent_run_id"]:
-        return
+        return True
+    if c.get("synthesis_wake_registered_at"):
+        return True
     from core.runtime.db_agent_wait import register_wait
     try:
         register_wait(owner_user_id=c["owner_user_id"], origin_session_id=c["origin_session_id"],
@@ -355,6 +371,9 @@ def _wake_parent_on(c: dict[str, Any], synthesis_assignment_id: str) -> None:
                       condition="first_terminal")
     except ContractError:
         logger.warning("ventekontrakt for raad %s kunne ikke registreres", c["council_id"], exc_info=True)
+        return False
+    store.mark_wake_registered(c["council_id"])
+    return True
 
 
 # --------------------------------------------------------------- review-kaeden

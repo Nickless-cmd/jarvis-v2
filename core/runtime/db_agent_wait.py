@@ -47,6 +47,12 @@ def ensure_wait_tables(conn: sqlite3.Connection) -> None:
         """)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_agent_wait_status "
                  "ON agent_wait_contracts(status, parent_run_id)")
+    # Idempotensen haandhaeves i DB'en, ikke kun i Python: to samtidige sweeps kan ellers
+    # begge se "ingen kontrakt" og indsaette hver sin. Partielt index, fordi en kontrakt
+    # uden parent_run_id (ingen at vaekke) ikke skal kollidere med nogen.
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_agent_wait_identity "
+                 "ON agent_wait_contracts(parent_run_id, condition, assignment_ids_json) "
+                 "WHERE parent_run_id != ''")
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS agent_run_stops (
@@ -109,6 +115,17 @@ def register_wait(*, owner_user_id: str, origin_session_id: str, parent_run_id: 
             raise ContractError("INVALID_SCOPE", "assignment tilhoerer ikke ejer/session")
         now = _now_iso()
         cid = f"wait-{uuid.uuid4().hex[:16]}"
+        # Idempotent: samme (parent_run, condition, assignments) er SAMME ventepunkt.
+        # Uden dette gav hvert supervisor-sweep en ny kontrakt for det samme raad, og
+        # parenten blev vaekket igen og igen om en tilstand der ikke aendrede sig.
+        if parent_run_id:
+            existing = conn.execute(
+                "SELECT contract_id FROM agent_wait_contracts WHERE parent_run_id=? "
+                "AND condition=? AND assignment_ids_json=?",
+                (parent_run_id, condition, json.dumps(ids))).fetchone()
+            if existing is not None:
+                conn.commit()
+                return get_contract(existing["contract_id"]) or {}
         stopped = parent_run_id and conn.execute(
             "SELECT reason FROM agent_run_stops WHERE run_id=?", (parent_run_id,)).fetchone()
         status = "stopped" if stopped else "registered"

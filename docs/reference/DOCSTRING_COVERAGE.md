@@ -426,7 +426,7 @@ Generated from source. 9995/18481 functions/methods documented (54%). The list b
 - `core/runtime/db_agent_route.py` :: `ensure_route_tables` (L25)
 - `core/runtime/db_agent_route.py` :: `record_decision` (L47)
 - `core/runtime/db_agent_wait.py` :: `ensure_wait_tables` (L30)
-- `core/runtime/db_agent_wait.py` :: `get_contract` (L134)
+- `core/runtime/db_agent_wait.py` :: `get_contract` (L151)
 - `core/runtime/db_approval_bridge.py` :: `state` (L381)
 - `core/runtime/db_autonomy.py` :: `create_autonomy_proposal` (L82)
 - `core/runtime/db_autonomy.py` :: `get_autonomy_proposal` (L152)

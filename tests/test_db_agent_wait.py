@@ -239,3 +239,27 @@ def test_dispatcher_tick_recovers_a_wake_lost_between_commit_and_file(w, monkeyp
     from core.services import visible_run_recovery_dispatcher as d
     out = d.recover_due_once(owner="api")
     assert out["started"] == 1 and seen["session_id"] == SESS
+
+
+def test_to_registreringer_af_samme_ventepunkt_giver_én_kontrakt(w):
+    """Samme (parent_run, condition, assignments) er SAMME ventepunkt.
+
+    Maalt 10/11-2026: hvert supervisor-sweep registrerede en ny kontrakt for det samme
+    raad, saa parenten blev vaekket igen og igen om en tilstand der ikke aendrede sig.
+    Idempotensen haandhaeves i DB'en (unik index), ikke kun i Python.
+    """
+    a = w.child("a")
+    first = w.reg([a])
+    second = w.reg([a])
+    assert first["contract_id"] == second["contract_id"]
+    n = w.k._conn().execute("SELECT COUNT(*) FROM agent_wait_contracts").fetchone()[0]
+    assert n == 1, f"der blev oprettet {n} kontrakter for ét ventepunkt"
+
+
+def test_forskellige_ventepunkter_er_stadig_forskellige(w):
+    """Idempotensen maa ikke smelte to RIGTIGE ventepunkter sammen."""
+    a, b = w.child("a"), w.child("b")
+    one = w.reg([a])
+    two = w.reg([b])
+    three = w.reg([a], cond="first_terminal")
+    assert len({one["contract_id"], two["contract_id"], three["contract_id"]}) == 3

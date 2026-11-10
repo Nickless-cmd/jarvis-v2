@@ -573,10 +573,10 @@ _Raad og review-kaede paa agentmotoren (agent-contract-v1 F5, spec 5.1 / 7.1 / 1
 | function | `synthesis_goal` | `(topic, outcomes)` | Syntesens opgave, delt i ``(instruktion, datagrundlag)``. | [src](../../../core/services/agent_council.py#L198) |
 | function | `_dispatch_synthesis` | `(c, outcomes)` | Syntesen gaar gennem ``derive()``, saa den faar sit EGET gemte mandat. | [src](../../../core/services/agent_council.py#L225) |
 | function | `advance` | `()` | Supervisor-taek: opret syntesen for raad hvis medlemmer alle er terminale, og luk raad hvis syntese er faerdig. | [src](../../../core/services/agent_council.py#L263) |
-| function | `_wake_parent_on_stalled` | `(c)` | Vaek parenten naar et raad er markeret ``stalled`` — praecis én gang. | [src](../../../core/services/agent_council.py#L325) |
-| function | `_wake_parent_on` | `(c, synthesis_assignment_id)` | Parenten vaekkes naar SYNTESEN er terminal (ikke ved hvert medlem). | [src](../../../core/services/agent_council.py#L347) |
-| function | `_read` | `(owner, assignment_id, name, limit)` | — | [src](../../../core/services/agent_council.py#L363) |
-| function | `dispatch_review` | `(*, owner_user_id, origin_session_id, builder_assignment_id, requirements, parent_run_id=…, budget_tokens=…, idempotency_key=…)` | Start en uafhaengig reviewer af en builders FAERDIGE arbejde. | [src](../../../core/services/agent_council.py#L372) |
+| function | `_wake_parent_on_stalled` | `(c)` | Vaek parenten naar et raad er markeret ``stalled`` — praecis én gang. | [src](../../../core/services/agent_council.py#L333) |
+| function | `_wake_parent_on` | `(c, synthesis_assignment_id)` | Parenten vaekkes naar SYNTESEN er terminal (ikke ved hvert medlem). | [src](../../../core/services/agent_council.py#L355) |
+| function | `_read` | `(owner, assignment_id, name, limit)` | — | [src](../../../core/services/agent_council.py#L382) |
+| function | `dispatch_review` | `(*, owner_user_id, origin_session_id, builder_assignment_id, requirements, parent_run_id=…, budget_tokens=…, idempotency_key=…)` | Start en uafhaengig reviewer af en builders FAERDIGE arbejde. | [src](../../../core/services/agent_council.py#L391) |
 
 ## `core/services/agent_dispatch.py`
 _Agent dispatch orchestrator for code mode (spec §19)._

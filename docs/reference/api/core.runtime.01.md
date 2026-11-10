@@ -377,13 +377,13 @@ _Ventekontrakter og brugerstop-spaerre for agent-contract-v1 (B2, §6)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `ensure_wait_tables` | `(conn)` | — | [src](../../../core/runtime/db_agent_wait.py#L30) |
-| function | `_satisfied` | `(conn, ids, condition)` | — | [src](../../../core/runtime/db_agent_wait.py#L60) |
-| function | `_fire_if_satisfied` | `(conn, c)` | — | [src](../../../core/runtime/db_agent_wait.py#L69) |
-| function | `evaluate_in_tx` | `(conn, assignment_id)` | Koeres i terminalcommittets transaktion. Returnerer de kontrakter der blev | [src](../../../core/runtime/db_agent_wait.py#L80) |
-| function | `register_wait` | `(*, owner_user_id, origin_session_id, parent_run_id, assignment_ids, condition=…)` | Registrer hvad parenten venter paa. Hver assignment skal tilhoere samme | [src](../../../core/runtime/db_agent_wait.py#L91) |
-| function | `get_contract` | `(contract_id)` | — | [src](../../../core/runtime/db_agent_wait.py#L134) |
-| function | `materialize_pending_wakes` | `()` | Skriv vaekke-intentionen for hver `fired` kontrakt uden en. Idempotent og | [src](../../../core/runtime/db_agent_wait.py#L139) |
-| function | `block_wakes_for_run` | `(*, run_id, reason=…)` | Manuelt brugerstop af parentens run: skriv markoeren FOER afbrydelsen, | [src](../../../core/runtime/db_agent_wait.py#L167) |
+| function | `_satisfied` | `(conn, ids, condition)` | — | [src](../../../core/runtime/db_agent_wait.py#L66) |
+| function | `_fire_if_satisfied` | `(conn, c)` | — | [src](../../../core/runtime/db_agent_wait.py#L75) |
+| function | `evaluate_in_tx` | `(conn, assignment_id)` | Koeres i terminalcommittets transaktion. Returnerer de kontrakter der blev | [src](../../../core/runtime/db_agent_wait.py#L86) |
+| function | `register_wait` | `(*, owner_user_id, origin_session_id, parent_run_id, assignment_ids, condition=…)` | Registrer hvad parenten venter paa. Hver assignment skal tilhoere samme | [src](../../../core/runtime/db_agent_wait.py#L97) |
+| function | `get_contract` | `(contract_id)` | — | [src](../../../core/runtime/db_agent_wait.py#L151) |
+| function | `materialize_pending_wakes` | `()` | Skriv vaekke-intentionen for hver `fired` kontrakt uden en. Idempotent og | [src](../../../core/runtime/db_agent_wait.py#L156) |
+| function | `block_wakes_for_run` | `(*, run_id, reason=…)` | Manuelt brugerstop af parentens run: skriv markoeren FOER afbrydelsen, | [src](../../../core/runtime/db_agent_wait.py#L184) |
 
 ## `core/runtime/db_anomalies.py`
 _Central-anomalier — persistent register over UDEFINEREDE fejl Centralen ikke selv har_

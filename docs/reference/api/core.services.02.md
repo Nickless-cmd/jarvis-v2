@@ -277,7 +277,7 @@ _The five-field model-facing Task facade over agent-contract-v1._
 | function | `_member_type` | `(team_type)` | Et teammedlems type — spaerringen ligger paa KIND, ikke paa rollenavnet. | [src](../../../core/services/agent_task_facade.py#L259) |
 | function | `derive_team` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, team, subagent_type=…, model=…, run_in_background=…, budget_tokens=…)` | Udled en plan pr. teammedlem — al validering sker FOER den foerste dispatch. | [src](../../../core/services/agent_task_facade.py#L275) |
 | function | `execute_team` | `(**fields)` | Dispatch et helt team — eller intet. | [src](../../../core/services/agent_task_facade.py#L330) |
-| function | `execute` | `(**fields)` | — | [src](../../../core/services/agent_task_facade.py#L370) |
+| function | `execute` | `(**fields)` | — | [src](../../../core/services/agent_task_facade.py#L355) |
 
 ## `core/services/agent_task_requirements.py`
 _Hvilke værktøjer en opgaveprompt KRÆVER at agenten kalder._

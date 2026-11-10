@@ -68,7 +68,8 @@ def _room_for(owner: str, parent: str, n: int) -> dict[str, Any] | None:
 def convene(*, owner_user_id: str, origin_session_id: str, topic: str, facts: str,
             members: list[dict[str, str]], parent_run_id: str = "", parent_agent_id: str = "jarvis",
             budget_tokens: int = 0, idempotency_key: str = "",
-            synthesis_role: str = "synthesizer") -> dict[str, Any]:
+            synthesis_role: str = "synthesizer",
+            derived_plans: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """Indkald et raad. Accepteres helt eller slet ikke; svaret er ids, ikke et resultat."""
     if (bad := svc._guard(owner_user_id, origin_session_id)):
         return bad
@@ -78,6 +79,8 @@ def convene(*, owner_user_id: str, origin_session_id: str, topic: str, facts: st
     clean, why = _validate(members)
     if why:
         return _err("INVALID_SCOPE", why)
+    if derived_plans is not None and len(derived_plans) != len(clean):
+        return _err("INVALID_SCOPE", "antallet af afledte planer matcher ikke teamets medlemmer")
     prior = store.find_by_key(owner_user_id, origin_session_id, idempotency_key)
     if prior is not None:
         if not prior["members"] and prior["status"] == store.PROVISIONING:
@@ -106,13 +109,23 @@ def convene(*, owner_user_id: str, origin_session_id: str, topic: str, facts: st
         # Holder raekken frisk gennem samlingen. Uden dette maales alderen fra ``created_at``
         # alene, og en langsom samling kunne blive lukket som forladt under foedderne.
         store.touch(cid)
-        out = svc.dispatch_agent(
-            owner_user_id=owner_user_id, origin_session_id=origin_session_id, parent_run_id=parent_run_id,
-            parent_agent_id=parent_agent_id, role=m["role"], goal=m["task"],
-            description=MEMBER_GOAL_HEAD.format(i=i, n=len(clean), role=m["role"]) + f"\n\nEMNE: {topic}\n\n"
-                        f"FAKTAGRUNDLAG:\n{facts or '(ingen yderligere fakta)'}",
-            expected_result="en begrundet vurdering med konfidens og forbehold", budget_tokens=budget_tokens,
-            idempotency_key=f"{cid}:m{i}", wake_parent=False)
+        if derived_plans is None:
+            out = svc.dispatch_agent(
+                owner_user_id=owner_user_id, origin_session_id=origin_session_id, parent_run_id=parent_run_id,
+                parent_agent_id=parent_agent_id, role=m["role"], goal=m["task"],
+                description=MEMBER_GOAL_HEAD.format(i=i, n=len(clean), role=m["role"]) + f"\n\nEMNE: {topic}\n\n"
+                            f"FAKTAGRUNDLAG:\n{facts or '(ingen yderligere fakta)'}",
+                expected_result="en begrundet vurdering med konfidens og forbehold", budget_tokens=budget_tokens,
+                idempotency_key=f"{cid}:m{i}", wake_parent=False)
+        else:
+            plan = dict(derived_plans[i - 1])
+            mandate = plan.pop("mandate")
+            plan.pop("run_in_background", None)
+            plan.pop("team_id", None)
+            out = svc.dispatch_agent(
+                owner_user_id=owner_user_id, origin_session_id=origin_session_id,
+                parent_run_id=parent_run_id, parent_agent_id=parent_agent_id,
+                mandate=mandate, wake_parent=False, **plan)
         if out.get("status") != "accepted":
             _abandon(owner_user_id, origin_session_id, cid, started, store.PROVISIONING)
             return {**out, "council_id": cid, "failed_member": i, "council_status": store.CANCELLED,

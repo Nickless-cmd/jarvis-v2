@@ -335,36 +335,21 @@ def execute_team(**fields: Any) -> dict[str, Any]:
     tilbage ville se ud som et helt teams.
     """
     from core.services import agent_contract_service as service
+    from core.services import agent_council
 
     try:
         plans = derive_team(**fields)
     except ValueError as exc:  # valideringen FOER dispatch er svaret, ikke en fejl at logge
         return service._err("INVALID_SCOPE", str(exc))
     team_id = str(plans[0].get("team_id") or "") if plans else ""
-    accepted: list[dict[str, Any]] = []
-    for plan in plans:
-        mandate = plan.pop("mandate")
-        plan.pop("run_in_background", None)
-        plan.pop("team_id", None)
-        out = service.dispatch_agent(
-            owner_user_id=fields["owner_user_id"], origin_session_id=fields["origin_session_id"],
-            parent_run_id=fields["parent_run_id"], parent_agent_id=fields["parent_agent_id"],
-            mandate=mandate, wake_parent=False, **plan)
-        if out.get("status") != "accepted":
-            for a in accepted:
-                try:
-                    service.interrupt_agent(
-                        owner_user_id=fields["owner_user_id"],
-                        origin_session_id=fields["origin_session_id"],
-                        agent_id=a["agent_id"], note=f"team {team_id} kunne ikke samles")
-                except Exception:  # noqa: BLE001 — oprydning maa ikke skjule den aegte fejl
-                    logger.warning("kunne ikke afbryde teammedlem %s", a.get("agent_id"), exc_info=True)
-            return {**out, "team_id": team_id, "members": accepted,
-                    "detail": f"teamet blev ikke samlet: {out.get('error')}"}
-        accepted.append({"assignment_id": out["assignment_id"], "agent_id": out["agent_id"],
-                         "member_index": plan.get("member_index")})
-    return {"status": "accepted", "team_id": team_id, "members": accepted,
-            "contract_version": service.CONTRACT_VERSION}
+    spec = fields["team"]
+    out = agent_council.convene(
+        owner_user_id=fields["owner_user_id"], origin_session_id=fields["origin_session_id"],
+        parent_run_id=fields["parent_run_id"], parent_agent_id=fields["parent_agent_id"],
+        topic=fields["description"], facts=fields["prompt"], members=spec["members"],
+        budget_tokens=fields.get("budget_tokens", 0), idempotency_key=team_id,
+        derived_plans=plans)
+    return {**out, "team_id": team_id}
 
 
 def execute(**fields: Any) -> dict[str, Any]:

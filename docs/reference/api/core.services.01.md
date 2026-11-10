@@ -565,18 +565,18 @@ _Raad og review-kaede paa agentmotoren (agent-contract-v1 F5, spec 5.1 / 7.1 / 1
 | function | `_digest` | `(topic, members)` | — | [src](../../../core/services/agent_council.py#L39) |
 | function | `_validate` | `(members)` | — | [src](../../../core/services/agent_council.py#L43) |
 | function | `_room_for` | `(owner, parent, n)` | — | [src](../../../core/services/agent_council.py#L58) |
-| function | `convene` | `(*, owner_user_id, origin_session_id, topic, facts, members, parent_run_id=…, parent_agent_id=…, budget_tokens=…, idempotency_key=…, synthesis_role=…)` | Indkald et raad. Accepteres helt eller slet ikke; svaret er ids, ikke et resultat. | [src](../../../core/services/agent_council.py#L68) |
-| function | `_abandon` | `(owner, session, cid, started, frm)` | Intet halvt raad: afbryd de medlemmer der allerede er startet og luk raadet. | [src](../../../core/services/agent_council.py#L126) |
-| function | `_interrupt_orphan_members` | `(owner, session, cid)` | Afbryd medlemmer der blev sendt afsted for et raad der aldrig blev samlet. | [src](../../../core/services/agent_council.py#L148) |
-| function | `_view` | `(c, *, replayed=…)` | — | [src](../../../core/services/agent_council.py#L171) |
-| function | `_outcomes` | `(owner, members)` | — | [src](../../../core/services/agent_council.py#L179) |
-| function | `synthesis_goal` | `(topic, outcomes)` | Syntesens opgave, delt i ``(instruktion, datagrundlag)``. | [src](../../../core/services/agent_council.py#L198) |
-| function | `_dispatch_synthesis` | `(c, outcomes)` | Syntesen gaar gennem ``derive()``, saa den faar sit EGET gemte mandat. | [src](../../../core/services/agent_council.py#L225) |
-| function | `advance` | `()` | Supervisor-taek: opret syntesen for raad hvis medlemmer alle er terminale, og luk raad hvis syntese er faerdig. | [src](../../../core/services/agent_council.py#L263) |
-| function | `_wake_parent_on_stalled` | `(c)` | Vaek parenten naar et raad er markeret ``stalled`` — praecis én gang. | [src](../../../core/services/agent_council.py#L333) |
-| function | `_wake_parent_on` | `(c, synthesis_assignment_id)` | Parenten vaekkes naar SYNTESEN er terminal (ikke ved hvert medlem). | [src](../../../core/services/agent_council.py#L355) |
-| function | `_read` | `(owner, assignment_id, name, limit)` | — | [src](../../../core/services/agent_council.py#L382) |
-| function | `dispatch_review` | `(*, owner_user_id, origin_session_id, builder_assignment_id, requirements, parent_run_id=…, budget_tokens=…, idempotency_key=…)` | Start en uafhaengig reviewer af en builders FAERDIGE arbejde. | [src](../../../core/services/agent_council.py#L391) |
+| function | `convene` | `(*, owner_user_id, origin_session_id, topic, facts, members, parent_run_id=…, parent_agent_id=…, budget_tokens=…, idempotency_key=…, synthesis_role=…, derived_plans=…)` | Indkald et raad. Accepteres helt eller slet ikke; svaret er ids, ikke et resultat. | [src](../../../core/services/agent_council.py#L68) |
+| function | `_abandon` | `(owner, session, cid, started, frm)` | Intet halvt raad: afbryd de medlemmer der allerede er startet og luk raadet. | [src](../../../core/services/agent_council.py#L139) |
+| function | `_interrupt_orphan_members` | `(owner, session, cid)` | Afbryd medlemmer der blev sendt afsted for et raad der aldrig blev samlet. | [src](../../../core/services/agent_council.py#L161) |
+| function | `_view` | `(c, *, replayed=…)` | — | [src](../../../core/services/agent_council.py#L184) |
+| function | `_outcomes` | `(owner, members)` | — | [src](../../../core/services/agent_council.py#L192) |
+| function | `synthesis_goal` | `(topic, outcomes)` | Syntesens opgave, delt i ``(instruktion, datagrundlag)``. | [src](../../../core/services/agent_council.py#L211) |
+| function | `_dispatch_synthesis` | `(c, outcomes)` | Syntesen gaar gennem ``derive()``, saa den faar sit EGET gemte mandat. | [src](../../../core/services/agent_council.py#L238) |
+| function | `advance` | `()` | Supervisor-taek: opret syntesen for raad hvis medlemmer alle er terminale, og luk raad hvis syntese er faerdig. | [src](../../../core/services/agent_council.py#L276) |
+| function | `_wake_parent_on_stalled` | `(c)` | Vaek parenten naar et raad er markeret ``stalled`` — praecis én gang. | [src](../../../core/services/agent_council.py#L346) |
+| function | `_wake_parent_on` | `(c, synthesis_assignment_id)` | Parenten vaekkes naar SYNTESEN er terminal (ikke ved hvert medlem). | [src](../../../core/services/agent_council.py#L368) |
+| function | `_read` | `(owner, assignment_id, name, limit)` | — | [src](../../../core/services/agent_council.py#L395) |
+| function | `dispatch_review` | `(*, owner_user_id, origin_session_id, builder_assignment_id, requirements, parent_run_id=…, budget_tokens=…, idempotency_key=…)` | Start en uafhaengig reviewer af en builders FAERDIGE arbejde. | [src](../../../core/services/agent_council.py#L404) |
 
 ## `core/services/agent_dispatch.py`
 _Agent dispatch orchestrator for code mode (spec §19)._

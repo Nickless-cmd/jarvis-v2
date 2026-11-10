@@ -34,6 +34,7 @@ RETIRED_AGENT_CREATION_TOOLS: frozenset[str] = frozenset({
     "dispatch_code_mode_task",
     "dispatch_to_claude_code",
     "task",
+    "relay_to_agent",
 })
 
 _PERSONAL_CONTEXT_RE = re.compile(

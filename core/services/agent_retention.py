@@ -212,6 +212,15 @@ def run(*, now: datetime | None = None) -> dict[str, Any]:
         except Exception as exc:
             logger.warning("retention: %s fejlede", name, exc_info=True)
             result["errors"].append(f"{name}: {type(exc).__name__}: {exc}"[:200])
+    # Bevarede worktrees UDEN beslutning. Uden denne liste ville de foerst blive ryddet af
+    # ``ARCHIVE_AFTER`` (30 dage), saa "ingen beslutning" betoed "behold i en maaned".
+    try:
+        result["pending_decisions"] = [{"assignment_id": w["assignment_id"], "age_days": w["age_days"],
+                                        "branch": w["branch"], "size_bytes": w["size_bytes"]}
+                                       for w in wtm.pending_decisions()]
+    except Exception as exc:
+        logger.warning("retention: pending_decisions fejlede", exc_info=True)
+        result["errors"].append(f"pending_decisions: {type(exc).__name__}: {exc}"[:200])
     return result
 
 

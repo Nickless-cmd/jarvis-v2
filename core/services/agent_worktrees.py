@@ -39,6 +39,10 @@ MIN_FREE_BYTES = 5 * 1024 ** 3
 MIN_FREE_FRACTION = 0.05
 # --- retention (§12.1) ----------------------------------------------------------------------------
 REMOVE_AFTER_DECISION = timedelta(days=7)
+#: ``kept`` = "gem til senere". Den skal ikke ryddes af det samme ur som et afgjort arbejde -
+#: ellers er valget identisk med ``discarded``. 90 dage er den ydre graense, saa intet hober
+#: op for evigt; en ny beslutning kan altid rykke den.
+REMOVE_AFTER_KEPT = timedelta(days=90)
 ATTENTION_AFTER = timedelta(days=14)
 ARCHIVE_AFTER = timedelta(days=30)
 STALE_CREATING = timedelta(hours=1)
@@ -331,8 +335,16 @@ def snapshot_for_assignment(*, assignment_id: str) -> dict[str, Any] | None:
 
 def decide(*, owner_user_id: str, worktree_id: str, decision: str) -> dict[str, Any]:
     """Registrer ejerens/approverens beslutning om det bevarede arbejde. Selve integrationen i hovedgrenen
-    sker ikke her - kun at den er afgjort, saa oprydningsuret kan starte."""
-    if decision not in ("integrated", "discarded"):
+    sker ikke her - kun at den er afgjort, saa oprydningsuret kan starte.
+
+    Tre valg, fordi der er tre aerlige udfald og kun to af dem rydder:
+
+    * ``integrated`` - arbejdet er i hovedgrenen; worktree'et er en kopi og ryddes efter 7 dage.
+    * ``discarded``  - arbejdet skal ikke bruges; ryddes efter 7 dage.
+    * ``kept``       - gem til senere. Har sin EGEN frist (90 dage), fordi et "gem" der ryddes
+      som et "afvis" ikke er et valg men en forsinket afvisning.
+    """
+    if decision not in ("integrated", "discarded", "kept"):
         raise ContractError("INVALID_TRANSITION", decision)
     owner = _require(owner_user_id, "owner_user_id")
     wt = get(worktree_id=worktree_id)
@@ -407,7 +419,8 @@ def sweep(*, now: datetime | None = None) -> dict[str, list[str]]:
                 out["stale"].append(wid)
                 _set(wid, status="unknown", last_error="oprettelse uafklaret efter genstart")
         elif wt["status"] == "decided":
-            if t - _parse(wt["decided_at"]) >= REMOVE_AFTER_DECISION and _verified_remove(wt):
+            frist = REMOVE_AFTER_KEPT if wt["decision"] == "kept" else REMOVE_AFTER_DECISION
+            if t - _parse(wt["decided_at"]) >= frist and _verified_remove(wt):
                 _set(wid, status="removed", closed_at=_iso(t))
                 out["removed"].append(wid)
         else:   # retained, ubehandlet
@@ -420,6 +433,27 @@ def sweep(*, now: datetime | None = None) -> dict[str, list[str]]:
                     out["blocked"].append(wid)
             elif age >= ATTENTION_AFTER:
                 out["attention"].append(wid)
+    return out
+
+
+def pending_decisions(*, min_age: timedelta = timedelta(0)) -> list[dict[str, Any]]:
+    """Bevarede worktrees der venter paa en beslutning - altsaa arbejde nogen skal tage stilling til.
+
+    Maalt 10/11-2026: 21 af 26 poster stod i ``retained`` uden beslutning, og de aeldste var
+    fra 5/11. Uden denne liste ryddes de foerst af ``ARCHIVE_AFTER`` (30 dage), saa "ingen
+    beslutning" i praksis betoed "behold i en maaned og arkivér". Det er ikke et valg, det er
+    fravaeret af et. Listen er indgangen til at kraeve det.
+    """
+    t = datetime.now(UTC)
+    out: list[dict[str, Any]] = []
+    for r in _conn().execute("SELECT * FROM agent_worktrees WHERE status='retained' "
+                             "ORDER BY retained_at, created_at").fetchall():
+        wt = dict(r)
+        age = t - _parse(wt["retained_at"] or wt["updated_at"])
+        if age < min_age:
+            continue
+        wt["age_days"] = round(age.total_seconds() / 86400, 1)
+        out.append(wt)
     return out
 
 

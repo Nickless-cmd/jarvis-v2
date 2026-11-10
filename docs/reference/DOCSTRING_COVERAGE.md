@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9963/18453 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9965/18455 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 9963/18453 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 876 | 1591 | 55% |
-| `core.services` | 6658 | 12507 | 53% |
+| `core.services` | 6660 | 12509 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -749,7 +749,7 @@ Generated from source. 9963/18453 functions/methods documented (53%). The list b
 - `core/services/agent_contract_projection.py` :: `close` (L565)
 - `core/services/agent_contract_projection.py` :: `followup` (L542)
 - `core/services/agent_contract_projection.py` :: `mark_read` (L486)
-- `core/services/agent_contract_service.py` :: `list_approvals` (L715)
+- `core/services/agent_contract_service.py` :: `list_approvals` (L784)
 - `core/services/agent_council.py` :: `synthesis_goal` (L151)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L322)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L320)
@@ -814,13 +814,13 @@ Generated from source. 9963/18453 functions/methods documented (53%). The list b
 - `core/services/agent_worktree_git.py` :: `stage_all` (L110)
 - `core/services/agent_worktree_gitdir.py` :: `sandbox_env` (L120)
 - `core/services/agent_worktree_gitdir.py` :: `work_ref` (L62)
-- `core/services/agent_worktrees.py` :: `allowed_workspace_roots` (L84)
-- `core/services/agent_worktrees.py` :: `ensure_worktree_tables` (L50)
-- `core/services/agent_worktrees.py` :: `get` (L186)
-- `core/services/agent_worktrees.py` :: `get_for_assignment` (L190)
-- `core/services/agent_worktrees.py` :: `quota_status` (L130)
-- `core/services/agent_worktrees.py` :: `worktree_root` (L80)
-- `core/services/agent_worktrees.py` :: `writes_allowed` (L266)
+- `core/services/agent_worktrees.py` :: `allowed_workspace_roots` (L88)
+- `core/services/agent_worktrees.py` :: `ensure_worktree_tables` (L54)
+- `core/services/agent_worktrees.py` :: `get` (L190)
+- `core/services/agent_worktrees.py` :: `get_for_assignment` (L194)
+- `core/services/agent_worktrees.py` :: `quota_status` (L134)
+- `core/services/agent_worktrees.py` :: `worktree_root` (L84)
+- `core/services/agent_worktrees.py` :: `writes_allowed` (L270)
 - `core/services/agentic_checkpoints.py` :: `checkpoint_prompt_section` (L146)
 - `core/services/agentic_checkpoints.py` :: `clear_run` (L124)
 - `core/services/agentic_checkpoints.py` :: `clear_session` (L133)

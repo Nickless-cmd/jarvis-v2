@@ -657,6 +657,71 @@ def _attach_outputs(view: list[dict[str, Any]], owner_user_id: str, offset: int)
         v["result_ref"] = ref
 
 
+def _surface_worktree_decisions() -> dict[str, int]:
+    """Gør bevarede worktrees UDEN beslutning synlige som en post i indbakken.
+
+    ## Hvorfor den findes (målt 10/11-2026)
+
+    21 af 26 worktree-poster stod i ``retained`` uden beslutning; de ældste fra 5/11.
+    ``sweep`` rydder først efter ``ARCHIVE_AFTER`` (30 dage), så «ingen beslutning»
+    betød i praksis «behold i en måned og arkivér» — ikke et valg, men fraværet af et.
+    Bjørn bad om det modsatte: dispatch skal KRAEVE at opgaven markeres som merged,
+    afvist eller gemt, og først derefter ryddes worktree'et.
+
+    Posten er idempotent (``kilde_id`` = assignment) og lukkes af sig selv når
+    assignmentet ikke længere venter — også når ``sweep`` har fjernet det. En post
+    der bliver stående efter sin grund er væk, er samme fejlklasse som den dækker.
+    """
+    from core.runtime import db_inbox
+    from core.services import agent_worktrees as wtm
+    from core.services.inbox_state import registrer_kilde
+
+    out = {"oprettet": 0, "lukket": 0, "fejl": 0}
+    try:
+        rows = wtm.pending_decisions()
+    except Exception:
+        logger.warning("kunne ikke laese ventende worktree-beslutninger", exc_info=True)
+        return out
+    venter = {w["assignment_id"]: w for w in rows}
+    for aid, w in venter.items():
+        owner = str(w.get("owner_user_id") or "")
+        if not owner:
+            continue
+        mb = int(w.get("size_bytes") or 0) // (1024 * 1024)
+        try:
+            registrer_kilde(
+                bruger_id=owner, kildetype="worktree_decision", kilde_id=aid,
+                beskrivelse=(f"Worktree venter på beslutning: {aid} — branch {w.get('branch', '')}, "
+                             f"{w.get('age_days', 0):.1f} dage, {mb} MB. "
+                             f"Beslut: merged / afvist / gem."),
+                importance="normal")
+            out["oprettet"] += 1
+        except Exception:
+            logger.warning("kunne ikke oprette beslutnings-post for %s", aid, exc_info=True)
+            out["fejl"] += 1
+    # Luk poster hvis worktree ikke længere venter (afgjort, fjernet eller arkiveret).
+    ejere = {str(r["owner_user_id"]) for r in c._conn().execute(
+        "SELECT DISTINCT owner_user_id FROM agent_worktrees WHERE owner_user_id != ''").fetchall()}
+    for owner in ejere:
+        try:
+            aabne = db_inbox.liste(bruger_id=owner, kun_aabne=True)
+        except Exception:
+            logger.warning("kunne ikke laese aabne poster for %s", owner, exc_info=True)
+            continue
+        for post in aabne:
+            if str(post.get("kildetype") or "") != "worktree_decision":
+                continue
+            if str(post.get("kilde_id") or "") in venter:
+                continue
+            try:
+                db_inbox.meld_kilde_faerdig(bruger_id=owner, kilde_id=str(post.get("kilde_id") or ""),
+                                            exit_kode=0)
+                out["lukket"] += 1
+            except Exception:
+                logger.warning("kunne ikke lukke beslutnings-post %s", post.get("kilde_id"), exc_info=True)
+    return out
+
+
 def supervise() -> list[dict[str, Any]]:
     """Supervisor-taek: udloeb approvals, genoptag parkerede agenter hvis approval er afgjort, overtag udloebne
     leases og genstart sikre forsoeg. Kan koeres fra begge processer; atomiske DB-claims afgoer hvem der handler."""
@@ -689,6 +754,10 @@ def supervise() -> list[dict[str, Any]]:
         run_if_due()
     except Exception:
         logger.warning("retention-runden fejlede", exc_info=True)
+    try:  # kravet: et bevaret worktree UDEN beslutning skal vaere synligt, ikke bare ligge
+        _surface_worktree_decisions()
+    except Exception:
+        logger.warning("worktree-beslutningsposter kunne ikke opdateres", exc_info=True)
     done = reconcile_expired_leases()
     try:
         from core.runtime.db_agent_feed import signal_changes

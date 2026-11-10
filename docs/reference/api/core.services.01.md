@@ -549,12 +549,13 @@ _agent-contract-v1: den ene motor bag dispatch og styring af agenter (leverance 
 | function | `list_agents` | `(*, owner_user_id, origin_session_id=…, status=…, limit=…)` | Ejerens agenter (aldrig en andens): status, rolle, target, ubehandlede resultater. | [src](../../../core/services/agent_contract_service.py#L556) |
 | function | `wait_agents` | `(*, owner_user_id, origin_session_id, assignment_ids, condition=…, timeout_seconds=…, wake_if_run_ends=…, parent_run_id=…, include_output=…, output_offset=…)` | Vent paa assignments. `timeout_seconds` blokerer kortvarigt (max 120 s); er betingelsen | [src](../../../core/services/agent_contract_service.py#L585) |
 | function | `_attach_outputs` | `(view, owner_user_id, offset)` | Fuldt output (``final.txt``) for terminale assignments, via den ejer-kontrollerede | [src](../../../core/services/agent_contract_service.py#L635) |
-| function | `supervise` | `()` | Supervisor-taek: udloeb approvals, genoptag parkerede agenter hvis approval er afgjort, overtag udloebne | [src](../../../core/services/agent_contract_service.py#L660) |
-| function | `approval_view` | `(r)` | Det en klient/en model maa se: sikker visning + digest, ALDRIG de raa argumenter. | [src](../../../core/services/agent_contract_service.py#L707) |
-| function | `list_approvals` | `(*, owner_user_id, status=…, origin_session_id=…)` | — | [src](../../../core/services/agent_contract_service.py#L715) |
-| function | `decide_approval` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…, actor_session_id=…)` | Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede | [src](../../../core/services/agent_contract_service.py#L725) |
-| function | `decide_approval_as_parent` | `(*, approval_id, decision, digest, note=…)` | Jarvis afgoer en af SINE EGNE agenters vaerktoejskald - uden et menneske imellem (14/10-2026). | [src](../../../core/services/agent_contract_service.py#L760) |
-| function | `request_integration` | `(*, owner_user_id, origin_session_id, assignment_id)` | Jarvis beder om integration af et kodeassignments arbejde. Opretter KUN en approval - han kan ikke | [src](../../../core/services/agent_contract_service.py#L786) |
+| function | `_surface_worktree_decisions` | `()` | Gør bevarede worktrees UDEN beslutning synlige som en post i indbakken. | [src](../../../core/services/agent_contract_service.py#L660) |
+| function | `supervise` | `()` | Supervisor-taek: udloeb approvals, genoptag parkerede agenter hvis approval er afgjort, overtag udloebne | [src](../../../core/services/agent_contract_service.py#L725) |
+| function | `approval_view` | `(r)` | Det en klient/en model maa se: sikker visning + digest, ALDRIG de raa argumenter. | [src](../../../core/services/agent_contract_service.py#L776) |
+| function | `list_approvals` | `(*, owner_user_id, status=…, origin_session_id=…)` | — | [src](../../../core/services/agent_contract_service.py#L784) |
+| function | `decide_approval` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…, actor_session_id=…)` | Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede | [src](../../../core/services/agent_contract_service.py#L794) |
+| function | `decide_approval_as_parent` | `(*, approval_id, decision, digest, note=…)` | Jarvis afgoer en af SINE EGNE agenters vaerktoejskald - uden et menneske imellem (14/10-2026). | [src](../../../core/services/agent_contract_service.py#L829) |
+| function | `request_integration` | `(*, owner_user_id, origin_session_id, assignment_id)` | Jarvis beder om integration af et kodeassignments arbejde. Opretter KUN en approval - han kan ikke | [src](../../../core/services/agent_contract_service.py#L855) |
 
 ## `core/services/agent_council.py`
 _Raad og review-kaede paa agentmotoren (agent-contract-v1 F5, spec 5.1 / 7.1 / 11)._

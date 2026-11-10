@@ -421,6 +421,54 @@ Indtil den er, er «100 %» en måling på fortiden, ikke en garanti for fremtid
 
 ---
 
+## Leverance 13 — `read_file` kunne ikke læse et linjeinterval ✅ LEVERET OG BEVIST I DRIFT (`91e30dd11`)
+
+**Rod-årsagen til de afbrudte agenter — fundet, ikke gættet.**
+
+En researcher bad om linje 418–650 af `agent_loop_core.py`. Værktøjsskemaet havde kun `path`, så
+argumentet blev kastet væk, og den fik modulets top igen — klippet ved `MAX_READ_CHARS = 32000`.
+Den svarede ærligt at den ikke kunne citere betingelserne uden at gætte. Den blev stemplet
+`AGENT_INCOMPLETE`. Det var ikke en doven agent. Det var et værktøj der ikke kunne det den blev bedt om.
+
+### To ruter, to værktøjssæt — og kun den ene havde hullet
+
+| Rute | Værktøj | Argumenter | Havde hullet? |
+|---|---|---|---|
+| **worker** (LLM-API, fx `copilot-premium`) | mit `read_file` via `get_tool_definitions` | `start_line` / `end_line` | **JA — fixet rammer her** |
+| **CLI** (`claude-cli`, `codex-cli`) | CLI'ens eget `Read` | `offset` / `limit` | NEJ — havde interval hele tiden |
+
+Det var den samme fejlform som resten af dagen: jeg rettede ét sted og troede det dækkede alle.
+En «bevist i drift»-konklusion skal navngive **ruten**, ikke bare sige «agenten».
+
+### Beviset, målt efter fixet blev indlæst
+
+Tjenesterne startede **22:06:37**; `file_tools_exec.py` er fra **22:04:28** — koden er indlæst.
+Skemaet worker-ruten sender er verificeret direkte (`_build_agent_tools_payload`): det annoncerer
+`start_line` og `end_line`. Og en researcher på worker-ruten kaldte:
+
+```
+read_file(path=…/agent_loop_core.py, start_line=540, end_line=560)
+```
+
+Den fik præcis det interval tilbage, med `"start_line": 540, "end_line": 560` i metadata (filen har
+671 linjer). Linje 542 er `gap = "" if scout else _delivery_gap(` — samme linje jeg selv havde læst.
+**Intervallet virker i drift på den rute hvor hullet var.**
+
+### Kalibreringen af accept-laget, rettet
+
+Ved gennemgang af den fejlede kørsel viste det sig at `_delivery_gap` **ikke** var årsagen:
+med den faktiske kontrakt gav den `""`. Årsagen var `unanswered` — **tre nummererede spørgsmål jeg
+selv havde skrevet i opgaven**. Det er præcis den beslutning der står som `dec_abdd66fe102c`:
+skriv skriveopgaver som befalinger, aldrig som nummererede krav.
+
+### Stadig ikke bevist
+
+At en agent der **før** stoppede midt i læsningen, nu fortsætter og leverer. Fixet gør redskabet i
+stand til at gøre arbejdet; det beviser ikke at modellen vælger at bruge det. Den måling kræver en
+kørsel der starter med samme opgave som den fejlede.
+
+---
+
 ## Arbejdsform for agent-kørslen
 
 Hver leverance køres som **én `Task`** med `subagent_type="executor"` mod repoet, med:

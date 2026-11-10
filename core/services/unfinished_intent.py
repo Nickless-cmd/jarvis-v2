@@ -74,7 +74,8 @@ _FUTURE_ACTION_PROMISE_RE = re.compile(
     r"ændrer|opdaterer|tilføjer|implementerer|bygger|kalder|sender|"
     r"committer|pusher|verificerer|tjekker|tester|starter|genstarter|"
     r"deployer|redigerer|patcher|prøver)\b.{0,80}?\b(?:nu|straks|"
-    r"øjeblikkeligt|med\s+det\s+samme|lige\s+nu|først|i\s+et\s+sekund|"
+    r"øjeblikkeligt|med\s+det\s+samme|lige\s+nu|"
+    r"lige(?!\s*(?:så|meget|sådan)\b)|først|i\s+et\s+sekund|"
     r"i\s+et\s+øjeblik|et\s+sekund|et\s+øjeblik)\b",
     re.IGNORECASE | re.DOTALL,
 )
@@ -264,12 +265,21 @@ def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
     """
     if not text or not isinstance(text, str):
         return None
-
     stripped = text.strip()
     if not stripped:
         return None
-
+    intent = _detect_intent_core(stripped)
+    if intent is None:
+        return None
     # ── Spørgsmåls-guard (2026-06-23, Bjørn) ────────────────────────────────
+    # Rodårsag 2 (side-02afb491ea, 13/11-2026): guarden stod tidligere ØVERST i
+    # den fælles detektor som blank `return None` og dræbte AL detektion — også
+    # registreringen af et udsagt løfte. Den hører til i continuation-gaten:
+    # et løfte der bare huskes koster intet; et autonomt run der fabrikerer
+    # samtykke er skadeligt. detect_promise_intent springer derfor begge
+    # guards over, mens sætnings-guarden (negation/spørgende sætning) gælder
+    # for registrering — se _detect_intent_core.
+    #
     # Hvis Jarvis AFSLUTTER med et spørgsmål til brugeren, VENTER han bevidst på
     # svar — det er IKKE en "stoppede midt i opgaven"-pause. Auto-continuation her
     # fabrikerer samtykke ("the user already green-lit it. Continue without waiting")
@@ -287,7 +297,33 @@ def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
     # afslutnings-familie der ellers misfyrer via "jeg skal"/"lad mig".
     if _HANDOFF_TAIL_RE.search(stripped):
         return None
+    return intent
 
+
+def detect_promise_intent(text: str | None) -> UnfinishedIntent | None:
+    """Registrerings-gate (rodårsag 2, side-02afb491ea 13/11-2026).
+
+    Løfte-registrering må ikke afhænge af continuation-guarden: et løfte
+    der bare huskes koster intet, mens et autonomt run der fabrikerer
+    samtykke på et spørgsmål (23/6-incidenten) er skadeligt. Derfor
+    springer denne gate spørgsmåls- og handoff-guarden over — men
+    sætnings-guarden (negation/spørgende sætning, 19/10-2026) gælder
+    stadig, så «Vil du have at jeg tjekker X?» ikke registreres som løfte.
+    """
+    if not text or not isinstance(text, str):
+        return None
+    stripped = text.strip()
+    if not stripped:
+        return None
+    intent = _detect_intent_core(stripped)
+    if intent is None or intent.pattern != "future_action_promise":
+        return None
+    return intent
+
+
+def _detect_intent_core(stripped: str) -> UnfinishedIntent | None:
+    """Alle detektor-mønstrene på en allerede strippet tekst — uden
+    continuation-guarden (spørgsmål/handoff), som bor i de to gater."""
     if len(stripped) < _MIN_TEXT_LEN:
         # Korte beskeder: fang KUN høj-signal start-løfter der ellers ryger under
         # grænsen ("Jeg går i gang!"). Negation undtaget. Lange beskeder beholder
@@ -295,6 +331,15 @@ def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
         if _PROMISE_PHRASE_RE.search(stripped) and not _PROMISE_NEGATION_RE.search(stripped):
             m = _PROMISE_PHRASE_RE.search(stripped)
             return UnfinishedIntent(pattern="future_action_promise", matched_text=m.group(0))
+        # Tillæg (side-02afb491ea, 13/11-2026): _PROMISE_PHRASE_RE har ingen
+        # «tjekker», så korte løfter som «Jeg tjekker det nu.» (19 tegn) fyrer
+        # aldrig. Future-promise-mønstret gælder nu også under 50 tegn — med
+        # samme sætnings-guard som de lange tekster.
+        m = _FUTURE_ACTION_PROMISE_RE.search(stripped)
+        if m and not _er_sætningsblokeret(stripped, m):
+            return UnfinishedIntent(
+                pattern="future_action_promise", matched_text=m.group(0),
+            )
         return None
 
     tail = _tail(stripped)

@@ -627,6 +627,7 @@ def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
 
     mood = capsule.get("mood", {})
     attention = capsule.get("attention", {})
+    relation = capsule.get("relation", {})
     somatic = capsule.get("somatic", {})
     goals_data = capsule.get("goals", {})
 
@@ -698,9 +699,19 @@ def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
     # ``_EMPTY_CAPSULE``. De blev derfor vist som NUTID uden at vaere maalt —
     # samme fejlform som fatigue-felterne, blot med tekst der lyder sand.
     #
-    # Et felt uden maaling hoerer ikke i visningen. Felterne bliver i kapslen
-    # (andre laesere kan bruge dem), men blokken viser kun det der er maalt.
+    # Samme dag blev de FJERNET. Det var for hurtigt: begge felter har en aegte
+    # kilde, den blev blot aldrig kaldt. ``open_thread`` kommer nu fra
+    # ``runtime_thread_registry`` (en traad der erklaeres og lukkes med bevis),
+    # og ``last_interaction_type`` fra ``VisibleRun.surface`` — den flade
+    # turen faktisk kom fra. Er kilden tom, staar feltet tomt; det er aerligt.
     # Vagten der holder det saa: tests/test_capsule_felter_har_skriver.py.
+    open_thread = str(attention.get("open_thread") or "").strip()
+    if open_thread:
+        lines.append(f"  Open thread: {open_thread}")
+
+    interaction = str(relation.get("last_interaction_type") or "").strip()
+    if interaction:
+        lines.append(f"  Last interaction: {interaction}")
 
     # Somatic (compact)
     visual = somatic.get("last_visual")
@@ -724,7 +735,18 @@ def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
             lines.append(f"  Active goals: {', '.join(goal_refs)}")
     # 10/11-2026: her stod ogsaa «Recent completions: …». Den blev altid sendt
     # som en TOM liste fra kilden, saa den var en konstant der lignede en
-    # maaling — den kunne aldrig vise andet end ingenting.
+    # maaling — den kunne aldrig vise andet end ingenting. Kilden henter nu de
+    # fuldfoerte maal fra ``list_all_goals`` (maalt: 7 i basen), saa feltet
+    # viser hvad der faktisk blev faerdigt.
+    completions = goals_data.get("recent_completions") or []
+    if completions:
+        refs = [
+            f"\"{str(g.get('title') or '')[:50]}\""
+            for g in completions[:3]
+            if str(g.get("title") or "").strip()
+        ]
+        if refs:
+            lines.append(f"  Recent completions: {', '.join(refs)}")
 
     # 2026-05-22 (Claude): "Last activity" and "Last exchange" removed from
     # continuity head. They duplicate content already present in the chat

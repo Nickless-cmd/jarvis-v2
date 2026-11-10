@@ -99,7 +99,7 @@ def _goals_fra_aktive_maal() -> dict[str, object] | None:
     maalt tomt (saa merge'en rydder), ikke maalt (saa kapslen arver).
     """
     try:
-        from core.services.long_horizon_goals import list_active_goals
+        from core.services.long_horizon_goals import list_active_goals, list_all_goals
 
         aktive = list_active_goals(limit=5)
         maal = [
@@ -107,7 +107,20 @@ def _goals_fra_aktive_maal() -> dict[str, object] | None:
             for g in aktive
             if str(g.get("title") or "").strip()
         ]
-        return {"active_goals": maal, "recent_completions": []}
+        # 10/11-2026: her stod en haardkodet tom liste. Den var ikke en maaling
+        # — den var en konstant der lignede et svar. ``list_all_goals`` har de
+        # fuldfoerte maal (maalt: 7 i basen, nyeste 28/10), saa feltet kan
+        # faktisk vise hvad der blev faerdigt i stedet for altid at vaere tomt.
+        fuldfoerte = [
+            {
+                "title": str(g.get("title") or "").strip(),
+                "completed_at": g.get("completed_at"),
+            }
+            for g in list_all_goals(limit=50)
+            if g.get("status") == "completed" and str(g.get("title") or "").strip()
+        ]
+        fuldfoerte.sort(key=lambda g: str(g.get("completed_at") or ""), reverse=True)
+        return {"active_goals": maal, "recent_completions": fuldfoerte[:3]}
     except Exception:
         import logging as _lg_maal
 
@@ -116,6 +129,56 @@ def _goals_fra_aktive_maal() -> dict[str, object] | None:
             exc_info=True,
         )
         return None
+
+
+def _open_thread_fra_registry() -> dict[str, object] | None:
+    """``open_thread`` til kapslen — fra den LEVENDE traad-registry.
+
+    Maalt 10/11-2026: feltet blev vist som nutidstilstand uden nogen skriver.
+    Den gamle kilde, ``cross_session_threads``, laeser en JSON-fil med 51
+    traade der ALLE staar ``active`` og hvis nyeste er fra 27. maj — den er
+    et arkiv der aldrig blev lukket, ikke en aaben traad. At vise den ville
+    vaere praecis den loegn feltet blev fjernet for.
+
+    ``runtime_thread_registry`` er den levende afloeser: en traad erklaeres
+    med et SAT navn og lukkes med bevis. Er den tom, er svaret aerligt tomt.
+
+    Samme tre udfald: maalt med traad, maalt tomt (rydder), ikke maalt (arver).
+    """
+    try:
+        from core.runtime.db_runtime_executive_signals import list_runtime_threads
+
+        aabne = list_runtime_threads(status="open", limit=1)
+        if not aabne:
+            return {"open_thread": None}
+        navn = str(aabne[0].get("name") or "").strip()
+        return {"open_thread": navn[:80] or None}
+    except Exception:
+        import logging as _lg_traad
+
+        _lg_traad.getLogger(__name__).warning(
+            "traad-udledning fejlede — kapslen arver sin forrige vaerdi",
+            exc_info=True,
+        )
+        return None
+
+
+def _relation_fra_turen(run: "_vr.VisibleRun") -> dict[str, object] | None:
+    """``last_interaction_type`` til kapslen — fra den FLADE turen kom fra.
+
+    Maalt 10/11-2026: feltet stod haardt paa «chat» fra ``_EMPTY_CAPSULE``.
+    ``VisibleRun.surface`` baerer faktisk «desk», «mobil», «discord» eller
+    «telegram» (sat af ``chat_stream_v2.py:511``), men den blev aldrig sendt
+    til kapslen — og den gemmes ikke i ``visible_runs``, saa den kan kun
+    laeses HER, mens turen er i live.
+
+    Er ``surface`` tom (klienten sagde det ikke), er svaret ``None`` — ikke
+    et gaet paa «chat». En tom flade er ikke det samme som en samtale.
+    """
+    flade = str(getattr(run, "surface", "") or "").strip().lower()
+    if not flade:
+        return {"last_interaction_type": None}
+    return {"last_interaction_type": flade[:40]}
 
 
 def _somatic_fra_sansearkivet() -> dict[str, object] | None:
@@ -300,6 +363,12 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
         # blev mergt ind over den forrige kapsel og derfor arvede den.
         # ``_attention_fra_aktive_goals`` skelner nu de tre udfald.
         attention = _attention_fra_aktive_goals()
+        # 10/11-2026: ``open_thread`` blev vist som nutidstilstand uden nogen
+        # skriver. Den hentes nu fra den levende traad-registry, og de to
+        # dicts flettes — de har hver deres tre-udfalds-semantik.
+        _traad = _open_thread_fra_registry()
+        if _traad is not None:
+            attention = {**(attention or {}), **_traad}
 
         # Gather recent activity
         recent_activity = {"last_tool_result_summary": assistant_text[:120]}
@@ -324,6 +393,7 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
             attention=attention or None,
             goals=_goals_fra_aktive_maal(),
             somatic=_somatic_fra_sansearkivet(),
+            relation=_relation_fra_turen(run),
             recent_activity=recent_activity or None,
             session_id=run.session_id,
         )

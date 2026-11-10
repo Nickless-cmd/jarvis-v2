@@ -73,26 +73,26 @@ _Sporet gennem én synlig kørsel — og runde-grænserne i den._
 | function | `_compact_llm_for_run` | `(prompt)` | Call the compact LLM for run-level summarisation (monkeypatchable). | [src](../../../core/services/visible_runs.py#L1174) |
 | function | `_handle_compact_command` | `(run)` | /compact: komprimér nu og giv Jarvis en besked at svare paa. | [src](../../../core/services/visible_runs.py#L1180) |
 | function | `_stream_visible_run` | `(run, *, force_user_id=…, tool_scope=…, recovery_task_id=…)` | — | [src](../../../core/services/visible_runs.py#L1201) |
-| function | `_native_tool_calls_to_capabilities` | `(tool_calls)` | Convert Ollama native tool_calls to capability-plan entries (legacy compat). | [src](../../../core/services/visible_runs.py#L6718) |
-| function | `_finalize_second_pass_visible_text` | `(text, *, fallback)` | — | [src](../../../core/services/visible_runs.py#L6794) |
-| function | `_bounded_error` | `(error_message, limit=…)` | — | [src](../../../core/services/visible_runs.py#L6910) |
-| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_runs.py#L6917) |
-| class | `PresentationInvariantError` | `` | Raised when user-visible text contains internal runtime markers. | [src](../../../core/services/visible_runs.py#L6921) |
-| function | `_assert_presentation_invariant` | `(text)` | — | [src](../../../core/services/visible_runs.py#L6956) |
-| function | `_parse_tc_args` | `(tc)` | Extract arguments dict from a tool call (handles both string and dict forms). | [src](../../../core/services/visible_runs.py#L6998) |
-| function | `_maybe_fallback_for_autonomous` | `(run, exc)` | Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen? | [src](../../../core/services/visible_runs.py#L7010) |
-| function | `_complete_visible_run_from_fallback` | `(run, fallback)` | Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev | [src](../../../core/services/visible_runs.py#L7054) |
-| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L7123) |
-| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L7197) |
-| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L7250) |
-| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7288) |
-| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7292) |
-| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7303) |
-| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L7317) |
-| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L7351) |
-| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L7355) |
-| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L7372) |
-| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7422) |
+| function | `_native_tool_calls_to_capabilities` | `(tool_calls)` | Convert Ollama native tool_calls to capability-plan entries (legacy compat). | [src](../../../core/services/visible_runs.py#L6722) |
+| function | `_finalize_second_pass_visible_text` | `(text, *, fallback)` | — | [src](../../../core/services/visible_runs.py#L6798) |
+| function | `_bounded_error` | `(error_message, limit=…)` | — | [src](../../../core/services/visible_runs.py#L6914) |
+| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_runs.py#L6921) |
+| class | `PresentationInvariantError` | `` | Raised when user-visible text contains internal runtime markers. | [src](../../../core/services/visible_runs.py#L6925) |
+| function | `_assert_presentation_invariant` | `(text)` | — | [src](../../../core/services/visible_runs.py#L6960) |
+| function | `_parse_tc_args` | `(tc)` | Extract arguments dict from a tool call (handles both string and dict forms). | [src](../../../core/services/visible_runs.py#L7002) |
+| function | `_maybe_fallback_for_autonomous` | `(run, exc)` | Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen? | [src](../../../core/services/visible_runs.py#L7014) |
+| function | `_complete_visible_run_from_fallback` | `(run, fallback)` | Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev | [src](../../../core/services/visible_runs.py#L7058) |
+| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L7127) |
+| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L7201) |
+| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L7254) |
+| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7292) |
+| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7296) |
+| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7307) |
+| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L7321) |
+| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L7355) |
+| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L7359) |
+| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L7376) |
+| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7426) |
 
 ## `core/services/visible_runs_approvals.py`
 _Pending tool-approval resolution for visible runs._
@@ -154,10 +154,12 @@ _Memory/continuity post-processing for visible runs._
 | function | `_recent_internal_tool_context` | `(session_id, *, limit=…)` | — | [src](../../../core/services/visible_runs_memory.py#L24) |
 | function | `_attention_fra_aktive_goals` | `()` | Fokus-feltet til kapslen — med forskellen paa «maalt tomt» og «ikke maalt». | [src](../../../core/services/visible_runs_memory.py#L50) |
 | function | `_goals_fra_aktive_maal` | `()` | Goals-sektionen til kapslen — maalt, ikke arvet. | [src](../../../core/services/visible_runs_memory.py#L90) |
-| function | `_somatic_fra_sansearkivet` | `()` | Somatic-sektionen til kapslen — fra det der faktisk er sanset. | [src](../../../core/services/visible_runs_memory.py#L121) |
-| function | `_run_memory_postprocess` | `(run, assistant_text)` | — | [src](../../../core/services/visible_runs_memory.py#L160) |
-| function | `_maybe_trigger_continuation` | `(run, assistant_text)` | If Jarvis stopped mid-task, trigger an autonomous-run | [src](../../../core/services/visible_runs_memory.py#L389) |
-| function | `_record_promise_from_run` | `(run, assistant_text)` | Bjørn-gate (16. jun 2026), udkoblet fra continuation (rodårsag 3, | [src](../../../core/services/visible_runs_memory.py#L486) |
+| function | `_open_thread_fra_registry` | `()` | ``open_thread`` til kapslen — fra den LEVENDE traad-registry. | [src](../../../core/services/visible_runs_memory.py#L134) |
+| function | `_relation_fra_turen` | `(run)` | ``last_interaction_type`` til kapslen — fra den FLADE turen kom fra. | [src](../../../core/services/visible_runs_memory.py#L166) |
+| function | `_somatic_fra_sansearkivet` | `()` | Somatic-sektionen til kapslen — fra det der faktisk er sanset. | [src](../../../core/services/visible_runs_memory.py#L184) |
+| function | `_run_memory_postprocess` | `(run, assistant_text)` | — | [src](../../../core/services/visible_runs_memory.py#L223) |
+| function | `_maybe_trigger_continuation` | `(run, assistant_text)` | If Jarvis stopped mid-task, trigger an autonomous-run | [src](../../../core/services/visible_runs_memory.py#L459) |
+| function | `_record_promise_from_run` | `(run, assistant_text)` | Bjørn-gate (16. jun 2026), udkoblet fra continuation (rodårsag 3, | [src](../../../core/services/visible_runs_memory.py#L556) |
 
 ## `core/services/visible_runs_outcomes.py`
 _Persistence + terminal outcome for visible runs (fail/cancel forbliver i main)._

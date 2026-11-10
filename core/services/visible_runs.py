@@ -6503,6 +6503,10 @@ async def _stream_visible_run(
                 # scans output for pause-patterns; on match it spawns
                 # an autonomous-run that wakes him again with context.
                 _maybe_trigger_continuation(run, visible_output_text)
+                # Bjørn-gate (16. jun 2026, udkoblet 13/11-2026 — side-02afb491ea):
+                # løfte-registrering køres UAFHÆNGIGT af continuation-spawning,
+                # så cooldown og spørgsmåls-guarden ikke afgør om et løfte huskes.
+                _record_promise_from_run(run, visible_output_text)
 
                 # ── TruthGate C4 (2026-06-22) ─────────────────────────────
                 # De gamle post-done effekt-gates (claim-block/fact_gate/diagnosis)
@@ -7711,6 +7715,7 @@ def _update_cognitive_systems_async(
 # modul-globals så bare kald i _stream_visible_run + test-monkeypatches virker.
 from core.services.visible_runs_memory import (  # noqa: E402
     _maybe_trigger_continuation,
+    _record_promise_from_run,
     _recent_internal_tool_context,
     _run_memory_postprocess,
 )

@@ -20,7 +20,7 @@ _Continuity Kernel — state capsule + live update + graded wake-up._
 | function | `build_conversation_continuity` | `(*, limit=…)` | Build a 'hvad talte vi om' block from recent session data. | [src](../../../core/services/continuity.py#L485) |
 | function | `_format_hours_gap` | `(hours_since)` | Format a duration in hours as a short Danish string. | [src](../../../core/services/continuity.py#L579) |
 | function | `build_wake_up_block` | `(capsule=…)` | Build the wake-up block for prompt injection. | [src](../../../core/services/continuity.py#L594) |
-| function | `live_update_after_turn` | `(*, mood=…, attention=…, relation=…, somatic=…, goals=…, recent_activity=…, session_id=…)` | Call this after every visible turn to persist the state capsule. | [src](../../../core/services/continuity.py#L745) |
+| function | `live_update_after_turn` | `(*, mood=…, attention=…, relation=…, somatic=…, goals=…, recent_activity=…, session_id=…)` | Call this after every visible turn to persist the state capsule. | [src](../../../core/services/continuity.py#L767) |
 
 ## `core/services/continuity_kernel.py`
 _Bounded Continuity Kernel — existence feel between ticks._

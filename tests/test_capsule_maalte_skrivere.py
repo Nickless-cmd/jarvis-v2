@@ -107,6 +107,7 @@ def test_goals_fra_aktive_maal_giver_de_faktiske_titler(monkeypatch):
         "list_active_goals",
         lambda limit=5: [{"title": "Ryd worktrees", "goal_id": "g1"}],
     )
+    monkeypatch.setattr(lhg, "list_all_goals", lambda limit=50: [])
 
     assert vrm._goals_fra_aktive_maal() == {
         "active_goals": [{"title": "Ryd worktrees", "id": "g1"}],
@@ -119,6 +120,7 @@ def test_goals_rydder_naar_der_er_maalt_og_tomt(monkeypatch):
     import core.services.long_horizon_goals as lhg
 
     monkeypatch.setattr(lhg, "list_active_goals", lambda limit=5: [])
+    monkeypatch.setattr(lhg, "list_all_goals", lambda limit=50: [])
 
     assert vrm._goals_fra_aktive_maal() == {
         "active_goals": [],
@@ -182,22 +184,127 @@ def test_somatic_arver_naar_maalingen_fejler(monkeypatch):
 # ── 4. de felter der blev fjernet fra visningen ───────────────────────
 
 
-def test_blokken_viser_ikke_de_umaalte_felter(capsule_dir):
-    """open_thread, relation og recent_completions maa ikke vises som nutid.
+def test_blokken_viser_de_tre_felter_naar_de_er_maalt(capsule_dir):
+    """De tre felter blev fjernet 10/11-2026 — for hurtigt.
 
-    De havde ingen skriver (open_thread, relation) eller blev altid sendt som
-    en tom liste (recent_completions). Et felt uden maaling hoerer ikke i
-    visningen — det var praecis den fejlform hele dagen handlede om.
+    De har alle en aegte kilde (traad-registry, VisibleRun.surface,
+    list_all_goals). Er de maalt, skal de VISES; er de tomme, skal de tie.
     """
     kapsel = dict(c._EMPTY_CAPSULE)
     kapsel["attention"] = dict(c._EMPTY_CAPSULE["attention"])
-    kapsel["attention"]["open_thread"] = "en traad der aldrig blev maalt"
+    kapsel["attention"]["open_thread"] = "kapsel-arbejde"
     kapsel["relation"] = dict(c._EMPTY_CAPSULE["relation"])
-    kapsel["goals"] = {"active_goals": [], "recent_completions": ["noget gammelt"]}
+    kapsel["relation"]["last_interaction_type"] = "desk"
+    kapsel["goals"] = {
+        "active_goals": [],
+        "recent_completions": [{"title": "Sanser → Emotion kobling", "completed_at": "x"}],
+    }
 
     blok = c.build_wake_up_block(kapsel)
 
     assert blok is not None
-    assert "Open thread" not in blok
-    assert "Relationship" not in blok
-    assert "Recent completions" not in blok
+    assert "Open thread: kapsel-arbejde" in blok
+    assert "Last interaction: desk" in blok
+    assert "Recent completions:" in blok
+    assert "Sanser → Emotion kobling" in blok
+
+
+def test_blokken_tier_naar_de_tre_felter_er_tomme(capsule_dir):
+    """En tom maaling er ikke en grund til at skrive en tom linje."""
+    kapsel = dict(c._EMPTY_CAPSULE)
+    kapsel["attention"] = dict(c._EMPTY_CAPSULE["attention"])
+    kapsel["attention"]["open_thread"] = None
+    kapsel["relation"] = dict(c._EMPTY_CAPSULE["relation"])
+    kapsel["relation"]["last_interaction_type"] = None
+    kapsel["goals"] = {"active_goals": [], "recent_completions": []}
+
+    blok = c.build_wake_up_block(kapsel)
+
+    assert blok is not None
+    assert "Open thread:" not in blok
+    assert "Last interaction:" not in blok
+    assert "Recent completions:" not in blok
+
+
+# ── 10/11-2026: de tre felter der blev FJERNET for hurtigt ────────────────
+#
+# De blev fjernet fra visningen samme dag som de fire andre, med den
+# begrundelse at de ingen skriver havde. Det var forkert for tre af dem:
+# kilden fandtes, den blev blot aldrig kaldt. Disse tests beviser at de
+# maaler noget — ikke bare at der staar et funktionsnavn i filen.
+
+
+def test_recent_completions_er_fyldt_fra_fuldfoerte_maal(monkeypatch):
+    """Feltet var en haardkodet tom liste. Nu skal det baere rigtige maal."""
+    import core.services.visible_runs as _vr  # noqa: F401 — import-cyklus
+
+    from core.services.visible_runs_memory import _goals_fra_aktive_maal
+
+    import core.services.long_horizon_goals as lhg
+
+    monkeypatch.setattr(lhg, "list_active_goals", lambda limit=5: [])
+    monkeypatch.setattr(
+        lhg,
+        "list_all_goals",
+        lambda limit=50: [
+            {"title": "gammel", "status": "completed", "completed_at": "2026-01-01"},
+            {"title": "nyest", "status": "completed", "completed_at": "2026-10-28"},
+            {"title": "forladt", "status": "abandoned", "completed_at": "2026-11-01"},
+        ],
+    )
+
+    resultat = _goals_fra_aktive_maal()
+    assert resultat is not None
+    completions = resultat["recent_completions"]
+    # Kun completed, nyeste foerst, og den forladte maa ikke snige sig ind.
+    assert [p["title"] for p in completions] == ["nyest", "gammel"]
+
+
+def test_open_thread_er_none_naar_registry_er_tom():
+    """En tom registry er et aerligt tomt svar — ikke et gaet."""
+    import core.services.visible_runs as _vr  # noqa: F401
+
+    from core.services.visible_runs_memory import _open_thread_fra_registry
+
+    resultat = _open_thread_fra_registry()
+    assert resultat is not None, "en fejlet maaling skal arve, ikke rydde"
+    assert "open_thread" in resultat
+
+
+def test_open_thread_laeser_en_aabnet_traad(monkeypatch):
+    """Er der en aaben traad, skal navnet staa i kapslen."""
+    import core.services.visible_runs as _vr  # noqa: F401
+
+    from core.services.visible_runs_memory import _open_thread_fra_registry
+    import core.runtime.db_runtime_executive_signals as sig
+
+    monkeypatch.setattr(
+        sig,
+        "list_runtime_threads",
+        lambda **kw: [{"thread_id": "thread-1", "name": "kapsel-arbejde", "status": "open"}],
+    )
+    assert _open_thread_fra_registry() == {"open_thread": "kapsel-arbejde"}
+
+
+def test_last_interaction_type_kommer_fra_surface():
+    """Feltet stod haardt paa «chat». Nu skal det maale den flade turen kom fra."""
+    import core.services.visible_runs as _vr  # noqa: F401
+
+    from core.services.visible_runs_memory import _relation_fra_turen
+
+    class _Tur:
+        surface = "desk"
+
+    assert _relation_fra_turen(_Tur()) == {"last_interaction_type": "desk"}
+
+
+def test_tom_surface_er_none_ikke_chat():
+    """En klient der ikke siger hvor den er, er ikke det samme som en samtale."""
+    import core.services.visible_runs as _vr  # noqa: F401
+
+    from core.services.visible_runs_memory import _relation_fra_turen
+
+    class _Tur:
+        surface = ""
+
+    assert _relation_fra_turen(_Tur()) == {"last_interaction_type": None}

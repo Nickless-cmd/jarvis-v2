@@ -1,40 +1,112 @@
-"""Coverage-gate alias: real tests live in test_unfinished_intent_detector.py.
+"""Tests for unfinished-intent detectoren (side-02afb491ea, 13/11-2026).
 
-This file exists so the test-coverage pre-commit hook is satisfied for
-edits to core/services/unfinished_intent.py. The bulk of the suite lives
-in test_unfinished_intent_detector.py (collected on its own); this file
-holds the question-ending regression directly so the two never depend on
-a cross-test-module ``import *`` (which broke full-suite collection —
-``tests`` is not a package).
+Dækker de tre målte rodårsager og tillægget om korte tekster:
+1. «lige» står nu alene på tidsord-listen, med gradords-lookaheads
+   (så/meget/sådan) og sætnings-negationsguard.
+2. Spørgsmåls-guarden bor i continuation-gaten (23/6-incidenten må ikke
+   gentages), mens registreringen (detect_promise_intent) springer den
+   over — et løfte der bare huskes koster intet.
+3. Kort tekst (<50 tegn) bruger nu også _FUTURE_ACTION_PROMISE_RE,
+   så «Jeg tjekker det nu.» fanger et løfte.
 """
 
+from __future__ import annotations
 
-def test_question_ending_suppresses_continuation():
-    """Bjørn 2026-06-23: Jarvis spurgte 'skal jeg genstarte?', fik intet svar, og
-    genstartede SELV (continuation fabrikerede samtykke). Et afsluttende spørgsmål =
-    han venter bevidst på brugeren → ALDRIG continuation."""
-    from core.services.unfinished_intent import detect_unfinished_intent as d
-    assert d("Jeg lovede en genstart. Jeg genstarter den nu — skal jeg gøre det?") is None
-    assert d("Vil du have at jeg implementerer specen nu og deployer med det samme?") is None
-    assert d("Skal jeg genstarte serveren?") is None
-    # Løfte UDEN spørgsmål fanges stadig (ingen over-suppression)
-    assert d("Jeg går i gang!").pattern == "future_action_promise"
+import core.services.unfinished_intent as ui
 
 
-def test_handoff_phrase_ending_suppresses_continuation():
-    """Bjørn 2026-08-15: efter en fil-sletning sluttede Jarvis med den høflige afslutning
-    'Hvis der er andet, jeg skal kigge på, så sig til.' — kontrollen givet tilbage til
-    brugeren, men UDEN '?'. Detektoren misfyrede på 'jeg skal kigge' og spawnede en
-    continuation der FABRIKEREDE en cache-check. En afsluttende handoff = venter bevidst
-    på brugeren → ALDRIG continuation."""
-    from core.services.unfinished_intent import detect_unfinished_intent as d
-    # Det præcise real-world tilfælde (indeholder 'jeg skal kigge' + handoff-slut)
-    assert d("Slettet og bekræftet — filen findes ikke længere på din maskine. Godt at "
-             "have dig hjemme, Bjørn. Hvis der er andet, jeg skal kigge på, så sig til.") is None
-    # Pause-pattern + handoff-slut i samme besked → handoff vinder
-    assert d("Jeg skal lige kigge på det for en sikkerheds skyld. Men ellers, sig til.") is None
-    assert d("Alt er ryddet op. Lad mig vide hvis du vil have mig til at tjekke mere.") is None
-    assert d("Filen er væk. Giv besked hvis der dukker noget andet op.") is None
-    # Ægte pause UDEN handoff-slut fanges stadig (ingen over-suppression)
-    assert d("Jeg skal først undersøge databasen for at være sikker på tallene passer.").pattern == "jeg_skal"
-    assert d("Hold — lad mig lige tjekke hvad der ligger, så vi ikke bygger parallelt.").pattern == "lad_mig"
+class TestLigeMatcher:
+    """Rodårsag 1: «lige» alene skal matche på tidsord-listen."""
+
+    def test_jeg_tjekker_lige_giver_traef(self):
+        # Konkret sætning der fejlede 10/11-2026 kl. 16:17.
+        intent = ui.detect_unfinished_intent(
+            "Jeg tjekker lige at nøglerne er væk og vender tilbage med svar."
+        )
+        assert intent is not None
+        assert intent.pattern == "future_action_promise"
+
+    def test_lige_nu_traef_stadig(self):
+        intent = ui.detect_unfinished_intent(
+            "Jeg opdaterer lige nu den række der mangler i tabellen."
+        )
+        assert intent is not None
+        assert intent.pattern == "future_action_promise"
+
+    def test_lige_saa_ikke_traef(self):
+        # «lige så» er gradsord, ikke tidsord: regex-lookahead skal afvise.
+        intent = ui.detect_unfinished_intent(
+            "Jeg tester lige så grundigt som sidste gang, men med de nye"
+            " rækker med i tabellen."
+        )
+        assert intent is None
+
+    def test_lige_meget_ikke_traef(self):
+        intent = ui.detect_unfinished_intent(
+            "Jeg tester lige meget med og uden cache ved at sammenligne"
+            " to rækker i tabellen."
+        )
+        assert intent is None
+
+    def test_lige_saaan_ikke_traef(self):
+        intent = ui.detect_unfinished_intent(
+            "Jeg tester lige sådan et af de gamle moduler for at"
+            " sammenligne resultaterne med arkivet."
+        )
+        assert intent is None
+
+    def test_negation_ikke_lige_ikke_traef(self):
+        # Sætnings-negationen: «ikke» står før matchet i samme sætning.
+        intent = ui.detect_unfinished_intent(
+            "Jeg tjekker ikke lige den fil igen, for den er allerede"
+            " verificeret."
+        )
+        assert intent is None
+
+
+class TestGuardSplit:
+    """Rodårsag 2: guarden blokerer continuation, ikke registrering."""
+
+    def test_sporgsmaal_blokerer_continuation_ikke_registrering(self):
+        t = (
+            "Jeg tjekker lige at nøglerne er væk og vender tilbage med"
+            " svar. Skal jeg gemme dem i arkivet igen?"
+        )
+        assert ui.detect_unfinished_intent(t) is None
+        intent = ui.detect_promise_intent(t)
+        assert intent is not None
+        assert intent.pattern == "future_action_promise"
+
+    def test_detect_promise_intent_kraver_future_action_promise(self):
+        # Cliffhanger er en continuation-signatur, ikke et løfte.
+        assert ui.detect_promise_intent("Her er status på det hele:") is None
+        assert ui.detect_promise_intent(
+            "Sådan her gør jeg det, nu kommer detaljerne..."
+        ) is None
+
+    def test_saetningsnegation_blokerer_registrering(self):
+        t = "Jeg tjekker ikke lige det punkt igen, det er allerede verificeret."
+        assert ui.detect_promise_intent(t) is None
+
+    def test_saetningssporgsmaal_blokerer_registrering(self):
+        # Tvetydigt løfte-til-spørgsmål registreres konservativt heller ikke:
+        # sætnings-guarden gælder for registrering (kun guard-GATEN skippes).
+        t = "Jeg tjekker lige tabellen nu, hvad siger du om det?"
+        assert ui.detect_promise_intent(t) is None
+
+    def test_none_input(self):
+        assert ui.detect_promise_intent(None) is None
+        assert ui.detect_promise_intent("") is None
+        assert ui.detect_promise_intent("   ") is None
+
+
+class TestKortTekstTillaeg:
+    """Tillæg: future-promise-mønstret gælder også under 50 tegn."""
+
+    def test_kort_lofte_giver_traef(self):
+        intent = ui.detect_promise_intent("Jeg tjekker det nu.")
+        assert intent is not None
+        assert intent.pattern == "future_action_promise"
+
+    def test_kort_negation_giver_ikke_traef(self):
+        assert ui.detect_promise_intent("Jeg tjekker ikke det nu.") is None

@@ -315,7 +315,8 @@ kan hænge på:
 
 Alle tre løses i §6 (deadline pr. medlem) plus en alderstærskel på teamet selv.
 **Tærsklen skal arves fra `derive()`'s deadline (30/45 min), ikke gættes til
-2 timer.**
+2 timer.** Præcisering (10/11-2026): teamet har ikke en egen konstant — værdien
+er `max(medlems-deadline)` og er dermed afledt, ikke valgt. Se §15.2.
 
 **R3 — vækning kan tabes permanent.** `_wake_parent_on()` kaldes efter
 `transition()` til `synthesizing`, og en `ContractError` **logges og sluges**
@@ -374,13 +375,55 @@ Eksisterende 1–9 fra v1, plus de huller reviewene fandt:
 7. R2/R3-værn: deadline pr. medlem, alderstærskel, gentagelig vækning.
 8. `AgentDispatchPane`: vis team-planen den faktisk dispatcher.
 
-## 15. Åbne punkter
+## 15. Afgjorte punkter (besluttet 10/11-2026)
 
-1. **§6:** skal `derive_team()` være en egen funktion, eller en gren i
-   `derive()`? Egen funktion er renere, men duplikerer valideringen.
-2. **§12 R2:** alderstærsklen arves fra `derive()`'s deadline — men et team har
-   N medlemmer med hver sin deadline. Er teamets tærskel `max(deadlines) + syntese`?
-3. **§5:** skal `team_id` være et prefiks (`team-…`) så det kan skelnes fra et
-   `council_id` i logs?
-4. **§9:** bør `agent_council.py` omdøbes til `agent_team.py`, når det nu er den
-   offentlige flade? Omdøbning koster git-historik.
+De fire spørgsmål stod åbne efter reviewene. De er nu afgjort — tre af dem af
+målinger, ikke af smag.
+
+### 15.1 `derive_team()` er en egen funktion, der kalder `derive()`
+
+Egen funktion. Den duplikerer ikke valideringen, den **kalder** den: `derive()`
+har ét ansvar (afled ét barns mandat af forælderens), og et team er en samling
+børn. En gren inde i `derive()` ville gøre den funktion til to ting og tvinge
+enhver ændring af enkelt-barnet gennem en team-betinget forgrening.
+
+`derive_team()` løber medlemmerne igennem og kalder `derive()` for hvert af dem.
+Det er den eneste form der giver §6's garanti: **hvert medlem har et gemt
+mandat**, og dermed er `max_fanout` håndhævet for det.
+
+### 15.2 Teamet har ingen egen alderstærskel — den er afledt
+
+**Beslutning: teamet får ikke sin egen deadline. Tærsklen er `max(medlems-
+deadline)`, og syntesen får sin egen når den oprettes.**
+
+Grunden er målt. `agent_task_facade.py:175` sætter `deadline_at = nu + 45 min
+hvis writes, ellers 30 min` — per assignment. Et team opretter alle medlemmer
+på samme tidspunkt, så de har allerede samme udløb. At lægge `max(deadlines) +
+syntese` ovenpå som en selvstændig formel ville opfinde et tal vi ikke har
+målt, oven på nogle vi har.
+
+Målt på 116 terminale assignments (10/11-2026): median **0,5 min**, p90 **3,8
+min**, p99 **10,6 min**, maksimum **19,1 min**. Nul har rørt 30-minutters-
+grænsen. Der er 11 minutters luft ved det værste observerede tilfælde, og
+syntesen er selv et assignment med sin egen grænse.
+
+**Men teamet skal kunne svare på "hvorfor lever det her team endnu?"** Derfor
+bærer det en *observeret* tærskel, ikke en håndhævet: `max(medlems-deadline)`.
+Er teamet ældre end det, er der noget galt, og det skal stå i Desk — ikke
+fejle tavst. En egen tærskel ville være et tal vi gættede; den afledte er et
+tal vi målte.
+
+### 15.3 `team_id` bærer `team-`-prefiks
+
+Ja. Det er gratis, og det gør et team skelneligt fra et `council_id` i logs og
+i `agent_councils`-tabellen, hvor de to ellers ville ligge i samme kolonne uden
+at kunne skelnes på form.
+
+### 15.4 `agent_council.py` omdøbes ikke nu
+
+Nej. Git-historikken er mere værd end navnet, og filen er den offentlige flade
+uanset hvad den hedder. Docstring'en siger allerede "råd og review-kæde på
+agentmotoren" — den skal blot udvides til at sige at den nu også er
+team-motoren. Omdøbningen hører til den dag filen alligevel skal røres
+strukturelt; at gøre det nu ville gøre en funktionel ændring uskelnelig fra en
+kosmetisk i historikken.

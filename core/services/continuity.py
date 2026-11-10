@@ -353,11 +353,20 @@ def read_handover() -> dict[str, Any] | None:
 
 
 def sync_capsule_mood() -> dict[str, Any] | None:
-    """Sync capsule mood from mood_oscillator's live state.
+    """Sync capsule mood from the LIVE state: oscillator + emotional controls.
 
-    Reads bearing + intensity from the oscillator and updates the capsule
-    on disk. Called after visible turns (via live_update_after_turn) and
-    can be called independently to refresh a stale capsule.
+    Reads bearing + intensity from the oscillator, and fatigue/frustration/
+    confidence from ``emotional_controls.read_emotional_snapshot()`` — the
+    per-tick measurement derived from tool errors in the last 10 minutes and
+    approval denials in the last hour.
+
+    Maalt 10/11-2026: denne funktion skrev KUN bearing/valence/curiosity.
+    ``fatigue``, ``frustration`` og ``confidence`` blev derfor aldrig skrevet
+    af nogen — og fordi ``capture_state`` merger over den forrige capsule, blev
+    de ARVET fremad for evigt. Filen stod paa fatigue=0.8, frustration=0.3,
+    confidence=0.5 gennem hele en eftermiddag hvor den levende maaling sagde
+    0.0 / 0.0 / 1.0. Et felt der beskriver en tilstand der ikke findes er
+    vaerre end et tomt felt: det farver adfaerden uden at vaere sandt.
 
     Returns the updated mood dict, or None if sync failed.
     """
@@ -382,6 +391,23 @@ def sync_capsule_mood() -> dict[str, Any] | None:
             else:  # melancholic, distressed
                 mood_update["valence"] = 1.0 - float(intensity)
             mood_update["curiosity"] = float(intensity) * 0.8 + 0.2
+
+        # De tre felter har INGEN anden kilde. Kan den levende maaling ikke
+        # laves, bevarer vi de gamle vaerdier frem for at skrive et gaet —
+        # men vi siger det i loggen, saa en frossen vaerdi kan spores.
+        try:
+            from core.services.emotional_controls import read_emotional_snapshot
+
+            snap = read_emotional_snapshot()
+            mood_update["fatigue"] = float(snap.fatigue)
+            mood_update["frustration"] = float(snap.frustration)
+            mood_update["confidence"] = float(snap.confidence)
+        except Exception as exc:
+            logger.warning(
+                "sync_capsule_mood: levende affekt-maaling utilgaengelig, "
+                "bevarer fatigue/frustration/confidence: %s",
+                exc,
+            )
 
         if not mood_update:
             return None
@@ -562,7 +588,6 @@ def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
     relation = capsule.get("relation", {})
     somatic = capsule.get("somatic", {})
     goals_data = capsule.get("goals", {})
-    recent = capsule.get("recent_activity", {})
 
     lines: list[str] = []
 

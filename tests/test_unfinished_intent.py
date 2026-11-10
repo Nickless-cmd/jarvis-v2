@@ -90,10 +90,19 @@ class TestGuardSplit:
         assert ui.detect_promise_intent(t) is None
 
     def test_saetningssporgsmaal_blokerer_registrering(self):
-        # Tvetydigt løfte-til-spørgsmål registreres konservativt heller ikke:
-        # sætnings-guarden gælder for registrering (kun guard-GATEN skippes).
-        t = "Jeg tjekker lige tabellen nu, hvad siger du om det?"
-        assert ui.detect_promise_intent(t) is None
+        # REVURDERET 10/11-2026: testen brugte «Jeg tjekker lige tabellen nu,
+        # hvad siger du om det?» som eksempel på et spørgsmål der skal blokere.
+        # Det var for bredt — sætningen er et LØFTE i indikativ med et
+        # tillægsspørgsmål, og registreringen skal huske løftet (se
+        # TestSpoergendeLedEfterLoftet). Blokeringen gælder stadig når
+        # sætningen ER et spørgsmål, dvs. når det spørgende led står først.
+        assert ui.detect_promise_intent(
+            "Er det ok at jeg tjekker tabellen nu?"
+        ) is None
+        # Negation gælder uændret.
+        assert ui.detect_promise_intent(
+            "Jeg tjekker ikke lige tabellen nu, den er verificeret."
+        ) is None
 
     def test_none_input(self):
         assert ui.detect_promise_intent(None) is None
@@ -201,10 +210,23 @@ class TestTilbudUdenForListenRegistreresIkke:
         ):
             assert ui.detect_promise_intent(t) is None, t
 
-    def test_spoergende_led_midt_i_saetningen_blokerer(self):
-        # Sætningen INDledes af «Jeg», så jeg-form-vagten alene slipper den
-        # igennem. Det spørgende led midt i sætningen skal fange den.
-        assert ui.detect_promise_intent(
+    def test_spoergende_led_efter_loftet_ophaever_det_ikke(self):
+        # REVURDERET 10/11-2026. Denne test hed «…_blokerer» og hævdede at et
+        # spørgende led midt i sætningen ophævede løftet. Det var for bredt:
+        # sætningen er et LØFTE i indikativ («Jeg tjekker lige tabellen nu»)
+        # med et tillægsspørgsmål («hvad siger du om det?»). At spørge hvad
+        # Bjørn synes ophæver ikke at jeg tjekker — og registreringen findes
+        # netop for at holde mig ansvarlig for det jeg sagde jeg ville gøre.
+        #
+        # Målt før rettelsen: reglen tabte løftet i BEGGE gater. For
+        # continuation er det stadig korrekt (jeg venter på svar).
+        intent = ui.detect_promise_intent(
+            "Jeg tjekker lige tabellen nu, hvad siger du om det?"
+        )
+        assert intent is not None, "et ægte løfte forsvandt på et tillægsspørgsmål"
+        assert intent.pattern in ui._LOFTE_PATTERNS
+        # Continuation skal fortsat vente på svar — den er ikke ændret.
+        assert ui.detect_unfinished_intent(
             "Jeg tjekker lige tabellen nu, hvad siger du om det?"
         ) is None
 

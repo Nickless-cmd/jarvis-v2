@@ -323,7 +323,15 @@ def _er_sætningsblokeret(
         if "?" in sætning:
             if _SPOERGE_INDLEDNING_RE.search(sætning):
                 return True
-            if _SPOERGE_LED_RE.search(sætning):
+            # Spørge-leddet blokerer kun når det står FØR løftet. Målt
+            # 10/11-2026: «Jeg tjekker lige tabellen nu, hvad siger du om
+            # det?» er et LØFTE i indikativ med et tillægsspørgsmål — at
+            # spørge hvad Bjørn synes ophæver ikke at jeg tjekker. Stod
+            # leddet først («Er det ok at jeg …?»), er sætningen et tilbud
+            # og skal blokere; det fanges af indlednings-grenen ovenfor og
+            # af denne positions-sammenligning.
+            led = _SPOERGE_LED_RE.search(sætning)
+            if led is not None and led.start() < max(0, m.start() - start):
                 return True
             if not _JEG_FORM_RE.search(sætning):
                 return True

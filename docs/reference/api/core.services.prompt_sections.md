@@ -25,10 +25,10 @@ _Jarvis' orkestratorprompt for agenter (leverance F3, spec 7.3)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_render_orchestrator_section` | `()` | Render den konstante instruktion, hvis motoren er aktiv. | [src](../../../core/services/prompt_sections/agent_orchestration.py#L46) |
-| function | `orchestrator_section` | `()` | Den cache-sene kontrakt; tom når V3 har flyttet eller scope-fravalgt den. | [src](../../../core/services/prompt_sections/agent_orchestration.py#L58) |
-| function | `stable_orchestrator_section` | `()` | Den konstante kontrakt i V3-prefixet; kun code har agentværktøjerne. | [src](../../../core/services/prompt_sections/agent_orchestration.py#L70) |
-| function | `orchestrator_state` | `(*, owner_user_id, session_id)` | Levende, ren LAESE-status for netop denne ejers og sessions agentarbejde, eller "". | [src](../../../core/services/prompt_sections/agent_orchestration.py#L84) |
+| function | `_render_orchestrator_section` | `()` | Render den konstante instruktion, hvis motoren er aktiv. | [src](../../../core/services/prompt_sections/agent_orchestration.py#L45) |
+| function | `orchestrator_section` | `()` | Den cache-sene kontrakt; tom når V3 har flyttet eller scope-fravalgt den. | [src](../../../core/services/prompt_sections/agent_orchestration.py#L57) |
+| function | `stable_orchestrator_section` | `()` | Den konstante kontrakt i V3-prefixet; kun code har agentværktøjerne. | [src](../../../core/services/prompt_sections/agent_orchestration.py#L69) |
+| function | `orchestrator_state` | `(*, owner_user_id, session_id)` | Levende, ren LAESE-status for netop denne ejers og sessions agentarbejde, eller "". | [src](../../../core/services/prompt_sections/agent_orchestration.py#L83) |
 
 ## `core/services/prompt_sections/attention_frame.py`
 _Cognitive-frame cache + attention-budget selection for prompts._

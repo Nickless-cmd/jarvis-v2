@@ -104,7 +104,7 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
     # agent-contract-v1: owner-only indtil flerbrugerpiloten (spec 12.4) - andre brugeres
     # agenter kraever den proevede ejer-/rutegraense foer deres modeller faar vaerktoejet.
     "Task", "followup_agent", "wait_agents", "interrupt_agent", "close_agent",
-    "integrate_agent_work", "convene_agent_council", "review_agent_work",
+    "integrate_agent_work", "review_agent_work",
     "cancel_recurring",
     # Klokkeslaet pr. ugedag (1/11-2026) — samme gruppe som de øvrige
     # scheduler-vaerktoejer: en husstandsmedlem maa ikke kunne flytte BJØRNS
@@ -158,7 +158,7 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # read-only researcher vs. worktree-executor fra subagent_type.
     "Task", "wait_agents", "list_agents", "send_message_to_agent",
     "followup_agent", "interrupt_agent", "close_agent", "review_agent_work",
-    "convene_agent_council", "integrate_agent_work",
+    "integrate_agent_work",
     # Kanalen til hans egen maskine. Gaten sidder i modulet (owner-only), ikke
     # her — men uden for scope kunne han slet ikke aabne den.
     "operator_channel",
@@ -351,7 +351,7 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # Samme kontraktvej som chat: ingen separat scout- eller kode-dispatcher.
     "Task", "wait_agents", "list_agents", "send_message_to_agent",
     "followup_agent", "interrupt_agent", "close_agent", "review_agent_work",
-    "convene_agent_council", "integrate_agent_work",
+    "integrate_agent_work",
     # Repo-dokumentation (23/10-2026). Hoerer netop her: en kode-opgave er dér
     # man har brug for at laese hvad der ER skrevet om systemet. (Bemaerk at
     # `recall` selv ikke staar i denne liste — memory-soegning er i dag kun

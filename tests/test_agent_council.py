@@ -312,16 +312,21 @@ def test_reviewing_the_same_builder_twice_is_idempotent(rv):
 # --- tools ---------------------------------------------------------------------------------------------
 
 def test_the_model_tools_go_through_the_same_service_with_owner_and_run_from_the_runtime(cn, monkeypatch):
+    from core.services import agent_council as C
     from core.tools import agent_contract_tools as T
     monkeypatch.setattr("core.identity.workspace_context.current_user_id", lambda: O)
-    out = T._exec_convene_agent_council({"_runtime_session_id": S, "_runtime_turn_id": R, "topic": "t", "facts": "f",
-                                         "members": cn.members(2), "user_id": "angriber"})
+    # 10/11-2026: raadet er ikke laengere et modelvendt vaerktoej. Motoren kaldes direkte
+    # (eller gennem `Task(team=...)`), saa ejer og parent-run kommer fra kalderen — ikke
+    # fra et modelargument. Det var netop hvad adapteren sikrede, og det maa ikke gaa tabt.
+    out = C.convene(owner_user_id=O, origin_session_id=S, parent_run_id=R, topic="t", facts="f",
+                    members=cn.members(2))
     assert out["status"] == "accepted" and len(out["members"]) == 2
     c = cn.store_.get(out["council_id"], O)
     assert (c["owner_user_id"], c["parent_run_id"]) == (O, R)
     bad = T._exec_review_agent_work({"_runtime_session_id": S, "builder_assignment_id": "x", "requirements": "y"})
     assert bad["code"] == "INVALID_SCOPE"
-    assert {"convene_agent_council", "review_agent_work"} <= set(T.CONTRACT_TOOL_NAMES) & T._NEW_ONLY
+    assert "review_agent_work" in T.CONTRACT_TOOL_NAMES
+    assert "convene_agent_council" not in T.CONTRACT_TOOL_NAMES
 
 
 def test_the_reviewer_stays_read_only_even_if_the_role_default_is_widened(rv, monkeypatch):

@@ -90,7 +90,7 @@ _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
     ("Agenter", [
         "Task", "wait_agents", "list_agents", "send_message_to_agent",
         "followup_agent", "interrupt_agent", "close_agent",
-        "review_agent_work", "convene_agent_council", "integrate_agent_work",
+        "review_agent_work", "integrate_agent_work",
     ]),
     # 6/9-2026: todo-vaerktoejerne fandtes med service, fem tools OG en
     # prompt-sektion der siger «max ÉN maa vaere ▶» — men de var usynlige i

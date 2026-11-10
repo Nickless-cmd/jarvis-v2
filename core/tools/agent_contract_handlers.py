@@ -5,7 +5,6 @@ now imports one mapping instead of owning this subsystem's individual wiring.
 """
 from core.tools.agent_contract_tools import (
     _exec_close_agent,
-    _exec_convene_agent_council,
     _exec_decide_agent_approval,
     _exec_dispatch_agent,
     _exec_followup_agent,
@@ -29,7 +28,6 @@ AGENT_CONTRACT_HANDLERS = {
     "wait_agents": _exec_wait_agents,
     "interrupt_agent": _exec_interrupt_agent,
     "integrate_agent_work": _exec_integrate_agent_work,
-    "convene_agent_council": _exec_convene_agent_council,
     "review_agent_work": _exec_review_agent_work,
     "decide_agent_approval": _exec_decide_agent_approval,
     "close_agent": _exec_close_agent,

@@ -49,13 +49,14 @@ def test_every_tool_the_text_names_is_really_advertised_when_on(pr):
     from core.tools.simple_tools import get_tool_definitions
 
     pr.on()
-    # `wake_if_run_ends`, `include_output`, `writes` og `workspace` er PARAMETERnavne, ikke vaerktoejer
+    # `wake_if_run_ends`, `include_output`, `writes`, `workspace` og `team` er PARAMETER-/
+    # FELTnavne, ikke vaerktoejer. `team` kom til 10/11-2026 da raadet blev et Task-felt.
     named = set(re.findall(r"`([A-Za-z_]+)`", ao.orchestrator_section())) - {
-        "wake_if_run_ends", "include_output", "writes", "workspace", "executor"}
+        "wake_if_run_ends", "include_output", "writes", "workspace", "executor", "team"}
     advertised = {d["function"]["name"] for d in get_tool_definitions(role="owner", scope="")}
     assert named == {"Task", "wait_agents", "send_message_to_agent", "followup_agent",
                      "interrupt_agent", "close_agent", "list_agents", "integrate_agent_work",
-                     "convene_agent_council", "review_agent_work"}
+                     "review_agent_work"}
     assert named <= advertised, named - advertised
 
 

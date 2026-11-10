@@ -9,14 +9,14 @@ import pytest
 #: ingen egen definition uden for kontrakten, men stod alligevel synlig naar motoren var
 #: slukket. Reglen udledes nu i `test_contract_only_tools_are_the_hidden_set`.
 NEW = ("Task", "followup_agent", "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work",
-       "convene_agent_council", "review_agent_work", "decide_agent_approval")
-#: ALLE definitioner i `AGENT_CONTRACT_TOOL_DEFINITIONS` (ni). Sammenfalder i dag med `NEW`,
+       "review_agent_work", "decide_agent_approval")
+#: ALLE definitioner i `AGENT_CONTRACT_TOOL_DEFINITIONS` (otte). Sammenfalder i dag med `NEW`,
 #: men maaler noget andet: hvilke definitioner der FINDES, ikke hvilke der SKJULES.
 DEFS = NEW
-#: Den FASTGJORTE flade naar motoren er taendt (kildens `CONTRACT_TOOL_NAMES`, elleve).
+#: Den FASTGJORTE flade naar motoren er taendt (kildens `CONTRACT_TOOL_NAMES`, ti).
 PINNED = ("Task", "send_message_to_agent", "followup_agent", "list_agents",
           "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work",
-          "convene_agent_council", "review_agent_work", "decide_agent_approval")
+          "review_agent_work", "decide_agent_approval")
 
 
 @pytest.fixture

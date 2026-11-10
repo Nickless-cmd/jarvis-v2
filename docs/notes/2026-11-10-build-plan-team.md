@@ -340,7 +340,49 @@ leverer tomt bliver altså **opdaget og sagt højt** — det var hele pointen me
 
 **Åbent herefter:** medlems-vagten er stadig en tekstheuristik. Den rigtige vej er strukturel
 (agenten skal ikke kunne afslutte `completed` midt i en læsning den selv har annonceret), og det er
-en selvstændig opgave — ikke en del af denne leverance.
+en selvstændig opgave — ikke en del af denne leverance. **Den opgave er nu bygget: se L12.**
+
+---
+
+## Leverance 12 — leverance-vagten: kontrakten var der, men blev aldrig læst
+
+✅ LEVERET (`9a96cacf9`), bygget efter L11's måling med Bjørns «Ja» (10/11-2026).
+
+**To ting der var blevet slået sammen, og som skal holdes adskilt:**
+
+| | Målt svar |
+|---|---|
+| **Hvorfor stoppede agenten?** | Begge medlemmer havde `max_turns: 8` og brugte 3–4 kald. Deadline 20:59, slut 20:29. Alle kald `ok`. Ingen budget-, deadline- eller fejlgrænse blev ramt — **modellen valgte selv at holde op midt i læsningen.** Hvorfor er ikke målt, og er ikke rettet her |
+| **Hvorfor blev det accepteret?** | Stop-grenen i `run_tool_loop` havde præcis **tre** indgange: `scout`, `must_write`, `unanswered`. Et læse-medlem i et råd ramte nul af dem |
+
+**Nøglefundet:** `expected_result` findes og er præcis («citer linjenumre, gæt ikke»). Den står endda
+i agentens prompt via `agent_prompt_layers.py:104` — men den blev **aldrig læst som kontrol**. Den var
+tekst *til* agenten, aldrig et krav *til* agenten. Samme fejlform som resten af dagen: mekanismen
+findes, men ingen læser den.
+
+**Ændringer:**
+
+1. `agent_loop_core.py` — ny `_delivery_gap(expected_result, final_text, tool_calls)`. Kilden er
+   kontrakten, ikke en ordliste. To målbare fakta, begge uden en model:
+   - et svar under **160 tegn** efter et værktøjskald kan ikke bære en undersøgelse,
+   - bestiller kontrakten filnavne eller linjenumre, skal svaret indeholde dem.
+2. `agent_loop_core.py` — **fjerde indgang** i stop-grenen, uafhængig af de tre andre. Fyrer den,
+   får agenten én ordre der navngiver hullet; står hullet stadig efter den, sættes `incomplete`.
+3. `agent_runtime_base.py` + `agent_worker_main.py` + `agent_worker_runner.py` — kontrakten slås op
+   via `open_assignment_for_agent()` og bæres ind i loopet på **begge** ruter (in-process og
+   sandkassen). Ellers gælder grenen kun den ene, og de to skal have samme adfærd.
+
+**Bevis:** 9 nye tests i `tests/test_agent_delivery_gap.py`; 52 grønne i det målrettede sæt,
+121–130 i det brede. De to faktiske svar fra rådet afvises nu, og et rigtigt svar går igennem uden en
+ekstra runde. Mutationstest begge veje: gøres grenen tavs, fejler fem tests; gøres kontrakten tom, er
+adfærden uændret. `sha256` byte-identisk efter gendannelse.
+
+**Begrænsning, sagt højt:** den fanger det åbenlyst tomme, ikke det subtilt ufuldstændige. En agent
+der skriver 400 tegn uden at have læst færdigt, slipper igennem. Syntesen er stadig modvægten — og
+den virkede i drift.
+
+**Ikke i drift ved commit:** tjenesterne startede 21:23, filerne er ændret 21:41–21:43. Genstart
+booket med `defer_until_idle`. **Verificér modul-mtime mod proces-start, før dette kaldes observeret.**
 
 ---
 

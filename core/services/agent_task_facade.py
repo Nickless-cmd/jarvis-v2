@@ -140,7 +140,8 @@ def _session_scope(owner: str, session: str) -> tuple[str, str]:
 def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
            parent_agent_id: str, description: str, prompt: str, subagent_type: str,
            model: str, run_in_background: bool, budget_tokens: int = 0,
-           team_id: str = "", member_index: int = 0) -> dict[str, Any]:
+           team_id: str = "", member_index: int = 0,
+           guard_text: str | None = None) -> dict[str, Any]:
     description, prompt = description.strip(), prompt.strip()
     kind = subagent_type.strip().lower()
     if not description or not prompt:
@@ -184,7 +185,8 @@ def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
     tools = _vaerktoejer_for("worktree-write" if writes else "read-only-runtime")
     if not workspace:
         tools = [t for t in tools if t in {"web_search", "web_fetch", "read_tool_result", "agent_note"}]
-    mangler = ufuldstaendige_vaerktoejer(prompt, tools, _kendte_vaerktoejer())
+    mangler = ufuldstaendige_vaerktoejer(
+        prompt if guard_text is None else guard_text, tools, _kendte_vaerktoejer())
     if mangler:
         # Afvis ved dispatch, ikke efter en kørsel: en agent kan ikke få et værktøj ud over sit
         # faste sæt, så opgaven ville blive accepteret, brænde tokens og fejle (4/11-2026).

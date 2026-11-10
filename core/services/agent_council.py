@@ -195,7 +195,14 @@ def _outcomes(owner: str, members: list[dict[str, Any]]) -> tuple[list[dict[str,
     return rows, all_terminal
 
 
-def synthesis_goal(topic: str, outcomes: list[dict[str, Any]]) -> str:
+def synthesis_goal(topic: str, outcomes: list[dict[str, Any]]) -> tuple[str, str]:
+    """Syntesens opgave, delt i ``(instruktion, datagrundlag)``.
+
+    Delingen er i KODEN, ikke i teksten: medlemmernes svar er DATA, ikke en ordre til
+    syntesen. Foer laa begge dele i én streng, og ``ufuldstaendige_vaerktoejer`` laeste
+    et medlemssvar som «koer `bash` og laes filen» som et KRAV til syntesen — den blev
+    afvist ved hvert supervisor-tick, og teamet endte i ``stalled`` (spec 6.4).
+    """
     lines = []
     for o in sorted(outcomes, key=lambda x: x["index"]):
         if o["status"] == "completed" and o["summary"].strip():
@@ -206,10 +213,13 @@ def synthesis_goal(topic: str, outcomes: list[dict[str, Any]]) -> str:
             lines.append(f"- Medlem {o['index']} ({o['role']}) FEJLEDE ({o['status']}"
                          f"{': ' + o['error_code'] if o['error_code'] else ''}) - der er INTET svar fra dem.")
     missing = [o for o in outcomes if o["status"] != "completed" or not o["summary"].strip()]
-    return (f"Du er syntese for et raad om: {topic}\n\nMedlemmernes terminale udfald:\n" + "\n".join(lines) +
-            "\n\nSammenfat enigheder og uenigheder og giv en samlet anbefaling med konfidens. Vaegt ikke et "
-            "manglende svar som samtykke. " + (f"NAVNGIV udtrykkeligt de {len(missing)} medlem(mer) der fejlede "
-            "eller ikke svarede, og sig hvad der derfor mangler i grundlaget." if missing else ""))
+    instruktion = (f"Du er syntese for et raad om: {topic}\n\n"
+                   "Sammenfat enigheder og uenigheder og giv en samlet anbefaling med konfidens. "
+                   "Vaegt ikke et manglende svar som samtykke. " +
+                   (f"NAVNGIV udtrykkeligt de {len(missing)} medlem(mer) der fejlede eller ikke svarede, "
+                    "og sig hvad der derfor mangler i grundlaget." if missing else ""))
+    datagrundlag = "Medlemmernes terminale udfald:\n" + "\n".join(lines)
+    return instruktion, datagrundlag
 
 
 def _dispatch_synthesis(c: dict[str, Any], outcomes: list[dict[str, Any]]) -> dict[str, Any]:
@@ -222,14 +232,18 @@ def _dispatch_synthesis(c: dict[str, Any], outcomes: list[dict[str, Any]]) -> di
     ikke kolliderer paa samme ``mandate_id``.
     """
     from core.services import agent_task_facade as facade
+    instruktion, datagrundlag = synthesis_goal(c["topic"], outcomes)
     try:
         plan = facade.derive(
             owner_user_id=c["owner_user_id"], origin_session_id=c["origin_session_id"],
             parent_run_id=c["parent_run_id"], parent_agent_id=c["parent_agent_id"] or "jarvis",
             description=f"EMNE: {c['topic']} — en samlet syntese der navngiver medlemmer uden svar",
-            prompt=synthesis_goal(c["topic"], outcomes), subagent_type="critic", model="",
+            prompt=f"{instruktion}\n\n{datagrundlag}", subagent_type="critic", model="",
             run_in_background=False, budget_tokens=c["budget_tokens"],
-            team_id=f"council:{c['council_id']}")
+            team_id=f"council:{c['council_id']}",
+            # Kun INSTRUKTIONEN maales: medlemmernes svar er data, og et svar der naevner
+            # et vaerktoej er ikke et krav til syntesen (spec 6.4).
+            guard_text=instruktion)
     except ValueError as exc:
         # Et supervisor-tick maa ikke doe paa ét raad: det proeves igen naeste taek,
         # praecis som CAPACITY-goer det nedenfor.

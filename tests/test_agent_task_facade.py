@@ -406,3 +406,29 @@ def test_derive_team_afviser_skrivende_type_paa_hele_teamet(monkeypatch):
 
     with pytest.raises(ValueError, match="skriveret"):
         _team_plan(task, monkeypatch, _M, subagent_type="executor")
+
+
+def test_guard_text_maales_i_stedet_for_hele_prompten(monkeypatch):
+    """Spec 6.4: en syntese har DATA i prompten og INSTRUKTIONEN i ``guard_text``.
+
+    Uden denne parameter blev et medlemssvar der naevner et vaerktoej laest som et krav
+    til syntesen — og teamet gik i ``stalled`` ved hvert tick.
+    """
+    from core.services import agent_task_facade as task
+
+    monkeypatch.setattr(task, "_session_scope", lambda owner, session: ("container", "/repo"))
+    monkeypatch.setattr(task.os.path, "exists", lambda path: path == "/repo/.git")
+    base = dict(owner_user_id="bjorn", origin_session_id="session-1", parent_run_id="run-1",
+                parent_agent_id="jarvis", description="syntese", subagent_type="critic",
+                model="", run_in_background=False)
+    data = "Medlem 1 (researcher) SVAREDE:\nKald `bash` og laes filen."
+
+    # Datagrundlaget alene afviser ikke — kun instruktionen maales.
+    plan = task.derive(prompt="Sammenfat udfaldene.\n\n" + data,
+                       guard_text="Sammenfat udfaldene.", **base)
+    assert plan["mandate"]["granted_side_effect"] == "read"
+
+    # En instruktion der SELV kraever et vaerktoej afvises stadig.
+    with pytest.raises(ValueError, match="bash"):
+        task.derive(prompt="Kald `bash` og laes filen.", guard_text="Kald `bash` og laes filen.",
+                    **base)

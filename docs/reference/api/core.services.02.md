@@ -272,12 +272,12 @@ _The five-field model-facing Task facade over agent-contract-v1._
 | function | `_kendte_vaerktoejer` | `()` | Runtime-registerets værktøjsnavne. Tomt sæt hvis det ikke kan læses: vagten | [src](../../../core/services/agent_task_facade.py#L69) |
 | function | `_vaerktoejer_for` | `(policy)` | Agentens værktøjer = policyens sæt + agent-kun-værktøjerne. | [src](../../../core/services/agent_task_facade.py#L80) |
 | function | `_session_scope` | `(owner, session)` | — | [src](../../../core/services/agent_task_facade.py#L103) |
-| function | `derive` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, subagent_type, model, run_in_background, budget_tokens=…, team_id=…, member_index=…)` | — | [src](../../../core/services/agent_task_facade.py#L140) |
-| function | `derive_team_id` | `(*, owner_user_id, origin_session_id, parent_run_id, description, prompt, team_name, members)` | Deterministisk ``team_id``, saa et gentaget ``Task(team=...)`` rammer den samme raekke. | [src](../../../core/services/agent_task_facade.py#L238) |
-| function | `_member_type` | `(team_type)` | Et teammedlems type — spaerringen ligger paa KIND, ikke paa rollenavnet. | [src](../../../core/services/agent_task_facade.py#L257) |
-| function | `derive_team` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, team, subagent_type=…, model=…, run_in_background=…, budget_tokens=…)` | Udled en plan pr. teammedlem — al validering sker FOER den foerste dispatch. | [src](../../../core/services/agent_task_facade.py#L273) |
-| function | `execute_team` | `(**fields)` | Dispatch et helt team — eller intet. | [src](../../../core/services/agent_task_facade.py#L328) |
-| function | `execute` | `(**fields)` | — | [src](../../../core/services/agent_task_facade.py#L368) |
+| function | `derive` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, subagent_type, model, run_in_background, budget_tokens=…, team_id=…, member_index=…, guard_text=…)` | — | [src](../../../core/services/agent_task_facade.py#L140) |
+| function | `derive_team_id` | `(*, owner_user_id, origin_session_id, parent_run_id, description, prompt, team_name, members)` | Deterministisk ``team_id``, saa et gentaget ``Task(team=...)`` rammer den samme raekke. | [src](../../../core/services/agent_task_facade.py#L240) |
+| function | `_member_type` | `(team_type)` | Et teammedlems type — spaerringen ligger paa KIND, ikke paa rollenavnet. | [src](../../../core/services/agent_task_facade.py#L259) |
+| function | `derive_team` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, team, subagent_type=…, model=…, run_in_background=…, budget_tokens=…)` | Udled en plan pr. teammedlem — al validering sker FOER den foerste dispatch. | [src](../../../core/services/agent_task_facade.py#L275) |
+| function | `execute_team` | `(**fields)` | Dispatch et helt team — eller intet. | [src](../../../core/services/agent_task_facade.py#L330) |
+| function | `execute` | `(**fields)` | — | [src](../../../core/services/agent_task_facade.py#L370) |
 
 ## `core/services/agent_task_requirements.py`
 _Hvilke værktøjer en opgaveprompt KRÆVER at agenten kalder._

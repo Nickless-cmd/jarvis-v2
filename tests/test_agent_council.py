@@ -456,3 +456,56 @@ def test_syntesen_er_en_critic_uden_skriveret(cn):
     assert (reg["role"], reg["tool_policy"]) == ("critic", "read-only-runtime")
     tilladte = json.loads(reg["allowed_tools_json"] or "[]")
     assert "wt_write_file" not in tilladte and "bash" not in tilladte
+
+
+def test_et_medlemssvar_der_naevner_et_vaerktoej_afviser_ikke_syntesen(cn):
+    """Spec 6.4: medlemmernes svar er DATA, ikke en ordre til syntesen.
+
+    Maalt 10/11-2026: ``synthesis_goal()`` lagde medlemmernes citater i SAMME streng som
+    instruktionen, og ``ufuldstaendige_vaerktoejer`` laeste et svar som «kald `bash` og
+    laes filen» som et KRAV til syntesen. Den blev afvist ved HVERT supervisor-tick, og
+    teamet endte i ``stalled`` uden at nogen havde gjort noget forkert.
+    """
+    # Fixturens falske model svarer med sin egen tekst; her tvinges medlemmernes svar
+    # til at indeholde et vaerktoejsnavn — praecis den formulering vagten ellers fanger.
+    out = cn.convene()
+    cn.run_all()
+    conn = cn.c_._conn()
+    rows = conn.execute(
+        "SELECT assignment_id, outcome_json FROM agent_assignments WHERE status='completed'").fetchall()
+    assert rows, "medlemmerne skulle vaere terminale"
+    for aid, raw in rows:
+        payload = json.loads(raw or "{}")
+        payload["summary"] = "Jeg ville kald `bash` og laese filen, men det gjorde jeg ikke."
+        conn.execute("UPDATE agent_assignments SET outcome_json=? WHERE assignment_id=?",
+                     (json.dumps(payload), aid))
+    conn.commit()
+
+    done = cn.A_.advance()
+
+    assert [d["action"] for d in done] == ["synthesis_started"], done
+    assert cn.store_.get(out["council_id"], O)["status"] == "synthesizing"
+    # Citatet ER naaet frem til syntesens datagrundlag — ellers maalte testen ingenting.
+    c = cn.store_.get(out["council_id"], O)
+    outcomes = cn.A_._outcomes(O, c["members"])[0]
+    _, datagrundlag = cn.A_.synthesis_goal(c["topic"], outcomes)
+    assert "kald `bash`" in datagrundlag, datagrundlag
+
+
+def test_en_synteseinstruktion_der_selv_kraever_et_vaerktoej_afvises_stadig(cn):
+    """Vagten skal stadig virke paa INSTRUKTIONEN — kun dataene er undtaget."""
+    from core.services import agent_task_facade as facade
+
+    instruktion, datagrundlag = cn.A_.synthesis_goal("emne", [])
+    assert "bash" not in instruktion
+    # Instruktionen alene slipper igennem; en instruktion MED et krav goer ikke.
+    facade.derive(
+        owner_user_id=O, origin_session_id=S, parent_run_id=R, parent_agent_id="jarvis",
+        description="syntese", prompt=instruktion, subagent_type="critic", model="",
+        run_in_background=False, guard_text=instruktion)
+    with pytest.raises(ValueError, match="bash"):
+        facade.derive(
+            owner_user_id=O, origin_session_id=S, parent_run_id=R, parent_agent_id="jarvis",
+            description="syntese", prompt=instruktion + "\nKald `bash` og laes filen.",
+            subagent_type="critic", model="", run_in_background=False,
+            guard_text=instruktion + "\nKald `bash` og laes filen.")

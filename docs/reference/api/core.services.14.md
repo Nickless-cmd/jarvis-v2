@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/finalize_tool_policy.py`
+_Skal den tvungne afslutnings-runde FJERNE vaerktoejslisten — eller raekker et flag?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `behold_vaerktoejer_paa_finalize` | `(provider)` | Maa den tvungne afslutning beholde vaerktoejslisten hos denne udbyder? | [src](../../../core/services/finalize_tool_policy.py#L53) |
+
 ## `core/services/finitude_runtime.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -508,27 +515,4 @@ _Good-enough gate — completion criterion for autonomous runs._
 | function | `_recent_run_signals` | `(run_id, limit=…)` | — | [src](../../../core/services/good_enough_gate.py#L34) |
 | function | `evaluate_good_enough` | `(*, run_id=…, iterations_done=…, iteration_budget=…, minutes_elapsed=…, minutes_budget=…)` | — | [src](../../../core/services/good_enough_gate.py#L57) |
 | function | `_exec_check_good_enough` | `(args)` | — | [src](../../../core/services/good_enough_gate.py#L148) |
-
-## `core/services/google_connector.py`
-_Google-pakke-connector — Calendar/Drive/Docs/Sheets/Slides (læse-tools)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_get` | `(user_id, url, params, err_prefix)` | Fælles GET med brugerens Google-token. → {status, data} | {status:error,...}. | [src](../../../core/services/google_connector.py#L249) |
-| function | `_send` | `(user_id, method, url, *, json_body=…, params=…, err_prefix=…)` | Skrive-kald (POST/PUT) med brugerens Google-token. Bruges af create/edit-tools. | [src](../../../core/services/google_connector.py#L269) |
-| function | `_clamp` | `(n, lo, hi, default)` | — | [src](../../../core/services/google_connector.py#L290) |
-| function | `list_events` | `(user_id, *, max_results=…)` | — | [src](../../../core/services/google_connector.py#L297) |
-| function | `drive_search` | `(user_id, *, query=…, max_results=…)` | — | [src](../../../core/services/google_connector.py#L318) |
-| function | `drive_download` | `(user_id, file_id, *, export_as=…)` | Hent en Drive-fil ned til brugerens EGEN filmappe og returnér et link. | [src](../../../core/services/google_connector.py#L354) |
-| function | `_doc_text` | `(content)` | — | [src](../../../core/services/google_connector.py#L457) |
-| function | `docs_read` | `(user_id, document_id)` | — | [src](../../../core/services/google_connector.py#L470) |
-| function | `sheets_read` | `(user_id, spreadsheet_id, cell_range)` | — | [src](../../../core/services/google_connector.py#L481) |
-| function | `_slides_text` | `(pres)` | — | [src](../../../core/services/google_connector.py#L495) |
-| function | `slides_read` | `(user_id, presentation_id)` | — | [src](../../../core/services/google_connector.py#L509) |
-| function | `create_event` | `(user_id, summary, start, *, end=…, description=…, location=…)` | Opret en begivenhed i brugerens primære kalender. start/end = ISO-8601. | [src](../../../core/services/google_connector.py#L523) |
-| function | `append_doc` | `(user_id, document_id, text)` | Tilføj tekst i slutningen af et Google Docs-dokument. | [src](../../../core/services/google_connector.py#L553) |
-| function | `create_doc` | `(user_id, title, *, text=…)` | Opret et nyt Google Docs-dokument. `text` indsættes som første indhold. | [src](../../../core/services/google_connector.py#L568) |
-| function | `create_sheet` | `(user_id, title, *, values=…)` | Opret et nyt Google Sheets-regneark. `values` skrives i første ark. | [src](../../../core/services/google_connector.py#L589) |
-| function | `create_slides` | `(user_id, title)` | Opret en ny Google Slides-præsentation (tom, med titel). | [src](../../../core/services/google_connector.py#L608) |
-| function | `write_sheet` | `(user_id, spreadsheet_id, cell_range, values)` | Skriv celler i et Google Sheets-regneark (overskriver range). values = liste af rækker. | [src](../../../core/services/google_connector.py#L621) |
 

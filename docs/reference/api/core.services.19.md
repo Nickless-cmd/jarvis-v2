@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/mood_regulator_subscriber.py`
+_Mood regulator subscriber — router truth-gate detektioner til humøret._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `start_mood_regulator_subscriber` | `()` | Start daemon-tråden der router detektions-events til mood-regulering. | [src](../../../core/services/mood_regulator_subscriber.py#L34) |
+| function | `stop_mood_regulator_subscriber` | `()` | — | [src](../../../core/services/mood_regulator_subscriber.py#L56) |
+| function | `_subscriber_loop` | `(*, subscriber)` | — | [src](../../../core/services/mood_regulator_subscriber.py#L73) |
+| function | `_route_event` | `(item)` | Route en enkelt eventbus-hændelse til ``regulate_auto``. | [src](../../../core/services/mood_regulator_subscriber.py#L89) |
+
 ## `core/services/mortality_awareness.py`
 _Mortality Awareness — each session could be my last._
 
@@ -662,19 +672,4 @@ _Owner-override-session-store — DB-backed, cross-proces._
 | function | `level` | `(session_id, *, now=…)` | Override-niveau hvis aktiv, ellers None. | [src](../../../core/services/override_store.py#L72) |
 | function | `touch` | `(session_id, *, now=…)` | Forny en AKTIV override til +5 min ved aktivitet. False hvis udløbet/fraværende. | [src](../../../core/services/override_store.py#L80) |
 | function | `revoke` | `(session_id)` | Deaktivér override (sæt udløbet — runtime_state har ingen delete). | [src](../../../core/services/override_store.py#L97) |
-
-## `core/services/paid_lane_guard.py`
-_Vagt: kun Bjørns egen lane må ramme den betalte DeepSeek-API (2026-09-05)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_host` | `(url)` | — | [src](../../../core/services/paid_lane_guard.py#L55) |
-| function | `is_paid` | `(base_url)` | — | [src](../../../core/services/paid_lane_guard.py#L62) |
-| function | `audit_paid_lanes` | `()` | Hvilke lanes peger på en betalt vært uden at måtte? | [src](../../../core/services/paid_lane_guard.py#L66) |
-| function | `_tilhoerer_ham` | `(run_id)` | Er kaldet en del af en af Bjørns egne ture? | [src](../../../core/services/paid_lane_guard.py#L103) |
-| function | `audit_paid_spend` | `(timer=…)` | Hvilke BETALTE kald hørte ikke til en af hans ture? | [src](../../../core/services/paid_lane_guard.py#L114) |
-| function | `check_paid_spend` | `(timer=…)` | Kør hovedbogs-revisionen: log + Central-nerve ved brud. | [src](../../../core/services/paid_lane_guard.py#L152) |
-| function | `audit_heartbeat_provider` | `()` | Kører hjerteslaget på en betalt udbyder? None = nej. | [src](../../../core/services/paid_lane_guard.py#L179) |
-| function | `check_paid_lanes` | `()` | Kør vagten: log + Central-nerve ved brud. Retter aldrig noget selv. | [src](../../../core/services/paid_lane_guard.py#L207) |
-| function | `build_paid_lane_guard_surface` | `()` | Begge domme: hvad routeren LOVER, og hvad hovedbogen REGISTREREDE. | [src](../../../core/services/paid_lane_guard.py#L233) |
 

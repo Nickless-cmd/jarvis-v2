@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/surprise_daemon.py`
+_Surprise daemon — first-person surprise when Jarvis's reactions diverge from baseline._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_text_signal` | `(value)` | Deterministic 0..1 proxy of a short text state so the event-gate can | [src](../../../core/services/surprise_daemon.py#L29) |
+| function | `_surprise_type_to_concept` | `(surprise_type)` | Map surprise classification to primary emotion concept. | [src](../../../core/services/surprise_daemon.py#L37) |
+| function | `_afterimage_concept` | `(surprise_type)` | Map surprise classification to afterimage emotion concept. | [src](../../../core/services/surprise_daemon.py#L45) |
+| function | `_process_pending_afterimages` | `()` | Trigger afterimage emotion concepts whose delay has elapsed. | [src](../../../core/services/surprise_daemon.py#L50) |
+| function | `tick_surprise_daemon` | `(inner_voice_mode=…, somatic_energy=…, skip_event_gate=…)` | — | [src](../../../core/services/surprise_daemon.py#L73) |
+| function | `_raw_signal_mode` | `()` | Self-safe læsning af runtime-state-flaget `raw_signal_mode` (default off). | [src](../../../core/services/surprise_daemon.py#L123) |
+| function | `_render_raw_divergence` | `(divergence)` | Byg rå kategorisk divergens-streng (ingen LLM, ingen prosa). | [src](../../../core/services/surprise_daemon.py#L132) |
+| function | `get_latest_surprise` | `()` | — | [src](../../../core/services/surprise_daemon.py#L146) |
+| function | `build_surprise_surface` | `()` | — | [src](../../../core/services/surprise_daemon.py#L150) |
+| function | `_record_snapshot` | `(mode, energy)` | — | [src](../../../core/services/surprise_daemon.py#L175) |
+| function | `_compute_divergence` | `(current_mode, current_energy)` | — | [src](../../../core/services/surprise_daemon.py#L187) |
+| function | `_generate_surprise` | `(mode, energy, divergence)` | — | [src](../../../core/services/surprise_daemon.py#L209) |
+| function | `_store_surprise` | `(phrase, divergence)` | — | [src](../../../core/services/surprise_daemon.py#L238) |
+| function | `_classify_surprise` | `(phrase)` | — | [src](../../../core/services/surprise_daemon.py#L293) |
+
 ## `core/services/surprise_detector.py`
 _Surprise detector — anomaly signals for the proactive/autonomous lane._
 
@@ -614,12 +634,4 @@ _Process-local timing and bounded live-output state for visible tool calls._
 | function | `cancel_call` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L312) |
 | function | `bind_execution` | `(tool_use_id, output_buffer, *, run_id=…, session_id=…, tool_name=…)` | — | [src](../../../core/services/tool_execution_trace.py#L317) |
 | function | `emit_current_output` | `(stream, chunk, seq=…, truncated=…)` | — | [src](../../../core/services/tool_execution_trace.py#L340) |
-
-## `core/services/tool_failure_surface.py`
-_Turn raw tool failures into short, actionable text for visible surfaces._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_field` | `(raw_result, name)` | — | [src](../../../core/services/tool_failure_surface.py#L7) |
-| function | `normalise_tool_failure` | `(status, result_text, raw_result, *, timeout_s=…)` | Keep existing detail, otherwise derive a concrete cause from raw output. | [src](../../../core/services/tool_failure_surface.py#L11) |
 

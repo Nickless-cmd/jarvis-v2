@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/paid_lane_guard.py`
+_Vagt: kun Bjørns egen lane må ramme den betalte DeepSeek-API (2026-09-05)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_host` | `(url)` | — | [src](../../../core/services/paid_lane_guard.py#L55) |
+| function | `is_paid` | `(base_url)` | — | [src](../../../core/services/paid_lane_guard.py#L62) |
+| function | `audit_paid_lanes` | `()` | Hvilke lanes peger på en betalt vært uden at måtte? | [src](../../../core/services/paid_lane_guard.py#L66) |
+| function | `_tilhoerer_ham` | `(run_id)` | Er kaldet en del af en af Bjørns egne ture? | [src](../../../core/services/paid_lane_guard.py#L103) |
+| function | `audit_paid_spend` | `(timer=…)` | Hvilke BETALTE kald hørte ikke til en af hans ture? | [src](../../../core/services/paid_lane_guard.py#L114) |
+| function | `check_paid_spend` | `(timer=…)` | Kør hovedbogs-revisionen: log + Central-nerve ved brud. | [src](../../../core/services/paid_lane_guard.py#L152) |
+| function | `audit_heartbeat_provider` | `()` | Kører hjerteslaget på en betalt udbyder? None = nej. | [src](../../../core/services/paid_lane_guard.py#L179) |
+| function | `check_paid_lanes` | `()` | Kør vagten: log + Central-nerve ved brud. Retter aldrig noget selv. | [src](../../../core/services/paid_lane_guard.py#L207) |
+| function | `build_paid_lane_guard_surface` | `()` | Begge domme: hvad routeren LOVER, og hvad hovedbogen REGISTREREDE. | [src](../../../core/services/paid_lane_guard.py#L233) |
+
 ## `core/services/paradox_tracker.py`
 _Paradox Tracker — detects active tensions in Jarvis' operation._
 
@@ -652,13 +667,4 @@ _Proactive context governor — auto-trigger compaction + sub-agent slicing._
 | function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L738) |
 | function | `_slug` | `(value)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L747) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L754) |
-
-## `core/services/proactive_outbound_substrate.py`
-_Proactive-outbound substrate — what Jarvis just said proactively._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_summarize_outbound_payload` | `(kind, payload)` | Extract the actual question/message text from a delivered event. | [src](../../../core/services/proactive_outbound_substrate.py#L36) |
-| function | `compute_proactive_outbound_substrate` | `(*, window_min=…, max_events=…)` | Return raw proactive-outbound events as substrate strings. | [src](../../../core/services/proactive_outbound_substrate.py#L49) |
-| function | `build_proactive_outbound_section` | `()` | Prompt section — proactive messages Jarvis sent in last 30 min. | [src](../../../core/services/proactive_outbound_substrate.py#L101) |
 

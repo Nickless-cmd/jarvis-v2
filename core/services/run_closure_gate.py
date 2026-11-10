@@ -661,17 +661,38 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
     # dem er «tavs» ikke et meningsfuldt ord.
     output = ""
     _output_laest = False
+    _run_status = ""
+    _run_error = ""
     try:
         from core.runtime.db import connect
         with connect() as conn:
             row = conn.execute(
-                "SELECT text_preview FROM visible_runs WHERE run_id = ?",
+                "SELECT text_preview, status, error FROM visible_runs WHERE run_id = ?",
                 (run_id,),
             ).fetchone()
         output = (row[0] if row else "") or ""
+        _run_status = (row[1] if row else "") or ""
+        _run_error = (row[2] if row else "") or ""
         _output_laest = True
     except Exception:
         logger.warning("run_closure_gate: failed to read run output", exc_info=True)
+
+    # close_derive (10/11-2026): udled en NORMALISERET lukke-grund for kørslen.
+    # `visible_runs` har ingen lukke-grund som felt — den ligger som fri tekst i
+    # `error`, målt til 40+ distinkte strenge hvor samme årsag optræder i mange
+    # former («HTTP 429», «first-pass-provider-error: HTTP 429», «followup-round-7-
+    # provider-error: HTTP 429»). Uden dette lag kan «hvorfor stoppede kørslerne?»
+    # ikke besvares uden at regex-parre fri tekst, og optællingen bliver forkert.
+    # Defensiv som procedure_bank ovenfor: må ALDRIG påvirke closure-logikken.
+    try:
+        from core.services.close_derive import derive_close
+        _close = derive_close(_run_status, _run_error)
+        logger.info(
+            "run_closure_gate: close=%s actor=%s run=%s",
+            _close["kind"], _close["actor"], run_id[:12],
+        )
+    except Exception:
+        logger.debug("run_closure_gate: close_derive failed", exc_info=True)
 
     # `_output_laest` bevarer den gamle kontrakt: en FEJLET laesning maa ikke
     # ligne en tavs koersel. Kun en laest, tom tekst er «tavs».

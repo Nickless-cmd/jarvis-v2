@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18436 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18440 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -39,30 +39,30 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18436 functions/
 - [`core.services.06`](core.services.06.md) — `central_governance` … `central_projection_cache`
 - [`core.services.07`](core.services.07.md) — `central_prompt_composer` … `central_watch`
 - [`core.services.08`](core.services.08.md) — `central_white_rabbit` … `citation_markorer`
-- [`core.services.09`](core.services.09.md) — `claim_scanner` … `continuity`
-- [`core.services.10`](core.services.10.md) — `continuity_kernel` … `daemon_memory_safeguard`
-- [`core.services.11`](core.services.11.md) — `daemon_state_surface` … `diary_synthesis_signal_tracking`
-- [`core.services.12`](core.services.12.md) — `dictation` … `emergent_signal_tracking`
-- [`core.services.13`](core.services.13.md) — `emitted_prefix` … `finalize_tool_policy`
-- [`core.services.14`](core.services.14.md) — `finitude_runtime` … `google_connector`
-- [`core.services.15`](core.services.15.md) — `google_login` … `idle_consolidation`
-- [`core.services.16`](core.services.16.md) — `idle_thinking` … `jobs_engine`
-- [`core.services.17`](core.services.17.md) — `kerne_curator` … `memory_consolidation_nudge`
-- [`core.services.18`](core.services.18.md) — `memory_decay_daemon` … `mood_regulator_subscriber`
-- [`core.services.19`](core.services.19.md) — `mortality_awareness` … `paid_lane_guard`
-- [`core.services.20`](core.services.20.md) — `paradox_tracker` … `proactive_outbound_substrate`
-- [`core.services.21`](core.services.21.md) — `proactive_question_gate_tracking` … `prose_tool_calls`
-- [`core.services.22`](core.services.22.md) — `provider_autodiscovery` … `relation_dynamics`
-- [`core.services.23`](core.services.23.md) — `relation_map` … `routine_types`
-- [`core.services.24`](core.services.24.md) — `rule_definitions` … `scheduled_task_runner`
-- [`core.services.25`](core.services.25.md) — `scheduled_tasks` … `selvmodel`
-- [`core.services.26`](core.services.26.md) — `selvmodel_kobling` … `signal_network_visualizer`
-- [`core.services.27`](core.services.27.md) — `signal_noise_guard` … `surprise_daemon`
-- [`core.services.28`](core.services.28.md) — `surprise_detector` … `tool_failure_surface`
-- [`core.services.29`](core.services.29.md) — `tool_hunt_nudge` … `value_formation`
-- [`core.services.30`](core.services.30.md) — `verification_gate` … `visible_run_segment_settlement`
-- [`core.services.31`](core.services.31.md) — `visible_run_steers` … `workspace_crypto`
-- [`core.services.32`](core.services.32.md) — `workspace_trust` … `world_model_signal_tracking`
+- [`core.services.09`](core.services.09.md) — `claim_scanner` … `context_window_manager`
+- [`core.services.10`](core.services.10.md) — `continuity` … `daemon_manager`
+- [`core.services.11`](core.services.11.md) — `daemon_memory_safeguard` … `diagnosis_gate`
+- [`core.services.12`](core.services.12.md) — `diary_synthesis_signal_tracking` … `emergent_goals`
+- [`core.services.13`](core.services.13.md) — `emergent_signal_tracking` … `file_watch_daemon`
+- [`core.services.14`](core.services.14.md) — `finalize_tool_policy` … `good_enough_gate`
+- [`core.services.15`](core.services.15.md) — `google_connector` … `identity_sketch`
+- [`core.services.16`](core.services.16.md) — `idle_consolidation` … `jarvisx_bridge`
+- [`core.services.17`](core.services.17.md) — `jobs_engine` … `memory_breathing`
+- [`core.services.18`](core.services.18.md) — `memory_consolidation_nudge` … `mood_oscillator`
+- [`core.services.19`](core.services.19.md) — `mood_regulator_subscriber` … `override_store`
+- [`core.services.20`](core.services.20.md) — `paid_lane_guard` … `proactive_loop_lifecycle_tracking`
+- [`core.services.21`](core.services.21.md) — `proactive_outbound_substrate` … `prosa_struktur_guard`
+- [`core.services.22`](core.services.22.md) — `prose_tool_calls` … `relation_creative_state_surface`
+- [`core.services.23`](core.services.23.md) — `relation_dynamics` … `routine_service`
+- [`core.services.24`](core.services.24.md) — `routine_types` … `scheduled_job_windows`
+- [`core.services.25`](core.services.25.md) — `scheduled_task_runner` … `selfhood_proposal_tracking`
+- [`core.services.26`](core.services.26.md) — `selvmodel` … `signal_delta_trigger`
+- [`core.services.27`](core.services.27.md) — `signal_network_visualizer` … `suggest_standing_guard`
+- [`core.services.28`](core.services.28.md) — `surprise_daemon` … `tool_execution_trace`
+- [`core.services.29`](core.services.29.md) — `tool_failure_surface` … `valence_trajectory`
+- [`core.services.30`](core.services.30.md) — `value_formation` … `visible_run_segment_exit`
+- [`core.services.31`](core.services.31.md) — `visible_run_segment_settlement` … `witness_signal_tracking`
+- [`core.services.32`](core.services.32.md) — `workspace_crypto` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

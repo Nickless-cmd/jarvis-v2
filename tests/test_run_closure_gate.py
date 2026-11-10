@@ -767,7 +767,13 @@ class TestRecurringTilIndbakken:
             def execute(self, *_a, **_kw):
                 class _R:
                     def fetchone(self):
-                        return (tekst,)
+                        # Producentens VIRKELIGE returform: gaten læser
+                        # `SELECT text_preview, status, error` (10/11-2026).
+                        # Stod her som `(tekst,)` — ét element — kastede
+                        # `row[1]` IndexError, som gaten sluger med en
+                        # warning. Testen var derfor tavst blind for
+                        # silent-run-grenen mens den så grøn ud.
+                        return (tekst, "completed", None)
                 return _R()
 
             def __enter__(self):
@@ -821,6 +827,59 @@ class TestRecurringTilIndbakken:
         assert [k for k in kald if k["kildetype"] == "run_closure"] == [], (
             f"en fejlet laesning maa ikke ligne tavshed: {kald}"
         )
+
+    def test_close_derive_kaldes_med_status_og_error(self, monkeypatch):
+        """Bevis for at derive-laget ikke er teater.
+
+        `close_derive` findes fordi `visible_runs` ikke har en lukke-grund som
+        felt. Bliver den aldrig kaldt, er den en fil ingen læser — derfor denne
+        test: den fanger kaldet og kræver de to felter der bar beslutningen.
+        """
+        kald = []
+        g = self._stub(monkeypatch, kald, global_origin="", flag=True)
+        monkeypatch.setattr(g, "_pop_tool_calls", lambda _r: [])
+        self._stub_db(monkeypatch, "et svar")
+
+        set_kald = []
+        import core.services.close_derive as _cd
+        monkeypatch.setattr(
+            _cd, "derive_close",
+            lambda status, error, **kw: (
+                set_kald.append((status, error))
+                or {"kind": "completed", "actor": "none", "clean": True, "raw": ""}
+            ),
+        )
+
+        g._on_run_completed(self._payload(
+            focus="Runtime-inspektion", origin="recurring"))
+
+        # Gaten normaliserer en NULL-error til tom streng foer kaldet, saa
+        # derive faar en ensartet type. Det er kontrakten der testes her.
+        assert set_kald == [("completed", "")], (
+            f"derive skal kaldes med raa status+error fra run-raekken: {set_kald}"
+        )
+
+    def test_close_derive_der_kaster_vaelter_ikke_afslutningen(self, monkeypatch):
+        """Defensiv som procedure_bank: en fejl i derive maa ikke miste referatet."""
+        kald = []
+        g = self._stub(monkeypatch, kald, global_origin="", flag=True)
+        monkeypatch.setattr(g, "_pop_tool_calls", lambda _r: [])
+        self._stub_db(monkeypatch, "Inspektionen er kørt.")
+
+        import core.services.close_derive as _cd
+
+        def _boom(*_a, **_kw):
+            raise RuntimeError("derive eksploderede")
+
+        monkeypatch.setattr(_cd, "derive_close", _boom)
+
+        g._on_run_completed(self._payload(
+            focus="Runtime-inspektion: kig i ~/.jarvis-v2",
+            origin="recurring"))
+
+        poster = self._poster(kald)
+        assert len(poster) == 1, f"referatet skal stadig sendes: {kald}"
+        assert "Inspektionen er kørt" in poster[0]["beskrivelse"]
 
 
 class TestAutonomRapportTilIndbakken:

@@ -43,6 +43,16 @@ _Clarification classifier — score user-message ambiguity._
 | function | `build_clarification_classifier_surface` | `()` | Mission Control surface — does not call the classifier (would need a | [src](../../../core/services/clarification_classifier.py#L116) |
 | function | `_emit_classifier_event` | `(verdict, score)` | — | [src](../../../core/services/clarification_classifier.py#L128) |
 
+## `core/services/close_derive.py`
+_Udled en normaliseret lukke-grund for en kørsel._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `derive_close` | `(status, error, *, error_kind=…)` | Udled lukke-grunden for én kørsel. | [src](../../../core/services/close_derive.py#L136) |
+| function | `_svar` | `(kind, aktor, raw, *, clean)` | — | [src](../../../core/services/close_derive.py#L178) |
+| function | `derive_for_run` | `(run)` | Convenience: udled fra en række/dict der ligner `visible_runs`. | [src](../../../core/services/close_derive.py#L187) |
+| function | `summarize` | `(runs)` | Tæl kørsler pr. lukke-type. | [src](../../../core/services/close_derive.py#L196) |
+
 ## `core/services/cluster_daemon.py`
 _Cluster-daemon primitive — one Central-governed daemon per FAMILY of nerves._
 
@@ -694,24 +704,4 @@ _Context window manager — strategies for keeping prompts within budget._
 | function | `context_window_section` | `()` | Awareness-section warning when degradation detected. | [src](../../../core/services/context_window_manager.py#L253) |
 | function | `_exec_context_pressure` | `(args)` | — | [src](../../../core/services/context_window_manager.py#L269) |
 | function | `_exec_manage_context_window` | `(args)` | Apply a chosen context-management strategy. | [src](../../../core/services/context_window_manager.py#L277) |
-
-## `core/services/continuity.py`
-_Continuity Kernel — state capsule + live update + graded wake-up._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/continuity.py#L111) |
-| function | `_ensure_dir` | `()` | — | [src](../../../core/services/continuity.py#L115) |
-| function | `_truncate_capsule` | `(data)` | Ensure capsule stays under _MAX_CAPSULE_SIZE_BYTES. | [src](../../../core/services/continuity.py#L119) |
-| function | `capture_state` | `(*, mood=…, attention=…, relation=…, somatic=…, goals=…, recent_activity=…, workspace_id=…, session_id=…)` | Build a complete state capsule dict from partial inputs. | [src](../../../core/services/continuity.py#L153) |
-| function | `write_capsule` | `(capsule)` | Write capsule to disk with rotation. | [src](../../../core/services/continuity.py#L269) |
-| function | `write_handover` | `(title, text)` | Skriv MIN egen overdragelse til den næste session. | [src](../../../core/services/continuity.py#L287) |
-| function | `read_handover` | `()` | Læs den overdragelse der står i capsulen lige nu (eller None). | [src](../../../core/services/continuity.py#L344) |
-| function | `sync_capsule_mood` | `()` | Sync capsule mood from mood_oscillator's live state. | [src](../../../core/services/continuity.py#L355) |
-| function | `read_capsule` | `()` | Read the latest capsule from disk. | [src](../../../core/services/continuity.py#L405) |
-| function | `get_wake_tier` | `(hours_since_last)` | Determine wake tier based on time since last session. | [src](../../../core/services/continuity.py#L423) |
-| function | `build_conversation_continuity` | `(*, limit=…)` | Build a 'hvad talte vi om' block from recent session data. | [src](../../../core/services/continuity.py#L435) |
-| function | `_format_hours_gap` | `(hours_since)` | Format a duration in hours as a short Danish string. | [src](../../../core/services/continuity.py#L529) |
-| function | `build_wake_up_block` | `(capsule=…)` | Build the wake-up block for prompt injection. | [src](../../../core/services/continuity.py#L544) |
-| function | `live_update_after_turn` | `(*, mood=…, attention=…, relation=…, somatic=…, goals=…, recent_activity=…, session_id=…)` | Call this after every visible turn to persist the state capsule. | [src](../../../core/services/continuity.py#L686) |
 

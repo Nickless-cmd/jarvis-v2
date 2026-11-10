@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/idle_consolidation.py`
+_Bounded sleep / idle consolidation light._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `run_idle_consolidation` | `(*, trigger=…, last_visible_at=…)` | Run one bounded idle consolidation pass. | [src](../../../core/services/idle_consolidation.py#L25) |
+| function | `build_idle_consolidation_from_inputs` | `(*, private_brain_context, witness_surface, emergent_surface, embodied_state, loop_runtime, inner_voice_state, now=…)` | Build a bounded consolidation plan from runtime truth inputs. | [src](../../../core/services/idle_consolidation.py#L183) |
+| function | `build_idle_consolidation_surface` | `()` | — | [src](../../../core/services/idle_consolidation.py#L312) |
+| function | `_load_runtime_inputs` | `()` | — | [src](../../../core/services/idle_consolidation.py#L342) |
+| function | `_adjacent_producer_block` | `(*, now, trigger)` | — | [src](../../../core/services/idle_consolidation.py#L368) |
+| function | `_latest_sleep_consolidation_record` | `()` | — | [src](../../../core/services/idle_consolidation.py#L393) |
+| function | `_classify_consolidation_state` | `(*, witness_surface, emergent_surface, embodied_state, loop_runtime)` | — | [src](../../../core/services/idle_consolidation.py#L400) |
+| function | `_choose_focus` | `(*, witness_summary, emergent_summary, loop_summary, embodied_state)` | — | [src](../../../core/services/idle_consolidation.py#L419) |
+| function | `_build_summary` | `(*, consolidation_state, source_inputs, loop_summary, embodied_state)` | — | [src](../../../core/services/idle_consolidation.py#L435) |
+| function | `_build_detail` | `(*, brain_summary, source_inputs, loop_summary, embodied_state)` | — | [src](../../../core/services/idle_consolidation.py#L451) |
+| function | `_is_near_duplicate` | `(summary, recent_records)` | — | [src](../../../core/services/idle_consolidation.py#L471) |
+| function | `_blocked` | `(*, reason, cadence_state, trigger, now, reference)` | — | [src](../../../core/services/idle_consolidation.py#L487) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/idle_consolidation.py#L512) |
+
 ## `core/services/idle_thinking.py`
 _Idle Thinking — Jarvis tænker frit når han er alene._
 
@@ -767,29 +786,4 @@ _JarvisX tool-bridge — bidirectional dispatch over WebSocket._
 | method | `BridgeRegistry._forward_cross_process` | `(self, *, user_id, tool, args, timeout_s, target_port=…, on_output=…)` | HTTP-forward dispatch til den proces der holder broen (dens interne endpoint). | [src](../../../core/services/jarvisx_bridge.py#L854) |
 | function | `set_main_loop` | `(loop)` | Register the main uvicorn loop. Called from app startup. | [src](../../../core/services/jarvisx_bridge.py#L979) |
 | function | `get_main_loop` | `()` | Return the registered main loop, or None if not set yet. | [src](../../../core/services/jarvisx_bridge.py#L985) |
-
-## `core/services/jobs_engine.py`
-_Jobs Engine — proper async job queue with provider selection and cost tracking._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_prune_completed_jobs` | `(items)` | — | [src](../../../core/services/jobs_engine.py#L54) |
-| class | `JobResult` | `` | — | [src](../../../core/services/jobs_engine.py#L81) |
-| function | `_storage_path` | `()` | — | [src](../../../core/services/jobs_engine.py#L95) |
-| function | `_load` | `()` | — | [src](../../../core/services/jobs_engine.py#L99) |
-| function | `_save` | `(items)` | — | [src](../../../core/services/jobs_engine.py#L129) |
-| function | `_med_laas` | `(*, timeout_s=…)` | Serialiser laes-aendr-skriv paa koe-filen — OGSAA paa tvaers af processer. | [src](../../../core/services/jobs_engine.py#L155) |
-| function | `_opdater_job` | `(job_id, **felter)` | Skriv felter paa ÉT job, med en frisk laesning under laas. | [src](../../../core/services/jobs_engine.py#L212) |
-| function | `register_handler` | `(job_type, handler)` | Register a handler function for a given job_type. | [src](../../../core/services/jobs_engine.py#L240) |
-| function | `enqueue_job` | `(*, job_type, payload=…, allowed_providers=…, prefer_free_first=…, max_requests=…, max_tokens=…, max_usd=…, window_key=…, scheduled_job_id=…, priority=…)` | Create a new pending job. Returns job_id. | [src](../../../core/services/jobs_engine.py#L248) |
-| function | `_enqueue_ulaast` | `(*, job_type, payload=…, allowed_providers=…, prefer_free_first=…, max_requests=…, max_tokens=…, max_usd=…, window_key=…, scheduled_job_id=…, priority=…)` | Selve indsaettelsen. Kaldes KUN med koe-laasen holdt. | [src](../../../core/services/jobs_engine.py#L272) |
-| function | `select_provider` | `(allowed, *, prefer_free_first=…)` | Pick the first usable provider from the list. | [src](../../../core/services/jobs_engine.py#L327) |
-| function | `_pop_next_pending` | `(items)` | — | [src](../../../core/services/jobs_engine.py#L351) |
-| function | `run_next_job` | `()` | Run the highest-priority pending job via its registered handler. | [src](../../../core/services/jobs_engine.py#L359) |
-| function | `cancel_job` | `(job_id)` | Marker jobbet afbrudt. Returnerer om afbrydelsen blev REGISTRERET. | [src](../../../core/services/jobs_engine.py#L456) |
-| function | `sweep_zombie_jobs` | `(stale_seconds=…)` | Marker 'running' jobs aeldre end stale_seconds som `lost`. | [src](../../../core/services/jobs_engine.py#L478) |
-| function | `_fej_ulaast` | `(stale_seconds)` | — | [src](../../../core/services/jobs_engine.py#L500) |
-| function | `all_jobs` | `()` | ALLE jobs — ingen hale klippet af. | [src](../../../core/services/jobs_engine.py#L534) |
-| function | `list_jobs` | `(*, status=…, limit=…)` | — | [src](../../../core/services/jobs_engine.py#L551) |
-| function | `build_jobs_engine_surface` | `()` | — | [src](../../../core/services/jobs_engine.py#L558) |
 

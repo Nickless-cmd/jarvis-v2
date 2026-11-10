@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/jobs_engine.py`
+_Jobs Engine — proper async job queue with provider selection and cost tracking._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_prune_completed_jobs` | `(items)` | — | [src](../../../core/services/jobs_engine.py#L54) |
+| class | `JobResult` | `` | — | [src](../../../core/services/jobs_engine.py#L81) |
+| function | `_storage_path` | `()` | — | [src](../../../core/services/jobs_engine.py#L95) |
+| function | `_load` | `()` | — | [src](../../../core/services/jobs_engine.py#L99) |
+| function | `_save` | `(items)` | — | [src](../../../core/services/jobs_engine.py#L129) |
+| function | `_med_laas` | `(*, timeout_s=…)` | Serialiser laes-aendr-skriv paa koe-filen — OGSAA paa tvaers af processer. | [src](../../../core/services/jobs_engine.py#L155) |
+| function | `_opdater_job` | `(job_id, **felter)` | Skriv felter paa ÉT job, med en frisk laesning under laas. | [src](../../../core/services/jobs_engine.py#L212) |
+| function | `register_handler` | `(job_type, handler)` | Register a handler function for a given job_type. | [src](../../../core/services/jobs_engine.py#L240) |
+| function | `enqueue_job` | `(*, job_type, payload=…, allowed_providers=…, prefer_free_first=…, max_requests=…, max_tokens=…, max_usd=…, window_key=…, scheduled_job_id=…, priority=…)` | Create a new pending job. Returns job_id. | [src](../../../core/services/jobs_engine.py#L248) |
+| function | `_enqueue_ulaast` | `(*, job_type, payload=…, allowed_providers=…, prefer_free_first=…, max_requests=…, max_tokens=…, max_usd=…, window_key=…, scheduled_job_id=…, priority=…)` | Selve indsaettelsen. Kaldes KUN med koe-laasen holdt. | [src](../../../core/services/jobs_engine.py#L272) |
+| function | `select_provider` | `(allowed, *, prefer_free_first=…)` | Pick the first usable provider from the list. | [src](../../../core/services/jobs_engine.py#L327) |
+| function | `_pop_next_pending` | `(items)` | — | [src](../../../core/services/jobs_engine.py#L351) |
+| function | `run_next_job` | `()` | Run the highest-priority pending job via its registered handler. | [src](../../../core/services/jobs_engine.py#L359) |
+| function | `cancel_job` | `(job_id)` | Marker jobbet afbrudt. Returnerer om afbrydelsen blev REGISTRERET. | [src](../../../core/services/jobs_engine.py#L456) |
+| function | `sweep_zombie_jobs` | `(stale_seconds=…)` | Marker 'running' jobs aeldre end stale_seconds som `lost`. | [src](../../../core/services/jobs_engine.py#L478) |
+| function | `_fej_ulaast` | `(stale_seconds)` | — | [src](../../../core/services/jobs_engine.py#L500) |
+| function | `all_jobs` | `()` | ALLE jobs — ingen hale klippet af. | [src](../../../core/services/jobs_engine.py#L534) |
+| function | `list_jobs` | `(*, status=…, limit=…)` | — | [src](../../../core/services/jobs_engine.py#L551) |
+| function | `build_jobs_engine_surface` | `()` | — | [src](../../../core/services/jobs_engine.py#L558) |
+
 ## `core/services/kerne_curator.py`
 _Kerne-kurator — holder USER.md `## Kerne` kort og levende (blok A, 2026-09-04)._
 
@@ -600,11 +625,4 @@ _Memory Breathing — use-strengthens, disuse-fades._
 | function | `recent_access_stats` | `(*, limit=…)` | Return stats about recent access pattern. | [src](../../../core/services/memory_breathing.py#L97) |
 | function | `build_memory_breathing_surface` | `()` | — | [src](../../../core/services/memory_breathing.py#L114) |
 | function | `reset_memory_breathing` | `()` | Reset access log (for testing). | [src](../../../core/services/memory_breathing.py#L130) |
-
-## `core/services/memory_consolidation_nudge.py`
-_Memory consolidation nudge — unconditional prompt section._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `memory_consolidation_nudge_section` | `()` | Return a short prompt section that fires every turn unconditionally. | [src](../../../core/services/memory_consolidation_nudge.py#L13) |
 

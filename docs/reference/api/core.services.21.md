@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/proactive_outbound_substrate.py`
+_Proactive-outbound substrate — what Jarvis just said proactively._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_summarize_outbound_payload` | `(kind, payload)` | Extract the actual question/message text from a delivered event. | [src](../../../core/services/proactive_outbound_substrate.py#L36) |
+| function | `compute_proactive_outbound_substrate` | `(*, window_min=…, max_events=…)` | Return raw proactive-outbound events as substrate strings. | [src](../../../core/services/proactive_outbound_substrate.py#L49) |
+| function | `build_proactive_outbound_section` | `()` | Prompt section — proactive messages Jarvis sent in last 30 min. | [src](../../../core/services/proactive_outbound_substrate.py#L101) |
+
 ## `core/services/proactive_question_gate_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -626,12 +635,4 @@ _Mekanisk kontrol af fire former for formfejl i et synligt svar._
 | function | `fejl_i_prosa` | `(text)` | Returnér læsbare fejl for formfejl — tom liste = intet at rette. | [src](../../../core/services/prosa_struktur_guard.py#L520) |
 | function | `_tabel_blokke` | `(text)` | Sammenhængende linjer der alle starter med ``|``. | [src](../../../core/services/prosa_struktur_guard.py#L563) |
 | function | `tabel_uden_flade` | `(text)` | Én linje når svaret bærer en sammenligningstabel uden en flade. | [src](../../../core/services/prosa_struktur_guard.py#L579) |
-
-## `core/services/prose_tool_calls.py`
-_Parser for prosa-emitterede tool-kald (cluster: tool-leak-fix 2026-06-21)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_match_json_object` | `(s, start)` | s[start] skal være '{'. Returnér (objekt-streng, slut-index) via brace-matching | [src](../../../core/services/prose_tool_calls.py#L26) |
-| function | `extract_prose_tool_calls` | `(text, valid_tool_names)` | Find `[navn]: {json}`-prosa-kald hvor navn er et kendt tool og args er et | [src](../../../core/services/prose_tool_calls.py#L55) |
 

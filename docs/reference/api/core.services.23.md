@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/relation_dynamics.py`
+_Relation Dynamics — pattern-recognition on people, not just facts._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/relation_dynamics.py#L32) |
+| function | `_load` | `()` | — | [src](../../../core/services/relation_dynamics.py#L37) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/relation_dynamics.py#L51) |
+| function | `_recent_runs` | `(days=…, limit=…)` | — | [src](../../../core/services/relation_dynamics.py#L63) |
+| function | `_time_patterns` | `(runs)` | — | [src](../../../core/services/relation_dynamics.py#L84) |
+| function | `_topic_patterns` | `(runs)` | — | [src](../../../core/services/relation_dynamics.py#L120) |
+| function | `_message_length_stats` | `(runs)` | — | [src](../../../core/services/relation_dynamics.py#L130) |
+| function | `_engagement_trend` | `(runs)` | Compare last-week run count vs previous-week. | [src](../../../core/services/relation_dynamics.py#L144) |
+| function | `_warmth_from_sources` | `()` | Pull trust-trajectory tail from relationship_texture as warmth proxy. | [src](../../../core/services/relation_dynamics.py#L174) |
+| function | `_vibe_from_recent` | `(runs)` | — | [src](../../../core/services/relation_dynamics.py#L189) |
+| function | `_recompute` | `()` | — | [src](../../../core/services/relation_dynamics.py#L206) |
+| function | `get_relation_dynamics` | `()` | — | [src](../../../core/services/relation_dynamics.py#L223) |
+| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/relation_dynamics.py#L236) |
+| function | `build_relation_dynamics_surface` | `()` | — | [src](../../../core/services/relation_dynamics.py#L244) |
+| function | `_surface_summary` | `(r)` | — | [src](../../../core/services/relation_dynamics.py#L265) |
+| function | `build_relation_dynamics_prompt_section` | `()` | Surface only when trend is noteworthy (rising, cooling, dormant). | [src](../../../core/services/relation_dynamics.py#L286) |
+
 ## `core/services/relation_map.py`
 _Relation map — multi-tenant user theory of mind._
 
@@ -610,23 +632,4 @@ _Authorized lifecycle service for versioned Routine definitions and runs._
 | method | `RoutineService.set_inbox_defaults` | `(self, policy, *args)` | — | [src](../../../core/services/routine_service.py#L495) |
 | method | `RoutineService.get_redacted_diagnostic` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L505) |
 | method | `RoutineService.archive_stopped_before` | `(self, *, now=…)` | — | [src](../../../core/services/routine_service.py#L528) |
-
-## `core/services/routine_types.py`
-_Value objects shared by the Routine domain._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `RoutineStatus` | `` | — | [src](../../../core/services/routine_types.py#L14) |
-| class | `RunStatus` | `` | — | [src](../../../core/services/routine_types.py#L23) |
-| class | `AccessScope` | `` | — | [src](../../../core/services/routine_types.py#L33) |
-| class | `RoutineExecutionMode` | `` | Hvor en rutine UDFØRES — valgt ved oprettelsen, ikke gættet bagefter. | [src](../../../core/services/routine_types.py#L38) |
-| class | `RoutineImportance` | `` | Hvor vigtigt et rutine-resultat er — styrer om indbakken fremhæver det. | [src](../../../core/services/routine_types.py#L61) |
-| class | `RoutinePrincipal` | `` | — | [src](../../../core/services/routine_types.py#L76) |
-| method | `RoutinePrincipal.user_id` | `(self)` | — | [src](../../../core/services/routine_types.py#L82) |
-| class | `RoutineExecutionContext` | `` | — | [src](../../../core/services/routine_types.py#L87) |
-| class | `RoutineClassification` | `` | Den udledte klassifikation — gemt i ``delivery_policy['classification']``. | [src](../../../core/services/routine_types.py#L108) |
-| method | `RoutineClassification.as_dict` | `(self)` | — | [src](../../../core/services/routine_types.py#L124) |
-| class | `RoutineCreate` | `` | — | [src](../../../core/services/routine_types.py#L136) |
-| class | `RoutinePatch` | `` | — | [src](../../../core/services/routine_types.py#L161) |
-| method | `RoutinePatch.changes` | `(self)` | — | [src](../../../core/services/routine_types.py#L177) |
 

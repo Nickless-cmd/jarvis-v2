@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/google_connector.py`
+_Google-pakke-connector — Calendar/Drive/Docs/Sheets/Slides (læse-tools)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_get` | `(user_id, url, params, err_prefix)` | Fælles GET med brugerens Google-token. → {status, data} | {status:error,...}. | [src](../../../core/services/google_connector.py#L249) |
+| function | `_send` | `(user_id, method, url, *, json_body=…, params=…, err_prefix=…)` | Skrive-kald (POST/PUT) med brugerens Google-token. Bruges af create/edit-tools. | [src](../../../core/services/google_connector.py#L269) |
+| function | `_clamp` | `(n, lo, hi, default)` | — | [src](../../../core/services/google_connector.py#L290) |
+| function | `list_events` | `(user_id, *, max_results=…)` | — | [src](../../../core/services/google_connector.py#L297) |
+| function | `drive_search` | `(user_id, *, query=…, max_results=…)` | — | [src](../../../core/services/google_connector.py#L318) |
+| function | `drive_download` | `(user_id, file_id, *, export_as=…)` | Hent en Drive-fil ned til brugerens EGEN filmappe og returnér et link. | [src](../../../core/services/google_connector.py#L354) |
+| function | `_doc_text` | `(content)` | — | [src](../../../core/services/google_connector.py#L457) |
+| function | `docs_read` | `(user_id, document_id)` | — | [src](../../../core/services/google_connector.py#L470) |
+| function | `sheets_read` | `(user_id, spreadsheet_id, cell_range)` | — | [src](../../../core/services/google_connector.py#L481) |
+| function | `_slides_text` | `(pres)` | — | [src](../../../core/services/google_connector.py#L495) |
+| function | `slides_read` | `(user_id, presentation_id)` | — | [src](../../../core/services/google_connector.py#L509) |
+| function | `create_event` | `(user_id, summary, start, *, end=…, description=…, location=…)` | Opret en begivenhed i brugerens primære kalender. start/end = ISO-8601. | [src](../../../core/services/google_connector.py#L523) |
+| function | `append_doc` | `(user_id, document_id, text)` | Tilføj tekst i slutningen af et Google Docs-dokument. | [src](../../../core/services/google_connector.py#L553) |
+| function | `create_doc` | `(user_id, title, *, text=…)` | Opret et nyt Google Docs-dokument. `text` indsættes som første indhold. | [src](../../../core/services/google_connector.py#L568) |
+| function | `create_sheet` | `(user_id, title, *, values=…)` | Opret et nyt Google Sheets-regneark. `values` skrives i første ark. | [src](../../../core/services/google_connector.py#L589) |
+| function | `create_slides` | `(user_id, title)` | Opret en ny Google Slides-præsentation (tom, med titel). | [src](../../../core/services/google_connector.py#L608) |
+| function | `write_sheet` | `(user_id, spreadsheet_id, cell_range, values)` | Skriv celler i et Google Sheets-regneark (overskriver range). values = liste af rækker. | [src](../../../core/services/google_connector.py#L621) |
+
 ## `core/services/google_login.py`
 _Google app-login (§12) — kort-levende login-resultat-store + orkestrering._
 
@@ -578,23 +601,4 @@ _Persistent Identity Sketch — dynamic "who am I right now" document._
 | function | `_is_stale` | `(updated_at, *, ttl_seconds=…)` | Check if sketch is older than ttl_seconds (default 6 hours). | [src](../../../core/services/identity_sketch.py#L276) |
 | function | `tick_identity_sketch_daemon` | `()` | Heartbeat daemon tick — refresh the sketch when stale (>6h). | [src](../../../core/services/identity_sketch.py#L295) |
 | function | `_now_iso` | `()` | — | [src](../../../core/services/identity_sketch.py#L340) |
-
-## `core/services/idle_consolidation.py`
-_Bounded sleep / idle consolidation light._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `run_idle_consolidation` | `(*, trigger=…, last_visible_at=…)` | Run one bounded idle consolidation pass. | [src](../../../core/services/idle_consolidation.py#L25) |
-| function | `build_idle_consolidation_from_inputs` | `(*, private_brain_context, witness_surface, emergent_surface, embodied_state, loop_runtime, inner_voice_state, now=…)` | Build a bounded consolidation plan from runtime truth inputs. | [src](../../../core/services/idle_consolidation.py#L183) |
-| function | `build_idle_consolidation_surface` | `()` | — | [src](../../../core/services/idle_consolidation.py#L312) |
-| function | `_load_runtime_inputs` | `()` | — | [src](../../../core/services/idle_consolidation.py#L342) |
-| function | `_adjacent_producer_block` | `(*, now, trigger)` | — | [src](../../../core/services/idle_consolidation.py#L368) |
-| function | `_latest_sleep_consolidation_record` | `()` | — | [src](../../../core/services/idle_consolidation.py#L393) |
-| function | `_classify_consolidation_state` | `(*, witness_surface, emergent_surface, embodied_state, loop_runtime)` | — | [src](../../../core/services/idle_consolidation.py#L400) |
-| function | `_choose_focus` | `(*, witness_summary, emergent_summary, loop_summary, embodied_state)` | — | [src](../../../core/services/idle_consolidation.py#L419) |
-| function | `_build_summary` | `(*, consolidation_state, source_inputs, loop_summary, embodied_state)` | — | [src](../../../core/services/idle_consolidation.py#L435) |
-| function | `_build_detail` | `(*, brain_summary, source_inputs, loop_summary, embodied_state)` | — | [src](../../../core/services/idle_consolidation.py#L451) |
-| function | `_is_near_duplicate` | `(summary, recent_records)` | — | [src](../../../core/services/idle_consolidation.py#L471) |
-| function | `_blocked` | `(*, reason, cadence_state, trigger, now, reference)` | — | [src](../../../core/services/idle_consolidation.py#L487) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/idle_consolidation.py#L512) |
 

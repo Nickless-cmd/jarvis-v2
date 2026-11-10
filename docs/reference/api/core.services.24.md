@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/routine_types.py`
+_Value objects shared by the Routine domain._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RoutineStatus` | `` | — | [src](../../../core/services/routine_types.py#L14) |
+| class | `RunStatus` | `` | — | [src](../../../core/services/routine_types.py#L23) |
+| class | `AccessScope` | `` | — | [src](../../../core/services/routine_types.py#L33) |
+| class | `RoutineExecutionMode` | `` | Hvor en rutine UDFØRES — valgt ved oprettelsen, ikke gættet bagefter. | [src](../../../core/services/routine_types.py#L38) |
+| class | `RoutineImportance` | `` | Hvor vigtigt et rutine-resultat er — styrer om indbakken fremhæver det. | [src](../../../core/services/routine_types.py#L61) |
+| class | `RoutinePrincipal` | `` | — | [src](../../../core/services/routine_types.py#L76) |
+| method | `RoutinePrincipal.user_id` | `(self)` | — | [src](../../../core/services/routine_types.py#L82) |
+| class | `RoutineExecutionContext` | `` | — | [src](../../../core/services/routine_types.py#L87) |
+| class | `RoutineClassification` | `` | Den udledte klassifikation — gemt i ``delivery_policy['classification']``. | [src](../../../core/services/routine_types.py#L108) |
+| method | `RoutineClassification.as_dict` | `(self)` | — | [src](../../../core/services/routine_types.py#L124) |
+| class | `RoutineCreate` | `` | — | [src](../../../core/services/routine_types.py#L136) |
+| class | `RoutinePatch` | `` | — | [src](../../../core/services/routine_types.py#L161) |
+| method | `RoutinePatch.changes` | `(self)` | — | [src](../../../core/services/routine_types.py#L177) |
+
 ## `core/services/rule_definitions.py`
 _Rule definitions — production rules feeding the rule_engine._
 
@@ -78,11 +97,11 @@ _Run-closure gate — fang tomme replies og unstaged changes efter agentic runs.
 | function | `_try_auto_commit` | `(touched_paths, *, run_id, session_id, focus)` | Commit filer rørt under et autonomt run. Return short-hash eller None. | [src](../../../core/services/run_closure_gate.py#L320) |
 | function | `_registrer_i_indbakken` | `(*, kildetype, kilde_id, beskrivelse, run_id=…, session_id=…, kilde_ejer=…)` | Læg gatens besked i INDBAKKEN i stedet for at sende den til Discord. | [src](../../../core/services/run_closure_gate.py#L424) |
 | function | `_on_run_completed` | `(payload)` | Handle a runtime.autonomous_run_completed event. | [src](../../../core/services/run_closure_gate.py#L477) |
-| function | `_on_run_started` | `(payload)` | Handle runtime.autonomous_run_started — snapshot git state. | [src](../../../core/services/run_closure_gate.py#L864) |
-| function | `_on_tool_used` | `(payload)` | Track tool calls so we can detect silent runs. | [src](../../../core/services/run_closure_gate.py#L879) |
-| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/run_closure_gate.py#L895) |
-| function | `start_run_closure_gate` | `()` | Start the eventbus subscriber thread. Safe to call multiple times. | [src](../../../core/services/run_closure_gate.py#L923) |
-| function | `stop_run_closure_gate` | `()` | — | [src](../../../core/services/run_closure_gate.py#L948) |
+| function | `_on_run_started` | `(payload)` | Handle runtime.autonomous_run_started — snapshot git state. | [src](../../../core/services/run_closure_gate.py#L885) |
+| function | `_on_tool_used` | `(payload)` | Track tool calls so we can detect silent runs. | [src](../../../core/services/run_closure_gate.py#L900) |
+| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/run_closure_gate.py#L916) |
+| function | `start_run_closure_gate` | `()` | Start the eventbus subscriber thread. Safe to call multiple times. | [src](../../../core/services/run_closure_gate.py#L944) |
+| function | `stop_run_closure_gate` | `()` | — | [src](../../../core/services/run_closure_gate.py#L969) |
 
 ## `core/services/run_event_log.py`
 _In-memory, append-only, offset-indekseret event-log PR. RUN._
@@ -750,11 +769,4 @@ _Scheduled Job Windows — time-window batch scheduling with provider preference
 | function | `tick` | `(_seconds=…)` | Heartbeat hook — evaluates windows, no-op when not inside any. | [src](../../../core/services/scheduled_job_windows.py#L198) |
 | function | `build_scheduled_job_windows_surface` | `()` | — | [src](../../../core/services/scheduled_job_windows.py#L204) |
 | function | `_surface_summary` | `(windows, active_now, history)` | — | [src](../../../core/services/scheduled_job_windows.py#L228) |
-
-## `core/services/scheduled_task_runner.py`
-_Scheduled task dispatcher — binds workspace_context before firing._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `fire_scheduled_task` | `(task, *, runner)` | Bind workspace_context to task's scheduled_for_user_id and run. | [src](../../../core/services/scheduled_task_runner.py#L20) |
 

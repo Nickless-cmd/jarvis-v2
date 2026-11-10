@@ -294,3 +294,45 @@ def test_the_owners_own_requirement_is_the_first_reason_and_a_long_rejection_lis
     monkeypatch.setattr("core.services.agent_model_fitness.er_blokeret", lambda p, m, rolle="": m.startswith("modeller-"))
     d = pol.route(ANDEN)
     assert d["rejected_total"] == 60 and len(d["rejected"]) == pol.P_.MAX_REJECTED + 1
+
+
+# --- CLI-modellen pr. rolle: «taenkning paa den staerke, haandvaerk paa den billige» ---------------
+
+def test_cli_model_follows_the_role_not_the_budget(pol, monkeypatch):
+    """Planner/critic paa opus, bygge- og laese-roller paa sonnet.
+
+    Maalt 10/11-2026: alle 21 claude-cli-koersler kørte model=``default`` — CLI'ens
+    egen dyreste — fordi valget aldrig blev taget. ``default`` er fravaeret af et
+    valg, ikke et modelnavn: ``_command`` sender slet ikke ``--model``.
+    """
+    pol.cands(PREMIUM)
+    monkeypatch.setattr("core.services.agent_cli_backend.admission_reason", lambda provider: "")
+    for role, forventet in [("planner", "opus"), ("critic", "opus"), ("executor", "sonnet"),
+                            ("researcher", "sonnet"), ("watcher", "sonnet")]:
+        route = pol.route(BJORN, requested_model="claude-cli", role=role)
+        assert (route["route_source"], route["provider"], route["model"]) == (
+            "explicit", "claude-cli", forventet), f"rolle {role!r} fik {route['model']!r}"
+
+
+def test_explicit_cli_model_is_never_overridden_by_the_role(pol, monkeypatch):
+    """Et valg er et valg. Trappen maa kun udfylde et FRAVAER (samme regel som _budget_for)."""
+    pol.cands(PREMIUM)
+    monkeypatch.setattr("core.services.agent_cli_backend.admission_reason", lambda provider: "")
+    route = pol.route(BJORN, requested_model="claude-cli/opus", role="executor")
+    assert route["model"] == "opus", "executorens rolle nedgraderede et eksplicit opus-valg"
+
+
+def test_codex_cli_keeps_default_because_its_models_cannot_be_measured(pol, monkeypatch):
+    """Codex' ``--help`` har ingen model-liste. Et gættet navn ville fejle hele koerslen."""
+    pol.cands(PREMIUM)
+    monkeypatch.setattr("core.services.agent_cli_backend.admission_reason", lambda provider: "")
+    route = pol.route(BJORN, requested_model="codex-cli", role="planner")
+    assert (route["provider"], route["model"]) == ("codex-cli", "default")
+
+
+def test_unknown_role_falls_back_to_the_cheap_cli_model(pol, monkeypatch):
+    """Ukendt rolle: en forkert billig model koster en gentagelse; en forkert dyr koster kvote hver gang."""
+    pol.cands(PREMIUM)
+    monkeypatch.setattr("core.services.agent_cli_backend.admission_reason", lambda provider: "")
+    route = pol.route(BJORN, requested_model="claude-cli", role="en-rolle-der-ikke-findes")
+    assert route["model"] == "sonnet"

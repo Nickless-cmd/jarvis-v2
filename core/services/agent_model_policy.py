@@ -182,6 +182,53 @@ def _estimate_cost(provider: str, model: str, budget_tokens: int) -> dict[str, A
     return {"estimated_cost_usd": 0.0, "cost_basis": "gratis", "tokens": tokens}
 
 
+# --------------------------------------------------------------- CLI-modellen pr. rolle
+
+#: Rolle -> CLI-model. Aksen er «taenkning paa den staerke, haandvaerk paa den
+#: billige» — samme akse som Claude Codes eget ``opusplan``-alias («Opus in plan
+#: mode, Sonnet otherwise», maalt i version 2.1.161). Aliaset er FJERNET i 2.1.318,
+#: saa det kan ikke arves; valget maa traeffes her.
+#:
+#: Aksen er ikke «lille budget = billig model». En planner bruger faa tokens (p90
+#: 12.792), men en daarlig PLAN forgrener sig i alt det efterfoelgende arbejde, og
+#: en critic der overser fejlen sender den i drift. Bygge- og laese-rollerne fejler
+#: derimod lokalt og fanges af test eller critic.
+#:
+#: Maalt 10/11-2026: claude-cli brugte 215.000 tokens paa 21 koersler, ALLE med
+#: model=``default`` — CLI'ens egen dyreste. Valget blev aldrig taget.
+#:
+#: Kun ``claude-cli`` staar her. ``codex-cli`` har ingen maalbar model-liste i sin
+#: ``--help``, og et gættet modelnavn ville fejle hele koerslen i stedet for at
+#: spare kvote.
+_CLI_MODEL_FOR_ROLE: dict[str, str] = {
+    "planner": "opus",
+    "critic": "opus",
+    "executor": "sonnet",
+    "researcher": "sonnet",
+    "watcher": "sonnet",
+}
+
+#: Ukendt rolle faar den billige: en forkert billig model koster en gentagelse, en
+#: forkert dyr model koster kvote hver gang.
+_CLI_MODEL_FALLBACK = "sonnet"
+
+
+def _cli_model_for(provider: str, role: str, requested: str) -> str:
+    """Rollens model — men KUN naar intet valg er taget.
+
+    ``default`` er ikke et modelnavn; det er FRAVAERET af et valg, og
+    ``agent_cli_backend._command`` sender derfor slet ikke ``--model``. Det er samme
+    regel som ``_budget_for``: udledning maa kun udfylde et fravaer, aldrig overrule
+    et valg. Skriver nogen ``claude-cli/opus``, er det deres beslutning.
+    """
+    valgt = str(requested or "").strip()
+    if valgt and valgt != "default":
+        return valgt
+    if str(provider or "") != "claude-cli":
+        return valgt or "default"
+    return _CLI_MODEL_FOR_ROLE.get(str(role or "").strip().lower(), _CLI_MODEL_FALLBACK)
+
+
 # --------------------------------------------------------------- beslutningen
 
 
@@ -235,7 +282,7 @@ def decide_route(*, owner_user_id: str, requested_model: str = "", hard: bool = 
                 if why:
                     reject("explicit", rp, rm, why)
                 else:
-                    add("explicit", rp, rm)
+                    add("explicit", rp, _cli_model_for(rp, role, rm))
             if hard and not chain:
                 raise ModelUnavailable(f"modelkravet {rp}/{rm} kan ikke opfyldes", rejected)
         elif rp in OWNER_ONLY_PROVIDERS:

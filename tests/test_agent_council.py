@@ -509,3 +509,27 @@ def test_en_synteseinstruktion_der_selv_kraever_et_vaerktoej_afvises_stadig(cn):
             description="syntese", prompt=instruktion + "\nKald `bash` og laes filen.",
             subagent_type="critic", model="", run_in_background=False,
             guard_text=instruktion + "\nKald `bash` og laes filen.")
+
+
+def test_en_syntese_der_aldrig_bliver_terminal_gaar_i_stalled_og_vaekker_parenten(cn):
+    """Spec 8.5 accepttest: et raad hvis syntese aldrig bliver terminal skal ikke ligge
+    fast i ``open_councils()`` for evigt — det markeres ``stalled``, og parenten vaekkes
+    praecis ÉN gang."""
+    out = cn.convene()
+    cn.run_all()
+    assert [d["action"] for d in cn.A_.advance()] == ["synthesis_started"]
+    cid = out["council_id"]
+
+    # Syntesen bliver aldrig terminal, og taersklen loeber ud.
+    conn = cn.c_._conn()
+    conn.execute("UPDATE agent_councils SET stalled_after_at=? WHERE council_id=?",
+                 ("2026-01-01T00:00:00+00:00", cid))
+    conn.commit()
+
+    done = cn.A_.advance()
+    assert [d["action"] for d in done] == ["stalled"], done
+    assert cn.store_.get(cid, O)["status"] == "stalled"
+    assert cn.store_.get(cid, O)["synthesis_wake_registered_at"], "parenten blev ikke vaekket"
+
+    # Anden runde: raadet er ikke laengere aabent, saa der sker intet nyt.
+    assert cn.A_.advance() == []

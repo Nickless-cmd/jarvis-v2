@@ -21,7 +21,7 @@ import json
 import logging
 import sqlite3
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from core.runtime.db_agent_contract import ContractError, _conn, _now_iso
@@ -30,6 +30,9 @@ logger = logging.getLogger(__name__)
 
 PROVISIONING = "provisioning"
 GATHERING, SYNTHESIZING, DONE, CANCELLED = "gathering", "synthesizing", "done", "cancelled"
+#: Et raad der stod i en aaben tilstand forbi sin taerskel. IKKE aabent: det er
+#: terminalt for sweepen, men skal stadig kunne ses — derfor ikke i OPEN_STATUSES.
+STALLED = "stalled"
 
 #: Statusser hvor raadet stadig er i live og en supervisor skal kigge paa det.
 #: ``open_councils()`` bygger sin IN-liste fra denne maengde — en ny aaben status
@@ -41,6 +44,12 @@ OPEN_STATUSES: frozenset[str] = frozenset({PROVISIONING, GATHERING, SYNTHESIZING
 #: saa en aktiv samling tager sekunder — ikke minutter. 5 minutter er rigelig luft til
 #: seks medlemmer, ogsaa naar dispatch er langsom.
 PROVISIONING_GRACE_SECONDS = 300
+
+#: Hvor laenge en raekke maa staa i ``gathering`` eller ``synthesizing`` foer den er
+#: forladt. Medlemmerne har deres egen deadline (30 min laesende, 45 skrivende), saa
+#: taersklen er den laengste af dem plus luft — ellers ville en aktiv syntese blive
+#: erklæret forladt mens den stadig arbejdede.
+OPEN_GRACE_SECONDS = 45 * 60 + 300
 
 
 def ensure_council_tables(conn: sqlite3.Connection) -> None:
@@ -92,10 +101,12 @@ def create(*, owner_user_id: str, origin_session_id: str, parent_run_id: str, pa
     conn = _conn()
     conn.execute(
         "INSERT INTO agent_councils (council_id, owner_user_id, origin_session_id, parent_agent_id, parent_run_id, "
-        "topic, facts, synthesis_role, budget_tokens, idempotency_key, status, created_at, updated_at) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "topic, facts, synthesis_role, budget_tokens, idempotency_key, status, created_at, updated_at, "
+        "stalled_after_at) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (cid, owner_user_id, origin_session_id, parent_agent_id, parent_run_id, topic, facts, synthesis_role,
-         int(budget_tokens), idempotency_key, PROVISIONING, now, now))
+         int(budget_tokens), idempotency_key, PROVISIONING, now, now,
+         _deadline_after(PROVISIONING_GRACE_SECONDS)))
     conn.commit()
     return get(cid, owner_user_id) or {}
 
@@ -134,8 +145,11 @@ def set_members(council_id: str, members: list[dict[str, Any]]) -> None:
         # medlemmer er praecis den tilstand der gav en syntese over et tomt grundlag.
         conn.execute(
             "UPDATE agent_councils SET members_json=?, "
-            "status=CASE WHEN status=? THEN ? ELSE status END, updated_at=? WHERE council_id=?",
-            (payload, PROVISIONING, GATHERING, now, council_id))
+            "status=CASE WHEN status=? THEN ? ELSE status END, "
+            "stalled_after_at=CASE WHEN status=? THEN ? ELSE stalled_after_at END, "
+            "updated_at=? WHERE council_id=?",
+            (payload, PROVISIONING, GATHERING, PROVISIONING,
+             _deadline_after(OPEN_GRACE_SECONDS), now, council_id))
     else:
         conn.execute("UPDATE agent_councils SET members_json=?, updated_at=? WHERE council_id=?",
                      (payload, now, council_id))
@@ -143,11 +157,20 @@ def set_members(council_id: str, members: list[dict[str, Any]]) -> None:
 
 
 def transition(council_id: str, *, frm: str, to: str, synthesis_assignment_id: str = "") -> bool:
-    """Atomisk statusskifte; ``False`` hvis en anden supervisor allerede har flyttet raadet."""
+    """Atomisk statusskifte; ``False`` hvis en anden supervisor allerede har flyttet raadet.
+
+    Indgangen til ``synthesizing`` saetter sin EGEN taerskel: syntesen har sin egen
+    deadline, og teamets taerskel fra ``gathering`` ville vaere udloebet mens den arbejdede.
+    """
     conn = _conn()
-    cur = conn.execute("UPDATE agent_councils SET status=?, synthesis_assignment_id=CASE WHEN ?!='' THEN ? "
-                       "ELSE synthesis_assignment_id END, updated_at=? WHERE council_id=? AND status=?",
-                       (to, synthesis_assignment_id, synthesis_assignment_id, _now_iso(), council_id, frm))
+    stalled = _deadline_after(OPEN_GRACE_SECONDS) if to == SYNTHESIZING else ""
+    cur = conn.execute(
+        "UPDATE agent_councils SET status=?, synthesis_assignment_id=CASE WHEN ?!='' THEN ? "
+        "ELSE synthesis_assignment_id END, "
+        "stalled_after_at=CASE WHEN ?!='' THEN ? ELSE stalled_after_at END, "
+        "updated_at=? WHERE council_id=? AND status=?",
+        (to, synthesis_assignment_id, synthesis_assignment_id,
+         stalled, stalled, _now_iso(), council_id, frm))
     conn.commit()
     return cur.rowcount == 1
 
@@ -163,6 +186,11 @@ def open_councils() -> list[dict[str, Any]]:
     rows = _conn().execute(f"SELECT * FROM agent_councils WHERE status IN ({placeholders}) ORDER BY created_at",
                            statuses).fetchall()
     return [_view(r) for r in rows]  # type: ignore[misc]
+
+
+def _deadline_after(seconds: int, *, now: datetime | None = None) -> str:
+    """ISO-tidsstempel ``seconds`` ude i fremtiden — taersklen for en aaben tilstand."""
+    return ((now or datetime.now(UTC)) + timedelta(seconds=seconds)).isoformat()
 
 
 def _parse_ts(value: Any) -> datetime | None:
@@ -240,6 +268,50 @@ def release_key(council_id: str) -> None:
     conn = _conn()
     conn.execute("UPDATE agent_councils SET idempotency_key='' WHERE council_id=?", (council_id,))
     conn.commit()
+
+
+def mark_wake_registered(council_id: str) -> None:
+    """Stempl at parenten er vaekket for dette raad — saa det kun sker én gang."""
+    conn = _conn()
+    conn.execute("UPDATE agent_councils SET synthesis_wake_registered_at=? WHERE council_id=?",
+                 (_now_iso(), council_id))
+    conn.commit()
+
+
+def expire_stalled(*, now: datetime | None = None) -> list[dict[str, Any]]:
+    """Raad i en aaben tilstand forbi sin taerskel -> ``STALLED``.
+
+    Uden dette kan et raad hvis syntese aldrig bliver terminal ligge i ``open_councils()``
+    for evigt: supervisor-tickket kigger paa det hvert tick, men der findes ingen tilstand
+    der siger «dette bliver ikke faerdigt». Parenten faar derfor aldrig besked, og venter
+    til sin egen deadline — eller for evigt.
+
+    Returnerer de raad der blev flyttet, saa kalderen kan vaekke parenten. Vaekningen sker
+    UDENFOR denne funktion: lageret maa ikke kalde services.
+    """
+    moment = now or datetime.now(UTC)
+    statuses = sorted(OPEN_STATUSES)
+    placeholders = ",".join("?" for _ in statuses)
+    rows = _conn().execute(
+        f"SELECT * FROM agent_councils WHERE status IN ({placeholders})", statuses).fetchall()
+    moved: list[dict[str, Any]] = []
+    for row in rows:
+        c = _view(row)
+        if c is None:
+            continue
+        limit = _parse_ts(c.get("stalled_after_at"))
+        if limit is None:
+            # Ingen laesbar taerskel paa en aaben raekke: den kan ikke blive faerdig, og vi
+            # kan ikke afgoere om den er aktiv. Samme retning som is_stale_provisioning:
+            # den flyttes, saa den ikke ligger fast for evigt.
+            stale = True
+        else:
+            stale = moment > limit
+        if not stale:
+            continue
+        if transition(c["council_id"], frm=c["status"], to=STALLED):
+            moved.append(c)
+    return moved
 
 
 def require(council_id: str, owner_user_id: str) -> dict[str, Any]:

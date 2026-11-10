@@ -254,3 +254,39 @@ def test_en_raekke_uden_laesbar_tid_lukkes_i_stedet_for_at_ligge_fast(cdb):
     assert cdb.C_.is_stale_provisioning(cdb.C_.get(cid, O)) is True
     assert ac.advance() == [{"council_id": cid, "action": "abandoned_provisioning"}]
     assert cdb.C_.get(cid, O)["status"] == "cancelled"
+
+
+def test_stalled_er_ikke_en_aaben_status(cdb):
+    """Et raad i ``stalled`` er terminalt for sweepen — ellers ville det blive behandlet
+    som aabent for evigt, og parenten ville aldrig faa besked."""
+    assert cdb.C_.STALLED not in cdb.C_.OPEN_STATUSES
+
+
+def test_taersklen_saettes_ved_alle_tre_aabne_tilstande(cdb):
+    """Spec 8.5: ``stalled_after_at`` skal saettes ved indgang til ENHVER aaben tilstand.
+
+    Blev den kun sat i ``gathering``, kunne et raad hvis syntese aldrig blev terminal
+    ligge i ``synthesizing`` for evigt uden at nogen opdagede det.
+    """
+    c = cdb.make(key="k-t")
+    cid = c["council_id"]
+    assert cdb.C_.get(cid, O)["stalled_after_at"], "provisioning mangler taerskel"
+    cdb.C_.set_members(cid, [{"index": 1, "role": "critic", "task": "x", "assignment_id": "a", "agent_id": "g"}])
+    assert cdb.C_.get(cid, O)["stalled_after_at"], "gathering mangler taerskel"
+    cdb.C_.transition(cid, frm="gathering", to="synthesizing", synthesis_assignment_id="syn")
+    assert cdb.C_.get(cid, O)["stalled_after_at"], "synthesizing mangler taerskel"
+
+
+def test_expire_stalled_flytter_kun_raad_forbi_taersklen(cdb):
+    c = cdb.make(key="k-e")
+    cid = c["council_id"]
+    cdb.C_.set_members(cid, [{"index": 1, "role": "critic", "task": "x", "assignment_id": "a", "agent_id": "g"}])
+    # En raekke der IKKE er forbi taersklen maa ikke flyttes.
+    assert cdb.C_.expire_stalled() == []
+    conn = cdb.C_._conn()
+    conn.execute("UPDATE agent_councils SET stalled_after_at=? WHERE council_id=?",
+                 ("2026-01-01T00:00:00+00:00", cid))
+    conn.commit()
+    moved = cdb.C_.expire_stalled()
+    assert [m["council_id"] for m in moved] == [cid]
+    assert cdb.C_.get(cid, O)["status"] == "stalled"

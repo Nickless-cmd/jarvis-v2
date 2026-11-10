@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9991/18477 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9995/18481 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,8 +25,8 @@ Generated from source. 9991/18477 functions/methods documented (54%). The list b
 | `core.identity` | 80 | 173 | 46% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 883 | 1596 | 55% |
-| `core.services` | 6678 | 12526 | 53% |
+| `core.runtime` | 886 | 1599 | 55% |
+| `core.services` | 6679 | 12527 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -403,10 +403,10 @@ Generated from source. 9991/18477 functions/methods documented (54%). The list b
 - `core/runtime/db_agent_bridge.py` :: `unresolved_for_client` (L156)
 - `core/runtime/db_agent_capacity.py` :: `ensure_capacity_columns` (L22)
 - `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L837)
-- `core/runtime/db_agent_council.py` :: `create` (L87)
-- `core/runtime/db_agent_council.py` :: `ensure_council_tables` (L46)
-- `core/runtime/db_agent_council.py` :: `find_by_key` (L109)
-- `core/runtime/db_agent_council.py` :: `require` (L245)
+- `core/runtime/db_agent_council.py` :: `create` (L96)
+- `core/runtime/db_agent_council.py` :: `ensure_council_tables` (L55)
+- `core/runtime/db_agent_council.py` :: `find_by_key` (L120)
+- `core/runtime/db_agent_council.py` :: `require` (L317)
 - `core/runtime/db_agent_deadlines.py` :: `ensure_deadline_columns` (L18)
 - `core/runtime/db_agent_deadlines.py` :: `initial_queue_deadline` (L55)
 - `core/runtime/db_agent_feed.py` :: `acknowledge` (L123)

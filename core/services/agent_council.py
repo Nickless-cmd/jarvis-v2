@@ -264,6 +264,12 @@ def advance() -> list[dict[str, Any]]:
     """Supervisor-taek: opret syntesen for raad hvis medlemmer alle er terminale, og luk raad hvis syntese er faerdig.
     Idempotent og sikker at koere fra begge processer (atomisk statusskifte + idempotent dispatch)."""
     done: list[dict[str, Any]] = []
+    # Raad forbi deres taerskel flyttes til STALLED FOERST: ellers ville de nedenfor blive
+    # behandlet som aabne endnu en runde, og parenten ville aldrig faa besked.
+    for c in store.expire_stalled():
+        logger.warning("raad %s stod forbi sin taerskel - markeret stalled", c["council_id"])
+        _wake_parent_on_stalled(c)
+        done.append({"council_id": c["council_id"], "action": "stalled"})
     for c in store.open_councils():
         owner, session = c["owner_user_id"], c["origin_session_id"]
         try:
@@ -314,6 +320,28 @@ def advance() -> list[dict[str, Any]]:
         except Exception:
             logger.warning("raad %s kunne ikke avanceres", c["council_id"], exc_info=True)
     return done
+
+
+def _wake_parent_on_stalled(c: dict[str, Any]) -> None:
+    """Vaek parenten naar et raad er markeret ``stalled`` — praecis én gang.
+
+    ``synthesis_wake_registered_at`` er stemplet: ellers ville hvert supervisor-tick
+    registrere en ny ventekontrakt for det samme raad, og parenten ville blive vaekket
+    igen og igen om en tilstand der ikke aendrer sig.
+    """
+    if not c["parent_run_id"] or c.get("synthesis_wake_registered_at"):
+        return
+    from core.runtime.db_agent_wait import register_wait
+    try:
+        register_wait(owner_user_id=c["owner_user_id"], origin_session_id=c["origin_session_id"],
+                      parent_run_id=c["parent_run_id"],
+                      assignment_ids=[m["assignment_id"] for m in c["members"] if m.get("assignment_id")],
+                      condition="all_terminal")
+    except ContractError:
+        logger.warning("ventekontrakt for stalled raad %s kunne ikke registreres",
+                       c["council_id"], exc_info=True)
+        return
+    store.mark_wake_registered(c["council_id"])
 
 
 def _wake_parent_on(c: dict[str, Any], synthesis_assignment_id: str) -> None:

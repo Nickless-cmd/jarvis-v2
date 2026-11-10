@@ -168,3 +168,52 @@ def test_abandon_from_provisioning_cancels_instead_of_stranding_the_council(cdb)
     ac._abandon(O, S, cid, [], cdb.C_.PROVISIONING)
     assert cdb.C_.get(cid, O)["status"] == "cancelled"
     assert cdb.C_.open_councils() == []
+
+
+def test_advance_lukker_et_raad_efterladt_i_provisioning_og_frigiver_noeglen(cdb):
+    """Genstart midt i samlingen: raekken staar i provisioning uden medlemmer.
+
+    Foer rettelsen kunne den hverken blive faerdig eller forsvinde: ``advance()`` sprang
+    den over for evigt, og dens idempotensnoegle laaste en retry ude med
+    IDEMPOTENCY_CONFLICT — permanent.
+    """
+    import core.services.agent_council as ac
+
+    c = cdb.make(key="k-left")
+    cid = c["council_id"]
+    conn = cdb.C_._conn()
+    conn.execute("UPDATE agent_councils SET created_at=? WHERE council_id=?",
+                 ("2026-01-01T00:00:00+00:00", cid))
+    conn.commit()
+
+    assert ac.advance() == [{"council_id": cid, "action": "abandoned_provisioning"}]
+    row = cdb.C_.get(cid, O)
+    assert row["status"] == "cancelled"
+    assert row["idempotency_key"] == "", "noeglen skal vaere frigivet til et nyt forsoeg"
+    assert cdb.C_.open_councils() == []
+    assert cdb.C_.find_by_key(O, S, "k-left") is None
+
+
+def test_en_samling_der_lige_er_startet_maa_ikke_lukkes(cdb):
+    """Grace-vinduet: en aktiv ``convene()``-loekke skriver medlemmerne ind inden for sekunder."""
+    import core.services.agent_council as ac
+
+    c = cdb.make(key="k-fresh")
+    assert ac.advance() == []
+    assert cdb.C_.get(c["council_id"], O)["status"] == "provisioning"
+    assert cdb.C_.get(c["council_id"], O)["idempotency_key"] == "k-fresh"
+
+
+def test_et_raad_med_medlemmer_lukkes_ikke_som_forladt(cdb):
+    """Kun TOMME provisioning-raekker er forladte — er listen skrevet ind, er samlingen naaet videre."""
+    import core.services.agent_council as ac
+
+    c = cdb.make(key="k-has-members")
+    cid = c["council_id"]
+    conn = cdb.C_._conn()
+    conn.execute("UPDATE agent_councils SET created_at=? WHERE council_id=?",
+                 ("2026-01-01T00:00:00+00:00", cid))
+    conn.commit()
+    cdb.C_.set_members(cid, [{"index": 1, "role": "critic", "task": "x", "assignment_id": "a", "agent_id": "g"}])
+    assert cdb.C_.get(cid, O)["status"] == "gathering"
+    assert cdb.C_.abandon_stale_provisioning(cid) is False

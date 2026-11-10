@@ -21,6 +21,7 @@ import json
 import logging
 import sqlite3
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from core.runtime.db_agent_contract import ContractError, _conn, _now_iso
@@ -34,6 +35,12 @@ GATHERING, SYNTHESIZING, DONE, CANCELLED = "gathering", "synthesizing", "done", 
 #: ``open_councils()`` bygger sin IN-liste fra denne maengde — en ny aaben status
 #: kan derfor ikke glemmes i en haandskrevet literal.
 OPEN_STATUSES: frozenset[str] = frozenset({PROVISIONING, GATHERING, SYNTHESIZING})
+
+#: Hvor laenge en raekke maa staa i ``provisioning`` foer den regnes for forladt.
+#: ``convene()`` skriver medlemmerne ind i samme synkrone loekke som den opretter raadet,
+#: saa en aktiv samling tager sekunder — ikke minutter. 5 minutter er rigelig luft til
+#: seks medlemmer, ogsaa naar dispatch er langsom.
+PROVISIONING_GRACE_SECONDS = 300
 
 
 def ensure_council_tables(conn: sqlite3.Connection) -> None:
@@ -146,6 +153,44 @@ def open_councils() -> list[dict[str, Any]]:
     rows = _conn().execute(f"SELECT * FROM agent_councils WHERE status IN ({placeholders}) ORDER BY created_at",
                            statuses).fetchall()
     return [_view(r) for r in rows]  # type: ignore[misc]
+
+
+def is_stale_provisioning(c: dict[str, Any], *, now: datetime | None = None) -> bool:
+    """Er raekken efterladt i ``provisioning`` — oprettet, men aldrig samlet?
+
+    Uden dette kan en raekke der blev oprettet men aldrig fik medlemmer (genstart midt i
+    samlingen) hverken blive faerdig eller forsvinde: ``advance()`` springer den over for
+    evigt, og dens idempotensnoegle laaser en retry ude med IDEMPOTENCY_CONFLICT.
+    """
+    if c.get("status") != PROVISIONING:
+        return False
+    try:
+        created = datetime.fromisoformat(str(c.get("created_at") or "").replace("Z", "+00:00"))
+    except ValueError:  # ulaeseligt tidsstempel: vi lukker ikke ved tvivl — hellere lade raekken staa
+        return False
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=UTC)
+    return ((now or datetime.now(UTC)) - created).total_seconds() > PROVISIONING_GRACE_SECONDS
+
+
+def abandon_stale_provisioning(council_id: str, *, now: datetime | None = None) -> bool:
+    """Luk en forladt samling og FRIGIV dens idempotensnoegle.
+
+    Noeglen ryddes, saa et nyt forsoeg kan bruge den — raekken selv bliver som historik.
+    Kun raekker uden medlemmer rammes: er listen ikke tom, er samlingen naaet laengere end
+    det punkt hvor et retry er det rigtige svar.
+    """
+    row = _conn().execute("SELECT * FROM agent_councils WHERE council_id=?", (council_id,)).fetchone()
+    c = _view(row)
+    if c is None or c["members"] or not is_stale_provisioning(c, now=now):
+        return False
+    conn = _conn()
+    cur = conn.execute(
+        "UPDATE agent_councils SET status=?, idempotency_key='', updated_at=? "
+        "WHERE council_id=? AND status=? AND members_json IN ('[]', '')",
+        (CANCELLED, _now_iso(), council_id, PROVISIONING))
+    conn.commit()
+    return cur.rowcount == 1
 
 
 def require(council_id: str, owner_user_id: str) -> dict[str, Any]:

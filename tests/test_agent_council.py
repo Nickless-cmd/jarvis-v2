@@ -335,3 +335,34 @@ def test_the_reviewer_stays_read_only_even_if_the_role_default_is_widened(rv, mo
     out = rv.review(rv.builder()["assignment_id"])
     reg = rv.cn.c_._conn().execute("SELECT tool_policy FROM agent_registry WHERE agent_id=?", (out["agent_id"],)).fetchone()
     assert reg["tool_policy"] == "read-only-runtime"
+
+
+def test_et_raad_efterladt_i_provisioning_braender_ikke_sin_idempotensnoegle(cn):
+    """Retry efter en afbrudt samling skal virke — ikke give IDEMPOTENCY_CONFLICT for evigt."""
+    first = cn.convene(idempotency_key="k-abandoned")
+    cid = first["council_id"]
+    conn = cn.c_._conn()
+    conn.execute("UPDATE agent_councils SET status='provisioning', members_json='[]', created_at=? "
+                 "WHERE council_id=?", ("2026-01-01T00:00:00+00:00", cid))
+    conn.commit()
+    assert cn.store_.get(cid, O)["status"] == "provisioning"
+
+    again = cn.convene(idempotency_key="k-abandoned")
+    assert again["status"] == "accepted", again
+    assert again["council_id"] != cid, "et efterladt raad maa ikke genbruges som svar"
+    assert cn.store_.get(cid, O)["status"] == "cancelled"
+
+
+def test_en_samling_der_koerer_lige_nu_erstattes_ikke(cn):
+    """Er raekken frisk i provisioning, samles den netop — et svar maa ikke gaettes."""
+    from datetime import UTC, datetime
+
+    c = cn.convene(idempotency_key="k-active")
+    cid = c["council_id"]
+    conn = cn.c_._conn()
+    conn.execute("UPDATE agent_councils SET status='provisioning', members_json='[]', created_at=? "
+                 "WHERE council_id=?", (datetime.now(UTC).isoformat(), cid))
+    conn.commit()
+
+    out = cn.convene(idempotency_key="k-active")
+    assert out["code"] == "PROVISIONING_IN_PROGRESS", out

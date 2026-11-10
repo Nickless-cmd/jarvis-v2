@@ -139,7 +139,8 @@ def _session_scope(owner: str, session: str) -> tuple[str, str]:
 
 def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
            parent_agent_id: str, description: str, prompt: str, subagent_type: str,
-           model: str, run_in_background: bool, budget_tokens: int = 0) -> dict[str, Any]:
+           model: str, run_in_background: bool, budget_tokens: int = 0,
+           team_id: str = "", member_index: int = 0) -> dict[str, Any]:
     description, prompt = description.strip(), prompt.strip()
     kind = subagent_type.strip().lower()
     if not description or not prompt:
@@ -198,6 +199,13 @@ def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
         "parent_agent": parent_agent_id, "description": description, "prompt": prompt,
         "subagent_type": kind, "model": model.strip(), "background": bool(run_in_background),
     }
+    # Team-felterne tilfoejes KUN naar de er sat. Laa de der ubetinget, fik hver
+    # enkelt-agent en ny ``idem`` og dermed et nyt ``mandate_id`` — og enhver replay af
+    # allerede accepteret arbejde ville braekke. Er ``team_id`` tom, er ``canonical``
+    # byte-identisk med foer; det er bevist af en test der holder hashen som literal.
+    if team_id:
+        canonical["team_id"] = team_id
+        canonical["member_index"] = int(member_index)
     idem = "task-" + hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()[:32]
     mandate_id = "mnd-" + hashlib.sha256(idem.encode()).hexdigest()[:16]
     scoped_prompt = prompt

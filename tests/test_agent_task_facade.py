@@ -199,3 +199,47 @@ def test_task_skemaet_tilbyder_budget_tokens():
     assert "budget_tokens" in params["properties"], "agenten skal kunne sætte sit eget budget"
     assert "budget_tokens" not in params["required"], "det skal være valgfrit"
 
+
+
+def test_en_single_agent_faar_byte_identisk_hash_som_foer_team_felterne(monkeypatch):
+    """Literalen er maalt paa koden FOER ``team_id``/``member_index`` blev indfoert.
+
+    Genberegnede testen formlen selv, beviste den intet: den skal fange at ``canonical``
+    aendrer sig. Laa team-felterne der ubetinget, fik hver enkelt-agent en ny ``idem`` og
+    dermed et nyt ``mandate_id`` — og enhver replay af allerede accepteret arbejde braek.
+    """
+    import hashlib
+
+    from core.services import agent_task_facade as task
+
+    monkeypatch.setattr(task, "_session_scope", lambda owner, session: ("container", "/repo"))
+    monkeypatch.setattr(task.os.path, "exists", lambda path: path == "/repo/.git")
+    plan = task.derive(
+        owner_user_id="bjorn", origin_session_id="session-1", parent_run_id="run-1",
+        parent_agent_id="jarvis", description="desc", prompt="do the thing",
+        subagent_type="researcher", model="", run_in_background=True,
+    )
+    assert plan["idempotency_key"] == "task-37cd37b548b3fd43e8cf53e4a49817f5"
+    expected_mandate = "mnd-" + hashlib.sha256(plan["idempotency_key"].encode()).hexdigest()[:16]
+    assert plan["mandate"]["mandate_id"] == expected_mandate
+
+
+def test_to_team_medlemmer_deler_ikke_mandate_id(monkeypatch):
+    """``mandate_id`` er PRIMARY KEY: to medlemmer af samme team maa ikke ramme samme raekke."""
+    from core.services import agent_task_facade as task
+
+    monkeypatch.setattr(task, "_session_scope", lambda owner, session: ("container", "/repo"))
+    monkeypatch.setattr(task.os.path, "exists", lambda path: path == "/repo/.git")
+    common = dict(owner_user_id="bjorn", origin_session_id="session-1", parent_run_id="run-1",
+                  parent_agent_id="jarvis", description="desc", prompt="do the thing",
+                  subagent_type="researcher", model="", run_in_background=True)
+
+    single = task.derive(**common)
+    m1 = task.derive(**common, team_id="team-abc", member_index=1)
+    m2 = task.derive(**common, team_id="team-abc", member_index=2)
+
+    assert m1["idempotency_key"] != single["idempotency_key"], "et team-medlem er ikke den samme agent"
+    assert m1["idempotency_key"] != m2["idempotency_key"]
+    assert m1["mandate"]["mandate_id"] != m2["mandate"]["mandate_id"], "PRIMARY KEY kollision"
+    assert task.derive(**common, team_id="team-abc", member_index=1)["idempotency_key"] == m1["idempotency_key"], \
+        "samme medlem skal vaere idempotent"

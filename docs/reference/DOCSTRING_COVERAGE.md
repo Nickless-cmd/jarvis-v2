@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9979/18466 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9981/18468 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9979/18466 functions/methods documented (54%). The list b
 | `core.identity` | 80 | 173 | 46% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 878 | 1591 | 55% |
+| `core.runtime` | 880 | 1593 | 55% |
 | `core.services` | 6671 | 12520 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
@@ -403,10 +403,10 @@ Generated from source. 9979/18466 functions/methods documented (54%). The list b
 - `core/runtime/db_agent_bridge.py` :: `unresolved_for_client` (L156)
 - `core/runtime/db_agent_capacity.py` :: `ensure_capacity_columns` (L22)
 - `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L837)
-- `core/runtime/db_agent_council.py` :: `create` (L80)
-- `core/runtime/db_agent_council.py` :: `ensure_council_tables` (L39)
-- `core/runtime/db_agent_council.py` :: `find_by_key` (L102)
-- `core/runtime/db_agent_council.py` :: `require` (L151)
+- `core/runtime/db_agent_council.py` :: `create` (L87)
+- `core/runtime/db_agent_council.py` :: `ensure_council_tables` (L46)
+- `core/runtime/db_agent_council.py` :: `find_by_key` (L109)
+- `core/runtime/db_agent_council.py` :: `require` (L196)
 - `core/runtime/db_agent_deadlines.py` :: `ensure_deadline_columns` (L18)
 - `core/runtime/db_agent_deadlines.py` :: `initial_queue_deadline` (L55)
 - `core/runtime/db_agent_feed.py` :: `acknowledge` (L123)
@@ -748,7 +748,7 @@ Generated from source. 9979/18466 functions/methods documented (54%). The list b
 - `core/services/agent_contract_projection.py` :: `followup` (L542)
 - `core/services/agent_contract_projection.py` :: `mark_read` (L486)
 - `core/services/agent_contract_service.py` :: `list_approvals` (L784)
-- `core/services/agent_council.py` :: `synthesis_goal` (L158)
+- `core/services/agent_council.py` :: `synthesis_goal` (L168)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L322)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L320)
 - `core/services/agent_loop_core.py` :: `LoopIO.model` (L315)
@@ -782,7 +782,7 @@ Generated from source. 9979/18466 functions/methods documented (54%). The list b
 - `core/services/agent_skill_distiller.py` :: `distill_all_known_roles` (L133)
 - `core/services/agent_skill_library.py` :: `list_skill_mutations` (L217)
 - `core/services/agent_task_facade.py` :: `derive` (L140)
-- `core/services/agent_task_facade.py` :: `execute` (L230)
+- `core/services/agent_task_facade.py` :: `execute` (L238)
 - `core/services/agent_todos.py` :: `add_todo` (L196)
 - `core/services/agent_todos.py` :: `clear_session_todos` (L379)
 - `core/services/agent_todos.py` :: `list_todos` (L68)

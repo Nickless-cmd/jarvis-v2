@@ -80,6 +80,16 @@ def convene(*, owner_user_id: str, origin_session_id: str, topic: str, facts: st
         return _err("INVALID_SCOPE", why)
     prior = store.find_by_key(owner_user_id, origin_session_id, idempotency_key)
     if prior is not None:
+        if not prior["members"] and prior["status"] == store.PROVISIONING:
+            # En samling der blev afbrudt (genstart mellem create og set_members) er ikke
+            # et svar. Dens tomme medlemsliste gav baade IDEMPOTENCY_CONFLICT for et
+            # legitimt retry OG laaste noeglen for evigt. Er den forladt, lukkes den og
+            # noeglen frigives, saa dette forsoeg kan oprette raadet rigtigt.
+            if not store.abandon_stale_provisioning(prior["council_id"]):
+                return _err("PROVISIONING_IN_PROGRESS",
+                            "et raad med samme noegle samles lige nu - forsoeg igen om lidt")
+            prior = None
+    if prior is not None:
         if prior["topic"] != topic or [(m["role"], m["task"]) for m in prior["members"]] != [
                 (m["role"], m["task"]) for m in clean]:
             return _err("IDEMPOTENCY_CONFLICT", idempotency_key)
@@ -180,7 +190,15 @@ def advance() -> list[dict[str, Any]]:
         owner, session = c["owner_user_id"], c["origin_session_id"]
         try:
             if c["status"] == store.PROVISIONING:
-                continue                      # medlemmerne er ikke skrevet ind endnu - intet at avancere
+                # Medlemmerne er ikke skrevet ind endnu - intet at avancere. Men en raekke
+                # der blev EFTERLADT her (genstart midt i samlingen) kan hverken blive
+                # faerdig eller forsvinde: den ligger i open_councils() for evigt, og dens
+                # idempotensnoegle laaser en retry ude. Den lukkes og noeglen frigives.
+                if store.abandon_stale_provisioning(c["council_id"]):
+                    logger.warning("raad %s var efterladt i provisioning - lukket, noeglen frigivet",
+                                   c["council_id"])
+                    done.append({"council_id": c["council_id"], "action": "abandoned_provisioning"})
+                continue
             if c["status"] == store.GATHERING:
                 if not c["members"]:
                     # Gamle raekker fra foer provisioning-tilstanden kan staa i gathering med en

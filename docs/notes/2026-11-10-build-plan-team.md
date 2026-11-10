@@ -381,8 +381,43 @@ adfærden uændret. `sha256` byte-identisk efter gendannelse.
 der skriver 400 tegn uden at have læst færdigt, slipper igennem. Syntesen er stadig modvægten — og
 den virkede i drift.
 
-**Ikke i drift ved commit:** tjenesterne startede 21:23, filerne er ændret 21:41–21:43. Genstart
-booket med `defer_until_idle`. **Verificér modul-mtime mod proces-start, før dette kaldes observeret.**
+### I drift (målt 10/11-2026)
+
+Tjenesterne blev genstartet **21:49:09–10** (`jarvis-api` PID 2739949, `jarvis-runtime` PID 2739954,
+`NRestarts=0`). Alle fire berørte moduler er ændret 21:41–21:43, altså **ældre end processen** —
+koden er indlæst. Verificeret ved at holde `stat`-mtime op mod `ActiveEnterTimestamp`, ikke ved at
+tro på commit-tidspunktet.
+
+### Kalibreringen — det der afgør om vagten er ærlig
+
+Spørgsmålet var ikke «virker den», men «rammer den de rigtige». Målt i den levende DB mod 63 korte
+completed-svar, og mod de 22 af dem der har deres egen `agent_runs.assignment_id`:
+
+| Mekanisme | Fanger | Vurdering |
+|---|---|---|
+| `_promises_action` (ordlisterne) | **19 af 63 = 30 %** | Forkert løftestang. 44 slipper igennem |
+| `_delivery_gap` (accept-laget) | **22 af 22 = 100 %** | Den rigtige løftestang |
+
+De 44 der slap gennem `_promises_action` er alle samme form — **narrativ fortsættelse**:
+«Nu runde-linjen i MessageList», «Jeg læser de relevante blokke», «Mange kandidater. Læs kerne»,
+«Let's inspect schema and find the code», «Flere kopier; jeg bruger hovedrepoet». Ingen af dem
+bruger de verber listerne kender. Der er allerede **to** ordlister, og de rammer 7 af 10 forbi.
+
+**Det er rod-årsagen, og den peger væk fra ordlister:** stop-formen er ikke en modelfejl, det er et
+loop-design-hul. En runde uden værktøjskald læses som et endeligt svar, og intet på runde-niveau
+skelner «narrativ fortsættelse» fra «færdigt resultat». Den eneste mekanisme der *kan* skelne dem
+måler **leverancen**, ikke formuleringen.
+
+⚠️ **Fælde jeg selv ramte i målingen:** jeg joinede først på `agent_id` og fik 41 «slap igennem» —
+alle med `kontrakt=''`. Det var ældre kørsler uden assignment, hvor jeg havde hentet en tilfældig
+nyere kontrakt til samme agent. Join altid på kørslens **egen** `assignment_id`.
+
+### Stadig ikke bevist
+
+Vagten er **ikke set fyre på en rigtig modelkørsel**. Den er kalibreret mod historiske data, den
+positive kontrol (asg-bf574ac158f04eaa) leverede korrekt og blev accepteret — men den negative
+halvdel, hvor en stoppende agent bliver nudget og derefter leverer, er ikke observeret endnu.
+Indtil den er, er «100 %» en måling på fortiden, ikke en garanti for fremtiden.
 
 ---
 

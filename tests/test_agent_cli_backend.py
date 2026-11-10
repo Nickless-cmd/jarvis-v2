@@ -16,7 +16,7 @@ def test_codex_command_uses_task_root_and_native_sandbox(tmp_path):
 
     out = str(tmp_path / "out")
     cmd = _command("codex-cli", "/bin/codex", "default", str(tmp_path), "gør det",
-                   writes=True, output_path=out)
+                   policy="worktree-write", output_path=out)
     assert cmd[:2] == ["/bin/codex", "exec"]
     assert cmd[cmd.index("-C") + 1] == str(tmp_path)
     assert cmd[cmd.index("--sandbox") + 1] == "workspace-write"
@@ -27,7 +27,7 @@ def test_claude_command_is_restricted_and_has_no_shell(tmp_path):
     from core.services.agent_cli_backend import _command
 
     cmd = _command("claude-cli", "/bin/claude", "sonnet", str(tmp_path), "gør det",
-                   writes=True, output_path=str(tmp_path / "unused"))
+                   policy="worktree-write", output_path=str(tmp_path / "unused"))
     assert "--restricted" in cmd and "--permission-prompts" in cmd
     tools = cmd[cmd.index("--tools") + 1]
     assert "Edit" in tools and "Write" in tools and "Bash" not in tools

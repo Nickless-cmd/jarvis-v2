@@ -33,20 +33,115 @@ from typing import Any
 #: fil uden en roterende skriver vokser til den fylder disken.
 LOG_MAKS_BYTES = 8 * 1024 * 1024
 
+#: Antal roterede generationer. Rettere: hvor mange døgn telemetrien kan rumme.
+#:
+#: MAALT 10/11-2026: skrivehastigheden er 4,19 MB/døgn, så ÉN generation på
+#: 8 MB daekkede 1,9 døgn — og med den daværende `.1`-fil i alt 4,7 døgn. Et
+#: «7-dages» tal fra telemetrien var derfor i praksis 44 timer, og det var
+#: usynligt: overfladen rapporterede en procentsats uden at sige hvilket
+#: tidsrum den daekkede.
+#:
+#: 4 x 8 MB = 32 MB ≈ 7,6 døgn ved den maalte hastighed. `prune_rotated_logs`
+#: rydder foerst efter 14 dage, så generationerne overlever deres eget formaals
+#: vindue. Loftet pr. FIL holdes bevidst paa 8 MB, så en enkelt laesning af den
+#: nyeste fil forbliver billig — det er antallet af filer der giver historikken.
+ROTATION_GENERATIONER = 4
+
 
 def _rotér(sti: Path) -> None:
-    """Flyt filen til `.1` naar den bliver for stor. Én generation, ikke fem.
-
-    Samme bevidste valg som varmeren: formaalet er at kende det seneste moenster,
-    ikke at foere arkiv. To filer aa 8 MB er et loft man kan regne med.
+    """Rul filen ned gennem generationerne: `.3`→`.4`, `.2`→`.3`, `.1`→`.2`, fil→`.1`.
 
     Selv-sikker: telemetri maa aldrig vaelte stream-stien.
     """
     try:
-        if sti.exists() and sti.stat().st_size > LOG_MAKS_BYTES:
-            sti.replace(sti.with_suffix(sti.suffix + ".1"))
+        if not (sti.exists() and sti.stat().st_size > LOG_MAKS_BYTES):
+            return
+        # Aeldste foerst, ellers overskriver vi den naste generation med dens
+        # egen forgænger. `.4` falder bort uden at blive flyttet: der er intet
+        # `.5` at skubbe til, og det er praecis meningen med et loft.
+        for n in range(ROTATION_GENERATIONER - 1, 0, -1):
+            aeldre = sti.with_suffix(sti.suffix + f".{n}")
+            nyere = sti.with_suffix(sti.suffix + f".{n + 1}")
+            if aeldre.exists():
+                aeldre.replace(nyere)
+        sti.replace(sti.with_suffix(sti.suffix + ".1"))
     except Exception:  # rotation må aldrig vælte stream-stien — telemetri er ikke kritisk
         pass
+
+
+def _generationer(sti: Path) -> list[Path]:
+    """Alle telemetri-filer, aeldste generation foerst."""
+    filer = [sti.with_suffix(sti.suffix + f".{n}")
+             for n in range(ROTATION_GENERATIONER, 0, -1)]
+    return [f for f in filer if f.exists()] + ([sti] if sti.exists() else [])
+
+
+def telemetri_spaend(*, sti: Path | None = None) -> dict[str, Any]:
+    """Det tidsrum telemetrien FAKTISK daekker — paa tvaers af alle generationer.
+
+    Findes fordi fravaeret af dette svar kostede en forkert konklusion
+    (10/11-2026): en procentsats blev laest som et 7-doegns-tal, mens filen
+    daekkede 44 timer. Et tal uden sit tidsrum er ikke et maal.
+
+    Laeser kun hver fils foerste og sidste `timestamp` — ikke hele filen.
+    Returnerer `daekker_7_doegn=False` naar historikken ikke raekker, saa
+    kalderen kan se det frem for at gætte.
+    """
+    home = Path(os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2"))
+    sti = sti or (home / "logs" / "cache_telemetry.jsonl")
+    foerste = sidste = ""
+    filer: list[dict[str, Any]] = []
+    for f in _generationer(sti):
+        try:
+            storrelse = f.stat().st_size
+            with f.open("r", encoding="utf-8", errors="replace") as fh:
+                t0 = ""
+                for ln in fh:
+                    if '"timestamp"' in ln:
+                        try:
+                            t0 = str(json.loads(ln).get("timestamp") or "")
+                        except ValueError:  # afkortet/korrupt linje — proev den naeste
+                            continue
+                        if t0:
+                            break
+            # Sidste linje: laes halen, ikke hele filen.
+            t1 = ""
+            with f.open("rb") as fh:
+                fh.seek(max(0, storrelse - 8192))
+                hale = fh.read().decode("utf-8", "replace").splitlines()
+            for ln in reversed(hale):
+                if '"timestamp"' in ln:
+                    try:
+                        t1 = str(json.loads(ln).get("timestamp") or "")
+                    except ValueError:  # afkortet/korrupt linje — proev den forrige
+                        continue
+                    if t1:
+                        break
+            if t0 and not foerste:
+                foerste = t0
+            if t1:
+                sidste = t1
+            filer.append({"navn": f.name, "bytes": storrelse, "fra": t0, "til": t1})
+        except OSError:  # filen kan ikke laeses (rettigheder, forsvundet) — naeste generation
+            continue
+    timer: float | None = None
+    if foerste and sidste:
+        try:
+            d0 = datetime.fromisoformat(foerste.replace("Z", "+00:00"))
+            d1 = datetime.fromisoformat(sidste.replace("Z", "+00:00"))
+            timer = round((d1 - d0).total_seconds() / 3600.0, 1)
+        except ValueError:
+            timer = None
+    return {
+        "filer": filer,
+        "generationer": len(filer),
+        "fra": foerste, "til": sidste,
+        "timer": timer,
+        "doegn": round(timer / 24.0, 1) if timer is not None else None,
+        "daekker_7_doegn": bool(timer is not None and timer >= 24 * 7),
+        "log_maks_bytes": LOG_MAKS_BYTES,
+        "rotation_generationer": ROTATION_GENERATIONER,
+    }
 
 
 def prefix_signature(system_content: str, tools: Any) -> tuple[str, int]:
@@ -371,18 +466,44 @@ def build_cache_telemetry_surface(*, tail_bytes: int = 2 * 1024 * 1024) -> dict[
     miss = sum(int(r.get("miss") or 0) for r in lines)
     churn = home / "logs" / "tools_churn.jsonl"
     last = lines[-1]
+
+    # Hvilket tidsrum daekker DE LINJER vi laeste? Uden dette kunne «hit 96,9 %»
+    # laeses som et 7-doegns-tal, mens halen er ~11 timer (maalt 10/11-2026:
+    # 2 MB ved 179 KB/time). Et tal uden sit tidsrum er ikke et maal.
+    laest_fra = str(lines[0].get("timestamp") or "")
+    laest_til = str(last.get("timestamp") or "")
+    laest_timer: float | None = None
+    if laest_fra and laest_til:
+        try:
+            _a = datetime.fromisoformat(laest_fra.replace("Z", "+00:00"))
+            _b = datetime.fromisoformat(laest_til.replace("Z", "+00:00"))
+            laest_timer = round((_b - _a).total_seconds() / 3600.0, 1)
+        except ValueError:
+            laest_timer = None
+    spaend = telemetri_spaend(sti=path)
+
     return {
         **base, "active": True,
         "signals": {"calls_read": len(lines), "unreadable_lines": broken, "log_bytes": size,
                     "hit_tokens": hit, "miss_tokens": miss,
                     "hit_pct": round(100.0 * hit / (hit + miss), 1) if (hit + miss) else None,
+                    # Tidsrummet for de linjer hit_pct bygger paa — og for hele
+                    # historikken. `hit_pct` maa aldrig citeres uden `read_hours`.
+                    "read_from": laest_fra, "read_to": laest_til,
+                    "read_hours": laest_timer,
+                    "history_from": spaend.get("fra"), "history_to": spaend.get("til"),
+                    "history_days": spaend.get("doegn"),
+                    "history_covers_7_days": spaend.get("daekker_7_doegn"),
+                    "rotated_generations": spaend.get("generationer"),
                     "distinct_prefix_sha": len({r.get("prefix_sha") for r in lines if r.get("prefix_sha")}),
                     "distinct_tools_sha": len({r.get("tools_sha") for r in lines if r.get("tools_sha")}),
                     "last_timestamp": last.get("timestamp"), "last_pct": last.get("pct"),
                     "last_lane": last.get("lane"),
                     "rotated_file_present": path.with_suffix(path.suffix + ".1").exists(),
                     "tools_churn_log_present": churn.exists()},
-        "summary": (f"{len(lines)} kald; hit {round(100.0 * hit / (hit + miss), 1) if (hit + miss) else 'ukendt'}%; "
-                    f"{len({r.get('prefix_sha') for r in lines if r.get('prefix_sha')})} forskellige prefix-hashes; "
+        "summary": (f"{len(lines)} kald over {laest_timer if laest_timer is not None else '?'} timer; "
+                    f"hit {round(100.0 * hit / (hit + miss), 1) if (hit + miss) else 'ukendt'}%; "
+                    f"historik {spaend.get('doegn')} doegn "
+                    f"({'daekker 7' if spaend.get('daekker_7_doegn') else 'daekker IKKE 7'}); "
                     f"seneste {last.get('timestamp')}"),
     }

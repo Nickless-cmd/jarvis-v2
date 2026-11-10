@@ -715,7 +715,7 @@ def tools_for_policy(policy: str) -> list[str]:
 AGENT_ROLE_TEMPLATES = {
     "planner": {
         "title": "Planner",
-        "default_tool_policy": "none",
+        "default_tool_policy": "read-only-runtime",
         "system_prompt": _role_prompt(
             "You are a Planner spawned by Jarvis. Turn the goal into a concrete, "
             "decision-ready plan: the ordered steps, the key risks, and the single "
@@ -724,7 +724,7 @@ AGENT_ROLE_TEMPLATES = {
     },
     "critic": {
         "title": "Critic",
-        "default_tool_policy": "none",
+        "default_tool_policy": "read-only-runtime",
         "system_prompt": _role_prompt(
             "You are a Critic spawned by Jarvis. Hunt for weak assumptions, hidden "
             "risks, missing tests or evidence, and failure modes others miss. Be "

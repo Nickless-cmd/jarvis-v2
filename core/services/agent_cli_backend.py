@@ -184,8 +184,51 @@ def _prompt(prompt: str, *, writes: bool) -> str:
     return f"{prompt}\n\nCLI backend boundary: {boundary}\nAfslut med en kompakt, konkret leverance."
 
 
+def _cli_tools_for_policy(policy: str) -> str:
+    """Oversæt en ``tool_policy`` til claude-CLI'ens ``--tools``-liste.
+
+    ## Hvorfor denne findes (maalt 10/11-2026)
+
+    ``_command`` satte værktøjerne ud fra ÉN ting: om policyen var
+    ``worktree-write``. Alt andet fik ``Read,Glob,Grep``. Det gjorde
+    ``default_tool_policy`` i ``AGENT_ROLE_TEMPLATES`` til **død kode** på
+    denne vej — to sandheder om samme agent:
+
+      * ``critic`` og ``planner`` er deklareret med ``"none"`` = nul
+        værktøjer, men fik tre. Tabellen loej.
+      * ``researcher`` er deklareret med ``read-only-runtime`` = ti værktøjer
+        inkl. ``bash``, men fik tre. Tabellen loej den anden vej.
+
+    Det var ikke kosmetik: jeg valgte ``critic`` til en maaleopgave ud fra
+    tabellen og fik en agent der ikke kunne maale noget. Den svarede aerligt
+    «jeg har ikke maalt noget» — men valget var mit, og det byggede paa en
+    tabel der ikke passede med virkeligheden.
+
+    ## Shell er BEVIDST udeladt
+
+    ``_READ_ONLY_TOOLS`` indeholder ``bash``, saa ``read-only-runtime`` lover
+    shell i tabellen. CLI-agenter faar den ikke her:
+    ``dec_6a234cd30460`` (Bjoern, 5/11-2026) indskraenkede netop det med
+    ordene «den har ingen shell», og den beslutning er hans at ophaeve.
+    Forskellen er nu EKSPLICIT i koden frem for tavs, og
+    ``tests/test_agent_cli_policy.py`` fæstner den.
+
+    Ukendt eller tom policy giver laeseadgang, ikke nul: en CLI der starter
+    uden værktøjer kan ikke engang laese den fil den blev bedt om at vurdere,
+    og fejlen ville se ud som en tom leverance.
+    """
+    pol = str(policy or "").strip()
+    if pol == "worktree-write":
+        return "Read,Glob,Grep,Edit,Write"
+    # none, read-only-runtime, read-only-workstation, can-spawn og ukendt:
+    # alle er laesende set fra CLI'ens side. `none` er ikke nul her — se
+    # docstringen: nul værktøjer gør agenten blind, ikke sikker.
+    return "Read,Glob,Grep"
+
+
 def _command(provider: str, executable: str, model: str, root: str, prompt: str,
-             *, writes: bool, output_path: str) -> list[str]:
+             *, policy: str, output_path: str) -> list[str]:
+    writes = str(policy or "") == "worktree-write"
     selected = str(model or "").strip()
     if provider == "codex-cli":
         cmd = [executable, "exec", "--ephemeral", "--color", "never", "-C", root,
@@ -195,7 +238,7 @@ def _command(provider: str, executable: str, model: str, root: str, prompt: str,
             cmd += ["--model", selected]
         return [*cmd, prompt]
 
-    tools = "Read,Glob,Grep,Edit,Write" if writes else "Read,Glob,Grep"
+    tools = _cli_tools_for_policy(policy)
     cmd = [executable, "--print", prompt, "--restricted", "--no-session-persistence",
            "--permission-prompts", "none", "--output-format", "json", "--tools", tools]
     if writes:
@@ -253,10 +296,14 @@ def run_task_cli(*, agent: dict[str, Any], prompt: str, run_id: str,
 
     assignment = _assignment(str(agent.get("agent_id") or ""))
     root, writes = _working_root(agent, assignment)
+    # Policyen sendes videre, ikke kun `writes`: `_cli_tools_for_policy` skal
+    # kunne skelne de laesende policies fra hinanden. Foer 10/11-2026 var
+    # `default_tool_policy` død kode her, og tabellen loej begge veje.
+    policy = str(agent.get("tool_policy") or "")
     fd, output_path = tempfile.mkstemp(prefix="jarvis-task-cli-", suffix=".txt")
     os.close(fd)
     cmd = _command(provider, executable, model, root, _prompt(prompt, writes=writes),
-                   writes=writes, output_path=output_path)
+                   policy=policy, output_path=output_path)
     started = time.monotonic()
     proc = subprocess.Popen(
         cmd, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE,

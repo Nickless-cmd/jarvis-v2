@@ -459,11 +459,12 @@ _Claude Code og Codex CLI som eksekveringsbackends for ``Task``._
 | function | `_assignment` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L143) |
 | function | `_working_root` | `(agent, assignment)` | — | [src](../../../core/services/agent_cli_backend.py#L152) |
 | function | `_prompt` | `(prompt, *, writes)` | — | [src](../../../core/services/agent_cli_backend.py#L170) |
-| function | `_command` | `(provider, executable, model, root, prompt, *, writes, output_path)` | — | [src](../../../core/services/agent_cli_backend.py#L187) |
-| function | `_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L208) |
-| function | `_stop` | `(proc)` | — | [src](../../../core/services/agent_cli_backend.py#L215) |
-| function | `_claude_text` | `(stdout)` | — | [src](../../../core/services/agent_cli_backend.py#L226) |
-| function | `run_task_cli` | `(*, agent, prompt, run_id, timeout_s=…)` | Koer den valgte CLI én gang og returner agent-runtimens resultatform. | [src](../../../core/services/agent_cli_backend.py#L236) |
+| function | `_cli_tools_for_policy` | `(policy)` | Oversæt en ``tool_policy`` til claude-CLI'ens ``--tools``-liste. | [src](../../../core/services/agent_cli_backend.py#L187) |
+| function | `_command` | `(provider, executable, model, root, prompt, *, policy, output_path)` | — | [src](../../../core/services/agent_cli_backend.py#L229) |
+| function | `_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L251) |
+| function | `_stop` | `(proc)` | — | [src](../../../core/services/agent_cli_backend.py#L258) |
+| function | `_claude_text` | `(stdout)` | — | [src](../../../core/services/agent_cli_backend.py#L269) |
+| function | `run_task_cli` | `(*, agent, prompt, run_id, timeout_s=…)` | Koer den valgte CLI én gang og returner agent-runtimens resultatform. | [src](../../../core/services/agent_cli_backend.py#L279) |
 
 ## `core/services/agent_contract_bridge.py`
 _Binder spawn_agent_task til agent-contract-v1 (leverance A2)._

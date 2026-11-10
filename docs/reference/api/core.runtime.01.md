@@ -275,7 +275,9 @@ _Workerlease med stigende fencing-token + supervisor-genopretning (agent-contrac
 | function | `agent_lease_scope` | `(agent_id, *, lease_seconds=…, renew_seconds=…)` | Hold leasen for agentens aabne assignment mens blokken koerer. Uden et assignment | [src](../../../core/runtime/db_agent_lease.py#L197) |
 | function | `_claim` | `(assignment_id, token, t)` | Overtag en udloebet lease med ét atomisk UPDATE. Kun den ene supervisor faar ``True``. | [src](../../../core/runtime/db_agent_lease.py#L241) |
 | function | `reconcile_expired_leases` | `(*, now=…)` | Find udloebne leases, overtag hver med ét atomisk UPDATE og afgoer sikkert. | [src](../../../core/runtime/db_agent_lease.py#L251) |
-| function | `_decide` | `(assignment_id, t)` | — | [src](../../../core/runtime/db_agent_lease.py#L273) |
+| function | `close_orphan_runs` | `(conn, assignment_id, *, reason)` | Luk run-raekker der stadig staar aabne for et assignment der ikke laengere er det. | [src](../../../core/runtime/db_agent_lease.py#L273) |
+| function | `close_stale_runs` | `(*, timeout_minutes=…, max_rows=…)` | Luk run-raekker der ikke laengere har nogen der ejer dem — periodisk fangst. | [src](../../../core/runtime/db_agent_lease.py#L296) |
+| function | `_decide` | `(assignment_id, t)` | — | [src](../../../core/runtime/db_agent_lease.py#L349) |
 
 ## `core/runtime/db_agent_mandate.py`
 _Durable, mechanically enforceable mandate for one agent assignment._

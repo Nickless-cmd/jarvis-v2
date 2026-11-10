@@ -1421,12 +1421,27 @@ def cleanup_stale_agents(
             except Exception as exc:
                 errors.append(f"{agent_id}:{exc}")
 
+    # Run-raekker (10/11-2026). ``agent_registry`` blev ryddet her, men ``agent_runs``
+    # havde ingen reaper: en proces der doer midt i en koersel — fx en genstart under
+    # en CLI-session — efterlader raekken paa ``starting`` for evigt. Maalt 10/11-2026:
+    # fire raekker, tre af dem fra september, to maaneder efter de blev forladt.
+    # Graensen er 6 timer og ikke ``active_timeout_minutes``: ``update_agent_run``
+    # skriver kun ved tilstandsskift, saa en levende koersel kan staa urørt laenge.
+    try:
+        from core.runtime.db_agent_lease import close_stale_runs
+        closed_runs = close_stale_runs()
+    except Exception as exc:
+        errors.append(f"stale_runs_failed: {exc}")
+        closed_runs = []
+
     return {
         "cancelled_waiting_count": len(cancelled_waiting),
         "cancelled_failed_count": len(cancelled_failed),
         "cancelled_active_count": len(cancelled_active),
         "cancelled_starting_count": len(cancelled_starting),
         "cancelled_blocked_count": len(cancelled_blocked),
+        "closed_stale_runs_count": len(closed_runs),
+        "closed_stale_runs_ids": closed_runs,
         "cancelled_waiting_ids": cancelled_waiting,
         "cancelled_failed_ids": cancelled_failed,
         "cancelled_active_ids": cancelled_active,

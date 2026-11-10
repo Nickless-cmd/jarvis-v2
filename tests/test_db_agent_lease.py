@@ -319,3 +319,78 @@ def test_execute_agent_task_really_holds_the_lease_while_the_agent_runs(ls, monk
     assert row["state"] == "released"
     (a,) = [r for r in ls.c_._conn().execute("SELECT status FROM agent_assignments")]
     assert a["status"] == "completed"
+
+
+# --- forældreløse run-rækker (10/11-2026) -------------------------------------------------
+#
+# MAALT i drift: fire rækker stod paa ``starting`` — én ``codex-cli`` fra samme aften
+# og tre fra september, to maaneder efter de blev forladt. Assignmentet var afgjort og
+# ude af koeen, leasen var claimed, og runnet blev aldrig lukket. ``_RUN_OPEN`` laeser
+# ``starting`` som et forsoeg der stadig koerer, saa raekken loej i databasen.
+
+def _indsæt_run(ls, run_id, *, status="starting", assignment_id="", updated_at="2000-01-01T00:00:00Z"):
+    cn = ls.c_._conn()
+    cn.execute(
+        "INSERT INTO agent_runs (run_id, agent_id, status, assignment_id, created_at, updated_at) "
+        "VALUES (?, 'a1', ?, ?, ?, ?)",
+        (run_id, status, assignment_id, updated_at, updated_at))
+    cn.commit()
+
+
+def test_a_run_left_behind_by_a_dead_process_is_closed_by_the_sweep(ls):
+    """En legacy-række uden assignment: tiden er det eneste bevis der findes."""
+    _indsæt_run(ls, "run-forladt")
+    assert ls.l_.close_stale_runs(timeout_minutes=90) == ["run-forladt"]
+    r = ls.run_row("run-forladt")
+    assert r["status"] == "failed"
+    assert r["error_code"] == "RUN_STALE"
+    assert r["finished_at"], "en lukket raekke skal baere hvornaar den blev lukket"
+
+
+def test_a_run_under_a_terminal_assignment_is_closed_even_when_it_is_fresh(ls):
+    """Den anden betingelse: assignmentet er afgjort, saa der er intet at vente paa —
+    ogsaa naar rækken kun er sekunder gammel. Det gælder ALLE dets aabne runs, ikke
+    kun det nyeste: et terminalt assignment kan ikke have et forsoeg i gang."""
+    acc = ls.assignment()
+    ls.c_.commit_terminal_outcome(assignment_id=acc["assignment_id"], status="failed")
+    nu = datetime.now(UTC).isoformat()
+    _indsæt_run(ls, "run-frisk", assignment_id=acc["assignment_id"], updated_at=nu)
+    lukket = ls.l_.close_stale_runs(timeout_minutes=90)
+    assert "run-frisk" in lukket and acc["run_id"] in lukket
+    assert ls.run_row("run-frisk")["error_code"] == "RUN_STALE"
+
+
+def test_a_live_run_is_not_touched_by_the_sweep(ls):
+    """Den vigtigste af de fire: en vagt der lukker levende arbejde er værre end ingen
+    vagt. Frisk række + åbent assignment = rør den ikke."""
+    acc = ls.assignment()
+    assert ls.c_.get_assignment(assignment_id=acc["assignment_id"],
+                                owner_user_id="bjorn")["status"] in ("queued", "active")
+    nu = datetime.now(UTC).isoformat()
+    _indsæt_run(ls, "run-levende", assignment_id=acc["assignment_id"], updated_at=nu)
+    assert ls.l_.close_stale_runs(timeout_minutes=90) == []
+    assert ls.run_row("run-levende")["status"] == "starting"
+
+
+def test_an_old_run_held_by_a_valid_lease_is_not_touched(ls):
+    """Den farligste fejl ville være at lukke levende arbejde. ``update_agent_run``
+    skriver kun ved tilstandsskift, saa en levende koersel kan staa urørt i timevis —
+    derfor er det leasen, ikke tidsstemplet, der afgoer ejerskab."""
+    acc = ls.assignment()
+    ls.l_.acquire(assignment_id=acc["assignment_id"], holder="levende-worker")
+    _indsæt_run(ls, "run-gammel", assignment_id=acc["assignment_id"],
+                updated_at="2000-01-01T00:00:00Z")
+    assert ls.l_.close_stale_runs(timeout_minutes=360) == []
+    assert ls.run_row("run-gammel")["status"] == "starting"
+
+
+def test_the_orphan_branch_closes_the_run_row_when_the_assignment_was_already_terminal(ls):
+    """Regressionen: ``_decide`` returnerede foer den roerte ``agent_runs``, saa en
+    genstart midt i en CLI-session efterlod runnet paa ``starting`` for evigt."""
+    acc = _expired(ls)
+    ls.c_.commit_terminal_outcome(assignment_id=acc["assignment_id"], status="failed")
+    assert ls.l_.reconcile_expired_leases(now=T0 + timedelta(seconds=200)) == []
+    r = ls.run_row(acc["run_id"])
+    assert r["status"] == "failed"
+    assert r["error_code"] == "RUN_ORPHANED"
+    assert r["finished_at"]

@@ -270,6 +270,82 @@ def reconcile_expired_leases(*, now: datetime | None = None) -> list[dict[str, A
     return [d for d in done if d]
 
 
+def close_orphan_runs(conn, assignment_id: str, *, reason: str) -> int:
+    """Luk run-raekker der stadig staar aabne for et assignment der ikke laengere er det.
+
+    MAALT 10/11-2026: fire raekker stod paa ``starting`` — én ``codex-cli`` fra samme
+    aften og tre fra september. Assignmentet var afgjort (``failed``) og ude af koeen,
+    leasen var claimed, og alligevel blev runnet aldrig lukket: ``_decide`` returnerer
+    foer den roerer ``agent_runs``, naar assignmentet allerede er terminalt. En proces
+    der doer midt i en koersel (fx en genstart under en CLI-session) rammer praecis den
+    raekkefoelge, og saa staar raekken der for evigt.
+
+    Det er ikke kosmetik: ``_RUN_OPEN`` laeser ``starting`` som et forsoeg der stadig
+    koerer, saa et senere forsoeg paa samme assignment ser ud til at vaere i konflikt
+    med sig selv. Returnerer antallet af lukkede raekker."""
+    now_s = _now_iso()
+    cur = conn.execute(
+        "UPDATE agent_runs SET status='failed', failure_reason=?, error_phase='recovery', "
+        "error_code='RUN_ORPHANED', finished_at=?, updated_at=? "
+        "WHERE assignment_id=? AND status IN ('queued','starting','running','active')",
+        (reason[:300], now_s, now_s, assignment_id))
+    conn.commit()
+    return int(cur.rowcount or 0)
+
+
+def close_stale_runs(*, timeout_minutes: int = 360, max_rows: int = 50) -> list[str]:
+    """Luk run-raekker der ikke laengere har nogen der ejer dem — periodisk fangst.
+
+    ``close_orphan_runs`` daekker den ene raekkefoelge (assignmentet blev terminalt
+    FOER leasen udloeb). Denne daekker den anden: en proces der doer midt i en
+    koersel, hvor leasen aldrig bliver claimet fordi der ikke er nogen supervisor
+    tilbage i den proces der ejede den. Uden den anden halvdel kan en raekke blive
+    staaende, og det er maalt: tre raekker fra september stod stadig paa ``starting``
+    to maaneder senere.
+
+    To betingelser, og den foerste er bevis frem for et gaet:
+      * assignmentet er terminalt — der er intet forsoeg tilbage at vente paa
+      * raekken er aeldre end ``timeout_minutes`` OG der findes ingen GYLDIG lease
+
+    Den anden betingelse maa ikke bygge paa ``updated_at`` alene: ``update_agent_run``
+    skriver kun ved tilstandsskift (maalt 10/11-2026), saa en levende koersel kan
+    staa urørt i timevis. Grænsen er derfor sat til 6 timer — CLI-ruten har 45
+    minutters haardt loft, saa en raekke der har staaet stille saa laenge er ikke en
+    langsom opgave. En gyldig ``held``-lease betyder at nogen stadig ejer raekken,
+    og saa roerer vi den slet ikke.
+    """
+    from core.runtime.db_agent_contract import ASSIGNMENT_TERMINAL
+
+    terminal = tuple(ASSIGNMENT_TERMINAL)
+    now_s = _now_iso()
+    cutoff = (datetime.now(UTC) - timedelta(minutes=max(1, int(timeout_minutes)))).isoformat()
+    marks = ",".join("?" for _ in terminal)
+    conn = _conn()
+    rows = conn.execute(
+        "SELECT r.run_id, r.assignment_id FROM agent_runs r "
+        "LEFT JOIN agent_assignments a ON a.assignment_id = r.assignment_id "
+        "LEFT JOIN agent_leases l ON l.assignment_id = r.assignment_id "
+        "WHERE r.status IN ('queued','starting','running','active') "
+        f"AND (a.status IN ({marks}) OR (r.updated_at < ? AND NOT ("
+        "  COALESCE(l.state,'') = 'held' AND COALESCE(l.lease_until,'') > ?))) "
+        "ORDER BY r.updated_at ASC LIMIT ?",
+        (*terminal, cutoff, now_s, int(max_rows))).fetchall()
+    closed: list[str] = []
+    for row in rows:
+        run_id = str(row["run_id"] or "")
+        if not run_id:
+            continue
+        conn.execute(
+            "UPDATE agent_runs SET status='failed', failure_reason=?, error_phase='recovery', "
+            "error_code='RUN_STALE', finished_at=?, updated_at=? WHERE run_id=? "
+            "AND status IN ('queued','starting','running','active')",
+            (f"ingen ejer: over {int(timeout_minutes)} min uden gyldig lease",
+             now_s, now_s, run_id))
+        closed.append(run_id)
+    conn.commit()
+    return closed
+
+
 def _decide(assignment_id: str, t: datetime) -> dict[str, Any]:
     from core.runtime.db_agent_contract import ASSIGNMENT_TERMINAL
 
@@ -277,6 +353,10 @@ def _decide(assignment_id: str, t: datetime) -> dict[str, Any]:
     a = _row(conn.execute("SELECT * FROM agent_assignments WHERE assignment_id=?",
                           (assignment_id,)).fetchone())
     if a is None or a["status"] in ASSIGNMENT_TERMINAL:
+        # Leasen blev overtaget, men assignmentet var allerede afgjort — saa denne
+        # gren er det SIDSTE sted der kan lukke runnet. Uden kaldet her bliver
+        # raekken staaende som ``starting`` i al evighed (se `close_orphan_runs`).
+        close_orphan_runs(conn, assignment_id, reason="assignment_terminal_before_lease_expiry")
         return {}
     run = _row(conn.execute("SELECT * FROM agent_runs WHERE assignment_id=? ORDER BY attempt_no DESC "
                             "LIMIT 1", (assignment_id,)).fetchone())

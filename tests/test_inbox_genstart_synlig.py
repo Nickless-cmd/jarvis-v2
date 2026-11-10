@@ -122,6 +122,71 @@ class TestGenstartProjiceres:
         assert v["genstarter"] == []
 
 
+class TestGenaabnetPostBliverIkkeDraebtIgen:
+    """Genåbningen skal rydde `vist_at`, ikke kun `afgjort_at` (målt 10/11-2026).
+
+    Kæden der gjorde genstarten usynlig i drift:
+
+    1. bekræftelsen leveres → `registrer_kilde` → posten var `drop` → genåbnet
+    2. `luk_forældede_informerende` dropper informerende poster hvor
+       `vist_at` er ældre end 6 timer — og `vist_at` var IKKE ryddet
+    3. posten blev derfor dræbt igen ~2 min senere, og Bjørn så den aldrig
+
+    Målt: `afgjort_at` 13:15:26 efter genstart 13:12:58, med `vist_at` fra
+    dagen før. Det er samme fælde som `expires_at`, der blev ryddet i 2026.
+    """
+
+    def test_genaabning_rydder_vist_at(self, db):
+        with db_inbox.connect() as conn:
+            db_inbox._ensure_skema(conn)
+            conn.execute(
+                "INSERT INTO inbox_items (bruger_id, kildetype, kilde_id,"
+                " status, verificeret_ejer, kraever_handling, beskrivelse,"
+                " created_at, afgjort_at, vist_at)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (BRUGER, "genstart", "genstart-chat-abc", db_inbox.STATUS_DROP,
+                 db_inbox.EJER_UKENDT, 0, "gammel bekræftelse",
+                 "2026-11-09T16:00:00+00:00", "2026-11-09T18:00:00+00:00",
+                 "2026-11-09T17:00:00+00:00"))
+            conn.commit()
+
+        r = db_inbox.genaabn_af_kilde(bruger_id=BRUGER, kilde_id="genstart-chat-abc")
+
+        assert r["status"] == "ok"
+        assert r["post"]["status"] == db_inbox.STATUS_AABEN
+        assert r["post"]["vist_at"] == "", (
+            "vist_at skal ryddes ved genåbning — ellers arver posten den "
+            "visning der netop fik den til at blive udsat")
+
+    def test_genaabnet_post_overlever_oprydningen(self, db):
+        """Den ægte konsekvens: posten må ikke droppes igen ved næste sweep."""
+        with db_inbox.connect() as conn:
+            db_inbox._ensure_skema(conn)
+            conn.execute(
+                "INSERT INTO inbox_items (bruger_id, kildetype, kilde_id,"
+                " status, verificeret_ejer, kraever_handling, beskrivelse,"
+                " created_at, afgjort_at, vist_at)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (BRUGER, "genstart", "genstart-chat-abc", db_inbox.STATUS_DROP,
+                 db_inbox.EJER_UKENDT, 0, "gammel bekræftelse",
+                 "2026-11-09T16:00:00+00:00", "2026-11-09T18:00:00+00:00",
+                 "2026-11-09T17:00:00+00:00"))
+            conn.commit()
+
+        db_inbox.genaabn_af_kilde(bruger_id=BRUGER, kilde_id="genstart-chat-abc")
+        sweep = db_inbox.luk_forældede_informerende(timer=6, maks=500)
+
+        with db_inbox.connect() as conn:
+            rad = conn.execute(
+                "SELECT status FROM inbox_items WHERE bruger_id=? AND kilde_id=?",
+                (BRUGER, "genstart-chat-abc")).fetchone()
+
+        assert sweep["opryddet"] == 0, "den genåbnede post må ikke rammes"
+        assert rad["status"] == db_inbox.STATUS_AABEN, (
+            "bekræftelsen blev genåbnet og derefter dræbt igen af sit eget "
+            "arvede vist_at — præcis den tavshed posten findes for at undgå")
+
+
 class TestAabnePosterForsvinderIkke:
     def test_aabne_poster_sorteres_foer_afgjorte(self, db):
         """Fejl 2: `ORDER BY id ASC LIMIT 500` tog de ÆLDSTE.

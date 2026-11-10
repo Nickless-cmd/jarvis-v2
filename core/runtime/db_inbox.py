@@ -513,7 +513,15 @@ def genaabn_af_kilde(*, bruger_id: str, kilde_id: str) -> dict[str, Any]:
             # beregnet ved læsning. Genåbningen sætter samtidig
             # `kraever_handling = 0`, så posten ikke længere kan gate og
             # derfor heller ikke har brug for en frist.
-            "expires_at = '' "
+            "expires_at = '', "
+            # `vist_at` ryddes SAMME sted (10/11-2026), af samme grund som
+            # fristen: `luk_forældede_informerende` dropper en informerende post
+            # hvis `vist_at` er ældre end 6 timer. Blev feltet ikke ryddet,
+            # arvede en genåbnet post den visning der netop fik den til at blive
+            # udsat — og blev dømt igen ved næste sweep. Målt i drift:
+            # genstart-bekræftelsen blev genåbnet kl. 13:12:58 og droppet igen
+            # kl. 13:15:26, så Bjørn aldrig så den.
+            "vist_at = '' "
             "WHERE bruger_id = ? AND kilde_id = ? AND status IN (?, ?)",
             (STATUS_AABEN, bruger_id, kilde_id, STATUS_DROP, STATUS_UDLOEBET),
         )

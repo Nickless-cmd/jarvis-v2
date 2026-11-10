@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9985/18472 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9986/18473 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 9985/18472 functions/methods documented (54%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 883 | 1596 | 55% |
-| `core.services` | 6672 | 12521 | 53% |
+| `core.services` | 6673 | 12522 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -782,7 +782,7 @@ Generated from source. 9985/18472 functions/methods documented (54%). The list b
 - `core/services/agent_skill_distiller.py` :: `distill_all_known_roles` (L133)
 - `core/services/agent_skill_library.py` :: `list_skill_mutations` (L217)
 - `core/services/agent_task_facade.py` :: `derive` (L140)
-- `core/services/agent_task_facade.py` :: `execute` (L238)
+- `core/services/agent_task_facade.py` :: `execute` (L257)
 - `core/services/agent_todos.py` :: `add_todo` (L196)
 - `core/services/agent_todos.py` :: `clear_session_todos` (L379)
 - `core/services/agent_todos.py` :: `list_todos` (L68)

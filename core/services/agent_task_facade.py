@@ -235,6 +235,25 @@ def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
     }
 
 
+def derive_team_id(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
+                   description: str, prompt: str, team_name: str,
+                   members: list[dict[str, Any]]) -> str:
+    """Deterministisk ``team_id``, saa et gentaget ``Task(team=...)`` rammer den samme raekke.
+
+    Ren funktion: ingen DB, ingen I/O — kan kaldes foer noget er dispatchet.
+    """
+    # Medlemmerne hashes i den bestilte raekkefoelge, ikke sorteret: ombyttede medlemmer er
+    # en anden bestilling (et andet team), ikke en retry af den foerste.
+    # Kun role+task indgaar, saa et senere tilfoejet felt ikke aendrer eksisterende id'er.
+    canonical = {
+        "owner_user_id": owner_user_id, "origin_session_id": origin_session_id,
+        "parent_run_id": parent_run_id, "description": description, "prompt": prompt,
+        "team_name": team_name,
+        "members": [{"role": m.get("role"), "task": m.get("task")} for m in members],
+    }
+    return "team-" + hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()[:16]
+
+
 def execute(**fields: Any) -> dict[str, Any]:
     from core.services import agent_contract_service as service
 

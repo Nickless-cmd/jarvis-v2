@@ -1,6 +1,8 @@
 """The Task facade derives authority from fixed runtime profiles."""
 from __future__ import annotations
 
+import pytest
+
 
 def test_read_task_derives_every_authority_field(monkeypatch):
     from core.services import agent_task_facade as task
@@ -243,3 +245,49 @@ def test_to_team_medlemmer_deler_ikke_mandate_id(monkeypatch):
     assert m1["mandate"]["mandate_id"] != m2["mandate"]["mandate_id"], "PRIMARY KEY kollision"
     assert task.derive(**common, team_id="team-abc", member_index=1)["idempotency_key"] == m1["idempotency_key"], \
         "samme medlem skal vaere idempotent"
+
+
+# --- derive_team_id: samme bestilling -> samme team, ellers et nyt ---------------------
+
+_A = {"role": "researcher", "task": "laes koden"}
+_B = {"role": "executor", "task": "skriv testen"}
+
+
+def _team(**override):
+    from core.services import agent_task_facade as task
+
+    base = dict(owner_user_id="bjorn", origin_session_id="session-1", parent_run_id="run-1",
+                description="desc", prompt="do the thing", team_name="hold",
+                members=[dict(_A), dict(_B)])
+    base.update(override)
+    return task.derive_team_id(**base)
+
+
+def test_team_id_er_deterministisk():
+    assert _team() == _team()
+
+
+def test_team_id_har_praefiks_og_16_hex():
+    import re
+
+    assert re.fullmatch(r"team-[0-9a-f]{16}", _team())
+
+
+def test_team_id_raekkefoelgen_betyder_noget():
+    assert _team(members=[dict(_A), dict(_B)]) != _team(members=[dict(_B), dict(_A)])
+
+
+@pytest.mark.parametrize("felt", ["owner_user_id", "origin_session_id", "parent_run_id",
+                                  "description", "prompt", "team_name"])
+def test_team_id_hvert_inputfelt_betyder_noget(felt):
+    assert _team(**{felt: "andet"}) != _team()
+
+
+@pytest.mark.parametrize("nogle", ["role", "task"])
+def test_team_id_medlemmets_indhold_betyder_noget(nogle):
+    aendret = dict(_B, **{nogle: "andet"})
+    assert _team(members=[dict(_A), aendret]) != _team()
+
+
+def test_team_id_ignorerer_ukendte_noegler_i_et_medlem():
+    assert _team(members=[dict(_A, note="x"), dict(_B)]) == _team()

@@ -100,7 +100,7 @@ def convene(*, owner_user_id: str, origin_session_id: str, topic: str, facts: st
             expected_result="en begrundet vurdering med konfidens og forbehold", budget_tokens=budget_tokens,
             idempotency_key=f"{cid}:m{i}", wake_parent=False)
         if out.get("status") != "accepted":
-            _abandon(owner_user_id, origin_session_id, cid, started)
+            _abandon(owner_user_id, origin_session_id, cid, started, store.PROVISIONING)
             return {**out, "council_id": cid, "failed_member": i, "council_status": store.CANCELLED,
                     "detail": f"medlem {i} ({m['role']}) kunne ikke accepteres: {out.get('error')}"}
         started.append({"index": i, "role": m["role"], "task": m["task"], "assignment_id": out["assignment_id"],
@@ -109,16 +109,23 @@ def convene(*, owner_user_id: str, origin_session_id: str, topic: str, facts: st
     return _view(store.require(cid, owner_user_id))
 
 
-def _abandon(owner: str, session: str, cid: str, started: list[dict[str, Any]]) -> None:
-    """Intet halvt raad: afbryd de medlemmer der allerede er startet og luk raadet."""
+def _abandon(owner: str, session: str, cid: str, started: list[dict[str, Any]], frm: str) -> None:
+    """Intet halvt raad: afbryd de medlemmer der allerede er startet og luk raadet.
+
+    Raadet lukkes FOER medlemmerne gemmes. ``set_members()`` flytter ellers raekken fra
+    ``provisioning`` til ``gathering``, og saa rammer transitionen til ``cancelled`` en
+    status den ikke forventede - et halvt raad ville staa fast uden vej ud.
+    ``frm`` er ``provisioning`` naar afvisningen sker i samlingsloekken (raekken er ikke
+    skrevet ind endnu) og ``gathering`` hvis raadet allerede var samlet.
+    """
     for m in started:
         try:
             svc.interrupt_agent(owner_user_id=owner, origin_session_id=session, agent_id=m["agent_id"],
                                 note=f"raad {cid} kunne ikke samles")
         except Exception:
             logger.warning("kunne ikke afbryde raadsmedlem %s", m.get("agent_id"), exc_info=True)
+    store.transition(cid, frm=frm, to=store.CANCELLED)
     store.set_members(cid, started)
-    store.transition(cid, frm=store.GATHERING, to=store.CANCELLED)
 
 
 def _view(c: dict[str, Any], *, replayed: bool = False) -> dict[str, Any]:
@@ -172,6 +179,14 @@ def advance() -> list[dict[str, Any]]:
     for c in store.open_councils():
         owner, session = c["owner_user_id"], c["origin_session_id"]
         try:
+            if c["status"] == store.PROVISIONING:
+                continue                      # medlemmerne er ikke skrevet ind endnu - intet at avancere
+            if not c["members"]:
+                # Gamle raekker fra foer provisioning-tilstanden kan staa i gathering med en
+                # tom liste. Uden denne vagt giver _outcomes ([], True): nul medlemmer, alle
+                # "terminale" - og syntesen ville blive skrevet over et tomt grundlag.
+                logger.warning("raad %s er %s uden medlemmer - springes over", c["council_id"], c["status"])
+                continue
             if c["status"] == store.GATHERING:
                 outcomes, all_terminal = _outcomes(owner, c["members"])
                 if not all_terminal or len(outcomes) != len(c["members"]):

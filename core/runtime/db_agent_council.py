@@ -4,10 +4,16 @@ Et raad er IKKE en egen runtime: det er et moenster over de almindelige assignme
 sammenhaengen - hvilke medlems-assignments hoerer til raadet, og hvilket syntese-assignment der blev oprettet
 da ALLE medlemmer var terminale. Selve arbejdet, udfaldene og beskederne ligger i assignment/outbox-tabellerne.
 
+    provisioning -> raekken er oprettet, men medlemmerne er endnu ikke skrevet ind
     gathering  -> medlemmerne arbejder
     synthesizing -> alle medlemmer er terminale; syntese-assignmentet er oprettet
     done       -> syntesen er terminal
     cancelled  -> raadet kunne ikke samles (intet halvt raad)
+
+``provisioning`` findes fordi ``create()`` indsatte raekken med ``members_json='[]'``
+og ``advance()`` derefter kunne se ``([], True)``: nul medlemmer, alle "terminale".
+Det gav en syntese over et tomt grundlag. Saa laenge raekken er i ``provisioning``,
+er den ikke et raad nogen supervisor maa avancere.
 """
 from __future__ import annotations
 
@@ -21,7 +27,13 @@ from core.runtime.db_agent_contract import ContractError, _conn, _now_iso
 
 logger = logging.getLogger(__name__)
 
+PROVISIONING = "provisioning"
 GATHERING, SYNTHESIZING, DONE, CANCELLED = "gathering", "synthesizing", "done", "cancelled"
+
+#: Statusser hvor raadet stadig er i live og en supervisor skal kigge paa det.
+#: ``open_councils()`` bygger sin IN-liste fra denne maengde — en ny aaben status
+#: kan derfor ikke glemmes i en haandskrevet literal.
+OPEN_STATUSES: frozenset[str] = frozenset({PROVISIONING, GATHERING, SYNTHESIZING})
 
 
 def ensure_council_tables(conn: sqlite3.Connection) -> None:
@@ -49,6 +61,12 @@ def ensure_council_tables(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_agent_councils_idem ON agent_councils"
                  "(owner_user_id, origin_session_id, idempotency_key) WHERE idempotency_key != ''")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_agent_councils_status ON agent_councils(status)")
+    # Additive kolonner: en eksisterende tabel maa ikke tabe data for at faa dem.
+    # Samme moenster som db_agent_deadlines.ensure_deadline_columns().
+    have = {r["name"] for r in conn.execute("PRAGMA table_info(agent_councils)")}
+    for name in ("stalled_after_at", "synthesis_wake_registered_at"):
+        if name not in have:
+            conn.execute(f"ALTER TABLE agent_councils ADD COLUMN {name} TEXT NOT NULL DEFAULT ''")
 
 
 def _view(r: sqlite3.Row | None) -> dict[str, Any] | None:
@@ -70,7 +88,7 @@ def create(*, owner_user_id: str, origin_session_id: str, parent_run_id: str, pa
         "topic, facts, synthesis_role, budget_tokens, idempotency_key, status, created_at, updated_at) "
         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (cid, owner_user_id, origin_session_id, parent_agent_id, parent_run_id, topic, facts, synthesis_role,
-         int(budget_tokens), idempotency_key, GATHERING, now, now))
+         int(budget_tokens), idempotency_key, PROVISIONING, now, now))
     conn.commit()
     return get(cid, owner_user_id) or {}
 
@@ -90,10 +108,17 @@ def find_by_key(owner_user_id: str, origin_session_id: str, key: str) -> dict[st
 
 
 def set_members(council_id: str, members: list[dict[str, Any]]) -> None:
+    """Gem medlemmerne og flyt raadet fra ``provisioning`` til ``gathering``.
+
+    Skiftet sker KUN fra ``provisioning``. Er raadet allerede ``gathering`` (en retry)
+    eller ``cancelled`` (en afbrudt samling), er der intet at flytte — og det er ikke
+    en fejl. Derfor ignoreres ``transition``s returvaerdi her.
+    """
     conn = _conn()
     conn.execute("UPDATE agent_councils SET members_json=?, updated_at=? WHERE council_id=?",
                  (json.dumps(members, ensure_ascii=False), _now_iso(), council_id))
     conn.commit()
+    transition(council_id, frm=PROVISIONING, to=GATHERING)
 
 
 def transition(council_id: str, *, frm: str, to: str, synthesis_assignment_id: str = "") -> bool:
@@ -107,8 +132,15 @@ def transition(council_id: str, *, frm: str, to: str, synthesis_assignment_id: s
 
 
 def open_councils() -> list[dict[str, Any]]:
-    rows = _conn().execute("SELECT * FROM agent_councils WHERE status IN (?,?) ORDER BY created_at",
-                           (GATHERING, SYNTHESIZING)).fetchall()
+    """Alle raad en supervisor stadig skal kigge paa — bygget fra ``OPEN_STATUSES``.
+
+    En ny aaben status kan derfor ikke glemmes i en haandskrevet literal; den skal
+    blot med i maengden.
+    """
+    statuses = sorted(OPEN_STATUSES)
+    placeholders = ",".join("?" for _ in statuses)
+    rows = _conn().execute(f"SELECT * FROM agent_councils WHERE status IN ({placeholders}) ORDER BY created_at",
+                           statuses).fetchall()
     return [_view(r) for r in rows]  # type: ignore[misc]
 
 

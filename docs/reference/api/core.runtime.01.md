@@ -202,15 +202,15 @@ _Raad paa agentmotoren (agent-contract-v1 F5, spec 5.1 + 7.1 om raad)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `ensure_council_tables` | `(conn)` | — | [src](../../../core/runtime/db_agent_council.py#L27) |
-| function | `_view` | `(r)` | — | [src](../../../core/runtime/db_agent_council.py#L54) |
-| function | `create` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, topic, facts, synthesis_role, budget_tokens, idempotency_key, council_id=…)` | — | [src](../../../core/runtime/db_agent_council.py#L62) |
-| function | `get` | `(council_id, owner_user_id)` | Ejerfiltreret: et andet raad end ejerens er ``None``. | [src](../../../core/runtime/db_agent_council.py#L78) |
-| function | `find_by_key` | `(owner_user_id, origin_session_id, key)` | — | [src](../../../core/runtime/db_agent_council.py#L84) |
-| function | `set_members` | `(council_id, members)` | — | [src](../../../core/runtime/db_agent_council.py#L92) |
-| function | `transition` | `(council_id, *, frm, to, synthesis_assignment_id=…)` | Atomisk statusskifte; ``False`` hvis en anden supervisor allerede har flyttet raadet. | [src](../../../core/runtime/db_agent_council.py#L99) |
-| function | `open_councils` | `()` | — | [src](../../../core/runtime/db_agent_council.py#L109) |
-| function | `require` | `(council_id, owner_user_id)` | — | [src](../../../core/runtime/db_agent_council.py#L115) |
+| function | `ensure_council_tables` | `(conn)` | — | [src](../../../core/runtime/db_agent_council.py#L39) |
+| function | `_view` | `(r)` | — | [src](../../../core/runtime/db_agent_council.py#L72) |
+| function | `create` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, topic, facts, synthesis_role, budget_tokens, idempotency_key, council_id=…)` | — | [src](../../../core/runtime/db_agent_council.py#L80) |
+| function | `get` | `(council_id, owner_user_id)` | Ejerfiltreret: et andet raad end ejerens er ``None``. | [src](../../../core/runtime/db_agent_council.py#L96) |
+| function | `find_by_key` | `(owner_user_id, origin_session_id, key)` | — | [src](../../../core/runtime/db_agent_council.py#L102) |
+| function | `set_members` | `(council_id, members)` | Gem medlemmerne og flyt raadet fra ``provisioning`` til ``gathering``. | [src](../../../core/runtime/db_agent_council.py#L110) |
+| function | `transition` | `(council_id, *, frm, to, synthesis_assignment_id=…)` | Atomisk statusskifte; ``False`` hvis en anden supervisor allerede har flyttet raadet. | [src](../../../core/runtime/db_agent_council.py#L124) |
+| function | `open_councils` | `()` | Alle raad en supervisor stadig skal kigge paa — bygget fra ``OPEN_STATUSES``. | [src](../../../core/runtime/db_agent_council.py#L134) |
+| function | `require` | `(council_id, owner_user_id)` | — | [src](../../../core/runtime/db_agent_council.py#L147) |
 
 ## `core/runtime/db_agent_deadlines.py`
 _Durable queue deadline for accepted contract assignments (§12.3)._

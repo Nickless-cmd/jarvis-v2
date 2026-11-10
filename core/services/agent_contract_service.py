@@ -266,9 +266,20 @@ def dispatch_agent(
             return _err("INVALID_SCOPE", "writes kraever et workspace (repo-sti)")
         if (allowed_tools and mandate is None) or (tool_policy and tool_policy != "worktree-write"):
             return _err("INVALID_SCOPE", "en kodeagent har den faste politik worktree-write")
-        if mandate is not None and any(t not in {"wt_bash", "wt_write_file", "agent_note"}
-                                       for t in (allowed_tools or [])):
-            return _err("INVALID_SCOPE", "Task-executoren maa kun bruge worktree-vaerktoejer")
+        # 10/11-2026: her stod en HAANDHOLDT tre-liste, mens `tools_for_policy("worktree-write")`
+        # giver elleve - saa hver executor med et mandate blev afvist, og Task-doeren var
+        # laast for alle. Reglen er nu en delmaengde af policyens FAKTISKE saet: stadig
+        # ingen `bash` (containeren) og intet der skriver uden for worktree'et, men listen
+        # kan ikke laengere drive fra beslutningen den skal bevoegte.
+        if mandate is not None:
+            from core.services.agent_runtime_base import tools_for_policy
+            # `agent_note` er agent-kun og ikke politik-styret; derfor uden for saettet.
+            tilladte = set(tools_for_policy("worktree-write")) | {"agent_note"}
+            ugyldige = [t for t in (allowed_tools or []) if t not in tilladte]
+            if ugyldige:
+                return _err("INVALID_SCOPE",
+                            "Task-executoren maa kun bruge worktree-vaerktoejer "
+                            f"(afvist: {', '.join(ugyldige)})")
         tool_policy = "worktree-write"
     elif wt_tools or (workspace or "").strip():
         return _err("INVALID_SCOPE", "worktree-vaerktoejer og workspace kraever writes=true")

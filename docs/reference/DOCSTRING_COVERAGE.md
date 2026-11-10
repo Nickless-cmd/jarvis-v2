@@ -747,7 +747,7 @@ Generated from source. 9985/18472 functions/methods documented (54%). The list b
 - `core/services/agent_contract_projection.py` :: `close` (L565)
 - `core/services/agent_contract_projection.py` :: `followup` (L542)
 - `core/services/agent_contract_projection.py` :: `mark_read` (L486)
-- `core/services/agent_contract_service.py` :: `list_approvals` (L784)
+- `core/services/agent_contract_service.py` :: `list_approvals` (L795)
 - `core/services/agent_council.py` :: `synthesis_goal` (L198)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L322)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L320)

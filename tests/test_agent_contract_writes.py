@@ -252,3 +252,50 @@ def test_en_afsendt_terminalbesked_spaerrer_ogsaa(cw):
 
     assert cw.c_.discard_unstarted_assignment(agent_id=ag, owner_user_id=O) is False
     assert cw.count("agent_assignments") == 1
+
+
+# ── regression 10/11-2026: Task-doeren var laast for HVER executor ────────────
+
+def _facade_plan(cw, monkeypatch, *, extra_tools=()):
+    """Planen praecis som `Task`-facaden sender den: elleve vaerktoejer + et mandate."""
+    from core.services import agent_task_facade as facade
+    monkeypatch.setattr(facade, "_session_scope", lambda owner, session: ("workstation", cw.repo_))
+    plan = facade.derive(
+        owner_user_id=O, origin_session_id=S, parent_run_id=R, parent_agent_id="jarvis",
+        description="byg en funktion", prompt="skriv en funktion", subagent_type="executor",
+        model="", run_in_background=True,
+    )
+    plan.pop("run_in_background", None)
+    mandate = plan.pop("mandate")
+    if extra_tools:
+        plan["allowed_tools"] = [*plan["allowed_tools"], *extra_tools]
+        mandate["allowed_tools"] = list(plan["allowed_tools"])
+    return plan, mandate
+
+
+def test_en_executor_fra_facaden_slipper_gennem_med_sit_mandat(cw, monkeypatch):
+    """Regressionen: facaden gav executoren elleve vaerktoejer, men kontraktservicen
+    sammenlignede med en HAANDHOLDT tre-liste. Resultatet var at hver executor med
+    et mandate blev afvist — Task-doeren var laast for alle, ikke kun for nogle.
+
+    Testen gaar gennem facadens EGEN derive() og den aegte dispatch, saa den maaler
+    samspillet mellem de to sider og ikke en kopi af det.
+    """
+    plan, mandate = _facade_plan(cw, monkeypatch)
+    assert "wt_bash" in plan["allowed_tools"] and len(plan["allowed_tools"]) > 3, \
+        "forudsaetningen er at policyen giver mere end de tre gamle navne"
+    out = cw.d(**plan, mandate=mandate)
+    assert out["status"] == "accepted", out
+    assert cw.count("agent_worktrees") == 1
+
+
+def test_executoren_afvises_stadig_for_et_container_vaerktoej(cw, monkeypatch):
+    """Lempen maa ikke aabne for containerværktøjet: `bash` kører uden for sandkassen
+    og er den eskalering C5 findes for at fjerne. Deltagelse i policysættet er
+    kravet — ikke at navnet ligner noget worktree-agtigt.
+    """
+    plan, mandate = _facade_plan(cw, monkeypatch, extra_tools=("bash",))
+    out = cw.d(**plan, mandate=mandate)
+    assert (out["status"], out["code"]) == ("error", "INVALID_SCOPE"), out
+    assert "bash" in out["error"]
+    assert cw.count("agent_worktrees") == 0 and cw.started_ == []

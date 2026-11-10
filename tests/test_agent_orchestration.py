@@ -69,6 +69,47 @@ def test_text_states_the_rules_the_spec_requires(pr):
         assert needle in t, needle
 
 
+def test_team_feltet_er_haandhaevet_i_skemaet_og_prompten_naevner_det_kun_fordi_det_findes(pr):
+    """Leverance 8: prompten maa kun naevne felter Task faktisk har.
+
+    ``team`` blev naevnt som et Task-felt, men foer Leverance 4 havde skemaet det ikke —
+    praecis den fejl der startede hele runden: et loefte om et felt der ikke findes.
+    Testen binder de to sider sammen, saa naeste gang nogen skriver et felt ind i
+    prompten foer skemaet, fejler den her i stedet for i modellen.
+    """
+    from core.tools.agent_contract_tools import AGENT_CONTRACT_TOOL_DEFINITIONS
+
+    pr.on()
+    task = next(d for d in AGENT_CONTRACT_TOOL_DEFINITIONS if d["function"]["name"] == "Task")
+    params = task["function"]["parameters"]
+    props = params["properties"]
+
+    # 1. Skemaet HAR feltet, og dets form er den prompten lover.
+    assert "team" in props, "Task-skemaet mangler team"
+    assert set(props["team"]["properties"]) == {"name", "members"}
+
+    # 2. Skemaet AFVISER ukendte felter i stedet for at ignorere dem. Uden dette
+    #    forsvinder en stavefejl som `team_name` stille, og modellen tror den bestilte et team.
+    assert params.get("additionalProperties") is False, (
+        "Task skal saette additionalProperties: false — ellers tabes et ukendt felt tavst")
+
+    # 3. Prompten naevner feltet. Det er kun aerligt fordi punkt 1 er sandt.
+    text = ao.orchestrator_section()
+    assert "`team`" in text, "prompten naevner ikke team, saa modellen finder det ikke"
+
+    # 4. Hvert parameter-navn prompten skriver i backticks skal findes i Task-skemaet.
+    #    Undtaget er vaerktoejsnavne (de er ikke Task-felter) og parametre der hoerer til
+    #    ANDRE vaerktoejer. Resten skal vaere Task-felter — ellers lover prompten noget
+    #    skemaet ikke kan levere.
+    andre_parametre = {"wake_if_run_ends", "include_output", "executor", "workspace", "writes"}
+    vaerktoejer = {"Task", "wait_agents", "send_message_to_agent", "followup_agent",
+                   "interrupt_agent", "close_agent", "list_agents", "integrate_agent_work",
+                   "review_agent_work"}
+    naevnt = set(re.findall(r"`([A-Za-z_]+)`", text))
+    ukendte = naevnt - vaerktoejer - andre_parametre - set(props)
+    assert not ukendte, f"prompten naevner felter Task ikke har: {sorted(ukendte)}"
+
+
 def _assembly():
     from core.services.prompt_contract import build_visible_chat_prompt_assembly
     return build_visible_chat_prompt_assembly(

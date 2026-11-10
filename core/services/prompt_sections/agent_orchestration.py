@@ -39,6 +39,10 @@ _TEXT = (
     "vaekker dig ikke - resultaterne ligger i inboxen til din naeste tur. Kun en handling der overskrider det oprindelige mandat maa skabe en menneskelig godkendelse; en mindre overskridelse af barnets eget mandat afvises og rapporteres til dig. Et fejlet barn "
     "vurderes ud fra aarsag og deloutput, ikke automatisk erstattet. Brug IKKE vaerktoejet til "
     "en kort handling du kan afslutte direkte."
+    " Et team bestilles som ét `Task`-kald med `team`: 2-6 medlemmer, hver med sin rolle og sin "
+    "egen opgave, alle med samme faktagrundlag. Medlemmer faar aldrig skriveret, og teamets id "
+    "udledes af bestillingen - et retry rammer de samme raekker i stedet for at starte N nye "
+    "agenter. Syntesen oprettes foerst naar alle medlemmer er terminale."
 )
 
 

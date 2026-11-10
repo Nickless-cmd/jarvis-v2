@@ -40,10 +40,20 @@ _NEW_ONLY: frozenset[str] = frozenset(
      "decide_agent_approval"})
 
 
-def _fn(name: str, description: str, properties: dict[str, Any], required: list[str]) -> dict[str, Any]:
+def _fn(name: str, description: str, properties: dict[str, Any], required: list[str],
+        *, additional_properties: bool | None = None) -> dict[str, Any]:
+    """Byg én vaerktoejsdefinition.
+
+    ``additional_properties=False`` saetter ``additionalProperties: false`` paa parameterobjektet,
+    saa et ukendt felt AFVISES i stedet for at forsvinde. Det er kun sat hvor et stille tab goer
+    skade: en model der skriver ``team_name`` i stedet for ``team`` fik ingen fejl og troede den
+    havde bestilt et team. De oevrige vaerktoejer beholder deres skema uaendret.
+    """
+    params: dict[str, Any] = {"type": "object", "properties": properties, "required": required}
+    if additional_properties is not None:
+        params["additionalProperties"] = additional_properties
     return {"type": "function", "function": {
-        "name": name, "description": description,
-        "parameters": {"type": "object", "properties": properties, "required": required}}}
+        "name": name, "description": description, "parameters": params}}
 
 
 _ID = {"type": "string", "description": "agent_id returned by Task."}
@@ -89,7 +99,8 @@ AGENT_CONTRACT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                                                   "description": "This member's own question. Must be "
                                                                  "unique within the team."}},
                           "required": ["role", "task"]}}}}},
-        ["description", "prompt"]),
+        ["description", "prompt"],
+        additional_properties=False),
     _fn("followup_agent",
         "Give an existing agent a NEW task (new assignment and run, same agent_id). Not allowed "
         "while it still has an active task or after close_agent.",

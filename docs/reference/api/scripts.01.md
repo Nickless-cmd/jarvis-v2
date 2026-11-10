@@ -294,8 +294,10 @@ _Udskudt genstart — vent til turen er SLUT, genstart saa._
 | function | `_run_is_alive` | `(run_id)` | True hvis runnet lever. Kan kilden ikke laeses, svarer vi True (vent). | [src](../../../scripts/deferred_restart.py#L64) |
 | function | `_andre_lever` | `(egen_run_id)` | Run-id for et ANDET levende run — "" hvis ingen, "?" hvis vi ikke ved det. | [src](../../../scripts/deferred_restart.py#L82) |
 | function | `wait_for_idle` | `(run_id, *, margin_s=…)` | Vent til MIT run er doedt OG ingen andre koersler lever. | [src](../../../scripts/deferred_restart.py#L129) |
-| function | `_afbryd` | `(waited, grund, run_id)` | Genstarten blev UDSKUDT — ikke udfoert. Sig det hoejt, og ryd op. | [src](../../../scripts/deferred_restart.py#L159) |
-| function | `main` | `(argv)` | — | [src](../../../scripts/deferred_restart.py#L199) |
+| function | `_ryd_op_og_sig` | `(*, run_id, kilde_id, beskrivelse)` | Ryd op efter en genstart der IKKE blev gennemfoert, og sig det hoejt. | [src](../../../scripts/deferred_restart.py#L159) |
+| function | `_afbryd` | `(waited, grund, run_id)` | Genstarten blev UDSKUDT — der koerer stadig nogen. Ryd op og sig det. | [src](../../../scripts/deferred_restart.py#L200) |
+| function | `_fejlet` | `(waited, grund, run_id)` | Genstarten blev FORSOEGT og fejlede — `sudo` naegtet, systemd nede, timeout. | [src](../../../scripts/deferred_restart.py#L214) |
+| function | `main` | `(argv)` | — | [src](../../../scripts/deferred_restart.py#L234) |
 
 ## `scripts/dispatcher_adoption.py`
 _Bliver `call_loaded_tool` faktisk brugt? — tallet der afgør etape B._

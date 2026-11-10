@@ -202,14 +202,68 @@ class TestMain:
         assert rc == 0
         assert kaldt and "jarvis-api" in kaldt[0]
 
-    def test_fejlende_genstart_giver_returkode_1(self, monkeypatch):
+    def test_fejlende_genstart_rydder_op(self, monkeypatch, tmp_path):
+        """En FEJLET genstart maa ikke efterlade en bekræftelse der lyver.
+
+        `restart_self` skriver filen FOER scriptet startes, og naeste
+        api-opstart sender den som «genstart gennemfoert». Fejler `systemctl`,
+        laa filen tilbage — og naeste opstart, maaske dage senere og af en
+        helt anden grund, havde loejet om udfaldet. Stdout duer ikke som
+        bevis: scriptet startes detached med DEVNULL, saa linjen forsvinder.
+        """
+        fil = tmp_path / "pending_restart_confirmation.json"
+        fil.write_text("{}")
+        monkeypatch.setattr(
+            "core.tools.restart_self_tools.PENDING_RESTART_FILE", fil)
+        kald: list[dict] = []
+        monkeypatch.setattr("core.services.inbox_state._ejer_id", lambda: "bjorn")
+        monkeypatch.setattr(
+            "core.services.inbox_state.registrer_kilde",
+            lambda **kw: kald.append(kw) or {"status": "ok"},
+        )
         monkeypatch.setattr(dr, "wait_for_idle",
                             lambda rid, margin_s=0.0: (1.0, ""))
         monkeypatch.setattr(
             dr.subprocess, "run",
             lambda cmd, **k: type("R", (), {"returncode": 1, "stderr": "nej"})(),
         )
-        assert dr.main(["deferred_restart.py", "visible-min", "jarvis-api"]) == 1
+
+        rc = dr.main(["deferred_restart.py", "visible-min", "jarvis-api"])
+
+        assert rc == 1
+        assert not fil.exists(), (
+            "bekraeftelsesfilen laa tilbage efter en fejlet genstart — "
+            "naeste opstart ville sende «genstart gennemfoert»"
+        )
+        assert len(kald) == 1, "fejlen blev ikke gjort synlig i indbakken"
+        assert kald[0]["kildetype"] == "genstart"
+        assert kald[0]["bruger_id"] == "bjorn"
+        assert "FEJLEDE" in kald[0]["beskrivelse"]
+
+    def test_kast_i_ventetiden_rydder_ogsaa_op(self, monkeypatch, tmp_path):
+        """Samme fejlform et lag laengere inde: en crash er ogsaa «ikke sket»."""
+        fil = tmp_path / "pending_restart_confirmation.json"
+        fil.write_text("{}")
+        monkeypatch.setattr(
+            "core.tools.restart_self_tools.PENDING_RESTART_FILE", fil)
+        monkeypatch.setattr("core.services.inbox_state._ejer_id", lambda: "bjorn")
+        monkeypatch.setattr(
+            "core.services.inbox_state.registrer_kilde",
+            lambda **kw: {"status": "ok"},
+        )
+        monkeypatch.setattr(
+            dr, "wait_for_idle",
+            lambda rid, margin_s=0.0: (_ for _ in ()).throw(RuntimeError("db nede")),
+        )
+        kaldt: list = []
+        monkeypatch.setattr(dr.subprocess, "run",
+                            lambda *a, **k: kaldt.append(a))
+
+        rc = dr.main(["deferred_restart.py", "visible-min", "jarvis-api"])
+
+        assert rc == 1
+        assert not kaldt, "der blev genstartet efter en crash i ventetiden"
+        assert not fil.exists(), "bekraeftelsesfilen overlevede en crash"
 
 
 def test_pytest_kan_se_modulet():

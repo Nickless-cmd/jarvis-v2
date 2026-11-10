@@ -156,18 +156,25 @@ def wait_for_idle(run_id: str, *, margin_s: float = DEFAULT_MARGIN_S) -> tuple[f
     return time.monotonic() - start, ""
 
 
-def _afbryd(waited: float, grund: str, run_id: str) -> None:
-    """Genstarten blev UDSKUDT — ikke udfoert. Sig det hoejt, og ryd op.
+def _ryd_op_og_sig(*, run_id: str, kilde_id: str, beskrivelse: str) -> None:
+    """Ryd op efter en genstart der IKKE blev gennemfoert, og sig det hoejt.
 
-    To ting skal ske, og begge er noedvendige:
+    Bruges af BEGGE ikke-succes-stier — udskudt og fejlet. Det er samme
+    regnskabsproblem: `restart_self` skriver den ventende bekræftelse FOER
+    scriptet startes (`restart_self_tools.py:236`), og ved naeste api-opstart
+    omdoeber `claim_pending_restart_confirmation` den og sender «genstart
+    gennemfoert». Bliver filen liggende efter en fejl, lyver den om en
+    genstart der aldrig skete — og naeste opstart kan ligge dage væk og ske
+    af en helt anden grund.
 
-    1. Den ventende bekræftelses-fil SLETTES. `restart_self` skriver den FOER
-       scriptet startes, og ved naeste api-opstart sender den «genstart
-       gennemfoert». Bliver den liggende, lyver den — der skete ingen genstart.
-    2. Det skal kunne SES. Indbakken er den flade Bjoern og jeg begge laeser,
-       og samme sted som run-closure-gatens beskeder lander nu.
+    Stdout alene duer ikke: scriptet startes detached med `stdout=DEVNULL`,
+    saa en linje her forsvinder. Indbakken er den flade Bjoern og jeg begge
+    laeser.
     """
     try:
+        # Funktions-lokal import med vilje: en top-level import ville binde en
+        # KOPI af stien, saa testenes monkeypatch (der rammer kildemodulet)
+        # ikke slog igennem — og oprydningen ville ramme den forkerte fil.
         from core.tools.restart_self_tools import PENDING_RESTART_FILE
         PENDING_RESTART_FILE.unlink(missing_ok=True)
     except Exception:
@@ -180,30 +187,73 @@ def _afbryd(waited: float, grund: str, run_id: str) -> None:
             registrer_kilde(
                 bruger_id=bruger,
                 kildetype="genstart",
-                kilde_id=f"udskudt-{run_id or 'ukendt'}",
+                kilde_id=kilde_id,
                 oprettende_run_id=run_id,
                 paastaaet_ejer="huset",
-                beskrivelse=(
-                    f"Genstart UDSKUDT efter {waited:.0f}s — {grund}. "
-                    "Jeg genstarter ikke mens en anden session koerer. "
-                    "Sig til, saa proever jeg igen."
-                ),
+                beskrivelse=beskrivelse,
             )
     except Exception:
         logger.warning("deferred_restart: kunne ikke skrive til indbakken",
                        exc_info=True)
+
+
+def _afbryd(waited: float, grund: str, run_id: str) -> None:
+    """Genstarten blev UDSKUDT — der koerer stadig nogen. Ryd op og sig det."""
+    _ryd_op_og_sig(
+        run_id=run_id,
+        kilde_id=f"udskudt-{run_id or 'ukendt'}",
+        beskrivelse=(
+            f"Genstart UDSKUDT efter {waited:.0f}s — {grund}. "
+            "Jeg genstarter ikke mens en anden session koerer. "
+            "Sig til, saa proever jeg igen."
+        ),
+    )
     print(f"deferred_restart: UDSKUDT efter {waited:.0f}s — {grund}. Ingen genstart.")
+
+
+def _fejlet(waited: float, grund: str, run_id: str) -> None:
+    """Genstarten blev FORSOEGT og fejlede — `sudo` naegtet, systemd nede, timeout.
+
+    Uden denne gren laa bekræftelsesfilen tilbage efter et fejlet
+    `systemctl restart`, og den naeste api-opstart havde sendt «genstart
+    gennemfoert» om en genstart der aldrig skete.
+    """
+    _ryd_op_og_sig(
+        run_id=run_id,
+        kilde_id=f"fejlet-{run_id or 'ukendt'}",
+        beskrivelse=(
+            f"Genstart FEJLEDE efter {waited:.0f}s — {grund}. "
+            "Tjenesterne koerer stadig den gamle kode. "
+            "Sig til, saa proever jeg igen."
+        ),
+    )
+    print(f"deferred_restart: ventede {waited:.0f}s — FEJL: {grund}")
 
 
 
 def main(argv: list[str]) -> int:
     run_id = argv[1] if len(argv) > 1 else ""
     services = [s for s in (argv[2].split(",") if len(argv) > 2 else []) if s]
-    margin = float(argv[3]) if len(argv) > 3 else DEFAULT_MARGIN_S
+    try:
+        margin = float(argv[3]) if len(argv) > 3 else DEFAULT_MARGIN_S
+    except ValueError:
+        # En ugyldig margin er ikke en grund til at efterlade en bekræftelse
+        # der vil paastaa at genstarten lykkedes.
+        logger.warning("deferred_restart: ugyldig margin %r — bruger %s",
+                       argv[3], DEFAULT_MARGIN_S)
+        margin = DEFAULT_MARGIN_S
     if not services:
         services = ["jarvis-api", "jarvis-runtime"]
 
-    waited, grund = wait_for_idle(run_id, margin_s=margin)
+    try:
+        waited, grund = wait_for_idle(run_id, margin_s=margin)
+    except Exception as exc:
+        # Kaster ventetiden, blev genstarten aldrig forsoegt — men
+        # bekræftelsen ligger allerede paa disken og ville lyve ved naeste
+        # opstart. Fejlen rapporteres, den skjules ikke.
+        logger.exception("deferred_restart: ventetiden kastede")
+        _fejlet(0.0, f"ventetiden kastede: {exc}", run_id)
+        return 1
     if grund:
         # Der koerer stadig noget. Vi genstarter IKKE — en draebt tur er
         # dyrere end en udskudt genstart.
@@ -223,7 +273,9 @@ def main(argv: list[str]) -> int:
             failures.append(f"{svc}: {exc}")
 
     if failures:
-        print(f"deferred_restart: ventede {waited:.0f}s — FEJL: {'; '.join(failures)}")
+        # Fejl-stien rydder op som den udskudte: ellers laa den ventende
+        # bekræftelse tilbage og naeste opstart havde loejet om udfaldet.
+        _fejlet(waited, "; ".join(failures), run_id)
         return 1
     print(f"deferred_restart: ventede {waited:.0f}s — genstartede {', '.join(services)}")
     return 0

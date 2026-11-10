@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9958/18448 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9960/18450 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -38,7 +38,7 @@ Generated from source. 9958/18448 functions/methods documented (53%). The list b
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 10 | 11 | 90% |
-| `scripts` | 316 | 651 | 48% |
+| `scripts` | 318 | 653 | 48% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -2508,7 +2508,7 @@ Generated from source. 9958/18448 functions/methods documented (53%). The list b
 - `scripts/db_path_fixture_audit.py` :: `main` (L20)
 - `scripts/db_split_baseline.py` :: `main` (L43)
 - `scripts/db_split_baseline.py` :: `measure` (L18)
-- `scripts/deferred_restart.py` :: `main` (L199)
+- `scripts/deferred_restart.py` :: `main` (L234)
 - `scripts/diagnostics/canary_measure.py` :: `main` (L56)
 - `scripts/diagnostics/recall_canary.py` :: `main` (L138)
 - `scripts/dispatcher_adoption.py` :: `main` (L63)

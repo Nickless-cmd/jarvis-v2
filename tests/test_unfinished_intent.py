@@ -77,8 +77,9 @@ class TestGuardSplit:
         assert intent is not None
         assert intent.pattern == "future_action_promise"
 
-    def test_detect_promise_intent_kraver_future_action_promise(self):
-        # Cliffhanger er en continuation-signatur, ikke et løfte.
+    def test_cliffhanger_er_ikke_et_loefte(self):
+        # Cliffhanger er en continuation-signatur, ikke et løfte. Den er derfor
+        # bevidst UDEN FOR _LOFTE_PATTERNS — ellers blev ledgeren ren støj.
         assert ui.detect_promise_intent("Her er status på det hele:") is None
         assert ui.detect_promise_intent(
             "Sådan her gør jeg det, nu kommer detaljerne..."
@@ -110,3 +111,69 @@ class TestKortTekstTillaeg:
 
     def test_kort_negation_giver_ikke_traef(self):
         assert ui.detect_promise_intent("Jeg tjekker ikke det nu.") is None
+
+
+class TestRegistreringUdenSpoergsmaalstegnGuard:
+    """Rodårsag 2, anden halvdel (målt 10/11-2026).
+
+    Den fælles sætnings-guard blokerede på ETHVERT «?», så et jeg-form-løfte
+    med et retorisk spørgsmålstegn hverken blev registreret eller fanget.
+    Målt: «Jeg tjekker lige at nøglerne faktisk er væk fra pending, så det
+    ikke bare er din overbevisning jeg citerer?» → None fra BEGGE gater.
+
+    Registrering koster intet, så der kræves nu BÅDE et tilbuds-ord OG et
+    «?» for at blokere. Continuation er UÆNDRET: et afsluttende spørgsmål
+    giver fortsat kontrollen tilbage til brugeren (23/6-incidenten).
+    """
+
+    # Den konkrete sætning fra 10/11-2026 kl. 16:17.
+    REELLE = (
+        "Jeg tjekker lige at nøglerne faktisk er væk fra pending, så det"
+        " ikke bare er din overbevisning jeg citerer?"
+    )
+
+    def test_reelt_loefte_med_spoergsmaalstegn_registreres(self):
+        intent = ui.detect_promise_intent(self.REELLE)
+        assert intent is not None, "løftet forsvandt på grund af et retorisk «?»"
+
+    def test_samme_saetning_blokerer_stadig_continuation(self):
+        # Regression: spørgsmåls-guarden i continuation-gaten må IKKE løsnes.
+        assert ui.detect_unfinished_intent(self.REELLE) is None
+
+    def test_tilbud_til_brugeren_registreres_ikke(self):
+        # Et tilbud er ikke et løfte — og det blokeres af tilbuds-ord + «?».
+        assert ui.detect_promise_intent(
+            "Vil du have at jeg tjekker nøglerne for dig?"
+        ) is None
+        assert ui.detect_promise_intent(
+            "Skal jeg tjekke nøglerne for dig?"
+        ) is None
+
+    def test_tilbud_uden_spoergsmaalstegn_registreres(self):
+        # «Først skal jeg dog hente seneste version» er en konstatering, og
+        # uden «?» er den ikke et tilbud — den skal stadig kunne registreres
+        # når den bærer et løfte. Måler at vi ikke genindførte den gamle
+        # overblokering ved at kræve «?» fraværende.
+        intent = ui.detect_promise_intent(
+            "Først skal jeg lige hente seneste version, og så tjekker jeg"
+            " nøglerne igennem for dig."
+        )
+        assert intent is not None
+
+    def test_jeg_skal_er_ogsaa_et_loefte(self):
+        # «Jeg skal lige …» klassificeres som «jeg_skal», ikke
+        # «future_action_promise». Før faldt den ud af registreringen fordi
+        # filteret kun accepterede sidstnævnte.
+        intent = ui.detect_promise_intent(
+            "Jeg skal lige tjekke nøglerne igennem inden jeg svarer dig,"
+            " så vi ikke bygger videre på en forkert antagelse."
+        )
+        assert intent is not None
+        assert intent.pattern == "jeg_skal"
+
+    def test_negation_registreres_ikke(self):
+        # Negationen gælder uændret i registrerings-tilstanden.
+        assert ui.detect_promise_intent(
+            "Jeg tjekker ikke lige den fil igen, for den er allerede"
+            " verificeret."
+        ) is None

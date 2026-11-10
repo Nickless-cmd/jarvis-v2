@@ -190,6 +190,37 @@ _SÆTNING_SPOERGSMAAL_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Registrerings-variant (side-02afb491ea, 10/11-2026). Målt: et jeg-form-løfte
+# med et afsluttende «?» — «Jeg tjekker lige at nøglerne er væk … citerer?» —
+# blev hverken registreret eller fanget, fordi _SÆTNING_SPOERGSMAAL_RE blokerer
+# på ETHVERT «?». Men modulets konservative afvejning («et tabt træf koster ét
+# ping; et falsk træf starter et autonomt run») gælder KUN continuation. En
+# registrering koster intet — den lægges i ledgeren og vises i næste prompt.
+#
+# Derfor: ved registrering kræver blokeringen BÅDE et tilbuds-ord OG et
+# spørgsmålstegn. Et retorisk «?» i en jeg-form-handling er ikke et tilbud, og
+# et tilbud uden «?» («Først skal jeg dog hente seneste version») er en
+# konstatering — ingen af dem må dræbe registreringen.
+_SÆTNING_SPOERGSMAAL_REGISTRERING_RE = re.compile(
+    r"\b(?:vil\s+du|skal\s+(?:jeg|vi)|må\s+jeg|kunne\s+du\s+tænke|"
+    r"hvad\s+(?:siger|synes)\s+du)\b[^?]{0,120}\?",
+    re.IGNORECASE,
+)
+
+# Hvilke detektor-patterns der er et LØFTE om en handling (og derfor hører i
+# promise-ledgeren). ``cliffhanger`` er bevidst udeladt: en tekst der slutter
+# med «…» eller «:» er en uafsluttet tanke, ikke et udsagn om hvad Jarvis vil
+# gøre — at registrere den som løfte ville gøre ledgeren til støj.
+# (side-02afb491ea, 10/11-2026: filteret krævede tidligere KUN
+# ``future_action_promise``, så «Jeg skal lige tjekke X» — et klart løfte —
+# faldt ud fordi detekteren klassificerer den som ``jeg_skal``.)
+_LOFTE_PATTERNS = frozenset({
+    "future_action_promise",
+    "jeg_skal",
+    "lad_mig",
+    "foerst_skal",
+})
+
 # Lukke-verber (19/10-2026): «jeg skal lige LUKKE min egen fejl ordentligt»
 # er ikke en opgave der åbnes — det er en sætning der AFSLUTTER noget. Samme
 # familie som negationen: ordet «skal» bærer ikke et løfte når verbet efter
@@ -213,7 +244,9 @@ def _sætning_omkring(tail: str, m: re.Match) -> tuple[str, int]:
     return tail[start:end], start
 
 
-def _er_sætningsblokeret(tail: str, m: re.Match) -> bool:
+def _er_sætningsblokeret(
+    tail: str, m: re.Match, *, registrering: bool = False,
+) -> bool:
     """True hvis sætningen omkring matchet er negeret eller spørgende.
 
     To målte forfinelser (19/10-2026, efter første forsøg slog 4 ægte træf ihjel):
@@ -246,7 +279,12 @@ def _er_sætningsblokeret(tail: str, m: re.Match) -> bool:
     if _SÆTNING_NEGATION_RE.match(efter_match.strip()):
         return True
 
-    if _SÆTNING_SPOERGSMAAL_RE.search(sætning):
+    mønster = (
+        _SÆTNING_SPOERGSMAAL_REGISTRERING_RE
+        if registrering
+        else _SÆTNING_SPOERGSMAAL_RE
+    )
+    if mønster.search(sætning):
         return True
     return False
 
@@ -301,29 +339,38 @@ def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
 
 
 def detect_promise_intent(text: str | None) -> UnfinishedIntent | None:
-    """Registrerings-gate (rodårsag 2, side-02afb491ea 13/11-2026).
+    """Registrerings-gate (rodårsag 2, side-02afb491ea 10/11-2026).
 
     Løfte-registrering må ikke afhænge af continuation-guarden: et løfte
     der bare huskes koster intet, mens et autonomt run der fabrikerer
     samtykke på et spørgsmål (23/6-incidenten) er skadeligt. Derfor
-    springer denne gate spørgsmåls- og handoff-guarden over — men
-    sætnings-guarden (negation/spørgende sætning, 19/10-2026) gælder
-    stadig, så «Vil du have at jeg tjekker X?» ikke registreres som løfte.
+    springer denne gate spørgsmåls- og handoff-guarden over.
+
+    Sætnings-guarden gælder stadig, men i sin registrerings-variant: et
+    retorisk «?» i en jeg-form-handling dræber ikke længere løftet (målt
+    10/11-2026 — «Jeg tjekker lige … citerer?» blev hverken registreret
+    eller fanget), mens et egentligt tilbud til brugeren stadig gør
+    («Vil du have at jeg tjekker X?» er ikke et løfte).
     """
     if not text or not isinstance(text, str):
         return None
     stripped = text.strip()
     if not stripped:
         return None
-    intent = _detect_intent_core(stripped)
-    if intent is None or intent.pattern != "future_action_promise":
+    intent = _detect_intent_core(stripped, registrering=True)
+    if intent is None or intent.pattern not in _LOFTE_PATTERNS:
         return None
     return intent
 
 
-def _detect_intent_core(stripped: str) -> UnfinishedIntent | None:
+def _detect_intent_core(
+    stripped: str, *, registrering: bool = False,
+) -> UnfinishedIntent | None:
     """Alle detektor-mønstrene på en allerede strippet tekst — uden
-    continuation-guarden (spørgsmål/handoff), som bor i de to gater."""
+    continuation-guarden (spørgsmål/handoff), som bor i de to gater.
+
+    ``registrering=True`` videresendes til sætnings-guarden og løsner KUN
+    spørgsmålstegn-leddet; negation og lukke-verber gælder uændret."""
     if len(stripped) < _MIN_TEXT_LEN:
         # Korte beskeder: fang KUN høj-signal start-løfter der ellers ryger under
         # grænsen ("Jeg går i gang!"). Negation undtaget. Lange beskeder beholder
@@ -336,7 +383,7 @@ def _detect_intent_core(stripped: str) -> UnfinishedIntent | None:
         # aldrig. Future-promise-mønstret gælder nu også under 50 tegn — med
         # samme sætnings-guard som de lange tekster.
         m = _FUTURE_ACTION_PROMISE_RE.search(stripped)
-        if m and not _er_sætningsblokeret(stripped, m):
+        if m and not _er_sætningsblokeret(stripped, m, registrering=registrering):
             return UnfinishedIntent(
                 pattern="future_action_promise", matched_text=m.group(0),
             )
@@ -346,7 +393,7 @@ def _detect_intent_core(stripped: str) -> UnfinishedIntent | None:
 
     # 1. "Lad mig først / lad mig se / lad mig selv tjekke ..."
     m = _LAD_MIG_RE.search(tail)
-    if m and not _er_negeret(tail, m) and not _er_sætningsblokeret(tail, m):
+    if m and not _er_negeret(tail, m) and not _er_sætningsblokeret(tail, m, registrering=registrering):
         return UnfinishedIntent(pattern="lad_mig", matched_text=m.group(0))
 
     # 2. "Jeg skal lige / jeg skal først / jeg skal tjekke ..."
@@ -355,7 +402,7 @@ def _detect_intent_core(stripped: str) -> UnfinishedIntent | None:
     if (
         m
         and not _er_negeret(tail, m)
-        and not _er_sætningsblokeret(tail, m)
+        and not _er_sætningsblokeret(tail, m, registrering=registrering)
         # Lukke-verbum-guard 19/10-2026: «jeg skal lige LUKKE min fejl» er en
         # afslutning, ikke en opgave. Verbet står EFTER matchet («jeg skal
         # lige» + «lukke»), så vi ser på matchet plus dets umiddelbare
@@ -368,7 +415,7 @@ def _detect_intent_core(stripped: str) -> UnfinishedIntent | None:
 
     # 3. "Først skal jeg / først lad mig / først må jeg"
     m = _FOERST_SKAL_RE.search(tail)
-    if m and not _er_sætningsblokeret(tail, m):
+    if m and not _er_sætningsblokeret(tail, m, registrering=registrering):
         return UnfinishedIntent(pattern="foerst_skal", matched_text=m.group(0))
 
     # 3b. "Jeg fikser/laver/kører X nu" — future-tense action promise.
@@ -376,7 +423,7 @@ def _detect_intent_core(stripped: str) -> UnfinishedIntent | None:
     # handling og afslutte runde uden faktisk tool-kald. Auto-continuation
     # vækker ham med "du sagde X — gør det nu".
     m = _FUTURE_ACTION_PROMISE_RE.search(tail)
-    if m and not _er_sætningsblokeret(tail, m):
+    if m and not _er_sætningsblokeret(tail, m, registrering=registrering):
         return UnfinishedIntent(
             pattern="future_action_promise", matched_text=m.group(0),
         )

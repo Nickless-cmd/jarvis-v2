@@ -70,11 +70,55 @@ def test_a_writing_agent_that_promises_instead_of_writing_is_nudged_once():
 
 def test_a_write_capable_agent_that_stops_without_writing_is_asked_once():
     """Ogsaa naar teksten ikke lover noget: en agent MED skrivevaerktoejer der slutter uden en
-    eneste skrivning faar ét spoergsmaal i stedet for et stiltiende 'faerdig'."""
+    eneste skrivning faar ét spoergsmaal — og dens tomme leverance er ikke en fuldfoert opgave.
+
+    10/11-2026: assertionen blev VENDT. Foer stod der at en skrive-agent der svarede
+    «Der var intet at rette» skulle passere som fuldfoert, fordi «den svarede - det var
+    ikke et loefte». Den regel blev maalt forkert fem gange i traek samme aften: fem
+    executorer svarede i tekst uden at skrive en linje, og hver af dem blev meldt
+    ``completed`` med files=[] og diff_bytes=0. Systemet kan ikke se forskel paa
+    «jeg fandt intet at rette» og «jeg gav op» — saa for en SKRIVE-opgave maa teksten
+    alene ikke kunne lukke opgaven. Status bliver BLOCKED, ikke FAILED: agenten gjorde
+    intet galt, den leverede bare ikke sin aendring."""
     io = FakeIO([{"text": "Jeg har undersøgt sagen."}, {"text": "Der var intet at rette."}])
     out = _run(io, tools_payload=_WT_TOOLS)
     assert out["rounds"] == 2 and out["final_text"] == "Der var intet at rette."
-    assert "incomplete" not in out                      # den svarede - det var ikke et loefte
+    assert out["incomplete"] is True
+    assert out["stop_reason"] == "agenten kunne skrive men skrev intet"
+
+
+def test_en_skrivende_agent_faar_aldrig_sine_vaerktoejer_fjernet_mens_der_er_budget():
+    """Den maalte kaede 10/11-2026, ord for ord.
+
+    Opgaven var en SKRIVE-opgave med en nummereret kravliste. `_unanswered_questions`
+    laeste kravene som spoergsmaal, og naar agenten svarede i tekst gav
+    `_answers_directive` den ét kald UDEN vaerktoejer — hvor skrivning er strukturelt
+    umulig — mens der var 4 af 12 runder tilbage. Fem executorer i traek endte saaledes
+    med nul skrevne linjer, hver af dem efter at have lokaliseret det praecise sted.
+
+    Vagten er ikke teksten men SKEMAET: intet modelkald i en skrive-opgave maa have
+    `tools == []` saa laenge rundebudgettet ikke er opbrugt."""
+    krav = ("Ret to steder i filen.\n"
+            "1) Tilfoej feltet til skemaet.\n"
+            "2) Naevnt feltet i prompten.\n"
+            "3) Skriv en test der binder dem sammen.\n")
+    io = FakeIO([
+        {"text": "", "tool_calls": [_wt(1, "wt_bash")]},          # runde 1: lokaliserer
+        {"text": "Jeg fandt begge steder, men naaede ikke at skrive."},   # runde 2: nudge
+        {"text": "Jeg fandt begge steder, men naaede ikke at skrive."},   # runde 3: giver op
+        # Ekstra svar saa en mutation kan naa assertionen i stedet for at doe paa tom IO.
+        {"text": "1) gjort\n2) gjort\n3) gjort"},
+    ])
+    out = _run(io, prompt=krav, tools_payload=_WT_TOOLS, max_rounds=12)
+    assert out["rounds"] < 12, "testen skal ramme opgivelses-grenen, ikke budgetloftet"
+    uden_vaerktoejer = [i for i, c in enumerate(io.model_calls) if c["tools"] == []]
+    assert uden_vaerktoejer == [], (
+        f"modelkald {uden_vaerktoejer} fik ingen vaerktoejer mens der var runder tilbage")
+    assert out["incomplete"] is True
+    assert out["stop_reason"] == "agenten kunne skrive men skrev intet", (
+        f"grunden skal vaere den tomme skrivning, ikke antallet af krav: {out.get('stop_reason')!r}")
+    assert not out.get("unanswered"), (
+        "en skriveopgaves kravliste maa ikke taelles som ubesvarede spoergsmaal")
 
 
 def test_an_agent_that_promises_twice_is_reported_incomplete_not_completed():

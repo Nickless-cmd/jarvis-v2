@@ -118,7 +118,8 @@ def _answers_directive(unanswered: int) -> str:
     return (
         f"Du har stadig {unanswered} ubesvarede spørgsmål. Svar på ALLE spørgsmålene NU, "
         "nummereret præcis som de står i opgaven (1), 2), 3) …), ud fra det du allerede "
-        "har fundet. Kald INGEN værktøjer — der er ingen runder tilbage. Kan du ikke "
+        "har fundet. Kald INGEN værktøjer — opgaven er at SVARE, ikke at undersøge videre. "
+        "Kan du ikke "
         "svare på et spørgsmål, så skriv det eksplicit med grunden; afslut ikke med et "
         "løfte om at undersøge det senere. Et spørgsmål du ikke kunne verificere er IKKE "
         "besvaret — tæl det ikke med. Slut af med én linje, "
@@ -429,9 +430,18 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                     messages.append({"role": "assistant", "content": final_text})
                     messages.append({"role": "user", "content": _SCOUT_NUDGE})
                     continue
-                # Samme vaern for en SKRIVENDE agent (8/10-2026). Én afgraenset nudge - ikke et
+                # Samme vaern for en SKRIVENDE agent (8/10-2026). Afgraenset nudge - ikke et
                 # krav om succes: naeste runde maa gerne vaere "det kan jeg ikke, fordi ...".
-                if not scout and action_retries < 1 and (promised or unanswered or (write_capable and write_calls == 0)):
+                #
+                # 10/11-2026: en SKRIVENDE agent der ikke har skrevet ét tegn er IKKE en
+                # agent med ubesvarede spoergsmaal - dens leverance er AENDRINGEN, ikke
+                # teksten. Maalt paa fem executor-koersler i traek: 6-9 vaerktoejskald, alle
+                # laesning, nul skriv. Kravlisten i opgaven blev laest som spoergsmaal, og
+                # `_answers_directive` gav den ét kald UDEN vaerktoejer - hvor skrivning er
+                # strukturelt umulig - mens der var 4 af 12 runder tilbage. Svar-grenen maa
+                # ikke vinde over skrivningen, saa laenge der er runder tilbage at skrive i.
+                must_write = write_capable and write_calls == 0
+                if not scout and action_retries < 1 and (promised or unanswered or must_write):
                     action_retries += 1
                     # 26/10-2026: nudgen maa ikke forbruge den SIDSTE tilladte runde. Goer den
                     # det, udloeb loekken paa `while rounds < max_rounds` uden at naa ned til
@@ -449,10 +459,16 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                 # Det er ikke en fuldfoert opgave - kalderen skal kunne se forskel.
                 if promised and write_capable and write_calls == 0:
                     incomplete = True
+                # En skrivende agent der ikke skrev er et MAALT faktum med sin egen grund.
+                # Uden denne linje blev den stemplet med antallet af ubesvarede spoergsmaal
+                # - en grund der ikke findes for en skriveopgave.
+                if must_write:
+                    incomplete = True
+                    stop_reason = stop_reason or "agenten kunne skrive men skrev intet"
                 # 26/10-2026: ubesvarede nummererede spoergsmaal er et MAALELIGT faktum, ikke
                 # en vurdering af teksten. Staar der stadig huller efter nudgen, er leverancen
                 # ufuldstaendig — ogsaa for en laese-agent, og ogsaa naar teksten lyder faerdig.
-                if unanswered:
+                if unanswered and not must_write:
                     incomplete = True
                     unanswered_total = unanswered
                     # 26/10-2026 (nat): nudgen er brugt, men spoergsmaalene staar stadig aabne.

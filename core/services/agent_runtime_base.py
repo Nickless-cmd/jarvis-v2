@@ -77,14 +77,26 @@ def _facade():
 # Routing them to providers without tool-call support (ollamafreeapi) results
 # in hallucinated tool-output prose. These roles must use providers that
 # support OpenAI-compatible tool calling.
-_TOOL_USING_ROLES: frozenset[str] = frozenset({
-    "researcher", "critic", "planner", "executor",
-    "devils_advocate", "watcher", "synthesizer", "reviewer",
-})
-
-
+#
+# 10/11-2026: listen var en HÅNDHOLDT kopi af en beslutning der allerede stod i
+# `AGENT_ROLE_TEMPLATES[...]["default_tool_policy"]`, og de to var drevet fra
+# hinanden: `synthesizer` og `devils_advocate` stod her som værktøjs-brugere
+# med policy `"none"` — altså nul værktøjer. Det er samme fejlform som
+# `critic`-fejlen samme dag, et lag længere inde: to lister, én beslutning.
+# Nu udledes den af policyen, så der er ÉN sandhed. `_role_needs_tools` er
+# stadig den funktion kalderne bruger — den læser bare templaten i stedet for
+# en kopi. En rolle uden template (fri tekst) arver `researcher`-bunden, så
+# svaret følger den template den faktisk kører på.
 def _role_needs_tools(role: str) -> bool:
-    return str(role or "") in _TOOL_USING_ROLES
+    template = AGENT_ROLE_TEMPLATES.get(str(role or ""))
+    if template is None:
+        template = AGENT_ROLE_TEMPLATES["researcher"]
+    return bool(tools_for_policy(str(template.get("default_tool_policy") or "")))
+
+
+def _tool_using_roles() -> frozenset[str]:
+    """Rollerne der faktisk får værktøjer — udledt, ikke håndholdt."""
+    return frozenset(r for r in AGENT_ROLE_TEMPLATES if _role_needs_tools(r))
 
 
 # ── Axis 3: agent tool EXECUTION (guarded behind a reversible flag) ─────────

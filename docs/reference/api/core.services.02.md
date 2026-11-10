@@ -92,26 +92,27 @@ _Agent runtime — shared foundation (imports, constants, role templates, helper
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_facade` | `()` | Return the facade module so monkeypatch-through-facade is honored. | [src](../../../core/services/agent_runtime_base.py#L63) |
-| function | `_role_needs_tools` | `(role)` | — | [src](../../../core/services/agent_runtime_base.py#L86) |
-| function | `agent_tools_enabled` | `()` | Read the reversible ``agent_tools_enabled`` runtime-state flag. | [src](../../../core/services/agent_runtime_base.py#L141) |
-| function | `set_agent_tools_enabled` | `(enabled, *, role=…)` | Flip the ``agent_tools_enabled`` flag. Returns the CURRENT value. | [src](../../../core/services/agent_runtime_base.py#L156) |
-| function | `_build_agent_tools_payload` | `(allowed_tools, *, ceiling=…)` | Build an OpenAI-compat tools array from an agent's allowed_tools. | [src](../../../core/services/agent_runtime_base.py#L176) |
-| function | `_execute_agent_tool_call` | `(tool_call, *, agent_id)` | Execute one model-issued tool call through the guarded dispatcher. | [src](../../../core/services/agent_runtime_base.py#L220) |
-| function | `_run_agent_tool_loop` | `(*, agent, prompt, requires_tools, run_id=…, resume=…)` | Run an agent turn WITH a real tools array + tool-execution loop. | [src](../../../core/services/agent_runtime_base.py#L300) |
-| class | `_InProcessLoopIO` | `` | Loekkens I/O naar den koerer i serverprocessen (dagens adfaerd, uaendret). | [src](../../../core/services/agent_runtime_base.py#L344) |
-| method | `_InProcessLoopIO.__init__` | `(self, *, agent, run_id, resume=…)` | — | [src](../../../core/services/agent_runtime_base.py#L347) |
-| method | `_InProcessLoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L358) |
-| method | `_InProcessLoopIO.run_id` | `(self)` | — | [src](../../../core/services/agent_runtime_base.py#L373) |
-| method | `_InProcessLoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_runtime_base.py#L376) |
-| method | `_InProcessLoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_runtime_base.py#L397) |
-| method | `_InProcessLoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_runtime_base.py#L400) |
-| function | `_bogfoer_start` | `(agent, run_id, tc)` | Startposten for et vaerktoejskald (status ``running``, ``started_at`` sat, ingen ``finished_at``). | [src](../../../core/services/agent_runtime_base.py#L409) |
-| function | `_bogfoer_vaerktoejskald` | `(agent, run_id, tc, tool_out)` | BOGFOER KALDET (db + per-agent transcript). `agent_tool_calls` havde foer NUL kaldere: | [src](../../../core/services/agent_runtime_base.py#L425) |
-| function | `_loop_result` | `(o, *, scout, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L463) |
-| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L630) |
-| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L689) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L828) |
-| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L832) |
+| function | `_role_needs_tools` | `(role)` | — | [src](../../../core/services/agent_runtime_base.py#L90) |
+| function | `_tool_using_roles` | `()` | Rollerne der faktisk får værktøjer — udledt, ikke håndholdt. | [src](../../../core/services/agent_runtime_base.py#L97) |
+| function | `agent_tools_enabled` | `()` | Read the reversible ``agent_tools_enabled`` runtime-state flag. | [src](../../../core/services/agent_runtime_base.py#L153) |
+| function | `set_agent_tools_enabled` | `(enabled, *, role=…)` | Flip the ``agent_tools_enabled`` flag. Returns the CURRENT value. | [src](../../../core/services/agent_runtime_base.py#L168) |
+| function | `_build_agent_tools_payload` | `(allowed_tools, *, ceiling=…)` | Build an OpenAI-compat tools array from an agent's allowed_tools. | [src](../../../core/services/agent_runtime_base.py#L188) |
+| function | `_execute_agent_tool_call` | `(tool_call, *, agent_id)` | Execute one model-issued tool call through the guarded dispatcher. | [src](../../../core/services/agent_runtime_base.py#L232) |
+| function | `_run_agent_tool_loop` | `(*, agent, prompt, requires_tools, run_id=…, resume=…)` | Run an agent turn WITH a real tools array + tool-execution loop. | [src](../../../core/services/agent_runtime_base.py#L312) |
+| class | `_InProcessLoopIO` | `` | Loekkens I/O naar den koerer i serverprocessen (dagens adfaerd, uaendret). | [src](../../../core/services/agent_runtime_base.py#L356) |
+| method | `_InProcessLoopIO.__init__` | `(self, *, agent, run_id, resume=…)` | — | [src](../../../core/services/agent_runtime_base.py#L359) |
+| method | `_InProcessLoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L370) |
+| method | `_InProcessLoopIO.run_id` | `(self)` | — | [src](../../../core/services/agent_runtime_base.py#L385) |
+| method | `_InProcessLoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_runtime_base.py#L388) |
+| method | `_InProcessLoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_runtime_base.py#L409) |
+| method | `_InProcessLoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_runtime_base.py#L412) |
+| function | `_bogfoer_start` | `(agent, run_id, tc)` | Startposten for et vaerktoejskald (status ``running``, ``started_at`` sat, ingen ``finished_at``). | [src](../../../core/services/agent_runtime_base.py#L421) |
+| function | `_bogfoer_vaerktoejskald` | `(agent, run_id, tc, tool_out)` | BOGFOER KALDET (db + per-agent transcript). `agent_tool_calls` havde foer NUL kaldere: | [src](../../../core/services/agent_runtime_base.py#L437) |
+| function | `_loop_result` | `(o, *, scout, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L475) |
+| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L642) |
+| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L701) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L840) |
+| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L844) |
 
 ## `core/services/agent_runtime_council.py`
 _Agent runtime — council & swarm collective rounds._
@@ -145,31 +146,31 @@ _Agent runtime — spawn, execution, messaging, scheduling & lifecycle._
 | function | `_spawn_depth_for` | `(parent_agent_id)` | Return depth for a new child agent (parent_depth + 1). | [src](../../../core/services/agent_runtime_spawn.py#L79) |
 | function | `_scout_maa_betale` | `(role, tool_policy)` | Må denne agent vælge blandt de BETALTE udbydere? | [src](../../../core/services/agent_runtime_spawn.py#L112) |
 | function | `spawn_agent_task` | `(*, role, goal, system_prompt=…, tool_policy=…, allowed_tools=…, parent_agent_id=…, persistent=…, ttl_seconds=…, budget_tokens=…, max_turns=…, context=…, result_contract=…, execution_mode=…, auto_execute=…, council_id=…, provider=…, respekter_model=…, model=…, contract=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L137) |
-| function | `_agent_thread_id` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L455) |
-| function | `_format_messages` | `(messages, *, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L464) |
-| function | `_result_contract_text` | `(contract)` | — | [src](../../../core/services/agent_runtime_spawn.py#L477) |
-| function | `_build_agent_prompt` | `(*, agent, messages, execution_mode, extra_instruction=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L484) |
-| function | `_snapshot_tools` | `(agent)` | Det vaerktoejsskema agenten faktisk faar (tomt naar den koerer uden haender). | [src](../../../core/services/agent_runtime_spawn.py#L506) |
-| function | `_live_run` | `(run_id)` | Det runforsoeg der koerer nu (G): foelger en failover-kaede; aldrig en undtagelse. | [src](../../../core/services/agent_runtime_spawn.py#L524) |
-| function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | Koer et barns arbejde. | [src](../../../core/services/agent_runtime_spawn.py#L534) |
-| function | `_execute_agent_task_impl` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L586) |
-| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1142) |
-| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1170) |
-| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1198) |
-| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1202) |
-| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L1240) |
-| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1445) |
-| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1489) |
-| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1498) |
-| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1537) |
-| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1567) |
-| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1582) |
-| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1601) |
-| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1618) |
-| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1637) |
-| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1659) |
-| function | `_frisk` | `(agent, *, minutter=…)` | Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt | [src](../../../core/services/agent_runtime_spawn.py#L1699) |
-| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1716) |
+| function | `_agent_thread_id` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L457) |
+| function | `_format_messages` | `(messages, *, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L466) |
+| function | `_result_contract_text` | `(contract)` | — | [src](../../../core/services/agent_runtime_spawn.py#L479) |
+| function | `_build_agent_prompt` | `(*, agent, messages, execution_mode, extra_instruction=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L486) |
+| function | `_snapshot_tools` | `(agent)` | Det vaerktoejsskema agenten faktisk faar (tomt naar den koerer uden haender). | [src](../../../core/services/agent_runtime_spawn.py#L508) |
+| function | `_live_run` | `(run_id)` | Det runforsoeg der koerer nu (G): foelger en failover-kaede; aldrig en undtagelse. | [src](../../../core/services/agent_runtime_spawn.py#L526) |
+| function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | Koer et barns arbejde. | [src](../../../core/services/agent_runtime_spawn.py#L536) |
+| function | `_execute_agent_task_impl` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L588) |
+| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1144) |
+| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1172) |
+| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1200) |
+| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1204) |
+| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L1242) |
+| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1447) |
+| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1491) |
+| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1500) |
+| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1539) |
+| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1569) |
+| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1584) |
+| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1603) |
+| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1620) |
+| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1639) |
+| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1661) |
+| function | `_frisk` | `(agent, *, minutter=…)` | Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt | [src](../../../core/services/agent_runtime_spawn.py#L1701) |
+| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1718) |
 
 ## `core/services/agent_runtime_surfaces.py`
 _Agent runtime — read surfaces (agent + council/swarm projections)._

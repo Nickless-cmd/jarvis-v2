@@ -38,7 +38,7 @@ from core.services.agent_runtime_council import *  # noqa: F401,F403
 from core.services.agent_runtime_base import (  # noqa: F401
     _AGENT_TOOL_LOOP_MAX_ROUNDS,
     _ACTIVE_STATUSES,
-    _TOOL_USING_ROLES,
+    _tool_using_roles,
     _build_agent_tools_payload,
     _execute_agent_tool_call,
     _facade,

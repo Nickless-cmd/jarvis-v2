@@ -1,16 +1,23 @@
-"""De to rolle-lister må ikke kunne divergere (2/10-2026).
+"""Rolle-listerne må ikke kunne divergere — og de må ikke lyve (2/10 + 10/11-2026).
 
 Bjørn: «ret de to rolle-lister til én — med test».
 
-Baggrunden, målt: `_TOOL_USING_ROLES` (agent_runtime_base.py) og `_TOOL_ROLES`
-(agent_runtime_spawn.py) betød det SAMME — «hvilke roller må kalde værktøjer» —
-men var skrevet som to literaler i to filer. De var drevet fra hinanden:
-`synthesizer` stod i base men manglede i spawn, så en synthesizer-agent ikke
-fik opgraderet en model under capability-gulvet (0,6) i spawn-blokken.
+Baggrunden, målt 2/10: `_TOOL_USING_ROLES` (agent_runtime_base.py) og
+`_TOOL_ROLES` (agent_runtime_spawn.py) betød det SAMME — «hvilke roller må
+kalde værktøjer» — men var skrevet som to literaler i to filer, og de var
+drevet fra hinanden.
 
-Rettelsen er at spawn ARVER fra base. `_TOOL_ROLES` er en LOKAL variabel inde i
-`spawn_agent_task` (ikke et modul-attribut), så testen her måler den ægte vej:
-at spawn-blokken læser `_TOOL_USING_ROLES` — og at den fanger synthesizer.
+Baggrunden, målt 10/11: rettelsen bandt de to lister sammen, men lod dem
+begge være en LITERAL der kunne påstå noget andet end den besluttede.
+`synthesizer` og `devils_advocate` stod i listen som værktøjs-brugere med
+`default_tool_policy: "none"` — altså nul værktøjer. Konsekvensen var ikke
+kosmetisk: `_role_needs_tools` styrer om agenten får en sandboxet
+værktøjs-worker eller en ren tekst-tur, så de to roller fik en dyr worker
+de ikke kunne bruge.
+
+Rettelsen er at listen UDLEDES af `default_tool_policy` — den beslutning
+der allerede findes ét sted. Testen her måler at udledningen er sand, og at
+en fremtidig literal ikke kan snige sig ind igen.
 """
 
 from __future__ import annotations
@@ -18,70 +25,89 @@ from __future__ import annotations
 import inspect
 
 
-def test_spawn_laeser_rollelisten_fra_base():
-    """Kilden skal være `_TOOL_USING_ROLES` — ikke en lokal literal.
+def test_spawn_udleder_rollen_i_stedet_for_at_laese_en_literal():
+    """Kilden skal kalde `_tool_using_roles()` — ikke en literal.
 
-    Kildetekst-tjekket er med vilje: en fremtidig literal med samme indhold
-    ville bestå et adfærds-tjek og alligevel kunne drive igen. Vi vil have
-    ÉN kilde, ikke to der tilfældigvis er enige i dag.
+    Kildetekst-tjekket er med vilje: en literal med samme indhold ville bestå
+    et adfærds-tjek og alligevel kunne drive igen. Vi vil have ÉN kilde, ikke
+    to der tilfældigvis er enige i dag.
     """
     from core.services import agent_runtime_spawn as S
 
     kilde = inspect.getsource(S.spawn_agent_task)
-    assert "_TOOL_ROLES = _TOOL_USING_ROLES" in kilde, (
-        "spawn's rolle-liste er en selvstændig literal igen — den skal arve "
-        "fra `_TOOL_USING_ROLES`, ellers kan de to divergere som de gjorde "
-        "med `synthesizer`"
+    assert "_TOOL_ROLES = _tool_using_roles()" in kilde, (
+        "spawn's rolle-liste er ikke længere udledt af `default_tool_policy` — "
+        "den skal kalde `_tool_using_roles()`, ellers kan den påstå noget andet "
+        "end den besluttede"
     )
-    # Og den gamle literal må ikke stå der længere.
+    # Den gamle literal må ikke stå der længere.
     assert '"devils_advocate", "watcher", "synthesizer"}' not in kilde
     assert '{"researcher", "critic", "planner", "executor", "watcher", "devils_advocate"}' not in kilde
 
 
-def test_synthesizer_er_med_i_kilden():
-    """Den konkrete drift der blev rettet: synthesizer manglede i spawn.
+def test_udledningen_stemmer_med_policyen_for_hver_rolle():
+    """Kernen i rettelsen: listen må ikke indeholde en rolle uden værktøjer.
 
-    Regressionen er præcis denne rolle — den stod i base, ikke i spawn, og
-    konsekvensen var tavs (ingen opgradering af en svag model).
+    Det var præcis fejlen — `synthesizer` og `devils_advocate` stod som
+    værktøjs-brugere med policy `"none"`. Testen går gennem ALLE templates,
+    så en ny rolle med `"none"` ikke kan snige sig ind i listen.
     """
-    from core.services.agent_runtime_base import _TOOL_USING_ROLES
+    from core.services.agent_runtime_base import (
+        AGENT_ROLE_TEMPLATES,
+        _role_needs_tools,
+        tools_for_policy,
+    )
 
-    assert "synthesizer" in _TOOL_USING_ROLES
+    for rolle, template in AGENT_ROLE_TEMPLATES.items():
+        policy = str(template.get("default_tool_policy") or "")
+        antal = len(tools_for_policy(policy))
+        assert _role_needs_tools(rolle) == (antal > 0), (
+            f"{rolle}: policy {policy!r} giver {antal} værktøjer, men "
+            f"_role_needs_tools siger {_role_needs_tools(rolle)} — de to skal "
+            f"svare det samme, ellers får agenten en worker den ikke kan bruge"
+        )
 
 
-def test_de_syv_tool_roller_plus_reviewer_er_intakte():
-    """Rettelsen må ikke have tabt nogen undervejs.
+def test_de_seks_vaerktoejs_roller_er_intakte():
+    """Rettelsen må ikke have tabt en rolle undervejs.
 
-    De syv roller er dem der faktisk kalder værktøjer; filosof/etiker er
-    refleksions-roller og hører ikke her.
+    Seks roller har en policy der giver værktøjer. `synthesizer` og
+    `devils_advocate` er rene tekstroller (policy `"none"`) og hører ikke
+    her — det var netop fejlen at de stod der.
     """
-    from core.services.agent_runtime_base import _TOOL_USING_ROLES
+    from core.services.agent_runtime_base import _tool_using_roles
 
     ventet = {
         "researcher", "critic", "planner", "executor",
-        "devils_advocate", "watcher", "synthesizer",
-        "reviewer",        # agent-contract-v1 F5: den uafhaengige, skrivebeskyttede reviewer (review_agent_work)
+        "watcher", "reviewer",   # agent-contract-v1 F5: den uafhaengige reviewer
     }
-    assert set(_TOOL_USING_ROLES) == ventet
-    # Refleksions-rollerne skal IKKE være med — de kalder ikke værktøjer.
-    assert "filosof" not in _TOOL_USING_ROLES
-    assert "etiker" not in _TOOL_USING_ROLES
+    assert set(_tool_using_roles()) == ventet
+    # Refleksions- og tekstrollerne skal IKKE være med.
+    for rolle in ("filosof", "etiker", "synthesizer", "devils_advocate"):
+        assert rolle not in _tool_using_roles(), (
+            f"{rolle} har policy 'none' og må ikke stå som værktøjs-bruger"
+        )
+
+
+def test_ukendt_rolle_arver_researcher_bunden():
+    """Fri tekst er tilladt som rollenavn — og skal følge den template den kører på.
+
+    `spawn_agent_task` falder tilbage til `researcher`-templaten for et ukendt
+    navn. Så skal `_role_needs_tools` svare det samme som den template, ellers
+    får agenten en anden behandling end dens egen prompt lover.
+    """
+    from core.services.agent_runtime_base import _role_needs_tools
+
+    assert _role_needs_tools("en-rolle-der-ikke-findes") is True
+    assert _role_needs_tools("") is True
 
 
 def test_begge_veje_til_rollelisten_er_enige():
-    """`_role_needs_tools` og spawn-blokken skal svare det SAMME.
+    """`_role_needs_tools` og den udledte liste skal svare det SAMME."""
+    from core.services.agent_runtime_base import _role_needs_tools, _tool_using_roles
 
-    Det var netop uenigheden mellem de to veje der var fejlen: base sagde
-    «synthesizer kan kalde værktøjer», spawn sagde «nej». Testen her binder
-    dem sammen, så en fremtidig ændring i den ene fanges af den anden.
-    """
-    from core.services.agent_runtime_base import (
-        _TOOL_USING_ROLES,
-        _role_needs_tools,
-    )
-
-    for rolle in _TOOL_USING_ROLES:
+    for rolle in _tool_using_roles():
         assert _role_needs_tools(rolle), rolle
-    # Og negativt: en refleksions-rolle skal svare nej begge steder.
+    # Og negativt: en refleksions-rolle skal svare nej.
     assert not _role_needs_tools("filosof")
     assert not _role_needs_tools("etiker")

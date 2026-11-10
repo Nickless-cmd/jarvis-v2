@@ -28,7 +28,7 @@ from core.services.agent_runtime_base import (
     _now_iso,
     _role_needs_tools,
     _run_agent_tool_loop,
-    _TOOL_USING_ROLES,
+    _tool_using_roles,
     agent_tools_enabled,
     cheap_lane_status_surface,
     create_agent_message,
@@ -296,11 +296,13 @@ def spawn_agent_task(
     # router (deepseek/70B/qwen3-32b/nemotron-120B). Reflection roles (filosof/etiker)
     # and already-capable configs are untouched. Se central_route._model_capability.
     #
-    # Arver fra `_TOOL_USING_ROLES` (2/10-2026). Her stod en LOKAL kopi af listen,
-    # og den var drevet fra kilden: `synthesizer` stod i base men manglede her,
-    # saa en synthesizer ikke fik opgraderet en model under capability-gulvet.
-    # To kopier af samme beslutning er dobbelt sandhed — nu er der én.
-    _TOOL_ROLES = _TOOL_USING_ROLES
+    # 10/11-2026: listen er nu UDLEDT af `default_tool_policy` (se
+    # `_tool_using_roles` i base). Foer var den en literal der ogsaa indeholdt
+    # `synthesizer` og `devils_advocate` — to roller med policy `"none"`, altsaa
+    # nul vaerktoejer. Listen paastod altsaa noget andet end den besluttede.
+    # Nu spoerger vi den samme funktion som resten af systemet: har rollen
+    # faktisk vaerktoejer? Det er den ene sandhed, ikke en kopi af den.
+    _TOOL_ROLES = _tool_using_roles()
     # Scouten må bruge de BETALTE modeller (Bjørn 26/9-2026: «de skal i hans
     # scout pulje»). Se `_scout_maa_betale` nedenfor for hvorfor det kræver
     # et flag der aldrig har været brugt.

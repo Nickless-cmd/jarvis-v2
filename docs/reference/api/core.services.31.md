@@ -153,8 +153,11 @@ _Memory/continuity post-processing for visible runs._
 |---|---|---|---|---|
 | function | `_recent_internal_tool_context` | `(session_id, *, limit=…)` | — | [src](../../../core/services/visible_runs_memory.py#L24) |
 | function | `_attention_fra_aktive_goals` | `()` | Fokus-feltet til kapslen — med forskellen paa «maalt tomt» og «ikke maalt». | [src](../../../core/services/visible_runs_memory.py#L50) |
-| function | `_run_memory_postprocess` | `(run, assistant_text)` | — | [src](../../../core/services/visible_runs_memory.py#L90) |
-| function | `_maybe_trigger_continuation` | `(run, assistant_text)` | If Jarvis stopped mid-task, trigger an autonomous-run | [src](../../../core/services/visible_runs_memory.py#L317) |
+| function | `_goals_fra_aktive_maal` | `()` | Goals-sektionen til kapslen — maalt, ikke arvet. | [src](../../../core/services/visible_runs_memory.py#L90) |
+| function | `_somatic_fra_sansearkivet` | `()` | Somatic-sektionen til kapslen — fra det der faktisk er sanset. | [src](../../../core/services/visible_runs_memory.py#L121) |
+| function | `_run_memory_postprocess` | `(run, assistant_text)` | — | [src](../../../core/services/visible_runs_memory.py#L160) |
+| function | `_maybe_trigger_continuation` | `(run, assistant_text)` | If Jarvis stopped mid-task, trigger an autonomous-run | [src](../../../core/services/visible_runs_memory.py#L389) |
+| function | `_record_promise_from_run` | `(run, assistant_text)` | Bjørn-gate (16. jun 2026), udkoblet fra continuation (rodårsag 3, | [src](../../../core/services/visible_runs_memory.py#L486) |
 
 ## `core/services/visible_runs_outcomes.py`
 _Persistence + terminal outcome for visible runs (fail/cancel forbliver i main)._

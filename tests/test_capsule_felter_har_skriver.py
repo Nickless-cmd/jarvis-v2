@@ -43,26 +43,24 @@ CAPSULE_SINKS = {
 }
 
 # Hver post er dokumenteret gaeld, ikke en generel tilladelse.
-UNDTAEDE_FELTER = {
-    # Kun schema-defaulten findes. Feltet vises stadig, men har ingen maaling.
-    ("attention", "open_thread"): "doedt felt; ingen producer uden for default",
-
-    # Begge relation-felter er historiske schema-defaults. Ingen aktiv
-    # capsule-producer skriver dem med en observeret vaerdi.
-    ("relation", "relationship_phase"): "kun schema-default; ingen maaling",
-    ("relation", "last_interaction_type"): "kun schema-default; ingen maaling",
-
-    # Somatic-sektionen kan merges ind via API'et, men repositoryets aktive
-    # capsule-skrivevej producerer ingen af disse tre konkrete noegler.
-    ("somatic", "last_visual"): "ingen aktiv capsule-producer",
-    ("somatic", "last_audio"): "ingen aktiv capsule-producer",
-    ("somatic", "atmosphere"): "ingen aktiv capsule-producer",
-
-    # Goals kan modtages som en generisk dict, men ingen aktiv skriver
-    # konstruerer disse viste noegler. De boer fjernes eller faa en kilde.
-    ("goals", "active_goals"): "ingen aktiv capsule-producer",
-    ("goals", "recent_completions"): "ingen aktiv capsule-producer",
-}
+#
+# 10/11-2026: listen er TOEMT. Den bar otte felter, og de faldt i to grupper:
+#
+#   * `open_thread`, `relationship_phase`, `last_interaction_type` blev VIST
+#     som nutidstilstand uden nogen maaling — de er nu fjernet fra
+#     `build_wake_up_block`. Et felt uden maaling hoerer ikke i visningen.
+#   * `somatic.*` (3 noegler) og `goals.active_goals` blev vist, men
+#     `live_update_after_turn` sendte dem aldrig. De har nu maalte skrivere:
+#     `_somatic_fra_sansearkivet` (sensory_archive.list_recent) og
+#     `_goals_fra_aktive_maal` (long_horizon_goals.list_active_goals).
+#   * `goals.recent_completions` blev ogsaa fjernet fra visningen: den blev
+#     altid sendt som en TOM liste, saa den var en konstant der lignede en
+#     maaling.
+#
+# Undtagelser maa kun indsaettes med en maalt begrundelse, og vagten afviser
+# en post hvis feltet ikke laengere vises — saa afviklet gaeld ikke kan blive
+# staaende som en tavs tilladelse.
+UNDTAEDE_FELTER: dict[tuple[str, str], str] = {}
 
 
 Field = tuple[str, str]

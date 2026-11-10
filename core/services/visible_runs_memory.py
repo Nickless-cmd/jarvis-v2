@@ -87,6 +87,76 @@ def _attention_fra_aktive_goals() -> dict[str, object] | None:
     return {"active_goal_title": None, "current_focus": None}
 
 
+def _goals_fra_aktive_maal() -> dict[str, object] | None:
+    """Goals-sektionen til kapslen — maalt, ikke arvet.
+
+    Maalt 10/11-2026: ``goals.active_goals`` og ``goals.recent_completions``
+    blev vist i CONTINUITY-blokken, men ``live_update_after_turn`` sendte dem
+    aldrig. ``list_active_goals()`` fandtes hele tiden i
+    ``core/services/long_horizon_goals.py`` — den blev blot ikke kaldt herfra.
+
+    Samme tre udfald som ``_attention_fra_aktive_goals``: maalt med maal,
+    maalt tomt (saa merge'en rydder), ikke maalt (saa kapslen arver).
+    """
+    try:
+        from core.services.long_horizon_goals import list_active_goals
+
+        aktive = list_active_goals(limit=5)
+        maal = [
+            {"title": str(g.get("title") or "").strip(), "id": g.get("goal_id")}
+            for g in aktive
+            if str(g.get("title") or "").strip()
+        ]
+        return {"active_goals": maal, "recent_completions": []}
+    except Exception:
+        import logging as _lg_maal
+
+        _lg_maal.getLogger(__name__).warning(
+            "goal-udledning fejlede — kapslen arver sin forrige vaerdi",
+            exc_info=True,
+        )
+        return None
+
+
+def _somatic_fra_sansearkivet() -> dict[str, object] | None:
+    """Somatic-sektionen til kapslen — fra det der faktisk er sanset.
+
+    Maalt 10/11-2026: alle tre viste noegler (``last_visual``, ``last_audio``,
+    ``atmosphere``) var ``null``. ``sensory_archive.list_recent()`` har
+    posterne — den blev blot aldrig kaldt fra capsule-vejen.
+
+    Samme tre udfald: maalt indhold, maalt tomt (rydder), ikke maalt (arver).
+    """
+    tom = {"last_visual": None, "last_audio": None, "atmosphere": None}
+    try:
+        from core.services.sensory_archive import list_recent
+
+        poster = list_recent(limit=1)
+        if not poster:
+            return tom
+        nyeste = poster[0]
+        indhold = str(nyeste.get("content") or "").strip()
+        modalitet = str(nyeste.get("modality") or "").strip()
+        if not indhold:
+            return tom
+        resultat: dict[str, object] = dict(tom)
+        if modalitet == "visual":
+            resultat["last_visual"] = indhold
+        elif modalitet == "audio":
+            resultat["last_audio"] = indhold
+        elif modalitet in {"atmosphere", "mixed"}:
+            resultat["atmosphere"] = indhold
+        return resultat
+    except Exception:
+        import logging as _lg_sans
+
+        _lg_sans.getLogger(__name__).warning(
+            "somatic-udledning fejlede — kapslen arver sin forrige vaerdi",
+            exc_info=True,
+        )
+        return None
+
+
 def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
     if not run.session_id:
         return
@@ -252,6 +322,8 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
         live_update_after_turn(
             mood=mood or None,
             attention=attention or None,
+            goals=_goals_fra_aktive_maal(),
+            somatic=_somatic_fra_sansearkivet(),
             recent_activity=recent_activity or None,
             session_id=run.session_id,
         )
@@ -348,15 +420,12 @@ def _maybe_trigger_continuation(run: "_vr.VisibleRun", assistant_text: str) -> N
         # Mark cooldown now so concurrent _post_process workers don't both fire
         mark_triggered(run.session_id)
 
-        # Bjørn-gate (16. jun 2026): registrér fremtids-løfter ("jeg gør det /
-        # jeg går i gang") så de rejses prominent i NÆSTE turs prompt og holder
-        # Jarvis ansvarlig. Fail-soft.
-        if intent.pattern == "future_action_promise":
-            try:
-                from core.services.promise_ledger import record_promise
-                record_promise(run.session_id, intent.matched_text)
-            except Exception:
-                pass
+        # Rodårsag 3 (side-02afb491ea, 13/11-2026): record_promise er flyttet ud
+        # af continuation-stien — nu i _record_promise_from_run, kaldt fra
+        # visible_runs.py UAFHÆNGIGT af dette. Før var registreringen bundet til
+        # continuation: cooldown, spørgsmåls-guarden (rodårsag 2) og intent=None
+        # gjorde at et løfte aldrig nåede ledgeren og Jarvis aldrig blev
+        # konfronteret i næste prompt.
 
         # Publish for observability — Bjørn can see in Mission Control
         # how often detector fires
@@ -410,5 +479,31 @@ def _maybe_trigger_continuation(run: "_vr.VisibleRun", assistant_text: str) -> N
             name=f"continuation-{run.run_id[:12]}",
             daemon=True,
         ).start()
+    except Exception:
+        pass
+
+
+def _record_promise_from_run(run: "_vr.VisibleRun", assistant_text: str) -> None:
+    """Bjørn-gate (16. jun 2026), udkoblet fra continuation (rodårsag 3,
+    side-02afb491ea 13/11-2026): registrér fremtids-løfter ("jeg gør det /
+    jeg går i gang / jeg tjekker lige") så de rejses prominent i NÆSTE turs
+    prompt og holder Jarvis ansvarlig. Fail-soft.
+
+    Kører UAFHÆNGIGT af _maybe_trigger_continuation: cooldown, spørgsmåls-
+    guarden og continuation-spawning afgør ikke længere om et løfte huskes.
+    Registreringen bruger detect_promise_intent (rodårsag 2), så et løfte i en
+    tekst der slutter med spørgsmål eller handoff registreres stadig.
+    """
+    if run.autonomous:
+        return  # autonome runs skriver ikke til Bjørn — samme guard som continuation
+    if not run.session_id:
+        return
+    try:
+        from core.services.unfinished_intent import detect_promise_intent
+        intent = detect_promise_intent(assistant_text)
+        if intent is None:
+            return
+        from core.services.promise_ledger import record_promise
+        record_promise(run.session_id, intent.matched_text)
     except Exception:
         pass

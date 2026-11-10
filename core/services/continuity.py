@@ -247,11 +247,35 @@ def capture_state(
     capsule["recent_activity"] = merged_ra
 
     # Wake provenance
+    #
+    # 10/11-2026: `hours_since_last_session` blev KOPIERET fra den forrige
+    # kapsel, saa den stod permanent paa 0.0. Maalt i min egen prompt samme
+    # dag: kapslen var tre dage gammel, og blokken sagde «Quick return (0 min
+    # since last session)». Det er den dyreste af de doede felter, fordi HELE
+    # overdragelsen hviler paa tallet — baade tier og gap formateres af det.
+    #
+    # Nu beregnes det af det forrige tidspunkt. Kan det ikke parses, staar
+    # feltet som None: «ikke maalt» er aerligt, et paastaaet nul er ikke.
     prev_prov = current.get("wake_provenance", {})
+    prev_ended = prev_prov.get("previous_session_ended_at")
+    hours_since: float | None = None
+    if prev_ended:
+        try:
+            ended_dt = datetime.fromisoformat(str(prev_ended).replace("Z", "+00:00"))
+            if ended_dt.tzinfo is None:
+                ended_dt = ended_dt.replace(tzinfo=UTC)
+            hours_since = max(
+                0.0, (datetime.now(UTC) - ended_dt).total_seconds() / 3600.0
+            )
+        except (TypeError, ValueError):
+            logger.warning(
+                "kunne ikke parse previous_session_ended_at: %r", prev_ended
+            )
+            hours_since = None
     capsule["wake_provenance"] = {
         "previous_session_id": session_id or prev_prov.get("previous_session_id"),
         "previous_session_ended_at": _now_iso(),
-        "hours_since_last_session": prev_prov.get("hours_since_last_session", 0.0),
+        "hours_since_last_session": hours_since,
     }
 
     # Handover ARVES fremad (4/10-2026). Uden denne linje ville min egen
@@ -578,26 +602,38 @@ def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
         return None
 
     provenance = capsule.get("wake_provenance", {})
-    hours_since = provenance.get("hours_since_last_session", 0.0)
-    tier = get_wake_tier(hours_since)
+    hours_since = provenance.get("hours_since_last_session")
 
-    gap_str = _format_hours_gap(hours_since)
+    # 10/11-2026: feltet kan vaere None naar det forrige tidspunkt ikke kunne
+    # parses. Foer faldt det tilbage paa 0.0, hvilket ville give «Quick return»
+    # om et vilkaarligt langt ophold — den samme loegn i den anden retning.
+    # Nu siger headeren hvad vi ved, og hvad vi ikke ved.
+    gap_tekst = "pause ikke maalt"
+    if hours_since is None:
+        tier_label = "Wake-up"
+        gap_str = "ukendt"
+    else:
+        try:
+            hours_since = float(hours_since)
+        except (TypeError, ValueError):
+            hours_since = 0.0
+        tier_label = {
+            "quick_return": "Quick return",
+            "normal": "Wake-up",
+            "deep_sleep": "Deep sleep",
+        }.get(get_wake_tier(hours_since), "Wake-up")
+        gap_str = _format_hours_gap(hours_since)
+        gap_tekst = f"{gap_str} since last session"
 
     mood = capsule.get("mood", {})
     attention = capsule.get("attention", {})
-    relation = capsule.get("relation", {})
     somatic = capsule.get("somatic", {})
     goals_data = capsule.get("goals", {})
 
     lines: list[str] = []
 
     # Header with tier indicator
-    tier_label = {
-        "quick_return": "Quick return",
-        "normal": "Wake-up",
-        "deep_sleep": "Deep sleep",
-    }.get(tier, "Wake-up")
-    lines.append(f"▲ CONTINUITY — {tier_label} ({gap_str} since last session)")
+    lines.append(f"▲ CONTINUITY — {tier_label} ({gap_tekst})")
 
     # Min egen overdragelse staar FOERST i blokken — den er det eneste her
     # der ikke kan udledes af tilstand: hvad jeg selv mente den naeste
@@ -655,18 +691,16 @@ def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
     # det er lige saa forkert som kilden der skrev det.
     if len(focus) >= MIN_FOCUS_CHARS:
         lines.append(f"  Focus: {focus}")
-    open_thread = attention.get("open_thread")
-    if open_thread:
-        lines.append(f"  Open thread: {open_thread}")
 
-    # Relationship
-    rel_phase = relation.get("relationship_phase", "")
-    last_type = relation.get("last_interaction_type", "")
-    if rel_phase or last_type:
-        rel_str = f"  Relationship: {rel_phase}"
-        if last_type:
-            rel_str += f" — last interaction was {last_type}"
-        lines.append(rel_str)
+    # 10/11-2026: her stod «Open thread: …» og «Relationship: co-development —
+    # last interaction was chat». Ingen af dem havde en skriver: ``open_thread``
+    # havde nul producenter, og de to relation-felter var konstanter fra
+    # ``_EMPTY_CAPSULE``. De blev derfor vist som NUTID uden at vaere maalt —
+    # samme fejlform som fatigue-felterne, blot med tekst der lyder sand.
+    #
+    # Et felt uden maaling hoerer ikke i visningen. Felterne bliver i kapslen
+    # (andre laesere kan bruge dem), men blokken viser kun det der er maalt.
+    # Vagten der holder det saa: tests/test_capsule_felter_har_skriver.py.
 
     # Somatic (compact)
     visual = somatic.get("last_visual")
@@ -688,9 +722,9 @@ def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
         goal_refs = [f"\"{g.get('title', '')[:60]}\"" for g in active_goals[:3] if g.get('title')]
         if goal_refs:
             lines.append(f"  Active goals: {', '.join(goal_refs)}")
-    completions = goals_data.get("recent_completions", [])
-    if completions:
-        lines.append(f"  Recent completions: {', '.join(completions[:3])}")
+    # 10/11-2026: her stod ogsaa «Recent completions: …». Den blev altid sendt
+    # som en TOM liste fra kilden, saa den var en konstant der lignede en
+    # maaling — den kunne aldrig vise andet end ingenting.
 
     # 2026-05-22 (Claude): "Last activity" and "Last exchange" removed from
     # continuity head. They duplicate content already present in the chat

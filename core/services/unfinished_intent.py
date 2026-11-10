@@ -119,7 +119,17 @@ _HANDOFF_TAIL_RE = re.compile(
     r"|lad\s+mig\s+(?:det\s+)?vide"
     r"|giv\s+(?:mig\s+)?(?:endelig\s+)?besked"
     r"|du\s+ved\s+hvor\s+(?:jeg\s+er|du\s+har\s+mig)"
-    r")\b(?:\s+(?:hvis|hvad|hvornår|når|om)\b[^.?!]{0,60})?[\W_]*$",
+    r")\b"
+    # 10/11-2026: her stod et krav om at frasen skulle stå HELT til sidst
+    # (`[^.?!]{0,60}[\W_]*$`). Målt: «Lad mig vide, hvis du vil have mig til at
+    # tjekke noget mere i morgen.» slap derfor igennem som et løfte — både i
+    # continuation og i registreringen — fordi et komma efter frasen brød
+    # matchningen. En handoff er en handoff uanset om der følger en bisætning.
+    # Vi tillader nu et komma og en kort hale, men stadig ikke en ny sætning:
+    # et «?» eller «.» efter frasen betyder at sætningen er afsluttet, og så
+    # gælder spørgsmåls-guarden i stedet.
+    r"(?:\s*,\s*[^.?!]{0,80}|\s+(?:hvis|hvad|hvornår|når|om)\b[^.?!]{0,60})?"
+    r"[\W_]*$",
     re.IGNORECASE | re.UNICODE,
 )
 
@@ -193,18 +203,39 @@ _SÆTNING_SPOERGSMAAL_RE = re.compile(
 # Registrerings-variant (side-02afb491ea, 10/11-2026). Målt: et jeg-form-løfte
 # med et afsluttende «?» — «Jeg tjekker lige at nøglerne er væk … citerer?» —
 # blev hverken registreret eller fanget, fordi _SÆTNING_SPOERGSMAAL_RE blokerer
-# på ETHVERT «?». Men modulets konservative afvejning («et tabt træf koster ét
-# ping; et falsk træf starter et autonomt run») gælder KUN continuation. En
-# registrering koster intet — den lægges i ledgeren og vises i næste prompt.
+# på ETHVERT «?».
 #
-# Derfor: ved registrering kræver blokeringen BÅDE et tilbuds-ord OG et
-# spørgsmålstegn. Et retorisk «?» i en jeg-form-handling er ikke et tilbud, og
-# et tilbud uden «?» («Først skal jeg dog hente seneste version») er en
-# konstatering — ingen af dem må dræbe registreringen.
-_SÆTNING_SPOERGSMAAL_REGISTRERING_RE = re.compile(
-    r"\b(?:vil\s+du|skal\s+(?:jeg|vi)|må\s+jeg|kunne\s+du\s+tænke|"
-    r"hvad\s+(?:siger|synes)\s+du)\b[^?]{0,120}\?",
+# FØRSTE FORSØG VAR FOR LØST (målt 10/11-2026 af reviewer, verificeret af mig):
+# jeg krævede BÅDE et tilbuds-ord OG et «?», hvilket lod «Er det ok at jeg
+# genstarter serveren nu?» og «Giver det mening at jeg tester det nu?» blive
+# registreret som løfter. Ledger-prompten siger «Hvis nej, så GØR det nu», så
+# et ubesvaret spørgsmål blev til en ordre om at handle — 23/6-fejlen ad en ny vej.
+#
+# Retningen er derfor den modsatte: ved registrering blokerer et «?» STADIG,
+# men kun når sætningen ikke er en jeg-form-handling i indikativ. Et retorisk
+# «?» i «Jeg tjekker lige … citerer?» er en konstatering med et løftet
+# spørgsmålstegn; et spørgsmål der INDledes af et spørgeord eller et
+# modal-verbum er et tilbud til brugeren og skal blokere.
+_SPOERGE_INDLEDNING_RE = re.compile(
+    r"^\s*(?:er|kan|kunne|vil|ville|skal|skulle|må|måtte|bør|burde|"
+    r"har|havde|hvad|hvordan|hvor|hvornår|hvorfor|hvilken|hvilket|hvilke|"
+    r"giver|gælder|tænker|synes|siger|ønsker|foretrækker)\b",
     re.IGNORECASE,
+)
+# Spørgende led MIDT i sætningen («Jeg tjekker lige tabellen nu, hvad siger du
+# om det?»). Målt 10/11-2026: uden dette slap et reelt spørgsmål til Bjørn
+# igennem som et løfte, fordi sætningen INDledes af «Jeg». Leddet er kun
+# spørgende når sætningen også slutter med «?» — ellers er «hvad jeg synes»
+# en bisætning, ikke et spørgsmål.
+_SPOERGE_LED_RE = re.compile(
+    r"\b(?:hvad\s+(?:siger|synes|tænker|mener|foretrækker)\s+du|"
+    r"vil\s+du|skal\s+(?:jeg|vi)|må\s+jeg|kunne\s+du\s+tænke|"
+    r"er\s+det\s+ok|giver\s+det\s+mening|hvordan\s+ser\s+du)\b",
+    re.IGNORECASE,
+)
+# Et jeg-form-løfte står i indikativ: «Jeg tjekker …», «Jeg skal …», «Lad mig …».
+_JEG_FORM_RE = re.compile(
+    r"^\s*(?:jeg\s+\w+|lad\s+mig\b)", re.IGNORECASE,
 )
 
 # Hvilke detektor-patterns der er et LØFTE om en handling (og derfor hører i
@@ -279,15 +310,27 @@ def _er_sætningsblokeret(
     if _SÆTNING_NEGATION_RE.match(efter_match.strip()):
         return True
 
-    mønster = (
-        _SÆTNING_SPOERGSMAAL_REGISTRERING_RE
-        if registrering
-        else _SÆTNING_SPOERGSMAAL_RE
-    )
-    if mønster.search(sætning):
+    # Spørgende sætning. To varianter, fordi de to gater har forskellig pris:
+    #
+    # * continuation: ethvert «?» eller spørgende led blokerer. Et autonomt run
+    #   der fabrikerer samtykke er skadeligt (23/6-incidenten).
+    # * registrering: et «?» blokerer KUN når sætningen ikke er en
+    #   jeg-form-handling i indikativ. Målt 10/11-2026: «Jeg tjekker lige …
+    #   citerer?» er en konstatering med et løftet spørgsmålstegn og skal
+    #   registreres, mens «Er det ok at jeg genstarter nu?» er et ubesvaret
+    #   tilbud og IKKE må blive en ordre i næste prompt.
+    if registrering:
+        if "?" in sætning:
+            if _SPOERGE_INDLEDNING_RE.search(sætning):
+                return True
+            if _SPOERGE_LED_RE.search(sætning):
+                return True
+            if not _JEG_FORM_RE.search(sætning):
+                return True
+        return False
+    if _SÆTNING_SPOERGSMAAL_RE.search(sætning):
         return True
     return False
-
 
 def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
     """Returner UnfinishedIntent hvis teksten antyder Jarvis stoppede midt
@@ -359,6 +402,13 @@ def detect_promise_intent(text: str | None) -> UnfinishedIntent | None:
         return None
     intent = _detect_intent_core(stripped, registrering=True)
     if intent is None or intent.pattern not in _LOFTE_PATTERNS:
+        return None
+    # Handoff-guard (15/8-2026) gælder OGSÅ her — målt 10/11-2026: uden den
+    # registrerede «…hvis der er andet, jeg skal kigge på, så sig til.» som et
+    # løfte, fordi registreringen sprang guarden over. En handoff er Jarvis der
+    # bevidst giver kontrollen tilbage — ikke en uafsluttet opgave. Guarden
+    # matcher kun NÆR slutningen, så et ægte løfte midt i teksten rammes ikke.
+    if _HANDOFF_TAIL_RE.search(stripped):
         return None
     return intent
 

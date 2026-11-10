@@ -177,3 +177,80 @@ class TestRegistreringUdenSpoergsmaalstegnGuard:
             "Jeg tjekker ikke lige den fil igen, for den er allerede"
             " verificeret."
         ) is None
+
+
+class TestTilbudUdenForListenRegistreresIkke:
+    """Regression målt 10/11-2026 af reviewer, verificeret af mig.
+
+    Første forsøg på at løsne «?»-guarden krævede BÅDE et tilbuds-ord OG et
+    «?». Det lod spørgsmål som «Er det ok at jeg genstarter serveren nu?»
+    blive registreret som løfter — og ledger-prompten siger «Hvis nej, så GØR
+    det nu», så et ubesvaret spørgsmål blev til en ordre om at handle. Det er
+    23/6-fejlen ad en ny vej.
+
+    Retningen er nu den modsatte: et «?» blokerer stadig, medmindre sætningen
+    er en jeg-form-handling i indikativ.
+    """
+
+    def test_spoergsmaal_uden_tilbudsord_registreres_ikke(self):
+        for t in (
+            "Er det ok at jeg genstarter serveren nu?",
+            "Giver det mening at jeg tester det nu?",
+            "Hvad med at jeg kører testsuiten igen nu?",
+            "Ønsker du at jeg sletter filen nu?",
+        ):
+            assert ui.detect_promise_intent(t) is None, t
+
+    def test_spoergende_led_midt_i_saetningen_blokerer(self):
+        # Sætningen INDledes af «Jeg», så jeg-form-vagten alene slipper den
+        # igennem. Det spørgende led midt i sætningen skal fange den.
+        assert ui.detect_promise_intent(
+            "Jeg tjekker lige tabellen nu, hvad siger du om det?"
+        ) is None
+
+
+class TestHandoffRegistreresIkke:
+    """Regression målt 10/11-2026: registreringen sprang handoff-guarden over.
+
+    En handoff («så sig til», «lad mig vide», «giv besked») er Jarvis der
+    bevidst giver kontrollen tilbage — ikke en uafsluttet opgave. Uden guarden
+    blev «…hvis der er andet, jeg skal kigge på, så sig til.» registreret som
+    et løfte om at kigge på noget.
+
+    Målt i HEAD før rettelsen: både continuation OG registrering misfyrede på
+    «Lad mig vide, hvis du vil have mig til at tjekke noget mere i morgen.» —
+    fordi mønstret krævede at frasen stod HELT til sidst, og et komma efter
+    frasen brød matchningen.
+    """
+
+    def test_handoff_ved_afslutning_registreres_ikke(self):
+        assert ui.detect_promise_intent(
+            "Alt er gennemgået og verificeret grundigt, hvis der er andet"
+            " jeg skal kigge på, så sig til."
+        ) is None
+
+    def test_handoff_med_komma_og_bisaetning_registreres_ikke(self):
+        # Den form der slap igennem: komma efter frasen + fortsat bisætning.
+        assert ui.detect_promise_intent(
+            "Lad mig vide, hvis du vil have mig til at tjekke noget mere"
+            " i morgen."
+        ) is None
+        assert ui.detect_promise_intent(
+            "Giv mig besked, hvis der er noget du vil have kigget på i morgen."
+        ) is None
+
+    def test_handoff_blokerer_ogsaa_continuation(self):
+        # Samme utæthed ramte continuation — den er ikke kun registreringens.
+        assert ui.detect_unfinished_intent(
+            "Lad mig vide, hvis du vil have mig til at tjekke noget mere"
+            " i morgen."
+        ) is None
+
+    def test_aegte_pause_efter_handoff_frasen_registreres(self):
+        # Guarden må ikke dræbe et ægte løfte: her er der ingen handoff, kun
+        # en jeg-form-handling der fortsætter.
+        intent = ui.detect_promise_intent(
+            "Jeg skal lige tjekke nøglerne igennem en ekstra gang for at"
+            " være helt sikker på at de er væk fra pending-listen nu."
+        )
+        assert intent is not None

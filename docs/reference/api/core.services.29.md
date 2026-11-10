@@ -347,16 +347,16 @@ _Unfinished-intent detector for visible-run output._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `UnfinishedIntent` | `` | Resultat af detector: hvilken pattern matched. | [src](../../../core/services/unfinished_intent.py#L30) |
-| function | `_tail` | `(text, n=…)` | Returner sidste ~n tegn af teksten. | [src](../../../core/services/unfinished_intent.py#L127) |
-| function | `_er_negeret` | `(tail, m)` | True hvis pausenøgleordet er indledt af en negation («uden at …»). | [src](../../../core/services/unfinished_intent.py#L153) |
-| function | `_sætning_omkring` | `(tail, m)` | Returner (sætning, startindeks) for sætningen matchet står i. | [src](../../../core/services/unfinished_intent.py#L235) |
-| function | `_er_sætningsblokeret` | `(tail, m, *, registrering=…)` | True hvis sætningen omkring matchet er negeret eller spørgende. | [src](../../../core/services/unfinished_intent.py#L247) |
-| function | `detect_unfinished_intent` | `(text)` | Returner UnfinishedIntent hvis teksten antyder Jarvis stoppede midt | [src](../../../core/services/unfinished_intent.py#L292) |
-| function | `detect_promise_intent` | `(text)` | Registrerings-gate (rodårsag 2, side-02afb491ea 10/11-2026). | [src](../../../core/services/unfinished_intent.py#L341) |
-| function | `_detect_intent_core` | `(stripped, *, registrering=…)` | Alle detektor-mønstrene på en allerede strippet tekst — uden | [src](../../../core/services/unfinished_intent.py#L366) |
-| function | `is_in_cooldown` | `(session_id)` | True hvis session_id har triggered en continuation indenfor cooldown-vinduet. | [src](../../../core/services/unfinished_intent.py#L463) |
-| function | `mark_triggered` | `(session_id)` | Marker at en continuation netop er triggered for session_id. | [src](../../../core/services/unfinished_intent.py#L472) |
-| function | `reset_cooldown_for_tests` | `()` | Test-helper: tøm cooldown-state mellem test cases. | [src](../../../core/services/unfinished_intent.py#L480) |
+| function | `_tail` | `(text, n=…)` | Returner sidste ~n tegn af teksten. | [src](../../../core/services/unfinished_intent.py#L137) |
+| function | `_er_negeret` | `(tail, m)` | True hvis pausenøgleordet er indledt af en negation («uden at …»). | [src](../../../core/services/unfinished_intent.py#L163) |
+| function | `_sætning_omkring` | `(tail, m)` | Returner (sætning, startindeks) for sætningen matchet står i. | [src](../../../core/services/unfinished_intent.py#L266) |
+| function | `_er_sætningsblokeret` | `(tail, m, *, registrering=…)` | True hvis sætningen omkring matchet er negeret eller spørgende. | [src](../../../core/services/unfinished_intent.py#L278) |
+| function | `detect_unfinished_intent` | `(text)` | Returner UnfinishedIntent hvis teksten antyder Jarvis stoppede midt | [src](../../../core/services/unfinished_intent.py#L335) |
+| function | `detect_promise_intent` | `(text)` | Registrerings-gate (rodårsag 2, side-02afb491ea 10/11-2026). | [src](../../../core/services/unfinished_intent.py#L384) |
+| function | `_detect_intent_core` | `(stripped, *, registrering=…)` | Alle detektor-mønstrene på en allerede strippet tekst — uden | [src](../../../core/services/unfinished_intent.py#L416) |
+| function | `is_in_cooldown` | `(session_id)` | True hvis session_id har triggered en continuation indenfor cooldown-vinduet. | [src](../../../core/services/unfinished_intent.py#L513) |
+| function | `mark_triggered` | `(session_id)` | Marker at en continuation netop er triggered for session_id. | [src](../../../core/services/unfinished_intent.py#L522) |
+| function | `reset_cooldown_for_tests` | `()` | Test-helper: tøm cooldown-state mellem test cases. | [src](../../../core/services/unfinished_intent.py#L530) |
 
 ## `core/services/untrusted_fencing.py`
 _Indhegning af utroet indhold — porteret fra jarvis-code._

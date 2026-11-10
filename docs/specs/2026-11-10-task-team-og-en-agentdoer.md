@@ -1,429 +1,455 @@
 ---
 status: til implementering
 dato: 2026-11-10
-version: 2
+version: 3
 ejer: bjorn
 forfatter: jarvis
-bygger på: 2026-10-07-agentorkestrering-og-subagenter.md (§5, §5.1, §6, §7)
-review: Jarvis (self-review) → Claude (opus) → Codex. Begge eksterne reviews fandt
-        blokerende fejl i v1; v2 er skrevet efter dem. Se §0.
+review: Jarvis (self-review) → Claude (opus) ×2 → Codex ×2. Runde 1 dømte v1, runde 2 dømte v2.
+         v3 er skrevet efter begge runder. Se §0.
 ---
 
 # Spec: `Task` som eneste generelle agentdør — og team som tilstand, ikke som system
 
 ## 0. Ændringslog — hvad reviewene kostede
 
-v1 blev sendt til to uafhængige reviews. Begge svarede **ikke klar**, og begge
-fandt den samme blokerende fejl som forfatteren selv havde lavet i leverancen:
-prompten annoncerede `Task` med et `team`-felt der ikke findes, så et kald ville
-blive **stille ignoreret** og starte én almindelig agent. Det er værre end et
-kapabilitetstab. **Rettet: løftet er fjernet fra prompten, målt med `grep`
-(nul hits).**
-
-Derudover er følgende rettet i v2:
-
-| v1 påstod | Målt | Rettet i |
+| Version | Dom | Hvad den kostede |
 |---|---|---|
-| "motoren røres ikke; kun én parameter, én kolonne, én gren" | `convene()` går uden om `derive()` og sender en fri `role` til `dispatch_agent` — intet mandat, ingen `allowed_tools`, ingen deadline, ingen worktree | §6, §9 |
-| "et medlem kan ikke få bredere tilladelse end topniveauet" | Udækket. `role="executor"` giver `can-spawn`, og `max_fanout` håndhæves **kun** via et gemt mandat | §6 |
-| "`max_fanout: 0` bevares" | Gælder kun børn af `Task`; team-medlemmer har intet mandat og dermed intet loft | §7 |
-| R2: "findes ikke i dag" | `expire_due_queues()` findes, men rammer kun `queued`. Rådets række holder ingen kapacitet | §12 R2 |
-| — (ikke fundet) | **Race:** `store.create()` gemmer `members_json='[]'`, og `advance()` kan nå at se `([], True)` → syntese af nul medlemmer | §8, §12 R0 |
-| — (ikke fundet) | Team-idempotens udefineret: `derive()`'s `canonical` indeholder ikke `team`; replay sammenligner ikke `facts`/`team_name` | §5 |
+| v1 | **ikke klar** (Claude + Codex) | Prompten annoncerede `Task(team)`, som ikke fandtes. Motoren kunne ikke genbruges uændret. Race gav syntese over nul medlemmer. |
+| v2 | **ikke klar** (Claude + Codex) | Fem blokerende fund, se nedenfor. Plus: forfatterens egen §15.2-beslutning byggede på en forkert præmis. |
+| v3 | afventer review | Fem fund lukket med mekanisme, ikke med vilje. §15.2 vendt. |
+
+**De fem fund fra runde 2, og hvor de nu lukkes:**
+
+| # | Fund | Lukkes i |
+|---|---|---|
+| 1 | Syntesen går uden om `derive()` — intet mandat, ingen værktøjsliste, ingen deadline | §6.3 |
+| 2 | `mandate_id` kolliderer: `canonical` indeholder ikke team, så N medlemmer får samme PRIMARY KEY | §5.2 |
+| 3 | `provisioning` er en tilstand uden udgang: `_abandon()` er hårdt kodet til `GATHERING`, og `open_councils()` henter kun to statusser | §8.2 |
+| 4 | `executor` afvises det forkerte sted — rollen er en etiket, `subagent_type` giver skriveret | §7.2 |
+| 5 | R3 (tabt vækning) er et ønske uden mekanisme | §8.4 |
+
+**Forfatterens egen fejl, rettet i v3:** v2's §15.2 hævdede at teamets alderstærskel kunne *arves* fra medlems-deadlines, fordi medlemmerne har samme udløb. Det holder ikke. `deadline_at` håndhæves **kun når agenten kalder et værktøj** (`agent_approval_gate.py:_mandate_verdict`), og der findes ingen sweep der udløber aktive assignments — `expire_due_queues()` rammer kun `status='queued'`. Et medlem der hænger inde i et LLM-kald bliver derfor aldrig terminalt, og teamet hænger evigt. Se §8.5.
+
+---
 
 ## 1. Formål og succeskriterium
 
-Jarvis skal have **én generel modelvendt indgang** til agentarbejde: `Task`.
-Ingen parallel livscyklus, ingen anden generel oprettelsesvej.
+**Formål:** Der findes præcis **én** modelvendt vej til at starte agentarbejde: `Task`. Alle andre agentværktøjer er enten tilstande i `Task` eller pensioneret.
 
-`Task` skal kunne to ting, valgt ved bestilling:
+**Succeskriterium — målbart:**
 
-| Tilstand | Hvad den er | Hvem bestemmer |
-|---|---|---|
-| `single` (standard) | Én opgave til én agent | Dagens `Task`, uændret |
-| `team` | Et hold der løser **én** opgave sammen | Jarvis ved bestilling |
+1. `Task` er det eneste værktøj i den annoncerede flade der kan oprette en agent. `spawn_agent_task`, `relay_to_agent`, `scout_agent`, `cancel_agent`, `dispatch_code_mode_task` og `convene_agent_council` er alle i `RETIRED_AGENT_CREATION_TOOLS`.
+2. Et team oprettes med `Task(team={...})`, og hvert medlem har et **gemt mandat** i `agent_assignment_mandates` — verificerbart med SQL, ikke med et løfte.
+3. Et team af N medlemmer koster **ét** `Task`-kald i Jarvis' kontekst, ikke N.
+4. Der findes ingen tilstand et team kan stå fast i uden at en sweep finder den.
 
-Et team er **ikke** en ny motor. Det er et mønster over den samme
-assignment-motor, som spec 2026-10-07 §2 allerede beslutter.
+---
 
-**Succeskriterium.** Jarvis bestiller et team med ét `Task`-kald, får et
-`team_id` og medlems-id'er straks, fortsætter sit eget arbejde, og modtager **ét**
-samlet svar når syntesen er terminal. Et medlem der fejler, tæller som færdigt og
-bliver **navngivet** i syntesen. `convene_agent_council` findes ikke længere i
-hans værktøjsflade.
+## 2. Produktgrænse — hvad dette IKKE er
 
-## 2. Produktgrænse
+- **Ikke en ny motor.** Team er et mønster over `agent-contract-v1`. `agent_council.py` bliver motoren; den får ingen egen LLM-runtime og ingen ThreadPool.
+- **Ikke skrivende teams i denne version.** Et teammedlem er læsende. Årsag i §7.2. Skrivende hold kræver en delt plan og en worktree-beslutning der ikke er taget.
+- **Ikke en delt opgaveliste.** Størrelse og roller besluttes ved booking (§4). En skrivbar liste koster claim-konflikter og er først værd at betale når medlemmer skal omfordele arbejde undervejs.
+- **Ikke en omdøbning af `agent_council.py`.** Historikken er mere værd end navnet.
 
-Efter denne ændring er der **to** oprettende værktøjer, ikke ét — og det skal
-siges præcist:
-
-- `Task` — den **generelle** dør til vilkårligt agentarbejde.
-- `review_agent_work` — en **specialiseret** dør der kun kan oprette én læsende
-  reviewer af et allerede afsluttet assignment. Den har også nul kald, men
-  pensioneres ikke her (§11 punkt 4).
-
-"Én dør" betyder i denne spec: én vej til vilkårligt agentarbejde.
-
-`convene_agent_council` var den sidste *generelle* oprettelsesvej uden for
-`Task`. Den er pensioneret (§10). **Konsekvens der skal siges højt:** indtil
-§6 er bygget findes der ingen modelvendt vej til et råd. Det er acceptabelt fordi
-den pensionerede vej havde **nul kald** i hele sin levetid (målt 10/11-2026), men
-det er en bevidst fjernelse af kapacitet og skal stå i commit-beskeden.
+---
 
 ## 3. Målt udgangspunkt (10/11-2026)
 
-- `Task` er den eneste agentdør der bruges: **43 af 105** agent-kald. Med
-  `wait_agents` (29) og `list_agents` (19) — opfølgning, ikke alternativer — er
-  det **91 af 105 = 87 %**.
-- Agent-kald er **0,5 %** af alle værktøjskald (105 af 19.563). `bash` er 67 %.
-- `convene_agent_council`, `review_agent_work`, `interrupt_agent`,
-  `decide_agent_approval`: **0 kald** hver.
-- `agent_council.convene` er allerede variabel: `MIN_MEMBERS, MAX_MEMBERS = 2, 6`,
-  `role` er en fri streng, og to medlemmer med samme opgave afvises.
-- `advance()` **kører i drift**, kaldt fra `agent_contract_service.py:748`.
-- `agent_task_facade.derive()` sætter `max_fanout: 0`, `max_depth: 0` og en
-  `deadline_at` på 30/45 min.
+**Værktøjsfladen:**
+
+| Måling | Tal |
+|---|---|
+| Agent-værktøjer i fladen | 16 |
+| Faktisk brugt | 7 |
+| `Task`' andel af agent-kald | 43 af 105 (**41 %**) |
+| `Task` + `wait_agents` + `list_agents` | 91 af 105 (**87 %**) |
+| Agent-kald som andel af ALLE værktøjskald | 105 af 19.541 (**0,5 %**) |
+| `bash` som andel af alle kald | 13.106 (**67 %**) |
+
+**Agenters varighed — 116 terminale assignments:**
+
+| Percentil | Varighed |
+|---|---|
+| median | 0,5 min |
+| p75 | 1,8 min |
+| p90 | 3,8 min |
+| p99 | 10,6 min |
+| **maksimum** | **19,1 min** |
+| over 30 min | **0 af 116** |
+| over 45 min | **0 af 116** |
+
+Deadline sættes per assignment: `now + 45 min` ved writes, ellers `now + 30 min` (`agent_task_facade.py:175`).
+
+**Konsekvens for designet:** der er 11 minutters margin ved det værst observerede tilfælde. Deadline er ikke en knap ressource — men den er **ikke håndhævet for en hængende agent** (§8.5).
+
+---
 
 ## 4. Kontrakten
 
 ```jsonc
 {
-  "description": "…",            // uændret
-  "prompt": "…",                 // uændret — opgaven, i BEGGE tilstande
-  "subagent_type": "researcher", // uændret; i team: standard for medlemmer
-  "model": "…",                  // uændret
-  "run_in_background": true,     // uændret
-  "budget_tokens": 0,            // uændret
-  "team": {                      // NYT — udeladt = single, som i dag
-    "name": "råd vedr. dispatch-arkitektur",
-    "facts": "målt: …; besluttet: …",   // valgfrit, fælles faktagrundlag
+  "description": "…",              // uændret
+  "prompt": "…",                   // uændret — opgaven
+  "subagent_type": "researcher",   // uændret i single; i team: medlemmernes standard
+  "model": "…",                    // uændret
+  "run_in_background": true,       // uændret
+  "budget_tokens": 0,              // uændret — gælder PER MEDLEM
+  "team": {                        // NYT — udeladt = single, som i dag
+    "name": "råd vedr. dispatch-arkitektur",   // fri etiket, kun til mennesker
     "members": [
       {"role": "critic",     "task": "angrib forslaget"},
       {"role": "researcher", "task": "find hvad koden faktisk gør"},
-      {"role": "planner",    "task": "foreslå rækkefølge"}
+      {"role": "planner",    "task": "foreslå rækkefølgen"}
     ]
   }
 }
 ```
 
-**Regler, alle håndhævet i `derive()` før accept:**
+**Regler:**
 
-1. `team` udeladt → `single`, adfærd uændret.
-2. `prompt` er **opgaven** i begge tilstande. I team er det hvad holdet samlet
-   skal svare på; `team.facts` er det fælles faktagrundlag. Et felt må ikke
-   betyde to ting afhængigt af en anden parameter.
-3. `members` skal være **2–6**, udledt af `MIN_MEMBERS`/`MAX_MEMBERS` — ikke
-   gentaget som literal.
-4. Hvert medlem kræver `role` og `task`, begge ikke-tomme.
-5. To medlemmer må ikke have samme `task`.
-6. `team` kan ikke kombineres med `run_in_background: false` (§11 punkt 2).
-7. **`synthesis_role` er ikke et felt.** Syntesen er altid rollen
-   `synthesizer` med `subagent_type` arvet fra topniveauet. v1 lod Jarvis vælge
-   den; det gav en vej til at give syntesen `executor`-kapabilitet gennem
-   bagdøren. Den er lukket.
+1. `team` udeladt → nøjagtig som i dag. Ingen adfærdsændring for single.
+2. `team.members` skal have **2–6** poster (`MIN_MEMBERS, MAX_MEMBERS` i `agent_council.py`). Størrelsen er et valg ved booking, ikke en fast liste.
+3. `role` er **fri tekst**. Der findes ingen whitelist — den er en etiket på medlemmets opgave, ikke en port.
+4. Hver `task` skal være **unik** inden for teamet. To identiske opgaver er ét svar talt to gange, og afvises.
+5. `team.name` er en etiket til mennesker. **Grupperingen sker på `team_id`, ikke på navnet** (§5.1).
+6. `facts` udeladt i denne version: `prompt` er det fælles faktagrundlag alle medlemmer får. Det er den eksisterende `council.topic`-semantik.
+
+**Ukendte argumenter må ikke ignoreres stiltiende.** `Task(team=…)` mod en runtime uden feltet skal **afvises med en fejl**, ikke køre som en single-agent. Det var v1's fejl: `_exec_task` kaster ukendte argumenter væk, så et team-kald blev en helt almindelig agent uden ét ord om det.
+
+---
 
 ## 5. Team-identitet og idempotens
 
-| Felt | Ejer | Formål |
-|---|---|---|
-| `team_id` | runtime, genereret | Gruppering, historik, ventekontrakt |
-| `team.name` | Jarvis, fri tekst | Læsbarhed. **Ikke** en nøgle |
+### 5.1 `team_id` er nøglen, `team.name` er håndtaget
 
-Navnet må ikke være nøglen: to råd kan hedde det samme med ugers mellemrum, og
-et idempotent genkald ville så returnere det forkerte teams svar.
+```python
+team_id = "team-" + secrets.token_hex(8)
+```
 
-**Idempotens (målt nødvendig — v1 havde den ikke).** `derive()`'s `canonical`
-(`agent_task_facade.py:189-194`) indeholder i dag ikke `team`. Uden rettelse
-giver to forskellige team med samme `prompt` **samme** `idempotency_key`, og det
-andet kald returnerer det første teams svar. Derfor:
+- `team_id` bærer `team-`-præfiks så det kan skelnes fra et `council-…` i logs.
+- Navnet bruges **kun** til visning. To teams må hedde det samme.
+- "Hvordan gik teamet?" besvares på `team_id`, aldrig på navn.
 
-- `canonical` skal omfatte `team.name`, `team.facts` og de sorterede
-  `(role, task)`-par.
-- `convene()`'s replay-sammenligning skal ud over `topic` og `(role, task)` også
-  sammenligne `facts` og `team_name` (`agent_council.py:83`).
-- **Replay af et `cancelled` team må ikke svare `accepted`.** `_view()`
-  (`agent_council.py:125`) gør det i dag. Det er en løgn om en accept der blev
-  rullet tilbage.
+### 5.2 `mandate_id` — kollisionen der skal løses FØR noget andet
 
-Lageret er den eksisterende `agent_councils`-tabel. `council_id` **er**
-`team_id`. Der tilføjes to kolonner: `team_name` og `team_facts`, begge
-`DEFAULT ''` så eksisterende rækker læses uændret.
+**Målt problem:** `derive()` udleder
+
+```python
+canonical = {"owner", "session", "parent_run", "parent_agent",
+             "description", "prompt", "subagent_type", "model", "background"}
+idem       = "task-" + sha256(json.dumps(canonical, sort_keys=True))[:32]
+mandate_id = "mnd-" + sha256(idem)[:16]
+```
+
+`mandate_id` er `PRIMARY KEY` i `agent_assignment_mandates`. `canonical` indeholder **ikke** team og **ikke** medlemsindex. Derfor:
+
+- Kalder `derive_team()` `derive()` N gange med samme `prompt` og samme `description`, får alle N medlemmer **identisk `mandate_id`**.
+- Resultat: medlem 2 fejler på PRIMARY KEY — eller bliver læst som en replay af medlem 1.
+- Retter man det ved at give hvert medlem `idem = f"{idem}:m{i}"`, er `mandate_id` **stadig** `sha256(idem)[:16]` af det oprindelige idem hvis man ikke også ændrer den linje. To steder skal rettes, ikke ét.
+
+**Afgørelse:** `derive()` får to nye parametre med bagudkompatible defaults:
+
+```python
+def derive(..., team_id: str = "", member_index: int = -1) -> dict:
+```
+
+og `canonical` udvides med `"team_id": team_id, "member_index": member_index`.
+
+- Single-agent: begge defaults → `canonical` er byte-identisk med i dag → **samme idem og samme `mandate_id` som før**. Ingen replay brydes.
+- Teammedlem: `team_id="team-…"`, `member_index=0..N-1` → unik `mandate_id` per medlem.
+- Syntesen: `member_index=-1`, `team_id` sat → egen `mandate_id`.
+
+**Accepttest:** to teams med identiske prompts skal give to forskellige `mandate_id`-sæt, og en single-agent med samme prompt skal give det id den ville fått før ændringen.
+
+---
 
 ## 6. Autoritet: medlemmerne skal gennem `derive()`
 
-Dette er v2's største ændring, og den er ikke kosmetisk.
+### 6.1 Hvorfor dette er den vigtigste sektion
 
-**Målt i v1's model:** `convene()` kalder `svc.dispatch_agent(role=<fri streng>,
-…)` uden `mandate`, `tool_policy`, `allowed_tools`, `deadline_at` eller
-`max_turns` (`agent_council.py:95-101`). Konsekvenserne:
+`max_fanout` og `deadline` håndhæves **kun gennem et gemt mandat** (`_mandate_verdict` læser `agent_assignment_mandates`). Et medlem uden mandat har:
 
-- **Værktøjer** kommer fra skabelonens `default_tool_policy`, så en læsende
-  rolle får `bash` i containeren — præcis det `derive()` bevidst fjerner
-  (`_UDELADTE_TOOLS`).
-- **`role="executor"` giver `can-spawn`** (`agent_runtime_base.py:789`), og det
-  sæt indeholder `spawn_agent_task` (`:684`) — stadig en levende handler. Uden
-  mandat findes ingen `max_fanout`-kontrol: den håndhæves kun for et gemt
-  mandat og kun for navnet `Task` (`agent_approval_gate.py:154`, `:206`).
-- **En `executor` i et team får `writes=False`** og intet worktree, men beholder
-  `can-spawn` og container-`bash`. Det er den dårligste kombination: ingen
-  isolering, men spredning.
-- **Ingen deadline** — et hængende medlem udløber aldrig.
-- `ufuldstaendige_vaerktoejer`-tjekket springes over.
+- ingen værktøjs-whitelist → `allowed_tools` er tom
+- ingen fan-out-spærring → `max_fanout` kan ikke læses, så den håndhæves ikke
+- ingen deadline → intet at overskride
+- intet worktree → ingen sti at holde sig inden for
 
-**Derfor:** `role` er en **ren persona-etiket**. Den må aldrig vælge policy.
+Det var v1's og v2's centrale hul: motoren blev beskrevet som "genbrugt uændret", men `convene()` gik uden om hele autoritetslaget.
 
-Den nye vej:
+### 6.2 `derive_team()` — egen funktion, der kalder `derive()`
 
+```python
+def derive_team(*, owner, session, parent_run, parent_agent, description,
+                prompt, subagent_type, model, run_in_background,
+                budget_tokens, team_name, members) -> dict:
+    team_id = "team-" + secrets.token_hex(8)
+    validated = _validate_members(members)          # 2-6, unikke tasks, fri rolle
+    derived = [
+        derive(..., description=description, prompt=f"{prompt}\n\nDIN OPGAVE: {m['task']}",
+               subagent_type=_member_type(subagent_type), model=model,
+               run_in_background=run_in_background,
+               budget_tokens=budget_tokens,
+               team_id=team_id, member_index=i)
+        for i, m in enumerate(validated)
+    ]
+    return {"team_id": team_id, "team_name": team_name, "members": derived}
 ```
-Task(team={…})
-  → derive_team()  → N færdige dispatch-planer (samme form som derive() giver)
-  → convene(plans=[…])  → dispatch_agent(**plan) pr. medlem
+
+**Hvorfor egen funktion og ikke en gren i `derive()`:** en gren ville gøre enhver ændring af single-agent-stien betinget af en team-tilstand. `derive()` skal forblive den ene, uforgrenede udledning af ét barns autoritet. `derive_team()` er en **løkke over den**, ikke en variant af den.
+
+### 6.3 Syntesen skal også gennem `derive()`
+
+**Målt problem:** `advance()` kalder `svc.dispatch_agent(...)` direkte (`agent_council.py:179-185`) med `role=c["synthesis_role"]`, uden `derive()`. Syntesen er dermed den N+1'te assignment med præcis det hul v1 blev afvist for. `synthesizer`-skabelonen har desuden `default_tool_policy: "none"` — altså nul værktøjer.
+
+**Afgørelse:** `advance()` kalder **facade-laget**, ikke service-laget:
+
+```python
+mandate = derive(
+    owner_user_id=owner, origin_session_id=session,
+    parent_run_id=c["parent_run_id"], parent_agent_id=c["parent_agent_id"] or "jarvis",
+    description=f"EMNE: {c['topic']}",
+    prompt=synthesis_goal(c["topic"], outcomes),
+    subagent_type="critic",            # læsende; syntesen får ingen skriveret
+    model="", run_in_background=False,
+    budget_tokens=c["budget_tokens"],
+    team_id=c["team_id"], member_index=-1,
+)
+out = svc.dispatch_agent(**mandate, wake_parent=False)
 ```
 
-`convene()` tager **færdige planer** ind i stedet for selv at kalde
-`dispatch_agent(role=…)`. `role` bruges derefter kun i `MEMBER_GOAL_HEAD` som
-menneskelæsbar etiket. Dispatch-rollen er den udledte `_ROLE[kind]`.
+- `subagent_type="critic"` giver `writes=False`, `deadline_at=now+30min`, `allowed_tools` = read-only-sættet og et gemt mandat.
+- Syntesen får dermed **mere** autoritet end i dag (en værktøjsliste og en deadline), ikke mindre — men stadig nul skriveret.
+- `derive()` kan kaste `ValueError` hvis prompten kræver værktøjer syntesen ikke har. `synthesis_goal()` indeholder ingen værktøjsnavne i backticks, så det sker ikke i dag — men fejlen skal fanges og logges som en **synlig** fejl, ikke sluges (§8.4).
 
-**I v1 afvises `executor` i et team helt.** Et team er et læsende mønster indtil
-videre. Skal et team skrive, kræver det en beslutning om worktrees og en delt
-plan — ikke en bivirkning af at nogen skrev `executor` i en medlemsrolle.
+**Accepttest:** hver `synthesis_assignment_id` skal have en række i `agent_assignment_mandates` med `member_index = -1`.
+
+---
 
 ## 7. Fan-out
 
-`derive()` sætter `max_fanout: 0`. Det gælder **kun** børn af `Task`, fordi
-loftet håndhæves via det gemte mandat. Team-medlemmer får i v2 deres eget mandat
-gennem `derive_team()` og dermed samme loft — men det er en **konsekvens af §6**,
-ikke noget der følger af sig selv.
+### 7.1 Et teammedlem må ikke selv sprede sig
 
-Reglen står fast:
+`derive()` sætter i dag `max_fanout: 0` og `max_depth: 0` for alle børn. Det er korrekt og skal bevares: et teammedlem der selv starter agenter giver en eksponentiel struktur ingen kan følge i Desk.
 
-> Kun Jarvis' eget run kan bestille et team. Et team kan ikke bestille et
-> undertema. Et medlem kan ikke spawne hjælpere.
+### 7.2 `executor` afvises i `derive()`, ikke i handleren
 
-`_room_for()` kontrollerer alle medlemmer før noget startes. Skal et medlem
-senere kunne delegere, er det en udtrykkelig ændring af `max_fanout` med eget
-loft — ikke en bivirkning.
+**Målt problem:** v2 afviste `role="executor"`. Men `role` er en **etiket** — `role = _ROLE.get(kind, kind)`, og `writes = kind in _WRITE_TYPES`. Det der giver skriveret er **`subagent_type`**, og den enum indeholder `"executor"`. Så `Task(subagent_type="executor", team={…})` ville give N skrivende agenter med hvert sit worktree, mens rollen hed noget andet.
 
-## 8. Livscyklus — og racen der skal lukkes
+**Afgørelse:** spærringen ligger i `derive()` som en mekanisk regel, ikke som en rolle-etiket:
 
-```
-Task(team={…})
-   ├─ validering (2–6, unikke opgaver, kapacitet)  ── afvist ⇒ intet startet
-   ├─ team_id oprettet, status = provisioning      ← NYT
-   ├─ N assignments dispatchet
-   ├─ medlemslisten gemt, status = gathering
-   │     └─ svigter ét ⇒ de øvrige afbrydes, status = cancelled
-   ▼
-advance()  ← reconcile-sweepen
-   │  KUN councils i gathering
-   │  alle medlemmer terminale?  (fejl tæller som terminalt)
-   ├─ nej ⇒ vent
-   └─ ja  ⇒ syntese oprettes, status = synthesizing
-                 └─ ventekontrakt på SYNTESEN, ikke på medlemmerne
-   ▼
-syntese terminal ⇒ status = done ⇒ Jarvis vakt ét sted med ét svar
+```python
+if team_id and kind in _WRITE_TYPES:
+    raise ValueError(
+        "et teammedlem kan ikke skrive: team er læsende i denne version. "
+        "Brug en single Task(subagent_type='executor') for skrivende arbejde."
+    )
 ```
 
-**R0 — racen (fundet af begge reviewere, ikke af forfatteren).**
-`store.create()` gemmer rådet som `gathering` med `members_json='[]'`
-(`db_agent_council.py:68-74`), og `set_members` kaldes først når alle N
-dispatches er færdige (`agent_council.py:108`). Kører `advance()` i det vindue,
-giver `_outcomes(owner, [])` → `([], True)`, og tjekket
-`len(outcomes) != len(c["members"])` bliver `0 != 0` → **falsk**. Syntesen
-oprettes med nul medlemmer, rådet skifter til `synthesizing`, og `_abandon`
-bagefter fejler stille fordi `GATHERING→CANCELLED` returnerer `False`.
+- Den rammer **uanset** hvilken etiket rollen har.
+- Den rammer i `derive()`, så den gælder for enhver kalder — også en fremtidig der ikke går gennem handleren.
+- Den giver en fejl ved dispatch, ikke efter en kørsel. Samme princip som `ufuldstaendige_vaerktoejer`-vagten.
 
-Vinduet er reelt: hver dispatch går gennem routing, fork-planlægning og
-worktree-oprettelse, og `advance()` kan køre fra begge processer.
+### 7.3 `_member_type()`
 
-**Lukket ved:** en ny status `provisioning` (oprettet, ingen medlemmer endnu).
-`advance()` rører **kun** `gathering`. Det er en eksplicit tilstand i stedet for
-en tom liste der tilfældigvis ser terminal ud.
+```python
+def _member_type(top_level: str) -> str:
+    kind = (top_level or "").strip().lower()
+    if kind in _WRITE_TYPES:      # topniveauet bad om skrivning
+        raise ValueError("team-medlemmer er læsende; se §7.2")
+    return kind or "researcher"
+```
+
+En udeladt type bliver `researcher` — samme never-escalate-regel som `derive()` allerede bruger.
+
+---
+
+## 8. Livscyklus — og de tre måder et team kan hænge
+
+### 8.1 Tilstande
+
+```
+provisioning ──► gathering ──► synthesizing ──► done
+     │               │              │
+     └───────────────┴──────────────┴──► cancelled
+                                         stalled   (NY, se §8.5)
+```
+
+### 8.2 `provisioning` skal have en udgang — ellers er den en fælde
+
+**Målt problem:** `store.create()` gemmer rådet med `members_json='[]'`. Kører `advance()` i det vindue, ser `_outcomes()` `([], True)` — og `0 != 0` er falsk, så syntesen oprettes over et tomt grundlag.
+
+v2's svar var en `provisioning`-status. Men:
+
+- `_abandon()` er hårdt kodet: `store.transition(cid, frm=store.GATHERING, to=store.CANCELLED)` → en `provisioning`-række kan **ikke** afbrydes.
+- `open_councils()` henter `WHERE status IN (GATHERING, SYNTHESIZING)` → en `provisioning`-række bliver **aldrig** sweepet.
+
+En tilstand ingen sweep finder, er en tilstand der hænger evigt.
+
+**Afgørelse — tre mekaniske rettelser, alle nødvendige:**
+
+1. **`open_councils()` henter alle ikke-terminale statusser**, udledt af en mængde snarere end to hårdt kodede konstanter:
+   ```python
+   OPEN_STATUSES = frozenset({PROVISIONING, GATHERING, SYNTHESIZING})
+   ```
+2. **`_abandon()` tager `frm` som parameter** i stedet for at gætte `GATHERING`.
+3. **`advance()` springer `provisioning` over** i syntese-grenen (den må ikke producere noget), men **fejler den** hvis den er ældre end provisionerings-vinduet — se §8.5.
+
+**Accepttest:** en council-række sat til `provisioning` med `members_json='[]'` skal (a) ikke producere en syntese, og (b) blive fundet af `open_councils()`.
+
+### 8.3 Alt-eller-intet
+
+Et team der ikke kan samles, skal ikke efterlade halve medlemmer. `_abandon()` afbryder de allerede startede medlemmer og lukker teamet som `cancelled`. Det er i dag korrekt — fejlen var kun `frm`-parameteren.
+
+### 8.4 R3 — vækning der kan tabes, skal kunne gentages
+
+**Målt problem:** `_wake_parent_on()` kaldes **efter** `transition(... to=SYNTHESIZING)` og sluger `ContractError`:
+
+```python
+except ContractError:
+    logger.warning("ventekontrakt for raad %s kunne ikke registreres", ...)
+```
+
+Næste sweep forsøger ikke igen, fordi transitionen allerede er sket. Syntesen færdiggøres, men Jarvis vågner aldrig.
+
+**Afgørelse:** vækning bliver en **selvstændig, idempotent handling**, ikke en sideeffekt af transitionen.
+
+- Ny kolonne: `synthesis_wake_registered_at TEXT NOT NULL DEFAULT ''`.
+- `advance()`'s `SYNTHESIZING`-gren kører **hver gang**, uanset syntesens status:
+  ```python
+  if not c["synthesis_wake_registered_at"] and c["synthesis_assignment_id"]:
+      if _wake_parent_on(c, c["synthesis_assignment_id"]):
+          store.mark_wake_registered(c["council_id"])
+  ```
+- `_wake_parent_on()` returnerer `bool` i stedet for at sluge fejlen. Fejlen **logges stadig** — men rækken forbliver tom, så næste sweep prøver igen.
+- Fejlen bliver dermed selvhelbredende uden at skjule sin egen årsag: loggen har hvert forsøg, og kolonnen viser om det lykkedes.
+
+**Accepttest:** en tvunget `ContractError` ved første forsøg skal give en tom `synthesis_wake_registered_at`, og næste `advance()` skal registrere vækningen.
+
+### 8.5 Teamet skal have sin EGEN alderstærskel — og en sweep der håndhæver den
+
+**Dette er rettelsen af v2's §15.2, som byggede på en forkert præmis.**
+
+Målt: `deadline_at` håndhæves i `_mandate_verdict`, som kun kaldes **når agenten kalder et værktøj**. `expire_due_queues()` rammer kun `status='queued'`. Der findes **ingen** sweep der gør en aktiv, hængende assignment terminal.
+
+Konsekvens: et medlem der hænger inde i et LLM-kald — eller en proces der døde midt i en kørsel — bliver aldrig terminalt. `_outcomes()` ser `all_terminal=False` for evigt, `advance()` `continue`r for evigt, og teamet hænger uden at nogen opdager det.
+
+**Afgørelse:**
+
+1. Teamet har en **egen** kolonne `stalled_after_at`, sat ved oprettelse til
+   `max(medlems-deadlines) + SYNTHESIS_MARGIN`, hvor `SYNTHESIS_MARGIN = 15 min`.
+   Begrundelse for marginen: syntesen er selv et assignment med egen 30-minutters deadline; teamet må ikke erklæres dødt mens syntesen kører.
+2. `advance()` markerer teamet `stalled` når `now > stalled_after_at` og teamet stadig er i `gathering` eller `provisioning`.
+3. `stalled` er en **observerbar** tilstand, ikke en tavs fejl: den vises i Desk og vækker parenten med navnet på de medlemmer der aldrig blev terminale.
+4. Tærsklen er **afledt, ikke gættet** — den bygger på de målte deadlines i §3, ikke på et rundt tal som "2 timer".
+
+**Hvorfor ikke bare lade deadline gælde:** fordi den ikke gælder. En regel der kun håndhæves ved værktøjskald kan ikke fange en agent der aldrig kalder et værktøj igen. Det er hele pointen.
+
+---
 
 ## 9. Hvad genbruges, og hvad ændres
 
-| Del | Status |
-|---|---|
-| `advance()` / supervisor | Genbruges, **+ guard mod `provisioning`** |
-| `_validate()` — 2–6, fri rolle, unik opgave | Genbruges uændret |
-| `_room_for()` — kapacitet før start | Genbruges uændret |
-| `_abandon()` — intet halvt team | Genbruges, men skal **logge** når overgangen returnerer `False` |
-| `_wake_parent_on()` — vækning på syntesen | Genbruges, **+ retry** (§12 R3) |
-| `synthesis_goal()` | Genbruges uændret |
-| `agent_councils`-tabellen | Genbruges, **+ `team_name`, `team_facts`, status `provisioning`** |
-| `convene()` | **Ændres:** tager færdige planer ind; `role` bliver etiket |
-| `derive()` | **Ny gren** `derive_team()` → N planer |
-| `Task`-skemaet | **Nyt felt**: `team` |
-| `convene_agent_council` som værktøj | **Pensioneret** |
+| Komponent | Status | Ændring |
+|---|---|---|
+| `agent_council.py` | **genbruges** | `convene()` → `convene_team()` med `team_id`; `advance()` gennem `derive()`; `_abandon()` får `frm`; vækning gøres gentagelig |
+| `db_agent_council.py` | **ændres** | Nye kolonner: `team_id`, `team_name`, `stalled_after_at`, `synthesis_wake_registered_at`; `OPEN_STATUSES` |
+| `agent_task_facade.py` | **ændres** | `derive()` får `team_id` + `member_index`; ny `derive_team()`; §7.2-spærring |
+| `agent_contract_tools.py` | **ændres** | `team`-felt i skemaet; `team` med i `_exec_task`'s kendte argumenter |
+| `agent_contract_handlers.py` | **ændres** | `_exec_task` grener til `derive_team()` |
+| `agent_assignment_mandates` | **uændret skema** | Får flere rækker, ikke flere kolonner |
+| `convene_agent_council` | **pensioneret** | Allerede fjernet 10/11 (§10) |
 
-Netto: motoren **røres** — på fire punkter, alle nødvendige. v1's påstand om
-"én parameter, én kolonne, én gren" var forkert.
+**Motoren røres — det er ikke en påstand om det modsatte.** v1 hævdede "én parameter, én kolonne, én gren". Det var forkert: der skal fire kolonner, to nye funktioner og tre rettelser i livscyklussen til.
 
-## 10. Pensionering af `convene_agent_council` — udført
+---
 
-Fjernet fra alle modelvendte flader. **Målt 10/11-2026:**
-`grep -rn "convene_agent_council" --include="*.py" core/ apps/` giver **nul**
-hits.
+## 10. Pensionering af `convene_agent_council` — allerede udført
 
-| Fil | Handling |
-|---|---|
-| `core/tools/agent_contract_tools.py` | Definition, handler, `CONTRACT_TOOL_NAMES`, `_NEW_ONLY` |
-| `core/tools/agent_contract_handlers.py` | Import og map-entry |
-| `core/tools/tool_scoping.py` | Tre lister |
-| `core/services/tool_catalog.py` | `("Agenter", […])` |
-| `core/services/prompt_sections/agent_orchestration.py` | Council-mønstret fjernet fra prompten |
-| `tests/test_agent_contract_tools.py`, `test_agent_orchestration.py`, `test_agent_council.py` | Opdateret; `agent_council.convene` testes direkte |
+Fjernet fra `agent_contract_tools.py`, `agent_contract_handlers.py`, `tool_scoping.py`, `tool_catalog.py` og `agent_orchestration.py`. Nul modelvendte hits i `core/` og `apps/`. 70 tests grønne i de tre berørte filer. `CAPABILITIES.md` regenereret.
 
-Motoren (`agent_council.py`, `db_agent_council.py`) står. De genererede
-referencer `docs/reference/CAPABILITIES.md` og
-`docs/reference/api/core.tools.01.md` skrives af repoets hooks og forsvinder ved
-næste regenerering — de må ikke rettes i hånden.
+**Codex anbefalede at rulle pensioneringen tilbage** fordi `Task(team)` endnu ikke findes. Det er ikke gjort: prompt-løftet er fjernet, så der er ingen løgn tilbage — kun et vindue uden rådsvej, og den vej havde **nul** kald. Bjørns beslutning var at den døde kode skulle ud.
 
-## 11. Bevidste fravalg
+**Vinduet lukkes af §14's rækkefølge.** Indtil `team`-feltet findes, kan Jarvis ikke samle et råd. Det er et bevidst fravalg, ikke en forglemmelse.
 
-1. **Ingen skrivbar delt opgaveliste.** Holdets sammensætning — og dermed
-   opgavefordelingen — besluttes ved bestilling. En liste der ikke kan ændres,
-   behøver ikke være skrivbar, kun **synlig**. En skrivbar liste koster
-   claim-konflikter, forældede claims og rækkefølgeafhængigheder.
-2. **`team` + `run_in_background: false` afvises.** En synkron venten på et helt
-   team binder Jarvis' tur mens N medlemmer plus en syntese kører.
-3. **Ingen team-hukommelse på tværs af kørsler.** `team_id` grupperer én kørsel.
-4. **`review_agent_work` pensioneres ikke her.** Den er en specialiseret dør, ikke
-   en generel.
-5. **`executor` i team afvises i v1** (§6).
-6. **`synthesis_role` er ikke et felt** (§4 regel 7).
+---
+
+## 11. Prompten må ikke love feltet før det findes
+
+**Målt fejl i v1, lavet af forfatteren selv i samme leverance:** `agent_orchestration.py` blev ændret til at nævne `` `Task` med `team` ``, mens `team`-feltet ikke fandtes. Et sådant kald ville blive **stille ignoreret** — `_exec_task` kaster ukendte argumenter væk — og starte én helt almindelig agent.
+
+**Regel:** prompt-teksten ændres i **samme commit** som feltet, aldrig før. Indtil da er `team` fraværende fra `orchestrator_section()`, og `test_agent_orchestration.py` vogter det (backtick-navne i prompten skal være annoncerede værktøjer eller eksplicit undtagne parameternavne).
+
+---
 
 ## 12. Risici
 
-**R0 — race mellem `convene` og `advance`.** Syntese af nul medlemmer. Lukket
-ved `provisioning`-tilstanden (§8). **Blokerende hvis ikke lukket.**
+| # | Risiko | Håndtering |
+|---|---|---|
+| **R0** | **Race:** `store.create()` gemmer `members_json='[]'`, `advance()` kan se `([], True)` → syntese over nul medlemmer | `provisioning`-status + `open_councils()` dækker den + `advance()` springer den over (§8.2). **Skal ind først.** |
+| **R1** | Medlem uden mandat → `max_fanout` håndhæves ikke | §6: alle medlemmer gennem `derive()`; accepttest kræver en mandat-række per medlem |
+| **R2** | **Fejldiagnosticeret i v2.** Rådets række holder ingen kapacitet — kapacitet tælles som åbne assignments, så at markere et team `failed` frigiver intet | Teamet får `stalled` som **observation** (§8.5), ikke som kapacitetsfrigivelse. R2 løses ikke ved at fejle teamet |
+| **R3** | Vækning tabes permanent | §8.4: `synthesis_wake_registered_at` + gentagelig registrering |
+| **R4** | `mandate_id`-kollision | §5.2: `team_id` + `member_index` i `canonical` |
+| **R5** | `executor` i team giver N skrivende agenter | §7.2: mekanisk spærring i `derive()` |
+| **R6** | Et team der hænger, opdages aldrig | §8.5: egen `stalled_after_at` + sweep, fordi `deadline_at` ikke håndhæves for en hængende agent |
+| **R7** | Teamet bliver endnu et system ingen læser — som det autonome council der blev fjernet 15/9 med begrundelsen *"hvilken effekt har det uden du læser det"* | Syntesen vækker parenten (§8.4), og resultatet lander i Jarvis' inbox. **Et team uden en læser er ikke færdigt.** |
 
-**R1 — kapabilitetstab i vinduet.** Indtil §6 er bygget findes ingen rådsvej.
-Afbødet ved at den gamle vej havde nul kald. Byg §6 og §10's efterladenskaber i
-**samme** leverance fremover.
-
-**R2 — fejldiagnosticeret i v1.** Rådets række holder **ingen** kapacitet;
-kapacitet tælles som åbne assignments (`db_agent_contract.py:843-853`). At sætte
-council-status til `failed` frigiver derfor intet. De tre reelle måder et team
-kan hænge på:
-
-- (a) et medlem står `active`/`waiting` uden deadline — fordi team-medlemmer i
-  dag ikke får `derive()`'s `deadline_at`;
-- (b) syntesen kan ikke accepteres (kapacitet) og prøves igen hver tick, mens
-  rådet står i `gathering`;
-- (c) syntesen accepteres men bliver aldrig terminal.
-
-Alle tre løses i §6 (deadline pr. medlem) plus en alderstærskel på teamet selv.
-**Tærsklen skal arves fra `derive()`'s deadline (30/45 min), ikke gættes til
-2 timer.** Præcisering (10/11-2026): teamet har ikke en egen konstant — værdien
-er `max(medlems-deadline)` og er dermed afledt, ikke valgt. Se §15.2.
-
-**R3 — vækning kan tabes permanent.** `_wake_parent_on()` kaldes efter
-`transition()` til `synthesizing`, og en `ContractError` **logges og sluges**
-(`agent_council.py:189-215`). Næste sweep forsøger ikke registreringen igen.
-Syntesen færdiggøres, men Jarvis vågner aldrig. Kræver: registreringen skal
-kunne gentages, eller fejlen skal gøre rådet synligt i tilstanden.
-
-**R4 — `cancel_agent`-navnekollision.** Står som annonceret agentværktøj i
-`copilot_tool_pruning.py:360`, men er en **funktion** i `agent_runtime_spawn` som
-Central-UI'et kalder. Ikke rettet her; samme fejlklasse som R1 i
-pensionsarbejdet: et internt funktionsnavn der ser ud som en dør.
+---
 
 ## 13. Accepttests
 
-Eksisterende 1–9 fra v1, plus de huller reviewene fandt:
+1. **Single uændret:** en `Task` uden `team` giver byte-identisk `idempotency_key` og `mandate_id` som før ændringen.
+2. **Mandat per medlem:** `Task(team={members: 3})` giver 3 rækker i `agent_assignment_mandates` med distinkte `mandate_id` og `member_index` 0,1,2.
+3. **Ingen skrivning:** `Task(subagent_type="executor", team={…})` afvises med `ValueError` **før** dispatch.
+4. **Ingen tom syntese:** en council i `provisioning` med `members_json='[]'` producerer ingen syntese og findes af `open_councils()`.
+5. **Vækning gentages:** tvunget `ContractError` → tom `synthesis_wake_registered_at` → næste `advance()` registrerer.
+6. **Stalled:** et team hvis medlem aldrig bliver terminalt markeres `stalled` efter `max(deadlines) + 15 min`.
+7. **Syntese har mandat:** hver `synthesis_assignment_id` har en mandat-række med `member_index = -1`.
+8. **Én dør:** `Task` er det eneste annoncerede værktøj der kan oprette en agent; de seks pensionerede navne er i `RETIRED_AGENT_CREATION_TOOLS`.
+9. **Prompten lover intet:** `orchestrator_section()` indeholder ikke `team` før feltet findes.
 
-1. `Task` uden `team` → identisk adfærd (regressionstest).
-2. `Task(team)` med 2 og med 6 medlemmer → accepteret, `team_id` returneret.
-3. 1 eller 7 medlemmer → `INVALID_SCOPE`, **intet** startet.
-4. To medlemmer med samme `task` → `INVALID_SCOPE`, intet startet.
-5. Kapacitet utilstrækkelig → afvist før start; `count_open_assignments` uændret.
-6. Eet medlem fejler → syntesen navngiver det, teamet bliver `done`.
-7. `convene_agent_council` findes ikke i nogen scope, i `load_more_tools`, i
-   `tool_catalog` eller i prompten; `grep` giver nul hits i `core/`+`apps/`.
-8. `team_name` og `team_facts` overlever genstart og kan læses tilbage på `team_id`.
-9. **R0-race:** `advance()` kaldt midt i `convene` (monkeypatch `dispatch_agent`
-   så den kalder `advance`) må ikke give en syntese med 0 medlemmer.
-10. **Tilladelser:** hvert medlems `allowed_tools` er lig `derive()`'s sæt —
-    uden `bash` og uden `spawn_agent_task` — og der findes et gemt mandat med
-    `max_fanout=0` og en `deadline_at`.
-11. **Roller:** `role="executor"` i et medlem afvises; syntesen kan ikke få
-    `executor`-kapabilitet.
-12. **Prompt mod skema:** hver parameter prompten nævner findes i skemaet. En
-    test der fanger næste gang nogen skriver et felt ind i prompten før det
-    findes.
-13. **Idempotens:** samme `Task(team)` to gange giver samme `team_id` og ingen
-    ekstra assignments; forskellige team med samme `prompt` giver **forskellige**
-    id'er; replay af et `cancelled` team svarer ikke `accepted`.
-14. **Delvis fejl:** når medlem 3 fejler, er medlem 1–2 afbrudt og
-    `count_open_assignments` tilbage på udgangspunktet.
-15. **Syntese-fejl:** en ikke-kapacitetsfejl i syntese-dispatch må ikke give et
-    evigt loop, og det skal være defineret hvad Jarvis får hvis syntesen selv fejler.
-16. **Migration:** en eksisterende tabel uden `team_name`/`team_facts` migreres
-    korrekt og læses uændret.
+---
 
-## 14. Implementeringsrækkefølge
+## 14. Rækkefølge — ikke til forhandling
 
-1. `team_name` + `team_facts`-kolonner, status `provisioning` (migration,
-   bagudkompatibel).
-2. **R0-guard** i `advance()` — før noget andet, ellers bygger vi oven på racen.
-3. `derive_team()` → N planer gennem den eksisterende `derive()`-logik.
-4. `convene(plans=…)`: tag planer ind, `role` som etiket, `synthesis_role` låst.
-5. `Task`-skemaets `team`-felt + prompt-sætningen — **i samme commit som 3–4**,
-   så prompten aldrig lover noget der ikke findes.
-6. Idempotens (§5): `canonical` + replay-sammenligning + `cancelled`-svar.
-7. R2/R3-værn: deadline pr. medlem, alderstærskel, gentagelig vækning.
-8. `AgentDispatchPane`: vis team-planen den faktisk dispatcher.
+1. **R0 — race-guarden.** `provisioning` + `OPEN_STATUSES` + `_abandon(frm)` + `advance()`-skip. Den er den eneste fejl der kan producere et svar uden grundlag.
+2. **§5.2 — `mandate_id`.** Uden den kan intet team med mere end ét medlem oprettes.
+3. **§6 — `derive_team()` og syntese gennem `derive()`.**
+4. **§7.2 — skrive-spærringen i `derive()`.**
+5. **§8.4 + §8.5 — vækning og `stalled`.**
+6. **§4 — `team`-feltet i skemaet, og `team` i prompten i SAMME commit.**
+7. **Desk — `AgentDispatchPane` (38 linjer i dag) viser den plan der faktisk dispatches.**
 
-## 15. Afgjorte punkter (besluttet 10/11-2026)
+Punkt 1–5 kan bygges og testes uden at `team`-feltet findes. Punkt 6 er den eneste der ændrer den modelvendte flade, og den kommer sidst fordi alt andet skal stå, før nogen kan kalde den.
 
-De fire spørgsmål stod åbne efter reviewene. De er nu afgjort — tre af dem af
-målinger, ikke af smag.
+---
+
+## 15. Afgjorte punkter
 
 ### 15.1 `derive_team()` er en egen funktion, der kalder `derive()`
+Ikke en gren i `derive()`. En gren ville gøre single-agent-stien betinget af en team-tilstand.
 
-Egen funktion. Den duplikerer ikke valideringen, den **kalder** den: `derive()`
-har ét ansvar (afled ét barns mandat af forælderens), og et team er en samling
-børn. En gren inde i `derive()` ville gøre den funktion til to ting og tvinge
-enhver ændring af enkelt-barnet gennem en team-betinget forgrening.
+### 15.2 Teamet har sin egen alderstærskel — afledt, og håndhævet af en sweep
+**v2's svar var forkert.** Det hævdede at tærsklen kunne arves fra medlems-deadlines, fordi medlemmerne har samme udløb. Målt: `deadline_at` håndhæves kun ved værktøjskald, og der findes ingen sweep for aktive assignments. Et hængende medlem bliver aldrig terminalt.
 
-`derive_team()` løber medlemmerne igennem og kalder `derive()` for hvert af dem.
-Det er den eneste form der giver §6's garanti: **hvert medlem har et gemt
-mandat**, og dermed er `max_fanout` håndhævet for det.
-
-### 15.2 Teamet har ingen egen alderstærskel — den er afledt
-
-**Beslutning: teamet får ikke sin egen deadline. Tærsklen er `max(medlems-
-deadline)`, og syntesen får sin egen når den oprettes.**
-
-Grunden er målt. `agent_task_facade.py:175` sætter `deadline_at = nu + 45 min
-hvis writes, ellers 30 min` — per assignment. Et team opretter alle medlemmer
-på samme tidspunkt, så de har allerede samme udløb. At lægge `max(deadlines) +
-syntese` ovenpå som en selvstændig formel ville opfinde et tal vi ikke har
-målt, oven på nogle vi har.
-
-Målt på 116 terminale assignments (10/11-2026): median **0,5 min**, p90 **3,8
-min**, p99 **10,6 min**, maksimum **19,1 min**. Nul har rørt 30-minutters-
-grænsen. Der er 11 minutters luft ved det værste observerede tilfælde, og
-syntesen er selv et assignment med sin egen grænse.
-
-**Men teamet skal kunne svare på "hvorfor lever det her team endnu?"** Derfor
-bærer det en *observeret* tærskel, ikke en håndhævet: `max(medlems-deadline)`.
-Er teamet ældre end det, er der noget galt, og det skal stå i Desk — ikke
-fejle tavst. En egen tærskel ville være et tal vi gættede; den afledte er et
-tal vi målte.
+v3's svar: `stalled_after_at = max(medlems-deadlines) + 15 min`, håndhævet af `advance()` selv, med `stalled` som observerbar tilstand. Tallet er afledt af de målte deadlines (§3), ikke gættet — men det er **håndhævet**, hvilket er forskellen.
 
 ### 15.3 `team_id` bærer `team-`-prefiks
-
-Ja. Det er gratis, og det gør et team skelneligt fra et `council_id` i logs og
-i `agent_councils`-tabellen, hvor de to ellers ville ligge i samme kolonne uden
-at kunne skelnes på form.
+Gratis, og gør et team skelneligt fra et council-id i logs.
 
 ### 15.4 `agent_council.py` omdøbes ikke nu
+Historikken er mere værd end navnet. En funktionel ændring skal ikke gøres uskelnelig fra en kosmetisk.
 
-Nej. Git-historikken er mere værd end navnet, og filen er den offentlige flade
-uanset hvad den hedder. Docstring'en siger allerede "råd og review-kæde på
-agentmotoren" — den skal blot udvides til at sige at den nu også er
-team-motoren. Omdøbningen hører til den dag filen alligevel skal røres
-strukturelt; at gøre det nu ville gøre en funktionel ændring uskelnelig fra en
-kosmetisk i historikken.
+### 15.5 Skrivende teams er udskudt
+Et teammedlem er læsende i denne version (§7.2). Skrivende hold kræver en delt plan og en worktree-beslutning der ikke er taget. Worktree-isoleringen blokerer ikke i sig selv en delt liste — listen er en tabel, ikke en fil — men et medlem kan i dag kun skrive til tre tabeller, og alle tre er per-barn. Det er den næste beslutning, ikke denne.
+
+---
+
+## 16. Åbent — og hvad der afgør det
+
+**Intet blokerende.** De fem fund fra runde 2 er lukket med mekanisme. Det ene åbne punkt er afhængigt af en måling vi ikke har:
+
+**Skal `stalled` vække parenten, eller kun vises i Desk?**
+Argumentet for vækning: et team der hænger, er præcis det Jarvis skal vide. Argumentet imod: et team der hænger, er ikke et svar — det er en fejl, og Jarvis har allerede en inbox der viser fejl.
+
+**Afgørelse:** det vises i Desk og tælles i `inbox` som en post — men det vækker **ikke** et nyt run. Vækning er forbeholdt syntesen, som er det eneste der bærer et svar. Et team der hænger, skal ikke kunne starte en tur uden indhold. Det er samme lære som 15/9.

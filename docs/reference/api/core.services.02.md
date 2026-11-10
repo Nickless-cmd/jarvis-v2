@@ -273,7 +273,7 @@ _The five-field model-facing Task facade over agent-contract-v1._
 | function | `_vaerktoejer_for` | `(policy)` | Agentens værktøjer = policyens sæt + agent-kun-værktøjerne. | [src](../../../core/services/agent_task_facade.py#L80) |
 | function | `_session_scope` | `(owner, session)` | — | [src](../../../core/services/agent_task_facade.py#L103) |
 | function | `derive` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, subagent_type, model, run_in_background, budget_tokens=…)` | — | [src](../../../core/services/agent_task_facade.py#L140) |
-| function | `execute` | `(**fields)` | — | [src](../../../core/services/agent_task_facade.py#L223) |
+| function | `execute` | `(**fields)` | — | [src](../../../core/services/agent_task_facade.py#L230) |
 
 ## `core/services/agent_task_requirements.py`
 _Hvilke værktøjer en opgaveprompt KRÆVER at agenten kalder._

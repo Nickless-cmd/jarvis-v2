@@ -162,7 +162,14 @@ def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
     workspace = os.path.realpath(workspace) if workspace else ""
     has_repo = bool(workspace and os.path.exists(os.path.join(workspace, ".git")))
     writes = kind in _WRITE_TYPES
-    if writes and (not workspace or workspace_kind.lower() not in {"container", "local", "code", "repo", "git"}):
+    # 10/11-2026: `workstation` manglede i saettet, og det blokerede HVER executor startet
+    # fra en Desk-session — maalt: sessionens workspace_kind er "workstation" med
+    # workspace_root = serverens eget repo, saa `derive()` afviste med "executor kraever et
+    # lokalt repo-workspace" selv om stien ER et git-repo. Rettelsen er ikke en lempelse:
+    # `has_repo`-tjekket lige nedenfor er det der afgoer, og en member-workspace der peger
+    # paa en anden maskine findes ikke paa serveren og afvises derfor stadig.
+    if writes and (not workspace or workspace_kind.lower() not in
+                   {"container", "local", "code", "repo", "git", "workstation"}):
         raise ValueError("executor kraever et lokalt repo-workspace paa origin-sessionen")
     if writes and not has_repo:
         # Worktrees have a .git file, but the facade starts from the session's source repository.

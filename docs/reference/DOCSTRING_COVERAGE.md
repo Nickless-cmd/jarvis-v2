@@ -784,7 +784,7 @@ Generated from source. 9977/18466 functions/methods documented (54%). The list b
 - `core/services/agent_skill_distiller.py` :: `distill_all_known_roles` (L133)
 - `core/services/agent_skill_library.py` :: `list_skill_mutations` (L217)
 - `core/services/agent_task_facade.py` :: `derive` (L140)
-- `core/services/agent_task_facade.py` :: `execute` (L223)
+- `core/services/agent_task_facade.py` :: `execute` (L230)
 - `core/services/agent_todos.py` :: `add_todo` (L196)
 - `core/services/agent_todos.py` :: `clear_session_todos` (L379)
 - `core/services/agent_todos.py` :: `list_todos` (L68)

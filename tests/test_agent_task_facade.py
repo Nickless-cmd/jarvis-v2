@@ -45,6 +45,43 @@ def test_chat_repo_gives_researcher_files_and_executor_a_worktree(monkeypatch):
     assert "bash" not in executor["allowed_tools"]
 
 
+def test_workstation_er_et_repo_naar_stien_faktisk_er_et(monkeypatch):
+    """`workstation` manglede i kinds-saettet og blokerede hver executor fra Desk.
+
+    Maalt 10/11-2026: sessionens workspace_kind er "workstation" med
+    workspace_root = serverens eget repo. `derive()` afviste derfor ALLE
+    executors med "executor kraever et lokalt repo-workspace" — selv om stien
+    baade findes og har .git. Det var ikke en sikkerhedsgraense, det var et hul
+    i en liste. `has_repo`-tjekket er det der afgoer, og det staar stadig.
+    """
+    from core.services import agent_task_facade as task
+
+    monkeypatch.setattr(task, "_session_scope", lambda owner, session: ("workstation", "/repo"))
+    monkeypatch.setattr(task.os.path, "exists", lambda path: path == "/repo/.git")
+    plan = task.derive(
+        owner_user_id="bjorn", origin_session_id="chat-1", parent_run_id="run-1",
+        parent_agent_id="jarvis", description="Et repo-resultat", prompt="Byg det",
+        subagent_type="executor", model="", run_in_background=True,
+    )
+    assert plan["writes"] is True and plan["workspace"] == "/repo"
+
+
+def test_workstation_uden_repo_afvises_stadig(monkeypatch):
+    """En member-workspace der peger paa en anden maskine findes ikke her — afvises."""
+    import pytest
+
+    from core.services import agent_task_facade as task
+
+    monkeypatch.setattr(task, "_session_scope", lambda owner, session: ("workstation", "/findes-ikke"))
+    monkeypatch.setattr(task.os.path, "exists", lambda path: False)
+    with pytest.raises(ValueError, match="git-repository"):
+        task.derive(
+            owner_user_id="bjorn", origin_session_id="chat-1", parent_run_id="run-1",
+            parent_agent_id="jarvis", description="Et repo-resultat", prompt="Byg det",
+            subagent_type="executor", model="", run_in_background=True,
+        )
+
+
 def test_udeladt_type_er_ikke_en_port(monkeypatch):
     """Task uden subagent_type må ikke tvinge et valg.
 

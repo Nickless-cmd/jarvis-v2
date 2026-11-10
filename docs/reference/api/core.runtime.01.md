@@ -208,11 +208,14 @@ _Raad paa agentmotoren (agent-contract-v1 F5, spec 5.1 + 7.1 om raad)._
 | function | `get` | `(council_id, owner_user_id)` | Ejerfiltreret: et andet raad end ejerens er ``None``. | [src](../../../core/runtime/db_agent_council.py#L103) |
 | function | `find_by_key` | `(owner_user_id, origin_session_id, key)` | — | [src](../../../core/runtime/db_agent_council.py#L109) |
 | function | `set_members` | `(council_id, members)` | Gem medlemmerne og flyt raadet fra ``provisioning`` til ``gathering``. | [src](../../../core/runtime/db_agent_council.py#L117) |
-| function | `transition` | `(council_id, *, frm, to, synthesis_assignment_id=…)` | Atomisk statusskifte; ``False`` hvis en anden supervisor allerede har flyttet raadet. | [src](../../../core/runtime/db_agent_council.py#L135) |
-| function | `open_councils` | `()` | Alle raad en supervisor stadig skal kigge paa — bygget fra ``OPEN_STATUSES``. | [src](../../../core/runtime/db_agent_council.py#L145) |
-| function | `is_stale_provisioning` | `(c, *, now=…)` | Er raekken efterladt i ``provisioning`` — oprettet, men aldrig samlet? | [src](../../../core/runtime/db_agent_council.py#L158) |
-| function | `abandon_stale_provisioning` | `(council_id, *, now=…)` | Luk en forladt samling og FRIGIV dens idempotensnoegle. | [src](../../../core/runtime/db_agent_council.py#L176) |
-| function | `require` | `(council_id, owner_user_id)` | — | [src](../../../core/runtime/db_agent_council.py#L196) |
+| function | `transition` | `(council_id, *, frm, to, synthesis_assignment_id=…)` | Atomisk statusskifte; ``False`` hvis en anden supervisor allerede har flyttet raadet. | [src](../../../core/runtime/db_agent_council.py#L145) |
+| function | `open_councils` | `()` | Alle raad en supervisor stadig skal kigge paa — bygget fra ``OPEN_STATUSES``. | [src](../../../core/runtime/db_agent_council.py#L155) |
+| function | `_parse_ts` | `(value)` | ISO-tidsstempel, eller ``None`` hvis det ikke kan laeses. | [src](../../../core/runtime/db_agent_council.py#L168) |
+| function | `touch` | `(council_id)` | Markér at samlingen stadig arbejder. | [src](../../../core/runtime/db_agent_council.py#L177) |
+| function | `is_stale_provisioning` | `(c, *, now=…)` | Er raekken efterladt i ``provisioning`` — oprettet, men aldrig samlet? | [src](../../../core/runtime/db_agent_council.py#L190) |
+| function | `abandon_stale_provisioning` | `(council_id, *, now=…)` | Luk en forladt samling og FRIGIV dens idempotensnoegle. | [src](../../../core/runtime/db_agent_council.py#L213) |
+| function | `release_key` | `(council_id)` | Frigiv idempotensnoeglen paa et raad der ikke blev samlet. | [src](../../../core/runtime/db_agent_council.py#L233) |
+| function | `require` | `(council_id, owner_user_id)` | — | [src](../../../core/runtime/db_agent_council.py#L245) |
 
 ## `core/runtime/db_agent_deadlines.py`
 _Durable queue deadline for accepted contract assignments (§12.3)._

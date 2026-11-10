@@ -203,8 +203,8 @@ def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
     # enkelt-agent en ny ``idem`` og dermed et nyt ``mandate_id`` — og enhver replay af
     # allerede accepteret arbejde ville braekke. Er ``team_id`` tom, er ``canonical``
     # byte-identisk med foer; det er bevist af en test der holder hashen som literal.
-    if team_id:
-        canonical["team_id"] = team_id
+    if str(team_id or "").strip():
+        canonical["team_id"] = str(team_id).strip()
         canonical["member_index"] = int(member_index)
     idem = "task-" + hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()[:32]
     mandate_id = "mnd-" + hashlib.sha256(idem.encode()).hexdigest()[:16]

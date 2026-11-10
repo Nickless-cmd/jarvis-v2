@@ -342,8 +342,9 @@ def test_et_raad_efterladt_i_provisioning_braender_ikke_sin_idempotensnoegle(cn)
     first = cn.convene(idempotency_key="k-abandoned")
     cid = first["council_id"]
     conn = cn.c_._conn()
-    conn.execute("UPDATE agent_councils SET status='provisioning', members_json='[]', created_at=? "
-                 "WHERE council_id=?", ("2026-01-01T00:00:00+00:00", cid))
+    conn.execute("UPDATE agent_councils SET status='provisioning', members_json='[]', "
+                 "created_at=?, updated_at=? WHERE council_id=?",
+                 ("2026-01-01T00:00:00+00:00", "2026-01-01T00:00:00+00:00", cid))
     conn.commit()
     assert cn.store_.get(cid, O)["status"] == "provisioning"
 
@@ -366,3 +367,59 @@ def test_en_samling_der_koerer_lige_nu_erstattes_ikke(cn):
 
     out = cn.convene(idempotency_key="k-active")
     assert out["code"] == "PROVISIONING_IN_PROGRESS", out
+
+
+def test_en_afvist_samling_frigiver_idempotensnoeglen(cn, monkeypatch):
+    """En afvist samling maa ikke efterlade en noegle der laaser en retry ude FOR EVIGT.
+
+    Det var den anden vej til samme lockout: ``abandon_stale_provisioning`` lukkede den
+    ene, men ``_abandon`` — den ægte sti hvor et medlem afvises midt i samlingen —
+    ryddede ikke noeglen. Testen gaar gennem ``convene()``, ikke gennem ``_abandon``
+    direkte, saa den rammer den vej der faktisk kaldes.
+    """
+    real = cn.svc_.dispatch_agent
+    seen = {"n": 0}
+
+    def flaky(**kw):
+        seen["n"] += 1
+        if seen["n"] == 2:
+            return {"status": "error", "code": "CAPACITY", "error": "fuldt"}
+        return real(**kw)
+
+    monkeypatch.setattr(cn.svc_, "dispatch_agent", flaky)
+    out = cn.convene(idempotency_key="k-rejected", members=cn.members(3))
+    assert out["council_status"] == "cancelled", out
+    row = cn.store_.get(out["council_id"], O)
+    assert row["status"] == "cancelled"
+    assert row["idempotency_key"] == "", "noeglen skal vaere frigivet"
+
+    monkeypatch.setattr(cn.svc_, "dispatch_agent", real)
+    again = cn.convene(idempotency_key="k-rejected", members=cn.members(3))
+    assert again["status"] == "accepted", again
+    assert again["council_id"] != out["council_id"]
+
+
+def test_et_efterladt_raads_medlemmer_afbrydes(cn, monkeypatch):
+    """Medlemmer dispatchet foer afbrydelsen maa ikke fortsætte uden ejer.
+
+    En retry faar et nyt cid og dermed nye medlemsnoegler, saa det gamle arbejde ville
+    vaere spildt kapacitet indtil deadlinen ramte.
+    """
+    calls: list[str] = []
+    real = cn.svc_.interrupt_agent
+
+    def spy(**kw):
+        calls.append(kw["agent_id"])
+        return real(**kw)
+
+    monkeypatch.setattr(cn.svc_, "interrupt_agent", spy)
+    first = cn.convene(idempotency_key="k-orphan")
+    cid = first["council_id"]
+    conn = cn.c_._conn()
+    conn.execute("UPDATE agent_councils SET status='provisioning', members_json='[]', "
+                 "created_at=?, updated_at=? WHERE council_id=?",
+                 ("2026-01-01T00:00:00+00:00", "2026-01-01T00:00:00+00:00", cid))
+    conn.commit()
+
+    cn.A_.advance()
+    assert calls, "foraeldroelse medlemmer skal afbrydes, ikke fortsætte uden ejer"

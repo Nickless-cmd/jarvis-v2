@@ -120,16 +120,26 @@ def set_members(council_id: str, members: list[dict[str, Any]]) -> None:
     Skiftet sker KUN fra ``provisioning``. Er raadet allerede ``gathering`` (en retry)
     eller ``cancelled`` (en afbrudt samling), er der intet at flytte — og det er ikke
     en fejl. Derfor ignoreres ``transition``s returvaerdi her.
+
+    Medlemmerne og statusskiftet skrives i ÉN UPDATE. Blev de skrevet hver for sig, kunne
+    en samtidig supervisor se en raekke i ``provisioning`` med en fyldt liste — eller en
+    fejlet anden halvdel efterlade raekken fast med medlemmer men uden status.
     """
     conn = _conn()
-    conn.execute("UPDATE agent_councils SET members_json=?, updated_at=? WHERE council_id=?",
-                 (json.dumps(members, ensure_ascii=False), _now_iso(), council_id))
-    conn.commit()
+    now = _now_iso()
+    payload = json.dumps(members, ensure_ascii=False)
     if members:
         # En TOM liste er ikke et raad. Den gemmes (saa _abandon kan bevare historikken),
         # men den maa ikke flytte raekken til ``gathering``: et raad i gathering uden
         # medlemmer er praecis den tilstand der gav en syntese over et tomt grundlag.
-        transition(council_id, frm=PROVISIONING, to=GATHERING)
+        conn.execute(
+            "UPDATE agent_councils SET members_json=?, "
+            "status=CASE WHEN status=? THEN ? ELSE status END, updated_at=? WHERE council_id=?",
+            (payload, PROVISIONING, GATHERING, now, council_id))
+    else:
+        conn.execute("UPDATE agent_councils SET members_json=?, updated_at=? WHERE council_id=?",
+                     (payload, now, council_id))
+    conn.commit()
 
 
 def transition(council_id: str, *, frm: str, to: str, synthesis_assignment_id: str = "") -> bool:
@@ -155,22 +165,49 @@ def open_councils() -> list[dict[str, Any]]:
     return [_view(r) for r in rows]  # type: ignore[misc]
 
 
+def _parse_ts(value: Any) -> datetime | None:
+    """ISO-tidsstempel, eller ``None`` hvis det ikke kan laeses."""
+    try:
+        parsed = datetime.fromisoformat(str(value or "").replace("Z", "+00:00"))
+    except ValueError:  # ulaeseligt tidsstempel: behandles som "kan ikke vurderes"
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+
+def touch(council_id: str) -> None:
+    """Markér at samlingen stadig arbejder.
+
+    ``convene()`` skriver ikke til raekken mens den dispatcher medlemmer, saa alderen
+    alene kan ikke skelne en aktiv samling fra en efterladt. Uden dette kan en langsom
+    samling blive lukket under foedderne — og dens medlemmer skrevet ind i en
+    ``cancelled``-raekke, hvor de fortsætter uden ejer.
+    """
+    conn = _conn()
+    conn.execute("UPDATE agent_councils SET updated_at=? WHERE council_id=?", (_now_iso(), council_id))
+    conn.commit()
+
+
 def is_stale_provisioning(c: dict[str, Any], *, now: datetime | None = None) -> bool:
     """Er raekken efterladt i ``provisioning`` — oprettet, men aldrig samlet?
 
     Uden dette kan en raekke der blev oprettet men aldrig fik medlemmer (genstart midt i
     samlingen) hverken blive faerdig eller forsvinde: ``advance()`` springer den over for
     evigt, og dens idempotensnoegle laaser en retry ude med IDEMPOTENCY_CONFLICT.
+
+    Alder maales fra det NYESTE tidsstempel, ikke fra ``created_at``: ``convene()`` rører
+    ``updated_at`` gennem ``touch()`` foer hver dispatch, saa en aktiv samling holder sig
+    frisk uanset hvor laenge den tager.
     """
     if c.get("status") != PROVISIONING:
         return False
-    try:
-        created = datetime.fromisoformat(str(c.get("created_at") or "").replace("Z", "+00:00"))
-    except ValueError:  # ulaeseligt tidsstempel: vi lukker ikke ved tvivl — hellere lade raekken staa
-        return False
-    if created.tzinfo is None:
-        created = created.replace(tzinfo=UTC)
-    return ((now or datetime.now(UTC)) - created).total_seconds() > PROVISIONING_GRACE_SECONDS
+    stamps = [d for d in (_parse_ts(c.get("created_at")), _parse_ts(c.get("updated_at"))) if d]
+    if not stamps:
+        # Ingen laesbar tid paa en aaben raekke: den kan ikke blive faerdig, og vi kan ikke
+        # afgoere om den er aktiv. Den lukkes — ellers genindfoerer "lad staa" praecis den
+        # permanente laas aendringen skulle fjerne. ``_now_iso()`` skriver altid et gyldigt
+        # tidsstempel, saa dette rammer kun korrupte eller importerede raekker.
+        return True
+    return ((now or datetime.now(UTC)) - max(stamps)).total_seconds() > PROVISIONING_GRACE_SECONDS
 
 
 def abandon_stale_provisioning(council_id: str, *, now: datetime | None = None) -> bool:
@@ -191,6 +228,18 @@ def abandon_stale_provisioning(council_id: str, *, now: datetime | None = None) 
         (CANCELLED, _now_iso(), council_id, PROVISIONING))
     conn.commit()
     return cur.rowcount == 1
+
+
+def release_key(council_id: str) -> None:
+    """Frigiv idempotensnoeglen paa et raad der ikke blev samlet.
+
+    Noeglen sidder i en UNIQUE INDEX. Bliver den ikke ryddet, laaser den en retry ude med
+    IDEMPOTENCY_CONFLICT — for evigt, fordi raadet er ``cancelled`` og aldrig bliver
+    samlet igen. Raekken selv bliver som historik.
+    """
+    conn = _conn()
+    conn.execute("UPDATE agent_councils SET idempotency_key='' WHERE council_id=?", (council_id,))
+    conn.commit()
 
 
 def require(council_id: str, owner_user_id: str) -> dict[str, Any]:

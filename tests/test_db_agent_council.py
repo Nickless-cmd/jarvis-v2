@@ -182,8 +182,8 @@ def test_advance_lukker_et_raad_efterladt_i_provisioning_og_frigiver_noeglen(cdb
     c = cdb.make(key="k-left")
     cid = c["council_id"]
     conn = cdb.C_._conn()
-    conn.execute("UPDATE agent_councils SET created_at=? WHERE council_id=?",
-                 ("2026-01-01T00:00:00+00:00", cid))
+    conn.execute("UPDATE agent_councils SET created_at=?, updated_at=? WHERE council_id=?",
+                 ("2026-01-01T00:00:00+00:00", "2026-01-01T00:00:00+00:00", cid))
     conn.commit()
 
     assert ac.advance() == [{"council_id": cid, "action": "abandoned_provisioning"}]
@@ -211,9 +211,46 @@ def test_et_raad_med_medlemmer_lukkes_ikke_som_forladt(cdb):
     c = cdb.make(key="k-has-members")
     cid = c["council_id"]
     conn = cdb.C_._conn()
-    conn.execute("UPDATE agent_councils SET created_at=? WHERE council_id=?",
-                 ("2026-01-01T00:00:00+00:00", cid))
+    conn.execute("UPDATE agent_councils SET created_at=?, updated_at=? WHERE council_id=?",
+                 ("2026-01-01T00:00:00+00:00", "2026-01-01T00:00:00+00:00", cid))
     conn.commit()
     cdb.C_.set_members(cid, [{"index": 1, "role": "critic", "task": "x", "assignment_id": "a", "agent_id": "g"}])
     assert cdb.C_.get(cid, O)["status"] == "gathering"
     assert cdb.C_.abandon_stale_provisioning(cid) is False
+
+
+def test_touch_holder_en_aktiv_samling_frisk(cdb):
+    """Alder maales fra det NYESTE tidsstempel.
+
+    ``convene()`` skriver ikke til raekken mens den dispatcher, saa uden ``touch()`` var
+    uret det eneste der skelnede en aktiv samling fra en efterladt — og en samling der
+    tog over 300 s ville blive lukket under foedderne.
+    """
+    c = cdb.make(key="k-touch")
+    cid = c["council_id"]
+    conn = cdb.C_._conn()
+    conn.execute("UPDATE agent_councils SET created_at=?, updated_at=? WHERE council_id=?",
+                 ("2026-01-01T00:00:00+00:00", "2026-01-01T00:00:00+00:00", cid))
+    conn.commit()
+    assert cdb.C_.is_stale_provisioning(cdb.C_.get(cid, O)) is True      # gammel
+    cdb.C_.touch(cid)
+    assert cdb.C_.is_stale_provisioning(cdb.C_.get(cid, O)) is False     # frisk igen
+
+
+def test_en_raekke_uden_laesbar_tid_lukkes_i_stedet_for_at_ligge_fast(cdb):
+    """Retningen ved tvivl: en aaben raekke uden tid kan ikke blive faerdig.
+
+    At returnere "ikke forladt" genindfoerer praecis den permanente laas aendringen
+    skulle fjerne. ``_now_iso()`` skriver altid et gyldigt tidsstempel, saa dette rammer
+    kun korrupte eller importerede raekker.
+    """
+    import core.services.agent_council as ac
+
+    c = cdb.make(key="k-no-time")
+    cid = c["council_id"]
+    conn = cdb.C_._conn()
+    conn.execute("UPDATE agent_councils SET created_at='', updated_at='' WHERE council_id=?", (cid,))
+    conn.commit()
+    assert cdb.C_.is_stale_provisioning(cdb.C_.get(cid, O)) is True
+    assert ac.advance() == [{"council_id": cid, "action": "abandoned_provisioning"}]
+    assert cdb.C_.get(cid, O)["status"] == "cancelled"

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9981/18468 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9985/18472 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,8 +25,8 @@ Generated from source. 9981/18468 functions/methods documented (54%). The list b
 | `core.identity` | 80 | 173 | 46% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 880 | 1593 | 55% |
-| `core.services` | 6671 | 12520 | 53% |
+| `core.runtime` | 883 | 1596 | 55% |
+| `core.services` | 6672 | 12521 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -406,7 +406,7 @@ Generated from source. 9981/18468 functions/methods documented (54%). The list b
 - `core/runtime/db_agent_council.py` :: `create` (L87)
 - `core/runtime/db_agent_council.py` :: `ensure_council_tables` (L46)
 - `core/runtime/db_agent_council.py` :: `find_by_key` (L109)
-- `core/runtime/db_agent_council.py` :: `require` (L196)
+- `core/runtime/db_agent_council.py` :: `require` (L245)
 - `core/runtime/db_agent_deadlines.py` :: `ensure_deadline_columns` (L18)
 - `core/runtime/db_agent_deadlines.py` :: `initial_queue_deadline` (L55)
 - `core/runtime/db_agent_feed.py` :: `acknowledge` (L123)
@@ -748,7 +748,7 @@ Generated from source. 9981/18468 functions/methods documented (54%). The list b
 - `core/services/agent_contract_projection.py` :: `followup` (L542)
 - `core/services/agent_contract_projection.py` :: `mark_read` (L486)
 - `core/services/agent_contract_service.py` :: `list_approvals` (L784)
-- `core/services/agent_council.py` :: `synthesis_goal` (L168)
+- `core/services/agent_council.py` :: `synthesis_goal` (L198)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L322)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L320)
 - `core/services/agent_loop_core.py` :: `LoopIO.model` (L315)

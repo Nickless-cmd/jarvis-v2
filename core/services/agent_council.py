@@ -88,6 +88,7 @@ def convene(*, owner_user_id: str, origin_session_id: str, topic: str, facts: st
             if not store.abandon_stale_provisioning(prior["council_id"]):
                 return _err("PROVISIONING_IN_PROGRESS",
                             "et raad med samme noegle samles lige nu - forsoeg igen om lidt")
+            _interrupt_orphan_members(owner_user_id, origin_session_id, prior["council_id"])
             prior = None
     if prior is not None:
         if prior["topic"] != topic or [(m["role"], m["task"]) for m in prior["members"]] != [
@@ -102,6 +103,9 @@ def convene(*, owner_user_id: str, origin_session_id: str, topic: str, facts: st
                            idempotency_key=idempotency_key)
     cid, started = council["council_id"], []
     for i, m in enumerate(clean, start=1):
+        # Holder raekken frisk gennem samlingen. Uden dette maales alderen fra ``created_at``
+        # alene, og en langsom samling kunne blive lukket som forladt under foedderne.
+        store.touch(cid)
         out = svc.dispatch_agent(
             owner_user_id=owner_user_id, origin_session_id=origin_session_id, parent_run_id=parent_run_id,
             parent_agent_id=parent_agent_id, role=m["role"], goal=m["task"],
@@ -135,7 +139,33 @@ def _abandon(owner: str, session: str, cid: str, started: list[dict[str, Any]], 
         except Exception:
             logger.warning("kunne ikke afbryde raadsmedlem %s", m.get("agent_id"), exc_info=True)
     store.transition(cid, frm=frm, to=store.CANCELLED)
+    # Noeglen skal frigives: raadet er ``cancelled`` og bliver aldrig samlet igen, saa en
+    # noegle der bliver staaende laaser en retry ude med IDEMPOTENCY_CONFLICT — for evigt.
+    store.release_key(cid)
     store.set_members(cid, started)
+
+
+def _interrupt_orphan_members(owner: str, session: str, cid: str) -> int:
+    """Afbryd medlemmer der blev sendt afsted for et raad der aldrig blev samlet.
+
+    De blev dispatchet med noeglen ``{cid}:m{i}``, saa de kan findes selv om raadets
+    medlemsliste er tom. Uden dette fortsætter de uden ejer: en retry faar et nyt cid og
+    dermed nye noegler, og det gamle arbejde er spildt kapacitet indtil deadlinen rammer.
+    """
+    rows = _conn().execute(
+        "SELECT assignment_id, agent_id FROM agent_assignments "
+        "WHERE owner_user_id=? AND origin_session_id=? AND idempotency_key LIKE ? "
+        "AND status IN ('queued','active','waiting')",
+        (owner, session, f"{cid}:m%")).fetchall()
+    stopped = 0
+    for r in rows:
+        try:
+            svc.interrupt_agent(owner_user_id=owner, origin_session_id=session, agent_id=r["agent_id"],
+                                note=f"raad {cid} blev aldrig samlet")
+            stopped += 1
+        except Exception:
+            logger.warning("kunne ikke afbryde foraeldroelost medlem %s", r["agent_id"], exc_info=True)
+    return stopped
 
 
 def _view(c: dict[str, Any], *, replayed: bool = False) -> dict[str, Any]:
@@ -197,6 +227,7 @@ def advance() -> list[dict[str, Any]]:
                 if store.abandon_stale_provisioning(c["council_id"]):
                     logger.warning("raad %s var efterladt i provisioning - lukket, noeglen frigivet",
                                    c["council_id"])
+                    _interrupt_orphan_members(owner, session, c["council_id"])
                     done.append({"council_id": c["council_id"], "action": "abandoned_provisioning"})
                 continue
             if c["status"] == store.GATHERING:

@@ -13,7 +13,11 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+import logging
+
 from fastapi import APIRouter
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/central", tags=["central-keys"])
 
@@ -51,5 +55,22 @@ def approve(key_id: int) -> dict:
     try:
         from core.services.central_keymaker import approve_key
         return approve_key(key_id)
-    except Exception as exc:
+    except Exception as exc:  # svarer med fejlen til ejeren; en godkendelse der kaster maa ikke give 500
+        logger.warning("keymaker: godkendelse af noegle %s fejlede: %s", key_id, exc)
+        return {"ok": False, "error": str(exc)[:120]}
+
+
+@router.post("/keys/{key_id}/reject")
+def reject(key_id: int, reason: str = "") -> dict:
+    """OWNER-handling: luk en pending nøgle uden at godkende den.
+
+    Uden denne vej kan en forældet nøgle aldrig lukkes, og `_mind_om_ventende` bliver ved at
+    minde om den. Kræver ikke strict-gate: at afvise en eskalering er ikke en eskalering.
+    """
+    _require_owner()
+    try:
+        from core.services.central_keymaker import reject_key
+        return reject_key(key_id, reason=reason)
+    except Exception as exc:  # svarer med fejlen til ejeren; en afvisning der kaster maa ikke give 500
+        logger.warning("keymaker: afvisning af noegle %s fejlede: %s", key_id, exc)
         return {"ok": False, "error": str(exc)[:120]}

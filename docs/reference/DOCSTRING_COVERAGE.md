@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9966/18456 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9969/18459 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 9966/18456 functions/methods documented (53%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 745 | 1039 | 71% |
+| `apps.api.jarvis_api.routes` | 746 | 1040 | 71% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -26,7 +26,7 @@ Generated from source. 9966/18456 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 876 | 1591 | 55% |
-| `core.services` | 6661 | 12510 | 53% |
+| `core.services` | 6663 | 12512 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -970,7 +970,7 @@ Generated from source. 9966/18456 functions/methods documented (53%). The list b
 - `core/services/central_injection_registry.py` :: `set_injection_live` (L140)
 - `core/services/central_injection_units.py` :: `register_default_units` (L44)
 - `core/services/central_instrument.py` :: `Finding.signature` (L118)
-- `core/services/central_keymaker.py` :: `list_keys` (L256)
+- `core/services/central_keymaker.py` :: `list_keys` (L281)
 - `core/services/central_learning.py` :: `learning_summary` (L239)
 - `core/services/central_lexicon.py` :: `active_terms` (L190)
 - `core/services/central_lexicon.py` :: `operators` (L194)

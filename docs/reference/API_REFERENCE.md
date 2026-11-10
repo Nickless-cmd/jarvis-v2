@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-11-08 from app.routes (live) — 693 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-10 from app.routes (live) — 694 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -226,6 +226,7 @@
 | GET | `/central/integrity` | dict | central_absorb_routes |
 | GET | `/central/keys` | dict | central_keys |
 | POST | `/central/keys/{key_id}/approve` | dict | central_keys |
+| POST | `/central/keys/{key_id}/reject` | dict | central_keys |
 | GET | `/central/machines` | dict | central_matrix |
 | GET | `/central/memory-health` | dict | central_absorb_routes |
 | GET | `/central/memory-state` | dict | central |

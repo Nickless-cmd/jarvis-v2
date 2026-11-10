@@ -20,11 +20,14 @@ godkendelse.
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from core.runtime.db_core import connect
+
+logger = logging.getLogger(__name__)
 
 # Track-record-tærskel: en gate har fortjent en nøgle ved ≥ dette antal beslutninger med 0 ikke-grøn.
 _EARN_MIN_VOLUME = 100
@@ -48,6 +51,20 @@ def _is_never(nerve: str) -> bool:
     except Exception:
         pass
     return nerve in _NEVER
+
+
+# Nerver der faktisk har en konsument: de navne der sendes som foerste argument til
+# ``lokal_groen(...)``. Maalt 10/11-2026: kun ``veto``, ``decision_gate`` og ``self_review``
+# (commit_gate_arbiter.py:66,99 og self_review_unified.py:313). Gut-gaten blev ALDRIG koblet
+# paa, saa en godkendt noegle for den flippede et flag ingen laeser — den slags noegle er ikke
+# autonomi, den er dekoration. Listen er en literal og ikke et grep i runtime: et grep ville
+# finde sin egen streng og kalde det en konsument.
+_KONSUMENTER = frozenset({"veto", "decision_gate", "self_review"})
+
+
+def _har_konsument(nerve: str) -> bool:
+    """True hvis <nerve> er koblet paa ``lokal_groen`` — dvs. en godkendt noegle bliver til adfaerd."""
+    return str(nerve or "").strip() in _KONSUMENTER
 
 
 def _ensure_table(conn: sqlite3.Connection) -> None:
@@ -103,6 +120,14 @@ def evaluate_keys() -> dict[str, Any]:
                 non_green = total - int(agg.get("green") or 0)
                 if total < _EARN_MIN_VOLUME or non_green != 0:
                     continue
+                # En noegle til en nerve uden konsument er ikke autonomi — den flipper et flag
+                # ingen laeser. Maalt 10/11-2026: gut_gate stod med 700 groenne / 55 roede og
+                # en PENDING noegle fra 15/10, men `lokal_groen` blev aldrig kaldt med den.
+                if not _har_konsument(nerve):
+                    logger.info(
+                        "keymaker: springer %s over — ingen konsument (kaldes ikke med lokal_groen)",
+                        nerve)
+                    continue
                 domain = f"decentralize:{nerve}"
                 out["earned"].append({"domain": domain, "track": total})
                 if domain in existing:
@@ -117,8 +142,8 @@ def evaluate_keys() -> dict[str, Any]:
                 out["issued"].append({"domain": domain, "track": total, "reason": reason})
                 _observe("earned", {"domain": domain, "track": total})
             conn.commit()
-    except Exception:
-        pass
+    except Exception as exc:  # self-safe: optjening maa aldrig kaste ind i kalders cadence
+        logger.warning("keymaker: optjening fejlede: %s", exc)
     # Notificér EFTER commit, saa vi aldrig varsler om en noegle der ikke blev skrevet.
     for k in out["issued"]:
         _varsl_ejer(k["domain"], int(k["track"]))
@@ -304,6 +329,26 @@ def approve_key(key_id: int) -> dict[str, Any]:
                 conn.commit()
                 _observe("rejected", {"domain": row["domain"], "reason": "security-klasse (§11.3)"})
                 return {"ok": False, "error": "sikkerheds-nerve kan ALDRIG decentraliseres (§11.3)"}
+            # Re-validér TRACK-RECORDEN ved godkendelse — ikke kun sikkerhedsklassen.
+            # Maalt 10/11-2026: noegle 5 og 6 blev udstedt 15/10 paa «100 beslutninger, 0 fejl».
+            # I dag staar gut_gate paa 700 groenne / 55 roede. Betingelsen der optjente noeglen
+            # holder altsaa ikke laengere, og en godkendelse ville flippe et flag paa et grundlag
+            # der er væk. Samme betingelse som optjeningen: non_green skal vaere 0.
+            if row["unlock_scope"] == "decentralize":
+                try:
+                    from core.services.gate_verdict_ledger import summary
+                    agg = summary().get(row["unlock_name"]) or {}
+                    total = int(agg.get("total") or 0)
+                    non_green = total - int(agg.get("green") or 0)
+                except Exception:
+                    # Kan vi ikke maale, godkender vi ikke: en noegle hvis grundlag vi ikke kan
+                    # efterproeve er praecis den slags tilladelse der ikke maa gives.
+                    return {"ok": False,
+                            "error": "kunne ikke re-validere track-record — godkendelse afvist"}
+                if non_green > 0:
+                    return {"ok": False,
+                            "error": (f"track-record holder ikke laengere: {non_green} ikke-groenne "
+                                      f"af {total} siden udstedelsen — noeglen blev optjent paa 0 fejl")}
             expires = (_now() + timedelta(hours=_KEY_TTL_HOURS)).isoformat()
             conn.execute("UPDATE central_keys SET status='approved', expires_at=? WHERE id=?",
                         (expires, key_id))
@@ -316,6 +361,35 @@ def approve_key(key_id: int) -> dict[str, Any]:
             pass
         _observe("unlocked", {"domain": row["domain"], "expires_at": expires})
         return {"ok": True, "domain": row["domain"], "expires_at": expires}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)[:120]}
+
+
+def reject_key(key_id: int, *, reason: str = "", by: str = "owner") -> dict[str, Any]:
+    """OWNER-handling: luk en pending noegle UDEN at godkende den.
+
+    Uden denne vej kunne en foraeldet noegle aldrig lukkes. Maalt 10/11-2026: noegle 5 og 6
+    havde ligget PENDING siden 15/10 — 26 dage — og `_mind_om_ventende` blev ved med at minde
+    om dem, fordi «pending» var den eneste tilstand de kunne forlade gennem godkendelse.
+    En noegle der ikke kan afvises er ikke en beslutning, den er en fastlaast doer.
+
+    Status saettes til 'rejected' (ikke 'expired'): den er ikke udloebet, den er fravalgt —
+    og forskellen skal kunne laeses bagefter. Self-safe.
+    """
+    try:
+        with connect() as conn:
+            _ensure_table(conn)
+            row = conn.execute("SELECT * FROM central_keys WHERE id=? AND status='pending'",
+                               (key_id,)).fetchone()
+            if not row:
+                return {"ok": False, "error": "ingen pending nøgle med det id"}
+            begrundelse = (str(reason or "").strip() or "afvist af ejer")[:200]
+            conn.execute(
+                "UPDATE central_keys SET status='rejected', reason=? WHERE id=?",
+                (f"{row['reason']} | afvist: {begrundelse} ({by})", key_id))
+            conn.commit()
+        _observe("rejected", {"domain": row["domain"], "reason": begrundelse, "by": by})
+        return {"ok": True, "domain": row["domain"], "status": "rejected", "reason": begrundelse}
     except Exception as exc:
         return {"ok": False, "error": str(exc)[:120]}
 

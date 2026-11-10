@@ -275,22 +275,24 @@ _The Keymaker — optjent, udløbende, én-dør-ad-gangen autonomi._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_is_never` | `(nerve)` | True hvis <nerve> ALDRIG må optjene/godkende en decentraliserings-nøgle: enten katalog- | [src](../../../core/services/central_keymaker.py#L40) |
-| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/central_keymaker.py#L53) |
-| function | `_now` | `()` | — | [src](../../../core/services/central_keymaker.py#L72) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_keymaker.py#L76) |
-| function | `evaluate_keys` | `()` | Find dimensioner der har OPTJENT en nøgle (track-record over tærskel) og udsted en PENDING | [src](../../../core/services/central_keymaker.py#L84) |
-| function | `_ejer_uid` | `()` | — | [src](../../../core/services/central_keymaker.py#L128) |
-| function | `_varsl_ejer` | `(domain, track)` | Sig til naar en noegle er OPTJENT — den kan ikke bruges foer ejeren godkender. | [src](../../../core/services/central_keymaker.py#L136) |
-| function | `_adfaerds_track_record` | `()` | Hans egen efterlevelse af sine forpligtelser. ``None`` hvis den ikke kan maales. | [src](../../../core/services/central_keymaker.py#L193) |
-| function | `evaluate_behaviour_key` | `()` | Udsted en PENDING adfaerds-noegle naar HAN har fortjent den. Self-safe. | [src](../../../core/services/central_keymaker.py#L208) |
-| function | `har_adfaerds_noegle` | `()` | True hvis han har en GYLDIG (godkendt + ikke udloebet) adfaerds-noegle. | [src](../../../core/services/central_keymaker.py#L247) |
-| function | `list_keys` | `(*, include_expired=…)` | — | [src](../../../core/services/central_keymaker.py#L256) |
-| function | `is_decentralized` | `(nerve)` | True hvis <nerve> har en GYLDIG optjent decentraliserings-nøgle: status='approved' OG endnu | [src](../../../core/services/central_keymaker.py#L267) |
-| function | `approve_key` | `(key_id)` | OWNER-handling: godkend en pending nøgle → flip dens flag ON i TTL. Auto-reverterer ved udløb. | [src](../../../core/services/central_keymaker.py#L289) |
-| function | `expire_due` | `()` | Cadence: reverter flag for udløbne nøgler (tilladelse mistes hvis ikke fornyet). Self-safe. | [src](../../../core/services/central_keymaker.py#L323) |
-| function | `_mind_om_ventende` | `()` | Mind om noegler der har ventet paa godkendelse i mere end tre dage. | [src](../../../core/services/central_keymaker.py#L354) |
-| function | `build_keymaker_surface` | `()` | Owner-view: aktive/afventende nøgler + fortjente dimensioner. Self-safe. | [src](../../../core/services/central_keymaker.py#L404) |
+| function | `_is_never` | `(nerve)` | True hvis <nerve> ALDRIG må optjene/godkende en decentraliserings-nøgle: enten katalog- | [src](../../../core/services/central_keymaker.py#L43) |
+| function | `_har_konsument` | `(nerve)` | True hvis <nerve> er koblet paa ``lokal_groen`` — dvs. en godkendt noegle bliver til adfaerd. | [src](../../../core/services/central_keymaker.py#L65) |
+| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/central_keymaker.py#L70) |
+| function | `_now` | `()` | — | [src](../../../core/services/central_keymaker.py#L89) |
+| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_keymaker.py#L93) |
+| function | `evaluate_keys` | `()` | Find dimensioner der har OPTJENT en nøgle (track-record over tærskel) og udsted en PENDING | [src](../../../core/services/central_keymaker.py#L101) |
+| function | `_ejer_uid` | `()` | — | [src](../../../core/services/central_keymaker.py#L153) |
+| function | `_varsl_ejer` | `(domain, track)` | Sig til naar en noegle er OPTJENT — den kan ikke bruges foer ejeren godkender. | [src](../../../core/services/central_keymaker.py#L161) |
+| function | `_adfaerds_track_record` | `()` | Hans egen efterlevelse af sine forpligtelser. ``None`` hvis den ikke kan maales. | [src](../../../core/services/central_keymaker.py#L218) |
+| function | `evaluate_behaviour_key` | `()` | Udsted en PENDING adfaerds-noegle naar HAN har fortjent den. Self-safe. | [src](../../../core/services/central_keymaker.py#L233) |
+| function | `har_adfaerds_noegle` | `()` | True hvis han har en GYLDIG (godkendt + ikke udloebet) adfaerds-noegle. | [src](../../../core/services/central_keymaker.py#L272) |
+| function | `list_keys` | `(*, include_expired=…)` | — | [src](../../../core/services/central_keymaker.py#L281) |
+| function | `is_decentralized` | `(nerve)` | True hvis <nerve> har en GYLDIG optjent decentraliserings-nøgle: status='approved' OG endnu | [src](../../../core/services/central_keymaker.py#L292) |
+| function | `approve_key` | `(key_id)` | OWNER-handling: godkend en pending nøgle → flip dens flag ON i TTL. Auto-reverterer ved udløb. | [src](../../../core/services/central_keymaker.py#L314) |
+| function | `reject_key` | `(key_id, *, reason=…, by=…)` | OWNER-handling: luk en pending noegle UDEN at godkende den. | [src](../../../core/services/central_keymaker.py#L368) |
+| function | `expire_due` | `()` | Cadence: reverter flag for udløbne nøgler (tilladelse mistes hvis ikke fornyet). Self-safe. | [src](../../../core/services/central_keymaker.py#L397) |
+| function | `_mind_om_ventende` | `()` | Mind om noegler der har ventet paa godkendelse i mere end tre dage. | [src](../../../core/services/central_keymaker.py#L428) |
+| function | `build_keymaker_surface` | `()` | Owner-view: aktive/afventende nøgler + fortjente dimensioner. Self-safe. | [src](../../../core/services/central_keymaker.py#L478) |
 
 ## `core/services/central_layer_contract.py`
 _core/services/central_layer_contract.py_

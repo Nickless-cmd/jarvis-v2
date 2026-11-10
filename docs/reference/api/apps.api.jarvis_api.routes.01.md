@@ -419,10 +419,11 @@ _Central 'keys' route — The Keymaker (optjent/udløbende/godkendt autonomi, ow
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_keys.py#L21) |
-| function | `_require_owner_strict` | `()` | Fail-closed gate for privilege-eskalering (nøgle-godkendelse giver Jarvis mere autonomi). | [src](../../../apps/api/jarvis_api/routes/central_keys.py#L26) |
-| function | `get_keys` | `(include_expired=…)` | Nøgle-oversigt: afventende (dit ja mangler) + åbne + optjente dimensioner. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_keys.py#L33) |
-| function | `approve` | `(key_id)` | OWNER-handling: godkend en pending nøgle → flip dens flag ON i TTL (auto-reverterer). | [src](../../../apps/api/jarvis_api/routes/central_keys.py#L48) |
+| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_keys.py#L25) |
+| function | `_require_owner_strict` | `()` | Fail-closed gate for privilege-eskalering (nøgle-godkendelse giver Jarvis mere autonomi). | [src](../../../apps/api/jarvis_api/routes/central_keys.py#L30) |
+| function | `get_keys` | `(include_expired=…)` | Nøgle-oversigt: afventende (dit ja mangler) + åbne + optjente dimensioner. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_keys.py#L37) |
+| function | `approve` | `(key_id)` | OWNER-handling: godkend en pending nøgle → flip dens flag ON i TTL (auto-reverterer). | [src](../../../apps/api/jarvis_api/routes/central_keys.py#L52) |
+| function | `reject` | `(key_id, reason=…)` | OWNER-handling: luk en pending nøgle uden at godkende den. | [src](../../../apps/api/jarvis_api/routes/central_keys.py#L64) |
 
 ## `apps/api/jarvis_api/routes/central_matrix.py`
 _Central 'matrix' routes — de fire tematiske selv-observations-komponenter (owner-view)._

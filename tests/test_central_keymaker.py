@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import timedelta
 from unittest import mock
 
 import pytest
@@ -123,7 +124,6 @@ def test_expire_due_reverts_flag(tmpdb):
         key_id = km.list_keys()[0]["id"]
         km.approve_key(key_id)
         # tving udløb i fortiden
-        import sqlite3 as _s
         conn = km.connect()
         conn.execute("UPDATE central_keys SET expires_at='2000-01-01T00:00:00+00:00' WHERE id=?",
                      (key_id,))
@@ -316,3 +316,100 @@ def test_cadence_kalder_optjeningen():
     import core.services.internal_cadence_core as C
 
     assert "evaluate_behaviour_key" in inspect.getsource(C)
+
+
+# ── 10/11-2026: tre huller fundet ved gennemgang af de to pending noegler (id 5 og 6) ──
+
+
+def test_godkendelse_afvises_naar_track_record_ikke_holder(tmpdb):
+    """Noeglen blev optjent paa «0 fejl». Holder det ikke laengere, maa den ikke godkendes.
+
+    Maalt 10/11-2026: gut_gate stod paa 700 groenne / 55 roede, men noeglen fra 15/10 var
+    udstedt paa 100/0. `approve_key` re-validere de kun sikkerhedsklassen, saa den ville
+    flippe et flag paa et grundlag der var vaek.
+    """
+    with km.connect() as conn:
+        km._ensure_table(conn)
+        conn.execute(
+            """INSERT INTO central_keys (domain, unlock_scope, unlock_name, track_value,
+               issued_at, status, reason) VALUES
+               ('decentralize:veto','decentralize','veto',100,?,'pending','100 beslutninger, 0 fejl')""",
+            (km._now().isoformat(),))
+        conn.commit()
+        key_id = conn.execute("SELECT id FROM central_keys").fetchone()["id"]
+
+    fake = {"veto": {"cluster": "commit", "total": 755, "green": 700}}
+    with mock.patch("core.services.gate_verdict_ledger.summary", return_value=fake), \
+            mock.patch("core.services.central_keymaker._observe"):
+        res = km.approve_key(key_id)
+
+    assert res["ok"] is False
+    assert "55" in res["error"], f"den maalte vaerdi skal staa i beskeden: {res['error']}"
+    assert "ikke-groenne" in res["error"]
+    with km.connect() as conn:
+        row = conn.execute("SELECT status FROM central_keys WHERE id=?", (key_id,)).fetchone()
+    assert row["status"] == "pending", "en afvist godkendelse maa ikke aendre status"
+
+
+def test_noegle_udstedes_ikke_for_nerve_uden_konsument(tmpdb):
+    """En noegle til en nerve `lokal_groen` aldrig kaldes med, flipper et flag ingen laeser."""
+    fake = {
+        "veto": {"cluster": "commit", "total": 500, "green": 500},          # har konsument
+        "gut_gate": {"cluster": "cognition", "total": 500, "green": 500},   # INGEN konsument
+    }
+    with mock.patch("core.services.gate_verdict_ledger.summary", return_value=fake), \
+            mock.patch("core.services.central_keymaker._observe"):
+        out = km.evaluate_keys()
+
+    assert {e["domain"] for e in out["earned"]} == {"decentralize:veto"}
+    assert {e["domain"] for e in out["issued"]} == {"decentralize:veto"}
+
+
+def test_afvist_noegle_forsvinder_fra_pending_og_paamindelse(tmpdb):
+    """En noegle der ikke kan afvises, kan aldrig lukkes — og bliver ved at minde om sig selv."""
+    with km.connect() as conn:
+        km._ensure_table(conn)
+        conn.execute(
+            """INSERT INTO central_keys (domain, unlock_scope, unlock_name, track_value,
+               issued_at, status, reason) VALUES
+               ('decentralize:gut_gate','decentralize','gut_gate',100,?,'pending','gammel')""",
+            ((km._now() - timedelta(days=30)).isoformat(),))
+        conn.commit()
+        key_id = conn.execute("SELECT id FROM central_keys").fetchone()["id"]
+
+    res = km.reject_key(key_id, reason="ingen konsument", by="bjorn")
+    assert res["ok"] is True and res["status"] == "rejected"
+
+    assert key_id not in {k["id"] for k in km.list_keys()}
+
+    sendt = []
+    with mock.patch("core.services.central_keymaker._ejer_uid", return_value="uid-1"), \
+            mock.patch("core.services.notification_router.route_proactive_notification",
+                       side_effect=lambda *a, **k: sendt.append(a) or {"delivered": True}), \
+            mock.patch("core.services.shared_cache.get", return_value=None), \
+            mock.patch("core.services.shared_cache.set"):
+        km._mind_om_ventende()
+    assert sendt == [], "en afvist noegle maa ikke laengere give paamindelser"
+
+
+def test_eksisterende_pending_noegler_uden_scope_aendrer_ikke_adfaerd(tmpdb):
+    """Regression: en pending noegle med en anden scope (fx behaviour) maa ikke rammes af
+    konsument-kravet — det gaelder kun decentraliserings-noegler."""
+    with km.connect() as conn:
+        km._ensure_table(conn)
+        conn.execute(
+            """INSERT INTO central_keys (domain, unlock_scope, unlock_name, track_value,
+               issued_at, status, reason) VALUES
+               ('behaviour:adherence','behaviour','adherence',90,?,'pending','efterlevelse')""",
+            (km._now().isoformat(),))
+        conn.commit()
+        key_id = conn.execute("SELECT id FROM central_keys").fetchone()["id"]
+
+    fake = {"veto": {"cluster": "commit", "total": 500, "green": 500}}
+    with mock.patch("core.services.gate_verdict_ledger.summary", return_value=fake), \
+            mock.patch("core.services.central_keymaker._observe"):
+        km.evaluate_keys()
+
+    with km.connect() as conn:
+        row = conn.execute("SELECT status FROM central_keys WHERE id=?", (key_id,)).fetchone()
+    assert row["status"] == "pending", "adfaerds-noegler skal ikke rammes af konsument-kravet"

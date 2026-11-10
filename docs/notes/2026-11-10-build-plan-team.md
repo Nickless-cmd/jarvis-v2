@@ -270,10 +270,11 @@ uændret.
 
 ---
 
-## Leverance 11 — §17.2: drift-verifikation ⚠️ DELVIST MÅLT (10/11-2026)
+## Leverance 11 — §17.2: drift-verifikation ✅ MÅLT (10/11-2026)
 
-**Status: «implementeret og indlæst, ikke bevist på en rigtig modelkørsel».** Det er en anden status
-end «færdig», og den skal stå sådan indtil et team er kørt gennem `Task(team=…)` på den levende runtime.
+**Status: målt på en rigtig modelkørsel på den levende runtime.** Kæden er fulgt gennem DB'en hele
+vejen fra `Task(team=…)` til `done`, og ventekontrakten er bekræftet `fired`. Se tabellen nedenfor.
+Den negative halvdel — at medlemmerne leverede tomt — står også der, fordi den er en del af målingen.
 
 **Målt 10/11-2026 kl. 21:25 mod den kørende proces og den levende DB:**
 
@@ -297,9 +298,49 @@ end «færdig», og den skal stå sådan indtil et team er kørt gennem `Task(te
    `expire_stalled()` flytter kun *ind* i tilstanden (linje 312). Der findes ingen transition ud.
    Den rapporterer og vækker — den genoptager ikke. Det er v5's beslutning, ikke en mangel.
 
-**Den ene måling der mangler:** en rigtig `Task(team=…)`-kørsel på CT105 med en rigtig model. Den
-kræver Bjørns ord, fordi den koster tokens på en levende runtime — og den er den eneste port der
-beviser at kæden virker uden for `isolated_runtime`.
+**Den måling der manglede — nu taget (10/11-2026 kl. 21:29):**
+
+Et rigtigt `Task(team=…)` blev kørt på den levende runtime med en rigtig model. Kæden blev fulgt
+hele vejen gennem DB'en, ikke gennem svaret:
+
+| Trin | Målt |
+|---|---|
+| `Task(team=…)` → råd | `council-92089f9dc9a842f2`, `team-6096a3fb53c51a2c`, status `gathering` |
+| Medlemmer dispatched | to assignments, begge terminale, 3 og 4 værktøjskald hver |
+| Syntese startet automatisk | `asg-5fa6bb85e06b4b5a` ved indgang til `synthesizing` |
+| Wake stempl et (L7) | `synthesis_wake_registered_at = 20:29:17.510876Z` |
+| Ventekontrakt fyret | `fired` kl. `20:29:35.945597Z` |
+| Rådet terminalt | status `done` |
+
+**Kæden virker ende-til-ende i drift.** Det er den port der ikke kunne tages i `isolated_runtime`,
+og den er nu taget.
+
+**Men målingen afslørede noget vigtigere end «den virker».** Begge medlemmer blev meldt `completed`
+med **28 og 56 tegns** svar:
+
+> «Nu linjerne omkring 187-320.» · «Nu skal jeg se linjer omkring 670-720 for fuld kontekst.»
+
+Det er arbejdsintentioner, ikke resultater — samme fejlform som de fem executor-kørsler tidligere på
+dagen, blot her inde i et råd. Årsagen er målt: `_promises_action` matcher kun `_PROMISE_DA`
+(`"lad mig "`, `"lad os "`) og `_PROMISE_EN`. Ingen af de to sætninger rammer listen, så vagten
+returnerer `False` og agenten meldes færdig.
+
+**Det er ikke en ny fejl.** `agent_loop_core.py:151-155` beskriver præcis denne form fra 26/10-2026
+(«Nu spørgsmål 2 og 3.»), med den konklusion at en tekstheuristik ikke kan afgøre om et svar er
+fuldstændigt. Målingen i dag er endnu et eksempel på det samme hul — ikke en regression.
+
+**Syntesen fangede det, og dét er den ægte gevinst.** Den skrev, uden at nogen bad den om det:
+
+> «Fraværet af svar må ikke tolkes som enighed om at der ingen forskel er … dette er en
+> arbejdsintention, ikke et resultat» — og sluttede med **«DÆKNING: ingen»**.
+
+L5's skelnen mellem instruktion og datagrundlag virker i drift: syntesen læste medlemmernes tomme
+svar som DATA, nægtede at producere en falsk konsensus, og navngav hvad der manglede. Et råd der
+leverer tomt bliver altså **opdaget og sagt højt** — det var hele pointen med laget.
+
+**Åbent herefter:** medlems-vagten er stadig en tekstheuristik. Den rigtige vej er strukturel
+(agenten skal ikke kunne afslutte `completed` midt i en læsning den selv har annonceret), og det er
+en selvstændig opgave — ikke en del af denne leverance.
 
 ---
 

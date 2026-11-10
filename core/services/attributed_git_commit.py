@@ -25,6 +25,11 @@ class AttributedCommitResult:
     stdout: str = ""
     stderr: str = ""
     sha: str = ""
+    #: Sat naar git meldte fejl men commit'en blev lavet alligevel. Strukturelt
+    #: felt og ikke en linje i `stdout`: maalt 10/11-2026 tabte
+    #: `commit_paths_as_jarvis` noten, fordi den kun laeser `stdout` naar
+    #: returncode != 0 — og her ER returncode netop 0.
+    note: str = ""
 
 
 def _git(
@@ -202,6 +207,7 @@ def commit_with_attribution(
                     stdout=(committed.stdout or "") + "\n" + note,
                     stderr=committed.stderr,
                     sha=_sha_after,
+                    note=note,
                 )
             return AttributedCommitResult(
                 returncode=committed.returncode,

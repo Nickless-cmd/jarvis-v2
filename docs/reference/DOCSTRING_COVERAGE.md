@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10000/18485 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10001/18486 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10000/18485 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 888 | 1601 | 55% |
-| `core.services` | 6681 | 12529 | 53% |
+| `core.services` | 6682 | 12530 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1314,10 +1314,10 @@ Generated from source. 10000/18485 functions/methods documented (54%). The list 
 - `core/services/ghost_networks.py` :: `build_ghost_networks_surface` (L184)
 - `core/services/ghost_networks.py` :: `format_ghost_for_prompt` (L175)
 - `core/services/ghost_networks.py` :: `reset_ghost_networks` (L180)
-- `core/services/git_actions.py` :: `commit_all` (L205)
+- `core/services/git_actions.py` :: `commit_all` (L260)
 - `core/services/git_actions.py` :: `commit_all_container` (L47)
-- `core/services/git_actions.py` :: `commit_all_workstation` (L187)
-- `core/services/git_actions.py` :: `parse_owner_repo` (L217)
+- `core/services/git_actions.py` :: `commit_all_workstation` (L242)
+- `core/services/git_actions.py` :: `parse_owner_repo` (L272)
 - `core/services/gmail_connector.py` :: `list_inbox` (L214)
 - `core/services/gmail_connector.py` :: `search` (L208)
 - `core/services/goal_signal_tracking.py` :: `build_runtime_goal_signal_surface` (L101)

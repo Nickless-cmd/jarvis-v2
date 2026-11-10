@@ -76,6 +76,30 @@ def _agent_attribution() -> CommitAttribution:
     )
 
 
+#: Hvor meget af en fejlbesked der vises. Halen, ikke hovedet — se `_uddrag`.
+_FEJL_UDDRAG = 1200
+
+
+def _uddrag(blob: str, graense: int = _FEJL_UDDRAG) -> str:
+    """Behold HALEN af en fejlbesked: aarsagen staar sidst, ikke foerst.
+
+    MAALT 10/11-2026: ``blob[:400]`` paa en pre-commit-kaede der printer 30
+    «Passed»-linjer og fejler paa den sidste gav agenten de foerste seks linjer
+    og skar aarsagen vaek. Agenten fik et «error» uden grund og kunne ikke
+    afgoere om den skulle proeve igen — den eneste vej til svaret var at koere
+    git gennem bash og se hele outputtet.
+
+    Reproduceret i et testrepo: 30 «Passed»-linjer + én fejl gav
+    ``len(detail) == 400`` der sluttede midt i linje 6, og fejl-strengen var
+    ikke til stede i det agenten saa.
+    """
+    tekst = (blob or "").strip()
+    if len(tekst) <= graense:
+        return tekst
+    udeladt = len(tekst) - graense
+    return f"[{udeladt} tegn udeladt — viser halen] …\n" + tekst[-graense:]
+
+
 def commit_paths_as_jarvis(
     repo: str,
     message: str,
@@ -109,6 +133,7 @@ def commit_paths_as_jarvis(
     if add.returncode != 0:
         return {"status": "error", "detail": f"git add: {(add.stderr or '').strip()[:200]}"}
 
+    head_before = _git_container(root, "rev-parse", "HEAD").stdout.strip()
     result = commit_with_attribution(
         repo=Path(root),
         message=message,
@@ -118,8 +143,32 @@ def commit_paths_as_jarvis(
     if result.returncode != 0:
         blob = ((result.stdout or "") + (result.stderr or "")).strip()
         if "nothing to commit" in blob or "working tree clean" in blob:
-            return {"status": "nochange", "detail": blob[:200]}
-        return {"status": "error", "detail": blob[:400]}
+            return {"status": "nochange", "detail": _uddrag(blob, 200)}
+        # SPØRG REPOET, IKKE EXIT-KODEN — ogsaa her, hvor
+        # `commit_with_attribution` allerede har spurgt én gang. Kalderens eget
+        # svar gør at et fejl-resultat ALDRIG kan mangle svaret paa «landede
+        # den?»: et «error» uden den oplysning efterlader agenten uden grund
+        # til at tro andet end «prøv igen», og det giver en dublet-commit.
+        head_after = _git_container(root, "rev-parse", "HEAD").stdout.strip()
+        if head_after and head_after != head_before:
+            return {
+                "status": "ok",
+                "sha": head_after[:12],
+                "full_sha": head_after,
+                "branch": _git_container(root, "branch", "--show-current").stdout.strip(),
+                "message": message,
+                "note": (
+                    f"HEAD flyttede sig til {head_after[:12]} selv om git meldte "
+                    f"exit={result.returncode}. Der ER committet — kør IKKE igen."
+                ),
+            }
+        return {
+            "status": "error",
+            "detail": _uddrag(blob),
+            "head_before": head_before[:12],
+            "head_after": head_after[:12],
+            "head_moved": False,
+        }
 
     sha = (result.sha or "").strip()
     branch = subprocess.run(
@@ -128,13 +177,19 @@ def commit_paths_as_jarvis(
         text=True,
         timeout=30,
     ).stdout.strip()
-    return {
+    svar = {
         "status": "ok",
         "sha": sha[:12],
         "full_sha": sha,
         "branch": branch,
         "message": message,
     }
+    # Naar `commit_with_attribution` selv reddede en commit som git meldte fejl
+    # paa, staar begrundelsen i `result.note`. Uden den ser agenten kun
+    # «Committed» og ved ikke at git protesterede undervejs.
+    if result.note:
+        svar["note"] = result.note
+    return svar
 
 
 # ── Workstation (brugerens egen bro) ───────────────────────────────────────

@@ -147,3 +147,81 @@ def test_create_pr_workstation_uses_attributed_cli_before_push():
     assert commit_index < push_index
     assert "--actor bjorn" in commands[commit_index]
     assert "'Titel med mellemrum'" in commands[commit_index]
+
+
+# ── Fejlårsagen skal overleve til agenten (10/11-2026) ────────────────────
+#
+# MÅLT: `commit_attributed` returnerede et fejlsignal hvis tekst var klippet
+# midt i pre-commit-kæden — sidste synlige linje var en «Passed». Agenten
+# kunne ikke se HVILKEN vagt der afviste, og den eneste vej til svaret var at
+# køre git gennem bash og læse hele outputtet. Reproduceret i et testrepo:
+# 30 «Passed»-linjer + én fejl gav `len(detail) == 400` der sluttede midt i
+# linje 6, og fejl-strengen fandtes ikke i det agenten så.
+
+
+def test_fejlens_hale_overlever_naar_hook_kaeden_er_lang():
+    """Fejlen staar SIDST i en hook-kæde. Et hoved-klip skærer den væk."""
+    blob = "\n".join(f"Vagt {i}.....Passed" for i in range(1, 31))
+    blob += "\nKRITISK: den aegte fejl"
+
+    uddrag = git_actions._uddrag(blob, 400)
+
+    assert "KRITISK: den aegte fejl" in uddrag, "fejlårsagen blev skåret væk"
+    assert "tegn udeladt" in uddrag, "udeladelsen skal være synlig, ikke tavs"
+    assert len(uddrag) < len(blob) + 60, "uddraget skal stadig være afgrænset"
+
+
+def test_en_kort_fejlbesked_klippes_ikke():
+    """Under grænsen skal beskeden stå urørt — ingen mærkat, intet tab."""
+    blob = "git add: pathspec 'x' did not match any files"
+    assert git_actions._uddrag(blob, 400) == blob
+
+
+def _fake_run_for(heads: list[str]):
+    """subprocess.run-stub: `add` ok, `rev-parse HEAD` giver næste sha i rækken."""
+    kald = {"rev": 0}
+
+    def fake_run(args, **kw):
+        sub = args[3] if len(args) > 3 else ""
+        if sub == "rev-parse":
+            sha = heads[min(kald["rev"], len(heads) - 1)]
+            kald["rev"] += 1
+            return _cp(0, sha + "\n")
+        if sub == "branch":
+            return _cp(0, "main\n")
+        return _cp(0, "")
+
+    return fake_run
+
+
+def test_et_fejlresultat_baerer_svaret_paa_om_commit_landede():
+    """«error» uden den oplysning efterlader «prøv igen» som eneste udvej —
+    og det giver en dublet-commit af samme ændring."""
+    with patch("subprocess.run", side_effect=_fake_run_for(["aaa111", "aaa111"])), \
+         patch.object(
+             git_actions,
+             "commit_with_attribution",
+             return_value=AttributedCommitResult(1, stderr="pre-commit afviste"),
+         ):
+        res = git_actions.commit_paths_as_jarvis("/repo", "min besked")
+
+    assert res["status"] == "error"
+    assert res["head_moved"] is False
+    assert res["head_before"] == "aaa111"
+    assert res["head_after"] == "aaa111"
+    assert "pre-commit afviste" in res["detail"]
+
+
+def test_en_commit_der_lander_trods_git_fejl_rapporteres_som_ok():
+    """HEAD er sandheden, ikke exit-koden: flyttede den sig, ER der committet."""
+    with patch("subprocess.run", side_effect=_fake_run_for(["aaa111", "bbb222"])), \
+         patch.object(
+             git_actions,
+             "commit_with_attribution",
+             return_value=AttributedCommitResult(1, stderr="hook meldte fejl"),
+         ):
+        res = git_actions.commit_paths_as_jarvis("/repo", "min besked")
+
+    assert res["status"] == "ok"
+    assert res["sha"] == "bbb222"
+    assert "kør IKKE igen" in res["note"]

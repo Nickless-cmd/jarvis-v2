@@ -89,9 +89,12 @@ def _exec_commit_attributed(args: dict[str, Any]) -> dict[str, Any]:
 
     if result.get("status") == "ok":
         subject = message.splitlines()[0][:80]
-        result["text"] = (
-            f"Committed {result.get('sha')} on {result.get('branch')}: {subject}"
-        )
+        text = f"Committed {result.get('sha')} on {result.get('branch')}: {subject}"
+        # Noten bærer det git's exit-kode ikke kunne sige: at der ER committet
+        # alligevel. Uden den læser agenten kun «Committed» og går glip af
+        # advarslen om ikke at køre igen.
+        note = str(result.pop("note", "") or "").strip()
+        result["text"] = f"{text}\n{note}" if note else text
     return result
 
 

@@ -423,3 +423,36 @@ def test_et_efterladt_raads_medlemmer_afbrydes(cn, monkeypatch):
 
     cn.A_.advance()
     assert calls, "foraeldroelse medlemmer skal afbrydes, ikke fortsætte uden ejer"
+
+
+def test_syntesen_faar_sit_eget_gemte_mandat(cn):
+    """Maalt 10/11-2026: ``advance()`` kaldte ``dispatch_agent`` DIREKTE.
+
+    Syntesen fik derfor intet gemt mandat, og ``max_fanout: 0`` var virkningsloes for
+    netop den assignment der laeser ALLE medlemmernes svar — den mest foelsomme i kaeden.
+    Nu gaar den gennem ``derive()`` som alt andet arbejde.
+    """
+    from core.runtime import db_agent_mandate
+
+    out = cn.convene()
+    cn.run_all()
+    assert [d["action"] for d in cn.A_.advance()] == ["synthesis_started"]
+    syn = cn.store_.get(out["council_id"], O)["synthesis_assignment_id"]
+
+    mandate = db_agent_mandate.get(assignment_id=syn)
+    assert mandate is not None, "syntesen har intet gemt mandat"
+    assert (mandate["max_fanout"], mandate["max_depth"]) == (0, 0)
+    assert mandate["granted_side_effect"] == "read", "syntesen maa ikke kunne skrive"
+
+
+def test_syntesen_er_en_critic_uden_skriveret(cn):
+    out = cn.convene()
+    cn.run_all()
+    cn.A_.advance()
+    syn = cn.store_.get(out["council_id"], O)["synthesis_assignment_id"]
+    reg = cn.c_._conn().execute(
+        "SELECT role, tool_policy, allowed_tools_json FROM agent_registry WHERE agent_id=("
+        "SELECT agent_id FROM agent_assignments WHERE assignment_id=?)", (syn,)).fetchone()
+    assert (reg["role"], reg["tool_policy"]) == ("critic", "read-only-runtime")
+    tilladte = json.loads(reg["allowed_tools_json"] or "[]")
+    assert "wt_write_file" not in tilladte and "bash" not in tilladte

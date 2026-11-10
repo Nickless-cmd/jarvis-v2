@@ -212,6 +212,40 @@ def synthesis_goal(topic: str, outcomes: list[dict[str, Any]]) -> str:
             "eller ikke svarede, og sig hvad der derfor mangler i grundlaget." if missing else ""))
 
 
+def _dispatch_synthesis(c: dict[str, Any], outcomes: list[dict[str, Any]]) -> dict[str, Any]:
+    """Syntesen gaar gennem ``derive()``, saa den faar sit EGET gemte mandat.
+
+    Her stod et direkte ``dispatch_agent``-kald (maalt 10/11-2026). Det gav syntesen
+    intet mandat, saa ``max_fanout: 0`` og ``max_depth: 0`` var virkningsloese for netop
+    den assignment der laeser ALLE medlemmernes svar — den mest foelsomme i kaeden.
+    ``team_id`` saettes til raadets id, saa to raad med identisk emne og identiske udfald
+    ikke kolliderer paa samme ``mandate_id``.
+    """
+    from core.services import agent_task_facade as facade
+    try:
+        plan = facade.derive(
+            owner_user_id=c["owner_user_id"], origin_session_id=c["origin_session_id"],
+            parent_run_id=c["parent_run_id"], parent_agent_id=c["parent_agent_id"] or "jarvis",
+            description=f"EMNE: {c['topic']} — en samlet syntese der navngiver medlemmer uden svar",
+            prompt=synthesis_goal(c["topic"], outcomes), subagent_type="critic", model="",
+            run_in_background=False, budget_tokens=c["budget_tokens"],
+            team_id=f"council:{c['council_id']}")
+    except ValueError as exc:
+        # Et supervisor-tick maa ikke doe paa ét raad: det proeves igen naeste taek,
+        # praecis som CAPACITY-goer det nedenfor.
+        logger.warning("syntese for %s kunne ikke udledes: %s", c["council_id"], exc)
+        return {"status": "error", "error": str(exc)}
+    mandate = plan.pop("mandate")
+    plan.pop("run_in_background", None)
+    # Den eksplicitte noegle bevares: raadets identitet er stabil, ogsaa hvis et
+    # medlemssvar indeholder noget der aendrer sig mellem to ticks.
+    plan["idempotency_key"] = f"{c['council_id']}:synthesis"
+    return svc.dispatch_agent(
+        owner_user_id=c["owner_user_id"], origin_session_id=c["origin_session_id"],
+        parent_run_id=c["parent_run_id"], parent_agent_id=c["parent_agent_id"] or "jarvis",
+        mandate=mandate, wake_parent=False, **plan)
+
+
 def advance() -> list[dict[str, Any]]:
     """Supervisor-taek: opret syntesen for raad hvis medlemmer alle er terminale, og luk raad hvis syntese er faerdig.
     Idempotent og sikker at koere fra begge processer (atomisk statusskifte + idempotent dispatch)."""
@@ -248,13 +282,7 @@ def advance() -> list[dict[str, Any]]:
                 outcomes, all_terminal = _outcomes(owner, c["members"])
                 if not all_terminal or len(outcomes) != len(c["members"]):
                     continue
-                out = svc.dispatch_agent(
-                    owner_user_id=owner, origin_session_id=session, parent_run_id=c["parent_run_id"],
-                    parent_agent_id=c["parent_agent_id"] or "jarvis", role=c["synthesis_role"],
-                    goal=synthesis_goal(c["topic"], outcomes), description=f"EMNE: {c['topic']}",
-                    expected_result="en samlet syntese der navngiver medlemmer uden svar",
-                    budget_tokens=c["budget_tokens"], idempotency_key=f"{c['council_id']}:synthesis",
-                    wake_parent=False)
+                out = _dispatch_synthesis(c, outcomes)
                 if out.get("status") != "accepted":
                     logger.warning("syntese for %s afventer: %s", c["council_id"], out.get("error"))
                     continue                                    # f.eks. CAPACITY - proeves igen naeste taek

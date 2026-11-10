@@ -79,7 +79,13 @@ def test_definitions_are_wellformed_and_required_fields_exist():
     # laeseret, aldrig skriveret; skrivning kraever stadig et bevidst valg.
     assert by["Task"]["required"] == ["description", "prompt"]
     assert "subagent_type" in by["Task"]["properties"]
-    assert len(by["Task"]["properties"]) == 6
+    # Skemaets flade er NAVNGIVET, ikke talt: en tilfoejelse skal vaere et bevidst valg,
+    # ikke en aendring der blot faar et tal til at stemme. `team` kom til 10/11-2026
+    # (Leverance 4) — den er den eneste vej til mere end én agent ad gangen, og dens
+    # medlemmer kan ikke skrive (spaerringen ligger i derive_team(), ikke i skemaet).
+    assert set(by["Task"]["properties"]) == {
+        "description", "prompt", "subagent_type", "model", "run_in_background",
+        "budget_tokens", "team"}
     # Alle autoritetsbaerende valg udledes af runtimen.
     # `budget_tokens` er ikke laengere paa listen: den er nu en legitim, VALGFRI
     # parameter der kun kan SAENKE den maalte default (10/11-2026). De oevrige

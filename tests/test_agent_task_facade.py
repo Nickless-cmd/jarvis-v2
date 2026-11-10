@@ -291,3 +291,118 @@ def test_team_id_medlemmets_indhold_betyder_noget(nogle):
 
 def test_team_id_ignorerer_ukendte_noegler_i_et_medlem():
     assert _team(members=[dict(_A, note="x"), dict(_B)]) == _team()
+
+
+# --- Leverance 4: _member_type og derive_team -----------------------------------------
+
+_M = [{"role": "researcher", "task": "laes koden"},
+      {"role": "critic", "task": "provoker konklusionen"},
+      {"role": "planner", "task": "foreslaa naeste skridt"}]
+
+
+def _team_plan(task, monkeypatch, members, **override):
+    monkeypatch.setattr(task, "_session_scope", lambda owner, session: ("container", "/repo"))
+    monkeypatch.setattr(task.os.path, "exists", lambda path: path == "/repo/.git")
+    base = dict(owner_user_id="bjorn", origin_session_id="session-1", parent_run_id="run-1",
+                parent_agent_id="jarvis", description="desc", prompt="do the thing",
+                model="", run_in_background=True)
+    base.update(override)
+    return task.derive_team(team={"name": "hold", "members": members}, **base)
+
+
+def test_member_type_afviser_skriveret_men_tillader_laesende():
+    from core.services import agent_task_facade as task
+
+    assert task._member_type("") == "researcher", "udeladt type giver laeseret"
+    for laesende in ("researcher", "critic", "planner", "watcher", "CRITIC"):
+        assert task._member_type(laesende) == laesende.strip().lower()
+    # Spaerringen ligger paa KIND, ikke paa navnet: alle skrivende navne OG deres
+    # aliaser skal afvises, ellers er et medlem ét ord fra skriveret.
+    for skrivende in ("executor", "builder", "coder", "code", "EXECUTOR", " executor "):
+        with pytest.raises(ValueError, match="skriveret"):
+            task._member_type(skrivende)
+
+
+def test_derive_team_giver_hvert_medlem_sin_egen_plan(monkeypatch):
+    from core.services import agent_task_facade as task
+
+    plans = _team_plan(task, monkeypatch, _M)
+
+    assert len(plans) == 3
+    assert len({p["mandate"]["mandate_id"] for p in plans}) == 3, "PRIMARY KEY kollision"
+    assert len({p["idempotency_key"] for p in plans}) == 3, "medlemmerne er ikke den samme agent"
+    assert len({p["team_id"] for p in plans}) == 1, "de hoerer til det SAMME team"
+    # Nul skriveret og nul fanout for hvert medlem — det er hele pointen med mandatet.
+    for p in plans:
+        assert (p["mandate"]["max_fanout"], p["mandate"]["max_depth"]) == (0, 0)
+        assert p["mandate"]["granted_side_effect"] == "read"
+        assert p["writes"] is False
+
+
+def test_derive_team_afviser_forkert_antal_medlemmer(monkeypatch):
+    from core.services import agent_task_facade as task
+
+    for antal in (1, 7):
+        members = [{"role": "researcher", "task": f"opgave {i}"} for i in range(antal)]
+        with pytest.raises(ValueError, match="2-6"):
+            _team_plan(task, monkeypatch, members)
+
+
+def test_derive_team_afviser_to_medlemmer_med_samme_task(monkeypatch):
+    from core.services import agent_task_facade as task
+
+    with pytest.raises(ValueError, match="samme task"):
+        _team_plan(task, monkeypatch, [{"role": "researcher", "task": "samme"},
+                                       {"role": "critic", "task": "samme"}])
+
+
+def test_derive_team_tillader_samme_role_med_forskellig_task(monkeypatch):
+    from core.services import agent_task_facade as task
+
+    assert len(_team_plan(task, monkeypatch, [{"role": "critic", "task": "a"},
+                                              {"role": "critic", "task": "b"}])) == 2
+
+
+def test_derive_team_afviser_tomt_team_navn(monkeypatch):
+    from core.services import agent_task_facade as task
+
+    monkeypatch.setattr(task, "_session_scope", lambda owner, session: ("container", "/repo"))
+    monkeypatch.setattr(task.os.path, "exists", lambda path: path == "/repo/.git")
+    for navn in ("", "   "):
+        with pytest.raises(ValueError, match="team.name"):
+            task.derive_team(
+                owner_user_id="bjorn", origin_session_id="session-1", parent_run_id="run-1",
+                parent_agent_id="jarvis", description="desc", prompt="do the thing",
+                team={"name": navn, "members": _M}, model="", run_in_background=True)
+
+
+@pytest.mark.parametrize("hul", [{"role": "", "task": "x"}, {"role": "critic", "task": ""},
+                                 {"task": "x"}, {"role": "critic"}])
+def test_derive_team_afviser_medlem_uden_role_eller_task(monkeypatch, hul):
+    """Fundet i review af Leverance 3.
+
+    ``derive_team_id`` hasher ``role``+``task`` raat. Et manglende felt blev ``None``, saa
+    to FORSKELLIGE bestillinger med huller kunne kollidere til samme ``team_id`` — og et
+    retry ville ramme den forkerte raekke. Hullet afvises derfor foer hashen.
+    """
+    from core.services import agent_task_facade as task
+
+    with pytest.raises(ValueError, match="mangler role eller task"):
+        _team_plan(task, monkeypatch, [{"role": "researcher", "task": "ok"}, hul])
+
+
+def test_derive_team_afviser_skrivende_medlem(monkeypatch):
+    from core.services import agent_task_facade as task
+
+    with pytest.raises(ValueError, match="skriveret"):
+        _team_plan(task, monkeypatch, [{"role": "researcher", "task": "a"},
+                                       {"role": "executor", "task": "b"}])
+
+
+def test_derive_team_afviser_skrivende_type_paa_hele_teamet(monkeypatch):
+    """§7.2: ``Task(subagent_type="executor", team=...)`` er et forsoeg paa at give
+    medlemmerne skriveret ad bagdoeren — den afvises, ikke ignoreres."""
+    from core.services import agent_task_facade as task
+
+    with pytest.raises(ValueError, match="skriveret"):
+        _team_plan(task, monkeypatch, _M, subagent_type="executor")

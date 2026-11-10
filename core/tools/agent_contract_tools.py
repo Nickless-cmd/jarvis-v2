@@ -71,7 +71,24 @@ AGENT_CONTRACT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                            "description": "Token budget; 0 or omitted = the role's MEASURED default "
                                           "(researcher 60k, executor 32k, critic/planner/watcher 16k). "
                                           "A budget that runs out wastes the whole run: the agent is "
-                                          "killed mid-work and its tokens are spent for nothing."}},
+                                          "killed mid-work and its tokens are spent for nothing."},
+         "team": {"type": "object",
+                  "description": "Optional team instead of one agent: 2-6 members sharing the same "
+                                 "facts, each with its own role and task. The team id is derived from "
+                                 "the request, so a retry reaches the same rows instead of starting N "
+                                 "new agents. Members never get write access. A synthesis is created "
+                                 "only when every member is terminal.",
+                  "properties": {
+                      "name": {"type": "string",
+                               "description": "Team handle. Required and must not be blank; it is a "
+                                              "label, not the key."},
+                      "members": {"type": "array", "items": {
+                          "type": "object",
+                          "properties": {"role": {"type": "string"},
+                                         "task": {"type": "string",
+                                                  "description": "This member's own question. Must be "
+                                                                 "unique within the team."}},
+                          "required": ["role", "task"]}}}}},
         ["description", "prompt"]),
     _fn("followup_agent",
         "Give an existing agent a NEW task (new assignment and run, same agent_id). Not allowed "
@@ -270,9 +287,9 @@ def _exec_task(args: dict[str, Any]) -> dict[str, Any]:
     """Five model fields in; all authority-bearing fields come from runtime state."""
     owner, session, run = _principal(args)
     scoped = _scoped_parent(args)
-    from core.services.agent_task_facade import execute
+    from core.services.agent_task_facade import execute, execute_team
 
-    return execute(
+    fields = dict(
         owner_user_id=owner, origin_session_id=session, parent_run_id=run,
         parent_agent_id=scoped[0] if scoped else "jarvis",
         description=str(args.get("description") or ""), prompt=str(args.get("prompt") or ""),
@@ -280,6 +297,12 @@ def _exec_task(args: dict[str, Any]) -> dict[str, Any]:
         run_in_background=bool(args.get("run_in_background", True)),
         budget_tokens=max(0, int(args.get("budget_tokens") or 0)),
     )
+    team = args.get("team")
+    if isinstance(team, dict) and team:
+        # Et team er en anden bestilling end én agent. Spaerringen paa skriveret ligger i
+        # derive_team(), ikke i skemaet — et skema kan ikke haandhaeve noget.
+        return execute_team(**fields, team=team)
+    return execute(**fields)
 
 
 def _exec_followup_agent(args: dict[str, Any]) -> dict[str, Any]:

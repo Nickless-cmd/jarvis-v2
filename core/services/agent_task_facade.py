@@ -254,6 +254,117 @@ def derive_team_id(*, owner_user_id: str, origin_session_id: str, parent_run_id:
     return "team-" + hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()[:16]
 
 
+def _member_type(team_type: str) -> str:
+    """Et teammedlems type — spaerringen ligger paa KIND, ikke paa rollenavnet.
+
+    Et medlem laeser det samme grundlag som de andre og skal vurdere det selvstaendigt.
+    Skriveret er derfor ikke noget et medlem kan vaelge ved at kalde sig noget: de
+    skrivende navne OG deres aliaser afvises, og et ukendt navn falder tilbage paa
+    ``derive()``s egen regel — kun et bevidst valg af en skrivende type giver skriveret,
+    og det valg findes ikke her.
+    """
+    kind = str(team_type or "").strip().lower() or "researcher"
+    kind = _ROLE.get(kind, kind)
+    if kind in _WRITE_TYPES:
+        raise ValueError(f"et teammedlem maa ikke have skriveret (fik {kind!r})")
+    return kind
+
+
+def derive_team(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
+                parent_agent_id: str, description: str, prompt: str, team: dict[str, Any],
+                subagent_type: str = "", model: str = "", run_in_background: bool = True,
+                budget_tokens: int = 0) -> list[dict[str, Any]]:
+    """Udled en plan pr. teammedlem — al validering sker FOER den foerste dispatch.
+
+    Et halvt team er vaerre end intet: naar medlemmerne er sendt afsted, kan de ikke
+    traekkes tilbage uden at brænde deres budget. Derfor valideres hele bestillingen her,
+    og ``derive_team_id`` kaldes foerst derefter.
+    """
+    # §7.2: en skrivende type paa HELE teamet er et forsoeg paa at give medlemmerne
+    # skriveret ad bagdoeren. Den afvises her, ikke i adapteren.
+    if str(subagent_type or "").strip():
+        _member_type(subagent_type)
+    spec = team if isinstance(team, dict) else {}
+    name = str(spec.get("name") or "").strip()
+    if not name:
+        raise ValueError("team.name er obligatorisk og maa ikke vaere tomt")
+    raw = spec.get("members")
+    if not isinstance(raw, list):
+        raise ValueError("team.members skal vaere en liste")
+    if not 2 <= len(raw) <= 6:
+        raise ValueError(f"et team skal have 2-6 medlemmer (fik {len(raw)})")
+    members: list[dict[str, str]] = []
+    for i, m in enumerate(raw):
+        if not isinstance(m, dict):
+            raise ValueError(f"team.members[{i}] skal vaere et objekt med role og task")
+        role = str(m.get("role") or "").strip()
+        task = str(m.get("task") or "").strip()
+        # ``derive_team_id`` hasher role+task raat. Et manglende felt blev ``None``, og to
+        # FORSKELLIGE bestillinger med huller kunne dermed kollidere til samme team_id — et
+        # retry ville ramme den forkerte raekke. Derfor afvises hullet her, foer hashen.
+        if not role or not task:
+            raise ValueError(f"team.members[{i}] mangler role eller task")
+        members.append({"role": role, "task": task})
+    if len({m["task"] for m in members}) != len(members):
+        raise ValueError("to medlemmer har samme task — det er ét svar talt flere gange")
+    team_id = derive_team_id(
+        owner_user_id=owner_user_id, origin_session_id=origin_session_id,
+        parent_run_id=parent_run_id, description=description, prompt=prompt,
+        team_name=name, members=members)
+    plans: list[dict[str, Any]] = []
+    for index, m in enumerate(members):
+        plan = derive(
+            owner_user_id=owner_user_id, origin_session_id=origin_session_id,
+            parent_run_id=parent_run_id, parent_agent_id=parent_agent_id,
+            description=description, prompt=f"{prompt}\n\nDin opgave i teamet: {m['task']}",
+            subagent_type=_member_type(m["role"]), model=model,
+            run_in_background=run_in_background, budget_tokens=budget_tokens,
+            team_id=team_id, member_index=index)
+        plan["team_id"] = team_id          # baeres til execute_team og fjernes foer dispatch
+        plans.append(plan)
+    return plans
+
+
+def execute_team(**fields: Any) -> dict[str, Any]:
+    """Dispatch et helt team — eller intet.
+
+    Samme regel som ``convene()``: er der ikke plads til alle, afbrydes de der allerede
+    er sendt afsted. Ellers ville et halvt team fortsætte uden ejer, og de svar der kom
+    tilbage ville se ud som et helt teams.
+    """
+    from core.services import agent_contract_service as service
+
+    try:
+        plans = derive_team(**fields)
+    except ValueError as exc:  # valideringen FOER dispatch er svaret, ikke en fejl at logge
+        return service._err("INVALID_SCOPE", str(exc))
+    team_id = str(plans[0].get("team_id") or "") if plans else ""
+    accepted: list[dict[str, Any]] = []
+    for plan in plans:
+        mandate = plan.pop("mandate")
+        plan.pop("run_in_background", None)
+        plan.pop("team_id", None)
+        out = service.dispatch_agent(
+            owner_user_id=fields["owner_user_id"], origin_session_id=fields["origin_session_id"],
+            parent_run_id=fields["parent_run_id"], parent_agent_id=fields["parent_agent_id"],
+            mandate=mandate, wake_parent=False, **plan)
+        if out.get("status") != "accepted":
+            for a in accepted:
+                try:
+                    service.interrupt_agent(
+                        owner_user_id=fields["owner_user_id"],
+                        origin_session_id=fields["origin_session_id"],
+                        agent_id=a["agent_id"], note=f"team {team_id} kunne ikke samles")
+                except Exception:  # noqa: BLE001 — oprydning maa ikke skjule den aegte fejl
+                    logger.warning("kunne ikke afbryde teammedlem %s", a.get("agent_id"), exc_info=True)
+            return {**out, "team_id": team_id, "members": accepted,
+                    "detail": f"teamet blev ikke samlet: {out.get('error')}"}
+        accepted.append({"assignment_id": out["assignment_id"], "agent_id": out["agent_id"],
+                         "member_index": plan.get("member_index")})
+    return {"status": "accepted", "team_id": team_id, "members": accepted,
+            "contract_version": service.CONTRACT_VERSION}
+
+
 def execute(**fields: Any) -> dict[str, Any]:
     from core.services import agent_contract_service as service
 

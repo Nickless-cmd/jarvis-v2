@@ -277,15 +277,15 @@ _Contextual tool pruning for GitHub Copilot / OpenAI-compatible providers._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `record_tool_usage` | `(tool_name)` | Record a tool call timestamp for recent-usage boost. Best-effort. | [src](../../../core/tools/copilot_tool_pruning.py#L365) |
-| function | `_recent_tool_counts` | `()` | — | [src](../../../core/tools/copilot_tool_pruning.py#L371) |
-| function | `_keyword_score_for_categories` | `(user_message)` | Return {tool_name: keyword_score} based on category keyword hits. | [src](../../../core/tools/copilot_tool_pruning.py#L381) |
-| function | `select_tools_for_copilot` | `(tools, *, user_message=…, session_id=…, max_tools=…, stable_only=…)` | Return at most ``max_tools`` tool definitions, prioritised for this call. | [src](../../../core/tools/copilot_tool_pruning.py#L397) |
-| function | `agent_contract_pinned` | `()` | De syv agent-vaerktoejer, FASTE i Jarvis' flade naar motoren er taendt (§7.3). | [src](../../../core/tools/copilot_tool_pruning.py#L492) |
-| function | `_faestn_kraevede` | `(selected_names, seen, by_name, max_tools, user_message)` | Saet de vaerktoejer ind der SKAL overleve kappen, og skaer resten. | [src](../../../core/tools/copilot_tool_pruning.py#L502) |
-| function | `spor_skill_match` | `(user_message)` | Spor at et skill matchede. Fæstner INGENTING — og det er hele rettelsen. | [src](../../../core/tools/copilot_tool_pruning.py#L538) |
-| function | `_stable_idx` | `(name)` | Deterministic tiebreak — lexicographic by name. | [src](../../../core/tools/copilot_tool_pruning.py#L592) |
-| function | `select_tools_for_visible` | `(tools, *, user_message=…, session_id=…, max_tools=…)` | Provider-neutral pruning wrapper for the visible lane. | [src](../../../core/tools/copilot_tool_pruning.py#L597) |
+| function | `record_tool_usage` | `(tool_name)` | Record a tool call timestamp for recent-usage boost. Best-effort. | [src](../../../core/tools/copilot_tool_pruning.py#L398) |
+| function | `_recent_tool_counts` | `()` | — | [src](../../../core/tools/copilot_tool_pruning.py#L404) |
+| function | `_keyword_score_for_categories` | `(user_message)` | Return {tool_name: keyword_score} based on category keyword hits. | [src](../../../core/tools/copilot_tool_pruning.py#L414) |
+| function | `select_tools_for_copilot` | `(tools, *, user_message=…, session_id=…, max_tools=…, stable_only=…)` | Return at most ``max_tools`` tool definitions, prioritised for this call. | [src](../../../core/tools/copilot_tool_pruning.py#L430) |
+| function | `agent_contract_pinned` | `()` | De syv agent-vaerktoejer, FASTE i Jarvis' flade naar motoren er taendt (§7.3). | [src](../../../core/tools/copilot_tool_pruning.py#L525) |
+| function | `_faestn_kraevede` | `(selected_names, seen, by_name, max_tools, user_message)` | Saet de vaerktoejer ind der SKAL overleve kappen, og skaer resten. | [src](../../../core/tools/copilot_tool_pruning.py#L535) |
+| function | `spor_skill_match` | `(user_message)` | Spor at et skill matchede. Fæstner INGENTING — og det er hele rettelsen. | [src](../../../core/tools/copilot_tool_pruning.py#L571) |
+| function | `_stable_idx` | `(name)` | Deterministic tiebreak — lexicographic by name. | [src](../../../core/tools/copilot_tool_pruning.py#L625) |
+| function | `select_tools_for_visible` | `(tools, *, user_message=…, session_id=…, max_tools=…)` | Provider-neutral pruning wrapper for the visible lane. | [src](../../../core/tools/copilot_tool_pruning.py#L630) |
 
 ## `core/tools/counterfactual_tools.py`
 _Counterfactual reflection tools — read-only exposition._

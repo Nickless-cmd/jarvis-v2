@@ -235,3 +235,28 @@ def test_spawn_agent_task_er_ude_af_det_faste_array():
     assert "spawn_agent_task" not in ctp.REQUIRED_LAZY_TOOL_NAMES
     assert "spawn_agent_task" not in ctp.SAFETY_FLOOR
     assert "spawn_agent_task" not in build_catalog_text()
+
+
+# ── Mail-vejen skal naa arrayet (10/11-2026) ────────────────────────────────
+#
+# Maalt 10/11-2026: naar Bjørn skrev «send en mail til selskabsinfo», «svar paa
+# mailen fra krak» eller «skriv til info@selskabsinfo.dk», var HVERKEN
+# `gmail_send` eller `send_mail` i turen. Routeren gav laese-vejen
+# (`gmail_search`, `gmail_list`) men ikke sende-vejen — saa svaret blev «her er
+# teksten, send den selv», selv om værktøjet fandtes og virkede.
+#
+# `TIER_2_CATEGORIES["email"]` peger kun paa `send_mail`/`read_mail`, og den
+# kategori bruges slet ikke i visible-lanen (`stable_only=True`). Derfor hoerer
+# svaret i gulvet, ikke i routing.
+
+def test_gmail_vejene_naar_arrayet():
+    """Ikke «staar i en liste» — men «bliver rent faktisk sendt»."""
+    import core.tools.copilot_tool_pruning as ctp
+    from core.tools.simple_tools import get_tool_definitions
+
+    alle = get_tool_definitions()
+    registreret = {(d.get("function") or d).get("name") for d in alle}
+    valgt = {(d.get("function") or d).get("name")
+             for d in ctp.select_tools_for_visible(alle, user_message="send en mail", session_id=None)}
+    mangler = [n for n in ("gmail_send", "gmail_get") if n in registreret and n not in valgt]
+    assert not mangler, f"mail-vejen naar ikke arrayet: {mangler}"

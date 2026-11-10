@@ -2505,6 +2505,18 @@ def _exec_gmail_list(args: dict[str, Any]) -> dict[str, Any]:
     return list_inbox(uid, max_results=args.get("max_results", 10))
 
 
+def _exec_gmail_get(args: dict[str, Any]) -> dict[str, Any]:
+    """Læs HELE brødteksten i én mail via brugerens EGEN connector-token.
+
+    `gmail_search`/`gmail_list` giver kun et snippet. 10/11-2026 kunne jeg
+    derfor ikke afgøre hvad Krak faktisk havde forbeholdt sig — svaret lå
+    efter snippet-grænsen.
+    """
+    from core.services.gmail_connector import get_message
+    uid = _operator_user_id(args)
+    return get_message(uid, str(args.get("message_id") or ""))
+
+
 def _exec_gmail_modify(args: dict[str, Any]) -> dict[str, Any]:
     """Flyt/arkivér/gendan eksplicitte Gmail-id'er. dry_run er sand som standard."""
     from core.services.gmail_connector import modify_messages

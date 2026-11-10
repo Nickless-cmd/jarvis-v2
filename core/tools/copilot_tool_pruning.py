@@ -27,7 +27,22 @@ logger = logging.getLogger(__name__)
 
 
 MAX_TOOLS = 128
-VISIBLE_MAX_TOOLS = 56
+# 56 -> 58 (10/11-2026). Regnestykket er maalt, ikke gaettet: de kraevede
+# navne (REQUIRED_LAZY_TOOL_NAMES + SAFETY_FLOOR + agent_contract_pinned) var
+# praecis 56 naar `call_loaded_tool` taelles med — den ligger ikke i kataloget,
+# den injiceres i `select_tools_for_visible`. Gulvet fyldte derfor loftet med
+# NUL plads til overs.
+#
+# Da `gmail_send` og `gmail_get` kom i gulvet, blev det 58 mod et loft paa 56.
+# `_faestn_kraevede` kunne ikke skaere i de kraevede, saa trunkeringen faldt
+# tilbage paa KATALOG-RAEKKEFOELGEN — og de to sidste i den raekkefoelge var
+# `call_loaded_tool` og `load_more_tools`. Maalt: begge forsvandt fra arrayet.
+# Det er den vaerste mulige udgang, fordi de to ER vejen til alle de andre.
+#
+# Loftet haves derfor med praecis de to pladser. Prisen er to smaa
+# definitioner i praefikset; alternativet var at smide halen ind til de rare
+# vaerktoejer ud, og det er dyrere.
+VISIBLE_MAX_TOOLS = 58
 # Vaerktoejer der ALTID skal overleve kappen. `load_more_tools` er halen ind til
 # de rare; de oevrige er tilfoejet 6/9-2026 efter en maaling: i cowork-scope er
 # kataloget 452 og den daværende kappe 48, og Tier 1 (107 navne) har INGEN intern prioritet —
@@ -89,6 +104,24 @@ SAFETY_FLOOR: tuple[str, ...] = (
     # tilbage til Tier 2. Det er bevidst: et værktøj der ikke kan kaldes er
     # dyrere end en mistet routing-plads.
     "commit_attributed",
+    # ── Sendeværktøjet til mail (10/11-2026) ───────────────────────────────
+    #
+    # Målt 10/11-2026: kataloget har 527 værktøjer og kappen er 56. `gmail_send`
+    # stod IKKE i gulvet, og `TIER_2_CATEGORIES["email"]` peger kun på
+    # `send_mail`/`read_mail` — så da Bjørn skrev «send en mail til
+    # selskabsinfo», «svar på mailen fra krak» eller «skriv til
+    # info@selskabsinfo.dk», var hverken `gmail_send` eller `send_mail` i turen.
+    # Routeren gav læse-vejen (`gmail_search`, `gmail_list`) men ikke sende-vejen,
+    # så svaret blev «her er teksten, send den selv».
+    #
+    # Det er samme fejlform som `commit_attributed` ovenfor: et værktøj der SKAL
+    # hentes midt i en travl tur er et værktøj man ikke griber. Forskellen er at
+    # her kostede det en ekstern handling, ikke bare en shell-vej.
+    "gmail_send",
+    # Læse-vejen til den anden halvdel. Uden `gmail_get` kan jeg kun se et
+    # uddrag, og 10/11-2026 kunne jeg ikke afgøre hvad Krak faktisk havde
+    # forbeholdt sig, fordi svaret lå efter snippet-grænsen.
+    "gmail_get",
 )
 
 

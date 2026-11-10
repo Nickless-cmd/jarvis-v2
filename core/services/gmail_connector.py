@@ -115,6 +115,29 @@ GMAIL_CONNECTOR_TOOL_DEFINITIONS: list[dict] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "gmail_get",
+            "description": (
+                "Læs HELE brødteksten i én Gmail-besked via brugerens EGEN forbundne konto. "
+                "gmail_search/gmail_list returnerer kun et uddrag (snippet) — brug denne når "
+                "svaret afhænger af hvad der faktisk står i mailen. Tager et message-id fra "
+                "gmail_search/gmail_list. Foretrækker text/plain og falder tilbage til "
+                "text/html (rå) hvis der ikke findes ren tekst."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "message_id": {
+                        "type": "string",
+                        "description": "Gmail message-id (fra gmail_search eller gmail_list)",
+                    },
+                },
+                "required": ["message_id"],
+            },
+        },
+    },
 ]
 
 
@@ -190,6 +213,90 @@ def search(user_id: str, query: str, *, max_results: int = 10) -> dict:
 
 def list_inbox(user_id: str, *, max_results: int = 10) -> dict:
     return _fetch_messages(user_id, None, max_results)
+
+
+def _extract_body(payload: dict) -> tuple[str, str]:
+    """Fold payload-træet ud og returnér (ren_tekst, html).
+
+    Gmail lægger brødteksten forskelligt: en simpel mail har `body.data` på
+    toppen, en multipart-mail har `parts[]` i vilkårlig dybde, og enkelte
+    klienter sender kun `text/html`. Vi samler ALLE text/plain-dele (de er
+    kanoniske) og bruger html kun hvis der slet ikke findes ren tekst.
+    """
+    import base64
+
+    plain: list[str] = []
+    html: list[str] = []
+
+    def _walk(node: dict) -> None:
+        if not isinstance(node, dict):
+            return
+        mime = (node.get("mimeType") or "").lower()
+        data = (node.get("body") or {}).get("data")
+        if data and mime in ("text/plain", "text/html"):
+            try:
+                padded = data + "=" * (-len(data) % 4)
+                tekst = base64.urlsafe_b64decode(padded).decode("utf-8", errors="replace")
+            except Exception:  # noqa: BLE001
+                tekst = ""
+            if tekst:
+                (plain if mime == "text/plain" else html).append(tekst)
+        for part in (node.get("parts") or []):
+            _walk(part)
+
+    _walk(payload)
+    return "\n".join(plain).strip(), "\n".join(html).strip()
+
+
+def get_message(user_id: str, message_id: str) -> dict:
+    """Hent ÉN mail med fuld brødtekst (format=full).
+
+    `_fetch_messages` bruger `format=metadata`, som bevidst kun giver headers
+    og snippet. Det er nok til at liste, men ikke til at svare på en mail —
+    målt 10/11-2026, hvor svaret fra Krak lå efter snippet-grænsen og jeg
+    derfor ikke kunne afgøre hvad de faktisk havde forbeholdt sig.
+    """
+    mid = (message_id or "").strip()
+    if not mid:
+        return {"status": "error", "error": "message_id_required"}
+    token = _token(user_id)
+    if not token:
+        return {"status": "error", "error": "gmail_not_connected"}
+    try:
+        import httpx
+        r = httpx.get(
+            f"{_API}/messages/{mid}",
+            headers=_headers(token),
+            params={"format": "full"},
+            timeout=20,
+        )
+        if r.status_code == 401:
+            return {"status": "error", "error": "gmail_not_connected"}
+        if r.status_code == 403:
+            return {"status": "error", "error": "gmail_scope_missing"}
+        if r.status_code == 404:
+            return {"status": "error", "error": "message_not_found", "message_id": mid}
+        if r.status_code != 200:
+            return {"status": "error", "error": f"gmail_http_{r.status_code}"}
+        md = r.json()
+        payload = md.get("payload") or {}
+        hdrs = {h.get("name", "").lower(): h.get("value", "")
+                for h in (payload.get("headers") or []) if isinstance(h, dict)}
+        plain, html = _extract_body(payload)
+        return {
+            "status": "ok",
+            "id": mid,
+            "from": hdrs.get("from", ""),
+            "to": hdrs.get("to", ""),
+            "subject": hdrs.get("subject", "(intet emne)"),
+            "date": hdrs.get("date", ""),
+            "body": plain or html,
+            "content_type": "text/plain" if plain else ("text/html" if html else "tom"),
+            "truncated": False,
+            "unread": "UNREAD" in (md.get("labelIds") or []),
+        }
+    except Exception as e:  # noqa: BLE001
+        return {"status": "error", "error": f"gmail_request_failed: {e}"}
 
 
 _AKTIONER: dict[str, dict] = {

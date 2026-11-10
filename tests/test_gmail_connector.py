@@ -230,3 +230,100 @@ def test_handler_er_registreret():
 def test_definition_er_synlig_for_modellen():
     navne = [d["function"]["name"] for d in gc.GMAIL_CONNECTOR_TOOL_DEFINITIONS]
     assert "gmail_modify" in navne
+
+
+# ── gmail_get: fuld brødtekst (10/11-2026) ────────────────────────────────
+#
+# `gmail_search`/`gmail_list` bruger format=metadata og giver kun et snippet.
+# Målt 10/11-2026: svaret fra Krak lå EFTER snippet-grænsen, så jeg kunne ikke
+# afgøre hvad de faktisk havde forbeholdt sig. Denne vej findes for at lukke
+# præcis det hul.
+
+def _full_payload(parts, *, headers=None):
+    return {
+        "id": "m1",
+        "labelIds": ["UNREAD"],
+        "payload": {
+            "mimeType": "multipart/alternative",
+            "headers": headers if headers is not None else [
+                {"name": "Subject", "value": "Re: Indsigelse"},
+                {"name": "From", "value": "privatperson@krak.dk"},
+                {"name": "To", "value": "onkeladolf@gmail.com"},
+                {"name": "Date", "value": "Tue, 10 Nov 2026 10:00:00 +0100"},
+            ],
+            "parts": parts,
+        },
+    }
+
+
+def _del(mime, tekst):
+    import base64
+    return {
+        "mimeType": mime,
+        "body": {"data": base64.urlsafe_b64encode(tekst.encode()).decode()},
+    }
+
+
+def test_get_message_giver_hele_braedteksten(monkeypatch):
+    """Kernen: teksten EFTER snippet-grænsen skal med."""
+    monkeypatch.setattr(gc, "_token", lambda uid: {"access_token": "t"})
+    lang = "Første afsnit. " + ("fyld " * 300) + "FORBEHOLD: vi gemmer data."
+    payload = _full_payload([_del("text/plain", lang), _del("text/html", "<p>html</p>")])
+    monkeypatch.setattr(httpx, "get", lambda url, **kw: _Resp(200, payload))
+
+    svar = gc.get_message("bjorn", "m1")
+
+    assert svar["status"] == "ok"
+    assert "FORBEHOLD" in svar["body"], "halen af teksten skal vaere med"
+    assert svar["content_type"] == "text/plain"
+    assert svar["subject"] == "Re: Indsigelse"
+    assert svar["from"] == "privatperson@krak.dk"
+    assert svar["unread"] is True
+
+
+def test_get_message_falder_tilbage_til_html(monkeypatch):
+    """Kun-html-mails findes; så skal body ikke være tom."""
+    monkeypatch.setattr(gc, "_token", lambda uid: {"access_token": "t"})
+    payload = _full_payload([_del("text/html", "<p>kun html her</p>")])
+    monkeypatch.setattr(httpx, "get", lambda url, **kw: _Resp(200, payload))
+
+    svar = gc.get_message("bjorn", "m1")
+
+    assert svar["status"] == "ok"
+    assert "kun html her" in svar["body"]
+    assert svar["content_type"] == "text/html"
+
+
+def test_get_message_finder_dele_i_dybden(monkeypatch):
+    """Brødtekst kan ligge nested i parts[].parts[] — ikke kun på toppen."""
+    monkeypatch.setattr(gc, "_token", lambda uid: {"access_token": "t"})
+    dyb = {"mimeType": "multipart/mixed", "parts": [_del("text/plain", "dybt liggende svar")]}
+    payload = _full_payload([dyb])
+    monkeypatch.setattr(httpx, "get", lambda url, **kw: _Resp(200, payload))
+
+    svar = gc.get_message("bjorn", "m1")
+
+    assert "dybt liggende svar" in svar["body"]
+
+
+def test_get_message_kraever_id():
+    assert gc.get_message("bjorn", "")["error"] == "message_id_required"
+
+
+def test_get_message_uden_token(monkeypatch):
+    monkeypatch.setattr(gc, "_token", lambda uid: None)
+    assert gc.get_message("bjorn", "m1")["error"] == "gmail_not_connected"
+
+
+def test_get_message_ukendt_id_giver_404(monkeypatch):
+    monkeypatch.setattr(gc, "_token", lambda uid: {"access_token": "t"})
+    monkeypatch.setattr(httpx, "get", lambda url, **kw: _Resp(404, {}))
+    assert gc.get_message("bjorn", "findes-ikke")["error"] == "message_not_found"
+
+
+def test_gmail_get_er_registreret_og_synlig():
+    """Uden dispatch-post er værktøjet defineret men dødt."""
+    from core.tools.simple_tools import _TOOL_HANDLERS
+    assert "gmail_get" in _TOOL_HANDLERS
+    navne = [d["function"]["name"] for d in gc.GMAIL_CONNECTOR_TOOL_DEFINITIONS]
+    assert "gmail_get" in navne

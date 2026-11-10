@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-11-08 — 535 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-10 — 536 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -151,6 +151,7 @@
 | `git_status` | native | no |
 | `github_list_issues` | native | no |
 | `github_list_prs` | native | no |
+| `gmail_get` | native | no |
 | `gmail_list` | native | no |
 | `gmail_modify` | native | no |
 | `gmail_search` | native | no |

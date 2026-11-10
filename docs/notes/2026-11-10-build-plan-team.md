@@ -270,10 +270,36 @@ uændret.
 
 ---
 
-## Leverance 11 — §17.2: drift-verifikation (kan ikke gøres af en agent)
+## Leverance 11 — §17.2: drift-verifikation ⚠️ DELVIST MÅLT (10/11-2026)
 
-Fem målinger på CT105 efter deploy. Indtil de er taget, er status «implementeret, ikke verificeret i
-drift» — en anden status end «færdig». Målingerne står i spec'ens §17.2.
+**Status: «implementeret og indlæst, ikke bevist på en rigtig modelkørsel».** Det er en anden status
+end «færdig», og den skal stå sådan indtil et team er kørt gennem `Task(team=…)` på den levende runtime.
+
+**Målt 10/11-2026 kl. 21:25 mod den kørende proces og den levende DB:**
+
+| Måling | Resultat |
+|---|---|
+| Koden er indlæst | `jarvis-api` PID 2721739, startet **21:23:04**; alle tre filer ændret 21:03–21:20 — **før** start. Genstartet med `defer_until_idle`, `NRestarts=0` |
+| Team-tabeller i levende DB | `agent_councils` findes (17 kolonner inkl. `stalled_after_at`, `synthesis_wake_registered_at`); `agent_wait_contracts` har 90 rækker, **alle `fired`** |
+| Er et team kørt i drift? | **Nej.** Nul råd med `team-`-idempotency. Det eneste råd er `council-25ea7c1df70f40ed` fra **7/10**, nøgle `e2e-…` — den gamle råds-mekanisme, ikke et team |
+| Ventekontrakt-mekanikken virker i drift | Ja — tre kontrakter oprettet og fyret i dag (19:47, 20:14, 20:15) |
+| `OPEN_GRACE_SECONDS` | `45*60 + 300` = **50 min** pr. åben tilstand; syntesen får sin **egen** tærskel ved indgang til `SYNTHESIZING` |
+
+**§16 besvaret ved måling, ikke gæt:**
+
+1. **Syntesens deadline (§16.1)** — `deadline_at` sættes **ikke** for syntese-assignmentet
+   (`grep deadline_at core/services/agent_council.py` = nul hits). Syntesen værnes i stedet af rådets
+   `stalled_after_at` på 50 min. Om 30 min er nok til 6 medlemssvar kan derfor **først** måles ved
+   første rigtige kørsel — men det er ikke en deadline der kan overskrides, for der findes ingen.
+2. **`MEMBER_SUMMARY_CHARS = 1500` (§16.2)** — bekræftet på `agent_council.py:31`, brugt to steder
+   (linje 222 og 430). Seks medlemmer = 9.000 tegn, som spec'en antog.
+3. **Kan `STALLED` genoptages? (§16.3)** — **Nej.** `STALLED` er ikke i `OPEN_STATUSES`, og
+   `expire_stalled()` flytter kun *ind* i tilstanden (linje 312). Der findes ingen transition ud.
+   Den rapporterer og vækker — den genoptager ikke. Det er v5's beslutning, ikke en mangel.
+
+**Den ene måling der mangler:** en rigtig `Task(team=…)`-kørsel på CT105 med en rigtig model. Den
+kræver Bjørns ord, fordi den koster tokens på en levende runtime — og den er den eneste port der
+beviser at kæden virker uden for `isolated_runtime`.
 
 ---
 

@@ -225,21 +225,25 @@ deadline. Går en assignment uden om `derive()`, er `max_fanout: 0` virkningslø
 
 ---
 
-## Leverance 9 — §10: de tre navne i `RETIRED_AGENT_CREATION_TOOLS`
+## Leverance 9 — §10: de tre navne i `RETIRED_AGENT_CREATION_TOOLS` ✅ LEVERET (`b9fd86628`)
 
-**Ændringer:** `tool_scoping.py` — tilføj `relay_to_agent`, `cancel_agent` og `convene_agent_council`
-til `RETIRED_AGENT_CREATION_TOOLS`. Listen har i dag fem navne (`scout_agent`, `spawn_agent_task`,
-`dispatch_code_mode_task`, `dispatch_to_claude_code`, `task`) — det er **fem**, ikke tre, og spec'ens
-§10 er rettet til at sige det.
+**Målt mod hovedtræet 10/11-2026 — spec'ens §10 bad om tre navne, men kun ét var dødt:**
 
-**Tests:** navnene er i listen, `is_tool_allowed()` afviser dem, og `load_more_tools` kan ikke
-genoplive dem.
+| Navn | Fandt vi | Handling |
+|---|---|---|
+| `relay_to_agent` | **Findes og er aktiv** (`simple_tools.py:2060`) | Tilføjet til listen — afvises nu også for owner |
+| `cancel_agent` | **Findes, bevidst i owner-only-listen** (`tool_scoping.py:103`) | **Ikke** pensioneret — den er ikke død |
+| `convene_agent_council` | **Findes nul steder** i hovedtræet; kun i en gammel `.claude/worktrees/`-kopi, og `tests/test_agent_council.py:329` beviser den allerede er ude af `CONTRACT_TOOL_NAMES` | Intet at pensionere |
+
+**Bevis:** `is_tool_allowed(role="owner", name="relay_to_agent")` er `False`, mens samme kald for
+`cancel_agent` er `True`. 151 grønne på tværs af loop, contract_tools, orchestration, council, facade
+og den nye test.
 
 **Review-port:** nej — selvstændig lille opgave.
 
 ---
 
-## Leverance 10 — §17.1: e2e-testen
+## Leverance 10 — §17.1: e2e-testen ✅ LEVERET (`1df48db2e`)
 
 **Fil:** `tests/e2e/test_team_e2e.py`, efter husets mønster (`isolated_runtime`, service-niveau, ingen
 live klient — se `tests/e2e/test_override_e2e.py`).
@@ -249,6 +253,18 @@ bestil 3 medlemmer gennem `Task`-facaden → 3 assignments, 3 `mandate_id`, alle
 i `GATHERING` → gør dem terminale (én completed med svar, én uden, én failed) → `supervise()` →
 syntese oprettet med gemt mandat og fejlende navngivet → gør syntesen terminal → `supervise()` →
 `DONE` og præcis **én** `fired` ventekontrakt.
+
+**Bygget af Codex-executor (`codex-cli`), verificeret af mig.** Dens eneste fejl var en manglende
+`import json` — testen nåede den sidste assertion, så hele kæden virkede.
+
+**`execute_team` blev samtidig omlagt:** den dispatchede selv medlemmerne og rullede dem tilbage i
+hånden, hvilket gav tre løse agenter uden ejer af helheden — intet råd, ingen syntese, ingen STALLED,
+ingen vækning. Nu går teamet gennem `agent_council.convene(derived_plans=...)`, så rådet ejer
+livscyklussen og tilbagerulning er rådets `_abandon`. `derived_plans=None` bevarer den gamle sti
+uændret.
+
+**Bevis:** 133 grønne. Mutationstest: springer man rådet over og dispatcher direkte, fejler e2e på
+`replayed` — testen fanger den gamle adfærd.
 
 **Review-port:** ja — dette er den samlede bevisførelse.
 

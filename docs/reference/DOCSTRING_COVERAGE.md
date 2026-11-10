@@ -406,7 +406,7 @@ Generated from source. 9979/18466 functions/methods documented (54%). The list b
 - `core/runtime/db_agent_council.py` :: `create` (L80)
 - `core/runtime/db_agent_council.py` :: `ensure_council_tables` (L39)
 - `core/runtime/db_agent_council.py` :: `find_by_key` (L102)
-- `core/runtime/db_agent_council.py` :: `require` (L147)
+- `core/runtime/db_agent_council.py` :: `require` (L151)
 - `core/runtime/db_agent_deadlines.py` :: `ensure_deadline_columns` (L18)
 - `core/runtime/db_agent_deadlines.py` :: `initial_queue_deadline` (L55)
 - `core/runtime/db_agent_feed.py` :: `acknowledge` (L123)

@@ -112,11 +112,52 @@ def test_advance_never_creates_a_synthesis_for_a_council_without_members(cdb, mo
     assert ac.advance() == []
 
     stale = cdb.make(key="k-stale")
-    cdb.C_._conn().execute("UPDATE agent_councils SET status='gathering', members_json='[]' WHERE council_id=?",
-                           (stale["council_id"],))
-    cdb.C_._conn().commit()
-    assert ac.advance() == []
+    conn = cdb.C_._conn()
+    conn.execute("UPDATE agent_councils SET status='gathering', members_json='[]' WHERE council_id=?",
+                 (stale["council_id"],))
+    conn.commit()
+    assert ac.advance() == [{"council_id": stale["council_id"], "action": "cancelled_empty"}]
     assert calls == [], f"syntese blev dispatchet over et tomt grundlag: {calls}"
+    # Den gamle raekke skal ikke bare springes over - den kan aldrig blive faerdig, saa den
+    # lukkes. Ellers laa den i open_councils() for evigt med en advarsel ved hvert tick.
+    assert cdb.C_.get(stale["council_id"], O)["status"] == "cancelled"
+    # Den friske raekke er legitimt aaben (den er midt i en samling); den gamle er lukket.
+    assert stale["council_id"] not in {x["council_id"] for x in cdb.C_.open_councils()}
+
+
+def test_set_members_with_an_empty_list_cannot_open_a_council(cdb):
+    """Et raad i ``gathering`` uden medlemmer ER fejlen. Lageret maa ikke kunne skabe den."""
+    c = cdb.make(key="k-empty")
+    cid = c["council_id"]
+    cdb.C_.set_members(cid, [])
+    assert cdb.C_.get(cid, O)["status"] == "provisioning"      # ikke flyttet
+    cdb.C_.set_members(cid, [{"index": 1, "role": "critic", "task": "x", "assignment_id": "a", "agent_id": "g"}])
+    assert cdb.C_.get(cid, O)["status"] == "gathering"
+
+
+def test_a_synthesizing_council_is_still_closed_when_its_member_list_is_empty(cdb):
+    """Regression: vagt mod tomme medlemslister maa ikke ramme ``synthesizing``.
+
+    En raekke i ``synthesizing`` har en syntese der skal lukkes. Bliver den sprunget over
+    fordi medlemslisten er tom, kan den aldrig naa ``done`` - den laa fast foer rettelsen.
+    """
+    import core.services.agent_council as ac
+    c = cdb.make(key="k-synth")
+    cid = c["council_id"]
+    conn = cdb.C_._conn()
+    conn.execute(
+        "UPDATE agent_councils SET status='synthesizing', members_json='[]', "
+        "synthesis_assignment_id='asg-none' WHERE council_id=?", (cid,))
+    conn.commit()
+    ac.advance()
+    assert cdb.C_.get(cid, O)["status"] == "synthesizing"      # syntesen findes ikke endnu
+    conn.execute(
+        "INSERT INTO agent_assignments (assignment_id, agent_id, owner_user_id, origin_session_id, goal, status, "
+        "created_at, updated_at) VALUES ('asg-none','g1',?,'s1','syntese','completed','2026-01-01','2026-01-01')",
+        (O,))
+    conn.commit()
+    ac.advance()
+    assert cdb.C_.get(cid, O)["status"] == "done"
 
 
 def test_abandon_from_provisioning_cancels_instead_of_stranding_the_council(cdb):

@@ -181,13 +181,21 @@ def advance() -> list[dict[str, Any]]:
         try:
             if c["status"] == store.PROVISIONING:
                 continue                      # medlemmerne er ikke skrevet ind endnu - intet at avancere
-            if not c["members"]:
-                # Gamle raekker fra foer provisioning-tilstanden kan staa i gathering med en
-                # tom liste. Uden denne vagt giver _outcomes ([], True): nul medlemmer, alle
-                # "terminale" - og syntesen ville blive skrevet over et tomt grundlag.
-                logger.warning("raad %s er %s uden medlemmer - springes over", c["council_id"], c["status"])
-                continue
             if c["status"] == store.GATHERING:
+                if not c["members"]:
+                    # Gamle raekker fra foer provisioning-tilstanden kan staa i gathering med en
+                    # tom liste. Uden denne vagt giver _outcomes ([], True): nul medlemmer, alle
+                    # "terminale" - og syntesen ville blive skrevet over et tomt grundlag.
+                    # De lukkes frem for at ligge i open_councils() for evigt: et raad uden
+                    # medlemmer kan aldrig blive faerdigt, og en advarsel pr. tick i to
+                    # processer er stoj, ikke en tilstand nogen kan handle paa.
+                    # Vagten hoerer KUN her: en raekke i synthesizing har en syntese der skal
+                    # lukkes, ogsaa selv om medlemslisten er tom.
+                    if store.transition(c["council_id"], frm=store.GATHERING, to=store.CANCELLED):
+                        logger.warning("raad %s var gathering uden medlemmer - lukket som cancelled",
+                                       c["council_id"])
+                        done.append({"council_id": c["council_id"], "action": "cancelled_empty"})
+                    continue
                 outcomes, all_terminal = _outcomes(owner, c["members"])
                 if not all_terminal or len(outcomes) != len(c["members"]):
                     continue

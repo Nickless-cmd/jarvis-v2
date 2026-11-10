@@ -118,7 +118,11 @@ def set_members(council_id: str, members: list[dict[str, Any]]) -> None:
     conn.execute("UPDATE agent_councils SET members_json=?, updated_at=? WHERE council_id=?",
                  (json.dumps(members, ensure_ascii=False), _now_iso(), council_id))
     conn.commit()
-    transition(council_id, frm=PROVISIONING, to=GATHERING)
+    if members:
+        # En TOM liste er ikke et raad. Den gemmes (saa _abandon kan bevare historikken),
+        # men den maa ikke flytte raekken til ``gathering``: et raad i gathering uden
+        # medlemmer er praecis den tilstand der gav en syntese over et tomt grundlag.
+        transition(council_id, frm=PROVISIONING, to=GATHERING)
 
 
 def transition(council_id: str, *, frm: str, to: str, synthesis_assignment_id: str = "") -> bool:

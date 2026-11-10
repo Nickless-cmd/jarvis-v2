@@ -1725,7 +1725,7 @@
       ]
     },
     "agent_councils": {
-      "digest": "4d:f6:c0:0e:03:e2:87:1a:c1:68:e6:10:54:14:2f:7f:3a:47:ed:93:f8:cb:fb:6e:1a:e1:08:e0:be:9c:f6:4e",
+      "digest": "01:0b:79:ca:6d:a6:0c:c9:80:d0:af:1f:e0:d4:82:83:f4:1e:20:c6:0f:a3:b5:76:cc:f1:8c:03:ab:e2:5d:95",
       "schema": {
         "columns": [
           {
@@ -1809,6 +1809,14 @@
             "hidden": 0
           },
           {
+            "name": "stalled_after_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
             "name": "status",
             "type": "TEXT",
             "nullable": false,
@@ -1829,6 +1837,14 @@
             "type": "TEXT",
             "nullable": false,
             "default": "'synthesizer'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "synthesis_wake_registered_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },

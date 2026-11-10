@@ -66,6 +66,31 @@ def test_dispatcheren_overlever_foreningen():
         clear("tv-disp")
 
 
+def test_indbakke_vaerktoejerne_er_i_det_array_turen_sender():
+    """`test_pinned_inbox_vaerktoejer` maaler pin-FILEN, ikke arrayet.
+
+    Maalt 10/11-2026: de tre navne stod i `state/tool_tags.pinned.json` mens
+    ingen test spurgte om de faktisk blev sendt. Det er samme fejlform som
+    `call_loaded_tool`, der faldt ud af arrayet mens testene var groenne — en
+    vagt der maaler en proxy i stedet for maalet.
+
+    Denne maaler den funktion turen kalder, MED session: det er den vej en
+    rigtig tur gaar. Uden session er svaret prunerens eget valg, og
+    cache-warmeren har ikke brug for indbakken.
+    """
+    clear("tv-inbox")
+    try:
+        n = _navne(vaerktoejer_for_turen(
+            get_tool_definitions(), user_message="hvad venter på mig?",
+            session_id="tv-inbox"))
+        mangler = {"inbox", "inbox_done", "inbox_drop"} - n
+        assert not mangler, (
+            f"{sorted(mangler)} sendes ikke — prompten beder om dem i hver tur, "
+            "saa han maa hente dem midt i turen og bryde prefix-cachen")
+    finally:
+        clear("tv-inbox")
+
+
 def test_uden_session_er_adfaerden_UAENDRET():
     """Cache-warmeren kalder uden session. Den maa ikke aendre sig."""
     v = vaerktoejer_for_turen(get_tool_definitions(), user_message="", session_id=None)

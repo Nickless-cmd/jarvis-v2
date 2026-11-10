@@ -321,7 +321,9 @@ _REF_EVIDENCE_RE = re.compile(
 _DELIVERY_MIN_CHARS = 160
 
 
-def _delivery_gap(expected_result: str, final_text: str, total_tool_calls: int) -> str:
+def _delivery_gap(expected_result: str, final_text: str, total_tool_calls: int,
+                  prompt: str = "", write_calls: int = 0,
+                  write_capable: bool = False) -> str:
     """Grunden til at leverancen ikke kan accepteres — eller ``""`` hvis den kan.
 
     MAALT 10/11-2026 i drift, raad `council-92089f9dc9a842f2` (team-6096a3fb53c51a2c):
@@ -348,16 +350,38 @@ def _delivery_gap(expected_result: str, final_text: str, total_tool_calls: int) 
          baere en undersøgelse.
       2. Bestiller kontrakten filnavne/linjenumre, skal svaret indeholde mindst ét.
     """
+    if write_capable:
+        # En agent der KAN skrive har aendringen som leverance, ikke teksten. Spoergsmaalet
+        # om en skrivende agent der IKKE skrev ejes af ``must_write``-grenen, og en der
+        # skrev har bevist sit arbejde i worktree'en. Maalt 10/11-2026: uden denne linje
+        # fik en skrivende agent ``_delivery_nudge`` i stedet for ``_ACTION_NUDGE``, fordi
+        # dens korte svar blev maalt som en undersøgelse der ikke var afleveret.
+        return ""
     contract = (expected_result or "").strip()
     if not contract:
-        return ""                      # ingen kontrakt = intet at maale imod
+        # Uden en kontrakt er der intet at maale imod. Denne spaerring er BEVIDST bevaret:
+        # at lade prompten alene aktivere vagten ville ramme hver agent uden kontrakt —
+        # maalt 10/11-2026 som fire brudte tests, bl.a. en resume-koersel der svarede
+        # "alt klaret" som sin helt korrekte afslutning.
+        return ""
     if total_tool_calls < 1:
         return ""                      # agenten undersøgte ikke; en anden gren ejer det
     text = (final_text or "").strip()
+    # Har agenten besvaret ALLE opgavens nummererede spoergsmaal, er leverancen daekket —
+    # uanset laengde. Maalt 10/11-2026: "1. Fem felter. 2. agent_assignment_mandates.
+    # 3. To steder." er 58 tegn og en FULD besvarelse; laengdetaersklen afviste den.
+    # Det er praecis den falske positiv taersklen selv advarer om.
+    if len(_question_numbers(prompt)) >= 2 and not _unanswered_questions(prompt, text):
+        return ""
     if len(text) < _DELIVERY_MIN_CHARS:
         return (f"svaret er {len(text)} tegn efter {total_tool_calls} værktøjskald — "
                 "undersøgelsen blev ikke afleveret")
-    if _REF_REQUEST_RE.search(contract) and not _REF_EVIDENCE_RE.search(text):
+    # Kravene kan staa i PROMPTEN selv om kontrakten er kort: `Task` saetter
+    # `expected_result` til description, mens "citer linjenumre, gæt ikke" staar i
+    # prompten. Maalt 10/11-2026 paa 139 assignments: 1 bestilte en form, 89 var under
+    # 60 tegn — saa form-kravet var dødt for alle praktiske formaal.
+    if (_REF_REQUEST_RE.search(f"{contract}\n{prompt or ''}")
+            and not _REF_EVIDENCE_RE.search(text)):
         return "kontrakten bestiller filnavne og linjenumre, og svaret indeholder ingen"
     return ""
 
@@ -515,7 +539,9 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                 # et loefte (_promises_action) eller et svar paa et tal i opgaven
                 # (unanswered). Kontrakten `expected_result` siger hvad der SKULLE leveres;
                 # se `_delivery_gap` for den maalte fejlform.
-                gap = "" if scout else _delivery_gap(expected_result, final_text, total_tool_calls)
+                gap = "" if scout else _delivery_gap(
+                    expected_result, final_text, total_tool_calls, prompt, write_calls,
+                    write_capable)
                 if not scout and action_retries < 1 and (promised or unanswered or must_write or gap):
                     action_retries += 1
                     # 26/10-2026: nudgen maa ikke forbruge den SIDSTE tilladte runde. Goer den

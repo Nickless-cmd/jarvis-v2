@@ -213,3 +213,68 @@ def test_the_gap_measure_returns_empty_only_when_the_delivery_can_be_accepted():
     assert core._delivery_gap(KONTRAKT, TOM_1, 0) == ""
     assert core._delivery_gap(KONTRAKT, TOM_1, 3) != ""
     assert core._delivery_gap(KONTRAKT, RIGTIGT, 3) == ""
+
+
+def test_a_writing_agent_is_left_to_the_must_write_gate():
+    """En agent der KAN skrive maales paa sin AENDRING, ikke paa sin tekst.
+
+    Maalt 10/11-2026: uden denne afgraensning fik en skrivende agent
+    ``_delivery_nudge`` i stedet for ``_ACTION_NUDGE``, fordi dens korte svar blev
+    laest som en undersoegelse der ikke var afleveret. Spoergsmaalet om en skrivende
+    agent der IKKE skrev ejes af ``must_write``-grenen, og en der skrev har bevist
+    sit arbejde i worktree'en.
+    """
+    assert core._delivery_gap(KONTRAKT, TOM_1, 3, "", 0, True) == ""
+    # Den samme maaling for en LAESE-agent er stadig et hul — reglen er ikke en lempelse.
+    assert core._delivery_gap(KONTRAKT, TOM_1, 3, "", 0, False) != ""
+
+
+def test_a_short_answer_that_covers_every_numbered_question_is_a_delivery():
+    """Et kort svar er ikke et tomt svar, naar det besvarer det hele.
+
+    Maalt 10/11-2026: "1. Fem felter. 2. agent_assignment_mandates. 3. To steder."
+    er 58 tegn og en FULD besvarelse. Laengdetaersklen afviste den — praecis den
+    falske positiv taersklen selv advarer om. Daekningen vinder over laengden.
+    """
+    opgave = ("Undersøg tre ting:\n1) Hvor mange felter har Task?\n"
+              "2) Hvilken tabel bærer mandaterne?\n3) Hvor sættes grenen?\n")
+    kort_men_fuldt = "1. Fem felter.\n2. agent_assignment_mandates.\n3. To steder."
+    io = FakeIO([
+        {"text": "", "tool_calls": [_tc(1)]},
+        _text(kort_men_fuldt),
+        # Reserve-svar: fyrer vagten alligevel, ses det paa antallet af modelkald i
+        # stedet for som en IndexError der maskerer fejlen. Maalt 10/11-2026: uden
+        # denne reserve var testen groen af den FORKERTE grund — den fangede ikke en
+        # mutation der fjernede daeknings-check'en.
+        _text(kort_men_fuldt),
+    ])
+    out = _run(io, prompt=opgave, expected_result=KONTRAKT)
+
+    assert len(io.model_calls) == 2, "et fuldt daekket svar skal ikke have en ekstra runde"
+    assert not out.get("incomplete"), out.get("stop_reason")
+    assert out["final_text"] == kort_men_fuldt
+
+
+def test_the_form_request_is_read_from_the_prompt_when_the_contract_is_short():
+    """Kravene kan staa i PROMPTEN selv om kontrakten er kort.
+
+    Maalt 10/11-2026 paa 139 assignments: ``Task`` saetter ``expected_result`` til
+    den korte description, og **1 af 139** bestilte en form — 89 var under 60 tegn.
+    Form-kravet var dermed doedt for alle praktiske formaal, ogsaa naar opgaven selv
+    skrev "citer linjenumre, gæt ikke". Kilden er derfor baade kontrakten OG prompten.
+    """
+    opgave = "Undersøg forskellen. Citér linjenumre — gæt ikke."
+    langt_uden_bevis = (
+        "Der er en vigtig forskel på de to ruter. Den ene har shell-adgang gennem "
+        "sit worktree-værktøj, den anden har ikke. Det betyder at den ene kan køre "
+        "tests selv, mens den anden må beskrive hvad den ville have gjort."
+    )
+    io = FakeIO([
+        {"text": "", "tool_calls": [_tc(1)]},
+        _text(langt_uden_bevis),
+        _text(langt_uden_bevis),
+    ])
+    out = _run(io, prompt=opgave, expected_result=KONTRAKT)   # kort kontrakt, krav i prompten
+
+    assert out.get("incomplete") is True
+    assert "filnavne" in out["stop_reason"]

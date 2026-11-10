@@ -115,8 +115,13 @@ def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
         # modsatte: deres udeladte type faar hele kataloget. Vi vaelger den anden
         # side af samme moent, fordi en agent der ikke kan skrive er harmloes.
         kind = "researcher"
-    if kind not in _READ_TYPES | _WRITE_TYPES:
-        raise ValueError("ukendt subagent_type; brug researcher, critic, planner, watcher eller executor")
+    # 10/11-2026: typen er et NAVN, ikke en port. Foer kastede en ukendt type
+    # ValueError, saa en opgave der hed «explore» eller «verification-cost» blev
+    # afvist for sit navn — maalt: `explore`/`explorer` findes i agent_registry
+    # men i ingen af listerne her. Navnet gaar nu videre som rollenavn; kun
+    # laese/skrive-afgoerelsen er mekanisk, og den falder ALTID mod laeseret.
+    # Et ukendt navn kan derfor aldrig give skriveret — kun et bevidst valg af
+    # en skrivende type kan, praecis som never-escalate kraever.
     workspace_kind, workspace = _session_scope(owner_user_id, origin_session_id)
     workspace = os.path.realpath(workspace) if workspace else ""
     has_repo = bool(workspace and os.path.exists(os.path.join(workspace, ".git")))

@@ -69,6 +69,29 @@ def test_udeladt_type_er_ikke_en_port(monkeypatch):
     assert "wt_write_file" not in plan["allowed_tools"]
 
 
+def test_ukendt_type_er_et_navn_ikke_en_port(monkeypatch):
+    """Et rolle-navn systemet ikke kender må ikke afvises — men må aldrig give skriveret.
+
+    Målt 10/11-2026: `explore` og `explorer` findes i `agent_registry` (5 kørsler),
+    men stod i ingen af facadens lister, så `derive` kastede ValueError på navnet.
+    Navnet er ikke en autoritet; kun læse/skrive er. Derfor: ukendt navn → læseret.
+    """
+    from core.services import agent_task_facade as task
+
+    monkeypatch.setattr(task, "_session_scope", lambda owner, session: ("repo", "/repo"))
+    monkeypatch.setattr(task.os.path, "exists", lambda path: path == "/repo/.git")
+    for navn in ("explore", "verification-cost", "en-helt-ny-rolle"):
+        plan = task.derive(
+            owner_user_id="bjorn", origin_session_id="chat-1", parent_run_id="run-1",
+            parent_agent_id="jarvis", description="Et svar", prompt="Undersøg kilden",
+            subagent_type=navn, model="", run_in_background=True,
+        )
+        assert plan["role"] == navn, "navnet skal bevares, ikke erstattes"
+        assert plan["writes"] is False, f"{navn} fik skriveret uden at være et bevidst valg"
+        assert plan["tool_policy"] == "read-only-runtime"
+        assert "wt_write_file" not in plan["allowed_tools"]
+
+
 def test_task_skemaet_kraever_ikke_subagent_type():
     """Porten sad i skemaet, ikke kun i koden: `required` tvang et valg ved hvert kald."""
     from core.tools.agent_contract_tools import AGENT_CONTRACT_TOOL_DEFINITIONS

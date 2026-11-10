@@ -13,7 +13,7 @@ def test_read_task_derives_every_authority_field(monkeypatch):
         subagent_type="researcher", model="", run_in_background=True,
     )
     assert plan["target"] == "runtime-container"
-    assert plan["budget_tokens"] == 8000 and plan["max_turns"] == 8
+    assert plan["budget_tokens"] == task._BUDGET_DEFAULT["researcher"] and plan["max_turns"] == 8
     assert plan["expected_result"] == "A cited answer"
     assert "bash" not in plan["allowed_tools"] and "write_file" not in plan["allowed_tools"]
     assert plan["mandate"]["granted_side_effect"] == "read"
@@ -101,4 +101,64 @@ def test_task_skemaet_kraever_ikke_subagent_type():
     params = task_def["function"]["parameters"]
     assert "subagent_type" in params["properties"], "feltet skal stadig kunne angives"
     assert "subagent_type" not in params["required"], "det må ikke være et krav"
+
+
+def _plan(task, monkeypatch, kind, budget=0):
+    monkeypatch.setattr(task, "_session_scope", lambda owner, session: ("repo", "/repo"))
+    monkeypatch.setattr(task.os.path, "exists", lambda path: path == "/repo/.git")
+    return task.derive(
+        owner_user_id="bjorn", origin_session_id="chat-1", parent_run_id="run-1",
+        parent_agent_id="jarvis", description="Et svar", prompt="Undersøg kilden",
+        subagent_type=kind, model="", run_in_background=True, budget_tokens=budget,
+    )
+
+
+def test_budgettet_er_rollens_maalte_default(monkeypatch):
+    """Budgettet må ikke være én literal for alle roller.
+
+    Målt 10/11-2026: 8 af 30 agenter siden 1/11 døde af `budget exhausted`. En
+    researcher der DØDE brugte 32.962 tokens hvor en der LYKKEDES brugte 19.302 —
+    de døde var midt i mere arbejde, ikke dårligere. Median-forbruget for den
+    læsende rolle er 12.961, altså 62 % over det gamle loft på 8.000.
+    """
+    from core.services import agent_task_facade as task
+
+    # Hver rolle får sit eget, målte loft — ikke ét fælles tal.
+    assert _plan(task, monkeypatch, "researcher")["budget_tokens"] == 60_000
+    assert _plan(task, monkeypatch, "executor")["budget_tokens"] == 32_000
+    for rolle in ("critic", "planner", "watcher"):
+        assert _plan(task, monkeypatch, rolle)["budget_tokens"] == 16_000, rolle
+
+    # Ingen rolle må falde tilbage til det gamle 8.000: det passede ingen af dem.
+    for rolle in ("researcher", "executor", "critic", "planner", "watcher"):
+        assert _plan(task, monkeypatch, rolle)["budget_tokens"] != 8_000, rolle
+
+
+def test_ukendt_rolle_faar_fallback_budget_ikke_det_gamle_loft(monkeypatch):
+    from core.services import agent_task_facade as task
+
+    plan = _plan(task, monkeypatch, "en-helt-ny-rolle")
+    assert plan["budget_tokens"] == task._BUDGET_FALLBACK
+    assert plan["budget_tokens"] != 8_000
+
+
+def test_eksplicit_budget_kan_saenke_men_ikke_haeve(monkeypatch):
+    """Modellen må vælge sit eget budget — men et tag-loft skal fange en tastefejl."""
+    from core.services import agent_task_facade as task
+
+    assert _plan(task, monkeypatch, "researcher", 5_000)["budget_tokens"] == 5_000
+    # Et forsoeg paa at HAEVE budgettet skal ikke virke: en graense en agent selv
+    # kan haeve er ikke en graense. Kun saenkning er tilladt.
+    assert _plan(task, monkeypatch, "researcher", 999_999_999)["budget_tokens"] == 60_000
+    assert _plan(task, monkeypatch, "researcher", -5)["budget_tokens"] == 60_000, "negativ = udeladt"
+
+
+def test_task_skemaet_tilbyder_budget_tokens():
+    from core.tools.agent_contract_tools import AGENT_CONTRACT_TOOL_DEFINITIONS
+
+    task_def = next(d for d in AGENT_CONTRACT_TOOL_DEFINITIONS
+                    if d["function"]["name"] == "Task")
+    params = task_def["function"]["parameters"]
+    assert "budget_tokens" in params["properties"], "agenten skal kunne sætte sit eget budget"
+    assert "budget_tokens" not in params["required"], "det skal være valgfrit"
 

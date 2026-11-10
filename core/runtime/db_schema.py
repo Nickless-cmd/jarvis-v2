@@ -1106,6 +1106,7 @@ def init_db() -> None:
         _ensure_scheduled_tasks_table(conn)
         _ensure_tool_router_tables(conn)
         _ensure_decision_trigger_column(conn)
+        _ensure_decision_scope_column(conn)
         _ensure_chat_messages_reasoning_column(conn)
         _ensure_chat_messages_content_json_column(conn)
         _ensure_chat_messages_encrypted_column(conn)
@@ -1188,6 +1189,36 @@ def _ensure_decision_trigger_column(conn: sqlite3.Connection) -> None:
         "UPDATE behavioral_decisions SET trigger_name = 'backend_unresolved_3_calls' "
         "WHERE decision_id = 'dec_56d4dbb03e22'"
     )
+
+
+def _ensure_decision_scope_column(conn: sqlite3.Connection) -> None:
+    """Add ``behavioral_decisions.scope_tools`` — hvilke værktøjer en beslutning gælder.
+
+    Målt 10/11-2026: gaten matcher ét ord i direktivet mod værktøjs-konteksten og
+    kan ikke se en hensigt. `dec_6a234cd30460` («undgå researcher til git-historik»)
+    blokerede derfor hver eneste redigering af en fil der nævnte ordet — også en
+    budget-tabel pr. rolle, som intet har med dispatch at gøre. 20 falske
+    blokeringer var allerede målt i november; dette er samme fejlform et lag oppe.
+
+    Kolonnen er en JSON-liste af værktøjsnavne. NULL/tom = alle værktøjer, så en
+    beslutning uden scope opfører sig præcis som før. Idempotent.
+    """
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(behavioral_decisions)").fetchall()}
+    if not cols:
+        return
+    if "scope_tools" not in cols:
+        try:
+            conn.execute("ALTER TABLE behavioral_decisions ADD COLUMN scope_tools TEXT")
+        except sqlite3.OperationalError as exc:
+            if "duplicate column" not in str(exc).lower():
+                raise
+    # Beslutningen handler om DISPATCH — ikke om at skrive kode der nævner rollen.
+    conn.execute(
+        "UPDATE behavioral_decisions SET scope_tools = ? "
+        "WHERE decision_id = 'dec_6a234cd30460' AND (scope_tools IS NULL OR scope_tools = '')",
+        ('["Task", "dispatch_agent", "spawn_agent_task", "followup_agent"]',),
+    )
+    conn.commit()
 
 
 def _ensure_chat_messages_reasoning_column(conn: sqlite3.Connection) -> None:

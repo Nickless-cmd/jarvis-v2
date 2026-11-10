@@ -29,6 +29,42 @@ _WRITE_TYPES = frozenset({"executor", "builder", "coder", "code"})
 _ROLE = {"scout": "researcher", "reviewer": "critic", "builder": "executor", "coder": "executor",
          "code": "executor"}
 
+# Budgettet var en literal (12_000/8_000), og den passede ikke til virkeligheden.
+# Maalt 10/11-2026 paa hele registret: 8 af 30 agenter siden 1/11 doede af
+# `budget exhausted` — og en laesende agent der DOEDE brugte 32.962 tokens hvor en
+# der LYKKEDES brugte 19.302. De doede var altsaa ikke daarligere; de var midt i
+# mere arbejde, og hele koerslen var spildt. Median-forbruget for den laesende
+# rolle er 12.961 — 62 % over det gamle loft paa 8.000, som aldrig har passet.
+#
+# Defaulten er nu p90 af det MAALTE forbrug pr. rolle, saa ni af ti koersler kan
+# fuldfoere. Et loft der ikke rammes koster nul; et loft der rammes koster hele
+# koerslen. Turn-loftet er uroert: nul fuldfoerte koersler har nogensinde ramt det.
+_BUDGET_DEFAULT: dict[str, int] = {
+    "researcher": 60_000,   # p90 maalt 57.403
+    "critic": 16_000,       # p90 maalt 14.273
+    "planner": 16_000,      # p90 maalt 12.792
+    "watcher": 16_000,      # ingen maalinger — samme niveau som critic/planner
+    "executor": 32_000,     # p90 maalt 27.745
+}
+#: Ukendt rolle: critic/planner-niveau — ikke det gamle 8.000, som ingen rolle passer i.
+_BUDGET_FALLBACK = 16_000
+def _budget_for(role: str, requested: int) -> int:
+    """Rollens maalte default — og et oenske der kun maa SAENKE den.
+
+    Budgettet er ikke en autoritet men en graense, og en graense en agent selv kan
+    haeve er ikke en graense. Derfor: defaulten kommer fra maalingen, og et
+    model-suppleret tal kan kun traekke forbruget NED (fx «denne opgave er lille»).
+    Det er samme regel som never-escalate — udledning maa kun nedgradere.
+    """
+    default = _BUDGET_DEFAULT.get(str(role or "").strip().lower(), _BUDGET_FALLBACK)
+    try:
+        wanted = int(requested or 0)
+    except (TypeError, ValueError):
+        wanted = 0
+    if wanted <= 0:
+        return default
+    return min(wanted, default)
+
 
 def _kendte_vaerktoejer() -> frozenset[str]:
     """Runtime-registerets værktøjsnavne. Tomt sæt hvis det ikke kan læses: vagten
@@ -103,7 +139,7 @@ def _session_scope(owner: str, session: str) -> tuple[str, str]:
 
 def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
            parent_agent_id: str, description: str, prompt: str, subagent_type: str,
-           model: str, run_in_background: bool) -> dict[str, Any]:
+           model: str, run_in_background: bool, budget_tokens: int = 0) -> dict[str, Any]:
     description, prompt = description.strip(), prompt.strip()
     kind = subagent_type.strip().lower()
     if not description or not prompt:
@@ -133,7 +169,8 @@ def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
         raise ValueError("executorens workspace er ikke et git-repository")
 
     # Fixed, countable limits. A child Task cannot fan out in this first complete slice.
-    budget_tokens = 12_000 if writes else 8_000
+    role = _ROLE.get(kind, kind)
+    budget_tokens = _budget_for(role, budget_tokens)
     max_turns = 12 if writes else 8
     deadline = (datetime.now(UTC) + timedelta(minutes=45 if writes else 30)).isoformat()
     tools = _vaerktoejer_for("worktree-write" if writes else "read-only-runtime")
@@ -162,7 +199,7 @@ def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
         scoped_prompt += (f"\n\nRuntime boundary: your workspace root is {visible_root}. "
                           "Use absolute paths inside that root; paths outside it are mechanically rejected.")
     return {
-        "goal": scoped_prompt, "description": description, "role": _ROLE.get(kind, kind),
+        "goal": scoped_prompt, "description": description, "role": role,
         "expected_result": description, "model": model.strip(), "writes": writes,
         "workspace": workspace if writes else "", "target": "runtime-container",
         "tool_policy": "worktree-write" if writes else "read-only-runtime",

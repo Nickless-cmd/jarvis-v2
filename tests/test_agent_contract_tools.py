@@ -79,9 +79,12 @@ def test_definitions_are_wellformed_and_required_fields_exist():
     # laeseret, aldrig skriveret; skrivning kraever stadig et bevidst valg.
     assert by["Task"]["required"] == ["description", "prompt"]
     assert "subagent_type" in by["Task"]["properties"]
-    assert len(by["Task"]["properties"]) == 5
+    assert len(by["Task"]["properties"]) == 6
     # Alle autoritetsbaerende valg udledes af runtimen.
-    for fjernet in ("target", "tool_policy", "writes", "budget_tokens", "max_turns",
+    # `budget_tokens` er ikke laengere paa listen: den er nu en legitim, VALGFRI
+    # parameter der kun kan SAENKE den maalte default (10/11-2026). De oevrige
+    # autoritetsfelter udledes stadig af runtimen og maa ikke kunne skrives.
+    for fjernet in ("target", "tool_policy", "writes", "max_turns",
                     "workspace", "idempotency_key", "expected_result", "role", "goal",
                     "context_mode", "accept_fork_switch", "reasoning_effort"):
         assert fjernet not in by["Task"]["properties"], f"{fjernet} er tilbage paa fladen"
@@ -173,7 +176,9 @@ def test_task_facade_derives_and_persists_the_mandate(tl, tmp_path):
     assert mandate["granted_side_effect"] == "read"
     assert mandate["original_side_effect"] == "worktree-write"
     assert "write_file" not in mandate["allowed_tools"] and "bash" not in mandate["allowed_tools"]
-    assert mandate["budget_tokens"] == 8000 and mandate["max_turns"] == 8
+    # Modellen bad om 999.999; den maa kun SAENKE, saa den faar rollens maalte
+    # default — ikke sit eget tal.
+    assert mandate["budget_tokens"] == 60_000 and mandate["max_turns"] == 8
     assert mandate["expected_result"] == "A source-backed answer"
     assert mandate["return_address"].startswith("agent-inbox:bjorn:")
 

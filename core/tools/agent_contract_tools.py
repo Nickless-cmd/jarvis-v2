@@ -66,7 +66,12 @@ AGENT_CONTRACT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                    "description": "Optional model preference; runtime validates allowed routes. "
                                   "For the owner's installed agent CLIs use claude-cli or codex-cli."},
          "run_in_background": {"type": "boolean",
-                               "description": "True returns after acceptance; false waits up to 120 seconds."}},
+                               "description": "True returns after acceptance; false waits up to 120 seconds."},
+         "budget_tokens": {"type": "integer",
+                           "description": "Token budget; 0 or omitted = the role's MEASURED default "
+                                          "(researcher 60k, executor 32k, critic/planner/watcher 16k). "
+                                          "A budget that runs out wastes the whole run: the agent is "
+                                          "killed mid-work and its tokens are spent for nothing."}},
         ["description", "prompt"]),
     _fn("followup_agent",
         "Give an existing agent a NEW task (new assignment and run, same agent_id). Not allowed "
@@ -288,6 +293,7 @@ def _exec_task(args: dict[str, Any]) -> dict[str, Any]:
         description=str(args.get("description") or ""), prompt=str(args.get("prompt") or ""),
         subagent_type=str(args.get("subagent_type") or ""), model=str(args.get("model") or ""),
         run_in_background=bool(args.get("run_in_background", True)),
+        budget_tokens=max(0, int(args.get("budget_tokens") or 0)),
     )
 
 

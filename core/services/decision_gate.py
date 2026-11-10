@@ -10,6 +10,7 @@ that violate commitments, not just be text in the prompt.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 from typing import Any
@@ -31,6 +32,34 @@ logger = logging.getLogger(__name__)
 # `memory_check_duplicate`, `write_file` og `edit_file` bevidst UDENFOR —
 # dec_f1047a72 og dec_dfb56369 handler netop om hvad der må skrives til
 # hukommelsen, og de skal fortsat kunne fange det.
+def _scope_tillader(decision: dict, tool_name: str) -> bool:
+    """Gælder beslutningen dette værktøj? Manglende scope = alle værktøjer.
+
+    Målt 10/11-2026: `dec_6a234cd30460` («undgå researcher til git-historik»)
+    blokerede hver eneste redigering af en fil der nævnte ordet «researcher» —
+    også en budget-tabel pr. rolle, som intet har med dispatch at gøre. Gaten
+    matcher ét ord, ikke en hensigt, så uden et scope rammer en dispatch-regel
+    alting der tilfældigt nævner samme ord.
+
+    Scope't står på BESLUTNINGEN, ikke gættet af gaten: en beslutning uden
+    `scope_tools` opfører sig præcis som før, så ingen gammel regel ændrer
+    adfærd ved at denne funktion findes.
+    """
+    raw = decision.get("scope_tools")
+    if not raw:
+        return True
+    if isinstance(raw, str):
+        try:
+            navne = json.loads(raw)
+        except (TypeError, ValueError):
+            navne = [n.strip() for n in raw.split(",")]
+    else:
+        navne = list(raw)
+    if not navne:
+        return True
+    return str(tool_name) in {str(n) for n in navne}
+
+
 _META_TOOLS = frozenset({
     "decision_list", "decision_get", "decision_review",
     "decision_create", "decision_update", "decision_revoke",
@@ -100,6 +129,8 @@ def check_decision_gate(
     for d in decisions:
         directive = str(d.get("directive") or "").strip()
         if not directive:
+            continue
+        if not _scope_tillader(d, tool_name):
             continue
         conflict = _detect_conflict(directive, context, d)
         if conflict:
@@ -278,6 +309,8 @@ def evaluate_decision_conflict(
     for d in decisions:
         directive = str(d.get("directive") or "").strip()
         if not directive:
+            continue
+        if not _scope_tillader(d, tool_name):
             continue
         if _detect_conflict(directive, context, d):
             decision_id = str(d.get("decision_id") or "unknown")

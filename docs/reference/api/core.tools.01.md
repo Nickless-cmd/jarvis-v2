@@ -17,25 +17,25 @@ _Modelvendte agent-vaerktoejer over agent-contract-v1 (leverance F2)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_fn` | `(name, description, properties, required)` | — | [src](../../../core/tools/agent_contract_tools.py#L43) |
-| function | `contract_tool_names_advertised` | `()` | De navne der skal fastnaeles i Jarvis' flade - tom naar kapabiliteten er slukket. | [src](../../../core/tools/agent_contract_tools.py#L142) |
-| function | `hidden_contract_tools` | `()` | De rene kontrakt-vaerktoejer der SKAL skjules lige nu: alle naar motoren er slukket | [src](../../../core/tools/agent_contract_tools.py#L153) |
-| function | `_ejer_fra_session` | `(session)` | Sessionens registrerede ejer — naar ContextVar'en er tom. | [src](../../../core/tools/agent_contract_tools.py#L161) |
-| function | `_principal` | `(args)` | (ejer, session, parent-run). Ejeren er den autentificerede kontekst - IKKE et argument. | [src](../../../core/tools/agent_contract_tools.py#L198) |
-| function | `_scoped_parent` | `(args)` | Return (agent, owner, session, run) for the current fenced child run. | [src](../../../core/tools/agent_contract_tools.py#L218) |
-| function | `_svc` | `()` | — | [src](../../../core/tools/agent_contract_tools.py#L240) |
-| function | `_exec_dispatch_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L245) |
-| function | `_exec_task` | `(args)` | Five model fields in; all authority-bearing fields come from runtime state. | [src](../../../core/tools/agent_contract_tools.py#L279) |
-| function | `_exec_followup_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L294) |
-| function | `_exec_wait_agents` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L304) |
-| function | `_exec_interrupt_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L317) |
-| function | `_exec_close_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L324) |
-| function | `_is_contract_bound` | `(agent_id, owner)` | — | [src](../../../core/tools/agent_contract_tools.py#L330) |
-| function | `_exec_send_message_to_agent` | `(args)` | Kontrakt-udgaven for bundne agenter; den gamle (inline) for resten. | [src](../../../core/tools/agent_contract_tools.py#L338) |
-| function | `_exec_list_agents` | `(args)` | Naar motoren er taendt: ejerens kontrakt-agenter (+ de gamle under `legacy`). | [src](../../../core/tools/agent_contract_tools.py#L350) |
-| function | `_exec_integrate_agent_work` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L363) |
-| function | `_exec_convene_agent_council` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L369) |
-| function | `_exec_decide_agent_approval` | `(args)` | Jarvis afgoer en af SINE EGNE agenters vaerktoejskald (14/10-2026). | [src](../../../core/tools/agent_contract_tools.py#L379) |
-| function | `_exec_review_agent_work` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L394) |
+| function | `contract_tool_names_advertised` | `()` | De navne der skal fastnaeles i Jarvis' flade - tom naar kapabiliteten er slukket. | [src](../../../core/tools/agent_contract_tools.py#L147) |
+| function | `hidden_contract_tools` | `()` | De rene kontrakt-vaerktoejer der SKAL skjules lige nu: alle naar motoren er slukket | [src](../../../core/tools/agent_contract_tools.py#L158) |
+| function | `_ejer_fra_session` | `(session)` | Sessionens registrerede ejer — naar ContextVar'en er tom. | [src](../../../core/tools/agent_contract_tools.py#L166) |
+| function | `_principal` | `(args)` | (ejer, session, parent-run). Ejeren er den autentificerede kontekst - IKKE et argument. | [src](../../../core/tools/agent_contract_tools.py#L203) |
+| function | `_scoped_parent` | `(args)` | Return (agent, owner, session, run) for the current fenced child run. | [src](../../../core/tools/agent_contract_tools.py#L223) |
+| function | `_svc` | `()` | — | [src](../../../core/tools/agent_contract_tools.py#L245) |
+| function | `_exec_dispatch_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L250) |
+| function | `_exec_task` | `(args)` | Five model fields in; all authority-bearing fields come from runtime state. | [src](../../../core/tools/agent_contract_tools.py#L284) |
+| function | `_exec_followup_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L300) |
+| function | `_exec_wait_agents` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L310) |
+| function | `_exec_interrupt_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L323) |
+| function | `_exec_close_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L330) |
+| function | `_is_contract_bound` | `(agent_id, owner)` | — | [src](../../../core/tools/agent_contract_tools.py#L336) |
+| function | `_exec_send_message_to_agent` | `(args)` | Kontrakt-udgaven for bundne agenter; den gamle (inline) for resten. | [src](../../../core/tools/agent_contract_tools.py#L344) |
+| function | `_exec_list_agents` | `(args)` | Naar motoren er taendt: ejerens kontrakt-agenter (+ de gamle under `legacy`). | [src](../../../core/tools/agent_contract_tools.py#L356) |
+| function | `_exec_integrate_agent_work` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L369) |
+| function | `_exec_convene_agent_council` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L375) |
+| function | `_exec_decide_agent_approval` | `(args)` | Jarvis afgoer en af SINE EGNE agenters vaerktoejskald (14/10-2026). | [src](../../../core/tools/agent_contract_tools.py#L385) |
+| function | `_exec_review_agent_work` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L400) |
 
 ## `core/tools/agent_memory_tools.py`
 _Agent-kun-vaerktoej til agentens EGEN hukommelse (agent-contract-v1 leverance C, hul 3; spec 7.2)._

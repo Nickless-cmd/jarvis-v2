@@ -5933,7 +5933,7 @@
       ]
     },
     "behavioral_decisions": {
-      "digest": "9c:5a:41:73:ea:ea:fc:88:f5:d9:53:81:79:b9:a1:48:19:37:8e:02:57:d8:41:8f:a2:cc:36:f3:3b:dd:a1:64",
+      "digest": "b9:7f:86:23:ef:2d:f2:19:f8:1f:dd:3d:82:2e:d8:39:a8:2b:bd:9f:4d:11:be:20:3e:74:fa:b5:cc:68:9c:99",
       "schema": {
         "columns": [
           {
@@ -6010,6 +6010,14 @@
           },
           {
             "name": "revoked_reason",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "scope_tools",
             "type": "TEXT",
             "nullable": true,
             "default": null,
@@ -9903,7 +9911,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "cheap_lane_admission_state": {

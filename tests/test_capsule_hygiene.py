@@ -173,25 +173,87 @@ def test_fokus_strippes_for_mellemrum(capsule_dir):
     assert "Focus:" not in blok
 
 
-# ── kilden filtrerer ogsaa ────────────────────────────────────────────
+# ── kilden: tre udfald, ikke to (10/11-2026) ──────────────────────────
+#
+# Maalt: kapslen stod med «Current goal: make stabilize workspace-search land
+# visibly» mens runtime_goal_signals havde NULL aktive raekker. Kilden sendte
+# en TOM dict; capture_state merger over den forrige kapsel, saa en fersk tom
+# vaerdi betoed «arve». En foraeldet fokus-streng kunne derfor overleve for
+# evigt — praecis som mood-felterne gjorde indtil samme dag.
+#
+# De to tests herunder erstatter to der greppede kilden for en streng. En grep
+# beviser at ordet staar i filen, ikke at feltet bliver ryddet.
+
+FORAELDET = "Current goal: make stabilize workspace-search land visibly"
 
 
-def test_kilden_beder_om_aktive_signaler():
-    """visible_runs_memory maa ikke hente arkiverede signaler."""
-    from pathlib import Path
+@pytest.fixture
+def kilde(monkeypatch):
+    """Fokus-kilden, med goal-signalerne styret af testen."""
+    import core.services.goal_signal_tracking as gst
+    from core.services import visible_runs_memory as vrm
 
-    kilde = (
-        Path(__file__).resolve().parents[1]
-        / "core/services/visible_runs_memory.py"
-    ).read_text(encoding="utf-8")
-    assert 'list_runtime_goal_signals(status="active"' in kilde
+    def _saet(signaler):
+        if isinstance(signaler, Exception):
+            def _kast(**_kw):
+                raise signaler
+            monkeypatch.setattr(gst, "list_runtime_goal_signals", _kast)
+        else:
+            monkeypatch.setattr(
+                gst, "list_runtime_goal_signals", lambda **_kw: signaler
+            )
+    return _saet, vrm
 
 
-def test_kilden_bruger_laengde_vagten():
-    from pathlib import Path
+def test_kilden_rydder_naar_den_har_maalt_og_intet_fundet(capsule_dir, kilde):
+    """Det maalte tilfaelde: nul aktive signaler maa RYDDE, ikke arve."""
+    saet, vrm = kilde
+    saet([])
 
-    kilde = (
-        Path(__file__).resolve().parents[1]
-        / "core/services/visible_runs_memory.py"
-    ).read_text(encoding="utf-8")
-    assert "MIN_FOCUS_CHARS" in kilde
+    gammel = dict(c._EMPTY_CAPSULE)
+    gammel["attention"] = {
+        "current_focus": FORAELDET,
+        "active_goal_title": FORAELDET,
+    }
+    c.write_capsule(gammel)
+
+    attention = vrm._attention_fra_aktive_goals()
+    assert attention == {"active_goal_title": None, "current_focus": None}
+
+    ny = c.capture_state(attention=attention)
+    assert ny["attention"].get("current_focus") is None
+    assert ny["attention"].get("active_goal_title") is None
+
+
+def test_kilden_arver_naar_den_ikke_kunne_maale(capsule_dir, kilde):
+    """En fejlet maaling er ikke et bevis for at der intet fokus er.
+
+    At rydde paa en fejl ville vaere den samme loegn i den anden retning.
+    """
+    saet, vrm = kilde
+    saet(RuntimeError("db nede"))
+
+    gammel = dict(c._EMPTY_CAPSULE)
+    gammel["attention"] = {"current_focus": FORAELDET}
+    c.write_capsule(gammel)
+
+    assert vrm._attention_fra_aktive_goals() is None
+    ny = c.capture_state(attention=None)
+    assert ny["attention"]["current_focus"] == FORAELDET
+
+
+def test_kilden_bruger_det_aktive_signal(capsule_dir, kilde):
+    """Et aegte signal skal stadig vinde over den gamle vaerdi."""
+    saet, vrm = kilde
+    saet([{"title": "railen 1:1 med mockup'en"}])
+
+    gammel = dict(c._EMPTY_CAPSULE)
+    gammel["attention"] = {"current_focus": FORAELDET}
+    c.write_capsule(gammel)
+
+    attention = vrm._attention_fra_aktive_goals()
+    assert attention["current_focus"] == "railen 1:1 med mockup'en"
+
+    ny = c.capture_state(attention=attention)
+    assert ny["attention"]["current_focus"] == "railen 1:1 med mockup'en"
+

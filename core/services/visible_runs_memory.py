@@ -47,6 +47,46 @@ def _recent_internal_tool_context(session_id: str | None, *, limit: int = 6) -> 
     )
 
 
+def _attention_fra_aktive_goals() -> dict[str, object] | None:
+    """Fokus-feltet til kapslen — med forskellen paa «maalt tomt» og «ikke maalt».
+
+    Maalt 10/11-2026: ``current_focus`` stod paa «Current goal: make stabilize
+    workspace-search land visibly» mens ``runtime_goal_signals`` havde NULL
+    aktive raekker. Kilden sendte en TOM dict, og ``capture_state`` merger over
+    den forrige kapsel — saa «fersk og tom» betoed det samme som «behold den
+    gamle». Kommentaren her paastod at feltet stod tomt; koden gjorde det
+    modsatte, og det er den slags kommentar der holder fejlen i live.
+
+    Derfor tre udfald, ikke to:
+
+    * et signal     -> titlen, som foer
+    * maalt, intet  -> ``None``-vaerdier, saa merge'en RYDDER feltet
+    * ikke maalt    -> ``None`` (hele dict'en), saa kapslen arver. En fejlet
+      maaling er ikke et bevis for at der intet fokus er; at rydde paa en
+      fejl ville vaere den samme loegn, blot i den anden retning.
+    """
+    try:
+        from core.services.continuity import MIN_FOCUS_CHARS
+        from core.services.goal_signal_tracking import list_runtime_goal_signals
+
+        for s in list_runtime_goal_signals(status="active", limit=3):
+            titel = str(s.get("title") or s.get("goal_title") or "").strip()
+            if len(titel) >= MIN_FOCUS_CHARS:
+                return {
+                    "active_goal_title": titel[:80],
+                    "current_focus": titel[:80],
+                }
+    except Exception:
+        import logging as _lg_fokus
+
+        _lg_fokus.getLogger(__name__).warning(
+            "fokus-udledning fejlede — kapslen arver sin forrige vaerdi",
+            exc_info=True,
+        )
+        return None
+    return {"active_goal_title": None, "current_focus": None}
+
+
 def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
     if not run.session_id:
         return
@@ -177,7 +217,7 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
         except Exception:
             pass
 
-        # Gather attention from active goals
+        # Gather attention from active goals.
         #
         # 4/10-2026: her stod der «Focus: t» i CONTINUITY-blokken. Kaldet
         # hentede UDEN statusfilter, saa det nyeste signal vandt — og det
@@ -185,22 +225,11 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
         # Maalt i basen: 1744 signaler, ALLE 'archived', nul aktive. Et
         # fokus-felt der baerer eet bogstav er vaerre end et tomt felt.
         #
-        # To værn: status="active" holder arkiverede ude, og længde-vagten
-        # holder et signal med en titel som «t» ude selv hvis det er aktivt.
-        # Er der intet brugbart signal, staar feltet tomt — det er aerligt.
-        attention = {}
-        try:
-            from core.services.continuity import MIN_FOCUS_CHARS
-            from core.services.goal_signal_tracking import list_runtime_goal_signals
-
-            for s in list_runtime_goal_signals(status="active", limit=3):
-                titel = str(s.get("title") or s.get("goal_title") or "").strip()
-                if len(titel) >= MIN_FOCUS_CHARS:
-                    attention["active_goal_title"] = titel[:80]
-                    attention["current_focus"] = titel[:80]
-                    break
-        except Exception:
-            pass
+        # 10/11-2026: statusfilteret og laengde-vagten var paa plads, men
+        # feltet stod STADIG med et foraeldet fokus — fordi en tom fersk dict
+        # blev mergt ind over den forrige kapsel og derfor arvede den.
+        # ``_attention_fra_aktive_goals`` skelner nu de tre udfald.
+        attention = _attention_fra_aktive_goals()
 
         # Gather recent activity
         recent_activity = {"last_tool_result_summary": assistant_text[:120]}

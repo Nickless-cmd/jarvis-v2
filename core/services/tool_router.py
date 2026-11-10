@@ -125,8 +125,30 @@ def _all_tool_names() -> list[str]:
     ]
 
 
+# Værktøjer der aldrig bliver kaldt FØR de findes.
+#
+# `_always_core_set` er frekvens-drevet: pinned ∪ top-N over 7 dages
+# `tool.invoked`. Et værktøj med nul kald kommer derfor aldrig ind i kernen —
+# og kan derfor aldrig blive kaldt første gang. Det er en koldstart-fælde, og
+# den rammer især handlings-veje: man svarer først på en mail naar man KAN
+# svare, så fraværet af kald er ikke evidens for at værktøjet er overflødigt.
+#
+# Målt 10/11-2026: `gmail_send` (fuldt implementeret bag approval-kort) og
+# `gmail_get` (fuld brødtekst via format=full) stod begge i kataloget og i
+# prunerens SAFETY_FLOOR, men hverken i pinned eller i top-N. Router-vejen —
+# den der vinder i `turens_vaerktoejer` — gav 68 navne uden dem: jeg kunne se
+# emnet på en mail men ikke læse eller besvare den.
+#
+# Listen er BEVIDST kort: den er til usynlige handlings-veje, ikke en generel
+# udvidelse af kernen (hver tilføjelse koster prompt-tokens på hver tur).
+# Tilføjer man her, skal `tool_router_always_core_size` kunne rumme det —
+# ellers fortrænger man et hyppigt kaldt værktøj, og så er kuren værre end
+# sygdommen. Kernen blev målt til 68 af loftet 70 samme dag.
+_KOLDSTART_KERNE = ["gmail_get", "gmail_send"]
+
+
 def _always_core_set(limit: int) -> list[str]:
-    """Top-N tools by 7-day call count ∪ pinned set, with fallback."""
+    """Top-N tools by 7-day call count ∪ pinned set ∪ coldstart, with fallback."""
     from core.services.tool_tagger import get_pinned_set
     try:
         pinned = get_pinned_set()
@@ -152,9 +174,15 @@ def _always_core_set(limit: int) -> list[str]:
         logger.warning("tool_router._always_core_set query failed: %s", exc)
         used_top = []
 
-    core = list(dict.fromkeys(list(pinned) + used_top))
-    if not core:
-        core = list(_BOOTSTRAP_FALLBACK_CORE)
+    # Bootstrap-nettet skal stadig virke: er BÅDE pinned og kald-loggen tom,
+    # er der ingen evidens at bygge en kerne på — så send den hardcodede liste
+    # i stedet for en kerne bestaaende af to koldstart-navne.
+    if not pinned and not used_top:
+        return list(_BOOTSTRAP_FALLBACK_CORE)
+
+    # Koldstart-navnene staar FOERST i `rest`, saa de overlever klippet nedenfor
+    # uanset hvor faa kalds-pladser der er tilbage.
+    core = list(dict.fromkeys(list(_KOLDSTART_KERNE) + list(pinned) + used_top))
 
     pinned_in_core = [n for n in core if n in pinned]
     rest = [n for n in core if n not in pinned]

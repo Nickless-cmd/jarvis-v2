@@ -84,6 +84,37 @@ def test_always_core_falls_back_to_bootstrap(monkeypatch):
     assert out == tr._BOOTSTRAP_FALLBACK_CORE
 
 
+def test_koldstart_vaerktoejer_overlever_frekvens_kernen(monkeypatch):
+    """Et værktøj med nul kald kommer aldrig i top-N — og kan derfor aldrig
+    blive kaldt første gang. Det er koldstart-fælden, og den rammer især
+    handlings-veje: man svarer først på en mail når man KAN svare.
+
+    Målt 10/11-2026: `gmail_send` (bag approval-kort) og `gmail_get` (fuld
+    brødtekst) stod i kataloget og i prunerens SAFETY_FLOOR, men hverken i
+    pinned eller i top-N. Routeren alene gav 68 navne uden dem.
+    """
+
+    class _HyppigeUdenGmail:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def execute(self, sql, params=()):
+            class _R:
+                def fetchall(self):
+                    return [(n,) for n in ("bash", "read_file", "grep", "git_status")]
+
+            return _R()
+
+    monkeypatch.setattr("core.services.tool_tagger.get_pinned_set", lambda: {"bash"})
+    monkeypatch.setattr(tr, "connect", lambda: _HyppigeUdenGmail())
+    kerne = tr._always_core_set(70)
+    for navn in ("gmail_send", "gmail_get"):
+        assert navn in kerne, f"{navn} faldt ud af kernen — koldstart-fælden er tilbage"
+
+
 def test_build_tool_router_surface_is_read_only_projection():
     surface = tr.build_tool_router_surface()
 

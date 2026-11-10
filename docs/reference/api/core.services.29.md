@@ -177,17 +177,17 @@ _Per-turn tool selection._
 | function | `_clarity_signal` | `(msg)` | Hvor sandsynligt er det at turen har brug for et vaerktoej? | [src](../../../core/services/tool_router.py#L64) |
 | function | `_score` | `(user_message, *, top_sim, load_more_rate_7d)` | — | [src](../../../core/services/tool_router.py#L113) |
 | function | `_all_tool_names` | `()` | — | [src](../../../core/services/tool_router.py#L120) |
-| function | `_always_core_set` | `(limit)` | Top-N tools by 7-day call count ∪ pinned set, with fallback. | [src](../../../core/services/tool_router.py#L128) |
-| function | `kald_pr_bruger` | `(dage=…)` | Hvilke vaerktoejer kalder hver bruger — grundlaget kernen mangler. | [src](../../../core/services/tool_router.py#L166) |
-| function | `_load_more_rate_7d` | `()` | — | [src](../../../core/services/tool_router.py#L199) |
-| function | `_confidence_buckets` | `(values, n_buckets=…)` | — | [src](../../../core/services/tool_router.py#L217) |
-| function | `_count_missed_tools` | `(rows)` | — | [src](../../../core/services/tool_router.py#L225) |
-| function | `build_tool_router_surface` | `()` | Mission Control surface for tool router state. | [src](../../../core/services/tool_router.py#L241) |
-| function | `select_tools` | `(*, user_message, session_id, lane, run_id=…)` | Select a subset of tools for this turn. Always returns a ToolSelection. | [src](../../../core/services/tool_router.py#L345) |
-| function | `_sprog_bro_taendt` | `()` | Live-kontakt for sprog-broen. Self-safe: kan config ikke laeses, er den TIL. | [src](../../../core/services/tool_router.py#L385) |
-| function | `_embedding_query` | `(user_message)` | Forespoergslen der embeddes — dansk broet til engelsk. | [src](../../../core/services/tool_router.py#L394) |
-| function | `_select_inner` | `(*, user_message, session_id, lane, run_id, settings, started_at)` | — | [src](../../../core/services/tool_router.py#L425) |
-| function | `_persist` | `(sel, user_message, session_id, lane, run_id)` | — | [src](../../../core/services/tool_router.py#L493) |
+| function | `_always_core_set` | `(limit)` | Top-N tools by 7-day call count ∪ pinned set ∪ coldstart, with fallback. | [src](../../../core/services/tool_router.py#L150) |
+| function | `kald_pr_bruger` | `(dage=…)` | Hvilke vaerktoejer kalder hver bruger — grundlaget kernen mangler. | [src](../../../core/services/tool_router.py#L194) |
+| function | `_load_more_rate_7d` | `()` | — | [src](../../../core/services/tool_router.py#L227) |
+| function | `_confidence_buckets` | `(values, n_buckets=…)` | — | [src](../../../core/services/tool_router.py#L245) |
+| function | `_count_missed_tools` | `(rows)` | — | [src](../../../core/services/tool_router.py#L253) |
+| function | `build_tool_router_surface` | `()` | Mission Control surface for tool router state. | [src](../../../core/services/tool_router.py#L269) |
+| function | `select_tools` | `(*, user_message, session_id, lane, run_id=…)` | Select a subset of tools for this turn. Always returns a ToolSelection. | [src](../../../core/services/tool_router.py#L373) |
+| function | `_sprog_bro_taendt` | `()` | Live-kontakt for sprog-broen. Self-safe: kan config ikke laeses, er den TIL. | [src](../../../core/services/tool_router.py#L413) |
+| function | `_embedding_query` | `(user_message)` | Forespoergslen der embeddes — dansk broet til engelsk. | [src](../../../core/services/tool_router.py#L422) |
+| function | `_select_inner` | `(*, user_message, session_id, lane, run_id, settings, started_at)` | — | [src](../../../core/services/tool_router.py#L453) |
+| function | `_persist` | `(sel, user_message, session_id, lane, run_id)` | — | [src](../../../core/services/tool_router.py#L521) |
 
 ## `core/services/tool_router_runtime.py`
 _Nightly daemon: refresh always-core ranking, recompute embeddings,_

@@ -34,7 +34,7 @@ def test_section_is_empty_when_off_and_versioned_when_on(pr):
     assert ao.orchestrator_section() == ""
     pr.on()
     text = ao.orchestrator_section()
-    assert text.startswith("Agenter (orchestrator-v2).")
+    assert text.startswith("Agenter (orchestrator-v3).")
     assert text == ao.orchestrator_section()          # konstant -> byte-stabil
 
 
@@ -120,20 +120,20 @@ def test_real_prompt_assembly_has_the_section_only_when_on_and_leaves_the_cached
     from core.services.prompt_contract import DYNAMIC_TAIL_SENTINEL
 
     off = _assembly().text
-    assert "Agenter (orchestrator-v2)" not in off
+    assert "Agenter (orchestrator-v3)" not in off
     pr.on()
     on = _assembly().text
-    assert on.count("Agenter (orchestrator-v2)") == 1
+    assert on.count("Agenter (orchestrator-v3)") == 1
     # Sektionen er awareness => den uncachede hale. Det CACHEDE praefiks skal vaere byte-ens.
     assert on.split(DYNAMIC_TAIL_SENTINEL)[0] == off.split(DYNAMIC_TAIL_SENTINEL)[0]
     pr.svc_.set_capability(False)
-    assert "Agenter (orchestrator-v2)" not in _assembly().text
+    assert "Agenter (orchestrator-v3)" not in _assembly().text
 
 
 def test_assembly_is_identical_across_two_turns_so_the_prefix_cache_holds(pr):
     pr.on()
     a, b = _assembly().text, _assembly().text
-    ia, ib = a.find("Agenter (orchestrator-v2)"), b.find("Agenter (orchestrator-v2)")
+    ia, ib = a.find("Agenter (orchestrator-v3)"), b.find("Agenter (orchestrator-v3)")
     assert a[ia:ia + 1500] == b[ib:ib + 1500]
 
 

@@ -65,12 +65,12 @@ def test_v3_moves_catalog_and_code_orchestrator_without_duplicates(monkeypatch):
         from core.services.tool_catalog import build_catalog_text
         assert "KERNE-VÆRKTØJER" in chat
         assert build_catalog_text() == ""
-        assert "Agenter (orchestrator-v2)" not in chat
+        assert "Agenter (orchestrator-v3)" not in chat
     with patch("core.tools.tool_scoping.current_tool_scope", return_value="code"):
         code = _visible_mode_orientation_instruction(compact=False) or ""
         from core.services.prompt_sections.agent_orchestration import orchestrator_section
         assert "KERNE-VÆRKTØJER" in code
-        assert _TEXT.format(version="orchestrator-v2") in code
+        assert _TEXT.format(version="orchestrator-v3") in code
         assert orchestrator_section() == ""
 
 
@@ -86,7 +86,7 @@ def test_v3_off_keeps_catalog_and_orchestrator_cache_late(monkeypatch):
         from core.services.tool_catalog import build_catalog_text
         assert "KERNE-VÆRKTØJER" not in orientation
         assert "KERNE-VÆRKTØJER" in build_catalog_text()
-        assert "Agenter (orchestrator-v2)" in orchestrator_section()
+        assert "Agenter (orchestrator-v3)" in orchestrator_section()
 
 
 def test_v2_chat_contract_is_cache_first_not_duplicated_in_tail(monkeypatch):

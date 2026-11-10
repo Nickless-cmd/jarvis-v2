@@ -27,7 +27,7 @@ from core.runtime.db_agent_contract import ASSIGNMENT_TERMINAL, CONTRACT_VERSION
 logger = logging.getLogger(__name__)
 
 CAPABILITY_FLAG = "agent_contract.enabled"
-PROMPT_VERSION = "orchestrator-v2"
+PROMPT_VERSION = "orchestrator-v3"
 
 # Startprofilen, §12.3.
 MAX_ACTIVE_GLOBAL = 12

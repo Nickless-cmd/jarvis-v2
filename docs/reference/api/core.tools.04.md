@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/surface_tools.py`
+_`vaelg_flade` — fladebeslutningen, truffet før formuleringen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_as_int` | `(value)` | Negative og ikke-numeriske tal betyder «ved det ikke», ikke en fejl. | [src](../../../core/tools/surface_tools.py#L26) |
+| function | `_exec_vaelg_flade` | `(args)` | Afgør fladen. Kaster aldrig — en fejl her må ikke vælte turen. | [src](../../../core/tools/surface_tools.py#L34) |
+
 ## `core/tools/think_language_tools.py`
 _Værktøj: skift tænke-sprog uden genstart (killswitch, 30/9-2026)._
 

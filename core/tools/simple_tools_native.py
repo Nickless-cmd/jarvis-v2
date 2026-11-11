@@ -29,6 +29,7 @@ from core.runtime.config import JARVIS_HOME, PROJECT_ROOT
 from core.runtime.workspace_paths import shared_dir as _shared_dir
 from core.tools.load_more_tools import _tool_load_more_tools  # noqa: F401
 from core.tools.mcp_tool import _exec_mcp  # noqa: F401
+from core.tools.heartbeat_status_tool import _exec_heartbeat_status  # noqa: F401
 from core.tools.simple_tools_web import _read_api_key  # noqa: F401
 
 logger = logging.getLogger(__name__)
@@ -914,88 +915,6 @@ def _exec_read_self_state(_args: dict[str, Any]) -> dict[str, Any]:
 
     result["text"] = "\n".join(lines)
     return result
-
-
-def _exec_heartbeat_status(_args: dict[str, Any]) -> dict[str, Any]:
-    """Return heartbeat scheduler status and recent tick history."""
-    import json as _json
-
-    try:
-        # 12/10-2026: samme resolver som skriveren (se _exec_heartbeat_status).
-        from core.runtime.workspace_paths import heartbeat_state_path
-        state_path = heartbeat_state_path()
-        raw = _json.loads(state_path.read_text(encoding="utf-8"))
-        state = raw.get("state", {})
-        recent = raw.get("recent_ticks", [])
-
-        scheduler = {
-            "active": state.get("scheduler_active"),
-            "health": state.get("scheduler_health"),
-            "started_at": state.get("scheduler_started_at"),
-            "stopped_at": state.get("scheduler_stopped_at") or None,
-            "currently_ticking": state.get("currently_ticking"),
-            "last_tick_at": state.get("last_tick_at"),
-            "next_tick_at": state.get("next_tick_at"),
-            "interval_minutes": state.get("interval_minutes"),
-            "last_trigger_source": state.get("last_trigger_source"),
-            "last_decision_type": state.get("last_decision_type"),
-            "execution_status": state.get("execution_status"),
-            "parse_status": state.get("parse_status"),
-        }
-
-        # Flaget alene er ikke et bevis på liv (stilstand 2026-09-02 og
-        # 2026-11-11): krydstjek mod tråden, iterationstælleren og seneste tick.
-        from core.services import heartbeat_scheduler as _hs
-
-        db_last = None
-        try:
-            from core.runtime.db_heartbeat import recent_heartbeat_runtime_ticks
-            ticks = recent_heartbeat_runtime_ticks(limit=1)
-            if ticks:
-                db_last = ticks[0].get("started_at")
-        except Exception:
-            db_last = None
-        liveness = _hs.assess_liveness(
-            scheduler_active=scheduler["active"],
-            scheduler_health=scheduler["health"],
-            next_tick_at=scheduler["next_tick_at"],
-            last_tick_at=scheduler["last_tick_at"],
-            interval_minutes=scheduler["interval_minutes"],
-            thread_running=_hs.is_running(),
-            iterations_count=_hs.iterations(),
-            db_last_tick_started_at=db_last,
-        )
-        scheduler["verdict"] = liveness["verdict"]
-        scheduler["mismatch"] = liveness["mismatch"]
-        scheduler["iterations"] = liveness["iterations"]
-        scheduler["thread_running"] = liveness["thread_running"]
-        scheduler["overdue_minutes"] = liveness["overdue_minutes"]
-        scheduler["newest_tick_started_at"] = liveness["newest_tick_started_at"]
-
-        lines = []
-        lines.append(f"Scheduler: {liveness['verdict']} (flag={scheduler['health']})")
-        lines.append(
-            f"Thread running: {liveness['thread_running']} | iterations: {liveness['iterations']}"
-            f" | next tick overdue: {liveness['overdue_minutes']} min"
-        )
-        if liveness["mismatch"]:
-            lines.append("MISMATCH: " + ", ".join(liveness["mismatch"]))
-        lines.append(f"Last tick: {scheduler['last_tick_at'] or 'never'}")
-        lines.append(f"Next tick: {scheduler['next_tick_at'] or 'unknown'}")
-        lines.append(f"Interval: {scheduler['interval_minutes']} min")
-        lines.append(f"Last trigger: {scheduler['last_trigger_source']}")
-        lines.append(f"Last decision: {scheduler['last_decision_type']}")
-        if recent:
-            lines.append(f"Recent ticks: {len(recent)} recorded")
-
-        return {
-            "status": "ok",
-            "scheduler": scheduler,
-            "recent_tick_count": len(recent),
-            "text": "\n".join(lines),
-        }
-    except Exception as exc:
-        return {"status": "error", "error": str(exc)}
 
 
 def _exec_trigger_heartbeat_tick(_args: dict[str, Any]) -> dict[str, Any]:

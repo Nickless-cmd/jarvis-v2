@@ -72,9 +72,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18511 functions/
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
 - [`core.tools.01`](core.tools.01.md) — `__init__` … `gate_override_tools`
-- [`core.tools.02`](core.tools.02.md) — `geolocation_tools` … `process_supervisor_tools`
-- [`core.tools.03`](core.tools.03.md) — `process_tools` … `surface_tools`
-- [`core.tools.04`](core.tools.04.md) — `think_language_tools` … `world_model_tools`
+- [`core.tools.02`](core.tools.02.md) — `geolocation_tools` … `pollinations_tools`
+- [`core.tools.03`](core.tools.03.md) — `process_supervisor_tools` … `stripe_tools`
+- [`core.tools.04`](core.tools.04.md) — `surface_tools` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

@@ -1352,7 +1352,7 @@ Generated from source. 10021/18511 functions/methods documented (54%). The list 
 - `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L278)
 - `core/services/heartbeat_scheduler.py` :: `stop` (L113)
 - `core/services/heartbeat_scheduler.py` :: `stop_event` (L64)
-- `core/services/heartbeat_scheduler.py` :: `stop_watchdog` (L292)
+- `core/services/heartbeat_scheduler.py` :: `stop_watchdog` (L301)
 - `core/services/hf_connector.py` :: `model_info` (L85)
 - `core/services/hf_connector.py` :: `search_models` (L67)
 - `core/services/hollow_promise_round.py` :: `note_detected` (L58)

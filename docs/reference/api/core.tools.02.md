@@ -87,6 +87,13 @@ _API health monitor tools — Jarvis can watch services and be notified of outag
 | function | `_exec_health_status` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L139) |
 | function | `_exec_health_history` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L169) |
 
+## `core/tools/heartbeat_status_tool.py`
+_User-facing heartbeat status assembled from runtime state and liveness signals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_heartbeat_status` | `(_args)` | Return heartbeat scheduler status and recent tick history. | [src](../../../core/tools/heartbeat_status_tool.py#L11) |
+
 ## `core/tools/hf_inference_tools.py`
 _Hugging Face Inference API tools — free-tier text-to-video + fallback image gen._
 
@@ -598,15 +605,4 @@ _Pollinations.ai tools — free, no-auth image + video generation._
 | function | `edit_video` | `(*, prompt, video_url, model=…, duration=…, aspect_ratio=…, audio=…)` | Lav en NY video ud fra en eksisterende + en instruktion. | [src](../../../core/tools/pollinations_tools.py#L506) |
 | function | `_exec_pollinations_video_edit` | `(args)` | — | [src](../../../core/tools/pollinations_tools.py#L571) |
 | function | `_exec_pollinations_video` | `(args)` | — | [src](../../../core/tools/pollinations_tools.py#L595) |
-
-## `core/tools/process_supervisor_tools.py`
-_Tool wrappers for the process supervisor._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_process_spawn` | `(args)` | — | [src](../../../core/tools/process_supervisor_tools.py#L15) |
-| function | `_exec_process_list` | `(args)` | — | [src](../../../core/tools/process_supervisor_tools.py#L25) |
-| function | `_exec_process_stop` | `(args)` | — | [src](../../../core/tools/process_supervisor_tools.py#L29) |
-| function | `_exec_process_tail` | `(args)` | — | [src](../../../core/tools/process_supervisor_tools.py#L36) |
-| function | `_exec_process_remove` | `(args)` | — | [src](../../../core/tools/process_supervisor_tools.py#L43) |
 

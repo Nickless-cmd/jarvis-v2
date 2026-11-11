@@ -154,8 +154,8 @@ def assess_liveness(
     next_tick_at: object,
     last_tick_at: object = None,
     interval_minutes: object = None,
-    thread_running: bool,
-    iterations_count: int,
+    thread_running: bool | None,
+    iterations_count: int | None,
     db_last_tick_started_at: object = None,
     now=None,
 ) -> dict[str, object]:
@@ -180,9 +180,13 @@ def assess_liveness(
         default=None,
     )
     mismatch: list[str] = []
-    if active and not thread_running:
+    # None betyder at kalderen IKKE er schedulerens ejerproces. False betyder
+    # derimod at ejerprocessen faktisk har målt sin lokale tråd som død. En
+    # API-proces har altid sin egen tomme kopi af modul-globalerne og må derfor
+    # aldrig sende False/0 som om det var en global måling.
+    if active and thread_running is False:
         mismatch.append("flag_active_but_thread_not_running")
-    if not active and thread_running:
+    if not active and thread_running is True:
         mismatch.append("flag_stopped_but_thread_running")
     if active and nxt is None:
         # Kan vi ikke læse næste tick, kan vi ikke afvise stilstand — og så må
@@ -208,8 +212,13 @@ def assess_liveness(
         "mismatch": mismatch,
         "overdue_minutes": round(overdue, 1),
         "stall_threshold_minutes": 2 * interval,
-        "thread_running": bool(thread_running),
-        "iterations": int(iterations_count),
+        "thread_running": thread_running,
+        "thread_observation": (
+            "not_observed_in_this_process"
+            if thread_running is None
+            else "running" if thread_running else "not_running"
+        ),
+        "iterations": int(iterations_count) if iterations_count is not None else None,
         "newest_tick_started_at": newest.isoformat() if newest else None,
         "next_tick_at": str(next_tick_at or "") or None,
     }

@@ -29,19 +29,23 @@ def _iso(dt):
 
 def _write_state(tmp_path, monkeypatch, *, next_tick_minutes_ago, active=1, health="active"):
     now = datetime.now(UTC)
+    state = {
+        "scheduler_active": active,
+        "scheduler_health": health,
+        "last_tick_at": _iso(now - timedelta(minutes=next_tick_minutes_ago + 15)),
+        "next_tick_at": _iso(now - timedelta(minutes=next_tick_minutes_ago)),
+        "interval_minutes": 15,
+    }
     path = tmp_path / "HEARTBEAT_STATE.json"
     path.write_text(json.dumps({
-        "state": {
-            "scheduler_active": active,
-            "scheduler_health": health,
-            "last_tick_at": _iso(now - timedelta(minutes=next_tick_minutes_ago + 15)),
-            "next_tick_at": _iso(now - timedelta(minutes=next_tick_minutes_ago)),
-            "interval_minutes": 15,
-        },
+        "state": state,
         "recent_ticks": [],
     }), encoding="utf-8")
     import core.runtime.workspace_paths as wp
+    from core.runtime import db_heartbeat
+
     monkeypatch.setattr(wp, "heartbeat_state_path", lambda: path)
+    monkeypatch.setattr(db_heartbeat, "get_heartbeat_runtime_state", lambda: state)
 
 
 def test_status_er_ikke_active_naar_next_tick_er_60_min_overskredet(tmp_path, monkeypatch):
@@ -53,15 +57,6 @@ def test_status_er_ikke_active_naar_next_tick_er_60_min_overskredet(tmp_path, mo
     assert out["scheduler"]["verdict"] == "STALLED"
     assert "ACTIVE" not in out["text"].split("\n")[0]
     assert "60" in out["text"]  # overskridelsen er synlig
-
-
-def test_status_rapporterer_mismatch_naar_flag_aktivt_men_traad_vaek(tmp_path, monkeypatch):
-    from core.tools.simple_tools_native import _exec_heartbeat_status
-
-    _write_state(tmp_path, monkeypatch, next_tick_minutes_ago=1)
-    out = _exec_heartbeat_status({})
-    assert "flag_active_but_thread_not_running" in out["scheduler"]["mismatch"]
-    assert out["scheduler"]["verdict"] != "ACTIVE"
 
 
 def test_status_eksponerer_iterations(tmp_path, monkeypatch):

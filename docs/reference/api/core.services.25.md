@@ -20,10 +20,10 @@ _Scheduled tasks service — lets Jarvis schedule future reminders/actions._
 | function | `list_pending_for_current_user` | `()` | Return scheduled tasks where scheduled_for_user_id matches current user. | [src](../../../core/services/scheduled_tasks.py#L164) |
 | function | `get_scheduled_tasks_state` | `()` | Return scheduled tasks for observability. | [src](../../../core/services/scheduled_tasks.py#L194) |
 | function | `_fire_due_tasks` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L215) |
-| function | `_poller_loop` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L490) |
-| function | `start_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L550) |
-| function | `stop_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L559) |
-| function | `build_scheduled_tasks_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/scheduled_tasks.py#L564) |
+| function | `_poller_loop` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L491) |
+| function | `start_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L551) |
+| function | `stop_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L560) |
+| function | `build_scheduled_tasks_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/scheduled_tasks.py#L565) |
 
 ## `core/services/scoped_recall_policy.py`
 _Fail-closed policy and independent kill switches for private recall._

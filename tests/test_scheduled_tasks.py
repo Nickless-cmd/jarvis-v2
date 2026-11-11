@@ -162,14 +162,20 @@ def _stub_fyring(monkeypatch, *, app_session: str, owner_session: str) -> dict:
 
     kald: dict = {}
 
-    from core.services import visible_runs
+    # ÉN VÆKKER (11/11-2026). scheduled-vejen starter ikke længere et run selv —
+    # den afleverer til indbakken. Stubben fanger derfor gateway-kaldet og
+    # bevarer de to ting testene håndhæver: hvilken SAMTALE vækningen fik, og
+    # hvilken HERKOMST den bar.
+    from core.services import wake_gateway
 
-    def _start(prompt, *, session_id=None, origin=None, **k):
-        kald["run_session"] = session_id
+    def _anmod(*, kilde, sag, tekst, session_id="", origin="", **k):
+        kald["run_session"] = session_id or None
         kald["run_origin"] = origin
-        return {"status": "ok"}
+        kald["kilde"] = kilde
+        kald["sag"] = sag
+        return {"status": "queued"}
 
-    monkeypatch.setattr(visible_runs, "start_autonomous_run", _start)
+    monkeypatch.setattr(wake_gateway, "anmod_om_vaekning", _anmod)
 
     st._fire_due_tasks()
     return kald

@@ -336,7 +336,6 @@ def _fire_due_tasks() -> None:
                         # the self-wakeup dispatcher's C-step.
                         if focus.strip():
                             try:
-                                from core.services.visible_runs import start_autonomous_run
                                 from core.identity.owner_resolver import (
                                     resolve_owner_app_session,
                                     resolve_owner_target_session,
@@ -393,46 +392,48 @@ def _fire_due_tasks() -> None:
                                 # dispatcher vi INTET — posten ligger allerede i
                                 # indbakken ovenfor og venter på ham i stedet for at
                                 # tale oveni ham.
-                                from core.services.wakeup_dispatcher import (
-                                    _active_turn_blocks,
+                                # ÉN VÆKKER (11/11-2026). Bjørn: «der skal kun være
+                                # en vækker (inbox) og de andre der kan vække
+                                # sender signalet til inbox'en, den vurderer
+                                # signalet og vækker».
+                                #
+                                # AKTIV-GUARDEN ER IKKE FJERNET — DEN ER FLYTTET.
+                                # Den stod her indtil nu, og dens kontrakt var
+                                # «er samtalen optaget, dispatcher vi INTET».
+                                # Konsekvensen var et TABT run: posten lå ganske
+                                # vist i indbakken, men runnet blev aldrig startet
+                                # for den. Wakeren bærer guarden nu
+                                # (`_session_er_aktiv`), så posten venter til
+                                # samtalen er ledig i stedet for at forsvinde.
+                                self_directive = (
+                                    f"[SCHEDULED REMINDER FIRED — task_id={task_id}]\n"
+                                    f"Du planlagde: {focus}\n\n"
+                                    "UDFØR opgaven nu med dine tools — beskriv den ikke bare. "
+                                    "Hvis det handler om at tjekke noget (Discord, en fil, "
+                                    "en status), så BRUG værktøjet. "
+                                    "Når du er færdig, rapportér resultatet kort til Bjørn."
+                                )
+                                from core.services.wake_gateway import (
+                                    anmod_om_vaekning,
                                 )
 
-                                _blokeret = _active_turn_blocks(str(target_session or ""))
-                                if _blokeret:
-                                    logger.info(
-                                        "scheduled_tasks: dispatched IKKE %s — sessionen "
-                                        "er optaget (%s); posten venter i indbakken",
-                                        task_id, _blokeret,
-                                    )
-                                    try:
-                                        from core.services.central_core import central
-                                        central().observe({
-                                            "cluster": "loop",
-                                            "nerve": "scheduled_task_fire",
-                                            "task_id": task_id,
-                                            "outcome": "dispatch_skipped",
-                                            "reason": _blokeret,
-                                        })
-                                    except Exception as obs_exc:  # observabilitet må aldrig vælte fyringen
-                                        logger.debug(
-                                            "scheduled_tasks: Central-observe fejlede for %s: %s",
-                                            task_id, obs_exc,
-                                        )
-                                else:
-                                    self_directive = (
-                                        f"[SCHEDULED REMINDER FIRED — task_id={task_id}]\n"
-                                        f"Du planlagde: {focus}\n\n"
-                                        "UDFØR opgaven nu med dine tools — beskriv den ikke bare. "
-                                        "Hvis det handler om at tjekke noget (Discord, en fil, "
-                                        "en status), så BRUG værktøjet. "
-                                        "Når du er færdig, rapportér resultatet kort til Bjørn."
-                                    )
-                                    start_autonomous_run(
-                                        self_directive,
-                                        session_id=target_session or None,
-                                        origin="scheduled",
-                                    )
-                                    logger.info("scheduled_tasks: dispatched %s as autonomous run", task_id)
+                                _kv = anmod_om_vaekning(
+                                    kilde="scheduled",
+                                    # DEDUP-NØGLEN ER FOREKOMSTEN, ikke opgaven.
+                                    # `task_id` alene ville dedupes mod den første
+                                    # post for evigt, så en daglig påmindelse kun
+                                    # kunne vække én gang. `now_iso` er fyringens
+                                    # tidsstempel og står som default-parameter.
+                                    sag=f"scheduled:{task_id}:{now_iso}",
+                                    tekst=self_directive,
+                                    session_id=str(target_session or ""),
+                                    task_id=str(task_id or ""),
+                                    origin="scheduled",
+                                )
+                                logger.info(
+                                    "scheduled_tasks: %s afleveret til indbakken (%s)",
+                                    task_id, _kv.get("status"),
+                                )
                                 # B6: påmindelse fyrede OG blev dispatchet — synligt i Centralen.
                                 try:
                                     from core.services.central_core import central

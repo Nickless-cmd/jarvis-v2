@@ -195,4 +195,20 @@ describe('agent-udledning mod produktionens strengform', () => {
     ]])
     expect(e.agents[0]!.status).not.toBe('ok')
   })
+
+  it('Task-dispatch bliver til en agent-række med sin faktiske tilstand', () => {
+    // `Task` er den ENESTE agent-dør siden 10/11-2026, men navnet manglede i
+    // AGENT_RESULT_TOOLS — så miljø-feltet var tomt for netop de agenter der
+    // kører. Svaret er målt på et rigtigt Task-kald 11/11-2026:
+    // {agent_id, assignment_id, assignment_status} — tilstanden hedder altså
+    // assignment_status, ikke agent_status.
+    const e = buildEnvironmentEvidence([[
+      tool('t6', 'Task', { description: 'mål panelerne' },
+        hegn('{"agent_id": "agent-task-1", "assignment_id": "asg-1", "assignment_status": "queued"}')),
+    ]])
+    expect(e.agents).toHaveLength(1)
+    expect(e.agents[0]!.agentId).toBe('agent-task-1')
+    expect(e.agents[0]!.status).toBe('queued')
+    expect(e.agents[0]!.dispatchToolUseId).toBe('t6')
+  })
 })

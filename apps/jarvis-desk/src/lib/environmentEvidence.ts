@@ -32,6 +32,10 @@ export interface EnvironmentEvidence {
 }
 
 const AGENT_RESULT_TOOLS = new Set([
+  // `Task` er den ENESTE agent-doer siden 10/11-2026. Den manglede her, saa
+  // miljoe-feltet var tomt for netop de agenter der faktisk koerer — maalt
+  // 11/11-2026 paa et rigtigt Task-svar.
+  'Task',
   'scout_agent',
   'explore', // gammelt navn (omdøbt 17/9-2026) — gemte ture bruger det stadig
   'spawn_agent_task',
@@ -127,7 +131,14 @@ function agentReferences(tool: ToolEvidence): AgentReference[] {
       // KUN agent_status. simple_tools.py:2112 filtrerer `status` ud af dumpen,
       // saa den `status` der evt. overlever er TOOLETS — «ok» er ikke en
       // agent-tilstand, og «koerer»-tjekket ville aldrig lyse.
-      status: result ? textValue(result.agent_status) : undefined,
+      //
+      // `Task` bærer sin tilstand i `assignment_status` (maalt 11/11-2026 paa et
+      // rigtigt svar: {agent_id, assignment_id, assignment_status:"queued"}).
+      // Uden det faldt status til undefined — og `agentSkalStaaFremme()` skjuler
+      // netop en tom status, saa agenten forsvandt selv om navnet kom med.
+      status: result
+        ? textValue(result.agent_status) ?? textValue(result.assignment_status)
+        : undefined,
       dispatchToolUseId: tool.id,
     })
   }

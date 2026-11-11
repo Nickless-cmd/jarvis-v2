@@ -135,3 +135,44 @@ run i kildens egen silo (`session_id=None`) for system-origins. Det er en ændri
 `anmod_om_vaekning` og `inbox_idle_waker._start_run`. Gatewayen falder tilbage til
 `kilde`, så «hvem vækkede mig» altid kan besvares. Uden dette tabte HVER migrering
 sin herkomst i det tavse: wakeren skrev altid `origin="inbox"`.
+
+## Målt 11/11-2026 (aften) — hvad der faktisk mangler, og hvorfor
+
+Tre kilder er migreret: `wakeup_dispatcher` (9edc428d6), `scheduled_tasks`
+(35657c3e2), `recurring_tasks` (fb89d5af5). Forudsætningen `inbox_items.origin`
+blev bygget først (9a9ce9baf), fordi vækkeren ellers skrev `origin="inbox"` for alt.
+
+### routine_dispatch — BLOKERET, ikke glemt
+
+Den ser ud som en ren kandidat (bærer allerede `session_id` og `task_id=run_id`),
+men den bærer fire ting gatewayen ikke tager imod:
+
+    start_autonomous_run(
+        ..., max_tool_calls=int(permission["max_tool_calls"]),
+        max_seconds=float(permission["max_seconds"]),
+        tool_scope=str(definition["capability_scope"]),
+        completion_callback=completed,     # afregner claimet via _settle_session_run
+    )
+
+`completed` er ikke kosmetisk: den kalder `_settle_session_run`, som frigiver
+`db_routines.claim_run`-leased og skriver `session_dispatched`-eventet. Migrerer
+man uden den, hænger claimet til leasen udløber, og rutinen ser aldrig afregnet ud.
+
+**Konsekvens:** `anmod_om_vaekning` skal kunne bære budget (`max_tool_calls`,
+`max_seconds`), `tool_scope` og en completion-callback FØR denne kilde kan flyttes.
+Det er en kontrakt-udvidelse, ikke en omskrivning af kaldestedet.
+
+### De øvrige, med deres egen grund
+
+| Kilde | Dom | Grund |
+|---|---|---|
+| `dreaming_session` | migreres IKKE | kører bevidst `session_id=None` i egen silo; `_maal_session` falder tilbage til ejerens app-samtale, så en blind migrering flytter hver drøm ind i Bjørns desk-chat |
+| `routine_trigger_adapters` | migreres IKKE | `origin="heartbeat"`, samme silo-problem |
+| `autonomous_side_task_dispatcher` | BLOKERET | bærer `max_tool_calls`, `max_seconds`, `started_callback`, `completion_callback` |
+| `session_spawn` | ikke en vækning | et værktøj jeg kalder for at starte et run i en navngiven session — hører i `kanal` |
+| `jarvisx_processes` | ikke en vækning | API-rute der vækker fra UI med egen rate-limit — `kanal`-lignende |
+| `visible_runs_memory` | uafklaret | continuation-run efter et run; ikke undersøgt |
+
+**Netto:** af de syv er to ikke vækninger, to skal ikke migreres, to er blokeret på
+samme kontrakt-udvidelse, og én er uafklaret. Den næste rigtige bid er derfor
+kontrakt-udvidelsen — ikke endnu en kildemigrering.

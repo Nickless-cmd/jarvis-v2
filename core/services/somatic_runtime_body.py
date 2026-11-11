@@ -101,6 +101,40 @@ def update_somatic_body(
     return result
 
 
+#: Holdningerne hvor kroppen ændrer adfærd (ikke blot farver prompten).
+_GATING_POSTURES = ("startled", "pressured")
+
+
+def apply_tool_outcome(result: dict[str, Any], *, tool: str, status: str) -> None:
+    """Direkte værktøjssti → krop → adfærd.
+
+    Kaldes fra `simple_tools` i selve øjeblikket et værktøj fejler (før gik
+    tool-error kun via en pollet perception med forsinkelse). To effekter:
+    1. `update_somatic_body("tool-error")` løfter frustration/pressure.
+    2. Når holdningen er startled/pressured, bærer SELVE fejl-resultatet
+       `somatic_gate` (reguleringen: «Narrow scope …») — det er det modellen
+       læser som næste skridt, så niveauet forgrener faktisk adfærden.
+    Succes ændrer intet. Self-safe: må aldrig vælte tool-flowet.
+    """
+    if str(status) != "error" or not isinstance(result, dict):
+        return
+    try:
+        state = update_somatic_body(
+            event_type="tool-error", intensity=0.6, detail=f"tool failed: {tool}"
+        )
+    except Exception:
+        # Kropsfejl maa aldrig vaelte et vaerktoejskald: fejlen er allerede paa
+        # vej til modellen i selve result-dicten, og en manglende gate er bedre
+        # end et tabt svar.
+        return
+    if isinstance(state, dict) and state.get("posture") in _GATING_POSTURES:
+        result["somatic_gate"] = {
+            "posture": state["posture"],
+            "levels": state["levels"],
+            "instruction": state["regulation"],
+        }
+
+
 def build_somatic_body_surface() -> dict[str, object]:
     raw = get_runtime_state_value(_STATE_KEY, {})
     if isinstance(raw, dict) and raw.get("active"):

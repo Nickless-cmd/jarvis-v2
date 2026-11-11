@@ -156,11 +156,11 @@ def test_generate_appraisal_returns_record_on_llm_success(tmp_db, monkeypatch):
     assert isinstance(record, shadow_mod.AppraisalRecord)
     assert record.rendered_text == "En rolig indre note."
     assert record.source == "llm"
-    assert record.confidence == 1.0
+    assert 0.0 < record.confidence < 1.0  # ét svar er aldrig «verificeret»
     assert record.llm_provider == "deepseek"
     assert record.llm_error is None
     assert record.inputs["status"] == "completed"  # evidence preserved
-    assert record.allowed_effects == ("render_only",)
+    assert not hasattr(record, "allowed_effects")  # dødt felt fjernet
     assert record.expiry_seconds == 300
 
 
@@ -224,14 +224,13 @@ def test_appraisal_record_to_dict_roundtrip():
         confidence=1.0,
         generated_at="2026-05-25T18:30:00+00:00",
         expiry_seconds=300,
-        allowed_effects=("render_only",),
     )
     d = record.to_dict()
     # Must be JSON-serializable
     json.dumps(d)
     assert d["rendered_text"] == "Jeg står roligt."
     assert d["source"] == "llm"
-    assert d["allowed_effects"] == ["render_only"]
+    assert "allowed_effects" not in d
     assert d["inputs"] == {"mood_tone": "steady"}
 
 
@@ -258,9 +257,83 @@ def test_appraisal_persisted_with_new_columns(tmp_db, monkeypatch):
             "FROM inner_voice_shadow ORDER BY id DESC LIMIT 1"
         ).fetchone()
     assert row["source"] == "llm"
-    assert row["confidence"] == 1.0
+    assert 0.0 < row["confidence"] < 1.0
     assert row["expiry_seconds"] == 300
-    assert row["allowed_effects_json"] == '["render_only"]'
+    assert row["allowed_effects_json"] is None  # feltet skrives ikke mere
+
+
+def test_identisk_input_skjuler_ikke_en_efterfoelgende_fejl(tmp_db, monkeypatch):
+    """Værn mod at genindføre en cache over vurderinger.
+
+    Målt 11/11-2026: en cache gjorde gentagne identiske kald deterministiske,
+    men cachede KUN succeser. Så snart LLM'en fejlede på et input der allerede
+    var lykkedes, blev fejlen aldrig skrevet — og `shadow_stats.success_rate`
+    drev mod 100 % netop når den burde falde. Hvert kald skal derfor have sin
+    egen række, også når input er identisk.
+    """
+    import core.services.inner_voice_shadow as shadow_mod
+
+    svar = iter([
+        {"output": "rolig", "provider": "p", "model": "m",
+         "latency_ms": 1, "error": None},
+        {"output": None, "provider": None, "model": None,
+         "latency_ms": 1, "error": "boom"},
+    ])
+    monkeypatch.setattr(shadow_mod, "_call_llm", lambda _: next(svar))
+
+    inputs = {"status": "completed", "focus": "f", "work_signal": ""}
+    kald = dict(
+        function_name="_helpful_signal",
+        prompt_builder=shadow_mod._build_helpful_signal_prompt,
+        inputs=inputs,
+        fallback="fb",
+    )
+    foerste = shadow_mod.generate_appraisal(**kald)
+    anden = shadow_mod.generate_appraisal(**kald)
+
+    assert foerste.source == "llm"
+    assert anden.source == "template_fallback"  # fejlen blev IKKE skjult
+    assert anden.llm_error == "boom"
+
+    stats = shadow_mod.shadow_stats("_helpful_signal")
+    assert stats["total_shadows"] == 2
+    assert stats["successful_llm_calls"] == 1
+
+
+def test_allowed_effects_field_is_gone():
+    """Accept 2: dødt felt fjernet (nul læsere i repoet)."""
+    import inspect
+
+    import core.services.inner_voice_shadow as shadow_mod
+    assert "allowed_effects" not in inspect.signature(
+        shadow_mod.generate_appraisal
+    ).parameters
+    assert not hasattr(shadow_mod, "_DEFAULT_ALLOWED_EFFECTS")
+
+
+def test_no_measurable_input_writes_zero_rows_and_no_llm(tmp_db, monkeypatch):
+    """Accept 4: tomt input → tom tekst, intet LLM-kald, nul rækker."""
+    import core.services.inner_voice_shadow as shadow_mod
+    calls = []
+    monkeypatch.setattr(
+        shadow_mod, "_call_llm",
+        lambda p: calls.append(p) or {"output": "digt", "provider": "p",
+                                      "model": "m", "latency_ms": 1, "error": None},
+    )
+    rec = shadow_mod.generate_appraisal(
+        function_name="_helpful_signal",
+        prompt_builder=shadow_mod._build_helpful_signal_prompt,
+        inputs={"status": "", "focus": "  ", "work_signal": ""},
+        fallback="en genereret template-sætning",
+    )
+    assert rec.rendered_text == ""
+    assert calls == []
+    with sqlite3.connect(str(tmp_db)) as conn:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS inner_voice_shadow (id INTEGER, function_name TEXT)"
+        )
+        n = conn.execute("SELECT COUNT(*) FROM inner_voice_shadow").fetchone()[0]
+    assert n == 0
 
 
 def test_legacy_string_api_unchanged_after_refactor(tmp_db, monkeypatch):

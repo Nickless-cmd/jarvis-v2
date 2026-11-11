@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10014/18501 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10016/18503 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10014/18501 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 890 | 1603 | 55% |
-| `core.services` | 6690 | 12539 | 53% |
+| `core.services` | 6692 | 12541 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1377,8 +1377,8 @@ Generated from source. 10014/18501 functions/methods documented (54%). The list 
 - `core/services/inner_voice_notifier.py` :: `get_inner_voice_notifier_state` (L277)
 - `core/services/inner_voice_notifier.py` :: `start_inner_voice_notifier` (L41)
 - `core/services/inner_voice_notifier.py` :: `stop_inner_voice_notifier` (L59)
-- `core/services/inner_voice_shadow.py` :: `AppraisalRecord.to_dict` (L116)
-- `core/services/inner_voice_shadow.py` :: `shadow_helpful_signal` (L439)
+- `core/services/inner_voice_shadow.py` :: `AppraisalRecord.to_dict` (L127)
+- `core/services/inner_voice_shadow.py` :: `shadow_helpful_signal` (L449)
 - `core/services/internal_opposition_signal_tracking.py` :: `build_runtime_internal_opposition_signal_surface` (L53)
 - `core/services/internal_opposition_signal_tracking.py` :: `refresh_runtime_internal_opposition_signal_statuses` (L49)
 - `core/services/internal_opposition_signal_tracking.py` :: `track_runtime_internal_opposition_signals_for_visible_turn` (L41)
@@ -2143,8 +2143,8 @@ Generated from source. 10014/18501 functions/methods documented (54%). The list 
 - `core/services/somatic_daemon.py` :: `record_latency_sample` (L54)
 - `core/services/somatic_daemon.py` :: `record_request_end` (L49)
 - `core/services/somatic_daemon.py` :: `record_request_start` (L44)
-- `core/services/somatic_runtime_body.py` :: `build_somatic_body_prompt_section` (L116)
-- `core/services/somatic_runtime_body.py` :: `build_somatic_body_surface` (L104)
+- `core/services/somatic_runtime_body.py` :: `build_somatic_body_prompt_section` (L150)
+- `core/services/somatic_runtime_body.py` :: `build_somatic_body_surface` (L138)
 - `core/services/somatic_runtime_body.py` :: `update_somatic_body` (L53)
 - `core/services/spaced_repetition.py` :: `build_spaced_repetition_prompt_section` (L214)
 - `core/services/spaced_repetition.py` :: `build_spaced_repetition_surface` (L174)

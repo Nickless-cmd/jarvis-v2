@@ -1418,6 +1418,8 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
             pass
     if not _intern:
         event_bus.publish("tool.completed", _completed_payload)
+        from core.services.somatic_runtime_body import apply_tool_outcome
+        apply_tool_outcome(result, tool=name, status=status)
 
     # Tavs kæde-knæk (Bjørn 9/10-2026): en REN `&&`-kæde der brød, hvor led
     # efter brud-punktet beviseligt ikke kørte — og Jarvis læste videre som om
@@ -1651,6 +1653,8 @@ def _execute_tool_force_impl(name: str, arguments: dict[str, Any]) -> dict[str, 
                 exc_info=True,
             )
     event_bus.publish("tool.completed", _completed_payload)
+    from core.services.somatic_runtime_body import apply_tool_outcome
+    apply_tool_outcome(result, tool=name, status=status)
 
     # Outcome learning — same hook as execute_tool so force-path is observed too
     try:

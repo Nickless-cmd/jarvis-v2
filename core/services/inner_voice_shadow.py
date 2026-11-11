@@ -53,11 +53,26 @@ _OUTPUT_CHAR_CAP = 160
 # want a different expiry can override via _generate_via_llm.
 _DEFAULT_EXPIRY_SECONDS = 300
 
-# Default allowed runtime effects for an inner-voice appraisal. "render_only"
-# means the rendered_text may be shown / persisted but MUST NOT trigger any
-# runtime behavior change. Future tranches can introduce richer effect tags
-# (e.g. "may_emit_chat_signal", "may_adjust_pacing") with explicit policy.
-_DEFAULT_ALLOWED_EFFECTS: tuple[str, ...] = ("render_only",)
+# `allowed_effects` er FJERNET (dødt felt): nul læsere i hele repoet, kun
+# skribenter. Det lignede en tilladelse men var en seddel på en dør ingen gik
+# ind ad. DB-kolonnen `allowed_effects_json` bliver (nullable, skrives ikke
+# mere) så gamle rækker og skemaet ikke brydes.
+
+# Ét LLM-svar uden replikation. Aldrig 1.0 — det ville påstå verifikation.
+_SINGLE_SAMPLE_CONFIDENCE = 0.5
+
+# INGEN cache over vurderinger (målt 11/11-2026). En cache blev forsøgt for at
+# gøre gentagne kald deterministiske, men den er ikke harmløs: kun SUCCESER
+# blev cachet, så identiske input der fejlede blev stadig talt, mens succeserne
+# forsvandt ud af tabellen. `shadow_stats.success_rate` drev dermed mod 100 %
+# netop når LLM'en degraderede — survivorship-bias i helbredsmålingen selv.
+# Variansen mellem to kald er ægte; det var `confidence=1.0` der løj, og det er
+# rettet separat.
+
+
+def _has_measurable_input(inputs: Mapping[str, Any]) -> bool:
+    """Sand hvis mindst ét input har et reelt (ikke-blankt) indhold."""
+    return any(str(v or "").strip() for v in inputs.values())
 
 
 # ── Appraisal record (state-first, narrative-second) ────────────────────
@@ -71,7 +86,7 @@ class AppraisalRecord:
     sentence IS the artifact) to "state-first" (where the structured record
     is the artifact and the sentence is just one rendering of it). This
     record holds the full state so future consumers can act on confidence,
-    expiry, and allowed_effects instead of regex-parsing prose.
+    and expiry instead of regex-parsing prose.
 
     Fields:
         function_name: which inner-voice function produced this record
@@ -82,9 +97,6 @@ class AppraisalRecord:
         confidence: 0.0-1.0; 1.0 when LLM succeeded with non-empty output,
             0.0 when we fell back to template. Reserved for richer scoring.
         expiry_seconds: how long this appraisal should be considered fresh
-        allowed_effects: tuple of runtime-effect tags this appraisal may
-            trigger. Default ("render_only",) means narrative only — no
-            behavior change. Stored as JSON in the DB.
         generated_at: ISO UTC timestamp
         llm_provider/model/latency_ms/error: provenance for audit
     """
@@ -96,7 +108,6 @@ class AppraisalRecord:
     confidence: float
     generated_at: str
     expiry_seconds: int = _DEFAULT_EXPIRY_SECONDS
-    allowed_effects: tuple[str, ...] = _DEFAULT_ALLOWED_EFFECTS
     llm_provider: str | None = None
     llm_model: str | None = None
     llm_latency_ms: int | None = None
@@ -121,7 +132,6 @@ class AppraisalRecord:
             "source": self.source,
             "confidence": self.confidence,
             "expiry_seconds": self.expiry_seconds,
-            "allowed_effects": list(self.allowed_effects),
             "generated_at": self.generated_at,
             "llm_provider": self.llm_provider,
             "llm_model": self.llm_model,
@@ -458,13 +468,12 @@ def generate_appraisal(
     fallback: str,
     timeout_seconds: float = 5.0,
     expiry_seconds: int = _DEFAULT_EXPIRY_SECONDS,
-    allowed_effects: tuple[str, ...] = _DEFAULT_ALLOWED_EFFECTS,
 ) -> AppraisalRecord:
     """State-first appraisal: returns the full structured record.
 
     Same LLM-primary + template-fallback semantics as _generate_via_llm,
     but exposes the full AppraisalRecord with evidence, confidence,
-    expiry, and allowed_effects. Use this for new call-sites that want
+    and expiry. Use this for new call-sites that want
     to act on structure (confidence gating, expiry-driven re-eval,
     effect-aware behavior) instead of regex-parsing the narrative.
 
@@ -473,6 +482,21 @@ def generate_appraisal(
     at a time, starting with _voice_line.
     """
     generated_at = datetime.now(UTC).isoformat()
+
+    # TOMT LAG (accept-test 4): uden målbart input er der intet at vurdere.
+    # Så skrives ingenting — ikke et LLM-kald, ikke en række, ikke en
+    # template-sætning. Kalderen får en tom record (rendered_text == "").
+    if not _has_measurable_input(inputs):
+        return AppraisalRecord(
+            function_name=function_name,
+            inputs=dict(inputs),
+            rendered_text="",
+            source="template_fallback",
+            confidence=0.0,
+            generated_at=generated_at,
+            expiry_seconds=expiry_seconds,
+            llm_error="no_measurable_input",
+        )
 
     try:
         prompt = prompt_builder(**inputs)
@@ -488,7 +512,6 @@ def generate_appraisal(
             confidence=0.0,
             generated_at=generated_at,
             expiry_seconds=expiry_seconds,
-            allowed_effects=allowed_effects,
             llm_error="prompt_builder_failed",
         )
         _persist_record(record, template_output=fallback)
@@ -518,9 +541,9 @@ def generate_appraisal(
 
     if llm_output and not llm_error:
         source: Literal["llm", "template_fallback"] = "llm"
-        # Confidence heuristic v1: binary. Tranche 2+ may add length-based
-        # scoring, response-time vs avg, semantic-similarity-to-prompt etc.
-        confidence = 1.0
+        # Ét LLM-svar er en ureplikeret stikprøve: aldrig 1.0. Målt: fem kald
+        # i samme sekund gav fem modstridende sætninger alle med 1.0.
+        confidence = _SINGLE_SAMPLE_CONFIDENCE
         rendered_text = llm_output
     else:
         source = "template_fallback"
@@ -535,7 +558,6 @@ def generate_appraisal(
         confidence=confidence,
         generated_at=generated_at,
         expiry_seconds=expiry_seconds,
-        allowed_effects=allowed_effects,
         llm_provider=llm_provider,
         llm_model=llm_model,
         llm_latency_ms=llm_latency,
@@ -562,7 +584,6 @@ def _persist_record(record: AppraisalRecord, *, template_output: str) -> None:
             source=record.source,
             confidence=record.confidence,
             expiry_seconds=record.expiry_seconds,
-            allowed_effects=record.allowed_effects,
             generated_at=record.generated_at,
         )
     except Exception:

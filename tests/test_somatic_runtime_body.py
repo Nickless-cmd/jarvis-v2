@@ -23,6 +23,40 @@ def test_perceptual_event_updates_somatic_body(isolated_runtime) -> None:
     assert surface["levels"]["frustration"] > 0
 
 
+def test_tool_error_on_real_tool_path_raises_levels_and_gates_behavior(
+    isolated_runtime, monkeypatch
+) -> None:
+    """Accept 3: execute_tool-fejl rammer kroppen DIREKTE, og efter nok fejl
+    bærer fejl-resultatet `somatic_gate` (adfærdsforgrening på niveauet)."""
+    from core.services.somatic_runtime_body import build_somatic_body_surface
+    from core.tools import simple_tools
+
+    def _boom(_args):
+        return {"status": "error", "error": "nope"}
+
+    monkeypatch.setitem(simple_tools._TOOL_HANDLERS, "somatic_probe", _boom)
+
+    first = simple_tools.execute_tool("somatic_probe", {})
+    assert build_somatic_body_surface()["levels"]["frustration"] > 0
+    assert "somatic_gate" not in first  # ét fejl-skud er ikke nok
+
+    last = first
+    for _ in range(4):
+        last = simple_tools.execute_tool("somatic_probe", {})
+    assert last["somatic_gate"]["posture"] == "pressured"
+    assert "narrow" in last["somatic_gate"]["instruction"].lower()
+
+
+def test_successful_tool_does_not_touch_body_or_gate(isolated_runtime, monkeypatch) -> None:
+    from core.services.somatic_runtime_body import build_somatic_body_surface
+    from core.tools import simple_tools
+
+    monkeypatch.setitem(simple_tools._TOOL_HANDLERS, "somatic_ok", lambda _a: {"status": "ok"})
+    out = simple_tools.execute_tool("somatic_ok", {})
+    assert "somatic_gate" not in out
+    assert build_somatic_body_surface()["active"] is False
+
+
 def test_decay_levels_reduces_startle() -> None:
     from core.services.somatic_runtime_body import _decay_levels
 

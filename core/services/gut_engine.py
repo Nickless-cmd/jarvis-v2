@@ -342,8 +342,10 @@ def gut_gate(
 
     # Counterfactual-tælling (12/10-2026): registrér BÅDE den faktiske afgørelse (med den
     # lærte bias) og hvad gaten ville have afgjort UDEN den. Forskellen er det eneste der
-    # kan svare på om erfaringen faktisk flytter en beslutning — uden den findes svaret ikke,
-    # fordi bias'en er positiv-only og derfor aldrig efterlader et withhold-spor.
+    # kan svare på om erfaringen faktisk flytter en beslutning — uden den findes svaret ikke.
+    # NB (11/11-2026): bias'en er SYMMETRISK om 0 siden derive_gut_signal (linje ~155), ikke
+    # positiv-only. Den kan altså i princippet efterlade et withhold-spor. Men dette tal
+    # tæller kun GRÆNSEKRYDS; påvirkning under tærsklen giver delta=0 (se build_gut_surface).
     _record_counterfactual(conf, would_pass, no_bias_confidence, threshold, mode, retning)
 
     # Egress-fri observation (shadow OG on) — kun skalarer, aldrig egress.

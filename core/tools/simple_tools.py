@@ -1566,7 +1566,23 @@ def _execute_tool_force_impl(name: str, arguments: dict[str, Any]) -> dict[str, 
         from core.services.emotional_controls import (
             apply_emotional_controls, format_gate_message,
         )
-        gate_action, gate_reason = apply_emotional_controls(kernel_action="execute")
+        # 11/11-2026 (side-9f7195dd18): kaldet her gik uden `risk`, saa det ramte
+        # funktionens default. Foer defaulten blev rettet til "high" betoed det at
+        # force-vejen slap ALT igennem; efter rettelsen blev den konservativ for
+        # alt — ogsaa en laesning. Ingen af delene er rigtigt: vaerktoejets egen art
+        # afgoer. `_tier_for_tool_name` er den kanoniske klassifikation (samme som
+        # gut-laget bruger), saa den genbruges frem for en ny tabel.
+        try:
+            from core.services.task_tool_mapping import (
+                TIER_IRREVERSIBLE, _tier_for_tool_name,
+            )
+            _risk = "high" if _tier_for_tool_name(name) == TIER_IRREVERSIBLE else "low"
+        except Exception:
+            # Kan klassifikationen ikke laeses, falder vi mod det der STANDLER.
+            _risk = "high"
+        gate_action, gate_reason = apply_emotional_controls(
+            kernel_action="execute", risk=_risk,
+        )
         if gate_action != "execute" and gate_reason:
             msg = format_gate_message(gate_action, gate_reason, tool_name=name)
             blocking = gate_action in _BLOCKING_GATE_ACTIONS

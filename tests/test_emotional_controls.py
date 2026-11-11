@@ -105,3 +105,28 @@ def test_accomplishment_still_lifts_fatigue_for_low_risk_action(monkeypatch):
     )
 
     assert (action, reason) == ("execute", "accomplishment_lifts_fatigue")
+
+
+def test_force_vejen_sender_vaerktoejets_egen_risiko_ikke_en_fast_default(monkeypatch):
+    """11/11-2026 (side-9f7195dd18): force-vejen kaldte gaten UDEN `risk`.
+
+    Foer defaulten blev rettet til "high" slap den ALT igennem; efter rettelsen
+    blev den konservativ for alt — ogsaa en laesning. Ingen af delene er rigtigt.
+    Vaerktoejets egen art afgoer, og den kommer fra den kanoniske
+    `_tier_for_tool_name` (samme tabel som gut-laget bruger).
+    """
+    from core.services.task_tool_mapping import TIER_IRREVERSIBLE, _tier_for_tool_name
+
+    # Klassifikationen selv: de to ender skal vaere forskellige.
+    assert _tier_for_tool_name("read_file") != TIER_IRREVERSIBLE
+    assert _tier_for_tool_name("gmail_send") == TIER_IRREVERSIBLE
+    assert _tier_for_tool_name("bash") == TIER_IRREVERSIBLE
+
+    # Og kaldstedet skal BRUGE den — ikke en fast streng.
+    import pathlib
+
+    src = pathlib.Path("core/tools/simple_tools.py").read_text(encoding="utf-8")
+    assert "_tier_for_tool_name(name)" in src, "force-vejen klassificerer ikke vaerktoejet"
+    assert 'apply_emotional_controls(kernel_action="execute")' not in src, (
+        "force-vejen kalder stadig gaten uden risk — saa rammer den defaulten"
+    )

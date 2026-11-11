@@ -539,11 +539,12 @@ _Config-drift-nerve (§7) — fang når DEKLARERET config og RUNTIME-virkelighed
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_declared_port` | `()` | Læs den DEKLAREREDE port DIREKTE fra runtime.json på disk — IKKE in-memory settings. | [src](../../../core/services/config_drift.py#L19) |
-| function | `_api_responds` | `(port)` | True hvis NOGET svarer HTTP på 127.0.0.1:port (selv 4xx/5xx = porten lytter). | [src](../../../core/services/config_drift.py#L42) |
-| function | `check_port_drift` | `()` | Probe deklareret port + alternativer. drift=True hvis API'en svarer, men IKKE på den | [src](../../../core/services/config_drift.py#L58) |
-| function | `observe_config_drift` | `()` | Kør drift-check → observe til Centralen + flag incident hvis drift. Kadence-kaldt. | [src](../../../core/services/config_drift.py#L106) |
-| function | `build_config_drift_surface` | `()` | MC-surface — read-only config-drift-projektion. | [src](../../../core/services/config_drift.py#L153) |
+| function | `_runtime_ports` | `()` | Service-ejede kandidater fra den etablerede runtime-port-resolver. | [src](../../../core/services/config_drift.py#L21) |
+| function | `_declared_port` | `()` | Læs den DEKLAREREDE port DIREKTE fra runtime.json på disk — IKKE in-memory settings. | [src](../../../core/services/config_drift.py#L31) |
+| function | `_api_responds` | `(port)` | True hvis NOGET svarer HTTP på 127.0.0.1:port (selv 4xx/5xx = porten lytter). | [src](../../../core/services/config_drift.py#L54) |
+| function | `check_port_drift` | `()` | Probe deklareret port + runtime-alternativer. drift=True hvis runtime svarer på en | [src](../../../core/services/config_drift.py#L70) |
+| function | `observe_config_drift` | `()` | Kør drift-check → observe til Centralen + flag incident hvis drift. Kadence-kaldt. | [src](../../../core/services/config_drift.py#L114) |
+| function | `build_config_drift_surface` | `()` | MC-surface — read-only config-drift-projektion. | [src](../../../core/services/config_drift.py#L161) |
 
 ## `core/services/conflict_daemon.py`
 _Conflict daemon — detects when Jarvis' signals pull in opposite directions._

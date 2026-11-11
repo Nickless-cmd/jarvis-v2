@@ -1,9 +1,10 @@
 """Config-drift-nerve (§7) — fang når DEKLARERET config og RUNTIME-virkelighed er ude af sync.
 
 Den konkrete bug der motiverede den (Bjørn): internal_api fejlede i DAGEVIS fordi settings
-sagde port 8010 men API'en kørte på 8011/8080 — ingen cluster fangede mismatchet. Det var en
-blind plet. Denne nerve prober den DEKLAREREDE port (load_settings().port) + kendte alternativer;
-hvis API'en svarer på en ANDEN port end den deklarerede → DRIFT → observe + incident til review.
+sagde port 8010 men runtime-tjenesten kørte på 8011 — ingen cluster fangede mismatchet. Det var
+en blind plet. Denne nerve prober den DEKLAREREDE port (load_settings().port) + kendte porte for
+runtime-tjenesten; hvis runtime svarer på en ANDEN port end den deklarerede → DRIFT → observe +
+incident til review.
 
 Read-only netværks-probe (localhost, kort timeout) — kører på kadence, ALDRIG på hot path.
 Self-safe. Udvides senere til flere config↔runtime-akser (model-lanes, paths, feature-flags).
@@ -12,8 +13,19 @@ from __future__ import annotations
 
 from typing import Any
 
-# Kendte porte API'en historisk har kørt på (declared sættes forrest dynamisk).
-_ALT_PORTS = (8080, 8011, 80, 8000, 8010)
+# Kendte porte jarvis-runtime historisk har kørt på. jarvis-api's 8080/80/8000
+# er en anden tjeneste og kan derfor ikke bevise, at runtime-porten er driftet.
+_HISTORICAL_RUNTIME_PORTS = (8011, 8010)
+
+
+def _runtime_ports() -> tuple[int, ...]:
+    """Service-ejede kandidater fra den etablerede runtime-port-resolver."""
+    try:
+        from core.services.jarvisx_bridge import _runtime_port
+        configured = int(_runtime_port())
+    except Exception:
+        configured = 8011
+    return tuple(dict.fromkeys((configured, *_HISTORICAL_RUNTIME_PORTS)))
 
 
 def _declared_port() -> int:
@@ -56,8 +68,8 @@ _RETRY_PAUSE_S = 0.5
 
 
 def check_port_drift() -> dict[str, Any]:
-    """Probe deklareret port + alternativer. drift=True hvis API'en svarer, men IKKE på den
-    deklarerede port. Self-safe.
+    """Probe deklareret port + runtime-alternativer. drift=True hvis runtime svarer på en
+    anden service-ejet port end den deklarerede. Self-safe.
 
     To rettelser målt 27/10-2026 (incident 15372 var et FALSK POSITIVT):
 
@@ -81,18 +93,14 @@ def check_port_drift() -> dict[str, Any]:
             "drift": False,
         }
 
-    candidates: list[int] = []
-    for p in (*_ALT_PORTS, declared):
-        if p not in candidates:
-            candidates.append(p)
+    candidates = [p for p in _runtime_ports() if p != declared]
     reachable = [p for p in candidates if _api_responds(p)]
 
     # Genforsøg på den deklarerede port: en stall skal ikke kunne læses som en config-fejl.
-    if reachable and declared not in reachable:
-        import time
-        time.sleep(_RETRY_PAUSE_S)
-        if _api_responds(declared):
-            reachable = [declared, *reachable]
+    import time
+    time.sleep(_RETRY_PAUSE_S)
+    if _api_responds(declared):
+        reachable = [declared, *reachable]
 
     drift = bool(reachable) and declared not in reachable
     return {

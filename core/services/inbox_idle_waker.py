@@ -331,6 +331,26 @@ def _start_run(
                     "inbox_idle_waker: kunne ikke binde arbejdsrum for %s: %s",
                     str(user_id)[:28], exc,
                 )
+        def _bind_rutine_run(
+            *, visible_run_id: str, session_id: str = "", **_: Any,
+        ) -> None:
+            """Skriv bindingen paa rutine-raekken, hvis posten ER et rutine-run.
+
+            `bind_visible_run` er en no-op naar `task_id` ikke matcher et
+            koerende rutine-run, saa den kaldes uden at spoerge foerst.
+            """
+            try:
+                from core.runtime import db_routines
+
+                db_routines.bind_visible_run(
+                    str(task_id or ""), visible_run_id=str(visible_run_id),
+                    session_id=str(session_id or ""),
+                )
+            except Exception:  # noqa: BLE001 — binding maa aldrig vaelte en vaekning
+                logger.debug(
+                    "inbox_idle_waker: kunne ikke binde rutine-run", exc_info=True,
+                )
+
         try:
             return start_autonomous_run(
                 tekst,
@@ -345,6 +365,13 @@ def _start_run(
                 # Adgangsniveauet læses fra den samtale vækningen blev BOOKET
                 # i, ikke fra den silo runnet lander i (målt 9/11-2026).
                 permission_session=str(permission_session or ""),
+                # BINDINGEN (11/11-2026). Er postens `task_id` et rutine-run,
+                # skrives det visible run-id paa rutine-raekken med det samme.
+                # Afregningen kan dermed laeses som TILSTAND af reconcileren i
+                # stedet for at vaere en closure der ikke kan krydse en
+                # procesgraense — og uden den requeuede reconcileren et claim
+                # hvis run maaske netop lykkedes, saa rutinen koerte IGEN.
+                started_callback=_bind_rutine_run,
                 # BUDGETTET (11/11-2026). Kilden satte et loft da den bookede
                 # vækningen; uden at føre det videre kører runnet uden grænse.
                 # `0` betyder «intet loft» og sendes derfor kun videre når

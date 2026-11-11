@@ -98,6 +98,7 @@ def _ensure_tables(conn: sqlite3.Connection) -> None:
             lease_holder TEXT,
             lease_generation INTEGER NOT NULL DEFAULT 0 CHECK(lease_generation >= 0),
             lease_expires_at TEXT,
+            visible_run_id TEXT NOT NULL DEFAULT '',
             provider TEXT NOT NULL DEFAULT '',
             model TEXT NOT NULL DEFAULT '',
             usage_enc BLOB,
@@ -203,6 +204,17 @@ def _ensure_tables(conn: sqlite3.Connection) -> None:
     columns = {str(row[1]) for row in conn.execute("PRAGMA table_info(routine_runs)")}
     if "lease_expires_at" not in columns:
         conn.execute("ALTER TABLE routine_runs ADD COLUMN lease_expires_at TEXT")
+    # BINDINGEN TIL DET RUN DER FAKTISK UDFOERER (11/11-2026). En rutine der
+    # dispatches til en SAMTALE udfoeres ikke af routine_runner, men af et
+    # visible run i en anden traad — og afregningen skete hidtil i en
+    # proces-lokal closure. Den kan ikke baeres gennem indbakken (den kan ikke
+    # serialiseres), og uden den requeuede reconcileren et UDLOEBET claim, saa
+    # rutinen koerte IGEN. Kolonnen goer afregningen til en TILSTAND: hvem
+    # udfoerte den, og hvordan endte det.
+    if "visible_run_id" not in columns:
+        conn.execute(
+            "ALTER TABLE routine_runs ADD COLUMN visible_run_id TEXT NOT NULL DEFAULT ''"
+        )
 
 
 def _definition_snapshot(values: Mapping[str, Any]) -> dict[str, Any]:
@@ -1040,6 +1052,32 @@ def list_open_tool_effects(run_id: str) -> list[dict[str, Any]]:
             (run_id,),
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+def bind_visible_run(
+    run_id: str, *, visible_run_id: str, session_id: str = "",
+) -> bool:
+    """Bind et rutine-run til det visible run der FAKTISK udfoerer det.
+
+    En rutine der dispatches til en samtale udfoeres ikke af ``routine_runner``
+    men af et visible run i en anden traad. Uden bindingen kan reconcileren
+    kun se «leasen er udloebet» — og requeuer derfor et run der maaske netop
+    lykkedes, saa rutinen koerer en gang til.
+
+    Returnerer ``True`` hvis en KOERENDE raekke blev bundet. Er runnet ikke
+    laengere koerende (fx allerede afregnet), er svaret ``False`` og intet
+    skrives — bindingen maa ikke genaabne en afsluttet sag.
+    """
+    if not str(run_id or "").strip() or not str(visible_run_id or "").strip():
+        return False
+    with connect() as conn:
+        _ensure_tables(conn)
+        changed = conn.execute(
+            "UPDATE routine_runs SET visible_run_id=?,updated_at=? "
+            "WHERE run_id=? AND status='running'",
+            (str(visible_run_id), _now(), str(run_id)),
+        )
+        return changed.rowcount == 1
 
 
 def reconcile_expired_runs(*, now: datetime) -> list[dict[str, Any]]:

@@ -29447,7 +29447,7 @@
       ]
     },
     "routine_runs": {
-      "digest": "7c:c0:c1:82:c2:fc:af:8c:49:c4:3a:b6:0e:6e:db:6e:18:58:90:ae:82:00:54:f7:2a:61:c9:87:b3:f8:5d:87",
+      "digest": "46:f5:c6:ad:1a:a3:88:a8:dd:e4:e0:e2:52:85:33:d3:95:c0:0d:aa:da:0a:b3:df:75:ba:ac:1a:7c:7c:2d:18",
       "schema": {
         "columns": [
           {
@@ -29631,6 +29631,14 @@
             "type": "BLOB",
             "nullable": true,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "visible_run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           }

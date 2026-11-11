@@ -35,6 +35,11 @@ function vis(p: unknown, rolle: string | null = 'owner', sessionId: string | nul
 
 const kort = { approvalId: 'a1', tool: 'bash', action: 'ls -la', sessionId: 'session-a' }
 
+/** En AGENT-godkendelse (11/11-2026). Den blokerer ingen stream — den parkerer et
+ *  assignment — saa den hoerer ikke til en samtale paa samme maade som en
+ *  tool-godkendelse. `kind` er det der skiller de to. */
+const agentKort = { ...kort, kind: 'agent' as const, digest: 'd1' }
+
 describe('GodkendelsesKort', () => {
   it('tegner kortet naar der venter en godkendelse', () => {
     vis(kort)
@@ -53,6 +58,32 @@ describe('GodkendelsesKort', () => {
 
   it('viser ikke et kort uden en aktiv session', () => {
     const { container } = vis(kort, 'owner', null)
+    expect(container.innerHTML).toBe('')
+  })
+
+  // ── Agent-godkendelser: sessionen maa ikke skjule dem (11/11-2026) ────────
+  //
+  // Bjoerns klage: «jeg skal have panelet aaben naar du kalder en agent jeg skal
+  // godkende ellers ser jeg dem ikke … approvals burde kun lande over composer.»
+  //
+  // En agent startet fra en ANDEN samtale (eller fra en autonom koersel) lagde
+  // sit kort i en session han ikke stod i. Gaten skjulte det, og tilbage var
+  // kun panel-raekken. Det er praecis den fejl disse to tests værner imod.
+  it('viser en agent-godkendelse fra en ANDEN samtale', () => {
+    vis(agentKort, 'owner', 'session-b')
+    expect(screen.getByText(/bash/i)).toBeInTheDocument()
+  })
+
+  it('viser en agent-godkendelse selv uden en aktiv samtale', () => {
+    // Den hoerer ikke til en stream, saa der er ingen session at hoere til.
+    vis(agentKort, 'owner', null)
+    expect(screen.getByText(/bash/i)).toBeInTheDocument()
+  })
+
+  it('en tool-godkendelse fra en anden samtale er STADIG skjult', () => {
+    // Regression paa den anden side: tool-kortet blokerer sin egen stream, og
+    // maa ikke dukke op i en samtale det ikke hoerer til.
+    const { container } = vis({ ...kort, kind: 'tool' as const }, 'owner', 'session-b')
     expect(container.innerHTML).toBe('')
   })
 

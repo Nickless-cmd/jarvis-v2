@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10011/18497 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10014/18501 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -30,7 +30,7 @@ Generated from source. 10011/18497 functions/methods documented (54%). The list 
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
-| `core.services.visible_runs_sections` | 25 | 40 | 62% |
+| `core.services.visible_runs_sections` | 28 | 44 | 63% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
 | `core.tools` | 632 | 1220 | 51% |
@@ -2328,18 +2328,18 @@ Generated from source. 10011/18497 functions/methods documented (54%). The list 
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.status` (L57)
 - `core/services/visible_run_terminal_recovery.py` :: `resolve_agentic_exit` (L82)
 - `core/services/visible_run_trace.py` :: `get_last_visible_execution_trace` (L73)
-- `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L612)
-- `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L618)
-- `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L615)
-- `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L625)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L7301)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L7326)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7364)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7360)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7297)
-- `core/services/visible_runs.py` :: `register_visible_run` (L7259)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7381)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L7312)
+- `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L614)
+- `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L620)
+- `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L617)
+- `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L627)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L7326)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L7351)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7389)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7385)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7322)
+- `core/services/visible_runs.py` :: `register_visible_run` (L7284)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7406)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L7337)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L772)
 - `core/services/visible_runs_sections/approval_wait.py` :: `unregister_live_approval` (L77)

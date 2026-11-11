@@ -55,6 +55,111 @@ def _get_active_visible_run_state() -> dict[str, object]:
     return payload if isinstance(payload, dict) else {}
 
 
+# ── TUREN ER LUKKET (11/11-2026) ────────────────────────────────────────────
+#
+# Bjørn: «en tur skal afsluttes helt før et wakeup kan begyndes».
+#
+# Vagten kunne ikke afgøre det. Den læste aktiv-slot'en, som
+# `unregister_visible_run` rydder SYKRONT i `finally` — altså før det sidste
+# frame er nået klienten og før `mark_completed` (der kører i en daemon-tråd)
+# har fjernet posten fra journalen. Og den gav op efter 120 sekunder, så et run
+# der ventede på et godkendelses-kort blev regnet for dødt.
+#
+# Resultatet var det Bjørn så: en wakeup startede i det vindue, dens frames
+# landede i den forrige turs besked, og der stod de til appen blev genstartet.
+#
+# Nu skrives en KVITTERING pr. session i det øjeblik turen er helt lukket.
+# Vagten spørger «er der en åben tur i denne session?» — et faktum, ikke et
+# tidsvindue. Nøglen er pr. session, så to samtaler ikke forveksles.
+_TURN_CLOSED_PREFIX = "visible_runs.turn_closed."
+
+
+def _turn_closed_key(session_id: str) -> str:
+    return f"{_TURN_CLOSED_PREFIX}{session_id}"
+
+
+def mark_turn_closed(session_id: str, run_id: str = "") -> None:
+    """Kvittér at turen i denne session er HELT afsluttet.
+
+    Kaldes fra `finally` i `_stream_visible_run` — det ene sted hver kørsel
+    passerer, uanset hvordan den endte. Self-safe: en manglende kvittering må
+    aldrig vælte turen; vagten falder så tilbage til de gamle regler.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return
+    try:
+        set_runtime_state_value(
+            _turn_closed_key(sid),
+            {
+                "closed_at": datetime.now(UTC).isoformat(),
+                "run_id": str(run_id or ""),
+            },
+        )
+    except Exception:  # self-safe: en manglende kvittering må ikke vælte turen
+        pass
+
+
+def turn_is_open(session_id: str) -> bool:
+    """Kører der stadig en tur i denne session? Spørger journalen, ikke et ur.
+
+    Rækkefølgen er med vilje: den DELTE journal først (den ser begge processer),
+    derefter aktiv-slot'en. Er ingen af dem i stand til at svare, siges «åben» —
+    et wakeup der venter er billigt, et der lander oveni en tur er ikke.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return False
+    # KVITTERINGEN FØRST (11/11-2026). `finally` i `_stream_visible_run` skriver
+    # «turen er lukket» naar kørslen er passeret — ogsaa naar det sidste frame
+    # lige er sendt og `mark_completed` endnu ikke har ryddet den delte journal.
+    # Uden dette opslag svarede de to andre kilder «aaben» i det vindue, og en
+    # wakeup landede oveni den tur Bjørn lige havde faaet svar paa.
+    try:
+        from core.services.visible_runs_sections.run_control_state import (
+            turn_closed_at,
+        )
+
+        if turn_closed_at(sid):
+            return False
+    except Exception:  # self-safe: næste kilde må svare i stedet
+        pass
+    try:
+        from core.services import in_flight_runs as ifr
+
+        if ifr.levende_koersler(session_id=sid, max_alder_s=0):
+            return True
+    except Exception:  # self-safe: næste kilde må svare i stedet
+        pass
+    try:
+        from core.services import run_event_log as rel
+
+        if rel.active_run_for_session(sid):
+            return True
+    except Exception:  # self-safe: uden svar gælder «ikke åben»
+        pass
+    return False
+
+
+def turn_closed_at(session_id: str) -> str:
+    """Hvornår blev turen i denne session kvitteret HELT lukket? ``""`` = ukendt.
+
+    Læsesiden af `mark_turn_closed`. Returnerer tidsstemplet naar kvitteringen
+    findes, ellers tom streng — saa kalderen kan skelne «lukket» fra «ved det
+    ikke» og falde tilbage til de andre kilder i stedet for at gætte.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return ""
+    try:
+        payload = get_runtime_state_value(_turn_closed_key(sid), default={})
+    except Exception:  # self-safe: uden svar gælder «ved det ikke»
+        return ""
+    if not isinstance(payload, dict):
+        return ""
+    return str(payload.get("closed_at") or "")
+
+
 def relay_owns_open_run(run_id: str) -> bool:
     """Whether the detached relay still owns this run, independent of age."""
     try:

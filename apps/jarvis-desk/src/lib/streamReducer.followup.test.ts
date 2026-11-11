@@ -73,4 +73,25 @@ describe('en ekstra runde river ikke svaret ned', () => {
     expect(efter.blocks).toEqual([])
     expect(efter.activeRunId).toBeNull()
   })
+
+  it('en SELVSTÆNDIG tur (wakeup) starter en ny besked — ikke en runde', () => {
+    // Målt 11/11-2026: en wakeup lander i SAMME session som turen der lige
+    // sluttede, med et nyt run-id. Uden `origin` i framen gættede reduceren
+    // «runde», og wakeup'ens tekst blev hængende i den FORRIGE turs besked
+    // indtil appen blev genstartet. Serveren kender svaret — den sender det nu.
+    const foer = laastSvar()
+    const efter = streamReducer(foer, system('run', { run_id: 'r2', origin: 'wakeup' }))
+    expect(efter.svarLaast).toBe(false)
+    expect(efter.blocks).toEqual([])
+    expect(efter.activeRunId).toBe('r2')
+    expect(efter.status).toBe('working')
+  })
+
+  it('en runde i MIN tur bærer ingen origin og bevarer svaret', () => {
+    // Modprøven: uden origin er det brugerens egen tur, og låsen skal holde.
+    const foer = laastSvar()
+    const efter = streamReducer(foer, system('run', { run_id: 'r2', origin: '' }))
+    expect(efter.svarLaast).toBe(true)
+    expect(efter.blocks.length).toBe(foer.blocks.length)
+  })
 })

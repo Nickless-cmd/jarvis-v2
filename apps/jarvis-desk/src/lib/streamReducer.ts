@@ -634,15 +634,21 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       }
       // run-event bærer det rigtige run_id (message_start har det tomt).
       if (event.kind === 'run') {
-        const rp = event.payload as { run_id?: string }
+        const rp = event.payload as { run_id?: string; origin?: string }
         if (!rp.run_id) return state
         // En run-frame kan være den første frame ved follow/reconnect. Er id'et
         // nyt, må intet visuelt arbejde fra den forrige tur følge med over.
         if (state.activeRunId && state.activeRunId !== rp.run_id) {
+          // En SELVSTÆNDIG tur (wakeup, heartbeat, rutine) er ikke en runde i
+          // brugerens tur, selv om den lander i samme session med et nyt
+          // run-id. Uden denne skelnen blev wakeup'ens tekst hængende i den
+          // forrige turs besked indtil appen blev genstartet (målt 11/11-2026).
+          // Serveren kender svaret — `origin` er tom for brugerens egen tur.
+          const selvstaendig = Boolean(rp.origin)
           // Er svaret låst, er dette en RUNDE i samme tur — ikke en ny besked.
           // Før wipede denne frame blokke, lås og turStart, og skærmen blev
           // tom midt i et svar brugeren allerede læste.
-          if (state.svarLaast) {
+          if (state.svarLaast && !selvstaendig) {
             return {
               ...state,
               status: 'working',

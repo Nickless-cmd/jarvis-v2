@@ -178,6 +178,30 @@ def _active_turn_blocks(session_id: str) -> str:
     if session_id and _jarvis_skrev_for_nylig(session_id):
         return "jarvis_skrev_for_nylig"
 
+    # 4) ER TUREN HELT AFSLUTTET? (11/11-2026)
+    #
+    # Bjørn: «en tur skal afsluttes helt før et wakeup kan begyndes».
+    #
+    # Her lå det sidste hul. Blokken nedenfor læser aktiv-slot'en, som
+    # `unregister_visible_run` rydder SYKRONT i `finally` — før det sidste frame
+    # er nået klienten og før `mark_completed` (i en daemon-tråd) har fjernet
+    # posten fra journalen. Og den gav op efter `_ACTIVE_TURN_FRESH_S` (120 s),
+    # så et run der ventede på et godkendelses-kort blev regnet for dødt.
+    # Resultatet: wakeup'en startede i vinduet, dens frames landede i den
+    # forrige turs besked, og der stod de til appen blev genstartet.
+    #
+    # `turn_is_open` spørger den DELTE journal og run-loggen — et faktum, ikke
+    # et ur. Den er self-safe: kan den ikke læses, falder vi tilbage til de
+    # gamle regler nedenfor frem for at gætte.
+    if session_id:
+        try:
+            from core.services.visible_runs import turn_is_open
+
+            if turn_is_open(session_id):
+                return "session_har_levende_run"
+        except Exception as exc:
+            logger.debug("wakeup: kunne ikke afgoere om turen er lukket: %s", exc)
+
     try:
         from core.services.visible_runs import _get_active_visible_run_state
 

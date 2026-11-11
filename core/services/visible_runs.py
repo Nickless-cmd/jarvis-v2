@@ -475,6 +475,8 @@ from core.services.visible_runs_sections.run_control_state import (  # noqa: E40
     _mark_visible_run_cancelled,
     _set_active_visible_run,
     touch_active_visible_run,
+    mark_turn_closed,
+    turn_is_open,
     _set_visible_approval_state,
     _set_visible_run_control,
     _visible_run_approval_key,
@@ -1538,6 +1540,13 @@ async def _stream_visible_run(
                 "provider": run.provider,
                 "model": run.model,
                 "status": "started",
+                # HVEM startede turen (11/11-2026). Klienten kan ikke afgøre
+                # det af sig selv: en wakeup lander i SAMME session som turen
+                # der lige sluttede, og dens run-id er nyt — præcis som en ny
+                # runde i brugerens egen tur. Uden dette felt gættede reduceren
+                # «runde», og wakeup'ens tekst strømmede ind i den FORRIGE turs
+                # besked indtil appen blev genstartet. Tom = brugerens egen tur.
+                "origin": str(getattr(run, "origin", "") or ""),
             },
         )
         yield _sse(
@@ -6353,6 +6362,22 @@ async def _stream_visible_run(
         # as "No response content returned". Guarantee: unregister happens
         # synchronously before we yield control to post-processing.
         unregister_visible_run(run.run_id)
+
+        # TUREN ER LUKKET (11/11-2026). Bjørn: «en tur skal afsluttes helt før
+        # et wakeup kan begyndes». `unregister_visible_run` rydder aktiv-slot'en
+        # med det samme, men det sidste frame er ikke nødvendigvis nået
+        # klienten, og `mark_completed` kører i en daemon-tråd bagefter. Uden
+        # denne kvittering startede en wakeup i det vindue, og dens tekst blev
+        # hængende i den forrige turs besked.
+        #
+        # Her og ikke på fejl-stien: `finally` er det ENESTE sted hver kørsel
+        # passerer — succes, fejl, GeneratorExit og CancelledError inklusive.
+        # Maalt 11/11: laa den kun paa fejl-stien, blev den aldrig skrevet paa
+        # den vej Bjørn faktisk ser (den normale afslutning).
+        try:
+            mark_turn_closed(str(run.session_id or ""), str(run.run_id or ""))
+        except Exception:  # self-safe: en manglende kvittering maa ikke vaelte turen — vagten falder saa tilbage til journalen
+            pass
 
         # Path B (local_tool_exec): fail any tool_calls still awaiting a client result
         # so a dropped SSE / client disconnect can't leave the broker holding pending

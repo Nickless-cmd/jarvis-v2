@@ -44,6 +44,13 @@ SyslogIdentifier=jarvis-runtime
 # faa, arves ikke som ambient, og er aegte hardening.
 CapabilityBoundingSet=CAP_SETUID CAP_SETGID
 
+# Målt 10/11-2026: processen holder ~313 fd på jarvis.db alene (197 tråde, én
+# pooled SQLite-forbindelse pr. tråd) mod en blød grænse på 1024. 9/11 kl. 13:52
+# gav det EMFILE i jarvisx_auth — den kunne ikke læse runtime.json og lavede en
+# midlertidig secret, så udstedte tokens ville dø ved næste genstart. Den hårde
+# grænse var 524288 hele tiden; kun den bløde var lav.
+LimitNOFILE=65536
+
 MemoryMax=16G
 CPUQuota=800%
 

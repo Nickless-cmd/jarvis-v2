@@ -45,6 +45,11 @@ SyslogIdentifier=jarvis-api
 # faa, arves ikke som ambient, og er aegte hardening.
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 
+# Målt 10/11-2026: API-processen holder 137 fd ved ro (53 tråde, én pooled
+# SQLite-forbindelse pr. tråd) mod en blød grænse på 1024. Samme defekt som
+# runtime: unit'en satte ingen LimitNOFILE, så systemd's lave standard gjaldt.
+LimitNOFILE=65536
+
 # Resource guard
 MemoryMax=4G
 CPUQuota=200%

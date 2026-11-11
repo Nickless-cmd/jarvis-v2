@@ -528,6 +528,20 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("intentions-fejning fejlede: %s", _exc)
             try:
+                # Udløbne godkendelses-kort (11/11-2026). `sweep_expired` fandtes
+                # men blev kaldt af INGEN i produktionen — kun af tests. Målt
+                # 11/11: fire kort, 5,7–14,5 timer gamle, lå i
+                # `pending_approvals.json` og blev returneret som «ventende».
+                # Klienten ryddede dem ved fristen og fik dem igen to sekunder
+                # senere: en notifikations-løkke og 3.778 kald til
+                # /chat/approvals/pending på fire minutter.
+                from core.services.approval_runtime import sweep_expired
+                _fej = sweep_expired()
+                if _fej.get("fejet"):
+                    logger.info("udloebne godkendelses-kort fejet: %s", _fej)
+            except Exception as _exc:
+                logger.warning("godkendelses-fejning fejlede: %s", _exc)
+            try:
                 # Et stille arbejdsforløb flyttes tilbage til ventende. Kun
                 # eksplicit verificering må markere sideopgaven færdig.
                 from core.services.side_tasks import fej_faerdige as _fej_side

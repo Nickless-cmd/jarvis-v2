@@ -102,12 +102,12 @@ _Én doer ind og ud af en godkendelse — Fase 4's sidste stykke._
 | function | `persist_approval_message` | `(*, approval_id, kort, status, decided_by=…)` | Skriv en godkendelses-haendelse ind i samtalens historik. | [src](../../../core/services/approval_runtime.py#L117) |
 | function | `pending_for_session` | `(session_id)` | Det ventende godkendelses-kort for ÉN samtale — eller ``None``. | [src](../../../core/services/approval_runtime.py#L198) |
 | function | `pending_for_owner` | `(user_id)` | Det ventende kort for en EJER — uanset hvilken samtale det hører til. | [src](../../../core/services/approval_runtime.py#L231) |
-| function | `udloeb_tid` | `(kort)` | Hvornår kortet ikke længere må bruges — ISO-tid, eller ``""`` hvis ukendt. | [src](../../../core/services/approval_runtime.py#L264) |
-| function | `alle_pending_for_owner` | `(user_id)` | ALLE ventende kort for en EJER — ikke kun det nyeste. | [src](../../../core/services/approval_runtime.py#L304) |
-| function | `decide` | `(approval_id, *, approved, answered_by=…)` | Svar paa en godkendelse. Den ENE vej ind for enhver svarer. | [src](../../../core/services/approval_runtime.py#L339) |
-| function | `state` | `(approval_id)` | Hvad ved vi om dette kort? None hvis det ikke findes. | [src](../../../core/services/approval_runtime.py#L353) |
-| function | `sweep_expired` | `()` | Fjern udloebne kort. Returnerer hvad der blev fejet. | [src](../../../core/services/approval_runtime.py#L375) |
-| function | `build_approval_runtime_surface` | `()` | Mission Control-surface: hvilke godkendelses-kort venter lige nu? | [src](../../../core/services/approval_runtime.py#L404) |
+| function | `udloeb_tid` | `(kort)` | Hvornår kortet ikke længere må bruges — ISO-tid, eller ``""`` hvis ukendt. | [src](../../../core/services/approval_runtime.py#L281) |
+| function | `alle_pending_for_owner` | `(user_id)` | ALLE ventende kort for en EJER — ikke kun det nyeste. | [src](../../../core/services/approval_runtime.py#L321) |
+| function | `decide` | `(approval_id, *, approved, answered_by=…)` | Svar paa en godkendelse. Den ENE vej ind for enhver svarer. | [src](../../../core/services/approval_runtime.py#L356) |
+| function | `state` | `(approval_id)` | Hvad ved vi om dette kort? None hvis det ikke findes. | [src](../../../core/services/approval_runtime.py#L370) |
+| function | `sweep_expired` | `()` | Fjern udloebne kort. Returnerer hvad der blev fejet. | [src](../../../core/services/approval_runtime.py#L392) |
+| function | `build_approval_runtime_surface` | `()` | Mission Control-surface: hvilke godkendelses-kort venter lige nu? | [src](../../../core/services/approval_runtime.py#L421) |
 
 ## `core/services/approval_state_surface.py`
 _Samlet flade for godkendelses- og samtykke-lagene — de build_*_surface ingen rute kaldte._

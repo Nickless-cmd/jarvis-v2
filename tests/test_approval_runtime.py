@@ -127,6 +127,40 @@ def test_fejningen_kaster_aldrig(isolated_runtime, monkeypatch):
     assert AR.sweep_expired()["fejet"] == 0
 
 
+# ── et udloebet kort er IKKE et ventende kort (11/11-2026) ───────────────
+
+def test_pending_for_owner_ignorerer_UDLOEBNE_kort(isolated_runtime, run):
+    """Notifikations-loekken fra 11/11-2026.
+
+    Maalt i drift: fire kort, 5,7-14,5 timer gamle, blev returneret som
+    «ventende». Klienten fik `expires_at` i fortiden, ryddede kortet, spurgte
+    igen to sekunder senere og fik det SAMME doede kort — saa
+    `ApprovalNotifier` fyrede «Jarvis venter paa din godkendelse» igen og igen,
+    og /chat/approvals/pending fik 3.778 kald paa fire minutter.
+
+    `godkendelser_nu` laeser disken raat med vilje (et udloebet kort skal kunne
+    AFVISES med «udloebet» i resolve-stien). Men den raa laesning maa ikke
+    forveksles med «der venter nogen paa dig».
+    """
+    import core.services.visible_runs as VR
+    VR._PENDING_APPROVALS.clear()
+    _laeg("doedt", 5 * 3600, run)
+
+    assert AR.pending_for_owner("bjorn") is None
+
+
+def test_pending_for_owner_finder_det_FRISKE_kort(isolated_runtime, run):
+    """Filteret maa ikke kaste det levende kort ud med det doede."""
+    import core.services.visible_runs as VR
+    VR._PENDING_APPROVALS.clear()
+    _laeg("doedt", 5 * 3600, run)
+    _laeg("friskt", 30, run)
+
+    kort = AR.pending_for_owner("bjorn")
+    assert kort is not None
+    assert kort["arguments"]["command"] == "friskt"
+
+
 # ── og at man kan spoerge om et kort ─────────────────────────────────────
 
 def test_state_finder_kortet_paa_disken(isolated_runtime, run):

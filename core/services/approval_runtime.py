@@ -250,10 +250,27 @@ def pending_for_owner(user_id: str) -> dict[str, Any] | None:
         return None
     import core.services.visible_runs as _vr
 
+    # Udløbne kort er IKKE ventende (11/11-2026).
+    #
+    # `godkendelser_nu` læser bevidst disken råt, så et udløbet kort kan
+    # afvises med «udløbet» i stedet for at forsvinde. Men den filtrering
+    # hører til RESOLVE-stien — her betyder et udløbet kort noget andet:
+    # klienten får det, ser at fristen er passeret, rydder det, spørger igen
+    # to sekunder senere og får det SAMME døde kort. Målt 11/11-2026: fire
+    # kort, 5,7–14,5 timer gamle, gav en notifikations-løkke («Jarvis venter
+    # på din godkendelse» gentaget) og 3.778 kald til /chat/approvals/pending
+    # på fire minutter. Et kort der ikke kan besvares, må ikke meldes som
+    # ventende.
+    try:
+        from core.services.visible_runs_approvals import _er_udloebet
+    except Exception:
+        _er_udloebet = None  # kan udløbet ikke afgøres, ændres intet her
+
     kandidater = [
         {**kort, "approval_id": aid}
         for aid, kort in _vr.godkendelser_nu().items()
         if str((kort or {}).get("owner_user_id") or "") == uid
+        and not (_er_udloebet and _er_udloebet(kort))
     ]
     if not kandidater:
         return None

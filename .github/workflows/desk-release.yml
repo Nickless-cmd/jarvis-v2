@@ -79,6 +79,27 @@ jobs:
           cache: npm
           cache-dependency-path: apps/jarvis-desk/package-lock.json
 
+      # TAG MÅ MATCHE VERSIONEN (11/11-2026). Releasen jarvis-desktop-v0.6.335
+      # endte med 19 assets: otte 0.6.332-navngivne binærer laa blandet med de
+      # rigtige 0.6.335-filer, fordi to runs ramte samme tag fra commits hvor
+      # package.json sagde noget andet end tagget. Feeden (latest.yml) var
+      # korrekt hele tiden — men et menneske der henter manuelt fra
+      # releasesiden kunne faa en binær der hed noget andet end den fik.
+      # Vagten staar FOER build, saa et forkert tag koster sekunder, ikke en
+      # halv release.
+      - name: Tag skal matche package.json-version
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          version="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "jarvis-desktop-v${version}" ]; then
+            echo "::error::Tag '$tag' matcher ikke apps/jarvis-desk/package.json version '$version' (forventede 'jarvis-desktop-v${version}')."
+            echo "Et tag maa ikke saettes paa en commit hvis version ikke matcher tag-navnet — det giver assets med to forskellige versionsnumre i samme release."
+            exit 1
+          fi
+          echo "Tag og version matcher: $tag"
+
       - name: Install deps
         run: npm ci
 

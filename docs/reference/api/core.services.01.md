@@ -637,17 +637,17 @@ _Agentens model-/vaerktoejsloekke som ren logik (agent-contract-v1 C6, spec 12.1
 | function | `_answered_numbers` | `(final_text, qs)` | Hvilke af opgavens spoergsmaalsnumre der faktisk er besvaret i resultatet. | [src](../../../core/services/agent_loop_core.py#L257) |
 | function | `_unanswered_questions` | `(prompt, final_text)` | Antal nummererede spoergsmaal i opgaven uden et NUMMERERET svar i resultatet. | [src](../../../core/services/agent_loop_core.py#L288) |
 | function | `_unanswered_detail` | `(prompt, final_text)` | (antal, ord) — tallet OG hvad der faktisk blev maalt. | [src](../../../core/services/agent_loop_core.py#L303) |
-| function | `_delivery_gap` | `(expected_result, final_text, total_tool_calls, prompt=…, write_calls=…, write_capable=…)` | Grunden til at leverancen ikke kan accepteres — eller ``""`` hvis den kan. | [src](../../../core/services/agent_loop_core.py#L347) |
-| function | `_delivery_nudge` | `(gap)` | Ordre til en agent hvis leverance ikke kan accepteres. Navngiver hullet, ikke dommen. | [src](../../../core/services/agent_loop_core.py#L412) |
-| class | `ApprovalPending` | `` | Et vaerktoejskald kraever en menneskelig godkendelse: loekken PARKERER (checkpoint) i stedet for at | [src](../../../core/services/agent_loop_core.py#L421) |
-| method | `ApprovalPending.__init__` | `(self, approval_id, tool_call_id=…)` | — | [src](../../../core/services/agent_loop_core.py#L425) |
-| class | `LoopIO` | `` | — | [src](../../../core/services/agent_loop_core.py#L430) |
-| method | `LoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_loop_core.py#L431) |
-| method | `LoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_loop_core.py#L434) |
-| method | `LoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_loop_core.py#L436) |
-| method | `LoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_loop_core.py#L438) |
-| function | `run_tool_loop` | `(io, *, prompt, tools_payload, requires_tools, provider, model, scout, max_rounds, synthesis_directive, resume=…, expected_result=…)` | Koer loekken og returner raa tal + tekst. Kaster aldrig: en fejl bliver ``error_str``. | [src](../../../core/services/agent_loop_core.py#L441) |
-| function | `_outcome` | `(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0, parked, incomplete=…, unanswered=…, unanswered_ord=…, stop_reason=…)` | — | [src](../../../core/services/agent_loop_core.py#L690) |
+| function | `_delivery_gap` | `(expected_result, final_text, total_tool_calls, prompt=…, write_calls=…, write_capable=…)` | Grunden til at leverancen ikke kan accepteres — eller ``""`` hvis den kan. | [src](../../../core/services/agent_loop_core.py#L367) |
+| function | `_delivery_nudge` | `(gap)` | Ordre til en agent hvis leverance ikke kan accepteres. Navngiver hullet, ikke dommen. | [src](../../../core/services/agent_loop_core.py#L440) |
+| class | `ApprovalPending` | `` | Et vaerktoejskald kraever en menneskelig godkendelse: loekken PARKERER (checkpoint) i stedet for at | [src](../../../core/services/agent_loop_core.py#L449) |
+| method | `ApprovalPending.__init__` | `(self, approval_id, tool_call_id=…)` | — | [src](../../../core/services/agent_loop_core.py#L453) |
+| class | `LoopIO` | `` | — | [src](../../../core/services/agent_loop_core.py#L458) |
+| method | `LoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_loop_core.py#L459) |
+| method | `LoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_loop_core.py#L462) |
+| method | `LoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_loop_core.py#L464) |
+| method | `LoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_loop_core.py#L466) |
+| function | `run_tool_loop` | `(io, *, prompt, tools_payload, requires_tools, provider, model, scout, max_rounds, synthesis_directive, resume=…, expected_result=…)` | Koer loekken og returner raa tal + tekst. Kaster aldrig: en fejl bliver ``error_str``. | [src](../../../core/services/agent_loop_core.py#L469) |
+| function | `_outcome` | `(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0, parked, incomplete=…, unanswered=…, unanswered_ord=…, stop_reason=…)` | — | [src](../../../core/services/agent_loop_core.py#L718) |
 
 ## `core/services/agent_message_receipt.py`
 _En besked til et barn maa ikke fryse foraelderens tur — Fase 6._

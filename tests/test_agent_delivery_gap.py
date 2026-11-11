@@ -223,8 +223,11 @@ def test_a_researcher_that_stops_mid_reading_is_not_completed():
     out = _run(io, scout=True, expected_result="Verificér Desk-P0-påstande mod koden")
 
     assert out.get("incomplete") is True, "en researcher der stoppede midt i er ikke en leverance"
-    assert "tegn" in out["stop_reason"], out["stop_reason"]
-    assert "4 værktøjskald" in out["stop_reason"]
+    # 11/11-2026: den målte tekst slutter med "Now check reconnect logic …". Den nye
+    # slutnings-regel fyrer derfor FOER laengdetaersklen, og grunden er praecisere end
+    # "tegn": den navngiver modaliteten. Taersklen alene fangede kun 3 af de 9 maalte
+    # arbejdsintentioner, fordi de seks andre var laengere end 160 tegn.
+    assert "arbejdsintention" in out["stop_reason"], out["stop_reason"]
     # Nudgen er leverance-ordren, ikke `_ACTION_NUDGE` — en read-only agent kan ikke skrive.
     nudge = io.model_calls[5]["messages"][-1]["content"]
     assert "kan ikke accepteres" in nudge
@@ -327,3 +330,58 @@ def test_the_form_request_is_read_from_the_prompt_when_the_contract_is_short():
 
     assert out.get("incomplete") is True
     assert "filnavne" in out["stop_reason"]
+
+
+def test_a_long_answer_that_ends_with_a_plan_is_not_a_delivery():
+    """Længde er det forkerte mål: 500 tegn kan være en plan, 89 kan være et svar.
+
+    Målt 11/11-2026 i råd `council-ae9a075e13514694`: 89-tegns-svaret blev fældet af
+    længdetærsklen, mens arbejdsintentioner på 214, 233 og 500 tegn gik lige igennem —
+    de var alle længere end 160. Over 111 completed-kørsler sluttede 9 fremadrettet, og
+    alle 9 var arbejdsintentioner. Tærsklen fangede 3 af dem; modaliteten fanger alle.
+    """
+    lang_plan = (
+        "Jeg har gennemgået de tre workflows og fundet at build-jobbet kun kører "
+        "npm ci og npm run build. Der er ingen test-kørsel og ingen lint. "
+        "Release-flowet publicerer til tre platforme via electron-builder, og "
+        "artefakterne uploades til GitHub-releasen for det tag der pushes. "
+        "Version-bumpet i package.json sker manuelt, og der er ingen kontrol "
+        "af at versionen matcher tag-navnet. Det betyder at en fejl i "
+        "versionsnummeret først opdages når electron-updater ikke finder "
+        "latest.yml ude hos brugerne. Now check the PWA build step and gate."
+    )
+    assert len(lang_plan) > 400
+    io = FakeIO([
+        {"text": "", "tool_calls": [_tc(1)]},
+        _text(lang_plan),
+        _text(lang_plan),
+    ])
+    out = _run(io, expected_result=KONTRAKT)
+
+    assert out.get("incomplete") is True, "en plan i 500 tegn er ikke en leverance"
+    assert "arbejdsintention" in out["stop_reason"], out["stop_reason"]
+
+
+def test_a_long_answer_that_ends_with_a_conclusion_is_a_delivery():
+    """Den negative halvdel: en lang konklusion må IKKE rammes af slutnings-reglen.
+
+    En vagt der fanger gode svar er værre end hullet den lukker. Derfor er "næste
+    skridt"/"next step" bevidst ikke i mønstret: det kan stå i en gyldig anbefaling.
+    """
+    konklusion = (
+        "Jeg har gennemgået de tre workflows og fundet at build-jobbet kun kører "
+        "npm ci og npm run build. Der er ingen test-kørsel og ingen lint. "
+        "Release-flowet publicerer til tre platforme via electron-builder, og "
+        "artefakterne uploades til GitHub-releasen for det tag der pushes. "
+        "Version-bumpet i package.json sker manuelt, og der er ingen kontrol "
+        "af at versionen matcher tag-navnet. Konklusion: releasesporet er "
+        "dækket på build, men ikke på test — det er den ene manglende vagt. "
+        "Næste skridt er at tilføje npm test til workflowet."
+    )
+    io = FakeIO([
+        {"text": "", "tool_calls": [_tc(1)]},
+        _text(konklusion),
+    ])
+    out = _run(io, expected_result=KONTRAKT)
+
+    assert not out.get("incomplete"), out.get("stop_reason")

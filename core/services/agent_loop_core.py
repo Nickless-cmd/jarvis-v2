@@ -343,6 +343,26 @@ _REF_EVIDENCE_RE = re.compile(
 #: åbenlyst tomme, ikke dømme et kortfattet svar.
 _DELIVERY_MIN_CHARS = 160
 
+#: MAALT 11/11-2026: laengde er det FORKERTE maal for om en undersoegelse er afleveret.
+#: I raad `council-ae9a075e13514694` blev et svar paa 89 tegn faeldet af taersklen, mens
+#: arbejdsintentioner paa 214, 233 og 500 tegn gik lige igennem. Det der kendetegner dem
+#: er ikke laengden men MODALITETEN: de slutter med en plan for hvad agenten vil goere nu
+#: ("Let's check …", "Now check …"), ikke med hvad den har gjort.
+#:
+#: Maalt over 111 completed-koersler: 9 slutter fremadrettet, og alle 9 er
+#: arbejdsintentioner — nul falske positiver. Taersklen fangede 3 af dem.
+#:
+#: "naeste skridt"/"next step" er BEVIDST udeladt: det kan staa i en gyldig anbefaling
+#: ("naeste skridt er at tilfoeje e2e"), og en vagt der rammer gode svar er vaerre end
+#: hullet den lukker.
+_FORWARD_TAIL_RE = re.compile(
+    r"(?:^|[\s(\[])(?:let'?s|lad\s+os|lad\s+mig|let\s+me)\s+\w+"
+    r"|\bnow\s+check\b|\bnow\s+let'?s\b|\bnu\s+tjekker\b",
+    re.IGNORECASE)
+#: Hvor meget af slutningen der undersoeges. En intention staar til sidst; at soege i
+#: hele teksten ville ramme et svar der naevner en plan midt i og konkluderer bagefter.
+_FORWARD_TAIL_CHARS = 220
+
 
 def _delivery_gap(expected_result: str, final_text: str, total_tool_calls: int,
                   prompt: str = "", write_calls: int = 0,
@@ -396,6 +416,14 @@ def _delivery_gap(expected_result: str, final_text: str, total_tool_calls: int,
     # Det er praecis den falske positiv taersklen selv advarer om.
     if len(_question_numbers(prompt)) >= 2 and not _unanswered_questions(prompt, text):
         return ""
+    # MAALT 11/11-2026, raad `council-ae9a075e13514694`: et svar paa 89 tegn blev faeldet af
+    # laengdetaersklen, mens arbejdsintentioner paa 214, 233 og 500 tegn slap igennem — de
+    # var alle laengere end taersklen. Det afgoerende er ikke laengden men om svaret slutter
+    # med en LEVERANCE eller med en PLAN. Se `_FORWARD_TAIL_RE`.
+    tail = text[-_FORWARD_TAIL_CHARS:]
+    if _FORWARD_TAIL_RE.search(tail):
+        return ("svaret slutter med en arbejdsintention i stedet for en leverance "
+                f"(«…{tail[-70:].strip()}»)")
     if len(text) < _DELIVERY_MIN_CHARS:
         return (f"svaret er {len(text)} tegn efter {total_tool_calls} værktøjskald — "
                 "undersøgelsen blev ikke afleveret")

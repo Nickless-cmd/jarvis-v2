@@ -65,6 +65,18 @@ def test_de_hyppigste_vaerktoejer_har_et_dansk_navn(navn):
     assert "_" not in etiket
 
 
+@pytest.mark.parametrize("navn,forventet", [
+    ("Task", "Sender en agent efter"),
+    ("wait_agents", "Venter på agenter"),
+    ("list_agents", "Lister agenter"),
+    ("followup_agent", "Sender opfølgning til agent"),
+    ("interrupt_agent", "Stopper agent"),
+    ("close_agent", "Lukker agent"),
+])
+def test_agentvaerktoejer_har_danske_etiketter(navn, forventet):
+    assert _tool_label(navn) == forventet
+
+
 @pytest.mark.parametrize("operator,almindelig", [
     ("operator_bash", "bash"),
     ("operator_read_file", "read_file"),

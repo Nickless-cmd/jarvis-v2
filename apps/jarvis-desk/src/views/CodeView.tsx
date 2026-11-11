@@ -1363,14 +1363,14 @@ export function CodeView({
           ))}
           {visLevendeTur && (
             <MessageRow presentation="code" role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming={stream.status === 'working'} finalAnswerStarted={stream.finalAnswerStarted || stream.svarLaast} arbejdeEfterSvar={stream.arbejdeEfterSvar} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} config={config}
-              runId={stream.activeRunId} onAnswerPaced={markerSvarPacet}
+              runId={stream.activeRunId} workingStep={stream.workingStep} onAnswerPaced={markerSvarPacet}
               elapsedMs={stream.elapsedMs} tokens={stream.usage.output} />
           )}
           {/* Cross-device: live-stream fra et run startet på en anden enhed (mobil).
               Kun når VI ikke selv streamer, så ingen dobbelt-render. */}
           {stream.status !== 'working' && bgActive && followState.status === 'working' && (
             <MessageRow presentation="code" role="assistant" blocks={liveBlokke(followState)} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted || followState.svarLaast} arbejdeEfterSvar={followState.arbejdeEfterSvar} rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} config={config}
-              runId={followState.activeRunId}
+              runId={followState.activeRunId} workingStep={followState.workingStep}
               elapsedMs={bgElapsedMs} tokens={followState.usage.output} />
           )}
           {/* Scroll-ankeret: det ENESTE browseren må forankre til (overflow-anchor,

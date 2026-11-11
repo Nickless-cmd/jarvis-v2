@@ -29,6 +29,7 @@ import type { ApiConfig } from '../../lib/api'
 import { opdel, opdelArbejdsrunder, turFortalt, type ArbejdsElement } from '../../lib/raekkeModel'
 import { lookupTool } from '../../lib/toolRegistry'
 import { describeTool, subjectFromInput, summarizeRound, summerDiff } from '../../lib/toolRound'
+import { isMeaningfulStatus } from '../../lib/chatFlowModel'
 import { diffFraResultat, diffStat } from '../../lib/diffStat'
 import { postFor, kropFor } from './raekkeKroppe'
 import { erUnderagent } from '../../lib/agentKald'
@@ -306,8 +307,9 @@ const Arbejdsdetaljer = memo(function Arbejdsdetaljer({ elementer, aaben, stream
   && sammeArbejdsElementer(a.elementer, b.elementer))
 
 function ArbejdsrundeImpl({
-  elementer, streaming, sidste, config, etiket, beskedId, turSekunder, skjult = false,
+  elementer, streaming, sidste, config, etiket, beskedId, turSekunder, skjult = false, workingStep,
 }: {
+  workingStep?: string | null
   elementer: ArbejdsElement[]
   streaming: boolean
   sidste: boolean
@@ -347,8 +349,14 @@ function ArbejdsrundeImpl({
   // et «Færdig · »-præfiks foran den mekaniske tekst, sat ind for at skelne en
   // afsluttet runde fra en kørende. Ordet var et fremmedelement i en linje der
   // ellers er ren handling — og skelnen findes allerede i shimmeren.
+  //
+  // Levende kilde (side-2974014f15): serverens `working_step`, når den er
+  // meningsfuld — samme vagt som chat mode, så `operator_bash` ikke blinker
+  // frem. `workingStep` er global (nyeste), men kun den aktive runde får den
+  // (`sidste`), og kun mens dens seneste kald kører.
+  const levendeStep = koerer && sidste ? (workingStep ?? '').replace(/\s+/g, ' ').trim() : ''
   const beskrivelse = koerer && seneste
-    ? describeTool(seneste.name, seneste.input, true, seneste.partialJson, seneste.result, seneste.status)
+    ? (levendeStep && isMeaningfulStatus(levendeStep) ? levendeStep : describeTool(seneste.name, seneste.input, true, seneste.partialJson, seneste.result, seneste.status))
     : etiket || mekanisk
   const Ikon = arbejdsIkon(vaerktoejer)
   return (
@@ -382,7 +390,7 @@ function ArbejdsrundeImpl({
 const Arbejdsrunde = memo(ArbejdsrundeImpl, (a, b) =>
   a.streaming === b.streaming && a.sidste === b.sidste
   && a.turSekunder === b.turSekunder
-  && a.skjult === b.skjult
+  && a.skjult === b.skjult && a.workingStep === b.workingStep
   && a.config === b.config && a.beskedId === b.beskedId && a.etiket === b.etiket
   && sammeArbejdsElementer(a.elementer, b.elementer))
 
@@ -397,8 +405,10 @@ function etiketFor(elementer: ArbejdsElement[], etiketter: Record<string, string
 function RaekkeTranskriptImpl({
   blocks, streaming, finalAnswerStarted = false, arbejdeEfterSvar = false, beskedId, runId, config, rundeEtiketter,
   elapsedMs = 0, tokens = 0, varighedSekunder = null,
-  skjulAktivRunde = false,
+  skjulAktivRunde = false, workingStep,
 }: {
+  /** Serverens nyeste `working_step` — levende kilde til den aktive rundelinje. */
+  workingStep?: string | null
   blocks: ContentBlock[]
   streaming: boolean
   finalAnswerStarted?: boolean
@@ -507,7 +517,8 @@ function RaekkeTranskriptImpl({
                 <Arbejdsrunde key="aktiv-runde" elementer={senesteRunde.elementer}
                   streaming sidste config={config}
                   etiket={etiketFor(senesteRunde.elementer, etiketter)}
-                  beskedId={beskedId} turSekunder={turSekunder} skjult={skjulAktivRunde} />
+                  beskedId={beskedId} turSekunder={turSekunder} skjult={skjulAktivRunde}
+                  workingStep={workingStep} />
               ) : null}
             </div>
           )}

@@ -43,12 +43,27 @@ const VERBS: Record<string, [string, string]> = {
   central_query: ['Spørger centralen om', 'Spurgte centralen om'],
   channel: ['Skriver i', 'Skrev i'],
   scout_agent: ['Sender en spejder efter', 'Sendte en spejder efter'],
+  Task: ['Sender en agent efter', 'Sendte en agent efter'],
+  wait_agents: ['Venter på agenter', 'Ventede på agenter'],
+  list_agents: ['Lister agenter', 'Listede agenter'],
+  followup_agent: ['Sender opfølgning til agent', 'Sendte opfølgning til agent'],
+  interrupt_agent: ['Stopper agent', 'Stoppede agent'],
+  close_agent: ['Lukker agent', 'Lukkede agent'],
   skill_invoke: ['Bruger', 'Brugte'],
   analyze_image: ['Analyserer', 'Analyserede'],
   schedule_self_wakeup: ['Sætter en påmindelse om', 'Satte en påmindelse om'],
   phone_adb_shell: ['Styrer telefonen', 'Styrede telefonen'],
   home_assistant: ['Styrer', 'Styrede'],
   load_more_tools: ['Henter flere værktøjer', 'Hentede flere værktøjer']
+}
+
+const NO_SUBJECT: Record<string, [string, string]> = {
+  Task: ['Sender en agent efter', 'Sendte en agent efter'],
+  wait_agents: ['Venter på agenter', 'Ventede på agenter'],
+  list_agents: ['Lister agenter', 'Listede agenter'],
+  followup_agent: ['Sender opfølgning til agent', 'Sendte opfølgning til agent'],
+  interrupt_agent: ['Stopper agent', 'Stoppede agent'],
+  close_agent: ['Lukker agent', 'Lukkede agent'],
 }
 
 /** `operator_read_file` og `read_file` er samme handling for læseren. */
@@ -181,6 +196,8 @@ export function describeTool(name: string, args: string, running: boolean): stri
   const verb = running ? now : past
   const subject = subjectFromArgs(args)
   if (subject) return `${verb} ${subject}${running ? '…' : ''}`
+  const fallback = NO_SUBJECT[tool]?.[running ? 0 : 1]
+  if (fallback) return `${fallback}${running ? '…' : ''}`
   return `${verb} ${tool}${running ? '…' : ''}`
 }
 
@@ -189,5 +206,5 @@ export function describeToolResult(content: string): string {
   const m = /\[([a-z_0-9]+)\]\s*:/i.exec(content || '')
   const tool = grundnavn(m?.[1] ?? '')
   const [, past] = VERBS[tool] ?? ['Kører', 'Kørte']
-  return tool ? `${past} ${tool}` : 'Brugte et værktøj'
+  return tool ? (NO_SUBJECT[tool]?.[1] ?? `${past} ${tool}`) : 'Brugte et værktøj'
 }

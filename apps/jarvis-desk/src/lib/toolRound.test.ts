@@ -46,6 +46,17 @@ describe('linjen siger hvad der laves, ikke hvilket værktøj', () => {
       .toBe('Søgte i hukommelsen efter projekter')
   })
 
+  it.each([
+    ['wait_agents', 'Venter på agenter…', 'Ventede på agenter'],
+    ['list_agents', 'Lister agenter…', 'Listede agenter'],
+    ['followup_agent', 'Sender opfølgning til agent…', 'Sendte opfølgning til agent'],
+    ['interrupt_agent', 'Stopper agent…', 'Stoppede agent'],
+    ['close_agent', 'Lukker agent…', 'Lukkede agent'],
+  ])('viser agentværktøjet %s på dansk', (navn, kører, færdig) => {
+    expect(describeTool(navn, {}, true)).toBe(kører)
+    expect(describeTool(navn, {}, false)).toBe(færdig)
+  })
+
   it('operator-varianten er samme handling for læseren', () => {
     // `operator_read_file` og `read_file` gør det samme; kun navnet er andet.
     expect(describeTool('operator_read_file', { path: 'x.ts' }, false)).toBe('Læste x.ts')

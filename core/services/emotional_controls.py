@@ -216,9 +216,13 @@ def apply_emotional_controls(
         return "verify_first", "low_confidence_guard"
 
     if snap.fatigue > _FATIGUE_SIMPLIFY:
-        # Positive override: accomplishment can lift this gate
+        # Positive override: accomplishment can lift this gate — men KUN for
+        # lav risiko. A7-analogt med joy-gaten må en stemning ikke fjerne den
+        # eneste vagt en farlig handling har: kaldsstedet blokerer kun
+        # simplify_plan ved high risk, så et high-risk løft ville være den
+        # eneste vej gennem fatigue-vagten.
         accomplishment_intensity = active_concepts.get("accomplishment", 0.0)
-        if accomplishment_intensity >= _ACCOMPLISHMENT_LIFT_THRESHOLD:
+        if accomplishment_intensity >= _ACCOMPLISHMENT_LIFT_THRESHOLD and risk == "low":
             return action, "accomplishment_lifts_fatigue"
         return "simplify_plan", "fatigue_threshold"
 

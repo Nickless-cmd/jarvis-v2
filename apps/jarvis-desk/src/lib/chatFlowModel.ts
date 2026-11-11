@@ -46,7 +46,7 @@ function normalizeLine(value: string | null | undefined): string {
 }
 
 /** Mechanical tool output belongs in the disclosure, never in Chat's status rail. */
-function isMeaningfulStatus(value: string): boolean {
+export function isMeaningfulStatus(value: string): boolean {
   if (!value) return false
   if (/^(?:kalder|kører kommando|koerer kommando|bash\b|edit_file\b)/i.test(value)) return false
   // working_step kommer før den asynkrone menneskelige rundeetiket. Interne

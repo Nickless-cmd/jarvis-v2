@@ -121,7 +121,14 @@ def test_visible_run_loop_claims_results_every_round_before_the_request():
     assert ny_runde[0] < claim[0].lineno < min(halen)
     assert ast.unparse(claim[0].args[0]) == "_tur_hale"            # det er turens hale der haeftes paa
     kw = {k.arg: ast.unparse(k.value) for k in claim[0].keywords}
-    assert kw == {"owner_user_id": "run.user_id", "session_id": "run.session_id or ''"}
+    # 11/11-2026: `runde` kom til, saa blokken kan baere sit eget rundestempel.
+    # Den er en DEL af kontrakten nu — fjernes den, laeser et kvitteret resultat
+    # som friskt i hver efterfoelgende runde (se test_et_kvitteret_resultat_...).
+    assert kw == {
+        "owner_user_id": "run.user_id",
+        "session_id": "run.session_id or ''",
+        "runde": "_agentic_round + 1",
+    }
 
 
 # --- F4c: ventende approvals i parentens inbox ---------------------------------------------------------------
@@ -224,5 +231,50 @@ def test_add_to_turn_tail_reuses_one_source_block_across_rounds(monkeypatch):
 def test_the_visible_run_uses_the_inbox_helper_and_no_loop_gate_is_persistent():
     import pathlib
     src = pathlib.Path("core/services/visible_runs.py").read_text(encoding="utf-8")
-    assert "add_to_turn_tail as _ar_til_hale" in src and "_ar_til_hale(_tur_hale," in src
+    assert "add_to_turn_tail as _ar_til_hale" in src and "_ar_til_hale(" in src
+    # 11/11-2026: kaldet baerer nu rundetallet, saa blokken kan stemple sin
+    # egen alder. Vagten kraever det, ellers kan parameteren forsvinde tavst.
+    assert "runde=_agentic_round + 1" in src
     assert "_tur_hale.tilfoej_vedvarende(" not in src          # upstream-reglen (test_run_trailing) holder
+
+
+def test_et_kvitteret_resultat_baerer_sit_eget_rundestempel(monkeypatch):
+    """11/11-2026: blokken er vedvarende, men skal ikke laese som NY i runde 3+.
+
+    MAALT i drift: et claimet resultat blev gen-analyseret som friskt tre gange i
+    traek i ét run — én spildt runde hver gang. Levetiden er uaendret (cachen
+    kraever det); det er FORMULERINGEN der nu baerer sin egen alder.
+    """
+    from core.services import agent_result_inbox as inbox
+    from core.services.run_trailing import RundeHale
+
+    # Vi patcher CLAIMET paa DB-niveau, ikke `_claim_for_model_step_parts`:
+    # rundestemplet saettes i `_render`, og en patch af den ydre funktion ville
+    # skjule praecis det vi maaler.
+    krav = iter([True, False, False, False])
+    monkeypatch.setattr(
+        "core.runtime.db_agent_contract.claim_pending_results",
+        lambda **_: ([{"payload_json": '{"agent_id":"a1","assignment_id":"as1","status":"completed","summary":"resultat et"}',
+                       "message_kind": "terminal"}] if next(krav) else []),
+    )
+    monkeypatch.setattr("core.runtime.db_agent_approvals.claim_announcements", lambda **_: [])
+    monkeypatch.setattr(
+        "core.services.prompt_sections.agent_orchestration.orchestrator_state",
+        lambda **_: "1 aktiv",
+    )
+    monkeypatch.setattr("core.runtime.db_inbox.claim_high_for_run", lambda **_: [])
+
+    hale = RundeHale()
+    hale.ny_runde()
+    assert inbox.add_to_turn_tail(hale, owner_user_id="bjorn", session_id="s1", runde=1) is True
+    tekst_runde_1 = hale.som_liste()[0]["content"]
+    assert "LEVERET I RUNDE" not in tekst_runde_1
+
+    # Runde 3: blokken ligger stadig (vedvarende), men siger nu at den er gammel.
+    hale.ny_runde()
+    inbox.add_to_turn_tail(hale, owner_user_id="bjorn", session_id="s1", runde=3)
+    tekst_runde_3 = hale.som_liste()[0]["content"]
+    assert "LEVERET I RUNDE 2" in tekst_runde_3
+    assert "Gen-analyser dem IKKE" in tekst_runde_3
+    # Ingen informationstab: resumeet staar stadig i blokken.
+    assert "resultat et" in tekst_runde_3

@@ -87,9 +87,14 @@ _TOOL_LABELS: dict[str, str] = {
     "send_discord_dm": "Sender Discord DM",
     "discord_channel": "Tilgår Discord-kanal",
     # Råd og agenter
+    "Task": "Sender en agent efter",
     "spawn_agent_task": "Spawner agent",
     "send_message_to_agent": "Sender besked til agent",
+    "wait_agents": "Venter på agenter",
     "list_agents": "Lister agenter",
+    "followup_agent": "Sender opfølgning til agent",
+    "interrupt_agent": "Stopper agent",
+    "close_agent": "Lukker agent",
     "relay_to_agent": "Videresender til agent",
     "cancel_agent": "Annullerer agent",
     # Smart home

@@ -124,8 +124,8 @@ _Emotional Controls — humør der GATER handlinger, ikke bare rapporteres._
 | function | `_recent_tool_errors_last_10min` | `()` | Count distinct failing tools in 10 minutes as a fatigue proxy. | [src](../../../core/services/emotional_controls.py#L92) |
 | function | `read_emotional_snapshot` | `()` | Compose current emotional state from available signals. | [src](../../../core/services/emotional_controls.py#L123) |
 | function | `apply_emotional_controls` | `(*, kernel_action=…, snapshot=…, risk=…)` | Transform a kernel action based on current emotional state. | [src](../../../core/services/emotional_controls.py#L166) |
-| function | `build_emotional_controls_surface` | `()` | MC surface — current emotional state + what would be gated. | [src](../../../core/services/emotional_controls.py#L234) |
-| function | `format_gate_message` | `(action, reason, *, tool_name=…)` | Generate a user-facing Danish message explaining the gate. | [src](../../../core/services/emotional_controls.py#L274) |
+| function | `build_emotional_controls_surface` | `()` | MC surface — current emotional state + what would be gated. | [src](../../../core/services/emotional_controls.py#L238) |
+| function | `format_gate_message` | `(action, reason, *, tool_name=…)` | Generate a user-facing Danish message explaining the gate. | [src](../../../core/services/emotional_controls.py#L278) |
 
 ## `core/services/emotional_memory_engine.py`
 _Emotional memory engine._

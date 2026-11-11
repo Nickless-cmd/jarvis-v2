@@ -27,7 +27,8 @@ import type { ActiveChatFlowMode } from '../../lib/chatFlowApi'
 import { usePacingWorkLine } from '../../lib/usePacingWorkLine'
 
 function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarted, arbejdeEfterSvar, beskedId, config,
-  rundeEtiketter, tankeResumeer, raekker, elapsedMs, tokens, varighedSekunder, runId, onPaced }: {
+  rundeEtiketter, tankeResumeer, raekker, elapsedMs, tokens, varighedSekunder, runId, onPaced, workingStep }: {
+  workingStep?: string | null
   blocks: ContentBlock[]
   density: 'compact' | 'full'
   streaming: boolean
@@ -103,7 +104,7 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
         arbejdeEfterSvar={arbejdeEfterSvar}
         beskedId={beskedId} runId={runId} config={config} rundeEtiketter={rundeEtiketter}
         elapsedMs={elapsedMs} tokens={tokens} varighedSekunder={varighedSekunder}
-        skjulAktivRunde={skjulAktivRunde} />
+        skjulAktivRunde={skjulAktivRunde} workingStep={workingStep} />
     : <BlocksRenderer blocks={paced} density={density} streaming={streaming}
         rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
         beskedId={beskedId} config={config} />
@@ -288,7 +289,7 @@ function MessageRowImpl({
               : <CodeAssistantTranscript blocks={blocks} density={density} streaming={streaming} onPaced={onAnswerPaced}
                   finalAnswerStarted={finalAnswerStarted} arbejdeEfterSvar={arbejdeEfterSvar} beskedId={beskedId} config={config}
                   rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} raekker={raekker}
-                  runId={runId}
+                  runId={runId} workingStep={workingStep}
                   elapsedMs={elapsedMs} tokens={tokens} varighedSekunder={varighedSekunder} />}
             {/* 25/10-2026 (Bjørn): «Åbn visible_runs.py» stod under hvert svar i
                 chat mode. Detektionen er rigtig — artifacts.ts regel 3 bygger

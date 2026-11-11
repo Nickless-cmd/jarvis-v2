@@ -51,6 +51,11 @@ const VERBS: Record<string, [string, string]> = {
   central_query: ['Spørger centralen om', 'Spurgte centralen om'],
   discord_channel: ['Skriver i', 'Skrev i'],
   Task: ['Sender en agent efter', 'Sendte en agent efter'],
+  wait_agents: ['Venter på agenter', 'Ventede på agenter'],
+  list_agents: ['Lister agenter', 'Listede agenter'],
+  followup_agent: ['Sender opfølgning til agent', 'Sendte opfølgning til agent'],
+  interrupt_agent: ['Stopper agent', 'Stoppede agent'],
+  close_agent: ['Lukker agent', 'Lukkede agent'],
   skill_invoke: ['Bruger', 'Brugte'],
   analyze_image: ['Analyserer', 'Analyserede'],
   schedule_self_wakeup: ['Sætter en påmindelse om', 'Satte en påmindelse om'],
@@ -250,6 +255,11 @@ const NO_SUBJECT: Record<string, [string, string]> = {
   notify_user: ['Sender en notifikation', 'Sendte en notifikation'],
   schedule_task: ['Planlægger en opgave', 'Planlagde en opgave'],
   open_ui_panel: ['Åbner et panel', 'Åbnede et panel'],
+  wait_agents: ['Venter på agenter', 'Ventede på agenter'],
+  list_agents: ['Lister agenter', 'Listede agenter'],
+  followup_agent: ['Sender opfølgning til agent', 'Sendte opfølgning til agent'],
+  interrupt_agent: ['Stopper agent', 'Stoppede agent'],
+  close_agent: ['Lukker agent', 'Lukkede agent'],
 }
 
 export function describeTool(name: string, input: Record<string, unknown> | undefined, running: boolean, partialJson?: string, result?: string, status?: ToolUse['status']): string {

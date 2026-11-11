@@ -2780,7 +2780,12 @@ async def _stream_visible_run(
                     # runs ejer + session claimes foer requesten. Vedvarende, saa
                     # historikken ikke skifter mellem runder (se run_trailing).
                     from core.services.agent_result_inbox import add_to_turn_tail as _ar_til_hale
-                    _ar_til_hale(_tur_hale, owner_user_id=run.user_id, session_id=run.session_id or "")
+                    _ar_til_hale(
+                        _tur_hale,
+                        owner_user_id=run.user_id,
+                        session_id=run.session_id or "",
+                        runde=_agentic_round + 1,
+                    )
                     try:
                         if _agentic_round >= 1 and _vf.agentic_lean_prompt_enabled():
                             _lean_msgs, _lean_metrics = _vf.build_lean_base_messages(

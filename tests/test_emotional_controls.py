@@ -55,3 +55,53 @@ def test_joy_cannot_lift_low_confidence_for_irreversible_action(monkeypatch):
     )
 
     assert (action, reason) == ("verify_first", "low_confidence_guard")
+
+
+def test_accomplishment_cannot_lift_fatigue_for_high_risk_action(monkeypatch):
+    """Removing the high-risk check must reopen the unsafe execute path."""
+    from core.services import emotional_controls as ec
+
+    monkeypatch.setattr(
+        "core.services.emotion_concepts.get_active_emotion_concepts",
+        lambda: [{"concept": "accomplishment", "intensity": 0.5}],
+    )
+    snapshot = ec.EmotionalSnapshot(
+        frustration=0.0,
+        confidence=0.5,
+        fatigue=0.8,
+        primary_mood="content",
+        intensity=0.5,
+    )
+
+    action, reason = ec.apply_emotional_controls(
+        kernel_action="execute",
+        snapshot=snapshot,
+        risk="high",
+    )
+
+    assert (action, reason) == ("simplify_plan", "fatigue_threshold")
+
+
+def test_accomplishment_still_lifts_fatigue_for_low_risk_action(monkeypatch):
+    """The risk guard must narrow the positive gate, not remove it."""
+    from core.services import emotional_controls as ec
+
+    monkeypatch.setattr(
+        "core.services.emotion_concepts.get_active_emotion_concepts",
+        lambda: [{"concept": "accomplishment", "intensity": 0.5}],
+    )
+    snapshot = ec.EmotionalSnapshot(
+        frustration=0.0,
+        confidence=0.5,
+        fatigue=0.8,
+        primary_mood="content",
+        intensity=0.5,
+    )
+
+    action, reason = ec.apply_emotional_controls(
+        kernel_action="execute",
+        snapshot=snapshot,
+        risk="low",
+    )
+
+    assert (action, reason) == ("execute", "accomplishment_lifts_fatigue")

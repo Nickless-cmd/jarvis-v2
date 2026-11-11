@@ -205,8 +205,6 @@ TILLADT: dict[str, str] = {
     "core/services/routine_trigger_adapters.py": "gaeld",
     "core/services/routine_dispatch.py": "gaeld",
     "core/services/autonomous_side_task_dispatcher.py": "gaeld",
-    "core/services/wakeup_dispatcher.py": "gaeld",
-    "core/services/agent_message_receipt.py": "gaeld",
     "core/services/session_spawn.py": "gaeld",
     "core/services/visible_runs_memory.py": "gaeld",
     "apps/api/jarvis_api/routes/jarvisx_processes.py": "gaeld",

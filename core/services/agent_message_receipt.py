@@ -137,10 +137,32 @@ def _book_completion_wakeup(agent_id: str, resultat: dict[str, Any],
                 logger.info("completion leveret i aktiv tur for %s (%s)",
                             agent_id, svar.get("status"))
         else:
-            from core.services.autonomous_stream_run import start_autonomous_stream_run
-            start_autonomous_stream_run(besked, session_id=session,
-                                        origin="agent-completion")
-            logger.info("completion-run startet for %s", agent_id)
+            # VÆKNINGEN GÅR GENNEM GATEWAYEN (11/11-2026, Bjørn: «der skal kun
+            # være en vækker»). Kilden siger «barnet er færdigt»; indbakken
+            # vurderer om der kan vækkes nu. Før startede vi runnet selv her —
+            # det var ét af 11 steder med hver sin beslutning om det samme.
+            #
+            # `queued` og `deduped` er BEGGE afleveringer: dedup betyder at en
+            # anden kilde allerede har bedt om samme sag, og posten venter.
+            from core.services.wake_gateway import anmod_om_vaekning
+
+            kv = anmod_om_vaekning(
+                kilde="agent_completion",
+                sag=f"agent:{agent_id}",
+                tekst=besked,
+                session_id=session,
+                importance=("high" if str(resultat.get("status") or "").lower()
+                            in {"ok", "completed", "success"} else "critical"),
+            )
+            if str(kv.get("status") or "") not in {"queued", "deduped"}:
+                # En afvisning er en ægte fejl, ikke en stille no-op. Vi rejser
+                # den så nødvejen nedenfor tager over — barnets svar må ikke
+                # blive tavst fordi indbakken ikke kunne modtage det.
+                raise RuntimeError(
+                    f"wake_gateway afviste: {kv.get('grund') or 'ukendt'}"
+                )
+            logger.info("completion afleveret til indbakken for %s (%s)",
+                        agent_id, kv.get("status"))
     except Exception:
         logger.warning("kunne ikke levere completion for %s", agent_id, exc_info=True)
         # Sidste udvej: en vækning er bedre end tavshed — ogsaa selv om den

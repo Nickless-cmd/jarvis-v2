@@ -1,4 +1,10 @@
-"""Unit tests for wakeup_dispatcher."""
+"""Unit tests for wakeup_dispatcher.
+
+KONTRAKT (11/11-2026): dispatcheren starter ikke selv et run. Den afleverer
+signalet til `wake_gateway.anmod_om_vaekning`; `dispatched=True` betyder
+«afleveret til indbakken», og `inbox_idle_waker` vurderer og vækker. Aktiv-
+guarden (`_active_turn_blocks`) bor derfor i wakeren, ikke her.
+"""
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -7,6 +13,9 @@ from unittest.mock import patch
 import pytest
 
 from core.services.wakeup_dispatcher import dispatch_due_wakeups
+
+GATEWAY = "core.services.wake_gateway.anmod_om_vaekning"
+_KOEET = {"status": "queued", "grund": ""}
 
 
 @pytest.fixture(autouse=True)
@@ -53,7 +62,7 @@ def test_dispatch_fires_webchat_and_marks_dispatched():
          patch("core.services.self_wakeup._save") as fake_save, \
          patch("core.services.outbound_nudges.push_nudge") as fake_push, \
          patch("core.services.heartbeat_phases.tick_with_phases") as fake_tick, \
-         patch("core.services.autonomous_stream_run.start_autonomous_stream_run"):
+         patch(GATEWAY, return_value=_KOEET):
         result = dispatch_due_wakeups()
     assert result["dispatched"] == 1
     assert "w1" in result["dispatched_ids"]
@@ -64,7 +73,7 @@ def test_dispatch_fires_webchat_and_marks_dispatched():
     fake_save.assert_called()
 
 
-def test_dispatch_starts_wakeup_with_server_stream_relay():
+def test_dispatch_hands_wakeup_to_gateway_with_origin_session():
     state = [{
         "wakeup_id": "w1",
         "prompt": "p",
@@ -79,21 +88,19 @@ def test_dispatch_starts_wakeup_with_server_stream_relay():
          patch("core.services.self_wakeup._save"), \
          patch("core.services.outbound_nudges.push_nudge"), \
          patch("core.services.heartbeat_phases.tick_with_phases"), \
-         patch("core.services.autonomous_stream_run.start_autonomous_stream_run") as fake_start:
+         patch(GATEWAY, return_value=_KOEET) as fake_gw:
         result = dispatch_due_wakeups()
 
     assert result["dispatched"] == 1
-    _kwargs = dict(fake_start.call_args.kwargs)
+    fake_gw.assert_called_once()
+    _kwargs = dict(fake_gw.call_args.kwargs)
     # PERMISSIONS-KILDEN (9/11-2026): vækningen skal bære sin oprindelses-
     # samtale, saa niveauet læses der og ikke fra `auto-*`-siloen.
-    assert _kwargs.pop("permission_session", ""), (
-        "vækningen skal sende sin oprindelses-samtale som permissions-kilde"
-    )
-    assert _kwargs == {
-        "session_id": "chat-origin",
-        "origin": "wakeup",
-        "task_id": "",
-    }
+    assert _kwargs["permission_session"] == "chat-origin"
+    assert _kwargs["session_id"] == "chat-origin"
+    assert _kwargs["kilde"] == "wakeup_dispatcher"
+    assert _kwargs["sag"] == "wakeup:w1"
+    assert _kwargs["task_id"] == ""
 
 
 def test_dispatch_skips_already_dispatched():
@@ -121,13 +128,13 @@ def test_dispatch_skips_already_skipped_without_repeating_side_effects():
     with patch("core.services.self_wakeup.due_wakeups", return_value=state), \
          patch("core.services.outbound_nudges.push_nudge") as fake_push, \
          patch("core.services.heartbeat_phases.tick_with_phases") as fake_tick, \
-         patch("core.services.autonomous_stream_run.start_autonomous_stream_run") as fake_start:
+         patch(GATEWAY) as fake_gw:
         result = dispatch_due_wakeups()
 
     assert result["dispatched"] == 0
     fake_push.assert_not_called()
     fake_tick.assert_not_called()
-    fake_start.assert_not_called()
+    fake_gw.assert_not_called()
 
 
 def test_dispatch_continues_if_webchat_fails():
@@ -139,7 +146,7 @@ def test_dispatch_continues_if_webchat_fails():
          patch("core.services.notification_bridge.send_session_notification",
                side_effect=Exception("webchat down")), \
          patch("core.services.heartbeat_phases.tick_with_phases"), \
-         patch("core.services.autonomous_stream_run.start_autonomous_stream_run"):
+         patch(GATEWAY, return_value=_KOEET):
         result = dispatch_due_wakeups()
     # Should still mark dispatched even if webchat fails
     assert result["dispatched"] == 1
@@ -157,71 +164,53 @@ def test_dispatch_handles_multiple_fired():
          patch("core.services.self_wakeup._save"), \
          patch("core.services.notification_bridge.send_session_notification"), \
          patch("core.services.heartbeat_phases.tick_with_phases"), \
-         patch("core.services.autonomous_stream_run.start_autonomous_stream_run"):
+         patch(GATEWAY, return_value=_KOEET) as fake_gw:
         result = dispatch_due_wakeups()
     assert result["dispatched"] == 2
+    assert [c.kwargs["sag"] for c in fake_gw.call_args_list] == ["wakeup:w1", "wakeup:w2"]
 
 
-def test_dispatch_restores_recorded_user_context_before_starting_run():
-    from core.identity.workspace_context import (
-        current_channel,
-        current_role,
-        current_session_id,
-        current_user_display_name,
-        current_user_id,
-        current_workspace_name,
-    )
+def test_dispatch_carries_task_session_and_permission_through_gateway():
+    """Den vigtigste: migreringen må ikke tabe task_id / session / permissions.
 
+    Recorden er booket i `chat-booket` og hører til opgave `opg-7`. Gatewayen
+    skal modtage præcis de værdier — ellers mister indbakke-vækkeren dem.
+    """
     state = [{
         "wakeup_id": "w1",
         "prompt": "p",
         "reason": "r",
         "status": "fired",
         "channel": "app",
-        "session_id": "chat-origin",
+        "session_id": "chat-booket",
+        "task_id": "opg-7",
         "user_id": "owner-123",
-        "workspace_name": "bjorn",
-        "user_display_name": "Bjoern",
-        "role": "owner",
-        "context_channel": "jarvisx-electron",
     }]
-    fired = state
-    captured = {}
+    fanget: list[dict] = []
 
-    def _start(_message, *, session_id, origin, task_id="", permission_session=None):
-        captured.update({
-            "session_id": session_id,
-            "context_session_id": current_session_id(),
-            "user_id": current_user_id(),
-            "workspace_name": current_workspace_name(),
-            "user_display_name": current_user_display_name(),
-            "role": current_role(),
-            "channel": current_channel(),
-            "origin": origin,
-        })
+    def _gw(**kwargs):
+        fanget.append(kwargs)
+        return dict(_KOEET)
 
-    with patch("core.services.self_wakeup.due_wakeups", return_value=fired), \
+    with patch("core.services.self_wakeup.due_wakeups", return_value=state), \
          patch("core.services.self_wakeup._load", return_value=state), \
          patch("core.services.self_wakeup._save"), \
          patch("core.services.outbound_nudges.push_nudge"), \
          patch("core.services.heartbeat_phases.tick_with_phases"), \
-         patch("core.services.autonomous_stream_run.start_autonomous_stream_run", side_effect=_start):
+         patch(GATEWAY, side_effect=_gw):
         result = dispatch_due_wakeups()
 
     assert result["dispatched"] == 1
-    assert captured == {
-        "session_id": "chat-origin",
-        "context_session_id": "chat-origin",
-        "user_id": "owner-123",
-        "workspace_name": "bjorn",
-        "user_display_name": "Bjoern",
-        "role": "owner",
-        "channel": "jarvisx-electron",
-        "origin": "wakeup",
-    }
+    assert len(fanget) == 1
+    kw = fanget[0]
+    assert kw["task_id"] == "opg-7"
+    assert kw["session_id"] == "chat-booket"
+    assert kw["permission_session"] == "chat-booket"
+    assert kw["bruger_id"] == "owner-123"
+    assert kw["importance"] == "normal"
 
 
-def test_dispatch_does_not_mark_delivered_when_run_start_fails():
+def test_dispatch_does_not_mark_delivered_when_gateway_raises():
     state = [{
         "wakeup_id": "w1",
         "prompt": "p",
@@ -236,7 +225,7 @@ def test_dispatch_does_not_mark_delivered_when_run_start_fails():
          patch("core.services.self_wakeup._save") as fake_save, \
          patch("core.services.outbound_nudges.push_nudge"), \
          patch("core.services.heartbeat_phases.tick_with_phases"), \
-         patch("core.services.autonomous_stream_run.start_autonomous_stream_run", side_effect=RuntimeError("start failed")):
+         patch(GATEWAY, side_effect=RuntimeError("start failed")):
         result = dispatch_due_wakeups()
 
     assert result["dispatched"] == 0
@@ -334,9 +323,9 @@ def _fang_direktivet() -> str:
          patch("core.services.self_wakeup._save"), \
          patch("core.services.outbound_nudges.push_nudge"), \
          patch("core.services.heartbeat_phases.tick_with_phases"), \
-         patch("core.services.autonomous_stream_run.start_autonomous_stream_run") as fake:
+         patch(GATEWAY, return_value=_KOEET) as fake:
         dispatch_due_wakeups()
-    return str(fake.call_args.args[0])
+    return str(fake.call_args.kwargs["tekst"])
 
 
 def test_direktivet_beder_IKKE_ubetinget_om_en_rapport():

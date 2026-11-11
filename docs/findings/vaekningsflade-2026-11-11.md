@@ -69,3 +69,29 @@ tool-kalderen, `wakeup_dispatcher` skriver allerede selv en indbakke-post. Rækk
 5) wakeup_dispatcher/agent_message_receipt. `origin` (dream/heartbeat/…) går i dag tabt, da waker
 altid bruger `origin="inbox"` — gatewayen bør bære det før migrering. Vagten kategoriserer dem som
 `gaeld`; hver migration fjerner en linje i `TILLADT`.
+
+## Migrering af wakeup_dispatcher
+
+`wakeup_dispatcher.dispatch_due_wakeups()` starter ikke længere selv et run. Efter push-nudge,
+heartbeat-tick og `pick_wakeup_run_target(...)` kalder den ÉT `wake_gateway.anmod_om_vaekning(
+kilde="wakeup_dispatcher", sag="wakeup:<id>", tekst=direktiv_for(record), session_id=<mål>,
+task_id=<record>, permission_session=<bookingens samtale>, bruger_id=<record.user_id>)`.
+`set_context`/`reset_context` og `start_autonomous_stream_run` er væk fra filen; den er fjernet
+fra `TILLADT`.
+
+**Kontraktændring for `dispatched`:** før = «et run startede NU». Nu = «vækningen er afleveret til
+indbakken, som vurderer og vækker». `queued` og `deduped` giver begge `dispatched=True` (dedup er
+allerede afleveret, ikke et nyt run). `rejected` giver skip med
+`skip_reason="gateway_rejected: <grund>"`; en kastet undtagelse giver stadig `run_start_failed: …`.
+`empty_prompt` er uændret. Det er en bevidst ændring, ikke et tab: «dispatched» siger intet om,
+at et run kører.
+
+**Aktiv-guarden** (`_active_turn_blocks`) kaldes ikke længere af dispatcheren. Funktionen er stadig
+DEFINERET i `wakeup_dispatcher.py` (præcis én definition), og `inbox_idle_waker` importerer den
+derfra og bærer nu guarden: den vækker først når intet kører i sessionen. Følge: en vækning der
+fyrer midt i en tur får ikke længere `dispatch_skipped="user_active"` fra dispatcheren; den står i
+indbakken og løftes, når turen er forbi.
+
+**Kendt forskel:** dispatcheren sætter ikke længere workspace-konteksten (`workspace_name`,
+`user_display_name`, `role`, `context_channel`) omkring runnet. Gatewayen bærer kun `bruger_id`,
+så disse felter videregives ikke. Se om `inbox_idle_waker._start_run` selv sætter konteksten.

@@ -445,3 +445,90 @@ def test_re_tjek_mellem_iterationer_stopper_anden_start(inbox_db, monkeypatch):
 
     assert w.vaek_paa_aabne_poster(bruger_id="bjorn")["vaekket"] == 1
     assert len(startet) == 1
+
+
+# ── arbejdsrummet skal med (11/11-2026) ──────────────────────────────────────
+
+def test_vaekning_binder_arbejdsrummet_foer_runnet_starter(monkeypatch):
+    """Da `wakeup_dispatcher` blev flyttet ind i vækkeren, fulgte dens
+    `set_context(...)`-kald IKKE med — og `start_autonomous_run` arver blot
+    ContextVars fra den tråd der kalder.
+
+    Uden binding kører en vækning booket i Michelles arbejdsrum i Bjørns, og
+    runnet ser den forkerte hukommelse. Fejlen er TAVS: runnet starter og
+    svarer som om intet er galt. Denne vagt måler hvad runnet faktisk ser.
+    """
+    from contextlib import contextmanager
+    from pathlib import Path
+
+    from core.identity.workspace_context import (
+        current_user_id,
+        current_workspace_name,
+    )
+    from core.services import inbox_idle_waker as w
+
+    setninger: list[tuple[str, str]] = []
+
+    @contextmanager
+    def _reservation(session_id):
+        class _R:
+            acquired = True
+            reason = ""
+        yield _R()
+
+    def _fake_start(tekst, **kw):
+        # Det er HER beviset ligger: hvad ser runnet, i det øjeblik det starter?
+        setninger.append((current_workspace_name(), current_user_id()))
+        return True
+
+    monkeypatch.setattr(
+        "core.services.background_start_reservation.reserve_background_start",
+        _reservation,
+    )
+    monkeypatch.setattr(
+        "core.services.visible_autonomous_run.start_autonomous_run", _fake_start
+    )
+    monkeypatch.setattr(
+        "core.runtime.workspace_paths.workspace_dir",
+        lambda uid: Path("/tmp/ws") / "michelle",
+    )
+
+    w._start_run("gør noget", session_id="chat-1", user_id="4242")
+
+    assert setninger == [("michelle", "4242")], (
+        f"runnet startede uden det rigtige arbejdsrum: {setninger}"
+    )
+
+
+def test_konteksten_rulles_tilbage_efter_runnet(monkeypatch):
+    """Bindingen må ikke lække ud i den poller der kaldte vækkeren — ellers
+    kører resten af indbakke-runderne i den forkerte brugers arbejdsrum."""
+    from contextlib import contextmanager
+    from pathlib import Path
+
+    from core.identity.workspace_context import current_workspace_name
+    from core.services import inbox_idle_waker as w
+
+    @contextmanager
+    def _reservation(session_id):
+        class _R:
+            acquired = True
+            reason = ""
+        yield _R()
+
+    monkeypatch.setattr(
+        "core.services.background_start_reservation.reserve_background_start",
+        _reservation,
+    )
+    monkeypatch.setattr(
+        "core.services.visible_autonomous_run.start_autonomous_run",
+        lambda tekst, **kw: True,
+    )
+    monkeypatch.setattr(
+        "core.runtime.workspace_paths.workspace_dir",
+        lambda uid: Path("/tmp/ws") / "michelle",
+    )
+
+    foer = current_workspace_name()
+    w._start_run("gør noget", session_id="chat-1", user_id="4242")
+    assert current_workspace_name() == foer, "arbejdsrummet lækkede ud af kaldet"

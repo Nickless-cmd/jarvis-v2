@@ -20,6 +20,10 @@ import pytest
 import core.services.self_wakeup as sw
 import core.services.wakeup_dispatcher as wd
 
+# KONTRAKT (11/11-2026): dispatcheren afleverer til indbakken via gatewayen;
+# den starter ikke selv et run. `dispatched` = «afleveret».
+GATEWAY = "core.services.wake_gateway.anmod_om_vaekning"
+
 
 def _past() -> str:
     return (datetime.now(UTC) - timedelta(seconds=10)).isoformat()
@@ -55,11 +59,8 @@ def test_dispatch_leaves_skip_trace_when_run_fails(monkeypatch, isolated):
     monkeypatch.setattr(sw, "_load", lambda: list(state))
     monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
 
-    def boom(*a, **k):
-        raise RuntimeError("no run today")
-
     monkeypatch.setattr(
-        "core.services.autonomous_stream_run.start_autonomous_stream_run", boom
+        GATEWAY, lambda **k: {"status": "rejected", "grund": "db_nede"}
     )
 
     result = wd.dispatch_due_wakeups()
@@ -69,23 +70,24 @@ def test_dispatch_leaves_skip_trace_when_run_fails(monkeypatch, isolated):
     assert result["skipped_ids"] == ["w1"]
     rec = state[0]
     assert rec["dispatch_skipped"] is True
-    assert "run_start_failed" in rec["dispatch_skipped_reason"]
+    assert "gateway_rejected" in rec["dispatch_skipped_reason"]
+    assert "db_nede" in rec["dispatch_skipped_reason"]
     assert rec.get("dispatched") is not True
     assert rec["dispatch_skipped_at"]
 
 
 def test_dispatch_marks_dispatched_when_run_starts(monkeypatch, isolated):
-    """Den sunde vej: run starter → dispatched-flag, intet skip-spor."""
+    """Den sunde vej: gatewayen koeer vaekningen → dispatched-flag, intet spor.
+
+    «dispatched» betyder nu «afleveret til indbakken», ikke «et run startede».
+    """
     state = [{
         "wakeup_id": "w2", "status": "pending", "fire_at": _past(),
         "prompt": "Tjek Y", "reason": "r2", "channel": "app",
     }]
     monkeypatch.setattr(sw, "_load", lambda: list(state))
     monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
-    monkeypatch.setattr(
-        "core.services.autonomous_stream_run.start_autonomous_stream_run",
-        lambda *a, **k: None,
-    )
+    monkeypatch.setattr(GATEWAY, lambda **k: {"status": "queued"})
 
     result = wd.dispatch_due_wakeups()
 
@@ -94,6 +96,33 @@ def test_dispatch_marks_dispatched_when_run_starts(monkeypatch, isolated):
     rec = state[0]
     assert rec["dispatched"] is True
     assert rec.get("dispatch_skipped") is not True
+
+
+def test_dispatch_counts_deduped_as_delivered_but_not_as_new_run(monkeypatch, isolated):
+    """Dedup = allerede afleveret. Tælles som dispatched, men er INTET nyt run:
+    dispatcheren starter aldrig selv et run, og der skrives intet skip-spor."""
+    state = [{
+        "wakeup_id": "w5", "status": "pending", "fire_at": _past(),
+        "prompt": "Tjek D", "reason": "r5", "channel": "app",
+    }]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+    monkeypatch.setattr(GATEWAY, lambda **k: {"status": "deduped"})
+    starter_kaldt: list = []
+    for navn in ("start_autonomous_stream_run", "start_autonomous_run"):
+        monkeypatch.setattr(
+            f"core.services.autonomous_stream_run.{navn}",
+            lambda *a, **k: starter_kaldt.append(a),
+            raising=False,
+        )
+
+    result = wd.dispatch_due_wakeups()
+
+    assert result["dispatched"] == 1
+    assert result["skipped"] == 0
+    assert state[0]["dispatched"] is True
+    assert state[0].get("dispatch_skipped") is not True
+    assert starter_kaldt == [], "dispatcheren startede selv et run"
 
 
 # ── Punkt 2: awareness-linjen skelner de to ────────────────────────
@@ -165,8 +194,8 @@ def test_dispatch_carries_extra_into_directive(monkeypatch, isolated):
     monkeypatch.setattr(sw, "_load", lambda: list(state))
     monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
     monkeypatch.setattr(
-        "core.services.autonomous_stream_run.start_autonomous_stream_run",
-        lambda msg, **k: captured.__setitem__("msg", msg),
+        GATEWAY,
+        lambda **k: captured.__setitem__("msg", k["tekst"]) or {"status": "queued"},
     )
 
     result = wd.dispatch_due_wakeups()
@@ -186,12 +215,14 @@ def test_schedule_persists_extra(monkeypatch):
     assert res["wakeup"]["extra"] == "husk Y"
 
 
-# ── Punkt 4: aktiv-guarden (12/9-2026) ─────────────────────────────
+# ── Punkt 4: aktiv-guarden er FLYTTET (12/9 → 11/11-2026) ──────────
 #
-# Målt: wake-d07eaea13d fyrede 16:57:35, mens Bjørn skrev 16:58:01 — 26 s efter
-# han selv tog ordet. Nu skal dispatcheren NÆGTE at starte et konkurrerende run
-# i den session, efterlade sporet 'user_active', og lade awareness-vejen bære
-# instruktionerne inde i den aktive tur i stedet.
+# Målt 12/9: wake-d07eaea13d fyrede 16:57:35, mens Bjørn skrev 16:58:01. Dengang
+# nægtede dispatcheren selv at starte et konkurrerende run. Siden 11/11-2026
+# starter dispatcheren aldrig et run — den afleverer til indbakken, og
+# `inbox_idle_waker` (som importerer `_active_turn_blocks` herfra) bærer
+# aktiv-guarden. Guardens egen logik testes i `test_wakeup_aktiv_samtale_guard.py`
+# og waker-testene; her bevises kun at dispatcheren IKKE længere spørger.
 
 
 def _active_state(*, session: str = "sess-1", age_s: float = 1.0) -> dict:
@@ -221,85 +252,41 @@ def _wakeup_record(**over) -> dict:
     return rec
 
 
-def test_guard_skips_run_when_user_turn_active(monkeypatch, isolated):
-    """Kernen: aktiv tur i samme session → INTET autonomt run, men et spor."""
-    started: list = []
+def test_dispatcher_kalder_gatewayen_uanset_aktiv_tur(monkeypatch, isolated):
+    """Aktiv tur i samme session → gatewayen kaldes ALLIGEVEL, og dispatcheren
+    spørger ikke `_active_turn_blocks` (guarden bor i `inbox_idle_waker`)."""
+    kaldt: list = []
+    spurgt: list = []
     state = [_wakeup_record(session_id="sess-1")]
     monkeypatch.setattr(sw, "_load", lambda: list(state))
     monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
     _patch_active(monkeypatch, _active_state(session="sess-1"))
+    monkeypatch.setattr(wd, "_active_turn_blocks",
+                        lambda sid: spurgt.append(sid) or "user_active")
     monkeypatch.setattr(
-        "core.services.autonomous_stream_run.start_autonomous_stream_run",
-        lambda *a, **k: started.append(a),
+        GATEWAY, lambda **k: kaldt.append(k) or {"status": "queued"}
     )
 
     result = wd.dispatch_due_wakeups()
 
-    assert started == [], "der blev startet et run oveni en aktiv tur"
-    assert result["dispatched"] == 0
-    assert result["skipped"] == 1
-    assert state[0]["dispatch_skipped"] is True
-    assert state[0]["dispatch_skipped_reason"] == "user_active"
-
-
-def test_guard_allows_run_when_other_session_active(monkeypatch, isolated):
-    """Aktiv tur i en ANDEN session er ikke «du taler her» → run må starte."""
-    started: list = []
-    state = [_wakeup_record(session_id="sess-1")]
-    monkeypatch.setattr(sw, "_load", lambda: list(state))
-    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
-    _patch_active(monkeypatch, _active_state(session="sess-OTHER"))
-    monkeypatch.setattr(
-        "core.services.autonomous_stream_run.start_autonomous_stream_run",
-        lambda *a, **k: started.append(a),
-    )
-
-    result = wd.dispatch_due_wakeups()
-
-    assert len(started) == 1
+    assert spurgt == [], "dispatcheren spurgte stadig aktiv-guarden"
+    assert len(kaldt) == 1
     assert result["dispatched"] == 1
+    assert result["skipped"] == 0
+    assert state[0].get("dispatch_skipped") is not True
 
 
-def test_guard_allows_run_when_active_turn_is_stale(monkeypatch, isolated):
-    """Et run der ikke har rørt sig i >120 s er ikke «nogen taler nu»."""
-    started: list = []
-    state = [_wakeup_record(session_id="sess-1")]
-    monkeypatch.setattr(sw, "_load", lambda: list(state))
-    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
-    _patch_active(monkeypatch, _active_state(session="sess-1", age_s=600))
-    monkeypatch.setattr(
-        "core.services.autonomous_stream_run.start_autonomous_stream_run",
-        lambda *a, **k: started.append(a),
+def test_active_turn_blocks_er_stadig_defineret_til_wakeren():
+    """Wakeren importerer guarden herfra — den må ikke forsvinde med migreringen."""
+    import inspect
+
+    from core.services import inbox_idle_waker as w
+
+    assert callable(wd._active_turn_blocks)
+    # Importen i wakeren er funktions-lokal, så vi læser kilden.
+    assert "from core.services.wakeup_dispatcher import _active_turn_blocks" in (
+        inspect.getsource(w)
     )
-
-    result = wd.dispatch_due_wakeups()
-
-    assert len(started) == 1
-    assert result["dispatched"] == 1
-
-
-def test_guard_is_self_safe_when_state_unreadable(monkeypatch, isolated):
-    """Kunne aktiv-tilstanden ikke læses, må wakeup'en IKKE forsvinde."""
-    started: list = []
-    state = [_wakeup_record(session_id="sess-1")]
-    monkeypatch.setattr(sw, "_load", lambda: list(state))
-    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
-
-    def boom():
-        raise RuntimeError("db nede")
-
-    monkeypatch.setattr(
-        "core.services.visible_runs._get_active_visible_run_state", boom
-    )
-    monkeypatch.setattr(
-        "core.services.autonomous_stream_run.start_autonomous_stream_run",
-        lambda *a, **k: started.append(a),
-    )
-
-    result = wd.dispatch_due_wakeups()
-
-    assert len(started) == 1, "guarden slugte wakeup'en da DB'en fejlede"
-    assert result["dispatched"] == 1
 
 
 def test_user_active_skip_is_not_retried(monkeypatch, isolated):
@@ -311,10 +298,7 @@ def test_user_active_skip_is_not_retried(monkeypatch, isolated):
     monkeypatch.setattr(sw, "_load", lambda: list(state))
     monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
     _patch_active(monkeypatch, _active_state(session="sess-1"))
-    monkeypatch.setattr(
-        "core.services.autonomous_stream_run.start_autonomous_stream_run",
-        lambda *a, **k: started.append(a),
-    )
+    monkeypatch.setattr(GATEWAY, lambda **k: started.append(k) or {"status": "queued"})
 
     result = wd.dispatch_due_wakeups()
 
@@ -406,10 +390,7 @@ def test_consume_before_tick_is_invisible_to_dispatcher(monkeypatch, isolated):
     }]
     monkeypatch.setattr(sw, "_load", lambda: list(state))
     monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
-    monkeypatch.setattr(
-        "core.services.autonomous_stream_run.start_autonomous_stream_run",
-        lambda *a, **k: None,
-    )
+    monkeypatch.setattr(GATEWAY, lambda **k: {"status": "queued"})
 
     sw.mark_wakeup_consumed("w1")          # kvitteret FØR dispatcheren ser den
     result = wd.dispatch_due_wakeups()     # tick'en kommer bagefter

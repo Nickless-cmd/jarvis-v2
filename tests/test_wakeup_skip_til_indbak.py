@@ -203,14 +203,18 @@ def test_samme_vaekning_loeftes_kun_en_gang(inbox_db, monkeypatch):
 # ── én definition af direktivet ─────────────────────────────────────────────
 
 def test_dispatcheren_bruger_den_faelles_tekst(monkeypatch):
-    """To kopier ville drive fra hinanden — den ene ville mangle 5/10-reglen."""
+    """To kopier ville drive fra hinanden — den ene ville mangle 5/10-reglen.
+
+    11/11-2026: dispatcheren afleverer teksten til `wake_gateway` i stedet for
+    at starte runnet; ærindet (én fælles tekstkilde) er uændret. Aktiv-guarden
+    bor nu i `inbox_idle_waker`, så `_active_turn_blocks` patches ikke længere.
+    """
     import core.services.self_wakeup as sw
     import core.services.wakeup_dispatcher as wd
 
     kaldt: list[dict] = []
     monkeypatch.setattr(sw, "direktiv_for",
                         lambda rec: kaldt.append(rec) or "FELLES")
-    monkeypatch.setattr(wd, "_active_turn_blocks", lambda sid: "")
     monkeypatch.setattr(wd, "pick_wakeup_run_target", lambda **k: "sess-1")
     monkeypatch.setattr(sw, "due_wakeups", lambda **k: [_record()])
     monkeypatch.setattr(sw, "_load", lambda: [_record()])
@@ -225,8 +229,8 @@ def test_dispatcheren_bruger_den_faelles_tekst(monkeypatch):
         "core.services.heartbeat_phases.tick_with_phases", lambda *a, **k: None)
     sendt: list[str] = []
     monkeypatch.setattr(
-        "core.services.autonomous_stream_run.start_autonomous_stream_run",
-        lambda tekst, **k: sendt.append(tekst))
+        "core.services.wake_gateway.anmod_om_vaekning",
+        lambda **k: sendt.append(k["tekst"]) or {"status": "queued"})
 
     r = wd.dispatch_due_wakeups()
 

@@ -303,18 +303,48 @@ def _start_run(
                 session_id[:28], reservation.reason,
             )
             return False
-        return start_autonomous_run(
-            tekst,
-            session_id=session_id,
-            origin="inbox",
-            force_user_id=str(user_id or ""),
-            # Vækningen fortsætter den forpligtelse den blev booket som — ellers
-            # starter et løsrevet run uden bånd til opgaven.
-            task_id=str(task_id or ""),
-            # Adgangsniveauet læses fra den samtale vækningen blev BOOKET i,
-            # ikke fra den silo runnet lander i (målt 9/11-2026).
-            permission_session=str(permission_session or ""),
-        )
+        # ARBEJDSRUMMET SKAL MED (11/11-2026). Da `wakeup_dispatcher` blev
+        # flyttet herind, fulgte dens `set_context(...)`-kald IKKE med — og
+        # `start_autonomous_run` arver blot ContextVars fra den tråd der
+        # kalder. Uden dette led kører en vækning booket i Michelles
+        # arbejdsrum i Bjørns, og runnet ser den forkerte hukommelse. Fejlen
+        # er tavs: runnet starter og svarer som om intet er galt.
+        # `workspace_dir()` er husets hybrid-resolver (legacy + SQLite).
+        # Fejler den, vækker vi alligevel — men vi LOGGER tabet, så det kan
+        # måles frem for at være usynligt.
+        token = None
+        if str(user_id or "").strip():
+            try:
+                from core.identity.workspace_context import set_context
+                from core.runtime.workspace_paths import workspace_dir
+
+                ws = workspace_dir(str(user_id)).name
+                token = set_context(
+                    workspace_name=ws, user_id=str(user_id), user_display_name=""
+                )
+            except Exception as exc:  # noqa: BLE001 — se kommentaren ovenfor
+                logger.warning(
+                    "inbox_idle_waker: kunne ikke binde arbejdsrum for %s: %s",
+                    str(user_id)[:28], exc,
+                )
+        try:
+            return start_autonomous_run(
+                tekst,
+                session_id=session_id,
+                origin="inbox",
+                force_user_id=str(user_id or ""),
+                # Vækningen fortsætter den forpligtelse den blev booket som —
+                # ellers starter et løsrevet run uden bånd til opgaven.
+                task_id=str(task_id or ""),
+                # Adgangsniveauet læses fra den samtale vækningen blev BOOKET
+                # i, ikke fra den silo runnet lander i (målt 9/11-2026).
+                permission_session=str(permission_session or ""),
+            )
+        finally:
+            if token is not None:
+                from core.identity.workspace_context import reset_context
+
+                reset_context(token)
 
 
 def _direktiv(post: dict[str, Any]) -> str:

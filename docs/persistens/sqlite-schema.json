@@ -21180,7 +21180,7 @@
       "created_at_formats": []
     },
     "inbox_items": {
-      "digest": "9c:f1:f3:a1:f2:60:32:2f:a0:9d:0a:30:50:ee:93:49:bf:a3:20:f0:93:53:00:e8:39:b5:32:a4:7b:ac:79:07",
+      "digest": "10:9e:f5:c5:b7:5d:cb:21:e6:2c:96:15:18:02:5e:47:04:38:05:59:da:a1:1b:9e:38:b5:62:ec:6e:04:d0:75",
       "schema": {
         "columns": [
           {
@@ -21328,6 +21328,14 @@
             "hidden": 0
           },
           {
+            "name": "permission_session",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
             "name": "session_id",
             "type": "TEXT",
             "nullable": false,
@@ -21372,6 +21380,14 @@
             "type": "TEXT",
             "nullable": false,
             "default": "'aaben'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "task_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },

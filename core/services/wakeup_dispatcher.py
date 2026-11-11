@@ -342,10 +342,6 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                 skip_reason = "empty_prompt"
             else:
                 try:
-                    from core.services.autonomous_stream_run import (
-                        start_autonomous_stream_run,
-                    )
-                    from core.identity.workspace_context import reset_context, set_context
                     from core.identity.owner_resolver import (
                         resolve_owner_app_session,
                         resolve_owner_target_session,
@@ -361,53 +357,40 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                         owner_resolver=resolve_owner_target_session,
                         is_external=session_is_external_channel,
                     )
-                    # 12/9-2026: aktiv-guard. Fyrede wakeup'en midt i en tur, må
-                    # dispatcheren IKKE starte sit eget run oveni — så taler to
-                    # runs i samme session. Vi afviser med et spor; awareness
-                    # bærer instruktionerne inde i den aktive tur i stedet.
-                    blocked = _active_turn_blocks(str(target_session or ""))
-                    if blocked:
-                        skip_reason = blocked
-                    else:
-                        from core.services.self_wakeup import direktiv_for
+                    # 11/11-2026: aktiv-guarden bor IKKE laengere her. Dispatcheren
+                    # afleverer kun signalet til indbakken (wake_gateway); det er
+                    # `inbox_idle_waker` der vurderer og vaekker, og den bruger
+                    # `_active_turn_blocks` (defineret ovenfor) foer den starter.
+                    from core.services.self_wakeup import direktiv_for
+                    from core.services.wake_gateway import anmod_om_vaekning
 
-                        # 13/10-2026: teksten er flyttet til
-                        # `self_wakeup.direktiv_for` — indbakke-vækkeren løfter
-                        # nu også sprangte vækninger, og to kopier ville drive
-                        # fra hinanden (den ene ville stille mangle 5/10-reglen).
-                        self_directive = direktiv_for(record)
-                        context_token = set_context(
-                            workspace_name=str(record.get("workspace_name") or "bjorn"),
-                            user_id=str(record.get("user_id") or ""),
-                            user_display_name=str(record.get("user_display_name") or ""),
-                            role=str(record.get("role") or ""),
-                            channel=str(record.get("context_channel") or ""),
-                            session_id=target_session or "",
-                        )
-                        try:
-                            start_autonomous_stream_run(
-                                self_directive,
-                                session_id=target_session,
-                                origin="wakeup",
-                                # OPGAVENS ID (14/10-2026): er vækningen en
-                                # fortsættelse, følger forpligtelsens id med
-                                # hele vejen til stemplet — så starteren VED
-                                # hvad den fortsætter i stedet for at gætte.
-                                task_id=str(record.get("task_id") or ""),
-                                # PERMISSIONS-KILDEN (9/11-2026). ``target_session``
-                                # er hvor runnet LANDER, og den kan være en
-                                # `auto-*`-silo født `ask`. Niveauet skal læses
-                                # fra den samtale vækningen blev BOOKET i: det er
-                                # der Bjørn satte «fuld adgang», og hans egen
-                                # regel fra 21/10 siger at en vækning skal
-                                # fortsætte som samtalen allerede er sat.
-                                permission_session=str(wakeup_session or ""),
-                            )
-                            run_started = True
-                        finally:
-                            reset_context(context_token)
+                    # 13/10-2026: teksten bor i `self_wakeup.direktiv_for`.
+                    self_directive = direktiv_for(record)
+                    kv = anmod_om_vaekning(
+                        kilde="wakeup_dispatcher",
+                        sag=f"wakeup:{wid}",
+                        tekst=self_directive,
+                        # Bookerens id, så posten ikke havner i en forkert
+                        # indbakke (tom -> gatewayen resolver selv).
+                        bruger_id=str(record.get("user_id") or ""),
+                        session_id=str(target_session or ""),
+                        # OPGAVENS ID (14/10-2026) og PERMISSIONS-KILDEN
+                        # (9/11-2026): den samtale vaekningen blev BOOKET i.
+                        task_id=str(record.get("task_id") or ""),
+                        permission_session=str(wakeup_session or ""),
+                        importance="normal",
+                    )
+                    status = str((kv or {}).get("status") or "")
+                    if status in {"queued", "deduped"}:
+                        # Kontrakt: dispatched=True = afleveret til indbakken,
+                        # IKKE «et run startede nu».
+                        run_started = True
+                    elif status == "rejected":
+                        skip_reason = f"gateway_rejected: {(kv or {}).get('grund', '')}"
+                    else:
+                        skip_reason = f"gateway_ukendt_status: {status[:60]}"
                 except Exception as exc:
-                    logger.warning("wakeup autonomous run trigger failed: %s", exc)
+                    logger.warning("wakeup gateway hand-off failed: %s", exc)
                     skip_reason = f"run_start_failed: {str(exc)[:160]}"
 
             if not run_started:

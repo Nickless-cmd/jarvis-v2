@@ -255,11 +255,19 @@ def test_sent_svar_leveres_til_den_samtale_der_sendte_barnet(monkeypatch):
     monkeypatch.setattr("core.identity.owner_resolver.resolve_owner_app_session",
                         lambda: "auto-autonomous-20260917")
     monkeypatch.setattr("core.services.wakeup_dispatcher._active_turn_blocks", lambda s: False)
-    startet = {}
-    monkeypatch.setattr("core.services.autonomous_stream_run.start_autonomous_stream_run",
-                        lambda besked, session_id="", origin="": startet.update(session=session_id))
+    # 11/11-2026: vækningen går gennem indbakken, ikke direkte til starteren.
+    # Testens ærinde er UÆNDRET — svarer det til den samtale der sendte barnet
+    # afsted? — så den måler nu gateway-kaldets session_id i stedet.
+    setattr_kald = {}
+
+    def _fang(*, kilde, sag, tekst, session_id="", importance="normal", **_):
+        setattr_kald.update(session=session_id, sag=sag, kilde=kilde)
+        return {"status": "queued", "grund": ""}
+
+    monkeypatch.setattr("core.services.wake_gateway.anmod_om_vaekning", _fang)
     mr._book_completion_wakeup("agent-x", {"status": "completed", "messages": []})
-    assert startet["session"] == "chat-desk-1"
+    assert setattr_kald["session"] == "chat-desk-1", setattr_kald
+    assert setattr_kald["sag"] == "agent:agent-x"
 
 
 def test_barn_uden_herkomst_falder_tilbage_paa_ejerens_session(monkeypatch):
@@ -268,8 +276,39 @@ def test_barn_uden_herkomst_falder_tilbage_paa_ejerens_session(monkeypatch):
                         lambda aid: {"agent_id": aid, "context_json": "{}"})
     monkeypatch.setattr("core.identity.owner_resolver.resolve_owner_app_session", lambda: "ejer-app")
     monkeypatch.setattr("core.services.wakeup_dispatcher._active_turn_blocks", lambda s: False)
-    startet = {}
-    monkeypatch.setattr("core.services.autonomous_stream_run.start_autonomous_stream_run",
-                        lambda besked, session_id="", origin="": startet.update(session=session_id))
+    setattr_kald = {}
+
+    def _fang(*, kilde, sag, tekst, session_id="", importance="normal", **_):
+        setattr_kald.update(session=session_id, sag=sag)
+        return {"status": "queued", "grund": ""}
+
+    monkeypatch.setattr("core.services.wake_gateway.anmod_om_vaekning", _fang)
     mr._book_completion_wakeup("agent-y", {"status": "completed", "messages": []})
-    assert startet["session"] == "ejer-app"
+    assert setattr_kald["session"] == "ejer-app", setattr_kald
+
+
+def test_afvist_vaekning_falder_tilbage_paa_noedvejen(monkeypatch):
+    """11/11-2026: gatewayen kan afvise (fx DB nede). En afvisning må IKKE
+    blive tavshed — barnets svar skal stadig nå forælderen ad nødvejen.
+
+    Uden denne vagt kunne migreringen til gatewayen gøre et sent svar
+    permanent usynligt, og det ville se ud som om barnet aldrig blev færdigt.
+    """
+    import core.services.agent_message_receipt as mr
+    monkeypatch.setattr("core.runtime.db_agent_runtime.get_agent_registry_entry",
+                        lambda aid: {"agent_id": aid, "context_json": "{}"})
+    monkeypatch.setattr("core.identity.owner_resolver.resolve_owner_app_session",
+                        lambda: "ejer-app")
+    monkeypatch.setattr("core.services.wakeup_dispatcher._active_turn_blocks", lambda s: False)
+    monkeypatch.setattr(
+        "core.services.wake_gateway.anmod_om_vaekning",
+        lambda **k: {"status": "rejected", "grund": "db_nede"},
+    )
+    noedvej = []
+    monkeypatch.setattr("core.services.self_wakeup.schedule_self_wakeup",
+                        lambda **k: noedvej.append(k))
+
+    mr._book_completion_wakeup("agent-z", {"status": "completed", "messages": []})
+
+    assert len(noedvej) == 1, "afvist vækning blev tavshed i stedet for nødvej"
+    assert "agent-z" in str(noedvej[0].get("reason") or "")

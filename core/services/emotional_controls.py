@@ -167,6 +167,7 @@ def apply_emotional_controls(
     *,
     kernel_action: str = "execute",
     snapshot: EmotionalSnapshot | None = None,
+    risk: str = "low",
 ) -> tuple[str, str | None]:
     """Transform a kernel action based on current emotional state.
 
@@ -200,9 +201,17 @@ def apply_emotional_controls(
         return "escalate_user", "frustration_threshold_exceeded"
 
     if snap.confidence < _CONFIDENCE_VERIFY and action == "execute":
-        # Positive override: joy can lift this gate
+        # Positive override: joy can lift this gate — men KUN for lav risiko.
+        #
+        # A7-analog (jf. gut_engine, 3/11-2026: «en irreversibel opgave er
+        # ALDRIG et proceed på global statistik»): en stemning må ikke fjerne
+        # den eneste vagt en farlig handling har. Målt 11/11-2026: uden denne
+        # grænse kunne joy≥0.50 løfte en high-risk handling til execute, fordi
+        # kaldsstedet kun blokerer verify_first ved high/medium — glæde var
+        # dermed den ENESTE vej en high-risk handling med lav confidence kunne
+        # køre på. `risk` kommer fra _classify_action_risk på kaldsstedet.
         joy_intensity = active_concepts.get("joy", 0.0)
-        if joy_intensity >= _JOY_OVERRIDE_THRESHOLD:
+        if joy_intensity >= _JOY_OVERRIDE_THRESHOLD and risk == "low":
             return action, "joy_lifts_low_confidence"
         return "verify_first", "low_confidence_guard"
 

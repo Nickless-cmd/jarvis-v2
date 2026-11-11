@@ -173,7 +173,7 @@ def execute_runtime_action(
     risk = _classify_action_risk(action)
     snapshot = read_emotional_snapshot()
     gated_action, gate_reason = apply_emotional_controls(
-        kernel_action="execute", snapshot=snapshot,
+        kernel_action="execute", snapshot=snapshot, risk=risk,
     )
 
     # ── veto_events-sporet (side-3e59d5dbe2, 9/10-2026) ─────────────────

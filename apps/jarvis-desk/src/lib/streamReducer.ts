@@ -66,6 +66,16 @@ export interface StreamState {
    *  den afsluttede besked viser turens samlede tid — ikke et ur der nulstilles
    *  når svaret begynder (Bjørn 17/10-2026). */
   turSlut: number | null
+  /**
+   * RUN-ID'ET FOR EN SELVSTÆNDIG TUR (wakeup, heartbeat, rutine).
+   *
+   * `message_start` kommer FØR `run`-framen — sse_v2's fallback-gren emitter
+   * den først — så `activeRunId` er allerede skiftet når `origin` ankommer.
+   * Uden denne markør kunne `run`-grenen ikke se at turen var ny, og wakeup'ens
+   * arbejdslinje blev flettet ind i den forrige besked (målt 11/11-2026 på en
+   * klient der HAVDE origin-feltet). `null` = ingen selvstændig tur i gang.
+   */
+  selvstaendigRunId: string | null
   recoveryNotice?: { reason: string; message: string; continuing: boolean }
   usage: { input: number; output: number; cacheHit: number; cacheMiss: number
            // Maalt paa SERVEREN (core/services/svar_tempo), ikke hentet hos
@@ -91,7 +101,7 @@ export interface StreamState {
 }
 
 export function initialStreamState(): StreamState {
-  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null, workingStep: null, finalAnswerStarted: false, svarLaast: false, arbejdeEfterSvar: false, turStart: null, turSlut: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0, ttftMs: null, tokPerSek: null } }
+  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null, workingStep: null, finalAnswerStarted: false, svarLaast: false, arbejdeEfterSvar: false, turStart: null, turSlut: null, selvstaendigRunId: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0, ttftMs: null, tokPerSek: null } }
 }
 
 /** Estimer output-tokens fra akkumuleret tekst/tænkning i blocks. Bruges
@@ -636,19 +646,36 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       if (event.kind === 'run') {
         const rp = event.payload as { run_id?: string; origin?: string }
         if (!rp.run_id) return state
+        // En SELVSTÆNDIG tur (wakeup, heartbeat, rutine) er ikke en runde i
+        // brugerens tur, selv om den lander i samme session med et nyt run-id.
+        // Serveren kender svaret — `origin` er tom for brugerens egen tur.
+        //
+        // Tjekket står FØR runde-grenen og hviler på en MARKØR, ikke på
+        // `activeRunId`. `message_start` kommer nemlig før denne frame
+        // (sse_v2's fallback-gren emitter den først), så `activeRunId` er
+        // allerede skiftet når origin ankommer — og et `activeRunId !== run_id`
+        //-tjek kunne derfor aldrig se at turen var ny. Målt 11/11-2026: en
+        // wakeup's arbejdslinje blev flettet ind i den forrige besked på en
+        // klient der HAVDE origin-feltet i bundlen.
+        if (Boolean(rp.origin) && state.selvstaendigRunId !== rp.run_id) {
+          return {
+            ...initialStreamState(),
+            status: 'working',
+            activeRunId: rp.run_id,
+            selvstaendigRunId: rp.run_id,
+            model: state.model,
+            provider: state.provider,
+            lane: state.lane,
+            turStart: Date.now(),
+          }
+        }
         // En run-frame kan være den første frame ved follow/reconnect. Er id'et
         // nyt, må intet visuelt arbejde fra den forrige tur følge med over.
         if (state.activeRunId && state.activeRunId !== rp.run_id) {
-          // En SELVSTÆNDIG tur (wakeup, heartbeat, rutine) er ikke en runde i
-          // brugerens tur, selv om den lander i samme session med et nyt
-          // run-id. Uden denne skelnen blev wakeup'ens tekst hængende i den
-          // forrige turs besked indtil appen blev genstartet (målt 11/11-2026).
-          // Serveren kender svaret — `origin` er tom for brugerens egen tur.
-          const selvstaendig = Boolean(rp.origin)
           // Er svaret låst, er dette en RUNDE i samme tur — ikke en ny besked.
           // Før wipede denne frame blokke, lås og turStart, og skærmen blev
           // tom midt i et svar brugeren allerede læste.
-          if (state.svarLaast && !selvstaendig) {
+          if (state.svarLaast) {
             return {
               ...state,
               status: 'working',

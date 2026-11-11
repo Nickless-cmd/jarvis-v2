@@ -94,4 +94,37 @@ describe('en ekstra runde river ikke svaret ned', () => {
     expect(efter.svarLaast).toBe(true)
     expect(efter.blocks.length).toBe(foer.blocks.length)
   })
+
+  it('en SELVSTÆNDIG tur rydder låsen — også når message_start kom FØRST', () => {
+    // Den FAKTISKE rækkefølge i drift. Målt 11/11-2026 i sse_v2's
+    // fallback-gren: `_emit_message_start_if_needed()` kaldes FØR `run`-
+    // hændelsen pakkes, så klienten ser message_start først og `activeRunId`
+    // er allerede skiftet når origin ankommer.
+    //
+    // Testen ovenfor fodrede `run` direkte efter låsen og ramte derfor en
+    // rækkefølge der ikke findes. Den var grøn mens wakeup'ens arbejdslinje
+    // blev flettet ind i den forrige besked — en test der ikke kunne nå den
+    // gren den påstod at dække.
+    const foer = laastSvar()
+    const medNytRun = streamReducer(foer, msgStart('r2'))
+    expect(medNytRun.activeRunId).toBe('r2')
+    // message_start alene er stadig en RUNDE — den bærer ingen origin.
+    expect(medNytRun.svarLaast).toBe(true)
+    const efter = streamReducer(medNytRun, system('run', { run_id: 'r2', origin: 'wakeup' }))
+    expect(efter.svarLaast).toBe(false)
+    expect(efter.blocks).toEqual([])
+    expect(efter.activeRunId).toBe('r2')
+    expect(efter.selvstaendigRunId).toBe('r2')
+  })
+
+  it('en gentaget run-frame for SAMME selvstændige tur rydder ikke igen', () => {
+    // Reconnect/replay må ikke nulstille en tur der allerede er begyndt.
+    const foer = laastSvar()
+    const medNytRun = streamReducer(foer, msgStart('r2'))
+    const a = streamReducer(medNytRun, system('run', { run_id: 'r2', origin: 'wakeup' }))
+    const b = streamReducer(a, system('run', { run_id: 'r2', origin: 'wakeup' }))
+    expect(b.selvstaendigRunId).toBe('r2')
+    expect(b.turStart).toBe(a.turStart)
+    expect(b.blocks).toEqual([])
+  })
 })

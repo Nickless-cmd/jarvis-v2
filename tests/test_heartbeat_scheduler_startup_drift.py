@@ -87,7 +87,11 @@ def test_prepare_scheduler_startup_detects_silent_write_drift(
     payload = drift[0][1]
     assert "mismatches" in payload
     assert "scheduler_health" in payload["mismatches"]
-    assert payload["mismatches"]["scheduler_health"]["expected"] == "active"
+    # 11/11-2026: start() skriver nu "starting", ikke "active". Helbredet må
+    # først hedde "active" når dæmon-tråden har gennemført sin FØRSTE
+    # iteration — den gamle værdi VAR fejlen (flaget påstod liv som intet
+    # havde målt). Testens ærinde er drift-detektionen, ikke ordlyden.
+    assert payload["mismatches"]["scheduler_health"]["expected"] == "starting"
     assert payload["mismatches"]["scheduler_health"]["actual"] == "stopped"
     assert "pid" in payload and isinstance(payload["pid"], int)
     assert "db_path" in payload

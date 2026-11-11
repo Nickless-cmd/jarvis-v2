@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10017/18504 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10021/18511 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10017/18504 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 890 | 1603 | 55% |
-| `core.services` | 6692 | 12541 | 53% |
+| `core.services` | 6696 | 12548 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 10017/18504 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2632)
+## Undocumented public functions (2633)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L231)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1345,13 +1345,14 @@ Generated from source. 10017/18504 functions/methods documented (54%). The list 
 - `core/services/habits_pipeline.py` :: `reject_suggestion` (L440)
 - `core/services/hardware_body.py` :: `build_hardware_body_surface` (L204)
 - `core/services/heartbeat_manage_runtime_work.py` :: `execute_manage_runtime_work` (L18)
-- `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L488)
-- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2299)
-- `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L303)
-- `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1257)
-- `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L273)
+- `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L493)
+- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2304)
+- `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L308)
+- `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1262)
+- `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L278)
 - `core/services/heartbeat_scheduler.py` :: `stop` (L113)
 - `core/services/heartbeat_scheduler.py` :: `stop_event` (L64)
+- `core/services/heartbeat_scheduler.py` :: `stop_watchdog` (L292)
 - `core/services/hf_connector.py` :: `model_info` (L85)
 - `core/services/hf_connector.py` :: `search_models` (L67)
 - `core/services/hollow_promise_round.py` :: `note_detected` (L58)

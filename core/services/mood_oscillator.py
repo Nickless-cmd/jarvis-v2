@@ -138,10 +138,21 @@ def apply_bump(delta: float, reason: str = "") -> None:
 
 
 def _combined_value() -> float:
-    """Sine base + nudge, clamped to [-1, 1]."""
+    """Event-driven value: ``_mood_nudge`` alone, clamped to [-1, 1].
+
+    Grundtonen var tidligere ``math.sin(_phase_offset)`` — en ~63-minutters
+    sinus uafhaengig af verden (maalt 11/11-2026: ingen doegnsammenhaeng,
+    «urolig» ved mood_nudge=0.0). Nu er grundtonen 0 (neutral); kun haendelser
+    (``apply_bump``) flytter humoeret, og de henfalder mod 0 (halveringstid
+    ``_NUDGE_DECAY_HALF_LIFE_SECONDS``). Ingen hændelser => neutral.
+
+    ``_phase_offset`` bruges IKKE laengere i vaerdien. Det taelles stadig op i
+    ``tick()``, persisteres og vises i surface/tick-resultatet udelukkende for
+    bagudkompatibilitet med gamle tilstandsraekker og MC — det er et ur, ikke
+    et humoer.
+    """
     _load_state_if_needed()
-    base = math.sin(_phase_offset)
-    return max(-1.0, min(1.0, base + _mood_nudge))
+    return max(-1.0, min(1.0, _mood_nudge))
 
 
 def get_current_mood() -> str:

@@ -943,8 +943,43 @@ def _exec_heartbeat_status(_args: dict[str, Any]) -> dict[str, Any]:
             "parse_status": state.get("parse_status"),
         }
 
+        # Flaget alene er ikke et bevis på liv (stilstand 2026-09-02 og
+        # 2026-11-11): krydstjek mod tråden, iterationstælleren og seneste tick.
+        from core.services import heartbeat_scheduler as _hs
+
+        db_last = None
+        try:
+            from core.runtime.db_heartbeat import recent_heartbeat_runtime_ticks
+            ticks = recent_heartbeat_runtime_ticks(limit=1)
+            if ticks:
+                db_last = ticks[0].get("started_at")
+        except Exception:
+            db_last = None
+        liveness = _hs.assess_liveness(
+            scheduler_active=scheduler["active"],
+            scheduler_health=scheduler["health"],
+            next_tick_at=scheduler["next_tick_at"],
+            last_tick_at=scheduler["last_tick_at"],
+            interval_minutes=scheduler["interval_minutes"],
+            thread_running=_hs.is_running(),
+            iterations_count=_hs.iterations(),
+            db_last_tick_started_at=db_last,
+        )
+        scheduler["verdict"] = liveness["verdict"]
+        scheduler["mismatch"] = liveness["mismatch"]
+        scheduler["iterations"] = liveness["iterations"]
+        scheduler["thread_running"] = liveness["thread_running"]
+        scheduler["overdue_minutes"] = liveness["overdue_minutes"]
+        scheduler["newest_tick_started_at"] = liveness["newest_tick_started_at"]
+
         lines = []
-        lines.append(f"Scheduler: {'ACTIVE' if scheduler['active'] else 'STOPPED'} ({scheduler['health']})")
+        lines.append(f"Scheduler: {liveness['verdict']} (flag={scheduler['health']})")
+        lines.append(
+            f"Thread running: {liveness['thread_running']} | iterations: {liveness['iterations']}"
+            f" | next tick overdue: {liveness['overdue_minutes']} min"
+        )
+        if liveness["mismatch"]:
+            lines.append("MISMATCH: " + ", ".join(liveness["mismatch"]))
         lines.append(f"Last tick: {scheduler['last_tick_at'] or 'never'}")
         lines.append(f"Next tick: {scheduler['next_tick_at'] or 'unknown'}")
         lines.append(f"Interval: {scheduler['interval_minutes']} min")

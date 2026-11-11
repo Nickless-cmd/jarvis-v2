@@ -124,6 +124,177 @@ def stop(*, name: str = "default") -> None:
     logger.info("heartbeat scheduler stopped name=%s", name)
 
 
+# ── Måling af liv (ikke flag) ────────────────────────────────────────────────
+# Fejlformen (2026-09-02 og 2026-11-11): `scheduler_active`/`scheduler_health`
+# er et FLAG der skrives af start(), og ingen målte om tråden faktisk slog.
+# assess_liveness er ren (ingen I/O) så den kan testes og genbruges af både
+# heartbeat_status og vagten nedenfor.
+
+def _parse_iso(value: object):
+    from datetime import UTC, datetime
+
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        # Ulæseligt tidsstempel = «vi ved ikke hvornår», ikke «nu». Kalderen
+        # behandler None som en MANGLENDE måling (se assess_liveness: aktiv
+        # uden parsbar next_tick_at er DEGRADED, ikke ACTIVE). At gætte et
+        # tidspunkt her ville gøre en død dæmon til en levende.
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+
+
+def assess_liveness(
+    *,
+    scheduler_active: object,
+    scheduler_health: object,
+    next_tick_at: object,
+    last_tick_at: object = None,
+    interval_minutes: object = None,
+    thread_running: bool,
+    iterations_count: int,
+    db_last_tick_started_at: object = None,
+    now=None,
+) -> dict[str, object]:
+    """Dom om dæmonen LEVER, ud fra målinger — ikke ud fra flaget alene.
+
+    verdict: ACTIVE | STARTING | DEGRADED | STALLED | STOPPED.
+    STALLED: next_tick_at overskredet med > 2× interval.
+    DEGRADED: flag og måling er uenige (mismatch ikke tom).
+    """
+    from datetime import UTC, datetime
+
+    now = now or datetime.now(UTC)
+    try:
+        interval = float(interval_minutes) if interval_minutes else 15.0
+    except (TypeError, ValueError):
+        interval = 15.0
+    active = bool(scheduler_active)
+    nxt = _parse_iso(next_tick_at)
+    overdue = (now - nxt).total_seconds() / 60.0 if nxt and now > nxt else 0.0
+    newest = max(
+        [d for d in (_parse_iso(last_tick_at), _parse_iso(db_last_tick_started_at)) if d],
+        default=None,
+    )
+    mismatch: list[str] = []
+    if active and not thread_running:
+        mismatch.append("flag_active_but_thread_not_running")
+    if not active and thread_running:
+        mismatch.append("flag_stopped_but_thread_running")
+    if active and nxt is None:
+        # Kan vi ikke læse næste tick, kan vi ikke afvise stilstand — og så må
+        # dommen ikke være ACTIVE. Uden denne gren gav et ulæseligt
+        # tidsstempel overdue=0 og dermed et falsk «alt er fint».
+        mismatch.append("next_tick_at_unparseable")
+    if active and str(scheduler_health or "") == "active" and iterations_count == 0 \
+            and overdue > interval:
+        mismatch.append("health_active_but_zero_iterations")
+    stalled = active and overdue > 2 * interval
+    if not active:
+        verdict = "STOPPED"
+    elif stalled:
+        verdict = "STALLED"
+    elif mismatch:
+        verdict = "DEGRADED"
+    elif str(scheduler_health or "") == "starting":
+        verdict = "STARTING"
+    else:
+        verdict = "ACTIVE"
+    return {
+        "verdict": verdict,
+        "mismatch": mismatch,
+        "overdue_minutes": round(overdue, 1),
+        "stall_threshold_minutes": 2 * interval,
+        "thread_running": bool(thread_running),
+        "iterations": int(iterations_count),
+        "newest_tick_started_at": newest.isoformat() if newest else None,
+        "next_tick_at": str(next_tick_at or "") or None,
+    }
+
+
+# ── Selvhelbredende vagt ─────────────────────────────────────────────────────
+# Kører på SIN EGEN dæmontråd, ikke i scheduler-tråden: en vagt der bor i det
+# den overvåger dør sammen med det.
+WATCHDOG_INTERVAL_SECONDS = 300
+_WATCHDOG_STOP = threading.Event()
+_WATCHDOG_THREAD: threading.Thread | None = None
+_WATCHDOG_LAST_ITER: int | None = None
+
+
+def watchdog_check(*, now=None) -> dict[str, object]:
+    """Én kontrol. Genstarter kun hvis STALLED OG iterations() ikke er steget
+    siden forrige kontrol (første kontrol sætter kun baseline)."""
+    global _WATCHDOG_LAST_ITER
+    from core.services import heartbeat_runtime as hb
+
+    current = iterations()
+    previous = _WATCHDOG_LAST_ITER
+    _WATCHDOG_LAST_ITER = current
+    state = hb.get_heartbeat_runtime_state() or {}
+    assessment = assess_liveness(
+        scheduler_active=state.get("scheduler_active"),
+        scheduler_health=state.get("scheduler_health"),
+        next_tick_at=state.get("next_tick_at"),
+        last_tick_at=state.get("last_tick_at"),
+        interval_minutes=state.get("interval_minutes"),
+        thread_running=is_running(),
+        iterations_count=current,
+        now=now,
+    )
+    if assessment["verdict"] != "STALLED" or previous is None or current > previous:
+        return {"restarted": False, **assessment}
+    message = (
+        f"heartbeat stalled: next_tick_at={assessment['next_tick_at']} overskredet "
+        f"{assessment['overdue_minutes']} min (>{assessment['stall_threshold_minutes']}), "
+        f"iterations={current} uændret, thread_running={assessment['thread_running']} "
+        f"— genstarter dæmonen"
+    )
+    logger.error("HEARTBEAT-WATCHDOG: %s", message)
+    try:
+        from core.runtime.db_central_incidents import record_central_incident
+
+        record_central_incident(
+            cluster="heartbeat", nerve="scheduler", kind="scheduler_stalled",
+            severity="error", message=message,
+        )
+    except Exception:
+        logger.warning("HEARTBEAT-WATCHDOG: incident kunne ikke skrives", exc_info=True)
+    stop()
+    start()
+    _WATCHDOG_LAST_ITER = None
+    return {"restarted": True, **assessment}
+
+
+def _watchdog_loop() -> None:
+    while not _WATCHDOG_STOP.wait(WATCHDOG_INTERVAL_SECONDS):
+        try:
+            watchdog_check()
+        except Exception:
+            logger.exception("heartbeat watchdog check failed")
+
+
+def start_watchdog() -> None:
+    """Idempotent. Stoppes ikke af stop() — et bevidst stop sætter
+    scheduler_active=False, og så rører vagten ikke ved noget."""
+    global _WATCHDOG_THREAD
+    if _WATCHDOG_THREAD and _WATCHDOG_THREAD.is_alive():
+        return
+    _WATCHDOG_STOP.clear()
+    _WATCHDOG_THREAD = threading.Thread(
+        target=_watchdog_loop, name="jarvis-heartbeat-watchdog", daemon=True
+    )
+    _WATCHDOG_THREAD.start()
+
+
+def stop_watchdog() -> None:
+    global _WATCHDOG_THREAD
+    _WATCHDOG_STOP.set()
+    _WATCHDOG_THREAD = None
+
+
 def _loop(*, name: str, startup_recovery_requested: bool) -> None:
     global _ITERATION
     from core.services import heartbeat_runtime as hb
@@ -148,6 +319,14 @@ def _loop(*, name: str, startup_recovery_requested: bool) -> None:
                 "trigger": "startup-recovery" if startup_recovery_requested else "scheduled",
             },
         )
+
+    # Først NU har tråden gennemført sin første iteration — først nu må
+    # helbredet hedde "active". start() skriver kun "starting" (se
+    # heartbeat_runtime._prepare_scheduler_startup).
+    try:
+        hb._mark_scheduler_health(name=name, health="active")
+    except Exception:
+        logger.warning("heartbeat scheduler: kunne ikke sætte health=active", exc_info=True)
 
     while not _STOP.wait(INTERVAL_SECONDS):
         _ITERATION += 1

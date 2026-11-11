@@ -268,6 +268,11 @@ def start_heartbeat_scheduler(*, name: str = "default") -> None:
     """
     from core.services import heartbeat_scheduler
     heartbeat_scheduler.start(name=name)
+    # Vagten har sin egen tråd og lever uafhængigt af scheduler-tråden.
+    try:
+        heartbeat_scheduler.start_watchdog()
+    except Exception:
+        logger.warning("heartbeat watchdog could not start", exc_info=True)
 
 
 def stop_heartbeat_scheduler(*, name: str = "default") -> None:
@@ -6984,7 +6989,7 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
             "scheduler_active": True,
             "scheduler_started_at": now.isoformat(),
             "scheduler_stopped_at": "",
-            "scheduler_health": "active",
+            "scheduler_health": "starting",
             "recovery_status": recovery_status,
             "last_recovery_at": last_recovery_at,
             "updated_at": now.isoformat(),
@@ -7042,7 +7047,7 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
                 "scheduler_active": True,
                 "scheduler_started_at": now.isoformat(),
                 "scheduler_stopped_at": "",
-                "scheduler_health": "active",
+                "scheduler_health": "starting",
                 "recovery_status": "startup-recovery-pending",
                 "last_recovery_at": now.isoformat(),
                 "updated_at": now.isoformat(),
@@ -7078,6 +7083,20 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
         **startup_state,
         "startup_recovery_requested": should_trigger_recovery,
     }
+
+
+def _mark_scheduler_health(*, name: str, health: str) -> None:
+    """Sæt scheduler_health — kaldes af dæmon-tråden selv efter første iteration."""
+    policy = load_heartbeat_policy(name=name)
+    persisted = get_heartbeat_runtime_state() or _default_persisted_state()
+    if not persisted.get("scheduler_active"):
+        return
+    _persist_runtime_state(
+        policy=policy,
+        persisted=persisted,
+        now=datetime.now(UTC),
+        overrides={"scheduler_health": health},
+    )
 
 
 def _mark_scheduler_stopped(*, name: str) -> None:

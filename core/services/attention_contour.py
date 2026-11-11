@@ -82,7 +82,8 @@ def _form(traad: dict[str, Any], rytme: dict[str, Any]) -> tuple[str, str]:
     """(ord, grundlag) — ordet skal kunne føres tilbage til sit tal."""
     baerer = int(traad.get("carrying_count") or 0)
     afbrydelser = int(traad.get("interruption_count") or 0)
-    holder = bool(traad.get("active")) and baerer > 0
+    # `theme` er thought_threads eksisterende succesmarkør og fladens sandhed.
+    holder = bool(traad.get("theme")) and baerer > 0
     try:
         puls = float(rytme.get("pulse_rate") or 0.0)
     except (TypeError, ValueError):

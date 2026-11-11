@@ -300,10 +300,10 @@ _Attention Contour — shape of attention._
 |---|---|---|---|---|
 | function | `_maal` | `()` | (tråd, rytme) — tomme dicts når kilderne ikke kan læses. | [src](../../../core/services/attention_contour.py#L64) |
 | function | `_form` | `(traad, rytme)` | (ord, grundlag) — ordet skal kunne føres tilbage til sit tal. | [src](../../../core/services/attention_contour.py#L81) |
-| function | `get_attention_shape` | `()` | Formen lige nu. Samme input giver samme svar — hver gang. | [src](../../../core/services/attention_contour.py#L109) |
-| function | `describe_attention` | `()` | — | [src](../../../core/services/attention_contour.py#L114) |
-| function | `format_attention_for_prompt` | `()` | — | [src](../../../core/services/attention_contour.py#L118) |
-| function | `build_attention_contour_surface` | `()` | — | [src](../../../core/services/attention_contour.py#L122) |
+| function | `get_attention_shape` | `()` | Formen lige nu. Samme input giver samme svar — hver gang. | [src](../../../core/services/attention_contour.py#L110) |
+| function | `describe_attention` | `()` | — | [src](../../../core/services/attention_contour.py#L115) |
+| function | `format_attention_for_prompt` | `()` | — | [src](../../../core/services/attention_contour.py#L119) |
+| function | `build_attention_contour_surface` | `()` | — | [src](../../../core/services/attention_contour.py#L123) |
 
 ## `core/services/attributed_git_commit.py`
 _Execute Git commits with canonical attribution and no staging side effects._

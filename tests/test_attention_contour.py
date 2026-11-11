@@ -21,9 +21,9 @@ import core.services.attention_contour as A
 @pytest.fixture
 def _maalt(monkeypatch):
     """Sæt tråd og rytme uden at røre databasen."""
-    def saet(*, baerer=0, afbrydelser=0, puls=1.0, tempo="steady", aktiv=True):
+    def saet(*, baerer=0, afbrydelser=0, puls=1.0, tempo="steady", tema="partial batch"):
         monkeypatch.setattr(A, "_maal", lambda: (
-            {"active": aktiv, "carrying_count": baerer,
+            {"theme": tema, "carrying_count": baerer,
              "interruption_count": afbrydelser},
             {"pulse_rate": puls, "subjective_time_pressure": tempo},
         ))
@@ -58,7 +58,8 @@ def test_fladen_udleder_ÉN_gang(monkeypatch):
 
     def _taellende():
         kald.append(1)
-        return ({"active": True, "carrying_count": 74, "interruption_count": 21},
+        return ({"theme": "partial batch", "carrying_count": 74,
+                 "interruption_count": 21},
                 {"pulse_rate": 0.3, "subjective_time_pressure": "breathing"})
 
     monkeypatch.setattr(A, "_maal", _taellende)
@@ -80,8 +81,31 @@ def test_den_maalte_tilstand_er_tidevand(_maalt):
 
 
 def test_ingen_traad_er_spredt(_maalt):
-    _maalt(aktiv=False, baerer=0)
+    _maalt(tema=None, baerer=0)
     assert A.get_attention_shape() == A.SPREDT
+
+
+def test_produktionens_traaddict_uden_active_er_ikke_spredt(monkeypatch):
+    """Succes-dictet fra thought_thread har historisk ikke haft `active`."""
+    monkeypatch.setattr(
+        "core.services.thought_thread.get_current_thread",
+        lambda: {
+            "theme": "partial batch",
+            "theme_tokens": ["partial", "batch"],
+            "carrying_count": 56,
+            "interruption_count": 28,
+            "age_minutes": 103,
+            "last_thought_summary": "Partial batch remains in focus.",
+            "last_thought_at": "2026-09-26T12:00:00+00:00",
+            "last_thought_type": "meta-reflection",
+        },
+    )
+    monkeypatch.setattr(
+        "core.services.temporal_rhythm.get_current_rhythm",
+        lambda: {"pulse_rate": 0.3, "subjective_time_pressure": "breathing"},
+    )
+
+    assert A.get_attention_shape() != A.SPREDT
 
 
 def test_en_uafbrudt_traad_er_en_laser(_maalt):

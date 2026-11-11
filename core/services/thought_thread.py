@@ -157,6 +157,7 @@ def _find_thread(thoughts: list[dict[str, Any]]) -> dict[str, Any] | None:
         pass
 
     return {
+        "active": True,
         "theme": " ".join(theme_tokens),
         "theme_tokens": theme_tokens,
         "carrying_count": len(carrying_thoughts),

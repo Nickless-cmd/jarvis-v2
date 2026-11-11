@@ -646,7 +646,7 @@ _Agentens model-/vaerktoejsloekke som ren logik (agent-contract-v1 C6, spec 12.1
 | method | `LoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_loop_core.py#L413) |
 | method | `LoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_loop_core.py#L415) |
 | function | `run_tool_loop` | `(io, *, prompt, tools_payload, requires_tools, provider, model, scout, max_rounds, synthesis_directive, resume=…, expected_result=…)` | Koer loekken og returner raa tal + tekst. Kaster aldrig: en fejl bliver ``error_str``. | [src](../../../core/services/agent_loop_core.py#L418) |
-| function | `_outcome` | `(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0, parked, incomplete=…, unanswered=…, unanswered_ord=…, stop_reason=…)` | — | [src](../../../core/services/agent_loop_core.py#L653) |
+| function | `_outcome` | `(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0, parked, incomplete=…, unanswered=…, unanswered_ord=…, stop_reason=…)` | — | [src](../../../core/services/agent_loop_core.py#L667) |
 
 ## `core/services/agent_message_receipt.py`
 _En besked til et barn maa ikke fryse foraelderens tur — Fase 6._

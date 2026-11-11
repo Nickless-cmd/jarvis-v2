@@ -539,10 +539,24 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                 # et loefte (_promises_action) eller et svar paa et tal i opgaven
                 # (unanswered). Kontrakten `expected_result` siger hvad der SKULLE leveres;
                 # se `_delivery_gap` for den maalte fejlform.
-                gap = "" if scout else _delivery_gap(
+                # 11/11-2026: kontrakten gaelder OGSAA scouts. Indtil nu stod der
+                # ``"" if scout else ...``, og `scout` er sat for enhver researcher med
+                # laesepolitik (agent_runtime_base.py:342). Maalt i drift: en researcher
+                # kaldte fire find_files, svarede 117 tegn ("Now check reconnect logic,
+                # approval flow, and autoUpdate.ts") mod en kontrakt paa 48 tegn, og blev
+                # meldt ``completed``. Vagten var bygget til praecis den fejlform og sprang
+                # den rolle over der laver den. Scout-grenen ved linje 521 daekker kun nul
+                # vaerktoejskald; denne agent havde fire.
+                #
+                # Prisen er maalt og accepteret: en KORT men gyldig scout-konklusion bliver
+                # ogsaa ramt af laengdetaersklen. Den faar ét afgraenset forsoeg med
+                # `_delivery_nudge`, som navngiver hullet — ikke en dom. En vagt der ikke
+                # rammer den rolle der fejler, er teater.
+                gap = _delivery_gap(
                     expected_result, final_text, total_tool_calls, prompt, write_calls,
                     write_capable)
-                if not scout and action_retries < 1 and (promised or unanswered or must_write or gap):
+                if action_retries < 1 and (gap or (
+                        not scout and (promised or unanswered or must_write))):
                     action_retries += 1
                     # 26/10-2026: nudgen maa ikke forbruge den SIDSTE tilladte runde. Goer den
                     # det, udloeb loekken paa `while rounds < max_rounds` uden at naa ned til

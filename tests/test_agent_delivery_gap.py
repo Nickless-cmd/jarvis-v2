@@ -195,6 +195,55 @@ def test_a_contract_that_orders_file_names_rejects_a_long_answer_without_them():
     assert "filnavne" in out["stop_reason"]
 
 
+# ── Scout/spaerringen: kontrakten gaelder OGSAA read-only-researchers ──────
+
+#: Det svar en rigtig researcher gav 11/11-2026 efter fire `find_files`-kald, mod en
+#: kontrakt paa 48 tegn. Ordret. Den blev meldt ``completed``.
+SCOUT_STOPPEDE = ("No playwright config exists in desk — confirms no e2e. "
+                  "Now check reconnect logic, approval flow, and autoUpdate.ts")
+
+
+def test_a_researcher_that_stops_mid_reading_is_not_completed():
+    """`scout` er sat for ENHVER researcher med laesepolitik, saa vagten sprang dem alle over.
+
+    Maalt 11/11-2026 i drift: ``agent_runtime_base.py:342`` saetter ``scout=True`` for
+    rollen `researcher` med politik ``read-only-runtime``/``read-only-workstation``, og
+    loopet beregnede ``gap = "" if scout else ...``. Vagten var altsaa bygget til praecis
+    den fejlform den ikke kunne se. Scout-grenen daekkede kun nul vaerktoejskald; denne
+    agent havde fire.
+    """
+    io = FakeIO([
+        {"text": "", "tool_calls": [_tc(1)]},
+        {"text": "", "tool_calls": [_tc(2)]},
+        {"text": "", "tool_calls": [_tc(3)]},
+        {"text": "", "tool_calls": [_tc(4)]},
+        _text(SCOUT_STOPPEDE),
+        _text(SCOUT_STOPPEDE),
+    ])
+    out = _run(io, scout=True, expected_result="Verificér Desk-P0-påstande mod koden")
+
+    assert out.get("incomplete") is True, "en researcher der stoppede midt i er ikke en leverance"
+    assert "tegn" in out["stop_reason"], out["stop_reason"]
+    assert "4 værktøjskald" in out["stop_reason"]
+    # Nudgen er leverance-ordren, ikke `_ACTION_NUDGE` — en read-only agent kan ikke skrive.
+    nudge = io.model_calls[5]["messages"][-1]["content"]
+    assert "kan ikke accepteres" in nudge
+    assert "skriveværktøj" not in nudge
+
+
+def test_a_researcher_that_delivers_is_not_nudged():
+    """En researcher der FAKTISK leverer skal ikke straffes med en ekstra runde."""
+    io = FakeIO([
+        {"text": "", "tool_calls": [_tc(1)]},
+        _text(RIGTIGT),
+    ])
+    out = _run(io, scout=True, expected_result=KONTRAKT)
+
+    assert len(io.model_calls) == 2, "et fuldt svar skal ikke have en ekstra runde"
+    assert not out.get("incomplete"), out.get("stop_reason")
+    assert out["final_text"] == RIGTIGT
+
+
 def test_a_contract_that_orders_file_names_accepts_an_answer_that_carries_them():
     kontrakt = KONTRAKT + ". Svar med præcise filnavne og linjenumre."
     io = FakeIO([

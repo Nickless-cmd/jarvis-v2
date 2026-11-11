@@ -313,7 +313,15 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // tur — ikke en ny besked. Er svaret låst, må en ny runde derfor hverken
       // rydde blokkene eller åbne låsen; ellers blev skærmen tom og pacen
       // startede forfra.
-      const _bevar = _sameRun || state.svarLaast
+      // ── SELVSTÆNDIG TUR SLÅR LÅSEN (11/11-2026) ──────────────────────────
+      // `message_start` kommer FØR `run`-framen (sse_v2's fallback-gren
+      // emitter den først), så origin er endnu ikke kendt her. Men et run-id
+      // vi allerede har set som selvstændigt er kendt — og så må låsen fra
+      // den FORRIGE tur ikke holde dets blokke fanget. Uden dette arvede
+      // wakeup'ens message_start den forrige turs blokke, og dens tekst
+      // strømmede ind i den besked brugeren allerede havde læst.
+      const _selvstaendig = !!_indkommende && state.selvstaendigRunId === _indkommende
+      const _bevar = _sameRun || (state.svarLaast && !_selvstaendig)
       return {
         ...state,
         status: 'working',
@@ -530,7 +538,10 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         // ind → hoved ud → tom skærm → pace forfra». Er svaret låst, bevares
         // både blokkene og låsen; det nye run er en runde EFTER svaret.
         const nytRun = !!state.activeRunId && state.activeRunId !== runId
-        const bevarSvar = nytRun && state.svarLaast
+        // En selvstændig tur (wakeup) er ikke en runde: dens tekst må ikke
+        // lægges oveni den forrige turs svar, uanset at svaret er låst.
+        const selvstaendig = state.selvstaendigRunId === runId
+        const bevarSvar = nytRun && state.svarLaast && !selvstaendig
         const blocks = nytRun && !bevarSvar ? [] : state.blocks
         const provisionalText = (nytRun && !bevarSvar ? '' : state.provisionalText) + delta
         const provisionalBlockIndex = nytRun && !bevarSvar ? null : state.provisionalBlockIndex

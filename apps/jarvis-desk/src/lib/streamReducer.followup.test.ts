@@ -127,4 +127,43 @@ describe('en ekstra runde river ikke svaret ned', () => {
     expect(b.turStart).toBe(a.turStart)
     expect(b.blocks).toEqual([])
   })
+
+  /**
+   * DEN FAKTISKE RÆKKEFØLGE (11/11-2026).
+   *
+   * Målt på Bjørns skærm: wakeup'ens arbejdslinje stod nederst i den FORRIGE
+   * besked indtil turen sluttede. Koden havde origin-feltet og grenen — men
+   * `message_start` kommer FØR `run`-framen (sse_v2's fallback-gren emitter
+   * den først), så `activeRunId` var allerede skiftet da origin ankom, og
+   * `message_start` havde på det tidspunkt arvet den forrige turs blokke
+   * fordi `svarLaast` var sand. Testen her følger den rækkefølgen.
+   */
+  it('message_start for en selvstændig tur arver IKKE den forrige turs blokke', () => {
+    // RÆKKEFØLGEN I DRIFT: message_start kommer FØR run-framen. Her er
+    // svarLaast stadig sand fra den forrige tur, og activeRunId skifter til
+    // det nye id — så uden markøren arver den forrige turs blokke.
+    const foer = laastSvar()
+    const efter = streamReducer(foer, msgStart('w2'))
+    // message_start alene kan ikke vide at w2 er selvstændig — den bærer
+    // ingen origin. Derfor må den HELLER IKKE rydde: låsen skal holde indtil
+    // run-framen bekræfter. Det er den kontrakt der gør fixet sikkert.
+    expect(efter.svarLaast).toBe(true)
+    expect(efter.blocks.length).toBe(foer.blocks.length)
+    // Og når run-framen så lander, ryddes alt — inkl. det message_start arvede.
+    const r = streamReducer(efter, system('run', { run_id: 'w2', origin: 'wakeup' }))
+    expect(r.blocks).toEqual([])
+    expect(r.svarLaast).toBe(false)
+    expect(r.selvstaendigRunId).toBe('w2')
+  })
+
+  it('delta fra en selvstændig tur lægges IKKE oveni den forrige turs svar', () => {
+    const foer = laastSvar()
+    const r1 = streamReducer(foer, system('run', { run_id: 'w3', origin: 'wakeup' }))
+    const efter = streamReducer(r1, system('provisional_text_delta', {
+      run_id: 'w3', delta: 'Læser det autonome runs indhold',
+    }))
+    expect(efter.provisionalText).toBe('Læser det autonome runs indhold')
+    expect(efter.blocks).toEqual([])
+    expect(efter.arbejdeEfterSvar).toBe(false)
+  })
 })

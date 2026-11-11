@@ -95,3 +95,43 @@ indbakken og løftes, når turen er forbi.
 **Kendt forskel:** dispatcheren sætter ikke længere workspace-konteksten (`workspace_name`,
 `user_display_name`, `role`, `context_channel`) omkring runnet. Gatewayen bærer kun `bruger_id`,
 så disse felter videregives ikke. Se om `inbox_idle_waker._start_run` selv sætter konteksten.
+
+## Rettelse til rækkefølgen — målt 11/11-2026 (sen aften)
+
+Den foreslåede rækkefølge ovenfor («1) dreaming/heartbeat — ingen returværdi») er
+**forkert**, og kriteriet var det også. Returværdi er ikke det der afgør om en kilde
+kan migreres. Det er **hvor runnet hører hjemme**.
+
+**Målt:** `dreaming_session` kalder `start_autonomous_run(..., session_id=None,
+origin="dream")` og `routine_trigger_adapters._legacy` kalder den med
+`session_id=None, origin="heartbeat"`. Begge kører bevidst i deres EGEN silo.
+`inbox_idle_waker._maal_session` falder tilbage til
+`pick_wakeup_run_target(channel="app", ...)` → **ejerens app-samtale**.
+
+Konsekvens hvis de blev migreret blindt: hver drømmesession og hvert
+heartbeat-initiativ ville lande som et run i Bjørns desk-chat. Det er ikke «én
+vækker», det er støj i hans samtale — og drømmen gør sig allerede synlig i
+indbakken via `_registrer_dream_i_indbakken` (kildetype `dream`,
+`IKKE_GATENDE_KILDETYPER`), så synligheden findes i forvejen ad en anden vej.
+
+**Derfor:** dream og heartbeat migreres IKKE, medmindre vækkeren først kan starte et
+run i kildens egen silo (`session_id=None`) for system-origins. Det er en ændring af
+`_start_run`s kontrakt («session_id er PÅKRÆVET»), ikke en migrering.
+
+**Rettes til:**
+
+1. `scheduled_tasks` — har `target_session` og kanal-guard i forvejen. **Blokeret
+   11/11:** `tests/test_scheduled_tasks.py::test_scheduled_run_kan_ikke_lande_i_discord`
+   håndhæver den gamle kontrakt (monkeypatcher `start_autonomous_run`). Migrationen
+   blev prøvet og rullet tilbage — den skal omskrives sammen med testen, ikke før.
+2. `routine_dispatch`, `autonomous_side_task_dispatcher` — samme form som (1).
+3. `session_spawn`, `visible_runs_memory`, `jarvisx_processes` — egne kontrakter
+   (synkron kvittering / auto-continuation / operator-vækning).
+4. dream, heartbeat — **ikke** vækninger. Se ovenfor.
+
+## Forudsætningen er bygget (commit 9a9ce9baf)
+
+`inbox_items.origin` (TEXT NOT NULL DEFAULT '') + `origin` gennem
+`anmod_om_vaekning` og `inbox_idle_waker._start_run`. Gatewayen falder tilbage til
+`kilde`, så «hvem vækkede mig» altid kan besvares. Uden dette tabte HVER migrering
+sin herkomst i det tavse: wakeren skrev altid `origin="inbox"`.

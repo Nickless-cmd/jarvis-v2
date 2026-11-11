@@ -5,8 +5,28 @@ import userEvent from '@testing-library/user-event'
 const getGitStatus = vi.fn()
 vi.mock('../../lib/api', async (orig) => ({ ...(await orig() as object), getGitStatus: (...a: unknown[]) => getGitStatus(...a) }))
 
+const kontrakt = vi.fn()
+vi.mock('../../lib/agentContractApi', () => ({
+  getKontraktOverblik: async (...a: unknown[]) => kontrakt(...a),
+}))
+
 import { EnvironmentPanel } from './EnvironmentPanel'
 const cfg = { apiBaseUrl: 'http://x', authToken: 't' }
+
+/** Projektions-raekker i den form `getKontraktOverblik` svarer med. Agent-listen
+ *  kommer fra den LEVENDE projektion (11/11-2026), ikke fra transkriptet: dér
+ *  er `queued` frosset ved dispatch, og `queued` staar i AKTIVE. */
+const somKontrakt = (rows: { agentId: string; role?: string; status?: string }[]) => ({
+  status: 'ok',
+  capability: { enabled: true, reason: '', contract_version: 'agent-contract-v1' },
+  agents: rows.map((r) => ({
+    agent_id: r.agentId, assignment_id: `asg-${r.agentId}`, role: r.role ?? '',
+    goal: '', bucket: r.status ?? '', attention: false,
+    assignment_status: 'active', run_status: 'running',
+  })),
+  counts: { active: rows.length, queued: 0, waiting: 0, blocked: 0, attention: 0, open: 0 },
+  groups: [], contract_version: 'agent-contract-v1',
+})
 
 describe('EnvironmentPanel', () => {
   beforeEach(() => getGitStatus.mockReset())
@@ -59,27 +79,19 @@ describe('EnvironmentPanel — agent-rækker og halen', () => {
     getGitStatus.mockResolvedValue({ is_git: true, branch: 'main', dirty: 0, added: 0, removed: 0 })
   })
 
-  const kald = (id: string) => ({ id, name: 'explore', input: { prompt: 'find noget' }, status: 'running' as const })
-
-  it('en agent UDEN id åbner sit tool-kald, ikke en tom agent-detalje', async () => {
-    const aabnAgent = vi.fn()
-    const aabnTool = vi.fn()
-    const tool = kald('t1')
-    const { container } = render(<EnvironmentPanel config={cfg} kind="container" root="/r" working
-      evidence={{ tools: [tool], sources: [], agents: [{ agentId: '', goal: 'find noget', status: 'running', dispatchToolUseId: 't1' }] }}
-      onOpenAgent={aabnAgent} onOpenTool={aabnTool} />)
-    // Agent-RAEKKEN, ikke tool-chippen — begge baerer opgaveteksten.
-    const raekke = container.querySelector('.env-rows .env-row-button:not([disabled])')
-    await userEvent.click(raekke as HTMLElement)
-    // Detaljen findes ikke — at kalde agent-inspectoren ville give et tomt panel.
-    expect(aabnAgent).not.toHaveBeenCalled()
-    expect(aabnTool).toHaveBeenCalledWith(tool)
-  })
-
-  it('en kørende agent uden id vises som kører', async () => {
+  it('en FROSSET koe-status fra transkriptet giver ikke «kører»', async () => {
+    // Selve fejlen 11/11-2026 (Bjørn: «hvorfor vises de selv om de er færdig?
+    // og med status kører?»): transkriptet bærer Task-dispatch med
+    // `assignment_status: "queued"`, som staar i AKTIVE — saa rækken påstod
+    // «kører» resten af samtalen. Kilden er nu projektionen.
+    kontrakt.mockResolvedValue(somKontrakt([]))
     render(<EnvironmentPanel config={cfg} kind="container" root="/r" working
-      evidence={{ tools: [kald('t1')], sources: [], agents: [{ agentId: '', status: 'running', dispatchToolUseId: 't1' }] }} />)
-    expect(await screen.findByText('kører')).toBeInTheDocument()
+      evidence={{ tools: [], sources: [], agents: [
+        { agentId: 'a1', role: 'gammel-dispatch', status: 'queued', dispatchToolUseId: 't1' },
+      ] }} />)
+    await screen.findByText('Ingen ændringer')
+    expect(screen.queryByText('Underagenter')).not.toBeInTheDocument()
+    expect(screen.queryByText('gammel-dispatch')).not.toBeInTheDocument()
   })
 
   it('viser fire kilder og siger hvor mange der ER i alt', async () => {
@@ -135,19 +147,21 @@ describe('EnvironmentPanel — agent-rækker og halen', () => {
   })
 
   it('en agents farve følger agenten, ikke dens plads i listen', async () => {
-    const agent = { agentId: 'a1', role: 'researcher', status: 'active', dispatchToolUseId: 't1' }
+    const agent = { agentId: 'a1', role: 'researcher', status: 'active' }
     const farve = (el: HTMLElement) => el.style.color
+    kontrakt.mockResolvedValue(somKontrakt([agent]))
     const { unmount } = render(<EnvironmentPanel config={cfg} kind="container" root="/r" working
-      evidence={{ tools: [], sources: [], agents: [agent] }} />)
+      evidence={{ tools: [], sources: [], agents: [] }} />)
     const alene = farve(await screen.findByText('researcher'))
     unmount()
 
+    kontrakt.mockResolvedValue(somKontrakt([
+      { agentId: 'a0', role: 'foran-1', status: 'active' },
+      { agentId: 'a2', role: 'foran-2', status: 'active' },
+      agent,
+    ]))
     render(<EnvironmentPanel config={cfg} kind="container" root="/r" working
-      evidence={{ tools: [], sources: [], agents: [
-        { agentId: 'a0', role: 'foran-1', status: 'active', dispatchToolUseId: 't0' },
-        { agentId: 'a2', role: 'foran-2', status: 'active', dispatchToolUseId: 't2' },
-        agent,
-      ] }} />)
+      evidence={{ tools: [], sources: [], agents: [] }} />)
     expect(farve(await screen.findByText('researcher'))).toBe(alene)
   })
 })
@@ -193,10 +207,11 @@ describe('EnvironmentPanel — hvilke agenter står fremme', () => {
   const agent = (id: string, status: string) => ({
     agentId: id, role: `rolle-${id}`, status, dispatchToolUseId: `t-${id}`,
   })
-  const vis = (agents: ReturnType<typeof agent>[]) => render(
-    <EnvironmentPanel config={cfg} kind="container" root="/r" working
-      evidence={{ tools: [], sources: [], agents }} />,
-  )
+  const vis = (agents: ReturnType<typeof agent>[]) => {
+    kontrakt.mockResolvedValue(somKontrakt(agents))
+    return render(<EnvironmentPanel config={cfg} kind="container" root="/r" working
+      evidence={{ tools: [], sources: [], agents: [] }} />)
+  }
 
   it('en agent der er FÆRDIG forsvinder', async () => {
     vis([agent('a1', 'completed')])

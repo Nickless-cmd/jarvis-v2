@@ -114,6 +114,24 @@ function textValue(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined
 }
 
+/** Statusser der beskriver et UDFALD — sande ogsaa efter kaldet er slut. */
+const UDFALDS_STATUS = new Set([
+  'completed', 'succeeded', 'success', 'done', 'finished',
+  'failed', 'error', 'cancelled', 'canceled', 'aborted', 'interrupted',
+  'timed_out', 'timeout', 'expired', 'stuck', 'orphaned',
+])
+
+/** Kun et udfald er sandt om en agent efter dispatch-kaldet er returneret.
+ *
+ * `Task` svarer med det samme og kører videre i minutter: maalt 11/11-2026 bar
+ * 41 Task-kald i én session alle `assignment_status: "queued"`. `queued` staar i
+ * `AKTIVE` i agentSynlighed, saa hver raekke paastod «koerer» resten af
+ * samtalen — ogsaa efter agenten var faerdig eller doed. En koe-status er
+ * HISTORIE, ikke en levetid; nutiden kommer fra projektionen. */
+function udfaldsStatus(value: string | undefined): string | undefined {
+  return value && UDFALDS_STATUS.has(value.toLowerCase()) ? value : undefined
+}
+
 function agentReferences(tool: ToolEvidence): AgentReference[] {
   if (!AGENT_RESULT_TOOLS.has(tool.name)) return []
   // IKKE en tidlig return naar resultatet ikke kan parses: et hegnet, klippet
@@ -136,8 +154,11 @@ function agentReferences(tool: ToolEvidence): AgentReference[] {
       // rigtigt svar: {agent_id, assignment_id, assignment_status:"queued"}).
       // Uden det faldt status til undefined — og `agentSkalStaaFremme()` skjuler
       // netop en tom status, saa agenten forsvandt selv om navnet kom med.
+      //
+      // MEN den status er et OJEBLIKBILLEDE fra dispatch, ikke en levetid — se
+      // `udfaldsStatus`. Kun et udfald er sandt efter kaldet.
       status: result
-        ? textValue(result.agent_status) ?? textValue(result.assignment_status)
+        ? udfaldsStatus(textValue(result.agent_status) ?? textValue(result.assignment_status))
         : undefined,
       dispatchToolUseId: tool.id,
     })
@@ -152,7 +173,7 @@ function agentReferences(tool: ToolEvidence): AgentReference[] {
         agentId,
         role: textValue(row.role),
         goal: textValue(row.goal) ?? commonGoal,
-        status: textValue(row.status),
+        status: udfaldsStatus(textValue(row.status)),
         dispatchToolUseId: tool.id,
       })
     }

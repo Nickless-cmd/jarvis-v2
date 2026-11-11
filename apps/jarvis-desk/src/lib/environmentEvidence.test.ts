@@ -156,7 +156,9 @@ describe('agent-udledning mod produktionens strengform', () => {
     ]])
     expect(e.agents).toHaveLength(1)
     expect(e.agents[0]!.agentId).toBe('agent-a')
-    expect(e.agents[0]!.status).toBe('running')
+    // `running` inde i et AFLUTTET resultat er et ojebliksbillede fra kaldet,
+    // ikke en levetid — se `udfaldsStatus`. Nutiden kommer fra projektionen.
+    expect(e.agents[0]!.status).toBeUndefined()
   })
 
   it('finder agenten når resultatet er KLIPPET og dermed ugyldig JSON', () => {
@@ -196,19 +198,35 @@ describe('agent-udledning mod produktionens strengform', () => {
     expect(e.agents[0]!.status).not.toBe('ok')
   })
 
-  it('Task-dispatch bliver til en agent-række med sin faktiske tilstand', () => {
+  it('Task-dispatch bliver til en agent-række — men en koe-status er HISTORIE', () => {
     // `Task` er den ENESTE agent-dør siden 10/11-2026, men navnet manglede i
     // AGENT_RESULT_TOOLS — så miljø-feltet var tomt for netop de agenter der
     // kører. Svaret er målt på et rigtigt Task-kald 11/11-2026:
-    // {agent_id, assignment_id, assignment_status} — tilstanden hedder altså
-    // assignment_status, ikke agent_status.
+    // {agent_id, assignment_id, assignment_status}.
+    //
+    // MEN `queued` er svaret i DISPATCH-ojeblikket, ikke en levetid: målt samme
+    // dag bar 41 Task-kald i én session alle "queued", og `queued` staar i
+    // AKTIVE — så hver række påstod «kører» resten af samtalen, også efter
+    // agenten var færdig. Rækken skal derfor findes (id + dispatch) uden at
+    // påstå en tilstand.
     const e = buildEnvironmentEvidence([[
       tool('t6', 'Task', { description: 'mål panelerne' },
         hegn('{"agent_id": "agent-task-1", "assignment_id": "asg-1", "assignment_status": "queued"}')),
     ]])
     expect(e.agents).toHaveLength(1)
     expect(e.agents[0]!.agentId).toBe('agent-task-1')
-    expect(e.agents[0]!.status).toBe('queued')
+    expect(e.agents[0]!.status).toBeUndefined()
     expect(e.agents[0]!.dispatchToolUseId).toBe('t6')
+  })
+
+  it('et UDFALD i resultatet bevares — det er sandt efter kaldet', () => {
+    // Modstykket til reglen ovenfor: «failed» beskriver hvad der SKETE, og det
+    // holder ved. Ellers ville en død agent forsvinde fra den liste der findes
+    // for at vise den.
+    const e = buildEnvironmentEvidence([[
+      tool('t7', 'Task', { description: 'x' },
+        hegn('{"agent_id": "agent-task-2", "assignment_status": "failed"}')),
+    ]])
+    expect(e.agents[0]!.status).toBe('failed')
   })
 })

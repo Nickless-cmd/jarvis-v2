@@ -6,6 +6,7 @@ import { RunHealth } from './RunHealth'
 import { getGitStatus, commitAllChanges, createPullRequest, type GitStatus, type ApiConfig } from '../../lib/api'
 import type { AgentReference, EnvironmentEvidence, SourceEvidence, ToolEvidence } from '../../lib/environmentEvidence'
 import { agentSkalStaaFremme } from '../../lib/agentSynlighed'
+import { getKontraktOverblik } from '../../lib/agentContractApi'
 const SYNLIGE_LINJER = 4
 const AGENT_COLORS = ['#e0843a', '#3ab85f', '#9b6bff', '#e0556b', '#3a9be0']
 
@@ -110,12 +111,51 @@ export function EnvironmentPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, root, refreshKey, everRan, working, config?.apiBaseUrl, config?.authToken])
 
+  // Agent-listen kommer fra den LEVENDE projektion — ikke fra transkriptet.
+  //
+  // Transkriptet kan ikke vide om en agent koerer NU: `Task` svarer `queued` i
+  // dispatch-ojeblikket og er faerdig som kald sekunder senere, mens agenten
+  // arbejder i minutter. Maalt 11/11-2026 bar 41 Task-kald i én session alle
+  // "queued", saa hver raekke paastod «koerer» resten af samtalen. Projektionen
+  // laeser agent_registry/agent_assignments/agent_runs direkte og kender baade
+  // aktiv-tilstand og de fejl der ikke er kvitteret — praecis det feltet er til.
+  const [levendeAgenter, setLevendeAgenter] = useState<AgentReference[]>([])
+  useEffect(() => {
+    if (!config) return
+    let cancelled = false
+    const hent = () => {
+      getKontraktOverblik(config, 'panel')
+        .then((o) => {
+          if (cancelled) return
+          setLevendeAgenter((o.agents ?? []).map((r) => ({
+            agentId: r.agent_id,
+            role: r.role || undefined,
+            goal: r.goal || undefined,
+            status: r.bucket,
+            dispatchToolUseId: '',
+          })))
+        })
+        // Et manglende svar maa ikke vaelte panelet — og ikke efterlade den
+        // forrige liste staaende som om den var nutid.
+        .catch(() => { if (!cancelled) setLevendeAgenter([]) })
+    }
+    hent()
+    const id = window.setInterval(hent, 4000)
+    return () => { cancelled = true; window.clearInterval(id) }
+    // Primaere deps: `config` er et NYT objekt ved hver render (maalt 16/6 og
+    // 11/11-2026 — det var praecis den fejl der skabte request-stormen).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config?.apiBaseUrl, config?.authToken, sessionId])
+
   if (!everRan) return null
 
   // Underagenter er ikke en historik, men en liste over det der kraever
   // opmaerksomhed: noget der koerer, og noget der gik galt. En agent der
   // gjorde sit arbejde faerdigt forsvinder. (Bjoern 16/9-2026)
-  const agents = (evidence?.agents ?? []).filter((a) => agentSkalStaaFremme(a.status))
+  //
+  // Kilden er projektionen (se effekten ovenfor), ikke `evidence.agents`:
+  // transkriptets status er frosset ved dispatch og kan ikke se nutiden.
+  const agents = levendeAgenter.filter((a) => agentSkalStaaFremme(a.status))
   const alleSources = evidence?.sources ?? []
   const alleTools = evidence?.tools ?? []
   // Én række pr. DOMÆNE (Bjørn 26/9-2026: «kilder skal dedups»). Lageret

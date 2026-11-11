@@ -203,7 +203,19 @@ deadline. Går en assignment uden om `derive()`, er `max_fanout: 0` virkningslø
 
 ---
 
-## Leverance 8 — §4/§11: `Task`-skemaet + prompten i samme commit
+## Leverance 8 — §4/§11: `Task`-skemaet + prompten i samme commit ✅ LEVERET (verificeret 11/11-2026)
+
+**Målt mod hovedtræet 11/11-2026 — alle fire punkter er i koden:**
+
+| Punkt | Bevis |
+|---|---|
+| `team` i `Task`-skemaet | `agent_contract_tools.py:85` — object med `name` + `members`, ikke required |
+| `additionalProperties: false` | `agent_contract_tools.py:54` via `additional_properties=False` |
+| `_exec_task()` læser `team` | `agent_contract_tools.py:311-315` → `execute_team(**fields, team=team)` |
+| Prompten nævner `team` | `prompt_sections/agent_orchestration.py:49-50` |
+| Testen binder dem sammen | `tests/test_agent_orchestration.py:72` — fejler hvis skema og prompt glider fra hinanden |
+
+**Bevis:** 17 grønne i `tests/test_agent_orchestration.py`.
 
 **Ændringer:**
 

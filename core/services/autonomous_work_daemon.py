@@ -661,6 +661,19 @@ def resolve_proposal(proposal_id: str, *, outcome: str, note: str = "") -> bool:
             if note:
                 e["resolution_note"] = str(note)[:300]
             _save(items)
+            details = e.get("details") or {}
+            seed_id = details.get("seed_id") if isinstance(details, dict) else None
+            if outcome == "completed" and e.get("type") == "research" and seed_id:
+                from core.services.creative_instinct_daemon import mark_seed
+                mark_seed(
+                    str(seed_id),
+                    status="adopted",
+                    adoption_reference={
+                        "kind": "autonomous_work_proposal",
+                        "proposal_id": str(proposal_id),
+                        "note": str(note)[:300],
+                    },
+                )
             return True
     return False
 

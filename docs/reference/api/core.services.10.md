@@ -371,10 +371,10 @@ _Creative Instinct — spontaneous idea-seeds written to INCUBATOR.md._
 | function | `_age_seeds` | `(seeds)` | Mature or wither seeds based on age. Returns True if any changed. | [src](../../../core/services/creative_instinct_daemon.py#L224) |
 | function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/creative_instinct_daemon.py#L242) |
 | function | `list_seeds` | `(*, status=…)` | — | [src](../../../core/services/creative_instinct_daemon.py#L273) |
-| function | `mark_seed` | `(seed_id, *, status)` | — | [src](../../../core/services/creative_instinct_daemon.py#L280) |
-| function | `build_creative_instinct_surface` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L295) |
-| function | `_surface_summary` | `(active, adopted, withered)` | — | [src](../../../core/services/creative_instinct_daemon.py#L325) |
-| function | `build_creative_instinct_prompt_section` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L342) |
+| function | `mark_seed` | `(seed_id, *, status, adoption_reference=…)` | — | [src](../../../core/services/creative_instinct_daemon.py#L280) |
+| function | `build_creative_instinct_surface` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L305) |
+| function | `_surface_summary` | `(active, adopted, withered)` | — | [src](../../../core/services/creative_instinct_daemon.py#L335) |
+| function | `build_creative_instinct_prompt_section` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L352) |
 
 ## `core/services/creative_journal_runtime.py`
 

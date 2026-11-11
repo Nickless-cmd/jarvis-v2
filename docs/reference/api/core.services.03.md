@@ -582,9 +582,9 @@ _Autonomous Work Daemon — Jarvis works on his own when Bjørn is away._
 | function | `tick` | `(_seconds=…)` | Plan work proposals during low activity. | [src](../../../core/services/autonomous_work_daemon.py#L587) |
 | function | `list_proposals` | `(*, status=…, limit=…)` | — | [src](../../../core/services/autonomous_work_daemon.py#L645) |
 | function | `resolve_proposal` | `(proposal_id, *, outcome, note=…)` | Close a proposal. outcome in {'approved', 'rejected', 'completed'}. | [src](../../../core/services/autonomous_work_daemon.py#L652) |
-| function | `build_autonomous_work_surface` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L668) |
-| function | `_surface_summary` | `(pending, all_items)` | Summarise the queue — og sig naar den ikke bliver forbruget. | [src](../../../core/services/autonomous_work_daemon.py#L701) |
-| function | `build_autonomous_work_prompt_section` | `()` | Sig hvad der venter — med type, dato og hvad der blokerer. | [src](../../../core/services/autonomous_work_daemon.py#L760) |
+| function | `build_autonomous_work_surface` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L681) |
+| function | `_surface_summary` | `(pending, all_items)` | Summarise the queue — og sig naar den ikke bliver forbruget. | [src](../../../core/services/autonomous_work_daemon.py#L714) |
+| function | `build_autonomous_work_prompt_section` | `()` | Sig hvad der venter — med type, dato og hvad der blokerer. | [src](../../../core/services/autonomous_work_daemon.py#L773) |
 
 ## `core/services/autonomy_budget.py`
 _Dagligt budget for selvvalgte handlinger + tælling af stilheden (blok E, 4/9)._

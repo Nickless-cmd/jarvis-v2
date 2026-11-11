@@ -277,15 +277,25 @@ def list_seeds(*, status: str | None = None) -> list[dict[str, Any]]:
     return seeds
 
 
-def mark_seed(seed_id: str, *, status: str) -> bool:
+def mark_seed(
+    seed_id: str,
+    *,
+    status: str,
+    adoption_reference: dict[str, Any] | None = None,
+) -> bool:
     valid = {"fresh", "maturing", "adopted", "withered"}
     if status not in valid:
         return False
     data = _load()
     for s in data["seeds"]:
         if s.get("seed_id") == seed_id:
+            now = datetime.now(UTC).isoformat()
             s["status"] = status
-            s["touched_at"] = datetime.now(UTC).isoformat()
+            s["touched_at"] = now
+            if status == "adopted":
+                s["adopted_at"] = now
+                if adoption_reference:
+                    s["adoption_reference"] = dict(adoption_reference)
             _save(data)
             _write_incubator_md(data["seeds"])
             return True

@@ -2,7 +2,7 @@
   "name": "jarvis-desktop",
   "productName": "J.A.R.V.I.S.",
   "private": true,
-  "version": "0.6.335",
+  "version": "0.6.336",
   "description": "J.A.R.V.I.S. \\u2014 Calm, robust desktop app. Built on /chat/stream/v2 Anthropic-style protocol.",
   "homepage": "https://github.com/Nickless-cmd/jarvis-v2",
   "main": "dist-electron/main.js",
@@ -61,7 +61,8 @@
       "target": [
         "nsis"
       ],
-      "icon": "assets/icon.png"
+      "icon": "assets/icon.png",
+      "artifactName": "J.A.R.V.I.S-Setup-${version}.${ext}"
     },
     "publish": [
       {

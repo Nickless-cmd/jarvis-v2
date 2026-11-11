@@ -102,29 +102,44 @@ def _stub_fyring(monkeypatch, *, app_session: str, levende_run: str = "") -> dic
 
     kald: dict = {}
 
-    from core.services import visible_runs
+    # ÉN VÆKKER (11/11-2026): scheduled-vejen starter ikke længere et run selv.
+    # Den afleverer til indbakken, og wakeren bærer aktiv-guarden. Spionen skal
+    # derfor ramme gatewayen — ellers ser den nul kald, og testen bliver grøn af
+    # den forkerte grund (den gamle `_stub_fyring` blev glemt i migrationen).
+    from core.services import wake_gateway
 
-    def _start(prompt, *, session_id=None, origin=None, **k):
-        kald["run_session"] = session_id
+    def _anmod(*, kilde=None, sag=None, tekst=None, session_id=None,
+               task_id="", origin=None, **k):
+        kald["run_session"] = session_id or None
         kald["run_origin"] = origin
-        kald["prompt"] = prompt
-        return {"status": "ok"}
+        kald["prompt"] = tekst
+        kald["kilde"] = kilde
+        kald["sag"] = sag
+        return {"status": "queued"}
 
-    monkeypatch.setattr(visible_runs, "start_autonomous_run", _start)
+    monkeypatch.setattr(wake_gateway, "anmod_om_vaekning", _anmod)
 
     st._fire_due_tasks()
     return kald
 
 
-def test_scheduled_run_startes_ikke_naar_sessionen_er_optaget(isolated_runtime, monkeypatch):
-    """Kører der allerede et run i samtalen, må scheduled-vejen ikke starte et til."""
+def test_scheduled_taber_ikke_opgaven_naar_samtalen_er_optaget(isolated_runtime, monkeypatch):
+    """Den gamle kontrakt kastede opgaven væk når samtalen var optaget.
+
+    Guarden stod i `scheduled_tasks.py` og betød «er samtalen optaget, dispatcher
+    vi INTET» — posten lå så i indbakken, men runnet blev aldrig startet for den.
+    Nu afleveres posten og wakeren udskyder den til samtalen er ledig. Det der
+    måles her er derfor at opgaven IKKE forsvinder.
+    """
     kald = _stub_fyring(
         monkeypatch, app_session="chat-optaget-1", levende_run="run-abc123",
     )
-    assert kald == {}, (
-        "scheduled-vejen startede et autonomt run oveni et levende run i samme "
-        f"session — det er kollisionen Bjørn så: {kald}"
+    assert kald.get("run_session") == "chat-optaget-1", (
+        "scheduled-vejen afleverede ikke opgaven til den bundne samtale — en "
+        f"optaget samtale må udskyde, ikke tabe: {kald}"
     )
+    assert kald.get("run_origin") == "scheduled"
+    assert kald.get("kilde") == "scheduled"
 
 
 def test_scheduled_run_startes_naar_sessionen_er_ledig(isolated_runtime, monkeypatch):
@@ -138,22 +153,35 @@ def test_scheduled_run_startes_naar_sessionen_er_ledig(isolated_runtime, monkeyp
     assert kald.get("run_origin") == "scheduled"
 
 
-def test_scheduled_vejen_kalder_den_faelles_aktiv_guard():
-    """Struktur-vagt: guarden skal være den FÆLLES, ikke en lokal kopi.
+def test_aktiv_guarden_har_praecis_en_implementering_og_ligger_paa_vaekningsvejen():
+    """Guarden er FLYTTET, ikke fjernet (11/11-2026).
 
-    Samme form som `test_scheduled_dispatch_gaar_gennem_kanal_guarden` fra
-    13/10: den fanger regressionen at nogen fjerner kaldet igen. To kopier af
-    «er sessionen optaget» ville drive fra hinanden — og så ville den ene stille
-    holde op med at virke, hvilket er præcis hvad der skete her.
+    Den lå før i `scheduled_tasks.py` med kontrakten «er samtalen optaget,
+    dispatcher vi INTET» — og konsekvensen var et TABT run. Wakeren bærer den
+    nu, så posten venter i stedet for at forsvinde. Det der stadig skal værnes
+    om er at der findes ÉN implementering: to kopier ville drive fra hinanden,
+    og så ville den ene stille holde op med at virke — præcis hvad der skete her.
     """
     import pathlib
 
-    kilde = pathlib.Path("core/services/scheduled_tasks.py").read_text(encoding="utf-8")
-    assert "_active_turn_blocks(" in kilde, (
-        "scheduled-vejen kalder ikke den fælles aktiv-guard — et scheduled run "
-        "kan igen lande oveni Bjørns igangværende tur"
+    waker = pathlib.Path("core/services/inbox_idle_waker.py").read_text(encoding="utf-8")
+    assert "_active_turn_blocks" in waker, (
+        "wakeren tjekker ikke den fælles aktiv-guard — så kan et scheduled run "
+        "igen lande oveni Bjørns igangværende tur"
     )
-    assert "def _active_turn_blocks" not in kilde, (
-        "scheduled_tasks.py har lavet sin EGEN kopi af aktiv-guarden — brug "
-        "wakeup_dispatcher._active_turn_blocks, så de to ikke driver fra hinanden"
-    )
+
+    for navn in ("scheduled_tasks.py", "recurring_tasks.py"):
+        kilde = pathlib.Path(f"core/services/{navn}").read_text(encoding="utf-8")
+        # Kun kode-linjer: en omtale i en kommentar er ikke et kald.
+        kode = "\n".join(
+            linje for linje in kilde.splitlines()
+            if not linje.lstrip().startswith("#")
+        )
+        assert "def _active_turn_blocks" not in kode, (
+            f"{navn} har lavet sin EGEN kopi af aktiv-guarden — brug "
+            "wakeup_dispatcher._active_turn_blocks, så de to ikke driver fra hinanden"
+        )
+        assert "start_autonomous_run(" not in kode, (
+            f"{navn} starter stadig et run direkte — kilden skal signalere til "
+            "indbakken, så wakeren kan bære guarden"
+        )

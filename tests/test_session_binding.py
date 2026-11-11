@@ -21,6 +21,13 @@ def _fresh(tmp_path, monkeypatch):
     monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
     db.init_db()
     rt._ensure_table()
+    # ÉN VÆKKER (11/11-2026): recurring-vejen afleverer nu til indbakken, så
+    # `inbox_items` skal findes i temp-DB'en. `db_inbox._ensure_skema` kører
+    # DDL ÉN gang pr. PROCESSUS, så uden dette nulstilles flaget aldrig og den
+    # anden temp-DB får ingen tabel — testen fejler med «no such table».
+    import core.runtime.db_inbox as db_inbox
+    monkeypatch.setattr(db_inbox, "_skema_klar", False)
+    db_inbox._ensure_skema(db.connect())
 
 
 # ── Den fælles binder ───────────────────────────────────────────────────────
@@ -80,8 +87,15 @@ def test_recurring_fyrer_i_den_bundne_samtale(tmp_path, monkeypatch):
     """Kernen i fixet: runnet lander i samtalen, ikke i auto-recurring."""
     _fresh(tmp_path, monkeypatch)
     kaldt: list[dict] = []
-    import core.services.visible_runs as vr
-    monkeypatch.setattr(vr, "start_autonomous_run", lambda **kw: kaldt.append(kw))
+    # ÉN VÆKKER (11/11-2026): recurring starter ikke længere et run selv — den
+    # afleverer til indbakken med samtalen bundet på posten. Spionen skal derfor
+    # ramme gatewayen; ellers ser den nul kald og testen bliver grøn af den
+    # forkerte grund.
+    import core.services.wake_gateway as wg
+    monkeypatch.setattr(
+        wg, "anmod_om_vaekning",
+        lambda **kw: kaldt.append(kw) or {"status": "queued"},
+    )
 
     t = rt.create_recurring_task(focus="medicin", interval_minutes=1440,
                                  session_id="chat-bundet-1")
@@ -95,14 +109,22 @@ def test_recurring_fyrer_i_den_bundne_samtale(tmp_path, monkeypatch):
     assert len(kaldt) == 1, "opgaven fyrede ikke"
     assert kaldt[0]["session_id"] == "chat-bundet-1"
     assert kaldt[0]["origin"] == "recurring"
+    assert kaldt[0]["tekst"] == "medicin"
+    # Dedup-nøglen skal være FOREKOMSTEN — kun task_id ville dedupes mod den
+    # første post for evigt, så en daglig opgave kun kunne vække én gang.
+    assert kaldt[0]["sag"].startswith(f"recurring:{t['task_id']}:")
+    assert kaldt[0]["sag"] != f"recurring:{t['task_id']}:"
 
 
 def test_recurring_uden_binding_falder_til_gammel_adfaerd(tmp_path, monkeypatch):
     """Raekker fra foer kolonnen fandtes har '' — de skal stadig fyre."""
     _fresh(tmp_path, monkeypatch)
     kaldt: list[dict] = []
-    import core.services.visible_runs as vr
-    monkeypatch.setattr(vr, "start_autonomous_run", lambda **kw: kaldt.append(kw))
+    import core.services.wake_gateway as wg
+    monkeypatch.setattr(
+        wg, "anmod_om_vaekning",
+        lambda **kw: kaldt.append(kw) or {"status": "queued"},
+    )
 
     t = rt.create_recurring_task(focus="gammel", interval_minutes=1440)
     assert t["session_id"] == ""
@@ -114,7 +136,9 @@ def test_recurring_uden_binding_falder_til_gammel_adfaerd(tmp_path, monkeypatch)
     rt._fire_due()
 
     assert len(kaldt) == 1
-    assert kaldt[0]["session_id"] is None
+    # Uden binding normaliserer kilden til "" — den tomme adresse betyder
+    # «slå den aktive op nu», ikke «ingen adresse».
+    assert kaldt[0]["session_id"] == ""
 
 
 # ── Ur 2: scheduled ─────────────────────────────────────────────────────────

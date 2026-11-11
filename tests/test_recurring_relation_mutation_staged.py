@@ -20,13 +20,18 @@ def test_recurring_tasks_create_fire_cancel_and_state(tmp_path, monkeypatch):
     monkeypatch.setattr(runtime_db, "connect", lambda: _sqlite_connect(db_path))
 
     emitted: list[tuple[str, object]] = []
-    visible_runs = ModuleType("core.services.visible_runs")
-    # start_autonomous_run now takes origin= (per-origin autonomous-history
-    # rotation) — the stub must accept it.
-    visible_runs.start_autonomous_run = (
-        lambda *, message, session_id=None, origin=None, task_id="": emitted.append((message, session_id))
-    )
-    monkeypatch.setitem(sys.modules, "core.services.visible_runs", visible_runs)
+    # ÉN VÆKKER (11/11-2026): recurring afleverer til indbakken i stedet for at
+    # starte et run. Stubben skal derfor være gatewayen — ellers ser den nul
+    # kald, og `fire_count` ville tælle et forsøg der aldrig blev leveret.
+    wake_gateway = ModuleType("core.services.wake_gateway")
+
+    def _anmod(*, kilde=None, sag=None, tekst=None, session_id=None,
+               task_id="", origin=None, **k):
+        emitted.append((tekst, session_id))
+        return {"status": "queued"}
+
+    wake_gateway.anmod_om_vaekning = _anmod
+    monkeypatch.setitem(sys.modules, "core.services.wake_gateway", wake_gateway)
 
     task = recurring.create_recurring_task(
         focus="Send daily recap",
@@ -48,7 +53,7 @@ def test_recurring_tasks_create_fire_cancel_and_state(tmp_path, monkeypatch):
 
     assert task["status"] == "active"
     assert state_before["total"] == 1
-    assert emitted == [("Send daily recap", None)]
+    assert emitted == [("Send daily recap", "")]
     assert listed[0]["fire_count"] == 1
     assert cancelled is True
     assert recurring.get_recurring_tasks_state()["cancelled_count"] == 1

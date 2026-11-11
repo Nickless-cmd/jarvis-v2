@@ -48,8 +48,9 @@ def waker(monkeypatch):
     monkeypatch.setattr(w, "_noget_koerer", lambda: False)
     monkeypatch.setattr(
         w, "_start_run",
-        lambda tekst, *, session_id, user_id: starter.append(
-            {"tekst": tekst, "session": session_id}) or True)
+        lambda tekst, *, session_id, user_id, task_id="", permission_session="": starter.append(
+            {"tekst": tekst, "session": session_id, "task_id": task_id,
+             "permission_session": permission_session}) or True)
     w.starter = starter  # type: ignore[attr-defined]
     return w
 
@@ -95,7 +96,28 @@ def test_to_kilder_samme_sag_giver_en_vaekning(inbox_db, waker):
 def test_waker_bruger_kildens_tekst_og_samtale(inbox_db, waker):
     _anmod(tekst="TJEK DEPLOY")
     waker.vaek_paa_aabne_poster(bruger_id=BRUGER)
-    assert waker.starter == [{"tekst": "TJEK DEPLOY", "session": "chat-1"}]
+    assert waker.starter == [{
+        "tekst": "TJEK DEPLOY", "session": "chat-1",
+        "task_id": "", "permission_session": "",
+    }]
+
+
+def test_opgave_og_permissionssamtale_naar_hele_vejen_til_starteren(inbox_db, waker):
+    """En migreret vækningskilde må ikke tabe det den bærer i dag.
+
+    `wakeup_dispatcher` gav før `task_id` (hvilken forpligtelse vækningen
+    fortsætter) og `permission_session` (hvor adgangsniveauet skal læses) til
+    starteren. Flyttes vækningen gennem indbakken, skal begge felter overleve
+    turen — ellers starter runnet uden bånd til opgaven og arver tilladelsen
+    fra den silo det lander i. Tabet ville være usynligt: runnet starter jo.
+    """
+    _anmod(tekst="fortsæt opgaven", task_id="opg-7",
+           permission_session="chat-booket")
+    waker.vaek_paa_aabne_poster(bruger_id=BRUGER)
+    assert waker.starter == [{
+        "tekst": "fortsæt opgaven", "session": "chat-1",
+        "task_id": "opg-7", "permission_session": "chat-booket",
+    }]
 
 
 # ── indbakkens vurdering gælder stadig ──────────────────────────────────────

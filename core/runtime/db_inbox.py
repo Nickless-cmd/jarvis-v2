@@ -171,6 +171,19 @@ _SENERE_KOLONNER: Final[tuple[tuple[str, str], ...]] = (
     ("importance", "TEXT NOT NULL DEFAULT 'normal'"),
     ("leveret_til_run_id", "TEXT NOT NULL DEFAULT ''"),
     ("leveret_at", "TEXT NOT NULL DEFAULT ''"),
+    # OPGAVENS ID (11/11-2026). En vækning skal kunne fortsætte den forpligtelse
+    # den blev booket som, ikke bare starte et løsrevet run. `wakeup_dispatcher`
+    # bar feltet videre til `start_autonomous_stream_run` indtil vækningerne
+    # blev flyttet gennem indbakken; uden kolonnen taber den migrering båndet
+    # mellem vækning og opgave — og tabet er usynligt, fordi runnet stadig
+    # starter. Det er præcis den slags der først ses når nogen leder efter det.
+    ("task_id", "TEXT NOT NULL DEFAULT ''"),
+    # PERMISSIONS-KILDEN (målt 9/11-2026). `session_id` er hvor runnet LANDER,
+    # og den kan være en `auto-*`-silo født `ask`. Adgangsniveauet skal læses
+    # fra den samtale vækningen blev BOOKET i — det er der Bjørn satte «fuld
+    # adgang». To felter, fordi de to spørgsmål har hver sit svar: hvor skal
+    # det køre, og hvilken tilladelse gælder.
+    ("permission_session", "TEXT NOT NULL DEFAULT ''"),
 )
 
 
@@ -226,6 +239,8 @@ def _post_fra_raekke(r: sqlite3.Row) -> dict[str, Any]:
         "importance": _felt(r, "importance") or "normal",
         "leveret_til_run_id": _felt(r, "leveret_til_run_id"),
         "leveret_at": _felt(r, "leveret_at"),
+        "task_id": _felt(r, "task_id"),
+        "permission_session": _felt(r, "permission_session"),
     }
     # ── Opgave 8: udløb er en BEREGNET tilstand ─────────────────────────────
     #
@@ -286,6 +301,8 @@ def opret_eller_hent(
     expires_at: str = "",
     session_id: str = "",
     importance: str = "normal",
+    task_id: str = "",
+    permission_session: str = "",
 ) -> dict[str, Any]:
     """Idempotent registrering. Findes posten, returneres DEN — urørt.
 
@@ -329,14 +346,15 @@ def opret_eller_hent(
                 bruger_id, kildetype, kilde_id, oprettende_run_id,
                 verificeret_ejer, kraever_handling, status, beskrivelse,
                 output_sti, output_bytes, created_at, bloker, expires_at,
-                session_id, importance
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                session_id, importance, task_id, permission_session
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (bruger_id, kildetype, kilde_id, str(oprettende_run_id or ""),
              str(verificeret_ejer or EJER_UKENDT), 1 if kraever_handling else 0,
              STATUS_AABEN, str(beskrivelse or ""), str(output_sti or ""),
              output_bytes, _nu(), 1 if bloker else 0, str(expires_at or ""),
-             str(session_id or ""), importance_n),
+             str(session_id or ""), importance_n, str(task_id or ""),
+             str(permission_session or "")),
         )
         # A source may learn that an existing open finding is more important.
         # Never downgrade: critical/high must not be erased by a later default.

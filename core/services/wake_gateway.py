@@ -75,6 +75,8 @@ def anmod_om_vaekning(
     bruger_id: str = "",
     session_id: str = "",
     importance: str = "normal",
+    task_id: str = "",
+    permission_session: str = "",
 ) -> dict[str, Any]:
     """Bed indbakken om at vække. Starter ikke noget selv.
 
@@ -82,6 +84,10 @@ def anmod_om_vaekning(
     `sag`    hvad vækningen handler om — dedup-nøglen
     `tekst`  instruktionen runnet skal have
     `session_id` den samtale vækningen hører til (tom = waker vælger/venter)
+    `task_id` den forpligtelse vækningen fortsætter (tom = et nyt run)
+    `permission_session` samtalen adgangsniveauet skal læses fra, når den
+        afviger fra `session_id` — ellers arver et run i en `auto-*`-silo
+        tilladelsen fra den silo i stedet for fra den samtale der bookede det
     """
     try:
         kilde = str(kilde or "").strip()
@@ -129,6 +135,8 @@ def anmod_om_vaekning(
             beskrivelse=tekst,
             session_id=str(session_id or ""),
             importance=importance,
+            task_id=str(task_id or ""),
+            permission_session=str(permission_session or ""),
         )
         if r.get("status") != "ok":
             logger.warning("wake_gateway: %s kunne ikke skrive %s: %s",

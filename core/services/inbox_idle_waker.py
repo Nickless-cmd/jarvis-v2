@@ -270,7 +270,14 @@ def _maal_session(post: dict[str, Any]) -> str:
     ) or ""
 
 
-def _start_run(tekst: str, *, session_id: str, user_id: str) -> bool | None:
+def _start_run(
+    tekst: str,
+    *,
+    session_id: str,
+    user_id: str,
+    task_id: str = "",
+    permission_session: str = "",
+) -> bool | None:
     """Start det autonome run i den samtale posten hører til. Adskilt, så
     testen kan bytte den ud ét sted.
 
@@ -301,6 +308,12 @@ def _start_run(tekst: str, *, session_id: str, user_id: str) -> bool | None:
             session_id=session_id,
             origin="inbox",
             force_user_id=str(user_id or ""),
+            # Vækningen fortsætter den forpligtelse den blev booket som — ellers
+            # starter et løsrevet run uden bånd til opgaven.
+            task_id=str(task_id or ""),
+            # Adgangsniveauet læses fra den samtale vækningen blev BOOKET i,
+            # ikke fra den silo runnet lander i (målt 9/11-2026).
+            permission_session=str(permission_session or ""),
         )
 
 
@@ -411,7 +424,13 @@ def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
             continue
         tekst = _dispatch_tekst(post)
         try:
-            startet = _start_run(tekst, session_id=session_id, user_id=bruger_id)
+            startet = _start_run(
+                tekst,
+                session_id=session_id,
+                user_id=bruger_id,
+                task_id=str(post.get("task_id") or ""),
+                permission_session=str(post.get("permission_session") or ""),
+            )
             # TAVS AFVISNING (14/10-2026). `start_autonomous_run` returnerede
             # foer `None` ogsaa naar run-guarden eller gut-gaten afviste — og
             # vaekkeren talte det som en vaekning. Posten stod som vaekket, mens

@@ -103,8 +103,29 @@ def _stub_gate(monkeypatch, gated_action: str, reason: str):
     monkeypatch.setattr(ex, "read_emotional_snapshot", _stub_snapshot)
     monkeypatch.setattr(
         ex, "apply_emotional_controls",
-        lambda *, kernel_action, snapshot: (gated_action, reason),
+        lambda *, kernel_action, snapshot, risk=None: (gated_action, reason),
     )
+
+
+def test_runtime_executor_passes_existing_risk_to_emotional_controls(monkeypatch):
+    from core.services import runtime_action_executor as ex
+
+    received: dict[str, str | None] = {}
+    monkeypatch.setattr(ex, "read_emotional_snapshot", _stub_snapshot)
+    monkeypatch.setattr(
+        ex,
+        "apply_emotional_controls",
+        lambda *, kernel_action, snapshot, risk=None: (
+            received.update(risk=risk) or ("escalate_user", "test_gate")
+        ),
+    )
+    monkeypatch.setattr(ex, "_gate_overstyret", lambda action, feeling: False)
+    monkeypatch.setattr(ex, "_log_gate_block", lambda **kwargs: None)
+
+    result = ex.execute_runtime_action(action_id="inspect_repo_context", payload={})
+
+    assert result.status == "blocked"
+    assert received == {"risk": "high"}
 
 
 def test_en_emotional_blokering_skriver_til_veto_events(monkeypatch):

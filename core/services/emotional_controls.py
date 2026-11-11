@@ -167,7 +167,7 @@ def apply_emotional_controls(
     *,
     kernel_action: str = "execute",
     snapshot: EmotionalSnapshot | None = None,
-    risk: str = "low",
+    risk: str = "high",
 ) -> tuple[str, str | None]:
     """Transform a kernel action based on current emotional state.
 

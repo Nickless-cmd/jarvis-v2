@@ -77,6 +77,7 @@ def anmod_om_vaekning(
     importance: str = "normal",
     task_id: str = "",
     permission_session: str = "",
+    origin: str = "",
 ) -> dict[str, Any]:
     """Bed indbakken om at vække. Starter ikke noget selv.
 
@@ -88,6 +89,11 @@ def anmod_om_vaekning(
     `permission_session` samtalen adgangsniveauet skal læses fra, når den
         afviger fra `session_id` — ellers arver et run i en `auto-*`-silo
         tilladelsen fra den silo i stedet for fra den samtale der bookede det
+    `origin` hvilken slags run vækningen må starte (dream, heartbeat,
+        scheduled, recurring …). Uden den skrev wakeren ALTID "inbox", og et
+        drømme-run blev umuligt at skelne fra en påmindelse i telemetrien.
+        Falder tilbage til `kilde`, så feltet aldrig er tomt for en kilde
+        der navngav sig.
     """
     try:
         kilde = str(kilde or "").strip()
@@ -137,6 +143,10 @@ def anmod_om_vaekning(
             importance=importance,
             task_id=str(task_id or ""),
             permission_session=str(permission_session or ""),
+            # HERKOMSTEN (11/11-2026): falder tilbage til kildenavnet, så en
+            # vækning altid kan svare på hvem der kaldte — også når kalderen
+            # ikke selv kender sin run-origin.
+            origin=str(origin or "").strip() or kilde,
         )
         if r.get("status") != "ok":
             logger.warning("wake_gateway: %s kunne ikke skrive %s: %s",

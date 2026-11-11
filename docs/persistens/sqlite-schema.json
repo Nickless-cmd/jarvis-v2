@@ -21180,7 +21180,7 @@
       "created_at_formats": []
     },
     "inbox_items": {
-      "digest": "10:9e:f5:c5:b7:5d:cb:21:e6:2c:96:15:18:02:5e:47:04:38:05:59:da:a1:1b:9e:38:b5:62:ec:6e:04:d0:75",
+      "digest": "04:86:00:0d:e1:a8:7d:8c:7e:7e:85:d9:c3:ca:2a:8a:cd:77:2b:71:4d:01:09:34:8d:d1:fd:c3:d8:2a:bb:98",
       "schema": {
         "columns": [
           {
@@ -21297,6 +21297,14 @@
           },
           {
             "name": "oprettende_run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "origin",
             "type": "TEXT",
             "nullable": false,
             "default": "''",

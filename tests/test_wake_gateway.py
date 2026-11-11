@@ -48,9 +48,10 @@ def waker(monkeypatch):
     monkeypatch.setattr(w, "_noget_koerer", lambda: False)
     monkeypatch.setattr(
         w, "_start_run",
-        lambda tekst, *, session_id, user_id, task_id="", permission_session="": starter.append(
+        lambda tekst, *, session_id, user_id, task_id="", permission_session="",
+        origin="": starter.append(
             {"tekst": tekst, "session": session_id, "task_id": task_id,
-             "permission_session": permission_session}) or True)
+             "permission_session": permission_session, "origin": origin}) or True)
     w.starter = starter  # type: ignore[attr-defined]
     return w
 
@@ -99,6 +100,9 @@ def test_waker_bruger_kildens_tekst_og_samtale(inbox_db, waker):
     assert waker.starter == [{
         "tekst": "TJEK DEPLOY", "session": "chat-1",
         "task_id": "", "permission_session": "",
+        # Kilden hed "test-kilde" og gav ingen origin: gatewayen skal falde
+        # tilbage til kildenavnet, så «hvem vækkede mig» altid kan besvares.
+        "origin": "test-kilde",
     }]
 
 
@@ -112,11 +116,14 @@ def test_opgave_og_permissionssamtale_naar_hele_vejen_til_starteren(inbox_db, wa
     fra den silo det lander i. Tabet ville være usynligt: runnet starter jo.
     """
     _anmod(tekst="fortsæt opgaven", task_id="opg-7",
-           permission_session="chat-booket")
+           permission_session="chat-booket", origin="dream")
     waker.vaek_paa_aabne_poster(bruger_id=BRUGER)
     assert waker.starter == [{
         "tekst": "fortsæt opgaven", "session": "chat-1",
         "task_id": "opg-7", "permission_session": "chat-booket",
+        # En EKSPLICIT origin må ikke overskrives af kilde-fallbacken: ellers
+        # blev et drømme-run igen umuligt at skelne fra en påmindelse.
+        "origin": "dream",
     }]
 
 

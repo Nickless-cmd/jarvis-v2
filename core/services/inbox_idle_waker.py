@@ -277,6 +277,7 @@ def _start_run(
     user_id: str,
     task_id: str = "",
     permission_session: str = "",
+    origin: str = "",
 ) -> bool | None:
     """Start det autonome run i den samtale posten hører til. Adskilt, så
     testen kan bytte den ud ét sted.
@@ -331,7 +332,9 @@ def _start_run(
             return start_autonomous_run(
                 tekst,
                 session_id=session_id,
-                origin="inbox",
+                # Bevar kildens herkomst; "inbox" er kun fallback for en post
+                # skrevet før feltet fandtes.
+                origin=str(origin or "").strip() or "inbox",
                 force_user_id=str(user_id or ""),
                 # Vækningen fortsætter den forpligtelse den blev booket som —
                 # ellers starter et løsrevet run uden bånd til opgaven.
@@ -460,6 +463,10 @@ def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
                 user_id=bruger_id,
                 task_id=str(post.get("task_id") or ""),
                 permission_session=str(post.get("permission_session") or ""),
+                # HERKOMSTEN (11/11-2026). Kilden skrev hvad slags run den
+                # bad om (dream, heartbeat, scheduled …). Uden den blev alt
+                # "inbox", og telemetrien kunne ikke skelne dem.
+                origin=str(post.get("origin") or ""),
             )
             # TAVS AFVISNING (14/10-2026). `start_autonomous_run` returnerede
             # foer `None` ogsaa naar run-guarden eller gut-gaten afviste — og

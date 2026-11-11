@@ -519,6 +519,18 @@ export function ChatView({
   })
 
 
+  // Ét STABILT config-objekt. Composer, GreetingHero og ~20 andre effekter har
+  // `config` som dependency, og et nyt objekt pr. render fik dem alle til at
+  // fyre ved HVER render — og under en tur re-rendres ChatView per stream-event.
+  // Det var mekanismen bag spammet: hvert tool-kald gav nye kald til
+  // /chat/visible-providers og /api/connectors. Målt 11/11-2026: 4.733 kald til
+  // visible-providers på 20 min, hvoraf 3.986 blev 429'et af husets egen
+  // rate-limiter. Primitive deps → objektet skifter kun når værdierne gør.
+  const apiConfig = useMemo(
+    () => (settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined),
+    [settings?.apiBaseUrl, settings?.authToken],
+  )
+
   const streaming = stream.status === 'working'
   const historicalChatMode = chatFlow.state.preference === 'calm' ? 'calm' : 'living'
   const primaryChatMode = stream.activeRunId
@@ -803,7 +815,7 @@ export function ChatView({
         voiceSupported={voice.supported}
         onStop={() => void stream.abort()}
         model="deepseek-flash"
-        config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
+        config={apiConfig}
         getSessionId={ensureSessionId}
         sessionId={sessionId}
         showPermissions={auth?.role === 'owner'}

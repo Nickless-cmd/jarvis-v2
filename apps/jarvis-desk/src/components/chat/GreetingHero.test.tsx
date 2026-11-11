@@ -82,4 +82,23 @@ describe('GreetingHero', () => {
     await waitFor(() => expect(popup.location.href).toBe('https://github.com/login/oauth/authorize?x'))
     vi.unstubAllGlobals()
   })
+
+  // Regression 11/11-2026 — spammet Bjørn filmede. `config` er et NYT objekt ved
+  // hver render af kalderen (ChatView bygger det inline), så effekten fyrede et
+  // kald per render; under en tur re-rendres fladen per stream-event. Målt:
+  // 1.088 kald til /api/connectors på ét minut, 4.733 til /chat/visible-providers
+  // på 20 minutter — hvoraf 3.986 blev 429'et af husets egen rate-limiter.
+  // Kaldantallet skal være upåvirket af hvor mange gange objektet genskabes.
+  it('henter connectors ÉN gang selv om config er et nyt objekt ved hver render', async () => {
+    getConnectors.mockResolvedValue([])
+    const vis = () => (
+      <GreetingHero config={{ apiBaseUrl: 'http://x', authToken: 't' }} userName="Bjørn">c</GreetingHero>
+    )
+    const { rerender } = render(vis())
+    for (let i = 0; i < 10; i++) rerender(vis())
+    await waitFor(() => expect(getConnectors).toHaveBeenCalled())
+    // Lad eventuelle efterfølgende kald lande, så vi ikke måler for tidligt.
+    await new Promise((r) => setTimeout(r, 60))
+    expect(getConnectors).toHaveBeenCalledTimes(1)
+  })
 })

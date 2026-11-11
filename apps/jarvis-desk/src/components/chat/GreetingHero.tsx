@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { ApiConfig } from '../../lib/api'
 import { getConnectors, startConnect, type Connector } from '../../lib/connectorsApi'
 import { connectorIcon } from '../../lib/connectorIcon'
@@ -43,10 +43,21 @@ export function GreetingHero({
   const [forbindFejl, setForbindFejl] = useState('')
   useEffect(() => { setHint(takePendingHint()) }, [])
 
+  // Samme fælde som composeren: `config` er et nyt objekt på hver render, så
+  // effekten fyrede et connector-kald per render — og under en tur re-rendres
+  // fladen per stream-event. Målt 11/11-2026: 1.088 kald på ét minut.
+  // Guarden er de primitive værdier, ikke objektets identitet.
+  const connForsoegtRef = useRef<string | null>(null)
+  const _connBase = config?.apiBaseUrl
+  const _connToken = config?.authToken
   useEffect(() => {
-    if (!config) return
+    if (!_connBase) return
+    const noegle = `${_connBase}|${_connToken ?? ''}`
+    if (connForsoegtRef.current === noegle) return
+    connForsoegtRef.current = noegle
+    const cfg = { apiBaseUrl: _connBase, authToken: _connToken ?? null } as ApiConfig
     let cancelled = false
-    void getConnectors(config)
+    void getConnectors(cfg)
       .then((list) => {
         if (cancelled) return
         // Kun IKKE-forbundne OAuth-apps — Gmail først. En app der er sat op én
@@ -65,7 +76,7 @@ export function GreetingHero({
       })
       .catch(() => { /* tom — ingen forslag er fint */ })
     return () => { cancelled = true }
-  }, [config])
+  }, [_connBase, _connToken])
 
   // Codex' punkt 2 (21/9-2026): «Forbind» kunne fejle HELT tavst. Tre steder
   // kunne det gaa galt — ingen url, ingen bro, en browser der ikke aabnede —

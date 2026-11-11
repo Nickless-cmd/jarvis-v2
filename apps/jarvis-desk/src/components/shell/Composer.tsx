@@ -279,15 +279,31 @@ export function Composer({
   const fileRef = useRef<HTMLInputElement>(null)
   const dictation = useDictation((t) => setText((cur) => (cur ? cur + ' ' : '') + t), config)
 
-  // Owner → hent hele paletten af visible-klare providers (engangs).
+  // Owner → hent hele paletten af visible-klare providers (ENGANG pr. forbindelse).
+  //
+  // To fælder gjorde dette til en storm. `providers.length` var stop-betingelsen,
+  // men den er RESULTATET — ikke et bevis på at vi har spurgt. Så længe svaret
+  // ikke var landet, var længen 0, og hver render fyrede et nyt kald. Og `config`
+  // er et NYT objekt på hver render (se effekten nedenfor), så under en tur —
+  // hvor composeren re-rendres per stream-event — blev der fyret et kald per
+  // event. Målt 11/11-2026: 3.577 kald på ét minut, 3.986 × 429 mod Bjørns
+  // egen IP. Rate-limiteren svarede, men svaret blev kastet væk, og løkken
+  // fortsatte. Guarden er derfor et FORSØGT: én hentning pr. (base, token).
+  const provForsoegtRef = useRef<string | null>(null)
+  const _provBase = config?.apiBaseUrl
+  const _provToken = config?.authToken
   useEffect(() => {
-    if (!isOwner || !config || providers.length) return
+    if (!isOwner || !_provBase) return
+    const noegle = `${_provBase}|${_provToken ?? ''}`
+    if (provForsoegtRef.current === noegle) return
+    provForsoegtRef.current = noegle
     let alive = true
+    const cfg = { apiBaseUrl: _provBase, authToken: _provToken ?? null }
     import('../../lib/api').then(({ getVisibleProviders }) =>
-      getVisibleProviders(config).then((p) => { if (alive) setProviders(p) }),
+      getVisibleProviders(cfg).then((p) => { if (alive) setProviders(p) }),
     )
     return () => { alive = false }
-  }, [isOwner, config, providers.length])
+  }, [isOwner, _provBase, _provToken])
 
   // Persistér provider + model så man ikke ryger tilbage til Deepseek-default.
   // (permission persisteres nu i PermissionContext.)

@@ -93,3 +93,43 @@ def test_workstation_agent_stempler_operator_kald_med_desk_kontekst(monkeypatch)
         "_runtime_user_id": "bjorn", "_runtime_session_id": "desk-session",
         "_operator_workspace_root": "/home/bjorn/project",
     }}
+
+
+# ── Kapabilitets-påstande (11/11-2026) ────────────────────────────────────
+#
+# Målt på en ægte kørsel: en researcher HAVDE web_search + web_fetch — begge i
+# `_READ_ONLY_TOOLS`, begge i hendes `allowed_tools_json`, og
+# `_build_agent_tools_payload` gav 10/10 med `MANGLER: []`. Hun svarede alligevel
+# «jeg har ikke adgang til web_search/web_fetch». Hendes faktiske kald var
+# `search` x2 og `find_files` x1: hun kaldte ALDRIG det værktøj hun påstod hun
+# manglede. Udfaldet blev bogført som AGENT_INCOMPLETE — altså blev VORES
+# manglende værn registreret som HENDES fejl.
+#
+# Værnet er en instruks, ikke en kode-gate: kun agenten ved om den prøvede.
+# Derfor holder testen fast at teksten faktisk står i prompten — ellers kan den
+# forsvinde i en refaktorering uden at nogen opdager det.
+
+def test_prompten_kraever_at_man_proever_foer_man_paastaar_at_man_mangler_et_vaerktoej():
+    from core.services.agent_runtime_base import _AGENT_VERIFY_RULE, _role_prompt
+    tekst = _role_prompt("Du er researcher.", tools=True)
+    assert "THIS INCLUDES YOUR OWN CAPABILITIES" in tekst
+    assert "never report that you lack a tool without first" in tekst
+    assert "only valid after a web_search call returned" in tekst
+    # Den skal IKKE lække ind i roller uden værktøjer — dér er den meningsløs.
+    uden = _role_prompt("Du er dommer.", tools=False)
+    assert "THIS INCLUDES YOUR OWN CAPABILITIES" not in uden
+
+
+def test_web_search_er_faktisk_i_den_policy_en_researcher_faar():
+    """Påstanden «jeg har ikke web_search» skal være falsificerbar i koden."""
+    from core.services.agent_runtime_base import (
+        _build_agent_tools_payload,
+        tools_for_policy,
+    )
+    policy = tools_for_policy("read-only-runtime")
+    assert "web_search" in policy and "web_fetch" in policy
+    payload = _build_agent_tools_payload(policy)
+    navne = {((t.get("function") or {}).get("name") or "") for t in payload}
+    assert {"web_search", "web_fetch"} <= navne, (
+        f"payload mangler web-vaerktoejer: {sorted(navne)}"
+    )

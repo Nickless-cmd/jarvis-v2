@@ -616,10 +616,24 @@ _AGENT_FINISH_RULE = (
 )
 
 # For roles that hold tools — verify before you assert.
+#
+# 11/11-2026: the rule covered FACTS but not your OWN CAPABILITIES, and that gap was
+# measured on a real run. A researcher holding web_search + web_fetch (both present in
+# `_READ_ONLY_TOOLS`, in her `allowed_tools_json`, and in the payload builder's 10/10
+# output with `MANGLER: []`) answered "jeg har ikke adgang til web_search/web_fetch".
+# Her actual calls that run were `search` x2 and `find_files` x1 — she never invoked
+# the tool she claimed to lack. We then booked it as AGENT_INCOMPLETE, i.e. we
+# recorded OUR missing guard as HER failure. A capability claim is an assertion like
+# any other: call the tool before you declare it absent.
 _AGENT_VERIFY_RULE = (
     "Use your tools to verify before you assert: never guess a file path, function "
     "name, or fact — check it (read_file / find_files), then state it. Read excerpts, "
-    "not whole files. Return conclusions and evidence, not raw dumps."
+    "not whole files. Return conclusions and evidence, not raw dumps.\n"
+    "THIS INCLUDES YOUR OWN CAPABILITIES. The tool list in your request is the complete "
+    "truth about what you have — never report that you lack a tool without first "
+    "CALLING it. 'I have no web_search' is only valid after a web_search call returned "
+    "an error; otherwise it is a guess about yourself, and it is wrong. The same holds "
+    "for your workspace: look before you conclude it is empty."
 )
 
 # Universal — the agent's OWN coverage declaration (27/10-2026).

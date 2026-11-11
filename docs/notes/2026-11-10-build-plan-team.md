@@ -482,3 +482,52 @@ en grøn test er ikke færdig.
 
 **Rækkefølgen må ikke ændres:** leverance 2 ændrer id-genereringen for alt efterfølgende, og
 leverance 1 lukker den ene fejl der kan give et svar uden grundlag.
+
+---
+
+## L14 — accept-laget er kalibreret, og dets grænse er målt
+
+**Status: målt 11/11-2026. Ingen ny regel bygget — fordi målingen ikke bærer en.**
+
+### Det der skete i drift
+
+Vagten fyrede for første gang på en rigtig modelkørsel: `asg-a6de0451494849aa`
+(`copilot-premium/claude-sonnet-5`), 16 værktøjskald, svar på **146 tegn**, stemplet
+`AGENT_INCOMPLETE (fase: delivery)`.
+
+**Men det var ikke modalitets-reglen der fyrede.** Målt direkte på teksten:
+
+| Regel | Resultat |
+|---|---|
+| `_FORWARD_TAIL_RE` (modalitet) | `False` — ramte ikke |
+| længde-tærsklen (160 tegn) | ramte — svaret er 146 |
+
+Og teksten var **ikke** en tom intention. Den indeholdt to konkrete fund:
+*«Dette workflow kører ikke `npm test`, kun build+package. Ingen version-vs-tag gate fundet.»*
+Det er præcis det svar opgaven bad om. **Det er en falsk positiv, målt i drift.**
+
+### Fire signaler, alle utilstrækkelige
+
+Målt over 111 completed-kørsler (okt–nov 2026), 24 af dem under 160 tegn:
+
+| Signal | Dækning | Fejl |
+|---|---|---|
+| længde < 160 | 24 ramt | rammer gyldige korte svar (den målte) |
+| bevis (filnavn/linjenummer) | 5 korte har bevis | 5 af dem er **stadig** intentioner |
+| bydeform i halen | 2 af 24 | de 2 er faktisk fund |
+| forward-hale (modalitet) | 16 af 24 | rammer også de 2 der er fund |
+
+**Ingen af dem kan alene afgøre om et svar er leveret.** Det er ikke et kalibreringsproblem;
+det er at sproget ikke bærer afgørelsen.
+
+### Konsekvensen — og hvad der IKKE skal bygges
+
+En femte ordliste ville være samme fejlform som de fire første. Det der mangler er ikke et
+bedre signal på **teksten**, men et signal på **arbejdet**: blev undersøgelsen faktisk ført til
+ende, eller stoppede den midt i? Det kan kun afgøres mod opgaven, ikke mod svarets form.
+
+**Indtil det findes, er den ærlige pris:** vagten fanger intentioner og rammer også enkelte
+gyldige korte svar. Et afvist svar bærer agentens tekst med (`— agentens tekst:`), så intet
+arbejde går tabt — men det koster en runde og et fejlstempel.
+
+**Det er ikke lukket. Det er målt, og grænsen er skrevet ned.**

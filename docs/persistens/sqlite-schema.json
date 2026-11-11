@@ -46300,6 +46300,86 @@
       },
       "created_at_formats": []
     },
+    "send_dedup": {
+      "digest": "7d:37:42:fc:32:b7:1d:7f:bf:d4:3d:89:f9:61:12:60:fc:18:5d:ec:69:87:e5:73:d8:13:f5:c0:c4:8e:21:60",
+      "schema": {
+        "columns": [
+          {
+            "name": "dedup_key",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "message_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "sent_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "tool_name",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "ix_send_dedup_sent_at",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "sent_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX ix_send_dedup_sent_at ON send_dedup(sent_at)"
+          },
+          {
+            "name": "sqlite_autoindex_send_dedup_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "dedup_key",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": []
+    },
     "sensory_memories": {
       "digest": "de:fa:c7:22:41:c1:58:77:6a:e1:e0:45:9d:f8:12:60:fa:1a:ac:88:2d:80:30:22:d5:8f:05:e5:0c:91:7b:2f",
       "schema": {

@@ -131,8 +131,15 @@ def test_ugedags_opgave_fyrer_IKKE_paa_en_dag_den_ikke_har_valgt(tmp_path, monke
     saa vagten med sikkerhed skal slaa til uanset hvornaar testen koeres."""
     _fresh(tmp_path, monkeypatch)
     kaldt: list[dict] = []
-    import core.services.visible_runs as vr
-    monkeypatch.setattr(vr, "start_autonomous_run", lambda **kw: kaldt.append(kw))
+    # ÉN VÆKKER (11/11-2026): recurring-vejen starter ikke længere et run selv —
+    # den afleverer til indbakken. Stubben skal derfor ramme gatewayen, og den
+    # skal svare en KVITTERING: returværdien bæres videre til `_advance`, som
+    # kun må tælle leveringer.
+    import core.services.wake_gateway as wg
+    monkeypatch.setattr(
+        wg, "anmod_om_vaekning",
+        lambda **kw: kaldt.append(kw) or {"status": "queued"},
+    )
 
     nu = datetime.now(UTC)
     andre = ",".join(str(d) for d in range(1, 8) if d != nu.isoweekday())
@@ -160,8 +167,14 @@ def test_ugedags_opgave_fyrer_naar_dagen_ER_valgt(tmp_path, monkeypatch):
     """Det modsatte maa ogsaa gaelde — ellers var «begraens» bare «sluk»."""
     _fresh(tmp_path, monkeypatch)
     kaldt: list[dict] = []
-    import core.services.visible_runs as vr
-    monkeypatch.setattr(vr, "start_autonomous_run", lambda **kw: kaldt.append(kw))
+    # ÉN VÆKKER (11/11-2026): samme søm som tvillingen ovenfor. Kilden starter
+    # ikke længere et run selv — den afleverer til indbakken, og kvitteringen
+    # bæres videre til `_advance`.
+    import core.services.wake_gateway as wg
+    monkeypatch.setattr(
+        wg, "anmod_om_vaekning",
+        lambda **kw: kaldt.append(kw) or {"status": "queued"},
+    )
 
     nu = datetime.now(UTC)
     t = rt.create_recurring_task(focus="medicin", interval_minutes=1440,

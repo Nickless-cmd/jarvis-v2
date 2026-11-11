@@ -206,7 +206,6 @@ TILLADT: dict[str, str] = {
     "core/services/discord_gateway.py": "kanal",
     "core/services/telegram_gateway.py": "kanal",
     "apps/api/jarvis_api/routes/plugins.py": "kanal",
-    "core/services/recurring_tasks.py": "gaeld",
     "core/services/dreaming_session.py": "gaeld",
     "core/services/routine_trigger_adapters.py": "gaeld",
     "core/services/routine_dispatch.py": "gaeld",

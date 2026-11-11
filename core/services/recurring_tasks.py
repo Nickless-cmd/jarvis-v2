@@ -1051,8 +1051,6 @@ def _fire_due() -> None:
             from core.services.routine_trigger_adapters import dispatch_recurring
 
             def _legacy() -> bool:
-                from core.services.visible_runs import start_autonomous_run
-
                 # SESSION-BINDING (14/10-2026): kør i den samtale opgaven blev
                 # bestilt i. Er bindingen tom (raekke fra foer kolonnen fandtes),
                 # falder vi tilbage til den gamle adfaerd — `None` → auto-silo.
@@ -1070,16 +1068,29 @@ def _fire_due() -> None:
                 # opgave stod med `fire_count: 134` og havde ikke født et run
                 # siden 23/10. En scheduler der melder «fired» om noget der
                 # aldrig blev født er værre end en der tier.
-                return bool(start_autonomous_run(
-                    message=focus,
-                    session_id=fire_session_id(task_id) or None,
-                    origin="recurring",
+                # ÉN VÆKKER (11/11-2026). Kilden signalerer, indbakken vækker.
+                from core.services.wake_gateway import anmod_om_vaekning
+
+                _kv = anmod_om_vaekning(
+                    kilde="recurring",
+                    # FOREKOMSTEN er dedup-nøglen — samme udtryk som
+                    # `dispatch_recurring` nedenfor får som `occurrence_id`.
+                    # `task_id` alene ville dedupes mod den første post for
+                    # evigt, så en tilbagevendende opgave kun kunne vække én gang.
+                    sag=f"recurring:{task_id}:{task.get('next_fire_at') or task_id}",
+                    tekst=focus,
+                    session_id=str(fire_session_id(task_id) or ""),
                     # task_id baeres med (15/10-2026), saa runnets afslutning
                     # kan slaa op paa OPGAVEN om svaret skylder nogen et svar —
                     # `inbox_on_complete`. Uden den vidste closure-gaten ikke
                     # hvilken opgave runnet hoerte til.
-                    task_id=task_id,
-                ))
+                    task_id=str(task_id or ""),
+                    origin="recurring",
+                )
+                # RETURVÆRDIENS BETYDNING ER UÆNDRET (29/10-2026): `_advance` må
+                # kun tælle LEVERINGER, ikke forsøg. `queued`/`deduped` = posten
+                # ligger i indbakken og bliver vækket; `rejected` = den gør ikke.
+                return str(_kv.get("status") or "") in ("queued", "deduped")
 
             _foedt = dispatch_recurring(
                 task_id,

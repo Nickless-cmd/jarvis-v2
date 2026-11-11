@@ -687,10 +687,17 @@ def build_gut_surface() -> dict[str, object]:
 def build_gut_counterfactual_surface() -> dict[str, object]:
     """Counterfactual decision delta: hvor ofte flyttede den lærte bias gatens afgørelse?
 
-    Læser den PERSISTENTE ledger (overlever genstart). Da bias'en i dag er positiv-only, er
-    med-bias-pass en overmængde af uden-bias-pass, og deltaet = antallet af hændelser hvor
-    erfaringen vendte en afvisning til en tilladelse. Det er dét tal der kan svare på om
-    erfaringen ændrer en beslutning — ikke om den bare er blevet gemt.
+    Læser den PERSISTENTE ledger (overlever genstart). Bias'en er siden 12/10-2026 et ægte
+    FORTEGN, symmetrisk om 0 (jf. derive_gut_signal): positiv løfter proceed-confidence og
+    sænker caution, negativ omvendt. Med-bias-pass er derfor IKKE en overmængde af
+    uden-bias-pass, og deltaet kan være negativt.
+
+    GRÆNSE (målt 11/11-2026): deltaet tæller kun GRÆNSEKRYDS — hændelser hvor bias vendte
+    would_pass. Det kan derfor IKKE skelne «bias er inaktiv» fra «bias flytter confidence
+    uden at krydse tærsklen»: når alle confidence-værdier ligger længere fra tærsklen end
+    bias'ens størrelse (målt: min. margin 0,20 mod bias 0,1125), er deltaet strukturelt 0 —
+    også selvom musklen beviseligt arbejder (proceed 0,500→0,610, caution 0,690→0,580).
+    Den skelnen skal bæres af et separat påvirknings-mål, ikke af dette tal.
     """
     try:
         from core.services import gate_verdict_ledger as ledger

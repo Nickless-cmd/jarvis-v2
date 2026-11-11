@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import re
 import time
+from datetime import datetime
 from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
@@ -102,6 +103,47 @@ def _budget_note(rounds: int, max_rounds: int, messages: list[dict]) -> str:
         "gang, læg flere kommandoer i samme bash-kald, søg og læs side om side. "
         "Et kald pr. runde koster en hel runde du ikke har tilbage. "
         "Del dem kun op naar det næste kald har brug for det forriges resultat.")
+
+
+#: Tærskler for tidsnoten, i minutter tilbage. Samme begrundelse som
+#: ``_BUDGET_NOTE_AT_REMAINING``: knapheden skal staa i KONTEKSTEN, ikke kun i
+#: koden. ``while``-betingelsen gav modellen nul signal, og en agent der ikke ved
+#: at tiden loeber prioriterer ikke sin leverance.
+_DEADLINE_NOTE_MIN = (10, 3)
+
+#: Rundeloftet naar der findes en deadline: ikke et tal men fravaeret af et tal.
+#: MAALT 11/11-2026 paa 133 completed-koersler: median 3,5 s pr. runde (p90 10,5 s),
+#: og det stoerste antal runder nogen faktisk brugte var 14. Et loft paa 60 runder
+#: svarer altsaa til ~3,5 minut — mens kontraktens deadline er 45 minutter for en
+#: skrivende agent. Rundetallet rammer derfor FOERST og klipper et arbejde der
+#: stadig havde tid, mens det tal der beskriver den ressource der faktisk loeber
+#: op (tiden) var dekoration. Naar tiden er gjort levende, er den grænsen.
+_UDEN_RUNDELOFT = 10 ** 6
+
+
+def _deadline_epoch(deadline_at: str) -> float:
+    """Deadline som epoch-sekunder, eller ``0.0`` naar der ingen gyldig er.
+
+    MAALT 11/11-2026: ``deadline_at`` blev skrevet ind i kontrakten af
+    ``agent_task_facade`` (nu + 45 min for skrivende, + 30 for laesende), gemt i
+    ``agent_assignments``, projiceret til Desk — og **aldrig laest i loopet**.
+    Den var dekoration: det eneste loft der faktisk stoppede en agent var et
+    rundetal, som intet har med den ressource at goere der bliver brugt op.
+    """
+    if not str(deadline_at or "").strip():
+        return 0.0
+    try:
+        return datetime.fromisoformat(str(deadline_at).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        logger.warning("ugyldig deadline_at %r — tidsgraensen handhaeves ikke", deadline_at)
+        return 0.0
+
+
+def _deadline_note(minutter: int) -> str:
+    return (
+        f"Tidsgrænse: {minutter} minutter tilbage af opgavens deadline. "
+        "Prioritér LEVERANCEN nu: skriv det du har fundet, og brug de sidste kald på "
+        "at verificere det du har lavet — ikke på nye læsninger.")
 
 
 def _answers_directive(unanswered: int) -> str:
@@ -469,7 +511,7 @@ class LoopIO(Protocol):
 def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], requires_tools: bool,
                   provider: str, model: str, scout: bool, max_rounds: int,
                   synthesis_directive: str, resume: dict[str, Any] | None = None,
-                  expected_result: str = "") -> dict[str, Any]:
+                  expected_result: str = "", deadline_at: str = "") -> dict[str, Any]:
     """Koer loekken og returner raa tal + tekst. Kaster aldrig: en fejl bliver ``error_str``.
 
     Kraever et kald en godkendelse (``ApprovalPending`` fra ``io.tool``), STOPPER loekken og returnerer
@@ -498,6 +540,13 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
     # ikke naaede, og hvorfor arbejdet stoppede."
     unanswered_total = 0
     unanswered_ord = ""
+    deadline_ts = _deadline_epoch(deadline_at)
+    deadline_noter: set[int] = set()
+    if deadline_ts:
+        # Tiden er grænsen. Uden dette ville `while rounds < max_rounds` stadig
+        # klippe et igangvaerende arbejde ved et tal der ikke beskriver noget
+        # forbrug — se `_UDEN_RUNDELOFT` for maalingen.
+        max_rounds = _UDEN_RUNDELOFT
     # 26/10-2026: HVORFOR arbejdet stoppede. Et maalt faktum (rundebudgettet loeb ud), ikke
     # en vurdering af teksten. Maalt paa `asg-a413aa7ac3704131`: agenten brugte 7
     # vaerktoejskald, fik sin nudge i runde 8 — som ER loftet — og loekken udloeb uden at
@@ -553,12 +602,31 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                 return _outcome(final_text, total_input, total_output, total_cost, total_tool_calls, rounds,
                                 error_str, t0, parked)
         while rounds < max_rounds:
+            if deadline_ts and time.time() >= deadline_ts:
+                # 11/11-2026: tidsgrænsen er den ressource der faktisk bliver brugt op.
+                # Foer denne linje fandtes der kun et rundetal, og `deadline_at` laa
+                # ubrugt i kontrakten. Grunden skrives ind i markeringen, saa
+                # `partial_delivery_error` kan stemple den `AGENT_BUDGET_EXHAUSTED`
+                # i stedet for at kalde et kapacitetsstop for en mangelfuld leverance.
+                incomplete = True
+                stop_reason = f"deadline nået efter {rounds} runder"
+                break
             rounds += 1
             # 5/11-2026: knapheden skal staa i konteksten, ikke kun i `while`-betingelsen.
             # Se `_BUDGET_NOTE_AT_REMAINING` for hvorfor den ligger her og ikke i prompten.
             budget_note = _budget_note(rounds, max_rounds, messages)
             if budget_note:
                 messages.append({"role": "user", "content": budget_note})
+            if deadline_ts:
+                minutter = (deadline_ts - time.time()) / 60.0
+                # Mindste opfyldte taerskel vinder: er der 2 minutter tilbage, er
+                # "10 minutter tilbage" en loegn. `sorted` gaar fra 3 til 10.
+                note_t = next((t for t in sorted(_DEADLINE_NOTE_MIN)
+                               if minutter <= t and t not in deadline_noter), None)
+                if (note_t is not None and messages
+                        and str(messages[-1].get("role") or "") == "tool"):
+                    deadline_noter.update(t for t in _DEADLINE_NOTE_MIN if t >= note_t)
+                    messages.append({"role": "user", "content": _deadline_note(note_t)})
             result = io.model(messages=messages, tools=tools_payload, requires_tools=requires_tools,
                               provider=provider, model=model)
             total_input += int(result.get("input_tokens") or 0)

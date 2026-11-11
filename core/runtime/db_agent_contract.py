@@ -604,8 +604,52 @@ def partial_delivery_error(*, full: str, registry_status: str) -> tuple[str, str
     """
     text = str(full or "")
     if text.strip() and "UFULDSTÆNDIG" in text:
-        return "AGENT_INCOMPLETE", "delivery"
+        return _incomplete_kode(text)
     return _ERROR_CODE.get(registry_status, ""), _ERROR_PHASE.get(registry_status, "")
+
+
+def _markering_grund(text: str) -> str:
+    """Årsagen inde i markeringen: ``UFULDSTÆNDIG (<grund>) — agentens tekst:``.
+
+    ``agent_runtime_base._loop_result`` skriver allerede den ægte grund ind i
+    parentesen (``stop_reason``, antal ubesvarede spørgsmål, eller
+    ``"rundebudgettet løb ud efter N runder"``). Indtil 11/11-2026 blev den
+    kastet væk: klassifikationen læste kun ordet ``UFULDSTÆNDIG`` og kaldte
+    alt for det samme. Grunden er den eneste kilde der kan skelne dem.
+    """
+    m = re.search(r"UFULDSTÆNDIG\s*\(([^\n]*?)\)", str(text or ""))
+    return m.group(1).strip() if m else ""
+
+
+#: Grunde der betyder at agenten blev STOPPET af en ressource — ikke at dens
+#: leverance var mangelfuld. Det er to forskellige jagter: kapacitet peger på
+#: budgettet, leverance peger på agentens arbejde.
+_KAPACITETS_GRUND = ("rundebudgettet", "deadline")
+
+
+def _incomplete_kode(text: str) -> tuple[str, str]:
+    """(error_code, error_phase) for en ``UFULDSTÆNDIG``-markering — splittet på grunden.
+
+    11/11-2026: én etiket skjulte mindst tre ægte årsager. Målt i drift på de 38
+    agentfejl: de blev alle stemplet ``AGENT_INCOMPLETE``/``delivery``, uanset om
+    agenten (a) blev klippet af rundebudgettet, (b) kunne skrive men skrev intet,
+    eller (c) sluttede med et løfte om næste skridt i stedet for et resultat.
+    Etiketten var derfor ikke forkert — den var ubrugelig: den sendte den næste
+    mig efter "leverancen" i alle tre tilfælde, også når den ægte årsag var at
+    ressourcegrænsen ramte midt i arbejdet.
+
+    ``AGENT_INCOMPLETE``/``delivery`` bevares som fallback for grunde der ikke
+    kendes (fx "N spørgsmål uden nummereret svar"), så eksisterende læsere og
+    test ikke brækker. De nye koder er mere specifikke, ikke en anden familie.
+    """
+    grund = _markering_grund(text)
+    if any(n in grund for n in _KAPACITETS_GRUND):
+        return "AGENT_BUDGET_EXHAUSTED", "capacity"
+    if "kunne skrive men skrev intet" in grund:
+        return "AGENT_NO_WRITE", "delivery"
+    if "løfte" in grund:
+        return "AGENT_PROMISED_NOT_DONE", "delivery"
+    return "AGENT_INCOMPLETE", "delivery"
 
 
 # Hvor tidligt i svaret en erklaering skal staa for at taelle. En agent der

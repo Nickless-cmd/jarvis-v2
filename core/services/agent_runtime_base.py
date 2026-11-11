@@ -350,18 +350,23 @@ def _run_agent_tool_loop(
     # aldrig laest som et vilkaar til agenten. Uden den kan `_delivery_gap` ikke skelne en
     # afleveret undersoegelse fra en der stoppede midt i (maalt: 28 og 56 tegn efter 3-4 kald).
     expected_result = ""
+    deadline_at = ""
     try:
         from core.runtime.db_agent_contract import open_assignment_for_agent
         _a = open_assignment_for_agent(str(agent.get("agent_id") or ""))
         if _a:
             expected_result = str(_a.get("expected_result") or _a.get("goal") or "")
+            # 11/11-2026: tidsgraensen laa ogsaa i kontrakten og blev ogsaa kastet vaek.
+            # `agent_task_facade` saetter den til nu + 45 min (skrivende) / 30 min
+            # (laesende); uden den her er den kun et tal i en tabel.
+            deadline_at = str(_a.get("deadline_at") or "")
     except Exception:                    # kontrakten er valgfri; loekken koerer uden den
         logger.debug("kunne ikke laese expected_result for agenten", exc_info=True)
     outcome = run_tool_loop(
         _InProcessLoopIO(agent=agent, run_id=run_id, resume=resume), prompt=prompt, tools_payload=tools_payload,
         requires_tools=requires_tools, provider=provider, model=model, scout=scout,
         max_rounds=_AGENT_TOOL_LOOP_MAX_ROUNDS, synthesis_directive=_AGENT_SYNTHESIS_DIRECTIVE,
-        resume=resume, expected_result=expected_result)
+        resume=resume, expected_result=expected_result, deadline_at=deadline_at)
     return _loop_result(outcome, scout=scout, provider=provider, model=model)
 
 

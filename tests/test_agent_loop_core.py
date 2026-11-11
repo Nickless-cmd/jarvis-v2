@@ -180,7 +180,10 @@ def test_module_imports_only_the_standard_library():
             mods |= {a.name.split(".")[0] for a in n.names}
         elif isinstance(n, ast.ImportFrom):
             mods.add((n.module or "").split(".")[0])
-    assert mods <= {"__future__", "logging", "re", "time", "typing"}, mods
+    # 11/11-2026: `datetime` tilfoejet. Den er standardbibliotek og altid monteret,
+    # saa vagtens hensigt (ingen tredjepart i sandkassen) er uaendret. Den bruges til
+    # at laese kontraktens `deadline_at`, som ellers var dekoration i loopet.
+    assert mods <= {"__future__", "datetime", "logging", "re", "time", "typing"}, mods
 
 
 def test_a_plain_answer_ends_after_one_round():

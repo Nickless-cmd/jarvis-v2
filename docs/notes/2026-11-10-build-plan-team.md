@@ -531,3 +531,41 @@ gyldige korte svar. Et afvist svar bærer agentens tekst med (`— agentens teks
 arbejde går tabt — men det koster en runde og et fejlstempel.
 
 **Det er ikke lukket. Det er målt, og grænsen er skrevet ned.**
+
+---
+
+## L15 — det afviste spor: rundebudgettet er ikke årsagen
+
+**Hypotesen der lød rigtig, og som blev målt forkert.** Efter den falske positiv i L14 var
+den nærliggende forklaring at agenten stoppede fordi den løb tør for runder — 16 værktøjskald
+ser meget ud, og hvis loftet lå tæt på, ville svaret være afbrudt frem for dovent.
+
+**Målt 11/11-2026:**
+
+| Led | Værdi | Kilde |
+|---|---|---|
+| Loft for agent-workere | **60 runder** | `agent_runtime_base.py:130` (`_AGENT_TOOL_LOOP_MAX_ROUNDS`) |
+| Den ramte kørsel | **16 kald** | `asg-a6de0451494849aa` |
+| Runder tilbage ved stop | **44** | 60 − 16 |
+
+Agenten løb altså ikke tør. Den havde 44 runder tilbage og valgte at stoppe.
+
+**Og budget-noten kunne ikke have hjulpet den.** `_budget_note` (`agent_loop_core.py:81`,
+kaldt på `:559`) fyrer kun ved **10, 5 og 2 runder tilbage** — altså runde 50+ ud af 60.
+Agent-workere stopper i praksis ved runde 1–16. De ser noten aldrig.
+
+Prompten nævner heller intet tal: `grep` efter rundebudget i `prompt_contract.py` giver kun
+kommentarer om mekanikken, ingen tal til modellen.
+
+**Nedskruningen af loftet rammer ikke denne rute.** `affect_modulation` kan sænke
+`max_rounds`, men kun på visible-ruten; `agent_runtime_base` sender 60 fast.
+
+### Hvad det betyder
+
+Rundebudgettet er **ikke** stedet at bygge. En agent med 44 runder tilbage der stopper, gør
+det af en anden grund — og `_delivery_nudge` (`agent_loop_core.py:440`) siger allerede det
+rigtige: *«Fortsæt undersøgelsen med dine værktøjer og afslut med det KONKRETE resultat.»*
+Den fik en korrekt ordre og stoppede alligevel.
+
+**Derfor bygges der intet her.** Sporet er skrevet ned så det ikke bliver genopdaget som en
+frisk hypotese — det er den eneste grund til at afsnittet findes.

@@ -36,39 +36,84 @@ def test_open_questions_compacts_and_is_silent_when_empty(monkeypatch):
     assert T._open_questions_section().startswith("Open questions: 3 unresolved (first: \"a?\")")
 
 
-def test_central_notices_keeps_one_per_nerve_max_three_and_skips_security_and_severe(monkeypatch):
+def _eier(monkeypatch, svar: bool = True):
+    """Gaten er fail-CLOSED: testene skal bevise ejerskab eksplicit, ligesom prod gør."""
+    monkeypatch.setattr("core.identity.owner_resolver.is_owner_app_session", lambda sid: svar)
+
+
+def test_central_notices_viser_roed_foerst_med_alder_og_severity(monkeypatch):
+    """Accept-test (krav 5): en uløst severity=error SKAL give en ikke-tom sektion med
+    rød markering. Fejlede på koden før 11/11-2026, hvor sektionen hed «medium» og
+    hverken bar alder eller grad."""
     from core.services.prompt_sections import tail_section_builders as T
+    _eier(monkeypatch)
     T._clear_central_notices_cache()
-    rows = [{"severity": "error", "kind": "x", "cluster": f"c{i // 2}", "nerve": f"n{i // 2}", "message": f"m{i}"}
-            for i in range(8)]
-    rows += [{"severity": "severe", "kind": "x", "cluster": "s", "nerve": "s", "message": "severe"},
-             {"severity": "error", "kind": "fail_open", "cluster": "f", "nerve": "f", "message": "sikkerhed"}]
+    rows = [{"id": 2, "ts": "2026-11-11T19:08:49+00:00", "severity": "error", "kind": "network_degraded",
+             "cluster": "network", "nerve": "health", "message": "API-latens 1790.4ms >= 800ms"},
+            {"id": 1, "ts": "2026-11-09T13:52:18+00:00", "severity": "severe", "kind": "undefined_error",
+             "cluster": "anomaly", "nerve": "log:Error", "message": "Too many open files"}]
     monkeypatch.setattr("core.runtime.db_central_incidents.list_central_incidents", lambda **kw: rows)
-    out = T._central_notices_section()
-    assert out.count("•") == 3 and out.count("c0/n0") == 1 and "c2/n2" in out     # én pr. nerve
-    assert "severe" not in out and "sikkerhed" not in out
+    out = T._central_notices_section("s1")
+    assert out is not None and "🔴" in out                       # rød markering
+    assert "RØD" in out and "1 severe" in out and "1 error" in out  # antal pr. grad
+    assert out.index("log:Error") < out.index("network/health")    # højeste grad først
+    assert "gammel" in out                                          # alder er med
+    assert "severe" in out                                          # severe er IKKE længere skjult
+
+
+def test_central_notices_er_tom_naar_intet_roedt_eller_gult_findes(monkeypatch):
+    """Krav 2: tom sektion når der intet er → 0 tokens, ingen «alt ok»-støj."""
+    from core.services.prompt_sections import tail_section_builders as T
+    _eier(monkeypatch)
     T._clear_central_notices_cache()
     monkeypatch.setattr("core.runtime.db_central_incidents.list_central_incidents", lambda **kw: [])
-    assert T._central_notices_section() is None
+    assert T._central_notices_section("s1") is None
+
+
+def test_central_notices_info_taelles_men_listes_ikke_naar_der_er_roedt(monkeypatch):
+    """FÆLDE (målt): 27 af 29 uløste rækker er info-støj. Listes de, drukner det røde."""
+    from core.services.prompt_sections import tail_section_builders as T
+    _eier(monkeypatch)
+    T._clear_central_notices_cache()
+    rows = [{"id": 99, "ts": "2026-11-11T19:08:49+00:00", "severity": "error", "kind": "x",
+             "cluster": "network", "nerve": "health", "message": "rød"}]
+    rows += [{"id": i, "ts": "2026-11-11T19:00:00+00:00", "severity": "info", "kind": "gate_enforce",
+              "cluster": "proactivity", "nerve": "verification", "message": f"stoej {i}"} for i in range(27)]
+    monkeypatch.setattr("core.runtime.db_central_incidents.list_central_incidents", lambda **kw: rows)
+    out = T._central_notices_section("s1")
+    assert "network/health" in out
+    assert "+27 gule" in out and "stoej" not in out      # talt, ikke listet
+
+
+def test_central_notices_er_ejer_only(monkeypatch):
+    """Krav 4: en medlems-session må IKKE se Centralens interne tilstand."""
+    from core.services.prompt_sections import tail_section_builders as T
+    _eier(monkeypatch, False)
+    T._clear_central_notices_cache()
+    rows = [{"id": 1, "ts": "2026-11-11T19:08:49+00:00", "severity": "severe", "kind": "x",
+             "cluster": "anomaly", "nerve": "log:Error", "message": "hemmelig"}]
+    monkeypatch.setattr("core.runtime.db_central_incidents.list_central_incidents", lambda **kw: rows)
+    assert T._central_notices_section("medlem-session") is None
+    assert T._central_notices_section(None) is None
 
 
 def test_central_notices_snapshot_stops_within_turn_prompt_flapping(monkeypatch):
     from core.services.prompt_sections import tail_section_builders as T
-
+    _eier(monkeypatch)
     now = [100.0]
-    rows = [{"severity": "error", "kind": "x", "cluster": "system",
-             "nerve": "provider", "message": "nede"}]
+    rows = [{"id": 1, "ts": "2026-11-11T19:08:49+00:00", "severity": "error", "kind": "x",
+             "cluster": "system", "nerve": "provider", "message": "nede"}]
     monkeypatch.setattr(T.time, "monotonic", lambda: now[0])
     monkeypatch.setattr(
         "core.runtime.db_central_incidents.list_central_incidents",
         lambda **kw: list(rows),
     )
     T._clear_central_notices_cache()
-    first = T._central_notices_section()
+    first = T._central_notices_section("s1")
     rows.clear()
-    assert T._central_notices_section() == first
+    assert T._central_notices_section("s1") == first
     now[0] += T._CENTRAL_NOTICES_CACHE_TTL_S + 0.1
-    assert T._central_notices_section() is None
+    assert T._central_notices_section("s1") is None
 
 
 def test_connected_connectors_lists_only_connected_and_enabled_oauth_apps(monkeypatch):

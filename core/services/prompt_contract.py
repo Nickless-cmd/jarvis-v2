@@ -1494,7 +1494,7 @@ def _build_visible_chat_prompt_assembly_impl(
     # Central-notices (spec 2026-06-23 §2): medium-niveau incidents Jarvis bør se da han
     # altid er ved systemet (severe ntfy'es, low er trace-only). Tom = 0 tokens. Prio 10.
     try:
-        _awareness_add(10, "central notices", _central_notices_section())
+        _awareness_add(10, "central notices", _central_notices_section(session_id))
     except Exception as _e:
         _sec_err("central notices", _e)
 

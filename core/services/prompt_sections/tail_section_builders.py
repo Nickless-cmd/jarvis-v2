@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import time
+from datetime import UTC, datetime
 
 LOGGER = logging.getLogger(__name__)
 
@@ -23,40 +24,100 @@ def _clear_central_notices_cache() -> None:
     _CENTRAL_NOTICES_CACHE = None
 
 
-def _central_notices_section() -> str | None:
-    """Medium-niveau Central-notices til Jarvis (spec 2026-06-23 §2). IKKE severe (dem
-    ntfy'er Centralen), IKKE low (dem er trace-only). Kompakt: max 3, max 1 pr. nerve.
-    Returnerer None (tom sektion) når ingen notices → brænder 0 tokens. Selv-sikker."""
+def _alder_tekst(ts: str, *, nu: datetime) -> str:
+    """Kort alder ('23m', '2d 6t') fra en ISO-tidsstempel. Tom streng hvis den ikke kan læses."""
+    try:
+        tid = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+        if tid.tzinfo is None:
+            tid = tid.replace(tzinfo=UTC)
+        sek = max(0, int((nu - tid).total_seconds()))
+    except Exception:
+        return ""
+    if sek < 3600:
+        return f"{sek // 60}m"
+    if sek < 86400:
+        return f"{sek // 3600}t"
+    d, rest = divmod(sek, 86400)
+    return f"{d}d {rest // 3600}t" if rest >= 3600 else f"{d}d"
+
+
+def _central_notices_section(session_id: str | None = None) -> str | None:
+    """Centralens aktuelle tilstand med VIGTIGHEDSGRAD — så Jarvis ser den uden at spørge.
+
+    Målt 11/11-2026: Centralen stod RØD (incident 16954, error, API-latens 1790ms) i over
+    en time uden at Jarvis nævnte det; Bjørn opdagede det selv. Samme dag havde incident
+    16740 (severe, «Too many open files» på runtime.json) stået ULØST og USYNLIG i to døgn.
+
+    Det sidste var ikke en tilfældig fejl: den gamle sektion filtrerede bevidst ``severe``
+    fra («dem ntfy'er Centralen»). Antagelsen holdt ikke — en push-notifikation læses ikke
+    som kontekst, og Jarvis kunne hverken vægte eller nævne den. Derfor: begge røde grader
+    vises nu, højest først. Gul (info) vises kun som ET ANTAL — de 27 uløste info-rækker er
+    gate/promise-støj, og listet enkeltvis ville de drukne det røde (målt: 27 info mod 2 røde).
+
+    Tom når intet rødt eller gult findes → 0 tokens. Ejer-gated: fail-CLOSED via
+    ``is_owner_app_session``, så en medlems- eller gæstesession aldrig ser Centralens
+    interne tilstand. Selv-sikker: crash = tom sektion, ikke crashet prompt."""
     global _CENTRAL_NOTICES_CACHE
+    # Gaten står FØR cachen: ellers kunne en medlems-session få en cachet ejer-sektion.
+    try:
+        from core.identity.owner_resolver import is_owner_app_session
+        if not is_owner_app_session(session_id):
+            return None
+    except Exception:
+        return None  # fail-closed: kan ejerskabet ikke bevises, lækker vi intet
+
     now = time.monotonic()
     if (_CENTRAL_NOTICES_CACHE is not None
             and now - _CENTRAL_NOTICES_CACHE[0] < _CENTRAL_NOTICES_CACHE_TTL_S):
         return _CENTRAL_NOTICES_CACHE[1]
     try:
         from core.runtime.db_central_incidents import list_central_incidents
-        incidents = list_central_incidents(unresolved_only=True, limit=40)
-        medium = [
+        incidents = list_central_incidents(unresolved_only=True, limit=60)
+        # FÆLDE (målt): resolved=0 betyder IKKE «uløst problem» — 27 af de 29 uløste rækker
+        # er info-støj. Filtrér derfor på SEVERITY, ikke på resolved alene.
+        roede = [
             i for i in incidents
-            if str(i.get("severity")) == "error"        # ikke "severe"
-            and str(i.get("kind")) != "fail_open"        # ikke sikkerhed
+            if str(i.get("severity")) in ("severe", "error")
+            and str(i.get("kind")) != "fail_open"        # sikkerheds-rækker har egen vej
         ]
-        if not medium:
+        gule = [i for i in incidents if str(i.get("severity")) == "info"]
+        if not roede and not gule:
             _CENTRAL_NOTICES_CACHE = (now, None)
             return None
-        seen: set[str] = set()
+
+        nu = datetime.now(UTC)
+        antal_severe = sum(1 for i in roede if str(i.get("severity")) == "severe")
+        antal_error = len(roede) - antal_severe
+
         lines: list[str] = []
-        for i in medium[:12]:
-            nerve = f"{i.get('cluster')}/{i.get('nerve')}"
-            if nerve in seen:
-                continue
-            seen.add(nerve)
-            lines.append(f"  • {nerve}: {str(i.get('message') or '')[:80]}")
-            if len(lines) >= 3:
-                break
+        if roede:
+            # Højeste grad først — Jarvis skal kunne vægte, ikke blot se.
+            roede.sort(key=lambda i: (str(i.get("severity")) != "severe", -int(i.get("id") or 0)))
+            dele = [f"{antal_severe} severe"] if antal_severe else []
+            if antal_error:
+                dele.append(f"{antal_error} error")
+            lines.append(f"🔴 RØD — {', '.join(dele)} uløst")
+            seen: set[str] = set()
+            for i in roede[:5]:
+                nerve = f"{i.get('cluster')}/{i.get('nerve')}"
+                if nerve in seen:
+                    continue
+                seen.add(nerve)
+                grad = str(i.get("severity"))
+                mark = "🔴" if grad == "severe" else "🟠"
+                alder = _alder_tekst(str(i.get("ts") or ""), nu=nu)
+                hale = f" · {alder} gammel" if alder else ""
+                lines.append(f"  {mark} {grad} · {nerve}{hale}")
+                lines.append(f"     {str(i.get('message') or '')[:110]}")
+        if gule:
+            if roede:
+                lines.append(f"  🟡 +{len(gule)} gule (info) — gate/promise-støj, ikke vist")
+            else:
+                lines.append(f"🟡 GUL — {len(gule)} info-rækker uløst, ingen rød tilstand")
         if not lines:
             _CENTRAL_NOTICES_CACHE = (now, None)
             return None
-        section = "[CENTRAL-NOTICE] medium:\n" + "\n".join(lines)
+        section = "[CENTRAL-TILSTAND]\n" + "\n".join(lines)
         _CENTRAL_NOTICES_CACHE = (now, section)
         return section
     except Exception:

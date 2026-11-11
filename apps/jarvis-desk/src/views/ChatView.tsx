@@ -603,13 +603,25 @@ export function ChatView({
     koe.sendEllerKoe(text, opts)
   }
 
-  const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+  // MAALT 11/11-2026: sessioner vokser til 13.165 beskeder (13 mio. tegn), og
+  // alle fem afledninger nedenfor koerte paa HELE listen ved hvert tastetryk —
+  // fordi komponisten sidder i samme trae som transkriptet. `sessions.messages`
+  // er React-state og skifter kun naar beskedlisten faktisk aendres, saa den er
+  // en stabil afhaengighed at memoize paa.
+  const visibleMessages = useMemo(
+    () => sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant'),
+    [sessions.messages],
+  )
   // Godkendelsen er ARBEJDE i turen, ikke en samtale-besked (31/10-2026).
 // `fletGodkendelser` grupperer pending+afgoerelse til ÉN linje og laegger den
 // ind i den assistent-tur den hørte til. En raekke hvis tur endnu ikke er
 // skrevet bliver staaende — den skal kunne besvares NU.
-  const flettede = fletGodkendelser(sessions.messages)
-  const transcriptMessages = flettede.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker' || m.role === 'approval_request')
+  // Samme grund som `visibleMessages`: begge koerte paa hele listen ved hver render.
+  const flettede = useMemo(() => fletGodkendelser(sessions.messages), [sessions.messages])
+  const transcriptMessages = useMemo(
+    () => flettede.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker' || m.role === 'approval_request'),
+    [flettede],
+  )
   // Mens den levende sluttekst ruller færdig, findes samme svar allerede som
   // lokal bro eller persisteret serverbesked. Skjul KUN samme run indtil den
   // levende række melder færdig; ellers står hele svaret ved siden af pacingen
@@ -628,6 +640,34 @@ export function ChatView({
     // Samme faldback som CodeView: raekken kan mangle `run_id` et kort vindue.
     levendeTekst,
   )
+
+  // MAALT 11/11-2026: den stoerste session har 13.165 beskeder (13 mio. tegn),
+  // og ALLE blev tegnet som DOM. Hver blok er markdown, kode og vaerktoejskort,
+  // saa traeet voksede lineart med samtalen — og komponisten, der sidder i
+  // samme trae, blev sloev at skrive i, fordi hvert tastetryk gaar gennem det.
+  // Vinduet tegner de nyeste; resten hentes med én knap. Alle beskeder bliver
+  // liggende i `sessions.messages`, saa kontekst, soegning og skinnen er urandret.
+  const [vindue, setVindue] = useState(120)
+  // Et sessionskift skal starte forfra — ellers arver en kort samtale den
+  // forrige samtales udvidede vindue.
+  useEffect(() => { setVindue(120) }, [sessionId])
+  const visteTranscriptMessages = useMemo(
+    () => (renderedTranscriptMessages.length > vindue
+      ? renderedTranscriptMessages.slice(-vindue)
+      : renderedTranscriptMessages),
+    [renderedTranscriptMessages, vindue],
+  )
+  // Naar aeldre beskeder kommer IND ovenover, maa det man laeser ikke flytte
+  // sig. Hoejden foer/efter er det eneste paalidelige maal: den maales i
+  // klikket og kompenseres i layout-fasen, altsaa foer browseren maler.
+  const visAeldreRef = useRef<{ hoejde: number; top: number } | null>(null)
+  useLayoutEffect(() => {
+    const maalt = visAeldreRef.current
+    const el = transcriptRef.current
+    if (!maalt || !el) return
+    visAeldreRef.current = null
+    el.scrollTop = el.scrollHeight - maalt.hoejde + maalt.top
+  }, [visteTranscriptMessages, scroll.containerRef])
 
   // 31/10-2026 — FALLBACK, ikke dublet. Se `lib/ventendeGodkendelse.ts` for
   // hvorfor: raekken vinder naar den findes, ellers bærer det flydende kort
@@ -653,9 +693,11 @@ export function ChatView({
     }
     return ud
   }, [transcriptMessages])
-  const compactionById = new Map(compactions.map((c) => [c.marker_id, c]))
+  const compactionById = useMemo(() => new Map(compactions.map((c) => [c.marker_id, c])), [compactions])
   // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).
-  const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), scroll.atBottom)
+  // Id-listen blev bygget forfra ved hver render — 13.000 strenge pr. tastetryk.
+  const visibleIds = useMemo(() => visibleMessages.map((m) => m.id), [visibleMessages])
+  const nyeFra = useNyeBeskeder(sessionId ?? null, visibleIds, scroll.atBottom)
 
   // ÉN kilde pr. run (Bjørn 2026-06-29, "3 svar"): når et fulgt run's svar
   // ALLEREDE står i transcript'en (serveren har persisteret det, eller bro-kopien
@@ -665,7 +707,15 @@ export function ChatView({
   const followText = followState.blocks
     .map((b) => (b.type === 'text' ? b.text : b.type === 'thinking' ? '' : '')).join('')
     .replace(/\s+/g, ' ').trim()
-  const lastVisibleAsst = [...visibleMessages].reverse().find((m) => m.role === 'assistant')
+  // Baglaens opslag i stedet for `[...].reverse()`: kopien alene var 13.000
+  // elementer pr. render, og den foerste assistent-besked bagfra findes uden.
+  const lastVisibleAsst = useMemo(() => {
+    for (let i = visibleMessages.length - 1; i >= 0; i--) {
+      const m = visibleMessages[i]
+      if (m && m.role === 'assistant') return m
+    }
+    return undefined
+  }, [visibleMessages])
   const lastVisibleAsstText = lastVisibleAsst
     ? (Array.isArray(lastVisibleAsst.content)
         ? lastVisibleAsst.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
@@ -1059,7 +1109,24 @@ export function ChatView({
             <button type="button" onClick={sessions.genindlaes}>Prøv igen</button>
           </div>
         )}
-        {renderedTranscriptMessages.map((m) => m.role === 'compact_marker' ? (
+        {renderedTranscriptMessages.length > visteTranscriptMessages.length && (
+          <div className="transcript-aeldre">
+            <button
+              type="button"
+              onClick={() => {
+                const el = transcriptRef.current
+                if (el) visAeldreRef.current = { hoejde: el.scrollHeight, top: el.scrollTop }
+                setVindue((n) => n + 120)
+              }}
+            >
+              Vis ældre beskeder
+            </button>
+            <span className="transcript-aeldre-antal">
+              {visteTranscriptMessages.length} af {renderedTranscriptMessages.length}
+            </span>
+          </div>
+        )}
+        {visteTranscriptMessages.map((m) => m.role === 'compact_marker' ? (
           <div key={m.id} data-rail-id={m.id} className="msg-block">
             <CompactionNotice stats={compactionById.get(m.id)} />
           </div>

@@ -5583,3 +5583,32 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
   margin: 4px 0 0; font-size: 10.5px; line-height: 1.4;
   color: var(--error-fg);
 }
+
+/* Vindue i transkriptet (11/11-2026). Den stoerste session har 13.165 beskeder;
+   alle blev tegnet, og komponisten blev sloev fordi den sidder i samme trae.
+   Knappen henter aeldre beskeder ind i DOM'en — dataene er der hele tiden. */
+.transcript-aeldre {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  padding: 10px 0 4px;
+  font-size: 12px;
+  color: var(--fg-3);
+}
+.transcript-aeldre button {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-2, 6px);
+  color: var(--fg-2);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 12px;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.transcript-aeldre button:hover {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.transcript-aeldre-antal {
+  font-variant-numeric: tabular-nums;
+}

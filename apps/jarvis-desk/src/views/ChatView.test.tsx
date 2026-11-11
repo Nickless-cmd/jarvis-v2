@@ -851,3 +851,57 @@ describe('ChatView — permission-vælger (owner-only)', () => {
     expect(container.querySelector('.composer-perm')).not.toBeInTheDocument()
   })
 })
+
+describe('ChatView — transkriptets vindue', () => {
+  // MAALT 11/11-2026: den stoerste session har 13.165 beskeder (13 mio. tegn),
+  // og ALLE blev tegnet som DOM. Komponisten sidder i samme trae, saa hvert
+  // tastetryk gik gennem 13.000 blokke. Vinduet skal holde DOM'en nede.
+  const mange = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `m${i}`,
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: [{ type: 'text', text: `besked nummer ${i}` }],
+      created_at: '2026-11-11T10:00:00Z',
+    }))
+
+  const vis = (n: number) => {
+    vi.mocked(api.getSession).mockResolvedValue({
+      messages: mange(n),
+      etag: 'e1',
+    } as never)
+    return render(
+      <SettingsProvider initialConfig={cfg}>
+        <SessionProvider config={cfg}>
+          <StreamProvider config={cfg}>
+            <PermissionProvider>
+              <PanelProvider defaultWidth={400}>
+                <ChatView sessionId="s1" />
+              </PanelProvider>
+            </PermissionProvider>
+          </StreamProvider>
+        </SessionProvider>
+      </SettingsProvider>,
+    )
+  }
+
+  it('tegner ikke hele samtalen naar den er stor', async () => {
+    const { container } = vis(400)
+    await waitFor(() => {
+      expect(container.querySelectorAll('.msg-block').length).toBeGreaterThan(0)
+    })
+    const antal = container.querySelectorAll('.msg-block').length
+    expect(antal).toBeLessThanOrEqual(120)
+    // De nyeste er dem der vises — ikke de foerste 120 i historikken.
+    expect(container.textContent).toContain('besked nummer 399')
+    expect(container.textContent).not.toContain('besked nummer 0')
+  })
+
+  it('en kort samtale skjules ikke bag et vindue', async () => {
+    const { container } = vis(6)
+    await waitFor(() => {
+      expect(container.querySelectorAll('.msg-block').length).toBeGreaterThan(0)
+    })
+    expect(container.querySelectorAll('.msg-block').length).toBe(6)
+    expect(screen.queryByRole('button', { name: /Vis ældre/i })).toBeNull()
+  })
+})

@@ -218,13 +218,28 @@ def synthesis_goal(topic: str, outcomes: list[dict[str, Any]]) -> tuple[str, str
     """
     lines = []
     for o in sorted(outcomes, key=lambda x: x["index"]):
-        if o["status"] == "completed" and o["summary"].strip():
-            lines.append(f"- Medlem {o['index']} ({o['role']}) SVAREDE:\n{o['summary'][:MEMBER_SUMMARY_CHARS]}")
+        text = o["summary"].strip()
+        if o["status"] == "completed" and text:
+            lines.append(f"- Medlem {o['index']} ({o['role']}) SVAREDE:\n{text[:MEMBER_SUMMARY_CHARS]}")
+        elif text and "agentens tekst:" in text:
+            # MAALT 11/11-2026, raad `council-7a4a3d1795f64c1f`: alle fire medlemmer blev
+            # stemplet `AGENT_INCOMPLETE`, men deres faktiske tekst laa i `summary` (runtime
+            # skriver den med som "agentens tekst:"). Denne gren kastede den vaek og skrev
+            # "INTET svar" — syntesen erklærede derfor fuldstaendigt evidenssvigt oven paa
+            # fire svar med filnavne og linjenumre.
+            # Kriteriet er mønstret, ikke status alene: et medlem der døde af en
+            # runtime-fejl har fejlbeskeden i `summary`, og den er IKKE et svar.
+            lines.append(f"- Medlem {o['index']} ({o['role']}) blev IKKE accepteret ({o['status']}"
+                         f"{': ' + o['error_code'] if o['error_code'] else ''}), men skrev:\n"
+                         f"{text[:MEMBER_SUMMARY_CHARS]}")
         elif o["status"] == "completed":
             lines.append(f"- Medlem {o['index']} ({o['role']}) blev afsluttet UDEN et brugbart svar.")
         else:
             lines.append(f"- Medlem {o['index']} ({o['role']}) FEJLEDE ({o['status']}"
                          f"{': ' + o['error_code'] if o['error_code'] else ''}) - der er INTET svar fra dem.")
+    # Et medlem der FEJLEDE skal stadig navngives: leverancen blev ikke accepteret, ogsaa
+    # naar teksten er brugbar. De to fakta hoerer sammen — teksten er med i grundlaget
+    # (grenen ovenfor), og syntesen skal vide at den ikke er godkendt.
     missing = [o for o in outcomes if o["status"] != "completed" or not o["summary"].strip()]
     instruktion = (f"Du er syntese for et raad om: {topic}\n\n"
                    "Sammenfat enigheder og uenigheder og giv en samlet anbefaling med konfidens. "

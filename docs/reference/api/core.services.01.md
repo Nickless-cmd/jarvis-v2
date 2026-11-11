@@ -571,12 +571,12 @@ _Raad og review-kaede paa agentmotoren (agent-contract-v1 F5, spec 5.1 / 7.1 / 1
 | function | `_view` | `(c, *, replayed=…)` | — | [src](../../../core/services/agent_council.py#L184) |
 | function | `_outcomes` | `(owner, members)` | — | [src](../../../core/services/agent_council.py#L192) |
 | function | `synthesis_goal` | `(topic, outcomes)` | Syntesens opgave, delt i ``(instruktion, datagrundlag)``. | [src](../../../core/services/agent_council.py#L211) |
-| function | `_dispatch_synthesis` | `(c, outcomes)` | Syntesen gaar gennem ``derive()``, saa den faar sit EGET gemte mandat. | [src](../../../core/services/agent_council.py#L238) |
-| function | `advance` | `()` | Supervisor-taek: opret syntesen for raad hvis medlemmer alle er terminale, og luk raad hvis syntese er faerdig. | [src](../../../core/services/agent_council.py#L276) |
-| function | `_wake_parent_on_stalled` | `(c)` | Vaek parenten naar et raad er markeret ``stalled`` — praecis én gang. | [src](../../../core/services/agent_council.py#L346) |
-| function | `_wake_parent_on` | `(c, synthesis_assignment_id)` | Parenten vaekkes naar SYNTESEN er terminal (ikke ved hvert medlem). | [src](../../../core/services/agent_council.py#L368) |
-| function | `_read` | `(owner, assignment_id, name, limit)` | — | [src](../../../core/services/agent_council.py#L395) |
-| function | `dispatch_review` | `(*, owner_user_id, origin_session_id, builder_assignment_id, requirements, parent_run_id=…, budget_tokens=…, idempotency_key=…)` | Start en uafhaengig reviewer af en builders FAERDIGE arbejde. | [src](../../../core/services/agent_council.py#L404) |
+| function | `_dispatch_synthesis` | `(c, outcomes)` | Syntesen gaar gennem ``derive()``, saa den faar sit EGET gemte mandat. | [src](../../../core/services/agent_council.py#L253) |
+| function | `advance` | `()` | Supervisor-taek: opret syntesen for raad hvis medlemmer alle er terminale, og luk raad hvis syntese er faerdig. | [src](../../../core/services/agent_council.py#L291) |
+| function | `_wake_parent_on_stalled` | `(c)` | Vaek parenten naar et raad er markeret ``stalled`` — praecis én gang. | [src](../../../core/services/agent_council.py#L361) |
+| function | `_wake_parent_on` | `(c, synthesis_assignment_id)` | Parenten vaekkes naar SYNTESEN er terminal (ikke ved hvert medlem). | [src](../../../core/services/agent_council.py#L383) |
+| function | `_read` | `(owner, assignment_id, name, limit)` | — | [src](../../../core/services/agent_council.py#L410) |
+| function | `dispatch_review` | `(*, owner_user_id, origin_session_id, builder_assignment_id, requirements, parent_run_id=…, budget_tokens=…, idempotency_key=…)` | Start en uafhaengig reviewer af en builders FAERDIGE arbejde. | [src](../../../core/services/agent_council.py#L419) |
 
 ## `core/services/agent_dispatch.py`
 _Agent dispatch orchestrator for code mode (spec §19)._
@@ -632,21 +632,22 @@ _Agentens model-/vaerktoejsloekke som ren logik (agent-contract-v1 C6, spec 12.1
 | function | `_answers_directive` | `(unanswered)` | Ordre om at svare NU ud fra det agenten allerede har fundet (26/10-2026). | [src](../../../core/services/agent_loop_core.py#L107) |
 | function | `_promises_action` | `(text)` | True naar teksten lover en handling i stedet for at udfoere den. | [src](../../../core/services/agent_loop_core.py#L136) |
 | function | `_declared_coverage` | `(final_text)` | Spoergsmaalsnumrene agenten SELV erklaerer besvaret. ``None`` = ingen erklaering. | [src](../../../core/services/agent_loop_core.py#L207) |
-| function | `_question_numbers` | `(prompt)` | Spoergsmaalsnumrene i opgaven, uanset om de er skrevet med ord eller som ren nummerering. | [src](../../../core/services/agent_loop_core.py#L224) |
-| function | `_answered_numbers` | `(final_text, qs)` | Hvilke af opgavens spoergsmaalsnumre der faktisk er besvaret i resultatet. | [src](../../../core/services/agent_loop_core.py#L234) |
-| function | `_unanswered_questions` | `(prompt, final_text)` | Antal nummererede spoergsmaal i opgaven uden et NUMMERERET svar i resultatet. | [src](../../../core/services/agent_loop_core.py#L265) |
-| function | `_unanswered_detail` | `(prompt, final_text)` | (antal, ord) — tallet OG hvad der faktisk blev maalt. | [src](../../../core/services/agent_loop_core.py#L280) |
-| function | `_delivery_gap` | `(expected_result, final_text, total_tool_calls, prompt=…, write_calls=…, write_capable=…)` | Grunden til at leverancen ikke kan accepteres — eller ``""`` hvis den kan. | [src](../../../core/services/agent_loop_core.py#L324) |
-| function | `_delivery_nudge` | `(gap)` | Ordre til en agent hvis leverance ikke kan accepteres. Navngiver hullet, ikke dommen. | [src](../../../core/services/agent_loop_core.py#L389) |
-| class | `ApprovalPending` | `` | Et vaerktoejskald kraever en menneskelig godkendelse: loekken PARKERER (checkpoint) i stedet for at | [src](../../../core/services/agent_loop_core.py#L398) |
-| method | `ApprovalPending.__init__` | `(self, approval_id, tool_call_id=…)` | — | [src](../../../core/services/agent_loop_core.py#L402) |
-| class | `LoopIO` | `` | — | [src](../../../core/services/agent_loop_core.py#L407) |
-| method | `LoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_loop_core.py#L408) |
-| method | `LoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_loop_core.py#L411) |
-| method | `LoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_loop_core.py#L413) |
-| method | `LoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_loop_core.py#L415) |
-| function | `run_tool_loop` | `(io, *, prompt, tools_payload, requires_tools, provider, model, scout, max_rounds, synthesis_directive, resume=…, expected_result=…)` | Koer loekken og returner raa tal + tekst. Kaster aldrig: en fejl bliver ``error_str``. | [src](../../../core/services/agent_loop_core.py#L418) |
-| function | `_outcome` | `(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0, parked, incomplete=…, unanswered=…, unanswered_ord=…, stop_reason=…)` | — | [src](../../../core/services/agent_loop_core.py#L667) |
+| function | `_own_task` | `(prompt)` | Kun den del af prompten der er DENNE agents opgave. | [src](../../../core/services/agent_loop_core.py#L234) |
+| function | `_question_numbers` | `(prompt)` | Spoergsmaalsnumrene i opgaven, uanset om de er skrevet med ord eller som ren nummerering. | [src](../../../core/services/agent_loop_core.py#L247) |
+| function | `_answered_numbers` | `(final_text, qs)` | Hvilke af opgavens spoergsmaalsnumre der faktisk er besvaret i resultatet. | [src](../../../core/services/agent_loop_core.py#L257) |
+| function | `_unanswered_questions` | `(prompt, final_text)` | Antal nummererede spoergsmaal i opgaven uden et NUMMERERET svar i resultatet. | [src](../../../core/services/agent_loop_core.py#L288) |
+| function | `_unanswered_detail` | `(prompt, final_text)` | (antal, ord) — tallet OG hvad der faktisk blev maalt. | [src](../../../core/services/agent_loop_core.py#L303) |
+| function | `_delivery_gap` | `(expected_result, final_text, total_tool_calls, prompt=…, write_calls=…, write_capable=…)` | Grunden til at leverancen ikke kan accepteres — eller ``""`` hvis den kan. | [src](../../../core/services/agent_loop_core.py#L347) |
+| function | `_delivery_nudge` | `(gap)` | Ordre til en agent hvis leverance ikke kan accepteres. Navngiver hullet, ikke dommen. | [src](../../../core/services/agent_loop_core.py#L412) |
+| class | `ApprovalPending` | `` | Et vaerktoejskald kraever en menneskelig godkendelse: loekken PARKERER (checkpoint) i stedet for at | [src](../../../core/services/agent_loop_core.py#L421) |
+| method | `ApprovalPending.__init__` | `(self, approval_id, tool_call_id=…)` | — | [src](../../../core/services/agent_loop_core.py#L425) |
+| class | `LoopIO` | `` | — | [src](../../../core/services/agent_loop_core.py#L430) |
+| method | `LoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_loop_core.py#L431) |
+| method | `LoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_loop_core.py#L434) |
+| method | `LoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_loop_core.py#L436) |
+| method | `LoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_loop_core.py#L438) |
+| function | `run_tool_loop` | `(io, *, prompt, tools_payload, requires_tools, provider, model, scout, max_rounds, synthesis_directive, resume=…, expected_result=…)` | Koer loekken og returner raa tal + tekst. Kaster aldrig: en fejl bliver ``error_str``. | [src](../../../core/services/agent_loop_core.py#L441) |
+| function | `_outcome` | `(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0, parked, incomplete=…, unanswered=…, unanswered_ord=…, stop_reason=…)` | — | [src](../../../core/services/agent_loop_core.py#L690) |
 
 ## `core/services/agent_message_receipt.py`
 _En besked til et barn maa ikke fryse foraelderens tur — Fase 6._

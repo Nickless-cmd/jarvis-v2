@@ -221,6 +221,29 @@ def _declared_coverage(final_text: str) -> set[int] | None:
     return {int(x) for x in re.findall(r"\d+", m.group(1))}
 
 
+#: Et team-medlem faar HELE raadets tekst PLUS sin egen opgave
+#: (`agent_task_facade.derive_team`). Uden et snit taeller spoergsmaalene i de ANDRE
+#: medlemmers opgaver med, og et medlem der svarer paa sin egen akse bliver doemt for
+#: de tres. MAALT 11/11-2026 i raad `council-7a4a3d1795f64c1f`: alle fire medlemmer
+#: leverede filnavne og linjenumre, og alle fire blev stemplet `AGENT_INCOMPLETE` med
+#: "3 spoergsmaal uden daekning" — de tre andre medlemmers akser. Syntesen laeste
+#: deres status som "intet indhold" og erklaerede fuldstaendigt evidenssvigt.
+_MEMBER_TASK_MARK = "Din opgave i teamet:"
+
+
+def _own_task(prompt: str) -> str:
+    """Kun den del af prompten der er DENNE agents opgave.
+
+    Et team-medlem skal maales paa sin egen akse, ikke paa raadets. Markoeren saettes af
+    `derive_team`; findes den ikke, er prompten en almindelig enkeltopgave og bruges hel.
+    """
+    text = prompt or ""
+    at = text.rfind(_MEMBER_TASK_MARK)
+    if at < 0:
+        return text
+    return text[at + len(_MEMBER_TASK_MARK):]
+
+
 def _question_numbers(prompt: str) -> set[int]:
     """Spoergsmaalsnumrene i opgaven, uanset om de er skrevet med ord eller som ren nummerering."""
     out: set[int] = set()
@@ -290,7 +313,7 @@ def _unanswered_detail(prompt: str, final_text: str) -> tuple[int, str]:
     giver taellingen det, maa ordet sige nummereret svar (den taelling er et
     overkant-tal, se docstringen ovenfor).
     """
-    qs = _question_numbers(prompt)
+    qs = _question_numbers(_own_task(prompt))
     if len(qs) < 2:
         return 0, ""
     # 27/10-2026: agentens egen erklaering vinder over taellingen. Den er den eneste kilde

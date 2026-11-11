@@ -5599,7 +5599,7 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
 .transcript-aeldre button {
   background: none;
   border: 1px solid var(--line);
-  border-radius: var(--radius-2, 6px);
+  border-radius: var(--radius-sm);
   color: var(--fg-2);
   cursor: pointer;
   font-size: 12px;

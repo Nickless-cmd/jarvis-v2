@@ -1,6 +1,8 @@
 """Hermetiske tests for gut_engine — særligt gut_gate (den nye, ægte forbruger af
 adjusted_confidence). Ingen DB / eventbus: kv og record_private monkeypatches.
 """
+import sqlite3
+
 import pytest
 
 import core.services.gut_engine as ge
@@ -21,6 +23,12 @@ def _stub_ledger(monkeypatch):
     # A1 (3/11-2026): signal-cachen er også modul-global — ryddet, så en test der stubber
     # DB-laget ikke læser den forrige tests tal.
     monkeypatch.setattr(ge, "_signal_cache", {}, raising=False)
+    # Den additive påvirknings-ledger er persistent i drift, men hver test får en tom,
+    # privat SQLite-DB, så suiten hverken læser eller skriver runtime-state.
+    influence_conn = sqlite3.connect(":memory:")
+    monkeypatch.setattr("core.runtime.db_core.connect", lambda: influence_conn, raising=False)
+    yield
+    influence_conn.close()
 
 
 # ── kv + record_private stubs ────────────────────────────────────────────
@@ -167,6 +175,73 @@ def _capture_ledger(monkeypatch):
     return calls
 
 
+def test_counterfactual_surface_sees_influence_without_crossing(monkeypatch):
+    """Fanger regressionen hvor kun grænsekryds blev læst som bias-påvirkning."""
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on",
+                              "central_gut_gate_threshold": 0.30})
+    _capture_private(monkeypatch)
+    monkeypatch.setattr(ge, "_gut_bias", lambda: 0.1125, raising=False)
+    monkeypatch.setattr(
+        "core.services.gate_verdict_ledger.summary",
+        lambda: {
+            "gut_gate": {"total": 1, "green": 1},
+            "gut_gate_uden_bias": {"total": 1, "green": 1},
+        },
+        raising=False,
+    )
+
+    assert ge.gut_gate(0.39, no_bias_confidence=0.34, hunch="proceed") is True
+    surf = ge.build_gut_counterfactual_surface()
+
+    assert surf["crossings"] == 0
+    assert surf["influence_events"] >= 1
+    assert surf["mean_abs_delta"] == pytest.approx(0.05)
+    assert surf["state"] == "subthreshold"
+
+
+def test_counterfactual_surface_is_inactive_when_bias_is_zero(monkeypatch):
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on",
+                              "central_gut_gate_threshold": 0.30})
+    _capture_private(monkeypatch)
+    monkeypatch.setattr(ge, "_gut_bias", lambda: 0.0, raising=False)
+    monkeypatch.setattr(
+        "core.services.gate_verdict_ledger.summary",
+        lambda: {
+            "gut_gate": {"total": 1, "green": 1},
+            "gut_gate_uden_bias": {"total": 1, "green": 1},
+        },
+        raising=False,
+    )
+
+    assert ge.gut_gate(0.34, no_bias_confidence=0.34, hunch="proceed") is True
+    surf = ge.build_gut_counterfactual_surface()
+
+    assert surf["influence_events"] == 0
+    assert surf["state"] == "inactive"
+
+
+def test_counterfactual_surface_preserves_crossing_count(monkeypatch):
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on",
+                              "central_gut_gate_threshold": 0.30})
+    _capture_private(monkeypatch)
+    monkeypatch.setattr(ge, "_gut_bias", lambda: 0.1125, raising=False)
+    monkeypatch.setattr(
+        "core.services.gate_verdict_ledger.summary",
+        lambda: {
+            "gut_gate": {"total": 1, "green": 1},
+            "gut_gate_uden_bias": {"total": 1, "red": 1},
+        },
+        raising=False,
+    )
+
+    assert ge.gut_gate(0.32, no_bias_confidence=0.27, hunch="proceed") is True
+    surf = ge.build_gut_counterfactual_surface()
+
+    assert surf["crossings"] == 1
+    assert surf["counterfactual_delta"] == 1
+    assert surf["state"] == "tipping"
+
+
 def test_counterfactual_taeller_begge_afgoerelser(monkeypatch):
     _install_kv(monkeypatch, {"central_gut_consumer_mode": "on",
                               "central_gut_gate_threshold": 0.30})
@@ -205,6 +280,17 @@ def test_counterfactual_ledger_fejl_vaelter_ikke_gaten(monkeypatch):
 
     monkeypatch.setattr("core.services.gate_verdict_ledger.record", _boom, raising=False)
     assert ge.gut_gate(0.90) is True  # en tæller må ALDRIG blokere gaten
+
+
+def test_influence_ledger_fejl_vaelter_ikke_gaten(monkeypatch):
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on"})
+    _capture_private(monkeypatch)
+
+    def _boom():
+        raise RuntimeError("influence-DB nede")
+
+    monkeypatch.setattr("core.runtime.db_core.connect", _boom, raising=False)
+    assert ge.gut_gate(0.90, no_bias_confidence=0.80) is True
 
 
 def test_counterfactual_delta_laeses_fra_ledger(monkeypatch):

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import time
+from datetime import UTC, datetime
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
@@ -241,6 +242,18 @@ _COUNTERFACTUAL_NERVE_NO_BIAS = "gut_gate_uden_bias"
 _COUNTERFACTUAL_NERVE_SHADOW = "gut_gate_shadow"
 _COUNTERFACTUAL_NERVE_NO_BIAS_SHADOW = "gut_gate_uden_bias_shadow"
 
+_INFLUENCE_TABLE_SQL = """
+    CREATE TABLE IF NOT EXISTS gut_influence_ledger (
+        nerve TEXT PRIMARY KEY,
+        events INTEGER,
+        delta_sum REAL,
+        delta_abs_sum REAL,
+        influenced INTEGER,
+        crossings INTEGER,
+        last_ts TEXT
+    )
+"""
+
 # A3 (3/11-2026): en afvisning er en BESLUTNING, ikke et udfald.
 #
 # Før endte den kun i en egress-fri trace (`record_private("gut_gate_withhold")`), som
@@ -260,6 +273,76 @@ def _safe_record(ledger: object, nerve: str, decision: str, reason: str) -> None
         ledger.record(nerve, "cognition", decision, reason=reason)
     except Exception:  # en tæller må ALDRIG kunne blokere gaten — fejler åbent
         return
+
+
+def _record_gut_influence(nerve: str, delta: float, crossed: bool) -> None:
+    """Persistér ét confidence-delta. Bookkeeping må ALDRIG kaste ind i gate-stien."""
+    try:
+        from core.runtime.db_core import connect
+
+        with connect() as conn:
+            # Samme DB-kald som skrivningen: uvicorn kan holde live-DB'en kortvarigt låst.
+            conn.execute("PRAGMA busy_timeout = 5000")
+            conn.execute(_INFLUENCE_TABLE_SQL)
+            conn.execute(
+                """
+                INSERT INTO gut_influence_ledger
+                    (nerve, events, delta_sum, delta_abs_sum, influenced, crossings, last_ts)
+                VALUES (?, 1, ?, ?, ?, ?, ?)
+                ON CONFLICT(nerve) DO UPDATE SET
+                    events = events + 1,
+                    delta_sum = delta_sum + excluded.delta_sum,
+                    delta_abs_sum = delta_abs_sum + excluded.delta_abs_sum,
+                    influenced = influenced + excluded.influenced,
+                    crossings = crossings + excluded.crossings,
+                    last_ts = excluded.last_ts
+                """,
+                (
+                    nerve,
+                    delta,
+                    abs(delta),
+                    int(abs(delta) > 1e-9),
+                    int(crossed),
+                    datetime.now(UTC).isoformat(),
+                ),
+            )
+    except Exception:
+        return
+
+
+def _read_gut_influence(nerve: str) -> dict[str, int | float | str]:
+    """Læs påvirkningsrækken selv-sikkert; en manglende tabel svarer til nul data."""
+    empty: dict[str, int | float | str] = {
+        "events": 0,
+        "delta_sum": 0.0,
+        "delta_abs_sum": 0.0,
+        "influenced": 0,
+        "crossings": 0,
+        "last_ts": "",
+    }
+    try:
+        from core.runtime.db_core import connect
+
+        with connect() as conn:
+            conn.execute("PRAGMA busy_timeout = 5000")
+            conn.execute(_INFLUENCE_TABLE_SQL)
+            row = conn.execute(
+                """SELECT events, delta_sum, delta_abs_sum, influenced, crossings, last_ts
+                   FROM gut_influence_ledger WHERE nerve = ?""",
+                (nerve,),
+            ).fetchone()
+        if not row:
+            return empty
+        return {
+            "events": int(row[0] or 0),
+            "delta_sum": float(row[1] or 0.0),
+            "delta_abs_sum": float(row[2] or 0.0),
+            "influenced": int(row[3] or 0),
+            "crossings": int(row[4] or 0),
+            "last_ts": str(row[5] or ""),
+        }
+    except Exception:
+        return empty
 
 
 def _record_counterfactual(
@@ -301,6 +384,10 @@ def _record_counterfactual(
     _safe_record(ledger, nerve_nb,
                  "green" if nb_would_pass else "red",
                  f"hunch={str(hunch or 'proceed').strip().lower()} conf={nb:.3f} thr={threshold:.2f}")
+    # A6b-stil: shadow har egne verdict-nerver og blandes heller ikke ind i den håndhævede
+    # påvirkningsrække. Skrive-helperen er selv-sikker, så DB-lås/fejl aldrig rammer gaten.
+    if not shadow:
+        _record_gut_influence(_COUNTERFACTUAL_NERVE, conf - nb, would_pass != nb_would_pass)
 
 
 def gut_gate(
@@ -694,18 +781,42 @@ def build_gut_counterfactual_surface() -> dict[str, object]:
     sænker caution, negativ omvendt. Med-bias-pass er derfor IKKE en overmængde af
     uden-bias-pass, og deltaet kan være negativt.
 
-    GRÆNSE (målt 11/11-2026): deltaet tæller kun GRÆNSEKRYDS — hændelser hvor bias vendte
-    would_pass. Det kan derfor IKKE skelne «bias er inaktiv» fra «bias flytter confidence
-    uden at krydse tærsklen»: når alle confidence-værdier ligger længere fra tærsklen end
-    bias'ens størrelse (målt: min. margin 0,20 mod bias 0,1125), er deltaet strukturelt 0 —
-    også selvom musklen beviseligt arbejder (proceed 0,500→0,610, caution 0,690→0,580).
-    Den skelnen skal bæres af et separat påvirknings-mål, ikke af dette tal.
+    Counterfactual-deltaet tæller kun GRÆNSEKRYDS. Den separate påvirknings-ledger måler
+    også confidence-flytning under tærsklen og skelner derfor inactive, uncoupled,
+    subthreshold og tipping uden at ændre gatens beslutningslogik.
     """
+    influence = _read_gut_influence(_COUNTERFACTUAL_NERVE)
+    influence_observations = int(influence["events"])
+    influence_events = int(influence["influenced"])
+    crossings = int(influence["crossings"])
+    mean_abs_delta = (
+        float(influence["delta_abs_sum"]) / influence_observations
+        if influence_observations else 0.0
+    )
+    mode = _consumer_mode()
+    bias = _gut_bias()
+    if mode != "on" or abs(bias) <= 1e-9:
+        influence_state = "inactive"
+    elif influence_events == 0:
+        influence_state = "uncoupled"
+    elif crossings == 0:
+        influence_state = "subthreshold"
+    else:
+        influence_state = "tipping"
+
+    influence_fields: dict[str, object] = {
+        "state": influence_state,
+        "influence_events": influence_events,
+        "mean_abs_delta": mean_abs_delta,
+        "influence_delta_sum": float(influence["delta_sum"]),
+        "crossings": crossings,
+    }
     try:
         from core.services import gate_verdict_ledger as ledger
         counts = ledger.summary()
     except Exception:  # ledgeren kan ikke læses → fladen melder "ingen data", kaster ikke
-        return {"active": False, "events": 0, "summary": "ledger utilgængelig"}
+        return {"active": False, "events": 0, **influence_fields,
+                "summary": "counterfactual-ledger utilgængelig"}
 
     backstop = counts.get(_BACKSTOP_NERVE) or {}
     med = counts.get(_COUNTERFACTUAL_NERVE) or {}
@@ -713,7 +824,7 @@ def build_gut_counterfactual_surface() -> dict[str, object]:
     shadow = counts.get(_COUNTERFACTUAL_NERVE_SHADOW) or {}
     total = int(med.get("total") or 0)
     if not total:
-        return {"active": False, "events": 0,
+        return {"active": False, "events": 0, **influence_fields,
                 "summary": "ingen gut_gate-afgørelser talt op endnu"}
 
     pass_med = int(med.get("green") or 0)
@@ -726,9 +837,16 @@ def build_gut_counterfactual_surface() -> dict[str, object]:
     # trækkes fra. Shadow-afgørelser ligger på deres egen nerve og indgår ikke i `total`.
     blokeret = max(0, total - pass_med - overkoersler)
     shadow_total = int(shadow.get("total") or 0)
+    state_summary = {
+        "inactive": "bias er inaktiv",
+        "uncoupled": "bias er aktiv, men confidence er ikke koblet til påvirkningsmålet",
+        "subthreshold": "musklen arbejder under vippegrænsen",
+        "tipping": "bias vipper afgørelser",
+    }[influence_state]
     return {
         "active": True,
         "events": total,
+        **influence_fields,
         "pass_med_bias": pass_med,
         "pass_uden_bias": pass_uden,
         "counterfactual_delta": delta,
@@ -737,8 +855,10 @@ def build_gut_counterfactual_surface() -> dict[str, object]:
         "backstop_overkoersler": overkoersler,
         "shadow_afgoerelser": shadow_total,
         "summary": (
-            f"bias flyttede afgørelsen i {delta} af {total} tilfælde "
-            f"({round(100.0 * delta / total, 2)} %); {blokeret} stoppet, "
+            f"{state_summary} (mean |Δ|={mean_abs_delta:.2f}, "
+            f"{crossings} grænsekryds); bias flyttede netto afgørelsen i "
+            f"{delta} af {total} tilfælde ({round(100.0 * delta / total, 2)} %); "
+            f"{blokeret} stoppet, "
             f"{overkoersler} sluppet igennem af bagkanten, "
             f"{shadow_total} simuleret i shadow"
         ),

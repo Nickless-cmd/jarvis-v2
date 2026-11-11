@@ -20385,6 +20385,91 @@
       },
       "created_at_formats": []
     },
+    "gut_influence_ledger": {
+      "digest": "e6:8e:2e:ba:91:60:ff:9a:2c:dd:a5:2e:d7:f2:03:0d:40:b4:e5:39:c1:ba:26:fa:e9:03:19:5b:98:87:a4:9e",
+      "schema": {
+        "columns": [
+          {
+            "name": "crossings",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "delta_abs_sum",
+            "type": "REAL",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "delta_sum",
+            "type": "REAL",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "events",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "influenced",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "last_ts",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "nerve",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_gut_influence_ledger_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "nerve",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": []
+    },
     "heartbeat_runtime_state": {
       "digest": "f0:df:00:76:3c:bb:1d:14:4c:52:2e:e7:f0:4c:e6:ed:fb:cd:ce:f9:ee:de:47:99:6a:11:be:ef:90:f0:ff:15",
       "schema": {

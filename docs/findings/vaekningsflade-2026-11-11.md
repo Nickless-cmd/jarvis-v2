@@ -176,3 +176,36 @@ Det er en kontrakt-udvidelse, ikke en omskrivning af kaldestedet.
 **Netto:** af de syv er to ikke vækninger, to skal ikke migreres, to er blokeret på
 samme kontrakt-udvidelse, og én er uafklaret. Den næste rigtige bid er derfor
 kontrakt-udvidelsen — ikke endnu en kildemigrering.
+
+## Kontrakt-udvidelsen: budgettet er baaret, callbacken er ikke (11/11-2026, sen aften)
+
+**Løst — `15841aa85`.** `max_tool_calls`, `max_seconds` og `tool_scope` er nu
+tre kolonner i `inbox_items` (32 i alt) og baeres hele vejen:
+gateway → post → waker → starter. `0` betyder «intet loft» og er en gyldig
+vaerdi, ikke en manglende; wakeren sender derfor kun feltet videre naar kilden
+faktisk satte en graense. Bevis: `test_budget_naar_hele_vejen_til_starteren`
+fejler paa kode uden videresendelsen i wakeren — maalt, ikke antaget.
+
+**Ikke løst — callbacken, og grunden er maalt.** `completion_callback` er en
+proces-lokal Python-funktion. Den kan ikke serialiseres i en DB-post, saa den
+kan ikke baeres gennem indbakken som de tre felter.
+
+Det afgoerende spoergsmaal er HVOR vaekningen sker. Maalt:
+`vaek_paa_aabne_poster` kaldes kun fra `scheduled_tasks` (samme proces som
+bookingen), mens `routine_dispatch` kaldes fra `routine_runner` — en poller i
+runtime-processen. En in-memory registrering noeglet paa postens `kilde_id`
+virker derfor for `scheduled_tasks`, men IKKE for `routine_dispatch`: den
+bookes i én proces og vaekkes i en anden.
+
+**Konsekvensen er konkret:** `_SESSION_LEASE_SECONDS = 900`, og leasen fornyes
+ikke. Uden `completed`-callbacken staar `db_routines.claim_run`-claimet i op
+til 15 minutter efter hvert rutine-run, og `session_dispatched`-eventet
+skrives aldrig. Rutinen ser ikke afregnet ud, selv om den er faerdig.
+
+**Naeste skridt er derfor ikke en registrering, men en beslutning:** enten
+(a) en cross-process afregning — `routine_runner` poller selv sine aabne
+claims og afregner dem, saa callbacken bliver overfloedig, eller (b) en
+DB-baaret afregnings-post som wakeren skriver naar runnet slutter. (a) er
+husets moenster: tilstanden ligger allerede i `db_routines`, og en poller der
+laeser sin egen sandhed er staerkere end en closure der skal overleve en
+procesgraense.

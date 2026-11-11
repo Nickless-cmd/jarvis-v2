@@ -278,6 +278,9 @@ def _start_run(
     task_id: str = "",
     permission_session: str = "",
     origin: str = "",
+    max_tool_calls: int = 0,
+    max_seconds: float = 0.0,
+    tool_scope: str = "",
 ) -> bool | None:
     """Start det autonome run i den samtale posten hører til. Adskilt, så
     testen kan bytte den ud ét sted.
@@ -342,6 +345,16 @@ def _start_run(
                 # Adgangsniveauet læses fra den samtale vækningen blev BOOKET
                 # i, ikke fra den silo runnet lander i (målt 9/11-2026).
                 permission_session=str(permission_session or ""),
+                # BUDGETTET (11/11-2026). Kilden satte et loft da den bookede
+                # vækningen; uden at føre det videre kører runnet uden grænse.
+                # `0` betyder «intet loft» og sendes derfor kun videre når
+                # kilden faktisk satte en grænse.
+                **({"max_tool_calls": int(max_tool_calls)}
+                   if int(max_tool_calls or 0) > 0 else {}),
+                **({"max_seconds": float(max_seconds)}
+                   if float(max_seconds or 0.0) > 0 else {}),
+                **({"tool_scope": str(tool_scope)}
+                   if str(tool_scope or "").strip() else {}),
             )
         finally:
             if token is not None:
@@ -467,6 +480,11 @@ def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
                 # bad om (dream, heartbeat, scheduled …). Uden den blev alt
                 # "inbox", og telemetrien kunne ikke skelne dem.
                 origin=str(post.get("origin") or ""),
+                # BUDGETTET (11/11-2026). Kilden satte loftet da den bookede
+                # vækningen; posten bærer det, og her føres det videre.
+                max_tool_calls=int(post.get("max_tool_calls") or 0),
+                max_seconds=float(post.get("max_seconds") or 0.0),
+                tool_scope=str(post.get("tool_scope") or ""),
             )
             # TAVS AFVISNING (14/10-2026). `start_autonomous_run` returnerede
             # foer `None` ogsaa naar run-guarden eller gut-gaten afviste — og

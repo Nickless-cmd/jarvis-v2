@@ -192,6 +192,15 @@ _SENERE_KOLONNER: Final[tuple[tuple[str, str], ...]] = (
     # svare på. Gatewayen falder tilbage til `kilde`, så feltet aldrig er tomt
     # for en kilde der navngav sig.
     ("origin", "TEXT NOT NULL DEFAULT ''"),
+    # BUDGETTET (11/11-2026). `routine_dispatch` og side-opgave-vækkeren
+    # sender begge `max_tool_calls`, `max_seconds` og `tool_scope` til
+    # starteren. Flyttede man dem gennem indbakken uden at bære felterne,
+    # forsvandt budget-styringen TAVST: runnet starter og ser rigtigt ud,
+    # men kører uden loft. `max_tool_calls = 0` betyder «intet loft» og er
+    # derfor en gyldig værdi, ikke en manglende.
+    ("max_tool_calls", "INTEGER NOT NULL DEFAULT 0"),
+    ("max_seconds", "REAL NOT NULL DEFAULT 0"),
+    ("tool_scope", "TEXT NOT NULL DEFAULT ''"),
 )
 
 
@@ -250,6 +259,9 @@ def _post_fra_raekke(r: sqlite3.Row) -> dict[str, Any]:
         "task_id": _felt(r, "task_id"),
         "permission_session": _felt(r, "permission_session"),
         "origin": _felt(r, "origin"),
+        "max_tool_calls": int(_felt(r, "max_tool_calls") or 0),
+        "max_seconds": float(_felt(r, "max_seconds") or 0.0),
+        "tool_scope": _felt(r, "tool_scope"),
     }
     # ── Opgave 8: udløb er en BEREGNET tilstand ─────────────────────────────
     #
@@ -313,6 +325,9 @@ def opret_eller_hent(
     task_id: str = "",
     permission_session: str = "",
     origin: str = "",
+    max_tool_calls: int = 0,
+    max_seconds: float = 0.0,
+    tool_scope: str = "",
 ) -> dict[str, Any]:
     """Idempotent registrering. Findes posten, returneres DEN — urørt.
 
@@ -356,15 +371,18 @@ def opret_eller_hent(
                 bruger_id, kildetype, kilde_id, oprettende_run_id,
                 verificeret_ejer, kraever_handling, status, beskrivelse,
                 output_sti, output_bytes, created_at, bloker, expires_at,
-                session_id, importance, task_id, permission_session, origin
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                session_id, importance, task_id, permission_session, origin,
+                max_tool_calls, max_seconds, tool_scope
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (bruger_id, kildetype, kilde_id, str(oprettende_run_id or ""),
              str(verificeret_ejer or EJER_UKENDT), 1 if kraever_handling else 0,
              STATUS_AABEN, str(beskrivelse or ""), str(output_sti or ""),
              output_bytes, _nu(), 1 if bloker else 0, str(expires_at or ""),
              str(session_id or ""), importance_n, str(task_id or ""),
-             str(permission_session or ""), str(origin or "")),
+             str(permission_session or ""), str(origin or ""),
+             int(max_tool_calls or 0), float(max_seconds or 0.0),
+             str(tool_scope or "")),
         )
         # A source may learn that an existing open finding is more important.
         # Never downgrade: critical/high must not be erased by a later default.

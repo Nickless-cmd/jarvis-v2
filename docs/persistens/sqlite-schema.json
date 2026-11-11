@@ -9956,7 +9956,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "cheap_lane_admission_state": {
@@ -21180,7 +21180,7 @@
       "created_at_formats": []
     },
     "inbox_items": {
-      "digest": "04:86:00:0d:e1:a8:7d:8c:7e:7e:85:d9:c3:ca:2a:8a:cd:77:2b:71:4d:01:09:34:8d:d1:fd:c3:d8:2a:bb:98",
+      "digest": "19:78:6f:c0:49:73:ea:36:0c:ce:61:bc:09:f1:30:78:4e:07:d7:cf:3e:a5:15:54:cc:9f:df:db:a3:68:18:36",
       "schema": {
         "columns": [
           {
@@ -21296,6 +21296,22 @@
             "hidden": 0
           },
           {
+            "name": "max_seconds",
+            "type": "REAL",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "max_tool_calls",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
             "name": "oprettende_run_id",
             "type": "TEXT",
             "nullable": false,
@@ -21393,6 +21409,14 @@
           },
           {
             "name": "task_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "tool_scope",
             "type": "TEXT",
             "nullable": false,
             "default": "''",

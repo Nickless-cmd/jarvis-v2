@@ -78,6 +78,9 @@ def anmod_om_vaekning(
     task_id: str = "",
     permission_session: str = "",
     origin: str = "",
+    max_tool_calls: int = 0,
+    max_seconds: float = 0.0,
+    tool_scope: str = "",
 ) -> dict[str, Any]:
     """Bed indbakken om at vække. Starter ikke noget selv.
 
@@ -147,6 +150,12 @@ def anmod_om_vaekning(
             # vækning altid kan svare på hvem der kaldte — også når kalderen
             # ikke selv kender sin run-origin.
             origin=str(origin or "").strip() or kilde,
+            # BUDGETTET (11/11-2026). Uden disse tre felter kører et migreret
+            # rutine-run uden loft: det starter, ser rigtigt ud og bruger
+            # ubegrænset tid og værktøjskald. `0` betyder «intet loft».
+            max_tool_calls=int(max_tool_calls or 0),
+            max_seconds=float(max_seconds or 0.0),
+            tool_scope=str(tool_scope or ""),
         )
         if r.get("status") != "ok":
             logger.warning("wake_gateway: %s kunne ikke skrive %s: %s",

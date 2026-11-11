@@ -49,9 +49,11 @@ def waker(monkeypatch):
     monkeypatch.setattr(
         w, "_start_run",
         lambda tekst, *, session_id, user_id, task_id="", permission_session="",
-        origin="": starter.append(
+        origin="", max_tool_calls=0, max_seconds=0.0, tool_scope="": starter.append(
             {"tekst": tekst, "session": session_id, "task_id": task_id,
-             "permission_session": permission_session, "origin": origin}) or True)
+             "permission_session": permission_session, "origin": origin,
+             "max_tool_calls": max_tool_calls, "max_seconds": max_seconds,
+             "tool_scope": tool_scope}) or True)
     w.starter = starter  # type: ignore[attr-defined]
     return w
 
@@ -103,6 +105,25 @@ def test_waker_bruger_kildens_tekst_og_samtale(inbox_db, waker):
         # Kilden hed "test-kilde" og gav ingen origin: gatewayen skal falde
         # tilbage til kildenavnet, så «hvem vækkede mig» altid kan besvares.
         "origin": "test-kilde",
+        "max_tool_calls": 0, "max_seconds": 0.0, "tool_scope": "",
+    }]
+
+
+def test_budget_naar_hele_vejen_til_starteren(inbox_db, waker):
+    """Et loft sat ved bookingen skal stadig gælde når runnet starter.
+
+    `routine_dispatch` og side-opgave-vækkeren sender `max_tool_calls`,
+    `max_seconds` og `tool_scope` til starteren. Gik de tabt i indbakken,
+    starter runnet og ser rigtigt ud — men kører uden grænse. Det er den
+    tavse fejl: intet fejler, der er bare ingen grænse.
+    """
+    _anmod(tekst="kør rutinen", max_tool_calls=12, max_seconds=600.0,
+           tool_scope="chat")
+    waker.vaek_paa_aabne_poster(bruger_id=BRUGER)
+    assert waker.starter == [{
+        "tekst": "kør rutinen", "session": "chat-1",
+        "task_id": "", "permission_session": "", "origin": "test-kilde",
+        "max_tool_calls": 12, "max_seconds": 600.0, "tool_scope": "chat",
     }]
 
 
@@ -124,6 +145,7 @@ def test_opgave_og_permissionssamtale_naar_hele_vejen_til_starteren(inbox_db, wa
         # En EKSPLICIT origin må ikke overskrives af kilde-fallbacken: ellers
         # blev et drømme-run igen umuligt at skelne fra en påmindelse.
         "origin": "dream",
+        "max_tool_calls": 0, "max_seconds": 0.0, "tool_scope": "",
     }]
 
 

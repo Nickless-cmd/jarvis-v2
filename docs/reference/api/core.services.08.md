@@ -519,7 +519,8 @@ _Et barn maa ikke laane foraeldrens autoritet — Fase 5._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `uden_foraeldrens_godkendelse` | `()` | Koer barnets arbejde UDEN foraeldrens ejer-godkendelse. | [src](../../../core/services/child_authority.py#L41) |
+| function | `uden_foraeldrens_vaerktoejsscope` | `()` | Koer barnet uden foraeldrens INTERAKTIVE vaerktoejsscope. | [src](../../../core/services/child_authority.py#L41) |
+| function | `uden_foraeldrens_godkendelse` | `()` | Koer barnets arbejde UDEN foraeldrens ejer-godkendelse. | [src](../../../core/services/child_authority.py#L79) |
 
 ## `core/services/child_failure_signal.py`
 _Et barn der doer, skal kunne SES — Fase 5._

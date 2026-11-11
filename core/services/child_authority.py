@@ -38,6 +38,44 @@ from typing import Iterator
 
 
 @contextlib.contextmanager
+def uden_foraeldrens_vaerktoejsscope() -> Iterator[None]:
+    """Koer barnet uden foraeldrens INTERAKTIVE vaerktoejsscope.
+
+    MAALT 11/11-2026 — og det retter en fejl i denne fils egen tabel.
+
+    Tabellen ovenfor siger «tool_scoping ... Bevares», med begrundelsen at
+    barnets vaerktoejsscope hviler paa den. Det er forkert for kontraktagenter:
+    deres vaerktoejer kommer fra `allowed_tools_json` (agentens EGEN politik),
+    og scopet er en FLADE-begreb — `chat` og `code` beskriver hvilken fane
+    mennesket sidder i, ikke hvad agenten maa.
+
+    Maalt konsekvens foer rettelsen: `_build_agent_tools_payload()` med en
+    researcher-politik gav
+
+        scope=''      10 vaerktoejer (inkl. web_search)
+        scope='chat'   6
+        scope='code'   4  — praecis read_file, search, find_files, agent_note
+
+    En agent dispatchet fra code mode fik altsaa fire laese-vaerktoejer i
+    stedet for sine ti, kunne ikke soege paa nettet, meldte det aerligt — og
+    blev bogfoert som `AGENT_INCOMPLETE`. 31 af 38 agentfejl laa i
+    `delivery`-fasen. Agenten havde ret; vi tog fejl.
+
+    Nulstilles til "" (owner/unbound = ingen flade-filtrering). Det er ikke en
+    udvidelse af barnets rettigheder: `_build_agent_tools_payload(allowed)`
+    skaerer stadig mod politikkens liste, saa barnet kan aldrig faa mere end
+    sin egen politik giver det. Invarianten er at barnets autoritet kommer fra
+    POLITIKKEN, ikke fra den flade der tilfaeldigt dispatchede det.
+    """
+    from core.tools.tool_scoping import reset_tool_scope, set_tool_scope
+    token = set_tool_scope("")
+    try:
+        yield
+    finally:
+        reset_tool_scope(token)
+
+
+@contextlib.contextmanager
 def uden_foraeldrens_godkendelse() -> Iterator[None]:
     """Koer barnets arbejde UDEN foraeldrens ejer-godkendelse.
 

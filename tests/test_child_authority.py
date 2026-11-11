@@ -115,3 +115,91 @@ def test_et_AEGTE_barn_ser_ingen_ejer_godkendelse(isolated_runtime, monkeypatch)
     finally:
         OA._ejer_godkendt.reset(t)
     assert set_af == {"ejer": False}
+
+
+# ── det arvede FLADE-scope (målt 11/11-2026) ─────────────────────────────
+#
+# Tabellen i denne fils modul-docstring sagde indtil i dag at `tool_scoping`
+# BEVARES. Det var forkert for kontraktagenter: deres værktøjer kommer fra
+# `allowed_tools_json`, og `chat`/`code` beskriver hvilken fane MENNESKET
+# sidder i — ikke hvad agenten må. Målt: en researcher-politik gav 10
+# værktøjer uden scope, 6 i chat og 4 i code. En agent dispatchet fra code
+# mode mistede `web_search`, meldte det ærligt og blev stemplet
+# AGENT_INCOMPLETE. 31 af 38 agentfejl lå i delivery-fasen.
+
+_RESEARCHER_POLICY = [
+    "read_file", "find_files", "search", "semantic_search_code", "find_symbol",
+    "find_usages", "read_tool_result", "web_search", "web_fetch", "agent_note",
+]
+
+
+def test_værnet_giver_agenten_hele_sin_politik():
+    """Kernen: agentens autoritet kommer fra POLITIKKEN, ikke fra fladen."""
+    from core.services.agent_runtime_base import _build_agent_tools_payload
+    from core.services.child_authority import uden_foraeldrens_vaerktoejsscope
+    from core.tools import tool_scoping as TS
+
+    t = TS._scope_var.set("code")
+    try:
+        assert len(_build_agent_tools_payload(_RESEARCHER_POLICY)) == 4, \
+            "forudsætning: code-scope skærer til fire"
+        with uden_foraeldrens_vaerktoejsscope():
+            navne = {t2["function"]["name"]
+                     for t2 in _build_agent_tools_payload(_RESEARCHER_POLICY)}
+        assert navne == set(_RESEARCHER_POLICY)
+    finally:
+        TS._scope_var.reset(t)
+
+
+def test_værnet_nulstiller_ikke_forældrenes_scope():
+    """Kaldet er ikke færdigt fordi et barn var forbi — samme krav som
+    godkendelsen."""
+    from core.services.child_authority import uden_foraeldrens_vaerktoejsscope
+    from core.tools import tool_scoping as TS
+
+    t = TS._scope_var.set("chat")
+    try:
+        with uden_foraeldrens_vaerktoejsscope():
+            assert TS.current_tool_scope() == ""
+        assert TS.current_tool_scope() == "chat"
+    finally:
+        TS._scope_var.reset(t)
+
+
+def test_værnet_nulstiller_ogsaa_naar_barnet_KASTER():
+    from core.services.child_authority import uden_foraeldrens_vaerktoejsscope
+    from core.tools import tool_scoping as TS
+
+    t = TS._scope_var.set("code")
+    try:
+        with pytest.raises(ValueError):
+            with uden_foraeldrens_vaerktoejsscope():
+                raise ValueError("barnet fejlede")
+        assert TS.current_tool_scope() == "code"
+    finally:
+        TS._scope_var.reset(t)
+
+
+def test_barnet_kan_ikke_faa_MERE_end_sin_politik():
+    """Nulstilling er ikke en udvidelse: payloaden skæres stadig mod
+    politikkens liste, så et smalt sæt forbliver smalt."""
+    from core.services.agent_runtime_base import _build_agent_tools_payload
+    from core.services.child_authority import uden_foraeldrens_vaerktoejsscope
+    from core.tools import tool_scoping as TS
+
+    t = TS._scope_var.set("code")
+    try:
+        with uden_foraeldrens_vaerktoejsscope():
+            navne = {t2["function"]["name"]
+                     for t2 in _build_agent_tools_payload(["read_file"])}
+        assert navne == {"read_file"}
+    finally:
+        TS._scope_var.reset(t)
+
+
+def test_koblingen_til_udfoerelsen():
+    """Uden koblingen er værnet bare en fil."""
+    import inspect
+    from core.services import agent_runtime_spawn as S
+    kilde = inspect.getsource(S.execute_agent_task)
+    assert "uden_foraeldrens_vaerktoejsscope()" in kilde

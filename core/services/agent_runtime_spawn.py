@@ -544,7 +544,10 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "",
     `child_authority` for hvad der bevares og hvorfor.
     """
     from core.runtime.db_agent_lease import agent_koersel_marker, agent_lease_scope
-    from core.services.child_authority import uden_foraeldrens_godkendelse
+    from core.services.child_authority import (
+        uden_foraeldrens_godkendelse,
+        uden_foraeldrens_vaerktoejsscope,
+    )
     # agent-contract-v1 (G): et uafklaret udfald (outcome_unknown) kan have udfoert en skrivning - ingen
     # automatisk genkoersel, hverken planlagt, besked-udloest eller supervisor-genstart, foer det er afgjort.
     from core.runtime.db_agent_outcome_unknown import is_blocked
@@ -568,7 +571,8 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "",
     # `current_assignment_id()`, som falder til "" naar leasen mister sin
     # gyldighed — og saa slap agentens bash ud paa Bjørns skrivebord
     # (16/10-2026).
-    with agent_lease_scope(agent_id), uden_foraeldrens_godkendelse(), agent_koersel_marker():
+    with agent_lease_scope(agent_id), uden_foraeldrens_godkendelse(), \
+            uden_foraeldrens_vaerktoejsscope(), agent_koersel_marker():
         surface = _execute_agent_task_impl(agent_id=agent_id, thread_id=thread_id,
                                            execution_mode=execution_mode)
     # Kontraktbundne Task-agenter leverer gennem agent_result_outbox i den

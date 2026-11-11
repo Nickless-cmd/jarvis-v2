@@ -99,6 +99,7 @@ def _ensure_tables(conn: sqlite3.Connection) -> None:
             lease_generation INTEGER NOT NULL DEFAULT 0 CHECK(lease_generation >= 0),
             lease_expires_at TEXT,
             visible_run_id TEXT NOT NULL DEFAULT '',
+            session_id TEXT NOT NULL DEFAULT '',
             provider TEXT NOT NULL DEFAULT '',
             model TEXT NOT NULL DEFAULT '',
             usage_enc BLOB,
@@ -214,6 +215,14 @@ def _ensure_tables(conn: sqlite3.Connection) -> None:
     if "visible_run_id" not in columns:
         conn.execute(
             "ALTER TABLE routine_runs ADD COLUMN visible_run_id TEXT NOT NULL DEFAULT ''"
+        )
+    # SAMTALEN SKAL MED (11/11-2026). `session_id` blev kun kendt i
+    # dispatch-oejeblikket og stod derfor aldrig paa raekken. Uden den kan
+    # reconcileren ikke skrive det samme evidence som closuren skrev, og et
+    # afregnet run ville vaere fattigere end et closure-afregnet.
+    if "session_id" not in columns:
+        conn.execute(
+            "ALTER TABLE routine_runs ADD COLUMN session_id TEXT NOT NULL DEFAULT ''"
         )
 
 
@@ -1054,6 +1063,65 @@ def list_open_tool_effects(run_id: str) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
+#: Visible-run statusser der betyder «den anden traad er faerdig». `interrupted`
+#: og `cancelled` er lige saa terminale som `failed` — runnet fortsaetter ikke.
+_VISIBLE_TERMINAL = ("completed", "failed", "cancelled", "interrupted")
+
+#: Samme leasetid som `routine_dispatch` bruger. Den staar her fordi reconcileren
+#: fornyer leasen, og en fornyelse med en ANDEN varighed ville goere leasens
+#: levetid afhaengig af hvilken kode der sidst roerte raekken.
+_SESSION_LEASE_SECONDS = 900
+
+
+def _visible_run_status(visible_run_id: str) -> str:
+    """Status paa det visible run et rutine-run blev bundet til — eller "".
+
+    Tom betyder «kan ikke afgoeres» (ingen binding, eller runnet er ikke
+    skrevet endnu), og den skal falde tilbage til den gamle adfaerd: requeue.
+    """
+    if not str(visible_run_id or "").strip():
+        return ""
+    try:
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT status FROM visible_runs WHERE run_id=?", (str(visible_run_id),),
+            ).fetchone()
+    except Exception:  # noqa: BLE001 — en laesefejl maa ikke vaelte reconcileren
+        return ""
+    return str(row["status"] or "") if row is not None else ""
+
+
+def _settle_from_visible(row: Any, *, visible: str, now: datetime) -> None:
+    """Afregn et rutine-run ud fra det visible runs terminale status.
+
+    Resultatet er det SAMME evidence-objekt som `routine_dispatch`'s closure
+    skrev, saa et run afregnet her og et afregnet gennem closuren er
+    indistinguishable i `result_enc`.
+    """
+    run_id = str(row["run_id"])
+    generation = int(row["lease_generation"])
+    evidence = _json_bytes({
+        "execution_path": "session",
+        "visible_run_id": str(row["visible_run_id"] or ""),
+        "session_id": str(row["session_id"] or ""),
+        "outcome": visible,
+    })
+    try:
+        if visible == "completed":
+            complete_run_success(
+                run_id, expected_generation=generation,
+                result=evidence, delivery_channel=None,
+            )
+        else:
+            transition_run(
+                run_id, to_status="failed", expected_generation=generation,
+                result=evidence, diagnostic_code=f"session_{visible}",
+            )
+    except ValueError:
+        # Leasen blev fornyet eller afregnet imens — saa er der intet at goere.
+        return
+
+
 def bind_visible_run(
     run_id: str, *, visible_run_id: str, session_id: str = "",
 ) -> bool:
@@ -1073,9 +1141,9 @@ def bind_visible_run(
     with connect() as conn:
         _ensure_tables(conn)
         changed = conn.execute(
-            "UPDATE routine_runs SET visible_run_id=?,updated_at=? "
+            "UPDATE routine_runs SET visible_run_id=?,session_id=?,updated_at=? "
             "WHERE run_id=? AND status='running'",
-            (str(visible_run_id), _now(), str(run_id)),
+            (str(visible_run_id), str(session_id or ""), _now(), str(run_id)),
         )
         return changed.rowcount == 1
 
@@ -1092,6 +1160,40 @@ def reconcile_expired_runs(*, now: datetime) -> list[dict[str, Any]]:
                 (now.isoformat(),),
             ).fetchall()
             for row in rows:
+                # BINDINGEN AFGOER DOMMEN (11/11-2026). Et rutine-run der blev
+                # dispatchet til en samtale udfoeres af et visible run i en
+                # ANDEN traad — og dets closure kan ikke foelge med gennem
+                # indbakken. Uden dette opslag kunne reconcileren kun se
+                # «leasen er udloebet» og requeuede derfor et run der maaske
+                # netop lykkedes: rutinen koerte en gang til. Bindingen goer
+                # afregningen til en TILSTAND nogen kan laese.
+                visible = _visible_run_status(row["visible_run_id"])
+                if visible == "running":
+                    # Runnet lever stadig — forny leasen i stedet for at
+                    # requeue. Et langt run maa ikke dobbelt-koeres.
+                    conn.execute(
+                        "UPDATE routine_runs SET lease_expires_at=?,updated_at=? WHERE run_id=?",
+                        ((now + timedelta(seconds=_SESSION_LEASE_SECONDS)).isoformat(),
+                         now.isoformat(), row["run_id"]),
+                    )
+                    outcomes.append({"run_id": row["run_id"], "status": "running",
+                                     "diagnostic_code": "lease_renewed"})
+                    continue
+                if visible in _VISIBLE_TERMINAL:
+                    # Afregningen skal gaa gennem de SAMME funktioner som
+                    # closuren brugte: `complete_run_success` skriver
+                    # resultat, terminal haendelse og delivery i én
+                    # transaktion, og `transition_run` skriver den terminale
+                    # haendelse for fejl. En raa UPDATE ville efterlade et run
+                    # der SER afsluttet ud men mangler sin terminale raekke.
+                    conn.commit()
+                    _settle_from_visible(row, visible=visible, now=now)
+                    outcomes.append({
+                        "run_id": row["run_id"],
+                        "status": "succeeded" if visible == "completed" else "failed",
+                        "diagnostic_code": "" if visible == "completed" else f"session_{visible}",
+                    })
+                    continue
                 open_effect = conn.execute(
                     "SELECT 1 FROM routine_tool_effects WHERE run_id=? AND status='dispatching' LIMIT 1",
                     (row["run_id"],),

@@ -385,3 +385,96 @@ def test_a_long_answer_that_ends_with_a_conclusion_is_a_delivery():
     out = _run(io, expected_result=KONTRAKT)
 
     assert not out.get("incomplete"), out.get("stop_reason")
+
+
+# ── Svaret i PUNKTER er også et svar (11/11-2026) ─────────────────────────
+
+#: Opgaven ORDRET, som den stod i `agent_runs` for `run-5306b1fe6a7845a5`
+#: ("Måling 3/4: Node.js LTS med formatkrav"). To nummererede spørgsmål plus en
+#: "Krav til svaret"-sektion hvis tredje punkt er et FORMATkrav.
+BULLET_OPGAVE = """Måling 3/4: Node.js LTS med formatkrav
+
+Undersøg to ting og svar kort (maks 120 ord).
+
+1. Hvilken Node.js-version er den aktuelle LTS lige nu?
+2. Hvornår blev den frigivet som LTS?
+
+Krav til svaret:
+1. Nævn versionsnummeret.
+2. Nævn frigivelsesdatoen.
+3. Skriv «DÆKNING: 1,2» som sidste linje hvis du har besvaret begge dele, ellers «DÆKNING: N/2»."""
+
+#: Punkterne ORDRET fra samme kørsels `**Findings**`-blok. Kørslen svarede nummereret
+#: nederst og skrev DÆKNING-linjen, så den slap igennem ad en anden vej; her er kun
+#: punkt-blokken, som er den form A handler om.
+BULLET_SVAR = """**Summary** — Den nuværende Active LTS-linje er Node.js 24.x, som gik i Active LTS
+den 28. oktober 2025 med udgivelsen af 24.11.0 'Krypton'.
+
+**Findings**
+- nodejs.org/en/download viser aktuelt v26.13.0 (LTS), v24.22.2 (LTS) og v22.23.4 (LTS).
+- Officiel kilde (nodejs.org blog): "2025-10-28, Version 24.11.0 'Krypton' (LTS)".
+- Seneste patch i LTS-linjen pr. søgetidspunkt: Node.js 24.12.0 (udgivet 10. december 2025).
+- Node 22.x var tidligere Active LTS og skiftede til Maintenance LTS med Node 24's overgang."""
+
+
+def test_a_bullet_answer_covers_the_numbered_questions():
+    """Et svar i punkter er en leverance — detektoren maalte det som et hul.
+
+    MAALT 11/11-2026: daeknings-grenen kraever et NUMMERERET svar, saa en agent der
+    svarede i bullets blev maalt som «2 spoergsmaal uden nummereret svar» og slap
+    derefter igennem paa tegn-taersklen i stedet. Maalt over 74 gennemfoerte koersler
+    siden 4/11 fjerner denne regel dommen i 2 af dem — begge fyldige leverancer uden
+    en DAEKNING-linje. Reglen er altsaa snaever, ikke et frit lejde.
+    """
+    io = FakeIO([
+        {"text": "", "tool_calls": [_tc(1)]},
+        _text(BULLET_SVAR),
+    ])
+    out = _run(io, prompt=BULLET_OPGAVE, expected_result=KONTRAKT)
+
+    assert len(io.model_calls) == 2, "et daekket svar skal ikke have en ekstra runde"
+    assert not out.get("incomplete"), out.get("stop_reason")
+    assert core._unanswered_detail(BULLET_OPGAVE, BULLET_SVAR)[0] == 0
+
+
+def test_a_bullet_answer_with_fewer_points_than_questions_is_still_a_gap():
+    """Den anden halvdel: punkter er ikke et frit lejde.
+
+    Stiller opgaven to spoergsmaal og svarer agenten med ET punkt, er leverancen ikke
+    daekket. Uden denne halvdel ville reglen goere enhver punkliste til en fuld
+    leverance, og saa var hullet byttet for et stoerre.
+    """
+    assert core._unanswered_detail(BULLET_OPGAVE, "- Node.js 24 er LTS.")[0] == 2
+    io = FakeIO([
+        {"text": "", "tool_calls": [_tc(1)]},
+        _text("- Node.js 24 er LTS."),
+        _text("- Node.js 24 er LTS."),
+    ])
+    out = _run(io, prompt=BULLET_OPGAVE, expected_result=KONTRAKT)
+
+    assert out.get("incomplete") is True
+    assert "tegn" in out["stop_reason"]
+
+
+def test_the_agents_own_declaration_still_wins_over_the_bullet_count():
+    """A maa IKKE overrule agentens EGEN daeknings-linje.
+
+    Erklaerer agenten «DÆKNING: 1» til en opgave med tre spoergsmaal, er det en aerlig
+    delvis leverance — ogsaa naar svaret har ti punkter. Maalt 11/11-2026: de 19
+    resterende huller i de 74 koersler er ALLE denne slags, nul er ren taelling. Ville
+    punkter vinde over erklaeringen, gjorde reglen praecis den tavshed den skulle fjerne.
+    """
+    opgave = "Undersøg tre ting:\n1) Hvad er A?\n2) Hvad er B?\n3) Hvad er C?\n"
+    svar = ("- A er besvaret\n- B er besvaret\n- C er besvaret\n"
+            "- endnu et punkt\n- og et mere\n\nDÆKNING: 1")
+    assert core._unanswered_detail(opgave, svar) == (2, "spørgsmål uden dækning")
+
+
+def test_the_bullet_measure_counts_only_points_that_carry_content():
+    """Enheden selv: tomme punkter og markdown-fremhaevning er ikke svar."""
+    assert core._bullet_answers(BULLET_SVAR) == 4
+    assert core._bullet_answers("- \n- \n* ") == 0
+    # "**Opsummering**" er ikke et punkt: moensteret kraever et mellemrum efter markoeren.
+    assert core._bullet_answers("**Opsummering**\ntekst") == 0
+    assert core._bullet_answers("Indledning.\n- et\n* to\n• tre\n– fire") == 4
+

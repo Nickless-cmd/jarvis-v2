@@ -368,6 +368,38 @@ def _answered_numbers(final_text: str, qs: set[int]) -> set[int]:
         out.add(n)
     return out
 
+#: 11/11-2026: en agent der svarer i PUNKTER i stedet for numre.
+#:
+#: MAALT i drift paa `run-b835a42813304393` (node-opgaven, efter fix `35ce649a7`):
+#: opgaven stillede to nummererede spoergsmaal, agenten svarede med to bullets, og
+#: `_unanswered_detail` gav 2 — den mente IKKE spoergsmaalene var besvaret. Alligevel
+#: slap koerslen igennem, fordi daeknings-grenen kraever et NUMMERERET svar og derfor
+#: faldt den ned til tegn-taersklen paa 160, som svaret var laengere end.
+#:
+#: Det er den fejlform der blev maalt hele dagen: en mekanisme hvis indgangsbetingelse
+#: halvdelen af virkeligheden ikke kan opfylde. Daeknings-grenen fandtes kun for
+#: nummererede svar, saa en bullet-leverance blev laest som et hul.
+#:
+#: Bjoerns valg 11/11-2026 var den MEKANISKE variant frem for emneord-matchning:
+#: stiller opgaven N nummererede spoergsmaal og svarer agenten med mindst N punkter der
+#: baerer indhold, er leverancen daekket. Den kan ikke doemme et rigtigt svar forkert
+#: paa ordvalg. Prisen er den modsatte: en agent der skriver fem tilfaeldige punkter til
+#: tre spoergsmaal slipper igennem. Den pris er valgt bevidst — de falske
+#: `AGENT_INCOMPLETE` kostede ti koersler samme dag, og en vagt der rammer gode svar er
+#: vaerre end hullet den lukker.
+_BULLET_RE = re.compile(r"(?m)^[ \t]*[-*•–][ \t]+(\S.*)$")
+
+
+def _bullet_answers(final_text: str) -> int:
+    """Antal punkter i svaret der baerer indhold.
+
+    En tom bullet ("- ") er ikke et svar. Markdown-fremhaevet tekst i starten af en
+    linje ("**Opsummering**") er ikke et punkt: moensteret kraever et mellemrum efter
+    markoeren, og der staar et `*` som naeste tegn.
+    """
+    return sum(1 for m in _BULLET_RE.finditer(final_text or "") if m.group(1).strip())
+
+
 def _unanswered_questions(prompt: str, final_text: str) -> int:
     """Antal nummererede spoergsmaal i opgaven uden et NUMMERERET svar i resultatet.
 
@@ -406,7 +438,14 @@ def _unanswered_detail(prompt: str, final_text: str) -> tuple[int, str]:
     if declared is not None:
         return len(qs - declared), "spørgsmål uden dækning"
     answered = _answered_numbers(final_text or "", qs)
-    return len(qs - answered), "spørgsmål uden nummereret svar"
+    missing = qs - answered
+    if missing and _bullet_answers(final_text or "") >= len(qs):
+        # 11/11-2026: svaret er leveret i PUNKTER. Formen er en anden, daekningen er
+        # den samme — se `_BULLET_RE`. Denne gren kan kun GOERE maalingen mildere for
+        # en koersel der ellers blev doemt paa formatering; den kan ikke faelde noget
+        # der slap igennem foer.
+        return 0, ""
+    return len(missing), "spørgsmål uden nummereret svar"
 
 
 #: Kontrakten (`expected_result`) kan selv bestille et bevis af en bestemt FORM. Staar der

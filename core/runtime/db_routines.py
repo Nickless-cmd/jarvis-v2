@@ -1122,6 +1122,27 @@ def _settle_from_visible(row: Any, *, visible: str, now: datetime) -> None:
         return
 
 
+def bind_session(run_id: str, *, session_id: str) -> bool:
+    """Gem hvilken SAMTALE rutine-runnet blev sendt til.
+
+    Sessionen kendes kun i dispatch-øjeblikket, hvor det visible run endnu
+    ikke findes. Uden den på rækken kan reconcileren ikke skrive det samme
+    evidence-JSON som den gamle closure skrev (``execution_path``,
+    ``visible_run_id``, ``session_id``, ``outcome``) — og et afregnet run
+    ville være fattigere end et closure-afregnet.
+    """
+    if not str(run_id or "").strip() or not str(session_id or "").strip():
+        return False
+    with connect() as conn:
+        _ensure_tables(conn)
+        changed = conn.execute(
+            "UPDATE routine_runs SET session_id=?,updated_at=? "
+            "WHERE run_id=? AND status='running'",
+            (str(session_id), _now(), str(run_id)),
+        )
+        return changed.rowcount == 1
+
+
 def bind_visible_run(
     run_id: str, *, visible_run_id: str, session_id: str = "",
 ) -> bool:

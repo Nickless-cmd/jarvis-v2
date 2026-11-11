@@ -230,7 +230,6 @@ TILLADT: dict[str, str] = {
     "apps/api/jarvis_api/routes/plugins.py": "kanal",
     "core/services/dreaming_session.py": "gaeld",
     "core/services/routine_trigger_adapters.py": "gaeld",
-    "core/services/routine_dispatch.py": "gaeld",
     "core/services/autonomous_side_task_dispatcher.py": "gaeld",
     "core/services/session_spawn.py": "gaeld",
     "core/services/visible_runs_memory.py": "gaeld",

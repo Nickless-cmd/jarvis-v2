@@ -525,10 +525,9 @@ _Deterministic execution-path routing for queued Routine occurrences._
 | function | `resolve_owner_session` | `(owner_user_id)` | Return (session, state); only a positive ownership stamp may wake. | [src](../../../core/services/routine_dispatch.py#L31) |
 | function | `runtime_presence` | `(session_id)` | Return idle/busy/unknown from shared runtime truth and cooldown state. | [src](../../../core/services/routine_dispatch.py#L65) |
 | function | `_context` | `(row, generation)` | — | [src](../../../core/services/routine_dispatch.py#L92) |
-| function | `_settle_session_run` | `(*, routine_run_id, generation, routine_id, owner_user_id, outcome, visible_run_id, session_id, error=…)` | — | [src](../../../core/services/routine_dispatch.py#L98) |
-| function | `_dispatch_session_claimed` | `(row, *, session_id)` | — | [src](../../../core/services/routine_dispatch.py#L136) |
-| function | `_dispatch_session` | `(row, *, session_id)` | Serialize the final presence check and synchronous visible-run birth. | [src](../../../core/services/routine_dispatch.py#L206) |
-| function | `route_next` | `(runner)` | Route one occurrence. Unknown state leaves it visibly queued. | [src](../../../core/services/routine_dispatch.py#L217) |
+| function | `_dispatch_session_claimed` | `(row, *, session_id)` | — | [src](../../../core/services/routine_dispatch.py#L98) |
+| function | `_dispatch_session` | `(row, *, session_id)` | Serialize the final presence check and synchronous visible-run birth. | [src](../../../core/services/routine_dispatch.py#L165) |
+| function | `route_next` | `(runner)` | Route one occurrence. Unknown state leaves it visibly queued. | [src](../../../core/services/routine_dispatch.py#L176) |
 
 ## `core/services/routine_identity.py`
 _Canonical, fail-closed identity resolution for Routine entry points._

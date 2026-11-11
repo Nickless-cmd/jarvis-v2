@@ -18,6 +18,24 @@ def deterministic_user_keys(monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def frisk_indbakke(isolated_runtime):
+    """`db_inbox` skal pege på den ISOLEREDE base, ikke den forrige tests.
+
+    `db_inbox` binder `connect` ved import (`from core.runtime.db_core import
+    connect`), så `isolated_runtime`s reload af `db_core` når ikke ind i den.
+    Uden denne reload skriver rutine-dispatchen sin vækning i en base der ikke
+    har `inbox_items` — og fejlen ser ud som en produktionsfejl («no such
+    table») selv om det er fixturet der er stale.
+    """
+    import importlib
+
+    import core.runtime.db_inbox as db_inbox
+
+    importlib.reload(db_inbox)
+    yield
+
+
 def _run(isolated_runtime, *, owner="bjorn", mode="adaptive", importance="normal"):
     from core.services.routine_service import RoutineService
 
@@ -60,7 +78,7 @@ def test_a_busy_jarvis_routes_adaptive_occurrence_to_background(
 def test_b_idle_jarvis_executes_in_verified_session_once(
     isolated_runtime, monkeypatch,
 ):
-    from core.runtime import db_routines
+    from core.runtime import db_inbox, db_routines
     from core.services import routine_dispatch
     from core.services.routine_runner import RoutineRunner
 
@@ -71,17 +89,6 @@ def test_b_idle_jarvis_executes_in_verified_session_once(
     monkeypatch.setattr(
         routine_dispatch, "runtime_presence", lambda _sid: ("idle", ""),
     )
-    starts = []
-    callback = {}
-
-    def fake_start(message, **kwargs):
-        starts.append((message, kwargs))
-        callback["finish"] = kwargs["completion_callback"]
-        return True
-
-    monkeypatch.setattr(
-        "core.services.visible_autonomous_run.start_autonomous_run", fake_start,
-    )
     runner = RoutineRunner()
     monkeypatch.setattr(
         runner, "run_once", lambda _run_id: pytest.fail("unnecessary background run"),
@@ -89,20 +96,19 @@ def test_b_idle_jarvis_executes_in_verified_session_once(
 
     outcome = runner.run_next()
     assert outcome.path == "session"
-    assert len(starts) == 1
-    assert starts[0][1]["session_id"] == "chat-bjorn"
-    assert starts[0][1]["force_user_id"] == "bjorn"
-    assert "ROUTINE WAKEUP" in starts[0][0]
+    # VÆKNINGEN LANDER I INDBakken (11/11-2026) — rutinen starter ikke selv
+    # runnet. Posten bærer opgavens id, så afregningen kan finde tilbage.
+    post = db_inbox.hent(bruger_id="bjorn", kilde_id="vaek-" + run.run_id)
+    assert post is not None, "vækningen blev ikke lagt i indbakken"
+    assert post["task_id"] == run.run_id
+    assert post["session_id"] == "chat-bjorn"
+    assert post["origin"] == "routine"
+    assert "ROUTINE WAKEUP" in post["beskrivelse"]
+    # Sessionen er gemt på rækken, så reconcileren kan skrive evidence-JSON.
+    raekke = db_routines.get_run(run.run_id, decrypt_for="bjorn")
+    assert raekke["session_id"] == "chat-bjorn"
     # The occurrence is already leased, so a second worker cannot execute it.
     assert runner.run_next() is None
-
-    callback["finish"](
-        outcome="completed", visible_run_id="visible-1",
-        session_id="chat-bjorn", error="",
-    )
-    settled = db_routines.get_run(run.run_id, decrypt_for="bjorn")
-    assert settled["status"] == "succeeded"
-    assert b'"visible_run_id": "visible-1"' in settled["result"]
     assert service.list_runs(routine.id)[0].run_id == run.run_id
 
 

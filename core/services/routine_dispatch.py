@@ -95,44 +95,6 @@ def _context(row: dict[str, Any], generation: int):
     return RoutineRunner()._context(row, generation)
 
 
-def _settle_session_run(
-    *, routine_run_id: str, generation: int, routine_id: str,
-    owner_user_id: str, outcome: str, visible_run_id: str,
-    session_id: str, error: str = "",
-) -> None:
-    evidence = json.dumps({
-        "execution_path": "session",
-        "visible_run_id": visible_run_id,
-        "session_id": session_id,
-        "outcome": outcome,
-    }, sort_keys=True).encode("utf-8")
-    if outcome == "completed":
-        db_routines.complete_run_success(
-            routine_run_id,
-            expected_generation=generation,
-            result=evidence,
-            delivery_channel=None,
-        )
-        return
-    db_routines.transition_run(
-        routine_run_id,
-        to_status="failed",
-        expected_generation=generation,
-        result=evidence,
-        diagnostic_code=f"session_{outcome}",
-    )
-    from core.services.routine_inbox import project_event_to_inbox
-
-    project_event_to_inbox({
-        "owner_user_id": owner_user_id,
-        "routine_id": routine_id,
-        "run_id": routine_run_id,
-        "event_id": f"{routine_run_id}:session-{outcome}",
-        "event_type": "failed",
-        "evidence": str(error or "")[:200],
-    })
-
-
 def _dispatch_session_claimed(row: dict[str, Any], *, session_id: str) -> RouteOutcome:
     run_id = str(row["run_id"])
     holder = f"routine-session-{uuid.uuid4().hex}"
@@ -152,47 +114,44 @@ def _dispatch_session_claimed(row: dict[str, Any], *, session_id: str) -> RouteO
     definition = dict(private["definition_snapshot"])
     permission = dict(definition.get("permission_policy") or {})
     from core.services.routine_prompt import build_session_routine_prompt
-    from core.services.visible_autonomous_run import start_autonomous_run
+    from core.services.wake_gateway import anmod_om_vaekning
 
-    def completed(**result: Any) -> None:
-        try:
-            _settle_session_run(
-                routine_run_id=run_id,
-                generation=generation,
-                routine_id=str(claim["routine_id"]),
-                owner_user_id=str(claim["owner_user_id"]),
-                outcome=str(result.get("outcome") or "failed"),
-                visible_run_id=str(result.get("visible_run_id") or ""),
-                session_id=str(result.get("session_id") or session_id),
-                error=str(result.get("error") or ""),
-            )
-        except Exception:
-            logger.exception("routine dispatch: session completion could not settle %s", run_id)
-
+    # VÆKNINGEN GÅR GENNEM INDBakken (11/11-2026). Bjørn: «der skal kun være
+    # en vækker (inbox) og de andre der kan vække sender signalet til
+    # inbox'en, den vurderer signalet og vækker». Rutinen starter derfor
+    # ikke længere runnet selv, og afregningen sker ikke i en closure her:
+    # `task_id=run_id` binder vækningen til forpligtelsen, og
+    # `reconcile_expired_runs` afregner ud fra `visible_runs.status` når
+    # leasen løber ud. En closure kunne ikke bæres gennem indbakken.
     try:
-        started = start_autonomous_run(
-            build_session_routine_prompt(
+        kvittering = anmod_om_vaekning(
+            kilde="routine",
+            sag=run_id,
+            tekst=build_session_routine_prompt(
                 context, instruction=bytes(definition["instruction"]),
             ),
+            bruger_id=str(claim["owner_user_id"]),
             session_id=session_id,
-            origin="routine",
             task_id=run_id,
+            permission_session=session_id,
+            origin="routine",
             max_tool_calls=int(permission.get("max_tool_calls") or 0),
             max_seconds=float(permission.get("max_seconds") or 600),
             tool_scope=str(definition.get("capability_scope") or "chat"),
-            force_user_id=str(claim["owner_user_id"]),
-            completion_callback=completed,
         )
     except Exception:
         db_routines.release_run_claim(
             run_id, holder=holder, expected_generation=generation,
         )
         raise
-    if not started:
+    if str(kvittering.get("status") or "") not in {"queued", "deduped"}:
         db_routines.release_run_claim(
             run_id, holder=holder, expected_generation=generation,
         )
         return RouteOutcome("pending", run_id, "session-start-refused")
+    # Sessionen blev kun kendt her. Uden den på rækken kan reconcileren ikke
+    # skrive det samme evidence-JSON som den gamle closure skrev.
+    db_routines.bind_session(run_id, session_id=session_id)
     db_routines.append_run_event(
         run_id=run_id,
         kind="session_dispatched",

@@ -439,11 +439,12 @@ _Hjerteslagets dæmon — tråden der spørger «er det tid?» hvert 30. sekund.
 | function | `stop` | `(*, name=…)` | — | [src](../../../core/services/heartbeat_scheduler.py#L113) |
 | function | `_parse_iso` | `(value)` | — | [src](../../../core/services/heartbeat_scheduler.py#L133) |
 | function | `assess_liveness` | `(*, scheduler_active, scheduler_health, next_tick_at, last_tick_at=…, interval_minutes=…, thread_running, iterations_count, db_last_tick_started_at=…, now=…)` | Dom om dæmonen LEVER, ud fra målinger — ikke ud fra flaget alene. | [src](../../../core/services/heartbeat_scheduler.py#L150) |
-| function | `watchdog_check` | `(*, now=…)` | Én kontrol. Genstarter kun hvis STALLED OG iterations() ikke er steget | [src](../../../core/services/heartbeat_scheduler.py#L236) |
-| function | `_watchdog_loop` | `()` | — | [src](../../../core/services/heartbeat_scheduler.py#L280) |
-| function | `start_watchdog` | `()` | Idempotent. Stoppes ikke af stop() — et bevidst stop sætter | [src](../../../core/services/heartbeat_scheduler.py#L288) |
-| function | `stop_watchdog` | `()` | — | [src](../../../core/services/heartbeat_scheduler.py#L301) |
-| function | `_loop` | `(*, name, startup_recovery_requested)` | — | [src](../../../core/services/heartbeat_scheduler.py#L307) |
+| function | `watchdog_is_running` | `()` | Lever den uafhængige vagttråd i denne proces? | [src](../../../core/services/heartbeat_scheduler.py#L236) |
+| function | `watchdog_check` | `(*, now=…)` | Én kontrol. Genstarter kun hvis STALLED OG iterations() ikke er steget | [src](../../../core/services/heartbeat_scheduler.py#L241) |
+| function | `_watchdog_loop` | `()` | — | [src](../../../core/services/heartbeat_scheduler.py#L285) |
+| function | `start_watchdog` | `()` | Idempotent. Stoppes ikke af stop() — et bevidst stop sætter | [src](../../../core/services/heartbeat_scheduler.py#L293) |
+| function | `stop_watchdog` | `()` | — | [src](../../../core/services/heartbeat_scheduler.py#L306) |
+| function | `_loop` | `(*, name, startup_recovery_requested)` | — | [src](../../../core/services/heartbeat_scheduler.py#L312) |
 
 ## `core/services/hentede_vaerktoejer.py`
 _Hvad der sker EFTER en `load_more_tools`-hentning — og hvorfor det kan slukkes._

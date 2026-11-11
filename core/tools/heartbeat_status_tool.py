@@ -60,6 +60,7 @@ def _exec_heartbeat_status(_args: dict[str, Any]) -> dict[str, Any]:
         owner_process = process_role() == "runtime"
         local_thread_running = _hs.is_running() if owner_process else None
         local_iterations = _hs.iterations() if owner_process else None
+        local_watchdog_running = _hs.watchdog_is_running() if owner_process else None
         liveness = _hs.assess_liveness(
             scheduler_active=scheduler["active"],
             scheduler_health=scheduler["health"],
@@ -75,6 +76,7 @@ def _exec_heartbeat_status(_args: dict[str, Any]) -> dict[str, Any]:
         scheduler["iterations"] = liveness["iterations"]
         scheduler["thread_running"] = liveness["thread_running"]
         scheduler["thread_observation"] = liveness["thread_observation"]
+        scheduler["watchdog_running"] = local_watchdog_running
         scheduler["observer_process"] = process_role()
         scheduler["liveness_source"] = "heartbeat_runtime_state"
         scheduler["overdue_minutes"] = liveness["overdue_minutes"]
@@ -93,6 +95,7 @@ def _exec_heartbeat_status(_args: dict[str, Any]) -> dict[str, Any]:
                 f"iterations: {liveness['iterations']} | "
                 f"next tick overdue: {liveness['overdue_minutes']} min"
             )
+            lines.append(f"Watchdog running: {local_watchdog_running}")
         if liveness["mismatch"]:
             lines.append("MISMATCH: " + ", ".join(liveness["mismatch"]))
         lines.append(f"Last tick: {scheduler['last_tick_at'] or 'never'}")

@@ -233,6 +233,11 @@ _WATCHDOG_THREAD: threading.Thread | None = None
 _WATCHDOG_LAST_ITER: int | None = None
 
 
+def watchdog_is_running() -> bool:
+    """Lever den uafhængige vagttråd i denne proces?"""
+    return bool(_WATCHDOG_THREAD and _WATCHDOG_THREAD.is_alive())
+
+
 def watchdog_check(*, now=None) -> dict[str, object]:
     """Én kontrol. Genstarter kun hvis STALLED OG iterations() ikke er steget
     siden forrige kontrol (første kontrol sætter kun baseline)."""
@@ -329,9 +334,11 @@ def _loop(*, name: str, startup_recovery_requested: bool) -> None:
             },
         )
 
-    # Først NU har tråden gennemført sin første iteration — først nu må
-    # helbredet hedde "active". start() skriver kun "starting" (se
+    # Først NU har tråden gennemført sin første iteration. Tæl den før
+    # health-skiftet, så "active" aldrig kan observeres sammen med nul
+    # gennemløb. start() skriver kun "starting" (se
     # heartbeat_runtime._prepare_scheduler_startup).
+    _ITERATION += 1
     try:
         hb._mark_scheduler_health(name=name, health="active")
     except Exception:

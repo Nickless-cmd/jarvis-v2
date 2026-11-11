@@ -17,6 +17,7 @@ def _rene():
     sched._THREAD = None
     sched._ITERATION = 0
     sched._WATCHDOG_LAST_ITER = None
+    sched._WATCHDOG_THREAD = None
     sched._STOP.clear()
     yield
     sched._STOP.set()
@@ -69,6 +70,32 @@ def test_status_eksponerer_iterations(tmp_path, monkeypatch):
     assert "iterations: 7" in out["text"]
 
 
+def test_status_eksponerer_watchdog_i_ejerprocessen(tmp_path, monkeypatch):
+    from core.tools.simple_tools_native import _exec_heartbeat_status
+
+    _write_state(tmp_path, monkeypatch, next_tick_minutes_ago=1)
+
+    class _AliveThread:
+        @staticmethod
+        def is_alive():
+            return True
+
+    sched._WATCHDOG_THREAD = _AliveThread()
+    out = _exec_heartbeat_status({})
+    assert out["scheduler"]["watchdog_running"] is True
+    assert "Watchdog running: True" in out["text"]
+
+
+def test_runtime_start_starter_scheduler_og_watchdog(monkeypatch):
+    from core.services import heartbeat_runtime as hb
+
+    calls: list[str] = []
+    monkeypatch.setattr(sched, "start", lambda **k: calls.append("scheduler"))
+    monkeypatch.setattr(sched, "start_watchdog", lambda: calls.append("watchdog"))
+    hb.start_heartbeat_scheduler(name="t")
+    assert calls == ["scheduler", "watchdog"]
+
+
 def test_start_efterlader_ikke_health_active_foer_foerste_iteration(monkeypatch):
     from core.services import heartbeat_runtime as hb
 
@@ -91,6 +118,7 @@ def test_start_efterlader_ikke_health_active_foer_foerste_iteration(monkeypatch)
 
 def test_health_active_saettes_foerst_efter_foerste_gennemloeb(monkeypatch):
     order: list[str] = []
+    iteration_at_active: list[int] = []
 
     class _FakeHb:
         event_bus = type("B", (), {"publish": staticmethod(lambda *a, **k: None)})()
@@ -103,6 +131,7 @@ def test_health_active_saettes_foerst_efter_foerste_gennemloeb(monkeypatch):
         @staticmethod
         def _mark_scheduler_health(*, name, health):
             order.append(f"health={health}")
+            iteration_at_active.append(sched.iterations())
 
         @staticmethod
         def poll_heartbeat_schedule(*, name):
@@ -118,6 +147,7 @@ def test_health_active_saettes_foerst_efter_foerste_gennemloeb(monkeypatch):
     sched._STOP.set()
     t.join(timeout=1.0)
     assert order[:2] == ["poll", "health=active"]
+    assert iteration_at_active == [1]
 
 
 def _fake_hb(monkeypatch, *, next_minutes_ago):

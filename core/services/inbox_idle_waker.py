@@ -91,7 +91,7 @@ def _er_moden(post: dict[str, Any], *, vaekninger: dict[str, dict[str, Any]]) ->
     # laa `kan_dispatch` alene til grund, men `_er_moden` sagde nej, og alarmen
     # ventede alligevel. Maalt: Bjørn sad i en aaben session og fik intet
     # signal da desk-release 0.6.237 fejlede.
-    if kildetype == "ci_alarm":
+    if kildetype in ("ci_alarm", "vaekning"):
         return True
     # `recurring` (19/10-2026): HELE todelingen af rutiner ligger her.
     #
@@ -335,6 +335,12 @@ def _dispatch_tekst(post: dict[str, Any]) -> str:
     """
     from core.services.inbox_state import kan_dispatch
 
+    # En gateway-vækning bærer sin EGEN instruktion i beskrivelsen — det er
+    # kildens tekst, ikke et generisk «du har en post»-direktiv.
+    if str(post.get("kildetype") or "") == "vaekning":
+        tekst = str(post.get("beskrivelse") or "").strip()
+        if tekst:
+            return tekst
     if not post.get("kraever_handling") and kan_dispatch(post.get("kildetype")):
         if str(post.get("kildetype") or "") == "wakeup":
             rec = _wakeup_records().get(str(post.get("kilde_id") or ""))

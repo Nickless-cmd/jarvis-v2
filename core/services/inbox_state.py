@@ -152,6 +152,12 @@ KAN_DISPATCHES_KILDETYPER: Final[frozenset[str]] = frozenset({
     # samtale (`recurring_tasks.session_id`). Uden den todeling ville alle 13
     # levende opgaver — inkl. den 4×daglige inspektion — begynde at vække runs.
     "recurring",
+    # `vaekning` (11/11-2026): ÉN indgang til at vække. Alle vækningskilder
+    # melder deres ønske via `wake_gateway.anmod_om_vaekning`, som kun skriver
+    # en post af denne type. Posten bærer ALDRIG `kraever_handling` (den må ikke
+    # nægte en mutation i et kørende run), og er moden i det øjeblik den
+    # skrives — det er kildens egen anmodning.
+    "vaekning",
 })
 
 

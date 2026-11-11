@@ -42,7 +42,8 @@ TRE BLINDE PLETTER RETTET SAMME DAG (alle maalt, ikke gaettet)
    `session_id`). `visible_runs` har ingen `session_id`-kolonne, og
    `run_event_log.session_for_run` er in-memory og kan ikke bruges af et
    script. Ligger sessionens sidste besked INDE i et `completed`-run uden fejl
-   for NETOP denne session, springes fundet over.
+   for NETOP denne session, OG runnet konkret leverede via `notify_user`,
+   springes fundet over. `completed` alene er ikke bevis for et svar.
 
 HVORFOR DEN FINDES (30-08-2026)
 --------------------------------
@@ -332,12 +333,15 @@ def run_ids_pr_session(con, cutoff_ts: str) -> dict[str, list[str]]:
     return ud
 
 
-def svar_leveret_eksternt(con, run_ids: list[str], tavs_ts: datetime) -> str | None:
-    """Laa der et PAENT afsluttet run i denne session da den gik tavs?
+def svar_leveret_eksternt(
+    con, sid: str, run_ids: list[str], tavs_ts: datetime,
+) -> str | None:
+    """Leverede et PAENT afsluttet run konkret sit svar i en anden session?
 
-    Returnerer run_id'et hvis ja — ellers None. "Paent afsluttet" er praecist:
-    `status='completed'` OG tom `error`. Et `failed`/`cancelled`/`interrupted`
-    run er IKKE et svar og maa ikke kunne daempe et fund.
+    Returnerer run_id'et hvis ja — ellers None. Det kraever baade
+    `status='completed'` med tom `error` OG et succesfuldt `notify_user`-resultat
+    i samme sessions run-vindue. Et completed run er ikke i sig selv et svar:
+    en kappet tur kan stadig blive lukket som completed.
 
     Tidskriteriet: sessionens sidste besked skal ligge INDE i runnets vindue
     [started_at, finished_at]. Maalt 14/10 rammer det begge nats falske fund
@@ -362,8 +366,22 @@ def svar_leveret_eksternt(con, run_ids: list[str], tavs_ts: datetime) -> str | N
         slut = til_utc(r["finished_at"])
         if start is None or slut is None:
             continue
-        if start <= tavs_ts <= slut:
-            return str(r["run_id"])
+        if not start <= tavs_ts <= slut:
+            continue
+        try:
+            leveringer = con.execute(
+                "SELECT content FROM chat_messages "
+                "WHERE session_id = ? AND role = 'tool' "
+                "AND created_at >= ? AND created_at <= ?",
+                (sid, str(r["started_at"]), str(r["finished_at"])),
+            ).fetchall()
+        except Exception:  # uden leveringsbevis maa completed ikke daempe
+            continue
+        for levering in leveringer:
+            content = str(levering["content"] or "")
+            if (sidste_vaerktoej(content) == "notify_user"
+                    and "Delivered to:" in content):
+                return str(r["run_id"])
     return None
 
 
@@ -463,7 +481,7 @@ def main() -> int:
 
         # Svarede et run i DENNE session — bare et andet sted hen? Saa er den
         # manglende assistent-raekke det RIGTIGE udfald, ikke en kappet tur.
-        if svar_leveret_eksternt(con, runs_pr_session.get(sid, []), last_at):
+        if svar_leveret_eksternt(con, sid, runs_pr_session.get(sid, []), last_at):
             continue
 
         # Forensik: hvor langt naaede turen?

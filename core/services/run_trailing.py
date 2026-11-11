@@ -80,6 +80,7 @@ Alle haefter sig bagest, og de staar i levetids-raekkefoelge: vedvarende
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 

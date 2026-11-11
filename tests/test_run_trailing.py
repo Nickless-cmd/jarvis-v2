@@ -440,3 +440,36 @@ def test_hale_telemetrien_publiceres_FAKTISK_fra_loekken():
     kilde = pathlib.Path("core/services/visible_runs.py").read_text(encoding="utf-8")
     assert "runtime.visible_run_tail" in kilde
     assert "_tur_hale.telemetri()" in kilde
+
+
+def test_alder_stemplet_kan_flyttes_uden_at_kaste():
+    """`re` blev brugt uden at vaere importeret — og fejlen draebte turen.
+
+    Maalt i drift 11/11-2026: ti runs doede paa rad med
+    `name 're' is not defined` mellem 18:54 og 21:09. Vejen var
+    `agent_result_inbox` -> `stempl_vedvarende_alder`, altsaa HVER gang en
+    agent leverede sit svar i en runde efter den foerste. Foerste levering gik
+    i else-grenen og slap igennem; anden levering ramte `re.sub` og kastede.
+    Kaldestedet har ingen try/except, saa NameError'en gik hele vejen op og
+    turen sluttede uden assistent-svar — praecis den «tavse cutoff» Bjørn
+    rapporterede gentagne gange.
+
+    Testen kalder BEGGE grene: foerst den der saetter stemplet, saa den der
+    flytter tallet. Kun den anden rammer `re.sub`, og det var den der doede.
+    """
+    h = RundeHale()
+    h.opdater_vedvarende("agent_result_inbox", nyt_indhold="RESUME: to filer aendret")
+
+    # 1. kald: blokken findes ikke med stempel endnu -> else-grenen
+    h.stempl_vedvarende_alder("agent_result_inbox", runde=2)
+    tekst = h.som_liste()[-1]["content"]
+    assert "LEVERET I RUNDE 1" in tekst, tekst
+
+    # 2. kald: stemplet findes -> re.sub-grenen. Det var HER NameError'en kom.
+    h.stempl_vedvarende_alder("agent_result_inbox", runde=3)
+    tekst = h.som_liste()[-1]["content"]
+    assert "LEVERET I RUNDE 2" in tekst, tekst
+    assert "LEVERET I RUNDE 1" not in tekst, "stemplet blev lagt til i stedet for flyttet"
+
+    # Indholdet skal staa urørt: praefiks-cachen kraever samme blok.
+    assert "RESUME: to filer aendret" in tekst

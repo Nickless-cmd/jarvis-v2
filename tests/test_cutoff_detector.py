@@ -413,6 +413,8 @@ class TestSvarLeveretEksternt:
         con.row_factory = sqlite3.Row
         con.execute("CREATE TABLE visible_runs (run_id TEXT, status TEXT, error TEXT, "
                     "started_at TEXT, finished_at TEXT)")
+        con.execute("CREATE TABLE chat_messages (session_id TEXT, role TEXT, "
+                    "content TEXT, created_at TEXT)")
         for r in rows:
             con.execute("INSERT INTO visible_runs VALUES (?,?,?,?,?)", r)
         con.commit()
@@ -423,14 +425,17 @@ class TestSvarLeveretEksternt:
         slut = datetime(2026, 10, 14, 4, 15, 31, tzinfo=UTC)
         con = self._con([("r1", "completed", "", start.isoformat(), slut.isoformat())])
         midt = datetime(2026, 10, 14, 4, 15, 28, tzinfo=UTC)
-        assert cd.svar_leveret_eksternt(con, ["r1"], midt) == "r1"
+        con.execute("INSERT INTO chat_messages VALUES (?,?,?,?)", (
+            "auto-x", "tool", "[tool_result:x]\n[notify_user]: Delivered to: webchat:chat-x",
+            midt.isoformat()))
+        assert cd.svar_leveret_eksternt(con, "auto-x", ["r1"], midt) == "r1"
 
     def test_fejlet_run_daemper_ikke(self):
         start = datetime(2026, 10, 14, 4, 14, tzinfo=UTC)
         slut = datetime(2026, 10, 14, 4, 16, tzinfo=UTC)
         con = self._con([("r1", "failed", "boom", start.isoformat(), slut.isoformat())])
         assert cd.svar_leveret_eksternt(
-            con, ["r1"], datetime(2026, 10, 14, 4, 15, tzinfo=UTC)) is None
+            con, "auto-x", ["r1"], datetime(2026, 10, 14, 4, 15, tzinfo=UTC)) is None
 
     def test_completed_med_fejlstreng_daemper_ikke(self):
         start = datetime(2026, 10, 14, 4, 14, tzinfo=UTC)
@@ -438,18 +443,18 @@ class TestSvarLeveretEksternt:
         con = self._con([("r1", "completed", "noget gik galt",
                           start.isoformat(), slut.isoformat())])
         assert cd.svar_leveret_eksternt(
-            con, ["r1"], datetime(2026, 10, 14, 4, 15, tzinfo=UTC)) is None
+            con, "auto-x", ["r1"], datetime(2026, 10, 14, 4, 15, tzinfo=UTC)) is None
 
     def test_tidspunkt_uden_for_vinduet_daemper_ikke(self):
         start = datetime(2026, 10, 14, 4, 14, tzinfo=UTC)
         slut = datetime(2026, 10, 14, 4, 15, tzinfo=UTC)
         con = self._con([("r1", "completed", "", start.isoformat(), slut.isoformat())])
         assert cd.svar_leveret_eksternt(
-            con, ["r1"], datetime(2026, 10, 14, 5, 0, tzinfo=UTC)) is None
+            con, "auto-x", ["r1"], datetime(2026, 10, 14, 5, 0, tzinfo=UTC)) is None
 
     def test_ingen_runs_giver_none(self):
         con = self._con([])
-        assert cd.svar_leveret_eksternt(con, [], datetime.now(UTC)) is None
+        assert cd.svar_leveret_eksternt(con, "auto-x", [], datetime.now(UTC)) is None
 
 
 class TestPlet3EndeTilEnde:
@@ -467,9 +472,16 @@ class TestPlet3EndeTilEnde:
         con.execute("CREATE TABLE events (id INTEGER, kind TEXT, payload_json TEXT, created_at TEXT)")
         # Sessionen gik tavs for 30 min siden — praecis som i nat: kun tool-raekker.
         tavs = datetime.now(UTC) - timedelta(minutes=30)
-        con.execute("INSERT INTO chat_messages VALUES (?,?,?,?,?)",
-                    ("m1", "auto-recurring-x", "tool",
-                     "[tool_result:abc]\n[notify_user]: leveret", tavs.isoformat()))
+        con.execute("INSERT INTO chat_messages VALUES (?,?,?,?,?)", (
+            "m-notify", "auto-recurring-x", "tool",
+            "[tool_result:notify]\n[notify_user]: Delivered to: webchat:chat-x",
+            (tavs - timedelta(seconds=5)).isoformat(),
+        ))
+        con.execute("INSERT INTO chat_messages VALUES (?,?,?,?,?)", (
+            "m1", "auto-recurring-x", "tool",
+            "[tool_result:abc]\n[bash]: efterarbejde efter leveringen",
+            tavs.isoformat(),
+        ))
         con.execute("INSERT INTO events VALUES (?,?,?,?)", (
             1, "runtime.autonomous_run_started",
             json.dumps({"run_id": "autonomous-a", "session_id": "auto-recurring-x"}),
@@ -500,6 +512,30 @@ class TestPlet3EndeTilEnde:
         p = self._scratch(tmp_path, med_completed_run=True)
         fundet = self._koer(p, tmp_path, monkeypatch)
         assert fundet == [], "et svar leveret i en anden session maa ikke blive et fund"
+
+    def test_completed_run_uden_ekstern_levering_er_et_fund(self, tmp_path, monkeypatch):
+        """`completed` er ikke i sig selv bevis for at brugeren fik et svar.
+
+        En kappet tur kan blive lukket som completed, selv om sessionen ender
+        paa et almindeligt tool-resultat. Kun konkret ekstern levering maa
+        derfor daempe fundet.
+        """
+        p = self._scratch(tmp_path, med_completed_run=True)
+        con = sqlite3.connect(str(p))
+        tavs = datetime.fromisoformat(con.execute(
+            "SELECT created_at FROM chat_messages WHERE message_id = 'm1'"
+        ).fetchone()[0])
+        con.execute("INSERT INTO chat_messages VALUES (?,?,?,?,?)", (
+            "m0", "auto-recurring-x", "user", "udfoer opgaven",
+            (tavs - timedelta(seconds=30)).isoformat(),
+        ))
+        con.execute("DELETE FROM chat_messages WHERE message_id = 'm-notify'")
+        con.commit()
+        con.close()
+
+        fundet = self._koer(p, tmp_path, monkeypatch)
+        assert len(fundet) == 1, "completed uden leveringsbevis skjulte et reelt cut"
+        assert fundet[0]["kind"] == "turn_without_reply"
 
     def test_uden_completed_run_er_fundet_bevaret(self, tmp_path, monkeypatch):
         """Negativ kontrol: uden det paene run SKAL fundet komme."""

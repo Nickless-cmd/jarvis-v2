@@ -235,19 +235,19 @@ _Detektor for ture der ender uden assistent-svar ("tavse cutoffs")._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `log` | `(msg)` | — | [src](../../../scripts/cutoff_detector.py#L107) |
-| function | `load_seen` | `()` | — | [src](../../../scripts/cutoff_detector.py#L113) |
-| function | `save_seen` | `(seen)` | — | [src](../../../scripts/cutoff_detector.py#L120) |
-| function | `sidste_vaerktoej` | `(content)` | Vaerktoejsnavnet fra en `tool`-raekkes content — eller "-". | [src](../../../scripts/cutoff_detector.py#L130) |
-| function | `til_utc` | `(tekst)` | ISO-tidsstreg -> tz-aware datetime, eller None hvis den er ulaesbar. | [src](../../../scripts/cutoff_detector.py#L155) |
-| function | `api_restarted_near` | `(when)` | Blev jarvis-api genstartet omkring tidspunktet? | [src](../../../scripts/cutoff_detector.py#L171) |
-| function | `doede_runs_uden_svar` | `(con, siden_ts)` | Runs der DOEDE uden at naa at skrive noget. | [src](../../../scripts/cutoff_detector.py#L215) |
-| function | `turen_koerer_stadig` | `(con, sid)` | Er der et LEVENDE visible-run for denne session lige nu? | [src](../../../scripts/cutoff_detector.py#L255) |
-| function | `_genstart_dom` | `(restarted)` | Teksten der gaar i fundet. `None` maa ikke lyde som et svar. | [src](../../../scripts/cutoff_detector.py#L295) |
-| function | `run_ids_pr_session` | `(con, cutoff_ts)` | session_id -> [run_id] for autonome runs startet i vinduet. | [src](../../../scripts/cutoff_detector.py#L304) |
-| function | `svar_leveret_eksternt` | `(con, run_ids, tavs_ts)` | Laa der et PAENT afsluttet run i denne session da den gik tavs? | [src](../../../scripts/cutoff_detector.py#L335) |
-| function | `run_startet_for_session` | `(con, sid, efter_ts)` | Blev der overhovedet STARTET et run for denne session efter beskeden? | [src](../../../scripts/cutoff_detector.py#L370) |
-| function | `main` | `()` | — | [src](../../../scripts/cutoff_detector.py#L395) |
+| function | `log` | `(msg)` | — | [src](../../../scripts/cutoff_detector.py#L108) |
+| function | `load_seen` | `()` | — | [src](../../../scripts/cutoff_detector.py#L114) |
+| function | `save_seen` | `(seen)` | — | [src](../../../scripts/cutoff_detector.py#L121) |
+| function | `sidste_vaerktoej` | `(content)` | Vaerktoejsnavnet fra en `tool`-raekkes content — eller "-". | [src](../../../scripts/cutoff_detector.py#L131) |
+| function | `til_utc` | `(tekst)` | ISO-tidsstreg -> tz-aware datetime, eller None hvis den er ulaesbar. | [src](../../../scripts/cutoff_detector.py#L156) |
+| function | `api_restarted_near` | `(when)` | Blev jarvis-api genstartet omkring tidspunktet? | [src](../../../scripts/cutoff_detector.py#L172) |
+| function | `doede_runs_uden_svar` | `(con, siden_ts)` | Runs der DOEDE uden at naa at skrive noget. | [src](../../../scripts/cutoff_detector.py#L216) |
+| function | `turen_koerer_stadig` | `(con, sid)` | Er der et LEVENDE visible-run for denne session lige nu? | [src](../../../scripts/cutoff_detector.py#L256) |
+| function | `_genstart_dom` | `(restarted)` | Teksten der gaar i fundet. `None` maa ikke lyde som et svar. | [src](../../../scripts/cutoff_detector.py#L296) |
+| function | `run_ids_pr_session` | `(con, cutoff_ts)` | session_id -> [run_id] for autonome runs startet i vinduet. | [src](../../../scripts/cutoff_detector.py#L305) |
+| function | `svar_leveret_eksternt` | `(con, sid, run_ids, tavs_ts)` | Leverede et PAENT afsluttet run konkret sit svar i en anden session? | [src](../../../scripts/cutoff_detector.py#L336) |
+| function | `run_startet_for_session` | `(con, sid, efter_ts)` | Blev der overhovedet STARTET et run for denne session efter beskeden? | [src](../../../scripts/cutoff_detector.py#L388) |
+| function | `main` | `()` | — | [src](../../../scripts/cutoff_detector.py#L413) |
 
 ## `scripts/db_backup_daglig.py`
 _Daglig konsistent backup af den LEVENDE jarvis.db + rotation._

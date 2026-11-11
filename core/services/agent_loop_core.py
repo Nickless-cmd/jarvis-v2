@@ -286,13 +286,54 @@ def _own_task(prompt: str) -> str:
     return text[at + len(_MEMBER_TASK_MARK):]
 
 
+#: 11/11-2026: en nummereret linje kan vaere et FORMATKRAV i stedet for et spoergsmaal.
+#: MAALT i drift paa `asg-bfde7917307541aa`: opgaven bad om to ting (version og
+#: udgivelsesdato) og nummererede derefter tre krav, hvor nummer 3 var "Skriv «DÆKNING:
+#: 2/2» som sidste linje". Agenten svarede korrekt paa begge spoergsmaal og erklaerede
+#: `DÆKNING: 1,2` — og blev alligevel stemplet `AGENT_INCOMPLETE` med "1 spoergsmaal uden
+#: daekning", fordi detektoren kraevede {1,2,3}. Et korrekt svar, doemt fordi opgavens
+#: FORMATERING blev laest som et ubesvaret spoergsmaal.
+#:
+#: Maalt over de 31 `AGENT_INCOMPLETE` i basen: 26 (84 %) ramte denne detektor, ikke
+#: agenternes arbejde.
+#:
+#: Moensteret er snaevert med vilje: kun en linje der beskriver svarets FORM — ordantal,
+#: en daeknings-markoer, eller hvilken linje markoeren skal staa paa. En linje som "Nævn
+#: versionen" stiller et indholdskrav og ER et spoergsmaal, ogsaa naar den staar under en
+#: krav-overskrift. En bredere regel (fx alt efter "Krav til svaret:") blev proevet og
+#: forkastet samme dag: den skar de aegte krav vaek og gjorde detektoren blind i stedet
+#: for praecis.
+_FORMAT_DEMAND_RE = re.compile(
+    r"(?i)\b(?:dækning|daekning|coverage)\b"
+    r"|\bsom\s+(?:den\s+)?(?:sidste|første|foerste)\s+linje\b"
+    r"|\b(?:last|first)\s+line\b"
+    r"|\b(?:maksimalt|maks\.?|højst|hoejst|at\s+most|max\.?)\s+\d+\s*"
+    r"(?:ord|words|tegn|chars|linjer|lines)\b"
+    r"|\b\d+\s*(?:ord|words)\b"
+)
+
+
 def _question_numbers(prompt: str) -> set[int]:
-    """Spoergsmaalsnumrene i opgaven, uanset om de er skrevet med ord eller som ren nummerering."""
+    """Spoergsmaalsnumrene i opgaven, uanset om de er skrevet med ord eller som ren nummerering.
+
+    11/11-2026: en nummereret linje der beskriver svarets FORM er et formatkrav, ikke et
+    spoergsmaal — se `_FORMAT_DEMAND_RE`. Uden filtreringen blev et korrekt svar doemt,
+    fordi opgaven nummererede sine formkrav sammen med sine spoergsmaal.
+    """
+    text = prompt or ""
     out: set[int] = set()
-    for m in _QUESTION_RE.finditer(prompt or ""):
+    for m in _QUESTION_RE.finditer(text):
         tal = m.group(1) or m.group(2)
-        if tal:
-            out.add(int(tal))
+        if not tal:
+            continue
+        # Linjens eget indhold afgoer, ikke dens placering: et formatkrav er kendetegnet
+        # ved hvad det beder om, ikke ved hvilken overskrift der staar over det.
+        linje_start = text.rfind("\n", 0, m.start()) + 1
+        linje_slut = text.find("\n", m.end())
+        linje = text[linje_start: linje_slut if linje_slut >= 0 else len(text)]
+        if _FORMAT_DEMAND_RE.search(linje):
+            continue
+        out.add(int(tal))
     return out
 
 
@@ -456,7 +497,12 @@ def _delivery_gap(expected_result: str, final_text: str, total_tool_calls: int,
     # uanset laengde. Maalt 10/11-2026: "1. Fem felter. 2. agent_assignment_mandates.
     # 3. To steder." er 58 tegn og en FULD besvarelse; laengdetaersklen afviste den.
     # Det er praecis den falske positiv taersklen selv advarer om.
-    if len(_question_numbers(prompt)) >= 2 and not _unanswered_questions(prompt, text):
+    # 11/11-2026: `_own_task` — et team-medlem maales paa SIN akse. Uden snittet talte de
+    # andre medlemmers roller som ubesvarede spoergsmaal; maalt i raad
+    # `council-7a4a3d1795f64c1f` blev alle fire medlemmer stemplet `AGENT_INCOMPLETE` for
+    # de tre andre medlemmers opgaver. `_own_task` fandtes og blev brugt i
+    # `_unanswered_detail`; her blev den glemt.
+    if len(_question_numbers(_own_task(prompt))) >= 2 and not _unanswered_questions(prompt, text):
         return ""
     # MAALT 11/11-2026, raad `council-ae9a075e13514694`: et svar paa 89 tegn blev faeldet af
     # laengdetaersklen, mens arbejdsintentioner paa 214, 233 og 500 tegn slap igennem — de

@@ -175,3 +175,115 @@ def test_ugyldig_deadline_handhaeves_ikke_men_kaster_ikke(monkeypatch):
                  {"text": _FAERDIG}])
     out = _run(io, max_rounds=5, deadline_at="ikke-en-dato")
     assert out["rounds"] == 2
+
+
+# ── Daeknings-detektoren: spoergsmaal fra kontrakten, ikke fra fri tekst (11/11-2026) ──
+#
+# MAALT I DRIFT: 26 af 31 ``AGENT_INCOMPLETE`` ramte daeknings-detektoren, ikke agentens
+# arbejde. To mekanismer, begge maalt paa faktiske assignments i basen:
+#
+#   1. En nummereret linje under en krav-overskrift er et FORMATKRAV. I
+#      ``asg-bfde7917307541aa`` bad opgaven om to ting og nummererede derefter tre krav,
+#      hvor det tredje var "skriv DAEKNING-linjen". Agenten svarede korrekt paa begge
+#      spoergsmaal og erklaerede ``DAEKNING: 1,2`` — og blev doemt for det tredje.
+#   2. Et team-medlem fik HELE raadets tekst. De fire medlemmers roller blev laest som
+#      fire ubesvarede spoergsmaal, saa alle fire blev stemplet fejlet for de tre andres
+#      opgaver. ``_own_task`` fandtes allerede og blev brugt i ``_unanswered_detail``,
+#      men var glemt i ``_delivery_gap``.
+
+
+def test_formatkrav_taelles_ikke_som_spoergsmaal():
+    """En nummereret linje der beskriver svarets FORM er et formatkrav, ikke et spoergsmaal."""
+    opgave = (
+        "Undersoeg to ting:\n"
+        "1. Hvad er den nyeste version?\n"
+        "2. Hvornaar blev den udgivet?\n"
+        "\n"
+        "Krav til svaret:\n"
+        "1. Naevn versionen.\n"
+        "2. Naevn værktøjerne.\n"
+        "3. Skriv DAEKNING-linjen til sidst.\n"
+    )
+    assert core._question_numbers(opgave) == {1, 2}
+
+
+def test_indholdskrav_under_en_krav_overskrift_er_stadig_spoergsmaal():
+    """Værnet mod den for grove regel: placering afgoer ikke, indholdet goer.
+
+    11/11-2026: den foerste udgave skar ALT efter "Krav til svaret:" — og dermed ogsaa de
+    aegte krav. Maalt paa `asg-bfde7917307541aa` blev hele spoergsmaalsmaengden tom, saa
+    detektoren holdt op med at maale noget som helst. En detektor der ikke kan se forskel
+    skal ikke slaa sig selv fra; den skal se snaevert.
+    """
+    opgave = (
+        "Krav til svaret:\n"
+        "1. Naevn versionen og udgivelsesdatoen.\n"
+        "2. Naevn hvilke værktøjer du brugte.\n"
+        "3. Skriv «DAEKNING: 2/2» som sidste linje.\n"
+    )
+    assert core._question_numbers(opgave) == {1, 2}
+
+
+def test_svar_paa_alle_aegte_krav_godkendes_trods_formatkrav():
+    """Det maalte driftsforloeb ende-til-ende: korrekt svar, erklaering 1,2, tredje var form."""
+    opgave = (
+        "Krav til svaret:\n"
+        "1. Naevn versionen og udgivelsesdatoen.\n"
+        "2. Naevn hvilke værktøjer du brugte.\n"
+        "3. Skriv «DAEKNING: 2/2» som sidste linje.\n"
+    )
+    svar = (
+        "**Svar**\n"
+        "1) Nyeste stabile Python er 3.15.2, udgivet 25. oktober 2026.\n"
+        "2) Jeg brugte web_search og web_fetch.\n"
+        "DAEKNING: 1,2\n"
+    )
+    assert core._unanswered_questions(opgave, svar) == 0
+
+
+def test_spoergsmaal_uden_krav_overskrift_taelles_stadig():
+    """Regression: uden en krav-overskrift er nummereringen stadig spoergsmaal."""
+    opgave = "Svar paa:\n1. Foerste\n2. Andet\n3. Tredje\n"
+    assert core._question_numbers(opgave) == {1, 2, 3}
+
+
+def test_team_medlem_maales_paa_sin_egen_akse():
+    """De andre medlemmers roller er ikke DENNE agents ubesvarede spoergsmaal."""
+    raad = (
+        "Raad om fire akser.\n\n"
+        "MEDLEMMER:\n"
+        "1. rolle: bruger\n   task: Gaa gennem views.\n"
+        "2. rolle: release\n   task: Afgoer om release kan leveres.\n"
+        "3. rolle: testdaekning\n   task: Afgoer hvad testene daekker.\n"
+        "4. rolle: dobbeltleverance\n   task: Afgoer om de to leverancer deles.\n"
+        "\n"
+        "Din opgave i teamet: Afgoer hvad testene daekker og hvad de ikke goer.\n"
+    )
+    assert core._question_numbers(raad) == {1, 2, 3, 4}
+    assert core._question_numbers(core._own_task(raad)) == set()
+
+
+def test_team_medlem_med_egne_nummererede_spoergsmaal_taeller_dem():
+    """Et medlem der FAKTISK faar nummererede spoergsmaal skal stadig maales paa dem."""
+    raad = (
+        "1. rolle: a\n   task: noget\n"
+        "2. rolle: b\n   task: noget andet\n"
+        "\n"
+        "Din opgave i teamet: Svar paa:\n1. Hvad er X?\n2. Hvad er Y?\n"
+    )
+    assert core._question_numbers(core._own_task(raad)) == {1, 2}
+
+
+def test_korrekt_svar_paa_formatkrav_opgave_doemmes_ikke():
+    """Det maalte tilfaelde: to spoergsmaal besvaret, tredje nummer var et formatkrav."""
+    opgave = (
+        "Undersoeg:\n1. Version?\n2. Udgivelsesdato?\n\n"
+        "Krav til svaret:\n1. Naevn versionen.\n2. Naevn værktøjerne.\n"
+        "3. Skriv DAEKNING-linjen.\n"
+    )
+    svar = (
+        "1) Version 3.15.2.\n"
+        "2) Udgivet 25. oktober 2026.\n"
+        "DAEKNING: 1,2\n"
+    )
+    assert core._unanswered_questions(opgave, svar) == 0

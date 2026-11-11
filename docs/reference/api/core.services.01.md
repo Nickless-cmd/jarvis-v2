@@ -635,21 +635,21 @@ _Agentens model-/vaerktoejsloekke som ren logik (agent-contract-v1 C6, spec 12.1
 | function | `_promises_action` | `(text)` | True naar teksten lover en handling i stedet for at udfoere den. | [src](../../../core/services/agent_loop_core.py#L178) |
 | function | `_declared_coverage` | `(final_text)` | Spoergsmaalsnumrene agenten SELV erklaerer besvaret. ``None`` = ingen erklaering. | [src](../../../core/services/agent_loop_core.py#L249) |
 | function | `_own_task` | `(prompt)` | Kun den del af prompten der er DENNE agents opgave. | [src](../../../core/services/agent_loop_core.py#L276) |
-| function | `_question_numbers` | `(prompt)` | Spoergsmaalsnumrene i opgaven, uanset om de er skrevet med ord eller som ren nummerering. | [src](../../../core/services/agent_loop_core.py#L289) |
-| function | `_answered_numbers` | `(final_text, qs)` | Hvilke af opgavens spoergsmaalsnumre der faktisk er besvaret i resultatet. | [src](../../../core/services/agent_loop_core.py#L299) |
-| function | `_unanswered_questions` | `(prompt, final_text)` | Antal nummererede spoergsmaal i opgaven uden et NUMMERERET svar i resultatet. | [src](../../../core/services/agent_loop_core.py#L330) |
-| function | `_unanswered_detail` | `(prompt, final_text)` | (antal, ord) — tallet OG hvad der faktisk blev maalt. | [src](../../../core/services/agent_loop_core.py#L345) |
-| function | `_delivery_gap` | `(expected_result, final_text, total_tool_calls, prompt=…, write_calls=…, write_capable=…)` | Grunden til at leverancen ikke kan accepteres — eller ``""`` hvis den kan. | [src](../../../core/services/agent_loop_core.py#L409) |
-| function | `_delivery_nudge` | `(gap)` | Ordre til en agent hvis leverance ikke kan accepteres. Navngiver hullet, ikke dommen. | [src](../../../core/services/agent_loop_core.py#L482) |
-| class | `ApprovalPending` | `` | Et vaerktoejskald kraever en menneskelig godkendelse: loekken PARKERER (checkpoint) i stedet for at | [src](../../../core/services/agent_loop_core.py#L491) |
-| method | `ApprovalPending.__init__` | `(self, approval_id, tool_call_id=…)` | — | [src](../../../core/services/agent_loop_core.py#L495) |
-| class | `LoopIO` | `` | — | [src](../../../core/services/agent_loop_core.py#L500) |
-| method | `LoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_loop_core.py#L501) |
-| method | `LoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_loop_core.py#L504) |
-| method | `LoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_loop_core.py#L506) |
-| method | `LoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_loop_core.py#L508) |
-| function | `run_tool_loop` | `(io, *, prompt, tools_payload, requires_tools, provider, model, scout, max_rounds, synthesis_directive, resume=…, expected_result=…, deadline_at=…)` | Koer loekken og returner raa tal + tekst. Kaster aldrig: en fejl bliver ``error_str``. | [src](../../../core/services/agent_loop_core.py#L511) |
-| function | `_outcome` | `(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0, parked, incomplete=…, unanswered=…, unanswered_ord=…, stop_reason=…)` | — | [src](../../../core/services/agent_loop_core.py#L786) |
+| function | `_question_numbers` | `(prompt)` | Spoergsmaalsnumrene i opgaven, uanset om de er skrevet med ord eller som ren nummerering. | [src](../../../core/services/agent_loop_core.py#L316) |
+| function | `_answered_numbers` | `(final_text, qs)` | Hvilke af opgavens spoergsmaalsnumre der faktisk er besvaret i resultatet. | [src](../../../core/services/agent_loop_core.py#L340) |
+| function | `_unanswered_questions` | `(prompt, final_text)` | Antal nummererede spoergsmaal i opgaven uden et NUMMERERET svar i resultatet. | [src](../../../core/services/agent_loop_core.py#L371) |
+| function | `_unanswered_detail` | `(prompt, final_text)` | (antal, ord) — tallet OG hvad der faktisk blev maalt. | [src](../../../core/services/agent_loop_core.py#L386) |
+| function | `_delivery_gap` | `(expected_result, final_text, total_tool_calls, prompt=…, write_calls=…, write_capable=…)` | Grunden til at leverancen ikke kan accepteres — eller ``""`` hvis den kan. | [src](../../../core/services/agent_loop_core.py#L450) |
+| function | `_delivery_nudge` | `(gap)` | Ordre til en agent hvis leverance ikke kan accepteres. Navngiver hullet, ikke dommen. | [src](../../../core/services/agent_loop_core.py#L528) |
+| class | `ApprovalPending` | `` | Et vaerktoejskald kraever en menneskelig godkendelse: loekken PARKERER (checkpoint) i stedet for at | [src](../../../core/services/agent_loop_core.py#L537) |
+| method | `ApprovalPending.__init__` | `(self, approval_id, tool_call_id=…)` | — | [src](../../../core/services/agent_loop_core.py#L541) |
+| class | `LoopIO` | `` | — | [src](../../../core/services/agent_loop_core.py#L546) |
+| method | `LoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_loop_core.py#L547) |
+| method | `LoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_loop_core.py#L550) |
+| method | `LoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_loop_core.py#L552) |
+| method | `LoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_loop_core.py#L554) |
+| function | `run_tool_loop` | `(io, *, prompt, tools_payload, requires_tools, provider, model, scout, max_rounds, synthesis_directive, resume=…, expected_result=…, deadline_at=…)` | Koer loekken og returner raa tal + tekst. Kaster aldrig: en fejl bliver ``error_str``. | [src](../../../core/services/agent_loop_core.py#L557) |
+| function | `_outcome` | `(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0, parked, incomplete=…, unanswered=…, unanswered_ord=…, stop_reason=…)` | — | [src](../../../core/services/agent_loop_core.py#L832) |
 
 ## `core/services/agent_message_receipt.py`
 _En besked til et barn maa ikke fryse foraelderens tur — Fase 6._

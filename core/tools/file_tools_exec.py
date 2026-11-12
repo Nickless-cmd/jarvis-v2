@@ -109,6 +109,127 @@ def _disk_readback(
     return block
 
 
+#: Over denne størrelse læses en fil ALDRIG ind som én streng. Målt på CT105 12/11-2026:
+#: `read_file(jarvis.db, start_line=1, end_line=2)` — 6,65 GB — læste hele filen ind
+#: (plus UTF-8-dekodning og en `split("\n")`-kopi) FØR linjeintervallet blev skåret ud.
+#: jarvis-runtime nåede 7 GB RAM og 8,6 GB swap og holdt op med at svare.
+MAX_FULD_LAESNING_BYTES = 32 * 1024 * 1024
+#: Højst så mange bytes ad gangen når en stor fil streames. En linje der er længere end
+#: dette (6 GB uden linjeskift) deles i stykker i stedet for at blive én linje i RAM.
+MAX_LINJE_BYTES = 1024 * 1024
+_BINAER_PROEVE_BYTES = 8192
+
+
+def _er_stor_almindelig_fil(target: Path) -> bool:
+    """En almindelig fil over `MAX_FULD_LAESNING_BYTES`? Krypterede `.enc`-filer og alt
+    der ikke kan stat'es regnes for små: de læses som før."""
+    try:
+        return target.is_file() and target.stat().st_size > MAX_FULD_LAESNING_BYTES
+    except OSError:  # kan filen ikke stat'es, regnes den for lille og læses som før — og fejler så på sædvanlig vis
+        return False
+
+
+def _noter_laesning(target: Path, args: dict[str, Any]) -> None:
+    """Fælles for begge læsestier: read-before-write-guarden og live-fremhævningen."""
+    # Tools modtager _runtime_session_id (ikke _session_id) — falder igennem begge nøgler,
+    # så guarden følger læsninger uanset kalder-konvention.
+    try:
+        from core.services.read_before_write_guard import record_read
+        _session_id = (
+            args.get("_runtime_session_id")
+            or args.get("_session_id")
+            or "default"
+        )
+        record_read(str(target), session_id=str(_session_id))
+    except Exception:  # guarden er rådgivende: kan læsningen ikke noteres, må selve læsningen ikke fejle
+        pass
+
+    _record_active_file(str(target), "read", args)
+
+
+def _laes_stor_fil(target: Path, args: dict[str, Any]) -> dict[str, Any]:
+    """Læs en STOR fil uden at indlæse den: afvis binære, stream et linjeinterval, ellers
+    returnér begyndelsen. Hukommelsen er afgrænset af `MAX_READ_CHARS` og `MAX_LINJE_BYTES`,
+    uanset filens størrelse. `total_lines` kendes ikke (det kræver en fuld gennemlæsning)."""
+    from core.tools.simple_tools import MAX_READ_CHARS
+
+    size = target.stat().st_size
+    try:
+        with target.open("rb") as f:
+            proeve = f.read(_BINAER_PROEVE_BYTES)
+    except PermissionError:  # svares som en fejl til modellen, ikke som et nedbrud
+        return {"error": f"Permission denied: {target}", "status": "error"}
+    if b"\x00" in proeve:
+        return {
+            "error": (f"Binary file ({size / 1e6:.0f} MB, contains NUL bytes) — read_file reads "
+                      "text only. Use a dedicated tool for this kind of file (fx sqlite for a "
+                      "database)."),
+            "status": "error",
+        }
+
+    _start = args.get("start_line")
+    _end = args.get("end_line")
+    ranged = _start is not None or _end is not None
+    lo = 1
+    if ranged:
+        try:
+            lo = max(1, int(_start)) if _start is not None else 1
+        except (TypeError, ValueError):  # ikke et tal = kaldets fejl; sig det eksplicit
+            return {"error": "start_line must be an integer", "status": "error"}
+        try:
+            hi: int | None = int(_end) if _end is not None else None
+        except (TypeError, ValueError):  # samme: et ugyldigt interval må ikke blive «tomt»
+            return {"error": "end_line must be an integer", "status": "error"}
+        if hi is not None and lo > hi:
+            return {"error": f"start_line {lo} is after end_line {hi}", "status": "error"}
+    else:
+        hi = None
+
+    linjer: list[str] = []
+    tegn = 0
+    truncated = False
+    nr = 0
+    with target.open("rb") as f:
+        while True:
+            raa = f.readline(MAX_LINJE_BYTES)
+            if not raa:
+                break
+            nr += 1
+            if nr < lo:
+                continue
+            if hi is not None and nr > hi:
+                break
+            linje = raa.decode("utf-8", errors="replace").rstrip("\n")
+            if tegn + len(linje) + (1 if linjer else 0) > MAX_READ_CHARS:
+                rest = MAX_READ_CHARS - tegn - (1 if linjer else 0)
+                if rest > 0:
+                    linjer.append(linje[:rest])
+                truncated = True
+                break
+            linjer.append(linje)
+            tegn += len(linje) + (1 if len(linjer) > 1 else 0)
+    text = "\n".join(linjer)
+
+    _noter_laesning(target, args)
+    result: dict[str, Any] = {
+        "text": text, "path": str(target), "size": len(text), "status": "ok",
+        "total_lines": None, "large_file": True, "file_bytes": size,
+    }
+    if ranged:
+        result["start_line"] = lo
+        result["end_line"] = lo + max(len(linjer) - 1, 0)
+    if truncated:
+        result["truncated"] = True
+        fra = (result["end_line"] + 1) if ranged else len(linjer) + 1
+        result["note"] = (
+            f"filen er {size / 1e6:.0f} MB og blev klippet ved {MAX_READ_CHARS} tegn — "
+            f"læs videre med start_line={fra}")
+    elif not ranged:
+        result["note"] = (f"filen er {size / 1e6:.0f} MB; kun begyndelsen er læst. Brug "
+                          "start_line/end_line for et bestemt stykke.")
+    return result
+
+
 def _exec_read_file(args: dict[str, Any]) -> dict[str, Any]:
     from core.tools.simple_tools import MAX_READ_CHARS
 
@@ -121,6 +242,10 @@ def _exec_read_file(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": f"File not found: {path}", "status": "error"}
     if target.exists() and not target.is_file():
         return {"error": f"Not a file: {path}", "status": "error"}
+
+    # STORE FILER læses aldrig ind som én streng — se `MAX_FULD_LAESNING_BYTES`.
+    if _er_stor_almindelig_fil(target):
+        return _laes_stor_fil(target, args)
 
     try:
         text = _ws_read_text(target)
@@ -171,22 +296,7 @@ def _exec_read_file(args: dict[str, Any]) -> dict[str, Any]:
         text = text[:MAX_READ_CHARS - 1] + "…"
         truncated = True
 
-    # Record read for read-before-write guard
-    # Note: tools receive _runtime_session_id (not _session_id) — fall back
-    # through both keys so the guard tracks reads correctly regardless of
-    # caller convention.
-    try:
-        from core.services.read_before_write_guard import record_read
-        _session_id = (
-            args.get("_runtime_session_id")
-            or args.get("_session_id")
-            or "default"
-        )
-        record_read(str(target), session_id=str(_session_id))
-    except Exception:
-        pass
-
-    _record_active_file(str(target), "read", args)
+    _noter_laesning(target, args)
     result: dict[str, Any] = {
         "text": text, "path": str(target), "size": len(text), "status": "ok",
         "total_lines": total_lines,

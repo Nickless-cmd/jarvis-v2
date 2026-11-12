@@ -473,13 +473,16 @@ _Fil-tool executors (read_file / write_file / edit_file / read_tool_result /_
 | function | `_record_active_file` | `(path, op, args)` | Live-highlight: notér at Jarvis (i brugerens kontekst) rører `path`, så | [src](../../../core/tools/file_tools_exec.py#L42) |
 | function | `_safe_readback` | `(path)` | Læs filen tilbage — selv-sikker. None = den kunne ikke læses. | [src](../../../core/tools/file_tools_exec.py#L73) |
 | function | `_disk_readback` | `(path, *, start_line, span=…, mark=…)` | Nummereret udsnit af filen som den står på disken EFTER skrivningen. | [src](../../../core/tools/file_tools_exec.py#L86) |
-| function | `_exec_read_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L112) |
-| function | `_exec_read_tool_result` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L212) |
-| function | `_exec_read_self_docs` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L235) |
-| function | `_trust_giver_adgang` | `(args)` | Har dette kald adgang til at springe «uden for workspace»-kortet over? | [src](../../../core/tools/file_tools_exec.py#L251) |
-| function | `_exec_write_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L292) |
-| function | `linjetal` | `(gammel, ny, erstatninger)` | (tilføjet, fjernet) for én erstatning ganget op — git-diff-semantik. | [src](../../../core/tools/file_tools_exec.py#L379) |
-| function | `_exec_edit_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L411) |
+| function | `_er_stor_almindelig_fil` | `(target)` | En almindelig fil over `MAX_FULD_LAESNING_BYTES`? Krypterede `.enc`-filer og alt | [src](../../../core/tools/file_tools_exec.py#L123) |
+| function | `_noter_laesning` | `(target, args)` | Fælles for begge læsestier: read-before-write-guarden og live-fremhævningen. | [src](../../../core/tools/file_tools_exec.py#L132) |
+| function | `_laes_stor_fil` | `(target, args)` | Læs en STOR fil uden at indlæse den: afvis binære, stream et linjeinterval, ellers | [src](../../../core/tools/file_tools_exec.py#L150) |
+| function | `_exec_read_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L233) |
+| function | `_exec_read_tool_result` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L322) |
+| function | `_exec_read_self_docs` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L345) |
+| function | `_trust_giver_adgang` | `(args)` | Har dette kald adgang til at springe «uden for workspace»-kortet over? | [src](../../../core/tools/file_tools_exec.py#L361) |
+| function | `_exec_write_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L402) |
+| function | `linjetal` | `(gammel, ny, erstatninger)` | (tilføjet, fjernet) for én erstatning ganget op — git-diff-semantik. | [src](../../../core/tools/file_tools_exec.py#L489) |
+| function | `_exec_edit_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L521) |
 
 ## `core/tools/force_handlers.py`
 _Force-handlere — værktøjer der kører EFTER et menneske har godkendt._

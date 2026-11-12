@@ -836,10 +836,24 @@ def build_gut_surface() -> dict[str, object]:
     else:
         baseline_summary = " | baseline utilgaengelig — hit-raten kan IKKE laeses som dygtighed"
 
+    # Evidensvinduet er KORTERE end akkumuleringen (maalt 12/11-2026): `events` ryddes
+    # efter events_retention (14 dage), mens `total_predictions` akkumulerer fra mavens
+    # foedsel (6/4-2026). Differencen kan ikke efterproeves og maa ikke laeses som evidens
+    # — derfor staar baade det akkumulerede tal og det verificerbare tal paa fladen.
+    total_evaluated = int(state["total_predictions"])
+    verified = int(baseline["n_observed"]) if baseline else 0
+    unverifiable = max(0, total_evaluated - verified)
+    evidence_summary = (
+        f" | {verified} af {total_evaluated} kan efterproeves (events ryddes efter "
+        f"14 dage); {unverifiable} ligger foer vinduet"
+    ) if unverifiable > 0 else ""
+
     return {
         "active": True,
         "state": state,
-        "evaluated": int(state["total_predictions"]),
+        "evaluated": total_evaluated,
+        "evaluated_verified": verified,
+        "evaluated_unverifiable": unverifiable,
         "withheld": withheld,
         "backstop_overkoersler": overkoersler,
         "baseline": baseline,
@@ -848,6 +862,7 @@ def build_gut_surface() -> dict[str, object]:
             f"({state['calibrated_hits']}/{state['total_predictions']} correct); "
             f"{withheld} afvist (intet udfald), {overkoersler} overkørt af bagkanten"
             f"{baseline_summary}"
+            f"{evidence_summary}"
         ),
     }
 

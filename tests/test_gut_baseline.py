@@ -159,3 +159,46 @@ def test_summary_siger_utilgaengelig_uden_baseline(monkeypatch):
     s = ge.build_gut_surface()
     assert s["baseline"] is None
     assert "IKKE" in s["summary"]
+
+
+def test_summary_viser_hvor_meget_der_kan_efterproeves(monkeypatch):
+    """DEN MÅLTE FEJLFORM (12/11-2026): `total_predictions` akkumulerer fra mavens fødsel,
+    mens `events` ryddes efter 14 dage (events_retention). Differencen kan IKKE efterprøves.
+
+    Produktion målte 4523 akkumulerede mod 344 verificerbare — 92% af tallet havde ingen
+    kilde i databasen. Fladen skal sige det, ikke lade 0.99 stå alene som evidens.
+    """
+    monkeypatch.setattr(
+        ge, "_observed_baseline",
+        lambda: {"n_observed": 10, "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
+    )
+    monkeypatch.setattr(
+        ge, "get_cognitive_gut_state",
+        lambda: {"total_predictions": 100, "calibrated_hits": 99,
+                 "calibration_score": 0.99, "last_hunch": "proceed → completed (✓)"},
+    )
+    monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
+    s = ge.build_gut_surface()
+    assert s["evaluated"] == 100
+    assert s["evaluated_verified"] == 10
+    assert s["evaluated_unverifiable"] == 90
+    assert "90 ligger foer vinduet" in s["summary"]
+    assert "kan efterproeves" in s["summary"]
+
+
+def test_ingen_advarsel_naar_alt_er_verificerbart(monkeypatch):
+    """Er akkumuleringen ikke større end vinduet, er der intet uverificerbart — og så skal
+    linjen ikke stå der. En advarsel der altid vises, læres der at overse."""
+    monkeypatch.setattr(
+        ge, "_observed_baseline",
+        lambda: {"n_observed": 10, "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
+    )
+    monkeypatch.setattr(
+        ge, "get_cognitive_gut_state",
+        lambda: {"total_predictions": 10, "calibrated_hits": 9,
+                 "calibration_score": 0.9, "last_hunch": "proceed → completed (✓)"},
+    )
+    monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
+    s = ge.build_gut_surface()
+    assert s["evaluated_unverifiable"] == 0
+    assert "foer vinduet" not in s["summary"]

@@ -24,7 +24,7 @@ import { HistoriskGodkendelse, type GodkendelsesHaendelse } from '../components/
 import { fletGodkendelser, forsteGodkendelse } from '../lib/godkendelseIFolden'
 import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
 import { PauseAskKort } from '../components/feedback/PauseAskKort'
-import { findesGodkendelseIRækken } from '../lib/ventendeGodkendelse'
+import { findesSynligGodkendelseRaekke } from '../lib/ventendeGodkendelse'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
@@ -1031,7 +1031,7 @@ export function CodeView({
   // 31/10-2026 — FALLBACK, ikke dublet. Se `lib/ventendeGodkendelse.ts` for
   // hvorfor: raekken vinder naar den findes, ellers bærer det flydende kort
   // svaret. Betingelsen er ÉN funktion, saa de to flader ikke kan divergere.
-  const pendingIRækken = findesGodkendelseIRækken(
+  const pendingIRækken = findesSynligGodkendelseRaekke(
     sessions.messages,
     stream.pendingApproval?.approvalId ?? null,
   )

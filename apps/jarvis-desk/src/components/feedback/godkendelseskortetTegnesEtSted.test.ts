@@ -81,7 +81,7 @@ describe('godkendelses-kortet', () => {
       .filter((f) => jsxNavne(f).includes('GodkendelsesKort'))
       .filter((f) => {
         const kilde = readFileSync(f, 'utf-8')
-        return !kilde.includes('findesGodkendelseIRækken')
+        return !kilde.includes('findesSynligGodkendelseRaekke')
           || !kilde.includes('!pendingIRækken')
       })
       .map((f) => f.slice(VIEWS.length + 1))

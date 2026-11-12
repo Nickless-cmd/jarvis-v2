@@ -1,3 +1,6 @@
+import type { ChatMessage } from './api'
+import { fletGodkendelser } from './godkendelseIFolden'
+
 /** Bærer rækken den godkendelse der venter LIGE NU?
  *
  *  31/10-2026. DEL 3 flyttede godkendelses-kortet ind i transcriptet som en
@@ -29,4 +32,25 @@ export function findesGodkendelseIRækken(
     const blok = liste[0] as { approval_id?: unknown } | undefined
     return String(blok?.approval_id ?? '') === approvalId
   })
+}
+
+/** Findes godkendelsen som en række der FAKTISK er tegnet — og kan besvares?
+ *
+ *  12/11-2026. `findesGodkendelseIRækken` alene læser de RÅ beskeder, men
+ *  skærmen tegner `fletGodkendelser(beskeder)`: en afventende række der har en
+ *  assistent-besked efter sig bliver lagt ind i DEN besked (uden knapper, i en
+ *  fold) og fjernet som fri række. Landede en heartbeat-besked midt i et run,
+ *  svarede den rå test «findes», composer-kortet blev skjult — og spørgsmålet
+ *  var hverken en række eller et kort (målt: godkendelse 272681 på CT105, ca.
+ *  3 minutter, indtil Bjørn fandt den i notifikations-feedet).
+ *
+ *  Spørg derfor den liste skærmen tegner. Fletningen køres kun når der VENTER
+ *  et kort, så den ikke koster noget ved hver render ellers.
+ */
+export function findesSynligGodkendelseRaekke(
+  beskeder: ReadonlyArray<ChatMessage>,
+  approvalId: string | null | undefined,
+): boolean {
+  if (!approvalId) return false
+  return findesGodkendelseIRækken(fletGodkendelser(beskeder), approvalId)
 }

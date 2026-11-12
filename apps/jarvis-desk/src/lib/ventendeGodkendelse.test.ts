@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import ts from 'typescript'
-import { findesGodkendelseIRækken } from './ventendeGodkendelse'
+import { findesGodkendelseIRækken, findesSynligGodkendelseRaekke } from './ventendeGodkendelse'
 
 /** Godkendelsen maa ikke kunne forsvinde — og den maa ikke staa to steder.
  *
@@ -89,6 +89,58 @@ describe('fallback-kortet er betinget, ikke dubleret', () => {
         + 'forsvinder spoergsmaalet indtil raekken lander (maalt 31/10)').not.toBe('')
       expect(gate).toContain('!pendingIRækken')
       expect(gate).toContain('pendingApproval')
+    })
+  }
+})
+
+describe('en afventende godkendelse der er flettet ind i en andens besked', () => {
+  // MÅLT 12/11-2026 på CT105 (chat_messages, session chat-ed2df…): en
+  // heartbeat-besked (id 272703) landede 15:53:03 MIDT i et run, mens
+  // godkendelsen 272681 stadig ventede (afgjort 15:54:11). `fletGodkendelser`
+  // lagde den afventende række ind i den besked — uden knapper, i en fold — og
+  // fjernede den som fri række. Men `findesGodkendelseIRækken` læste de RÅ
+  // beskeder og svarede «rækken findes», så composer-kortet blev skjult.
+  // Resultat: hverken række eller kort i ca. 3 minutter.
+  const pending = {
+    id: 'm1', role: 'approval_request', content: 'Godkendelse afventer: bash — ls',
+    content_json: [{ approval_id: 'a1', tool: 'bash', action: 'ls', status: 'pending' }],
+    created_at: '2026-11-12T15:51:16+00:00', parent_id: null,
+  }
+  const hjerteslag = {
+    id: 'm2', role: 'assistant',
+    content: [{ type: 'text', text: '🌙 Hjerteslag — hvad jeg lavede mens du var væk' }],
+    created_at: '2026-11-12T15:53:03+00:00', parent_id: null,
+  }
+
+  it('tæller IKKE som en synlig række — composer-kortet skal bære den', () => {
+    expect(findesSynligGodkendelseRaekke([pending, hjerteslag] as never, 'a1')).toBe(false)
+  })
+
+  it('tæller som en række når intet følger efter — rækken har selv knapperne', () => {
+    expect(findesSynligGodkendelseRaekke([pending] as never, 'a1')).toBe(true)
+  })
+
+  it('en tom id giver false uden at flette', () => {
+    expect(findesSynligGodkendelseRaekke([pending] as never, null)).toBe(false)
+  })
+})
+
+describe('viewene spørger den FLETTEDE liste, ikke de rå beskeder', () => {
+  for (const view of ['ChatView.tsx', 'CodeView.tsx']) {
+    it(`${view} beregner pendingIRækken med findesSynligGodkendelseRaekke`, () => {
+      const fil = resolve(SRC, 'views', view)
+      const kilde = ts.createSourceFile(fil, readFileSync(fil, 'utf-8'),
+        ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+      let init = ''
+      const gaa = (n: ts.Node) => {
+        if (ts.isVariableDeclaration(n) && n.name.getText() === 'pendingIRækken') {
+          init = n.initializer?.getText() ?? ''
+        }
+        ts.forEachChild(n, gaa)
+      }
+      gaa(kilde)
+      expect(init, 'pendingIRækken blev ikke fundet').not.toBe('')
+      expect(init).toContain('findesSynligGodkendelseRaekke(')
     })
   }
 })

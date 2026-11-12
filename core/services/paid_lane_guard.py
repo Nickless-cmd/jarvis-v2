@@ -160,6 +160,15 @@ def audit_paid_spend(timer: int = SPEND_VINDUE_TIMER) -> list[dict[str, Any]]:
     løfte. Samlet pr. lane med beløb, fordi «der er et brud» ikke er
     handlingsbart og «vision har brugt $0,02 over ni dage» er.
 
+    RUN-ID'ET ER IKKE GRUPPENS NAVN (12/11-2026). Indtil da satte posten
+    `run_id` fra den FØRSTE række i lane-gruppen, mens `antal` og `cost_usd`
+    summerede ALLE runs i den. Målt: `agentic_round` dækkede 77 distinkte runs
+    på ét døgn, så en post med «21 kald» under ét run-id navngav 2 runs og
+    skjulte resten. Et rigtigt tal under et forkert navn er samme fejlform som
+    den vagten blev bygget for at fange. `run_ids` bærer nu fordelingen, og
+    `run_id` er kun sat når gruppen har præcis ét run — altså når navnet
+    faktisk er sandt.
+
     Kaster videre ved en ulæselig hovedbog. `check_paid_spend` skelner så
     «ingen brud» fra «jeg kunne ikke se efter» — to forskellige svar der
     blandet sammen er præcis det der lod det her ligge.
@@ -185,10 +194,18 @@ def audit_paid_spend(timer: int = SPEND_VINDUE_TIMER) -> list[dict[str, Any]]:
             continue
         p = pr_lane.setdefault(str(lane or ""), {
             "lane": str(lane or ""), "provider": str(provider or ""),
-            "run_id": str(run_id or ""), "antal": 0, "cost_usd": 0.0,
+            "antal": 0, "cost_usd": 0.0, "_runs": {},
         })
         p["antal"] += 1
         p["cost_usd"] += float(cost or 0.0)
+        rid = str(run_id or "")
+        p["_runs"][rid] = p["_runs"].get(rid, 0.0) + float(cost or 0.0)
+
+    for p in pr_lane.values():
+        runs = sorted(p.pop("_runs").items(), key=lambda x: -x[1])
+        p["run_count"] = len(runs)
+        p["run_ids"] = [{"run_id": r, "cost_usd": round(c, 6)} for r, c in runs]
+        p["run_id"] = runs[0][0] if len(runs) == 1 else ""
     return sorted(pr_lane.values(), key=lambda x: -x["cost_usd"])
 
 
@@ -203,8 +220,11 @@ def check_paid_spend(timer: int = SPEND_VINDUE_TIMER) -> dict[str, Any]:
         logger.warning(
             "BETALT-FORBRUG UDEN FOR HANS TURE (%d timer): %s. Bjoerns regel er "
             "at kun hans egne ture maa koste penge.", timer,
-            ", ".join("%s $%.4f (%d kald)" % (b["lane"], b["cost_usd"], b["antal"])
-                      for b in brud),
+            ", ".join(
+                "%s $%.4f (%d kald, %d runs)"
+                % (b["lane"], b["cost_usd"], b["antal"], b["run_count"])
+                for b in brud
+            ),
         )
         try:
             from core.services.central_core import central

@@ -271,6 +271,53 @@ def test_brud_samles_pr_lane_med_BELOEB(monkeypatch):
     assert abs(brud["compat_oneshot"]["cost_usd"] - 0.30) < 1e-9
 
 
+def test_run_id_er_TOM_naar_gruppen_daekker_flere_runs(monkeypatch):
+    """Et rigtigt tal under et forkert navn (12/11-2026).
+
+    Gruppen summerede ALLE runs i lane'en, men satte `run_id` fra den FOERSTE
+    raekke. Maalt i drift: `agentic_round` daekkede 77 distinkte runs paa et
+    doegn, og en post med «21 kald» navngav 2. Tallet var rigtigt; navnet var
+    ikke — og det er samme fejlform som vagten selv blev bygget for at fange.
+    """
+    _hovedbog(monkeypatch, [
+        ("agentic_round", "deepseek", "autonomous-aaa", 0.30),
+        ("agentic_round", "deepseek", "autonomous-bbb", 0.10),
+    ])
+    brud = PLG.audit_paid_spend()
+    assert len(brud) == 1
+    assert brud[0]["run_id"] == "", (
+        "gruppen navngav ét run mens den summerede to"
+    )
+    assert brud[0]["run_count"] == 2
+    assert brud[0]["antal"] == 2
+    assert abs(brud[0]["cost_usd"] - 0.40) < 1e-9
+
+
+def test_run_id_er_SAT_naar_gruppen_har_praecis_ET_run(monkeypatch):
+    """Navnet skal stadig vaere der naar det ER sandt — ellers byttede jeg en
+    loegn ud med et tomt felt."""
+    _hovedbog(monkeypatch, [("vision", "deepseek", "autonomous-xyz", 0.20)])
+    brud = PLG.audit_paid_spend()
+    assert brud[0]["run_id"] == "autonomous-xyz"
+    assert brud[0]["run_count"] == 1
+
+
+def test_run_ids_bar_hvor_stor_en_del_hvert_run_er(monkeypatch):
+    """Fordelingen skal kunne svare paa HVILKET run der kostede hvad — ellers
+    er `run_count` bare et tal mere uden en vej til handling."""
+    _hovedbog(monkeypatch, [
+        ("agentic_round", "deepseek", "autonomous-dyr", 0.90),
+        ("agentic_round", "deepseek", "autonomous-billig", 0.10),
+    ])
+    brud = PLG.audit_paid_spend()[0]
+    fordeling = {r["run_id"]: r["cost_usd"] for r in brud["run_ids"]}
+    assert abs(fordeling["autonomous-dyr"] - 0.90) < 1e-9
+    assert abs(fordeling["autonomous-billig"] - 0.10) < 1e-9
+    assert abs(sum(fordeling.values()) - brud["cost_usd"]) < 1e-9, (
+        "fordelingen summerer ikke til gruppens beloeb"
+    )
+
+
 def test_fladen_BAERER_hovedbogens_dom(monkeypatch):
     """En vagt hvis dom ingen kan se, er den fejl vi lige har rettet.
 

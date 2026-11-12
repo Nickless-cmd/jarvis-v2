@@ -159,3 +159,39 @@ def test_laasen_sidder_EFTER_par_valideringen():
     i_laas = src.index("session_model_pin as _smp")
     assert i_valid < i_afvis < i_laas, (
         "laasen staar foer par-valideringen — et ugyldigt par kunne laases")
+
+
+# ── choice_for_conversation: brugerens valg til autonome runs i en samtale ────
+def test_choice_for_conversation_overlever_en_compaction_i_modsaetning_til_get_pinned(
+        isolated_runtime, monkeypatch):
+    """Compaction nulstiller LÅSEN (routeren må vælge forfra), men ikke brugerens valg."""
+    from core.services import session_model_pin as smp
+
+    smp.pin("chat-c1", "deepseek", "deepseek-flash")
+    assert smp.get_pinned("chat-c1") == ("deepseek", "deepseek-flash")
+
+    monkeypatch.setattr(smp, "_compact_epoch", lambda sid: 8)   # historikken blev skrevet om
+    # (filens autouse-fixture står på 7, så 8 er en ny epoke)
+
+    assert smp.get_pinned("chat-c1") is None
+    assert smp.choice_for_conversation("chat-c1") == ("deepseek", "deepseek-flash")
+
+
+@pytest.mark.parametrize("session_id", ["", "   ", "auto-heartbeat-20261112", "auto-dream-1"])
+def test_choice_for_conversation_er_kun_for_rigtige_samtaler(isolated_runtime, session_id):
+    from core.services import session_model_pin as smp
+
+    smp._state_set(session_id.strip() or "tom", {"provider": "deepseek", "model": "deepseek-flash", "epoch": 0})
+    assert smp.choice_for_conversation(session_id) is None
+
+
+def test_choice_for_conversation_respekterer_kill_switchen_og_et_ufuldstaendigt_par(
+        isolated_runtime, monkeypatch):
+    from core.services import session_model_pin as smp
+
+    smp._state_set("chat-k", {"provider": "deepseek", "model": "", "epoch": 0})
+    assert smp.choice_for_conversation("chat-k") is None
+
+    smp.pin("chat-k2", "deepseek", "deepseek-flash")
+    monkeypatch.setattr(smp, "pin_enabled", lambda: False)
+    assert smp.choice_for_conversation("chat-k2") is None

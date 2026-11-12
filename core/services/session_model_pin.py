@@ -120,6 +120,31 @@ def get_pinned(session_id: str) -> tuple[str, str] | None:
     return provider, model
 
 
+def choice_for_conversation(session_id: str) -> tuple[str, str] | None:
+    """Modellen brugeren har valgt i en SAMTALE — til autonome runs der lander i den.
+
+    Vækninger gik til baggrundsmodellen, og `resolve_autonomous_model` klemmer bevidst
+    den betalte DeepSeek-provider væk. Men Bjørn er den eneste der bruger
+    DeepSeek-API'et; de andre bruger DeepSeek via ollama cloud. Et svar midt i en
+    samtale skal komme fra den model samtalen kører på (og dens prompt-cache).
+
+    * Kun en rigtig samtale: `auto-*`-siloer (heartbeat, drømme, rutiner) har ingen
+      brugervalgt model og bliver på den billige lane.
+    * EPOKEN IGNORERES, i modsætning til `get_pinned`: en compaction nulstiller låsen
+      så routeren må vælge forfra, men brugerens valg gælder indtil næste tur.
+    * ``None`` uden et helt par, uden session eller med kill-switchen slået fra.
+    """
+    sid = str(session_id or "").strip()
+    if not sid or sid.startswith("auto-") or not pin_enabled():
+        return None
+    state = _state_get(sid)
+    provider = str(state.get("provider") or "").strip()
+    model = str(state.get("model") or "").strip()
+    if not provider or not model:
+        return None
+    return provider, model
+
+
 def pin(session_id: str, provider: str, model: str) -> tuple[str, str] | None:
     """Lås modellen for sessionen. Returnerer det der FAKTISK blev låst.
 

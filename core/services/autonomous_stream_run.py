@@ -112,6 +112,11 @@ def start_autonomous_stream_run(
         autonomous_provider=settings.autonomous_model_provider,
         autonomous_model=settings.autonomous_model_name,
     )
+    # SAMTALENS MODEL (12/11-2026): samme regel som `start_autonomous_run`, og samme
+    # funktion — to veje må ikke kunne svare forskelligt om hvilken model en vækning får.
+    from core.services.visible_autonomous_run import _samtalens_model
+
+    provider, model = _samtalens_model(sid, provider, model)
     # PRE-FLIGHT GUT-GATE (12/10-2026). Samme beslutningspunkt som i `start_autonomous_run`:
     # gaten skal kunne stoppe runnet FØR det fødes. Fail-open — kan gaten ikke kaldes,
     # starter runnet som før.

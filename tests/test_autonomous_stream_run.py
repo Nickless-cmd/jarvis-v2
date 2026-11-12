@@ -203,3 +203,53 @@ def test_vaekning_falder_tilbage_til_ejeren(isolated_runtime, monkeypatch) -> No
 
     assert fanget.get("user_id") == "owner-42", "ejeren skal sættes når ingen er bundet"
     assert journal.get("force_user_id") == "owner-42", "journalen er det gaten slår op i"
+
+
+def _fang_stream_run(monkeypatch, session_id):
+    """Start en autonom stream-run og returnér det VisibleRun der blev bygget."""
+    import core.services.run_event_log as rel  # noqa: F401
+    import core.services.visible_runs as visible_runs
+    import core.services.visible_runs_sse_v2 as v2
+    from core.services.autonomous_stream_run import start_autonomous_stream_run
+
+    set_: list[object] = []
+    monkeypatch.setattr(
+        visible_runs, "load_settings",
+        lambda: SimpleNamespace(primary_model_lane="visible",
+                                autonomous_model_provider="ap", autonomous_model_name="am"),
+    )
+
+    async def _fake_stream(run, **kw):
+        set_.append(run)
+        yield "legacy-frame"
+
+    async def _fake_translate(source, **kwargs):
+        async for _ in source:
+            yield "v2-frame"
+
+    monkeypatch.setattr(visible_runs, "_stream_visible_run", _fake_stream)
+    monkeypatch.setattr(v2, "translate_to_v2", _fake_translate)
+    monkeypatch.setattr("core.services.run_guard.blokeringsgrund", lambda *a, **k: "")
+
+    start_autonomous_stream_run("vaekning", session_id=session_id, origin="wakeup")
+    deadline = time.time() + 5.0
+    while time.time() < deadline and not set_:
+        time.sleep(0.05)
+    assert set_, "runnet blev aldrig startet"
+    return set_[0]
+
+
+def test_stream_vejen_bruger_ogsaa_samtalens_model(isolated_runtime, monkeypatch) -> None:
+    """To veje må ikke kunne svare forskelligt om hvilken model en vækning får."""
+    from core.services import session_model_pin as smp
+    from core.services.central_router_adapt import resolve_autonomous_model
+
+    smp.pin("chat-stream-pin", "deepseek", "deepseek-flash")
+    run = _fang_stream_run(monkeypatch, "chat-stream-pin")
+    assert (run.provider, run.model) == ("deepseek", "deepseek-flash")
+
+    # og en auto-silo bliver på den billige lane
+    smp.pin("auto-dream-20261112", "deepseek", "deepseek-flash")
+    silo = _fang_stream_run(monkeypatch, "auto-dream-20261112")
+    assert (silo.provider, silo.model) == resolve_autonomous_model(
+        autonomous_provider="ap", autonomous_model="am")

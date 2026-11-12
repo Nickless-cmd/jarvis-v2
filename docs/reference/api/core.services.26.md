@@ -263,9 +263,10 @@ _Fastlås modellen pr. session, så prompt-præfikset holder (2026-10-03)._
 | function | `_state_get` | `(session_id)` | — | [src](../../../core/services/session_model_pin.py#L88) |
 | function | `_state_set` | `(session_id, payload)` | — | [src](../../../core/services/session_model_pin.py#L99) |
 | function | `get_pinned` | `(session_id)` | Det låste (udbyder, model) — ``None`` når intet er låst, eller når | [src](../../../core/services/session_model_pin.py#L107) |
-| function | `pin` | `(session_id, provider, model)` | Lås modellen for sessionen. Returnerer det der FAKTISK blev låst. | [src](../../../core/services/session_model_pin.py#L123) |
-| function | `resolve` | `(session_id, provider, model)` | Modellen turen skal bruge, og hvor valget kom fra. | [src](../../../core/services/session_model_pin.py#L139) |
-| function | `release` | `(session_id, *, grund=…)` | Slip låsen — kaldes når den låste model ikke kunne bruges. | [src](../../../core/services/session_model_pin.py#L163) |
+| function | `choice_for_conversation` | `(session_id)` | Modellen brugeren har valgt i en SAMTALE — til autonome runs der lander i den. | [src](../../../core/services/session_model_pin.py#L123) |
+| function | `pin` | `(session_id, provider, model)` | Lås modellen for sessionen. Returnerer det der FAKTISK blev låst. | [src](../../../core/services/session_model_pin.py#L148) |
+| function | `resolve` | `(session_id, provider, model)` | Modellen turen skal bruge, og hvor valget kom fra. | [src](../../../core/services/session_model_pin.py#L164) |
+| function | `release` | `(session_id, *, grund=…)` | Slip låsen — kaldes når den låste model ikke kunne bruges. | [src](../../../core/services/session_model_pin.py#L188) |
 
 ## `core/services/session_permission.py`
 _Samtalens tilladelses-niveau — én sandhed, på serveren (Bjørn 20/9-2026)._

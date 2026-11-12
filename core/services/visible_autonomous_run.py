@@ -51,6 +51,35 @@ def _trust_for_autonomous(session_id: str) -> bool:
         return False
 
 
+def _samtalens_model(session_id: str, provider: str, model: str) -> tuple[str, str]:
+    """Samtalens valgte model hvis den findes OG er et gyldigt par; ellers `provider/model`.
+
+    Parret valideres som alle andre modeller her (`model_pair_resolver.resolve_safe`):
+    en død eller ukendt pin må ikke kile vækningen fast, så den falder tilbage til den
+    billige lane i stedet for at fejle. Kaster aldrig.
+    """
+    try:
+        from core.services.session_model_pin import choice_for_conversation
+
+        valgt = choice_for_conversation(session_id)
+        if valgt is None:
+            return provider, model
+        from core.services.model_pair_resolver import resolve_safe
+
+        p, m, problem = resolve_safe(valgt[0], valgt[1])
+        if problem:
+            logger.warning("samtalens model %s/%s kan ikke bruges (%s) — vækningen "
+                           "bruger baggrundsmodellen", valgt[0], valgt[1], problem)
+            return provider, model
+        logger.info("autonomt run i %s bruger samtalens model %s/%s",
+                    str(session_id)[:28], p, m)
+        return p, m
+    except Exception:  # noqa: BLE001 — et modelvalg må aldrig kunne vælte en vækning
+        logger.warning("samtalens model kunne ikke afgøres — bruger baggrundsmodellen",
+                       exc_info=True)
+        return provider, model
+
+
 def _observe_autonomous_run(*, run, session_id: str, outcome: str,
                             frames: int = 0, error: str = "") -> None:
     """#10 (Phase A): gør autonome runs (dream/idle/proaktiv) synlige som ENHED i Den
@@ -315,6 +344,12 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
     _auto_provider, _auto_model = _resolve_auto(
         autonomous_provider=settings.autonomous_model_provider,
         autonomous_model=settings.autonomous_model_name)
+    # SAMTALENS MODEL (12/11-2026). Lander runnet i en rigtig samtale, svarer det med
+    # den model brugeren valgte dér — ikke baggrundsmodellen. `auto-*`-siloer
+    # (heartbeat, drømme, rutiner) bliver på den billige lane. Se
+    # `session_model_pin.choice_for_conversation`.
+    _auto_provider, _auto_model = _samtalens_model(
+        resolved_session, _auto_provider, _auto_model)
 
     # MODEL-PARRET SKAL OGSAA TJEKKES HER (10/9-2026). `resolve_safe` blev
     # bygget da `ollama/glm-5.2` viste sig at give 162 tomme svar ud af 162 —

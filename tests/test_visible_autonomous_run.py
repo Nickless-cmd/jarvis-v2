@@ -171,3 +171,97 @@ def test_re_eksporten_er_doven_men_virker():
 
     with pytest.raises(AttributeError):
         vr.findes_ikke_her
+
+
+# ── En vækning i en SAMTALE bruger samtalens model (Bjørn 12/11-2026) ─────────
+#
+# Bjørn er den eneste der bruger DeepSeek-API'et; de andre bruger DeepSeek via
+# ollama cloud. Vækninger gik til baggrundsmodellen (ollama/glm-5.3-flash), og
+# `resolve_autonomous_model` klemmer bevidst den betalte provider væk. Resultatet:
+# vækningens svar kom fra en anden model end den han havde valgt, midt i hans samtale
+# — og uden hans prompt-cache. `session_model_pin` kender allerede samtalens model.
+# Heartbeat, drømme m.fl. lander i `auto-*`-siloer og bliver på den billige lane.
+def _start_og_fang_run(monkeypatch, session_id):
+    from types import SimpleNamespace
+
+    from core.services import visible_runs as vr
+
+    kaldt: list[object] = []
+
+    def settings():
+        return SimpleNamespace(primary_model_lane="visible", visible_model_provider="p",
+                               visible_model_name="m", autonomous_model_provider="ap",
+                               autonomous_model_name="am")
+
+    async def stream(run, **kw):
+        kaldt.append(run)
+        yield "frame"
+
+    monkeypatch.setattr(vr, "load_settings", settings)
+    monkeypatch.setattr(vr, "_stream_visible_run", stream)
+    monkeypatch.setattr("core.identity.owner_resolver.owner_user_id", lambda: "owner-42")
+    monkeypatch.setattr("core.services.inbox_state.registrer_kilde",
+                        lambda **k: {"status": "ok", "post": {}})
+    monkeypatch.setattr("core.services.run_guard.blokeringsgrund", lambda *a, **k: "")
+
+    vr.start_autonomous_run("vaekning", session_id=session_id)
+    deadline = time.time() + 5.0
+    while time.time() < deadline and not kaldt:
+        time.sleep(0.05)
+    assert kaldt, "runnet blev aldrig startet"
+    return kaldt[0]
+
+
+def _billig_lane() -> tuple[str, str]:
+    from core.services.central_router_adapt import resolve_autonomous_model
+
+    return resolve_autonomous_model(autonomous_provider="ap", autonomous_model="am")
+
+
+def test_en_vaekning_i_en_samtale_bruger_samtalens_pinnede_model(isolated_runtime, monkeypatch):
+    from core.services import session_model_pin as smp
+
+    smp.pin("chat-pinnet", "deepseek", "deepseek-flash")   # Bjørns: det betalte API
+
+    run = _start_og_fang_run(monkeypatch, "chat-pinnet")
+
+    assert (run.provider, run.model) == ("deepseek", "deepseek-flash")
+    assert (run.provider, run.model) != _billig_lane()
+
+
+def test_en_vaekning_i_en_anden_brugers_samtale_bruger_den_samtales_model(isolated_runtime, monkeypatch):
+    from core.services import session_model_pin as smp
+
+    smp.pin("chat-medlem", "ollama", "deepseek-v4-flash:cloud")   # de andre: via ollama cloud
+
+    run = _start_og_fang_run(monkeypatch, "chat-medlem")
+
+    assert (run.provider, run.model) == ("ollama", "deepseek-v4-flash:cloud")
+
+
+def test_uden_en_pin_bliver_vaekningen_paa_den_billige_lane(isolated_runtime, monkeypatch):
+    run = _start_og_fang_run(monkeypatch, "chat-uden-pin")
+
+    assert (run.provider, run.model) == _billig_lane()
+
+
+def test_en_auto_silo_bruger_aldrig_en_pin_selv_om_der_findes_en(isolated_runtime, monkeypatch):
+    """Heartbeat, drømme og rutiner lander i `auto-*` — dem er det den billige lane til."""
+    from core.services import session_model_pin as smp
+
+    smp.pin("auto-heartbeat-20261112", "deepseek", "deepseek-flash")
+
+    run = _start_og_fang_run(monkeypatch, "auto-heartbeat-20261112")
+
+    assert (run.provider, run.model) == _billig_lane()
+
+
+def test_en_ugyldig_pin_falder_tilbage_til_den_billige_lane(isolated_runtime, monkeypatch):
+    """En død/ukendt model må ikke kile vækningen fast: samme retning som `release`."""
+    from core.services import session_model_pin as smp
+
+    smp.pin("chat-doed-pin", "ollama", "findes-ikke-9000")   # resolve_safe afviser ukendte ollama-modeller
+
+    run = _start_og_fang_run(monkeypatch, "chat-doed-pin")
+
+    assert (run.provider, run.model) == _billig_lane()

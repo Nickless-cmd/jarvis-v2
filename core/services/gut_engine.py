@@ -966,6 +966,57 @@ def preflight_allows(message: str) -> bool:
     return bool(udfald.get("allowed", True))
 
 
+# ── Livstidstæller for udfalds-EVENTS ────────────────────────────────────────
+#
+# Hvorfor (12/11-2026, Bjørns anden indvending): `total_predictions` og
+# eventloggen har FORSKELLIGE definitioner. `total_predictions` tæller kun
+# afgjorte udfald — og gjorde det ikke før 12/11 — mens loggen rummer både
+# afgjorte og neutrale. Differencen blev kaldt «antal ryddede rækker», men den
+# er ikke det: kommer der én ny NEUTRAL hændelse, stiger loggen uden at
+# `total_predictions` gør, så differencen falder med én — uden at nogen række er
+# kommet tilbage. To tællere må ikke trækkes fra hinanden og tilskrives en
+# forklaring, medmindre de tæller den samme slags ting.
+#
+# Denne tæller har SAMME definition som eventloggen. Differencen bliver derfor
+# meningsfuld — men først når tælleren har levet længere end retention-vinduet,
+# for indtil da kan en række være ryddet FØR tælleren begyndte at tælle.
+_EVENT_LEDGER_KEY = "gut_outcome_event_ledger"
+
+
+def _bump_event_ledger() -> None:
+    """Tæl én udfaldshændelse — samme definition som eventloggen. Kaster aldrig."""
+    try:
+        from core.runtime import state_store
+
+        with state_store.med_laas(_EVENT_LEDGER_KEY):
+            ledger = state_store.load_json(_EVENT_LEDGER_KEY, None)
+            if not isinstance(ledger, dict):
+                ledger = {"started_at": datetime.now(UTC).isoformat(), "events": 0}
+            ledger["events"] = int(ledger.get("events") or 0) + 1
+            state_store.save_json(_EVENT_LEDGER_KEY, ledger)
+    except Exception:
+        # Tælleren er EVIDENS, ikke drift: kan den ikke skrives, må hændelsen
+        # stadig registreres. En manglende tæller må ikke stoppe kalibreringen.
+        logger.debug("gut: kunne ikke opdatere event-ledger", exc_info=True)
+
+
+def _event_ledger_state() -> dict[str, object] | None:
+    """Livstidstælleren, eller None hvis den ikke findes. Kaster aldrig."""
+    try:
+        from core.runtime import state_store
+
+        ledger = state_store.load_json(_EVENT_LEDGER_KEY, None)
+        if not isinstance(ledger, dict):
+            return None
+        events = int(ledger.get("events") or 0)
+        started = str(ledger.get("started_at") or "")
+        if events <= 0 or not started:
+            return None
+        return {"events": events, "started_at": started}
+    except Exception:
+        return None
+
+
 def record_gut_outcome(
     *,
     hunch: str,
@@ -982,6 +1033,9 @@ def record_gut_outcome(
     Eventet udsendes stadig, så fladen kan se at udfaldet skete — men med
     `outcome_class` og `correct: None`, så ingen læser kan tage det som en dom.
     """
+    # Tælles for BEGGE klasser — ellers får tælleren samme skæve definition som
+    # `total_predictions`, og så er vi lige vidt.
+    _bump_event_ledger()
     outcome_class = classify_outcome(actual_outcome)
     if outcome_class == "neutral":
         event_bus.publish(
@@ -1161,7 +1215,39 @@ def build_gut_surface() -> dict[str, object]:
     # defaulte til 0, for saa ville hver eneste raekke blive kaldt «ryddet».
     event_rows = int(raw_event_rows) if raw_event_rows is not None else decided_rows
     neutral_rows = int((baseline or {}).get("neutral_rows") or 0)
-    no_event_row = max(0, total_evaluated - event_rows)
+    # `no_event_row` er KUN en måling når de to tællere tæller den samme slags ting
+    # (12/11-2026, Bjørns anden indvending). `total_predictions` tæller afgjorte
+    # udfald; eventloggen tæller alle. En ny NEUTRAL hændelse øger loggen men ikke
+    # `total_predictions` — så `total - event_rows` ville FALDE med én, uden at
+    # nogen række var kommet tilbage. Derfor måles den nu mod livstidstælleren, og
+    # kun når den har levet længere end retentionen; ellers er svaret None med en
+    # grund, ikke et tal der ser målt ud.
+    no_event_row: int | None = None
+    no_event_row_grund: str | None = None
+    ledger = _event_ledger_state()
+    if ledger is None:
+        no_event_row_grund = "ingen livstidstaeller for udfalds-events"
+    else:
+        try:
+            from core.services.events_retention import _retention_days
+
+            retention_dage = int(_retention_days())
+        except Exception:
+            retention_dage = 14
+        try:
+            alder_dage = (
+                datetime.now(UTC) - datetime.fromisoformat(str(ledger["started_at"]))
+            ).days
+        except (TypeError, ValueError):
+            alder_dage = -1
+        if alder_dage < retention_dage:
+            no_event_row_grund = (
+                f"livstidstaelleren er {max(0, alder_dage)} dage gammel, yngre end "
+                f"retentionen paa {retention_dage} dage — en ryddet raekke kan vaere "
+                "ryddet foer den begyndte at tælle"
+            )
+        else:
+            no_event_row = max(0, int(ledger["events"]) - event_rows)
     verified = decided_rows
     unverifiable = no_event_row
     # Skævheden er ikke kun ALDER (12/11-2026, Bjørns indvending). Før den fælles
@@ -1171,21 +1257,26 @@ def build_gut_surface() -> dict[str, object]:
     # RETNINGEN er kendt; STØRRELSEN kan ikke måles, fordi de events der ville vise den
     # er ryddet. Derfor står den som en navngivet skævhed, ikke som et korrigeret tal:
     # et tal jeg ikke kan udlede må jeg ikke opfinde.
+    # Skævheden hænger på at `total_predictions` bærer historik fra FØR den fælles
+    # udfaldsmodel — ikke på et beregnet antal ryddede rækker (som ikke kan måles).
     historical_bias = (
         "historiske neutrale udfald (fx interrupted) blev regnet som korrekte for "
         "caution og som fejl for proceed; retningen er kendt, stoerrelsen kan ikke "
         "maales — de events der ville vise den er ryddet efter 14 dage"
-    ) if unverifiable > 0 else None
+    ) if total_evaluated > decided_rows else None
     _evidens_dele: list[str] = []
-    if no_event_row > 0:
+    if no_event_row is not None and no_event_row > 0:
         _evidens_dele.append(
-            f"{no_event_row} har ingen event-raekke tilbage (ryddes efter 14 dage)"
+            f"{no_event_row} udfalds-events er ryddet (maalt mod livstidstaelleren)"
         )
     if neutral_rows > 0:
         _evidens_dele.append(f"{neutral_rows} er i vinduet men uafgjorte")
     evidence_summary = (
-        f" | {decided_rows} af {total_evaluated} kan efterproeves; " + "; ".join(_evidens_dele)
+        f" | {decided_rows} af {total_evaluated} afgoerelser kan efterproeves; "
+        + "; ".join(_evidens_dele)
     ) if _evidens_dele else ""
+    if no_event_row is None:
+        evidence_summary += f" | antal ryddede raekker kan ikke maales: {no_event_row_grund}"
     if historical_bias:
         evidence_summary += (
             " | de historiske tal er SKAEVE i caution-gruppens favoer, ikke kun gamle"
@@ -1201,6 +1292,8 @@ def build_gut_surface() -> dict[str, object]:
         "decided_rows": decided_rows,
         "neutral_rows": neutral_rows,
         "no_event_row": no_event_row,
+        "no_event_row_grund": no_event_row_grund,
+        "event_ledger": ledger,
         "historical_bias": historical_bias,
         "withheld": withheld,
         "backstop_overkoersler": overkoersler,

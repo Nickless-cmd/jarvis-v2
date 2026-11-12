@@ -181,6 +181,11 @@
       "beskrivelse": "Ghost Networks — spor af mønstre der holdt op med at være aktive.",
       "registreret": "2026-09-25"
     },
+    "gut_outcome_event_ledger": {
+      "ejer": "core/services/gut_engine.py",
+      "beskrivelse": "Livstidstaeller for udfalds-EVENTS med samme definition som eventloggen (baade afgjorte og neutrale). Findes fordi total_predictions kun taeller afgjorte udfald, saa differencen mellem den og eventloggen ikke kunne bruges som antal ryddede raekker. Maalt 12/11-2026: en ny NEUTRAL haendelse fik differencen til at falde med én uden at nogen raekke kom tilbage.",
+      "registreret": "2026-11-12"
+    },
     "identity_mutation_log": {
       "ejer": "core/services/identity_mutation_log.py",
       "beskrivelse": "Identity mutation log — full audit trail for Tier 3 auto-mutations.",

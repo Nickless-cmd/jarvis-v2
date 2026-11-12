@@ -179,10 +179,12 @@ _Gut Engine — intuition and calibration tracking._
 | function | `_caution_har_evidens` | `()` | Måler om `caution` SKELNER — grundlaget for at advarslen må blokere et run. | [src](../../../core/services/gut_engine.py#L753) |
 | function | `preflight_gut_gate` | `(*, task_description)` | PRE-FLIGHT: dan hunch og afgør om et autonomt run må starte. Kaster ALDRIG. | [src](../../../core/services/gut_engine.py#L875) |
 | function | `preflight_allows` | `(message)` | Bekvemmeligheds-indpakning til run-start-stierne: True = start runnet. | [src](../../../core/services/gut_engine.py#L957) |
-| function | `record_gut_outcome` | `(*, hunch, actual_outcome)` | Record whether the gut hunch was correct. | [src](../../../core/services/gut_engine.py#L969) |
-| function | `_observed_baseline` | `()` | Mål maven mod en KONSTANT baseline (altid «proceed») på de events der findes. | [src](../../../core/services/gut_engine.py#L1022) |
-| function | `build_gut_surface` | `()` | Kalibrerings-fladen — viser de tre lag ADSKILT (A3, 3/11-2026). | [src](../../../core/services/gut_engine.py#L1102) |
-| function | `build_gut_counterfactual_surface` | `()` | Counterfactual decision delta: hvor ofte flyttede den lærte bias gatens afgørelse? | [src](../../../core/services/gut_engine.py#L1218) |
+| function | `_bump_event_ledger` | `()` | Tæl én udfaldshændelse — samme definition som eventloggen. Kaster aldrig. | [src](../../../core/services/gut_engine.py#L986) |
+| function | `_event_ledger_state` | `()` | Livstidstælleren, eller None hvis den ikke findes. Kaster aldrig. | [src](../../../core/services/gut_engine.py#L1003) |
+| function | `record_gut_outcome` | `(*, hunch, actual_outcome)` | Record whether the gut hunch was correct. | [src](../../../core/services/gut_engine.py#L1020) |
+| function | `_observed_baseline` | `()` | Mål maven mod en KONSTANT baseline (altid «proceed») på de events der findes. | [src](../../../core/services/gut_engine.py#L1076) |
+| function | `build_gut_surface` | `()` | Kalibrerings-fladen — viser de tre lag ADSKILT (A3, 3/11-2026). | [src](../../../core/services/gut_engine.py#L1156) |
+| function | `build_gut_counterfactual_surface` | `()` | Counterfactual decision delta: hvor ofte flyttede den lærte bias gatens afgørelse? | [src](../../../core/services/gut_engine.py#L1311) |
 
 ## `core/services/habit_tracker.py`
 _Habit Tracker — detects recurring patterns and friction points._

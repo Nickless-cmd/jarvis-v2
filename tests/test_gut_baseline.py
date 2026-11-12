@@ -161,98 +161,159 @@ def test_summary_siger_utilgaengelig_uden_baseline(monkeypatch):
     assert "IKKE" in s["summary"]
 
 
-def test_summary_viser_hvor_meget_der_kan_efterproeves(monkeypatch):
-    """DEN MÅLTE FEJLFORM (12/11-2026): `total_predictions` akkumulerer fra mavens fødsel,
-    mens `events` ryddes efter 14 dage (events_retention). Differencen kan IKKE efterprøves.
+_MODEN_LEDGER = {"events": 500, "started_at": "2026-01-01T00:00:00+00:00"}
 
-    Produktion målte 4523 akkumulerede mod 344 verificerbare — 92% af tallet havde ingen
-    kilde i databasen. Fladen skal sige det, ikke lade 0.99 stå alene som evidens.
+
+def _gut_state(total: int, hits: int) -> dict[str, object]:
+    return {"total_predictions": total, "calibrated_hits": hits,
+            "calibration_score": hits / max(total, 1), "last_hunch": "proceed → completed (✓)"}
+
+
+def test_uden_livstidstaeller_siges_tallet_ikke(monkeypatch):
+    """Uden en tæller med SAMME definition som eventloggen kan antallet af ryddede
+    rækker ikke måles. Fladen må da sige det — ikke beregne `total - events`, som
+    blander to definitioner (se testen nedenfor).
+
+    Produktion målte 4527 akkumulerede mod 343 event-rækker. Den gamle formel kaldte
+    differencen «4184 ligger foer vinduet». Det tal var ikke målt — det var en rest.
     """
+    monkeypatch.setattr(ge, "_event_ledger_state", lambda: None)
     monkeypatch.setattr(
         ge, "_observed_baseline",
-        lambda: {"n_observed": 10, "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
+        lambda: {"n_observed": 10, "event_rows": 11, "neutral_rows": 1,
+                 "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
     )
-    monkeypatch.setattr(
-        ge, "get_cognitive_gut_state",
-        lambda: {"total_predictions": 100, "calibrated_hits": 99,
-                 "calibration_score": 0.99, "last_hunch": "proceed → completed (✓)"},
-    )
+    monkeypatch.setattr(ge, "get_cognitive_gut_state", lambda: _gut_state(100, 99))
     monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
     s = ge.build_gut_surface()
     assert s["evaluated"] == 100
     assert s["evaluated_verified"] == 10
-    assert s["evaluated_unverifiable"] == 90
-    assert "90 har ingen event-raekke tilbage" in s["summary"]
+    assert s["no_event_row"] is None, "et tal der ikke kan maales maa ikke se maalt ud"
+    assert s["evaluated_unverifiable"] is None
+    assert "kan ikke maales" in s["summary"]
     assert "kan efterproeves" in s["summary"]
 
 
-def test_neutral_event_taelles_ikke_som_ryddet(monkeypatch):
-    """BJØRNS INVENDING (12/11-2026): `unverifiable = total - decided` pålagde differencen
-    forklaringen «ligger før vinduet». Men en neutral event FINDES i vinduet — den er bare
-    uafgjort. De to mængder må ikke lægges sammen.
-
-    Målt i produktion: 4527 akkumulerede, 343 event-rækker, 342 afgjorte, 1 neutral.
-    Den gamle formel sagde 4185 «før vinduet»; den rigtige er 4184 + 1 uafgjort.
+def test_ung_ledger_maa_ikke_udtale_sig(monkeypatch):
+    """En tæller der er yngre end retentionen kan ikke bruges: en række kan være
+    ryddet FØR den begyndte at tælle, og så ville differencen underdrive antallet.
     """
+    from datetime import UTC, datetime, timedelta
+
+    ung = (datetime.now(UTC) - timedelta(days=1)).isoformat()
+    monkeypatch.setattr(ge, "_event_ledger_state", lambda: {"events": 50, "started_at": ung})
+    monkeypatch.setattr(
+        ge, "_observed_baseline",
+        lambda: {"n_observed": 10, "event_rows": 11, "neutral_rows": 1,
+                 "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
+    )
+    monkeypatch.setattr(ge, "get_cognitive_gut_state", lambda: _gut_state(100, 99))
+    monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
+    s = ge.build_gut_surface()
+    assert s["no_event_row"] is None
+    assert "yngre end" in s["summary"]
+
+
+def test_moden_ledger_giver_et_rigtigt_tal(monkeypatch):
+    """Er tælleren moden, må differencen bruges: livstidsevents minus events i
+    vinduet = antal ryddede rækker. Det er den eneste formel hvor begge sider
+    tæller den samme slags ting."""
+    monkeypatch.setattr(ge, "_event_ledger_state", lambda: dict(_MODEN_LEDGER))
+    monkeypatch.setattr(
+        ge, "_observed_baseline",
+        lambda: {"n_observed": 99, "event_rows": 100, "neutral_rows": 1,
+                 "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
+    )
+    monkeypatch.setattr(ge, "get_cognitive_gut_state", lambda: _gut_state(600, 500))
+    monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
+    s = ge.build_gut_surface()
+    assert s["no_event_row"] == 400
+    assert s["evaluated_unverifiable"] == 400
+    assert "400 udfalds-events er ryddet" in s["summary"]
+
+
+def test_neutral_event_aendrer_ikke_antallet_af_ryddede(monkeypatch):
+    """BJØRNS ANDEN INVENDING (12/11-2026), den afgørende test.
+
+    `record_gut_outcome` returnerer FØR `update_cognitive_gut_state` når udfaldet er
+    neutralt — så `total_predictions` tæller kun afgjorte udfald, mens eventloggen
+    tæller alle. Differencen `total - event_rows` er derfor ikke et antal ryddede
+    rækker: kommer der én ny NEUTRAL hændelse, stiger `event_rows` uden at `total`
+    gør, og differencen FALDER med én — selvom ingen række er kommet tilbage.
+
+    Testen tilføjer netop den hændelse og kræver at tallet står STILLE. Den gamle
+    formel fejler her; det er hele pointen.
+    """
+    monkeypatch.setattr(ge, "get_cognitive_gut_state", lambda: _gut_state(500, 450))
+    monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
+
+    monkeypatch.setattr(ge, "_event_ledger_state", lambda: {"events": 100, "started_at": _MODEN_LEDGER["started_at"]})
     monkeypatch.setattr(
         ge, "_observed_baseline",
         lambda: {"n_observed": 9, "event_rows": 10, "neutral_rows": 1,
                  "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
     )
-    monkeypatch.setattr(
-        ge, "get_cognitive_gut_state",
-        lambda: {"total_predictions": 10, "calibrated_hits": 9,
-                 "calibration_score": 0.9, "last_hunch": "proceed → completed (✓)"},
-    )
-    monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
-    s = ge.build_gut_surface()
-    assert s["event_rows"] == 10, "alle ti rækker findes i vinduet"
-    assert s["decided_rows"] == 9
-    assert s["neutral_rows"] == 1
-    assert s["no_event_row"] == 0, "den neutrale er IKKE ryddet — den er uafgjort"
-    assert s["evaluated_unverifiable"] == 0
-    assert "1 er i vinduet men uafgjorte" in s["summary"]
-    assert "har ingen event-raekke tilbage" not in s["summary"]
-    assert s["historical_bias"] is None, "ingen ryddede rækker = ingen historisk skævhed at navngive"
+    foer = ge.build_gut_surface()
 
-
-def test_fire_maengder_summerer_til_det_akkumulerede(monkeypatch):
-    """Regnskabet skal gå op: afgjorte + uafgjorte + ryddede = akkumulerede.
-
-    Er summen forkert, er mindst én af de fire mængder målt på det forkerte grundlag —
-    og så kan ingen af dem læses som evidens.
-    """
+    # Én ny NEUTRAL hændelse: loggen og tælleren stiger begge med én.
+    monkeypatch.setattr(ge, "_event_ledger_state", lambda: {"events": 101, "started_at": _MODEN_LEDGER["started_at"]})
     monkeypatch.setattr(
         ge, "_observed_baseline",
-        lambda: {"n_observed": 342, "event_rows": 343, "neutral_rows": 1,
-                 "maven_pct": 92.4, "baseline_pct": 100.0, "skill_pp": -7.6},
+        lambda: {"n_observed": 9, "event_rows": 11, "neutral_rows": 2,
+                 "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
     )
-    monkeypatch.setattr(
-        ge, "get_cognitive_gut_state",
-        lambda: {"total_predictions": 4527, "calibrated_hits": 4492,
-                 "calibration_score": 0.99, "last_hunch": "proceed → completed (✓)"},
+    efter = ge.build_gut_surface()
+
+    assert efter["neutral_rows"] == foer["neutral_rows"] + 1
+    assert efter["evaluated"] == foer["evaluated"], "neutral opdaterer ikke total_predictions"
+    assert efter["no_event_row"] == foer["no_event_row"], (
+        "en ny NEUTRAL hændelse må ikke se ud som om en ryddet række kom tilbage"
     )
-    monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
-    s = ge.build_gut_surface()
-    assert s["decided_rows"] + s["neutral_rows"] + s["no_event_row"] == s["evaluated"]
+
+
+def test_neutral_udfald_taelles_ogsaa_i_livstidstaelleren(monkeypatch):
+    """Tælleren skal have SAMME definition som eventloggen — også for neutrale udfald.
+
+    Ellers arver den præcis den skævhed den skulle rette: `total_predictions` tæller
+    kun afgjorte udfald (record_gut_outcome returnerer før opdateringen ved neutral),
+    og så er differencen igen ubrugelig. Tælleren skal stige ved BEGGE klasser.
+    """
+    from contextlib import nullcontext
+
+    from core.runtime import state_store
+
+    store: dict[str, object] = {}
+    monkeypatch.setattr(state_store, "load_json", lambda name, default: store.get(name, default))
+    monkeypatch.setattr(state_store, "save_json", lambda name, data: store.__setitem__(name, data))
+    monkeypatch.setattr(state_store, "med_laas", lambda name: nullcontext())
+    monkeypatch.setattr(ge, "update_cognitive_gut_state", lambda **kw: {"updated_at": "x"})
+    monkeypatch.setattr(ge.event_bus, "publish", lambda *a, **k: None)
+
+    ge.record_gut_outcome(hunch="proceed", actual_outcome="interrupted")  # neutral
+    efter_neutral = store[ge._EVENT_LEDGER_KEY]["events"]
+    ge.record_gut_outcome(hunch="proceed", actual_outcome="completed")  # afgjort
+    efter_afgjort = store[ge._EVENT_LEDGER_KEY]["events"]
+
+    assert efter_neutral == 1, "et NEUTRALT udfald er stadig en udfaldshændelse i loggen"
+    assert efter_afgjort == 2
 
 
 def test_ingen_advarsel_naar_alt_er_verificerbart(monkeypatch):
-    """Er akkumuleringen ikke større end vinduet, er der intet uverificerbart — og så skal
-    linjen ikke stå der. En advarsel der altid vises, læres der at overse."""
+    """Er intet ryddet, skal linjen ikke stå der. En advarsel der altid vises,
+    læres der at overse — samme regel som alderslinjen."""
+    monkeypatch.setattr(ge, "_event_ledger_state", lambda: {"events": 10, "started_at": _MODEN_LEDGER["started_at"]})
     monkeypatch.setattr(
         ge, "_observed_baseline",
-        lambda: {"n_observed": 10, "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
+        lambda: {"n_observed": 10, "event_rows": 10, "neutral_rows": 0,
+                 "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
     )
-    monkeypatch.setattr(
-        ge, "get_cognitive_gut_state",
-        lambda: {"total_predictions": 10, "calibrated_hits": 9,
-                 "calibration_score": 0.9, "last_hunch": "proceed → completed (✓)"},
-    )
+    monkeypatch.setattr(ge, "get_cognitive_gut_state", lambda: _gut_state(10, 9))
     monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
     s = ge.build_gut_surface()
+    assert s["no_event_row"] == 0
     assert s["evaluated_unverifiable"] == 0
-    assert "foer vinduet" not in s["summary"]
+    assert "ryddet" not in s["summary"]
+    assert "kan ikke maales" not in s["summary"]
 
 
 def test_historisk_skaevhed_navngives_ikke_kun_alder(monkeypatch):

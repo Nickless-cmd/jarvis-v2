@@ -390,3 +390,75 @@ def test_afleveringen_til_indbakken_hedder_queued_ikke_dispatched(monkeypatch):
     kinds = [k for k, _ in publiceret if k.startswith("self_wakeup.")]
     assert kinds == ["self_wakeup.queued"]
     assert dict(publiceret)["self_wakeup.queued"]["wakeup_id"] == "w1"
+
+
+# ── En vækning kvitteret UNDER dispatchen må ikke afleveres bagefter ───────────
+#
+# Målt 12/11-2026 (wake-bd36c1b2ea): fyrede 18:04:29; dispatcheren tog et snapshot
+# og startede et heartbeat-tick, der tog 2 min 37 s; Jarvis kvitterede den 18:05:50
+# (inbox_done + consumed); dispatcheren genoptog med det GAMLE snapshot og
+# afleverede den til indbakken 18:07:22 — og den vækkede ham 18:11:20 til en
+# opgave han allerede havde løst. `marker_dispatch` er race-bevidst og var et
+# no-op, men afleveringen sker FØR den.
+def _fyret_post(**ekstra) -> dict:
+    return {"wakeup_id": "w1", "prompt": "p", "reason": "r", "status": "fired", **ekstra}
+
+
+@pytest.mark.parametrize("status_efter_tick", ["consumed", "cancelled"])
+def test_en_vaekning_kvitteret_under_heartbeat_tick_afleveres_ikke(monkeypatch, status_efter_tick):
+    state = [_fyret_post()]
+    publiceret = _fanget_eventbus(monkeypatch)
+
+    def _tick(**kw):
+        state[0]["status"] = status_efter_tick   # Jarvis kvitterer imens ticket kører
+
+    with patch("core.services.self_wakeup.due_wakeups", return_value=state), \
+         patch("core.services.self_wakeup._load", return_value=state), \
+         patch("core.services.self_wakeup._save"), \
+         patch("core.services.outbound_nudges.push_nudge"), \
+         patch("core.services.heartbeat_phases.tick_with_phases", side_effect=_tick), \
+         patch(GATEWAY, return_value=_KOEET) as fake_gw:
+        result = dispatch_due_wakeups()
+
+    fake_gw.assert_not_called()
+    assert result["dispatched"] == 0
+    assert result["dispatched_ids"] == []
+    assert result["consumed_during"] == ["w1"]
+    assert [k for k, _ in publiceret if k.startswith("self_wakeup.")] == []
+
+
+def test_en_vaekning_der_stadig_er_fyret_efter_ticket_afleveres_som_for(monkeypatch):
+    state = [_fyret_post()]
+    with patch("core.services.self_wakeup.due_wakeups", return_value=state), \
+         patch("core.services.self_wakeup._load", return_value=state), \
+         patch("core.services.self_wakeup._save"), \
+         patch("core.services.outbound_nudges.push_nudge"), \
+         patch("core.services.heartbeat_phases.tick_with_phases"), \
+         patch(GATEWAY, return_value=_KOEET) as fake_gw:
+        result = dispatch_due_wakeups()
+
+    fake_gw.assert_called_once()
+    assert (result["dispatched"], result["consumed_during"]) == (1, [])
+
+
+def test_kan_lageret_ikke_laeses_afleveres_vaekningen_hellere_end_at_forsvinde(monkeypatch):
+    """Fail-open som resten af dispatcheren: en vækning må ikke forsvinde på en læsefejl."""
+    state = [_fyret_post()]
+    kald = {"n": 0}
+
+    def _load_foerste_gang_fejler():
+        kald["n"] += 1
+        if kald["n"] == 1:          # det er den re-læsning FØR afleveringen
+            raise RuntimeError("væk")
+        return state
+
+    with patch("core.services.self_wakeup.due_wakeups", return_value=state), \
+         patch("core.services.self_wakeup._save"), \
+         patch("core.services.outbound_nudges.push_nudge"), \
+         patch("core.services.heartbeat_phases.tick_with_phases"), \
+         patch("core.services.self_wakeup._load", side_effect=_load_foerste_gang_fejler), \
+         patch(GATEWAY, return_value=_KOEET) as fake_gw:
+        result = dispatch_due_wakeups()
+
+    fake_gw.assert_called_once()
+    assert result["dispatched"] == 1

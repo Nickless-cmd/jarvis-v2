@@ -706,16 +706,17 @@ _Self-wakeup — Jarvis' equivalent of Claude Code's ScheduleWakeup._
 | function | `add_wakeup_extra` | `(wakeup_id, extra)` | Læg en tilføjelse på en booket wakeup — så den følger med i noten. | [src](../../../core/services/self_wakeup.py#L570) |
 | function | `cancel_wakeup` | `(wakeup_id)` | Cancel a pending wakeup before it fires. | [src](../../../core/services/self_wakeup.py#L607) |
 | function | `marker_dispatch` | `(wakeup_id, *, dispatched, skip_reason=…)` | Skriv dispatch-markøren på ÉN vækning — under lås, med det samme. | [src](../../../core/services/self_wakeup.py#L634) |
-| function | `list_wakeups` | `(*, status=…, limit=…)` | — | [src](../../../core/services/self_wakeup.py#L685) |
-| function | `cleanup_old_wakeups` | `(*, consumed_age_hours=…, cancelled_age_hours=…, stale_fired_age_hours=…)` | Ryd op i gamle consumed/cancelled/stale-fired wakeups. | [src](../../../core/services/self_wakeup.py#L693) |
-| function | `tick_wakeup_cleanup` | `()` | Daemon tick — ryd op i gamle wakeups. | [src](../../../core/services/self_wakeup.py#L761) |
-| function | `_kun_denne_samtale` | `(records)` | De fyrede vækninger der hører til den AKTUELLE samtale — eller til ingen. | [src](../../../core/services/self_wakeup.py#L770) |
-| function | `self_wakeup_section` | `()` | Awareness section showing fired-but-not-consumed wakeups. | [src](../../../core/services/self_wakeup.py#L807) |
-| function | `_exec_schedule_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L868) |
-| function | `_exec_list_self_wakeups` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L897) |
-| function | `_exec_cancel_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L915) |
-| function | `_exec_mark_wakeup_consumed` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L919) |
-| function | `_exec_add_wakeup_extra` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L923) |
+| function | `er_stadig_fyret` | `(wakeup_id)` | Står vækningen STADIG som `fired` i lageret — altså hverken kvitteret eller annulleret? | [src](../../../core/services/self_wakeup.py#L685) |
+| function | `list_wakeups` | `(*, status=…, limit=…)` | — | [src](../../../core/services/self_wakeup.py#L704) |
+| function | `cleanup_old_wakeups` | `(*, consumed_age_hours=…, cancelled_age_hours=…, stale_fired_age_hours=…)` | Ryd op i gamle consumed/cancelled/stale-fired wakeups. | [src](../../../core/services/self_wakeup.py#L712) |
+| function | `tick_wakeup_cleanup` | `()` | Daemon tick — ryd op i gamle wakeups. | [src](../../../core/services/self_wakeup.py#L780) |
+| function | `_kun_denne_samtale` | `(records)` | De fyrede vækninger der hører til den AKTUELLE samtale — eller til ingen. | [src](../../../core/services/self_wakeup.py#L789) |
+| function | `self_wakeup_section` | `()` | Awareness section showing fired-but-not-consumed wakeups. | [src](../../../core/services/self_wakeup.py#L826) |
+| function | `_exec_schedule_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L887) |
+| function | `_exec_list_self_wakeups` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L916) |
+| function | `_exec_cancel_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L934) |
+| function | `_exec_mark_wakeup_consumed` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L938) |
+| function | `_exec_add_wakeup_extra` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L942) |
 
 ## `core/services/selfhood_proposal_tracking.py`
 

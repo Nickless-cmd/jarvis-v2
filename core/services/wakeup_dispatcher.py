@@ -271,7 +271,7 @@ def pick_wakeup_run_target(
 
 def dispatch_due_wakeups() -> dict[str, Any]:
     """Find newly-fired wakeups, push them out via webchat + heartbeat tick."""
-    from core.services.self_wakeup import due_wakeups, marker_dispatch
+    from core.services.self_wakeup import due_wakeups, er_stadig_fyret, marker_dispatch
 
     with _dispatch_lock:
         fired = due_wakeups(include_fired_unconsumed=True)
@@ -286,6 +286,7 @@ def dispatch_due_wakeups() -> dict[str, Any]:
         # via `marker_dispatch` under laas.
         dispatched: list[str] = []
         skipped: list[str] = []
+        consumed_during: list[str] = []
         for record in fired:
             wid = record.get("wakeup_id")
             if record.get("dispatched"):
@@ -342,6 +343,20 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                 tick_with_phases(name="default", trigger="self-wakeup-fire")
             except Exception as exc:
                 logger.debug("wakeup heartbeat trigger failed: %s", exc)
+
+            # RE-LÆS FØR AFLEVERINGEN (12/11-2026). `fired` er et snapshot fra
+            # løkkens start, og trin B (heartbeat-tick) kan tage minutter. Blev
+            # vækningen kvitteret imens, ville afleveringen nedenfor vække Jarvis
+            # til en opgave han allerede havde løst: wake-bd36c1b2ea fyrede 18:04:29,
+            # blev kvitteret 18:05:50 og afleveret alligevel 18:07:22. `marker_dispatch`
+            # er race-bevidst men sker EFTER afleveringen.
+            if not er_stadig_fyret(str(wid)):
+                logger.info(
+                    "wakeup %s blev kvitteret/annulleret under dispatchen — afleveres ikke",
+                    wid,
+                )
+                consumed_during.append(str(wid))
+                continue
 
             # C: actually EXECUTE the wakeup prompt as a self-directive run
             run_started = False
@@ -439,6 +454,7 @@ def dispatch_due_wakeups() -> dict[str, Any]:
             "dispatched_ids": dispatched,
             "skipped": len(skipped),
             "skipped_ids": skipped,
+            "consumed_during": consumed_during,
         }
 
 

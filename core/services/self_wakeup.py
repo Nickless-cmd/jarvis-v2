@@ -682,6 +682,25 @@ def marker_dispatch(
     return {"status": "ok", "wakeup_id": wakeup_id}
 
 
+def er_stadig_fyret(wakeup_id: str) -> bool:
+    """Står vækningen STADIG som `fired` i lageret — altså hverken kvitteret eller annulleret?
+
+    Dispatcheren arbejder på et snapshot, og et heartbeat-tick midt i løkken kan tage
+    minutter (målt 2 min 37 s, 12/11-2026). Kvitteres vækningen imens, må den ikke
+    afleveres bagefter: det vækker Jarvis til en opgave han allerede har løst.
+
+    Fail-open: kan lageret ikke læses, svarer vi `True`. En vækning må ikke forsvinde
+    på en læsefejl — samme retning som resten af dispatcheren.
+    """
+    try:
+        for r in _load():
+            if r.get("wakeup_id") == wakeup_id:
+                return str(r.get("status") or "") == "fired"
+    except Exception:  # noqa: BLE001 — se docstringen
+        return True
+    return True   # ukendt id: ikke vores sag at afvise her
+
+
 def list_wakeups(*, status: str | None = None, limit: int = 30) -> list[dict[str, Any]]:
     records = _load()
     if status:

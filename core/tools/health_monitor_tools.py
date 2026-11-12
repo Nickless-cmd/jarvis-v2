@@ -11,11 +11,39 @@ from typing import Any
 _STATE_PATH = Path.home() / ".jarvis-v2" / "state" / "health_monitor.json"
 _MAX_HISTORY = 20
 
-_PRESET_ENDPOINTS = {
-    "jarvis-api": "http://localhost:8000/health",
-    "ollama": "http://127.0.0.1:11434/api/tags",
-    "comfyui": "http://localhost:8188/",
-}
+def _port(navn: str, standard: int) -> int:
+    """Processens port fra den etablerede resolver (`jarvisx_bridge`), ellers standarden.
+
+    Porten stod hårdkodet som 8000 i `jarvis-api`-presettet, men API'et lytter på
+    8080 — værktøjet fik `Connection refused` på 0 ms og meldte UNHEALTHY om en
+    tjeneste der svarede 200 på 2,6 ms (CT105, 12/11-2026). Én kilde til portene
+    betyder at presettet ikke kan drive fra servicen igen.
+    """
+    try:
+        from core.services import jarvisx_bridge
+
+        return int(getattr(jarvisx_bridge, navn)())
+    except Exception:  # resolveren må ikke kunne vælte et sundhedstjek
+        return standard
+
+
+def _presets() -> dict[str, str]:
+    """De navngivne endpoints, beregnet FRISKT så en ændret port-env slår igennem.
+
+    `jarvis-api` og `jarvis-runtime` er to processer: `/health` på den ene siger
+    intet om den anden (se `runtime_guard`).
+    """
+    return {
+        "jarvis-api": f"http://127.0.0.1:{_port('_api_port', 8080)}/health",
+        "jarvis-runtime": f"http://127.0.0.1:{_port('_runtime_port', 8011)}/health",
+        "ollama": "http://127.0.0.1:11434/api/tags",
+        "comfyui": "http://localhost:8188/",
+    }
+
+
+#: Bagudkompatibelt navn (tests og ældre kaldere). Kode i dette modul bruger
+#: `_presets()`, så portene altid er friske.
+_PRESET_ENDPOINTS = _presets()
 
 
 def _load() -> dict:
@@ -89,10 +117,10 @@ def _exec_health_check(args: dict[str, Any]) -> dict[str, Any]:
         url = name_or_url
         name = url
     elif name_or_url in data["endpoints"]:
-        url = data["endpoints"][name_or_url].get("url") or _PRESET_ENDPOINTS.get(name_or_url, "")
+        url = data["endpoints"][name_or_url].get("url") or _presets().get(name_or_url, "")
         name = name_or_url
-    elif name_or_url in _PRESET_ENDPOINTS:
-        url = _PRESET_ENDPOINTS[name_or_url]
+    elif name_or_url in _presets():
+        url = _presets()[name_or_url]
         name = name_or_url
     else:
         return {"status": "error", "error": f"'{name_or_url}' not registered. Use health_register or pass a full URL."}
@@ -141,11 +169,12 @@ def _exec_health_status(args: dict[str, Any]) -> dict[str, Any]:
     endpoints = []
 
     # Include presets that aren't explicitly registered
-    all_names = set(data["endpoints"].keys()) | set(_PRESET_ENDPOINTS.keys())
+    presets = _presets()
+    all_names = set(data["endpoints"].keys()) | set(presets.keys())
 
     for name in sorted(all_names):
         ep = data["endpoints"].get(name, {})
-        url = ep.get("url") or _PRESET_ENDPOINTS.get(name, "")
+        url = ep.get("url") or presets.get(name, "")
         endpoints.append({
             "name": name,
             "url": url,
@@ -194,13 +223,13 @@ HEALTH_MONITOR_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "name": "health_check",
             "description": (
                 "Ping a service endpoint and get its health status. "
-                "Supports named endpoints (jarvis-api, ollama, comfyui) and full URLs. "
+                "Supports named endpoints (jarvis-api, jarvis-runtime, ollama, comfyui) and full URLs. "
                 "Records result to history."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "name": {"type": "string", "description": "Registered endpoint name or built-in preset (jarvis-api, ollama, comfyui)."},
+                    "name": {"type": "string", "description": "Registered endpoint name or built-in preset (jarvis-api, jarvis-runtime, ollama, comfyui)."},
                     "url": {"type": "string", "description": "Direct URL to check (alternative to name)."},
                     "expected_status": {"type": "integer", "description": "Expected HTTP status code (default 200)."},
                     "timeout": {"type": "integer", "description": "Timeout in seconds (default 10, max 30)."},

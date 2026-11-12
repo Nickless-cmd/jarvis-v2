@@ -78,14 +78,16 @@ _API health monitor tools — Jarvis can watch services and be notified of outag
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/tools/health_monitor_tools.py#L21) |
-| function | `_save` | `(data)` | — | [src](../../../core/tools/health_monitor_tools.py#L28) |
-| function | `_ping` | `(url, expected_status=…, timeout=…)` | — | [src](../../../core/tools/health_monitor_tools.py#L33) |
-| function | `_record_check` | `(name, result)` | — | [src](../../../core/tools/health_monitor_tools.py#L62) |
-| function | `_exec_health_check` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L79) |
-| function | `_exec_health_register` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L115) |
-| function | `_exec_health_status` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L139) |
-| function | `_exec_health_history` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L169) |
+| function | `_port` | `(navn, standard)` | Processens port fra den etablerede resolver (`jarvisx_bridge`), ellers standarden. | [src](../../../core/tools/health_monitor_tools.py#L14) |
+| function | `_presets` | `()` | De navngivne endpoints, beregnet FRISKT så en ændret port-env slår igennem. | [src](../../../core/tools/health_monitor_tools.py#L30) |
+| function | `_load` | `()` | — | [src](../../../core/tools/health_monitor_tools.py#L49) |
+| function | `_save` | `(data)` | — | [src](../../../core/tools/health_monitor_tools.py#L56) |
+| function | `_ping` | `(url, expected_status=…, timeout=…)` | — | [src](../../../core/tools/health_monitor_tools.py#L61) |
+| function | `_record_check` | `(name, result)` | — | [src](../../../core/tools/health_monitor_tools.py#L90) |
+| function | `_exec_health_check` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L107) |
+| function | `_exec_health_register` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L143) |
+| function | `_exec_health_status` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L167) |
+| function | `_exec_health_history` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L198) |
 
 ## `core/tools/heartbeat_status_tool.py`
 _User-facing heartbeat status assembled from runtime state and liveness signals._

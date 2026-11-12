@@ -32,9 +32,19 @@ import argparse
 import hashlib
 import json
 import sqlite3
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+# Scriptet koeres som `python scripts/...`, hvor sys.path[0] er scripts/ — ikke
+# repo-roden. Uden dette fejler `from core...` med ImportError, som baade
+# arkiveringen og state-opslaget sluger, saa de svarer "ingen data" i drift mens
+# de virker i en test koert fra roden. Maalt 12/11-2026: arkiveringen skrev nul
+# raekker uden en fejlbesked.
+_ROD = Path(__file__).resolve().parents[1]
+if str(_ROD) not in sys.path:
+    sys.path.insert(0, str(_ROD))
 
 HASH_FELTER = ("id", "claim", "op", "threshold", "probability", "score_at")
 
@@ -92,6 +102,67 @@ def verificer_forsegling(
         if forventet and forventet != frozen_hash(p):
             aendret.append(pid)
     return aendret
+
+
+_ARKIV_AREA = "frozen_predictions"
+
+
+def _arkiv_aeldste() -> dict[str, str]:
+    """Foerste (aeldste) arkiverede hash pr. post-id fra governance_ledger.
+
+    Filen og dens forsegling kan aendres samlet af enhver med skriveadgang —
+    hashen beviser kun at de to dele stemmer overens. Ledgeren er det
+    uafhaengige spor: én raekke pr. post, skrevet ved forseglingen, aldrig
+    opdateret. Returnerer {} hvis ledgeren ikke kan laeses.
+    """
+    try:
+        from core.runtime.db_governance_ledger import read_ledger
+
+        raekker = read_ledger(area=_ARKIV_AREA, limit=500)
+    except Exception:  # ledgeren er et ekstra spor, ikke en forudsaetning for at score
+        return {}
+    aeldst: dict[str, tuple[str, str]] = {}
+    for r in raekker:
+        v = r.get("value") if isinstance(r.get("value"), dict) else None
+        if not v or not v.get("frozen_hash"):
+            continue
+        pid, ts = str(r.get("key") or ""), str(r.get("ts") or "")
+        if pid not in aeldst or ts < aeldst[pid][0]:
+            aeldst[pid] = (ts, str(v["frozen_hash"]))
+    return {pid: h for pid, (_ts, h) in aeldst.items()}
+
+
+def arkiver_forsegling(poster: list[dict[str, Any]]) -> int:
+    """Skriv hashes til governance_ledger for poster der ikke er arkiveret endnu.
+
+    Idempotent: en post arkiveres kun én gang, saa gentagne koersler ikke
+    fylder ledgeren. Returnerer antal nye raekker.
+    """
+    try:
+        from core.runtime.db_governance_ledger import record_mutation
+    except Exception:  # arkivering er valgfri — scoringen maa ikke afhaenge af den
+        return 0
+    allerede = _arkiv_aeldste()
+    nye = 0
+    for p in poster:
+        if not isinstance(p, dict) or not p.get("id"):
+            continue
+        pid = str(p["id"])
+        if pid in allerede:
+            continue
+        record_mutation(
+            _ARKIV_AREA,
+            pid,
+            {
+                "frozen_hash": frozen_hash(p),
+                "probability": p.get("probability"),
+                "claim": p.get("claim"),
+                "frozen_at": p.get("frozen_at"),
+                "event_group": p.get("event_group"),
+            },
+        )
+        nye += 1
+    return nye
 
 
 def _hent_tal(conn: sqlite3.Connection, sql: str) -> float | None:
@@ -169,9 +240,13 @@ def kalibrering(poster: list[dict[str, Any]]) -> dict[str, Any]:
     """Kalibrering paa HAENDELSE-niveau, ikke post-niveau.
 
     En gruppe med flere poster (fx F1/F6, der er modsatrettede om samme
-    haendelse) bidrager med ÉN sandsynlighed — gennemsnittet af gruppens
-    poster — og ÉT udfald, taget fra den foerst frosne post. Uenighed inden
-    for gruppen rapporteres som ``uenige`` i stedet for at blive skjult.
+    haendelse) bidrager med ÉN sandsynlighed: den FOERST frosne vurdering.
+    Senere poster i gruppen er revisioner — de er lavet efter at jeg havde
+    set data den foerste ikke havde, saa de kan ikke veje lige tungt.
+    Ellers kunne en daarlig P "repareres" ved at fryse en modsat post bagefter,
+    og saa var forseglingen vaerdiloes. Revisionerne rapporteres under
+    ``revisioner`` med deres egen sandsynlighed, saa uenigheden er synlig
+    uden at forurene Brier-scoren.
     """
     grupper: dict[str, list[dict[str, Any]]] = {}
     for p in poster:
@@ -184,15 +259,24 @@ def kalibrering(poster: list[dict[str, Any]]) -> dict[str, Any]:
     for gruppe, ps in grupper.items():
         ps.sort(key=lambda x: str(x.get("frozen_at") or ""))
         foerste = ps[0]
-        p_mid = sum(float(x.get("probability") or 0.0) for x in ps) / len(ps)
+        revisioner = [
+            {
+                "id": x.get("id"),
+                "probability": x.get("probability"),
+                "hit": x.get("hit"),
+                "frozen_at": x.get("frozen_at"),
+            }
+            for x in ps[1:]
+        ]
         haendelser.append(
             {
                 "event_group": gruppe,
                 "n_poster": len(ps),
                 "ids": [x.get("id") for x in ps],
-                "probability": round(p_mid, 4),
+                "probability": round(float(foerste.get("probability") or 0.0), 4),
                 "outcome": 1 if foerste.get("hit") else 0,
                 "uenige": len({bool(x.get("hit")) for x in ps}) > 1,
+                "revisioner": revisioner,
             }
         )
 
@@ -228,6 +312,7 @@ def score(
     *,
     dry_run: bool = False,
     nu: datetime | None = None,
+    arkiver: bool = True,
 ) -> dict[str, Any]:
     """Scor alle modne poster. Skriver kun til filen hvis noget faktisk blev scoret."""
     fil = fil or STANDARD_FIL
@@ -237,6 +322,15 @@ def score(
     data = json.loads(fil.read_text(encoding="utf-8"))
     poster = data.get("forudsigelser") or []
     aendret = verificer_forsegling(poster, data.get("forsegling"))
+
+    arkiv = _arkiv_aeldste()
+    arkiv_aendret = [
+        str(p.get("id"))
+        for p in poster
+        if isinstance(p, dict)
+        and str(p.get("id")) in arkiv
+        and arkiv[str(p.get("id"))] != frozen_hash(p)
+    ]
 
     conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     try:
@@ -260,9 +354,13 @@ def score(
         fil.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
         skrev = True
 
+    arkiveret = arkiver_forsegling(poster) if arkiver and not dry_run else 0
+
     return {
         "rapport": rapport,
         "tampered": aendret,
+        "arkiv_tampered": arkiv_aendret,
+        "arkiveret": arkiveret,
         "kalibrering": kalibrering(poster),
         "skrev": skrev,
         "dry_run": dry_run,
@@ -282,6 +380,13 @@ def _vis(resultat: dict[str, Any]) -> None:
 
     if resultat["tampered"]:
         print(f"\n  ADVARSEL: forseglingen er brudt for {resultat['tampered']}")
+    if resultat.get("arkiv_tampered"):
+        print(
+            f"\n  ADVARSEL: arkivet i governance_ledger stemmer ikke for "
+            f"{resultat['arkiv_tampered']} — filen er aendret uden om ledgeren"
+        )
+    if resultat.get("arkiveret"):
+        print(f"\n  nye forseglinger arkiveret i ledgeren: {resultat['arkiveret']}")
 
     k = resultat["kalibrering"]
     print(f"\n  haendelser={k['n_events']}  poster={k['n_poster']}  brier={k['brier']}")

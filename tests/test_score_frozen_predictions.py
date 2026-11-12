@@ -106,7 +106,23 @@ def test_event_group_taeller_som_en_haendelse(tmp_path: Path) -> None:
     assert k["haendelser"][0]["uenige"] is True
     # Udfaldet tages fra den først frosne post — ikke fra den der passer bedst.
     assert k["haendelser"][0]["outcome"] == 1
-    assert k["haendelser"][0]["probability"] == pytest.approx(0.70)
+    # Sandsynligheden er også den først frosne. Et gennemsnit ville give en
+    # vurdering lavet EFTER data 50 % vægt — så kunne en dårlig P repareres
+    # ved at fryse en modsat post bagefter.
+    assert k["haendelser"][0]["probability"] == pytest.approx(0.75)
+
+
+def test_senere_vurdering_er_revision_ikke_kalibrering() -> None:
+    """F6 er lavet efter F1 og må ikke trække den primære sandsynlighed."""
+    a = _post(id="F1", event_group="samme", probability=0.75, hit=True, frozen_at="2026-11-12T20:41:00+00:00")
+    b = _post(id="F6", event_group="samme", probability=0.30, hit=True, frozen_at="2026-11-12T20:44:00+00:00")
+
+    h = sfp.kalibrering([a, b])["haendelser"][0]
+
+    assert h["probability"] == pytest.approx(0.75)
+    assert len(h["revisioner"]) == 1
+    assert h["revisioner"][0]["id"] == "F6"
+    assert h["revisioner"][0]["probability"] == pytest.approx(0.30)
 
 
 def test_to_grupper_giver_to_haendelser() -> None:
@@ -280,3 +296,74 @@ def test_dry_run_skriver_ikke(rigtig_db: Path, tmp_path: Path) -> None:
 
     assert resultat["rapport"][0]["status"] == "scoret"
     assert fil.read_text(encoding="utf-8") == foer
+
+
+# ── Eksternt arkiv: forseglingen skal ikke kunne ændres ved at redigere filen ──
+
+
+def test_arkiv_skriver_kun_poster_der_ikke_er_arkiveret(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Idempotent: en post arkiveres én gang, ellers fylder gentagne kørsler ledgeren."""
+    skrevne: list[tuple[str, str]] = []
+
+    def _fake_read(area: str | None = None, limit: int = 50) -> list[dict]:
+        return [{"key": "F1", "ts": "2026-11-12T20:41:00+00:00", "value": {"frozen_hash": "gammel"}}]
+
+    def _fake_record(area: str, key: str, value: dict) -> None:
+        skrevne.append((area, key))
+
+    from core.runtime import db_governance_ledger
+
+    monkeypatch.setattr(db_governance_ledger, "read_ledger", _fake_read)
+    monkeypatch.setattr(db_governance_ledger, "record_mutation", _fake_record)
+
+    nye = sfp.arkiver_forsegling([_post(id="F1"), _post(id="F3")])
+
+    assert nye == 1
+    assert skrevne == [("frozen_predictions", "F3")]
+
+
+def test_arkiv_aeldste_tager_den_foerste_ikke_den_seneste(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ledgeren er append-only: nyeste række ligger øverst, men den ældste er sandheden."""
+    from core.runtime import db_governance_ledger
+
+    monkeypatch.setattr(
+        db_governance_ledger,
+        "read_ledger",
+        lambda area=None, limit=50: [
+            {"key": "F1", "ts": "2026-11-13T10:00:00+00:00", "value": {"frozen_hash": "ny"}},
+            {"key": "F1", "ts": "2026-11-12T20:41:00+00:00", "value": {"frozen_hash": "oprindelig"}},
+        ],
+    )
+
+    assert sfp._arkiv_aeldste() == {"F1": "oprindelig"}
+
+
+def test_aendring_af_fil_og_hash_opdages_mod_arkivet(
+    rigtig_db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Den gamle forsegling kunne omgås ved at rette både P og hash i samme fil.
+
+    Arkivet ligger uden for filen, så den ændring fanges nu.
+    """
+    post = _post(probability=0.9)
+    oprindelig_hash = sfp.frozen_hash(post)
+    post["probability"] = 0.3
+    post["frozen_hash"] = sfp.frozen_hash(post)  # angriberen retter også hashen
+    fil = _fil(tmp_path, [post], forsegling={"T1": sfp.frozen_hash(post)})
+
+    from core.runtime import db_governance_ledger
+
+    monkeypatch.setattr(
+        db_governance_ledger,
+        "read_ledger",
+        lambda area=None, limit=50: [
+            {"key": "T1", "ts": "2026-11-12T20:41:00+00:00", "value": {"frozen_hash": oprindelig_hash}}
+        ],
+    )
+
+    resultat = sfp.score(fil, rigtig_db, nu=NU, arkiver=False)
+
+    # Filens egen forsegling er konsistent — den kan ikke se noget.
+    assert resultat["tampered"] == []
+    # Men arkivet afslører at P er rørt.
+    assert resultat["arkiv_tampered"] == ["T1"]

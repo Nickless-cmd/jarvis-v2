@@ -13,26 +13,27 @@ _(no top-level classes or functions)_
 | class | `EventBus` | `` | Thread-safe event bus with async SQLite writes. | [src](../../../core/eventbus/bus.py#L43) |
 | method | `EventBus.__init__` | `(self)` | — | [src](../../../core/eventbus/bus.py#L61) |
 | method | `EventBus.publish` | `(self, kind, payload=…, *, caused_by=…, edge_kind=…)` | Publish an event.  Returns immediately — the actual write is async. | [src](../../../core/eventbus/bus.py#L98) |
-| method | `EventBus.flush` | `(self, timeout=…)` | Block until the writer has committed *all* events published so far. | [src](../../../core/eventbus/bus.py#L152) |
-| method | `EventBus.stop` | `(self)` | Graceful shutdown: drain the writer thread. | [src](../../../core/eventbus/bus.py#L172) |
-| method | `EventBus.recent` | `(self, limit=…)` | — | [src](../../../core/eventbus/bus.py#L180) |
-| method | `EventBus.recent_by_family` | `(self, family, *, limit=…)` | — | [src](../../../core/eventbus/bus.py#L201) |
-| method | `EventBus.recent_since_id` | `(self, after_id, *, limit=…)` | — | [src](../../../core/eventbus/bus.py#L226) |
-| method | `EventBus.subscribe` | `(self)` | — | [src](../../../core/eventbus/bus.py#L248) |
-| method | `EventBus.unsubscribe` | `(self, subscriber)` | — | [src](../../../core/eventbus/bus.py#L254) |
-| method | `EventBus._writer_loop` | `(self)` | Dedicated thread: pull items from queue, write to SQLite, notify. | [src](../../../core/eventbus/bus.py#L262) |
-| method | `EventBus._dead_letter_path` | `(self)` | Stien til spill-filen. Læses lazy, så DB_PATH kan omdirigeres i tests. | [src](../../../core/eventbus/bus.py#L312) |
-| method | `EventBus._spill_batch` | `(self, batch, exc)` | Skriv en batch der ikke kunne committes til dead-letter-filen. | [src](../../../core/eventbus/bus.py#L318) |
-| method | `EventBus._drain_dead_letter` | `(self)` | Genindlæs spillede events. Returnerer antal skrevet tilbage til DB'en. | [src](../../../core/eventbus/bus.py#L359) |
-| method | `EventBus._maaske_drain` | `(self)` | Forsøg genindlæsning — kun når køen er tom, og højst hvert minut. | [src](../../../core/eventbus/bus.py#L418) |
-| method | `EventBus.dead_letter_stats` | `(self)` | Tællere + filstørrelse — så «taber vi events?» er et tal, ikke en eftersøgning. | [src](../../../core/eventbus/bus.py#L438) |
-| method | `EventBus._write_event` | `(self, item)` | Backward-compat single-event wrapper (tests/callers). | [src](../../../core/eventbus/bus.py#L452) |
-| method | `EventBus._write_events_batch` | `(self, batch)` | Write a FIFO batch of events in ONE transaction (single commit), then | [src](../../../core/eventbus/bus.py#L456) |
-| method | `EventBus._noter_egen` | `(self, event_id)` | — | [src](../../../core/eventbus/bus.py#L510) |
-| method | `EventBus.er_egen` | `(self, event_id)` | Skrev denne proces eventet? (Så har lokale abonnenter allerede fået det.) | [src](../../../core/eventbus/bus.py#L517) |
-| method | `EventBus._notify_subscribers` | `(self, item)` | — | [src](../../../core/eventbus/bus.py#L524) |
-| method | `EventBus._serialize_event` | `(self, *, event_id, event_kind, event_payload, created_at)` | — | [src](../../../core/eventbus/bus.py#L533) |
-| method | `EventBus._deserialize_row` | `(self, *, event_id, kind, payload_json, created_at)` | — | [src](../../../core/eventbus/bus.py#L552) |
+| method | `EventBus.flush` | `(self, timeout=…)` | Block until the writer has committed *all* events published so far. | [src](../../../core/eventbus/bus.py#L167) |
+| method | `EventBus.stop` | `(self)` | Graceful shutdown: drain the writer thread. | [src](../../../core/eventbus/bus.py#L187) |
+| method | `EventBus.recent` | `(self, limit=…)` | — | [src](../../../core/eventbus/bus.py#L195) |
+| method | `EventBus.recent_by_family` | `(self, family, *, limit=…)` | — | [src](../../../core/eventbus/bus.py#L216) |
+| method | `EventBus.recent_since_id` | `(self, after_id, *, limit=…)` | — | [src](../../../core/eventbus/bus.py#L241) |
+| method | `EventBus.subscribe` | `(self)` | — | [src](../../../core/eventbus/bus.py#L263) |
+| method | `EventBus.unsubscribe` | `(self, subscriber)` | — | [src](../../../core/eventbus/bus.py#L269) |
+| method | `EventBus._writer_loop` | `(self)` | Dedicated thread: pull items from queue, write to SQLite, notify. | [src](../../../core/eventbus/bus.py#L277) |
+| method | `EventBus._dead_letter_path` | `(self)` | Stien til spill-filen. Læses lazy, så DB_PATH kan omdirigeres i tests. | [src](../../../core/eventbus/bus.py#L327) |
+| method | `EventBus.dead_letter_path` | `(self)` | Offentlig sti til dead-letter-filen. | [src](../../../core/eventbus/bus.py#L333) |
+| method | `EventBus._spill_batch` | `(self, batch, exc)` | Skriv en batch der ikke kunne committes til dead-letter-filen. | [src](../../../core/eventbus/bus.py#L343) |
+| method | `EventBus._drain_dead_letter` | `(self)` | Genindlæs spillede events. Returnerer antal skrevet tilbage til DB'en. | [src](../../../core/eventbus/bus.py#L384) |
+| method | `EventBus._maaske_drain` | `(self)` | Forsøg genindlæsning — kun når køen er tom, og højst hvert minut. | [src](../../../core/eventbus/bus.py#L443) |
+| method | `EventBus.dead_letter_stats` | `(self)` | Tællere + filstørrelse — så «taber vi events?» er et tal, ikke en eftersøgning. | [src](../../../core/eventbus/bus.py#L463) |
+| method | `EventBus._write_event` | `(self, item)` | Backward-compat single-event wrapper (tests/callers). | [src](../../../core/eventbus/bus.py#L477) |
+| method | `EventBus._write_events_batch` | `(self, batch)` | Write a FIFO batch of events in ONE transaction (single commit), then | [src](../../../core/eventbus/bus.py#L481) |
+| method | `EventBus._noter_egen` | `(self, event_id)` | — | [src](../../../core/eventbus/bus.py#L535) |
+| method | `EventBus.er_egen` | `(self, event_id)` | Skrev denne proces eventet? (Så har lokale abonnenter allerede fået det.) | [src](../../../core/eventbus/bus.py#L542) |
+| method | `EventBus._notify_subscribers` | `(self, item)` | — | [src](../../../core/eventbus/bus.py#L549) |
+| method | `EventBus._serialize_event` | `(self, *, event_id, event_kind, event_payload, created_at)` | — | [src](../../../core/eventbus/bus.py#L558) |
+| method | `EventBus._deserialize_row` | `(self, *, event_id, kind, payload_json, created_at)` | — | [src](../../../core/eventbus/bus.py#L577) |
 
 ## `core/eventbus/context.py`
 _EventContext — ContextVar holding the current parent event_id._

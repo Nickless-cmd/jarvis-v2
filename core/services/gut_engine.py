@@ -1030,39 +1030,68 @@ def _event_ledger_state() -> dict[str, object] | None:
         return None
 
 
-def _publish_outcome(payload: dict[str, object]) -> None:
-    """Udsend udfaldshændelsen og bekræft livstidstælleren bagefter. Kaster aldrig.
+def _dead_letter_gut_events() -> int | None:
+    """Antal udfalds-events der ligger i eventbussens dead-letter, ikke i DB'en.
 
-    `event_bus.publish` returnerer None og dropper TAVST når writer-køen er fuld
-    (`queue.Full` → `logger.error`). Tælleren blev før bumpet FØR publish, så et
-    droppet event stod som registreret — og så målte `ledger - event_rows` en
-    forskel mellem to mekanismer, ikke antal ryddede rækker (Bjørn, 12/11-2026).
+    Bussens `publish` kvitterer nu ACSEPT (12/11-2026), men writer-tråden
+    committer til SQLite senere. Fejler det, spilles batchen til
+    `eventbus_dead_letter.jsonl` i stedet for at blive kastet. Et accepteret
+    event kan altså mangle i `events` uden at være ryddet af retention — og så
+    ville `no_event_row` overdrive antallet af ryddede rækker.
 
-    Køen måles før og efter i stedet for at ændre bussens signatur: vokser den,
-    blev eventet afleveret. Står den stille, blev det droppet — og tælles i
-    `unconfirmed`, så fladen kan skelne tab fra retention.
+    `None` betyder «kan ikke afgøres»: så må fladen ikke udtale et tal, fordi
+    den ikke kan skelne retention fra en skrive-fejl den ikke kunne læse.
     """
-    koe_foer: int | None = None
     try:
-        koe_foer = event_bus._writer_queue.qsize()  # noqa: SLF001 — se docstring
+        from core.runtime.db_core import DB_PATH
+
+        path = event_bus.dead_letter_path()
+        if not path.exists():
+            return 0
+        antal = 0
+        with open(path, encoding="utf-8") as fh:
+            for linje in fh:
+                linje = linje.strip()
+                if not linje:
+                    continue
+                try:
+                    post = _json.loads(linje)
+                except (TypeError, ValueError):
+                    # een beskadiget linje maa ikke skjule de andre
+                    continue
+                if isinstance(post, dict) and (
+                    post.get("kind") == "cognitive_gut.outcome_recorded"
+                ):
+                    antal += 1
+        return antal
     except Exception:
-        koe_foer = None
+        logger.debug("gut: kunne ikke laese dead-letter", exc_info=True)
+        return None
+
+
+def _publish_outcome(payload: dict[str, object]) -> None:
+    """Udsend udfaldshændelsen og bekræft livstidstælleren på bussens KVITTERING.
+
+    `event_bus.publish` returnerer nu eventets `seq` når det blev accepteret i
+    writer-køen, og `None` når køen var fuld og eventet blev droppet
+    (12/11-2026). Før returnerede den altid `None`, og jeg målte køens størrelse
+    før og efter for at gætte skæbnen. Det holder ikke: writer-tråden dræner
+    køen samtidig, så et ACCEPTERET event kan se droppet ud (køen faldt igen) og
+    et DROPPET event kan se accepteret ud (en anden producent fyldte køen).
+    Kø-størrelse kan ikke identificere ÉT events skæbne (Bjørn, 12/11-2026).
+
+    Niveauet er ACSEPTERET, ikke PERSISTERET: writer-tråden committer til SQLite
+    senere, og fejler den, går batchen til dead-letter. Tælleren måler altså
+    «bussen tog imod», ikke «databasen har den». Fladen siger det højt, så et
+    tab i skrive-laget ikke kan læses som retention.
+    """
     try:
-        event_bus.publish("cognitive_gut.outcome_recorded", dict(payload))
+        seq = event_bus.publish("cognitive_gut.outcome_recorded", dict(payload))
     except Exception:
         logger.debug("gut: publish fejlede", exc_info=True)
         _bump_event_ledger(confirmed=False)
         return
-    if koe_foer is None:
-        # Kan køen ikke måles, antages aflevering: en tæller der ikke kan
-        # bekræftes må ikke gøre hver eneste hændelse til et formodet tab.
-        _bump_event_ledger()
-        return
-    try:
-        afleveret = event_bus._writer_queue.qsize() > koe_foer  # noqa: SLF001
-    except Exception:
-        afleveret = True
-    _bump_event_ledger(confirmed=afleveret)
+    _bump_event_ledger(confirmed=seq is not None)
 
 
 def record_gut_outcome(
@@ -1271,7 +1300,12 @@ def build_gut_surface() -> dict[str, object]:
     # grund, ikke et tal der ser målt ud.
     no_event_row: int | None = None
     no_event_row_grund: str | None = None
+    spillede: int | None = None
     ledger = _event_ledger_state()
+    # Dead-letter måles UAFHÆNGIGT af tællerens alder: den er en observation af
+    # skrive-laget, ikke af retentionen, og skal være synlig selv når tallet for
+    # ryddede rækker ikke kan udtales.
+    spillede = _dead_letter_gut_events()
     if ledger is None:
         no_event_row_grund = "ingen livstidstaeller for udfalds-events"
     else:
@@ -1294,16 +1328,34 @@ def build_gut_surface() -> dict[str, object]:
                 "ryddet foer den begyndte at tælle"
             )
         else:
-            # Et event der blev talt men ikke afleveret til eventbussen er ikke
-            # ryddet — det blev aldrig skrevet. Det trækkes fra, så differencen
-            # måler retention og ikke tab (Bjørn, 12/11-2026).
-            uafklarede = int(ledger.get("unconfirmed") or 0)
-            no_event_row = max(0, int(ledger["events"]) - uafklarede - event_rows)
-            if uafklarede:
+            if spillede is None:
                 no_event_row_grund = (
-                    f"{uafklarede} udfalds-events blev talt men aldrig afleveret til "
-                    "eventbussen (fuld koe) — de er ikke ryddet og indgaar ikke i tallet"
+                    "dead-letter-filen kunne ikke laeses — om et ACSEPTERET event "
+                    "blev persisteret kan ikke afgoeres, saa antal ryddede raekker "
+                    "kan ikke maales"
                 )
+            else:
+                # To slags tab der IKKE er retention og derfor skal trækkes fra:
+                # (1) eventet blev talt men afvist af en fuld kø, (2) eventet blev
+                # accepteret men spillet til dead-letter fordi SQLite-skrivningen
+                # fejlede. Kun det der hverken blev afvist eller spillet kan være
+                # ryddet af retentionen (Bjørn, 12/11-2026).
+                uafklarede = int(ledger.get("unconfirmed") or 0)
+                no_event_row = max(
+                    0, int(ledger["events"]) - uafklarede - spillede - event_rows
+                )
+                _tab: list[str] = []
+                if uafklarede:
+                    _tab.append(f"{uafklarede} blev talt men afvist af en fuld koe")
+                if spillede:
+                    _tab.append(
+                        f"{spillede} blev accepteret men spillet til dead-letter"
+                    )
+                if _tab:
+                    no_event_row_grund = (
+                        "; ".join(_tab)
+                        + " — de er ikke ryddet og indgaar ikke i tallet"
+                    )
     verified = decided_rows
     unverifiable = no_event_row
     # Skævheden er ikke kun ALDER (12/11-2026, Bjørns indvending). Før den fælles
@@ -1350,6 +1402,7 @@ def build_gut_surface() -> dict[str, object]:
         "no_event_row": no_event_row,
         "no_event_row_grund": no_event_row_grund,
         "event_ledger": ledger,
+        "dead_letter_rows": spillede,
         "historical_bias": historical_bias,
         "withheld": withheld,
         "backstop_overkoersler": overkoersler,

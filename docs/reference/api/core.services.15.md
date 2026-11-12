@@ -181,11 +181,12 @@ _Gut Engine — intuition and calibration tracking._
 | function | `preflight_allows` | `(message)` | Bekvemmeligheds-indpakning til run-start-stierne: True = start runnet. | [src](../../../core/services/gut_engine.py#L957) |
 | function | `_bump_event_ledger` | `(*, confirmed=…)` | Tæl én udfaldshændelse — samme definition som eventloggen. Kaster aldrig. | [src](../../../core/services/gut_engine.py#L986) |
 | function | `_event_ledger_state` | `()` | Livstidstælleren, eller None hvis den ikke findes. Kaster aldrig. | [src](../../../core/services/gut_engine.py#L1012) |
-| function | `_publish_outcome` | `(payload)` | Udsend udfaldshændelsen og bekræft livstidstælleren bagefter. Kaster aldrig. | [src](../../../core/services/gut_engine.py#L1033) |
-| function | `record_gut_outcome` | `(*, hunch, actual_outcome)` | Record whether the gut hunch was correct. | [src](../../../core/services/gut_engine.py#L1068) |
-| function | `_observed_baseline` | `()` | Mål maven mod en KONSTANT baseline (altid «proceed») på de events der findes. | [src](../../../core/services/gut_engine.py#L1123) |
-| function | `build_gut_surface` | `()` | Kalibrerings-fladen — viser de tre lag ADSKILT (A3, 3/11-2026). | [src](../../../core/services/gut_engine.py#L1203) |
-| function | `build_gut_counterfactual_surface` | `()` | Counterfactual decision delta: hvor ofte flyttede den lærte bias gatens afgørelse? | [src](../../../core/services/gut_engine.py#L1367) |
+| function | `_dead_letter_gut_events` | `()` | Antal udfalds-events der ligger i eventbussens dead-letter, ikke i DB'en. | [src](../../../core/services/gut_engine.py#L1033) |
+| function | `_publish_outcome` | `(payload)` | Udsend udfaldshændelsen og bekræft livstidstælleren på bussens KVITTERING. | [src](../../../core/services/gut_engine.py#L1072) |
+| function | `record_gut_outcome` | `(*, hunch, actual_outcome)` | Record whether the gut hunch was correct. | [src](../../../core/services/gut_engine.py#L1097) |
+| function | `_observed_baseline` | `()` | Mål maven mod en KONSTANT baseline (altid «proceed») på de events der findes. | [src](../../../core/services/gut_engine.py#L1152) |
+| function | `build_gut_surface` | `()` | Kalibrerings-fladen — viser de tre lag ADSKILT (A3, 3/11-2026). | [src](../../../core/services/gut_engine.py#L1232) |
+| function | `build_gut_counterfactual_surface` | `()` | Counterfactual decision delta: hvor ofte flyttede den lærte bias gatens afgørelse? | [src](../../../core/services/gut_engine.py#L1420) |
 
 ## `core/services/habit_tracker.py`
 _Habit Tracker — detects recurring patterns and friction points._

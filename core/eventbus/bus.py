@@ -102,8 +102,21 @@ class EventBus:
         *,
         caused_by: int | list[int] | None = None,
         edge_kind: str = "triggered",
-    ) -> None:
-        """Publish an event.  Returns immediately — the actual write is async."""
+    ) -> int | None:
+        """Publish an event.  Returns immediately — the actual write is async.
+
+        Returnerer eventets `seq` når det blev ACCEPTERET i writer-køen, og `None`
+        når køen var fuld og eventet blev droppet. Før returnerede den altid
+        `None`, så en kaldende part ikke kunne vide om netop dens event overlevede
+        — og en måling af køens størrelse før/efter kan ikke afgøre det, fordi
+        writer-tråden dræner køen samtidig (Bjørn, 12/11-2026).
+
+        Niveauet er ACSEPTERET, ikke PERSISTERET: writer-tråden committer senere
+        til SQLite, og fejler den, går batchen til dead-letter. En kaldende part
+        der har brug for persistens-garanti må læse dead-letter eller `flush()`,
+        ikke denne returværdi. Returværdien er bagudkompatibel: ingen af de
+        eksisterende kaldere læser den.
+        """
         # Resolve parent (EventContext if caller didn't provide explicit).
         if caused_by is None:
             try:
@@ -148,6 +161,8 @@ class EventBus:
             # an event we'll never process.
             with self._seq_lock:
                 self._write_seq = seq
+            return None
+        return seq
 
     def flush(self, timeout: float = 10.0) -> None:
         """Block until the writer has committed *all* events published so far.
@@ -314,6 +329,16 @@ class EventBus:
         from core.runtime.db_core import DB_PATH
 
         return Path(DB_PATH).parent / _DEAD_LETTER_FILENAME
+
+    def dead_letter_path(self) -> Path:
+        """Offentlig sti til dead-letter-filen.
+
+        Findes fordi en observatør skal kunne afgøre om et ACSEPTERET event
+        faktisk blev persisteret: `publish` kvitterer kun for køen, mens
+        writer-tråden committer senere og spiller fejlede batches hertil.
+        Uden denne vej ville en skrive-fejl se ud som om rækken var ryddet.
+        """
+        return self._dead_letter_path()
 
     def _spill_batch(
         self, batch: list[dict[str, Any]], exc: BaseException | None

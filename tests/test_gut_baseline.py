@@ -405,23 +405,13 @@ def test_taelleren_bekraeftes_efter_publish(monkeypatch):
     """
     kald: list[str] = []
 
-    class _Koe:
-        def __init__(self) -> None:
-            self.n = 0
+    def _fake_publish(kind, payload=None, **kw):
+        kald.append("publish")
+        return 4711  # accepteret i køen
 
-        def qsize(self) -> int:
-            return self.n
-
-    koe = _Koe()
-
-    class _Bus:
-        _writer_queue = koe
-
-        def publish(self, kind, payload=None, **kw):
-            kald.append("publish")
-            koe.n += 1  # afleveret
-
-    monkeypatch.setattr(ge, "event_bus", _Bus())
+    # Lap METODEN på det ægte objekt — ikke singletonen (se
+    # tests/test_event_bus_singleton_maa_ikke_udskiftes.py).
+    monkeypatch.setattr(ge.event_bus, "publish", _fake_publish, raising=False)
     monkeypatch.setattr(ge, "_bump_event_ledger", lambda **kw: kald.append(
         f"bump:{kw.get('confirmed', True)}"
     ))
@@ -434,20 +424,92 @@ def test_droppet_publish_giver_ubekraeftet_taelling(monkeypatch):
     """Fuld kø: publish gør intet, køen vokser ikke — så skal tælleren være uafklaret."""
     kald: list[bool] = []
 
-    class _Koe:
-        def qsize(self) -> int:
-            return 10_000  # loftet — står stille
+    def _fake_publish(kind, payload=None, **kw):
+        return None  # droppet, som bussen gør det
 
-    class _Bus:
-        _writer_queue = _Koe()
-
-        def publish(self, kind, payload=None, **kw):
-            return None  # droppet, som bussen gør det
-
-    monkeypatch.setattr(ge, "event_bus", _Bus())
+    monkeypatch.setattr(ge.event_bus, "publish", _fake_publish, raising=False)
     monkeypatch.setattr(ge, "_bump_event_ledger", lambda **kw: kald.append(
         kw.get("confirmed", True)
     ))
     monkeypatch.setattr(ge, "update_cognitive_gut_state", lambda **kw: {"ok": True})
     ge.record_gut_outcome(hunch="proceed", actual_outcome="completed")
     assert kald == [False], "et droppet event maa ikke taelles som bekræftet"
+
+
+def test_koe_stoerrelse_kan_ikke_afgoere_et_events_skæbne(monkeypatch):
+    """Bjørns race (12/11-2026): writer-tråden dræner køen SAMTIDIG.
+
+    Kø-størrelse kan derfor svare forkert i begge retninger. Testen fastlåser at
+    svaret kommer fra bussens kvittering — ikke fra køen:
+
+    A: eventet blev ACCEPTERET, men køen faldt igen (writer hentede det)
+       → skal være bekræftet. En kø-måling ville have sagt «droppet».
+    B: eventet blev DROPPET, men en anden producent fyldte køen
+       → skal være ubekræftet. En kø-måling ville have sagt «afleveret».
+    """
+    svar: list[bool] = []
+
+    class _Koe:
+        def __init__(self, n: int) -> None:
+            self.n = n
+
+        def qsize(self) -> int:
+            return self.n
+
+    # A: accepteret, men køen skrumpede fordi writer-tråden hentede eventet.
+    koe_a = _Koe(5)
+
+    def _fake_a(kind, payload=None, **kw):
+        koe_a.n = 0  # writer draenede koeen
+        return 99
+
+    monkeypatch.setattr(ge.event_bus, "publish", _fake_a, raising=False)
+    monkeypatch.setattr(ge.event_bus, "_writer_queue", koe_a, raising=False)
+    monkeypatch.setattr(ge, "_bump_event_ledger", lambda **kw: svar.append(
+        kw.get("confirmed", True)
+    ))
+    monkeypatch.setattr(ge, "update_cognitive_gut_state", lambda **kw: {"ok": True})
+    ge.record_gut_outcome(hunch="proceed", actual_outcome="completed")
+    assert svar == [True], (
+        "et accepteret event maa ikke se droppet ud fordi writer-traaden toemte koeen"
+    )
+
+    # B: droppet, men køen voksede fordi en ANDEN producent skrev i den.
+    svar.clear()
+    koe_b = _Koe(5)
+
+    def _fake_b(kind, payload=None, **kw):
+        koe_b.n = 9  # en anden producents event
+        return None  # mit eget blev droppet
+
+    monkeypatch.setattr(ge.event_bus, "publish", _fake_b, raising=False)
+    monkeypatch.setattr(ge.event_bus, "_writer_queue", koe_b, raising=False)
+    ge.record_gut_outcome(hunch="proceed", actual_outcome="completed")
+    assert svar == [False], (
+        "et droppet event maa ikke se afleveret ud fordi en anden fyldte koeen"
+    )
+
+
+def test_aegte_bus_kvitterer_accept_og_drop():
+    """Mod den ÆGTE bus, ikke en stub: accept giver eventets seq, fuld kø giver None.
+
+    Uden denne test ville kontrakten kun være bevist mod stubbe, og en fremtidig
+    ændring i bussen kunne fjerne returværdien uden at nogen test faldt — samme
+    fælde som da testene stubbede den regel de skulle teste.
+    """
+    import queue as _q
+    import threading
+
+    from core.eventbus.bus import EventBus
+
+    b = EventBus.__new__(EventBus)  # uden __init__: ingen writer-traad, ingen DB
+    b._seq_lock = threading.Lock()
+    b._publish_seq = 0
+    b._write_seq = 0
+    b._writer_queue = _q.Queue(maxsize=1)
+
+    seq = b.publish("cognitive_gut.accepted")
+    assert seq == 1, f"accept skal give eventets seq, fik {seq!r}"
+
+    # Det første event fyldte køen (maxsize=1) — næste publish må derfor droppes.
+    assert b.publish("cognitive_gut.dropped") is None, "fuld koe skal give None"

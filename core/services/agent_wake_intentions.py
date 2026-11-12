@@ -54,7 +54,10 @@ def stage_wake(*, task_id: str, session_id: str, owner_user_id: str, message: st
         records[task_id] = {
             "task_id": task_id, "run_id": task_id, "session_id": session_id,
             "status": "recovering", "kind": "visible", "wake_kind": wake_kind,
-            "approval_mode": "ask", "thinking_mode": "think", "tool_scope": "",
+            # Tom = «samtalen afgør». Dispatcheren læser opgavens værdi FØR
+            # samtalens, så et hårdkodet `ask` her overstyrede en `trust`-
+            # samtale (20 kort i ét run, målt 12/11-2026).
+            "approval_mode": "", "thinking_mode": "think", "tool_scope": "",
             "surface": "", "force_user_id": owner_user_id, "local_tool_exec": False,
             "excerpt": message[:240], "original_request": message,
             "parent_run_id": parent_run_id,

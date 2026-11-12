@@ -347,7 +347,7 @@ _Varig fortsaettelsesintention for en parent der venter paa agenter (B2, §6)._
 |---|---|---|---|---|
 | function | `wake_message` | `(*, condition, assignment_ids)` | Teksten der starter det vaagnede run. Maerket som fra systemet (staaende | [src](../../../core/services/agent_wake_intentions.py#L26) |
 | function | `stage_wake` | `(*, task_id, session_id, owner_user_id, message, parent_run_id=…, wake_kind=…)` | Skriv intentionen. Idempotent paa `task_id`. Findes der allerede en anden | [src](../../../core/services/agent_wake_intentions.py#L39) |
-| function | `cancel_pending_wake` | `(task_id, *, reason)` | Aflys en vaekning der endnu IKKE er startet. En allerede claimet (`running`) | [src](../../../core/services/agent_wake_intentions.py#L79) |
+| function | `cancel_pending_wake` | `(task_id, *, reason)` | Aflys en vaekning der endnu IKKE er startet. En allerede claimet (`running`) | [src](../../../core/services/agent_wake_intentions.py#L82) |
 
 ## `core/services/agent_worker_main.py`
 _Entry for en sandboxet agent-worker (agent-contract-v1 C6b)._

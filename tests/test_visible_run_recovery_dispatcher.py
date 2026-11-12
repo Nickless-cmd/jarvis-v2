@@ -822,3 +822,21 @@ def test_fornyelsen_fejler_naar_originalens_status_er_skiftet(monkeypatch):
         )
     finally:
         _stop_lease_traaden(frigiv)
+
+
+@pytest.mark.parametrize("samtalens_niveau", ["trust", "ask"])
+def test_en_agent_vaekning_arver_samtalens_niveau_ikke_et_haardkodet_ask(
+        spawn, monkeypatch, samtalens_niveau):
+    """Målt 12/11-2026 på CT105: 20 godkendelses-kort i ÉN genoptagelse
+    (`agentwake-wait-…`) i en samtale der stod på `trust`. `stage_wake` skrev
+    `approval_mode="ask"` på opgaven, og dispatcheren læser opgavens værdi FØR
+    samtalens — så fallbacken til samtalen blev aldrig nået."""
+    from core.services import agent_wake_intentions as aw
+
+    monkeypatch.setattr("core.services.session_permission.hent_permission",
+                        lambda sid: samtalens_niveau)
+    aw.stage_wake(task_id="agentwake-wait-1", session_id="chat-1",
+                  owner_user_id="owner-1", message="[SYSTEM — agentvækning]")
+
+    assert D.recover_due_once()["started"] == 1
+    assert spawn[0]["approval_mode"] == samtalens_niveau

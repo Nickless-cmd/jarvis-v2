@@ -320,12 +320,13 @@ _Lageret bag indbakken: `inbox_items`._
 | function | `nulstil_vaekning` | `(*, bruger_id, kilde_id)` | Ryd vækningens spor, så posten kan vækkes igen. | [src](../../../core/runtime/db_inbox.py#L823) |
 | function | `er_udloebet` | `(post, nu=…)` | Er posten udløbet? Beregnet, så den dør uden at et job skal køre. | [src](../../../core/runtime/db_inbox.py#L878) |
 | function | `saet_udloeb` | `(*, bruger_id, kilde_id, expires_at)` | Sæt (eller fjern, med tom streng) en posts frist. | [src](../../../core/runtime/db_inbox.py#L907) |
-| function | `fej_udloebne` | `(*, maks=…)` | Skriv den terminale tilstand for åbne poster hvis frist er passeret. | [src](../../../core/runtime/db_inbox.py#L923) |
-| function | `marker_vist` | `(poster, *, bruger_id=…)` | Stempl «denne post er nu vist til Jarvis». Idempotent. | [src](../../../core/runtime/db_inbox.py#L1009) |
-| function | `claim_high_for_run` | `(*, bruger_id, session_id, run_id, maks=…)` | Atomically claim unseen high/critical items for one visible run. | [src](../../../core/runtime/db_inbox.py#L1043) |
-| function | `luk_forældede_informerende` | `(*, timer=…, dage=…, maks=…)` | Udsæt informerende poster der har været VIST og er blevet forældede. | [src](../../../core/runtime/db_inbox.py#L1084) |
-| function | `meld_kilde_faerdig` | `(*, bruger_id, kilde_id, exit_kode)` | Kilden melder sig færdig. Nedgradér posten — hvis den gik GODT. | [src](../../../core/runtime/db_inbox.py#L1140) |
-| function | `liste_aktiv` | `(*, bruger_id, maks=…)` | Den AKTIVE visning: åbne poster plus nyligt lukkede. | [src](../../../core/runtime/db_inbox.py#L1201) |
+| function | `kraev_laesning` | `(*, bruger_id, kilde_id, importance=…)` | Gør en ÅBEN post gatende: «den skal LÆSES, ikke bare ligge». | [src](../../../core/runtime/db_inbox.py#L923) |
+| function | `fej_udloebne` | `(*, maks=…)` | Skriv den terminale tilstand for åbne poster hvis frist er passeret. | [src](../../../core/runtime/db_inbox.py#L971) |
+| function | `marker_vist` | `(poster, *, bruger_id=…)` | Stempl «denne post er nu vist til Jarvis». Idempotent. | [src](../../../core/runtime/db_inbox.py#L1057) |
+| function | `claim_high_for_run` | `(*, bruger_id, session_id, run_id, maks=…)` | Atomically claim unseen high/critical items for one visible run. | [src](../../../core/runtime/db_inbox.py#L1091) |
+| function | `luk_forældede_informerende` | `(*, timer=…, dage=…, maks=…)` | Udsæt informerende poster der har været VIST og er blevet forældede. | [src](../../../core/runtime/db_inbox.py#L1132) |
+| function | `meld_kilde_faerdig` | `(*, bruger_id, kilde_id, exit_kode)` | Kilden melder sig færdig. Nedgradér posten — hvis den gik GODT. | [src](../../../core/runtime/db_inbox.py#L1188) |
+| function | `liste_aktiv` | `(*, bruger_id, maks=…)` | Den AKTIVE visning: åbne poster plus nyligt lukkede. | [src](../../../core/runtime/db_inbox.py#L1249) |
 
 ## `core/runtime/db_instrument.py`
 _Persistens for central_instrument — selv-instrumenterings-motorens fund + scan-cache._

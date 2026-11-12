@@ -920,6 +920,54 @@ def saet_udloeb(*, bruger_id: str, kilde_id: str, expires_at: str) -> dict[str, 
     return {"status": "ok", "id": kilde_id, "expires_at": str(expires_at or "")}
 
 
+def kraev_laesning(
+    *, bruger_id: str, kilde_id: str, importance: str = "high",
+) -> dict[str, Any]:
+    """Gør en ÅBEN post gatende: «den skal LÆSES, ikke bare ligge».
+
+    Bjørn 12/11-2026: «hvis du er aktiv lægge den markeret i inbox og forlange
+    du læser den». Indtil nu fandtes kun to tilstande — start et run, eller
+    vent. En post hvis run ikke KUNNE startes (samtalen var aktiv) stod derfor
+    som `kraever_handling=0` og var hverken kørt eller krævet: usynligt
+    arbejde der ventede for evigt.
+
+    Virkningen er gatens egen, ikke en ny mekanisme: `kraever_handling` +
+    `verificeret_ejer='jarvis'` er præcis den kandidat-regel
+    `inbox_gate._gatende_poster` bruger. En FYRET vækning er ikke i
+    `planlagte_vaekning_ids` (den læser kun `pending`), så den undtagelse
+    rammer hende ikke.
+
+    Kun ÅBNE poster opgraderes. En afgjort post er historie, og en fejlet
+    hændelse må ikke genoplive den — derfor `status = 'aaben'` i WHERE.
+    Fristen sættes hvis den mangler: samme regel som produsenten i
+    `opret_eller_hent`, så en krævet post ikke kan låse i det uendelige.
+    """
+    bruger_id = str(bruger_id or "").strip()
+    kilde_id = str(kilde_id or "").strip()
+    if not bruger_id or not kilde_id:
+        return {"status": "fejl", "error": "bruger_id og kilde_id kraeves"}
+    from core.services.inbox_importance import normalize_importance
+
+    importance_n = normalize_importance(importance)
+    frist = (datetime.now(UTC) + timedelta(days=_FRIST_DAGE)).isoformat()
+    with connect() as conn:
+        _ensure_skema(conn)
+        cur = conn.execute(
+            "UPDATE inbox_items SET kraever_handling = 1, "
+            "importance = CASE WHEN CASE importance "
+            "  WHEN 'critical' THEN 3 WHEN 'high' THEN 2 "
+            "  WHEN 'normal' THEN 1 ELSE 0 END < ? "
+            "THEN ? ELSE importance END, "
+            "expires_at = CASE WHEN expires_at = '' THEN ? ELSE expires_at END "
+            "WHERE bruger_id = ? AND kilde_id = ? AND status = ?",
+            ({"low": 0, "normal": 1, "high": 2, "critical": 3}[importance_n],
+             importance_n, frist, bruger_id, kilde_id, STATUS_AABEN),
+        )
+    if cur.rowcount == 0:
+        return {"status": "ukendt", "id": kilde_id}
+    return {"status": "ok", "id": kilde_id, "kraever_handling": True}
+
+
 def fej_udloebne(*, maks: int = 500) -> dict[str, Any]:
     """Skriv den terminale tilstand for åbne poster hvis frist er passeret.
 

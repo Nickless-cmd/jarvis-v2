@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -222,6 +223,45 @@ def _session_er_aktiv(session_id: str) -> bool:
             exc,
         )
         return True
+
+
+#: Hvor længe en post må vente på en ledig samtale, før den KRÆVES læst.
+#: Bjørn 12/11-2026: «hvis du er aktiv lægge den markeret i inbox og forlange
+#: du læser den». Uden denne grænse stod en fyrede vækning hvis run ikke kunne
+#: startes som `kraever_handling=0` — hverken kørt eller krævet.
+KRAEV_ALDER_MIN = 5
+
+
+def _alder_minutter(
+    post: dict[str, Any], *, nu: "datetime | None" = None,
+) -> float | None:
+    """Hvor længe posten har været AKTUEL — ikke hvor længe rækken har eksisteret.
+
+    En vækning får sin indbakke-række ved BOOKINGEN, så `created_at` kan være
+    timer ældre end det øjeblik hun fyrer. Måler vi på den, ville hver planlagt
+    vækning være «gammel» i samme sekund hun fyrer og blive krævet med det
+    samme — også når samtalen blev fri igen om ti sekunder. For en vækning
+    tælles derfor fra `fire_at`; for alle andre kilder fra `created_at`.
+
+    `None` = alderen kan ikke bestemmes (manglende eller ulaesbar tidsstempel).
+    Kalderen behandler det som «for ung»: et gæt må ikke gøre en post gatende.
+    """
+    raa = ""
+    if str(post.get("kildetype") or "") == "wakeup":
+        rec = _wakeup_records().get(str(post.get("kilde_id") or ""))
+        if rec:
+            raa = str(rec.get("fire_at") or "")
+    if not raa:
+        raa = str(post.get("created_at") or "")
+    if not raa:
+        return None
+    try:
+        sat = datetime.fromisoformat(raa)
+    except (TypeError, ValueError):  # noqa: BLE001 — ukendt alder er et svar, ikke en fejl: et gæt maa ikke goere posten gatende
+        return None
+    if sat.tzinfo is None:
+        sat = sat.replace(tzinfo=UTC)
+    return ((nu or datetime.now(UTC)) - sat).total_seconds() / 60.0
 
 
 def _maal_session(post: dict[str, Any]) -> str:
@@ -524,10 +564,47 @@ def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
         # før vækkesporet skrives; en aktiv samtale må hverken afbrydes eller
         # få posten brændt af som allerede vækket.
         if _session_er_aktiv(session_id):
-            logger.info(
-                "inbox_idle_waker: maal-session %s er aktiv — posten venter",
-                session_id[:28],
-            )
+            # ── TRE GRENE, IKKE ÉN (Bjørn 12/11-2026) ──────────────────────
+            #
+            # «inbox skal vurdere om der gået X min uden du eller jeg ikk har
+            # skrevet hvis det er et ældre wakeup, men hvis det er et wakeup du
+            # mangler sår bør inbox starte den med det samme eller hvis du er
+            # aktiv lægge den markeret i inbox og forlange du læserne.»
+            #
+            # FØR: en aktiv samtale betød `continue` — og en fyrede vækning
+            # hvis run ikke kunne startes stod tilbage som `kraever_handling=0`,
+            # hverken kørt eller krævet. Målt 12/11-2026: wake-b1f4f73cf9
+            # fyrede 17:55:43 og var stadig ubesvaret fordi samtalen var aktiv
+            # 61 sekunder senere. Guarden havde ret i at vente; fejlen var at
+            # der ikke fandtes en anden udgang.
+            #
+            # NU: en post der har ventet længere end KRAEV_ALDER_MIN gøres
+            # gatende. Så tvinger den eksisterende inbox-gate mig til at læse
+            # hende i næste tur — uden en ny mekanisme, med samme regel som
+            # enhver anden forpligtelse jeg selv har oprettet.
+            alder = _alder_minutter(post)
+            if alder is not None and alder >= KRAEV_ALDER_MIN:
+                try:
+                    r = db_inbox.kraev_laesning(
+                        bruger_id=bruger_id, kilde_id=kilde_id)
+                    logger.info(
+                        "inbox_idle_waker: %s/%s har ventet %.0f min paa en "
+                        "aktiv samtale — kraever laesning (%s)",
+                        post.get("kildetype"), kilde_id, alder,
+                        r.get("status"),
+                    )
+                except Exception as exc:  # noqa: BLE001 — maa ikke vaelte polleren
+                    logger.warning(
+                        "inbox_idle_waker: kunne ikke kraeve %s laest: %s",
+                        kilde_id, exc,
+                    )
+            else:
+                logger.info(
+                    "inbox_idle_waker: maal-session %s er aktiv — posten venter "
+                    "(alder %s min)",
+                    session_id[:28],
+                    "?" if alder is None else f"{alder:.0f}",
+                )
             continue
         # Sporet skrives FØR run'et startes: kaster starten, må posten ikke stå
         # som vækket — så prøves den igen i næste runde.

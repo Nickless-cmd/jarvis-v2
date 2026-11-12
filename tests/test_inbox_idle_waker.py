@@ -616,3 +616,116 @@ def test_et_FEJLET_run_lukker_posten_som_fejlet(inbox_db, monkeypatch):
     assert w.vaek_paa_aabne_poster(bruger_id="bjorn")["vaekket"] == 1
     post = db_inbox.hent(bruger_id="bjorn", kilde_id="job-fejl")
     assert post["status"] == db_inbox.STATUS_FEJLET, post["status"]
+
+
+# ── Tre grene ved en AKTIV samtale (Bjørn 12/11-2026) ──────────────────────
+#
+# «inbox skal vurdere om der gået X min uden du eller jeg ikk har skrevet hvis
+# det er et ældre wakeup, men hvis det er et wakeup du mangler sår bør inbox
+# starte den med det samme eller hvis du er aktiv lægge den markeret i inbox og
+# forlange du læserne.»
+#
+# Målt i drift før fixet: wake-b1f4f73cf9 fyrede 17:55:43 og var stadig
+# ubesvaret, fordi samtalen var aktiv 61 sekunder senere. Guarden havde ret i
+# at vente — fejlen var at der ikke fandtes en anden udgang.
+
+
+def _vaekning(id="vaek-wakeup:wake-1", **kw):
+    """En post af typen `vaekning`: må starte et run, men gater ikke af sig selv.
+
+    Netop derfor var hun usynlig: hun var hverken kørt (samtalen var aktiv)
+    eller krævet (kraever_handling=0).
+    """
+    return _post(id=id, kildetype="vaekning", kraever_handling=False, **kw)
+
+
+def test_en_GAMMEL_post_paa_en_aktiv_samtale_bliver_KRAEVET_laest(
+        inbox_db, monkeypatch):
+    """Den ældre vækning må ikke forsvinde — hun skal KRÆVES, ikke bare vente."""
+    from core.services import inbox_idle_waker as w
+
+    _vaekning()
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    monkeypatch.setattr(w, "_session_er_aktiv", lambda sid: True)
+    monkeypatch.setattr(w, "_alder_minutter", lambda p, **kw: 30.0)
+    startet: list[str] = []
+    monkeypatch.setattr(w, "_start_run", lambda t, **kw: startet.append(t) or True)
+
+    r = w.vaek_paa_aabne_poster(bruger_id="bjorn")
+
+    assert r["vaekket"] == 0, "en aktiv samtale maa ikke afbrydes"
+    assert startet == []
+    post = db_inbox.hent(bruger_id="bjorn", kilde_id="vaek-wakeup:wake-1")
+    assert post["kraever_handling"] is True, (
+        "posten ventede 30 min paa en aktiv samtale og blev hverken koert "
+        "eller kraevet — praecis den tilstand der gjorde hende usynlig")
+    assert post["status"] == "aaben", "hun skal stadig kunne afgoeres"
+
+
+def test_en_FRISK_post_paa_en_aktiv_samtale_bliver_IKKE_kraevet(
+        inbox_db, monkeypatch):
+    """En samtale der er aktiv NU bliver ofte fri om faa minutter — vent."""
+    from core.services import inbox_idle_waker as w
+
+    _vaekning()
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    monkeypatch.setattr(w, "_session_er_aktiv", lambda sid: True)
+    monkeypatch.setattr(w, "_alder_minutter", lambda p, **kw: 1.0)
+
+    r = w.vaek_paa_aabne_poster(bruger_id="bjorn")
+
+    assert r["vaekket"] == 0
+    post = db_inbox.hent(bruger_id="bjorn", kilde_id="vaek-wakeup:wake-1")
+    assert post["kraever_handling"] is False, (
+        "en post paa eet minut skal have sin chance, ikke kraeves med det samme")
+
+
+def test_en_kraevet_post_GATER_en_mutation(inbox_db, monkeypatch):
+    """Beviset der betyder noget: kraevet betyder KRÆVET, ikke blot markeret.
+
+    Uden denne er `kraev_laesning` en label der ser rigtig ud og gør ingenting.
+    """
+    from core.services import inbox_gate
+
+    _vaekning()
+    foer = inbox_gate.evaluer_inbox_mutation(
+        "bjorn", "write_file", {"path": "/tmp/x"}, tur="run-1")
+    assert foer["blokeret"] is False, "en ikke-gatende post maa ikke blokere"
+
+    db_inbox.kraev_laesning(bruger_id="bjorn", kilde_id="vaek-wakeup:wake-1")
+
+    # Gaten blokerer foerst naar paamindelses-taersklen er naaet; dens foerste
+    # svar er en advarsel. Vi koerer den til taersklen og kraever blokaden.
+    svar = {}
+    for i in range(5):
+        svar = inbox_gate.evaluer_inbox_mutation(
+            "bjorn", "write_file", {"path": "/tmp/x"}, tur=f"run-{i}")
+        if svar["blokeret"]:
+            break
+    assert svar["blokeret"] is True, (
+        "posten blev kraevet, men gaten naegtede stadig ikke — saa er kravet "
+        "et teater-flag")
+    assert "vaek-wakeup:wake-1" in svar["poster"]
+
+
+def test_alderen_taelles_fra_fire_at_for_en_vaekning(monkeypatch):
+    """En vækning faar sin raekke ved BOOKINGEN — `created_at` kan vaere timer
+    ældre end det øjeblik hun fyrer. Maalte vi paa den, ville hver planlagt
+    vækning være «gammel» i samme sekund hun fyrer."""
+    from datetime import UTC, datetime, timedelta
+
+    from core.services import inbox_idle_waker as w
+
+    nu = datetime(2026, 11, 12, 18, 0, tzinfo=UTC)
+    monkeypatch.setattr(w, "_wakeup_records", lambda: {
+        "wake-1": {"fire_at": (nu - timedelta(minutes=2)).isoformat()},
+    })
+    post = {
+        "kildetype": "wakeup", "kilde_id": "wake-1",
+        "created_at": (nu - timedelta(hours=3)).isoformat(),
+    }
+    assert w._alder_minutter(post, nu=nu) == pytest.approx(2.0, abs=0.01)
+
+    # En post UDEN en laesbar tid er ikke gatende paa et gæt.
+    assert w._alder_minutter({"created_at": ""}, nu=nu) is None
+    assert w._alder_minutter({"created_at": "i går"}, nu=nu) is None

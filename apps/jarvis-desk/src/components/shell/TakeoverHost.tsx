@@ -1,30 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
-import { useRammeReducer } from '../../lib/useRammeReducer'
-import { getActiveRuns, followRun, getSession } from '../../lib/api'
-import { streamReducer, initialStreamState } from '../../lib/streamReducer'
-import { MessageRow } from '../rich/MessageRow'
-import { LivenessIndicator } from '../feedback/LivenessIndicator'
+import { useEffect } from 'react'
 import { useSessions } from '../../hooks/useSessions'
 import { bestilStemme } from '../../lib/figurBud'
-import { useSettings } from '../../hooks/useSettings'
-import type { ChatMessage } from '../../lib/api'
 
 /**
- * App-niveau live takeover-panel: kører på tværs af ALLE faner — i modsætning til
- * ChatView's poll der kun lever i Chat-fanen. Når en chat-session får et aktivt run
- * (fx man tager over fra mobilen) MENS man er i Code/Cowork, popper et flydende
- * chat-vindue med PRÆCIS samme liveness som Chat mode: live transcript, spinner og
- * token-tæller.
+ * App-niveau bro til Jarvis-figuren på skrivebordet (electron/figur.ts).
  *
- * Mekanikken er kopieret 1:1 fra ChatView (den fungerende reference):
- * - bgUntil-LATCH (≥6s): et kort mobil-svar-run kan starte+slutte mellem to polls.
- *   Uden latchen rydder vi activeSid med det samme runnet forlader active-runs →
- *   panelet popper op og forsvinder igen INDEN follow/transcript når at vise noget
- *   (det var fejlen: "en notits der forsvinder når svaret er færdigt").
- * - followRun(/live) → followState: live token-stream (transcript + workingStep +
- *   output-token-estimat), samme kilde som ChatView's overlay.
- * - getSession-EFTERSLÆB: polles videre under latchen → fanger den persisterede,
- *   rensede besked når runnet slutter, så svaret bliver stående.
+ * Komponenten tegner INTET. Den tegnede før et flydende «live takeover»-kort med «Åbn chat» på
+ * de øvrige flader (cowork, indstillinger …) når en samtale fik et aktivt run — og det kort
+ * hentede `/chat/active-runs`, altså ALLE sessioner brugeren må se, også andres (12/11-2026:
+ * Bjørn så en andens session pop op i arbejdsfladen). Chat og Code har deres egen liveness,
+ * og kortet var kun for de andre flader. Det er fjernet, og med det de to polls (active-runs
+ * hvert 1,5 s og transcript hvert 1,2 s), som også åd af rate-limit-kvoten.
+ *
+ * Det der bliver: figurens taleboble. Et klik på den viser hovedvinduet, og her åbnes
+ * samtalen den talte om — samme handling som at tage en samtale over fra telefonen.
  */
 export function TakeoverHost({
   surface,
@@ -33,16 +22,7 @@ export function TakeoverHost({
   surface: string
   setSurface: (s: 'chat') => void
 }) {
-  const { sessions, select } = useSessions()
-  const { settings } = useSettings()
-  const [activeSid, setActiveSid] = useState<string | null>(null)
-  const dismissed = useRef<Set<string>>(new Set())
-  const [followState, followDispatch] = useRammeReducer(streamReducer, initialStreamState)
-  const followCtl = useRef<{ abort: () => void } | null>(null)
-  const [msgs, setMsgs] = useState<ChatMessage[]>([])
-  const [elapsedMs, setElapsedMs] = useState(0)
-  const [tabtKontakt, setTabtKontakt] = useState(0)
-  const startedAt = useRef(0)
+  const { select } = useSessions()
 
   // Jarvis-figuren på skrivebordet (electron/figur.ts): et klik på dens
   // taleboble viser hovedvinduet — og her åbnes samtalen den talte om. Samme
@@ -58,118 +38,5 @@ export function TakeoverHost({
     return () => { af1?.(); af2?.() }
   }, [select, setSurface, surface])
 
-  // 1) Find en cross-device-aktiv session — med 6s-latch (som ChatView) så korte
-  //    runs ikke forsvinder mellem to polls.
-  useEffect(() => {
-    // Panelet kan ikke vises på chat- og code-fladerne — `tick` returnerer
-    // tidligt for dem. Uden denne retur FØR kaldet hentede vi alligevel
-    // /chat/active-runs hvert 1,5 sekund og kastede svaret væk. Målt 9/11-2026:
-    // 337 kald på 15 min fra én klient, på den flade man er på næsten hele tiden.
-    if (!settings || surface === 'chat' || surface === 'code') { setActiveSid(null); return }
-    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
-    let cancelled = false
-    let bgUntil = 0
-    let held: string | null = null
-    const tick = async () => {
-      try {
-        const ids = await getActiveRuns(cfg)
-        if (cancelled) return
-        for (const d of [...dismissed.current]) if (!ids.includes(d)) dismissed.current.delete(d)
-        // Chat OG code har nu native cross-device-liveness i selve viewet → ingen
-        // popup der (Bjørn 2026-06-20). Popup'en er kun for øvrige flader.
-        if (surface === 'chat' || surface === 'code') { held = null; setActiveSid(null); return }
-        const cand = ids.find((id) => !dismissed.current.has(id)) ?? null
-        if (cand) { held = cand; bgUntil = Date.now() + 6000 }
-        else if (Date.now() >= bgUntil) { held = null }
-        setActiveSid(held)
-      } catch { /* behold sidste valg — et hik maa ikke faa popup'en til at blinke */ }
-    }
-    void tick()
-    const t = setInterval(tick, 1500)
-    return () => { cancelled = true; clearInterval(t) }
-  }, [settings, surface])
-
-  // 2) Følg den aktive session live (token-stream). Genstart IKKE hvis vi følger.
-  useEffect(() => {
-    if (!settings || !activeSid) {
-      followCtl.current?.abort(); followCtl.current = null
-      return
-    }
-    if (followCtl.current) return
-    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
-    followCtl.current = followRun(cfg, activeSid, (ev) => followDispatch(ev), () => { followCtl.current = null })
-    return () => { followCtl.current?.abort(); followCtl.current = null }
-  }, [settings, activeSid])
-
-  // 3) Poll transcript'en (efterslæb-kilde — fanger den persisterede besked).
-  const transcriptEtag = useRef<string | null>(null)
-  useEffect(() => {
-    if (!settings || !activeSid) { setMsgs([]); transcriptEtag.current = null; return }
-    transcriptEtag.current = null
-    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
-    let cancelled = false
-    const pull = async () => {
-      try {
-        const snapshot = transcriptEtag.current
-          ? await getSession(cfg, activeSid, { ifNoneMatch: transcriptEtag.current })
-          : await getSession(cfg, activeSid)
-        if (!cancelled && snapshot) {
-          transcriptEtag.current = snapshot.etag
-          setMsgs(snapshot.messages)
-        }
-        if (!cancelled) setTabtKontakt(0)
-      } catch {
-        // Codex' punkt 2 (21/9-2026): vi beholder stadig den sidste udskrift —
-        // men hovedet sagde «🟢 live fra en anden enhed» imens. Ved 1,2 s pr.
-        // hentning er tre i traek under fire sekunders tavshed: for lidt til at
-        // blinke over, rigeligt til at den groenne prik bliver en usandhed.
-        if (!cancelled) setTabtKontakt((n) => n + 1)
-      }
-    }
-    void pull()
-    const t = setInterval(pull, 1200)
-    return () => { cancelled = true; clearInterval(t) }
-  }, [settings, activeSid])
-
-  // 4) Elapsed-tæller til liveness-linjen (nulstil ved ny session).
-  useEffect(() => {
-    if (!activeSid) { setElapsedMs(0); return }
-    startedAt.current = Date.now()
-    setElapsedMs(0)
-    const t = setInterval(() => setElapsedMs(Date.now() - startedAt.current), 1000)
-    return () => clearInterval(t)
-  }, [activeSid])
-
-  if (!activeSid) return null
-  const title = sessions.find((s) => s.id === activeSid)?.title || 'en samtale'
-  const live = followState.status === 'working' && followState.blocks.length > 0
-  const mistet = tabtKontakt >= 3
-  const lastAssistant = [...msgs].reverse().find((m) => m.role === 'assistant')
-  return (
-    <div className="takeover-live">
-      <div className="takeover-live-head">
-        <span className="takeover-live-title">
-          {mistet ? '⚪' : '🟢'} {title} <span className="takeover-live-sub">
-            {mistet ? '— ingen kontakt, det viste er sidste nyt' : '— live fra en anden enhed'}
-          </span>
-        </span>
-        <button type="button" className="takeover-live-open" onClick={() => { select(activeSid); setSurface('chat'); setActiveSid(null) }}>Åbn chat</button>
-        <button type="button" className="takeover-live-x" aria-label="Skjul" onClick={() => { dismissed.current.add(activeSid); setActiveSid(null) }}>×</button>
-      </div>
-      <div className="takeover-live-body">
-        {live ? (
-          <MessageRow role="assistant" blocks={followState.blocks} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted} />
-        ) : lastAssistant ? (
-          <MessageRow role="assistant" blocks={lastAssistant.content} density="compact" streaming={false} />
-        ) : null}
-        <LivenessIndicator
-          status="working"
-          elapsedMs={elapsedMs}
-          density="compact"
-          workingStep={followState.workingStep ?? 'vågner'}
-          tokens={followState.usage.output}
-        />
-      </div>
-    </div>
-  )
+  return null
 }

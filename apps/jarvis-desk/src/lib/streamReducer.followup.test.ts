@@ -87,6 +87,19 @@ describe('en ekstra runde river ikke svaret ned', () => {
     expect(efter.status).toBe('working')
   })
 
+  it('en AGENT-vækning (origin agent-wake) er en selvstændig tur, i drifts-rækkefølgen', () => {
+    // Målt 12/11-2026: genoptagelsen af en agentwake kørte som bruger-run og bar
+    // TOM origin, så den fik «runde»-grenen og blev flettet ind i den forrige
+    // besked. Serveren sender nu `agent-wake`; værdien er ligegyldig for
+    // klienten, kun at den er ikke-tom. message_start kommer FØRST.
+    const foer = laastSvar()
+    const medNytRun = streamReducer(foer, msgStart('r2'))
+    const efter = streamReducer(medNytRun, system('run', { run_id: 'r2', origin: 'agent-wake' }))
+    expect(efter.selvstaendigRunId).toBe('r2')
+    expect(efter.svarLaast).toBe(false)
+    expect(efter.blocks).toEqual([])
+  })
+
   it('en runde i MIN tur bærer ingen origin og bevarer svaret', () => {
     // Modprøven: uden origin er det brugerens egen tur, og låsen skal holde.
     const foer = laastSvar()

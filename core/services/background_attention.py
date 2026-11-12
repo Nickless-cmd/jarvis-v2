@@ -64,6 +64,16 @@ def _existing_inbox(*, owner: str, inbox_id: str) -> dict[str, Any] | None:
         return None
 
 
+def _nyeste_inbox(*, owner: str, inbox_id: str) -> dict[str, Any] | None:
+    """Nyeste post for kilden — ogsaa en der er gemt med generation-suffiks."""
+    try:
+        from core.runtime import db_inbox
+
+        return db_inbox.nyeste_for_kilde(bruger_id=owner, kilde_id=inbox_id)
+    except Exception:  # a lookup failure must never close the wrong post
+        return None
+
+
 def _write_side_task(**kwargs: Any) -> dict[str, Any]:
     from core.services.side_tasks import flag
 
@@ -217,9 +227,15 @@ def report_background_recovered(*, source_kind: str, source_id: str) -> dict[str
     if not owner:
         return {"status": "partial", "inbox": "no-owner"}
     inbox_id = f"background-{kind_n}-{id_n}"[:220]
-    existing = _existing_inbox(owner=owner, inbox_id=inbox_id)
+    # Det praecise opslag finder kun den FOERSTE generation. En gentaget
+    # haendelse gemmes som `<id>-<generation>`, saa vi slaar den NYESTE op —
+    # den er den eneste der beskriver tilstanden lige nu (12/11-2026).
+    existing = _nyeste_inbox(owner=owner, inbox_id=inbox_id)
     if not existing:
         return {"status": "ok", "inbox": "ingen-post"}
+    # Luk den post der FAKTISK findes. Et generation-suffikseret id kan ikke
+    # genskabes af det vi byggede herover.
+    inbox_id = str(existing.get("kilde_id") or "") or inbox_id
     havde = str(existing.get("status") or "")
     # Kun en AABEN post beskriver en tilstand der stadig gælder. `done` er
     # Bjørns egen afgørelse, `afsluttet_af_kilde` er allerede lukket, og en

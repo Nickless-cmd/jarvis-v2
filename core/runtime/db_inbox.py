@@ -422,6 +422,44 @@ def hent(*, bruger_id: str, kilde_id: str) -> dict[str, Any] | None:
     return None if r is None else _post_fra_raekke(r)
 
 
+def nyeste_for_kilde(*, bruger_id: str, kilde_id: str) -> dict[str, Any] | None:
+    """Nyeste post for en kilde — ogsaa naar den er gemt med generation-suffiks.
+
+    Hvorfor den findes (12/11-2026)
+    -------------------------------
+    `hent` slår op på det PRAECISE id. Men en post der beskriver en GENTAGET
+    hændelse gemmes som ``<id>-<generation>`` — `report_background_outcome` gør
+    det for at en løst sag ikke skal sluge en ægte gentagelse. Det præcise
+    opslag finder derfor kun den FØRSTE generation, og
+    `report_background_recovered` svarede «ingen-post» om netop de advarsler
+    der var gentagelser. Målt: post 262358 — en cadence-producer der overskred
+    sin tidsgrænse for anden gang — kunne ikke lukke sig selv.
+
+    Den NYESTE er den eneste der beskriver tilstanden lige nu: en ældre
+    generation er en anden, allerede afsluttet hændelse.
+
+    `_` og `%` escapes i prefixet. Kilde-id'er må indeholde `_` (fx
+    `central_hypothesis_sampler`), og uescaped er `_` et LIKE-wildcard for ét
+    vilkårligt tegn — så et opslag kunne ramme en ANDEN kildes post.
+    """
+    bruger_id = str(bruger_id or "").strip()
+    kilde_id = str(kilde_id or "").strip()
+    if not bruger_id or not kilde_id:
+        return None
+    prefix = (
+        kilde_id.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    )
+    with connect() as conn:
+        _ensure_skema(conn)
+        r = conn.execute(
+            "SELECT * FROM inbox_items WHERE bruger_id = ? "
+            "AND (kilde_id = ? OR kilde_id LIKE ? ESCAPE '\\') "
+            "ORDER BY id DESC LIMIT 1",
+            (bruger_id, kilde_id, f"{prefix}-%"),
+        ).fetchone()
+    return None if r is None else _post_fra_raekke(r)
+
+
 def liste(
     *,
     bruger_id: str,

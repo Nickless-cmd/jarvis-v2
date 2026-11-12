@@ -96,7 +96,11 @@ def test_recovery_closes_an_open_post(monkeypatch):
     lukket = []
     monkeypatch.setattr(attention, "_owner_user_id", lambda: "bjorn")
     monkeypatch.setattr(
-        attention, "_existing_inbox", lambda **kwargs: {"status": "aaben"},
+        attention, "_nyeste_inbox",
+        lambda **kwargs: {
+            "status": "aaben",
+            "kilde_id": "background-cadence-producer-central_hypothesis_sampler",
+        },
     )
     monkeypatch.setattr(
         "core.runtime.db_inbox.meld_kilde_faerdig",
@@ -122,7 +126,11 @@ def test_recovery_leaves_a_done_post_alone(monkeypatch):
     """Bjørns egen afgørelse må ikke overskrives af en rutine."""
     monkeypatch.setattr(attention, "_owner_user_id", lambda: "bjorn")
     monkeypatch.setattr(
-        attention, "_existing_inbox", lambda **kwargs: {"status": "done"},
+        attention, "_nyeste_inbox",
+        lambda **kwargs: {
+            "status": "done",
+            "kilde_id": "background-cadence-producer-x",
+        },
     )
     monkeypatch.setattr(
         "core.runtime.db_inbox.meld_kilde_faerdig",
@@ -139,7 +147,7 @@ def test_recovery_leaves_a_done_post_alone(monkeypatch):
 
 def test_recovery_without_a_post_writes_nothing(monkeypatch):
     monkeypatch.setattr(attention, "_owner_user_id", lambda: "bjorn")
-    monkeypatch.setattr(attention, "_existing_inbox", lambda **kwargs: None)
+    monkeypatch.setattr(attention, "_nyeste_inbox", lambda **kwargs: None)
     monkeypatch.setattr(
         "core.runtime.db_inbox.meld_kilde_faerdig",
         lambda **kwargs: (_ for _ in ()).throw(AssertionError("no close")),
@@ -148,6 +156,40 @@ def test_recovery_without_a_post_writes_nothing(monkeypatch):
     assert attention.report_background_recovered(
         source_kind="cadence-producer", source_id="y",
     )["inbox"] == "ingen-post"
+
+
+def test_recovery_closes_the_NEWEST_generation(monkeypatch):
+    """En gentaget hændelse gemmes som `<id>-<generation>`, og det præcise
+    opslag finder kun generation 1. Netop gentagelser — den vigtigste slags
+    advarsel — kunne derfor ikke lukke sig selv (målt 12/11-2026, post
+    262358). Vi skal lukke generation 2 og efterlade generation 1 urørt."""
+    lukket = []
+    monkeypatch.setattr(attention, "_owner_user_id", lambda: "bjorn")
+    monkeypatch.setattr(
+        attention, "_nyeste_inbox",
+        lambda **kwargs: {
+            "status": "aaben",
+            "kilde_id": (
+                "background-cadence-producer-baggrundsjob_vagt-20261112141015"
+            ),
+        },
+    )
+    monkeypatch.setattr(
+        "core.runtime.db_inbox.meld_kilde_faerdig",
+        lambda **kwargs: lukket.append(kwargs) or {
+            "status": "ok", "id": "x", "ny_status": "afsluttet_af_kilde",
+        },
+    )
+
+    result = attention.report_background_recovered(
+        source_kind="cadence-producer", source_id="baggrundsjob_vagt",
+    )
+
+    assert result["ny_status"] == "afsluttet_af_kilde"
+    assert len(lukket) == 1
+    assert lukket[0]["kilde_id"] == (
+        "background-cadence-producer-baggrundsjob_vagt-20261112141015"
+    )
 
 
 def test_recovery_without_owner_does_not_guess(monkeypatch):

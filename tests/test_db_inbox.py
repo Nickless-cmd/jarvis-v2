@@ -109,6 +109,38 @@ def test_ensure_koerer_DDL_en_gang_pr_proces(db, monkeypatch):
     assert ddl == [], f"DDL koerte igen: {ddl}"
 
 
+# ── Opslag på generation (12/11-2026) ──────────────────────────────────────
+
+def test_nyeste_for_kilde_finder_generation_2(db):
+    """`hent` slår op på det PRÆCISE id, så den finder kun generation 1. En
+    gentaget hændelse gemmes som `<id>-<generation>`, og uden denne funktion
+    kunne netop gentagelser ikke lukke sig selv — post 262358.
+
+    Målt mod en RIGTIG base: en mock på søgningen kan ikke se om WHERE-grenen
+    faktisk rammer.
+    """
+    base = "background-cadence-producer-baggrundsjob_vagt"
+    _opret(base)
+    db_inbox.meld_kilde_faerdig(bruger_id=BRUGER, kilde_id=base, exit_kode=0)
+    _opret(f"{base}-20261112141015")
+
+    praecis = db_inbox.hent(bruger_id=BRUGER, kilde_id=base)
+    assert praecis["status"] == db_inbox.STATUS_AFSLUTTET_AF_KILDE
+
+    nyeste = db_inbox.nyeste_for_kilde(bruger_id=BRUGER, kilde_id=base)
+    assert nyeste["kilde_id"] == f"{base}-20261112141015"
+    assert nyeste["status"] == db_inbox.STATUS_AABEN
+
+
+def test_nyeste_for_kilde_behandler_understreg_som_ET_BOGSTAV(db):
+    """`_` er et LIKE-wildcard for ét vilkårligt tegn. Uden escape ville et
+    opslag på `central_hypothesis_sampler` også ramme en ANDEN kildes post."""
+    _opret("background-x-centralxhypothesisxsampler-1")
+    assert db_inbox.nyeste_for_kilde(
+        bruger_id=BRUGER, kilde_id="background-x-central_hypothesis_sampler",
+    ) is None
+
+
 # ── Idempotens og kapløb ────────────────────────────────────────────────────
 
 def test_opret_to_gange_giver_SAMME_raekke_urort(db):

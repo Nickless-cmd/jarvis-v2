@@ -729,6 +729,71 @@ def record_gut_outcome(
     return result
 
 
+_BASELINE_CACHE: dict[str, object] = {"at": 0.0, "value": None}
+_BASELINE_TTL_S = 300.0
+
+
+def _observed_baseline() -> dict[str, object] | None:
+    """Mål maven mod en KONSTANT baseline (altid «proceed») på de events der findes.
+
+    Hvorfor (12/11-2026): fladen viste calibration_score 0,9925 og blev læst som «maven
+    har ret i 99% af tilfældene». Målt mod de 346 faktiske events var maven 92,77%
+    korrekt, mens en konstant «proceed» ville være 99,71% — altså 6,94 procentpoint
+    DÅRLIGHERE. Årsagen er aritmetisk: runs lykkes 99,7% af tiden, så enhver advarsel
+    næsten altid er forkert. En hit-rate uden baseline kan ikke skelne «maven er dygtig»
+    fra «systemet fejler næsten aldrig».
+
+    Self-safe og cachet i _BASELINE_TTL_S sekunder: fladen kaldes fra heartbeat-hotpathen,
+    og queryen koster ~5 ms. Uden DB returneres None — fladen vises stadig, men uden
+    baseline, og det er synligt i summary'en.
+    """
+    import json as _json
+
+    nu = time.time()
+    if _BASELINE_CACHE["value"] is not None and (nu - float(_BASELINE_CACHE["at"])) < _BASELINE_TTL_S:
+        return _BASELINE_CACHE["value"]  # type: ignore[return-value]
+
+    result: dict[str, object] | None = None
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT payload_json FROM events WHERE kind = 'cognitive_gut.outcome_recorded'"
+            ).fetchall()
+        faktisk = 0
+        baseline = 0
+        n = 0
+        for row in rows:
+            try:
+                d = _json.loads(row[0])
+            except (TypeError, ValueError):  # een beskadiget raekke maa ikke skjule de andre
+                continue
+            if not isinstance(d, dict):
+                continue
+            hunch = str(d.get("hunch") or "")
+            actual = str(d.get("actual") or "")
+            if hunch not in ("proceed", "caution"):
+                continue
+            n += 1
+            act_success = actual in ("completed", "success")
+            faktisk += (hunch == "proceed") == act_success
+            baseline += act_success
+        if n:
+            result = {
+                "n_observed": n,
+                "maven_pct": round(faktisk / n * 100, 2),
+                "baseline_pct": round(baseline / n * 100, 2),
+                "skill_pp": round((faktisk - baseline) / n * 100, 2),
+            }
+    except Exception:  # baseline er et SUPPLEMENT — fladen skal vises selvom DB'en ikke kan læses
+        result = None
+
+    _BASELINE_CACHE["at"] = nu
+    _BASELINE_CACHE["value"] = result
+    return result
+
+
 def build_gut_surface() -> dict[str, object]:
     """Kalibrerings-fladen — viser de tre lag ADSKILT (A3, 3/11-2026).
 
@@ -759,16 +824,30 @@ def build_gut_surface() -> dict[str, object]:
         return {"active": False, "state": None,
                 "withheld": withheld, "backstop_overkoersler": overkoersler,
                 "summary": "No gut data yet"}
+    baseline = _observed_baseline()
+    if baseline:
+        skill = float(baseline["skill_pp"])
+        dom = "BEDRE" if skill > 0 else ("DAARLIGERE" if skill < 0 else "LIGE")
+        baseline_summary = (
+            f" | mod konstant baseline: maven {baseline['maven_pct']:.2f}% vs "
+            f"{baseline['baseline_pct']:.2f}% (n={baseline['n_observed']}) "
+            f"= {skill:+.2f} pp {dom}"
+        )
+    else:
+        baseline_summary = " | baseline utilgaengelig — hit-raten kan IKKE laeses som dygtighed"
+
     return {
         "active": True,
         "state": state,
         "evaluated": int(state["total_predictions"]),
         "withheld": withheld,
         "backstop_overkoersler": overkoersler,
+        "baseline": baseline,
         "summary": (
             f"Calibration: {state['calibration_score']:.2f} "
             f"({state['calibrated_hits']}/{state['total_predictions']} correct); "
             f"{withheld} afvist (intet udfald), {overkoersler} overkørt af bagkanten"
+            f"{baseline_summary}"
         ),
     }
 

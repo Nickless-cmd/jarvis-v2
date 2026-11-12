@@ -203,6 +203,60 @@ def test_followup_while_busy_other_owner_and_closed_agent_are_refused(sv):
     assert sv.rows("agent_assignments") == 1
 
 
+def test_followup_provisionerer_worktree_til_det_nye_assignment(sv, monkeypatch):
+    """Et followup faar et NYT assignment-id — og worktree'et haenger paa assignment-id'et.
+
+    Maalt 12/11-2026: to followups dode 5 ms efter start med «Task-worktree mangler
+    eller er ikke aktivt», mens den foerste koersel fuldfoerte. Dispatch-stien
+    provisionerer ved accept; followup gjorde ikke. Uden denne test kan den gren
+    forsvinde igen uden at nogen opdager det, fordi fejlen foerst vises paa ANDEN
+    koersel — ikke i den vej de fleste tests gaar.
+    """
+    from core.services import agent_worktrees as aw
+
+    sv.on()
+    first = sv.d()
+    sv.run_all()
+
+    agent = dict(sv.svc_._owned_agent(first["agent_id"], O) or {})
+    agent["tool_policy"] = "worktree-write"
+    monkeypatch.setattr(sv.svc_, "_owned_agent", lambda aid, owner: agent)
+    monkeypatch.setattr(aw, "repo_path_for_agent", lambda **kw: "/media/projects/jarvis-v2")
+    kaldt: list = []
+    monkeypatch.setattr(aw, "provision", lambda **kw: kaldt.append(kw))
+
+    fu = sv.svc_.followup_agent(owner_user_id=O, origin_session_id=S,
+                                agent_id=first["agent_id"], goal="naeste")
+    assert fu.get("assignment_id"), fu
+    assert len(kaldt) == 1, kaldt
+    assert kaldt[0]["assignment_id"] == fu["assignment_id"]
+    assert kaldt[0]["repo_path"] == "/media/projects/jarvis-v2"
+
+
+def test_followup_uden_arvet_repo_afvises_tydeligt(sv, monkeypatch):
+    """Mangler arven, skal followup sige det — ikke lade koerslen do i model-fasen."""
+    from core.services import agent_worktrees as aw
+
+    sv.on()
+    first = sv.d()
+    sv.run_all()
+
+    agent = dict(sv.svc_._owned_agent(first["agent_id"], O) or {})
+    agent["tool_policy"] = "worktree-write"
+    monkeypatch.setattr(sv.svc_, "_owned_agent", lambda aid, owner: agent)
+    monkeypatch.setattr(aw, "repo_path_for_agent", lambda **kw: "")
+    kaldt: list = []
+    monkeypatch.setattr(aw, "provision", lambda **kw: kaldt.append(kw))
+
+    out = sv.svc_.followup_agent(owner_user_id=O, origin_session_id=S,
+                                 agent_id=first["agent_id"], goal="naeste")
+    assert out.get("code") == "INVALID_SCOPE", out
+    assert "worktree" in str(out.get("error", "")).lower(), out
+    assert kaldt == []
+    # Intet halvt barn: kun den foerste koersels resultat maa vente.
+    assert len(sv.k.list_pending_results(owner_user_id=O, origin_session_id=S)) == 1
+
+
 def test_message_to_busy_agent_is_stored_with_honest_delivery(sv):
     sv.on()
     first = sv.d()

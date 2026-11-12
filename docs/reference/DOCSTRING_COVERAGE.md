@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10078/18578 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10079/18579 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10078/18578 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 899 | 1612 | 55% |
-| `core.services` | 6728 | 12584 | 53% |
+| `core.services` | 6729 | 12585 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -747,7 +747,7 @@ Generated from source. 10078/18578 functions/methods documented (54%). The list 
 - `core/services/agent_contract_projection.py` :: `close` (L565)
 - `core/services/agent_contract_projection.py` :: `followup` (L542)
 - `core/services/agent_contract_projection.py` :: `mark_read` (L486)
-- `core/services/agent_contract_service.py` :: `list_approvals` (L822)
+- `core/services/agent_contract_service.py` :: `list_approvals` (L841)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L624)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L622)
 - `core/services/agent_loop_core.py` :: `LoopIO.model` (L617)
@@ -817,7 +817,7 @@ Generated from source. 10078/18578 functions/methods documented (54%). The list 
 - `core/services/agent_worktrees.py` :: `get_for_assignment` (L194)
 - `core/services/agent_worktrees.py` :: `quota_status` (L134)
 - `core/services/agent_worktrees.py` :: `worktree_root` (L84)
-- `core/services/agent_worktrees.py` :: `writes_allowed` (L292)
+- `core/services/agent_worktrees.py` :: `writes_allowed` (L310)
 - `core/services/agentic_checkpoints.py` :: `checkpoint_prompt_section` (L146)
 - `core/services/agentic_checkpoints.py` :: `clear_run` (L124)
 - `core/services/agentic_checkpoints.py` :: `clear_session` (L133)

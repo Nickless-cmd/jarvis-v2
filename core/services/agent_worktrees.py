@@ -196,6 +196,24 @@ def get_for_assignment(*, owner_user_id: str, assignment_id: str) -> dict[str, A
                                 (assignment_id, owner_user_id)).fetchone())
 
 
+def repo_path_for_agent(*, owner_user_id: str, agent_id: str) -> str:
+    """Repo-stien agenten allerede arbejder i — kilden naar et NYT assignment skal have sit eget worktree.
+
+    ``repo_path`` findes kun paa worktree-raekken, ikke paa assignmentet. Derfor kunne
+    ``followup_agent`` ikke provisionere: den havde intet at give ``provision``. En agent
+    kan have flere assignments gennem sit liv, men de arbejder paa samme repo, saa den
+    nyeste raekke er den rigtige arv. Tom streng = agenten har aldrig haft et worktree.
+    """
+    try:
+        row = _conn().execute(
+            "SELECT repo_path FROM agent_worktrees WHERE agent_id=? AND owner_user_id=? "
+            "ORDER BY created_at DESC LIMIT 1",
+            (str(agent_id or ""), str(owner_user_id or ""))).fetchone()
+        return str(row["repo_path"] or "") if row is not None else ""
+    except Exception:  # noqa: BLE001 — et manglende opslag maa ikke vaelte followup
+        return ""
+
+
 def get_for_run(*, run_id: str) -> dict[str, Any] | None:
     """Worktree'et for det run der kører lige nu — ``None`` hvis agenten ikke har ét.
 

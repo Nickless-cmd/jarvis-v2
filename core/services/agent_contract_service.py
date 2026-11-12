@@ -463,6 +463,25 @@ def followup_agent(
     except ContractError as exc:
         logger.info("followup_agent afvist for %s: %s", agent_id, exc)
         return _err(exc.code, exc.detail)
+    if str(agent.get("tool_policy") or "") == "worktree-write":
+        # Et followup faar et NYT assignment-id, men worktree'et er knyttet til
+        # assignment-id'et. Uden dette skridt doer koerslen i model-fasen med
+        # «Task-worktree mangler eller er ikke aktivt» — maalt 12/11-2026: to
+        # followups dode 5 ms efter start, mens den foerste koersel fuldfoerte.
+        # Dispatch-stien provisionerer (se `writes`-blokken ovenfor); followup
+        # gjorde ikke, saa ruten fejlede kun paa anden koersel.
+        from core.services.agent_worktrees import provision, repo_path_for_agent
+
+        repo = repo_path_for_agent(owner_user_id=owner_user_id, agent_id=agent_id)
+        if not repo:
+            c.discard_unstarted_assignment(agent_id=agent_id, owner_user_id=owner_user_id)
+            return _err("INVALID_SCOPE", "agenten har intet worktree at arve repo-stien fra")
+        try:
+            provision(owner_user_id=owner_user_id, assignment_id=acc["assignment_id"], repo_path=repo)
+        except Exception as exc:
+            logger.warning("worktree kunne ikke reserveres til followup", exc_info=True)
+            c.discard_unstarted_assignment(agent_id=agent_id, owner_user_id=owner_user_id)
+            return _err("INVALID_SCOPE", f"worktree: {type(exc).__name__}"[:120])
     from core.runtime.db_agent_runtime import create_agent_message, update_agent_registry_entry
     from uuid import uuid4
     create_agent_message(message_id=f"agent-msg-{uuid4().hex}", thread_id=f"agent-thread-{agent_id}",

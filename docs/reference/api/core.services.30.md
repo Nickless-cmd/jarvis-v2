@@ -98,7 +98,8 @@ _Autonome (heartbeat-startede) synlige runs: starter og observation._
 | function | `_trust_for_session` | `(session_id)` | Samtalens tilladelses-niveau — fail-closed til `ask`. | [src](../../../core/services/visible_autonomous_run.py#L22) |
 | function | `_trust_for_autonomous` | `(session_id)` | Arv for et AUTONOMT run — en silo låner ejerens niveau (9/11-2026). | [src](../../../core/services/visible_autonomous_run.py#L37) |
 | function | `_observe_autonomous_run` | `(*, run, session_id, outcome, frames=…, error=…)` | #10 (Phase A): gør autonome runs (dream/idle/proaktiv) synlige som ENHED i Den | [src](../../../core/services/visible_autonomous_run.py#L54) |
-| function | `start_autonomous_run` | `(message, session_id=…, follow=…, origin=…, task_id=…, max_tool_calls=…, max_seconds=…, tool_scope=…, force_user_id=…, started_callback=…, completion_callback=…)` | Trigger an autonomous (heartbeat-initiated) visible run in a background thread. | [src](../../../core/services/visible_autonomous_run.py#L112) |
+| function | `_session_ejer_tilladt` | `(session_id, force_user_id=…)` | False kun naar sessionens STEMPLEDE ejer er en anden end runets ejer. | [src](../../../core/services/visible_autonomous_run.py#L112) |
+| function | `start_autonomous_run` | `(message, session_id=…, follow=…, origin=…, task_id=…, max_tool_calls=…, max_seconds=…, tool_scope=…, force_user_id=…, started_callback=…, completion_callback=…)` | Trigger an autonomous (heartbeat-initiated) visible run in a background thread. | [src](../../../core/services/visible_autonomous_run.py#L161) |
 
 ## `core/services/visible_chat_pragmatics.py`
 _Pragmatic conversation boundaries for the visible chat-only lane._

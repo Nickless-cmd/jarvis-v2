@@ -109,6 +109,55 @@ def _observe_autonomous_run(*, run, session_id: str, outcome: str,
         pass
 
 
+def _session_ejer_tilladt(session_id: str, force_user_id: str = "") -> bool:
+    """False kun naar sessionens STEMPLEDE ejer er en anden end runets ejer.
+
+    Laeser `chat_sessions.owner_user_id` direkte (ikke `is_owner_session`).
+    Alt tvivlsomt slipper igennem: ukendt session, tom/'system'-ejer, silo.
+    Alias-bevidst sammenligning (`ejerstempel_tilhoerer_bruger`), saa ejerens
+    egne id-formater ikke afvises.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return True
+    try:
+        from core.services.autonomous_sessions import is_system_session
+
+        if is_system_session(sid) or sid.startswith("plugin-"):
+            return True
+        from core.runtime import db_core
+
+        with db_core.connect() as conn:
+            row = conn.execute(
+                "SELECT owner_user_id FROM chat_sessions WHERE session_id=?",
+                (sid,),
+            ).fetchone()
+        if not row:
+            return True
+        session_owner = str(row[0] or "").strip()
+        if not session_owner or session_owner == "system":
+            return True
+        run_owner = str(force_user_id or "").strip()
+        if not run_owner:
+            from core.identity.owner_resolver import owner_user_id as _owner_id
+
+            run_owner = str(_owner_id() or "").strip()
+        if not run_owner:
+            return True
+        from core.identity.session_access import ejerstempel_tilhoerer_bruger
+
+        if ejerstempel_tilhoerer_bruger(session_owner, run_owner):
+            return True
+        logger.warning(
+            "autonomt run afvist: session=%s ejes af %s, runets ejer er %s",
+            sid, session_owner, run_owner,
+        )
+        return False
+    except Exception:  # noqa: BLE001 — tjekket maa aldrig vaelte en kalder
+        logger.debug("ejer-tjek fejlede for %s — slipper igennem", sid, exc_info=True)
+        return True
+
+
 def start_autonomous_run(message: str, session_id: str | None = None, follow: bool = False,
                          origin: str | None = None, task_id: str = "",
                          max_tool_calls: int = 0, max_seconds: float = 0.0,
@@ -175,6 +224,12 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
             resolved_session = create_chat_session(title="Autonomous")["id"]
     else:
         resolved_session = session_id.strip()
+
+    # EJER-TJEK (12/11-2026): et autonomt run maa ikke skrive i en ANDEN
+    # brugers stemplede samtale. Slipper igennem: ukendt session, tom/'system'-
+    # ejer (legacy), system-silo. Afviser med False (aldrig exception).
+    if not _session_ejer_tilladt(resolved_session, force_user_id):
+        return False
 
     # FÆLLES CROSS-PROCES-VAGT (13/10-2026). Se `core/services/run_guard.py`.
     #

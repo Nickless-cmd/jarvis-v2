@@ -146,26 +146,19 @@ def test_beskeden_lander_i_hans_sidst_aktive_samtale(monkeypatch):
     assert skrevet[0]["workspace_name"] == "default"
 
 
-def test_uden_en_frisk_samtale_falder_den_tilbage_til_siloen(monkeypatch):
+def test_uden_en_frisk_ejerstemplet_samtale_skriver_den_intet(monkeypatch):
     """Har han ikke skrevet i et døgn, hører beskeden ikke hjemme i en samtale
     han for længst har lukket."""
     import core.services.proactivity_bridge as B
 
     monkeypatch.setattr(B, "_sidst_aktive_samtale", lambda: "")
+    skrevet = []
     monkeypatch.setattr(
-        "core.services.chat_sessions.get_or_create_named_session",
-        lambda sid, titel: sid,
+        "core.services.notification_bridge.send_session_notification",
+        lambda *a, **kw: skrevet.append((a, kw)),
     )
-    monkeypatch.setattr(
-        "core.services.chat_sessions.append_chat_message", lambda **kw: {"id": "m1"},
-    )
-    monkeypatch.setattr(
-        "core.services.chat_sessions.get_chat_session", lambda sid: {"id": sid},
-    )
-    monkeypatch.setattr(
-        "core.services.session_inbox.is_session_active", lambda sid, **k: False,
-    )
-    assert B._persist_as_chat("u1", "💭 en tanke") == B._PROACTIVITY_SESSION_ID
+    assert B._persist_as_chat("u1", "💭 en tanke") == ""
+    assert skrevet == []
 
 
 def test_kun_HANS_samtaler_taeller_som_sidst_aktive():

@@ -240,22 +240,60 @@ def _sidst_aktive_samtale() -> str:
     og æde hans prompt-kontekst. Deres RESULTAT når ham allerede gennem denne
     kanal; selve arbejdet bliver i sin egen session.
 
-    Self-safe → tom streng, og så falder vi tilbage til den dedikerede session.
+    Self-safe og fail-closed → tom streng.
     """
     try:
         from datetime import UTC, datetime, timedelta
 
+        from core.identity.owner_resolver import owner_user_id
         from core.runtime.db_core import connect
+        ejer = (owner_user_id() or "").strip()
+        if not ejer:
+            return ""
         graense = (datetime.now(UTC) - timedelta(hours=_SIDST_AKTIV_MAKS_TIMER)).isoformat()
         with connect() as conn:
             row = conn.execute(
                 """SELECT session_id FROM chat_sessions
-                   WHERE session_id LIKE 'chat-%' AND updated_at > ?
+                   WHERE session_id LIKE 'chat-%'
+                     AND owner_user_id = ?
+                     AND updated_at > ?
                    ORDER BY updated_at DESC LIMIT 1""",
-                (graense,)).fetchone()
+                (ejer, graense)).fetchone()
         return str(row["session_id"]) if row else ""
     except Exception as exc:
         logger.debug("proactivity_bridge: kunne ikke finde sidst aktive samtale: %s", exc)
+        return ""
+
+
+def _sikker_proactivity_silo(uid: str) -> str:
+    """Den dedikerede proactivity-silo — men KUN hvis den beviseligt er hans.
+
+    Siloen ligger uden for ``chat-%`` og kan derfor ikke rammes af
+    ``_sidst_aktive_samtale``. Den bruges som fallback naar han ikke har skrevet
+    i et doegn: hellere hans egen dedikerede samtale end at tabe beskeden.
+
+    12/11-2026: siloen stod med TOM ``owner_user_id`` og var derfor et frit
+    maal — den blev stempelt med ejeren i samme omgang. Nu kraeves stemplet
+    eksplicit foer brug, saa en fremmed eller ejerloes silo aldrig kan bruges.
+    Self-safe → tom streng.
+    """
+    try:
+        from core.identity.session_access import ejerstempel_tilhoerer_bruger
+        from core.runtime.db_core import connect
+
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT owner_user_id FROM chat_sessions WHERE session_id=?",
+                (_PROACTIVITY_SESSION_ID,),
+            ).fetchone()
+        if not row:
+            return ""
+        ejer = str(row[0] or "").strip()
+        if not ejer or not ejerstempel_tilhoerer_bruger(ejer, str(uid or "")):
+            return ""
+        return _PROACTIVITY_SESSION_ID
+    except Exception as exc:
+        logger.debug("proactivity_bridge: kunne ikke afgoere silo-ejer: %s", exc)
         return ""
 
 
@@ -263,19 +301,20 @@ def _persist_as_chat(uid: str, text: str) -> str:
     """Skriv beskeden som en RIGTIG chat-besked, så Bjørn kan se og SVARE på den
     — ikke kun en forsvindende notifikation.
 
-    Lander i hans SIDST AKTIVE samtale når der er en fra det sidste døgn; ellers
-    i den dedikerede proactivity-session som før. Self-safe; returnerer
-    session_id ('' ved fejl)."""
+    Lander i hans SIDST AKTIVE samtale når der er en ejerstemplet samtale fra
+    det sidste døgn; ellers i hans egen dedikerede proactivity-silo, men kun når
+    den beviseligt er stempelt med ham. Uden et sikkert match skrives intet.
+    Self-safe; returnerer session_id ('' ved fejl eller manglende match)."""
     try:
-        from core.services.chat_sessions import get_or_create_named_session
         from core.services.notification_bridge import (
             delivery_succeeded,
             send_session_notification,
         )
         sid = _sidst_aktive_samtale()
         if not sid:
-            sid = get_or_create_named_session(_PROACTIVITY_SESSION_ID,
-                                              _PROACTIVITY_SESSION_TITLE)
+            sid = _sikker_proactivity_silo(uid)
+        if not sid:
+            return ""
         # 2/10-2026: gennem daemon-vagten. Foer skrev vi direkte, saa et
         # «Mens du var vaek taenkte jeg paa» kunne lande midt i en saetning —
         # seks gange paa tre doegn i Bjoerns arbejdssession. Sessionen vaelges

@@ -275,8 +275,9 @@ _Heartbeat-levering: de to veje et hjerteslag naar webchatten ad._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_recent_ping_history` | `(*, limit=…)` | Slaa op i `heartbeat_runtime` ved kaldetid — en modul-import ville vaere | [src](../../../core/services/heartbeat_delivery.py#L39) |
-| function | `_deliver_heartbeat_proposal` | `(*, policy, tick_id, summary, proposed_action)` | — | [src](../../../core/services/heartbeat_delivery.py#L54) |
-| function | `_deliver_heartbeat_ping_directly` | `(*, policy, tick_id, ping_text, summary)` | Deliver an LLM-authored ping straight to webchat. | [src](../../../core/services/heartbeat_delivery.py#L247) |
+| function | `_owner_chat_session_id` | `(*, prefer_pinned)` | Vælg kun en session med ejerens kanoniske oprettelsesstempel. | [src](../../../core/services/heartbeat_delivery.py#L54) |
+| function | `_deliver_heartbeat_proposal` | `(*, policy, tick_id, summary, proposed_action)` | — | [src](../../../core/services/heartbeat_delivery.py#L105) |
+| function | `_deliver_heartbeat_ping_directly` | `(*, policy, tick_id, ping_text, summary)` | Deliver an LLM-authored ping straight to webchat. | [src](../../../core/services/heartbeat_delivery.py#L291) |
 
 ## `core/services/heartbeat_manage_runtime_work.py`
 _Hjerteslagets `manage_runtime_work`-handling — udskilt fra heartbeat_runtime._

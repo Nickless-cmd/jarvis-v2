@@ -51,6 +51,57 @@ def _recent_ping_history(*, limit: int = 8) -> Any:
         return []
 
 
+def _owner_chat_session_id(*, prefer_pinned: bool) -> str:
+    """Vælg kun en session med ejerens kanoniske oprettelsesstempel.
+
+    En global pin kan pege på en anden brugers samtale. Tomme legacy-stempler
+    er tvetydige og må derfor heller ikke bruges som heartbeat-destination.
+    Self-safe og fail-closed: manglende ejer, match eller database giver ``""``.
+    """
+    try:
+        from core.identity.owner_resolver import owner_user_id
+        from core.runtime.db_core import connect
+        from core.services.chat_sessions import list_chat_sessions
+
+        ejer = (owner_user_id() or "").strip()
+        if not ejer:
+            return ""
+
+        pinned = ""
+        if prefer_pinned:
+            from core.services.notification_bridge import get_pinned_session_id
+            pinned = (get_pinned_session_id() or "").strip()
+
+        sessions = list_chat_sessions(user_id=ejer)
+        with connect() as conn:
+            if pinned:
+                row = conn.execute(
+                    """SELECT session_id FROM chat_sessions
+                       WHERE session_id = ? AND owner_user_id = ?
+                       LIMIT 1""",
+                    (pinned, ejer),
+                ).fetchone()
+                if row:
+                    return str(row["session_id"] or "").strip()
+
+            for session in sessions:
+                sid = str((session or {}).get("id") or "").strip()
+                if not sid:
+                    continue
+                row = conn.execute(
+                    """SELECT 1 FROM chat_sessions
+                       WHERE session_id = ? AND owner_user_id = ?
+                       LIMIT 1""",
+                    (sid, ejer),
+                ).fetchone()
+                if row:
+                    return sid
+        return ""
+    except Exception as exc:
+        logger.debug("heartbeat_delivery: kunne ikke finde ejerens session: %s", exc)
+        return ""
+
+
 def _deliver_heartbeat_proposal(
     *,
     policy: dict[str, object],
@@ -125,18 +176,11 @@ def _deliver_heartbeat_proposal(
             "blocked_reason": "system-internal-text-rejected",
         }
 
-    from core.services.chat_sessions import (
-        get_chat_session,
-        list_chat_sessions,
-    )
-    from core.services.notification_bridge import get_pinned_session_id
+    from core.services.chat_sessions import get_chat_session
 
-    # Prefer the pinned session (the one the user is actively viewing),
-    # fall back to most recent session.
-    session_id = get_pinned_session_id()
-    if not session_id or get_chat_session(session_id) is None:
-        sessions = list_chat_sessions()
-        session_id = str((sessions[0] or {}).get("id") or "").strip() if sessions else ""
+    # Foretræk kun den globale pin hvis den er ejerstemplet; ellers ejerens
+    # seneste session. Tvetydige/andre brugeres rækker er aldrig fallback.
+    session_id = _owner_chat_session_id(prefer_pinned=True)
     if not session_id or get_chat_session(session_id) is None:
         event_bus.publish(
             "heartbeat.propose_blocked",
@@ -375,13 +419,9 @@ def _deliver_heartbeat_ping_directly(
                 "blocked_reason": "",
             }
 
-    from core.services.chat_sessions import (
-        get_chat_session,
-        list_chat_sessions,
-    )
+    from core.services.chat_sessions import get_chat_session
 
-    sessions = list_chat_sessions()
-    session_id = str((sessions[0] or {}).get("id") or "").strip() if sessions else ""
+    session_id = _owner_chat_session_id(prefer_pinned=False)
     if not session_id or get_chat_session(session_id) is None:
         event_bus.publish(
             "heartbeat.ping_blocked",

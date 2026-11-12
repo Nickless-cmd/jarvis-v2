@@ -263,6 +263,87 @@ class TestPublishAndFlush:
         b.flush(timeout=1.0)
         assert time.monotonic() - start < 0.2, "flush() ventede uden uafgjorte events"
 
+    def test_pending_er_oeket_foer_eventet_bliver_synligt(self):
+        """RÆKKEFØLGEN ER BEVISET (Bjørn, 12/11-2026): tælleren skal op FØR køen.
+
+        Før blev `_pending` øget EFTER `put_nowait`. Writer-tråden kunne derfor
+        hente eventet, skrive det og decrementere (clampet til nul) i vinduet
+        mellem de to linjer — og så stod tælleren permanent på 1, mens flush()
+        ventede til timeout på et event der for længst var committet.
+
+        Testen gennemtvinger netop det interleaving: den læser `_pending` i det
+        øjeblik eventet bliver synligt i køen. Er den 0 dér, kan writer-tråden
+        nå at se det usynligt-talt, og race'en er tilbage.
+        """
+        from core.eventbus.bus import EventBus
+
+        b = EventBus.__new__(EventBus)  # uden __init__: ingen writer-tråd
+        b._seq_lock = threading.Lock()
+        b._publish_seq = 0
+        b._write_seq = 0
+        b._pending = 0
+
+        set_ved_put: list[int] = []
+
+        class _Koe:
+            def put_nowait(self, item):
+                # Læses på det præcise tidspunkt hvor writer-tråden ville kunne
+                # se eventet. Det er hele målingen.
+                set_ved_put.append(b._pending)
+
+            def qsize(self):
+                return 0
+
+        b._writer_queue = _Koe()
+
+        seq = b.publish("runtime.test_race", {"x": 1})
+
+        assert seq == 1, "eventet skulle være accepteret"
+        assert set_ved_put == [1], (
+            f"tælleren stod på {set_ved_put} da eventet blev synligt — "
+            "writer-tråden kan nå at decrementere før den blev øget"
+        )
+        assert b.pending_count() == 1
+
+    def test_drop_ruller_taelleren_tilbage(self):
+        """Et droppet event blev aldrig synligt — tælleren må ikke blive stående.
+
+        Med `_pending += 1` flyttet op FØR kø-indsættelsen er der nu en vej hvor
+        tælleren øges og indsættelsen fejler. Uden tilbagerulning ville flush()
+        vente på et event der aldrig kommer.
+        """
+        from core.eventbus.bus import EventBus
+
+        b = EventBus.__new__(EventBus)
+        b._seq_lock = threading.Lock()
+        b._publish_seq = 0
+        b._write_seq = 0
+        b._pending = 0
+        b._writer_queue = queue.Queue(maxsize=1)
+        b._writer_queue.put_nowait({"optaget": True})  # køen er nu fuld
+
+        assert b.publish("runtime.test_drop", {"x": 1}) is None
+        assert b.pending_count() == 0, (
+            "tælleren stod tilbage på et event der blev droppet"
+        )
+
+    def test_taelleren_klampes_ikke_tavst(self):
+        """KILDE-VAGT: `max(0, ...)` i nedtællingen gjorde et invariantbrud usynligt.
+
+        Klampen var ikke kosmetisk — den var årsagen til at race'en kunne stå i
+        produktion uden at nogen så den: tælleren blev «rigtig» ved at blive
+        klippet, ikke ved at blive talt rigtigt. Et brud skal logges.
+        """
+        from pathlib import Path
+
+        kilde = Path("core/eventbus/bus.py").read_text(encoding="utf-8")
+        assert "self._pending = max(0, self._pending - len(batch))" not in kilde, (
+            "klampen er tilbage — den skjuler et invariantbrud i stedet for at melde det"
+        )
+        assert "pending-invariant brudt" in kilde, (
+            "bruddet skal rapporteres i loggen, ikke ties ihjel"
+        )
+
 
 class TestSubscribe:
     """Real-time subscriber notification."""

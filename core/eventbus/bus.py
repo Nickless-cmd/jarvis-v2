@@ -158,9 +158,22 @@ class EventBus:
         seq = seq + 1
         item["seq"] = seq
 
+        # RÆKKEFØLGEN ER BETYDNINGSBÆRENDE (12/11-2026, Bjørns anden indvending):
+        # `_pending` skal være øget FØR eventet bliver synligt i køen. Før blev
+        # den øget bagefter, og writer-tråden kunne nå at hente, skrive og
+        # decrementere (clampet til nul) i vinduet imellem — så stod tælleren
+        # permanent på 1 og flush() ventede til timeout på et event der for
+        # længst var committet. `max(0, ...)` i nedtællingen skjulte netop den
+        # fejl, fordi den gjorde et brud i invarianten tavst.
+        with self._seq_lock:
+            self._pending += 1
         try:
             self._writer_queue.put_nowait(item)
         except queue.Full:
+            # Eventet blev ALDRIG synligt for writer-tråden, så tælleren skal
+            # tilbage — ellers venter flush() på noget der ikke findes.
+            with self._seq_lock:
+                self._pending -= 1
             logger.error(
                 "eventbus-writer queue FULL (limit=%d) — dropping event kind=%s seq=%d",
                 _WRITER_QUEUE_MAXSIZE,
@@ -171,11 +184,7 @@ class EventBus:
             # flush() frem til et seq hvis forgængere stadig lå i køen: 10.000
             # accepterede + 1 droppet satte `_write_seq` til 10.001, så flush()
             # returnerede straks selvom ingen af de 10.000 var skrevet (Bjørn).
-            # `_pending` blev ikke øget for dette event, så flush() venter nu
-            # korrekt — uden at vente på et event der aldrig kommer.
             return None
-        with self._seq_lock:
-            self._pending += 1
         return seq
 
     def pending_count(self) -> int:
@@ -200,6 +209,13 @@ class EventBus:
         Før ventede denne på `_write_seq >= _publish_seq`, men det tal kunne
         springe over køen (se `_pending`). Intended for tests. Production code
         should not need this.
+
+        Dette er en IDLE-BARRIER, ikke en snapshot-barrier: den venter til hele
+        den globale kø er inaktiv, ikke kun på de events der eksisterede da den
+        blev kaldt. Under kontinuerlig produktion kan den derfor time out selvom
+        alle de oprindelige events er afgjort. Det er et bevidst valg — en
+        snapshot-barrier ville kræve at man ventede på et bestemt seq, og det er
+        netop den sammenblanding der gjorde den gamle `_write_seq`-måling forkert.
         """
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
@@ -352,7 +368,23 @@ class EventBus:
                 with self._seq_lock:
                     if max_seq >= self._write_seq:
                         self._write_seq = max_seq
-                    self._pending = max(0, self._pending - len(batch))
+                    # Ingen `max(0, ...)` her (12/11-2026): klampen gjorde et brud
+                    # i invarianten `pending = accepterede - afgjorte` tavst. Kan
+                    # tælleren ikke trækkes ned, er det en fejl der skal ses i
+                    # loggen — ikke skjules. Writer-tråden må ikke dø af det, så
+                    # tælleren nulstilles og afvigelsen rapporteres.
+                    if self._pending < len(batch):
+                        logger.error(
+                            "eventbus pending-invariant brudt: pending=%d < batch=%d "
+                            "(seq %s..%s) — tælleren nulstilles",
+                            self._pending,
+                            len(batch),
+                            min((it.get("seq", -1) for it in batch), default=-1),
+                            max_seq,
+                        )
+                        self._pending = 0
+                    else:
+                        self._pending -= len(batch)
 
             if poison:
                 break

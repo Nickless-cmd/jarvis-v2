@@ -1300,6 +1300,7 @@ def build_gut_surface() -> dict[str, object]:
     # grund, ikke et tal der ser målt ud.
     no_event_row: int | None = None
     no_event_row_grund: str | None = None
+    no_event_row_er_estimat: bool = False
     spillede: int | None = None
     ledger = _event_ledger_state()
     # Dead-letter måles UAFHÆNGIGT af tællerens alder: den er en observation af
@@ -1341,6 +1342,20 @@ def build_gut_surface() -> dict[str, object]:
                 # fejlede. Kun det der hverken blev afvist eller spillet kan være
                 # ryddet af retentionen (Bjørn, 12/11-2026).
                 uafklarede = int(ledger.get("unconfirmed") or 0)
+                # Events der er ACCEPTERET men endnu ikke afgjort af writer-traaden
+                # findes hverken i `events` eller i dead-letter. De ligger derfor i
+                # differencen og faar tallet til at OVERDRIVE antallet af ryddede
+                # raekker (Bjørn, 12/11-2026). De kan ikke traekkes fra praecist:
+                # `pending` er global for alle event-kinds, ikke kun udfalds-events.
+                # Saa tallet beholdes, men markeres som estimat naar der er noget i
+                # flugt — et oevre skoen er aerligt, et praecist tal var det ikke.
+                i_flugt = 0
+                try:
+                    from core.eventbus.bus import event_bus as _bus
+
+                    i_flugt = max(0, int(_bus.pending_count()))
+                except Exception:
+                    i_flugt = 0
                 no_event_row = max(
                     0, int(ledger["events"]) - uafklarede - spillede - event_rows
                 )
@@ -1356,6 +1371,18 @@ def build_gut_surface() -> dict[str, object]:
                         "; ".join(_tab)
                         + " — de er ikke ryddet og indgaar ikke i tallet"
                     )
+                if i_flugt > 0:
+                    _flugt_note = (
+                        f"{i_flugt} events er accepteret men endnu ikke afgjort af "
+                        "writer-traaden — de findes hverken i eventloggen eller i "
+                        "dead-letter, saa tallet er et OEVRE skoen, ikke en maaling"
+                    )
+                    no_event_row_grund = (
+                        f"{no_event_row_grund}; {_flugt_note}"
+                        if no_event_row_grund
+                        else _flugt_note
+                    )
+                    no_event_row_er_estimat = True
     verified = decided_rows
     unverifiable = no_event_row
     # Skævheden er ikke kun ALDER (12/11-2026, Bjørns indvending). Før den fælles
@@ -1401,6 +1428,7 @@ def build_gut_surface() -> dict[str, object]:
         "neutral_rows": neutral_rows,
         "no_event_row": no_event_row,
         "no_event_row_grund": no_event_row_grund,
+        "no_event_row_er_estimat": no_event_row_er_estimat,
         "event_ledger": ledger,
         "dead_letter_rows": spillede,
         "historical_bias": historical_bias,

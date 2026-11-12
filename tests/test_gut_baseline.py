@@ -506,10 +506,26 @@ def test_aegte_bus_kvitterer_accept_og_drop():
     b._seq_lock = threading.Lock()
     b._publish_seq = 0
     b._write_seq = 0
+    b._pending = 0
     b._writer_queue = _q.Queue(maxsize=1)
 
     seq = b.publish("cognitive_gut.accepted")
     assert seq == 1, f"accept skal give eventets seq, fik {seq!r}"
+    assert b.pending_count() == 1, (
+        "et accepteret event er UAFGJORT indtil writer-traaden har behandlet det"
+    )
 
     # Det første event fyldte køen (maxsize=1) — næste publish må derfor droppes.
     assert b.publish("cognitive_gut.dropped") is None, "fuld koe skal give None"
+
+    # REGRESSION (Bjørn, 12/11-2026): drop-grenen satte `_write_seq` til det
+    # droppede seq, så flush() kunne returnere mens de forudgående events stadig
+    # lå i køen. Med 1 accepteret + 1 droppet ville write_seq vaere 2 — altså
+    # "alt skrevet" — selvom intet var skrevet. Den maa ikke rykke frem.
+    assert b._write_seq == 0, (
+        "et droppet event maa ikke rykke write_seq frem over de events der stadig "
+        "ligger i koeen"
+    )
+    assert b.pending_count() == 1, (
+        "et droppet event blev aldrig accepteret og maa ikke efterlade en uafgjort post"
+    )

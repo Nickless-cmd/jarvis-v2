@@ -68,7 +68,17 @@ class EventBus:
         )
         self._seq_lock = threading.Lock()
         self._publish_seq: int = 0  # incremented per publish (next seq to hand out)
-        self._write_seq: int = 0  # seq of the last committed event
+        self._write_seq: int = 0  # seq of the last event the writer RESOLVED (diagnostik)
+        # Antal events der er ACCEPTERET men endnu ikke afgjort af writer-tråden.
+        # `flush()` venter på at denne bliver nul. Før ventede den på
+        # `_write_seq >= _publish_seq`, hvilket var forkert i to retninger
+        # (Bjørn, 12/11-2026): et DROPPET event sprang `_write_seq` frem til sit
+        # eget seq, så flush() returnerede mens de forudgående events stadig lå i
+        # køen; og writer-tråden rykkede `_write_seq` også når batchen blev spillet
+        # til dead-letter, så seq-tallet kunne ikke skelne commit fra spill.
+        # En tæller over UAFGJORTE events kan ikke springe over noget: den falder
+        # kun når writer-tråden faktisk har behandlet batchen færdig.
+        self._pending: int = 0
 
         # Id'er på events DENNE proces har skrevet. Krydsproces-relæet
         # (core/eventbus/krydsproces.py) springer dem over, så en lokal
@@ -157,28 +167,50 @@ class EventBus:
                 kind,
                 seq,
             )
-            # Still advance write_seq so flush() doesn't wait forever for
-            # an event we'll never process.
-            with self._seq_lock:
-                self._write_seq = seq
+            # Drop-tælleren i `_write_seq` er FJERNET (12/11-2026). Den sprang
+            # flush() frem til et seq hvis forgængere stadig lå i køen: 10.000
+            # accepterede + 1 droppet satte `_write_seq` til 10.001, så flush()
+            # returnerede straks selvom ingen af de 10.000 var skrevet (Bjørn).
+            # `_pending` blev ikke øget for dette event, så flush() venter nu
+            # korrekt — uden at vente på et event der aldrig kommer.
             return None
+        with self._seq_lock:
+            self._pending += 1
         return seq
 
-    def flush(self, timeout: float = 10.0) -> None:
-        """Block until the writer has committed *all* events published so far.
+    def pending_count(self) -> int:
+        """Antal events der er accepteret, men endnu ikke afgjort af writer-tråden.
 
-        Intended for tests.  Production code should not need this.
+        Bruges af flader der skal sige om et regnskab er komplet: et event der
+        stadig ligger i køen findes hverken i `events` eller i dead-letter, så en
+        difference der tæller det som «ryddet» ville overdrive antallet af
+        forsvundne rækker (Bjørn, 12/11-2026). Kaster aldrig.
+        """
+        with self._seq_lock:
+            return max(0, int(self._pending))
+
+    def flush(self, timeout: float = 10.0) -> None:
+        """Block until the writer has RESOLVED every event accepted so far.
+
+        «Afgjort» betyder at writer-tråden har behandlet eventet færdigt: enten
+        committet det til SQLite ELLER spillet batchen til dead-letter. Det er
+        ikke det samme som «persisteret i databasen» — vil man vide om noget blev
+        spillet, skal man læse `dead_letter_path()`.
+
+        Før ventede denne på `_write_seq >= _publish_seq`, men det tal kunne
+        springe over køen (se `_pending`). Intended for tests. Production code
+        should not need this.
         """
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            with self._seq_lock:
-                if self._write_seq >= self._publish_seq:
-                    return
+            if self.pending_count() == 0:
+                return
             time.sleep(_FLUSH_POLL_SECS)
         logger.warning(
             "eventbus.flush() timed out after %.1fs — "
-            "publish_seq=%d write_seq=%d queue_size=%d",
+            "pending=%d publish_seq=%d write_seq=%d queue_size=%d",
             timeout,
+            self.pending_count(),
             self._publish_seq,
             self._write_seq,
             self._writer_queue.qsize(),
@@ -313,11 +345,14 @@ class EventBus:
             except Exception as exc:
                 self._spill_batch(batch, exc)
             finally:
-                # Always advance the sequence so flush() doesn't deadlock.
+                # Batchen er AFGJORT — committet eller spillet til dead-letter.
+                # `_pending` falder derfor uanset udfald; ellers ville flush()
+                # hænge på et event der aldrig bliver committet.
                 max_seq = max((it.get("seq", -1) for it in batch), default=-1)
                 with self._seq_lock:
                     if max_seq >= self._write_seq:
                         self._write_seq = max_seq
+                    self._pending = max(0, self._pending - len(batch))
 
             if poison:
                 break

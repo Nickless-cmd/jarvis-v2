@@ -218,6 +218,52 @@ class TestPublishAndFlush:
         ), "Expected timeout warning"
 
 
+    def test_flush_kan_ikke_springe_over_koeen(self):
+        """REGRESSION (Bjørn, 12/11-2026): seq-tallet var ikke bevis for at alt var skrevet.
+
+        `_write_seq >= _publish_seq` kunne blive sandt uden at et eneste event var
+        persisteret, i to tilfælde: et DROPPET event sprang `_write_seq` frem til
+        sit eget seq (så 10.000 accepterede + 1 droppet så ud som «alt skrevet»),
+        og writer-tråden rykkede den også når en batch blev spillet til
+        dead-letter. Her står `_write_seq` præcis som den gamle måling ville
+        tolke som færdig, mens tre events er uafgjorte: flush() skal vente.
+        """
+        from core.eventbus.bus import EventBus
+
+        b = EventBus.__new__(EventBus)  # uden __init__: ingen writer-tråd
+        b._seq_lock = threading.Lock()
+        b._publish_seq = 3
+        b._write_seq = 3  # ser ud som «alt skrevet»
+        b._pending = 3  # men tre events er stadig uafgjorte
+        b._writer_queue = queue.Queue()
+
+        start = time.monotonic()
+        b.flush(timeout=0.3)
+        brugt = time.monotonic() - start
+        assert brugt >= 0.25, (
+            "flush() returnerede på seq-tallet selvom tre events var uafgjorte"
+        )
+
+    def test_flush_returnerer_naar_intet_er_uafgjort(self):
+        """Positiv kontrol: er der intet i flugt, må flush() ikke vente.
+
+        Uden den ville den foregående test også være grøn hvis flush() altid
+        ventede til timeout — så beviste den intet om tælleren.
+        """
+        from core.eventbus.bus import EventBus
+
+        b = EventBus.__new__(EventBus)
+        b._seq_lock = threading.Lock()
+        b._publish_seq = 3
+        b._write_seq = 3
+        b._pending = 0
+        b._writer_queue = queue.Queue()
+
+        start = time.monotonic()
+        b.flush(timeout=1.0)
+        assert time.monotonic() - start < 0.2, "flush() ventede uden uafgjorte events"
+
+
 class TestSubscribe:
     """Real-time subscriber notification."""
 

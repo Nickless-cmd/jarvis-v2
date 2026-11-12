@@ -477,8 +477,9 @@ _Wakeup dispatcher — autonomous fire of self-wakeups._
 | function | `_nylig_rolle_i_session` | `(session_id, *, rolle, vindue_s)` | Findes der en besked fra `rolle` yngre end `vindue_s`? Self-safe. | [src](../../../core/services/wakeup_dispatcher.py#L84) |
 | function | `_active_turn_blocks` | `(session_id, *, karantaene=…)` | Returnér en skip-årsag hvis en FERSK visible-tur kører i sessionen. | [src](../../../core/services/wakeup_dispatcher.py#L118) |
 | function | `pick_wakeup_run_target` | `(*, channel, record_session, app_resolver, owner_resolver, is_external)` | Beslut hvilken session et wakeup-run skal lande i — med Discord-guard. | [src](../../../core/services/wakeup_dispatcher.py#L241) |
-| function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L272) |
-| function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L461) |
+| function | `_udloes_heartbeat_tick` | `()` | Kør heartbeat-tick'et UDEN for dispatchens kritiske sti (12/11-2026). | [src](../../../core/services/wakeup_dispatcher.py#L279) |
+| function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L304) |
+| function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L489) |
 
 ## `core/services/wall_guard.py`
 _Observerende vagt: opdager en «mur» — flere pointer i én prosablok._

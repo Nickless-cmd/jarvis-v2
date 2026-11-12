@@ -269,6 +269,38 @@ def pick_wakeup_run_target(
     return cand or None
 
 
+#: Baggrundstråden der kører heartbeat-tick'et efter en vækning. Single-flight:
+#: kører et tick allerede, startes der ikke et nyt — et tick er «reagér på at en
+#: vækning fyrede», og ét tick dækker flere vækninger lige så godt som to.
+_tick_traad: threading.Thread | None = None
+_tick_laas = threading.Lock()
+
+
+def _udloes_heartbeat_tick() -> None:
+    """Kør heartbeat-tick'et UDEN for dispatchens kritiske sti (12/11-2026).
+
+    Tick'et lå før INDE i løkken, før afleveringen og under `_dispatch_lock`.
+    Målt: 2 min 37 s for wake-bd36c1b2ea, og 57/59/173 s fyret → afleveret for de
+    tre vækninger vi har tal for. Alt i den tid stod i kø bag låsen. Tick'et skal
+    reagere på en vækning, ikke bestemme hvornår den starter.
+    """
+    global _tick_traad
+    with _tick_laas:
+        if _tick_traad is not None and _tick_traad.is_alive():
+            return
+
+        def _tick() -> None:
+            try:
+                from core.services.heartbeat_phases import tick_with_phases
+
+                tick_with_phases(name="default", trigger="self-wakeup-fire")
+            except Exception as exc:  # noqa: BLE001 — et tick må aldrig vælte en vækning
+                logger.debug("wakeup heartbeat trigger failed: %s", exc)
+
+        _tick_traad = threading.Thread(target=_tick, name="wakeup-heartbeat-tick", daemon=True)
+        _tick_traad.start()
+
+
 def dispatch_due_wakeups() -> dict[str, Any]:
     """Find newly-fired wakeups, push them out via webchat + heartbeat tick."""
     from core.services.self_wakeup import due_wakeups, er_stadig_fyret, marker_dispatch
@@ -336,13 +368,6 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                         send_session_notification(nudge_message, source="self-wakeup")
             except Exception as exc:
                 logger.warning("wakeup nudge push failed: %s", exc)
-
-            # B: trigger heartbeat phase tick
-            try:
-                from core.services.heartbeat_phases import tick_with_phases
-                tick_with_phases(name="default", trigger="self-wakeup-fire")
-            except Exception as exc:
-                logger.debug("wakeup heartbeat trigger failed: %s", exc)
 
             # RE-LÆS FØR AFLEVERINGEN (12/11-2026). `fired` er et snapshot fra
             # løkkens start, og trin B (heartbeat-tick) kan tage minutter. Blev
@@ -428,10 +453,13 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                 marker_dispatch(str(wid), dispatched=False,
                                 skip_reason=skip_reason or "unknown")
                 skipped.append(str(wid))
+                _udloes_heartbeat_tick()
                 continue
 
             marker_dispatch(str(wid), dispatched=True)
             dispatched.append(str(wid))
+            # B: heartbeat-tick — EFTER afleveringen (se `_udloes_heartbeat_tick`).
+            _udloes_heartbeat_tick()
 
             # Eventbus
             try:

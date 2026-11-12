@@ -64,6 +64,7 @@ def test_dispatch_fires_webchat_and_marks_dispatched():
          patch("core.services.heartbeat_phases.tick_with_phases") as fake_tick, \
          patch(GATEWAY, return_value=_KOEET):
         result = dispatch_due_wakeups()
+        _ventende_tick()
     assert result["dispatched"] == 1
     assert "w1" in result["dispatched_ids"]
     fake_push.assert_called_once()
@@ -404,19 +405,22 @@ def _fyret_post(**ekstra) -> dict:
     return {"wakeup_id": "w1", "prompt": "p", "reason": "r", "status": "fired", **ekstra}
 
 
-@pytest.mark.parametrize("status_efter_tick", ["consumed", "cancelled"])
-def test_en_vaekning_kvitteret_under_heartbeat_tick_afleveres_ikke(monkeypatch, status_efter_tick):
+@pytest.mark.parametrize("status_imens", ["consumed", "cancelled"])
+def test_en_vaekning_kvitteret_efter_snapshottet_men_foer_afleveringen_afleveres_ikke(
+        monkeypatch, status_imens):
+    """Vinduet er nu snapshot → nudge-push → aflevering (og de andre vækninger i
+    løkken). Heartbeat-tick'et ligger ikke længere i det."""
     state = [_fyret_post()]
     publiceret = _fanget_eventbus(monkeypatch)
 
-    def _tick(**kw):
-        state[0]["status"] = status_efter_tick   # Jarvis kvitterer imens ticket kører
+    def _push(**kw):
+        state[0]["status"] = status_imens   # Jarvis kvitterer imens
 
     with patch("core.services.self_wakeup.due_wakeups", return_value=state), \
          patch("core.services.self_wakeup._load", return_value=state), \
          patch("core.services.self_wakeup._save"), \
-         patch("core.services.outbound_nudges.push_nudge"), \
-         patch("core.services.heartbeat_phases.tick_with_phases", side_effect=_tick), \
+         patch("core.services.outbound_nudges.push_nudge", side_effect=_push), \
+         patch("core.services.heartbeat_phases.tick_with_phases"), \
          patch(GATEWAY, return_value=_KOEET) as fake_gw:
         result = dispatch_due_wakeups()
 
@@ -462,3 +466,86 @@ def test_kan_lageret_ikke_laeses_afleveres_vaekningen_hellere_end_at_forsvinde(m
 
     fake_gw.assert_called_once()
     assert result["dispatched"] == 1
+
+
+# ── Aflever FØRST, heartbeat-tick BAGEFTER (Bjørn 12/11-2026) ─────────────────
+#
+# Tick'et (`tick_with_phases`) lå INDE i løkken FØR afleveringen, under
+# `_dispatch_lock`. Målt: 2 min 37 s for wake-bd36c1b2ea, og 57/59/173 s fyret →
+# afleveret for de tre vækninger vi har tal for. Tick'et skal reagere på en
+# vækning, ikke bestemme hvornår den starter.
+def _ventende_tick():
+    from core.services import wakeup_dispatcher as wd
+
+    traad = wd._tick_traad
+    if traad is not None:
+        traad.join(timeout=5.0)
+
+
+def test_afleveringen_sker_foer_heartbeat_tick(monkeypatch):
+    raekkefoelge: list[str] = []
+    state = [_fyret_post()]
+    with patch("core.services.self_wakeup.due_wakeups", return_value=state), \
+         patch("core.services.self_wakeup._load", return_value=state), \
+         patch("core.services.self_wakeup._save"), \
+         patch("core.services.outbound_nudges.push_nudge"), \
+         patch("core.services.heartbeat_phases.tick_with_phases",
+               side_effect=lambda **kw: raekkefoelge.append("tick")), \
+         patch(GATEWAY, side_effect=lambda **kw: raekkefoelge.append("gateway") or _KOEET):
+        dispatch_due_wakeups()
+        _ventende_tick()
+
+    assert raekkefoelge == ["gateway", "tick"]
+
+
+def test_et_langsomt_tick_holder_hverken_dispatchen_eller_laasen_fast():
+    import threading
+    import time
+
+    from core.services import wakeup_dispatcher as wd
+
+    frigiv = threading.Event()
+    state = [_fyret_post()]
+    try:
+        with patch("core.services.self_wakeup.due_wakeups", return_value=state), \
+             patch("core.services.self_wakeup._load", return_value=state), \
+             patch("core.services.self_wakeup._save"), \
+             patch("core.services.outbound_nudges.push_nudge"), \
+             patch("core.services.heartbeat_phases.tick_with_phases",
+                   side_effect=lambda **kw: frigiv.wait(30)), \
+             patch(GATEWAY, return_value=_KOEET):
+            t = time.monotonic()
+            result = dispatch_due_wakeups()
+            brugt = time.monotonic() - t
+
+            assert result["dispatched"] == 1
+            assert brugt < 2.0, f"dispatchen ventede paa tick'et ({brugt:.1f}s)"
+            assert not wd._dispatch_lock.locked()
+    finally:
+        frigiv.set()
+        _ventende_tick()
+
+
+def test_der_koerer_hoejst_eet_heartbeat_tick_ad_gangen():
+    import threading
+
+    frigiv = threading.Event()
+    tick = patch("core.services.heartbeat_phases.tick_with_phases",
+                 side_effect=lambda **kw: frigiv.wait(30))
+    state1 = [_fyret_post(wakeup_id="w1")]
+    state2 = [_fyret_post(wakeup_id="w2")]
+    try:
+        with tick as fake_tick, \
+             patch("core.services.self_wakeup._save"), \
+             patch("core.services.outbound_nudges.push_nudge"), \
+             patch(GATEWAY, return_value=_KOEET):
+            with patch("core.services.self_wakeup.due_wakeups", return_value=state1), \
+                 patch("core.services.self_wakeup._load", return_value=state1):
+                dispatch_due_wakeups()
+            with patch("core.services.self_wakeup.due_wakeups", return_value=state2), \
+                 patch("core.services.self_wakeup._load", return_value=state2):
+                dispatch_due_wakeups()
+            assert fake_tick.call_count == 1
+    finally:
+        frigiv.set()
+        _ventende_tick()

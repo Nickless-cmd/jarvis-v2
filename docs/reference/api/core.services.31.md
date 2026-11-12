@@ -481,6 +481,17 @@ _Wakeup dispatcher — autonomous fire of self-wakeups._
 | function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L304) |
 | function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L489) |
 
+## `core/services/wakeup_ticker.py`
+_Dedikeret vækker-tråd: fyr forfaldne vækninger inden for sekunder (12/11-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Tik` | `` | Resultatet af ét tik: hvor længe der ventes, og hvad næste tik skal huske. | [src](../../../core/services/wakeup_ticker.py#L49) |
+| function | `tik` | `(forfaldne, dispatch, *, forrige)` | Ét tik, uden tråd og ur — så det kan testes direkte. | [src](../../../core/services/wakeup_ticker.py#L56) |
+| function | `_loop` | `()` | — | [src](../../../core/services/wakeup_ticker.py#L81) |
+| function | `start_wakeup_ticker` | `()` | Start tråden. Idempotent: kører den allerede, returneres `True` uden en ny. | [src](../../../core/services/wakeup_ticker.py#L92) |
+| function | `stop_wakeup_ticker` | `()` | — | [src](../../../core/services/wakeup_ticker.py#L105) |
+
 ## `core/services/wall_guard.py`
 _Observerende vagt: opdager en «mur» — flere pointer i én prosablok._
 
@@ -539,13 +550,4 @@ _Quota and adaptive health calculations for cheap-lane candidates._
 | function | `rolling_average` | `(*, current_avg, current_count, new_value)` | — | [src](../../../core/services/weighted_slot_health.py#L211) |
 | function | `normalize_probe_text` | `(value)` | — | [src](../../../core/services/weighted_slot_health.py#L217) |
 | function | `smoke_quality_score` | `(*, expected, actual)` | — | [src](../../../core/services/weighted_slot_health.py#L222) |
-
-## `core/services/widget_dokument.py`
-_Pak model-skrevet HTML i et dokument der ikke kan naa noget._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `maerke` | `(titel=…)` | — | [src](../../../core/services/widget_dokument.py#L70) |
-| class | `WidgetFejl` | `` | En HTML vi ikke vil pakke. Beskeden gaar tilbage til Jarvis. | [src](../../../core/services/widget_dokument.py#L78) |
-| function | `pak` | `(html, *, titel=…)` | Model-HTML → et komplet dokument med CSP, klar til en sandkasse. | [src](../../../core/services/widget_dokument.py#L82) |
 

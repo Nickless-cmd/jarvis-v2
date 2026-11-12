@@ -682,6 +682,32 @@ def marker_dispatch(
     return {"status": "ok", "wakeup_id": wakeup_id}
 
 
+def forfaldne_ider() -> set[str]:
+    """Id'erne dispatcheren skal tage nu: forfaldne `pending` og `fired` uden afleveringsspor.
+
+    Billigt opslag til vækker-tråden (`wakeup_ticker`): et enkelt JSON-læs, ingen skrivning
+    og ingen lås. Sprungne vækninger (`dispatch_skipped`) hører til den durable indbakkevej
+    og tæller ikke — dem må tråden ikke blive ved med at samle op. Kan lageret ikke læses,
+    er der «intet forfaldent»: tråden skal overleve en læsefejl og prøve igen næste tik.
+    """
+    now_iso = datetime.now(UTC).isoformat()
+    try:
+        records = _load()
+    except Exception:  # noqa: BLE001 — se docstringen
+        return set()
+    ud: set[str] = set()
+    for r in records:
+        status = str(r.get("status") or "")
+        wid = str(r.get("wakeup_id") or "")
+        if not wid:
+            continue
+        if status == "pending" and str(r.get("fire_at", "")) <= now_iso:
+            ud.add(wid)
+        elif status == "fired" and not r.get("dispatched") and not r.get("dispatch_skipped"):
+            ud.add(wid)
+    return ud
+
+
 def er_stadig_fyret(wakeup_id: str) -> bool:
     """Står vækningen STADIG som `fired` i lageret — altså hverken kvitteret eller annulleret?
 

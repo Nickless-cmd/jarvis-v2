@@ -402,6 +402,15 @@ def create_app() -> FastAPI:
                 logger.info("approval outbox dispatcher started")
             except Exception as _exc:
                 logger.warning("approval outbox dispatcher start failed: %s", _exc)
+            # Vækninger fyres af en dedikeret tråd (12/11-2026), ikke kun af 60 s-jobbet
+            # via jobkøen: målt 3-59 s for sent (median 32 s). Jobbet er sikkerhedsnet.
+            try:
+                from core.services.wakeup_ticker import start_wakeup_ticker
+
+                start_wakeup_ticker()
+                logger.info("wakeup ticker started")
+            except Exception as _exc:
+                logger.warning("wakeup ticker start failed: %s", _exc)
             try:
                 from core.services.my_projects import ensure_my_projects_running
                 _mp_result = ensure_my_projects_running()

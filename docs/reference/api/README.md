@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18543 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18548 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -61,8 +61,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18543 functions/
 - [`core.services.28`](core.services.28.md) — `surprise_daemon` … `tool_execution_trace`
 - [`core.services.29`](core.services.29.md) — `tool_failure_surface` … `valence_trajectory`
 - [`core.services.30`](core.services.30.md) — `value_formation` … `visible_run_segment_exit`
-- [`core.services.31`](core.services.31.md) — `visible_run_segment_settlement` … `widget_dokument`
-- [`core.services.32`](core.services.32.md) — `witness_signal_tracking` … `world_model_signal_tracking`
+- [`core.services.31`](core.services.31.md) — `visible_run_segment_settlement` … `weighted_slot_health`
+- [`core.services.32`](core.services.32.md) — `widget_dokument` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

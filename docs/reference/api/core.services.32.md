@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/widget_dokument.py`
+_Pak model-skrevet HTML i et dokument der ikke kan naa noget._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `maerke` | `(titel=…)` | — | [src](../../../core/services/widget_dokument.py#L70) |
+| class | `WidgetFejl` | `` | En HTML vi ikke vil pakke. Beskeden gaar tilbage til Jarvis. | [src](../../../core/services/widget_dokument.py#L78) |
+| function | `pak` | `(html, *, titel=…)` | Model-HTML → et komplet dokument med CSP, klar til en sandkasse. | [src](../../../core/services/widget_dokument.py#L82) |
+
 ## `core/services/witness_signal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |

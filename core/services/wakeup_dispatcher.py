@@ -496,8 +496,8 @@ WAKEUP_DISPATCHER_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "dispatch_due_wakeups",
             "description": (
-                "Manually run the wakeup dispatcher (normally automatic via "
-                "periodic_jobs_scheduler every 60s). Pushes any fired-but-undispatched "
+                "Manually run the wakeup dispatcher (normally automatic via the wakeup ticker thread, "
+                "with periodic_jobs_scheduler every 60s as safety net). Pushes any fired-but-undispatched "
                 "wakeups to webchat + triggers heartbeat tick."
             ),
             "parameters": {"type": "object", "properties": {}, "required": []},

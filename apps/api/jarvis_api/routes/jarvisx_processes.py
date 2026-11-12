@@ -593,9 +593,20 @@ def operator_wakeup_fired(payload: dict) -> dict:
             # til ren drain (besked "dumpes" ind, men STABILT). Follow-streaming
             # genoptages med translate-i-endpoint-design — se memory
             # project_autonomous_run_followstream.
-            start_autonomous_run(_prompt, session_id=target)
-            _OP_WAKEUP_TIMES.append(now)
-            re_engaged = True
+            # OVERLAP-VÆRNET (12/11-2026). Denne starter gik uden om
+            # `reserve_background_start`, så en operator-wakeup kunne lande
+            # oven i et run der allerede kørte i samme samtale. Rate-limit'en
+            # ovenfor tæller pr. TIME — den ser ikke at nogen taler nu.
+            from core.services.background_start_reservation import (
+                reserve_background_start,
+            )
+            with reserve_background_start(target or "") as reservation:
+                if not reservation.acquired:
+                    skipped = f"overlap: {reservation.reason}"
+                else:
+                    start_autonomous_run(_prompt, session_id=target)
+                    _OP_WAKEUP_TIMES.append(now)
+                    re_engaged = True
     except Exception as exc:
         skipped = str(exc)[:160]
 

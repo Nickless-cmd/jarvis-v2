@@ -539,14 +539,36 @@ def _maybe_trigger_continuation(run: "_vr.VisibleRun", assistant_text: str) -> N
                 if active and active.get("session_id") == run.session_id:
                     # A new run is already active in this session — skip continuation
                     return
-                _vr.start_autonomous_run(continuation_message, session_id=run.session_id,
-                                         origin="continuation",
-                                         # TILLADELSEN FØLGER SAMTALEN (12/11-2026).
-                                         # En continuation er en fortsættelse af en tur
-                                         # hvis niveau brugeren allerede har sat — den må
-                                         # ikke læse et silo-niveau og rejse kort han ikke
-                                         # sidder og svarer på.
-                                         permission_session=run.session_id)
+                # OVERLAP-VÆRNET (12/11-2026). Continuation var den ene af ti
+                # startere der gik uden om `reserve_background_start`, så to
+                # uafhængige startere kunne lande oven i hinanden i samme
+                # samtale: den forrige kørsel var lige slut, og intet så den.
+                # Reservationen er et OS-flock om check/start-sektionen, så
+                # også en anden proces' start er synlig her.
+                from core.services.background_start_reservation import (
+                    reserve_background_start,
+                )
+                with reserve_background_start(run.session_id) as reservation:
+                    if not reservation.acquired:
+                        # Continuation er en bekvemmelighed, ikke et løfte:
+                        # er der allerede nogen i samtalen, skal den ikke
+                        # genforsøges — brugeren eller et andet run har taget
+                        # over, og et ekstra run ville være præcis det
+                        # «råb ind ad døren» værnene findes for at undgå.
+                        import logging as _lg_vaern
+                        _lg_vaern.getLogger(__name__).info(
+                            "continuation afvist for %s: %s",
+                            run.session_id[:28], reservation.reason,
+                        )
+                        return
+                    _vr.start_autonomous_run(continuation_message, session_id=run.session_id,
+                                             origin="continuation",
+                                             # TILLADELSEN FØLGER SAMTALEN (12/11-2026).
+                                             # En continuation er en fortsættelse af en tur
+                                             # hvis niveau brugeren allerede har sat — den må
+                                             # ikke læse et silo-niveau og rejse kort han ikke
+                                             # sidder og svarer på.
+                                             permission_session=run.session_id)
             except Exception:
                 pass
 

@@ -162,6 +162,7 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
                          origin: str | None = None, task_id: str = "",
                          max_tool_calls: int = 0, max_seconds: float = 0.0,
                          tool_scope: str = "", force_user_id: str = "",
+                         permission_session: str = "",
                          started_callback: Callable[..., None] | None = None,
                          completion_callback: Callable[..., None] | None = None) -> bool:
     """Trigger an autonomous (heartbeat-initiated) visible run in a background thread.
@@ -396,7 +397,19 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
         # vedvarende policy vinder over samtalens kontakt-flag.
         trust_all=(
             False if str(origin or "").strip().lower() == "routine"
-            else _trust_for_autonomous(resolved_session)
+            else (
+                # TILLADELSEN KOMMER FRA KILDEN (12/11-2026). Samme regel som i
+                # `autonomous_stream_run`: en vækning lander i en `auto-*`-silo,
+                # men blev BOOKET i en samtale — og det er den samtales niveau
+                # brugeren satte. `inbox_idle_waker` har båret
+                # `permission_session` hele vejen gennem indbakken lige siden
+                # 11/11-2026, men parameteren fandtes ikke her: hvert kald
+                # kastede TypeError, blev fanget som «kunne ikke starte run»,
+                # og posten blev rullet tilbage og ventede for evigt.
+                _trust_for_session(_pk)
+                if (_pk := str(permission_session or "").strip())
+                else _trust_for_autonomous(resolved_session)
+            )
         ),
         user_id=str(force_user_id or ""),
         origin=_origin,

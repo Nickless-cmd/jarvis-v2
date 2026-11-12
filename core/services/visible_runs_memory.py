@@ -540,7 +540,13 @@ def _maybe_trigger_continuation(run: "_vr.VisibleRun", assistant_text: str) -> N
                     # A new run is already active in this session — skip continuation
                     return
                 _vr.start_autonomous_run(continuation_message, session_id=run.session_id,
-                                         origin="continuation")
+                                         origin="continuation",
+                                         # TILLADELSEN FØLGER SAMTALEN (12/11-2026).
+                                         # En continuation er en fortsættelse af en tur
+                                         # hvis niveau brugeren allerede har sat — den må
+                                         # ikke læse et silo-niveau og rejse kort han ikke
+                                         # sidder og svarer på.
+                                         permission_session=run.session_id)
             except Exception:
                 pass
 

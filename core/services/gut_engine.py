@@ -63,13 +63,33 @@ def _task_mapping(task_description: str) -> dict[str, object]:
 _ERROR_RATE_CAUTION = 0.20
 _MIN_SAMPLE_FOR_RATE = 20
 
-# Evidens-port (12/11-2026): grundlaget for at en `caution` må BLOKKERE et run.
-# Målt 12/11: 26 caution-advarsler, 1 korrekt (3,8 %) — advarslen var ren støj fordi
-# runs lykkes ~99,7 % af tiden. Tærsklerne er sat så et lille, skævt sample ikke kan
-# låse gaten: under 20 events er præcisionen ikke et grundlag, og først når flertallet
-# af advarslerne faktisk varsler fejl, har den positiv forventet værdi.
+# Evidens-port (12/11-2026, RETTET samme aften efter Bjoerns indvending).
+#
+# Foerste version kraevede praecision > 0,5 — «flertallet af advarsler skal varsle fejl».
+# Det er en majoritetsregel paa en haendelse der sker i 0,29 % af tilfaeldene, og den er
+# metodisk forkert: en risikodetektor skal ikke vaere bedre end en konstant paa ACCURACY,
+# den skal loefte fejlraten i den gruppe den peger paa. Maalt paa de 344 events:
+#
+#   proceed: 318 events, 0 fejl  (0,00 %)
+#   caution:  26 events, 1 fejl  (3,85 %)   <- 13x basisraten 0,29 %
+#
+# Altsaa: recall 100 % (den ENESTE fejl laa i caution-gruppen), og et lift paa ~13x.
+# En 50 %-taerskel ville kassere netop det signal der fandt fejlen.
+#
+# Den rigtige taerskel er KONSEKVENS-bevidst. En falsk blokering koster ét udskudt run
+# (budgettet er 3 pr. time, og runnet fødes bare ikke — intet tabes). En ufanget fejl
+# koster et helt autonomt run der brænder tokens eller skriver noget forkert. Er
+# fejlens pris `_FEJL_KOST` gange blokeringens, er break-even-liftet
+# `_FEJL_KOST / (1 + _FEJL_KOST)` — ca. 0,91 ved 10x. Vi kraever lift >= 2,0, hvilket
+# svarer til at en fejl kun skal koste 2x en blokering. Det er bevidst konservativt i
+# den anden retning end foer: signalet skal bevise at det SKELNER, ikke at det har ret
+# i flertallet af sine advarsler.
+#
+# `interrupted` taelles IKKE som en sand advarsel. Maalt: den ene «fejl» i datasættet
+# var `actual: "interrupted"` — et afbrudt run, ikke et fejlet. At taelle det som en
+# fanget fejl ville give maven aeren for noget den ikke forudsagde.
 _EVIDENS_MIN_CAUTION = 20
-_EVIDENS_MIN_PRECISION = 0.5
+_EVIDENS_MIN_LIFT = 2.0
 _EVIDENS_TTL_S = 300.0
 _EVIDENS_CACHE: dict[str, object] = {"at": 0.0, "value": None}
 
@@ -650,15 +670,23 @@ def take_preflight_prediction() -> dict[str, object] | None:
 
 
 def _caution_har_evidens() -> dict[str, object]:
-    """Måler om `caution` er bedre end «sig altid proceed» — grundlaget for at blokere.
+    """Måler om `caution` SKELNER — grundlaget for at advarslen må blokere et run.
 
-    Spørgsmålet er ikke «har maven ret ofte?» men «har advarslen positiv forventet værdi?».
-    En advarsel der fyrer på noget der går fint, koster et run og giver intet igen.
+    Spørgsmålet er ikke «har maven ret i flertallet af sine advarsler?» men «løfter
+    advarslen fejlraten i den gruppe den peger på, mere end den koster at følge?».
 
-    Kravet er todelt og bevidst konservativt:
-      * mindst `_EVIDENS_MIN_CAUTION` caution-events, ellers er præcisionen støj
-      * præcisionen skal være over `_EVIDENS_MIN_PRECISION` — altså at flertallet af
-        advarslerne faktisk varslede en fejl
+    Hvorfor ikke præcision (12/11-2026, Bjørns indvending): en risikodetektor på en
+    hændelse der sker i 0,29 % af tilfældene kan ikke måles med en majoritetsregel. Målt
+    på de 344 events: caution-gruppen havde 1 fejl af 26 (3,85 %) mod 0 af 318 for
+    proceed — altså 13x basisraten, og den ENESTE fejl i hele datasættet lå i
+    caution-gruppen. En 50 %-tærskel ville kassere netop det signal der fandt den.
+
+    Målet er derfor LIFT = fejlrate(caution) / fejlrate(alle). Kravet er
+    `_EVIDENS_MIN_LIFT`, som svarer til at en ufanget fejl kun skal koste 2x en falsk
+    blokering — og en blokering koster ét udskudt run, ikke et tabt.
+
+    `interrupted` tælles ikke som fejl: et afbrudt run er ikke et fejlet run, og at
+    kreditere maven for det ville være at give den æren for noget den ikke forudsagde.
 
     Self-safe: kan evidensen ikke måles, svarer den `may_block=False` med en grund. En
     gate der ikke kan begrunde sin blokering må ikke blokere.
@@ -681,8 +709,11 @@ def _caution_har_evidens() -> dict[str, object]:
                 "SELECT payload_json FROM events "
                 "WHERE kind = 'cognitive_gut.outcome_recorded'"
             ).fetchall()
-        caution_n = 0
-        caution_rigtige = 0
+        # Kun afgjorte udfald tæller. `interrupted` er hverken succes eller fejl — et
+        # afbrudt run siger intet om hvorvidt advarslen var berettiget.
+        _FEJL = ("error", "failed", "failure")
+        _OK = ("completed", "success")
+        caution_n = caution_fejl = alle_n = alle_fejl = 0
         for row in rows:
             try:
                 d = _json.loads(row[0])
@@ -690,12 +721,22 @@ def _caution_har_evidens() -> dict[str, object]:
                 continue
             if not isinstance(d, dict):
                 continue
-            if str(d.get("hunch") or "") != "caution":
+            hunch = str(d.get("hunch") or "")
+            if hunch not in ("proceed", "caution"):
                 continue
-            caution_n += 1
-            # En caution-advarsel havde ret hvis udfaldet IKKE var en succes.
-            if str(d.get("actual") or "") not in ("completed", "success"):
-                caution_rigtige += 1
+            actual = str(d.get("actual") or "")
+            if actual in _FEJL:
+                er_fejl = True
+            elif actual in _OK:
+                er_fejl = False
+            else:
+                continue  # interrupted/ukendt: hverken bevis for eller imod
+            alle_n += 1
+            alle_fejl += er_fejl
+            if hunch == "caution":
+                caution_n += 1
+                caution_fejl += er_fejl
+
         if caution_n < _EVIDENS_MIN_CAUTION:
             ud = {
                 "may_block": False,
@@ -703,16 +744,30 @@ def _caution_har_evidens() -> dict[str, object]:
                 "caution_n": caution_n,
                 "kraevet": _EVIDENS_MIN_CAUTION,
             }
-        else:
-            praecision = caution_rigtige / caution_n
+        elif alle_fejl == 0:
+            # Nul fejl i hele datasættet: der er intet at skelne imod, og en advarsel
+            # kan ikke have fanget noget. Lift er udefineret — ikke uendelig.
             ud = {
-                "may_block": praecision > _EVIDENS_MIN_PRECISION,
-                "reason": "praecision" if praecision > _EVIDENS_MIN_PRECISION
-                          else "advarslen-tager-fejl",
+                "may_block": False,
+                "reason": "ingen-fejl-at-skelne",
                 "caution_n": caution_n,
-                "caution_rigtige": caution_rigtige,
-                "praecision": round(praecision, 4),
-                "kraevet_praecision": _EVIDENS_MIN_PRECISION,
+                "alle_n": alle_n,
+            }
+        else:
+            basisrate = alle_fejl / alle_n
+            cautionrate = caution_fejl / caution_n
+            lift = cautionrate / basisrate
+            ud = {
+                "may_block": lift >= _EVIDENS_MIN_LIFT,
+                "reason": "lift" if lift >= _EVIDENS_MIN_LIFT
+                          else "advarslen-skelner-ikke",
+                "caution_n": caution_n,
+                "caution_fejl": caution_fejl,
+                "cautionrate": round(cautionrate, 4),
+                "basisrate": round(basisrate, 4),
+                "lift": round(lift, 2),
+                "kraevet_lift": _EVIDENS_MIN_LIFT,
+                "alle_n": alle_n,
             }
     except Exception:  # uden maaling blokerer vi ikke — se docstring
         ud = {"may_block": False, "reason": "db-fejl"}

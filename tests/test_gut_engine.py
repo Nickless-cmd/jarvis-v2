@@ -629,7 +629,8 @@ def test_preflight_sender_hunch_til_gaten(monkeypatch):
     # Evidens-porten (12/11-2026) kræver at advarslen kan vises at være præcis, før den
     # må blokere. Her gives et sample hvor caution faktisk rammer, så testen måler
     # retnings-videregivelsen og ikke porten.
-    _stub_evidens(monkeypatch, caution_n=40, rigtige=30)
+    _stub_evidens(monkeypatch, caution_n=40, caution_fejl=30,
+                  alle_n=300, alle_fejl=32)
     ud = ge.preflight_gut_gate(task_description="t")
     assert ud["allowed"] is False, "en advarsel over tærsklen må ikke slippe igennem"
     assert ud["hunch"] == "caution"
@@ -821,7 +822,8 @@ def test_afvisning_registreres_som_beslutning(monkeypatch):
     _fast_mave(monkeypatch, kalibrering=1.0, bias=0.0)
     # «kritisk migration» bliver caution via irreversible-grenen. Evidens-porten kræver
     # at advarslen er præcis før den må blokere — her gives et sample hvor den rammer.
-    _stub_evidens(monkeypatch, caution_n=40, rigtige=30)
+    _stub_evidens(monkeypatch, caution_n=40, caution_fejl=30,
+                  alle_n=300, alle_fejl=32)
     ud = ge.preflight_gut_gate(task_description="kritisk migration")
     assert ud["allowed"] is False
     withheld = [c for c in calls if c["nerve"] == "gut_gate_withheld"]
@@ -836,18 +838,33 @@ def test_afvisning_registreres_som_beslutning(monkeypatch):
 # noget der gik fint 96 % af gangene. Porten kræver at advarslen kan vises at være bedre
 # end «sig altid proceed» før den må stoppe et run.
 
-def _stub_evidens(monkeypatch, *, caution_n: int, rigtige: int):
-    """Stub evidens-målingen med et bestemt sample i stedet for at læse DB'en."""
+def _stub_evidens(monkeypatch, *, caution_n: int, caution_fejl: int,
+                  alle_n: int = 344, alle_fejl: int | None = None):
+    """Stub evidens-målingen med et bestemt sample i stedet for at læse DB'en.
+
+    Modellerer LIFT-reglen (12/11-2026): caution skal løfte fejlraten over basisraten,
+    ikke vinde et flertal. `alle_fejl` defaulter til caution_fejl, så et kald uden
+    proceed-fejl giver samme tal som produktionen ville.
+    """
+    if alle_fejl is None:
+        alle_fejl = caution_fejl
+
     def _fake():
         if caution_n < ge._EVIDENS_MIN_CAUTION:
             return {"may_block": False, "reason": "for-faa-caution-events",
                     "caution_n": caution_n, "kraevet": ge._EVIDENS_MIN_CAUTION}
-        p = rigtige / caution_n
-        return {"may_block": p > ge._EVIDENS_MIN_PRECISION,
-                "reason": "praecision" if p > ge._EVIDENS_MIN_PRECISION
-                          else "advarslen-tager-fejl",
-                "caution_n": caution_n, "caution_rigtige": rigtige,
-                "praecision": round(p, 4)}
+        if alle_fejl == 0:
+            return {"may_block": False, "reason": "ingen-fejl-at-skelne",
+                    "caution_n": caution_n, "alle_n": alle_n}
+        basis = alle_fejl / alle_n
+        cr = caution_fejl / caution_n
+        lift = cr / basis
+        return {"may_block": lift >= ge._EVIDENS_MIN_LIFT,
+                "reason": "lift" if lift >= ge._EVIDENS_MIN_LIFT
+                          else "advarslen-skelner-ikke",
+                "caution_n": caution_n, "caution_fejl": caution_fejl,
+                "cautionrate": round(cr, 4), "basisrate": round(basis, 4),
+                "lift": round(lift, 2), "alle_n": alle_n}
     monkeypatch.setattr(ge, "_caution_har_evidens", _fake, raising=False)
 
 
@@ -864,38 +881,62 @@ def _tving_caution_afvist(monkeypatch):
 
 
 def test_caution_uden_evidens_blokerer_ikke(monkeypatch):
-    """Kernen i fixet: 26 advarsler hvor 1 var korrekt må ikke stoppe et run.
+    """Kernen i fixet: en advarsel der ikke skelner må ikke stoppe et run.
 
-    Det er den målte tilstand 12/11. Uden porten stoppede gaten runs på et signal der
-    tog fejl 96 % af gangene — og `crossings = 0` viste at bias'en aldrig flyttede noget.
+    Målt 12/11: 26 caution-advarsler, 0 fejl i caution-gruppen og 0 i proceed-gruppen
+    (den ene ikke-succes var `interrupted`). Der er intet at skelne imod, så advarslen
+    kan ikke have fanget noget — og må ikke blokere.
     """
     _tving_caution_afvist(monkeypatch)
-    _stub_evidens(monkeypatch, caution_n=26, rigtige=1)
+    _stub_evidens(monkeypatch, caution_n=26, caution_fejl=0, alle_n=343, alle_fejl=0)
     ud = ge.preflight_gut_gate(task_description="t")
-    assert ud["allowed"] is True, "en advarsel der tager fejl 96% må ikke blokere"
+    assert ud["allowed"] is True, "en advarsel der ikke skelner må ikke blokere"
     assert ud.get("evidence_blocked") is True
-    assert ud["evidence"]["praecision"] == pytest.approx(0.0385, abs=1e-3)
+    assert ud["evidence"]["reason"] == "ingen-fejl-at-skelne"
     # Signalet selv er UÆNDRET — de fire andre forbrugere skal stadig se caution.
     assert ud["hunch"] == "caution"
 
 
 def test_caution_med_evidens_blokerer_stadig(monkeypatch):
-    """Den anden retning: er advarslen faktisk præcis, skal gaten stadig kunne stoppe.
+    """Den anden retning: skelner advarslen faktisk, skal gaten stadig kunne stoppe.
 
     Uden denne test ville fixet være «advar aldrig» — og så havde jeg fjernet en
     sikkerhedsmekanisme i stedet for at afgrænse den.
     """
     _tving_caution_afvist(monkeypatch)
-    _stub_evidens(monkeypatch, caution_n=40, rigtige=30)   # 75 % præcision
+    # 10 af 25 caution-events fejler (40 %) mod 2 af 300 i resten (0,67 %) → lift ~60x
+    _stub_evidens(monkeypatch, caution_n=25, caution_fejl=10,
+                  alle_n=325, alle_fejl=12)
     ud = ge.preflight_gut_gate(task_description="t")
-    assert ud["allowed"] is False, "en præcis advarsel skal stadig kunne stoppe et run"
+    assert ud["allowed"] is False, "en advarsel der skelner skal stadig kunne stoppe et run"
     assert ud["hunch"] == "caution"
+
+
+def test_lav_praecision_men_hoej_lift_blokerer(monkeypatch):
+    """BJØRNS INDVENDING (12/11-2026), fastholdt som test.
+
+    En risikodetektor på en sjælden hændelse skal ikke vinde et flertal — den skal løfte
+    fejlraten i den gruppe den peger på. 3,85 % præcision er 13x basisraten 0,29 %, og
+    den ENESTE fejl i datasættet lå i caution-gruppen. En 50 %-tærskel ville kassere
+    netop det signal der fandt fejlen.
+    """
+    _tving_caution_afvist(monkeypatch)
+    # 1 fejl af 26 caution (3,85 %) mod 1 fejl af 344 i alt (0,29 %) → lift ~13x
+    _stub_evidens(monkeypatch, caution_n=26, caution_fejl=1,
+                  alle_n=344, alle_fejl=1)
+    ud = ge.preflight_gut_gate(task_description="t")
+    assert ud["allowed"] is False, "13x lift er et signal, ikke støj"
+    # `evidence` lægges kun i svaret når porten AFVISER en blokering — her slap den
+    # igennem, så lift-tallet læses fra målingen selv.
+    ev = ge._caution_har_evidens()
+    assert ev["lift"] >= ge._EVIDENS_MIN_LIFT
+    assert ev["cautionrate"] > ev["basisrate"]
 
 
 def test_for_lille_sample_blokerer_ikke(monkeypatch):
     """3 advarsler hvor alle 3 var korrekte er 100 % — men ikke et grundlag."""
     _tving_caution_afvist(monkeypatch)
-    _stub_evidens(monkeypatch, caution_n=3, rigtige=3)
+    _stub_evidens(monkeypatch, caution_n=3, caution_fejl=3, alle_n=300, alle_fejl=3)
     ud = ge.preflight_gut_gate(task_description="t")
     assert ud["allowed"] is True
     assert ud["evidence"]["reason"] == "for-faa-caution-events"
@@ -911,7 +952,7 @@ def test_proceed_rammes_ikke_af_evidens_porten(monkeypatch):
     monkeypatch.setattr(ge, "_blok_budget_brugt", lambda: False, raising=False)
     monkeypatch.setattr(ge, "_record_withheld_decision",
                         lambda *a, **k: None, raising=False)
-    _stub_evidens(monkeypatch, caution_n=26, rigtige=1)
+    _stub_evidens(monkeypatch, caution_n=26, caution_fejl=0, alle_n=343, alle_fejl=0)
     ud = ge.preflight_gut_gate(task_description="t")
     assert ud["allowed"] is False, "proceed-stien må ikke ændres af evidens-porten"
     assert "evidence_blocked" not in ud
@@ -925,3 +966,82 @@ def test_evidens_kan_ikke_maales_blokerer_ikke(monkeypatch):
     ud = ge.preflight_gut_gate(task_description="t")
     assert ud["allowed"] is True
     assert ud["evidence"]["reason"] == "db-fejl"
+
+
+def test_interrupted_taelles_ikke_som_fanget_fejl(monkeypatch, tmp_path):
+    """Et afbrudt run er ikke et fejlet run.
+
+    Målt 12/11: den ene «fejl» i datasættet var `actual: "interrupted"`. At tælle den
+    som en sand advarsel giver maven æren for noget den ikke forudsagde — og ville
+    opfinde et signal hvor der er nul fejl at skelne imod.
+    """
+    import json as _json
+    import sqlite3 as _sq
+
+    p = tmp_path / "ev.db"
+    conn = _sq.connect(p)
+    conn.execute("CREATE TABLE events (kind TEXT, payload_json TEXT)")
+    rows = [("caution", "interrupted")] * 30 + [("proceed", "completed")] * 300
+    for h, a in rows:
+        conn.execute("INSERT INTO events VALUES (?,?)",
+                     ("cognitive_gut.outcome_recorded",
+                      _json.dumps({"hunch": h, "actual": a})))
+    conn.commit()
+    conn.close()
+
+    import core.runtime.db as dbmod
+    monkeypatch.setattr(dbmod, "connect", lambda *a, **k: _sq.connect(p), raising=False)
+    monkeypatch.setattr(ge, "_EVIDENS_CACHE", {"at": 0.0, "value": None}, raising=False)
+
+    ud = ge._caution_har_evidens()
+    assert ud["may_block"] is False
+    # Beviset: de 30 interrupted-events tælles slet ikke med. Havde de været talt som
+    # fejl, ville caution_n være 30 og præcisionen 100 % — og gaten ville blokere på et
+    # signal der ikke findes.
+    assert ud["caution_n"] == 0, (
+        "interrupted må ikke gøre caution-gruppen til en fanget fejl")
+    assert ud["reason"] == "for-faa-caution-events"
+
+def test_lift_reglen_selv_ikke_kun_porten(monkeypatch, tmp_path):
+    """Rammer `_caution_har_evidens` DIREKTE — ikke gennem en stub.
+
+    Målt 12/11: de øvrige evidens-tests stubbede målingen væk, så de beviste at PORTEN
+    spørger rigtigt, men ikke at REGLEN er rigtig. Satte jeg den gamle 50 %-regel tilbage,
+    var alle 63 tests stadig grønne. Denne test læser den faktiske funktion mod en
+    faktisk DB, så reglen selv er dækket.
+    """
+    import json as _json
+    import sqlite3 as _sq
+
+    def _maal(rows):
+        p = tmp_path / f"ev{abs(hash(tuple(rows)))}.db"
+        conn = _sq.connect(p)
+        conn.execute("CREATE TABLE events (kind TEXT, payload_json TEXT)")
+        for h, a in rows:
+            conn.execute("INSERT INTO events VALUES (?,?)",
+                         ("cognitive_gut.outcome_recorded",
+                          _json.dumps({"hunch": h, "actual": a})))
+        conn.commit()
+        conn.close()
+        import core.runtime.db as dbmod
+        monkeypatch.setattr(dbmod, "connect",
+                            lambda *a, **k: _sq.connect(p), raising=False)
+        monkeypatch.setattr(ge, "_EVIDENS_CACHE", {"at": 0.0, "value": None},
+                            raising=False)
+        return ge._caution_har_evidens()
+
+    # 1 fejl af 26 caution (3,85 %) mod 1 fejl af 344 (0,29 %) → lift ~13x.
+    # Den gamle 50 %-regel ville sige False her. Lift-reglen skal sige True.
+    ud = _maal([("caution", "error")] + [("caution", "completed")] * 25
+               + [("proceed", "completed")] * 318)
+    assert ud["may_block"] is True, (
+        "13x lift er et signal — en 50%-praecisionsregel ville kassere det")
+    assert ud["lift"] >= ge._EVIDENS_MIN_LIFT
+    assert ud["cautionrate"] > ud["basisrate"]
+
+    # Ren støj: caution rammer ALDRIG, proceed rammer. Lift = 0 → må ikke blokere.
+    ud = _maal([("caution", "completed")] * 25
+               + [("proceed", "error")] * 3 + [("proceed", "completed")] * 297)
+    assert ud["may_block"] is False
+    assert ud["reason"] == "advarslen-skelner-ikke"
+    assert ud["lift"] == 0.0

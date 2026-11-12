@@ -787,11 +787,6 @@ def flag_fra_bruger(
 #: Hvilken kilde-mekanisme lukker hvilken kildetype. `done` på en vækning skal
 #: ramme `mark_wakeup_consumed`; et job stoppes IKKE af `done` — det er en
 #: selvstændig, kilde-specifik mutation med egne tilladelser.
-_DONE_HANDLERE: Final[dict[str, str]] = {
-    "wakeup": "self_wakeup.mark_wakeup_consumed",
-}
-
-
 def _luk_kilden(post: dict[str, Any]) -> dict[str, Any]:
     """Kør kildens egen kvitterings-mekanisme, hvis den har én.
 
@@ -800,9 +795,22 @@ def _luk_kilden(post: dict[str, Any]) -> dict[str, Any]:
     durable afgørelse hele lukningen.
     """
     kildetype = str(post.get("kildetype") or "")
-    if kildetype != "wakeup":
-        return {"status": "ingen"}
     kilde_id = str(post.get("kilde_id") or "")
+    if kildetype == "vaekning":
+        # En `vaekning`-post er INDBakkens emballage om en vækning der kom
+        # gennem `wake_gateway` (`vaek-wakeup:<wakeup_id>`). Målt 12/11-2026:
+        # posten blev lukket som `done` af `afslut_efter_run`, men vækningens
+        # egen record stod stadig `fired` og uforbrugt — fordi denne funktion
+        # kun kendte `kildetype='wakeup'` og svarede «ingen». Kilden er den
+        # samme; kun emballagen er ny. En `vaekning` om noget ANDET end en
+        # vækning (fx et baggrundsjob) har intet wakeup-id og lukkes som før.
+        from core.services.wake_gateway import wakeup_id_fra_vaekning
+
+        kilde_id = wakeup_id_fra_vaekning(kilde_id)
+        if not kilde_id:
+            return {"status": "ingen"}
+    elif kildetype != "wakeup":
+        return {"status": "ingen"}
     try:
         from core.services import self_wakeup
         # `wake-` ER en del af det rigtige wakeup-id (målt: `wake-` + 10 hex),

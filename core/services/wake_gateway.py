@@ -60,6 +60,30 @@ def vaekning_kilde_id(sag: str) -> str:
     return f"vaek-{ren}" if ren else ""
 
 
+#: Sagen en vækning fra `self_wakeup` melder sig under. Postens id bliver
+#: dermed `vaek-wakeup:wake-<hex>`.
+_WAKEUP_SAG_PRAEFIKS = "wakeup:"
+
+
+def wakeup_id_fra_vaekning(kilde_id: str) -> str:
+    """Wakeup-id'et bag en `vaekning`-post, eller tom streng.
+
+    Formatet ejes HER, fordi det er `vaekning_kilde_id` der bygger det. Skrev
+    den der LÆSER posten sin egen afkodning, skulle to steder blive enige om et
+    format ingen af dem ejer — og en ændring i det ene ville tavst gøre den
+    anden blind. Målt 12/11-2026: `inbox_state._luk_kilden` kendte kun
+    `kildetype='wakeup'` og svarede «ingen kvittering» for en `vaekning`-post,
+    så vækningen stod `fired` og uforbrugt efter sit run.
+    """
+    ren = str(kilde_id or "").strip()
+    if not ren.startswith("vaek-"):
+        return ""
+    sag = ren[len("vaek-"):]
+    if not sag.startswith(_WAKEUP_SAG_PRAEFIKS):
+        return ""
+    return sag[len(_WAKEUP_SAG_PRAEFIKS):]
+
+
 def _bruger() -> str:
     from core.identity.workspace_context import current_workspace_name
     from core.services.inbox_state import bruger_for_workspace

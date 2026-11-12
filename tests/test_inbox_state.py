@@ -1302,3 +1302,62 @@ def test_afregning_paa_ukendt_udfald_roerer_intet(inbox_db, monkeypatch):
     assert kaldt == [], "et ukendt udfald kvitterede vaekningen"
     assert db_inbox.hent(bruger_id=BJORN, kilde_id="wake-afregning1")["status"] == \
         db_inbox.STATUS_AABEN
+
+
+def test_en_VAEKNING_post_kvitterer_vaekningen_bag_sit_id(inbox_db, monkeypatch):
+    """Posten der FAKTISK bliver vaekket er `vaekning`, ikke `wakeup`.
+
+    Maalt 12/11-2026: `vaek-wakeup:wake-eee651a4e1` blev lukket som `done` af
+    `afslut_efter_run`, mens vaekningens egen record stod `fired` og uforbrugt.
+    `_luk_kilden` kendte kun `kildetype='wakeup'` og svarede «ingen
+    kvittering». De fire afregnings-tests ovenfor er groenne hele tiden, fordi
+    de skriver posten som `wakeup` — den type der aldrig bliver vaekket i
+    praksis. En groen vagt der rammer en anden doer end den der bruges beviser
+    intet om den doer.
+    """
+    with _som_bjorn():
+        inbox_state.registrer_kilde(
+            bruger_id=BJORN, kildetype="vaekning",
+            kilde_id="vaek-wakeup:wake-afregning2",
+            oprettende_run_id="visible-abc123")
+    kaldt: list[str] = []
+    monkeypatch.setattr(
+        "core.services.self_wakeup.mark_wakeup_consumed",
+        lambda wid: kaldt.append(wid) or {"status": "ok"},
+    )
+
+    r = inbox_state.afslut_efter_run(
+        BJORN, "vaek-wakeup:wake-afregning2", udfald="completed",
+        run_id="autonomous-4")
+
+    assert r["status"] == "ok", r
+    assert kaldt == ["wake-afregning2"], (
+        "vaekningen bag vaekning-posten blev ikke kvitteret — praefikset blev "
+        "ikke afkodet, eller kildetypen blev ikke genkendt")
+    assert db_inbox.hent(
+        bruger_id=BJORN, kilde_id="vaek-wakeup:wake-afregning2")["status"] == \
+        db_inbox.STATUS_DONE
+
+
+def test_en_VAEKNING_om_andet_end_en_vaekning_kvitterer_intet(
+        inbox_db, monkeypatch):
+    """`vaekning` er en FAELLES emballage — et baggrundsjob melder sig gennem
+    den samme. Kun `vaek-wakeup:`-sager har en vaekning bag sig; de andre maa
+    ikke faa et wakeup-id ud af den tomme luft."""
+    with _som_bjorn():
+        inbox_state.registrer_kilde(
+            bruger_id=BJORN, kildetype="vaekning",
+            kilde_id="vaek-baggrundsjob_vagt-1",
+            oprettende_run_id="visible-abc123")
+    kaldt: list[str] = []
+    monkeypatch.setattr(
+        "core.services.self_wakeup.mark_wakeup_consumed",
+        lambda wid: kaldt.append(wid) or {"status": "ok"},
+    )
+
+    r = inbox_state.afslut_efter_run(
+        BJORN, "vaek-baggrundsjob_vagt-1", udfald="completed",
+        run_id="autonomous-5")
+
+    assert r["status"] == "ok", r
+    assert kaldt == [], "en post uden wakeup-id kvitterede en vaekning"

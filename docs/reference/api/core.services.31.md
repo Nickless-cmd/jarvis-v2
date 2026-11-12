@@ -463,8 +463,9 @@ _Én indgang til at vække — kilderne SIGNALERER, indbakken VURDERER og vække
 |---|---|---|---|---|
 | function | `_kvittering` | `(status, grund, **ekstra)` | — | [src](../../../core/services/wake_gateway.py#L53) |
 | function | `vaekning_kilde_id` | `(sag)` | Stabil post-nøgle for en sag. Tom streng hvis sagen er tom. | [src](../../../core/services/wake_gateway.py#L57) |
-| function | `_bruger` | `()` | — | [src](../../../core/services/wake_gateway.py#L63) |
-| function | `anmod_om_vaekning` | `(*, kilde, sag, tekst, bruger_id=…, session_id=…, importance=…, task_id=…, permission_session=…, origin=…, max_tool_calls=…, max_seconds=…, tool_scope=…)` | Bed indbakken om at vække. Starter ikke noget selv. | [src](../../../core/services/wake_gateway.py#L70) |
+| function | `wakeup_id_fra_vaekning` | `(kilde_id)` | Wakeup-id'et bag en `vaekning`-post, eller tom streng. | [src](../../../core/services/wake_gateway.py#L68) |
+| function | `_bruger` | `()` | — | [src](../../../core/services/wake_gateway.py#L87) |
+| function | `anmod_om_vaekning` | `(*, kilde, sag, tekst, bruger_id=…, session_id=…, importance=…, task_id=…, permission_session=…, origin=…, max_tool_calls=…, max_seconds=…, tool_scope=…)` | Bed indbakken om at vække. Starter ikke noget selv. | [src](../../../core/services/wake_gateway.py#L94) |
 
 ## `core/services/wakeup_dispatcher.py`
 _Wakeup dispatcher — autonomous fire of self-wakeups._

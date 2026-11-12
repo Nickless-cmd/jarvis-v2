@@ -522,11 +522,6 @@ def _dispatch_tekst(post: dict[str, Any]) -> str:
     return _direktiv(post)
 
 
-#: Posternes kilde-id for en vækning der kom gennem `wake_gateway`
-#: (`vaek-` + sagen, og sagen er `wakeup:<wakeup_id>`).
-_WAKEUP_KILDE_PRAEFIKS = "vaek-wakeup:"
-
-
 def _publicer_vaekning_startet(post: dict[str, Any], kilde_id: str) -> None:
     """Udgiv `self_wakeup.dispatched` NÅR runnet er startet — ikke før.
 
@@ -535,10 +530,13 @@ def _publicer_vaekning_startet(post: dict[str, Any], kilde_id: str) -> None:
     startede 18:22:20. Her ved vi det faktisk: starteren har ikke afvist.
     Self-safe: observabilitet må ikke kunne vælte polleren.
     """
-    kilde_id = str(kilde_id or "")
-    if not kilde_id.startswith(_WAKEUP_KILDE_PRAEFIKS):
-        return
-    wakeup_id = kilde_id[len(_WAKEUP_KILDE_PRAEFIKS):]
+    # Afkodningen af `vaek-wakeup:<id>` bor i `wake_gateway`, som EJER
+    # formatet. Den lå her som en lokal konstant indtil 12/11-2026, hvor den
+    # samme afkodning skulle bruges i `inbox_state._luk_kilden` — to steder,
+    # ét format, ingen ejer.
+    from core.services.wake_gateway import wakeup_id_fra_vaekning
+
+    wakeup_id = wakeup_id_fra_vaekning(kilde_id)
     if not wakeup_id:
         return
     try:

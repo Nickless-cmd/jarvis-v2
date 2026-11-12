@@ -49,11 +49,13 @@ def waker(monkeypatch):
     monkeypatch.setattr(
         w, "_start_run",
         lambda tekst, *, session_id, user_id, task_id="", permission_session="",
-        origin="", max_tool_calls=0, max_seconds=0.0, tool_scope="": starter.append(
+        origin="", max_tool_calls=0, max_seconds=0.0, tool_scope="",
+        kilde_id="", kildetype="": starter.append(
             {"tekst": tekst, "session": session_id, "task_id": task_id,
              "permission_session": permission_session, "origin": origin,
              "max_tool_calls": max_tool_calls, "max_seconds": max_seconds,
-             "tool_scope": tool_scope}) or True)
+             "tool_scope": tool_scope, "kilde_id": kilde_id,
+             "kildetype": kildetype}) or True)
     w.starter = starter  # type: ignore[attr-defined]
     return w
 
@@ -106,6 +108,10 @@ def test_waker_bruger_kildens_tekst_og_samtale(inbox_db, waker):
         # tilbage til kildenavnet, så «hvem vækkede mig» altid kan besvares.
         "origin": "test-kilde",
         "max_tool_calls": 0, "max_seconds": 0.0, "tool_scope": "",
+        # POSTENS ADRESSE (12/11-2026). Uden den kan runnet ikke kvittere den
+        # post det blev født af — og så står vækningen `fired` og uforbrugt
+        # efter sit run. Adressen er ikke metadata; den er kvitteringsvejen.
+        "kilde_id": "vaek-sag-1", "kildetype": "vaekning",
     }]
 
 
@@ -124,6 +130,7 @@ def test_budget_naar_hele_vejen_til_starteren(inbox_db, waker):
         "tekst": "kør rutinen", "session": "chat-1",
         "task_id": "", "permission_session": "", "origin": "test-kilde",
         "max_tool_calls": 12, "max_seconds": 600.0, "tool_scope": "chat",
+        "kilde_id": "vaek-sag-1", "kildetype": "vaekning",
     }]
 
 
@@ -146,6 +153,7 @@ def test_opgave_og_permissionssamtale_naar_hele_vejen_til_starteren(inbox_db, wa
         # blev et drømme-run igen umuligt at skelne fra en påmindelse.
         "origin": "dream",
         "max_tool_calls": 0, "max_seconds": 0.0, "tool_scope": "",
+        "kilde_id": "vaek-sag-1", "kildetype": "vaekning",
     }]
 
 
@@ -291,3 +299,26 @@ def test_der_findes_kun_en_definition_af_nogen_taler_nu():
 def test_gatewayen_selv_naevner_aldrig_en_starter():
     fundet = _filer_der_naevner_en_starter()
     assert "core/services/wake_gateway.py" not in fundet
+
+
+def test_wakeup_id_fra_vaekning_er_en_RUNDTUR_med_byggeren():
+    """Afkodningen skal ligge hos den der BYGGER id'et.
+
+    Fejlen 12/11-2026 var ikke et forkert format — det var at laeseren af
+    posten havde sin EGEN afkodning og kun kendte `kildetype='wakeup'`, mens
+    den post der faktisk blev vaekket hed `vaekning`. En rundtur-test binder de
+    to ender sammen: bygger `vaekning_kilde_id` et id som
+    `wakeup_id_fra_vaekning` ikke kan laese tilbage, er de drevet fra
+    hinanden — og det kan ingen af dem se alene.
+    """
+    from core.services import wake_gateway as g
+
+    bygget = g.vaekning_kilde_id("wakeup:wake-abc123")
+    assert bygget == "vaek-wakeup:wake-abc123"
+    assert g.wakeup_id_fra_vaekning(bygget) == "wake-abc123"
+
+    # En sag der IKKE er en vaekning maa ikke blive til en vaekning.
+    assert g.wakeup_id_fra_vaekning("vaek-baggrundsjob_vagt-1") == ""
+    assert g.wakeup_id_fra_vaekning("vaek-wakeup:") == ""
+    assert g.wakeup_id_fra_vaekning("wake-abc123") == ""
+    assert g.wakeup_id_fra_vaekning("") == ""

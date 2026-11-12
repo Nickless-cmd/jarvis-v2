@@ -842,8 +842,9 @@ def _stub_evidens(monkeypatch, *, caution_n: int, caution_fejl: int,
                   alle_n: int = 344, alle_fejl: int | None = None):
     """Stub evidens-målingen med et bestemt sample i stedet for at læse DB'en.
 
-    Modellerer LIFT-reglen (12/11-2026): caution skal løfte fejlraten over basisraten,
-    ikke vinde et flertal. `alle_fejl` defaulter til caution_fejl, så et kald uden
+    Modellerer BREAK-EVEN-reglen (12/11-2026, Bjørns anden indvending): caution skal
+    løfte fejlraten over den pris, blokeringen skal tjene ind — ikke over en fast lift
+    og ikke over et flertal. `alle_fejl` defaulter til caution_fejl, så et kald uden
     proceed-fejl giver samme tal som produktionen ville.
     """
     if alle_fejl is None:
@@ -859,12 +860,15 @@ def _stub_evidens(monkeypatch, *, caution_n: int, caution_fejl: int,
         basis = alle_fejl / alle_n
         cr = caution_fejl / caution_n
         lift = cr / basis
-        return {"may_block": lift >= ge._EVIDENS_MIN_LIFT,
-                "reason": "lift" if lift >= ge._EVIDENS_MIN_LIFT
-                          else "advarslen-skelner-ikke",
+        blok_pris, fejl_pris = ge._omkostnings_ratio()
+        break_even = blok_pris / (blok_pris + fejl_pris)
+        skal = cr > break_even
+        return {"may_block": skal,
+                "reason": "over-break-even" if skal else "under-break-even",
                 "caution_n": caution_n, "caution_fejl": caution_fejl,
                 "cautionrate": round(cr, 4), "basisrate": round(basis, 4),
-                "lift": round(lift, 2), "alle_n": alle_n}
+                "lift": round(lift, 2), "break_even": round(break_even, 4),
+                "alle_n": alle_n}
     monkeypatch.setattr(ge, "_caution_har_evidens", _fake, raising=False)
 
 
@@ -912,25 +916,32 @@ def test_caution_med_evidens_blokerer_stadig(monkeypatch):
     assert ud["hunch"] == "caution"
 
 
-def test_lav_praecision_men_hoej_lift_blokerer(monkeypatch):
-    """BJØRNS INDVENDING (12/11-2026), fastholdt som test.
+def test_prisen_styrer_ikke_lift_alene(monkeypatch):
+    """BJØRNS ANDEN INDVENding (12/11-2026): lift er ikke en beslutningsregel.
 
-    En risikodetektor på en sjælden hændelse skal ikke vinde et flertal — den skal løfte
-    fejlraten i den gruppe den peger på. 3,85 % præcision er 13x basisraten 0,29 %, og
-    den ENESTE fejl i datasættet lå i caution-gruppen. En 50 %-tærskel ville kassere
-    netop det signal der fandt fejlen.
+    Lift 13x ser imponerende ud, men den absolutte risiko er 3,85 %. Om det kan betale
+    sig at blokere afhænger af hvad en falsk blokering koster mod en ufanget fejl — og
+    det følger ikke af lift. Med husets default (4:1) er break-even 20 %, så 3,85 %
+    blokerer IKKE. Hæves fejl-prisen til 40:1 (break-even 2,44 %), gør den.
+
+    Den anden halvdel er pointen: reglen reagerer på konsekvenserne i stedet for at
+    være en skjult 50 %-regel med en anden etiket.
     """
     _tving_caution_afvist(monkeypatch)
     # 1 fejl af 26 caution (3,85 %) mod 1 fejl af 344 i alt (0,29 %) → lift ~13x
     _stub_evidens(monkeypatch, caution_n=26, caution_fejl=1,
                   alle_n=344, alle_fejl=1)
     ud = ge.preflight_gut_gate(task_description="t")
-    assert ud["allowed"] is False, "13x lift er et signal, ikke støj"
-    # `evidence` lægges kun i svaret når porten AFVISER en blokering — her slap den
-    # igennem, så lift-tallet læses fra målingen selv.
-    ev = ge._caution_har_evidens()
-    assert ev["lift"] >= ge._EVIDENS_MIN_LIFT
-    assert ev["cautionrate"] > ev["basisrate"]
+    assert ud["allowed"] is True, (
+        "3,85 % fejlrisiko er under break-even 20 % ved husets default-priser")
+
+    # Samme data, men nu koster en ufanget fejl 40x en blokering → break-even 2,44 %
+    monkeypatch.setattr(ge, "_omkostnings_ratio", lambda: (1.0, 40.0), raising=False)
+    _stub_evidens(monkeypatch, caution_n=26, caution_fejl=1,
+                  alle_n=344, alle_fejl=1)
+    ud = ge.preflight_gut_gate(task_description="t")
+    assert ud["allowed"] is False, (
+        "ved 40:1 ligger 3,85 % over break-even — prisen skal kunne ændre svaret")
 
 
 def test_for_lille_sample_blokerer_ikke(monkeypatch):
@@ -1002,19 +1013,90 @@ def test_interrupted_taelles_ikke_som_fanget_fejl(monkeypatch, tmp_path):
         "interrupted må ikke gøre caution-gruppen til en fanget fejl")
     assert ud["reason"] == "for-faa-caution-events"
 
-def test_lift_reglen_selv_ikke_kun_porten(monkeypatch, tmp_path):
+def test_udfaldsmodellen_er_faelles(monkeypatch, tmp_path):
+    """BJØRNS HOVEDPOINTE (12/11-2026): de tre funktioner skal mene det samme.
+
+    Før rettelsen skelnede `_caution_har_evidens` `interrupted` fra, mens
+    `record_gut_outcome` og `_observed_baseline` regnede det som fiasko. Samme
+    hændelse var neutral for beslutningsporten og en dom for den statistik der
+    træner maven — og det er derfor `calibration_score` kunne stå på 0,9925 mens
+    maven var dårligere end en konstant.
+
+    Testen rammer alle tre gennem den faktiske `classify_outcome`.
+    """
+    import json as _json
+    import sqlite3 as _sq
+
+    # 1. Klassifikationen selv — ukendt er neutralt, ikke fejl.
+    assert ge.classify_outcome("completed") == "success"
+    assert ge.classify_outcome("success") == "success"
+    assert ge.classify_outcome("failed") == "failure"
+    assert ge.classify_outcome("error") == "failure"
+    assert ge.classify_outcome("interrupted") == "neutral"
+    assert ge.classify_outcome("cancelled") == "neutral"
+    assert ge.classify_outcome("blocked") == "neutral"
+    assert ge.classify_outcome("noget-ukendt") == "neutral"
+    assert ge.classify_outcome(None) == "neutral"
+
+    # 2. record_gut_outcome: neutralt udfald kalibrerer IKKE — men eventet udsendes,
+    #    så fladen kan se at hændelsen skete, uden at den læses som en dom.
+    kald: list[dict] = []
+    udsendt: list[tuple] = []
+    monkeypatch.setattr(ge, "update_cognitive_gut_state",
+                        lambda **kw: kald.append(kw) or {"ok": True}, raising=False)
+    monkeypatch.setattr(ge.event_bus, "publish",
+                        lambda *a, **k: udsendt.append(a), raising=False)
+
+    ge.record_gut_outcome(hunch="caution", actual_outcome="interrupted")
+    assert kald == [], "et afbrudt run må ikke kalibrere maven"
+    assert udsendt[0][1]["correct"] is None
+    assert udsendt[0][1]["outcome_class"] == "neutral"
+
+    # ... og en rigtig fejl kalibrerer stadig, som før.
+    ge.record_gut_outcome(hunch="caution", actual_outcome="failed")
+    assert len(kald) == 1 and kald[0]["prediction_correct"] is True
+
+    # 3. _observed_baseline: samme filtrering — ellers kan fladen og porten svare
+    #    forskelligt om det samme event.
+    p = tmp_path / "baseline.db"
+    conn = _sq.connect(p)
+    conn.execute("CREATE TABLE events (kind TEXT, payload_json TEXT)")
+    for h, a in [("caution", "interrupted"), ("proceed", "interrupted"),
+                 ("proceed", "completed")]:
+        conn.execute("INSERT INTO events VALUES (?,?)",
+                     ("cognitive_gut.outcome_recorded",
+                      _json.dumps({"hunch": h, "actual": a})))
+    conn.commit()
+    conn.close()
+    import core.runtime.db as dbmod
+    monkeypatch.setattr(dbmod, "connect", lambda *a, **k: _sq.connect(p), raising=False)
+    monkeypatch.setattr(ge, "_BASELINE_CACHE", {"at": 0.0, "value": None},
+                        raising=False)
+    b = ge._observed_baseline()
+    assert b is not None
+    assert b["n_observed"] == 1, "kun det afgjorte udfald tæller for fladen"
+    assert b["maven_pct"] == 100.0
+
+
+def test_break_even_reglen_selv_ikke_kun_porten(monkeypatch, tmp_path):
     """Rammer `_caution_har_evidens` DIREKTE — ikke gennem en stub.
 
     Målt 12/11: de øvrige evidens-tests stubbede målingen væk, så de beviste at PORTEN
     spørger rigtigt, men ikke at REGLEN er rigtig. Satte jeg den gamle 50 %-regel tilbage,
     var alle 63 tests stadig grønne. Denne test læser den faktiske funktion mod en
     faktisk DB, så reglen selv er dækket.
+
+    Den beviser også Bjørns anden indvending: lift alene afgør intet. Samme data kan
+    blokere eller ikke alt efter hvad blokeringen koster — det er break-even der styrer.
     """
     import json as _json
     import sqlite3 as _sq
 
+    _kald = [0]
+
     def _maal(rows):
-        p = tmp_path / f"ev{abs(hash(tuple(rows)))}.db"
+        _kald[0] += 1
+        p = tmp_path / f"ev{_kald[0]}.db"
         conn = _sq.connect(p)
         conn.execute("CREATE TABLE events (kind TEXT, payload_json TEXT)")
         for h, a in rows:
@@ -1031,17 +1113,25 @@ def test_lift_reglen_selv_ikke_kun_porten(monkeypatch, tmp_path):
         return ge._caution_har_evidens()
 
     # 1 fejl af 26 caution (3,85 %) mod 1 fejl af 344 (0,29 %) → lift ~13x.
-    # Den gamle 50 %-regel ville sige False her. Lift-reglen skal sige True.
-    ud = _maal([("caution", "error")] + [("caution", "completed")] * 25
-               + [("proceed", "completed")] * 318)
-    assert ud["may_block"] is True, (
-        "13x lift er et signal — en 50%-praecisionsregel ville kassere det")
-    assert ud["lift"] >= ge._EVIDENS_MIN_LIFT
-    assert ud["cautionrate"] > ud["basisrate"]
+    rows = ([("caution", "error")] + [("caution", "completed")] * 25
+            + [("proceed", "completed")] * 318)
+
+    # Husets default (4:1) → break-even 20 %. 3,85 % er UNDER den grænse.
+    ud = _maal(rows)
+    assert ud["may_block"] is False, (
+        "3,85 % er under break-even 20 % — lift alene maa ikke blokere")
+    assert ud["reason"] == "under-break-even"
+    assert ud["break_even"] == 0.2
+    assert ud["lift"] > 10, "lift rapporteres stadig — den er informativ, ikke beslutningen"
+
+    # Samme data, men nu koster en ufanget fejl 40x → break-even 2,44 % → bloker.
+    monkeypatch.setattr(ge, "_omkostnings_ratio", lambda: (1.0, 40.0), raising=False)
+    ud = _maal(rows)
+    assert ud["may_block"] is True
+    assert ud["reason"] == "over-break-even"
 
     # Ren støj: caution rammer ALDRIG, proceed rammer. Lift = 0 → må ikke blokere.
     ud = _maal([("caution", "completed")] * 25
                + [("proceed", "error")] * 3 + [("proceed", "completed")] * 297)
     assert ud["may_block"] is False
-    assert ud["reason"] == "advarslen-skelner-ikke"
     assert ud["lift"] == 0.0

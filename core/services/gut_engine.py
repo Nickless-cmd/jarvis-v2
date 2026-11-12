@@ -89,7 +89,85 @@ _MIN_SAMPLE_FOR_RATE = 20
 # var `actual: "interrupted"` — et afbrudt run, ikke et fejlet. At taelle det som en
 # fanget fejl ville give maven aeren for noget den ikke forudsagde.
 _EVIDENS_MIN_CAUTION = 20
-_EVIDENS_MIN_LIFT = 2.0
+
+# ── Fælles udfaldsmodel (12/11-2026) ─────────────────────────────────────────
+#
+# Bjørns indvending: tre funktioner i denne fil afgjorde hver for sig hvad en
+# «fejl» er — `_caution_har_evidens` skelnede `interrupted` fra, mens
+# `record_gut_outcome` og `_observed_baseline` gjorde det ikke. Den samme
+# hændelse var altså neutral for beslutningsporten og en fiasko for den
+# statistik der træner maven. Det er ikke en detalje: det er derfor
+# calibration_score kunne stå på 0,9925 mens maven var dårligere end en konstant.
+#
+# Én klassifikation, brugt af alle tre. Ukendte værdier er NEUTRALE — ikke fejl.
+# At gætte «fejl» på noget man ikke kender, opfinder fiaskoer.
+_OUTCOME_SUCCESS = frozenset({"completed", "success"})
+_OUTCOME_FAILURE = frozenset({"error", "failed", "failure"})
+# `interrupted`, `cancelled`, `looped`, `burned`, `blocked` og alt ukendt er
+# neutrale: et afbrudt run siger intet om hvorvidt forudsigelsen var rigtig.
+
+
+def classify_outcome(actual: object) -> str:
+    """«success» | «failure» | «neutral» — den ENESTE udfaldsdefinition i filen.
+
+    Bruges af `record_gut_outcome` (kalibrering), `_observed_baseline` (fladen) og
+    `_caution_har_evidens` (blokerings-retten). Svarer de tre forskelligt, kan den
+    samme hændelse være en succes for én mekanisme og en fejl for en anden.
+    """
+    a = str(actual or "").strip().lower()
+    if a in _OUTCOME_SUCCESS:
+        return "success"
+    if a in _OUTCOME_FAILURE:
+        return "failure"
+    return "neutral"
+
+
+# ── Blokeringens pris (12/11-2026) ───────────────────────────────────────────
+#
+# Lift alene afgør ikke om en advarsel må blokere. Break-even er:
+#
+#     p_caution > C_blok / (C_blok + C_fejl)
+#
+# Lift 2,0 med en basisrate på 0,29 % giver p = 0,58 % — hvilket kræver at en
+# ufanget fejl koster ~170x en falsk blokering. Det var den påstand den gamle
+# docstring fremsatte, og den var aritmetisk forkert (målt 12/11-2026).
+#
+# Omkostningerne er SKØN, ikke måling, og det står her fordi det betyder noget:
+#   * En falsk blokering koster ET RUN DER ALDRIG FØDES. Der er ingen
+#     genplanlægning i blokerings-grenen (`visible_autonomous_run:388` og
+#     `autonomous_stream_run:130` returnerer blot), så næste forsøg er først ved
+#     kalderens egen kadence. Den er derfor dyrere end «et udskudt run».
+#   * En ufanget fejl koster det samme run PLUS hvad det efterlader: spildte
+#     modelkald, og i værste fald en dårlig commit eller en forkert tilstand.
+# Default 4:1 er konservativt valgt — fejl antages dyrere, fordi den kan gøre
+# skade, men ikke så meget dyrere at tallet bliver en undskyldning for at gætte.
+# Kan justeres i drift via `central_gut_blok_pris` / `central_gut_fejl_pris`.
+_BLOK_PRIS_DEFAULT = 1.0
+_FEJL_PRIS_DEFAULT = 4.0
+_PRIS_BLOK_KEY = "central_gut_blok_pris"
+_PRIS_FEJL_KEY = "central_gut_fejl_pris"
+
+
+def _omkostnings_ratio() -> tuple[float, float]:
+    """(blok_pris, fejl_pris) fra runtime-kv, med de dokumenterede defaults.
+
+    Self-safe: kan kv ikke læses eller indeholder skrald, bruges defaulten. En
+    pris der ikke kan læses må ikke gøre porten mere eller mindre tillidsfuld
+    end den blev målt til.
+    """
+    blok, fejl = _BLOK_PRIS_DEFAULT, _FEJL_PRIS_DEFAULT
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+
+        b = get_runtime_state_value(_PRIS_BLOK_KEY, None)
+        f = get_runtime_state_value(_PRIS_FEJL_KEY, None)
+        if b is not None and float(b) > 0:
+            blok = float(b)
+        if f is not None and float(f) > 0:
+            fejl = float(f)
+    except Exception:  # kv er et supplement — defaulten er den målte adfærd
+        pass
+    return blok, fejl
 _EVIDENS_TTL_S = 300.0
 _EVIDENS_CACHE: dict[str, object] = {"at": 0.0, "value": None}
 
@@ -681,12 +759,25 @@ def _caution_har_evidens() -> dict[str, object]:
     proceed — altså 13x basisraten, og den ENESTE fejl i hele datasættet lå i
     caution-gruppen. En 50 %-tærskel ville kassere netop det signal der fandt den.
 
-    Målet er derfor LIFT = fejlrate(caution) / fejlrate(alle). Kravet er
-    `_EVIDENS_MIN_LIFT`, som svarer til at en ufanget fejl kun skal koste 2x en falsk
-    blokering — og en blokering koster ét udskudt run, ikke et tabt.
+    Målet er derfor LIFT = fejlrate(caution) / fejlrate(alle) — men lift alene er
+    stadig ikke en beslutningsregel (Bjørns anden indvending, 12/11-2026). Lift
+    beskriver kun forholdet til basisraten, ikke den absolutte risiko. Lift 2,0 ved
+    en basisrate på 0,29 % er p = 0,58 %, og det kræver at en ufanget fejl koster
+    ~170x en falsk blokering — ikke 2x, som den forrige udgave af denne docstring
+    påstod. Den påstand var aritmetisk forkert.
+
+    Reglen er derfor BREAK-EVEN:
+
+        p_caution > C_blok / (C_blok + C_fejl)
+
+    Lift rapporteres fortsat, fordi det er tallet der afslører om advarslen skelner
+    overhovedet — men det er break-even der afgør. Priserne er skøn (se
+    `_BLOK_PRIS_DEFAULT`), ikke målinger, og det står i svaret hvilke der blev brugt.
 
     `interrupted` tælles ikke som fejl: et afbrudt run er ikke et fejlet run, og at
     kreditere maven for det ville være at give den æren for noget den ikke forudsagde.
+    Klassifikationen kommer fra `classify_outcome`, som de to andre funktioner i
+    filen også bruger — før svarede de tre forskelligt om den samme hændelse.
 
     Self-safe: kan evidensen ikke måles, svarer den `may_block=False` med en grund. En
     gate der ikke kan begrunde sin blokering må ikke blokere.
@@ -709,10 +800,8 @@ def _caution_har_evidens() -> dict[str, object]:
                 "SELECT payload_json FROM events "
                 "WHERE kind = 'cognitive_gut.outcome_recorded'"
             ).fetchall()
-        # Kun afgjorte udfald tæller. `interrupted` er hverken succes eller fejl — et
-        # afbrudt run siger intet om hvorvidt advarslen var berettiget.
-        _FEJL = ("error", "failed", "failure")
-        _OK = ("completed", "success")
+        # Én klassifikation for hele filen. Ukendte værdier er neutrale — at gætte
+        # «fejl» på noget man ikke kender, opfinder fiaskoer.
         caution_n = caution_fejl = alle_n = alle_fejl = 0
         for row in rows:
             try:
@@ -724,13 +813,10 @@ def _caution_har_evidens() -> dict[str, object]:
             hunch = str(d.get("hunch") or "")
             if hunch not in ("proceed", "caution"):
                 continue
-            actual = str(d.get("actual") or "")
-            if actual in _FEJL:
-                er_fejl = True
-            elif actual in _OK:
-                er_fejl = False
-            else:
+            outcome_class = classify_outcome(d.get("actual"))
+            if outcome_class == "neutral":
                 continue  # interrupted/ukendt: hverken bevis for eller imod
+            er_fejl = outcome_class == "failure"
             alle_n += 1
             alle_fejl += er_fejl
             if hunch == "caution":
@@ -757,16 +843,22 @@ def _caution_har_evidens() -> dict[str, object]:
             basisrate = alle_fejl / alle_n
             cautionrate = caution_fejl / caution_n
             lift = cautionrate / basisrate
+            # Break-even, ikke lift: hvor høj skal fejlrisikoen i caution-gruppen
+            # være før det kan betale sig at følge advarslen? Priserne er skøn.
+            blok_pris, fejl_pris = _omkostnings_ratio()
+            break_even = blok_pris / (blok_pris + fejl_pris)
+            skal_blokere = cautionrate > break_even
             ud = {
-                "may_block": lift >= _EVIDENS_MIN_LIFT,
-                "reason": "lift" if lift >= _EVIDENS_MIN_LIFT
-                          else "advarslen-skelner-ikke",
+                "may_block": skal_blokere,
+                "reason": "over-break-even" if skal_blokere else "under-break-even",
                 "caution_n": caution_n,
                 "caution_fejl": caution_fejl,
                 "cautionrate": round(cautionrate, 4),
                 "basisrate": round(basisrate, 4),
                 "lift": round(lift, 2),
-                "kraevet_lift": _EVIDENS_MIN_LIFT,
+                "break_even": round(break_even, 4),
+                "blok_pris": blok_pris,
+                "fejl_pris": fejl_pris,
                 "alle_n": alle_n,
             }
     except Exception:  # uden maaling blokerer vi ikke — se docstring
@@ -876,10 +968,32 @@ def record_gut_outcome(
     hunch: str,
     actual_outcome: str,
 ) -> dict[str, object]:
-    """Record whether the gut hunch was correct."""
+    """Record whether the gut hunch was correct.
+
+    `interrupted` og andre neutrale udfald kalibrerer IKKE (12/11-2026). Før blev
+    alt andet end `completed`/`success` regnet som fiasko, så et afbrudt run blev
+    enten en falsk fiasko eller — for `caution` — en gratis «korrekt forudsigelse».
+    Bjørn målte det: den eneste «fejl» i de 344 events var `interrupted`, altså et
+    run maven ikke forudsagde noget om.
+
+    Eventet udsendes stadig, så fladen kan se at udfaldet skete — men med
+    `outcome_class` og `correct: None`, så ingen læser kan tage det som en dom.
+    """
+    outcome_class = classify_outcome(actual_outcome)
+    if outcome_class == "neutral":
+        event_bus.publish(
+            "cognitive_gut.outcome_recorded",
+            {
+                "correct": None,
+                "hunch": hunch,
+                "actual": actual_outcome,
+                "outcome_class": outcome_class,
+            },
+        )
+        return {"skipped": "neutralt-udfald", "outcome_class": outcome_class}
+
     predicted_success = hunch == "proceed"
-    actual_success = actual_outcome in ("completed", "success")
-    correct = predicted_success == actual_success
+    correct = predicted_success == (outcome_class == "success")
 
     result = update_cognitive_gut_state(
         prediction_correct=correct,
@@ -888,7 +1002,12 @@ def record_gut_outcome(
 
     event_bus.publish(
         "cognitive_gut.outcome_recorded",
-        {"correct": correct, "hunch": hunch, "actual": actual_outcome},
+        {
+            "correct": correct,
+            "hunch": hunch,
+            "actual": actual_outcome,
+            "outcome_class": outcome_class,
+        },
     )
     return result
 
@@ -939,8 +1058,17 @@ def _observed_baseline() -> dict[str, object] | None:
             actual = str(d.get("actual") or "")
             if hunch not in ("proceed", "caution"):
                 continue
+            # Fælles udfaldsmodel (12/11-2026): neutrale udfald — `interrupted`
+            # m.fl. — kan ikke afgøre om forudsigelsen var rigtig og tælles derfor
+            # hverken med for maven eller for baseline. Før blev de regnet som
+            # fiasko, hvilket både straffede en `proceed` der blev afbrudt og
+            # belønnede en `caution` der blev det, for en hændelse ingen af dem
+            # forudsagde.
+            outcome_class = classify_outcome(actual)
+            if outcome_class == "neutral":
+                continue
             n += 1
-            act_success = actual in ("completed", "success")
+            act_success = outcome_class == "success"
             faktisk += (hunch == "proceed") == act_success
             baseline += act_success
         if n:

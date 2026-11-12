@@ -1211,3 +1211,94 @@ def test_en_GENAABNET_post_faar_sin_FRISKE_tekst(inbox_db):
     assert r["post"]["status"] == db_inbox.STATUS_AABEN, r
     assert r["post"]["beskrivelse"] == "[advisory 55%] en forpligtelse", \
         "den genaabnede post bar sin gamle tekst"
+
+
+# ── Afregning efter run (12/11-2026) ────────────────────────────────────────
+#
+# Bjørn: «du skal enten kvittere når en vækning er overstået — færdig/fejlet/
+# pauset — eller systemet skal gøre det automatisk efter en vækning er
+# fuldført.» Indtil nu fandtes KUN den manuelle vej. Glemte jeg den, blev
+# vækningen stående `fired` og uforbrugt, og fordi `kandidater()` springer
+# poster med et vækkespor over, kunne den hverken rejses igen eller lukkes.
+
+def _vaekning_med_run(monkeypatch):
+    """Én åben vækning-post med et vækkespor sat — som efter et rigtigt run."""
+    with _som_bjorn():
+        inbox_state.registrer_kilde(bruger_id=BJORN, kildetype="wakeup",
+                                    kilde_id="wake-afregning1",
+                                    oprettende_run_id="visible-abc123")
+    db_inbox.noter_vaekning(bruger_id=BJORN, kilde_id="wake-afregning1",
+                            tur="inbox-idle-waker")
+    kaldt: list[str] = []
+    monkeypatch.setattr(
+        "core.services.self_wakeup.mark_wakeup_consumed",
+        lambda wid: kaldt.append(wid) or {"status": "ok"},
+    )
+    return kaldt
+
+
+def test_FAERDIGT_run_lukker_posten_og_kvitterer_vaekningen(inbox_db, monkeypatch):
+    """Det normale udfald: runnet gik i mål uden at nogen kaldte `inbox_done`."""
+    kaldt = _vaekning_med_run(monkeypatch)
+
+    r = inbox_state.afslut_efter_run(
+        BJORN, "wake-afregning1", udfald="completed", run_id="autonomous-1")
+
+    assert r["status"] == "ok", r
+    assert kaldt == ["wake-afregning1"], \
+        "vaekningen blev ikke kvitteret — den staar stadig som uforbrugt"
+    assert db_inbox.hent(bruger_id=BJORN, kilde_id="wake-afregning1")["status"] == \
+        db_inbox.STATUS_DONE
+
+
+def test_FEJLET_run_lukker_posten_som_fejlet_og_kvitterer(inbox_db, monkeypatch):
+    """Et forsøg der gik galt er stadig FORSØGT. Det maa ikke blive hængende
+    som uforbrugt, og det maa ikke se ud som en beslutning nogen traf."""
+    kaldt = _vaekning_med_run(monkeypatch)
+
+    r = inbox_state.afslut_efter_run(
+        BJORN, "wake-afregning1", udfald="failed", run_id="autonomous-2",
+        error="modellen svarede ikke")
+
+    assert r["status"] == "ok", r
+    assert r["udfald"] == "fejlet", r
+    assert kaldt == ["wake-afregning1"], \
+        "en fejlet vaekning blev ikke kvitteret — den blokerer naeste forsoeg"
+    post = db_inbox.hent(bruger_id=BJORN, kilde_id="wake-afregning1")
+    assert post["status"] == db_inbox.STATUS_FEJLET, post["status"]
+    assert post["status"] in db_inbox.TERMINALE_STATUSSER, \
+        "fejlet er ikke terminal — posten ville gate videre"
+
+
+def test_PAUSET_run_lader_posten_staa_AABEN_og_rydder_vaekkesporet(
+        inbox_db, monkeypatch):
+    """«Pauset» er det tredje udfald: arbejdet er ikke i mål, så posten skal
+    kunne rejses igen. Sporet SKAL ryddes — `kandidater()` springer alt med et
+    `sidste_vaekning_tur` over, så uden rydningen ville «kan tages igen» være
+    en paastand uden mekanisme bag."""
+    kaldt = _vaekning_med_run(monkeypatch)
+    assert db_inbox.hent(bruger_id=BJORN,
+                         kilde_id="wake-afregning1")["sidste_vaekning_tur"] == \
+        "inbox-idle-waker"
+
+    r = inbox_state.afslut_efter_run(
+        BJORN, "wake-afregning1", udfald="interrupted", run_id="autonomous-3")
+
+    assert r["status"] == "ok" and r["udfald"] == "pauset", r
+    assert kaldt == ["wake-afregning1"], "vaekningen blev ikke kvitteret"
+    post = db_inbox.hent(bruger_id=BJORN, kilde_id="wake-afregning1")
+    assert post["status"] == db_inbox.STATUS_AABEN, post["status"]
+    assert post["sidste_vaekning_tur"] == "", \
+        "vaekkesporet stod stadig — posten kan aldrig rejses igen"
+
+
+def test_afregning_paa_ukendt_udfald_roerer_intet(inbox_db, monkeypatch):
+    """En stub fra en aeldre starter maa ikke kunne lukke en post ved et uheld."""
+    kaldt = _vaekning_med_run(monkeypatch)
+
+    r = inbox_state.afslut_efter_run(BJORN, "wake-afregning1", udfald="looped")
+
+    assert r["status"] == "fejl", r
+    assert kaldt == [], "et ukendt udfald kvitterede vaekningen"
+    assert db_inbox.hent(bruger_id=BJORN, kilde_id="wake-afregning1")["status"] == \
+        db_inbox.STATUS_AABEN

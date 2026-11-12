@@ -156,7 +156,10 @@ def report_background_outcome(
     # An open incident is updated.  A resolved incident is history and must
     # not swallow a genuine recurrence, so a new generation gets its own id.
     if existing and str(existing.get("status") or "") in {
-        "done", "afsluttet_af_kilde",
+        # `fejlet` (12/11-2026): en hændelse hvis kørsel gik galt er også
+        # HISTORIE. Uden den her ville en fejlet post sluge den næste ægte
+        # gentagelse — samme fejl som listen findes for at undgå.
+        "done", "afsluttet_af_kilde", "fejlet",
     }:
         generation = _token(run_id, "") or datetime.now(UTC).strftime("%Y%m%d%H%M%S")
         inbox_id = f"{inbox_id}-{generation}"[:240]

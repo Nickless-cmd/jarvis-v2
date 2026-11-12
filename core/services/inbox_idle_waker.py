@@ -281,12 +281,20 @@ def _start_run(
     max_tool_calls: int = 0,
     max_seconds: float = 0.0,
     tool_scope: str = "",
+    kilde_id: str = "",
+    kildetype: str = "",
 ) -> bool | None:
     """Start det autonome run i den samtale posten hører til. Adskilt, så
     testen kan bytte den ud ét sted.
 
     `session_id` er PÅKRÆVET: et run uden en samtale ville falde tilbage til
     `auto-{origin}-{dato}` — den silo vækkeren netop ikke må skabe.
+
+    `kilde_id`/`kildetype` er postens adresse. De bruges KUN til afregningen:
+    når runnet er terminalt, kvitteres posten automatisk (12/11-2026), så en
+    vækning ikke bliver stående uforbrugt fordi jeg glemte at kalde
+    `inbox_done`. Er de tomme, springes afregningen over — et run uden en post
+    skal ikke kunne lukke noget tilfældigt.
 
     Returnerer starterens svar: `False` = run-guarden eller gut-gaten afviste
     det TAVST, og posten må ikke stå som vækket. `None` bevares for kaldere og
@@ -351,6 +359,37 @@ def _start_run(
                     "inbox_idle_waker: kunne ikke binde rutine-run", exc_info=True,
                 )
 
+        def _afregn_post(
+            *, outcome: str, visible_run_id: str = "", error: str = "", **_: Any,
+        ) -> None:
+            """Kvittér posten når dens run er terminalt (12/11-2026).
+
+            Bjørns krav: enten kvitterer jeg, eller systemet gør det
+            automatisk. Uden dette stod en vækning hvis run var færdigt
+            tilbage som `fired`/uforbrugt — og `kandidater()` springer poster
+            med et vækkespor over, så den kunne hverken rejses igen eller
+            lukkes af nogen anden. Den stod fast i visningen for evigt.
+
+            Kun poster med en adresse afregnes. Fejler skrivningen, logges
+            det: et run der sluttede er stadig sandt, og et manglende
+            kvitteringsforsøg må ikke kunne vælte afslutningen.
+            """
+            if not str(kilde_id or "").strip():
+                return
+            try:
+                from core.services.inbox_state import afslut_efter_run
+
+                afslut_efter_run(
+                    str(user_id or ""), str(kilde_id),
+                    udfald=str(outcome or ""), run_id=str(visible_run_id or ""),
+                    error=str(error or ""),
+                )
+            except Exception as exc:  # noqa: BLE001 — se docstringen
+                logger.warning(
+                    "inbox_idle_waker: kunne ikke afregne %s/%s efter run (%s): %s",
+                    kildetype, kilde_id, outcome, exc,
+                )
+
         try:
             return start_autonomous_run(
                 tekst,
@@ -372,6 +411,9 @@ def _start_run(
                 # procesgraense — og uden den requeuede reconcileren et claim
                 # hvis run maaske netop lykkedes, saa rutinen koerte IGEN.
                 started_callback=_bind_rutine_run,
+                # AFREGNINGEN (12/11-2026): posten kvitteres når runnet er
+                # terminalt — færdig, fejlet eller pauset. Se `_afregn_post`.
+                completion_callback=_afregn_post,
                 # BUDGETTET (11/11-2026). Kilden satte et loft da den bookede
                 # vækningen; uden at føre det videre kører runnet uden grænse.
                 # `0` betyder «intet loft» og sendes derfor kun videre når
@@ -512,6 +554,11 @@ def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
                 max_tool_calls=int(post.get("max_tool_calls") or 0),
                 max_seconds=float(post.get("max_seconds") or 0.0),
                 tool_scope=str(post.get("tool_scope") or ""),
+                # POSTENS ADRESSE (12/11-2026). Runnet skal kunne kvittere
+                # præcis den post det blev født af — ellers kan det ikke
+                # afregne sig selv, og posten bliver stående.
+                kilde_id=kilde_id,
+                kildetype=str(post.get("kildetype") or ""),
             )
             # TAVS AFVISNING (14/10-2026). `start_autonomous_run` returnerede
             # foer `None` ogsaa naar run-guarden eller gut-gaten afviste — og

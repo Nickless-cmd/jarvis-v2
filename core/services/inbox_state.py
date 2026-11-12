@@ -60,6 +60,7 @@ from core.runtime.db_inbox import (
     STATUS_AABEN,
     STATUS_DONE,
     STATUS_DROP,
+    STATUS_FEJLET,
 )
 
 logger = logging.getLogger(__name__)
@@ -997,9 +998,105 @@ def drop(bruger_id: str, post_id: str, reason: str) -> dict[str, Any]:
     return {"status": "ok", "type": str(post.get("kildetype") or ""), "id": post_id}
 
 
+def afslut_efter_run(
+    bruger_id: str,
+    post_id: str,
+    *,
+    udfald: str,
+    run_id: str = "",
+    error: str = "",
+) -> dict[str, Any]:
+    """Afregn en post automatisk når det run den vækkede er terminalt.
+
+    Bjørn 12/11-2026: «du skal enten kvittere når en vækning er overstået —
+    færdig/fejlet/pauset — eller systemet skal gøre det automatisk efter en
+    vækning er fuldført.»
+
+    Hullet var reelt: den ENESTE kvitteringsvej var `inbox_done`, altså et
+    værktøjskald jeg selv skulle huske. Glemte jeg det, blev vækningen stående
+    `fired` og uforbrugt — og fordi `kandidater()` springer poster med et
+    `sidste_vaekning_tur` over, kunne den hverken vækkes igen eller lukkes af
+    nogen anden. Den stod fast i visningen for evigt.
+
+    Udfaldene, og hvorfor de er tre og ikke to:
+
+      * ``completed``   → posten lukkes som `done`. Kildens egen kvittering
+                          kører (`_luk_kilden`), så en vækning bliver
+                          `consumed` og ikke bare skjult.
+      * ``failed``      → posten lukkes som `fejlet`. Kilden kvitteres OGSÅ:
+                          et vækst-forsøg der fejlede er stadig forsøgt, og
+                          skal ikke blive hængende som uforbrugt.
+      * ``interrupted`` → «pauset». Vækningen kvitteres, men posten forbliver
+                          ÅBEN og dens vækkespor ryddes, så den kan rejses
+                          igen. Arbejdet er ikke i mål, og det forrige forsøg
+                          må ikke blokere det næste.
+
+    Idempotent: en post der allerede er terminal svarer `allerede` og røres
+    ikke — `db_inbox.afgoer` skriver kun på `status = 'aaben'`. Self-safe:
+    denne funktion kaldes fra et runs `finally`, og en fejl her må aldrig
+    kunne vælte afslutningen af runnet.
+    """
+    bruger_id = str(bruger_id or "").strip()
+    post_id = str(post_id or "").strip()
+    if not bruger_id or not post_id:
+        return {"status": "fejl", "error": "bruger_id og post_id kraeves"}
+    udfald = str(udfald or "").strip().lower()
+    if udfald not in {"completed", "failed", "interrupted"}:
+        return {"status": "fejl", "error": f"ukendt udfald: {udfald}"}
+
+    if udfald == "completed":
+        return done(bruger_id, post_id)
+
+    post = _hent_eller_optag(bruger_id, post_id)
+    if post is None:
+        return {"status": "ukendt", "id": post_id}
+
+    # Kildens kvittering FØRST, som i `done`: fejler den, står posten åben og
+    # et nyt forsøg er idempotent hos kilden. Omvendt rækkefølge ville lukke
+    # posten mens vækningen blev hængende som uforbrugt.
+    kilde = _luk_kilden(post)
+    if kilde.get("status") == "fejl":
+        logger.warning(
+            "inbox_state: kildens kvittering fejlede for %s (%s): %s",
+            post_id, udfald, kilde.get("error"),
+        )
+
+    if udfald == "interrupted":
+        # «Pauset»: posten skal kunne rejses igen. Sporet ryddes, fordi
+        # `kandidater()` springer alt med et `sidste_vaekning_tur` over.
+        try:
+            db_inbox.nulstil_vaekning(bruger_id=bruger_id, kilde_id=post_id)
+        except Exception as exc:  # noqa: BLE001 — se self-safe i docstringen
+            logger.warning("inbox_state: kunne ikke rydde vaekkespor for %s: %s",
+                           post_id, exc)
+        _spor("inbox.efter_run", {
+            "bruger_id": bruger_id, "kilde_id": post_id, "udfald": "pauset",
+            "run_id": run_id, "kildetype": str(post.get("kildetype") or ""),
+        })
+        return {"status": "ok", "id": post_id, "udfald": "pauset"}
+
+    r = db_inbox.afgoer(
+        bruger_id=bruger_id, kilde_id=post_id, ny_status=STATUS_FEJLET,
+        grund=f"run fejlede: {str(error or '')[:200]}",
+    )
+    if r.get("status") == "allerede":
+        return {"status": "ok", "type": str(post.get("kildetype") or ""),
+                "id": post_id, "allerede": str(r.get("havde") or "")}
+    if r.get("status") != "ok":
+        return {"status": "fejl", "type": str(post.get("kildetype") or ""),
+                "id": post_id, "error": str(r.get("error") or r.get("status"))}
+    _spor("inbox.efter_run", {
+        "bruger_id": bruger_id, "kilde_id": post_id, "udfald": "fejlet",
+        "run_id": run_id, "kildetype": str(post.get("kildetype") or ""),
+    })
+    return {"status": "ok", "type": str(post.get("kildetype") or ""),
+            "id": post_id, "udfald": "fejlet"}
+
+
 __all__ = [
     "KILDETYPE_FLAG", "flag_fra_bruger", "laese_bruger",
     "EJER_BRUGER", "EJER_HUSET", "EJER_JARVIS", "EJER_UKENDT", "STATUS_AABEN",
     "IKKE_GATENDE_KILDETYPER", "done", "drop", "registrer_kilde",
+    "afslut_efter_run",
     "verificeret_jarvis_run",
 ]

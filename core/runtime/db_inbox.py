@@ -45,9 +45,14 @@ STATUS_DROP: Final[str] = "drop"
 STATUS_UDLOEBET: Final[str] = "udloebet"
 #: Opgave 9: kilden meldte sig færdig. En NEDGRADERING — beviset slettes ikke.
 STATUS_AFSLUTTET_AF_KILDE: Final[str] = "afsluttet_af_kilde"
+#: Kørslen posten vækkede endte med en fejl (12/11-2026). Egen værdi, ikke
+#: `drop`: ingen har afvist posten, og den skal kunne ses som netop «forsøgt,
+#: gik galt» frem for at ligne en beslutning nogen traf.
+STATUS_FEJLET: Final[str] = "fejlet"
 
 TERMINALE_STATUSSER: Final[frozenset[str]] = frozenset({
     STATUS_DONE, STATUS_DROP, STATUS_UDLOEBET, STATUS_AFSLUTTET_AF_KILDE,
+    STATUS_FEJLET,
 })
 
 #: `jarvis` = verificeret som hans eget arbejde, må gate. `huset` = daemon,

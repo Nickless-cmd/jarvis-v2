@@ -532,3 +532,87 @@ def test_konteksten_rulles_tilbage_efter_runnet(monkeypatch):
     foer = current_workspace_name()
     w._start_run("gør noget", session_id="chat-1", user_id="4242")
     assert current_workspace_name() == foer, "arbejdsrummet lækkede ud af kaldet"
+
+
+# ── Afregning efter run (12/11-2026) ────────────────────────────────────────
+#
+# Bjørn: «du skal enten kvittere når en vækning er overstået … eller systemet
+# skal gøre det automatisk efter en vækning er fuldført.»
+#
+# Denne test maaler TILSLUTNINGEN, ikke bare at funktionen findes. En
+# afregning der aldrig bliver kaldt er praecis det teater Bjørn advarer om:
+# koden ser rigtig ud, og posten staar fast alligevel.
+
+class _Reservation:
+    acquired = True
+    reason = ""
+
+
+@contextmanager
+def _reservation(*_a, **_kw):
+    yield _Reservation()
+
+
+def test_runnet_faar_en_completion_callback_der_lukker_posten(
+        inbox_db, monkeypatch):
+    """Hele kaeden: post → run → callback → posten er `done`.
+
+    Uden tilslutningen ville posten staa `aaben` med et vaekkespor, og
+    `kandidater()` springer den over — den kunne hverken rejses igen eller
+    lukkes af nogen anden.
+    """
+    from core.services import inbox_idle_waker as w
+    import core.services.background_start_reservation as bsr
+    import core.services.visible_autonomous_run as var
+
+    _post(id="job-afregn", ejer=db_inbox.EJER_JARVIS, kraever_handling=True)
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    monkeypatch.setattr(bsr, "reserve_background_start", _reservation)
+
+    fanget: dict = {}
+
+    def _fake_start(tekst, **kw):
+        fanget.update(kw)
+        # Efterlign starteren: runnet er terminalt, og callbacken kaldes.
+        kw["completion_callback"](
+            outcome="completed", visible_run_id="autonomous-afregn",
+            session_id=kw.get("session_id", ""), error="",
+        )
+        return True
+
+    monkeypatch.setattr(var, "start_autonomous_run", _fake_start)
+
+    r = w.vaek_paa_aabne_poster(bruger_id="bjorn")
+    assert r["vaekket"] == 1, r
+    assert callable(fanget.get("completion_callback")), \
+        "runnet fik ingen completion_callback — afregningen er ikke tilsluttet"
+    # Adressen blev baaret med hele vejen: det er NETOP denne post der blev
+    # lukket, ikke en tilfaeldig anden.
+
+    post = db_inbox.hent(bruger_id="bjorn", kilde_id="job-afregn")
+    assert post["status"] == db_inbox.STATUS_DONE, post["status"]
+
+
+def test_et_FEJLET_run_lukker_posten_som_fejlet(inbox_db, monkeypatch):
+    """Samme tilslutning, det andet udfald: en fejl maa ikke efterlade posten
+    aaben med et vaekkespor, for saa er den laast for evigt."""
+    from core.services import inbox_idle_waker as w
+    import core.services.background_start_reservation as bsr
+    import core.services.visible_autonomous_run as var
+
+    _post(id="job-fejl", ejer=db_inbox.EJER_JARVIS, kraever_handling=True)
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    monkeypatch.setattr(bsr, "reserve_background_start", _reservation)
+
+    def _fake_start(tekst, **kw):
+        kw["completion_callback"](
+            outcome="failed", visible_run_id="autonomous-fejl",
+            session_id=kw.get("session_id", ""), error="modellen svarede ikke",
+        )
+        return True
+
+    monkeypatch.setattr(var, "start_autonomous_run", _fake_start)
+
+    assert w.vaek_paa_aabne_poster(bruger_id="bjorn")["vaekket"] == 1
+    post = db_inbox.hent(bruger_id="bjorn", kilde_id="job-fejl")
+    assert post["status"] == db_inbox.STATUS_FEJLET, post["status"]

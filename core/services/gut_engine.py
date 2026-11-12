@@ -983,8 +983,15 @@ def preflight_allows(message: str) -> bool:
 _EVENT_LEDGER_KEY = "gut_outcome_event_ledger"
 
 
-def _bump_event_ledger() -> None:
-    """Tæl én udfaldshændelse — samme definition som eventloggen. Kaster aldrig."""
+def _bump_event_ledger(*, confirmed: bool = True) -> None:
+    """Tæl én udfaldshændelse — samme definition som eventloggen. Kaster aldrig.
+
+    `confirmed=False` betyder at hændelsen blev TALT men ikke afleveret til
+    eventbussen (fuld kø). Den tælles alligevel, fordi den skete — men i sin egen
+    bøtte, så fladen kan skelne «ryddet af retention» fra «aldrig registreret»
+    (12/11-2026, Bjørns tredje indvending). Uden den skelnen ville et tabt event
+    se ud som en ryddet række, og `max(0, …)` ville skjule den anden retning.
+    """
     try:
         from core.runtime import state_store
 
@@ -993,6 +1000,8 @@ def _bump_event_ledger() -> None:
             if not isinstance(ledger, dict):
                 ledger = {"started_at": datetime.now(UTC).isoformat(), "events": 0}
             ledger["events"] = int(ledger.get("events") or 0) + 1
+            if not confirmed:
+                ledger["unconfirmed"] = int(ledger.get("unconfirmed") or 0) + 1
             state_store.save_json(_EVENT_LEDGER_KEY, ledger)
     except Exception:
         # Tælleren er EVIDENS, ikke drift: kan den ikke skrives, må hændelsen
@@ -1012,9 +1021,48 @@ def _event_ledger_state() -> dict[str, object] | None:
         started = str(ledger.get("started_at") or "")
         if events <= 0 or not started:
             return None
-        return {"events": events, "started_at": started}
+        return {
+            "events": events,
+            "started_at": started,
+            "unconfirmed": int(ledger.get("unconfirmed") or 0),
+        }
     except Exception:
         return None
+
+
+def _publish_outcome(payload: dict[str, object]) -> None:
+    """Udsend udfaldshændelsen og bekræft livstidstælleren bagefter. Kaster aldrig.
+
+    `event_bus.publish` returnerer None og dropper TAVST når writer-køen er fuld
+    (`queue.Full` → `logger.error`). Tælleren blev før bumpet FØR publish, så et
+    droppet event stod som registreret — og så målte `ledger - event_rows` en
+    forskel mellem to mekanismer, ikke antal ryddede rækker (Bjørn, 12/11-2026).
+
+    Køen måles før og efter i stedet for at ændre bussens signatur: vokser den,
+    blev eventet afleveret. Står den stille, blev det droppet — og tælles i
+    `unconfirmed`, så fladen kan skelne tab fra retention.
+    """
+    koe_foer: int | None = None
+    try:
+        koe_foer = event_bus._writer_queue.qsize()  # noqa: SLF001 — se docstring
+    except Exception:
+        koe_foer = None
+    try:
+        event_bus.publish("cognitive_gut.outcome_recorded", dict(payload))
+    except Exception:
+        logger.debug("gut: publish fejlede", exc_info=True)
+        _bump_event_ledger(confirmed=False)
+        return
+    if koe_foer is None:
+        # Kan køen ikke måles, antages aflevering: en tæller der ikke kan
+        # bekræftes må ikke gøre hver eneste hændelse til et formodet tab.
+        _bump_event_ledger()
+        return
+    try:
+        afleveret = event_bus._writer_queue.qsize() > koe_foer  # noqa: SLF001
+    except Exception:
+        afleveret = True
+    _bump_event_ledger(confirmed=afleveret)
 
 
 def record_gut_outcome(
@@ -1034,18 +1082,18 @@ def record_gut_outcome(
     `outcome_class` og `correct: None`, så ingen læser kan tage det som en dom.
     """
     # Tælles for BEGGE klasser — ellers får tælleren samme skæve definition som
-    # `total_predictions`, og så er vi lige vidt.
-    _bump_event_ledger()
+    # `total_predictions`, og så er vi lige vidt. Rækkefølgen er omvendt af før
+    # (12/11-2026, Bjørns tredje indvending): tælleren bekræftes EFTER publish, så
+    # et event der blev droppet af en fuld kø ikke står som registreret.
     outcome_class = classify_outcome(actual_outcome)
     if outcome_class == "neutral":
-        event_bus.publish(
-            "cognitive_gut.outcome_recorded",
+        _publish_outcome(
             {
                 "correct": None,
                 "hunch": hunch,
                 "actual": actual_outcome,
                 "outcome_class": outcome_class,
-            },
+            }
         )
         return {"skipped": "neutralt-udfald", "outcome_class": outcome_class}
 
@@ -1057,14 +1105,13 @@ def record_gut_outcome(
         last_hunch=f"{hunch} → {actual_outcome} ({'✓' if correct else '✗'})",
     )
 
-    event_bus.publish(
-        "cognitive_gut.outcome_recorded",
+    _publish_outcome(
         {
             "correct": correct,
             "hunch": hunch,
             "actual": actual_outcome,
             "outcome_class": outcome_class,
-        },
+        }
     )
     return result
 
@@ -1247,7 +1294,16 @@ def build_gut_surface() -> dict[str, object]:
                 "ryddet foer den begyndte at tælle"
             )
         else:
-            no_event_row = max(0, int(ledger["events"]) - event_rows)
+            # Et event der blev talt men ikke afleveret til eventbussen er ikke
+            # ryddet — det blev aldrig skrevet. Det trækkes fra, så differencen
+            # måler retention og ikke tab (Bjørn, 12/11-2026).
+            uafklarede = int(ledger.get("unconfirmed") or 0)
+            no_event_row = max(0, int(ledger["events"]) - uafklarede - event_rows)
+            if uafklarede:
+                no_event_row_grund = (
+                    f"{uafklarede} udfalds-events blev talt men aldrig afleveret til "
+                    "eventbussen (fuld koe) — de er ikke ryddet og indgaar ikke i tallet"
+                )
     verified = decided_rows
     unverifiable = no_event_row
     # Skævheden er ikke kun ALDER (12/11-2026, Bjørns indvending). Før den fælles

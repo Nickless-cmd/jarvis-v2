@@ -362,3 +362,92 @@ def test_ingen_skaevhedsnote_naar_alt_er_verificerbart(monkeypatch):
     s = ge.build_gut_surface()
     assert s["historical_bias"] is None
     assert "SKAEVE" not in s["summary"]
+
+
+def test_droppet_event_taelles_ikke_som_ryddet(monkeypatch):
+    """Et event der blev talt men aldrig afleveret er TAB, ikke retention.
+
+    Bjørns tredje indvending (12/11-2026): livstidstælleren ligger i en JSON-fil,
+    hændelsen går gennem eventbussens asynkrone kø. `publish` dropper TAVST ved
+    fuld kø. Uden denne skelnen ville et tabt event se ud som en ryddet række —
+    og `max(0, …)` ville skjule den modsatte retning.
+    """
+    monkeypatch.setattr(
+        ge, "_observed_baseline",
+        lambda: {"n_observed": 8, "event_rows": 8, "neutral_rows": 0,
+                 "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
+    )
+    monkeypatch.setattr(
+        ge, "get_cognitive_gut_state",
+        lambda: {"total_predictions": 10, "calibrated_hits": 9,
+                 "calibration_score": 0.9, "last_hunch": "proceed → completed (✓)"},
+    )
+    monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
+    # Tælleren er moden, men to af dens events blev aldrig afleveret.
+    monkeypatch.setattr(
+        ge, "_event_ledger_state",
+        lambda: {"events": 10, "started_at": "2026-01-01T00:00:00+00:00",
+                 "unconfirmed": 2},
+    )
+    s = ge.build_gut_surface()
+    assert s["no_event_row"] == 0, (
+        "10 talt - 2 aldrig afleveret - 8 i vinduet = 0 ryddede; "
+        "de to er tab, ikke retention"
+    )
+    assert "fuld koe" in (s["no_event_row_grund"] or "")
+
+
+def test_taelleren_bekraeftes_efter_publish(monkeypatch):
+    """Rækkefølgen: publish FØRST, tæller bagefter — ellers kan et drop ikke ses.
+
+    Blev tælleren bumpet før publish, stod et droppet event som registreret, og
+    differencen målte forskellen mellem to mekanismer i stedet for ryddede rækker.
+    """
+    kald: list[str] = []
+
+    class _Koe:
+        def __init__(self) -> None:
+            self.n = 0
+
+        def qsize(self) -> int:
+            return self.n
+
+    koe = _Koe()
+
+    class _Bus:
+        _writer_queue = koe
+
+        def publish(self, kind, payload=None, **kw):
+            kald.append("publish")
+            koe.n += 1  # afleveret
+
+    monkeypatch.setattr(ge, "event_bus", _Bus())
+    monkeypatch.setattr(ge, "_bump_event_ledger", lambda **kw: kald.append(
+        f"bump:{kw.get('confirmed', True)}"
+    ))
+    monkeypatch.setattr(ge, "update_cognitive_gut_state", lambda **kw: {"ok": True})
+    ge.record_gut_outcome(hunch="proceed", actual_outcome="completed")
+    assert kald == ["publish", "bump:True"], f"forkert raekkefoelge: {kald}"
+
+
+def test_droppet_publish_giver_ubekraeftet_taelling(monkeypatch):
+    """Fuld kø: publish gør intet, køen vokser ikke — så skal tælleren være uafklaret."""
+    kald: list[bool] = []
+
+    class _Koe:
+        def qsize(self) -> int:
+            return 10_000  # loftet — står stille
+
+    class _Bus:
+        _writer_queue = _Koe()
+
+        def publish(self, kind, payload=None, **kw):
+            return None  # droppet, som bussen gør det
+
+    monkeypatch.setattr(ge, "event_bus", _Bus())
+    monkeypatch.setattr(ge, "_bump_event_ledger", lambda **kw: kald.append(
+        kw.get("confirmed", True)
+    ))
+    monkeypatch.setattr(ge, "update_cognitive_gut_state", lambda **kw: {"ok": True})
+    ge.record_gut_outcome(hunch="proceed", actual_outcome="completed")
+    assert kald == [False], "et droppet event maa ikke taelles som bekræftet"

@@ -181,8 +181,8 @@ _Gut Engine — intuition and calibration tracking._
 | function | `preflight_allows` | `(message)` | Bekvemmeligheds-indpakning til run-start-stierne: True = start runnet. | [src](../../../core/services/gut_engine.py#L957) |
 | function | `record_gut_outcome` | `(*, hunch, actual_outcome)` | Record whether the gut hunch was correct. | [src](../../../core/services/gut_engine.py#L969) |
 | function | `_observed_baseline` | `()` | Mål maven mod en KONSTANT baseline (altid «proceed») på de events der findes. | [src](../../../core/services/gut_engine.py#L1022) |
-| function | `build_gut_surface` | `()` | Kalibrerings-fladen — viser de tre lag ADSKILT (A3, 3/11-2026). | [src](../../../core/services/gut_engine.py#L1092) |
-| function | `build_gut_counterfactual_surface` | `()` | Counterfactual decision delta: hvor ofte flyttede den lærte bias gatens afgørelse? | [src](../../../core/services/gut_engine.py#L1182) |
+| function | `build_gut_surface` | `()` | Kalibrerings-fladen — viser de tre lag ADSKILT (A3, 3/11-2026). | [src](../../../core/services/gut_engine.py#L1102) |
+| function | `build_gut_counterfactual_surface` | `()` | Counterfactual decision delta: hvor ofte flyttede den lærte bias gatens afgørelse? | [src](../../../core/services/gut_engine.py#L1218) |
 
 ## `core/services/habit_tracker.py`
 _Habit Tracker — detects recurring patterns and friction points._

@@ -182,8 +182,59 @@ def test_summary_viser_hvor_meget_der_kan_efterproeves(monkeypatch):
     assert s["evaluated"] == 100
     assert s["evaluated_verified"] == 10
     assert s["evaluated_unverifiable"] == 90
-    assert "90 ligger foer vinduet" in s["summary"]
+    assert "90 har ingen event-raekke tilbage" in s["summary"]
     assert "kan efterproeves" in s["summary"]
+
+
+def test_neutral_event_taelles_ikke_som_ryddet(monkeypatch):
+    """BJØRNS INVENDING (12/11-2026): `unverifiable = total - decided` pålagde differencen
+    forklaringen «ligger før vinduet». Men en neutral event FINDES i vinduet — den er bare
+    uafgjort. De to mængder må ikke lægges sammen.
+
+    Målt i produktion: 4527 akkumulerede, 343 event-rækker, 342 afgjorte, 1 neutral.
+    Den gamle formel sagde 4185 «før vinduet»; den rigtige er 4184 + 1 uafgjort.
+    """
+    monkeypatch.setattr(
+        ge, "_observed_baseline",
+        lambda: {"n_observed": 9, "event_rows": 10, "neutral_rows": 1,
+                 "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
+    )
+    monkeypatch.setattr(
+        ge, "get_cognitive_gut_state",
+        lambda: {"total_predictions": 10, "calibrated_hits": 9,
+                 "calibration_score": 0.9, "last_hunch": "proceed → completed (✓)"},
+    )
+    monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
+    s = ge.build_gut_surface()
+    assert s["event_rows"] == 10, "alle ti rækker findes i vinduet"
+    assert s["decided_rows"] == 9
+    assert s["neutral_rows"] == 1
+    assert s["no_event_row"] == 0, "den neutrale er IKKE ryddet — den er uafgjort"
+    assert s["evaluated_unverifiable"] == 0
+    assert "1 er i vinduet men uafgjorte" in s["summary"]
+    assert "har ingen event-raekke tilbage" not in s["summary"]
+    assert s["historical_bias"] is None, "ingen ryddede rækker = ingen historisk skævhed at navngive"
+
+
+def test_fire_maengder_summerer_til_det_akkumulerede(monkeypatch):
+    """Regnskabet skal gå op: afgjorte + uafgjorte + ryddede = akkumulerede.
+
+    Er summen forkert, er mindst én af de fire mængder målt på det forkerte grundlag —
+    og så kan ingen af dem læses som evidens.
+    """
+    monkeypatch.setattr(
+        ge, "_observed_baseline",
+        lambda: {"n_observed": 342, "event_rows": 343, "neutral_rows": 1,
+                 "maven_pct": 92.4, "baseline_pct": 100.0, "skill_pp": -7.6},
+    )
+    monkeypatch.setattr(
+        ge, "get_cognitive_gut_state",
+        lambda: {"total_predictions": 4527, "calibrated_hits": 4492,
+                 "calibration_score": 0.99, "last_hunch": "proceed → completed (✓)"},
+    )
+    monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
+    s = ge.build_gut_surface()
+    assert s["decided_rows"] + s["neutral_rows"] + s["no_event_row"] == s["evaluated"]
 
 
 def test_ingen_advarsel_naar_alt_er_verificerbart(monkeypatch):

@@ -1050,6 +1050,8 @@ def _observed_baseline() -> dict[str, object] | None:
         faktisk = 0
         baseline = 0
         n = 0
+        event_rows = 0
+        neutral_rows = 0
         for row in rows:
             try:
                 d = _json.loads(row[0])
@@ -1061,6 +1063,7 @@ def _observed_baseline() -> dict[str, object] | None:
             actual = str(d.get("actual") or "")
             if hunch not in ("proceed", "caution"):
                 continue
+            event_rows += 1
             # Fælles udfaldsmodel (12/11-2026): neutrale udfald — `interrupted`
             # m.fl. — kan ikke afgøre om forudsigelsen var rigtig og tælles derfor
             # hverken med for maven eller for baseline. Før blev de regnet som
@@ -1069,17 +1072,24 @@ def _observed_baseline() -> dict[str, object] | None:
             # forudsagde.
             outcome_class = classify_outcome(actual)
             if outcome_class == "neutral":
+                neutral_rows += 1
                 continue
             n += 1
             act_success = outcome_class == "success"
             faktisk += (hunch == "proceed") == act_success
             baseline += act_success
-        if n:
+        # `event_rows` tælles SEPARAT fra `n` (12/11-2026, Bjørns indvending): en neutral
+        # event FINDES i vinduet, den er bare uafgjort. Før blev den slaaet sammen med de
+        # events der slet ikke har en raekke tilbage, og differencen blev forklaret som
+        # «ligger foer vinduet» — en forklaring der ikke daekkede de neutrale.
+        if event_rows:
             result = {
                 "n_observed": n,
-                "maven_pct": round(faktisk / n * 100, 2),
-                "baseline_pct": round(baseline / n * 100, 2),
-                "skill_pp": round((faktisk - baseline) / n * 100, 2),
+                "event_rows": event_rows,
+                "neutral_rows": neutral_rows,
+                "maven_pct": round(faktisk / n * 100, 2) if n else None,
+                "baseline_pct": round(baseline / n * 100, 2) if n else None,
+                "skill_pp": round((faktisk - baseline) / n * 100, 2) if n else None,
             }
     except Exception:  # baseline er et SUPPLEMENT — fladen skal vises selvom DB'en ikke kan læses
         result = None
@@ -1120,7 +1130,7 @@ def build_gut_surface() -> dict[str, object]:
                 "withheld": withheld, "backstop_overkoersler": overkoersler,
                 "summary": "No gut data yet"}
     baseline = _observed_baseline()
-    if baseline:
+    if baseline and int(baseline.get("n_observed") or 0) > 0:
         skill = float(baseline["skill_pp"])
         dom = "BEDRE" if skill > 0 else ("DAARLIGERE" if skill < 0 else "LIGE")
         baseline_summary = (
@@ -1136,8 +1146,24 @@ def build_gut_surface() -> dict[str, object]:
     # foedsel (6/4-2026). Differencen kan ikke efterproeves og maa ikke laeses som evidens
     # — derfor staar baade det akkumulerede tal og det verificerbare tal paa fladen.
     total_evaluated = int(state["total_predictions"])
-    verified = int(baseline["n_observed"]) if baseline else 0
-    unverifiable = max(0, total_evaluated - verified)
+    # FIRE mængder, ikke to (12/11-2026, Bjørns indvending). `total - decided` blev
+    # tidligere kaldt «ligger foer vinduet», men den trak de neutrale events med, som
+    # netop FINDES i vinduet — de er bare uafgjorte. To tal maa ikke traekkes fra
+    # hinanden og tilskrives en forklaring, medmindre de maaler kompatible maengder:
+    #   event_rows   — raekker der findes i vinduet
+    #   decided_rows — heraf klassificeret success/failure (kan efterproeves)
+    #   neutral_rows — heraf uafgjorte (findes, men kan ikke afgoere forudsigelsen)
+    #   no_event_row — akkumulerede afgoerelser uden en raekke tilbage (ryddet)
+    raw_event_rows = (baseline or {}).get("event_rows")
+    decided_rows = int((baseline or {}).get("n_observed") or 0)
+    # Mangler `event_rows` (ældre kald, stub eller cache fra før 12/11-2026), antages det
+    # at alle afgjorte rækker findes i vinduet — den gamle adfærd. Feltet maa ikke
+    # defaulte til 0, for saa ville hver eneste raekke blive kaldt «ryddet».
+    event_rows = int(raw_event_rows) if raw_event_rows is not None else decided_rows
+    neutral_rows = int((baseline or {}).get("neutral_rows") or 0)
+    no_event_row = max(0, total_evaluated - event_rows)
+    verified = decided_rows
+    unverifiable = no_event_row
     # Skævheden er ikke kun ALDER (12/11-2026, Bjørns indvending). Før den fælles
     # udfaldsmodel blev `caution → interrupted` talt som en KORREKT forudsigelse, fordi
     # alt andet end completed/success var fiasko. De historiske tællere bærer derfor en
@@ -1150,10 +1176,16 @@ def build_gut_surface() -> dict[str, object]:
         "caution og som fejl for proceed; retningen er kendt, stoerrelsen kan ikke "
         "maales — de events der ville vise den er ryddet efter 14 dage"
     ) if unverifiable > 0 else None
+    _evidens_dele: list[str] = []
+    if no_event_row > 0:
+        _evidens_dele.append(
+            f"{no_event_row} har ingen event-raekke tilbage (ryddes efter 14 dage)"
+        )
+    if neutral_rows > 0:
+        _evidens_dele.append(f"{neutral_rows} er i vinduet men uafgjorte")
     evidence_summary = (
-        f" | {verified} af {total_evaluated} kan efterproeves (events ryddes efter "
-        f"14 dage); {unverifiable} ligger foer vinduet"
-    ) if unverifiable > 0 else ""
+        f" | {decided_rows} af {total_evaluated} kan efterproeves; " + "; ".join(_evidens_dele)
+    ) if _evidens_dele else ""
     if historical_bias:
         evidence_summary += (
             " | de historiske tal er SKAEVE i caution-gruppens favoer, ikke kun gamle"
@@ -1165,6 +1197,10 @@ def build_gut_surface() -> dict[str, object]:
         "evaluated": total_evaluated,
         "evaluated_verified": verified,
         "evaluated_unverifiable": unverifiable,
+        "event_rows": event_rows,
+        "decided_rows": decided_rows,
+        "neutral_rows": neutral_rows,
+        "no_event_row": no_event_row,
         "historical_bias": historical_bias,
         "withheld": withheld,
         "backstop_overkoersler": overkoersler,

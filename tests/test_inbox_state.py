@@ -1361,3 +1361,39 @@ def test_en_VAEKNING_om_andet_end_en_vaekning_kvitterer_intet(
 
     assert r["status"] == "ok", r
     assert kaldt == [], "en post uden wakeup-id kvitterede en vaekning"
+
+
+def test_vaekning_emballagen_lukker_OSAA_soester_raekken(inbox_db, monkeypatch):
+    """`wake-<id>`-raekken blev oprettet ved BOOKINGEN med `kraever_handling=1`.
+
+    Maalt 12/11-2026: `mark_wakeup_consumed` roerer kun JSON-filen, ikke
+    raekken. Vaekningen blev altsaa `consumed` mens dens egen raekke stod
+    `aaben` og gatede videre — og vejen ud gik gennem netop det vaerktoej
+    gaten blokerer. Hver booket vaekning efterlod dermed en gatende raekke
+    der skulle kvitteres i haanden, hvilket er praecis den byrde Bjørn bad om
+    at slippe for: «enten kvitterer jeg, eller systemet goer det automatisk».
+    """
+    with _som_bjorn():
+        inbox_state.registrer_kilde(
+            bruger_id=BJORN, kildetype="wakeup",
+            kilde_id="wake-soester1", bloker=True,
+            oprettende_run_id="visible-abc123")
+        inbox_state.registrer_kilde(
+            bruger_id=BJORN, kildetype="vaekning",
+            kilde_id="vaek-wakeup:wake-soester1",
+            oprettende_run_id="visible-abc123")
+    soester = db_inbox.hent(bruger_id=BJORN, kilde_id="wake-soester1")
+    assert soester["kraever_handling"] == 1, "fixturen gater ikke — testen ville vaere tom"
+    monkeypatch.setattr(
+        "core.services.self_wakeup.mark_wakeup_consumed",
+        lambda wid: {"status": "ok"},
+    )
+
+    r = inbox_state.afslut_efter_run(
+        BJORN, "vaek-wakeup:wake-soester1", udfald="completed",
+        run_id="autonomous-6")
+
+    assert r["status"] == "ok", r
+    for kid in ("vaek-wakeup:wake-soester1", "wake-soester1"):
+        post = db_inbox.hent(bruger_id=BJORN, kilde_id=kid)
+        assert post["status"] == db_inbox.STATUS_DONE, (kid, post["status"])

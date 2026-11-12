@@ -796,6 +796,10 @@ def _luk_kilden(post: dict[str, Any]) -> dict[str, Any]:
     """
     kildetype = str(post.get("kildetype") or "")
     kilde_id = str(post.get("kilde_id") or "")
+    #: Peger `kilde_id` på en SØSTER-række, eller er det postens eget id?
+    #: Kun `vaekning`-emballagen (`vaek-wakeup:<id>`) peger et andet sted hen.
+    #: For `wakeup` er id'et postens eget, og den lukkes af kalderen bagefter.
+    soester = False
     if kildetype == "vaekning":
         # En `vaekning`-post er INDBakkens emballage om en vækning der kom
         # gennem `wake_gateway` (`vaek-wakeup:<wakeup_id>`). Målt 12/11-2026:
@@ -809,6 +813,7 @@ def _luk_kilden(post: dict[str, Any]) -> dict[str, Any]:
         kilde_id = wakeup_id_fra_vaekning(kilde_id)
         if not kilde_id:
             return {"status": "ingen"}
+        soester = True
     elif kildetype != "wakeup":
         return {"status": "ingen"}
     try:
@@ -826,6 +831,24 @@ def _luk_kilden(post: dict[str, Any]) -> dict[str, Any]:
         # `except` omkring kaldet rammes derfor aldrig — fejlen skal læses af
         # svaret, ellers bliver den en værdi vi ikke kan skelne fra succes.
         return {"status": "fejl", "error": str(svar.get("error") or svar)}
+    if soester:
+        # Vækningens EGEN indbakke-række (`wake-<id>`) blev oprettet ved
+        # BOOKINGEN med `kraever_handling=1`, og `mark_wakeup_consumed` rører
+        # kun JSON-filen — ikke rækken. Målt 12/11-2026: hver booket vækning
+        # efterlod derfor en gatende række der skulle kvitteres i hånden, og
+        # vejen ud gik gennem netop det værktøj gaten blokerer. Vækningen er nu
+        # forbrugt; sagen er afgjort, og rækken skal følge den.
+        try:
+            db_inbox.afgoer(
+                bruger_id=str(post.get("bruger_id") or ""),
+                kilde_id=kilde_id,
+                ny_status=STATUS_DONE,
+                grund="vaekningen forbrugt",
+            )
+        except Exception as exc:  # noqa: BLE001 — en lukket søster må ikke vælte kilden
+            logger.warning(
+                "inbox_state: kunne ikke lukke soester-raekken %s: %s", kilde_id, exc
+            )
     return {"status": "ok"}
 
 

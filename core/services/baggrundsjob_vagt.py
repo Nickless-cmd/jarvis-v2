@@ -19,7 +19,9 @@ Alle delene fandtes; ingen kaldte dem i den raekkefoelge:
   to tilfaelde vi er i, og siger det i sit svar: `"queued"` = sessionen var
   aktiv, beskeden ligger i `session_inbox` og flushes efter hans tur.
   `"ok"` = der var ingen aktiv tur, beskeden blev skrevet direkte.
-* `self_wakeup.schedule_self_wakeup()` er det der faktisk VAEKKER.
+* `wake_gateway.anmod_om_vaekning()` er vejen der VAEKKER — vagten
+  SIGNALERER, og indbakken vurderer og starter runnet. Den direkte
+  `schedule_self_wakeup` er kun noedvejen naar gatewayen afviser.
 
 Derfor behoever vagten ikke sin egen «er han aktiv»-logik: svaret fra broen
 fortaeller det. Ét sted at tage fejl i stedet for to.
@@ -165,22 +167,52 @@ def _meld(job: dict[str, Any]) -> tuple[bool, str]:
     # Ingen aktiv tur: beskeden staar i sessionen, men der er ingen der laeser
     # den af sig selv. Derfor en vaekning — det er den han ellers skulle have
     # booket i haanden.
+    #
+    # GENNEM GATEWAYEN (12/11-2026, Bjørn: «lad os tage de 6 kilder med inden
+    # deploy»). Kilden siger «jobbet er faerdigt»; indbakken vurderer om der
+    # kan vaekkes nu. Foer bookede vi selv en vaekning her — det var en af de
+    # seks veje der gik uden om den ene vaekker, saa to kilder kunne fyre i
+    # samme vindue uden at nogen af dem vidste det.
+    #
+    # `queued` og `deduped` er BEGGE afleveringer: dedup betyder at en anden
+    # kilde allerede har bedt om samme sag, og posten venter.
     try:
-        from core.services.self_wakeup import schedule_self_wakeup
-        res = schedule_self_wakeup(
-            delay_seconds=_VAEKNING_DELAY_S,
-            prompt=(f"{tekst}\n\nSe resultatet, og rapportér KUN til Bjørn hvis der er "
-                    f"noget han skal vide eller gøre."),
-            reason="baggrundsjob faerdigt",
+        from core.services.wake_gateway import anmod_om_vaekning
+
+        kv = anmod_om_vaekning(
+            kilde="baggrundsjob_vagt",
+            sag=f"baggrundsjob:{job.get('id') or job.get('pid') or ''}",
+            tekst=(f"{tekst}\n\nSe resultatet, og rapportér KUN til Bjørn hvis der "
+                   f"er noget han skal vide eller gøre."),
+            importance=("normal" if job.get("exit_code") in (0, "0") else "high"),
         )
-        if str(res.get("status") or "") == "error":
-            # Vaekningen fejlede (typisk loftet paa pending). Beskeden ER
-            # leveret, saa jobbet taeller som meldt — men det skal staa i
-            # svaret, ikke forsvinde.
-            return True, f"skrevet_uden_vaekning:{res.get('error')}"
+        if str(kv.get("status") or "") in {"queued", "deduped"}:
+            return True, "vaekning"
+        # En afvisning er en ægte fejl, ikke en stille no-op. Vi rejser den så
+        # nødvejen nedenfor tager over — meldingen må ikke blive tavs fordi
+        # indbakken ikke kunne modtage den.
+        raise RuntimeError(f"wake_gateway afviste: {kv.get('grund') or 'ukendt'}")
     except Exception:
         logger.warning("baggrundsjob_vagt: kunne ikke booke vaekning", exc_info=True)
-        return True, "skrevet_uden_vaekning"
+        # Sidste udvej: en vaekning er bedre end tavshed — ogsaa selv om den
+        # tidligst lander efter et minut.
+        try:
+            from core.services.self_wakeup import schedule_self_wakeup
+            res = schedule_self_wakeup(
+                delay_seconds=_VAEKNING_DELAY_S,
+                prompt=(f"{tekst}\n\nSe resultatet, og rapportér KUN til Bjørn hvis "
+                        f"der er noget han skal vide eller gøre."),
+                reason="baggrundsjob faerdigt",
+            )
+            if str(res.get("status") or "") == "error":
+                # Vaekningen fejlede (typisk loftet paa pending). Beskeden ER
+                # leveret, saa jobbet taeller som meldt — men det skal staa i
+                # svaret, ikke forsvinde.
+                return True, f"skrevet_uden_vaekning:{res.get('error')}"
+        except Exception:
+            logger.warning("baggrundsjob_vagt: fallback-vaekning fejlede ogsaa",
+                           exc_info=True)
+            return True, "skrevet_uden_vaekning"
     return True, "vaekning"
 
 

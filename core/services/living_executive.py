@@ -461,12 +461,11 @@ def _action_schedule_self_wakeup(impulse: dict[str, Any]) -> dict[str, object]:
             opgave_id = str((get_record(rid) or {}).get("task_id") or "") or rid
         except Exception:  # noqa: BLE001 — et fejlet opslag maa ikke droppe vaekningen
             pass
-    result = schedule_self_wakeup(
-        delay_seconds=int(payload.get("delay_seconds") or 300),
-        prompt=str(payload.get("prompt") or ""),
-        reason=str(payload.get("reason") or "living-executive"),
-        session_id=session_id or None,
-        task_id=opgave_id if er_genoptagelse else "",
+    result = _book_impuls_vaekning(
+        payload=payload,
+        session_id=session_id,
+        opgave_id=opgave_id if er_genoptagelse else "",
+        impuls_id=str(impulse.get("impulse_id") or impulse.get("source_kind") or ""),
     )
     if result.get("status") == "ok":
         wakeup = result.get("wakeup") if isinstance(result.get("wakeup"), dict) else {}
@@ -476,6 +475,55 @@ def _action_schedule_self_wakeup(impulse: dict[str, Any]) -> dict[str, object]:
             "wakeup": wakeup,
         }
     return {"status": "failed", "summary": str(result.get("error") or "wakeup failed")}
+
+
+def _book_impuls_vaekning(
+    *,
+    payload: dict[str, Any],
+    session_id: str,
+    opgave_id: str,
+    impuls_id: str,
+) -> dict[str, Any]:
+    """Book impulsens vækning — gennem indbakken, med den direkte vej som nødvej.
+
+    12/11-2026 (Bjørn: «lad os tage de 6 kilder med inden deploy»): kilden
+    siger «jeg har en impuls der skal følges op på»; indbakken vurderer om der
+    kan vækkes nu. Før bookede vi selv, og to impulser i samme vindue kunne
+    ikke se hinanden.
+
+    Kontrakten udad er uændret: `{"status": "ok", "wakeup": {...}}` ved succes,
+    ellers `{"status": "error", "error": ...}`. Indbakken har ikke en
+    `wakeup_id`, så vi svarer med postens nøgle i samme felt — kalderen
+    rapporterer den som sporet, og det er sandt: det ER sporet.
+    """
+    tekst = str(payload.get("prompt") or "")
+    try:
+        from core.services.wake_gateway import anmod_om_vaekning
+
+        kv = anmod_om_vaekning(
+            kilde="living_executive",
+            sag=f"impuls:{impuls_id or payload.get('reason') or 'ukendt'}",
+            tekst=tekst,
+            session_id=session_id,
+            task_id=opgave_id,
+        )
+        if str(kv.get("status") or "") in {"queued", "deduped"}:
+            return {
+                "status": "ok",
+                "wakeup": {"wakeup_id": str(kv.get("kilde_id") or "")},
+            }
+        raise RuntimeError(f"wake_gateway afviste: {kv.get('grund') or 'ukendt'}")
+    except Exception as exc:  # noqa: BLE001 — nødvejen nedenfor tager over
+        logger.warning("living_executive: gateway fejlede: %s — falder tilbage", exc)
+    from core.services.self_wakeup import schedule_self_wakeup
+
+    return schedule_self_wakeup(
+        delay_seconds=int(payload.get("delay_seconds") or 300),
+        prompt=tekst,
+        reason=str(payload.get("reason") or "living-executive"),
+        session_id=session_id or None,
+        task_id=opgave_id,
+    )
 
 
 def _action_record_focus_intent(impulse: dict[str, Any]) -> dict[str, object]:

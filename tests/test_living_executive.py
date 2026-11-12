@@ -58,15 +58,51 @@ def test_execute_focus_intent_records_trace_and_focus(monkeypatch) -> None:
 
 
 def test_execute_schedule_self_wakeup_action(monkeypatch) -> None:
+    """Impulsen SIGNALERER til indbakken — den booker ikke selv.
+
+    12/11-2026 (Bjørn: «lad os tage de 6 kilder med inden deploy»): kilden
+    siger «jeg har en impuls der skal følges op på»; indbakken vurderer om der
+    kan vækkes nu. Kontrakten udad er uændret: `executed` + et spor.
+    """
     lex, state = _state_patch(monkeypatch)
+    import core.services.wake_gateway as gw
+
+    kaldt = []
+
+    def fake_gateway(**kwargs):
+        kaldt.append(kwargs)
+        return {"status": "queued", "grund": "ny_post", "kilde_id": "vaek-impuls:p1"}
+
+    monkeypatch.setattr(gw, "anmod_om_vaekning", fake_gateway)
+
+    trace = lex.run_once(events=[{
+        "id": 4,
+        "kind": "self_repair.action_failed",
+        "payload": {"pattern_id": "p1", "name": "Restart mail checker"},
+    }])
+
+    assert trace["status"] == "executed"
+    assert trace["action_id"] == "schedule_self_wakeup"
+    assert "vaek-impuls:p1" in trace["outcome"]
+    assert len(kaldt) == 1 and kaldt[0]["kilde"] == "living_executive"
+    assert state["traces"][0]["aftertaste"] == "thread held"
+
+
+def test_impuls_falder_tilbage_til_direkte_vaekning(monkeypatch) -> None:
+    """Afviser indbakken, må impulsen ikke blive tavs."""
+    lex, _state = _state_patch(monkeypatch)
+    import core.services.wake_gateway as gw
     import core.services.self_wakeup as sw
 
+    monkeypatch.setattr(gw, "anmod_om_vaekning",
+                        lambda **k: {"status": "rejected", "grund": "ingen_bruger"})
+    brugt = []
     monkeypatch.setattr(
         sw,
         "schedule_self_wakeup",
-        lambda **kwargs: {
+        lambda **kwargs: brugt.append(kwargs) or {
             "status": "ok",
-            "wakeup": {"wakeup_id": "wake-test", **kwargs},
+            "wakeup": {"wakeup_id": "wake-fallback"},
         },
     )
 
@@ -77,9 +113,8 @@ def test_execute_schedule_self_wakeup_action(monkeypatch) -> None:
     }])
 
     assert trace["status"] == "executed"
-    assert trace["action_id"] == "schedule_self_wakeup"
-    assert "wake-test" in trace["outcome"]
-    assert state["traces"][0]["aftertaste"] == "thread held"
+    assert "wake-fallback" in trace["outcome"]
+    assert len(brugt) == 1, "nødvejen skal tage over"
 
 
 def test_cooldown_suppresses_repeated_action(monkeypatch) -> None:

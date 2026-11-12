@@ -331,8 +331,8 @@ _Ros og ris på Jarvis' svar — og hvad de bliver til._
 | function | `markér_gennemgået` | `(message_ids)` | — | [src](../../../core/services/message_feedback.py#L122) |
 | function | `byg_review_prompt` | `(poster)` | Den tekst Jarvis vågner op til. | [src](../../../core/services/message_feedback.py#L138) |
 | function | `tick_feedback_review` | `(now=…)` | Én gang om måneden: giv Jarvis månedens stemmer at tænke over. | [src](../../../core/services/message_feedback.py#L167) |
-| function | `_nu` | `()` | — | [src](../../../core/services/message_feedback.py#L210) |
-| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/message_feedback.py#L214) |
+| function | `_nu` | `()` | — | [src](../../../core/services/message_feedback.py#L216) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/message_feedback.py#L220) |
 
 ## `core/services/meta_cognition_daemon.py`
 _Meta-Cognition Daemon — first-person reflection on own state (Experiment 4: HOT)._

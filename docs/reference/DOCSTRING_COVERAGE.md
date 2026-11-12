@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10032/18523 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10033/18524 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10032/18523 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 894 | 1607 | 55% |
-| `core.services` | 6703 | 12556 | 53% |
+| `core.services` | 6704 | 12557 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1419,8 +1419,8 @@ Generated from source. 10032/18523 functions/methods documented (54%). The list 
 - `core/services/living_executive.py` :: `choose_impulse` (L108)
 - `core/services/living_executive.py` :: `execute_impulse` (L137)
 - `core/services/living_executive.py` :: `process_event` (L120)
-- `core/services/living_executive.py` :: `start_listener` (L981)
-- `core/services/living_executive.py` :: `stop_listener` (L1002)
+- `core/services/living_executive.py` :: `start_listener` (L1029)
+- `core/services/living_executive.py` :: `stop_listener` (L1050)
 - `core/services/long_arc_synthesizer.py` :: `list_arcs` (L208)
 - `core/services/long_horizon_goals.py` :: `create_goal` (L34)
 - `core/services/long_horizon_goals.py` :: `delete_goal` (L128)
@@ -2110,9 +2110,9 @@ Generated from source. 10032/18523 functions/methods documented (54%). The list 
 - `core/services/shared_language_extended.py` :: `build_shared_language_extended_surface` (L265)
 - `core/services/shared_language_extended.py` :: `list_shorthand_terms` (L210)
 - `core/services/shutdown_window_daemon.py` :: `build_shutdown_window_surface` (L168)
-- `core/services/side_tasks.py` :: `get` (L708)
-- `core/services/side_tasks.py` :: `list_pending` (L505)
-- `core/services/side_tasks.py` :: `mark_autonomy_exhausted_reported` (L696)
+- `core/services/side_tasks.py` :: `get` (L738)
+- `core/services/side_tasks.py` :: `list_pending` (L535)
+- `core/services/side_tasks.py` :: `mark_autonomy_exhausted_reported` (L726)
 - `core/services/signal_decay_daemon.py` :: `build_signal_decay_surface` (L98)
 - `core/services/signal_decay_daemon.py` :: `get_signal_decay_stats` (L91)
 - `core/services/signal_noise_guard.py` :: `build_bounded_hypothesis_text` (L185)

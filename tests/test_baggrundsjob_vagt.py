@@ -49,8 +49,10 @@ def rig(monkeypatch, tmp_path, isolated_runtime):
         "bridge_ok": True,
         "sendt": [],
         "vaekninger": [],
+        "gateway": [],
         "send_svar": {"status": "queued"},
         "vaekning_svar": {"status": "ok", "wakeup_id": "wake-1"},
+        "gateway_svar": {"status": "queued", "grund": "ny_post"},
     }
 
     def fake_operator_jobs(uid, exec_fn):
@@ -68,9 +70,17 @@ def rig(monkeypatch, tmp_path, isolated_runtime):
         tilstand["vaekninger"].append(kw)
         return dict(tilstand["vaekning_svar"])
 
+    def fake_gateway(**kw):
+        tilstand["gateway"].append(kw)
+        return dict(tilstand["gateway_svar"])
+
     monkeypatch.setattr("core.services.background_jobs._operator_jobs", fake_operator_jobs)
     monkeypatch.setattr("core.services.notification_bridge.send_session_notification", fake_send)
     monkeypatch.setattr("core.services.self_wakeup.schedule_self_wakeup", fake_wake)
+    # VÆKNINGEN GÅR GENNEM INDBakken (12/11-2026, Bjørn: «lad os tage de 6
+    # kilder med inden deploy»). Den direkte vej er nu kun NØDVEJEN, så den
+    # patcher vi stadig — men den skal ikke kaldes i normaltilfældet.
+    monkeypatch.setattr("core.services.wake_gateway.anmod_om_vaekning", fake_gateway)
     return tilstand
 
 
@@ -119,17 +129,37 @@ def test_aktiv_tur_bruger_inboxen_og_vaekker_IKKE(rig):
 
 
 def test_ingen_aktiv_tur_booker_en_vaekning(rig):
+    """Ingen aktiv tur ⇒ signalet går til INDBakken, som vurderer og vækker.
+
+    12/11-2026: før bookede vagten selv en wakeup. Nu er den en af kilderne der
+    SIGNALERER — den ene vækker er indbakken.
+    """
     rig["jobs"] = []
     V.tick_baggrundsjob_vagt()
     rig["send_svar"] = {"status": "ok"}             # ok = ingen aktiv tur
     rig["jobs"] = [_job("bg_2", kode=1, kommando="pytest -q")]
     ud = V.tick_baggrundsjob_vagt()
     assert ud["maader"] == ["vaekning"]
-    assert len(rig["vaekninger"]) == 1
-    kw = rig["vaekninger"][0]
-    assert kw["delay_seconds"] == 60
-    assert "pytest -q" in kw["prompt"] and "exit 1" in kw["prompt"]
-    assert kw["reason"] == "baggrundsjob faerdigt"
+    assert len(rig["gateway"]) == 1, "signalet skal gå gennem den ene vækker"
+    assert rig["vaekninger"] == [], "den direkte vej er kun nødvejen"
+    kw = rig["gateway"][0]
+    assert kw["kilde"] == "baggrundsjob_vagt"
+    assert kw["sag"] == "baggrundsjob:bg_2"
+    assert "pytest -q" in kw["tekst"] and "exit 1" in kw["tekst"]
+    assert kw["importance"] == "high", "et fejlet job er ikke normal-vigtigt"
+
+
+def test_gateway_afvisning_falder_tilbage_til_direkte_vaekning(rig):
+    """En afvisning er en ægte fejl — meldingen må ikke blive tavs af den."""
+    rig["jobs"] = []
+    V.tick_baggrundsjob_vagt()
+    rig["send_svar"] = {"status": "ok"}
+    rig["gateway_svar"] = {"status": "rejected", "grund": "ingen_bruger"}
+    rig["jobs"] = [_job("bg_6")]
+    ud = V.tick_baggrundsjob_vagt()
+    assert ud["meldt"] == 1
+    assert len(rig["vaekninger"]) == 1, "nødvejen skal tage over"
+    assert rig["vaekninger"][0]["reason"] == "baggrundsjob faerdigt"
 
 
 def test_bro_der_tier_markerer_intet(rig):
@@ -161,11 +191,12 @@ def test_mislykket_levering_markerer_ikke_jobbet(rig):
 
 
 def test_vaekning_der_fejler_taber_ikke_meldingen(rig):
-    """Loftet paa pending wakeups er naaet. Beskeden ER skrevet, saa jobbet
+    """Både indbakken OG nødvejen afviser. Beskeden ER skrevet, saa jobbet
     taeller som meldt — men svaret skal sige at vaekningen manglede."""
     rig["jobs"] = []
     V.tick_baggrundsjob_vagt()
     rig["send_svar"] = {"status": "ok"}
+    rig["gateway_svar"] = {"status": "rejected", "grund": "ingen_bruger"}
     rig["vaekning_svar"] = {"status": "error", "error": "max 20 pending wakeups"}
     rig["jobs"] = [_job("bg_5")]
     ud = V.tick_baggrundsjob_vagt()

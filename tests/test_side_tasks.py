@@ -478,11 +478,23 @@ def vaekninger(monkeypatch):
         bog["ventende"].discard(wid)
         return {"status": "ok", "wakeup_id": wid}
 
+    def _gateway(*, kilde, sag, tekst, session_id="", task_id="", **kw):
+        """Indbakken er den ENE vækker (12/11-2026). Den svarer med postens
+        nøgle, ikke et wakeup-id — og det er sporet kalderen rapporterer."""
+        wid = f"wake-test{len(bog['bookede']) + 1}"
+        bog["bookede"].append({"wakeup_id": wid, "kilde": kilde, "sag": sag,
+                               "prompt": tekst, "session_id": session_id,
+                               "task_id": task_id})
+        bog["ventende"].add(wid)
+        return {"status": "queued", "grund": "ny_post", "kilde_id": wid}
+
     monkeypatch.setattr(sw, "schedule_self_wakeup", _book)
     monkeypatch.setattr(sw, "cancel_wakeup", _annuller)
     monkeypatch.setattr(sw, "list_wakeups",
                         lambda *, status=None, limit=30: [{"wakeup_id": w}
                                                           for w in bog["ventende"]])
+    import core.services.wake_gateway as gw
+    monkeypatch.setattr(gw, "anmod_om_vaekning", _gateway)
     return bog
 
 

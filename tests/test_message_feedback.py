@@ -61,20 +61,27 @@ def test_tikket_TIER_naar_der_intet_er(isolated_runtime, monkeypatch):
 def test_tikket_planlaegger_en_WAKEUP_naar_der_ER_noget(isolated_runtime, monkeypatch):
     # En prompt-sektion der aldrig laeses er husets hyppigste fejl; en wakeup
     # giver ham en rigtig tur at taenke i.
+    #
+    # 12/11-2026: signalet gaar gennem INDBakken — den ene vaekker. Foer
+    # bookede kilden selv en wakeup, og to kilder i samme vindue kunne ikke
+    # se hinanden.
     kaldt = []
-    import core.services.self_wakeup as sw
-    monkeypatch.setattr(sw, "schedule_self_wakeup", lambda **k: kaldt.append(k) or {"status": "ok"})
+    import core.services.wake_gateway as gw
+    monkeypatch.setattr(gw, "anmod_om_vaekning",
+                        lambda **k: kaldt.append(k) or {"status": "queued", "grund": "ny_post"})
     mf.sæt_stemme(message_id="m1", vote="down")
     ud = mf.tick_feedback_review()
     assert ud == {"planlagt": True, "antal": 1}
-    assert len(kaldt) == 1 and "LEKTIE" in kaldt[0]["prompt"]
+    assert len(kaldt) == 1 and "LEKTIE" in kaldt[0]["tekst"]
+    assert kaldt[0]["kilde"] == "message_feedback"
     # ... og de er nu gennemgaaet.
     assert mf.ugennemgåede() == []
 
 
 def test_kadencen_holder_en_maaned(isolated_runtime, monkeypatch):
-    import core.services.self_wakeup as sw
-    monkeypatch.setattr(sw, "schedule_self_wakeup", lambda **k: {"status": "ok"})
+    import core.services.wake_gateway as gw
+    monkeypatch.setattr(gw, "anmod_om_vaekning",
+                        lambda **k: {"status": "queued", "grund": "ny_post"})
     mf.sæt_stemme(message_id="m1", vote="up")
     assert mf.tick_feedback_review()["planlagt"] is True
     mf.sæt_stemme(message_id="m2", vote="up")
@@ -85,9 +92,9 @@ def test_kadencen_holder_en_maaned(isolated_runtime, monkeypatch):
 
 def test_en_AFVIST_wakeup_efterlader_stemmerne_ugennemgaaede(isolated_runtime, monkeypatch):
     # Markerede vi foer, ville maanedens stemmer forsvinde uden at nogen saa dem.
-    import core.services.self_wakeup as sw
-    monkeypatch.setattr(sw, "schedule_self_wakeup",
-                        lambda **k: {"status": "error", "error": "nej"})
+    import core.services.wake_gateway as gw
+    monkeypatch.setattr(gw, "anmod_om_vaekning",
+                        lambda **k: {"status": "rejected", "grund": "ingen_bruger"})
     mf.sæt_stemme(message_id="m1", vote="up")
     assert mf.tick_feedback_review()["planlagt"] is False
     assert len(mf.ugennemgåede()) == 1
@@ -96,8 +103,9 @@ def test_en_AFVIST_wakeup_efterlader_stemmerne_ugennemgaaede(isolated_runtime, m
 def test_uret_saettes_OGSAA_naar_der_intet_var(isolated_runtime, monkeypatch):
     # Ellers ville en tom maaned betyde et databaseopslag ved HVERT tick
     # resten af maaneden.
-    import core.services.self_wakeup as sw
-    monkeypatch.setattr(sw, "schedule_self_wakeup", lambda **k: {"status": "ok"})
+    import core.services.wake_gateway as gw
+    monkeypatch.setattr(gw, "anmod_om_vaekning",
+                        lambda **k: {"status": "queued", "grund": "ny_post"})
     assert mf.tick_feedback_review()["grund"] == "ingen stemmer"
     mf.sæt_stemme(message_id="m1", vote="up")
     assert mf.tick_feedback_review()["grund"] == "kadence"

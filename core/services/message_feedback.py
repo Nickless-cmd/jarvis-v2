@@ -187,15 +187,21 @@ def tick_feedback_review(now: datetime | None = None) -> dict[str, Any]:
     if not poster:
         return {"planlagt": False, "grund": "ingen stemmer"}
 
+    # GENNEM GATEWAYEN (12/11-2026, Bjørn: «lad os tage de 6 kilder med inden
+    # deploy»). Kilden siger «der ligger stemmer der skal ses på»; indbakken
+    # vurderer om der kan vækkes nu. Før bookede vi selv en vækning her — det
+    # var en af de seks veje uden om den ene vækker.
     try:
-        from core.services.self_wakeup import schedule_self_wakeup
-        svar = schedule_self_wakeup(
-            delay_seconds=60,
-            prompt=byg_review_prompt(poster),
-            reason="månedlig gennemgang af tilbagemeldinger",
+        from core.services.wake_gateway import anmod_om_vaekning
+
+        kv = anmod_om_vaekning(
+            kilde="message_feedback",
+            sag="tilbagemeldinger:maanedlig",
+            tekst=byg_review_prompt(poster),
         )
-        if svar.get("status") == "error":
-            return {"planlagt": False, "grund": "wakeup afvist", "fejl": svar.get("error")}
+        if str(kv.get("status") or "") not in {"queued", "deduped"}:
+            return {"planlagt": False, "grund": "wakeup afvist",
+                    "fejl": kv.get("grund")}
     except Exception as exc:
         logger.warning("message_feedback: kunne ikke planlægge review: %s", exc, exc_info=True)
         return {"planlagt": False, "grund": "fejl", "fejl": str(exc)[:200]}

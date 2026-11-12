@@ -451,30 +451,44 @@ def _fire_action(watch: Watch, reason: str) -> None:
         return
 
     if watch.on_match == "self_wakeup":
+        # GENNEM GATEWAYEN (12/11-2026, Bjørn: «lad os tage de 6 kilder med
+        # inden deploy»). Vagten siger «betingelsen er indtruffet»; indbakken
+        # vurderer om der kan vaekkes nu. Foer bookede vi selv en vaekning her,
+        # og to vagter der fyrede i samme vindue kunne ikke se hinanden.
         try:
-            # Schedule a wakeup ~60 seconds out (self_wakeup minimum)
-            # so it surfaces on the next prompt assembly cycle.
-            from core.services.self_wakeup import schedule_self_wakeup
-            schedule_self_wakeup(
-                prompt=body[:1000],
-                delay_seconds=5,
-                reason=f"process_watcher:{watch.label}",
+            from core.services.wake_gateway import anmod_om_vaekning
+
+            kv = anmod_om_vaekning(
+                kilde="process_watcher",
+                sag=f"vagt:{watch.watch_id}",
+                tekst=body[:1000],
             )
+            if str(kv.get("status") or "") in {"queued", "deduped"}:
+                return
+            raise RuntimeError(f"wake_gateway afviste: {kv.get('grund') or 'ukendt'}")
         except Exception as exc:
             # Fallback: self_wakeup module missing or signature mismatch.
             # Degrade gracefully to push_initiative.
             try:
-                from core.services.initiative_queue import push_initiative
-                push_initiative(
-                    focus=body[:500],
-                    source="process_watcher_fallback",
-                    source_id=watch.watch_id,
+                from core.services.self_wakeup import schedule_self_wakeup
+                schedule_self_wakeup(
+                    prompt=body[:1000],
+                    delay_seconds=5,
+                    reason=f"process_watcher:{watch.label}",
                 )
             except Exception as exc2:
-                logger.warning(
-                    "process_watcher: self_wakeup + fallback failed: %s | %s",
-                    exc, exc2,
-                )
+                try:
+                    from core.services.initiative_queue import push_initiative
+                    push_initiative(
+                        focus=body[:500],
+                        source="process_watcher_fallback",
+                        source_id=watch.watch_id,
+                    )
+                except Exception as exc3:
+                    logger.warning(
+                        "process_watcher: gateway + self_wakeup + fallback failed: "
+                        "%s | %s | %s", exc, exc2, exc3,
+                    )
         return
 
     if watch.on_match == "notify_owner":

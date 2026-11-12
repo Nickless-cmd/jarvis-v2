@@ -270,9 +270,42 @@ def _book_vaekning(record: dict[str, Any], *, nu: datetime | None = None) -> str
         return ""
     tid = str(record.get("side_task_id") or "")
     titel = _kort(str(record.get("title") or ""), 70)
+    sid = str(record.get("arbejds_session") or record.get("session_id") or "").strip()
+    # `_default` er IKKE en samtale — den er `flag`s pladsholder. Blev den
+    # sendt med, pegede vækningen på en session der ikke findes.
+    # Tom ⇒ `pick_wakeup_run_target` resolver ejerens app-samtale.
+    maal_session = sid if sid and sid != "_default" else ""
+    # GENNEM GATEWAYEN (12/11-2026, Bjørn: «lad os tage de 6 kilder med inden
+    # deploy»). Kilden siger «opgaven sover ikke længere»; indbakken vurderer
+    # om der kan vækkes nu. `task_id` følger med, så posten bærer den
+    # forpligtelse vækningen fortsætter — uden den blev et migreret run et nyt
+    # run i stedet for en fortsættelse.
+    try:
+        from core.services.wake_gateway import anmod_om_vaekning
+
+        kv = anmod_om_vaekning(
+            kilde="side_tasks",
+            sag=f"side-opgave:{tid}",
+            tekst=(
+                f"Side-opgaven [{tid}] «{titel}» sover ikke laengere — dens tid er "
+                "inde. Tag den op nu, eller udskyd den igen med "
+                "`snooze_side_task`. Er den ikke laengere relevant, saa afvis den "
+                f"med en grund: dismiss_side_task(side_task_id=\"{tid}\", "
+                "decision=\"dismissed\", reason=\"...\")."),
+            session_id=maal_session,
+            task_id=tid,
+        )
+        if str(kv.get("status") or "") in {"queued", "deduped"}:
+            # Gatewayen ejer posten, ikke en wakeup-række. Returværdien er
+            # postens nøgle, så kalderen kan se HVILKEN vækning der blev
+            # booket — samme kontrakt som før.
+            return str(kv.get("kilde_id") or "")
+        raise RuntimeError(f"wake_gateway afviste: {kv.get('grund') or 'ukendt'}")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("side-opgaver: gateway fejlede for %s: %s — falder tilbage",
+                       tid, exc)
     try:
         from core.services.self_wakeup import schedule_self_wakeup
-        sid = str(record.get("arbejds_session") or record.get("session_id") or "").strip()
         svar = schedule_self_wakeup(
             delay_seconds=int(sekunder),
             prompt=(
@@ -282,10 +315,7 @@ def _book_vaekning(record: dict[str, Any], *, nu: datetime | None = None) -> str
                 f"med en grund: dismiss_side_task(side_task_id=\"{tid}\", "
                 "decision=\"dismissed\", reason=\"...\")."),
             reason=f"side-opgave udskudt til {_kort_tid(record.get('not_before'))}",
-            # `_default` er IKKE en samtale — den er `flag`s pladsholder. Blev
-            # den sendt med, pegede vækningen på en session der ikke findes.
-            # Tom ⇒ `pick_wakeup_run_target` resolver ejerens app-samtale.
-            session_id=sid if sid and sid != "_default" else None,
+            session_id=maal_session or None,
             task_id=tid,
         )
     except Exception as exc:  # noqa: BLE001

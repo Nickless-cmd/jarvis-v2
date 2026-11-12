@@ -16,7 +16,7 @@
  *  Fejl caches ALDRIG (en enkelt netværksfejl må ikke fastfryse en død værdi i TTL-vinduet).
  */
 
-import { LOFT_MS, roFaktor } from './ro'
+import { LOFT_MS, roFaktor, synligtLoft } from './ro'
 
 interface CacheEntry {
   value: unknown
@@ -32,6 +32,8 @@ export interface SharedReadOptions {
   ttlMs: number
   /** Hvor længe det må genbruges mens et run streamer (typisk meget længere). */
   streamingTtlMs?: number
+  /** Loft for hvile-forlængelsen mens vinduet er SYNLIGT — se `RoValg.loftSynligMs`. */
+  loftSynligMs?: number
 }
 
 /** Marker om et visible-run streamer lige nu (sættes fra StreamContext). */
@@ -49,7 +51,11 @@ function effectiveTtl(opts: SharedReadOptions): number {
   }
   // Ingen kigger → længere TTL, så komponenternes uændrede intervaller
   // rammer cachen i stedet for nettet (se ro.ts). 1x mens noget streamer.
-  return Math.min(opts.ttlMs * roFaktor(_streamActive), LOFT_MS)
+  return Math.min(
+    opts.ttlMs * roFaktor(_streamActive), LOFT_MS,
+    // Et synligt, hvilende vindue må ikke få et 16 s gammelt «intet run» tilbage.
+    synligtLoft({ loftSynligMs: opts.loftSynligMs }),
+  )
 }
 
 /** Læs via delt cache + in-flight dedup. Samme `key` = samme svar indenfor TTL. */

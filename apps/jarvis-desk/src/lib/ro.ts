@@ -54,6 +54,17 @@ function erSkjult(): boolean {
   return typeof document !== 'undefined' && document.visibilityState === 'hidden'
 }
 
+/** Hvor gammelt et «ingen kørende runs» må være i et SYNLIGT vindue, også i ro.
+ *  Målt 12/11-2026: 12 s poll + 16 s cache lod et 20 s wake-run blive opdaget 3 s før
+ *  det sluttede (se `RoValg.loftSynligMs`). Pollen og cachen deler loftet. Bor HER og ikke
+ *  i `api.ts`, fordi view-testene mocker `api` med en fast eksportliste. */
+export const AKTIVE_RUNS_LOFT_SYNLIG_MS = 2_000
+
+/** Loftet for et SYNLIGT vindue, ellers «intet loft». Se `RoValg.loftSynligMs`. */
+export function synligtLoft(valg: RoValg): number {
+  return !erSkjult() && valg.loftSynligMs ? Math.max(valg.loftSynligMs, 1) : Infinity
+}
+
 export interface RoValg {
   /** Live-arbejde: bremses aldrig. */
   fuldFart?: boolean
@@ -63,6 +74,15 @@ export interface RoValg {
   ignorerSkjult?: boolean
   /** Eget loft, hvis det forlængede interval ikke må blive så langt. */
   loftMs?: number
+  /** Loft der KUN gælder mens vinduet er SYNLIGT (12/11-2026).
+   *
+   *  Hvile («tre minutter uden input») skal spare en sovende eller skjult skærm, ikke
+   *  en der bliver kigget på. Den som venter på en vækning rører ikke musen, og hvile-
+   *  faktoren 8 gjorde pollen af `/chat/active-runs` til 12 s og dens delte cache til
+   *  16 s: wake-runnet autonomous-7d13b933 (20 s) blev opdaget 17 s inde, 3 s før det
+   *  sluttede, og kom ind som 305 frames på én gang. Et skjult vindue beholder sin
+   *  langsomme takt, og `vaagn()` nulstiller alt når det bliver synligt igen. */
+  loftSynligMs?: number
 }
 
 /** Hvor meget intervallerne skal ganges lige nu. `fuldFart` vinder over alt. */
@@ -88,7 +108,7 @@ export function maaPolle(noegle: string, intervalMs: number, valg: RoValg | bool
   const faktor = roFaktor(v)
   if (faktor === 1) return true
   const nu = naa()
-  const forlaenget = Math.min(intervalMs * faktor, v.loftMs ?? LOFT_MS)
+  const forlaenget = Math.min(intervalMs * faktor, v.loftMs ?? LOFT_MS, synligtLoft(v))
   const sidste = sidstePoll.get(noegle)
   if (sidste !== undefined && nu - sidste < forlaenget) return false
   sidstePoll.set(noegle, nu)

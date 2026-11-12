@@ -1,4 +1,4 @@
-import { maaPolle } from '../lib/ro'
+import { maaPolle, AKTIVE_RUNS_LOFT_SYNLIG_MS } from '../lib/ro'
 import { Fragment, useCallback } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -249,7 +249,12 @@ export function ChatView({
     const tick = () => {
       // Ingen kigger → sjældnere (ro.ts). Fuld fart mens vi selv streamer, og
       // så længe der sidst blev set et baggrunds-run.
-      if (!maaPolle('chat-aktive-runs', 1500, stream.status === 'working' || Date.now() < bgUntil)) return
+      // `loftSynligMs`: et SYNLIGT vindue i ro skal stadig opdage en vækning inden for et par
+      // sekunder — han sidder og venter på den uden at røre skærmen (12/11-2026).
+      if (!maaPolle('chat-aktive-runs', 1500, {
+        fuldFart: stream.status === 'working' || Date.now() < bgUntil,
+        loftSynligMs: AKTIVE_RUNS_LOFT_SYNLIG_MS,
+      })) return
       void getActiveRunSessions(cfg)
         .then((runs) => {
           if (cancelled) return

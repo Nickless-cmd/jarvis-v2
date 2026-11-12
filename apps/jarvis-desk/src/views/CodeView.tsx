@@ -1,4 +1,4 @@
-import { maaPolle } from '../lib/ro'
+import { maaPolle, AKTIVE_RUNS_LOFT_SYNLIG_MS } from '../lib/ro'
 import { Fragment } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -623,7 +623,11 @@ export function CodeView({
     const tick = () => {
       // Ingen kigger → sjældnere (ro.ts). Fuld fart mens vi streamer eller
       // lige har set et baggrunds-run.
-      if (!maaPolle('kode-aktive-runs', 1500, stream.status === 'working' || Date.now() < bgUntil)) return
+      // Se ChatView: et synligt vindue i ro opdager stadig en vækning hurtigt (12/11-2026).
+      if (!maaPolle('kode-aktive-runs', 1500, {
+        fuldFart: stream.status === 'working' || Date.now() < bgUntil,
+        loftSynligMs: AKTIVE_RUNS_LOFT_SYNLIG_MS,
+      })) return
       void getActiveRunSessions(cfg)
         .then((runs) => {
           if (cancelled) return

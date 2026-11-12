@@ -107,3 +107,53 @@ describe('maaPolle', () => {
     expect(maaPolle('a', 1500)).toBe(false)
   })
 })
+
+// ── Opdagelse af et NYT run må ikke bremses af hvile-tilstanden (12/11-2026) ───
+//
+// Målt på CT105: wake-runnet autonomous-7d13b933 startede 19:11:20 og varede 20 s,
+// men desk tilsluttede sig først 19:11:37 — 3 s før det sluttede, og med alle 305
+// frames på én gang («kastet ind»). /chat/active-runs blev spurgt 19:10:49, :10:59,
+// :11:13 og så :11:37: et hul på 24 s hen over runnets start. Han sad og ventede på
+// vækningen uden at røre skærmen, altså netop «ro» (3 min uden input → faktor 8), og
+// hvile-faktoren ramte både pollen OG den delte cache. Hvile skal spare en SOVENDE
+// eller SKJULT skærm — ikke en der kigges på.
+describe('loftSynligMs — et synligt vindue opdager nyt arbejde hurtigt, selv i ro', () => {
+  const valg = { loftSynligMs: 2000 }
+
+  it('i ro og SYNLIGT slippes der igennem hvert loft, ikke hvert forlænget interval', () => {
+    gaa(ROLIG_EFTER_MS + 1)
+    expect(maaPolle('aktive-runs', 1500, valg)).toBe(true)
+    gaa(1500)
+    expect(maaPolle('aktive-runs', 1500, valg)).toBe(false)   // 1,5 s < loftet 2 s
+    gaa(600)
+    expect(maaPolle('aktive-runs', 1500, valg)).toBe(true)    // 2,1 s ≥ 2 s (uden loft: 12 s)
+  })
+
+  it('uden loftSynligMs er adfærden UÆNDRET: 12 s i ro', () => {
+    gaa(ROLIG_EFTER_MS + 1)
+    expect(maaPolle('t', 1500)).toBe(true)
+    gaa(5000)
+    expect(maaPolle('t', 1500)).toBe(false)
+    gaa(7001)
+    expect(maaPolle('t', 1500)).toBe(true)
+  })
+
+  it('et SKJULT vindue holder fortsat sin langsomme takt — loftet gælder kun synlige', () => {
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    gaa(ROLIG_EFTER_MS + 1)
+    expect(maaPolle('aktive-runs', 1500, valg)).toBe(true)
+    gaa(10_000)
+    expect(maaPolle('aktive-runs', 1500, valg)).toBe(false)   // 1,5 s × 20 = 30 s
+    gaa(20_001)
+    expect(maaPolle('aktive-runs', 1500, valg)).toBe(true)
+  })
+
+  it('loftet gør aldrig intervallet LÆNGERE end det var', () => {
+    gaa(ROLIG_EFTER_MS + 1)
+    expect(maaPolle('hurtig', 500, { loftSynligMs: 2000 })).toBe(true)
+    gaa(400)
+    expect(maaPolle('hurtig', 500, { loftSynligMs: 2000 })).toBe(false)   // 500 × 8 = 4 s → loft 2 s
+    gaa(1700)
+    expect(maaPolle('hurtig', 500, { loftSynligMs: 2000 })).toBe(true)
+  })
+})

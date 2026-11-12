@@ -11,6 +11,7 @@ import { StreamError } from './streamClient'
 import type { ContentBlock } from './sseProtocol'
 import { messageToBlocks } from './normalizeMessage'
 import { sharedRead } from './sharedRead'
+import { AKTIVE_RUNS_LOFT_SYNLIG_MS } from './ro'
 import { reportUnauthorized } from './authEvents'
 
 export interface ChatSession {
@@ -864,7 +865,7 @@ export async function getActiveRunSessions(config: ApiConfig): Promise<ActiveRun
   const data = await sharedRead(
     `active-runs:${config.apiBaseUrl}`,
     () => apiFetch<{ session_ids: string[]; sessions?: ActiveRunSession[] }>(config, '/chat/active-runs'),
-    { ttlMs: 2_000, streamingTtlMs: 10_000 },
+    { ttlMs: 2_000, streamingTtlMs: 10_000, loftSynligMs: AKTIVE_RUNS_LOFT_SYNLIG_MS },
   )
   return data.sessions ?? (data.session_ids ?? []).map((session_id) => ({ session_id, run_id: '', status: 'working' }))
 }

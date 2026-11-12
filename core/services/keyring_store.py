@@ -28,9 +28,10 @@ _KEK_RUNTIME_KEY = "encryption_kek"  # pragma: allowlist secret
 _DEK_DB_PREFIX = "user_dek:"
 
 
-#: Hvor længe proben må vente på nøgleringen. En LÅST SecretService-samling
+#: Hvor længe proben må vente på nøgleringen (en oplåst svarer på millisekunder).
+#: En LÅST SecretService-samling
 #: venter på en oplåsnings-dialog der aldrig kommer på en server.
-_PROBE_TIMEOUT_S = 2.0
+_PROBE_TIMEOUT_S = 0.5
 #: Sat når proben hang. Husket for processens levetid, så hvert opslag ikke
 #: betaler timeouten igen og efterlader en ny hængende tråd.
 _KEYRING_BLOKERET = False

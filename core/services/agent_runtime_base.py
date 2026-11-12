@@ -383,6 +383,8 @@ class _InProcessLoopIO:
         pend = (resume or {}).get("pending_calls") or []
         self._resume_ids = ({str(pend[0].get("id") or ""): str(resume["approval_id"])}
                             if pend and resume.get("approval_id") else {})
+        # ``None`` = ikke maalt endnu. En maalt ``False`` er et svar og maa ikke maales igen.
+        self._wrote: bool | None = None
 
     def model(self, *, messages, tools, requires_tools, provider, model):
         # D: en agent med ejer genvalideres ved hvert kald og failover'er gennem sin gemte rute;
@@ -425,6 +427,34 @@ class _InProcessLoopIO:
 
     def after_tool(self, tc, tool_out):
         _bogfoer_vaerktoejskald(self._agent, self._run_id, tc, tool_out)
+
+    def wrote_something(self) -> bool:
+        """Har agenten aendret worktree'en — uanset hvilket vaerktoej den brugte?
+
+        ``write_calls`` taeller kun de otte navne i ``_WRITE_TOOL_NAMES``. ``wt_bash``
+        er ikke et af dem, men den ER skrivevejen i worktree-politikken: den koerer i
+        bwrap med worktree'et som ``/work``. Maalt 12/11-2026: en executor skrev 1933
+        bytes gennem ``python3 - <<'EOF'`` i ``wt_bash`` og blev alligevel stemplet
+        ``AGENT_NO_WRITE`` — dens arbejde blev kasseret og lavet om i haanden.
+
+        Svarer paa det eneste spoergsmaal der kan afgoeres uden at gaette: er der en
+        diff mod base? Maales én gang og huskes — det er en git-operation, ikke en
+        gratis egenskab, og svaret aendrer sig ikke efter den foerste maaling.
+        """
+        if self._wrote is None:
+            self._wrote = self._maalt_skrivning()
+        return self._wrote
+
+    def _maalt_skrivning(self) -> bool:
+        try:
+            from core.services import agent_worktree_git as g
+            from core.services import agent_worktrees as aw
+            wt = aw.get_for_run(run_id=self._run_id)
+            if not wt:
+                return False
+            return bool(g.diff_against(wt["gitdir"], wt["path"], wt["base_commit"]))
+        except Exception:  # noqa: BLE001 — en IO der ikke kan maale svarer «nej», som foer
+            return False
 
     def after_round(self, rounds, tool_calls):
         try:

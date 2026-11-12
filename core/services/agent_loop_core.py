@@ -486,6 +486,37 @@ _FORWARD_TAIL_RE = re.compile(
 _FORWARD_TAIL_CHARS = 220
 
 
+def _io_wrote_something(io: Any) -> bool:
+    """Har agenten aendret sin worktree — uanset hvilket vaerktoej den brugte?
+
+    Hvorfor den findes (12/11-2026, Bjoern: «fikset skal laves»)
+    -----------------------------------------------------------
+    ``write_calls`` taelles kun naar vaerktoejsnavnet staar i ``_WRITE_TOOL_NAMES``.
+    ``wt_bash`` staar ikke der, men den ER skrivevejen i worktree-politikken: den
+    koerer i bwrap med worktree'et som ``/work`` (agent_approval_gate.py:45). Maalt i
+    drift 12/11-2026: tre executor-agenter blev stemplet ``AGENT_NO_WRITE``. To havde
+    reelt skrevet intet, men den tredje havde **1933 bytes** i ``diff.patch`` — den
+    skrev gennem ``python3 - <<'EOF'`` i ``wt_bash``. Dens arbejde blev kasseret som
+    «nåede aldrig til skrivning» og lavet om i haanden bagefter.
+
+    At tilfoeje ``wt_bash`` til navnelisten ville vaere lige saa forkert: ``sed -n``
+    og ``grep`` gaar gennem samme shell, saa hver laesning ville taelle som en
+    skrivning — og en tom leverance ville slippe igennem. Derfor spoerges den der
+    kender svaret: worktree'ens diff mod base, som allerede maales til ``diff.patch``.
+
+    En IO der ikke kan svare (broker-ruten, en test-double) svarer ``False``, og
+    vagten opfoerer sig praecis som foer. En hook der fejler maa ikke goere en tom
+    leverance godkendt — fejlretningen er «stemplet som foer», ikke «slippet igennem».
+    """
+    hook = getattr(io, "wrote_something", None)
+    if not callable(hook):
+        return False
+    try:
+        return bool(hook())
+    except Exception:  # noqa: BLE001 — se docstringen: fejl giver den gamle adfaerd
+        return False
+
+
 def _delivery_gap(expected_result: str, final_text: str, total_tool_calls: int,
                   prompt: str = "", write_calls: int = 0,
                   write_capable: bool = False) -> str:
@@ -737,7 +768,8 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                 # `_answers_directive` gav den ét kald UDEN vaerktoejer - hvor skrivning er
                 # strukturelt umulig - mens der var 4 af 12 runder tilbage. Svar-grenen maa
                 # ikke vinde over skrivningen, saa laenge der er runder tilbage at skrive i.
-                must_write = write_capable and write_calls == 0
+                must_write = (write_capable and write_calls == 0
+                              and not _io_wrote_something(io))
                 # 10/11-2026: den fjerde indgang. En LAESE-agent i et raad ramte ingen af
                 # de tre andre, fordi dens leverance hverken er en aendring (must_write),
                 # et loefte (_promises_action) eller et svar paa et tal i opgaven

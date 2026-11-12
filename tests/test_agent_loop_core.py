@@ -87,6 +87,68 @@ def test_a_write_capable_agent_that_stops_without_writing_is_asked_once():
     assert out["stop_reason"] == "agenten kunne skrive men skrev intet"
 
 
+def test_en_agent_der_skrev_gennem_wt_bash_blev_ikke_stemplet_som_tom():
+    """Den maalte fejl 12/11-2026, ord for ord.
+
+    Tre executor-agenter blev stemplet ``AGENT_NO_WRITE``. To havde reelt skrevet
+    intet — men den tredje havde **1933 bytes** i ``diff.patch``: den skrev gennem
+    ``python3 - <<'EOF'`` i ``wt_bash``. ``write_calls`` taeller kun de otte navne i
+    ``_WRITE_TOOL_NAMES``, og ``wt_bash`` staar ikke der, selv om den ER skrivevejen
+    i worktree-politikken (bwrap med worktree'et som ``/work``). Arbejdet blev
+    kasseret som «nåede aldrig til skrivning» og lavet om i haanden bagefter.
+
+    Vagten maa derfor ikke spoerge hvilket vaerktoej der blev brugt — den skal
+    spoerge worktree'en. Her svarer I/O'en at der ER en diff.
+    """
+    class SkrevIO(FakeIO):
+        def wrote_something(self):
+            return True
+
+    io = SkrevIO([{"text": "", "tool_calls": [_wt(1, "wt_bash")]},
+                  {"text": "Migreringen er skrevet i alle fem filer."},
+                  # Ubrugt paa den rettede kode; den GAMLE kode bruger den til sin nudge-runde,
+                  # saa forskellen maales i stedet for at forsvinde i et tomt svar-array.
+                  {"text": "Migreringen er skrevet i alle fem filer."}])
+    out = _run(io, tools_payload=_WT_TOOLS, max_rounds=4)
+    assert not out.get("error"), f"runnet døde: {out.get('error')}"
+    assert out["total_tool_calls"] == 1
+    assert not out.get("incomplete"), (
+        "agenten skrev gennem wt_bash — diffen er beviset, ikke vaerktoejsnavnet")
+    assert out.get("stop_reason") != "agenten kunne skrive men skrev intet"
+
+
+def test_en_agent_uden_diff_er_stadig_tom_selv_om_den_brugte_wt_bash():
+    """Modstykket — og grunden til at navnet ikke maa tilfoejes listen.
+
+    ``sed -n`` og ``grep`` gaar gennem SAMME shell som skrivningen. Ville man loese
+    fejlen ved at saette ``wt_bash`` i ``_WRITE_TOOL_NAMES``, ville hver laesning
+    taelle som en skrivning, og en agent der kun laeste ville slippe igennem med en
+    tom leverance. Derfor maales DIFFEN: her er den tom, og vagten skal stadig fange
+    agenten.
+    """
+    class TomIO(FakeIO):
+        def wrote_something(self):
+            return False
+
+    io = TomIO([{"text": "", "tool_calls": [_wt(1, "wt_bash")]},
+                {"text": "Jeg laeste filerne."}, {"text": "Jeg laeste filerne."}])
+    out = _run(io, tools_payload=_WT_TOOLS, max_rounds=4)
+    assert out["incomplete"] is True
+    assert out["stop_reason"] == "agenten kunne skrive men skrev intet"
+
+
+def test_en_io_uden_hooken_opfoerer_sig_praecis_som_foer():
+    """Broker-ruten og test-double har ingen ``wrote_something``.
+
+    En manglende hook maa ikke aendre adfaerd — den skal give den gamle afgoerelse.
+    Ellers ville fixet goere hver eneste IO uden hooken tandloes.
+    """
+    io = FakeIO([{"text": "Der var intet at rette."}, {"text": "Der var intet at rette."}])
+    out = _run(io, tools_payload=_WT_TOOLS)
+    assert out["incomplete"] is True
+    assert out["stop_reason"] == "agenten kunne skrive men skrev intet"
+
+
 def test_en_skrivende_agent_faar_aldrig_sine_vaerktoejer_fjernet_mens_der_er_budget():
     """Den maalte kaede 10/11-2026, ord for ord.
 

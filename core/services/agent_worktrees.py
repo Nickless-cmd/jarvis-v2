@@ -196,6 +196,28 @@ def get_for_assignment(*, owner_user_id: str, assignment_id: str) -> dict[str, A
                                 (assignment_id, owner_user_id)).fetchone())
 
 
+def get_for_run(*, run_id: str) -> dict[str, Any] | None:
+    """Worktree'et for det run der kører lige nu — ``None`` hvis agenten ikke har ét.
+
+    Opslaget gaar gennem ``agent_runs``, fordi det er den eneste tabel der ALTID kender
+    baade ``run_id`` og ``assignment_id``. Agent-dict'en goer ikke: den baerer kun
+    ``agent_id``, og en agent kan have flere assignments gennem sit liv.
+
+    Findes for at loekken kan maale hvad agenten faktisk gjorde, frem for hvilket
+    vaerktoejsnavn den brugte. Se ``_InProcessLoopIO.wrote_something``.
+    """
+    try:
+        row = _conn().execute(
+            "SELECT assignment_id, owner_user_id FROM agent_runs WHERE run_id=?",
+            (str(run_id or ""),)).fetchone()
+        if row is None or not row["assignment_id"]:
+            return None
+        return get_for_assignment(owner_user_id=str(row["owner_user_id"] or ""),
+                                  assignment_id=str(row["assignment_id"]))
+    except Exception:  # noqa: BLE001 — et manglende opslag maa ikke vaelte loekken
+        return None
+
+
 def _set(worktree_id: str, **fields: Any) -> None:
     conn = _conn()
     cols = ", ".join(f"{k}=?" for k in fields)

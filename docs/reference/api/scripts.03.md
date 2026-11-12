@@ -281,6 +281,24 @@ _Ryd ejerløse kandidater i runtime_contract_candidates._
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/ryd_ejerloese_kandidater.py#L33) |
 
+## `scripts/score_frozen_predictions.py`
+_Scor frosne forudsigelser om min egen adfaerd — mekanisk, ikke paa hukommelse._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kanonisk` | `(post)` | — | [src](../../../scripts/score_frozen_predictions.py#L55) |
+| function | `frozen_hash` | `(post)` | Fingerprint af de felter der ikke maa aendres efter frysning. | [src](../../../scripts/score_frozen_predictions.py#L60) |
+| function | `_nu` | `()` | — | [src](../../../scripts/score_frozen_predictions.py#L65) |
+| function | `_parse` | `(ts)` | — | [src](../../../scripts/score_frozen_predictions.py#L69) |
+| function | `verificer_forsegling` | `(poster, forsegling)` | Id'er hvis frosne felter er aendret siden forseglingen blev skrevet. | [src](../../../scripts/score_frozen_predictions.py#L80) |
+| function | `_hent_tal` | `(conn, sql)` | Koer én laesende spoergring og returnér foerste kolonne som tal. | [src](../../../scripts/score_frozen_predictions.py#L97) |
+| function | `_hent_fra_state` | `(spec)` | Laes en aggregeret vaerdi fra en state_store JSON-noegle. | [src](../../../scripts/score_frozen_predictions.py#L109) |
+| function | `evaluer` | `(post, conn, nu=…)` | Afgoer om én post kan scores nu, og i saa fald om den ramte. | [src](../../../scripts/score_frozen_predictions.py#L138) |
+| function | `kalibrering` | `(poster)` | Kalibrering paa HAENDELSE-niveau, ikke post-niveau. | [src](../../../scripts/score_frozen_predictions.py#L168) |
+| function | `score` | `(fil=…, db=…, *, dry_run=…, nu=…)` | Scor alle modne poster. Skriver kun til filen hvis noget faktisk blev scoret. | [src](../../../scripts/score_frozen_predictions.py#L225) |
+| function | `_vis` | `(resultat)` | — | [src](../../../scripts/score_frozen_predictions.py#L272) |
+| function | `main` | `()` | — | [src](../../../scripts/score_frozen_predictions.py#L298) |
+
 ## `scripts/seed_cognitive_state.py`
 _Seed cognitive state tables with initial values based on known context._
 
@@ -420,14 +438,4 @@ _Vagt over vagterne: hver hook skal have en test der ser den sige nej._
 | function | `_tester_der_naevner` | `(modul)` | — | [src](../../../scripts/verify_guard_tests.py#L45) |
 | function | `mangler` | `()` | (vagt, årsag) for hver vagt uden en test der ser den afvise. | [src](../../../scripts/verify_guard_tests.py#L56) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_guard_tests.py#L69) |
-
-## `scripts/verify_history_reads.py`
-_Vagt: ingen NYE kaldere der læser en hel samtale-historik synkront._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_navn` | `(node)` | — | [src](../../../scripts/verify_history_reads.py#L49) |
-| function | `fund_i_fil` | `(sti)` | — | [src](../../../scripts/verify_history_reads.py#L54) |
-| function | `_filer` | `(a)` | — | [src](../../../scripts/verify_history_reads.py#L76) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_history_reads.py#L92) |
 

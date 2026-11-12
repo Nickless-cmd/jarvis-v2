@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/verify_history_reads.py`
+_Vagt: ingen NYE kaldere der læser en hel samtale-historik synkront._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_navn` | `(node)` | — | [src](../../../scripts/verify_history_reads.py#L49) |
+| function | `fund_i_fil` | `(sti)` | — | [src](../../../scripts/verify_history_reads.py#L54) |
+| function | `_filer` | `(a)` | — | [src](../../../scripts/verify_history_reads.py#L76) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_history_reads.py#L92) |
+
 ## `scripts/verify_memory_status.py`
 _Skraldespærre mod statuspåstande i MEMORY.md der ikke kan efterprøves._
 

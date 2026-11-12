@@ -63,11 +63,33 @@ def test_stream_varianten_ogsaa():
 
 def test_wakeup_gaar_gennem_en_uovervaaget_indgang():
     """Wakeups fyrer uden nogen til stede. Gik de gennem den SYNLIGE indgang,
-    ville de lave kort ingen svarer paa."""
+    ville de lave kort ingen svarer paa.
+
+    12/11-2026: arkitekturen blev delt i to. Dispatcheren starter intet run —
+    den afleverer til indbakken via `wake_gateway`, og `inbox_idle_waker` er
+    den der starter et run, naar intet andet koerer. Den gamle test kraevede
+    `start_autonomous_stream_run` i dispatcherens KILDE, hvilket bandt testen
+    til en startvej der siden blev pensioneret. Den maaler nu de to led der
+    faktisk baerer egenskaben: dispatcheren maa ikke bruge den synlige indgang,
+    og den usynlige indgang skal vaere den autonome.
+    """
+    from core.services import inbox_idle_waker as IW
     from core.services import wakeup_dispatcher as WD
-    kilde = inspect.getsource(WD)
-    assert "start_autonomous_stream_run" in kilde
-    assert "start_visible_run(" not in kilde
+
+    # Den SYNLIGE indgang maa ikke vaere bundet i nogen af de to moduler: den
+    # ville lave et kort ingen svarer paa. (Begge moduler importerer deres
+    # startere LOKALT inde i funktionerne, saa `hasattr` ser dem ikke — den
+    # egenskab der faktisk kan maales her er at den synlige vej ikke er bundet.)
+    assert not hasattr(WD, "start_visible_run")
+    assert not hasattr(IW, "start_visible_run")
+
+    # At kaeden FAKTISK starter et autonomt run — og at den ikke starter naar en
+    # tur er aktiv — maales ende-til-ende gennem den aegte job-koe i
+    # tests/e2e/test_wakeup_guard_e2e.py. En streng-grep her ville vaere en
+    # attraap: maalt 12/11-2026 bestod den selv da importen blev byttet til den
+    # synlige indgang, fordi navnet ogsaa stod i kommentarer og kaldesteder.
+    # Se test_e2e_no_active_turn_dispatches_run_through_real_queue.
+    assert "anmod_om_vaekning(" in inspect.getsource(WD)
 
 
 def test_droemme_ogsaa():

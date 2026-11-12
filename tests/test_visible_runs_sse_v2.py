@@ -1176,3 +1176,100 @@ async def test_afbrudt_tur_promoveres_ikke_til_slutsvar():
     assert "final_answer" not in faser.values(), (
         f"en afbrudt tur fik et slutsvar den ikke har: {faser}"
     )
+
+
+# ── Blandet ræsonnement må ikke skære svarteksten i stykker (12/11-2026) ───────
+#
+# Målt i desk på en vækning (ollama/glm-5.3-flash): «V» → Think(«native reads.»)
+# → «idnet skal måle fem punkter…», og «Nu» → Think(«complete.») → «måler jeg…».
+# Efter et værktøjskald ligger rundens tekst i `_pending_text`, og `reasoning_delta`
+# kaldte `_flush_pending_text()`: hver tænke-bid der kom midt i svaret skrev den
+# ventende tekst ud som sin EGEN afsluttede blok. DeepSeek sender ræsonnementet
+# FØR teksten, så dér er der intet ventende — derfor skete det kun i vækninger.
+def _tekst_blokke(events: list[tuple[str, dict]]) -> list[str]:
+    """Teksten i hver text-blok, i blok-rækkefølge."""
+    typer: dict[int, str] = {}
+    tekst: dict[int, str] = {}
+    for navn, p in events:
+        if navn == "content_block_start":
+            typer[p["index"]] = p["content_block"]["type"]
+        elif navn == "content_block_delta" and p["delta"]["type"] == "text_delta":
+            tekst[p["index"]] = tekst.get(p["index"], "") + p["delta"]["text"]
+    return [tekst.get(i, "") for i, t in sorted(typer.items()) if t == "text"]
+
+
+def _blok_typer(events: list[tuple[str, dict]]) -> list[str]:
+    return [p["content_block"]["type"] for navn, p in events if navn == "content_block_start"]
+
+
+def _vaerktoej() -> str:
+    return _legacy_sse("tool_call", {
+        "type": "tool_call", "run_id": "autonomous-1", "call_id": "c1", "name": "bash",
+        "arguments": {"command": "ls"},
+    })
+
+
+def _d(tekst: str) -> str:
+    return _legacy_sse("delta", {"type": "delta", "run_id": "autonomous-1", "delta": tekst})
+
+
+def _r(tekst: str) -> str:
+    return _legacy_sse("reasoning_delta", {"type": "reasoning_delta", "run_id": "autonomous-1", "delta": tekst})
+
+
+def _done() -> str:
+    return _legacy_sse("done", {"type": "done", "run_id": "autonomous-1", "status": "completed",
+                                "input_tokens": 1, "output_tokens": 1})
+
+
+async def _koer(*frames: str) -> list[tuple[str, dict]]:
+    async def legacy() -> AsyncIterator[str]:
+        for f in frames:
+            yield f
+
+    return _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="autonomous-1", model="glm", provider="ollama", lane="l",
+        session_id="s", ping_interval_s=999.0)))
+
+
+@pytest.mark.asyncio
+async def test_ræsonnement_midt_i_rundens_tekst_skærer_ikke_teksten():
+    events = await _koer(
+        _vaerktoej(),
+        _d("V"), _r("native reads."), _d("idnet skal måle fem punkter"),
+        _done(),
+    )
+    assert _tekst_blokke(events) == ["Vidnet skal måle fem punkter"]
+    assert _blok_typer(events).count("thinking") == 1
+
+
+@pytest.mark.asyncio
+async def test_ræsonnement_blandet_flere_gange_i_samme_runde_giver_stadig_en_blok():
+    events = await _koer(
+        _vaerktoej(),
+        _d("Nu"), _r("complete."), _d(" måler"), _r(" mere."), _d(" jeg tilstanden"),
+        _done(),
+    )
+    assert _tekst_blokke(events) == ["Nu måler jeg tilstanden"]
+
+
+@pytest.mark.asyncio
+async def test_en_ny_runde_er_stadig_sin_egen_tekstblok():
+    """Rundegrænsen er værktøjskaldet — den må jeg ikke have fjernet."""
+    events = await _koer(
+        _vaerktoej(),
+        _d("Første runde."),
+        _legacy_sse("tool_call", {"type": "tool_call", "run_id": "autonomous-1",
+                                  "call_id": "c2", "name": "bash", "arguments": {"command": "pwd"}}),
+        _r("ny tanke"),
+        _d("Anden runde."),
+        _done(),
+    )
+    assert _tekst_blokke(events) == ["Første runde.", "Anden runde."]
+
+
+@pytest.mark.asyncio
+async def test_ræsonnement_før_teksten_er_uændret_som_hos_deepseek():
+    events = await _koer(_vaerktoej(), _r("tænker"), _d("Svar"), _done())
+    assert _tekst_blokke(events) == ["Svar"]
+    assert _blok_typer(events).count("thinking") == 1

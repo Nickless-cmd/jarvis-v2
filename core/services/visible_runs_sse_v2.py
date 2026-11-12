@@ -878,7 +878,18 @@ async def translate_to_v2(
 
                 if event_name == "reasoning_delta":
                     # Live thinking-trace → foldbart 'tænker…'-felt i frontend.
-                    await _flush_pending_text()
+                    #
+                    # Ligger der allerede ventende tekst, ER det rundens egen tekst:
+                    # hvert værktøjskald og hvert `working_step: thinking`
+                    # flusher den, så ventende tekst kan kun være kommet efter
+                    # rundens start. Reasoningen er så BLANDET ind i svaret
+                    # (ollama/GLM sender begge felter i samme strøm) og er ikke en
+                    # rundegrænse. Flushede vi her, blev svaret skåret over og hver
+                    # del en egen afsluttet blok: «V» → Think → «idnet skal …»
+                    # (målt i desk på en vækning 12/11-2026). DeepSeek sender
+                    # reasoning FØR teksten, så dér var der aldrig noget at skære.
+                    if not _pending_text:
+                        await _flush_pending_text()
                     await _emit_message_start_if_needed()
                     if not _state["thinking_block_open"]:
                         await _open_thinking_block()

@@ -540,13 +540,13 @@ _Lease and dispatch one explicitly autonomous side task while Jarvis is idle._
 | function | `dispatch_one` | `()` | Start at most one task.  Every uncertain precondition means no start. | [src](../../../core/services/autonomous_side_task_dispatcher.py#L229) |
 
 ## `core/services/autonomous_stream_run.py`
-_Server-authoritative streaming lifecycle for autonomous visible runs._
+_PENSIONERET — den autonome startvej er `visible_autonomous_run.start_autonomous_run`._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_trust_for_session` | `(session_id)` | Samtalens tilladelses-niveau — fail-closed til `ask`. | [src](../../../core/services/autonomous_stream_run.py#L9) |
-| function | `_trust_for_autonomous` | `(session_id)` | Arv for et AUTONOMT run — en silo låner ejerens niveau (9/11-2026). | [src](../../../core/services/autonomous_stream_run.py#L25) |
-| function | `start_autonomous_stream_run` | `(message, *, session_id, origin=…, task_id=…, permission_session=…)` | Start autonomous work and relay its v2 frames through ``run_event_log``. | [src](../../../core/services/autonomous_stream_run.py#L42) |
+| function | `_trust_for_session` | `(session_id)` | Samtalens tilladelses-niveau — fail-closed til `ask`. | [src](../../../core/services/autonomous_stream_run.py#L27) |
+| function | `_trust_for_autonomous` | `(session_id)` | Arv for et AUTONOMT run — en silo låner ejerens niveau (9/11-2026). | [src](../../../core/services/autonomous_stream_run.py#L43) |
+| function | `start_autonomous_stream_run` | `(message, *, session_id, origin=…, task_id=…, permission_session=…)` | Start autonomous work and relay its v2 frames through ``run_event_log``. | [src](../../../core/services/autonomous_stream_run.py#L60) |
 
 ## `core/services/autonomous_supervisor.py`
 _Autonom run-supervision (#3) — Centralen følger HVERT autonomt run, korrelerer det på tværs_

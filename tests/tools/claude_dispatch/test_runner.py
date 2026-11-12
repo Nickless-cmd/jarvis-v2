@@ -15,12 +15,50 @@ def _basic_spec():
     })
 
 
+def _fake_run(cmd, **kwargs):
+    """Stub for `subprocess.run` — runneren bruger den til git og commit-wrapperen.
+
+    Uden denne stub spawner testen RIGTIGE processer: `_head()` kører
+    `git rev-parse HEAD` i en worktree-sti der kun er patchet som streng, så
+    git fejler — og commit-wrapperen forsøger derefter at nå nettet. Det blev
+    stoppet af test-vagten som «1 test(s) ville kalde nettet» (målt 12/11-2026).
+    Testen tjekker `bus.publish`, så den har intet ægte git at bruge.
+
+    HEAD skal flytte sig efter commit-wrapperen: runneren erklærer «no_commit»
+    hvis `rev-parse HEAD` er identisk foer og efter (runner.py:341-355), og så
+    bliver status «error» uanset hvor mange events der blev publiceret.
+    """
+    import subprocess as _sp
+
+    args = list(cmd)
+    if args and args[0] == "git":
+        sub = args[1] if len(args) > 1 else ""
+        if sub == "rev-parse":
+            _fake_run.head_calls += 1
+            sha = "a" * 40 if _fake_run.head_calls == 1 else "b" * 40
+            return _sp.CompletedProcess(args, 0, sha + "\n", "")
+        if sub == "diff":
+            return _sp.CompletedProcess(args, 0, "core/foo.py\n", "")
+        return _sp.CompletedProcess(args, 0, "", "")
+    return _sp.CompletedProcess(args, 0, "", "")
+
+
+_fake_run.head_calls = 0
+
+
 @pytest.fixture
 def patched_runner(tmp_dispatch_db):
+    _fake_run.head_calls = 0
     with patch("core.tools.claude_dispatch.runner.create_worktree") as mw, \
          patch("core.tools.claude_dispatch.runner.worktree_diff") as md, \
          patch("core.tools.claude_dispatch.runner.find_host_oauth_token",
                return_value="test-token") as _mt, \
+         patch("core.tools.claude_dispatch.runner.quota_preflight",
+               return_value={"allow": True, "severity": "unknown",
+                             "reason": "test: kvoten måles ikke",
+                             "pct": None, "resets_at": "", "reading": None}) as _mq, \
+         patch("core.tools.claude_dispatch.runner.subprocess.run",
+               side_effect=_fake_run) as mr, \
          patch("core.tools.claude_dispatch.runner.subprocess.Popen") as mp:
         mw.return_value = "/media/projects/jarvis-v2/.claude/worktrees/claude-task-xyz"
         md.return_value = " core/foo.py | 2 +-\n 1 file changed"

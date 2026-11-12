@@ -69,7 +69,7 @@ def _on_started(payload: dict) -> None:
     _pending[run_id] = hunch
 
     # 12/10-2026: gut_gate-kaldet FLYTTEDE herfra til pre-flight (gut_engine.preflight_gut_gate,
-    # kaldt fra start_autonomous_run/start_autonomous_stream_run). Her fyrede det på et event der
+    # kaldt fra start_autonomous_run). Her fyrede det på et event der
     # kommer EFTER runnet er begyndt — «vi ANNULLERER ikke run'et her» stod der selv — så det
     # kunne aldrig stoppe noget, og det ville dobbelt-tælle counterfactual'en nu hvor gaten er
     # ægte. Denne handler har ÉN opgave tilbage: stashe hunch'en, så udfaldet kan kalibrere maven.

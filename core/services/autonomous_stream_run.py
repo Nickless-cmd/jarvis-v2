@@ -1,4 +1,22 @@
-"""Server-authoritative streaming lifecycle for autonomous visible runs."""
+"""PENSIONERET — den autonome startvej er `visible_autonomous_run.start_autonomous_run`.
+
+MÅLT 12/11-2026: `start_autonomous_stream_run` importeres IKKE i produktionen.
+`grep -rn "import.*autonomous_stream_run" --include=*.py core/ apps/` giver nul
+hits uden for modulet selv, og der findes ingen dynamisk reference (ingen
+`getattr`, `importlib` eller registry-streng peger på den). Kun tests kalder den:
+`tests/test_autonomous_stream_run.py`, `tests/e2e/test_wakeup_guard_e2e.py`,
+`tests/test_autonomi_koordinering_fem_steps.py` og `tests/test_wakeup_dispatch_trace.py`.
+
+Den LEVENDE vej er `core.services.visible_autonomous_run.start_autonomous_run`,
+som har 13 produktionskaldere (session_spawn, inbox_idle_waker, recurring_tasks,
+dreaming_session, discord_gateway, telegram_gateway, jarvisx_processes m.fl.).
+
+Modulet bliver stående fordi testene dækker adfærd der stadig gælder
+(permissions-arv, `auto-*`-siloer), men ni produktions-kommentarer henviser til
+det som om det er en aktiv startvej — og det får en læser til at bygge
+begrundelser på en vej der ikke kører. Det skete i commit 841723595.
+Ret kommentaren dér, ikke koden her, hvis du finder flere.
+"""
 from __future__ import annotations
 
 import logging

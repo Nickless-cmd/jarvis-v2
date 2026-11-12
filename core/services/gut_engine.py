@@ -577,7 +577,7 @@ def gut_gate(
 # begyndt. Koden sagde det selv: «vi ANNULLERER ikke run'et her (run er allerede startet —
 # vinduet er observations-gate, ikke en pre-flight veto)». Den kunne derfor aldrig stoppe
 # noget, uanset hvor lav confidence var. Her er beslutningspunktet: bliver runnet afvist,
-# fødes det ikke — `start_autonomous_run` og `start_autonomous_stream_run` kalder denne FØR
+# fødes det ikke — `start_autonomous_run` kalder denne FØR
 # de bygger run-objektet.
 #
 # BAGKANT (fordi en negativ bias nu kan blokere): højst _MAX_BLOK_PER_TIME blokeringer pr.

@@ -285,7 +285,7 @@ def _ryd_visible_drift(enforced: bool) -> int:
 
     ## Hvorfor fraværet er signalet
 
-    Hver startvej skriver begge spor — `autonomous_stream_run` gør det endda
+    Hver startvej skriver begge spor — `visible_autonomous_run` gør det endda
     synkront i api-processen med en kommentar om præcis den fejl. Er posten væk
     fra `in_flight_runs`, er der ingen proces der streamer den.
 

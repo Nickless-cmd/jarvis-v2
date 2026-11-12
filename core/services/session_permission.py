@@ -105,8 +105,8 @@ def trust_for_session(session_id: str) -> bool:
     for sessionen, det skal fortsætte som det allerede er sat i sessionen.»
 
     Målt samme dag: en vækning landede i en samtale sat til `trust` og fik
-    alligevel et godkendelses-kort — fordi `start_autonomous_stream_run`
-    oprettede `VisibleRun(autonomous=True)` uden at læse samtalens niveau.
+    alligevel et godkendelses-kort — fordi den autonome startvej oprettede
+    `VisibleRun(autonomous=True)` uden at læse samtalens niveau.
     Kørslen arvede altså spørgsmålet men ikke svaret. Sad Bjørn ikke ved
     skærmen, udløb kortet, og vækningen var tandløs i en samtale hvor han
     netop havde givet fuld adgang.

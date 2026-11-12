@@ -1300,7 +1300,18 @@ def build_gut_surface() -> dict[str, object]:
     # grund, ikke et tal der ser målt ud.
     no_event_row: int | None = None
     no_event_row_grund: str | None = None
-    no_event_row_er_estimat: bool = False
+    # TRE tilstande, ikke to (12/11-2026, tredje lag). `True` = der ER et tal, men
+    # det er et estimat. `None` = der er INTET tal (grunden står i
+    # `no_event_row_grund`). `False` bruges ikke længere: efter at den lokale kø
+    # blev afvist som bevis findes der ikke et tilfælde hvor tallet er præcist.
+    #
+    # Målt i drift: alle tre grene hvor tallet ikke kan beregnes (ingen
+    # livstidstæller, for ung tæller, ulæselig dead-letter) lod flaget stå på sin
+    # initialværdi `False` — og `er_estimat: False` læses som «dette er en præcis
+    # måling», mens der slet ikke findes en måling. En bool tvang «findes ikke» til
+    # at klæde sig ud som «præcis», hvilket er den samme fejlform som resten af
+    # aftenen: et felt der ser ud som om det svarer.
+    no_event_row_er_estimat: bool | None = None
     spillede: int | None = None
     ledger = _event_ledger_state()
     # Dead-letter måles UAFHÆNGIGT af tællerens alder: den er en observation af

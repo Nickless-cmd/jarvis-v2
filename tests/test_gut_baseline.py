@@ -211,7 +211,45 @@ def test_ung_ledger_maa_ikke_udtale_sig(monkeypatch):
     monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
     s = ge.build_gut_surface()
     assert s["no_event_row"] is None
+    assert s["no_event_row_er_estimat"] is None, (
+        "der findes INTET tal — flaget må ikke sige «ikke et estimat», for det "
+        "læses som «præcis måling»"
+    )
     assert "yngre end" in s["summary"]
+
+
+def test_ingen_tal_tre_tilstande_ikke_to(monkeypatch):
+    """TREDJE LAG (12/11-2026): de grene hvor tallet ikke KAN beregnes.
+
+    Der er tre af dem — ingen livstidstæller, en tæller yngre end retentionen, og
+    en dead-letter der ikke kan læses. Alle tre lod `no_event_row_er_estimat` stå
+    på sin initialværdi `False`, og `False` læses som «dette er en præcis måling»
+    — mens der slet ikke findes en måling. Målt i drift: fladen svarede
+    `no_event_row: None` sammen med `no_event_row_er_estimat: False`.
+
+    Flaget har derfor tre tilstande: `True` = der er et tal, men det er et
+    estimat; `None` = der er intet tal; `False` bruges ikke længere.
+    """
+    monkeypatch.setattr(ge, "get_cognitive_gut_state", lambda: _gut_state(600, 500))
+    monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
+    monkeypatch.setattr(
+        ge, "_observed_baseline",
+        lambda: {"n_observed": 10, "event_rows": 11, "neutral_rows": 1,
+                 "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
+    )
+
+    # Gren 1: ingen livstidstæller.
+    monkeypatch.setattr(ge, "_event_ledger_state", lambda: None)
+    s = ge.build_gut_surface()
+    assert s["no_event_row"] is None
+    assert s["no_event_row_er_estimat"] is None, "ingen tæller ⇒ intet tal"
+
+    # Gren 3: tælleren er moden, men dead-letter kan ikke læses.
+    monkeypatch.setattr(ge, "_event_ledger_state", lambda: dict(_MODEN_LEDGER))
+    monkeypatch.setattr(ge, "_dead_letter_gut_events", lambda: None)
+    s = ge.build_gut_surface()
+    assert s["no_event_row"] is None
+    assert s["no_event_row_er_estimat"] is None, "ulæselig dead-letter ⇒ intet tal"
 
 
 def test_moden_ledger_giver_et_rigtigt_tal(monkeypatch):

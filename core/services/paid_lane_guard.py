@@ -100,15 +100,57 @@ _PAID_PROVIDERS = frozenset({"deepseek", "primary_cache_warmer"})
 SPEND_VINDUE_TIMER = 24
 
 
-def _tilhoerer_ham(run_id: str) -> bool:
+def _runs_startet_af_en_post(timer: int = SPEND_VINDUE_TIMER) -> set[str]:
+    """Run-id'er der blev startet AF en indbakke-post — ikke af Bjørn.
+
+    Koblingen er `inbox_items.leveret_til_run_id`. Den skrives når vækkeren
+    starter et run for en post (`db_inbox.noter_leveret_til_run`, 12/11-2026).
+    Et run der står der, har en post som årsag — og så er det ikke hans tur,
+    uanset at det bærer `visible-`-præfikset: `start_visible_run` er den samme
+    mekanisme for begge.
+
+    HVORFOR DETTE OPSLAG (målt 12/11-2026). Vagten frikendte alt med
+    `visible-`, og `visible-*` bar **$87,91 af $90,46** i betalt forbrug over
+    30 dage. Et væknings-run er netop et `visible-`-run, så reglen «kun hans
+    egne ture må koste penge» var i praksis «næsten alt må koste penge».
+
+    Ét opslag for HELE vinduet, ikke ét pr. række: hovedbogen har ~50.000
+    rækker på 24 timer, og en query pr. række ville gøre revisionen dyrere end
+    det den reviderer.
+
+    Kaster videre hvis lageret ikke kan læses. `check_paid_spend` skelner så
+    «ingen brud» fra «jeg kunne ikke se efter» — samme kontrakt som hovedbogen.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    import core.runtime.db as db
+
+    graense = (datetime.now(timezone.utc) - timedelta(hours=int(timer))).isoformat()
+    with db.connect() as conn:
+        raekker = conn.execute(
+            "SELECT DISTINCT leveret_til_run_id FROM inbox_items "
+            "WHERE leveret_til_run_id != '' AND created_at >= ?",
+            (graense,),
+        ).fetchall()
+    return {str(r[0]) for r in raekker if r and r[0]}
+
+
+def _tilhoerer_ham(run_id: str, startet_af_post: set[str] | None = None) -> bool:
     """Er kaldet en del af en af Bjørns egne ture?
 
     `visible-` er formen for en synlig kørsel. `autonomous-` er det modsatte,
     og et TOMT run-id betyder at kaldet slet ikke hørte til en tur — begge er
     brud. Vi svarer aldrig ja på et ukendt præfiks: en betalt vej hvis ophav vi
     ikke kender, skal frem i lyset, ikke frikendes.
+
+    `visible-` er dog ikke nok alene (12/11-2026): et run startet af en
+    indbakke-post bærer samme præfiks. Står run-id'et i `startet_af_post`, er
+    posten årsagen, og svaret er nej uanset præfikset.
     """
-    return str(run_id or "").startswith("visible-")
+    rid = str(run_id or "")
+    if rid and startet_af_post and rid in startet_af_post:
+        return False
+    return rid.startswith("visible-")
 
 
 def audit_paid_spend(timer: int = SPEND_VINDUE_TIMER) -> list[dict[str, Any]]:
@@ -127,6 +169,7 @@ def audit_paid_spend(timer: int = SPEND_VINDUE_TIMER) -> list[dict[str, Any]]:
     import core.runtime.db as db
 
     graense = (datetime.now(timezone.utc) - timedelta(hours=int(timer))).isoformat()
+    startet_af_post = _runs_startet_af_en_post(timer)
     with db.connect() as conn:
         raekker = conn.execute(
             "SELECT lane, provider, run_id, cost_usd FROM costs "
@@ -138,7 +181,7 @@ def audit_paid_spend(timer: int = SPEND_VINDUE_TIMER) -> list[dict[str, Any]]:
     for lane, provider, run_id, cost in raekker:
         if str(provider or "") not in _PAID_PROVIDERS:
             continue
-        if _tilhoerer_ham(run_id):
+        if _tilhoerer_ham(run_id, startet_af_post):
             continue
         p = pr_lane.setdefault(str(lane or ""), {
             "lane": str(lane or ""), "provider": str(provider or ""),

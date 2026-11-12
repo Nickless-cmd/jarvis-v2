@@ -122,17 +122,31 @@ def test_a_broken_resolver_never_raises(monkeypatch):
 # ─────────────────────────────────────────────────────────────────────────
 
 
-def _hovedbog(monkeypatch, raekker):
-    """Byt costs-opslaget ud. Raekker: (lane, provider, run_id, cost)."""
+def _hovedbog(monkeypatch, raekker, koblede=()):
+    """Byt costs-opslaget ud. Raekker: (lane, provider, run_id, cost).
+
+    `koblede` er de run-id'er der staar som `leveret_til_run_id` paa en post —
+    altsaa runs en indbakke-post startede. Fixturen SKAL skelne paa SQL: en
+    fake-forbindelse der svarer det samme uanset spoergsmaalet kan aldrig se
+    den nye WHERE-gren, og saa er testen groen af den forkerte grund.
+    """
+    kaldte: list[str] = []
+
     class _Conn:
         def execute(self, q, p=()):
+            kaldte.append(q)
+
             class _C:
-                def fetchall(_s): return raekker
+                def fetchall(_s):
+                    if "inbox_items" in q:
+                        return [(r,) for r in koblede]
+                    return raekker
             return _C()
         def __enter__(self): return self
         def __exit__(self, *a): return False
     import core.runtime.db as db
     monkeypatch.setattr(db, "connect", lambda: _Conn())
+    return kaldte
 
 
 def test_et_betalt_kald_UDEN_synligt_run_er_et_brud(monkeypatch):
@@ -161,6 +175,64 @@ def test_en_AUTONOM_koersel_er_et_brud(monkeypatch):
     _hovedbog(monkeypatch, [("visible", "deepseek", "autonomous-xyz", 1.00)])
     brud = PLG.audit_paid_spend()
     assert len(brud) == 1 and brud[0]["run_id"] == "autonomous-xyz"
+
+
+def test_et_vaeknings_run_er_IKKE_hans_tur(monkeypatch):
+    """Sømmen (12/11-2026). Et run startet af en indbakke-post baerer `visible-`,
+    fordi `start_visible_run` er samme mekanisme — og blev derfor frikendt som
+    hans egen tur. Maalt: `visible-*` bar $87,91 af $90,46 i betalt forbrug, saa
+    frikendelsen daekkede i praksis naesten alt. Koblingen paa posten er det
+    eneste sted ophavet staar."""
+    _hovedbog(
+        monkeypatch,
+        [("agentic_round", "deepseek", "visible-vaekning1", 0.40)],
+        koblede=("visible-vaekning1",),
+    )
+    brud = PLG.audit_paid_spend()
+    assert len(brud) == 1, "et vaeknings-run blev frikendt som hans egen tur"
+    assert brud[0]["run_id"] == "visible-vaekning1"
+    assert brud[0]["cost_usd"] == 0.40
+
+
+def test_koblingen_rammer_kun_det_run_den_naevner(monkeypatch):
+    """En kobling paa ét run maa ikke smitte af paa naboens run — ellers ville
+    ét vaeknings-run goere hele samtalens forbrug til et brud."""
+    _hovedbog(
+        monkeypatch,
+        [
+            ("agentic_round", "deepseek", "visible-hans", 1.00),
+            ("agentic_round", "deepseek", "visible-vaekning2", 0.50),
+        ],
+        koblede=("visible-vaekning2",),
+    )
+    brud = PLG.audit_paid_spend()
+    assert [b["run_id"] for b in brud] == ["visible-vaekning2"]
+
+
+def test_koblingen_laeses_i_BATCH_ikke_pr_raekke(monkeypatch):
+    """Hovedbogen har ~50.000 raekker paa 24 timer. Ét opslag pr. raekke ville
+    goere revisionen dyrere end det den reviderer."""
+    kaldte = _hovedbog(
+        monkeypatch,
+        [("agentic_round", "deepseek", f"visible-{i}", 0.01) for i in range(200)],
+        koblede=(),
+    )
+    PLG.audit_paid_spend()
+    post_opslag = [q for q in kaldte if "inbox_items" in q]
+    assert len(post_opslag) == 1, f"koblingen blev laest {len(post_opslag)} gange"
+
+
+def test_en_ULAESELIG_kobling_paastaar_ikke_at_alt_er_godt(monkeypatch):
+    """Kan koblingen ikke laeses, ved vi ikke hvem runnet tilhoerer. Saa maa
+    svaret vaere «jeg kunne ikke se efter» — ikke «alt er godt»."""
+    import core.runtime.db as db
+
+    def _braend():
+        raise RuntimeError("lageret svarer ikke")
+    monkeypatch.setattr(db, "connect", _braend)
+    svar = PLG.check_paid_spend()
+    assert svar["checked"] is False, "en ulæselig kobling blev meldt som ren"
+    assert svar["leaks"] == []
 
 
 def test_et_NYT_lane_navn_fanges_UDEN_at_nogen_opdaterer_en_liste(monkeypatch):

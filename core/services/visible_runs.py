@@ -798,6 +798,7 @@ def start_visible_run(
     local_tool_exec: bool = False,
     surface: str = "",
     recovery_task_id: str = "",
+    origin: str = "",
 ) -> AsyncIterator[str]:
     """Begin a visible run.
 
@@ -1127,6 +1128,7 @@ def start_visible_run(
         local_tool_exec=bool(local_tool_exec),
         user_id=str(force_user_id or ""),
         surface=str(surface or "").strip().lower(),
+        origin=str(origin or "").strip().lower(),
     )
     # KERNE-FORRANG (2026-07-22): markér den synlige tur som aktiv i HELE dens levetid
     # (assembly + streaming) via en in-proces gate, så private baggrunds-LLM-lag

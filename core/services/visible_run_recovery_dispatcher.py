@@ -381,6 +381,14 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
             recovery_task_id=task_id,
             recovery_generation=generation,
             recovery_attempt=int(krav.get("recovery_attempt") or 0),
+            # En agent-vækning er en SELVSTÆNDIG tur, ikke en fortsættelse af
+            # brugerens. Er `origin` tom, tolker klientens reducer den som en
+            # runde i den forrige tur og fletter dens tekst ind i den besked
+            # han allerede har læst (målt 12/11-2026). En genoptagelse af hans
+            # egen tur forbliver tom. Bevidst IKKE en værdi fra
+            # `autonomous_sessions.ORIGINS`: `_bruger_til_stede` læser dem som
+            # «intet menneske», og det skal en agent-vækning i hans samtale ikke.
+            origin="agent-wake" if str(krav.get("wake_kind") or "") else "",
         )
     except Exception as exc:
         in_flight_runs.release_recovery_claim(

@@ -840,3 +840,25 @@ def test_en_agent_vaekning_arver_samtalens_niveau_ikke_et_haardkodet_ask(
 
     assert D.recover_due_once()["started"] == 1
     assert spawn[0]["approval_mode"] == samtalens_niveau
+
+
+def test_en_agent_vaekning_meldes_som_selvstaendig_tur_almindelig_genoptagelse_ikke(
+        spawn, monkeypatch):
+    """Klientens reducer fletter en tur med TOM origin ind i den forrige besked
+    som «en runde» (streamReducer, `run`-frame). En agent-vækning er en
+    selvstændig tur og skal derfor bære origin; en genoptagelse af brugerens
+    EGEN tur skal blive ved med at være tom."""
+    from core.services import agent_wake_intentions as aw
+
+    monkeypatch.setattr("core.services.session_permission.hent_permission", lambda sid: "ask")
+    aw.stage_wake(task_id="agentwake-wait-2", session_id="chat-1",
+                  owner_user_id="owner-1", message="[SYSTEM — agentvækning]")
+    _forladt_opgave("task-bruger", besked="ret koden")
+    # Den anden session, så de to ikke samles til én fortsættelse.
+    ifr.mark_started(run_id="task-bruger-2", session_id="chat-2", user_message="ret mere")
+    ifr.settle_recovering("task-bruger-2", reason="shutdown")
+
+    while D.recover_due_once()["started"]:
+        pass
+    af_opgave = {k["recovery_task_id"]: k.get("origin", "") for k in spawn}
+    assert af_opgave == {"agentwake-wait-2": "agent-wake", "task-bruger": "", "task-bruger-2": ""}

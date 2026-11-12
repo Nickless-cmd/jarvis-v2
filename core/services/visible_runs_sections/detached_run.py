@@ -287,6 +287,8 @@ def start_user_run_detached(
     # Fladen turen blev skrevet fra ("desk" | "mobil"). Baeres med saa en
     # notifikation om turen kan finde tilbage til den enhed han sad ved.
     surface: str = "",
+    # HVEM startede turen — tom for brugerens egen. Bæres ned i `run`-framen.
+    origin: str = "",
 ) -> str:
     """Start et server-autoritativt run. Returnerer run_id (klienten abonnerer
     via run_event_log gennem /chat/stream/v2 eller /chat/runs/{id}/subscribe)."""
@@ -348,7 +350,9 @@ def start_user_run_detached(
         legacy_iter = None
     if legacy_iter is None:
         from core.services.visible_runs import start_visible_run
-        legacy_iter = start_visible_run(**visible_args)
+        # Kun når den er sat: research-stien tager ikke parameteren.
+        legacy_iter = start_visible_run(
+            **visible_args, **({"origin": origin} if origin else {}))
     from core.services.plan_mode import (
         session_plan_mode as _session_plan_mode,
         wrap_stream as _plan_wrap_stream,

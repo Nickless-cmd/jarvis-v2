@@ -416,3 +416,22 @@ def test_ukendt_ramme_maa_ikke_etablere_ejerskab(monkeypatch):
         "et ukendt id maa ikke blive 'owned' ved at rammen selv satte aliaset"
     )
     assert finished.wait(timeout=2.0), "det detached test-run skal afslutte før stubs gendannes"
+
+
+def test_origin_foeres_fra_detached_run_ned_til_den_synlige_tur(monkeypatch):
+    """`run`-framen læser `VisibleRun.origin`. Blev den tabt her, så den
+    selvstændige tur (agent-vækning) lignede en runde i brugerens egen tur."""
+    import core.services.visible_runs as vr
+    from core.services.visible_runs_sections.detached_run import start_user_run_detached
+
+    _patch(monkeypatch, [])
+    set_args: list[dict] = []
+    monkeypatch.setattr(vr, "start_visible_run",
+                        lambda **kw: (set_args.append(kw), _make_async_iter([]))[1])
+    start_user_run_detached(message="x", session_id="s1", origin="wakeup")
+    start_user_run_detached(message="y", session_id="s2")
+    for _ in range(60):
+        if len(set_args) >= 2:
+            break
+        time.sleep(0.05)
+    assert {k["session_id"]: k.get("origin", "") for k in set_args} == {"s1": "wakeup", "s2": ""}

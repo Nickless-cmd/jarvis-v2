@@ -363,3 +363,30 @@ def test_direktivet_beder_stadig_om_mark_wakeup_consumed():
     d = _fang_direktivet()
     assert "mark_wakeup_consumed" in d
     assert "w1" in d
+
+
+def _fanget_eventbus(monkeypatch) -> list[tuple[str, dict]]:
+    from core.eventbus.bus import event_bus
+
+    set_: list[tuple[str, dict]] = []
+    monkeypatch.setattr(event_bus, "publish", lambda kind, payload=None, **kw: set_.append((kind, payload or {})))
+    return set_
+
+
+def test_afleveringen_til_indbakken_hedder_queued_ikke_dispatched(monkeypatch):
+    """Målt 12/11-2026: en vækning blev `dispatched` 18:15:39 og startede først
+    18:22:20 — syv minutter hvor eventet påstod noget der ikke var sket. Hand-off
+    til indbakken er `queued`; `dispatched` hører til når runnet starter (se
+    `inbox_idle_waker`)."""
+    publiceret = _fanget_eventbus(monkeypatch)
+    state = [{"wakeup_id": "w1", "prompt": "p", "reason": "test", "status": "fired"}]
+    with patch("core.services.self_wakeup.due_wakeups", return_value=state), \
+         patch("core.services.self_wakeup._load", return_value=state), \
+         patch("core.services.self_wakeup._save"), \
+         patch("core.services.outbound_nudges.push_nudge"), \
+         patch("core.services.heartbeat_phases.tick_with_phases"), \
+         patch(GATEWAY, return_value=_KOEET):
+        dispatch_due_wakeups()
+    kinds = [k for k, _ in publiceret if k.startswith("self_wakeup.")]
+    assert kinds == ["self_wakeup.queued"]
+    assert dict(publiceret)["self_wakeup.queued"]["wakeup_id"] == "w1"

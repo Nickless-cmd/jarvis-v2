@@ -130,7 +130,8 @@ _Indbakken skal kunne VÆKKE — ikke kun gate._
 | function | `_start_run` | `(tekst, *, session_id, user_id, task_id=…, permission_session=…, origin=…, max_tool_calls=…, max_seconds=…, tool_scope=…, kilde_id=…, kildetype=…)` | Start det autonome run i den samtale posten hører til. Adskilt, så | [src](../../../core/services/inbox_idle_waker.py#L313) |
 | function | `_direktiv` | `(post)` | — | [src](../../../core/services/inbox_idle_waker.py#L475) |
 | function | `_dispatch_tekst` | `(post)` | Run-direktivet for posten. | [src](../../../core/services/inbox_idle_waker.py#L492) |
-| function | `vaek_paa_aabne_poster` | `(*, bruger_id)` | Væk ét run for de øverste gatende poster — hvis intet kører. | [src](../../../core/services/inbox_idle_waker.py#L522) |
+| function | `_publicer_vaekning_startet` | `(post, kilde_id)` | Udgiv `self_wakeup.dispatched` NÅR runnet er startet — ikke før. | [src](../../../core/services/inbox_idle_waker.py#L527) |
+| function | `vaek_paa_aabne_poster` | `(*, bruger_id)` | Væk ét run for de øverste gatende poster — hvis intet kører. | [src](../../../core/services/inbox_idle_waker.py#L555) |
 
 ## `core/services/inbox_importance.py`
 _Shared importance and delivery policy for Jarvis' inbox surfaces._

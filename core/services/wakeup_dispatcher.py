@@ -413,8 +413,13 @@ def dispatch_due_wakeups() -> dict[str, Any]:
             # Eventbus
             try:
                 from core.eventbus.bus import event_bus
+                # `queued`, ikke `dispatched` (12/11-2026): her er signalet kun
+                # afleveret til indbakken. Målt: eventet hed `dispatched`
+                # 18:15:39 mens runnet først startede 18:22:20, og både Jarvis og
+                # Bjørn læste det som «kørt». `dispatched` udgives nu af
+                # `inbox_idle_waker` når runnet FAKTISK er startet.
                 event_bus.publish(
-                    "self_wakeup.dispatched",
+                    "self_wakeup.queued",
                     {"wakeup_id": wid, "reason": reason[:80]},
                 )
             except Exception:

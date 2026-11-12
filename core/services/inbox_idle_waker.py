@@ -519,6 +519,39 @@ def _dispatch_tekst(post: dict[str, Any]) -> str:
     return _direktiv(post)
 
 
+#: Posternes kilde-id for en vækning der kom gennem `wake_gateway`
+#: (`vaek-` + sagen, og sagen er `wakeup:<wakeup_id>`).
+_WAKEUP_KILDE_PRAEFIKS = "vaek-wakeup:"
+
+
+def _publicer_vaekning_startet(post: dict[str, Any], kilde_id: str) -> None:
+    """Udgiv `self_wakeup.dispatched` NÅR runnet er startet — ikke før.
+
+    Eventet hed indtil 12/11-2026 `dispatched` allerede ved afleveringen til
+    indbakken (nu `queued`, i `wakeup_dispatcher`). Målt: 18:15:39 vs. et run der
+    startede 18:22:20. Her ved vi det faktisk: starteren har ikke afvist.
+    Self-safe: observabilitet må ikke kunne vælte polleren.
+    """
+    kilde_id = str(kilde_id or "")
+    if not kilde_id.startswith(_WAKEUP_KILDE_PRAEFIKS):
+        return
+    wakeup_id = kilde_id[len(_WAKEUP_KILDE_PRAEFIKS):]
+    if not wakeup_id:
+        return
+    try:
+        from core.eventbus.bus import event_bus
+
+        event_bus.publish("self_wakeup.dispatched", {
+            "wakeup_id": wakeup_id,
+            "kilde_id": kilde_id,
+            "session_id": str(post.get("session_id") or ""),
+            "origin": str(post.get("origin") or ""),
+        })
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("inbox_idle_waker: kunne ikke udgive dispatched for %s: %s",
+                     kilde_id, exc)
+
+
 def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
     """Væk ét run for de øverste gatende poster — hvis intet kører.
 
@@ -653,6 +686,7 @@ def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
                 continue
             vaekket += 1
             logger.info("inbox_idle_waker: vaekkede paa %s/%s", post.get("kildetype"), kilde_id)
+            _publicer_vaekning_startet(post, kilde_id)
         except Exception as exc:  # noqa: BLE001
             logger.warning("inbox_idle_waker: kunne ikke starte run for %s: %s",
                            kilde_id, exc)

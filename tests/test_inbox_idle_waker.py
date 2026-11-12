@@ -729,3 +729,38 @@ def test_alderen_taelles_fra_fire_at_for_en_vaekning(monkeypatch):
     # En post UDEN en laesbar tid er ikke gatende paa et gæt.
     assert w._alder_minutter({"created_at": ""}, nu=nu) is None
     assert w._alder_minutter({"created_at": "i går"}, nu=nu) is None
+
+
+# ── `dispatched` er først sandt når runnet er startet ──────────────────────
+def _fang_events(monkeypatch) -> list[tuple[str, dict]]:
+    from core.eventbus.bus import event_bus
+
+    set_: list[tuple[str, dict]] = []
+    monkeypatch.setattr(event_bus, "publish",
+                        lambda kind, payload=None, **kw: set_.append((kind, payload or {})))
+    return set_
+
+
+@pytest.mark.parametrize("kilde_id, kildetype, startet, forventet", [
+    ("vaek-wakeup:wake-abc", "vaekning", True, [("self_wakeup.dispatched", "wake-abc")]),
+    ("vaek-wakeup:wake-abc", "vaekning", None, [("self_wakeup.dispatched", "wake-abc")]),
+    # starteren afviste TAVST → intet run → intet dispatched
+    ("vaek-wakeup:wake-abc", "vaekning", False, []),
+    # en post der ikke er en wakeup-vækning
+    ("min", "job", True, []),
+    ("vaek-rutine:rec-1", "vaekning", True, []),
+])
+def test_dispatched_udgives_kun_naar_en_wakeup_faktisk_har_faaet_sit_run(
+        inbox_db, monkeypatch, kilde_id, kildetype, startet, forventet):
+    from core.services import inbox_idle_waker as w
+
+    _post(id=kilde_id, kildetype=kildetype, ejer=db_inbox.EJER_JARVIS, kraever_handling=True)
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: startet)
+    publiceret = _fang_events(monkeypatch)
+
+    r = w.vaek_paa_aabne_poster(bruger_id="bjorn")
+
+    assert r == {"status": "ok", "vaekket": 0 if startet is False else 1}
+    ud = [(k, p.get("wakeup_id")) for k, p in publiceret if k.startswith("self_wakeup.")]
+    assert ud == forventet

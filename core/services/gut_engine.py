@@ -134,9 +134,12 @@ def classify_outcome(actual: object) -> str:
 #
 # Omkostningerne er SKØN, ikke måling, og det står her fordi det betyder noget:
 #   * En falsk blokering koster ET RUN DER ALDRIG FØDES. Der er ingen
-#     genplanlægning i blokerings-grenen (`visible_autonomous_run:388` og
-#     `autonomous_stream_run:130` returnerer blot), så næste forsøg er først ved
-#     kalderens egen kadence. Den er derfor dyrere end «et udskudt run».
+#     genplanlægning i blokerings-grenen (`visible_autonomous_run:388` returnerer
+#     blot), så næste forsøg er først ved kalderens egen kadence. Den er derfor
+#     dyrere end «et udskudt run» — og jeg kan ikke dokumentere kadencen, hvilket
+#     er hvorfor prisen er et skøn og ikke et tal jeg kan forsvare som måling.
+#     (`autonomous_stream_run` har en tilsvarende gren, men modulet importeres
+#     ikke i produktion — kun tests kalder den. Målt 12/11-2026.)
 #   * En ufanget fejl koster det samme run PLUS hvad det efterlader: spildte
 #     modelkald, og i værste fald en dårlig commit eller en forkert tilstand.
 # Default 4:1 er konservativt valgt — fejl antages dyrere, fordi den kan gøre

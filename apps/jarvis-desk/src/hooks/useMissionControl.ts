@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ApiConfig } from '../lib/api'
 import { openEventSocket } from '../lib/api'
+import { lavTrailingThrottle, WS_GENHENT_MS } from '../lib/trailingThrottle'
 import {
   getMcRuns, getMcAgents, getMcScheduledTasks, getMcOverviewSafe,
   type McRun, type McAgent, type McScheduledTask, type McOverview,
@@ -63,12 +64,14 @@ export function useMissionControl(config: ApiConfig | undefined, isOwner: boolea
     const cfg = cfgRef.current
     if (!cfg) return
     let ws: WebSocket | null = null
+    // Throttlet (12/11-2026) — se `useCoworkData`: hver WS-besked udløste en fuld genhentning.
+    const genhent = lavTrailingThrottle(() => void refresh(), WS_GENHENT_MS)
     try {
       ws = openEventSocket(cfg)
-      ws.onmessage = () => { void refresh() }
+      ws.onmessage = () => genhent.kald()
       ws.onerror = () => { /* polling-fallback dækker */ }
     } catch { /* polling-fallback dækker */ }
-    return () => { try { ws?.close() } catch { /* noop */ } }
+    return () => { genhent.annuller(); try { ws?.close() } catch { /* noop */ } }
   }, [refresh, config?.apiBaseUrl])
 
   return { runs, activeRun, failedCount, agents, scheduled, overview, udfald, refresh }

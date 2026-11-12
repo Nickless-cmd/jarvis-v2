@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ApiConfig } from '../lib/api'
 import { openEventSocket } from '../lib/api'
+import { lavTrailingThrottle, WS_GENHENT_MS } from '../lib/trailingThrottle'
 import {
   getCoworkQueue, getCoworkPlans, getCoworkTodos, getCoworkChannels, resolveQueueItem,
   getShareGuard, resolveShareGuard, getCoworkAgents,
@@ -30,17 +31,20 @@ export function useCoworkData(config: ApiConfig | undefined, isOwner: boolean) {
   }, [])
   const ifAlive = <T,>(fn: (v: T) => void) => (v: T) => { if (aliveRef.current) fn(v) }
 
+  // Ét ad gangen (12/11-2026): pollen og WS-genhentningen må ikke køre oven i hinanden.
+  const laeserRef = useRef(false)
   const refresh = useCallback(async () => {
     const cfg = cfgRef.current
-    if (!cfg) return
-    await Promise.allSettled([
+    if (!cfg || laeserRef.current) return
+    laeserRef.current = true
+    try { await Promise.allSettled([
       getCoworkQueue(cfg).then(ifAlive(setQueue)),
       getCoworkPlans(cfg).then(ifAlive(setPlans)),
       getCoworkTodos(cfg).then(ifAlive(setTodos)),
       isOwner ? getCoworkChannels(cfg).then(ifAlive(setChannels)) : Promise.resolve(),
       isOwner ? getShareGuard(cfg).then(ifAlive(setShareGuard)) : Promise.resolve(),
       isOwner ? getCoworkAgents(cfg).then(ifAlive(setAgents)) : Promise.resolve(),
-    ])
+    ]) } finally { laeserRef.current = false }
   }, [isOwner])
 
   useEffect(() => {
@@ -54,12 +58,15 @@ export function useCoworkData(config: ApiConfig | undefined, isOwner: boolean) {
     const cfg = cfgRef.current
     if (!cfg) return
     let ws: WebSocket | null = null
+    // Throttlet (12/11-2026): HVER besked fra strømmen udløste før seks GET'er, og strømmen
+    // sender hændelser hele tiden → ~490 × 429 pr. endpoint på 5 minutter.
+    const genhent = lavTrailingThrottle(() => void refresh(), WS_GENHENT_MS)
     try {
       ws = openEventSocket(cfg)
-      ws.onmessage = () => { void refresh() }
+      ws.onmessage = () => genhent.kald()
       ws.onerror = () => { /* polling-fallback dækker; sluger fejl-event så det ikke bobler */ }
     } catch { /* polling-fallback dækker */ }
-    return () => { try { ws?.close() } catch { /* noop */ } }
+    return () => { genhent.annuller(); try { ws?.close() } catch { /* noop */ } }
   }, [refresh, config?.apiBaseUrl])
 
   const resolve = useCallback(async (id: string, decision: 'approve' | 'reject') => {

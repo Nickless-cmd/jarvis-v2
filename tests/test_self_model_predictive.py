@@ -29,3 +29,26 @@ def test_section_renders_english_when_data_present(monkeypatch):
 def test_section_empty_when_no_signal(monkeypatch):
     monkeypatch.setattr(smp, "build_predictive_self_model", lambda days=14: {})
     assert smp.predictive_self_model_section() == ""
+
+
+def test_section_viser_afventende_forudsigelse(monkeypatch):
+    """En forudsigelse der endnu ikke er moden skal være synlig, ikke skjult."""
+    fake = {
+        "tick_quality": {"avg": 52.5, "samples": 200, "trend": "stable", "last_5_avg": 50.0},
+        "self_prediction": {"n": 0, "accuracy": None, "pending": 1},
+    }
+    monkeypatch.setattr(smp, "build_predictive_self_model", lambda days=14: fake)
+    out = smp.predictive_self_model_section()
+    assert "Self-prediction" in out
+    assert "afventer" in out
+
+
+def test_section_viser_brier_naar_der_er_data(monkeypatch):
+    fake = {
+        "tick_quality": {"avg": 52.5, "samples": 200, "trend": "stable", "last_5_avg": 50.0},
+        "self_prediction": {"n": 4, "accuracy": 0.5, "brier": 0.31, "pending": 0},
+    }
+    monkeypatch.setattr(smp, "build_predictive_self_model", lambda days=14: fake)
+    out = smp.predictive_self_model_section()
+    assert "0.5 hit-rate (n=4)" in out
+    assert "Brier=0.31" in out

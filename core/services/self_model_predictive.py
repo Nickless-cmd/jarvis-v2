@@ -41,7 +41,7 @@ def _tick_quality_stats(days: int = 14) -> dict[str, Any]:
             "trend": s.get("trend"),
             "samples": s.get("count"),
         }
-    except Exception:
+    except Exception:  # kilden kan mangle under delvis opstart — uden data er der intet at måle
         return {}
 
 
@@ -49,7 +49,7 @@ def _mood_baseline(days: int = 14) -> dict[str, dict[str, Any]]:
     try:
         from core.services.personality_drift import compute_baseline
         return compute_baseline(lookback_days=days) or {}
-    except Exception:
+    except Exception:  # personligheds-drift kan fejle på tynd historik; en tom baseline er ærlig
         return {}
 
 
@@ -57,7 +57,7 @@ def _decision_adherence() -> dict[str, Any]:
     try:
         from core.services.agent_self_evaluation import decision_adherence_summary
         return decision_adherence_summary() or {}
-    except Exception:
+    except Exception:  # beslutnings-laget kan mangle ved kold start; adherence uden data er tom
         return {}
 
 
@@ -88,7 +88,7 @@ def _productive_idle_ratio(days: int = 7) -> float | None:
         ticks = load_json("recent_ticks", [])
         if not isinstance(ticks, list) or not ticks:
             return None
-    except Exception:
+    except Exception:  # krise-detektoren kan fejle; nul markeringer er et svar, ikke et crash
         return None
     cutoff = datetime.now(UTC) - timedelta(days=days)
     relevant: list[dict[str, Any]] = []
@@ -99,7 +99,7 @@ def _productive_idle_ratio(days: int = 7) -> float | None:
         try:
             if datetime.fromisoformat(ts) < cutoff:
                 continue
-        except ValueError:
+        except ValueError:  # state-storen kan være låst; uden ticks er forholdet ukendt, ikke nul
             continue
         relevant.append(t)
     if not relevant:
@@ -118,12 +118,16 @@ def build_predictive_self_model(days: int = 14) -> dict[str, Any]:
         "crisis_frequency_30d": _crisis_frequency(days=30),
         "productive_idle_ratio_7d": _productive_idle_ratio(days=7),
     }
-    # Lukket loop: persistér en kompakt, verificerbar prediktion afledt af
-    # denne model, så score_predictions() senere kan holde den mod virkeligheden.
-    # Self-safe — må aldrig vælte selve model-beregningen.
+    # Lukket loop: persistér en kompakt, FALSIFICERBAR prediktion afledt af
+    # denne model, så score_predictions() senere kan holde den mod virkeligheden
+    # i et ADSKILT fremtidsvindue. Self-safe — må aldrig vælte model-beregningen.
     try:
         _maybe_record_from_model(model)
-    except Exception:
+    except Exception:  # en fejlende forudsigelse må aldrig vælte model-beregningen
+        pass
+    try:
+        model["self_prediction"] = score_predictions()
+    except Exception:  # scoring er en bivirkning; modellen skal kunne læses uden den
         pass
     return model
 
@@ -132,13 +136,24 @@ def build_predictive_self_model(days: int = 14) -> dict[str, Any]:
 # hyppige kald ikke oversvømmer storen med næsten-identiske records.
 _RECORD_DEBOUNCE_HOURS = 6.0
 
+# Forudsigelsens horisont. Vinduet der måles ved scoring SKAL være adskilt fra
+# det vindue forudsigelsen blev udledt af — ellers er fejlen aritmetisk næsten
+# udelukket. Målt 12/11-2026: den gamle sløjfe meldte accuracy 1.0 på 196
+# forudsigelser med kun TO unikke faktiske værdier, fordi scoringen hentede et
+# nyt 14-dages glidende gennemsnit der overlappede 13 af 14 dage med det gamle.
+_PRED_HORIZON_HOURS = 168.0   # 7 dage: en helt adskilt uge
+_PRED_MIN_SAMPLES = 10        # for lidt data i vinduet = ingen dom, ikke et hit
+
 
 def _maybe_record_from_model(model: dict[str, Any]) -> None:
-    """Uddrag en verificerbar prediktion fra modellen og persistér den.
+    """Uddrag en FALSIFICERBAR prediktion fra modellen og persistér den.
 
-    Pt. tick_quality.avg vs baseline-tærskel 50: forudsig at avg forbliver på
-    samme side af 50 som nu, med en sandsynlighed afledt af hvor langt fra
-    tærsklen vi ligger. Debounced. Self-safe.
+    Tærsklen er den værdi modellen netop målte, og udsagnet gælder en adskilt
+    fremtidig uge: fortsætter niveauet, eller falder det? Det er et ægte
+    væddemål der kan tabes — i modsætning til den tidligere formulering, hvor
+    forudsigelsen og scoringen målte næsten samme vindue.
+
+    Debounced. Self-safe.
     """
     tq = model.get("tick_quality") or {}
     if not isinstance(tq, dict):
@@ -148,7 +163,7 @@ def _maybe_record_from_model(model: dict[str, Any]) -> None:
         return
     try:
         avg_f = float(avg)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError):  # en ikke-numerisk avg er ikke en måling
         return
 
     # Debounce mod seneste tick_quality-prediktion.
@@ -160,19 +175,33 @@ def _maybe_record_from_model(model: dict[str, Any]) -> None:
                 if age is not None and age < _RECORD_DEBOUNCE_HOURS:
                     return
                 break
-    except Exception:
+    except Exception:  # kan debounce ikke læses, registrér hellere end at springe over
         pass
 
-    threshold = 50.0
-    predicted_above = avg_f > threshold
-    # Længere fra tærsklen → højere tillid (0.5..0.95).
-    distance = min(abs(avg_f - threshold) / 50.0, 1.0)
-    probability = round(0.5 + 0.45 * distance, 3)
+    trend = str(tq.get("trend") or "stable")
+    try:
+        samples = int(tq.get("samples") or 0)
+    except (TypeError, ValueError):
+        samples = 0
+
+    # Tærsklen er det målte niveau, ikke en fast konstant: spørgsmålet er om
+    # niveauet holder en uge mere, og det kan besvares forkert.
+    threshold = round(avg_f, 1)
+    # Faldende trend vædder vi imod; ellers vædder vi med niveauet.
+    predicted_above = trend != "degrading"
+    # Ærlig tillid: en uge er langt ude. Trenden flytter 0.1, og tynd historik
+    # trækker mod 0.5. Vi går aldrig over 0.65 — overmod er den fejl der gjorde
+    # det gamle loop blindt.
+    confidence = min(samples / 60.0, 1.0)
+    tilt = 0.1 if trend == "improving" else (-0.1 if trend == "degrading" else 0.0)
+    probability = round(0.5 + tilt * confidence, 3)
+
     record_prediction(
         metric="tick_quality.avg",
         threshold=threshold,
         predicted_above=predicted_above,
         probability=probability,
+        baseline=avg_f,
     )
 
 
@@ -201,7 +230,7 @@ def predictive_self_model_section() -> str:
             stable = "stable" if (stdev or 0) < 0.1 else "varying"
             try:
                 salient.append(f"{dim}={float(mean):.2f} ({stable})")
-            except (TypeError, ValueError):
+            except (TypeError, ValueError):  # en ikke-numerisk baseline springes over, ikke gættet
                 continue
         if salient:
             lines.append("- Mood baseline: " + ", ".join(salient[:5]))
@@ -242,28 +271,73 @@ def predictive_self_model_section() -> str:
     if pi is not None:
         lines.append(f"- Productive idle ratio (7d): {pi}")
 
+    sp = m.get("self_prediction") or {}
+    if isinstance(sp, dict) and (sp.get("n") or sp.get("pending")):
+        acc = sp.get("accuracy")
+        brier = sp.get("brier")
+        if sp.get("n"):
+            bit = f"- Self-prediction (7d ahead): {acc} hit-rate (n={sp.get('n')})"
+            if brier is not None:
+                bit += f", Brier={brier}"
+        else:
+            bit = "- Self-prediction (7d ahead): ingen scoret endnu"
+        pend = int(sp.get("pending") or 0)
+        if pend:
+            bit += f" — {pend} afventer deres uge"
+        lines.append(bit)
+
     if len(lines) == 1:
         return ""  # no signal yet
     return "\n".join(lines)
-
 
 # ── Lukket forudsigelses-loop (predict → observe-actual → score → learn) ─────
 #
 # build_predictive_self_model FORUDSIGER allerede ("i 73% af ticks er curiosity
 # > 0.55"), men scorede aldrig sig selv mod virkeligheden. Dette loop lukker
-# den sløjfe additivt:
+# den sløjfe:
 #
-#   record_prediction(...)  persistér en kompakt prediktions-record
-#   score_predictions()     hent FAKTISK observeret værdi → hit/miss + accuracy
+#   record_prediction(...)  persistér en FALSIFICERBAR prediktions-record
+#   score_predictions()     mål i det ADSKILTE fremtidsvindue → hit/miss + Brier
 #   prediction_accuracy      eksponeret i surface + absorberet som central-nerve
 #
-# Kilde til "faktisk værdi": samme kilde forudsigelsen brugte — pt.
-# tick_quality.avg via _tick_quality_stats(). Ren statistik, ingen LLM.
+# HISTORIK (målt 12/11-2026): den første version af dette loop var tautologisk.
+# Forudsigelsen blev udledt af et 14-dages glidende gennemsnit, og scoringen
+# hentede det SAMME vindue 24 timer senere — 13 af 14 dage overlappede. Den
+# meldte accuracy 1.0 på 196 forudsigelser med kun to unikke faktiske værdier.
+# Version 2 (``v``: 2) måler i ``[made_at, made_at + horizon_hours]``, som
+# ligger HELT efter det vindue forudsigelsen blev udledt af, og kræver mindst
+# ``_PRED_MIN_SAMPLES`` målinger i vinduet før den udtaler sig. For lidt data
+# er «ingen dom», ikke et hit.
+#
+# Version 1-records erklæres void: deres grundlag var overlap, så deres udfald
+# siger intet. De tælles ikke i accuracy og blandes aldrig ind i kalibreringen.
+#
 # Alt self-safe: fejl → tom/neutral, kaster ALDRIG.
 
 _PRED_STORE_KEY = "self_model_predictions"
 _PRED_MAX = 200           # hold storen kompakt
 _ACCURACY_N = 30          # rullende accuracy over seneste N scorede
+_PRED_VERSION = 2
+
+# Nøglen til tick-evalueringerne ejes af agent_self_evaluation; vi læser den
+# samme liste, fordi forudsigelsen og scoringen SKAL måle samme størrelse.
+_TICK_EVAL_KEY = "tick_quality_evaluations"
+
+
+def _parse_iso(raw: Any) -> datetime | None:
+    """Parse ISO-tidsstempel fra state-storen. ``Z`` og ``+00:00`` er samme tid."""
+    s = str(raw or "").strip()
+    if not s:
+        return None
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    try:
+        d = datetime.fromisoformat(s)
+    except ValueError:  # ikke et ISO-tidsstempel = ukendt tid, aldrig «nu»
+        return None
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=UTC)
+    return d
 
 
 def _load_predictions() -> list[dict[str, Any]]:
@@ -272,7 +346,7 @@ def _load_predictions() -> list[dict[str, Any]]:
         from core.runtime.state_store import load_json
         data = load_json(_PRED_STORE_KEY, [])
         return data if isinstance(data, list) else []
-    except Exception:
+    except Exception:  # uden store er der ingen forudsigelser — ikke en fejl der skal kaste
         return []
 
 
@@ -281,22 +355,35 @@ def _save_predictions(preds: list[dict[str, Any]]) -> None:
     try:
         from core.runtime.state_store import save_json
         save_json(_PRED_STORE_KEY, list(preds)[-_PRED_MAX:])
-    except Exception:
+    except Exception:  # en manglende skrivning må ikke vælte den kaldende prompt-sti
         pass
 
 
-def _observe_actual(metric: str) -> float | None:
-    """Hent den FAKTISKE observerede værdi for en metric — samme kilde som
-    forudsigelsen brugte. Returnér None hvis ukendt/utilgængelig. Aldrig kast.
+def _tick_scores_in_window(start: datetime, end: datetime) -> list[int]:
+    """Tick-scores hvis ``evaluated_at`` ligger i ``[start, end]``.
+
+    Det er denne afgrænsning der gør forudsigelsen falsificerbar: vinduet
+    indeholder kun målinger fra EFTER forudsigelsen blev lavet.
     """
     try:
-        if metric == "tick_quality.avg":
-            tq = _tick_quality_stats(days=14)
-            v = tq.get("avg") if isinstance(tq, dict) else None
-            return float(v) if v is not None else None
-    except Exception:
-        return None
-    return None
+        from core.runtime.state_store import load_json
+        evals = load_json(_TICK_EVAL_KEY, [])
+    except Exception:  # uden tick-historik er vinduet tomt, og det er et gyldigt svar
+        return []
+    if not isinstance(evals, list):
+        return []
+    out: list[int] = []
+    for e in evals:
+        if not isinstance(e, dict):
+            continue
+        ts = _parse_iso(e.get("evaluated_at"))
+        if ts is None or ts < start or ts > end:
+            continue
+        try:
+            out.append(int(e.get("score") or 0))
+        except (TypeError, ValueError):  # en score der ikke kan læses tælles ikke med
+            continue
+    return out
 
 
 def _absorb(cluster: str, nerve: str, value: Any, **kwargs: Any) -> None:
@@ -304,7 +391,7 @@ def _absorb(cluster: str, nerve: str, value: Any, **kwargs: Any) -> None:
     try:
         from core.services.central_absorb import absorb
         absorb(cluster, nerve, value, **kwargs)
-    except Exception:
+    except Exception:  # absorption er en bivirkning; central_absorb må ikke vælte læsningen
         pass
 
 
@@ -314,53 +401,145 @@ def record_prediction(
     predicted_above: bool,
     probability: float,
     made_at: str | None = None,
+    *,
+    horizon_hours: float = _PRED_HORIZON_HOURS,
+    baseline: float | None = None,
 ) -> None:
-    """Persistér en kompakt prediktions-record. Skalar, self-safe, aldrig kast.
+    """Persistér en FALSIFICERBAR prediktions-record. Skalar, self-safe.
 
     metric          hvilken størrelse (fx "tick_quality.avg")
     threshold       tærskel prediktionen udtaler sig om
     predicted_above forudsiger vi at metric > threshold (True) eller < (False)
     probability     modellens sandsynlighed for udsagnet (0..1)
     made_at         ISO-tid (default: nu)
+    horizon_hours   hvor langt ude forudsigelsen skal indfries. Vinduet
+                    ``[made_at, made_at + horizon_hours]`` er det der måles, og
+                    det skal ligge efter forudsigelsens grundlag.
+    baseline        værdien forudsigelsen blev udledt af (til revision)
     """
     try:
-        rec = {
+        made = _parse_iso(made_at) if made_at else datetime.now(UTC)
+        if made is None:
+            made = datetime.now(UTC)
+        horizon = float(horizon_hours)
+        rec: dict[str, Any] = {
+            "v": _PRED_VERSION,
             "metric": str(metric),
             "threshold": float(threshold),
             "predicted_above": bool(predicted_above),
             "probability": float(probability),
-            "made_at": made_at or datetime.now(UTC).isoformat(),
+            "made_at": made.isoformat(),
+            "horizon_hours": horizon,
+            "window_start": made.isoformat(),
+            "window_end": (made + timedelta(hours=horizon)).isoformat(),
             "scored": False,
         }
-    except Exception:
+        if baseline is not None:
+            rec["baseline"] = round(float(baseline), 2)
+    except Exception:  # en record der ikke kan bygges gemmes ikke — den findes ikke
         return
     try:
         preds = _load_predictions()
         preds.append(rec)
         _save_predictions(preds)
-    except Exception:
+    except Exception:  # en fejlet skrivning må ikke ramme den kaldende tur
         pass
 
 
 def _age_hours(made_at: str) -> float | None:
-    try:
-        made = datetime.fromisoformat(made_at)
-        if made.tzinfo is None:
-            made = made.replace(tzinfo=UTC)
-        return (datetime.now(UTC) - made).total_seconds() / 3600.0
-    except Exception:
+    made = _parse_iso(made_at)
+    if made is None:
         return None
+    return (datetime.now(UTC) - made).total_seconds() / 3600.0
+
+
+def _score_record(p: dict[str, Any], now: datetime) -> tuple[str, dict[str, Any]]:
+    """Afgør én v2-records skæbne: pending | scored | insufficient | void."""
+    made = _parse_iso(p.get("made_at"))
+    if made is None:
+        return "void", {"void_reason": "ugyldigt made_at"}
+    try:
+        horizon = float(p.get("horizon_hours") or _PRED_HORIZON_HOURS)
+    except (TypeError, ValueError):
+        horizon = _PRED_HORIZON_HOURS
+    if horizon <= 0:
+        return "void", {"void_reason": "ugyldig horisont"}
+
+    end = made + timedelta(hours=horizon)
+    if now < end:
+        return "pending", {}
+
+    scores = _tick_scores_in_window(made, end)
+    if len(scores) < _PRED_MIN_SAMPLES:
+        return "insufficient", {"n_window": len(scores)}
+
+    try:
+        threshold = float(p.get("threshold"))
+        probability = float(p.get("probability"))
+    except (TypeError, ValueError):  # manglende horisont falder tilbage på standardugen
+        return "void", {"void_reason": "ugyldig tærskel/sandsynlighed"}
+
+    actual = sum(scores) / len(scores)
+    actual_above = actual > threshold
+    hit = actual_above == bool(p.get("predicted_above"))
+    # Brier måler SANDHEDEN af den udtalte sandsynlighed for «metric > threshold»
+    # — uafhængigt af om retningen var rigtig. 0 = perfekt, 0.25 = en mønt.
+    outcome = 1.0 if actual_above else 0.0
+    brier = (probability - outcome) ** 2
+    return "scored", {
+        "actual": round(actual, 2),
+        "hit": bool(hit),
+        "brier": round(brier, 4),
+        "n_window": len(scores),
+        "window_days": round(horizon / 24.0, 1),
+    }
+
+
+# Bøtter valgt efter det interval vores sandsynligheder faktisk ligger i.
+_CALIBRATION_EDGES = (0.0, 0.4, 0.5, 0.6, 1.01)
+
+
+def _calibration(scored: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Kalibrering: passerer den udtalte sandsynlighed med virkeligheden?
+
+    For hver bøtte: hvor mange, hvad sagde vi i gennemsnit, og hvor ofte var
+    udsagnet faktisk sandt. Predicted 0.6 og observed 0.2 er overmod — den
+    slags selvindsigt giver en hit-rate ikke.
+    """
+    out: list[dict[str, Any]] = []
+    for lo, hi in zip(_CALIBRATION_EDGES, _CALIBRATION_EDGES[1:]):
+        bucket: list[tuple[float, float]] = []
+        for p in scored:
+            try:
+                prob = float(p.get("probability"))
+                actual = float(p.get("actual"))
+                threshold = float(p.get("threshold"))
+            except (TypeError, ValueError):  # uden tal kan udsagnet ikke afgøres og erklæres void
+                continue
+            if lo <= prob < hi:
+                bucket.append((prob, 1.0 if actual > threshold else 0.0))
+        if not bucket:
+            continue
+        n = len(bucket)
+        out.append({
+            "bin": f"{lo:.2f}-{min(hi, 1.0):.2f}",
+            "n": n,
+            "predicted": round(sum(b[0] for b in bucket) / n, 3),
+            "observed": round(sum(b[1] for b in bucket) / n, 3),
+        })
+    return out
 
 
 def score_predictions(min_age_hours: float = 24.0) -> dict[str, Any]:
-    """Scor modne, uscorede prediktioner mod virkeligheden. Aldrig kast.
+    """Scor modne forudsigelser i deres eget adskilte fremtidsvindue.
 
-    For hver udestående prediktion ældre end ``min_age_hours``: hent den
-    FAKTISKE observerede værdi og afgør om udsagnet holdt (hit/miss). Beregn
-    en rullende ``accuracy`` (hit-rate) over de seneste N scorede.
+    ``min_age_hours`` er bevaret for eksisterende kaldere, men er ikke
+    autoritativ: for v2-records afgør ``made_at + horizon_hours`` hvornår en
+    forudsigelse er moden. En forudsigelse der gælder en uge kan ikke scores
+    efter et døgn.
 
-    Returnerer {"scored": int, "accuracy": float|None, "n": int} — accuracy er
-    None når intet endnu er scoret (neutral, ingen data).
+    Returnerer accuracy (ramte vi retningen), Brier (hvor skarp sandsynligheden
+    var) og kalibreringsbøtter. Begge er None når intet endnu er scoret.
     """
     try:
         preds = _load_predictions()
@@ -369,48 +548,83 @@ def score_predictions(min_age_hours: float = 24.0) -> dict[str, Any]:
     if not isinstance(preds, list):
         preds = []
 
+    now = datetime.now(UTC)
     newly_scored = 0
-    now_iso = datetime.now(UTC).isoformat()
+    newly_void = 0
+    pending = 0
+    insufficient = 0
+
     for p in preds:
         try:
-            if not isinstance(p, dict) or p.get("scored"):
+            if not isinstance(p, dict):
                 continue
-            age = _age_hours(str(p.get("made_at", "")))
-            if age is None or age < float(min_age_hours):
+            # v1 blev scoret mod næsten samme vindue som det den forudsagde ud
+            # fra. Uanset om den gamle kørsel kaldte det et hit, er udfaldet
+            # meningsløst — den erklæres void, også når den allerede står som
+            # scoret, så historikken ikke kan læses som præcision.
+            try:
+                version = int(p.get("v") or 1)
+            except (TypeError, ValueError):
+                version = 1
+            if version < _PRED_VERSION:
+                if not p.get("void"):
+                    p["void"] = True
+                    p["void_reason"] = (
+                        "v1: forudsigelse og scoring delte vindue (tautologisk)"
+                    )
+                    newly_void += 1
                 continue
-            actual = _observe_actual(str(p.get("metric", "")))
-            if actual is None:
+            if p.get("scored"):
                 continue
-            threshold = float(p.get("threshold"))
-            predicted_above = bool(p.get("predicted_above"))
-            actual_above = actual > threshold
-            hit = (actual_above == predicted_above)
+            outcome, detail = _score_record(p, now)
+            if outcome == "pending":
+                pending += 1
+                continue
+            if outcome == "insufficient":
+                insufficient += 1
+                continue
             p["scored"] = True
-            p["hit"] = bool(hit)
-            p["actual"] = round(float(actual), 3)
-            p["scored_at"] = now_iso
-            newly_scored += 1
+            p["scored_at"] = now.isoformat()
+            if outcome == "void":
+                p["void"] = True
+                p["void_reason"] = detail.get("void_reason", "")
+                newly_void += 1
+            else:
+                p.update(detail)
+                newly_scored += 1
         except Exception:
             # Skør enkelt-record forgifter aldrig hele scoringen.
             continue
 
-    if newly_scored:
+    if newly_scored or newly_void:
         _save_predictions(preds)
 
-    try:
-        scored = [p for p in preds if isinstance(p, dict) and p.get("scored")]
-        recent = scored[-_ACCURACY_N:]
-        n = len(recent)
-        if n == 0:
-            accuracy: float | None = None
-        else:
-            hits = sum(1 for p in recent if p.get("hit"))
-            accuracy = round(hits / n, 3)
-    except Exception:
-        accuracy = None
-        n = 0
-
-    return {"scored": newly_scored, "accuracy": accuracy, "n": n}
+    scored_v2 = [
+        p for p in preds
+        if isinstance(p, dict) and p.get("scored") and not p.get("void")
+        and int(p.get("v") or 1) >= _PRED_VERSION
+    ]
+    recent = scored_v2[-_ACCURACY_N:]
+    n = len(recent)
+    accuracy = round(sum(1 for p in recent if p.get("hit")) / n, 3) if n else None
+    brier = (
+        round(sum(float(p.get("brier") or 0.0) for p in recent) / n, 4) if n else None
+    )
+    legacy = sum(
+        1 for p in preds
+        if isinstance(p, dict) and p.get("void") and int(p.get("v") or 1) < _PRED_VERSION
+    )
+    return {
+        "scored": newly_scored,
+        "accuracy": accuracy,
+        "n": n,
+        "brier": brier,
+        "calibration": _calibration(recent),
+        "void": newly_void,
+        "legacy_excluded": legacy,
+        "pending": pending,
+        "insufficient": insufficient,
+    }
 
 
 def build_self_model_predictive_surface() -> dict[str, object]:
@@ -421,10 +635,12 @@ def build_self_model_predictive_surface() -> dict[str, object]:
     observed. Specific state-readers added as the module evolves.
 
     2026-07-06: lukker forudsigelses-loopet (rådets #2). Lazy scoring ved
-    læsning (enkleste der virker — ingen ny cadence-registrering nødvendig):
-    scorer modne prediktioner, eksponerer ``prediction_accuracy`` og
-    absorberer den som central-nerve, så Centralen VED hvor god den er til at
-    forudsige sig selv — og lærer. Self-safe: fejl → neutral.
+    læsning (enkleste der virker — ingen ny cadence-registrering nødvendig).
+
+    2026-11-12: loopet blev gjort falsificerbart. Fladen eksponerer nu også
+    ``prediction_brier`` og ``prediction_calibration``, fordi en hit-rate
+    alene ikke kan skelne «jeg gætter rigtigt» fra «jeg gætter sikkert».
+    Self-safe: fejl → neutral.
     """
     surface: dict[str, object] = {
         "active": True,
@@ -436,23 +652,30 @@ def build_self_model_predictive_surface() -> dict[str, object]:
         acc = score_predictions()
     except Exception:
         acc = {"scored": 0, "accuracy": None, "n": 0}
+
     surface["prediction_accuracy"] = acc
+    surface["prediction_brier"] = acc.get("brier")
+    surface["prediction_calibration"] = acc.get("calibration") or []
 
     # Absorbér som levende central-nerve — Centralen lærer sin egen præcision.
+    # Flaget fyrer på BÅDE lav hit-rate og dårlig Brier: en model kan ramme
+    # retningen ofte og stadig være systematisk overmodig.
     try:
         n = int(acc.get("n") or 0)
         accuracy = acc.get("accuracy")
+        brier = acc.get("brier")
         _absorb(
             "self",
             "prediction_accuracy",
-            {"accuracy": accuracy, "n": n},
+            {"accuracy": accuracy, "n": n, "brier": brier},
             learn_key="self:prediction_accuracy",
-            flag_if=lambda v: (v.get("n", 0) >= 5) and (v.get("accuracy") is not None) and (v["accuracy"] < 0.4),
+            flag_if=lambda v: (v.get("n", 0) >= 5) and (
+                (v.get("accuracy") is not None and v["accuracy"] < 0.4)
+                or (v.get("brier") is not None and v["brier"] > 0.28)
+            ),
             flag_reason="lav forudsigelses-præcision",
         )
-    except Exception:
+    except Exception:  # fladen skal kunne læses selv om absorptionen fejler
         pass
 
     return surface
-
-

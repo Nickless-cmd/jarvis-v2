@@ -533,17 +533,44 @@ def interrupt_agent(*, owner_user_id: str, origin_session_id: str, agent_id: str
             "assignment_id": open_a["assignment_id"], "contract_version": CONTRACT_VERSION}
 
 
+def _acknowledge_terminal(*, agent_id: str, owner_user_id: str) -> list[str]:
+    """Kvitter agentens TERMINALE assignments. Returnerer dem der faktisk blev kvitteret."""
+    from core.runtime.db_agent_feed import acknowledge as feed_acknowledge
+
+    marks = ",".join("?" * len(ASSIGNMENT_TERMINAL))
+    rows = c._conn().execute(
+        f"SELECT assignment_id FROM agent_assignments WHERE agent_id=? AND owner_user_id=? "
+        f"AND status IN ({marks})",
+        (agent_id, owner_user_id, *ASSIGNMENT_TERMINAL)).fetchall()
+    kvitteret: list[str] = []
+    for row in rows:
+        if feed_acknowledge(owner_user_id=owner_user_id, ref_kind="agent",
+                            ref_id=row["assignment_id"]):
+            kvitteret.append(row["assignment_id"])
+    return kvitteret
+
+
 def close_agent(*, owner_user_id: str, origin_session_id: str, agent_id: str) -> dict[str, Any]:
     """Graceful lukning: `closing` straks (afviser nye opgaver); `closed` naar eget run og
-    boern er terminale. Accepterede runs afbrydes ikke."""
+    boern er terminale. Accepterede runs afbrydes ikke.
+
+    En FAERDIG lukning kvitterer ogsaa agentens terminale fejl. Uden det blev en lukket fejl
+    haengende i opmaerksomhedslisten for evigt: `attention` regnes som «terminal OG ikke
+    kvitteret», mens lukningen kun satte `lifecycle_status` - som projektionen sender med til
+    skaermen men aldrig filtrerer paa. Maalt 12/11-2026: fire fejlede agenter stod
+    `failed|closed` og blev ved med at staa i Miljoe-feltet indtil de blev kvitteret i haanden.
+    """
     if (bad := _guard(owner_user_id, origin_session_id, control=True)):
         return bad
     if _owned_agent(agent_id, owner_user_id) is None:
         return _err("INVALID_SCOPE", "ukendt agent")
     c.set_lifecycle(agent_id=agent_id, owner_user_id=owner_user_id, lifecycle_status="closing")
-    return {"status": "accepted", "agent_id": agent_id,
-            "lifecycle_status": settle_closing(agent_id, owner_user_id),
-            "contract_version": CONTRACT_VERSION}
+    lifecycle = settle_closing(agent_id, owner_user_id)
+    # Staar agenten stadig `closing`, er dens fejl ikke afgjort endnu - den skal blive i listen.
+    acknowledged = (_acknowledge_terminal(agent_id=agent_id, owner_user_id=owner_user_id)
+                    if lifecycle == "closed" else [])
+    return {"status": "accepted", "agent_id": agent_id, "lifecycle_status": lifecycle,
+            "acknowledged": acknowledged, "contract_version": CONTRACT_VERSION}
 
 
 def settle_closing(agent_id: str, owner_user_id: str) -> str:

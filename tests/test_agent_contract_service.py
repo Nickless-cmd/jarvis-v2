@@ -266,6 +266,44 @@ def test_close_is_graceful_busy_agent_stays_closing_until_it_finishes(sv):
                                agent_id=idle["agent_id"])["lifecycle_status"] == "closed"
 
 
+def test_close_acknowledges_a_terminal_failure_so_it_leaves_the_panel(sv):
+    """En lukket fejl maa ikke blive staaende i opmaerksomhedslisten.
+
+    MAALT 12/11-2026: fire fejlede agenter stod `failed|closed` og blev ved med at staa i
+    Miljoe-feltet. `attention` regnes som «terminal OG ikke kvitteret», og lukningen satte kun
+    `lifecycle_status` — som projektionen sender med til skaermen men aldrig filtrerer paa.
+    """
+    from core.services import agent_contract_projection as proj
+
+    sv.on()
+    first = sv.d()
+    # Udfaldet fastlaegges gennem husets egen vej: testen maaler LUKNINGEN, ikke hvordan
+    # fejlen opstod, og et asynkront run ville skrive sin egen status bagefter.
+    sv.k.commit_terminal_outcome(assignment_id=first["assignment_id"], status="failed",
+                                 summary="agenten kunne skrive men skrev intet",
+                                 error_code="AGENT_NO_WRITE", error_phase="delivery")
+    assert sv.k.get_assignment(assignment_id=first["assignment_id"],
+                               owner_user_id=O)["status"] == "failed"
+    foer = [r for r in proj.overview(O)["agents"] if r["agent_id"] == first["agent_id"]]
+    assert foer and foer[0]["attention"] is True          # fejlen kraever opmaerksomhed
+
+    out = sv.svc_.close_agent(owner_user_id=O, origin_session_id=S, agent_id=first["agent_id"])
+
+    assert out["lifecycle_status"] == "closed"
+    efter = [r for r in proj.overview(O)["agents"] if r["agent_id"] == first["agent_id"]]
+    assert efter == []                                     # panelet viser den ikke laengere
+    assert out["acknowledged"] == [first["assignment_id"]]
+
+
+def test_close_of_a_busy_agent_acknowledges_nothing(sv):
+    """Kun TERMINALE assignments kvitteres. Ellers kunne en lukning skjule et run der korer."""
+    sv.on()
+    first = sv.d()
+    out = sv.svc_.close_agent(owner_user_id=O, origin_session_id=S, agent_id=first["agent_id"])
+    assert out["lifecycle_status"] == "closing"
+    assert out["acknowledged"] == []
+
+
 # --- list / wait ------------------------------------------------------------------------
 
 def test_list_agents_shows_only_the_owners_with_unprocessed_counts(sv):

@@ -1135,3 +1135,55 @@ def test_break_even_reglen_selv_ikke_kun_porten(monkeypatch, tmp_path):
                + [("proceed", "error")] * 3 + [("proceed", "completed")] * 297)
     assert ud["may_block"] is False
     assert ud["lift"] == 0.0
+
+
+def test_break_even_findes_kun_naar_der_er_fejl(monkeypatch, tmp_path):
+    """VERIFIKATIONS-FAELDEN (12/11-2026, Bjørns indvending).
+
+    Da fixet skulle i drift, planlagde jeg at verificere det ved at lede efter
+    `break_even`-feltet i portens svar. Men på et datasæt med NUL fejl returnerer
+    `_caution_har_evidens` tidligt med `ingen-fejl-at-skelne` — og `break_even` findes
+    slet ikke i svaret. Verifikationen ville altså have dømt en helt korrekt genstart
+    som fejlet.
+
+    Det er samme fejlform som resten af aftenen: en test der ikke kan nå den gren den
+    skal bevise. Testen her fastlåser HVILKE nøgler der findes i hver gren, så en
+    fremtidig verifikation kan vælge den rigtige i stedet for at gætte.
+    """
+    import json as _json
+    import sqlite3 as _sq
+
+    _kald = [0]
+
+    def _maal(rows):
+        _kald[0] += 1
+        p = tmp_path / f"n{_kald[0]}.db"
+        conn = _sq.connect(p)
+        conn.execute("CREATE TABLE events (kind TEXT, payload_json TEXT)")
+        for h, a in rows:
+            conn.execute("INSERT INTO events VALUES (?,?)",
+                         ("cognitive_gut.outcome_recorded",
+                          _json.dumps({"hunch": h, "actual": a})))
+        conn.commit()
+        conn.close()
+        import core.runtime.db as dbmod
+        monkeypatch.setattr(dbmod, "connect",
+                            lambda *a, **k: _sq.connect(p), raising=False)
+        monkeypatch.setattr(ge, "_EVIDENS_CACHE", {"at": 0.0, "value": None},
+                            raising=False)
+        return ge._caution_har_evidens()
+
+    # Nul fejl — den gren produktionen faktisk står i.
+    ud = _maal([("caution", "completed")] * 25 + [("proceed", "completed")] * 318)
+    assert ud["reason"] == "ingen-fejl-at-skelne"
+    assert "break_even" not in ud, (
+        "break_even findes IKKE uden fejl — en verifikation der leder efter det "
+        "doemmer en korrekt koersel som fejlet")
+    assert set(ud.keys()) == {"may_block", "reason", "caution_n", "alle_n"}, (
+        "nøglesættet i denne gren skal være fastlåst, så verifikationen kan vælge rigtigt")
+
+    # Med fejl findes break_even — det er den anden gren, og den kræver fejl > 0.
+    ud = _maal([("caution", "error")] + [("caution", "completed")] * 25
+               + [("proceed", "completed")] * 318)
+    assert ud["reason"] == "under-break-even"
+    assert "break_even" in ud

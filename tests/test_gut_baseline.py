@@ -202,3 +202,51 @@ def test_ingen_advarsel_naar_alt_er_verificerbart(monkeypatch):
     s = ge.build_gut_surface()
     assert s["evaluated_unverifiable"] == 0
     assert "foer vinduet" not in s["summary"]
+
+
+def test_historisk_skaevhed_navngives_ikke_kun_alder(monkeypatch):
+    """DEN ANDEN FEJL I DE HISTORISKE TAL (12/11-2026, Bjørns indvending).
+
+    De akkumulerede tællere er ikke bare GAMLE — de er SKÆVE. Før den fælles
+    udfaldsmodel blev `caution → interrupted` talt som en korrekt forudsigelse, fordi
+    alt andet end completed/success var fiasko. Retningen er kendt; størrelsen kan ikke
+    måles, fordi events ryddes efter 14 dage.
+
+    Fladen må ikke kun sige «92% ligger før vinduet» og lade læseren tro at resten er
+    et rent udsnit. Skævheden skal navngives som skævhed.
+    """
+    monkeypatch.setattr(
+        ge, "_observed_baseline",
+        lambda: {"n_observed": 10, "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
+    )
+    monkeypatch.setattr(
+        ge, "get_cognitive_gut_state",
+        lambda: {"total_predictions": 100, "calibrated_hits": 99,
+                 "calibration_score": 0.99, "last_hunch": "proceed → completed (✓)"},
+    )
+    monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
+    s = ge.build_gut_surface()
+    assert s["historical_bias"], "skaevheden skal vaere et felt, ikke kun prosa"
+    assert "caution" in s["historical_bias"]
+    assert "kan ikke" in s["historical_bias"] or "kan ikke maales" in s["historical_bias"]
+    assert "SKAEVE" in s["summary"]
+
+
+def test_ingen_skaevhedsnote_naar_alt_er_verificerbart(monkeypatch):
+    """Er der intet uverificerbart, findes der ingen historisk skævhed at navngive.
+
+    En advarsel der altid vises, læres der at overse — samme regel som alderslinjen.
+    """
+    monkeypatch.setattr(
+        ge, "_observed_baseline",
+        lambda: {"n_observed": 10, "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
+    )
+    monkeypatch.setattr(
+        ge, "get_cognitive_gut_state",
+        lambda: {"total_predictions": 10, "calibrated_hits": 9,
+                 "calibration_score": 0.9, "last_hunch": "proceed → completed (✓)"},
+    )
+    monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
+    s = ge.build_gut_surface()
+    assert s["historical_bias"] is None
+    assert "SKAEVE" not in s["summary"]

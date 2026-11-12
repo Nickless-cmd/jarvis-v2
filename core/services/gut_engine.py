@@ -1138,10 +1138,26 @@ def build_gut_surface() -> dict[str, object]:
     total_evaluated = int(state["total_predictions"])
     verified = int(baseline["n_observed"]) if baseline else 0
     unverifiable = max(0, total_evaluated - verified)
+    # Skævheden er ikke kun ALDER (12/11-2026, Bjørns indvending). Før den fælles
+    # udfaldsmodel blev `caution → interrupted` talt som en KORREKT forudsigelse, fordi
+    # alt andet end completed/success var fiasko. De historiske tællere bærer derfor en
+    # systematisk skævhed i caution-gruppens favør — ikke bare manglende rækker.
+    # RETNINGEN er kendt; STØRRELSEN kan ikke måles, fordi de events der ville vise den
+    # er ryddet. Derfor står den som en navngivet skævhed, ikke som et korrigeret tal:
+    # et tal jeg ikke kan udlede må jeg ikke opfinde.
+    historical_bias = (
+        "historiske neutrale udfald (fx interrupted) blev regnet som korrekte for "
+        "caution og som fejl for proceed; retningen er kendt, stoerrelsen kan ikke "
+        "maales — de events der ville vise den er ryddet efter 14 dage"
+    ) if unverifiable > 0 else None
     evidence_summary = (
         f" | {verified} af {total_evaluated} kan efterproeves (events ryddes efter "
         f"14 dage); {unverifiable} ligger foer vinduet"
     ) if unverifiable > 0 else ""
+    if historical_bias:
+        evidence_summary += (
+            " | de historiske tal er SKAEVE i caution-gruppens favoer, ikke kun gamle"
+        )
 
     return {
         "active": True,
@@ -1149,6 +1165,7 @@ def build_gut_surface() -> dict[str, object]:
         "evaluated": total_evaluated,
         "evaluated_verified": verified,
         "evaluated_unverifiable": unverifiable,
+        "historical_bias": historical_bias,
         "withheld": withheld,
         "backstop_overkoersler": overkoersler,
         "baseline": baseline,

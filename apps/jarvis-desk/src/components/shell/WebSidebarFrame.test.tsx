@@ -74,7 +74,7 @@ describe('WebSidebarFrame', () => {
     expect(screen.queryByText('Mine samtaler')).not.toBeInTheDocument()
   })
 
-  it('lukker panelet når man trykker udenfor det i pwa', () => {
+  it('lukker panelet når man trykker udenfor det i pwa — på en telefon', () => {
     saetSkærm(true)
     tegn()
 
@@ -85,7 +85,11 @@ describe('WebSidebarFrame', () => {
     expect(screen.queryByText('Mine samtaler')).not.toBeInTheDocument()
   })
 
-  it('lukker også når man trykker udenfor på en bred flade', () => {
+  // 12/11-2026 (Bjørn): «i web buildt skal venstre panel ikk forsvinde naar man
+  // trykker uden for som det goer i pwa mobil view». Over 600px staar panelet
+  // som kolonne ved siden af samtalen — et klik i chatten er saa et klik i
+  // chatten, ikke en anmodning om at lukke panelet.
+  it('beholder panelet naar man trykker udenfor paa en bred flade', () => {
     saetSkærm(false)
     tegn()
 
@@ -93,7 +97,7 @@ describe('WebSidebarFrame', () => {
     expect(screen.getByText('Mine samtaler')).toBeInTheDocument()
 
     fireEvent.pointerDown(screen.getByText('Samtale'))
-    expect(screen.queryByText('Mine samtaler')).not.toBeInTheDocument()
+    expect(screen.getByText('Mine samtaler')).toBeInTheDocument()
   })
 
   it('keeps the desktop sidebar visible without a web toggle', () => {

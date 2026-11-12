@@ -31,9 +31,19 @@ export function WebSidebarFrame({
   // lukke i pwa»). Under 600px ligger det oven på indholdet; over det står det
   // som kolonne. Lukke-adfærden er den samme, for det er brugerens tryk der
   // skal lukke det, ikke et layout-tilfælde.
+  //
+  // 12/11-2026 (Bjørn): «i web buildt skal venstre panel ikk forsvinde naar man
+  // trykker uden for som det goer i pwa mobil view». Derfor er det nu
+  // SKAERMBREDDEN der afgoer, ikke bare `web`: under 600px ligger panelet oven
+  // paa indholdet (CSS-media-queryen), saa et tryk udenfor ER et tryk paa
+  // samtalen og skal lukke. Over 600px staar det som kolonne ved siden af —
+  // der er et tryk i chatten ikke en anmodning om at lukke panelet.
   useEffect(() => {
     if (!web || !open) return
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mobil = window.matchMedia('(max-width: 600px)')
     const udenfor = (event: PointerEvent) => {
+      if (!mobil.matches) return
       const slot = slotRef.current
       if (!slot || slot.contains(event.target as Node)) return
       setOpen(false)

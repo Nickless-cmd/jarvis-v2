@@ -613,7 +613,18 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
     if (serverIds.has(lm.id)) continue
     if (lm.clientStatus === 'optimistic_user') {
       if (serverCaughtUp) continue // svaret er persisteret → bruger-beskeden er det også
-      if (serverUserTexts.has(userText(lm))) continue // serveren har allerede samme tekst
+      // Serveren har samme tekst — men ved GENSSEND har den ALLEREDE den gamle
+      // kopi, så et rent sæt-match dropper den NYE optimistiske for tidligt
+      // (Bjørn 12/11-2026: «to ens beskeder»). Tæl i stedet: først når serveren
+      // har FLERE kopier af teksten end vi allerede har bekræftet, er den nye
+      // kommet med — ellers er den optimistiske stadig en bro der skal vises.
+      const tekst = userText(lm)
+      if (tekst && serverUserTexts.has(tekst)) {
+        const bekraeftet = local.filter((x) => x.clientStatus === 'server_confirmed'
+          && x.role === 'user' && userText(x) === tekst).length
+        const paaServer = server.filter((x) => x.role === 'user' && userText(x) === tekst).length
+        if (paaServer > bekraeftet) continue
+      }
       result.push(lm) // bruger-besked serveren endnu ikke har → behold som bro
     } else if (lm.clientStatus === 'server_missing_keep_stream') {
       // Drop broen hvis serveren har persisteret SAMME run (præcist), eller

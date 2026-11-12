@@ -8,6 +8,12 @@
 .transcript {
   overflow-y: auto;
   overflow-x: hidden;
+  /* Uden `contain` kæder et hjultrin ved transcriptets top videre til <body>,
+     og browseren ruller SIDEN i stedet. Målt 12/11-2026 i PWA'ens web-build:
+     de første trin flyttede intet i transcriptet, og et "spring" opad blev
+     kastet tilbage. Desk (Electron) skjulte fejlen fordi hele vinduet er
+     scroll-låst. `contain` holder rullen i den container den startede i. */
+  overscroll-behavior: contain;
   padding: 12px 24px 4px;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 16px,
                                       #000 calc(100% - 44px), transparent 100%);

@@ -35,7 +35,13 @@ _BASE_HEADERS = {
     "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
     "Referrer-Policy": "no-referrer",
     "X-Permitted-Cross-Domain-Policies": "none",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    # `microphone` og `geolocation` skal være `(self)`, ikke `()`: PWA'en
+    # serveres af dette API paa samme origin (ui_static), og en tom allow-list
+    # slaar dem fra i browseren UANSET at brugeren giver samtykke. Maalt
+    # 12/11-2026: diktering og lokation virkede i Desk (Electron, ingen
+    # header) men fejlede tavst i PWA'en — NotAllowedError uden prompt.
+    # `camera` forbliver lukket: intet i fladen bruger kameraet.
+    "Permissions-Policy": "camera=(), microphone=(self), geolocation=(self)",
 }
 # CSP kun hvis eksplicit slået til (kan brække serveret HTML).
 _CSP = "default-src 'none'; frame-ancestors 'none'"

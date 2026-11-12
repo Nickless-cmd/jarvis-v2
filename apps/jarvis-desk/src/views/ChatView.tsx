@@ -48,7 +48,7 @@ import { useRaekkeFn, useSenesteFn } from '../lib/stabileHandlinger'
 import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { useVisning, VisningContext } from '../lib/visning'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
-import { getContextInfo, getContextUsage, getActiveRunSessions, followRun, compactNow, warmSession, steerRun, type CompactionStats } from '../lib/api'
+import { getContextInfo, getContextUsage, getActiveRunSessions, followRun, compactNow, warmSession, steerRun, cancelRun, type CompactionStats } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
@@ -76,6 +76,7 @@ import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { useChatFlow } from '../hooks/useChatFlow'
 import { deriveChatFlow } from '../lib/chatFlowModel'
 import { udenAktivRun, normaliseretTekst } from '../lib/transcriptFilter'
+import { udenErstattede } from '../lib/gensendDublet'
 import { svarPacingGate } from '../lib/svarPacing'
 import { ChatFlowOnboarding } from '../components/rich/ChatFlowOnboarding'
 import { ChatFlowSuggestion } from '../components/rich/ChatFlowSuggestion'
@@ -630,9 +631,13 @@ export function ChatView({
 // skrevet bliver staaende — den skal kunne besvares NU.
   // Samme grund som `visibleMessages`: begge koerte paa hele listen ved hver render.
   const flettede = useMemo(() => fletGodkendelser(sessions.messages), [sessions.messages])
+  // Bobler der er ERSTATTET af et gensend. Den gamle kopi bliver liggende i
+  // `sessions.messages` (historikken må ikke ændres), men skjules i visningen —
+  // ellers stod to ens bobler (Bjørn 12/11-2026).
+  const [erstattede, setErstattede] = useState<ReadonlySet<string>>(() => new Set())
   const transcriptMessages = useMemo(
-    () => flettede.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker' || m.role === 'approval_request'),
-    [flettede],
+    () => udenErstattede(flettede, erstattede).filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker' || m.role === 'approval_request'),
+    [flettede, erstattede],
   )
   // Mens den levende sluttekst ruller færdig, findes samme svar allerede som
   // lokal bro eller persisteret serverbesked. Skjul KUN samme run indtil den
@@ -801,6 +806,17 @@ export function ChatView({
   }, [resendStabil])
   const pinFor = useRaekkeFn((id) => fastgjorte.skift(id))
   const rewindFor = useRaekkeFn((id) => void tilbage.spol(id))
+  // Gensend fra en boble: den nye besked erstatter den gamle i VISNINGEN, ellers
+  // står der to ens bobler (lib/gensendDublet). Historikken røres ikke.
+  const gensendFor = useRaekkeFn((id) => {
+    const orig = sessions.messages.find((x) => x.id === id)
+    const tekst = Array.isArray(orig?.content)
+      ? orig!.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
+      : ''
+    if (!tekst.trim()) return
+    setErstattede((s) => new Set(s).add(id))
+    resendStabil(tekst)
+  })
   const raekkeConfig = useMemo(
     () => (settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined),
     [settings?.apiBaseUrl, settings?.authToken], // eslint-disable-line react-hooks/exhaustive-deps
@@ -809,11 +825,26 @@ export function ChatView({
   const composer = (
     <>
       <Composer
-        streaming={streaming}
+        /* `streaming` er kun MIT EGET svar. Et væknings-/baggrunds-run kører ad
+           `followState`/`bgActive` og satte derfor aldrig stop-knappen — Bjørn
+           12/11-2026: «jeg har aldrig mulighed for at afbryde en wakeup stream».
+           Stop skal vises for ALT arbejde i samtalen, ikke kun det jeg selv
+           startede her. */
+        streaming={streaming || bgActive || followState.status === 'working'}
         onSend={handleSend}
         onVoice={voice.enter}
         voiceSupported={voice.supported}
-        onStop={() => void stream.abort()}
+        onStop={() => {
+          // Et follow-run har ingen lokal SSE at abortere — det kører på
+          // serveren. Derfor rammes det med `cancelRun(runId)`; kun mit eget
+          // svar har en lokal stream der kan afbrydes.
+          const runId = followState.activeRunId ?? bgRunId
+          if (!streaming && runId && apiConfig) {
+            void cancelRun(apiConfig, runId)
+            return
+          }
+          void stream.abort()
+        }}
         model="deepseek-flash"
         config={apiConfig}
         getSessionId={ensureSessionId}
@@ -1181,7 +1212,7 @@ export function ChatView({
             beskedId={m.id}
             sessionId={sessionId}
             canUndo={auth?.role === 'owner'}
-            onResend={m.role === 'user' ? resendStabil : undefined}
+            onResend={m.role === 'user' ? gensendFor(m.id) : undefined}
             config={raekkeConfig}
             pinned={fastgjorte.pins.includes(m.id)}
             onTogglePin={sessionId ? pinFor(m.id) : undefined}

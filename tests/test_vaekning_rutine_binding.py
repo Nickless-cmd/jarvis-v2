@@ -70,3 +70,52 @@ def test_bindingen_faar_postens_opgave_id_ogsa_nar_det_er_tomt(monkeypatch):
     assert bundet == [{
         "run_id": "", "visible_run_id": "vis-9", "session_id": "chat-1",
     }], bundet
+
+
+def test_vaekningen_binder_POSTEN_til_runnet(monkeypatch):
+    """Posten skal bære run-id'et — det er den eneste kobling udgiften kan måles over.
+
+    `costs` har `run_id` men ingen session, og et tidsvindue rammer også runs
+    posten ikke startede. Uden denne binding kan kroneloftet i `self_wakeup`
+    ikke se hvad en vækning kostede (målt 12/11-2026: 0 af 1.102 poster bandt).
+    """
+    from core.services import inbox_idle_waker as w
+
+    bundet: list[dict] = []
+
+    def _noter(**kw):
+        bundet.append(kw)
+        return {"status": "ok"}
+
+    monkeypatch.setattr("core.runtime.db_inbox.noter_leveret_til_run", _noter)
+    _fang_binding(monkeypatch)
+    _fake_starter(monkeypatch)
+
+    assert w._start_run(
+        "gør noget", session_id="chat-1", user_id="42",
+        kilde_id="wake-abc", kildetype="wakeup",
+    ) is True
+
+    assert bundet == [{
+        "bruger_id": "42",
+        "kilde_id": "wake-abc",
+        "run_id": "vis-9",
+        "session_id": "chat-1",
+    }], bundet
+
+
+def test_en_post_uden_adresse_binder_intet(monkeypatch):
+    """Et run uden en post må ikke kunne knytte sig til en tilfældig række."""
+    from core.services import inbox_idle_waker as w
+
+    bundet: list[dict] = []
+    monkeypatch.setattr(
+        "core.runtime.db_inbox.noter_leveret_til_run",
+        lambda **kw: bundet.append(kw) or {"status": "ok"},
+    )
+    _fang_binding(monkeypatch)
+    _fake_starter(monkeypatch)
+
+    w._start_run("gør noget", session_id="chat-1", user_id="42")
+
+    assert bundet == [], bundet

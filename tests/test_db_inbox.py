@@ -799,3 +799,58 @@ def test_en_UKENDT_post_giver_ukendt_og_ikke_succes(db):
     r = db_inbox.opdater_beskrivelse(
         bruger_id=BRUGER, kilde_id="findes-ikke", beskrivelse="x")
     assert r["status"] == "ukendt", r
+
+
+# ── KOBLINGEN POST → RUN (12/11-2026) ────────────────────────────────────────
+# `leveret_til_run_id` blev kun skrevet af `claim_high_for_run`, så feltet var
+# tomt i alle 1.102 poster. Uden det kan udgiften til en vækning ikke findes.
+
+
+def test_noter_leveret_til_run_binder_posten(db):
+    db_inbox.opret_eller_hent(
+        bruger_id=BRUGER, kildetype="wakeup", kilde_id="wake-bind1",
+        session_id="chat-1",
+    )
+
+    r = db_inbox.noter_leveret_til_run(
+        bruger_id=BRUGER, kilde_id="wake-bind1", run_id="visible-abc",
+    )
+
+    assert r["status"] == "ok", r
+    post = db_inbox.hent(bruger_id=BRUGER, kilde_id="wake-bind1")
+    assert post["leveret_til_run_id"] == "visible-abc"
+    assert post["leveret_at"], "tidsstemplet skal sættes sammen med bindingen"
+    assert post["session_id"] == "chat-1", \
+        "postens egen samtale må ikke flyttes af et run der startede senere"
+
+
+def test_noter_leveret_til_run_skriver_samtalen_kun_naar_den_mangler(db):
+    db_inbox.opret_eller_hent(
+        bruger_id=BRUGER, kildetype="wakeup", kilde_id="wake-bind2",
+    )
+
+    db_inbox.noter_leveret_til_run(
+        bruger_id=BRUGER, kilde_id="wake-bind2", run_id="visible-def",
+        session_id="chat-2",
+    )
+
+    post = db_inbox.hent(bruger_id=BRUGER, kilde_id="wake-bind2")
+    assert post["session_id"] == "chat-2"
+    assert post["status"] == db_inbox.STATUS_AABEN, \
+        "en binding er et spor, ikke en afgørelse"
+
+
+def test_noter_leveret_til_run_uden_post_svarer_ukendt(db):
+    r = db_inbox.noter_leveret_til_run(
+        bruger_id=BRUGER, kilde_id="findes-ikke", run_id="visible-xyz",
+    )
+    assert r["status"] == "ukendt", r
+
+
+def test_forbrug_uden_costs_tabel_er_IKKE_kendt(db):
+    """En læsefejl må ikke se ud som nul forbrug — så er loftet blindt."""
+    r = db_inbox.vaeknings_forbrug_siden(
+        bruger_id=BRUGER, siden_iso="2020-01-01T00:00:00+00:00",
+    )
+    assert r["usd_kendt"] is False, r
+    assert r["usd"] == 0.0

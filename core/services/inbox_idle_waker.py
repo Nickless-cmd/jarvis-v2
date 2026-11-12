@@ -382,14 +382,36 @@ def _start_run(
                     "inbox_idle_waker: kunne ikke binde arbejdsrum for %s: %s",
                     str(user_id)[:28], exc,
                 )
-        def _bind_rutine_run(
+        def _bind_start(
             *, visible_run_id: str, session_id: str = "", **_: Any,
         ) -> None:
-            """Skriv bindingen paa rutine-raekken, hvis posten ER et rutine-run.
+            """Skriv bindingen paa posten og paa rutine-raekken, hvis der er en.
 
             `bind_visible_run` er en no-op naar `task_id` ikke matcher et
             koerende rutine-run, saa den kaldes uden at spoerge foerst.
+
+            POSTEN BINDES OGSAA (12/11-2026). Uden det kan man ikke svare paa
+            hvad en vaekning kostede: `costs` baerer `run_id`, men posten bar
+            intet run-id, og et tidsvindue paa 120 s rammer ogsaa runs posten
+            ikke startede. Bindingen er det eneste sted koblingen findes.
             """
+            if str(kilde_id or "").strip():
+                try:
+                    from core.runtime import db_inbox
+
+                    db_inbox.noter_leveret_til_run(
+                        bruger_id=str(user_id or ""),
+                        kilde_id=str(kilde_id),
+                        run_id=str(visible_run_id or ""),
+                        session_id=str(session_id or ""),
+                    )
+                except Exception as exc:  # noqa: BLE001 — binding maa aldrig vaelte en vaekning
+                    # Ikke tavst: et tabt spor goer kroneloftet blindt, og det
+                    # skal kunne maales i loggen i stedet for at vaere usynligt.
+                    logger.warning(
+                        "inbox_idle_waker: kunne ikke binde posten %s til run: %s",
+                        kilde_id, exc,
+                    )
             try:
                 from core.runtime import db_routines
 
@@ -453,7 +475,7 @@ def _start_run(
                 # stedet for at vaere en closure der ikke kan krydse en
                 # procesgraense — og uden den requeuede reconcileren et claim
                 # hvis run maaske netop lykkedes, saa rutinen koerte IGEN.
-                started_callback=_bind_rutine_run,
+                started_callback=_bind_start,
                 # AFREGNINGEN (12/11-2026): posten kvitteres når runnet er
                 # terminalt — færdig, fejlet eller pauset. Se `_afregn_post`.
                 completion_callback=_afregn_post,

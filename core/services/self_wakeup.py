@@ -98,6 +98,45 @@ _MAX_PENDING = 20
 #: indholdet hvis det kommer igen; et antals-loft kan ikke skelne de to.
 _MAX_PR_SAMTALE_PR_DOEGN = 30
 
+#: Krone-loft pr. samtale pr. døgn (12/11-2026).
+#:
+#: `_MAX_PR_SAMTALE_PR_DOEGN` tæller BOOKINGER, ikke kroner. Siden `4ee97b863`
+#: bruger en vækning i en samtale samtalens model — altså DeepSeek-priser — og
+#: et run kan gå op til 45 runder. 30 bookinger er derfor ikke længere et loft
+#: over udgiften: den samme kvote koster alt fra $0,15 til $2,89.
+#:
+#: MÅLT (30 dage, costs.id <= 1170933, n=184 væknings-initierede runs):
+#:   pr. run:  avg $0,0247 · p95 $0,0624 · max $0,0962
+#:   pr. døgn: avg $0,149 · p90 $0,333 · max $0,520 (31 døgn-samples)
+#:
+#: Advarsel ved $0,75 = 1,4x det højeste målte døgn. Blok ved $1,75 = 3,4x.
+#: Blokken SKAL være nåelig inden for de 30 bookinger (30 x $0,058 rammer den),
+#: ellers fyrer den aldrig — og et loft der ligger over den strukturelle grænse
+#: beviser intet, uanset hvor fornuftigt tallet ser ud.
+_VARSEL_USD_PR_DOEGN = 0.75
+_BLOK_USD_PR_DOEGN = 1.75
+
+
+def _vaeknings_forbrug_sidste_doegn(user_id: str) -> dict[str, Any]:
+    """Kroner brugt på vækninger i denne samtale det sidste døgn.
+
+    FAIL-OPEN: kan `costs` ikke læses, svarer vi `usd_kendt=False` og bookingen
+    går igennem. En vækning må ikke forsvinde på en læsefejl — samme princip som
+    `8758cd4b1`, hvor en kvittering der fejlede ikke måtte koste posten.
+    """
+    bruger = str(user_id or "").strip()
+    if not bruger:
+        return {"usd": 0.0, "runs": 0, "usd_kendt": False}
+    siden = (datetime.now(UTC) - timedelta(hours=24)).isoformat()
+    try:
+        from core.runtime import db_inbox
+
+        return db_inbox.vaeknings_forbrug_siden(bruger_id=bruger, siden_iso=siden)
+    except Exception as exc:  # noqa: BLE001 — se fail-open i docstringen
+        logger.warning("self_wakeup: kunne ikke maale vaeknings-forbrug: %s", exc)
+        return {"usd": 0.0, "runs": 0, "usd_kendt": False, "error": str(exc)}
+
+
 
 def _load() -> list[dict[str, Any]]:
     """Laes lageret. Dette er den ENESTE laese-søm — ogsaa for skrive-stierne.
@@ -147,6 +186,9 @@ def schedule_self_wakeup(
     # slippe to bookinger igennem det samme led.
     sid = (session_id or "").strip()
     i_doegnet = 0
+    # Måles UDEN for lager-laasen: en DB-læsning må ikke holde laasen på
+    # state-filen mens den venter på disk. Værdien bruges først længere nede.
+    forbrug = _vaeknings_forbrug_sidste_doegn(str(user_id or ""))
 
     fire_at = datetime.now(UTC) + timedelta(seconds=delay)
     wakeup_id = f"wake-{uuid4().hex[:10]}"
@@ -223,6 +265,33 @@ def schedule_self_wakeup(
                     ),
                     "bookinger_seneste_doegn": i_doegnet,
                 }
+
+            # ── 2b. KRONE-LOFTET (12/11-2026) ─────────────────────────────
+            # Bookinger er ikke kroner. Loftet her er målt (se
+            # `_VARSEL_USD_PR_DOEGN`), og det er det ENESTE sted udgiften til
+            # en vækning bliver set: `paid_lane_guard` frikender alt med et
+            # `visible-`-run-id som «Bjørns egen tur», og vækningens run har
+            # netop det præfiks.
+            brugt = float(forbrug.get("usd") or 0.0)
+            if forbrug.get("usd_kendt") and brugt >= _BLOK_USD_PR_DOEGN:
+                return {
+                    "status": "error",
+                    "error": (
+                        f"wakeups from this conversation have cost ${brugt:.2f} "
+                        f"in the last 24h (limit ${_BLOK_USD_PR_DOEGN:.2f} over "
+                        f"{forbrug.get('runs', 0)} runs). Booking refused: a "
+                        "wakeup chain on the conversation's own model is the "
+                        "most expensive shape we have. Ask Bjoern whether the "
+                        "watch is still wanted instead of re-booking."
+                    ),
+                    "vaeknings_forbrug_usd": round(brugt, 4),
+                }
+            if forbrug.get("usd_kendt") and brugt >= _VARSEL_USD_PR_DOEGN:
+                logger.warning(
+                    "self_wakeup: vækninger i samtalen har kostet $%.2f det "
+                    "sidste døgn (varsel $%.2f, loft $%.2f)",
+                    brugt, _VARSEL_USD_PR_DOEGN, _BLOK_USD_PR_DOEGN,
+                )
 
             # ── 3. LOFTET (8/11-2026) ──────────────────────────────────────
             # Bjørn: «max 20 men rullende inden for de 20, sådan den kører i

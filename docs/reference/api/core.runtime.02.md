@@ -323,11 +323,13 @@ _Lageret bag indbakken: `inbox_items`._
 | function | `kraev_laesning` | `(*, bruger_id, kilde_id, importance=…)` | Gør en ÅBEN post gatende: «den skal LÆSES, ikke bare ligge». | [src](../../../core/runtime/db_inbox.py#L923) |
 | function | `fej_udloebne` | `(*, maks=…)` | Skriv den terminale tilstand for åbne poster hvis frist er passeret. | [src](../../../core/runtime/db_inbox.py#L971) |
 | function | `marker_vist` | `(poster, *, bruger_id=…)` | Stempl «denne post er nu vist til Jarvis». Idempotent. | [src](../../../core/runtime/db_inbox.py#L1057) |
-| function | `claim_high_for_run` | `(*, bruger_id, session_id, run_id, maks=…)` | Atomically claim unseen high/critical items for one visible run. | [src](../../../core/runtime/db_inbox.py#L1091) |
-| function | `brugere_med_vaekkespor` | `()` | Brugere der har mindst én åben post med et vækkespor. | [src](../../../core/runtime/db_inbox.py#L1132) |
-| function | `luk_forældede_informerende` | `(*, timer=…, dage=…, maks=…)` | Udsæt informerende poster der har været VIST og er blevet forældede. | [src](../../../core/runtime/db_inbox.py#L1152) |
-| function | `meld_kilde_faerdig` | `(*, bruger_id, kilde_id, exit_kode)` | Kilden melder sig færdig. Nedgradér posten — hvis den gik GODT. | [src](../../../core/runtime/db_inbox.py#L1208) |
-| function | `liste_aktiv` | `(*, bruger_id, maks=…)` | Den AKTIVE visning: åbne poster plus nyligt lukkede. | [src](../../../core/runtime/db_inbox.py#L1269) |
+| function | `noter_leveret_til_run` | `(*, bruger_id, kilde_id, run_id, session_id=…)` | Bind posten til det run den startede — varigt, ikke kun i hukommelsen. | [src](../../../core/runtime/db_inbox.py#L1091) |
+| function | `vaeknings_forbrug_siden` | `(*, bruger_id, siden_iso)` | Hvad vækningerne har kostet siden et tidspunkt — målt, ikke gættet. | [src](../../../core/runtime/db_inbox.py#L1129) |
+| function | `claim_high_for_run` | `(*, bruger_id, session_id, run_id, maks=…)` | Atomically claim unseen high/critical items for one visible run. | [src](../../../core/runtime/db_inbox.py#L1166) |
+| function | `brugere_med_vaekkespor` | `()` | Brugere der har mindst én åben post med et vækkespor. | [src](../../../core/runtime/db_inbox.py#L1207) |
+| function | `luk_forældede_informerende` | `(*, timer=…, dage=…, maks=…)` | Udsæt informerende poster der har været VIST og er blevet forældede. | [src](../../../core/runtime/db_inbox.py#L1227) |
+| function | `meld_kilde_faerdig` | `(*, bruger_id, kilde_id, exit_kode)` | Kilden melder sig færdig. Nedgradér posten — hvis den gik GODT. | [src](../../../core/runtime/db_inbox.py#L1283) |
+| function | `liste_aktiv` | `(*, bruger_id, maks=…)` | Den AKTIVE visning: åbne poster plus nyligt lukkede. | [src](../../../core/runtime/db_inbox.py#L1344) |
 
 ## `core/runtime/db_instrument.py`
 _Persistens for central_instrument — selv-instrumenterings-motorens fund + scan-cache._

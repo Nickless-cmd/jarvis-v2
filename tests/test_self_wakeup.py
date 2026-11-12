@@ -748,3 +748,65 @@ def test_er_ulaesbar_skelner_manglende_fra_korrupt(monkeypatch, tmp_path):
     assert ss.er_ulaesbar("self_wakeups") is False          # tom, men gyldig
     (tmp_path / "self_wakeups.json").write_text("{", encoding="utf-8")
     assert ss.er_ulaesbar("self_wakeups") is True           # korrupt
+
+
+# ── KRONE-LOFTET (12/11-2026) ────────────────────────────────────────────────
+# `_MAX_PR_SAMTALE_PR_DOEGN` tæller bookinger. Efter `4ee97b863` kører en
+# vækning på samtalens model, så kvoten er ikke et loft over udgiften.
+
+
+def test_booking_afvises_over_krone_loftet(monkeypatch):
+    state: list = []
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+    monkeypatch.setattr(
+        sw, "_vaeknings_forbrug_sidste_doegn",
+        lambda uid: {"usd": 2.10, "runs": 24, "usd_kendt": True},
+    )
+
+    svar = sw.schedule_self_wakeup(
+        delay_seconds=120, prompt="x", session_id="chat-1", user_id="bjorn",
+    )
+
+    assert svar["status"] == "error", svar
+    assert svar["vaeknings_forbrug_usd"] == 2.1
+    assert state == [], "en afvist booking maa ikke ligge i lageret"
+
+
+def test_booking_over_varsel_gaar_igennem_men_logges(monkeypatch, caplog):
+    import logging
+
+    state: list = []
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+    monkeypatch.setattr(
+        sw, "_vaeknings_forbrug_sidste_doegn",
+        lambda uid: {"usd": 1.00, "runs": 12, "usd_kendt": True},
+    )
+
+    with caplog.at_level(logging.WARNING, logger=sw.logger.name):
+        svar = sw.schedule_self_wakeup(
+            delay_seconds=120, prompt="x", session_id="chat-1", user_id="bjorn",
+        )
+
+    assert svar["status"] == "ok", svar
+    assert any("varsel" in r.getMessage() for r in caplog.records), caplog.text
+
+
+def test_laasefejl_paa_costs_afviser_IKKE_bookingen(monkeypatch):
+    """Fail-open, målt gennem den RIGTIGE helper — ikke gennem en stub.
+
+    Kan `costs` ikke læses, må en vækning ikke forsvinde: `usd_kendt=False` er
+    «intet målt», ikke «nul forbrug». Samme princip som `8758cd4b1`.
+    """
+    from core.runtime import db_inbox
+
+    def _braender(**kw):
+        raise RuntimeError("db nede")
+
+    monkeypatch.setattr(db_inbox, "vaeknings_forbrug_siden", _braender)
+
+    r = sw._vaeknings_forbrug_sidste_doegn("bjorn")
+
+    assert r["usd_kendt"] is False, r
+    assert r["usd"] == 0.0

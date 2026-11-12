@@ -1088,6 +1088,81 @@ def marker_vist(poster: list[str], *, bruger_id: str = "") -> int:
     return n
 
 
+def noter_leveret_til_run(
+    *, bruger_id: str, kilde_id: str, run_id: str, session_id: str = "",
+) -> dict[str, Any]:
+    """Bind posten til det run den startede — varigt, ikke kun i hukommelsen.
+
+    `leveret_til_run_id` blev indtil 12/11-2026 KUN skrevet af
+    `claim_high_for_run`, altså for poster der VISES til et run der allerede
+    kører. For en vækning er posten selve årsagen til at runnet findes, og
+    feltet var derfor tomt i alle 1.102 poster (målt 12/11-2026). Uden
+    bindingen kan hverken udgiften (`costs.run_id`) eller samtalen findes
+    tilbage fra posten — kun gættes ud fra tidsstempler, og et tidsvindue på
+    120 s rammer også runs posten ikke startede.
+
+    `session_id` skrives KUN når posten ikke har et. En vækning booket i en
+    samtale bærer den allerede, og et run der blev startet senere må ikke
+    flytte posten til en anden samtale.
+
+    Skriver aldrig `status`: en binding er et spor, ikke en afgørelse.
+    """
+    bruger_id = str(bruger_id or "").strip()
+    kilde_id = str(kilde_id or "").strip()
+    run_id = str(run_id or "").strip()
+    session_id = str(session_id or "").strip()
+    if not bruger_id or not kilde_id or not run_id:
+        return {"status": "fejl", "error": "bruger_id, kilde_id og run_id kraeves"}
+    with connect() as conn:
+        _ensure_skema(conn)
+        cur = conn.execute(
+            "UPDATE inbox_items SET leveret_til_run_id = ?, leveret_at = ?, "
+            "session_id = CASE WHEN session_id = '' THEN ? ELSE session_id END "
+            "WHERE bruger_id = ? AND kilde_id = ?",
+            (run_id, _nu(), session_id, bruger_id, kilde_id),
+        )
+        if cur.rowcount == 0:
+            return {"status": "ukendt", "id": kilde_id}
+    return {"status": "ok", "id": kilde_id, "run_id": run_id}
+
+
+def vaeknings_forbrug_siden(*, bruger_id: str, siden_iso: str) -> dict[str, Any]:
+    """Hvad vækningerne har kostet siden et tidspunkt — målt, ikke gættet.
+
+    Summerer `costs.cost_usd` for de runs der blev startet AF en post, via
+    `inbox_items.leveret_til_run_id`. Det er den eneste kobling der findes:
+    `costs` har ingen session, og postens `created_at` er booking-tid, ikke
+    kørselstid — derfor `leveret_at` når den findes.
+
+    `usd_kendt=False` betyder at lageret ikke kunne læses. Kalderen skal
+    behandle det som «intet målt», ALDRIG som «nul forbrug».
+    """
+    bruger_id = str(bruger_id or "").strip()
+    siden = str(siden_iso or "").strip()
+    if not bruger_id or not siden:
+        return {"usd": 0.0, "runs": 0, "usd_kendt": False}
+    try:
+        with connect() as conn:
+            _ensure_skema(conn)
+            row = conn.execute(
+                "SELECT COALESCE(SUM(c.cost_usd), 0.0) AS usd, "
+                "       COUNT(DISTINCT c.run_id) AS runs "
+                "FROM inbox_items i JOIN costs c "
+                "  ON c.run_id = i.leveret_til_run_id "
+                "WHERE i.bruger_id = ? AND i.leveret_til_run_id != '' "
+                "  AND COALESCE(NULLIF(i.leveret_at, ''), i.created_at) >= ?",
+                (bruger_id, siden),
+            ).fetchone()
+    except Exception as exc:  # noqa: BLE001 — se `usd_kendt` i docstringen
+        logger.warning("db_inbox: kunne ikke laese vaeknings-forbrug: %s", exc)
+        return {"usd": 0.0, "runs": 0, "usd_kendt": False, "error": str(exc)}
+    return {
+        "usd": float(row["usd"] or 0.0) if row is not None else 0.0,
+        "runs": int(row["runs"] or 0) if row is not None else 0,
+        "usd_kendt": True,
+    }
+
+
 def claim_high_for_run(
     *, bruger_id: str, session_id: str, run_id: str, maks: int = 8,
 ) -> list[dict[str, Any]]:

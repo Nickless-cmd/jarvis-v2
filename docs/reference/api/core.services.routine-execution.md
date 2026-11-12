@@ -53,7 +53,7 @@ _Crash reconciliation and retention sweeps for Routine work._
 | class | `RoutineReconciler` | `` | — | [src](../../../core/services/routine_reconciler.py#L10) |
 | method | `RoutineReconciler.__init__` | `(self, *, repository=…)` | — | [src](../../../core/services/routine_reconciler.py#L11) |
 | method | `RoutineReconciler.reconcile_once` | `(self, now=…)` | — | [src](../../../core/services/routine_reconciler.py#L18) |
-| method | `RoutineReconciler.sweep_retention` | `(self, now=…)` | — | [src](../../../core/services/routine_reconciler.py#L44) |
+| method | `RoutineReconciler.sweep_retention` | `(self, now=…)` | — | [src](../../../core/services/routine_reconciler.py#L54) |
 
 ## `core/services/routine_runner.py`
 _Fenced, session-neutral execution of one Routine run._
@@ -120,7 +120,7 @@ _Fenced, session-neutral execution of one Routine run._
 | method | `RoutineRunner._check_ollama_while_waiting` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L750) |
 | method | `RoutineRunner.cancel` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L776) |
 | method | `RoutineRunner.record_execution_success` | `(self, routine_id)` | — | [src](../../../core/services/routine_runner.py#L779) |
-| method | `RoutineRunner.record_execution_failure` | `(self, routine_id, *, run_id)` | — | [src](../../../core/services/routine_runner.py#L782) |
+| method | `RoutineRunner.record_execution_failure` | `(self, routine_id, *, run_id, terminal_diagnostic_code=…)` | — | [src](../../../core/services/routine_runner.py#L782) |
 
 ## `core/services/routine_runtime.py`
 _Bounded worker and reconciler threads for Routines._

@@ -1824,7 +1824,7 @@ Generated from source. 10029/18520 functions/methods documented (54%). The list 
 - `core/services/routine_migration.py` :: `MigrationReport.quarantine_count` (L61)
 - `core/services/routine_migration.py` :: `report_path` (L148)
 - `core/services/routine_reconciler.py` :: `RoutineReconciler.reconcile_once` (L18)
-- `core/services/routine_reconciler.py` :: `RoutineReconciler.sweep_retention` (L44)
+- `core/services/routine_reconciler.py` :: `RoutineReconciler.sweep_retention` (L54)
 - `core/services/routine_run_recorder.py` :: `RoutineRunRecorder.append` (L10)
 - `core/services/routine_run_recorder.py` :: `RoutineRunRecorder.list` (L24)
 - `core/services/routine_runner.py` :: `RoutineRunRepository.assert_current` (L363)

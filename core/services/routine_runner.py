@@ -779,7 +779,9 @@ class RoutineRunner:
     def record_execution_success(self, routine_id: str) -> None:
         db_routines.update_execution_failure_count(routine_id, success=True)
 
-    def record_execution_failure(self, routine_id: str, *, run_id: str) -> int:
+    def record_execution_failure(
+        self, routine_id: str, *, run_id: str, terminal_diagnostic_code: str = "",
+    ) -> int:
         count = db_routines.update_execution_failure_count(routine_id, success=False)
         routine = db_routines.get_routine(routine_id)
         if routine is None:
@@ -790,7 +792,13 @@ class RoutineRunner:
         threshold = int(dict(private.get("failure_policy") or {}).get(
             "consecutive_failures", 3,
         ))
-        if count >= max(1, threshold) and routine["status"] == "active":
+        threshold_reached = count >= max(1, threshold)
+        if threshold_reached and terminal_diagnostic_code:
+            db_routines.transition_run(
+                run_id, to_status="failed",
+                diagnostic_code=terminal_diagnostic_code,
+            )
+        if threshold_reached and routine["status"] == "active":
             db_routines.transition_routine(routine_id, to_status="paused")
             from core.services.routine_inbox import project_event_to_inbox
 

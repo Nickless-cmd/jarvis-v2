@@ -18,26 +18,36 @@ class RoutineReconciler:
     def reconcile_once(self, now: datetime | None = None) -> int:
         outcomes = db_routines.reconcile_expired_runs(now=now or datetime.now(UTC))
         for outcome in outcomes:
-            if outcome.get("status") != "failed":
+            failed = outcome.get("status") == "failed"
+            lease_requeued = (
+                outcome.get("status") == "queued"
+                and outcome.get("diagnostic_code") == "lease_expired"
+            )
+            if not failed and not lease_requeued:
                 continue
             run_id = str(outcome["run_id"])
             run = db_routines.get_run(run_id)
             if run is None:
                 continue
-            from core.services.routine_inbox import project_event_to_inbox
             from core.services.routine_runner import RoutineRunner, publish_operational_failure
 
-            project_event_to_inbox({
-                "owner_user_id": run["owner_user_id"],
-                "routine_id": run["routine_id"],
-                "event_id": f"{run_id}:failed",
-                "event_type": "failed",
-            })
-            publish_operational_failure(
-                routine_id=str(run["routine_id"]), run_id=run_id, component="tool",
-            )
+            if failed:
+                from core.services.routine_inbox import project_event_to_inbox
+
+                project_event_to_inbox({
+                    "owner_user_id": run["owner_user_id"],
+                    "routine_id": run["routine_id"],
+                    "event_id": f"{run_id}:failed",
+                    "event_type": "failed",
+                })
+                publish_operational_failure(
+                    routine_id=str(run["routine_id"]), run_id=run_id, component="tool",
+                )
             RoutineRunner().record_execution_failure(
                 str(run["routine_id"]), run_id=run_id,
+                terminal_diagnostic_code=(
+                    "lease_expired_after_retries" if lease_requeued else ""
+                ),
             )
         return len(outcomes)
 

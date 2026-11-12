@@ -125,6 +125,59 @@ def test_unknown_tool_outcome_is_failed_and_never_requeued(queued_run, monkeypat
     }]
 
 
+def test_third_expired_lease_pauses_routine_and_terminates_requeue(
+    service, active_routine, queued_run,
+):
+    from core.services.routine_reconciler import RoutineReconciler
+    from core.services.routine_runner import RoutineRunner
+
+    started_at = datetime(2026, 10, 12, 12, 0, tzinfo=UTC)
+    runner = RoutineRunner()
+    reconciler = RoutineReconciler(repository=runner.repository)
+
+    for attempt in range(3):
+        claimed_at = started_at + timedelta(minutes=2 * attempt)
+        claim = runner.repository.claim(
+            queued_run.run_id,
+            holder=f"expired-worker-{attempt}",
+            now=claimed_at,
+        )
+        assert claim is not None
+        reconciler.reconcile_once(now=claimed_at + timedelta(seconds=91))
+
+    run = runner.repository.get_run(queued_run.run_id)
+    assert service.get(active_routine.id).status == "paused"
+    assert run.status == "failed"
+    assert run.diagnostic_code == "lease_expired_after_retries"
+    assert runner.repository.next_queued_run() is None
+    events = runner.recorder.list(queued_run.run_id, decrypt_for="member-a")
+    assert sum(bool(event["terminal"]) for event in events) == 1
+
+
+def test_success_after_expired_lease_resets_failure_counter(
+    service, active_routine, queued_run,
+):
+    from core.services.routine_reconciler import RoutineReconciler
+    from core.services.routine_runner import RoutineRunner
+
+    started_at = datetime(2026, 10, 12, 12, 0, tzinfo=UTC)
+    runner = RoutineRunner(driver=_OneToolDriver(), tool_executor=lambda _call: "ok")
+    claim = runner.repository.claim(
+        queued_run.run_id, holder="expired-worker", now=started_at,
+    )
+    assert claim is not None
+    RoutineReconciler(repository=runner.repository).reconcile_once(
+        now=started_at + timedelta(seconds=91),
+    )
+    assert runner.repository.get_failure_count(active_routine.id) == 1
+
+    result = runner.run_once(queued_run.run_id)
+
+    assert result.status == "succeeded"
+    assert runner.repository.get_failure_count(active_routine.id) == 0
+    assert service.get(active_routine.id).status == "active"
+
+
 def test_third_execution_failure_pauses_but_delivery_failure_does_not(
     service, active_routine
 ):

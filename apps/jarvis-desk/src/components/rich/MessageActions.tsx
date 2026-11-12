@@ -62,7 +62,11 @@ export function MessageActions({
     // Ingen stemmer = ingen lyd, tavst. Det er præcis sådan «læs op» så ud da
     // Chromium manglede broen til speech-dispatcher: knappen lyste op og der
     // skete intet. Sig det i stedet.
-    if (synth.getVoices().length === 0) {
+    // Web (Chrome/Safari) henter stemmelisten asynkront: første klik ser ofte 0
+    // stemmer. Uden hensyn hertil var oplæsning aldrig mulig i web-build.
+    // speak() sker stadig synkront i klikket (iOS kræver det) — vi afviser kun
+    // når listen er tom OG browseren ikke kan levere stemmer senere.
+    if (synth.getVoices().length === 0 && !('onvoiceschanged' in synth)) {
       setFejl('Ingen stemmer installeret')
       setTimeout(() => setFejl(''), 2600)
       return

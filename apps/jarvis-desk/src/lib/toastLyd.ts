@@ -36,6 +36,29 @@ export function setToastLyd(til: boolean): void {
   window.dispatchEvent(new Event(TOAST_LYD_EVENT))
 }
 
+/** Safari/iOS/Chrome starter AudioContext «suspended» og tillader kun resume()
+ *  fra et ægte brugerklik. Toasten kommer fra en poll (intet klik) og ville
+ *  derfor være stum for evigt. Første klik/tast/touch opretter og låser derfor
+ *  konteksten op; derefter fjernes lytterne. */
+export function laasLydOpVedFoersteGestus(): () => void {
+  if (typeof window === 'undefined') return () => {}
+  const events = ['pointerdown', 'touchend', 'click', 'keydown'] as const
+  const fjern = () => events.forEach((e) => window.removeEventListener(e, laas, true))
+  function laas() {
+    try {
+      const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      if (AC) {
+        ctx = ctx ?? new AC()
+        if (ctx.state === 'suspended') void ctx.resume()
+      }
+    } catch { /* lyd er en dyd */ }
+    fjern()
+  }
+  events.forEach((e) => window.addEventListener(e, laas, true))
+  return fjern
+}
+laasLydOpVedFoersteGestus()
+
 export function spilToastKlang(tone: Tone = 'neutral'): void {
   if (!toastLydTil()) return
   try {

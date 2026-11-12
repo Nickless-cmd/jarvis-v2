@@ -30,6 +30,13 @@ def test_security_headers_present() -> None:
     assert r.headers["Referrer-Policy"] == "no-referrer"
 
 
+def test_permissions_policy_allows_mic_and_geo_for_self_only() -> None:
+    pp = TestClient(_app()).get("/x").headers["Permissions-Policy"]
+    assert "microphone=(self)" in pp
+    assert "geolocation=(self)" in pp
+    assert "camera=()" in pp
+
+
 def test_csp_gated_off_by_default(monkeypatch) -> None:
     monkeypatch.delenv("JARVISX_CSP", raising=False)
     c = TestClient(_app())

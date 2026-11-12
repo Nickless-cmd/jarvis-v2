@@ -96,3 +96,62 @@ def test_uden_session_falder_den_tilbage_paa_den_gamle_vej(monkeypatch):
     _levende(monkeypatch, "visible-x")
     _beskeder(monkeypatch, alder_s=10)
     assert wd._active_turn_blocks("") == ""
+
+
+# ── Indbakke-vækkeren spørger KUN om et levende run (Bjørn 12/11-2026) ─────────
+#
+# Målt: wake-eee651a4e1 fyrede 18:15:26 i en samtale hvor intet kørte (sidste run
+# `completed` 18:11:51), og blev holdt tilbage i 7 minutter fordi hans seneste
+# besked var 4 min gammel (karantæne 10 min) og Jarvis' 3,5 min (karantæne 5 min).
+# 17 tilbageholdelser samme dag, 2 vækninger der faktisk startede. Loggen kaldte
+# det «aktiv». Bjørn: «karantænen mener sessionen er aktiv selv om den er
+# inaktiv» — og valgte at «aktiv» for en vækning kun er et levende run.
+def _assistent_besked(monkeypatch, *, alder_s: float):
+    t = datetime.now(UTC) - timedelta(seconds=alder_s)
+    rk = [{"role": "assistant", "content": "svar", "created_at": t.isoformat()}]
+    import core.services.chat_sessions as cs
+    monkeypatch.setattr(cs, "recent_chat_session_messages", lambda sid, **k: list(rk))
+
+
+@pytest.mark.parametrize("levende, bruger_alder_s, jarvis_alder_s, uden_karantaene, med_karantaene", [
+    # intet kører, hans besked er 1 min gammel: karantænen holder, vækkeren slipper
+    (None, 60, None, "", "bruger_skrev_for_nylig"),
+    # intet kører, Jarvis svarede for 1 min siden
+    (None, None, 60, "", "jarvis_skrev_for_nylig"),
+    # et levende run blokerer UANSET (et godkendelses-kort kan stå i minutter)
+    ("visible-koerer", None, None, "session_har_levende_run", "session_har_levende_run"),
+    ("visible-koerer", 60, None, "session_har_levende_run", "session_har_levende_run"),
+    # helt stille: begge slipper
+    (None, None, None, "", ""),
+])
+def test_karantaenen_kan_slaas_fra_men_et_levende_run_blokerer_altid(
+        monkeypatch, levende, bruger_alder_s, jarvis_alder_s, uden_karantaene, med_karantaene):
+    _levende(monkeypatch, levende)
+    if jarvis_alder_s is not None:
+        _assistent_besked(monkeypatch, alder_s=jarvis_alder_s)
+    else:
+        _beskeder(monkeypatch, alder_s=bruger_alder_s)
+
+    assert wd._active_turn_blocks("chat-1", karantaene=False) == uden_karantaene
+    # standarden er UÆNDRET for rutiner, sideopgaver og kvitteringer
+    assert wd._active_turn_blocks("chat-1") == med_karantaene
+
+
+def test_indbakke_vaekkeren_regner_en_samtale_uden_levende_run_for_inaktiv(monkeypatch):
+    """Den ÆGTE `_session_er_aktiv` — ikke en stub — med hans besked 1 min gammel."""
+    from core.services import inbox_idle_waker as w
+
+    _levende(monkeypatch, None)
+    _beskeder(monkeypatch, alder_s=60)
+    monkeypatch.setattr("core.services.visible_runs.turn_is_open", lambda sid: False)
+
+    assert w._session_er_aktiv("chat-1") is False
+
+
+def test_indbakke_vaekkeren_regner_en_samtale_med_levende_run_for_aktiv(monkeypatch):
+    from core.services import inbox_idle_waker as w
+
+    _levende(monkeypatch, "visible-koerer")
+    _beskeder(monkeypatch, alder_s=None)
+
+    assert w._session_er_aktiv("chat-1") is True

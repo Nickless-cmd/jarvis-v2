@@ -216,7 +216,10 @@ def _session_er_aktiv(session_id: str) -> bool:
     try:
         from core.services.wakeup_dispatcher import _active_turn_blocks
 
-        return bool(_active_turn_blocks(str(session_id)))
+        # KUN et levende run (Bjørn 12/11-2026). Tidskarantænerne efter hans og
+        # min sidste besked kaldte en rolig samtale «aktiv» og holdt en vækning
+        # tilbage i minutter uden at nogen skrev eller noget kørte.
+        return bool(_active_turn_blocks(str(session_id), karantaene=False))
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "inbox_idle_waker: kunne ikke afgoere maal-sessionens aktivitet: %s",

@@ -115,8 +115,16 @@ def _nylig_rolle_i_session(session_id: str, *, rolle: str, vindue_s: float) -> b
     return False
 
 
-def _active_turn_blocks(session_id: str) -> str:
+def _active_turn_blocks(session_id: str, *, karantaene: bool = True) -> str:
     """Returnér en skip-årsag hvis en FERSK visible-tur kører i sessionen.
+
+    `karantaene=False` springer de to TIDSVINDUER over (efter hans og efter min
+    sidste besked) og spørger kun om et LEVENDE run. Det er indbakke-vækkerens
+    regel (Bjørn 12/11-2026: «karantænen mener sessionen er aktiv selv om den er
+    inaktiv»): målt blev wake-eee651a4e1 holdt tilbage i 7 minutter i en samtale
+    hvor intet kørte, og 17 vækninger blev holdt tilbage samme dag mod 2 der
+    startede. Standarden er UÆNDRET — rutiner, sideopgaver og kvitteringer har
+    deres egne grunde til vinduerne og er ikke besluttet om.
 
     12/9-2026: wake-d07eaea13d fyrede 16:57:35 mens Bjørn skrev (16:58:01).
     Dispatcheren startede alligevel sit eget run oveni turen. Målt: intet
@@ -164,7 +172,7 @@ def _active_turn_blocks(session_id: str) -> str:
     # Mellem to af hans beskeder kører der ingenting, og dér smuttede en
     # autonom ind mens han læste svaret. Vinduet er BUNDET (8 beskeder), så
     # det her ikke bliver en ny fuld historik-læsning.
-    if session_id and _bruger_skrev_for_nylig(session_id):
+    if karantaene and session_id and _bruger_skrev_for_nylig(session_id):
         return "bruger_skrev_for_nylig"
 
     # 3) KARANTÆNE EFTER MIN EGEN SIDSTE BESKED (19/10-2026).
@@ -175,7 +183,7 @@ def _active_turn_blocks(session_id: str) -> str:
     # tabt. Egen årsag, ikke slået sammen med hans: de to vinduer er
     # forskellige (10 min vs. 5), og et sammenlagt svar ville skjule hvilken
     # der holdt runnet tilbage.
-    if session_id and _jarvis_skrev_for_nylig(session_id):
+    if karantaene and session_id and _jarvis_skrev_for_nylig(session_id):
         return "jarvis_skrev_for_nylig"
 
     # 4) ER TUREN HELT AFSLUTTET? (11/11-2026)

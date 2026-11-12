@@ -1124,10 +1124,107 @@ def afslut_efter_run(
             "id": post_id, "udfald": "fejlet"}
 
 
+#: Hvor gammel en vækning skal være før sweepen må røre den. Et run der lige er
+#: startet har endnu ikke nået den delte journal, og må ikke erklæres dødt.
+SWEEP_MINSTE_ALDER_S: Final = 120.0
+
+
+def afregn_doede_vaekninger(
+    bruger_id: str = "", *, mindste_alder_s: float = SWEEP_MINSTE_ALDER_S,
+) -> dict[str, Any]:
+    """Afregn vækninger hvis run døde med processen (12/11-2026).
+
+    ## Hullet
+
+    `afslut_efter_run` kaldes fra ÉN closure i `inbox_idle_waker`, som sendes
+    med til `start_autonomous_run`. Den lever kun i hukommelsen. Dør processen
+    mens væknings-runnet kører — en genstart er nok — forsvinder callbacken, og
+    posten står tilbage som `aaben` med et vækkespor.
+
+    `kandidater()` springer alt med et `sidste_vaekning_tur` over, så posten kan
+    hverken vækkes igen eller lukkes. Den står fast for evigt.
+
+    Der findes ingen durable kobling at falde tilbage på: `leveret_til_run_id`
+    betyder «vist til dette run» og sættes kun af `claim_high_for_run` — målt
+    12/11-2026 var den tom i alle 448 wakeup-poster.
+
+    ## Hvad den gør
+
+    For hver åben post med et vækkespor: spørg `run_guard` om der lever et run i
+    postens session. Gør der ikke det, er postens run dødt, og posten afregnes
+    som ``interrupted`` — «pauset». Det rydder vækkesporet, så posten kan rejses
+    igen, og lader den stå åben: arbejdet er ikke i mål, og det forrige forsøg må
+    ikke blokere det næste.
+
+    `mindste_alder_s` værner et run der lige er startet. Er sessionen ukendt,
+    røres posten ikke — en post der ikke kan afgøres må ikke lukkes på et gæt.
+    """
+    bruger = str(bruger_id or "").strip()
+    try:
+        brugere = [bruger] if bruger else list(db_inbox.brugere_med_vaekkespor())
+    except Exception as exc:  # noqa: BLE001 — fail-open: en læsefejl må ikke lukke noget
+        logger.warning("inbox_state: kunne ikke finde brugere til sweep: %s", exc)
+        return {"status": "ok", "afregnet": 0, "aarsag": "laesefejl"}
+
+    from datetime import UTC, datetime, timedelta
+
+    from core.services.run_guard import levende_run_i_session
+
+    graense = datetime.now(UTC) - timedelta(seconds=max(0.0, float(mindste_alder_s)))
+    afregnet: list[str] = []
+
+    for b in brugere:
+        try:
+            poster = db_inbox.liste(bruger_id=b, kun_aabne=True)
+        except Exception as exc:  # noqa: BLE001 — se fail-open ovenfor
+            logger.warning("inbox_state: kunne ikke liste poster for sweep: %s", exc)
+            continue
+        for post in poster:
+            kilde_id = str(post.get("kilde_id") or "")
+            if not kilde_id:
+                continue
+            if not str(post.get("sidste_vaekning_tur") or "").strip():
+                continue
+            session = str(post.get("session_id") or "").strip()
+            if not session:
+                continue
+            raa = str(post.get("sidste_vaekning_at") or post.get("created_at") or "")
+            try:
+                vaekket = datetime.fromisoformat(raa)
+            except (TypeError, ValueError):  # utolkeligt tidsstempel: alderen kan ikke afgoeres, og en post maa ikke lukkes paa et gaet
+                continue
+            if vaekket.tzinfo is None:
+                vaekket = vaekket.replace(tzinfo=UTC)
+            if vaekket > graense:
+                continue
+            try:
+                if levende_run_i_session(session):
+                    continue
+            except Exception as exc:  # noqa: BLE001 — uafgjort er ikke dødt
+                logger.debug("inbox_state: kunne ikke afgoere levende run: %s", exc)
+                continue
+            try:
+                r = afslut_efter_run(b, kilde_id, udfald="interrupted")
+            except Exception as exc:  # noqa: BLE001 — én fejl må ikke stoppe resten
+                logger.warning(
+                    "inbox_state: sweep kunne ikke afregne %s: %s", kilde_id, exc)
+                continue
+            if r.get("status") == "ok":
+                afregnet.append(kilde_id)
+
+    if afregnet:
+        logger.info(
+            "inbox_state: sweep afregnede %d doed vaekning(er) som pauset",
+            len(afregnet),
+        )
+    return {"status": "ok", "afregnet": len(afregnet), "poster": afregnet}
+
+
 __all__ = [
     "KILDETYPE_FLAG", "flag_fra_bruger", "laese_bruger",
     "EJER_BRUGER", "EJER_HUSET", "EJER_JARVIS", "EJER_UKENDT", "STATUS_AABEN",
     "IKKE_GATENDE_KILDETYPER", "done", "drop", "registrer_kilde",
     "afslut_efter_run",
+    "afregn_doede_vaekninger", "SWEEP_MINSTE_ALDER_S",
     "verificeret_jarvis_run",
 ]

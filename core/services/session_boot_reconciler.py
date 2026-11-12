@@ -192,6 +192,7 @@ def reconcile_on_boot(stale_after_s: float = STALE_AFTER_SECONDS) -> dict[str, A
                 )
 
     drift = _ryd_visible_drift(enforced)
+    vaekninger = _afregn_doede_vaekninger(enforced)
 
     summary: dict[str, Any] = {
         "count": count,
@@ -199,6 +200,7 @@ def reconcile_on_boot(stale_after_s: float = STALE_AFTER_SECONDS) -> dict[str, A
         "kinds": kinds,
         "error": False,
         "visible_drift": drift,
+        "vaekninger_pauset": vaekninger,
     }
 
     try:
@@ -223,6 +225,48 @@ def reconcile_on_boot(stale_after_s: float = STALE_AFTER_SECONDS) -> dict[str, A
         )
 
     return summary
+
+
+def _afregn_doede_vaekninger(enforced: bool) -> int:
+    """Luk indbakke-poster hvis væknings-run døde med processen (12/11-2026).
+
+    ## Hullet, og hvorfor det hører HER
+
+    `_ryd_visible_drift` ovenfor beskriver det selv: en række der findes i ét
+    lager men ikke i det andet er usynlig for reconcileren for altid. Indbakken
+    er det tredje lager. Da vi begyndte at afregne vækninger automatisk, skete
+    det gennem en closure i `inbox_idle_waker` — den lever kun i hukommelsen, så
+    et run der døde med processen efterlod sin post som `aaben` med et
+    vækkespor. `kandidater()` springer alt med et vækkespor over, så posten
+    kunne hverken vækkes igen eller lukkes.
+
+    Reconcileren finder netop de døde runs. Den skal derfor også fortælle
+    indbakken det — ellers rydder den det ene lager og lader det andet stå.
+
+    ## Kill-switch
+
+    Er `session_persistence` slået fra, skrives der intet (samme kontrakt som
+    resten af reconcileren): sweepen rapporteres som 0, og intet røres.
+
+    Fail-open: en fejl her må aldrig vælte opstarten.
+    """
+    if not enforced:
+        return 0
+    try:
+        from core.services.inbox_state import afregn_doede_vaekninger
+
+        r = afregn_doede_vaekninger()
+        n = int(r.get("afregnet") or 0)
+    except Exception as exc:  # noqa: BLE001 — opstarten må ikke vælte på en sweep
+        logger.warning("session_boot_reconciler: vaeknings-sweep fejlede: %s", exc)
+        return 0
+    if n:
+        logger.info(
+            "session_boot_reconciler: %d vaekning(er) pauset — deres run døde "
+            "med processen, og posten kunne ellers hverken vækkes eller lukkes",
+            n,
+        )
+    return n
 
 
 def _ryd_visible_drift(enforced: bool) -> int:

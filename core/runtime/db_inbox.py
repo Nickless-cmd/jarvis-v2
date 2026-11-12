@@ -1129,6 +1129,26 @@ def claim_high_for_run(
     return claimed
 
 
+def brugere_med_vaekkespor() -> list[str]:
+    """Brugere der har mindst én åben post med et vækkespor.
+
+    Sweepen i `inbox_state.afregn_doede_vaekninger` skal finde poster hvis run
+    døde med processen, men `liste()` kræver et bruger-id — og en opstarts-
+    reconciler kender ikke brugerne. Uden denne funktion ville sweepen enten
+    skulle gætte en bruger eller springe alle andre over.
+
+    Tom liste er et gyldigt svar: ingen har et vækkespor.
+    """
+    with connect() as conn:
+        _ensure_skema(conn)
+        rows = conn.execute(
+            "SELECT DISTINCT bruger_id FROM inbox_items "
+            "WHERE status = ? AND TRIM(COALESCE(sidste_vaekning_tur, '')) != ''",
+            (STATUS_AABEN,),
+        ).fetchall()
+    return [str(r["bruger_id"]) for r in rows if str(r["bruger_id"] or "").strip()]
+
+
 def luk_forældede_informerende(
     *, timer: int | None = None, dage: int | None = None, maks: int = 500
 ) -> dict[str, Any]:

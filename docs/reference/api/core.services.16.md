@@ -176,6 +176,7 @@ _Proveniens og bogføring for indbakken._
 | function | `done` | `(bruger_id, post_id, bevis=…)` | Kvittér en ALLEREDE UDFØRT opgave. Typet svar, aldrig prosa. | [src](../../../core/services/inbox_state.py#L965) |
 | function | `drop` | `(bruger_id, post_id, reason)` | Afvis en åben post med begrundelse. | [src](../../../core/services/inbox_state.py#L1002) |
 | function | `afslut_efter_run` | `(bruger_id, post_id, *, udfald, run_id=…, error=…)` | Afregn en post automatisk når det run den vækkede er terminalt. | [src](../../../core/services/inbox_state.py#L1032) |
+| function | `afregn_doede_vaekninger` | `(bruger_id=…, *, mindste_alder_s=…)` | Afregn vækninger hvis run døde med processen (12/11-2026). | [src](../../../core/services/inbox_state.py#L1132) |
 
 ## `core/services/inbox_view.py`
 _Indbakken som LÆSEFLADE. Otte sektioner, én linje per post, aldrig payload._

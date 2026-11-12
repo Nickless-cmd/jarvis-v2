@@ -1237,6 +1237,68 @@ def _vaekning_med_run(monkeypatch):
     return kaldt
 
 
+# ── Sweep: en post hvis run døde med processen (12/11-2026) ─────────────────
+#
+# `afslut_efter_run` blev kaldt fra ÉN closure i `inbox_idle_waker`, og den
+# lever kun i hukommelsen. En genstart midt i et væknings-run efterlod derfor
+# posten `aaben` med et vækkespor — og `kandidater()` springer alt med et
+# vækkespor over, så den kunne hverken vækkes igen eller lukkes.
+
+def _vaekning_i_session(session: str = "chat-1") -> str:
+    """Én åben vækning med et vækkespor — som efter et run der døde."""
+    with _som_bjorn():
+        inbox_state.registrer_kilde(
+            bruger_id=BJORN, kildetype="wakeup", kilde_id="wake-doed1",
+            oprettende_run_id="visible-abc123", session_id=session)
+    db_inbox.noter_vaekning(bruger_id=BJORN, kilde_id="wake-doed1",
+                            tur="inbox-idle-waker")
+    return "wake-doed1"
+
+
+def test_sweep_pauser_en_post_hvis_run_er_doed(inbox_db, monkeypatch):
+    """Intet run lever i sessionen ⇒ posten pauses, så den kan rejses igen."""
+    post_id = _vaekning_i_session()
+    monkeypatch.setattr(
+        "core.services.run_guard.levende_run_i_session", lambda sid: "")
+
+    r = inbox_state.afregn_doede_vaekninger(BJORN, mindste_alder_s=0)
+
+    assert r["afregnet"] == 1, r
+    post = db_inbox.hent(bruger_id=BJORN, kilde_id=post_id)
+    assert post["status"] == db_inbox.STATUS_AABEN, \
+        "en pauset post skal blive aaben — arbejdet er ikke i maal"
+    assert not str(post["sidste_vaekning_tur"] or "").strip(), \
+        "vaekkesporet blev ikke ryddet — posten kan hverken rejses eller lukkes"
+
+
+def test_sweep_roerer_IKKE_en_post_hvis_runnet_lever(inbox_db, monkeypatch):
+    """Et levende run i sessionen betyder at posten stadig er i gang."""
+    post_id = _vaekning_i_session()
+    monkeypatch.setattr(
+        "core.services.run_guard.levende_run_i_session",
+        lambda sid: "autonomous-levende")
+
+    r = inbox_state.afregn_doede_vaekninger(BJORN, mindste_alder_s=0)
+
+    assert r["afregnet"] == 0, r
+    post = db_inbox.hent(bruger_id=BJORN, kilde_id=post_id)
+    assert post["sidste_vaekning_tur"] == "inbox-idle-waker", \
+        "sweepen ryddede sporet paa en post hvis run stadig koerer"
+
+
+def test_sweep_roerer_IKKE_en_frisk_vaekning(inbox_db, monkeypatch):
+    """Et run der lige er startet har endnu ikke naaet den delte journal."""
+    post_id = _vaekning_i_session()
+    monkeypatch.setattr(
+        "core.services.run_guard.levende_run_i_session", lambda sid: "")
+
+    r = inbox_state.afregn_doede_vaekninger(BJORN, mindste_alder_s=3600)
+
+    assert r["afregnet"] == 0, r
+    post = db_inbox.hent(bruger_id=BJORN, kilde_id=post_id)
+    assert post["sidste_vaekning_tur"] == "inbox-idle-waker"
+
+
 def test_FAERDIGT_run_lukker_posten_og_kvitterer_vaekningen(inbox_db, monkeypatch):
     """Det normale udfald: runnet gik i mål uden at nogen kaldte `inbox_done`."""
     kaldt = _vaekning_med_run(monkeypatch)

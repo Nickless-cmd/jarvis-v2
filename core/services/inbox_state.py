@@ -296,6 +296,49 @@ def bruger_for_workspace(navn: str) -> str:
     return uid
 
 
+def normaliser_indbakke_bruger(bruger_id: str) -> str:
+    """Opløs en kendt identitet til den indbakke personen faktisk læses i.
+
+    En kilde kan bære en ÆLDRE identitet for samme person end den hans
+    sessioner opløser til. `routine_dispatch` sender rutinens `owner_user_id`,
+    som for en system-ejet rutine er ejerens legacy-identitet — mens hans
+    indbakke læses under hans discord-id. Posten blev derfor skrevet i en
+    indbakke ingen poller kigger i: vækningen stod stille, mens den så ud som
+    om den var kørt. Målt 12/11-2026 lå tre rutine-vækninger `aaben` på tre
+    forskellige identiteter, alle med tom `sidste_vaekning_tur`.
+
+    Huset har ramt navnerumsblandingen før: `self_wakeup` skrev
+    workspace-NAVNET i `bruger_id`, og 36 poster blev aldrig arbejdet i (se
+    `bruger_for_workspace`). Det her er samme fejl med et legacy-id i stedet
+    for et navn, så den genbruger samme opslag frem for at opfinde et nyt.
+
+    En UKENDT identitet returneres uændret. At gætte en indbakke er værre end
+    at lade kilden bestemme: en post i den forkerte indbakke forsvinder lige
+    så stille som ingen post.
+    """
+    b = str(bruger_id or "").strip()
+    if not b:
+        return ""
+    if b == _ejer_id():
+        return b
+    try:
+        from core.runtime.db_core import connect
+
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT workspace FROM users WHERE user_id=? AND deleted_at IS NULL",
+                (b,),
+            ).fetchone()
+    except Exception as exc:  # noqa: BLE001 — et opslag maa ikke vaelte en vaekning
+        logger.warning("inbox_state: kunne ikke slaa identitet %r op: %s",
+                       b[:20], exc)
+        return b
+    navn = str(row[0] or "").strip() if row else ""
+    if not navn:
+        return b
+    return bruger_for_workspace(navn) or b
+
+
 def laese_bruger() -> str:
     """HVIS indbakke skal læses? Tom streng når det ikke kan afgøres.
 

@@ -109,6 +109,14 @@ def anmod_om_vaekning(
         if not tekst:
             return _kvittering(REJECTED, "mangler_tekst", kilde=kilde,
                                kilde_id=kilde_id)
+        # BRUGEREN NORMALISERES (12/11-2026). Kilden kender sin EGEN identitet,
+        # og den kan være ældre end den personen læses under: rutinen sender
+        # ejerens legacy-id, mens indbakken læses under hans discord-id. Uden
+        # dette led lander posten i en indbakke ingen poller kigger i, og
+        # vækningen står stille mens den ser ud som om den er kørt (målt: tre
+        # `aaben`-poster med tom `sidste_vaekning_tur`).
+        from core.services.inbox_state import normaliser_indbakke_bruger
+
         bruger = str(bruger_id or "").strip() or _bruger()
         if not bruger:
             # En post i den forkerte indbakke er værre end ingen post.

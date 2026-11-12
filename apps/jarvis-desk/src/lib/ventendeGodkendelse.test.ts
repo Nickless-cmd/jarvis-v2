@@ -144,3 +144,66 @@ describe('viewene spørger den FLETTEDE liste, ikke de rå beskeder', () => {
     })
   }
 })
+
+import { afstemVentendeGodkendelse } from './ventendeGodkendelse'
+
+describe('afstemning af kortet klienten HOLDER mod hvad serveren siger venter', () => {
+  // MÅLT 12/11-2026 (CT105, 15:45–15:57): 19 godkendelser, og ALLE blev afgjort
+  // via notifikations-feedet (/notifikationer/<id>/afgoer) — ingen via
+  // composer-kortet. Effekten holdt op med at polle så snart den HAVDE et kort,
+  // og kortet ryddes kun af message_stop, nyt send, eget klik eller udløb
+  // (3600 s). Et kort afgjort et andet sted blev derfor stående — og blokerede
+  // opsamlingen af alle de næste.
+  const a1 = { approvalId: 'a1', kind: 'tool' as const }
+  const a2 = { approvalId: 'a2', kind: 'tool' as const }
+
+  it('intet kort holdt, intet fundet → behold', () => {
+    expect(afstemVentendeGodkendelse(null, null, 0)).toEqual({ handling: 'behold', tommeISnor: 0 })
+  })
+
+  it('intet kort holdt, et fundet → skift til det', () => {
+    expect(afstemVentendeGodkendelse(null, a1, 0)).toEqual({ handling: 'skift', tommeISnor: 0 })
+  })
+
+  it('samme kort stadig ventende → behold og nulstil tælleren', () => {
+    expect(afstemVentendeGodkendelse(a1, a1, 1)).toEqual({ handling: 'behold', tommeISnor: 0 })
+  })
+
+  it('serveren venter på et ANDET kort → skift (det holdte er afgjort et andet sted)', () => {
+    expect(afstemVentendeGodkendelse(a1, a2, 0)).toEqual({ handling: 'skift', tommeISnor: 0 })
+  })
+
+  it('ét tomt svar rydder IKKE — en enkelt netværksfejl er også «intet»', () => {
+    expect(afstemVentendeGodkendelse(a1, null, 0)).toEqual({ handling: 'behold', tommeISnor: 1 })
+  })
+
+  it('to tomme svar i træk rydder kortet — det er afgjort', () => {
+    expect(afstemVentendeGodkendelse(a1, null, 1)).toEqual({ handling: 'ryd', tommeISnor: 0 })
+  })
+
+  it('et AGENT-kort røres ikke af tool-opsamlingen', () => {
+    const agent = { approvalId: 'g1', kind: 'agent' as const }
+    expect(afstemVentendeGodkendelse(agent, null, 5)).toEqual({ handling: 'behold', tommeISnor: 0 })
+    expect(afstemVentendeGodkendelse(agent, a1, 0)).toEqual({ handling: 'behold', tommeISnor: 0 })
+  })
+
+  it('et kort uden kind er et tool-kort (alt der kom før feltet fandtes)', () => {
+    expect(afstemVentendeGodkendelse({ approvalId: 'a1' }, null, 1)).toEqual({ handling: 'ryd', tommeISnor: 0 })
+  })
+})
+
+describe('StreamContext afstemmer det holdte kort mod serveren', () => {
+  it('opsamlingen kalder afstemVentendeGodkendelse', () => {
+    const fil = resolve(SRC, 'contexts', 'StreamContext.tsx')
+    const kilde = ts.createSourceFile(fil, readFileSync(fil, 'utf-8'),
+      ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    let kald = 0
+    const gaa = (n: ts.Node) => {
+      if (ts.isCallExpression(n) && n.expression.getText() === 'afstemVentendeGodkendelse') kald += 1
+      ts.forEachChild(n, gaa)
+    }
+    gaa(kilde)
+    expect(kald, 'uden afstemningen bliver et kort afgjort et andet sted staaende '
+      + 'og blokerer opsamlingen af de naeste (maalt 12/11-2026)').toBeGreaterThan(0)
+  })
+})

@@ -7,6 +7,7 @@ import { afgoerAgentApproval, hentVentendeAgentGodkendelse } from '../lib/agentC
 import { streamReducer, initialStreamState, type StreamStatus } from '../lib/streamReducer'
 import type { StreamEvent, ContentBlock } from '../lib/sseProtocol'
 import { lastTextBlock } from '../lib/blockHelpers'
+import { afstemVentendeGodkendelse } from '../lib/ventendeGodkendelse'
 import { useCanonicalError } from '../hooks/useCanonicalError'
 import type { CanonicalError } from '../lib/canonicalError'
 import { setStreamActive } from '../lib/sharedRead'
@@ -585,10 +586,18 @@ export function StreamProvider({
   // saa kun den tilhoerende chat tegner det. Vi spoerger gennem `maaPolle`,
   // saa et skjult vindue falder til ro
   // i stedet for at banke løs. Har vi allerede et kort, holder vi op.
+  //
+  // Vi spørger OGSÅ mens vi holder et kort (12/11-2026). Før holdt effekten op
+  // så snart den havde ét, og kortet ryddes ellers kun af message_stop, nyt
+  // send, eget klik eller udløb (3600 s). Blev det afgjort et andet sted —
+  // notifikations-feedet, telefonen — stod det tilbage og blokerede
+  // opsamlingen af alle de næste. Målt på CT105: 19 godkendelser på 12
+  // minutter, alle afgjort i feedet. Afstemningen bor i `lib/ventendeGodkendelse`.
   useEffect(() => {
-    if (pendingApproval || !config.apiBaseUrl) return
+    if (!config.apiBaseUrl) return
     const cfg = { apiBaseUrl: config.apiBaseUrl, authToken: config.authToken }
     let levende = true
+    let tommeISnor = 0
     const spoerg = () => {
       // Kun rolige intervaller når vinduet er skjult eller han er gået fra
       // det — men ALDRIG helt slukket: et kort der venter, venter uanset om
@@ -596,23 +605,28 @@ export function StreamProvider({
       if (!maaPolle('ventende-godkendelse', 4000, { ignorerSkjult: true, loftMs: 20_000 })) return
       void hentVentendeGodkendelseOveralt(cfg).then((k) => {
         if (!levende) return
-        if (k) {
+        const holdt = pendingApprovalRef.current
+        const afstemt = afstemVentendeGodkendelse(holdt, k, tommeISnor)
+        tommeISnor = afstemt.tommeISnor
+        if (afstemt.handling === 'ryd') { setPendingApproval(null); return }
+        if (afstemt.handling === 'skift' && k) {
           setPendingApproval({ approvalId: k.approvalId, tool: k.tool, action: k.action, sessionId: k.sessionId, kind: 'tool', expiresAt: k.expiresAt })
           return
         }
+        if (k || holdt) return
         // Den gamle vej svarede intet. Spørg AGENT-vejen (14/10-2026): en
         // agent-godkendelse blokerer ingen stream, så den kommer ALDRIG som et
         // live-event i denne samtale — den venter i lageret indtil nogen svarer.
         // Uden dette kald kendte kortet den ikke, og posten lå kun i feedet.
         void hentVentendeAgentGodkendelse(cfg).then((a) => {
-          if (levende && a) setPendingApproval({ ...a, kind: 'agent' })
+          if (levende && a && !pendingApprovalRef.current) setPendingApproval({ ...a, kind: 'agent' })
         })
       })
     }
     const id = window.setInterval(spoerg, 2000)
     spoerg()
     return () => { levende = false; window.clearInterval(id) }
-  }, [pendingApproval, config.apiBaseUrl, config.authToken])
+  }, [config.apiBaseUrl, config.authToken])
 
   // Et kort må ikke kunne hænge (25/10-2026).
   //

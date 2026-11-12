@@ -54,3 +54,41 @@ export function findesSynligGodkendelseRaekke(
   if (!approvalId) return false
   return findesGodkendelseIRækken(fletGodkendelser(beskeder), approvalId)
 }
+
+/** Hvor mange tomme svar i træk der skal til før et holdt kort regnes for afgjort. */
+export const TOMME_SVAR_FOER_RYD = 2
+
+export type AfstemHandling = 'behold' | 'skift' | 'ryd'
+
+/** Afstem det kort klienten HOLDER mod hvad serveren siger venter.
+ *
+ *  12/11-2026. Opsamlingen holdt op med at spørge så snart klienten havde et
+ *  kort, og kortet ryddes ellers kun af message_stop, nyt send, eget klik eller
+ *  udløb (3600 s). Blev det afgjort et andet sted — notifikations-feedet,
+ *  telefonen — blev det stående og blokerede opsamlingen af alle de næste.
+ *  Målt: 19 godkendelser på 12 minutter, alle afgjort i feedet.
+ *
+ *  `tool`-opsamlingen kender kun tool-kort, så et AGENT-kort lader vi være: en
+ *  tom tool-liste siger intet om det.
+ *
+ *  Et tomt svar er tvetydigt (`hentVentendeGodkendelseOveralt` svarer også
+ *  `null` på en netværksfejl), så ét tomt svar rydder ikke — der skal to i
+ *  træk. Rydder vi forkert, finder næste poll kortet igen.
+ */
+export function afstemVentendeGodkendelse(
+  holdt: { approvalId: string; kind?: 'tool' | 'agent' } | null,
+  fundet: { approvalId: string } | null,
+  tommeISnor: number,
+): { handling: AfstemHandling; tommeISnor: number } {
+  if (!holdt) return { handling: fundet ? 'skift' : 'behold', tommeISnor: 0 }
+  if (holdt.kind === 'agent') return { handling: 'behold', tommeISnor: 0 }
+  if (fundet) {
+    return fundet.approvalId === holdt.approvalId
+      ? { handling: 'behold', tommeISnor: 0 }
+      : { handling: 'skift', tommeISnor: 0 }
+  }
+  const n = tommeISnor + 1
+  return n >= TOMME_SVAR_FOER_RYD
+    ? { handling: 'ryd', tommeISnor: 0 }
+    : { handling: 'behold', tommeISnor: n }
+}

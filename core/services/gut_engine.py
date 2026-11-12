@@ -1345,10 +1345,22 @@ def build_gut_surface() -> dict[str, object]:
                 # Events der er ACCEPTERET men endnu ikke afgjort af writer-traaden
                 # findes hverken i `events` eller i dead-letter. De ligger derfor i
                 # differencen og faar tallet til at OVERDRIVE antallet af ryddede
-                # raekker (Bjørn, 12/11-2026). De kan ikke traekkes fra praecist:
-                # `pending` er global for alle event-kinds, ikke kun udfalds-events.
-                # Saa tallet beholdes, men markeres som estimat naar der er noget i
-                # flugt — et oevre skoen er aerligt, et praecist tal var det ikke.
+                # raekker (Bjørn, 12/11-2026).
+                #
+                # OG DER FINDES INTET GLOBALT AFGJORT-PUNKT (Bjørn, 12/11-2026, anden
+                # indvending). `pending_count()` er LOKAL for den proces der kalder:
+                # jarvis-api og jarvis-runtime har hver sin EventBus med hver sin
+                # writer-koe (se core/eventbus/krydsproces.py). Udfaldene registreres
+                # via run_closure_gate i RUNTIME-processen, mens /mc/gut svarer fra
+                # API-processen — saa den lokale taeller er per konstruktion 0 for
+                # netop de events regnskabet handler om. En flade der laeser sin egen
+                # koe kan derfor erklaere tallet praecist mens fem events er i flugt
+                # i den anden proces.
+                #
+                # Konklusionen er ikke en bedre lokal maaling — den er at tallet ikke
+                # KAN vaere praecist foer en faelles opgoerelse over alle writers
+                # findes. Derfor er det ALTID et estimat, ikke kun naar den lokale
+                # koe tilfaeldigvis er ikke-tom.
                 i_flugt = 0
                 try:
                     from core.eventbus.bus import event_bus as _bus
@@ -1358,6 +1370,18 @@ def build_gut_surface() -> dict[str, object]:
                     i_flugt = 0
                 no_event_row = max(
                     0, int(ledger["events"]) - uafklarede - spillede - event_rows
+                )
+                no_event_row_er_estimat = True
+                _estimat_note = (
+                    "ESTIMAT: fladen kan kun se sin EGEN proces' writer-koe, og "
+                    "udfaldene registreres i en anden proces — et event i flugt der "
+                    "findes hverken i eventloggen eller i dead-letter, saa tallet er "
+                    "et oevre skoen, ikke en maaling"
+                )
+                no_event_row_grund = (
+                    f"{no_event_row_grund}; {_estimat_note}"
+                    if no_event_row_grund
+                    else _estimat_note
                 )
                 _tab: list[str] = []
                 if uafklarede:
@@ -1372,17 +1396,12 @@ def build_gut_surface() -> dict[str, object]:
                         + " — de er ikke ryddet og indgaar ikke i tallet"
                     )
                 if i_flugt > 0:
-                    _flugt_note = (
-                        f"{i_flugt} events er accepteret men endnu ikke afgjort af "
-                        "writer-traaden — de findes hverken i eventloggen eller i "
-                        "dead-letter, saa tallet er et OEVRE skoen, ikke en maaling"
-                    )
+                    # Den lokale koe er ikke-tom: en konkret observation der
+                    # bekraefter estimatet, ikke det der goer det til et estimat.
                     no_event_row_grund = (
-                        f"{no_event_row_grund}; {_flugt_note}"
-                        if no_event_row_grund
-                        else _flugt_note
+                        f"{no_event_row_grund}; {i_flugt} events er lige nu i flugt i "
+                        "DENNE proces"
                     )
-                    no_event_row_er_estimat = True
     verified = decided_rows
     unverifiable = no_event_row
     # Skævheden er ikke kun ALDER (12/11-2026, Bjørns indvending). Før den fælles

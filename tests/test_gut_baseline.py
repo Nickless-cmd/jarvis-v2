@@ -232,6 +232,47 @@ def test_moden_ledger_giver_et_rigtigt_tal(monkeypatch):
     assert "400 udfalds-events er ryddet" in s["summary"]
 
 
+def test_tom_lokal_koe_goer_ikke_tallet_praecist(monkeypatch):
+    """BJØRNS FJERDE INVENDING (12/11-2026): fladen læser sin EGEN proces' kø.
+
+    jarvis-api og jarvis-runtime har hver sin EventBus med hver sin writer-kø
+    (`core/eventbus/krydsproces.py`). Udfaldene registreres via run_closure_gate i
+    RUNTIME-processen, men `/mc/gut` svarer fra API-processen — så
+    `pending_count()` er per konstruktion 0 for netop de events regnskabet handler
+    om.
+
+    Testen giver den mest gunstige mulige situation: moden tæller OG tom lokal kø.
+    Alligevel må tallet ikke erklæres præcist, for der findes intet globalt
+    afgjort-punkt. Den gamle regel satte kun flaget når `i_flugt > 0`, så den ville
+    svare False her — og dermed påstå en præcision den ikke kan se.
+    """
+    monkeypatch.setattr(ge, "_event_ledger_state", lambda: dict(_MODEN_LEDGER))
+    monkeypatch.setattr(
+        ge, "_observed_baseline",
+        lambda: {"n_observed": 99, "event_rows": 100, "neutral_rows": 1,
+                 "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
+    )
+    monkeypatch.setattr(ge, "get_cognitive_gut_state", lambda: _gut_state(600, 500))
+    monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
+
+    # Patch METODEN paa det aegte objekt — ikke singletonen. `from ... import
+    # event_bus` inde i funktionen binder en kopi, saa en attr-stub paa `ge` rammer
+    # intet (maalt: testen fejlede paa sin egen opstilling, ikke paa koden). Og
+    # singletonen maa ikke udskiftes — se test_event_bus_singleton_maa_ikke_udskiftes.
+    monkeypatch.setattr(
+        "core.eventbus.bus.event_bus.pending_count", lambda: 0, raising=False
+    )
+
+    s = ge.build_gut_surface()
+    assert s["no_event_row"] == 400, "tallet beregnes fortsat"
+    assert s["no_event_row_er_estimat"] is True, (
+        "en tom LOKAL kø er ikke bevis for at den anden proces har afgjort sine events"
+    )
+    assert "EGEN proces" in (s["no_event_row_grund"] or ""), (
+        "grunden skal navngive at målingen kun dækker denne proces"
+    )
+
+
 def test_neutral_event_aendrer_ikke_antallet_af_ryddede(monkeypatch):
     """BJØRNS ANDEN INVENDING (12/11-2026), den afgørende test.
 

@@ -190,10 +190,15 @@ class EventBus:
     def pending_count(self) -> int:
         """Antal events der er accepteret, men endnu ikke afgjort af writer-tråden.
 
-        Bruges af flader der skal sige om et regnskab er komplet: et event der
-        stadig ligger i køen findes hverken i `events` eller i dead-letter, så en
-        difference der tæller det som «ryddet» ville overdrive antallet af
-        forsvundne rækker (Bjørn, 12/11-2026). Kaster aldrig.
+        ⚠️ LOKAL for denne proces. jarvis-api og jarvis-runtime har hver sin
+        EventBus med hver sin writer-kø (se `core/eventbus/krydsproces.py`), så
+        tallet siger INTET om events en anden proces har i flugt. En flade der
+        læser det som en global sandhed kan erklære et regnskab præcist mens den
+        anden proces stadig behandler events (målt 12/11-2026, Bjørns indvending:
+        udfaldene registreres i runtime, men `/mc/gut` svarer fra API).
+
+        Bruges derfor kun som en KONKRET observation af egen kø — aldrig som bevis
+        for at «alt er afgjort». Kaster aldrig.
         """
         with self._seq_lock:
             return max(0, int(self._pending))

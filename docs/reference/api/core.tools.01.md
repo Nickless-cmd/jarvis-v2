@@ -113,34 +113,37 @@ _Persistent bash sessions — Jarvis' one-shot bash forced him to restart his_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `_Session` | `` | — | [src](../../../core/tools/bash_session.py#L75) |
-| method | `_Session.__init__` | `(self, session_id)` | — | [src](../../../core/tools/bash_session.py#L76) |
-| method | `_Session._drain_pending` | `(self, timeout)` | — | [src](../../../core/tools/bash_session.py#L138) |
-| method | `_Session.alive` | `(self)` | — | [src](../../../core/tools/bash_session.py#L149) |
-| method | `_Session._resync` | `(self, probe_timeout=…)` | Bryd shell'en ud af en hængende/continuation-tilstand og bekræft at den svarer. | [src](../../../core/tools/bash_session.py#L156) |
-| method | `_Session.run` | `(self, command, timeout=…, on_output=…)` | — | [src](../../../core/tools/bash_session.py#L204) |
-| method | `_Session.terminate` | `(self)` | Dræb shellen UDEN at tage sessionens lås. | [src](../../../core/tools/bash_session.py#L382) |
-| method | `_Session._reap_now` | `(self, timeout=…)` | Høst barnet efter drabet. True når det er væk. | [src](../../../core/tools/bash_session.py#L406) |
-| method | `_Session.close` | `(self)` | Dræb shellen og luk pty'en. Vender tilbage selv om en kommando kører. | [src](../../../core/tools/bash_session.py#L427) |
-| function | `_list_row` | `(sid, sess, now)` | Én række i `list`-svaret. | [src](../../../core/tools/bash_session.py#L452) |
-| function | `_decode` | `(buf)` | — | [src](../../../core/tools/bash_session.py#L484) |
-| function | `_daemon_main` | `()` | Singleton bash-session daemon. Listens on the Unix socket, owns sessions. | [src](../../../core/tools/bash_session.py#L496) |
-| function | `_send` | `(client, payload)` | — | [src](../../../core/tools/bash_session.py#L707) |
-| function | `_send_live_nonblocking` | `(client, payload)` | Best-effort live projection; never hold the shell session on a slow reader. | [src](../../../core/tools/bash_session.py#L714) |
-| function | `_read_daemon_pid` | `()` | Læs daemonens PID fra pid-filen. None hvis den ikke findes/er ulaesbar. | [src](../../../core/tools/bash_session.py#L728) |
-| function | `_pid_is_our_daemon` | `(pid)` | Kill-guard: kun en ÆGTE bash-session-daemon. En genbrugt PID må aldrig rammes. | [src](../../../core/tools/bash_session.py#L736) |
-| function | `_kill_daemon` | `(pid)` | SIGTERM, derefter SIGKILL. Gør intet hvis PID'en ikke er vores daemon. | [src](../../../core/tools/bash_session.py#L747) |
-| function | `_force_restart_daemon` | `()` | Dræb en hængende daemon og start en frisk. True hvis den svarer bagefter. | [src](../../../core/tools/bash_session.py#L769) |
-| function | `_ensure_daemon_running` | `()` | Return True if a reachable daemon exists. Spawn one if not. | [src](../../../core/tools/bash_session.py#L788) |
-| function | `_spawn_daemon` | `()` | Fork a detached daemon process running _daemon_main(). | [src](../../../core/tools/bash_session.py#L836) |
-| function | `_ping_daemon` | `()` | — | [src](../../../core/tools/bash_session.py#L852) |
-| function | `_client_call_once` | `(payload, timeout=…, on_output=…)` | Ét IPC-forsøg mod daemonen. Ingen selv-helbredelse — se _client_call. | [src](../../../core/tools/bash_session.py#L872) |
-| function | `_client_call` | `(payload, timeout=…, on_output=…)` | Send ét kald til daemonen — og helbred den selv hvis den er hængt. | [src](../../../core/tools/bash_session.py#L927) |
-| function | `_exec_bash_session_open` | `(args)` | — | [src](../../../core/tools/bash_session.py#L969) |
-| function | `_open_arbejdssession` | `(scope=…)` | Aabn den DELTE arbejds-shell — den `bash`-vaerktoejet genbruger. | [src](../../../core/tools/bash_session.py#L974) |
-| function | `_exec_bash_session_run` | `(args)` | — | [src](../../../core/tools/bash_session.py#L987) |
-| function | `_exec_bash_session_close` | `(args)` | — | [src](../../../core/tools/bash_session.py#L1026) |
-| function | `_exec_bash_session_list` | `(_args)` | — | [src](../../../core/tools/bash_session.py#L1033) |
+| function | `_uden_arvede` | `(env)` | — | [src](../../../core/tools/bash_session.py#L69) |
+| function | `_daemon_env` | `()` | Miljøet daemonen startes med: den startende proces' miljø, uden D-Bus. | [src](../../../core/tools/bash_session.py#L73) |
+| function | `_shell_env` | `()` | Miljøet en session-shell startes med (PTY-indstillinger + uden D-Bus). | [src](../../../core/tools/bash_session.py#L78) |
+| class | `_Session` | `` | — | [src](../../../core/tools/bash_session.py#L114) |
+| method | `_Session.__init__` | `(self, session_id)` | — | [src](../../../core/tools/bash_session.py#L115) |
+| method | `_Session._drain_pending` | `(self, timeout)` | — | [src](../../../core/tools/bash_session.py#L160) |
+| method | `_Session.alive` | `(self)` | — | [src](../../../core/tools/bash_session.py#L171) |
+| method | `_Session._resync` | `(self, probe_timeout=…)` | Bryd shell'en ud af en hængende/continuation-tilstand og bekræft at den svarer. | [src](../../../core/tools/bash_session.py#L178) |
+| method | `_Session.run` | `(self, command, timeout=…, on_output=…)` | — | [src](../../../core/tools/bash_session.py#L226) |
+| method | `_Session.terminate` | `(self)` | Dræb shellen UDEN at tage sessionens lås. | [src](../../../core/tools/bash_session.py#L404) |
+| method | `_Session._reap_now` | `(self, timeout=…)` | Høst barnet efter drabet. True når det er væk. | [src](../../../core/tools/bash_session.py#L428) |
+| method | `_Session.close` | `(self)` | Dræb shellen og luk pty'en. Vender tilbage selv om en kommando kører. | [src](../../../core/tools/bash_session.py#L449) |
+| function | `_list_row` | `(sid, sess, now)` | Én række i `list`-svaret. | [src](../../../core/tools/bash_session.py#L474) |
+| function | `_decode` | `(buf)` | — | [src](../../../core/tools/bash_session.py#L506) |
+| function | `_daemon_main` | `()` | Singleton bash-session daemon. Listens on the Unix socket, owns sessions. | [src](../../../core/tools/bash_session.py#L518) |
+| function | `_send` | `(client, payload)` | — | [src](../../../core/tools/bash_session.py#L729) |
+| function | `_send_live_nonblocking` | `(client, payload)` | Best-effort live projection; never hold the shell session on a slow reader. | [src](../../../core/tools/bash_session.py#L736) |
+| function | `_read_daemon_pid` | `()` | Læs daemonens PID fra pid-filen. None hvis den ikke findes/er ulaesbar. | [src](../../../core/tools/bash_session.py#L750) |
+| function | `_pid_is_our_daemon` | `(pid)` | Kill-guard: kun en ÆGTE bash-session-daemon. En genbrugt PID må aldrig rammes. | [src](../../../core/tools/bash_session.py#L758) |
+| function | `_kill_daemon` | `(pid)` | SIGTERM, derefter SIGKILL. Gør intet hvis PID'en ikke er vores daemon. | [src](../../../core/tools/bash_session.py#L769) |
+| function | `_force_restart_daemon` | `()` | Dræb en hængende daemon og start en frisk. True hvis den svarer bagefter. | [src](../../../core/tools/bash_session.py#L791) |
+| function | `_ensure_daemon_running` | `()` | Return True if a reachable daemon exists. Spawn one if not. | [src](../../../core/tools/bash_session.py#L810) |
+| function | `_spawn_daemon` | `()` | Fork a detached daemon process running _daemon_main(). | [src](../../../core/tools/bash_session.py#L858) |
+| function | `_ping_daemon` | `()` | — | [src](../../../core/tools/bash_session.py#L875) |
+| function | `_client_call_once` | `(payload, timeout=…, on_output=…)` | Ét IPC-forsøg mod daemonen. Ingen selv-helbredelse — se _client_call. | [src](../../../core/tools/bash_session.py#L895) |
+| function | `_client_call` | `(payload, timeout=…, on_output=…)` | Send ét kald til daemonen — og helbred den selv hvis den er hængt. | [src](../../../core/tools/bash_session.py#L950) |
+| function | `_exec_bash_session_open` | `(args)` | — | [src](../../../core/tools/bash_session.py#L992) |
+| function | `_open_arbejdssession` | `(scope=…)` | Aabn den DELTE arbejds-shell — den `bash`-vaerktoejet genbruger. | [src](../../../core/tools/bash_session.py#L997) |
+| function | `_exec_bash_session_run` | `(args)` | — | [src](../../../core/tools/bash_session.py#L1010) |
+| function | `_exec_bash_session_close` | `(args)` | — | [src](../../../core/tools/bash_session.py#L1049) |
+| function | `_exec_bash_session_list` | `(_args)` | — | [src](../../../core/tools/bash_session.py#L1056) |
 
 ## `core/tools/brain_write_gate.py`
 _HARD gate for user-initiated writes to Jarvis' brain._

@@ -57,6 +57,45 @@ _PID_PATH = _STATE_DIR / "bash_session.pid"
 _MAX_SESSIONS = 8
 _OUTPUT_LIMIT_BYTES = 32 * 1024
 _DEFAULT_TIMEOUT = 30
+
+#: Variabler daemonen og dens shells IKKE må arve fra den proces der startede
+#: daemonen. `DBUS_SESSION_BUS_ADDRESS` får Python-processer i shellen til at
+#: vælge den låste SecretService-nøgleringe, og `keyring_store` hang da på en
+#: oplåsnings-dialog der aldrig kommer (CT105 12/11-2026: 33 kald ramte
+#: 120 s-timeouten). Serverens egne processer har ingen D-Bus.
+_ARVES_IKKE: tuple[str, ...] = ("DBUS_SESSION_BUS_ADDRESS",)
+
+
+def _uden_arvede(env: dict[str, str]) -> dict[str, str]:
+    return {k: v for k, v in env.items() if k not in _ARVES_IKKE}
+
+
+def _daemon_env() -> dict[str, str]:
+    """Miljøet daemonen startes med: den startende proces' miljø, uden D-Bus."""
+    return _uden_arvede(dict(os.environ))
+
+
+def _shell_env() -> dict[str, str]:
+    """Miljøet en session-shell startes med (PTY-indstillinger + uden D-Bus)."""
+    return dict(
+        _daemon_env(),
+        PS1="",
+        # PS2="" bevidst: protokollen wrapper hver kommando i "{ ... }",
+        # så bash printer ALTID continuation-prompt som normal del af flowet
+        # — PS2 kan derfor ikke bruges til desync-detektion (afprøvet og
+        # forkastet 18. aug 2026: gav falsk positiv på hver kommando).
+        PS2="",
+        TERM="dumb",
+        # 2026-05-16 fix: pty hænger fordi git/less/man auto-pager
+        # venter på "Press RETURN to continue". Tving alle pagers
+        # til at bare dumpe output uden interaktion.
+        GIT_PAGER="cat",
+        PAGER="cat",
+        LESS="FRX",  # F=quit-if-one-screen, R=raw, X=no-init
+        # Forhindre interaktive prompts fra andre værktøjer
+        DEBIAN_FRONTEND="noninteractive",
+    )
+
 _IDLE_SESSION_TTL = 30 * 60
 _IDLE_DAEMON_TTL = 60 * 60
 _CLIENT_CONNECT_TIMEOUT = 5.0
@@ -105,24 +144,7 @@ class _Session:
                 os.execvpe(
                     "bash",
                     ["bash", "--noprofile", "--norc", "-i"],
-                    dict(
-                        os.environ,
-                        PS1="",
-                        # PS2="" bevidst: protokollen wrapper hver kommando i "{ ... }",
-                        # så bash printer ALTID continuation-prompt som normal del af flowet
-                        # — PS2 kan derfor ikke bruges til desync-detektion (afprøvet og
-                        # forkastet 18. aug 2026: gav falsk positiv på hver kommando).
-                        PS2="",
-                        TERM="dumb",
-                        # 2026-05-16 fix: pty hænger fordi git/less/man auto-pager
-                        # venter på "Press RETURN to continue". Tving alle pagers
-                        # til at bare dumpe output uden interaktion.
-                        GIT_PAGER="cat",
-                        PAGER="cat",
-                        LESS="FRX",  # F=quit-if-one-screen, R=raw, X=no-init
-                        # Forhindre interaktive prompts fra andre værktøjer
-                        DEBIAN_FRONTEND="noninteractive",
-                    ),
+                    _shell_env(),
                 )
             except Exception:
                 os._exit(127)
@@ -844,6 +866,7 @@ def _spawn_daemon() -> None:
             stderr=subprocess.DEVNULL,
             start_new_session=True,
             close_fds=True,
+            env=_daemon_env(),
         )
     except Exception as exc:
         logger.warning("bash_session: spawn daemon failed: %s", exc)

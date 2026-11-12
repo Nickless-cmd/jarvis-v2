@@ -398,14 +398,14 @@ _Central-anomalier — persistent register over UDEFINEREDE fejl Centralen ikke 
 | function | `record_anomaly_signature` | `(*, signature, category, importance, source, sample, location=…)` | UPSERT en anomali-signatur. Returnerer True hvis det er FØRSTE gang (ny fejl-type | [src](../../../core/runtime/db_anomalies.py#L77) |
 | function | `list_anomalies` | `(*, limit=…, unresolved_only=…, min_importance=…, exclude_known=…)` | Læs anomalier (nyeste først). `exclude_known=True` (default) filtrerer promoverede | [src](../../../core/runtime/db_anomalies.py#L134) |
 | function | `resolve_anomaly` | `(signature)` | Markér én anomali-signatur som håndteret (forsvinder fra det live register). Selv-sikker. | [src](../../../core/runtime/db_anomalies.py#L169) |
-| function | `anomaly_counts` | `()` | Hurtig optælling pr. importance (til realtime-panelet). Selv-sikker. | [src](../../../core/runtime/db_anomalies.py#L185) |
-| function | `_within_hours` | `(iso_ts, hours)` | True hvis iso_ts ligger inden for de seneste `hours` timer. Self-safe → False. | [src](../../../core/runtime/db_anomalies.py#L206) |
-| function | `promote_to_known` | `(*, signature, count, first_seen, importance=…, category=…, auto_threshold=…, auto_window_hours=…, force=…)` | Promovér en anomali-signatur til 'kendt signal' hvis tærskel nået. Self-safe. | [src](../../../core/runtime/db_anomalies.py#L216) |
-| function | `route_anomaly_to_nerve` | `(*, signature, cluster, nerve, action=…, notes=…, promoted_by=…)` | Knyt én anomali-signatur til en nerve (manuel routing). Sætter known_signal=1 + | [src](../../../core/runtime/db_anomalies.py#L264) |
-| function | `get_known_signal` | `(signature)` | Slå en signatur op i known_anomaly_signals. Returnerer {cluster, nerve, action} | [src](../../../core/runtime/db_anomalies.py#L296) |
-| function | `bump_known_signal_count` | `(signature)` | Tæl en ny forekomst af et allerede-kendt signal (uden at vise det som anomali). Self-safe. | [src](../../../core/runtime/db_anomalies.py#L313) |
-| function | `list_known_signals` | `(*, limit=…)` | Liste over promoverede 'kendte signaler' (nyeste først). Self-sikker → []. | [src](../../../core/runtime/db_anomalies.py#L328) |
-| function | `depromote_known_signal` | `(signature)` | Angre en promotion: slet known_anomaly_signals-rækken + sæt known_signal=0 i | [src](../../../core/runtime/db_anomalies.py#L349) |
+| function | `anomaly_counts` | `(*, active_window_hours=…)` | Hurtig optælling pr. importance (til realtime-panelet). Selv-sikker. | [src](../../../core/runtime/db_anomalies.py#L188) |
+| function | `_within_hours` | `(iso_ts, hours)` | True hvis iso_ts ligger inden for de seneste `hours` timer. Self-safe → False. | [src](../../../core/runtime/db_anomalies.py#L232) |
+| function | `promote_to_known` | `(*, signature, count, first_seen, importance=…, category=…, auto_threshold=…, auto_window_hours=…, force=…)` | Promovér en anomali-signatur til 'kendt signal' hvis tærskel nået. Self-safe. | [src](../../../core/runtime/db_anomalies.py#L242) |
+| function | `route_anomaly_to_nerve` | `(*, signature, cluster, nerve, action=…, notes=…, promoted_by=…)` | Knyt én anomali-signatur til en nerve (manuel routing). Sætter known_signal=1 + | [src](../../../core/runtime/db_anomalies.py#L290) |
+| function | `get_known_signal` | `(signature)` | Slå en signatur op i known_anomaly_signals. Returnerer {cluster, nerve, action} | [src](../../../core/runtime/db_anomalies.py#L322) |
+| function | `bump_known_signal_count` | `(signature)` | Tæl en ny forekomst af et allerede-kendt signal (uden at vise det som anomali). Self-safe. | [src](../../../core/runtime/db_anomalies.py#L339) |
+| function | `list_known_signals` | `(*, limit=…)` | Liste over promoverede 'kendte signaler' (nyeste først). Self-sikker → []. | [src](../../../core/runtime/db_anomalies.py#L354) |
+| function | `depromote_known_signal` | `(signature)` | Angre en promotion: slet known_anomaly_signals-rækken + sæt known_signal=0 i | [src](../../../core/runtime/db_anomalies.py#L375) |
 
 ## `core/runtime/db_api_connections.py`
 _API-forbindelses-nerve — persistent, GDPR-bundet metadata om hvem/hvad der rammer API'et._

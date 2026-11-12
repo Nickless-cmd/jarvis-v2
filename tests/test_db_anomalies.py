@@ -79,3 +79,62 @@ def test_promote_force(monkeypatch, tmp_path):
     assert da.promote_to_known(signature=sig, count=1, first_seen="", category="test:F",
                                force=True) == "route_to_nerve"
     assert da.get_known_signal(sig) is not None
+
+
+# ── Aldersvinduet paa anomaly_counts (12/11-2026) ────────────────────────────
+#
+# Hvorfor: én critical fra 9. november (set én gang, count=1) holdt
+# anomaly-clusteret rødt i tre dage mens Centralen var sund. Farven blev regnet
+# paa ALT uløst uden alder, saa en ægte rød tilstand ikke kunne skelnes fra en
+# spøgelsesalarm. Reglen: kun anomalier SET inden for vinduet farver fladen;
+# ældre tælles som `stale` og forsvinder ikke fra dataene.
+
+def _insert_anomaly(monkeypatch, tmp_path, *, sig, importance, last_seen):
+    _fresh_db(monkeypatch, tmp_path)
+    import core.runtime.db_core as dbc
+    with dbc.connect() as conn:
+        da._ensure_anomalies_table(conn)
+        conn.execute("DELETE FROM central_anomalies")
+        conn.execute(
+            "INSERT INTO central_anomalies (signature, category, importance, source, count, "
+            "first_seen, last_seen, sample, resolved, location, known_signal) "
+            "VALUES (?,?,?,?,?,?,?,?,0,'',0)",
+            (sig, "test", importance, "t", 1, last_seen, last_seen, "x"),
+        )
+
+
+def test_gammel_critical_taeller_som_stale(monkeypatch, tmp_path):
+    """En critical fra 3 dage siden maa ikke farve fladen — men maa ikke forsvinde."""
+    from datetime import UTC, datetime, timedelta
+    gammel = (datetime.now(UTC) - timedelta(days=3)).isoformat()
+    _insert_anomaly(monkeypatch, tmp_path, sig="test:gammel", importance="critical", last_seen=gammel)
+    c = da.anomaly_counts()
+    assert c["critical"] == 0, c
+    assert c["stale"] == 1, c
+
+
+def test_frisk_critical_taeller_stadig(monkeypatch, tmp_path):
+    """Vinduet maa ikke goere fladen blind: en frisk critical skal stadig taelle."""
+    from datetime import UTC, datetime
+    nu = datetime.now(UTC).isoformat()
+    _insert_anomaly(monkeypatch, tmp_path, sig="test:frisk", importance="critical", last_seen=nu)
+    c = da.anomaly_counts()
+    assert c["critical"] == 1, c
+    assert c["stale"] == 0, c
+
+
+def test_vindue_nul_giver_den_gamle_adfaerd(monkeypatch, tmp_path):
+    """active_window_hours=0 slaar vinduet fra — vagter skal kunne se hele historikken."""
+    from datetime import UTC, datetime, timedelta
+    gammel = (datetime.now(UTC) - timedelta(days=30)).isoformat()
+    _insert_anomaly(monkeypatch, tmp_path, sig="test:urgammel", importance="critical", last_seen=gammel)
+    assert da.anomaly_counts(active_window_hours=0)["critical"] == 1
+    assert da.anomaly_counts()["critical"] == 0
+
+
+def test_status_bliver_groen_paa_kun_stale():
+    """Farven: kun-stale er groen, men frisk critical og aaben breaker er stadig roed."""
+    from core.services.central_realtime import _status_from
+    assert _status_from({}, [], [], {}, [], {"critical": 0, "high": 0, "total": 0, "stale": 61}) == "green"
+    assert _status_from({}, [], [], {}, [], {"critical": 1, "high": 0, "total": 1}) == "red"
+    assert _status_from({}, [], ["breaker"], {}, [], {"critical": 0, "high": 0, "total": 0}) == "red"

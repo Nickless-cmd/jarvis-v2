@@ -182,21 +182,47 @@ def resolve_anomaly(signature: str) -> bool:
         return False
 
 
-def anomaly_counts() -> dict[str, int]:
-    """Hurtig optælling pr. importance (til realtime-panelet). Selv-sikker."""
-    out = {"critical": 0, "high": 0, "medium": 0, "low": 0, "total": 0}
+_ACTIVE_WINDOW_HOURS = 72.0
+
+
+def anomaly_counts(*, active_window_hours: float = _ACTIVE_WINDOW_HOURS) -> dict[str, int]:
+    """Hurtig optælling pr. importance (til realtime-panelet). Selv-sikker.
+
+    ## Hvorfor der er et tidsvindue (12/11-2026)
+
+    Farven på Central-prikken blev regnet på ALT uløst, uden alder. Én
+    ``critical`` fra 9. november — set én gang, ``count=1``, en forbigaaende
+    ``Errno 24`` — holdt derfor anomaly-clusteret rødt i tre dage, mens
+    Centralen i øvrigt var sund (degraded=false, nul breakers, nul errors).
+    En farve der altid er rød kan ikke skelne en ægte fejl fra en spøgelsesalarm.
+
+    Anomalier der ikke er SET inden for vinduet tælles nu som ``stale`` i
+    stedet: de forsvinder ikke fra dataene, men de farver ikke fladen. En
+    anomali der blusser op igen får ny ``last_seen`` og tæller straks med.
+
+    ``active_window_hours=0`` slår vinduet fra og giver den gamle adfærd —
+    bruges af vagter der skal se hele historikken.
+    """
+    out = {"critical": 0, "high": 0, "medium": 0, "low": 0, "total": 0, "stale": 0}
     try:
         with connect() as conn:
             _ensure_anomalies_table(conn)
-            for imp, n in conn.execute(
-                "SELECT importance, COUNT(*) FROM central_anomalies "
+            rows = conn.execute(
+                "SELECT importance, last_seen, COUNT(*) FROM central_anomalies "
                 "WHERE resolved = 0 AND known_signal = 0 "
-                "GROUP BY importance"
-            ).fetchall():
+                "GROUP BY importance, last_seen"
+            ).fetchall()
+            for imp, last_seen, n in rows:
+                n = int(n)
+                if active_window_hours and not _within_hours(last_seen, active_window_hours):
+                    out["stale"] += n
+                    continue
                 if str(imp) in out:
-                    out[str(imp)] = int(n)
-                out["total"] += int(n)
+                    out[str(imp)] += n
+                out["total"] += n
     except Exception:
+        # En læsefejl må ikke gøre status grøn af vanvare: returnér nul-tællinger,
+        # som kalderen behandler som «ingen anomalier» — men fejlen logges af connect-laget.
         pass
     return out
 

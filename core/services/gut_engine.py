@@ -63,6 +63,16 @@ def _task_mapping(task_description: str) -> dict[str, object]:
 _ERROR_RATE_CAUTION = 0.20
 _MIN_SAMPLE_FOR_RATE = 20
 
+# Evidens-port (12/11-2026): grundlaget for at en `caution` må BLOKKERE et run.
+# Målt 12/11: 26 caution-advarsler, 1 korrekt (3,8 %) — advarslen var ren støj fordi
+# runs lykkes ~99,7 % af tiden. Tærsklerne er sat så et lille, skævt sample ikke kan
+# låse gaten: under 20 events er præcisionen ikke et grundlag, og først når flertallet
+# af advarslerne faktisk varsler fejl, har den positiv forventet værdi.
+_EVIDENS_MIN_CAUTION = 20
+_EVIDENS_MIN_PRECISION = 0.5
+_EVIDENS_TTL_S = 300.0
+_EVIDENS_CACHE: dict[str, object] = {"at": 0.0, "value": None}
+
 
 def derive_gut_signal(
     *,
@@ -639,6 +649,79 @@ def take_preflight_prediction() -> dict[str, object] | None:
         return None
 
 
+def _caution_har_evidens() -> dict[str, object]:
+    """Måler om `caution` er bedre end «sig altid proceed» — grundlaget for at blokere.
+
+    Spørgsmålet er ikke «har maven ret ofte?» men «har advarslen positiv forventet værdi?».
+    En advarsel der fyrer på noget der går fint, koster et run og giver intet igen.
+
+    Kravet er todelt og bevidst konservativt:
+      * mindst `_EVIDENS_MIN_CAUTION` caution-events, ellers er præcisionen støj
+      * præcisionen skal være over `_EVIDENS_MIN_PRECISION` — altså at flertallet af
+        advarslerne faktisk varslede en fejl
+
+    Self-safe: kan evidensen ikke måles, svarer den `may_block=False` med en grund. En
+    gate der ikke kan begrunde sin blokering må ikke blokere.
+    """
+    import json as _json
+
+    nu = time.time()
+    if (
+        _EVIDENS_CACHE["value"] is not None
+        and (nu - float(_EVIDENS_CACHE["at"])) < _EVIDENS_TTL_S
+    ):
+        return _EVIDENS_CACHE["value"]  # type: ignore[return-value]
+
+    ud: dict[str, object] = {"may_block": False, "reason": "kunne-ikke-maales"}
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT payload_json FROM events "
+                "WHERE kind = 'cognitive_gut.outcome_recorded'"
+            ).fetchall()
+        caution_n = 0
+        caution_rigtige = 0
+        for row in rows:
+            try:
+                d = _json.loads(row[0])
+            except (TypeError, ValueError):  # een beskadiget raekke maa ikke skjule de andre
+                continue
+            if not isinstance(d, dict):
+                continue
+            if str(d.get("hunch") or "") != "caution":
+                continue
+            caution_n += 1
+            # En caution-advarsel havde ret hvis udfaldet IKKE var en succes.
+            if str(d.get("actual") or "") not in ("completed", "success"):
+                caution_rigtige += 1
+        if caution_n < _EVIDENS_MIN_CAUTION:
+            ud = {
+                "may_block": False,
+                "reason": "for-faa-caution-events",
+                "caution_n": caution_n,
+                "kraevet": _EVIDENS_MIN_CAUTION,
+            }
+        else:
+            praecision = caution_rigtige / caution_n
+            ud = {
+                "may_block": praecision > _EVIDENS_MIN_PRECISION,
+                "reason": "praecision" if praecision > _EVIDENS_MIN_PRECISION
+                          else "advarslen-tager-fejl",
+                "caution_n": caution_n,
+                "caution_rigtige": caution_rigtige,
+                "praecision": round(praecision, 4),
+                "kraevet_praecision": _EVIDENS_MIN_PRECISION,
+            }
+    except Exception:  # uden maaling blokerer vi ikke — se docstring
+        ud = {"may_block": False, "reason": "db-fejl"}
+
+    _EVIDENS_CACHE["at"] = nu
+    _EVIDENS_CACHE["value"] = ud
+    return ud
+
+
 def preflight_gut_gate(*, task_description: str) -> dict[str, object]:
     """PRE-FLIGHT: dan hunch og afgør om et autonomt run må starte. Kaster ALDRIG.
 
@@ -666,6 +749,32 @@ def preflight_gut_gate(*, task_description: str) -> dict[str, object]:
                           hunch=hunch)
     except Exception:  # gaten er rådgivende — en fejl her må ALDRIG stoppe et run
         return {"allowed": True, "reason": "gate-fejl", "confidence": conf}
+
+    # EVIDENS-PORT (12/11-2026): en advarsel må kun BLOKKERE når maven kan vises at være
+    # bedre end den trivielle strategi «sig altid proceed». Uden porten er `caution` en
+    # advarsel der per konstruktion næsten altid tager fejl: runs lykkes ~99,7 % af tiden,
+    # så en advarsel er forkert i samme grad. Målt 12/11 kl. 21:45Z på 344 events: maven
+    # 92,73 % korrekt mod konstantens 99,71 % = −6,98 pp, og af 26 caution-advarsler var
+    # 1 korrekt (3,8 %). Gaten advarede altså om noget der gik fint 96 % af gangene.
+    #
+    # Porten rører IKKE signalet: `hunch`, `confidence` og kalibreringen går uændret videre
+    # til de fire andre forbrugere (kalibrerings-forudsigelse, Central-stance,
+    # stance-tensions, central_valence). Kun den ene handling — at stoppe et run — kræver
+    # evidens. Er der ikke nok events til at afgøre det, blokeres der ikke: en gate uden
+    # grundlag må ikke handle.
+    if not tillad and hunch == "caution":
+        evidens = _caution_har_evidens()
+        if not evidens.get("may_block"):
+            udfald = {
+                "allowed": True,
+                "confidence": conf,
+                "hunch": hunch,
+                "evidence_blocked": True,
+                "evidence": evidens,
+            }
+            _stash_preflight_prediction(signal=signal, udfald=udfald,
+                                        task_description=task_description)
+            return udfald
 
     if tillad:
         udfald = {"allowed": True, "confidence": conf, "hunch": hunch}

@@ -160,26 +160,27 @@ _Gut Engine — intuition and calibration tracking._
 |---|---|---|---|---|
 | function | `_gut_bias` | `()` | Læs Lag-4-bias'en (0.0 = shadow/ingen ændring). Én sætning, så kaldestedets try er | [src](../../../core/services/gut_engine.py#L23) |
 | function | `_task_mapping` | `(task_description)` | Opgave → værktøjs-risiko. Kaster ALDRIG: en fejl her må ikke ændre en hunch. | [src](../../../core/services/gut_engine.py#L33) |
-| function | `derive_gut_signal` | `(*, task_description, confidence=…, recent_error_count=…, recent_success_count=…)` | Generate a gut-feel hunch about a task. | [src](../../../core/services/gut_engine.py#L67) |
-| function | `_consumer_mode` | `()` | — | [src](../../../core/services/gut_engine.py#L213) |
-| function | `_gate_threshold` | `()` | — | [src](../../../core/services/gut_engine.py#L223) |
-| function | `_safe_record` | `(ledger, nerve, decision, reason)` | Ét ledger-kald, indkapslet. En tæller må ALDRIG kunne blokere gaten. | [src](../../../core/services/gut_engine.py#L270) |
-| function | `_record_gut_influence` | `(nerve, delta, crossed)` | Persistér ét confidence-delta. Bookkeeping må ALDRIG kaste ind i gate-stien. | [src](../../../core/services/gut_engine.py#L278) |
-| function | `_read_gut_influence` | `(nerve)` | Læs påvirkningsrækken selv-sikkert; en manglende tabel svarer til nul data. | [src](../../../core/services/gut_engine.py#L313) |
-| function | `_record_counterfactual` | `(conf, would_pass, no_bias_confidence, threshold, mode, hunch=…)` | Optæl gatens afgørelse MED og UDEN den lærte bias. Ren statistik — kaster ALDRIG. | [src](../../../core/services/gut_engine.py#L348) |
-| function | `gut_gate` | `(proceed_confidence, *, context=…, no_bias_confidence=…, hunch=…)` | Beslut om et proceed-valg må fortsætte, gated på gut-confidence. | [src](../../../core/services/gut_engine.py#L393) |
-| function | `_blok_budget_brugt` | `(no=…)` | True når blokerings-budgettet for den rullende time er brugt. Ren — kaster ikke. | [src](../../../core/services/gut_engine.py#L483) |
-| function | `_record_backstop` | `(conf, hunch)` | Tæl en overkørsel: gaten ville stoppe, men bagkanten slap runnet igennem. | [src](../../../core/services/gut_engine.py#L491) |
-| function | `_record_withheld_decision` | `(conf, hunch, task_description)` | A3: registrér en afvisning som BESLUTNING — adskilt fra enhver udfaldskalibrering. | [src](../../../core/services/gut_engine.py#L501) |
-| function | `_recent_tick_signals` | `()` | (error_count, success_count) fra de seneste ticks. Fail-safe: (0, 0) ved fejl. | [src](../../../core/services/gut_engine.py#L535) |
-| function | `_stash_preflight_prediction` | `(*, signal, udfald, task_description)` | Gem preflight'ens forudsigelse + beslutning, så livscyklussen kan evaluere DEN. | [src](../../../core/services/gut_engine.py#L588) |
-| function | `take_preflight_prediction` | `()` | Tag den ældste ikke-forbrugte preflight-forudsigelse. None hvis ingen findes. | [src](../../../core/services/gut_engine.py#L623) |
-| function | `preflight_gut_gate` | `(*, task_description)` | PRE-FLIGHT: dan hunch og afgør om et autonomt run må starte. Kaster ALDRIG. | [src](../../../core/services/gut_engine.py#L642) |
-| function | `preflight_allows` | `(message)` | Bekvemmeligheds-indpakning til run-start-stierne: True = start runnet. | [src](../../../core/services/gut_engine.py#L698) |
-| function | `record_gut_outcome` | `(*, hunch, actual_outcome)` | Record whether the gut hunch was correct. | [src](../../../core/services/gut_engine.py#L710) |
-| function | `_observed_baseline` | `()` | Mål maven mod en KONSTANT baseline (altid «proceed») på de events der findes. | [src](../../../core/services/gut_engine.py#L736) |
-| function | `build_gut_surface` | `()` | Kalibrerings-fladen — viser de tre lag ADSKILT (A3, 3/11-2026). | [src](../../../core/services/gut_engine.py#L797) |
-| function | `build_gut_counterfactual_surface` | `()` | Counterfactual decision delta: hvor ofte flyttede den lærte bias gatens afgørelse? | [src](../../../core/services/gut_engine.py#L870) |
+| function | `derive_gut_signal` | `(*, task_description, confidence=…, recent_error_count=…, recent_success_count=…)` | Generate a gut-feel hunch about a task. | [src](../../../core/services/gut_engine.py#L77) |
+| function | `_consumer_mode` | `()` | — | [src](../../../core/services/gut_engine.py#L223) |
+| function | `_gate_threshold` | `()` | — | [src](../../../core/services/gut_engine.py#L233) |
+| function | `_safe_record` | `(ledger, nerve, decision, reason)` | Ét ledger-kald, indkapslet. En tæller må ALDRIG kunne blokere gaten. | [src](../../../core/services/gut_engine.py#L280) |
+| function | `_record_gut_influence` | `(nerve, delta, crossed)` | Persistér ét confidence-delta. Bookkeeping må ALDRIG kaste ind i gate-stien. | [src](../../../core/services/gut_engine.py#L288) |
+| function | `_read_gut_influence` | `(nerve)` | Læs påvirkningsrækken selv-sikkert; en manglende tabel svarer til nul data. | [src](../../../core/services/gut_engine.py#L323) |
+| function | `_record_counterfactual` | `(conf, would_pass, no_bias_confidence, threshold, mode, hunch=…)` | Optæl gatens afgørelse MED og UDEN den lærte bias. Ren statistik — kaster ALDRIG. | [src](../../../core/services/gut_engine.py#L358) |
+| function | `gut_gate` | `(proceed_confidence, *, context=…, no_bias_confidence=…, hunch=…)` | Beslut om et proceed-valg må fortsætte, gated på gut-confidence. | [src](../../../core/services/gut_engine.py#L403) |
+| function | `_blok_budget_brugt` | `(no=…)` | True når blokerings-budgettet for den rullende time er brugt. Ren — kaster ikke. | [src](../../../core/services/gut_engine.py#L493) |
+| function | `_record_backstop` | `(conf, hunch)` | Tæl en overkørsel: gaten ville stoppe, men bagkanten slap runnet igennem. | [src](../../../core/services/gut_engine.py#L501) |
+| function | `_record_withheld_decision` | `(conf, hunch, task_description)` | A3: registrér en afvisning som BESLUTNING — adskilt fra enhver udfaldskalibrering. | [src](../../../core/services/gut_engine.py#L511) |
+| function | `_recent_tick_signals` | `()` | (error_count, success_count) fra de seneste ticks. Fail-safe: (0, 0) ved fejl. | [src](../../../core/services/gut_engine.py#L545) |
+| function | `_stash_preflight_prediction` | `(*, signal, udfald, task_description)` | Gem preflight'ens forudsigelse + beslutning, så livscyklussen kan evaluere DEN. | [src](../../../core/services/gut_engine.py#L598) |
+| function | `take_preflight_prediction` | `()` | Tag den ældste ikke-forbrugte preflight-forudsigelse. None hvis ingen findes. | [src](../../../core/services/gut_engine.py#L633) |
+| function | `_caution_har_evidens` | `()` | Måler om `caution` er bedre end «sig altid proceed» — grundlaget for at blokere. | [src](../../../core/services/gut_engine.py#L652) |
+| function | `preflight_gut_gate` | `(*, task_description)` | PRE-FLIGHT: dan hunch og afgør om et autonomt run må starte. Kaster ALDRIG. | [src](../../../core/services/gut_engine.py#L725) |
+| function | `preflight_allows` | `(message)` | Bekvemmeligheds-indpakning til run-start-stierne: True = start runnet. | [src](../../../core/services/gut_engine.py#L807) |
+| function | `record_gut_outcome` | `(*, hunch, actual_outcome)` | Record whether the gut hunch was correct. | [src](../../../core/services/gut_engine.py#L819) |
+| function | `_observed_baseline` | `()` | Mål maven mod en KONSTANT baseline (altid «proceed») på de events der findes. | [src](../../../core/services/gut_engine.py#L845) |
+| function | `build_gut_surface` | `()` | Kalibrerings-fladen — viser de tre lag ADSKILT (A3, 3/11-2026). | [src](../../../core/services/gut_engine.py#L906) |
+| function | `build_gut_counterfactual_surface` | `()` | Counterfactual decision delta: hvor ofte flyttede den lærte bias gatens afgørelse? | [src](../../../core/services/gut_engine.py#L979) |
 
 ## `core/services/habit_tracker.py`
 _Habit Tracker — detects recurring patterns and friction points._

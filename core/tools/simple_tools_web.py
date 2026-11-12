@@ -180,7 +180,13 @@ def _exec_search(args: dict[str, Any]) -> dict[str, Any]:
         # Det er formentlig stoerste enkeltaarsag til at agenternes
         # undersoegelser blev ringe netop dér hvor Jarvis bor.
         argv = [
-            "grep", "-rEnH", "--color=never",
+            # `-I` (12/11-2026): grep læser ellers en binær fil HELE vejen igennem for at
+            # afgøre om den matcher. `search` på ~/.jarvis-v2/state ramte jarvis.db
+            # (6,65 GB) og løftede servicens memory-peak til 6,5 GB via page cache. Med
+            # `-I` stopper grep efter første buffer, når den ser NUL-bytes. Databaserne
+            # udelukkes også ved navn: en træffer i en SQLite-side er aldrig et svar.
+            "grep", "-rEnHI", "--color=never",
+            "--exclude=*.db", "--exclude=*.sqlite*", "--exclude=*-wal", "--exclude=*-shm",
             "--exclude-dir=.git", "--exclude-dir=node_modules",
             "--exclude-dir=__pycache__", "--exclude-dir=.claude",
             "--exclude-dir=dist", "--exclude-dir=build",

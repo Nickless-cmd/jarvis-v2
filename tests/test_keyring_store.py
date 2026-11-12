@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 
 def test_pbkdf2_deterministic_and_length() -> None:
     from core.services.keyring_store import derive_key_from_password
@@ -96,3 +98,116 @@ def test_keyring_probe_accepts_working_backend(monkeypatch) -> None:
 
     monkeypatch.setattr(_kr, "get_keyring", lambda: _OkBackend())
     assert ks._keyring() is _kr
+
+
+# ── En BLOKERET nøgleringe må ikke hænge processen (12/11-2026) ─────────────────
+#
+# Målt på CT105: den delte bash-session (daemon startet 4/11 fra en login-session)
+# har DBUS_SESSION_BUS_ADDRESS, men jarvis-api/-runtime har den ikke. Hver
+# Python-proces startet fra shellen fik derfor SecretService som backend; dens
+# samling er låst, og `get_password` ventede evigt på en oplåsnings-dialog
+# (stak: secretstorage.exec_prompt ← keyring_store._keyring ← get_user_key ←
+# routine_migration.resolve_canonical_identity ← resolve_owner_target_session).
+# 33 bash-kald i dag ramte 120 s-timeouten og blev kørt igen via fallback.
+# Prober der hænger = ingen nøgleringe: brug server-KEK/DEK, som servicene gør.
+@pytest.fixture
+def _frisk_probe(monkeypatch):
+    import core.services.keyring_store as ks
+
+    monkeypatch.setattr(ks, "_KEYRING_BLOKERET", False)
+    monkeypatch.setattr(ks, "_PROBE_TIMEOUT_S", 0.2)
+    return ks
+
+
+def test_en_blokeret_noegleringe_regnes_for_utilgaengelig(monkeypatch, _frisk_probe) -> None:
+    import threading
+    import time
+
+    import keyring as _kr
+
+    ks = _frisk_probe
+    frigiv = threading.Event()
+
+    class _Blokeret:
+        def get_password(self, svc, uid):
+            frigiv.wait(30)   # som secretstorage.exec_prompt: venter paa en dialog
+            return None
+
+    monkeypatch.setattr(_kr, "get_keyring", lambda: _Blokeret())
+    try:
+        t = time.monotonic()
+        assert ks._keyring() is None
+        assert time.monotonic() - t < 2.0
+    finally:
+        frigiv.set()
+
+
+def test_blokeret_udfald_huskes_saa_hvert_kald_ikke_betaler_timeouten_igen(
+        monkeypatch, _frisk_probe) -> None:
+    import threading
+    import time
+
+    import keyring as _kr
+
+    ks = _frisk_probe
+    frigiv = threading.Event()
+    kald: list[int] = []
+
+    class _Blokeret:
+        def get_password(self, svc, uid):
+            kald.append(1)
+            frigiv.wait(30)
+            return None
+
+    monkeypatch.setattr(_kr, "get_keyring", lambda: _Blokeret())
+    try:
+        assert ks._keyring() is None
+        t = time.monotonic()
+        assert ks._keyring() is None
+        assert time.monotonic() - t < 0.1       # ingen ny ventetid
+        assert len(kald) == 1                    # og ingen ny hængende tråd
+    finally:
+        frigiv.set()
+
+
+def test_en_langsom_men_svarende_noegleringe_bruges_stadig(monkeypatch, _frisk_probe) -> None:
+    import time
+
+    import keyring as _kr
+
+    ks = _frisk_probe
+
+    class _Langsom:
+        def get_password(self, svc, uid):
+            time.sleep(0.05)
+            return None
+
+    monkeypatch.setattr(_kr, "get_keyring", lambda: _Langsom())
+    assert ks._keyring() is _kr
+
+
+def test_get_user_key_falder_til_server_dek_naar_noegleringen_blokerer(
+        isolated_runtime, monkeypatch, _frisk_probe) -> None:
+    """Hele vejen: en blokeret nøgleringe giver SAMME nøgle som servicenes
+    server-DEK — ikke en ny tilfældig nøgle gemt i nøgleringen (split-brain)."""
+    import threading
+
+    import keyring as _kr
+
+    ks = _frisk_probe
+    frigiv = threading.Event()
+
+    class _Blokeret:
+        def get_password(self, svc, uid):
+            frigiv.wait(30)
+
+        def set_password(self, svc, uid, val):
+            raise AssertionError("der maa ikke skrives en nøgle i en blokeret nøgleringe")
+
+    monkeypatch.setattr(_kr, "get_keyring", lambda: _Blokeret())
+    try:
+        k = ks.get_user_key("bjorn")
+        monkeypatch.setattr(ks, "_keyring", lambda: None)   # servicenes vej
+        assert ks.get_user_key("bjorn") == k
+    finally:
+        frigiv.set()

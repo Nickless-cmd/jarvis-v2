@@ -28,16 +28,52 @@ _KEK_RUNTIME_KEY = "encryption_kek"  # pragma: allowlist secret
 _DEK_DB_PREFIX = "user_dek:"
 
 
+#: Hvor længe proben må vente på nøgleringen. En LÅST SecretService-samling
+#: venter på en oplåsnings-dialog der aldrig kommer på en server.
+_PROBE_TIMEOUT_S = 2.0
+#: Sat når proben hang. Husket for processens levetid, så hvert opslag ikke
+#: betaler timeouten igen og efterlader en ny hængende tråd.
+_KEYRING_BLOKERET = False
+
+
 def _keyring():
+    global _KEYRING_BLOKERET
+    if _KEYRING_BLOKERET:
+        return None
     try:
         import keyring
-        # Probe-operation: fail-backenden (headless container) består .priority-
-        # tjekket men kaster NoKeyringError ved FAKTISK brug. En harmløs lookup
-        # afslører det robust → fald tilbage til server-side KEK/DEK.
-        keyring.get_keyring().get_password("jarvis-v2-keyring-probe", "probe")
-        return keyring
     except Exception:
         return None
+    # Proben kører i en daemon-tråd med en frist (12/11-2026). Målt på CT105: den
+    # delte bash-session har DBUS_SESSION_BUS_ADDRESS, servicene har ikke. En
+    # Python-proces startet derfra fik SecretService, hvis samling er låst, og
+    # `get_password` ventede evigt på en oplåsnings-dialog (33 bash-kald på én
+    # dag ramte 120 s-timeouten). En probe der hænger er ingen nøgleringe:
+    # server-KEK/DEK bruges, som servicene gør. Det beskytter også mod en
+    # split-brain-nøgle — var oplåsningen lykkedes, havde `get_user_key` gemt en
+    # ANDEN tilfældig nøgle end den server-DEK servicene bruger.
+    import threading
+
+    udfald: dict[str, object] = {}
+
+    def _probe() -> None:
+        try:
+            # Probe-operation: fail-backenden (headless container) består
+            # .priority-tjekket men kaster NoKeyringError ved FAKTISK brug. En
+            # harmløs lookup afslører det robust → fald tilbage til server-side
+            # KEK/DEK.
+            keyring.get_keyring().get_password("jarvis-v2-keyring-probe", "probe")
+            udfald["ok"] = True
+        except Exception:
+            udfald["ok"] = False
+
+    traad = threading.Thread(target=_probe, name="keyring-probe", daemon=True)
+    traad.start()
+    traad.join(_PROBE_TIMEOUT_S)
+    if traad.is_alive():
+        _KEYRING_BLOKERET = True
+        return None
+    return keyring if udfald.get("ok") else None
 
 
 # ── Server-side KEK/DEK (headless) ──────────────────────────────────────────

@@ -582,14 +582,19 @@ _The Ghost — hvad der overlever model-skift._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_ghost.py#L41) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_ghost.py#L50) |
-| function | `analyze` | `(texts)` | Beregn klang-fingeraftrykket fra en stak svar-tekster (strukturelt, ingen indhold gemt). | [src](../../../core/services/central_ghost.py#L58) |
-| function | `update_profile` | `(texts)` | Opdatér det durable ghost_profile fra seneste svar. Self-safe. | [src](../../../core/services/central_ghost.py#L106) |
-| function | `get_profile` | `()` | — | [src](../../../core/services/central_ghost.py#L114) |
-| function | `klang_primer` | `()` | Rendér fingeraftrykket som en kort klang-primer til en ny models system-prompt. Self-safe. | [src](../../../core/services/central_ghost.py#L119) |
-| function | `_recent_texts` | `(limit=…)` | Hans seneste svar fra chat_messages (role=assistant). Self-safe → [] ved fejl. | [src](../../../core/services/central_ghost.py#L141) |
-| function | `build_ghost_surface` | `()` | Fingeraftryk + klang-primer + følt linje. Self-safe. | [src](../../../core/services/central_ghost.py#L156) |
-| function | `klang_drift` | `(gammel, ny)` | Hvor meget har klangen flyttet sig mellem to fingeraftryk? READ-ONLY, strukturelt. | [src](../../../core/services/central_ghost.py#L166) |
-| function | `record_ghost` | `(*, trigger=…, last_visible_at=…)` | Cadence (6t): opdatér fingeraftrykket — og LAD et klangskift lande som forpligtelse. | [src](../../../core/services/central_ghost.py#L193) |
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_ghost.py#L47) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_ghost.py#L56) |
+| function | `_pending` | `()` | — | [src](../../../core/services/central_ghost.py#L64) |
+| function | `_gem_pending` | `(drift, *, grund)` | Bevar skiftet på tværs af kørsler — med sin oprindelige opdagelsestid. | [src](../../../core/services/central_ghost.py#L71) |
+| function | `_ryd_pending` | `()` | — | [src](../../../core/services/central_ghost.py#L85) |
+| function | `_land_skift` | `(drift, *, kilde)` | Forsøg at gøre et målt klangskift til en bindende beslutning. | [src](../../../core/services/central_ghost.py#L89) |
+| function | `_land_efterslaeb` | `()` | Ligger der et skift fra en tidligere kørsel der aldrig fik sin beslutning? | [src](../../../core/services/central_ghost.py#L130) |
+| function | `analyze` | `(texts)` | Beregn klang-fingeraftrykket fra en stak svar-tekster (strukturelt, ingen indhold gemt). | [src](../../../core/services/central_ghost.py#L147) |
+| function | `update_profile` | `(texts)` | Opdatér det durable ghost_profile fra seneste svar. Self-safe. | [src](../../../core/services/central_ghost.py#L195) |
+| function | `get_profile` | `()` | — | [src](../../../core/services/central_ghost.py#L203) |
+| function | `klang_primer` | `()` | Rendér fingeraftrykket som en kort klang-primer til en ny models system-prompt. Self-safe. | [src](../../../core/services/central_ghost.py#L208) |
+| function | `_recent_texts` | `(limit=…)` | Hans seneste svar fra chat_messages (role=assistant). Self-safe → [] ved fejl. | [src](../../../core/services/central_ghost.py#L230) |
+| function | `build_ghost_surface` | `()` | Fingeraftryk + klang-primer + følt linje. Self-safe. | [src](../../../core/services/central_ghost.py#L245) |
+| function | `klang_drift` | `(gammel, ny)` | Hvor meget har klangen flyttet sig mellem to fingeraftryk? READ-ONLY, strukturelt. | [src](../../../core/services/central_ghost.py#L255) |
+| function | `record_ghost` | `(*, trigger=…, last_visible_at=…)` | Cadence (6t): opdatér fingeraftrykket — og LAD et klangskift lande som forpligtelse. | [src](../../../core/services/central_ghost.py#L282) |
 

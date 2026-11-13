@@ -16,6 +16,7 @@ dage + tone-label, ALDRIG samtaleindhold — §24.4). Self-safe. Relateret: [[ce
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,97 @@ _DAYS_KEY = "relational_days_seen"
 # `days_together` vokser monotont. Et FALD betyder at selv-tilstandens alder blev
 # nulstillet — altså at relationens kontinuitet gik tabt uden at nogen bemærkede det.
 _FALD_TAERSKEL = 0.5
+
+# (13/11-2026, Bjørns anden indvending) Et OPDAGET fald må ikke forsvinde fordi
+# handlingen fejlede. Før rettelsen blev `_DAYS_KEY` overskrevet uanset om
+# `land_decision` lykkedes, og `landing` stod som «sammenlignet_uden_fald» — så
+# næste kørsel sammenlignede to ens tal og fundet var væk uden et spor.
+# Nu bæres et ulandet fald videre her, og forsøges igen ved næste kørsel.
+_PENDING_KEY = "relational_pending_fald"
+
+
+def _now_iso() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+def _pending() -> dict[str, Any] | None:
+    p = _kv_get(_PENDING_KEY, None)
+    if isinstance(p, dict) and p.get("forrige") is not None and p.get("nu") is not None:
+        return p
+    return None
+
+
+def _gem_pending(forrige: Any, nu: Any, *, grund: str) -> None:
+    """Bevar fundet på tværs af kørsler — med sin oprindelige opdagelsestid."""
+    gammel = _pending() or {}
+    _kv_set(_PENDING_KEY, {
+        "forrige": forrige,
+        "nu": nu,
+        "opdaget_at": gammel.get("opdaget_at") or _now_iso(),
+        "forsog": int(gammel.get("forsog") or 0) + 1,
+        "sidste_fejl": str(grund)[:300],
+    })
+
+
+def _ryd_pending() -> None:
+    _kv_set(_PENDING_KEY, None)
+
+
+def _land_fald(forrige: Any, nu: Any, *, kilde: str) -> dict[str, Any]:
+    """Forsøg at gøre et opdaget fald til en bindende beslutning.
+
+    Returnerer ALTID et udfald — også når landingen fejler. `outcome` siger hvad
+    der blev OPDAGET; `decision_applied` siger om beslutningen blev oprettet.
+    De to må ikke blandes sammen: et fund der ikke kunne handles er stadig et fund.
+    """
+    try:
+        from core.services.central_consequence import land_decision
+        svar = land_decision(
+            "relational",
+            (f"Relations-kontinuiteten faldt fra {forrige} til {nu} dage — "
+             "undersøg hvad der blev nulstillet"),
+            rationale=(
+                "Varigheden af forholdet vokser monotont. Et fald betyder at "
+                "selv-tilstandens alder blev nulstillet, altså at det lag der "
+                "bærer «vi har været her før» mistede sin historie."),
+            trigger_cue="Når jeg skal sige hvor længe vi har været her",
+            subject="relations_alder_fald",
+            priority=62,
+            evidence=f"forrige={forrige} nu={nu} taerskel={_FALD_TAERSKEL} kilde={kilde}",
+            evidence_source=f"central_relational.record_relational({kilde})",
+        )
+    except Exception as exc:
+        logger.warning("relational: kunne ikke lande aldersfald (%s): %s", kilde, exc)
+        _gem_pending(forrige, nu, grund=str(exc))
+        return {"applied": False, "decision_applied": False,
+                "outcome": "fald_registreret",
+                "reason": f"faldet blev opdaget, men landingen fejlede: {exc}"}
+
+    landet = bool(svar.get("applied"))
+    if landet:
+        _ryd_pending()
+    else:
+        # Gate afviste (fx støj-veto). Fundet består — sporet bæres videre.
+        _gem_pending(forrige, nu, grund=str(svar.get("reason") or "ikke anvendt"))
+    return {**svar, "outcome": "fald_registreret", "decision_applied": landet}
+
+
+def _land_efterslaeb() -> dict[str, Any] | None:
+    """Ligger der et fald fra en tidligere kørsel der aldrig fik sin beslutning?"""
+    p = _pending()
+    if not p:
+        return None
+    ud = _land_fald(p["forrige"], p["nu"], kilde="efterslaeb")
+    landet = bool(ud.get("decision_applied"))
+    return {
+        "outcome": "efterslaeb_landet" if landet else "efterslaeb_ikke_landet",
+        "landed": landet,
+        "opdaget_at": p.get("opdaget_at"),
+        "forsog": p.get("forsog"),
+        "forrige": p["forrige"],
+        "nu": p["nu"],
+        "reason": ud.get("reason"),
+    }
 
 
 def _self_state() -> dict[str, Any]:
@@ -116,6 +208,12 @@ def record_relational(*, trigger: str = "cadence", last_visible_at: str = "") ->
     st = relational_state()
     days = st["days_together"]
     forrige = _kv_get(_DAYS_KEY, None)
+
+    # Et ulandet fald fra en tidligere kørsel forsøges FØRST — uafhængigt af hvad
+    # den nye sammenligning viser. Ellers kunne et nyt, helt normalt forløb skjule
+    # at det gamle fund aldrig fik sin konsekvens.
+    efterslaeb = _land_efterslaeb()
+
     # (13/11-2026, Bjørns indvending) `landing` startede som «ingen sammenligning»
     # og blev KUN opdateret ved et fald. Derfor betød `applied: false` tre
     # forskellige ting på én gang: intet grundlag, sammenlignet-uden-fald, og
@@ -133,27 +231,13 @@ def record_relational(*, trigger: str = "cadence", last_visible_at: str = "") ->
         landing = {"applied": False, "outcome": "sammenlignet_uden_fald",
                    "reason": f"varigheden gik fra {forrige} til {days} dage",
                    "forrige": forrige, "nu": days}
+        if float(days) < float(forrige) - _FALD_TAERSKEL:
+            # Afvigelsen registreres FØR forsøget. Et fejlet land må aldrig kunne
+            # efterlade svaret som «sammenlignet uden fald» — det var præcis den
+            # vej hvor fundet kunne forsvinde sammen med sit grundlag.
+            landing = {**_land_fald(forrige, days, kilde="frisk"),
+                       "forrige": forrige, "nu": days}
     if days is not None:
-        try:
-            if forrige is not None and float(days) < float(forrige) - _FALD_TAERSKEL:
-                from core.services.central_consequence import land_decision
-                landing = {**land_decision(
-                    "relational",
-                    (f"Relations-kontinuiteten faldt fra {forrige} til {days} dage — "
-                     "undersøg hvad der blev nulstillet"),
-                    rationale=(
-                        "Varigheden af forholdet vokser monotont. Et fald betyder at "
-                        "selv-tilstandens alder blev nulstillet, altså at det lag der "
-                        "bærer «vi har været her før» mistede sin historie."),
-                    trigger_cue="Når jeg skal sige hvor længe vi har været her",
-                    subject="relations_alder_fald",
-                    priority=62,
-                    evidence=f"forrige={forrige} nu={days} taerskel={_FALD_TAERSKEL}",
-                    evidence_source="central_relational.record_relational",
-                ), "outcome": "fald_registreret",
-                   "forrige": forrige, "nu": days}
-        except Exception as exc:
-            logger.warning("relational: kunne ikke lande aldersfald: %s", exc)
         _kv_set(_DAYS_KEY, days)
     try:
         from core.services.central_core import central
@@ -162,4 +246,5 @@ def record_relational(*, trigger: str = "cadence", last_visible_at: str = "") ->
                            "forrige_days": forrige})
     except Exception:  # Centralen nede → målingen er stadig gemt i KV
         pass
-    return {"status": "ok", "days_together": days, "landing": landing}
+    return {"status": "ok", "days_together": days, "landing": landing,
+            "efterslaeb": efterslaeb}

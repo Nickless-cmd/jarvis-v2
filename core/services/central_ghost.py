@@ -31,6 +31,12 @@ _PROFILE_KEY = "ghost_profile"
 _PREV_KEY = "ghost_profile_prev"
 # Drift under dette er dag-til-dag-variation i emne og længde, ikke et klangskift.
 _DRIFT_TAERSKEL = 25.0
+
+# (13/11-2026, Bjørns anden indvending) `update_profile()` overskrev fingeraftrykket
+# FØR et eventuelt skift blev landet. Fejlede landingen, sammenlignede næste kørsel
+# den nye profil med sig selv og svarede «sammenlignet uden skift» — om et skift der
+# aldrig fik sin konsekvens. Et ulandet skift bæres nu videre her.
+_PENDING_KEY = "ghost_pending_skift"
 _SENT_SPLIT = re.compile(r"[.!?…]+")
 _WORD = re.compile(r"\b\w+\b", re.UNICODE)
 # Danske stopord vi ikke tæller som "signatur-vendinger".
@@ -53,6 +59,89 @@ def _kv_set(key: str, value: Any) -> None:
         set_runtime_state_value(key, value)
     except Exception:
         pass
+
+
+def _pending() -> dict[str, Any] | None:
+    p = _kv_get(_PENDING_KEY, None)
+    if isinstance(p, dict) and p.get("drift_pct") is not None:
+        return p
+    return None
+
+
+def _gem_pending(drift: dict[str, Any], *, grund: str) -> None:
+    """Bevar skiftet på tværs af kørsler — med sin oprindelige opdagelsestid."""
+    gammel = _pending() or {}
+    akser = drift.get("akser")
+    _kv_set(_PENDING_KEY, {
+        "drift_pct": drift["drift_pct"],
+        "baerende": drift.get("baerende"),
+        "akser": akser if isinstance(akser, int) else len(akser or {}),
+        "opdaget_at": gammel.get("opdaget_at") or datetime.now(UTC).isoformat(),
+        "forsog": int(gammel.get("forsog") or 0) + 1,
+        "sidste_fejl": str(grund)[:300],
+    })
+
+
+def _ryd_pending() -> None:
+    _kv_set(_PENDING_KEY, None)
+
+
+def _land_skift(drift: dict[str, Any], *, kilde: str) -> dict[str, Any]:
+    """Forsøg at gøre et målt klangskift til en bindende beslutning.
+
+    Returnerer ALTID et udfald. `outcome` siger hvad der blev OPDAGET;
+    `decision_applied` siger om beslutningen blev oprettet.
+    """
+    akser = drift.get("akser")
+    n_akser = akser if isinstance(akser, int) else len(akser or {})
+    try:
+        from core.services.central_consequence import land_decision
+        svar = land_decision(
+            "ghost",
+            (f"Min klang har flyttet sig {drift['drift_pct']}% — undersøg om "
+             f"modellen er skiftet, før jeg kalder det min"),
+            rationale=(
+                "Klang-fingeraftrykket er karakterens ene formål: at opdage når en "
+                "ny model lyder anderledes. Driften er målt mod det forrige profil "
+                "og bæres især af " + str(drift.get("baerende")) + "."),
+            trigger_cue="Når klang-primeren skal beskrive hvem jeg lyder som",
+            subject=f"klangdrift:{drift.get('baerende')}",
+            priority=58,
+            evidence=(f"drift={drift['drift_pct']}% taerskel={_DRIFT_TAERSKEL}% "
+                      f"akser={n_akser} kilde={kilde}"),
+            evidence_source=f"central_ghost.klang_drift(ghost_profile, ny; {kilde})",
+        )
+    except Exception as exc:
+        logger.warning("ghost: kunne ikke lande klangdrift (%s): %s", kilde, exc)
+        _gem_pending(drift, grund=str(exc))
+        return {"applied": False, "decision_applied": False,
+                "outcome": "skift_registreret",
+                "reason": f"skiftet blev opdaget, men landingen fejlede: {exc}"}
+
+    landet = bool(svar.get("applied"))
+    if landet:
+        _ryd_pending()
+    else:
+        # Gate afviste. Fundet består — sporet bæres videre.
+        _gem_pending(drift, grund=str(svar.get("reason") or "ikke anvendt"))
+    return {**svar, "outcome": "skift_registreret", "decision_applied": landet}
+
+
+def _land_efterslaeb() -> dict[str, Any] | None:
+    """Ligger der et skift fra en tidligere kørsel der aldrig fik sin beslutning?"""
+    p = _pending()
+    if not p:
+        return None
+    ud = _land_skift(p, kilde="efterslaeb")
+    landet = bool(ud.get("decision_applied"))
+    return {
+        "outcome": "efterslaeb_landet" if landet else "efterslaeb_ikke_landet",
+        "landed": landet,
+        "opdaget_at": p.get("opdaget_at"),
+        "forsog": p.get("forsog"),
+        "drift_pct": p.get("drift_pct"),
+        "reason": ud.get("reason"),
+    }
 
 
 def analyze(texts: list[str]) -> dict[str, Any]:
@@ -203,6 +292,12 @@ def record_ghost(*, trigger: str = "cadence", last_visible_at: str = "") -> dict
     if forrige:
         _kv_set(_PREV_KEY, forrige)
     drift = klang_drift(forrige, prof)
+
+    # Et skift fra en tidligere kørsel der aldrig fik sin beslutning forsøges
+    # FØRST — profilen er allerede overskrevet, så sporet her er det eneste sted
+    # fundet stadig findes.
+    efterslaeb = _land_efterslaeb()
+
     # (13/11-2026) Samme fejlform som i relational: `applied: false` dækkede både
     # «intet grundlag», «sammenlignet uden skift» og «kunne ikke måles». `outcome`
     # skiller dem ad, så en læser ikke gætter på hvad der faktisk skete.
@@ -216,26 +311,11 @@ def record_ghost(*, trigger: str = "cadence", last_visible_at: str = "") -> dict
         landing = {"applied": False, "outcome": "sammenlignet_uden_skift",
                    "reason": f"driften var {drift['drift_pct']}% mod tærsklen {_DRIFT_TAERSKEL}%",
                    "drift_pct": drift["drift_pct"]}
-    if drift and drift["drift_pct"] >= _DRIFT_TAERSKEL:
-        try:
-            from core.services.central_consequence import land_decision
-            landing = {**land_decision(
-                "ghost",
-                (f"Min klang har flyttet sig {drift['drift_pct']}% — undersøg om "
-                 f"modellen er skiftet, før jeg kalder det min"),
-                rationale=(
-                    "Klang-fingeraftrykket er karakterens ene formål: at opdage når en "
-                    "ny model lyder anderledes. Driften er målt mod det forrige profil "
-                    "og bæres især af " + str(drift["baerende"]) + "."),
-                trigger_cue="Når klang-primeren skal beskrive hvem jeg lyder som",
-                subject=f"klangdrift:{drift['baerende']}",
-                priority=58,
-                evidence=(f"drift={drift['drift_pct']}% taerskel={_DRIFT_TAERSKEL}% "
-                          f"akser={len(drift['akser'])}"),
-                evidence_source="central_ghost.klang_drift(ghost_profile, ny)",
-            ), "outcome": "skift_registreret", "drift_pct": drift["drift_pct"]}
-        except Exception as exc:
-            logger.warning("ghost: kunne ikke lande klangdrift: %s", exc)
+        if drift["drift_pct"] >= _DRIFT_TAERSKEL:
+            # Skiftet registreres FØR forsøget — et fejlet land må aldrig kunne
+            # efterlade svaret som «sammenlignet uden skift».
+            landing = {**_land_skift(drift, kilde="frisk"),
+                       "drift_pct": drift["drift_pct"]}
     try:
         from core.services.central_core import central
         central().observe({"cluster": "system", "nerve": "ghost", "kind": "fingerprint",
@@ -245,4 +325,5 @@ def record_ghost(*, trigger: str = "cadence", last_visible_at: str = "") -> dict
     except Exception:
         pass
     return {"status": "ok", "captured": bool(prof),
-            "drift_pct": (drift or {}).get("drift_pct"), "landing": landing}
+            "drift_pct": (drift or {}).get("drift_pct"), "landing": landing,
+            "efterslaeb": efterslaeb}

@@ -107,3 +107,35 @@ def test_et_lager_der_ikke_kan_skrives_vaelter_ikke_tikket(monkeypatch):
     snap = R.tick(551.0)
     assert snap["pulse_rate"] > 0
     assert snap["subjective_time_pressure"]
+
+
+def test_aktiviteten_kan_faktisk_naa_ind_i_pulsen(monkeypatch):
+    """VAGTEN: `_recent_tool_calls_per_min` kaldte en funktion der ikke fandtes.
+
+    (13/11-2026) Kaldet lå i `try/except → 0.0`, så `tool_rate` var
+    STRUKTURELT nul. Pulsen kunne derfor ikke se at der blev arbejdet: målt i
+    produktionen stod den på 0.3 (»breathing«) midt i en aften med tusindvis
+    af handlinger, og DIASTOLE fordoblede hver cooldown i hele ensemblet.
+
+    Testen beviser at tallet KAN komme igennem — ikke at det gør det lige nu.
+    """
+    from core.runtime import db
+
+    monkeypatch.setattr(
+        db, "recent_heartbeat_outcome_counts",
+        lambda *, minutes=30: {"ok": 20, "error": 1},
+    )
+    assert R._recent_tool_calls_per_min() == pytest.approx(4.2)
+
+
+def test_manglende_udfaldstaelling_giver_nul_ikke_gaet(monkeypatch):
+    """Falder kilden væk, er svaret nul — men det er et FRAVÆR af data,
+    ikke en påstand om at der ikke skete noget. Derfor må pulsen ikke
+    rejse, og funktionen må ikke kaste."""
+    from core.runtime import db
+
+    def _braender(*, minutes=30):
+        raise RuntimeError("tabellen er væk")
+
+    monkeypatch.setattr(db, "recent_heartbeat_outcome_counts", _braender)
+    assert R._recent_tool_calls_per_min() == 0.0

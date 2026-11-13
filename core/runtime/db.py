@@ -550,6 +550,7 @@ from core.runtime.db_capability import (  # noqa: E402,F401
 # --- Runtime learning/outcome signal tables (split into db_runtime_signals.py per boy scout rule) ---
 from core.runtime.db_runtime_signals import (  # noqa: E402,F401
     ensure_runtime_signals_tables,
+    recent_heartbeat_outcome_counts,
     recent_runtime_action_outcomes,
     recent_runtime_learning_signals,
     record_runtime_action_outcome,

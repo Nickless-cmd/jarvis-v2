@@ -232,3 +232,73 @@ def test_kaeden_baerer_ankeret_hele_vejen(signals):
     recent = signals.recent_runtime_action_outcomes(limit=5)
     assert recent[0]["run_id"] == "visible-kaedetest"
     assert recent[0]["session_id"] == "sess-kaede"
+
+
+# ── udfaldstællingen: funktionen fire mekanismer kaldte uden at den fandtes ──
+#
+# (13/11-2026) `temporal_rhythm`, `desperation_awareness`, `mortality_awareness`
+# og `prompt_mutation_loop` kaldte alle `recent_heartbeat_outcome_counts`. Den
+# fandtes ikke — hvert kald lå i en `try/except` der returnerede nul. Målt i
+# produktionen: 5.268 `ok` og 131 `error` i tabellen, mens alle fire meldte nul.
+# Pulsen kunne derfor ikke se at der blev arbejdet, og desperation og mortality
+# kunne ikke se fejl. Testene her værner at funktionen FINDES, at den læser den
+# ægte tabel, og at den ikke oversætter statusser til en pænere normalform.
+
+
+def _udfald(signals, status: str, *, minutter_siden: int = 1) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    ts = datetime.now(UTC) - timedelta(minutes=minutter_siden)
+    signals.record_runtime_action_outcome(
+        action_id="probe",
+        decision_mode="execute",
+        decision_reason="test",
+        decision_score=0.5,
+        payload_json={},
+        result_status=status,
+        result_summary="",
+        result_json={},
+        recorded_at=ts.isoformat(),
+    )
+
+
+def test_udfald_taelles_pr_status(signals):
+    """Tre ok og én fejl skal give netop de to nøgler — ikke et samlet tal."""
+    _udfald(signals, "ok")
+    _udfald(signals, "ok")
+    _udfald(signals, "ok")
+    _udfald(signals, "error")
+    assert signals.recent_heartbeat_outcome_counts(minutes=10) == {"ok": 3, "error": 1}
+
+
+def test_raa_statusnøgler_uden_alias(signals):
+    """`guard_blocked` skal stå som `guard_blocked`. En oversættelse til
+    `blocked` ville skjule for læseren hvad der faktisk stod i tabellen."""
+    _udfald(signals, "guard_blocked")
+    counts = signals.recent_heartbeat_outcome_counts(minutes=10)
+    assert counts == {"guard_blocked": 1}
+    assert "blocked" not in counts
+
+
+def test_vinduet_afgraenser_gamle_udfald(signals):
+    """Et udfald fra i går må ikke tælles som aktivitet nu."""
+    _udfald(signals, "ok", minutter_siden=1)
+    _udfald(signals, "ok", minutter_siden=60 * 24 * 2)
+    assert signals.recent_heartbeat_outcome_counts(minutes=30) == {"ok": 1}
+    assert signals.recent_heartbeat_outcome_counts(minutes=60 * 24 * 3) == {"ok": 2}
+
+
+def test_tom_tabel_giver_tom_dict_ikke_null(signals):
+    """Ingen udfald er «ingen data», ikke «nul udfald af hver slags»."""
+    assert signals.recent_heartbeat_outcome_counts(minutes=30) == {}
+
+
+def test_facaden_eksporterer_funktionen(signals):
+    """VAGTEN: de fire mekanismer importerer fra `core.runtime.db`, ikke fra
+    submodulet. Fjernes re-eksporten, dør alle fire igen — lydløst, fordi
+    hvert kald er pakket i `try/except`. Derfor testes facaden selv."""
+    from core.runtime.db import recent_heartbeat_outcome_counts
+
+    assert callable(recent_heartbeat_outcome_counts)
+    _udfald(signals, "ok")
+    assert recent_heartbeat_outcome_counts(minutes=10) == {"ok": 1}

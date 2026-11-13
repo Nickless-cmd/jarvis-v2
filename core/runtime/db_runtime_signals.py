@@ -187,6 +187,37 @@ def recent_runtime_action_outcomes(limit: int = 10) -> list[dict[str, object]]:
     return [_runtime_action_outcome_from_row(row) for row in rows]
 
 
+def recent_heartbeat_outcome_counts(*, minutes: int = 30) -> dict[str, int]:
+    """Antal udfald pr. status inden for de sidste ``minutes`` minutter.
+
+    (13/11-2026) Fire moduler kaldte denne funktion — ``temporal_rhythm``,
+    ``desperation_awareness``, ``mortality_awareness`` og
+    ``prompt_mutation_loop`` — men den fandtes ikke. Hvert kald lå i en
+    ``try/except`` der returnerede nul, så alle fire mekanismer var
+    strukturelt døde: pulsen kunne ikke se at der blev arbejdet, og
+    desperation og mortality kunne ikke se fejl. Målt i produktionen:
+    5.268 ``ok`` og 131 ``error`` i ``runtime_action_outcomes`` sidste
+    døgn, mens alle fire meldte nul.
+
+    Kilden er ``runtime_action_outcomes.result_status``. Nøglerne er de
+    statusser der faktisk findes (``ok``, ``error``, ``guard_blocked`` …),
+    ikke en oversat normalform — en læser der leder efter ``blocked`` skal
+    se at feltet hedder ``guard_blocked``, ikke få det skjult bag et alias.
+    """
+    vindue = max(int(minutes), 1)
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT result_status, COUNT(*) AS n
+            FROM runtime_action_outcomes
+            WHERE datetime(recorded_at) >= datetime('now', ?)
+            GROUP BY result_status
+            """,
+            (f"-{vindue} minutes",),
+        ).fetchall()
+    return {str(row["result_status"] or "unknown"): int(row["n"]) for row in rows}
+
+
 def recent_runtime_learning_signals(limit: int = 25) -> list[dict[str, object]]:
     with connect() as conn:
         rows = conn.execute(

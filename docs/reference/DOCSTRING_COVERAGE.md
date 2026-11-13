@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10147/18663 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10148/18664 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 10147/18663 functions/methods documented (54%). The list 
 | `core.identity` | 80 | 173 | 46% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 899 | 1612 | 55% |
+| `core.runtime` | 900 | 1613 | 55% |
 | `core.services` | 6793 | 12665 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
@@ -624,9 +624,9 @@ Generated from source. 10147/18663 functions/methods documented (54%). The list 
 - `core/runtime/db_runtime_initiatives.py` :: `update_runtime_initiative` (L341)
 - `core/runtime/db_runtime_signals.py` :: `ensure_runtime_signals_tables` (L17)
 - `core/runtime/db_runtime_signals.py` :: `recent_runtime_action_outcomes` (L164)
-- `core/runtime/db_runtime_signals.py` :: `recent_runtime_learning_signals` (L190)
-- `core/runtime/db_runtime_signals.py` :: `record_runtime_action_outcome` (L215)
-- `core/runtime/db_runtime_signals.py` :: `record_runtime_learning_signal` (L291)
+- `core/runtime/db_runtime_signals.py` :: `recent_runtime_learning_signals` (L221)
+- `core/runtime/db_runtime_signals.py` :: `record_runtime_action_outcome` (L246)
+- `core/runtime/db_runtime_signals.py` :: `record_runtime_learning_signal` (L322)
 - `core/runtime/db_runtime_tasks.py` :: `create_runtime_task` (L103)
 - `core/runtime/db_runtime_tasks.py` :: `ensure_runtime_tasks_tables` (L41)
 - `core/runtime/db_runtime_tasks.py` :: `get_runtime_task` (L174)

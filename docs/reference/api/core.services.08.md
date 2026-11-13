@@ -32,8 +32,9 @@ _Follow the White Rabbit — serendipitets-motoren._
 | function | `_dark_doors` | `()` | Mørke/stille nerver ingen rører — de uåbnede døre. Self-safe. | [src](../../../core/services/central_white_rabbit.py#L25) |
 | function | `follow_rabbit` | `(*, seed=…, observe=…)` | Vælg én uåbnet dør at undre sig over — ren ikke-målrettet udforskning. Self-safe. | [src](../../../core/services/central_white_rabbit.py#L36) |
 | function | `_observe` | `(door, total)` | — | [src](../../../core/services/central_white_rabbit.py#L62) |
-| function | `build_white_rabbit_surface` | `()` | Ren læsning: samme dør hele dagen, og INGEN hændelse i nerve-strømmen. | [src](../../../core/services/central_white_rabbit.py#L71) |
-| function | `record_white_rabbit` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_white_rabbit.py#L80) |
+| function | `_dag_seed` | `()` | Én dør pr. dag — seedet på datoen, ikke på kaldet. | [src](../../../core/services/central_white_rabbit.py#L71) |
+| function | `build_white_rabbit_surface` | `()` | Ren læsning: samme dør hele dagen, og INGEN hændelse i nerve-strømmen. | [src](../../../core/services/central_white_rabbit.py#L79) |
+| function | `record_white_rabbit` | `(*, trigger=…, last_visible_at=…)` | Cadence: ÉN dør om dagen — ikke en ny ved hvert kald. | [src](../../../core/services/central_white_rabbit.py#L84) |
 
 ## `core/services/central_xproc.py`
 _Cross-proces trace-tee for Den Intelligente Central._

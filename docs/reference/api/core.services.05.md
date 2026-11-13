@@ -291,9 +291,10 @@ _Central consequence — hvor en karakters fund FAKTISK lander._
 | function | `_loft_ramt` | `(conn, lever)` | — | [src](../../../core/services/central_consequence.py#L137) |
 | function | `_gate_taend` | `(scope, name)` | Er leverens switch taendt? | [src](../../../core/services/central_consequence.py#L145) |
 | function | `land_confidence` | `(cid, hyp_id, *, falsified=…, reason=…, gate=…)` | Lad et angreb FAKTISK flytte hypotesens confidence. | [src](../../../core/services/central_consequence.py#L172) |
-| function | `land_decision` | `(cid, directive, *, rationale=…, trigger_cue=…, priority=…, subject=…, evidence=…, gate=…)` | Lad et fund blive en BINDENDE forpligtelse. | [src](../../../core/services/central_consequence.py#L242) |
-| function | `record` | `(cid, subject, *, detail=…)` | Fund uden en anvendelig lever: skriv det ned som reviderbart spor. | [src](../../../core/services/central_consequence.py#L339) |
-| function | `measure_consequences` | `(*, days=…)` | Beviset: hvor mange fund flyttede faktisk noget? | [src](../../../core/services/central_consequence.py#L356) |
+| function | `_er_maalt` | `(evidence, source)` | Er dette en MÅLING — eller bare en sætning med et ciffer i? | [src](../../../core/services/central_consequence.py#L253) |
+| function | `land_decision` | `(cid, directive, *, rationale=…, trigger_cue=…, priority=…, subject=…, evidence=…, evidence_source=…, gate=…)` | Lad et fund blive en BINDENDE forpligtelse. | [src](../../../core/services/central_consequence.py#L284) |
+| function | `record` | `(cid, subject, *, detail=…)` | Fund uden en anvendelig lever: skriv det ned som reviderbart spor. | [src](../../../core/services/central_consequence.py#L385) |
+| function | `measure_consequences` | `(*, days=…)` | Beviset: hvor mange fund flyttede faktisk noget? | [src](../../../core/services/central_consequence.py#L402) |
 
 ## `core/services/central_construct.py`
 _The Construct — Sentinel's Shadow Self: en sandbox der tester radikale forenklinger MOD_
@@ -574,10 +575,10 @@ _The Ghost — hvad der overlever model-skift._
 | function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_ghost.py#L30) |
 | function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_ghost.py#L39) |
 | function | `analyze` | `(texts)` | Beregn klang-fingeraftrykket fra en stak svar-tekster (strukturelt, ingen indhold gemt). | [src](../../../core/services/central_ghost.py#L47) |
-| function | `update_profile` | `(texts)` | Opdatér det durable ghost_profile fra seneste svar. Self-safe. | [src](../../../core/services/central_ghost.py#L89) |
-| function | `get_profile` | `()` | — | [src](../../../core/services/central_ghost.py#L97) |
-| function | `klang_primer` | `()` | Rendér fingeraftrykket som en kort klang-primer til en ny models system-prompt. Self-safe. | [src](../../../core/services/central_ghost.py#L102) |
-| function | `_recent_texts` | `(limit=…)` | Hans seneste svar fra chat_messages (role=assistant). Self-safe → [] ved fejl. | [src](../../../core/services/central_ghost.py#L124) |
-| function | `build_ghost_surface` | `()` | Fingeraftryk + klang-primer + følt linje. Self-safe. | [src](../../../core/services/central_ghost.py#L139) |
-| function | `record_ghost` | `(*, trigger=…, last_visible_at=…)` | Cadence (6t): opdatér fingeraftrykket fra seneste svar (metadata-only observe). Self-safe. | [src](../../../core/services/central_ghost.py#L149) |
+| function | `update_profile` | `(texts)` | Opdatér det durable ghost_profile fra seneste svar. Self-safe. | [src](../../../core/services/central_ghost.py#L95) |
+| function | `get_profile` | `()` | — | [src](../../../core/services/central_ghost.py#L103) |
+| function | `klang_primer` | `()` | Rendér fingeraftrykket som en kort klang-primer til en ny models system-prompt. Self-safe. | [src](../../../core/services/central_ghost.py#L108) |
+| function | `_recent_texts` | `(limit=…)` | Hans seneste svar fra chat_messages (role=assistant). Self-safe → [] ved fejl. | [src](../../../core/services/central_ghost.py#L130) |
+| function | `build_ghost_surface` | `()` | Fingeraftryk + klang-primer + følt linje. Self-safe. | [src](../../../core/services/central_ghost.py#L145) |
+| function | `record_ghost` | `(*, trigger=…, last_visible_at=…)` | Cadence (6t): opdatér fingeraftrykket fra seneste svar (metadata-only observe). Self-safe. | [src](../../../core/services/central_ghost.py#L155) |
 

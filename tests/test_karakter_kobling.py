@@ -102,12 +102,18 @@ class TestSporIkkeForpligtelse:
 
 class TestVetoIkkeDoedGren:
     def test_evidens_med_tal_springer_vetoet_over(self, monkeypatch):
-        """Målt: seks karakter-fund dømt STØJ i træk. Vetoet ser FORM, ikke MÅLING."""
+        """Målt: seks karakter-fund dømt STØJ i træk. Vetoet ser FORM, ikke MÅLING.
+
+        (13/11-2026) Opdateret: en måling kræver nu OGSÅ en navngivet kilde —
+        se `test_bart_ciffer_er_ikke_maalt`. Uden kilden er `severity=2` blot
+        en sætning med et lighedstegn i.
+        """
         from core.services import smith_noise_veto
         monkeypatch.setattr(smith_noise_veto, "maa_minte", lambda *a, **kw: (False, "doemt_stoej"))
         r = cc.land_decision(
             "red_dress", "Undersøg X nu — severity 2, kun 0 kig",
-            subject="quiet_fire:X", evidence="severity=2 volume=0")
+            subject="quiet_fire:X", evidence="severity=2 volume=0",
+            evidence_source="central_red_dress")
         assert "veto" not in str(r.get("reason") or ""), r
 
     def test_uden_evidens_koerer_vetoet_som_foer(self, monkeypatch):

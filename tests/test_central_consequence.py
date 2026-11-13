@@ -245,3 +245,89 @@ class TestKonsekvensenNaarPrompten:
         s = gate.decision_adherence_section()
         assert "dec_g" not in s
         assert "IKKE MÅLT" in s
+
+
+class TestEtCifferErIkkeEnMaaling:
+    """(13/11-2026) Bjørn fandt hullet i min egen vagt samme dag jeg skrev den.
+
+    Den første version spurgte om evidensstrengen indeholdt ET CIFTER:
+        if not re.search(r"\\d", evidence or ""):
+    Så ``evidence="0"`` blev godkendt som «målt evidens», og en rent formuleret
+    påstand slap gennem støj-vetoet ved at skrive ét tegn. Det blev bevist i
+    drift: den SAMME directive blev afvist uden evidens og BUNDET med
+    ``evidence="0"``.
+
+    Fejlformen er præcis den hele dagen handlede om: en vagt der ser ud som om
+    den virker, men hvis indgangsbetingelse intet kan skelne. Et tal er ikke
+    automatisk en måling, og en måling er ikke automatisk evidens.
+    """
+
+    def test_bart_ciffer_er_ikke_maalt(self):
+        from core.services.central_consequence import _er_maalt
+
+        for ev in ("0", "1", "7", "x1", "42"):
+            fik, grund = _er_maalt(ev, "")
+            assert fik is False, f"«{ev}» må ikke godkendes som måling"
+            assert "maaleform" in grund
+
+    def test_ciffer_med_kilde_er_stadig_ikke_maalt(self):
+        from core.services.central_consequence import _er_maalt
+
+        fik, _ = _er_maalt("0", "central_et_eller_andet")
+        assert fik is False, "en kilde gør ikke et ciffer til en måling"
+
+    def test_maaleform_uden_kilde_er_ikke_evidens(self):
+        from core.services.central_consequence import _er_maalt
+
+        fik, grund = _er_maalt("severity=2 volume=0", "")
+        assert fik is False
+        assert "kilde" in grund
+
+    def test_alle_tre_maaleformer_godkendes_med_kilde(self):
+        from core.services.central_consequence import _er_maalt
+
+        for ev in ("severity=2 volume=0", "115 gange", "0,8 → 0,4"):
+            fik, grund = _er_maalt(ev, "en_kilde")
+            assert fik is True, f"«{ev}» er en ægte måling, fik: {grund}"
+
+    def test_hullet_er_lukket_gennem_land_decision(self, monkeypatch):
+        """Det konkrete bevis: vetoet afviser ALT, og et ciffer må ikke smutte forbi."""
+        import core.services.central_consequence as cc
+
+        monkeypatch.setattr(cc, "_loft_ramt", lambda conn, lever: None)
+        monkeypatch.setattr(cc, "_gate_taend", lambda scope, name: True)
+        monkeypatch.setattr(cc, "_allerede_landet",
+                            lambda conn, cid, lever, subject: False)
+        monkeypatch.setattr(
+            "core.services.smith_noise_veto.maa_minte",
+            lambda k, e="", cfg=None, metric=0.0: (False, "doemt_stoej"),
+        )
+
+        for ev in ("0", "1", "x1"):
+            r = cc.land_decision("hul", "Jeg tror jeg performer naar nogen ser paa",
+                                 evidence=ev, subject=f"hul:{ev}")
+            assert r["applied"] is False, f"«{ev}» slap gennem vetoet"
+
+        # og den ægte måling skal stadig kunne binde
+        r = cc.land_decision("hul", "Undersoeg den stille brand nu",
+                             evidence="severity=2 volume=0",
+                             evidence_source="central_red_dress",
+                             subject="hul:aegte")
+        assert r["applied"] is True, f"en ægte måling blev blokeret: {r['reason']}"
+
+    def test_hver_karakter_baerer_både_evidens_og_kilde(self):
+        """En karakter-forpligtelse uden måling ville falde tilbage til vetoet."""
+        import pathlib
+        import re as _re
+
+        rod = pathlib.Path(__file__).resolve().parent.parent / "core" / "services"
+        for navn in ("central_redpill", "central_dissent", "central_red_dress",
+                     "central_mourning"):
+            kilde = (rod / f"{navn}.py").read_text(encoding="utf-8")
+            assert "land_decision(" in kilde, f"{navn} kalder ikke land_decision"
+            assert "evidence=" in kilde, f"{navn} bærer ingen evidens"
+            assert "evidence_source=" in kilde, f"{navn} navngiver ikke sin kilde"
+            # evidensen skal INTERPOLERE noget — en konstant streng er ikke en måling
+            # (både `evidence=f"…"` og `evidence=(f"…" f"…")` er gyldige former)
+            assert _re.search(r'evidence=\(?\s*f"', kilde), \
+                f"{navn}s evidens er en konstant, ikke en måling"

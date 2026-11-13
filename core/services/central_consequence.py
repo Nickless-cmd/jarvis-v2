@@ -239,6 +239,48 @@ def land_confidence(
         return out
 
 
+_EVIDENS_FELT = re.compile(r"[A-Za-z_]\w*\s*=\s*-?\d+(?:[.,]\d+)?")
+_EVIDENS_ENHED = re.compile(
+    r"\d+(?:[.,]\d+)?\s*(?:gange|%|procent|stk|dage?|timer?|minutter?|min|"
+    r"sekunder?|sek|ms|kald|rækker?|ord|sætninger|hypoteser|indsigelser|"
+    r"landinger|fund|målinger|fejl|døre|nerver|incidents|anomalier|"
+    r"beslutninger|kig|epitafer)\b",
+    re.IGNORECASE,
+)
+_EVIDENS_RETNING = re.compile(r"\d+(?:[.,]\d+)?\s*(?:→|->|til)\s*\d+(?:[.,]\d+)?")
+
+
+def _er_maalt(evidence: str, source: str) -> tuple[bool, str]:
+    """Er dette en MÅLING — eller bare en sætning med et ciffer i?
+
+    (13/11-2026) Rettet efter Bjørns fund, samme dag som vagten blev skrevet.
+    Den første version spurgte om strengen indeholdt ET CIFTER, så
+    ``evidence="0"`` blev godkendt som målt evidens. Hullet blev bevist i drift:
+    den SAMME formulerede påstand blev afvist uden evidens og **bundet** med
+    ``evidence="0"`` — ét tegn var nok til at omgå støj-vetoet.
+
+    Et tal er ikke automatisk en måling, og en måling er ikke automatisk
+    evidens. Derfor to krav: målingen skal have en FORM (navngivne felter,
+    tal med enhed, eller en før→efter-retning — et bart ciffer har ingen af
+    dem), og den skal navngive sin KILDE. En formuleret sætning kan skrive et
+    ciffer ved et uheld; den kan ikke opfinde en måleform og en kilde uden at
+    nogen faktisk har målt.
+
+    Formen ``severity=2 volume=0`` tælles som en måling, selv om tallene er
+    små: felterne er navngivet, og det er præcis forskellen fra «0».
+    """
+    ev = (evidence or "").strip()
+    if not ev:
+        return False, "ingen evidens"
+    if not (_EVIDENS_FELT.search(ev)
+            or _EVIDENS_ENHED.search(ev)
+            or _EVIDENS_RETNING.search(ev)):
+        return False, "evidens baerer ikke en maaleform (felt, enhed eller retning)"
+    if not (source or "").strip():
+        return False, "evidens navngiver ikke sin kilde"
+    return True, "maalt"
+
+
 def land_decision(
     cid: str,
     directive: str,
@@ -248,11 +290,12 @@ def land_decision(
     priority: int = 55,
     subject: str = "",
     evidence: str = "",
+    evidence_source: str = "",
     gate: tuple[str, str] = ("consequence", "bind_decisions"),
 ) -> dict[str, Any]:
     """Lad et fund blive en BINDENDE forpligtelse.
 
-    Gaar gennem stoej-vetoet — MEDMINDRE forpligtelsen baerer en maalt evidens.
+    Gaar gennem stoej-vetoet — MEDMINDRE forpligtelsen baerer en MAALT evidens.
 
     (13/11-2026) Denne gren er tilfoejet efter en maaling der gjorde vetoet til
     en doed gren for alle karakterer: seks forskellige karakter-fund blev doemt
@@ -261,17 +304,20 @@ def land_decision(
     «en ren sproglig gentagelse er aldrig aegte». Den er bygget til Smiths
     MØNSTRE, som var FORMULEREDE. Et karakter-fund er noget andet: det baerer et
     maalt tal — 47.332 indsigelser, 0,8→0,4, 14,32 % divergens. Forskellen
-    mellem formuleret og maalt er praecis hvad vetoet ikke kan se, saa naar
-    evidensen baerer et tal, springes det over. Uden et tal koerer det som foer.
+    mellem formuleret og maalt er praecis hvad vetoet ikke kan se.
+
+    Kravet til «maalt» er strammet efter et fund: et ciffer er IKKE nok.
+    Se `_er_maalt` — der kraeves en maaleform OG en navngivet kilde.
     """
     out: dict[str, Any] = {"applied": False, "decision_id": None, "reason": ""}
     subject = (subject or directive)[:200]
-    if not re.search(r"\d", evidence or ""):
+    maalt, maalt_grund = _er_maalt(evidence, evidence_source)
+    if not maalt:
         try:
             from core.services.smith_noise_veto import maa_minte
             ok, grund = maa_minte(f"{cid}:{subject}", directive)
             if not ok:
-                out["reason"] = f"veto: {grund}"
+                out["reason"] = f"veto: {grund} ({maalt_grund})"
                 with _connect() as conn:
                     _ensure(conn)
                     _skriv(conn, cid=cid, lever="decision", subject=subject,

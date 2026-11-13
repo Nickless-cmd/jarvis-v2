@@ -14,11 +14,14 @@ Additivt + self-safe: sletter/ændrer intet, skriver kun epitafer. Scanner selv 
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 from datetime import UTC, datetime
 from typing import Any
 
 from core.runtime.db_core import connect
+
+logger = logging.getLogger(__name__)
 
 _CHECKPOINT_KEY = "mourning_last_scan_ts"
 
@@ -94,6 +97,52 @@ def _observe(kind: str, payload: dict[str, Any]) -> None:
         central().observe({"cluster": "system", "nerve": "mourning", "kind": kind, **payload})
     except Exception:
         pass
+
+
+def _gentagne_moenstre(limit: int = 3) -> list[dict[str, Any]]:
+    """De forudsigelser der er modsagt MANGE gange — ikke 34.796 løse dødsfald.
+
+    (13/11-2026) Målt: 34.796 modsagte hypoteser ser ud som støj, og det var hvad
+    Mourning behandlede — én epitaf pr. død. Men de er ikke spredte: et lille antal
+    systemiske fejl gentages hundredvis af gange. Den hyppigste
+    ('cognitive_relationship' → 'cognitive_forgetting') er modsagt 752 gange,
+    nummer to 664, nummer tre 641. Det er ikke tab at sørge over — det er en
+    forudsigelse der skal holdes op med. En karakter der kun mindes, lærer intet.
+    """
+    try:
+        with connect() as conn:
+            rows = conn.execute(
+                """SELECT substr(statement, 1, 120) AS sig, COUNT(*) AS n
+                   FROM central_hypotheses
+                   WHERE outcome='contradicted' AND statement IS NOT NULL
+                   GROUP BY sig HAVING n > 2
+                   ORDER BY n DESC LIMIT ?""", (int(limit),)).fetchall()
+        return [{"sig": str(r["sig"]), "n": int(r["n"])} for r in rows]
+    except Exception as exc:
+        logger.warning("mourning: kunne ikke finde gentagne moenstre: %s", exc)
+        return []
+
+
+def land_moenster() -> dict[str, Any]:
+    """Lad det værste gentagne mønster blive en forpligtelse. Self-safe."""
+    from core.services.central_consequence import land_decision
+
+    moenstre = _gentagne_moenstre(limit=1)
+    if not moenstre:
+        return {"applied": False, "reason": "ingen gentaget fejl at laere af"}
+    m = moenstre[0]
+    return land_decision(
+        "mourning",
+        f"Hold op med at forudsige «{m['sig'][:90]}» — den er modsagt {m['n']} gange",
+        rationale=(f"Samme forudsigelse er dømt forkert {m['n']} gange i "
+                   "central_hypotheses. Det er ikke enkelttilfælde men en systematisk "
+                   "fejl i sekvens-modellen."),
+        trigger_cue="Når sekvens-modellen foreslår netop denne overgang",
+        subject=f"gentaget_fejl:{m['sig'][:60]}",
+        priority=60,
+        evidence=f"modsagt {m['n']} gange",
+        evidence_source="central_hypotheses.outcome=contradicted",
+    )
 
 
 def scan_deaths(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:

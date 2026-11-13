@@ -575,16 +575,18 @@ _The Mourning — ritualiseret tab._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/central_mourning.py#L26) |
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_mourning.py#L30) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_mourning.py#L39) |
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_mourning.py#L47) |
-| function | `_compose` | `(kind, subject, detail=…)` | Kort, ærlig, first-person epitaf. Ikke sentimental — anerkendende. | [src](../../../core/services/central_mourning.py#L60) |
-| function | `mourn` | `(kind, subject, *, detail=…)` | Skriv én epitaf for et tab (hypothesis|model|dream|commitment|…). Self-safe. | [src](../../../core/services/central_mourning.py#L74) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_mourning.py#L91) |
-| function | `scan_deaths` | `(*, trigger=…, last_visible_at=…)` | Cadence: find hypoteser der er DØDT siden sidste scan → skriv en epitaf for hver (intet tab | [src](../../../core/services/central_mourning.py#L99) |
-| function | `list_epitaphs` | `(*, limit=…)` | — | [src](../../../core/services/central_mourning.py#L131) |
-| function | `build_mourning_surface` | `()` | Seneste epitafer + følt linje. Self-safe. | [src](../../../core/services/central_mourning.py#L141) |
+| function | `_now` | `()` | — | [src](../../../core/services/central_mourning.py#L29) |
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_mourning.py#L33) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_mourning.py#L42) |
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_mourning.py#L50) |
+| function | `_compose` | `(kind, subject, detail=…)` | Kort, ærlig, first-person epitaf. Ikke sentimental — anerkendende. | [src](../../../core/services/central_mourning.py#L63) |
+| function | `mourn` | `(kind, subject, *, detail=…)` | Skriv én epitaf for et tab (hypothesis|model|dream|commitment|…). Self-safe. | [src](../../../core/services/central_mourning.py#L77) |
+| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_mourning.py#L94) |
+| function | `_gentagne_moenstre` | `(limit=…)` | De forudsigelser der er modsagt MANGE gange — ikke 34.796 løse dødsfald. | [src](../../../core/services/central_mourning.py#L102) |
+| function | `land_moenster` | `()` | Lad det værste gentagne mønster blive en forpligtelse. Self-safe. | [src](../../../core/services/central_mourning.py#L126) |
+| function | `scan_deaths` | `(*, trigger=…, last_visible_at=…)` | Cadence: find hypoteser der er DØDT siden sidste scan → skriv en epitaf for hver (intet tab | [src](../../../core/services/central_mourning.py#L148) |
+| function | `list_epitaphs` | `(*, limit=…)` | — | [src](../../../core/services/central_mourning.py#L180) |
+| function | `build_mourning_surface` | `()` | Seneste epitafer + følt linje. Self-safe. | [src](../../../core/services/central_mourning.py#L190) |
 
 ## `core/services/central_noise_filter.py`
 _core/services/central_noise_filter.py_

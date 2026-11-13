@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10125/18641 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10130/18645 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10125/18641 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 899 | 1612 | 55% |
-| `core.services` | 6773 | 12645 | 53% |
+| `core.services` | 6778 | 12649 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 10125/18641 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2630)
+## Undocumented public functions (2629)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L231)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -959,7 +959,7 @@ Generated from source. 10125/18641 functions/methods documented (54%). The list 
 - `core/services/central_existence_feel.py` :: `get_continuity_reading` (L151)
 - `core/services/central_existence_feel.py` :: `get_mortality_reading` (L159)
 - `core/services/central_existence_feel.py` :: `get_subjective_time_reading` (L155)
-- `core/services/central_ghost.py` :: `get_profile` (L97)
+- `core/services/central_ghost.py` :: `get_profile` (L103)
 - `core/services/central_hypothesis_governance.py` :: `get_anchored_baseline` (L303)
 - `core/services/central_injection_registry.py` :: `register` (L50)
 - `core/services/central_injection_registry.py` :: `registered_keys` (L54)
@@ -976,7 +976,7 @@ Generated from source. 10125/18641 functions/methods documented (54%). The list 
 - `core/services/central_matrix_ensemble.py` :: `increment_unaddressed` (L48)
 - `core/services/central_matrix_ensemble.py` :: `reset_unaddressed` (L55)
 - `core/services/central_merovingian.py` :: `list_challenges` (L331)
-- `core/services/central_mourning.py` :: `list_epitaphs` (L131)
+- `core/services/central_mourning.py` :: `list_epitaphs` (L180)
 - `core/services/central_prompt_composer.py` :: `is_live_enabled` (L246)
 - `core/services/central_prompt_composer.py` :: `is_tail_live_enabled` (L250)
 - `core/services/central_prompt_explore.py` :: `is_explore_live` (L71)
@@ -1007,7 +1007,6 @@ Generated from source. 10125/18641 functions/methods documented (54%). The list 
 - `core/services/central_trace.py` :: `TraceSink.subscribe` (L70)
 - `core/services/central_trace.py` :: `TraceSink.unsubscribe` (L76)
 - `core/services/central_trace.py` :: `sink` (L96)
-- `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L80)
 - `core/services/chat_crypto.py` :: `er_krypteret` (L150)
 - `core/services/chat_flow_preferences.py` :: `ack_chat_flow_onboarding` (L137)
 - `core/services/chat_flow_preferences.py` :: `claim_chat_flow_onboarding` (L113)

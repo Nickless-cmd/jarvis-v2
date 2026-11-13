@@ -104,6 +104,7 @@ def record_red_dress(*, trigger: str = "cadence", last_visible_at: str = "") -> 
                 rationale=d.get("felt", ""),
                 evidence=(f"severity={top['severity']} volume={top['volume']} "
                           f"antal_stille_braende={len(fires)}"),
+                evidence_source="central_red_dress.build_red_dress_surface",
             )
         except Exception as exc:
             logger.warning("red_dress: kunne ikke lande stille brand: %s", exc)

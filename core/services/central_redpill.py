@@ -177,6 +177,8 @@ def record_redpill(*, trigger: str = "cadence", last_visible_at: str = "") -> di
                 trigger_cue="naar den samme sandhed dukker op igen uden at vaere handlet",
                 priority=70,
                 subject=f"redpill:{truth[:120]}",
+                evidence=f"blue_streak={streak} dage",
+                evidence_source="central_redpill.todays_truth",
             )
         except Exception as exc:
             # En forpligtelse der ikke kunne bindes er et tab af konsekvens —

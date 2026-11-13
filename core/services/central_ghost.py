@@ -60,8 +60,14 @@ def analyze(texts: list[str]) -> dict[str, Any]:
     per_k = lambda c: round(1000.0 * c / total_chars, 2)
     words = [w.lower() for w in _WORD.findall(joined)]
     bigrams = Counter(zip(words, words[1:]))
-    frequent = [" ".join(b) for b, _ in bigrams.most_common(30)
-                if b[0] not in _STOP and b[1] not in _STOP][:8]
+    # (13/11-2026) Maalt defekt: filteret kraevede at BEGGE ord var indholdsord.
+    # Paa dansk indeholder naesten hvert bigram et stopord, saa listen var ALTID
+    # tom — mens klang-primeren lovede at beskrive hans vendinger. Nu kraeves ét
+    # indholdsord paa mindst fire bogstaver; det er den lempelse der goer at
+    # profilen faktisk kan citere ham i stedet for kun at taelle hans ord.
+    frequent = [" ".join(b) for b, _ in bigrams.most_common(300)
+                if (b[0] not in _STOP or b[1] not in _STOP)
+                and max(len(b[0]), len(b[1])) >= 4][:8]
     return {
         "sentences": n,
         "avg_sentence_len": round(avg, 1),

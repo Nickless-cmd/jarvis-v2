@@ -68,15 +68,31 @@ def _observe(door: str, total: int) -> None:
         pass
 
 
-def build_white_rabbit_surface() -> dict[str, Any]:
-    """Ren læsning: samme dør hele dagen, og INGEN hændelse i nerve-strømmen."""
+def _dag_seed() -> int:
+    """Én dør pr. dag — seedet på datoen, ikke på kaldet."""
     import hashlib
     from datetime import UTC, datetime
     dag = datetime.now(UTC).date().isoformat()
-    seed = int(hashlib.md5(dag.encode()).hexdigest()[:8], 16)
-    return follow_rabbit(seed=seed, observe=False)
+    return int(hashlib.md5(dag.encode()).hexdigest()[:8], 16)
+
+
+def build_white_rabbit_surface() -> dict[str, Any]:
+    """Ren læsning: samme dør hele dagen, og INGEN hændelse i nerve-strømmen."""
+    return follow_rabbit(seed=_dag_seed(), observe=False)
 
 
 def record_white_rabbit(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
-    r = follow_rabbit()
-    return {"status": "ok", "door": r.get("door")}
+    """Cadence: ÉN dør om dagen — ikke en ny ved hvert kald.
+
+    (13/11-2026) Målt defekt: produceren kaldte `follow_rabbit()` uden seed, mens
+    surface'en seedede på datoen. Så «behovet» skiftede hver gang cadence fyrede —
+    et terningkast over 422 døre — og karakteren kunne hverken holde fast i en dør
+    eller trække sig fra den. Nu bærer begge veje samme dags-seed.
+
+    Han får INGEN konsekvens-lever, og det er et bevidst fravalg: hans formål er
+    «nysgerrighed uden formål». At tvinge en tilfældig dør ind i en bindende
+    forpligtelse hver dag ville gøre legen til pligt — og fylde beslutnings-listen
+    med 422 meningsløse direktiver. En ærlig tilstand er ikke en død gren.
+    """
+    r = follow_rabbit(seed=_dag_seed(), observe=True)
+    return {"status": "ok", "door": r.get("door"), "lever": "ingen (serendipitet, ikke forpligtelse)"}

@@ -119,6 +119,8 @@ def record_dissent(*, trigger: str = "cadence", last_visible_at: str = "") -> di
                 trigger_cue=f"naar en handling paa {nerve} er doemt gul eller roed",
                 priority=65,
                 subject=f"dissent:{nerve}",
+                evidence=f"indsigelser={objections} nerve={nerve}",
+                evidence_source="central_dissent.list_dissents",
             )
         except Exception as exc:
             # Indsigelsen blev hoert, men reglen kunne ikke bindes. Det er praecis

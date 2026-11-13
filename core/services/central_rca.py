@@ -231,13 +231,28 @@ def record_rca(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[s
             # siger om beskeden ogsaa er identisk. En gruppe der kun deler sted er ikke
             # en gentaget rodaarsag, og en gate-haandhaevelse er ikke et uloest problem.
             if top["enforcement"]:
-                directive = (f"Jeg blev standset {n} gange af gaten "
-                             f"«{top['nerve']}» med samme begrundelse — skift adfærd, "
-                             f"ikke gate")
-                grund = (f"Gaten har blokeret {n} gange paa "
-                         f"{top['cluster']}/{top['nerve']} ({top['kind']}). Det er ikke en "
-                         f"fejl i vagten: den virker. Det er min adfærd der gentager sig, "
-                         f"og det er den der skal aendre sig. Besked: {top['message']}")
+                # (13/11-2026, tredje runde — Bjørns anden indvending) «med samme
+                # begrundelse» stod ubetinget, ogsaa naar `same_message` var False.
+                # Paastanden skal foelge maalingen: er beskederne ikke identiske, er
+                # det stadig en fungerende gate, men jeg ved ikke at grunden er den
+                # samme — og saa maa jeg ikke sige det.
+                if top["same_message"]:
+                    directive = (f"Jeg blev standset {n} gange af gaten "
+                                 f"«{top['nerve']}» med samme begrundelse — skift adfærd, "
+                                 f"ikke gate")
+                    grund = (f"Gaten har blokeret {n} gange paa "
+                             f"{top['cluster']}/{top['nerve']} ({top['kind']}) med IDENTISK "
+                             f"besked. Det er ikke en fejl i vagten: den virker. Det er min "
+                             f"adfærd der gentager sig, og det er den der skal aendre sig. "
+                             f"Besked: {top['message']}")
+                else:
+                    directive = (f"Jeg blev standset {n} gange af gaten "
+                                 f"«{top['nerve']}» — skift adfærd, ikke gate")
+                    grund = (f"Gaten har blokeret {n} gange paa "
+                             f"{top['cluster']}/{top['nerve']} ({top['kind']}), men med "
+                             f"{top['distinct_messages']} FORSKELLIGE beskeder. At vagten "
+                             f"virker er maalt; at begrundelsen er den samme er det IKKE. "
+                             f"Seneste: {top['message']}")
             else:
                 samlet = ("med identisk besked" if top["same_message"]
                           else f"med {top['distinct_messages']} forskellige beskeder")

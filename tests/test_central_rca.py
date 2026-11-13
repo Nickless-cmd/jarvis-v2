@@ -151,3 +151,60 @@ def test_record_rca_lander_ikke_uden_moenster(db):
             mock.patch("core.runtime.db_central_incidents.count_unresolved", return_value=2):
         out = rca.record_rca()
     assert "landing" not in out, "to enkeltstaaende incidents er ikke et moenster"
+
+
+def test_gate_uden_identisk_besked_paastaar_ikke_samme_begrundelse(db):
+    """Bjørns anden indvending, målt 13/11-2026: `enforcement`-grenen skrev ubetinget
+    «med samme begrundelse» — også når `same_message` var False. De syv konkrete
+    observationer havde identiske beskeder, så den påstand var sand DER. Men koden
+    kunne fremsætte den samme stærke påstand i et fremtidigt tilfælde hvor den ikke
+    var målt. Påstanden skal følge målingen, ikke være hardcodet."""
+    # `_norm_msg` erstatter alle tal med «#», så forskellen skal ligge i ORDENE —
+    # ellers er syv beskeder med forskelligt tal pr. definition «samme besked».
+    _tekster = ["R2 blød surface — uverificerede mutationer",
+                "manglende commit-attribuering",
+                "test uden dækning",
+                "docstring-drift i offentlig API",
+                "uverificeret filskrivning",
+                "schema-drift mod CT105",
+                "hemmelighed i kilden"]
+    rows = [_inc(i, "info", "proactivity", "verification", kind="gate_enforce",
+                 msg=f"gate håndhævet: verification → yellow: {_tekster[i - 1]}")
+            for i in range(1, 8)]
+    kaldt = []
+
+    def _fake_land(*a, **kw):
+        kaldt.append((a, kw))
+        return {"applied": True, "decision_id": "dec_z"}
+
+    with mock.patch("core.runtime.db_central_incidents.list_central_incidents", return_value=rows), \
+            mock.patch("core.runtime.db_central_incidents.count_unresolved", return_value=7), \
+            mock.patch("core.services.central_consequence.land_decision", side_effect=_fake_land):
+        rca.record_rca()
+
+    directive = kaldt[0][0][1]
+    grund = kaldt[0][1]["rationale"]
+    assert "samme begrundelse" not in directive, (
+        f"syv FORSKELLIGE beskeder må ikke kaldes én begrundelse: {directive}")
+    assert "adfærd" in directive, "det er stadig en fungerende gate — adfærd, ikke grav"
+    assert "FORSKELLIGE" in grund, f"grunden skal sige at beskederne ikke er ens: {grund}"
+
+
+def test_gate_med_identisk_besked_siger_det_den_har_maalt(db):
+    """Modstykket: når beskederne ER ens, må påstanden gerne være stærk — den er målt."""
+    rows = [_inc(i, "info", "proactivity", "verification", kind="gate_enforce",
+                 msg="gate håndhævet: verification → yellow: R2 blød surface")
+            for i in range(1, 8)]
+    kaldt = []
+
+    def _fake_land(*a, **kw):
+        kaldt.append((a, kw))
+        return {"applied": True, "decision_id": "dec_w"}
+
+    with mock.patch("core.runtime.db_central_incidents.list_central_incidents", return_value=rows), \
+            mock.patch("core.runtime.db_central_incidents.count_unresolved", return_value=7), \
+            mock.patch("core.services.central_consequence.land_decision", side_effect=_fake_land):
+        rca.record_rca()
+
+    directive = kaldt[0][0][1]
+    assert "samme begrundelse" in directive, directive

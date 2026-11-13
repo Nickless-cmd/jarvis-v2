@@ -136,3 +136,56 @@ def test_halvtom_dimension_taeller_ikke_som_til_stede():
 
     fyldt = {"self_model": {"completeness": 1.0, "identity_focus": "kontinuitet"}}
     assert ch._present(fyldt, "self_model") is True, "indhold tæller stadig"
+
+
+def test_flyttet_opmaerksomhed_er_bevaegelse_ikke_identitetsdrift():
+    """Bjørns anden indvending, målt 13/11-2026: filens egen docstring siger at
+    `attention.foreground` gerne må flytte sig efter en genstart — men den stod i
+    `_BÆRENDE` og blev sammenlignet direkte. Målingen gjorde altså almindelig
+    tilstandsændring til identitetsdrift, i modstrid med sin egen begrundelse.
+
+    Nu er opmærksomhed en TILSTANDS-dimension: den tæller som `moved`, ikke `drifted`,
+    og `same_content` straffer den ikke."""
+    før = _full_self()
+    efter = _full_self()
+    efter["attention"] = {"foreground": "noget helt andet"}   # dagsformen flyttede sig
+    kv = FakeKV({"central_self_state": efter,
+                 "continuity_snapshot": {"state": før, "ts": ch._now().isoformat()}})
+    g, s = _patch_kv(kv)
+    with g, s:
+        m = ch.measure_fidelity()
+    assert m["fidelity"] == 1.0, "intet forsvandt"
+    assert "attention" not in m["drifted"], (
+        f"flyttet opmærksomhed er ikke identitetsdrift: {m['drifted']}")
+    assert "attention" in m["moved"], "bevægelsen skal stadig kunne ses"
+    assert m["same_content"] == 1.0, "identitetsindholdet er uændret"
+
+
+def test_aendret_identitetsfokus_er_drift():
+    """Modstykket: ændrer `identity_focus` sig fra én betydningsfuld værdi til en
+    anden, ER det identitetsdrift — og det skal `drifted` sige."""
+    før = _full_self()
+    efter = _full_self()
+    efter["self_model"] = dict(efter["self_model"], identity_focus="noget andet")
+    kv = FakeKV({"central_self_state": efter,
+                 "continuity_snapshot": {"state": før, "ts": ch._now().isoformat()}})
+    g, s = _patch_kv(kv)
+    with g, s:
+        m = ch.measure_fidelity()
+    assert m["drifted"] == ["self_model"], m["drifted"]
+    assert m["same_content"] < 1.0
+
+
+def test_surface_siger_bevaegelse_naar_kun_dagsformen_flyttede():
+    """Den følte linje må ikke påstå «intet ændrede sig» når opmærksomheden flyttede —
+    men den må heller ikke kalde det tab af identitet."""
+    før = _full_self()
+    efter = _full_self()
+    efter["attention"] = {"foreground": "noget helt andet"}
+    kv = FakeKV({"central_self_state": efter,
+                 "continuity_snapshot": {"state": før, "ts": ch._now().isoformat()}})
+    g, s = _patch_kv(kv)
+    with g, s:
+        surf = ch.build_continuity_surface()
+    assert surf["drifted"] == [], surf["drifted"]
+    assert "bevægelse, ikke tab" in surf["felt"], surf["felt"]

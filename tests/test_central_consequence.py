@@ -115,6 +115,33 @@ class TestVaernene:
         assert anden["applied"] is False
         assert "allerede landet" in anden["reason"]
 
+    def test_land_decision_skelner_allerede_landet_fra_afvist(self, base, monkeypatch):
+        """(13/11-2026, Bjørns fjerde indvending) `applied=False` betød både
+        «afvist» og «allerede afsluttet». En kalder der rydder sit spor på
+        `applied` kunne derfor aldrig afslutte et fund hvis beslutning VAR
+        oprettet — den lå fast som uafsluttet for evigt. Feltet skiller dem."""
+        # Beslutnings-tabellen er ikke sat op her; den ægte create_decision ville
+        # skrive i produktionsbasen. Se `base`-fixturens docstring.
+        monkeypatch.setattr("core.services.behavioral_decisions.create_decision",
+                            lambda **kw: {"decision_id": "dec_test", "deduped": False})
+        kald = dict(
+            directive="Testdirektiv der beskriver et konkret maalt fald",
+            rationale="en grund der forklarer hvorfor det betyder noget",
+            trigger_cue="naar jeg skal sige hvor laenge vi har vaeret her",
+            priority=60,
+            subject="test_subject_eksklusivt",
+            evidence="forrige=200.0 nu=12.0 taerskel=1.0",
+            evidence_source="test.test_land_decision",
+        )
+        foerste = cc.land_decision("relational", **kald)
+        assert foerste["applied"] is True, foerste
+        assert not foerste.get("already_landed"), foerste
+
+        anden = cc.land_decision("relational", **kald)
+        assert anden["applied"] is False
+        assert anden["already_landed"] is True, (
+            "en allerede oprettet beslutning skal kunne skelnes fra en afvist")
+
     def test_dagsloft_standser_en_braekket_detektor(self, base, monkeypatch):
         monkeypatch.setitem(cc._DAGSLoft, "confidence", 1)
         assert cc.land_confidence("sentinel", "clh-1")["applied"] is True

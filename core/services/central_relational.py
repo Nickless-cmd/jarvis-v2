@@ -159,7 +159,7 @@ def _land_fald(forrige: Any, nu: Any, *, kilde: str,
                 "outcome": "fald_registreret", "spor_gemt": _opdater_fund(fund_id, grund=str(exc)),
                 "reason": f"faldet blev opdaget, men landingen fejlede: {exc}"}
 
-    landet = bool(svar.get("applied"))
+    landet = bool(svar.get("applied")) or bool(svar.get("already_landed"))
     spor_gemt = (_fjern_fund(fund_id) if landet
                  else _opdater_fund(fund_id, grund=str(svar.get("reason") or "ikke anvendt")))
     return {**svar, "outcome": "fald_registreret", "decision_applied": landet,
@@ -276,6 +276,8 @@ def record_relational(*, trigger: str = "cadence", last_visible_at: str = "") ->
     # udlede «der blev ikke sammenlignet» af en kørsel der sammenlignede fint.
     landing: dict[str, Any] = {"applied": False, "outcome": "intet_grundlag",
                                "reason": "ingen tidligere måling at sammenligne med"}
+    fald_opdaget = False
+    fund_sikret = True
     if days is None:
         landing = {"applied": False, "outcome": "utilgaengelig",
                    "reason": "varigheden kunne ikke måles (selv-tilstand utilgængelig)"}
@@ -287,16 +289,26 @@ def record_relational(*, trigger: str = "cadence", last_visible_at: str = "") ->
                    "reason": f"varigheden gik fra {forrige} til {days} dage",
                    "forrige": forrige, "nu": days}
         if float(days) < float(forrige) - _FALD_TAERSKEL:
+            fald_opdaget = True
             # Fundet registreres FØR forsøget — ikke bagefter. Sker der et crash
             # midt i landingen, ligger sporet allerede; og kunne sporet slet ikke
             # skrives, står det i svaret i stedet for at forsvinde i en log-linje.
             fund_id, note = _registrer_fund(forrige, days)
+            fund_sikret = fund_id is not None
             landing = {**_land_fald(forrige, days, kilde="frisk", fund_id=fund_id),
                        "forrige": forrige, "nu": days}
             if note:
                 landing["spor_note"] = note
-    if days is not None:
+    # (13/11-2026, Bjørns fjerde indvending) Kunne fundet ikke SIKRES, må grundlaget
+    # ikke overskrives. Ellers ville et fald der ikke ligger gemt nogen steder få
+    # sit sammenligningsgrundlag erstattet — og kunne aldrig genopdages. Så hellere
+    # sammenligne mod det gamle tal igen ved næste kørsel.
+    if days is not None and (fund_sikret or not fald_opdaget):
         _kv_set(_DAYS_KEY, days)
+    elif days is not None:
+        landing["grundlag_bevaret"] = True
+        landing["grundlag_note"] = ("fundet blev ikke sikret — det gamle "
+                                    "sammenligningsgrundlag er bevaret")
     try:
         from core.services.central_core import central
         central().observe({"cluster": "system", "nerve": "relational", "kind": "bond",

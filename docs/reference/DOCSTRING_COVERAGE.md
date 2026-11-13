@@ -959,7 +959,7 @@ Generated from source. 10161/18678 functions/methods documented (54%). The list 
 - `core/services/central_existence_feel.py` :: `get_continuity_reading` (L151)
 - `core/services/central_existence_feel.py` :: `get_mortality_reading` (L159)
 - `core/services/central_existence_feel.py` :: `get_subjective_time_reading` (L155)
-- `core/services/central_ghost.py` :: `get_profile` (L265)
+- `core/services/central_ghost.py` :: `get_profile` (L269)
 - `core/services/central_hypothesis_governance.py` :: `get_anchored_baseline` (L303)
 - `core/services/central_injection_registry.py` :: `register` (L50)
 - `core/services/central_injection_registry.py` :: `registered_keys` (L54)

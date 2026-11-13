@@ -547,3 +547,122 @@ def test_exile_lander_naar_den_ikke_kan_tale(monkeypatch, landet):
     assert ud["spoke"] is False
     assert landet and landet[0]["cid"] == "exile"
     assert "tom skal" in landet[0]["directive"]
+
+
+# ── Tabsikkerhed: et usikret fund må ikke efterlade et overskrevet grundlag ────
+# (13/11-2026, Bjørns fjerde indvending) Rækkefølgen var vendt om, men kæden var
+# stadig brudt: kunne sporet ikke SKRIVES, fortsatte landingen alligevel — og
+# grundlaget blev overskrevet. Så var fundet væk uden at ligge nogen steder.
+
+
+class _SelektivKV(FakeKV):
+    """FakeKV der kan nægte en nøgle, eller nægte den efter N skrivninger."""
+
+    def __init__(self, initial=None):
+        super().__init__(initial)
+        self.naegt: set[str] = set()
+        self.naegt_efter: dict[str, int] = {}
+        self.talt: dict[str, int] = {}
+
+    def set(self, key, value, *, updated_at=""):
+        self.talt[key] = self.talt.get(key, 0) + 1
+        if key in self.naegt:
+            raise RuntimeError(f"KV nægter {key}")
+        graense = self.naegt_efter.get(key)
+        if graense is not None and self.talt[key] > graense:
+            raise RuntimeError(f"KV nægter {key} efter {graense} skriv")
+        self.store[key] = value
+
+
+def test_relational_usikret_fund_bevarer_grundlaget(monkeypatch):
+    """Kan sporet IKKE skrives, må det gamle sammenligningsgrundlag ikke
+    overskrives. Ellers ligger faldet hverken i sporet eller i grundlaget, og
+    næste kørsel sammenligner to ens tal — fundet er væk for altid."""
+    kv = _SelektivKV({"relational_days_seen": 200.0})
+    _kv(monkeypatch, kv)
+    kv.naegt = {rel._PENDING_KEY}
+    monkeypatch.setattr(rel, "relational_state",
+                        lambda: {"days_together": 12.0, "tone": "let", "reboot": True})
+    # Landingen afvises også — så begge veje er lukket.
+    monkeypatch.setattr("core.services.central_consequence.land_decision",
+                        lambda *a, **kw: {"applied": False, "reason": "switch slukket"})
+
+    ud = rel.record_relational()
+
+    assert ud["landing"]["outcome"] == "fald_registreret", ud["landing"]
+    assert ud["landing"]["spor_note"], "at sporet ikke kunne skrives skal stå i svaret"
+    assert ud["landing"]["grundlag_bevaret"] is True, ud["landing"]
+    assert kv.get("relational_days_seen") == 200.0, (
+        "grundlaget blev overskrevet selvom fundet ikke var sikret — faldet er nu usporbart")
+
+
+def test_relational_fuldt_efterslaeb_bevarer_grundlaget(monkeypatch):
+    """Loftet på 20 er samme vej: er køen fuld, kan fundet ikke gemmes — og så
+    må grundlaget heller ikke rykke."""
+    fyldt = [{"id": f"f{i}", "forrige": 100.0, "nu": 90.0,
+              "opdaget_at": "2026-11-13T10:00:00+00:00", "forsog": 0, "sidste_fejl": ""}
+             for i in range(rel._PENDING_LOFT)]
+    kv = _SelektivKV({"relational_days_seen": 200.0, rel._PENDING_KEY: fyldt})
+    _kv(monkeypatch, kv)
+    monkeypatch.setattr(rel, "relational_state",
+                        lambda: {"days_together": 12.0, "tone": "let", "reboot": True})
+    monkeypatch.setattr("core.services.central_consequence.land_decision",
+                        lambda *a, **kw: {"applied": False, "reason": "switch slukket"})
+
+    ud = rel.record_relational()
+
+    assert "fuldt" in ud["landing"]["spor_note"], ud["landing"]
+    assert ud["landing"]["grundlag_bevaret"] is True
+    assert kv.get("relational_days_seen") == 200.0, "fuldt efterslæb må ikke koste grundlaget"
+
+
+def test_relational_allerede_landet_fund_afsluttes(monkeypatch):
+    """Landing lykkedes, men rydningen fejlede. Næste kørsel får
+    «allerede landet i doegnet» — og SKAL genkende det som afsluttet. Blev det
+    læst som en fejlet landing, lå fundet fast som uafsluttet for evigt."""
+    kv = _SelektivKV({"relational_days_seen": 200.0})
+    _kv(monkeypatch, kv)
+    monkeypatch.setattr(rel, "relational_state",
+                        lambda: {"days_together": 12.0, "tone": "let", "reboot": False})
+    monkeypatch.setattr("core.services.central_consequence.land_decision",
+                        lambda *a, **kw: {"applied": True, "decision_id": "dec_1"})
+    # Første skrivning til sporet = registreringen. Anden = rydningen, som fejler.
+    kv.naegt_efter = {rel._PENDING_KEY: 1}
+    foerste = rel.record_relational()
+    assert foerste["landing"]["decision_applied"] is True, foerste["landing"]
+    assert len(kv.get(rel._PENDING_KEY) or []) == 1, (
+        "fundet skal stadig ligge efter en fejlet rydning")
+
+    # Anden kørsel: grundlaget er nu 12, så intet nyt fald — kun efterslæbet.
+    kv.naegt_efter = {}
+    monkeypatch.setattr("core.services.central_consequence.land_decision",
+                        lambda *a, **kw: {"applied": False, "already_landed": True,
+                                          "reason": "allerede landet i doegnet"})
+    anden = rel.record_relational()
+
+    assert anden["efterslaeb"][0]["outcome"] == "efterslaeb_landet", anden["efterslaeb"]
+    assert kv.get(rel._PENDING_KEY) == [], "et allerede landet fund skal ryddes"
+
+
+def test_ghost_usikret_skift_bevarer_fingeraftrykket(monkeypatch):
+    """Samme for Ghost: kan skiftet ikke skrives, må fingeraftrykket ikke
+    overskrives — ellers er skiftet målt mod et grundlag der ikke findes mere."""
+    kv = _SelektivKV({})
+    _kv(monkeypatch, kv)
+    kv.naegt = {gh._PENDING_KEY}
+    monkeypatch.setattr(gh, "_recent_texts", lambda: ["noget tekst her"])
+    monkeypatch.setattr(gh, "get_profile", lambda: dict(_PROFIL_ROLIG))
+    monkeypatch.setattr(gh, "byg_profil", lambda t: dict(_PROFIL_SKIFTET))
+    monkeypatch.setattr(gh, "klang_drift",
+                        lambda a, b: {"drift_pct": 90.0, "baerende": "avg_sentence_len_exact",
+                                      "akser": {"avg_sentence_len_exact": 90.0}})
+    monkeypatch.setattr("core.services.central_consequence.land_decision",
+                        lambda *a, **kw: {"applied": False, "reason": "switch slukket"})
+
+    ud = gh.record_ghost()
+
+    assert ud["landing"]["spor_note"], ud["landing"]
+    assert ud["landing"]["grundlag_bevaret"] is True, ud["landing"]
+    gemt = kv.get(gh._PROFILE_KEY)
+    assert gemt == _PROFIL_ROLIG or gemt is None, (
+        f"fingeraftrykket blev overskrevet uden at skiftet var sikret: {gemt}")

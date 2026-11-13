@@ -363,6 +363,12 @@ def land_decision(
             _ensure(conn)
             if _allerede_landet(conn, cid, "decision", subject):
                 out["reason"] = "allerede landet i doegnet"
+                # (13/11-2026, Bjørns fjerde indvending) `applied=False` betød både
+                # «afvist» og «allerede afsluttet». En kalder der rydder sit spor på
+                # `applied` kunne derfor aldrig afslutte et fund hvis beslutning VAR
+                # oprettet — den lå fast som uafsluttet for evigt. Feltet skiller de
+                # to: konsekvensen findes allerede, så fundet er færdigt.
+                out["already_landed"] = True
                 _skriv(conn, cid=cid, lever="decision", subject=subject,
                        applied=False, reason=out["reason"])
                 conn.commit()

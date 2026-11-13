@@ -165,7 +165,11 @@ def _land_skift(drift: dict[str, Any], *, kilde: str,
                 "spor_gemt": _opdater_fund(fund_id, grund=str(exc)),
                 "reason": f"skiftet blev opdaget, men landingen fejlede: {exc}"}
 
-    landet = bool(svar.get("applied"))
+    # (13/11-2026, Bjørns fjerde indvending) `applied=False` med reason
+    # «allerede landet i doegnet» er ikke en fejlet landing — beslutningen FINDES
+    # allerede. Blev den læst som fejl, kunne et fund hvis rydning fejlede ligge
+    # fast som uafsluttet for evigt, selvom dets konsekvens var oprettet.
+    landet = bool(svar.get("applied")) or bool(svar.get("already_landed"))
     spor_gemt = (_fjern_fund(fund_id) if landet
                  else _opdater_fund(fund_id, grund=str(svar.get("reason") or "ikke anvendt")))
     return {**svar, "outcome": "skift_registreret", "decision_applied": landet,
@@ -363,6 +367,8 @@ def record_ghost(*, trigger: str = "cadence", last_visible_at: str = "") -> dict
     # (13/11-2026) Samme fejlform som i relational: `applied: false` dækkede både
     # «intet grundlag», «sammenlignet uden skift» og «kunne ikke måles». `outcome`
     # skiller dem ad, så en læser ikke gætter på hvad der faktisk skete.
+    skift_opdaget = False
+    fund_sikret = True
     if not prof:
         landing: dict[str, Any] = {"applied": False, "outcome": "utilgaengelig",
                                    "reason": "kunne ikke danne et fingeraftryk"}
@@ -374,16 +380,24 @@ def record_ghost(*, trigger: str = "cadence", last_visible_at: str = "") -> dict
                    "reason": f"driften var {drift['drift_pct']}% mod tærsklen {_DRIFT_TAERSKEL}%",
                    "drift_pct": drift["drift_pct"]}
         if drift["drift_pct"] >= _DRIFT_TAERSKEL:
+            skift_opdaget = True
             # Skiftet registreres FØR forsøget — og før profilen nedenfor gemmes.
             fund_id, note = _registrer_fund(drift)
+            fund_sikret = fund_id is not None
             landing = {**_land_skift(drift, kilde="frisk", fund_id=fund_id),
                        "drift_pct": drift["drift_pct"]}
             if note:
                 landing["spor_note"] = note
 
-    # Først NU overskrives sammenligningsgrundlaget — efter fundet er registreret.
-    if prof:
+    # (13/11-2026, Bjørns fjerde indvending) Kunne skiftet ikke SIKRES, må
+    # fingeraftrykket ikke overskrives: så ville et skift der ikke ligger gemt
+    # nogen steder have mistet det den blev målt imod, og kunne aldrig genopdages.
+    if prof and (fund_sikret or not skift_opdaget):
         _kv_set(_PROFILE_KEY, prof)
+    elif prof:
+        landing["grundlag_bevaret"] = True
+        landing["grundlag_note"] = ("skiftet blev ikke sikret — det gamle "
+                                    "fingeraftryk er bevaret som grundlag")
     if forrige:
         _kv_set(_PREV_KEY, forrige)
     try:

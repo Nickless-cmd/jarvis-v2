@@ -14,11 +14,14 @@ Kilde: db_central_incidents (persistente incidents). Self-safe. Relateret: [[cen
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 from datetime import UTC, datetime
 from typing import Any
 
 from core.runtime.db_core import connect
+
+logger = logging.getLogger(__name__)
 
 _SEVERITY_RANK = {"severe": 3, "error": 2, "warning": 1, "info": 0}
 
@@ -141,9 +144,75 @@ def build_rca_surface() -> dict[str, Any]:
     return {"unresolved": unresolved, "next_incident": nxt, "recent_rca": rcas, "felt": felt}
 
 
+def recurring_nerves(*, min_unresolved: int = 3, limit: int = 5) -> list[dict[str, Any]]:
+    """Nerver hvor den SAMME fejl er uløst flere gange — systemisk, ikke enkeltstaaende. READ-ONLY.
+
+    (13/11-2026) Maalt: 15 uloeste incidents, hvoraf 6 laa paa `proactivity/verification`
+    og 4 paa `privacy/cross_user_share`. `pick_incident()` valgte ÉN og kiggede aldrig
+    paa at de øvrige var samme fejl — saa hver undersøgelse startede forfra.
+    """
+    try:
+        from core.runtime.db_central_incidents import list_central_incidents
+        rows = list_central_incidents(limit=200, unresolved_only=True)
+    except Exception as exc:
+        logger.warning("rca: kunne ikke hente incidents: %s", exc)
+        return []
+    agg: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for r in rows:
+        agg.setdefault((str(r.get("cluster") or ""), str(r.get("nerve") or "")), []).append(r)
+    out: list[dict[str, Any]] = []
+    for (cluster, nerve), group in agg.items():
+        if len(group) < int(min_unresolved):
+            continue
+        out.append({
+            "cluster": cluster,
+            "nerve": nerve,
+            "unresolved": len(group),
+            "oldest_id": min(int(r.get("id") or 0) for r in group),
+            "severity": max(
+                (str(r.get("severity") or "") for r in group),
+                key=lambda s: _SEVERITY_RANK.get(s, 0),
+            ),
+            "message": str(group[0].get("message") or "")[:160],
+        })
+    out.sort(key=lambda d: (-int(d["unresolved"]), -_SEVERITY_RANK.get(str(d["severity"]), 0)))
+    return out[:limit]
+
+
 def record_rca(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
-    """Cadence: observér uløst-antal + næste-mål (metadata-only). Self-safe. Investigerer IKKE
-    automatisk — det er en bevidst handling."""
+    """Cadence: observér uløst-antal + næste-mål — og lad et GENTAGET mønster lande.
+
+    (13/11-2026) Produceren observerede kun metadata: 15 uløste, 6 af dem paa samme
+    nerve, og intet fulgte. En nerve der fejler seks gange er ikke seks hændelser —
+    det er én systemisk fejl. Den lander nu som en bindende forpligtelse, og
+    `evidence` bærer de maalte tal saa stoej-vetoet ikke doemmer et MAALT fund
+    som stoej (det veto er bygget til FORMULEREDE moenstre, ikke til maalinger).
+
+    Investigerer stadig IKKE automatisk — at grave er en bevidst handling.
+    """
     surf = build_rca_surface()
     _observe("pending", {"unresolved": surf["unresolved"], "has_next": bool(surf["next_incident"])})
-    return {"status": "ok", "unresolved": surf["unresolved"]}
+    out: dict[str, object] = {"status": "ok", "unresolved": surf["unresolved"]}
+    rec = recurring_nerves()
+    if rec:
+        top = rec[0]
+        try:
+            from core.services.central_consequence import land_decision
+            out["landing"] = land_decision(
+                "rca",
+                (f"Grav i {top['cluster']}/{top['nerve']} — "
+                 f"{top['unresolved']} uløste incidents paa samme nerve"),
+                subject=f"recurring:{top['cluster']}/{top['nerve']}",
+                rationale=(f"Den samme fejl er uløst {top['unresolved']} gange paa "
+                           f"{top['cluster']}/{top['nerve']}. Det er ikke {top['unresolved']} "
+                           f"hændelser, det er én systemisk fejl der gentager sig mens "
+                           f"incident-listen vokser. Seneste: {top['message']}"),
+                trigger_cue="naar en nerve har flere uloeste incidents end én",
+                priority=60,
+                evidence=(f"uloeste={top['unresolved']} severity={top['severity']} "
+                          f"incidenter_i_alt={surf['unresolved']}"),
+                evidence_source="central_rca.recurring_nerves",
+            )
+        except Exception as exc:
+            logger.warning("rca: kunne ikke lande gentaget moenster: %s", exc)
+    return out

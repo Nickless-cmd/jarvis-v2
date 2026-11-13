@@ -63,6 +63,16 @@ _TABLE = "central_consequences"
 # betyder at en utæmmet confidence-lever kan tømme økosystemet på få timer.
 _DAGSLoft = {"confidence": 8, "decision": 3, "record": 500}
 
+# (13/11-2026) Loftet ovenfor var GLOBALT: 3 beslutninger i doegnet paa tvaers af
+# alle 31 karakterer. Det var ment som vaern mod én braekket detektor, men ramte
+# alle sunde: dissent, red_dress og mourning landede foerst, og derefter var
+# leveren en DOED GREN for de øvrige — maalt i drift som «dagsloft ramt (3/3)»
+# paa et fuldt gyldigt fund. Det er praecis den fejlform hele arbejdet jager.
+# `_DAGSLoft` er derfor nu pr. KARAKTER (én braekket detektor kan ikke spaamme),
+# og `_GLOBAL_DAGSLoft` er det ydre vaern (mange braekkede detektorer kan ikke
+# aede økosystemet). Begge skal kunne naas af et sundt system.
+_GLOBAL_DAGSLoft = {"confidence": 40, "decision": 60, "record": 5000}
+
 
 def _nu() -> str:
     return datetime.now(UTC).isoformat()
@@ -92,12 +102,19 @@ def _ensure(conn) -> None:
     )
 
 
-def _landinger_sidste_doegn(conn, lever: str) -> int:
+def _landinger_sidste_doegn(conn, lever: str, cid: str | None = None) -> int:
+    """Landinger i doegnet — for ÉN karakter naar `cid` er givet, ellers i alt."""
     cutoff = (datetime.now(UTC) - timedelta(days=1)).isoformat()
-    r = conn.execute(
-        f"SELECT COUNT(*) FROM {_TABLE} WHERE lever=? AND applied=1 AND created_at>=?",
-        (lever, cutoff),
-    ).fetchone()
+    if cid is None:
+        r = conn.execute(
+            f"SELECT COUNT(*) FROM {_TABLE} WHERE lever=? AND applied=1 AND created_at>=?",
+            (lever, cutoff),
+        ).fetchone()
+    else:
+        r = conn.execute(
+            f"SELECT COUNT(*) FROM {_TABLE} WHERE lever=? AND cid=? AND applied=1 AND created_at>=?",
+            (lever, cid, cutoff),
+        ).fetchone()
     return int((r or [0])[0] or 0)
 
 
@@ -134,11 +151,23 @@ def _skriv(
     )
 
 
-def _loft_ramt(conn, lever: str) -> str | None:
-    loft = int(_DAGSLoft.get(lever, 0))
-    n = _landinger_sidste_doegn(conn, lever)
-    if loft and n >= loft:
-        return f"dagsloft ramt ({n}/{loft})"
+def _loft_ramt(conn, lever: str, cid: str = "") -> str | None:
+    """To lofter: ét pr. KARAKTER og ét GLOBALT.
+
+    Pr-karakter-lofter er det der standser én braekket detektor. Det globale loft
+    er det der standser mange. Da loftet var globalt alene, brugte de tre foerste
+    sunde fund dagens budget og blokerede resten — det blev maalt i drift som et
+    fuldt gyldigt fund afvist med «dagsloft ramt (3/3)».
+    """
+    if cid:
+        pr_karakter = int(_DAGSLoft.get(lever, 0))
+        n = _landinger_sidste_doegn(conn, lever, cid)
+        if pr_karakter and n >= pr_karakter:
+            return f"dagsloft for {cid} ramt ({n}/{pr_karakter})"
+    globalt = int(_GLOBAL_DAGSLoft.get(lever, 0))
+    total = _landinger_sidste_doegn(conn, lever)
+    if globalt and total >= globalt:
+        return f"globalt dagsloft ramt ({total}/{globalt})"
     return None
 
 
@@ -217,7 +246,7 @@ def land_confidence(
                 return _afvis("allerede landet i doegnet")
             if not _gate_taend(*gate):
                 return _afvis(f"switch slukket: {gate[0]}/{gate[1]}")
-            if (loft := _loft_ramt(conn, "confidence")) is not None:
+            if (loft := _loft_ramt(conn, "confidence", cid)) is not None:
                 return _afvis(loft)
 
             after = float(apply_outcome(before, falsified=bool(falsified)))
@@ -344,7 +373,7 @@ def land_decision(
                        applied=False, reason=out["reason"])
                 conn.commit()
                 return out
-            if (loft := _loft_ramt(conn, "decision")) is not None:
+            if (loft := _loft_ramt(conn, "decision", cid)) is not None:
                 out["reason"] = loft
                 _skriv(conn, cid=cid, lever="decision", subject=subject,
                        applied=False, reason=out["reason"])

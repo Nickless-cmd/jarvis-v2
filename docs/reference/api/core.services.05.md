@@ -282,19 +282,19 @@ _Central consequence — hvor en karakters fund FAKTISK lander._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_nu` | `()` | — | [src](../../../core/services/central_consequence.py#L67) |
-| function | `_connect` | `()` | — | [src](../../../core/services/central_consequence.py#L71) |
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_consequence.py#L76) |
-| function | `_landinger_sidste_doegn` | `(conn, lever)` | — | [src](../../../core/services/central_consequence.py#L95) |
-| function | `_allerede_landet` | `(conn, cid, lever, subject)` | Idempotens: samme fund lander ikke to gange i samme døgn. | [src](../../../core/services/central_consequence.py#L104) |
-| function | `_skriv` | `(conn, *, cid, lever, subject, before=…, after=…, applied=…, reason=…)` | — | [src](../../../core/services/central_consequence.py#L119) |
-| function | `_loft_ramt` | `(conn, lever)` | — | [src](../../../core/services/central_consequence.py#L137) |
-| function | `_gate_taend` | `(scope, name)` | Er leverens switch taendt? | [src](../../../core/services/central_consequence.py#L145) |
-| function | `land_confidence` | `(cid, hyp_id, *, falsified=…, reason=…, gate=…)` | Lad et angreb FAKTISK flytte hypotesens confidence. | [src](../../../core/services/central_consequence.py#L172) |
-| function | `_er_maalt` | `(evidence, source)` | Er dette en MÅLING — eller bare en sætning med et ciffer i? | [src](../../../core/services/central_consequence.py#L253) |
-| function | `land_decision` | `(cid, directive, *, rationale=…, trigger_cue=…, priority=…, subject=…, evidence=…, evidence_source=…, gate=…)` | Lad et fund blive en BINDENDE forpligtelse. | [src](../../../core/services/central_consequence.py#L284) |
-| function | `record` | `(cid, subject, *, detail=…)` | Fund uden en anvendelig lever: skriv det ned som reviderbart spor. | [src](../../../core/services/central_consequence.py#L385) |
-| function | `measure_consequences` | `(*, days=…)` | Beviset: hvor mange fund flyttede faktisk noget? | [src](../../../core/services/central_consequence.py#L402) |
+| function | `_nu` | `()` | — | [src](../../../core/services/central_consequence.py#L77) |
+| function | `_connect` | `()` | — | [src](../../../core/services/central_consequence.py#L81) |
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_consequence.py#L86) |
+| function | `_landinger_sidste_doegn` | `(conn, lever, cid=…)` | Landinger i doegnet — for ÉN karakter naar `cid` er givet, ellers i alt. | [src](../../../core/services/central_consequence.py#L105) |
+| function | `_allerede_landet` | `(conn, cid, lever, subject)` | Idempotens: samme fund lander ikke to gange i samme døgn. | [src](../../../core/services/central_consequence.py#L121) |
+| function | `_skriv` | `(conn, *, cid, lever, subject, before=…, after=…, applied=…, reason=…)` | — | [src](../../../core/services/central_consequence.py#L136) |
+| function | `_loft_ramt` | `(conn, lever, cid=…)` | To lofter: ét pr. KARAKTER og ét GLOBALT. | [src](../../../core/services/central_consequence.py#L154) |
+| function | `_gate_taend` | `(scope, name)` | Er leverens switch taendt? | [src](../../../core/services/central_consequence.py#L174) |
+| function | `land_confidence` | `(cid, hyp_id, *, falsified=…, reason=…, gate=…)` | Lad et angreb FAKTISK flytte hypotesens confidence. | [src](../../../core/services/central_consequence.py#L201) |
+| function | `_er_maalt` | `(evidence, source)` | Er dette en MÅLING — eller bare en sætning med et ciffer i? | [src](../../../core/services/central_consequence.py#L282) |
+| function | `land_decision` | `(cid, directive, *, rationale=…, trigger_cue=…, priority=…, subject=…, evidence=…, evidence_source=…, gate=…)` | Lad et fund blive en BINDENDE forpligtelse. | [src](../../../core/services/central_consequence.py#L313) |
+| function | `record` | `(cid, subject, *, detail=…)` | Fund uden en anvendelig lever: skriv det ned som reviderbart spor. | [src](../../../core/services/central_consequence.py#L414) |
+| function | `measure_consequences` | `(*, days=…)` | Beviset: hvor mange fund flyttede faktisk noget? | [src](../../../core/services/central_consequence.py#L431) |
 
 ## `core/services/central_construct.py`
 _The Construct — Sentinel's Shadow Self: en sandbox der tester radikale forenklinger MOD_

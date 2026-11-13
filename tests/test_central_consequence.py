@@ -294,7 +294,9 @@ class TestEtCifferErIkkeEnMaaling:
         """Det konkrete bevis: vetoet afviser ALT, og et ciffer må ikke smutte forbi."""
         import core.services.central_consequence as cc
 
-        monkeypatch.setattr(cc, "_loft_ramt", lambda conn, lever: None)
+        # signaturen fik `cid` 13/11-2026 da loftet blev pr-karakter; lambdaen
+        # skal foelge den, ellers maaler testen en anden funktion end produktionen.
+        monkeypatch.setattr(cc, "_loft_ramt", lambda conn, lever, cid="": None)
         monkeypatch.setattr(cc, "_gate_taend", lambda scope, name: True)
         monkeypatch.setattr(cc, "_allerede_landet",
                             lambda conn, cid, lever, subject: False)
@@ -331,3 +333,57 @@ class TestEtCifferErIkkeEnMaaling:
             # (både `evidence=f"…"` og `evidence=(f"…" f"…")` er gyldige former)
             assert _re.search(r'evidence=\(?\s*f"', kilde), \
                 f"{navn}s evidens er en konstant, ikke en måling"
+
+
+# ── 5. Loftet er pr. KARAKTER, ikke globalt (13/11-2026) ────────────────────
+#
+# Målt i drift: `_DAGSLoft["decision"]` var 3 og blev talt GLOBALT. Dissent,
+# red_dress og mourning landede først, og derefter blev et fuldt gyldigt fjerde
+# fund afvist med «dagsloft ramt (3/3)». Leveren var altså en død gren for de
+# øvrige 28 karakterer — præcis den fejlform hele arbejdet jager: en mekanisme
+# hvis indgangsbetingelse intet sundt system kan opfylde.
+#
+# Loftet skal stadig standse én brækket detektor. Det gør det nu pr. karakter,
+# og det globale loft er det ydre værn mod mange.
+
+
+def _land(cid: str, i: int, subject: str) -> dict:
+    return cc.land_decision(
+        cid,
+        f"fund {i} fra {cid}",
+        subject=subject,
+        evidence="severity=2 volume=0",
+        evidence_source="tests.test_central_consequence",
+    )
+
+
+class TestLoftetErPrKarakter:
+    def test_en_fjerde_karakter_kan_lande_efter_tre_andre(self, base):
+        with mock.patch("core.services.behavioral_decisions.create_decision",
+                        return_value={"decision_id": "dec_x", "status": "active"}):
+            for i, cid in enumerate(["dissent", "red_dress", "mourning"]):
+                assert _land(cid, i, f"s{i}")["applied"] is True, cid
+            fjerde = _land("rca", 3, "s3")
+        assert fjerde["applied"] is True, f"en fjerde karakter skal kunne lande: {fjerde}"
+        assert fjerde["decision_id"] == "dec_x"
+
+    def test_samme_karakter_stanses_stadig(self, base):
+        """Pr-karakter-lofter skal stadig være et værn mod én brækket detektor."""
+        with mock.patch("core.services.behavioral_decisions.create_decision",
+                        return_value={"decision_id": "dec_y", "status": "active"}):
+            for i in range(3):
+                assert _land("dissent", i, f"t{i}")["applied"] is True
+            fjerde = _land("dissent", 3, "t3")
+        assert fjerde["applied"] is False
+        assert "dagsloft for dissent" in fjerde["reason"], fjerde
+
+    def test_det_globale_loft_er_det_ydre_vaern(self, base, monkeypatch):
+        """Mange brækkede detektorer må ikke kunne æde økosystemet."""
+        monkeypatch.setitem(cc._GLOBAL_DAGSLoft, "decision", 2)
+        with mock.patch("core.services.behavioral_decisions.create_decision",
+                        return_value={"decision_id": "dec_z", "status": "active"}):
+            assert _land("a", 0, "g0")["applied"] is True
+            assert _land("b", 1, "g1")["applied"] is True
+            tredje = _land("c", 2, "g2")
+        assert tredje["applied"] is False
+        assert "globalt dagsloft" in tredje["reason"], tredje

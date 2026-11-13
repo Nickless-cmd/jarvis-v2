@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10131/18645 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10134/18646 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10131/18645 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 899 | 1612 | 55% |
-| `core.services` | 6779 | 12649 | 53% |
+| `core.services` | 6782 | 12650 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -980,7 +980,7 @@ Generated from source. 10131/18645 functions/methods documented (54%). The list 
 - `core/services/central_prompt_composer.py` :: `is_live_enabled` (L246)
 - `core/services/central_prompt_composer.py` :: `is_tail_live_enabled` (L250)
 - `core/services/central_prompt_explore.py` :: `is_explore_live` (L71)
-- `core/services/central_rca.py` :: `list_rca` (L117)
+- `core/services/central_rca.py` :: `list_rca` (L120)
 - `core/services/central_redpill.py` :: `build_redpill_surface` (L146)
 - `core/services/central_router_adapt.py` :: `is_live_enabled` (L63)
 - `core/services/central_router_explore.py` :: `is_explore_live` (L45)

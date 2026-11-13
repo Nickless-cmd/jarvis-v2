@@ -18,6 +18,7 @@ import re
 from collections import Counter
 from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 from core.identity.samtale_scope import aktuel_samtale_workspace
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,12 @@ _DRIFT_TAERSKEL = 25.0
 # FØR et eventuelt skift blev landet. Fejlede landingen, sammenlignede næste kørsel
 # den nye profil med sig selv og svarede «sammenlignet uden skift» — om et skift der
 # aldrig fik sin konsekvens. Et ulandet skift bæres nu videre her.
+#
+# (13/11-2026, Bjørns tredje indvending — to fejl mere) Sporet var ét objekt, så
+# et nyt fund kunne overskrive et ældre og arve dets `opdaget_at`. Nu er det en
+# liste med egen id pr. fund. Og det skrives FØR landingen forsøges, ikke efter.
 _PENDING_KEY = "ghost_pending_skift"
+_PENDING_LOFT = 20
 _SENT_SPLIT = re.compile(r"[.!?…]+")
 _WORD = re.compile(r"\b\w+\b", re.UNICODE)
 # Danske stopord vi ikke tæller som "signatur-vendinger".
@@ -53,44 +59,85 @@ def _kv_get(key: str, default: Any) -> Any:
         return default
 
 
-def _kv_set(key: str, value: Any) -> None:
+def _kv_set(key: str, value: Any) -> bool:
+    """Skriv til KV. Returnerer False hvis skrivningen fejlede.
+
+    (13/11-2026, Bjørns tredje indvending) Før slugte `pass` en fejlet skrivning,
+    så et fund kunne forsvinde uden at svaret viste det.
+    """
     try:
         from core.runtime.db_core import set_runtime_state_value
         set_runtime_state_value(key, value)
-    except Exception:
-        pass
+        return True
+    except Exception as exc:
+        logger.warning("ghost: kunne ikke skrive %s: %s", key, exc)
+        return False
 
 
-def _pending() -> dict[str, Any] | None:
-    p = _kv_get(_PENDING_KEY, None)
-    if isinstance(p, dict) and p.get("drift_pct") is not None:
-        return p
-    return None
+def _pending_liste() -> list[dict[str, Any]]:
+    """Alle ulandede skift. Læser også det gamle enkelt-objekt som en liste."""
+    p = _kv_get(_PENDING_KEY, [])
+    if isinstance(p, dict):
+        p = [p] if p.get("drift_pct") is not None else []
+    if not isinstance(p, list):
+        return []
+    ud: list[dict[str, Any]] = []
+    for x in p:
+        if not isinstance(x, dict) or x.get("drift_pct") is None:
+            continue
+        ud.append(x if x.get("id") else {**x, "id": uuid4().hex[:10]})
+    return ud
 
 
-def _gem_pending(drift: dict[str, Any], *, grund: str) -> None:
-    """Bevar skiftet på tværs af kørsler — med sin oprindelige opdagelsestid."""
-    gammel = _pending() or {}
+def _registrer_fund(drift: dict[str, Any]) -> tuple[str | None, str]:
+    """Registrér skiftet holdbart FØR landingen forsøges. Se `_registrer_fund` i
+    central_relational for hvorfor rækkefølgen er vendt om."""
+    liste = _pending_liste()
+    if len(liste) >= _PENDING_LOFT:
+        return None, (f"efterslæbet er fuldt ({_PENDING_LOFT} ulandede skift) — "
+                      "dette fund blev ikke gemt")
     akser = drift.get("akser")
-    _kv_set(_PENDING_KEY, {
+    fid = uuid4().hex[:10]
+    liste.append({
+        "id": fid,
         "drift_pct": drift["drift_pct"],
         "baerende": drift.get("baerende"),
         "akser": akser if isinstance(akser, int) else len(akser or {}),
-        "opdaget_at": gammel.get("opdaget_at") or datetime.now(UTC).isoformat(),
-        "forsog": int(gammel.get("forsog") or 0) + 1,
-        "sidste_fejl": str(grund)[:300],
+        "opdaget_at": datetime.now(UTC).isoformat(),
+        "forsog": 0,
+        "sidste_fejl": "",
     })
+    if _kv_set(_PENDING_KEY, liste):
+        return fid, ""
+    return None, "sporet kunne ikke skrives til KV — fundet findes kun i dette svar"
 
 
-def _ryd_pending() -> None:
-    _kv_set(_PENDING_KEY, None)
+def _opdater_fund(fund_id: str | None, *, grund: str) -> bool:
+    liste = _pending_liste()
+    for p in liste:
+        if fund_id and p.get("id") == fund_id:
+            p["forsog"] = int(p.get("forsog") or 0) + 1
+            p["sidste_fejl"] = str(grund)[:300]
+            return _kv_set(_PENDING_KEY, liste)
+    return False
 
 
-def _land_skift(drift: dict[str, Any], *, kilde: str) -> dict[str, Any]:
+def _fjern_fund(fund_id: str | None) -> bool:
+    liste = _pending_liste()
+    rest = [p for p in liste if not (fund_id and p.get("id") == fund_id)]
+    if len(rest) == len(liste):
+        return True
+    return _kv_set(_PENDING_KEY, rest)
+
+
+def _land_skift(drift: dict[str, Any], *, kilde: str,
+                fund_id: str | None = None) -> dict[str, Any]:
     """Forsøg at gøre et målt klangskift til en bindende beslutning.
 
     Returnerer ALTID et udfald. `outcome` siger hvad der blev OPDAGET;
     `decision_applied` siger om beslutningen blev oprettet.
+
+    Sporet er registreret af kalderen FØR dette kald — her ryddes/opdateres det kun.
     """
     akser = drift.get("akser")
     n_akser = akser if isinstance(akser, int) else len(akser or {})
@@ -113,35 +160,39 @@ def _land_skift(drift: dict[str, Any], *, kilde: str) -> dict[str, Any]:
         )
     except Exception as exc:
         logger.warning("ghost: kunne ikke lande klangdrift (%s): %s", kilde, exc)
-        _gem_pending(drift, grund=str(exc))
         return {"applied": False, "decision_applied": False,
                 "outcome": "skift_registreret",
+                "spor_gemt": _opdater_fund(fund_id, grund=str(exc)),
                 "reason": f"skiftet blev opdaget, men landingen fejlede: {exc}"}
 
     landet = bool(svar.get("applied"))
-    if landet:
-        _ryd_pending()
-    else:
-        # Gate afviste. Fundet består — sporet bæres videre.
-        _gem_pending(drift, grund=str(svar.get("reason") or "ikke anvendt"))
-    return {**svar, "outcome": "skift_registreret", "decision_applied": landet}
+    spor_gemt = (_fjern_fund(fund_id) if landet
+                 else _opdater_fund(fund_id, grund=str(svar.get("reason") or "ikke anvendt")))
+    return {**svar, "outcome": "skift_registreret", "decision_applied": landet,
+            "spor_gemt": spor_gemt}
 
 
-def _land_efterslaeb() -> dict[str, Any] | None:
-    """Ligger der et skift fra en tidligere kørsel der aldrig fik sin beslutning?"""
-    p = _pending()
-    if not p:
+def _land_efterslaeb() -> list[dict[str, Any]] | None:
+    """Ligger der skift fra tidligere kørsler der aldrig fik deres beslutning?
+
+    Hvert fund forsøges for sig — et der ikke kan landes må ikke blokere de andre.
+    """
+    liste = _pending_liste()
+    if not liste:
         return None
-    ud = _land_skift(p, kilde="efterslaeb")
-    landet = bool(ud.get("decision_applied"))
-    return {
-        "outcome": "efterslaeb_landet" if landet else "efterslaeb_ikke_landet",
-        "landed": landet,
-        "opdaget_at": p.get("opdaget_at"),
-        "forsog": p.get("forsog"),
-        "drift_pct": p.get("drift_pct"),
-        "reason": ud.get("reason"),
-    }
+    udfald: list[dict[str, Any]] = []
+    for p in liste:
+        ud = _land_skift(p, kilde="efterslaeb", fund_id=p.get("id"))
+        landet = bool(ud.get("decision_applied"))
+        udfald.append({
+            "outcome": "efterslaeb_landet" if landet else "efterslaeb_ikke_landet",
+            "landed": landet,
+            "opdaget_at": p.get("opdaget_at"),
+            "forsog": p.get("forsog"),
+            "drift_pct": p.get("drift_pct"),
+            "reason": ud.get("reason"),
+        })
+    return udfald
 
 
 def analyze(texts: list[str]) -> dict[str, Any]:
@@ -192,9 +243,20 @@ def analyze(texts: list[str]) -> dict[str, Any]:
     }
 
 
+def byg_profil(texts: list[str]) -> dict[str, Any]:
+    """Dan fingeraftrykket UDEN at gemme det.
+
+    (13/11-2026, Bjørns tredje indvending) `update_profile()` gemte profilen før
+    et skift blev landet, så et fund kunne miste sit sammenligningsgrundlag midt i
+    forløbet. Nu kan kalderen danne profilen, registrere fundet, og FØRST derefter
+    overskrive grundlaget — så grundlaget ikke forsvinder før fundet er holdbart.
+    """
+    return analyze(texts)
+
+
 def update_profile(texts: list[str]) -> dict[str, Any]:
     """Opdatér det durable ghost_profile fra seneste svar. Self-safe."""
-    prof = analyze(texts)
+    prof = byg_profil(texts)
     if prof:
         _kv_set(_PROFILE_KEY, prof)
     return prof
@@ -288,14 +350,14 @@ def record_ghost(*, trigger: str = "cadence", last_visible_at: str = "") -> dict
     overskrives, og et skift over tærsklen lander som en beslutning.
     """
     forrige = get_profile()
-    prof = update_profile(_recent_texts())
-    if forrige:
-        _kv_set(_PREV_KEY, forrige)
+    # (13/11-2026, Bjørns tredje indvending) Profilen DANNES først og gemmes
+    # senere. Før blev grundlaget overskrevet før et skift blev landet, så et
+    # fund kunne miste det den var målt imod midt i forløbet.
+    prof = byg_profil(_recent_texts())
     drift = klang_drift(forrige, prof)
 
     # Et skift fra en tidligere kørsel der aldrig fik sin beslutning forsøges
-    # FØRST — profilen er allerede overskrevet, så sporet her er det eneste sted
-    # fundet stadig findes.
+    # FØRST — uafhængigt af hvad den nye sammenligning viser.
     efterslaeb = _land_efterslaeb()
 
     # (13/11-2026) Samme fejlform som i relational: `applied: false` dækkede både
@@ -312,10 +374,18 @@ def record_ghost(*, trigger: str = "cadence", last_visible_at: str = "") -> dict
                    "reason": f"driften var {drift['drift_pct']}% mod tærsklen {_DRIFT_TAERSKEL}%",
                    "drift_pct": drift["drift_pct"]}
         if drift["drift_pct"] >= _DRIFT_TAERSKEL:
-            # Skiftet registreres FØR forsøget — et fejlet land må aldrig kunne
-            # efterlade svaret som «sammenlignet uden skift».
-            landing = {**_land_skift(drift, kilde="frisk"),
+            # Skiftet registreres FØR forsøget — og før profilen nedenfor gemmes.
+            fund_id, note = _registrer_fund(drift)
+            landing = {**_land_skift(drift, kilde="frisk", fund_id=fund_id),
                        "drift_pct": drift["drift_pct"]}
+            if note:
+                landing["spor_note"] = note
+
+    # Først NU overskrives sammenligningsgrundlaget — efter fundet er registreret.
+    if prof:
+        _kv_set(_PROFILE_KEY, prof)
+    if forrige:
+        _kv_set(_PREV_KEY, forrige)
     try:
         from core.services.central_core import central
         central().observe({"cluster": "system", "nerve": "ghost", "kind": "fingerprint",

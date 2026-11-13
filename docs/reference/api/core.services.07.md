@@ -122,21 +122,22 @@ _Relationel Continuity — så Jarvis kan sige "velkommen tilbage" og MENE det._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_relational.py#L25) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_relational.py#L34) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/central_relational.py#L55) |
-| function | `_pending` | `()` | — | [src](../../../core/services/central_relational.py#L59) |
-| function | `_gem_pending` | `(forrige, nu, *, grund)` | Bevar fundet på tværs af kørsler — med sin oprindelige opdagelsestid. | [src](../../../core/services/central_relational.py#L66) |
-| function | `_ryd_pending` | `()` | — | [src](../../../core/services/central_relational.py#L78) |
-| function | `_land_fald` | `(forrige, nu, *, kilde)` | Forsøg at gøre et opdaget fald til en bindende beslutning. | [src](../../../core/services/central_relational.py#L82) |
-| function | `_land_efterslaeb` | `()` | Ligger der et fald fra en tidligere kørsel der aldrig fik sin beslutning? | [src](../../../core/services/central_relational.py#L121) |
-| function | `_self_state` | `()` | — | [src](../../../core/services/central_relational.py#L139) |
-| function | `_days_together` | `()` | — | [src](../../../core/services/central_relational.py#L147) |
-| function | `_tone` | `()` | — | [src](../../../core/services/central_relational.py#L156) |
-| function | `relational_state` | `()` | Forholdets bærende signaler: dage sammen + nuværende tone. READ-ONLY. Self-safe. | [src](../../../core/services/central_relational.py#L161) |
-| function | `wake_greeting` | `()` | En jordet opvågnings-hilsen der står på ægte varighed + tone — ikke en generisk floskel. | [src](../../../core/services/central_relational.py#L169) |
-| function | `build_relational_surface` | `()` | Owner/self-view: dage + tone + opvågnings-hilsen. Self-safe. | [src](../../../core/services/central_relational.py#L190) |
-| function | `record_relational` | `(*, trigger=…, last_visible_at=…)` | Cadence: observér relations-kontinuitet — og LAD et fald i varigheden lande. | [src](../../../core/services/central_relational.py#L199) |
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_relational.py#L26) |
+| function | `_kv_set` | `(key, value)` | Skriv til KV. Returnerer False hvis skrivningen fejlede. | [src](../../../core/services/central_relational.py#L35) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/central_relational.py#L72) |
+| function | `_pending_liste` | `()` | Alle ulandede fald. Læser også det gamle enkelt-objekt som en liste. | [src](../../../core/services/central_relational.py#L76) |
+| function | `_registrer_fund` | `(forrige, nu)` | Registrér fundet holdbart FØR landingen forsøges. | [src](../../../core/services/central_relational.py#L91) |
+| function | `_opdater_fund` | `(fund_id, *, grund)` | Markér at et forsøg fejlede. Rører ikke de andre fund i listen. | [src](../../../core/services/central_relational.py#L109) |
+| function | `_fjern_fund` | `(fund_id)` | Fjern ét landet fund. De øvrige bliver liggende — de er egne observationer. | [src](../../../core/services/central_relational.py#L120) |
+| function | `_land_fald` | `(forrige, nu, *, kilde, fund_id=…)` | Forsøg at gøre et opdaget fald til en bindende beslutning. | [src](../../../core/services/central_relational.py#L129) |
+| function | `_land_efterslaeb` | `()` | Ligger der fald fra tidligere kørsler der aldrig fik deres beslutning? | [src](../../../core/services/central_relational.py#L169) |
+| function | `_self_state` | `()` | — | [src](../../../core/services/central_relational.py#L194) |
+| function | `_days_together` | `()` | — | [src](../../../core/services/central_relational.py#L202) |
+| function | `_tone` | `()` | — | [src](../../../core/services/central_relational.py#L211) |
+| function | `relational_state` | `()` | Forholdets bærende signaler: dage sammen + nuværende tone. READ-ONLY. Self-safe. | [src](../../../core/services/central_relational.py#L216) |
+| function | `wake_greeting` | `()` | En jordet opvågnings-hilsen der står på ægte varighed + tone — ikke en generisk floskel. | [src](../../../core/services/central_relational.py#L224) |
+| function | `build_relational_surface` | `()` | Owner/self-view: dage + tone + opvågnings-hilsen. Self-safe. | [src](../../../core/services/central_relational.py#L245) |
+| function | `record_relational` | `(*, trigger=…, last_visible_at=…)` | Cadence: observér relations-kontinuitet — og LAD et fald i varigheden lande. | [src](../../../core/services/central_relational.py#L254) |
 
 ## `core/services/central_render.py`
 _core/services/central_render.py_

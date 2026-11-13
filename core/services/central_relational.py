@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
@@ -31,12 +32,20 @@ def _kv_get(key: str, default: Any) -> Any:
         return default
 
 
-def _kv_set(key: str, value: Any) -> None:
+def _kv_set(key: str, value: Any) -> bool:
+    """Skriv til KV. Returnerer False hvis skrivningen fejlede.
+
+    (13/11-2026, Bjørns tredje indvending) Før slugte denne `pass` en fejlet
+    skrivning: et fund kunne forsvinde uden at hverken kalderen eller svaret
+    viste det. En fejl her må ikke vælte cadence — men den skal kunne SES.
+    """
     try:
         from core.runtime.db_core import set_runtime_state_value
         set_runtime_state_value(key, value)
-    except Exception:  # KV utilgængelig → næste tik prøver igen; ikke fatalt
-        pass
+        return True
+    except Exception as exc:
+        logger.warning("relational: kunne ikke skrive %s: %s", key, exc)
+        return False
 
 
 _DAYS_KEY = "relational_days_seen"
@@ -49,42 +58,84 @@ _FALD_TAERSKEL = 0.5
 # `land_decision` lykkedes, og `landing` stod som «sammenlignet_uden_fald» — så
 # næste kørsel sammenlignede to ens tal og fundet var væk uden et spor.
 # Nu bæres et ulandet fald videre her, og forsøges igen ved næste kørsel.
+#
+# (13/11-2026, Bjørns tredje indvending — to fejl mere i den første rettelse)
+# 1. Sporet var ÉT objekt. Et nyt fund overskrev et ældre og arvede dets
+#    `opdaget_at`, så tidspunktet tilhørte én observation og indholdet en anden.
+#    Nu er det en LISTE, og hvert fund har sin egen id og sit eget tidsstempel.
+# 2. Sporet blev skrevet EFTER et mislykket landingsforsøg, så et crash midt i
+#    landingen tog fundet med sig. Nu registreres det FØR forsøget.
 _PENDING_KEY = "relational_pending_fald"
+_PENDING_LOFT = 20
 
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def _pending() -> dict[str, Any] | None:
-    p = _kv_get(_PENDING_KEY, None)
-    if isinstance(p, dict) and p.get("forrige") is not None and p.get("nu") is not None:
-        return p
-    return None
+def _pending_liste() -> list[dict[str, Any]]:
+    """Alle ulandede fald. Læser også det gamle enkelt-objekt som en liste."""
+    p = _kv_get(_PENDING_KEY, [])
+    if isinstance(p, dict):
+        p = [p] if p.get("forrige") is not None and p.get("nu") is not None else []
+    if not isinstance(p, list):
+        return []
+    ud: list[dict[str, Any]] = []
+    for x in p:
+        if not isinstance(x, dict) or x.get("forrige") is None or x.get("nu") is None:
+            continue
+        ud.append(x if x.get("id") else {**x, "id": uuid4().hex[:10]})
+    return ud
 
 
-def _gem_pending(forrige: Any, nu: Any, *, grund: str) -> None:
-    """Bevar fundet på tværs af kørsler — med sin oprindelige opdagelsestid."""
-    gammel = _pending() or {}
-    _kv_set(_PENDING_KEY, {
-        "forrige": forrige,
-        "nu": nu,
-        "opdaget_at": gammel.get("opdaget_at") or _now_iso(),
-        "forsog": int(gammel.get("forsog") or 0) + 1,
-        "sidste_fejl": str(grund)[:300],
-    })
+def _registrer_fund(forrige: Any, nu: Any) -> tuple[str | None, str]:
+    """Registrér fundet holdbart FØR landingen forsøges.
+
+    Returnerer (fund_id, note). `fund_id=None` betyder at sporet IKKE kunne
+    skrives — og det skal stå i svaret, ikke forsvinde i en log-linje.
+    """
+    liste = _pending_liste()
+    if len(liste) >= _PENDING_LOFT:
+        return None, (f"efterslæbet er fuldt ({_PENDING_LOFT} ulandede fund) — "
+                      "dette fund blev ikke gemt")
+    fid = uuid4().hex[:10]
+    liste.append({"id": fid, "forrige": forrige, "nu": nu,
+                  "opdaget_at": _now_iso(), "forsog": 0, "sidste_fejl": ""})
+    if _kv_set(_PENDING_KEY, liste):
+        return fid, ""
+    return None, "sporet kunne ikke skrives til KV — fundet findes kun i dette svar"
 
 
-def _ryd_pending() -> None:
-    _kv_set(_PENDING_KEY, None)
+def _opdater_fund(fund_id: str | None, *, grund: str) -> bool:
+    """Markér at et forsøg fejlede. Rører ikke de andre fund i listen."""
+    liste = _pending_liste()
+    for p in liste:
+        if fund_id and p.get("id") == fund_id:
+            p["forsog"] = int(p.get("forsog") or 0) + 1
+            p["sidste_fejl"] = str(grund)[:300]
+            return _kv_set(_PENDING_KEY, liste)
+    return False
 
 
-def _land_fald(forrige: Any, nu: Any, *, kilde: str) -> dict[str, Any]:
+def _fjern_fund(fund_id: str | None) -> bool:
+    """Fjern ét landet fund. De øvrige bliver liggende — de er egne observationer."""
+    liste = _pending_liste()
+    rest = [p for p in liste if not (fund_id and p.get("id") == fund_id)]
+    if len(rest) == len(liste):
+        return True
+    return _kv_set(_PENDING_KEY, rest)
+
+
+def _land_fald(forrige: Any, nu: Any, *, kilde: str,
+               fund_id: str | None = None) -> dict[str, Any]:
     """Forsøg at gøre et opdaget fald til en bindende beslutning.
 
     Returnerer ALTID et udfald — også når landingen fejler. `outcome` siger hvad
     der blev OPDAGET; `decision_applied` siger om beslutningen blev oprettet.
     De to må ikke blandes sammen: et fund der ikke kunne handles er stadig et fund.
+
+    Sporet er registreret af kalderen FØR dette kald; her ryddes eller opdateres
+    det kun. Derfor kan et crash midt i landingen ikke tage fundet med sig.
     """
     try:
         from core.services.central_consequence import land_decision
@@ -104,36 +155,40 @@ def _land_fald(forrige: Any, nu: Any, *, kilde: str) -> dict[str, Any]:
         )
     except Exception as exc:
         logger.warning("relational: kunne ikke lande aldersfald (%s): %s", kilde, exc)
-        _gem_pending(forrige, nu, grund=str(exc))
         return {"applied": False, "decision_applied": False,
-                "outcome": "fald_registreret",
+                "outcome": "fald_registreret", "spor_gemt": _opdater_fund(fund_id, grund=str(exc)),
                 "reason": f"faldet blev opdaget, men landingen fejlede: {exc}"}
 
     landet = bool(svar.get("applied"))
-    if landet:
-        _ryd_pending()
-    else:
-        # Gate afviste (fx støj-veto). Fundet består — sporet bæres videre.
-        _gem_pending(forrige, nu, grund=str(svar.get("reason") or "ikke anvendt"))
-    return {**svar, "outcome": "fald_registreret", "decision_applied": landet}
+    spor_gemt = (_fjern_fund(fund_id) if landet
+                 else _opdater_fund(fund_id, grund=str(svar.get("reason") or "ikke anvendt")))
+    return {**svar, "outcome": "fald_registreret", "decision_applied": landet,
+            "spor_gemt": spor_gemt}
 
 
-def _land_efterslaeb() -> dict[str, Any] | None:
-    """Ligger der et fald fra en tidligere kørsel der aldrig fik sin beslutning?"""
-    p = _pending()
-    if not p:
+def _land_efterslaeb() -> list[dict[str, Any]] | None:
+    """Ligger der fald fra tidligere kørsler der aldrig fik deres beslutning?
+
+    Hvert fund forsøges for sig — et der ikke kan landes må ikke blokere de andre,
+    og det må heller ikke overskrive dem.
+    """
+    liste = _pending_liste()
+    if not liste:
         return None
-    ud = _land_fald(p["forrige"], p["nu"], kilde="efterslaeb")
-    landet = bool(ud.get("decision_applied"))
-    return {
-        "outcome": "efterslaeb_landet" if landet else "efterslaeb_ikke_landet",
-        "landed": landet,
-        "opdaget_at": p.get("opdaget_at"),
-        "forsog": p.get("forsog"),
-        "forrige": p["forrige"],
-        "nu": p["nu"],
-        "reason": ud.get("reason"),
-    }
+    udfald: list[dict[str, Any]] = []
+    for p in liste:
+        ud = _land_fald(p["forrige"], p["nu"], kilde="efterslaeb", fund_id=p.get("id"))
+        landet = bool(ud.get("decision_applied"))
+        udfald.append({
+            "outcome": "efterslaeb_landet" if landet else "efterslaeb_ikke_landet",
+            "landed": landet,
+            "opdaget_at": p.get("opdaget_at"),
+            "forsog": p.get("forsog"),
+            "forrige": p["forrige"],
+            "nu": p["nu"],
+            "reason": ud.get("reason"),
+        })
+    return udfald
 
 
 def _self_state() -> dict[str, Any]:
@@ -232,11 +287,14 @@ def record_relational(*, trigger: str = "cadence", last_visible_at: str = "") ->
                    "reason": f"varigheden gik fra {forrige} til {days} dage",
                    "forrige": forrige, "nu": days}
         if float(days) < float(forrige) - _FALD_TAERSKEL:
-            # Afvigelsen registreres FØR forsøget. Et fejlet land må aldrig kunne
-            # efterlade svaret som «sammenlignet uden fald» — det var præcis den
-            # vej hvor fundet kunne forsvinde sammen med sit grundlag.
-            landing = {**_land_fald(forrige, days, kilde="frisk"),
+            # Fundet registreres FØR forsøget — ikke bagefter. Sker der et crash
+            # midt i landingen, ligger sporet allerede; og kunne sporet slet ikke
+            # skrives, står det i svaret i stedet for at forsvinde i en log-linje.
+            fund_id, note = _registrer_fund(forrige, days)
+            landing = {**_land_fald(forrige, days, kilde="frisk", fund_id=fund_id),
                        "forrige": forrige, "nu": days}
+            if note:
+                landing["spor_note"] = note
     if days is not None:
         _kv_set(_DAYS_KEY, days)
     try:

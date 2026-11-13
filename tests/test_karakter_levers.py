@@ -186,7 +186,8 @@ def test_relational_fund_overlever_at_landingen_fejler(monkeypatch):
 
     # og sporet ligger der med sin oprindelige opdagelsestid
     pending = kv.get("relational_pending_fald")
-    assert pending and pending["forrige"] == 200.0 and pending["nu"] == 12.0, pending
+    assert isinstance(pending, list) and len(pending) == 1, pending
+    assert pending[0]["forrige"] == 200.0 and pending[0]["nu"] == 12.0, pending
 
     # Næste kørsel: alderen er nu stabil, så der er intet NYT fald at se.
     # Uden efterslæbet ville fundet her være forsvundet for evigt.
@@ -197,9 +198,9 @@ def test_relational_fund_overlever_at_landingen_fejler(monkeypatch):
     )
     anden = rel.record_relational()
 
-    assert anden["efterslaeb"]["outcome"] == "efterslaeb_landet", anden["efterslaeb"]
+    assert anden["efterslaeb"][0]["outcome"] == "efterslaeb_landet", anden["efterslaeb"]
     assert kaldt and "200.0" in kaldt[0] and "12.0" in kaldt[0], kaldt
-    assert kv.get("relational_pending_fald") is None, "landet spor skal ryddes"
+    assert kv.get("relational_pending_fald") == [], "landet spor skal ryddes"
 
 
 def test_relational_afvist_gate_bevarer_fundet(monkeypatch):
@@ -215,7 +216,81 @@ def test_relational_afvist_gate_bevarer_fundet(monkeypatch):
     assert ud["landing"]["outcome"] == "fald_registreret", ud["landing"]
     assert ud["landing"]["decision_applied"] is False
     assert ud["landing"]["reason"] == "støj-veto"
-    assert kv.get("relational_pending_fald")["nu"] == 12.0
+    assert kv.get("relational_pending_fald")[0]["nu"] == 12.0
+
+
+def test_relational_fejlet_kv_skrivning_ses_i_svaret(monkeypatch):
+    """(13/11-2026, Bjørns tredje indvending) `_kv_set` slugte før fejlen med `pass`.
+    Så kunne sporet forsvinde uden at nogen — eller svaret — vidste det. En test med
+    en fungerende FakeKV beviser ikke at en fejlet skrivning opdages; derfor fejler
+    skrivningen her bevidst, og svaret skal sige det."""
+    kv = _kv(monkeypatch, FakeKV({"relational_days_seen": 200.0}))
+
+    def _set(k, v, **kw):
+        if k == "relational_pending_fald":
+            raise RuntimeError("database is locked")
+        kv.set(k, v)
+
+    monkeypatch.setattr("core.runtime.db_core.set_runtime_state_value", _set)
+    monkeypatch.setattr(rel, "relational_state",
+                        lambda: {"days_together": 12.0, "tone": "let", "reboot": True})
+    monkeypatch.setattr("core.services.central_consequence.land_decision",
+                        lambda cid, d, **kw: {"applied": False, "reason": "støj-veto"})
+    ud = rel.record_relational()
+
+    assert ud["landing"]["outcome"] == "fald_registreret", ud["landing"]
+    assert ud["landing"]["spor_gemt"] is False, ud["landing"]
+    assert "kunne ikke skrives" in ud["landing"]["spor_note"], ud["landing"]
+    assert kv.get("relational_pending_fald") is None, "intet spor blev gemt"
+
+
+def test_relational_sporet_er_gemt_foer_landingen_forsoeges(monkeypatch):
+    """(13/11-2026, Bjørns tredje indvending) Før blev sporet skrevet EFTER et
+    mislykket forsøg — så et crash midt i landingen tog fundet med sig. Her
+    inspiceres KV'en inde FRA `land_decision`: på det tidspunkt skal sporet
+    allerede ligge der."""
+    kv = _kv(monkeypatch, FakeKV({"relational_days_seen": 200.0}))
+    set_under_kald: list[list] = []
+
+    def _fake(cid, d, **kw):
+        set_under_kald.append(list(kv.get("relational_pending_fald") or []))
+        return {"applied": True, "decision_id": "dec_x"}
+
+    monkeypatch.setattr("core.services.central_consequence.land_decision", _fake)
+    monkeypatch.setattr(rel, "relational_state",
+                        lambda: {"days_together": 12.0, "tone": "let", "reboot": True})
+    rel.record_relational()
+
+    assert set_under_kald, "land_decision blev slet ikke kaldt"
+    assert len(set_under_kald[0]) == 1, f"sporet lå ikke der da handlingen blev forsøgt: {set_under_kald[0]}"
+    assert set_under_kald[0][0]["nu"] == 12.0, set_under_kald[0]
+
+
+def test_relational_to_fund_bevarer_hver_sit_tidspunkt(monkeypatch):
+    """(13/11-2026, Bjørns tredje indvending) Med ÉT spor-objekt kunne fund B
+    overskrive fund A og arve A's `opdaget_at` — så tidspunktet tilhørte én
+    observation og indholdet en anden. To fald i træk skal give to poster med
+    hver sin tid og hver sine tal."""
+    kv = _kv(monkeypatch, FakeKV({"relational_days_seen": 200.0}))
+    tider = iter(["2026-11-13T10:00:00+00:00", "2026-11-13T11:00:00+00:00"])
+    monkeypatch.setattr(rel, "_now_iso", lambda: next(tider))
+    monkeypatch.setattr("core.services.central_consequence.land_decision",
+                        lambda cid, d, **kw: {"applied": False, "reason": "støj-veto"})
+
+    monkeypatch.setattr(rel, "relational_state",
+                        lambda: {"days_together": 12.0, "tone": "let", "reboot": True})
+    rel.record_relational()
+
+    monkeypatch.setattr(rel, "relational_state",
+                        lambda: {"days_together": 3.0, "tone": "let", "reboot": True})
+    rel.record_relational()
+
+    liste = kv.get("relational_pending_fald")
+    assert isinstance(liste, list) and len(liste) == 2, liste
+    a, b = liste
+    assert (a["forrige"], a["nu"], a["opdaget_at"]) == (200.0, 12.0, "2026-11-13T10:00:00+00:00"), a
+    assert (b["forrige"], b["nu"], b["opdaget_at"]) == (12.0, 3.0, "2026-11-13T11:00:00+00:00"), b
+    assert a["id"] != b["id"], "to fund skal ikke dele identitet"
 
 
 def test_ghost_fund_overlever_at_landingen_fejler(monkeypatch):
@@ -225,7 +300,7 @@ def test_ghost_fund_overlever_at_landingen_fejler(monkeypatch):
     kv = _kv(monkeypatch, FakeKV({}))
     monkeypatch.setattr(gh, "_recent_texts", lambda: ["noget tekst her"])
     monkeypatch.setattr(gh, "get_profile", lambda: dict(_PROFIL_ROLIG))
-    monkeypatch.setattr(gh, "update_profile", lambda t: dict(_PROFIL_SKIFTET))
+    monkeypatch.setattr(gh, "byg_profil", lambda t: dict(_PROFIL_SKIFTET))
     monkeypatch.setattr(gh, "klang_drift",
                         lambda a, b: {"drift_pct": 90.0, "baerende": "avg_sentence_len_exact",
                                       "akser": {"avg_sentence_len_exact": 90.0}})
@@ -239,7 +314,8 @@ def test_ghost_fund_overlever_at_landingen_fejler(monkeypatch):
     assert foerste["landing"]["outcome"] == "skift_registreret", foerste["landing"]
     assert foerste["landing"]["decision_applied"] is False
     pending = kv.get("ghost_pending_skift")
-    assert pending and pending["drift_pct"] == 90.0, pending
+    assert isinstance(pending, list) and len(pending) == 1, pending
+    assert pending[0]["drift_pct"] == 90.0, pending
 
     # Næste kørsel: profilen er allerede den nye, så drift er ~0.
     monkeypatch.setattr(gh, "get_profile", lambda: dict(_PROFIL_SKIFTET))
@@ -252,9 +328,37 @@ def test_ghost_fund_overlever_at_landingen_fejler(monkeypatch):
     )
     anden = gh.record_ghost()
 
-    assert anden["efterslaeb"]["outcome"] == "efterslaeb_landet", anden["efterslaeb"]
+    assert anden["efterslaeb"][0]["outcome"] == "efterslaeb_landet", anden["efterslaeb"]
     assert kaldt and "90.0" in kaldt[0], kaldt
-    assert kv.get("ghost_pending_skift") is None, "landet spor skal ryddes"
+    assert kv.get("ghost_pending_skift") == [], "landet spor skal ryddes"
+
+
+def test_ghost_profilen_gemmes_efter_fundet_er_registreret(monkeypatch):
+    """(13/11-2026, Bjørns tredje indvending) `update_profile()` overskrev
+    fingeraftrykket FØR et skift blev landet, så fundet kunne miste det grundlag
+    det var målt imod. Nu skal sporet ligge i KV — og profilen stadig være den
+    gamle — i det øjeblik handlingen forsøges."""
+    kv = _kv(monkeypatch, FakeKV({}))
+    set_under_kald: list[tuple[list, object]] = []
+
+    def _fake(cid, d, **kw):
+        set_under_kald.append((list(kv.get("ghost_pending_skift") or []),
+                               kv.get("ghost_profile")))
+        return {"applied": True, "decision_id": "dec_x"}
+
+    monkeypatch.setattr("core.services.central_consequence.land_decision", _fake)
+    monkeypatch.setattr(gh, "_recent_texts", lambda: ["noget tekst her"])
+    monkeypatch.setattr(gh, "get_profile", lambda: dict(_PROFIL_ROLIG))
+    monkeypatch.setattr(gh, "byg_profil", lambda t: dict(_PROFIL_SKIFTET))
+    monkeypatch.setattr(gh, "klang_drift",
+                        lambda a, b: {"drift_pct": 90.0, "baerende": "avg_sentence_len_exact",
+                                      "akser": {"avg_sentence_len_exact": 90.0}})
+    gh.record_ghost()
+
+    assert set_under_kald, "land_decision blev slet ikke kaldt"
+    spor, profil_under = set_under_kald[0]
+    assert len(spor) == 1, f"sporet lå ikke der da handlingen blev forsøgt: {spor}"
+    assert profil_under is None, "grundlaget blev overskrevet FØR fundet var registreret"
 
 
 def test_ghost_skelner_sammenlignet_uden_skift_fra_intet_grundlag(monkeypatch, landet):

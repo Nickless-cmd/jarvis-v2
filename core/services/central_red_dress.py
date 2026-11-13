@@ -11,7 +11,10 @@ Kilde: central_timeseries (volumen) + db_central_incidents (impact). Self-safe.
 """
 from __future__ import annotations
 
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 _SEV = {"severe": 3, "error": 2, "warning": 1, "info": 0}
 
@@ -78,5 +81,30 @@ def build_red_dress_surface() -> dict[str, Any]:
 
 
 def record_red_dress(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
+    """Cadence-producenten — den ENESTE vej en stille brand bliver til en forpligtelse.
+
+    (13/11-2026) Foer skrev denne kun et tal tilbage. Men en «stille brand» er
+    ikke en statistik: det er en nerve med severity 2 og nul opmaerksomhed, altsaa
+    noget der braender mens ingen kigger. Det ER en undvigelse, og den hoerer i
+    en bindende forpligtelse — ikke i en taeller. `evidence` baerer de maalte tal,
+    saa stoej-vetoet (bygget til Smiths FORMULEREDE moenstre) ikke fejlagtigt
+    doemmer et MAALT fund som stoej.
+    """
     d = detect_attention_traps()
-    return {"status": "ok", "quiet_fires": len(d["quiet_fires"])}
+    fires = d.get("quiet_fires") or []
+    landing: dict[str, object] | None = None
+    if fires:
+        top = fires[0]
+        try:
+            from core.services.central_consequence import land_decision
+            landing = land_decision(
+                "red_dress",
+                f"Undersøg {top['nerve']} nu — severity {top['severity']}, kun {top['volume']} kig",
+                subject=f"quiet_fire:{top['nerve']}",
+                rationale=d.get("felt", ""),
+                evidence=(f"severity={top['severity']} volume={top['volume']} "
+                          f"antal_stille_braende={len(fires)}"),
+            )
+        except Exception as exc:
+            logger.warning("red_dress: kunne ikke lande stille brand: %s", exc)
+    return {"status": "ok", "quiet_fires": len(fires), "landing": landing}

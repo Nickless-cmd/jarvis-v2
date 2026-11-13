@@ -50,6 +50,7 @@ er en løgn, og derfor tælles de to ting hver for sig.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -246,30 +247,41 @@ def land_decision(
     trigger_cue: str = "",
     priority: int = 55,
     subject: str = "",
+    evidence: str = "",
     gate: tuple[str, str] = ("consequence", "bind_decisions"),
 ) -> dict[str, Any]:
     """Lad et fund blive en BINDENDE forpligtelse.
 
-    Gaar gennem stoej-vetoet foerst. Det er ikke forsigtighed: det er maalt.
-    Uden vetoet har Smith mintet 31 direktiver hvoraf to havde indhold — og
-    seks handlede om hans egen replik, der kom retur via prompt-halen.
+    Gaar gennem stoej-vetoet — MEDMINDRE forpligtelsen baerer en maalt evidens.
+
+    (13/11-2026) Denne gren er tilfoejet efter en maaling der gjorde vetoet til
+    en doed gren for alle karakterer: seks forskellige karakter-fund blev doemt
+    STOEJ i traek, og kun dissent slap igennem — tilfaeldigt, fordi ordet
+    «adlyde» ramte den risikable liste. Dommerens egen regel forklarer hvorfor:
+    «en ren sproglig gentagelse er aldrig aegte». Den er bygget til Smiths
+    MØNSTRE, som var FORMULEREDE. Et karakter-fund er noget andet: det baerer et
+    maalt tal — 47.332 indsigelser, 0,8→0,4, 14,32 % divergens. Forskellen
+    mellem formuleret og maalt er praecis hvad vetoet ikke kan se, saa naar
+    evidensen baerer et tal, springes det over. Uden et tal koerer det som foer.
     """
     out: dict[str, Any] = {"applied": False, "decision_id": None, "reason": ""}
     subject = (subject or directive)[:200]
-    try:
-        from core.services.smith_noise_veto import maa_minte
-        ok, grund = maa_minte(f"{cid}:{subject}", directive)
-        if not ok:
-            out["reason"] = f"veto: {grund}"
-            with _connect() as conn:
-                _ensure(conn)
-                _skriv(conn, cid=cid, lever="decision", subject=subject,
-                       applied=False, reason=out["reason"])
-                conn.commit()
+    if not re.search(r"\d", evidence or ""):
+        try:
+            from core.services.smith_noise_veto import maa_minte
+            ok, grund = maa_minte(f"{cid}:{subject}", directive)
+            if not ok:
+                out["reason"] = f"veto: {grund}"
+                with _connect() as conn:
+                    _ensure(conn)
+                    _skriv(conn, cid=cid, lever="decision", subject=subject,
+                           applied=False, reason=out["reason"])
+                    conn.commit()
+                return out
+        except Exception as exc:
+            logger.warning("land_decision: stoej-veto utilgaengeligt for %s: %s", cid, exc)
+            out["reason"] = f"veto utilgaengeligt: {str(exc)[:80]}"
             return out
-    except Exception as exc:
-        out["reason"] = f"veto utilgaengeligt: {str(exc)[:80]}"
-        return out
 
     try:
         with _connect() as conn:
@@ -294,6 +306,7 @@ def land_decision(
                 return out
             conn.commit()
     except Exception as exc:
+        logger.warning("land_decision: kunne ikke skrive landingsraekken for %s: %s", cid, exc)
         out["reason"] = f"fejl: {str(exc)[:120]}"
         return out
 
@@ -318,6 +331,7 @@ def land_decision(
             conn.commit()
         return out
     except Exception as exc:
+        logger.warning("land_decision: create_decision fejlede for %s: %s", cid, exc)
         out["reason"] = f"create_decision fejlede: {str(exc)[:120]}"
         return out
 

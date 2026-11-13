@@ -65,7 +65,15 @@ def analyze(texts: list[str]) -> dict[str, Any]:
     return {
         "sentences": n,
         "avg_sentence_len": round(avg, 1),
+        # (13/11-2026) Den RAA vaerdi, ikke visningsvaerdien. `avg_sentence_len` runder
+        # til 1 decimal, saa 12,04 og 11,96 bliver begge 12,0. Maalt i drift: analysatoren
+        # regnede sin divergens paa de to afrundede tal, fik 0,0 % og konkluderede
+        # «jeg er den samme, om du ser paa eller ej» — mens de raa data var forskellige
+        # (2.659 vs 3.147 saetninger, std 9,7 vs 8,4). En karakter der oedelaegger sit
+        # eget signal foer den konkluderer, lyver uden at vide det.
+        "avg_sentence_len_exact": round(avg, 6),
         "sentence_len_std": round(var ** 0.5, 1),
+        "sentence_len_std_exact": round(var ** 0.5, 6),
         "markers_per_1k": {
             "em_dash": per_k(joined.count("—")),
             "ellipsis": per_k(joined.count("…") + joined.count("...")),

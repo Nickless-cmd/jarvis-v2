@@ -97,10 +97,10 @@ _The Woman in the Red Dress — opmærksomheds-fælden._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_observe` | `(payload)` | — | [src](../../../core/services/central_red_dress.py#L19) |
-| function | `detect_attention_traps` | `(*, limit=…, observe=…)` | Find hvor opmærksomheden går hen vs hvor impact faktisk er. READ-ONLY. Self-safe. | [src](../../../core/services/central_red_dress.py#L27) |
-| function | `build_red_dress_surface` | `()` | Ren læsning — ingen hændelse i nerve-strømmen. | [src](../../../core/services/central_red_dress.py#L75) |
-| function | `record_red_dress` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_red_dress.py#L80) |
+| function | `_observe` | `(payload)` | — | [src](../../../core/services/central_red_dress.py#L22) |
+| function | `detect_attention_traps` | `(*, limit=…, observe=…)` | Find hvor opmærksomheden går hen vs hvor impact faktisk er. READ-ONLY. Self-safe. | [src](../../../core/services/central_red_dress.py#L30) |
+| function | `build_red_dress_surface` | `()` | Ren læsning — ingen hændelse i nerve-strømmen. | [src](../../../core/services/central_red_dress.py#L78) |
+| function | `record_red_dress` | `(*, trigger=…, last_visible_at=…)` | Cadence-producenten — den ENESTE vej en stille brand bliver til en forpligtelse. | [src](../../../core/services/central_red_dress.py#L83) |
 
 ## `core/services/central_redpill.py`
 _Red Pill — dagens ubehagelige sandhed._

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10123/18640 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10125/18641 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10123/18640 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 899 | 1612 | 55% |
-| `core.services` | 6771 | 12644 | 53% |
+| `core.services` | 6773 | 12645 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 10123/18640 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2631)
+## Undocumented public functions (2630)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L231)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -940,8 +940,8 @@ Generated from source. 10123/18640 functions/methods documented (54%). The list 
 - `core/services/candidate_tracking.py` :: `track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn` (L136)
 - `core/services/central_adaptation.py` :: `is_paused` (L230)
 - `core/services/central_agenda.py` :: `is_authoritative` (L42)
-- `core/services/central_analyst.py` :: `build_analyst_surface` (L72)
-- `core/services/central_analyst.py` :: `record_analyst` (L76)
+- `core/services/central_analyst.py` :: `build_analyst_surface` (L128)
+- `core/services/central_analyst.py` :: `record_analyst` (L132)
 - `core/services/central_belief_gap.py` :: `build_belief_gap_surface` (L85)
 - `core/services/central_belief_gap.py` :: `record_belief_gap` (L89)
 - `core/services/central_body_mood_feel.py` :: `get_affective_reading` (L248)
@@ -959,7 +959,7 @@ Generated from source. 10123/18640 functions/methods documented (54%). The list 
 - `core/services/central_existence_feel.py` :: `get_continuity_reading` (L151)
 - `core/services/central_existence_feel.py` :: `get_mortality_reading` (L159)
 - `core/services/central_existence_feel.py` :: `get_subjective_time_reading` (L155)
-- `core/services/central_ghost.py` :: `get_profile` (L89)
+- `core/services/central_ghost.py` :: `get_profile` (L97)
 - `core/services/central_hypothesis_governance.py` :: `get_anchored_baseline` (L303)
 - `core/services/central_injection_registry.py` :: `register` (L50)
 - `core/services/central_injection_registry.py` :: `registered_keys` (L54)
@@ -981,7 +981,6 @@ Generated from source. 10123/18640 functions/methods documented (54%). The list 
 - `core/services/central_prompt_composer.py` :: `is_tail_live_enabled` (L250)
 - `core/services/central_prompt_explore.py` :: `is_explore_live` (L71)
 - `core/services/central_rca.py` :: `list_rca` (L117)
-- `core/services/central_red_dress.py` :: `record_red_dress` (L80)
 - `core/services/central_redpill.py` :: `build_redpill_surface` (L146)
 - `core/services/central_router_adapt.py` :: `is_live_enabled` (L63)
 - `core/services/central_router_explore.py` :: `is_explore_live` (L45)

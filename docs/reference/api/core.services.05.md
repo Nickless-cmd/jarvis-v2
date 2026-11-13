@@ -285,16 +285,18 @@ _Central consequence — hvor en karakters fund FAKTISK lander._
 | function | `_nu` | `()` | — | [src](../../../core/services/central_consequence.py#L77) |
 | function | `_connect` | `()` | — | [src](../../../core/services/central_consequence.py#L81) |
 | function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_consequence.py#L86) |
-| function | `_landinger_sidste_doegn` | `(conn, lever, cid=…)` | Landinger i doegnet — for ÉN karakter naar `cid` er givet, ellers i alt. | [src](../../../core/services/central_consequence.py#L105) |
-| function | `_allerede_landet` | `(conn, cid, lever, subject)` | Idempotens: samme fund lander ikke to gange i samme døgn. | [src](../../../core/services/central_consequence.py#L121) |
-| function | `_skriv` | `(conn, *, cid, lever, subject, before=…, after=…, applied=…, reason=…)` | — | [src](../../../core/services/central_consequence.py#L136) |
-| function | `_loft_ramt` | `(conn, lever, cid=…)` | To lofter: ét pr. KARAKTER og ét GLOBALT. | [src](../../../core/services/central_consequence.py#L154) |
-| function | `_gate_taend` | `(scope, name)` | Er leverens switch taendt? | [src](../../../core/services/central_consequence.py#L174) |
-| function | `land_confidence` | `(cid, hyp_id, *, falsified=…, reason=…, gate=…)` | Lad et angreb FAKTISK flytte hypotesens confidence. | [src](../../../core/services/central_consequence.py#L201) |
-| function | `_er_maalt` | `(evidence, source)` | Er dette en MÅLING — eller bare en sætning med et ciffer i? | [src](../../../core/services/central_consequence.py#L282) |
-| function | `land_decision` | `(cid, directive, *, rationale=…, trigger_cue=…, priority=…, subject=…, evidence=…, evidence_source=…, gate=…)` | Lad et fund blive en BINDENDE forpligtelse. | [src](../../../core/services/central_consequence.py#L313) |
-| function | `record` | `(cid, subject, *, detail=…)` | Fund uden en anvendelig lever: skriv det ned som reviderbart spor. | [src](../../../core/services/central_consequence.py#L420) |
-| function | `measure_consequences` | `(*, days=…)` | Beviset: hvor mange fund flyttede faktisk noget? | [src](../../../core/services/central_consequence.py#L437) |
+| function | `_tilfoej_kolonne` | `(conn, navn, definition)` | Migrér en eksisterende tabel — `ALTER TABLE` fejler hvis kolonnen findes. | [src](../../../core/services/central_consequence.py#L119) |
+| function | `_landinger_sidste_doegn` | `(conn, lever, cid=…)` | Landinger i doegnet — for ÉN karakter naar `cid` er givet, ellers i alt. | [src](../../../core/services/central_consequence.py#L126) |
+| function | `_allerede_landet` | `(conn, cid, lever, subject, fund_id=…)` | Idempotens: samme FUND lander ikke to gange. | [src](../../../core/services/central_consequence.py#L151) |
+| function | `_skriv` | `(conn, *, cid, lever, subject, before=…, after=…, applied=…, reason=…, fund_id=…, decision_id=…)` | — | [src](../../../core/services/central_consequence.py#L186) |
+| function | `_loft_ramt` | `(conn, lever, cid=…)` | To lofter: ét pr. KARAKTER og ét GLOBALT. | [src](../../../core/services/central_consequence.py#L209) |
+| function | `_gate_taend` | `(scope, name)` | Er leverens switch taendt? | [src](../../../core/services/central_consequence.py#L229) |
+| function | `land_confidence` | `(cid, hyp_id, *, falsified=…, reason=…, gate=…)` | Lad et angreb FAKTISK flytte hypotesens confidence. | [src](../../../core/services/central_consequence.py#L256) |
+| function | `_er_maalt` | `(evidence, source)` | Er dette en MÅLING — eller bare en sætning med et ciffer i? | [src](../../../core/services/central_consequence.py#L337) |
+| function | `land_decision` | `(cid, directive, *, rationale=…, trigger_cue=…, priority=…, subject=…, evidence=…, evidence_source=…, fund_id=…, gate=…)` | Lad et fund blive en BINDENDE forpligtelse. | [src](../../../core/services/central_consequence.py#L368) |
+| function | `_beslutning_for_fund` | `(conn, fund_id)` | Hvilken beslutning blev dette fund oprindeligt landet som? | [src](../../../core/services/central_consequence.py#L513) |
+| function | `record` | `(cid, subject, *, detail=…)` | Fund uden en anvendelig lever: skriv det ned som reviderbart spor. | [src](../../../core/services/central_consequence.py#L531) |
+| function | `measure_consequences` | `(*, days=…)` | Beviset: hvor mange fund flyttede faktisk noget? | [src](../../../core/services/central_consequence.py#L548) |
 
 ## `core/services/central_construct.py`
 _The Construct — Sentinel's Shadow Self: en sandbox der tester radikale forenklinger MOD_
@@ -589,14 +591,14 @@ _The Ghost — hvad der overlever model-skift._
 | function | `_opdater_fund` | `(fund_id, *, grund)` | — | [src](../../../core/services/central_ghost.py#L115) |
 | function | `_fjern_fund` | `(fund_id)` | — | [src](../../../core/services/central_ghost.py#L125) |
 | function | `_land_skift` | `(drift, *, kilde, fund_id=…)` | Forsøg at gøre et målt klangskift til en bindende beslutning. | [src](../../../core/services/central_ghost.py#L133) |
-| function | `_land_efterslaeb` | `()` | Ligger der skift fra tidligere kørsler der aldrig fik deres beslutning? | [src](../../../core/services/central_ghost.py#L179) |
-| function | `analyze` | `(texts)` | Beregn klang-fingeraftrykket fra en stak svar-tekster (strukturelt, ingen indhold gemt). | [src](../../../core/services/central_ghost.py#L202) |
-| function | `byg_profil` | `(texts)` | Dan fingeraftrykket UDEN at gemme det. | [src](../../../core/services/central_ghost.py#L250) |
-| function | `update_profile` | `(texts)` | Opdatér det durable ghost_profile fra seneste svar. Self-safe. | [src](../../../core/services/central_ghost.py#L261) |
-| function | `get_profile` | `()` | — | [src](../../../core/services/central_ghost.py#L269) |
-| function | `klang_primer` | `()` | Rendér fingeraftrykket som en kort klang-primer til en ny models system-prompt. Self-safe. | [src](../../../core/services/central_ghost.py#L274) |
-| function | `_recent_texts` | `(limit=…)` | Hans seneste svar fra chat_messages (role=assistant). Self-safe → [] ved fejl. | [src](../../../core/services/central_ghost.py#L296) |
-| function | `build_ghost_surface` | `()` | Fingeraftryk + klang-primer + følt linje. Self-safe. | [src](../../../core/services/central_ghost.py#L311) |
-| function | `klang_drift` | `(gammel, ny)` | Hvor meget har klangen flyttet sig mellem to fingeraftryk? READ-ONLY, strukturelt. | [src](../../../core/services/central_ghost.py#L321) |
-| function | `record_ghost` | `(*, trigger=…, last_visible_at=…)` | Cadence (6t): opdatér fingeraftrykket — og LAD et klangskift lande som forpligtelse. | [src](../../../core/services/central_ghost.py#L348) |
+| function | `_land_efterslaeb` | `()` | Ligger der skift fra tidligere kørsler der aldrig fik deres beslutning? | [src](../../../core/services/central_ghost.py#L183) |
+| function | `analyze` | `(texts)` | Beregn klang-fingeraftrykket fra en stak svar-tekster (strukturelt, ingen indhold gemt). | [src](../../../core/services/central_ghost.py#L206) |
+| function | `byg_profil` | `(texts)` | Dan fingeraftrykket UDEN at gemme det. | [src](../../../core/services/central_ghost.py#L254) |
+| function | `update_profile` | `(texts)` | Opdatér det durable ghost_profile fra seneste svar. Self-safe. | [src](../../../core/services/central_ghost.py#L265) |
+| function | `get_profile` | `()` | — | [src](../../../core/services/central_ghost.py#L273) |
+| function | `klang_primer` | `()` | Rendér fingeraftrykket som en kort klang-primer til en ny models system-prompt. Self-safe. | [src](../../../core/services/central_ghost.py#L278) |
+| function | `_recent_texts` | `(limit=…)` | Hans seneste svar fra chat_messages (role=assistant). Self-safe → [] ved fejl. | [src](../../../core/services/central_ghost.py#L300) |
+| function | `build_ghost_surface` | `()` | Fingeraftryk + klang-primer + følt linje. Self-safe. | [src](../../../core/services/central_ghost.py#L315) |
+| function | `klang_drift` | `(gammel, ny)` | Hvor meget har klangen flyttet sig mellem to fingeraftryk? READ-ONLY, strukturelt. | [src](../../../core/services/central_ghost.py#L325) |
+| function | `record_ghost` | `(*, trigger=…, last_visible_at=…)` | Cadence (6t): opdatér fingeraftrykket — og LAD et klangskift lande som forpligtelse. | [src](../../../core/services/central_ghost.py#L352) |
 

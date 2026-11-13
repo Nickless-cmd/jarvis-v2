@@ -94,37 +94,87 @@ def _ensure(conn) -> None:
             after_value TEXT NOT NULL DEFAULT '',
             applied INTEGER NOT NULL DEFAULT 0,
             reason TEXT NOT NULL DEFAULT '',
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            fund_id TEXT NOT NULL DEFAULT '',
+            decision_id TEXT NOT NULL DEFAULT ''
         )"""
     )
     conn.execute(
         f"CREATE INDEX IF NOT EXISTS idx_{_TABLE}_cid ON {_TABLE}(cid, created_at)"
     )
+    # (13/11-2026) Kolonnerne kom efter tabellen var taget i brug i drift, saa
+    # `CREATE TABLE IF NOT EXISTS` tilfoejer dem ikke til en eksisterende base.
+    # Uden migreringen ville hver skrivning fejle paa en produktionsbase mens
+    # testene (der bygger tabellen frisk) var groenne.
+    _tilfoej_kolonne(conn, "fund_id", "TEXT NOT NULL DEFAULT ''")
+    _tilfoej_kolonne(conn, "decision_id", "TEXT NOT NULL DEFAULT ''")
+    # Identiteten skal vaere haandhaevet, ikke blot gemt: to samtidige forsoeg
+    # paa samme fund maa ikke begge slippe igennem et check-og-skriv.
+    conn.execute(
+        f"""CREATE UNIQUE INDEX IF NOT EXISTS idx_{_TABLE}_fund
+            ON {_TABLE}(fund_id) WHERE fund_id != ''"""
+    )
+
+
+def _tilfoej_kolonne(conn, navn: str, definition: str) -> None:
+    """Migrér en eksisterende tabel — `ALTER TABLE` fejler hvis kolonnen findes."""
+    kolonner = {str(r[1]) for r in conn.execute(f"PRAGMA table_info({_TABLE})")}
+    if navn not in kolonner:
+        conn.execute(f"ALTER TABLE {_TABLE} ADD COLUMN {navn} {definition}")
 
 
 def _landinger_sidste_doegn(conn, lever: str, cid: str | None = None) -> int:
-    """Landinger i doegnet — for ÉN karakter naar `cid` er givet, ellers i alt."""
+    """Landinger i doegnet — for ÉN karakter naar `cid` er givet, ellers i alt.
+
+    (13/11-2026) `reason='reserveret'` tælles IKKE med. Reservationen skrives
+    foer beslutningen oprettes, saa den findes paa tællingstidspunktet for det
+    kald der er ved at lande — og et loft der tæller den med, afviser det andet
+    fund i traek som «dagsloft ramt». En reservation er et claim, ikke en
+    landing; den bliver foerst en landing naar raekken opgraderes.
+    """
     cutoff = (datetime.now(UTC) - timedelta(days=1)).isoformat()
     if cid is None:
         r = conn.execute(
-            f"SELECT COUNT(*) FROM {_TABLE} WHERE lever=? AND applied=1 AND created_at>=?",
+            f"SELECT COUNT(*) FROM {_TABLE} WHERE lever=? AND applied=1 "
+            f"AND reason!='reserveret' AND created_at>=?",
             (lever, cutoff),
         ).fetchone()
     else:
         r = conn.execute(
-            f"SELECT COUNT(*) FROM {_TABLE} WHERE lever=? AND cid=? AND applied=1 AND created_at>=?",
+            f"SELECT COUNT(*) FROM {_TABLE} WHERE lever=? AND cid=? AND applied=1 "
+            f"AND reason!='reserveret' AND created_at>=?",
             (lever, cid, cutoff),
         ).fetchone()
     return int((r or [0])[0] or 0)
 
 
-def _allerede_landet(conn, cid: str, lever: str, subject: str) -> bool:
-    """Idempotens: samme fund lander ikke to gange i samme døgn.
+def _allerede_landet(conn, cid: str, lever: str, subject: str,
+                     fund_id: str = "") -> bool:
+    """Idempotens: samme FUND lander ikke to gange.
 
     Uden dette ville en cadence-producer der kører hvert tredje kvarter skrive
     den samme konklusion 96 gange i døgnet — og hver skrivning ville se ud som
     en ny konsekvens i målingen.
+
+    (13/11-2026, Bjørns indvending) Vinduet var et rullende døgn paa
+    ``(cid, lever, subject)``, og `subject` er en FAST streng pr. karakter
+    (``relations_alder_fald``, ``klangdrift:<akse>``). To forskellige fund af
+    samme TYPE blev derfor smeltet sammen: faldt alderen 200→12 og derefter
+    12→3 to timer senere, fik det andet svar «allerede landet» — og karakteren
+    ryddede det som afsluttet. Lighed er ikke identitet.
+
+    Naar fundet baerer et `fund_id`, er det identiteten: samme id lander aldrig
+    to gange, uanset hvor lang tid der gaar, og et ANDET id lander uanset hvor
+    kort tid der er gaaet. Uden et id (ældre kald, `record`) falder vi tilbage
+    til type-vinduet — det er svagere, men det er den ærlige grænse for hvad
+    der kan afgøres uden en identitet.
     """
+    if fund_id:
+        r = conn.execute(
+            f"SELECT 1 FROM {_TABLE} WHERE fund_id=? AND applied=1 LIMIT 1",
+            (fund_id,),
+        ).fetchone()
+        return r is not None
     cutoff = (datetime.now(UTC) - timedelta(days=1)).isoformat()
     r = conn.execute(
         f"SELECT 1 FROM {_TABLE} WHERE cid=? AND lever=? AND subject=? AND applied=1 AND created_at>=? LIMIT 1",
@@ -143,11 +193,16 @@ def _skriv(
     after: str = "",
     applied: bool = False,
     reason: str = "",
+    fund_id: str = "",
+    decision_id: str = "",
 ) -> None:
     conn.execute(
-        f"""INSERT INTO {_TABLE} (cid, lever, subject, before_value, after_value, applied, reason, created_at)
-            VALUES (?,?,?,?,?,?,?,?)""",
-        (cid, lever, subject[:200], str(before)[:200], str(after)[:200], 1 if applied else 0, reason[:300], _nu()),
+        f"""INSERT INTO {_TABLE}
+            (cid, lever, subject, before_value, after_value, applied, reason,
+             created_at, fund_id, decision_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?)""",
+        (cid, lever, subject[:200], str(before)[:200], str(after)[:200],
+         1 if applied else 0, reason[:300], _nu(), fund_id or "", decision_id or ""),
     )
 
 
@@ -320,6 +375,7 @@ def land_decision(
     subject: str = "",
     evidence: str = "",
     evidence_source: str = "",
+    fund_id: str = "",
     gate: tuple[str, str] = ("consequence", "bind_decisions"),
 ) -> dict[str, Any]:
     """Lad et fund blive en BINDENDE forpligtelse.
@@ -337,9 +393,16 @@ def land_decision(
 
     Kravet til «maalt» er strammet efter et fund: et ciffer er IKKE nok.
     Se `_er_maalt` — der kraeves en maaleform OG en navngivet kilde.
+
+    ``fund_id`` er fundets EGEN identitet (13/11-2026). Den goer idempotensen
+    konkret frem for typisk: samme fund lander aldrig to gange — heller ikke
+    efter et doegnsskifte — og to FORSKELLIGE fund med samme ``subject`` lander
+    begge. Identiteten skrives ogsaa paa beslutningen som ``source_record_id``,
+    saa koblingen findes i begge ender og ikke kun i denne tabel.
     """
     out: dict[str, Any] = {"applied": False, "decision_id": None, "reason": ""}
     subject = (subject or directive)[:200]
+    fund_id = (fund_id or "").strip()
     maalt, maalt_grund = _er_maalt(evidence, evidence_source)
     if not maalt:
         try:
@@ -350,7 +413,7 @@ def land_decision(
                 with _connect() as conn:
                     _ensure(conn)
                     _skriv(conn, cid=cid, lever="decision", subject=subject,
-                           applied=False, reason=out["reason"])
+                           applied=False, reason=out["reason"], fund_id=fund_id)
                     conn.commit()
                 return out
         except Exception as exc:
@@ -361,30 +424,41 @@ def land_decision(
     try:
         with _connect() as conn:
             _ensure(conn)
-            if _allerede_landet(conn, cid, "decision", subject):
-                out["reason"] = "allerede landet i doegnet"
+            if _allerede_landet(conn, cid, "decision", subject, fund_id):
+                out["reason"] = ("fundet er allerede landet" if fund_id
+                                 else "allerede landet i doegnet")
                 # (13/11-2026, Bjørns fjerde indvending) `applied=False` betød både
                 # «afvist» og «allerede afsluttet». En kalder der rydder sit spor på
                 # `applied` kunne derfor aldrig afslutte et fund hvis beslutning VAR
                 # oprettet — den lå fast som uafsluttet for evigt. Feltet skiller de
                 # to: konsekvensen findes allerede, så fundet er færdigt.
                 out["already_landed"] = True
+                out["decision_id"] = _beslutning_for_fund(conn, fund_id)
                 _skriv(conn, cid=cid, lever="decision", subject=subject,
-                       applied=False, reason=out["reason"])
+                       applied=False, reason=out["reason"], fund_id=fund_id,
+                       decision_id=out["decision_id"] or "")
                 conn.commit()
                 return out
             if not _gate_taend(*gate):
                 out["reason"] = f"switch slukket: {gate[0]}/{gate[1]}"
                 _skriv(conn, cid=cid, lever="decision", subject=subject,
-                       applied=False, reason=out["reason"])
+                       applied=False, reason=out["reason"], fund_id=fund_id)
                 conn.commit()
                 return out
             if (loft := _loft_ramt(conn, "decision", cid)) is not None:
                 out["reason"] = loft
                 _skriv(conn, cid=cid, lever="decision", subject=subject,
-                       applied=False, reason=out["reason"])
+                       applied=False, reason=out["reason"], fund_id=fund_id)
                 conn.commit()
                 return out
+            # Reservationen skrives og committes FOER beslutningen oprettes.
+            # (13/11-2026) Ellers kunne to samtidige forsoeg paa samme fund begge
+            # passere `_allerede_landet` og oprette hver sin beslutning — og et
+            # crash mellem oprettelsen og rydningen ville efterlade fundet uden
+            # spor. Nu er raekken beviset paa at fundet ER taget, og den unikke
+            # indeks paa `fund_id` goer det haandhaevet i basen, ikke i koden.
+            _skriv(conn, cid=cid, lever="decision", subject=subject,
+                   applied=True, reason="reserveret", fund_id=fund_id)
             conn.commit()
     except Exception as exc:
         logger.warning("land_decision: kunne ikke skrive landingsraekken for %s: %s", cid, exc)
@@ -398,6 +472,12 @@ def land_decision(
             rationale=rationale or None,
             trigger_cue=trigger_cue or None,
             priority=int(priority),
+            # (13/11-2026) Fundets identitet foelger med ind i beslutningslaget.
+            # Uden den vidste beslutningen ikke hvilken konkret observation den
+            # hoerte til, og dens egen dedup (der matcher paa direktiv-TEKST)
+            # kunne hverken skelne to fund eller genkende det samme efter et
+            # doegnsskifte.
+            source_record_id=fund_id or None,
             source_type=f"character:{cid}",
             created_by="jarvis",
         )
@@ -407,14 +487,45 @@ def land_decision(
                     "reason": "deduped" if deduped else "bundet"})
         with _connect() as conn:
             _ensure(conn)
-            _skriv(conn, cid=cid, lever="decision", subject=subject,
-                   before="", after=str(did or ""), applied=not deduped, reason=out["reason"])
+            if fund_id:
+                # Reservationen opgraderes til den faerdige kobling. Fejler den,
+                # staar raekken stadig som `reserveret` — fundet er landet, og
+                # naeste forsoeg svarer `already_landed` i stedet for at oprette
+                # en dublet.
+                conn.execute(
+                    f"""UPDATE {_TABLE} SET after_value=?, applied=?, reason=?, decision_id=?
+                        WHERE fund_id=? AND lever='decision'""",
+                    (str(did or "")[:200], 0 if deduped else 1, out["reason"][:300],
+                     str(did or ""), fund_id),
+                )
+            else:
+                _skriv(conn, cid=cid, lever="decision", subject=subject,
+                       before="", after=str(did or ""), applied=not deduped,
+                       reason=out["reason"], decision_id=str(did or ""))
             conn.commit()
         return out
     except Exception as exc:
         logger.warning("land_decision: create_decision fejlede for %s: %s", cid, exc)
         out["reason"] = f"create_decision fejlede: {str(exc)[:120]}"
         return out
+
+
+def _beslutning_for_fund(conn, fund_id: str) -> str | None:
+    """Hvilken beslutning blev dette fund oprindeligt landet som?
+
+    Bruges naar et fund forsoeges igen: svaret skal vaere den EKSISTERENDE
+    beslutning, ikke `None`. Ellers kunne en kalder der spoerger «blev mit fund
+    landet?» faa «ja, men jeg ved ikke som hvad» — og en genstart ville efterlade
+    fundet uden sin kobling.
+    """
+    if not fund_id:
+        return None
+    r = conn.execute(
+        f"""SELECT decision_id FROM {_TABLE}
+            WHERE fund_id=? AND lever='decision' AND decision_id != '' LIMIT 1""",
+        (fund_id,),
+    ).fetchone()
+    return str(r[0]) if r and r[0] else None
 
 
 def record(cid: str, subject: str, *, detail: str = "") -> dict[str, Any]:

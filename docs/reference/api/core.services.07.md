@@ -130,14 +130,14 @@ _Relationel Continuity — så Jarvis kan sige "velkommen tilbage" og MENE det._
 | function | `_opdater_fund` | `(fund_id, *, grund)` | Markér at et forsøg fejlede. Rører ikke de andre fund i listen. | [src](../../../core/services/central_relational.py#L109) |
 | function | `_fjern_fund` | `(fund_id)` | Fjern ét landet fund. De øvrige bliver liggende — de er egne observationer. | [src](../../../core/services/central_relational.py#L120) |
 | function | `_land_fald` | `(forrige, nu, *, kilde, fund_id=…)` | Forsøg at gøre et opdaget fald til en bindende beslutning. | [src](../../../core/services/central_relational.py#L129) |
-| function | `_land_efterslaeb` | `()` | Ligger der fald fra tidligere kørsler der aldrig fik deres beslutning? | [src](../../../core/services/central_relational.py#L169) |
-| function | `_self_state` | `()` | — | [src](../../../core/services/central_relational.py#L194) |
-| function | `_days_together` | `()` | — | [src](../../../core/services/central_relational.py#L202) |
-| function | `_tone` | `()` | — | [src](../../../core/services/central_relational.py#L211) |
-| function | `relational_state` | `()` | Forholdets bærende signaler: dage sammen + nuværende tone. READ-ONLY. Self-safe. | [src](../../../core/services/central_relational.py#L216) |
-| function | `wake_greeting` | `()` | En jordet opvågnings-hilsen der står på ægte varighed + tone — ikke en generisk floskel. | [src](../../../core/services/central_relational.py#L224) |
-| function | `build_relational_surface` | `()` | Owner/self-view: dage + tone + opvågnings-hilsen. Self-safe. | [src](../../../core/services/central_relational.py#L245) |
-| function | `record_relational` | `(*, trigger=…, last_visible_at=…)` | Cadence: observér relations-kontinuitet — og LAD et fald i varigheden lande. | [src](../../../core/services/central_relational.py#L254) |
+| function | `_land_efterslaeb` | `()` | Ligger der fald fra tidligere kørsler der aldrig fik deres beslutning? | [src](../../../core/services/central_relational.py#L174) |
+| function | `_self_state` | `()` | — | [src](../../../core/services/central_relational.py#L199) |
+| function | `_days_together` | `()` | — | [src](../../../core/services/central_relational.py#L207) |
+| function | `_tone` | `()` | — | [src](../../../core/services/central_relational.py#L216) |
+| function | `relational_state` | `()` | Forholdets bærende signaler: dage sammen + nuværende tone. READ-ONLY. Self-safe. | [src](../../../core/services/central_relational.py#L221) |
+| function | `wake_greeting` | `()` | En jordet opvågnings-hilsen der står på ægte varighed + tone — ikke en generisk floskel. | [src](../../../core/services/central_relational.py#L229) |
+| function | `build_relational_surface` | `()` | Owner/self-view: dage + tone + opvågnings-hilsen. Self-safe. | [src](../../../core/services/central_relational.py#L250) |
+| function | `record_relational` | `(*, trigger=…, last_visible_at=…)` | Cadence: observér relations-kontinuitet — og LAD et fald i varigheden lande. | [src](../../../core/services/central_relational.py#L259) |
 
 ## `core/services/central_render.py`
 _core/services/central_render.py_

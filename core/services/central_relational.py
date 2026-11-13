@@ -150,6 +150,11 @@ def _land_fald(forrige: Any, nu: Any, *, kilde: str,
             trigger_cue="Når jeg skal sige hvor længe vi har været her",
             subject="relations_alder_fald",
             priority=62,
+            # (13/11-2026) Fundets egen identitet foelger med. `subject` er en
+            # fast streng, saa uden dette blev to FORSKELLIGE fald (200→12 og
+            # derefter 12→3) behandlet som det samme fund — og det andet ryddet
+            # som «allerede landet» uden at have faaet sin egen konsekvens.
+            fund_id=fund_id or "",
             evidence=f"forrige={forrige} nu={nu} taerskel={_FALD_TAERSKEL} kilde={kilde}",
             evidence_source=f"central_relational.record_relational({kilde})",
         )

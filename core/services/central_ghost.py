@@ -154,6 +154,10 @@ def _land_skift(drift: dict[str, Any], *, kilde: str,
             trigger_cue="Når klang-primeren skal beskrive hvem jeg lyder som",
             subject=f"klangdrift:{drift.get('baerende')}",
             priority=58,
+            # (13/11-2026) Samme grund som i relational: `subject` navngiver
+            # hvilken AKSE der drev, ikke hvilket skift der blev maalt. To
+            # skift paa samme akse er to fund.
+            fund_id=fund_id or "",
             evidence=(f"drift={drift['drift_pct']}% taerskel={_DRIFT_TAERSKEL}% "
                       f"akser={n_akser} kilde={kilde}"),
             evidence_source=f"central_ghost.klang_drift(ghost_profile, ny; {kilde})",

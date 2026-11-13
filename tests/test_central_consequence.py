@@ -326,7 +326,7 @@ class TestEtCifferErIkkeEnMaaling:
         monkeypatch.setattr(cc, "_loft_ramt", lambda conn, lever, cid="": None)
         monkeypatch.setattr(cc, "_gate_taend", lambda scope, name: True)
         monkeypatch.setattr(cc, "_allerede_landet",
-                            lambda conn, cid, lever, subject: False)
+                            lambda conn, cid, lever, subject, fund_id="": False)
         monkeypatch.setattr(
             "core.services.smith_noise_veto.maa_minte",
             lambda k, e="", cfg=None, metric=0.0: (False, "doemt_stoej"),
@@ -414,3 +414,180 @@ class TestLoftetErPrKarakter:
             tredje = _land("c", 2, "g2")
         assert tredje["applied"] is False
         assert "globalt dagsloft" in tredje["reason"], tredje
+
+
+# ── 6. Identitet, ikke lighed (13/11-2026) ──────────────────────────────────
+#
+# Bjørns indvending: idempotensen var et rullende doegn paa
+# `(cid, lever, subject)`, og `subject` er en FAST streng pr. karakter
+# (`relations_alder_fald`, `klangdrift:<akse>`). To forskellige fund af samme
+# TYPE blev derfor smeltet sammen — og naar det andet svarede «allerede landet»,
+# ryddede karakteren det som afsluttet. Et fund der aldrig fik sin konsekvens
+# blev altså markeret som faerdigt.
+#
+# Kontrakten er to saetninger, og de traekker hver sin vej:
+#   * To FORSKELLIGE fund maa ikke smeltes sammen — heller ikke med samme subject.
+#   * Det SAMME fund maa ikke lande to gange — heller ikke efter et doegnsskifte.
+#
+# Lighed er ikke identitet. Derfor baerer fundet sit eget id hele vejen.
+
+
+def _land_fund(cid: str, fund_id: str, *, subject: str = "relations_alder_fald",
+               forrige: float = 200.0, nu: float = 12.0) -> dict:
+    return cc.land_decision(
+        cid,
+        f"Relations-kontinuiteten faldt fra {forrige} til {nu} dage",
+        subject=subject,
+        evidence=f"forrige={forrige} nu={nu} taerskel=1.0 kilde=test",
+        evidence_source="tests.test_central_consequence",
+        fund_id=fund_id,
+    )
+
+
+class TestIdentitetIkkeLighed:
+    def test_to_fund_med_samme_subject_lander_begge(self, base):
+        """200→12 og derefter 12→3 er to observationer, ikke én gentagelse.
+
+        Foer rettelsen fik det andet svar «allerede landet i doegnet», og
+        relational ryddede det som afsluttet — et reelt fald forsvandt.
+        """
+        with mock.patch("core.services.behavioral_decisions.create_decision",
+                        side_effect=lambda **kw: {"decision_id": f"dec_{kw['source_record_id']}",
+                                                  "deduped": False}):
+            foerste = _land_fund("relational", "fund-a", forrige=200.0, nu=12.0)
+            anden = _land_fund("relational", "fund-b", forrige=12.0, nu=3.0)
+        assert foerste["applied"] is True, foerste
+        assert anden["applied"] is True, (
+            f"et nyt fald blev smeltet sammen med det forrige: {anden}")
+        assert not anden.get("already_landed"), anden
+        assert foerste["decision_id"] != anden["decision_id"]
+
+    def test_samme_fund_lander_kun_en_gang(self, base):
+        with mock.patch("core.services.behavioral_decisions.create_decision",
+                        return_value={"decision_id": "dec_en", "deduped": False}):
+            foerste = _land_fund("relational", "fund-samme")
+            anden = _land_fund("relational", "fund-samme")
+        assert foerste["applied"] is True
+        assert anden["applied"] is False
+        assert anden["already_landed"] is True
+        assert anden["decision_id"] == "dec_en", (
+            "et gentaget forsoeg skal svare med den EKSISTERENDE beslutning")
+
+    def test_samme_fund_efter_doegnsskiftet_lander_ikke_igen(self, base):
+        """Vinduet var et rullende doegn. Identiteten har ingen udloebsdato.
+
+        Uden dette kunne det samme gamle fund oprette en ny beslutning naeste
+        dag — og hvis beslutningslagets egen dedup (der matcher paa TEKST) ikke
+        laengere fandt en aktiv række, blev der oprettet en dublet.
+        """
+        with mock.patch("core.services.behavioral_decisions.create_decision",
+                        return_value={"decision_id": "dec_gammel", "deduped": False}):
+            assert _land_fund("relational", "fund-gammel")["applied"] is True
+
+        # Flyt raekken 25 timer tilbage: uden for det gamle doegnsvindue.
+        with sqlite3.connect(base) as c:
+            c.execute(
+                f"UPDATE {cc._TABLE} SET created_at=? WHERE fund_id='fund-gammel'",
+                ((datetime.now(UTC) - timedelta(hours=25)).isoformat(),),
+            )
+            c.commit()
+
+        with mock.patch("core.services.behavioral_decisions.create_decision",
+                        return_value={"decision_id": "dec_dublet", "deduped": False}) as ny:
+            anden = _land_fund("relational", "fund-gammel")
+        assert anden["applied"] is False, (
+            "det samme fund landede igen efter doegnsskiftet")
+        assert anden["already_landed"] is True
+        assert anden["decision_id"] == "dec_gammel"
+        assert not ny.called, "der blev oprettet en ny beslutning for et gammelt fund"
+
+    def test_fundets_id_naar_beslutningslaget(self, base):
+        """Koblingen skal findes i BEGGE ender, ikke kun i konsekvens-tabellen."""
+        with mock.patch("core.services.behavioral_decisions.create_decision",
+                        return_value={"decision_id": "dec_kobling", "deduped": False}) as kald:
+            _land_fund("ghost", "fund-kobling", subject="klangdrift:baerende")
+        assert kald.call_args.kwargs["source_record_id"] == "fund-kobling", (
+            "beslutningen ved ikke hvilken observation den hoerer til")
+
+    def test_koblingen_skrives_paa_raekken(self, base):
+        with mock.patch("core.services.behavioral_decisions.create_decision",
+                        return_value={"decision_id": "dec_skrevet", "deduped": False}):
+            _land_fund("relational", "fund-skrevet")
+        with sqlite3.connect(base) as c:
+            r = c.execute(
+                f"SELECT fund_id, decision_id, applied FROM {cc._TABLE} "
+                f"WHERE fund_id='fund-skrevet'"
+            ).fetchone()
+        assert r is not None, "fundet efterlod ingen raekke"
+        assert r[0] == "fund-skrevet" and r[1] == "dec_skrevet"
+        assert r[2] == 1
+
+    def test_crash_efter_reservation_efterlader_fundet_landet(self, base):
+        """Crash mellem reservation og beslutning maa ikke efterlade fundet aabent.
+
+        Reservationen skrives og committes FOER beslutningen oprettes. Doer
+        processen imellem, staar fundet som taget — og naeste forsoeg svarer
+        «allerede landet» i stedet for at oprette en dublet. Det er den
+        genoprettelige overgang: tilstanden er konservativ, ikke tabt.
+        """
+        with mock.patch("core.services.behavioral_decisions.create_decision",
+                        side_effect=RuntimeError("proces doede")):
+            foerste = _land_fund("relational", "fund-crash")
+        assert foerste["applied"] is False
+        assert "create_decision fejlede" in foerste["reason"]
+
+        with mock.patch("core.services.behavioral_decisions.create_decision",
+                        return_value={"decision_id": "dec_efter", "deduped": False}) as ny:
+            anden = _land_fund("relational", "fund-crash")
+        assert anden["already_landed"] is True, (
+            "et reserveret fund blev forsoegt landet igen efter et crash")
+        assert not ny.called
+
+    def test_uden_fund_id_falder_den_tilbage_til_type_vinduet(self, base):
+        """Ældre kald baerer ingen identitet. Grænsen skal være synlig, ikke skjult.
+
+        Uden et id kan systemet kun sammenligne TYPE — og det er svagere. Men
+        det skal stadig virke, ellers ville hver eneste eksisterende karakter
+        begynde at lande den samme konklusion 96 gange i doegnet.
+        """
+        with mock.patch("core.services.behavioral_decisions.create_decision",
+                        return_value={"decision_id": "dec_type", "deduped": False}):
+            foerste = cc.land_decision(
+                "dissent", "Stop med at gentage dig selv", subject="dissent:nerve",
+                evidence="severity=2 volume=0", evidence_source="test")
+            anden = cc.land_decision(
+                "dissent", "Stop med at gentage dig selv", subject="dissent:nerve",
+                evidence="severity=2 volume=0", evidence_source="test")
+        assert foerste["applied"] is True
+        assert anden["already_landed"] is True
+        assert "doegnet" in anden["reason"], (
+            "fald-tilbage-reglen skal navngive sit eget vindue")
+
+    def test_basen_afviser_to_raekker_for_samme_fund(self, base):
+        """Identiteten skal være håndhævet i BASEN, ikke kun i koden.
+
+        `_allerede_landet` er et check-og-skriv, og to samtidige kald kan begge
+        passere det. Den unikke indeks er det der faktisk forhindrer to
+        beslutninger for samme fund — uden den er hele identiteten en
+        konvention, der holder indtil nogen kalder den parallelt.
+        """
+        c = sqlite3.connect(base)
+        try:
+            cc._ensure(c)
+            c.commit()
+            c.execute(
+                f"""INSERT INTO {cc._TABLE}
+                    (cid, lever, subject, before_value, after_value, applied,
+                     reason, created_at, fund_id, decision_id)
+                    VALUES ('relational','decision','s','','dec_1',1,'bundet','2026-11-13','fund-unik','dec_1')"""
+            )
+            c.commit()
+            with pytest.raises(sqlite3.IntegrityError):
+                c.execute(
+                    f"""INSERT INTO {cc._TABLE}
+                        (cid, lever, subject, before_value, after_value, applied,
+                         reason, created_at, fund_id, decision_id)
+                        VALUES ('relational','decision','s','','dec_2',1,'bundet','2026-11-13','fund-unik','dec_2')"""
+                )
+        finally:
+            c.close()

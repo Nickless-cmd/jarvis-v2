@@ -740,6 +740,15 @@ def byg_indbakke(
     # at verificere imod.
     genstarter: list[dict[str, Any]] = []
 
+    # REFERATER (13/11-2026). Bjørn: «hjerte slag eller initativ køen behøvs
+    # ikk at ligge i chat view nødvendigvis.. de kunne lande i din inbak og
+    # lade værnet der styre inboxen sørge for du fortæller når der er noget
+    # nyt». Et referat fra et baggrundsrun er noget jeg skal VIDE — ikke noget
+    # nogen skal svare på, og ikke en blokering. Uden denne gren faldt de i
+    # «VENTER PÅ DIG» (ejer=jarvis, ikke-gatende → else-grenen), præcis den
+    # samme løgn om postens art som `decision` blev reddet fra 5/10.
+    referater: list[dict[str, Any]] = []
+
     turens_wake = str(k.turens_wakeup_id() or "").strip()
 
     # ── Afgjorte poster, ÉT sted ──────────────────────────────────────────
@@ -865,6 +874,12 @@ def byg_indbakke(
             # den. Ejer-grenen nedenfor betyder «min at MINDES om», og en
             # beslutning er ikke noget Bjørn skylder at svare på.
             beslutninger.append(post)
+        elif str(p.get("kildetype") or "") in ("digest", "autonomt_run"):
+            # Rapporten om et afsluttet baggrundsrun. Den er ORIENTERING:
+            # `digest` står i `IKKE_GATENDE_KILDETYPER`, så den kan aldrig
+            # nægte en mutation, og den skal derfor heller ikke stå under en
+            # overskrift der siger at nogen venter på et svar.
+            referater.append(post)
         elif post["ejer"] == db_inbox.EJER_BRUGER:
             # BJØRNS post er MIN at minde HAM om — ikke min at udføre.
             #
@@ -1016,6 +1031,7 @@ def byg_indbakke(
                          ("paa_vej", paa_vej), ("planlagte", planlagte),
                          ("beslutninger", beslutninger),
                          ("genstarter", genstarter),
+                         ("referater", referater),
                          ("venter_paa_bjorn", venter_paa_bjorn)):
         # Dubletter FOERST, saa loftet taeller grupper og ikke raa poster —
         # ellers kunne tre bookinger af samme vaekning spise tre af de otte

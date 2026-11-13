@@ -8,8 +8,8 @@ _Emergent Goals — desires that grow from experience, not assignment._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `generate_emergent_goal_from_experience` | `(*, recent_topic=…, curiosity_level=…, knowledge_gap=…)` | — | [src](../../../core/services/emergent_goals.py#L18) |
-| function | `build_jarvis_agenda` | `()` | Jarvis' own agenda — what HE thinks is important. | [src](../../../core/services/emergent_goals.py#L37) |
-| function | `build_emergent_goals_surface` | `()` | — | [src](../../../core/services/emergent_goals.py#L62) |
+| function | `build_jarvis_agenda` | `()` | Jarvis' own agenda — what HE thinks is important. | [src](../../../core/services/emergent_goals.py#L45) |
+| function | `build_emergent_goals_surface` | `()` | — | [src](../../../core/services/emergent_goals.py#L70) |
 
 ## `core/services/emergent_signal_tracking.py`
 

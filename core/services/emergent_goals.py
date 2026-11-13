@@ -21,7 +21,15 @@ def generate_emergent_goal_from_experience(
 ) -> dict[str, object] | None:
     if curiosity_level < 0.4 and not knowledge_gap:
         return None
-    desire = knowledge_gap or f"Udforsk og forstå {recent_topic[:60]} bedre"
+    # Målt 13/11-2026: uden et emne blev ønsket den samme tomme sætning hver gang
+    # («Udforsk og forstå  bedre» — dobbelt mellemrum fordi recent_topic var tom),
+    # og fordi goal_id er nyt pr. kald, erstattede INSERT OR REPLACE intet.
+    # Resultatet var 108 identiske rækker på under et døgn: et ønske uden indhold
+    # er ikke en appetit, det er en tæller der løber.
+    emne = str(recent_topic or "").strip()
+    if not emne and not str(knowledge_gap or "").strip():
+        return None
+    desire = knowledge_gap or f"Udforsk og forstå {emne[:60]} bedre"
     if not desire.strip():
         return None
     goal_id = f"goal-{uuid4().hex[:8]}"

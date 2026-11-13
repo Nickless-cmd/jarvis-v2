@@ -97,6 +97,30 @@ def test_et_UPARSABELT_tidsstempel_giver_None_ikke_NUL_dage():
     assert "forfalden" not in post["linje"]
 
 
+# ── Referater har deres EGEN sektion (13/11-2026) ───────────────────────────
+
+def test_et_referat_staar_under_referater_og_IKKE_i_venter_paa_dig():
+    """Bjørn: «de kunne lande i din inbak og lade værnet der styre inboxen».
+
+    Et referat fra et baggrundsrun er ORIENTERING — noget jeg skal VIDE, ikke
+    noget nogen skal svare på. Uden egen gren faldt det i «VENTER PÅ DIG»,
+    præcis den samme løgn om postens art som `decision` blev reddet fra 5/10.
+    """
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(
+        poster=[_post(kildetype="digest", beskrivelse="🌙 Autonom — noget nyt")]))
+    assert len(v["referater"]) == 1
+    assert v["venter_paa_dig"] == []
+    assert "Autonom" in v["referater"][0]["linje"]
+
+
+def test_et_referat_kan_ikke_blokere():
+    """Sektionen er ikke nok: kildetypen skal ogsaa staa uden for det sæt der
+    maa nægte en mutation. Ellers ville et referat kunne lamme næste kald."""
+    from core.services.inbox_state import IKKE_GATENDE_KILDETYPER
+
+    assert "digest" in IKKE_GATENDE_KILDETYPER
+
+
 # ── Trin 4: dubletter ───────────────────────────────────────────────────────
 
 def test_tre_identiske_vaekninger_vises_som_EN_med_et_tal():

@@ -491,7 +491,7 @@ _Referat af en autonom koersel — kort, i hans egen samtale._
 | function | `_foerste_afsnit` | `(tekst)` | Hans egen konklusion, ikke hele udskriften. | [src](../../../core/services/autonomous_run_digest.py#L93) |
 | function | `_pænt_vaerktoej` | `(navn)` | — | [src](../../../core/services/autonomous_run_digest.py#L125) |
 | function | `byg_referat` | `(*, session_id, tool_calls=…, output=…, aendrede_filer=…, committet=…)` | Referatet, eller tom streng hvis der ikke er noget at fortaelle. | [src](../../../core/services/autonomous_run_digest.py#L129) |
-| function | `post_referat` | `(*, run_id, session_id, tool_calls=…, output=…, aendrede_filer=…, committet=…)` | Skriv referatet i hans sidst aktive samtale. Returnerer session_id ('' = intet skrevet). | [src](../../../core/services/autonomous_run_digest.py#L166) |
+| function | `post_referat` | `(*, run_id, session_id, tool_calls=…, output=…, aendrede_filer=…, committet=…)` | Læg referatet i INDBOKKEN. Returnerer postens kilde-id ('' = intet skrevet). | [src](../../../core/services/autonomous_run_digest.py#L166) |
 
 ## `core/services/autonomous_run_failures.py`
 _Fejlede autonome kørsler — set af Jarvis selv, ikke gemt i hans mund._

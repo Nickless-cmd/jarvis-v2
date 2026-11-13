@@ -172,7 +172,27 @@ def post_referat(
     aendrede_filer: list[str] | None = None,
     committet: bool = False,
 ) -> str:
-    """Skriv referatet i hans sidst aktive samtale. Returnerer session_id ('' = intet skrevet).
+    """Læg referatet i INDBOKKEN. Returnerer postens kilde-id ('' = intet skrevet).
+
+    ## Hvorfor ikke chatten (ændret 13/11-2026)
+
+    Før skrev denne gennem `send_session_notification` til den sidst aktive
+    samtale. Målt: **18 baggrundsrun i døgnet gav 18 «🌙 Hjerteslag»-klumper
+    midt i samtalen.** Bjørn: «jeg er sku lidt i tvivl om hjeret slaget bruges
+    rigtigt» — og det var han, fordi fladen kaldte to forskellige ting det
+    samme: den ægte puls (`heartbeat.phased_tick`) og post-run-rapporter der
+    ikke havde noget med samtalen at gøre.
+
+    Rapporten hører i indbakken, fordi indbakken har et VÆRN: den kan sige
+    «der er noget nyt» i stedet for at dumpe indhold. Chatten er stedet hvor
+    vi taler — ikke en log vi begge skal læse os igennem.
+
+    ## Kontrakten
+
+    Kildetypen er `digest`, som staar i `IKKE_GATENDE_KILDETYPER`: posten er
+    SYNLIG i prompten under «REFERATER (til orientering)» men kan aldrig
+    naegte en mutation. `importance="normal"` med vilje — et referat skal
+    ikke fortrænge en post der faktisk kræver noget.
 
     Self-safe og tavs: et referat der ikke naar frem maa aldrig kunne vaelte
     afslutningen af en koersel.
@@ -192,31 +212,42 @@ def post_referat(
             if not tekst:
                 return ""
 
-        from core.services.proactivity_bridge import _sidst_aktive_samtale
-        sid = _sidst_aktive_samtale()
-        if not sid:
-            return ""     # ingen frisk samtale → referatet ville ligge i en silo igen
+        from core.services.inbox_state import _ejer_id, registrer_kilde
 
-        # 2/10-2026: gennem daemon-vagten, saa et referat ikke lander midt i
-        # en saetning. Sessionen er stadig den sidst aktive samtale (valgt
-        # ovenfor); kun timingen aendrer sig. `push=False`: ingen push foer.
-        from core.services.notification_bridge import (
-            delivery_succeeded,
-            send_session_notification,
-        )
-        svar = send_session_notification(
-            tekst,
-            source="autonomous-run-digest",
-            session_id=sid,
-            workspace_name="default",
-            push=False,
-        )
-        if not delivery_succeeded(svar):
-            logger.warning("autonomous_run_digest: levering afvist: %s", svar)
+        ejer = _ejer_id()
+        if not ejer:
+            # Uden en ejer kan posten ikke placeres — og en post uden ejer
+            # ville havne i den forkerte indbakke. Tavst fravalg er rigtigt
+            # her; kalderen er en afslutnings-hook der ikke maa vaelte.
+            logger.debug("autonomous_run_digest: ingen ejer — referat ikke skrevet")
             return ""
-        logger.info("autonomous_run_digest: referat for %s → %s (%s)",
-                    run_id[:12], sid, svar.get("status"))
-        return sid
+
+        from datetime import UTC as _UTC
+        from datetime import datetime as _dt
+        from datetime import timedelta as _td
+
+        kilde_id = f"referat-{run_id}"
+        svar = registrer_kilde(
+            bruger_id=ejer,
+            kildetype="digest",
+            kilde_id=kilde_id,
+            oprettende_run_id=run_id,
+            beskrivelse=tekst[:600],
+            session_id=session_id,
+            importance="normal",
+            # Syv dage: en orientering der er ældre end en uge er historie,
+            # og historie hører i sessionsloggen — ikke i indbakken.
+            expires_at=(_dt.now(_UTC) + _td(days=7)).isoformat(),
+        )
+        status = str((svar or {}).get("status") or "")
+        if status != "ok":
+            logger.warning(
+                "autonomous_run_digest: referat ikke placeret for %s: %s",
+                run_id[:12], svar)
+            return ""
+        logger.info("autonomous_run_digest: referat for %s → indbakke (%s)",
+                    run_id[:12], svar.get("post_id") or svar.get("id") or "ok")
+        return kilde_id
     except Exception:
         logger.debug("autonomous_run_digest: kunne ikke poste referat", exc_info=True)
         return ""

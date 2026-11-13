@@ -88,6 +88,12 @@ _OVERSKRIFTER: tuple[tuple[str, str], ...] = (
     # nu — uden den startede jeg i en ny samtale uden at vide at genstarten
     # var sket. Den gater ikke: den er til ORIENTERING.
     ("genstarter", "GENSTARTET (til orientering)"),
+    # Referater fra afsluttede baggrundsrun (13/11-2026). De lå tidligere som
+    # chat-beskeder midt i samtalen — målt 18 baggrundsrun i døgnet gav 18
+    # «🌙 Hjerteslag»-klumper i chatten, som Bjørn ikke kunne skelne fra ægte
+    # puls. De er ORIENTERING: de gater ikke, og de skal ikke stå under en
+    # overskrift der siger at nogen venter på svar.
+    ("referater", "REFERATER (til orientering)"),
     ("paa_vej", "PÅ VEJ"),
     ("planlagte", "PLANLAGTE (gentager sig)"),
     ("venter_paa_bjorn", "VENTER PÅ BJØRN (gater ikke)"),

@@ -1446,9 +1446,19 @@ def build_gut_surface() -> dict[str, object]:
     ) if total_evaluated > decided_rows else None
     _evidens_dele: list[str] = []
     if no_event_row is not None and no_event_row > 0:
-        _evidens_dele.append(
-            f"{no_event_row} udfalds-events er ryddet (maalt mod livstidstaelleren)"
-        )
+        # Er tallet et estimat, maa saetningen ikke sige «maalt». Den der laeser
+        # summary'en ser ikke flaget ved siden af, og «maalt» er netop den paastand
+        # flaget findes for at afvise — samme fejlform som `_tab`-overskrivelsen,
+        # bare i den anden tekstflade (Bjørn, 13/11-2026).
+        if no_event_row_er_estimat:
+            _evidens_dele.append(
+                f"anslaaet {no_event_row} udfalds-events ryddet "
+                "(ESTIMAT mod livstidstaelleren, ukendt fejlretning)"
+            )
+        else:
+            _evidens_dele.append(
+                f"{no_event_row} udfalds-events er ryddet (maalt mod livstidstaelleren)"
+            )
     if neutral_rows > 0:
         _evidens_dele.append(f"{neutral_rows} er i vinduet men uafgjorte")
     evidence_summary = (

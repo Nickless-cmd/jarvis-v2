@@ -267,7 +267,18 @@ def test_moden_ledger_giver_et_rigtigt_tal(monkeypatch):
     s = ge.build_gut_surface()
     assert s["no_event_row"] == 400
     assert s["evaluated_unverifiable"] == 400
-    assert "400 udfalds-events er ryddet" in s["summary"]
+    # BJØRNS SJETTE INVENDING (13/11-2026): den maskinlæsbare kontrakt var mere
+    # ærlig end den menneskelige opsummering. `no_event_row_er_estimat` stod på
+    # True, men summary'en sagde stadig «målt mod livstidstælleren» — og den der
+    # læser summary'en ser ikke flaget ved siden af. En korrekt måling skal bevare
+    # præcis den samme usikkerhed i sin forklaring som i sin implementation.
+    assert s["no_event_row_er_estimat"] is True
+    assert "anslaaet 400 udfalds-events ryddet" in s["summary"]
+    assert "ESTIMAT" in s["summary"]
+    assert "maalt mod livstidstaelleren" not in s["summary"], (
+        "summary'en kalder estimatet en måling — så er flaget meningsløst for "
+        "den læser der kun ser teksten"
+    )
 
 
 def test_tom_lokal_koe_goer_ikke_tallet_praecist(monkeypatch):
@@ -348,6 +359,15 @@ def test_estimat_og_tab_forklaringer_overskriver_ikke_hinanden(monkeypatch):
     assert "fuld koe" in grund, "tab-linjen skal ogsaa staa"
     assert "UKENDT RETNING" in grund, (
         "et estimat hvis fejl kan gaa begge veje maa ikke kaldes et oevre skoen"
+    )
+    # Samme krav til den ANDEN tekstflade (Bjørn, 13/11-2026): flaget og grunden
+    # var aerlige, men summary'en kaldte stadig estimatet «maalt». Kombinationen
+    # er den svaereste — der ER et tal, der ER en grund, og der ER tab — saa det
+    # er her en tekstflade kan slippe afsted med at love mere end den kan holde.
+    assert "anslaaet 397 udfalds-events ryddet" in s["summary"]
+    assert "ESTIMAT" in s["summary"]
+    assert "maalt mod livstidstaelleren" not in s["summary"], (
+        "summary'en og grunden maa ikke vaere uenige om hvor praecist tallet er"
     )
 
 

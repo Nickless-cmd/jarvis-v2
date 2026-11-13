@@ -105,6 +105,10 @@ _CHARACTERS: list[dict[str, Any]] = [
         "label": "[🕴️ Smith]",
         "line": "Nej, Mr. Anderson. Forudsigeligt som altid.",
         "check": lambda surf: bool(surf.get("active")),
+        # Behovet er den KONKRETE fangst, ikke «jeg er aktiv». Uden den blev
+        # behovet en konstant — og da `opgivet` først falder ved et nyt emne,
+        # kunne en Smith der havde trukket sig aldrig vende tilbage.
+        "behov": lambda surf: _smith_behov(surf),
     },
     {
         "id": "trainman",
@@ -771,6 +775,30 @@ def _save_lifecycle(data: dict[str, dict[str, Any]]) -> None:
         )
     except Exception as exc:
         logger.warning("matrix_voice_lifecycle: save failed: %s", exc)
+
+
+def _smith_behov(surf: dict[str, Any]) -> str | None:
+    """Smiths behov er den KONKRETE fejl han har målt — ikke «jeg er aktiv».
+
+    Målt 13/11-2026: uden denne gren faldt `_behov` tilbage til `smith:aktiv`,
+    en konstant. Et behov der aldrig kan skifte kan heller aldrig blive løst, og
+    da `opgivet` først falder ved et nyt emne, kom han ALDRIG tilbage — uanset
+    hvilken ny fejl der dukkede op. Samme fejlform som redpill-streaken der
+    talte kald i stedet for dage: tællingen skal knyttes til EMNET.
+    """
+    maalt = surf.get("measured") if isinstance(surf.get("measured"), list) else []
+    stoerste = None
+    for m in maalt:
+        if not isinstance(m, dict):
+            continue
+        if stoerste is None or float(m.get("metric") or 0) > float(stoerste.get("metric") or 0):
+            stoerste = m
+    if stoerste:
+        lab = str(stoerste.get("label") or "").strip()
+        if lab:
+            return f"smith:{lab}"[:120]
+    linje = str(surf.get("line") or "").strip()
+    return f"smith:{linje}"[:120] if linje else None
 
 
 def _emne(surf: dict[str, Any]) -> str:

@@ -400,58 +400,59 @@ _Matrix Ensemble — prompttail-labels for Matrix-programmerne (11 karakterer)._
 | function | `reset_unaddressed` | `(cid)` | — | [src](../../../core/services/central_matrix_ensemble.py#L55) |
 | function | `_escalated_message` | `(label, count, original_line)` | — | [src](../../../core/services/central_matrix_ensemble.py#L71) |
 | function | `extract_cid` | `(source)` | Extract karakter-ID fra en nudge source 'matrix/<cid>'. Return None hvis ikke matrix-nudge. | [src](../../../core/services/central_matrix_ensemble.py#L79) |
-| function | `_build_surface` | `(module_path, fn_name)` | Kald surface-funktionen på en central_*-karakter. Fejl → tom dict. | [src](../../../core/services/central_matrix_ensemble.py#L330) |
-| function | `_trainman_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L344) |
-| function | `_seraph_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L348) |
-| function | `_persephone_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L352) |
-| function | `_twins_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L356) |
-| function | `_merovingian_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L360) |
-| function | `_keymaker_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L364) |
-| function | `_construct_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L368) |
-| function | `_oracle_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L372) |
-| function | `_architect_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L376) |
-| function | `_echo_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L380) |
-| function | `_glitch_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L384) |
-| function | `_child_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L388) |
-| function | `_source_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L392) |
-| function | `_neo_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L396) |
-| function | `_smith_surface` | `()` | Smith — mønster-detektor og forpligtelseshåndhæver. | [src](../../../core/services/central_matrix_ensemble.py#L400) |
-| function | `_morpheus_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L442) |
-| function | `_trinity_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L446) |
-| function | `_sentinel_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L455) |
-| function | `_redpill_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L459) |
-| function | `_dissent_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L463) |
-| function | `_white_rabbit_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L467) |
-| function | `_dejavu_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L471) |
-| function | `_dream_action_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L475) |
-| function | `_rca_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L479) |
-| function | `_continuity_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L483) |
-| function | `_red_dress_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L487) |
-| function | `_analyst_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L491) |
-| function | `_mourning_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L495) |
-| function | `_relational_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L499) |
-| function | `_ghost_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L503) |
-| function | `_exile_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L507) |
-| function | `push_active_character_nudges` | `()` | Iterer alle Matrix-karakterer og post nudge for hver aktiv med rung_line. | [src](../../../core/services/central_matrix_ensemble.py#L550) |
-| function | `_foerste_emne` | `(surf, noegle, felter)` | Emnet i den første post af `noegle` — eller None hvis listen er tom. | [src](../../../core/services/central_matrix_ensemble.py#L651) |
-| function | `_oracle_behov` | `(surf)` | Oracle er kun til stede når linjen er krydset, eller er under et døgn væk. | [src](../../../core/services/central_matrix_ensemble.py#L670) |
-| function | `_fornyelig` | `(ts, *, timer)` | Er tidsstemplet inden for `timer`? Ulæseligt → False. | [src](../../../core/services/central_matrix_ensemble.py#L694) |
-| function | `_dissent_behov` | `(surf)` | Den NYESTE indsigelse — ikke summen af dem. | [src](../../../core/services/central_matrix_ensemble.py#L712) |
-| function | `_rca_behov` | `(surf)` | Incidenten der venter på at blive gravet til bunds. | [src](../../../core/services/central_matrix_ensemble.py#L733) |
-| function | `_mourning_behov` | `(surf)` | Kun et FERSK dødsfald er et behov — de 15 gamle er historie. | [src](../../../core/services/central_matrix_ensemble.py#L741) |
-| function | `_load_lifecycle` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L756) |
-| function | `_save_lifecycle` | `(data)` | — | [src](../../../core/services/central_matrix_ensemble.py#L766) |
-| function | `_emne` | `(surf)` | Emnet surfacen bærer — ikke størrelsen på det. | [src](../../../core/services/central_matrix_ensemble.py#L776) |
-| function | `_behov` | `(ch, surf)` | Det uløste behovs identitet — eller None når der ikke er brug for karakteren. | [src](../../../core/services/central_matrix_ensemble.py#L800) |
-| function | `_stemme` | `(surf, ch)` | Surfacens EGEN aflæsning. | [src](../../../core/services/central_matrix_ensemble.py#L822) |
-| function | `_trainman_stemme` | `(surf)` | Trainman har ingen `felt` — hans ægte indhold er den nyeste drøm. | [src](../../../core/services/central_matrix_ensemble.py#L847) |
-| function | `_karakterer_med_behov` | `()` | (ch, surf, behov) for hver karakter der lige nu har et uløst behov. | [src](../../../core/services/central_matrix_ensemble.py#L866) |
-| function | `tick_matrix_lifecycle` | `()` | Æld behovet op — og lad karakteren trække sig når den har sagt sit. | [src](../../../core/services/central_matrix_ensemble.py#L883) |
-| function | `active_character_voices` | `(*, limit=…)` | De karakterer der har noget at sige LIGE NU. Ren læsning; ingen side-effekter. | [src](../../../core/services/central_matrix_ensemble.py#L928) |
-| function | `build_matrix_voices_section` | `()` | Awareness-sektion: de aktive karakterer, med deres egne ord. | [src](../../../core/services/central_matrix_ensemble.py#L982) |
-| function | `_note_sagt` | `(cids)` | Registrér at karaktererne blev VIS'T — ikke at de blev besvaret. | [src](../../../core/services/central_matrix_ensemble.py#L1008) |
-| function | `note_voices_shown` | `(cids)` | Tæl en visning op som ubesvaret. Kaldes EFTER en tur hvor de blev vist. | [src](../../../core/services/central_matrix_ensemble.py#L1021) |
-| function | `build_matrix_ensemble_prompt_section` | `()` | Byg karakter-labels for prompt-halen. | [src](../../../core/services/central_matrix_ensemble.py#L1047) |
+| function | `_build_surface` | `(module_path, fn_name)` | Kald surface-funktionen på en central_*-karakter. Fejl → tom dict. | [src](../../../core/services/central_matrix_ensemble.py#L334) |
+| function | `_trainman_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L348) |
+| function | `_seraph_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L352) |
+| function | `_persephone_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L356) |
+| function | `_twins_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L360) |
+| function | `_merovingian_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L364) |
+| function | `_keymaker_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L368) |
+| function | `_construct_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L372) |
+| function | `_oracle_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L376) |
+| function | `_architect_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L380) |
+| function | `_echo_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L384) |
+| function | `_glitch_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L388) |
+| function | `_child_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L392) |
+| function | `_source_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L396) |
+| function | `_neo_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L400) |
+| function | `_smith_surface` | `()` | Smith — mønster-detektor og forpligtelseshåndhæver. | [src](../../../core/services/central_matrix_ensemble.py#L404) |
+| function | `_morpheus_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L446) |
+| function | `_trinity_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L450) |
+| function | `_sentinel_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L459) |
+| function | `_redpill_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L463) |
+| function | `_dissent_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L467) |
+| function | `_white_rabbit_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L471) |
+| function | `_dejavu_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L475) |
+| function | `_dream_action_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L479) |
+| function | `_rca_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L483) |
+| function | `_continuity_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L487) |
+| function | `_red_dress_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L491) |
+| function | `_analyst_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L495) |
+| function | `_mourning_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L499) |
+| function | `_relational_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L503) |
+| function | `_ghost_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L507) |
+| function | `_exile_surface` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L511) |
+| function | `push_active_character_nudges` | `()` | Iterer alle Matrix-karakterer og post nudge for hver aktiv med rung_line. | [src](../../../core/services/central_matrix_ensemble.py#L554) |
+| function | `_foerste_emne` | `(surf, noegle, felter)` | Emnet i den første post af `noegle` — eller None hvis listen er tom. | [src](../../../core/services/central_matrix_ensemble.py#L655) |
+| function | `_oracle_behov` | `(surf)` | Oracle er kun til stede når linjen er krydset, eller er under et døgn væk. | [src](../../../core/services/central_matrix_ensemble.py#L674) |
+| function | `_fornyelig` | `(ts, *, timer)` | Er tidsstemplet inden for `timer`? Ulæseligt → False. | [src](../../../core/services/central_matrix_ensemble.py#L698) |
+| function | `_dissent_behov` | `(surf)` | Den NYESTE indsigelse — ikke summen af dem. | [src](../../../core/services/central_matrix_ensemble.py#L716) |
+| function | `_rca_behov` | `(surf)` | Incidenten der venter på at blive gravet til bunds. | [src](../../../core/services/central_matrix_ensemble.py#L737) |
+| function | `_mourning_behov` | `(surf)` | Kun et FERSK dødsfald er et behov — de 15 gamle er historie. | [src](../../../core/services/central_matrix_ensemble.py#L745) |
+| function | `_load_lifecycle` | `()` | — | [src](../../../core/services/central_matrix_ensemble.py#L760) |
+| function | `_save_lifecycle` | `(data)` | — | [src](../../../core/services/central_matrix_ensemble.py#L770) |
+| function | `_smith_behov` | `(surf)` | Smiths behov er den KONKRETE fejl han har målt — ikke «jeg er aktiv». | [src](../../../core/services/central_matrix_ensemble.py#L780) |
+| function | `_emne` | `(surf)` | Emnet surfacen bærer — ikke størrelsen på det. | [src](../../../core/services/central_matrix_ensemble.py#L804) |
+| function | `_behov` | `(ch, surf)` | Det uløste behovs identitet — eller None når der ikke er brug for karakteren. | [src](../../../core/services/central_matrix_ensemble.py#L828) |
+| function | `_stemme` | `(surf, ch)` | Surfacens EGEN aflæsning. | [src](../../../core/services/central_matrix_ensemble.py#L850) |
+| function | `_trainman_stemme` | `(surf)` | Trainman har ingen `felt` — hans ægte indhold er den nyeste drøm. | [src](../../../core/services/central_matrix_ensemble.py#L875) |
+| function | `_karakterer_med_behov` | `()` | (ch, surf, behov) for hver karakter der lige nu har et uløst behov. | [src](../../../core/services/central_matrix_ensemble.py#L894) |
+| function | `tick_matrix_lifecycle` | `()` | Æld behovet op — og lad karakteren trække sig når den har sagt sit. | [src](../../../core/services/central_matrix_ensemble.py#L911) |
+| function | `active_character_voices` | `(*, limit=…)` | De karakterer der har noget at sige LIGE NU. Ren læsning; ingen side-effekter. | [src](../../../core/services/central_matrix_ensemble.py#L956) |
+| function | `build_matrix_voices_section` | `()` | Awareness-sektion: de aktive karakterer, med deres egne ord. | [src](../../../core/services/central_matrix_ensemble.py#L1010) |
+| function | `_note_sagt` | `(cids)` | Registrér at karaktererne blev VIS'T — ikke at de blev besvaret. | [src](../../../core/services/central_matrix_ensemble.py#L1036) |
+| function | `note_voices_shown` | `(cids)` | Tæl en visning op som ubesvaret. Kaldes EFTER en tur hvor de blev vist. | [src](../../../core/services/central_matrix_ensemble.py#L1049) |
+| function | `build_matrix_ensemble_prompt_section` | `()` | Byg karakter-labels for prompt-halen. | [src](../../../core/services/central_matrix_ensemble.py#L1075) |
 
 ## `core/services/central_membrane_watch.py`
 _WARDEN — vogteren over muren (LivingNeuron-roadmap §2, 4. jul)._

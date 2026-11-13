@@ -226,8 +226,16 @@ def _detect_candidates(*, window_days: int = 21) -> list[EmergenceCandidate]:
         candidates.append(
             EmergenceCandidate(
                 pattern_key="direction_drift_decisions",
-                title="Direction Drift",
-                summary=f"{decision_count} recent decisions suggest evolving direction.",
+                title="Decision Volume",
+                # Målt 13/11-2026: tælleren måler VOLUMEN, ikke retning —
+                # «evolving direction» var en påstand intet i koden kan indfri
+                # (den kan ikke skelne drift fra short_term_task_spike).
+                # Summary siger nu kun hvad der er målt.
+                summary=(
+                    f"{decision_count} behavioral decisions created "
+                    f"in the last {window_days} days — volume only; "
+                    f"no direction or drift is measured."
+                ),
                 evidence_count=decision_count,
                 base_confidence=min(0.88, 0.28 + (decision_count / 20.0)),
                 competing_explanations=["short_term_task_spike"],

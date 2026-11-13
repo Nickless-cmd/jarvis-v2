@@ -698,14 +698,14 @@ _Emergence — evidence-based pattern detection across recent activity._
 | function | `_fetch_procedures_count` | `(*, window_days=…)` | Tæl rutiner der er NYE i vinduet og faktisk blevet vist eller pinnet. | [src](../../../core/services/emergence.py#L135) |
 | function | `_fetch_decisions_count` | `(*, window_days=…)` | — | [src](../../../core/services/emergence.py#L168) |
 | function | `_detect_candidates` | `(*, window_days=…)` | — | [src](../../../core/services/emergence.py#L181) |
-| function | `_create_or_update_pattern` | `(*, pattern_key, title, summary, confidence, evidence_count, competing_explanations, confounders, status)` | Insert or update a pattern row. Returns the persisted row. | [src](../../../core/services/emergence.py#L256) |
-| function | `detect_and_score_patterns` | `(*, window_days=…)` | Main entry — detect candidates, score via apophenia, persist, emit events. | [src](../../../core/services/emergence.py#L316) |
-| function | `list_patterns` | `(*, status=…, limit=…)` | Return persisted patterns, optionally filtered by status. | [src](../../../core/services/emergence.py#L401) |
-| function | `summarize_patterns` | `()` | — | [src](../../../core/services/emergence.py#L424) |
-| function | `_decode_json_list` | `(value)` | — | [src](../../../core/services/emergence.py#L443) |
-| function | `_band` | `(confidence)` | — | [src](../../../core/services/emergence.py#L459) |
-| function | `brewing_patterns` | `(*, limit=…)` | Mønstre i brewing-båndet (0.5 ≤ conf < 0.78) — strengthening men endnu ikke emergent. | [src](../../../core/services/emergence.py#L468) |
-| function | `build_emergence_surface` | `(*, limit=…)` | Surface persisted emergence candidates without running detection. | [src](../../../core/services/emergence.py#L494) |
+| function | `_create_or_update_pattern` | `(*, pattern_key, title, summary, confidence, evidence_count, competing_explanations, confounders, status)` | Insert or update a pattern row. Returns the persisted row. | [src](../../../core/services/emergence.py#L264) |
+| function | `detect_and_score_patterns` | `(*, window_days=…)` | Main entry — detect candidates, score via apophenia, persist, emit events. | [src](../../../core/services/emergence.py#L324) |
+| function | `list_patterns` | `(*, status=…, limit=…)` | Return persisted patterns, optionally filtered by status. | [src](../../../core/services/emergence.py#L409) |
+| function | `summarize_patterns` | `()` | — | [src](../../../core/services/emergence.py#L432) |
+| function | `_decode_json_list` | `(value)` | — | [src](../../../core/services/emergence.py#L451) |
+| function | `_band` | `(confidence)` | — | [src](../../../core/services/emergence.py#L467) |
+| function | `brewing_patterns` | `(*, limit=…)` | Mønstre i brewing-båndet (0.5 ≤ conf < 0.78) — strengthening men endnu ikke emergent. | [src](../../../core/services/emergence.py#L476) |
+| function | `build_emergence_surface` | `(*, limit=…)` | Surface persisted emergence candidates without running detection. | [src](../../../core/services/emergence.py#L502) |
 
 ## `core/services/emergence_initiative_bridge.py`
 _Emergence → initiative bridge: et opdaget mønster bliver en handling._

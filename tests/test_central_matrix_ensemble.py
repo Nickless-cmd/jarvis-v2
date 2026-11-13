@@ -14,7 +14,21 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pytest
+
 import core.services.central_matrix_ensemble as me
+
+
+@pytest.fixture(autouse=True)
+def _isoler_livscyklus(monkeypatch, tmp_path):
+    """Livscyklus-tilstanden er en ÆGTE fil under ~/.jarvis-v2/state.
+
+    Uden denne isolering læser og SKRIVER hver test produktions-tilstanden, så
+    en testkørsel kan «opgive» en karakter der aldrig kommer tilbage i drift.
+    Målt 13/11-2026: `smith` stod opgivet med behovet `smith:aktiv`, og testen
+    så det som en kodefejl.
+    """
+    monkeypatch.setattr(me, "_LIFECYCLE_PATH", tmp_path / "lc.json")
 
 
 class TestKommerOgGaar:
@@ -202,6 +216,33 @@ class TestLivscyklus:
         assert all(n == 0 for n in antal[me._GIV_OP_SEEN - 1:]), (
             "den kommer ikke igen om det samme emne"
         )
+
+    def test_opgivet_emne_sover_men_et_nyt_vaekker(self, monkeypatch, tmp_path):
+        """De skal komme og gå EFTER BEHOV — også når de er gået.
+
+        Målt 13/11-2026: `opgivet` faldt kun ved et nyt emne, men Smiths behov
+        var konstanten `smith:aktiv`. Så en karakter der først havde trukket sig
+        kunne ALDRIG vende tilbage, uanset hvor ny fangsten var — «kom og gå»
+        blev «kom aldrig igen».
+        """
+        surf_a = {"active": True, "ready_to_surface": [{"hyp_id": "clh-1"}], "felt": "a"}
+        self._setup(monkeypatch, tmp_path, surf_a)
+        for _ in range(me._GIV_OP_SEEN + 1):
+            me.tick_matrix_lifecycle()
+            self._vist()  # visningen tæller `sagt` — uden den kan intet opgives
+            self._alder(tmp_path)
+        import json as _j
+        state = _j.loads((tmp_path / "lc.json").read_text())
+        assert state["seraph"].get("opgivet") is True, "forudsætning: karakteren ER gået"
+        assert self._vist() == 0, "det samme emne skal den ikke gentage"
+        # Et NYT emne er et nyt behov — og skal vække den opgivne karakter.
+        monkeypatch.setattr(me, "_SURFACE_BUILDERS",
+                            {"seraph": lambda: {"active": True,
+                                                "ready_to_surface": [{"hyp_id": "clh-2"}],
+                                                "felt": "b"}})
+        self._alder(tmp_path)
+        me.tick_matrix_lifecycle()
+        assert self._vist() == 1, "et nyt behov skal vække den opgivne karakter"
 
     def test_behovet_vaek_rydder_posten(self, monkeypatch, tmp_path):
         surf = {"active": True, "ready_to_surface": [{"hyp_id": "clh-1"}], "felt": "x"}

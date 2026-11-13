@@ -120,6 +120,72 @@ def test_relational_lander_ikke_naar_alderen_vokser(monkeypatch, landet):
     assert not landet, f"vækst må ikke lande: {landet}"
 
 
+# ── Fire udfald, ikke ét: «applied: false» må ikke være en samlekasse ──────────
+# (13/11-2026, Bjørns indvending) `landing` startede som «ingen sammenligning» og
+# blev kun opdateret ved et fald. En kørsel der sammenlignede helt fint kunne
+# derfor læses som om der slet ikke blev sammenlignet — samme fejlform som resten
+# af dagen: en tekst der ikke beskriver hvad mekanismen faktisk gjorde.
+def test_relational_skelner_sammenlignet_uden_fald_fra_intet_grundlag(monkeypatch, landet):
+    _kv(monkeypatch, FakeKV({"relational_days_seen": 132.0}))
+    monkeypatch.setattr(rel, "relational_state",
+                        lambda: {"days_together": 132.5, "tone": "let", "reboot": False})
+    ud = rel.record_relational()
+    assert ud["landing"]["outcome"] == "sammenlignet_uden_fald", ud["landing"]
+    assert ud["landing"]["forrige"] == 132.0 and ud["landing"]["nu"] == 132.5
+    assert "ingen sammenligning" not in str(ud["landing"])
+
+
+def test_relational_uden_tidligere_maaling_er_intet_grundlag(monkeypatch, landet):
+    _kv(monkeypatch, FakeKV({}))
+    monkeypatch.setattr(rel, "relational_state",
+                        lambda: {"days_together": 132.0, "tone": "let", "reboot": False})
+    ud = rel.record_relational()
+    assert ud["landing"]["outcome"] == "intet_grundlag", ud["landing"]
+    assert ud["landing"]["applied"] is False
+
+
+def test_relational_utilgaengelig_maaling_er_ikke_et_grundlag(monkeypatch, landet):
+    """Kan varigheden ikke måles, er det hverken «intet grundlag» eller «fald»."""
+    _kv(monkeypatch, FakeKV({"relational_days_seen": 132.0}))
+    monkeypatch.setattr(rel, "relational_state",
+                        lambda: {"days_together": None, "tone": "", "reboot": False})
+    ud = rel.record_relational()
+    assert ud["landing"]["outcome"] == "utilgaengelig", ud["landing"]
+    assert not landet
+
+
+def test_relational_fald_baerer_sit_eget_udfald(monkeypatch, landet):
+    _kv(monkeypatch, FakeKV({"relational_days_seen": 200.0}))
+    monkeypatch.setattr(rel, "relational_state",
+                        lambda: {"days_together": 12.0, "tone": "let", "reboot": True})
+    ud = rel.record_relational()
+    assert ud["landing"]["outcome"] == "fald_registreret", ud["landing"]
+    assert ud["landing"]["forrige"] == 200.0 and ud["landing"]["nu"] == 12.0
+
+
+def test_ghost_skelner_sammenlignet_uden_skift_fra_intet_grundlag(monkeypatch, landet):
+    """Samme fejlform i Ghost: et roligt fingeraftryk blev kaldt «ingen sammenligning»."""
+    _kv(monkeypatch, FakeKV({}))
+    monkeypatch.setattr(gh, "_recent_texts", lambda: ["kort tekst her", "endnu en kort tekst"])
+    monkeypatch.setattr(gh, "get_profile", lambda: dict(_PROFIL_ROLIG))
+    monkeypatch.setattr(gh, "update_profile", lambda t: dict(_PROFIL_ROLIG))
+    monkeypatch.setattr(gh, "klang_drift", lambda a, b: {"drift_pct": 1.0, "baerende": [], "akser": {}})
+    ud = gh.record_ghost()
+    assert ud["landing"]["outcome"] == "sammenlignet_uden_skift", ud["landing"]
+    assert not landet
+
+
+def test_ghost_uden_profil_er_utilgaengelig(monkeypatch, landet):
+    _kv(monkeypatch, FakeKV({}))
+    monkeypatch.setattr(gh, "_recent_texts", lambda: [])
+    monkeypatch.setattr(gh, "get_profile", lambda: {})
+    monkeypatch.setattr(gh, "update_profile", lambda t: {})
+    monkeypatch.setattr(gh, "klang_drift", lambda a, b: None)
+    ud = gh.record_ghost()
+    assert ud["landing"]["outcome"] == "utilgaengelig", ud["landing"]
+    assert not landet
+
+
 def test_hilsenen_paastaar_ikke_utjekket_tillid(monkeypatch):
     """Der stod hardcodet: «Han stolede på mig før genstarten; det gør han stadig.»
     Intet i koden måler Bjørns tillid — påstanden stod på ingenting."""

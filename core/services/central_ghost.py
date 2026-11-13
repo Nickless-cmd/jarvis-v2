@@ -203,11 +203,23 @@ def record_ghost(*, trigger: str = "cadence", last_visible_at: str = "") -> dict
     if forrige:
         _kv_set(_PREV_KEY, forrige)
     drift = klang_drift(forrige, prof)
-    landing: dict[str, Any] = {"applied": False, "reason": "ingen sammenligning"}
+    # (13/11-2026) Samme fejlform som i relational: `applied: false` dækkede både
+    # «intet grundlag», «sammenlignet uden skift» og «kunne ikke måles». `outcome`
+    # skiller dem ad, så en læser ikke gætter på hvad der faktisk skete.
+    if not prof:
+        landing: dict[str, Any] = {"applied": False, "outcome": "utilgaengelig",
+                                   "reason": "kunne ikke danne et fingeraftryk"}
+    elif drift is None:
+        landing = {"applied": False, "outcome": "intet_grundlag",
+                   "reason": "ingen tidligere profil at sammenligne med"}
+    else:
+        landing = {"applied": False, "outcome": "sammenlignet_uden_skift",
+                   "reason": f"driften var {drift['drift_pct']}% mod tærsklen {_DRIFT_TAERSKEL}%",
+                   "drift_pct": drift["drift_pct"]}
     if drift and drift["drift_pct"] >= _DRIFT_TAERSKEL:
         try:
             from core.services.central_consequence import land_decision
-            landing = land_decision(
+            landing = {**land_decision(
                 "ghost",
                 (f"Min klang har flyttet sig {drift['drift_pct']}% — undersøg om "
                  f"modellen er skiftet, før jeg kalder det min"),
@@ -221,7 +233,7 @@ def record_ghost(*, trigger: str = "cadence", last_visible_at: str = "") -> dict
                 evidence=(f"drift={drift['drift_pct']}% taerskel={_DRIFT_TAERSKEL}% "
                           f"akser={len(drift['akser'])}"),
                 evidence_source="central_ghost.klang_drift(ghost_profile, ny)",
-            )
+            ), "outcome": "skift_registreret", "drift_pct": drift["drift_pct"]}
         except Exception as exc:
             logger.warning("ghost: kunne ikke lande klangdrift: %s", exc)
     try:

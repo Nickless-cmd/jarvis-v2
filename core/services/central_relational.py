@@ -116,12 +116,28 @@ def record_relational(*, trigger: str = "cadence", last_visible_at: str = "") ->
     st = relational_state()
     days = st["days_together"]
     forrige = _kv_get(_DAYS_KEY, None)
-    landing: dict[str, Any] = {"applied": False, "reason": "ingen sammenligning"}
+    # (13/11-2026, Bjørns indvending) `landing` startede som «ingen sammenligning»
+    # og blev KUN opdateret ved et fald. Derfor betød `applied: false` tre
+    # forskellige ting på én gang: intet grundlag, sammenlignet-uden-fald, og
+    # måling utilgængelig. `outcome` skiller dem nu ad, så en læser ikke kan
+    # udlede «der blev ikke sammenlignet» af en kørsel der sammenlignede fint.
+    landing: dict[str, Any] = {"applied": False, "outcome": "intet_grundlag",
+                               "reason": "ingen tidligere måling at sammenligne med"}
+    if days is None:
+        landing = {"applied": False, "outcome": "utilgaengelig",
+                   "reason": "varigheden kunne ikke måles (selv-tilstand utilgængelig)"}
+    elif forrige is None:
+        landing = {"applied": False, "outcome": "intet_grundlag",
+                   "reason": "første måling — grundlaget er nu sat"}
+    else:
+        landing = {"applied": False, "outcome": "sammenlignet_uden_fald",
+                   "reason": f"varigheden gik fra {forrige} til {days} dage",
+                   "forrige": forrige, "nu": days}
     if days is not None:
         try:
             if forrige is not None and float(days) < float(forrige) - _FALD_TAERSKEL:
                 from core.services.central_consequence import land_decision
-                landing = land_decision(
+                landing = {**land_decision(
                     "relational",
                     (f"Relations-kontinuiteten faldt fra {forrige} til {days} dage — "
                      "undersøg hvad der blev nulstillet"),
@@ -134,7 +150,8 @@ def record_relational(*, trigger: str = "cadence", last_visible_at: str = "") ->
                     priority=62,
                     evidence=f"forrige={forrige} nu={days} taerskel={_FALD_TAERSKEL}",
                     evidence_source="central_relational.record_relational",
-                )
+                ), "outcome": "fald_registreret",
+                   "forrige": forrige, "nu": days}
         except Exception as exc:
             logger.warning("relational: kunne ikke lande aldersfald: %s", exc)
         _kv_set(_DAYS_KEY, days)

@@ -91,3 +91,56 @@ def test_ruten_er_mountet() -> None:
 
     ruter = {r.path for r in central.router.routes}
     assert "/central/central-state" in ruter
+
+
+def _klassificer(monkeypatch, surface):
+    monkeypatch.setattr(agg, "_call", lambda n, m, f: surface)
+    monkeypatch.setattr(agg, "_GROUPS", {"tilstand": [("x", "m", "f")]})
+    return agg.build_central_state_surface()
+
+
+def test_afvist_adgang_er_ikke_en_tavs_flade(monkeypatch) -> None:
+    """(13/11-2026) En producent der melder `access='denied'` håndhæver en policy.
+
+    Den er ikke død — den siger netop hvorfor den ikke kan måle. Før blev
+    `reason` brugt som tavsheds-markør, så den flade der råbte højest blev
+    talt som den tavse. Det er samme kollaps som i `build_dejavu_surface`,
+    bare i den tredje forbruger af samme måling.
+    """
+    flade = _klassificer(monkeypatch, {"fragment": None, "access": "denied",
+                                       "reason": "kræver bruger-scope"})
+    assert flade["begraenset"] == ["x"]
+    assert flade["taxse"] == [] and flade["fejl"] == []
+
+
+def test_maalt_uden_fund_er_et_svar_ikke_tavshed(monkeypatch) -> None:
+    """`access='ok'` med en forklaring ER et svar: den målte og fandt intet.
+
+    (13/11-2026) Det er præcis hvad dejavu svarer når der ikke er noget nu at
+    associere mod — og den må ikke tælles som en død flade for det.
+    """
+    flade = _klassificer(monkeypatch, {"fragment": None, "access": "ok",
+                                       "reason": "intet nu at resonere mod"})
+    assert flade["taxse"] == []
+    assert "x" in flade["uden_active_flag"]
+
+
+def test_uventet_tab_taelles_som_fejl_ikke_som_tavs(monkeypatch) -> None:
+    """`access='error'` er det modsatte af tavshed: vi havde lov og kunne ikke."""
+    monkeypatch.setattr(agg, "_call",
+                        lambda n, m, f: {"fragment": None, "access": "error",
+                                         "reason": "kandidatkilden fejlede: db nede"})
+    monkeypatch.setattr(agg, "_GROUPS", {"tilstand": [("x", "m", "f")]})
+    flade = agg.build_central_state_surface()
+    assert flade["fejl"] == ["x"]
+    assert flade["taxse"] == [] and flade["begraenset"] == []
+
+
+def test_en_kastende_producent_er_tavs_ikke_begraenset(monkeypatch) -> None:
+    """Den tredje retning: en producent der fejler må ikke gemme sig som policy."""
+    monkeypatch.setattr(agg, "_GROUPS",
+                        {"tilstand": [("knaekket", "core.services.central_dejavu",
+                                       "findes_ikke_som_funktion")]})
+    flade = agg.build_central_state_surface()
+    assert flade["taxse"] == ["knaekket"]
+    assert flade["begraenset"] == [] and flade["fejl"] == []

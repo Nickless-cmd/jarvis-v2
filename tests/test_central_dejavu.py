@@ -141,3 +141,62 @@ class TestLoggerFindes:
         kilde = inspect.getsource(dj)
         assert "logger.warning" in kilde or "logger.debug" in kilde
         assert dj.logger is not None
+
+
+class TestVisningsfladen:
+    """(13/11-2026, syvende runde) To forbrugere af samme måling må ikke fortælle
+    hver sin historie om resultatet.
+
+    `record_dejavu` skelnede tre tilstande — `denied`, `error`, `ok` — men
+    `build_dejavu_surface` kendte kun `denied` og lod ALT andet uden fragment ende
+    i «Stille. Intet bobler op af sig selv lige nu». En teknisk fejl blev altså
+    præsenteret som ro i præcis den flade nogen faktisk kigger på.
+    """
+
+    def test_teknisk_fejl_bliver_ikke_til_stilhed(self, monkeypatch):
+        monkeypatch.setattr(dj, "surface_dejavu",
+                            lambda **kw: {"fragment": None, "access": "error",
+                                          "reason": "kandidatkilden fejlede: db nede"})
+        s = dj.build_dejavu_surface()
+        assert s["access"] == "error", "fejlen skal videreføres, ikke skjules"
+        assert "kandidatkilden fejlede" in s["reason"]
+        assert "Stille. Intet bobler" not in s["felt"]
+        assert "kunne ikke kigge" in s["felt"]
+
+    def test_tomt_fund_er_ikke_en_fejl(self, monkeypatch):
+        """Den modsatte retning: et ægte tomt fund skal stadig måtte lyde stille."""
+        monkeypatch.setattr(dj, "surface_dejavu",
+                            lambda **kw: {"fragment": None, "access": "ok",
+                                          "reason": "ingen resonans i déjà-vu-båndet"})
+        s = dj.build_dejavu_surface()
+        assert s["access"] == "ok" and s["reason"] == "ingen resonans i déjà-vu-båndet"
+        assert "Stille" in s["felt"]
+
+    def test_fragment_baerer_ogsaa_sin_tilstand(self, monkeypatch):
+        monkeypatch.setattr(dj, "surface_dejavu",
+                            lambda **kw: {"fragment": "et minde", "resonance": 0.55,
+                                          "felt": "Noget minder mig om noget…",
+                                          "access": "ok"})
+        s = dj.build_dejavu_surface()
+        assert s["fragment"] == "et minde" and s["access"] == "ok"
+
+    def test_access_er_total_i_alle_grene(self, monkeypatch):
+        """Enhver returvej skal bære sin egen tilstand — ellers må forbrugeren gætte."""
+        import core.services.experiential_memory as em
+
+        monkeypatch.setattr(dj, "_present_context", lambda: "")
+        assert dj.surface_dejavu()["access"] == "ok", "intet nu"
+
+        monkeypatch.setattr(dj, "_present_context", lambda: "noget nu")
+        monkeypatch.setattr(dj, "_candidates", lambda limit=20: [])
+        assert dj.surface_dejavu()["access"] == "ok", "ingen kandidater"
+
+        monkeypatch.setattr(dj, "_candidates",
+                            lambda limit=20: [_kandidat("exp-1", "et minde")])
+        monkeypatch.setattr(em, "score_memories_by_relevance", lambda **kw: {"exp-1": 0.95})
+        assert dj.surface_dejavu()["access"] == "ok", "intet i båndet"
+
+        monkeypatch.setattr(dj, "_candidates",
+                            lambda limit=20: [{"memory_id": "exp-1", "narrative": ""}])
+        monkeypatch.setattr(em, "score_memories_by_relevance", lambda **kw: {"exp-1": 0.5})
+        assert dj.surface_dejavu()["access"] == "ok", "minde uden tekst"

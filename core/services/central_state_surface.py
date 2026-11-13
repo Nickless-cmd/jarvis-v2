@@ -139,16 +139,28 @@ def _call(name: str, mod_path: str, fn_attr: str) -> dict[str, Any]:
 def build_central_state_surface() -> dict[str, Any]:
     """Kald alle 72 central-producenter og returnér deres tilstand.
 
-    To lister der IKKE må blandes sammen:
+    Lister der IKKE må blandes sammen:
 
     ``taxse`` er flader der svarede med en tom dict eller en fejl — de har
     intet at vise. ``uden_active_flag`` er flader der svarede med ægte data
     men ikke sætter et ``active``-felt. De er ikke døde; de bruger bare en
     anden form. Målt 7/11-2026: 34 af de 72 hører i den anden liste, så en
     tælling der slog dem sammen ville melde 34 levende flader som døde.
+
+    (13/11-2026, syvende runde — Bjørns femte indvending) Samme skel manglede
+    her, i den TREDJE forbruger af samme måling. ``reason`` blev brugt som
+    tavsheds-markør, så snart en producent begyndte at bære sin forklaring
+    ærligt blev den talt som død — netop den flade der råbte højest. Tre
+    tilstande, som producenterne allerede rapporterer dem:
+
+      * ``access='denied'``  → ``begraenset``: policyen virker. Ikke en defekt.
+      * ``access='error'``   → ``fejl``: vi havde lov at måle og kunne ikke.
+      * intet/andet          → ``taxse`` hvis der intet er at vise.
     """
     grupper: dict[str, dict[str, Any]] = {}
     taxse: list[str] = []
+    begraenset: list[str] = []
+    fejl: list[str] = []
     uden_active_flag: list[str] = []
     svarer = 0
 
@@ -158,7 +170,15 @@ def build_central_state_surface() -> dict[str, Any]:
             surface = _call(name, mod_path, fn_attr)
             ud[name] = surface
             svarer += 1
-            if surface.get("reason"):
+            tilstand = surface.get("access")
+            if tilstand == "error":
+                fejl.append(name)
+            elif tilstand == "denied":
+                begraenset.append(name)
+            elif tilstand is None and surface.get("reason"):
+                # Kun `_call`s egen syntetiske fejlmarkør tæller som tavshed. En
+                # producent der selv rapporterer en tilstand HAR svaret — også
+                # når svaret er «målt, intet fund».
                 taxse.append(name)
             elif "active" not in surface:
                 uden_active_flag.append(name)
@@ -177,12 +197,15 @@ def build_central_state_surface() -> dict[str, Any]:
         "active": True,
         "summary": (
             f"{svarer}/{total} central-lag svarer ({aktive} melder aktivt indhold, "
-            f"{len(uden_active_flag)} svarer uden active-flag)"
+            f"{len(uden_active_flag)} svarer uden active-flag, "
+            f"{len(begraenset)} er begrænset af policy, {len(fejl)} fejlede)"
         ),
         "svarer": svarer,
         "producenter": total,
         "aktive": aktive,
         "grupper": grupper,
         "taxse": taxse,
+        "begraenset": begraenset,
+        "fejl": fejl,
         "uden_active_flag": uden_active_flag,
     }

@@ -445,9 +445,9 @@ _Déjà Vu — ufrivillig erindring._
 | function | `surface_dejavu` | `(context=…, *, candidates=…, strong=…)` | Find ét associativt (svagt-bånd) minde der resonerer med nuet → ufrivilligt fragment. | [src](../../../core/services/central_dejavu.py#L99) |
 | function | `_observe` | `(frag)` | — | [src](../../../core/services/central_dejavu.py#L168) |
 | function | `build_dejavu_surface` | `()` | Seneste ufrivillige fragment + følt linje. Self-safe. | [src](../../../core/services/central_dejavu.py#L177) |
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_dejavu.py#L198) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_dejavu.py#L207) |
-| function | `record_dejavu` | `(*, trigger=…, last_visible_at=…)` | Cadence: lad et fragment boble op — og lad et UVENTET tab af måleevne lande. | [src](../../../core/services/central_dejavu.py#L215) |
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_dejavu.py#L217) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_dejavu.py#L226) |
+| function | `record_dejavu` | `(*, trigger=…, last_visible_at=…)` | Cadence: lad et fragment boble op — og lad et UVENTET tab af måleevne lande. | [src](../../../core/services/central_dejavu.py#L234) |
 
 ## `core/services/central_dissent.py`
 _HAL's Silence — den usagte uenighed._

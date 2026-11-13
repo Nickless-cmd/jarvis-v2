@@ -102,7 +102,7 @@ def surface_dejavu(context: str = "", *, candidates: list[dict[str, Any]] | None
     READ-ONLY. Self-safe. `candidates` kan injiceres (test); ellers hentes experiential memory."""
     ctx = context or _present_context()
     if not ctx:
-        return {"fragment": None, "reason": "intet nu at resonere mod"}
+        return {"fragment": None, "access": "ok", "reason": "intet nu at resonere mod"}
     cands = candidates if candidates is not None else _candidates()
     if cands is None:
         # Ikke det samme som tomt: vi fik ikke LOV at kigge. Forskellen skal kunne
@@ -146,7 +146,7 @@ def surface_dejavu(context: str = "", *, candidates: list[dict[str, Any]] | None
         if _WEAK_FLOOR <= s < strong and s > best_score:
             best, best_score = m, s
     if not best:
-        return {"fragment": None, "reason": "ingen resonans i déjà-vu-båndet"}
+        return {"fragment": None, "access": "ok", "reason": "ingen resonans i déjà-vu-båndet"}
     # (13/11-2026) Målt: kandidaterne bærer feltet `narrative` — ikke text/content/
     # summary. Fragmentet blev derfor tomt mens resonansen var 0.65: karakteren HAVDE
     # et fund og kastede det væk på et feltnavn. Feltlisten følger nu den faktiske form.
@@ -156,7 +156,7 @@ def surface_dejavu(context: str = "", *, candidates: list[dict[str, Any]] | None
         if text:
             break
     if not text:
-        return {"fragment": None, "reason": "minde uden tekstindhold",
+        return {"fragment": None, "access": "ok", "reason": "minde uden tekstindhold",
                 "resonance": round(best_score, 3)}
     frag = (text[:160] + "…") if len(text) > 160 else text
     out = {"fragment": frag, "resonance": round(best_score, 3), "involuntary": True,
@@ -175,15 +175,34 @@ def _observe(frag: dict[str, Any]) -> None:
 
 
 def build_dejavu_surface() -> dict[str, Any]:
-    """Seneste ufrivillige fragment + følt linje. Self-safe."""
+    """Seneste ufrivillige fragment + følt linje. Self-safe.
+
+    (13/11-2026, syvende runde — Bjørns femte indvending) Denne flade kollapsede
+    ALLE tilstande uden fragment til «Stille» — undtagen ``denied``. `record_dejavu`
+    havde lært at skelne et uventet tab fra et tomt fund, men visningsfladen gjorde
+    det ikke: en `access='error'` blev præsenteret som almindelig ro. To forbrugere
+    af samme måling fortalte altså hver sin historie om resultatet.
+
+    Fladen viderefører nu `access` og `reason` uanset udfald. En teknisk fejl kan
+    ikke læses som stilhed, fordi den ikke længere SER ud som stilhed.
+    """
     d = surface_dejavu()
-    if not d.get("fragment"):
-        if d.get("access") == "denied":
-            return {"fragment": None, "access": "denied",
-                    "felt": "Stille — men ikke fordi der intet er. Jeg må ikke kigge: "
-                            "private minder kræver en bruger-scope jeg ikke har her."}
-        return {"fragment": None, "felt": "Stille. Intet bobler op af sig selv lige nu."}
-    return {"fragment": d["fragment"], "resonance": d.get("resonance"), "felt": d["felt"]}
+    access = d.get("access") or "ok"
+    reason = d.get("reason")
+    if d.get("fragment"):
+        return {"fragment": d["fragment"], "resonance": d.get("resonance"),
+                "felt": d["felt"], "access": access}
+    if access == "denied":
+        return {"fragment": None, "access": "denied", "reason": reason,
+                "felt": "Stille — men ikke fordi der intet er. Jeg må ikke kigge: "
+                        "private minder kræver en bruger-scope jeg ikke har her."}
+    if access == "error":
+        return {"fragment": None, "access": "error", "reason": reason,
+                "felt": "Ikke stille — jeg kunne ikke kigge: "
+                        f"{reason or 'ukendt grund'}. Det er et tab af måleevne, "
+                        "ikke et tomt fund."}
+    return {"fragment": None, "access": access, "reason": reason,
+            "felt": "Stille. Intet bobler op af sig selv lige nu."}
 
 
 # (13/11-2026, sjette runde — Bjørns fjerde indvending) Nøglen tæller nu UVENTEDE tab,

@@ -189,3 +189,54 @@ def test_surface_siger_bevaegelse_naar_kun_dagsformen_flyttede():
         surf = ch.build_continuity_surface()
     assert surf["drifted"] == [], surf["drifted"]
     assert "bevægelse, ikke tab" in surf["felt"], surf["felt"]
+
+
+def test_naevneren_er_de_maalte_dimensioner_ikke_alle_overlevende():
+    """Bjørns tredje indvending, målt 13/11-2026: påstanden beskrev en anden
+    population end beregningen brugte.
+
+    `_same_content` svarer True for en dimension uden bærende felter. `attention`
+    har kun dagsform, blev aldrig sammenlignet — og talte alligevel med i nævneren
+    `len(survived)`. Målt på denne fixture: alle seks dimensioner overlever og kun
+    `self_model` er drifted. Den gamle nævner gav 5/6 = 83,3 %, de fem målelige
+    giver 4/5 = 80 %. Forskellen ER påstanden: «uændret» må ikke dække over
+    «aldrig undersøgt».
+    """
+    før = _full_self()
+    efter = _full_self()
+    efter["self_model"] = dict(efter["self_model"], identity_focus="noget andet")
+    kv = FakeKV({"central_self_state": efter,
+                 "continuity_snapshot": {"state": før, "ts": ch._now().isoformat()}})
+    g, s = _patch_kv(kv)
+    with g, s:
+        m = ch.measure_fidelity()
+
+    assert m["fidelity"] == 1.0, "alle seks kom igennem"
+    assert m["survived"] == 6
+    assert m["measured"] == 5, f"kun fem dimensioner har identitetsindhold: {m}"
+    assert m["unmeasured"] == ["attention"], m["unmeasured"]
+    assert m["same_content"] == 0.8, (
+        f"4/5 = 0.8 — ikke 5/6 = 0.833: {m['same_content']}")
+    assert m["same_content"] != round(5 / 6, 3), (
+        "den umålte dimension må ikke trække tallet op")
+
+
+def test_intet_maaleligt_indhold_giver_none_ikke_et_et_et():
+    """Overlever kun dimensioner uden identitetsindhold, er der intet at sammenligne.
+    Svaret skal være `None` — «ikke undersøgt» — ikke 1.0, der læses som «uændret»."""
+    før = {"attention": {"foreground": "kigge"}, "continuity": {"generation": 1}}
+    efter = {"attention": {"foreground": "noget andet"}, "continuity": {"generation": 2}}
+    kv = FakeKV({"central_self_state": efter,
+                 "continuity_snapshot": {"state": før, "ts": ch._now().isoformat()}})
+    g, s = _patch_kv(kv)
+    with g, s:
+        m = ch.measure_fidelity()
+        surf = ch.build_continuity_surface()
+
+    assert m["fidelity"] == 1.0
+    assert m["measured"] == 0
+    assert m["same_content"] is None, (
+        f"intet målt indhold må ikke blive 1.0: {m['same_content']}")
+    assert "intet af mig blev tabt" not in surf["felt"].lower() or \
+        "ingen af dem havde identitetsindhold" in surf["felt"], surf["felt"]
+    assert "identitetsindhold" in surf["felt"], surf["felt"]

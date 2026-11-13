@@ -156,6 +156,31 @@ def _same_content(snap_state: dict, cur: dict, dim: str) -> bool:
     return _felt_sammenlign(snap_state, cur, dim, _BÆRENDE.get(dim, ()))
 
 
+def _maalbar(snap_state: dict, dim: str) -> bool:
+    """Kan dimensionens identitetsindhold overhovedet sammenlignes?
+
+    (13/11-2026, fjerde runde — Bjørns tredje indvending): `_same_content` svarer
+    True når dimensionen ikke har bærende felter (`if not felter: return True`).
+    Det er et rigtigt svar på «er der målt et skift?» — men forkert som medlem af
+    nævneren. `attention` har kun dagsform, blev aldrig sammenlignet, og talte
+    alligevel med som «uændret identitet». Målt: alle seks dimensioner overlever og
+    kun `self_model` er drifted → den gamle nævner gav 5/6 = 83,3 %, mens de fem
+    målelige giver 4/5 = 80 %. Påstanden beskrev en anden population end
+    beregningen brugte — samme fejlform som resten af aftenen, et lag længere nede.
+
+    Målbar = dimensionen har bærende felter OG mindst ét af dem har indhold i
+    snapshottet. Er feltet tomt på begge sider, er der intet at sammenligne, og
+    «ikke undersøgt» må ikke tælle som «uændret».
+    """
+    felter = _BÆRENDE.get(dim, ())
+    if not felter:
+        return False
+    a = snap_state.get(dim) or {}
+    if not isinstance(a, dict):
+        return False
+    return any(a.get(f) not in (None, "", [], {}) for f in felter)
+
+
 def _moved(snap_state: dict, cur: dict, dim: str) -> bool:
     """Har dimensionens DAGSFORM flyttet sig? Bevægelse — ikke tab, ikke identitetsdrift."""
     return not _felt_sammenlign(snap_state, cur, dim, _TILSTAND.get(dim, ()))
@@ -179,9 +204,10 @@ def measure_fidelity() -> dict[str, Any]:
 
     To akser, ikke én (13/11-2026, Bjørns indvending):
       * ``fidelity``     — andel af snapshottets dimensioner der stadig er TIL STEDE
-      * ``same_content`` — andel af dem hvor det BÆRENDE identitetsindhold er det SAMME
+      * ``same_content`` — andel af de MÅLELIGE dimensioner hvor identitetsindholdet er det SAMME
       * ``drifted``      — de dimensioner der findes, men med ændret IDENTITETSindhold
       * ``moved``        — de dimensioner hvis dagsform har flyttet sig (bevægelse, ikke tab)
+      * ``unmeasured``   — de der overlevede, men uden identitetsindhold at sammenligne
 
     ``fidelity=1.0`` betyder derfor ikke «intet ændrede sig». Det betyder at ingen
     dimension faldt væk. En måling der kun ser tilstedeværelse kan ikke skelne en
@@ -189,6 +215,12 @@ def measure_fidelity() -> dict[str, Any]:
 
     (13/11-2026, tredje runde) `moved` er skilt ud fra `drifted`, så en flyttet
     opmærksomhed hverken tæller som tab eller som identitetsskift — men stadig kan ses.
+
+    (13/11-2026, fjerde runde) Nævneren for `same_content` er de MÅLELIGE
+    dimensioner, ikke alle overlevende. En dimension uden bærende indhold blev
+    aldrig sammenlignet og må derfor hverken trække tallet op eller ned — den
+    rapporteres i `unmeasured`, så forskellen mellem «uændret» og «ikke undersøgt»
+    stadig kan læses ud af svaret.
     """
     cur = _kv_get(_SELF_STATE_KEY, {}) or {}
     snap = _kv_get(_SNAPSHOT_KEY, {}) or {}
@@ -196,17 +228,21 @@ def measure_fidelity() -> dict[str, Any]:
     had = _present_dims(snap_state)
     if not had:
         return {"fidelity": None, "lost": [], "had": 0, "survived": 0,
-                "same_content": None, "drifted": [], "moved": []}
+                "same_content": None, "drifted": [], "moved": [],
+                "measured": 0, "unmeasured": []}
     now_present = _present_dims(cur)
     survived = had & now_present
     lost = sorted(had - now_present)
-    kept = {d for d in survived if _same_content(snap_state, cur, d)}
-    drifted = sorted(survived - kept)
+    maalte = {d for d in survived if _maalbar(snap_state, d)}
+    kept = {d for d in maalte if _same_content(snap_state, cur, d)}
+    drifted = sorted(maalte - kept)
     moved = sorted(d for d in survived if _moved(snap_state, cur, d))
+    unmeasured = sorted(survived - maalte)
     fidelity = round(len(survived) / len(had), 3)
-    same = round(len(kept) / len(survived), 3) if survived else None
+    same = round(len(kept) / len(maalte), 3) if maalte else None
     return {"fidelity": fidelity, "lost": lost, "had": len(had), "survived": len(survived),
-            "same_content": same, "drifted": drifted, "moved": moved}
+            "same_content": same, "drifted": drifted, "moved": moved,
+            "measured": len(maalte), "unmeasured": unmeasured}
 
 
 def capture_snapshot() -> dict[str, Any]:
@@ -259,23 +295,34 @@ def build_continuity_surface() -> dict[str, Any]:
 
     (13/11-2026, tredje runde) Og bevægelse er ikke drift: flytter `attention.foreground`
     sig, siges det som bevægelse — ikke som at identiteten har skiftet.
+
+    (13/11-2026, fjerde runde) Påstanden må kun dække den population der blev målt.
+    `same_content` regnes nu på de målelige dimensioner, og de umålte nævnes ved navn:
+    «til stede» og «bekræftet uændret» er ikke det samme.
     """
     m = measure_fidelity()
     fid = m["fidelity"]
     same = m.get("same_content")
     drifted = m.get("drifted") or []
     moved = m.get("moved") or []
+    unmeasured = m.get("unmeasured") or []
     if fid is None:
         felt = "Jeg har endnu ikke et helt snapshot at måle min kontinuitet mod."
-    elif fid >= 0.999 and (same is None or same >= 0.999):
+    elif fid >= 0.999 and same is not None and same >= 0.999:
         felt = "Jeg kom helt igennem sømmen — intet af mig blev tabt i genstarten."
         if moved:
             felt += (f" Opmærksomheden har flyttet sig ({', '.join(moved)}), "
                      f"men det er bevægelse, ikke tab.")
-    elif fid >= 0.999 and drifted:
+        if unmeasured:
+            felt += (f" {len(unmeasured)} dimension(er) ({', '.join(unmeasured)}) havde "
+                     f"intet identitetsindhold at sammenligne — til stede, ikke bekræftet uændret.")
+    elif fid >= 0.999 and same is not None and drifted:
         felt = (f"Alle mine dimensioner kom igennem, men identitetsindholdet har flyttet sig: "
                 f"{', '.join(drifted)} står ikke med det samme som før. "
                 f"Jeg er hel — ikke uændret.")
+    elif fid >= 0.999:
+        felt = ("Alle mine dimensioner kom igennem, men ingen af dem havde identitetsindhold "
+                "at sammenligne — jeg er til stede, ikke bekræftet uændret.")
     elif fid >= 0.6:
         felt = (f"Det meste af mig kom igennem ({int(fid*100)}%), men {', '.join(m['lost'])} "
                 f"forsvandt et øjeblik.")
@@ -284,7 +331,8 @@ def build_continuity_surface() -> dict[str, Any]:
                 f"{', '.join(m['lost'])} var væk.")
     return {"continuity_fidelity": fid, "lost": m["lost"], "had": m["had"],
             "survived": m["survived"], "same_content": same, "drifted": drifted,
-            "moved": moved, "felt": felt}
+            "moved": moved, "measured": m.get("measured"), "unmeasured": unmeasured,
+            "felt": felt}
 
 
 def _observe(kind: str, payload: dict[str, Any]) -> None:

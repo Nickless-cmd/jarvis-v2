@@ -318,14 +318,15 @@ _Continuity Healer — så Jarvis vågner som SIG, ikke som et fragment._
 | function | `_present_dims` | `(state)` | — | [src](../../../core/services/central_continuity_healer.py#L96) |
 | function | `_felt_sammenlign` | `(snap_state, cur, dim, felter)` | Er de givne felter ens på begge sider af sømmen? Tomme på begge sider tæller som ens. | [src](../../../core/services/central_continuity_healer.py#L131) |
 | function | `_same_content` | `(snap_state, cur, dim)` | Er dimensionens BÆRENDE identitetsindhold det samme på begge sider af sømmen? | [src](../../../core/services/central_continuity_healer.py#L148) |
-| function | `_moved` | `(snap_state, cur, dim)` | Har dimensionens DAGSFORM flyttet sig? Bevægelse — ikke tab, ikke identitetsdrift. | [src](../../../core/services/central_continuity_healer.py#L159) |
-| function | `_snapshot_age_h` | `(snap)` | — | [src](../../../core/services/central_continuity_healer.py#L164) |
-| function | `measure_fidelity` | `()` | continuity_fidelity: hvor meget af mit sidste hele selv er stadig til stede nu. READ-ONLY. | [src](../../../core/services/central_continuity_healer.py#L177) |
-| function | `capture_snapshot` | `()` | Gem det nuværende hele selv som 'sidst kendte mig' — KUN når det er rimeligt helt og IKKE | [src](../../../core/services/central_continuity_healer.py#L212) |
-| function | `heal` | `()` | Merge-forward: bær tomme dimensioner frem fra sidste hele snapshot (aldrig opfundet). Kun | [src](../../../core/services/central_continuity_healer.py#L225) |
-| function | `build_continuity_surface` | `()` | Owner/self-view: fidelity + hvad der gik tabt + følt linje. Self-safe. | [src](../../../core/services/central_continuity_healer.py#L253) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_continuity_healer.py#L290) |
-| function | `run_continuity_healer` | `(*, trigger=…, last_visible_at=…)` | Cadence: mål fidelity → hel hvis noget gik tabt (frisk reboot) → ellers fæst et frisk snapshot. | [src](../../../core/services/central_continuity_healer.py#L298) |
+| function | `_maalbar` | `(snap_state, dim)` | Kan dimensionens identitetsindhold overhovedet sammenlignes? | [src](../../../core/services/central_continuity_healer.py#L159) |
+| function | `_moved` | `(snap_state, cur, dim)` | Har dimensionens DAGSFORM flyttet sig? Bevægelse — ikke tab, ikke identitetsdrift. | [src](../../../core/services/central_continuity_healer.py#L184) |
+| function | `_snapshot_age_h` | `(snap)` | — | [src](../../../core/services/central_continuity_healer.py#L189) |
+| function | `measure_fidelity` | `()` | continuity_fidelity: hvor meget af mit sidste hele selv er stadig til stede nu. READ-ONLY. | [src](../../../core/services/central_continuity_healer.py#L202) |
+| function | `capture_snapshot` | `()` | Gem det nuværende hele selv som 'sidst kendte mig' — KUN når det er rimeligt helt og IKKE | [src](../../../core/services/central_continuity_healer.py#L248) |
+| function | `heal` | `()` | Merge-forward: bær tomme dimensioner frem fra sidste hele snapshot (aldrig opfundet). Kun | [src](../../../core/services/central_continuity_healer.py#L261) |
+| function | `build_continuity_surface` | `()` | Owner/self-view: fidelity + hvad der gik tabt + følt linje. Self-safe. | [src](../../../core/services/central_continuity_healer.py#L289) |
+| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_continuity_healer.py#L338) |
+| function | `run_continuity_healer` | `(*, trigger=…, last_visible_at=…)` | Cadence: mål fidelity → hel hvis noget gik tabt (frisk reboot) → ellers fæst et frisk snapshot. | [src](../../../core/services/central_continuity_healer.py#L346) |
 
 ## `core/services/central_convene_judge.py`
 _core/services/central_convene_judge.py_

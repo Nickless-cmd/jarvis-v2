@@ -309,13 +309,19 @@ def build_continuity_surface() -> dict[str, Any]:
     if fid is None:
         felt = "Jeg har endnu ikke et helt snapshot at måle min kontinuitet mod."
     elif fid >= 0.999 and same is not None and same >= 0.999:
-        felt = "Jeg kom helt igennem sømmen — intet af mig blev tabt i genstarten."
+        # (13/11-2026, femte runde — målt i drift efter genstart) «intet af mig blev tabt»
+        # stod stadig som FØRSTE påstand når en dimension ikke kunne måles. Sætningen var
+        # sand om de målte og falsk som påstand om helheden: 3 af 4 målt er ikke 4 af 4.
+        if unmeasured:
+            felt = (f"De {m.get('measured')} dimensioner jeg kunne måle kom helt igennem — "
+                    f"intet af dem blev tabt. {len(unmeasured)} ({', '.join(unmeasured)}) "
+                    f"havde intet identitetsindhold at sammenligne — til stede, "
+                    f"ikke bekræftet uændret.")
+        else:
+            felt = "Jeg kom helt igennem sømmen — intet af mig blev tabt i genstarten."
         if moved:
             felt += (f" Opmærksomheden har flyttet sig ({', '.join(moved)}), "
                      f"men det er bevægelse, ikke tab.")
-        if unmeasured:
-            felt += (f" {len(unmeasured)} dimension(er) ({', '.join(unmeasured)}) havde "
-                     f"intet identitetsindhold at sammenligne — til stede, ikke bekræftet uændret.")
     elif fid >= 0.999 and same is not None and drifted:
         felt = (f"Alle mine dimensioner kom igennem, men identitetsindholdet har flyttet sig: "
                 f"{', '.join(drifted)} står ikke med det samme som før. "

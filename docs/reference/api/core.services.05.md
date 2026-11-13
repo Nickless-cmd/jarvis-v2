@@ -325,8 +325,8 @@ _Continuity Healer — så Jarvis vågner som SIG, ikke som et fragment._
 | function | `capture_snapshot` | `()` | Gem det nuværende hele selv som 'sidst kendte mig' — KUN når det er rimeligt helt og IKKE | [src](../../../core/services/central_continuity_healer.py#L248) |
 | function | `heal` | `()` | Merge-forward: bær tomme dimensioner frem fra sidste hele snapshot (aldrig opfundet). Kun | [src](../../../core/services/central_continuity_healer.py#L261) |
 | function | `build_continuity_surface` | `()` | Owner/self-view: fidelity + hvad der gik tabt + følt linje. Self-safe. | [src](../../../core/services/central_continuity_healer.py#L289) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_continuity_healer.py#L338) |
-| function | `run_continuity_healer` | `(*, trigger=…, last_visible_at=…)` | Cadence: mål fidelity → hel hvis noget gik tabt (frisk reboot) → ellers fæst et frisk snapshot. | [src](../../../core/services/central_continuity_healer.py#L346) |
+| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_continuity_healer.py#L344) |
+| function | `run_continuity_healer` | `(*, trigger=…, last_visible_at=…)` | Cadence: mål fidelity → hel hvis noget gik tabt (frisk reboot) → ellers fæst et frisk snapshot. | [src](../../../core/services/central_continuity_healer.py#L352) |
 
 ## `core/services/central_convene_judge.py`
 _core/services/central_convene_judge.py_

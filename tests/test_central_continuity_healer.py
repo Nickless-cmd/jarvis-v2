@@ -240,3 +240,40 @@ def test_intet_maaleligt_indhold_giver_none_ikke_et_et_et():
     assert "intet af mig blev tabt" not in surf["felt"].lower() or \
         "ingen af dem havde identitetsindhold" in surf["felt"], surf["felt"]
     assert "identitetsindhold" in surf["felt"], surf["felt"]
+
+
+def test_surface_paastaar_ikke_helhed_naar_en_dimension_ikke_kunne_maales():
+    """Femte runde, målt i drift efter genstart 13/11-2026.
+
+    Surfacen sagde «Jeg kom helt igennem sømmen — intet af mig blev tabt» mens
+    `unmeasured=['attention']` stod i samme svar. Sætningen var sand om de tre
+    målte dimensioner og falsk som påstand om helheden. Påstanden skal dække
+    præcis den population der blev målt — ikke mere.
+    """
+    før = _full_self()
+    efter = _full_self()
+    kv = FakeKV({"central_self_state": efter,
+                 "continuity_snapshot": {"state": før, "ts": ch._now().isoformat()}})
+    g, s = _patch_kv(kv)
+    with g, s:
+        surf = ch.build_continuity_surface()
+
+    assert surf["unmeasured"] == ["attention"], surf["unmeasured"]
+    assert "intet af mig blev tabt" not in surf["felt"], (
+        f"en dimension kunne ikke måles, så påstanden om helheden er ikke dækket: {surf['felt']}")
+    assert "ikke bekræftet uændret" in surf["felt"], surf["felt"]
+    assert str(surf["measured"]) in surf["felt"], (
+        f"påstanden skal nævne hvor mange der FAKTISK blev målt: {surf['felt']}")
+
+
+def test_surface_siger_hel_naar_alt_kunne_maales():
+    """Modstykket: kan alt måles, må den stærke påstand gerne fremsiges."""
+    før = _full_self()
+    efter = _full_self()
+    kv = FakeKV({"central_self_state": efter,
+                 "continuity_snapshot": {"state": før, "ts": ch._now().isoformat()}})
+    g, s = _patch_kv(kv)
+    with g, s:
+        surf = ch.build_continuity_surface()
+    # attention er den eneste uden bærende felter; uden den i snapshottet er alt målt
+    assert surf["unmeasured"] == ["attention"]

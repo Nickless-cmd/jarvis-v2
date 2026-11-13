@@ -286,20 +286,22 @@ _Scor frosne forudsigelser om min egen adfaerd — mekanisk, ikke paa hukommelse
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_kanonisk` | `(post)` | — | [src](../../../scripts/score_frozen_predictions.py#L65) |
-| function | `frozen_hash` | `(post)` | Fingerprint af de felter der ikke maa aendres efter frysning. | [src](../../../scripts/score_frozen_predictions.py#L70) |
-| function | `_nu` | `()` | — | [src](../../../scripts/score_frozen_predictions.py#L75) |
-| function | `_parse` | `(ts)` | — | [src](../../../scripts/score_frozen_predictions.py#L79) |
-| function | `verificer_forsegling` | `(poster, forsegling)` | Id'er hvis frosne felter er aendret siden forseglingen blev skrevet. | [src](../../../scripts/score_frozen_predictions.py#L90) |
-| function | `_arkiv_aeldste` | `()` | Foerste (aeldste) arkiverede hash pr. post-id fra governance_ledger. | [src](../../../scripts/score_frozen_predictions.py#L110) |
-| function | `arkiver_forsegling` | `(poster)` | Skriv hashes til governance_ledger for poster der ikke er arkiveret endnu. | [src](../../../scripts/score_frozen_predictions.py#L135) |
-| function | `_hent_tal` | `(conn, sql)` | Koer én laesende spoergring og returnér foerste kolonne som tal. | [src](../../../scripts/score_frozen_predictions.py#L168) |
-| function | `_hent_fra_state` | `(spec)` | Laes en aggregeret vaerdi fra en state_store JSON-noegle. | [src](../../../scripts/score_frozen_predictions.py#L180) |
-| function | `evaluer` | `(post, conn, nu=…)` | Afgoer om én post kan scores nu, og i saa fald om den ramte. | [src](../../../scripts/score_frozen_predictions.py#L209) |
-| function | `kalibrering` | `(poster)` | Kalibrering paa HAENDELSE-niveau, ikke post-niveau. | [src](../../../scripts/score_frozen_predictions.py#L239) |
-| function | `score` | `(fil=…, db=…, *, dry_run=…, nu=…, arkiver=…)` | Scor alle modne poster. Skriver kun til filen hvis noget faktisk blev scoret. | [src](../../../scripts/score_frozen_predictions.py#L309) |
-| function | `_vis` | `(resultat)` | — | [src](../../../scripts/score_frozen_predictions.py#L370) |
-| function | `main` | `()` | — | [src](../../../scripts/score_frozen_predictions.py#L403) |
+| function | `_kanonisk` | `(post, version=…)` | — | [src](../../../scripts/score_frozen_predictions.py#L89) |
+| function | `frozen_hash` | `(post, version=…)` | Fingerprint af de felter der ikke maa aendres efter frysning. | [src](../../../scripts/score_frozen_predictions.py#L95) |
+| function | `_post_version` | `(post)` | Hvilken hash-regel posten blev forseglet under. | [src](../../../scripts/score_frozen_predictions.py#L105) |
+| function | `_nu` | `()` | — | [src](../../../scripts/score_frozen_predictions.py#L122) |
+| function | `_parse` | `(ts)` | — | [src](../../../scripts/score_frozen_predictions.py#L126) |
+| function | `verificer_forsegling` | `(poster, forsegling)` | Id'er hvis frosne felter er aendret siden forseglingen blev skrevet. | [src](../../../scripts/score_frozen_predictions.py#L137) |
+| function | `_arkiv_aeldste` | `()` | Foerste (aeldste) arkiverede hash pr. post-id fra governance_ledger. | [src](../../../scripts/score_frozen_predictions.py#L157) |
+| function | `stemple_versioner` | `(data)` | Saet ``_forsegling_version`` paa poster forseglet under den gamle regel. | [src](../../../scripts/score_frozen_predictions.py#L182) |
+| function | `arkiver_forsegling` | `(poster)` | Skriv hashes til governance_ledger for poster der ikke er arkiveret endnu. | [src](../../../scripts/score_frozen_predictions.py#L209) |
+| function | `_hent_tal` | `(conn, sql)` | Koer én laesende spoergring og returnér foerste kolonne som tal. | [src](../../../scripts/score_frozen_predictions.py#L242) |
+| function | `_hent_fra_state` | `(spec)` | Laes en aggregeret vaerdi fra en state_store JSON-noegle. | [src](../../../scripts/score_frozen_predictions.py#L254) |
+| function | `evaluer` | `(post, conn, nu=…)` | Afgoer om én post kan scores nu, og i saa fald om den ramte. | [src](../../../scripts/score_frozen_predictions.py#L283) |
+| function | `kalibrering` | `(poster)` | Kalibrering paa HAENDELSE-niveau, ikke post-niveau. | [src](../../../scripts/score_frozen_predictions.py#L313) |
+| function | `score` | `(fil=…, db=…, *, dry_run=…, nu=…, arkiver=…)` | Scor alle modne poster. Skriver kun til filen hvis noget faktisk blev scoret. | [src](../../../scripts/score_frozen_predictions.py#L383) |
+| function | `_vis` | `(resultat)` | — | [src](../../../scripts/score_frozen_predictions.py#L475) |
+| function | `main` | `()` | — | [src](../../../scripts/score_frozen_predictions.py#L513) |
 
 ## `scripts/seed_cognitive_state.py`
 _Seed cognitive state tables with initial values based on known context._

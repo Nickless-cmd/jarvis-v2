@@ -30,6 +30,22 @@ from scripts import score_frozen_predictions as sfp
 
 NU = datetime(2026, 11, 20, 12, 0, tzinfo=UTC)
 
+# Fanges FØR autouse-fixturen patcher den væk, så arkiv-testen kan kalde den ægte.
+_AEGTE_ARKIVER = sfp.arkiver_forsegling
+
+
+@pytest.fixture(autouse=True)
+def _ingen_produktions_ledger(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Testene må ALDRIG skrive til den rigtige governance-ledger.
+
+    (13/11-2026) `score()` arkiverer som standard, så hver test der kaldte den
+    skrev sine test-id'er ind i produktionsledgeren — og efterlod dermed en
+    hash som de efterfølgende tests blev målt imod. Det gjorde ni tests røde
+    af en årsag der lå i en helt anden test. Arkivering testes eksplicit i
+    `test_arkiv_*` med monkeypatch, så den ægte funktion dækkes dér.
+    """
+    monkeypatch.setattr(sfp, "arkiver_forsegling", lambda poster: 0)
+
 
 @pytest.fixture()
 def rigtig_db(tmp_path: Path) -> Path:
@@ -78,7 +94,7 @@ def test_hash_fanger_aendret_sandsynlighed() -> None:
     forsegling = {"T1": sfp.frozen_hash(post)}
 
     post["probability"] = 0.95
-    aendret = sfp.verifikation = sfp.verificer_forsegling([post], forsegling)
+    aendret = sfp.verificer_forsegling([post], forsegling)
 
     assert aendret == ["T1"]
 
@@ -316,7 +332,10 @@ def test_arkiv_skriver_kun_poster_der_ikke_er_arkiveret(monkeypatch: pytest.Monk
     monkeypatch.setattr(db_governance_ledger, "read_ledger", _fake_read)
     monkeypatch.setattr(db_governance_ledger, "record_mutation", _fake_record)
 
-    nye = sfp.arkiver_forsegling([_post(id="F1"), _post(id="F3")])
+    # Den autouse-fixture slår arkiveringen fra for at beskytte den rigtige
+    # ledger; her testes netop den funktion, så originalen kaldes eksplicit.
+    aegte = _AEGTE_ARKIVER
+    nye = aegte([_post(id="F1"), _post(id="F3")])
 
     assert nye == 1
     assert skrevne == [("frozen_predictions", "F3")]
@@ -367,3 +386,131 @@ def test_aendring_af_fil_og_hash_opdages_mod_arkivet(
     assert resultat["tampered"] == []
     # Men arkivet afslører at P er rørt.
     assert resultat["arkiv_tampered"] == ["T1"]
+
+
+# ── (13/11-2026) Maalereglen skal vaere forseglet, og en brudt forsegling ──────
+# ── skal BLOKERE — ikke bare rapporteres. Bjørns to fund. ─────────────────────
+
+
+def test_aendret_sql_bryder_forseglingen(rigtig_db: Path, tmp_path: Path) -> None:
+    """Maalereglen er en del af forudsigelsen, ikke en detalje ved siden af.
+
+    Foer daekkede hashen kun id+claim+op+threshold+probability+score_at. Saa
+    kunne spoergringen der afgoer udfaldet skiftes ud mens P stod stille — og
+    forseglingen ville ikke se det. Det er praecis den slags bagdoer der goer
+    en kalibrering vaerdiloes.
+    """
+    post = _post(threshold=3)
+    forsegling = {"T1": sfp.frozen_hash(post)}
+
+    post["sql"] = "SELECT COUNT(*) FROM beslutninger WHERE status='revoked'"
+
+    assert sfp.verificer_forsegling([post], forsegling) == ["T1"]
+
+
+def test_aendret_kilde_bryder_forseglingen(rigtig_db: Path, tmp_path: Path) -> None:
+    """Samme for `kilde`: en JSON-kilde er ogsaa en maaleregel."""
+    post = _post(
+        sql=None,
+        kilde={
+            "noegle": "tick_quality_evaluations",
+            "dato_felt": "evaluated_at",
+            "dato": "2026-11-20",
+            "vaerdi_felt": "score",
+            "min_n": 2,
+        },
+    )
+    forsegling = {"T1": sfp.frozen_hash(post)}
+
+    post["kilde"] = dict(post["kilde"], min_n=1)
+
+    assert sfp.verificer_forsegling([post], forsegling) == ["T1"]
+
+
+def test_brudt_forsegling_blokerer_scoring_og_kalibrering(
+    rigtig_db: Path, tmp_path: Path
+) -> None:
+    """En aendring der OPDAGES maa ikke samtidig paavirke Brier.
+
+    Foer blev `tampered` beregnet og derefter ignoreret: posten blev scoret,
+    skrevet som hit og taget med i kalibreringen. En forsegling der ikke
+    standser noget er dekoration.
+    """
+    post = _post(threshold=3)
+    forsegling = {"T1": sfp.frozen_hash(post)}
+    post["probability"] = 0.99  # aendret efter frysning
+    fil = _fil(tmp_path, [post], forsegling=forsegling)
+
+    resultat = sfp.score(fil, rigtig_db, nu=NU)
+
+    assert resultat["tampered"] == ["T1"]
+    assert resultat["rapport"][0]["status"] == "forsegling_brudt"
+    # Ingen dom, ingen skrivning, og intet datapunkt i kalibreringen.
+    assert "hit" not in post
+    assert resultat["skrev"] is False
+    assert resultat["kalibrering"]["n_events"] == 0
+    assert resultat["kalibrering"]["brier"] is None
+
+
+def test_brudt_forsegling_uden_arkiv_blokerer_ogsaa(
+    rigtig_db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ogsaa naar kun ledger-arkivet ser aendringen — filen selv er konsistent."""
+    post = _post(probability=0.9)
+    oprindelig = sfp.frozen_hash(post)
+    post["probability"] = 0.3
+    fil = _fil(tmp_path, [post], forsegling={"T1": sfp.frozen_hash(post)})
+
+    from core.runtime import db_governance_ledger
+
+    monkeypatch.setattr(
+        db_governance_ledger,
+        "read_ledger",
+        lambda area=None, limit=50: [
+            {"key": "T1", "ts": "2026-11-12T20:41:00+00:00", "value": {"frozen_hash": oprindelig}}
+        ],
+    )
+
+    resultat = sfp.score(fil, rigtig_db, nu=NU, arkiver=False)
+
+    assert resultat["tampered"] == []
+    assert resultat["arkiv_tampered"] == ["T1"]
+    assert resultat["rapport"][0]["status"] == "forsegling_brudt"
+    assert resultat["kalibrering"]["n_events"] == 0
+
+
+def test_v1_forseglet_post_stemples_og_scores(
+    rigtig_db: Path, tmp_path: Path
+) -> None:
+    """En post forseglet under den gamle, smallere regel maa ikke meldes brudt.
+
+    Ellers ville den bredere hash goere ti sunde poster til falske alarmer —
+    praecis den fejlform aftenen handler om.
+    """
+    post = _post(threshold=3)
+    v1_hash = sfp.frozen_hash(post, 1)
+    fil = _fil(tmp_path, [post], forsegling={"T1": v1_hash})
+
+    resultat = sfp.score(fil, rigtig_db, nu=NU)
+
+    assert resultat["tampered"] == []
+    assert resultat["stemplet"] == ["T1"]
+    assert resultat["rapport"][0]["status"] == "scoret"
+    # Stemplingen er skrevet, saa den ikke skal gentages hver koersel.
+    gemt = json.loads(fil.read_text(encoding="utf-8"))
+    assert gemt["forudsigelser"][0]["_forsegling_version"] == 1
+
+
+def test_post_uden_match_i_nogen_version_stemples_ikke(
+    rigtig_db: Path, tmp_path: Path
+) -> None:
+    """En aendret post maa ikke kunne maskeres som en version-opgradering."""
+    post = _post(probability=0.9)
+    post["probability"] = 0.2  # aendret: matcher hverken v1 eller v2
+    fil = _fil(tmp_path, [post], forsegling={"T1": "deadbeefdeadbeef"})
+
+    resultat = sfp.score(fil, rigtig_db, nu=NU)
+
+    assert resultat["stemplet"] == []
+    assert resultat["uafklaret"] == ["T1"]
+    assert resultat["rapport"][0]["status"] == "forsegling_brudt"

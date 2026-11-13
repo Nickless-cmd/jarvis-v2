@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10145/18661 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10147/18663 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -38,7 +38,7 @@ Generated from source. 10145/18661 functions/methods documented (54%). The list 
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 10 | 11 | 90% |
-| `scripts` | 327 | 667 | 49% |
+| `scripts` | 329 | 669 | 49% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -2640,7 +2640,7 @@ Generated from source. 10145/18661 functions/methods documented (54%). The list 
 - `scripts/reset_heartbeat_state.py` :: `main` (L36)
 - `scripts/rewrite_legacy_memory_provenance.py` :: `main` (L57)
 - `scripts/ryd_ejerloese_kandidater.py` :: `main` (L33)
-- `scripts/score_frozen_predictions.py` :: `main` (L403)
+- `scripts/score_frozen_predictions.py` :: `main` (L513)
 - `scripts/setup_google_calendar.py` :: `main` (L17)
 - `scripts/signal_noise_cleanup.py` :: `cleanup_signal_noise` (L103)
 - `scripts/signal_noise_cleanup.py` :: `main` (L191)

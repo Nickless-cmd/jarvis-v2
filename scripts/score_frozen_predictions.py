@@ -13,8 +13,12 @@ Tre regler fra Bjoern (12/11-2026), haandhaevet her:
    ved kalibrering, men separate tidsstemplede vurderinger ved revisionsanalyse.
    Derfor rapporteres ``n_events`` (grupper) ved siden af ``n_poster``.
 2. **Uforanderlighed.** ``probability`` maa ikke aendres efter frysning.
-   ``frozen_hash`` daekker id+claim+op+threshold+probability+score_at og
-   verificeres ved hver koersel; aendrede poster rapporteres som ``tampered``.
+   ``frozen_hash`` daekker id+claim+op+threshold+probability+score_at+sql+kilde
+   og verificeres ved hver koersel; aendrede poster rapporteres som ``tampered``
+   OG udelades fra scoring og kalibrering. (13/11-2026: maalereglen — ``sql``
+   og ``kilde`` — var ikke daekket, saa spoergringen der afgoer udfaldet kunne
+   skiftes ud mens sandsynligheden stod stille. Og en opdaget aendring blev
+   rapporteret men ikke blokeret, saa den kunne paavirke Brier alligevel.)
 3. **Uafhaengighed.** Antallet af datapunkter maa ikke forveksles med antallet
    af uafhaengige haendelser — derfor er gruppering og den maalte korrelation
    en del af filen, ikke en note ved siden af.
@@ -46,7 +50,27 @@ _ROD = Path(__file__).resolve().parents[1]
 if str(_ROD) not in sys.path:
     sys.path.insert(0, str(_ROD))
 
-HASH_FELTER = ("id", "claim", "op", "threshold", "probability", "score_at")
+# (13/11-2026) `sql` og `kilde` SKAL med. Uden dem kunne maalereglen — den
+# spoergring der afgoer udfaldet — skiftes ud mens sandsynligheden stod stille,
+# og forseglingen ville ikke se det. Saa var det ikke forudsigelsen der blev
+# laast, men kun tallet ved siden af den. `frozen_hash` er en hash af netop
+# disse felter, saa en post forseglet foer denne rettelse faar en NY hash —
+# derfor skrives den gamle hash ind i `_forsegling_version` nedenfor.
+HASH_FELTER = (
+    "id",
+    "claim",
+    "op",
+    "threshold",
+    "probability",
+    "score_at",
+    "sql",
+    "kilde",
+)
+
+# Version 1 = de seks oprindelige felter (12/11-2026). Version 2 tilfoejer
+# maalereglen. En post maa ikke kunne skifte version efter frysning: ellers
+# kunne man skifte til den svagere regel og kalde det en opgradering.
+FORSEGLING_VERSION = 2
 
 STANDARD_FIL = Path.home() / ".jarvis-v2" / "state" / "frozen_predictions.json"
 STANDARD_DB = Path.home() / ".jarvis-v2" / "state" / "jarvis.db"
@@ -62,14 +86,37 @@ _OPS: dict[str, Any] = {
 _BUCKETS = ((0.0, 0.2), (0.2, 0.4), (0.4, 0.6), (0.6, 0.8), (0.8, 1.01))
 
 
-def _kanonisk(post: dict[str, Any]) -> str:
-    delmaengde = {k: post.get(k) for k in HASH_FELTER}
+def _kanonisk(post: dict[str, Any], version: int = FORSEGLING_VERSION) -> str:
+    felter = HASH_FELTER if version >= 2 else HASH_FELTER[:6]
+    delmaengde = {k: post.get(k) for k in felter}
     return json.dumps(delmaengde, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
 
-def frozen_hash(post: dict[str, Any]) -> str:
-    """Fingerprint af de felter der ikke maa aendres efter frysning."""
-    return hashlib.sha256(_kanonisk(post).encode("utf-8")).hexdigest()[:16]
+def frozen_hash(post: dict[str, Any], version: int = FORSEGLING_VERSION) -> str:
+    """Fingerprint af de felter der ikke maa aendres efter frysning.
+
+    ``version`` goer det muligt at verificere en post forseglet under den
+    gamle, smallere regel (v1) uden at melde den som brudt — og uden at lade
+    den skifte til den bredere regel bagefter.
+    """
+    return hashlib.sha256(_kanonisk(post, version).encode("utf-8")).hexdigest()[:16]
+
+
+def _post_version(post: dict[str, Any]) -> int:
+    """Hvilken hash-regel posten blev forseglet under.
+
+    En ugyldig version er ikke «den nyeste» — det ville vaere at gaette paa
+    forseglingens grundlag. Ukendt vaerdi giver derfor en fejl, som
+    `verificer_forsegling` ikke kan sluge: hellere en post der ikke kan
+    scores end en post der scores mod den forkerte regel.
+    """
+    raa = post.get("_forsegling_version")
+    if raa is None:
+        return FORSEGLING_VERSION
+    version = int(raa)  # ValueError/TypeError => ugyldig forsegling, ikke et default
+    if version not in (1, FORSEGLING_VERSION):
+        raise ValueError(f"ukendt forsegling-version: {raa!r}")
+    return version
 
 
 def _nu() -> datetime:
@@ -99,7 +146,7 @@ def verificer_forsegling(
             continue
         pid = str(p.get("id"))
         forventet = forsegling.get(pid)
-        if forventet and forventet != frozen_hash(p):
+        if forventet and forventet != frozen_hash(p, _post_version(p)):
             aendret.append(pid)
     return aendret
 
@@ -132,6 +179,33 @@ def _arkiv_aeldste() -> dict[str, str]:
     return {pid: h for pid, (_ts, h) in aeldst.items()}
 
 
+def stemple_versioner(data: dict[str, Any]) -> dict[str, Any]:
+    """Saet ``_forsegling_version`` paa poster forseglet under den gamle regel.
+
+    (13/11-2026) Da ``sql`` og ``kilde`` kom med i hashen, ville hver post
+    forseglet under v1 ellers blive meldt som brudt — en falsk alarm af
+    praecis den slags aftenen handler om. Stemplingen er kun tilladelig naar
+    hashen faktisk matcher v1: en post der ikke matcher nogen version er
+    aendret, og den maa ikke kunne maskeres som en opgradering.
+    """
+    forsegling = data.get("forsegling") or {}
+    stemplet: list[str] = []
+    uafklaret: list[str] = []
+    for p in data.get("forudsigelser") or []:
+        if not isinstance(p, dict) or "_forsegling_version" in p:
+            continue
+        pid = str(p.get("id"))
+        forventet = forsegling.get(pid)
+        if not forventet:
+            continue
+        if forventet == frozen_hash(p, 1):
+            p["_forsegling_version"] = 1
+            stemplet.append(pid)
+        elif forventet != frozen_hash(p, FORSEGLING_VERSION):
+            uafklaret.append(pid)
+    return {"stemplet": stemplet, "uafklaret": uafklaret}
+
+
 def arkiver_forsegling(poster: list[dict[str, Any]]) -> int:
     """Skriv hashes til governance_ledger for poster der ikke er arkiveret endnu.
 
@@ -154,7 +228,7 @@ def arkiver_forsegling(poster: list[dict[str, Any]]) -> int:
             _ARKIV_AREA,
             pid,
             {
-                "frozen_hash": frozen_hash(p),
+                "frozen_hash": frozen_hash(p, _post_version(p)),
                 "probability": p.get("probability"),
                 "claim": p.get("claim"),
                 "frozen_at": p.get("frozen_at"),
@@ -320,6 +394,9 @@ def score(
     nu = nu or _nu()
 
     data = json.loads(fil.read_text(encoding="utf-8"))
+    # Stem v1-forseglede poster foer verifikationen, saa en bredere hash-regel
+    # ikke melder sunde poster som brudte.
+    stempling = stemple_versioner(data)
     poster = data.get("forudsigelser") or []
     aendret = verificer_forsegling(poster, data.get("forsegling"))
 
@@ -329,14 +406,31 @@ def score(
         for p in poster
         if isinstance(p, dict)
         and str(p.get("id")) in arkiv
-        and arkiv[str(p.get("id"))] != frozen_hash(p)
+        and arkiv[str(p.get("id"))] != frozen_hash(p, _post_version(p))
     ]
+
+    # (13/11-2026) En brudt forsegling SKAL blokere, ikke bare rapporteres.
+    # Foer blev `tampered` beregnet og derefter ignoreret: posten blev scoret,
+    # skrevet som hit og taget med i Brier — saa en aendring kunne opdages og
+    # samtidig paavirke den officielle kalibrering. En forsegling der ikke
+    # standser noget er dekoration. Posten udelades nu fra BOTH scoring og
+    # kalibrering, og staar i rapporten som `forsegling_brudt`.
+    brudt = set(aendret) | set(arkiv_aendret)
 
     conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     try:
         rapport: list[dict[str, Any]] = []
         for p in poster:
             if not isinstance(p, dict):
+                continue
+            if str(p.get("id")) in brudt:
+                rapport.append(
+                    {
+                        "id": p.get("id"),
+                        "status": "forsegling_brudt",
+                        "grund": "posten er aendret efter frysning — den kan ikke scores",
+                    }
+                )
                 continue
             r = evaluer(p, conn, nu)
             r["id"] = p.get("id")
@@ -349,19 +443,30 @@ def score(
         conn.close()
 
     skrev = False
-    if not dry_run and any(x["status"] == "scoret" for x in rapport):
+    if not dry_run and (
+        any(x["status"] == "scoret" for x in rapport) or stempling["stemplet"]
+    ):
         data["forudsigelser"] = poster
         fil.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
         skrev = True
 
     arkiveret = arkiver_forsegling(poster) if arkiver and not dry_run else 0
 
+    # Kalibreringen maa kun se poster der faktisk blev scoret i denne koersel
+    # eller var scoret i forvejen — aldrig en post hvis grundlag er aendret.
+    til_kalibrering = [
+        p for p in poster if isinstance(p, dict) and str(p.get("id")) not in brudt
+    ]
+
     return {
         "rapport": rapport,
         "tampered": aendret,
         "arkiv_tampered": arkiv_aendret,
+        "forsegling_brudt": sorted(brudt),
+        "stemplet": stempling["stemplet"],
+        "uafklaret": stempling["uafklaret"],
         "arkiveret": arkiveret,
-        "kalibrering": kalibrering(poster),
+        "kalibrering": kalibrering(til_kalibrering),
         "skrev": skrev,
         "dry_run": dry_run,
     }
@@ -384,6 +489,11 @@ def _vis(resultat: dict[str, Any]) -> None:
         print(
             f"\n  ADVARSEL: arkivet i governance_ledger stemmer ikke for "
             f"{resultat['arkiv_tampered']} — filen er aendret uden om ledgeren"
+        )
+    if resultat.get("forsegling_brudt"):
+        print(
+            f"\n  UDELADT fra scoring og kalibrering: {resultat['forsegling_brudt']} "
+            f"— en aendret post kan ikke baere en dom"
         )
     if resultat.get("arkiveret"):
         print(f"\n  nye forseglinger arkiveret i ledgeren: {resultat['arkiveret']}")

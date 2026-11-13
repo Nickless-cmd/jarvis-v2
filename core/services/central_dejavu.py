@@ -39,43 +39,40 @@ def _present_context() -> str:
         return ""
 
 
-def _candidates(limit: int = 20) -> list[dict[str, Any]]:
-    """Hent kandidater fra experiential memory — på tværs af de ejere der faktisk har minder.
+def _candidates(limit: int = 20) -> list[dict[str, Any]] | None:
+    """Hent kandidater fra experiential memory — inden for ÉN autoritativ bruger-scope.
 
     (13/11-2026) Målt: `get_experiential_memory_candidates()` kræver en eksplicit
     bruger-scope og kaster `MissingRecallScope` når den kaldes fra cadence, hvor der
     ingen session er. Undtagelsen blev slugt, listen blev tom, og karakteren svarede
-    «ingen minder at associere» — som om tomheden var et fund. Basen havde 319 minder
-    under to andre ejere hele tiden. En tavs undtagelse der ligner en tom måling er
-    den samme fejlform som resten af rydningen: karakteren lyver om sit eget signal.
+    «ingen minder at associere» — som om tomheden var et fund.
+
+    ⚠️ FØRSTE RETTELSE VAR SELV FEJLEN (samme dag, anden runde): for at undgå den
+    falske tomhed læste koden `SELECT DISTINCT user_id ... LIMIT 8` og blandede op
+    til otte forskellige brugeres private erindringer i én pulje. Det er ikke en
+    måling — det er en grænseovertrædelse begået for at få et tal.
+    `scoped_recall_policy` kræver en autoritativ principal FØR private minder læses;
+    at hente principalen fra de rækker man vil læse er at udstede sin egen tilladelse.
+
+    Tre udfald, og de skal kunne skelnes:
+      * ``[...]`` — undersøgt inden for scope, disse findes
+      * ``[]``    — undersøgt inden for scope, intet fundet
+      * ``None``  — IKKE undersøgt: ingen scope at læse inden for
+
+    Fravær af adgang er ikke fravær af information. Kun det første kan blive et fund.
     """
     try:
         from core.runtime.db import get_experiential_memory_candidates
+        from core.services.scoped_recall_policy import MissingRecallScope
     except Exception as exc:
         logger.warning("dejavu: kunne ikke importere kandidat-kilden: %s", exc)
         return []
     try:
         return list(get_experiential_memory_candidates(limit=limit) or [])
-    except Exception as exc:
-        # Ingen scope i denne kontekst → læs de ejere der ER i tabellen. Det er ikke
-        # et gæt på en identitet: det er de rækker der findes, uden at opfinde en ejer.
-        logger.debug("dejavu: scope mangler (%s) — læser på tværs af faktiske ejere", exc)
-    try:
-        from core.runtime.db_core import connect
-        with connect() as conn:
-            rows = conn.execute(
-                "SELECT DISTINCT user_id FROM cognitive_experiential_memories "
-                "WHERE decay_score < 0.95 AND user_id != '' LIMIT 8"
-            ).fetchall()
-        ud: list[dict[str, Any]] = []
-        for r in rows:
-            try:
-                ud.extend(get_experiential_memory_candidates(
-                    limit=limit, user_id=str(r["user_id"])) or [])
-            except Exception as exc:
-                logger.debug("dejavu: ejer %s kunne ikke læses: %s", r["user_id"], exc)
-        ud.sort(key=lambda m: float(m.get("importance") or 0.0), reverse=True)
-        return ud[:limit]
+    except MissingRecallScope as exc:
+        # Ingen principal → vi må IKKE kigge. Ikke «tomt»: «ikke undersøgt».
+        logger.info("dejavu: ingen bruger-scope — private minder ikke undersøgt: %s", exc)
+        return None
     except Exception as exc:
         logger.warning("dejavu: kunne ikke læse experiential memory: %s", exc)
         return []
@@ -89,8 +86,13 @@ def surface_dejavu(context: str = "", *, candidates: list[dict[str, Any]] | None
     if not ctx:
         return {"fragment": None, "reason": "intet nu at resonere mod"}
     cands = candidates if candidates is not None else _candidates()
+    if cands is None:
+        # Ikke det samme som tomt: vi fik ikke LOV at kigge. Forskellen skal kunne
+        # ses af læseren — ellers lyver karakteren om sit eget signal igen.
+        return {"fragment": None, "access": "denied",
+                "reason": "private minder kunne ikke undersøges uden bruger-scope"}
     if not cands:
-        return {"fragment": None, "reason": "ingen minder at associere"}
+        return {"fragment": None, "access": "ok", "reason": "ingen minder at associere"}
     try:
         from core.services.experiential_memory import score_memories_by_relevance
         # (13/11-2026) Målt: funktionen returnerer {memory_id: score} — en DICT, ikke
@@ -148,6 +150,10 @@ def build_dejavu_surface() -> dict[str, Any]:
     """Seneste ufrivillige fragment + følt linje. Self-safe."""
     d = surface_dejavu()
     if not d.get("fragment"):
+        if d.get("access") == "denied":
+            return {"fragment": None, "access": "denied",
+                    "felt": "Stille — men ikke fordi der intet er. Jeg må ikke kigge: "
+                            "private minder kræver en bruger-scope jeg ikke har her."}
         return {"fragment": None, "felt": "Stille. Intet bobler op af sig selv lige nu."}
     return {"fragment": d["fragment"], "resonance": d.get("resonance"), "felt": d["felt"]}
 

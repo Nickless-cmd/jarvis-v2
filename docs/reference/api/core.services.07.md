@@ -71,15 +71,16 @@ _Self-RCA — så Jarvis kan grave ÉN fejl til bunds i stedet for at starte på
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/central_rca.py#L29) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_rca.py#L33) |
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_rca.py#L41) |
-| function | `pick_incident` | `()` | Vælg ÉN uløst incident at grave i — højest severity, ældst (længst uløst). READ-ONLY. | [src](../../../core/services/central_rca.py#L55) |
-| function | `investigate` | `(incident_id=…)` | Saml bevis-sporet for ÉN incident → udfyld RCA-skelet + persistér som draft. Self-safe. | [src](../../../core/services/central_rca.py#L69) |
-| function | `list_rca` | `(*, limit=…)` | — | [src](../../../core/services/central_rca.py#L120) |
-| function | `build_rca_surface` | `()` | Uløste incidents + næste at grave i + seneste RCA'er + følt linje. Self-safe. | [src](../../../core/services/central_rca.py#L130) |
-| function | `recurring_nerves` | `(*, min_unresolved=…, limit=…)` | Nerver hvor den SAMME fejl er uløst flere gange — systemisk, ikke enkeltstaaende. READ-ONLY. | [src](../../../core/services/central_rca.py#L147) |
-| function | `record_rca` | `(*, trigger=…, last_visible_at=…)` | Cadence: observér uløst-antal + næste-mål — og lad et GENTAGET mønster lande. | [src](../../../core/services/central_rca.py#L182) |
+| function | `_now` | `()` | — | [src](../../../core/services/central_rca.py#L30) |
+| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_rca.py#L34) |
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_rca.py#L42) |
+| function | `pick_incident` | `()` | Vælg ÉN uløst incident at grave i — højest severity, ældst (længst uløst). READ-ONLY. | [src](../../../core/services/central_rca.py#L56) |
+| function | `investigate` | `(incident_id=…)` | Saml bevis-sporet for ÉN incident → udfyld RCA-skelet + persistér som draft. Self-safe. | [src](../../../core/services/central_rca.py#L70) |
+| function | `list_rca` | `(*, limit=…)` | — | [src](../../../core/services/central_rca.py#L121) |
+| function | `build_rca_surface` | `()` | Uløste incidents + næste at grave i + seneste RCA'er + følt linje. Self-safe. | [src](../../../core/services/central_rca.py#L131) |
+| function | `_norm_msg` | `(s)` | Besked uden tal og tidsstempler — så to forekomster af SAMME fejl ligner hinanden. | [src](../../../core/services/central_rca.py#L148) |
+| function | `recurring_nerves` | `(*, min_unresolved=…, limit=…)` | Grupper af uløste incidents der deler en FEJLSIGNATUR — ikke blot et sted. READ-ONLY. | [src](../../../core/services/central_rca.py#L153) |
+| function | `record_rca` | `(*, trigger=…, last_visible_at=…)` | Cadence: observér uløst-antal + næste-mål — og lad et GENTAGET mønster lande. | [src](../../../core/services/central_rca.py#L209) |
 
 ## `core/services/central_realtime.py`
 _Real-time Central-surface til owner-vinduet i jarvis-desk (code mode)._

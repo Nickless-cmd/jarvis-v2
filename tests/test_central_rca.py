@@ -16,9 +16,9 @@ def db(tmp_path):
         yield
 
 
-def _inc(i, sev, cluster, nerve, resolved=0, msg="boom"):
+def _inc(i, sev, cluster, nerve, resolved=0, msg="boom", kind="error"):
     return {"id": i, "severity": sev, "cluster": cluster, "nerve": nerve,
-            "resolved": resolved, "message": msg}
+            "kind": kind, "resolved": resolved, "message": msg}
 
 
 def test_pick_incident_highest_severity(db):
@@ -86,7 +86,7 @@ def test_recurring_nerves_taersklen_er_tre(db):
 def test_record_rca_lader_moenstret_lande(db):
     """Fundet skal blive en forpligtelse — og evidensen skal bære det målte tal
     OG sin kilde, ellers dømmer støj-vetoet et målt fund som støj."""
-    rows = [_inc(i, "info", "proactivity", "verification") for i in range(1, 7)]
+    rows = [_inc(i, "error", "proactivity", "verification") for i in range(1, 7)]
     kaldt = []
 
     def _fake_land(*a, **kw):
@@ -106,7 +106,43 @@ def test_record_rca_lader_moenstret_lande(db):
     kw = kaldt[0][1]
     assert "uloeste=6" in (kw.get("evidence") or ""), "evidensen skal baere det maalte tal"
     assert kw.get("evidence_source"), "en maaling uden kilde er ikke evidens"
-    assert kw.get("subject") == "recurring:proactivity/verification", "idempotens kraever et stabilt emne"
+    assert kw.get("subject") == "recurring:proactivity/verification/error", \
+        "emnet skal baere FEJLTYPEN, ikke kun stedet — ellers er idempotensen paa et loest grundlag"
+
+
+def test_blandede_fejltyper_paa_samme_nerve_smeltes_ikke_sammen(db):
+    """Bjørns indvending, målt: gruppering på (cluster, nerve) måler samme STED,
+    ikke samme FEJL. Seks incidents på én nerve kan være seks forskellige problemer,
+    og «én gentaget rodårsag» ville være en stærkere påstand end dataene bærer."""
+    rows = ([_inc(i, "error", "loop", "veto", kind="timeout") for i in range(1, 4)]
+            + [_inc(10 + i, "error", "loop", "veto", kind="parse") for i in range(1, 4)])
+    with mock.patch("core.runtime.db_central_incidents.list_central_incidents", return_value=rows):
+        grupper = rca.recurring_nerves(min_unresolved=3)
+    assert len(grupper) == 2, f"to fejltyper skal give to grupper, fik {grupper}"
+    assert {g["kind"] for g in grupper} == {"timeout", "parse"}
+    assert all(g["unresolved"] == 3 for g in grupper), "ingen gruppe må tælle den anden med"
+
+
+def test_en_fungerende_gate_er_ikke_et_uloest_problem(db):
+    """Målt 13/11-2026: 7 rækker på proactivity/verification var gate_enforce/info —
+    gaten der virkede syv gange. At lande «grav i den» sender mig ud i at undersøge
+    noget der ikke er i stykker. Den skal give en ADFÆRDS-forpligtelse i stedet."""
+    rows = [_inc(i, "info", "proactivity", "verification", kind="gate_enforce")
+            for i in range(1, 8)]
+    kaldt = []
+
+    def _fake_land(*a, **kw):
+        kaldt.append((a, kw))
+        return {"applied": True, "decision_id": "dec_y"}
+
+    with mock.patch("core.runtime.db_central_incidents.list_central_incidents", return_value=rows), \
+            mock.patch("core.runtime.db_central_incidents.count_unresolved", return_value=7), \
+            mock.patch("core.services.central_consequence.land_decision", side_effect=_fake_land):
+        rca.record_rca()
+
+    directive = kaldt[0][0][1]
+    assert "Grav i" not in directive, f"en fungerende gate skal ikke graves i: {directive}"
+    assert "adfærd" in directive, directive
 
 
 def test_record_rca_lander_ikke_uden_moenster(db):

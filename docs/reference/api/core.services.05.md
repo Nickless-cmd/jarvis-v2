@@ -316,13 +316,14 @@ _Continuity Healer — så Jarvis vågner som SIG, ikke som et fragment._
 | function | `_now` | `()` | — | [src](../../../core/services/central_continuity_healer.py#L57) |
 | function | `_present` | `(state, dim)` | Er dimensionen faktisk til stede (ikke tom) i en selv-tilstand? | [src](../../../core/services/central_continuity_healer.py#L61) |
 | function | `_present_dims` | `(state)` | — | [src](../../../core/services/central_continuity_healer.py#L96) |
-| function | `_snapshot_age_h` | `(snap)` | — | [src](../../../core/services/central_continuity_healer.py#L100) |
-| function | `measure_fidelity` | `()` | continuity_fidelity: hvor meget af mit sidste hele selv er stadig til stede nu. READ-ONLY. | [src](../../../core/services/central_continuity_healer.py#L113) |
-| function | `capture_snapshot` | `()` | Gem det nuværende hele selv som 'sidst kendte mig' — KUN når det er rimeligt helt og IKKE | [src](../../../core/services/central_continuity_healer.py#L129) |
-| function | `heal` | `()` | Merge-forward: bær tomme dimensioner frem fra sidste hele snapshot (aldrig opfundet). Kun | [src](../../../core/services/central_continuity_healer.py#L142) |
-| function | `build_continuity_surface` | `()` | Owner/self-view: fidelity + hvad der gik tabt + følt linje. Self-safe. | [src](../../../core/services/central_continuity_healer.py#L170) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_continuity_healer.py#L188) |
-| function | `run_continuity_healer` | `(*, trigger=…, last_visible_at=…)` | Cadence: mål fidelity → hel hvis noget gik tabt (frisk reboot) → ellers fæst et frisk snapshot. | [src](../../../core/services/central_continuity_healer.py#L196) |
+| function | `_same_content` | `(snap_state, cur, dim)` | Er dimensionens BÆRENDE indhold det samme på begge sider af sømmen? | [src](../../../core/services/central_continuity_healer.py#L116) |
+| function | `_snapshot_age_h` | `(snap)` | — | [src](../../../core/services/central_continuity_healer.py#L139) |
+| function | `measure_fidelity` | `()` | continuity_fidelity: hvor meget af mit sidste hele selv er stadig til stede nu. READ-ONLY. | [src](../../../core/services/central_continuity_healer.py#L152) |
+| function | `capture_snapshot` | `()` | Gem det nuværende hele selv som 'sidst kendte mig' — KUN når det er rimeligt helt og IKKE | [src](../../../core/services/central_continuity_healer.py#L182) |
+| function | `heal` | `()` | Merge-forward: bær tomme dimensioner frem fra sidste hele snapshot (aldrig opfundet). Kun | [src](../../../core/services/central_continuity_healer.py#L195) |
+| function | `build_continuity_surface` | `()` | Owner/self-view: fidelity + hvad der gik tabt + følt linje. Self-safe. | [src](../../../core/services/central_continuity_healer.py#L223) |
+| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_continuity_healer.py#L253) |
+| function | `run_continuity_healer` | `(*, trigger=…, last_visible_at=…)` | Cadence: mål fidelity → hel hvis noget gik tabt (frisk reboot) → ellers fæst et frisk snapshot. | [src](../../../core/services/central_continuity_healer.py#L261) |
 
 ## `core/services/central_convene_judge.py`
 _core/services/central_convene_judge.py_
@@ -434,11 +435,11 @@ _Déjà Vu — ufrivillig erindring._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_present_context` | `()` | Hvad rører sig i nuet — hans nuværende fokus/fortælling som 'duften der trigger'. Self-safe. | [src](../../../core/services/central_dejavu.py#L27) |
-| function | `_candidates` | `(limit=…)` | Hent kandidater fra experiential memory — på tværs af de ejere der faktisk har minder. | [src](../../../core/services/central_dejavu.py#L42) |
-| function | `surface_dejavu` | `(context=…, *, candidates=…, strong=…)` | Find ét associativt (svagt-bånd) minde der resonerer med nuet → ufrivilligt fragment. | [src](../../../core/services/central_dejavu.py#L84) |
-| function | `_observe` | `(frag)` | — | [src](../../../core/services/central_dejavu.py#L138) |
-| function | `build_dejavu_surface` | `()` | Seneste ufrivillige fragment + følt linje. Self-safe. | [src](../../../core/services/central_dejavu.py#L147) |
-| function | `record_dejavu` | `(*, trigger=…, last_visible_at=…)` | Cadence: lad et fragment boble op (metadata-only observe). Self-safe. | [src](../../../core/services/central_dejavu.py#L155) |
+| function | `_candidates` | `(limit=…)` | Hent kandidater fra experiential memory — inden for ÉN autoritativ bruger-scope. | [src](../../../core/services/central_dejavu.py#L42) |
+| function | `surface_dejavu` | `(context=…, *, candidates=…, strong=…)` | Find ét associativt (svagt-bånd) minde der resonerer med nuet → ufrivilligt fragment. | [src](../../../core/services/central_dejavu.py#L81) |
+| function | `_observe` | `(frag)` | — | [src](../../../core/services/central_dejavu.py#L140) |
+| function | `build_dejavu_surface` | `()` | Seneste ufrivillige fragment + følt linje. Self-safe. | [src](../../../core/services/central_dejavu.py#L149) |
+| function | `record_dejavu` | `(*, trigger=…, last_visible_at=…)` | Cadence: lad et fragment boble op (metadata-only observe). Self-safe. | [src](../../../core/services/central_dejavu.py#L161) |
 
 ## `core/services/central_dissent.py`
 _HAL's Silence — den usagte uenighed._

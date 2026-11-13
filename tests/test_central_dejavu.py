@@ -30,44 +30,50 @@ def _kandidat(mid: str, narrative: str, importance: float = 0.5) -> dict:
 
 
 class TestKandidatkilden:
-    def test_scope_fejl_falder_tilbage_paa_faktiske_ejere(self, monkeypatch):
-        """Uden scope skal den læse de ejere der ER — ikke svare tomt."""
+    def test_scope_fejl_giver_ikke_adgang_og_laeser_intet(self, monkeypatch):
+        """Uden en autoritativ principal må private minder IKKE læses.
+
+        (13/11-2026) Denne test krævede tidligere det MODSATTE: at koden faldt
+        tilbage på «de faktiske ejere» — altså blandede forskellige brugeres
+        private erindringer i én pulje, netop fordi policyen sagde nej. Testen
+        kodificerede grænseovertrædelsen. Nu kræver den det modsatte: intet
+        svar og ingen forbindelse til tabellen.
+        """
         from core.runtime import db as dbmod
+        from core.services.scoped_recall_policy import MissingRecallScope
 
         def raab(**kw):
-            if not kw.get("user_id"):
-                from core.services.scoped_recall_policy import MissingRecallScope
-                raise MissingRecallScope("private recall requires explicit user scope")
-            return [_kandidat("exp-1", "et minde")]
+            raise MissingRecallScope("private recall requires explicit user scope")
 
         monkeypatch.setattr(dbmod, "get_experiential_memory_candidates", raab)
 
-        class _R:
-            def __init__(self, uid):
-                self._uid = uid
-
-            def __getitem__(self, k):
-                return self._uid
-
-        class _Conn:
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *a):
-                return False
-
-            def execute(self, *a, **kw):
-                class _C:
-                    def fetchall(self_inner):
-                        return [_R("u1")]
-                return _C()
-
         import core.runtime.db_core as dbc
-        monkeypatch.setattr(dbc, "connect", lambda *a, **kw: _Conn())
+
+        def _ingen_forbindelse(*a, **kw):
+            raise AssertionError("connect() må ikke kaldes når scope mangler")
+
+        monkeypatch.setattr(dbc, "connect", _ingen_forbindelse)
 
         ud = dj._candidates(limit=5)
-        assert len(ud) == 1, "faldt tilbage på de faktiske ejere"
-        assert ud[0]["memory_id"] == "exp-1"
+        assert ud is None, "manglende adgang skal være None — ikke en tom liste"
+
+    def test_manglende_adgang_kan_skelnes_fra_tomt(self, monkeypatch):
+        """Fravær af adgang er ikke fravær af information. De to må ikke lyde ens."""
+        monkeypatch.setattr(dj, "_present_context", lambda: "noget nu")
+        monkeypatch.setattr(dj, "_candidates", lambda limit=20: None)
+        naegtet = dj.surface_dejavu()
+        monkeypatch.setattr(dj, "_candidates", lambda limit=20: [])
+        tomt = dj.surface_dejavu()
+        assert naegtet["access"] == "denied" and tomt["access"] == "ok"
+        assert naegtet["reason"] != tomt["reason"]
+
+    def test_naegtet_adgang_siges_hoejt_i_surfacen(self, monkeypatch):
+        """En læser må ikke kunne forveksle «jeg må ikke kigge» med «der er intet»."""
+        monkeypatch.setattr(dj, "_present_context", lambda: "noget nu")
+        monkeypatch.setattr(dj, "_candidates", lambda limit=20: None)
+        s = dj.build_dejavu_surface()
+        assert s.get("access") == "denied"
+        assert "må ikke kigge" in s["felt"] or "ikke fordi der intet er" in s["felt"]
 
     def test_ingen_kandidater_giver_ingen_undtagelse(self, monkeypatch):
         from core.runtime import db as dbmod

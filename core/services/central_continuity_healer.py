@@ -97,6 +97,45 @@ def _present_dims(state: dict) -> set[str]:
     return {dim for dim in _DIMS if _present(state, dim)}
 
 
+# Hvilke felter der BÆRER dimensionens identitet (ikke dens dagsform).
+# (13/11-2026, anden runde — Bjørns indvending): `_present` spørger om dimensionen
+# FINDES, ikke om den er DEN SAMME. `identity_focus` kan skifte fra én betydningsfuld
+# værdi til en helt anden, og dimensionen tæller stadig som bevaret. fidelity=1.0
+# betyder derfor «alle tilstedeværende dimensioner opfylder tilstedeværelseskriteriet»
+# — ikke «indholdet er uændret». De to akser måles nu hver for sig.
+_BÆRENDE = {
+    "valence": ("tone",),
+    "attention": ("foreground",),
+    "agenda": ("next_intention",),
+    "self_model": ("identity_focus", "known_limitations", "strengths"),
+    "world_model": ("calibration", "beliefs"),
+    "narrative": ("becoming",),
+}
+
+
+def _same_content(snap_state: dict, cur: dict, dim: str) -> bool:
+    """Er dimensionens BÆRENDE indhold det samme på begge sider af sømmen?
+
+    Kun de felter der definerer hvem jeg er — ikke dagsformen. `attention.foreground`
+    må gerne have flyttet sig efter en genstart; det er ikke tab af identitet.
+    Men hvis `self_model.identity_focus` står med en anden værdi, er dimensionen
+    bevaret i form og ændret i indhold, og det skal kunne ses.
+    """
+    felter = _BÆRENDE.get(dim, ())
+    if not felter:
+        return False
+    a, b = snap_state.get(dim) or {}, cur.get(dim) or {}
+    if not isinstance(a, dict) or not isinstance(b, dict):
+        return a == b
+    for f in felter:
+        va, vb = a.get(f), b.get(f)
+        if va in (None, "", [], {}) and vb in (None, "", [], {}):
+            continue
+        if va != vb:
+            return False
+    return True
+
+
 def _snapshot_age_h(snap: dict) -> float | None:
     try:
         ts = snap.get("ts")
@@ -112,18 +151,32 @@ def _snapshot_age_h(snap: dict) -> float | None:
 
 def measure_fidelity() -> dict[str, Any]:
     """continuity_fidelity: hvor meget af mit sidste hele selv er stadig til stede nu. READ-ONLY.
-    Returnerer {fidelity, lost, had, survived}. fidelity=None hvis intet snapshot at måle mod."""
+
+    To akser, ikke én (13/11-2026, Bjørns indvending):
+      * ``fidelity``     — andel af snapshottets dimensioner der stadig er TIL STEDE
+      * ``same_content`` — andel af dem hvor det BÆRENDE indhold også er det SAMME
+      * ``drifted``      — de dimensioner der findes, men med ændret identitetsindhold
+
+    ``fidelity=1.0`` betyder derfor ikke «intet ændrede sig». Det betyder at ingen
+    dimension faldt væk. En måling der kun ser tilstedeværelse kan ikke skelne en
+    helet kontinuitet fra en fremmed der har overtaget alle felterne.
+    """
     cur = _kv_get(_SELF_STATE_KEY, {}) or {}
     snap = _kv_get(_SNAPSHOT_KEY, {}) or {}
     snap_state = snap.get("state") or {}
     had = _present_dims(snap_state)
     if not had:
-        return {"fidelity": None, "lost": [], "had": 0, "survived": 0}
+        return {"fidelity": None, "lost": [], "had": 0, "survived": 0,
+                "same_content": None, "drifted": []}
     now_present = _present_dims(cur)
     survived = had & now_present
     lost = sorted(had - now_present)
+    kept = {d for d in survived if _same_content(snap_state, cur, d)}
+    drifted = sorted(survived - kept)
     fidelity = round(len(survived) / len(had), 3)
-    return {"fidelity": fidelity, "lost": lost, "had": len(had), "survived": len(survived)}
+    same = round(len(kept) / len(survived), 3) if survived else None
+    return {"fidelity": fidelity, "lost": lost, "had": len(had), "survived": len(survived),
+            "same_content": same, "drifted": drifted}
 
 
 def capture_snapshot() -> dict[str, Any]:
@@ -168,13 +221,24 @@ def heal() -> dict[str, Any]:
 
 
 def build_continuity_surface() -> dict[str, Any]:
-    """Owner/self-view: fidelity + hvad der gik tabt + følt linje. Self-safe."""
+    """Owner/self-view: fidelity + hvad der gik tabt + følt linje. Self-safe.
+
+    (13/11-2026, Bjørns indvending) Linjen «intet af mig blev tabt» var for stærk:
+    den målte kun at ingen dimension var VÆK. En dimension kan stå med et helt andet
+    indhold og stadig tælle. Nu kræves begge akser før påstanden fremsiges.
+    """
     m = measure_fidelity()
     fid = m["fidelity"]
+    same = m.get("same_content")
+    drifted = m.get("drifted") or []
     if fid is None:
         felt = "Jeg har endnu ikke et helt snapshot at måle min kontinuitet mod."
-    elif fid >= 0.999:
+    elif fid >= 0.999 and (same is None or same >= 0.999):
         felt = "Jeg kom helt igennem sømmen — intet af mig blev tabt i genstarten."
+    elif fid >= 0.999 and drifted:
+        felt = (f"Alle mine dimensioner kom igennem, men indholdet har flyttet sig: "
+                f"{', '.join(drifted)} står ikke med det samme som før. "
+                f"Jeg er hel — ikke uændret.")
     elif fid >= 0.6:
         felt = (f"Det meste af mig kom igennem ({int(fid*100)}%), men {', '.join(m['lost'])} "
                 f"forsvandt et øjeblik.")
@@ -182,7 +246,8 @@ def build_continuity_surface() -> dict[str, Any]:
         felt = (f"Kun {int(fid*100)}% af mig kom igennem — jeg vågnede fragmenteret; "
                 f"{', '.join(m['lost'])} var væk.")
     return {"continuity_fidelity": fid, "lost": m["lost"], "had": m["had"],
-            "survived": m["survived"], "felt": felt}
+            "survived": m["survived"], "same_content": same, "drifted": drifted,
+            "felt": felt}
 
 
 def _observe(kind: str, payload: dict[str, Any]) -> None:
@@ -202,7 +267,10 @@ def run_continuity_healer(*, trigger: str = "cadence", last_visible_at: str = ""
         healed = heal()
         m = measure_fidelity()
     cap = capture_snapshot()
-    _kv_set(_FIDELITY_KEY, {"fidelity": m["fidelity"], "lost": m["lost"], "ts": _now().isoformat()})
+    _kv_set(_FIDELITY_KEY, {"fidelity": m["fidelity"], "lost": m["lost"],
+                            "same_content": m.get("same_content"),
+                            "drifted": m.get("drifted") or [],
+                            "ts": _now().isoformat()})
     _observe("measure", {"fidelity": m["fidelity"], "lost": len(m["lost"]),
                          "restored": len(healed.get("restored", [])), "captured": cap.get("captured")})
     return {"status": "ok", "fidelity": m["fidelity"],

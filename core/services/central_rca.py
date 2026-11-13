@@ -15,6 +15,7 @@ Kilde: db_central_incidents (persistente incidents). Self-safe. Relateret: [[cen
 from __future__ import annotations
 
 import logging
+import re
 import sqlite3
 from datetime import UTC, datetime
 from typing import Any
@@ -144,12 +145,30 @@ def build_rca_surface() -> dict[str, Any]:
     return {"unresolved": unresolved, "next_incident": nxt, "recent_rca": rcas, "felt": felt}
 
 
-def recurring_nerves(*, min_unresolved: int = 3, limit: int = 5) -> list[dict[str, Any]]:
-    """Nerver hvor den SAMME fejl er uløst flere gange — systemisk, ikke enkeltstaaende. READ-ONLY.
+def _norm_msg(s: str) -> str:
+    """Besked uden tal og tidsstempler — så to forekomster af SAMME fejl ligner hinanden."""
+    return re.sub(r"\d+", "#", str(s or "").lower()).strip()[:200]
 
-    (13/11-2026) Maalt: 15 uloeste incidents, hvoraf 6 laa paa `proactivity/verification`
-    og 4 paa `privacy/cross_user_share`. `pick_incident()` valgte ÉN og kiggede aldrig
-    paa at de øvrige var samme fejl — saa hver undersøgelse startede forfra.
+
+def recurring_nerves(*, min_unresolved: int = 3, limit: int = 5) -> list[dict[str, Any]]:
+    """Grupper af uløste incidents der deler en FEJLSIGNATUR — ikke blot et sted. READ-ONLY.
+
+    (13/11-2026, foerste version) Grupperede paa `(cluster, nerve)`. Det maaler at noget
+    sker samme STED, ikke at det er samme FEJL: seks incidents paa én nerve kan vaere
+    seks forskellige problemer. Fundet er relevant for en undersoegelse, men det er en
+    staerkere paastand at kalde dem én gentaget rodaarsag. (Bjørns indvending, og den
+    er rigtig.)
+
+    Grupperingen er nu `(cluster, nerve, kind)`, og hver gruppe baerer:
+      * ``same_message``      — om alle raekker deler samme normaliserede besked, saa
+                                «samme fejl» er MAALT og ikke antaget
+      * ``distinct_messages`` — hvor mange forskellige beskeder der faktisk ligger
+      * ``enforcement``       — om gruppen er gate-haandhaevelser (``gate_enforce`` +
+                                ``info``). Det er ikke et uloest problem: det er en
+                                vagt der virkede. Den rangeres nederst, for en
+                                forpligtelse om at «grave i» en fungerende gate
+                                sender mig ud i at undersoege noget der ikke er i
+                                stykker.
     """
     try:
         from core.runtime.db_central_incidents import list_central_incidents
@@ -157,25 +176,33 @@ def recurring_nerves(*, min_unresolved: int = 3, limit: int = 5) -> list[dict[st
     except Exception as exc:
         logger.warning("rca: kunne ikke hente incidents: %s", exc)
         return []
-    agg: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    agg: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
     for r in rows:
-        agg.setdefault((str(r.get("cluster") or ""), str(r.get("nerve") or "")), []).append(r)
+        key = (str(r.get("cluster") or ""), str(r.get("nerve") or ""),
+               str(r.get("kind") or ""))
+        agg.setdefault(key, []).append(r)
     out: list[dict[str, Any]] = []
-    for (cluster, nerve), group in agg.items():
+    for (cluster, nerve, kind), group in agg.items():
         if len(group) < int(min_unresolved):
             continue
+        msgs = {_norm_msg(r.get("message")) for r in group}
+        sev = max((str(r.get("severity") or "") for r in group),
+                  key=lambda s: _SEVERITY_RANK.get(s, 0))
         out.append({
             "cluster": cluster,
             "nerve": nerve,
+            "kind": kind,
             "unresolved": len(group),
+            "same_message": len(msgs) == 1,
+            "distinct_messages": len(msgs),
+            "enforcement": kind == "gate_enforce" and sev == "info",
             "oldest_id": min(int(r.get("id") or 0) for r in group),
-            "severity": max(
-                (str(r.get("severity") or "") for r in group),
-                key=lambda s: _SEVERITY_RANK.get(s, 0),
-            ),
+            "severity": sev,
             "message": str(group[0].get("message") or "")[:160],
         })
-    out.sort(key=lambda d: (-int(d["unresolved"]), -_SEVERITY_RANK.get(str(d["severity"]), 0)))
+    # Ægte fejl før fungerende værn; derefter efter antal og alvor.
+    out.sort(key=lambda d: (bool(d["enforcement"]), -int(d["unresolved"]),
+                            -_SEVERITY_RANK.get(str(d["severity"]), 0)))
     return out[:limit]
 
 
@@ -196,21 +223,40 @@ def record_rca(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[s
     rec = recurring_nerves()
     if rec:
         top = rec[0]
+        n = int(top["unresolved"])
         try:
             from core.services.central_consequence import land_decision
+            # (13/11-2026) Paastanden foelger nu maalingen, ikke en staerkere antagelse:
+            # gruppen er dannet paa FEJLSIGNATUR (cluster+nerve+kind), og `same_message`
+            # siger om beskeden ogsaa er identisk. En gruppe der kun deler sted er ikke
+            # en gentaget rodaarsag, og en gate-haandhaevelse er ikke et uloest problem.
+            if top["enforcement"]:
+                directive = (f"Jeg blev standset {n} gange af gaten "
+                             f"«{top['nerve']}» med samme begrundelse — skift adfærd, "
+                             f"ikke gate")
+                grund = (f"Gaten har blokeret {n} gange paa "
+                         f"{top['cluster']}/{top['nerve']} ({top['kind']}). Det er ikke en "
+                         f"fejl i vagten: den virker. Det er min adfærd der gentager sig, "
+                         f"og det er den der skal aendre sig. Besked: {top['message']}")
+            else:
+                samlet = ("med identisk besked" if top["same_message"]
+                          else f"med {top['distinct_messages']} forskellige beskeder")
+                directive = (f"Grav i {top['cluster']}/{top['nerve']} — {n} uløste "
+                             f"incidents af typen «{top['kind']}»")
+                grund = (f"{n} uløste incidents af SAMME type ({top['kind']}) {samlet} på "
+                         f"{top['cluster']}/{top['nerve']}. Grupperet på fejlsignatur, ikke "
+                         f"på sted — de øvrige incidents på nerven tælles ikke med her. "
+                         f"Seneste: {top['message']}")
             out["landing"] = land_decision(
                 "rca",
-                (f"Grav i {top['cluster']}/{top['nerve']} — "
-                 f"{top['unresolved']} uløste incidents paa samme nerve"),
-                subject=f"recurring:{top['cluster']}/{top['nerve']}",
-                rationale=(f"Den samme fejl er uløst {top['unresolved']} gange paa "
-                           f"{top['cluster']}/{top['nerve']}. Det er ikke {top['unresolved']} "
-                           f"hændelser, det er én systemisk fejl der gentager sig mens "
-                           f"incident-listen vokser. Seneste: {top['message']}"),
-                trigger_cue="naar en nerve har flere uloeste incidents end én",
+                directive,
+                subject=f"recurring:{top['cluster']}/{top['nerve']}/{top['kind']}",
+                rationale=grund,
+                trigger_cue="naar flere uloeste incidents deler samme fejlsignatur",
                 priority=60,
-                evidence=(f"uloeste={top['unresolved']} severity={top['severity']} "
-                          f"incidenter_i_alt={surf['unresolved']}"),
+                evidence=(f"uloeste={n} samme_besked={top['same_message']} "
+                          f"forskellige_beskeder={top['distinct_messages']} "
+                          f"severity={top['severity']} incidenter_i_alt={surf['unresolved']}"),
                 evidence_source="central_rca.recurring_nerves",
             )
         except Exception as exc:

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10097/18596 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10098/18597 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10097/18596 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 899 | 1612 | 55% |
-| `core.services` | 6745 | 12600 | 53% |
+| `core.services` | 6746 | 12601 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1642,12 +1642,12 @@ Generated from source. 10097/18596 functions/methods documented (54%). The list 
 - `core/services/proactive_question_gate_tracking.py` :: `refresh_runtime_proactive_question_gate_statuses` (L75)
 - `core/services/proactive_question_gate_tracking.py` :: `track_runtime_proactive_question_gates_for_visible_turn` (L52)
 - `core/services/procedure_bank.py` :: `build_procedure_surface` (L45)
-- `core/services/procedure_bank_pipeline.py` :: `build_procedure_bank_surface` (L275)
-- `core/services/procedure_bank_pipeline.py` :: `delete_procedure` (L179)
-- `core/services/procedure_bank_pipeline.py` :: `get_procedure` (L116)
-- `core/services/procedure_bank_pipeline.py` :: `list_procedures` (L136)
-- `core/services/procedure_bank_pipeline.py` :: `set_procedure_pinned` (L155)
-- `core/services/procedure_bank_pipeline.py` :: `upsert_procedure` (L64)
+- `core/services/procedure_bank_pipeline.py` :: `build_procedure_bank_surface` (L326)
+- `core/services/procedure_bank_pipeline.py` :: `delete_procedure` (L180)
+- `core/services/procedure_bank_pipeline.py` :: `get_procedure` (L117)
+- `core/services/procedure_bank_pipeline.py` :: `list_procedures` (L137)
+- `core/services/procedure_bank_pipeline.py` :: `set_procedure_pinned` (L156)
+- `core/services/procedure_bank_pipeline.py` :: `upsert_procedure` (L65)
 - `core/services/process_supervisor.py` :: `list_processes` (L229)
 - `core/services/process_supervisor.py` :: `stop_process` (L368)
 - `core/services/process_supervisor.py` :: `tail_process_log` (L375)

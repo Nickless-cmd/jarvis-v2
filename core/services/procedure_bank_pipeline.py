@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -239,13 +240,63 @@ def match_procedures_for_text(text: str, *, limit: int = 3) -> list[dict[str, An
     return matched
 
 
+#: Et emne skal kunne BESKRIVE en opgave. Målt 13/11-2026: 27 af 27 rækker i
+#: `cognitive_procedures` var skrald — «Sådan: Titel», «Sådan: Skriv»,
+#: «Sådan: date», «Sådan: inbox_done(id="wake-804cdf6c57")». Årsagen er at
+#: `session_topic_tracker` udtrækker ENHVER stort-begyndt ord eller backtick-term
+#: som «emne», og pipelinen tog det første den fandt. Et enkeltord er ikke et
+#: emne: det beskriver ikke hvad kørslen gjorde, og som trigger matcher det
+#: næsten enhver tekst. Vagtens job er at afvise form, ikke at gætte indhold.
+_EMNE_MIN_ORD = 2
+_EMNE_MIN_TEGN = 8
+
+
+def _meningsfuldt_emne(kandidat: str) -> bool:
+    """Kan denne streng beskrive en opgave? — form-kontrol, ingen gæt.
+
+    Afvises: enkeltord, kodestumper (parenteser, `=`, `{}`, `<>`), stier og
+    filnavne, id-fragmenter (`wake-…`, `proc_…`), rene tal/datoer og emner
+    kortere end `_EMNE_MIN_TEGN`. Det er de former der blev målt som skrald.
+    """
+    tekst = str(kandidat or "").strip()
+    if len(tekst) < _EMNE_MIN_TEGN:
+        return False
+    # Bindestreg er en ordgrænse på dansk: «netværks-fejlfinding» er to ord.
+    # Målt 13/11-2026: uden dette blev et ægte sammensat emne afvist, mens
+    # «inbox_done(id=…)» slap igennem — vagten målte længde, ikke form.
+    if len(re.split(r"[\s\-_]+", tekst)) < _EMNE_MIN_ORD:
+        return False
+    if any(ch in tekst for ch in "()={}<>\"'`"):
+        return False
+    if "/" in tekst or "\\" in tekst:
+        return False
+    if tekst.startswith(("~", ".", "-")) or "://" in tekst:
+        return False
+    # id-fragmenter: «wake-804cdf6c57», «proc_ab12», «run-abc»
+    if re.match(r"^[a-z]+[-_][0-9a-f]{6,}$", tekst, re.IGNORECASE):
+        return False
+    # snake_case-identifikatorer er funktions-/feltnavne, ikke emner:
+    # «mark_wakeup_consumed» slap igennem da bindestreg blev en ordgrænse.
+    if re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+", tekst):
+        return False
+    # rene tal, datoer og tidsstempler beskriver ingen opgave
+    if re.fullmatch(r"[\d\s:.,/-]+", tekst):
+        return False
+    return True
+
+
 def maybe_record_procedure_from_run(*, session_id: str, tool_calls: list[str]) -> dict[str, Any] | None:
     """LivingNeuron Fase B (surface-only): udled en NAVNGIVEN kandidat-procedure fra en kørsel der
     gjorde meningsfuldt multi-tool-arbejde. Byg-og-forladt: banken havde hverken feed eller læser.
 
     Anti-skrald: kræver ≥2 DISTINKTE tools OG et meningsfuldt session-topic (ellers skip — ingen
     støj-procedurer). Navn = topic'et, procedure = tool-sekvensen. PROMPT-INJECTION er IKKE wired
-    (gated bag budget-grading, §Fase B) — banken fyldes+vises kun (surface-only). Self-safe."""
+    (gated bag budget-grading, §Fase B) — banken fyldes+vises kun (surface-only). Self-safe.
+
+    13/11-2026: «meningsfuldt» blev aldrig håndhævet — kun `if cand:` stod der, så
+    ethvert ord fra topic-udtrækkeren slap igennem. Nu går kandidaterne gennem
+    `_meningsfuldt_emne`, og vi tager den FØRSTE der består i stedet for den
+    første der findes. Er ingen af dem et emne, skrives der intet."""
     try:
         tools = [str(t).strip() for t in (tool_calls or []) if str(t).strip()]
         distinct = list(dict.fromkeys(tools))  # unikke, bevar rækkefølge
@@ -258,7 +309,7 @@ def maybe_record_procedure_from_run(*, session_id: str, tool_calls: list[str]) -
                 cand = str(t.get("label") or t.get("topic") or "").strip()
             else:
                 cand = str(t or "").strip()
-            if cand:
+            if _meningsfuldt_emne(cand):
                 topic = cand
                 break
         if not topic:

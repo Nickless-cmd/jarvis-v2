@@ -22,3 +22,58 @@ def test_feed_records_named_procedure(isolated_runtime, monkeypatch):
     assert rec is not None
     assert "netværks-fejlfinding" in rec["name"]
     assert "→" in rec["procedure"]  # tool-sekvens
+
+
+# ── emne-vagten (13/11-2026) ────────────────────────────────────────────────
+# Fixturen er de FAKTISKE 27 navne målt i den ægte base 13/11-2026, ikke
+# opdigtede eksempler. De er alle skrald, og de kom alle igennem den gamle
+# `if cand:`-kontrol, fordi den kun spurgte om strengen var tom.
+_SKRALD_EMNER = [
+    "Titel", "Skriv", "Jarvis", "Læse", "Find", "Rapportér", "Genbesøg",
+    "Runtime", "Undersøg", "Send", "Sansernes", "Tick", "Fortsætte",
+    "Gennemgå", "Tjek", "Trække", "Hent", "Prøv", "date", "VAERKTOEJS",
+    "VÆKKEDE", "mark_wakeup_consumed",
+    'inbox_done(id="wake-804cdf6c57")',
+    'inbox_done(id="wake-3196468e2d")',
+    'inbox_done(id="wake-abdaa04db6")',
+    "~/dreams/dream-session-{timestamp}.md",
+    "core/services/emotional_controls.py:202-207",
+]
+
+
+def test_alle_27_maalte_skraldnavne_afvises():
+    """Vagten skal afvise præcis det der blev målt — ikke bare nogle eksempler."""
+    gennem_slaaet = [e for e in _SKRALD_EMNER if pb._meningsfuldt_emne(e)]
+    assert gennem_slaaet == [], f"disse slap igennem: {gennem_slaaet}"
+
+
+def test_et_reelt_emne_slipper_igennem():
+    """Positiv kontrol: uden den er den negative test tom — en vagt der afviser
+    alt ville også bestå testen ovenfor."""
+    for emne in ("netværks-fejlfinding", "procedure-banken skrives fuld af skrald",
+                 "Undersøg hvorfor rutinerne kører som session"):
+        assert pb._meningsfuldt_emne(emne) is True, emne
+
+
+def test_skrald_emne_giver_INGEN_raekke(isolated_runtime, monkeypatch):
+    """Kernen: står der kun skrald i topic-listen, skrives der intet."""
+    import core.services.session_topic_tracker as st
+    monkeypatch.setattr(st, "load_session_topics",
+                        lambda sid: [{"label": "Titel"}, {"label": "Skriv"}])
+    assert pb.maybe_record_procedure_from_run(
+        session_id="s-skrald", tool_calls=["bash", "read_file"]) is None
+
+
+def test_foerste_brugbare_emne_vaelges_frem_for_det_foerste(isolated_runtime, monkeypatch):
+    """Den gamle kode tog den FØRSTE kandidat uanset kvalitet. Nu skal den gå
+    videre til den første der faktisk beskriver en opgave."""
+    import core.services.session_topic_tracker as st
+    monkeypatch.setattr(st, "load_session_topics", lambda sid: [
+        {"label": "Titel"},
+        {"label": "inbox_done(id=\"wake-804cdf6c57\")"},
+        {"label": "rydde indbakken for doede forslag"},
+    ])
+    rec = pb.maybe_record_procedure_from_run(
+        session_id="s-blandet", tool_calls=["bash", "read_file"])
+    assert rec is not None
+    assert "rydde indbakken for doede forslag" in rec["name"]

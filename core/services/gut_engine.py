@@ -1386,8 +1386,12 @@ def build_gut_surface() -> dict[str, object]:
                 _estimat_note = (
                     "ESTIMAT: fladen kan kun se sin EGEN proces' writer-koe, og "
                     "udfaldene registreres i en anden proces — et event i flugt der "
-                    "findes hverken i eventloggen eller i dead-letter, saa tallet er "
-                    "et oevre skoen, ikke en maaling"
+                    "findes hverken i eventloggen eller i dead-letter. Fejlen har "
+                    "derfor UKENDT RETNING: et event i flugt traekker tallet OP, men "
+                    "en livstidstaeller der ikke kunne skrives traekker det NED "
+                    "(save_json melder fejlen og lader kalderen fortsaette, saa en "
+                    "registreret haendelse kan mangle i taelleren) — tallet er et "
+                    "estimat, ikke en maaling"
                 )
                 no_event_row_grund = (
                     f"{no_event_row_grund}; {_estimat_note}"
@@ -1402,9 +1406,20 @@ def build_gut_surface() -> dict[str, object]:
                         f"{spillede} blev accepteret men spillet til dead-letter"
                     )
                 if _tab:
-                    no_event_row_grund = (
+                    # BJØRNS SJETTE INDVENDING (12/11-2026): denne tildeling
+                    # OVERSKREV forklaringen ovenfor, saa `_estimat_note` forsvandt
+                    # netop i det tilfaelde hvor der BAADE var tab og et estimat.
+                    # Flaget var stadig sat, men grunden — det eneste der kan
+                    # efterproeves — var vaek. De to oplysninger besvarer to
+                    # forskellige spoergsmaal og skal begge staa.
+                    _tab_note = (
                         "; ".join(_tab)
                         + " — de er ikke ryddet og indgaar ikke i tallet"
+                    )
+                    no_event_row_grund = (
+                        f"{no_event_row_grund}; {_tab_note}"
+                        if no_event_row_grund
+                        else _tab_note
                     )
                 if i_flugt > 0:
                     # Den lokale koe er ikke-tom: en konkret observation der

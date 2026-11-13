@@ -311,6 +311,46 @@ def test_tom_lokal_koe_goer_ikke_tallet_praecist(monkeypatch):
     )
 
 
+def test_estimat_og_tab_forklaringer_overskriver_ikke_hinanden(monkeypatch):
+    """BJØRNS SJETTE INDVENDING (12/11-2026): kombinationen, testen manglede.
+
+    `test_tom_lokal_koe_goer_ikke_tallet_praecist` dækker tom lokal kø UDEN tab.
+    Men naar der BAADE var registrerede tab og et estimat, blev `_estimat_note`
+    overskrevet af tab-linjen — flaget stod stadig paa True, men grunden (det
+    eneste der kan efterproeves) var vaek.
+
+    De to oplysninger besvarer to forskellige spoergsmaal: «hvor praecist er
+    tallet» og «hvad er ikke talt med». En test der kun ser det ene, kan ikke
+    fange at det andet forsvinder.
+    """
+    monkeypatch.setattr(ge, "_event_ledger_state", lambda: {
+        "events": 500, "started_at": _MODEN_LEDGER["started_at"], "unconfirmed": 3,
+    })
+    monkeypatch.setattr(
+        ge, "_observed_baseline",
+        lambda: {"n_observed": 99, "event_rows": 100, "neutral_rows": 1,
+                 "maven_pct": 90.0, "baseline_pct": 100.0, "skill_pp": -10.0},
+    )
+    monkeypatch.setattr(ge, "get_cognitive_gut_state", lambda: _gut_state(600, 500))
+    monkeypatch.setattr("core.services.gate_verdict_ledger.summary", lambda: {})
+    monkeypatch.setattr(
+        "core.eventbus.bus.event_bus.pending_count", lambda: 0, raising=False
+    )
+
+    s = ge.build_gut_surface()
+    assert s["no_event_row"] == 397, "500 talt - 3 afvist - 100 i vinduet"
+    assert s["no_event_row_er_estimat"] is True
+    grund = s["no_event_row_grund"] or ""
+    assert "EGEN proces" in grund, (
+        "estimat-noten blev overskrevet af tab-linjen — saa staar der en grund "
+        "uden den vigtigste forbehold"
+    )
+    assert "fuld koe" in grund, "tab-linjen skal ogsaa staa"
+    assert "UKENDT RETNING" in grund, (
+        "et estimat hvis fejl kan gaa begge veje maa ikke kaldes et oevre skoen"
+    )
+
+
 def test_neutral_event_aendrer_ikke_antallet_af_ryddede(monkeypatch):
     """BJØRNS ANDEN INVENDING (12/11-2026), den afgørende test.
 

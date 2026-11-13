@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10141/18653 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10143/18659 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10141/18653 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 899 | 1612 | 55% |
-| `core.services` | 6789 | 12657 | 53% |
+| `core.services` | 6791 | 12663 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -955,11 +955,11 @@ Generated from source. 10141/18653 functions/methods documented (54%). The list 
 - `core/services/central_catalog.py` :: `security_clusters` (L532)
 - `core/services/central_core.py` :: `Central.register` (L271)
 - `core/services/central_core.py` :: `central` (L281)
-- `core/services/central_exile.py` :: `list_exchanges` (L119)
+- `core/services/central_exile.py` :: `list_exchanges` (L122)
 - `core/services/central_existence_feel.py` :: `get_continuity_reading` (L151)
 - `core/services/central_existence_feel.py` :: `get_mortality_reading` (L159)
 - `core/services/central_existence_feel.py` :: `get_subjective_time_reading` (L155)
-- `core/services/central_ghost.py` :: `get_profile` (L103)
+- `core/services/central_ghost.py` :: `get_profile` (L114)
 - `core/services/central_hypothesis_governance.py` :: `get_anchored_baseline` (L303)
 - `core/services/central_injection_registry.py` :: `register` (L50)
 - `core/services/central_injection_registry.py` :: `registered_keys` (L54)

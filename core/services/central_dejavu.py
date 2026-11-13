@@ -35,7 +35,7 @@ def _present_context() -> str:
             (st.get("agenda") or {}).get("next_intention") or "",
         ]
         return " ".join(p for p in parts if p).strip()
-    except Exception:
+    except Exception:  # selv-tilstand utilgængelig → tomt nu; intet at associere
         return ""
 
 
@@ -142,7 +142,7 @@ def _observe(frag: dict[str, Any]) -> None:
         from core.services.central_core import central
         central().observe({"cluster": "cognition", "nerve": "dejavu", "kind": "involuntary_recall",
                            "resonance": frag.get("resonance"), "has_fragment": bool(frag.get("fragment"))})
-    except Exception:
+    except Exception:  # Centralen nede → fragmentet er stadig returneret til kalderen
         pass
 
 
@@ -158,7 +158,69 @@ def build_dejavu_surface() -> dict[str, Any]:
     return {"fragment": d["fragment"], "resonance": d.get("resonance"), "felt": d["felt"]}
 
 
+_BLIND_KEY = "dejavu_blind_streak"
+# Hvor mange cadence-tik i træk uden scope før blindheden er strukturel, ikke tilfældig.
+_BLIND_TAERSKEL = 3
+
+
+def _kv_get(key: str, default: Any) -> Any:
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        v = get_runtime_state_value(key, default)
+        return v if v is not None else default
+    except Exception:  # KV utilgængelig → default; en læsning må ikke vælte cadence
+        return default
+
+
+def _kv_set(key: str, value: Any) -> None:
+    try:
+        from core.runtime.db_core import set_runtime_state_value
+        set_runtime_state_value(key, value)
+    except Exception:  # KV utilgængelig → næste tik prøver igen; ikke fatalt
+        pass
+
+
 def record_dejavu(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
-    """Cadence: lad et fragment boble op (metadata-only observe). Self-safe."""
+    """Cadence: lad et fragment boble op — og LAD strukturel blindhed lande.
+
+    (13/11-2026) Målt defekt: `surface_dejavu()` returnerede `access='denied'` hver
+    gang cadence kaldte den (cadence har ingen session, altså ingen bruger-scope), og
+    `record_dejavu` svarede bare `surfaced: False`. Karakteren var altså blind i
+    PRÆCIS den kontekst den kører i — uden at nogen fik det at vide. Nu tælles
+    sammenhængende blinde tik, og ved tærsklen lander det som en forpligtelse.
+
+    Et enkelt blindt tik er normalt og nulstiller ikke noget. Det er rækken af dem
+    der er fundet.
+    """
     d = surface_dejavu()
-    return {"status": "ok", "surfaced": bool(d.get("fragment")), "resonance": d.get("resonance")}
+    streak = int(_kv_get(_BLIND_KEY, 0) or 0)
+    landing: dict[str, Any] = {"applied": False, "reason": "kunne undersøge"}
+    if d.get("access") == "denied":
+        streak += 1
+        _kv_set(_BLIND_KEY, streak)
+        if streak >= _BLIND_TAERSKEL:
+            try:
+                from core.services.central_consequence import land_decision
+                landing = land_decision(
+                    "dejavu",
+                    (f"Jeg har ikke kunnet undersøge mine egne erindringer i {streak} "
+                     "cadence-tik — karakteren er blind dér hvor den kører"),
+                    rationale=(
+                        "Cadence kalder uden session, og scoped_recall_policy kræver en "
+                        "autoritativ bruger-scope før private minder må læses. Uden en "
+                        "scope er svaret ikke «ingen minder» men «ikke undersøgt» — og "
+                        "det svar blev kastet væk som et tomt fund."),
+                    trigger_cue="Når déjà vu skal fortælle hvad der bobler op",
+                    subject="dejavu_strukturel_blindhed",
+                    priority=60,
+                    evidence=f"blinde_tik_i_traek={streak} taerskel={_BLIND_TAERSKEL}",
+                    evidence_source="central_dejavu.record_dejavu",
+                )
+            except Exception as exc:
+                logger.warning("dejavu: kunne ikke lande blindhed: %s", exc)
+    else:
+        if streak:
+            _kv_set(_BLIND_KEY, 0)
+        streak = 0
+    return {"status": "ok", "surfaced": bool(d.get("fragment")),
+            "access": d.get("access"), "blind_streak": streak, "landing": landing}

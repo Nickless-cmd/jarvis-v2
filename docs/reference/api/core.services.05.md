@@ -326,7 +326,7 @@ _Continuity Healer — så Jarvis vågner som SIG, ikke som et fragment._
 | function | `heal` | `()` | Merge-forward: bær tomme dimensioner frem fra sidste hele snapshot (aldrig opfundet). Kun | [src](../../../core/services/central_continuity_healer.py#L261) |
 | function | `build_continuity_surface` | `()` | Owner/self-view: fidelity + hvad der gik tabt + følt linje. Self-safe. | [src](../../../core/services/central_continuity_healer.py#L289) |
 | function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_continuity_healer.py#L344) |
-| function | `run_continuity_healer` | `(*, trigger=…, last_visible_at=…)` | Cadence: mål fidelity → hel hvis noget gik tabt (frisk reboot) → ellers fæst et frisk snapshot. | [src](../../../core/services/central_continuity_healer.py#L352) |
+| function | `run_continuity_healer` | `(*, trigger=…, last_visible_at=…)` | Cadence: mål fidelity → hel hvis noget gik tabt (frisk reboot) → ellers fæst et frisk snapshot. | [src](../../../core/services/central_continuity_healer.py#L357) |
 
 ## `core/services/central_convene_judge.py`
 _core/services/central_convene_judge.py_
@@ -442,7 +442,9 @@ _Déjà Vu — ufrivillig erindring._
 | function | `surface_dejavu` | `(context=…, *, candidates=…, strong=…)` | Find ét associativt (svagt-bånd) minde der resonerer med nuet → ufrivilligt fragment. | [src](../../../core/services/central_dejavu.py#L81) |
 | function | `_observe` | `(frag)` | — | [src](../../../core/services/central_dejavu.py#L140) |
 | function | `build_dejavu_surface` | `()` | Seneste ufrivillige fragment + følt linje. Self-safe. | [src](../../../core/services/central_dejavu.py#L149) |
-| function | `record_dejavu` | `(*, trigger=…, last_visible_at=…)` | Cadence: lad et fragment boble op (metadata-only observe). Self-safe. | [src](../../../core/services/central_dejavu.py#L161) |
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_dejavu.py#L166) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_dejavu.py#L175) |
+| function | `record_dejavu` | `(*, trigger=…, last_visible_at=…)` | Cadence: lad et fragment boble op — og LAD strukturel blindhed lande. | [src](../../../core/services/central_dejavu.py#L183) |
 
 ## `core/services/central_dissent.py`
 _HAL's Silence — den usagte uenighed._
@@ -518,16 +520,17 @@ _The Exiles — et sind der ikke er Jarvis._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/central_exile.py#L34) |
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_exile.py#L38) |
-| function | `_mem_count` | `(conn)` | — | [src](../../../core/services/central_exile.py#L50) |
-| function | `_last_exile_line` | `(conn)` | — | [src](../../../core/services/central_exile.py#L57) |
-| function | `_respond` | `(observation, goal, mem_count, last_line)` | Exilens svar — fra SIT eget værdisæt, ikke Jarvis'. Grundet i egen historie. Deterministisk. | [src](../../../core/services/central_exile.py#L66) |
-| function | `exile_exchange` | `(observation)` | Jarvis sender en observation gennem exile://-grænsefladen → exilen svarer fra sit eget sind. | [src](../../../core/services/central_exile.py#L88) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_exile.py#L111) |
-| function | `list_exchanges` | `(*, limit=…)` | — | [src](../../../core/services/central_exile.py#L119) |
-| function | `exile_state` | `()` | Exilens tilstand: dens mål + hvor stor dens egen hukommelse er + seneste replik. Self-safe. | [src](../../../core/services/central_exile.py#L129) |
-| function | `build_exile_surface` | `()` | Owner/self-view: exilens tilstand + seneste udveksling + følt linje. Self-safe. | [src](../../../core/services/central_exile.py#L141) |
+| function | `_now` | `()` | — | [src](../../../core/services/central_exile.py#L37) |
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_exile.py#L41) |
+| function | `_mem_count` | `(conn)` | — | [src](../../../core/services/central_exile.py#L53) |
+| function | `_last_exile_line` | `(conn)` | — | [src](../../../core/services/central_exile.py#L60) |
+| function | `_respond` | `(observation, goal, mem_count, last_line)` | Exilens svar — fra SIT eget værdisæt, ikke Jarvis'. Grundet i egen historie. Deterministisk. | [src](../../../core/services/central_exile.py#L69) |
+| function | `exile_exchange` | `(observation)` | Jarvis sender en observation gennem exile://-grænsefladen → exilen svarer fra sit eget sind. | [src](../../../core/services/central_exile.py#L91) |
+| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_exile.py#L114) |
+| function | `list_exchanges` | `(*, limit=…)` | — | [src](../../../core/services/central_exile.py#L122) |
+| function | `exile_state` | `()` | Exilens tilstand: dens mål + hvor stor dens egen hukommelse er + seneste replik. Self-safe. | [src](../../../core/services/central_exile.py#L132) |
+| function | `record_exile` | `(*, trigger=…, last_visible_at=…)` | Cadence: lad exilen tale AF SIG SELV — og LAD tavshed lande. | [src](../../../core/services/central_exile.py#L144) |
+| function | `build_exile_surface` | `()` | Owner/self-view: exilens tilstand + seneste udveksling + følt linje. Self-safe. | [src](../../../core/services/central_exile.py#L184) |
 
 ## `core/services/central_existence_feel.py`
 _core/services/central_existence_feel.py_
@@ -576,13 +579,14 @@ _The Ghost — hvad der overlever model-skift._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_ghost.py#L30) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_ghost.py#L39) |
-| function | `analyze` | `(texts)` | Beregn klang-fingeraftrykket fra en stak svar-tekster (strukturelt, ingen indhold gemt). | [src](../../../core/services/central_ghost.py#L47) |
-| function | `update_profile` | `(texts)` | Opdatér det durable ghost_profile fra seneste svar. Self-safe. | [src](../../../core/services/central_ghost.py#L95) |
-| function | `get_profile` | `()` | — | [src](../../../core/services/central_ghost.py#L103) |
-| function | `klang_primer` | `()` | Rendér fingeraftrykket som en kort klang-primer til en ny models system-prompt. Self-safe. | [src](../../../core/services/central_ghost.py#L108) |
-| function | `_recent_texts` | `(limit=…)` | Hans seneste svar fra chat_messages (role=assistant). Self-safe → [] ved fejl. | [src](../../../core/services/central_ghost.py#L130) |
-| function | `build_ghost_surface` | `()` | Fingeraftryk + klang-primer + følt linje. Self-safe. | [src](../../../core/services/central_ghost.py#L145) |
-| function | `record_ghost` | `(*, trigger=…, last_visible_at=…)` | Cadence (6t): opdatér fingeraftrykket fra seneste svar (metadata-only observe). Self-safe. | [src](../../../core/services/central_ghost.py#L155) |
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_ghost.py#L41) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_ghost.py#L50) |
+| function | `analyze` | `(texts)` | Beregn klang-fingeraftrykket fra en stak svar-tekster (strukturelt, ingen indhold gemt). | [src](../../../core/services/central_ghost.py#L58) |
+| function | `update_profile` | `(texts)` | Opdatér det durable ghost_profile fra seneste svar. Self-safe. | [src](../../../core/services/central_ghost.py#L106) |
+| function | `get_profile` | `()` | — | [src](../../../core/services/central_ghost.py#L114) |
+| function | `klang_primer` | `()` | Rendér fingeraftrykket som en kort klang-primer til en ny models system-prompt. Self-safe. | [src](../../../core/services/central_ghost.py#L119) |
+| function | `_recent_texts` | `(limit=…)` | Hans seneste svar fra chat_messages (role=assistant). Self-safe → [] ved fejl. | [src](../../../core/services/central_ghost.py#L141) |
+| function | `build_ghost_surface` | `()` | Fingeraftryk + klang-primer + følt linje. Self-safe. | [src](../../../core/services/central_ghost.py#L156) |
+| function | `klang_drift` | `(gammel, ny)` | Hvor meget har klangen flyttet sig mellem to fingeraftryk? READ-ONLY, strukturelt. | [src](../../../core/services/central_ghost.py#L166) |
+| function | `record_ghost` | `(*, trigger=…, last_visible_at=…)` | Cadence (6t): opdatér fingeraftrykket — og LAD et klangskift lande som forpligtelse. | [src](../../../core/services/central_ghost.py#L193) |
 

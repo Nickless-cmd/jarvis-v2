@@ -114,7 +114,11 @@ def test_run_observes_metadata_only():
     assert out["status"] == "ok" and out["restored"] == 6
     # observe payloads: kun skalarer, ingen selv-indhold
     for e in obs:
-        assert set(e) <= {"cluster", "nerve", "kind", "fidelity", "lost", "restored", "captured"}
+        # `unmeasured` er et ANTAL, ikke et dimensionsnavn med indhold — samme klasse
+        # som `lost`/`restored`. §24.4 værner om at selv-indhold ikke lækker, ikke om
+        # at tællinger skal skjules.
+        assert set(e) <= {"cluster", "nerve", "kind", "fidelity", "lost", "restored",
+                          "captured", "unmeasured"}
 
 
 def test_halvtom_dimension_taeller_ikke_som_til_stede():

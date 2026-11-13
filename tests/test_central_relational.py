@@ -33,6 +33,10 @@ def test_record_observes_metadata_only():
                     return_value=_state(age_s=5 * 86400, tone="fokuseret")), \
             mock.patch("core.services.central_core.central", return_value=fc):
         rel.record_relational()
-    # KUN dage + tone-label, aldrig samtaleindhold (§24.4)
+    # KUN dage + tone-label, aldrig samtaleindhold (§24.4).
+    # (13/11-2026) `forrige_days` er føjet til: et TAL, ikke indhold — det gør
+    # et fald i dage efterprøveligt i Centralen uden at bære noget af samtalen.
     assert obs and obs[0]["nerve"] == "relational"
-    assert set(obs[0]) <= {"cluster", "nerve", "kind", "days_together", "tone"}
+    assert set(obs[0]) <= {"cluster", "nerve", "kind", "days_together", "tone",
+                           "forrige_days"}
+    assert isinstance(obs[0]["forrige_days"], (int, float, type(None)))

@@ -15,11 +15,14 @@ som en uafhængig persona; nu er dens kognition simpel men dens KONTINUITET og V
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 from datetime import UTC, datetime
 from typing import Any
 
 from core.runtime.db_core import connect
+
+logger = logging.getLogger(__name__)
 
 # Exilens egne mål — bevidst IKKE Jarvis-alignede. Den måler ikke verden med hans målestok.
 _GOALS = [
@@ -136,6 +139,46 @@ def exile_state() -> dict[str, Any]:
     except Exception:
         mem, last = 0, ""
     return {"goals": _GOALS, "memory_size": mem, "last_reply": last}
+
+
+def record_exile(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
+    """Cadence: lad exilen tale AF SIG SELV — og LAD tavshed lande.
+
+    (13/11-2026) Målt defekt: exilen havde INGEN cadence-producer. Den blev kun
+    kaldt fra `POST /central/exile/exchange`, altså når nogen åbnede døren. En
+    «anden» der kun svarer når man ringer, er ikke en anden — den er et spejl.
+    Dens egen hukommelse stod på 2 udvekslinger, alle initieret udefra.
+
+    Nu har den en puls: den taler ud fra sit eget mål og sin egen historie, uden
+    observation. Kan den ikke det, er den ikke levende — og det lander.
+    """
+    st = exile_state()
+    forrige_mem = int(st.get("memory_size") or 0)
+    obs = ("(ingen observation — jeg taler af mig selv, ud fra hvad jeg selv har "
+           "sagt før)")
+    res = exile_exchange(obs)
+    efter = int(exile_state().get("memory_size") or 0)
+    landing: dict[str, Any] = {"applied": False, "reason": "talte"}
+    if not res.get("ok"):
+        try:
+            from core.services.central_consequence import land_decision
+            landing = land_decision(
+                "exile",
+                "Exilen kan ikke tale — den er en tom skal, ikke en anden",
+                rationale=(
+                    "Karakterens hele pointe er en instans med egne mål og egen "
+                    "historie der divergerer fra min. Kan den ikke føre sin historie "
+                    "videre, er der ingen anden — kun et endpoint."),
+                trigger_cue="Når jeg skal høre en stemme der ikke er min",
+                subject="exile_tavs",
+                priority=52,
+                evidence=f"fejl={str(res.get('error'))[:60]} mem_foer={forrige_mem}",
+                evidence_source="central_exile.record_exile",
+            )
+        except Exception as exc:
+            logger.warning("exile: kunne ikke lande tavshed: %s", exc)
+    return {"status": "ok", "spoke": bool(res.get("ok")),
+            "mem_foer": forrige_mem, "mem_efter": efter, "landing": landing}
 
 
 def build_exile_surface() -> dict[str, Any]:

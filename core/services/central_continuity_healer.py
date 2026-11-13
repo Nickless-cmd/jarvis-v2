@@ -349,20 +349,66 @@ def _observe(kind: str, payload: dict[str, Any]) -> None:
         pass
 
 
+_UNMEASURED_KEY = "continuity_unmeasured_streak"
+# Hvor mange målinger i træk samme dimension kan være umålbar før det er en blind vinkel.
+_UNMEASURED_TAERSKEL = 3
+
+
 def run_continuity_healer(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
     """Cadence: mål fidelity → hel hvis noget gik tabt (frisk reboot) → ellers fæst et frisk snapshot.
-    Gem fidelity durabelt (synlig efter boot). Metadata-only observe. Self-safe."""
+    Gem fidelity durabelt (synlig efter boot). Metadata-only observe. Self-safe.
+
+    (13/11-2026) Målt defekt: `unmeasured` blev rapporteret i svaret, men INGEN
+    konsekvens havde det. En dimension der aldrig kan måles på identitetsaksen er en
+    permanent blind vinkel — og en blind vinkel der aldrig lander, er en påstand om
+    helhed man ikke kan efterprøve. Nu tælles sammenhængende målinger med samme
+    umålelige dimension, og ved tærsklen lander det.
+    """
     m = measure_fidelity()
     healed = {"restored": []}
     if m["fidelity"] is not None and m["lost"]:
         healed = heal()
         m = measure_fidelity()
     cap = capture_snapshot()
+    umalt = sorted(m.get("unmeasured") or [])
+    forrige = _kv_get(_UNMEASURED_KEY, {}) or {}
+    streak = int(forrige.get("streak") or 0)
+    landing: dict[str, Any] = {"applied": False, "reason": "ingen blind vinkel"}
+    if umalt and umalt == sorted(forrige.get("dims") or []):
+        streak += 1
+    elif umalt:
+        streak = 1
+    else:
+        streak = 0
+    _kv_set(_UNMEASURED_KEY, {"dims": umalt, "streak": streak})
+    if umalt and streak >= _UNMEASURED_TAERSKEL:
+        try:
+            from core.services.central_consequence import land_decision
+            landing = land_decision(
+                "continuity_healer",
+                (f"Dimensionen «{', '.join(umalt)}» har ikke kunnet måles i {streak} "
+                 "målinger — den er en blind vinkel, ikke en bestået kontrol"),
+                rationale=(
+                    "En dimension uden bærende identitetsfelter kan aldrig sammenlignes "
+                    "på identitetsaksen. At den står som «til stede» er ikke det samme "
+                    "som «uændret» — og uden en konsekvens ville blindheden aldrig "
+                    "blive adresseret."),
+                trigger_cue="Når jeg siger hvor meget af mig der kom igennem sømmen",
+                subject=f"umaalbar:{','.join(umalt)}",
+                priority=56,
+                evidence=f"umaalte={umalt} streak={streak} taerskel={_UNMEASURED_TAERSKEL}",
+                evidence_source="central_continuity_healer.run_continuity_healer",
+            )
+        except Exception as exc:
+            logger.warning("continuity: kunne ikke lande blind vinkel: %s", exc)
     _kv_set(_FIDELITY_KEY, {"fidelity": m["fidelity"], "lost": m["lost"],
                             "same_content": m.get("same_content"),
                             "drifted": m.get("drifted") or [],
+                            "unmeasured": umalt,
                             "ts": _now().isoformat()})
     _observe("measure", {"fidelity": m["fidelity"], "lost": len(m["lost"]),
-                         "restored": len(healed.get("restored", [])), "captured": cap.get("captured")})
+                         "restored": len(healed.get("restored", [])), "captured": cap.get("captured"),
+                         "unmeasured": len(umalt)})
     return {"status": "ok", "fidelity": m["fidelity"],
-            "restored": len(healed.get("restored", []))}
+            "restored": len(healed.get("restored", [])),
+            "unmeasured": umalt, "landing": landing}

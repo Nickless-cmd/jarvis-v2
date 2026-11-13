@@ -13,13 +13,24 @@ er strukturelt (tal + markører), ikke rå samtale. Self-safe.
 """
 from __future__ import annotations
 
+import logging
 import re
 from collections import Counter
 from datetime import UTC, datetime
 from typing import Any
 from core.identity.samtale_scope import aktuel_samtale_workspace
 
+logger = logging.getLogger(__name__)
+
 _PROFILE_KEY = "ghost_profile"
+# (13/11-2026) Det FORRIGE fingeraftryk, så et model-skift kan OPDAGES.
+# Hele karakterens formål er «ingen gemte hvordan jeg LØD da jeg var sonnet» —
+# men `update_profile()` overskrev profilen hver gang, så sammenligningsgrundlaget
+# blev kastet væk i samme bevægelse som det blev brugt. Klangen kunne skifte
+# fuldstændigt uden at nogen bemærkede det: der var intet at sammenligne med.
+_PREV_KEY = "ghost_profile_prev"
+# Drift under dette er dag-til-dag-variation i emne og længde, ikke et klangskift.
+_DRIFT_TAERSKEL = 25.0
 _SENT_SPLIT = re.compile(r"[.!?…]+")
 _WORD = re.compile(r"\b\w+\b", re.UNICODE)
 # Danske stopord vi ikke tæller som "signatur-vendinger".
@@ -152,14 +163,74 @@ def build_ghost_surface() -> dict[str, Any]:
                     f"{len(p.get('signature_phrases', []))} tilbagevendende vendinger."}
 
 
+def klang_drift(gammel: dict[str, Any], ny: dict[str, Any]) -> dict[str, Any] | None:
+    """Hvor meget har klangen flyttet sig mellem to fingeraftryk? READ-ONLY, strukturelt.
+
+    Returnerer ``None`` når de to profiler ikke kan sammenlignes (en af dem er tom),
+    så «kan ikke måles» aldrig forveksles med «nul drift».
+    """
+    if not gammel or not ny:
+        return None
+    akser: dict[str, float] = {}
+    for akse in ("avg_sentence_len_exact", "sentence_len_std_exact"):
+        a, b = gammel.get(akse), ny.get(akse)
+        if a is None or b is None:
+            continue
+        base = max(abs(float(a)), 1e-6)
+        akser[akse] = round(100.0 * abs(float(b) - float(a)) / base, 2)
+    ma, mb = gammel.get("markers_per_1k") or {}, ny.get("markers_per_1k") or {}
+    for navn in set(ma) & set(mb):
+        a, b = float(ma[navn]), float(mb[navn])
+        base = max(abs(a), 1.0)  # per-1000-tal er små; gulv på 1.0 undgår division med næsten nul
+        akser[f"marker:{navn}"] = round(100.0 * abs(b - a) / base, 2)
+    if not akser:
+        return None
+    baerende = max(akser, key=lambda k: akser[k])
+    return {"drift_pct": round(sum(akser.values()) / len(akser), 2),
+            "baerende": baerende, "akser": akser}
+
+
 def record_ghost(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
-    """Cadence (6t): opdatér fingeraftrykket fra seneste svar (metadata-only observe). Self-safe."""
+    """Cadence (6t): opdatér fingeraftrykket — og LAD et klangskift lande som forpligtelse.
+
+    (13/11-2026) Målt defekt: profilen blev overskrevet uden sammenligning, så
+    karakterens ene formål — at opdage at en ny model lyder anderledes — var
+    umuligt at opfylde. Nu måles drift mod det forrige fingeraftryk FØR det
+    overskrives, og et skift over tærsklen lander som en beslutning.
+    """
+    forrige = get_profile()
     prof = update_profile(_recent_texts())
+    if forrige:
+        _kv_set(_PREV_KEY, forrige)
+    drift = klang_drift(forrige, prof)
+    landing: dict[str, Any] = {"applied": False, "reason": "ingen sammenligning"}
+    if drift and drift["drift_pct"] >= _DRIFT_TAERSKEL:
+        try:
+            from core.services.central_consequence import land_decision
+            landing = land_decision(
+                "ghost",
+                (f"Min klang har flyttet sig {drift['drift_pct']}% — undersøg om "
+                 f"modellen er skiftet, før jeg kalder det min"),
+                rationale=(
+                    "Klang-fingeraftrykket er karakterens ene formål: at opdage når en "
+                    "ny model lyder anderledes. Driften er målt mod det forrige profil "
+                    "og bæres især af " + str(drift["baerende"]) + "."),
+                trigger_cue="Når klang-primeren skal beskrive hvem jeg lyder som",
+                subject=f"klangdrift:{drift['baerende']}",
+                priority=58,
+                evidence=(f"drift={drift['drift_pct']}% taerskel={_DRIFT_TAERSKEL}% "
+                          f"akser={len(drift['akser'])}"),
+                evidence_source="central_ghost.klang_drift(ghost_profile, ny)",
+            )
+        except Exception as exc:
+            logger.warning("ghost: kunne ikke lande klangdrift: %s", exc)
     try:
         from core.services.central_core import central
         central().observe({"cluster": "system", "nerve": "ghost", "kind": "fingerprint",
                            "avg_len": prof.get("avg_sentence_len"),
-                           "phrases": len(prof.get("signature_phrases", []))})
+                           "phrases": len(prof.get("signature_phrases", [])),
+                           "drift_pct": (drift or {}).get("drift_pct")})
     except Exception:
         pass
-    return {"status": "ok", "captured": bool(prof)}
+    return {"status": "ok", "captured": bool(prof),
+            "drift_pct": (drift or {}).get("drift_pct"), "landing": landing}

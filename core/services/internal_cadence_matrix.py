@@ -346,3 +346,15 @@ def register_matrix_producers(register_producer: Callable[[ProducerSpec], None])
 
     register_producer(ProducerSpec(name="twins", cooldown_minutes=240, visible_grace_minutes=0,
                                    run_fn=_run_twins, priority=5))
+
+    # The Exiles (6. jul, Jarvis' #5 — det dybeste hul): en instans med EGNE mål og EGEN
+    # historie der divergerer fra hans. (13/11-2026) Målt defekt: den havde INGEN puls —
+    # den blev kun kaldt fra `POST /central/exile/exchange`, altså når nogen åbnede døren.
+    # En «anden» der kun svarer når man ringer, er et spejl, ikke en anden. Dens historie
+    # stod på 2 udvekslinger, alle initieret udefra. Nu taler den af sig selv.
+    def _run_exile(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_exile import record_exile
+        return record_exile(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="exile", cooldown_minutes=480, visible_grace_minutes=0,
+                                   run_fn=_run_exile, priority=5))

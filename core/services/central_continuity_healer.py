@@ -59,22 +59,37 @@ def _now() -> datetime:
 
 
 def _present(state: dict, dim: str) -> bool:
-    """Er dimensionen faktisk til stede (ikke tom) i en selv-tilstand?"""
+    """Er dimensionen faktisk til stede (ikke tom) i en selv-tilstand?
+
+    (13/11-2026) Målt: fidelity var 1.0 hver gang — 5 af 5, «intet af mig blev tabt».
+    Årsagen var at kriteriet spurgte om en nøgle var IKKE-TOM, ikke om den havde
+    INDHOLD: `self_model.completeness > 0.0` og `world_model.calibration is not None`
+    er opfyldt af næsten enhver frisk tilstand. En måling der altid giver 1.0 måler
+    ikke sømmen — den måler at der findes et dict. Nu kræves substans: en mængde der
+    faktisk kan gå tabt.
+    """
     d = state.get(dim) or {}
     if not isinstance(d, dict):
         return bool(d)
     if dim == "valence":
-        return bool(d.get("tone"))
+        return bool(str(d.get("tone") or "").strip())
     if dim == "attention":
-        return bool(d.get("foreground"))
+        return bool(str(d.get("foreground") or "").strip())
     if dim == "agenda":
-        return bool(d.get("next_intention"))
+        return bool(str(d.get("next_intention") or "").strip())
     if dim == "self_model":
-        return float(d.get("completeness") or 0.0) > 0.0
+        # En tom model har completeness 0; en flad har indhold i sine felter.
+        if float(d.get("completeness") or 0.0) <= 0.0:
+            return False
+        return any(str(d.get(k) or "").strip() for k in ("known_limitations", "strengths", "identity_focus"))
     if dim == "world_model":
-        return d.get("calibration") is not None
+        # `calibration is not None` var gratis. Kræv et tal der er sat, eller indhold.
+        cal = d.get("calibration")
+        if isinstance(cal, (int, float)):
+            return True
+        return bool(str(cal or "").strip()) or bool(d.get("beliefs"))
     if dim == "narrative":
-        return bool(d.get("becoming")) or float(d.get("self_completeness") or 0.0) > 0.0
+        return bool(str(d.get("becoming") or "").strip()) or float(d.get("self_completeness") or 0.0) > 0.0
     return False
 
 

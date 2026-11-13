@@ -3,11 +3,15 @@ from core.services import central_continuity_healer as ch
 
 
 def _full_self(reboot=False):
+    # (13/11-2026) `self_model` havde tidligere kun en tæller — intet der kunne GÅ
+    # TABT. `_present` kræver nu substans, så et «helt selv» skal have indhold i den
+    # dimension som i de øvrige. Ellers målte testen at der findes et dict, ikke en søm.
     return {
         "valence": {"tone": "rolig", "score": 0.4},
         "attention": {"foreground": "bygge kontinuitet"},
         "agenda": {"next_intention": "hele sømmen"},
-        "self_model": {"completeness": 0.7},
+        "self_model": {"completeness": 0.7, "identity_focus": "kontinuitet",
+                       "known_limitations": "glemmer detaljer"},
         "world_model": {"calibration": 0.9},
         "narrative": {"becoming": "voksende selv", "self_completeness": 0.7},
         "continuity": {"reboot": reboot, "generation": 12},
@@ -111,3 +115,24 @@ def test_run_observes_metadata_only():
     # observe payloads: kun skalarer, ingen selv-indhold
     for e in obs:
         assert set(e) <= {"cluster", "nerve", "kind", "fidelity", "lost", "restored", "captured"}
+
+
+def test_halvtom_dimension_taeller_ikke_som_til_stede():
+    """Målt 13/11-2026: fidelity var 1.0 hver gang — «intet af mig blev tabt».
+
+    Årsagen var at `_present` spurgte om en nøgle var IKKE-TOM, ikke om den havde
+    INDHOLD: `self_model.completeness > 0.0` og `world_model.calibration is not None`
+    er opfyldt af næsten enhver frisk tilstand. En måling der altid giver 1.0 måler
+    ikke sømmen — den måler at der findes et dict. Nu kræves substans.
+    """
+    halvtomt = {
+        "self_model": {"completeness": 1.0},          # tæller, intet indhold
+        "world_model": {"calibration": None},          # nøglen findes, værdien er tom
+        "valence": {"tone": "let"},
+    }
+    assert ch._present(halvtomt, "self_model") is False, "en tæller er ikke et selv"
+    assert ch._present(halvtomt, "world_model") is False, "None er ikke en kalibrering"
+    assert ch._present(halvtomt, "valence") is True
+
+    fyldt = {"self_model": {"completeness": 1.0, "identity_focus": "kontinuitet"}}
+    assert ch._present(fyldt, "self_model") is True, "indhold tæller stadig"

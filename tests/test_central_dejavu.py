@@ -1,0 +1,137 @@
+"""Déjà Vu — karakteren der var stum i tre lag.
+
+Målt 13/11-2026: `build_dejavu_surface()` svarede «Stille. Intet bobler op af sig
+selv lige nu» — hver gang. Tre fejl lå oven på hinanden, og hver af dem lignede
+et tomt resultat:
+
+1. **Scope.** `get_experiential_memory_candidates()` kræver en eksplicit bruger og
+   kaster `MissingRecallScope` fra cadence. Undtagelsen blev slugt → «ingen minder».
+   Basen havde 319 minder under to andre ejere hele tiden.
+2. **Returformat.** `score_memories_by_relevance()` returnerer `{memory_id: score}`,
+   en dict. Koden itererede over den og kaldte `.get("score")` på en streng → kast →
+   slugt → «ingen resonans».
+3. **Feltnavn.** Kandidaterne bærer `narrative`, ikke `text`/`content`/`summary`.
+   Fragmentet blev tomt mens resonansen var 0.65: karakteren HAVDE et fund og
+   kastede det væk på et feltnavn.
+
+Fælles form: en tavs undtagelse eller et forkert antaget format der er umuligt at
+skelne fra en ægte tom måling.
+"""
+from __future__ import annotations
+
+import pytest
+
+from core.services import central_dejavu as dj
+
+
+def _kandidat(mid: str, narrative: str, importance: float = 0.5) -> dict:
+    return {"memory_id": mid, "narrative": narrative, "topic": "emne",
+            "importance": importance, "decay_score": 0.0, "user_id": "u1"}
+
+
+class TestKandidatkilden:
+    def test_scope_fejl_falder_tilbage_paa_faktiske_ejere(self, monkeypatch):
+        """Uden scope skal den læse de ejere der ER — ikke svare tomt."""
+        from core.runtime import db as dbmod
+
+        def raab(**kw):
+            if not kw.get("user_id"):
+                from core.services.scoped_recall_policy import MissingRecallScope
+                raise MissingRecallScope("private recall requires explicit user scope")
+            return [_kandidat("exp-1", "et minde")]
+
+        monkeypatch.setattr(dbmod, "get_experiential_memory_candidates", raab)
+
+        class _R:
+            def __init__(self, uid):
+                self._uid = uid
+
+            def __getitem__(self, k):
+                return self._uid
+
+        class _Conn:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def execute(self, *a, **kw):
+                class _C:
+                    def fetchall(self_inner):
+                        return [_R("u1")]
+                return _C()
+
+        import core.runtime.db_core as dbc
+        monkeypatch.setattr(dbc, "connect", lambda *a, **kw: _Conn())
+
+        ud = dj._candidates(limit=5)
+        assert len(ud) == 1, "faldt tilbage på de faktiske ejere"
+        assert ud[0]["memory_id"] == "exp-1"
+
+    def test_ingen_kandidater_giver_ingen_undtagelse(self, monkeypatch):
+        from core.runtime import db as dbmod
+        monkeypatch.setattr(dbmod, "get_experiential_memory_candidates",
+                            lambda **kw: [])
+        assert dj._candidates(limit=5) == []
+
+
+class TestScoringsformat:
+    def test_dict_format_læses_som_dict(self, monkeypatch):
+        """Returformatet er {memory_id: score} — ikke en liste af rækker."""
+        import core.services.experiential_memory as em
+        monkeypatch.setattr(dj, "_present_context", lambda: "noget nu")
+        monkeypatch.setattr(dj, "_candidates",
+                            lambda limit=20: [_kandidat("exp-1", "et minde")])
+        monkeypatch.setattr(em, "score_memories_by_relevance",
+                            lambda **kw: {"exp-1": 0.55})
+        d = dj.surface_dejavu()
+        assert d["fragment"], "et minde i båndet skal boble op"
+        assert d["resonance"] == pytest.approx(0.55)
+
+    def test_score_over_strong_er_ikke_et_fragment(self, monkeypatch):
+        """Et opslag er ikke en fornemmelse: over strong-båndet er det ikke déjà vu."""
+        import core.services.experiential_memory as em
+        monkeypatch.setattr(dj, "_present_context", lambda: "noget nu")
+        monkeypatch.setattr(dj, "_candidates",
+                            lambda limit=20: [_kandidat("exp-1", "et minde")])
+        monkeypatch.setattr(em, "score_memories_by_relevance",
+                            lambda **kw: {"exp-1": 0.95})
+        d = dj.surface_dejavu()
+        assert d["fragment"] is None
+        assert "båndet" in d["reason"]
+
+
+class TestFeltnavn:
+    def test_narrative_baeres_frem_som_fragment(self, monkeypatch):
+        """Kandidaterne har `narrative` — ikke text/content/summary."""
+        import core.services.experiential_memory as em
+        monkeypatch.setattr(dj, "_present_context", lambda: "noget nu")
+        monkeypatch.setattr(dj, "_candidates",
+                            lambda limit=20: [_kandidat("exp-1", "Bjørn var nysgerrig.")])
+        monkeypatch.setattr(em, "score_memories_by_relevance",
+                            lambda **kw: {"exp-1": 0.5})
+        d = dj.surface_dejavu()
+        assert d["fragment"] == "Bjørn var nysgerrig."
+
+    def test_minde_uden_tekst_giver_ingen_tomt_fragment(self, monkeypatch):
+        """Et tomt fragment må ikke se ud som et fund."""
+        import core.services.experiential_memory as em
+        monkeypatch.setattr(dj, "_present_context", lambda: "noget nu")
+        monkeypatch.setattr(dj, "_candidates",
+                            lambda limit=20: [{"memory_id": "exp-1", "narrative": ""}])
+        monkeypatch.setattr(em, "score_memories_by_relevance",
+                            lambda **kw: {"exp-1": 0.5})
+        d = dj.surface_dejavu()
+        assert d["fragment"] is None
+        assert d["reason"] == "minde uden tekstindhold"
+
+
+class TestLoggerFindes:
+    def test_modulet_har_en_logger(self):
+        """Femte gang samme fælde: logger.warning i et modul uden logger → NameError
+        inde i except-grenen, altså præcis når noget allerede er galt."""
+        import inspect
+        kilde = inspect.getsource(dj)
+        assert "logger.warning" in kilde or "logger.debug" in kilde
+        assert dj.logger is not None

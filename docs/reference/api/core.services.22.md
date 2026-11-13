@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prosa_korrektion.py`
+_Ret prosa-opremsninger FØR svaret vises — ikke som et flag bagefter._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_baerende_tokens` | `(tekst)` | De ord i et afsnit der ikke må forsvinde: tal, hashes og stier. | [src](../../../core/services/prosa_korrektion.py#L74) |
+| function | `_led_i_afsnit` | `(samlet)` | Del et afsnit i de led der hver især bærer én selvstændig oplysning. | [src](../../../core/services/prosa_korrektion.py#L109) |
+| function | `_mekanisk_opstil` | `(tekst, punkter)` | Sæt hvert led i et fakta-tungt afsnit på sin egen linje — uden model. | [src](../../../core/services/prosa_korrektion.py#L134) |
+| function | `_afsnit_tekst` | `(tekst, punkt)` | Find det rå afsnit i teksten som ``punkt`` peger på. | [src](../../../core/services/prosa_korrektion.py#L191) |
+| function | `_del_svar` | `(tekst, dele)` | Sæt de returnerede afsnit tilbage i teksten, ét ad gangen. | [src](../../../core/services/prosa_korrektion.py#L210) |
+| function | `korriger_prosa` | `(tekst, fejl, *, stream_followup, provider, model, base_messages, run_id=…, session_id=…)` | Bed modellen rette prosa-opremsninger. Returnerer ny tekst. | [src](../../../core/services/prosa_korrektion.py#L228) |
+
 ## `core/services/prosa_struktur_guard.py`
 _Mekanisk kontrol af fire former for formfejl i et synligt svar._
 
@@ -680,34 +692,4 @@ _Regulation/homeostasis signal tracking — migrated onto signal_tracking_framew
 | function | `_source_anchor_from_support_summary` | `(value)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L492) |
 | function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L506) |
 | function | `_value` | `(*values, default)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L518) |
-
-## `core/services/relation_continuity_signal_tracking.py`
-_Relation-continuity signal tracking — migrated onto signal_tracking_framework._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_relation_continuity_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L38) |
-| function | `refresh_runtime_relation_continuity_signal_statuses` | `()` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L64) |
-| function | `build_runtime_relation_continuity_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L68) |
-| function | `_extract_relation_continuity_candidates` | `(*, run_id)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L72) |
-| function | `_latest_user_understanding_signal` | `(*, run_id)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L185) |
-| function | `_latest_chronicle_brief` | `(*, run_id, focus_key)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L195) |
-| function | `_latest_chronicle_signal` | `(*, run_id, focus_key)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L207) |
-| function | `_latest_regulation_signal` | `(*, run_id, focus_key)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L219) |
-| function | `_derive_continuity_watchfulness` | `(*, relation_watchfulness, regulation_watchfulness)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L231) |
-| function | `_derive_continuity_weight` | `(*, chronicle_weight, relation_confidence)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L237) |
-| function | `_derive_continuity_state` | `(*, relation_state, continuity_alignment, continuity_watchfulness, continuity_weight)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L245) |
-| function | `_continuity_summary` | `(*, focus, continuity_state, continuity_alignment, continuity_watchfulness, continuity_weight)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L261) |
-| function | `_grounding_mode` | `(*, has_chronicle_brief, has_chronicle_signal, has_regulation)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L276) |
-| function | `_with_runtime_view` | `(record, signal)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L288) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L310) |
-| function | `_relation_continuity_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L326) |
-| function | `_focus_key` | `(item)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L347) |
-| function | `_anchor` | `(item)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L351) |
-| function | `_canonical_segment` | `(value, *, index)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L361) |
-| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L373) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L385) |
-| function | `_value` | `(*values, default)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L397) |
-| function | `_grounding_mode_from_support_summary` | `(value)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L405) |
-| function | `_source_anchor_from_support_summary` | `(value)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L413) |
 

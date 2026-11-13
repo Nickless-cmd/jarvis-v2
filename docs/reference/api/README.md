@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18628 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18640 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -35,34 +35,34 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18628 functions/
 - [`core.services.02`](core.services.02.md) — `agent_parking` … `anticipatory_action_daemon`
 - [`core.services.03`](core.services.03.md) — `anticipatory_context` … `autonomy_pressure_signal_tracking`
 - [`core.services.04`](core.services.04.md) — `autonomy_proposal_queue` … `central_adaptation`
-- [`core.services.05`](core.services.05.md) — `central_affect` … `central_glitch`
-- [`core.services.06`](core.services.06.md) — `central_governance` … `central_projection_cache`
-- [`core.services.07`](core.services.07.md) — `central_prompt_composer` … `central_watch`
-- [`core.services.08`](core.services.08.md) — `central_white_rabbit` … `citation_markorer`
-- [`core.services.09`](core.services.09.md) — `claim_scanner` … `context_window_manager`
-- [`core.services.10`](core.services.10.md) — `continuity` … `daemon_manager`
-- [`core.services.11`](core.services.11.md) — `daemon_memory_safeguard` … `diagnosis_gate`
-- [`core.services.12`](core.services.12.md) — `diary_synthesis_signal_tracking` … `emergent_bridge`
-- [`core.services.13`](core.services.13.md) — `emergent_goals` … `file_links`
-- [`core.services.14`](core.services.14.md) — `file_watch_daemon` … `goal_signal_tracking`
-- [`core.services.15`](core.services.15.md) — `good_enough_gate` … `identity_mutation_log`
-- [`core.services.16`](core.services.16.md) — `identity_sketch` … `jarvis_ui_guard`
-- [`core.services.17`](core.services.17.md) — `jarvisx_bridge` … `meaning_significance_signal_tracking`
-- [`core.services.18`](core.services.18.md) — `memory_breathing` … `mood_dialer`
-- [`core.services.19`](core.services.19.md) — `mood_oscillator` … `override_command`
-- [`core.services.20`](core.services.20.md) — `override_store` … `proactive_context_governor`
-- [`core.services.21`](core.services.21.md) — `proactive_loop_lifecycle_tracking` … `prosa_korrektion`
-- [`core.services.22`](core.services.22.md) — `prosa_struktur_guard` … `relation_continuity_signal_tracking`
-- [`core.services.23`](core.services.23.md) — `relation_creative_state_surface` … `routine_scheduler`
-- [`core.services.24`](core.services.24.md) — `routine_service` … `scheduled_inbox`
-- [`core.services.25`](core.services.25.md) — `scheduled_job_windows` … `self_wakeup`
-- [`core.services.26`](core.services.26.md) — `selfhood_proposal_tracking` … `signal_decay_daemon`
-- [`core.services.27`](core.services.27.md) — `signal_delta_trigger` … `subjective_time`
-- [`core.services.28`](core.services.28.md) — `suggest_standing_guard` … `tool_embeddings`
-- [`core.services.29`](core.services.29.md) — `tool_execution_trace` … `user_understanding_signal_tracking`
-- [`core.services.30`](core.services.30.md) — `valence_trajectory` … `visible_run_recovery_dispatcher`
-- [`core.services.31`](core.services.31.md) — `visible_run_segment_exit` … `weekly_manifest`
-- [`core.services.32`](core.services.32.md) — `weighted_slot_health` … `world_model_signal_tracking`
+- [`core.services.05`](core.services.05.md) — `central_affect` … `central_ghost`
+- [`core.services.06`](core.services.06.md) — `central_glitch` … `central_profiles`
+- [`core.services.07`](core.services.07.md) — `central_projection_cache` … `central_valence`
+- [`core.services.08`](core.services.08.md) — `central_watch` … `ci_status_watch`
+- [`core.services.09`](core.services.09.md) — `citation_markorer` … `context_proveniens`
+- [`core.services.10`](core.services.10.md) — `context_window_manager` … `daemon_llm`
+- [`core.services.11`](core.services.11.md) — `daemon_manager` … `device_tokens`
+- [`core.services.12`](core.services.12.md) — `diagnosis_gate` … `emergence_initiative_bridge`
+- [`core.services.13`](core.services.13.md) — `emergent_bridge` … `file_awareness_daemon`
+- [`core.services.14`](core.services.14.md) — `file_links` … `goal_signal_synthesizer`
+- [`core.services.15`](core.services.15.md) — `goal_signal_tracking` … `identity_guard`
+- [`core.services.16`](core.services.16.md) — `identity_mutation_log` … `jarvis_brain_visibility`
+- [`core.services.17`](core.services.17.md) — `jarvis_ui_guard` … `mcp_trust`
+- [`core.services.18`](core.services.18.md) — `meaning_significance_signal_tracking` … `monitor_streams`
+- [`core.services.19`](core.services.19.md) — `mood_dialer` … `outreach_composer`
+- [`core.services.20`](core.services.20.md) — `override_command` … `proactive_candidates`
+- [`core.services.21`](core.services.21.md) — `proactive_context_governor` … `proprioception_metrics`
+- [`core.services.22`](core.services.22.md) — `prosa_korrektion` … `regulation_homeostasis_signal_tracking`
+- [`core.services.23`](core.services.23.md) — `relation_continuity_signal_tracking` … `routine_run_recorder`
+- [`core.services.24`](core.services.24.md) — `routine_scheduler` … `rupture_repair`
+- [`core.services.25`](core.services.25.md) — `scheduled_inbox` … `self_system_code_awareness`
+- [`core.services.26`](core.services.26.md) — `self_wakeup` … `signal_baseline`
+- [`core.services.27`](core.services.27.md) — `signal_decay_daemon` … `subagent_ecology`
+- [`core.services.28`](core.services.28.md) — `subjective_time` … `tool_dansk_bro`
+- [`core.services.29`](core.services.29.md) — `tool_embeddings` … `user_theory_of_mind`
+- [`core.services.30`](core.services.30.md) — `user_understanding_signal_tracking` … `visible_run_recovery_coordinator`
+- [`core.services.31`](core.services.31.md) — `visible_run_recovery_dispatcher` … `web_push_subscriptions`
+- [`core.services.32`](core.services.32.md) — `weekly_manifest` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

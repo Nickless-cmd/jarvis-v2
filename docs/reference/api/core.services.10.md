@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/context_window_manager.py`
+_Context window manager — strategies for keeping prompts within budget._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_current_visible_window` | `()` | Resolve the visible lane model's context window in tokens. Fallback 200k. | [src](../../../core/services/context_window_manager.py#L45) |
+| function | `_window_scaled_thresholds` | `()` | Compaction target + pressure levels as a fraction of the ACTUAL model window. | [src](../../../core/services/context_window_manager.py#L62) |
+| function | `_estimate_session_tokens` | `()` | — | [src](../../../core/services/context_window_manager.py#L90) |
+| function | `_list_session_messages` | `(session_id=…, limit=…)` | — | [src](../../../core/services/context_window_manager.py#L98) |
+| function | `_is_anchor` | `(message)` | — | [src](../../../core/services/context_window_manager.py#L120) |
+| function | `apply_sliding` | `(messages, *, keep_recent=…, preserve_anchors=…)` | Keep last N messages, drop middle. Optionally preserve anchor messages. | [src](../../../core/services/context_window_manager.py#L127) |
+| function | `estimate_pressure` | `()` | Read current session size + classify pressure level against the ACTUAL | [src](../../../core/services/context_window_manager.py#L152) |
+| function | `degradation_signal` | `()` | Detect signs that long context is hurting performance. | [src](../../../core/services/context_window_manager.py#L177) |
+| function | `adaptive_pick_strategy` | `()` | Pick the best strategy for current state. | [src](../../../core/services/context_window_manager.py#L242) |
+| function | `context_window_section` | `()` | Awareness-section warning when degradation detected. | [src](../../../core/services/context_window_manager.py#L253) |
+| function | `_exec_context_pressure` | `(args)` | — | [src](../../../core/services/context_window_manager.py#L269) |
+| function | `_exec_manage_context_window` | `(args)` | Apply a chosen context-management strategy. | [src](../../../core/services/context_window_manager.py#L277) |
+
 ## `core/services/continuity.py`
 _Continuity Kernel — state capsule + live update + graded wake-up._
 
@@ -609,26 +627,4 @@ _Shared LLM call for daemons — cheap lane first, heartbeat model fallback._
 | function | `_gratis_balancer_foerst` | `()` | Live kill switch for public-safe-daemons. Fejler ALDRIG. | [src](../../../core/services/daemon_llm.py#L322) |
 | function | `_estimer_tokens` | `(text)` | Grov token-estimat når provideren ikke returnerer et tal. | [src](../../../core/services/daemon_llm.py#L339) |
 | function | `_daemon_llm_call_impl` | `(prompt, *, max_len, fallback, daemon_name, public_safe)` | — | [src](../../../core/services/daemon_llm.py#L354) |
-
-## `core/services/daemon_manager.py`
-_Daemon Manager — registry, lifecycle control, and state persistence for all daemons._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_state_file` | `()` | — | [src](../../../core/services/daemon_manager.py#L20) |
-| function | `get_daemon_names` | `()` | — | [src](../../../core/services/daemon_manager.py#L806) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/daemon_manager.py#L810) |
-| function | `_save_state` | `(state)` | — | [src](../../../core/services/daemon_manager.py#L820) |
-| function | `_get_daemon_state` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L826) |
-| function | `_set_daemon_state` | `(name, updates)` | — | [src](../../../core/services/daemon_manager.py#L830) |
-| function | `_require_known` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L838) |
-| function | `is_enabled` | `(name)` | Return True if the named daemon should run. Unknown daemons return True (safe default). | [src](../../../core/services/daemon_manager.py#L844) |
-| function | `set_daemon_enabled` | `(name, enabled)` | — | [src](../../../core/services/daemon_manager.py#L853) |
-| function | `get_effective_cadence` | `(name)` | Return interval in minutes: override if set, else default. | [src](../../../core/services/daemon_manager.py#L858) |
-| function | `_tick_resume` | `(result)` | Et resumé der kan svare på om et medlem kørte. | [src](../../../core/services/daemon_manager.py#L878) |
-| function | `record_daemon_tick` | `(name, result)` | Record last_run_at and a summary of the tick result. Called by heartbeat_runtime. | [src](../../../core/services/daemon_manager.py#L920) |
-| function | `_hours_since` | `(iso)` | — | [src](../../../core/services/daemon_manager.py#L929) |
-| function | `get_all_daemon_states` | `()` | Return status for all registered daemons. | [src](../../../core/services/daemon_manager.py#L941) |
-| function | `control_daemon` | `(name, action, *, interval_minutes=…)` | Control a daemon. Actions: enable, disable, restart, set_interval. | [src](../../../core/services/daemon_manager.py#L964) |
-| function | `_restart_daemon` | `(name)` | Clear the module-level state variable so the daemon fires on next heartbeat tick. | [src](../../../core/services/daemon_manager.py#L995) |
 

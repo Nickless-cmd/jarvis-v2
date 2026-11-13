@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/diagnosis_gate.py`
+_Diagnosis-gate (spec 2026-06-14) — fanger uverificerede diagnostiske konklusioner._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_promise_footnote` | `(claim_snippet)` | Fodnote-linje for en uverificeret completion-claim (konsistent stil). | [src](../../../core/services/diagnosis_gate.py#L53) |
+| class | `DiagnosisResult` | `` | — | [src](../../../core/services/diagnosis_gate.py#L88) |
+| class | `DiagnosisEvent` | `` | — | [src](../../../core/services/diagnosis_gate.py#L97) |
+| function | `analyze_diagnosis` | `(text, *, tools_used=…)` | Ren detektion: er der en uverificeret diagnostisk konklusion i teksten? | [src](../../../core/services/diagnosis_gate.py#L110) |
+| function | `analyze_completion_claim` | `(text, *, tools_used=…)` | Promise-ledger §8: påstår teksten en FULDFØRT handling ('det er committet/ | [src](../../../core/services/diagnosis_gate.py#L151) |
+| function | `diagnosis_gate_enforce` | `(text, *, session_id=…, run_id=…, tools_used=…)` | Pipeline-hook (spec §3.2): kører efter fact-gate, før append_chat_message. | [src](../../../core/services/diagnosis_gate.py#L185) |
+
 ## `core/services/diary_synthesis_signal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -719,16 +731,4 @@ _Emergence → initiative bridge: et opdaget mønster bliver en handling._
 | function | `push_emergents_to_queue` | `(patterns=…)` | Gør opdagede mønstre til initiativer. Returnerer hvad der skete og hvorfor. | [src](../../../core/services/emergence_initiative_bridge.py#L131) |
 | function | `_normaliser` | `(patterns)` | Tag imod både detect-returformen og rå DB-rækker. | [src](../../../core/services/emergence_initiative_bridge.py#L188) |
 | function | `build_emergence_initiative_surface` | `()` | MC-flade: hvad motoren har gjort ved køen — og hvad den afviste hvorfor. | [src](../../../core/services/emergence_initiative_bridge.py#L204) |
-
-## `core/services/emergent_bridge.py`
-_Emergent Bridge — consumer for emergent signals to influence visible prompt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `should_influence_prompt` | `()` | Determine if an emergent signal should influence the visible prompt. | [src](../../../core/services/emergent_bridge.py#L26) |
-| function | `get_influencing_emergents` | `()` | Get the emergent signals that are currently influencing. | [src](../../../core/services/emergent_bridge.py#L45) |
-| function | `format_emergent_for_prompt` | `()` | Format emergent signal for prompt injection. | [src](../../../core/services/emergent_bridge.py#L68) |
-| function | `reset_emergent_bridge` | `()` | Reset emergent bridge state (for testing). | [src](../../../core/services/emergent_bridge.py#L84) |
-| function | `get_emergent_bridge_state` | `()` | Get current state of emergent bridge. | [src](../../../core/services/emergent_bridge.py#L90) |
-| function | `build_emergent_bridge_surface` | `()` | Build MC surface for emergent bridge. | [src](../../../core/services/emergent_bridge.py#L100) |
 

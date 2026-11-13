@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/file_links.py`
+_Kortlivede, signerede links til udgivne filer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_noegle` | `()` | Signerings-nøglen. Tom bytes når den ikke kan udledes. | [src](../../../core/services/file_links.py#L60) |
+| function | `_rent_navn` | `(filnavn)` | Filnavnet som det MÅ signeres. Tom streng når det ikke er et blot navn. | [src](../../../core/services/file_links.py#L81) |
+| function | `_rent_workspace` | `(navn)` | Workspace-navnet som det må signeres. Samme rensning som filnavnet. | [src](../../../core/services/file_links.py#L93) |
+| function | `_signatur` | `(ws, navn, udloeb, noegle)` | — | [src](../../../core/services/file_links.py#L104) |
+| function | `signer` | `(filnavn, *, workspace, levetid_s=…, nu=…)` | Udsted et link. `{"status": "ok", "sig": ..., "udloeb": ...}` eller en fejl. | [src](../../../core/services/file_links.py#L109) |
+| function | `verificer` | `(filnavn, udloeb, sig, *, workspace, nu=…)` | Holder signaturen, og er den stadig i live? Falsk ved enhver tvivl. | [src](../../../core/services/file_links.py#L136) |
+
 ## `core/services/file_watch_daemon.py`
 _File Watch Daemon — proprioception: "I feel when my own files change"._
 
@@ -505,29 +517,4 @@ _Goal signal synthesizer — surface candidate goals from dreams/reflections._
 |---|---|---|---|---|
 | function | `_gather_signals` | `()` | Collect recent introspective signals as text for LLM. | [src](../../../core/services/goal_signal_synthesizer.py#L23) |
 | function | `synthesize_candidate_goals` | `(*, max_candidates=…)` | Run one synthesis pass — propose new goals from recent signals. | [src](../../../core/services/goal_signal_synthesizer.py#L52) |
-
-## `core/services/goal_signal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_goal_signals_for_visible_turn` | `(*, session_id, run_id, user_message)` | — | [src](../../../core/services/goal_signal_tracking.py#L23) |
-| function | `refresh_runtime_goal_signal_statuses` | `()` | — | [src](../../../core/services/goal_signal_tracking.py#L64) |
-| function | `build_runtime_goal_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/goal_signal_tracking.py#L101) |
-| function | `_extract_goal_candidates` | `(*, user_message, completed_domains)` | — | [src](../../../core/services/goal_signal_tracking.py#L126) |
-| function | `_goal_from_active_focus` | `(focus, *, user_message, completed_domains)` | — | [src](../../../core/services/goal_signal_tracking.py#L152) |
-| function | `_persist_goal_signals` | `(*, goals, session_id, run_id)` | — | [src](../../../core/services/goal_signal_tracking.py#L225) |
-| function | `_apply_completion_signals` | `(domains)` | — | [src](../../../core/services/goal_signal_tracking.py#L292) |
-| function | `_supersede_replaced_goal_signals` | `(persisted_item, *, updated_at)` | — | [src](../../../core/services/goal_signal_tracking.py#L347) |
-| function | `_completed_goal_domains` | `(message)` | — | [src](../../../core/services/goal_signal_tracking.py#L377) |
-| function | `_blocking_state_for_domain` | `(domain_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L385) |
-| function | `_has_completed_goal_history` | `(domain_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L430) |
-| function | `_domain_key_from_focus` | `(canonical_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L439) |
-| function | `_domain_key_from_critic` | `(canonical_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L463) |
-| function | `_domain_key_from_self_model` | `(canonical_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L472) |
-| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/goal_signal_tracking.py#L481) |
-| function | `_message_domain_key` | `(text)` | — | [src](../../../core/services/goal_signal_tracking.py#L485) |
-| function | `_goal_title` | `(domain_key, fallback)` | — | [src](../../../core/services/goal_signal_tracking.py#L494) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/goal_signal_tracking.py#L502) |
-| function | `_rank` | `(value)` | — | [src](../../../core/services/goal_signal_tracking.py#L511) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/goal_signal_tracking.py#L515) |
 

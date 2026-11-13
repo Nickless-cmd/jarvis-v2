@@ -7316,6 +7316,114 @@
       },
       "created_at_formats": []
     },
+    "central_consequences": {
+      "digest": "f1:51:5e:12:15:aa:a0:80:35:13:1f:d5:f9:18:4f:f2:e9:10:55:1b:67:dd:54:33:01:f9:af:98:89:fe:ff:22",
+      "schema": {
+        "columns": [
+          {
+            "name": "after_value",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "applied",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "before_value",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "cid",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "lever",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "reason",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "subject",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_central_consequences_cid",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "cid",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "created_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_central_consequences_cid ON central_consequences(cid, created_at)"
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_offset"
+      ]
+    },
     "central_dream_actions": {
       "digest": "0c:44:91:ba:78:22:f7:18:21:f8:03:ce:bc:2d:02:a6:30:7e:21:63:05:d1:c7:26:3c:b4:a4:f1:71:89:53:0b",
       "schema": {
@@ -9956,7 +10064,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "cheap_lane_admission_state": {

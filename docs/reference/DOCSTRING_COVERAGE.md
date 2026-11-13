@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10116/18628 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10123/18640 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10116/18628 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 899 | 1612 | 55% |
-| `core.services` | 6764 | 12632 | 53% |
+| `core.services` | 6771 | 12644 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 10116/18628 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2632)
+## Undocumented public functions (2631)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L231)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -955,7 +955,6 @@ Generated from source. 10116/18628 functions/methods documented (54%). The list 
 - `core/services/central_catalog.py` :: `security_clusters` (L532)
 - `core/services/central_core.py` :: `Central.register` (L271)
 - `core/services/central_core.py` :: `central` (L281)
-- `core/services/central_dissent.py` :: `record_dissent` (L87)
 - `core/services/central_exile.py` :: `list_exchanges` (L119)
 - `core/services/central_existence_feel.py` :: `get_continuity_reading` (L151)
 - `core/services/central_existence_feel.py` :: `get_mortality_reading` (L159)
@@ -983,11 +982,11 @@ Generated from source. 10116/18628 functions/methods documented (54%). The list 
 - `core/services/central_prompt_explore.py` :: `is_explore_live` (L71)
 - `core/services/central_rca.py` :: `list_rca` (L117)
 - `core/services/central_red_dress.py` :: `record_red_dress` (L80)
-- `core/services/central_redpill.py` :: `build_redpill_surface` (L142)
+- `core/services/central_redpill.py` :: `build_redpill_surface` (L146)
 - `core/services/central_router_adapt.py` :: `is_live_enabled` (L63)
 - `core/services/central_router_explore.py` :: `is_explore_live` (L45)
 - `core/services/central_self_state.py` :: `is_prompt_authoritative` (L508)
-- `core/services/central_sentinel.py` :: `list_attacks` (L140)
+- `core/services/central_sentinel.py` :: `list_attacks` (L176)
 - `core/services/central_sequence.py` :: `ensure_schema` (L47)
 - `core/services/central_soul_feel.py` :: `get_calm_anchor_reading` (L334)
 - `core/services/central_soul_feel.py` :: `get_drift_reading` (L358)

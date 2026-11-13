@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/proactive_context_governor.py`
+_Proactive context governor — auto-trigger compaction + sub-agent slicing._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `should_auto_compact` | `()` | Decide whether prompt_contract should trigger compaction now. | [src](../../../core/services/proactive_context_governor.py#L50) |
+| function | `auto_compact_if_needed` | `()` | Run compaction if threshold crossed. Idempotent (cooldown protected). | [src](../../../core/services/proactive_context_governor.py#L101) |
+| function | `auto_compact_if_needed_deferred` | `()` | Schedulér auto-compact til at køre EFTER den nuværende synlige tur (off critical | [src](../../../core/services/proactive_context_governor.py#L145) |
+| function | `build_subagent_context_slice` | `(*, role, goal, max_chars=…)` | Compose a tailored context slice for a sub-agent based on goal. | [src](../../../core/services/proactive_context_governor.py#L195) |
+| function | `_load_versions` | `()` | — | [src](../../../core/services/proactive_context_governor.py#L252) |
+| function | `_save_versions` | `(versions)` | — | [src](../../../core/services/proactive_context_governor.py#L259) |
+| function | `save_context_version` | `(*, reason=…)` | Snapshot the current session state. Returns version_id. | [src](../../../core/services/proactive_context_governor.py#L263) |
+| function | `list_context_versions` | `(*, limit=…)` | — | [src](../../../core/services/proactive_context_governor.py#L301) |
+| function | `recall_context_version` | `(version_id)` | — | [src](../../../core/services/proactive_context_governor.py#L316) |
+| function | `_exec_should_auto_compact` | `(args)` | — | [src](../../../core/services/proactive_context_governor.py#L327) |
+| function | `_exec_auto_compact_if_needed` | `(args)` | — | [src](../../../core/services/proactive_context_governor.py#L331) |
+| function | `_exec_build_subagent_context` | `(args)` | — | [src](../../../core/services/proactive_context_governor.py#L335) |
+| function | `_exec_list_context_versions` | `(args)` | — | [src](../../../core/services/proactive_context_governor.py#L343) |
+| function | `_exec_recall_context_version` | `(args)` | — | [src](../../../core/services/proactive_context_governor.py#L347) |
+
 ## `core/services/proactive_loop_lifecycle_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -630,16 +650,4 @@ _Proprioception Metrics — process-level body sense._
 | function | `_surface_summary` | `(current, rss_trend)` | — | [src](../../../core/services/proprioception_metrics.py#L180) |
 | function | `build_proprioception_metrics_prompt_section` | `()` | Only surfaces when something is actively worth noticing. | [src](../../../core/services/proprioception_metrics.py#L196) |
 | function | `reset_proprioception_metrics` | `()` | — | [src](../../../core/services/proprioception_metrics.py#L216) |
-
-## `core/services/prosa_korrektion.py`
-_Ret prosa-opremsninger FØR svaret vises — ikke som et flag bagefter._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_baerende_tokens` | `(tekst)` | De ord i et afsnit der ikke må forsvinde: tal, hashes og stier. | [src](../../../core/services/prosa_korrektion.py#L74) |
-| function | `_led_i_afsnit` | `(samlet)` | Del et afsnit i de led der hver især bærer én selvstændig oplysning. | [src](../../../core/services/prosa_korrektion.py#L109) |
-| function | `_mekanisk_opstil` | `(tekst, punkter)` | Sæt hvert led i et fakta-tungt afsnit på sin egen linje — uden model. | [src](../../../core/services/prosa_korrektion.py#L134) |
-| function | `_afsnit_tekst` | `(tekst, punkt)` | Find det rå afsnit i teksten som ``punkt`` peger på. | [src](../../../core/services/prosa_korrektion.py#L191) |
-| function | `_del_svar` | `(tekst, dele)` | Sæt de returnerede afsnit tilbage i teksten, ét ad gangen. | [src](../../../core/services/prosa_korrektion.py#L210) |
-| function | `korriger_prosa` | `(tekst, fejl, *, stream_followup, provider, model, base_messages, run_id=…, session_id=…)` | Bed modellen rette prosa-opremsninger. Returnerer ny tekst. | [src](../../../core/services/prosa_korrektion.py#L228) |
 

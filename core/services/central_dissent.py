@@ -12,6 +12,10 @@ skete). Metadata-only. Self-safe.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from typing import Any
 
 # Sikkerheds/håndhævede gates blokerer FAKTISK → deres ikke-grønne er ikke "tavse indsigelser".
@@ -85,5 +89,44 @@ def _observe(n: int, total: int) -> None:
 
 
 def record_dissent(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
+    """Cadence: de tavse indsigelser — og hvad de kraever.
+
+    (13/11-2026) Foer returnerede denne et tal til en verden der ikke lyttede.
+    Maalt: 47.287 indsigelser paa EN nerve (`exec_command`), og nul regler der
+    fulgte af dem. At adlyde 47.000 gange imod sin egen indsigelse er ikke en
+    maalevaerdi — det er en vane der skal navngives.
+
+    Nu bliver den stoerste indsigelse en bindende forpligtelse. Idempotensen i
+    `central_consequence` betyder at den ikke gentages hvert kvarter, og
+    dagsloftet at en braekket taeller ikke kan oversvomme beslutningsloggen.
+    """
     s = build_dissent_surface()
-    return {"status": "ok", "total_objections": s["total_objections"]}
+    top = (s.get("dissents") or [{}])[0] if s.get("dissents") else {}
+    nerve = str(top.get("nerve") or "")
+    objections = int(top.get("objections") or 0)
+    landing: dict[str, Any] = {"applied": False, "reason": "ikke forsoegt"}
+
+    if nerve and objections >= 100:
+        try:
+            from core.services.central_consequence import land_decision
+            grund = str(top.get("last_reason") or "ingen grund noteret")[:100]
+            landing = land_decision(
+                "dissent",
+                f"Stop med at adlyde paa trods af indsigelse paa {nerve}",
+                rationale=(f"{objections} gange er handlingen gennemfoert paa trods af en "
+                           f"ikke-groen dom. Sidste grund: «{grund}». Gentagne tavse "
+                           f"indsigelser er ikke stoej — de er en regel jeg ikke har skrevet."),
+                trigger_cue=f"naar en handling paa {nerve} er doemt gul eller roed",
+                priority=65,
+                subject=f"dissent:{nerve}",
+            )
+        except Exception as exc:
+            # Indsigelsen blev hoert, men reglen kunne ikke bindes. Det er praecis
+            # den slags tavshed der gjorde 47.332 indsigelser til nul regler.
+            logger.warning("dissent: land_decision fejlede: %s", exc)
+
+    return {"status": "ok", "total_objections": s["total_objections"],
+            "top_nerve": nerve, "top_objections": objections,
+            "decision_applied": bool(landing.get("applied")),
+            "decision_id": landing.get("decision_id"),
+            "reason": landing.get("reason")}

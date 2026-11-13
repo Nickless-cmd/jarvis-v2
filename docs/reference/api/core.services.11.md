@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/daemon_manager.py`
+_Daemon Manager — registry, lifecycle control, and state persistence for all daemons._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_state_file` | `()` | — | [src](../../../core/services/daemon_manager.py#L20) |
+| function | `get_daemon_names` | `()` | — | [src](../../../core/services/daemon_manager.py#L806) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/daemon_manager.py#L810) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/daemon_manager.py#L820) |
+| function | `_get_daemon_state` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L826) |
+| function | `_set_daemon_state` | `(name, updates)` | — | [src](../../../core/services/daemon_manager.py#L830) |
+| function | `_require_known` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L838) |
+| function | `is_enabled` | `(name)` | Return True if the named daemon should run. Unknown daemons return True (safe default). | [src](../../../core/services/daemon_manager.py#L844) |
+| function | `set_daemon_enabled` | `(name, enabled)` | — | [src](../../../core/services/daemon_manager.py#L853) |
+| function | `get_effective_cadence` | `(name)` | Return interval in minutes: override if set, else default. | [src](../../../core/services/daemon_manager.py#L858) |
+| function | `_tick_resume` | `(result)` | Et resumé der kan svare på om et medlem kørte. | [src](../../../core/services/daemon_manager.py#L878) |
+| function | `record_daemon_tick` | `(name, result)` | Record last_run_at and a summary of the tick result. Called by heartbeat_runtime. | [src](../../../core/services/daemon_manager.py#L920) |
+| function | `_hours_since` | `(iso)` | — | [src](../../../core/services/daemon_manager.py#L929) |
+| function | `get_all_daemon_states` | `()` | Return status for all registered daemons. | [src](../../../core/services/daemon_manager.py#L941) |
+| function | `control_daemon` | `(name, action, *, interval_minutes=…)` | Control a daemon. Actions: enable, disable, restart, set_interval. | [src](../../../core/services/daemon_manager.py#L964) |
+| function | `_restart_daemon` | `(name)` | Clear the module-level state variable so the daemon fires on next heartbeat tick. | [src](../../../core/services/daemon_manager.py#L995) |
+
 ## `core/services/daemon_memory_safeguard.py`
 _Daemon memory safeguard — post-hoc check that Jarvis saved what mattered._
 
@@ -118,8 +140,8 @@ _Gate 1: Decision-adherence gate._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `decision_adherence_section` | `()` | Build an escalation prompt section based on current decision adherence. | [src](../../../core/services/decision_adherence_gate.py#L32) |
-| function | `registrer_i_indbakken` | `(bruger_id)` | Giv hver beslutning under tærsklen en post i indbakken. | [src](../../../core/services/decision_adherence_gate.py#L231) |
+| function | `decision_adherence_section` | `()` | Build an escalation prompt section based on current decision adherence. | [src](../../../core/services/decision_adherence_gate.py#L33) |
+| function | `registrer_i_indbakken` | `(bruger_id)` | Giv hver beslutning under tærsklen en post i indbakken. | [src](../../../core/services/decision_adherence_gate.py#L251) |
 
 ## `core/services/decision_breach_reader.py`
 _Læseren for breach-events — den manglende anden halvdel af sløjfen._
@@ -565,16 +587,4 @@ _Per-bruger FCM device-tokens. Egen tabel — rører ikke db.py's 33k linjer._
 | function | `register` | `(user_id, token, platform=…)` | — | [src](../../../core/services/device_tokens.py#L28) |
 | function | `list_for_user` | `(user_id)` | — | [src](../../../core/services/device_tokens.py#L45) |
 | function | `delete` | `(token)` | — | [src](../../../core/services/device_tokens.py#L57) |
-
-## `core/services/diagnosis_gate.py`
-_Diagnosis-gate (spec 2026-06-14) — fanger uverificerede diagnostiske konklusioner._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_promise_footnote` | `(claim_snippet)` | Fodnote-linje for en uverificeret completion-claim (konsistent stil). | [src](../../../core/services/diagnosis_gate.py#L53) |
-| class | `DiagnosisResult` | `` | — | [src](../../../core/services/diagnosis_gate.py#L88) |
-| class | `DiagnosisEvent` | `` | — | [src](../../../core/services/diagnosis_gate.py#L97) |
-| function | `analyze_diagnosis` | `(text, *, tools_used=…)` | Ren detektion: er der en uverificeret diagnostisk konklusion i teksten? | [src](../../../core/services/diagnosis_gate.py#L110) |
-| function | `analyze_completion_claim` | `(text, *, tools_used=…)` | Promise-ledger §8: påstår teksten en FULDFØRT handling ('det er committet/ | [src](../../../core/services/diagnosis_gate.py#L151) |
-| function | `diagnosis_gate_enforce` | `(text, *, session_id=…, run_id=…, tools_used=…)` | Pipeline-hook (spec §3.2): kører efter fact-gate, før append_chat_message. | [src](../../../core/services/diagnosis_gate.py#L185) |
 

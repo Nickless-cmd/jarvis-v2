@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/citation_markorer.py`
+_Citation-markører — kontrolsyntaks der aldrig må nå skærmen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Kilder` | `` | Turens kilder — det eneste en ``cite``/``url``-ref kan pege på. | [src](../../../core/services/citation_markorer.py#L69) |
+| method | `Kilder.url_for` | `(self, ref)` | — | [src](../../../core/services/citation_markorer.py#L94) |
+| method | `Kilder.memory_i_kontekst` | `(self)` | Var der memory i den prompt turen faktisk fik? Fail-closed. | [src](../../../core/services/citation_markorer.py#L97) |
+| method | `Kilder.tilfoej` | `(self, ref, url)` | Registrér én kilde — mens turen kører. | [src](../../../core/services/citation_markorer.py#L108) |
+| class | `Fund` | `` | Én markør der blev fundet — godkendt eller afvist. | [src](../../../core/services/citation_markorer.py#L121) |
+| method | `Fund.til_metadata` | `(self, kilder=…)` | JSON-egnet form til UI/observability. | [src](../../../core/services/citation_markorer.py#L143) |
+| function | `_gyldig_url` | `(url)` | Kun absolutte HTTP(S)-URL'er med et host. Alt andet afvises. | [src](../../../core/services/citation_markorer.py#L167) |
+| function | `_find_lukker` | `(tekst, start)` | Indeks for den LUKKENDE klamme der hører til åbneren ved ``start``. | [src](../../../core/services/citation_markorer.py#L180) |
+| function | `_tyd` | `(raa, kilder)` | Fortolk én markørs indhold. ``None`` = ikke en markør vi kender. | [src](../../../core/services/citation_markorer.py#L198) |
+| function | `_render` | `(fund)` | Markørens tekstfallback — hvad der står hvis den ikke kan blive et link. | [src](../../../core/services/citation_markorer.py#L243) |
+| function | `parse_markorer` | `(tekst, kilder)` | Fjern alle markører fra ``tekst`` og returnér (ren tekst, fundne). | [src](../../../core/services/citation_markorer.py#L259) |
+| class | `CitationKontrakt` | `` | Strøm-sikker markør-fjerner — samme form som ``StroemSkrubber``. | [src](../../../core/services/citation_markorer.py#L299) |
+| method | `CitationKontrakt.__init__` | `(self, kilder=…)` | — | [src](../../../core/services/citation_markorer.py#L307) |
+| method | `CitationKontrakt.feed` | `(self, tekst)` | — | [src](../../../core/services/citation_markorer.py#L312) |
+| method | `CitationKontrakt.flush` | `(self)` | — | [src](../../../core/services/citation_markorer.py#L337) |
+
 ## `core/services/claim_scanner.py`
 _Claim Scanner — output gate for the Lying Engine (Layer 2)._
 
@@ -687,22 +708,4 @@ _Kontekst-proveniens: hvad var FAKTISK i den prompt der blev bygget._
 | function | `marker_memory_i_kontekst` | `(session_id, antal_linjer)` | Registrér at `[HUKOMMELSE]` blev bygget med `antal_linjer` linjer. | [src](../../../core/services/context_proveniens.py#L47) |
 | function | `memory_i_kontekst` | `(session_id)` | Var der memory-linjer i den seneste byggede prompt for sessionen? | [src](../../../core/services/context_proveniens.py#L60) |
 | function | `ryd_register` | `()` | Tøm registeret. Kun til tests — ellers lever det som en lille dict. | [src](../../../core/services/context_proveniens.py#L80) |
-
-## `core/services/context_window_manager.py`
-_Context window manager — strategies for keeping prompts within budget._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_current_visible_window` | `()` | Resolve the visible lane model's context window in tokens. Fallback 200k. | [src](../../../core/services/context_window_manager.py#L45) |
-| function | `_window_scaled_thresholds` | `()` | Compaction target + pressure levels as a fraction of the ACTUAL model window. | [src](../../../core/services/context_window_manager.py#L62) |
-| function | `_estimate_session_tokens` | `()` | — | [src](../../../core/services/context_window_manager.py#L90) |
-| function | `_list_session_messages` | `(session_id=…, limit=…)` | — | [src](../../../core/services/context_window_manager.py#L98) |
-| function | `_is_anchor` | `(message)` | — | [src](../../../core/services/context_window_manager.py#L120) |
-| function | `apply_sliding` | `(messages, *, keep_recent=…, preserve_anchors=…)` | Keep last N messages, drop middle. Optionally preserve anchor messages. | [src](../../../core/services/context_window_manager.py#L127) |
-| function | `estimate_pressure` | `()` | Read current session size + classify pressure level against the ACTUAL | [src](../../../core/services/context_window_manager.py#L152) |
-| function | `degradation_signal` | `()` | Detect signs that long context is hurting performance. | [src](../../../core/services/context_window_manager.py#L177) |
-| function | `adaptive_pick_strategy` | `()` | Pick the best strategy for current state. | [src](../../../core/services/context_window_manager.py#L242) |
-| function | `context_window_section` | `()` | Awareness-section warning when degradation detected. | [src](../../../core/services/context_window_manager.py#L253) |
-| function | `_exec_context_pressure` | `(args)` | — | [src](../../../core/services/context_window_manager.py#L269) |
-| function | `_exec_manage_context_window` | `(args)` | Apply a chosen context-management strategy. | [src](../../../core/services/context_window_manager.py#L277) |
 

@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/emergent_bridge.py`
+_Emergent Bridge — consumer for emergent signals to influence visible prompt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `should_influence_prompt` | `()` | Determine if an emergent signal should influence the visible prompt. | [src](../../../core/services/emergent_bridge.py#L26) |
+| function | `get_influencing_emergents` | `()` | Get the emergent signals that are currently influencing. | [src](../../../core/services/emergent_bridge.py#L45) |
+| function | `format_emergent_for_prompt` | `()` | Format emergent signal for prompt injection. | [src](../../../core/services/emergent_bridge.py#L68) |
+| function | `reset_emergent_bridge` | `()` | Reset emergent bridge state (for testing). | [src](../../../core/services/emergent_bridge.py#L84) |
+| function | `get_emergent_bridge_state` | `()` | Get current state of emergent bridge. | [src](../../../core/services/emergent_bridge.py#L90) |
+| function | `build_emergent_bridge_surface` | `()` | Build MC surface for emergent bridge. | [src](../../../core/services/emergent_bridge.py#L100) |
+
 ## `core/services/emergent_goals.py`
 _Emergent Goals — desires that grow from experience, not assignment._
 
@@ -659,16 +671,4 @@ _File Awareness Daemon — proprioception: "I feel when my files change."_
 | function | `stop_file_awareness` | `()` | Stop the file awareness watcher. | [src](../../../core/services/file_awareness_daemon.py#L293) |
 | function | `is_file_awareness_running` | `()` | Check if the file awareness watcher is running. | [src](../../../core/services/file_awareness_daemon.py#L309) |
 | function | `tick_file_awareness` | `()` | Heartbeat tick: ensure watcher is running, report status. | [src](../../../core/services/file_awareness_daemon.py#L318) |
-
-## `core/services/file_links.py`
-_Kortlivede, signerede links til udgivne filer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_noegle` | `()` | Signerings-nøglen. Tom bytes når den ikke kan udledes. | [src](../../../core/services/file_links.py#L60) |
-| function | `_rent_navn` | `(filnavn)` | Filnavnet som det MÅ signeres. Tom streng når det ikke er et blot navn. | [src](../../../core/services/file_links.py#L81) |
-| function | `_rent_workspace` | `(navn)` | Workspace-navnet som det må signeres. Samme rensning som filnavnet. | [src](../../../core/services/file_links.py#L93) |
-| function | `_signatur` | `(ws, navn, udloeb, noegle)` | — | [src](../../../core/services/file_links.py#L104) |
-| function | `signer` | `(filnavn, *, workspace, levetid_s=…, nu=…)` | Udsted et link. `{"status": "ok", "sig": ..., "udloeb": ...}` eller en fejl. | [src](../../../core/services/file_links.py#L109) |
-| function | `verificer` | `(filnavn, udloeb, sig, *, workspace, nu=…)` | Holder signaturen, og er den stadig i live? Falsk ved enhver tvivl. | [src](../../../core/services/file_links.py#L136) |
 

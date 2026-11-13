@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_projection_cache.py`
+_Kortlivet cache for Centralens projektioner — så polling ikke koster._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `cached` | `(key, ttl_s, producer)` | Returnér ``(værdi, alder_i_sekunder)`` — beregn kun hvis TTL er udløbet. | [src](../../../core/services/central_projection_cache.py#L55) |
+| function | `invalidate` | `(prefix=…)` | Smid cachede værdier væk. Tom prefix rydder alt. Returnerer antal fjernet. | [src](../../../core/services/central_projection_cache.py#L81) |
+| function | `stats` | `()` | Hits/misses/hitrate — så effekten kan aflæses i stedet for antages. | [src](../../../core/services/central_projection_cache.py#L93) |
+| function | `cached_by_version` | `(key, version, producer)` | Som ``cached()``, men invalideret af en VERSIONSNØGLE i stedet for en TTL. | [src](../../../core/services/central_projection_cache.py#L105) |
+
 ## `core/services/central_prompt_composer.py`
 _core/services/central_prompt_composer.py_
 
@@ -97,13 +107,13 @@ _Red Pill — dagens ubehagelige sandhed._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_redpill.py#L20) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_redpill.py#L29) |
-| function | `_candidates` | `()` | Saml de undgåede sandheder med en avoidance-score (jo højere, jo mere undgået). Self-safe. | [src](../../../core/services/central_redpill.py#L37) |
-| function | `todays_truth` | `(*, advance=…)` | Vælg den ÉNE mest-undgåede sandhed — og opdatér blå-pille-striben. | [src](../../../core/services/central_redpill.py#L86) |
-| function | `_observe` | `(kind, streak)` | — | [src](../../../core/services/central_redpill.py#L133) |
-| function | `build_redpill_surface` | `()` | — | [src](../../../core/services/central_redpill.py#L142) |
-| function | `record_redpill` | `(*, trigger=…, last_visible_at=…)` | Cadence-produceren — den ENESTE vej der tæller blå-pille-striben op. | [src](../../../core/services/central_redpill.py#L146) |
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_redpill.py#L24) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_redpill.py#L33) |
+| function | `_candidates` | `()` | Saml de undgåede sandheder med en avoidance-score (jo højere, jo mere undgået). Self-safe. | [src](../../../core/services/central_redpill.py#L41) |
+| function | `todays_truth` | `(*, advance=…)` | Vælg den ÉNE mest-undgåede sandhed — og opdatér blå-pille-striben. | [src](../../../core/services/central_redpill.py#L90) |
+| function | `_observe` | `(kind, streak)` | — | [src](../../../core/services/central_redpill.py#L137) |
+| function | `build_redpill_surface` | `()` | — | [src](../../../core/services/central_redpill.py#L146) |
+| function | `record_redpill` | `(*, trigger=…, last_visible_at=…)` | Cadence-produceren — den ENESTE vej der tæller blå-pille-striben op. | [src](../../../core/services/central_redpill.py#L150) |
 
 ## `core/services/central_relational.py`
 _Relationel Continuity — så Jarvis kan sige "velkommen tilbage" og MENE det._
@@ -264,17 +274,17 @@ _The Sentinel — en ægte modstander._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/central_sentinel.py#L27) |
-| function | `_enforced` | `()` | Shadow default: Sentinel foreslår kun. Flip via eksplicit flag efter shadow-eval. | [src](../../../core/services/central_sentinel.py#L31) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_sentinel.py#L41) |
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_sentinel.py#L49) |
-| function | `_top_hypothesis` | `()` | — | [src](../../../core/services/central_sentinel.py#L63) |
-| function | `_generate_attack` | `(hyp)` | Formulér angrebet fra track-record — ikke for at være rigtig, men for at kræve et forsvar. | [src](../../../core/services/central_sentinel.py#L75) |
-| function | `attack` | `()` | Angrib den højeste-confidence hypotese → contested + FORESLÅ halvering (shadow). Self-safe. | [src](../../../core/services/central_sentinel.py#L95) |
-| function | `defend` | `(attack_id, *, defense)` | Centralen forsvarer hypotesen mod angrebet → status 'defended' (halvering afvises). Self-safe. | [src](../../../core/services/central_sentinel.py#L121) |
-| function | `list_attacks` | `(*, active_only=…, limit=…)` | — | [src](../../../core/services/central_sentinel.py#L140) |
-| function | `build_sentinel_surface` | `()` | Aktive angreb (contested hypoteser der venter på forsvar) + følt linje. Self-safe. | [src](../../../core/services/central_sentinel.py#L151) |
-| function | `run_sentinel` | `(*, trigger=…, last_visible_at=…)` | Prime-cadence (73 min): ét angreb på den stærkeste antagelse (shadow — foreslår kun). Self-safe. | [src](../../../core/services/central_sentinel.py#L160) |
+| function | `_now` | `()` | — | [src](../../../core/services/central_sentinel.py#L31) |
+| function | `_enforced` | `()` | Shadow default: Sentinel foreslår kun. Flip via eksplicit flag efter shadow-eval. | [src](../../../core/services/central_sentinel.py#L35) |
+| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_sentinel.py#L45) |
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_sentinel.py#L53) |
+| function | `_top_hypothesis` | `()` | — | [src](../../../core/services/central_sentinel.py#L67) |
+| function | `_generate_attack` | `(hyp)` | Formulér angrebet fra track-record — ikke for at være rigtig, men for at kræve et forsvar. | [src](../../../core/services/central_sentinel.py#L79) |
+| function | `attack` | `()` | Angrib den højeste-confidence hypotese → contested + FORESLÅ halvering (shadow). Self-safe. | [src](../../../core/services/central_sentinel.py#L99) |
+| function | `defend` | `(attack_id, *, defense)` | Centralen forsvarer hypotesen mod angrebet → status 'defended' (halvering afvises). Self-safe. | [src](../../../core/services/central_sentinel.py#L157) |
+| function | `list_attacks` | `(*, active_only=…, limit=…)` | — | [src](../../../core/services/central_sentinel.py#L176) |
+| function | `build_sentinel_surface` | `()` | Aktive angreb (contested hypoteser der venter på forsvar) + følt linje. Self-safe. | [src](../../../core/services/central_sentinel.py#L187) |
+| function | `run_sentinel` | `(*, trigger=…, last_visible_at=…)` | Prime-cadence (73 min): ét angreb på den stærkeste antagelse (shadow — foreslår kun). Self-safe. | [src](../../../core/services/central_sentinel.py#L196) |
 
 ## `core/services/central_sequence.py`
 _core/services/central_sequence.py_
@@ -616,26 +626,4 @@ _core/services/central_valence.py_
 | function | `run_valence_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: integrér følelses-organerne → gem durabelt + egress-fri observe (kun skalarer/tone-label, | [src](../../../core/services/central_valence.py#L126) |
 | function | `register_valence_producer` | `()` | Registrér følt-tilstands-integrationen som cadence-producer (~hvert 15 min). Egress-frit. | [src](../../../core/services/central_valence.py#L142) |
 | function | `build_valence_surface` | `()` | Mission Control — read-only: Centralens ene følte tilstand. | [src](../../../core/services/central_valence.py#L154) |
-
-## `core/services/central_watch.py`
-_core/services/central_watch.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_owner_uid` | `()` | — | [src](../../../core/services/central_watch.py#L48) |
-| function | `_notify_cooldown_active` | `(key, now)` | True hvis samme flag allerede har ringet inden for afkølingsvinduet. | [src](../../../core/services/central_watch.py#L68) |
-| function | `_notify_cooldown_mark` | `(key, now)` | — | [src](../../../core/services/central_watch.py#L91) |
-| function | `_notify_owner` | `(title, message, importance)` | — | [src](../../../core/services/central_watch.py#L115) |
-| function | `_raise_flag` | `(cluster, nerve, *, severity, message, importance=…, make_incident=…)` | Ét flag → trace + (læring via incident) + (notifikation) + tidsserie. Self-safe. | [src](../../../core/services/central_watch.py#L138) |
-| function | `_latest` | `(cluster, nerve)` | — | [src](../../../core/services/central_watch.py#L172) |
-| function | `_clear_flag` | `(cluster, nerve)` | Luk en ÅBEN flag-incident når TILSTANDEN er væk. Returnerer antal lukkede. | [src](../../../core/services/central_watch.py#L177) |
-| function | `run_watch_tick` | `(*, trigger=…, last_visible_at=…)` | Evaluér de fodrede streams; flag ægte (støjfangede) signaler. Self-safe. | [src](../../../core/services/central_watch.py#L199) |
-| function | `_event_is_recent` | `(r, *, max_age_min=…)` | True hvis event-record er nyere end max_age_min. Fail-open ved ukendt/uparsbar | [src](../../../core/services/central_watch.py#L428) |
-| function | `_council_forced_count` | `(*, limit=…)` | Antal council.deadlock_forced_conclusion på eventbussen NYLIGT. Cross-proces. | [src](../../../core/services/central_watch.py#L443) |
-| function | `_today_cost_usd` | `()` | — | [src](../../../core/services/central_watch.py#L457) |
-| function | `_cheap_lane_stats` | `(*, limit=…)` | (completed, exhausted) fra seneste cheap-lane-events på eventbussen (cross-proces). | [src](../../../core/services/central_watch.py#L465) |
-| function | `_tool_outcome_counts` | `(*, limit=…)` | (total, errors) fra NYLIGE tool.completed-events på eventbussen. Cross-proces. | [src](../../../core/services/central_watch.py#L488) |
-| function | `_heed_summary` | `()` | Verification-heed-aggregat (fil-backet = cross-proces). Self-safe. | [src](../../../core/services/central_watch.py#L506) |
-| function | `_recent_cache_pcts` | `(*, limit=…)` | Læs seneste cache-hit-rater fra eventbussen (cross-proces). Self-safe. | [src](../../../core/services/central_watch.py#L515) |
-| function | `register_watch_producer` | `()` | Registrér vagten som cadence-producer (~hvert 2 min). Læser tidsserie + flagger. | [src](../../../core/services/central_watch.py#L529) |
 

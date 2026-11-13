@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/identity_mutation_log.py`
+_Identity mutation log — full audit trail for Tier 3 auto-mutations._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_auto_mutation_enabled` | `()` | Read kill switch from authorization file. | [src](../../../core/services/identity_mutation_log.py#L48) |
+| function | `is_target_authorized` | `(path)` | Check if a target path is in the authorized Tier 3 list. | [src](../../../core/services/identity_mutation_log.py#L63) |
+| function | `is_infrastructure_blocked` | `(target)` | Check if target hits an infrastructure-blocked module. | [src](../../../core/services/identity_mutation_log.py#L71) |
+| function | `_hash_text` | `(text)` | — | [src](../../../core/services/identity_mutation_log.py#L77) |
+| function | `_diff_summary` | `(before, after)` | Compact diff stats. | [src](../../../core/services/identity_mutation_log.py#L81) |
+| function | `record_mutation` | `(*, target_path, before_content, after_content, reason, proposer=…)` | Record a mutation for audit. Returns mutation_id for rollback reference. | [src](../../../core/services/identity_mutation_log.py#L95) |
+| function | `rollback_mutation` | `(mutation_id)` | Restore the BEFORE content for a recorded mutation. | [src](../../../core/services/identity_mutation_log.py#L163) |
+| function | `list_mutations` | `(*, limit=…, target_filter=…)` | — | [src](../../../core/services/identity_mutation_log.py#L206) |
+| function | `_exec_list_identity_mutations` | `(args)` | — | [src](../../../core/services/identity_mutation_log.py#L230) |
+| function | `_exec_rollback_identity_mutation` | `(args)` | — | [src](../../../core/services/identity_mutation_log.py#L240) |
+| function | `_exec_identity_mutation_status` | `(args)` | — | [src](../../../core/services/identity_mutation_log.py#L244) |
+
 ## `core/services/identity_sketch.py`
 _Persistent Identity Sketch — dynamic "who am I right now" document._
 
@@ -751,21 +768,4 @@ _Privacy-gate for Jarvis Brain recall._
 | function | `_resolve_owner_id` | `()` | Hentet via owner_resolver. Wrapped så tests kan monkeypatche. | [src](../../../core/services/jarvis_brain_visibility.py#L18) |
 | function | `can_recall` | `(entry_visibility, ceiling)` | True if entry's visibility is permitted at the given ceiling. | [src](../../../core/services/jarvis_brain_visibility.py#L45) |
 | function | `session_visibility_ceiling` | `(session)` | Beregn visibility-ceiling for en session. | [src](../../../core/services/jarvis_brain_visibility.py#L50) |
-
-## `core/services/jarvis_ui_guard.py`
-_Normaliserer og validerer ``jarvis-ui``-blokke FØR de når chatten._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_normaliser_form` | `(raw)` | Flyt JSON'en ned på sin egen linje og lukke-fencen på sin egen linje. | [src](../../../core/services/jarvis_ui_guard.py#L73) |
-| function | `_reparer_json` | `(tekst)` | Ret de entydige JSON-fejl. Rører intet der allerede er gyldigt. | [src](../../../core/services/jarvis_ui_guard.py#L86) |
-| function | `_ret_laengder` | `(tekst)` | Juster ``comparison``-values op til kolonneantallet. Returnerer ny JSON. | [src](../../../core/services/jarvis_ui_guard.py#L94) |
-| function | `_tekst` | `(vaerdi)` | Spejl rendererens ``text()``: kun strenge, trimmet, tom = falsk. | [src](../../../core/services/jarvis_ui_guard.py#L131) |
-| function | `_liste` | `(vaerdi, maks)` | Spejl rendererens ``list()``: kun objekter, afkortet til ``maks``. | [src](../../../core/services/jarvis_ui_guard.py#L136) |
-| function | `_diagnosticér` | `(data)` | Afgør om rendereren viser blokken. Returnerer (niveau, fejl). | [src](../../../core/services/jarvis_ui_guard.py#L143) |
-| function | `_validér` | `(tekst)` | — | [src](../../../core/services/jarvis_ui_guard.py#L249) |
-| function | `normalisér` | `(text, *, run_id=…)` | Normalisér alle ``jarvis-ui``-blokke i teksten. Returnerer ny tekst. | [src](../../../core/services/jarvis_ui_guard.py#L269) |
-| function | `_normalisér_indre` | `(text, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L285) |
-| function | `_registrér` | `(aendringer, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L344) |
-| function | `fejl_i_flader` | `(text)` | Returnér de fejl der gør en ``jarvis-ui``-blok død eller ufuldstændig. | [src](../../../core/services/jarvis_ui_guard.py#L364) |
 

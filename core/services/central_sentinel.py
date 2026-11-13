@@ -15,6 +15,10 @@ Sentinel er den INTELLEKTUELLE konfrontation. Ujævn cadence (73 min, primtal). 
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import sqlite3
 from datetime import UTC, datetime
 from typing import Any
@@ -114,8 +118,40 @@ def attack() -> dict[str, Any]:
         return {"ok": False, "error": str(exc)[:120]}
     _observe("attack", {"hyp_id": hyp.get("hyp_id"), "confidence_before": conf,
                         "proposed_confidence": proposed, "enforced": _enforced()})
+
+    # (13/11-2026) Foer: `proposed_confidence` blev regnet ud, gemt i en kolonne
+    # der hed `proposed_`, og ALDRIG skrevet tilbage. `_enforced()` var en
+    # shadow-flag der var slukket, og der fandtes ingen kode bag den — saa
+    # «haandhaevelse» var en gren der ikke eksisterede. Et angreb der ikke kan
+    # flytte noget er en mening, ikke en handling.
+    #
+    # Nu lander det gennem `central_consequence.land_confidence`, som bruger
+    # `apply_outcome` (Popper: falsifikation er et haardt multiplikativt
+    # nedtraek) frem for den selvopfundne halvering — og som har dagsloft,
+    # idempotens og en aegte kill-switch.
+    landing: dict[str, Any] = {"applied": False, "reason": "ikke forsoegt"}
+    try:
+        from core.services.central_consequence import land_confidence
+        landing = land_confidence(
+            "sentinel", str(hyp.get("hyp_id")),
+            falsified=True,
+            reason=f"angreb #{aid}: {att[:120]}",
+        )
+        _observe("attack_landed", {"attack_id": aid, "hyp_id": hyp.get("hyp_id"),
+                                   "applied": landing.get("applied"),
+                                   "after": landing.get("after"),
+                                   "reason": str(landing.get("reason") or "")[:120]})
+    except Exception as exc:
+        # Landingen er det vigtigste led — fejler den, skal det kunne ses i loggen
+        # og ikke kun som et "applied: False" uden aarsag.
+        logger.warning("sentinel: land_confidence fejlede: %s", exc)
+
     return {"ok": True, "attack_id": aid, "hyp_id": hyp.get("hyp_id"), "attack": att,
-            "confidence_before": conf, "proposed_confidence": proposed, "enforced": _enforced()}
+            "confidence_before": conf, "proposed_confidence": proposed,
+            "confidence_after": landing.get("after"),
+            "applied": bool(landing.get("applied")),
+            "reason": landing.get("reason"),
+            "enforced": _enforced()}
 
 
 def defend(attack_id: int, *, defense: str) -> dict[str, Any]:

@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_watch.py`
+_core/services/central_watch.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_owner_uid` | `()` | — | [src](../../../core/services/central_watch.py#L48) |
+| function | `_notify_cooldown_active` | `(key, now)` | True hvis samme flag allerede har ringet inden for afkølingsvinduet. | [src](../../../core/services/central_watch.py#L68) |
+| function | `_notify_cooldown_mark` | `(key, now)` | — | [src](../../../core/services/central_watch.py#L91) |
+| function | `_notify_owner` | `(title, message, importance)` | — | [src](../../../core/services/central_watch.py#L115) |
+| function | `_raise_flag` | `(cluster, nerve, *, severity, message, importance=…, make_incident=…)` | Ét flag → trace + (læring via incident) + (notifikation) + tidsserie. Self-safe. | [src](../../../core/services/central_watch.py#L138) |
+| function | `_latest` | `(cluster, nerve)` | — | [src](../../../core/services/central_watch.py#L172) |
+| function | `_clear_flag` | `(cluster, nerve)` | Luk en ÅBEN flag-incident når TILSTANDEN er væk. Returnerer antal lukkede. | [src](../../../core/services/central_watch.py#L177) |
+| function | `run_watch_tick` | `(*, trigger=…, last_visible_at=…)` | Evaluér de fodrede streams; flag ægte (støjfangede) signaler. Self-safe. | [src](../../../core/services/central_watch.py#L199) |
+| function | `_event_is_recent` | `(r, *, max_age_min=…)` | True hvis event-record er nyere end max_age_min. Fail-open ved ukendt/uparsbar | [src](../../../core/services/central_watch.py#L428) |
+| function | `_council_forced_count` | `(*, limit=…)` | Antal council.deadlock_forced_conclusion på eventbussen NYLIGT. Cross-proces. | [src](../../../core/services/central_watch.py#L443) |
+| function | `_today_cost_usd` | `()` | — | [src](../../../core/services/central_watch.py#L457) |
+| function | `_cheap_lane_stats` | `(*, limit=…)` | (completed, exhausted) fra seneste cheap-lane-events på eventbussen (cross-proces). | [src](../../../core/services/central_watch.py#L465) |
+| function | `_tool_outcome_counts` | `(*, limit=…)` | (total, errors) fra NYLIGE tool.completed-events på eventbussen. Cross-proces. | [src](../../../core/services/central_watch.py#L488) |
+| function | `_heed_summary` | `()` | Verification-heed-aggregat (fil-backet = cross-proces). Self-safe. | [src](../../../core/services/central_watch.py#L506) |
+| function | `_recent_cache_pcts` | `(*, limit=…)` | Læs seneste cache-hit-rater fra eventbussen (cross-proces). Self-safe. | [src](../../../core/services/central_watch.py#L515) |
+| function | `register_watch_producer` | `()` | Registrér vagten som cadence-producer (~hvert 2 min). Læser tidsserie + flagger. | [src](../../../core/services/central_watch.py#L529) |
+
 ## `core/services/central_white_rabbit.py`
 _Follow the White Rabbit — serendipitets-motoren._
 
@@ -644,25 +666,4 @@ _CI-status — set, ikke gættet._
 | function | `_beskriv` | `(run)` | — | [src](../../../core/services/ci_status_watch.py#L233) |
 | function | `_sekunder_siden` | `(sidste)` | Sekunder siden forrige tjek — eller None når stemplet mangler eller er | [src](../../../core/services/ci_status_watch.py#L243) |
 | function | `tik` | `()` | Tjek CI på `main` og læg én followup for nye røde kørsler. | [src](../../../core/services/ci_status_watch.py#L255) |
-
-## `core/services/citation_markorer.py`
-_Citation-markører — kontrolsyntaks der aldrig må nå skærmen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Kilder` | `` | Turens kilder — det eneste en ``cite``/``url``-ref kan pege på. | [src](../../../core/services/citation_markorer.py#L69) |
-| method | `Kilder.url_for` | `(self, ref)` | — | [src](../../../core/services/citation_markorer.py#L94) |
-| method | `Kilder.memory_i_kontekst` | `(self)` | Var der memory i den prompt turen faktisk fik? Fail-closed. | [src](../../../core/services/citation_markorer.py#L97) |
-| method | `Kilder.tilfoej` | `(self, ref, url)` | Registrér én kilde — mens turen kører. | [src](../../../core/services/citation_markorer.py#L108) |
-| class | `Fund` | `` | Én markør der blev fundet — godkendt eller afvist. | [src](../../../core/services/citation_markorer.py#L121) |
-| method | `Fund.til_metadata` | `(self, kilder=…)` | JSON-egnet form til UI/observability. | [src](../../../core/services/citation_markorer.py#L143) |
-| function | `_gyldig_url` | `(url)` | Kun absolutte HTTP(S)-URL'er med et host. Alt andet afvises. | [src](../../../core/services/citation_markorer.py#L167) |
-| function | `_find_lukker` | `(tekst, start)` | Indeks for den LUKKENDE klamme der hører til åbneren ved ``start``. | [src](../../../core/services/citation_markorer.py#L180) |
-| function | `_tyd` | `(raa, kilder)` | Fortolk én markørs indhold. ``None`` = ikke en markør vi kender. | [src](../../../core/services/citation_markorer.py#L198) |
-| function | `_render` | `(fund)` | Markørens tekstfallback — hvad der står hvis den ikke kan blive et link. | [src](../../../core/services/citation_markorer.py#L243) |
-| function | `parse_markorer` | `(tekst, kilder)` | Fjern alle markører fra ``tekst`` og returnér (ren tekst, fundne). | [src](../../../core/services/citation_markorer.py#L259) |
-| class | `CitationKontrakt` | `` | Strøm-sikker markør-fjerner — samme form som ``StroemSkrubber``. | [src](../../../core/services/citation_markorer.py#L299) |
-| method | `CitationKontrakt.__init__` | `(self, kilder=…)` | — | [src](../../../core/services/citation_markorer.py#L307) |
-| method | `CitationKontrakt.feed` | `(self, tekst)` | — | [src](../../../core/services/citation_markorer.py#L312) |
-| method | `CitationKontrakt.flush` | `(self)` | — | [src](../../../core/services/citation_markorer.py#L337) |
 

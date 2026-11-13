@@ -11,6 +11,10 @@ Kilde: incidents + excess + dream_action + merovingian. Blå-pille-tæller durab
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from datetime import UTC, datetime
 from typing import Any
 
@@ -144,6 +148,42 @@ def build_redpill_surface() -> dict[str, Any]:
 
 
 def record_redpill(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
-    """Cadence-produceren — den ENESTE vej der tæller blå-pille-striben op."""
+    """Cadence-produceren — den ENESTE vej der tæller blå-pille-striben op.
+
+    (13/11-2026) Foer: striben blev talt op, returneret i en dict — og laest af
+    INTET. Et tal der vokser uden at noget sker er ikke en konsekvens, det er
+    en maaler der ikke er koblet til noget.
+
+    Nu: har den SAMME sandhed staet uloest to dage i traek, er det ikke laengere
+    en daglig besked — det er en undvigelse, og den bliver en bindende
+    forpligtelse via `central_consequence.land_decision`. Direktivet naevner
+    den konkrete sandhed; en generel regel ville vaere en floskel, og floskler
+    er praecis det vi rydder ud.
+    """
     t = todays_truth(advance=True)
-    return {"status": "ok", "blue_streak": t.get("blue_streak", 0)}
+    streak = int(t.get("blue_streak") or 0)
+    truth = str(t.get("truth") or "")
+    landing: dict[str, Any] = {"applied": False, "reason": "ikke forsoegt"}
+
+    if streak >= 2 and truth:
+        try:
+            from core.services.central_consequence import land_decision
+            landing = land_decision(
+                "redpill",
+                f"Handl paa den undgaaede sandhed: {truth[:160]}",
+                rationale=(f"Den samme ubehagelige sandhed har staet uloest {streak} dage i traek. "
+                           f"En daglig paamindelse der ikke aendrer noget er en blaa pille med "
+                           f"roed indpakning."),
+                trigger_cue="naar den samme sandhed dukker op igen uden at vaere handlet",
+                priority=70,
+                subject=f"redpill:{truth[:120]}",
+            )
+        except Exception as exc:
+            # En forpligtelse der ikke kunne bindes er et tab af konsekvens —
+            # ikke en detalje. Den skal staa i loggen.
+            logger.warning("redpill: land_decision fejlede: %s", exc)
+
+    return {"status": "ok", "blue_streak": streak,
+            "decision_applied": bool(landing.get("applied")),
+            "decision_id": landing.get("decision_id"),
+            "reason": landing.get("reason")}

@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_run_recovery_dispatcher.py`
+_Én ejer af fortsættelsen — en forladt opgave genoptages præcis én gang._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_udskydelses_backoff` | `(tidligere)` | Vent længere for hver gang samtalen var optaget — men aldrig i det uendelige. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L45) |
+| function | `_er_runtime_processen` | `()` | Runtime-processen dispatcher ikke. Den må forlige, ikke starte. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L55) |
+| function | `_besked_fra` | `(record)` | Den oprindelige anmodning — det er DEN opgaven handler om. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L61) |
+| function | `_luk_afloest_raekke` | `(run_id, *, reason)` | Luk den afløste kørsels EGEN række i `visible_runs`. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L71) |
+| function | `_samtalen_gik_videre` | `(session_id, efter)` | Er brugeren gået videre, siden den her kørsel døde? | [src](../../../core/services/visible_run_recovery_dispatcher.py#L112) |
+| function | `_runnet_har_svaret` | `(run_id)` | Har kørslen SELV allerede svaret Bjørn? | [src](../../../core/services/visible_run_recovery_dispatcher.py#L158) |
+| function | `recover_due_once` | `(*, owner=…)` | Tag ÉN forfalden opgave og start dens fortsættelse. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L184) |
+| function | `signal_recovery_dispatcher` | `()` | Væk dispatcheren nu — kaldes lige efter en durabel afregning. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L412) |
+| function | `_loop` | `()` | — | [src](../../../core/services/visible_run_recovery_dispatcher.py#L417) |
+| function | `start_recovery_dispatcher` | `()` | Start dispatcheren. `False` = den kører ikke her (og skal ikke). | [src](../../../core/services/visible_run_recovery_dispatcher.py#L431) |
+| function | `stop_recovery_dispatcher` | `()` | Stop uden at starte nyt arbejde. En nedlukning afregner, den dispatcher ikke. | [src](../../../core/services/visible_run_recovery_dispatcher.py#L448) |
+
 ## `core/services/visible_run_segment_exit.py`
 _Afgoer hvad et agentisk segment blev til, og goer det durabelt._
 
@@ -528,14 +545,4 @@ _Per-bruger web-push-abonnementer (VAPID). Egen tabel — rører ikke db.py._
 | function | `save` | `(user_id, endpoint, p256dh, auth)` | — | [src](../../../core/services/web_push_subscriptions.py#L38) |
 | function | `list_for_user` | `(user_id)` | Alle abonnementer for brugeren som ``[{endpoint, p256dh, auth}]``. | [src](../../../core/services/web_push_subscriptions.py#L57) |
 | function | `delete` | `(endpoint)` | — | [src](../../../core/services/web_push_subscriptions.py#L72) |
-
-## `core/services/weekly_manifest.py`
-_Weekly manifest — Jarvis' running self-reflection._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_weekly_manifest_path` | `()` | — | [src](../../../core/services/weekly_manifest.py#L32) |
-| function | `_gather_context` | `()` | Pull recent self-state to ground the reflection. | [src](../../../core/services/weekly_manifest.py#L36) |
-| function | `_build_prompt` | `(ctx)` | — | [src](../../../core/services/weekly_manifest.py#L58) |
-| function | `build_weekly_manifest` | `()` | Generate weekly manifest, write to WEEKLY_MANIFEST.md, return summary. | [src](../../../core/services/weekly_manifest.py#L73) |
 

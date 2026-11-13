@@ -14,6 +14,7 @@ This module is imported lazily in prompt_contract.py to avoid circular imports.
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -92,7 +93,7 @@ def decision_adherence_section() -> str:
     # sorteringen ville loftet kunne skjule en kritisk beslutning bag
     # advisory-støj — præcis den fejlklasse fixet 2026-09-21 retter.
     raekker: list[tuple[float, str, str]] = []
-    umalte: list[str] = []
+    umalte: list[tuple[str, str, str]] = []
     for d in active:
         directive = d.get("directive", "")
         # Fix 2026-09-21: `d.get("adherence_score", 1.0) or 1.0` behandlede en
@@ -126,7 +127,7 @@ def decision_adherence_section() -> str:
             if r2_rate is not None and dec_id in _R2_LINKED_DECISIONS:
                 score = r2_rate
             else:
-                umalte.append(dec_id)
+                umalte.append((dec_id, str(directive or ""), str(d.get("created_at") or "")))
                 continue
         else:
             stored_score = float(raa)
@@ -218,10 +219,29 @@ def decision_adherence_section() -> str:
         # `_MAKS_LINJER` findes netop fordi den slags fortrænger det
         # kritiske bånd. Tallet hører i prompten; ADRESSERNE hører i
         # indbakken, som bærer dem alle fordi den er et værktøj jeg kalder.
-        lines.append(
-            f"{len(umalte)} beslutninger er IKKE MÅLT endnu (under 3 tællende "
-            "domme): hverken fulgt eller brudt. Id'erne ligger i indbakken."
-        )
+        #
+        # (13/11-2026) Undtagelsen: en beslutning der blev BUNDET inden for
+        # det sidste døgn nævnes ved navn. Målt: 97 aktive, 37 umålte — så
+        # «37 er ikke målt» var den ENESTE spor af en frisk forpligtelse, og
+        # den er indistinkt fra støj. En konsekvens der lander i en tælling
+        # jeg ikke kan skelne, er ikke landet. Grenen er afgrænset til 3
+        # linjer og forsvinder af sig selv efter et døgn.
+        frisk_cutoff = (datetime.now(UTC) - timedelta(hours=24)).isoformat()
+        # Nyeste foerst: lagerets raekkefoelge er priority/updated_at, ikke tid,
+        # saa uden sorteringen kunne en gammel forpligtelse fortrænge den jeg
+        # netop bandt mig til.
+        friske = sorted(
+            [u for u in umalte if str(u[2]) >= frisk_cutoff],
+            key=lambda u: str(u[2]), reverse=True,
+        )[:3]
+        for dec_id, directive, _c in friske:
+            lines.append(f"NY forpligtelse (ikke målt endnu) — {dec_id}: {directive[:180]}")
+        rest = len(umalte) - len(friske)
+        if rest > 0:
+            lines.append(
+                f"{rest} beslutninger er IKKE MÅLT endnu (under 3 tællende "
+                "domme): hverken fulgt eller brudt. Id'erne ligger i indbakken."
+            )
 
     lines.append("[/DECISION-ADHERENCE-GATE]\n")
     return "\n".join(lines)

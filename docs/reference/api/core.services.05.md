@@ -276,6 +276,24 @@ _core/services/central_causal_quality.py_
 | function | `register_causal_quality_producer` | `()` | Registrér causal-kvalitets-målingen som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_causal_quality.py#L144) |
 | function | `build_central_causal_quality_surface` | `()` | Mission Control surface — read-only causal-kvalitets-projektion (tier + precision). | [src](../../../core/services/central_causal_quality.py#L156) |
 
+## `core/services/central_consequence.py`
+_Central consequence — hvor en karakters fund FAKTISK lander._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nu` | `()` | — | [src](../../../core/services/central_consequence.py#L66) |
+| function | `_connect` | `()` | — | [src](../../../core/services/central_consequence.py#L70) |
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_consequence.py#L75) |
+| function | `_landinger_sidste_doegn` | `(conn, lever)` | — | [src](../../../core/services/central_consequence.py#L94) |
+| function | `_allerede_landet` | `(conn, cid, lever, subject)` | Idempotens: samme fund lander ikke to gange i samme døgn. | [src](../../../core/services/central_consequence.py#L103) |
+| function | `_skriv` | `(conn, *, cid, lever, subject, before=…, after=…, applied=…, reason=…)` | — | [src](../../../core/services/central_consequence.py#L118) |
+| function | `_loft_ramt` | `(conn, lever)` | — | [src](../../../core/services/central_consequence.py#L136) |
+| function | `_gate_taend` | `(scope, name)` | Er leverens switch taendt? | [src](../../../core/services/central_consequence.py#L144) |
+| function | `land_confidence` | `(cid, hyp_id, *, falsified=…, reason=…, gate=…)` | Lad et angreb FAKTISK flytte hypotesens confidence. | [src](../../../core/services/central_consequence.py#L171) |
+| function | `land_decision` | `(cid, directive, *, rationale=…, trigger_cue=…, priority=…, subject=…, gate=…)` | Lad et fund blive en BINDENDE forpligtelse. | [src](../../../core/services/central_consequence.py#L241) |
+| function | `record` | `(cid, subject, *, detail=…)` | Fund uden en anvendelig lever: skriv det ned som reviderbart spor. | [src](../../../core/services/central_consequence.py#L325) |
+| function | `measure_consequences` | `(*, days=…)` | Beviset: hvor mange fund flyttede faktisk noget? | [src](../../../core/services/central_consequence.py#L342) |
+
 ## `core/services/central_construct.py`
 _The Construct — Sentinel's Shadow Self: en sandbox der tester radikale forenklinger MOD_
 
@@ -425,11 +443,11 @@ _HAL's Silence — den usagte uenighed._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_rows` | `()` | — | [src](../../../core/services/central_dissent.py#L35) |
-| function | `list_dissents` | `(*, limit=…)` | Ikke-grønne domme på ikke-håndhævede gates = 'jeg var imod, men handlingen skete'. READ-ONLY. | [src](../../../core/services/central_dissent.py#L43) |
-| function | `build_dissent_surface` | `()` | De tavse indsigelser, anerkendt. Self-safe. | [src](../../../core/services/central_dissent.py#L64) |
-| function | `_observe` | `(n, total)` | — | [src](../../../core/services/central_dissent.py#L78) |
-| function | `record_dissent` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_dissent.py#L87) |
+| function | `_rows` | `()` | — | [src](../../../core/services/central_dissent.py#L39) |
+| function | `list_dissents` | `(*, limit=…)` | Ikke-grønne domme på ikke-håndhævede gates = 'jeg var imod, men handlingen skete'. READ-ONLY. | [src](../../../core/services/central_dissent.py#L47) |
+| function | `build_dissent_surface` | `()` | De tavse indsigelser, anerkendt. Self-safe. | [src](../../../core/services/central_dissent.py#L68) |
+| function | `_observe` | `(n, total)` | — | [src](../../../core/services/central_dissent.py#L82) |
+| function | `record_dissent` | `(*, trigger=…, last_visible_at=…)` | Cadence: de tavse indsigelser — og hvad de kraever. | [src](../../../core/services/central_dissent.py#L91) |
 
 ## `core/services/central_dream_action.py`
 _Dream-to-Action Pipeline — så Jarvis FORANDRER sig, ikke bare lærer._
@@ -561,13 +579,4 @@ _The Ghost — hvad der overlever model-skift._
 | function | `_recent_texts` | `(limit=…)` | Hans seneste svar fra chat_messages (role=assistant). Self-safe → [] ved fejl. | [src](../../../core/services/central_ghost.py#L116) |
 | function | `build_ghost_surface` | `()` | Fingeraftryk + klang-primer + følt linje. Self-safe. | [src](../../../core/services/central_ghost.py#L131) |
 | function | `record_ghost` | `(*, trigger=…, last_visible_at=…)` | Cadence (6t): opdatér fingeraftrykket fra seneste svar (metadata-only observe). Self-safe. | [src](../../../core/services/central_ghost.py#L141) |
-
-## `core/services/central_glitch.py`
-_The One's Anomaly Detector — glitches i selvbilledet (overskud som glitch)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_age_days` | `(last_ts)` | — | [src](../../../core/services/central_glitch.py#L32) |
-| function | `detect_glitches` | `()` | Find stille overskud: altid-shadow policies + frosne nerver. READ-ONLY. Self-safe. | [src](../../../core/services/central_glitch.py#L42) |
-| function | `record_glitches` | `()` | Cadence: observér glitches til nerve system/glitch (metadata-only). Self-safe. | [src](../../../core/services/central_glitch.py#L88) |
 

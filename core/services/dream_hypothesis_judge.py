@@ -56,6 +56,44 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+
+# (13/11-2026) Produceren overskred sin tidsgrænse tre gange på 37 minutter.
+# Årsagen var ikke en hængning: dommen koster TO model-kald pr. kandidat, og
+# korpuset var vokset til 87 kandidater — 174 sekventielle kald mod en 75s
+# grænse. Uden cache blev de samme afviste kandidater dømt forfra ved hvert
+# tik, så belastningen voksede i takt med korpuset i stedet for at falde.
+# Dommen er deterministisk (temperature 0), så et svar der allerede ER givet
+# behøver ikke spørges igen.
+#
+# Cachen er bevidst IN-MEMORY og ikke i `runtime_state`: en dom der ligger i
+# den delte tilstand ville også blive læst af tests, og så arver en test en
+# dom fra en anden kørsel. Det blev målt — testen `..._umoden_hypotekse_...`
+# fik «ikke en hypotese» fra en tidligere kørsel med samme tekst.
+_DOM_CACHE: dict[str, str] = {}
+_DOM_CACHE_MAX = 4000
+# Loft pr. kørsel: én kørsel kan ikke overskride sin egen tidsgrænse, uanset
+# hvor mange nye kandidater der er dukket op siden sidst. Resten tages næste
+# tik — 40 kandidater à to kald er ~32s mod grænsen på 75s.
+_MAX_DOM_PER_RUN = 40
+
+
+def _cachet_grund(k: "Kandidat") -> str:
+    """En NEGATIV dom der allerede er givet for præcis denne tekst."""
+    return _DOM_CACHE.get(k.fingeraftryk, "")
+
+
+def _gem_dom(k: "Kandidat", grund: str) -> None:
+    """Kun negative domme caches.
+
+    En positiv dom skal prøves igen hver gang: forfremmelsen kan fejle, og så
+    må kandidaten ikke være låst ude af sin egen dom.
+    """
+    if len(_DOM_CACHE) >= _DOM_CACHE_MAX:
+        for nøgle in list(_DOM_CACHE)[: _DOM_CACHE_MAX // 2]:
+            _DOM_CACHE.pop(nøgle, None)
+    _DOM_CACHE[k.fingeraftryk] = grund
+
+
 DRØMME_MAPPE = Path.home() / "dreams"
 _FILMØNSTER = "hypothesis-candidate-*.md"
 
@@ -220,7 +258,12 @@ def skal_videre(k: Kandidat) -> bool:
 
 
 def doem(k: Kandidat) -> tuple[bool, str]:
-    """``(forfrem, grund)``. Grunden logges, saa dommen kan efterproeves."""
+    """``(forfrem, grund)``. Grunden logges, saa dommen kan efterproeves.
+
+    Ren funktion: den læser kun kandidaten. Cache og loft hører i
+    ``koer_dommer`` — ellers bliver dommen tilstandsbundet, og en test der
+    dømmer den samme tekst to gange får to forskellige svar.
+    """
     if k.selv_afvist:
         return False, "selv-afvist"
     if not siger_hvad_der_ville_modbevise_den(k):
@@ -336,7 +379,24 @@ def koer_dommer(*, mappe: Path | None = None) -> dict[str, object]:
     """
     tal: dict[str, int] = {}
     forfremmede: list[str] = []
+    domt = 0
     for k in laes_kandidater(mappe):
+        # Allerede skrevet ind? Så er der intet at dømme, og de to model-kald
+        # ville være spildt. Målt 13/11-2026: 15 af 87 var allerede forfremmet
+        # og blev dømt forfra ved hvert tik.
+        if _allerede_forfremmet(k):
+            tal["allerede-kendt"] = tal.get("allerede-kendt", 0) + 1
+            continue
+        if domt >= _MAX_DOM_PER_RUN:
+            # Resten tages næste tik. Et udsat kandidat koster ingenting; en
+            # kørsel der overskrider sin grænse koster hele tikket.
+            tal["udsat"] = tal.get("udsat", 0) + 1
+            continue
+        cachet = _cachet_grund(k)
+        if cachet:
+            tal[cachet] = tal.get(cachet, 0) + 1
+            continue
+        domt += 1
         ok, grund = doem(k)
         if ok:
             res = forfrem(k)
@@ -345,6 +405,10 @@ def koer_dommer(*, mappe: Path | None = None) -> dict[str, object]:
                     "afvist-praeregistrering"
             if res.get("status") == "registered":
                 forfremmede.append(k.navn)
+        elif grund in ("ikke en hypotese", "ikke moden"):
+            # Kun de negative domme der kostede et model-kald. «selv-afvist» og
+            # «ingen falsifikation» afgøres gratis og behøver ingen cache.
+            _gem_dom(k, grund)
         tal[grund] = tal.get(grund, 0) + 1
     try:
         from core.services.central_core import central

@@ -191,3 +191,95 @@ def test_uden_dedup_opslag_forfremmes_der_ikke():
 
     with patch("core.runtime.db.connect", side_effect=RuntimeError("db væk")):
         assert _allerede_forfremmet(_k(_HC7)) is True
+
+
+# ── tidsgrænsen: hvorfor produceren blev blokeret tre gange 13/11-2026 ──────
+#
+# Målt: dommen koster TO modelkald pr. kandidat (er_en_hypotese + skal_videre),
+# korpuset var vokset til 87 kandidater, og grænsen er 75s. Produceren hang
+# ikke — den regnede 174 sekventielle kald sammen. Uden de tre vagter nedenfor
+# vokser belastningen i takt med korpuset, og næste gang fejler den igen.
+
+
+def test_cachen_sparer_modelkald_ved_gentaget_koersel():
+    """Anden kørsel må ikke spørge modellen om det den allerede har dømt."""
+    from core.services import dream_hypothesis_judge as dj
+
+    dj._DOM_CACHE.clear()
+    kald: list[int] = []
+    ks = [_k(_HC7, f"HC-{i}") for i in range(3)]
+
+    def _svar(*a, **kw):
+        kald.append(1)
+        return "BEHOLD"          # aldrig HYPOTESE → afvist, og dermed cachet
+
+    with patch.object(dj, "laes_kandidater", return_value=ks), \
+         patch.object(dj, "_allerede_forfremmet", return_value=False), \
+         patch("core.services.local_small_model.spoerg_et_ord", side_effect=_svar):
+        dj.koer_dommer()
+        foerste = len(kald)
+        dj.koer_dommer()
+        anden = len(kald) - foerste
+
+    assert foerste > 0, "første kørsel skal spørge modellen"
+    assert anden == 0, f"anden kørsel spurgte modellen {anden} gange — cachen virker ikke"
+
+
+def test_en_positiv_dom_cachede_ikke_saa_forfremmelse_kan_genproeves():
+    """Kun negative domme caches: en forfremmelse kan fejle, og så må
+    kandidaten ikke være låst ude af sin egen dom."""
+    from core.services import dream_hypothesis_judge as dj
+
+    dj._DOM_CACHE.clear()
+    ks = [_k(_HC7, "HC-7")]
+    with patch.object(dj, "laes_kandidater", return_value=ks), \
+         patch.object(dj, "_allerede_forfremmet", return_value=False), \
+         patch.object(dj, "doem", return_value=(True, "fremfoert")), \
+         patch.object(dj, "forfrem", return_value={"status": "error"}):
+        dj.koer_dommer()
+
+    assert dj._DOM_CACHE == {}, "en positiv dom blev cachet — kandidaten er låst ude"
+
+
+def test_loftet_pr_koersel_udsatter_resten():
+    """Én kørsel kan ikke overskride sin egen tidsgrænse, uanset korpusstørrelse."""
+    from core.services import dream_hypothesis_judge as dj
+
+    dj._DOM_CACHE.clear()
+    overskud = 15
+    ks = [_k(_HC7, f"HC-{i}") for i in range(dj._MAX_DOM_PER_RUN + overskud)]
+    domte: list[str] = []
+
+    def _doem(k):
+        domte.append(k.navn)
+        return False, "ikke moden"
+
+    with patch.object(dj, "laes_kandidater", return_value=ks), \
+         patch.object(dj, "_allerede_forfremmet", return_value=False), \
+         patch.object(dj, "doem", side_effect=_doem):
+        r = dj.koer_dommer()
+
+    assert len(domte) == dj._MAX_DOM_PER_RUN, f"domte {len(domte)} — loftet holdt ikke"
+    assert r["tal"].get("udsat") == overskud
+
+
+def test_allerede_forfremmet_doemmes_ikke():
+    """Dedup skal ligge FØR de dyre kald. Målt: 15 af 87 var allerede
+    forfremmet og blev dømt forfra ved hvert tik."""
+    from core.services import dream_hypothesis_judge as dj
+
+    dj._DOM_CACHE.clear()
+    ks = [_k(_HC7, f"HC-{i}") for i in range(3)]
+    domte: list[str] = []
+
+    def _doem(k):
+        domte.append(k.navn)
+        return False, "ikke moden"
+
+    with patch.object(dj, "laes_kandidater", return_value=ks), \
+         patch.object(dj, "_allerede_forfremmet", return_value=True), \
+         patch.object(dj, "doem", side_effect=_doem):
+        r = dj.koer_dommer()
+
+    assert domte == [], f"allerede forfremmede blev dømt: {domte}"
+    assert r["tal"].get("allerede-kendt") == 3

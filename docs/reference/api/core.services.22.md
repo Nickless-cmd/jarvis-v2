@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/proprioception_metrics.py`
+_Proprioception Metrics — process-level body sense._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_psutil` | `()` | — | [src](../../../core/services/proprioception_metrics.py#L38) |
+| function | `_current_snapshot` | `()` | Sample current process stats. | [src](../../../core/services/proprioception_metrics.py#L46) |
+| function | `_measure_self_latency_ms` | `()` | Measure trivial self-dispatch as a crude latency proxy. | [src](../../../core/services/proprioception_metrics.py#L76) |
+| function | `_emit` | `(kind, payload)` | — | [src](../../../core/services/proprioception_metrics.py#L89) |
+| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/proprioception_metrics.py#L100) |
+| function | `recent_snapshots` | `(*, limit=…)` | — | [src](../../../core/services/proprioception_metrics.py#L143) |
+| function | `build_proprioception_metrics_surface` | `()` | — | [src](../../../core/services/proprioception_metrics.py#L147) |
+| function | `_surface_summary` | `(current, rss_trend)` | — | [src](../../../core/services/proprioception_metrics.py#L180) |
+| function | `build_proprioception_metrics_prompt_section` | `()` | Only surfaces when something is actively worth noticing. | [src](../../../core/services/proprioception_metrics.py#L196) |
+| function | `reset_proprioception_metrics` | `()` | — | [src](../../../core/services/proprioception_metrics.py#L216) |
+
 ## `core/services/prosa_korrektion.py`
 _Ret prosa-opremsninger FØR svaret vises — ikke som et flag bagefter._
 
@@ -659,37 +675,4 @@ _Regret Engine — systematisk tracking af fortrydelser og læring._
 | function | `summarize_regrets` | `()` | — | [src](../../../core/services/regret_engine.py#L326) |
 | function | `reconcile_open_regrets` | `(*, close_below=…)` | Auto-resolve regrets whose level has decayed below the threshold. | [src](../../../core/services/regret_engine.py#L359) |
 | function | `build_regret_engine_surface` | `()` | MC surface — returns current regret state for Mission Control. | [src](../../../core/services/regret_engine.py#L400) |
-
-## `core/services/regulation_homeostasis_signal_tracking.py`
-_Regulation/homeostasis signal tracking — migrated onto signal_tracking_framework._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_regulation_homeostasis_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L43) |
-| function | `refresh_runtime_regulation_homeostasis_signal_statuses` | `()` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L77) |
-| function | `build_runtime_regulation_homeostasis_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L81) |
-| function | `_extract_candidate_for_run` | `(*, run_id)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L85) |
-| function | `_latest_private_state_snapshot` | `(*, run_id)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L216) |
-| function | `_latest_initiative_tension_signal` | `(*, run_id, focus_key)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L226) |
-| function | `_latest_temporal_curiosity_state` | `(*, run_id, focus_key)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L238) |
-| function | `_latest_executive_contradiction_signal` | `(*, run_id, focus_key)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L250) |
-| function | `_latest_inner_visible_support_signal` | `(*, run_id, focus_key)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L262) |
-| function | `_derive_regulation_pressure` | `(*, state_pressure, tension_type, contradiction_pressure)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L274) |
-| function | `_derive_regulation_watchfulness` | `(*, contradiction_status, contradiction_pressure, visible_watchfulness)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L285) |
-| function | `_derive_regulation_pacing` | `(*, pressure, watchfulness, curiosity_pull)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L298) |
-| function | `_derive_regulation_state` | `(*, state_tone, pressure, watchfulness, pacing)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L313) |
-| function | `_bounded_regulation_summary` | `(*, focus, regulation_state, regulation_pressure, regulation_watchfulness, regulation_pacing)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L329) |
-| function | `_grounding_mode` | `(*, has_tension, has_curiosity, has_executive_contradiction, has_inner_visible_support)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L344) |
-| function | `_with_runtime_view` | `(record, signal)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L364) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L389) |
-| function | `_regulation_homeostasis_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L411) |
-| function | `_regulation_homeostasis_observe_surface` | `(surface)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L432) |
-| function | `_focus_key` | `(item)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L446) |
-| function | `_support_anchor` | `(item)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L450) |
-| function | `_canonical_segment` | `(value, *, index)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L460) |
-| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L472) |
-| function | `_grounding_mode_from_support_summary` | `(value)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L484) |
-| function | `_source_anchor_from_support_summary` | `(value)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L492) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L506) |
-| function | `_value` | `(*values, default)` | — | [src](../../../core/services/regulation_homeostasis_signal_tracking.py#L518) |
 

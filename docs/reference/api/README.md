@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18678 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18687 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -47,22 +47,22 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18678 functions/
 - [`core.services.14`](core.services.14.md) — `file_links` … `goal_signal_synthesizer`
 - [`core.services.15`](core.services.15.md) — `goal_signal_tracking` … `identity_guard`
 - [`core.services.16`](core.services.16.md) — `identity_mutation_log` … `jarvis_brain_visibility`
-- [`core.services.17`](core.services.17.md) — `jarvis_ui_guard` … `mcp_trust`
-- [`core.services.18`](core.services.18.md) — `meaning_significance_signal_tracking` … `monitor_streams`
-- [`core.services.19`](core.services.19.md) — `mood_dialer` … `outreach_composer`
-- [`core.services.20`](core.services.20.md) — `override_command` … `proactive_candidates`
-- [`core.services.21`](core.services.21.md) — `proactive_context_governor` … `proprioception_metrics`
-- [`core.services.22`](core.services.22.md) — `prosa_korrektion` … `regulation_homeostasis_signal_tracking`
-- [`core.services.23`](core.services.23.md) — `relation_continuity_signal_tracking` … `routine_run_recorder`
-- [`core.services.24`](core.services.24.md) — `routine_scheduler` … `rupture_repair`
-- [`core.services.25`](core.services.25.md) — `scheduled_inbox` … `self_system_code_awareness`
-- [`core.services.26`](core.services.26.md) — `self_wakeup` … `signal_baseline`
-- [`core.services.27`](core.services.27.md) — `signal_decay_daemon` … `subagent_ecology`
-- [`core.services.28`](core.services.28.md) — `subjective_time` … `tool_dansk_bro`
-- [`core.services.29`](core.services.29.md) — `tool_embeddings` … `user_theory_of_mind`
-- [`core.services.30`](core.services.30.md) — `user_understanding_signal_tracking` … `visible_run_recovery_coordinator`
-- [`core.services.31`](core.services.31.md) — `visible_run_recovery_dispatcher` … `web_push_subscriptions`
-- [`core.services.32`](core.services.32.md) — `weekly_manifest` … `world_model_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `jarvis_ui_guard` … `mcp_registry`
+- [`core.services.18`](core.services.18.md) — `mcp_trust` … `modulator_witness`
+- [`core.services.19`](core.services.19.md) — `monitor_streams` … `outcome_projector`
+- [`core.services.20`](core.services.20.md) — `outreach_composer` … `private_temporal_promotion_signal_tracking`
+- [`core.services.21`](core.services.21.md) — `proactive_candidates` … `proposal_classifier`
+- [`core.services.22`](core.services.22.md) — `proprioception_metrics` … `regret_engine`
+- [`core.services.23`](core.services.23.md) — `regulation_homeostasis_signal_tracking` … `routine_inbox`
+- [`core.services.24`](core.services.24.md) — `routine_run_recorder` … `runtime_tasks`
+- [`core.services.25`](core.services.25.md) — `rupture_repair` … `self_surprise_expectation`
+- [`core.services.26`](core.services.26.md) — `self_system_code_awareness` … `side_tasks`
+- [`core.services.27`](core.services.27.md) — `signal_baseline` … `subagent_digest`
+- [`core.services.28`](core.services.28.md) — `subagent_ecology` … `tool_contract_shadow`
+- [`core.services.29`](core.services.29.md) — `tool_dansk_bro` … `user_temperature_runtime`
+- [`core.services.30`](core.services.30.md) — `user_theory_of_mind` … `visible_run_outcome_state`
+- [`core.services.31`](core.services.31.md) — `visible_run_recovery_coordinator` … `web_push_gateway`
+- [`core.services.32`](core.services.32.md) — `web_push_subscriptions` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

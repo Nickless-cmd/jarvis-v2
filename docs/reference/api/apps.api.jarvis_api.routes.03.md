@@ -72,17 +72,18 @@ _Mission Control routes: kognitiv/relationel introspektion (personality, chronic
 | function | `mc_personal_project` | `()` | Return Jarvis' current personal project (his thing that grows with him). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L563) |
 | function | `mc_learning_curriculum` | `()` | Return the generated learning curriculum. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L571) |
 | function | `mc_cadence_producers` | `()` | Return cadence-producers surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L581) |
-| function | `mc_idle_thinking` | `()` | Return idle-thinking surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L591) |
-| function | `mc_experiments` | `()` | List all consciousness experiments with their enabled status. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L612) |
-| function | `mc_experiment_toggle` | `(experiment_id)` | Toggle a consciousness experiment on or off. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L623) |
-| function | `mc_recurrence_state` | `()` | Return recurrence-loop daemon surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L635) |
-| function | `mc_global_workspace` | `()` | Return global-workspace (broadcast daemon) surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L642) |
-| function | `mc_layer_tensions` | `()` | Return active inter-layer tensions — signals pulling in opposite directions. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L649) |
-| function | `mc_meta_cognition` | `()` | Return meta-cognition daemon surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L656) |
-| function | `mc_attention_profile` | `()` | Return attention-profile surface (attention-blink test). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L663) |
-| function | `mc_cognitive_core_experiments` | `()` | Unified cognitive-core experiment surface for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L670) |
-| function | `mc_living_executive` | `()` | Living Executive impulse/choice/action trace for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L679) |
-| function | `mc_agency_map` | `()` | Connected/missing agency bridges for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L686) |
+| function | `mc_matrix_karakterer` | `()` | Matrix-karaktererne filtreret ud af cadence-registret, med seneste udfald. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L591) |
+| function | `mc_idle_thinking` | `()` | Return idle-thinking surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L599) |
+| function | `mc_experiments` | `()` | List all consciousness experiments with their enabled status. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L620) |
+| function | `mc_experiment_toggle` | `(experiment_id)` | Toggle a consciousness experiment on or off. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L631) |
+| function | `mc_recurrence_state` | `()` | Return recurrence-loop daemon surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L643) |
+| function | `mc_global_workspace` | `()` | Return global-workspace (broadcast daemon) surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L650) |
+| function | `mc_layer_tensions` | `()` | Return active inter-layer tensions — signals pulling in opposite directions. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L657) |
+| function | `mc_meta_cognition` | `()` | Return meta-cognition daemon surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L664) |
+| function | `mc_attention_profile` | `()` | Return attention-profile surface (attention-blink test). | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L671) |
+| function | `mc_cognitive_core_experiments` | `()` | Unified cognitive-core experiment surface for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L678) |
+| function | `mc_living_executive` | `()` | Living Executive impulse/choice/action trace for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L687) |
+| function | `mc_agency_map` | `()` | Connected/missing agency bridges for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_introspection.py#L694) |
 
 ## `apps/api/jarvis_api/routes/mission_control_jarvis_state.py`
 _Mission Control routes: jarvis-introspektion (cognitive-frame, attention-budget, self-*, dream-*, embodied)_

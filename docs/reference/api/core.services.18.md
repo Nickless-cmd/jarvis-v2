@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/mcp_trust.py`
+_MCP-tillid: allowliste + TOFU-pinning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/mcp_trust.py#L35) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/mcp_trust.py#L44) |
+| function | `is_allowlisted` | `(name)` | — | [src](../../../core/services/mcp_trust.py#L48) |
+| function | `allow` | `(name)` | Godkend et servernavn. Idempotent. | [src](../../../core/services/mcp_trust.py#L52) |
+| function | `revoke` | `(name)` | Fjern fra allowlisten OG drop pinnen. Idempotent. | [src](../../../core/services/mcp_trust.py#L65) |
+| function | `list_trust` | `()` | — | [src](../../../core/services/mcp_trust.py#L80) |
+| function | `_sha256_file` | `(path)` | — | [src](../../../core/services/mcp_trust.py#L85) |
+| function | `check_pin_stdio` | `(name, command)` | Pin en stdio-servers binær (sti + sha256). Første syn pinner. | [src](../../../core/services/mcp_trust.py#L96) |
+| function | `check_pin_http` | `(name, url)` | Pin en HTTP-servers vaert. Første syn pinner. | [src](../../../core/services/mcp_trust.py#L117) |
+
 ## `core/services/meaning_significance_signal_tracking.py`
 _Meaning/significance signal tracking — migrated onto signal_tracking_framework._
 
@@ -629,19 +644,4 @@ _Witness surface for hidden behavior modulators._
 | function | `_item` | `(*, name, active, current_effect, evidence, confidence, allowed_effects, source)` | — | [src](../../../core/services/modulator_witness.py#L12) |
 | function | `_safe_call` | `(fn, default)` | — | [src](../../../core/services/modulator_witness.py#L33) |
 | function | `build_modulator_witness_surface` | `(*, workspace_id=…)` | Return active hidden modulators and the effects they are allowed to have. | [src](../../../core/services/modulator_witness.py#L40) |
-
-## `core/services/monitor_streams.py`
-_Pinned monitors — Jarvis' equivalent of Claude Code's Monitor tool._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/monitor_streams.py#L40) |
-| function | `_save` | `(monitors)` | — | [src](../../../core/services/monitor_streams.py#L47) |
-| function | `_session_monitors` | `(session_id)` | — | [src](../../../core/services/monitor_streams.py#L51) |
-| function | `open_monitor` | `(*, session_id, source, label=…, pattern=…)` | — | [src](../../../core/services/monitor_streams.py#L56) |
-| function | `close_monitor` | `(monitor_id)` | — | [src](../../../core/services/monitor_streams.py#L115) |
-| function | `list_monitors` | `(session_id)` | — | [src](../../../core/services/monitor_streams.py#L124) |
-| function | `_drain_eventbus` | `(rec)` | — | [src](../../../core/services/monitor_streams.py#L128) |
-| function | `_drain_file` | `(rec)` | — | [src](../../../core/services/monitor_streams.py#L166) |
-| function | `monitor_digest_section` | `(session_id)` | Format new matches across all this session's monitors. Side effect: | [src](../../../core/services/monitor_streams.py#L196) |
 

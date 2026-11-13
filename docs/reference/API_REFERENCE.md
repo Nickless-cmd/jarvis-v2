@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-11-11 from app.routes (live) — 694 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-13 from app.routes (live) — 695 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -541,6 +541,7 @@
 | GET | `/mc/loop-runtime` | dict | mission_control_jarvis_state |
 | GET | `/mc/main-agent-selection` | dict | mission_control_runtime_config |
 | PUT | `/mc/main-agent-selection` | dict | mission_control_runtime_config |
+| GET | `/mc/matrix-karakterer` | dict | mission_control_introspection |
 | GET | `/mc/memory` | dict | mission_control_skills_hardening_lab |
 | GET | `/mc/memory-decay` | dict | mission_control_living_mind |
 | POST | `/mc/memory-decay/hold-fast/{record_id}` | dict | mission_control_living_mind |

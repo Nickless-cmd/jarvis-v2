@@ -7,6 +7,7 @@ import { MissionControl } from '../components/cowork/missioncontrol/MissionContr
 import { CoworkZones } from '../components/cowork/CoworkZones'
 import { CategoryPage, CategorySection } from '../components/cowork/CategoryPage'
 import { JarvisMind } from '../components/cowork/JarvisMind'
+import { MatrixKarakterer } from '../components/cowork/MatrixKarakterer'
 import { CentralBadge } from '../components/shell/CentralBadge'
 import { MarketplacePane } from '../components/cowork/MarketplacePane'
 import { CheapLanePanel } from '../components/cowork/cheaplane/CheapLanePanel'
@@ -164,6 +165,9 @@ export function CoworkView({
         <CategoryPage title="Systemstatus" description="Teknisk tilstand og avanceret indsigt i Jarvis' drift." focusSection={zone} wide>
           <CategorySection id="central" title="Central"><CentralBadge config={config} isOwner={isOwner} /></CategorySection>
           <CategorySection id="jarvisMind" title="Jarvis Mind"><JarvisMind config={config} /></CategorySection>
+          <CategorySection id="matrixKarakterer" title="Matrix-karakterer" description="Hvem der kører, hvor tit — og hvad de senest faktisk gjorde.">
+            <MatrixKarakterer config={config} />
+          </CategorySection>
         </CategoryPage>
       ) : null
 

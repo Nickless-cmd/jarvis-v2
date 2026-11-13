@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_dansk_bro.py`
+_Danske udtryk for værktøjer der kun beskriver sig selv på engelsk._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `dansk_tillaeg` | `(navn)` | Danske udtryk for et værktøj, eller tom streng. | [src](../../../core/services/tool_dansk_bro.py#L246) |
+
 ## `core/services/tool_embeddings.py`
 _Tool description embedding cache._
 
@@ -592,16 +599,4 @@ _Daemon for the user-temperature LLM stream (Lag 10)._
 | function | `_loop` | `()` | Two rhythms in one loop: | [src](../../../core/services/user_temperature_runtime.py#L65) |
 | function | `start_user_temperature_runtime` | `()` | Start the daemon. Idempotent. | [src](../../../core/services/user_temperature_runtime.py#L88) |
 | function | `stop_user_temperature_runtime` | `()` | — | [src](../../../core/services/user_temperature_runtime.py#L101) |
-
-## `core/services/user_theory_of_mind.py`
-_User Theory of Mind — model what the user thinks and feels._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_user_mental_model` | `(user_id=…)` | Build a theory-of-mind model of the user. | [src](../../../core/services/user_theory_of_mind.py#L22) |
-| function | `_build_secondary_user_model` | `(user_id)` | Return stored ToM snapshot for a secondary user. | [src](../../../core/services/user_theory_of_mind.py#L33) |
-| function | `_build_primary_user_model` | `()` | Build live DB-backed theory-of-mind for the primary user. | [src](../../../core/services/user_theory_of_mind.py#L45) |
-| function | `format_user_model_for_prompt` | `(model)` | Compact user model for prompt injection. | [src](../../../core/services/user_theory_of_mind.py#L102) |
-| function | `build_user_theory_of_mind_surface` | `()` | — | [src](../../../core/services/user_theory_of_mind.py#L124) |
-| function | `_emit_user_theory_of_mind_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/user_theory_of_mind.py#L140) |
 

@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_system_code_awareness.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_self_system_code_awareness_surface` | `()` | — | [src](../../../core/services/self_system_code_awareness.py#L16) |
+| function | `_default_repo_observation` | `()` | — | [src](../../../core/services/self_system_code_awareness.py#L114) |
+| function | `_detect_repo_root` | `(*starts)` | — | [src](../../../core/services/self_system_code_awareness.py#L134) |
+| function | `_observe_repo_status` | `(repo_root)` | — | [src](../../../core/services/self_system_code_awareness.py#L147) |
+| function | `_derive_concern_state` | `(*, repo_status, local_change_state, upstream_awareness, branch_name)` | — | [src](../../../core/services/self_system_code_awareness.py#L236) |
+| function | `_run_read_only_command` | `(args)` | — | [src](../../../core/services/self_system_code_awareness.py#L279) |
+| function | `_safe_int` | `(raw)` | — | [src](../../../core/services/self_system_code_awareness.py#L298) |
+| function | `_status_xy` | `(line)` | — | [src](../../../core/services/self_system_code_awareness.py#L305) |
+| function | `_status_path` | `(line)` | — | [src](../../../core/services/self_system_code_awareness.py#L312) |
+| function | `_append_bounded_path` | `(paths, value, *, limit=…)` | — | [src](../../../core/services/self_system_code_awareness.py#L319) |
+| function | `_approval_required_mutation_classes` | `(capabilities)` | — | [src](../../../core/services/self_system_code_awareness.py#L326) |
+| function | `_emit_self_system_code_awareness_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/self_system_code_awareness.py#L341) |
+
 ## `core/services/self_wakeup.py`
 _Self-wakeup — Jarvis' equivalent of Claude Code's ScheduleWakeup._
 
@@ -652,17 +669,4 @@ _Side-task flag — keep the main thread focused._
 | function | `_sidst_aktiv` | `(session_id)` | Hvornår samtalen sidst sagde noget (`chat_sessions.updated_at`). | [src](../../../core/services/side_tasks.py#L1431) |
 | function | `_arbejds_run_aktiv` | `(session_id)` | Et langt run må ikke omklassificeres på grund af stille chat-historik. | [src](../../../core/services/side_tasks.py#L1455) |
 | function | `fej_faerdige` | `(*, stilstand_minutter=…)` | Flyt forladte `activated` opgaver tilbage til `pending`. | [src](../../../core/services/side_tasks.py#L1466) |
-
-## `core/services/signal_baseline.py`
-_Persisted signal-baseline with cold-start guard (Task C1)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_store_key` | `(scope)` | Durable KV key for ``scope``. None/empty → the global key, unchanged. | [src](../../../core/services/signal_baseline.py#L47) |
-| function | `_load` | `(scope=…)` | Read the whole baseline dict for ``scope``. Fail-closed to {}. | [src](../../../core/services/signal_baseline.py#L55) |
-| function | `_save` | `(baselines, scope=…)` | — | [src](../../../core/services/signal_baseline.py#L74) |
-| function | `get_baseline` | `(signal, scope=…)` | Last recorded value for ``signal`` in ``scope``; None if never recorded. | [src](../../../core/services/signal_baseline.py#L84) |
-| function | `set_baseline` | `(signal, value, scope=…)` | Persist ``value`` durably as the new baseline for ``signal`` in ``scope``. | [src](../../../core/services/signal_baseline.py#L95) |
-| function | `is_cold_start` | `(min_signals=…, scope=…)` | True until ``min_signals`` distinct baselines exist *within* ``scope``. | [src](../../../core/services/signal_baseline.py#L115) |
-| function | `clear_all` | `(scope=…)` | Drop all baselines in ``scope`` (test helper). Self-safe. | [src](../../../core/services/signal_baseline.py#L134) |
 

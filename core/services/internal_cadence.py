@@ -504,6 +504,13 @@ def run_cadence_tick(
                     logger.warning("cadence producer '%s' tog %.1fs", spec.name, _prod_dt)
                 ran_this_tick.add(spec.name)
                 _last_run_at[spec.name] = now_iso
+                # Udfaldet (`outcome`) ligger kun i svaret; gem det holdbart så
+                # Desk kan vise hvad producenten SENEST gjorde. Self-safe.
+                try:
+                    from core.services.matrix_karakterer import noter_udfald
+                    noter_udfald(spec.name, result, at=now_iso)
+                except Exception:
+                    logger.debug("udfald kunne ikke noteres", exc_info=True)
                 # Samme maerke, holdbart. Uden dette overlever nedkoelingen
                 # ikke en genstart — og en producent der lige har koert, ville
                 # koere igen med det samme.

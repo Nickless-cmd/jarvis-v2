@@ -974,6 +974,33 @@ export async function getMindSection(
   return apiFetch(config, `/central/mind?${q.toString()}`)
 }
 
+export interface MatrixKarakterUdfald {
+  outcome: string
+  tekst: string
+  tone: 'ok' | 'warn' | 'bad' | 'neutral' | 'ukendt'
+}
+export interface MatrixKarakter {
+  name: string
+  funktion: string
+  priority: number
+  cooldown_minutes: number
+  effektiv_cooldown_minutes: number
+  last_run_at: string | null
+  udfald: MatrixKarakterUdfald | null
+  udfald_at: string | null
+}
+export interface MatrixKarakterer {
+  active: boolean
+  tempo: number
+  antal: number
+  karakterer: MatrixKarakter[]
+}
+/** Matrix-karaktererne, filtreret ud af cadence-registret SERVER-SIDE (listen
+ *  hardkodes aldrig her — se core/services/matrix_karakterer.py). */
+export async function getMatrixKarakterer(config: ApiConfig): Promise<MatrixKarakterer> {
+  return apiFetch(config, '/mc/matrix-karakterer')
+}
+
 const BESLUTNINGS_RUTER: Record<string, string> = {
   'initiative:approve': '/mc/initiatives/{id}/approve',
   'initiative:reject': '/mc/initiatives/{id}/reject',

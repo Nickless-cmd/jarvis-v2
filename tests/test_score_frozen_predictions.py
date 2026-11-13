@@ -514,3 +514,123 @@ def test_post_uden_match_i_nogen_version_stemples_ikke(
     assert resultat["stemplet"] == []
     assert resultat["uafklaret"] == ["T1"]
     assert resultat["rapport"][0]["status"] == "forsegling_brudt"
+
+
+# ── Forseglingen skal dække det der BÆRER resultatet (13/11-2026) ─────────────
+# Bjoerns fund: `event_group` og `frozen_at` bestemmer hvor mange uafhængige
+# hændelser Brier regnes over, og hvilken post i gruppen der tæller som den
+# første. Begge var uden for hashen — så resultatet kunne flyttes uden at
+# forseglingen så det.
+
+
+def test_aendret_event_group_bryder_forseglingen() -> None:
+    """At flytte en post til en ny gruppe ændrer n_events — og dermed Brier."""
+    post = _post(event_group="g1")
+    forsegling = {"T1": sfp.frozen_hash(post)}
+
+    post["event_group"] = "g2"
+
+    assert sfp.verificer_forsegling([post], forsegling) == ["T1"]
+
+
+def test_aendret_frozen_at_bryder_forseglingen() -> None:
+    """`frozen_at` afgør hvem der er «den først frosne» — altså hvem der tæller."""
+    post = _post()
+    forsegling = {"T1": sfp.frozen_hash(post)}
+
+    post["frozen_at"] = "2026-11-13T20:41:00+00:00"
+
+    assert sfp.verificer_forsegling([post], forsegling) == ["T1"]
+
+
+def test_gruppeflytning_ville_aendret_brier_men_fanges(rigtig_db: Path, tmp_path: Path) -> None:
+    """Det konkrete forløb: Brier 0,2025 → 0,1812 ved at flytte én post.
+
+    To poster om samme hændelse tæller som ÉN. Flyttes den anden til sin egen
+    gruppe, bliver de to — og Brier falder uden at en enkelt maaling er blevet
+    bedre. Det er præcis den slags «forbedring» forseglingen skal forhindre.
+    """
+    a = _post(id="A", event_group="g1", probability=0.55, frozen_at="2026-11-12T20:00:00+00:00")
+    b = _post(id="B", event_group="g1", probability=0.60, frozen_at="2026-11-12T21:00:00+00:00")
+    forsegling = {"A": sfp.frozen_hash(a), "B": sfp.frozen_hash(b)}
+
+    # Før: én hændelse, A's P tæller.
+    foer = sfp.kalibrering([dict(a, hit=True), dict(b, hit=True)])
+    assert foer["n_events"] == 1
+    assert foer["brier"] == 0.2025
+
+    # Efter en uset flytning: to hændelser, lavere Brier.
+    efter = sfp.kalibrering(
+        [dict(a, hit=True), dict(b, hit=True, event_group="g2")]
+    )
+    assert efter["n_events"] == 2
+    assert efter["brier"] == 0.1812
+
+    # Men flytningen kan ikke ske ubemærket.
+    b["event_group"] = "g2"
+    assert sfp.verificer_forsegling([a, b], forsegling) == ["B"]
+
+
+def test_scoring_danner_udfalds_forsegling(rigtig_db: Path, tmp_path: Path) -> None:
+    """Udfaldet forsegles i det øjeblik det skrives — ikke bagefter."""
+    post = _post(threshold=3)
+    fil = _fil(tmp_path, [post], forsegling={"T1": sfp.frozen_hash(post)})
+
+    resultat = sfp.score(fil, rigtig_db, nu=NU)
+
+    assert resultat["rapport"][0]["status"] == "scoret"
+    gemt = json.loads(fil.read_text(encoding="utf-8"))["forudsigelser"][0]
+    assert gemt["hit"] is True
+    assert gemt["udfalds_hash"] == sfp.udfalds_hash(gemt)
+
+
+def test_aendret_hit_efter_scoring_udelades(rigtig_db: Path, tmp_path: Path) -> None:
+    """Et `hit` der er rettet bagefter må ikke indgå i kalibreringen.
+
+    `evaluer` svarer «allerede-scorets» for en post der har `hit` — så uden en
+    udfalds-forsegling ville en rettet værdi blive genbrugt og vejet med.
+    """
+    post = _post(threshold=3)
+    fil = _fil(tmp_path, [post], forsegling={"T1": sfp.frozen_hash(post)})
+    sfp.score(fil, rigtig_db, nu=NU)
+
+    data = json.loads(fil.read_text(encoding="utf-8"))
+    data["forudsigelser"][0]["hit"] = False  # rettet efter scoring
+    fil.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    resultat = sfp.score(fil, rigtig_db, nu=NU)
+
+    assert resultat["udfald_aendret"] == ["T1"]
+    assert resultat["rapport"][0]["status"] == "udfald_aendret"
+    assert resultat["kalibrering"]["n_events"] == 0
+
+
+def test_post_scoret_foer_udfalds_forsegling_rapporteres(
+    rigtig_db: Path, tmp_path: Path
+) -> None:
+    """En post scoret før v3 har intet udfalds-hash. Det skal STÅ, ikke skjules.
+
+    Den kan ikke få en troværdig forsegling bagefter — den ville være dannet
+    efter kendskab til udfaldet. Så den rapporteres som uforsikret og indgår
+    stadig, så historikken ikke bliver ubrugelig af en ærlig mangel.
+    """
+    post = _post(threshold=3, hit=True, actual=3.0, scored_at="2026-11-13T20:00:00+00:00")
+    fil = _fil(tmp_path, [post], forsegling={"T1": sfp.frozen_hash(post)})
+
+    resultat = sfp.score(fil, rigtig_db, nu=NU)
+
+    assert resultat["udfald_uforsikret"] == ["T1"]
+    assert resultat["udfald_aendret"] == []
+    assert resultat["kalibrering"]["n_events"] == 1
+
+
+def test_svag_forsegling_rapporteres(rigtig_db: Path, tmp_path: Path) -> None:
+    """En v1-forsegling er ikke brudt — men den er svagere, og det skal stå."""
+    post = _post(threshold=3)
+    fil = _fil(tmp_path, [post], forsegling={"T1": sfp.frozen_hash(post, 1)})
+
+    resultat = sfp.score(fil, rigtig_db, nu=NU)
+
+    assert resultat["svag_forsegling"] == ["T1"]
+    assert resultat["forsegling_brudt"] == []
+    assert resultat["rapport"][0]["status"] == "scoret"

@@ -56,21 +56,50 @@ if str(_ROD) not in sys.path:
 # laast, men kun tallet ved siden af den. `frozen_hash` er en hash af netop
 # disse felter, saa en post forseglet foer denne rettelse faar en NY hash —
 # derfor skrives den gamle hash ind i `_forsegling_version` nedenfor.
-HASH_FELTER = (
-    "id",
-    "claim",
-    "op",
-    "threshold",
-    "probability",
-    "score_at",
-    "sql",
-    "kilde",
-)
+# (13/11-2026, Bjoerns tredje fund) `event_group` og `frozen_at` SKAL med.
+# `event_group` bestemmer grupperingen og dermed hvor mange UAFHAENGIGE
+# haendelser Brier regnes over; `frozen_at` bestemmer hvilken post i gruppen
+# der taeller som den foerste, og dermed baade P og udfald. Maalt: blev F5
+# flyttet til en ny gruppe, aendredes Brier fra 0,1812 til 0,1742 — uden at
+# den daværende hash saa det. Det var de to felter der bar resultatet, og de
+# var de eneste uden for forseglingen.
+#
+# Versionerne er en KÆDE, ikke et spring: en post forseglet under v1 kan ikke
+# stemles som v3 uden at have matchet v2 undervejs. Ellers kunne en aendring
+# maskeres som en opgradering.
+_VERSIONS_FELTER: dict[int, tuple[str, ...]] = {
+    1: ("id", "claim", "op", "threshold", "probability", "score_at"),
+    2: (
+        "id",
+        "claim",
+        "op",
+        "threshold",
+        "probability",
+        "score_at",
+        "sql",
+        "kilde",
+    ),
+    3: (
+        "id",
+        "claim",
+        "op",
+        "threshold",
+        "probability",
+        "score_at",
+        "sql",
+        "kilde",
+        "event_group",
+        "frozen_at",
+    ),
+}
+
+HASH_FELTER = _VERSIONS_FELTER[3]
 
 # Version 1 = de seks oprindelige felter (12/11-2026). Version 2 tilfoejer
-# maalereglen. En post maa ikke kunne skifte version efter frysning: ellers
-# kunne man skifte til den svagere regel og kalde det en opgradering.
-FORSEGLING_VERSION = 2
+# maalereglen. Version 3 tilfoejer grupperingen og frysningstidspunktet.
+# En post maa ikke kunne skifte version efter frysning: ellers kunne man
+# skifte til den svagere regel og kalde det en opgradering.
+FORSEGLING_VERSION = 3
 
 STANDARD_FIL = Path.home() / ".jarvis-v2" / "state" / "frozen_predictions.json"
 STANDARD_DB = Path.home() / ".jarvis-v2" / "state" / "jarvis.db"
@@ -87,7 +116,12 @@ _BUCKETS = ((0.0, 0.2), (0.2, 0.4), (0.4, 0.6), (0.6, 0.8), (0.8, 1.01))
 
 
 def _kanonisk(post: dict[str, Any], version: int = FORSEGLING_VERSION) -> str:
-    felter = HASH_FELTER if version >= 2 else HASH_FELTER[:6]
+    try:
+        felter = _VERSIONS_FELTER[version]
+    except KeyError:
+        # Ukendt version er ikke «den nyeste» — det ville vaere at gaette paa
+        # forseglingens grundlag. Hellere en fejl end en hash mod vrøvl.
+        raise ValueError(f"ukendt forsegling-version: {version!r}") from None
     delmaengde = {k: post.get(k) for k in felter}
     return json.dumps(delmaengde, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
@@ -102,6 +136,29 @@ def frozen_hash(post: dict[str, Any], version: int = FORSEGLING_VERSION) -> str:
     return hashlib.sha256(_kanonisk(post, version).encode("utf-8")).hexdigest()[:16]
 
 
+# (13/11-2026, Bjoerns fjerde fund) Udfaldet var det sidste ubeskyttede led.
+# `hit` KAN ikke vaere med i frysnings-hashen — det findes ikke foer scoringen.
+# Derfor en SEPARAT forsegling der dannes i det oejeblik udfaldet skrives.
+# Uden den kunne et registreret `hit` rettes i filen, og naeste koersel ville
+# genbruge det (`evaluer` svarer ``allerede-scorets``) og tage det med i Brier
+# uden at noget sammenlignede det med den maaling der oprindeligt gav det.
+_UDFALD_FELTER = ("id", "actual", "hit", "scored_at")
+
+
+def udfalds_hash(post: dict[str, Any]) -> str | None:
+    """Fingerprint af det udfald der blev SKREVET — None hvis intet er skrevet.
+
+    Beviser ikke at udfaldet er sandt, kun at det ikke er aendret siden det blev
+    beregnet. Det er praecis hvad der manglede: en post hvis `hit` var rettet
+    bagefter var uskelnelig fra en der var scoret rigtigt.
+    """
+    if post.get("hit") is None:
+        return None
+    delmaengde = {k: post.get(k) for k in _UDFALD_FELTER}
+    tekst = json.dumps(delmaengde, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(tekst.encode("utf-8")).hexdigest()[:16]
+
+
 def _post_version(post: dict[str, Any]) -> int:
     """Hvilken hash-regel posten blev forseglet under.
 
@@ -114,7 +171,7 @@ def _post_version(post: dict[str, Any]) -> int:
     if raa is None:
         return FORSEGLING_VERSION
     version = int(raa)  # ValueError/TypeError => ugyldig forsegling, ikke et default
-    if version not in (1, FORSEGLING_VERSION):
+    if version not in _VERSIONS_FELTER:
         raise ValueError(f"ukendt forsegling-version: {raa!r}")
     return version
 
@@ -198,10 +255,15 @@ def stemple_versioner(data: dict[str, Any]) -> dict[str, Any]:
         forventet = forsegling.get(pid)
         if not forventet:
             continue
-        if forventet == frozen_hash(p, 1):
-            p["_forsegling_version"] = 1
-            stemplet.append(pid)
-        elif forventet != frozen_hash(p, FORSEGLING_VERSION):
+        # Kæden gennemløbes fra den ÆLDSTE version: en post forseglet under v1
+        # stemles som v1 — ikke som den nyeste den tilfældigvis også matcher.
+        # Ellers ville en svag forsegling kunne udgive sig for en stærk.
+        for version in sorted(_VERSIONS_FELTER):
+            if forventet == frozen_hash(p, version):
+                p["_forsegling_version"] = version
+                stemplet.append(pid)
+                break
+        else:
             uafklaret.append(pid)
     return {"stemplet": stemplet, "uafklaret": uafklaret}
 
@@ -417,6 +479,34 @@ def score(
     # kalibrering, og staar i rapporten som `forsegling_brudt`.
     brudt = set(aendret) | set(arkiv_aendret)
 
+    # Udfalds-forseglingen er separat fra frysningen: den dannes naar udfaldet
+    # SKRIVES, ikke naar posten fryses. En post scoret foer v3 har ingen — den
+    # rapporteres som `udfald_uforsikret` frem for at blive laest som intakt.
+    # En post hvis udfald er aendret EFTER scoring udelades fra kalibreringen,
+    # ligesom en brudt frysning: ellers kunne et tal rettes til det man oenskede.
+    udfald_aendret: set[str] = set()
+    udfald_uforsikret: list[str] = []
+    for p in poster:
+        if not isinstance(p, dict) or p.get("hit") is None:
+            continue
+        pid = str(p.get("id"))
+        if pid in brudt:
+            continue
+        forventet_u = p.get("udfalds_hash")
+        if not forventet_u:
+            udfald_uforsikret.append(pid)
+        elif forventet_u != udfalds_hash(p):
+            udfald_aendret.add(pid)
+
+    # Poster forseglet under en ældre, smallere regel er ikke brudte — men de
+    # er svagere beskyttet, og det skal staa i rapporten frem for at vaere
+    # usynligt for den naeste der laeser kalibreringen.
+    svag_forsegling = sorted(
+        str(p.get("id"))
+        for p in poster
+        if isinstance(p, dict) and _post_version(p) < FORSEGLING_VERSION
+    )
+
     conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     try:
         rapport: list[dict[str, Any]] = []
@@ -432,12 +522,22 @@ def score(
                     }
                 )
                 continue
+            if str(p.get("id")) in udfald_aendret:
+                rapport.append(
+                    {
+                        "id": p.get("id"),
+                        "status": "udfald_aendret",
+                        "grund": "udfaldet er aendret efter scoring — det kan ikke indgaa",
+                    }
+                )
+                continue
             r = evaluer(p, conn, nu)
             r["id"] = p.get("id")
             if r["status"] == "scoret":
                 p["actual"] = r["actual"]
                 p["hit"] = r["hit"]
                 p["scored_at"] = nu.isoformat()
+                p["udfalds_hash"] = udfalds_hash(p)
             rapport.append(r)
     finally:
         conn.close()
@@ -453,9 +553,14 @@ def score(
     arkiveret = arkiver_forsegling(poster) if arkiver and not dry_run else 0
 
     # Kalibreringen maa kun se poster der faktisk blev scoret i denne koersel
-    # eller var scoret i forvejen — aldrig en post hvis grundlag er aendret.
+    # eller var scoret i forvejen — aldrig en post hvis grundlag eller udfald
+    # er aendret.
     til_kalibrering = [
-        p for p in poster if isinstance(p, dict) and str(p.get("id")) not in brudt
+        p
+        for p in poster
+        if isinstance(p, dict)
+        and str(p.get("id")) not in brudt
+        and str(p.get("id")) not in udfald_aendret
     ]
 
     return {
@@ -463,6 +568,9 @@ def score(
         "tampered": aendret,
         "arkiv_tampered": arkiv_aendret,
         "forsegling_brudt": sorted(brudt),
+        "udfald_aendret": sorted(udfald_aendret),
+        "udfald_uforsikret": sorted(udfald_uforsikret),
+        "svag_forsegling": svag_forsegling,
         "stemplet": stempling["stemplet"],
         "uafklaret": stempling["uafklaret"],
         "arkiveret": arkiveret,

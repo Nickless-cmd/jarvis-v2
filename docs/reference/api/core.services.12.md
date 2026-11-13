@@ -707,6 +707,19 @@ _Emergence — evidence-based pattern detection across recent activity._
 | function | `brewing_patterns` | `(*, limit=…)` | Mønstre i brewing-båndet (0.5 ≤ conf < 0.78) — strengthening men endnu ikke emergent. | [src](../../../core/services/emergence.py#L421) |
 | function | `build_emergence_surface` | `(*, limit=…)` | Surface persisted emergence candidates without running detection. | [src](../../../core/services/emergence.py#L447) |
 
+## `core/services/emergence_initiative_bridge.py`
+_Emergence → initiative bridge: et opdaget mønster bliver en handling._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_er_handlingsbar` | `(pattern)` | Returnér (ja/nej, grund). Grunden bruges til at forklare en afvisning. | [src](../../../core/services/emergence_initiative_bridge.py#L47) |
+| function | `_fokus_for` | `(pattern)` | Formulér opgaven som noget der kan HANDLES, ikke som en etiket. | [src](../../../core/services/emergence_initiative_bridge.py#L70) |
+| function | `_begrundelse_for` | `(pattern)` | Hvorfor dette er et initiativ — evidensen, ikke en følelse. | [src](../../../core/services/emergence_initiative_bridge.py#L89) |
+| function | `_allerede_i_koen` | `(pattern_key)` | Er dette mønster allerede rejst? Målt på ``source_id``, ikke på fokus-tekst. | [src](../../../core/services/emergence_initiative_bridge.py#L106) |
+| function | `push_emergents_to_queue` | `(patterns=…)` | Gør opdagede mønstre til initiativer. Returnerer hvad der skete og hvorfor. | [src](../../../core/services/emergence_initiative_bridge.py#L131) |
+| function | `_normaliser` | `(patterns)` | Tag imod både detect-returformen og rå DB-rækker. | [src](../../../core/services/emergence_initiative_bridge.py#L188) |
+| function | `build_emergence_initiative_surface` | `()` | MC-flade: hvad motoren har gjort ved køen — og hvad den afviste hvorfor. | [src](../../../core/services/emergence_initiative_bridge.py#L204) |
+
 ## `core/services/emergent_bridge.py`
 _Emergent Bridge — consumer for emergent signals to influence visible prompt._
 
@@ -718,13 +731,4 @@ _Emergent Bridge — consumer for emergent signals to influence visible prompt._
 | function | `reset_emergent_bridge` | `()` | Reset emergent bridge state (for testing). | [src](../../../core/services/emergent_bridge.py#L84) |
 | function | `get_emergent_bridge_state` | `()` | Get current state of emergent bridge. | [src](../../../core/services/emergent_bridge.py#L90) |
 | function | `build_emergent_bridge_surface` | `()` | Build MC surface for emergent bridge. | [src](../../../core/services/emergent_bridge.py#L100) |
-
-## `core/services/emergent_goals.py`
-_Emergent Goals — desires that grow from experience, not assignment._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `generate_emergent_goal_from_experience` | `(*, recent_topic=…, curiosity_level=…, knowledge_gap=…)` | — | [src](../../../core/services/emergent_goals.py#L18) |
-| function | `build_jarvis_agenda` | `()` | Jarvis' own agenda — what HE thinks is important. | [src](../../../core/services/emergent_goals.py#L37) |
-| function | `build_emergent_goals_surface` | `()` | — | [src](../../../core/services/emergent_goals.py#L62) |
 

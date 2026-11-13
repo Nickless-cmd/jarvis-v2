@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/suggest_standing_guard.py`
+_Stillingtagen til næste skridt ved tur-afslutning (Bjørn 7/10-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `suggest_standing_guard_enabled` | `()` | Default FALSE (Bjørn 19/10-2026). Env kan tænde den igen. | [src](../../../core/services/suggest_standing_guard.py#L84) |
+| function | `mangler_stilling` | `(*, called_tool_names, nudged_already=…, final_text=…, is_last_round=…, er_autonom=…)` | True når turen udførte arbejde og intet forslag blev lagt. | [src](../../../core/services/suggest_standing_guard.py#L118) |
+| function | `build_nudge` | `()` | Beskeden der lægges i turen. Bedømmer, opfordrer ikke til gentagelse. | [src](../../../core/services/suggest_standing_guard.py#L169) |
+
 ## `core/services/surprise_daemon.py`
 _Surprise daemon — first-person surprise when Jarvis's reactions diverge from baseline._
 
@@ -606,32 +615,4 @@ _Tool description embedding cache._
 | function | `top_k_similar` | `(query, k=…, *, timeout_s=…)` | Return (tool_name, similarity) sorted desc by cosine similarity. | [src](../../../core/services/tool_embeddings.py#L136) |
 | function | `warmup_all` | `()` | Compute embeddings for every registered tool. Returns count computed. | [src](../../../core/services/tool_embeddings.py#L157) |
 | function | `build_tool_embeddings_surface` | `()` | Mission Control-surface: hvor mange vaerktoejer har en embedding, og hvor frisk er den? | [src](../../../core/services/tool_embeddings.py#L177) |
-
-## `core/services/tool_execution_trace.py`
-_Process-local timing and bounded live-output state for visible tool calls._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `OutputDelta` | `` | — | [src](../../../core/services/tool_execution_trace.py#L20) |
-| class | `BoundedOutputBuffer` | `` | Thread-safe non-blocking queue that drops oldest output under pressure. | [src](../../../core/services/tool_execution_trace.py#L28) |
-| method | `BoundedOutputBuffer.__init__` | `(self, max_frames=…, max_pending_chars=…)` | — | [src](../../../core/services/tool_execution_trace.py#L31) |
-| method | `BoundedOutputBuffer.put` | `(self, delta)` | — | [src](../../../core/services/tool_execution_trace.py#L40) |
-| method | `BoundedOutputBuffer.drain` | `(self)` | — | [src](../../../core/services/tool_execution_trace.py#L61) |
-| class | `_ExecutionBinding` | `` | — | [src](../../../core/services/tool_execution_trace.py#L70) |
-| class | `_CallTrace` | `` | — | [src](../../../core/services/tool_execution_trace.py#L81) |
-| function | `_timing_enabled` | `()` | — | [src](../../../core/services/tool_execution_trace.py#L104) |
-| function | `_milliseconds` | `(start, end)` | — | [src](../../../core/services/tool_execution_trace.py#L115) |
-| function | `start_call` | `(tool_use_id, *, tool, run_id, session_id=…, title=…, command=…, announced_at=…)` | — | [src](../../../core/services/tool_execution_trace.py#L121) |
-| function | `_tool_source` | `(tool_name)` | — | [src](../../../core/services/tool_execution_trace.py#L157) |
-| function | `_publish_job_event` | `(event_type, item, payload)` | — | [src](../../../core/services/tool_execution_trace.py#L161) |
-| function | `mark_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L176) |
-| function | `mark_execution_complete` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L183) |
-| function | `mark_approval_wait` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L190) |
-| function | `mark_approved_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L197) |
-| function | `note_executor_timing` | `(tool_use_id, timing)` | — | [src](../../../core/services/tool_execution_trace.py#L204) |
-| function | `_finish` | `(tool_use_id, *, status, exit_code, now, result_text=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_execution_trace.py#L221) |
-| function | `surface_result` | `(tool_use_id, *, status, exit_code=…, now=…, result_text=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_execution_trace.py#L291) |
-| function | `cancel_call` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L312) |
-| function | `bind_execution` | `(tool_use_id, output_buffer, *, run_id=…, session_id=…, tool_name=…)` | — | [src](../../../core/services/tool_execution_trace.py#L317) |
-| function | `emit_current_output` | `(stream, chunk, seq=…, truncated=…)` | — | [src](../../../core/services/tool_execution_trace.py#L340) |
 

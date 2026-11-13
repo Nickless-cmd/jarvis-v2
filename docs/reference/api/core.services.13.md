@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/emergent_goals.py`
+_Emergent Goals — desires that grow from experience, not assignment._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `generate_emergent_goal_from_experience` | `(*, recent_topic=…, curiosity_level=…, knowledge_gap=…)` | — | [src](../../../core/services/emergent_goals.py#L18) |
+| function | `build_jarvis_agenda` | `()` | Jarvis' own agenda — what HE thinks is important. | [src](../../../core/services/emergent_goals.py#L37) |
+| function | `build_emergent_goals_surface` | `()` | — | [src](../../../core/services/emergent_goals.py#L62) |
+
 ## `core/services/emergent_signal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -662,25 +671,4 @@ _Kortlivede, signerede links til udgivne filer._
 | function | `_signatur` | `(ws, navn, udloeb, noegle)` | — | [src](../../../core/services/file_links.py#L104) |
 | function | `signer` | `(filnavn, *, workspace, levetid_s=…, nu=…)` | Udsted et link. `{"status": "ok", "sig": ..., "udloeb": ...}` eller en fejl. | [src](../../../core/services/file_links.py#L109) |
 | function | `verificer` | `(filnavn, udloeb, sig, *, workspace, nu=…)` | Holder signaturen, og er den stadig i live? Falsk ved enhver tvivl. | [src](../../../core/services/file_links.py#L136) |
-
-## `core/services/file_watch_daemon.py`
-_File Watch Daemon — proprioception: "I feel when my own files change"._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_synk` | `()` | Hent de seneste aendringer fra disk hvis filen er aendret. | [src](../../../core/services/file_watch_daemon.py#L68) |
-| function | `_gem` | `()` | — | [src](../../../core/services/file_watch_daemon.py#L80) |
-| function | `reset_file_watch_state` | `()` | Ryd de delte aendringer. Roerer IKKE fingeraftrykket — det er per proces. | [src](../../../core/services/file_watch_daemon.py#L86) |
-| function | `_should_ignore` | `(path_str)` | — | [src](../../../core/services/file_watch_daemon.py#L93) |
-| function | `_watched_roots` | `()` | — | [src](../../../core/services/file_watch_daemon.py#L97) |
-| function | `_iter_watched_files` | `(root)` | — | [src](../../../core/services/file_watch_daemon.py#L113) |
-| function | `_diff_preview` | `(path)` | — | [src](../../../core/services/file_watch_daemon.py#L128) |
-| function | `_record_change` | `(path, change_type)` | — | [src](../../../core/services/file_watch_daemon.py#L137) |
-| function | `_compact_path` | `(path)` | — | [src](../../../core/services/file_watch_daemon.py#L157) |
-| function | `tick` | `(_seconds=…)` | One polling sweep across watched roots. | [src](../../../core/services/file_watch_daemon.py#L173) |
-| function | `recent_changes` | `(*, limit=…)` | — | [src](../../../core/services/file_watch_daemon.py#L221) |
-| function | `build_file_watch_surface` | `()` | — | [src](../../../core/services/file_watch_daemon.py#L226) |
-| function | `_surface_summary` | `(recent)` | — | [src](../../../core/services/file_watch_daemon.py#L243) |
-| function | `build_file_watch_prompt_section` | `()` | Surface recent changes briefly — stays quiet if nothing recent. | [src](../../../core/services/file_watch_daemon.py#L254) |
-| function | `reset_file_watch` | `()` | Reset state (for testing). | [src](../../../core/services/file_watch_daemon.py#L279) |
 

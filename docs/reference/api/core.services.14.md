@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/file_watch_daemon.py`
+_File Watch Daemon — proprioception: "I feel when my own files change"._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_synk` | `()` | Hent de seneste aendringer fra disk hvis filen er aendret. | [src](../../../core/services/file_watch_daemon.py#L68) |
+| function | `_gem` | `()` | — | [src](../../../core/services/file_watch_daemon.py#L80) |
+| function | `reset_file_watch_state` | `()` | Ryd de delte aendringer. Roerer IKKE fingeraftrykket — det er per proces. | [src](../../../core/services/file_watch_daemon.py#L86) |
+| function | `_should_ignore` | `(path_str)` | — | [src](../../../core/services/file_watch_daemon.py#L93) |
+| function | `_watched_roots` | `()` | — | [src](../../../core/services/file_watch_daemon.py#L97) |
+| function | `_iter_watched_files` | `(root)` | — | [src](../../../core/services/file_watch_daemon.py#L113) |
+| function | `_diff_preview` | `(path)` | — | [src](../../../core/services/file_watch_daemon.py#L128) |
+| function | `_record_change` | `(path, change_type)` | — | [src](../../../core/services/file_watch_daemon.py#L137) |
+| function | `_compact_path` | `(path)` | — | [src](../../../core/services/file_watch_daemon.py#L157) |
+| function | `tick` | `(_seconds=…)` | One polling sweep across watched roots. | [src](../../../core/services/file_watch_daemon.py#L173) |
+| function | `recent_changes` | `(*, limit=…)` | — | [src](../../../core/services/file_watch_daemon.py#L221) |
+| function | `build_file_watch_surface` | `()` | — | [src](../../../core/services/file_watch_daemon.py#L226) |
+| function | `_surface_summary` | `(recent)` | — | [src](../../../core/services/file_watch_daemon.py#L243) |
+| function | `build_file_watch_prompt_section` | `()` | Surface recent changes briefly — stays quiet if nothing recent. | [src](../../../core/services/file_watch_daemon.py#L254) |
+| function | `reset_file_watch` | `()` | Reset state (for testing). | [src](../../../core/services/file_watch_daemon.py#L279) |
+
 ## `core/services/finalize_tool_policy.py`
 _Skal den tvungne afslutnings-runde FJERNE vaerktoejslisten — eller raekker et flag?_
 
@@ -509,13 +530,4 @@ _Goal signal synthesizer — surface candidate goals from dreams/reflections._
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/goal_signal_tracking.py#L502) |
 | function | `_rank` | `(value)` | — | [src](../../../core/services/goal_signal_tracking.py#L511) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/goal_signal_tracking.py#L515) |
-
-## `core/services/good_enough_gate.py`
-_Good-enough gate — completion criterion for autonomous runs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_recent_run_signals` | `(run_id, limit=…)` | — | [src](../../../core/services/good_enough_gate.py#L34) |
-| function | `evaluate_good_enough` | `(*, run_id=…, iterations_done=…, iteration_budget=…, minutes_elapsed=…, minutes_budget=…)` | — | [src](../../../core/services/good_enough_gate.py#L57) |
-| function | `_exec_check_good_enough` | `(args)` | — | [src](../../../core/services/good_enough_gate.py#L148) |
 

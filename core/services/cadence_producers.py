@@ -913,6 +913,25 @@ def tick_frozen_detectors(tick_count: int) -> dict[str, int]:
             pats = detect_and_score_patterns(window_days=21)
             out["emergence"] = len(pats) if isinstance(pats, list) else 0
             _observe_frozen("emergence", {"patterns": out["emergence"]})
+            # Konsekvensen følger observationen (Bjørn, 13/11-2026). Uden dette
+            # kald gik motorens output kun til en visning: 5 mønstre, heraf ét
+            # med 115 beviser, førte aldrig til en handling. Broen gør dem til
+            # initiativer gennem den EKSISTERENDE kø — ikke en ny tabel.
+            try:
+                from core.services.emergence_initiative_bridge import (
+                    push_emergents_to_queue,
+                )
+                bro = push_emergents_to_queue(pats)
+                out["emergence_initiativer"] = len(bro.get("pushet") or [])
+                _observe_frozen("emergence_initiative", {
+                    "pushet": out["emergence_initiativer"],
+                    "afvist": len(bro.get("afvist") or []),
+                })
+            except Exception:
+                logger.debug(
+                    "tick_frozen_detectors: emergence→initiative bridge failed",
+                    exc_info=True,
+                )
         except Exception:
             logger.debug("tick_frozen_detectors: emergence failed", exc_info=True)
     if tick_count % 20 == 0:

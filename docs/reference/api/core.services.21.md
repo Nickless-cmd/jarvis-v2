@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/proactive_loop_lifecycle_tracking.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_proactive_loop_lifecycle_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L74) |
+| function | `refresh_runtime_proactive_loop_lifecycle_signal_statuses` | `()` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L97) |
+| function | `build_runtime_proactive_loop_lifecycle_surface` | `(*, limit=…)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L160) |
+| function | `_build_runtime_proactive_loop_lifecycle_surface_uncached` | `(*, limit=…)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L170) |
+| function | `_extract_proactive_loop_lifecycle_candidates` | `()` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L217) |
+| function | `_build_lifecycle_candidate` | `(*, loop_kind, loop_focus, open_loop, autonomy_pressure, source_anchor, question_readiness, closure_readiness, relation, meaning, witness, chronicle, metabolism, release, initiative, regulation)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L380) |
+| function | `_persist_proactive_loop_lifecycle_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L493) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L555) |
+| function | `_best_loop_focus` | `(*, latest_loop, attachment, loyalty, relation, meaning)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L587) |
+| function | `_loop_identity_key` | `(*, latest_loop, loop_focus)` | Loopets IDENTITET — tredje segment af nøglen, ikke visningsteksten. | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L616) |
+| function | `_normalize_focus_candidate` | `(value)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L631) |
+| function | `_derive_loop_state` | `(*, loop_kind, open_status, question_readiness, closure_readiness, witness_persistence, release_state)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L657) |
+| function | `_loop_summary` | `(*, loop_kind, loop_state, loop_focus, question_readiness, closure_readiness)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L677) |
+| function | `_source_anchor` | `(surface, *, fallback)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L701) |
+| function | `_find_support_value` | `(summary, key, default)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L709) |
+| function | `_max_ranked` | `(*values)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L720) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L729) |
+| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L738) |
+| function | `_slug` | `(value)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L747) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/proactive_loop_lifecycle_tracking.py#L754) |
+
 ## `core/services/proactive_outbound_substrate.py`
 _Proactive-outbound substrate — what Jarvis just said proactively._
 
@@ -615,25 +640,4 @@ _Ret prosa-opremsninger FØR svaret vises — ikke som et flag bagefter._
 | function | `_afsnit_tekst` | `(tekst, punkt)` | Find det rå afsnit i teksten som ``punkt`` peger på. | [src](../../../core/services/prosa_korrektion.py#L191) |
 | function | `_del_svar` | `(tekst, dele)` | Sæt de returnerede afsnit tilbage i teksten, ét ad gangen. | [src](../../../core/services/prosa_korrektion.py#L210) |
 | function | `korriger_prosa` | `(tekst, fejl, *, stream_followup, provider, model, base_messages, run_id=…, session_id=…)` | Bed modellen rette prosa-opremsninger. Returnerer ny tekst. | [src](../../../core/services/prosa_korrektion.py#L228) |
-
-## `core/services/prosa_struktur_guard.py`
-_Mekanisk kontrol af fire former for formfejl i et synligt svar._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ProsaPunkt` | `` | Ét afsnit (eller én fence) der bærer en formfejl. | [src](../../../core/services/prosa_struktur_guard.py#L139) |
-| method | `ProsaPunkt.som_fejl` | `(self)` | Læsbar fejlstreng — samme form som ``jarvis_ui_guard.fejl_i_flader``. | [src](../../../core/services/prosa_struktur_guard.py#L152) |
-| function | `_blokke_med_overskrift` | `(text)` | (nærmeste overskrift, blok) for hvert afsnit i hele teksten. | [src](../../../core/services/prosa_struktur_guard.py#L181) |
-| function | `_er_struktureret` | `(blok)` | — | [src](../../../core/services/prosa_struktur_guard.py#L229) |
-| function | `_antal_led` | `(saetning)` | Antal parallelle led i én sætning, målt på opremsningskæden. | [src](../../../core/services/prosa_struktur_guard.py#L235) |
-| function | `_antal_tal` | `(afsnit)` | Antal selvstændige tal i et afsnit, efter klokkeslæt og hashes er fjernet. | [src](../../../core/services/prosa_struktur_guard.py#L251) |
-| function | `_pseudo_overskrift` | `(blok)` | Returnér den fede tekst hvis blokken indledes af en pseudo-overskrift. | [src](../../../core/services/prosa_struktur_guard.py#L262) |
-| function | `skal_have_break` | `(linje)` | Er denne linje en pseudo-overskrift der mangler sit break? | [src](../../../core/services/prosa_struktur_guard.py#L279) |
-| function | `ret_pseudo_overskrift` | `(text)` | Sæt et break ind efter en pseudo-overskrift. Ren teksttransformation. | [src](../../../core/services/prosa_struktur_guard.py#L321) |
-| function | `_indeholder_kode` | `(krop)` | Afgør om en fence-krop faktisk er kode. | [src](../../../core/services/prosa_struktur_guard.py#L364) |
-| function | `_kodeblokke` | `(text)` | Find fences uden kode. Returnerer (overskrift, krop, linjer). | [src](../../../core/services/prosa_struktur_guard.py#L373) |
-| function | `find_prosa_punkter` | `(text)` | Find formfejl i et svar. Én blok giver højst ét fund. | [src](../../../core/services/prosa_struktur_guard.py#L404) |
-| function | `fejl_i_prosa` | `(text)` | Returnér læsbare fejl for formfejl — tom liste = intet at rette. | [src](../../../core/services/prosa_struktur_guard.py#L520) |
-| function | `_tabel_blokke` | `(text)` | Sammenhængende linjer der alle starter med ``|``. | [src](../../../core/services/prosa_struktur_guard.py#L563) |
-| function | `tabel_uden_flade` | `(text)` | Én linje når svaret bærer en sammenligningstabel uden en flade. | [src](../../../core/services/prosa_struktur_guard.py#L579) |
 

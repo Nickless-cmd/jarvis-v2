@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/relation_creative_state_surface.py`
+_Samlet flade for relation, bruger-model, kreativitet og temporal tilstand._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `producer_names` | `()` | Navnene i kald-raekkefoelge, paa tvaers af grupperne — til test. | [src](../../../core/services/relation_creative_state_surface.py#L84) |
+| function | `group_names` | `()` | Gruppe-navnene i definitions-raekkefoelge. | [src](../../../core/services/relation_creative_state_surface.py#L89) |
+| function | `_call` | `(name, mod_path, fn_attr)` | Kald én producent. En defekt maa ikke skjule de oevrige. | [src](../../../core/services/relation_creative_state_surface.py#L94) |
+| function | `build_relation_creative_state_surface` | `()` | Kald alle producenter og returnér deres egne signaler, grupperet. Kaster ALDRIG. | [src](../../../core/services/relation_creative_state_surface.py#L108) |
+
 ## `core/services/relation_dynamics.py`
 _Relation Dynamics — pattern-recognition on people, not just facts._
 
@@ -588,47 +598,4 @@ _Tidsstyring for Rutiner — én scheduler for ALLE brugere._
 | function | `_seneste_forekomst` | `(config, *, anchor, now)` | Den seneste planlagte forekomst der ligger på eller før ``now``. | [src](../../../core/services/routine_scheduler.py#L67) |
 | function | `_service` | `()` | — | [src](../../../core/services/routine_scheduler.py#L118) |
 | function | `fire_due` | `(*, now=…)` | Læg et run i kø for hver rutine hvis forekomst er passeret. | [src](../../../core/services/routine_scheduler.py#L127) |
-
-## `core/services/routine_service.py`
-_Authorized lifecycle service for versioned Routine definitions and runs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `StaleRoutineVersion` | `` | An edit lost the optimistic version race. | [src](../../../core/services/routine_service.py#L23) |
-| class | `InvalidRoutineTransition` | `` | A requested lifecycle transition is not valid from the current state. | [src](../../../core/services/routine_service.py#L27) |
-| class | `RoutineView` | `` | — | [src](../../../core/services/routine_service.py#L32) |
-| method | `RoutineView.id` | `(self)` | — | [src](../../../core/services/routine_service.py#L55) |
-| class | `RunView` | `` | — | [src](../../../core/services/routine_service.py#L60) |
-| function | `_routine_view` | `(row)` | — | [src](../../../core/services/routine_service.py#L105) |
-| function | `_som_tekst` | `(value)` | Gør et gemt resultat til tekst. | [src](../../../core/services/routine_service.py#L130) |
-| function | `_run_view` | `(row)` | — | [src](../../../core/services/routine_service.py#L145) |
-| function | `_command_values` | `(command)` | — | [src](../../../core/services/routine_service.py#L164) |
-| function | `_apply_classification` | `(values)` | Validér oprettelsens valg og læg den udledte klassifikation i policy'en. | [src](../../../core/services/routine_service.py#L171) |
-| class | `RoutineService` | `` | — | [src](../../../core/services/routine_service.py#L195) |
-| method | `RoutineService.__init__` | `(self, principal=…)` | — | [src](../../../core/services/routine_service.py#L196) |
-| method | `RoutineService._actor` | `(self, supplied=…)` | — | [src](../../../core/services/routine_service.py#L199) |
-| method | `RoutineService._actor_and_rest` | `(self, args)` | — | [src](../../../core/services/routine_service.py#L205) |
-| method | `RoutineService._project` | `(view, event_type)` | — | [src](../../../core/services/routine_service.py#L211) |
-| method | `RoutineService.create_and_activate` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L221) |
-| method | `RoutineService.create_proposal` | `(self, principal, *, for_owner, command)` | — | [src](../../../core/services/routine_service.py#L243) |
-| method | `RoutineService.get` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L265) |
-| method | `RoutineService.update` | `(self, *args, expected_version=…, patch=…, reactivate=…, **changes)` | — | [src](../../../core/services/routine_service.py#L277) |
-| method | `RoutineService._transition` | `(self, operation, *args)` | — | [src](../../../core/services/routine_service.py#L313) |
-| method | `RoutineService.pause` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L335) |
-| method | `RoutineService.resume` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L338) |
-| method | `RoutineService.archive` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L341) |
-| method | `RoutineService.restore` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L344) |
-| method | `RoutineService.stop` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L347) |
-| method | `RoutineService.restart` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L363) |
-| method | `RoutineService.delete` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L387) |
-| method | `RoutineService.enqueue_run` | `(self, *args, trigger_key, execution_context=…)` | — | [src](../../../core/services/routine_service.py#L402) |
-| method | `RoutineService.get_run` | `(self, *args, decrypt=…)` | — | [src](../../../core/services/routine_service.py#L424) |
-| method | `RoutineService.cancel_run` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L436) |
-| method | `RoutineService.list` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L455) |
-| method | `RoutineService.list_runs` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L465) |
-| method | `RoutineService.list_run_events` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L476) |
-| method | `RoutineService.get_inbox_defaults` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L489) |
-| method | `RoutineService.set_inbox_defaults` | `(self, policy, *args)` | — | [src](../../../core/services/routine_service.py#L495) |
-| method | `RoutineService.get_redacted_diagnostic` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L505) |
-| method | `RoutineService.archive_stopped_before` | `(self, *, now=…)` | — | [src](../../../core/services/routine_service.py#L528) |
 

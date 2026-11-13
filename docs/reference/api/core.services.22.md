@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prosa_struktur_guard.py`
+_Mekanisk kontrol af fire former for formfejl i et synligt svar._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ProsaPunkt` | `` | Ét afsnit (eller én fence) der bærer en formfejl. | [src](../../../core/services/prosa_struktur_guard.py#L139) |
+| method | `ProsaPunkt.som_fejl` | `(self)` | Læsbar fejlstreng — samme form som ``jarvis_ui_guard.fejl_i_flader``. | [src](../../../core/services/prosa_struktur_guard.py#L152) |
+| function | `_blokke_med_overskrift` | `(text)` | (nærmeste overskrift, blok) for hvert afsnit i hele teksten. | [src](../../../core/services/prosa_struktur_guard.py#L181) |
+| function | `_er_struktureret` | `(blok)` | — | [src](../../../core/services/prosa_struktur_guard.py#L229) |
+| function | `_antal_led` | `(saetning)` | Antal parallelle led i én sætning, målt på opremsningskæden. | [src](../../../core/services/prosa_struktur_guard.py#L235) |
+| function | `_antal_tal` | `(afsnit)` | Antal selvstændige tal i et afsnit, efter klokkeslæt og hashes er fjernet. | [src](../../../core/services/prosa_struktur_guard.py#L251) |
+| function | `_pseudo_overskrift` | `(blok)` | Returnér den fede tekst hvis blokken indledes af en pseudo-overskrift. | [src](../../../core/services/prosa_struktur_guard.py#L262) |
+| function | `skal_have_break` | `(linje)` | Er denne linje en pseudo-overskrift der mangler sit break? | [src](../../../core/services/prosa_struktur_guard.py#L279) |
+| function | `ret_pseudo_overskrift` | `(text)` | Sæt et break ind efter en pseudo-overskrift. Ren teksttransformation. | [src](../../../core/services/prosa_struktur_guard.py#L321) |
+| function | `_indeholder_kode` | `(krop)` | Afgør om en fence-krop faktisk er kode. | [src](../../../core/services/prosa_struktur_guard.py#L364) |
+| function | `_kodeblokke` | `(text)` | Find fences uden kode. Returnerer (overskrift, krop, linjer). | [src](../../../core/services/prosa_struktur_guard.py#L373) |
+| function | `find_prosa_punkter` | `(text)` | Find formfejl i et svar. Én blok giver højst ét fund. | [src](../../../core/services/prosa_struktur_guard.py#L404) |
+| function | `fejl_i_prosa` | `(text)` | Returnér læsbare fejl for formfejl — tom liste = intet at rette. | [src](../../../core/services/prosa_struktur_guard.py#L520) |
+| function | `_tabel_blokke` | `(text)` | Sammenhængende linjer der alle starter med ``|``. | [src](../../../core/services/prosa_struktur_guard.py#L563) |
+| function | `tabel_uden_flade` | `(text)` | Én linje når svaret bærer en sammenligningstabel uden en flade. | [src](../../../core/services/prosa_struktur_guard.py#L579) |
+
 ## `core/services/prose_tool_calls.py`
 _Parser for prosa-emitterede tool-kald (cluster: tool-leak-fix 2026-06-21)._
 
@@ -689,14 +710,4 @@ _Relation-continuity signal tracking — migrated onto signal_tracking_framework
 | function | `_value` | `(*values, default)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L397) |
 | function | `_grounding_mode_from_support_summary` | `(value)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L405) |
 | function | `_source_anchor_from_support_summary` | `(value)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L413) |
-
-## `core/services/relation_creative_state_surface.py`
-_Samlet flade for relation, bruger-model, kreativitet og temporal tilstand._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `producer_names` | `()` | Navnene i kald-raekkefoelge, paa tvaers af grupperne — til test. | [src](../../../core/services/relation_creative_state_surface.py#L84) |
-| function | `group_names` | `()` | Gruppe-navnene i definitions-raekkefoelge. | [src](../../../core/services/relation_creative_state_surface.py#L89) |
-| function | `_call` | `(name, mod_path, fn_attr)` | Kald én producent. En defekt maa ikke skjule de oevrige. | [src](../../../core/services/relation_creative_state_surface.py#L94) |
-| function | `build_relation_creative_state_surface` | `()` | Kald alle producenter og returnér deres egne signaler, grupperet. Kaster ALDRIG. | [src](../../../core/services/relation_creative_state_surface.py#L108) |
 

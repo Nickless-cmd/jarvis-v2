@@ -116,9 +116,10 @@ def test_run_observes_metadata_only():
     for e in obs:
         # `unmeasured` er et ANTAL, ikke et dimensionsnavn med indhold — samme klasse
         # som `lost`/`restored`. §24.4 værner om at selv-indhold ikke lækker, ikke om
-        # at tællinger skal skjules.
+        # at tællinger skal skjules. `by_design`/`unmeasured_gap` er den samme tælling
+        # delt i to, så grænsen kan skelnes fra fejlen (13/11-2026, sjette runde).
         assert set(e) <= {"cluster", "nerve", "kind", "fidelity", "lost", "restored",
-                          "captured", "unmeasured"}
+                          "captured", "unmeasured", "by_design", "unmeasured_gap"}
 
 
 def test_halvtom_dimension_taeller_ikke_som_til_stede():
@@ -265,19 +266,50 @@ def test_surface_paastaar_ikke_helhed_naar_en_dimension_ikke_kunne_maales():
     assert surf["unmeasured"] == ["attention"], surf["unmeasured"]
     assert "intet af mig blev tabt" not in surf["felt"], (
         f"en dimension kunne ikke måles, så påstanden om helheden er ikke dækket: {surf['felt']}")
-    assert "ikke bekræftet uændret" in surf["felt"], surf["felt"]
+    # (13/11-2026, sjette runde) `attention` er ikke et tomt grundlag men en grænse i
+    # målemodellen — den skal siges som det den er. Den stærke påstand er stadig
+    # forbudt (linjen ovenfor), men begrundelsen er nu præcis.
+    assert "grænse i målemodellen" in surf["felt"], surf["felt"]
+    assert surf["by_design"] == ["attention"], surf["by_design"]
+    assert surf["unmeasured_gap"] == [], surf["unmeasured_gap"]
     assert str(surf["measured"]) in surf["felt"], (
         f"påstanden skal nævne hvor mange der FAKTISK blev målt: {surf['felt']}")
 
 
-def test_surface_siger_hel_naar_alt_kunne_maales():
-    """Modstykket: kan alt måles, må den stærke påstand gerne fremsiges."""
+def test_surface_skelner_tomt_grundlag_fra_modelgraense():
+    """En dimension der ER målbar i princippet, men stod tom, skal siges som et tomt
+    grundlag — ikke som en grænse i målemodellen. De to har forskellige konsekvenser:
+    kun det første kan rettes ved at fylde noget."""
     før = _full_self()
+    før["narrative"] = {"self_completeness": 0.7}      # til stede, men uden `becoming`
     efter = _full_self()
     kv = FakeKV({"central_self_state": efter,
                  "continuity_snapshot": {"state": før, "ts": ch._now().isoformat()}})
     g, s = _patch_kv(kv)
     with g, s:
         surf = ch.build_continuity_surface()
-    # attention er den eneste uden bærende felter; uden den i snapshottet er alt målt
-    assert surf["unmeasured"] == ["attention"]
+    assert surf["unmeasured_gap"] == ["narrative"], surf["unmeasured_gap"]
+    assert surf["by_design"] == ["attention"], surf["by_design"]
+    assert "ikke bekræftet uændret" in surf["felt"], surf["felt"]
+    assert "grænse i målemodellen" in surf["felt"], surf["felt"]
+
+
+def test_surface_siger_hel_naar_alt_kunne_maales():
+    """Modstykket: kan alt måles, må den stærke påstand gerne fremsiges.
+
+    (13/11-2026, sjette runde) Testen hed det samme før, men målte det modsatte: den
+    krævede `unmeasured == ["attention"]` — altså netop det tilfælde hvor den stærke
+    påstand IKKE er dækket. Nu fjernes `attention` fra snapshottet, så der faktisk
+    ikke er noget umålt tilbage.
+    """
+    før = _full_self()
+    før.pop("attention")
+    efter = _full_self()
+    kv = FakeKV({"central_self_state": efter,
+                 "continuity_snapshot": {"state": før, "ts": ch._now().isoformat()}})
+    g, s = _patch_kv(kv)
+    with g, s:
+        surf = ch.build_continuity_surface()
+    assert surf["unmeasured"] == [], surf["unmeasured"]
+    assert surf["by_design"] == [], surf["by_design"]
+    assert "Jeg kom helt igennem sømmen" in surf["felt"], surf["felt"]

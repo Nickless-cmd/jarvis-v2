@@ -130,58 +130,121 @@ def test_hilsenen_paastaar_ikke_utjekket_tillid(monkeypatch):
     assert "132" in hilsen, "varigheden skal stadig bære sætningen"
 
 
-# ── Déjà Vu: strukturel blindhed må ikke se ud som et tomt fund ────────────────
-def test_dejavu_lander_naar_blindheden_er_strukturel(monkeypatch, landet):
-    """Cadence har ingen session → ingen scope → `access='denied'` hver gang.
-    Det er blindhed i PRÆCIS den kontekst karakteren kører i."""
-    _kv(monkeypatch, FakeKV({"dejavu_blind_streak": 2}))
+# ── Déjà Vu: tre udfald — kun det UVENTEDE tab er et fund ─────────────────────
+def test_dejavu_forventet_afvisning_lander_ikke(monkeypatch, landet):
+    """Bjørns fjerde indvending (13/11-2026): cadence har ingen autoritativ
+    bruger-scope, så `scoped_recall_policy` afviser — korrekt, hver gang. Det er
+    ikke blindhed, det er sikkerhed der virker. Den gamle regel gjorde den til en
+    forpligtelse om at være defekt."""
+    _kv(monkeypatch, FakeKV({"dejavu_uventet_streak": 9}))
     monkeypatch.setattr(dj, "surface_dejavu",
                         lambda **kw: {"fragment": None, "access": "denied"})
     ud = dj.record_dejavu()
 
-    assert ud["blind_streak"] == 3
+    assert not landet, f"korrekt håndhævet sikkerhed må ikke lande: {landet}"
+    assert ud["uventet_streak"] == 0
+    assert "Dækningsbegrænsning" in ud["daekning"]
+    assert "policyen virker" in ud["landing"]["reason"]
+
+
+def test_dejavu_lander_naar_maaleevnen_uventet_forsvinder(monkeypatch, landet):
+    """Den eneste tilstand der må lande: vi HAVDE lov at kigge og kunne ikke.
+    «Må ikke» og «kan ikke» er forskellige svar, og kun det sidste er en fejl."""
+    _kv(monkeypatch, FakeKV({"dejavu_uventet_streak": 2}))
+    monkeypatch.setattr(dj, "surface_dejavu",
+                        lambda **kw: {"fragment": None, "access": "error",
+                                      "reason": "kandidatkilden fejlede: import"})
+    ud = dj.record_dejavu()
+
+    assert ud["uventet_streak"] == 3
     assert landet and landet[0]["cid"] == "dejavu"
-    assert "blind" in landet[0]["directive"].lower()
+    assert "kan ikke" in landet[0]["directive"].lower()
 
 
-def test_dejavu_et_enkelt_blindt_tik_lander_ikke(monkeypatch, landet):
+def test_dejavu_et_enkelt_uventet_tab_lander_ikke(monkeypatch, landet):
     _kv(monkeypatch, FakeKV({}))
     monkeypatch.setattr(dj, "surface_dejavu",
-                        lambda **kw: {"fragment": None, "access": "denied"})
+                        lambda **kw: {"fragment": None, "access": "error"})
     ud = dj.record_dejavu()
-    assert ud["blind_streak"] == 1
-    assert not landet, f"et enkelt blindt tik er normalt: {landet}"
+    assert ud["uventet_streak"] == 1
+    assert not landet, f"et enkelt uventet tab er ikke strukturelt: {landet}"
 
 
 def test_dejavu_nulstiller_naar_den_kunne_undersoeges(monkeypatch, landet):
     """Et fund — eller et ægte tomt resultat — bryder rækken."""
-    kv = _kv(monkeypatch, FakeKV({"dejavu_blind_streak": 5}))
+    kv = _kv(monkeypatch, FakeKV({"dejavu_uventet_streak": 5}))
     monkeypatch.setattr(dj, "surface_dejavu",
                         lambda **kw: {"fragment": None, "reason": "ingen resonans"})
     ud = dj.record_dejavu()
-    assert ud["blind_streak"] == 0 and kv.get("dejavu_blind_streak") == 0
+    assert ud["uventet_streak"] == 0 and kv.get("dejavu_uventet_streak") == 0
     assert not landet
 
 
-# ── Continuity: en dimension der aldrig kan måles er en blind vinkel ──────────
-def _fidelity(unmeasured):
+def test_dejavu_kilde_fejl_er_ikke_et_tomt_fund(monkeypatch):
+    """Kilden svarede `[]` både når den var tom og når den kastede. De to må ikke
+    læses som det samme — det var præcis kollapsen et lag længere nede."""
+    from core.runtime import db as dbmod
+
+    def raab(**kw):
+        raise RuntimeError("db nede")
+
+    monkeypatch.setattr(dbmod, "get_experiential_memory_candidates", raab)
+    monkeypatch.setattr(dj, "_present_context", lambda: "noget nu")
+
+    cands = dj._candidates(limit=3)
+    assert isinstance(cands, dj._UndersoegelseFejlede)
+    assert dj.surface_dejavu()["access"] == "error"
+
+
+# ── Continuity: modelgrænse vs. tomt grundlag ────────────────────────────────
+def _fidelity(unmeasured, *, by_design=None, gap=None):
+    """Spejler `measure_fidelity`s form — inkl. de to slags umålt (13/11-2026)."""
     return {"fidelity": 1.0, "lost": [], "same_content": 1.0, "drifted": [],
-            "moved": [], "measured": 3, "unmeasured": list(unmeasured)}
+            "moved": [], "measured": 3, "unmeasured": list(unmeasured),
+            "by_design": list(by_design or []),
+            "unmeasured_gap": list(gap or [])}
 
 
-def test_continuity_lander_naar_en_dimension_er_permanent_umaalbar(monkeypatch, landet):
-    """`attention` har kun dagsform og kan ALDRIG måles på identitetsaksen. Står den
-    som «til stede», er det ikke det samme som «uændret» — og uden en konsekvens
-    ville blindheden aldrig blive adresseret."""
+def test_maaleevne_er_statisk_ikke_et_spoergsmaal_om_taalmodighed():
+    """Forskellen kan afgøres uden at måle: den afhænger kun af om dimensionen HAR
+    bærende felter. Derfor kan en `by_design`-dimension ikke blive målbar af at
+    blive målt igen — og en række målinger er ikke et fund."""
+    assert ch._maaleevne("attention") == ch._MAALEEVNE_BY_DESIGN
+    assert ch._maaleevne("narrative") == ch._MAALEEVNE_TOMT_GRUNDLAG
+
+
+def test_continuity_lander_ikke_paa_en_dimension_der_er_umaalbar_efter_design(monkeypatch, landet):
+    """`attention` har ingen bærende felter og kan ALDRIG måles på identitetsaksen.
+    At tælle gentagelser gør ikke en grænse i MÅLEMODELLEN til et fund; det gør en
+    fungerende model til en defekt. Målt i basen: den gamle regel oprettede
+    `dec_835cc0115cac` om netop dette."""
     _kv(monkeypatch, FakeKV({"continuity_unmeasured_streak":
-                             {"dims": ["attention"], "streak": 2}}))
-    monkeypatch.setattr(ch, "measure_fidelity", lambda: _fidelity(["attention"]))
+                             {"dims": ["attention"], "streak": 9}}))
+    monkeypatch.setattr(ch, "measure_fidelity",
+                        lambda: _fidelity(["attention"], by_design=["attention"]))
+    monkeypatch.setattr(ch, "capture_snapshot", lambda: {"captured": False})
+    ud = ch.run_continuity_healer()
+
+    assert not landet, f"en modelgrænse må ikke blive en bindende beslutning: {landet}"
+    assert ud["by_design"] == ["attention"]
+    assert ud["unmeasured_gap"] == []
+    assert "grænse i målemodellen" in ud["begraensning"]
+
+
+def test_continuity_lander_paa_et_tomt_grundlag(monkeypatch, landet):
+    """Den ANDEN slags umålt: dimensionen er målbar i princippet, men grundlaget var
+    tomt. Det kan være reel blindhed — og det er den eneste der må lande."""
+    _kv(monkeypatch, FakeKV({"continuity_unmeasured_streak":
+                             {"dims": ["narrative"], "streak": 2}}))
+    monkeypatch.setattr(ch, "measure_fidelity",
+                        lambda: _fidelity(["narrative"], gap=["narrative"]))
     monkeypatch.setattr(ch, "capture_snapshot", lambda: {"captured": False})
     ud = ch.run_continuity_healer()
 
     assert landet and landet[0]["cid"] == "continuity_healer"
-    assert "attention" in landet[0]["directive"]
-    assert ud["unmeasured"] == ["attention"]
+    assert "narrative" in landet[0]["directive"]
+    assert "grundlaget" in landet[0]["directive"]
+    assert ud["unmeasured"] == ["narrative"]
 
 
 def test_continuity_nulstiller_naar_alt_kunne_maales(monkeypatch, landet):

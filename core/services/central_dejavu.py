@@ -39,6 +39,24 @@ def _present_context() -> str:
         return ""
 
 
+class _UndersoegelseFejlede(list):
+    """Kandidaterne kunne ikke hentes — af en UVENTET grund.
+
+    (13/11-2026, sjette runde — Bjørns fjerde indvending) Kilden svarede `[]` både
+    når den var undersøgt og tom, og når importen eller læsningen kastede. De to
+    blev læst som det samme: «ingen minder at associere». Det er den samme kollaps
+    som `MissingRecallScope`-grenen lige blev rettet for — bare et lag længere nede,
+    hvor den ikke er en policy men en fejl.
+
+    Arver `list` med vilje: en tom fejl og et tomt fund skal stadig opføre sig ens
+    for alle der bare itererer. Forskellen findes kun for den der spørger.
+    """
+
+    def __init__(self, grund: str) -> None:
+        super().__init__()
+        self.grund = grund
+
+
 def _candidates(limit: int = 20) -> list[dict[str, Any]] | None:
     """Hent kandidater fra experiential memory — inden for ÉN autoritativ bruger-scope.
 
@@ -66,7 +84,7 @@ def _candidates(limit: int = 20) -> list[dict[str, Any]] | None:
         from core.services.scoped_recall_policy import MissingRecallScope
     except Exception as exc:
         logger.warning("dejavu: kunne ikke importere kandidat-kilden: %s", exc)
-        return []
+        return _UndersoegelseFejlede("kandidat-kilden kunne ikke importeres")
     try:
         return list(get_experiential_memory_candidates(limit=limit) or [])
     except MissingRecallScope as exc:
@@ -75,7 +93,7 @@ def _candidates(limit: int = 20) -> list[dict[str, Any]] | None:
         return None
     except Exception as exc:
         logger.warning("dejavu: kunne ikke læse experiential memory: %s", exc)
-        return []
+        return _UndersoegelseFejlede("experiential memory kunne ikke læses")
 
 
 def surface_dejavu(context: str = "", *, candidates: list[dict[str, Any]] | None = None,
@@ -91,6 +109,12 @@ def surface_dejavu(context: str = "", *, candidates: list[dict[str, Any]] | None
         # ses af læseren — ellers lyver karakteren om sit eget signal igen.
         return {"fragment": None, "access": "denied",
                 "reason": "private minder kunne ikke undersøges uden bruger-scope"}
+    if isinstance(cands, _UndersoegelseFejlede):
+        # (13/11-2026, sjette runde) Den tredje tilstand: vi HAVDE lov at kigge, men
+        # kilden fejlede. Det er hverken en afvist adgang eller et tomt fund — og
+        # kun denne tilstand kan blive et fund om at måleevnen er tabt.
+        return {"fragment": None, "access": "error",
+                "reason": f"kandidatkilden fejlede: {cands.grund}"}
     if not cands:
         return {"fragment": None, "access": "ok", "reason": "ingen minder at associere"}
     try:
@@ -108,8 +132,12 @@ def surface_dejavu(context: str = "", *, candidates: list[dict[str, Any]] | None
         else:
             scored = list(raw)
     except Exception as exc:
+        # (13/11-2026, sjette runde) Scoring der kaster er et UVENTET tab af måleevne,
+        # ikke «ingen resonans». Før blev det til en tom liste og dermed til det samme
+        # svar som en ægte måling uden fund.
         logger.warning("dejavu: scoring fejlede: %s", exc)
-        scored = []
+        return {"fragment": None, "access": "error",
+                "reason": f"scoring fejlede: {str(exc)[:120]}"}
     # find det STÆRKESTE minde inde i det SVAGE bånd (associativt, ikke et opslag)
     best = None
     best_score = -1.0
@@ -158,9 +186,13 @@ def build_dejavu_surface() -> dict[str, Any]:
     return {"fragment": d["fragment"], "resonance": d.get("resonance"), "felt": d["felt"]}
 
 
-_BLIND_KEY = "dejavu_blind_streak"
-# Hvor mange cadence-tik i træk uden scope før blindheden er strukturel, ikke tilfældig.
-_BLIND_TAERSKEL = 3
+# (13/11-2026, sjette runde — Bjørns fjerde indvending) Nøglen tæller nu UVENTEDE tab,
+# ikke afviste adgange. Den gamle `dejavu_blind_streak` læses ikke længere: den talte
+# korrekt håndhævet sikkerhed som blindhed, og dens række (målt: 2) ville ellers fortsætte
+# ind i den nye betydning som om intet havde ændret sig.
+_UVENTET_KEY = "dejavu_uventet_streak"
+# Hvor mange uventede tab af måleevne i træk før det er et fund.
+_UVENTET_TAERSKEL = 3
 
 
 def _kv_get(key: str, default: Any) -> Any:
@@ -181,46 +213,74 @@ def _kv_set(key: str, value: Any) -> None:
 
 
 def record_dejavu(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
-    """Cadence: lad et fragment boble op — og LAD strukturel blindhed lande.
+    """Cadence: lad et fragment boble op — og lad et UVENTET tab af måleevne lande.
 
     (13/11-2026) Målt defekt: `surface_dejavu()` returnerede `access='denied'` hver
     gang cadence kaldte den (cadence har ingen session, altså ingen bruger-scope), og
     `record_dejavu` svarede bare `surfaced: False`. Karakteren var altså blind i
-    PRÆCIS den kontekst den kører i — uden at nogen fik det at vide. Nu tælles
-    sammenhængende blinde tik, og ved tærsklen lander det som en forpligtelse.
+    PRÆCIS den kontekst den kører i — uden at nogen fik det at vide.
 
-    Et enkelt blindt tik er normalt og nulstiller ikke noget. Det er rækken af dem
-    der er fundet.
+    (13/11-2026, sjette runde — Bjørns fjerde indvending) Konsekvensen blev den
+    forkerte. Efter tre afvisninger landede der en forpligtelse om at karakteren er
+    blind — men afvisningen kommer fra `scoped_recall_policy`, der gør sit arbejde.
+    Cadence HAR ingen autoritativ bruger-scope, så svaret er identisk ved hvert tik,
+    og det er korrekt. At gøre korrekt håndhævet sikkerhed til en defekt er samme
+    fejl som at gøre en modelgrænse til en blind vinkel. Tre udfald, ikke to:
+
+      * ``access='denied'`` — FORVENTET afvisning. Policyen virker. Registreres som
+        dækningsbegrænsning i svaret; lander aldrig, fordi der ikke er noget at
+        rette: svaret er rigtigt hver gang det gives.
+      * ``access='error'``  — UVENTET tab. Vi havde lov at kigge og kunne ikke. Den
+        eneste tilstand der kan blive et fund, og den tælles i træk.
+      * ``access='ok'``     — undersøgt. Et fund eller et ægte tomt resultat.
+
+    Tælleren står i `evidence`, ikke i direktivet: en voksende tæller i selve
+    beslutningsteksten ville gøre hver gentagelse til en ny tekst.
     """
     d = surface_dejavu()
-    streak = int(_kv_get(_BLIND_KEY, 0) or 0)
+    access = d.get("access")
+    streak = int(_kv_get(_UVENTET_KEY, 0) or 0)
     landing: dict[str, Any] = {"applied": False, "reason": "kunne undersøge"}
-    if d.get("access") == "denied":
+    daekning = ""
+    if access == "denied":
+        if streak:
+            _kv_set(_UVENTET_KEY, 0)
+        streak = 0
+        daekning = ("Dækningsbegrænsning: cadence har ingen bruger-scope, så private "
+                    "minder kan ikke undersøges her. Policyen afviser korrekt.")
+        landing = {"applied": False, "reason": "forventet afvisning — policyen virker"}
+    elif access == "error":
         streak += 1
-        _kv_set(_BLIND_KEY, streak)
-        if streak >= _BLIND_TAERSKEL:
+        _kv_set(_UVENTET_KEY, streak)
+        landing = {"applied": False,
+                   "reason": f"uventet tab, under tærskel ({streak}/{_UVENTET_TAERSKEL})"}
+        if streak >= _UVENTET_TAERSKEL:
             try:
                 from core.services.central_consequence import land_decision
                 landing = land_decision(
                     "dejavu",
-                    (f"Jeg har ikke kunnet undersøge mine egne erindringer i {streak} "
-                     "cadence-tik — karakteren er blind dér hvor den kører"),
+                    ("Jeg har lov at undersøge mine egne erindringer og kan ikke: "
+                     "kandidatkilden fejler. Et svar der aldrig blev givet er ikke "
+                     "et tomt svar"),
                     rationale=(
-                        "Cadence kalder uden session, og scoped_recall_policy kræver en "
-                        "autoritativ bruger-scope før private minder må læses. Uden en "
-                        "scope er svaret ikke «ingen minder» men «ikke undersøgt» — og "
-                        "det svar blev kastet væk som et tomt fund."),
+                        "Adgangen er ikke afvist — den fejler. Det er ikke "
+                        "scoped_recall_policy der beskytter noget her, og derfor "
+                        "heller ikke en grænse jeg skal acceptere. Forskellen mellem "
+                        "«må ikke» og «kan ikke» er hele fundet."),
                     trigger_cue="Når déjà vu skal fortælle hvad der bobler op",
-                    subject="dejavu_strukturel_blindhed",
+                    subject="dejavu_uventet_tab",
                     priority=60,
-                    evidence=f"blinde_tik_i_traek={streak} taerskel={_BLIND_TAERSKEL}",
+                    evidence=(f"uventede_tab_i_traek={streak} "
+                              f"taerskel={_UVENTET_TAERSKEL} "
+                              f"grund={str(d.get('reason') or '')[:80]}"),
                     evidence_source="central_dejavu.record_dejavu",
                 )
             except Exception as exc:
-                logger.warning("dejavu: kunne ikke lande blindhed: %s", exc)
+                logger.warning("dejavu: kunne ikke lande uventet tab: %s", exc)
     else:
         if streak:
-            _kv_set(_BLIND_KEY, 0)
+            _kv_set(_UVENTET_KEY, 0)
         streak = 0
     return {"status": "ok", "surfaced": bool(d.get("fragment")),
-            "access": d.get("access"), "blind_streak": streak, "landing": landing}
+            "access": access, "uventet_streak": streak,
+            "daekning": daekning, "landing": landing}

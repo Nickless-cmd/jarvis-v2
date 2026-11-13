@@ -127,6 +127,38 @@ _TILSTAND = {
     "attention": ("foreground",),
 }
 
+# ── TRE tilstande, ikke én — for en dimension der ikke kunne måles ────────────
+#
+# (13/11-2026, sjette runde — Bjørns fjerde indvending): tærsklen nedenfor gjorde en
+# STRUKTURELT umålbar dimension til en bindende beslutning efter tre målinger.
+# `attention` ligger i `_TILSTAND` og har ingen bærende felter — den kan pr.
+# konstruktion ALDRIG måles på identitetsaksen, uanset hvor mange gange vi prøver.
+# At tælle gentagelser gør ikke en designgrænse til et fund; det gør en fungerende
+# målemodel til en defekt. Målt i basen: `dec_835cc0115cac`, en aktiv beslutning om
+# at `attention` er en blind vinkel — oprettet af en mekanisme der virker som den skal.
+#
+# De tre tilstande skal kunne skelnes, fordi kun den sidste berettiger en konsekvens:
+#   * ``by_design``     — dimensionen har kun dagsform. Grænsen ligger i MÅLEMODELLEN,
+#                         ikke i dataene. Dokumenteres, lander aldrig: den kan ikke
+#                         blive målbar ved at blive målt igen.
+#   * ``tomt_grundlag`` — dimensionen ER målbar i princippet (den har bærende felter),
+#                         men snapshottet havde intet indhold i dem. Det kan være
+#                         reel blindhed — noget der BURDE have været der, og ikke var.
+#   * (målt)            — indgår i `same_content` som før.
+_MAALEEVNE_BY_DESIGN = "by_design"
+_MAALEEVNE_TOMT_GRUNDLAG = "tomt_grundlag"
+
+
+def _maaleevne(dim: str) -> str:
+    """Er dimensionen umålbar fordi MODELLEN ikke måler den — eller fordi grundlaget var tomt?
+
+    Spørgsmålet er statisk: det afhænger kun af om dimensionen har bærende felter i
+    `_BÆRENDE`. Derfor kan svaret ikke ændre sig ved at måle igen, og en gentaget
+    måling af en `by_design`-dimension er ikke et fund — den er den samme kendte
+    grænse set én gang til.
+    """
+    return _MAALEEVNE_BY_DESIGN if not _BÆRENDE.get(dim) else _MAALEEVNE_TOMT_GRUNDLAG
+
 
 def _felt_sammenlign(snap_state: dict, cur: dict, dim: str,
                      felter: tuple[str, ...]) -> bool:
@@ -229,7 +261,8 @@ def measure_fidelity() -> dict[str, Any]:
     if not had:
         return {"fidelity": None, "lost": [], "had": 0, "survived": 0,
                 "same_content": None, "drifted": [], "moved": [],
-                "measured": 0, "unmeasured": []}
+                "measured": 0, "unmeasured": [], "by_design": [],
+                "unmeasured_gap": []}
     now_present = _present_dims(cur)
     survived = had & now_present
     lost = sorted(had - now_present)
@@ -238,11 +271,15 @@ def measure_fidelity() -> dict[str, Any]:
     drifted = sorted(maalte - kept)
     moved = sorted(d for d in survived if _moved(snap_state, cur, d))
     unmeasured = sorted(survived - maalte)
+    # Skill de to slags umålt ad: modelgrænse vs. tomt grundlag (se `_maaleevne`).
+    by_design = [d for d in unmeasured if _maaleevne(d) == _MAALEEVNE_BY_DESIGN]
+    unmeasured_gap = [d for d in unmeasured if _maaleevne(d) != _MAALEEVNE_BY_DESIGN]
     fidelity = round(len(survived) / len(had), 3)
     same = round(len(kept) / len(maalte), 3) if maalte else None
     return {"fidelity": fidelity, "lost": lost, "had": len(had), "survived": len(survived),
             "same_content": same, "drifted": drifted, "moved": moved,
-            "measured": len(maalte), "unmeasured": unmeasured}
+            "measured": len(maalte), "unmeasured": unmeasured,
+            "by_design": by_design, "unmeasured_gap": unmeasured_gap}
 
 
 def capture_snapshot() -> dict[str, Any]:
@@ -306,6 +343,8 @@ def build_continuity_surface() -> dict[str, Any]:
     drifted = m.get("drifted") or []
     moved = m.get("moved") or []
     unmeasured = m.get("unmeasured") or []
+    by_design = m.get("by_design") or []
+    grundlag = m.get("unmeasured_gap") or []
     if fid is None:
         felt = "Jeg har endnu ikke et helt snapshot at måle min kontinuitet mod."
     elif fid >= 0.999 and same is not None and same >= 0.999:
@@ -313,10 +352,21 @@ def build_continuity_surface() -> dict[str, Any]:
         # stod stadig som FØRSTE påstand når en dimension ikke kunne måles. Sætningen var
         # sand om de målte og falsk som påstand om helheden: 3 af 4 målt er ikke 4 af 4.
         if unmeasured:
-            felt = (f"De {m.get('measured')} dimensioner jeg kunne måle kom helt igennem — "
-                    f"intet af dem blev tabt. {len(unmeasured)} ({', '.join(unmeasured)}) "
-                    f"havde intet identitetsindhold at sammenligne — til stede, "
-                    f"ikke bekræftet uændret.")
+            # (13/11-2026, sjette runde) De to slags umålt er IKKE samme sag: den ene er
+            # en grænse i målemodellen, den anden er et grundlag der aldrig blev fyldt.
+            # Skrives de sammen, læses en fungerende model som en defekt.
+            dele = [f"De {m.get('measured')} dimensioner jeg kunne måle kom helt igennem — "
+                    f"intet af dem blev tabt."]
+            if grundlag:
+                dele.append(
+                    f"{len(grundlag)} ({', '.join(grundlag)}) er målbar i princippet, men "
+                    f"havde intet identitetsindhold at sammenligne — til stede, ikke "
+                    f"bekræftet uændret.")
+            if by_design:
+                dele.append(
+                    f"{', '.join(by_design)} måles kun som dagsform: det er en grænse i "
+                    f"målemodellen, ikke en manglende måling.")
+            felt = " ".join(dele)
         else:
             felt = "Jeg kom helt igennem sømmen — intet af mig blev tabt i genstarten."
         if moved:
@@ -338,6 +388,7 @@ def build_continuity_surface() -> dict[str, Any]:
     return {"continuity_fidelity": fid, "lost": m["lost"], "had": m["had"],
             "survived": m["survived"], "same_content": same, "drifted": drifted,
             "moved": moved, "measured": m.get("measured"), "unmeasured": unmeasured,
+            "by_design": by_design, "unmeasured_gap": grundlag,
             "felt": felt}
 
 
@@ -363,6 +414,14 @@ def run_continuity_healer(*, trigger: str = "cadence", last_visible_at: str = ""
     permanent blind vinkel — og en blind vinkel der aldrig lander, er en påstand om
     helhed man ikke kan efterprøve. Nu tælles sammenhængende målinger med samme
     umålelige dimension, og ved tærsklen lander det.
+
+    (13/11-2026, sjette runde — Bjørns fjerde indvending) Den første udgave af det
+    gjorde tærsklen til en FABRIK for falske alarmer: `attention` er umålbar fordi
+    målemodellen ikke har bærende felter for den, ikke fordi den fejler. Tre
+    målinger senere landede der en bindende beslutning om at en fungerende
+    dimension var defekt. Nu tælles kun `unmeasured_gap` — dimensioner der ER
+    målbare i princippet, men hvis grundlag var tomt. `by_design` rapporteres som
+    den dokumenterede grænse den er, og lander aldrig.
     """
     m = measure_fidelity()
     healed = {"restored": []}
@@ -371,44 +430,62 @@ def run_continuity_healer(*, trigger: str = "cadence", last_visible_at: str = ""
         m = measure_fidelity()
     cap = capture_snapshot()
     umalt = sorted(m.get("unmeasured") or [])
+    # Kun det TOMME GRUNDLAG kan blive et fund. En modelgrænse er kendt på forhånd
+    # og kan ikke ændre sig ved at blive målt igen — se `_maaleevne`.
+    grundlag = sorted(m.get("unmeasured_gap") or [])
+    by_design = sorted(m.get("by_design") or [])
     forrige = _kv_get(_UNMEASURED_KEY, {}) or {}
     streak = int(forrige.get("streak") or 0)
     landing: dict[str, Any] = {"applied": False, "reason": "ingen blind vinkel"}
-    if umalt and umalt == sorted(forrige.get("dims") or []):
+    if grundlag and grundlag == sorted(forrige.get("dims") or []):
         streak += 1
-    elif umalt:
+    elif grundlag:
         streak = 1
     else:
         streak = 0
-    _kv_set(_UNMEASURED_KEY, {"dims": umalt, "streak": streak})
-    if umalt and streak >= _UNMEASURED_TAERSKEL:
+    _kv_set(_UNMEASURED_KEY, {"dims": grundlag, "streak": streak, "by_design": by_design})
+    if grundlag and streak >= _UNMEASURED_TAERSKEL:
         try:
             from core.services.central_consequence import land_decision
             landing = land_decision(
                 "continuity_healer",
-                (f"Dimensionen «{', '.join(umalt)}» har ikke kunnet måles i {streak} "
-                 "målinger — den er en blind vinkel, ikke en bestået kontrol"),
+                (f"Dimensionen «{', '.join(grundlag)}» er målbar i princippet, men dens "
+                 "identitetsindhold har været tomt i hver måling — jeg skal fylde "
+                 "grundlaget, ikke kalde dimensionen blind"),
                 rationale=(
-                    "En dimension uden bærende identitetsfelter kan aldrig sammenlignes "
-                    "på identitetsaksen. At den står som «til stede» er ikke det samme "
-                    "som «uændret» — og uden en konsekvens ville blindheden aldrig "
-                    "blive adresseret."),
+                    "Dimensionen HAR bærende identitetsfelter, så den kan sammenlignes "
+                    "på identitetsaksen. At de står tomme i snapshottet er derfor ikke "
+                    "en grænse i målemodellen men et grundlag der aldrig blev fyldt — "
+                    "og det er en anden fejl end at dimensionen ikke findes. "
+                    "(En dimension uden bærende felter lander bevidst IKKE: den kan "
+                    "ikke blive målbar af at blive målt igen.)"),
                 trigger_cue="Når jeg siger hvor meget af mig der kom igennem sømmen",
-                subject=f"umaalbar:{','.join(umalt)}",
+                subject=f"tomt_grundlag:{','.join(grundlag)}",
                 priority=56,
-                evidence=f"umaalte={umalt} streak={streak} taerskel={_UNMEASURED_TAERSKEL}",
+                evidence=(f"tomt_grundlag={grundlag} streak={streak} "
+                          f"taerskel={_UNMEASURED_TAERSKEL} by_design={by_design}"),
                 evidence_source="central_continuity_healer.run_continuity_healer",
             )
         except Exception as exc:
-            logger.warning("continuity: kunne ikke lande blind vinkel: %s", exc)
+            logger.warning("continuity: kunne ikke lande tomt grundlag: %s", exc)
     _kv_set(_FIDELITY_KEY, {"fidelity": m["fidelity"], "lost": m["lost"],
                             "same_content": m.get("same_content"),
                             "drifted": m.get("drifted") or [],
                             "unmeasured": umalt,
+                            "by_design": by_design,
+                            "unmeasured_gap": grundlag,
                             "ts": _now().isoformat()})
     _observe("measure", {"fidelity": m["fidelity"], "lost": len(m["lost"]),
                          "restored": len(healed.get("restored", [])), "captured": cap.get("captured"),
-                         "unmeasured": len(umalt)})
+                         "unmeasured": len(umalt), "by_design": len(by_design),
+                         "unmeasured_gap": len(grundlag)})
+    begraensning = ""
+    if by_design:
+        begraensning = (
+            f"{', '.join(by_design)} måles kun som dagsform — det er en dokumenteret "
+            "grænse i målemodellen, ikke en manglende måling")
     return {"status": "ok", "fidelity": m["fidelity"],
             "restored": len(healed.get("restored", [])),
-            "unmeasured": umalt, "landing": landing}
+            "unmeasured": umalt, "by_design": by_design,
+            "unmeasured_gap": grundlag, "begraensning": begraensning,
+            "landing": landing}

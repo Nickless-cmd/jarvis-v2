@@ -24,8 +24,15 @@ def _observe(payload: dict[str, Any]) -> None:
         pass
 
 
-def detect_attention_traps(*, limit: int = 5) -> dict[str, Any]:
-    """Find hvor opmærksomheden går hen vs hvor impact faktisk er. READ-ONLY. Self-safe."""
+def detect_attention_traps(*, limit: int = 5, observe: bool = True) -> dict[str, Any]:
+    """Find hvor opmærksomheden går hen vs hvor impact faktisk er. READ-ONLY. Self-safe.
+
+    (13/11-2026) `observe` tilføjet: surface'en kaldte denne og skrev dermed en
+    `attention_trap`-hændelse på nerven `red_dress` ved HVERT prompt-build. Det er
+    selve ironien — en detektor der kritiserer at den mest fyrede nerve får mest
+    opmærksomhed, gjorde sig selv til den mest fyrede nerve. Nu rapporterer kun
+    cadence-produceren; en læsning skriver intet.
+    """
     # volumen pr. nerve = antal samples i tidsserien (hvor meget den fylder i bevidstheden)
     volume: dict[str, int] = {}
     try:
@@ -60,12 +67,14 @@ def detect_attention_traps(*, limit: int = 5) -> dict[str, Any]:
         felt = f"Meget larm fra {red_dresses[0]['nerve']}, men intet brænder. Bare en rød kjole."
     else:
         felt = "Opmærksomhed og vigtighed følges ad lige nu. Ingen fælde."
-    _observe({"red_dresses": len(red_dresses), "quiet_fires": len(fires_out)})
+    if observe:
+        _observe({"red_dresses": len(red_dresses), "quiet_fires": len(fires_out)})
     return {"red_dresses": red_dresses, "quiet_fires": fires_out, "felt": felt}
 
 
 def build_red_dress_surface() -> dict[str, Any]:
-    return detect_attention_traps()
+    """Ren læsning — ingen hændelse i nerve-strømmen."""
+    return detect_attention_traps(observe=False)
 
 
 def record_red_dress(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:

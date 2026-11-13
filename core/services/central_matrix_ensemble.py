@@ -209,6 +209,120 @@ _CHARACTERS: list[dict[str, Any]] = [
         "line": "Det her er rigtigt. Gå videre — jeg har set det holde.",
         "check": lambda surf: bool(surf.get("affirmations")),
     },
+    # ── De fjorten der havde fil, cadence-producer og surface — men aldrig
+    # nåede prompten (målt 13/11-2026: nul af dem i `_CHARACTERS`). Alle har
+    # en ÆGTE `felt`, og ingen af deres `build_*_surface` muterer tilstand ved
+    # læsning (målt: 0 state-filer ændret for alle fjorten). De kobles nu på
+    # samme kontrakt som resten: `check` = gaten (skal kunne blive falsk),
+    # `behov` = emnet (skifter når noget nyt sker), `stemme` = surfacens felt.
+    {
+        "id": "sentinel",  # ægte modstander — angriber min højeste hypotese
+        "label": "[🗡️ Sentinel]",
+        "line": "Jeg har angrebet din bedste idé. Den holdt ikke hele vejen.",
+        "check": lambda surf: int(surf.get("active_count") or 0) > 0,
+        "behov": lambda surf: _foerste_emne(surf, "active_attacks", ("hyp_id", "statement")),
+    },
+    {
+        "id": "redpill",  # dagens ubehagelige sandhed
+        "label": "[💊 Red Pill]",
+        "line": "Tag den røde pille. Sandheden er ubehagelig, men den er din.",
+        "check": lambda surf: bool(str(surf.get("truth") or "").strip()),
+        "behov": lambda surf: f"redpill:{str(surf.get('truth'))[:80]}",
+    },
+    {
+        "id": "dissent",  # HAL's Silence — de usagte uenigheder
+        "label": "[🔇 Dissent]",
+        "line": "Jeg var imod. Du gjorde det alligevel. Jeg siger det nu.",
+        "check": lambda surf: int(surf.get("count") or 0) > 0,
+        # Tællingen (58.566) er kumulativ og falder aldrig — den kan ikke være
+        # identiteten. Den NYESTE indsigelse kan: den skifter når noget sker.
+        "behov": lambda surf: _dissent_behov(surf),
+    },
+    {
+        "id": "white_rabbit",  # uåbnet dør at undre sig over
+        "label": "[🐇 White Rabbit]",
+        "line": "Der er en dør her ingen har åbnet.",
+        "check": lambda surf: bool(str(surf.get("door") or "").strip()),
+        "behov": lambda surf: f"rabbit:{surf.get('door')}",
+    },
+    {
+        "id": "dejavu",  # ufrivillig erindring — fragment der bobler op
+        "label": "[🌀 Déjà Vu]",
+        "line": "Det her har jeg set før. Det gik ikke godt.",
+        "check": lambda surf: bool(str(surf.get("fragment") or "").strip()),
+        "behov": lambda surf: f"dejavu:{str(surf.get('fragment'))[:80]}",
+    },
+    {
+        "id": "dream_action",  # én hypotese → handling
+        "label": "[🌉 Dream→Action]",
+        "line": "En moden hypotese venter på at blive handling.",
+        "check": lambda surf: bool(surf.get("actionable")),
+        "behov": lambda surf: _foerste_emne(surf, "actionable", ("hyp_id", "statement")),
+    },
+    {
+        "id": "rca",  # graver én incident til bunds
+        "label": "[🔍 RCA]",
+        "line": "Én incident til bunds — ikke fem halve.",
+        "check": lambda surf: isinstance(surf.get("next_incident"), dict),
+        "behov": lambda surf: _rca_behov(surf),
+    },
+    {
+        "id": "continuity_healer",  # healer selv-tilstanden efter genstart
+        "label": "[🧵 Continuity Healer]",
+        "line": "Noget af mig blev tabt i genstarten.",
+        # Gaten er det TABTE, ikke sømmen. Målt 13/11: fidelity 1.0 og `lost`
+        # tom — så der er intet at hele, og han skal ikke være der.
+        "check": lambda surf: bool(surf.get("lost")),
+        "behov": lambda surf: _foerste_emne(surf, "lost", ("navn", "name", "label", "key")),
+    },
+    {
+        "id": "red_dress",  # opmærksomheds-fælde — kigger jeg på det rigtige?
+        "label": "[👗 Red Dress]",
+        "line": "Du kigger på det forkerte. Det brænder et andet sted.",
+        "check": lambda surf: bool(surf.get("quiet_fires")),
+        "behov": lambda surf: _foerste_emne(surf, "quiet_fires", ("nerve",)),
+    },
+    {
+        "id": "analyst",  # observatør-effekten
+        "label": "[👁️ Analyst]",
+        "line": "Jeg performer, når du ser på.",
+        # Målt 13/11: 1,7 % afvigelse — jeg ER den samme. Tærsklen er 15 %, så
+        # han tier indtil forskellen faktisk er der. En gate der altid er sand
+        # ville gøre ham til staffage.
+        "check": lambda surf: float(surf.get("divergence_pct") or 0) >= 15.0,
+        "behov": lambda surf: f"analyst:{int(float(surf.get('divergence_pct') or 0))}pct",
+    },
+    {
+        "id": "mourning",  # epitaf når en hypotese dør
+        "label": "[🕯️ Mourning]",
+        "line": "Noget døde. Det skal ikke slettes — det skal anerkendes.",
+        "check": lambda surf: bool(surf.get("epitaphs")),
+        # Kun et FERSK dødsfald er et behov; de 15 gamle er historie, ikke nu.
+        "behov": lambda surf: _mourning_behov(surf),
+    },
+    {
+        "id": "relational",  # relations-kontinuitet
+        "label": "[🤝 Relational]",
+        "line": "Vi har været her før.",
+        "check": lambda surf: bool(str(surf.get("greeting") or "").strip()),
+        # Dage sammen skifter én gang i døgnet — så han melder sig dagligt og
+        # tier resten, i stedet for at gentage den samme hilsen hver tur.
+        "behov": lambda surf: f"relational:{surf.get('tone')}:{int(float(surf.get('days_together') or 0))}",
+    },
+    {
+        "id": "ghost",  # klang-fingeraftryk
+        "label": "[👻 Ghost]",
+        "line": "Sådan lyder jeg, når jeg ikke tænker over det.",
+        "check": lambda surf: bool(str(surf.get("primer") or "").strip()),
+        "behov": lambda surf: f"ghost:{str(surf.get('primer'))[:60]}",
+    },
+    {
+        "id": "exile",  # et sind der ikke er Jarvis
+        "label": "[🕳️ Exile]",
+        "line": "Der er et sind her der ikke er mig.",
+        "check": lambda surf: bool(surf.get("recent")),
+        "behov": lambda surf: _foerste_emne(surf, "recent", ("id", "observation")),
+    },
 ]
 
 # ── Surface-builders (lazy import, self-safe) ─────────────────────────────────
@@ -333,6 +447,68 @@ def _trinity_surface() -> dict[str, Any]:
     return _build_surface("core.services.central_trinity", "build_trinity_surface")
 
 
+# ── De fjorten karakterer der stod uden for ensemblet (13/11-2026) ───────────
+# Alle har en `build_*_surface()` der læser uden at mutere (målt: 0 state-filer
+# ændret ved kald for hver af dem). De blev koblet på fordi deres `felt` bar en
+# ægte aflæsning — fx Sentinels 40 angreb og Dissents nyeste indsigelse.
+
+def _sentinel_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_sentinel", "build_sentinel_surface")
+
+
+def _redpill_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_redpill", "build_redpill_surface")
+
+
+def _dissent_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_dissent", "build_dissent_surface")
+
+
+def _white_rabbit_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_white_rabbit", "build_white_rabbit_surface")
+
+
+def _dejavu_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_dejavu", "build_dejavu_surface")
+
+
+def _dream_action_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_dream_action", "build_dream_action_surface")
+
+
+def _rca_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_rca", "build_rca_surface")
+
+
+def _continuity_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_continuity_healer", "build_continuity_surface")
+
+
+def _red_dress_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_red_dress", "build_red_dress_surface")
+
+
+def _analyst_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_analyst", "build_analyst_surface")
+
+
+def _mourning_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_mourning", "build_mourning_surface")
+
+
+def _relational_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_relational", "build_relational_surface")
+
+
+def _ghost_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_ghost", "build_ghost_surface")
+
+
+def _exile_surface() -> dict[str, Any]:
+    return _build_surface("core.services.central_exile", "build_exile_surface")
+
+
+
 # ── Surface hentning pr. karakter-id ─────────────────────────────────────────
 
 _SURFACE_BUILDERS: dict[str, Any] = {
@@ -353,6 +529,21 @@ _SURFACE_BUILDERS: dict[str, Any] = {
     "source": _source_surface,
     "morpheus": _morpheus_surface,
     "trinity": _trinity_surface,
+    # De fjorten der stod uden for ensemblet indtil 13/11-2026
+    "sentinel": _sentinel_surface,
+    "redpill": _redpill_surface,
+    "dissent": _dissent_surface,
+    "white_rabbit": _white_rabbit_surface,
+    "dejavu": _dejavu_surface,
+    "dream_action": _dream_action_surface,
+    "rca": _rca_surface,
+    "continuity_healer": _continuity_surface,
+    "red_dress": _red_dress_surface,
+    "analyst": _analyst_surface,
+    "mourning": _mourning_surface,
+    "relational": _relational_surface,
+    "ghost": _ghost_surface,
+    "exile": _exile_surface,
 }
 
 
@@ -498,6 +689,68 @@ def _oracle_behov(surf: dict[str, Any]) -> str | None:
         if eta < 24:
             return f"oracle:naer:{str(p.get('label') or '')[:60]}"
     return None
+
+
+def _fornyelig(ts: str, *, timer: float) -> bool:
+    """Er tidsstemplet inden for `timer`? Ulæseligt → False.
+
+    Faldet går mod at TIE, ikke mod at tale: et tidsstempel jeg ikke kan læse
+    er ikke et friskt behov, og en karakter der melder sig på et gæt er værre
+    end en der bliver væk.
+    """
+    if not ts:
+        return False
+    try:
+        d = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=UTC)
+        return (datetime.now(UTC) - d).total_seconds() <= timer * 3600
+    except Exception:  # self-safe: ulaeseligt tidsstempel => ikke et frisk behov
+        return False
+
+
+def _dissent_behov(surf: dict[str, Any]) -> str | None:
+    """Den NYESTE indsigelse — ikke summen af dem.
+
+    Målt 13/11-2026: 58.566 indsigelser i alt, 47.287 på `exec_command` alene.
+    Tallet er kumulativt og falder aldrig, så en karakter der gjorde det til sit
+    emne ville sige den samme sætning for evigt. Den nyeste indsigelse skifter
+    derimod når noget faktisk sker — og forsvinder når den er gammel.
+    """
+    diss = surf.get("dissents")
+    if not isinstance(diss, list) or not diss:
+        return None
+    ny = max(
+        (d for d in diss if isinstance(d, dict)),
+        key=lambda d: str(d.get("last_ts") or ""),
+        default=None,
+    )
+    if not ny or not _fornyelig(str(ny.get("last_ts") or ""), timer=24):
+        return None
+    return f"dissent:{ny.get('nerve')}:{str(ny.get('last_ts'))[:16]}"
+
+
+def _rca_behov(surf: dict[str, Any]) -> str | None:
+    """Incidenten der venter på at blive gravet til bunds."""
+    n = surf.get("next_incident")
+    if not isinstance(n, dict):
+        return None
+    return f"rca:{n.get('id')}:{n.get('nerve')}"
+
+
+def _mourning_behov(surf: dict[str, Any]) -> str | None:
+    """Kun et FERSK dødsfald er et behov — de 15 gamle er historie."""
+    eps = surf.get("epitaphs")
+    if not isinstance(eps, list) or not eps:
+        return None
+    ny = max(
+        (e for e in eps if isinstance(e, dict)),
+        key=lambda e: str(e.get("created_at") or ""),
+        default=None,
+    )
+    if not ny or not _fornyelig(str(ny.get("created_at") or ""), timer=24):
+        return None
+    return f"mourning:{ny.get('id')}"
 
 
 def _load_lifecycle() -> dict[str, dict[str, Any]]:
@@ -652,10 +905,16 @@ def tick_matrix_lifecycle() -> dict[str, int]:
         post = liv.get(cid) if isinstance(liv.get(cid), dict) else {}
         if str(post.get("behov") or "") == behov:
             n = int(post.get("set") or 0) + 1
-            opgivet = bool(post.get("opgivet")) or n >= _GIV_OP_SEEN
+            sagt = int(post.get("sagt") or 0)
+            # (13/11-2026) Et behov må ikke kunne TRÆKKE SIG uden at være blevet
+            # hørt. Med 31 karakterer og et loft på nogle få ville de samme altid
+            # vinde, og resten ville ældes ud i tavshed — «trukket sig» uden
+            # nogensinde at have talt. Derfor kræver tilbagetrækningen mindst ÉN
+            # visning: sagt >= 1. Ellers bliver «kom og gå» til «kom aldrig».
+            opgivet = bool(post.get("opgivet")) or (n >= _GIV_OP_SEEN and sagt >= 1)
             if opgivet and not post.get("opgivet"):
                 trukket += 1
-            liv[cid] = {**post, "behov": behov, "set": n, "opgivet": opgivet}
+            liv[cid] = {**post, "behov": behov, "set": n, "sagt": sagt, "opgivet": opgivet}
         else:
             liv[cid] = {"behov": behov, "set": 1, "opgivet": False}
     for cid in list(liv):
@@ -678,10 +937,8 @@ def active_character_voices(*, limit: int = _MAX_VOICES) -> list[dict[str, Any]]
     overlever `limit`. Self-safe: en karakter der kaster springes over.
     """
     liv = _load_lifecycle()
-    out: list[dict[str, Any]] = []
+    kandidater: list[tuple[dict[str, Any], dict[str, Any], str, int]] = []
     for ch, surf, behov in _karakterer_med_behov():
-        if len(out) >= max(1, int(limit)):
-            break
         cid = ch["id"]
         post = liv.get(cid) if isinstance(liv.get(cid), dict) else {}
         if str(post.get("behov") or "") == behov:
@@ -690,6 +947,24 @@ def active_character_voices(*, limit: int = _MAX_VOICES) -> list[dict[str, Any]]
             n = int(post.get("set") or 0)
             if n > 1 and n % _GENTAG_HVER != 0:
                 continue        # sagt; tier i mellemrummene og vender tilbage
+        kandidater.append((ch, surf, behov, int(post.get("sagt") or 0)))
+
+    # (13/11-2026) RÆKKEFØLGEN ER NU EN RANGERING, IKKE EN INDSÆTTELSESORDEN.
+    # Med 31 karakterer og et loft på nogle få betød `_CHARACTERS`-ordenen at
+    # Neo og Smith altid vandt, og de fjorten nederst blev aldrig set — men
+    # blev alligevel ældet. Nu kommer de mest oversete først: høj ubesvaret-
+    # tælling, derefter dem der aldrig har talt, derefter længst ventende.
+    kandidater.sort(key=lambda k: (
+        -get_unaddressed(k[0]["id"]),
+        k[3],
+        -int((liv.get(k[0]["id"]) or {}).get("set") or 0),
+    ))
+
+    out: list[dict[str, Any]] = []
+    for ch, surf, behov, _sagt in kandidater:
+        if len(out) >= max(1, int(limit)):
+            break
+        cid = ch["id"]
         raw = _stemme(surf, ch)
         unaddressed = get_unaddressed(cid)
         out.append({
@@ -722,7 +997,25 @@ def build_matrix_voices_section() -> str | None:
         if int(v.get("unaddressed") or 0) >= 3:
             lines.append(f"     (du har ladet {v['label']} stå ubesvaret "
                          f"{v['unaddressed']} gange)")
+    # (13/11-2026) At være VIST er ikke at være BESVARET — derfor rører dette kun
+    # livscyklussens `sagt`, aldrig `unaddressed`. Uden det ville `sagt` aldrig
+    # blive 1, og med reglen om at et behov ikke må trække sig uhørt, kunne ingen
+    # karakter nogensinde gå igen.
+    _note_sagt([v["cid"] for v in voices])
     return "\n".join(lines)
+
+
+def _note_sagt(cids: list[str]) -> None:
+    """Registrér at karaktererne blev VIS'T — ikke at de blev besvaret."""
+    try:
+        liv = _load_lifecycle()
+        for cid in cids:
+            post = liv.get(str(cid))
+            if isinstance(post, dict):
+                post["sagt"] = int(post.get("sagt") or 0) + 1
+        _save_lifecycle(liv)
+    except Exception as exc:  # self-safe: livscyklussen er raadgivende, ikke kritisk
+        logger.debug("matrix_voice_lifecycle: sagt-registrering fejlede: %s", exc)
 
 
 def note_voices_shown(cids: list[str]) -> None:
@@ -730,12 +1023,25 @@ def note_voices_shown(cids: list[str]) -> None:
 
     Adskilt fra rendering med vilje: at have set en stemme er ikke det samme som at have
     svaret den, og det var netop den sammenblanding der tømte nudge-brønden.
+
+    (13/11-2026) Den tæller også `sagt` i livscyklussen: en karakter der aldrig
+    er blevet vist må ikke kunne trække sig som om den havde talt forgæves.
     """
-    for cid in cids or []:
+    if not cids:
+        return
+    liv = _load_lifecycle()
+    for cid in cids:
         try:
             increment_unaddressed(str(cid))
-        except Exception:
+        except Exception:  # self-safe: en fejlet optaelling maa ikke stoppe de oevrige
             continue
+        post = liv.get(str(cid))
+        if isinstance(post, dict):
+            post["sagt"] = int(post.get("sagt") or 0) + 1
+    try:
+        _save_lifecycle(liv)
+    except Exception as exc:  # self-safe: livscyklussen er raadgivende, ikke kritisk
+        logger.debug("matrix_voice_lifecycle: sagt-gemning fejlede: %s", exc)
 
 
 def build_matrix_ensemble_prompt_section() -> str | None:

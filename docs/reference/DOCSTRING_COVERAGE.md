@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10107/18608 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10115/18627 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10107/18608 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 899 | 1612 | 55% |
-| `core.services` | 6755 | 12612 | 53% |
+| `core.services` | 6763 | 12631 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 10107/18608 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2635)
+## Undocumented public functions (2632)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L231)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -982,10 +982,8 @@ Generated from source. 10107/18608 functions/methods documented (54%). The list 
 - `core/services/central_prompt_composer.py` :: `is_tail_live_enabled` (L250)
 - `core/services/central_prompt_explore.py` :: `is_explore_live` (L71)
 - `core/services/central_rca.py` :: `list_rca` (L117)
-- `core/services/central_red_dress.py` :: `build_red_dress_surface` (L67)
-- `core/services/central_red_dress.py` :: `record_red_dress` (L71)
-- `core/services/central_redpill.py` :: `build_redpill_surface` (L116)
-- `core/services/central_redpill.py` :: `record_redpill` (L120)
+- `core/services/central_red_dress.py` :: `record_red_dress` (L80)
+- `core/services/central_redpill.py` :: `build_redpill_surface` (L142)
 - `core/services/central_router_adapt.py` :: `is_live_enabled` (L63)
 - `core/services/central_router_explore.py` :: `is_explore_live` (L45)
 - `core/services/central_self_state.py` :: `is_prompt_authoritative` (L508)
@@ -1011,8 +1009,7 @@ Generated from source. 10107/18608 functions/methods documented (54%). The list 
 - `core/services/central_trace.py` :: `TraceSink.subscribe` (L70)
 - `core/services/central_trace.py` :: `TraceSink.unsubscribe` (L76)
 - `core/services/central_trace.py` :: `sink` (L96)
-- `core/services/central_white_rabbit.py` :: `build_white_rabbit_surface` (L58)
-- `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L62)
+- `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L80)
 - `core/services/chat_crypto.py` :: `er_krypteret` (L150)
 - `core/services/chat_flow_preferences.py` :: `ack_chat_flow_onboarding` (L137)
 - `core/services/chat_flow_preferences.py` :: `claim_chat_flow_onboarding` (L113)

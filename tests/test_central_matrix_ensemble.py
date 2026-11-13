@@ -172,6 +172,20 @@ class TestLivscyklus:
         d["_sidst_aldret"] = "2020-01-01T00:00:00+00:00"
         p.write_text(_j.dumps(d))
 
+    def _vist(self):
+        """Antal stemmer i den ÆGTE sektion — visningen er det der tæller `sagt`.
+
+        (13/11-2026) Testen målte før `active_character_voices()` direkte, som med
+        vilje er ren læsning. Men så blev `sagt` aldrig talt, og reglen om at et
+        behov ikke må trække sig uhørt kunne aldrig indfries — karakteren blev
+        stående for evigt. Prompten bruger `build_matrix_voices_section`, så det
+        er den vej testen skal måle.
+        """
+        sec = me.build_matrix_voices_section()
+        if not sec:
+            return 0
+        return sum(1 for ln in sec.splitlines() if ln.startswith("  ["))
+
     def test_frem_tav_tilbage_trukket(self, monkeypatch, tmp_path):
         surf = {"active": True, "ready_to_surface": [{"hyp_id": "clh-1"}],
                 "felt": "en hypotese er klar"}
@@ -179,7 +193,7 @@ class TestLivscyklus:
         antal = []
         for _ in range(me._GIV_OP_SEEN + 1):
             me.tick_matrix_lifecycle()
-            antal.append(len(me.active_character_voices(limit=9)))
+            antal.append(self._vist())
             self._alder(tmp_path)
         assert antal[0] == 1, "et nyt behov skal dukke op med det samme"
         assert antal[1] == 0, "sagt én gang — den gentager sig ikke næste tur"

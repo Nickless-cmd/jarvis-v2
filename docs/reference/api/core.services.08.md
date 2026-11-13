@@ -8,10 +8,10 @@ _Follow the White Rabbit — serendipitets-motoren._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_dark_doors` | `()` | Mørke/stille nerver ingen rører — de uåbnede døre. Self-safe. | [src](../../../core/services/central_white_rabbit.py#L25) |
-| function | `follow_rabbit` | `(*, seed=…)` | Vælg én uåbnet dør at undre sig over — ren ikke-målrettet udforskning. Self-safe. | [src](../../../core/services/central_white_rabbit.py#L36) |
-| function | `_observe` | `(door, total)` | — | [src](../../../core/services/central_white_rabbit.py#L49) |
-| function | `build_white_rabbit_surface` | `()` | — | [src](../../../core/services/central_white_rabbit.py#L58) |
-| function | `record_white_rabbit` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_white_rabbit.py#L62) |
+| function | `follow_rabbit` | `(*, seed=…, observe=…)` | Vælg én uåbnet dør at undre sig over — ren ikke-målrettet udforskning. Self-safe. | [src](../../../core/services/central_white_rabbit.py#L36) |
+| function | `_observe` | `(door, total)` | — | [src](../../../core/services/central_white_rabbit.py#L62) |
+| function | `build_white_rabbit_surface` | `()` | Ren læsning: samme dør hele dagen, og INGEN hændelse i nerve-strømmen. | [src](../../../core/services/central_white_rabbit.py#L71) |
+| function | `record_white_rabbit` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_white_rabbit.py#L80) |
 
 ## `core/services/central_xproc.py`
 _Cross-proces trace-tee for Den Intelligente Central._

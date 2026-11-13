@@ -1,4 +1,5 @@
 """Tests for de 5 nye Matrix-temaer + 2 bonus."""
+from datetime import UTC, datetime, timedelta
 from unittest import mock
 import pytest
 
@@ -37,22 +38,38 @@ from core.services import central_redpill as rp
 
 
 def test_redpill_picks_and_counts_blue_streak():
+    """Striben tæller DAGE, ikke kald (13/11-2026).
+
+    Før: hvert kald lagde 1 til, så striben stod på 43 efter 43 prompt-builds —
+    den målte hvor ofte nogen kiggede, ikke hvor længe sandheden var undgået.
+    Nu: `advance=True` tæller højst én gang pr. kalenderdag, og en LÆSNING
+    (`build_redpill_surface`) tæller slet ikke.
+    """
     kv = {}
     with mock.patch("core.services.central_redpill._candidates",
                     return_value=[{"key": "bloat:db.py", "kind": "bloat", "truth": "db.py er stor", "score": 33}]), \
             mock.patch("core.services.central_redpill._kv_get", side_effect=lambda k, d: kv.get(k, d)), \
             mock.patch("core.services.central_redpill._kv_set", side_effect=lambda k, v: kv.__setitem__(k, v)), \
             mock.patch("core.services.central_redpill._observe"):
-        t1 = rp.todays_truth()
-        t2 = rp.todays_truth()
-    assert t1["blue_streak"] == 1 and t2["blue_streak"] == 2   # samme sandhed → stribe vokser
+        t1 = rp.todays_truth(advance=True)
+        t2 = rp.todays_truth(advance=True)          # samme dag → ingen vækst
+        lest = rp.build_redpill_surface()           # ren læsning → ingen vækst
+        # næste dag: samme sandhed undgået igen → striben vokser med præcis 1
+        i_morgen = (datetime.now(UTC) + timedelta(days=1)).date().isoformat()
+        with mock.patch("core.services.central_redpill.datetime") as dt:
+            dt.now.return_value = datetime.fromisoformat(i_morgen + "T12:00:00+00:00")
+            t3 = rp.todays_truth(advance=True)
+    assert t1["blue_streak"] == 1
+    assert t2["blue_streak"] == 1, "to kald samme dag må ikke give to dage"
+    assert lest["blue_streak"] == 1, "en læsning må ikke tælle noget"
+    assert t3["blue_streak"] == 2, "en ny dag med samme undgåede sandhed giver +1"
 
 
 def test_redpill_empty_is_honest():
     with mock.patch("core.services.central_redpill._candidates", return_value=[]), \
             mock.patch("core.services.central_redpill._kv_get", return_value={}), \
             mock.patch("core.services.central_redpill._kv_set"):
-        assert rp.todays_truth()["truth"] is None
+        assert rp.todays_truth(advance=True)["truth"] is None
 
 
 # ── HAL's Silence / Dissent ──
@@ -122,3 +139,39 @@ def test_machines_lists_dependencies():
         d = ma.dependencies()
     assert d["dependency_count"] == 1 + 3    # 1 provider + 3 faste infrastruktur
     assert "hænder om min hals" in d["felt"]
+
+
+# ── Ren læsning: en surface må ikke skrive når den LÆSES (13/11-2026) ──
+class TestSurfacesErRenLaesning:
+    """Ensemblet læser surfaces ved HVER prompt-assembly.
+
+    Målt 13/11-2026: `build_redpill_surface()` skrev blå-pille-striben op ved
+    hvert kald, `white_rabbit` valgte en NY tilfældig dør hver gang (så hans
+    behov aldrig kunne ældes), og både white_rabbit og red_dress fodrede den
+    nerve-strøm red_dress selv kritiserer for at stjæle opmærksomheden.
+    Et panel der skaber det det påstår at observere, er ikke en måling.
+    """
+
+    def test_ingen_observe_ved_laesning(self):
+        from core.services import central_white_rabbit as wr
+        from core.services import central_red_dress as rd
+        from core.services import central_redpill as rp
+        with mock.patch("core.services.central_core.central") as c:
+            wr.build_white_rabbit_surface()
+            rd.build_red_dress_surface()
+            rp.build_redpill_surface()
+        assert c.return_value.observe.call_count == 0
+
+    def test_redpill_surface_skriver_ikke_striben(self):
+        from core.services import central_redpill as rp
+        with mock.patch("core.services.central_redpill._kv_set") as s:
+            rp.build_redpill_surface()
+        assert s.call_count == 0, "en læsning må ikke tælle en undgået sandhed"
+
+    def test_white_rabbit_doer_er_dagstabil(self):
+        """Skiftede døren hvert kald, kunne behovet aldrig ældes — og karakteren
+        ville stå der for evigt med en ny sætning hver tur."""
+        from core.services import central_white_rabbit as wr
+        a = wr.build_white_rabbit_surface()
+        b = wr.build_white_rabbit_surface()
+        assert a.get("door") == b.get("door")

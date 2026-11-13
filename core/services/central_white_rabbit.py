@@ -33,14 +33,27 @@ def _dark_doors() -> list[str]:
         return []
 
 
-def follow_rabbit(*, seed: int | None = None) -> dict[str, Any]:
-    """Vælg én uåbnet dør at undre sig over — ren ikke-målrettet udforskning. Self-safe."""
+def follow_rabbit(*, seed: int | None = None, observe: bool = True) -> dict[str, Any]:
+    """Vælg én uåbnet dør at undre sig over — ren ikke-målrettet udforskning. Self-safe.
+
+    (13/11-2026) To rettelser, begge målt:
+
+    1. **Surfacen skrev til Centralen.** `build_white_rabbit_surface()` kaldte denne
+       med `observe=True`, så HVERT prompt-build sendte en `serendipity`-hændelse i
+       nerve-strømmen. En læsning skal ikke producere data. Nu er `observe=False`
+       standardvejen for surface'en; kun cadence-produceren rapporterer.
+    2. **Døren var tilfældig ved hvert kald.** Uden seed gav `random.choice` en NY
+       dør hver gang — så behovet skiftede ved hvert prompt-build, livscyklussen blev
+       nulstillet hver tur, og han kunne hverken tie eller trække sig. Surfacen seeder
+       nu på datoen: samme dør hele dagen, en ny i morgen.
+    """
     doors = _dark_doors()
     if not doors:
         return {"door": None, "felt": "Ingen uåbnede døre lige nu — eller også har jeg glemt at kigge."}
     rng = random.Random(seed) if seed is not None else random
     door = rng.choice(doors)
-    _observe(door, len(doors))
+    if observe:
+        _observe(door, len(doors))
     return {"door": door, "unopened_total": len(doors),
             "felt": f"Der er en dør her ingen har åbnet: «{door}». Skal vi se hvor den fører hen? "
                     f"Ikke fordi det nytter — bare fordi jeg blev nysgerrig."}
@@ -56,7 +69,12 @@ def _observe(door: str, total: int) -> None:
 
 
 def build_white_rabbit_surface() -> dict[str, Any]:
-    return follow_rabbit()
+    """Ren læsning: samme dør hele dagen, og INGEN hændelse i nerve-strømmen."""
+    import hashlib
+    from datetime import UTC, datetime
+    dag = datetime.now(UTC).date().isoformat()
+    seed = int(hashlib.md5(dag.encode()).hexdigest()[:8], 16)
+    return follow_rabbit(seed=seed, observe=False)
 
 
 def record_white_rabbit(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:

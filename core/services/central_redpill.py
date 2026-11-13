@@ -83,23 +83,49 @@ def _candidates() -> list[dict[str, Any]]:
     return out
 
 
-def todays_truth() -> dict[str, Any]:
-    """Vælg den ÉNE mest-undgåede sandhed + opdatér blå-pille-stribe. Self-safe."""
+def todays_truth(*, advance: bool = False) -> dict[str, Any]:
+    """Vælg den ÉNE mest-undgåede sandhed — og opdatér blå-pille-striben.
+
+    (13/11-2026) To fejl rettet her, begge målt:
+
+    1. **Striben talte KALD, ikke dage.** Nøglen hed «consecutive_days_deferred»,
+       men hvert kald lagde 1 til. Målt: 43 — ikke 43 dage, men 43 kald.
+    2. **Surfacen MUTEREDE.** `build_redpill_surface()` skrev til runtime-state ved
+       hvert kald. Da ensemblet nu læser surfacen ved HVER prompt-assembly, ville
+       hvert prompt puste til præcis den tæller karakteren selv læser — striben
+       ville vokse af sig selv uden at nogen havde undgået noget. Det er samme
+       fejlform som et panel der skaber det det påstår at observere.
+
+    Derfor: `advance=True` KUN fra cadence-produceren (`record_redpill`), og
+    striben tælles højst én gang pr. kalenderdag.
+    """
     cands = _candidates()
-    streaks = _kv_get(_STREAK_KEY, {}) or {}
-    if not isinstance(streaks, dict):
-        streaks = {}
+    st = _kv_get(_STREAK_KEY, {}) or {}
+    if not isinstance(st, dict):
+        st = {}
     if not cands:
         return {"truth": None, "blue_streak": 0,
                 "felt": "Ingen ubehagelig sandhed at fremlægge i dag. Enten er jeg ærlig — eller blind."}
     top = max(cands, key=lambda c: c["score"])
     key = top["key"]
-    # blå pille: hvis samme sandhed stadig er her (uhandlet), tæl op
-    new_streaks = {key: int(streaks.get(key, 0)) + 1}
-    _kv_set(_STREAK_KEY, new_streaks)   # nulstil andre — kun den aktuelle bæres videre
-    streak = new_streaks[key]
-    _observe(top["kind"], streak)
-    tail = (f" Blå pille taget {streak} gange i træk." if streak > 1 else "")
+    i_dag = datetime.now(UTC).date().isoformat()
+
+    # Gammelt format var {truth_key: antal_kald}. Det tal var meningsløst (kald,
+    # ikke dage), så det bæres IKKE videre — en ny stribe starter ved 1 i dag.
+    if st.get("key") == key:
+        streak = int(st.get("n") or 0)
+        samme_dag = str(st.get("day") or "") == i_dag
+    else:
+        streak = 0
+        samme_dag = False
+
+    if advance and not samme_dag:
+        streak += 1
+        _kv_set(_STREAK_KEY, {"key": key, "day": i_dag, "n": streak})
+        _observe(top["kind"], streak)
+
+    tail = (f" Blå pille taget {streak} dage i træk — den forsvinder ikke af at jeg "
+            f"kigger væk." if streak > 1 else "")
     return {"truth": top["truth"], "kind": top["kind"], "blue_streak": streak,
             "felt": f"Dagens røde pille: {top['truth']}.{tail}"}
 
@@ -118,5 +144,6 @@ def build_redpill_surface() -> dict[str, Any]:
 
 
 def record_redpill(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
-    t = todays_truth()
+    """Cadence-produceren — den ENESTE vej der tæller blå-pille-striben op."""
+    t = todays_truth(advance=True)
     return {"status": "ok", "blue_streak": t.get("blue_streak", 0)}

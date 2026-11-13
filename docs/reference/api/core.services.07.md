@@ -88,9 +88,9 @@ _The Woman in the Red Dress — opmærksomheds-fælden._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_observe` | `(payload)` | — | [src](../../../core/services/central_red_dress.py#L19) |
-| function | `detect_attention_traps` | `(*, limit=…)` | Find hvor opmærksomheden går hen vs hvor impact faktisk er. READ-ONLY. Self-safe. | [src](../../../core/services/central_red_dress.py#L27) |
-| function | `build_red_dress_surface` | `()` | — | [src](../../../core/services/central_red_dress.py#L67) |
-| function | `record_red_dress` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_red_dress.py#L71) |
+| function | `detect_attention_traps` | `(*, limit=…, observe=…)` | Find hvor opmærksomheden går hen vs hvor impact faktisk er. READ-ONLY. Self-safe. | [src](../../../core/services/central_red_dress.py#L27) |
+| function | `build_red_dress_surface` | `()` | Ren læsning — ingen hændelse i nerve-strømmen. | [src](../../../core/services/central_red_dress.py#L75) |
+| function | `record_red_dress` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_red_dress.py#L80) |
 
 ## `core/services/central_redpill.py`
 _Red Pill — dagens ubehagelige sandhed._
@@ -100,10 +100,10 @@ _Red Pill — dagens ubehagelige sandhed._
 | function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_redpill.py#L20) |
 | function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_redpill.py#L29) |
 | function | `_candidates` | `()` | Saml de undgåede sandheder med en avoidance-score (jo højere, jo mere undgået). Self-safe. | [src](../../../core/services/central_redpill.py#L37) |
-| function | `todays_truth` | `()` | Vælg den ÉNE mest-undgåede sandhed + opdatér blå-pille-stribe. Self-safe. | [src](../../../core/services/central_redpill.py#L86) |
-| function | `_observe` | `(kind, streak)` | — | [src](../../../core/services/central_redpill.py#L107) |
-| function | `build_redpill_surface` | `()` | — | [src](../../../core/services/central_redpill.py#L116) |
-| function | `record_redpill` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_redpill.py#L120) |
+| function | `todays_truth` | `(*, advance=…)` | Vælg den ÉNE mest-undgåede sandhed — og opdatér blå-pille-striben. | [src](../../../core/services/central_redpill.py#L86) |
+| function | `_observe` | `(kind, streak)` | — | [src](../../../core/services/central_redpill.py#L133) |
+| function | `build_redpill_surface` | `()` | — | [src](../../../core/services/central_redpill.py#L142) |
+| function | `record_redpill` | `(*, trigger=…, last_visible_at=…)` | Cadence-produceren — den ENESTE vej der tæller blå-pille-striben op. | [src](../../../core/services/central_redpill.py#L146) |
 
 ## `core/services/central_relational.py`
 _Relationel Continuity — så Jarvis kan sige "velkommen tilbage" og MENE det._

@@ -132,8 +132,8 @@ def _count_blocked(events: list[dict[str, Any]]) -> int:
     return n
 
 
-def _fetch_procedures_count() -> int:
-    """Tæl kun procedurer med MÅLT brug eller en bevidst pinning.
+def _fetch_procedures_count(*, window_days: int = 21) -> int:
+    """Tæl rutiner der er NYE i vinduet og faktisk blevet vist eller pinnet.
 
     Målt 13/11-2026: tabellen havde 27 rækker og ALLE 27 var skrald —
     «Sådan: Titel», «Sådan: Skriv», «Sådan: Jarvis» — med `hit_count = 0`.
@@ -142,15 +142,23 @@ def _fetch_procedures_count() -> int:
     ikke evner: mønsteret «Capability Growth» reklamerede med confidence 1.00
     på 27 ulæste rækker.
 
-    En `pinned` række tælles med, fordi en pinning er en bevidst beslutning om
-    at rækken skal bruges — den er evidens i sig selv. Ulæste, upinnede rækker
-    er ikke.
+    To krav, og begge er nødvendige:
+
+    * `hit_count > 0 OR pinned = 1` — en række nogen har set, eller som jeg
+      bevidst har pinnet. Ulæste, upinnede rækker er ikke evidens.
+    * `created_at` inden for vinduet — et DELTA, ikke et niveau. Uden det
+      fyrer mønsteret på et gammelt lager der ikke har ændret sig, og ordet
+      «growth» beskriver noget der ikke er sket. Det var fix 3, som de
+      afviste forslag pegede på, og som stod uafsluttet indtil nu.
     """
+    cutoff = (datetime.now(UTC) - timedelta(days=window_days)).isoformat()
     try:
         with connect() as c:
             row = c.execute(
                 "SELECT COUNT(*) AS n FROM cognitive_procedures "
-                "WHERE deleted = 0 AND (hit_count > 0 OR pinned = 1)"
+                "WHERE deleted = 0 AND (hit_count > 0 OR pinned = 1) "
+                "AND created_at >= ?",
+                (cutoff,),
             ).fetchone()
         return int(row["n"]) if row else 0
     except Exception:
@@ -192,14 +200,19 @@ def _detect_candidates(*, window_days: int = 21) -> list[EmergenceCandidate]:
             )
         )
 
-    # 2. Capability growth — count of cognitive_procedures
-    proc_count = _fetch_procedures_count()
+    # 2. Capability growth — NYE rutiner der faktisk er blevet vist eller pinnet.
+    # Summary sagde tidligere «indicate expanding stable capability» om et rent
+    # NIVEAU. Det var en påstand om vækst uden at noget var målt som en ændring.
+    proc_count = _fetch_procedures_count(window_days=window_days)
     if proc_count >= 5:
         candidates.append(
             EmergenceCandidate(
                 pattern_key="capability_growth_procedures",
                 title="Capability Growth",
-                summary=f"{proc_count} procedures indicate expanding stable capability.",
+                summary=(
+                    f"{proc_count} new procedures shown or pinned "
+                    f"in the last {window_days} days."
+                ),
                 evidence_count=proc_count,
                 base_confidence=min(0.9, 0.3 + (proc_count / 24.0)),
                 competing_explanations=["duplicate_procedures"],

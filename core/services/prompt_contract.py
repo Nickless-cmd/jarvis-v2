@@ -1429,6 +1429,19 @@ def _build_visible_chat_prompt_assembly_impl(
                        build_session_topics_prompt_section(session_id=session_id))
     except Exception as _e:
         _sec_err("session topics (always-on)", _e)
+    # Rutiner jeg har gjort før (13/11-2026). Dette er den LÆSER procedure-
+    # banken manglede: `match_procedures_for_text` havde nul kaldere i hele
+    # træet, så `hit_count` kunne per definition ikke stige — og tælleren i
+    # `emergence.py` kræver netop `hit_count > 0`. Banken blev fyldt og vist,
+    # men aldrig læst der hvor den kunne gøre en forskel. Et match er et
+    # forslag, ikke en ordre; derfor priority 4, ikke 0.
+    if user_message:
+        try:
+            from core.services.procedure_bank_pipeline import procedures_prompt_section
+            _awareness_add(4, "rutiner jeg har gjort før",
+                           procedures_prompt_section(user_message))
+        except Exception as _e:
+            _sec_err("rutiner jeg har gjort før", _e)
 
     # Eventbus wake-up digest — DEFERRED to tail (just before time pin).
     # 2026-05-26 (Claude): empirically the only within-session cache breaker

@@ -77,3 +77,57 @@ def test_foerste_brugbare_emne_vaelges_frem_for_det_foerste(isolated_runtime, mo
         session_id="s-blandet", tool_calls=["bash", "read_file"])
     assert rec is not None
     assert "rydde indbakken for doede forslag" in rec["name"]
+
+
+# ── læseren (13/11-2026, tredje runde) ──────────────────────────────────────
+# `match_procedures_for_text` havde NUL kaldere i hele træet. Banken blev fyldt
+# og vist, men aldrig læst — så `hit_count` kunne per definition ikke stige, og
+# kravet `hit_count > 0` i emergence-tælleren var en betingelse intet kunne
+# opfylde. Disse tests måler at læseren findes OG at den tæller.
+
+
+def test_laeseren_giver_none_naar_intet_matcher(isolated_runtime):
+    pb.upsert_procedure(name="daglig mail-check", trigger="tjekke mail",
+                        procedure="mail_check → notify")
+    assert pb.procedures_prompt_section("hvordan bliver vejret i morgen?") is None
+
+
+def test_laeseren_viser_matchende_rutine(isolated_runtime):
+    """Positiv kontrol: uden den er den negative test ovenfor tom — en læser
+    der altid svarer None ville også bestå."""
+    pb.upsert_procedure(name="daglig mail-check", trigger="tjekke mail",
+                        procedure="mail_check → notify")
+
+    tekst = pb.procedures_prompt_section("kan du tjekke mail for mig?")
+
+    assert tekst is not None
+    assert "daglig mail-check" in tekst
+    assert "mail_check → notify" in tekst
+
+
+def test_laeseren_taeller_hittet_saa_taelleren_kan_se_brug(isolated_runtime):
+    """Kernen i hele rettelsen: efter et kald er `hit_count` > 0.
+
+    Uden dette kunne emergence-tællerens krav aldrig opfyldes — uanset hvor
+    mange gange rutinen blev vist. Det var teateret.
+    """
+    pb.upsert_procedure(name="daglig mail-check", trigger="tjekke mail",
+                        procedure="mail_check → notify")
+    foer = pb.get_procedure(procedure_name="daglig mail-check")
+    assert foer["hit_count"] == 0
+
+    pb.procedures_prompt_section("kan du tjekke mail for mig?")
+
+    efter = pb.get_procedure(procedure_name="daglig mail-check")
+    assert efter["hit_count"] == 1
+    assert efter["last_triggered_at"], "et hit skal tidsstemples"
+
+
+def test_tom_besked_giver_ingen_soegning(isolated_runtime):
+    """En tom besked må ikke matche alt — ellers steg hit_count af sig selv."""
+    pb.upsert_procedure(name="daglig mail-check", trigger="tjekke mail",
+                        procedure="mail_check → notify")
+
+    assert pb.procedures_prompt_section("") is None
+    assert pb.get_procedure(procedure_name="daglig mail-check")["hit_count"] == 0
+

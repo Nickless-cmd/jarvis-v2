@@ -16,12 +16,22 @@ styk, alle «Sådan: <enkeltord>» med `hit_count=0`, og `hit_count` sættes kun
 `match_procedures_for_text`, som havde nul kaldere i hele træet. Tælleren
 kræver nu målt brug eller en bevidst pinning.
 
-Det der IKKE er rettet: at et absolut tal overhovedet bruges som udsagn om
+Det der IKKE var rettet: at et absolut tal overhovedet bruges som udsagn om
 vækst. Et stigende antal målte procedurer er stadig ikke en måling af at evnen
 vokser — kun af at banken gør.
+
+13/11-2026 (tredje runde): begge huller lukket.
+* `procedures_prompt_section` er bankens LÆSER — `match_procedures_for_text`
+  havde nul kaldere, så `hit_count` kunne per definition ikke stige, og
+  kravet `hit_count > 0` var en betingelse intet kunne opfylde.
+* Tælleren kræver nu også `created_at` inden for vinduet: et DELTA, ikke et
+  niveau. Summary siger «N new procedures shown or pinned in the last W days»
+  i stedet for «indicate expanding stable capability».
 """
 
 from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -159,6 +169,7 @@ def procedure_db(monkeypatch):
     En fake-forbindelse der returnerer de samme rækker uanset SQL kan ikke se
     forskel på «alle rækker» og «kun brugte rækker». Den ville måle sin egen
     mock i stedet for WHERE-grenen, og en grøn test ville ikke betyde noget.
+    `created_at` er med, fordi tælleren nu også filtrerer på den.
     """
     import sqlite3
 
@@ -166,15 +177,19 @@ def procedure_db(monkeypatch):
     db.row_factory = sqlite3.Row
     db.execute(
         "CREATE TABLE cognitive_procedures "
-        "(name TEXT, hit_count INTEGER, pinned INTEGER, deleted INTEGER)"
+        "(name TEXT, hit_count INTEGER, pinned INTEGER, deleted INTEGER, "
+        " created_at TEXT)"
     )
     monkeypatch.setattr(em, "connect", lambda: db)
     return db
 
 
-def _indsæt(db, *raekker):
+def _indsæt(db, *raekker, alder_dage: float = 0.0):
+    """Indsæt rækker. `alder_dage` styrer `created_at`, så delta-grenen kan prøves."""
+    ts = (datetime.now(UTC) - timedelta(days=alder_dage)).isoformat()
     db.executemany(
-        "INSERT INTO cognitive_procedures VALUES (?, ?, ?, ?)", list(raekker)
+        "INSERT INTO cognitive_procedures VALUES (?, ?, ?, ?, ?)",
+        [(n, h, p, d, ts) for (n, h, p, d) in raekker],
     )
     db.commit()
 
@@ -196,6 +211,43 @@ def test_brugte_og_pinnede_taeller_men_slettede_goer_ikke(procedure_db):
     )
 
     assert em._fetch_procedures_count() == 2
+
+
+def test_gamle_rutiner_er_ikke_vaekst(procedure_db):
+    """Kernen i fix 3: et NIVEAU der har stået stille er ikke en ændring.
+
+    Uden dette krav fyrede mønsteret på et lager fra uger tilbage, og ordet
+    «growth» beskrev noget der ikke var sket i vinduet.
+    """
+    _indsæt(procedure_db, *[(f"gammel{i}", 1, 0, 0) for i in range(8)],
+            alder_dage=90)
+
+    assert em._fetch_procedures_count(window_days=21) == 0
+
+
+def test_nye_rutiner_i_brug_taeller_som_vaekst(procedure_db):
+    """Positiv kontrol: uden den kan den negative test ikke skelne «gammel»
+    fra «ingen». Grænsen skal kunne passeres."""
+    _indsæt(procedure_db, *[(f"ny{i}", 1, 0, 0) for i in range(5)])
+    _indsæt(procedure_db, *[(f"gammel{i}", 1, 0, 0) for i in range(9)],
+            alder_dage=90)
+
+    assert em._fetch_procedures_count(window_days=21) == 5
+
+
+def test_summary_paastaar_ikke_expanding(procedure_db, monkeypatch):
+    """Ordvalget er påstanden. «expanding stable capability» om et niveau var
+    en løgn; nu står der hvad der faktisk blev målt."""
+    _indsæt(procedure_db, *[(f"ny{i}", 1, 0, 0) for i in range(5)])
+    monkeypatch.setattr(em, "_fetch_recent_events", lambda **k: [])
+    monkeypatch.setattr(em, "_fetch_decisions_count", lambda **k: 0)
+
+    kandidater = em._detect_candidates(window_days=21)
+    cap = [c for c in kandidater if c.pattern_key == "capability_growth_procedures"]
+
+    assert cap, "positiv kontrol: kandidaten skal findes"
+    assert "expanding" not in cap[0].summary
+    assert "last 21 days" in cap[0].summary
 
 
 def test_en_bank_uden_brug_foder_ingen_capability_kandidat(procedure_db, monkeypatch):

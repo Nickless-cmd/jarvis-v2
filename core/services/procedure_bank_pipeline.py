@@ -339,3 +339,41 @@ def build_procedure_bank_surface() -> dict[str, Any]:
         "recent": [p for p in all_procs if not p.get("pinned")][:10],
         "total_count": len(all_procs),
     }
+
+
+def procedures_prompt_section(text: str) -> str | None:
+    """Læseren banken manglede — matchende rutiner ind i prompten.
+
+    Målt 13/11-2026: `match_procedures_for_text` havde NUL kaldere i hele
+    træet. Banken blev fyldt (`run_closure_gate`) og vist (Mission Control),
+    men aldrig læst der hvor den kunne gøre en forskel. Derfor kunne
+    `hit_count` per definition ikke stige — og tælleren i `emergence.py`
+    kræver netop `hit_count > 0`. Kravet var en betingelse intet kunne
+    opfylde: teater, ikke en mekanisme.
+
+    `hit_count` betyder her «antallet af gange rutinen blev VIST for mig i en
+    prompt», ikke «antallet af gange jeg fulgte den». Det er den eneste
+    påstand koden kan bære, og den er sand.
+
+    Kaldes med brugerens besked. Et match er et forslag, ikke en ordre.
+    """
+    try:
+        matchede = match_procedures_for_text(text, limit=2)
+    except Exception as exc:  # noqa: BLE001 — en defekt læser må ikke vælte prompten
+        logger.warning("procedure-bank: kunne ikke matche rutiner: %s", exc)
+        return None
+    if not matchede:
+        return None
+    linjer: list[str] = []
+    for m in matchede:
+        navn = str(m.get("name") or "").strip()
+        if not navn:
+            continue
+        trin = str(m.get("procedure") or "").strip()
+        linjer.append(f"· {navn}" + (f" → {trin}" if trin else ""))
+    if not linjer:
+        return None
+    return (
+        "Rutiner jeg har gjort før, som matcher denne besked "
+        "(forslag, ikke en ordre):\n" + "\n".join(linjer)
+    )

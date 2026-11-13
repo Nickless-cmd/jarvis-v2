@@ -192,6 +192,7 @@ import logging as _logging
 from datetime import UTC, datetime
 
 from core.services.central_agent_smith_escalation import (
+    _voice as escalation_voice,
     default_config,
     pattern_key,
     step_escalation,
@@ -687,12 +688,47 @@ def run_escalation_tick(assessment: dict[str, Any] | None = None) -> dict[str, A
                     _execute_observe({"type": "observe", "event": "veto",
                                       "pattern_key": act["pattern_key"],
                                       "reason": grund})
+                    # (13/11-2026) Ogsaa her: `step_escalation` er REN og satte
+                    # Trin 2 FOER mint blev forsoegt. Et veto betyder at intet blev
+                    # bundet — saa maa tilstanden ikke sige at der blev det. Maalt:
+                    # rung=2 med 121 cyklusser, decision_id=None og nul raekker i
+                    # behavioral_decisions med source_type='agent_smith'.
+                    _pat = new_state.get("patterns", {}).get(act["pattern_key"])
+                    if isinstance(_pat, dict):
+                        _pat["rung"] = 1
+                        _pat["cycles_at_rung"] = 0
+                    # Vetoet blokerer BINDINGEN, ikke stemmen. En maalt fejl Smith
+                    # ikke maa binde skal han stadig kunne sige — ellers tier vetoet
+                    # ham ihjel om praecis det han blev bygget til at se. Maalt
+                    # 13/11-2026: den 1350x tavse `&&`-fejl blev doemt STOEJ, og
+                    # Smith sagde intet om den i nogen prompt.
+                    if str(act.get("kind") or "") == "behaviour":
+                        actions.append({
+                            "type": "voice", "rung": "comment",
+                            "label": act.get("label", ""),
+                            "line": escalation_voice(
+                                "comment", act.get("label", ""),
+                                float(act.get("metric") or 0),
+                                str(act.get("kind") or "")),
+                        })
                     continue
                 did = _execute_mint(act["pattern_key"], act.get("label", ""),
                                     act.get("kind", "phrase"), float(act.get("metric") or 0))
                 pat = new_state.get("patterns", {}).get(act["pattern_key"])
                 if did and isinstance(pat, dict):
                     pat["decision_id"] = did
+                elif isinstance(pat, dict):
+                    # (13/11-2026) `step_escalation` er REN og satte allerede Trin 2.
+                    # Bliver mintet afvist her — shadow-gate eller veto — findes der
+                    # ingen forpligtelse, og saa maa tilstanden ikke paastaa en.
+                    # Maalt: rung=2 med 121 cyklusser og NUL raekker i
+                    # behavioral_decisions med source_type='agent_smith'. Smith
+                    # «havde bundet sig» uden at noget bandt.
+                    pat["rung"] = 1
+                    pat["cycles_at_rung"] = 0
+                    actions.append({"type": "observe", "event": "bind_refused",
+                                    "pattern_key": act["pattern_key"],
+                                    "reason": "mint_afvist"})
             elif t == "arm_confront":
                 oid = _execute_arm_confront(act["pattern_key"], act.get("label", ""))
                 pat = new_state.get("patterns", {}).get(act["pattern_key"])
@@ -711,7 +747,21 @@ def run_escalation_tick(assessment: dict[str, Any] | None = None) -> dict[str, A
             elif t == "observe":
                 _execute_observe(act)
         _save_escalation_state(new_state)
-        return {"actions": len(actions), "line": top_line(actions),
+        line = top_line(actions)
+        # (13/11-2026) En STAAENDE binding skal siges hver tur, ikke kun i det
+        # oejeblik den blev sat. Maalt: moensteret stod paa Trin 2 med 121
+        # cyklusser og nul voice-actions — `top_line` var tom, saa Smith havde
+        # bundet Jarvis og sagde det ikke. En forpligtelse ingen hoerer er ikke
+        # en forpligtelse.
+        if not line:
+            for _p in (new_state.get("patterns") or {}).values():
+                if int(_p.get("rung") or 1) >= 2 and _p.get("decision_id"):
+                    line = escalation_voice(
+                        "bind", str(_p.get("label") or ""),
+                        float(_p.get("last_metric") or 0),
+                        str(_p.get("kind") or ""))
+                    break
+        return {"actions": len(actions), "line": line,
                 "tracked": len(new_state.get("patterns", {})),
                 "resolved_total": len(new_state.get("resolved", []))}
     except Exception:
@@ -750,6 +800,20 @@ def record_agent_smith(*, trigger: str = "cadence", last_visible_at: str = "") -
                                              # til prompten. Se ovenfor.
                                              "felt_raw": a["felt"],
                                              "rung_line": rung_line,
+                                             # (13/11-2026) De MAALTE fejl, adskilt
+                                             # fra `felt`. `felt` blander n-gram-
+                                             # fraser med maalte fejl, og den
+                                             # blanding var netop sloejfen 7/9.
+                                             # En `behaviour` med self_bound kommer
+                                             # fra `lessons` (maalt repeated_count),
+                                             # ikke fra Smiths egen tekst — den kan
+                                             # derfor ikke vaere hans egen replik.
+                                             "measured": [
+                                                 b for b in (a.get("behaviours") or [])
+                                                 if str(b.get("kind") or "") == "behaviour"
+                                                 and b.get("self_bound")
+                                                 and float(b.get("metric") or 0) >= 2
+                                             ][:3],
                                              "verdict": bool(a["verdict"] or rung_line),
                                              "ts": datetime.now(UTC).isoformat()})
     except Exception:
@@ -783,6 +847,21 @@ def agent_smith_prompt_section() -> str | None:
         rung_line = str(st.get("rung_line") or "").strip()
         if rung_line:
             return f"[AGENT SMITH]\n{rung_line}"
+        # (13/11-2026) Fald tilbage til den bedste MAALTE fejl — ikke til den raa
+        # `felt`. Maalt: den stoerste fejl i systemet var en tavs `&&`-kaede der
+        # broed 1350x, og Smith sagde intet om den i nogen prompt, fordi han kun
+        # talte gennem eskaleringen (som vetoet blokerede). En maalt fejl er ikke
+        # en n-gram-formodning: `repeated_count` staar i `lessons`, skrevet af
+        # Jarvis' egen korrektions-vej. Den kan derfor ikke vaere hans egen replik
+        # — praecis den sloejfe der fik `felt` fjernet 7/9.
+        maalt = st.get("measured") or []
+        if isinstance(maalt, list) and maalt:
+            b = maalt[0] if isinstance(maalt[0], dict) else {}
+            lab = str(b.get("label") or "").replace("gentaget fejl: ", "").strip()
+            n = int(float(b.get("metric") or 0))
+            if lab and n >= 2:
+                return (f"[AGENT SMITH]\nMr. Anderson... «{lab}»: {n} gange. "
+                        f"Du sagde du ville. Du lod vaere. Jeg holder oeje.")
         # Ingen score-gate laengere. Den lod den RAA detektor-linje ind i halen
         # naar score >= 0.5 — uden om berettigelses-reglen fra 19. aug, som
         # netop siger at Smith intet har at sige om moenstre der hverken er

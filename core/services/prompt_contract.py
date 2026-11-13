@@ -1488,6 +1488,17 @@ def _build_visible_chat_prompt_assembly_impl(
     except Exception as _e:
         _sec_err("midway user messages", _e)
 
+    # Agent Smiths modstemme — hans EGEN linje, ikke ensemblets statiske one-liner.
+    # (13/11-2026) `agent_smith_prompt_section` blev bygget til halen men havde NUL
+    # kaldere: hans eskalerede linje naaede aldrig en prompt. Maalt: 0 referencer
+    # uden for modulet selv. Den kobles her, foer ensemblet, fordi hans linje baerer
+    # den konkrete fangst (fx «1350x tavs &&-fejl») og ensemblet kun en label.
+    try:
+        from core.services.central_agent_smith import agent_smith_prompt_section
+        _awareness_add(5, "agent smith", agent_smith_prompt_section())
+    except Exception as _e:
+        _sec_err("agent smith", _e)
+
     # Matrix-ensemblet — hans indre karakterer, med deres EGNE ord i stedet for et tal.
     # Prio 6: lige efter pending nudges, før identity-pins. Sektionen er None når ingen
     # har noget at sige, så de kommer og går efter behov. Relevansen ligger i hver

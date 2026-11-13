@@ -78,8 +78,15 @@ _MAX_DOM_PER_RUN = 40
 
 
 def _cachet_grund(k: "Kandidat") -> str:
-    """En NEGATIV dom der allerede er givet for præcis denne tekst."""
-    return _DOM_CACHE.get(k.fingeraftryk, "")
+    """En NEGATIV dom der allerede er givet for præcis denne tekst.
+
+    Nøglen er ``cache_noegle`` (navn + tekst), ikke ``fingeraftryk`` (navn).
+    Målt 13/11-2026, Bjørns indvending: samme titel kan senere bære en helt
+    anden hypotese — skærpet med en falsificerbar forudsigelse — og en cachet
+    afvisning ville så overleve at grundlaget blev skrevet om. Hukommelsen må
+    ikke overleve det den husker om.
+    """
+    return _DOM_CACHE.get(k.cache_noegle, "")
 
 
 def _gem_dom(k: "Kandidat", grund: str) -> None:
@@ -91,7 +98,7 @@ def _gem_dom(k: "Kandidat", grund: str) -> None:
     if len(_DOM_CACHE) >= _DOM_CACHE_MAX:
         for nøgle in list(_DOM_CACHE)[: _DOM_CACHE_MAX // 2]:
             _DOM_CACHE.pop(nøgle, None)
-    _DOM_CACHE[k.fingeraftryk] = grund
+    _DOM_CACHE[k.cache_noegle] = grund
 
 
 DRØMME_MAPPE = Path.home() / "dreams"
@@ -118,6 +125,10 @@ class Kandidat:
     carry: int | None = None
     konklusion: str = ""
     fingeraftryk: str = field(default="", repr=False)
+    # Dommens nøgle: navn + INDHOLD. ``fingeraftryk`` er kandidatens identitet
+    # (bruges til dedup af allerede-forfremmede hypoteser og skal være stabil),
+    # men en dom må ikke hænge på identiteten alene — se ``_cachet_grund``.
+    cache_noegle: str = field(default="", repr=False)
 
     def __post_init__(self) -> None:
         # Felterne udtraekkes HER, ikke i parseren. Foer laa udtraekket i
@@ -136,6 +147,10 @@ class Kandidat:
         if not self.fingeraftryk:
             self.fingeraftryk = hashlib.sha1(  # noqa: S324 - dedup, ikke sikkerhed
                 self.navn.strip().lower().encode()
+            ).hexdigest()[:16]
+        if not self.cache_noegle:
+            self.cache_noegle = hashlib.sha1(  # noqa: S324 - dedup, ikke sikkerhed
+                (self.navn.strip().lower() + "\x00" + self.tekst).encode()
             ).hexdigest()[:16]
 
     @property
@@ -235,26 +250,46 @@ _SKAL_VIDERE = (
 )
 
 
-def er_en_hypotese(k: Kandidat) -> bool:
+def er_en_hypotese(k: Kandidat) -> bool | None:
     """Bjørns krav: «sørg for det er faktisk hypoteser».
 
-    Fejler lukket — uden en dom er svaret nej.
+    ``None`` = kunne IKKE undersøges. (13/11-2026, Bjørns indvending) Før
+    kollapsede både en exception OG et tomt modelsvar (``None``) til ``False``
+    — så en midlertidig modelfejl blev til dommen «ikke en hypotese», og den
+    dom blev derefter cachet. Det er præcis den fejlform aftenen handlede om:
+    «kunne ikke undersøges» forklædt som «undersøgt og afvist».
+
+    Kun de to forventede ord er en dom. Et tredje ord er heller ikke et svar —
+    at gætte hvad modellen «mente» er den samme slags løgn.
     """
     try:
         from core.services.local_small_model import spoerg_et_ord
-        return spoerg_et_ord(_ER_HYPOTESE, k.tekst[:1200]) == "HYPOTESE"
+        svar = spoerg_et_ord(_ER_HYPOTESE, k.tekst[:1200])
     except Exception as exc:
         logger.debug("dream_hypothesis_judge: hypotese-proeve fejlede: %s", exc)
+        return None
+    if svar == "HYPOTESE":
+        return True
+    if svar == "NOTE":
         return False
+    logger.debug("dream_hypothesis_judge: hypotese-proeve uden brugbart svar: %r", svar)
+    return None
 
 
-def skal_videre(k: Kandidat) -> bool:
+def skal_videre(k: Kandidat) -> bool | None:
+    """``None`` = kunne IKKE undersøges. Samme tredje tilstand som ovenfor."""
     try:
         from core.services.local_small_model import spoerg_et_ord
-        return spoerg_et_ord(_SKAL_VIDERE, k.tekst[:1200]) == "FREMFOER"
+        svar = spoerg_et_ord(_SKAL_VIDERE, k.tekst[:1200])
     except Exception as exc:
         logger.debug("dream_hypothesis_judge: modenheds-proeve fejlede: %s", exc)
+        return None
+    if svar == "FREMFOER":
+        return True
+    if svar == "BEHOLD":
         return False
+    logger.debug("dream_hypothesis_judge: modenheds-proeve uden brugbart svar: %r", svar)
+    return None
 
 
 def doem(k: Kandidat) -> tuple[bool, str]:
@@ -263,14 +298,24 @@ def doem(k: Kandidat) -> tuple[bool, str]:
     Ren funktion: den læser kun kandidaten. Cache og loft hører i
     ``koer_dommer`` — ellers bliver dommen tilstandsbundet, og en test der
     dømmer den samme tekst to gange får to forskellige svar.
+
+    Tre udfald, ikke to: ``"ikke undersoegt"`` er en EGEN grund. Den betyder
+    at modelporten ikke kunne svare, og den må hverken tælles som en afvisning
+    eller caches — næste tik skal spørge igen.
     """
     if k.selv_afvist:
         return False, "selv-afvist"
     if not siger_hvad_der_ville_modbevise_den(k):
         return False, "ingen falsifikation"
-    if not er_en_hypotese(k):
+    hypotese = er_en_hypotese(k)
+    if hypotese is None:
+        return False, "ikke undersoegt"
+    if not hypotese:
         return False, "ikke en hypotese"
-    if not skal_videre(k):
+    moden = skal_videre(k)
+    if moden is None:
+        return False, "ikke undersoegt"
+    if not moden:
         return False, "ikke moden"
     return True, "fremfoert"
 

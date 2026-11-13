@@ -438,22 +438,22 @@ _Dommer over drømme-hypoteser: hvad skal videre fra drømme-stadiet?_
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_cachet_grund` | `(k)` | En NEGATIV dom der allerede er givet for præcis denne tekst. | [src](../../../core/services/dream_hypothesis_judge.py#L80) |
-| function | `_gem_dom` | `(k, grund)` | Kun negative domme caches. | [src](../../../core/services/dream_hypothesis_judge.py#L85) |
-| class | `Kandidat` | `` | Én ``## sektion`` fra en kandidat-fil. | [src](../../../core/services/dream_hypothesis_judge.py#L111) |
-| method | `Kandidat.__post_init__` | `(self)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L122) |
-| method | `Kandidat.selv_afvist` | `(self)` | Han har allerede dømt den i selve artefaktet. | [src](../../../core/services/dream_hypothesis_judge.py#L142) |
-| function | `_parse_fil` | `(sti)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L152) |
-| function | `laes_kandidater` | `(mappe=…)` | Alle hypotese-kandidater fra drømme-mappen, nyeste fil først. | [src](../../../core/services/dream_hypothesis_judge.py#L172) |
-| function | `siger_hvad_der_ville_modbevise_den` | `(k)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L205) |
-| function | `er_en_hypotese` | `(k)` | Bjørns krav: «sørg for det er faktisk hypoteser». | [src](../../../core/services/dream_hypothesis_judge.py#L238) |
-| function | `skal_videre` | `(k)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L251) |
-| function | `doem` | `(k)` | ``(forfrem, grund)``. Grunden logges, saa dommen kan efterproeves. | [src](../../../core/services/dream_hypothesis_judge.py#L260) |
-| function | `_afsnit` | `(k)` | Felter fra begge notations-former i korpuset: ``**Navn:**`` og ``### Navn``. | [src](../../../core/services/dream_hypothesis_judge.py#L291) |
-| function | `_foerste` | `(felter, *navne)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L301) |
-| function | `byg_preregistrering` | `(k)` | Markdown → den form ``register_governed_hypothesis`` kræver. | [src](../../../core/services/dream_hypothesis_judge.py#L309) |
-| function | `_allerede_forfremmet` | `(k)` | Er denne kandidat skrevet ind foer? | [src](../../../core/services/dream_hypothesis_judge.py#L340) |
-| function | `forfrem` | `(k)` | Skriv hypotesen ind hvor den kan testes og dø. Self-safe. | [src](../../../core/services/dream_hypothesis_judge.py#L362) |
-| function | `koer_dommer` | `(*, mappe=…)` | Dømm alle kandidater og forfrem dem der har fortjent det. | [src](../../../core/services/dream_hypothesis_judge.py#L374) |
+| function | `_gem_dom` | `(k, grund)` | Kun negative domme caches. | [src](../../../core/services/dream_hypothesis_judge.py#L92) |
+| class | `Kandidat` | `` | Én ``## sektion`` fra en kandidat-fil. | [src](../../../core/services/dream_hypothesis_judge.py#L118) |
+| method | `Kandidat.__post_init__` | `(self)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L133) |
+| method | `Kandidat.selv_afvist` | `(self)` | Han har allerede dømt den i selve artefaktet. | [src](../../../core/services/dream_hypothesis_judge.py#L157) |
+| function | `_parse_fil` | `(sti)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L167) |
+| function | `laes_kandidater` | `(mappe=…)` | Alle hypotese-kandidater fra drømme-mappen, nyeste fil først. | [src](../../../core/services/dream_hypothesis_judge.py#L187) |
+| function | `siger_hvad_der_ville_modbevise_den` | `(k)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L220) |
+| function | `er_en_hypotese` | `(k)` | Bjørns krav: «sørg for det er faktisk hypoteser». | [src](../../../core/services/dream_hypothesis_judge.py#L253) |
+| function | `skal_videre` | `(k)` | ``None`` = kunne IKKE undersøges. Samme tredje tilstand som ovenfor. | [src](../../../core/services/dream_hypothesis_judge.py#L279) |
+| function | `doem` | `(k)` | ``(forfrem, grund)``. Grunden logges, saa dommen kan efterproeves. | [src](../../../core/services/dream_hypothesis_judge.py#L295) |
+| function | `_afsnit` | `(k)` | Felter fra begge notations-former i korpuset: ``**Navn:**`` og ``### Navn``. | [src](../../../core/services/dream_hypothesis_judge.py#L336) |
+| function | `_foerste` | `(felter, *navne)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L346) |
+| function | `byg_preregistrering` | `(k)` | Markdown → den form ``register_governed_hypothesis`` kræver. | [src](../../../core/services/dream_hypothesis_judge.py#L354) |
+| function | `_allerede_forfremmet` | `(k)` | Er denne kandidat skrevet ind foer? | [src](../../../core/services/dream_hypothesis_judge.py#L385) |
+| function | `forfrem` | `(k)` | Skriv hypotesen ind hvor den kan testes og dø. Self-safe. | [src](../../../core/services/dream_hypothesis_judge.py#L407) |
+| function | `koer_dommer` | `(*, mappe=…)` | Dømm alle kandidater og forfrem dem der har fortjent det. | [src](../../../core/services/dream_hypothesis_judge.py#L419) |
 
 ## `core/services/dream_hypothesis_signal_tracking.py`
 _Dream-hypothesis signal tracking — migrated onto signal_tracking_framework._

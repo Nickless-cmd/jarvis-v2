@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10143/18659 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10144/18659 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10143/18659 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 899 | 1612 | 55% |
-| `core.services` | 6791 | 12663 | 53% |
+| `core.services` | 6792 | 12663 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 10143/18659 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2629)
+## Undocumented public functions (2628)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L231)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1227,8 +1227,7 @@ Generated from source. 10143/18659 functions/methods documented (54%). The list 
 - `core/services/dream_hypothesis_generator.py` :: `build_dream_hypothesis_surface` (L394)
 - `core/services/dream_hypothesis_generator.py` :: `list_dream_hypotheses` (L354)
 - `core/services/dream_hypothesis_generator.py` :: `mark_hypothesis_presented` (L383)
-- `core/services/dream_hypothesis_judge.py` :: `siger_hvad_der_ville_modbevise_den` (L205)
-- `core/services/dream_hypothesis_judge.py` :: `skal_videre` (L251)
+- `core/services/dream_hypothesis_judge.py` :: `siger_hvad_der_ville_modbevise_den` (L220)
 - `core/services/dream_hypothesis_signal_tracking.py` :: `build_runtime_dream_hypothesis_signal_surface` (L89)
 - `core/services/dream_hypothesis_signal_tracking.py` :: `refresh_runtime_dream_hypothesis_signal_statuses` (L85)
 - `core/services/dream_hypothesis_signal_tracking.py` :: `track_runtime_dream_hypothesis_signals_for_visible_turn` (L60)

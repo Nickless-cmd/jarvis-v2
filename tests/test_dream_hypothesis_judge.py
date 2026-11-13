@@ -211,7 +211,10 @@ def test_cachen_sparer_modelkald_ved_gentaget_koersel():
 
     def _svar(*a, **kw):
         kald.append(1)
-        return "BEHOLD"          # aldrig HYPOTESE → afvist, og dermed cachet
+        # (13/11-2026) «NOTE» er den GYLDIGE negative dom på hypotese-porten.
+        # Testen brugte tidligere «BEHOLD» her — et svar fra den anden port —
+        # og stolede dermed på at et ugyldigt svar blev læst som et nej.
+        return "NOTE"
 
     with patch.object(dj, "laes_kandidater", return_value=ks), \
          patch.object(dj, "_allerede_forfremmet", return_value=False), \
@@ -223,6 +226,79 @@ def test_cachen_sparer_modelkald_ved_gentaget_koersel():
 
     assert foerste > 0, "første kørsel skal spørge modellen"
     assert anden == 0, f"anden kørsel spurgte modellen {anden} gange — cachen virker ikke"
+
+
+def test_aendret_indhold_doemmes_igen_selv_om_navnet_er_det_samme():
+    """Bjørns indvending 13/11-2026: dommen hænger på INDHOLDET, ikke på titlen.
+
+    Samme titel kan senere bære en helt anden hypotese — skærpet med en
+    falsificerbar forudsigelse. En cachet afvisning må ikke overleve at
+    grundlaget blev skrevet om: så arbejder hukommelsen imod læringen.
+    """
+    from core.services import dream_hypothesis_judge as dj
+
+    dj._DOM_CACHE.clear()
+    kald: list[int] = []
+    gammel = _k(_HC7, "Relationer skaber sammenhæng")
+    ny = _k(_HC7 + "\n\n**Test:** hvis X stiger, falder Y inden for 7 dage.",
+            "Relationer skaber sammenhæng")
+    assert gammel.fingeraftryk == ny.fingeraftryk, "navnet skal være identisk her"
+    assert gammel.cache_noegle != ny.cache_noegle, "indholdet er ændret"
+
+    def _svar(*a, **kw):
+        kald.append(1)
+        return "NOTE"
+
+    with patch.object(dj, "laes_kandidater", return_value=[gammel]), \
+         patch.object(dj, "_allerede_forfremmet", return_value=False), \
+         patch("core.services.local_small_model.spoerg_et_ord", side_effect=_svar):
+        dj.koer_dommer()
+        foerste = len(kald)
+        # Samme titel, nyt indhold: skal undersøges forfra.
+        with patch.object(dj, "laes_kandidater", return_value=[ny]):
+            dj.koer_dommer()
+    assert foerste > 0
+    assert len(kald) > foerste, (
+        "en ændret hypotese blev afvist på en gammel dom — cachen husker titlen, "
+        "ikke indholdet")
+
+
+def test_modelfejl_caches_ikke_som_en_afvisning():
+    """Bjørns indvending 13/11-2026: «kunne ikke undersøges» må ikke blive
+    «undersøgt og afvist».
+
+    Målt: både en exception og et tomt modelsvar (``None``) kollapsede til
+    ``False`` → «ikke en hypotese» → og den dom blev cachet. En midlertidig
+    modelfejl blev dermed permanent.
+    """
+    from core.services import dream_hypothesis_judge as dj
+
+    dj._DOM_CACHE.clear()
+    ks = [_k(_HC7, "HC-7")]
+
+    with patch.object(dj, "laes_kandidater", return_value=ks), \
+         patch.object(dj, "_allerede_forfremmet", return_value=False), \
+         patch("core.services.local_small_model.spoerg_et_ord", return_value=None):
+        r = dj.koer_dommer()
+
+    assert dj._DOM_CACHE == {}, f"en manglende dom blev cachet: {dj._DOM_CACHE}"
+    assert r["tal"].get("ikke undersoegt") == 1, r["tal"]
+    assert "ikke en hypotese" not in r["tal"], r["tal"]
+
+
+def test_et_ugyldigt_modelsvar_er_ikke_en_dom():
+    """Et ord fra den forkerte kategori er heller ikke et svar.
+
+    «BEHOLD» på spørgsmålet «er det en hypotese?» er hverken ja eller nej —
+    at læse det som et nej er at gætte hvad modellen «mente».
+    """
+    from core.services import dream_hypothesis_judge as dj
+
+    k = _k(_HC7, "HC-7")
+    with patch("core.services.local_small_model.spoerg_et_ord", return_value="BEHOLD"):
+        assert dj.er_en_hypotese(k) is None
+    with patch("core.services.local_small_model.spoerg_et_ord", return_value="NOTE"):
+        assert dj.er_en_hypotese(k) is False
 
 
 def test_en_positiv_dom_cachede_ikke_saa_forfremmelse_kan_genproeves():

@@ -293,16 +293,18 @@ _Scor frosne forudsigelser om min egen adfaerd — mekanisk, ikke paa hukommelse
 | function | `_nu` | `()` | — | [src](../../../scripts/score_frozen_predictions.py#L179) |
 | function | `_parse` | `(ts)` | — | [src](../../../scripts/score_frozen_predictions.py#L183) |
 | function | `verificer_forsegling` | `(poster, forsegling)` | Id'er hvis frosne felter er aendret siden forseglingen blev skrevet. | [src](../../../scripts/score_frozen_predictions.py#L194) |
-| function | `_arkiv_aeldste` | `()` | Foerste (aeldste) arkiverede hash pr. post-id fra governance_ledger. | [src](../../../scripts/score_frozen_predictions.py#L214) |
-| function | `stemple_versioner` | `(data)` | Saet ``_forsegling_version`` paa poster forseglet under den gamle regel. | [src](../../../scripts/score_frozen_predictions.py#L239) |
-| function | `arkiver_forsegling` | `(poster)` | Skriv hashes til governance_ledger for poster der ikke er arkiveret endnu. | [src](../../../scripts/score_frozen_predictions.py#L271) |
-| function | `_hent_tal` | `(conn, sql)` | Koer én laesende spoergring og returnér foerste kolonne som tal. | [src](../../../scripts/score_frozen_predictions.py#L304) |
-| function | `_hent_fra_state` | `(spec)` | Laes en aggregeret vaerdi fra en state_store JSON-noegle. | [src](../../../scripts/score_frozen_predictions.py#L316) |
-| function | `evaluer` | `(post, conn, nu=…)` | Afgoer om én post kan scores nu, og i saa fald om den ramte. | [src](../../../scripts/score_frozen_predictions.py#L345) |
-| function | `kalibrering` | `(poster)` | Kalibrering paa HAENDELSE-niveau, ikke post-niveau. | [src](../../../scripts/score_frozen_predictions.py#L375) |
-| function | `score` | `(fil=…, db=…, *, dry_run=…, nu=…, arkiver=…)` | Scor alle modne poster. Skriver kun til filen hvis noget faktisk blev scoret. | [src](../../../scripts/score_frozen_predictions.py#L445) |
-| function | `_vis` | `(resultat)` | — | [src](../../../scripts/score_frozen_predictions.py#L583) |
-| function | `main` | `()` | — | [src](../../../scripts/score_frozen_predictions.py#L621) |
+| function | `_arkiv_aeldste` | `()` | Foerste (aeldste) arkiverede hash pr. post-id fra governance_ledger. | [src](../../../scripts/score_frozen_predictions.py#L222) |
+| function | `_arkiv_udfald` | `()` | Foerste (aeldste) arkiverede UDFALDS-hash pr. post-id. | [src](../../../scripts/score_frozen_predictions.py#L247) |
+| function | `arkiver_udfald` | `(poster, ids)` | Arkivér udfaldet for netop de poster der blev scoret i DENNE koersel. | [src](../../../scripts/score_frozen_predictions.py#L272) |
+| function | `stemple_versioner` | `(data)` | Saet ``_forsegling_version`` paa poster forseglet under den gamle regel. | [src](../../../scripts/score_frozen_predictions.py#L314) |
+| function | `arkiver_forsegling` | `(poster)` | Skriv hashes til governance_ledger for poster der ikke er arkiveret endnu. | [src](../../../scripts/score_frozen_predictions.py#L346) |
+| function | `_hent_tal` | `(conn, sql)` | Koer én laesende spoergring og returnér foerste kolonne som tal. | [src](../../../scripts/score_frozen_predictions.py#L379) |
+| function | `_hent_fra_state` | `(spec)` | Laes en aggregeret vaerdi fra en state_store JSON-noegle. | [src](../../../scripts/score_frozen_predictions.py#L391) |
+| function | `evaluer` | `(post, conn, nu=…)` | Afgoer om én post kan scores nu, og i saa fald om den ramte. | [src](../../../scripts/score_frozen_predictions.py#L420) |
+| function | `kalibrering` | `(poster)` | Kalibrering paa HAENDELSE-niveau, ikke post-niveau. | [src](../../../scripts/score_frozen_predictions.py#L450) |
+| function | `score` | `(fil=…, db=…, *, dry_run=…, nu=…, arkiver=…)` | Scor alle modne poster. Skriver kun til filen hvis noget faktisk blev scoret. | [src](../../../scripts/score_frozen_predictions.py#L520) |
+| function | `_vis` | `(resultat)` | — | [src](../../../scripts/score_frozen_predictions.py#L675) |
+| function | `main` | `()` | — | [src](../../../scripts/score_frozen_predictions.py#L725) |
 
 ## `scripts/seed_cognitive_state.py`
 _Seed cognitive state tables with initial values based on known context._

@@ -210,6 +210,14 @@ def verificer_forsegling(
 
 _ARKIV_AREA = "frozen_predictions"
 
+# (13/11-2026, Bjoerns femte fund) Udfaldet skal arkiveres i LEDGEREN, ikke kun
+# i posten. Foer blev `udfalds_hash` gemt i samme JSON-post som `hit` og
+# sammenlignet med en genberegning af SAMME post — saa kunne man rette `hit` OG
+# genberegne hashen, og kontrollen passede igen. En forsegling der kun
+# sammenligner filen med sig selv er ikke en forsegling. Det uafhaengige spor er
+# den foerste raekke i ledgeren; den kan ikke aendres ved at skrive i filen.
+_ARKIV_AREA_UDFALD = "frozen_predictions_udfald"
+
 
 def _arkiv_aeldste() -> dict[str, str]:
     """Foerste (aeldste) arkiverede hash pr. post-id fra governance_ledger.
@@ -234,6 +242,73 @@ def _arkiv_aeldste() -> dict[str, str]:
         if pid not in aeldst or ts < aeldst[pid][0]:
             aeldst[pid] = (ts, str(v["frozen_hash"]))
     return {pid: h for pid, (_ts, h) in aeldst.items()}
+
+
+def _arkiv_udfald() -> dict[str, str]:
+    """Foerste (aeldste) arkiverede UDFALDS-hash pr. post-id.
+
+    Samme princip som ``_arkiv_aeldste``, men for det der blev skrevet ved
+    scoringen. En post der er scoret for denne arkivering fandtes, har ingen
+    raekke — og bliver ved med at mangle en, uanset hvad der senere skrives i
+    filen. Det er med vilje: et udfald kan ikke forsegles bagefter.
+    """
+    try:
+        from core.runtime.db_governance_ledger import read_ledger
+
+        raekker = read_ledger(area=_ARKIV_AREA_UDFALD, limit=500)
+    except Exception:  # ledgeren er et ekstra spor, ikke en forudsaetning for at score
+        return {}
+    aeldst: dict[str, tuple[str, str]] = {}
+    for r in raekker:
+        v = r.get("value") if isinstance(r.get("value"), dict) else None
+        if not v or not v.get("udfalds_hash"):
+            continue
+        pid, ts = str(r.get("key") or ""), str(r.get("ts") or "")
+        if pid not in aeldst or ts < aeldst[pid][0]:
+            aeldst[pid] = (ts, str(v["udfalds_hash"]))
+    return {pid: h for pid, (_ts, h) in aeldst.items()}
+
+
+def arkiver_udfald(poster: list[dict[str, Any]], ids: list[str]) -> int:
+    """Arkivér udfaldet for netop de poster der blev scoret i DENNE koersel.
+
+    ``ids`` er ikke en bekvemmelighed: kun de poster der lige er skrevet maa
+    arkiveres. Blev hele listen arkiveret, ville de gamle, uforsikrede scoringer
+    faa en raekke nu og dermed se forseglede ud med tilbagevirkende kraft —
+    praecis den retroaktive pynt rettelsen her skal forhindre.
+    """
+    if not ids:
+        return 0
+    try:
+        from core.runtime.db_governance_ledger import record_mutation
+    except Exception:  # arkivering er valgfri — scoringen maa ikke afhaenge af den
+        return 0
+    allerede = _arkiv_udfald()
+    nye = 0
+    for p in poster:
+        if not isinstance(p, dict) or str(p.get("id")) not in ids:
+            continue
+        pid = str(p.get("id"))
+        if pid in allerede:
+            continue
+        h = udfalds_hash(p)
+        if not h:
+            continue
+        record_mutation(
+            _ARKIV_AREA_UDFALD,
+            pid,
+            {
+                "udfalds_hash": h,
+                "hit": p.get("hit"),
+                "actual": p.get("actual"),
+                "scored_at": p.get("scored_at"),
+                # Binding til det frosne design: et udfald hoerer til den
+                # forudsigelse der laa fast, ikke til en hvilken som helst post.
+                "frozen_hash": frozen_hash(p, _post_version(p)),
+            },
+        )
+        nye += 1
+    return nye
 
 
 def stemple_versioner(data: dict[str, Any]) -> dict[str, Any]:
@@ -480,10 +555,13 @@ def score(
     brudt = set(aendret) | set(arkiv_aendret)
 
     # Udfalds-forseglingen er separat fra frysningen: den dannes naar udfaldet
-    # SKRIVES, ikke naar posten fryses. En post scoret foer v3 har ingen — den
-    # rapporteres som `udfald_uforsikret` frem for at blive laest som intakt.
-    # En post hvis udfald er aendret EFTER scoring udelades fra kalibreringen,
-    # ligesom en brudt frysning: ellers kunne et tal rettes til det man oenskede.
+    # SKRIVES, ikke naar posten fryses. (13/11-2026, Bjoerns femte fund)
+    # Sammenligningsgrundlaget er LEDGERENS foerste raekke — ikke feltet i
+    # filen. Foer blev `udfalds_hash` sammenlignet med en genberegning af samme
+    # post, saa en aendring af baade `hit` og hashen slap igennem; og en gammel
+    # scoret post kunne se forseglet ud blot ved at nogen tilfoejede feltet.
+    # Nu afgoer den uafhaengige raekke, ikke feltet, om posten er forseglet.
+    udfald_arkiv = _arkiv_udfald()
     udfald_aendret: set[str] = set()
     udfald_uforsikret: list[str] = []
     for p in poster:
@@ -492,10 +570,12 @@ def score(
         pid = str(p.get("id"))
         if pid in brudt:
             continue
-        forventet_u = p.get("udfalds_hash")
-        if not forventet_u:
+        arkiveret_u = udfald_arkiv.get(pid)
+        if not arkiveret_u:
+            # Ingen uafhaengig reference. Feltet i filen — hvis det findes —
+            # er skrevet af samme haand som udfaldet og beviser intet.
             udfald_uforsikret.append(pid)
-        elif forventet_u != udfalds_hash(p):
+        elif udfalds_hash(p) != arkiveret_u or p.get("udfalds_hash") != arkiveret_u:
             udfald_aendret.add(pid)
 
     # Poster forseglet under en ældre, smallere regel er ikke brudte — men de
@@ -510,6 +590,7 @@ def score(
     conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     try:
         rapport: list[dict[str, Any]] = []
+        nye_udfald: list[str] = []
         for p in poster:
             if not isinstance(p, dict):
                 continue
@@ -538,6 +619,7 @@ def score(
                 p["hit"] = r["hit"]
                 p["scored_at"] = nu.isoformat()
                 p["udfalds_hash"] = udfalds_hash(p)
+                nye_udfald.append(str(p.get("id")))
             rapport.append(r)
     finally:
         conn.close()
@@ -551,6 +633,15 @@ def score(
         skrev = True
 
     arkiveret = arkiver_forsegling(poster) if arkiver and not dry_run else 0
+
+    # Raekkefoelgen er ikke ligegyldig: filen skrives FOERST, ledgeren derefter.
+    # Blev ledgeren skrevet foerst og koerslen doede imellem, stod der en
+    # arkiveret udfaldshash for et udfald der aldrig blev gemt — og posten ville
+    # blive meldt som aendret, selv om ingen havde aendret den. Nu koster et
+    # afbrudt skridt kun at posten er `udfald_uforsikret`, hvilket er sandt.
+    udfald_arkiveret = (
+        arkiver_udfald(poster, nye_udfald) if arkiver and not dry_run and skrev else 0
+    )
 
     # Kalibreringen maa kun se poster der faktisk blev scoret i denne koersel
     # eller var scoret i forvejen — aldrig en post hvis grundlag eller udfald
@@ -574,6 +665,7 @@ def score(
         "stemplet": stempling["stemplet"],
         "uafklaret": stempling["uafklaret"],
         "arkiveret": arkiveret,
+        "udfald_arkiveret": udfald_arkiveret,
         "kalibrering": kalibrering(til_kalibrering),
         "skrev": skrev,
         "dry_run": dry_run,
@@ -605,6 +697,18 @@ def _vis(resultat: dict[str, Any]) -> None:
         )
     if resultat.get("arkiveret"):
         print(f"\n  nye forseglinger arkiveret i ledgeren: {resultat['arkiveret']}")
+    if resultat.get("udfald_arkiveret"):
+        print(f"  nye udfald arkiveret i ledgeren: {resultat['udfald_arkiveret']}")
+    if resultat.get("udfald_uforsikret"):
+        print(
+            f"\n  UFORSIKRET udfald — ingen uafhaengig raekke i ledgeren: "
+            f"{resultat['udfald_uforsikret']}"
+        )
+        print("  (et udfald kan ikke forsegles efter man kender det; de bliver uforsikrede)")
+    if resultat.get("svag_forsegling"):
+        print(
+            f"\n  svagere forseglet (aeldre hash-regel): {resultat['svag_forsegling']}"
+        )
 
     k = resultat["kalibrering"]
     print(f"\n  haendelser={k['n_events']}  poster={k['n_poster']}  brier={k['brier']}")

@@ -32,6 +32,7 @@ NU = datetime(2026, 11, 20, 12, 0, tzinfo=UTC)
 
 # Fanges FØR autouse-fixturen patcher den væk, så arkiv-testen kan kalde den ægte.
 _AEGTE_ARKIVER = sfp.arkiver_forsegling
+_AEGTE_UDFALDS_ARKIVER = sfp.arkiver_udfald
 
 
 @pytest.fixture(autouse=True)
@@ -43,8 +44,16 @@ def _ingen_produktions_ledger(monkeypatch: pytest.MonkeyPatch) -> None:
     hash som de efterfølgende tests blev målt imod. Det gjorde ni tests røde
     af en årsag der lå i en helt anden test. Arkivering testes eksplicit i
     `test_arkiv_*` med monkeypatch, så den ægte funktion dækkes dér.
+
+    (13/11-2026, Bjoerns femte fund) Også UDFALDS-arkivet holdes ude af testene:
+    uden det skrev en tidligere test sin `T1`-raekke i den delte shield-DB, og
+    den naeste test — der skulle se en post som uforsikret — saa den som
+    arkiveret. Testen maalte sin nabo. Standard her er en TOM ledger; de tests
+    der vil maale mod et arkiv peger `_arkiv_udfald` paa deres eget dict.
     """
     monkeypatch.setattr(sfp, "arkiver_forsegling", lambda poster: 0)
+    monkeypatch.setattr(sfp, "arkiver_udfald", lambda poster, ids: 0)
+    monkeypatch.setattr(sfp, "_arkiv_udfald", lambda: {})
 
 
 @pytest.fixture()
@@ -584,17 +593,29 @@ def test_scoring_danner_udfalds_forsegling(rigtig_db: Path, tmp_path: Path) -> N
     assert gemt["udfalds_hash"] == sfp.udfalds_hash(gemt)
 
 
-def test_aendret_hit_efter_scoring_udelades(rigtig_db: Path, tmp_path: Path) -> None:
+def test_aendret_hit_efter_scoring_udelades(
+    rigtig_db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Et `hit` der er rettet bagefter må ikke indgå i kalibreringen.
 
     `evaluer` svarer «allerede-scorets» for en post der har `hit` — så uden en
     udfalds-forsegling ville en rettet værdi blive genbrugt og vejet med.
+
+    (13/11-2026) Referencepunktet er arkivet, ikke feltet i filen: testen
+    peger derfor `_arkiv_udfald` på den hash den foerste koersel skrev. Uden
+    en arkiv-raekke kan et rettet `hit` ikke OPDAGES — kun markeres som
+    uforsikret, og så kan det ikke udelades. Det er den ærlige grænse for de
+    poster der blev scoret foer arkiveringen fandtes.
     """
     post = _post(threshold=3)
     fil = _fil(tmp_path, [post], forsegling={"T1": sfp.frozen_hash(post)})
     sfp.score(fil, rigtig_db, nu=NU)
 
     data = json.loads(fil.read_text(encoding="utf-8"))
+    arkiveret = data["forudsigelser"][0]["udfalds_hash"]
+    assert arkiveret
+    monkeypatch.setattr(sfp, "_arkiv_udfald", lambda: {"T1": arkiveret})
+
     data["forudsigelser"][0]["hit"] = False  # rettet efter scoring
     fil.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
@@ -634,3 +655,142 @@ def test_svag_forsegling_rapporteres(rigtig_db: Path, tmp_path: Path) -> None:
     assert resultat["svag_forsegling"] == ["T1"]
     assert resultat["forsegling_brudt"] == []
     assert resultat["rapport"][0]["status"] == "scoret"
+
+
+def test_aendret_udfald_med_genberegnet_hash_fanges_alligevel(
+    rigtig_db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Udfaldet OG dets hash kan aendres sammen — det skal stadig fanges.
+
+    (13/11-2026, Bjoerns femte fund) Foer blev ``udfalds_hash`` gemt i samme
+    post som ``hit`` og sammenlignet med en genberegning af SAMME post. Saa
+    kunne man rette ``hit`` og genberegne hashen, og kontrollen passede igen:
+    en forsegling der kun sammenligner filen med sig selv er ikke en
+    forsegling. Referencepunktet er nu ledgerens foerste raekke.
+    """
+    post = _post(threshold=3)
+    fil = _fil(tmp_path, [post], forsegling={"T1": sfp.frozen_hash(post)})
+
+    # Foerste koersel giver den aegte udfalds-hash; den bruges som arkiv-reference.
+    sfp.score(fil, rigtig_db, nu=NU)
+    data = json.loads(fil.read_text(encoding="utf-8"))
+    oprindelig = data["forudsigelser"][0]["udfalds_hash"]
+    assert oprindelig, "scoringen skulle have skrevet en udfalds-hash"
+
+    monkeypatch.setattr(sfp, "_arkiv_udfald", lambda: {"T1": oprindelig})
+
+    # Baade udfaldet og dets hash aendres: filen er selvkonsistent.
+    data["forudsigelser"][0]["hit"] = False
+    data["forudsigelser"][0]["udfalds_hash"] = sfp.udfalds_hash(data["forudsigelser"][0])
+    fil.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    resultat = sfp.score(fil, rigtig_db, nu=NU)
+
+    assert resultat["udfald_aendret"] == ["T1"]
+    assert resultat["kalibrering"]["n_events"] == 0
+
+
+def test_tilfoejet_udfalds_hash_forsegler_ikke_en_gammel_post(
+    rigtig_db: Path, tmp_path: Path
+) -> None:
+    """At skrive feltet paa en gammel post maa ikke gøre den forseglet.
+
+    Det var den retroaktive pynt: en post scoret foer udfalds-forseglingen
+    fandtes kunne se forseglet ud blot ved at nogen tilfoejede feltet. Nu
+    afgoer ledgerens raekke — ikke feltets tilstedeværelse — om posten er
+    forseglet, saa en gammel scoring bliver ved med at staa som uforsikret.
+    """
+    post = _post(threshold=3, hit=True, actual=3.0, scored_at="2026-11-13T20:00:00+00:00")
+    post["udfalds_hash"] = sfp.udfalds_hash(post)  # feltet tilfoejet bagefter
+    fil = _fil(tmp_path, [post], forsegling={"T1": sfp.frozen_hash(post)})
+
+    resultat = sfp.score(fil, rigtig_db, nu=NU)
+
+    assert resultat["udfald_uforsikret"] == ["T1"]
+    assert resultat["udfald_aendret"] == []
+
+
+def test_arkiveret_udfald_forsegler_posten(
+    rigtig_db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Vejen fra «uforsikret» til «forseglet» gaar gennem arkivet, ikke filen.
+
+    Uden denne test kunne arkiveringen vaere dekoration: den skrev en raekke
+    som intet senere sammenlignede med.
+    """
+    arkiv: dict[str, str] = {}
+    monkeypatch.setattr(sfp, "_arkiv_udfald", lambda: dict(arkiv))
+
+    def _arkiver(poster: list[dict[str, object]], ids: list[str]) -> int:
+        for p in poster:
+            if str(p.get("id")) in ids and p.get("hit") is not None:
+                h = sfp.udfalds_hash(p)
+                if h:
+                    arkiv[str(p.get("id"))] = h
+        return len(ids)
+
+    monkeypatch.setattr(sfp, "arkiver_udfald", _arkiver)
+
+    post = _post(threshold=3)
+    fil = _fil(tmp_path, [post], forsegling={"T1": sfp.frozen_hash(post)})
+
+    foerste = sfp.score(fil, rigtig_db, nu=NU)
+    assert foerste["udfald_arkiveret"] == 1
+    assert arkiv["T1"]
+
+    anden = sfp.score(fil, rigtig_db, nu=NU)
+    assert anden["udfald_uforsikret"] == []
+    assert anden["udfald_aendret"] == []
+    assert anden["kalibrering"]["n_events"] == 1
+
+
+def test_kun_ny_scorede_poster_arkiveres(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Arkiveringen maa ikke give gamle scoringer en raekke med tilbagevirkende kraft.
+
+    (13/11-2026) Blev hele post-listen arkiveret, ville de poster der blev
+    scoret foer arkiveringen fandtes pludselig se forseglede ud — den
+    retroaktive pynt som `udfald_uforsikret` netop findes for at forhindre.
+    """
+    skrevne: list[str] = []
+    import core.runtime.db_governance_ledger as ledger
+
+    monkeypatch.setattr(
+        ledger, "record_mutation", lambda area, key, value: skrevne.append(key)
+    )
+    monkeypatch.setattr(sfp, "_arkiv_udfald", lambda: {})
+
+    gammel = _post(id="GAMMEL", threshold=3, hit=True, actual=3.0, scored_at="2026-11-13T20:00:00+00:00")
+    ny = _post(id="NY", threshold=3, hit=True, actual=3.0, scored_at="2026-11-13T20:00:00+00:00")
+
+    antal = _AEGTE_UDFALDS_ARKIVER([gammel, ny], ["NY"])
+
+    assert antal == 1
+    assert skrevne == ["NY"]
+
+
+def test_felt_der_afviger_fra_arkivets_raekke_udelades(
+    rigtig_db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Feltet i filen skal stemme med ledgeren — ikke kun udfaldet med ledgeren.
+
+    (13/11-2026) Uden denne test var halvdelen af betingelsen dekoration: et
+    `udfalds_hash` der var byttet ud, mens `hit`/`actual`/`scored_at` var
+    intakte, slap igennem. Feltet er det en laeser ser, saa naar det modsiger
+    den uafhaengige raekke er posten uenighed — ikke et tal man regner videre
+    paa.
+    """
+    post = _post(threshold=3)
+    fil = _fil(tmp_path, [post], forsegling={"T1": sfp.frozen_hash(post)})
+    sfp.score(fil, rigtig_db, nu=NU)
+
+    data = json.loads(fil.read_text(encoding="utf-8"))
+    arkiveret = data["forudsigelser"][0]["udfalds_hash"]
+    monkeypatch.setattr(sfp, "_arkiv_udfald", lambda: {"T1": arkiveret})
+
+    data["forudsigelser"][0]["udfalds_hash"] = "0" * 16  # feltet byttet ud
+    fil.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    resultat = sfp.score(fil, rigtig_db, nu=NU)
+
+    assert resultat["udfald_aendret"] == ["T1"]
+    assert resultat["kalibrering"]["n_events"] == 0

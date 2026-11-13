@@ -10,8 +10,15 @@ med conf=1.0 og «27 procedures indicate expanding stable capability», hvor de
 Testene her rammer den grænse ændringen FAKTISK håndhæver: en række UDEN
 kandidat nedgraderes, en række MED kandidat røres ikke.
 
-Den retter ikke den underliggende påstand — at et absolut antal er en vækst.
-Det er en anden fejl, og den skal ikke kunne læses ud af grønne tests her.
+13/11-2026 (senere): kilden til det falske mønster blev også rettet.
+`_fetch_procedures_count` talte ALLE rækker i `cognitive_procedures` — 27
+styk, alle «Sådan: <enkeltord>» med `hit_count=0`, og `hit_count` sættes kun af
+`match_procedures_for_text`, som havde nul kaldere i hele træet. Tælleren
+kræver nu målt brug eller en bevidst pinning.
+
+Det der IKKE er rettet: at et absolut tal overhovedet bruges som udsagn om
+vækst. Et stigende antal målte procedurer er stadig ikke en måling af at evnen
+vokser — kun af at banken gør.
 """
 
 from __future__ import annotations
@@ -140,3 +147,74 @@ def test_kandidaterne_persisteres_stadig(miljoe, monkeypatch):
         k["pattern_key"] == "stadig_aktiv" and k["status"] == "candidate"
         for k in miljoe["skrevet"]
     )
+
+
+# ── Tælleren: hvad der må tælles som evne ────────────────────────────────────
+
+
+@pytest.fixture
+def procedure_db(monkeypatch):
+    """Ægte SQLite med den ægte tabel.
+
+    En fake-forbindelse der returnerer de samme rækker uanset SQL kan ikke se
+    forskel på «alle rækker» og «kun brugte rækker». Den ville måle sin egen
+    mock i stedet for WHERE-grenen, og en grøn test ville ikke betyde noget.
+    """
+    import sqlite3
+
+    db = sqlite3.connect(":memory:")
+    db.row_factory = sqlite3.Row
+    db.execute(
+        "CREATE TABLE cognitive_procedures "
+        "(name TEXT, hit_count INTEGER, pinned INTEGER, deleted INTEGER)"
+    )
+    monkeypatch.setattr(em, "connect", lambda: db)
+    return db
+
+
+def _indsæt(db, *raekker):
+    db.executemany(
+        "INSERT INTO cognitive_procedures VALUES (?, ?, ?, ?)", list(raekker)
+    )
+    db.commit()
+
+
+def test_ubrugte_procedurer_taeller_ikke_som_evne(procedure_db):
+    """Den målte virkelighed 13/11: 27 rækker, nul læst, nul pinned."""
+    _indsæt(procedure_db, *[(f"Sådan: ord{i}", 0, 0, 0) for i in range(27)])
+
+    assert em._fetch_procedures_count() == 0
+
+
+def test_brugte_og_pinnede_taeller_men_slettede_goer_ikke(procedure_db):
+    _indsæt(
+        procedure_db,
+        ("brugt", 3, 0, 0),
+        ("pinnet", 0, 1, 0),
+        ("skrald", 0, 0, 0),
+        ("slettet men brugt", 5, 0, 1),
+    )
+
+    assert em._fetch_procedures_count() == 2
+
+
+def test_en_bank_uden_brug_foder_ingen_capability_kandidat(procedure_db, monkeypatch):
+    """Mønsteret må ikke fyre på en write-only bank — det var den falske påstand."""
+    _indsæt(procedure_db, *[(f"Sådan: ord{i}", 0, 0, 0) for i in range(27)])
+    monkeypatch.setattr(em, "_fetch_recent_events", lambda **k: [])
+    monkeypatch.setattr(em, "_fetch_decisions_count", lambda **k: 0)
+
+    keys = {c.pattern_key for c in em._detect_candidates(window_days=21)}
+
+    assert "capability_growth_procedures" not in keys
+
+
+def test_en_bank_MED_brug_foder_kandidaten(procedure_db, monkeypatch):
+    """Positiv kontrol: grenen skal kunne fyre, ellers beviser testen ovenfor intet."""
+    _indsæt(procedure_db, *[(f"brugt{i}", 1, 0, 0) for i in range(5)])
+    monkeypatch.setattr(em, "_fetch_recent_events", lambda **k: [])
+    monkeypatch.setattr(em, "_fetch_decisions_count", lambda **k: 0)
+
+    keys = {c.pattern_key for c in em._detect_candidates(window_days=21)}
+
+    assert "capability_growth_procedures" in keys

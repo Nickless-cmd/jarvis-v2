@@ -133,10 +133,24 @@ def _count_blocked(events: list[dict[str, Any]]) -> int:
 
 
 def _fetch_procedures_count() -> int:
+    """Tæl kun procedurer med MÅLT brug eller en bevidst pinning.
+
+    Målt 13/11-2026: tabellen havde 27 rækker og ALLE 27 var skrald —
+    «Sådan: Titel», «Sådan: Skriv», «Sådan: Jarvis» — med `hit_count = 0`.
+    `hit_count` sættes kun af `match_procedures_for_text`, og den funktion
+    havde nul kaldere i hele træet. Et rækkeantal i en bank ingen læser måler
+    ikke evner: mønsteret «Capability Growth» reklamerede med confidence 1.00
+    på 27 ulæste rækker.
+
+    En `pinned` række tælles med, fordi en pinning er en bevidst beslutning om
+    at rækken skal bruges — den er evidens i sig selv. Ulæste, upinnede rækker
+    er ikke.
+    """
     try:
         with connect() as c:
             row = c.execute(
-                "SELECT COUNT(*) AS n FROM cognitive_procedures WHERE deleted = 0"
+                "SELECT COUNT(*) AS n FROM cognitive_procedures "
+                "WHERE deleted = 0 AND (hit_count > 0 OR pinned = 1)"
             ).fetchone()
         return int(row["n"]) if row else 0
     except Exception:

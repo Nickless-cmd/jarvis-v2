@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10096/18596 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10097/18596 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10096/18596 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 899 | 1612 | 55% |
-| `core.services` | 6744 | 12600 | 53% |
+| `core.services` | 6745 | 12600 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1258,7 +1258,7 @@ Generated from source. 10096/18596 functions/methods documented (54%). The list 
 - `core/services/embodied_state.py` :: `build_embodied_state_prompt_section` (L91)
 - `core/services/embodied_state.py` :: `build_embodied_state_surface` (L13)
 - `core/services/embodied_state.py` :: `collect_host_facts` (L157)
-- `core/services/emergence.py` :: `summarize_patterns` (L397)
+- `core/services/emergence.py` :: `summarize_patterns` (L411)
 - `core/services/emergent_goals.py` :: `build_emergent_goals_surface` (L70)
 - `core/services/emergent_goals.py` :: `generate_emergent_goal_from_experience` (L18)
 - `core/services/emergent_signal_tracking.py` :: `build_runtime_emergent_signal_surface` (L185)

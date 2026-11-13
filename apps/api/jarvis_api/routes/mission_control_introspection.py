@@ -587,6 +587,14 @@ def mc_cadence_producers() -> dict:
     return build_cadence_producers_surface()
 
 
+@router.get("/matrix-karakterer")
+def mc_matrix_karakterer() -> dict:
+    """Matrix-karaktererne filtreret ud af cadence-registret, med seneste udfald."""
+    from core.services.matrix_karakterer import build_matrix_karakterer_surface
+
+    return build_matrix_karakterer_surface()
+
+
 @router.get("/idle-thinking")
 def mc_idle_thinking() -> dict:
     """Return idle-thinking surface."""

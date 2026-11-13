@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10161/18678 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10168/18687 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 10161/18678 functions/methods documented (54%). The list 
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 746 | 1040 | 71% |
+| `apps.api.jarvis_api.routes` | 747 | 1041 | 71% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -26,7 +26,7 @@ Generated from source. 10161/18678 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 900 | 1613 | 55% |
-| `core.services` | 6806 | 12679 | 53% |
+| `core.services` | 6812 | 12687 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 10161/18678 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2628)
+## Undocumented public functions (2629)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L231)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1433,6 +1433,7 @@ Generated from source. 10161/18678 functions/methods documented (54%). The list 
 - `core/services/malware_scan.py` :: `ScanReport.as_dict` (L30)
 - `core/services/malware_scan.py` :: `ScanReport.safe` (L27)
 - `core/services/malware_scan.py` :: `clamav_available` (L35)
+- `core/services/matrix_karakterer.py` :: `beskriv_udfald` (L81)
 - `core/services/mcp_auth.py` :: `get_token` (L75)
 - `core/services/mcp_auth.py` :: `needs_refresh` (L102)
 - `core/services/mcp_auth.py` :: `set_token` (L80)

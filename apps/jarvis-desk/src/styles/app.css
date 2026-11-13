@@ -3408,6 +3408,18 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .jm-feed-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: var(--radius-sm); font-size: 12px; color: var(--fg-2); }
 .jm-feed-row:hover { background: var(--bg-1); }
 
+/* Matrix-karakterer (Systemstatus) — navn+funktion fylder, de tre målinger står som kolonner */
+.mk-raekke { flex-wrap: wrap; }
+.mk-navn { flex: 1 1 220px; min-width: 0; }
+.mk-sidste { flex: 0 0 90px; }
+.mk-cooldown { flex: 0 0 120px; }
+.mk-udfald { flex: 0 0 170px; font-weight: 600; text-align: right; }
+.mk-tone-ok { color: #34d399; }
+.mk-tone-warn { color: #fbbf24; }
+.mk-tone-bad { color: var(--error-fg); }
+.mk-tone-neutral { color: var(--fg-2); }
+.mk-tone-ukendt { color: var(--fg-3); font-weight: 400; }
+
 /* Søgefelt (Skills) — 70 skills kan ikke overskues uden et filter */
 .jm-search { width: 100%; padding: 8px 11px; border: 1px solid var(--line); border-radius: var(--radius-md);
   background: var(--bg-1); color: var(--fg-1); font-size: 13px; font-family: inherit; }

@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/monitor_streams.py`
+_Pinned monitors — Jarvis' equivalent of Claude Code's Monitor tool._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/monitor_streams.py#L40) |
+| function | `_save` | `(monitors)` | — | [src](../../../core/services/monitor_streams.py#L47) |
+| function | `_session_monitors` | `(session_id)` | — | [src](../../../core/services/monitor_streams.py#L51) |
+| function | `open_monitor` | `(*, session_id, source, label=…, pattern=…)` | — | [src](../../../core/services/monitor_streams.py#L56) |
+| function | `close_monitor` | `(monitor_id)` | — | [src](../../../core/services/monitor_streams.py#L115) |
+| function | `list_monitors` | `(session_id)` | — | [src](../../../core/services/monitor_streams.py#L124) |
+| function | `_drain_eventbus` | `(rec)` | — | [src](../../../core/services/monitor_streams.py#L128) |
+| function | `_drain_file` | `(rec)` | — | [src](../../../core/services/monitor_streams.py#L166) |
+| function | `monitor_digest_section` | `(session_id)` | Format new matches across all this session's monitors. Side effect: | [src](../../../core/services/monitor_streams.py#L196) |
+
 ## `core/services/mood_dialer.py`
 _Mood Dialer — humør til gradueret initiativ-parametre._
 
@@ -670,20 +685,4 @@ _`OutcomeProjector` — ét terminalt udfald pr. run, uden at opfinde sandhed._
 | method | `OutcomeLedger.record` | `(self, run_id, outcome)` | — | [src](../../../core/services/outcome_projector.py#L179) |
 | method | `OutcomeLedger.outcome` | `(self, run_id)` | — | [src](../../../core/services/outcome_projector.py#L195) |
 | method | `OutcomeLedger.is_terminal` | `(self, run_id)` | — | [src](../../../core/services/outcome_projector.py#L198) |
-
-## `core/services/outreach_composer.py`
-_Outreach composer — Spor-1 of generative autonomy._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_runtime_db_path` | `()` | — | [src](../../../core/services/outreach_composer.py#L47) |
-| function | `_hours_since` | `(iso_ts)` | — | [src](../../../core/services/outreach_composer.py#L51) |
-| function | `_last_outreach_timestamp` | `()` | Most recent impulse.outreach.sent event timestamp. | [src](../../../core/services/outreach_composer.py#L63) |
-| function | `_last_user_message_context` | `()` | Gather (preview, hours_since, channel_hint) from latest user turn. | [src](../../../core/services/outreach_composer.py#L87) |
-| function | `_gather_signal_context` | `()` | Top-3 pressures + bearing + affect, for the outreach prompt. | [src](../../../core/services/outreach_composer.py#L123) |
-| function | `_build_outreach_prompt` | `(*, direction, topic, strength, user_ctx, signal_ctx)` | Build the prompt that asks Jarvis-the-LLM to write the message. | [src](../../../core/services/outreach_composer.py#L172) |
-| function | `_call_visible_model` | `(prompt, *, timeout=…)` | Call the visible-lane model (Ollama / GLM cloud) for the message text. | [src](../../../core/services/outreach_composer.py#L209) |
-| function | `_send_message` | `(text, *, channel)` | Send the composed message via the USER's reach_out-kanalvalg (notification_router). | [src](../../../core/services/outreach_composer.py#L260) |
-| function | `_decay_longing_after_outreach` | `(reduction=…)` | When Jarvis has reached out, the longing pressure should drop. | [src](../../../core/services/outreach_composer.py#L299) |
-| function | `compose_and_send_outreach` | `(*, direction, topic, strength)` | Spor-1 entry point. Compose a coherent message and send it. | [src](../../../core/services/outreach_composer.py#L316) |
 

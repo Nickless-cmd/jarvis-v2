@@ -546,6 +546,20 @@ _Rekonstruér markdown-blokstruktur fra inline-markører._
 | function | `_normalize_segment` | `(text)` | — | [src](../../../core/services/markdown_structure.py#L303) |
 | function | `normalize_markdown_structure` | `(text)` | Genskab blokstruktur fra inline-markører. Beskytter kode-fences. | [src](../../../core/services/markdown_structure.py#L349) |
 
+## `core/services/matrix_karakterer.py`
+_Matrix-karaktererne som en MÅLING — ikke en navneliste (13/11-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `matrix_navne` | `(register_fn=…)` | Navnene på det Matrix-modulet registrerer — uden at røre registret. | [src](../../../core/services/matrix_karakterer.py#L56) |
+| function | `udled_udfald` | `(result)` | Udfaldet i et producer-svar: `landing.outcome`, dernæst `outcome`. | [src](../../../core/services/matrix_karakterer.py#L66) |
+| function | `beskriv_udfald` | `(outcome)` | — | [src](../../../core/services/matrix_karakterer.py#L81) |
+| function | `noter_udfald` | `(name, result, *, at)` | Gem seneste udfald holdbart (deles af API- og runtime-processen). | [src](../../../core/services/matrix_karakterer.py#L88) |
+| function | `_laes_udfald` | `(name)` | — | [src](../../../core/services/matrix_karakterer.py#L106) |
+| function | `funktion_af` | `(name)` | Første linje af `central_<name>.py`s docstring. Læses som tekst (ast) — | [src](../../../core/services/matrix_karakterer.py#L118) |
+| function | `byg_raekker` | `(specs, navne, *, tempo, effektiv_cooldown, sidste_koersel, udfald_af, funktion)` | Ren sammenstilling: registrets specs filtreret til karaktererne. | [src](../../../core/services/matrix_karakterer.py#L135) |
+| function | `build_matrix_karakterer_surface` | `()` | Flade til Desk → Systemstatus. Self-safe: tom liste ved fejl. | [src](../../../core/services/matrix_karakterer.py#L166) |
+
 ## `core/services/mcp_apps.py`
 _MCP Apps host-bro: `ui://` resource -> sikker widget i samtalen._
 
@@ -623,19 +637,4 @@ _MCP-server-registry (§4.6) — brugerens konfigurerede MCP-endpoints._
 | function | `list_mcp_servers` | `()` | — | [src](../../../core/services/mcp_registry.py#L24) |
 | function | `add_mcp_server` | `(name, url=…, *, command=…, args=…, env=…, transport=…)` | Tilføj en server — HTTP (`url`) eller stdio (`command` + `args`). | [src](../../../core/services/mcp_registry.py#L28) |
 | function | `remove_mcp_server` | `(server_id)` | — | [src](../../../core/services/mcp_registry.py#L73) |
-
-## `core/services/mcp_trust.py`
-_MCP-tillid: allowliste + TOFU-pinning._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/mcp_trust.py#L35) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/mcp_trust.py#L44) |
-| function | `is_allowlisted` | `(name)` | — | [src](../../../core/services/mcp_trust.py#L48) |
-| function | `allow` | `(name)` | Godkend et servernavn. Idempotent. | [src](../../../core/services/mcp_trust.py#L52) |
-| function | `revoke` | `(name)` | Fjern fra allowlisten OG drop pinnen. Idempotent. | [src](../../../core/services/mcp_trust.py#L65) |
-| function | `list_trust` | `()` | — | [src](../../../core/services/mcp_trust.py#L80) |
-| function | `_sha256_file` | `(path)` | — | [src](../../../core/services/mcp_trust.py#L85) |
-| function | `check_pin_stdio` | `(name, command)` | Pin en stdio-servers binær (sti + sha256). Første syn pinner. | [src](../../../core/services/mcp_trust.py#L96) |
-| function | `check_pin_http` | `(name, url)` | Pin en HTTP-servers vaert. Første syn pinner. | [src](../../../core/services/mcp_trust.py#L117) |
 

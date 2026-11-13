@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/outreach_composer.py`
+_Outreach composer — Spor-1 of generative autonomy._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_runtime_db_path` | `()` | — | [src](../../../core/services/outreach_composer.py#L47) |
+| function | `_hours_since` | `(iso_ts)` | — | [src](../../../core/services/outreach_composer.py#L51) |
+| function | `_last_outreach_timestamp` | `()` | Most recent impulse.outreach.sent event timestamp. | [src](../../../core/services/outreach_composer.py#L63) |
+| function | `_last_user_message_context` | `()` | Gather (preview, hours_since, channel_hint) from latest user turn. | [src](../../../core/services/outreach_composer.py#L87) |
+| function | `_gather_signal_context` | `()` | Top-3 pressures + bearing + affect, for the outreach prompt. | [src](../../../core/services/outreach_composer.py#L123) |
+| function | `_build_outreach_prompt` | `(*, direction, topic, strength, user_ctx, signal_ctx)` | Build the prompt that asks Jarvis-the-LLM to write the message. | [src](../../../core/services/outreach_composer.py#L172) |
+| function | `_call_visible_model` | `(prompt, *, timeout=…)` | Call the visible-lane model (Ollama / GLM cloud) for the message text. | [src](../../../core/services/outreach_composer.py#L209) |
+| function | `_send_message` | `(text, *, channel)` | Send the composed message via the USER's reach_out-kanalvalg (notification_router). | [src](../../../core/services/outreach_composer.py#L260) |
+| function | `_decay_longing_after_outreach` | `(reduction=…)` | When Jarvis has reached out, the longing pressure should drop. | [src](../../../core/services/outreach_composer.py#L299) |
+| function | `compose_and_send_outreach` | `(*, direction, topic, strength)` | Spor-1 entry point. Compose a coherent message and send it. | [src](../../../core/services/outreach_composer.py#L316) |
+
 ## `core/services/override_command.py`
 _Owner-override-kommando — delt handler for gateways (Discord/Telegram)._
 
@@ -615,34 +631,4 @@ _Private temporal-promotion signal tracking — migrated onto signal_tracking_fr
 | function | `_pressure_from_state_tone` | `(state_tone)` | — | [src](../../../core/services/private_temporal_promotion_signal_tracking.py#L331) |
 | function | `_title_target` | `(title)` | — | [src](../../../core/services/private_temporal_promotion_signal_tracking.py#L337) |
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/private_temporal_promotion_signal_tracking.py#L345) |
-
-## `core/services/proactive_candidates.py`
-_Proactive candidates — the ONE queue for "Jarvis wants to tell a user something"._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `er_telemetri` | `(source, kind=…)` | Er dette intern telemetri frem for en besked Bjørn skal se? | [src](../../../core/services/proactive_candidates.py#L128) |
-| function | `_owner_uid` | `()` | Owner'ens discord-id — samme kanoniske vej som `proactivity_bridge._owner_uid`. | [src](../../../core/services/proactive_candidates.py#L133) |
-| function | `_bruger_for` | `(user_id, source, session_id=…, kind=…)` | Hvilken bruger hører denne kandidat til? ``''`` = intern (vises aldrig). | [src](../../../core/services/proactive_candidates.py#L150) |
-| function | `_kerne` | `(text)` | Anmodningen selv — ikke skabelonen den er pakket ind i. | [src](../../../core/services/proactive_candidates.py#L191) |
-| function | `_kerne_similarity` | `(a, b)` | Jaccard mellem to kærners ord (0-1). | [src](../../../core/services/proactive_candidates.py#L203) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/proactive_candidates.py#L211) |
-| function | `_terms` | `(text)` | — | [src](../../../core/services/proactive_candidates.py#L215) |
-| function | `lexical_coverage` | `(query, text)` | — | [src](../../../core/services/proactive_candidates.py#L224) |
-| function | `_norm_text` | `(text)` | — | [src](../../../core/services/proactive_candidates.py#L231) |
-| function | `ensure_table` | `(conn)` | — | [src](../../../core/services/proactive_candidates.py#L235) |
-| function | `_row` | `(r)` | — | [src](../../../core/services/proactive_candidates.py#L266) |
-| function | `normalize_priority` | `(importance)` | — | [src](../../../core/services/proactive_candidates.py#L274) |
-| function | `add_candidate` | `(*, source, text, priority=…, kind=…, user_id=…, session_id=…)` | Queue a message for a user. Deduped on normalized text within 24 h. | [src](../../../core/services/proactive_candidates.py#L283) |
-| function | `list_pending` | `(*, limit=…, priorities=…, user_id=…)` | Pending kandidater. `user_id` er et FILTER på kolonnen: | [src](../../../core/services/proactive_candidates.py#L369) |
-| function | `mark` | `(candidate_ids, status, *, run_id=…)` | — | [src](../../../core/services/proactive_candidates.py#L394) |
-| function | `expire_stale` | `(*, days=…, aabne_days=…)` | Luk forældede kandidater. `pending` efter `days`; `surfaced`/`mentioned` | [src](../../../core/services/proactive_candidates.py#L415) |
-| function | `counts` | `()` | — | [src](../../../core/services/proactive_candidates.py#L436) |
-| function | `counts_per_user` | `()` | Åbne kandidater pr. ejer. ``(intern)`` er de kilder der aldrig leveres. | [src](../../../core/services/proactive_candidates.py#L443) |
-| function | `relevant_for` | `(user_message, *, user_id=…, session_id=…, limit=…, min_coverage=…)` | Pending items for THIS user, lexically relevant to what they just wrote. | [src](../../../core/services/proactive_candidates.py#L455) |
-| function | `remember_shown` | `(session_id, candidate_ids)` | — | [src](../../../core/services/proactive_candidates.py#L482) |
-| function | `build_since_last_line` | `(user_message, *, session_id=…, user_id=…)` | At most ONE line: 'Siden sidst: …' when a pending item is relevant to the message. | [src](../../../core/services/proactive_candidates.py#L493) |
-| function | `mark_mentioned_if_overlap` | `(*, session_id, answer_text, run_id=…, min_coverage=…)` | Auto-deliver: the shown item counts as delivered when Jarvis' answer overlaps it. | [src](../../../core/services/proactive_candidates.py#L512) |
-| function | `bridge_candidates` | `(user_id=…)` | Shape expected by proactivity_bridge.collect_candidates(). | [src](../../../core/services/proactive_candidates.py#L540) |
-| function | `build_proactive_candidates_surface` | `()` | — | [src](../../../core/services/proactive_candidates.py#L562) |
 

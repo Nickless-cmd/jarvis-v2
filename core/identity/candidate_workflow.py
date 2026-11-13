@@ -758,7 +758,14 @@ def _append_curated_topic_line(content_line: str) -> dict[str, str]:
             content_line=normalized_line,
         )
     path.parent.mkdir(parents=True, exist_ok=True)
-    existing = path.read_text(encoding="utf-8") if path.exists() else ""
+    # 13/11-2026: læs STI-NØGLET. `path.read_text()` ser ikke en krypteret
+    # member-fil (.enc), så dedup'en læste "" og en linje der allerede stod i
+    # den krypterede fil blev vurderet som ny og skrevet igen. Skrivningen var
+    # korrekt (upsert_section → atomic_write_text_for_path); det var LÆSNINGEN
+    # der pegede på den forkerte fil.
+    from core.services.workspace_crypto import read_text_for_path
+
+    existing = read_text_for_path(path) or ""
     if normalized_line in existing:
         return {"write_status": "already-present", "path": str(path), "content_line": normalized_line}
     if _fuzzy_line_match(normalized_line, existing, threshold=0.85):

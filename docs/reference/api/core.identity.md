@@ -34,16 +34,16 @@ _(no top-level classes or functions)_
 | function | `_default_apply_status_reason` | `(candidate, *, write_status)` | — | [src](../../../core/identity/candidate_workflow.py#L684) |
 | function | `_fuzzy_line_match` | `(line, existing_text, threshold=…)` | Check if *line* is already present in *existing_text* (fuzzy). | [src](../../../core/identity/candidate_workflow.py#L703) |
 | function | `_append_curated_topic_line` | `(content_line)` | Route en MEMORY.md-promovering til curated-memory-TOPIC'en i stedet for at | [src](../../../core/identity/candidate_workflow.py#L741) |
-| function | `_append_workspace_contract_line` | `(*, target_file, section_heading, content_line, owner_workspace=…)` | — | [src](../../../core/identity/candidate_workflow.py#L777) |
-| function | `_append_workspace_contract_line_raw` | `(*, target_file, section_heading, content_line, owner_workspace=…)` | — | [src](../../../core/identity/candidate_workflow.py#L798) |
-| function | `_append_workspace_contract_block` | `(*, target_file, section_heading, content_block)` | — | [src](../../../core/identity/candidate_workflow.py#L879) |
-| function | `_insert_under_heading` | `(text, heading, content_line)` | — | [src](../../../core/identity/candidate_workflow.py#L919) |
-| function | `_insert_block_under_heading` | `(text, heading, content_block)` | — | [src](../../../core/identity/candidate_workflow.py#L942) |
-| function | `_apply_chronicle_runtime_contract_candidate` | `(candidate, *, status_reason_override=…)` | — | [src](../../../core/identity/candidate_workflow.py#L965) |
-| function | `_chronicle_entry_shape` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L1060) |
-| function | `_single_line` | `(value)` | — | [src](../../../core/identity/candidate_workflow.py#L1068) |
-| function | `_now_iso` | `()` | — | [src](../../../core/identity/candidate_workflow.py#L1072) |
-| function | `_check_repeat_writer_trap` | `(target_file, content_line)` | Check if the same content has been written too many times. Alarm if stuck. | [src](../../../core/identity/candidate_workflow.py#L1090) |
+| function | `_append_workspace_contract_line` | `(*, target_file, section_heading, content_line, owner_workspace=…)` | — | [src](../../../core/identity/candidate_workflow.py#L784) |
+| function | `_append_workspace_contract_line_raw` | `(*, target_file, section_heading, content_line, owner_workspace=…)` | — | [src](../../../core/identity/candidate_workflow.py#L805) |
+| function | `_append_workspace_contract_block` | `(*, target_file, section_heading, content_block)` | — | [src](../../../core/identity/candidate_workflow.py#L886) |
+| function | `_insert_under_heading` | `(text, heading, content_line)` | — | [src](../../../core/identity/candidate_workflow.py#L926) |
+| function | `_insert_block_under_heading` | `(text, heading, content_block)` | — | [src](../../../core/identity/candidate_workflow.py#L949) |
+| function | `_apply_chronicle_runtime_contract_candidate` | `(candidate, *, status_reason_override=…)` | — | [src](../../../core/identity/candidate_workflow.py#L972) |
+| function | `_chronicle_entry_shape` | `(candidate)` | — | [src](../../../core/identity/candidate_workflow.py#L1067) |
+| function | `_single_line` | `(value)` | — | [src](../../../core/identity/candidate_workflow.py#L1075) |
+| function | `_now_iso` | `()` | — | [src](../../../core/identity/candidate_workflow.py#L1079) |
+| function | `_check_repeat_writer_trap` | `(target_file, content_line)` | Check if the same content has been written too many times. Alarm if stuck. | [src](../../../core/identity/candidate_workflow.py#L1097) |
 
 ## `core/identity/email_verify.py`
 _Email-verifikation (spec 2026-06-15 §5). Token-store i runtime_state_kv,_

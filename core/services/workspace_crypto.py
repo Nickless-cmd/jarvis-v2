@@ -200,6 +200,25 @@ def read_text_for_path(path: str | os.PathLike, *, encoding: str = "utf-8") -> s
     return None
 
 
+def _advarsel_hvis_plaintext_for_member(p: str, member: str | None) -> None:
+    """Log et spor naar en KENDT medlemsfil skrives i klartekst.
+
+    13/11-2026: krypteringsvalget er gatet af miljoevariablen
+    `JARVISX_ENCRYPT_WORKSPACES` (`encrypt_on_write`). Tjenesterne har den i
+    deres systemd-unit, men en proces uden den — et engangsscript, en
+    subprocess, et vaerktoejskoer — skrev plaintext ind i et medlems workspace
+    uden at fejle. Kontrakten (flag-off = no-op-migration) er bevidst og
+    bevares; det der ikke maa ske er at den er TAVS. Uden dette spor kan man
+    bagefter ikke se hvilken proces der laekkede hvad.
+    """
+    if member and not encrypt_on_write():
+        logger.warning(
+            "workspace_crypto: PLAINTEXT-skrivning til medlems-workspace %s — "
+            "JARVISX_ENCRYPT_WORKSPACES er ikke sat i denne proces (member=%s)",
+            p, member,
+        )
+
+
 def write_text_for_path(path: str | os.PathLike, content: str | bytes) -> str:
     """Skriv workspace-fil-tekst sti-nøglet. Mens ENCRYPT_ON_WRITE er FRA skrives
     altid plaintext (ren no-op-migration). Når den er TIL: member-filer → .enc med
@@ -207,6 +226,7 @@ def write_text_for_path(path: str | os.PathLike, content: str | bytes) -> str:
     p = str(path)
     data = content.encode("utf-8") if isinstance(content, str) else content
     member = member_user_id_for_path(p)
+    _advarsel_hvis_plaintext_for_member(p, member)
     if member and encrypt_on_write():
         from core.services.encryption import encrypt
         from core.services.keyring_store import get_user_key
@@ -244,6 +264,7 @@ def atomic_write_text_for_path(path: str | os.PathLike, content: str | bytes) ->
     p = str(path)
     data = content.encode("utf-8") if isinstance(content, str) else content
     member = member_user_id_for_path(p)
+    _advarsel_hvis_plaintext_for_member(p, member)
     if member and encrypt_on_write():
         from core.services.encryption import encrypt
         from core.services.keyring_store import get_user_key

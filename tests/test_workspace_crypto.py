@@ -128,3 +128,49 @@ def test_runtime_subdir_excluded_from_encryption(_ws_tree) -> None:
     assert member_user_id_for_path(_ws_tree / "mikkel" / "MEMORY.md") == "d-mikkel"
     assert member_user_id_for_path(_ws_tree / "mikkel" / "runtime" / "HEARTBEAT_STATE.json") is None
     assert member_user_id_for_path(_ws_tree / "mikkel" / "runtime" / "x.pkl") is None
+
+
+# ── Lækagen maa ikke vaere tavs (13/11-2026) ────────────────────────────────
+#
+# Krypteringsvalget er gatet af miljoevariablen JARVISX_ENCRYPT_WORKSPACES.
+# Tjenesterne har den i deres systemd-unit, men en proces uden den — et
+# engangsscript, en subprocess, et vaerktoejskoer — skrev plaintext ind i et
+# medlems workspace uden at fejle. Maalt 13/11 09:48Z: workspaces/michelle/
+# USER.md og workspaces/mikkel/USER.md opstod som klartekst ved siden af
+# uruerte USER.md.enc. Kontrakten (flag-off = no-op-migration) bevares her;
+# det der testes er at den ikke kan ske i stilhed.
+
+def test_plaintext_skrivning_til_medlem_efterlader_spor(_ws_tree, monkeypatch, caplog) -> None:
+    import logging
+    monkeypatch.delenv("JARVISX_ENCRYPT_WORKSPACES", raising=False)
+    from core.services.workspace_crypto import write_text_for_path, atomic_write_text_for_path
+    p = _ws_tree / "mikkel" / "MEMORY.md"
+    with caplog.at_level(logging.WARNING):
+        write_text_for_path(p, "Mikkels ting")
+        atomic_write_text_for_path(p, "Mikkels ting 2")
+    spor = [m for m in caplog.messages if "PLAINTEXT-skrivning" in m]
+    assert len(spor) == 2, f"forventede et spor pr. skrivning, fik {len(spor)}: {caplog.messages}"
+
+
+def test_krypteret_skrivning_advarsler_ikke(_ws_tree, monkeypatch, caplog) -> None:
+    """Med flaget TIL er der ingen laekage — og saa skal der ikke staa en
+    advarsel. En advarsel der altid vises, laeres der at overse."""
+    import logging
+    monkeypatch.setenv("JARVISX_ENCRYPT_WORKSPACES", "1")
+    import core.services.keyring_store as ks
+    monkeypatch.setattr(ks, "_keyring", lambda: None)
+    from core.services.workspace_crypto import write_text_for_path
+    with caplog.at_level(logging.WARNING):
+        skrevet = write_text_for_path(_ws_tree / "mikkel" / "MEMORY.md", "hemmelig")
+    assert skrevet.endswith(".enc")
+    assert not [m for m in caplog.messages if "PLAINTEXT-skrivning" in m]
+
+
+def test_owner_plaintext_advarsler_ikke(_ws_tree, monkeypatch, caplog) -> None:
+    """Owner skrives i klartekst BY DESIGN — det er ikke en laekage."""
+    import logging
+    monkeypatch.delenv("JARVISX_ENCRYPT_WORKSPACES", raising=False)
+    from core.services.workspace_crypto import write_text_for_path
+    with caplog.at_level(logging.WARNING):
+        write_text_for_path(_ws_tree / "bjorn" / "MEMORY.md", "Bjoerns ting")
+    assert not [m for m in caplog.messages if "PLAINTEXT-skrivning" in m]

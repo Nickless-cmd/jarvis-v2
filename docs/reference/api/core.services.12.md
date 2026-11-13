@@ -700,12 +700,12 @@ _Emergence — evidence-based pattern detection across recent activity._
 | function | `_detect_candidates` | `(*, window_days=…)` | — | [src](../../../core/services/emergence.py#L159) |
 | function | `_create_or_update_pattern` | `(*, pattern_key, title, summary, confidence, evidence_count, competing_explanations, confounders, status)` | Insert or update a pattern row. Returns the persisted row. | [src](../../../core/services/emergence.py#L229) |
 | function | `detect_and_score_patterns` | `(*, window_days=…)` | Main entry — detect candidates, score via apophenia, persist, emit events. | [src](../../../core/services/emergence.py#L289) |
-| function | `list_patterns` | `(*, status=…, limit=…)` | Return persisted patterns, optionally filtered by status. | [src](../../../core/services/emergence.py#L354) |
-| function | `summarize_patterns` | `()` | — | [src](../../../core/services/emergence.py#L377) |
-| function | `_decode_json_list` | `(value)` | — | [src](../../../core/services/emergence.py#L396) |
-| function | `_band` | `(confidence)` | — | [src](../../../core/services/emergence.py#L412) |
-| function | `brewing_patterns` | `(*, limit=…)` | Mønstre i brewing-båndet (0.5 ≤ conf < 0.78) — strengthening men endnu ikke emergent. | [src](../../../core/services/emergence.py#L421) |
-| function | `build_emergence_surface` | `(*, limit=…)` | Surface persisted emergence candidates without running detection. | [src](../../../core/services/emergence.py#L447) |
+| function | `list_patterns` | `(*, status=…, limit=…)` | Return persisted patterns, optionally filtered by status. | [src](../../../core/services/emergence.py#L374) |
+| function | `summarize_patterns` | `()` | — | [src](../../../core/services/emergence.py#L397) |
+| function | `_decode_json_list` | `(value)` | — | [src](../../../core/services/emergence.py#L416) |
+| function | `_band` | `(confidence)` | — | [src](../../../core/services/emergence.py#L432) |
+| function | `brewing_patterns` | `(*, limit=…)` | Mønstre i brewing-båndet (0.5 ≤ conf < 0.78) — strengthening men endnu ikke emergent. | [src](../../../core/services/emergence.py#L441) |
+| function | `build_emergence_surface` | `(*, limit=…)` | Surface persisted emergence candidates without running detection. | [src](../../../core/services/emergence.py#L467) |
 
 ## `core/services/emergence_initiative_bridge.py`
 _Emergence → initiative bridge: et opdaget mønster bliver en handling._

@@ -1258,7 +1258,7 @@ Generated from source. 10096/18596 functions/methods documented (54%). The list 
 - `core/services/embodied_state.py` :: `build_embodied_state_prompt_section` (L91)
 - `core/services/embodied_state.py` :: `build_embodied_state_surface` (L13)
 - `core/services/embodied_state.py` :: `collect_host_facts` (L157)
-- `core/services/emergence.py` :: `summarize_patterns` (L377)
+- `core/services/emergence.py` :: `summarize_patterns` (L397)
 - `core/services/emergent_goals.py` :: `build_emergent_goals_surface` (L70)
 - `core/services/emergent_goals.py` :: `generate_emergent_goal_from_experience` (L18)
 - `core/services/emergent_signal_tracking.py` :: `build_runtime_emergent_signal_surface` (L185)

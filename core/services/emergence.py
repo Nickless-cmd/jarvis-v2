@@ -348,6 +348,26 @@ def detect_and_score_patterns(*, window_days: int = 21) -> list[dict[str, Any]]:
                 "assessment": dict(assessed),
             }
         )
+
+    # Stale-gennemgang: persisted rækker hvis mønster IKKE længere genererer
+    # en kandidat må ikke blive ved med at reklamere med frosset confidence.
+    # 13/11-2026: uden dette ville en nedgraderet evidenskilde (fx en
+    # write-only procedure-bank) efterlade en evig «upgraded»-række, som
+    # fladen og initiativ-broen fortsatte med at læse.
+    active_keys = {c_.pattern_key for c_ in candidates}
+    for stale in list_patterns(status="upgraded"):
+        if stale.get("pattern_key") in active_keys:
+            continue
+        _create_or_update_pattern(
+            pattern_key=str(stale.get("pattern_key") or ""),
+            title=str(stale.get("title") or ""),
+            summary=str(stale.get("summary") or ""),
+            confidence=min(0.4, float(stale.get("confidence") or 0.0)),
+            evidence_count=int(stale.get("evidence_count") or 0),
+            competing_explanations=["evidence_no_longer_generates_candidate"],
+            confounders=[],
+            status="downgraded",
+        )
     return out
 
 

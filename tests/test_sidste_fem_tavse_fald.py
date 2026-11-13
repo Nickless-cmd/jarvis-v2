@@ -30,8 +30,14 @@ def _advarsler(caplog: pytest.LogCaptureFixture) -> list[str]:
 
 # ── channel_inbound ─────────────────────────────────────────────────────────
 
-def test_register_builtin_logger_og_saetter_flaget(monkeypatch, caplog):
-    """En fejlet plugin-registrering var både tavs OG permanent."""
+def test_register_builtin_logger_og_flaget_bliver_false(monkeypatch, caplog):
+    """En fejlet plugin-registrering var både tavs OG permanent.
+
+    31/10-2026 blev retningen ÆNDRET: flaget sættes nu kun ved succes, så næste
+    kald prøver igen. Denne test holdt fast i den gamle adfærd («flaget sættes
+    alligevel») og fejlede derfor mod koden — den målte sin egen fortid.
+    Kontrakten er nu: et spor i loggen + flaget bliver False (retry muligt).
+    """
     def _kaster(_manifest):
         raise RuntimeError("plugin-registret nede")
 
@@ -43,8 +49,38 @@ def test_register_builtin_logger_og_saetter_flaget(monkeypatch, caplog):
 
     assert any("discord-local" in m for m in _advarsler(caplog)), \
         "en fejlet registrering efterlod intet spor"
-    # Retningen er UÆNDRET: flaget sættes alligevel, så kaldet er stadig idempotent.
-    assert ci._BUILTINS_REGISTERED is True, "idempotens-flaget må ikke ændre adfærd"
+    assert ci._BUILTINS_REGISTERED is False, (
+        "flaget blev sat trods fejl — så ville registreringen være permanent "
+        "væk i denne proces, uden en vej tilbage"
+    )
+
+
+def test_register_builtin_retry_lykkes_naar_registret_kommer_tilbage(monkeypatch, caplog):
+    """Hele grunden til at flaget bliver False: næste kald skal kunne lykkes.
+
+    Uden denne test er påstanden om flaget bare en påstand. Med den er den en
+    målt egenskab: et fejlet kald efterlader processen i en tilstand hvor et nyt
+    kald faktisk registrerer pluginnet.
+    """
+    kald = {"n": 0}
+    registreret: list[str] = []
+
+    def _fejler_foerst(manifest):
+        kald["n"] += 1
+        if kald["n"] == 1:
+            raise RuntimeError("plugin-registret nede")
+        registreret.append(manifest.plugin_id)
+
+    monkeypatch.setattr(ci, "register_plugin", _fejler_foerst)
+    monkeypatch.setattr(ci, "_BUILTINS_REGISTERED", False)
+
+    with caplog.at_level(logging.WARNING, logger=ci.logger.name):
+        ci.register_builtin_channel_plugins()   # fejler
+        ci.register_builtin_channel_plugins()   # skal prøve igen og lykkes
+
+    assert kald["n"] == 2, "andet kald sprang retry'en over — flaget låste processen"
+    assert registreret == ["discord-local"], "kanalen kom aldrig tilbage"
+    assert ci._BUILTINS_REGISTERED is True, "flaget blev ikke sat efter succes"
 
 
 def test_register_builtin_stoejer_ikke_ved_normal_drift(monkeypatch, caplog):

@@ -1504,7 +1504,14 @@ def _build_visible_chat_prompt_assembly_impl(
     # har noget at sige, så de kommer og går efter behov. Relevansen ligger i hver
     # karakters egen `check` mod en levende surface; eskaleringen i unaddressed-tælleren.
     try:
-        from core.services.central_matrix_ensemble import build_matrix_voices_section
+        from core.services.central_matrix_ensemble import (
+            build_matrix_voices_section,
+            tick_matrix_lifecycle,
+        )
+        # Æld behovet op FØR stemmerne bygges: et behov ældes af at bestå, ikke af
+        # at blive nævnt. Uden dette kan en karakter nagle i det uendelige ved at
+        # blive ved med at blive vist — og en karakter der aldrig går, er staffage.
+        tick_matrix_lifecycle()
         _awareness_add(6, "matrix ensemble voices", build_matrix_voices_section())
     except Exception as _e:
         _sec_err("matrix ensemble voices", _e)

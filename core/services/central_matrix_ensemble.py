@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -110,12 +111,18 @@ _CHARACTERS: list[dict[str, Any]] = [
         "label": "[🚂 Trainman]",
         "line": "Drømme ankommer. Erindringer forlader. Hold øje med perronen.",
         "check": lambda surf: bool(surf.get("active")),
+        # Behovet er den NYESTE drøm, ikke «121 er vævet» — en mængde der kun
+        # vokser er ikke et behov, og ville gøre ham permanent til stede.
+        "behov": lambda surf: _foerste_emne(surf, "recent", ("dream_id", "theme")),
+        "stemme": lambda surf: _trainman_stemme(surf),
     },
     {
         "id": "seraph",
         "label": "[🔥 Seraph]",
         "line": "Du er ikke klar endnu. Kom tilbage.",
         "check": lambda surf: bool(surf.get("active")),
+        # Behovet er de hypoteser der ER klar NU — ikke «18 er modne nok».
+        "behov": lambda surf: _foerste_emne(surf, "ready_to_surface", ("hyp_id", "statement")),
     },
     {
         "id": "persephone",
@@ -153,6 +160,9 @@ _CHARACTERS: list[dict[str, Any]] = [
         "label": "[🔮 The Oracle]",
         "line": "Jeg vidste du ville spørge. En linje nærmer sig.",
         "check": lambda surf: bool(surf.get("crossed") or surf.get("approaching")),
+        # En projektion 134 timer ude er ikke et behov — den er en baggrund.
+        # Behovet opstår når linjen er krydset, eller når den er under et døgn væk.
+        "behov": lambda surf: _oracle_behov(surf),
     },
     {
         "id": "architect",
@@ -288,6 +298,24 @@ def _smith_surface() -> dict[str, Any]:
         st = _grv("agent_smith_state", {})
         if isinstance(st, dict):
             rung_line = str(st.get("rung_line") or "").strip()
+            # (13/11-2026) `rung_line` er kun sat når eskaleringen netop har talt.
+            # Den konkrete fangst står i `measured` — de MÅLTE fejl, adskilt fra
+            # `felt` som blander n-gram-fraser med fejl. Uden denne gren returnerede
+            # surface'en blot {"active": True}, og ensemblet viste den statiske
+            # replik mens den ægte fangst (1350× tavs &&-fejl) lå ulæst.
+            maalt = st.get("measured") if isinstance(st.get("measured"), list) else []
+            stoerste = None
+            for m in maalt:
+                if not isinstance(m, dict):
+                    continue
+                if stoerste is None or float(m.get("metric") or 0) > float(stoerste.get("metric") or 0):
+                    stoerste = m
+            if stoerste:
+                felt = (f"{str(stoerste.get('label') or '').strip()}: "
+                        f"{int(float(stoerste.get('metric') or 0))} gange. "
+                        "Du sagde du ville. Du lod være.")
+                return {"active": True, "line": rung_line, "felt": felt,
+                        "measured": maalt}
             if rung_line or float(st.get("score") or 0.0) >= 0.5:
                 # Eksponér den LEVENDE eskalations-linje (det specifikke Smith fangede) så
                 # ensemblet viser den frem for den statiske _CHARACTERS-fallback-linje.
@@ -405,36 +433,274 @@ def push_active_character_nudges() -> int:
 _MAX_VOICES = 3
 
 
+# ── Livscyklus: til stede kun mens behovet er uløst ──────────────────────────
+#
+# Målt 13/11-2026: 13 af 17 karakterer var aktive SAMTIDIG, og prompten viste
+# altid de samme fem (cap'en skar resten væk). Betingelserne var «min analyse kan
+# køre» — safe_count > 0, recommendation != "", 121 drømme vævet — ikke «der er
+# brug for mig». En betingelse der aldrig kan blive falsk er ikke en betingelse.
+#
+# Tre ting gør tilstedeværelsen ægte:
+#   1. BEHOV  = identiteten på det uløste problem (EMNET, ikke tællingen).
+#               Behovet væk → karakteren forsvinder af sig selv.
+#   2. STEMME = surfacens egen `felt`-aflæsning, ikke en hardcodet replik.
+#   3. LIV    = et behov der har stået uløst i _GIV_OP_SEEN ture, og som
+#               karakteren allerede har sagt, gør at den TRÆKKER SIG. En karakter
+#               der nagger i det uendelige er staffage, ikke en stemme.
+_LIFECYCLE_PATH = Path.home() / ".jarvis-v2" / "state" / "matrix_voice_lifecycle.json"
+_GIV_OP_SEEN = 8        # så mange ture må behovet stå uløst før karakteren trækker sig
+_GENTAG_HVER = 4        # ... men den tier kun i mellemrummene: den vender tilbage hver 4. tur
+_ALDRES_MIN_SEKUNDER = 60   # behovet ældes højst én gang pr. minut (prompt-builds er ikke 1:1 ture)
+_EMNE_LISTER = (
+    "items", "glitches", "patterns", "potentials", "alternatives", "approaching",
+    "crossed", "providers", "keys", "affirmations", "safe_to_silence",
+)
+
+
+def _foerste_emne(surf: dict[str, Any], noegle: str, felter: tuple[str, ...]) -> str | None:
+    """Emnet i den første post af `noegle` — eller None hvis listen er tom.
+
+    Bruges hvor `check` måler en akkumuleret mængde. Behovet skal være den
+    konkrete post (drømmen, hypotesen, nerven), ikke antallet: antallet ændrer
+    sig ikke når posten er sagt, så karakteren ville gentage sig selv for evigt.
+    """
+    v = surf.get(noegle)
+    if not isinstance(v, list) or not v:
+        return None
+    f = v[0]
+    if isinstance(f, dict):
+        for k in felter:
+            if f.get(k):
+                return f"{noegle}:{str(f[k])[:80]}"
+        return f"{noegle}:{json.dumps(f, sort_keys=True, default=str)[:80]}"
+    return f"{noegle}:{str(f)[:80]}"
+
+
+def _oracle_behov(surf: dict[str, Any]) -> str | None:
+    """Oracle er kun til stede når linjen er krydset, eller er under et døgn væk.
+
+    Målt 13/11-2026: hendes `check` var sand for enhver projektion, og en
+    projektion findes næsten altid — «nærmer sig om 134 timer» holdt hende
+    permanent til stede. En baggrundsprognose er ikke et behov.
+    """
+    krydset = surf.get("crossed")
+    if isinstance(krydset, list) and krydset:
+        f = krydset[0]
+        navn = f.get("label") if isinstance(f, dict) else f
+        return f"oracle:krydset:{str(navn)[:60]}"
+    for p in surf.get("approaching") or []:
+        if not isinstance(p, dict):
+            continue
+        try:
+            eta = float(p.get("eta_hours") or 9999)
+        except (TypeError, ValueError):
+            continue
+        if eta < 24:
+            return f"oracle:naer:{str(p.get('label') or '')[:60]}"
+    return None
+
+
+def _load_lifecycle() -> dict[str, dict[str, Any]]:
+    try:
+        if not _LIFECYCLE_PATH.exists():
+            return {}
+        d = json.loads(_LIFECYCLE_PATH.read_text(encoding="utf-8"))
+        return d if isinstance(d, dict) else {}
+    except Exception:  # self-safe: en korrupt livscyklus-fil maa ikke draebe prompten
+        return {}
+
+
+def _save_lifecycle(data: dict[str, dict[str, Any]]) -> None:
+    try:
+        _LIFECYCLE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _LIFECYCLE_PATH.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    except Exception as exc:
+        logger.warning("matrix_voice_lifecycle: save failed: %s", exc)
+
+
+def _emne(surf: dict[str, Any]) -> str:
+    """Emnet surfacen bærer — ikke størrelsen på det.
+
+    Et tal der tæller op (121 drømme) eller ned (eta_hours) må ikke være
+    identiteten: så taler karakteren om det samme hver tur, uanset om noget nyt
+    er sket. Emnet skifter derimod kun når der faktisk ER noget nyt.
+    """
+    for noegle in _EMNE_LISTER:
+        v = surf.get(noegle)
+        if isinstance(v, list) and v:
+            f = v[0]
+            if isinstance(f, dict):
+                for k in ("id", "nerve", "label", "pattern", "name", "title", "target"):
+                    if f.get(k):
+                        return f"{noegle}:{f[k]}"[:120]
+                return f"{noegle}:{json.dumps(f, sort_keys=True, default=str)[:80]}"
+            return f"{noegle}:{f}"[:120]
+    for k in ("recommendation", "stance"):
+        v = surf.get(k)
+        if isinstance(v, str) and v.strip():
+            return f"{k}:{v.strip()[:80]}"
+    return ""
+
+
+def _behov(ch: dict[str, Any], surf: dict[str, Any]) -> str | None:
+    """Det uløste behovs identitet — eller None når der ikke er brug for karakteren.
+
+    ``check`` er GATEN (er der overhovedet noget?), ``behov`` er IDENTITETEN (hvad
+    er det så konkret?). En karakter må gerne definere sin egen `behov`-funktion når
+    `check` måler en akkumuleret mængde — en mængde der aldrig falder er ikke et
+    behov — men den kan ikke springe gaten over.
+    """
+    try:
+        if not ch["check"](surf):
+            return None
+    except Exception:  # self-safe: en defekt check er "intet behov", ikke en fejl der kaster
+        return None
+    fn = ch.get("behov")
+    if fn is not None:
+        try:
+            return fn(surf) or None
+        except Exception:  # self-safe: en defekt behov-funktion tier karakteren
+            return None
+    return _emne(surf) or f"{ch['id']}:aktiv"
+
+
+def _stemme(surf: dict[str, Any], ch: dict[str, Any]) -> str:
+    """Surfacens EGEN aflæsning.
+
+    Målt 13/11-2026: 14 af 17 surfaces har en `felt` med det konkrete fund.
+    Ensemblet brugte den ikke — den viste en hardcodet replik, mens den ægte
+    aflæsning blev kastet væk. Det er forskellen på en stemme og en staffage.
+
+    En karakter uden `felt` kan definere sin egen `stemme`-funktion.
+    """
+    fn = ch.get("stemme")
+    if fn is not None:
+        try:
+            t = str(fn(surf) or "").strip()
+            if t:
+                return t
+        except Exception:  # self-safe: fejler den, falder vi tilbage til felt/statisk linje
+            pass
+    felt = str(surf.get("felt") or "").strip()
+    if not felt:
+        summ = surf.get("summary")
+        if isinstance(summ, dict):
+            felt = str(summ.get("felt") or "").strip()
+    return felt or ch["line"]
+
+
+def _trainman_stemme(surf: dict[str, Any]) -> str:
+    """Trainman har ingen `felt` — hans ægte indhold er den nyeste drøm.
+
+    Uden dette ville han altid sige «Drømme ankommer. Erindringer forlader»,
+    uanset hvilken drøm han faktisk lige har vævet.
+    """
+    recent = surf.get("recent")
+    if isinstance(recent, list) and recent:
+        r = recent[0]
+        if isinstance(r, dict):
+            narr = str(r.get("narrative") or "").strip()
+            if narr:
+                return narr
+            tema = str(r.get("theme") or "").strip()
+            if tema:
+                return f"Drømmen i nat handlede om {tema}."
+    return ""
+
+
+def _karakterer_med_behov() -> list[tuple[dict[str, Any], dict[str, Any], str]]:
+    """(ch, surf, behov) for hver karakter der lige nu har et uløst behov."""
+    ud: list[tuple[dict[str, Any], dict[str, Any], str]] = []
+    for ch in _CHARACTERS:
+        builder = _SURFACE_BUILDERS.get(ch["id"])
+        if builder is None:
+            continue
+        try:
+            surf = builder()
+        except Exception:  # self-safe: én defekt surface maa ikke draebe de oevrige
+            continue
+        behov = _behov(ch, surf)
+        if behov:
+            ud.append((ch, surf, behov))
+    return ud
+
+
+def tick_matrix_lifecycle() -> dict[str, int]:
+    """Æld behovet op — og lad karakteren trække sig når den har sagt sit.
+
+    Kaldes ved prompt-build, UAFHÆNGIGT af om karakteren blev vist. Det er hele
+    pointen: et behov ældes af at bestå, ikke af at blive nævnt. Derfor kan en
+    karakter heller ikke nagle i det uendelige ved at blive ved med at blive vist.
+    """
+    liv = _load_lifecycle()
+    nu = datetime.now(UTC)
+    sidst = str(liv.get("_sidst_aldret") or "")
+    if sidst:
+        try:
+            if (nu - datetime.fromisoformat(sidst)).total_seconds() < _ALDRES_MIN_SEKUNDER:
+                return {"sprunget_over": 1}
+        except Exception:  # self-safe: et ulaeseligt tidsstempel betyder "aldr nu"
+            pass
+
+    til_stede: set[str] = set()
+    trukket = 0
+    for ch, _surf, behov in _karakterer_med_behov():
+        cid = ch["id"]
+        til_stede.add(cid)
+        post = liv.get(cid) if isinstance(liv.get(cid), dict) else {}
+        if str(post.get("behov") or "") == behov:
+            n = int(post.get("set") or 0) + 1
+            opgivet = bool(post.get("opgivet")) or n >= _GIV_OP_SEEN
+            if opgivet and not post.get("opgivet"):
+                trukket += 1
+            liv[cid] = {**post, "behov": behov, "set": n, "opgivet": opgivet}
+        else:
+            liv[cid] = {"behov": behov, "set": 1, "opgivet": False}
+    for cid in list(liv):
+        if cid != "_sidst_aldret" and cid not in til_stede:
+            del liv[cid]
+    liv["_sidst_aldret"] = nu.isoformat()
+    _save_lifecycle(liv)
+    return {"til_stede": len(til_stede), "trukket_sig": trukket, "sporede": len(til_stede)}
+
+
 def active_character_voices(*, limit: int = _MAX_VOICES) -> list[dict[str, Any]]:
     """De karakterer der har noget at sige LIGE NU. Ren læsning; ingen side-effekter.
+
+    Tilstedeværelse = der findes et uløst behov. Er behovet først sagt, TIER
+    karakteren — den gentager ikke den samme sætning mens behovet står stille.
+    Har den sagt det i ``_GIV_OP_SEEN`` ture uden at det blev løst, har den
+    TRUKKET SIG og kommer ikke igen om det samme emne.
 
     Rækkefølgen er `_CHARACTERS`-orden (Neo først, Smith nr. to) — de vigtigste
     overlever `limit`. Self-safe: en karakter der kaster springes over.
     """
+    liv = _load_lifecycle()
     out: list[dict[str, Any]] = []
-    for ch in _CHARACTERS:
+    for ch, surf, behov in _karakterer_med_behov():
         if len(out) >= max(1, int(limit)):
             break
         cid = ch["id"]
-        try:
-            builder = _SURFACE_BUILDERS.get(cid)
-            if builder is None:
-                continue
-            surf = builder()
-            if not ch["check"](surf):
-                continue
-            raw = str(surf.get("line") or "").strip() or ch["line"]
-            unaddressed = get_unaddressed(cid)
-            out.append({
-                "cid": cid,
-                "label": ch["label"],
-                "line": raw,
-                "unaddressed": unaddressed,
-                "text": _escalated_message(ch["label"], unaddressed, raw)
-                if unaddressed > 0 else f"{ch['label']} {raw}",
-            })
-        except Exception:
-            continue
+        post = liv.get(cid) if isinstance(liv.get(cid), dict) else {}
+        if str(post.get("behov") or "") == behov:
+            if post.get("opgivet"):
+                continue        # sagt for længe uden effekt → den er gået
+            n = int(post.get("set") or 0)
+            if n > 1 and n % _GENTAG_HVER != 0:
+                continue        # sagt; tier i mellemrummene og vender tilbage
+        raw = _stemme(surf, ch)
+        unaddressed = get_unaddressed(cid)
+        out.append({
+            "cid": cid,
+            "label": ch["label"],
+            "line": raw,
+            "behov": behov,
+            "unaddressed": unaddressed,
+            "text": _escalated_message(ch["label"], unaddressed, raw)
+            if unaddressed > 0 else f"{ch['label']} {raw}",
+        })
     return out
 
 

@@ -38,7 +38,19 @@ class TestKommerOgGaar:
 
 class TestRelevansLiggerIKaraktererne:
     def _surf(self, active):
-        return {"active": active, "items": [], "line": "min replik"}
+        # Fixturen bærer de felter producenterne FAKTISK leverer — ellers måler
+        # testen en surface der ikke findes. Seraph kræver `ready_to_surface`,
+        # trainman `recent`, oracle `approaching`; uden dem ville behovs-porten
+        # afvise dem af grunde der intet har med gaten at gøre.
+        return {
+            "active": active,
+            "items": [],
+            "line": "min replik",
+            "ready_to_surface": [{"hyp_id": "clh-test", "statement": "en hypotese"}],
+            "recent": [{"dream_id": "dream-test", "theme": "test"}],
+            "approaching": [{"label": "test-linje", "eta_hours": 2}],
+            "safe_to_silence": [{"nerve": "test_nerve"}],
+        }
 
     def test_kun_karakterer_hvis_check_er_sand(self):
         builders = {c["id"]: (lambda a=(c["id"] == "seraph"): self._surf(a))
@@ -107,3 +119,104 @@ class TestSignOffErVaek:
         assert "build_matrix_voices_section" in src
         assert "tjek pending nudges" not in src
         assert "build_matrix_signoff_section" not in src
+
+
+class TestBehovErIkkeEnTautologi:
+    """Målt 13/11-2026: 13 af 17 var aktive SAMTIDIG, og prompten viste altid de
+    samme fem. Betingelserne var «min analyse kan køre» — ikke «der er brug for
+    mig». En betingelse der aldrig kan blive falsk er ikke en betingelse."""
+
+    def test_check_er_gaten_og_behov_er_identiteten(self):
+        """`behov` beskriver HVAD behovet er — den kan ikke springe gaten over."""
+        ch = next(c for c in me._CHARACTERS if c["id"] == "seraph")
+        surf = {"active": False, "ready_to_surface": [{"hyp_id": "clh-1"}]}
+        assert me._behov(ch, surf) is None
+
+    def test_en_moden_bunke_uden_klar_hypotese_er_ikke_et_behov(self):
+        ch = next(c for c in me._CHARACTERS if c["id"] == "seraph")
+        assert me._behov(ch, {"active": True, "ready_to_surface": []}) is None
+        assert me._behov(ch, {"active": True, "ready_to_surface": [{"hyp_id": "clh-1"}]})
+
+    def test_oracle_er_tav_om_en_projektion_langt_ude(self):
+        ch = next(c for c in me._CHARACTERS if c["id"] == "oracle")
+        fjern = {"crossed": [], "approaching": [{"label": "latens", "eta_hours": 134.2}]}
+        assert me._behov(ch, fjern) is None, "134 timer ude er en baggrund, ikke et behov"
+        naer = {"crossed": [], "approaching": [{"label": "latens", "eta_hours": 2.0}]}
+        assert me._behov(ch, naer), "under et døgn er et behov"
+
+    def test_behovet_er_emnet_ikke_antallet(self):
+        """Et tal der kun vokser (121 drømme) ville gøre karakteren permanent til stede."""
+        ch = next(c for c in me._CHARACTERS if c["id"] == "trainman")
+        a = {"active": True, "woven_total": 121, "recent": [{"dream_id": "dream-a"}]}
+        b = {"active": True, "woven_total": 999, "recent": [{"dream_id": "dream-a"}]}
+        assert me._behov(ch, a) == me._behov(ch, b), "antallet må ikke være identiteten"
+        c = {"active": True, "woven_total": 121, "recent": [{"dream_id": "dream-b"}]}
+        assert me._behov(ch, a) != me._behov(ch, c), "en ny drøm er et nyt behov"
+
+
+class TestLivscyklus:
+    """Karakteren skal dukke op, tie, vende tilbage og til sidst trække sig."""
+
+    def _setup(self, monkeypatch, tmp_path, surf):
+        monkeypatch.setattr(me, "_LIFECYCLE_PATH", tmp_path / "lc.json")
+        ch = next(c for c in me._CHARACTERS if c["id"] == "seraph")
+        monkeypatch.setattr(me, "_SURFACE_BUILDERS", {"seraph": lambda: surf})
+        monkeypatch.setattr(me, "_CHARACTERS", [ch])
+        monkeypatch.setattr(me, "get_unaddressed", lambda _c: 0)
+        return ch
+
+    def _alder(self, tmp_path):
+        import json as _j
+        p = tmp_path / "lc.json"
+        d = _j.loads(p.read_text())
+        d["_sidst_aldret"] = "2020-01-01T00:00:00+00:00"
+        p.write_text(_j.dumps(d))
+
+    def test_frem_tav_tilbage_trukket(self, monkeypatch, tmp_path):
+        surf = {"active": True, "ready_to_surface": [{"hyp_id": "clh-1"}],
+                "felt": "en hypotese er klar"}
+        self._setup(monkeypatch, tmp_path, surf)
+        antal = []
+        for _ in range(me._GIV_OP_SEEN + 1):
+            me.tick_matrix_lifecycle()
+            antal.append(len(me.active_character_voices(limit=9)))
+            self._alder(tmp_path)
+        assert antal[0] == 1, "et nyt behov skal dukke op med det samme"
+        assert antal[1] == 0, "sagt én gang — den gentager sig ikke næste tur"
+        assert antal[me._GENTAG_HVER - 1] == 1, "den vender tilbage"
+        assert antal[me._GIV_OP_SEEN - 1] == 0, "den har sagt sit og trækker sig"
+        assert all(n == 0 for n in antal[me._GIV_OP_SEEN - 1:]), (
+            "den kommer ikke igen om det samme emne"
+        )
+
+    def test_behovet_vaek_rydder_posten(self, monkeypatch, tmp_path):
+        surf = {"active": True, "ready_to_surface": [{"hyp_id": "clh-1"}], "felt": "x"}
+        self._setup(monkeypatch, tmp_path, surf)
+        me.tick_matrix_lifecycle()
+        assert "seraph" in me._load_lifecycle()
+        monkeypatch.setattr(me, "_SURFACE_BUILDERS",
+                            {"seraph": lambda: {"active": False, "ready_to_surface": []}})
+        self._alder(tmp_path)
+        me.tick_matrix_lifecycle()
+        assert "seraph" not in me._load_lifecycle(), "et løst behov skal ryddes, ikke huskes"
+        assert me.active_character_voices(limit=9) == []
+
+
+class TestStemmenErAegte:
+    """En karakter der siger en hardcodet replik mens den ægte aflæsning ligger
+    ulæst i surfacen, er staffage — ikke en stemme."""
+
+    def test_surfacens_felt_bruges_frem_for_den_statiske_replik(self):
+        ch = next(c for c in me._CHARACTERS if c["id"] == "construct")
+        assert me._stemme({"felt": "3 nerver kan slukkes"}, ch) == "3 nerver kan slukkes"
+
+    def test_uden_en_aflaesning_falder_den_tilbage(self):
+        ch = next(c for c in me._CHARACTERS if c["id"] == "construct")
+        assert me._stemme({}, ch) == ch["line"]
+
+    def test_trainman_siger_drommen_ikke_sloganet(self):
+        ch = next(c for c in me._CHARACTERS if c["id"] == "trainman")
+        surf = {"active": True, "recent": [{"narrative": "I nat drømte jeg om værktøj."}]}
+        tekst = me._stemme(surf, ch)
+        assert "værktøj" in tekst
+        assert "perronen" not in tekst

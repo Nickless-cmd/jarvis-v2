@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10099/18598 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10107/18608 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10099/18598 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 899 | 1612 | 55% |
-| `core.services` | 6747 | 12602 | 53% |
+| `core.services` | 6755 | 12612 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -973,9 +973,9 @@ Generated from source. 10099/18598 functions/methods documented (54%). The list 
 - `core/services/central_lexicon.py` :: `operators` (L194)
 - `core/services/central_machines.py` :: `build_machines_surface` (L73)
 - `core/services/central_machines.py` :: `record_machines` (L77)
-- `core/services/central_matrix_ensemble.py` :: `get_unaddressed` (L43)
-- `core/services/central_matrix_ensemble.py` :: `increment_unaddressed` (L47)
-- `core/services/central_matrix_ensemble.py` :: `reset_unaddressed` (L54)
+- `core/services/central_matrix_ensemble.py` :: `get_unaddressed` (L44)
+- `core/services/central_matrix_ensemble.py` :: `increment_unaddressed` (L48)
+- `core/services/central_matrix_ensemble.py` :: `reset_unaddressed` (L55)
 - `core/services/central_merovingian.py` :: `list_challenges` (L331)
 - `core/services/central_mourning.py` :: `list_epitaphs` (L131)
 - `core/services/central_prompt_composer.py` :: `is_live_enabled` (L246)
@@ -1665,13 +1665,13 @@ Generated from source. 10099/18598 functions/methods documented (54%). The list 
 - `core/services/prompt_assembly_turn_cache.py` :: `lookup` (L26)
 - `core/services/prompt_assembly_turn_cache.py` :: `store` (L39)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3725)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3573)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3862)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3732)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3580)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3869)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L173)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L121)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L148)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4829)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4836)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L229)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L474)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)

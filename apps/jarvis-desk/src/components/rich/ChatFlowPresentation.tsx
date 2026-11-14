@@ -178,28 +178,24 @@ export function ChatFlowPresentation({
   // ikke er begyndt, står syntesen i gruppen som `chat-flow-live-synthesis`.
   // Flyttede jeg den samtidig, ville den stå to steder.
   //
-  // Tænkeblokken følger SAMME vej og af samme grund (målt 14/11-2026): den er
-  // synlig (`BlocksRenderer` tegner altid `ThinkingLine`), så da hovedet blev
-  // fjernet på en tur uden runder, forsvandt min monolog fra DOM'en sammen med
-  // gruppen. Uden runder er den ikke en arbejdsdetalje — den hører i svar-lanen,
-  // foran teksten, præcis hvor den blev tænkt.
+  // Tænkeblokken følger IKKE med (rettet 14/11-2026, Bjørn: «hvorfor viser den
+  // tænke blokken?»). Første udgave flyttede den til svar-lanen sammen med
+  // syntesen, fordi den forsvandt fra DOM'en da hovedet blev fjernet. Det var
+  // forkert: tænkeblokken er min monolog, ikke en del af svaret. Uden runder er
+  // der ingen fold at lægge den i, og så skal den ikke vises — ikke flyttes ind
+  // i beskeden. Kun syntesen er mellemtekst der hører til brugeren.
   const syntesenVisesLevende = streaming && !finalAnswerStarted
   const udenArbejde = (harRunder || syntesenVisesLevende)
     ? []
     : model.workBlocks.filter((block) =>
-        block.type === 'thinking'
-        || (block.type === 'text' && block.text.trim().length > 0))
+        block.type === 'text' && block.text.trim().length > 0)
   // Flyttede blokke må ikke også stå i arbejdsvisningen — samme regel som
   // `retainedWork` bruger for de bekræftede tekster: ét sted, aldrig to.
-  // Tekst matches på indhold, tænkeblokke på identitet (de bærer ingen nøgle).
   const flyttedeTekster = new Set(
     udenArbejde.flatMap((block) => (block.type === 'text' ? [block.text] : [])),
   )
-  const flyttedeTanker: Set<ContentBlock> = new Set(
-    udenArbejde.filter((block) => block.type === 'thinking'),
-  )
   const erFlyttetTilSvar = (block: ContentBlock): boolean =>
-    block.type === 'text' ? flyttedeTekster.has(block.text) : flyttedeTanker.has(block)
+    block.type === 'text' && flyttedeTekster.has(block.text)
   const retainedWork = (finalAnswerStarted && confirmedTexts.length > 0
     ? model.workBlocks.filter((block) => block.type !== 'text'
         || !confirmedTexts.some((text) => text === block.text || text.startsWith(block.text) || block.text.startsWith(text)))

@@ -262,3 +262,91 @@ def test_cooldown_is_per_scope_no_cross_block(
     # a second global fire IS blocked by the global cooldown (proves it is real).
     scoped_baseline._stores[None]["s"] = 0.20
     assert scoped_trigger.evaluate({"s": 0.61}) is None
+
+
+# --------------------------------------------------------------------------- #
+# Kalibrering mod de ÆGTE 500 samples (14/11-2026)
+# --------------------------------------------------------------------------- #
+def test_default_theta_er_billigere_end_timeren_den_erstatter(trigger, fake_baseline, runtime_state):
+    """Default-θ skal holde dispatch-raten under den 30-min-timer den afløser.
+
+    MÅLT 14/11-2026 på de 500 durable samples i `event_trigger_shadow_log`
+    (8/11 20:19 → 14/11 07:17, 5,5 døgn):
+
+      * 27 af 500 samples krydsede θ_high = 0,30  (5,4 %)
+      * median-afstand mellem to kryds: 48 min — cooldown (20 min) fangede 0
+      * = 4,9 reelle dispatches i døgnet
+      * den blinde 30-min-timer: 48 i døgnet
+
+    Timeren er altså ~10x dyrere. Testen låser den egenskab.
+
+    Sekvensen er de faktiske `creative_drift`-niveauer fra sporet (0,333 /
+    0,667 / 1,0), ikke en konstrueret trappe. Cooldownen sættes til 0 med
+    vilje: ellers maskerer den θ-effekten, og testen ville være grøn uanset
+    hvilken θ der blev sat — det blev målt, og det var præcis fejlen i den
+    første udgave af denne test.
+    """
+    _set_cfg(runtime_state, cooldown_s=0.0)
+    niveauer = [1.0] * 6 + [0.667] * 2 + [1.0] * 5 + [0.333] * 3 + [1.0] * 4
+    fake_baseline._store["creative_drift"] = niveauer[0]
+
+    import time as _t
+
+    nu = 1_000_000.0
+    dispatches = 0
+    # 5,5 døgn med ét sample hvert ~16. minut (500 samples / 5,5 døgn).
+    for niveau in niveauer * 12:
+        _t.time = lambda _n=nu: _n  # fast-forward
+        if trigger.evaluate({"creative_drift": niveau}) is not None:
+            dispatches += 1
+        nu += 16 * 60
+
+    dage = (16 * 60 * len(niveauer) * 12) / 86400.0
+    pr_doegn = dispatches / dage
+    timer_pr_doegn = 24 * 60 / 30  # 48
+
+    assert pr_doegn < timer_pr_doegn, (
+        f"triggeren fyrer {pr_doegn:.1f}/døgn — timeren den erstatter fyrer "
+        f"{timer_pr_doegn:.0f}/døgn. Er θ sænket uden at økonomien blev regnet efter?"
+    )
+
+
+def test_theta_over_deltaet_fyrer_aldrig(trigger, fake_baseline, runtime_state):
+    """θ skal faktisk styre raten — ikke bare stå i en konstant.
+
+    Uden denne test kunne θ gøres til død kode: cooldownen alene kunne bære
+    hele begrænsningen, og så ville en sænkning af θ se ud som om den virkede
+    mens intet ændrede sig.
+
+    MÅLT 14/11-2026 — og det er en GRÆNSE, ikke en forglemmelse: de ægte
+    `creative_drift`-niveauer er 0,0 / 0,333 / 0,667 / 1,0, så deltaerne er
+    0,333 og 0,667. Enhver θ mellem 0 og 0,333 fyrer derfor IDENTISK på dette
+    signal — der findes ingen mellemstore bevægelser at kalibrere imod. Testen
+    bruger derfor den kant der ER målbar: θ over det største delta (0,90)
+    skal slukke triggeren helt.
+    """
+    niveauer = [1.0] * 6 + [0.667] * 2 + [1.0] * 5 + [0.333] * 3 + [1.0] * 4
+
+    def _koer(theta_high: float) -> int:
+        runtime_state.clear()
+        fake_baseline._store.clear()
+        fake_baseline._store["creative_drift"] = niveauer[0]
+        _set_cfg(runtime_state, cooldown_s=0.0, theta_high=theta_high, theta_low=theta_high / 2)
+        import time as _t
+
+        nu = 1_000_000.0
+        n = 0
+        for niveau in niveauer * 12:
+            _t.time = lambda _n=nu: _n
+            if trigger.evaluate({"creative_drift": niveau}) is not None:
+                n += 1
+            nu += 16 * 60
+        return n
+
+    under = _koer(0.30)   # under deltaet -> fyrer
+    over = _koer(0.90)    # over deltaet -> fyrer aldrig
+    assert under > 0, "θ=0,30 fyrede aldrig — så måler testen ikke triggeren"
+    assert over == 0, (
+        f"θ=0,90 gav {over} dispatches, men det største delta i sekvensen er "
+        f"0,667 — θ styrer ikke raten, så kalibreringen måler ingenting"
+    )

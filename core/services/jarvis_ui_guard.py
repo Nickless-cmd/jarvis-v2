@@ -69,6 +69,13 @@ _DEGRADERET = "*(en flade kunne ikke vises — dataene passede ikke sammen)*"
 #: så markøren siger nu hvad den er.
 _MANGLER = "— (mangler)"
 
+#: Lofterne for de typer der bærer børn. De SKAL stå her og ikke kun i
+#: rendereren: guarden erklærer en flade «ok» hvis den ikke kender loftet, og
+#: så klipper klienten børnene væk uden at nogen ser det. Tallene er de samme
+#: som `BOX_MAX_DYBDE` / `BOX_MAX_BOERN` i desk og mobil.
+_BOX_MAX_DYBDE = 3
+_BOX_MAX_BOERN = 8
+
 
 def _normaliser_form(raw: str) -> str:
     """Flyt JSON'en ned på sin egen linje og lukke-fencen på sin egen linje.
@@ -149,8 +156,12 @@ def _endeligt_tal(vaerdi: object) -> bool:
     return vaerdi == vaerdi and abs(vaerdi) != float("inf")
 
 
-def _diagnosticér(data: dict) -> tuple[str, list[str]]:
+def _diagnosticér(data: dict, dybde: int = 1) -> tuple[str, list[str]]:
     """Afgør om rendereren viser blokken. Returnerer (niveau, fejl).
+
+    ``dybde`` tælles kun for de typer der bærer børn (``box``, ``tabs``).
+    Rendereren afviser en box dybere end 3; guarden skal måle det samme tal,
+    ellers erklærer den en flade «ok» som klienten returnerer ``null`` for.
 
     Niveau er ``"ok"``, ``"delvis"`` (nogle elementer filtreres væk, resten
     vises) eller ``"død"`` (rendereren returnerer ``null`` — intet vises).
@@ -293,6 +304,121 @@ def _diagnosticér(data: dict) -> tuple[str, list[str]]:
         if len(alle) > 8:
             fejl.append(f"control har {len(alle)} felter, kun 8 vises")
         return ("delvis" if fejl else "ok"), fejl
+
+    if typ == "box":
+        # (14/11-2026) Nesting landede i renderer og prompt, men IKKE her.
+        # Målt: `_diagnosticér` faldt til «ukendt flade-type» for hver box, så
+        # `_validér` sagde nej, blokken blev erstattet af `_DEGRADERET`, og
+        # `fejl_i_flader` fyrede `korriger_flader` — et helt modelkald for en
+        # flade der var korrekt skrevet. En guard der ikke kender en type er
+        # ikke passiv: den ØDELÆGGER den.
+        if dybde > _BOX_MAX_DYBDE:
+            return "død", [f"box står i dybde {dybde}, højst {_BOX_MAX_DYBDE} tillades"]
+        born = data.get("children") if isinstance(data.get("children"), list) else []
+        brugbare = 0
+        for i, x in enumerate(born):
+            if not isinstance(x, dict):
+                fejl.append(f"box barn {i} er ikke et objekt")
+                continue
+            _n, _f = _diagnosticér(x, dybde + 1)
+            if _n == "død":
+                fejl.append(f"box barn {i} er dødt: {'; '.join(_f)[:120]}")
+            else:
+                brugbare += 1
+        if not brugbare:
+            return "død", fejl or ["box har ingen brugbare børn"]
+        if len(born) > _BOX_MAX_BOERN:
+            fejl.append(f"box har {len(born)} børn, kun {_BOX_MAX_BOERN} vises")
+        return ("delvis" if fejl else "ok"), fejl
+
+    if typ == "tabs":
+        # Faner bærer børn ligesom box, men viser ÉT barn ad gangen. Mindst to
+        # faner: med én fane er der intet at skifte mellem, og fladen ville
+        # være en box med en knap.
+        alle = data.get("tabs") if isinstance(data.get("tabs"), list) else []
+        if len(alle) < 2:
+            return "død", [f"tabs har {len(alle)} faner, mindst 2 kræves"]
+        brugbare = 0
+        for i, x in enumerate(alle):
+            if not isinstance(x, dict):
+                fejl.append(f"tabs fane {i} er ikke et objekt")
+                continue
+            if not _tekst(x.get("label")):
+                fejl.append(f"tabs fane {i} mangler label")
+                continue
+            born = x.get("children") if isinstance(x.get("children"), list) else []
+            gyldige = 0
+            for j, b in enumerate(born):
+                if isinstance(b, dict) and _diagnosticér(b, dybde + 1)[0] != "død":
+                    gyldige += 1
+                elif not isinstance(b, dict):
+                    fejl.append(f"tabs fane {i} barn {j} er ikke et objekt")
+            if not gyldige:
+                fejl.append(f"tabs fane {i} har ingen brugbare børn")
+            else:
+                brugbare += 1
+        if not brugbare:
+            return "død", fejl or ["tabs har ingen brugbare faner"]
+        if len(alle) > 5:
+            fejl.append(f"tabs har {len(alle)} faner, kun 5 vises")
+        return ("delvis" if fejl else "ok"), fejl
+
+    if typ == "keyvalue":
+        # Kompakte fakta på rækker. Forskellen til `stats` er læseformen:
+        # stats fremhæver få tal, keyvalue lister mange par tæt.
+        alle = data.get("items") if isinstance(data.get("items"), list) else []
+        brugbare = 0
+        for i, x in enumerate(alle):
+            if not isinstance(x, dict):
+                fejl.append(f"keyvalue item {i} er ikke et objekt")
+                continue
+            if not (_tekst(x.get("key")) or _tekst(x.get("label"))):
+                fejl.append(f"keyvalue item {i} mangler key/label")
+            elif not _tekst(x.get("value")):
+                fejl.append(f"keyvalue item {i} mangler value")
+            else:
+                brugbare += 1
+        if not brugbare:
+            return "død", fejl or ["keyvalue har ingen brugbare items"]
+        if len(alle) > 12:
+            fejl.append(f"keyvalue har {len(alle)} items, kun 12 vises")
+        return ("delvis" if fejl else "ok"), fejl
+
+    if typ == "progress":
+        alle = data.get("items") if isinstance(data.get("items"), list) else []
+        brugbare = 0
+        for i, x in enumerate(alle):
+            if not isinstance(x, dict):
+                fejl.append(f"progress item {i} er ikke et objekt")
+                continue
+            maks = x.get("max")
+            if not _tekst(x.get("label")):
+                fejl.append(f"progress item {i} mangler label")
+            elif not _endeligt_tal(x.get("value")):
+                # Samme fælde som slideren: `NaN` er et tal for Python, men en
+                # bredde på `NaN` giver en usynlig bjælke uden nogen fejl.
+                fejl.append(f"progress item {i} mangler et gyldigt value")
+            elif maks is not None and (not _endeligt_tal(maks) or maks <= 0):
+                fejl.append(f"progress item {i} har ulovligt max")
+            else:
+                brugbare += 1
+        if not brugbare:
+            return "død", fejl or ["progress har ingen brugbare items"]
+        if len(alle) > 8:
+            fejl.append(f"progress har {len(alle)} items, kun 8 vises")
+        return ("delvis" if fejl else "ok"), fejl
+
+    if typ == "quote":
+        if not _tekst(data.get("text")):
+            return "død", ["quote mangler text"]
+        return "ok", fejl
+
+    if typ == "code":
+        # Kodeblokken adskiller sig fra Markdown-fences ved at bære en STI, så
+        # læseren ved hvor uddraget kommer fra. Uden indhold er den en tom ramme.
+        if not _tekst(data.get("code")):
+            return "død", ["code mangler code"]
+        return "ok", fejl
 
     if typ == "location":
         adresse = _tekst(data.get("address"))

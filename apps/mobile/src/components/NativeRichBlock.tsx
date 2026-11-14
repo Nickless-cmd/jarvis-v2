@@ -18,6 +18,15 @@ export type NativeSpec =
       | { kind: 'slider'; bind: string; label: string; min: number; max: number; step: number; value: number }
       | { kind: 'text'; text: string }
     > }
+  // `box` + katalogudvidelsen (14/11-2026). Samme fem typer som desk — og
+  // samme krav: hver type SKAL have en gren i `jarvis_ui_guard.py`, ellers
+  // erklaerer guarden den doed og fyrer et modelkald for at «rette» den.
+  | { type: 'box'; title: string; children: NativeSpec[] }
+  | { type: 'keyvalue'; title: string; items: Array<{ key: string; value: string; detail: string }> }
+  | { type: 'progress'; title: string; items: Array<{ label: string; value: number; max: number; detail: string }> }
+  | { type: 'quote'; title: string; text: string; source: string; href: string }
+  | { type: 'code'; title: string; path: string; language: string; code: string; start: number }
+  | { type: 'tabs'; title: string; tabs: Array<{ label: string; children: NativeSpec[] }> }
 
 const text = (v: unknown, max = 500) => typeof v === 'string' ? v.trim().slice(0, max) : ''
 const tal = (v: unknown): number | null => typeof v === 'number' && Number.isFinite(v) ? v : null
@@ -25,11 +34,73 @@ const list = (v: unknown, max: number): Json[] => Array.isArray(v)
   ? v.filter((x): x is Json => Boolean(x) && typeof x === 'object' && !Array.isArray(x)).slice(0, max)
   : []
 
+/** Lofterne for de typer der baerer boern. Skal matche desk og guarden. */
+const BOX_MAX_DYBDE = 3
+const BOX_MAX_BOERN = 8
+
 export function parseNativeRichSpec(code: string): NativeSpec | null {
   let raw: Json
   try { raw = JSON.parse(code) as Json } catch { return null }
+  return parseNode(raw, 1)
+}
+
+// Rekursion (14/11-2026): mobil-parseren var FLAD, saa `box` kunne ikke
+// parses her — den faldt til `return null` og forsvandt paa telefonen mens
+// den saa rigtig ud i desk. Samme flade, to svar. `depth` baeres nu med, saa
+// dybde-graensen kan haandhaeves praecis som i desk.
+function parseNode(raw: unknown, depth: number): NativeSpec | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  return parseNodeObj(raw as Json, depth)
+}
+
+function parseNodeObj(raw: Json, depth: number): NativeSpec | null {
   const type = text(raw.type, 30); const title = text(raw.title, 120)
+  if (type === 'box') {
+    if (depth > BOX_MAX_DYBDE) return null
+    const children = list(raw.children, BOX_MAX_BOERN)
+      .map((x) => parseNode(x, depth + 1))
+      .filter((x): x is NativeSpec => x !== null)
+    return children.length ? { type, title, children } : null
+  }
+  if (type === 'tabs') {
+    if (depth > BOX_MAX_DYBDE) return null
+    const tabs = list(raw.tabs, 5).map((x) => ({
+      label: text(x.label, 60),
+      children: list(x.children, BOX_MAX_BOERN)
+        .map((c) => parseNode(c, depth + 1))
+        .filter((c): c is NativeSpec => c !== null),
+    })).filter((x) => x.label && x.children.length)
+    return tabs.length >= 2 ? { type, title, tabs } : null
+  }
+  if (type === 'keyvalue') {
+    const items = list(raw.items, 12).map((x) => ({
+      key: text(x.key, 80) || text(x.label, 80), value: text(x.value, 240), detail: text(x.detail, 240),
+    })).filter((x) => x.key && x.value)
+    return items.length ? { type, title, items } : null
+  }
+  if (type === 'progress') {
+    const items = list(raw.items, 8).map((x) => {
+      const label = text(x.label, 120)
+      const value = tal(x.value)
+      const max = tal(x.max) ?? 100
+      if (!label || value === null || max <= 0) return null
+      return { label, value, max, detail: text(x.detail, 240) }
+    }).filter((x): x is NonNullable<typeof x> => Boolean(x))
+    return items.length ? { type, title, items } : null
+  }
+  if (type === 'quote') {
+    const body = text(raw.text, 2000)
+    return body ? { type, title, text: body, source: text(raw.source, 200), href: text(raw.href, 500) } : null
+  }
+  if (type === 'code') {
+    const kode = text(raw.code, 8000)
+    if (!kode) return null
+    const start = tal(raw.start)
+    return {
+      type, title, code: kode, path: text(raw.path, 300), language: text(raw.language, 30),
+      start: start !== null && start > 0 ? Math.floor(start) : 1,
+    }
+  }
   if (type === 'callout') {
     const body = text(raw.body, 1200)
     const tone = ['info', 'success', 'warning', 'danger'].includes(String(raw.tone)) ? String(raw.tone) as 'info' | 'success' | 'warning' | 'danger' : 'info'
@@ -101,11 +172,72 @@ const trinVaerdier = (f: { min: number; max: number; step: number }): number[] =
 
 export function NativeRichBlock({ code }: { code: string }) {
   const spec = parseNativeRichSpec(code)
+  return spec ? <FladeNode spec={spec} /> : null
+}
+
+// Hver node er sin EGEN komponent (14/11-2026), saa `control` og `tabs` i et
+// barn har deres egen state, og hook-raekkefoelgen er konstant uanset
+// fladetype. Foer laa alt i een funktion, hvilket gjorde rekursion umulig.
+function FladeNode({ spec }: { spec: NativeSpec }) {
   const styles = useStyles(makeStyles); const theme = useTheme(); const send = useContext(WidgetPrompt)
   const [kontrolVaerdier, setKontrolVaerdi] = useState<Record<string, number>>({})
-  if (!spec) return null
+  const [valgtFane, setValgtFane] = useState(0)
   // `control` har ingen titel — den er et lille haandtag, ikke et kort.
   const heading = 'title' in spec && spec.title ? <Text style={styles.title}>{spec.title}</Text> : null
+  if (spec.type === 'box') return <View accessibilityLabel={spec.title || 'Samling'} style={styles.card}>{heading}
+    {spec.children.map((c, i) => <FladeNode key={`${c.type}-${i}`} spec={c} />)}
+  </View>
+  if (spec.type === 'tabs') {
+    // `Math.min` klemmer et gemt indeks der peger ud i tomrummet efter en
+    // kortere flade — uden den ville fane-indholdet rendere ingenting.
+    const idx = Math.min(valgtFane, spec.tabs.length - 1)
+    const aktiv = spec.tabs[idx]
+    if (!aktiv) return null
+    return <View accessibilityLabel={spec.title || 'Faner'} style={styles.card}>{heading}
+      <View style={styles.tabsListe}>{spec.tabs.map((t, i) => (
+        <Pressable key={`${t.label}-${i}`} accessibilityRole="tab" accessibilityLabel={t.label}
+          accessibilityState={{ selected: i === idx }} onPress={() => setValgtFane(i)}
+          style={({ pressed }) => [styles.tab, i === idx && styles.tabAktiv, pressed && styles.pressed]}>
+          <Text style={[styles.tabTekst, i === idx && styles.tabTekstAktiv]}>{t.label}</Text>
+        </Pressable>
+      ))}</View>
+      <View style={styles.tabsIndhold}>{aktiv.children.map((c, i) => <FladeNode key={`${c.type}-${i}`} spec={c} />)}</View>
+    </View>
+  }
+  if (spec.type === 'keyvalue') return <View accessibilityLabel={spec.title || 'Fakta'} style={styles.card}>{heading}
+    {spec.items.map((x, i) => <View key={`${x.key}-${i}`} style={styles.kvRaekke}>
+      <Text style={styles.kvNoegle}>{x.key}</Text>
+      <View style={styles.flex}><Text style={styles.kvVaerdi}>{x.value}</Text>{x.detail ? <Text style={styles.body}>{x.detail}</Text> : null}</View>
+    </View>)}
+  </View>
+  if (spec.type === 'progress') return <View accessibilityLabel={spec.title || 'Status'} style={styles.card}>{heading}
+    {spec.items.map((x, i) => {
+      // Klemt til 0-100: en vaerdi over `max` ville loebe ud over rammen.
+      const pct = Math.max(0, Math.min(100, (x.value / x.max) * 100))
+      return <View key={`${x.label}-${i}`} style={styles.progressPost}>
+        <View style={styles.progressHoved}><Text style={styles.muted}>{x.label}</Text><Text style={styles.strong}>{x.value} / {x.max}</Text></View>
+        <View style={styles.progressBjaelke}><View style={[styles.progressFyld, { width: `${pct}%` }]} /></View>
+        {x.detail ? <Text style={styles.muted}>{x.detail}</Text> : null}
+      </View>
+    })}
+  </View>
+  if (spec.type === 'quote') return <View accessibilityLabel={spec.title || 'Citat'} style={styles.quote}>{heading}
+    <Text style={styles.quoteTekst}>{spec.text}</Text>
+    {spec.source ? (spec.href
+      ? <Pressable accessibilityRole="link" accessibilityLabel={spec.source} onPress={() => void Linking.openURL(spec.href)}>
+          <Text style={styles.quoteKilde}>{spec.source}</Text>
+        </Pressable>
+      : <Text style={styles.quoteKilde}>{spec.source}</Text>) : null}
+  </View>
+  if (spec.type === 'code') return <View accessibilityLabel={spec.title || 'Kode'} style={styles.codeKasse}>
+    {(spec.title || spec.path) ? <View style={styles.codeHoved}>{heading}{spec.path ? <Text style={styles.codeSti}>{spec.path}</Text> : null}</View> : null}
+    <ScrollView horizontal showsHorizontalScrollIndicator>
+      <View>{spec.code.split('\n').map((l, i) => <View key={i} style={styles.codeLinje}>
+        <Text style={styles.codeNr}>{spec.start + i}</Text>
+        <Text style={styles.codeTekst}>{l || ' '}</Text>
+      </View>)}</View>
+    </ScrollView>
+  </View>
   if (spec.type === 'callout') {
     const Icon = spec.tone === 'success' ? CheckCircle2 : spec.tone === 'warning' ? AlertTriangle : spec.tone === 'danger' ? CircleAlert : Info
     const color = spec.tone === 'success' ? theme.color.ok : spec.tone === 'warning' ? theme.color.warn : spec.tone === 'danger' ? theme.color.error : theme.color.accent
@@ -180,4 +312,28 @@ const makeStyles = (t: Theme) => StyleSheet.create({
   controlTrinValgt: { borderColor: t.color.accent, backgroundColor: t.color.bg1 },
   controlTrinTekst: { color: t.color.fg2, fontSize: 13 },
   controlTrinTekstValgt: { color: t.color.fg1, fontWeight: '700' },
+  // Katalogudvidelse (14/11-2026): keyvalue · progress · quote · code · tabs
+  kvRaekke: { flexDirection: 'row', gap: t.spacing.sm, paddingVertical: 6, borderTopWidth: 1, borderColor: t.color.line },
+  kvNoegle: { color: t.color.fg3, fontSize: 13, minWidth: 90 },
+  kvVaerdi: { color: t.color.fg1 },
+  progressPost: { gap: 4 },
+  progressHoved: { flexDirection: 'row', justifyContent: 'space-between', gap: t.spacing.sm },
+  progressBjaelke: { height: 7, borderRadius: 4, backgroundColor: t.color.bg2, overflow: 'hidden' },
+  progressFyld: { height: 7, borderRadius: 4, backgroundColor: t.color.accent },
+  // quote: venstrekant i stedet for citationstegn — et uddrag, ikke pynt.
+  quote: { marginVertical: t.spacing.xs, paddingLeft: t.spacing.md, borderLeftWidth: 3, borderColor: t.color.line, gap: 4 },
+  quoteTekst: { color: t.color.fg1, fontStyle: 'italic', lineHeight: 21 },
+  quoteKilde: { color: t.color.fg3, fontSize: 13, textDecorationLine: 'underline' },
+  codeKasse: { marginVertical: t.spacing.xs, borderWidth: 1, borderColor: t.color.line, borderRadius: t.radius.md, backgroundColor: t.color.bg1, overflow: 'hidden' },
+  codeHoved: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: 8, paddingHorizontal: t.spacing.sm, paddingVertical: 8, borderBottomWidth: 1, borderColor: t.color.line },
+  codeSti: { color: t.color.fg3, fontSize: 12 },
+  codeLinje: { flexDirection: 'row', gap: 10, paddingHorizontal: t.spacing.sm },
+  codeNr: { color: t.color.fg3, fontSize: 12, minWidth: 30, textAlign: 'right' },
+  codeTekst: { color: t.color.fg2, fontSize: 12, fontFamily: 'monospace' },
+  tabsListe: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: t.spacing.sm },
+  tab: { minHeight: 36, justifyContent: 'center', paddingHorizontal: 12, borderWidth: 1, borderColor: t.color.line, borderRadius: t.radius.md, backgroundColor: t.color.bg1 },
+  tabAktiv: { borderColor: t.color.accent, backgroundColor: t.color.bg2 },
+  tabTekst: { color: t.color.fg2, fontSize: 13 },
+  tabTekstAktiv: { color: t.color.fg1, fontWeight: '700' },
+  tabsIndhold: { gap: t.spacing.sm },
 })

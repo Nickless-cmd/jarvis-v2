@@ -25,6 +25,18 @@ type NativeSpec =
   // `box` (14/11-2026): bærer børn og rendrer dem rekursivt, så en sammensat
   // flade kan bygges uden modelkald. Kun rene bind-navne — ingen evaluator.
   | { type: 'box'; title: string; children: NativeSpec[] }
+  // (14/11-2026) Katalogudvidelse, første bølge: fem typer valgt efter gevinst
+  // per risiko. Resten af de ~20 er bevidst IKKE bygget — de skal måles først.
+  //
+  // Rækkefølgen her er ikke kosmetisk: hver type SKAL have en tilsvarende gren
+  // i `core/services/jarvis_ui_guard.py::_diagnosticér`, ellers erklærer
+  // guarden den «død», erstatter den med en grå linje og fyrer et helt
+  // modelkald for at «rette» en flade der var korrekt skrevet.
+  | { type: 'keyvalue'; title: string; items: Array<{ key: string; value: string; detail: string }> }
+  | { type: 'progress'; title: string; items: Array<{ label: string; value: number; max: number; detail: string }> }
+  | { type: 'quote'; title: string; text: string; source: string; href: string }
+  | { type: 'code'; title: string; path: string; language: string; code: string; start: number }
+  | { type: 'tabs'; title: string; tabs: Array<{ label: string; children: NativeSpec[] }> }
 
 /** Højeste dybde en `box` må stå i (toppen er dybde 1). En box i dybde 4
  *  afvises; blade (callout osv.) under en dybde-3-box er stadig fine. */
@@ -63,6 +75,48 @@ function parseNodeObj(raw: Json, depth: number): NativeSpec | null {
       .map((x) => parseNode(x, depth + 1))
       .filter((x): x is NativeSpec => x !== null)
     return children.length ? { type, title, children } : null
+  }
+  if (type === 'keyvalue') {
+    const items = list(raw.items, 12).map((x) => ({
+      key: text(x.key, 80) || text(x.label, 80), value: text(x.value, 240), detail: text(x.detail, 240),
+    })).filter((x) => x.key && x.value)
+    return items.length ? { type, title, items } : null
+  }
+  if (type === 'progress') {
+    const items = list(raw.items, 8).map((x) => {
+      const label = text(x.label, 120)
+      const value = tal(x.value)
+      const max = tal(x.max) ?? 100
+      // Samme værn som slideren: et `value` der ikke er et endeligt tal giver
+      // en bjælke med `width: NaN%` — usynlig, uden nogen fejl nogen steder.
+      if (!label || value === null || max <= 0) return null
+      return { label, value, max, detail: text(x.detail, 240) }
+    }).filter((x): x is NonNullable<typeof x> => Boolean(x))
+    return items.length ? { type, title, items } : null
+  }
+  if (type === 'quote') {
+    const body = text(raw.text, 2000)
+    return body ? { type, title, text: body, source: text(raw.source, 200), href: text(raw.href, 500) } : null
+  }
+  if (type === 'code') {
+    const kode = text(raw.code, 8000)
+    if (!kode) return null
+    const start = tal(raw.start)
+    return {
+      type, title, code: kode, path: text(raw.path, 300), language: text(raw.language, 30),
+      start: start !== null && start > 0 ? Math.floor(start) : 1,
+    }
+  }
+  if (type === 'tabs') {
+    if (depth > BOX_MAX_DYBDE) return null
+    const tabs = list(raw.tabs, 5).map((x) => ({
+      label: text(x.label, 60),
+      children: list(x.children, BOX_MAX_BOERN)
+        .map((c) => parseNode(c, depth + 1))
+        .filter((c): c is NativeSpec => c !== null),
+    })).filter((x) => x.label && x.children.length)
+    // Én fane er ikke faner — det er en box med en knap. Samme regel som guarden.
+    return tabs.length >= 2 ? { type, title, tabs } : null
   }
   if (type === 'callout') {
     const body = text(raw.body, 1200)
@@ -188,6 +242,9 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
   // fladetypen, og React kaster ved næste render. Det er den fælde der gør
   // at en flade kan se rigtig ud én gang og dræbe visningen bagefter.
   const [kontrolVaerdier, setKontrolVaerdi] = useState<Record<string, number>>({})
+  // Fanevalg for `tabs` (14/11-2026). Samme krav som ovenfor: hooken står før
+  // alle betingede returns, så rækkefølgen er konstant uanset fladetype.
+  const [valgtFane, setValgtFane] = useState(0)
   if (spec.type === 'box') return <section className="native-rich native-box" aria-label={spec.title || 'Samling'}>
     <Heading title={spec.title} />
     <div className="native-box-boern">{spec.children.map((c, i) => <FladeNode key={`${c.type}-${i}`} spec={c} />)}</div>
@@ -242,6 +299,61 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
             <output className="native-control-vaerdi">{aktuel(f.bind, f.value)}</output>
           </label>
         ) : <p key={`t-${i}`}>{interpolér(f.text)}</p>)}
+      </div>
+    </section>
+  }
+  if (spec.type === 'keyvalue') return <section className="native-rich" aria-label={spec.title || 'Fakta'}>
+    <Heading title={spec.title} /><dl className="native-keyvalue">{spec.items.map((x, i) => <div key={`${x.key}-${i}`}><dt>{x.key}</dt><dd>{x.value}{x.detail && <small>{x.detail}</small>}</dd></div>)}</dl>
+  </section>
+  if (spec.type === 'progress') return <section className="native-rich" aria-label={spec.title || 'Status'}>
+    <Heading title={spec.title} /><div className="native-progress">{spec.items.map((x, i) => {
+      // Klemt til 0–100: en værdi over `max` ville give en bjælke der løb ud
+      // over rammen, og en negativ en bjælke der pegede baglæns.
+      const pct = Math.max(0, Math.min(100, (x.value / x.max) * 100))
+      return <div className="native-progress-post" key={`${x.label}-${i}`}>
+        <div className="native-progress-hoved"><span>{x.label}</span><output>{x.value} / {x.max}</output></div>
+        <div className="native-progress-bjaelke" role="progressbar" aria-label={x.label}
+          aria-valuenow={x.value} aria-valuemin={0} aria-valuemax={x.max}>
+          <span style={{ width: `${pct}%` }} />
+        </div>
+        {x.detail && <small>{x.detail}</small>}
+      </div>
+    })}</div>
+  </section>
+  if (spec.type === 'quote') return <blockquote className="native-rich native-quote" aria-label={spec.title || 'Citat'}>
+    <Heading title={spec.title} /><p>{spec.text}</p>
+    {spec.source && (spec.href
+      ? <cite><button type="button" onClick={() => openExternalUrl(spec.href)}>{spec.source}</button></cite>
+      : <cite>{spec.source}</cite>)}
+  </blockquote>
+  if (spec.type === 'code') return <section className="native-rich native-code" aria-label={spec.title || 'Kode'}>
+    {(spec.title || spec.path) && <div className="native-code-hoved">
+      <Heading title={spec.title} />{spec.path && <code className="native-code-sti">{spec.path}</code>}
+    </div>}
+    <pre className="native-code-blok">{spec.code.split('\n').map((l, i) => <span className="native-code-linje" key={i}>
+      <span className="native-code-nr" aria-hidden="true">{spec.start + i}</span>
+      <span className="native-code-tekst">{l || ' '}</span>
+    </span>)}</pre>
+  </section>
+  if (spec.type === 'tabs') {
+    // `Math.min` fordi antallet af faner kan ændre sig mellem to flader i samme
+    // samtale: uden klemningen ville et gemt indeks pege ud i tomrummet og
+    // fladen ville rendere ingenting — uden fejl.
+    const idx = Math.min(valgtFane, spec.tabs.length - 1)
+    const aktiv = spec.tabs[idx]
+    // Parser og guard kræver mindst to faner, så grenen er i praksis uopnåelig.
+    // Den står her fordi `noUncheckedIndexedAccess` ellers gør opslaget
+    // «muligvis undefined» — og et typetjek er billigere end en tom flade.
+    if (!aktiv) return null
+    return <section className="native-rich native-tabs" aria-label={spec.title || 'Faner'}>
+      <Heading title={spec.title} />
+      <div className="native-tabs-liste" role="tablist">
+        {spec.tabs.map((t, i) => <button type="button" role="tab" key={`${t.label}-${i}`}
+          aria-selected={i === idx} className={i === idx ? 'native-tab aktiv' : 'native-tab'}
+          onClick={() => setValgtFane(i)}>{t.label}</button>)}
+      </div>
+      <div className="native-tabs-indhold" role="tabpanel">
+        {aktiv.children.map((c, i) => <FladeNode key={`${c.type}-${i}`} spec={c} />)}
       </div>
     </section>
   }

@@ -177,8 +177,8 @@ def _insert_world_model(db, *, canonical_key: str, status: str = "uncertain", mi
     )
 
 
-def _insert_internal_opposition(db, *, status: str, signal_type: str, canonical_key: str, run_id: str = "test-run") -> None:
-    now = datetime.now(UTC).isoformat()
+def _insert_internal_opposition(db, *, status: str, signal_type: str, canonical_key: str, run_id: str = "test-run", dage_siden: int = 0) -> None:
+    ts = (datetime.now(UTC) - timedelta(days=dage_siden)).isoformat()
     db.upsert_runtime_internal_opposition_signal(
         signal_id=f"internal-opposition-{uuid4().hex}",
         signal_type=signal_type,
@@ -193,8 +193,8 @@ def _insert_internal_opposition(db, *, status: str, signal_type: str, canonical_
         support_summary="internal opposition support",
         support_count=2,
         session_count=1,
-        created_at=now,
-        updated_at=now,
+        created_at=ts,
+        updated_at=ts,
         status_reason="Validation internal opposition status",
         run_id=run_id,
         session_id="test-session",
@@ -514,3 +514,72 @@ def test_to_lag_i_forskellige_koersler_danner_ikke_opposition(isolated_runtime) 
     surface = tracking.build_runtime_internal_opposition_signal_surface(limit=8)
 
     assert surface["active"] is False
+
+
+def test_tidsligt_signal_pensioneres_tidligt_semantisk_bliver(isolated_runtime) -> None:
+    """Et tidsligt signal skal dø med sin kørsel — ikke hobe sig op i 14 dage.
+
+    Målt 14/11-2026: 958 aktive ``challenge-calibration``, hvoraf 957 havde et
+    run-id som domæne. Reglen i ``central_convene_judge`` er
+    ``1.0 if active else 0.0``, så «mindst ét item er aktivt» var sandt hver dag
+    i 14 dage efter hver kørsel — signalet stod konstant på 1,0 og målte «en
+    kørsel skete», ikke «to lag modsagde hinanden».
+
+    ``challenge-direction`` og ``challenge-world-view`` har EMNET som domæne og
+    skal derfor beholde de 14 dage: de kan rejse sig igen over tid.
+    """
+    db = isolated_runtime.db
+    tracking = isolated_runtime.internal_opposition_tracking
+
+    # Tidsligt signal, 5 dage gammelt: skal pensioneres (grænse 2 dage).
+    _insert_internal_opposition(
+        db,
+        status="active",
+        signal_type="challenge-calibration",
+        canonical_key="internal-opposition:challenge-calibration:visible-gammel-koersel",
+        dage_siden=5,
+    )
+    # Semantisk signal, 5 dage gammelt: skal BLIVE (grænse 14 dage).
+    _insert_internal_opposition(
+        db,
+        status="active",
+        signal_type="challenge-direction",
+        canonical_key="internal-opposition:challenge-direction:danish-concise-calibration",
+        dage_siden=5,
+    )
+
+    tracking.refresh_runtime_internal_opposition_signal_statuses()
+
+    rows = {
+        str(r["signal_type"]): str(r["status"])
+        for r in db.list_runtime_internal_opposition_signals(limit=50)
+    }
+    assert rows["challenge-calibration"] == "stale", (
+        "det tidslige signal overlevede sin kørsel — så hober det sig op til en konstant"
+    )
+    assert rows["challenge-direction"] == "active", (
+        "det semantiske signal blev pensioneret for tidligt — det har emnet som domæne"
+    )
+
+
+def test_tidsligt_signal_under_graensen_bliver_aktivt(isolated_runtime) -> None:
+    """Grænsen skal ikke være så stram at signalet dør før det kan læses.
+
+    Et signal fra i går skal stadig kunne ses i den næste kørsel eller to —
+    ellers ville rettelsen bare flytte konstanten fra 1,0 til 0,0.
+    """
+    db = isolated_runtime.db
+    tracking = isolated_runtime.internal_opposition_tracking
+
+    _insert_internal_opposition(
+        db,
+        status="active",
+        signal_type="challenge-calibration",
+        canonical_key="internal-opposition:challenge-calibration:visible-i-gaar",
+        dage_siden=1,
+    )
+
+    tracking.refresh_runtime_internal_opposition_signal_statuses()
+
+    rows = list(db.list_runtime_internal_opposition_signals(limit=50))
+    assert rows[0]["status"] == "active"

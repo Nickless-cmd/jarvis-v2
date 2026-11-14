@@ -36,6 +36,26 @@ from core.runtime.db import (
 
 _STALE_AFTER_DAYS = 14
 
+# (14/11-2026) ``challenge-calibration`` er et TIDSLIGT signal, ikke et
+# vedvarende et. Dets domæne er kørslen (se ``_run_domain``), så hver kørsel
+# laver sit eget item — målt: 957 af 958 aktive rækker havde et run-id som
+# domæne, og alle 958 var samme type. Med en 14-dages levetid blev signalet
+# derfor et konstant 1,0: reglen i ``central_convene_judge`` er
+# ``1.0 if active else 0.0``, og «mindst ét item er aktivt» var sandt hver dag
+# i 14 dage efter hver kørsel. Signalet målte «en kørsel skete», ikke
+# «to lag modsagde hinanden».
+#
+# Et tidsligt signal skal dø med sin kørsel. 2 dage er nok til at det kan
+# læses i den næste kørsel eller to, og kort nok til at det ikke hober sig op
+# til en konstant. ``challenge-direction`` og ``challenge-world-view`` er
+# SEMANTISKE (deres domæne er emnet), og de beholder de 14 dage.
+_EARLY_RETIRE_DAYS = 2
+
+
+def _opposition_early_retire(item: dict[str, object]) -> bool:
+    """Kun det tidslige signal pensioneres tidligt — ikke de semantiske."""
+    return str(item.get("signal_type") or "") == "challenge-calibration"
+
 
 # ── public surface (thin delegates; signatures unchanged) ─────────────────────
 def track_runtime_internal_opposition_signals_for_visible_turn(
@@ -323,6 +343,8 @@ _SPEC = SignalTrackingSpec(
     supersede_group_kw="domain_key",
     extract_fn=_extract_internal_opposition_candidates,
     stale_after_days=_STALE_AFTER_DAYS,
+    early_retire_days=_EARLY_RETIRE_DAYS,
+    early_retire_predicate=_opposition_early_retire,
     refreshable_statuses=frozenset({"active", "softening"}),
     stale_status_reason="Marked stale after bounded internal-opposition inactivity window.",
     surface_status_order=("active", "softening", "stale", "superseded"),

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10181/18700 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10182/18701 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10181/18700 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 900 | 1613 | 55% |
-| `core.services` | 6821 | 12696 | 53% |
+| `core.services` | 6822 | 12697 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1373,9 +1373,9 @@ Generated from source. 10181/18700 functions/methods documented (54%). The list 
 - `core/services/inner_voice_notifier.py` :: `stop_inner_voice_notifier` (L59)
 - `core/services/inner_voice_shadow.py` :: `AppraisalRecord.to_dict` (L127)
 - `core/services/inner_voice_shadow.py` :: `shadow_helpful_signal` (L449)
-- `core/services/internal_opposition_signal_tracking.py` :: `build_runtime_internal_opposition_signal_surface` (L53)
-- `core/services/internal_opposition_signal_tracking.py` :: `refresh_runtime_internal_opposition_signal_statuses` (L49)
-- `core/services/internal_opposition_signal_tracking.py` :: `track_runtime_internal_opposition_signals_for_visible_turn` (L41)
+- `core/services/internal_opposition_signal_tracking.py` :: `build_runtime_internal_opposition_signal_surface` (L73)
+- `core/services/internal_opposition_signal_tracking.py` :: `refresh_runtime_internal_opposition_signal_statuses` (L69)
+- `core/services/internal_opposition_signal_tracking.py` :: `track_runtime_internal_opposition_signals_for_visible_turn` (L61)
 - `core/services/invocation_record.py` :: `taellere` (L37)
 - `core/services/irony_daemon.py` :: `build_irony_surface` (L56)
 - `core/services/irony_daemon.py` :: `get_latest_irony_observation` (L52)

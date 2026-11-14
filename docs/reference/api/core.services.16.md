@@ -605,24 +605,25 @@ _Internal-opposition signal tracking — migrated onto signal_tracking_framework
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `track_runtime_internal_opposition_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L41) |
-| function | `refresh_runtime_internal_opposition_signal_statuses` | `()` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L49) |
-| function | `build_runtime_internal_opposition_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L53) |
-| function | `_run_domain` | `(item, key_fn)` | Domaenet er KOERSLEN, ikke et semantisk emne. | [src](../../../core/services/internal_opposition_signal_tracking.py#L64) |
-| function | `_extract_internal_opposition_candidates` | `(*_args, **_kwargs)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L87) |
-| function | `_build_candidate` | `(*, domain_key, signal_type, status, title, summary, rationale, status_reason, source_items)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L273) |
-| function | `_internal_opposition_track_summary` | `(items, message)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L303) |
-| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L338) |
-| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L349) |
-| function | `_critic_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L354) |
-| function | `_self_model_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L362) |
-| function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L367) |
-| function | `_temporal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L372) |
-| function | `_open_loop_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L377) |
-| function | `_world_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L382) |
-| function | `_snapshot_label` | `(snapshot, domain_key)` | Et læsbart emne til titlen — run-id'et er domænet, ikke en titel. | [src](../../../core/services/internal_opposition_signal_tracking.py#L387) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L402) |
-| function | `_lag_pair_label` | `(snapshot)` | Begge lags tekst i ÉN linje — fordi det kun er titlen der når prompten. | [src](../../../core/services/internal_opposition_signal_tracking.py#L407) |
+| function | `_opposition_early_retire` | `(item)` | Kun det tidslige signal pensioneres tidligt — ikke de semantiske. | [src](../../../core/services/internal_opposition_signal_tracking.py#L55) |
+| function | `track_runtime_internal_opposition_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L61) |
+| function | `refresh_runtime_internal_opposition_signal_statuses` | `()` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L69) |
+| function | `build_runtime_internal_opposition_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L73) |
+| function | `_run_domain` | `(item, key_fn)` | Domaenet er KOERSLEN, ikke et semantisk emne. | [src](../../../core/services/internal_opposition_signal_tracking.py#L84) |
+| function | `_extract_internal_opposition_candidates` | `(*_args, **_kwargs)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L107) |
+| function | `_build_candidate` | `(*, domain_key, signal_type, status, title, summary, rationale, status_reason, source_items)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L293) |
+| function | `_internal_opposition_track_summary` | `(items, message)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L323) |
+| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L360) |
+| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L371) |
+| function | `_critic_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L376) |
+| function | `_self_model_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L384) |
+| function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L389) |
+| function | `_temporal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L394) |
+| function | `_open_loop_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L399) |
+| function | `_world_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L404) |
+| function | `_snapshot_label` | `(snapshot, domain_key)` | Et læsbart emne til titlen — run-id'et er domænet, ikke en titel. | [src](../../../core/services/internal_opposition_signal_tracking.py#L409) |
+| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L424) |
+| function | `_lag_pair_label` | `(snapshot)` | Begge lags tekst i ÉN linje — fordi det kun er titlen der når prompten. | [src](../../../core/services/internal_opposition_signal_tracking.py#L429) |
 
 ## `core/services/interruption_notice.py`
 _Afbrydelses-noten — en besked til MENNESKET, ikke til modellen._

@@ -13,16 +13,20 @@ main: den eksisterende Task-livscyklus ejer begge dele.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 import signal
 import subprocess
 import tempfile
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from core.runtime.config import PROJECT_ROOT
+
+logger = logging.getLogger(__name__)
 
 
 CLI_PROVIDERS = frozenset({"claude-cli", "codex-cli"})
@@ -244,8 +248,14 @@ def _command(provider: str, executable: str, model: str, root: str, prompt: str,
         return [*cmd, prompt]
 
     tools = _cli_tools_for_policy(policy)
+    # (14/11-2026) `json` giver KUN slutresultatet. Værktøjskaldene sker inde i
+    # subprocessen og forlod den aldrig, så `agent_tool_calls` var blind for
+    # hele CLI-ruten. `stream-json` leverer `tool_use`-blokke; formen er målt
+    # mod CLI 2.1.318, og flagkombinationen er afprøvet med de øvrige
+    # sikkerhedsflag intakte.
     cmd = [executable, "--print", prompt, "--restricted", "--no-session-persistence",
-           "--permission-prompts", "none", "--output-format", "json", "--tools", tools]
+           "--permission-prompts", "none", "--output-format", "stream-json",
+           "--verbose", "--tools", tools]
     if writes:
         cmd += ["--permission-mode", "acceptEdits"]
     if selected and selected != "default":
@@ -272,13 +282,145 @@ def _stop(proc: subprocess.Popen[str]) -> None:
 
 
 def _claude_text(stdout: str) -> tuple[str, int, int]:
+    """Læs CLI'ens stdout — både `stream-json` (én JSON pr. linje) og `json`.
+
+    (14/11-2026) Funktionen hed det samme før, men antog ÉN JSON-blob. Da
+    ``--output-format`` blev skiftet til ``stream-json`` for at få
+    værktøjskaldene med, ville ``json.loads(stdout)`` fejle på flerlinjet
+    output og gøre hele ruten død. Derfor læses begge former her, så et ældre
+    kald (eller et test-fixture skrevet mod det gamle format) ikke brækker.
+
+    Returnerer ``(tekst, input_tokens, output_tokens)``. Værktøjskaldene hentes
+    separat med :func:`_claude_tool_calls` — de hører til bogføringen, ikke til
+    leverancen.
+    """
+    parsed = _claude_parse(stdout)
+    return parsed["text"], parsed["input_tokens"], parsed["output_tokens"]
+
+
+def _claude_parse(stdout: str) -> dict[str, Any]:
+    """Normalisér CLI-output til tekst, tokens og værktøjskald.
+
+    Bruger ``result``-hændelsens ``result``-felt som leverance når det findes —
+    det er den samlede sluttekst — og falder tilbage til assistant-blokkenes
+    tekst. Kaster hvis outputtet hverken er JSON eller stream-json, for et tomt
+    svar der ser ud som succes er den fejl funktionen findes for at undgå.
+    """
+    from core.tools.claude_dispatch.stream import parse_stream_line
+
+    tekst = ""
+    input_tokens = 0
+    output_tokens = 0
+    cost = 0.0
+    tool_uses: list[dict[str, Any]] = []
+    tool_results: list[dict[str, Any]] = []
+    så_vi_json = False
+
+    # Form 1: én JSON-blob (det gamle `--output-format json`).
     try:
-        data = json.loads(stdout)
-    except ValueError as exc:
-        raise CliBackendError(f"Claude CLI gav ikke JSON: {exc}") from exc
-    text = str(data.get("result") or "").strip() if isinstance(data, dict) else ""
-    usage = data.get("usage") or {} if isinstance(data, dict) else {}
-    return text, int(usage.get("input_tokens") or 0), int(usage.get("output_tokens") or 0)
+        blob = json.loads(stdout)
+    except ValueError:
+        blob = None
+    if isinstance(blob, dict):
+        så_vi_json = True
+        tekst = str(blob.get("result") or "").strip()
+        usage = blob.get("usage") or {}
+        input_tokens = int(usage.get("input_tokens") or 0)
+        output_tokens = int(usage.get("output_tokens") or 0)
+        cost = float(blob.get("total_cost_usd") or 0.0)
+        # En fejlblob er gyldig JSON. Uden dette tjek ville en CLI-fejl blive
+        # returneret som en leverance — tavshed af den værste slags.
+        if blob.get("is_error"):
+            raise CliBackendError(
+                f"claude-cli rapporterede en fejl: {tekst[:200] or 'uden tekst'}"
+            )
+    else:
+        # Form 2: stream-json — én hændelse pr. linje.
+        assistant_tekst: list[str] = []
+        for linje in stdout.splitlines():
+            ev = parse_stream_line(linje)
+            if ev is None:
+                continue
+            så_vi_json = True
+            tool_uses.extend(ev.tool_uses)
+            tool_results.extend(ev.tool_results)
+            if ev.kind == "assistant" and ev.text:
+                assistant_tekst.append(ev.text)
+            elif ev.kind == "result":
+                raw = ev.raw or {}
+                tekst = str(raw.get("result") or "").strip()
+                usage = raw.get("usage") or {}
+                input_tokens = int(usage.get("input_tokens") or 0)
+                output_tokens = int(usage.get("output_tokens") or 0)
+                cost = float(raw.get("total_cost_usd") or 0.0)
+                if raw.get("is_error"):
+                    raise CliBackendError(
+                        f"claude-cli rapporterede en fejl: {tekst[:200] or 'uden tekst'}"
+                    )
+        if not tekst and assistant_tekst:
+            tekst = "\n".join(assistant_tekst).strip()
+
+    if not så_vi_json:
+        raise CliBackendError("Claude CLI gav hverken JSON eller stream-json")
+    return {
+        "text": tekst,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cost_usd": cost,
+        "tool_uses": tool_uses,
+        "tool_results": tool_results,
+    }
+
+
+def _bogfoer_cli_vaerktoejskald(
+    agent: dict[str, Any],
+    run_id: str,
+    tool_uses: list[dict[str, Any]],
+    tool_results: list[dict[str, Any]],
+) -> int:
+    """Skriv CLI-agentens værktøjskald til ``agent_tool_calls``. Returnerer antallet.
+
+    (14/11-2026) `create_agent_tool_call` havde NUL kaldere for denne rute: hele
+    CLI-vejen kørte uden spor. Målt 13/11-2026 kørte to agenter gennem
+    ``claude-cli`` med 10.161 og 22.030 output-tokens, læste filer og kørte
+    grep — og efterlod nul rækker. Den tomme tabel blev derefter læst som
+    «agenten kan ikke kalde værktøjer», hvilket var en målefejl, ikke et fund.
+
+    Kald og resultat parres på ``tool_use_id``, så ``status`` og
+    ``result_preview`` beskriver det der faktisk skete. Fail-safe: en fejl her
+    må ikke kunne vælte barnets tur — men den tier heller ikke i loggen.
+    """
+    if not tool_uses:
+        return 0
+    aid = str(agent.get("agent_id") or "")
+    resultat_for: dict[str, dict[str, Any]] = {
+        str(r.get("tool_use_id") or ""): r for r in tool_results
+    }
+    skrevet = 0
+    for kall in tool_uses:
+        tc_id = str(kall.get("id") or "")
+        if not tc_id:
+            continue
+        svar = resultat_for.get(tc_id) or {}
+        try:
+            from core.runtime.db import create_agent_tool_call
+
+            create_agent_tool_call(
+                tool_call_id=tc_id,
+                run_id=str(run_id or ""),
+                agent_id=aid,
+                tool_name=str(kall.get("name") or ""),
+                arguments_json=json.dumps(
+                    kall.get("input") or {}, ensure_ascii=False
+                )[:4000],
+                result_preview=str(svar.get("preview") or "")[:400],
+                status="error" if svar.get("is_error") else "ok",
+                finished_at=datetime.now(UTC).isoformat(),
+            )
+            skrevet += 1
+        except Exception:
+            logger.debug("kunne ikke bogfoere CLI-vaerktoejskald", exc_info=True)
+    return skrevet
 
 
 def run_task_cli(*, agent: dict[str, Any], prompt: str, run_id: str,
@@ -332,11 +474,22 @@ def run_task_cli(*, agent: dict[str, Any], prompt: str, run_id: str,
         if proc.returncode != 0:
             raise _cli_failure(provider, proc.returncode, stdout, stderr)
         if provider == "claude-cli":
-            text, input_tokens, output_tokens = _claude_text(stdout)
+            parsed = _claude_parse(stdout)
+            text = parsed["text"]
+            input_tokens = parsed["input_tokens"]
+            output_tokens = parsed["output_tokens"]
+            # (14/11-2026) Kaldene bogføres HER, fordi de kun findes i denne
+            # proces' stdout. Uden dette stod `agent_tool_calls` tom for hele
+            # CLI-ruten, og tomheden blev læst som «agenten kalder intet».
+            _bogfoer_cli_vaerktoejskald(
+                agent, run_id, parsed["tool_uses"], parsed["tool_results"]
+            )
+            cli_tool_calls = len(parsed["tool_uses"])
         else:
             text = Path(output_path).read_text(encoding="utf-8").strip()
             input_tokens = max(1, len(prompt) // 4)
             output_tokens = max(1, len(text) // 4)
+            cli_tool_calls = 0
         if not text:
             raise CliBackendError(f"{provider} returnerede ingen leverance")
         return {
@@ -344,6 +497,7 @@ def run_task_cli(*, agent: dict[str, Any], prompt: str, run_id: str,
             "execution_mode": "task-cli-backend", "source": "Task.model",
             "input_tokens": input_tokens, "output_tokens": output_tokens, "cost_usd": 0.0,
             "run_id": run_id,
+            "total_tool_calls": cli_tool_calls,
         }
     finally:
         try:

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10174/18693 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10177/18695 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10174/18693 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 900 | 1613 | 55% |
-| `core.services` | 6814 | 12689 | 53% |
+| `core.services` | 6817 | 12691 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -741,8 +741,8 @@ Generated from source. 10174/18693 functions/methods documented (54%). The list 
 - `core/services/agent_bridge.py` :: `human_resolve` (L390)
 - `core/services/agent_bridge.py` :: `idempotency_class` (L64)
 - `core/services/agent_bridge.py` :: `run_is_halted` (L351)
-- `core/services/agent_cli_backend.py` :: `is_cli_provider` (L81)
-- `core/services/agent_cli_backend.py` :: `resolve_executable` (L85)
+- `core/services/agent_cli_backend.py` :: `is_cli_provider` (L85)
+- `core/services/agent_cli_backend.py` :: `resolve_executable` (L89)
 - `core/services/agent_contract_bridge.py` :: `resolve_owner_and_session` (L18)
 - `core/services/agent_contract_projection.py` :: `close` (L565)
 - `core/services/agent_contract_projection.py` :: `followup` (L542)
@@ -2398,7 +2398,7 @@ Generated from source. 10174/18693 functions/methods documented (54%). The list 
 - `core/tools/claude_dispatch/jail.py` :: `build_worktree_path` (L24)
 - `core/tools/claude_dispatch/runner.py` :: `run_dispatch` (L143)
 - `core/tools/claude_dispatch/spec.py` :: `parse_spec` (L33)
-- `core/tools/claude_dispatch/stream.py` :: `parse_stream_line` (L17)
+- `core/tools/claude_dispatch/stream.py` :: `parse_stream_line` (L24)
 - `core/tools/claude_dispatch/worktree.py` :: `cleanup_worktree` (L24)
 - `core/tools/claude_dispatch/worktree.py` :: `create_worktree` (L9)
 - `core/tools/claude_dispatch/worktree.py` :: `worktree_diff` (L41)

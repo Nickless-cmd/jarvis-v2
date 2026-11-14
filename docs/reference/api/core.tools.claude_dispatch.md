@@ -83,7 +83,7 @@ _Find a live host Claude Code OAuth token to inject into `claude -p` spawns._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `ParsedEvent` | `` | — | [src](../../../core/tools/claude_dispatch/stream.py#L9) |
-| function | `parse_stream_line` | `(line)` | — | [src](../../../core/tools/claude_dispatch/stream.py#L17) |
+| function | `parse_stream_line` | `(line)` | — | [src](../../../core/tools/claude_dispatch/stream.py#L24) |
 
 ## `core/tools/claude_dispatch/tool.py`
 

@@ -448,23 +448,25 @@ _Claude Code og Codex CLI som eksekveringsbackends for ``Task``._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `CliBackendError` | `` | — | [src](../../../core/services/agent_cli_backend.py#L39) |
-| method | `CliBackendError.__init__` | `(self, message, *, error_code=…, error_phase=…, provider_status=…)` | — | [src](../../../core/services/agent_cli_backend.py#L40) |
-| function | `_cli_failure` | `(provider, returncode, stdout, stderr)` | — | [src](../../../core/services/agent_cli_backend.py#L55) |
-| function | `parse_preference` | `(value)` | Returner en CLI-rute for de dokumenterede aliases, ellers ``None``. | [src](../../../core/services/agent_cli_backend.py#L68) |
-| function | `is_cli_provider` | `(provider)` | — | [src](../../../core/services/agent_cli_backend.py#L81) |
-| function | `resolve_executable` | `(provider)` | — | [src](../../../core/services/agent_cli_backend.py#L85) |
-| function | `_claude_spawn_env` | `(provider)` | Miljoeet CLI-processen startes med. Claude skal have SIT EGET token med. | [src](../../../core/services/agent_cli_backend.py#L96) |
-| function | `admission_reason` | `(provider)` | Tom streng betyder at CLI-ruten kan optages i Task-rutekæden. | [src](../../../core/services/agent_cli_backend.py#L125) |
-| function | `_assignment` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L143) |
-| function | `_working_root` | `(agent, assignment)` | — | [src](../../../core/services/agent_cli_backend.py#L152) |
-| function | `_prompt` | `(prompt, *, writes)` | — | [src](../../../core/services/agent_cli_backend.py#L170) |
-| function | `_cli_tools_for_policy` | `(policy)` | Oversæt en ``tool_policy`` til claude-CLI'ens ``--tools``-liste. | [src](../../../core/services/agent_cli_backend.py#L187) |
-| function | `_command` | `(provider, executable, model, root, prompt, *, policy, output_path)` | — | [src](../../../core/services/agent_cli_backend.py#L234) |
-| function | `_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L256) |
-| function | `_stop` | `(proc)` | — | [src](../../../core/services/agent_cli_backend.py#L263) |
-| function | `_claude_text` | `(stdout)` | — | [src](../../../core/services/agent_cli_backend.py#L274) |
-| function | `run_task_cli` | `(*, agent, prompt, run_id, timeout_s=…)` | Koer den valgte CLI én gang og returner agent-runtimens resultatform. | [src](../../../core/services/agent_cli_backend.py#L284) |
+| class | `CliBackendError` | `` | — | [src](../../../core/services/agent_cli_backend.py#L43) |
+| method | `CliBackendError.__init__` | `(self, message, *, error_code=…, error_phase=…, provider_status=…)` | — | [src](../../../core/services/agent_cli_backend.py#L44) |
+| function | `_cli_failure` | `(provider, returncode, stdout, stderr)` | — | [src](../../../core/services/agent_cli_backend.py#L59) |
+| function | `parse_preference` | `(value)` | Returner en CLI-rute for de dokumenterede aliases, ellers ``None``. | [src](../../../core/services/agent_cli_backend.py#L72) |
+| function | `is_cli_provider` | `(provider)` | — | [src](../../../core/services/agent_cli_backend.py#L85) |
+| function | `resolve_executable` | `(provider)` | — | [src](../../../core/services/agent_cli_backend.py#L89) |
+| function | `_claude_spawn_env` | `(provider)` | Miljoeet CLI-processen startes med. Claude skal have SIT EGET token med. | [src](../../../core/services/agent_cli_backend.py#L100) |
+| function | `admission_reason` | `(provider)` | Tom streng betyder at CLI-ruten kan optages i Task-rutekæden. | [src](../../../core/services/agent_cli_backend.py#L129) |
+| function | `_assignment` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L147) |
+| function | `_working_root` | `(agent, assignment)` | — | [src](../../../core/services/agent_cli_backend.py#L156) |
+| function | `_prompt` | `(prompt, *, writes)` | — | [src](../../../core/services/agent_cli_backend.py#L174) |
+| function | `_cli_tools_for_policy` | `(policy)` | Oversæt en ``tool_policy`` til claude-CLI'ens ``--tools``-liste. | [src](../../../core/services/agent_cli_backend.py#L191) |
+| function | `_command` | `(provider, executable, model, root, prompt, *, policy, output_path)` | — | [src](../../../core/services/agent_cli_backend.py#L238) |
+| function | `_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L266) |
+| function | `_stop` | `(proc)` | — | [src](../../../core/services/agent_cli_backend.py#L273) |
+| function | `_claude_text` | `(stdout)` | Læs CLI'ens stdout — både `stream-json` (én JSON pr. linje) og `json`. | [src](../../../core/services/agent_cli_backend.py#L284) |
+| function | `_claude_parse` | `(stdout)` | Normalisér CLI-output til tekst, tokens og værktøjskald. | [src](../../../core/services/agent_cli_backend.py#L301) |
+| function | `_bogfoer_cli_vaerktoejskald` | `(agent, run_id, tool_uses, tool_results)` | Skriv CLI-agentens værktøjskald til ``agent_tool_calls``. Returnerer antallet. | [src](../../../core/services/agent_cli_backend.py#L375) |
+| function | `run_task_cli` | `(*, agent, prompt, run_id, timeout_s=…)` | Koer den valgte CLI én gang og returner agent-runtimens resultatform. | [src](../../../core/services/agent_cli_backend.py#L426) |
 
 ## `core/services/agent_contract_bridge.py`
 _Binder spawn_agent_task til agent-contract-v1 (leverance A2)._

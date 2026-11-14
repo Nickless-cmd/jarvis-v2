@@ -63,6 +63,11 @@ KNOWN_MAPPINGS: dict[str, str] = {
     "core/runtime/db_autonomy.py": "tests/test_user_scope_154.py",
     "core/runtime/db_private_brain.py": "tests/test_user_scope_154.py",
     "core/runtime/db_scheduled_tasks.py": "tests/test_agent_runtime_phase3_scheduler.py",
+    # (14/11-2026) `stream.py` testes hvor dispatch-testene bor — i
+    # `tests/tools/claude_dispatch/`. Uden linjen blokerede gaten en rettelse
+    # hvis test FILEN faktisk fandtes, blot ikke paa den sti navnekonventionen
+    # pegede paa.
+    "core/tools/claude_dispatch/stream.py": "tests/tools/claude_dispatch/test_stream.py",
     "core/services/dream_hypothesis_generator.py": "tests/runtime/test_db_schema_multiuser.py",
     # Group 4: permission scope filters — tests live in tests/multi_user/
     # Mapping added 2026-05-28.

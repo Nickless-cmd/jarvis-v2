@@ -5,7 +5,7 @@ import type { ContentBlock } from '../../lib/sseProtocol'
 import type { StreamStatus } from '../../lib/streamReducer'
 import { useChatPacedBlocks } from '../../lib/useChatPacedBlocks'
 import { useFoldHukommelse } from '../../lib/foldHukommelse'
-import { useTurSekunder, formaterTurTid } from '../../lib/turTid'
+import { useTurSekunder } from '../../lib/turTid'
 import { usePacingWorkLine } from '../../lib/usePacingWorkLine'
 import '../../styles/chat-flow.css'
 import { BlocksRenderer } from './BlocksRenderer'
@@ -13,7 +13,6 @@ import { JarvisRing } from '../shell/JarvisRing'
 import { LabelSkift, SynteseLinje } from './LabelSkift'
 import { FoldPil, TurHoved } from './TurHoved'
 import { RullendeTokens } from '../feedback/RullendeTal'
-import { RullendeTid } from './RullendeTid'
 
 export interface ChatFlowPresentationProps {
   blocks: ContentBlock[]
@@ -491,7 +490,11 @@ export function ChatFlowPresentation({
                hovedet stå uden ur præcis i den fase det nu ejer. */
             sekunder={sekunder}
             tekst={model.hovedTekst}
-            meta={streaming && tokens > 0
+            /* Token-tallet er ikke bundet til `streaming` (14/11-2026), af
+               samme grund som uret: hovedet findes netop i den fase hvor
+               streamen er slut. Bandt vi tallet til streamen, stod hovedet
+               uden sit resultat præcis når det skulle vise det. */
+            meta={tokens > 0
               ? <span className="rv-turMeta">~<RullendeTokens tokens={tokens} /> output</span>
               : null}
             /* Bjørn 14/11-2026: «fjern skill linjen mellem hoved og besked».
@@ -550,27 +553,14 @@ export function ChatFlowPresentation({
                           <LabelSkift tekst={rundeTekst} arbejder className="shimmer" fastIkon />
                         </span>
                       ) : null}
-                      {/* Uret flyttede herned 14/11-2026 (Bjørn): hovedet
-                          findes først når turen er slut, så rundelinjen er
-                          det eneste sted tallet kan stå mens turen løber.
-                          Uden den ville hele den levende tur mangle sit ur —
-                          og ved skiftet ville hovedet vise et tal der først
-                          dukkede op dér, altså et hop. */}
-                      {typeof sekunder === 'number' ? (
-                        <span className="chat-flow-round-tid" data-testid="chat-flow-round-tid"
-                          role="timer" aria-label={formaterTurTid(sekunder)}>
-                          <RullendeTid tekst={formaterTurTid(sekunder)} />
-                        </span>
-                      ) : null}
-                      {/* Token-tallet fulgte uret. Det sad også i hovedet, og
-                          uden denne gren forsvandt `~321 output` fra hele den
-                          levende tur — en reel informations­tab, ikke kun en
-                          flytning. */}
-                      {streaming && tokens > 0 ? (
-                        <span className="chat-flow-round-tokens" data-testid="chat-flow-round-tokens">
-                          ~<RullendeTokens tokens={tokens} /> output
-                        </span>
-                      ) : null}
+                      {/* Uret og token-tallet bor i HOVEDET, ikke her.
+                          Bjørn 14/11-2026: «du har blandet turhoved ind i
+                          rundelinjen i stedet for at lade dem være adskilt».
+                          De blev flyttet herned for at dække et vindue hvor
+                          hovedet ikke findes — men det gjorde rundelinjen
+                          til en kopi af hovedet. De to linjer har hver sin
+                          opgave: rundelinjen siger HVAD der sker nu, hovedet
+                          siger HVAD turen kostede. Tallet hører i resultatet. */}
                     </div>
                   </div>
                 ) : null}

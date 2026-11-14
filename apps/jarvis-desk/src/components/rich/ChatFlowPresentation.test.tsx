@@ -22,16 +22,17 @@ const common = {
 }
 
 describe('ChatFlowPresentation', () => {
-  it('viser levende output-tokens i rundelinjen mens turen kører', () => {
-    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Hovedet er et
-    // RESULTAT og findes først når turen er slut — så token-tælleren kan ikke
-    // bo der mens turen løber. Den flyttede ned i rundelinjen sammen med uret;
-    // ellers forsvandt `~321 output` fra hele den levende tur.
-    const { container } = render(<ChatFlowPresentation {...common} mode="living" streaming
-      status="working" blocks={[summary('Læser konfigurationen', 1)]} tokens={321} />)
-    expect(container.querySelector('.chat-flow-round-tokens .rullende')).toHaveAttribute('aria-label', '321')
-    expect(container.querySelector('.chat-flow-round-tokens')).toHaveTextContent('output')
-    expect(container.querySelector('.rv-tur')).toBeNull()
+  it('viser output-tokens i turhovedet — ikke i rundelinjen', () => {
+    // RETTET 14/11-2026 (Bjørn): «du har blandet turhoved ind i rundelinjen i
+    // stedet for at lade dem være adskilt». Tallet hører i hovedet — det er
+    // turens RESULTAT. Rundelinjen siger hvad der sker nu; hovedet hvad turen
+    // kostede. De skal ikke bære det samme.
+    const arbejde: ContentBlock = { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }
+    const { container } = render(<ChatFlowPresentation {...common} mode="living" streaming={false}
+      status="done" blocks={[arbejde]} tokens={321} />)
+    expect(container.querySelector('.rv-turMeta .rullende')).toHaveAttribute('aria-label', '321')
+    expect(container.querySelector('.rv-turMeta')).toHaveTextContent('output')
+    expect(container.querySelector('.chat-flow-round-tokens')).toBeNull()
   })
 
   it('replaces the Living status in place instead of accumulating a list', () => {
@@ -220,11 +221,11 @@ describe('ChatFlowPresentation', () => {
     expect(within(runde).queryByText('Tænker')).not.toBeInTheDocument()
     expect(within(runde).queryByText('|')).not.toBeInTheDocument()
     expect(syntese.compareDocumentPosition(runde) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    // Uret bor nu i rundelinjen mens turen kører (14/11-2026) — hovedet
-    // findes ikke endnu. `varighedSekunder` er den persisterede varighed, og
-    // den er det eneste tal der findes på en tur der ikke streamer.
+    // Hverken hoved eller ur findes mens turen kører (14/11-2026): hovedet er
+    // resultatet, og rundelinjen bærer ikke hovedets tal. De to linjer er
+    // adskilte — rundelinjen er ikke en kopi af hovedet.
     expect(document.querySelector('.rv-tur')).toBeNull()
-    expect(runde.querySelector('.chat-flow-round-tid')).toHaveAttribute('aria-label', '7s')
+    expect(runde.querySelector('.chat-flow-round-tid')).toBeNull()
     expect(within(runde).queryByText('Læste konfigurationen')).toBeInTheDocument()
     expect(document.querySelector('.chat-flow-answer')).toBeNull()
   })
@@ -363,22 +364,22 @@ describe('ChatFlowPresentation', () => {
   })
 
   it('viser turens levende ur i hovedet — sekunder, og minutter efter et minut', () => {
-    // VENDT 14/11-2026 (Bjørn): «sekunder Xs i turhoved skal … vises mens
-    // turen køre». Uret er nu bundet til `streaming`, så testen må køre en
-    // levende tur — den kørte før en afsluttet, fordi tallet dengang blev
-    // frosset og stod i hovedet bagefter.
-    const blokke = [summary('Fandt kilden', 1)]
     // Cifrene er delt i lodrette strimler, så den flade tekst læses fra
     // `aria-label` — det er også den skærmlæserne får.
-    // VENDT 14/11-2026 (Bjørn): hovedet findes først når turen er slut, så
-    // uret står nu i rundelinjen mens turen kører.
-    const ur = () => document.querySelector('.chat-flow-round-tid')?.getAttribute('aria-label')
-    const { rerender } = render(<ChatFlowPresentation {...common} mode="living" streaming
-      status="working" finalAnswerStarted turStart={Date.now() - 12_000} blocks={blokke} />)
+    // RETTET 14/11-2026 (Bjørn): uret bor i hovedet, ikke i rundelinjen. Det
+    // kan derfor kun måles på den afsluttede tur — som er præcis der hovedet
+    // findes nu. Et værktøjskald sikrer at der er et hoved at måle på.
+    const blokkeMedRunde: ContentBlock[] = [
+      { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+      summary('Fandt kilden', 1),
+    ]
+    const ur = () => document.querySelector('.rv-turTid')?.getAttribute('aria-label')
+    const { rerender } = render(<ChatFlowPresentation {...common} mode="living" streaming={false}
+      status="done" turStart={Date.now() - 12_000} blocks={blokkeMedRunde} />)
     expect(ur()).toMatch(/^1[12]s$/)
 
-    rerender(<ChatFlowPresentation {...common} mode="living" streaming
-      status="working" finalAnswerStarted turStart={Date.now() - 72_000} blocks={blokke} />)
+    rerender(<ChatFlowPresentation {...common} mode="living" streaming={false}
+      status="done" turStart={Date.now() - 72_000} blocks={blokkeMedRunde} />)
     expect(ur()).toMatch(/^1m 1[12]s$/)
   })
 

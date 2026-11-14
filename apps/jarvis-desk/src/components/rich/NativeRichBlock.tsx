@@ -595,13 +595,23 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
           if (f.kind === 'select') return <label className="native-form-select" key={`${f.bind}-${i}`}>
             <span className="native-control-label">{f.label}</span>
             <select value={tekstV(f.bind, f.value)}
-              onChange={(e) => setKontrolVaerdi((forrige) => ({ ...forrige, [f.bind]: e.currentTarget.value }))}>
+              onChange={(e) => {
+                // `currentTarget` nulstilles når handleren returnerer. Læses den
+                // inde i opdateringsfunktionen — som kører under render, bagefter —
+                // er den `null`, og React kaster «Cannot read properties of null».
+                const v = e.currentTarget.value
+                setKontrolVaerdi((forrige) => ({ ...forrige, [f.bind]: v }))
+              }}>
               {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
           </label>
           return <label className="native-form-toggle" key={`${f.bind}-${i}`}>
             <input type="checkbox" checked={boolV(f.bind, f.value)}
-              onChange={(e) => setKontrolVaerdi((forrige) => ({ ...forrige, [f.bind]: e.currentTarget.checked }))} />
+              onChange={(e) => {
+                // Samme fælde som select: værdien skal ud af eventet FØR state-kaldet.
+                const v = e.currentTarget.checked
+                setKontrolVaerdi((forrige) => ({ ...forrige, [f.bind]: v }))
+              }} />
             <span>{f.label}</span>
           </label>
         })}

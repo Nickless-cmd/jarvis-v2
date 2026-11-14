@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { FladeKontrolContext, NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
 import { WidgetPrompt } from './WidgetBlock'
@@ -112,6 +114,52 @@ describe('NativeRichBlock', () => {
     } finally {
       fetchSpy.mockRestore()
     }
+  })
+
+  it('GUARD: form-felter læser værdien FØR state-kaldet — ikke fra et tømt event', () => {
+    // Målt 14/11-2026: `select` og `toggle` læste `e.currentTarget` inde i
+    // opdateringsfunktionen. React nulstiller `currentTarget` når handleren
+    // returnerer, så den kørende funktion læste `.value` af `null` og kastede
+    // «Cannot read properties of null (reading 'value')». Hele beskeden faldt
+    // ud af visningen. Slideren var upåvirket, fordi den læste værdien ud i en
+    // lokal variabel først — det er mønstret de to andre nu følger.
+    //
+    // VAGTEN LÆSER KILDEN, fordi en adfærdstest ikke kan fange det: jsdom
+    // nulstiller ikke `currentTarget` som en rigtig browser gør, så mutations-
+    // prøven bestod med den brækkede kode. Målt, ikke antaget.
+    const kilde = readFileSync(resolve(process.cwd(), 'src/components/rich/NativeRichBlock.tsx'), 'utf8')
+    expect(kilde).not.toMatch(/setKontrolVaerdi\(\(forrige\)\s*=>\s*\(\{[^}]*e\.currentTarget/)
+    expect(kilde.match(/const v = e\.currentTarget\.(value|checked)/g) ?? []).toHaveLength(2)
+
+    const send = vi.fn()
+    const form = JSON.stringify({
+      type: 'form', title: 'Prøv',
+      fields: [
+        { kind: 'select', bind: 'vej', label: 'Vej', options: ['Nesting', 'Katalog', 'DIL'], value: 'Nesting' },
+        { kind: 'toggle', bind: 'kode', label: 'Rør code mode', value: false },
+        { kind: 'text', text: 'Vej: {vej} — kode: {kode}' },
+      ],
+    })
+    render(<FladeKontrolContext.Provider value><WidgetPrompt.Provider value={send}>
+      <NativeRichBlock code={form} />
+    </WidgetPrompt.Provider></FladeKontrolContext.Provider>)
+
+    // Ingen af de to kald må kaste — det var selve fejlen.
+    const valg = screen.getByRole('combobox') as HTMLSelectElement
+    expect(() => fireEvent.change(valg, { target: { value: 'DIL' } })).not.toThrow()
+    expect(valg.value).toBe('DIL')
+    // `{kode}` står råt indtil toggle'en er rørt: `interpolér` falder tilbage
+    // til pladsholderen når nøglen ikke findes i state. Ærligt, men uskønt —
+    // checkboxen viser `false` mens teksten viser `{kode}`.
+    expect(screen.getByText('Vej: DIL — kode: {kode}')).toBeInTheDocument()
+
+    const knap = screen.getByRole('checkbox') as HTMLInputElement
+    expect(() => fireEvent.click(knap)).not.toThrow()
+    expect(knap.checked).toBe(true)
+    expect(screen.getByText('Vej: DIL — kode: true')).toBeInTheDocument()
+
+    // Stadig nul modelkald: hele pointen med lokal state.
+    expect(send).not.toHaveBeenCalled()
   })
 
   it('box med børn renderer dem rekursivt', () => {

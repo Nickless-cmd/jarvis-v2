@@ -70,6 +70,13 @@ type NativeSpec =
   // bevis er en påstand. Skabelonen sparer den komposition jeg ellers bygger
   // som box + stats + timeline hver gang jeg rapporterer en leverance.
   | { type: 'leverance-status'; title: string; items: Array<{ label: string; status: 'leveret' | 'igang' | 'blokeret' | 'naeste'; bevis: string }> }
+  // Navngivne skabeloner (14/11-2026): `fil-diff`, `maaling-over-tid` og
+  // `beslutningsvalg` er genveje over de primitive typer, så jeg kan vælge et
+  // færdigt produkt ved navn i stedet for at komponere. De har bevidst INGEN
+  // plads i denne union: parseren udfolder dem til `diff`/`chart`/`choices`,
+  // så rendereren ser dem aldrig. Stod de her, ville de sidste grene i
+  // render-kæden skulle håndtere former der per definition er væk — og
+  // `location`-fallbacken ville fejle på en type den ikke kan få.
 
 /** Højeste dybde en `box` må stå i (toppen er dybde 1). En box i dybde 4
  *  afvises; blade (callout osv.) under en dybde-3-box er stadig fine. */
@@ -343,6 +350,36 @@ function parseNodeObj(raw: Json, depth: number): NativeSpec | null {
     const efter = text(raw.new, 20000)
     if (!foer && !efter) return null
     return { type, title, path: text(raw.path, 300), old: foer, new: efter }
+  }
+  // Skabelon-aliaser: navnet er genvejen, formen er den primitive types.
+  // Ukendt indhold falder tilbage til null, så en tom skabelon ikke tegnes
+  // som en tom ramme — samme degradering som de primitive grene.
+  if (type === 'fil-diff') {
+    const foer = text(raw.old, 20000)
+    const efter = text(raw.new, 20000)
+    if (!foer && !efter) return null
+    return { type: 'diff', title: text(raw.title, 200), path: text(raw.path, 300), old: foer, new: efter }
+  }
+  if (type === 'maaling-over-tid') {
+    const series = list(raw.series, 4).map((x) => {
+      const name = text(x.name, 80)
+      const values = Array.isArray(x.points)
+        ? x.points.filter((v): v is number => typeof v === 'number' && Number.isFinite(v)).slice(0, 60)
+        : []
+      return values.length ? { name, values } : null
+    }).filter((x): x is NonNullable<typeof x> => Boolean(x))
+    if (!series.length) return null
+    const xLabels = Array.isArray(raw.xLabels) ? raw.xLabels.map((v) => text(v, 40)).slice(0, 60) : []
+    return { type: 'chart', title: text(raw.title, 200), kind: 'line', labels: xLabels, series }
+  }
+  if (type === 'beslutningsvalg') {
+    const options = list(raw.options, 6).map((x) => {
+      const label = text(x.label, 120)
+      if (!label) return null
+      return { label, prompt: text(x.prompt, 500) }
+    }).filter((x): x is NonNullable<typeof x> => Boolean(x))
+    if (!options.length) return null
+    return { type: 'choices', title: text(raw.title, 200), options }
   }
   if (type === 'leverance-status') {
     // Ukendt `status` degraderer til `naeste` i stedet for at kassere posten:

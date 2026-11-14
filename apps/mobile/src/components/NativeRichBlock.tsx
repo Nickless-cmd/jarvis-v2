@@ -260,6 +260,35 @@ function parseNodeObj(raw: Json, depth: number): NativeSpec | null {
     if (!foer && !efter) return null
     return { type, title, path: text(raw.path, 300), old: foer, new: efter }
   }
+  if (type === 'fil-diff') {
+    // Skabelon-alias (14/11-2026): navnet er genvejen, formen er `diff`s.
+    const foer = text(raw.old, 20000)
+    const efter = text(raw.new, 20000)
+    if (!foer && !efter) return null
+    return { type: 'diff', title: text(raw.title, 200), path: text(raw.path, 300), old: foer, new: efter }
+  }
+  if (type === 'maaling-over-tid') {
+    // Alias for `chart`. `points` er aliasets navn for `values`.
+    const series = list(raw.series, 4).map((x) => {
+      const name = text(x.name, 80)
+      const kilde = Array.isArray(x.values) ? x.values : (Array.isArray(x.points) ? x.points : [])
+      const values = kilde.filter((v): v is number => typeof v === 'number' && Number.isFinite(v)).slice(0, 60)
+      return values.length ? { name, values } : null
+    }).filter((x): x is NonNullable<typeof x> => Boolean(x))
+    if (!series.length) return null
+    const labels = Array.isArray(raw.xLabels) ? raw.xLabels.map((v) => text(v, 40)).slice(0, 60) : []
+    return { type: 'chart', title: text(raw.title, 200), kind: 'line', labels, series }
+  }
+  if (type === 'beslutningsvalg') {
+    // Alias for `choices`.
+    const options = list(raw.options, 6).map((x) => {
+      const label = text(x.label, 120)
+      if (!label) return null
+      return { label, prompt: text(x.prompt, 500) }
+    }).filter((x): x is NonNullable<typeof x> => Boolean(x))
+    if (!options.length) return null
+    return { type: 'choices', title: text(raw.title, 200), options }
+  }
   if (type === 'leverance-status') {
     const items = list(raw.items, 12).map((x) => {
       const label = text(x.label, 120)

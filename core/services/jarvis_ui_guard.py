@@ -595,6 +595,56 @@ def _diagnosticér(data: dict, dybde: int = 1) -> tuple[str, list[str]]:
             fejl.append(f"leverance-status har {len(items)} items, kun 12 vises")
         return ("delvis" if fejl else "ok"), fejl
 
+    if typ == "fil-diff":
+        # Skabelon-alias (14/11-2026): navnet er genvejen, formen er `diff`s.
+        # Guarden udfolder derfor til den primitive type i stedet for at
+        # duplikere reglerne — ellers ville de to kunne drive fra hinanden, og
+        # en flade der er korrekt som `diff` kunne blive «død» som `fil-diff`.
+        if not (_tekst(data.get("old")) or _tekst(data.get("new"))):
+            return "død", ["fil-diff mangler både old og new"]
+        return "ok", fejl
+
+    if typ == "maaling-over-tid":
+        # Alias for `chart`. `points` er aliasets navn for `values`; begge
+        # accepteres, så en model der skriver den ene ikke straffes for det.
+        serier = data.get("series") if isinstance(data.get("series"), list) else []
+        if not serier:
+            return "død", ["maaling-over-tid mangler series"]
+        brugbare = 0
+        for i, s in enumerate(serier):
+            if not isinstance(s, dict):
+                fejl.append(f"maaling-over-tid serie {i} er ikke et objekt")
+                continue
+            vaerdier = s.get("values") if isinstance(s.get("values"), list) else (
+                s.get("points") if isinstance(s.get("points"), list) else []
+            )
+            if len([v for v in vaerdier if _endeligt_tal(v)]) < 2:
+                fejl.append(f"maaling-over-tid serie {i} har under 2 gyldige tal")
+            else:
+                brugbare += 1
+        if not brugbare:
+            return "død", fejl or ["maaling-over-tid har ingen brugbare serier"]
+        return ("delvis" if fejl else "ok"), fejl
+
+    if typ == "beslutningsvalg":
+        # Alias for `choices`. Kræver mindst én valgmulighed med en etiket —
+        # samme regel som den primitive gren, så de to ikke kan divergere.
+        valg = data.get("options") if isinstance(data.get("options"), list) else []
+        if not valg:
+            return "død", ["beslutningsvalg mangler options"]
+        brugbare = 0
+        for i, x in enumerate(valg):
+            if not isinstance(x, dict):
+                fejl.append(f"beslutningsvalg option {i} er ikke et objekt")
+                continue
+            if not _tekst(x.get("label")):
+                fejl.append(f"beslutningsvalg option {i} mangler label")
+                continue
+            brugbare += 1
+        if not brugbare:
+            return "død", fejl or ["beslutningsvalg har ingen brugbare options"]
+        return ("delvis" if fejl else "ok"), fejl
+
     if typ == "location":
         adresse = _tekst(data.get("address"))
         lat, lon = data.get("latitude"), data.get("longitude")

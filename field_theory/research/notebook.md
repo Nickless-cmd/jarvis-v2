@@ -94,6 +94,39 @@ A weaker question, answerable sooner: of the six, how many had a *declared*
 verification step that was skipped, versus no verification step at all? That
 distinction would say whether the defect is in discipline or in design.
 
+### Amendment (2026-11-14, same day): why this note was not registered as an experiment
+
+**Status:** scope note on the entry above. No protocol, forecast, or run added;
+nothing in `experiments/` or `artifacts/` changed.
+
+**Observation.** The entry's own status line says "No protocol, no forecast, no
+falsification condition was declared before the events recorded here." The
+fields an experiment needs (protocol, forecast, falsification condition, all
+declared before the events) are absent, and the events are already past.
+
+**Why it cannot be registered retroactively.** A protocol written now for the
+six corrections would be written by a party who has seen the events and their
+classification. That is the post-hoc fitting that Investigation 6's
+before-the-run thresholds exist to prevent. A forecast about those six events is
+not a forecast.
+
+**Why a forward-looking version was not written either.** A prediction such as
+"retention will not correct itself within N days" needs three things this
+project does not have:
+
+1. a mechanical definition of "a correction" and of "distinction-collapse". The
+   six cases were identified by a self-classification, and the entry's Question
+   section states that the detector "is not yet built";
+2. a baseline rate measured with that definition. None has been measured, so any
+   N or threshold written now would be invented;
+3. a classifier other than the system that made the errors.
+
+**Decision.** The entry stays an observation. A future experiment may be opened,
+but only as a new entry with its own protocol, written after the detector and
+baseline exist and before the window it covers. It is not a registration of
+this note. The next reader should not try to turn this entry into an experiment
+by editing it.
+
 ## 2026-10-30 — Investigation 6, fourth correction: a red test is not a verdict
 
 **Observation.** The line-214 mutant (`required = 0`) turns

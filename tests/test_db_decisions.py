@@ -115,3 +115,72 @@ def test_update_nothing_to_change_returns_row_unchanged(tmp_db):
     assert u is not None
     assert u["decision_id"] == did
     assert u["directive"] == d["directive"]
+
+
+# ---------------------------------------------------------------------------
+# Det partielle indeks paa `source_record_id` (14/11-2026)
+# ---------------------------------------------------------------------------
+# Værnet skal staa der hvor raekken bliver til: `create_decision` dedupliker
+# paa direktiv-TEKST med et SELECT foer INSERT, saa to samtidige kald med
+# samme fund kunne begge indsaette hver sin beslutning. Maalt: to traade,
+# samme fund-id -> to beslutninger, hvoraf den ene var foraeldroes.
+#
+# Indeksen er PARTIEL. Grunden blev foerst skrevet forkert: jeg paastod at en
+# fuld unik indeks kun ville tillade ÉN raekke uden `source_record_id`. Det er
+# ikke sandt — SQLite behandler NULL som distinkt, saa mange NULL gaar frit
+# igennem. Det er den TOMME STRENG den kun tillader én af. Praecis dét er
+# grunden: et kald der sender '' frem for NULL ville optage den ene plads og
+# derefter afvise enhver senere beslutning uden fund. Testen her værner begge
+# halvdele, saa kommentaren ikke kan blive sand igen uden at nogen ser det.
+
+
+_RAW_TAELLER = iter(range(10_000))
+
+
+def _indsæt_raw(conn, sr):
+    conn.execute(
+        "INSERT INTO behavioral_decisions "
+        "(decision_id, directive, created_at, updated_at, source_record_id) "
+        "VALUES (?,?,?,?,?)",
+        (f"dec_raw_{next(_RAW_TAELLER)}", "x", "2026-11-14T00:00:00+00:00",
+         "2026-11-14T00:00:00+00:00", sr),
+    )
+
+
+def test_mange_null_kan_indsættes_side_om_side(tmp_db, tmp_path):
+    """En fuld unik indeks ville ogsaa tillade dette — saa det er ikke
+    grunden til at indeksen er partiel. Men det skal stadig holde: de 397
+    beslutninger uden fund i drift er NULL, ikke tomme strenge."""
+    conn = _connect_row(str(tmp_path / "decisions-test.db"))
+    for _ in range(3):
+        _indsæt_raw(conn, None)
+    conn.commit()
+    n = conn.execute(
+        "SELECT COUNT(*) FROM behavioral_decisions WHERE source_record_id IS NULL"
+    ).fetchone()[0]
+    assert n == 3
+
+
+def test_tom_streng_optager_ikke_den_eneste_plads(tmp_db, tmp_path):
+    """Det er HER det partielle indeks bærer. En fuld unik indeks ville
+    afvise den anden tomme streng — og dermed ogsaa enhver senere kalder der
+    sender '' i stedet for NULL, med en fejl der intet siger om hvorfor."""
+    conn = _connect_row(str(tmp_path / "decisions-test.db"))
+    _indsæt_raw(conn, "")
+    _indsæt_raw(conn, "")
+    conn.commit()
+    n = conn.execute(
+        "SELECT COUNT(*) FROM behavioral_decisions WHERE source_record_id = ''"
+    ).fetchone()[0]
+    assert n == 2, f"to tomme strenge skal begge kunne staa der: {n}"
+
+
+def test_samme_fund_kun_én_beslutning(tmp_db, tmp_path):
+    """Og den regel indeksen faktisk findes for: to beslutninger for samme
+    fund er en foraeldroes forpligtelse — den overlever uden ejer."""
+    conn = _connect_row(str(tmp_path / "decisions-test.db"))
+    _indsæt_raw(conn, "fund-samme")
+    conn.commit()
+    with pytest.raises(sqlite3.IntegrityError):
+        _indsæt_raw(conn, "fund-samme")
+        conn.commit()

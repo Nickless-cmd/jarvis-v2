@@ -115,19 +115,19 @@ _Behavioral decisions store — commitments Jarvis makes to himself._
 |---|---|---|---|---|
 | function | `_add_column_if_missing` | `(conn, table, column, ddl_type)` | Idempotent ALTER TABLE — _ensure_tables kaldes ved HVERT opslag. | [src](../../../core/runtime/db_decisions.py#L28) |
 | function | `_ensure_tables` | `(conn)` | — | [src](../../../core/runtime/db_decisions.py#L42) |
-| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_decisions.py#L121) |
-| function | `_new_id` | `(prefix)` | — | [src](../../../core/runtime/db_decisions.py#L125) |
-| function | `create_decision` | `(*, directive, rationale=…, trigger_cue=…, priority=…, source_record_id=…, source_type=…, created_by=…)` | — | [src](../../../core/runtime/db_decisions.py#L129) |
-| function | `append_review` | `(*, decision_id, verdict, note=…, evidence=…)` | Record a self-assessment: how am I doing on this? | [src](../../../core/runtime/db_decisions.py#L168) |
-| function | `_verified_adherence` | `(conn, decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L225) |
-| function | `repair_legacy_auto_adherence` | `()` | Rebuild stored scores after legacy automatic suspicions polluted them. | [src](../../../core/runtime/db_decisions.py#L260) |
-| function | `update_decision` | `(decision_id, *, directive=…, rationale=…, trigger_cue=…, trigger_name=…, priority=…, status=…, revoked_reason=…, revoked_evidence=…)` | Update mutable fields on a decision. | [src](../../../core/runtime/db_decisions.py#L281) |
-| function | `set_status` | `(decision_id, new_status, *, reason=…, evidence=…)` | Sæt status. Ved 'revoked' SKAL reason følge med og persisteres. | [src](../../../core/runtime/db_decisions.py#L351) |
-| function | `get_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L388) |
-| function | `list_decisions` | `(*, status=…, limit=…)` | List decisions, newest priority first. | [src](../../../core/runtime/db_decisions.py#L400) |
-| function | `list_reviews` | `(decision_id, *, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L431) |
-| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L442) |
-| function | `count_decisions` | `(*, status=…)` | — | [src](../../../core/runtime/db_decisions.py#L457) |
+| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_decisions.py#L132) |
+| function | `_new_id` | `(prefix)` | — | [src](../../../core/runtime/db_decisions.py#L136) |
+| function | `create_decision` | `(*, directive, rationale=…, trigger_cue=…, priority=…, source_record_id=…, source_type=…, created_by=…)` | — | [src](../../../core/runtime/db_decisions.py#L140) |
+| function | `append_review` | `(*, decision_id, verdict, note=…, evidence=…)` | Record a self-assessment: how am I doing on this? | [src](../../../core/runtime/db_decisions.py#L179) |
+| function | `_verified_adherence` | `(conn, decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L236) |
+| function | `repair_legacy_auto_adherence` | `()` | Rebuild stored scores after legacy automatic suspicions polluted them. | [src](../../../core/runtime/db_decisions.py#L271) |
+| function | `update_decision` | `(decision_id, *, directive=…, rationale=…, trigger_cue=…, trigger_name=…, priority=…, status=…, revoked_reason=…, revoked_evidence=…)` | Update mutable fields on a decision. | [src](../../../core/runtime/db_decisions.py#L292) |
+| function | `set_status` | `(decision_id, new_status, *, reason=…, evidence=…)` | Sæt status. Ved 'revoked' SKAL reason følge med og persisteres. | [src](../../../core/runtime/db_decisions.py#L362) |
+| function | `get_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L399) |
+| function | `list_decisions` | `(*, status=…, limit=…)` | List decisions, newest priority first. | [src](../../../core/runtime/db_decisions.py#L411) |
+| function | `list_reviews` | `(decision_id, *, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L442) |
+| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L453) |
+| function | `count_decisions` | `(*, status=…)` | — | [src](../../../core/runtime/db_decisions.py#L468) |
 
 ## `core/runtime/db_devices.py`
 _Enheder — hvem må styre denne computer, og hvem må bruge code mode._

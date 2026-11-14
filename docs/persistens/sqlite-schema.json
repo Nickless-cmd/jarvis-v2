@@ -5978,7 +5978,7 @@
       ]
     },
     "behavioral_decisions": {
-      "digest": "b9:7f:86:23:ef:2d:f2:19:f8:1f:dd:3d:82:2e:d8:39:a8:2b:bd:9f:4d:11:be:20:3e:74:fa:b5:cc:68:9c:99",
+      "digest": "c5:2b:62:2d:a8:48:ba:3a:52:39:81:8a:da:3e:33:8d:8d:6e:35:5c:18:89:04:dd:ab:1e:fd:11:34:d1:ca:30",
       "schema": {
         "columns": [
           {
@@ -6119,6 +6119,25 @@
           }
         ],
         "indexes": [
+          {
+            "name": "idx_decisions_source_record",
+            "unique": true,
+            "origin": "c",
+            "partial": true,
+            "parts": [
+              {
+                "column": "source_record_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE UNIQUE INDEX idx_decisions_source_record ON behavioral_decisions (source_record_id) WHERE source_record_id IS NOT NULL AND source_record_id != ''"
+          },
           {
             "name": "idx_decisions_status",
             "unique": false,
@@ -10099,7 +10118,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "cheap_lane_admission_state": {

@@ -91,9 +91,20 @@ def _ensure_tables(conn: sqlite3.Connection) -> None:
     # den beskyttede SPORET, ikke BESLUTNINGEN. Et vaern skal staa der hvor
     # raekken bliver til, ellers er det dekoration.
     #
-    # Partiel, fordi langt de fleste beslutninger ikke har et fund (1 af 398 i
-    # drift pr. 14/11-2026): en fuld unik indeks ville tillade praecis ÉN
-    # beslutning uden `source_record_id` i hele tabellen.
+    # Partiel — men ikke af den grund jeg foerst skrev. (14/11-2026, GPT's
+    # fjerde indvending, maalt.) Jeg skrev at en fuld unik indeks ville tillade
+    # praecis ÉN beslutning uden `source_record_id`. Det er FORKERT: SQLite
+    # behandler NULL som distinkt i et unikt indeks, saa tre NULL-raekker gik
+    # lige igennem en fuld indeks (maalt). Det er den TOMME STRENG den kun
+    # tillader én af — og praecis dét er grunden til at indeksen er partiel:
+    # et kald der sender `source_record_id=''` frem for NULL ville ellers
+    # optage den ene tilladte plads og afvise alle senere beslutninger uden
+    # fund med «UNIQUE constraint failed». En tavs fejl hos en senere kalder,
+    # for en vaerdi ingen nogensinde ville savne.
+    #
+    # I drift pr. 14/11-2026: 397 raekker med NULL, 1 med et fund. Ingen tom
+    # streng — men indeksen skal ikke vaere korrekt for den tilstand der
+    # tilfaeldigvis findes, kun for dem der kan opstaa.
     conn.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_decisions_source_record "
         "ON behavioral_decisions (source_record_id) "

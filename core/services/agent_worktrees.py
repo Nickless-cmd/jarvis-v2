@@ -460,7 +460,17 @@ def sweep(*, now: datetime | None = None) -> dict[str, list[str]]:
                 _set(wid, status="unknown", last_error="oprettelse uafklaret efter genstart")
         elif wt["status"] == "decided":
             frist = REMOVE_AFTER_KEPT if wt["decision"] == "kept" else REMOVE_AFTER_DECISION
-            if t - _parse(wt["decided_at"]) >= frist and _verified_remove(wt):
+            # En AFGJORT raekke hvis worktree allerede er væk fra disken bevarer intet: arbejdet
+            # ligger i artefakterne, og der er ingen fortrydelsesret at værne om — selve fristen
+            # findes for at nogen kan fortryde FOER worktree'et rives ned. Stod den alligevel og
+            # ventede, holdt den kvoten som en spogelsespost. Maalt 14/11-2026: 20 ``decided`` +
+            # 4 ``retained`` = 24/24 med 0 mapper paa disk, og al skrivende uddelegering var
+            # blokeret af en bogholderifejl frem for af kapacitet.
+            if not os.path.isdir(wt["path"]):
+                _set(wid, status="removed", closed_at=_iso(t),
+                     last_error="worktree var allerede væk fra disken ved retention")
+                out["removed"].append(wid)
+            elif t - _parse(wt["decided_at"]) >= frist and _verified_remove(wt):
                 _set(wid, status="removed", closed_at=_iso(t))
                 out["removed"].append(wid)
         else:   # retained, ubehandlet

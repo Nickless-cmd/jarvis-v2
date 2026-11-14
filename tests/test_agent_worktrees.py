@@ -287,6 +287,43 @@ def test_a_decided_worktree_is_removed_after_seven_days_and_only_then(wt):
     assert wt.W_.quota_status()["retained"] == 0                         # kvoten frigives foerst nu
 
 
+def test_an_already_vanished_decided_worktree_frees_the_quota_at_once(wt):
+    """En afgjort raekke hvis worktree ALLEREDE er væk bevarer intet.
+
+    Maalt 14/11-2026: 20 ``decided`` + 4 ``retained`` stod som 24/24 paa et target hvor
+    ``state/agent-worktrees`` var 4 KB og indeholdt nul mapper. Al skrivende uddelegering
+    blev afvist med "24 bevarede worktrees" — en bogholderifejl, ikke kapacitet. Fristen paa
+    syv dage findes for at nogen kan fortryde FOER worktree'et rives ned; er det allerede
+    væk, er der ingen fortrydelsesret at værne om, og arbejdet ligger i artefakterne.
+    """
+    import shutil
+
+    w = _retained(wt)
+    d = wt.W_.decide(owner_user_id="bjorn", worktree_id=w["worktree_id"], decision="integrated")
+    shutil.rmtree(w["path"])                                            # forsvinder for tidligt
+    assert not os.path.exists(w["path"])
+    t0 = datetime.fromisoformat(d["decided_at"].replace("Z", "+00:00"))
+
+    out = wt.W_.sweep(now=t0 + timedelta(minutes=1))                    # langt foer syv dage
+    assert out["removed"] == [w["worktree_id"]]
+    assert wt.rows()[0]["status"] == "removed"
+    assert wt.W_.quota_status()["retained"] == 0
+
+
+def test_a_decided_worktree_that_still_exists_waits_the_seven_days(wt):
+    """Modstykket: minuttet efter beslutningen maa den IKKE ryddes naar den faktisk ligger der.
+
+    Uden denne kunne fixet ovenfor let blive til "fjern alle afgjorte med det samme".
+    """
+    w = _retained(wt)
+    d = wt.W_.decide(owner_user_id="bjorn", worktree_id=w["worktree_id"], decision="integrated")
+    t0 = datetime.fromisoformat(d["decided_at"].replace("Z", "+00:00"))
+    assert os.path.isdir(w["path"])
+    assert wt.W_.sweep(now=t0 + timedelta(minutes=1))["removed"] == []
+    assert wt.rows()[0]["status"] == "decided"
+    assert wt.W_.quota_status()["retained"] == 1
+
+
 def test_an_undecided_worktree_needs_attention_at_14_days_and_is_archived_at_30(wt):
     from core.runtime import db_agent_artifacts as art
 

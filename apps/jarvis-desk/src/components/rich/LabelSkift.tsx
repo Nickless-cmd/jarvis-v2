@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Code2 } from 'lucide-react'
+import { MarkdownRenderer } from './MarkdownRenderer'
 
 /**
  * Label-skiftet på tool-linjen — Claude Desktops `GS`, porteret (19/9-2026).
@@ -167,9 +168,9 @@ export function SynteseLinje({ tekst, noegle }: { tekst: string; noegle: number 
   const nyKlasse = vist.id === 0 ? '' : ' ls-ind'
 
   return (
-    <span className="ls-grid">
+    <div className="ls-grid">
       {gammel && (
-        <span
+        <div
           key={`g${gammel.id}`}
           className="ls-lag ls-ud"
           aria-hidden="true"
@@ -178,8 +179,8 @@ export function SynteseLinje({ tekst, noegle }: { tekst: string; noegle: number 
             if (e.target === e.currentTarget && e.animationName === 'ls-fade-ud') setGammel(null)
           }}
         >
-          {gammel.tekst}
-        </span>
+          <MarkdownRenderer text={gammel.tekst} streaming />
+        </div>
       )}
       {/* Syntesen bærer INTET shimmer (Bjørn 17/10-2026: «der ska ikk være
           shimmer i synteses linjen og den tekst bør være hvid — runde linjen
@@ -188,10 +189,18 @@ export function SynteseLinje({ tekst, noegle }: { tekst: string; noegle: number 
           `.shimmer` maler gradient ind i teksten via
           `-webkit-text-fill-color: transparent`, så det var også dét der
           gjorde syntesen grå i stedet for hvid. */}
-      <span className="ls-lag linje-titel">
-        <span key={`n${vist.id}`} className={`ls-tekst${nyKlasse}`}>{vist.tekst}</span>
-      </span>
-    </span>
+      {/* 14/11-2026 (Bjørn): «teksten/systemerne er bare blokke og ikk læsbar
+          formatering». Syntesen blev skrevet RÅ ind i et `<span>`, så `\n\n`
+          kollapsede til ét mellemrum og alle afsnit, lister og fed blev én
+          sammenhængende mur. Den er den ENESTE tekstflade i chatten der ikke
+          gik gennem `BlocksRenderer`; nu går den gennem samme markdown-vej som
+          slutsvaret, så det der vises undervejs ligner det der bliver stående. */}
+      <div className="ls-lag linje-titel">
+        <div key={`n${vist.id}`} className={`ls-tekst${nyKlasse}`}>
+          <MarkdownRenderer text={vist.tekst} streaming />
+        </div>
+      </div>
+    </div>
   )
 }
 

@@ -803,7 +803,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 /* 0,625em = 9,4 px ved 15 px skrift — mobilens 10 px ved 16 px, samme forhold.
  * Nødvendig modvægt til den strammere linjehøjde: uden den smelter afsnittene
  * sammen (0,2em gav kun ~8,6 px luft efter linjehøjden blev sænket). */
-.jarvis-body p { margin: 0 0 0.625em 0; }
+.jarvis-body p { margin: 0 0 0.9em 0; }
 .jarvis-body strong { color: var(--fg-0, #f0f2f7); font-weight: 600; }
 .jarvis-body em { color: var(--fg-2); }
 .jarvis-body h1, .jarvis-body h2, .jarvis-body h3,
@@ -817,8 +817,8 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .jarvis-body h2 { font-size: 1.10em; }
 .jarvis-body h3 { font-size: 1.04em; }
 .jarvis-body h4, .jarvis-body h5, .jarvis-body h6 { font-size: 1em; }
-.jarvis-body ul, .jarvis-body ol { margin: 0.3em 0 0.6em 1.4em; padding: 0; }
-.jarvis-body li { margin-bottom: 0.2em; }
+.jarvis-body ul, .jarvis-body ol { margin: 0.5em 0 0.8em 0; padding-left: 1.4em; }
+.jarvis-body li { margin-bottom: 0.4em; }
 .jarvis-body li > p { margin: 0; } /* lister i markdown er ofte <p> indeni — fjern dobbelt-margin */
 .jarvis-body a {
   color: #7fb3ff;

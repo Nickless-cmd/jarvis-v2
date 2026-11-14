@@ -217,11 +217,58 @@
   overflow-wrap: anywhere;
 }
 
-.chat-flow-live-synthesis .ls-lag { align-items: start; }
+.chat-flow-live-synthesis .ls-lag {
+  /* 14/11-2026: syntesen er nu markdown (afsnit, lister, fed), ikke én
+     tekstlinje. `inline-flex` fra tool-label-reglen ville presse blokkene ind
+     i en flex-række og gøre afsnittene til flex-items uden margin-kollaps —
+     derfor blok her, mens tool-labels beholder deres inline-flex. */
+  display: block;
+  align-items: start;
+}
 
 .chat-flow-live-synthesis .ls-tekst {
   display: block;
   overflow: visible;
+}
+
+/* Markdown-typografien i syntesen. Den arver slutsvarets form, men strammere:
+   en syntese er mellemtekst der afløses, så afsnitsafstanden skal bære
+   læsbarheden uden at linjen vokser ud af syne. `:first-child`/`:last-child`
+   nulstilles, ellers giver første og sidste afsnit et hul mod rundelinjen. */
+.chat-flow-live-synthesis .ls-tekst > :first-child { margin-block-start: 0; }
+.chat-flow-live-synthesis .ls-tekst > :last-child { margin-block-end: 0; }
+.chat-flow-live-synthesis .ls-tekst p { margin: 0 0 0.9em; }
+.chat-flow-live-synthesis .ls-tekst p:last-child { margin-block-end: 0; }
+.chat-flow-live-synthesis .ls-tekst ul,
+.chat-flow-live-synthesis .ls-tekst ol {
+  margin: 0.2em 0 0.6em;
+  padding-inline-start: 1.25em;
+}
+.chat-flow-live-synthesis .ls-tekst li { margin-block: 0.35em; }
+.chat-flow-live-synthesis .ls-tekst li > p { margin: 0; }
+.chat-flow-live-synthesis .ls-tekst strong { color: var(--fg-1); font-weight: 600; }
+.chat-flow-live-synthesis .ls-tekst code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.92em;
+  padding: 0.08em 0.32em;
+  border-radius: 0.3em;
+  background: var(--bg-2, rgb(255 255 255 / 7%));
+}
+.chat-flow-live-synthesis .ls-tekst pre {
+  margin: 0.3em 0 0.6em;
+  padding: 0.5em 0.65em;
+  border-radius: 0.5em;
+  background: var(--bg-2, rgb(255 255 255 / 7%));
+  overflow-x: auto;
+}
+.chat-flow-live-synthesis .ls-tekst pre code { padding: 0; background: none; }
+.chat-flow-live-synthesis .ls-tekst h1,
+.chat-flow-live-synthesis .ls-tekst h2,
+.chat-flow-live-synthesis .ls-tekst h3,
+.chat-flow-live-synthesis .ls-tekst h4 {
+  margin: 0.5em 0 0.35em;
+  font-size: 1em;
+  line-height: 1.3;
 }
 
 /* Status + rundelinje ligger som linje to DIREKTE under syntesen. Den vokser

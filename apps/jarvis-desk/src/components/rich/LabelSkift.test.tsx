@@ -188,6 +188,41 @@ describe('syntese-linjen (chat mode)', () => {
   })
 })
 
+// 14/11-2026 (Bjørn): «teksten/systemerne er bare blokke og ikk læsbar
+// formatering». Syntesen blev skrevet RÅ ind i et `<span>`, så `\n\n`
+// kollapsede til ét mellemrum: afsnit, lister og fed forsvandt, og fladen blev
+// én mur af tekst. Testen krydser den vej der FAKTISK tegner — `SynteseLinje`
+// — og ikke `MarkdownRenderer` isoleret, for det var netop divergensen mellem
+// de to der var fejlen.
+describe('syntesen er markdown, ikke rå tekst', () => {
+  it('tomlinje bliver til to afsnit — ikke én sammenhængende mur', () => {
+    const { container } = render(
+      <SynteseLinje tekst={'Første pointe.\n\nAnden pointe.'} noegle={0} />,
+    )
+    const afsnit = container.querySelectorAll('.ls-tekst p')
+    expect(afsnit).toHaveLength(2)
+    expect(afsnit[0]).toHaveTextContent('Første pointe.')
+    expect(afsnit[1]).toHaveTextContent('Anden pointe.')
+  })
+
+  it('fed og kode renderes — de rå tegn står ikke i teksten', () => {
+    const { container } = render(
+      <SynteseLinje tekst={'**Afgørende:** jeg målte `_command()`.'} noegle={0} />,
+    )
+    expect(container.querySelector('.ls-tekst strong')).toHaveTextContent('Afgørende:')
+    expect(container.querySelector('.ls-tekst code')).toHaveTextContent('_command()')
+    expect(container.querySelector('.ls-tekst')).not.toHaveTextContent('**')
+    expect(container.querySelector('.ls-tekst')).not.toHaveTextContent('`')
+  })
+
+  it('punktopstilling bliver en liste, ikke bindestreger i prosa', () => {
+    const { container } = render(
+      <SynteseLinje tekst={'Tre ting:\n\n- første\n- anden\n- tredje'} noegle={0} />,
+    )
+    expect(container.querySelectorAll('.ls-tekst li')).toHaveLength(3)
+  })
+})
+
 // Kildens tal, pinnet mod den CSS der faktisk leveres.
 describe('værdierne i app.css er Claude Desktops', () => {
   const css = readFileSync(join(__dirname, '../../styles/app.css'), 'utf8')

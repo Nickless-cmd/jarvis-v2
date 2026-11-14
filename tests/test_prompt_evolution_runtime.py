@@ -355,3 +355,37 @@ def test_mission_control_runtime_and_endpoint_expose_prompt_evolution(isolated_r
     assert runtime["runtime_prompt_evolution"]["boundary"] == "not-memory-not-identity-not-action-not-applied-prompt"
     assert self_model["prompt_evolution"]["candidate_fragment"].startswith("Keep the inner line plain")
     assert self_model["prompt_evolution"]["summary"]["proposal_truth"] == "proposal-only"
+
+
+def test_claim_uden_referencepunkt_faelder_ikke(isolated_runtime, monkeypatch) -> None:
+    """Et manglende referencepunkt er information, ikke en fejl.
+
+    MAALT 12/11-2026 kl. 06:48-06:50: producenten fejlede tre tik i traek med
+    "unsupported operand type(s) for -: 'datetime.datetime' and 'NoneType'".
+
+    Vejen dertil: `_last_run_at` er en modul-global der er TOM efter en
+    genstart, mens kravet ligger i DB'en fordi den anden proces (jarvis-api)
+    har leaset producenten. Claim-grenen sendte derfor `reference=None` ind i
+    `_blocked`, som regnede `now - reference`. Resultatet var at HELE koerslen
+    blev kastet vaek — ikke bare det ene felt.
+
+    Testen holder fast at grenen svarer i stedet for at kaste, og at det
+    ukendte forloeb rapporteres aerligt som 0 frem for et gaet.
+    """
+    from core.services.cadence_claims import ClaimResult
+    from core.services import prompt_evolution_runtime as runtime_mod
+
+    monkeypatch.setattr(runtime_mod, "_last_run_at", "")
+    monkeypatch.setattr(
+        runtime_mod,
+        "claim_producer",
+        lambda *a, **k: ClaimResult(claimed=False, reason="claimed-elsewhere"),
+    )
+
+    result = runtime_mod.run_prompt_evolution_runtime(
+        trigger="heartbeat", last_visible_at=""
+    )
+
+    assert result["cadence_state"] == "claimed-elsewhere"
+    assert result["daemon_ran"] is False
+    assert result["elapsed_minutes"] == 0

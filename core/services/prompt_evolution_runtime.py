@@ -1101,9 +1101,22 @@ def _blocked(
     cadence_state: str,
     trigger: str,
     now: datetime,
-    reference: datetime,
+    reference: datetime | None,
 ) -> dict[str, object]:
-    elapsed_minutes = max(int((now - reference).total_seconds() // 60), 0)
+    # `reference` er VALGFRI. Den foerste kalder (claim-grenen) har kun den
+    # module-globale `_last_run_at`, som er tom efter en genstart — og naar
+    # kravet samtidig ligger i DB'en (den anden proces har leaset), er der
+    # intet referencepunkt at maale fra. Foer blev None sendt ind i
+    # `now - reference`, hvilket kastede
+    # "unsupported operand type(s) for -: 'datetime.datetime' and 'NoneType'"
+    # og faeldede HELE koerslen (maalt 12/11-2026 kl. 06:48-06:50, tre tik i
+    # traek efter en genstart). `elapsed_minutes` er ren information, saa et
+    # manglende referencepunkt skal give 0 — ikke en fejl.
+    elapsed_minutes = (
+        max(int((now - reference).total_seconds() // 60), 0)
+        if reference is not None
+        else 0
+    )
     return {
         "producer": "prompt_evolution_runtime",
         "daemon_ran": False,

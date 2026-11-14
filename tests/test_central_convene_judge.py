@@ -250,3 +250,118 @@ def test_gemt_on_laeses_som_shadow():
         assert j.current_mode() == "off"
     with patch.object(j, "_kv_get", return_value="noget-andet"):
         assert j.current_mode() == "off", "ukendt vaerdi skal falde til off"
+
+
+# ---------------------------------------------------------------------------
+# Alders-vægtning af de binære signaler (14/11-2026)
+# ---------------------------------------------------------------------------
+
+
+def _iso(minutter_siden: float) -> str:
+    from datetime import UTC, datetime, timedelta
+
+    return (datetime.now(UTC) - timedelta(minutes=minutter_siden)).isoformat()
+
+
+def test_frisk_undren_vejer_tungere_end_en_gammel():
+    """MÅLT 14/11-2026: `conflict` og `existential_wonder` stod på 1.0 i alle
+    500 samples over seks døgn — reglen var `1.0 if <streng> else 0.0`, så en
+    konflikt fra kl. 05:56 talte lige så meget kl. 14.
+
+    Uden denne test kan alders-vægtningen fjernes igen uden at nogen ser det,
+    og dommeren er tilbage til at måle tilstedeværelse i stedet for bevægelse.
+    """
+    from core.services import central_convene_judge as j
+
+    frisk = j._movement_from_signal(
+        "conflict", {"last_conflict": "spænding", "generated_at": _iso(5)}
+    )
+    gammel = j._movement_from_signal(
+        "conflict", {"last_conflict": "spænding", "generated_at": _iso(60 * 8)}
+    )
+    assert frisk > 0.9, f"en konflikt fra 5 min siden skal veje næsten fuldt, fik {frisk}"
+    assert gammel == 0.0, f"en konflikt fra 8 timer skal være faldet til nul, fik {gammel}"
+    assert frisk > gammel
+
+    wonder_frisk = j._movement_from_signal(
+        "existential_wonder", {"latest_wonder": "Hvem er jeg?", "last_generated_at": _iso(5)}
+    )
+    wonder_gammel = j._movement_from_signal(
+        "existential_wonder",
+        {"latest_wonder": "Hvem er jeg?", "last_generated_at": _iso(60 * 8)},
+    )
+    assert wonder_frisk > 0.9
+    assert wonder_gammel == 0.0
+
+
+def test_manglende_tidsstempel_falder_tilbage_paa_binaer():
+    """Bagudkompatibilitet: en surface UDEN tidsstempel må ikke blive nul.
+
+    Et signal der forsvinder fordi kilden ikke leverer en tid ville se ud som et
+    fald på 1.0 — det største mulige — og udløse en indkaldelse netop når kilden
+    er ufuldstændig. Derfor falder vi tilbage til den gamle regel.
+    """
+    from core.services import central_convene_judge as j
+
+    assert j._movement_from_signal("conflict", {"last_conflict": "noget"}) == 1.0
+    assert j._movement_from_signal("existential_wonder", {"latest_wonder": "noget"}) == 1.0
+
+
+def test_tomt_indhold_er_nul_uanset_tidsstempel():
+    """En frisk tid uden indhold er ikke et signal."""
+    from core.services import central_convene_judge as j
+
+    assert j._movement_from_signal("conflict", {"last_conflict": "", "generated_at": _iso(1)}) == 0.0
+    assert (
+        j._movement_from_signal(
+            "existential_wonder", {"latest_wonder": "", "last_generated_at": _iso(1)}
+        )
+        == 0.0
+    )
+
+
+def test_en_ny_post_loefter_movement_total_over_taersklen():
+    """Den ægte ende-til-ende: en frisk post SKAL kunne udløse dommeren.
+
+    Før rettelsen var niveauet konstant 1.0, så deltaet var 0 i alle samples og
+    dommeren kunne aldrig sige ja. Her måles det mod den rigtige tærskel.
+    """
+    from core.services import central_convene_judge as j
+
+    def _surfaces(**over):
+        base = {
+            "autonomy_pressure": {"summary": {"active_count": 0}},
+            "open_loop": {"summary": {"open_count": 0}},
+            "internal_opposition": {"active": False},
+            "existential_wonder": {"latest_wonder": "", "last_generated_at": ""},
+            "creative_drift": {"drift_count_today": 0},
+            "desire": {"active_count": 0},
+            "conflict": {"last_conflict": "", "generated_at": ""},
+            "affective_meta_state": {"mood": "steady"},
+        }
+        base.update(over)
+        return base
+
+    surfaces = _surfaces()
+
+    def _read(name):
+        return surfaces.get(name, {})
+
+    from unittest.mock import patch
+
+    j.reset_reference()
+    with _mode("on"), patch(
+        "core.services.signal_surface_router.read_surface", side_effect=_read
+    ):
+        foer = j.judge_convene(surfaces=surfaces, top_signals=[], score=0.0)
+        assert foer["convene"] is False
+
+        # En konflikt opstår NU.
+        surfaces["conflict"] = {"last_conflict": "spænding 1.0", "generated_at": _iso(0)}
+        efter = j.judge_convene(surfaces=surfaces, top_signals=[], score=0.0)
+
+    assert efter["movement_total"] >= j._MOVEMENT_THRESHOLD, (
+        f"en ny konflikt skal kunne løfte bevægelsen over tærsklen "
+        f"{j._MOVEMENT_THRESHOLD}, fik {efter['movement_total']}"
+    )
+    assert efter["convene"] is True

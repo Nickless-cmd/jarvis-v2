@@ -35,6 +35,7 @@ gater KUN om rådet indkaldes — den begrænser ikke hvem der må tænke.
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +107,41 @@ def current_mode() -> str:
 # Reading the flowing values
 # ---------------------------------------------------------------------------
 
+_ALDER_VINDUE_TIMER = 6.0
+
+
+def _alder_vaegt(tidsstempel: object, vindue_timer: float = _ALDER_VINDUE_TIMER) -> float | None:
+    """Niveau 1.0 for en frisk post, faldende lineært til 0.0 over vinduet.
+
+    MÅLT 14/11-2026: `conflict` og `existential_wonder` stod på 1.0 i ALLE 500
+    samples over seks døgn, fordi reglen var `1.0 if <streng> else 0.0`. En
+    konflikt fra kl. 05:56 talte lige så meget kl. 14 — og en undren fra i går
+    talte som en frisk. Niveauet kunne derfor aldrig falde, og et signal der
+    ikke kan falde, kan ikke bevæge sig.
+
+    Simuleret mod de faktiske tidsstempler (364 undringer, 988 konflikter):
+    alders-vægtning giver 9-17 spring over seks døgn mod 0 før. Springet kommer
+    når en NY post løfter niveauet fra næsten nul til 1.0 — altså en ægte
+    hændelse, ikke støj.
+
+    Returnerer None når tidsstemplet mangler eller ikke kan læses, så kalderen
+    kan falde tilbage til den binære regel i stedet for at gætte.
+    """
+    tekst = str(tidsstempel or "").strip()
+    if not tekst:
+        return None
+    try:
+        fra = datetime.fromisoformat(tekst.replace("Z", "+00:00"))
+    except ValueError:  # ugyldigt tidsstempel = «ingen tid», ikke «gammel post»
+        return None
+    if fra.tzinfo is None:
+        fra = fra.replace(tzinfo=UTC)
+    alder_timer = (datetime.now(UTC) - fra).total_seconds() / 3600.0
+    if alder_timer < 0:
+        return 1.0
+    return max(0.0, 1.0 - alder_timer / vindue_timer)
+
+
 def _movement_from_signal(name: str, surface: dict[str, Any]) -> float:
     """Normalise ONE signal surface to a 0..1 'how much is this moving' reading.
 
@@ -121,13 +157,19 @@ def _movement_from_signal(name: str, surface: dict[str, Any]) -> float:
         if name == "internal_opposition":
             return 1.0 if s.get("active") else 0.0
         if name == "existential_wonder":
-            return 1.0 if str(s.get("latest_wonder") or "") else 0.0
+            if not str(s.get("latest_wonder") or ""):
+                return 0.0
+            vaegt = _alder_vaegt(s.get("last_generated_at"))
+            return vaegt if vaegt is not None else 1.0
         if name == "creative_drift":
             return min(int(s.get("drift_count_today") or 0) / 3.0, 1.0)
         if name == "desire":
             return min(int(s.get("active_count") or 0) / 3.0, 1.0)
         if name == "conflict":
-            return 1.0 if str(s.get("last_conflict") or "") else 0.0
+            if not str(s.get("last_conflict") or ""):
+                return 0.0
+            vaegt = _alder_vaegt(s.get("generated_at"))
+            return vaegt if vaegt is not None else 1.0
     except Exception:
         return 0.0
     return 0.0

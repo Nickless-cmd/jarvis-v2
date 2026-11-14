@@ -4,7 +4,8 @@ import { useSettings } from '../hooks/useSettings'
 import { presencePing, fetchPendingNotifications, ackNotification } from '../lib/api'
 import { buildPingBody } from '../lib/presence'
 import { consumeInteraction } from '../lib/presenceSignal'
-import { loadMode, getDesktopLocation, type DeskLocationPayload } from '../lib/deskLocation'
+import { loadMode, getDesktopLocation } from '../lib/deskLocation'
+import { createLocationResolver } from '../lib/locationResolver'
 
 /**
  * Altid-monteret (i shell'en) device-presence + proaktiv notif-poll. Skal IKKE
@@ -43,26 +44,9 @@ export function PresenceHost() {
       return key
     }
 
-    // Lokation: cache i 10 min (IP/manuel ændrer sig sjældent; browser-GPS pollet
-    // hvert 5 min via maximumAge). clearedOff sender {} ÉN gang ved toggle off.
-    let cachedLoc: DeskLocationPayload | null = null
-    let cachedAt = 0
-    let clearedOff = false
-    const resolveLocation = async (): Promise<DeskLocationPayload | Record<string, never> | undefined> => {
-      const mode = loadMode()
-      if (mode === 'off') {
-        cachedLoc = null
-        if (clearedOff) return undefined
-        clearedOff = true
-        return {}
-      }
-      clearedOff = false
-      const now = Date.now()
-      if (cachedLoc && now - cachedAt < 600000) return cachedLoc
-      const loc = await getDesktopLocation(mode)
-      if (loc) { cachedLoc = loc; cachedAt = now; return loc }
-      return cachedLoc ?? undefined
-    }
+    // Lokation: cache i 10 min (en FEJL i 2 min — se locationResolver.ts). clearedOff sender {} ÉN
+    // gang ved toggle off.
+    const resolveLocation = createLocationResolver({ loadMode, getLocation: getDesktopLocation })
 
     const ping = async (): Promise<void> => {
       if (cancelled) return

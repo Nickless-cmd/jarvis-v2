@@ -329,8 +329,19 @@ def test_genudsendt_fra_stille_koe_dobler_ikke_feed_raekken(isolated_runtime, mo
     ramme det tidspunkt hvor genudsendelsen faktisk sker — ellers beviser den
     intet (den passede før fordi rækken aldrig fyrede)."""
     from core.services import notifikationer as lager
+    from datetime import datetime, timedelta, timezone
+
+    class FrozenDateTime(datetime):
+        current = datetime(2026, 11, 14, 11, 59, tzinfo=timezone(timedelta(hours=1)))
+
+        @classmethod
+        def now(cls, tz=None):
+            if tz is None:
+                return cls.current
+            return cls.current.astimezone(tz)
 
     monkeypatch.setattr(nr, "_deliver_to_channel", lambda *a, **k: True)
+    monkeypatch.setattr(nr, "datetime", FrozenDateTime)
     nr.set_preferences("bjorn", **{"quiet_start": "00:00", "quiet_end": "12:00"})
 
     # Uret maa ikke afgoere om testen bestaar. `is_quiet_hours()` laeser
@@ -342,8 +353,15 @@ def test_genudsendt_fra_stille_koe_dobler_ikke_feed_raekken(isolated_runtime, mo
     res = nr.route_proactive_notification("bjorn", "reach_out", {"body": "hej"}, importance="normal")
     assert res["channel"] == "queued"
     assert len(lager.aabne("bjorn", er_owner=True)) == 1
+    with db.connect() as conn:
+        due_at = conn.execute(
+            "SELECT deliver_after FROM delayed_notifications"
+        ).fetchone()["deliver_after"]
+    assert due_at == "2026-11-14T11:00:00Z"
 
     monkeypatch.setattr(nr, "is_quiet_hours", lambda *a, **k: False)
+    FrozenDateTime.current = datetime(
+        2026, 11, 14, 12, 0, tzinfo=timezone(timedelta(hours=1)))
     udfald = nr.fire_due_delayed()
     assert udfald["leveret"] == 1, "genudsendelsen skulle være sket — ellers beviser testen intet"
     assert len(lager.aabne("bjorn", er_owner=True)) == 1

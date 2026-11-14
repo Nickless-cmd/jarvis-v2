@@ -190,6 +190,24 @@ _Udgivne filer — per bruger._
 | function | `download_file` | `(filename, ws=…)` | Hent én fil — min egen, eller en andens via et gyldigt signeret link. | [src](../../../apps/api/jarvis_api/routes/files.py#L124) |
 | function | `list_files` | `()` | MINE filer. Aldrig nogen andens, og aldrig de gamle faelles. | [src](../../../apps/api/jarvis_api/routes/files.py#L173) |
 
+## `apps/api/jarvis_api/routes/flade_deferred_turn.py`
+_Chat-fladers direkte, adresserede tool-turns._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `DeferredTurnAddressBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/flade_deferred_turn.py#L28) |
+| class | `DeferredToolTurnBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/flade_deferred_turn.py#L36) |
+| class | `DeferredApprovalStatusBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/flade_deferred_turn.py#L42) |
+| function | `_current_user_id` | `()` | — | [src](../../../apps/api/jarvis_api/routes/flade_deferred_turn.py#L47) |
+| function | `_kraev_adgang` | `(session_id)` | — | [src](../../../apps/api/jarvis_api/routes/flade_deferred_turn.py#L52) |
+| function | `_source_message_belongs` | `(message_id, session_id)` | — | [src](../../../apps/api/jarvis_api/routes/flade_deferred_turn.py#L57) |
+| function | `_adresse` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/flade_deferred_turn.py#L68) |
+| function | `_validér_adresse` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/flade_deferred_turn.py#L78) |
+| function | `_register_approval` | `(adresse, tool_name, arguments, raw)` | Byg kortet gennem samme approval-runtime som synlige model-runs. | [src](../../../apps/api/jarvis_api/routes/flade_deferred_turn.py#L99) |
+| function | `_execute_chat_tool` | `(tool_name, arguments)` | Bind chat-scope omkring BÅDE katalogopslag og udførelse. | [src](../../../apps/api/jarvis_api/routes/flade_deferred_turn.py#L133) |
+| function | `flade_deferred_tool_turn` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/flade_deferred_turn.py#L153) |
+| function | `flade_deferred_tool_status` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/flade_deferred_turn.py#L173) |
+
 ## `apps/api/jarvis_api/routes/flade_log.py`
 _Klientlog ved renderbeslutningen — fire målepunkter, ingen guard._
 
@@ -599,8 +617,4 @@ _Mission Control: tool/skill/hardening/lab-hjælpere._
 | function | `_lab_providers_today` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L241) |
 | function | `_lab_db_stats` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L272) |
 | function | `_lab_recent_events` | `(limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L289) |
-
-## `apps/api/jarvis_api/routes/mission_control_imports.py`
-
-_(no top-level classes or functions)_
 

@@ -122,6 +122,9 @@ from apps.api.jarvis_api.routes.chat_inbox import (
 from apps.api.jarvis_api.routes.review import router as review_router
 from apps.api.jarvis_api.routes.mobile_memory import router as mobile_memory_router
 from apps.api.jarvis_api.routes.chat_stream_v2 import router as chat_stream_v2_router
+from apps.api.jarvis_api.routes.flade_deferred_turn import (
+    router as flade_deferred_turn_router,
+)
 from apps.api.jarvis_api.routes.cowork import router as cowork_router
 from apps.api.jarvis_api.routes.plugins import router as plugins_router
 from apps.api.jarvis_api.routes.totp import router as totp_router
@@ -1055,6 +1058,7 @@ def create_app() -> FastAPI:
     app.include_router(review_router)
     app.include_router(mobile_memory_router)
     app.include_router(chat_stream_v2_router)
+    app.include_router(flade_deferred_turn_router)
     from apps.api.jarvis_api.routes.push import router as push_router
     app.include_router(push_router)
     from apps.api.jarvis_api.routes.presence import router as presence_router

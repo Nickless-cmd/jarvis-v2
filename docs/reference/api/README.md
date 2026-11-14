@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18732 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18746 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -9,8 +9,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18732 functions/
 - [`apps.api.jarvis_api`](apps.api.jarvis_api.md)
 - [`apps.api.jarvis_api.middleware`](apps.api.jarvis_api.middleware.md)
 - [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `chat_flow_preferences`
-- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `chat_inbox` … `mission_control_imports`
-- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `mission_control_introspection` … `workbench`
+- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `chat_inbox` … `mission_control_helpers`
+- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `mission_control_imports` … `workbench`
 - [`apps.api.jarvis_api.routes.routines`](apps.api.jarvis_api.routes.routines.md) — `routines` … `routines`
 - [`apps.api.jarvis_api.schemas`](apps.api.jarvis_api.schemas.md)
 - [`apps.central_cli.central_cli`](apps.central_cli.central_cli.md)
@@ -44,25 +44,25 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18732 functions/
 - [`core.services.11`](core.services.11.md) — `daemon_manager` … `device_tokens`
 - [`core.services.12`](core.services.12.md) — `diagnosis_gate` … `emergence`
 - [`core.services.13`](core.services.13.md) — `emergence_initiative_bridge` … `felt_surface_store`
-- [`core.services.14`](core.services.14.md) — `file_awareness_daemon` … `goal_reporter`
-- [`core.services.15`](core.services.15.md) — `goal_signal_synthesizer` … `identity_drift_proposer`
-- [`core.services.16`](core.services.16.md) — `identity_guard` … `jarvis_brain_reflection`
-- [`core.services.17`](core.services.17.md) — `jarvis_brain_visibility` … `mcp_manager`
-- [`core.services.18`](core.services.18.md) — `mcp_registry` … `model_trust`
-- [`core.services.19`](core.services.19.md) — `modulator_witness` … `outcome_learning`
-- [`core.services.20`](core.services.20.md) — `outcome_payload_trim` … `private_state_snapshot_tracking`
-- [`core.services.21`](core.services.21.md) — `private_temporal_curiosity_state_tracking` … `prompt_support_signals`
-- [`core.services.22`](core.services.22.md) — `prompt_variant_tracker` … `reflection_to_plan`
-- [`core.services.23`](core.services.23.md) — `reflective_critic_tracking` … `routine_identity`
-- [`core.services.24`](core.services.24.md) — `routine_identity_migration` … `runtime_self_model_surfaces`
-- [`core.services.25`](core.services.25.md) — `runtime_surface_cache` … `self_review_unified`
-- [`core.services.26`](core.services.26.md) — `self_surprise_detection` … `short_ttl_cache`
-- [`core.services.27`](core.services.27.md) — `shutdown_window_daemon` … `stream_sentinel`
-- [`core.services.28`](core.services.28.md) — `stream_settlement` … `tool_catalog`
-- [`core.services.29`](core.services.29.md) — `tool_chip_payload` … `user_model_daemon`
-- [`core.services.30`](core.services.30.md) — `user_scope` … `visible_run_guard_notices`
-- [`core.services.31`](core.services.31.md) — `visible_run_interruption` … `wakeup_dispatcher`
-- [`core.services.32`](core.services.32.md) — `wakeup_ticker` … `world_model_signal_tracking`
+- [`core.services.14`](core.services.14.md) — `file_awareness_daemon` … `gmail_connector`
+- [`core.services.15`](core.services.15.md) — `goal_reporter` … `identity_drift_guard`
+- [`core.services.16`](core.services.16.md) — `identity_drift_proposer` … `jarvis_brain_daemon`
+- [`core.services.17`](core.services.17.md) — `jarvis_brain_reflection` … `mcp_client`
+- [`core.services.18`](core.services.18.md) — `mcp_manager` … `model_probe`
+- [`core.services.19`](core.services.19.md) — `model_trust` … `outbound_nudges`
+- [`core.services.20`](core.services.20.md) — `outcome_learning` … `private_inner_note_signal_tracking`
+- [`core.services.21`](core.services.21.md) — `private_state_snapshot_tracking` … `prompt_section_stale_cache`
+- [`core.services.22`](core.services.22.md) — `prompt_support_signals` … `reflection_signal_tracking`
+- [`core.services.23`](core.services.23.md) — `reflection_to_plan` … `routine_dispatch`
+- [`core.services.24`](core.services.24.md) — `routine_identity` … `runtime_self_model_state`
+- [`core.services.25`](core.services.25.md) — `runtime_self_model_surfaces` … `self_review_signal_tracking`
+- [`core.services.26`](core.services.26.md) — `self_review_unified` … `shell_confinement_report`
+- [`core.services.27`](core.services.27.md) — `short_ttl_cache` … `stream_failure_kind`
+- [`core.services.28`](core.services.28.md) — `stream_sentinel` … `tool_calling_evidence`
+- [`core.services.29`](core.services.29.md) — `tool_catalog` … `user_md_update_proposal_tracking`
+- [`core.services.30`](core.services.30.md) — `user_model_daemon` … `visible_run_firstpass`
+- [`core.services.31`](core.services.31.md) — `visible_run_guard_notices` … `wake_gateway`
+- [`core.services.32`](core.services.32.md) — `wakeup_dispatcher` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

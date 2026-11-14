@@ -362,12 +362,12 @@ export function ChatScreen({
     // (14/11/2026) Fladen faar et UDFALD. `delivered` lover AFLEVERING, ikke
     // succes: `sendNuRef` er en Promise, saa turen koerer videre efter dette
     // svar og dens fejl opstaar bagefter. Samme graense som i desk.
-    if (!t) return { status: 'failed' as const, kode: 'empty_action' as const, besked: '' }
+    if (!t) return { status: 'failed' as const, kode: 'empty_action' as const, besked: '', retryable: false }
     if (!sendNuRef.current) {
-      return { status: 'failed' as const, kode: 'component_unavailable' as const, besked: '' }
+      return { status: 'failed' as const, kode: 'component_unavailable' as const, besked: '', retryable: false }
     }
     void sendNuRef.current(t)
-    return { status: 'delivered' as const }
+    return { status: 'delivered' as const, retryable: false as const }
   }, [])
   // Rul-til-bunden: vises naar man har rullet OP i traaden. Listen er inverteret,
   // saa offset 0 = nederst ved det nyeste. Taerskel paa en halv skaerm — under det

@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-11-13 from app.routes (live) — 695 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-14 from app.routes (live) — 697 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -288,6 +288,8 @@
 | POST | `/chat/file` | dict | chat |
 | POST | `/chat/file/commit` | dict | chat |
 | POST | `/chat/file/commit-message` | dict | chat |
+| POST | `/chat/flade/deferred-turn` | dict | flade_deferred_turn |
+| POST | `/chat/flade/deferred-turn/status` | dict | flade_deferred_turn |
 | POST | `/chat/git-panel/commit` | dict | git_panel |
 | GET | `/chat/git-panel/diff` | dict | git_panel |
 | GET | `/chat/git-panel/log` | dict | git_panel |

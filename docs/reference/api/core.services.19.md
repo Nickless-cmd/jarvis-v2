@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/model_trust.py`
+_Central-governed EARNED model-trust (harness refactor Part 1 foundation)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/model_trust.py#L19) |
+| function | `_row` | `(conn, model)` | — | [src](../../../core/services/model_trust.py#L33) |
+| function | `record_run_outcome` | `(model, *, degenerated)` | Record one run's outcome. Clean -> +1 streak (promote at threshold); degeneration -> reset | [src](../../../core/services/model_trust.py#L43) |
+| function | `set_pin` | `(model, pin)` | Owner override: 'weak' | 'strong' | 'auto' (default). Self-safe. | [src](../../../core/services/model_trust.py#L75) |
+| function | `model_strength` | `(model)` | 'strong' | 'weak'. Pin wins; else earned strength. FAILS OPEN to 'weak'. | [src](../../../core/services/model_trust.py#L91) |
+| function | `build_model_trust_surface` | `()` | Central-CLI view: per-model trust state. Self-safe. | [src](../../../core/services/model_trust.py#L105) |
+
 ## `core/services/modulator_witness.py`
 _Witness surface for hidden behavior modulators._
 
@@ -660,22 +672,4 @@ _Outbound nudge ledger — replaces direct daemon→user sends for Type A/C._
 | function | `mark_sent` | `(nudge_id)` | Mark a nudge as actually surfaced to the user by Jarvis. | [src](../../../core/services/outbound_nudges.py#L341) |
 | function | `mark_dismissed` | `(nudge_id)` | Mark a nudge as explicitly skipped by Jarvis (won't reappear). | [src](../../../core/services/outbound_nudges.py#L355) |
 | function | `format_pending_for_awareness` | `()` | Render pending nudges as awareness section. | [src](../../../core/services/outbound_nudges.py#L369) |
-
-## `core/services/outcome_learning.py`
-_Outcome Learning — record observations, let old evidence decay._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/outcome_learning.py#L39) |
-| function | `_load` | `()` | — | [src](../../../core/services/outcome_learning.py#L43) |
-| function | `_save` | `(items)` | Atomisk skrivning med en UNIK temp-fil pr. kald. | [src](../../../core/services/outcome_learning.py#L57) |
-| function | `record_outcome` | `(*, context, outcome, weight=…, metadata=…)` | Record a single observation. outcome is free-form ('success', 'error', | [src](../../../core/services/outcome_learning.py#L87) |
-| function | `_decay_factor` | `(recorded_at, now)` | — | [src](../../../core/services/outcome_learning.py#L117) |
-| function | `pattern_strength` | `(context, *, outcome=…)` | Return decayed totals for a given context, optionally per-outcome. | [src](../../../core/services/outcome_learning.py#L126) |
-| function | `top_patterns` | `(*, limit=…, outcome=…)` | Return the N strongest patterns (highest decayed strength). | [src](../../../core/services/outcome_learning.py#L158) |
-| function | `prune_old_records` | `(*, min_weight=…)` | Drop records whose decayed weight is below min_weight. Returns count dropped. | [src](../../../core/services/outcome_learning.py#L185) |
-| function | `tick` | `(_seconds=…)` | Heartbeat hook — occasional pruning. Doesn't run full prune every tick. | [src](../../../core/services/outcome_learning.py#L203) |
-| function | `build_outcome_learning_surface` | `()` | — | [src](../../../core/services/outcome_learning.py#L213) |
-| function | `_summary_line` | `(count, total, top)` | — | [src](../../../core/services/outcome_learning.py#L237) |
-| function | `_emit_outcome_learning_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/outcome_learning.py#L249) |
 

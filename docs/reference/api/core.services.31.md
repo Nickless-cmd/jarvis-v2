@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_run_guard_notices.py`
+_Værns-noterne — hvad Bjørn ser, og hvad modellen må se._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `forbindelsen_glippede` | `()` | P6 graceful-degrade: forbindelsen svigtede gentagne gange. Klasse 3. | [src](../../../core/services/visible_run_guard_notices.py#L85) |
+| function | `loekken_tvang_en_afslutning` | `()` | Løkken tvang en afslutning med et ventende tool-intent. Klasse 3. | [src](../../../core/services/visible_run_guard_notices.py#L94) |
+| function | `tool_call_loekke` | `(runder)` | Flere runder med værktøjskald og intet synligt svar. Klasse 3. | [src](../../../core/services/visible_run_guard_notices.py#L103) |
+| function | `ingen_tekst_i_runder` | `(runder)` | Runder uden tekst overhovedet — KLASSE 1, den holder runnet i gang. | [src](../../../core/services/visible_run_guard_notices.py#L112) |
+| function | `tomt_loefte_advarsel` | `()` | Advarslen til NÆSTE runde om et tomt løfte. Klasse 2 — MÆRKET. | [src](../../../core/services/visible_run_guard_notices.py#L128) |
+| function | `systemmaerket` | `(tekst)` | Mærk en vilkårlig runtime-besked som fra systemet. Klasse 1 og 2. | [src](../../../core/services/visible_run_guard_notices.py#L151) |
+| function | `er_menneske_note` | `(tekst)` | Er dette en klasse-3-note — altså til Bjørn og ikke til modellen? | [src](../../../core/services/visible_run_guard_notices.py#L183) |
+| function | `er_handler_note` | `(tekst)` | Er dette en klasse-1-note? Den SKAL naa modellen; her kun til mærkning. | [src](../../../core/services/visible_run_guard_notices.py#L201) |
+| function | `fjern_menneske_noter` | `(dele)` | Fjern klasse-3-noter fra de dele der bliver model-input. | [src](../../../core/services/visible_run_guard_notices.py#L213) |
+| function | `fjern_menneske_noter_fra_historik` | `(historik)` | Fjern klasse-3-noter fra den PERSISTEREDE historik modellen får. | [src](../../../core/services/visible_run_guard_notices.py#L230) |
+
 ## `core/services/visible_run_interruption.py`
 _Hvad afbrød et synligt run — til fejl-envelopen og Centralen._
 
@@ -534,18 +550,4 @@ _Én indgang til at vække — kilderne SIGNALERER, indbakken VURDERER og vække
 | function | `wakeup_id_fra_vaekning` | `(kilde_id)` | Wakeup-id'et bag en `vaekning`-post, eller tom streng. | [src](../../../core/services/wake_gateway.py#L68) |
 | function | `_bruger` | `()` | — | [src](../../../core/services/wake_gateway.py#L87) |
 | function | `anmod_om_vaekning` | `(*, kilde, sag, tekst, bruger_id=…, session_id=…, importance=…, task_id=…, permission_session=…, origin=…, max_tool_calls=…, max_seconds=…, tool_scope=…)` | Bed indbakken om at vække. Starter ikke noget selv. | [src](../../../core/services/wake_gateway.py#L94) |
-
-## `core/services/wakeup_dispatcher.py`
-_Wakeup dispatcher — autonomous fire of self-wakeups._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_bruger_skrev_for_nylig` | `(session_id)` | Skrev brugeren inden for karantænen? Self-safe → False ved enhver fejl. | [src](../../../core/services/wakeup_dispatcher.py#L64) |
-| function | `_jarvis_skrev_for_nylig` | `(session_id)` | Skrev JEG inden for karantænen? Self-safe → False ved enhver fejl. | [src](../../../core/services/wakeup_dispatcher.py#L71) |
-| function | `_nylig_rolle_i_session` | `(session_id, *, rolle, vindue_s)` | Findes der en besked fra `rolle` yngre end `vindue_s`? Self-safe. | [src](../../../core/services/wakeup_dispatcher.py#L84) |
-| function | `_active_turn_blocks` | `(session_id, *, karantaene=…)` | Returnér en skip-årsag hvis en FERSK visible-tur kører i sessionen. | [src](../../../core/services/wakeup_dispatcher.py#L118) |
-| function | `pick_wakeup_run_target` | `(*, channel, record_session, app_resolver, owner_resolver, is_external)` | Beslut hvilken session et wakeup-run skal lande i — med Discord-guard. | [src](../../../core/services/wakeup_dispatcher.py#L241) |
-| function | `_udloes_heartbeat_tick` | `()` | Kør heartbeat-tick'et UDEN for dispatchens kritiske sti (12/11-2026). | [src](../../../core/services/wakeup_dispatcher.py#L279) |
-| function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L304) |
-| function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L489) |
 

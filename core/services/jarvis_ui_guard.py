@@ -262,6 +262,19 @@ def _diagnosticér(data: dict, dybde: int = 1) -> tuple[str, list[str]]:
             fejl.append(f"choices har {len(alle)} options, kun 6 vises")
         return ("delvis" if fejl else "ok"), fejl
 
+    if typ == "tool":
+        # Handlende chat-flade (14/11-2026). Guarden skal kende formen FØR
+        # korrektionen ser den; ellers omskriver den en gyldig handling som en
+        # ukendt flade bag modellens ryg. `arguments` er bevidst et objekt:
+        # tool-gaten validerer det konkrete skema ved udførelse.
+        if not _tekst(data.get("tool")):
+            return "død", ["tool-flade mangler tool"]
+        if not _tekst(data.get("label")):
+            return "død", ["tool-flade mangler label"]
+        if not isinstance(data.get("arguments"), dict):
+            return "død", ["tool-flade arguments er ikke et objekt"]
+        return "ok", fejl
+
     if typ == "control":
         # (14/11-2026) Den FØRSTE flade med lokal state: en slider der rykker
         # uden at et modelkald går ud. Grenen her er ikke kosmetisk.

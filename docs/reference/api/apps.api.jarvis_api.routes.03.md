@@ -2,6 +2,10 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/mission_control_imports.py`
+
+_(no top-level classes or functions)_
+
 ## `apps/api/jarvis_api/routes/mission_control_introspection.py`
 _Mission Control routes: kognitiv/relationel introspektion (personality, chronicle, decisions, meta-cognition, agency-map)_
 

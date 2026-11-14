@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { FladeKontrolContext, NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
 import { WidgetPrompt } from './WidgetBlock'
+import { FladeDeferredTurnContext } from '../../lib/fladeDeferredTurn'
 
 describe('NativeRichBlock', () => {
   it('afviser ukendt, ugyldig og for stor struktur', () => {
@@ -36,6 +37,40 @@ describe('NativeRichBlock', () => {
     expect(send).toHaveBeenCalledWith('[fra valgkort] gør det')
   })
 
+  it('tool-fladen får resultatet ind i sig selv og reviderer adressen', async () => {
+    const run = vi.fn(async (request) => ({
+      status: 'delivered' as const, retryable: false as const,
+      result: { temperature: 12 },
+      address: { ...request.address, contentRevision: 1 },
+    }))
+    render(<FladeKontrolContext.Provider value><FladeDeferredTurnContext.Provider value={{
+      accountId: 'owner-1', conversationId: 'chat-1', sourceMessageId: 'msg-1', run,
+    }}><NativeRichBlock code={JSON.stringify({
+      type: 'tool', title: 'Vejret', tool: 'weather',
+      arguments: { location: 'Svendborg' }, label: 'Hent vejret',
+    })} /></FladeDeferredTurnContext.Provider></FladeKontrolContext.Provider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Hent vejret' }))
+    expect(await screen.findByText(/temperature/)).toHaveTextContent('12')
+    expect(run.mock.calls[0]?.[0].address).toMatchObject({
+      conversationId: 'chat-1', sourceMessageId: 'msg-1', contentRevision: 0,
+    })
+  })
+
+  it('retryable tool-fejl viser en aktiv Prøv igen-knap', async () => {
+    const run = vi.fn(async (request) => ({
+      status: 'failed' as const, kode: 'tool_failed' as const, besked: 'netværk', retryable: true, address: request.address,
+    }))
+    render(<FladeKontrolContext.Provider value><FladeDeferredTurnContext.Provider value={{
+      accountId: '', conversationId: 'chat-1', sourceMessageId: 'msg-1', run,
+    }}><NativeRichBlock code={JSON.stringify({
+      type: 'tool', title: 'Vejret', tool: 'weather', arguments: {}, label: 'Hent',
+    })} /></FladeDeferredTurnContext.Provider></FladeKontrolContext.Provider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Hent' }))
+    expect(await screen.findByRole('button', { name: 'Prøv igen' })).toBeEnabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Prøv igen' }))
+    expect(run).toHaveBeenCalledTimes(2)
+  })
+
   // Handlings-udfaldet (14/11-2026). Tre påstande, og den tredje er den
   // vigtigste: chat mode skal vise en ÆRLIG fejl, og code mode skal være
   // UÆNDRET. Uden den tredje kunne jeg have ændret maskinrummet uden at se det.
@@ -44,7 +79,7 @@ describe('NativeRichBlock', () => {
   })
 
   it('chat mode: en afvist handling vises — ikke en tavs død knap', () => {
-    const send = vi.fn(() => ({ status: 'failed' as const, kode: 'component_unavailable' as const, besked: '' }))
+    const send = vi.fn(() => ({ status: 'failed' as const, kode: 'component_unavailable' as const, besked: '', retryable: false }))
     render(<FladeKontrolContext.Provider value><WidgetPrompt.Provider value={send}>
       <NativeRichBlock code={valgkort} />
     </WidgetPrompt.Provider></FladeKontrolContext.Provider>)
@@ -53,7 +88,7 @@ describe('NativeRichBlock', () => {
   })
 
   it('chat mode: en afleveret handling tier — turen fortsætter selv i tråden', () => {
-    const send = vi.fn(() => ({ status: 'delivered' as const }))
+    const send = vi.fn(() => ({ status: 'delivered' as const, retryable: false as const }))
     render(<FladeKontrolContext.Provider value><WidgetPrompt.Provider value={send}>
       <NativeRichBlock code={valgkort} />
     </WidgetPrompt.Provider></FladeKontrolContext.Provider>)

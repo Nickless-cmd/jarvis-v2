@@ -214,6 +214,25 @@ def test_ukendt_type_degraderes() -> None:
     assert _DEGRADERET in normalisér(tekst)
 
 
+def test_tool_flade_med_navn_argumenter_og_knap_bevares() -> None:
+    """Guard-bruddet: en handlende flade må ikke omskrives som ukendt type."""
+    spec = {
+        "type": "tool",
+        "title": "Slå vejret op",
+        "tool": "weather",
+        "arguments": {"location": "Svendborg"},
+        "label": "Hent vejret",
+    }
+    tekst = "```jarvis-ui\n" + json.dumps(spec, ensure_ascii=False) + "\n```"
+    assert _diagnosticér(spec) == ("ok", [])
+    assert normalisér(tekst) == tekst
+
+
+def test_tool_flade_uden_toolnavn_degraderes() -> None:
+    spec = {"type": "tool", "label": "Kør", "arguments": {}}
+    assert _niveau(spec) == "død"
+
+
 def test_delvist_tab_bevarer_blokken_men_siger_det() -> None:
     """Et dårligt item af tre må ikke koste hele fladen — men tabet skal ses."""
     spec = {

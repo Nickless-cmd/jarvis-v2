@@ -829,11 +829,17 @@ def set_last_visible_run_outcome(
     _stemple_afslutning_synkront(
         run.run_id, status=status, finished_at=finished_at, error=error)
     import threading as _t_outcome
+    # 14/11-2026: afgøres HER, synkront. Sporet er en global; når tråden kører,
+    # kan en senere kørsel have overskrevet det, og så ville målingen svare for
+    # en anden kørsel.
+    from core.services.visible_run_trace import run_never_reached_model
+    _no_model_call = run_never_reached_model(run.run_id, text_preview)
     _t_outcome.Thread(
         target=_persist_visible_run_outcome,
         args=(run,),
         kwargs=dict(status=status, finished_at=finished_at,
-                    text_preview=text_preview, error=error),
+                    text_preview=text_preview, error=error,
+                    no_model_call=_no_model_call),
         name=f"outcome-persist-{str(run.run_id)[:10]}", daemon=True,
     ).start()
 
@@ -1069,6 +1075,7 @@ def _persist_visible_run_outcome(
     finished_at: str,
     text_preview: str | None = None,
     error: str | None = None,
+    no_model_call: bool = False,
 ) -> None:
     controller = _vr.get_visible_run_controller(run.run_id)
     shared = _vr._get_visible_run_control(run.run_id)
@@ -1191,6 +1198,11 @@ def _persist_visible_run_outcome(
             ),
         )
         conn.commit()
+    # De FAKTUELLE rækker (visible_runs, visible_work_units/notes ovenfor) er
+    # skrevet. Resten er narrativ — indre noter, vækst-noter, self-review — og
+    # har intet input når kørslen aldrig nåede modellen (14/11-2026).
+    if no_model_call:
+        return
     write_private_terminal_layers(
         run_id=run.run_id,
         work_id=work_id,

@@ -74,6 +74,30 @@ def get_last_visible_execution_trace() -> dict[str, object] | None:
     return dict(_LAST_VISIBLE_EXECUTION_TRACE) if _LAST_VISIBLE_EXECUTION_TRACE else None
 
 
+def run_never_reached_model(run_id: str, assistant_text: str | None) -> bool:
+    """Sandt når kørslen hverken har et modelkald eller noget modeloutput.
+
+    14/11-2026: en kørsel aflyst FØR første modelkald (`provider_call_count=0`,
+    tom tekst) kørte alligevel hele post-run-narrativet og skrev artefakter der
+    påstod uafsluttet arbejde ("Run outcome: cancelled", "that loose end keeps
+    …"). Inputtet var tomt; artefakterne var teater.
+
+    Prædikatet er bevidst SNÆVERT og fejler åbent (False = gammel adfærd):
+    * sporet skal tilhøre DENNE kørsel — `_LAST_VISIBLE_EXECUTION_TRACE` er en
+      global, og en senere kørsel kan have overskrevet den;
+    * `provider_call_count` skal være præcis 0 — manglende/ukendt tæller ikke;
+    * der må ikke være tekst — nogle stier sætter aldrig tælleren, og en
+      kørsel med output skal stadig destilleres.
+    """
+    if str(assistant_text or "").strip():
+        return False
+    trace = get_last_visible_execution_trace()
+    if not trace or str(trace.get("run_id") or "") != str(run_id or ""):
+        return False
+    count = trace.get("provider_call_count")
+    return isinstance(count, int) and not isinstance(count, bool) and count == 0
+
+
 def _start_visible_execution_trace(run: VisibleRun) -> dict[str, object]:
     trace = {
         "run_id": run.run_id,

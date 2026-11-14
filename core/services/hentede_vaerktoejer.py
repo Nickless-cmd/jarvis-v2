@@ -22,11 +22,39 @@ To ting gjorde arrayet ustabilt efter en hentning:
    unødvendige — skemaerne står allerede i hentningens RESULTAT, altså i
    beskederne, efter cache-grænsen, hvor de koster ~0.
 
+## Adoptions-målingen findes (rettet 14/11-2026)
+
+Til 14/11-2026 stod der her at vi ingen måling havde. Det var forkert, og
+fejlen er værd at kende: sporet har ligget i `simple_tool_executor` siden
+30/9, og `scripts/dispatcher_adoption.py` har kunnet læse det hele tiden.
+Målt de syv dage op til 14/11: **230 dispatcher-kald** og 179 hentninger.
+Docstringen påstod det modsatte, så opgaven blev stillet som «byg en måling»
+over noget der allerede kørte.
+
+Det der MANGLEDE var koblingen, ikke sporet:
+
+* `tool_router.dispatcher_brugt` bærer `run_id` — kald-siden var målbar.
+* `tool_router.load_more_fired` bar det IKKE (0 af 179). Uden run-id på
+  hentesiden kan «hentede dette run et værktøj, og kaldte det det bagefter?»
+  ikke besvares, og en «adoptionsrate» måtte blive et forhold mellem to
+  løsrevne tællinger. Scriptet gjorde netop det og rapporterede 37 %, mens
+  `db_query` alene stod med 87 kald mod 37 hentninger — 235 % for ét navn.
+  Tallet så præcist ud og var ubrugeligt.
+
+Hentningen bærer nu `run_id` (også i `tool_router_load_more`), og scriptet
+regner **run-dækning**: af de runs der hentede mindst ét værktøj, hvor mange
+kaldte bagefter mindst ét af de hentede navne gennem dispatcheren. Hentninger
+fra før 14/11 er `ukobbelige` og tælles hverken for eller imod.
+
+**Fletten er stadig ikke skåret.** `visible_tools_frozen` står uændret og skal
+først røres når run-dækningen er målt over hentninger EFTER 14/11 — det er
+hele pointen med den.
+
 ## Hvorfor det kan slukkes uden genstart
 
-Vi har ingen adoptions-måling endnu: hvis modellen ikke bruger dispatcheren,
-kan et hentet værktøj **ikke kaldes** — DeepSeek afviser et værktøj der ikke er
-deklareret, og det er målt mod deres API, ikke antaget.
+Hvis modellen ikke bruger dispatcheren, kan et hentet værktøj **ikke kaldes** —
+DeepSeek afviser et værktøj der ikke er deklareret, og det er målt mod deres
+API, ikke antaget.
 
 Derfor `visible_tools_frozen` i settings.json. `load_settings()` læser filen ved
 HVERT kald, så den virker uden genstart. Slå den fra, og fletten og lås-

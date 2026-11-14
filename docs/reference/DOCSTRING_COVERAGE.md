@@ -2506,7 +2506,7 @@ Generated from source. 10192/18719 functions/methods documented (54%). The list 
 - `scripts/deferred_restart.py` :: `main` (L234)
 - `scripts/diagnostics/canary_measure.py` :: `main` (L56)
 - `scripts/diagnostics/recall_canary.py` :: `main` (L138)
-- `scripts/dispatcher_adoption.py` :: `main` (L63)
+- `scripts/dispatcher_adoption.py` :: `main` (L83)
 - `scripts/e2e_indbakke.py` :: `Led.bestod` (L64)
 - `scripts/e2e_indbakke.py` :: `main` (L408)
 - `scripts/enforce_commit_hygiene.py` :: `main` (L89)

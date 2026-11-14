@@ -494,10 +494,10 @@ _Hvad der sker EFTER en `load_more_tools`-hentning — og hvorfor det kan slukke
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `frosset` | `()` | Skal værktøjsarrayet holdes helt stille efter en hentning? | [src](../../../core/services/hentede_vaerktoejer.py#L43) |
-| function | `hentede_navne` | `(tool_results)` | Navnene fra `load_more_tools`-resultater i denne runde, i rækkefølge. | [src](../../../core/services/hentede_vaerktoejer.py#L57) |
-| function | `udvid_laasen` | `(session_id, navne)` | Læg de hentede navne i session-låsen — med mindre arrayet er frosset. | [src](../../../core/services/hentede_vaerktoejer.py#L72) |
-| function | `flet_ind` | `(definitions, navne, alle)` | Flet de hentede definitioner ind i rundens array — med mindre frosset. | [src](../../../core/services/hentede_vaerktoejer.py#L90) |
+| function | `frosset` | `()` | Skal værktøjsarrayet holdes helt stille efter en hentning? | [src](../../../core/services/hentede_vaerktoejer.py#L71) |
+| function | `hentede_navne` | `(tool_results)` | Navnene fra `load_more_tools`-resultater i denne runde, i rækkefølge. | [src](../../../core/services/hentede_vaerktoejer.py#L85) |
+| function | `udvid_laasen` | `(session_id, navne)` | Læg de hentede navne i session-låsen — med mindre arrayet er frosset. | [src](../../../core/services/hentede_vaerktoejer.py#L100) |
+| function | `flet_ind` | `(definitions, navne, alle)` | Flet de hentede definitioner ind i rundens array — med mindre frosset. | [src](../../../core/services/hentede_vaerktoejer.py#L118) |
 
 ## `core/services/hf_connector.py`
 _Hugging Face-connector — søg modeller/datasets via Hub API._

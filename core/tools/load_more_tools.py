@@ -65,11 +65,33 @@ def _tool_load_more_tools(arguments: dict) -> dict:
             "schemas": [],
         }
 
+    # ── Run-id'et paa hentningen (14/11-2026) ──────────────────────────────
+    #
+    # Maalt: `tool_router.dispatcher_brugt` baerer run_id, men hentningen gjorde
+    # ikke — 0 af 179 i syv dage. Uden den kan «hentede dette run et vaerktoej,
+    # og kaldte det det bagefter?» ikke besvares, og adoptionsraten maa gættes
+    # som et forhold mellem to loesrevne taellinger. Det gjorde scriptet netop:
+    # 230 kald / 614 navne = «37 %», mens `db_query` alene stod med 87 kald mod
+    # 37 hentninger — 235 % for ét navn, hvilket er umuligt som en rate.
+    #
+    # `_runtime_turn_id` haeftes af `simple_tool_executor` FOER handleren kaldes;
+    # contextvar'en er reserve for veje uden om executoren. ``UKENDT`` gemmes som
+    # TOMT: en join-noegle der hedder «UKENDT» ville smelte alle ukendte runs
+    # sammen til ét fiktivt run og opfinde en adoption der ikke findes.
+    run_id = ""
+    try:
+        from core.tools.tool_call_telemetry import identitet
+        _rid = str(identitet(arguments or {}).get("run_id") or "")
+        run_id = "" if _rid == "UKENDT" else _rid
+    except Exception:  # maalingen maa aldrig stoppe en hentning
+        run_id = ""
+
     try:
         event_bus.publish("tool_router.load_more_fired", {
             "requested_names": names,
             "requested_query": query,
             "resolved_names": resolved,
+            "run_id": run_id,
         })
     except Exception:
         pass
@@ -78,9 +100,10 @@ def _tool_load_more_tools(arguments: dict) -> dict:
         with connect() as c:
             c.execute(
                 "INSERT INTO tool_router_load_more("
-                "requested_names_json, requested_query, resolved_names_json, created_at) "
-                "VALUES (?,?,?, datetime('now'))",
-                (_json.dumps(names), query, _json.dumps(resolved)),
+                "run_id, requested_names_json, requested_query, "
+                "resolved_names_json, created_at) "
+                "VALUES (?,?,?,?, datetime('now'))",
+                (run_id, _json.dumps(names), query, _json.dumps(resolved)),
             )
             c.commit()
     except Exception:

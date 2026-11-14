@@ -300,12 +300,12 @@ _Udskudt genstart — vent til turen er SLUT, genstart saa._
 | function | `main` | `(argv)` | — | [src](../../../scripts/deferred_restart.py#L234) |
 
 ## `scripts/dispatcher_adoption.py`
-_Bliver `call_loaded_tool` faktisk brugt? — tallet der afgør etape B._
+_Bliver `call_loaded_tool` faktisk brugt? — tallet der afgør om fletten kan skæres._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_rækker` | `(con, kind, siden)` | — | [src](../../../scripts/dispatcher_adoption.py#L50) |
-| function | `main` | `()` | — | [src](../../../scripts/dispatcher_adoption.py#L63) |
+| function | `_rækker` | `(con, kind, siden)` | — | [src](../../../scripts/dispatcher_adoption.py#L70) |
+| function | `main` | `()` | — | [src](../../../scripts/dispatcher_adoption.py#L83) |
 
 ## `scripts/docs_audit.py`
 _SP1 docs auditor — classify docs/*.md against git+runtime truth. Regenerable, static_

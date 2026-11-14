@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { stabilizeStreamingMarkdown } from './streamingMarkdown'
+import { lukAabneMarkeringer, stabilizeStreamingMarkdown } from './streamingMarkdown'
 
 describe('stabilizeStreamingMarkdown', () => {
   it('holds back an unclosed code fence', () => {
@@ -63,5 +63,47 @@ describe('den kendte begrænsning: en fence uden en eneste afsluttet linje', () 
     expect(ud).toContain('const x = 1')
     expect(ud).not.toContain('const y =')     // den halve linje vises ikke
     expect(ud.endsWith(T)).toBe(true)          // midlertidig lukkemarkør
+  })
+})
+
+describe('lukAabneMarkeringer — den halve markering (14/11-2026)', () => {
+  it('lukker en fed-markering der er ved at blive skrevet', () => {
+    // Målt: uden lukningen stod der rå `**` i fladen mens svaret løb.
+    expect(lukAabneMarkeringer('Her er en **vigtig pointe')).toBe('Her er en **vigtig pointe**')
+  })
+
+  it('rører IKKE en komplet markering', () => {
+    const md = 'Her er en **vigtig pointe** der er lukket'
+    expect(lukAabneMarkeringer(md)).toBe(md)
+  })
+
+  it('lukker inline-kode', () => {
+    expect(lukAabneMarkeringer('kør `npm test')).toBe('kør `npm test`')
+  })
+
+  it('tæller ikke markeringer inde i en kode-fence', () => {
+    // Kode skal vises som den er skrevet. Uden fence-værnet ville de to
+    // stjerner i eksemplet blive talt med og give en falsk lukning.
+    const md = '```\nconst a = "**"\n```'
+    expect(lukAabneMarkeringer(md)).toBe(md)
+  })
+
+  it('rører ikke en enkelt stjerne eller underscore', () => {
+    // Dansk prosa bruger `*` og `_` uden at mene markdown. En gættet lukning
+    // ville gøre skade i stedet for at undgå den.
+    const md = 'en note om 2 * 3 og snake_case_navn'
+    expect(lukAabneMarkeringer(md)).toBe(md)
+  })
+
+  it('en tekst uden markeringer er uændret', () => {
+    const md = 'helt almindelig prosa uden formatering'
+    expect(lukAabneMarkeringer(md)).toBe(md)
+  })
+
+  it('stabilizeStreamingMarkdown lukker markeringen — og kun dér', () => {
+    // Kontrakten: reparationen hører til streaming-vejen. En FÆRDIG tekst med
+    // en halv markering skal se rå ud, for der er det en rigtig fejl.
+    const halv = 'Her er en **pointe der ikke blev lukket'
+    expect(stabilizeStreamingMarkdown(halv)).toBe(`${halv}**`)
   })
 })

@@ -22,6 +22,10 @@ import { scanFences } from './fenceScanner'
  * vaerre end en udokumenteret, fordi ingen leder efter den.
  */
 export function stabilizeStreamingMarkdown(md: string): string {
+  return lukAabneMarkeringer(stabilizeFences(md))
+}
+
+function stabilizeFences(md: string): string {
   const spans = scanFences(md)
   const last = spans[spans.length - 1]
   if (!last || last.closed) return md
@@ -31,4 +35,57 @@ export function stabilizeStreamingMarkdown(md: string): string {
     return md.slice(0, completeEnd + 1) + last.marker.repeat(last.length)
   }
   return md.slice(0, last.start).replace(/\n+$/, '')
+}
+
+/**
+ * Lukker en markering der er ved at blive skrevet (14/11-2026).
+ *
+ * ## Hvorfor den findes
+ *
+ * Bjørn: «hvorfor knækker markdown inde i turhoved for det meste, men lykkes
+ * enkelte gange?» Målt: det er ikke folden og ikke streaming. Den SAMME
+ * halve tekst giver rå `**` både med og uden `streaming` — og den komplette
+ * tekst er pæn i begge tilstande. Variablen er om teksten er HEL.
+ *
+ * En tekst der skrives tegn for tegn er uundgåeligt halv i et vindue: hver
+ * `**fed**` har et øjeblik hvor der kun står `**fed`. Uden reparation vises
+ * stjernerne råt, og det ser ud som om rendereren er i stykker. Derfor
+ * «for det meste» — man ser arbejdet mens det sker.
+ *
+ * Svaret uden for folden rammes ikke, fordi det først vises når det er
+ * færdigt (pacet). Det er samme mekanisme, forskelligt tidspunkt.
+ *
+ * ## Hvad den IKKE gør
+ *
+ * Kun `**` og enkel inline-code. Ikke `*` eller `_`: en enkelt stjerne eller
+ * underscore i dansk prosa er oftest ikke en markering, og en gættet lukning
+ * ville gøre skade i stedet for at undgå den. Kode-fences tælles ikke med —
+ * kode skal vises som den er skrevet.
+ *
+ * KENDT BEGRÆNSNING: `**` inde i inline-code tælles med. Det kræver at
+ * markeringen er åben på samme tid, og resultatet er da en synlig `**` mere
+ * i et kort vindue — ikke en ødelagt flade.
+ */
+export function lukAabneMarkeringer(md: string): string {
+  // Fence-områder erstattes med mellemrum af samme længde, så positioner og
+  // længder er uændrede — vi tæller kun i den synlige prosa.
+  const spans = scanFences(md)
+  let synlig = md
+  for (const s of spans) {
+    synlig = synlig.slice(0, s.start) + ' '.repeat(s.end - s.start) + synlig.slice(s.end)
+  }
+
+  let ud = md
+  const stjerner = (synlig.match(/\*\*/g) ?? []).length
+  if (stjerner % 2 === 1) ud += '**'
+  // Efter en mulig `**`-lukning: backticks tælles på den oprindelige tekst,
+  // så de to tællinger ikke påvirker hinanden.
+  // Kun ENKELTE backticks er inline-kode. En run på tre eller flere er en
+  // fence-agtig sekvens, og `` ``` `` midt i prosa er tre tegn tekst — den
+  // må ikke tælles som en åben markering. (Fanget af en eksisterende test:
+  // «Brug ``` for kode.» fik ellers en fjerde backtick hængt på.)
+  const runs = synlig.match(/`+/g) ?? []
+  const ticks = runs.filter((r) => r.length === 1).length
+  if (ticks % 2 === 1) ud += '`'
+  return ud
 }

@@ -171,16 +171,26 @@ def _allerede_landet(conn, cid: str, lever: str, subject: str,
     der kan afgøres uden en identitet.
     """
     if fund_id:
-        # (14/11-2026) En RESERVATION tæller også som «taget». Rækken skrives
-        # med `applied=0` (den er et claim, ikke en landing), men den unikke
-        # indeks på `fund_id` gælder uanset — så et andet forsøg på samme fund
-        # ville kollidere i basen i stedet for at få et ærligt svar. Spørgsmålet
-        # her er «er fundet taget?», ikke «flyttede det noget?».
+        # (14/11-2026, GPT's anden indvending — maalt) Spørgsmaalet er «er
+        # fundet LANDET?», ikke «findes der en raekke?». Foer spurgte denne
+        # `WHERE fund_id=?` uden at se paa tilstanden, saa en raekke der stod
+        # `reserveret` efter et crash blev laest som «taget» — og
+        # `create_decision` blev ALDRIG kaldt igen. Fundet var tabt for altid,
+        # mens raekken stadig stod som et spor der SAA faerdigt ud. Maalt:
+        # et genforsoeg svarede `already_landed` med `decision_id: None`, og
+        # create_decision blev ikke kaldt.
+        #
+        # En landing er bevist ved at BESLUTNINGEN findes, ikke ved `applied`:
+        # `applied=0` daekker baade «deduped» (beslutningen fandtes i
+        # forvejen) og «reserveret» (den findes ikke). Kun `decision_id`
+        # skelner de to.
         r = conn.execute(
-            f"SELECT 1 FROM {_TABLE} WHERE fund_id=? LIMIT 1",
+            f"SELECT decision_id FROM {_TABLE} WHERE fund_id=? AND lever='decision' LIMIT 1",
             (fund_id,),
         ).fetchone()
-        return r is not None
+        if r is None:
+            return False
+        return bool(str(r["decision_id"] or "").strip())
     cutoff = (datetime.now(UTC) - timedelta(days=1)).isoformat()
     r = conn.execute(
         f"SELECT 1 FROM {_TABLE} WHERE cid=? AND lever=? AND subject=? AND applied=1 AND created_at>=? LIMIT 1",
@@ -202,6 +212,25 @@ def _skriv(
     fund_id: str = "",
     decision_id: str = "",
 ) -> None:
+    """Skriv en landingsraekke — UPSERT naar fundet baerer en identitet.
+
+    (14/11-2026, GPT's anden indvending) Den unikke indeks paa `fund_id` gør
+    at der kun kan findes ÉN raekke pr. fund. En INSERT betoed derfor at et
+    genforsoeg kolliderede i basen: svaret blev en fejl, og fundet stod
+    tilbage i den tilstand det foerste forsoeg efterlod. Med en upsert
+    overskriver genforsoerget sin EGEN raekke — reservationen bliver til den
+    landing den var paa vej til at blive.
+    """
+    if fund_id:
+        opdateret = conn.execute(
+            f"""UPDATE {_TABLE} SET cid=?, lever=?, subject=?, before_value=?,
+                after_value=?, applied=?, reason=?, decision_id=?
+                WHERE fund_id=?""",
+            (cid, lever, subject[:200], str(before)[:200], str(after)[:200],
+             1 if applied else 0, reason[:300], decision_id or "", fund_id),
+        ).rowcount
+        if opdateret:
+            return
     conn.execute(
         f"""INSERT INTO {_TABLE}
             (cid, lever, subject, before_value, after_value, applied, reason,

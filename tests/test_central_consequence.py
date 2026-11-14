@@ -522,13 +522,19 @@ class TestIdentitetIkkeLighed:
         assert r[0] == "fund-skrevet" and r[1] == "dec_skrevet"
         assert r[2] == 1
 
-    def test_crash_efter_reservation_efterlader_fundet_landet(self, base):
-        """Crash mellem reservation og beslutning maa ikke efterlade fundet aabent.
+    def test_crash_efter_reservation_bliver_gennemfoert_ved_genforsoeg(self, base):
+        """Crash mellem reservation og beslutning må ikke TÅBE fundet.
 
-        Reservationen skrives og committes FOER beslutningen oprettes. Doer
-        processen imellem, staar fundet som taget — og naeste forsoeg svarer
-        «allerede landet» i stedet for at oprette en dublet. Det er den
-        genoprettelige overgang: tilstanden er konservativ, ikke tabt.
+        (14/11-2026, GPT's anden indvending — målt) Den tidligere regel var at
+        næste forsøg skulle svare «allerede landet», og docstringen kaldte det
+        «konservativt, ikke tabt». Det var forkert: reservationen er et CLAIM,
+        ikke en landing, så beslutningen blev ALDRIG oprettet — mens rækken
+        stod som et spor der SÅ færdigt ud. Målt i drift: genforsøget svarede
+        `already_landed` med `decision_id: None`, og `create_decision` blev
+        ikke kaldt.
+
+        Et fund er landet når BESLUTNINGEN findes. Er `decision_id` tom, er
+        fundet uafsluttet — og så skal genforsøget gennemføre det.
         """
         with mock.patch("core.services.behavioral_decisions.create_decision",
                         side_effect=RuntimeError("proces doede")):
@@ -539,9 +545,16 @@ class TestIdentitetIkkeLighed:
         with mock.patch("core.services.behavioral_decisions.create_decision",
                         return_value={"decision_id": "dec_efter", "deduped": False}) as ny:
             anden = _land_fund("relational", "fund-crash")
-        assert anden["already_landed"] is True, (
-            "et reserveret fund blev forsoegt landet igen efter et crash")
-        assert not ny.called
+        assert ny.called, "et claim uden beslutning skal gennemføres, ikke affejes"
+        assert anden["applied"] is True, anden
+        assert anden["decision_id"] == "dec_efter", anden
+        with sqlite3.connect(base) as c:
+            raekker = c.execute(
+                f"SELECT applied, reason, decision_id FROM {cc._TABLE} "
+                f"WHERE fund_id='fund-crash'"
+            ).fetchall()
+        assert len(raekker) == 1, f"genforsøget skrev en ny række: {raekker}"
+        assert raekker[0] == (1, "bundet", "dec_efter"), raekker[0]
 
     def test_uden_fund_id_falder_den_tilbage_til_type_vinduet(self, base):
         """Ældre kald baerer ingen identitet. Grænsen skal være synlig, ikke skjult.
@@ -644,11 +657,20 @@ class TestReservationenBliverTilEnLanding:
                 f"SELECT fund_id FROM {cc._TABLE} WHERE reason='bundet'").fetchall()]
         assert len(set(ids)) == 2, f"to fund blev smeltet sammen: {ids}"
 
-    def test_en_hængende_reservation_kan_afsluttes(self, base):
-        """Crash mellem reservation og beslutning må ikke låse fundet fast.
+    def test_en_hængende_reservation_bliver_gennemfoert(self, base):
+        """Crash mellem reservation og beslutning må ikke TÅBE fundet.
 
-        Rækken står som `reserveret` med `applied=0`. Næste forsøg skal svare
-        «allerede landet» — ikke kollidere på indeksen og ikke oprette en dublet.
+        (14/11-2026, GPT's anden indvending — målt) Den tidligere regel var at
+        næste forsøg skulle svare «allerede landet». Det lød konservativt, men
+        var et tab: reservationen er et CLAIM, ikke en landing, så beslutningen
+        blev ALDRIG oprettet — og rækken stod samtidig som et spor der SÅ
+        færdigt ud. Målt: genforsøg svarede `already_landed` med
+        `decision_id: None`, og `create_decision` blev ikke kaldt.
+
+        Den genoprettelige overgang er den modsatte: et claim uden beslutning
+        skal GENNEMFØRES. Rækkeantallet er det der skiller «svarede pænt» fra
+        «skrev rigtigt» — en ekstra INSERT med samme `fund_id` kolliderer på
+        indeksen, og uden den kontrol ville grenen se ud som om den virkede.
         """
         with mock.patch("core.services.behavioral_decisions.create_decision",
                         side_effect=RuntimeError("proces doede")):
@@ -665,11 +687,13 @@ class TestReservationenBliverTilEnLanding:
             anden = cc.land_decision(
                 "relational", "Stop med at gentage dig",
                 subject="relational:gentag", evidence="fald=0.8", evidence_source="test")
-        assert anden["already_landed"] is True, anden
-        assert not ny.called, "en hængende reservation må ikke føde en ny beslutning"
-        # Rækkeantallet er det der skiller «svarede pænt» fra «skrev rigtigt»:
-        # en ekstra INSERT med samme fund_id kolliderer på indeksen, og uden
-        # denne kontrol ville grenen se ud som om den virkede.
+        assert ny.called, "et claim uden beslutning skal gennemføres, ikke affejes"
+        assert anden["applied"] is True, anden
+        assert anden["decision_id"] == "dec_efter", anden
         with sqlite3.connect(base) as c:
-            n = c.execute(f"SELECT COUNT(*) FROM {cc._TABLE}").fetchone()[0]
-        assert n == 1, f"already_landet skrev en ny række i stedet for at genbruge: {n}"
+            n, applied, reason, did = c.execute(
+                f"SELECT COUNT(*), MAX(applied), MAX(reason), MAX(decision_id) FROM {cc._TABLE}"
+            ).fetchone()
+        assert n == 1, f"genforsøget skrev en ny række i stedet for at opgradere: {n}"
+        assert (applied, reason, did) == (1, "bundet", "dec_efter"), (
+            f"reservationen blev ikke opgraderet til en landing: {(applied, reason, did)}")

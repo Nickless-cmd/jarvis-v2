@@ -12,7 +12,7 @@ import types
 
 import core.tools.copilot_tool_pruning as ctp
 from core.services.session_tool_pin import clear, get_pinned, resolve
-from core.services.turens_vaerktoejer import vaerktoejer_for_turen
+from core.services.turens_vaerktoejer import vaerktoejer_for_session, vaerktoejer_for_turen
 from core.tools.simple_tools import get_tool_definitions
 
 
@@ -95,6 +95,55 @@ def test_uden_session_er_adfaerden_UAENDRET():
     """Cache-warmeren kalder uden session. Den maa ikke aendre sig."""
     v = vaerktoejer_for_turen(get_tool_definitions(), user_message="", session_id=None)
     assert len(v) == ctp.VISIBLE_MAX_TOOLS
+
+
+# ── Læse-adgangen til det låste sæt (cache-warmeren) ──────────────────────
+
+
+def test_for_session_giver_NONE_naar_intet_er_laast():
+    clear("tv-laes-tom")
+    try:
+        assert vaerktoejer_for_session(get_tool_definitions(), session_id="tv-laes-tom") is None
+    finally:
+        clear("tv-laes-tom")
+
+
+def test_for_session_MAALER_ikke_laasen():
+    """Varmeren kalder den her med en session den ikke ejer.
+
+    Blev låsen sat her, ville en tom besked fra en baggrundsproces bestemme
+    hvilke værktøjer en samtale har resten af sit liv — og `resolve` ville
+    aldrig få lov at sætte den ud fra en rigtig besked. Derfor er kravet
+    hårdt: efter kaldet står låsen præcis som før (tom).
+    """
+    clear("tv-laes-ro")
+    try:
+        vaerktoejer_for_session(get_tool_definitions(), session_id="tv-laes-ro")
+        assert get_pinned("tv-laes-ro") == [], (
+            "læse-adgangen satte en lås — en varmer må ikke vælge samtalens værktøjer")
+    finally:
+        clear("tv-laes-ro")
+
+
+def test_for_session_giver_SAMME_saet_som_turen():
+    """Kontrakten varmeren hviler på: samme session → samme array, byte for byte.
+
+    Rækkefølgen tæller som indhold her — den ER cache-nøglen.
+    """
+    clear("tv-laes-ens")
+    try:
+        vaerktoejer_for_turen(get_tool_definitions(),
+                              user_message="hej", session_id="tv-laes-ens")
+        fra_turen = vaerktoejer_for_turen(get_tool_definitions(),
+                                          user_message="hvad er der i min kalender",
+                                          session_id="tv-laes-ens")
+        fra_laasen = vaerktoejer_for_session(get_tool_definitions(), session_id="tv-laes-ens")
+        assert fra_laasen is not None, "låsen findes, men læse-adgangen gav intet"
+        assert fra_laasen == fra_turen, (
+            "læse-adgangen og turen giver forskellige arrays — så varmer de "
+            "forskellige cache-segmenter")
+    finally:
+        clear("tv-laes-ens")
 
 
 def test_killswitchen_virker_UDEN_genstart(monkeypatch):

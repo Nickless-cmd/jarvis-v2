@@ -413,3 +413,47 @@ def test_fetch_warmer_tools_are_normalized_with_type(monkeypatch):
     # ALLE tools skal nu have 'type' (ellers 400 på DeepSeek).
     assert all("type" in t for t in out), f"u-normaliseret: {[t for t in out if 'type' not in t]}"
     assert all(t.get("type") == "function" for t in out)
+
+
+def test_varmeren_sender_det_LAaste_saet_ikke_prunerens(monkeypatch):
+    """REGRESSION (målt 14/11-2026): varmeren kaldte `select_tools_for_visible`
+    direkte og sendte 58 værktøjer, mens hver ægte session sendte 85-103. To
+    forskellige arrays er to cache-segmenter, så den har aldrig ramt en tur —
+    og intet fejlede, fordi et varmt kald uden hit ser ud som et varmt kald.
+
+    Vagten holder fast at varmeren går gennem den LÅSTE liste når den findes.
+    """
+    import scripts.primary_cache_warmer as w
+    import core.tools.simple_tools as st
+    import core.services.turens_vaerktoejer as tv
+
+    laast = [{"type": "function", "function": {"name": "kun_fra_laasen"}}]
+    monkeypatch.setattr(st, "get_tool_definitions", lambda: [{"type": "function",
+                        "function": {"name": "fra_kataloget"}}])
+    monkeypatch.setattr(tv, "vaerktoejer_for_session",
+                        lambda alle, *, session_id: list(laast))
+
+    out = w._fetch_warmer_tools(session_id="en-session")
+    navne = {(t.get("function") or {}).get("name") for t in out or []}
+    assert navne == {"kun_fra_laasen"}, (
+        f"varmeren brugte ikke det låste sæt: {sorted(navne)}")
+
+
+def test_varmeren_falder_tilbage_naar_intet_er_laast(monkeypatch):
+    """Uden en lås (ny session, eller compaction flyttede epoken) findes der
+    intet rigtigt array at matche. Så skal den falde tilbage til pruneren —
+    ikke sende ingenting."""
+    import scripts.primary_cache_warmer as w
+    import core.tools.simple_tools as st
+    import core.services.turens_vaerktoejer as tv
+    import core.tools.copilot_tool_pruning as ctp
+
+    monkeypatch.setattr(st, "get_tool_definitions", lambda: [
+        {"type": "function", "function": {"name": "fra_kataloget"}}])
+    monkeypatch.setattr(tv, "vaerktoejer_for_session", lambda alle, *, session_id: None)
+    monkeypatch.setattr(ctp, "select_tools_for_visible",
+                        lambda tools, **kw: list(tools))
+
+    out = w._fetch_warmer_tools(session_id="en-session")
+    navne = {(t.get("function") or {}).get("name") for t in out or []}
+    assert navne == {"fra_kataloget"}, "faldt ikke tilbage til pruneren"

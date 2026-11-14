@@ -281,29 +281,70 @@ def _touch_last_run() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _fetch_warmer_tools() -> list[dict] | None:
-    """Hent samme pruned tools-array som visible-chats sender.
+def _nyeste_session_id() -> str | None:
+    """Den senest opdaterede samtale — den mest sandsynlige næste tur.
 
-    2026-06-10 (Claude): DeepSeek's prompt-cache nøgle inkluderer
-    sandsynligvis tools-arrayet. Hvis warmer sender ingen tools mens
-    chats sender 128 tools, ender de to i forskellige cache-segmenter.
-    Ved at sende samme pruned subset (med empty user_message så
-    keyword-scoring ikke varierer) deler warmer og chats samme cache.
+    Værktøjssættet er IKKE workspace-afhængigt (definitionerne er globale), så
+    ét session-opslag kan bruges til alle de workspaces der varmes. Det er
+    præcis hvad der gør det muligt at ramme en rigtig tur uden at kende
+    brugerens næste besked.
+    """
+    try:
+        _repo_root = Path(__file__).resolve().parents[1]
+        if str(_repo_root) not in sys.path:
+            sys.path.insert(0, str(_repo_root))
+        from core.runtime.db import connect
+        with connect() as c:
+            row = c.execute(
+                "SELECT session_id FROM chat_sessions "
+                "WHERE archived = 0 ORDER BY updated_at DESC LIMIT 1"
+            ).fetchone()
+        return str(row[0]) if row and row[0] else None
+    except Exception as exc:
+        logger.debug("kunne ikke finde nyeste session: %s", exc)
+        return None
 
-    Returnerer None hvis tool-import fejler — warmer kører så uden
-    tools som fallback (samme adfærd som før denne ændring).
+
+def _fetch_warmer_tools(session_id: str | None = None) -> list[dict] | None:
+    """Hent det tools-array som visible-chats FAKTISK sender.
+
+    DeepSeek's prompt-cache-nøgle inkluderer tools-arrayet, og det ligger lige
+    efter systembeskeden. To forskellige arrays er derfor to forskellige
+    cache-segmenter — resten af præfikset kan være byte-identisk uden at det
+    hjælper.
+
+    ## Hvorfor pruneren ikke er svaret (målt 14/11-2026)
+
+    Indtil nu kaldte denne funktion `select_tools_for_visible` direkte. Målt
+    mod virkeligheden: pruneren giver **58** værktøjer, mens hver eneste ægte
+    session sender **85-103** — de kommer fra routeren + `session_tool_pin`,
+    som pruneren ikke kender. Varmeren har altså aldrig ramt en eneste tur.
+    Docstringen herover påstod det modsatte; antagelsen holdt før den forenede
+    værktøjssti (30/9-2026) og blev aldrig efterprøvet.
+
+    Nu læses den LÅSTE liste i stedet (`vaerktoejer_for_session` — ren læsning,
+    ingen bivirkning). Er intet låst, falder vi tilbage til pruneren, præcis
+    som før.
     """
     try:
         from core.tools.simple_tools import get_tool_definitions
-        from core.tools.copilot_tool_pruning import select_tools_for_visible
+        from core.services.cheap_provider_runtime import _normalize_tools_for_openai_chat
         all_tools = get_tool_definitions()
-        # Empty user_message + None session_id giver deterministisk subset
-        # (samme tier-1 + tier-2-comfort-defaults uafhængigt af recent
-        # tool usage — den dimension er den eneste der reelt varierer
-        # mellem chats inden for samme bruger).
-        pruned = select_tools_for_visible(
-            all_tools, user_message="", session_id=None,
-        )
+
+        valgt = None
+        if session_id:
+            from core.services.turens_vaerktoejer import vaerktoejer_for_session
+            valgt = vaerktoejer_for_session(all_tools, session_id=str(session_id))
+
+        if valgt is None:
+            from core.tools.copilot_tool_pruning import select_tools_for_visible
+            # Empty user_message + None session_id giver deterministisk subset
+            # (samme tier-1 + tier-2-comfort-defaults uafhængigt af recent
+            # tool usage — den dimension er den eneste der reelt varierer
+            # mellem chats inden for samme bruger).
+            valgt = select_tools_for_visible(
+                all_tools, user_message="", session_id=None,
+            )
         # KRITISK (2026-06-30): live-lanen sender tools gennem
         # _normalize_tools_for_openai_chat (cheap_provider_runtime:1351/1557) som
         # wrapper hvert tool i {"type":"function","function":{…}}. Warmeren sendte
@@ -313,13 +354,15 @@ def _fetch_warmer_tools() -> list[dict] | None:
         # → warmer + chats i forskellige cache-segmenter. Normalisér med PRÆCIS
         # samme funktion som live → fixer 400 + garanterer byte-match.
         from core.services.cheap_provider_runtime import _normalize_tools_for_openai_chat
-        return _normalize_tools_for_openai_chat(pruned)
+        return _normalize_tools_for_openai_chat(valgt)
     except Exception as exc:
         logger.debug("fetch_warmer_tools fejlede: %s", exc)
         return None
 
 
-def _build_payload(system_prompt: str) -> dict[str, Any]:
+def _build_payload(
+    system_prompt: str, *, session_id: str | None = None
+) -> dict[str, Any]:
     """Byg request body til DeepSeek chat completions.
 
     System prompt + minimal user message + tools-array (samme som visible
@@ -337,7 +380,7 @@ def _build_payload(system_prompt: str) -> dict[str, Any]:
         "temperature": DEFAULT_TEMPERATURE,
         "stream": False,
     }
-    tools = _fetch_warmer_tools()
+    tools = _fetch_warmer_tools(session_id=session_id)
     if tools:
         payload["tools"] = tools
     return payload
@@ -625,6 +668,7 @@ def _warm_one_workspace(
     base_url: str,
     dry_run: bool,
     tool_scope: str = "chat",
+    session_id: str | None = None,
 ) -> None:
     """Cache-warm én bestemt workspace i ÉN mode. Logger separat per (workspace, mode)."""
     system_prompt = _fetch_system_prompt(
@@ -634,7 +678,7 @@ def _warm_one_workspace(
         logger.error("[%s] Kunne ikke hente system prompt — skip", workspace_name)
         return
 
-    payload = _build_payload(system_prompt)
+    payload = _build_payload(system_prompt, session_id=session_id)
 
     log_entry: dict[str, Any] = {
         "ts": datetime.now(UTC).isoformat(),
@@ -724,12 +768,19 @@ def main(argv: list[str] | None = None) -> int:
     logger.info("Warmer multi-user run: %d workspaces (%s)",
                 len(workspaces), ", ".join(workspaces))
 
+    # Værktøjssættet er globalt (definitionerne afhænger ikke af workspace),
+    # men det afhænger af SESSIONEN: hver samtale har sin egen låste liste.
+    # Derfor slås den senest aktive samtale op ÉN gang og bruges til alle
+    # workspaces — den er den mest sandsynlige næste tur.
+    session_id = _nyeste_session_id()
+    logger.info("Varmer med værktøjssættet fra session %s", session_id or "(intet — prunerens fald)")
+
     for ws in workspaces:
         for _scope in _WARM_SCOPES:
             try:
                 _warm_one_workspace(
                     ws, api_key=api_key, base_url=base_url, dry_run=dry_run,
-                    tool_scope=_scope,
+                    tool_scope=_scope, session_id=session_id,
                 )
             except Exception as exc:
                 # En enkelt brugers fejl må ikke afbryde de andre.

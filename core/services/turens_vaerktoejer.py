@@ -42,6 +42,57 @@ def _navn(d: dict[str, Any]) -> str:
     return str((d.get("function") or d).get("name") or "")
 
 
+def _filtrer(
+    alle: list[dict[str, Any]],
+    saet: set[str],
+    eget: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Katalog-rækkefølgen, filtreret på navn — og med prunerens egne som hale.
+
+    Rækkefølgen er ikke kosmetik: den ER cache-nøglen. To sæt med samme navne i
+    to rækkefølger er to præfikser, og det dyre præfiks er hele historikken.
+    `call_loaded_tool` har ingen definition i kataloget (pruneren injicerer
+    den), så den — og kun den slags — hentes fra `eget` og lægges bagefter.
+    """
+    fra_eget = {_navn(d): d for d in eget}
+    ud = [d for d in alle if _navn(d) in saet]
+    for n in saet - {_navn(d) for d in ud}:
+        if n in fra_eget:
+            ud.append(fra_eget[n])
+    return ud or eget
+
+
+def vaerktoejer_for_session(
+    alle: list[dict[str, Any]],
+    *,
+    session_id: str,
+) -> list[dict[str, Any]] | None:
+    """Det LÅSTE værktøjssæt for sessionen — samme array som turen sender.
+
+    Læsning uden bivirkning: `session_tool_pin.get_pinned` læser låsen,
+    `resolve` ville sætte den. Forskellen betyder noget her, fordi
+    cache-warmeren kalder den her funktion med en session den ikke ejer — en
+    varmer må ikke låse en samtales værktøjer ud fra en tom besked.
+
+    Returnerer ``None`` når intet er låst (eller når compaction har flyttet
+    epoken), så kalderen kan falde tilbage til prunerens valg.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return None
+    try:
+        from core.services.session_tool_pin import _med_garanterede, get_pinned
+        laast = get_pinned(sid)
+        if not laast:
+            return None
+        from core.tools.copilot_tool_pruning import select_tools_for_visible
+        eget = select_tools_for_visible(alle, user_message="", session_id=None)
+        return _filtrer(alle, set(_med_garanterede(laast)), eget)
+    except Exception as exc:  # en læsning maa aldrig koste kalderen dens saet
+        logger.debug("laast vaerktoejssaet fejlede for %s: %s", sid, exc)
+        return None
+
+
 def vaerktoejer_for_turen(
     alle: list[dict[str, Any]],
     *,

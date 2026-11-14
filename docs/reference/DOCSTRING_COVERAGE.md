@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10189/18716 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10192/18719 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10189/18716 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 900 | 1614 | 55% |
-| `core.services` | 6827 | 12705 | 53% |
+| `core.services` | 6829 | 12707 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -38,7 +38,7 @@ Generated from source. 10189/18716 functions/methods documented (54%). The list 
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 10 | 11 | 90% |
-| `scripts` | 334 | 678 | 49% |
+| `scripts` | 335 | 679 | 49% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -1659,13 +1659,13 @@ Generated from source. 10189/18716 functions/methods documented (54%). The list 
 - `core/services/prompt_assembly_turn_cache.py` :: `lookup` (L26)
 - `core/services/prompt_assembly_turn_cache.py` :: `store` (L39)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3732)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3580)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3869)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3754)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3602)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3891)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L173)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L121)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L148)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4836)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4858)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L229)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L474)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)
@@ -2629,7 +2629,7 @@ Generated from source. 10189/18716 functions/methods documented (54%). The list 
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `extract_tiktok_cookies` (L39)
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `find_firefox_cookie_db` (L28)
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `main` (L70)
-- `scripts/primary_cache_warmer.py` :: `main` (L699)
+- `scripts/primary_cache_warmer.py` :: `main` (L743)
 - `scripts/prompt_dump_readable.py` :: `build` (L97)
 - `scripts/prompt_dump_readable.py` :: `main` (L253)
 - `scripts/prompt_dump_split.py` :: `build_markdown` (L51)

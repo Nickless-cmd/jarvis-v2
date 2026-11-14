@@ -396,6 +396,21 @@ class TestCachePrefixInvariant:
             "stable) står på SAMME position i begge bygge-funktioner."
         )
 
+    def test_prefixet_naar_helt_frem_til_hale_markoeren(self):
+        """Vagten ovenfor siger kun «er et præfiks» — den er tavs om hvor LANGT
+        det er. Målt 14/11-2026 stoppede det 1.959 tegn før den cachebare
+        grænse: milepæle og capability truth lå i live-prompten men ikke i
+        præfikset, så præcis det stykke stod koldt hver gang uden at nogen test
+        sagde noget. Kravet er derfor ikke «et præfiks» men «nå frem til
+        hale-markøren».
+        """
+        warm, full = self._build_both()
+        rest = full[len(warm):]
+        assert rest.lstrip().startswith("⟦◆DYNAMIC-TAIL"), (
+            "warmer-prefixet stopper før hale-markøren — så varmes et stykke "
+            f"stabilt indhold aldrig op. Næste stykke i live er: {rest[:120]!r}"
+        )
+
     def test_honesty_rules_inside_the_shared_prefix(self):
         # Ærligheds-reglen (handling + epistemisk) skal ligge i den DELTE (cachede)
         # del — ikke kun i live-halen — så warmer-cron pre-varmer den. Efter

@@ -605,6 +605,28 @@ def build_visible_stable_prefix(
     if _mem_index:
         parts.append(_mem_index)
 
+    # Milepæle + capability truth — de sidste to stabile sektioner før
+    # hale-markøren. Målt 14/11-2026: de lå i live-prompten men IKKE i
+    # prefixet, så varmeren stoppede 1.959 tegn før den cachebare grænse og
+    # lod præcis det stykke stå koldt hver gang. Begge er deterministiske af
+    # workspace/scope — de hører i præfikset, ikke i halen.
+    #
+    # Rækkefølgen er målt mod `build_visible_chat_prompt_assembly`: milepæle
+    # (via `life_milestones`) kommer først, capability truth (via
+    # `placer_sektioner`) derefter. Bytter man dem, er prefixet ikke længere
+    # et præfiks af live, og så rammer den varmede cache ingenting.
+    try:
+        from core.services.life_milestones import build_life_history_prompt_section
+        _milestones = build_life_history_prompt_section()
+        if _milestones:
+            parts.append(_milestones)
+    except Exception:  # en sektion maa ikke vaelte prompt-bygningen
+        pass
+
+    _capability_truth = _visible_capability_truth_instruction(compact=compact)
+    if _capability_truth:
+        parts.append(_capability_truth)
+
     return "\n\n".join(part for part in parts if part).strip()
 
 

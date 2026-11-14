@@ -186,18 +186,19 @@ _Primary lane cache warmer._
 | function | `_save_prompt_to_file` | `(content)` | Gem prompt til fil så standalone kald kan bruge det senere. | [src](../../../scripts/primary_cache_warmer.py#L237) |
 | function | `_check_dedup` | `(*, force=…)` | Tjek om et kald er for nyligt. | [src](../../../scripts/primary_cache_warmer.py#L250) |
 | function | `_touch_last_run` | `()` | — | [src](../../../scripts/primary_cache_warmer.py#L274) |
-| function | `_fetch_warmer_tools` | `()` | Hent samme pruned tools-array som visible-chats sender. | [src](../../../scripts/primary_cache_warmer.py#L284) |
-| function | `_build_payload` | `(system_prompt)` | Byg request body til DeepSeek chat completions. | [src](../../../scripts/primary_cache_warmer.py#L322) |
-| function | `_build_headers` | `(api_key)` | — | [src](../../../scripts/primary_cache_warmer.py#L346) |
-| function | `_call_api` | `(api_key, base_url, payload, *, timeout_s=…)` | Kald DeepSeek chat completions API. | [src](../../../scripts/primary_cache_warmer.py#L353) |
-| function | `_insert_cost_row` | `(result)` | Indsæt warmer-kald i costs-tabellen. | [src](../../../scripts/primary_cache_warmer.py#L425) |
-| function | `_rotér` | `(sti)` | Flyt filen til `.1` naar den bliver for stor. Én generation, ikke fem. | [src](../../../scripts/primary_cache_warmer.py#L479) |
-| function | `_append_log` | `(entry)` | — | [src](../../../scripts/primary_cache_warmer.py#L498) |
-| function | `_read_key_from_runtime_json` | `()` | Læs deepseek_api_key fra ~/.jarvis-v2/config/runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L514) |
-| function | `_resolve_api_key` | `(*, override=…)` | Resolve DeepSeek API key: override > env > runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L524) |
-| function | `warm_primary_cache` | `(*, api_key=…, base_url=…, system_prompt=…, force=…, workspace_name=…)` | Udfør ét cache-warmer kald og returnér resultat. | [src](../../../scripts/primary_cache_warmer.py#L541) |
-| function | `_warm_one_workspace` | `(workspace_name, *, api_key, base_url, dry_run, tool_scope=…)` | Cache-warm én bestemt workspace i ÉN mode. Logger separat per (workspace, mode). | [src](../../../scripts/primary_cache_warmer.py#L621) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/primary_cache_warmer.py#L699) |
+| function | `_nyeste_session_id` | `()` | Den senest opdaterede samtale — den mest sandsynlige næste tur. | [src](../../../scripts/primary_cache_warmer.py#L284) |
+| function | `_fetch_warmer_tools` | `(session_id=…)` | Hent det tools-array som visible-chats FAKTISK sender. | [src](../../../scripts/primary_cache_warmer.py#L308) |
+| function | `_build_payload` | `(system_prompt, *, session_id=…)` | Byg request body til DeepSeek chat completions. | [src](../../../scripts/primary_cache_warmer.py#L363) |
+| function | `_build_headers` | `(api_key)` | — | [src](../../../scripts/primary_cache_warmer.py#L389) |
+| function | `_call_api` | `(api_key, base_url, payload, *, timeout_s=…)` | Kald DeepSeek chat completions API. | [src](../../../scripts/primary_cache_warmer.py#L396) |
+| function | `_insert_cost_row` | `(result)` | Indsæt warmer-kald i costs-tabellen. | [src](../../../scripts/primary_cache_warmer.py#L468) |
+| function | `_rotér` | `(sti)` | Flyt filen til `.1` naar den bliver for stor. Én generation, ikke fem. | [src](../../../scripts/primary_cache_warmer.py#L522) |
+| function | `_append_log` | `(entry)` | — | [src](../../../scripts/primary_cache_warmer.py#L541) |
+| function | `_read_key_from_runtime_json` | `()` | Læs deepseek_api_key fra ~/.jarvis-v2/config/runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L557) |
+| function | `_resolve_api_key` | `(*, override=…)` | Resolve DeepSeek API key: override > env > runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L567) |
+| function | `warm_primary_cache` | `(*, api_key=…, base_url=…, system_prompt=…, force=…, workspace_name=…)` | Udfør ét cache-warmer kald og returnér resultat. | [src](../../../scripts/primary_cache_warmer.py#L584) |
+| function | `_warm_one_workspace` | `(workspace_name, *, api_key, base_url, dry_run, tool_scope=…, session_id=…)` | Cache-warm én bestemt workspace i ÉN mode. Logger separat per (workspace, mode). | [src](../../../scripts/primary_cache_warmer.py#L664) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/primary_cache_warmer.py#L743) |
 
 ## `scripts/prompt_dump_readable.py`
 _Læsbar version af et prompt-dump (30/9-2026)._

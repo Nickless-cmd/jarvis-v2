@@ -34,6 +34,14 @@ def ensure_visible_tables(conn: sqlite3.Connection) -> None:
     )
     if not any(row[1] == "user_id" for row in conn.execute("PRAGMA table_info(visible_runs)")):
         conn.execute("ALTER TABLE visible_runs ADD COLUMN user_id TEXT NOT NULL DEFAULT ''")
+    # Doven migration (14/11-2026): scopet var indtil da kun en parameter og
+    # stod ikke på rækken, så det var usynligt hvilken prompt-variant turen
+    # havde kørt. Scopet skifter promptens FØRSTE tegn — to varianter deler
+    # intet cache-prefix — så uden kolonnen kan et koldt prefix ikke henføres
+    # til et scope-skift. Eksisterende rækker får '' (ukendt), hvilket er
+    # sandt: vi ved det ikke for dem.
+    if not any(row[1] == "tool_scope" for row in conn.execute("PRAGMA table_info(visible_runs)")):
+        conn.execute("ALTER TABLE visible_runs ADD COLUMN tool_scope TEXT NOT NULL DEFAULT ''")
     conn.execute(
         # Tidsvinduet. `hollow_promise_census` slaar modellen op med
         # `? BETWEEN r.started_at AND r.finished_at ORDER BY r.started_at DESC

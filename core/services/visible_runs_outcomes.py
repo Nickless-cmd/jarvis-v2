@@ -875,9 +875,10 @@ def persist_visible_run_start(run: "_vr.VisibleRun") -> None:
                 INSERT INTO visible_runs (
                     run_id, lane, provider, model, status,
                     started_at, finished_at, text_preview, error, capability_id,
-                    profile_name, profile_hash, profile_schema_version, user_id
+                    profile_name, profile_hash, profile_schema_version, user_id,
+                    tool_scope
                 )
-                VALUES (?, ?, ?, ?, 'running', ?, '', ?, NULL, NULL, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, 'running', ?, '', ?, NULL, NULL, ?, ?, ?, ?, ?)
                 ON CONFLICT(run_id) DO NOTHING
                 """,
                 (
@@ -889,6 +890,7 @@ def persist_visible_run_start(run: "_vr.VisibleRun") -> None:
                     protect_preview(_preview_text(getattr(run, "user_message", "") or ""), member),
                     profil_navn, profil_hash, profil_version,
                     str(getattr(run, "user_id", "") or ""),
+                    str(getattr(run, "tool_scope", "") or ""),
                 ),
             )
     except Exception:
@@ -1097,9 +1099,10 @@ def _persist_visible_run_outcome(
             """
             INSERT INTO visible_runs (
                 run_id, lane, provider, model, status,
-                started_at, finished_at, text_preview, error, capability_id, user_id
+                started_at, finished_at, text_preview, error, capability_id, user_id,
+                tool_scope
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_id) DO UPDATE SET
                 lane=excluded.lane,
                 provider=excluded.provider,
@@ -1110,7 +1113,8 @@ def _persist_visible_run_outcome(
                 text_preview=excluded.text_preview,
                 error=excluded.error,
                 capability_id=excluded.capability_id,
-                user_id=excluded.user_id
+                user_id=excluded.user_id,
+                tool_scope=excluded.tool_scope
             """,
             (
                 run.run_id,
@@ -1124,6 +1128,7 @@ def _persist_visible_run_outcome(
                 stored_error,
                 capability_id,
                 str(getattr(run, "user_id", "") or ""),
+                str(getattr(run, "tool_scope", "") or ""),
             ),
         )
         conn.execute(

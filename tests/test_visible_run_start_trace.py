@@ -28,7 +28,8 @@ _SCHEMA = (
     "id INTEGER PRIMARY KEY AUTOINCREMENT, "
     "run_id TEXT NOT NULL UNIQUE, lane TEXT, provider TEXT, model TEXT, "
     "status TEXT, started_at TEXT, finished_at TEXT, text_preview TEXT, "
-    "error TEXT, capability_id TEXT, user_id TEXT NOT NULL DEFAULT '')",
+    "error TEXT, capability_id TEXT, user_id TEXT NOT NULL DEFAULT '', "
+    "tool_scope TEXT NOT NULL DEFAULT '')",
     # Outcome-stien skriver tre tabeller i ÉT write-lock. Uden dem her fejler
     # `_persist_visible_run_outcome` midtvejs, og testen ville måle en fejl der
     # ikke findes i produktion.

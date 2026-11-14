@@ -440,3 +440,72 @@ class TestDumpVagtenMaalerIndholdIkkeLaengde:
         to_markoerer = ('[tool_result:x] og "tool_use_id" — se noten. ' + "y" * 9000)
         vro._persist_session_assistant_message(_Run(), to_markoerer)
         assert leaks == [], "to markører blev læst som et dump-mønster"
+
+
+class TestToolScopePersisteres:
+    """REGRESSION (målt 14/11-2026): `tool_scope` var KUN en parameter gennem
+    `start_visible_run` og landede aldrig på `visible_runs`-rækken. Efter
+    kørslen var det derfor usynligt hvilken prompt-variant turen havde brugt —
+    og scopet skifter promptens FØRSTE tegn, så to varianter deler intet
+    cache-prefix. Hver eneste cache-diagnose det døgn (min, Claudes, Codex')
+    gættede sig frem ud fra `system_len` i telemetrien, fordi den direkte
+    kilde ikke fandtes. Vagten holder den direkte kilde åben.
+    """
+
+    @pytest.mark.parametrize("scope", ["chat", "code", ""])
+    def test_start_raekken_baerer_scopet(self, isolated_runtime, scope) -> None:
+        from core.runtime.db import connect
+
+        class _ScopedRun:
+            run_id = f"visible-scope-{scope or 'tom'}"
+            lane = "visible"
+            provider = "deepseek"
+            model = "deepseek-flash"
+            user_message = "hej"
+            user_id = ""
+            tool_scope = scope
+
+        vro.persist_visible_run_start(_ScopedRun())
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT tool_scope FROM visible_runs WHERE run_id=?",
+                (_ScopedRun.run_id,),
+            ).fetchone()
+        assert row is not None, "start-rækken blev ikke skrevet"
+        assert row[0] == scope, (
+            f"scopet landede som {row[0]!r} i stedet for {scope!r} — "
+            "så kan et koldt prefix ikke henføres til et scope-skift"
+        )
+
+    def test_udfaldet_overskriver_ikke_scopet_med_tomt(self, isolated_runtime, monkeypatch) -> None:
+        """Outcome-rækken skrives bagefter start-rækken. Bærer den ikke scopet
+        med, ville den slette den eneste kilde der findes."""
+        from core.runtime.db import connect
+
+        class _ScopedRun:
+            run_id = "visible-scope-outcome"
+            lane = "visible"
+            provider = "deepseek"
+            model = "deepseek-flash"
+            user_message = "hej"
+            user_id = ""
+            tool_scope = "chat"
+            session_id = "test-scope-session"
+            autonomous = False
+
+        monkeypatch.setattr(vro._vr, "get_visible_run_controller", lambda _rid: None)
+        monkeypatch.setattr(vro._vr, "_get_visible_run_control", lambda _rid: {})
+        monkeypatch.setattr(vro, "write_private_terminal_layers", lambda **_kw: None)
+        monkeypatch.setattr(vro._vr, "_update_cognitive_systems_async", lambda **_kw: None)
+        vro.persist_visible_run_start(_ScopedRun())
+        vro._persist_visible_run_outcome(
+            _ScopedRun(), status="completed", finished_at="2026-11-14T18:00:00Z",
+            text_preview="Svar.")
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT tool_scope FROM visible_runs WHERE run_id=?",
+                (_ScopedRun.run_id,),
+            ).fetchone()
+        assert row is not None and row[0] == "chat", (
+            f"outcome-rækken efterlod scopet som {row[0] if row else None!r}"
+        )

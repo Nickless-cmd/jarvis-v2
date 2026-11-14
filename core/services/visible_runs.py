@@ -592,6 +592,16 @@ class VisibleRun:
     # card». Routeren valgte enhed efter en rangliste; nu kan den i stedet
     # følge turen tilbage til den flade den kom fra.
     surface: str = ""
+    # Hvilket tool-scope turen kørte med: "chat", "code" eller "" (klient uden
+    # mode-signal). Feltet findes fordi scopet indtil 14/11-2026 KUN var en
+    # parameter gennem `start_visible_run` og aldrig landede på rækken — så
+    # efter kørslen var det usynligt hvilken prompt-variant turen havde brugt.
+    # Hver eneste cache-diagnose det døgn (min, Claudes, Codex') gættede sig
+    # frem ud fra `system_len` i telemetrien, fordi den direkte kilde ikke
+    # fandtes. Scopet skifter promptens FØRSTE tegn, så to varianter deler
+    # intet cache-prefix; uden feltet kan man ikke afgøre om et koldt prefix
+    # skyldes et reelt scope-skift eller noget andet.
+    tool_scope: str = ""
 
 
 @dataclass(slots=True)
@@ -1129,6 +1139,7 @@ def start_visible_run(
         user_id=str(force_user_id or ""),
         surface=str(surface or "").strip().lower(),
         origin=str(origin or "").strip().lower(),
+        tool_scope=str(tool_scope or "").strip().lower(),
     )
     # KERNE-FORRANG (2026-07-22): markér den synlige tur som aktiv i HELE dens levetid
     # (assembly + streaming) via en in-proces gate, så private baggrunds-LLM-lag

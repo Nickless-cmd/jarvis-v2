@@ -210,6 +210,59 @@ def koer(vaeg: str, mms: Any, sektioner: list[tuple[str, str]]) -> dict[str, Any
     }
 
 
+def maal_kaede() -> dict[str, Any]:
+    """Den AEGTE kaede: udvaelgelse PLUS `_filter_answer_changing_memory`.
+
+    GPT's indvending 14/11-2026: `koer()` kalder `select_memory_md_sections`
+    direkte og springer det filter over som `_workspace_memory_section` kalder
+    bagefter. Uden denne maaling er `stoej` et tal for ET LAG, ikke for hvad der
+    naar prompten. Lofterne her matcher visible_chat (prompt_contract.py:2560:
+    max_lines=3, max_chars=1500).
+    """
+    from core.services.prompt_sections.memory_selection import (
+        _filter_answer_changing_memory,
+        _workspace_memory_section,
+    )
+
+    raa = filteret = 0
+    pr_spoergsmaal: list[dict[str, Any]] = []
+    for spoergsmaal in AABNE:
+        selection = _workspace_memory_section(
+            WORKSPACE / "MEMORY.md",
+            label="MEMORY.md",
+            user_message=spoergsmaal,
+            max_lines=3,
+            max_chars=1500,
+            workspace_dir=WORKSPACE,
+            mode="visible_chat",
+        )
+        linjer = selection.lines if selection else []
+        # Rekonstruér hvad udvaelgelsen gav FOER filteret, med samme lofter.
+        from core.services.prompt_sections.memory_md_selection import (
+            select_memory_md_sections,
+        )
+        foer = select_memory_md_sections(
+            spoergsmaal, workspace_dir=WORKSPACE, max_sections=3, max_chars=1500
+        )
+        efter = _filter_answer_changing_memory(spoergsmaal, foer) if foer else []
+        raa += len(foer)
+        filteret += len(efter)
+        pr_spoergsmaal.append({
+            "spoergsmaal": spoergsmaal,
+            "udvalgt": len(foer),
+            "efter_filter": len(efter),
+            "i_prompten": len(linjer),
+            "fjernet_af_filter": len(foer) - len(efter),
+        })
+    return {
+        "udvalgt": raa,
+        "efter_filter": filteret,
+        "fjernet_af_filter": raa - filteret,
+        "i_prompten": sum(p["i_prompten"] for p in pr_spoergsmaal),
+        "detaljer": pr_spoergsmaal,
+    }
+
+
 def main() -> int:
     from core.services.prompt_sections import memory_md_selection as mms
 
@@ -235,6 +288,14 @@ def main() -> int:
     print("\n=== SAMMENFATNING ===")
     for r in resultater:
         print(f"{r['variant']:<16} recall@3 {r['recall_at_3']:>6.1%}   stoej {r['stoej_sektioner']:>2} sektioner")
+
+    print("\n=== DEN AEGTE KAEDE (udvaelgelse + _filter_answer_changing_memory) ===")
+    kaede = maal_kaede()
+    print(f"  udvalgt foer filter : {kaede['udvalgt']}")
+    print(f"  fjernet af filteret : {kaede['fjernet_af_filter']}")
+    print(f"  naar prompten       : {kaede['i_prompten']}")
+    for p in kaede["detaljer"]:
+        print(f"    {p['spoergsmaal'][:36]:38} {p['udvalgt']:>2} -> {p['efter_filter']:>2} -> {p['i_prompten']:>2} i prompten")
     return 0
 
 

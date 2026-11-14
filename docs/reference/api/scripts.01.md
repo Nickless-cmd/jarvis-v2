@@ -412,7 +412,8 @@ _Eval-harness for MEMORY.md-udvaelgelsen — maal FOER du retter._
 | function | `_df_map` | `(sektioner, terms)` | — | [src](../../../scripts/eval_memory_selection.py#L97) |
 | function | `byg_varianter` | `(mms, sektioner, aegte)` | Varianterne der maales. Hver er (coverage-funktion, min_score). | [src](../../../scripts/eval_memory_selection.py#L105) |
 | function | `koer` | `(vaeg, mms, sektioner)` | — | [src](../../../scripts/eval_memory_selection.py#L170) |
-| function | `main` | `()` | — | [src](../../../scripts/eval_memory_selection.py#L213) |
+| function | `maal_kaede` | `()` | Den AEGTE kaede: udvaelgelse PLUS `_filter_answer_changing_memory`. | [src](../../../scripts/eval_memory_selection.py#L213) |
+| function | `main` | `()` | — | [src](../../../scripts/eval_memory_selection.py#L266) |
 
 ## `scripts/eval_research_lane.py`
 _Offline deterministic smoke evaluation for research routing and gates._

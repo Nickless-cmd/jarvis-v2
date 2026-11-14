@@ -2,6 +2,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import { NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
 import { WidgetPrompt } from './WidgetFlade'
+import { FladeDeferredTurnContext } from '../lib/fladeDeferredTurn'
 
 describe('NativeRichBlock', () => {
   it('validerer og begrænser modeldata', () => {
@@ -34,11 +35,42 @@ describe('NativeRichBlock', () => {
     expect(send).toHaveBeenCalledWith('[fra valgkort] gør det')
   })
 
+  it('tool-fladen får resultatet ind i sig selv og reviderer adressen', async () => {
+    const run = jest.fn(async (request) => ({
+      status: 'delivered' as const, retryable: false as const,
+      result: { temperature: 12 }, address: { ...request.address, contentRevision: 1 },
+    }))
+    const screen = await render(<FladeDeferredTurnContext.Provider value={{
+      accountId: 'owner-1', conversationId: 'chat-1', sourceMessageId: 'msg-1', run,
+    }}><NativeRichBlock code={JSON.stringify({
+      type: 'tool', title: 'Vejret', tool: 'weather',
+      arguments: { location: 'Svendborg' }, label: 'Hent vejret',
+    })} /></FladeDeferredTurnContext.Provider>)
+    fireEvent.press(screen.getByLabelText('Hent vejret'))
+    await waitFor(() => expect(screen.getByText(/temperature/)).toBeTruthy())
+    expect(run.mock.calls[0]?.[0].address).toMatchObject({ contentRevision: 0 })
+  })
+
+  it('retryable tool-fejl kan prøves igen', async () => {
+    const run = jest.fn(async (request) => ({
+      status: 'failed' as const, kode: 'tool_failed' as const, besked: 'netværk', retryable: true, address: request.address,
+    }))
+    const screen = await render(<FladeDeferredTurnContext.Provider value={{
+      accountId: '', conversationId: 'chat-1', sourceMessageId: 'msg-1', run,
+    }}><NativeRichBlock code={JSON.stringify({
+      type: 'tool', title: 'Vejret', tool: 'weather', arguments: {}, label: 'Hent',
+    })} /></FladeDeferredTurnContext.Provider>)
+    fireEvent.press(screen.getByLabelText('Hent'))
+    await waitFor(() => expect(screen.getByLabelText('Prøv igen')).toBeTruthy())
+    fireEvent.press(screen.getByLabelText('Prøv igen'))
+    expect(run).toHaveBeenCalledTimes(2)
+  })
+
   // (14/11-2026) Udfaldet: en flade der ikke kan handle må SIGE det. Før var
   // begge veje tavse — «ingen lytter» og «det gik galt» endte som intet, og en
   // aktiv knap der intet gjorde er præcis den fejlform Bjørn kalder teater.
   it('en afvist handling siger hvorfor i stedet for at tie', async () => {
-    const send = jest.fn(() => ({ status: 'failed' as const, kode: 'component_unavailable' as const, besked: '' }))
+    const send = jest.fn(() => ({ status: 'failed' as const, kode: 'component_unavailable' as const, besked: '', retryable: false }))
     const screen = await render(<WidgetPrompt.Provider value={send}><NativeRichBlock code={JSON.stringify({
       type: 'choices', title: 'Vælg', options: [{ label: 'Fortsæt', prompt: 'gør det' }],
     })} /></WidgetPrompt.Provider>)
@@ -47,7 +79,7 @@ describe('NativeRichBlock', () => {
   })
 
   it('en afleveret handling viser intet — turen fortsætter i tråden', async () => {
-    const send = jest.fn(() => ({ status: 'delivered' as const }))
+    const send = jest.fn(() => ({ status: 'delivered' as const, retryable: false as const }))
     const screen = await render(<WidgetPrompt.Provider value={send}><NativeRichBlock code={JSON.stringify({
       type: 'choices', title: 'Vælg', options: [{ label: 'Fortsæt', prompt: 'gør det' }],
     })} /></WidgetPrompt.Provider>)

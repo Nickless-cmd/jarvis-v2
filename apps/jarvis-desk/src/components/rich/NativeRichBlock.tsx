@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useId, useState } from 'react'
 import { AlertTriangle, CheckCircle2, CircleAlert, Info, MapPin } from 'lucide-react'
 import { openExternalUrl } from '../../lib/host'
 import { interpolérUdtryk } from '../../lib/udtryk'
@@ -6,6 +6,8 @@ import { reparérDelvisJson } from '../../lib/delvisJson'
 import { WidgetPrompt } from './WidgetBlock'
 import { DiffView } from './DiffView'
 import { beskrivUdfald, normalisérUdfald, type FladeUdfald } from '../../lib/fladeHandling'
+import { FladeDeferredTurnContext } from '../../lib/fladeDeferredTurn'
+import type { DeferredToolUdfald } from '../../lib/fladeHandling'
 
 type Json = Record<string, unknown>
 type NativeSpec =
@@ -14,6 +16,7 @@ type NativeSpec =
   | { type: 'timeline'; title: string; items: Array<{ time: string; title: string; detail: string; status: 'done' | 'current' | 'next' }> }
   | { type: 'comparison'; title: string; columns: string[]; rows: Array<{ label: string; values: string[] }> }
   | { type: 'choices'; title: string; options: Array<{ label: string; prompt: string }> }
+  | { type: 'tool'; title: string; tool: string; arguments: Record<string, unknown>; label: string }
   | { type: 'location'; title: string; address: string; latitude?: number; longitude?: number }
   // `control` (14/11-2026): den FØRSTE flade med lokal state. Slideren rykker
   // uden at noget modelkald går ud — state bor i komponenten, ikke i samtalen.
@@ -230,6 +233,14 @@ function parseNodeObj(raw: Json, depth: number): NativeSpec | null {
       .filter((x) => x.label && x.prompt)
     return options.length ? { type, title, options } : null
   }
+  if (type === 'tool') {
+    const tool = text(raw.tool, 120)
+    const label = text(raw.label, 120)
+    const args = raw.arguments
+    return tool && label && args && typeof args === 'object' && !Array.isArray(args)
+      ? { type, title, tool, arguments: args as Record<string, unknown>, label }
+      : null
+  }
   if (type === 'location') {
     const address = text(raw.address, 300)
     const latitude = typeof raw.latitude === 'number' && raw.latitude >= -90 && raw.latitude <= 90 ? raw.latitude : undefined
@@ -436,6 +447,8 @@ function NativeRichIndhold({ code }: { code: string }) {
 function FladeNode({ spec }: { spec: NativeSpec }) {
   const send = useContext(WidgetPrompt)
   const kontrolTilladt = useContext(FladeKontrolContext)
+  const deferred = useContext(FladeDeferredTurnContext)
+  const widgetInstanceId = useId()
   // Lokal state for `control` (14/11-2026). Hooken SKAL stå før alle
   // betingede returns nedenfor: ellers ville hook-rækkefølgen skifte med
   // fladetypen, og React kaster ved næste render. Det er den fælde der gør
@@ -454,6 +467,10 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
   // «forsøgt og gik galt» — fladen skal ikke bebrejde nogen noget den ikke har
   // prøvet.
   const [handlingUdfald, setHandlingUdfald] = useState<FladeUdfald | null>(null)
+  const [toolUdfald, setToolUdfald] = useState<DeferredToolUdfald | null>(null)
+  const [toolResultat, setToolResultat] = useState<unknown>(null)
+  const [toolRevision, setToolRevision] = useState(0)
+  const [toolKoerer, setToolKoerer] = useState(false)
   if (spec.type === 'box') return <section className="native-rich native-box" aria-label={spec.title || 'Samling'}>
     <Heading title={spec.title} />
     <div className="native-box-boern">{spec.children.map((c, i) => <FladeNode key={`${c.type}-${i}`} spec={c} />)}</div>
@@ -490,7 +507,7 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
       try {
         ud = normalisérUdfald(send?.(`[fra valgkort] ${prompt}`))
       } catch (e) {
-        ud = { status: 'failed', kode: 'tool_failed', besked: String((e as Error)?.message || e) }
+        ud = { status: 'failed', kode: 'tool_failed', besked: String((e as Error)?.message || e), retryable: true }
       }
       setHandlingUdfald(ud.status === 'failed' ? ud : null)
     }
@@ -504,6 +521,41 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
         onClick={() => tryk(x.prompt)}
       >{x.label}</button>)}</div>
       {fejlTekst && <p className="native-handling-fejl" role="note">{fejlTekst}</p>}
+    </section>
+  }
+  if (spec.type === 'tool') {
+    if (!kontrolTilladt) return null
+    const kør = async () => {
+      if (!deferred || toolKoerer) return
+      setToolKoerer(true)
+      const udfald = await deferred.run({
+        address: {
+          accountId: deferred.accountId,
+          conversationId: deferred.conversationId,
+          sourceMessageId: deferred.sourceMessageId,
+          widgetInstanceId,
+          contentRevision: toolRevision,
+        },
+        tool: spec.tool,
+        arguments: spec.arguments,
+      })
+      setToolUdfald(udfald)
+      if (udfald.status === 'delivered') {
+        setToolResultat(udfald.result)
+        setToolRevision(udfald.address.contentRevision)
+      }
+      setToolKoerer(false)
+    }
+    const fejl = toolUdfald?.status === 'failed' ? beskrivUdfald(toolUdfald) : ''
+    return <section className="native-rich native-card native-tool" aria-label={spec.title || spec.label}>
+      <Heading title={spec.title} />
+      <button type="button" disabled={toolKoerer || !deferred} onClick={() => void kør()}>
+        {toolKoerer ? 'Arbejder…' : spec.label}
+      </button>
+      {toolResultat !== null && <pre data-content-revision={toolRevision}>{JSON.stringify(toolResultat, null, 2)}</pre>}
+      {fejl && <p className="native-handling-fejl" role="note">{fejl}</p>}
+      {toolUdfald?.status === 'failed' && toolUdfald.retryable
+        && <button type="button" onClick={() => void kør()}>Prøv igen</button>}
     </section>
   }
   if (spec.type === 'control') {

@@ -198,7 +198,7 @@ export function WidgetBlock({ block, config }: {
         try {
           ud = normalisérUdfald(onPrompt?.(`${maerke} ${tekst}`))
         } catch (e) {
-          ud = { status: 'failed', kode: 'tool_failed', besked: String((e as Error)?.message || e) }
+          ud = { status: 'failed', kode: 'tool_failed', besked: String((e as Error)?.message || e), retryable: true }
         }
         setHandlingUdfald(ud.status === 'failed' ? ud : null)
       }

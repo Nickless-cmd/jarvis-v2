@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/stream_sentinel.py`
+_Stream-cluster — observabilitet for SSE-lanen. IKKE en blokerende gate: streaming er_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_aktivitet` | `(run_id, rec)` | Seneste livstegn for runnet (monotonic). | [src](../../../core/services/stream_sentinel.py#L45) |
+| function | `_observe` | `(nerve, run_id, session_id, **data)` | — | [src](../../../core/services/stream_sentinel.py#L70) |
+| function | `note_start` | `(run_id, session_id=…, **meta)` | En SSE-stream sendte message_start. Registrér + observe + opportunistisk stall-sweep. | [src](../../../core/services/stream_sentinel.py#L81) |
+| function | `note_stop` | `(run_id, *, reason=…)` | En SSE-stream sendte message_stop (reason='done' normalt, 'fallback' = terminal-garanti). | [src](../../../core/services/stream_sentinel.py#L98) |
+| function | `note_event` | `(run_id, kind, session_id=…, **data)` | Andre lane-fejl/edge-cases: idle / cancel / error / zombie_slot / subscriber_timeout. | [src](../../../core/services/stream_sentinel.py#L120) |
+| function | `_sweep_stalled` | `(timeout_s=…)` | Ingen livstegn i >timeout_s → ægte zombie → flag ÉN gang pr. run | [src](../../../core/services/stream_sentinel.py#L139) |
+| function | `sweep` | `()` | Eksternt-kaldbar stall-sweep (fx fra heartbeat-kadence). Returnér antal live streams. | [src](../../../core/services/stream_sentinel.py#L188) |
+| function | `live_count` | `()` | — | [src](../../../core/services/stream_sentinel.py#L198) |
+
 ## `core/services/stream_settlement.py`
 _`StreamSettlement` — ét sted der afgør hvad et udbyder-forsøg BLEV til._
 
@@ -615,17 +629,4 @@ _Hvilke modeller KALDER faktisk vaerktoejer — maalt, ikke antaget._
 | function | `tool_calling_record` | `(*, min_koersler=…)` | (provider, model) -> {koersler, med_kald, andel, dom}. | [src](../../../core/services/tool_calling_evidence.py#L114) |
 | function | `kan_kalde_vaerktoejer` | `(provider, model)` | Skal denne model faa en opgave der KRAEVER vaerktoejer? | [src](../../../core/services/tool_calling_evidence.py#L149) |
 | function | `build_tool_calling_evidence_surface` | `()` | Mission Control-surface: hvilke modeller har maalt bevis for at kalde vaerktoejer. | [src](../../../core/services/tool_calling_evidence.py#L165) |
-
-## `core/services/tool_catalog.py`
-_Compact tool catalog for system prompt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_short_desc` | `(tool_def)` | — | [src](../../../core/services/tool_catalog.py#L149) |
-| function | `_registry_hash` | `()` | — | [src](../../../core/services/tool_catalog.py#L163) |
-| function | `_render_catalog_text` | `()` | Return cached catalog text; rebuild only if tool registry changed. | [src](../../../core/services/tool_catalog.py#L178) |
-| function | `build_catalog_text` | `()` | Return the cache-late catalog, or empty when V3 moved it cache-first. | [src](../../../core/services/tool_catalog.py#L214) |
-| function | `stable_catalog_text` | `()` | Return the catalog only for a V3-warmed, scope-specific prefix. | [src](../../../core/services/tool_catalog.py#L223) |
-| function | `catalog_token_estimate` | `()` | Rough char/4 token estimate of the current catalog. | [src](../../../core/services/tool_catalog.py#L232) |
-| function | `invalidate_cache` | `()` | Force next call to rebuild. Useful in tests. | [src](../../../core/services/tool_catalog.py#L237) |
 

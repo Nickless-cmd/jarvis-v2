@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import type { ApiConfig } from '../../lib/api'
 import { deriveChatFlow } from '../../lib/chatFlowModel'
 import type { ContentBlock } from '../../lib/sseProtocol'
@@ -13,6 +13,8 @@ import { JarvisRing } from '../shell/JarvisRing'
 import { LabelSkift, SynteseLinje } from './LabelSkift'
 import { TurHoved } from './TurHoved'
 import { FladeKontrolContext } from './NativeRichBlock'
+import { FladeDeferredTurnContext } from '../../lib/fladeDeferredTurn'
+import { udførDeferredTool } from '../../lib/fladeHandling'
 import { RullendeTokens } from '../feedback/RullendeTal'
 
 export interface ChatFlowPresentationProps {
@@ -42,6 +44,7 @@ export interface ChatFlowPresentationProps {
   rundeEtiketter?: Record<string, string>
   tankeResumeer?: Record<string, string>
   beskedId?: string
+  sessionId?: string | null
   config?: ApiConfig
   onWorkExpanded?: () => void
   /** Hold slutsvarets visuelle pacing i live efter message_stop, indtil den
@@ -93,11 +96,20 @@ export function ChatFlowPresentation({
   rundeEtiketter,
   tankeResumeer,
   beskedId,
+  sessionId,
   config,
   onWorkExpanded,
   paceFinalAnswer = false,
   onAnswerPaced,
 }: ChatFlowPresentationProps) {
+  const deferredTurn = useMemo(() => (
+    config && sessionId && beskedId
+      ? {
+          accountId: '', conversationId: sessionId, sourceMessageId: beskedId,
+          run: (request: Parameters<typeof udførDeferredTool>[1]) => udførDeferredTool(config, request),
+        }
+      : null
+  ), [config, sessionId, beskedId])
   // Pace fra FØRSTE levende teksttegn, ikke først efter final_answer_start.
   // No-tool-svar får ingen sådan grænse fra relæet og kunne derfor arve
   // providerens store bidder, mens autonome follow-runs så fine ud. Samme
@@ -484,6 +496,7 @@ export function ChatFlowPresentation({
     // også dukke op i maskinrummet. Kontekstens default er falsk — glemmer
     // nogen at sætte flaget, forsvinder fladen frem for at dukke op forkert.
     <FladeKontrolContext.Provider value>
+    <FladeDeferredTurnContext.Provider value={deferredTurn}>
     <div className="chat-flow" data-chat-flow-mode={mode}>
       {visTurhoved ? (
           <TurHoved
@@ -624,6 +637,7 @@ export function ChatFlowPresentation({
         </div>
       ) : null}
     </div>
+    </FladeDeferredTurnContext.Provider>
     </FladeKontrolContext.Provider>
   )
 }

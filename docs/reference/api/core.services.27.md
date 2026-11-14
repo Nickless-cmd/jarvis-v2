@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/short_ttl_cache.py`
+_Kort TTL-cache til poll-endpoints: samme svar til samme spoerger inden for et par sekunder._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ShortTTLCache` | `` | — | [src](../../../core/services/short_ttl_cache.py#L23) |
+| method | `ShortTTLCache.__init__` | `(self, ttl_s, clock=…)` | — | [src](../../../core/services/short_ttl_cache.py#L24) |
+| method | `ShortTTLCache.get_or_compute` | `(self, key, fn)` | — | [src](../../../core/services/short_ttl_cache.py#L32) |
+| method | `ShortTTLCache._fresh` | `(self, key)` | — | [src](../../../core/services/short_ttl_cache.py#L49) |
+| method | `ShortTTLCache.invalidate` | `(self, key=…)` | — | [src](../../../core/services/short_ttl_cache.py#L56) |
+
 ## `core/services/shutdown_window_daemon.py`
 _Shutdown Window daemon — unannounced pauses to practice finitude._
 
@@ -610,18 +621,4 @@ _Struktureret failure-taksonomi for streaming/followup (spec §11.1 B11, I5)._
 | class | `MalformedStreamPayload` | `` | Streamen sluttede malformet (trunkeret final-JSON / ingen terminal/``done``) | [src](../../../core/services/stream_failure_kind.py#L291) |
 | function | `safe_decode_line` | `(raw_line)` | Decode én rå stream-linje UDEN nogensinde at rejse. | [src](../../../core/services/stream_failure_kind.py#L298) |
 | function | `try_parse_json_line` | `(data)` | Parse én JSON ``data:``-streng → ``(payload, ok)``, ALDRIG rejsende. | [src](../../../core/services/stream_failure_kind.py#L319) |
-
-## `core/services/stream_sentinel.py`
-_Stream-cluster — observabilitet for SSE-lanen. IKKE en blokerende gate: streaming er_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_aktivitet` | `(run_id, rec)` | Seneste livstegn for runnet (monotonic). | [src](../../../core/services/stream_sentinel.py#L45) |
-| function | `_observe` | `(nerve, run_id, session_id, **data)` | — | [src](../../../core/services/stream_sentinel.py#L70) |
-| function | `note_start` | `(run_id, session_id=…, **meta)` | En SSE-stream sendte message_start. Registrér + observe + opportunistisk stall-sweep. | [src](../../../core/services/stream_sentinel.py#L81) |
-| function | `note_stop` | `(run_id, *, reason=…)` | En SSE-stream sendte message_stop (reason='done' normalt, 'fallback' = terminal-garanti). | [src](../../../core/services/stream_sentinel.py#L98) |
-| function | `note_event` | `(run_id, kind, session_id=…, **data)` | Andre lane-fejl/edge-cases: idle / cancel / error / zombie_slot / subscriber_timeout. | [src](../../../core/services/stream_sentinel.py#L120) |
-| function | `_sweep_stalled` | `(timeout_s=…)` | Ingen livstegn i >timeout_s → ægte zombie → flag ÉN gang pr. run | [src](../../../core/services/stream_sentinel.py#L139) |
-| function | `sweep` | `()` | Eksternt-kaldbar stall-sweep (fx fra heartbeat-kadence). Returnér antal live streams. | [src](../../../core/services/stream_sentinel.py#L188) |
-| function | `live_count` | `()` | — | [src](../../../core/services/stream_sentinel.py#L198) |
 

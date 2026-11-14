@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_review_unified.py`
+_Self-Review Unified — periodisk samlet selv-audit._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/self_review_unified.py#L29) |
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/self_review_unified.py#L33) |
+| function | `_gather_review_inputs` | `()` | Pull signals v2 already has that need to be reflected upon. | [src](../../../core/services/self_review_unified.py#L58) |
+| function | `_base_review` | `(inputs)` | Rule-based review as fallback when LLM unavailable. | [src](../../../core/services/self_review_unified.py#L96) |
+| function | `_build_review_prompt` | `(inputs)` | — | [src](../../../core/services/self_review_unified.py#L143) |
+| function | `_extract_review_json` | `(raw)` | — | [src](../../../core/services/self_review_unified.py#L174) |
+| function | `run_self_review` | `(*, period=…)` | Generate and persist a self-review. Returns the review dict. | [src](../../../core/services/self_review_unified.py#L200) |
+| function | `maybe_run_self_review` | `(*, min_hours_between=…)` | Run a review if it's been at least N hours since the last. | [src](../../../core/services/self_review_unified.py#L344) |
+| function | `list_self_reviews` | `(*, limit=…)` | — | [src](../../../core/services/self_review_unified.py#L365) |
+| function | `build_self_review_surface` | `()` | — | [src](../../../core/services/self_review_unified.py#L384) |
+
 ## `core/services/self_surprise_detection.py`
 _Self-Surprise Detection — "Huh, det havde jeg ikke forventet af mig selv."_
 
@@ -612,15 +628,4 @@ _Hver shell-sti skal SIGE om den er indespaerret — Fase 3, K10._
 |---|---|---|---|---|
 | function | `rapport` | `(grund)` | Byg rapporten — eller None naar der ikke er noget at sige. | [src](../../../core/services/shell_confinement_report.py#L38) |
 | function | `vedhaeft` | `(svar, grund)` | Saet rapporten paa et svar. Roerer intet andet, kaster aldrig. | [src](../../../core/services/shell_confinement_report.py#L60) |
-
-## `core/services/short_ttl_cache.py`
-_Kort TTL-cache til poll-endpoints: samme svar til samme spoerger inden for et par sekunder._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ShortTTLCache` | `` | — | [src](../../../core/services/short_ttl_cache.py#L23) |
-| method | `ShortTTLCache.__init__` | `(self, ttl_s, clock=…)` | — | [src](../../../core/services/short_ttl_cache.py#L24) |
-| method | `ShortTTLCache.get_or_compute` | `(self, key, fn)` | — | [src](../../../core/services/short_ttl_cache.py#L32) |
-| method | `ShortTTLCache._fresh` | `(self, key)` | — | [src](../../../core/services/short_ttl_cache.py#L49) |
-| method | `ShortTTLCache.invalidate` | `(self, key=…)` | — | [src](../../../core/services/short_ttl_cache.py#L56) |
 

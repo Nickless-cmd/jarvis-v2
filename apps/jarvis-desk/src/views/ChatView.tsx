@@ -846,7 +846,7 @@ export function ChatView({
     // kun at turen blev startet — den kører i sin egen stream, så dens fejl
     // opstår længe efter dette svar. At kalde det `ok` ville være samme løgn
     // som `send_alert` der kvitterede True mens intet nåede telefonen.
-    if (!t) return { status: 'failed' as const, kode: 'empty_action' as const, besked: '' }
+    if (!t) return { status: 'failed' as const, kode: 'empty_action' as const, besked: '', retryable: false }
     try {
       resendStabil(t)
     } catch (e) {
@@ -854,9 +854,10 @@ export function ChatView({
         status: 'failed' as const,
         kode: 'tool_failed' as const,
         besked: String((e as Error)?.message || e),
+        retryable: true,
       }
     }
-    return { status: 'delivered' as const }
+    return { status: 'delivered' as const, retryable: false as const }
   }, [resendStabil])
   const pinFor = useRaekkeFn((id) => fastgjorte.skift(id))
   const rewindFor = useRaekkeFn((id) => void tilbage.spol(id))

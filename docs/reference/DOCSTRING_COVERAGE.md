@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10199/18729 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10204/18743 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 10199/18729 functions/methods documented (54%). The list 
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 747 | 1041 | 71% |
+| `apps.api.jarvis_api.routes` | 749 | 1050 | 71% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -26,7 +26,7 @@ Generated from source. 10199/18729 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 900 | 1614 | 55% |
-| `core.services` | 6836 | 12717 | 53% |
+| `core.services` | 6839 | 12722 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,9 +43,9 @@ Generated from source. 10199/18729 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2633)
+## Undocumented public functions (2636)
 
-- `apps/api/jarvis_api/app.py` :: `create_app` (L231)
+- `apps/api/jarvis_api/app.py` :: `create_app` (L234)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
@@ -98,6 +98,8 @@ Generated from source. 10199/18729 functions/methods documented (54%). The list 
 - `apps/api/jarvis_api/routes/connectors.py` :: `delete_connector` (L46)
 - `apps/api/jarvis_api/routes/connectors.py` :: `get_connectors` (L27)
 - `apps/api/jarvis_api/routes/connectors.py` :: `post_enabled` (L35)
+- `apps/api/jarvis_api/routes/flade_deferred_turn.py` :: `flade_deferred_tool_status` (L173)
+- `apps/api/jarvis_api/routes/flade_deferred_turn.py` :: `flade_deferred_tool_turn` (L153)
 - `apps/api/jarvis_api/routes/geo.py` :: `geo_reverse` (L27)
 - `apps/api/jarvis_api/routes/geo.py` :: `geo_search` (L40)
 - `apps/api/jarvis_api/routes/git_panel.py` :: `git_panel_log` (L390)
@@ -1289,6 +1291,7 @@ Generated from source. 10199/18729 functions/methods documented (54%). The list 
 - `core/services/finitude_runtime.py` :: `note_context_compaction` (L155)
 - `core/services/finitude_runtime.py` :: `record_visible_model_transition` (L82)
 - `core/services/finitude_runtime.py` :: `run_finitude_ritual` (L213)
+- `core/services/flade_deferred_turn.py` :: `DeferredTurnAddress.public` (L24)
 - `core/services/flow_state_detection.py` :: `build_flow_state_surface` (L37)
 - `core/services/flow_state_detection.py` :: `get_flow_state` (L33)
 - `core/services/flow_state_detection.py` :: `update_flow_detection` (L11)

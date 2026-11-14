@@ -98,6 +98,18 @@ _Hvad gør vi når FØRSTE pas kom tilbage ubrugelig?_
 | function | `first_pass_is_hollow` | `(text, tool_calls)` | Lovede første pas en handling uden at kalde ét eneste værktøj? | [src](../../../core/services/first_pass_recovery.py#L57) |
 | function | `nudge_for_tool_calls` | `(*, message, provider, model, session_id, thinking_mode, tool_scope=…, local_exec=…)` | Spoerg ÉN gang mere, med nudget, ad en vej der ANNONCERER vaerktoejer. | [src](../../../core/services/first_pass_recovery.py#L79) |
 
+## `core/services/flade_deferred_turn.py`
+_Kontrakt for handlende chat-flader og deres indholdsrevision._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `DeferredTurnAddress` | `` | — | [src](../../../core/services/flade_deferred_turn.py#L17) |
+| method | `DeferredTurnAddress.public` | `(self)` | — | [src](../../../core/services/flade_deferred_turn.py#L24) |
+| function | `_fejl` | `(adresse, code, message, *, retryable)` | — | [src](../../../core/services/flade_deferred_turn.py#L34) |
+| function | `afslut_tool_resultat` | `(adresse, raw)` | Gør et ægte tool-resultat til en revision af den samme flade. | [src](../../../core/services/flade_deferred_turn.py#L50) |
+| function | `kør_deferred_tool` | `(adresse, *, tool_name, arguments, allowed_tools, execute, register_approval=…)` | Kør gennem en allerede afgjort gate og behold fladens returadresse. | [src](../../../core/services/flade_deferred_turn.py#L79) |
+| function | `aflæs_approval_resultat` | `(adresse, state, *, approval_id=…)` | Projicér approval-runtimens delte state tilbage i den oprindelige flade. | [src](../../../core/services/flade_deferred_turn.py#L120) |
+
 ## `core/services/flade_korrektion.py`
 _Ret en ødelagt ``jarvis-ui``-blok FØR svaret vises — ikke efter._
 
@@ -514,16 +526,4 @@ _Gmail-connector — API-klient + tool-handlers (vertical: search + list)._
 | function | `get_message` | `(user_id, message_id)` | Hent ÉN mail med fuld brødtekst (format=full). | [src](../../../core/services/gmail_connector.py#L251) |
 | function | `modify_messages` | `(user_id, message_ids, *, action=…, dry_run=…)` | Flyt/arkivér/fortryd på EKSPLICITTE message-id'er. | [src](../../../core/services/gmail_connector.py#L314) |
 | function | `send_message` | `(user_id, to, subject, body)` | Send en mail på brugerens vegne. KRÆVER approval-flow før den eksponeres som tool. | [src](../../../core/services/gmail_connector.py#L375) |
-
-## `core/services/goal_reporter.py`
-_Goal reporter — fører systemets egne målinger tilbage til målet der bad om dem._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_criterion_fulfilment` | `(measured, target)` | Hvor stor en del af kriteriet er opfyldt — kappet ved 1.0. | [src](../../../core/services/goal_reporter.py#L33) |
-| function | `_find_goal` | `(*, title_fragment)` | Slå det aktive mål op hvis titel indeholder fragmentet. | [src](../../../core/services/goal_reporter.py#L48) |
-| function | `collect_metrics` | `(*, days=…)` | Læs de tre tal. Fejler aldrig hårdt — et manglende tal bliver None. | [src](../../../core/services/goal_reporter.py#L58) |
-| function | `compute_progress` | `(*, tick_score, heed_rate)` | progress_pct + de enkelte kriterier. Svageste led bestemmer. | [src](../../../core/services/goal_reporter.py#L95) |
-| function | `_format_note` | `(metrics, progress)` | Én kort note til update-loggen — tallene, ikke fortællingen om dem. | [src](../../../core/services/goal_reporter.py#L132) |
-| function | `report_goal_metrics` | `(*, days=…, dry_run=…, goal_title_fragment=…)` | Mål, skriv til målet, returnér hvad der skete. Aldrig stille. | [src](../../../core/services/goal_reporter.py#L155) |
 

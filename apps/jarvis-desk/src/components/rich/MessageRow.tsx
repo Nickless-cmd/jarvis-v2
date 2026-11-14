@@ -285,6 +285,7 @@ function MessageRowImpl({
                   runId={runId} turStart={turStart} turSlut={turSlut} varighedSekunder={varighedSekunder} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
                   tokens={tokens}
                   beskedId={beskedId} config={config} onWorkExpanded={onWorkExpanded}
+                  sessionId={sessionId}
                   paceFinalAnswer={paceFinalAnswer} onAnswerPaced={onAnswerPaced} />
               : <CodeAssistantTranscript blocks={blocks} density={density} streaming={streaming} onPaced={onAnswerPaced}
                   finalAnswerStarted={finalAnswerStarted} arbejdeEfterSvar={arbejdeEfterSvar} beskedId={beskedId} config={config}

@@ -1,10 +1,12 @@
-import { useContext, useState } from 'react'
+import { useContext, useId, useState } from 'react'
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { AlertTriangle, CheckCircle2, CircleAlert, Info, MapPin } from 'lucide-react-native'
 import Svg, { Line, Polyline, Rect as SvgRect } from 'react-native-svg'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { WidgetPrompt } from './WidgetFlade'
 import { beskrivUdfald, normalisérUdfald, type FladeUdfald } from '../lib/fladeHandling'
+import { FladeDeferredTurnContext } from '../lib/fladeDeferredTurn'
+import type { DeferredToolUdfald } from '../lib/fladeHandling'
 import { lineDiff } from '../lib/diff'
 import { interpolérUdtryk } from '../lib/udtryk'
 
@@ -15,6 +17,7 @@ export type NativeSpec =
   | { type: 'timeline'; title: string; items: Array<{ time: string; title: string; detail: string; status: 'done' | 'current' | 'next' }> }
   | { type: 'comparison'; title: string; columns: string[]; rows: Array<{ label: string; values: string[] }> }
   | { type: 'choices'; title: string; options: Array<{ label: string; prompt: string }> }
+  | { type: 'tool'; title: string; tool: string; arguments: Record<string, unknown>; label: string }
   | { type: 'location'; title: string; address: string; latitude?: number; longitude?: number }
   // `control` (14/11-2026): den FØRSTE flade med lokal state. Slideren rykker
   // uden at noget modelkald går ud — state bor i komponenten, ikke i samtalen.
@@ -155,6 +158,14 @@ function parseNodeObj(raw: Json, depth: number): NativeSpec | null {
   if (type === 'choices') {
     const options = list(raw.options, 6).map((x) => ({ label: text(x.label, 100), prompt: text(x.prompt, 1000) })).filter((x) => x.label && x.prompt)
     return options.length ? { type, title, options } : null
+  }
+  if (type === 'tool') {
+    const tool = text(raw.tool, 120)
+    const label = text(raw.label, 120)
+    const args = raw.arguments
+    return tool && label && args && typeof args === 'object' && !Array.isArray(args)
+      ? { type, title, tool, arguments: args as Record<string, unknown>, label }
+      : null
   }
   if (type === 'location') {
     const address = text(raw.address, 300)
@@ -323,11 +334,17 @@ export function NativeRichBlock({ code }: { code: string }) {
 // fladetype. Foer laa alt i een funktion, hvilket gjorde rekursion umulig.
 function FladeNode({ spec }: { spec: NativeSpec }) {
   const styles = useStyles(makeStyles); const theme = useTheme(); const send = useContext(WidgetPrompt)
+  const deferred = useContext(FladeDeferredTurnContext)
+  const widgetInstanceId = useId()
   const [kontrolVaerdier, setKontrolVaerdi] = useState<Record<string, number | string | boolean>>({})
   const [valgtFane, setValgtFane] = useState(0)
   // Udfaldet af den seneste handling fladen selv satte i gang (14/11-2026).
   // Hooken staar FOER alle betingede returns, saa raekkefoelgen er konstant.
   const [handlingUdfald, setHandlingUdfald] = useState<FladeUdfald | null>(null)
+  const [toolUdfald, setToolUdfald] = useState<DeferredToolUdfald | null>(null)
+  const [toolResultat, setToolResultat] = useState<unknown>(null)
+  const [toolRevision, setToolRevision] = useState(0)
+  const [toolKoerer, setToolKoerer] = useState(false)
   // Sortering for `table` (14/11-2026). LOKAL — rører ikke data, sender intet.
   const [sortering, setSortering] = useState<{ kolonne: number; retning: 1 | -1 } | null>(null)
   // `control` har ingen titel — den er et lille haandtag, ikke et kort.
@@ -406,7 +423,7 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
       try {
         ud = normalisérUdfald(send?.(`[fra valgkort] ${prompt}`))
       } catch (e) {
-        ud = { status: 'failed', kode: 'tool_failed', besked: String((e as Error)?.message || e) }
+        ud = { status: 'failed', kode: 'tool_failed', besked: String((e as Error)?.message || e), retryable: true }
       }
       setHandlingUdfald(ud.status === 'failed' ? ud : null)
     }
@@ -414,6 +431,45 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
     return <View accessibilityLabel={spec.title || 'Valgmuligheder'} style={[styles.card, styles.cardBox]}>{heading}
       <View style={styles.wrap}>{spec.options.map((x, i) => <Pressable key={`${x.label}-${i}`} accessibilityRole="button" accessibilityLabel={x.label} onPress={() => tryk(x.prompt)} style={({ pressed }) => [styles.button, pressed && styles.pressed]}><Text style={styles.buttonText}>{x.label}</Text></Pressable>)}</View>
       {fejlTekst ? <Text style={styles.muted} accessibilityRole="text">{fejlTekst}</Text> : null}
+    </View>
+  }
+  if (spec.type === 'tool') {
+    const kør = async () => {
+      if (!deferred || toolKoerer) return
+      setToolKoerer(true)
+      const udfald = await deferred.run({
+        address: {
+          accountId: deferred.accountId,
+          conversationId: deferred.conversationId,
+          sourceMessageId: deferred.sourceMessageId,
+          widgetInstanceId,
+          contentRevision: toolRevision,
+        },
+        tool: spec.tool,
+        arguments: spec.arguments,
+      })
+      setToolUdfald(udfald)
+      if (udfald.status === 'delivered') {
+        setToolResultat(udfald.result)
+        setToolRevision(udfald.address.contentRevision)
+      }
+      setToolKoerer(false)
+    }
+    const fejl = toolUdfald?.status === 'failed' ? beskrivUdfald(toolUdfald) : ''
+    return <View accessibilityLabel={spec.title || spec.label} style={[styles.card, styles.cardBox]}>{heading}
+      <Pressable accessibilityRole="button" accessibilityLabel={spec.label}
+        disabled={toolKoerer || !deferred} onPress={() => void kør()}
+        style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
+        <Text style={styles.buttonText}>{toolKoerer ? 'Arbejder…' : spec.label}</Text>
+      </Pressable>
+      {toolResultat !== null ? <Text style={styles.body}>{JSON.stringify(toolResultat, null, 2)}</Text> : null}
+      {fejl ? <Text style={styles.muted}>{fejl}</Text> : null}
+      {toolUdfald?.status === 'failed' && toolUdfald.retryable ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Prøv igen" onPress={() => void kør()}
+          style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
+          <Text style={styles.buttonText}>Prøv igen</Text>
+        </Pressable>
+      ) : null}
     </View>
   }
   if (spec.type === 'control') {

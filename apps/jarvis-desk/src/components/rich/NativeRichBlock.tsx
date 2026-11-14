@@ -2,6 +2,7 @@ import { createContext, useContext, useState } from 'react'
 import { AlertTriangle, CheckCircle2, CircleAlert, Info, MapPin } from 'lucide-react'
 import { openExternalUrl } from '../../lib/host'
 import { WidgetPrompt } from './WidgetBlock'
+import { DiffView } from './DiffView'
 
 type Json = Record<string, unknown>
 type NativeSpec =
@@ -37,11 +38,41 @@ type NativeSpec =
   | { type: 'quote'; title: string; text: string; source: string; href: string }
   | { type: 'code'; title: string; path: string; language: string; code: string; start: number }
   | { type: 'tabs'; title: string; tabs: Array<{ label: string; children: NativeSpec[] }> }
+  // (14/11-2026) Anden bølge — de sidste fem. Rækkefølgen følger guarden, og af
+  // samme grund som der: en type uden en guard-gren erklæres død og koster et
+  // helt modelkald for at «rette» en flade der var korrekt skrevet.
+  //
+  // `table` er ikke det samme som en GFM-tabel i prosa. Forskellen er ikke
+  // udseendet men interaktionen: her kan læseren sortere lokalt.
+  | { type: 'table'; title: string; columns: string[]; rows: string[][] }
+  // `chart` er ikke `vis_graf`. Værktøjet tegner et billede og koster et run;
+  // denne tegner inline fra data der allerede står i svaret.
+  | { type: 'chart'; title: string; kind: 'line' | 'bar'; labels: string[]; series: Array<{ name: string; values: number[] }> }
+  // `form` bygger videre på `control`s state-lag: samme `bind`, flere felt-typer.
+  | { type: 'form'; title: string; fields: Array<
+      | { kind: 'slider'; bind: string; label: string; min: number; max: number; step: number; value: number }
+      | { kind: 'select'; bind: string; label: string; options: string[]; value: string }
+      | { kind: 'toggle'; bind: string; label: string; value: boolean }
+      | { kind: 'text'; text: string }
+    > }
+  // `tree` er en FLAD liste med `depth` — ikke indlejrede børn. En indlejret form
+  // ville kræve en evaluator for at udlede indrykningen, og det er netop undgået.
+  | { type: 'tree'; title: string; items: Array<{ name: string; kind: 'dir' | 'file'; depth: number; note: string }> }
+  // `diff` genbruger `DiffView`, som selv regner diffen med `lib/diff.lineDiff`.
+  | { type: 'diff'; title: string; path: string; old: string; new: string }
 
 /** Højeste dybde en `box` må stå i (toppen er dybde 1). En box i dybde 4
  *  afvises; blade (callout osv.) under en dybde-3-box er stadig fine. */
 const BOX_MAX_DYBDE = 3
 const BOX_MAX_BOERN = 8
+// Anden bølge (14/11-2026). Skal matche `_TABLE_MAX_*` m.fl. i
+// core/services/jarvis_ui_guard.py — ellers erklærer guarden en flade «ok»
+// som parseren derefter kasserer, og så er der ingen der kan se hvorfor.
+const TABLE_MAX_KOLONNER = 12
+const TABLE_MAX_RAEKKER = 100
+const CHART_MAX_SERIER = 4
+const CHART_MAX_PUNKTER = 40
+const TREE_MAX_DYBDE = 8
 
 const text = (v: unknown, max = 500) => typeof v === 'string' ? v.trim().slice(0, max) : ''
 // `Number.isFinite` — ikke `typeof === 'number'`. Forskellen er målt: `NaN` og
@@ -197,6 +228,93 @@ function parseNodeObj(raw: Json, depth: number): NativeSpec | null {
     // være ren tekst forklædt som en kontrol. Det er hele pointen med typen.
     return fields.some((f) => f.kind === 'slider') ? { type, title, fields } : null
   }
+  if (type === 'table') {
+    // Kolonnerne klippes FØRST, og rækkerne klippes til samme længde. Ellers
+    // ville en række med flere celler end kolonner forskubbe alt til højre, så
+    // tal stod under den forkerte overskrift — værre end at vise færre kolonner.
+    const columns = (Array.isArray(raw.columns) ? raw.columns : [])
+      .map((k) => text(k, 80)).filter(Boolean).slice(0, TABLE_MAX_KOLONNER)
+    if (!columns.length) return null
+    const rows = (Array.isArray(raw.rows) ? raw.rows : [])
+      .filter((r): r is unknown[] => Array.isArray(r))
+      .map((r) => r.slice(0, columns.length).map((c) => text(c, 300)))
+      .filter((r) => r.length === columns.length)
+      .slice(0, TABLE_MAX_RAEKKER)
+    return rows.length ? { type, title, columns, rows } : null
+  }
+  if (type === 'chart') {
+    const labels = (Array.isArray(raw.labels) ? raw.labels : [])
+      .map((l) => text(l, 40)).slice(0, CHART_MAX_PUNKTER)
+    const series = list(raw.series, CHART_MAX_SERIER).map((s) => ({
+      name: text(s.name, 60),
+      // `tal()` kasserer NaN/Infinity. Uden det ville SVG'en tegne en streg der
+      // knækkede usynligt: den springer ugyldige punkter over uden at fejle.
+      values: (Array.isArray(s.values) ? s.values : [])
+        .map((v) => tal(v)).filter((v): v is number => v !== null).slice(0, CHART_MAX_PUNKTER),
+    })).filter((s) => s.values.length >= 2)
+    if (!series.length) return null
+    const kind = text(raw.kind, 10) === 'bar' ? 'bar' as const : 'line' as const
+    return { type, title, kind, labels, series }
+  }
+  if (type === 'form') {
+    const fields = list(raw.fields, 10).map((x) => {
+      const art = text(x.kind, 20)
+      if (art === 'text') {
+        const t = text(x.text, 600)
+        return t ? { kind: 'text' as const, text: t } : null
+      }
+      const bind = text(x.bind, 40)
+      const label = text(x.label, 120)
+      if (!bind || !label) return null
+      if (art === 'slider') {
+        const min = tal(x.min)
+        const max = tal(x.max)
+        if (min === null || max === null || max <= min) return null
+        const step = tal(x.step)
+        const raa = tal(x.value) ?? min
+        return {
+          kind: 'slider' as const, bind, label, min, max,
+          step: step !== null && step > 0 ? step : 1,
+          value: Math.min(max, Math.max(min, raa)),
+        }
+      }
+      if (art === 'select') {
+        const options = (Array.isArray(x.options) ? x.options : [])
+          .map((o) => text(o, 80)).filter(Boolean).slice(0, 12)
+        if (options.length < 2) return null
+        const val = text(x.value, 80)
+        // Falder tilbage til første mulighed: en `value` der ikke findes i
+        // listen ville give et `<select>` uden valgt punkt, altså en tom rude.
+        return { kind: 'select' as const, bind, label, options, value: options.includes(val) ? val : options[0] ?? '' }
+      }
+      if (art === 'toggle') return { kind: 'toggle' as const, bind, label, value: x.value === true }
+      return null
+    }).filter((x): x is NonNullable<typeof x> => Boolean(x))
+    // Mindst ét felt med `bind`: ellers er der ingen lokal state, og fladen
+    // ville være ren tekst forklædt som en formular — samme regel som control.
+    return fields.some((f) => f.kind !== 'text') ? { type, title, fields } : null
+  }
+  if (type === 'tree') {
+    const items = list(raw.items, 60).map((x) => {
+      const name = text(x.name, 200)
+      if (!name) return null
+      const d = tal(x.depth)
+      // Ulovlig dybde klippes til 0 i stedet for at kassere rækken: navnet er
+      // stadig sandt, og en rod der mangler ville gøre træet sværere at læse.
+      const depth = d !== null && d >= 0 && d <= TREE_MAX_DYBDE ? Math.floor(d) : 0
+      return {
+        name, depth, note: text(x.note, 160),
+        kind: text(x.kind, 10) === 'dir' ? 'dir' as const : 'file' as const,
+      }
+    }).filter((x): x is NonNullable<typeof x> => Boolean(x))
+    return items.length ? { type, title, items } : null
+  }
+  if (type === 'diff') {
+    const foer = text(raw.old, 20000)
+    const efter = text(raw.new, 20000)
+    if (!foer && !efter) return null
+    return { type, title, path: text(raw.path, 300), old: foer, new: efter }
+  }
   return null
 }
 
@@ -241,7 +359,11 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
   // betingede returns nedenfor: ellers ville hook-rækkefølgen skifte med
   // fladetypen, og React kaster ved næste render. Det er den fælde der gør
   // at en flade kan se rigtig ud én gang og dræbe visningen bagefter.
-  const [kontrolVaerdier, setKontrolVaerdi] = useState<Record<string, number>>({})
+  const [kontrolVaerdier, setKontrolVaerdi] = useState<Record<string, number | string | boolean>>({})
+  // Sortering for `table` (14/11-2026). Også en hook, og af samme grund som
+  // ovenfor: den står før alle betingede returns, så rækkefølgen er konstant.
+  // Sorteringen er LOKAL — den rører ikke data og sender intet afsted.
+  const [sortering, setSortering] = useState<{ kolonne: number; retning: 1 | -1 } | null>(null)
   // Fanevalg for `tabs` (14/11-2026). Samme krav som ovenfor: hooken står før
   // alle betingede returns, så rækkefølgen er konstant uanset fladetype.
   const [valgtFane, setValgtFane] = useState(0)
@@ -274,7 +396,12 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
     // Sliderens værdi: lokal state først, ellers den værdi fladen kom med.
     // Der er ingen `useEffect` der synkroniserer — state ER sandheden så snart
     // brugeren har rørt håndtaget, og ellers er den medfødte værdi.
-    const aktuel = (bind: string, fallback: number) => kontrolVaerdier[bind] ?? fallback
+    const aktuel = (bind: string, fallback: number): number => {
+      // `kontrolVaerdier` bærer nu også tekst og bool (for `form`). Uden
+      // typetjekket ville en `select`-værdi kunne lande i en slider.
+      const v = kontrolVaerdier[bind]
+      return typeof v === 'number' ? v : fallback
+    }
     // `{bind}` i et tekstfelt interpoleres fra sliderne. Det er her fladen
     // svarer brugeren uden et modelkald: teksten regnes om ved hvert træk.
     const interpolér = (s: string) => {
@@ -355,6 +482,148 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
       <div className="native-tabs-indhold" role="tabpanel">
         {aktiv.children.map((c, i) => <FladeNode key={`${c.type}-${i}`} spec={c} />)}
       </div>
+    </section>
+  }
+  if (spec.type === 'table') {
+    // Sorteringen er LOKAL (14/11-2026): et klik på en kolonne ændrer kun
+    // rækkefølgen i denne visning. Det er hele forskellen til en GFM-tabel, og
+    // det koster nul modelkald.
+    const raekker = sortering
+      ? [...spec.rows].sort((a, b) => {
+        const x = a[sortering.kolonne] ?? ''
+        const y = b[sortering.kolonne] ?? ''
+        // Tal sorteres som tal, ikke som tekst: ellers ville «10» komme før «9».
+        const nx = Number(x.replace(',', '.'))
+        const ny = Number(y.replace(',', '.'))
+        const beggeTal = x.trim() !== '' && y.trim() !== ''
+          && Number.isFinite(nx) && Number.isFinite(ny)
+        const cmp = beggeTal ? nx - ny : x.localeCompare(y, 'da')
+        return cmp * sortering.retning
+      })
+      : spec.rows
+    return <section className="native-rich native-table" aria-label={spec.title || 'Tabel'}>
+      <Heading title={spec.title} />
+      <div className="native-table-ramme">
+        <table>
+          <thead><tr>{spec.columns.map((k, i) => <th key={`${k}-${i}`} scope="col">
+            <button type="button" className="native-table-sorter"
+              onClick={() => setSortering((forrige) => forrige?.kolonne === i
+                ? { kolonne: i, retning: forrige.retning === 1 ? -1 : 1 }
+                : { kolonne: i, retning: 1 })}>
+              {k}{sortering?.kolonne === i && <span aria-hidden="true">{sortering.retning === 1 ? ' ▲' : ' ▼'}</span>}
+            </button>
+          </th>)}</tr></thead>
+          <tbody>{raekker.map((r, i) => <tr key={i}>
+            {r.map((c, j) => <td key={j}>{c}</td>)}
+          </tr>)}</tbody>
+        </table>
+      </div>
+    </section>
+  }
+  if (spec.type === 'chart') {
+    // Inline SVG, ingen værktøjskald. Skalaen regnes fra data, så en serie der
+    // kun ændrer sig lidt stadig fylder hele højden — ellers ville to næsten
+    // identiske tal se ud som en flad streg.
+    const alle = spec.series.flatMap((s) => s.values)
+    const min = Math.min(...alle)
+    const maks = Math.max(...alle)
+    const spaend = maks - min || 1
+    const B = 320, H = 120, P = 8
+    const antal = Math.max(...spec.series.map((s) => s.values.length))
+    const px = (i: number) => antal <= 1 ? B / 2 : P + (i / (antal - 1)) * (B - 2 * P)
+    const py = (v: number) => H - P - ((v - min) / spaend) * (H - 2 * P)
+    const bjBredde = (B - 2 * P) / Math.max(1, antal)
+    const perSerie = bjBredde / spec.series.length
+    return <section className="native-rich native-chart" aria-label={spec.title || 'Graf'}>
+      <Heading title={spec.title} />
+      <svg viewBox={`0 0 ${B} ${H}`} className="native-chart-svg" role="img"
+        aria-label={`${spec.kind === 'bar' ? 'Søjler' : 'Linje'}: ${spec.series.map((s) => s.name).join(', ')}`}>
+        <line x1={P} y1={H - P} x2={B - P} y2={H - P} className="native-chart-akse" />
+        {spec.series.map((s, si) => s.values.length < 2 ? null : spec.kind === 'bar'
+          ? s.values.map((v, i) => <rect key={`${si}-${i}`} className={`native-chart-soejle native-chart-serie-${si}`}
+              x={P + i * bjBredde + si * perSerie + perSerie * 0.1}
+              y={py(v)} width={Math.max(1, perSerie * 0.8)} height={Math.max(0, H - P - py(v))} />
+          )
+          : <polyline key={si} className={`native-chart-linje native-chart-serie-${si}`} fill="none"
+              points={s.values.map((v, i) => `${px(i)},${py(v)}`).join(' ')} />
+        )}
+      </svg>
+      <div className="native-chart-forklaring">
+        {spec.series.map((s, i) => <span key={`${s.name}-${i}`} className={`native-chart-noegle native-chart-serie-${i}`}>
+          {s.name || `Serie ${i + 1}`}
+        </span>)}
+      </div>
+      {spec.labels.length > 0 && <div className="native-chart-labels">
+        {spec.labels.slice(0, 6).map((l, i) => <span key={`${l}-${i}`}>{l}</span>)}
+      </div>}
+    </section>
+  }
+  if (spec.type === 'form') {
+    // Samme gate som `control`: code mode må ikke se den.
+    if (!kontrolTilladt) return null
+    const talV = (bind: string, fallback: number): number => {
+      const v = kontrolVaerdier[bind]
+      return typeof v === 'number' ? v : fallback
+    }
+    const tekstV = (bind: string, fallback: string): string => {
+      const v = kontrolVaerdier[bind]
+      return typeof v === 'string' ? v : fallback
+    }
+    const boolV = (bind: string, fallback: boolean): boolean => {
+      const v = kontrolVaerdier[bind]
+      return typeof v === 'boolean' ? v : fallback
+    }
+    const interpolér = (s: string) => s.replace(/\{(\w+)\}/g, (m, k) => {
+      const v = kontrolVaerdier[k]
+      return v === undefined ? m : String(v)
+    })
+    return <section className="native-rich native-form" aria-label={spec.title || 'Formular'}>
+      <Heading title={spec.title} />
+      <div className="native-control-felter">
+        {spec.fields.map((f, i) => {
+          if (f.kind === 'text') return <p key={`t-${i}`}>{interpolér(f.text)}</p>
+          if (f.kind === 'slider') return <label className="native-control-slider" key={`${f.bind}-${i}`}>
+            <span className="native-control-label">{f.label}</span>
+            <input type="range" min={f.min} max={f.max} step={f.step}
+              value={talV(f.bind, f.value)}
+              onChange={(e) => {
+                const n = Number(e.currentTarget.value)
+                if (Number.isFinite(n)) setKontrolVaerdi((forrige) => ({ ...forrige, [f.bind]: n }))
+              }} />
+            <output className="native-control-vaerdi">{talV(f.bind, f.value)}</output>
+          </label>
+          if (f.kind === 'select') return <label className="native-form-select" key={`${f.bind}-${i}`}>
+            <span className="native-control-label">{f.label}</span>
+            <select value={tekstV(f.bind, f.value)}
+              onChange={(e) => setKontrolVaerdi((forrige) => ({ ...forrige, [f.bind]: e.currentTarget.value }))}>
+              {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </label>
+          return <label className="native-form-toggle" key={`${f.bind}-${i}`}>
+            <input type="checkbox" checked={boolV(f.bind, f.value)}
+              onChange={(e) => setKontrolVaerdi((forrige) => ({ ...forrige, [f.bind]: e.currentTarget.checked }))} />
+            <span>{f.label}</span>
+          </label>
+        })}
+      </div>
+    </section>
+  }
+  if (spec.type === 'tree') {
+    return <section className="native-rich native-tree" aria-label={spec.title || 'Struktur'}>
+      <Heading title={spec.title} />
+      <ul className="native-tree-liste">
+        {spec.items.map((x, i) => <li key={`${x.name}-${i}`} className={`native-tree-item native-tree-${x.kind}`}
+          style={{ paddingLeft: `${x.depth * 16}px` }}>
+          <span className="native-tree-navn">{x.name}</span>
+          {x.note && <small className="native-tree-note">{x.note}</small>}
+        </li>)}
+      </ul>
+    </section>
+  }
+  if (spec.type === 'diff') {
+    return <section className="native-rich" aria-label={spec.title || 'Ændring'}>
+      <Heading title={spec.title} />
+      <DiffView oldText={spec.old} newText={spec.new} filename={spec.path} />
     </section>
   }
   const q = spec.latitude !== undefined && spec.longitude !== undefined ? `${spec.latitude},${spec.longitude}` : spec.address

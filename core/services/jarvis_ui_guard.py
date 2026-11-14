@@ -75,6 +75,14 @@ _MANGLER = "— (mangler)"
 #: som `BOX_MAX_DYBDE` / `BOX_MAX_BOERN` i desk og mobil.
 _BOX_MAX_DYBDE = 3
 _BOX_MAX_BOERN = 8
+#: Lofter for anden bølge (14/11-2026). Sat efter hvad der kan LÆSES, ikke
+#: efter hvad der kan sendes: en tabel på 40 kolonner er ikke en flade, den er
+#: et regneark presset ind i en samtale.
+_TABLE_MAX_KOLONNER = 12
+_TABLE_MAX_RAEKKER = 100
+_CHART_MAX_SERIER = 4
+_CHART_MAX_PUNKTER = 40
+_TREE_MAX_DYBDE = 8
 
 
 def _normaliser_form(raw: str) -> str:
@@ -418,6 +426,142 @@ def _diagnosticér(data: dict, dybde: int = 1) -> tuple[str, list[str]]:
         # læseren ved hvor uddraget kommer fra. Uden indhold er den en tom ramme.
         if not _tekst(data.get("code")):
             return "død", ["code mangler code"]
+        return "ok", fejl
+
+    if typ == "table":
+        # Sorterbar tabel. Forskellen til GFM-tabeller i prosa er ikke udseendet
+        # men interaktionen: her kan læseren sortere efter en kolonne uden at
+        # noget sendes afsted. Derfor er rækkerne en matrix, ikke færdige strenge.
+        kolonner = data.get("columns") if isinstance(data.get("columns"), list) else []
+        raekker = data.get("rows") if isinstance(data.get("rows"), list) else []
+        if not kolonner:
+            return "død", ["table mangler columns"]
+        if not raekker:
+            return "død", ["table mangler rows"]
+        if not all(_tekst(k) for k in kolonner):
+            fejl.append("table har en tom kolonne-titel")
+        # En række med forkert længde ville forskubbe kolonnerne, så tal stod
+        # under den forkerte overskrift — værre end at vise færre rækker.
+        gode = 0
+        for i, r in enumerate(raekker):
+            if not isinstance(r, list):
+                fejl.append(f"table række {i} er ikke en liste")
+            elif len(r) != len(kolonner):
+                fejl.append(f"table række {i} har {len(r)} celler, {len(kolonner)} kræves")
+            else:
+                gode += 1
+        if not gode:
+            return "død", fejl or ["table har ingen brugbare rækker"]
+        if len(kolonner) > _TABLE_MAX_KOLONNER:
+            fejl.append(f"table har {len(kolonner)} kolonner, kun {_TABLE_MAX_KOLONNER} vises")
+        if len(raekker) > _TABLE_MAX_RAEKKER:
+            fejl.append(f"table har {len(raekker)} rækker, kun {_TABLE_MAX_RAEKKER} vises")
+        return ("delvis" if fejl else "ok"), fejl
+
+    if typ == "chart":
+        # En graf UDEN værktøjskald. `vis_graf` tegner et billede og koster et
+        # run; denne type tegner inline fra data modellen allerede har. Det er
+        # ikke den samme ting, og derfor er den ikke dubleret arbejde.
+        serier = data.get("series") if isinstance(data.get("series"), list) else []
+        if not serier:
+            return "død", ["chart mangler series"]
+        brugbare = 0
+        for i, s in enumerate(serier):
+            if not isinstance(s, dict):
+                fejl.append(f"chart serie {i} er ikke et objekt")
+                continue
+            vaerdier = s.get("values") if isinstance(s.get("values"), list) else []
+            # Et punkt der ikke er et endeligt tal ville give en streg der
+            # knækker usynligt: SVG tegner intet for NaN uden at fejle.
+            if len([v for v in vaerdier if _endeligt_tal(v)]) < 2:
+                fejl.append(f"chart serie {i} har under 2 gyldige tal")
+            else:
+                brugbare += 1
+        if not brugbare:
+            return "død", fejl or ["chart har ingen brugbare serier"]
+        if len(serier) > _CHART_MAX_SERIER:
+            fejl.append(f"chart har {len(serier)} serier, kun {_CHART_MAX_SERIER} vises")
+        for i, s in enumerate(serier):
+            if isinstance(s, dict) and isinstance(s.get("values"), list) and len(s["values"]) > _CHART_MAX_PUNKTER:
+                fejl.append(f"chart serie {i} har {len(s['values'])} punkter, kun {_CHART_MAX_PUNKTER} vises")
+        return ("delvis" if fejl else "ok"), fejl
+
+    if typ == "form":
+        # Bygger videre på `control`s state-lag — samme `bind`, men flere
+        # felt-typer: `select` (fast liste) og `toggle` (til/fra). Forskellen
+        # til `choices` er stadig den samme: intet sendes afsted.
+        felter = data.get("fields") if isinstance(data.get("fields"), list) else []
+        if not felter:
+            return "død", ["form mangler fields"]
+        bundne = 0
+        for i, f in enumerate(felter):
+            if not isinstance(f, dict):
+                fejl.append(f"form felt {i} er ikke et objekt")
+                continue
+            art = _tekst(f.get("kind"))
+            if art == "text":
+                if not _tekst(f.get("text")):
+                    fejl.append(f"form felt {i} er text uden text")
+                continue
+            if not _tekst(f.get("bind")):
+                fejl.append(f"form felt {i} mangler bind")
+                continue
+            if not _tekst(f.get("label")):
+                fejl.append(f"form felt {i} mangler label")
+                continue
+            if art == "slider":
+                min_v, max_v = f.get("min"), f.get("max")
+                if not (_endeligt_tal(min_v) and _endeligt_tal(max_v)) or max_v <= min_v:
+                    fejl.append(f"form felt {i} har ulovligt interval")
+                    continue
+            elif art == "select":
+                valg = f.get("options") if isinstance(f.get("options"), list) else []
+                if len([v for v in valg if _tekst(v)]) < 2:
+                    fejl.append(f"form felt {i} har under 2 valgmuligheder")
+                    continue
+            elif art == "toggle":
+                pass
+            else:
+                fejl.append(f"form felt {i} har ukendt kind: {art or '(mangler)'}")
+                continue
+            bundne += 1
+        if not bundne:
+            return "død", fejl or ["form har ingen brugbare felter"]
+        if len(felter) > 10:
+            fejl.append(f"form har {len(felter)} felter, kun 10 vises")
+        return ("delvis" if fejl else "ok"), fejl
+
+    if typ == "tree":
+        # Mappestruktur som FLAD liste med `depth`, ikke indlejrede børn. Det er
+        # et bevidst valg: en indlejret form ville kræve rekursion OG en
+        # evaluator for at udlede indrykningen, og vi har netop undgået en
+        # evaluator. `depth` gør formen eksplicit i data.
+        items = data.get("items") if isinstance(data.get("items"), list) else []
+        brugbare = 0
+        for i, x in enumerate(items):
+            if not isinstance(x, dict):
+                fejl.append(f"tree item {i} er ikke et objekt")
+                continue
+            if not _tekst(x.get("name")):
+                fejl.append(f"tree item {i} mangler name")
+                continue
+            d = x.get("depth")
+            if d is not None and (not isinstance(d, int) or isinstance(d, bool) or d < 0 or d > _TREE_MAX_DYBDE):
+                fejl.append(f"tree item {i} har ulovlig depth")
+                continue
+            brugbare += 1
+        if not brugbare:
+            return "død", fejl or ["tree har ingen brugbare items"]
+        if len(items) > 60:
+            fejl.append(f"tree har {len(items)} items, kun 60 vises")
+        return ("delvis" if fejl else "ok"), fejl
+
+    if typ == "diff":
+        # Genbruger `DiffView` i desk, som selv regner diffen med `lineDiff`.
+        # Guarden skal derfor kun kræve at der ER to sider at sammenligne —
+        # ikke selv forstå formatet.
+        if not (_tekst(data.get("old")) or _tekst(data.get("new"))):
+            return "død", ["diff mangler både old og new"]
         return "ok", fejl
 
     if typ == "location":

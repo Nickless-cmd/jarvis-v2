@@ -1,8 +1,10 @@
 import { useContext, useState } from 'react'
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { AlertTriangle, CheckCircle2, CircleAlert, Info, MapPin } from 'lucide-react-native'
+import Svg, { Line, Polyline, Rect as SvgRect } from 'react-native-svg'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { WidgetPrompt } from './WidgetFlade'
+import { lineDiff } from '../lib/diff'
 
 type Json = Record<string, unknown>
 export type NativeSpec =
@@ -27,6 +29,19 @@ export type NativeSpec =
   | { type: 'quote'; title: string; text: string; source: string; href: string }
   | { type: 'code'; title: string; path: string; language: string; code: string; start: number }
   | { type: 'tabs'; title: string; tabs: Array<{ label: string; children: NativeSpec[] }> }
+  // (14/11-2026) Anden boelge — de sidste fem, samme som desk. En type uden
+  // guard-gren erklaeres doed og koster et modelkald; en type uden mobil-gren
+  // forsvinder paa telefonen mens den virker i desk. Begge dele er fejl.
+  | { type: 'table'; title: string; columns: string[]; rows: string[][] }
+  | { type: 'chart'; title: string; kind: 'line' | 'bar'; labels: string[]; series: Array<{ name: string; values: number[] }> }
+  | { type: 'form'; title: string; fields: Array<
+      | { kind: 'slider'; bind: string; label: string; min: number; max: number; step: number; value: number }
+      | { kind: 'select'; bind: string; label: string; options: string[]; value: string }
+      | { kind: 'toggle'; bind: string; label: string; value: boolean }
+      | { kind: 'text'; text: string }
+    > }
+  | { type: 'tree'; title: string; items: Array<{ name: string; kind: 'dir' | 'file'; depth: number; note: string }> }
+  | { type: 'diff'; title: string; path: string; old: string; new: string }
 
 const text = (v: unknown, max = 500) => typeof v === 'string' ? v.trim().slice(0, max) : ''
 const tal = (v: unknown): number | null => typeof v === 'number' && Number.isFinite(v) ? v : null
@@ -37,6 +52,12 @@ const list = (v: unknown, max: number): Json[] => Array.isArray(v)
 /** Lofterne for de typer der baerer boern. Skal matche desk og guarden. */
 const BOX_MAX_DYBDE = 3
 const BOX_MAX_BOERN = 8
+// Anden boelge (14/11-2026). Skal matche `_TABLE_MAX_*` m.fl. i guarden.
+const TABLE_MAX_KOLONNER = 12
+const TABLE_MAX_RAEKKER = 100
+const CHART_MAX_SERIER = 4
+const CHART_MAX_PUNKTER = 40
+const TREE_MAX_DYBDE = 8
 
 export function parseNativeRichSpec(code: string): NativeSpec | null {
   let raw: Json
@@ -158,6 +179,82 @@ function parseNodeObj(raw: Json, depth: number): NativeSpec | null {
     // Mindst ÉN slider: uden et `bind` er der ingen lokal state.
     return fields.some((f) => f.kind === 'slider') ? { type, title, fields } : null
   }
+  if (type === 'table') {
+    const columns = (Array.isArray(raw.columns) ? raw.columns : [])
+      .map((k) => text(k, 80)).filter(Boolean).slice(0, TABLE_MAX_KOLONNER)
+    if (!columns.length) return null
+    const rows = (Array.isArray(raw.rows) ? raw.rows : [])
+      .filter((r): r is unknown[] => Array.isArray(r))
+      .map((r) => r.slice(0, columns.length).map((c) => text(c, 300)))
+      .filter((r) => r.length === columns.length)
+      .slice(0, TABLE_MAX_RAEKKER)
+    return rows.length ? { type, title, columns, rows } : null
+  }
+  if (type === 'chart') {
+    const labels = (Array.isArray(raw.labels) ? raw.labels : [])
+      .map((l) => text(l, 40)).slice(0, CHART_MAX_PUNKTER)
+    const series = list(raw.series, CHART_MAX_SERIER).map((s) => ({
+      name: text(s.name, 60),
+      values: (Array.isArray(s.values) ? s.values : [])
+        .map((v) => tal(v)).filter((v): v is number => v !== null).slice(0, CHART_MAX_PUNKTER),
+    })).filter((s) => s.values.length >= 2)
+    if (!series.length) return null
+    const kind = text(raw.kind, 10) === 'bar' ? 'bar' as const : 'line' as const
+    return { type, title, kind, labels, series }
+  }
+  if (type === 'form') {
+    const fields = list(raw.fields, 10).map((x) => {
+      const art = text(x.kind, 20)
+      if (art === 'text') {
+        const t = text(x.text, 600)
+        return t ? { kind: 'text' as const, text: t } : null
+      }
+      const bind = text(x.bind, 40)
+      const label = text(x.label, 120)
+      if (!bind || !label) return null
+      if (art === 'slider') {
+        const min = tal(x.min)
+        const max = tal(x.max)
+        if (min === null || max === null || max <= min) return null
+        const step = tal(x.step)
+        const raaVaerdi = tal(x.value) ?? min
+        return {
+          kind: 'slider' as const, bind, label, min, max,
+          step: step !== null && step > 0 ? step : 1,
+          value: Math.min(max, Math.max(min, raaVaerdi)),
+        }
+      }
+      if (art === 'select') {
+        const options = (Array.isArray(x.options) ? x.options : [])
+          .map((o) => text(o, 80)).filter(Boolean).slice(0, 12)
+        if (options.length < 2) return null
+        const val = text(x.value, 80)
+        return { kind: 'select' as const, bind, label, options, value: options.includes(val) ? val : options[0] ?? '' }
+      }
+      if (art === 'toggle') return { kind: 'toggle' as const, bind, label, value: x.value === true }
+      return null
+    }).filter((x): x is NonNullable<typeof x> => Boolean(x))
+    return fields.some((f) => f.kind !== 'text') ? { type, title, fields } : null
+  }
+  if (type === 'tree') {
+    const items = list(raw.items, 60).map((x) => {
+      const name = text(x.name, 200)
+      if (!name) return null
+      const d = tal(x.depth)
+      const depth = d !== null && d >= 0 && d <= TREE_MAX_DYBDE ? Math.floor(d) : 0
+      return {
+        name, depth, note: text(x.note, 160),
+        kind: text(x.kind, 10) === 'dir' ? 'dir' as const : 'file' as const,
+      }
+    }).filter((x): x is NonNullable<typeof x> => Boolean(x))
+    return items.length ? { type, title, items } : null
+  }
+  if (type === 'diff') {
+    const foer = text(raw.old, 20000)
+    const efter = text(raw.new, 20000)
+    if (!foer && !efter) return null
+    return { type, title, path: text(raw.path, 300), old: foer, new: efter }
+  }
   return null
 }
 
@@ -180,8 +277,10 @@ export function NativeRichBlock({ code }: { code: string }) {
 // fladetype. Foer laa alt i een funktion, hvilket gjorde rekursion umulig.
 function FladeNode({ spec }: { spec: NativeSpec }) {
   const styles = useStyles(makeStyles); const theme = useTheme(); const send = useContext(WidgetPrompt)
-  const [kontrolVaerdier, setKontrolVaerdi] = useState<Record<string, number>>({})
+  const [kontrolVaerdier, setKontrolVaerdi] = useState<Record<string, number | string | boolean>>({})
   const [valgtFane, setValgtFane] = useState(0)
+  // Sortering for `table` (14/11-2026). LOKAL — rører ikke data, sender intet.
+  const [sortering, setSortering] = useState<{ kolonne: number; retning: 1 | -1 } | null>(null)
   // `control` har ingen titel — den er et lille haandtag, ikke et kort.
   const heading = 'title' in spec && spec.title ? <Text style={styles.title}>{spec.title}</Text> : null
   if (spec.type === 'box') return <View accessibilityLabel={spec.title || 'Samling'} style={styles.card}>{heading}
@@ -249,7 +348,12 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
   if (spec.type === 'choices') return <View accessibilityLabel={spec.title || 'Valgmuligheder'} style={[styles.card, styles.cardBox]}>{heading}<View style={styles.wrap}>{spec.options.map((x, i) => <Pressable key={`${x.label}-${i}`} accessibilityRole="button" accessibilityLabel={x.label} accessibilityState={{ disabled: !send }} disabled={!send} onPress={() => send?.(`[fra valgkort] ${x.prompt}`)} style={({ pressed }) => [styles.button, pressed && styles.pressed]}><Text style={styles.buttonText}>{x.label}</Text></Pressable>)}</View></View>
   if (spec.type === 'control') {
     // Sliderens værdi: lokal state først, ellers den værdi fladen kom med.
-    const aktuel = (bind: string, fallback: number) => kontrolVaerdier[bind] ?? fallback
+    const aktuel = (bind: string, fallback: number): number => {
+      // `kontrolVaerdier` baerer nu ogsaa tekst og bool (for `form`). Uden
+      // typetjekket kunne en `select`-vaerdi lande i en slider.
+      const v = kontrolVaerdier[bind]
+      return typeof v === 'number' ? v : fallback
+    }
     const interpolér = (t: string) => {
       const opslag: Record<string, number> = {}
       for (const f of spec.fields) if (f.kind === 'slider') opslag[f.bind] = aktuel(f.bind, f.value)
@@ -279,6 +383,167 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
           <Text style={styles.strong}>{aktuel(f.bind, f.value)}</Text>
         </View>
       ) : <Text key={`t-${i}`} style={styles.body}>{interpolér(f.text)}</Text>)}
+    </View>
+  }
+  if (spec.type === 'table') {
+    // Sorteringen er LOKAL (14/11-2026): et tryk paa en kolonne aendrer kun
+    // raekkefoelgen her. Det er forskellen til en GFM-tabel, og det koster
+    // nul modelkald.
+    const raekker = sortering
+      ? [...spec.rows].sort((a, b) => {
+        const x = a[sortering.kolonne] ?? ''
+        const y = b[sortering.kolonne] ?? ''
+        const nx = Number(x.replace(',', '.'))
+        const ny = Number(y.replace(',', '.'))
+        const beggeTal = x.trim() !== '' && y.trim() !== ''
+          && Number.isFinite(nx) && Number.isFinite(ny)
+        const cmp = beggeTal ? nx - ny : x.localeCompare(y, 'da')
+        return cmp * sortering.retning
+      })
+      : spec.rows
+    return <View accessibilityLabel={spec.title || 'Tabel'} style={styles.card}>{heading}
+      <ScrollView horizontal showsHorizontalScrollIndicator>
+        <View>
+          <View style={styles.tableRow}>
+            {spec.columns.map((k, i) => <Pressable key={`${k}-${i}`} accessibilityRole="button"
+              accessibilityLabel={`Sortér efter ${k}`}
+              onPress={() => setSortering((forrige) => forrige?.kolonne === i
+                ? { kolonne: i, retning: forrige.retning === 1 ? -1 : 1 }
+                : { kolonne: i, retning: 1 })}
+              style={styles.tabelHovedCelle}>
+              <Text style={styles.rowHead}>{k}{sortering?.kolonne === i ? (sortering.retning === 1 ? ' ▲' : ' ▼') : ''}</Text>
+            </Pressable>)}
+          </View>
+          {raekker.map((r, i) => <View key={i} style={styles.tableRow}>
+            {r.map((c, j) => <Text key={j} style={styles.cell}>{c}</Text>)}
+          </View>)}
+        </View>
+      </ScrollView>
+    </View>
+  }
+  if (spec.type === 'chart') {
+    // Inline SVG, intet vaerktoejskald. Skalaen regnes fra data, saa en serie
+    // der kun aendrer sig lidt stadig fylder hele hoejden.
+    const alle = spec.series.flatMap((s) => s.values)
+    const min = Math.min(...alle); const maks = Math.max(...alle)
+    const spaend = maks - min || 1
+    const B = 320, H = 120, P = 8
+    const antal = Math.max(...spec.series.map((s) => s.values.length))
+    const px = (i: number) => antal <= 1 ? B / 2 : P + (i / (antal - 1)) * (B - 2 * P)
+    const py = (v: number) => H - P - ((v - min) / spaend) * (H - 2 * P)
+    const bjBredde = (B - 2 * P) / Math.max(1, antal)
+    const perSerie = bjBredde / spec.series.length
+    return <View accessibilityLabel={spec.title || 'Graf'} style={styles.card}>{heading}
+      <Svg viewBox={`0 0 ${B} ${H}`} width="100%" height={H}>
+        <Line x1={P} y1={H - P} x2={B - P} y2={H - P} stroke={theme.color.line} strokeWidth={1} />
+        {spec.series.map((s, si) => s.values.length < 2 ? null : spec.kind === 'bar'
+          ? s.values.map((v, i) => <SvgRect key={`${si}-${i}`} fill={theme.color.accent} opacity={1 - si * 0.22}
+              x={P + i * bjBredde + si * perSerie + perSerie * 0.1}
+              y={py(v)} width={Math.max(1, perSerie * 0.8)} height={Math.max(0, H - P - py(v))} />
+          )
+          : <Polyline key={si} fill="none" stroke={theme.color.accent} opacity={1 - si * 0.22}
+              strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"
+              points={s.values.map((v, i) => `${px(i)},${py(v)}`).join(' ')} />
+        )}
+      </Svg>
+      <View style={styles.wrap}>{spec.series.map((s, i) => (
+        <Text key={`${s.name}-${i}`} style={styles.muted}>{s.name || `Serie ${i + 1}`}</Text>
+      ))}</View>
+    </View>
+  }
+  if (spec.type === 'form') {
+    // Ingen gate her: mobilen har kun chat-visning (`MessageBubble`), ingen
+    // code mode — praecis som `control`, der heller ikke er gatet her.
+    const talV = (bind: string, fallback: number): number => {
+      const v = kontrolVaerdier[bind]
+      return typeof v === 'number' ? v : fallback
+    }
+    const tekstV = (bind: string, fallback: string): string => {
+      const v = kontrolVaerdier[bind]
+      return typeof v === 'string' ? v : fallback
+    }
+    const boolV = (bind: string, fallback: boolean): boolean => {
+      const v = kontrolVaerdier[bind]
+      return typeof v === 'boolean' ? v : fallback
+    }
+    const interpolér = (s: string) => s.replace(/\{(\w+)\}/g, (m, k) => {
+      const v = kontrolVaerdier[k]
+      return v === undefined ? m : String(v)
+    })
+    return <View accessibilityLabel={spec.title || 'Formular'} style={styles.card}>{heading}
+      <View style={styles.controlFelter}>
+        {spec.fields.map((f, i) => {
+          if (f.kind === 'text') return <Text key={`t-${i}`} style={styles.body}>{interpolér(f.text)}</Text>
+          if (f.kind === 'slider') {
+            // Samme diskrete trykfelter som `control` — husets moenster for
+            // justering uden modelkald.
+            const nu = talV(f.bind, f.value)
+            const trin: number[] = []
+            for (let v = f.min; v <= f.max && trin.length < 12; v += f.step) trin.push(v)
+            return <View key={`${f.bind}-${i}`} style={styles.controlFelt}>
+              <Text style={styles.muted}>{f.label}</Text>
+              <View style={styles.controlSkinne}>{trin.map((vaerdi) => (
+                <Pressable key={`${f.bind}-${vaerdi}`} accessibilityRole="adjustable"
+                  accessibilityLabel={`${f.label}: ${vaerdi}`} accessibilityState={{ selected: vaerdi === nu }}
+                  onPress={() => setKontrolVaerdi((forrige) => ({ ...forrige, [f.bind]: vaerdi }))}
+                  style={[styles.controlTrin, vaerdi === nu && styles.controlTrinValgt]}>
+                  <Text style={[styles.controlTrinTekst, vaerdi === nu && styles.controlTrinTekstValgt]}>{vaerdi}</Text>
+                </Pressable>
+              ))}</View>
+            </View>
+          }
+          if (f.kind === 'select') {
+            const nu = tekstV(f.bind, f.value)
+            return <View key={`${f.bind}-${i}`} style={styles.controlFelt}>
+              <Text style={styles.muted}>{f.label}</Text>
+              <View style={styles.controlSkinne}>{f.options.map((o) => (
+                <Pressable key={o} accessibilityRole="radio" accessibilityLabel={o}
+                  accessibilityState={{ selected: o === nu }}
+                  onPress={() => setKontrolVaerdi((forrige) => ({ ...forrige, [f.bind]: o }))}
+                  style={[styles.controlTrin, o === nu && styles.controlTrinValgt]}>
+                  <Text style={[styles.controlTrinTekst, o === nu && styles.controlTrinTekstValgt]}>{o}</Text>
+                </Pressable>
+              ))}</View>
+            </View>
+          }
+          const til = boolV(f.bind, f.value)
+          return <Pressable key={`${f.bind}-${i}`} accessibilityRole="switch" accessibilityLabel={f.label}
+            accessibilityState={{ checked: til }}
+            onPress={() => setKontrolVaerdi((forrige) => ({ ...forrige, [f.bind]: !til }))}
+            style={[styles.controlTrin, til && styles.controlTrinValgt]}>
+            <Text style={[styles.controlTrinTekst, til && styles.controlTrinTekstValgt]}>{f.label}</Text>
+          </Pressable>
+        })}
+      </View>
+    </View>
+  }
+  if (spec.type === 'tree') {
+    return <View accessibilityLabel={spec.title || 'Struktur'} style={styles.card}>{heading}
+      {spec.items.map((x, i) => <View key={`${x.name}-${i}`} style={[styles.treeItem, { paddingLeft: x.depth * 16 }]}>
+        <Text style={x.kind === 'dir' ? styles.treeDir : styles.treeNavn}>
+          {x.name}{x.kind === 'dir' ? '/' : ''}
+        </Text>
+        {x.note ? <Text style={styles.muted}>{x.note}</Text> : null}
+      </View>)}
+    </View>
+  }
+  if (spec.type === 'diff') {
+    // Samme `lineDiff` som desk — filen er kopieret, saa diffen ser ens ud.
+    const linjer = lineDiff(spec.old, spec.new)
+    const adds = linjer.filter((l) => l.type === 'add').length
+    const dels = linjer.filter((l) => l.type === 'del').length
+    return <View accessibilityLabel={spec.title || 'Ændring'} style={styles.card}>{heading}
+      <View style={styles.diffHoved}>
+        {spec.path ? <Text style={styles.codeSti}>{spec.path}</Text> : null}
+        <Text style={styles.muted}>+{adds} −{dels}</Text>
+      </View>
+      <View style={styles.codeKasse}>
+        {linjer.map((l, i) => <View key={i} style={[styles.diffLinje,
+          l.type === 'add' && styles.diffAdd, l.type === 'del' && styles.diffDel]}>
+          <Text style={styles.codeNr}>{l.type === 'add' ? '+' : l.type === 'del' ? '−' : ' '}</Text>
+          <Text style={styles.codeTekst}>{l.text || ' '}</Text>
+        </View>)}
+      </View>
     </View>
   }
   const q = spec.latitude !== undefined && spec.longitude !== undefined ? `${spec.latitude},${spec.longitude}` : spec.address
@@ -336,4 +601,13 @@ const makeStyles = (t: Theme) => StyleSheet.create({
   tabTekst: { color: t.color.fg2, fontSize: 13 },
   tabTekstAktiv: { color: t.color.fg1, fontWeight: '700' },
   tabsIndhold: { gap: t.spacing.sm },
+  // Anden boelge (14/11-2026): table · chart · form · tree · diff
+  tabelHovedCelle: { justifyContent: 'center', paddingHorizontal: t.spacing.sm, paddingVertical: 6, backgroundColor: t.color.bg1 },
+  treeItem: { flexDirection: 'row', alignItems: 'baseline', gap: 8, paddingVertical: 2 },
+  treeNavn: { color: t.color.fg2, fontFamily: 'monospace', fontSize: 13 },
+  treeDir: { color: t.color.fg1, fontFamily: 'monospace', fontSize: 13, fontWeight: '700' },
+  diffHoved: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: 8 },
+  diffLinje: { flexDirection: 'row', gap: 10, paddingHorizontal: t.spacing.sm },
+  diffAdd: { backgroundColor: t.color.bg2 },
+  diffDel: { backgroundColor: t.color.bg0 },
 })

@@ -50043,7 +50043,7 @@
       ]
     },
     "visible_runs": {
-      "digest": "f1:80:43:3f:3a:7b:f3:28:5a:7e:c7:ee:4b:8b:30:98:c9:1d:ac:07:d1:76:fc:a7:1a:60:75:75:a5:e9:4f:05",
+      "digest": "50:04:ae:74:2c:9d:b6:58:f4:ad:3e:9c:14:e0:4f:ea:94:a3:cf:31:64:7a:af:7c:2b:d9:86:69:40:6e:83:9c",
       "schema": {
         "columns": [
           {
@@ -50155,6 +50155,14 @@
             "type": "TEXT",
             "nullable": true,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "tool_scope",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },

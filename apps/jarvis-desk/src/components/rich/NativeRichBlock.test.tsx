@@ -83,6 +83,71 @@ describe('NativeRichBlock', () => {
     expect(container.querySelector('.native-control')).toBeNull()
   })
 
+  // `box` (14/11-2026): en flade der bærer børn. Den ÆGTE test er ikke at den
+  // ser rigtig ud, men at en tur med en nestet flade ikke koster ét eneste
+  // modelkald: hverken `send` (WidgetPrompt) eller netværket må røres.
+  const box = (children: unknown[], title = '') => JSON.stringify({ type: 'box', title, children })
+  const callout = { type: 'callout', title: 'Barn', body: 'Indre tekst' }
+  const dyb = (n: number): Record<string, unknown> =>
+    n <= 1 ? callout : { type: 'box', title: `niveau${n}`, children: [dyb(n - 1)] }
+
+  it('GUARD: en nestet flade koster nul modelkald', () => {
+    const send = vi.fn()
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() => Promise.reject(new Error('intet netværk')))
+    try {
+      render(<FladeKontrolContext.Provider value><WidgetPrompt.Provider value={send}>
+        <NativeRichBlock code={box([
+          callout,
+          { type: 'box', title: 'indre', children: [
+            { type: 'control', title: 'K', fields: [slider, { kind: 'text', text: 'Du har valgt {timer} timer.' }] },
+          ] },
+        ], 'Ydre')} />
+      </WidgetPrompt.Provider></FladeKontrolContext.Provider>)
+      expect(screen.getByText('Indre tekst')).toBeInTheDocument()
+      // Slideren to lag nede rykker lokalt og ændrer barnets tekst.
+      fireEvent.change(screen.getByRole('slider'), { target: { value: '15' } })
+      expect(screen.getByText('Du har valgt 15 timer.')).toBeInTheDocument()
+      expect(send).not.toHaveBeenCalled()
+      expect(fetchSpy).not.toHaveBeenCalled()
+    } finally {
+      fetchSpy.mockRestore()
+    }
+  })
+
+  it('box med børn renderer dem rekursivt', () => {
+    render(<NativeRichBlock code={box([callout, { type: 'box', title: 'Indre', children: [callout] }], 'Ydre')} />)
+    expect(screen.getByLabelText('Ydre')).toBeInTheDocument()
+    expect(screen.getByLabelText('Indre')).toBeInTheDocument()
+    expect(screen.getAllByText('Indre tekst')).toHaveLength(2)
+  })
+
+  it('box med ukendt barnetype: barnet filtreres væk, boxen vises', () => {
+    render(<NativeRichBlock code={box([{ type: 'chart', title: 'X' }, 'streng', 42, callout], 'Ydre')} />)
+    expect(screen.getByLabelText('Ydre')).toBeInTheDocument()
+    expect(screen.getByText('Indre tekst')).toBeInTheDocument()
+    // Kun ukendte børn = intet at bære = ingen flade (ligesom stats uden items).
+    expect(parseNativeRichSpec(box([{ type: 'chart' }]))).toBeNull()
+  })
+
+  it('box i dybde 4 afvises (dybde 3 er det yderste)', () => {
+    expect(parseNativeRichSpec(JSON.stringify(dyb(4)))?.type).toBe('box')
+    // Fire bokse i hinanden: den inderste (dybde 4) afvises, og de tomme
+    // forfædre falder med den — der er ingen børn tilbage at bære.
+    const fire = { type: 'box', children: [{ type: 'box', children: [{ type: 'box', children: [{ type: 'box', children: [callout] }] }] }] }
+    expect(parseNativeRichSpec(JSON.stringify(fire))).toBeNull()
+    // Men et søskendebarn ved siden af den afviste bliver stående.
+    const med = { type: 'box', title: 'Rod', children: [callout, { type: 'box', children: [{ type: 'box', children: [{ type: 'box', children: [callout] }] }] }] }
+    const spec = parseNativeRichSpec(JSON.stringify(med))
+    expect(spec?.type === 'box' && spec.children).toHaveLength(1)
+  })
+
+  it('uafsluttet JSON i et barn kaster ikke', () => {
+    const halv = box([callout]).slice(0, -12)
+    expect(() => parseNativeRichSpec(halv)).not.toThrow()
+    expect(parseNativeRichSpec(halv)).toBeNull()
+    expect(() => render(<NativeRichBlock code={halv} />)).not.toThrow()
+  })
+
   // Målt 24/10-2026: boksen fik alle seks flader til at skære sig ud af
   // brødteksten. Data (comparison/timeline/stats) skal ligge i tekstens
   // materiale; kun objekter (callout/choices/location) skal skille sig ud.

@@ -94,10 +94,16 @@ DEFAULT_MODEL = _konfigureret_model()
 
 #: De tool-scopes der faktisk forekommer i drift, og som derfor hver især har
 #: sit eget cachede præfiks. Prompten indledes med en mode-orientering der
-#: skifter med scopet, så de to varianter deler IKKE præfiks — hver skal varmes
-#: for sig. ``""`` (ældre klient uden mode-signal) udelades med vilje: desk
-#: sender altid et mode, så den variant koster kun penge at varme.
-_WARM_SCOPES: tuple[str, ...] = ("chat", "code")
+#: skifter med scopet, så varianterne deler IKKE præfiks — hver skal varmes
+#: for sig.
+#:
+#: ``""`` (klient uden mode-signal) STOD UDELADT med begrundelsen «desk sender
+#: altid et mode». Den antagelse er målt falsk 14/11-2026: 136 af 899
+#: visible-kald i døgnet (15 %) kørte den tomme variant, fordi
+#: ``udled_tool_scope()`` giver ``""`` når klienten udelader mode — og de ture
+#: ramte 19-23 % hit, mens de øvrige ramte 99 %. Varianten er 14.384 tegn
+#: kortere end chat-varianten, så den kan ikke dækkes af den.
+_WARM_SCOPES: tuple[str, ...] = ("chat", "code", "")
 DEFAULT_MAX_TOKENS = 10
 DEFAULT_TEMPERATURE = 0.0
 MIN_INTERVAL_SECONDS = 60  # mindst 1 minut mellem kald

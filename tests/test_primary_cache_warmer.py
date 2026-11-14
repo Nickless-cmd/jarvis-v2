@@ -457,3 +457,64 @@ def test_varmeren_falder_tilbage_naar_intet_er_laast(monkeypatch):
     out = w._fetch_warmer_tools(session_id="en-session")
     navne = {(t.get("function") or {}).get("name") for t in out or []}
     assert navne == {"fra_kataloget"}, "faldt ikke tilbage til pruneren"
+
+
+def test_den_tomme_scope_varmes_ogsaa():
+    """REGRESSION (målt 14/11-2026): ``""`` var udeladt af ``_WARM_SCOPES`` med
+    begrundelsen «desk sender altid et mode».
+
+    Den antagelse er målt falsk: 136 af 899 visible-kald i døgnet (15 %) kørte
+    den tomme variant, fordi ``udled_tool_scope()`` giver ``""`` når klienten
+    udelader mode. De ture ramte 19-23 % hit mens de øvrige ramte 99 % — og
+    varmeren havde aldrig lagt den variant, fordi den er 14.384 tegn kortere
+    end chat-varianten og derfor ikke kan dækkes af den.
+    """
+    import scripts.primary_cache_warmer as w
+
+    assert "" in w._WARM_SCOPES, (
+        "den tomme scope-variant varmes ikke — men den rammer ~15 % af turene, "
+        "når klienten udelader mode-signal")
+    assert "chat" in w._WARM_SCOPES
+
+
+def test_varmer_prefixet_er_den_besked_turen_faktisk_sender():
+    """Vagten måler mod det der SENDES, ikke mod en funktion.
+
+    Det er hele fejlklassen: `TestCachePrefixInvariant` sammenlignede to
+    funktioner med hinanden og var grøn i månedsvis mens varmeren byggede en
+    anden prompt end turen. Her bygges begge sider ad den vej der faktisk
+    bruges — varmerens `_fetch_system_prompt` mod
+    `_build_visible_chat_messages_for_github`, som er den der leverer
+    systembeskeden til provideren.
+
+    ``code`` er udeladt med vilje og med tal: varmeren bygger 71.729 tegn,
+    turen sender 71.606 — 123 tegn for meget, en sektion code-varianten ikke
+    har. Det er en egen divergens (code er ~7 % af turene) og skal løses for
+    sig; en vagt her ville ellers melde den som denne fejls skyld.
+    """
+    from core.tools.tool_scoping import reset_tool_scope, set_tool_scope
+    from core.services.visible_model import _build_visible_chat_messages_for_github
+    import scripts.primary_cache_warmer as w
+
+    session_id = "chat-1fa646106874479db4c6c4b8b8868f59"
+    for scope in ("chat", ""):
+        token = set_tool_scope(scope)
+        try:
+            warm = w._fetch_system_prompt("bjorn", tool_scope=scope)
+            msgs = _build_visible_chat_messages_for_github(
+                "hej", session_id=session_id,
+                provider="deepseek", model=w.DEFAULT_MODEL)
+            sendt = [m for m in msgs if m.get("role") == "system"][0]["content"]
+        finally:
+            reset_tool_scope(token)
+
+        assert warm, f"varmeren byggede intet for scope={scope!r}"
+        if warm == sendt:
+            continue
+        i = 0
+        while i < min(len(warm), len(sendt)) and warm[i] == sendt[i]:
+            i += 1
+        raise AssertionError(
+            f"scope={scope!r}: varmer ({len(warm)}) != sendt ({len(sendt)}), "
+            f"divergerer ved tegn {i}: varmer={warm[max(0,i-40):i+60]!r} "
+            f"sendt={sendt[max(0,i-40):i+60]!r}")

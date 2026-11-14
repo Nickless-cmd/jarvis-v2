@@ -2629,7 +2629,7 @@ Generated from source. 10192/18719 functions/methods documented (54%). The list 
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `extract_tiktok_cookies` (L39)
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `find_firefox_cookie_db` (L28)
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `main` (L70)
-- `scripts/primary_cache_warmer.py` :: `main` (L743)
+- `scripts/primary_cache_warmer.py` :: `main` (L749)
 - `scripts/prompt_dump_readable.py` :: `build` (L97)
 - `scripts/prompt_dump_readable.py` :: `main` (L253)
 - `scripts/prompt_dump_split.py` :: `build_markdown` (L51)

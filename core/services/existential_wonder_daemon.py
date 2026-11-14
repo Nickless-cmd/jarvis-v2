@@ -178,11 +178,55 @@ def get_latest_wonder() -> str:
     return _latest_wonder
 
 
+def _seneste_persisterede_wonder() -> tuple[str, str]:
+    """Seneste undren som den ligger i databasen — uafhængig af processens levetid.
+
+    MÅLT 14/11-2026: ``_latest_wonder`` og ``_last_tick_at`` er modul-state. En
+    genstart nulstiller dem, så surfacen svarede ``latest_wonder: ""`` og
+    ``last_generated_at: ""`` selv om der lå undren fra i går i
+    ``private_brain_records``. Konsekvensen var at signalet var 0 PRÆCIS når
+    nogen kiggede — og med 170 runtime-genstarter siden 7/11 var det den
+    normale tilstand, ikke undtagelsen.
+
+    Det ramte også dommerens alders-vægtning: uden tidsstempel faldt
+    ``_alder_vaegt`` tilbage til den binære regel, så en undren fra i går talte
+    som en frisk. Undren ER persisteret — det var kun læsningen der pegede på
+    den forkerte kilde.
+
+    Returnerer ``("", "")`` når opslaget fejler; en læsefejl må ikke vælte
+    prompt-bygningen, og tomt er det ærlige svar uden data.
+    """
+    try:
+        from core.runtime.db import list_private_brain_records
+
+        poster = list_private_brain_records(record_type="existential-wonder", limit=1)
+    except Exception:  # en læsefejl giver tomt svar, ikke en væltet prompt-bygning
+        return "", ""
+    if not poster:
+        return "", ""
+    post = poster[0]
+    return (
+        str(post.get("summary") or "").strip(),
+        str(post.get("created_at") or "").strip(),
+    )
+
+
 def build_existential_wonder_surface() -> dict:
+    latest = _latest_wonder
+    generated_at = _last_tick_at.isoformat() if _last_tick_at else ""
+    # Efter en genstart er begge tomme mens undren ligger i databasen. Vi læser
+    # den persisterede post som fallback — ellers er signalet 0 hver gang
+    # processen er yngre end den seneste undren.
+    if not latest or not generated_at:
+        db_wonder, db_at = _seneste_persisterede_wonder()
+        if not latest:
+            latest = db_wonder
+        if not generated_at:
+            generated_at = db_at
     return {
-        "latest_wonder": _latest_wonder,
+        "latest_wonder": latest,
         "wonder_buffer": _wonder_buffer[:_BUFFER_MAX],
-        "last_generated_at": _last_tick_at.isoformat() if _last_tick_at else "",
+        "last_generated_at": generated_at,
         "open_count": len(open_wonders(limit=50)),
     }
 

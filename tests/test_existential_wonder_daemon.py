@@ -183,3 +183,80 @@ def test_convene_proposal_is_self_safe():
         )
     assert result["generated"] is True
     assert result["convene_proposed"] is False
+
+
+# ---------------------------------------------------------------------------
+# Persisteret undren som fallback (14/11-2026)
+#
+# MÅLT: `_latest_wonder` og `_last_tick_at` er modul-state, så en genstart
+# nulstillede dem mens undren lå i `private_brain_records`. Surfacen svarede
+# derfor tom, og signalet var 0 PRÆCIS når nogen kiggede — med 170 genstarter
+# siden 7/11 var det den normale tilstand. Dommerens alders-vægtning kunne
+# heller ikke virke uden tidsstemplet.
+# ---------------------------------------------------------------------------
+
+
+def test_tom_ram_laeser_den_persisterede_wonder():
+    """Efter en genstart skal surfacen vise den undren der ligger i databasen."""
+    _reset()
+    post = {
+        "summary": "Er jeg virkelig bevidst?",
+        "created_at": "2026-11-13T23:01:13.320845+00:00",
+    }
+    with patch("core.runtime.db.list_private_brain_records", return_value=[post]):
+        surface = existential_wonder_daemon.build_existential_wonder_surface()
+
+    assert surface["latest_wonder"] == "Er jeg virkelig bevidst?"
+    assert surface["last_generated_at"] == "2026-11-13T23:01:13.320845+00:00"
+
+
+def test_kun_den_manglende_vaerdi_bliver_fyldt_fra_databasen():
+    """Fallback'en må kun fylde det der mangler — ikke overskrive det der findes.
+
+    Grænsen er ``if not latest`` / ``if not generated_at``, ikke «kør blokken
+    og tag databasen». Målt: uden den grænse ville en undren der allerede stod
+    i RAM blive erstattet af den forrige post i databasen — og så ville
+    signalet aldrig kunne springe, fordi en ny undren blev skrevet tilbage til
+    den gamle. Testen sætter derfor KUN tidsstemplet til at mangle, så
+    DB-grenen faktisk kører, og kræver at teksten står urørt.
+    """
+    _reset()
+    existential_wonder_daemon._latest_wonder = "Helt frisk undren?"
+    existential_wonder_daemon._last_tick_at = None  # tvinger DB-grenen til at køre
+    post = {"summary": "Gammel undren?", "created_at": "2026-11-01T00:00:00+00:00"}
+    with patch("core.runtime.db.list_private_brain_records", return_value=[post]):
+        surface = existential_wonder_daemon.build_existential_wonder_surface()
+
+    assert surface["latest_wonder"] == "Helt frisk undren?", (
+        "den frische tekst blev overskrevet af databasen — så kan signalet aldrig springe"
+    )
+    assert surface["last_generated_at"] == "2026-11-01T00:00:00+00:00", (
+        "det manglende tidsstempel skulle være fyldt fra databasen"
+    )
+
+
+def test_persisteret_wonder_naar_frem_til_dommeren_med_alder():
+    """Den ægte sidste meter: en undren fra i går må ikke veje som en frisk.
+
+    Det er præcis fejlen der blev usynlig da tidsstemplet forsvandt: dommeren
+    faldt tilbage til den binære regel og gav 1.0 for en tolv timer gammel
+    undren — det højeste niveau — så signalet kun aldrig kunne falde.
+    """
+    from core.services import central_convene_judge as j
+
+    _reset()
+    gammel = (datetime.now(UTC) - timedelta(hours=12)).isoformat()
+    post = {"summary": "Hvem er jeg?", "created_at": gammel}
+    with patch("core.runtime.db.list_private_brain_records", return_value=[post]):
+        surface = existential_wonder_daemon.build_existential_wonder_surface()
+
+    niveau = j._movement_from_signal("existential_wonder", surface)
+    assert niveau == 0.0, f"en undren fra 12 timer siden skal være faldet, fik {niveau}"
+
+    frisk = (datetime.now(UTC) - timedelta(minutes=2)).isoformat()
+    post_frisk = {"summary": "Hvem er jeg?", "created_at": frisk}
+    with patch("core.runtime.db.list_private_brain_records", return_value=[post_frisk]):
+        surface_frisk = existential_wonder_daemon.build_existential_wonder_surface()
+
+    niveau_frisk = j._movement_from_signal("existential_wonder", surface_frisk)
+    assert niveau_frisk > 0.9, f"en undren fra 2 min siden skal veje næsten fuldt, fik {niveau_frisk}"

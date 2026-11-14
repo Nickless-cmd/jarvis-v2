@@ -375,13 +375,19 @@ function parseNodeObj(raw: Json, depth: number): NativeSpec | null {
   if (type === 'maaling-over-tid') {
     const series = list(raw.series, 4).map((x) => {
       const name = text(x.name, 80)
-      const values = Array.isArray(x.points)
-        ? x.points.filter((v): v is number => typeof v === 'number' && Number.isFinite(v)).slice(0, 60)
-        : []
-      return values.length ? { name, values } : null
+      // Guarden erklærer aliaset brugbart ud fra `values` og falder ellers
+      // tilbage til `points`; parseren skal bruge præcis samme rækkefølge.
+      const raekke = Array.isArray(x.values) ? x.values : (Array.isArray(x.points) ? x.points : [])
+      const values = raekke
+        .map((v) => tal(v)).filter((v): v is number => v !== null).slice(0, CHART_MAX_PUNKTER)
+      // Et enkelt punkt tegner ingen udvikling over tid. Derfor følger
+      // aliaset guardens mindst-to-regel frem for chartets tidligere tomme prik.
+      return values.length >= 2 ? { name, values } : null
     }).filter((x): x is NonNullable<typeof x> => Boolean(x))
     if (!series.length) return null
-    const xLabels = Array.isArray(raw.xLabels) ? raw.xLabels.map((v) => text(v, 40)).slice(0, 60) : []
+    const xLabels = Array.isArray(raw.xLabels)
+      ? raw.xLabels.map((v) => text(v, 40)).slice(0, CHART_MAX_PUNKTER)
+      : []
     return { type: 'chart', title: text(raw.title, 200), kind: 'line', labels: xLabels, series }
   }
   if (type === 'beslutningsvalg') {

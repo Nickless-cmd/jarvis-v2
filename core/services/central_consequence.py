@@ -576,6 +576,50 @@ def land_decision(
             conn.commit()
         return out
     except Exception as exc:
+        # (14/11-2026, GPT's tredje indvending — maalt) Et tabt kaploeb er ikke
+        # en fejl. Den unikke indeks paa `source_record_id` afviser den anden
+        # beslutning for samme fund — men den anden traad ER landet, af den
+        # foerste. Foer stod der «create_decision fejlede: UNIQUE constraint
+        # failed» tilbage til kalderen, altsaa en fejl hvor sandheden er «dit
+        # fund blev landet, som denne beslutning». Kalderen ville saa proeve
+        # igen eller melde et tab der ikke fandtes.
+        #
+        # Vi spoerger derfor databasen hvem der vandt, og svarer som den gren
+        # der allerede findes for «fundet er landet».
+        if "UNIQUE constraint failed" in str(exc) and fund_id:
+            try:
+                with _connect() as conn:
+                    _ensure(conn)
+                    vinder = _beslutning_for_fund(conn, fund_id)
+                    if not vinder:
+                        # (14/11-2026, maalt) Vinderen har INDSAT beslutningen
+                        # (det er derfor indeksen faldt), men den har endnu ikke
+                        # opgraderet spor-raekken — saa opslaget gennem
+                        # `central_consequences` svarer None i praecis det
+                        # vindue. Beslutningen selv er allerede committet, saa
+                        # vi slaar den op hvor den ligger.
+                        r = conn.execute(
+                            "SELECT decision_id FROM behavioral_decisions "
+                            "WHERE source_record_id=? LIMIT 1",
+                            (fund_id,),
+                        ).fetchone()
+                        vinder = str(r[0]) if r and r[0] else None
+                if vinder:
+                    logger.info(
+                        "land_decision: %s tabte kaploebet om %s — landet som %s",
+                        cid, fund_id, vinder,
+                    )
+                    out.update({
+                        "applied": False,
+                        "decision_id": vinder,
+                        "reason": "landet af et samtidigt kald",
+                        "already_landed": True,
+                    })
+                    return out
+            except Exception as indre:
+                logger.warning(
+                    "land_decision: kunne ikke laese vinderen for %s: %s", fund_id, indre
+                )
         logger.warning("land_decision: create_decision fejlede for %s: %s", cid, exc)
         out["reason"] = f"create_decision fejlede: {str(exc)[:120]}"
         return out

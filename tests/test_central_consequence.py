@@ -697,3 +697,87 @@ class TestReservationenBliverTilEnLanding:
         assert n == 1, f"genforsøget skrev en ny række i stedet for at opgradere: {n}"
         assert (applied, reason, did) == (1, "bundet", "dec_efter"), (
             f"reservationen blev ikke opgraderet til en landing: {(applied, reason, did)}")
+
+
+class TestKaploebetOmEtFund:
+    """To samtidige kald paa samme fund maa ikke give to beslutninger.
+
+    (14/11-2026, GPT's tredje indvending — maalt i drift) `create_decision`
+    dedupliker paa direktiv-TEKST med et SELECT foer INSERT. Det er et
+    check-og-skriv, saa to traade kan begge passere den. Maalt paa en kopi af
+    den levende base: to traade, samme fund-id → TO beslutninger, mens
+    `central_consequences` kun havde ÉN raekke. Den anden beslutning var en
+    foraeldroes forpligtelse — den findes, den overlever, og intet fund peger
+    paa den.
+
+    `central_consequences` havde allerede en unik indeks paa `fund_id`, men den
+    beskyttede SPORET, ikke BESLUTNINGEN. Vaernet skal staa der hvor raekken
+    bliver til.
+    """
+
+    def test_den_anden_beslutning_afvises_af_databasen(self, base):
+        """Indeksen skal vaere haandhaevet i skemaet, ikke kun i koden."""
+        with sqlite3.connect(base) as c:
+            cc._ensure(c)
+            # db_decisions' eget skema — det er DER beslutningen bliver til.
+            from core.runtime import db_decisions as dbd
+            dbd._ensure_tables(c)
+            indekser = {
+                str(r[0]) for r in c.execute(
+                    "SELECT name FROM sqlite_master WHERE type='index' "
+                    "AND tbl_name='behavioral_decisions'")
+            }
+        assert "idx_decisions_source_record" in indekser, (
+            f"den unikke indeks paa source_record_id mangler: {indekser}")
+
+    def test_to_beslutninger_paa_samme_fund_afvises(self, base):
+        """Den konkrete dublet skal kollidere — ikke blot vaere usandsynlig."""
+        from core.runtime import db_decisions as dbd
+        with sqlite3.connect(base) as c:
+            dbd._ensure_tables(c)
+            c.execute(
+                "INSERT INTO behavioral_decisions (decision_id, directive, status,"
+                " priority, created_at, updated_at, source_record_id)"
+                " VALUES ('dec_a','X','active',50,'2026-11-14','2026-11-14','fund-1')")
+            c.commit()
+            with pytest.raises(sqlite3.IntegrityError):
+                c.execute(
+                    "INSERT INTO behavioral_decisions (decision_id, directive, status,"
+                    " priority, created_at, updated_at, source_record_id)"
+                    " VALUES ('dec_b','Y','active',50,'2026-11-14','2026-11-14','fund-1')")
+
+    def test_tabt_kaploeb_svarer_landet_ikke_fejl(self, base, monkeypatch):
+        """Den tabende traad skal faa et svar, ikke en fejl.
+
+        Foer stod der «create_decision fejlede: UNIQUE constraint failed»
+        tilbage — altsaa en fejl hvor sandheden er «dit fund blev landet, som
+        denne beslutning». Kalderen ville proeve igen eller melde et tab der
+        ikke fandtes.
+        """
+        from core.runtime import db_decisions as dbd
+        with sqlite3.connect(base) as c:
+            dbd._ensure_tables(c)
+            # Vinderen har allerede indsat sin beslutning, men har endnu ikke
+            # opgraderet spor-raekken — praecis det vindue racen rammer.
+            c.execute(
+                "INSERT INTO behavioral_decisions (decision_id, directive, status,"
+                " priority, created_at, updated_at, source_record_id)"
+                " VALUES ('dec_vinder','X','active',50,'2026-11-14','2026-11-14','fund-kaploeb')")
+            c.commit()
+
+        def _kolliderer(**kw):
+            raise sqlite3.IntegrityError(
+                "UNIQUE constraint failed: behavioral_decisions.source_record_id")
+
+        monkeypatch.setattr(
+            "core.services.behavioral_decisions.create_decision", _kolliderer)
+        r = cc.land_decision(
+            "relational", "Kaploeb om et fund", subject="relational:kaploeb",
+            evidence="fald=0.8", evidence_source="test", fund_id="fund-kaploeb")
+
+        assert r["applied"] is False, r
+        assert r.get("already_landed") is True, (
+            f"et tabt kaploeb blev meldt som fejl i stedet for «landet»: {r}")
+        assert r["decision_id"] == "dec_vinder", (
+            f"svaret skal pege paa den beslutning der VANDT: {r}")
+        assert "fejlede" not in r["reason"], r

@@ -78,6 +78,27 @@ def _ensure_tables(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_decisions_status "
         "ON behavioral_decisions (status, priority DESC, updated_at DESC)"
     )
+    # (14/11-2026, GPT's tredje indvending — maalt) Et FUND maa kun blive ÉN
+    # beslutning. `create_decision` dedupliker paa direktiv-TEKST med et SELECT
+    # foer INSERT, og det er et check-og-skriv: to samtidige kald med samme
+    # `source_record_id` kan begge passere den og indsaette hver sin raekke.
+    # Maalt paa en kopi af den levende base: to traade, samme fund-id → TO
+    # beslutninger (dec_329c… og dec_c722…), mens `central_consequences` kun
+    # havde ÉN raekke. Den anden beslutning var en foraeldroes forpligtelse:
+    # den findes, den overlever, og intet fund peger paa den.
+    #
+    # `central_consequences` havde allerede en unik indeks paa `fund_id` — men
+    # den beskyttede SPORET, ikke BESLUTNINGEN. Et vaern skal staa der hvor
+    # raekken bliver til, ellers er det dekoration.
+    #
+    # Partiel, fordi langt de fleste beslutninger ikke har et fund (1 af 398 i
+    # drift pr. 14/11-2026): en fuld unik indeks ville tillade praecis ÉN
+    # beslutning uden `source_record_id` i hele tabellen.
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_decisions_source_record "
+        "ON behavioral_decisions (source_record_id) "
+        "WHERE source_record_id IS NOT NULL AND source_record_id != ''"
+    )
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS behavioral_decision_reviews (

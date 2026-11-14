@@ -140,6 +140,15 @@ def _liste(vaerdi: object, maks: int) -> list[dict]:
     return [x for x in vaerdi if isinstance(x, dict) and not isinstance(x, list)][:maks]
 
 
+def _endeligt_tal(vaerdi: object) -> bool:
+    """Et tal vi kan regne med. ``NaN`` og ``Infinity`` ER tal for Python, men
+    ikke for en slider: ``value={NaN}`` giver et håndtag der står tomt uden at
+    nogen fejl bliver rejst nogen steder."""
+    if not isinstance(vaerdi, (int, float)) or isinstance(vaerdi, bool):
+        return False
+    return vaerdi == vaerdi and abs(vaerdi) != float("inf")
+
+
 def _diagnosticér(data: dict) -> tuple[str, list[str]]:
     """Afgør om rendereren viser blokken. Returnerer (niveau, fejl).
 
@@ -232,6 +241,57 @@ def _diagnosticér(data: dict) -> tuple[str, list[str]]:
             return "død", fejl or ["choices har ingen brugbare options"]
         if len(alle) > 6:
             fejl.append(f"choices har {len(alle)} options, kun 6 vises")
+        return ("delvis" if fejl else "ok"), fejl
+
+    if typ == "control":
+        # (14/11-2026) Den FØRSTE flade med lokal state: en slider der rykker
+        # uden at et modelkald går ud. Grenen her er ikke kosmetisk.
+        #
+        # Uden den faldt typen til «ukendt flade-type» nedenfor, og dét er ikke
+        # en harmløs degradering: `visible_runs.py` kæder fejl -> `korriger_flader`
+        # (ET HELT MODELKALD) -> normalisér. Korrektionsmodellen ville omskrive
+        # en gyldig slider til `choices` — teknisk gyldigt, derfor accepteret.
+        # Funktionen forsvinder, fladen ser rigtig ud, og intet i loggen siger
+        # det. Det er præcis den slags tavse tab denne fil findes for at fange.
+        alle = data.get("fields") if isinstance(data.get("fields"), list) else []
+        brugbare = 0
+        # MÅLT 14/11-2026: guarden talte tekstfelter som «brugbare», men BEGGE
+        # renderere kræver mindst én slider (`fields.some(f => f.kind ===
+        # 'slider')`) — uden et `bind` er der ingen lokal state at justere.
+        # En flade med kun tekst blev derfor erklæret «ok» her og returneret
+        # som `null` i klienten: grøn vagt, død flade. Guarden skal måle det
+        # samme som rendereren, ellers vogter den ingenting.
+        har_slider = False
+        for i, x in enumerate(alle):
+            if not isinstance(x, dict):
+                fejl.append(f"control felt {i} er ikke et objekt")
+                continue
+            if _tekst(x.get("kind")) == "text":
+                if _tekst(x.get("text")):
+                    brugbare += 1
+                else:
+                    fejl.append(f"control felt {i} er text uden text")
+                continue
+            bind = _tekst(x.get("bind"))
+            label = _tekst(x.get("label"))
+            min_v, max_v = x.get("min"), x.get("max")
+            if not bind:
+                fejl.append(f"control felt {i} mangler bind")
+            elif not label:
+                fejl.append(f"control felt {i} mangler label")
+            elif not (_endeligt_tal(min_v) and _endeligt_tal(max_v)) or max_v <= min_v:
+                # Et ulovligt interval er en død slider: håndtaget kan ikke
+                # trækkes, og `value={NaN}` giver en tavs tom kontrol.
+                fejl.append(f"control felt {i} har ulovligt interval")
+            else:
+                brugbare += 1
+                har_slider = True
+        if not brugbare:
+            return "død", fejl or ["control har ingen brugbare felter"]
+        if not har_slider:
+            return "død", fejl + ["control har ingen slider — uden bind er der ingen lokal state"]
+        if len(alle) > 8:
+            fejl.append(f"control har {len(alle)} felter, kun 8 vises")
         return ("delvis" if fejl else "ok"), fejl
 
     if typ == "location":

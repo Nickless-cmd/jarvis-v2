@@ -295,3 +295,50 @@ def test_doed_blok_giver_fejl_med_feltnavn() -> None:
     fejl = fejl_i_flader('Prosa.\n\n```jarvis-ui\n{"type":"timeline","title":"T","items":[]}\n```\n')
     assert fejl
     assert "timeline" in fejl[0]
+
+
+def test_control_uden_slider_er_doed_ikke_ok() -> None:
+    """Guarden skal måle det SAMME som rendereren.
+
+    MÅLT 14/11-2026: guarden talte tekstfelter som «brugbare» og erklærede en
+    control med kun tekst for «ok». Begge renderere kræver mindst én slider
+    (`fields.some(f => f.kind === 'slider')`) og returnerer `null` uden den.
+    Resultatet var en grøn vagt over en død flade — brugeren så ingenting, og
+    intet i loggen sagde det. Testen fejler på den gamle kode.
+    """
+    from core.services.jarvis_ui_guard import _diagnosticér
+
+    kun_tekst = {"type": "control", "fields": [{"kind": "text", "text": "hej"}]}
+    niveau, fejl = _diagnosticér(kun_tekst)
+    assert niveau == "død"
+    assert any("slider" in f for f in fejl)
+
+    tom = {"type": "control", "fields": []}
+    assert _diagnosticér(tom)[0] == "død"
+
+
+def test_control_med_slider_er_ok_og_bevarer_bind() -> None:
+    """Den form prompten beder om må ikke degraderes af normaliseringen.
+
+    Uden denne gren faldt typen til «ukendt flade-type», som kæder til et helt
+    modelkald der omskriver slideren til `choices` — funktionen forsvinder
+    lydløst, og fladen ser stadig rigtig ud.
+    """
+    import json
+
+    from core.services.jarvis_ui_guard import _diagnosticér, normalisér
+
+    spec = {
+        "type": "control",
+        "title": "Styrke",
+        "fields": [
+            {"kind": "slider", "bind": "styrke", "label": "Styrke", "min": 0, "max": 10, "step": 1, "value": 5},
+            {"kind": "text", "text": "Værdi: {styrke}"},
+        ],
+    }
+    assert _diagnosticér(spec) == ("ok", [])
+
+    blok = "```jarvis-ui\n" + json.dumps(spec, ensure_ascii=False) + "\n```"
+    ud = normalisér(blok)
+    assert '"control"' in ud
+    assert "styrke" in ud

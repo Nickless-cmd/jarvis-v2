@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
+import { FladeKontrolContext, NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
 import { WidgetPrompt } from './WidgetBlock'
 
 describe('NativeRichBlock', () => {
@@ -32,6 +32,55 @@ describe('NativeRichBlock', () => {
     })} /></WidgetPrompt.Provider>)
     fireEvent.click(screen.getByRole('button', { name: 'Fortsæt' }))
     expect(send).toHaveBeenCalledWith('[fra valgkort] gør det')
+  })
+
+  // `control` (14/11-2026): den FØRSTE flade med lokal state. Det der skal
+  // måles er ikke at den ser rigtig ud — det er at slideren rykker UDEN at et
+  // modelkald går ud. `send` må ikke blive kaldt én eneste gang.
+  const kontrol = (felter: unknown[], title = '') => JSON.stringify({ type: 'control', title, fields: felter })
+  const slider = { kind: 'slider', bind: 'timer', label: 'Timer', min: 1, max: 24, step: 1, value: 8 }
+
+  it('slideren rykker lokalt — nul modelkald', () => {
+    const send = vi.fn()
+    render(<FladeKontrolContext.Provider value><WidgetPrompt.Provider value={send}>
+      <NativeRichBlock code={kontrol([slider, { kind: 'text', text: 'Du har valgt {timer} timer.' }])} />
+    </WidgetPrompt.Provider></FladeKontrolContext.Provider>)
+    const input = screen.getByRole('slider') as HTMLInputElement
+    expect(input.value).toBe('8')
+    fireEvent.change(input, { target: { value: '15' } })
+    expect(input.value).toBe('15')
+    // Det er hele pointen: teksten regnes om lokalt, og der gik intet run ud.
+    expect(screen.getByText('Du har valgt 15 timer.')).toBeInTheDocument()
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('filtrerer felter væk der ikke kan bindes eller har ulovligt interval', () => {
+    // Uden `bind` er der intet at holde state i — feltet ville se interaktivt
+    // ud uden at være det.
+    const udenBind = parseNativeRichSpec(kontrol([{ kind: 'slider', label: 'L', min: 1, max: 2, value: 1 }]))
+    expect(udenBind).toBeNull()
+    // `max <= min` giver et håndtag der ikke kan trækkes.
+    expect(parseNativeRichSpec(kontrol([{ ...slider, min: 10, max: 2 }]))).toBeNull()
+    // Kun tekstfelter er ingen kontrol.
+    expect(parseNativeRichSpec(kontrol([{ kind: 'text', text: 'hej' }]))).toBeNull()
+  })
+
+  it('afviser NaN og Infinity — de ER tal for typeof, men ikke for en slider', () => {
+    // Målt: `typeof NaN === 'number'` slipper igennem en naiv kontrol og giver
+    // `value={NaN}`, altså en tavs tom slider uden fejl nogen steder.
+    expect(parseNativeRichSpec(kontrol([{ ...slider, min: NaN }]))).toBeNull()
+    expect(parseNativeRichSpec(kontrol([{ ...slider, max: Infinity }]))).toBeNull()
+    // En `value` uden for intervallet klem-mes ind i stedet for at kassere.
+    const klemt = parseNativeRichSpec(kontrol([{ ...slider, value: 999 }]))
+    expect(klemt?.type === 'control' && klemt.fields[0]).toMatchObject({ value: 24 })
+  })
+
+  it('er gated: uden chat-flaget vises fladen slet ikke', () => {
+    // `BlocksRenderer` deles med code mode. Default i konteksten er falsk, så
+    // glemmer nogen at sætte flaget, forsvinder fladen frem for at dukke op i
+    // maskinrummet.
+    const { container } = render(<NativeRichBlock code={kontrol([slider])} />)
+    expect(container.querySelector('.native-control')).toBeNull()
   })
 
   // Målt 24/10-2026: boksen fik alle seks flader til at skære sig ud af

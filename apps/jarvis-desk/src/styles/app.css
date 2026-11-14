@@ -904,6 +904,17 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .native-location { display: flex; align-items: flex-start; gap: 11px; }
 .native-location > svg { flex: none; color: var(--accent-text); }
 .native-location button { margin-top: 9px; }
+/* `control` (14/11-2026) — den første flade med LOKAL state. Den er ikke et
+ * kort: den skal kunne læses som en del af teksten og røres uden at noget
+ * sendes afsted. Derfor ingen `native-card` og ingen boks. */
+.native-control-felter { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.native-control-slider { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; }
+.native-control-label { color: var(--fg-2); font-size: 0.94em; }
+.native-control-slider input[type="range"] { grid-column: 1 / -1; width: 100%; margin: 0; accent-color: var(--accent); cursor: pointer; }
+/* `tabular-nums` holder bredden fast, så tallet ikke skubber linjen hver gang
+ * håndtaget flytter sig ét trin. */
+.native-control-vaerdi { color: var(--fg-1); font-variant-numeric: tabular-nums; font-size: 0.94em; }
+.native-control-felter > p { margin: 0; color: var(--fg-2); }
 @media (prefers-reduced-motion: reduce) { .native-rich * { scroll-behavior: auto !important; transition: none !important; } }
 /* inline-kode — em-baseret padding så højden følger line-height.
  * Dæmpet visuel vægt: lavere baggrundskontrast og diskret farve, så mange

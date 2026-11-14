@@ -1,4 +1,4 @@
-import { useContext } from 'react'
+import { useContext, useState } from 'react'
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { AlertTriangle, CheckCircle2, CircleAlert, Info, MapPin } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
@@ -12,8 +12,15 @@ export type NativeSpec =
   | { type: 'comparison'; title: string; columns: string[]; rows: Array<{ label: string; values: string[] }> }
   | { type: 'choices'; title: string; options: Array<{ label: string; prompt: string }> }
   | { type: 'location'; title: string; address: string; latitude?: number; longitude?: number }
+  // `control` (14/11-2026): den FØRSTE flade med lokal state. Slideren rykker
+  // uden at noget modelkald går ud — state bor i komponenten, ikke i samtalen.
+  | { type: 'control'; title: string; fields: Array<
+      | { kind: 'slider'; bind: string; label: string; min: number; max: number; step: number; value: number }
+      | { kind: 'text'; text: string }
+    > }
 
 const text = (v: unknown, max = 500) => typeof v === 'string' ? v.trim().slice(0, max) : ''
+const tal = (v: unknown): number | null => typeof v === 'number' && Number.isFinite(v) ? v : null
 const list = (v: unknown, max: number): Json[] => Array.isArray(v)
   ? v.filter((x): x is Json => Boolean(x) && typeof x === 'object' && !Array.isArray(x)).slice(0, max)
   : []
@@ -38,7 +45,13 @@ export function parseNativeRichSpec(code: string): NativeSpec | null {
   }
   if (type === 'comparison') {
     const columns = Array.isArray(raw.columns) ? raw.columns.map((x) => text(x, 80)).filter(Boolean).slice(0, 4) : []
-    const rows = list(raw.rows, 12).map((x) => ({ label: text(x.label, 100), values: Array.isArray(x.values) ? x.values.map((v) => text(v, 240)).slice(0, columns.length) : [] })).filter((x) => x.label && x.values.length === columns.length)
+    // 14/11-2026: PAD i stedet for at kassere — samme regel som desk fik
+    // 30/10-2026. Mobil kasserede stadig rækker hvis values var kortere end
+    // columns, så den samme flade så rigtig ud i desk og død ud på telefonen.
+    const rows = list(raw.rows, 12).map((x) => {
+      const givne = Array.isArray(x.values) ? x.values.map((v) => text(v, 240)) : []
+      return { label: text(x.label, 100), values: Array.from({ length: columns.length }, (_, i) => givne[i] ?? '') }
+    }).filter((x) => x.label && x.values.some(Boolean))
     return columns.length >= 2 && rows.length ? { type, title, columns, rows } : null
   }
   if (type === 'choices') {
@@ -51,14 +64,48 @@ export function parseNativeRichSpec(code: string): NativeSpec | null {
     const longitude = typeof raw.longitude === 'number' && raw.longitude >= -180 && raw.longitude <= 180 ? raw.longitude : undefined
     return address || (latitude !== undefined && longitude !== undefined) ? { type, title, address, latitude, longitude } : null
   }
+  if (type === 'control') {
+    const fields = list(raw.fields, 8).map((x) => {
+      if (text(x.kind, 20) === 'text') {
+        const t = text(x.text, 600)
+        return t ? { kind: 'text' as const, text: t } : null
+      }
+      const bind = text(x.bind, 40)
+      const label = text(x.label, 120)
+      if (!bind || !label) return null
+      const min = tal(x.min)
+      const max = tal(x.max)
+      if (min === null || max === null || max <= min) return null
+      const step = tal(x.step)
+      const raaVaerdi = tal(x.value) ?? min
+      return {
+        kind: 'slider' as const, bind, label, min, max,
+        step: step !== null && step > 0 ? step : 1,
+        value: Math.min(max, Math.max(min, raaVaerdi)),
+      }
+    }).filter((x): x is NonNullable<typeof x> => Boolean(x))
+    // Mindst ÉN slider: uden et `bind` er der ingen lokal state.
+    return fields.some((f) => f.kind === 'slider') ? { type, title, fields } : null
+  }
   return null
+}
+
+// Slideren er diskrete trykfelter, ikke en kontinuerlig skyder: pakken
+// `@react-native-community/slider` er ikke installeret, og en ny native-
+// afhaengighed til ét felt er ikke prisen vaerd. Trinene regnes fra min/max/step.
+const trinVaerdier = (f: { min: number; max: number; step: number }): number[] => {
+  const antal = Math.floor((f.max - f.min) / f.step) + 1
+  const maks = Math.min(antal, 12)
+  return Array.from({ length: maks }, (_, i) => Number((f.min + i * f.step).toFixed(4)))
 }
 
 export function NativeRichBlock({ code }: { code: string }) {
   const spec = parseNativeRichSpec(code)
   const styles = useStyles(makeStyles); const theme = useTheme(); const send = useContext(WidgetPrompt)
+  const [kontrolVaerdier, setKontrolVaerdi] = useState<Record<string, number>>({})
   if (!spec) return null
-  const heading = spec.title ? <Text style={styles.title}>{spec.title}</Text> : null
+  // `control` har ingen titel — den er et lille haandtag, ikke et kort.
+  const heading = 'title' in spec && spec.title ? <Text style={styles.title}>{spec.title}</Text> : null
   if (spec.type === 'callout') {
     const Icon = spec.tone === 'success' ? CheckCircle2 : spec.tone === 'warning' ? AlertTriangle : spec.tone === 'danger' ? CircleAlert : Info
     const color = spec.tone === 'success' ? theme.color.ok : spec.tone === 'warning' ? theme.color.warn : spec.tone === 'danger' ? theme.color.error : theme.color.accent
@@ -68,6 +115,40 @@ export function NativeRichBlock({ code }: { code: string }) {
   if (spec.type === 'timeline') return <View accessibilityLabel={spec.title || 'Tidslinje'} style={styles.card}>{heading}{spec.items.map((x, i) => <View key={`${x.title}-${i}`} style={styles.timelineRow}><View style={[styles.dot, x.status === 'done' && styles.dotDone, x.status === 'current' && styles.dotCurrent]} /><View style={styles.flex}>{x.time ? <Text style={styles.muted}>{x.time}</Text> : null}<Text style={styles.strong}>{x.title}</Text>{x.detail ? <Text style={styles.body}>{x.detail}</Text> : null}</View></View>)}</View>
   if (spec.type === 'comparison') return <View accessibilityLabel={spec.title || 'Sammenligning'} style={styles.card}>{heading}<ScrollView horizontal showsHorizontalScrollIndicator><View><View style={styles.tableRow}><Text style={[styles.cell, styles.rowHead]}>Punkt</Text>{spec.columns.map((x) => <Text key={x} style={[styles.cell, styles.strong]}>{x}</Text>)}</View>{spec.rows.map((r, i) => <View key={`${r.label}-${i}`} style={styles.tableRow}><Text style={[styles.cell, styles.rowHead]}>{r.label}</Text>{r.values.map((v, j) => <Text key={j} style={styles.cell}>{v}</Text>)}</View>)}</View></ScrollView></View>
   if (spec.type === 'choices') return <View accessibilityLabel={spec.title || 'Valgmuligheder'} style={[styles.card, styles.cardBox]}>{heading}<View style={styles.wrap}>{spec.options.map((x, i) => <Pressable key={`${x.label}-${i}`} accessibilityRole="button" accessibilityLabel={x.label} accessibilityState={{ disabled: !send }} disabled={!send} onPress={() => send?.(`[fra valgkort] ${x.prompt}`)} style={({ pressed }) => [styles.button, pressed && styles.pressed]}><Text style={styles.buttonText}>{x.label}</Text></Pressable>)}</View></View>
+  if (spec.type === 'control') {
+    // Sliderens værdi: lokal state først, ellers den værdi fladen kom med.
+    const aktuel = (bind: string, fallback: number) => kontrolVaerdier[bind] ?? fallback
+    const interpolér = (t: string) => {
+      const opslag: Record<string, number> = {}
+      for (const f of spec.fields) if (f.kind === 'slider') opslag[f.bind] = aktuel(f.bind, f.value)
+      return t.replace(/[{](\w+)[}]/g, (m, kk) => (kk in opslag ? String(opslag[kk]) : m))
+    }
+    return <View style={styles.controlFelter}>{heading}
+      {spec.fields.map((f, i) => f.kind === 'slider' ? (
+        <View key={`${f.bind}-${i}`} style={styles.controlFelt}>
+          <Text style={styles.muted}>{f.label}</Text>
+          <View style={styles.controlSkinne}>
+            {trinVaerdier(f).map((vaerdi) => {
+              const valgt = aktuel(f.bind, f.value) === vaerdi
+              return (
+                <Pressable
+                  key={`${f.bind}-${vaerdi}`}
+                  accessibilityRole="adjustable"
+                  accessibilityLabel={`${f.label}: ${vaerdi}`}
+                  accessibilityState={{ selected: valgt }}
+                  onPress={() => setKontrolVaerdi((forrige) => ({ ...forrige, [f.bind]: vaerdi }))}
+                  style={[styles.controlTrin, valgt && styles.controlTrinValgt]}
+                >
+                  <Text style={[styles.controlTrinTekst, valgt && styles.controlTrinTekstValgt]}>{vaerdi}</Text>
+                </Pressable>
+              )
+            })}
+          </View>
+          <Text style={styles.strong}>{aktuel(f.bind, f.value)}</Text>
+        </View>
+      ) : <Text key={`t-${i}`} style={styles.body}>{interpolér(f.text)}</Text>)}
+    </View>
+  }
   const q = spec.latitude !== undefined && spec.longitude !== undefined ? `${spec.latitude},${spec.longitude}` : spec.address
   const href = `https://www.openstreetmap.org/search?query=${encodeURIComponent(q)}`
   return <View accessibilityLabel={spec.title || 'Lokation'} style={[styles.card, styles.cardBox, styles.callout]}><MapPin size={22} color={theme.color.accent} /><View style={styles.flex}>{heading}{spec.address ? <Text style={styles.body}>{spec.address}</Text> : null}<Pressable accessibilityRole="link" accessibilityLabel="Åbn kort" onPress={() => void Linking.openURL(href)} style={({ pressed }) => [styles.button, styles.mapButton, pressed && styles.pressed]}><Text style={styles.buttonText}>Åbn kort</Text></Pressable></View></View>
@@ -92,4 +173,11 @@ const makeStyles = (t: Theme) => StyleSheet.create({
   cell: { color: t.color.fg2, width: 150, padding: t.spacing.sm }, rowHead: { color: t.color.fg1, fontWeight: '700', width: 120 },
   button: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1, borderColor: t.color.line, borderRadius: t.radius.md, backgroundColor: t.color.bg2 },
   buttonText: { color: t.color.fg1, fontWeight: '700' }, pressed: { opacity: .7 }, mapButton: { alignSelf: 'flex-start', marginTop: t.spacing.sm },
+  controlFelter: { gap: t.spacing.sm },
+  controlFelt: { gap: 4 },
+  controlSkinne: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  controlTrin: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: t.color.line, borderRadius: t.radius.md, backgroundColor: t.color.bg2 },
+  controlTrinValgt: { borderColor: t.color.accent, backgroundColor: t.color.bg1 },
+  controlTrinTekst: { color: t.color.fg2, fontSize: 13 },
+  controlTrinTekstValgt: { color: t.color.fg1, fontWeight: '700' },
 })

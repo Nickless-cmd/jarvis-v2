@@ -12,6 +12,7 @@ import { BlocksRenderer } from './BlocksRenderer'
 import { JarvisRing } from '../shell/JarvisRing'
 import { LabelSkift, SynteseLinje } from './LabelSkift'
 import { TurHoved } from './TurHoved'
+import { FladeKontrolContext } from './NativeRichBlock'
 import { RullendeTokens } from '../feedback/RullendeTal'
 
 export interface ChatFlowPresentationProps {
@@ -478,6 +479,11 @@ export function ChatFlowPresentation({
   const visArbejdsdetaljer = foldWork.length > 0 && arbejdeAabent
 
   return (
+    // `control` er kun en chat-flade (14/11-2026). `BlocksRenderer` deles med
+    // `RaekkeTranskript` (code mode), så uden denne Provider ville slideren
+    // også dukke op i maskinrummet. Kontekstens default er falsk — glemmer
+    // nogen at sætte flaget, forsvinder fladen frem for at dukke op forkert.
+    <FladeKontrolContext.Provider value>
     <div className="chat-flow" data-chat-flow-mode={mode}>
       {visTurhoved ? (
           <TurHoved
@@ -618,5 +624,6 @@ export function ChatFlowPresentation({
         </div>
       ) : null}
     </div>
+    </FladeKontrolContext.Provider>
   )
 }

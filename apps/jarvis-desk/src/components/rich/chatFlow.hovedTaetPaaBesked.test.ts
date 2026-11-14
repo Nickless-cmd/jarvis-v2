@@ -49,9 +49,23 @@ describe('VAGT — hovedet hænger sammen med beskeden', () => {
     // MÅLT 14/11-2026: `font-family: inherit` gav "Times New Roman" ved 14px
     // fordi chatvisningen ikke altid ligger i den container der sætter fonten.
     const css = kilde('chat-flow.css')
-    const blok = css.slice(css.indexOf('.chat-flow .rv-tur,'))
-    expect(blok.slice(0, 1200)).toContain('font-family: -apple-system')
-    expect(blok.slice(0, 1200)).toContain('font-size: 13px')
+    // Blokken udtrækkes fra selektoren til dens afsluttende `}` — ikke et
+    // fast tegnvindue. MÅLT 14/11-2026: med `slice(0, 1200)` faldt
+    // `font-size` ud af vinduet så snart kommentaren blev længere, og vagten
+    // fejlede på sin egen formatering i stedet for på fonten.
+    const start = css.indexOf('.chat-flow .rv-tur,')
+    const blok = css.slice(start, css.indexOf('}', start))
+    expect(blok).toContain('font-family: -apple-system')
+    // Bjørn 14/11-2026: «lige som i code mode skal font være lige så stor som
+    // runde linjens font størrelse». Vagten tjekker BEGGE sider — ellers
+    // beviste den kun at der står et tal, ikke at det matcher.
+    expect(blok).toContain('font-size: 14px')
+    const raekke = readFileSync(resolve(__dirname, '../../styles/raekkevisning.css'), 'utf8')
+    // Ankret på selektoren MED krølleparentes: uden den rammer `indexOf` en
+    // senere variant (`.rv-arbejdsknap[data-koerer]`) og måler en anden blok.
+    const rStart = raekke.indexOf('.raekkevisning .rv-arbejdsknap {')
+    const arbejdsknap = raekke.slice(rStart, raekke.indexOf('}', rStart))
+    expect(arbejdsknap).toContain('font-size: 14px')
   })
 
   it('rører IKKE code mode — turhoved.css er delt mellem de to flader', () => {

@@ -339,26 +339,39 @@ describe('ChatFlowPresentation', () => {
     expect(document.querySelector('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'false')
   })
 
-  it('viser turens ur i hovedet — sekunder, og minutter efter et minut', () => {
+  it('viser turens levende ur i hovedet — sekunder, og minutter efter et minut', () => {
+    // VENDT 14/11-2026 (Bjørn): «sekunder Xs i turhoved skal … vises mens
+    // turen køre». Uret er nu bundet til `streaming`, så testen må køre en
+    // levende tur — den kørte før en afsluttet, fordi tallet dengang blev
+    // frosset og stod i hovedet bagefter.
     const blokke = [summary('Fandt kilden', 1)]
     // Cifrene er delt i lodrette strimler, så den flade tekst læses fra
     // `aria-label` — det er også den skærmlæserne får.
     const ur = () => document.querySelector('.rv-turTid')?.getAttribute('aria-label')
-    const { rerender } = render(<ChatFlowPresentation {...common} mode="living" streaming={false}
-      status="done" finalAnswerStarted turStart={Date.now() - 12_000} blocks={blokke} />)
+    const { rerender } = render(<ChatFlowPresentation {...common} mode="living" streaming
+      status="working" finalAnswerStarted turStart={Date.now() - 12_000} blocks={blokke} />)
     expect(ur()).toMatch(/^1[12]s$/)
 
-    rerender(<ChatFlowPresentation {...common} mode="living" streaming={false}
-      status="done" finalAnswerStarted turStart={Date.now() - 72_000} blocks={blokke} />)
+    rerender(<ChatFlowPresentation {...common} mode="living" streaming
+      status="working" finalAnswerStarted turStart={Date.now() - 72_000} blocks={blokke} />)
     expect(ur()).toMatch(/^1m 1[12]s$/)
   })
 
-  it('beholder uret når strømmen er forbi — det fryser på turens sluttid', () => {
+  it('fjerner uret når strømmen er forbi — men beholder hovedet', () => {
+    // VENDT 14/11-2026 (Bjørn): «sekunder Xs i turhoved skal forsvinde når
+    // turen er slut». Den tidligere test bekræftede det modsatte — at tallet
+    // blev frosset og STOD i hovedet bagefter (17/10-2026: «ueret skal osse
+    // når strømmen er forbi»). Et stille tal på en færdig tur beskriver noget
+    // der allerede er sket; det hører i en log, ikke i et hoved der skal
+    // fortælle hvad der sker nu.
+    //
+    // Kontrasten er pointen: hovedet bliver stående fordi der er et
+    // værktøjskald at folde ud — det er kun TALLET der forsvinder.
     const start = Date.now() - 95_000
-    render(<ChatFlowPresentation {...common} mode="living" streaming={false} status="done"
+    const { container } = render(<ChatFlowPresentation {...common} mode="living" streaming={false} status="done"
       finalAnswerStarted turStart={start} turSlut={start + 95_000} blocks={[summary('Fandt kilden', 1)]} />)
-    // 95 sekunder, målt fra start til slut — ikke fra start til nu.
-    expect(document.querySelector('.rv-turTid')?.getAttribute('aria-label')).toBe('1m 35s')
+    expect(container.querySelector('.rv-tur')).not.toBeNull()
+    expect(container.querySelector('.rv-turTid')).toBeNull()
   })
 
   it('fjerner den levende syntese efter turen, men bevarer arbejdsdetaljerne', () => {
@@ -495,7 +508,7 @@ describe('ChatFlowPresentation — turhovedet fra første ord', () => {
     expect(container.querySelector('.rv-tur')).toBeNull()
   })
 
-  it('beholder hovedet og uret når turen HAR kaldt runder', () => {
+  it('beholder hovedet — men ikke uret — når turen HAR kaldt runder', () => {
     // Modstykket til testen ovenfor: samme afsluttede tur, men med ét
     // værktøjskald. Så er der noget at folde ud, og hovedet bliver stående.
     const { container } = render(<ChatFlowPresentation {...common} mode="living"
@@ -508,7 +521,11 @@ describe('ChatFlowPresentation — turhovedet fra første ord', () => {
     expect(hoved).not.toBeNull()
     // Intet at folde i denne fixture? Jo — `tool_use` gør den foldbar.
     expect(hoved.tagName).toBe('BUTTON')
-    expect(container.querySelector('.rv-turTid')?.getAttribute('aria-label')).toBe('12s')
+    // Uret er væk — turen er slut (Bjørn 14/11/2026: «sekunder Xs i turhoved
+    // skal forsvinde når turen er slut»). `varighedSekunder` er stadig sat, så
+    // dette beviser at det er `streaming`-gaten der fjerner tallet, ikke at
+    // varigheden mangler.
+    expect(container.querySelector('.rv-turTid')).toBeNull()
   })
 
   it('tegner intet hoved når der hverken er arbejde, kørsel eller varighed', () => {

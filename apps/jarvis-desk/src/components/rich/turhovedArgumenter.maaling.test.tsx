@@ -160,14 +160,16 @@ describe('TurHoved-argumenter — de to flader sammenlignet', () => {
     expect(code.get('tekst')).toContain('turFortalt')
   })
 
-  it('sekunder er AFGJORT forskellig — code viser uret i rundelinjen, ikke i hovedet', () => {
-    // AFGJORT 30/10-2026: forskellen BLIVER. Den er ikke en manglende
-    // visning: `turSekunder` beregnes live i code mode (RaekkeTranskript.tsx
-    // :441) og vises som `rv-rundeur`/`RullendeUr` i den aktive rundelinje
-    // (:370-371). Hovedets ur er efterspillets tal. Satte man det også i
-    // hovedet, ville code mode vise to ure samtidig.
-    // (chat sender VARIABLEN, ikke hook-kaldet; udledningen står på linje 267)
-    expect(chat.get('sekunder')).toBe('sekunder={sekunder}')
+  it('sekunder er SPEJLVENDT forskellig — chat viser det levende ur i hovedet', () => {
+    // VENDT 14/11-2026 (Bjørn): «sekunder Xs i turhoved skal forsvinde når
+    // turen er slut. og vises mens turen køre».
+    //
+    // Før 14/11 var forskellen den modsatte: chat viste det FROSNE tal i
+    // hovedet, code viste det levende i rundelinjen. Den aftale holdt kun så
+    // længe chat mode ikke havde noget levende sted at sætte uret — chat mode
+    // har ingen `rv-rundeur`. Nu bærer hovedet det levende ur og slipper det
+    // ved turens slutning; code er urørt.
+    expect(chat.get('sekunder')).toBe('sekunder={streaming ? sekunder : null}')
     expect(code.get('sekunder')).toContain('!streaming')
   })
 

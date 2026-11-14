@@ -31,10 +31,16 @@
    * i serif læses som en fejl, ikke som et valg. Samme font som brødteksten
    * i `chat-reading.css`, så hoved og besked taler samme sprog. */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
-  /* 14px er brødtekst-størrelse; en label over indholdet skal være lidt
-   * mindre og have luft nok til at være læsbar. 13px med 1,45 i line-height
-   * giver samme optiske vægt som ChatGPT-referencen Bjørn pegede på. */
-  font-size: 13px;
+  /* Samme størrelse som rundelinjens tekst i code mode (`.rv-slags`,
+   * `.rv-sum` og `.rv-arbejdsknap` er alle 14px). Bjørn 14/11-2026: «lige som
+   * i code mode skal font være lige så stor som runde linjens font størrelse».
+   *
+   * Jeg satte den først til 13px ud fra en idé om at en label skal være mindre
+   * end sit indhold. Målt blev det 13px mod code modes 14px — en divergens
+   * ingen havde bedt om, og hovedet blev spinkelt ved siden af de 16px
+   * brødtekst. Urets cifre bliver i 13px (`.rv-turTid`), præcis som
+   * `.rv-rundeur` er 13px ved siden af 14px tekst i code mode. */
+  font-size: 14px;
   line-height: 1.45;
   letter-spacing: 0.005em;
 }

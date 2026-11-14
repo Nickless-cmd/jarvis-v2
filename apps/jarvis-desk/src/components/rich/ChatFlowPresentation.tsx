@@ -297,14 +297,21 @@ export function ChatFlowPresentation({
   // (Bjørn 17/10-2026: «lige som i code mode skal turhoved vises hele tiden
   // før de første ord».) Uden `streaming` her manglede hovedet netop i det
   // øjeblik turen begyndte, og dukkede først op bagefter.
-  // Uret: sekunder mens turen kører, frosset når den slutter. Bjørn
-  // 17/10-2026: «timer for turen Xm Xs startende med Xs og så Xm osv» — og
-  // «ueret skal osse når strømmen er forbi». Derfor måles der til `turSlut`
-  // (sat ved `message_stop`), ikke til `aktiv` som bliver falsk allerede når
-  // svaret begynder.
+  // Uret tælles op fra `turStart` og måles til `turSlut` (sat ved
+  // `message_stop`) — ikke til `aktiv`, som bliver falsk allerede når svaret
+  // begynder. Det giver det rigtige tal gennem hele turen.
   //
-  // Persisterede ture har ingen stream-tilstand tilbage. Deres varighed er
-  // udledt af transskriptet, så uret også står der (17/10-2026).
+  // VENDT 14/11-2026 (Bjørn): «sekunder Xs i turhoved skal forsvinde når
+  // turen er slut. og vises mens turen køre». Den tidligere regel var det
+  // modsatte — uret blev frosset og STOD i hovedet bagefter (17/10-2026:
+  // «ueret skal osse når strømmen er forbi»), og persisterede ture viste
+  // deres udledte varighed for evigt. Et tal der står stille på en færdig
+  // tur beskriver noget der allerede er sket; det hører i en log, ikke i et
+  // hoved der skal fortælle hvad der sker NU.
+  //
+  // Beregningen bliver stående uanset `streaming`: den bærer stadig
+  // `varighedSekunder` for persisterede ture, og `visTurhoved` nedenfor læser
+  // den. Det er kun VISNINGEN der gates.
   const sekunder = useTurSekunder(turStart, turSlut) ?? varighedSekunder ?? null
   // Hovedet er turens skillestreg — ikke en overskrift for værktøjskald.
   // (Bjørn 17/10-2026: «tur hoved vises ikke hvis han ikk kalder tools… det
@@ -401,7 +408,7 @@ export function ChatFlowPresentation({
             aaben={aaben}
             foldbar={harArbejde}
             koerer={arbejdeKoerer}
-            sekunder={sekunder}
+            sekunder={streaming ? sekunder : null}
             tekst={model.hovedTekst}
             meta={streaming && tokens > 0
               ? <span className="rv-turMeta">~<RullendeTokens tokens={tokens} /> output</span>

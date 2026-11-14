@@ -472,21 +472,42 @@ describe('ChatFlowPresentation — turhovedet fra første ord', () => {
     view.rerender(<ChatFlowPresentation {...common} mode="living" blocks={[
       { type: 'text', text: 'Svaret', phase: 'final_answer' },
     ]} finalAnswerStarted />)
-    expect(document.querySelector('.rv-tur')).not.toHaveAttribute('data-skillelinje')
+    // Bjørn 14/11-2026: uden runder forsvinder hovedet helt når slutsvaret
+    // begynder — så her er der hverken hoved eller streg at måle på. Det er
+    // den stærkeste form for «ingen skillelinje»: elementet findes ikke.
+    expect(document.querySelector('.rv-tur')).toBeNull()
   })
 
-  it('beholder hovedet og uret på en tur uden værktøjskald', () => {
-    // Bjørn 17/10-2026: «tur hoved vises ikke hvis han ikk kalder tools…
-    // det skal være der osse uden tool kald». Hovedet er turens skillestreg,
-    // ikke en overskrift for værktøjskald.
+  it('viser intet hoved på en afsluttet tur uden værktøjskald', () => {
+    // VENDT 14/11-2026 (Bjørn): «hvis ingen runder er kørt i turen bør
+    // turhoved forsvinde når beskeden starter». Den tidligere test bekræftede
+    // det modsatte (17/10-2026: «det skal være der osse uden tool kald») — men
+    // dengang handlede det om at hovedet manglede MENS turen kørte. Her er
+    // turen færdig, der er intet at folde ud, og et «Tænkte 12s» over et
+    // direkte svar er en label uden indhold.
+    //
+    // Varigheden alene bærer den ikke: `varighedSekunder` er stadig sat, så
+    // testen beviser at det er fraværet af runder — ikke fraværet af et ur —
+    // der fjerner hovedet.
     const { container } = render(<ChatFlowPresentation {...common} mode="living"
       blocks={[{ type: 'text', text: 'Et rent svar.' }]}
       streaming={false} status="done" finalAnswerStarted varighedSekunder={12} />)
+    expect(container.querySelector('.rv-tur')).toBeNull()
+  })
+
+  it('beholder hovedet og uret når turen HAR kaldt runder', () => {
+    // Modstykket til testen ovenfor: samme afsluttede tur, men med ét
+    // værktøjskald. Så er der noget at folde ud, og hovedet bliver stående.
+    const { container } = render(<ChatFlowPresentation {...common} mode="living"
+      blocks={[
+        { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+        { type: 'text', text: 'Et rent svar.', phase: 'final_answer' },
+      ]}
+      streaming={false} status="done" finalAnswerStarted varighedSekunder={12} />)
     const hoved = container.querySelector('.rv-tur') as HTMLElement
     expect(hoved).not.toBeNull()
-    // Intet at folde → hovedet er ikke en knap, og pilen er væk.
-    expect(hoved.tagName).toBe('DIV')
-    expect(container.querySelector('.rv-turC')).toBeNull()
+    // Intet at folde i denne fixture? Jo — `tool_use` gør den foldbar.
+    expect(hoved.tagName).toBe('BUTTON')
     expect(container.querySelector('.rv-turTid')?.getAttribute('aria-label')).toBe('12s')
   })
 

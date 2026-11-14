@@ -145,10 +145,43 @@ export function ChatFlowPresentation({
   } else if (confirmedRef.current.runKey !== runKey) {
     confirmedRef.current = { runKey, texts: [] }
   }
-  const retainedWork = finalAnswerStarted && confirmedTexts.length > 0
+  // «Runder» er værktøjskald og arbejdsrapporter — ikke tekst.
+  //
+  // Bjørn 14/11-2026: «hvis ingen runder er kørt i turen bør turhoved forsvinde
+  // når beskeden starter, men det kræver vi tager højde for at en syntese ikk er
+  // det samme som slut beskeden. og hvis der kaldes runder bør hoved forblive
+  // synligt.»
+  //
+  // `hasObservableWork` kan ikke bruges til den sondring: den er OGSÅ sand når
+  // der kun ligger synteser (`allSynthesis.length > 0`), så et rent syntese-svar
+  // holdt hovedet i live gennem hele turen — også efter beskeden var begyndt.
+  // Syntesen er en mellemtekst under arbejdet, ikke et værktøjskald, og den må
+  // hverken tælle som runde eller forveksles med slutsvaret.
+  const harRunder = model.workBlocks.some((blok) => blok.type !== 'text')
+  // Uden runder er der ingen fold at gemme syntesen i.
+  //
+  // MÅLT 14/11/2026 i Chromium: da hovedet blev fjernet, forsvandt syntesen
+  // «Lad mig se på det.» HELT fra DOM'en — den lå kun i gruppen under hovedet,
+  // og gruppen forsvinder sammen med det. Uden runder er syntesen ikke en
+  // arbejdsdetalje; den er en del af svaret og hører i svar-lanen, foran det.
+  //
+  // MEN kun når den levende visning er forbi: mens turen kører og slutsvaret
+  // ikke er begyndt, står syntesen i gruppen som `chat-flow-live-synthesis`.
+  // Flyttede jeg den samtidig, ville den stå to steder.
+  const syntesenVisesLevende = streaming && !finalAnswerStarted
+  const synteseUdenArbejde = (harRunder || syntesenVisesLevende)
+    ? []
+    : model.workBlocks.filter((block): block is Extract<ContentBlock, { type: 'text' }> =>
+        block.type === 'text' && block.text.trim().length > 0)
+  // Flyttede tekster må ikke også stå i arbejdsvisningen — samme regel som
+  // `retainedWork` bruger for de bekræftede tekster: ét sted, aldrig to.
+  const flyttedeTekster = new Set(synteseUdenArbejde.map((block) => block.text))
+  const erFlyttetTilSvar = (block: ContentBlock): boolean =>
+    block.type === 'text' && flyttedeTekster.has(block.text)
+  const retainedWork = (finalAnswerStarted && confirmedTexts.length > 0
     ? model.workBlocks.filter((block) => block.type !== 'text'
         || !confirmedTexts.some((text) => text === block.text || text.startsWith(block.text) || block.text.startsWith(text)))
-    : model.workBlocks
+    : model.workBlocks).filter((block) => !erFlyttetTilSvar(block))
   // Et blokerende spørgsmål er ikke en arbejdsdetalje der må gemmes bag
   // turhovedets fold. Det er en samtalebesked med et svarfelt og skal stå
   // inline, synligt og tastaturtilgængeligt mens resten af arbejdet fortsat
@@ -176,7 +209,7 @@ export function ChatFlowPresentation({
           || text.startsWith(block.text)
           || block.text.startsWith(text)))
     : []
-  const answerBlocks = [...restoredText, ...model.finalBlocks]
+  const answerBlocks = [...synteseUdenArbejde, ...restoredText, ...model.finalBlocks]
   const answer = samletSvarMarkdown(answerBlocks)
   const targetSvar = blocks.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
   const vistSvar = pacedBlocks.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
@@ -298,7 +331,17 @@ export function ChatFlowPresentation({
   //
   // Foldet er lukket under pacen (`arbejdeKoerer` er falsk når `streaming` er
   // falsk), så hovedet står som en stille streg over et svar der skriver sig.
-  const visTurhoved = harArbejde || streaming || sekunder !== null
+  //
+  // MED runder: uændret — hovedet bliver stående gennem hele turen, også mens
+  // slutsvaret rulles ud, fordi der ER arbejde at folde ud og en varighed at vise.
+  //
+  // UDEN runder: kun mens turen kører og slutsvaret ikke er begyndt. `streaming`
+  // er nødvendig i den gren — `finalAnswerStarted` er `false` som default for
+  // persisterede ture, så uden den ville historikkens direkte svar få et hoved
+  // de aldrig havde.
+  const visTurhoved = harRunder
+    ? (harArbejde || streaming || sekunder !== null)
+    : streaming && !finalAnswerStarted
   // Rundelinjen må aldrig vise et internt tool-navn. Modellen filtrerer de
   // rå working_step-værdier; indtil den menneskelige etiket er klar, står en
   // rolig fallback i samme stabile celle UNDER syntesen — ikke i turhovedet.

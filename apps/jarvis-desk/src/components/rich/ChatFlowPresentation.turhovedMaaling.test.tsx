@@ -94,10 +94,12 @@ function rulTilPaceErFaerdig(_container: HTMLElement, max = 5000): number {
 }
 
 describe('MÅLING — turhovedets lukning mod pacens ur', () => {
-  it('A: agentisk runde — hovedet STÅR over svaret mens pacen ruller', () => {
-    // Præcis det vindue Bjørn beskriver: slutsvaret er begyndt
-    // (`finalAnswerStarted`), strømmen løber stadig (`working`, fordi der
-    // kommer endnu en runde), og pacen ruller teksten.
+  it('A: uden runder forsvinder hovedet når slutsvaret begynder', () => {
+    // VENDT 14/11-2026 (Bjørn): «hvis ingen runder er kørt i turen bør
+    // turhoved forsvinde når beskeden starter». Fixturen har kun et
+    // `final_answer`-blok — ingen værktøjskald — så der er intet at folde ud
+    // og intet at tælle. Den målte 29/10 at hovedet BLEV stående her; det var
+    // den adfærd der nu er ændret.
     const view = render(
       <ChatFlowPresentation blocks={[svar]} mode="living" density="compact"
         streaming status="working" finalAnswerStarted runId="maaling-a" />,
@@ -105,19 +107,34 @@ describe('MÅLING — turhovedets lukning mod pacens ur', () => {
     frame()
     frame()
 
-    // MÅLT 29/10-2026: hovedet ER der, og teksten ruller samtidig. Det er
-    // fejlen Bjørn beskriver — ikke en test der er skrevet forkert.
-    // Gaten er `pacerSvar = paceFinalAnswer && status === 'done'`, og status
-    // bliver først `done` ved `message_stop`, altså EFTER hele slutsvaret.
-    expect(hovedStaar(view.container)).toBe(true)
+    expect(hovedStaar(view.container)).toBe(false)
     const vist = vistTekst(view.container).length
     expect(vist).toBeGreaterThan(0)
     expect(vist).toBeLessThan(LANG.length)
 
     const frames = rulTilPaceErFaerdig(view.container)
-    // Hele efterslæbet ligger inde under hovedet, fordi status aldrig bliver
-    // `done` i dette vindue.
     expect(frames).toBeGreaterThan(60)
+    // Stadig væk efter pacen: det er ikke en fade, det er en gate.
+    expect(hovedStaar(view.container)).toBe(false)
+  })
+
+  it('A2: MED runder bliver hovedet stående gennem samme vindue', () => {
+    // Samme props som A, men med ét værktøjskald. Bjørn: «hvis der kaldes
+    // runder bør hoved forblive synligt» — også efter at slutsvaret er
+    // begyndt, fordi der er arbejde at folde ud.
+    const view = render(
+      <ChatFlowPresentation blocks={[arbejde, svar]} mode="living" density="compact"
+        streaming status="working" finalAnswerStarted runId="maaling-a2" />,
+    )
+    frame()
+    frame()
+
+    expect(hovedStaar(view.container)).toBe(true)
+    const vist = vistTekst(view.container).length
+    expect(vist).toBeGreaterThan(0)
+    expect(vist).toBeLessThan(LANG.length)
+
+    rulTilPaceErFaerdig(view.container)
     expect(hovedStaar(view.container)).toBe(true)
   })
 

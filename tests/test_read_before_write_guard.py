@@ -488,3 +488,40 @@ def test_edit_sender_session_id_til_gaten(tmp_path, monkeypatch):
         "_runtime_session_id": "min-session-42",
     })
     assert set_flag["sid"] == "min-session-42"
+
+
+# ── Preview-grenen i check_read_before_write — fail-closed ────────────────
+#
+# Målt 14/11-2026 med mutationstest: grenen kunne ændres til `return True, None`
+# (fail-open) og ALLE 82 tests var stadig grønne. Det var den eneste fejlsti på
+# den LEVENDE blokeringsvej uden en rød test bag sig — de fire andre grene
+# (linje 114, 156, 596 og 128) blev alle fældet af en test.
+
+def test_preview_fejl_blokerer_stadig(tmp_path, monkeypatch):
+    """Kan previewet ikke læses, står blokeringen ved magt — ikke fail-open.
+
+    Grenen rammes når filen EKSISTERER men `read_text` fejler (IO-fejl,
+    rettigheder, encoding). Uden denne test kunne grenen returnere
+    `(True, None)` og slippe en blind skrivning gennem vagten.
+    """
+    from pathlib import Path
+    from core.services import read_before_write_guard as rbw
+
+    f = tmp_path / "modul.py"
+    f.write_text("x = 1\n")
+    rigtig = Path.read_text
+
+    def _fejler(self, *a, **k):
+        if self.name == f.name:
+            raise OSError("simuleret IO-fejl")
+        return rigtig(self, *a, **k)
+
+    monkeypatch.setattr(Path, "read_text", _fejler)
+
+    allowed, reason = rbw.check_read_before_write(
+        str(f), session_id="test-preview-fejl"
+    )
+
+    assert allowed is False, "en ulæselig fil må ikke slippe igennem skrive-vagten"
+    assert reason, "blokeringen skal bære en begrundelse"
+    assert "Kunne ikke læse preview" in reason, reason

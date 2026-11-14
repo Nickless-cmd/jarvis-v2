@@ -273,13 +273,15 @@ _The five-field model-facing Task facade over agent-contract-v1._
 | function | `_budget_for` | `(role, requested)` | Rollens maalte default — og et oenske der kun maa SAENKE den. | [src](../../../core/services/agent_task_facade.py#L51) |
 | function | `_kendte_vaerktoejer` | `()` | Runtime-registerets værktøjsnavne. Tomt sæt hvis det ikke kan læses: vagten | [src](../../../core/services/agent_task_facade.py#L69) |
 | function | `_vaerktoejer_for` | `(policy)` | Agentens værktøjer = policyens sæt + agent-kun-værktøjerne. | [src](../../../core/services/agent_task_facade.py#L80) |
-| function | `_session_scope` | `(owner, session)` | — | [src](../../../core/services/agent_task_facade.py#L103) |
-| function | `derive` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, subagent_type, model, run_in_background, budget_tokens=…, team_id=…, member_index=…, guard_text=…)` | — | [src](../../../core/services/agent_task_facade.py#L140) |
-| function | `derive_team_id` | `(*, owner_user_id, origin_session_id, parent_run_id, description, prompt, team_name, members)` | Deterministisk ``team_id``, saa et gentaget ``Task(team=...)`` rammer den samme raekke. | [src](../../../core/services/agent_task_facade.py#L240) |
-| function | `_member_type` | `(team_type)` | Et teammedlems type — spaerringen ligger paa KIND, ikke paa rollenavnet. | [src](../../../core/services/agent_task_facade.py#L259) |
-| function | `derive_team` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, team, subagent_type=…, model=…, run_in_background=…, budget_tokens=…)` | Udled en plan pr. teammedlem — al validering sker FOER den foerste dispatch. | [src](../../../core/services/agent_task_facade.py#L275) |
-| function | `execute_team` | `(**fields)` | Dispatch et helt team — eller intet. | [src](../../../core/services/agent_task_facade.py#L330) |
-| function | `execute` | `(**fields)` | — | [src](../../../core/services/agent_task_facade.py#L355) |
+| function | `_cli_providers` | `()` | De ruter der kører en ekstern CLI frem for Jarvis' egen værktøjsflade. | [src](../../../core/services/agent_task_facade.py#L103) |
+| function | `_annoncerede_vaerktoejer` | `(policy, model, har_workspace)` | Hvilke værktøjer facaden må LOVe agenten — på den rute den faktisk kører. | [src](../../../core/services/agent_task_facade.py#L114) |
+| function | `_session_scope` | `(owner, session)` | — | [src](../../../core/services/agent_task_facade.py#L143) |
+| function | `derive` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, subagent_type, model, run_in_background, budget_tokens=…, team_id=…, member_index=…, guard_text=…)` | — | [src](../../../core/services/agent_task_facade.py#L180) |
+| function | `derive_team_id` | `(*, owner_user_id, origin_session_id, parent_run_id, description, prompt, team_name, members)` | Deterministisk ``team_id``, saa et gentaget ``Task(team=...)`` rammer den samme raekke. | [src](../../../core/services/agent_task_facade.py#L284) |
+| function | `_member_type` | `(team_type)` | Et teammedlems type — spaerringen ligger paa KIND, ikke paa rollenavnet. | [src](../../../core/services/agent_task_facade.py#L303) |
+| function | `derive_team` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, team, subagent_type=…, model=…, run_in_background=…, budget_tokens=…)` | Udled en plan pr. teammedlem — al validering sker FOER den foerste dispatch. | [src](../../../core/services/agent_task_facade.py#L319) |
+| function | `execute_team` | `(**fields)` | Dispatch et helt team — eller intet. | [src](../../../core/services/agent_task_facade.py#L374) |
+| function | `execute` | `(**fields)` | — | [src](../../../core/services/agent_task_facade.py#L399) |
 
 ## `core/services/agent_task_requirements.py`
 _Hvilke værktøjer en opgaveprompt KRÆVER at agenten kalder._

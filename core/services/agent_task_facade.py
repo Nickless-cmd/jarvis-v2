@@ -100,6 +100,46 @@ def _vaerktoejer_for(policy: str) -> list[str]:
     return [*navne, *[t for t in _AGENT_ONLY_TOOLS if t not in navne]]
 
 
+def _cli_providers() -> frozenset[str]:
+    """De ruter der kører en ekstern CLI frem for Jarvis' egen værktøjsflade.
+
+    Importeres lazy: ``agent_cli_backend`` rækker ind i worktree- og
+    kontrakt-lagene, og facaden skal ikke trække hele den kæde ind ved import.
+    """
+    from core.services.agent_cli_backend import CLI_PROVIDERS
+
+    return CLI_PROVIDERS
+
+
+def _annoncerede_vaerktoejer(policy: str, model: str, har_workspace: bool) -> list[str]:
+    """Hvilke værktøjer facaden må LOVe agenten — på den rute den faktisk kører.
+
+    ## Hvorfor listen ikke kan være policyen alene (målt 14/11-2026)
+
+    ``_vaerktoejer_for("worktree-write")`` giver ``wt_bash`` og ``wt_write_file``,
+    fordi det er hvad Jarvis' egen worker-rute monterer. Men CLI-ruterne har deres
+    EGEN værktøjsflade: ``claude-cli`` kører med ``--tools Read,Glob,Grep,Edit,Write``
+    og ``codex-cli`` med sin egen sandbox. Ingen af dem har ``wt_*``.
+
+    To agenter blev sendt af sted med ``wt_bash`` på listen, ledte efter den, fandt
+    den ikke — og afleverede kode uden at have kørt én test:
+    ``asg-dc669ecaebd54825`` (claude-cli: «wt_bash findes ikke her») og
+    ``asg-f32b7d7f86a940fc`` (codex-cli: nul testkald). Prisen var 40 minutters
+    arbejde og en diff ingen havde prøvet.
+
+    Listen her afgør både hvad der ANNONCERES for agenten og hvad der AFVISES ved
+    dispatch, så et værktøj der ikke findes er en løgn med en målt pris. En kortere
+    liste der taler sandt er hele pointen: opgaven skal afvises ved bestilling, ikke
+    efter kørslen.
+    """
+    tools = _vaerktoejer_for(policy)
+    if not har_workspace:
+        tools = [t for t in tools if t in {"web_search", "web_fetch", "read_tool_result", "agent_note"}]
+    if str(model or "").strip() in _cli_providers():
+        tools = [t for t in tools if not t.startswith("wt_")]
+    return tools
+
+
 def _session_scope(owner: str, session: str) -> tuple[str, str]:
     from core.runtime.db import _ensure_chat_session_workspace_columns, connect
 
@@ -182,17 +222,21 @@ def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
     budget_tokens = _budget_for(role, budget_tokens)
     max_turns = 12 if writes else 8
     deadline = (datetime.now(UTC) + timedelta(minutes=45 if writes else 30)).isoformat()
-    tools = _vaerktoejer_for("worktree-write" if writes else "read-only-runtime")
-    if not workspace:
-        tools = [t for t in tools if t in {"web_search", "web_fetch", "read_tool_result", "agent_note"}]
+    tools = _annoncerede_vaerktoejer(
+        "worktree-write" if writes else "read-only-runtime", model, bool(workspace))
     mangler = ufuldstaendige_vaerktoejer(
         prompt if guard_text is None else guard_text, tools, _kendte_vaerktoejer())
     if mangler:
         # Afvis ved dispatch, ikke efter en kørsel: en agent kan ikke få et værktøj ud over sit
         # faste sæt, så opgaven ville blive accepteret, brænde tokens og fejle (4/11-2026).
+        cli_note = (
+            " CLI-ruten har sine egne værktøjer og ingen shell — bed den ikke køre kommandoer."
+            if str(model or "").strip() in _cli_providers() else ""
+        )
         raise ValueError(
             f"opgaven kraever {', '.join('`' + n + '`' for n in mangler)}, som en {kind} ikke har "
             f"(den faar kun: {', '.join(tools)}). Udfoer det selv i stedet for at delegere det"
+            + cli_note
         )
     granted = "worktree-write" if writes else "read"
     original = "worktree-write" if has_repo else "read"

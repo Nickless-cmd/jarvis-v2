@@ -127,3 +127,36 @@ def test_codex_sandbox_foelger_policy():
     )
     assert skriv[skriv.index("--sandbox") + 1] == "workspace-write"
     assert laes[laes.index("--sandbox") + 1] == "read-only"
+
+
+# ── facaden: listen skal tale om RUTEN, ikke kun politikken ────────────────
+
+def test_facaden_lover_ikke_wt_vaerktoejer_paa_en_cli_rute():
+    """Målt 14/11-2026: to agenter fik `wt_bash` annonceret og havde den ikke.
+
+    `asg-dc669ecaebd54825` (claude-cli) svarede «wt_bash findes ikke her» og kørte
+    nul tests. `asg-f32b7d7f86a940fc` (codex-cli) skrev 19 filer uden ét testkald.
+    Listen afgør både hvad agenten får at vide OG hvad der afvises ved dispatch —
+    lover den et værktøj ruten ikke har, koster det en hel kørsel.
+    """
+    from core.services.agent_task_facade import _annoncerede_vaerktoejer
+
+    worker = _annoncerede_vaerktoejer("worktree-write", "deepseek", True)
+    assert "wt_bash" in worker, "worker-ruten HAR wt_bash — den skal stadig annonceres"
+
+    for rute in ("claude-cli", "codex-cli"):
+        cli = _annoncerede_vaerktoejer("worktree-write", rute, True)
+        assert not [t for t in cli if t.startswith("wt_")], (
+            f"{rute} annoncerer wt_-værktøjer den ikke har: {cli}"
+        )
+        assert "read_file" in cli, "CLI-agenten skal stadig kunne læse filer"
+
+
+def test_facaden_afviser_ved_bestilling_naar_cli_ruten_mangler_shell():
+    """Afvisningen skal nævne at CLI-ruten ikke har shell — ikke kun mangle navnet."""
+    from core.services.agent_task_requirements import ufuldstaendige_vaerktoejer
+    from core.services.agent_task_facade import _annoncerede_vaerktoejer
+
+    cli = _annoncerede_vaerktoejer("worktree-write", "codex-cli", True)
+    mangler = ufuldstaendige_vaerktoejer("kør `wt_bash` og rapportér", cli, set(cli) | {"wt_bash"})
+    assert mangler == ["wt_bash"], "facaden skal opdage at wt_bash ikke findes på ruten"

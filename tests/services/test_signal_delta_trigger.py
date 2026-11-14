@@ -11,9 +11,24 @@ MOCKED here per the task contract.
 from __future__ import annotations
 
 import sys
+import time
 import types
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _gendan_uret():
+    """Gendan ``time.time`` efter hver test.
+
+    Flere tests her fast-forwarder uret ved at tildele ``time.time`` direkte.
+    Uden gendannelsen lækker det falske ur til næste testfil i samme kørsel —
+    målt 14/11-2026: `test_dispatch_quota` så et ur fra 1970 og meldte en
+    passeret codex-grænse som aktiv blokering, mens den var grøn alene.
+    """
+    oprindelig = time.time
+    yield
+    time.time = oprindelig
 
 
 # --------------------------------------------------------------------------- #

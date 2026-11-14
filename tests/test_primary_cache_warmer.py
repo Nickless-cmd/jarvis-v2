@@ -459,21 +459,31 @@ def test_varmeren_falder_tilbage_naar_intet_er_laast(monkeypatch):
     assert navne == {"fra_kataloget"}, "faldt ikke tilbage til pruneren"
 
 
-def test_den_tomme_scope_varmes_ogsaa():
-    """REGRESSION (målt 14/11-2026): ``""`` var udeladt af ``_WARM_SCOPES`` med
-    begrundelsen «desk sender altid et mode».
+def test_den_tomme_scope_varmes_ikke():
+    """Den tomme variant skal IKKE varmes — det er målt, ikke antaget.
 
-    Den antagelse er målt falsk: 136 af 899 visible-kald i døgnet (15 %) kørte
-    den tomme variant, fordi ``udled_tool_scope()`` giver ``""`` når klienten
-    udelader mode. De ture ramte 19-23 % hit mens de øvrige ramte 99 % — og
-    varmeren havde aldrig lagt den variant, fordi den er 14.384 tegn kortere
-    end chat-varianten og derfor ikke kan dækkes af den.
+    Historikken er værd at huske, fordi den er min egen fejl: 14/11-2026 blev
+    ``""`` tilføjet til ``_WARM_SCOPES`` ud fra en hypotese om at 15 % af
+    turene kørte iskolde fordi varianten ikke blev varmet. Timen efter viste
+    målingen det modsatte — de tomme ture ramte deres egen cache lige så godt
+    som chat-turene:
+
+        tom  : 145 ture, 7 kolde (4,8 %), median 99,1 % hit
+        chat : 723 ture, 37 kolde (5,1 %), median 99,5 % hit
+
+    Varmeren fik 3,4 % hit til $0,0025 pr. kald — den bygger prefixet ti
+    minutter før nogen tur bruger det, og så er netop dét prefix udløbet.
+    Målt pris: ~$3,24/dag for nul gavn.
+
+    Tilføjer nogen den igen, skal de kunne pege på en måling der viser at de
+    tomme ture ER kolde. Denne vagt kræver det modsatte bevis.
     """
     import scripts.primary_cache_warmer as w
 
-    assert "" in w._WARM_SCOPES, (
-        "den tomme scope-variant varmes ikke — men den rammer ~15 % af turene, "
-        "når klienten udelader mode-signal")
+    assert "" not in w._WARM_SCOPES, (
+        "den tomme scope-variant blev varmet igen. Det kostede ~$3,24/dag for "
+        "3,4 % hit i den ene måling vi har — de tomme ture rammer deres egen "
+        "cache (4,8 % kolde mod chat-variantens 5,1 %). Vis en ny måling først.")
     assert "chat" in w._WARM_SCOPES
 
 

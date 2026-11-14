@@ -97,13 +97,20 @@ DEFAULT_MODEL = _konfigureret_model()
 #: skifter med scopet, så varianterne deler IKKE præfiks — hver skal varmes
 #: for sig.
 #:
-#: ``""`` (klient uden mode-signal) STOD UDELADT med begrundelsen «desk sender
-#: altid et mode». Den antagelse er målt falsk 14/11-2026: 136 af 899
-#: visible-kald i døgnet (15 %) kørte den tomme variant, fordi
-#: ``udled_tool_scope()`` giver ``""`` når klienten udelader mode — og de ture
-#: ramte 19-23 % hit, mens de øvrige ramte 99 %. Varianten er 14.384 tegn
-#: kortere end chat-varianten, så den kan ikke dækkes af den.
-_WARM_SCOPES: tuple[str, ...] = ("chat", "code", "")
+#: ``""`` (klient uden mode-signal) er UDELADT — og det er nu målt, ikke
+#: antaget. Den blev tilføjet 14/11-2026 på en hypotese om at 15 % af turene
+#: kørte iskolde fordi varianten ikke blev varmet. Målingen viste det modsatte:
+#:
+#:   tom  : 145 ture, 7 kolde (4,8 %), median 99,1 % hit
+#:   chat : 723 ture, 37 kolde (5,1 %), median 99,5 % hit
+#:
+#: De tomme ture rammer altså deres EGEN cache lige så godt som chat-turene,
+#: fordi de kommer i klumper inden for samme session. Varmeren derimod fik
+#: 3,4 % hit til $0,0025 pr. kald — den bygger prefixet 10 minutter før nogen
+#: tur bruger det, og så er netop dét prefix udløbet. Målt pris: ~$3,24/dag
+#: for nul gavn. Varianten kan bygges byte-identisk (se vagten), men der er
+#: intet at hente ved at varme den.
+_WARM_SCOPES: tuple[str, ...] = ("chat", "code")
 DEFAULT_MAX_TOKENS = 10
 DEFAULT_TEMPERATURE = 0.0
 MIN_INTERVAL_SECONDS = 60  # mindst 1 minut mellem kald

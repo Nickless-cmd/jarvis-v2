@@ -16,15 +16,24 @@ def test_clarity_signal_empty_zero():
 
 
 def test_score_monotonic_in_top_sim():
-    a = tr._score("læs filen visible_runs.py", top_sim=0.3, load_more_rate_7d=0.05)
-    b = tr._score("læs filen visible_runs.py", top_sim=0.7, load_more_rate_7d=0.05)
+    a = tr._score("læs filen visible_runs.py", top_sim=0.3)
+    b = tr._score("læs filen visible_runs.py", top_sim=0.7)
     assert b > a
 
 
-def test_score_lowered_by_high_load_more_rate():
-    a = tr._score("læs filen", top_sim=0.5, load_more_rate_7d=0.0)
-    b = tr._score("læs filen", top_sim=0.5, load_more_rate_7d=0.20)
-    assert b < a
+def test_score_er_uaftaengig_af_load_more_raten():
+    """Koblingen var cirkulær og havde omvendt fortegn (målt 14/11-2026).
+
+    Et højt load_more-tal sænkede loftet → lavere confidence → under tærsklen →
+    færre værktøjer → MERE load_more. Scoren må kun afhænge af beskeden og af
+    hvor godt den rammer kataloget; signaturen er beviset.
+    """
+    import inspect
+
+    assert "load_more" not in inspect.signature(tr._score).parameters, (
+        "scoren tager stadig load_more-raten som input — koblingen er tilbage"
+    )
+    assert tr._score("læs filen", top_sim=0.5) == tr._score("læs filen", top_sim=0.5)
 
 
 def test_killswitch_returns_full_list(monkeypatch):

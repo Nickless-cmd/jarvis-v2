@@ -1,8 +1,14 @@
 """Per-turn tool selection.
 
 Returns a ToolSelection containing the names of tools to send with full
-schema this turn. Falls back to the full registry when confidence is low,
-when any subsystem fails, or when the killswitch is set.
+schema this turn.
+
+Tre udfald, ikke to: hele registret ved killswitch eller subsystem-fejl, den
+fulde selektion (kerne + embedding-picks) naar confidence er over taersklen, og
+KUN kernen naar den er under. Den sidste gren er ikke en fejl-fallback — den er
+normal tilstand for chitchat, og modellen kan hente resten med
+`load_more_tools`. Denne docstring paastod tidligere at lav confidence gav hele
+registret; det holdt ikke laengere efter grenen blev aendret (maalt 14/11-2026).
 """
 from __future__ import annotations
 
@@ -110,11 +116,42 @@ def _clarity_signal(msg: str) -> float:
     return min(1.0, base)
 
 
-def _score(user_message: str, *, top_sim: float, load_more_rate_7d: float) -> float:
+#: Confidence-formlens loft. KONSTANT med vilje.
+#:
+#: Det var tidligere `adaptive_floor = max(0.30, 0.60 - load_more_rate*2)`, altsaa
+#: et loft der faldt naar `load_more`-raten steg. Koblingen var cirkulaer OG
+#: havde omvendt fortegn, maalt 14/11-2026:
+#:
+#:   hoej load_more -> lavere loft -> lavere confidence -> UNDER taersklen
+#:                  -> kun 70 kerne-vaerktoejer -> faerre vaerktoejer til raadighed
+#:                  -> MERE load_more -> ...
+#:
+#: Formlen blev skrevet mens grenen under taersklen sendte HELE registret: der
+#: betoed et hoejt load_more-tal «udvid». Grenen blev senere aendret til kun at
+#: sende kernen (for at spare ~38K tokens paa chitchat), og dermed vendte den
+#: samme multiplikator effekten til «indskraenk».
+#:
+#: Maalt konsekvens: raten gik 0,033 -> 0,102, loftet faldt 0,534 -> 0,396, og
+#: taersklen 0,380 laa pludselig over det — 47 % af turene fik kun kernen. Med
+#: fast loft 0,60 ville confidence vaere 0,552 BAADE foer og efter 4/11-2026:
+#: hele faldet var multiplikatoren. `_clarity_signal` laa stabilt 0,70-0,80 hele
+#: perioden, og forholdet confidence/loft 0,89-0,99.
+#:
+#: Loftet maa derfor ikke afhaenge af et signal hvis eneste aarsag er routerens
+#: egen praecision. 0,60 er den vaerdi formlen havde ved rate 0.
+_CONFIDENCE_CEILING = 0.60
+
+
+def _score(user_message: str, *, top_sim: float) -> float:
+    """Hvor sikkert rammer beskeden noget UDENFOR kerne-vaerktoejerne?
+
+    To input og intet andet: beskedens form (`_clarity_signal`) og hvor godt den
+    rammer kataloget (`top_sim`). Alt der maaler routerens EGEN historik hoerer
+    ikke her — se `_CONFIDENCE_CEILING` for maalingen bag.
+    """
     msg_clarity = _clarity_signal(user_message)
     similarity_strength = min(top_sim / 0.7, 1.0) if top_sim > 0 else 0.0
-    adaptive_floor = max(0.30, 0.60 - load_more_rate_7d * 2.0)
-    return (msg_clarity * 0.4 + similarity_strength * 0.6) * adaptive_floor
+    return (msg_clarity * 0.4 + similarity_strength * 0.6) * _CONFIDENCE_CEILING
 
 
 def _all_tool_names() -> list[str]:
@@ -457,7 +494,6 @@ def _select_inner(
 
     always_core = _always_core_set(settings.tool_router_always_core_size)
     threshold = float(settings.tool_router_threshold)
-    load_more_rate = _load_more_rate_7d()
 
     try:
         sim = top_k_similar(
@@ -474,7 +510,7 @@ def _select_inner(
         sim = []
 
     top_sim = sim[0][1] if sim else 0.0
-    confidence = _score(user_message or "", top_sim=top_sim, load_more_rate_7d=load_more_rate)
+    confidence = _score(user_message or "", top_sim=top_sim)
 
     if confidence < threshold:
         # Low-confidence case (chitchat, single-word affirmations, vague

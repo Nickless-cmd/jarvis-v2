@@ -108,39 +108,84 @@ def test_ulaeselig_config_lader_broen_vaere_taendt(monkeypatch):
 
 
 def test_taersklen_lukker_de_maalte_vaerktoejs_foresporgsler_ind():
-    """Fire ægte forespørgsler, målt eksakt. De tre nederste blev afvist ved 0,40.
+    """Fire ægte forespørgsler skal passere — regnet på den formel der kører nu.
 
-    Tallene er confidence fra produktion 6/9-2026 med sprog-broen slået til.
-    Ændres tærsklen op igen, fejler den her — så det bliver et bevidst valg.
+    Tallene her var hardkodede (0,42484 / 0,41779 / 0,39311 / 0,38042, målt
+    6/9-2026). De var målt med et rate-afhængigt loft, og da loftet faldt
+    (målt 14/11-2026: 0,534 → 0,396) faldt de fire med det — den nederste
+    endte under tærsklen. Testen var grøn hele tiden, fordi den sammenlignede
+    mod en kopi af fortiden i stedet for mod formlen.
     """
     from core.runtime.settings import RuntimeSettings
+    from core.services.tool_router import _score
+
     t = float(RuntimeSettings().tool_router_threshold)
-    # Målt EFTER _clarity_signal fik imperativ-feature. De gamle tal (0,38016
-    # / 0,37312 / 0,33581) stammer fra det signal der var målt vendt om.
-    maalte = {
-        "kan du lægge et møde ind i min kalender på fredag": 0.42484,
-        "send en mail til bjorn om netværket": 0.41779,
-        "hvad er der i min kalender i morgen": 0.39311,
-        "vis mig de seneste commits": 0.38042,
+    beskeder = [
+        "kan du lægge et møde ind i min kalender på fredag",
+        "send en mail til bjorn om netværket",
+        "hvad er der i min kalender i morgen",
+        "vis mig de seneste commits",
+    ]
+    # top_sim 0,5 er et forsigtigt match: en ægte forespørgsel må ikke være
+    # afhængig af et perfekt embedding-hit for at slippe igennem porten.
+    afvist = {
+        b: round(_score(b, top_sim=0.5), 4)
+        for b in beskeder
+        if _score(b, top_sim=0.5) < t
     }
-    afvist = [b for b, c in maalte.items() if c < t]
     assert not afvist, f"ægte værktøjs-forespørgsler afvises af tærsklen {t}: {afvist}"
 
 
-def test_taersklen_ligger_under_formlens_loft():
-    """adaptive_floor = max(0,30 · 0,60 − rate·2) er loftet for HELE confidence.
+def test_chitchat_faar_kun_kernen():
+    """Den anden side af samme port — og den er ikke kosmetisk.
 
-    Ved den nuværende load_more_rate (~0,08) er loftet 0,440. Kommer tærsklen
-    for tæt på, kan intet nogensinde passere — det var netop fejlen ved 0,55,
-    som gav 100 % fallback.
+    Uden den her kan testen ovenfor opfyldes ved at sænke tærsklen til nul, og
+    så er der ingen pruning tilbage: hver tur betaler ~38K tokens for et fuldt
+    sæt. Porten skal skelne, ikke bare åbne.
     """
     from core.runtime.settings import RuntimeSettings
+    from core.services.tool_router import _score
+
     t = float(RuntimeSettings().tool_router_threshold)
-    loft_ved_typisk_rate = max(0.30, 0.60 - 0.08 * 2.0)
-    assert t < loft_ved_typisk_rate * 0.90, (
-        f"tærskel {t} er for tæt på loftet {loft_ved_typisk_rate:.3f} — "
+    for besked in ("ja", "ok", "hvad synes du om det"):
+        assert _score(besked, top_sim=0.0) < t, f"chitchat {besked!r} slipper igennem"
+
+
+def test_loftet_ligger_over_taersklen_med_margin():
+    """Loftet er KONSTANT 0,60, og tærsklen skal have luft under det.
+
+    Vagten regnede FØR loftet ud fra en hardkodet rate (0,08) og målte dermed et
+    tal der ikke findes. Ved den faktiske rate 0,102 (målt 14/11-2026) faldt
+    loftet til 0,396 mens tærsklen stod på 0,380 — 47 % af turene fik kun
+    kernen — og testen var grøn, fordi den aldrig så den rate der kørte.
+    """
+    from core.runtime.settings import RuntimeSettings
+    from core.services.tool_router import _CONFIDENCE_CEILING
+
+    t = float(RuntimeSettings().tool_router_threshold)
+    assert t < _CONFIDENCE_CEILING * 0.90, (
+        f"tærskel {t} er for tæt på loftet {_CONFIDENCE_CEILING:.3f} — "
         "porten ville næsten aldrig åbne"
     )
+
+
+def test_loftet_kan_ikke_saenkes_af_load_more_raten():
+    """Confidence må ikke straffes for routerens EGEN load_more-rate.
+
+    Målt 14/11-2026: raten gik 0,033 → 0,102, loftet faldt 0,534 → 0,396, og
+    tærsklen 0,380 endte OVER loftet. Kæden var cirkulær og havde omvendt
+    fortegn: smalt sæt → mere load_more → lavere loft → smallere sæt. Med fast
+    loft er scoren 0,578 både før og efter — hele faldet var multiplikatoren.
+    """
+    import inspect
+
+    assert "load_more" not in inspect.signature(R._score).parameters, (
+        "scoren tager stadig load_more-raten som input — koblingen er tilbage"
+    )
+    # Målt med det faste loft: 0,910 clarity og top_sim 0,7.
+    assert R._score(
+        "kan du lægge et møde ind i min kalender på fredag", top_sim=0.7
+    ) == pytest.approx(0.5784, abs=0.005)
 
 
 # ---------------------------------------------------------------------------

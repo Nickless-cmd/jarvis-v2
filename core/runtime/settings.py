@@ -623,11 +623,18 @@ class RuntimeSettings:
     # 6/9-2026: 0,40 → 0,375, kalibreret paa 189 beskeder stratificeret over
     # seks maaneder (op til 40 pr. maaned, saa én lang samtale ikke dominerer).
     #
-    # Hvorfor 0,40 var for hoejt: confidence-formlens LOFT er adaptive_floor =
-    # max(0,30 · 0,60 − load_more_rate·2) = 0,440 ved den nuvaerende rate. Med et
-    # loft paa 0,440 og en taerskel paa 0,400 er der ti procents luft i HELE
-    # skalaen — porten afgoeres af marginaler. Maalt paa aegte vaerktoejs-
-    # foresp0rgsler:
+    # Hvorfor 0,40 var for hoejt: confidence-formlens LOFT var dengang
+    # adaptive_floor = max(0,30 · 0,60 − load_more_rate·2) = 0,440 ved den
+    # davaerende rate. Med et loft paa 0,440 og en taerskel paa 0,400 var der ti
+    # procents luft i HELE skalaen — porten blev afgjort af marginaler.
+    #
+    # 14/11-2026: loftet er nu KONSTANT 0,60 — se `_CONFIDENCE_CEILING` i
+    # `core/services/tool_router.py`. Koblingen til load_more-raten var cirkulaer
+    # og havde omvendt fortegn: raten gik 0,033 → 0,102, loftet faldt 0,534 →
+    # 0,396, og taersklen 0,380 endte OVER loftet — 47 % af turene fik kun
+    # kernen. Genscoring af 3.736 faktiske beslutninger over 14 dage: 38,6 % →
+    # 6,5 %. Tallene nedenfor er maalt mod det GAMLE loft og er derfor ca. 1,12x
+    # lavere end den samme besked scorer i dag; de er historik, ikke nutid.
     #     0,40128  «hvad er der i min kalender i morgen»   (slap igennem)
     #     0,38016  «kan du laegge et moede ind i min kalender»
     #     0,37488  «kan du laese den fil og rette fejlen»

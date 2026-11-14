@@ -268,7 +268,16 @@ def _command(provider: str, executable: str, model: str, root: str, prompt: str,
            "--permission-prompts", "none", "--output-format", "stream-json",
            "--verbose", "--tools", tools]
     if writes:
-        cmd += ["--permission-mode", "acceptEdits"]
+        cmd += ["--permission-mode", "acceptEdits",
+                # (14/11-2026) `--tools` giver værktøjet, men ikke TILLADELSEN.
+                # Med `--permission-prompts none` findes ingen godkendelsesflade,
+                # så et Bash-kald der ikke står i CLI'ens egen sikre liste afvises
+                # med «ingen godkendelsesflade». Målt: `echo READY` gik igennem,
+                # `echo READY && python3 --version` blev nægtet — agenten kunne
+                # derfor hverken køre vitest eller en sammensat kommando, og
+                # afleverede uden at have målt noget (asg-17fb07b6bf1b4ea9).
+                # `--allowedTools Bash` lukker den forskel; målt grøn bagefter.
+                "--allowedTools", "Bash"]
     if selected and selected != "default":
         cmd += ["--model", selected]
     return cmd

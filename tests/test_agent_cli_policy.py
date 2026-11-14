@@ -122,6 +122,10 @@ def test_command_sender_policyens_vaerktoejer_til_cli():
         policy="worktree-write", output_path="/tmp/out.txt",
     )
     assert cmd[cmd.index("--tools") + 1] == "Read,Glob,Grep,Edit,Write,Bash"
+    # `--tools` giver værktøjet, `--allowedTools` giver tilladelsen. Uden den
+    # anden afvises hvert Bash-kald der ikke står i CLI'ens sikre liste — målt
+    # 14/11-2026: agenten kunne køre `echo` men ikke `&&` eller vitest.
+    assert cmd[cmd.index("--allowedTools") + 1] == "Bash"
 
     cmd_ro = backend._command(
         "claude-cli", "/usr/bin/claude", "default", "/tmp", "opgave",

@@ -591,3 +591,85 @@ class TestIdentitetIkkeLighed:
                 )
         finally:
             c.close()
+
+
+class TestReservationenBliverTilEnLanding:
+    """(14/11-2026) Målt i drift: 0 af 185 rækker havde et `fund_id`.
+
+    Ingen af de ti kaldere sendte et, så reservationen blev skrevet med
+    `fund_id=''` — og opgraderingen (`UPDATE … WHERE fund_id=?`) ramte nul
+    rækker. Rækken stod derfor fast som `reserveret` med `applied=1` for evigt,
+    mens beslutningen VAR oprettet 4 ms senere. To sådanne rækker lå i basen
+    (`red_dress` 13/11, `rca` 14/11).
+
+    Fejlen var usynlig fordi den ikke kaster: fundet blev landet, beslutningen
+    oprettet, og kun revisionssporet løj. Det er præcis den fejlform hvor
+    mekanismen ser ud som om den virker.
+    """
+
+    def test_kalder_uden_fund_id_faar_alligevel_en_opgraderet_raekke(self, base):
+        with mock.patch("core.services.behavioral_decisions.create_decision",
+                        return_value={"decision_id": "dec_opg", "deduped": False}):
+            r = cc.land_decision(
+                "red_dress", "Undersøg silent_cutoff nu",
+                subject="quiet_fire:silent_cutoff",
+                evidence="severity=2 volume=0", evidence_source="test")
+        assert r["applied"] is True, r
+        with sqlite3.connect(base) as c:
+            raekker = c.execute(
+                f"SELECT fund_id, applied, reason, decision_id FROM {cc._TABLE}"
+            ).fetchall()
+        assert len(raekker) == 1, f"reservationen blev ikke opgraderet: {raekker}"
+        fund_id, applied, reason, decision_id = raekker[0]
+        assert fund_id, "identiteten skal findes, ellers kan rækken ikke opgraderes"
+        assert reason == "bundet", f"rækken står stadig som {reason!r}"
+        assert applied == 1
+        assert decision_id == "dec_opg"
+
+    def test_to_forskellige_fund_med_samme_subject_faar_hver_sin_identitet(self, base):
+        """`subject` er en TYPE. To fund af samme type er ikke samme fund."""
+        with mock.patch("core.services.behavioral_decisions.create_decision",
+                        return_value={"decision_id": "dec_x", "deduped": False}):
+            a = cc.land_decision(
+                "rca", "Grav i infra/pfsense_security",
+                subject="recurring:infra/pfsense_security/security",
+                evidence="uloeste=3 severity=2", evidence_source="test")
+            b = cc.land_decision(
+                "rca", "Grav i infra/pfsense_security",
+                subject="recurring:infra/pfsense_security/security",
+                evidence="uloeste=7 severity=3", evidence_source="test")
+        assert a["applied"] is True and b["applied"] is True, (a, b)
+        with sqlite3.connect(base) as c:
+            ids = [r[0] for r in c.execute(
+                f"SELECT fund_id FROM {cc._TABLE} WHERE reason='bundet'").fetchall()]
+        assert len(set(ids)) == 2, f"to fund blev smeltet sammen: {ids}"
+
+    def test_en_hængende_reservation_kan_afsluttes(self, base):
+        """Crash mellem reservation og beslutning må ikke låse fundet fast.
+
+        Rækken står som `reserveret` med `applied=0`. Næste forsøg skal svare
+        «allerede landet» — ikke kollidere på indeksen og ikke oprette en dublet.
+        """
+        with mock.patch("core.services.behavioral_decisions.create_decision",
+                        side_effect=RuntimeError("proces doede")):
+            foerste = cc.land_decision(
+                "relational", "Stop med at gentage dig",
+                subject="relational:gentag", evidence="fald=0.8", evidence_source="test")
+        assert foerste["applied"] is False
+        with sqlite3.connect(base) as c:
+            r = c.execute(f"SELECT applied, reason FROM {cc._TABLE}").fetchone()
+        assert r == (0, "reserveret"), f"reservationen skal være et claim, ikke en landing: {r}"
+
+        with mock.patch("core.services.behavioral_decisions.create_decision",
+                        return_value={"decision_id": "dec_efter", "deduped": False}) as ny:
+            anden = cc.land_decision(
+                "relational", "Stop med at gentage dig",
+                subject="relational:gentag", evidence="fald=0.8", evidence_source="test")
+        assert anden["already_landed"] is True, anden
+        assert not ny.called, "en hængende reservation må ikke føde en ny beslutning"
+        # Rækkeantallet er det der skiller «svarede pænt» fra «skrev rigtigt»:
+        # en ekstra INSERT med samme fund_id kolliderer på indeksen, og uden
+        # denne kontrol ville grenen se ud som om den virkede.
+        with sqlite3.connect(base) as c:
+            n = c.execute(f"SELECT COUNT(*) FROM {cc._TABLE}").fetchone()[0]
+        assert n == 1, f"already_landet skrev en ny række i stedet for at genbruge: {n}"

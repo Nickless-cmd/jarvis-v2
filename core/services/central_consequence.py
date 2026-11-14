@@ -49,6 +49,7 @@ er en løgn, og derfor tælles de to ting hver for sig.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 from datetime import UTC, datetime, timedelta
@@ -170,8 +171,13 @@ def _allerede_landet(conn, cid: str, lever: str, subject: str,
     der kan afgøres uden en identitet.
     """
     if fund_id:
+        # (14/11-2026) En RESERVATION tæller også som «taget». Rækken skrives
+        # med `applied=0` (den er et claim, ikke en landing), men den unikke
+        # indeks på `fund_id` gælder uanset — så et andet forsøg på samme fund
+        # ville kollidere i basen i stedet for at få et ærligt svar. Spørgsmålet
+        # her er «er fundet taget?», ikke «flyttede det noget?».
         r = conn.execute(
-            f"SELECT 1 FROM {_TABLE} WHERE fund_id=? AND applied=1 LIMIT 1",
+            f"SELECT 1 FROM {_TABLE} WHERE fund_id=? LIMIT 1",
             (fund_id,),
         ).fetchone()
         return r is not None
@@ -403,6 +409,23 @@ def land_decision(
     out: dict[str, Any] = {"applied": False, "decision_id": None, "reason": ""}
     subject = (subject or directive)[:200]
     fund_id = (fund_id or "").strip()
+    # (14/11-2026) IDENTITETEN SKAL ALTID FINDES — ellers er reservationen en
+    # fælde. Målt i drift: 0 af 185 rækker havde et `fund_id`, fordi ingen af de
+    # ti kaldere sender et. Reservationen blev derfor skrevet med `fund_id=''`,
+    # og opgraderingen (`UPDATE … WHERE fund_id=?`) ramte nul rækker — så rækken
+    # stod fast som `reserveret` med `applied=1` for evigt, mens beslutningen VAR
+    # oprettet 4 ms senere. To sådanne rækker lå i basen (red_dress 13/11, rca
+    # 14/11). Kalderne BÆRER identiteten — `quiet_fire:<nerve>`,
+    # `recurring:<cluster>/<nerve>/<kind>` — men kun som `subject`, der er en
+    # TYPE. Derfor udledes identiteten her: subject + evidens + direktiv er
+    # fundets fingeraftryk, og det er stabilt for det samme fund uden at smelte
+    # to forskellige fund sammen.
+    if not fund_id:
+        _finger = f"{subject}\x1f{evidence}\x1f{directive}"
+        fund_id = "fund-" + hashlib.sha256(_finger.encode("utf-8")).hexdigest()[:16]
+        _udledt_id = True
+    else:
+        _udledt_id = False
     maalt, maalt_grund = _er_maalt(evidence, evidence_source)
     if not maalt:
         try:
@@ -425,7 +448,7 @@ def land_decision(
         with _connect() as conn:
             _ensure(conn)
             if _allerede_landet(conn, cid, "decision", subject, fund_id):
-                out["reason"] = ("fundet er allerede landet" if fund_id
+                out["reason"] = ("fundet er allerede landet" if not _udledt_id
                                  else "allerede landet i doegnet")
                 # (13/11-2026, Bjørns fjerde indvending) `applied=False` betød både
                 # «afvist» og «allerede afsluttet». En kalder der rydder sit spor på
@@ -434,9 +457,21 @@ def land_decision(
                 # to: konsekvensen findes allerede, så fundet er færdigt.
                 out["already_landed"] = True
                 out["decision_id"] = _beslutning_for_fund(conn, fund_id)
-                _skriv(conn, cid=cid, lever="decision", subject=subject,
-                       applied=False, reason=out["reason"], fund_id=fund_id,
-                       decision_id=out["decision_id"] or "")
+                # (14/11-2026) Rækken FINDES allerede — det er hele grunden til
+                # at vi er i denne gren. At skrive endnu en med samme `fund_id`
+                # kolliderer på den unikke indeks og gør svaret til en fejl i
+                # stedet for et svar. Sporet er skrevet; her mangler kun
+                # beslutnings-id'et, hvis reservationen aldrig blev opgraderet.
+                if fund_id and out["decision_id"]:
+                    conn.execute(
+                        f"""UPDATE {_TABLE} SET decision_id=?, applied=1, reason=?
+                            WHERE fund_id=? AND lever='decision'""",
+                        (str(out["decision_id"]), out["reason"][:300], fund_id),
+                    )
+                elif not fund_id:
+                    _skriv(conn, cid=cid, lever="decision", subject=subject,
+                           applied=False, reason=out["reason"],
+                           decision_id=out["decision_id"] or "")
                 conn.commit()
                 return out
             if not _gate_taend(*gate):
@@ -455,10 +490,17 @@ def land_decision(
             # (13/11-2026) Ellers kunne to samtidige forsoeg paa samme fund begge
             # passere `_allerede_landet` og oprette hver sin beslutning — og et
             # crash mellem oprettelsen og rydningen ville efterlade fundet uden
-            # spor. Nu er raekken beviset paa at fundet ER taget, og den unikke
-            # indeks paa `fund_id` goer det haandhaevet i basen, ikke i koden.
+            # spor. Den unikke indeks paa `fund_id` goer det haandhaevet i basen.
+            #
+            # (14/11-2026) MEN RESERVATIONEN ER IKKE EN LANDING. Den skrives med
+            # `applied=0`: `applied=1` betyder «fundet flyttede noget», og det
+            # goer den foerst naar beslutningen findes. Maalt i drift stod to
+            # raekker fast som `reserveret` med `applied=1` fordi opgraderingen
+            # ikke ramte dem — og `_allerede_landet` laeste dem som landede.
+            # Med `applied=0` er reservationen et claim: indeksen bevarer
+            # enkeltheden, mens `_allerede_landet` kun ser FAERDIGE landinger.
             _skriv(conn, cid=cid, lever="decision", subject=subject,
-                   applied=True, reason="reserveret", fund_id=fund_id)
+                   applied=False, reason="reserveret", fund_id=fund_id)
             conn.commit()
     except Exception as exc:
         logger.warning("land_decision: kunne ikke skrive landingsraekken for %s: %s", cid, exc)

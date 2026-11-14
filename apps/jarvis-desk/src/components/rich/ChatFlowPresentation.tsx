@@ -5,7 +5,7 @@ import type { ContentBlock } from '../../lib/sseProtocol'
 import type { StreamStatus } from '../../lib/streamReducer'
 import { useChatPacedBlocks } from '../../lib/useChatPacedBlocks'
 import { useFoldHukommelse } from '../../lib/foldHukommelse'
-import { useTurSekunder } from '../../lib/turTid'
+import { useTurSekunder, formaterTurTid } from '../../lib/turTid'
 import { usePacingWorkLine } from '../../lib/usePacingWorkLine'
 import '../../styles/chat-flow.css'
 import { BlocksRenderer } from './BlocksRenderer'
@@ -13,6 +13,7 @@ import { JarvisRing } from '../shell/JarvisRing'
 import { LabelSkift, SynteseLinje } from './LabelSkift'
 import { FoldPil, TurHoved } from './TurHoved'
 import { RullendeTokens } from '../feedback/RullendeTal'
+import { RullendeTid } from './RullendeTid'
 
 export interface ChatFlowPresentationProps {
   blocks: ContentBlock[]
@@ -263,7 +264,12 @@ export function ChatFlowPresentation({
   // «Aktiv» er arbejdsfasen: Jarvis kører og har ikke begyndt at svare endnu.
   // Uden for den er turen enten afsluttet eller svaret er begyndt — og så
   // klapper hovedet sammen og arbejdet lægger sig som detaljer.
-  const aktiv = streaming && !finalAnswerStarted && model.terminalState === 'active'
+  // «Aktiv» betyder «turen kører og rundelinjen er dens ansigt». Den må ikke
+  // kræve `!finalAnswerStarted`: med «gem turhoved til det foldes» (14/11-2026)
+  // findes hovedet ikke før turen er slut, så rundelinjen skal blive stående
+  // gennem slutsvaret. Målt: uden denne gren faldt `arbejdeAabent` tilbage på
+  // `aaben` = true, og arbejdsdetaljerne overtog pladsen mens turen kørte.
+  const aktiv = streaming || arbejdeEfterSvar
   // KUN rundelinjen fader — synteselinjen bliver stående. Første udgave satte
   // attributten på den fælles wrapper `chat-flow-activity`, så både syntese og
   // runde forsvandt i samme fade og skærmen blev tom (Bjørn 22/10-2026: «det
@@ -384,23 +390,33 @@ export function ChatFlowPresentation({
   // det kun er den LEVENDE tur der morpher ind; en persisteret tur uden
   // runder viser stadig intet hoved, for dér ville tallet stå stille på noget
   // der allerede er sket.
-  const hovedVenterUdenRunder = !harRunder && streaming && !finalAnswerStarted
-  const visTurhoved = hovedVenterUdenRunder
-    ? false
-    : harRunder
-      ? (harArbejde || streaming || sekunder !== null)
-      // En afbrudt eller fejlet tur beholder hovedet selv uden runder: det er
-      // dér den ærlige besked står («Arbejdet afbrudt» / «Arbejdet fejlede»).
-      // Uden denne gren forsvandt statusen sammen med hovedet — målt
-      // 14/11-2026 i `preserves partial text and uses honest … copy`.
-      : (streaming && finalAnswerStarted)
-        || model.terminalState === 'interrupted'
-        || model.terminalState === 'failed'
-  // Rundelinjen skal kunne stå ALENE. Den ejer derfor sin egen gate i stedet
-  // for at ligge inde i hovedets fragment — ellers forsvandt den sammen med
-  // det hoved den skulle overlevere til (målt 14/11-2026: `.rv-tur` var barn
-  // af samme gren, og hele fragmentet var betinget af `visTurhoved`).
-  const visArbejdsgruppe = visTurhoved || hovedVenterUdenRunder
+  // VENDT 14/11-2026, tredje gang samme dag (Bjørn): «skal vi gemme turhoved
+  // til det foldes? og lade den aktive rundelinje trække det levende indtil
+  // hoved foldes?»
+  //
+  // De to første regler var begge halve. Den første lod hovedet forsvinde når
+  // svaret begyndte — så var der intet at overlevere til. Den anden lod det
+  // morphe ind ved `finalAnswerStarted` — men dér er turen ikke slut, og
+  // hovedet stod dermed som en etiket over et svar der stadig skrev sig, mens
+  // rundelinjen under det sagde nogenlunde det samme.
+  //
+  // Den tredje regel er den ene: hovedet er et RESULTAT, ikke en status. Det
+  // findes først når turen er slut — når folden lukker (`arbejdeKoerer` falsk).
+  // Indtil da er rundelinjen turens ansigt, og den bærer uret, så intet tal
+  // går tabt ved skiftet. Fire grene bliver til én.
+  // ÉN regel (Bjørn 14/11-2026): «lad turhoved være som det er, gør det usynlig
+  // til hoved folder og slut beskeden sker». Hovedet er turens RESULTAT, ikke
+  // en status — det findes først når turen er slut. Persisteret historik uden
+  // runder får intet hoved: dér ville tallet stå stille på noget der allerede
+  // er sket.
+  const turenKoerer = streaming || arbejdeEfterSvar
+  const visTurhoved = !turenKoerer
+    && (harRunder || model.terminalState === 'interrupted' || model.terminalState === 'failed')
+  // Mens turen kører, er rundelinjen turens ansigt. Den ejer sin EGEN gate:
+  // lå den inde i hovedets fragment, forsvandt den sammen med det hoved den
+  // skulle overlevere til (målt 14/11-2026: `.rv-tur` var barn af samme gren,
+  // og hele fragmentet var betinget af `visTurhoved`).
+  const visArbejdsgruppe = turenKoerer || harRunder
   // Rundelinjen må aldrig vise et internt tool-navn. Modellen filtrerer de
   // rå working_step-værdier; indtil den menneskelige etiket er klar, står en
   // rolig fallback i samme stabile celle UNDER syntesen — ikke i turhovedet.
@@ -414,15 +430,17 @@ export function ChatFlowPresentation({
   // bærer INGEN rundetekst: turhovedet siger allerede «Tænker», og to ens ord
   // lige under hinanden er ikke en oplysning men støj. Tilstanden viser i
   // stedet kun tilstedeværelses-ringen — se gaten nedenfor.
+  // OVERLEVERINGEN: mens hovedet venter, ER rundelinjen turens ansigt — så
+  // den skal sige hvad hovedet ville have sagt. Uden denne gren stod der
+  // kun en puls uden ord i det vindue hvor turen lige var startet, og den
+  // tekst brugeren mistede var præcis den hovedet bærer (`model.hovedTekst`:
+  // «Tænker» / «Arbejder»). Målt 14/11-2026: `getByText('Tænker')` fandtes
+  // ikke længere i calm mode efter splittet.
   const rundeTekst = harArbejde
     ? (!activeLine || generiskArbejde ? 'Tænker' : activeLine)
-    // OVERLEVERINGEN: mens hovedet venter, ER rundelinjen turens ansigt — så
-    // den skal sige hvad hovedet ville have sagt. Uden denne gren stod der
-    // kun en puls uden ord i det vindue hvor turen lige var startet, og den
-    // tekst brugeren mistede var præcis den hovedet bærer (`model.hovedTekst`:
-    // «Tænker» / «Arbejder»). Målt 14/11-2026: `getByText('Tænker')` fandtes
-    // ikke længere i calm mode efter splittet.
-    : hovedVenterUdenRunder ? model.hovedTekst : null
+    : turenKoerer
+      ? model.hovedTekst
+      : null
 
   // ÉN gate — samme form som code mode (`RaekkeTranskript.tsx:434/449/469`).
   //
@@ -445,10 +463,12 @@ export function ChatFlowPresentation({
   // række har `activeRunId`, og den persisterede besked bærer samme id i
   // `run_id`. Uden nøgle opfører den sig som før (rent lokal state).
   const [aabenManuelt, setAabenManuelt] = useFoldHukommelse(runId ?? beskedId)
-  // Låsen beskytter SVARET, ikke hovedets tilstand (Bjørn 29/10-2026): er der
-  // kommet arbejde efter svar-låsen, kører turen stadig og hovedet skal være
-  // åbent. Samme formel som code mode (`RaekkeTranskript`: `arbejdeKoerer`).
-  const arbejdeKoerer = streaming && (!finalAnswerStarted || arbejdeEfterSvar)
+  // Låsen beskyttede SVARET, men med «gem turhoved til det foldes» (14/11-2026)
+  // er der ikke længere noget hoved at folde under streamen — rundelinjen ER
+  // turens ansigt indtil turen slutter. Folden skal derfor følge TUREN, ikke
+  // svar-låsen: ellers lukkede gruppen i samme øjeblik slutsvaret begyndte, og
+  // både rundelinje og ur forsvandt midt i turen (målt: `data-aaben=false`).
+  const arbejdeKoerer = streaming || arbejdeEfterSvar
   const aaben = aabenManuelt ?? arbejdeKoerer
   // Arbejdsdetaljerne under rundelinjen. Mens der arbejdes er de foldet
   // sammen som udgangspunkt — den levende linje er nok — men Bjørn kan folde
@@ -465,7 +485,11 @@ export function ChatFlowPresentation({
             aaben={aaben}
             foldbar={harArbejde}
             koerer={arbejdeKoerer}
-            sekunder={streaming ? sekunder : null}
+            /* Uret er ikke bundet til `streaming` (14/11-2026): hovedet er
+               turens RESULTAT og findes først når turen er slut — netop dér
+               hvor `streaming` er falsk. Bandt vi tallet til streamen, ville
+               hovedet stå uden ur præcis i den fase det nu ejer. */
+            sekunder={sekunder}
             tekst={model.hovedTekst}
             meta={streaming && tokens > 0
               ? <span className="rv-turMeta">~<RullendeTokens tokens={tokens} /> output</span>
@@ -498,17 +522,22 @@ export function ChatFlowPresentation({
       {visArbejdsgruppe ? (
           <div className="chat-flow-gruppe-ydre" data-aaben={aaben ? 'true' : 'false'}>
             <div className="chat-flow-gruppe" aria-hidden={!aaben}>
-            {aaben && (harArbejde || model.arbejdsTilstand === 'placeholder') && !arbejdeAabent ? (
+            {aaben && (harArbejde || turenKoerer || levendeSyntese || model.arbejdsTilstand === 'placeholder') ? (
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
                 aria-label={[activeSynthesis, rundeTekst].filter(Boolean).join('. ')}>
-                {levendeSyntese ? (
+                {/* MÅLT 14/11-2026: hele denne blok var betinget af
+                    `!arbejdeAabent`, så fold-pilen forsvandt i samme frame som
+                    man foldede ud — der var ingen vej tilbage. Syntesen og
+                    rundelinjen skal stadig vige for den udfoldede kronologi,
+                    men FOLD-KNAPPEN må ikke forsvinde med dem. */}
+                {!arbejdeAabent && levendeSyntese ? (
                   <div className="chat-flow-live-synthesis" data-testid="chat-flow-live-synthesis"
                     aria-hidden="true">
                     <SynteseLinje tekst={levendeSyntese.tekst} noegle={levendeSyntese.noegle} />
                   </div>
                 ) : null}
-                {rundeTekst || model.arbejdsTilstand === 'placeholder' ? (
+                {!arbejdeAabent && (rundeTekst || turenKoerer || model.arbejdsTilstand === 'placeholder') ? (
                   <div className="chat-flow-round" data-testid="chat-flow-round"
                     data-pacing-skjult={skjulAktivRunde ? '' : undefined}>
                     <div className="chat-flow-round-line" data-testid="chat-flow-round-line"
@@ -521,20 +550,45 @@ export function ChatFlowPresentation({
                           <LabelSkift tekst={rundeTekst} arbejder className="shimmer" fastIkon />
                         </span>
                       ) : null}
+                      {/* Uret flyttede herned 14/11-2026 (Bjørn): hovedet
+                          findes først når turen er slut, så rundelinjen er
+                          det eneste sted tallet kan stå mens turen løber.
+                          Uden den ville hele den levende tur mangle sit ur —
+                          og ved skiftet ville hovedet vise et tal der først
+                          dukkede op dér, altså et hop. */}
+                      {typeof sekunder === 'number' ? (
+                        <span className="chat-flow-round-tid" data-testid="chat-flow-round-tid"
+                          role="timer" aria-label={formaterTurTid(sekunder)}>
+                          <RullendeTid tekst={formaterTurTid(sekunder)} />
+                        </span>
+                      ) : null}
+                      {/* Token-tallet fulgte uret. Det sad også i hovedet, og
+                          uden denne gren forsvandt `~321 output` fra hele den
+                          levende tur — en reel informations­tab, ikke kun en
+                          flytning. */}
+                      {streaming && tokens > 0 ? (
+                        <span className="chat-flow-round-tokens" data-testid="chat-flow-round-tokens">
+                          ~<RullendeTokens tokens={tokens} /> output
+                        </span>
+                      ) : null}
                     </div>
-                    {foldWork.length > 0 ? (
-                      <button
-                        type="button"
-                        className="chat-flow-round-fold"
-                        data-testid="chat-flow-round-fold"
-                        aria-expanded={arbejdeAabent}
-                        aria-label={arbejdeAabent ? 'Skjul arbejdet' : 'Vis arbejdet'}
-                        onClick={() => setAabenManuelt(!arbejdeAabent)}
-                      >
-                        <FoldPil aaben={arbejdeAabent} />
-                      </button>
-                    ) : null}
                   </div>
+                ) : null}
+                {/* Fold-pilen ligger UDEN FOR rundelinjen (målt 14/11-2026):
+                    lå den indeni, forsvandt den i samme frame som man foldede
+                    ud — der var ingen vej tilbage. Den skal kunne foldes ind
+                    igen, uanset om syntesen og rundelinjen er synlige. */}
+                {foldWork.length > 0 ? (
+                  <button
+                    type="button"
+                    className="chat-flow-round-fold"
+                    data-testid="chat-flow-round-fold"
+                    aria-expanded={arbejdeAabent}
+                    aria-label={arbejdeAabent ? 'Skjul arbejdet' : 'Vis arbejdet'}
+                    onClick={() => setAabenManuelt(!arbejdeAabent)}
+                  >
+                    <FoldPil aaben={arbejdeAabent} />
+                  </button>
                 ) : null}
               </div>
             ) : null}

@@ -217,16 +217,17 @@ describe('ChatFlowPresentation — aktiv rundelinje under pacing', () => {
         streaming status="working" finalAnswerStarted runId="run-vindue" />,
     )
     frame()
-    // Hovedet folder ved svarets start — uafhaengigt af hvor pacen er.
-    const hoved = view.container.querySelector('.rv-tur') as HTMLElement
-    expect(hoved).toBeInTheDocument()
-    expect(hoved).toHaveAttribute('aria-expanded', 'false')
-    // Og rammen foelger hovedet, som i code mode. Ikke pacen.
+    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Mens turen
+    // kører findes hovedet ikke — så det er ikke længere hovedet der lukker
+    // gruppen. Gruppen bliver ÅBEN, fordi rundelinjen er turens ansigt indtil
+    // turen er slut. Det er den samme én-gate-form som code mode: gaten følger
+    // turen, ikke pacen.
+    expect(view.container.querySelector('.rv-tur')).toBeNull()
     const ydre = view.container.querySelector('.chat-flow-gruppe-ydre') as HTMLElement
-    expect(ydre).toHaveAttribute('data-aaben', 'false')
-    // Linjerne er ikke monteret naar gruppen er lukket (code mode:
-    // `{aaben && sektioner.map(...)}`).
-    expect(view.container.querySelector('[data-testid="chat-flow-activity"]')).not.toBeInTheDocument()
+    expect(ydre).toHaveAttribute('data-aaben', 'true')
+    // Rundelinjen ER monteret her — det er hele pointen i den nye regel:
+    // slutsvaret er begyndt, men turen løber, så rundelinjen bærer den.
+    expect(view.container.querySelector('[data-testid="chat-flow-activity"]')).not.toBeNull()
   })
 
   it('lader korte synteser passere uden at blinke linjen', () => {

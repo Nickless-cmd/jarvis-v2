@@ -173,11 +173,17 @@ describe('fold overlever ikke et remount — målt på begge flader', () => {
         streaming status="working" finalAnswerStarted={false}
       />,
     )
-    expect(foldTilstand(live.container)).toBe('true')
+    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Under turen
+    // findes hovedet ikke — rundelinjen er turens ansigt — så der er ingen
+    // `button.rv-tur` at måle på. Den levende tilstand måles på gruppen.
+    expect(foldTilstand(live.container)).toBeNull()
+    expect(live.container.querySelector('.chat-flow-gruppe-ydre'))
+      .toHaveAttribute('data-aaben', 'true')
 
-    // Brugeren FOLDER SAMMEN undervejs — vil se svaret, ikke arbejdet.
-    klikFold(live.container)
-    expect(foldTilstand(live.container)).toBe('false')
+    // VENDT 14/11-2026: der er intet hoved at folde mens turen kører, så
+    // brugeren kan ikke folde sammen midt i den. Arbejdsdetaljerne vises
+    // først når turen er slut og hovedet findes.
+    expect(live.container.querySelector('.chat-flow-work-details')).toBeNull()
 
     // Streamen slutter. ChatView afmonterer den levende række og monterer den
     // persisterede besked fra historikken (nyt element, `key={m.id}`).
@@ -194,7 +200,9 @@ describe('fold overlever ikke et remount — målt på begge flader', () => {
       `[MÅLING live→historisk] sammenfoldet under arbejde → efter persistering=${efter}`,
     )
 
-    // Begge veje ender lukket her, så overgangen er usynlig i DETTE tilfælde.
+    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Folden følger
+    // nu TUREN: den persisterede tur har runder, så hovedet findes og står
+    // lukket — men det er hovedets egen standard, ikke et tab af brugerens valg.
     expect(efter).toBe('false')
   })
 
@@ -206,7 +214,10 @@ describe('fold overlever ikke et remount — målt på begge flader', () => {
         streaming status="working" finalAnswerStarted={false}
       />,
     )
-    expect(foldTilstand(live.container)).toBe('true')
+    // VENDT 14/11-2026: hovedet findes ikke under turen — gruppen bærer den.
+    expect(foldTilstand(live.container)).toBeNull()
+    expect(live.container.querySelector('.chat-flow-gruppe-ydre'))
+      .toHaveAttribute('data-aaben', 'true')
 
     // Turen slutter → persisteret besked monteres → standarden er nu LUKKET.
     cleanup()
@@ -221,6 +232,9 @@ describe('fold overlever ikke et remount — målt på begge flader', () => {
     console.log(
       `[MÅLING live→historisk] åben under arbejde → efter persistering=${efter}`,
     )
+    // VENDT 14/11-2026 (Bjørn): den persisterede tur har runder, så hovedet
+    // findes nu og bærer sin egen lukkede standard. Målingen er uændret —
+    // overgangen er stadig usynlig fordi begge veje ender lukket.
     expect(efter).toBe('false')
   })
 })
@@ -282,18 +296,21 @@ describe('med en besked-identitet overlever folden et remount', () => {
 
   it('overgangen live → persisteret bevarer folden, fordi run_id er den fælles nøgle', () => {
     // Den levende tur: samme run-id som rækken har i `activeRunId`.
+    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Hovedet findes
+    // ikke mens turen kører, så folden kan først sættes når turen er slut.
+    // Målingen af den fælles nøgle står derfor på den afsluttede tur.
     const live = render(
       <ChatFlowPresentation
         blocks={ARBEJDE} mode="calm" density="compact"
-        streaming status="working" finalAnswerStarted={false}
+        streaming={false} status="done" finalAnswerStarted={false}
         runId="visible-abc123"
       />,
     )
-    expect(foldTilstand(live.container)).toBe('true')
-
-    // Brugeren folder SAMMEN undervejs for at se svaret.
-    klikFold(live.container)
     expect(foldTilstand(live.container)).toBe('false')
+
+    // Brugeren folder UD for at se arbejdet.
+    klikFold(live.container)
+    expect(foldTilstand(live.container)).toBe('true')
 
     // Streamen slutter. ChatView afmonterer den levende række og monterer den
     // persisterede — som bærer SAMME id i `run_id` (`ChatMessage.run_id`).
@@ -306,9 +323,9 @@ describe('med en besked-identitet overlever folden et remount', () => {
       />,
     )
     const efter = foldTilstand(historisk.container)
-    console.log(`[MED NØGLE live→historisk] sammenfoldet under arbejde → efter persistering=${efter}`)
+    console.log(`[MED NØGLE live→historisk] udfoldet under arbejde → efter persistering=${efter}`)
     // Brugerens valg følger med over i den persisterede besked.
-    expect(efter).toBe('false')
+    expect(efter).toBe('true')
   })
 
   it('en ANDEN besked arver ikke folden', () => {

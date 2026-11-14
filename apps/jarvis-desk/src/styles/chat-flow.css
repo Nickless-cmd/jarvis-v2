@@ -286,6 +286,24 @@
 .chat-flow-round-label .ls-lag,
 .chat-flow-round-label .ls-tekst { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 
+/* Uret i rundelinjen (14/11-2026). Det sad i turhovedet, men hovedet findes
+   først når turen er slut — så mens turen løber er dette det eneste sted
+   tallet kan stå. Farven er dæmpet som hovedets, så det læses som metadata
+   og ikke som en del af statusordet. */
+.chat-flow-round-tid {
+  flex: 0 0 auto;
+  color: var(--rv-tertiary, var(--fg-3, #8b939c));
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.chat-flow-round-tokens {
+  flex: 0 0 auto;
+  color: var(--rv-tertiary, var(--fg-3, #8b939c));
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .chat-flow-activity--calm .chat-flow-synthesis {
   animation: none;
 }

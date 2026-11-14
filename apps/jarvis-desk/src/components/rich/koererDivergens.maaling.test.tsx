@@ -81,18 +81,12 @@ describe('koerer — ensrettet 30/10-2026', () => {
         runId="run-divergens"
       />,
     )
-    const hoved = container.querySelector('.rv-tur') as HTMLElement
-    expect(hoved).toHaveAttribute('data-koerer')
-
-    fireEvent.click(hoved)
-
-    // MÅLT: folden lukker PRÆCIS som i code mode — men her er der ingen
-    // guard, så «jeg arbejder»-signalet bliver stående.
-    //
-    // Det er den skarpe kontrast: samme brugerhandling, samme fold-tilstand
-    // (`aria-expanded="false"` begge steder), forskelligt signal. Fladerne
-    // er altså ikke uenige om HVAD der skete — kun om hvad det betyder.
-    expect(hoved).toHaveAttribute('aria-expanded', 'false')
-    expect(hoved).toHaveAttribute('data-koerer')
+    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Under turen
+    // findes hovedet ikke i chat mode — rundelinjen er turens ansigt. Det er
+    // nu den ægte divergens mod code mode, og den måles på gruppen.
+    expect(container.querySelector('.rv-tur')).toBeNull()
+    const gruppe = container.querySelector('.chat-flow-gruppe-ydre') as HTMLElement
+    expect(gruppe).toHaveAttribute('data-aaben', 'true')
+    expect(container.querySelector('[data-testid="chat-flow-round-line"]')).not.toBeNull()
   })
 })

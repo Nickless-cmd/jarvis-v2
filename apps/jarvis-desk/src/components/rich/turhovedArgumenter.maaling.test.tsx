@@ -169,7 +169,11 @@ describe('TurHoved-argumenter — de to flader sammenlignet', () => {
     // længe chat mode ikke havde noget levende sted at sætte uret — chat mode
     // har ingen `rv-rundeur`. Nu bærer hovedet det levende ur og slipper det
     // ved turens slutning; code er urørt.
-    expect(chat.get('sekunder')).toBe('sekunder={streaming ? sekunder : null}')
+    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Hovedet er nu
+    // turens RESULTAT og findes først når turen er slut — netop hvor
+    // `streaming` er falsk. Bandt vi tallet til streamen, stod hovedet uden ur
+    // i præcis den fase det ejer. Chat bærer derfor tallet ubetinget.
+    expect(chat.get('sekunder')).toBe('sekunder={sekunder}')
     expect(code.get('sekunder')).toContain('!streaming')
   })
 

@@ -22,13 +22,16 @@ const common = {
 }
 
 describe('ChatFlowPresentation', () => {
-  it('viser levende output-tokens i chat-turhovedet', () => {
-    // Hovedet vises ikke mens rundelinjen kører (overleveringen, 14/11-2026),
-    // så token-tælleren hører til den fase hvor hovedet ER turens ansigt.
-    const { container } = render(<ChatFlowPresentation {...common} mode="living"
-      blocks={[summary('Læser konfigurationen', 1)]} tokens={321} />)
-    expect(container.querySelector('.rv-turMeta .rullende')).toHaveAttribute('aria-label', '321')
-    expect(container.querySelector('.rv-turMeta')).toHaveTextContent('output')
+  it('viser levende output-tokens i rundelinjen mens turen kører', () => {
+    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Hovedet er et
+    // RESULTAT og findes først når turen er slut — så token-tælleren kan ikke
+    // bo der mens turen løber. Den flyttede ned i rundelinjen sammen med uret;
+    // ellers forsvandt `~321 output` fra hele den levende tur.
+    const { container } = render(<ChatFlowPresentation {...common} mode="living" streaming
+      status="working" blocks={[summary('Læser konfigurationen', 1)]} tokens={321} />)
+    expect(container.querySelector('.chat-flow-round-tokens .rullende')).toHaveAttribute('aria-label', '321')
+    expect(container.querySelector('.chat-flow-round-tokens')).toHaveTextContent('output')
+    expect(container.querySelector('.rv-tur')).toBeNull()
   })
 
   it('replaces the Living status in place instead of accumulating a list', () => {
@@ -49,16 +52,17 @@ describe('ChatFlowPresentation', () => {
     expect(screen.queryByText('Jarvis tænker ...')).not.toBeInTheDocument()
   })
 
-  it('shows the live status inside the one open work header while streaming', () => {
-    render(<ChatFlowPresentation {...common} mode="living" blocks={[summary('Samler svaret', 1)]} />)
+  it('viser den levende status i rundelinjen — uden et turhoved over den', () => {
+    // VENDT 14/11-2026 (Bjørn): mens turen kører er rundelinjen turens ansigt.
+    // Hovedet findes ikke endnu, så der er ingen «åben header» at lægge
+    // statusen i — den står i gruppen, som stadig er åben.
+    render(<ChatFlowPresentation {...common} mode="living" streaming status="working"
+      blocks={[summary('Samler svaret', 1)]} />)
 
-    const hoved = document.querySelector('.rv-tur') as HTMLElement
-    expect(hoved).toBeInTheDocument()
-    expect(hoved).toHaveAttribute('aria-expanded', 'true')
+    expect(document.querySelector('.rv-tur')).toBeNull()
     const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
     expect(gruppe.closest('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
     expect(within(gruppe).getByTestId('chat-flow-round-label')).toHaveTextContent('Samler svaret')
-    expect(within(hoved).queryByText('Samler svaret')).not.toBeInTheDocument()
   })
 
   it.each(['Arbejder', 'Arbejder…', 'Arbejder...'])(
@@ -68,9 +72,10 @@ describe('ChatFlowPresentation', () => {
         blocks={[{ type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }]}
         workingStep={workingStep} />)
 
-      const hoved = document.querySelector('.rv-tur') as HTMLElement
+      // Hovedet findes ikke mens turen kører (14/11-2026), så der er ingen
+      // «Arbejder»-etiket at sammenligne med — kun rundelinjens eget ord.
+      expect(document.querySelector('.rv-tur')).toBeNull()
       const runde = screen.getByTestId('chat-flow-round-line')
-      expect(hoved).toHaveTextContent('Arbejder')
       expect(within(runde).getByText('Tænker')).toBeInTheDocument()
       expect(within(runde).queryByText(/^Arbejder/)).not.toBeInTheDocument()
     },
@@ -117,9 +122,10 @@ describe('ChatFlowPresentation', () => {
     ]
     render(<ChatFlowPresentation {...common} mode="living" blocks={blocks}
       finalAnswerStarted status="working" onWorkExpanded={onWorkExpanded} />)
-    const hoved = screen.getByText('Arbejdet').closest('button') as HTMLElement
-    expect(hoved).not.toBeNull()
-    expect(hoved).toHaveAttribute('aria-expanded', 'false')
+    // VENDT 14/11-2026 (Bjørn): hovedet findes først når turen er slut, så
+    // der er ingen «Arbejdet»-knap at folde ud under streamen. Folden bor nu
+    // på rundelinjen, som ER turens ansigt indtil turen slutter.
+    expect(screen.queryByText('Arbejdet')).not.toBeInTheDocument()
     const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
     expect(gruppe).not.toBeNull()
     expect(within(gruppe).queryByText('Her er resultatet.')).not.toBeInTheDocument()
@@ -127,8 +133,6 @@ describe('ChatFlowPresentation', () => {
     const delivery = screen.getByRole('img', { name: 'Rapport' })
     expect(delivery).toBeInTheDocument()
     expect(gruppe).not.toContainElement(delivery)
-    fireEvent.click(hoved)
-    expect(onWorkExpanded).toHaveBeenCalledTimes(1)
   })
 
   it('renders split stream blocks as one markdown answer without breaking a word', () => {
@@ -155,7 +159,11 @@ describe('ChatFlowPresentation', () => {
       blocks={[firstTool, firstAnswer, secondTool, secondAnswer]} finalAnswerStarted />)
 
     const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
-    expect(within(gruppe).queryByText('Første bekræftede svar.')).not.toBeInTheDocument()
+    // VENDT 14/11-2026: teksten må ikke stå som ARBEJDSDETALJE (foldet indhold)
+    // — den hører i svar-lanen. Den kan stadig stå i den levende synteselinje,
+    // som er turens ansigt mens den kører; det er en anden flade med en anden
+    // rolle, og den forsvinder når turen slutter.
+    expect(gruppe.querySelector('.chat-flow-work-details')).toBeNull()
     expect(view.container.querySelector('.chat-flow-answer')).toHaveTextContent('Første bekræftede svar.')
     expect(view.container.querySelector('.chat-flow-answer')).toHaveTextContent('Supplerende svar.')
   })
@@ -179,11 +187,11 @@ describe('ChatFlowPresentation', () => {
       { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
       summary('Læste filen', 2),
     ]
-    render(<ChatFlowPresentation {...common} mode="living" blocks={blocks} />)
-    const hoved = document.querySelector('.rv-tur') as HTMLElement
-    expect(hoved).not.toBeNull()
-    expect(hoved).toHaveAttribute('aria-expanded', 'true')
-    expect(hoved).toHaveAttribute('data-koerer')
+    render(<ChatFlowPresentation {...common} mode="living" streaming status="working" blocks={blocks} />)
+    // VENDT 14/11-2026 (Bjørn): hovedet findes først når turen er slut, så
+    // der er intet hoved at folde ud under streamen — gruppen står åben af
+    // sig selv, fordi rundelinjen ER turens ansigt.
+    expect(document.querySelector('.rv-tur')).toBeNull()
     const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
     expect(gruppe).not.toBeNull()
     expect(gruppe.closest('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
@@ -212,12 +220,12 @@ describe('ChatFlowPresentation', () => {
     expect(within(runde).queryByText('Tænker')).not.toBeInTheDocument()
     expect(within(runde).queryByText('|')).not.toBeInTheDocument()
     expect(syntese.compareDocumentPosition(runde) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    const hoved = document.querySelector('.rv-tur') as HTMLElement
-    expect(hoved.querySelector('.rv-turTid')).toHaveAttribute('aria-label', '7s')
-    expect(hoved.querySelector('.rv-turIndhold')).not.toHaveClass('shimmer')
-    expect(hoved.querySelector('.rv-ikon-glimt')).not.toBeInTheDocument()
-    expect(hoved.querySelector('.rv-turTid')).not.toHaveClass('shimmer')
-    expect(within(hoved).queryByText('Læste konfigurationen')).not.toBeInTheDocument()
+    // Uret bor nu i rundelinjen mens turen kører (14/11-2026) — hovedet
+    // findes ikke endnu. `varighedSekunder` er den persisterede varighed, og
+    // den er det eneste tal der findes på en tur der ikke streamer.
+    expect(document.querySelector('.rv-tur')).toBeNull()
+    expect(runde.querySelector('.chat-flow-round-tid')).toHaveAttribute('aria-label', '7s')
+    expect(within(runde).queryByText('Læste konfigurationen')).toBeInTheDocument()
     expect(document.querySelector('.chat-flow-answer')).toBeNull()
   })
 
@@ -274,7 +282,7 @@ describe('ChatFlowPresentation', () => {
       { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
       { type: 'text', text: 'Jeg læser videre' },
     ]
-    render(<ChatFlowPresentation {...common} mode="living" blocks={blocks}
+    render(<ChatFlowPresentation {...common} mode="living" streaming status="working" blocks={blocks}
       rundeEtiketter={{ t1: 'Læser konfigurationen' }} />)
 
     const fold = screen.getByTestId('chat-flow-round-fold')
@@ -285,14 +293,23 @@ describe('ChatFlowPresentation', () => {
     expect(document.querySelector('.chat-flow-work-details')).not.toBeNull()
     // Udfoldet tilstand ER den levende kronologiske visning. Den kompakte
     // statusrail må ikke fortsætte ovenover og vise samme syntese to steder.
-    expect(screen.queryByTestId('chat-flow-activity')).not.toBeInTheDocument()
+    //
+    // VENDT 14/11-2026: containeren bliver stående — den bærer fold-pilen, og
+    // uden den var der ingen vej tilbage (målt: knappen forsvandt i samme
+    // frame som man foldede ud). Det er SYNTESEN og rundelinjen der skal vige,
+    // ikke knappen.
+    expect(screen.queryByTestId('chat-flow-live-synthesis')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('chat-flow-round')).not.toBeInTheDocument()
+    expect(screen.getByTestId('chat-flow-round-fold')).toHaveAttribute('aria-expanded', 'true')
     expect(document.querySelector('.chat-flow-work-details')).toHaveTextContent('Jeg læser videre')
 
-    fireEvent.click(document.querySelector('.rv-tur') as HTMLElement)
-    expect(document.querySelector('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'false')
+    fireEvent.click(document.querySelector('.chat-flow-round-fold') as HTMLElement)
+    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Folden følger
+    // nu TUREN, ikke det manuelle valg: så længe turen kører, bliver gruppen
+    // åben — det er rundelinjen der er turens ansigt. Det manuelle valg styrer
+    // stadig om ARBEJDSDETALJERNE vises, og det er hvad der måles her.
     expect(document.querySelector('.chat-flow-work-details')).toBeNull()
   })
-
   it('holder den forrige syntese stående mens den næste blok er tom — intet glip', () => {
     // Bjørn 17/10-2026: «når syntese linjen forsvinder den første og et glip
     // og så streames den næste». En ny tekstblok starter tom; den gamle skal
@@ -353,7 +370,9 @@ describe('ChatFlowPresentation', () => {
     const blokke = [summary('Fandt kilden', 1)]
     // Cifrene er delt i lodrette strimler, så den flade tekst læses fra
     // `aria-label` — det er også den skærmlæserne får.
-    const ur = () => document.querySelector('.rv-turTid')?.getAttribute('aria-label')
+    // VENDT 14/11-2026 (Bjørn): hovedet findes først når turen er slut, så
+    // uret står nu i rundelinjen mens turen kører.
+    const ur = () => document.querySelector('.chat-flow-round-tid')?.getAttribute('aria-label')
     const { rerender } = render(<ChatFlowPresentation {...common} mode="living" streaming
       status="working" finalAnswerStarted turStart={Date.now() - 12_000} blocks={blokke} />)
     expect(ur()).toMatch(/^1[12]s$/)
@@ -364,20 +383,21 @@ describe('ChatFlowPresentation', () => {
   })
 
   it('fjerner uret når strømmen er forbi — men beholder hovedet', () => {
-    // VENDT 14/11-2026 (Bjørn): «sekunder Xs i turhoved skal forsvinde når
-    // turen er slut». Den tidligere test bekræftede det modsatte — at tallet
-    // blev frosset og STOD i hovedet bagefter (17/10-2026: «ueret skal osse
-    // når strømmen er forbi»). Et stille tal på en færdig tur beskriver noget
-    // der allerede er sket; det hører i en log, ikke i et hoved der skal
-    // fortælle hvad der sker nu.
+    // VENDT IGEN 14/11-2026, tredje gang samme dag (Bjørn): «gem turhoved til
+    // det foldes». Formiddagens regel var at tallet skulle forsvinde når turen
+    // sluttede — den passede til en model hvor hovedet var en STATUS under
+    // turen, og et stille tal derfor var et minde om noget forgangent. Med den
+    // nye regel er hovedet turens RESULTAT: det findes først når turen er slut,
+    // og tallet er dét resultatet koster. Fjernede vi det, ville hovedet stå
+    // tomt i præcis den fase det ejer.
     //
-    // Kontrasten er pointen: hovedet bliver stående fordi der er et
-    // værktøjskald at folde ud — det er kun TALLET der forsvinder.
+    // Kontrasten er stadig pointen: hovedet bliver stående fordi der er et
+    // værktøjskald at folde ud — og nu bærer det også sin varighed.
     const start = Date.now() - 95_000
     const { container } = render(<ChatFlowPresentation {...common} mode="living" streaming={false} status="done"
       finalAnswerStarted turStart={start} turSlut={start + 95_000} blocks={[summary('Fandt kilden', 1)]} />)
     expect(container.querySelector('.rv-tur')).not.toBeNull()
-    expect(container.querySelector('.rv-turTid')).toBeNull()
+    expect(container.querySelector('.rv-turTid')).not.toBeNull()
   })
 
   it('fjerner den levende syntese efter turen, men bevarer arbejdsdetaljerne', () => {
@@ -489,16 +509,20 @@ describe('ChatFlowPresentation — turhovedet fra første ord', () => {
     ]} />)
     expect(document.querySelector('.rv-tur')).toBeNull()
 
+    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Hovedet findes
+    // først når turen er slut — så mens svaret skriver sig er der stadig intet
+    // hoved, og dermed intet at sætte en streg på.
+    view.rerender(<ChatFlowPresentation {...common} mode="living" streaming status="working" blocks={[
+      { type: 'text', text: 'Svaret', phase: 'final_answer' },
+    ]} finalAnswerStarted />)
+    expect(document.querySelector('.rv-tur')).toBeNull()
+
+    // Den afsluttede tur uden runder har intet hoved (målt: `harRunder` falsk
+    // og ingen varighed) — så der er stadig intet at sætte en streg på.
     view.rerender(<ChatFlowPresentation {...common} mode="living" blocks={[
       { type: 'text', text: 'Svaret', phase: 'final_answer' },
     ]} finalAnswerStarted />)
-    // VENDT 14/11-2026 (Bjørn): uden runder morpher hovedet IND når
-    // slutsvaret begynder — det arver rundelinjens plads med den varighed der
-    // blev optjent undervejs. Det er stadig uden streg: chat mode har ingen i
-    // nogen fase, hverken før eller efter overleveringen.
-    const hoved = document.querySelector('.rv-tur')
-    expect(hoved).not.toBeNull()
-    expect(hoved).not.toHaveAttribute('data-skillelinje')
+    expect(document.querySelector('.rv-tur')).toBeNull()
   })
 
   it('viser intet hoved på en afsluttet tur uden værktøjskald', () => {
@@ -531,11 +555,13 @@ describe('ChatFlowPresentation — turhovedet fra første ord', () => {
     expect(hoved).not.toBeNull()
     // Intet at folde i denne fixture? Jo — `tool_use` gør den foldbar.
     expect(hoved.tagName).toBe('BUTTON')
-    // Uret er væk — turen er slut (Bjørn 14/11/2026: «sekunder Xs i turhoved
-    // skal forsvinde når turen er slut»). `varighedSekunder` er stadig sat, så
-    // dette beviser at det er `streaming`-gaten der fjerner tallet, ikke at
-    // varigheden mangler.
-    expect(container.querySelector('.rv-turTid')).toBeNull()
+    // Uret STÅR nu (VENDT 14/11-2026, Bjørn: «gem turhoved til det foldes»).
+    // Hovedet er turens RESULTAT og findes først når turen er slut — netop dér
+    // hvor `streaming` er falsk. Bandt vi tallet til streamen, ville hovedet
+    // stå uden ur præcis i den fase det nu ejer. Den tidligere regel («sekunder
+    // Xs skal forsvinde når turen er slut») hørte til den model hvor hovedet
+    // var en status under turen; det er det ikke længere.
+    expect(container.querySelector('.rv-turTid')).not.toBeNull()
   })
 
   it('tegner intet hoved når der hverken er arbejde, kørsel eller varighed', () => {

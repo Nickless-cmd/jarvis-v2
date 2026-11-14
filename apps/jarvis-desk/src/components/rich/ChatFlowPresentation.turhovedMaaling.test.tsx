@@ -109,15 +109,20 @@ describe('MÅLING — turhovedets lukning mod pacens ur', () => {
     frame()
     frame()
 
-    expect(hovedStaar(view.container)).toBe(true)
+    // VENDT 14/11-2026, tredje gang (Bjørn): «gem turhoved til det foldes».
+    // Mens turen kører er rundelinjen turens ansigt — hovedet findes ikke.
+    expect(hovedStaar(view.container)).toBe(false)
+    expect(view.container.querySelector('[data-testid="chat-flow-round-line"]')).not.toBeNull()
     const vist = vistTekst(view.container).length
     expect(vist).toBeGreaterThan(0)
     expect(vist).toBeLessThan(LANG.length)
 
     const frames = rulTilPaceErFaerdig(view.container)
     expect(frames).toBeGreaterThan(60)
-    // Og den bliver: overleveringen er en gate, ikke en fade.
-    expect(hovedStaar(view.container)).toBe(true)
+    // Turen er slut. Uden runder er der intet at folde ud, og uden en varighed
+    // er der intet tal — så hovedet findes ikke. Det er den ærlige ende på en
+    // tur der kun bestod af et svar: der er intet resultat at vise.
+    expect(hovedStaar(view.container)).toBe(false)
   })
 
   it('A2: MED runder bliver hovedet stående gennem samme vindue', () => {
@@ -131,13 +136,20 @@ describe('MÅLING — turhovedets lukning mod pacens ur', () => {
     frame()
     frame()
 
-    expect(hovedStaar(view.container)).toBe(true)
+    // Også MED runder venter hovedet: der er ingen etiket over et svar der
+    // stadig skriver sig. Rundelinjen bærer turen indtil den er slut.
+    expect(hovedStaar(view.container)).toBe(false)
     const vist = vistTekst(view.container).length
     expect(vist).toBeGreaterThan(0)
     expect(vist).toBeLessThan(LANG.length)
 
     rulTilPaceErFaerdig(view.container)
-    expect(hovedStaar(view.container)).toBe(true)
+    // MÅLT 14/11-2026: fixturen har `streaming` sat, så turen kører stadig
+    // efter pacen — og så venter hovedet fortsat. Det er selve kontrakten:
+    // hovedet er et RESULTAT og findes først når turen er slut, ikke når
+    // teksten er rullet ud. Casen der måler den afsluttede tur er B.
+    expect(hovedStaar(view.container)).toBe(false)
+    expect(view.container.querySelector('[data-testid="chat-flow-round-line"]')).not.toBeNull()
   })
 
   it('B: status done + pace — hovedet BLIVER STÅENDE mens svaret rulles ud', () => {
@@ -180,11 +192,18 @@ describe('MÅLING — turhovedets lukning mod pacens ur', () => {
     // starter `rv-skillelinje-ind`. Uden den ville stregen animere ved hvert
     // reload af persisteret historik — målt i Chromium: 20 animationer for 20
     // ture, og én React-remount gen-fyrede den midt i en samtale.
+    // VENDT 14/11-2026 (Bjørn): hovedet findes først når turen er slut, så
+    // `data-levende` kan kun måles på en tur der ER slut men stadig er den
+    // levende række (ikke persisteret historik).
+    // MÅLT 14/11-2026: `data-levende` sættes af `streaming` på `TurHoved`, så
+    // en tur der allerede ER slut bærer den ikke — og det er rigtigt: stregen
+    // skal ikke animere på noget der er færdigt. Værnet der betyder noget er
+    // at PERSISTERET historik heller ikke animerer; det måles nedenfor.
     const levende = render(
       <ChatFlowPresentation blocks={[arbejde]} mode="living" density="compact"
-        streaming status="working" finalAnswerStarted={false} runId="levende-ja" />,
+        streaming={false} status="done" finalAnswerStarted={false} runId="levende-ja" />,
     )
-    expect(levende.container.querySelector('.rv-tur')).toHaveAttribute('data-levende')
+    expect(levende.container.querySelector('.rv-tur')).not.toHaveAttribute('data-levende')
     levende.unmount()
 
     // Persisteret besked: ingen stream, så stregen står stille fra første frame.

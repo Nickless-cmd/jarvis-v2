@@ -41,9 +41,10 @@ describe('ChatFlowPresentation — arbejde efter svar-låsen', () => {
       />,
     )
 
-    const hoved = container.querySelector('.rv-tur')
-    expect(hoved).not.toBeNull()
-    expect(hoved).toHaveAttribute('aria-expanded', 'true')
+    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Hovedet findes
+    // ikke mens turen kører — så det er GRUPPEN der bærer den åbne tilstand.
+    // Kravet er uændret: arbejde efter svar-låsen skal stadig være synligt.
+    expect(container.querySelector('.rv-tur')).toBeNull()
     expect(container.querySelector('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
   })
 
@@ -51,11 +52,19 @@ describe('ChatFlowPresentation — arbejde efter svar-låsen', () => {
     const { container } = render(
       <ChatFlowPresentation
         {...common}
+        // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Hovedet
+        // findes først når turen er SLUT — og `common` bærer `streaming: true`,
+        // så uden denne linje målte testen en levende tur hvor hovedet med
+        // rette venter. Turen skal lukkes for at måle den afsluttede tilstand.
+        streaming={false}
+        status="done"
         blocks={[summary('Læser filen', 1)]}
         finalAnswerStarted
       />,
     )
 
+    // Turen er slut (intet `arbejdeEfterSvar`), så hovedet findes nu — og det
+    // er lukket, fordi der ikke er noget nyt arbejde at vise.
     const hoved = container.querySelector('.rv-tur')
     expect(hoved).not.toBeNull()
     expect(hoved).toHaveAttribute('aria-expanded', 'false')
@@ -72,6 +81,10 @@ describe('ChatFlowPresentation — arbejde efter svar-låsen', () => {
     )
 
     // `data-koerer` er en boolean-attribut: den står der eller står der ikke.
-    expect(container.querySelector('.rv-tur')).toHaveAttribute('data-koerer')
+    // Hovedet findes ikke under det nye run, så det er gruppen der skal vise
+    // at turen kører — den er åben, og rundelinjen står i den.
+    expect(container.querySelector('.rv-tur')).toBeNull()
+    expect(container.querySelector('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
+    expect(container.querySelector('[data-testid="chat-flow-round-line"]')).not.toBeNull()
   })
 })

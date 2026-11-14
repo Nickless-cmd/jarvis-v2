@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_run_interruption.py`
+_Hvad afbrød et synligt run — til fejl-envelopen og Centralen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `classify_visible_run_interruption` | `(error_message)` | — | [src](../../../core/services/visible_run_interruption.py#L17) |
+
 ## `core/services/visible_run_journal.py`
 _Persist the visible run and its composer context for durable recovery._
 
@@ -541,15 +548,4 @@ _Wakeup dispatcher — autonomous fire of self-wakeups._
 | function | `_udloes_heartbeat_tick` | `()` | Kør heartbeat-tick'et UDEN for dispatchens kritiske sti (12/11-2026). | [src](../../../core/services/wakeup_dispatcher.py#L279) |
 | function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L304) |
 | function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L489) |
-
-## `core/services/wakeup_ticker.py`
-_Dedikeret vækker-tråd: fyr forfaldne vækninger inden for sekunder (12/11-2026)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Tik` | `` | Resultatet af ét tik: hvor længe der ventes, og hvad næste tik skal huske. | [src](../../../core/services/wakeup_ticker.py#L49) |
-| function | `tik` | `(forfaldne, dispatch, *, forrige)` | Ét tik, uden tråd og ur — så det kan testes direkte. | [src](../../../core/services/wakeup_ticker.py#L56) |
-| function | `_loop` | `()` | — | [src](../../../core/services/wakeup_ticker.py#L81) |
-| function | `start_wakeup_ticker` | `()` | Start tråden. Idempotent: kører den allerede, returneres `True` uden en ny. | [src](../../../core/services/wakeup_ticker.py#L92) |
-| function | `stop_wakeup_ticker` | `()` | — | [src](../../../core/services/wakeup_ticker.py#L105) |
 

@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/wakeup_ticker.py`
+_Dedikeret vækker-tråd: fyr forfaldne vækninger inden for sekunder (12/11-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Tik` | `` | Resultatet af ét tik: hvor længe der ventes, og hvad næste tik skal huske. | [src](../../../core/services/wakeup_ticker.py#L49) |
+| function | `tik` | `(forfaldne, dispatch, *, forrige)` | Ét tik, uden tråd og ur — så det kan testes direkte. | [src](../../../core/services/wakeup_ticker.py#L56) |
+| function | `_loop` | `()` | — | [src](../../../core/services/wakeup_ticker.py#L81) |
+| function | `start_wakeup_ticker` | `()` | Start tråden. Idempotent: kører den allerede, returneres `True` uden en ny. | [src](../../../core/services/wakeup_ticker.py#L92) |
+| function | `stop_wakeup_ticker` | `()` | — | [src](../../../core/services/wakeup_ticker.py#L105) |
+
 ## `core/services/wall_guard.py`
 _Observerende vagt: opdager en «mur» — flere pointer i én prosablok._
 

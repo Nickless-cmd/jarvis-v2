@@ -262,6 +262,13 @@ def prune_telemetry_tables() -> dict[str, object]:
         out["cheap_lane_redacted_payloads"] = purge_expired_payloads()
     except Exception as exc:
         out["cheap_lane_redacted_payloads"] = f"err:{str(exc)[:60]}"
+    # Rækken beholdes; kun de lange tekstværdier i result_json afkortes efter 7 dage (se modulet).
+    try:
+        from core.services.outcome_payload_trim import trim_old_outcome_payloads
+
+        out["runtime_action_outcomes_payload_trim"] = trim_old_outcome_payloads()
+    except Exception as exc:
+        out["runtime_action_outcomes_payload_trim"] = f"err:{str(exc)[:60]}"
     return out
 
 

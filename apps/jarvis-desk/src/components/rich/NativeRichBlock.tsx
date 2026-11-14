@@ -2,6 +2,7 @@ import { createContext, useContext, useState } from 'react'
 import { AlertTriangle, CheckCircle2, CircleAlert, Info, MapPin } from 'lucide-react'
 import { openExternalUrl } from '../../lib/host'
 import { interpolérUdtryk } from '../../lib/udtryk'
+import { reparérDelvisJson } from '../../lib/delvisJson'
 import { WidgetPrompt } from './WidgetBlock'
 import { DiffView } from './DiffView'
 
@@ -84,11 +85,24 @@ const list = (v: unknown, max: number): Json[] => Array.isArray(v)
   ? v.filter((x): x is Json => Boolean(x) && typeof x === 'object' && !Array.isArray(x)).slice(0, max)
   : []
 
-export function parseNativeRichSpec(code: string): NativeSpec | null {
+export function parseNativeRichSpec(code: string, delvis = false): NativeSpec | null {
   // Halv JSON under streaming: `JSON.parse` kaster her, og det er den ENESTE
   // der må kaste. Børnene er allerede parsede objekter når `parseNode` kører.
+  //
+  // 14/11-2026: `delvis` er KUN sat mens blokken streames. Reparatoren tegner
+  // de strukturer der er bevisligt lukket og klipper resten væk — se
+  // `lib/delvisJson.ts`. Uden for streaming må en ødelagt blok ikke blive til
+  // en halv flade: der skal den vise «kunne ikke tegnes», ellers ville en
+  // faktisk fejl se ud som en flade der bare mangler lidt.
   let raw: Json
-  try { raw = JSON.parse(code) as Json } catch { return null }
+  try {
+    raw = JSON.parse(code) as Json
+  } catch {
+    if (!delvis) return null
+    const repareret = reparérDelvisJson(code)
+    if (!repareret) return null
+    try { raw = JSON.parse(repareret) as Json } catch { return null }
+  }
   return parseNode(raw, 1)
 }
 

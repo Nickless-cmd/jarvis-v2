@@ -82,9 +82,12 @@ function Pre({ children }: { children?: React.ReactNode }) {
     // Der logges KUN her hvor grenen faktisk blev kørt. En fejl der betyder
     // at grenen aldrig nås (`no-pre-node`) kan denne log pr. definition ikke
     // se — den fanges i MarkdownBlok nedenfor.
-    const spec = parseNativeRichSpec(code)
+    const spec = parseNativeRichSpec(code, streaming)
     logFlade({
-      udfald: spec ? 'native' : 'parse-null',
+      // 14/11-2026: «native-delvis» er en flade tegnet af en HALV blok. Den
+      // skal kunne skelnes i loggen — ellers ville en delvis flade se ud som
+      // en komplet, og næste fejlsøgning ville lede efter den forkerte fejl.
+      udfald: spec ? (streaming && !code.trim().endsWith('}') ? 'native-delvis' : 'native') : 'parse-null',
       foer: '', efter: '',
       blok: code,
       className: props.className ?? '',

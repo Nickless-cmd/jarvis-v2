@@ -42,7 +42,9 @@ export interface TurHovedProps {
   koerer?: boolean
   /** Turens forløbne sekunder. Vises som `42s` / `1m 5s`; `null` = intet ur. */
   sekunder?: number | null
-  /** Levende metadata efter teksten, fx code-turens rullende token-tal. */
+  /** Levende metadata i ENDEN af hovedet, efter uret — fx code-turens
+   *  rullende token-tal. Det er turens resultat, ikke en del af varigheden,
+   *  så det må ikke stå mellem «Tænkte» og sekunderne (14/11-2026). */
   meta?: ReactNode
   /** Om skillestregen under hovedet er kommet til syne. Hovedets plads er
    *  uændret mens stregen glider ind, så `Working` kan stå der fra turstart. */
@@ -76,10 +78,14 @@ export function TurHoved({
     <>
       <span className="rv-turIndhold">
         <span className="rv-turTekst">{tekst}</span>
-        {meta}
+        {/* Uret hører til teksten («Tænkte 12s»), meta hører til RESULTATET og
+            står derfor i enden. Bjørn 14/11-2026: token-tallet «hørte til i
+            enden af turhoved». Stod det før uret, læste linjen som om tallet
+            var en del af varigheden. */}
         {typeof sekunder === 'number' ? (
           <RullendeTid tekst={formaterTurTid(sekunder)} />
         ) : null}
+        {meta}
       </span>
       {foldbar ? (
         <span className="rv-turC" aria-hidden="true">

@@ -29,10 +29,21 @@ describe('ChatFlowPresentation', () => {
     // kostede. De skal ikke bære det samme.
     const arbejde: ContentBlock = { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }
     const { container } = render(<ChatFlowPresentation {...common} mode="living" streaming={false}
-      status="done" blocks={[arbejde]} tokens={321} />)
+      status="done" blocks={[arbejde]} tokens={321} varighedSekunder={12} />)
     expect(container.querySelector('.rv-turMeta .rullende')).toHaveAttribute('aria-label', '321')
     expect(container.querySelector('.rv-turMeta')).toHaveTextContent('output')
     expect(container.querySelector('.chat-flow-round-tokens')).toBeNull()
+    expect(container.querySelector('.chat-flow-round-tid')).toBeNull()
+
+    // Rækkefølgen ER kontrakten (Bjørn 14/11-2026: tallet «hørte til i enden af
+    // turhoved»). Uret beskriver VARIGHEDEN og står derfor først; token-tallet
+    // beskriver RESULTATET og står i enden. Stod det omvendt, læste linjen som
+    // om tallet var en del af tiden.
+    const tid = container.querySelector('.rv-turTid')
+    const meta = container.querySelector('.rv-turMeta')
+    expect(tid).not.toBeNull()
+    expect(meta).not.toBeNull()
+    expect(tid!.compareDocumentPosition(meta!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('replaces the Living status in place instead of accumulating a list', () => {

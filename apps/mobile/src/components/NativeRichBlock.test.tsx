@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react-native'
+import { fireEvent, render, waitFor } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import { NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
 import { WidgetPrompt } from './WidgetFlade'
@@ -32,6 +32,48 @@ describe('NativeRichBlock', () => {
     })} /></WidgetPrompt.Provider>)
     fireEvent.press(screen.getByLabelText('Fortsæt'))
     expect(send).toHaveBeenCalledWith('[fra valgkort] gør det')
+  })
+
+  // (14/11-2026) Udfaldet: en flade der ikke kan handle må SIGE det. Før var
+  // begge veje tavse — «ingen lytter» og «det gik galt» endte som intet, og en
+  // aktiv knap der intet gjorde er præcis den fejlform Bjørn kalder teater.
+  it('en afvist handling siger hvorfor i stedet for at tie', async () => {
+    const send = jest.fn(() => ({ status: 'failed' as const, kode: 'component_unavailable' as const, besked: '' }))
+    const screen = await render(<WidgetPrompt.Provider value={send}><NativeRichBlock code={JSON.stringify({
+      type: 'choices', title: 'Vælg', options: [{ label: 'Fortsæt', prompt: 'gør det' }],
+    })} /></WidgetPrompt.Provider>)
+    fireEvent.press(screen.getByLabelText('Fortsæt'))
+    await waitFor(() => expect(screen.getByText('kan ikke sende herfra')).toBeTruthy())
+  })
+
+  it('en afleveret handling viser intet — turen fortsætter i tråden', async () => {
+    const send = jest.fn(() => ({ status: 'delivered' as const }))
+    const screen = await render(<WidgetPrompt.Provider value={send}><NativeRichBlock code={JSON.stringify({
+      type: 'choices', title: 'Vælg', options: [{ label: 'Fortsæt', prompt: 'gør det' }],
+    })} /></WidgetPrompt.Provider>)
+    fireEvent.press(screen.getByLabelText('Fortsæt'))
+    await waitFor(() => expect(send).toHaveBeenCalled())
+    expect(screen.queryByText('kan ikke sende herfra')).toBeNull()
+    expect(screen.queryByText('kunne ikke sende')).toBeNull()
+  })
+
+  it('en kastende afsendelse bliver en fejlnote, ikke et styrt', async () => {
+    const send = jest.fn(() => { throw new Error('netværk') })
+    const screen = await render(<WidgetPrompt.Provider value={send}><NativeRichBlock code={JSON.stringify({
+      type: 'choices', title: 'Vælg', options: [{ label: 'Fortsæt', prompt: 'gør det' }],
+    })} /></WidgetPrompt.Provider>)
+    fireEvent.press(screen.getByLabelText('Fortsæt'))
+    await waitFor(() => expect(screen.getByText('kunne ikke sende')).toBeTruthy())
+  })
+
+  it('uden modtager er knappen trykbar og siger at den ikke kan sende', async () => {
+    // Den gamle gren returnerede tavst her. Testen findes for at den ikke
+    // kommer tilbage: en aktiv knap der intet gør er værre end en død.
+    const screen = await render(<NativeRichBlock code={JSON.stringify({
+      type: 'choices', title: 'Vælg', options: [{ label: 'Fortsæt', prompt: 'gør det' }],
+    })} />)
+    fireEvent.press(screen.getByLabelText('Fortsæt'))
+    await waitFor(() => expect(screen.getByText('kan ikke sende herfra')).toBeTruthy())
   })
 
   // `control` (14/11-2026): et lille håndtag midt i teksten, ikke et valgkort.

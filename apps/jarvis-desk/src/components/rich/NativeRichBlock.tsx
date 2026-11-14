@@ -484,10 +484,11 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
     // * CODE MODE: uændret. Uden provider er knappen deaktiveret, som før.
     //   Maskinrummet skal ikke ændre adfærd fordi samtalen fik et udfald.
     const tryk = (prompt: string) => {
-      if (!send) return
+      // Uden modtager er knappen stadig trykbar i chat mode — så den må ikke
+      // tie. Den gamle gren (`if (!send) return`) gjorde præcis det.
       let ud: FladeUdfald
       try {
-        ud = normalisérUdfald(send(`[fra valgkort] ${prompt}`))
+        ud = normalisérUdfald(send?.(`[fra valgkort] ${prompt}`))
       } catch (e) {
         ud = { status: 'failed', kode: 'tool_failed', besked: String((e as Error)?.message || e) }
       }

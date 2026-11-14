@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import type { FladeUdfald } from '../lib/fladeHandling'
 import { Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { WebView } from 'react-native-webview'
 import { Maximize2, X } from 'lucide-react-native'
@@ -47,7 +48,9 @@ const MAX_PROMPT_TEGN = 2000
  *  aendre to signaturer der intet har med widgets at goere.
  *
  *  Standard er `null`: en widget i en visning der ikke kan sende skal tie. */
-export const WidgetPrompt = createContext<((markeretTekst: string) => void) | null>(null)
+export const WidgetPrompt = createContext<
+  ((markeretTekst: string) => FladeUdfald | void) | null
+>(null)
 
 const HOEJDE_SCRIPT = `
 (function () {

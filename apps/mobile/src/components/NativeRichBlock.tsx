@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, CircleAlert, Info, MapPin } from 'lucide-r
 import Svg, { Line, Polyline, Rect as SvgRect } from 'react-native-svg'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { WidgetPrompt } from './WidgetFlade'
+import { beskrivUdfald, normalisérUdfald, type FladeUdfald } from '../lib/fladeHandling'
 import { lineDiff } from '../lib/diff'
 import { interpolérUdtryk } from '../lib/udtryk'
 
@@ -324,6 +325,9 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
   const styles = useStyles(makeStyles); const theme = useTheme(); const send = useContext(WidgetPrompt)
   const [kontrolVaerdier, setKontrolVaerdi] = useState<Record<string, number | string | boolean>>({})
   const [valgtFane, setValgtFane] = useState(0)
+  // Udfaldet af den seneste handling fladen selv satte i gang (14/11-2026).
+  // Hooken staar FOER alle betingede returns, saa raekkefoelgen er konstant.
+  const [handlingUdfald, setHandlingUdfald] = useState<FladeUdfald | null>(null)
   // Sortering for `table` (14/11-2026). LOKAL — rører ikke data, sender intet.
   const [sortering, setSortering] = useState<{ kolonne: number; retning: 1 | -1 } | null>(null)
   // `control` har ingen titel — den er et lille haandtag, ikke et kort.
@@ -390,7 +394,28 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
   if (spec.type === 'stats') return <View accessibilityLabel={spec.title || 'Nøgletal'} style={styles.card}>{heading}<View style={styles.wrap}>{spec.items.map((x, i) => <View key={`${x.label}-${i}`} style={styles.stat}><Text style={styles.muted}>{x.label}</Text><Text style={styles.value}>{x.value}</Text>{x.detail ? <Text style={styles.body}>{x.detail}</Text> : null}</View>)}</View></View>
   if (spec.type === 'timeline') return <View accessibilityLabel={spec.title || 'Tidslinje'} style={styles.card}>{heading}{spec.items.map((x, i) => <View key={`${x.title}-${i}`} style={styles.timelineRow}><View style={[styles.dot, x.status === 'done' && styles.dotDone, x.status === 'current' && styles.dotCurrent]} /><View style={styles.flex}>{x.time ? <Text style={styles.muted}>{x.time}</Text> : null}<Text style={styles.strong}>{x.title}</Text>{x.detail ? <Text style={styles.body}>{x.detail}</Text> : null}</View></View>)}</View>
   if (spec.type === 'comparison') return <View accessibilityLabel={spec.title || 'Sammenligning'} style={styles.card}>{heading}<ScrollView horizontal showsHorizontalScrollIndicator><View><View style={styles.tableRow}><Text style={[styles.cell, styles.rowHead]}>Punkt</Text>{spec.columns.map((x) => <Text key={x} style={[styles.cell, styles.strong]}>{x}</Text>)}</View>{spec.rows.map((r, i) => <View key={`${r.label}-${i}`} style={styles.tableRow}><Text style={[styles.cell, styles.rowHead]}>{r.label}</Text>{r.values.map((v, j) => <Text key={j} style={styles.cell}>{v}</Text>)}</View>)}</View></ScrollView></View>
-  if (spec.type === 'choices') return <View accessibilityLabel={spec.title || 'Valgmuligheder'} style={[styles.card, styles.cardBox]}>{heading}<View style={styles.wrap}>{spec.options.map((x, i) => <Pressable key={`${x.label}-${i}`} accessibilityRole="button" accessibilityLabel={x.label} accessibilityState={{ disabled: !send }} disabled={!send} onPress={() => send?.(`[fra valgkort] ${x.prompt}`)} style={({ pressed }) => [styles.button, pressed && styles.pressed]}><Text style={styles.buttonText}>{x.label}</Text></Pressable>)}</View></View>
+  if (spec.type === 'choices') {
+    // (14/11-2026) Samme kontrakt som desk: knappen er ikke tavst doed, og en
+    // afvist handling siger det. Mobilen har ingen code mode, saa her er der
+    // ingen gate at respektere — fladen er altid i samtalen.
+    const tryk = (prompt: string) => {
+      // Uden modtager er knappen stadig trykbar — så den må ikke tie. Den
+      // gamle gren (`if (!send) return`) gjorde præcis det: en aktiv knap der
+      // intet gjorde og intet sagde.
+      let ud: FladeUdfald
+      try {
+        ud = normalisérUdfald(send?.(`[fra valgkort] ${prompt}`))
+      } catch (e) {
+        ud = { status: 'failed', kode: 'tool_failed', besked: String((e as Error)?.message || e) }
+      }
+      setHandlingUdfald(ud.status === 'failed' ? ud : null)
+    }
+    const fejlTekst = handlingUdfald ? beskrivUdfald(handlingUdfald) : ''
+    return <View accessibilityLabel={spec.title || 'Valgmuligheder'} style={[styles.card, styles.cardBox]}>{heading}
+      <View style={styles.wrap}>{spec.options.map((x, i) => <Pressable key={`${x.label}-${i}`} accessibilityRole="button" accessibilityLabel={x.label} onPress={() => tryk(x.prompt)} style={({ pressed }) => [styles.button, pressed && styles.pressed]}><Text style={styles.buttonText}>{x.label}</Text></Pressable>)}</View>
+      {fejlTekst ? <Text style={styles.muted} accessibilityRole="text">{fejlTekst}</Text> : null}
+    </View>
+  }
   if (spec.type === 'control') {
     // Sliderens værdi: lokal state først, ellers den værdi fladen kom med.
     const aktuel = (bind: string, fallback: number): number => {

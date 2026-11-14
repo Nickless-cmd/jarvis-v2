@@ -359,7 +359,15 @@ export function ChatScreen({
   const sendNuRef = useRef<((t: string) => Promise<void>) | null>(null)
   const widgetPrompt = useCallback((markeretTekst: string) => {
     const t = markeretTekst.trim()
-    if (t) void sendNuRef.current?.(t)
+    // (14/11/2026) Fladen faar et UDFALD. `delivered` lover AFLEVERING, ikke
+    // succes: `sendNuRef` er en Promise, saa turen koerer videre efter dette
+    // svar og dens fejl opstaar bagefter. Samme graense som i desk.
+    if (!t) return { status: 'failed' as const, kode: 'empty_action' as const, besked: '' }
+    if (!sendNuRef.current) {
+      return { status: 'failed' as const, kode: 'component_unavailable' as const, besked: '' }
+    }
+    void sendNuRef.current(t)
+    return { status: 'delivered' as const }
   }, [])
   // Rul-til-bunden: vises naar man har rullet OP i traaden. Listen er inverteret,
   // saa offset 0 = nederst ved det nyeste. Taerskel paa en halv skaerm — under det

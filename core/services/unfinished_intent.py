@@ -70,7 +70,7 @@ _FOERST_SKAL_RE = re.compile(
 # vækker ham med "du sagde du ville X — gør det nu i stedet for at
 # tale om det".
 _FUTURE_ACTION_PROMISE_RE = re.compile(
-    r"\bjeg\s+(?:fikser|fixer|laver|kører|skriver|opretter|sletter|"
+    r"\bjeg\s+(?:fikser|fixer|retter|laver|kører|skriver|opretter|sletter|"
     r"ændrer|opdaterer|tilføjer|implementerer|bygger|kalder|sender|"
     r"committer|pusher|verificerer|tjekker|tester|starter|genstarter|"
     r"deployer|redigerer|patcher|prøver)\b.{0,80}?\b(?:nu|straks|"
@@ -130,6 +130,23 @@ _HANDOFF_TAIL_RE = re.compile(
     # gælder spørgsmåls-guarden i stedet.
     r"(?:\s*,\s*[^.?!]{0,80}|\s+(?:hvis|hvad|hvornår|når|om)\b[^.?!]{0,60})?"
     r"[\W_]*$",
+    re.IGNORECASE | re.UNICODE,
+)
+
+# Bruger-handlings-handoff (14/11-2026, målt falsk positiv): Jarvis sluttede
+# med «intet tag — du ser PWA'en først», men et tidligere «jeg skriver ... nu»
+# lå stadig i tail-vinduet. Det tidligere løfte startede derfor et autonomt run,
+# selv om den sidste sætning udtrykkeligt gav næste handling til Bjørn.
+#
+# Kun den afsluttende sætning matches. En handoff tidligere i teksten må ikke
+# blokere et efterfølgende, ægte «jeg retter X nu»-løfte.
+_BRUGER_HANDLING_TAIL_RE = re.compile(
+    r"(?:^|[.!?]\s+|\n+)[^.?!]{0,160}\b(?:"
+    r"venter\s+(?:nu\s+)?på\s+dig"
+    r"|du\s+[^.?!]{0,80}?\bførst\b"
+    r"|er\s+(?:din|dit)\s+at\s+(?:afgøre|beslutte|godkende|vurdere|"
+    r"teste|se|prøve|kigge)\b"
+    r")[^.?!]*[.!?…]*\s*$",
     re.IGNORECASE | re.UNICODE,
 )
 
@@ -377,6 +394,12 @@ def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
     # (dobbelt/tripel de sidste dage). Et afsluttende "?" = kontrollen givet tilbage
     # til brugeren → ALDRIG continuation. (Promise-fraser UDEN spørgsmål fanges stadig.)
     if stripped.rstrip().endswith("?"):
+        return None
+
+    # En afsluttende sætning der lægger næste handling hos brugeren er en
+    # bevidst tilbageholdenhed, ikke et glemt løfte. Denne guard bor i
+    # continuation-detektoren; promise-ledgeren er fortsat uafhængig.
+    if _BRUGER_HANDLING_TAIL_RE.search(stripped):
         return None
 
     # ── Handoff-guard (2026-08-15, Bjørn) ───────────────────────────────────

@@ -25,14 +25,39 @@
   padding-bottom: 0;
   margin-bottom: 0;
   border-bottom-color: transparent;
+  /* `turhoved.css` siger `font-family: inherit`, men chatvisningen er ikke
+   * altid inden for den container der sætter fonten — målt 14/11-2026 faldt
+   * hovedet tilbage til browserens serif (Times New Roman) ved 14px. En label
+   * i serif læses som en fejl, ikke som et valg. Samme font som brødteksten
+   * i `chat-reading.css`, så hoved og besked taler samme sprog. */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
+  /* 14px er brødtekst-størrelse; en label over indholdet skal være lidt
+   * mindre og have luft nok til at være læsbar. 13px med 1,45 i line-height
+   * giver samme optiske vægt som ChatGPT-referencen Bjørn pegede på. */
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: 0.005em;
 }
 
-/* Hoved og dets gruppe hører sammen: afstanden ned til indholdet skal være
- * mindre end afstanden mellem to selvstændige blokke. De 6,4px spiser det
- * meste af grid-gappet, så hovedet lægger sig til indholdet i stedet for at
- * svæve over det. */
+/* Hoved og dets indhold er ÉN blok, ikke to grid-items med et gap imellem.
+ *
+ * MÅLT 14/11-2026 i Chromium: `.chat-flow` er et grid med `gap: 10,4px`, og
+ * mellem hovedet og svaret lå `chat-flow-gruppe-ydre` som et TOMT grid-item
+ * (højde 0). Et tomt item koster stadig to gaps — ét over og ét under — så
+ * der stod 20,8px luft mellem to ting der ikke havde noget imellem sig.
+ * Bjørn: «turhoved skal stå lige over starten af beskeden».
+ *
+ * `:empty` duede IKKE: gruppen har altid et indre `div`-barn, så den er aldrig
+ * tom i CSS'ens forstand (målt — reglen ramte nul elementer). Den lukkede
+ * gruppe bærer derimod allerede `data-aaben='false'`, og den er sand netop når
+ * der intet er at vise. `display: none` fjerner den fra grid-flowet helt, så
+ * kun ét gap står tilbage. */
+.chat-flow > .chat-flow-gruppe-ydre[data-aaben='false'] {
+  display: none;
+}
+
 .chat-flow > .rv-tur + * {
-  margin-top: -0.4rem;
+  margin-top: 0;
 }
 
 .chat-flow-activity {

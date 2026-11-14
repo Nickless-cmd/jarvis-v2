@@ -6935,14 +6935,15 @@ def _finalize_second_pass_visible_text(text: str, *, fallback: str) -> str:
     # her; en omskrivning ville oedelaegge prosa der flyder rigtigt.
     try:
         from core.services.prosa_struktur_guard import (
-            tabel_uden_flade as _tabel_uden_flade,
+            flade_mangel as _flade_mangel,
         )
         from core.runtime import state_store as _state_store
 
         _state_store.save_json(
             "flade_paamindelse",
             {
-                "linje": (_tabel_uden_flade(cleaned) if cleaned else None) or "",
+                # tabel → talmur → opremsning; højst én linje (14/11-2026)
+                "linje": (_flade_mangel(cleaned) if cleaned else None) or "",
                 "run_id": str(run.run_id or ""),
             },
         )

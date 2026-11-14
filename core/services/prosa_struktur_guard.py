@@ -58,6 +58,7 @@ __all__ = [
     "ret_pseudo_overskrift",
     "skal_have_break",
     "tabel_uden_flade",
+    "flade_mangel",
 ]
 
 #: Hvor mange parallelle led et afsnit må bære i prosa før det flagges.
@@ -582,6 +583,11 @@ def tabel_uden_flade(text: str) -> str | None:
     Returnerer ``None`` når svaret ingen tabel har, når tabellen er for lille
     til at en flade ville være bedre, eller når svaret allerede indeholder en
     ``jarvis-ui``-blok. Retter intet og afviser intet.
+
+    **Hvad linjen må sige** (målt 14/11-2026): den gamle tekst sagde «overvej
+    `vaelg_flade`» — men tabellen ER der allerede, så rådet læses som om
+    tabellen mangler. Målt ramte det 205 svar, alle med tabellen synlig.
+    Linjen skal derfor handle om at få tabellen TEGNET, ikke om at lave den.
     """
     if not text or "|" not in text or "jarvis-ui" in text:
         return None
@@ -601,7 +607,72 @@ def tabel_uden_flade(text: str) -> str | None:
 
     return (
         f"forrige svar havde en sammenligningstabel paa {bedste_raekker} raekker "
-        f"og {bedste_kolonner} kolonner uden flade — overvej `vaelg_flade` naar "
-        f"en tabel har 3+ kolonner, saa den bliver tegnet i stedet for laest "
-        f"som prosa"
+        f"og {bedste_kolonner} kolonner som markdown — den blev laest som prosa. "
+        f"Overvej `vaelg_flade` med en table-flade, saa den bliver tegnet"
     )
+
+
+def flade_mangel(text: str) -> str | None:
+    """Én påmindelseslinje for forrige svar — tabel, talmur eller opremsning.
+
+    Kobler prosa-guardens fund til ``flade_paamindelse``-kredsen (14/11-2026):
+    talmuren og opremsningen blev opdaget hver gang, men udfaldet gik kun til
+    omskrivning og blev glemt. Her bruges de SAMME detektorer og tærskler, men
+    udfaldet bliver en linje til næste tur — intet omskrives.
+
+    Højst én linje, mest specifikke form først: tabel → talmur → opremsning.
+    ``None`` når svaret har en flade eller intet fund.
+
+    **Værnet mod at påminde om noget svaret allerede gjorde** (målt 14/11-2026):
+    den første version tjekkede kun for ``jarvis-ui``. Målt over 2.052 rigtige
+    svar gav det 282 svar beskeden «overvej liste» selv om de HAVDE en
+    markdown-liste, og 67 fik tabel-rådet med tabellen lige foran sig. En
+    påmindelse der er blind for hvad der allerede er gjort, er ikke en
+    påmindelse — den er støj, og den lærer modellen at ignorere linjen.
+    """
+    if not text or "jarvis-ui" in text:
+        return None
+    linje = tabel_uden_flade(text)
+    if linje:
+        return linje
+    try:
+        slags = {p.slags for p in find_prosa_punkter(text)}
+    except Exception:  # fail-open: detektoren fejler → som før (kun tabel-linjen)
+        return None
+    if "talmur" in slags and not _har_tabel(text):
+        return (
+            "forrige svar havde en talmur (5+ tal i prosa) uden flade — "
+            "overvej `vaelg_flade` med stats/chart"
+        )
+    if "opremsning" in slags and not _har_liste(text):
+        return (
+            "forrige svar havde en opremsning (3+ led) skrevet som prosa — "
+            "overvej liste eller flade"
+        )
+    return None
+
+
+def _har_liste(text: str) -> bool:
+    """Har svaret allerede en markdown-liste? Så er opremsningen ikke et fund.
+
+    Tjekker linjestart, ikke forekomst: en ``-`` midt i en sætning er en
+    bindestreg, ikke et punkt. Kræver mindst to punkter — ét enkelt punkt er
+    ikke en liste nogen kan have glemt at lave.
+    """
+    punkter = 0
+    for linje in text.splitlines():
+        strippet = linje.lstrip()
+        if strippet.startswith("- ") or strippet.startswith("* "):
+            punkter += 1
+            if punkter >= 2:
+                return True
+    return False
+
+
+def _har_tabel(text: str) -> bool:
+    """Har svaret allerede en markdown-tabel? Så er talmuren ikke et fund."""
+    for linje in text.splitlines():
+        strippet = linje.strip()
+        if strippet.startswith("|") and strippet.count("|") >= 2:
+            return True
+    return False

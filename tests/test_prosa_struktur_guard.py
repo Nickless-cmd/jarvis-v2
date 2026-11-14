@@ -484,3 +484,111 @@ def test_detektoren_er_ikke_en_formfejl_og_udloeser_ingen_omskrivning() -> None:
     """
     assert g.tabel_uden_flade(SAMMENLIGNING) is not None
     assert g.fejl_i_prosa(SAMMENLIGNING) == []
+
+
+# ── 8. Prosa-fund → flade-påmindelse (14/11-2026) ──────────────────────────
+
+TALMUR = (
+    "## Målingen\n\n"
+    "Mistral svarede 401 mod 200 mens gemini svarede 404 mod 200 og opencode "
+    "svarede 403 mod 200 hvilket gav 8 tal i samme afsnit uden nogen tegning.\n"
+)
+
+OPREMSNING = (
+    "## 🩺 Hvad jeg fandt\n\n"
+    "Jeg kiggede på rækkerne, og fejlen sad i guarden og ikke i rendereren, "
+    "og den var allerede rettet i den kode der kørte, så det var ikke noget "
+    "jeg kunne gøre noget ved den aften.\n"
+)
+
+
+def _sektion_med_gemt_linje(monkeypatch, tmp_path, linje: str):
+    """Kør den rigtige læser mod en gemt nøgle (samme kreds som i produktion)."""
+    from core.runtime import state_store
+    from core.services import prompt_contract
+
+    gemt = {"flade_paamindelse": {"linje": linje, "run_id": "t"}}
+    monkeypatch.setattr(state_store, "load_json", lambda k, d=None: gemt.get(k, d))
+    return prompt_contract._flade_paamindelse_section()
+
+
+def test_talmur_uden_flade_skriver_paamindelse(monkeypatch, tmp_path) -> None:
+    """(a) talmur uden flade → linje der nævner stats/chart, og læseren viser den.
+
+    MUTATION: fjern talmur-grenen i flade_mangel → None → fejler.
+    """
+    linje = g.flade_mangel(TALMUR)
+    assert linje and "stats/chart" in linje and "\n" not in linje
+    assert "stats/chart" in (_sektion_med_gemt_linje(monkeypatch, tmp_path, linje) or "")
+
+
+def test_opremsning_uden_flade_skriver_liste_eller_flade() -> None:
+    """MUTATION: fjern opremsning-grenen → None → fejler."""
+    linje = g.flade_mangel(OPREMSNING)
+    assert linje and "liste eller flade" in linje
+
+
+def test_svar_med_flade_giver_tom_paamindelse(monkeypatch, tmp_path) -> None:
+    """(b) svar med flade → ingen linje → læseren returnerer None.
+
+    MUTATION: fjern `"jarvis-ui" in text` i flade_mangel → fejler.
+    """
+    tekst = TALMUR + '\n```jarvis-ui {"type":"stats"}\n```\n'
+    linje = g.flade_mangel(tekst)
+    assert linje is None
+    assert _sektion_med_gemt_linje(monkeypatch, tmp_path, linje or "") is None
+
+
+def test_tabel_og_talmur_giver_kun_en_linje_den_specifikke() -> None:
+    """Tabel + talmur → præcis én linje, og det er tabel-linjen."""
+    linje = g.flade_mangel(SAMMENLIGNING + "\n" + TALMUR)
+    assert linje and "sammenligningstabel" in linje and "talmur" not in linje
+
+
+def test_detektor_fejl_er_fail_open(monkeypatch) -> None:
+    def boom(_t):
+        raise RuntimeError("x")
+
+    monkeypatch.setattr(g, "find_prosa_punkter", boom)
+    assert g.flade_mangel(TALMUR) is None
+    assert g.flade_mangel(SAMMENLIGNING) is not None
+
+
+# --- 9. flade_mangel må ikke påminde om noget svaret allerede gjorde (14/11-2026)
+# Målt over 2.052 rigtige svar: 282 fik «overvej liste» med en liste lige foran
+# sig, og 67 fik tabel-rådet med tabellen synlig. En påmindelse der er blind for
+# hvad der allerede er gjort, er støj — og den lærer modellen at ignorere linjen.
+
+
+def test_flade_mangel_tier_naar_svaret_allerede_har_en_liste():
+    from core.services.prosa_struktur_guard import flade_mangel
+
+    tekst = (
+        "Her er de tre ting der skal ske, og de hænger sammen i rækkefølge:\n\n"
+        "- først måles tilstanden\n"
+        "- så rettes den ene fejl\n"
+        "- til sidst verificeres det\n"
+    )
+    assert flade_mangel(tekst) is None
+
+
+def test_flade_mangel_tier_naar_svaret_allerede_har_en_tabel():
+    from core.services.prosa_struktur_guard import flade_mangel
+
+    tekst = (
+        "Tallene for de fem dage ser sådan ud, og de er målt i UTC:\n\n"
+        "| dag | kald | fejl |\n"
+        "| --- | --- | --- |\n"
+        "| 1 | 12 | 0 |\n"
+        "| 2 | 14 | 1 |\n"
+    )
+    assert flade_mangel(tekst) is None
+
+
+def test_flade_mangel_taeller_ikke_en_bindestreg_som_et_punkt():
+    """`-` midt i en sætning er en bindestreg, ikke en liste."""
+    from core.services.prosa_struktur_guard import _har_liste
+
+    assert _har_liste("Det er en bindestreg - midt i teksten - og igen") is False
+    assert _har_liste("- ét enkelt punkt er ikke en liste") is False
+    assert _har_liste("- et punkt\n- og et mere") is True

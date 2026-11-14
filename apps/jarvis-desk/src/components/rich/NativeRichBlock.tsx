@@ -1,6 +1,7 @@
 import { createContext, useContext, useState } from 'react'
 import { AlertTriangle, CheckCircle2, CircleAlert, Info, MapPin } from 'lucide-react'
 import { openExternalUrl } from '../../lib/host'
+import { interpolérUdtryk } from '../../lib/udtryk'
 import { WidgetPrompt } from './WidgetBlock'
 import { DiffView } from './DiffView'
 
@@ -402,12 +403,15 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
       const v = kontrolVaerdier[bind]
       return typeof v === 'number' ? v : fallback
     }
-    // `{bind}` i et tekstfelt interpoleres fra sliderne. Det er her fladen
-    // svarer brugeren uden et modelkald: teksten regnes om ved hvert træk.
+    // `{bind}` og `{udtryk}` i et tekstfelt interpoleres fra felterne. Det er
+    // her fladen svarer brugeren uden et modelkald: teksten regnes om ved
+    // hvert træk. Siden 14/11-2026 gennem den lukkede evaluator, så
+    // `{seats*29}` også virker — og så et ugyldigt udtryk degraderer til sin
+    // egen tekst i stedet for at fjerne hele fladen.
     const interpolér = (s: string) => {
-      const opslag: Record<string, number> = {}
-      for (const f of spec.fields) if (f.kind === 'slider') opslag[f.bind] = aktuel(f.bind, f.value)
-      return s.replace(/\{(\w+)\}/g, (m, k) => (k in opslag ? String(opslag[k]) : m))
+      const kontekst: Record<string, unknown> = { ...kontrolVaerdier }
+      for (const f of spec.fields) if (f.kind === 'slider') kontekst[f.bind] = aktuel(f.bind, f.value)
+      return interpolérUdtryk(s, kontekst).tekst
     }
     return <section className="native-rich native-control" aria-label={spec.title || 'Kontrol'}>
       <Heading title={spec.title} />
@@ -573,10 +577,19 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
       const v = kontrolVaerdier[bind]
       return typeof v === 'boolean' ? v : fallback
     }
-    const interpolér = (s: string) => s.replace(/\{(\w+)\}/g, (m, k) => {
-      const v = kontrolVaerdier[k]
-      return v === undefined ? m : String(v)
-    })
+    // Alle felt-typer i konteksten — ikke kun sliderne. `form` har tekst,
+    // select og toggle, og et udtryk som `{enheder * pris}` må ikke se en
+    // tekst-værdi som 0 fordi den ikke blev lagt ind.
+    const interpolér = (s: string) => {
+      const kontekst: Record<string, unknown> = { ...kontrolVaerdier }
+      for (const f of spec.fields) {
+        if (f.kind === 'text') continue
+        if (f.kind === 'slider') kontekst[f.bind] = talV(f.bind, f.value)
+        else if (f.kind === 'select') kontekst[f.bind] = tekstV(f.bind, f.value)
+        else kontekst[f.bind] = boolV(f.bind, f.value)
+      }
+      return interpolérUdtryk(s, kontekst).tekst
+    }
     return <section className="native-rich native-form" aria-label={spec.title || 'Formular'}>
       <Heading title={spec.title} />
       <div className="native-control-felter">

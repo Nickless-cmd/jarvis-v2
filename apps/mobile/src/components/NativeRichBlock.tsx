@@ -5,6 +5,7 @@ import Svg, { Line, Polyline, Rect as SvgRect } from 'react-native-svg'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { WidgetPrompt } from './WidgetFlade'
 import { lineDiff } from '../lib/diff'
+import { interpolérUdtryk } from '../lib/udtryk'
 
 type Json = Record<string, unknown>
 export type NativeSpec =
@@ -355,9 +356,9 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
       return typeof v === 'number' ? v : fallback
     }
     const interpolér = (t: string) => {
-      const opslag: Record<string, number> = {}
-      for (const f of spec.fields) if (f.kind === 'slider') opslag[f.bind] = aktuel(f.bind, f.value)
-      return t.replace(/[{](\w+)[}]/g, (m, kk) => (kk in opslag ? String(opslag[kk]) : m))
+      const kontekst: Record<string, unknown> = { ...kontrolVaerdier }
+      for (const f of spec.fields) if (f.kind === 'slider') kontekst[f.bind] = aktuel(f.bind, f.value)
+      return interpolérUdtryk(t, kontekst).tekst
     }
     return <View style={styles.controlFelter}>{heading}
       {spec.fields.map((f, i) => f.kind === 'slider' ? (
@@ -466,10 +467,17 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
       const v = kontrolVaerdier[bind]
       return typeof v === 'boolean' ? v : fallback
     }
-    const interpolér = (s: string) => s.replace(/\{(\w+)\}/g, (m, k) => {
-      const v = kontrolVaerdier[k]
-      return v === undefined ? m : String(v)
-    })
+    // Alle felt-typer i konteksten — ikke kun sliderne (14/11-2026).
+    const interpolér = (s: string) => {
+      const kontekst: Record<string, unknown> = { ...kontrolVaerdier }
+      for (const f of spec.fields) {
+        if (f.kind === 'text') continue
+        if (f.kind === 'slider') kontekst[f.bind] = talV(f.bind, f.value)
+        else if (f.kind === 'select') kontekst[f.bind] = tekstV(f.bind, f.value)
+        else kontekst[f.bind] = boolV(f.bind, f.value)
+      }
+      return interpolérUdtryk(s, kontekst).tekst
+    }
     return <View accessibilityLabel={spec.title || 'Formular'} style={styles.card}>{heading}
       <View style={styles.controlFelter}>
         {spec.fields.map((f, i) => {

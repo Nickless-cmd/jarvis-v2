@@ -148,10 +148,12 @@ describe('NativeRichBlock', () => {
     const valg = screen.getByRole('combobox') as HTMLSelectElement
     expect(() => fireEvent.change(valg, { target: { value: 'DIL' } })).not.toThrow()
     expect(valg.value).toBe('DIL')
-    // `{kode}` står råt indtil toggle'en er rørt: `interpolér` falder tilbage
-    // til pladsholderen når nøglen ikke findes i state. Ærligt, men uskønt —
-    // checkboxen viser `false` mens teksten viser `{kode}`.
-    expect(screen.getByText('Vej: DIL — kode: {kode}')).toBeInTheDocument()
+    // (14/11-2026) `{kode}` viser nu `false` FØR toggle'en er rørt. Før stod
+    // den råt som `{kode}`, fordi `interpolér` kun slog op i den RØRTE state —
+    // så checkboxen viste `false` mens teksten viste `{kode}`. To svar på
+    // samme spørgsmål på samme skærm. Nu lægger `interpolér` feltets
+    // medfødte værdi i konteksten, så teksten siger det samme som kontrollen.
+    expect(screen.getByText('Vej: DIL — kode: false')).toBeInTheDocument()
 
     const knap = screen.getByRole('checkbox') as HTMLInputElement
     expect(() => fireEvent.click(knap)).not.toThrow()

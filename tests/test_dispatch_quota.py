@@ -540,3 +540,70 @@ def test_claude_gyldigt_credentials_token_bruges(monkeypatch, tmp_path):
 
     assert reading.ok is True
     assert reading.get("token_source") == "credentials_file"
+
+
+def test_manglende_credentials_fil_er_en_tydelig_fejl_ikke_stilhed(monkeypatch, tmp_path):
+    """Den døde credentials-fil er FJERNET fra maskinen (14/11-2026).
+
+    Filen var udløbet 20/5-2026 og havde intet refresh-token, så den kunne
+    aldrig komme tilbage — men den lå som sidste led i kæden og forgiftede
+    ethvert kald hvor miljøet og env-filen ikke bar tokenet. Målt: `claude -p`
+    svarede 401 fra den fil, mens det levende token i `claude_dispatch.env`
+    virkede hele tiden.
+
+    Fjernelsen må ikke gøre kæden TAVS. Mangler alle tre kilder, skal svaret
+    navngive dem alle, så næste fejlsøgning ikke starter med et gæt.
+    """
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setattr(dispatch_quota, "_CLAUDE_ENV_FILE", str(tmp_path / "ingen.env"))
+    monkeypatch.setattr(dispatch_quota, "_CLAUDE_CREDENTIALS_FILE",
+                        str(tmp_path / "ingen-credentials.json"))
+
+    token, grund = dispatch_quota._claude_token()
+
+    assert token == ""
+    assert "miljøet" in grund
+    assert "ingen.env" in grund
+    assert "ingen-credentials.json" in grund
+
+
+def test_env_filen_er_kilden_naar_credentials_filen_er_væk(monkeypatch, tmp_path):
+    """Det levende token i env-filen skal bære lane'en alene.
+
+    Det er den faktiske driftstilstand efter fjernelsen: systemd-units har
+    `EnvironmentFile=-…/claude_dispatch.env`, og credentials-filen findes ikke.
+    """
+    env_fil = tmp_path / "claude_dispatch.env"
+    env_fil.write_text(
+        "# kommentar\nCLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-levende\n", encoding="utf-8"
+    )
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setattr(dispatch_quota, "_CLAUDE_ENV_FILE", str(env_fil))
+    monkeypatch.setattr(dispatch_quota, "_CLAUDE_CREDENTIALS_FILE",
+                        str(tmp_path / "ingen-credentials.json"))
+
+    token, kilde = dispatch_quota._claude_token()
+
+    assert token == "sk-ant-oat01-levende"
+    assert kilde == "env_file"
+
+
+def test_miljoe_tokenet_vinder_over_env_filen(monkeypatch, tmp_path):
+    """Miljøet er FØRSTE led i kæden — ikke en detalje ved siden af.
+
+    Uden denne test kunne miljø-grenen fjernes uden at nogen så det: de øvrige
+    tests dækker env-filen og credentials-filen, men ikke at et token der
+    allerede ligger i processens miljø (systemd `EnvironmentFile`) bruges før
+    filerne overhovedet læses.
+    """
+    env_fil = tmp_path / "claude_dispatch.env"
+    env_fil.write_text("CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-fra-fil\n", encoding="utf-8")  # pragma: allowlist secret
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "sk-ant-oat01-fra-miljoe")
+    monkeypatch.setattr(dispatch_quota, "_CLAUDE_ENV_FILE", str(env_fil))
+    monkeypatch.setattr(dispatch_quota, "_CLAUDE_CREDENTIALS_FILE",
+                        str(tmp_path / "ingen-credentials.json"))
+
+    token, kilde = dispatch_quota._claude_token()
+
+    assert token == "sk-ant-oat01-fra-miljoe"
+    assert kilde == "env"

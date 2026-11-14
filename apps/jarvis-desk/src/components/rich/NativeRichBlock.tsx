@@ -5,6 +5,7 @@ import { interpolérUdtryk } from '../../lib/udtryk'
 import { reparérDelvisJson } from '../../lib/delvisJson'
 import { WidgetPrompt } from './WidgetBlock'
 import { DiffView } from './DiffView'
+import { beskrivUdfald, normalisérUdfald, type FladeUdfald } from '../../lib/fladeHandling'
 
 type Json = Record<string, unknown>
 type NativeSpec =
@@ -447,6 +448,12 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
   // Fanevalg for `tabs` (14/11-2026). Samme krav som ovenfor: hooken står før
   // alle betingede returns, så rækkefølgen er konstant uanset fladetype.
   const [valgtFane, setValgtFane] = useState(0)
+  // Udfaldet af den seneste handling fladen selv satte i gang (14/11-2026).
+  // Også en hook, og af samme grund: den står før alle betingede returns.
+  // `null` = ingen handling forsøgt endnu, hvilket er forskelligt fra
+  // «forsøgt og gik galt» — fladen skal ikke bebrejde nogen noget den ikke har
+  // prøvet.
+  const [handlingUdfald, setHandlingUdfald] = useState<FladeUdfald | null>(null)
   if (spec.type === 'box') return <section className="native-rich native-box" aria-label={spec.title || 'Samling'}>
     <Heading title={spec.title} />
     <div className="native-box-boern">{spec.children.map((c, i) => <FladeNode key={`${c.type}-${i}`} spec={c} />)}</div>
@@ -466,9 +473,38 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
   if (spec.type === 'comparison') return <section className="native-rich" aria-label={spec.title || 'Sammenligning'}>
     <Heading title={spec.title} /><div className="native-comparison-scroll"><table className="native-comparison"><thead><tr><th scope="col">Punkt</th>{spec.columns.map((x) => <th scope="col" key={x}>{x}</th>)}</tr></thead><tbody>{spec.rows.map((r, i) => <tr key={`${r.label}-${i}`}><th scope="row">{r.label}</th>{r.values.map((v, j) => <td key={j}>{v}</td>)}</tr>)}</tbody></table></div>
   </section>
-  if (spec.type === 'choices') return <section className="native-rich native-card" aria-label={spec.title || 'Valgmuligheder'}>
-    <Heading title={spec.title} /><div className="native-choices">{spec.options.map((x, i) => <button type="button" key={`${x.label}-${i}`} disabled={!send} onClick={() => send?.(`[fra valgkort] ${x.prompt}`)}>{x.label}</button>)}</div>
-  </section>
+  if (spec.type === 'choices') {
+    // (14/11-2026) To tilstande, og forskellen er hele pointen:
+    //
+    // * CHAT MODE (`kontrolTilladt`): knappen er ALDRIG død. En flade der ser
+    //   handlingsdygtig ud men har en tom indgangsbetingelse er den fejlform
+    //   Bjørn kalder teater — så her forsøger den, og siger ærligt hvad der
+    //   skete hvis det ikke gik. `delivered` viser intet: en tavs succes er
+    //   korrekt, for turen fortsætter af sig selv i tråden.
+    // * CODE MODE: uændret. Uden provider er knappen deaktiveret, som før.
+    //   Maskinrummet skal ikke ændre adfærd fordi samtalen fik et udfald.
+    const tryk = (prompt: string) => {
+      if (!send) return
+      let ud: FladeUdfald
+      try {
+        ud = normalisérUdfald(send(`[fra valgkort] ${prompt}`))
+      } catch (e) {
+        ud = { status: 'failed', kode: 'tool_failed', besked: String((e as Error)?.message || e) }
+      }
+      setHandlingUdfald(ud.status === 'failed' ? ud : null)
+    }
+    const fejlTekst = handlingUdfald ? beskrivUdfald(handlingUdfald) : ''
+    return <section className="native-rich native-card" aria-label={spec.title || 'Valgmuligheder'}>
+      <Heading title={spec.title} />
+      <div className="native-choices">{spec.options.map((x, i) => <button
+        type="button"
+        key={`${x.label}-${i}`}
+        disabled={!kontrolTilladt && !send}
+        onClick={() => tryk(x.prompt)}
+      >{x.label}</button>)}</div>
+      {fejlTekst && <p className="native-handling-fejl" role="note">{fejlTekst}</p>}
+    </section>
+  }
   if (spec.type === 'control') {
     // Gaten: code mode må ikke se den. Default er falsk (se
     // `FladeKontrolContext`), så kun chat-visningen sætter flaget.

@@ -36,6 +36,38 @@ describe('NativeRichBlock', () => {
     expect(send).toHaveBeenCalledWith('[fra valgkort] gør det')
   })
 
+  // Handlings-udfaldet (14/11-2026). Tre påstande, og den tredje er den
+  // vigtigste: chat mode skal vise en ÆRLIG fejl, og code mode skal være
+  // UÆNDRET. Uden den tredje kunne jeg have ændret maskinrummet uden at se det.
+  const valgkort = JSON.stringify({
+    type: 'choices', title: 'Vælg', options: [{ label: 'Fortsæt', prompt: 'gør det' }],
+  })
+
+  it('chat mode: en afvist handling vises — ikke en tavs død knap', () => {
+    const send = vi.fn(() => ({ status: 'failed' as const, kode: 'component_unavailable' as const, besked: '' }))
+    render(<FladeKontrolContext.Provider value><WidgetPrompt.Provider value={send}>
+      <NativeRichBlock code={valgkort} />
+    </WidgetPrompt.Provider></FladeKontrolContext.Provider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Fortsæt' }))
+    expect(screen.getByRole('note')).toHaveTextContent('kan ikke sende herfra')
+  })
+
+  it('chat mode: en afleveret handling tier — turen fortsætter selv i tråden', () => {
+    const send = vi.fn(() => ({ status: 'delivered' as const }))
+    render(<FladeKontrolContext.Provider value><WidgetPrompt.Provider value={send}>
+      <NativeRichBlock code={valgkort} />
+    </WidgetPrompt.Provider></FladeKontrolContext.Provider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Fortsæt' }))
+    expect(send).toHaveBeenCalledWith('[fra valgkort] gør det')
+    expect(screen.queryByRole('note')).toBeNull()
+  })
+
+  it('code mode: uden provider er knappen stadig deaktiveret — uændret', () => {
+    // Ingen `FladeKontrolContext` = code mode (default er falsk).
+    render(<NativeRichBlock code={valgkort} />)
+    expect(screen.getByRole('button', { name: 'Fortsæt' })).toBeDisabled()
+  })
+
   // `control` (14/11-2026): den FØRSTE flade med lokal state. Det der skal
   // måles er ikke at den ser rigtig ud — det er at slideren rykker UDEN at et
   // modelkald går ud. `send` må ikke blive kaldt én eneste gang.

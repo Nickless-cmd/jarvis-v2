@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { fetchBlobWithAuth, type ApiConfig } from '../../lib/api'
+import { beskrivUdfald, normalisérUdfald, type FladeUdfald } from '../../lib/fladeHandling'
 
 /**
  * En widget: model-skrevet HTML renderet i en SANDKASSE.
@@ -95,8 +96,16 @@ export interface WidgetBlok {
  *  sit streaming-vaern i samme fil-familie.
  *
  *  Standard er en NO-OP: en widget i en visning der ikke kan sende (et
- *  arkiv, en test uden provider) skal tie, ikke kaste. */
-export const WidgetPrompt = createContext<((markeretTekst: string) => void) | null>(null)
+ *  arkiv, en test uden provider) skal tie, ikke kaste.
+ *
+ *  Returværdien er fladens UDFALD (14/11-2026). Den er `FladeUdfald | void`
+ *  og ikke bare `FladeUdfald`, fordi providerne er ældre end udfaldet: en
+ *  provider der ikke svarer må ikke se ud som en succes. `normalisérUdfald`
+ *  gør en tavs retur til `component_unavailable` — den ærlige læsning af «der
+ *  kom intet svar» er «jeg ved ikke om nogen lyttede». */
+export const WidgetPrompt = createContext<
+  ((markeretTekst: string) => FladeUdfald | void) | null
+>(null)
 
 export function WidgetBlock({ block, config }: {
   block: WidgetBlok
@@ -107,6 +116,11 @@ export function WidgetBlock({ block, config }: {
   const onPrompt = useContext(WidgetPrompt)
   const [html, setHtml] = useState<string | null>(null)
   const [fejl, setFejl] = useState<string | null>(null)
+  // Udfaldet af den seneste handling widget'en selv satte i gang (14/11-2026).
+  // Adskilt fra `fejl`: `fejl` betyder «widget'en kunne ikke vises», dette
+  // betyder «widget'en blev vist, men dens handling nåede ikke frem». At slå
+  // dem sammen ville få en afvist handling til at se ud som en ødelagt widget.
+  const [handlingUdfald, setHandlingUdfald] = useState<FladeUdfald | null>(null)
   const iframe = useRef<HTMLIFrameElement | null>(null)
   const [hoejde, setHoejde] = useState(160)
   /** Noncen fra main. Tom indtil den er hentet — og tom for evigt paa flader
@@ -177,7 +191,16 @@ export function WidgetBlock({ block, config }: {
         if (!maerke.startsWith('[fra widget')) return
 
         sendte.current = { antal: sendte.current.antal + 1, sidst: nu }
-        onPrompt?.(`${maerke} ${tekst}`)
+        // (14/11-2026) Widget'en får et UDFALD, ikke tavshed. Den kan ikke
+        // vide om turen lykkedes — den kører i sin egen stream — men den kan
+        // vide om afleveringen blev afvist. Samme grænse som `choices`-fladen.
+        let ud: FladeUdfald
+        try {
+          ud = normalisérUdfald(onPrompt?.(`${maerke} ${tekst}`))
+        } catch (e) {
+          ud = { status: 'failed', kode: 'tool_failed', besked: String((e as Error)?.message || e) }
+        }
+        setHandlingUdfald(ud.status === 'failed' ? ud : null)
       }
     }
     window.addEventListener('message', paaBesked)
@@ -190,21 +213,27 @@ export function WidgetBlock({ block, config }: {
   if (html == null) {
     return <div className="rv-kort rv-widget-venter">Widget hentes…</div>
   }
+  const handlingFejl = handlingUdfald ? beskrivUdfald(handlingUdfald) : ''
   return (
-    <iframe
-      ref={iframe}
-      className="rv-widget"
-      title={block.filename || 'widget'}
-      // UDEN allow-same-origin. Se komponentens docstring.
-      sandbox="allow-scripts"
-      // `referrerPolicy` og `loading` er ikke sikkerhed, men de fjerner to
-      // utilsigtede signaler: hvor widget'en blev vist, og en hentning af en
-      // flade der ikke er rullet frem endnu.
-      referrerPolicy="no-referrer"
-      loading="lazy"
-      srcDoc={medNonce(html + HOEJDE_SCRIPT, nonce)}
-      style={{ width: '100%', height: hoejde, border: 0, display: 'block' }}
-    />
+    <>
+      <iframe
+        ref={iframe}
+        className="rv-widget"
+        title={block.filename || 'widget'}
+        // UDEN allow-same-origin. Se komponentens docstring.
+        sandbox="allow-scripts"
+        // `referrerPolicy` og `loading` er ikke sikkerhed, men de fjerner to
+        // utilsigtede signaler: hvor widget'en blev vist, og en hentning af
+        // en flade der ikke er rullet frem endnu.
+        referrerPolicy="no-referrer"
+        loading="lazy"
+        srcDoc={medNonce(html + HOEJDE_SCRIPT, nonce)}
+        style={{ width: '100%', height: hoejde, border: 0, display: 'block' }}
+      />
+      {/* Handlingen nåede ikke frem (14/11-2026). Noten står UNDER rammen, så
+          den ikke kan læses som om widget'en selv fejlede. */}
+      {handlingFejl && <p className="rv-widget-handling-fejl" role="note">{handlingFejl}</p>}
+    </>
   )
 }
 

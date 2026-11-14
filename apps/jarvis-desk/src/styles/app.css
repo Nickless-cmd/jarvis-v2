@@ -994,6 +994,23 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .native-tree-dir .native-tree-navn { color: var(--fg-0); font-weight: 600; }
 .native-tree-dir .native-tree-navn::after { content: "/"; color: var(--fg-3); }
 .native-tree-note { color: var(--fg-3); }
+
+/* `choices` i chat mode: en handling der ikke nåede frem (14/11-2026).
+   Dæmpet, ikke en alarm — fladen fejlede, men svaret er intet i vejen med.
+   Samme rolle som `--fg-3` har i `native-tree-note`: sekundær oplysning. */
+.native-handling-fejl {
+  margin: 8px 0 0;
+  color: var(--fg-3);
+  font-size: 0.85em;
+}
+
+/* Samme note, men under en widget-iframe. Egen klasse fordi rammen har sin
+   egen margin-kontekst, og fordi `rv-`-præfikset er det widget-fladen bruger. */
+.rv-widget-handling-fejl {
+  margin: 4px 0 0;
+  color: var(--fg-3);
+  font-size: 0.85em;
+}
 /* `leverance-status` (14/11-2026): en TILSTAND pr. post, ikke et forløb.
  * `blokeret` er en førsteklasses tilstand og får derfor samme visuelle vægt
  * som `leveret` — ikke en bleg «ikke færdig»-grå. Farven bærer betydningen,

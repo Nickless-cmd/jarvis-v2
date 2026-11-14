@@ -215,7 +215,7 @@ describe('WidgetBlock sendPrompt-kanalen', () => {
 
   it('en MAERKET besked naar frem med maerket foran', async () => {
     const set: string[] = []
-    const { send } = await medIframe((t) => set.push(t))
+    const { send } = await medIframe((t) => { set.push(t) })
     send({ type: 'jarvis-widget-prompt', tekst: 'sorter efter miss', maerke: '[fra widget «Tabel»]' })
     await waitFor(() => expect(set).toHaveLength(1))
     expect(set[0]).toBe('[fra widget «Tabel»] sorter efter miss')
@@ -224,7 +224,7 @@ describe('WidgetBlock sendPrompt-kanalen', () => {
   it('en UMAERKET besked sendes IKKE', async () => {
     // Staaende regel: umaerket tekst ville laeses som Bjoerns egne ord.
     const set: string[] = []
-    const { send } = await medIframe((t) => set.push(t))
+    const { send } = await medIframe((t) => { set.push(t) })
     send({ type: 'jarvis-widget-prompt', tekst: 'gør noget' })
     send({ type: 'jarvis-widget-prompt', tekst: 'gør noget', maerke: 'Bjørn:' })
     await new Promise((r) => setTimeout(r, 0))
@@ -234,7 +234,7 @@ describe('WidgetBlock sendPrompt-kanalen', () => {
   it('en besked fra et FREMMED vindue sendes ikke', async () => {
     const set: string[] = []
     render(
-      <WidgetPrompt.Provider value={(t) => set.push(t)}>
+      <WidgetPrompt.Provider value={(t) => { set.push(t) }}>
         <WidgetBlock block={{ attachment_id: 'a1', filename: 'w.html' }} config={config} />
       </WidgetPrompt.Provider>,
     )
@@ -249,7 +249,7 @@ describe('WidgetBlock sendPrompt-kanalen', () => {
 
   it('takten begraenses — en loekke kan ikke spamme samtalen', async () => {
     const set: string[] = []
-    const { send } = await medIframe((t) => set.push(t))
+    const { send } = await medIframe((t) => { set.push(t) })
     for (let i = 0; i < 20; i++) {
       send({ type: 'jarvis-widget-prompt', tekst: `nr ${i}`, maerke: '[fra widget]' })
     }
@@ -260,7 +260,7 @@ describe('WidgetBlock sendPrompt-kanalen', () => {
 
   it('tom og overlang tekst afvises', async () => {
     const set: string[] = []
-    const { send } = await medIframe((t) => set.push(t))
+    const { send } = await medIframe((t) => { set.push(t) })
     send({ type: 'jarvis-widget-prompt', tekst: '   ', maerke: '[fra widget]' })
     send({ type: 'jarvis-widget-prompt', tekst: 'x'.repeat(2001), maerke: '[fra widget]' })
     send({ type: 'jarvis-widget-prompt', tekst: 42 as never, maerke: '[fra widget]' })
@@ -268,8 +268,13 @@ describe('WidgetBlock sendPrompt-kanalen', () => {
     expect(set).toEqual([])
   })
 
-  it('uden onPrompt sker der ingenting — ingen kasten', async () => {
+  it('uden onPrompt kastes der ikke — men widget\'en får et ærligt udfald', async () => {
+    // (14/11-2026) Testen hed før «sker der ingenting», og det var sandt så
+    // længe `WidgetPrompt` var `(tekst) => void`. Nu registrerer fladen at
+    // dens handling ikke nåede frem. Navnet skulle følge adfærden — ellers
+    // stod der en grøn test tilbage der beskyttede en adfærd vi har forladt.
     const { send } = await medIframe(undefined)
     expect(() => send({ type: 'jarvis-widget-prompt', tekst: 'x', maerke: '[fra widget]' })).not.toThrow()
+    expect(await screen.findByRole('note')).toHaveTextContent('kan ikke sende herfra')
   })
 })

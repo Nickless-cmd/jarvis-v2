@@ -12,8 +12,24 @@ def test_tempo_scalar_high_pulse_maps_to_floor():
 
 
 def test_tempo_scalar_low_pulse_maps_to_ceiling():
-    # hvile (puls 0.5) → sjældnere → højeste multiplier
-    assert cc.tempo_scalar(0.5) == 2.0
+    # Puls-GULVET (0.3 = intet sker) → sjældnere → højeste multiplier.
+    # Rettet 14/11-2026: den gamle test hævdede at puls 0.5 gav loftet, men det
+    # var netop mætningen — 1/0.5 = 2.0 ramte klemmen, så hele hvile-området
+    # 0.3–0.5 var utydeligt. Nu er loftet forbeholdt det faktiske gulv.
+    assert cc.tempo_scalar(0.3) == 2.0
+
+
+def test_tempo_scalar_hvile_omraadet_er_ikke_maettet():
+    """86 af 100 målte samples lå på præcis 2.0 før kalibreringen.
+
+    Med ``1/puls`` nåede klemmen loftet allerede ved puls 0.5, så «dyb hvile»
+    og «let hvile» gav samme cooldown. Testen fælder et tilbagefald til den
+    form: de fire niveauer skal være fire FORSKELLIGE tal.
+    """
+    niveauer = [cc.tempo_scalar(p) for p in (0.3, 0.375, 0.5, 0.75)]
+    assert len(set(niveauer)) == 4, f"hvile-niveauerne er kollapset: {niveauer}"
+    assert niveauer == sorted(niveauer, reverse=True)  # mere hvile → højere tempo
+    assert niveauer[0] == 2.0 and niveauer[-1] < 2.0
 
 
 def test_tempo_scalar_normal_pulse_is_baseline():
@@ -61,7 +77,7 @@ def test_sense_forces_baseline_when_loop_lag_high(monkeypatch):
 
 def test_sense_not_throttled_just_below_threshold(monkeypatch):
     monkeypatch.setattr("core.services.temporal_rhythm.get_current_rhythm",
-                        lambda: {"pulse_rate": 0.5})
+                        lambda: {"pulse_rate": 0.3})
     monkeypatch.setattr(cc, "_recent_loop_lag_ms", lambda: 249.0)
     s = cc.sense_tempo()
     assert s["throttled_by_loop_lag"] is False and s["tempo"] == 2.0

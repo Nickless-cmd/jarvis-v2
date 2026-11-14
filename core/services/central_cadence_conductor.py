@@ -27,12 +27,16 @@ Observe-only. Egress-frit (kun skalarer via record_private). Self-safe: kaster a
 """
 from __future__ import annotations
 
+import math
 from typing import Any
 
 # Hård tempo-klemme — de to tal der forhindrer CPU-brand og sultet daemon.
 _TEMPO_MIN = 0.5
 _TEMPO_MAX = 2.0
 _TEMPO_BASELINE = 1.0
+# Puls-gulvet i temporal_rhythm._compute_pulse_rate: intet sker → puls 0,3.
+# Kalibreringspunktet for tempo-mappingen (se tempo_scalar).
+_PULSE_FLOOR = 0.3
 # Dødemandsknap: aligner med central_loop_lag._SPIKE_MS / network_health gul.
 _LOOP_LAG_SPIKE_MS = 250.0
 
@@ -58,7 +62,20 @@ def tempo_scalar(pulse: float | None) -> float:
     """Ren funktion: puls → cadence-tempo-multiplier, hårdt klemt til [0.5, 2.0].
 
     Invers relation: høj puls (presset) → LAV multiplier → kortere cooldown → hyppigere.
-    Lav puls (hvile) → HØJ multiplier → længere cooldown → sjældnere. clamp(1/pulse, 0.5, 2.0).
+    Lav puls (hvile) → HØJ multiplier → længere cooldown → sjældnere.
+
+    KALIBRERET 14/11-2026 (Bjørn valgte vej 1). Den gamle form var ``1/puls``, og den
+    mættede: puls-gulvet er 0,3, så ``1/0,3 = 3,33`` blev klemt til loftet 2,0 — og
+    loftet blev ALLEREDE nået ved puls 0,5. Målt på 100 faktiske samples lå 86 på
+    præcis 2,0, altså var hele hvile-området 0,3–0,5 utydeligt for mekanismen, og
+    hver cooldown blev fordoblet i døgndrift (distillation 180→360 min = 4/døgn mod
+    8 forventet). Det var ikke timeoutene; det var denne mapping.
+
+    Ny form: ``tempo = 1 - k·ln(puls)`` med ``k = 1/ln(1/0,3)``, så puls 0,3 rammer
+    loftet 2,0 og puls 1,0 rammer præcis 1,0 (invarianten bevares). Log-formen gør
+    hvile-halen læsbar: puls 0,375 → 1,815 og 0,5 → 1,576 i stedet for begge 2,0.
+    Klemmen [0,5; 2,0] står uændret — den er værn mod CPU-brand og sultet daemon.
+
     Self-safe: pulse None/<=0/ikke-tal → baseline 1.0 (fejl-sikker, aldrig →0 eller →∞)."""
     try:
         p = float(pulse)  # type: ignore[arg-type]
@@ -66,7 +83,7 @@ def tempo_scalar(pulse: float | None) -> float:
         return _TEMPO_BASELINE
     if p <= 0.0:
         return _TEMPO_BASELINE
-    raw = 1.0 / p
+    raw = 1.0 - math.log(p) / math.log(1.0 / _PULSE_FLOOR)
     return round(max(_TEMPO_MIN, min(_TEMPO_MAX, raw)), 3)
 
 

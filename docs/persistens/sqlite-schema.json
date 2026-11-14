@@ -7317,7 +7317,7 @@
       "created_at_formats": []
     },
     "central_consequences": {
-      "digest": "f1:51:5e:12:15:aa:a0:80:35:13:1f:d5:f9:18:4f:f2:e9:10:55:1b:67:dd:54:33:01:f9:af:98:89:fe:ff:22",
+      "digest": "19:ee:ba:84:e1:9f:f0:86:bc:e2:12:fe:66:b8:02:3a:4d:fe:54:78:79:12:19:89:c0:d0:b7:af:34:78:64:3b",
       "schema": {
         "columns": [
           {
@@ -7357,6 +7357,22 @@
             "type": "TEXT",
             "nullable": false,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "decision_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "fund_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },
@@ -7417,6 +7433,25 @@
               }
             ],
             "sql": "CREATE INDEX idx_central_consequences_cid ON central_consequences(cid, created_at)"
+          },
+          {
+            "name": "idx_central_consequences_fund",
+            "unique": true,
+            "origin": "c",
+            "partial": true,
+            "parts": [
+              {
+                "column": "fund_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE UNIQUE INDEX idx_central_consequences_fund ON central_consequences(fund_id) WHERE fund_id != ''"
           }
         ]
       },
@@ -10064,7 +10099,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "cheap_lane_admission_state": {

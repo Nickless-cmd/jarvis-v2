@@ -129,10 +129,26 @@ def _er_stor_almindelig_fil(target: Path) -> bool:
         return False
 
 
-def _noter_laesning(target: Path, args: dict[str, Any]) -> None:
-    """Fælles for begge læsestier: read-before-write-guarden og live-fremhævningen."""
-    # Tools modtager _runtime_session_id (ikke _session_id) — falder igennem begge nøgler,
-    # så guarden følger læsninger uanset kalder-konvention.
+def _noter_laesning_guard(path: str, args: dict[str, Any]) -> None:
+    """Registrér `path` som LÆST i denne session — nøglen read-before-write-vagten slår op i.
+
+    Kaldes fra BÅDE læse- og skrive-stien. En fil man netop har SKREVET kan man
+    ikke «mangle at have læst»: målt 14/11-2026 kom 50 af 447 `guard_blocked` på
+    `edit_file` efter en `write_file` med status `ok` på samme absolutte sti i
+    samme run — fx `tests/test_karakter_levers.py` skrevet 19:38:58 og afvist
+    19:39:13. Skrive-stien kaldte kun `_record_active_file` og satte derfor
+    aldrig vagtens nøgle `(session_id, abs_path)`.
+
+    Kaldes KUN efter en skrivning der faktisk lykkedes — en blokeret eller
+    fejlet skrivning må ikke registreres som en læsning, for så ville vagten
+    give grønt lys til den næste skrivning på et grundlag der ikke findes.
+
+    Fail-open: en manglende cache må ikke gøre en gennemført læsning eller
+    skrivning til en fejl.
+    """
+    # Tools modtager _runtime_session_id (ikke _session_id) — falder igennem begge
+    # nøgler, så guarden følger kaldet uanset kalder-konvention. Udledningen bor
+    # her og ikke i de to stier, så læse og skrive ikke kan divergere.
     try:
         from core.services.read_before_write_guard import record_read
         _session_id = (
@@ -140,10 +156,14 @@ def _noter_laesning(target: Path, args: dict[str, Any]) -> None:
             or args.get("_session_id")
             or "default"
         )
-        record_read(str(target), session_id=str(_session_id))
-    except Exception:  # guarden er rådgivende: kan læsningen ikke noteres, må selve læsningen ikke fejle
+        record_read(str(path), session_id=str(_session_id))
+    except Exception:  # guarden er rådgivende: kan noteringen ikke skrives, må kaldet ikke fejle
         pass
 
+
+def _noter_laesning(target: Path, args: dict[str, Any]) -> None:
+    """Fælles for begge læsestier: read-before-write-guarden og live-fremhævningen."""
+    _noter_laesning_guard(str(target), args)
     _record_active_file(str(target), "read", args)
 
 
@@ -483,6 +503,10 @@ def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
     except Exception:
         pass
     _record_active_file(str(target), "write", args)
+    # Skrivningen lykkedes (vi er nået hertil efter readback) — filen er derfor
+    # læst i denne session. Uden dette afvises en efterfølgende edit_file på
+    # samme sti af READ-BEFORE-WRITE-vagten.
+    _noter_laesning_guard(str(target), args)
     return result
 
 
@@ -651,4 +675,7 @@ def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
         result["redirected_from"] = redirected_from
         result["note"] = f"Path redirected to canonical workspace location: {target}"
     _record_active_file(str(target), "write", args)
+    # Samme grund som i write_file: en gennemført edit efterlader filen læst, så
+    # to redigeringer i træk på samme fil ikke kræver en kunstig read_file imellem.
+    _noter_laesning_guard(str(target), args)
     return result

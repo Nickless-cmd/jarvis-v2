@@ -428,3 +428,174 @@ def test_the_schema_ANNOUNCES_the_range() -> None:
     # `path` er stadig det eneste paakraevede felt.
     assert katalog["read_file"]["function"]["parameters"]["required"] == ["path"]
 
+
+
+# ── Skrive-stien skal selv registrere filen som læst (14/11-2026) ───────────
+#
+# Målt 14/11-2026 i events: 50 af 447 `guard_blocked` på `edit_file` kom efter
+# en `write_file` med status ok på SAMME absolutte sti i SAMME run. Konkret:
+# run `visible-57a5bba8762e4c7cbe3cda3da3b17ef4` skrev
+# `tests/test_karakter_levers.py` 19:38:58 og blev afvist 19:39:13 — femten
+# sekunder senere, på en fil den lige havde skrevet.
+#
+# Årsagen var ikke at vagten var for streng. Den var at skrive-stien kun kaldte
+# `_record_active_file` (desk-fil-træet) og aldrig `record_read` (vagtens nøgle).
+# Vagten spurgte «har du læst den?» om en fil der lige var skrevet af samme
+# kalder — et spørgsmål hvis svar var indlysende, men som ingen havde noteret.
+
+
+def test_en_fil_der_LIGE_er_skrevet_kan_redigeres(tmp_path) -> None:
+    """Kernen i fejlen: write_file efterfulgt af edit_file på samme sti.
+
+    `.py` er valgt med vilje — det er en beskyttet endelse, så vagten faktisk
+    fyrer. En `.txt` ville passere uanset og gøre testen tom.
+    """
+    from uuid import uuid4
+
+    from core.services.read_before_write_guard import was_read
+    from core.tools import file_tools_exec as fx
+
+    # Unik session pr. kørsel: shared_cache er fælles for hele maskinen, og en
+    # fast nøgle ville lade en tidligere kørsel gøre testen grøn.
+    sid = f"prove-skrevet-{uuid4().hex[:10]}"
+    p = tmp_path / "modul.py"
+
+    foerste = fx._exec_write_file(
+        {"path": str(p), "content": "en = 1\nto = 2\n", "_runtime_session_id": sid},
+    )
+    assert foerste["status"] == "ok", foerste
+    assert was_read(str(p), sid) is True, (
+        "skrivningen registrerede ikke filen som læst — næste edit vil blive afvist"
+    )
+
+    anden = fx._exec_edit_file(
+        {
+            "path": str(p),
+            "old_text": "en = 1",
+            "new_text": "en = 9",
+            "_runtime_session_id": sid,
+        },
+    )
+    assert anden["status"] == "ok", f"edit blev afvist efter egen skrivning: {anden}"
+    assert "en = 9" in p.read_text(encoding="utf-8")
+
+
+def test_en_FEJLET_skrivning_registreres_ikke_som_laest(tmp_path, monkeypatch) -> None:
+    """Den anden halvdel — og den der gør rettelsen sikker.
+
+    Registrerede vi en fejlet eller blokeret skrivning som en læsning, ville den
+    NÆSTE skrivning passere uden at nogen havde set filens indhold. Vagten ville
+    altså slås til præcis når den skal virke, og grundlaget ville være en
+    skrivning der ikke fandt sted.
+    """
+    from uuid import uuid4
+
+    from core.services.read_before_write_guard import was_read
+    from core.tools import file_tools_exec as fx
+
+    sid = f"prove-fejl-{uuid4().hex[:10]}"
+    p = tmp_path / "modul.py"
+
+    def _kaster(path, content):
+        raise OSError("disken er fuld")
+
+    monkeypatch.setattr(fx, "_ws_write_text", _kaster)
+
+    # Uanset om fejlen propagerer eller fanges og returneres: udfaldet må ikke
+    # vaere `ok`, og filen må ikke staa som læst.
+    try:
+        ud = fx._exec_write_file(
+            {"path": str(p), "content": "x = 1\n", "_runtime_session_id": sid},
+        )
+    except OSError:
+        ud = {"status": "error"}
+    assert ud.get("status") != "ok", f"skrivningen fejlede men meldte ok: {ud}"
+    assert was_read(str(p), sid) is False, (
+        "en fejlet skrivning blev registreret som læsning"
+    )
+
+
+def test_to_redigeringer_i_traek_kraever_ingen_kunstig_laesning(tmp_path) -> None:
+    """Edit-grenen skal ogsaa efterlade filen læst.
+
+    Samme defekt som write_file-grenen, blot et skridt senere: efter en
+    gennemført `edit_file` er filens indhold kendt af den der redigerede den.
+    Uden registreringen ville den anden redigering i træk blive afvist, og
+    kalderen måtte indsætte en `read_file` hvis eneste formål var at fortælle
+    vagten noget den allerede vidste.
+
+    Testen er skrevet fordi mutationen «fjern registreringen fra edit-grenen»
+    ellers slap gennem hele suiten — grenen var dekoration.
+
+    Isolationen er nødvendig: `read_file`'s egen nøgle er frisk i 600 s og
+    ville maskere fejlen, så testen blev grøn af den forkerte grund. Derfor
+    læses filen under sessionen `default` (som `_was_read` falder tilbage til),
+    mens redigeringen kører under sin EGEN session. Efter redigeringen slettes
+    `default`-nøglen — nu er redigeringens egen registrering den eneste mulige
+    kilde til «læst».
+    """
+    from uuid import uuid4
+
+    from core.services import shared_cache
+    from core.services.read_before_write_guard import _cache_key, record_read, was_read
+    from core.tools import file_tools_exec as fx
+
+    sid = f"prove-to-edits-{uuid4().hex[:10]}"
+    p = tmp_path / "modul.py"
+    p.write_text("en = 1\nto = 2\ntre = 3\n", encoding="utf-8")
+    abs_sti = str(p.resolve())
+
+    # Læsningen registreres under `default`, så redigeringen under `sid`
+    # passerer via vagtens fallback.
+    record_read(abs_sti, session_id="default")
+    foerste = fx._exec_edit_file(
+        {"path": str(p), "old_text": "en = 1", "new_text": "en = 9",
+         "_runtime_session_id": sid},
+    )
+    assert foerste["status"] == "ok", foerste
+
+    # Fjern fallback'en. Tilbage er kun hvad redigeringen selv satte under `sid`.
+    shared_cache.delete(_cache_key("default", abs_sti))
+    assert was_read(abs_sti, sid) is True, (
+        "edit registrerede ikke filen som læst — næste redigering ville blive afvist"
+    )
+
+    anden = fx._exec_edit_file(
+        {"path": str(p), "old_text": "to = 2", "new_text": "to = 8",
+         "_runtime_session_id": sid},
+    )
+    assert anden["status"] == "ok", f"anden edit blev afvist: {anden}"
+    tekst = p.read_text(encoding="utf-8")
+    assert "en = 9" in tekst and "to = 8" in tekst
+
+
+def test_ende_til_ende_gennem_execute_tool(tmp_path) -> None:
+    """Den vej runnet faktisk gik — gennem dispatcheren, ikke exec-funktionen.
+
+    Fejlen blev målt i events som `write_file` → `edit_file` gennem
+    `execute_tool`, og det er derfor fixet skal bevises dér. En test der kun
+    kalder `_exec_edit_file` kan være grøn selv om dispatcheren,
+    argument-normaliseringen eller gate-kæden ændrer noget undervejs.
+    """
+    from uuid import uuid4
+
+    from core.tools.simple_tools import execute_tool
+
+    sid = f"prove-e2e-{uuid4().hex[:10]}"
+    p = tmp_path / "karakter_levers.py"
+
+    skriv = execute_tool(
+        "write_file",
+        {"path": str(p), "content": "LEVER = 1\n", "_runtime_session_id": sid},
+    )
+    assert skriv.get("status") == "ok", skriv
+
+    rediger = execute_tool(
+        "edit_file",
+        {"path": str(p), "old_text": "LEVER = 1", "new_text": "LEVER = 2",
+         "_runtime_session_id": sid},
+    )
+    assert rediger.get("status") == "ok", (
+        f"edit_file blev afvist efter egen write_file: {rediger}"
+    )
+    assert "LEVER = 2" in p.read_text(encoding="utf-8")

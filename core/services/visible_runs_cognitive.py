@@ -264,41 +264,47 @@ def _track_runtime_candidates(run: "_vr.VisibleRun", assistant_text: str) -> Non
         )
     except Exception:
         _track_step_failed()
-    try:
-        _vr.track_runtime_self_review_signals_for_visible_turn(
-            session_id=run.session_id,
-            run_id=run.run_id,
-        )
-    except Exception:
-        _track_step_failed()
-    try:
-        _vr.track_runtime_self_review_records_for_visible_turn(
-            session_id=run.session_id,
-            run_id=run.run_id,
-        )
-    except Exception:
-        _track_step_failed()
-    try:
-        _vr.track_runtime_self_review_runs_for_visible_turn(
-            session_id=run.session_id,
-            run_id=run.run_id,
-        )
-    except Exception:
-        _track_step_failed()
-    try:
-        _vr.track_runtime_self_review_outcomes_for_visible_turn(
-            session_id=run.session_id,
-            run_id=run.run_id,
-        )
-    except Exception:
-        _track_step_failed()
-    try:
-        _vr.track_runtime_self_review_cadence_signals_for_visible_turn(
-            session_id=run.session_id,
-            run_id=run.run_id,
-        )
-    except Exception:
-        _track_step_failed()
+    # 14/11-2026: en kørsel der aldrig nåede modellen har intet at selv-reviewe.
+    # Self-review- og indre-note-trackerne skrev alligevel «Review needed for
+    # run …» for en kørsel hvis tekst var 0 tegn.
+    from core.services.visible_run_trace import run_never_reached_model
+    _no_model_call = run_never_reached_model(run.run_id, assistant_text)
+    if not _no_model_call:
+        try:
+            _vr.track_runtime_self_review_signals_for_visible_turn(
+                session_id=run.session_id,
+                run_id=run.run_id,
+            )
+        except Exception:
+            _track_step_failed()
+        try:
+            _vr.track_runtime_self_review_records_for_visible_turn(
+                session_id=run.session_id,
+                run_id=run.run_id,
+            )
+        except Exception:
+            _track_step_failed()
+        try:
+            _vr.track_runtime_self_review_runs_for_visible_turn(
+                session_id=run.session_id,
+                run_id=run.run_id,
+            )
+        except Exception:
+            _track_step_failed()
+        try:
+            _vr.track_runtime_self_review_outcomes_for_visible_turn(
+                session_id=run.session_id,
+                run_id=run.run_id,
+            )
+        except Exception:
+            _track_step_failed()
+        try:
+            _vr.track_runtime_self_review_cadence_signals_for_visible_turn(
+                session_id=run.session_id,
+                run_id=run.run_id,
+            )
+        except Exception:
+            _track_step_failed()
     try:
         _vr.track_runtime_dream_hypothesis_signals_for_visible_turn(
             session_id=run.session_id,
@@ -352,13 +358,14 @@ def _track_runtime_candidates(run: "_vr.VisibleRun", assistant_text: str) -> Non
         )
     except Exception:
         _track_step_failed()
-    try:
-        _vr.track_runtime_private_inner_note_signals_for_visible_turn(
-            session_id=run.session_id,
-            run_id=run.run_id,
-        )
-    except Exception:
-        _track_step_failed()
+    if not _no_model_call:
+        try:
+            _vr.track_runtime_private_inner_note_signals_for_visible_turn(
+                session_id=run.session_id,
+                run_id=run.run_id,
+            )
+        except Exception:
+            _track_step_failed()
     try:
         _vr.track_runtime_private_initiative_tension_signals_for_visible_turn(
             session_id=run.session_id,

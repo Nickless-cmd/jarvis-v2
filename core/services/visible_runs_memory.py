@@ -245,66 +245,77 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
     consolidation_result: dict[str, object] | None = None
     errors: list[str] = []
 
-    try:
-        from core.services.session_distillation import (
-            distill_session_carry,
-        )
+    # 14/11-2026: en kørsel der aldrig nåede modellen (aflyst før første kald,
+    # tom tekst) har intet at destillere. Før skrev distillation/consolidation/
+    # session-summary alligevel narrativ der påstod uafsluttet arbejde, og den
+    # indre stemme læste det som «den afbrudte kørsel efterlod noget». Kun de
+    # NARRATIVE producenter springes over; kapsel + side-opgave-fejning nedenfor
+    # er ikke narrative og kører som før.
+    from core.services.visible_run_trace import run_never_reached_model
+    no_model_call = run_never_reached_model(run.run_id, assistant_text)
 
-        distillation_result = distill_session_carry(
-            session_id=run.session_id,
-            run_id=run.run_id,
-        )
-    except Exception as exc:
-        errors.append(f"session_distillation:{type(exc).__name__}:{exc}")
-        event_bus.publish(
-            "memory.session_distillation_failed",
-            {
-                "session_id": run.session_id,
-                "run_id": run.run_id,
-                "error": str(exc) or type(exc).__name__,
-            },
-        )
+    if not no_model_call:
+        try:
+            from core.services.session_distillation import (
+                distill_session_carry,
+            )
 
-    try:
-        from core.services.end_of_run_memory_consolidation import (
-            consolidate_run_memory,
-        )
+            distillation_result = distill_session_carry(
+                session_id=run.session_id,
+                run_id=run.run_id,
+            )
+        except Exception as exc:
+            errors.append(f"session_distillation:{type(exc).__name__}:{exc}")
+            event_bus.publish(
+                "memory.session_distillation_failed",
+                {
+                    "session_id": run.session_id,
+                    "run_id": run.run_id,
+                    "error": str(exc) or type(exc).__name__,
+                },
+            )
 
-        consolidation_result = consolidate_run_memory(
-            session_id=run.session_id,
-            run_id=run.run_id,
-            user_message=run.user_message,
-            assistant_response=assistant_text,
-            internal_context=_vr._recent_internal_tool_context(run.session_id),
-            human_user_message=not run.autonomous,
-        )
-    except Exception as exc:
-        errors.append(f"end_of_run_consolidation:{type(exc).__name__}:{exc}")
-        event_bus.publish(
-            "memory.end_of_run_consolidation_failed",
-            {
-                "session_id": run.session_id,
-                "run_id": run.run_id,
-                "error": str(exc) or type(exc).__name__,
-            },
-        )
+        try:
+            from core.services.end_of_run_memory_consolidation import (
+                consolidate_run_memory,
+            )
+
+            consolidation_result = consolidate_run_memory(
+                session_id=run.session_id,
+                run_id=run.run_id,
+                user_message=run.user_message,
+                assistant_response=assistant_text,
+                internal_context=_vr._recent_internal_tool_context(run.session_id),
+                human_user_message=not run.autonomous,
+            )
+        except Exception as exc:
+            errors.append(f"end_of_run_consolidation:{type(exc).__name__}:{exc}")
+            event_bus.publish(
+                "memory.end_of_run_consolidation_failed",
+                {
+                    "session_id": run.session_id,
+                    "run_id": run.run_id,
+                    "error": str(exc) or type(exc).__name__,
+                },
+            )
 
     # Generate session summary for cross-session continuity
     session_summary_text = ""
-    try:
-        from core.services.session_distillation import (
-            generate_session_summary,
-        )
+    if not no_model_call:
+        try:
+            from core.services.session_distillation import (
+                generate_session_summary,
+            )
 
-        session_summary_text = generate_session_summary(
-            session_id=run.session_id,
-            run_id=run.run_id,
-            user_message=run.user_message,
-            assistant_response=assistant_text,
-            human_user_message=not run.autonomous,
-        ) or ""
-    except Exception as exc:
-        errors.append(f"session_summary:{type(exc).__name__}:{exc}")
+            session_summary_text = generate_session_summary(
+                session_id=run.session_id,
+                run_id=run.run_id,
+                user_message=run.user_message,
+                assistant_response=assistant_text,
+                human_user_message=not run.autonomous,
+            ) or ""
+        except Exception as exc:
+            errors.append(f"session_summary:{type(exc).__name__}:{exc}")
 
     # Cross-session threads: create or resume a thread for this session once
     # it has a meaningful title (not "New chat") and a summary. Uses session_id
@@ -450,8 +461,9 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
                 consolidation_result or {}
             ).get("user_updated"),
             "skipped_reason": (
-                consolidation_result or {}
-            ).get("skipped_reason"),
+                "no-model-call" if no_model_call
+                else (consolidation_result or {}).get("skipped_reason")
+            ),
         },
     )
 

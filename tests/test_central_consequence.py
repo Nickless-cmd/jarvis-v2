@@ -781,3 +781,66 @@ class TestKaploebetOmEtFund:
         assert r["decision_id"] == "dec_vinder", (
             f"svaret skal pege paa den beslutning der VANDT: {r}")
         assert "fejlede" not in r["reason"], r
+
+
+# ---------------------------------------------------------------------------
+# `record` — den tredje lever maa ikke goere én observation til 157 (14/11-2026)
+# ---------------------------------------------------------------------------
+# Maalt i drift: 157 af 188 raekker i `central_consequences` var den SAMME
+# observation — `analyst / observer_effect:variation` — skrevet hvert par
+# minutter i 16 timer. `record` var ikke idempotent, saa en producer der
+# kører ofte skrev den samme konklusion igen og igen. Det er praecis den
+# defekt `land_decision` blev rettet for; `record` havde den stadig.
+#
+# Konsekvensen var ikke bare en stor tabel: `measure_consequences` — den
+# funktion der SKAL vaere beviset paa om et fund flyttede noget — talte hver
+# af dem som «afvist». Analyst stod med 157 afvisninger hvor den havde
+# registreret ÉN observation. Beviset maalte sin egen stoej.
+
+
+def test_record_dedup_paa_samme_observation(base):
+    """Samme (cid, subject) inden for doegnet er ÉN observation, ikke 157."""
+    for _ in range(5):
+        cc.record("analyst", "observer_effect:variation", detail="12% forskel")
+    with sqlite3.connect(base) as c:
+        n = c.execute(
+            f"SELECT COUNT(*) FROM {cc._TABLE} WHERE lever='record'"
+        ).fetchone()[0]
+    assert n == 1, f"fem kald af samme observation skal give ÉN raekke, gav {n}"
+
+
+def test_record_opdaterer_den_nyeste_vaerdi(base):
+    """Den ene raekke skal baere den NYESTE maaling — ellers ville dedup'en
+    fryse den foerste og skjule at observationen udviklede sig."""
+    cc.record("analyst", "observer_effect:variation", detail="9% forskel")
+    cc.record("analyst", "observer_effect:variation", detail="31% forskel")
+    with sqlite3.connect(base) as c:
+        r = c.execute(
+            f"SELECT after_value FROM {cc._TABLE} WHERE lever='record'"
+        ).fetchone()
+    assert r is not None and "31" in r[0], f"nyeste maaling skal staa: {r}"
+
+
+def test_record_holder_forskellige_observationer_adskilt(base):
+    """Dedup paa (cid, subject) — ikke paa cid alene. To forskellige fund
+    fra samme karakter er to observationer."""
+    cc.record("analyst", "observer_effect:variation", detail="a")
+    cc.record("analyst", "observer_effect:hedge", detail="b")
+    cc.record("rca", "observer_effect:variation", detail="c")
+    with sqlite3.connect(base) as c:
+        n = c.execute(f"SELECT COUNT(*) FROM {cc._TABLE} WHERE lever='record'").fetchone()[0]
+    assert n == 3, f"tre forskellige observationer skal give tre raekker: {n}"
+
+
+def test_measure_taeller_ikke_record_som_afvist(base):
+    """`record` er ikke en afvisning — det er den aerlige tredje mulighed:
+    et fund uden en anvendelig lever. At taelle den som «afvist» goer
+    beviset misvisende i den pessimistiske retning."""
+    cc.record("analyst", "observer_effect:variation", detail="12%")
+    m = cc.measure_consequences(days=7)
+    assert m["status"] == "ok"
+    analyst = m["per_karakter"].get("analyst", {})
+    assert analyst.get("afvist", 0) == 0, (
+        f"en registrering er ikke en afvisning: {analyst}"
+    )
+    assert m.get("registreret", 0) == 1, f"skal taelles separat: {m}"

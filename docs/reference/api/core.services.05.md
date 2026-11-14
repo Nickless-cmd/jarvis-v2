@@ -296,7 +296,7 @@ _Central consequence — hvor en karakters fund FAKTISK lander._
 | function | `land_decision` | `(cid, directive, *, rationale=…, trigger_cue=…, priority=…, subject=…, evidence=…, evidence_source=…, fund_id=…, gate=…)` | Lad et fund blive en BINDENDE forpligtelse. | [src](../../../core/services/central_consequence.py#L403) |
 | function | `_beslutning_for_fund` | `(conn, fund_id)` | Hvilken beslutning blev dette fund oprindeligt landet som? | [src](../../../core/services/central_consequence.py#L628) |
 | function | `record` | `(cid, subject, *, detail=…)` | Fund uden en anvendelig lever: skriv det ned som reviderbart spor. | [src](../../../core/services/central_consequence.py#L646) |
-| function | `measure_consequences` | `(*, days=…)` | Beviset: hvor mange fund flyttede faktisk noget? | [src](../../../core/services/central_consequence.py#L663) |
+| function | `measure_consequences` | `(*, days=…)` | Beviset: hvor mange fund flyttede faktisk noget? | [src](../../../core/services/central_consequence.py#L689) |
 
 ## `core/services/central_construct.py`
 _The Construct — Sentinel's Shadow Self: en sandbox der tester radikale forenklinger MOD_

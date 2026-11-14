@@ -652,7 +652,33 @@ def record(cid: str, subject: str, *, detail: str = "") -> dict[str, Any]:
     try:
         with _connect() as conn:
             _ensure(conn)
-            _skriv(conn, cid=cid, lever="record", subject=subject, after=detail[:200], applied=False)
+            # (14/11-2026, maalt) Samme (cid, subject) inden for doegnet er ÉN
+            # observation — ikke én pr. kald. Maalt i drift: 157 af 188 raekker
+            # var `analyst / observer_effect:variation`, skrevet hvert par
+            # minutter i 16 timer. `land_decision` fik denne rettelse 13/11;
+            # `record` havde defekten stadig.
+            #
+            # Den ENE raekke skal baere den NYESTE maaling, ellers fryser
+            # dedup'en den foerste og skjuler at observationen udviklede sig.
+            # Derfor UPDATE af after_value OG created_at: raekken er «denne
+            # observation, senest set nu», ikke «den blev foerst set i gaar».
+            cutoff = (datetime.now(UTC) - timedelta(hours=24)).isoformat()
+            findes = conn.execute(
+                f"""SELECT id FROM {_TABLE}
+                    WHERE cid=? AND lever='record' AND subject=? AND created_at>=?
+                    ORDER BY id DESC LIMIT 1""",
+                (cid, subject[:200], cutoff),
+            ).fetchone()
+            if findes:
+                conn.execute(
+                    f"UPDATE {_TABLE} SET after_value=?, created_at=? WHERE id=?",
+                    (str(detail)[:200], _nu(), findes[0]),
+                )
+            else:
+                _skriv(
+                    conn, cid=cid, lever="record", subject=subject,
+                    after=detail[:200], applied=False,
+                )
             conn.commit()
         return {"applied": False, "reason": "kun registreret"}
     except Exception as exc:
@@ -685,12 +711,24 @@ def measure_consequences(*, days: int = 7) -> dict[str, Any]:
     per: dict[str, dict[str, int]] = {}
     flyttede = 0
     uden_flytning = 0
+    registreret = 0
     for r in rows:
         cid = str(r[0] if not isinstance(r, dict) else r["cid"])
+        lever = str(r[1] if not isinstance(r, dict) else r["lever"])
         applied = int(r[2] if not isinstance(r, dict) else r["applied"] or 0)
         before = str(r[3] if not isinstance(r, dict) else r["before_value"] or "")
         after = str(r[4] if not isinstance(r, dict) else r["after_value"] or "")
-        d = per.setdefault(cid, {"landet": 0, "afvist": 0, "flyttede": 0})
+        # (14/11-2026, maalt) `record` er den aerlige TREDJE mulighed — et fund
+        # uden en anvendelig lever. Den er hverken landet eller afvist, og at
+        # taelle den som «afvist» gjorde beviset misvisende i den pessimistiske
+        # retning: analyst stod med 157 afvisninger hvor den havde registreret
+        # ÉN observation. Beviset maalte sin egen stoej.
+        if lever == "record":
+            registreret += 1
+            per.setdefault(cid, {"landet": 0, "afvist": 0, "flyttede": 0, "registreret": 0})
+            per[cid]["registreret"] = per[cid].get("registreret", 0) + 1
+            continue
+        d = per.setdefault(cid, {"landet": 0, "afvist": 0, "flyttede": 0, "registreret": 0})
         if applied:
             d["landet"] += 1
             if before != after:
@@ -706,6 +744,7 @@ def measure_consequences(*, days: int = 7) -> dict[str, Any]:
         "i_alt": len(rows),
         "flyttede": flyttede,
         "landet_uden_flytning": uden_flytning,
+        "registreret": registreret,
         "per_karakter": per,
         "uden_landing": sorted(c for c, d in per.items() if d["landet"] == 0),
     }

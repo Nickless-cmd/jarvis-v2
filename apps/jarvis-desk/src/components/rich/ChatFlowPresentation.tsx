@@ -364,15 +364,43 @@ export function ChatFlowPresentation({
   // er nødvendig i den gren — `finalAnswerStarted` er `false` som default for
   // persisterede ture, så uden den ville historikkens direkte svar få et hoved
   // de aldrig havde.
-  const visTurhoved = harRunder
-    ? (harArbejde || streaming || sekunder !== null)
-    // En afbrudt eller fejlet tur beholder hovedet selv uden runder: det er
-    // dér den ærlige besked står («Arbejdet afbrudt» / «Arbejdet fejlede»).
-    // Uden denne gren forsvandt statusen sammen med hovedet — målt 14/11-2026
-    // i `preserves partial text and uses honest … copy`.
-    : (streaming && !finalAnswerStarted)
-      || model.terminalState === 'interrupted'
-      || model.terminalState === 'failed'
+  // OVERLEVERINGEN (Bjørn 14/11-2026): «turhoved skjules, og kun den aktive
+  // rundelinje vises indtil den skifter position til under den første syntese
+  // eller besked, og så når rundelinjen forsvinder morpher turhoved — som har
+  // kørt hele tiden — ind».
+  //
+  // Uden runder er hovedet under streamen en død etiket: der er intet at
+  // folde ud, og det eneste den bærer — uret — står også i rundelinjen. Så
+  // rundelinjen er turens ansigt indtil svaret begynder; derefter tager
+  // hovedet over med den varighed der blev optjent undervejs. Fordi uret har
+  // talt hele tiden, er der intet der starter op ved skiftet — det er dét der
+  // gør overgangen uden hop.
+  //
+  // VENDT 14/11-2026, anden gang samme dag: formiddagens regel var at hovedet
+  // helt FORSVANDT når svaret begyndte. Den var rigtig så længe der ikke var
+  // noget at overlevere TIL, men med rundelinjen som turens ansigt er der en
+  // naturlig arvtager — og et «Tænkte 8s» der først dukker op ved svarets
+  // start fortæller hvad turen kostede, ikke hvad der sker nu. Det er derfor
+  // det kun er den LEVENDE tur der morpher ind; en persisteret tur uden
+  // runder viser stadig intet hoved, for dér ville tallet stå stille på noget
+  // der allerede er sket.
+  const hovedVenterUdenRunder = !harRunder && streaming && !finalAnswerStarted
+  const visTurhoved = hovedVenterUdenRunder
+    ? false
+    : harRunder
+      ? (harArbejde || streaming || sekunder !== null)
+      // En afbrudt eller fejlet tur beholder hovedet selv uden runder: det er
+      // dér den ærlige besked står («Arbejdet afbrudt» / «Arbejdet fejlede»).
+      // Uden denne gren forsvandt statusen sammen med hovedet — målt
+      // 14/11-2026 i `preserves partial text and uses honest … copy`.
+      : (streaming && finalAnswerStarted)
+        || model.terminalState === 'interrupted'
+        || model.terminalState === 'failed'
+  // Rundelinjen skal kunne stå ALENE. Den ejer derfor sin egen gate i stedet
+  // for at ligge inde i hovedets fragment — ellers forsvandt den sammen med
+  // det hoved den skulle overlevere til (målt 14/11-2026: `.rv-tur` var barn
+  // af samme gren, og hele fragmentet var betinget af `visTurhoved`).
+  const visArbejdsgruppe = visTurhoved || hovedVenterUdenRunder
   // Rundelinjen må aldrig vise et internt tool-navn. Modellen filtrerer de
   // rå working_step-værdier; indtil den menneskelige etiket er klar, står en
   // rolig fallback i samme stabile celle UNDER syntesen — ikke i turhovedet.
@@ -388,7 +416,13 @@ export function ChatFlowPresentation({
   // stedet kun tilstedeværelses-ringen — se gaten nedenfor.
   const rundeTekst = harArbejde
     ? (!activeLine || generiskArbejde ? 'Tænker' : activeLine)
-    : null
+    // OVERLEVERINGEN: mens hovedet venter, ER rundelinjen turens ansigt — så
+    // den skal sige hvad hovedet ville have sagt. Uden denne gren stod der
+    // kun en puls uden ord i det vindue hvor turen lige var startet, og den
+    // tekst brugeren mistede var præcis den hovedet bærer (`model.hovedTekst`:
+    // «Tænker» / «Arbejder»). Målt 14/11-2026: `getByText('Tænker')` fandtes
+    // ikke længere i calm mode efter splittet.
+    : hovedVenterUdenRunder ? model.hovedTekst : null
 
   // ÉN gate — samme form som code mode (`RaekkeTranskript.tsx:434/449/469`).
   //
@@ -427,7 +461,6 @@ export function ChatFlowPresentation({
   return (
     <div className="chat-flow" data-chat-flow-mode={mode}>
       {visTurhoved ? (
-        <>
           <TurHoved
             aaben={aaben}
             foldbar={harArbejde}
@@ -449,17 +482,20 @@ export function ChatFlowPresentation({
               if (naeste) onWorkExpanded?.()
             }}
           />
-          {/* Chat mode viser én levende statuslinje ad gangen. Den erstattes
-              på stedet under turhovedets streg og forsvinder, når svaret
-              begynder. De fulde arbejdsdetaljer er fortsat tilgængelige ved
-              at folde en afsluttet tur ud. */}
-          {/* Bjørn 20/10-2026: «synteser og runder forsvinder i et blink».
-              `hidden` er `display: none` i ÉN frame — der er ingen højde at
-              animere fra, så hele billedet rykker sammen med præcis linjernes
-              højde. Gruppen bliver derfor stående i DOM'en, og den ydre ramme
-              glider fra `1fr` til `0fr` (grid-rækker kan animeres i både
-              Chromium og Safari; `height: auto` ville kræve `interpolate-size`,
-              som kun Chromium har). */}
+      ) : null}
+      {/* Chat mode viser én levende statuslinje ad gangen. Den erstattes
+          på stedet under turhovedets streg og forsvinder, når svaret
+          begynder. De fulde arbejdsdetaljer er fortsat tilgængelige ved
+          at folde en afsluttet tur ud.
+
+          Bjørn 20/10-2026: «synteser og runder forsvinder i et blink».
+          `hidden` er `display: none` i ÉN frame — der er ingen højde at
+          animere fra, så hele billedet rykker sammen med præcis linjernes
+          højde. Gruppen bliver derfor stående i DOM'en, og den ydre ramme
+          glider fra `1fr` til `0fr` (grid-rækker kan animeres i både
+          Chromium og Safari; `height: auto` ville kræve `interpolate-size`,
+          som kun Chromium har). */}
+      {visArbejdsgruppe ? (
           <div className="chat-flow-gruppe-ydre" data-aaben={aaben ? 'true' : 'false'}>
             <div className="chat-flow-gruppe" aria-hidden={!aaben}>
             {aaben && (harArbejde || model.arbejdsTilstand === 'placeholder') && !arbejdeAabent ? (
@@ -513,7 +549,6 @@ export function ChatFlowPresentation({
             ) : null}
             </div>
           </div>
-        </>
       ) : null}
 
       {inlineQuestions.length > 0 ? (

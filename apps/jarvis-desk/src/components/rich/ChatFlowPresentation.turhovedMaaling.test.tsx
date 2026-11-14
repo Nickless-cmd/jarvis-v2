@@ -94,12 +94,14 @@ function rulTilPaceErFaerdig(_container: HTMLElement, max = 5000): number {
 }
 
 describe('MÅLING — turhovedets lukning mod pacens ur', () => {
-  it('A: uden runder forsvinder hovedet når slutsvaret begynder', () => {
-    // VENDT 14/11-2026 (Bjørn): «hvis ingen runder er kørt i turen bør
-    // turhoved forsvinde når beskeden starter». Fixturen har kun et
-    // `final_answer`-blok — ingen værktøjskald — så der er intet at folde ud
-    // og intet at tælle. Den målte 29/10 at hovedet BLEV stående her; det var
-    // den adfærd der nu er ændret.
+  it('A: uden runder morpher hovedet IND når slutsvaret begynder', () => {
+    // VENDT 14/11-2026, anden gang samme dag (Bjørn): overleveringen.
+    // Formiddagens regel var at hovedet FORSVANDT når svaret begyndte — den
+    // var rigtig så længe der ikke var noget at overlevere til. Med
+    // rundelinjen som turens ansigt er der en arvtager: hovedet tager dens
+    // plads med den varighed der blev optjent mens det ventede. Fixturen har
+    // kun et `final_answer`-blok — ingen værktøjskald — så der er intet at
+    // folde ud, og det er præcis den gren der måles.
     const view = render(
       <ChatFlowPresentation blocks={[svar]} mode="living" density="compact"
         streaming status="working" finalAnswerStarted runId="maaling-a" />,
@@ -107,15 +109,15 @@ describe('MÅLING — turhovedets lukning mod pacens ur', () => {
     frame()
     frame()
 
-    expect(hovedStaar(view.container)).toBe(false)
+    expect(hovedStaar(view.container)).toBe(true)
     const vist = vistTekst(view.container).length
     expect(vist).toBeGreaterThan(0)
     expect(vist).toBeLessThan(LANG.length)
 
     const frames = rulTilPaceErFaerdig(view.container)
     expect(frames).toBeGreaterThan(60)
-    // Stadig væk efter pacen: det er ikke en fade, det er en gate.
-    expect(hovedStaar(view.container)).toBe(false)
+    // Og den bliver: overleveringen er en gate, ikke en fade.
+    expect(hovedStaar(view.container)).toBe(true)
   })
 
   it('A2: MED runder bliver hovedet stående gennem samme vindue', () => {

@@ -23,7 +23,10 @@ const common = {
 
 describe('ChatFlowPresentation', () => {
   it('viser levende output-tokens i chat-turhovedet', () => {
-    const { container } = render(<ChatFlowPresentation {...common} mode="living" blocks={[]} tokens={321} />)
+    // Hovedet vises ikke mens rundelinjen kører (overleveringen, 14/11-2026),
+    // så token-tælleren hører til den fase hvor hovedet ER turens ansigt.
+    const { container } = render(<ChatFlowPresentation {...common} mode="living"
+      blocks={[summary('Læser konfigurationen', 1)]} tokens={321} />)
     expect(container.querySelector('.rv-turMeta .rullende')).toHaveAttribute('aria-label', '321')
     expect(container.querySelector('.rv-turMeta')).toHaveTextContent('output')
   })
@@ -39,7 +42,10 @@ describe('ChatFlowPresentation', () => {
     expect(within(rail).getByText('Fire')).toBeInTheDocument()
 
     rerender(<ChatFlowPresentation {...common} mode="living" blocks={[]} />)
-    expect(screen.queryByTestId('chat-flow-round-label')).not.toBeInTheDocument()
+    // OVERLEVERINGEN (14/11-2026): uden runder bærer rundelinjen hovedets ord,
+    // så der er én linje og ikke to. Den gamle fallback («Jarvis tænker ...»)
+    // var en anden sætning om det samme — den er væk.
+    expect(within(screen.getByTestId('chat-flow-round-line')).getByText('Tænker')).toBeInTheDocument()
     expect(screen.queryByText('Jarvis tænker ...')).not.toBeInTheDocument()
   })
 
@@ -457,38 +463,42 @@ describe('ChatFlowPresentation', () => {
 })
 
 describe('ChatFlowPresentation — turhovedet fra første ord', () => {
-  // Bjørn 17/10-2026: «lige som i code mode skal turhoved vises hele tiden
-  // før de første ord». Uden dette stod hovedet stille i det vindue hvor
-  // turen lige var startet og intet arbejde var rapporteret endnu.
-  it('viser turhovedet med det samme turen kører — også uden arbejde og synteser', () => {
+  // VENDT 14/11-2026 (Bjørn): «turhoved skjules, og kun den aktive rundelinje
+  // vises … og så når rundelinjen forsvinder morpher turhoved — som har kørt
+  // hele tiden — ind». Den gamle regel (17/10-2026: «lige som i code mode
+  // skal turhoved vises hele tiden før de første ord») satte hovedet først,
+  // men dengang var der ingen rundelinje at give scenen til. Resultatet var
+  // en død etiket over en puls der sagde præcis det samme.
+  it('viser rundelinjen med det samme turen kører — hovedet venter', () => {
     render(<ChatFlowPresentation {...common} mode="living" blocks={[]} />)
-    const hoved = document.querySelector('.rv-tur') as HTMLElement
-    expect(hoved).not.toBeNull()
-    expect(hoved).toHaveAttribute('data-koerer')
-    expect(hoved).toHaveTextContent('Tænker')
-    // Bjørn 14/11-2026: chat mode bærer INGEN skillelinje — hovedet er en
-    // label over indholdet, ikke en selvstændig blok. Code mode beholder den.
-    expect(hoved).not.toHaveAttribute('data-skillelinje')
+    expect(document.querySelector('.rv-tur')).toBeNull()
+    const runde = screen.getByTestId('chat-flow-round-line')
+    expect(runde).toHaveTextContent('Tænker')
   })
 
   it('holder skillelinjen slukket gennem hele chat-streamen', () => {
     // Modsat code mode, hvor stregen taendes af en gate. Chat mode har ingen
     // streg i nogen fase — så der er intet at animere og intet at glemme.
     const view = render(<ChatFlowPresentation {...common} mode="living" blocks={[]} />)
-    expect(document.querySelector('.rv-tur')).not.toHaveAttribute('data-skillelinje')
+    // Fase 1 af overleveringen: hovedet venter, så der er intet element at
+    // sætte en streg på. Det er den stærkeste form for «ingen skillelinje».
+    expect(document.querySelector('.rv-tur')).toBeNull()
 
     view.rerender(<ChatFlowPresentation {...common} mode="living" blocks={[
       { type: 'text', text: 'Mellemstatus', phase: 'commentary' },
     ]} />)
-    expect(document.querySelector('.rv-tur')).not.toHaveAttribute('data-skillelinje')
+    expect(document.querySelector('.rv-tur')).toBeNull()
 
     view.rerender(<ChatFlowPresentation {...common} mode="living" blocks={[
       { type: 'text', text: 'Svaret', phase: 'final_answer' },
     ]} finalAnswerStarted />)
-    // Bjørn 14/11-2026: uden runder forsvinder hovedet helt når slutsvaret
-    // begynder — så her er der hverken hoved eller streg at måle på. Det er
-    // den stærkeste form for «ingen skillelinje»: elementet findes ikke.
-    expect(document.querySelector('.rv-tur')).toBeNull()
+    // VENDT 14/11-2026 (Bjørn): uden runder morpher hovedet IND når
+    // slutsvaret begynder — det arver rundelinjens plads med den varighed der
+    // blev optjent undervejs. Det er stadig uden streg: chat mode har ingen i
+    // nogen fase, hverken før eller efter overleveringen.
+    const hoved = document.querySelector('.rv-tur')
+    expect(hoved).not.toBeNull()
+    expect(hoved).not.toHaveAttribute('data-skillelinje')
   })
 
   it('viser intet hoved på en afsluttet tur uden værktøjskald', () => {

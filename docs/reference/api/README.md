@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18719 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18724 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -42,27 +42,27 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18719 functions/
 - [`core.services.09`](core.services.09.md) — `citation_markorer` … `context_proveniens`
 - [`core.services.10`](core.services.10.md) — `context_window_manager` … `daemon_llm`
 - [`core.services.11`](core.services.11.md) — `daemon_manager` … `device_tokens`
-- [`core.services.12`](core.services.12.md) — `diagnosis_gate` … `emergence_initiative_bridge`
-- [`core.services.13`](core.services.13.md) — `emergent_bridge` … `file_awareness_daemon`
-- [`core.services.14`](core.services.14.md) — `file_links` … `goal_signal_synthesizer`
-- [`core.services.15`](core.services.15.md) — `goal_signal_tracking` … `identity_guard`
-- [`core.services.16`](core.services.16.md) — `identity_mutation_log` … `jarvis_brain_visibility`
-- [`core.services.17`](core.services.17.md) — `jarvis_ui_guard` … `mcp_registry`
-- [`core.services.18`](core.services.18.md) — `mcp_trust` … `modulator_witness`
-- [`core.services.19`](core.services.19.md) — `monitor_streams` … `outcome_projector`
-- [`core.services.20`](core.services.20.md) — `outreach_composer` … `private_temporal_promotion_signal_tracking`
-- [`core.services.21`](core.services.21.md) — `proactive_candidates` … `proposal_classifier`
-- [`core.services.22`](core.services.22.md) — `proprioception_metrics` … `regret_engine`
-- [`core.services.23`](core.services.23.md) — `regulation_homeostasis_signal_tracking` … `routine_inbox`
-- [`core.services.24`](core.services.24.md) — `routine_run_recorder` … `runtime_tasks`
-- [`core.services.25`](core.services.25.md) — `rupture_repair` … `self_surprise_expectation`
-- [`core.services.26`](core.services.26.md) — `self_system_code_awareness` … `side_task_lifecycle`
-- [`core.services.27`](core.services.27.md) — `side_tasks` … `structured_content_flag`
-- [`core.services.28`](core.services.28.md) — `subagent_digest` … `tool_concurrency`
-- [`core.services.29`](core.services.29.md) — `tool_contract_shadow` … `user_temperature_engine`
-- [`core.services.30`](core.services.30.md) — `user_temperature_runtime` … `visible_run_journal`
-- [`core.services.31`](core.services.31.md) — `visible_run_outcome_state` … `wall_guard`
-- [`core.services.32`](core.services.32.md) — `web_push_gateway` … `world_model_signal_tracking`
+- [`core.services.12`](core.services.12.md) — `diagnosis_gate` … `emergence`
+- [`core.services.13`](core.services.13.md) — `emergence_initiative_bridge` … `felt_surface_store`
+- [`core.services.14`](core.services.14.md) — `file_awareness_daemon` … `goal_reporter`
+- [`core.services.15`](core.services.15.md) — `goal_signal_synthesizer` … `identity_drift_proposer`
+- [`core.services.16`](core.services.16.md) — `identity_guard` … `jarvis_brain_reflection`
+- [`core.services.17`](core.services.17.md) — `jarvis_brain_visibility` … `mcp_manager`
+- [`core.services.18`](core.services.18.md) — `mcp_registry` … `model_trust`
+- [`core.services.19`](core.services.19.md) — `modulator_witness` … `outcome_learning`
+- [`core.services.20`](core.services.20.md) — `outcome_projector` … `private_temporal_curiosity_state_tracking`
+- [`core.services.21`](core.services.21.md) — `private_temporal_promotion_signal_tracking` … `prompt_variant_tracker`
+- [`core.services.22`](core.services.22.md) — `proposal_classifier` … `reflective_critic_tracking`
+- [`core.services.23`](core.services.23.md) — `regret_engine` … `routine_identity_migration`
+- [`core.services.24`](core.services.24.md) — `routine_inbox` … `runtime_surface_cache`
+- [`core.services.25`](core.services.25.md) — `runtime_tasks` … `self_surprise_detection`
+- [`core.services.26`](core.services.26.md) — `self_surprise_expectation` … `shutdown_window_daemon`
+- [`core.services.27`](core.services.27.md) — `side_task_lifecycle` … `stream_settlement`
+- [`core.services.28`](core.services.28.md) — `structured_content_flag` … `tool_chip_payload`
+- [`core.services.29`](core.services.29.md) — `tool_concurrency` … `user_scope`
+- [`core.services.30`](core.services.30.md) — `user_temperature_engine` … `visible_run_interruption`
+- [`core.services.31`](core.services.31.md) — `visible_run_journal` … `wakeup_ticker`
+- [`core.services.32`](core.services.32.md) — `wall_guard` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

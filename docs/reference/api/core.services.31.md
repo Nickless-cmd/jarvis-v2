@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_run_journal.py`
+_Persist the visible run and its composer context for durable recovery._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `mark_visible_run_started` | `(run, *, tool_scope=…, force_user_id=…, recovery_task_id=…)` | Record the settings a resumed run needs to keep its original lane. | [src](../../../core/services/visible_run_journal.py#L9) |
+
 ## `core/services/visible_run_outcome_state.py`
 _Et synligt runs terminale beslutning — og vagten mod en optimistisk standard._
 
@@ -545,13 +552,4 @@ _Dedikeret vækker-tråd: fyr forfaldne vækninger inden for sekunder (12/11-202
 | function | `_loop` | `()` | — | [src](../../../core/services/wakeup_ticker.py#L81) |
 | function | `start_wakeup_ticker` | `()` | Start tråden. Idempotent: kører den allerede, returneres `True` uden en ny. | [src](../../../core/services/wakeup_ticker.py#L92) |
 | function | `stop_wakeup_ticker` | `()` | — | [src](../../../core/services/wakeup_ticker.py#L105) |
-
-## `core/services/wall_guard.py`
-_Observerende vagt: opdager en «mur» — flere pointer i én prosablok._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_prosablokke` | `(text)` | Del teksten i blokke og kast kode, tabeller, lister og native-JSON væk. | [src](../../../core/services/wall_guard.py#L42) |
-| function | `find_walls` | `(text)` | Returnér de prosablokke der ser ud som en mur. Tom liste = intet fundet. | [src](../../../core/services/wall_guard.py#L65) |
-| function | `observe` | `(text, *, run_id=…)` | Mål uden at røre teksten. Skriver en central-hændelse ved fund. | [src](../../../core/services/wall_guard.py#L86) |
 

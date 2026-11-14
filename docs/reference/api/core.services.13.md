@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/emergence_initiative_bridge.py`
+_Emergence → initiative bridge: et opdaget mønster bliver en handling._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_er_handlingsbar` | `(pattern)` | Returnér (ja/nej, grund). Grunden bruges til at forklare en afvisning. | [src](../../../core/services/emergence_initiative_bridge.py#L47) |
+| function | `_fokus_for` | `(pattern)` | Formulér opgaven som noget der kan HANDLES, ikke som en etiket. | [src](../../../core/services/emergence_initiative_bridge.py#L70) |
+| function | `_begrundelse_for` | `(pattern)` | Hvorfor dette er et initiativ — evidensen, ikke en følelse. | [src](../../../core/services/emergence_initiative_bridge.py#L89) |
+| function | `_allerede_i_koen` | `(pattern_key)` | Er dette mønster allerede rejst? Målt på ``source_id``, ikke på fokus-tekst. | [src](../../../core/services/emergence_initiative_bridge.py#L106) |
+| function | `push_emergents_to_queue` | `(patterns=…)` | Gør opdagede mønstre til initiativer. Returnerer hvad der skete og hvorfor. | [src](../../../core/services/emergence_initiative_bridge.py#L131) |
+| function | `_normaliser` | `(patterns)` | Tag imod både detect-returformen og rå DB-rækker. | [src](../../../core/services/emergence_initiative_bridge.py#L188) |
+| function | `build_emergence_initiative_surface` | `()` | MC-flade: hvad motoren har gjort ved køen — og hvad den afviste hvorfor. | [src](../../../core/services/emergence_initiative_bridge.py#L204) |
+
 ## `core/services/emergent_bridge.py`
 _Emergent Bridge — consumer for emergent signals to influence visible prompt._
 
@@ -655,21 +668,4 @@ _Delt lager for de følte overflader — så de overlever en procesgrænse._
 | function | `load_surface` | `(name)` | Læs en gemt overflade. {} hvis der intet er, eller ved enhver fejl. | [src](../../../core/services/felt_surface_store.py#L85) |
 | function | `shared_surface` | `(name, local_builder)` | Overfladen som den skal se ud, uanset hvilken proces der spørger. | [src](../../../core/services/felt_surface_store.py#L96) |
 | function | `persist_local_surfaces` | `()` | Gem de følte overflader som DENNE proces kan se dem. | [src](../../../core/services/felt_surface_store.py#L128) |
-
-## `core/services/file_awareness_daemon.py`
-_File Awareness Daemon — proprioception: "I feel when my files change."_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `get_recent_events` | `(limit=…)` | Return the most recent file-change events (for prompt inclusion). | [src](../../../core/services/file_awareness_daemon.py#L74) |
-| function | `has_recent_events` | `(seconds=…)` | Are there events newer than `seconds` ago? | [src](../../../core/services/file_awareness_daemon.py#L80) |
-| function | `_should_track` | `(path)` | Decide if a file change is worth tracking. | [src](../../../core/services/file_awareness_daemon.py#L102) |
-| function | `_classify_change` | `(path)` | Classify a file change by importance. | [src](../../../core/services/file_awareness_daemon.py#L124) |
-| function | `_record_change` | `(event_type, src_path, is_directory=…)` | Record a file change event. | [src](../../../core/services/file_awareness_daemon.py#L144) |
-| function | `_on_governance_mutation` | `(event)` | Receive governance flag mutations from eventbus and store in buffer | [src](../../../core/services/file_awareness_daemon.py#L200) |
-| function | `_make_handler` | `()` | Create a watchdog event handler that routes to _record_change. | [src](../../../core/services/file_awareness_daemon.py#L219) |
-| function | `start_file_awareness` | `()` | Start the file awareness watcher. Returns True if started successfully. | [src](../../../core/services/file_awareness_daemon.py#L243) |
-| function | `stop_file_awareness` | `()` | Stop the file awareness watcher. | [src](../../../core/services/file_awareness_daemon.py#L293) |
-| function | `is_file_awareness_running` | `()` | Check if the file awareness watcher is running. | [src](../../../core/services/file_awareness_daemon.py#L309) |
-| function | `tick_file_awareness` | `()` | Heartbeat tick: ensure watcher is running, report status. | [src](../../../core/services/file_awareness_daemon.py#L318) |
 

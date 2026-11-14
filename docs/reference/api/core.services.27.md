@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/side_task_lifecycle.py`
+_Pure lifecycle rules for durable side tasks._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `validate_transition` | `(old, new, *, reason=…)` | Return a user-facing error, or ``None`` when the transition is legal. | [src](../../../core/services/side_task_lifecycle.py#L42) |
+| function | `apply_transition` | `(record, new, *, reason=…, actor=…, now=…)` | Mutate one record with timestamps and a bounded, auditable history. | [src](../../../core/services/side_task_lifecycle.py#L59) |
+
 ## `core/services/side_tasks.py`
 _Side-task flag — keep the main thread focused._
 
@@ -622,12 +630,4 @@ _`StreamSettlement` — ét sted der afgør hvad et udbyder-forsøg BLEV til._
 | method | `AttemptLedger.settled` | `(self, attempt_id)` | — | [src](../../../core/services/stream_settlement.py#L286) |
 | method | `AttemptLedger.is_settled` | `(self, attempt_id)` | — | [src](../../../core/services/stream_settlement.py#L289) |
 | method | `AttemptLedger.guard` | `(self, attempt_id)` | Kaster hvis forsøget er afregnet. Til pumper der vil skrive. | [src](../../../core/services/stream_settlement.py#L292) |
-
-## `core/services/structured_content_flag.py`
-_Governed kill-switch for struktureret content-persist + wire. Default ON._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_read_flag` | `()` | Læs rå flag-værdi fra runtime-state. None = usat. | [src](../../../core/services/structured_content_flag.py#L12) |
-| function | `structured_content_v2_enabled` | `()` | True medmindre eksplicit slået fra ('off'/'0'/'false'/'no'). Læse-fejl → True | [src](../../../core/services/structured_content_flag.py#L18) |
 

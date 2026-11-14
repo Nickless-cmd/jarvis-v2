@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/jarvis_brain_visibility.py`
+_Privacy-gate for Jarvis Brain recall._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_resolve_owner_id` | `()` | Hentet via owner_resolver. Wrapped så tests kan monkeypatche. | [src](../../../core/services/jarvis_brain_visibility.py#L18) |
+| function | `can_recall` | `(entry_visibility, ceiling)` | True if entry's visibility is permitted at the given ceiling. | [src](../../../core/services/jarvis_brain_visibility.py#L45) |
+| function | `session_visibility_ceiling` | `(session)` | Beregn visibility-ceiling for en session. | [src](../../../core/services/jarvis_brain_visibility.py#L50) |
+
 ## `core/services/jarvis_ui_guard.py`
 _Normaliserer og validerer ``jarvis-ui``-blokke FØR de når chatten._
 
@@ -628,14 +637,4 @@ _MCP-manager — forbinder registerets servere og eksponerer deres værktøjer._
 | function | `call_with_app` | `(navn, vaerktoej, arguments=…)` | Modelkald + evt. MCP App-resource, uden at blande de to datastrømme. | [src](../../../core/services/mcp_manager.py#L117) |
 | function | `call_raw` | `(navn, vaerktoej, arguments=…)` | Host-broens app-initierede tool-kald; stadig bag register+tillid. | [src](../../../core/services/mcp_manager.py#L157) |
 | function | `read_resource` | `(navn, uri)` | Host-broens resource-læsning på den allerede godkendte server. | [src](../../../core/services/mcp_manager.py#L174) |
-
-## `core/services/mcp_registry.py`
-_MCP-server-registry (§4.6) — brugerens konfigurerede MCP-endpoints._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/mcp_registry.py#L17) |
-| function | `list_mcp_servers` | `()` | — | [src](../../../core/services/mcp_registry.py#L24) |
-| function | `add_mcp_server` | `(name, url=…, *, command=…, args=…, env=…, transport=…)` | Tilføj en server — HTTP (`url`) eller stdio (`command` + `args`). | [src](../../../core/services/mcp_registry.py#L28) |
-| function | `remove_mcp_server` | `(server_id)` | — | [src](../../../core/services/mcp_registry.py#L73) |
 

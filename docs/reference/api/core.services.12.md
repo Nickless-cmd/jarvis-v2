@@ -637,6 +637,17 @@ _Hvad GJALDT der faktisk for denne koersel — Fase 9._
 | function | `_hash` | `(felter)` | sha256 over de politik-baerende felter — uden tidsstempler og id'er, | [src](../../../core/services/effective_policy.py#L134) |
 | function | `afviger` | `(a, b)` | Hvilke politik-felter er forskellige? Til at forklare et hash-skift. | [src](../../../core/services/effective_policy.py#L147) |
 
+## `core/services/efterladt_run_vagt.py`
+_Den periodiske sweep der manglede: en ``running``-række uden ejer bliver aldrig lukket._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_running_raekker` | `(stilstand_s)` | ``(run_id, started_at)`` for ``running``-rækker ældre end tærsklen. | [src](../../../core/services/efterladt_run_vagt.py#L75) |
+| function | `sweep_efterladte_runs` | `(*, stilstand_s=…)` | Stempl ``running``-rækker der hverken lever eller er terminale. | [src](../../../core/services/efterladt_run_vagt.py#L94) |
+| function | `_loop` | `()` | Kadence-loop. Venter ``KADENCE_S`` mellem runder, ikke på et fast ur. | [src](../../../core/services/efterladt_run_vagt.py#L152) |
+| function | `start_efterladt_run_vagt` | `()` | Start vagten én gang pr. proces. Idempotent. Returnerer True hvis startet. | [src](../../../core/services/efterladt_run_vagt.py#L168) |
+| function | `stop_efterladt_run_vagt` | `()` | Stop loopet. Idempotent; no-op hvis det aldrig startede. | [src](../../../core/services/efterladt_run_vagt.py#L196) |
+
 ## `core/services/egress_guard.py`
 _SSRF-vaern for udgaaende hentninger — porteret fra jarvis-code._
 
@@ -720,17 +731,4 @@ _Emergence — evidence-based pattern detection across recent activity._
 | function | `_band` | `(confidence)` | — | [src](../../../core/services/emergence.py#L467) |
 | function | `brewing_patterns` | `(*, limit=…)` | Mønstre i brewing-båndet (0.5 ≤ conf < 0.78) — strengthening men endnu ikke emergent. | [src](../../../core/services/emergence.py#L476) |
 | function | `build_emergence_surface` | `(*, limit=…)` | Surface persisted emergence candidates without running detection. | [src](../../../core/services/emergence.py#L502) |
-
-## `core/services/emergence_initiative_bridge.py`
-_Emergence → initiative bridge: et opdaget mønster bliver en handling._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_er_handlingsbar` | `(pattern)` | Returnér (ja/nej, grund). Grunden bruges til at forklare en afvisning. | [src](../../../core/services/emergence_initiative_bridge.py#L47) |
-| function | `_fokus_for` | `(pattern)` | Formulér opgaven som noget der kan HANDLES, ikke som en etiket. | [src](../../../core/services/emergence_initiative_bridge.py#L70) |
-| function | `_begrundelse_for` | `(pattern)` | Hvorfor dette er et initiativ — evidensen, ikke en følelse. | [src](../../../core/services/emergence_initiative_bridge.py#L89) |
-| function | `_allerede_i_koen` | `(pattern_key)` | Er dette mønster allerede rejst? Målt på ``source_id``, ikke på fokus-tekst. | [src](../../../core/services/emergence_initiative_bridge.py#L106) |
-| function | `push_emergents_to_queue` | `(patterns=…)` | Gør opdagede mønstre til initiativer. Returnerer hvad der skete og hvorfor. | [src](../../../core/services/emergence_initiative_bridge.py#L131) |
-| function | `_normaliser` | `(patterns)` | Tag imod både detect-returformen og rå DB-rækker. | [src](../../../core/services/emergence_initiative_bridge.py#L188) |
-| function | `build_emergence_initiative_surface` | `()` | MC-flade: hvad motoren har gjort ved køen — og hvad den afviste hvorfor. | [src](../../../core/services/emergence_initiative_bridge.py#L204) |
 

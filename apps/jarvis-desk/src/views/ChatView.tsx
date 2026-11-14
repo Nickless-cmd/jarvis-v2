@@ -84,6 +84,14 @@ import { HistoriskGodkendelse, type GodkendelsesHaendelse } from '../components/
 import { fletGodkendelser, forsteGodkendelse } from '../lib/godkendelseIFolden'
 
 
+/** Genstarter af follow-strømmen UDEN fremgang før vi giver op (14/11-2026).
+ *  `followRun` har sit eget loft på 7 forsøg pr. forbindelse, men hver ny
+ *  `followRun` starter det forfra — så uden dette loft kunne et run der aldrig
+ *  blev terminalt holde klienten i en uendelig løkke. Fem genstarter à ~30 s er
+ *  rigeligt til at ride et netværksudfald af; derefter lader vi pollet afgøre
+ *  sagen i stedet for at hamre serveren. */
+const MAX_FOLLOW_GENSTART = 5
+
 /** Chat-mode. Ved tom/ny samtale: composer centreret midt på skærmen. Ved
  *  første besked oprettes session (hvis nødvendigt) og layoutet skifter — composer
  *  hopper ned i bunden, transcript fylder. */
@@ -134,6 +142,15 @@ export function ChatView({
   const followCtrlRef = useRef<{ abort: () => void } | null>(null)
   const [bgRunId, setBgRunId] = useState<string | null>(null)
   const [followRetry, setFollowRetry] = useState(0)
+  // Loftet der manglede (14/11-2026). `followRetry` blev hævet på HVER fejl, og
+  // hver ny `followRun` starter sit eget `attempt`-loft på nul — så
+  // `MAX_GENOPTAG` inde i `followRun` kunne aldrig bide. Et run der aldrig blev
+  // terminalt holdt dermed klienten i en uendelig genåbnings-løkke; målt i
+  // journalen som attach/detach flere gange i sekundet på et KONSTANT
+  // `from_idx`. Tælleren nulstilles af ÆGTE fremgang — en modtaget ramme der
+  // ikke er ping — så et langt, sundt run stadig må genoptage mange gange.
+  const followForsoegRef = useRef(0)
+  const followSidsteRunRef = useRef<string | null>(null)
 
   // Debounced refresh (Bjørn 2026-06-29): vi havde FIRE stablede sessions.refresh()-
   // timere (700/2200ms efter eget done + 600/2000ms efter et fulgt run sluttede).
@@ -347,6 +364,12 @@ export function ChatView({
   useEffect(() => {
     if (!FOLLOW_ENABLED || !bgActive || !sessionId || !settings) return
     if (followCtrlRef.current) return // følger allerede
+    // Nyt run i sessionen = frisk chance. Samme run = tælleren fortsætter, så
+    // en række der aldrig bliver terminal ikke kan holdes i live af os selv.
+    if (followSidsteRunRef.current !== bgRunId) {
+      followSidsteRunRef.current = bgRunId
+      followForsoegRef.current = 0
+    }
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     let alive = true
     let stopped = false
@@ -356,6 +379,9 @@ export function ChatView({
       (ev) => {
         if (!alive) return
         if (ev.type === 'message_stop') stopped = true
+        // Ægte fremgang: nulstil genstarts-loftet. Pings tæller ikke — de er
+        // keepalive og beviser ikke at runnet rører sig.
+        if (ev.type !== 'ping') followForsoegRef.current = 0
         followDispatch(ev)
       },
       (reason) => {
@@ -370,8 +396,17 @@ export function ChatView({
           debouncedRefresh(2000)
         }
         // En tabt passiv SSE må ikke stå stille resten af runnet. Et normalt
-        // message_stop afventer næste run-id; et netværksbrud prøver igen.
+        // message_stop afventer næste run-id; et netværksbrud prøver igen —
+        // men kun indtil loftet. Uden det blev hver fejl til en ny `followRun`
+        // med et nulstillet `attempt`, altså en løkke uden ende.
         if (reason === 'error' && !stopped && bgRunId) {
+          if (followForsoegRef.current >= MAX_FOLLOW_GENSTART) {
+            // Vi kommer ingen vegne. Stop med at hamre; hent det persisterede
+            // indhold, så visningen ikke står tom, og lad pollet afgøre sagen.
+            debouncedRefresh(2000)
+            return
+          }
+          followForsoegRef.current += 1
           retryTimer = setTimeout(() => setFollowRetry((n) => n + 1), 1000)
         }
       },

@@ -693,6 +693,25 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("release-vagt kunne ikke startes: %s", _exc)
 
+            # Efterladte RUN (14/11-2026). `stamp_visible_run_interrupted`
+            # fandtes, men blev kun kaldt ved opstart og ved nedlukning — saa et
+            # run der doede midt i en tur blev staaende `running` indtil næste
+            # genstart. Raekken laaser sin session: `ChatView` saetter
+            # `bgActive` saa længe `/chat/active-runs` melder den, og klienten
+            # genaabner `subscribe` i det uendelige mod et run der aldrig sender
+            # flere events. Maalt i journalen: attach/detach flere gange i
+            # sekundet paa et KONSTANT `from_idx`. For Bjørn: «streamen resetter
+            # hele tiden».
+            #
+            # Cross-proces (den delte `in_flight_runs` + /proc), saa den ser
+            # ogsaa runtime-processens runs — men stempler kun naar BEGGE
+            # kilder siger at runnet ikke lever. Se modulet for vaernene.
+            try:
+                from core.services.efterladt_run_vagt import start_efterladt_run_vagt
+                start_efterladt_run_vagt()
+            except Exception as _exc:
+                logger.warning("efterladt-run-vagt kunne ikke startes: %s", _exc)
+
         # Efterladte API-processer (18/10-2026). En genstart efterlod den gamle
         # proces i live med 172 traade og 261 DB-forbindelser mod samme
         # jarvis.db. Den lyttede ikke paa porten, saa intet syntes galt — men
@@ -729,6 +748,13 @@ def create_app() -> FastAPI:
             stop_release_vagt()
         except Exception:
             logger.warning("kunne ikke stoppe release-vagten", exc_info=True)
+        # Stop FØR nedluknings-sweepen nedenfor: begge stempler `running`-rækker,
+        # og vagten skal ikke køre midt i den bogføring der allerede er i gang.
+        try:
+            from core.services.efterladt_run_vagt import stop_efterladt_run_vagt
+            stop_efterladt_run_vagt()
+        except Exception:
+            logger.warning("kunne ikke stoppe efterladt-run-vagten", exc_info=True)
         try:
             from core.runtime.process_lifecycle import markér_nedlukning
             markér_nedlukning("lifespan-shutdown")

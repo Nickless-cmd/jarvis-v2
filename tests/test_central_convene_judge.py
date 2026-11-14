@@ -113,6 +113,55 @@ def test_reads_movement_from_provided_surfaces():
     j.reset_reference()
 
 
+def test_partial_surfaces_baseline_every_successfully_read_signal(isolated_runtime):
+    """Fallback-læste signaler skal indgå i dommerens egen reference.
+
+    Fjerner man ``ok_signals.add(name)`` fra den vellykkede fallback-gren,
+    indeholder referencen kun det ene injicerede surface, og ændringer i de
+    øvrige seks kan aldrig bidrage til ``movement_total``.
+    """
+    from core.runtime import db_core
+    from core.services import central_convene_judge as j
+
+    fallback_surfaces = _surfaces()
+
+    def _read(name):
+        return fallback_surfaces.get(name, {})
+
+    j.reset_reference()
+    with _mode("on"), patch(
+        "core.services.signal_surface_router.read_surface", side_effect=_read
+    ):
+        first = j.judge_convene(
+            surfaces={"existential_wonder": {"latest_wonder": "x"}},
+            top_signals=["existential_wonder"],
+            score=0.0,
+        )
+
+        reference = db_core.get_runtime_state_value(j._PREV_LEVELS_KEY, None)
+        assert reference == {
+            "autonomy_pressure": 0.0,
+            "open_loop": 0.0,
+            "internal_opposition": 0.0,
+            "existential_wonder": 1.0,
+            "creative_drift": 0.0,
+            "desire": 0.0,
+            "conflict": 0.0,
+        }
+        assert first["movement_total"] == 0.0
+
+        fallback_surfaces["autonomy_pressure"] = {
+            "summary": {"active_count": 3}
+        }
+        second = j.judge_convene(
+            surfaces={"existential_wonder": {"latest_wonder": "x"}},
+            top_signals=["existential_wonder"],
+            score=0.0,
+        )
+
+    assert second["movement_total"] > 0.0
+
+
 def test_judge_nudges_topic_but_prescribes_no_roles():
     """15. jul (Bjørn): dommeren er en NUDGE — den detekterer bevægelse + emne, men
     FORESKRIVER ALDRIG roller. Jarvis konstruerer selv rollerne per-emne i convene_council

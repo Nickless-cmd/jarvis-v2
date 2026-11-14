@@ -286,40 +286,34 @@ describe('ChatFlowPresentation', () => {
     expect(css).not.toMatch(/\.chat-flow-live-synthesis \.ls-tekst\s*\{[^}]*line-clamp/s)
   })
 
-  it('rundelinjen har en fold-pil der folder arbejdet ud UNDER streaming', () => {
-    // Bjørn 17/10-2026: «runde linjen under streaming bør have > i ende og
-    // kunne foldes ud under streaming». Foldet sammen som udgangspunkt —
-    // den levende linje er nok — men pilen lover et indhold der findes.
+  it('rundelinjen bærer INGEN fold-pil — kun hovedet folder', () => {
+    // VENDT 14/11-2026 (Bjørn): «her kan du se hvad jeg mener med > under
+    // rundelinjen.. den skal væk».
+    //
+    // Den tidligere test bekræftede det modsatte — Bjørn bad 17/10-2026 om en
+    // `>` i enden af rundelinjen så arbejdet kunne foldes ud under streaming.
+    // Knappen endte med at stå på SIN EGEN LINJE under rundelinjen (gruppen er
+    // `display: block`), og læste dermed som en tredje, løsrevet ting.
+    //
+    // Den nye opdeling: rundelinjen er STATUS uden affordances, hovedet er
+    // RESULTATET og har fold-pilen. Under turen er der intet at folde ud —
+    // den levende linje ER visningen.
     const blocks: ContentBlock[] = [
       { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
       { type: 'text', text: 'Jeg læser videre' },
     ]
-    render(<ChatFlowPresentation {...common} mode="living" streaming status="working" blocks={blocks}
-      rundeEtiketter={{ t1: 'Læser konfigurationen' }} />)
+    const { container } = render(<ChatFlowPresentation {...common} mode="living" streaming
+      status="working" blocks={blocks} rundeEtiketter={{ t1: 'Læser konfigurationen' }} />)
 
-    const fold = screen.getByTestId('chat-flow-round-fold')
-    expect(fold).toHaveAttribute('aria-expanded', 'false')
-    expect(document.querySelector('.chat-flow-work-details')).toBeNull()
+    // Rundelinjen findes og viser hvad der sker nu.
+    expect(screen.getByTestId('chat-flow-round')).toBeInTheDocument()
+    expect(screen.getByTestId('chat-flow-round-label')).toHaveTextContent('Læser konfigurationen')
 
-    fireEvent.click(fold)
-    expect(document.querySelector('.chat-flow-work-details')).not.toBeNull()
-    // Udfoldet tilstand ER den levende kronologiske visning. Den kompakte
-    // statusrail må ikke fortsætte ovenover og vise samme syntese to steder.
-    //
-    // VENDT 14/11-2026: containeren bliver stående — den bærer fold-pilen, og
-    // uden den var der ingen vej tilbage (målt: knappen forsvandt i samme
-    // frame som man foldede ud). Det er SYNTESEN og rundelinjen der skal vige,
-    // ikke knappen.
-    expect(screen.queryByTestId('chat-flow-live-synthesis')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('chat-flow-round')).not.toBeInTheDocument()
-    expect(screen.getByTestId('chat-flow-round-fold')).toHaveAttribute('aria-expanded', 'true')
-    expect(document.querySelector('.chat-flow-work-details')).toHaveTextContent('Jeg læser videre')
-
-    fireEvent.click(document.querySelector('.chat-flow-round-fold') as HTMLElement)
-    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Folden følger
-    // nu TUREN, ikke det manuelle valg: så længe turen kører, bliver gruppen
-    // åben — det er rundelinjen der er turens ansigt. Det manuelle valg styrer
-    // stadig om ARBEJDSDETALJERNE vises, og det er hvad der måles her.
+    // Men der er hverken knap eller pil i den.
+    expect(screen.queryByTestId('chat-flow-round-fold')).not.toBeInTheDocument()
+    expect(container.querySelector('.chat-flow-round-fold')).toBeNull()
+    expect(container.querySelector('.chat-flow-activity button')).toBeNull()
+    // Og intet arbejde er foldet ud under turen.
     expect(document.querySelector('.chat-flow-work-details')).toBeNull()
   })
   it('holder den forrige syntese stående mens den næste blok er tom — intet glip', () => {

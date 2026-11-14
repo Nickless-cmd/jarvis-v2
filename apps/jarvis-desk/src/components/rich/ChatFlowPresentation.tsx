@@ -11,7 +11,7 @@ import '../../styles/chat-flow.css'
 import { BlocksRenderer } from './BlocksRenderer'
 import { JarvisRing } from '../shell/JarvisRing'
 import { LabelSkift, SynteseLinje } from './LabelSkift'
-import { FoldPil, TurHoved } from './TurHoved'
+import { TurHoved } from './TurHoved'
 import { RullendeTokens } from '../feedback/RullendeTal'
 
 export interface ChatFlowPresentationProps {
@@ -564,22 +564,17 @@ export function ChatFlowPresentation({
                     </div>
                   </div>
                 ) : null}
-                {/* Fold-pilen ligger UDEN FOR rundelinjen (målt 14/11-2026):
-                    lå den indeni, forsvandt den i samme frame som man foldede
-                    ud — der var ingen vej tilbage. Den skal kunne foldes ind
-                    igen, uanset om syntesen og rundelinjen er synlige. */}
-                {foldWork.length > 0 ? (
-                  <button
-                    type="button"
-                    className="chat-flow-round-fold"
-                    data-testid="chat-flow-round-fold"
-                    aria-expanded={arbejdeAabent}
-                    aria-label={arbejdeAabent ? 'Skjul arbejdet' : 'Vis arbejdet'}
-                    onClick={() => setAabenManuelt(!arbejdeAabent)}
-                  >
-                    <FoldPil aaben={arbejdeAabent} />
-                  </button>
-                ) : null}
+                {/* Ingen fold-pil her (Bjørn 14/11-2026: «den skal væk»).
+                    Den stod som en selvstændig `>` UNDER rundelinjen, fordi
+                    aktivitetsgruppen er `display: block` — så den faldt på sin
+                    egen linje og læste som en tredje, løsrevet ting i stedet
+                    for som en del af runden.
+
+                    Opdelingen er også den rigtige: rundelinjen er STATUS og
+                    bærer ingen affordances; hovedet er RESULTATET og har
+                    fold-pilen. Under turen er der intet at folde ud — den
+                    levende linje ER visningen. Efter turen folder man via
+                    `button.rv-tur`. */}
               </div>
             ) : null}
 

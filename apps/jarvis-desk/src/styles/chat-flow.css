@@ -254,26 +254,10 @@
   color: var(--accent);
 }
 
-.chat-flow-round-fold {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--fg-3, #898781);
-  cursor: pointer;
-  line-height: 0;
-}
-
-.chat-flow-round-fold:hover { color: var(--fg-1); }
-
-.chat-flow-round-fold:focus-visible {
-  outline: 2px solid var(--focus, #6aa9ff);
-  outline-offset: 2px;
-  border-radius: var(--radius-xs);
-}
+/* Ingen `.chat-flow-round-fold` (14/11-2026, Bjørn: «den skal væk»).
+   Knappen stod som en løsrevet `>` på sin egen linje under rundelinjen,
+   fordi aktivitetsgruppen er `display: block`. Rundelinjen er status uden
+   affordances; hovedet er resultatet og bærer fold-pilen. */
 
 .chat-flow-round-label {
   min-width: 0;

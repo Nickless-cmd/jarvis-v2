@@ -58,9 +58,8 @@ describe('MessageRow', () => {
   })
 
   it.each([
-    ['done' as const, 'Arbejdet'],
-    ['interrupted' as const, 'Arbejdet afbrudt'],
-    ['error' as const, 'Arbejdet fejlede'],
+    ['interrupted' as const, 'Afbrudt'],
+    ['error' as const, 'Fejlede'],
   ])('preserves missing-signal Chat text once for %s', (status, label) => {
     render(<MessageRow presentation="chat" chatMode="living" status={status}
       role="assistant" blocks={[
@@ -69,6 +68,20 @@ describe('MessageRow', () => {
       ]} density="compact" streaming={false} />)
     expect(screen.getAllByText('Bevaret indhold')).toHaveLength(1)
     expect(screen.getByText(label)).toBeInTheDocument()
+  })
+
+  it('viser intet turhoved på en færdig tur der kun tænkte — teksten står stadig én gang', () => {
+    // VENDT 14/11-2026 (Bjørn): «hvis den første blok er en tanke blok og så
+    // beskeden … ellers bliver det stående fordi du tænker før du skriver i
+    // chat mode». Tænkeblokken er ikke en runde, så hovedet skal væk — men
+    // teksten må ikke forsvinde med det, og den må ikke stå to steder.
+    const { container } = render(<MessageRow presentation="chat" chatMode="living" status="done"
+      role="assistant" blocks={[
+        { type: 'thinking', thinking: 'arbejde' },
+        { type: 'text', text: 'Bevaret indhold' },
+      ]} density="compact" streaming={false} />)
+    expect(screen.getAllByText('Bevaret indhold')).toHaveLength(1)
+    expect(container.querySelector('.rv-tur')).toBeNull()
   })
 
   it('lader live-tekst komme frem i flere trin uden at ændre det færdige svar', () => {

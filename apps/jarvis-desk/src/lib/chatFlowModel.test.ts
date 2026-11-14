@@ -196,10 +196,15 @@ describe('deriveChatFlow', () => {
     expect(model.hasObservableWork).toBe(false)
   })
 
+  // VENDT 14/11-2026: en tænkeblok er ikke arbejde. Før sagde de tre
+  // tilfælde «Arbejdet»/«Arbejdet afbrudt»/«Arbejdet fejlede» — men der blev
+  // ikke kaldt ét eneste værktøj, kun tænkt. Det var inkonsistent med testen
+  // nedenfor («tekst uden tool kald … tænkte efter»), som allerede krævede
+  // «Tænkte» for samme slags tur.
   it.each([
-    ['done' as const, 'completed' as const, 'Arbejdet'],
-    ['interrupted' as const, 'interrupted' as const, 'Arbejdet afbrudt'],
-    ['error' as const, 'failed' as const, 'Arbejdet fejlede'],
+    ['done' as const, 'completed' as const, 'Tænkte'],
+    ['interrupted' as const, 'interrupted' as const, 'Afbrudt'],
+    ['error' as const, 'failed' as const, 'Fejlede'],
   ])('promotes retained text exactly once on terminal %s fallback', (status, terminalState, label) => {
     const first: ContentBlock = { type: 'text', text: 'Første del. ' }
     const second: ContentBlock = { type: 'text', text: 'Anden del.' }

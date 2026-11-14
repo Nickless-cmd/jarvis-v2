@@ -155,8 +155,8 @@ describe('ChatFlowPresentation', () => {
   })
 
   it.each([
-    ['interrupted' as const, 'Arbejdet afbrudt'],
-    ['error' as const, 'Arbejdet fejlede'],
+    ['interrupted' as const, 'Afbrudt'],
+    ['error' as const, 'Fejlede'],
   ])('preserves partial text and uses honest %s copy', (status, label) => {
     render(<ChatFlowPresentation {...common} mode="living" status={status} streaming={false}
       blocks={[

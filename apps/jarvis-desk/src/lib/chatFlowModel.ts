@@ -248,8 +248,14 @@ export function deriveChatFlow(input: ChatFlowInput): ChatFlowModel {
     }
   }
 
+  // `thinking` tæller ikke som observerbart arbejde (målt 14/11-2026): uden
+  // denne udelukkelse sagde hovedet «Arbejder» på en tur der kun tænkte — og
+  // «Arbejdet afbrudt» på en tur der blev afbrudt før noget arbejde. Bjørns
+  // regel fra 17/10-2026 er den modsatte: «hvis det er tekst uden tool kald så
+  // tænker under kørsel og tænkte efter».
   const hasObservableWork = workBlocks.some((block) => (
-    block.type !== 'text' || block.phase === 'commentary'
+    (block.type !== 'text' && block.type !== 'thinking')
+    || (block.type === 'text' && block.phase === 'commentary')
   )) || allSynthesis.length > 0
   return {
     allSynthesis,

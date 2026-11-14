@@ -157,7 +157,16 @@ export function ChatFlowPresentation({
   // holdt hovedet i live gennem hele turen — også efter beskeden var begyndt.
   // Syntesen er en mellemtekst under arbejdet, ikke et værktøjskald, og den må
   // hverken tælle som runde eller forveksles med slutsvaret.
-  const harRunder = model.workBlocks.some((blok) => blok.type !== 'text')
+  //
+  // `thinking` er udelukket af samme grund (Bjørn 14/11-2026: «hvis den første
+  // blok er en tanke blok og så beskeden … ellers bliver det stående fordi du
+  // tænker før du skriver i chat mode»). I chat mode tænker jeg FØR jeg skriver,
+  // så næsten hver tur ville ellers bære en «runde» og holde hovedet stående
+  // gennem hele beskeden — uden at et eneste værktøj var kaldt. Tænkeblokken er
+  // min monolog, ikke arbejde: den kan foldes ud, men den er ikke en runde.
+  const harRunder = model.workBlocks.some(
+    (blok) => blok.type !== 'text' && blok.type !== 'thinking',
+  )
   // Uden runder er der ingen fold at gemme syntesen i.
   //
   // MÅLT 14/11/2026 i Chromium: da hovedet blev fjernet, forsvandt syntesen
@@ -168,16 +177,29 @@ export function ChatFlowPresentation({
   // MEN kun når den levende visning er forbi: mens turen kører og slutsvaret
   // ikke er begyndt, står syntesen i gruppen som `chat-flow-live-synthesis`.
   // Flyttede jeg den samtidig, ville den stå to steder.
+  //
+  // Tænkeblokken følger SAMME vej og af samme grund (målt 14/11-2026): den er
+  // synlig (`BlocksRenderer` tegner altid `ThinkingLine`), så da hovedet blev
+  // fjernet på en tur uden runder, forsvandt min monolog fra DOM'en sammen med
+  // gruppen. Uden runder er den ikke en arbejdsdetalje — den hører i svar-lanen,
+  // foran teksten, præcis hvor den blev tænkt.
   const syntesenVisesLevende = streaming && !finalAnswerStarted
-  const synteseUdenArbejde = (harRunder || syntesenVisesLevende)
+  const udenArbejde = (harRunder || syntesenVisesLevende)
     ? []
-    : model.workBlocks.filter((block): block is Extract<ContentBlock, { type: 'text' }> =>
-        block.type === 'text' && block.text.trim().length > 0)
-  // Flyttede tekster må ikke også stå i arbejdsvisningen — samme regel som
+    : model.workBlocks.filter((block) =>
+        block.type === 'thinking'
+        || (block.type === 'text' && block.text.trim().length > 0))
+  // Flyttede blokke må ikke også stå i arbejdsvisningen — samme regel som
   // `retainedWork` bruger for de bekræftede tekster: ét sted, aldrig to.
-  const flyttedeTekster = new Set(synteseUdenArbejde.map((block) => block.text))
+  // Tekst matches på indhold, tænkeblokke på identitet (de bærer ingen nøgle).
+  const flyttedeTekster = new Set(
+    udenArbejde.flatMap((block) => (block.type === 'text' ? [block.text] : [])),
+  )
+  const flyttedeTanker: Set<ContentBlock> = new Set(
+    udenArbejde.filter((block) => block.type === 'thinking'),
+  )
   const erFlyttetTilSvar = (block: ContentBlock): boolean =>
-    block.type === 'text' && flyttedeTekster.has(block.text)
+    block.type === 'text' ? flyttedeTekster.has(block.text) : flyttedeTanker.has(block)
   const retainedWork = (finalAnswerStarted && confirmedTexts.length > 0
     ? model.workBlocks.filter((block) => block.type !== 'text'
         || !confirmedTexts.some((text) => text === block.text || text.startsWith(block.text) || block.text.startsWith(text)))
@@ -209,7 +231,7 @@ export function ChatFlowPresentation({
           || text.startsWith(block.text)
           || block.text.startsWith(text)))
     : []
-  const answerBlocks = [...synteseUdenArbejde, ...restoredText, ...model.finalBlocks]
+  const answerBlocks = [...udenArbejde, ...restoredText, ...model.finalBlocks]
   const answer = samletSvarMarkdown(answerBlocks)
   const targetSvar = blocks.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
   const vistSvar = pacedBlocks.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
@@ -348,7 +370,13 @@ export function ChatFlowPresentation({
   // de aldrig havde.
   const visTurhoved = harRunder
     ? (harArbejde || streaming || sekunder !== null)
-    : streaming && !finalAnswerStarted
+    // En afbrudt eller fejlet tur beholder hovedet selv uden runder: det er
+    // dér den ærlige besked står («Arbejdet afbrudt» / «Arbejdet fejlede»).
+    // Uden denne gren forsvandt statusen sammen med hovedet — målt 14/11-2026
+    // i `preserves partial text and uses honest … copy`.
+    : (streaming && !finalAnswerStarted)
+      || model.terminalState === 'interrupted'
+      || model.terminalState === 'failed'
   // Rundelinjen må aldrig vise et internt tool-navn. Modellen filtrerer de
   // rå working_step-værdier; indtil den menneskelige etiket er klar, står en
   // rolig fallback i samme stabile celle UNDER syntesen — ikke i turhovedet.

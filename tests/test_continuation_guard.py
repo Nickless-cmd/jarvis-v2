@@ -121,3 +121,37 @@ def test_lukke_verbum_i_anden_saetning_draeber_ikke_aegte_traef() -> None:
     assert detect_unfinished_intent(
         "Jeg skal tjekke om filen er der. Bagefter lukker jeg sagen."
     ) is not None
+
+
+@pytest.mark.parametrize(
+    "tilbageholdenhed",
+    [
+        "Releasen venter på dig.",
+        "Du ser PWA'en først.",
+        "Releasen er din at afgøre.",
+    ],
+)
+def test_brugerhandling_i_slutningen_blokerer_tidligere_loefte(
+    tilbageholdenhed: str,
+) -> None:
+    """Et tidligere løfte må ikke overtrumfe en afsluttende bruger-handoff."""
+    tekst = (
+        "Jeg opdaterer layoutet nu, så den nye visning er klar. "
+        + tilbageholdenhed
+    )
+    assert detect_unfinished_intent(tekst) is None
+
+
+def test_den_maalte_tag_tilbageholdenhed_starter_ikke_continuation() -> None:
+    """14/11-2026: PWA-kig før Desk-release var en beslutning, ikke en pause."""
+    assert detect_unfinished_intent(
+        "Så jeg skriver med hoveder og punktopstilling fra nu. "
+        "Ikke gjort: intet tag — du ser PWA'en først."
+    ) is None
+
+
+def test_jeg_retter_x_nu_er_et_loefte() -> None:
+    """Den positive kontrol: førstepersons-handling nu skal stadig vække."""
+    intent = detect_unfinished_intent("Jeg retter X nu.")
+    assert intent is not None
+    assert intent.pattern == "future_action_promise"

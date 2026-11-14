@@ -10,19 +10,22 @@ Maalt 10/11-2026. Fejlen havde to lag, og det foerste var det vaerste:
    agent der ikke kunne maale. Den svarede aerligt «jeg har ikke maalt noget»
    — men valget var mit, og det byggede paa en tabel der ikke passede.
 
-2. **CLI-vejen (kun gjort eksplicit, IKKE rettet):** `_command` satte
-   værktøjerne ud fra ÉN ting — om policyen var `worktree-write`. Alt andet
-   fik `Read,Glob,Grep`, saa `default_tool_policy` var død kode der. Det er nu
-   en eksplicit mapping (`_cli_tools_for_policy`) i stedet for en tavs
-   ternaer — men resultatet er det SAMME, og det skal siges hoejt: CLI-agenter
-   faar fortsat ikke `bash`, selv om `_READ_ONLY_TOOLS` lover det.
+2. **CLI-vejen (rettet 14/11-2026):** `_command` satte værktøjerne ud fra ÉN
+   ting — om policyen var `worktree-write`. Alt andet fik `Read,Glob,Grep`, saa
+   `default_tool_policy` var død kode der. Det er nu en eksplicit mapping
+   (`_cli_tools_for_policy`) i stedet for en tavs ternaer.
 
-   `dec_6a234cd30460` (Bjoern, 5/11-2026) indskraenkede netop det med ordene
-   «den har ingen shell». Beslutningen hviler paa at CLI-virkeligheden er
-   saadan — men tabellen siger det modsatte. En af de to skal rettes, og det
-   er Bjoerns beslutning hvilken. Indtil da fæstner
-   `test_cli_afviger_fra_tabellen_paa_shell` afvigelsen, saa den ikke kan
-   forsvinde tavst igen.
+   Indtil 14/11-2026 gav ingen policy shell. `dec_6a234cd30460` (Bjoern,
+   5/11-2026) blev laest som et forbud, og `test_cli_afviger_fra_tabellen_paa_shell`
+   fæstnede det. Prisen blev maalt: to agenter afleverede kode uden at koere
+   én test, og en tredje skrev 19 filer med typecheck-fejl i baade desk og
+   mobil. En skrivende agent uden shell kan ikke verificere sit eget arbejde.
+
+   Bjoern ophaevede det 14/11-2026 («giv claude wt_bash») efter at flagene var
+   maalt: `--tools …Bash` + `--restricted` koerer kommandoen, fordi
+   `--restricted` kun fjerner Bash naar `--tools` ikke naevner det. Skrivende
+   ruter har den nu; laesende har den ikke, og dét fæstnes af
+   `test_skrivende_rute_har_shell_og_laesende_har_ikke`.
 """
 from __future__ import annotations
 
@@ -82,23 +85,34 @@ def test_ingen_cli_policy_goer_agenten_blind(policy):
     assert _cli_tools(policy), f"policy {policy!r} gav nul værktøjer"
 
 
-def test_cli_afviger_fra_tabellen_paa_shell():
-    """Den kendte afvigelse — fæstnet, saa den ikke forsvinder tavst.
+def test_skrivende_rute_har_shell_og_laesende_har_ikke():
+    """Shell-fordelingen mellem de to slags ruter — fæstnet, saa den ikke glider.
 
-    `_READ_ONLY_TOOLS` indeholder `bash`, saa tabellen lover shell for
-    `read-only-runtime`. CLI-ruten giver det ikke. Det er en STRUKTUREL
-    egenskab ved `_cli_tools_for_policy`, ikke en beslutning der håndhæver
-    den: ingen policy giver shell, heller ikke `worktree-write`. Fejler
-    denne test, er en af de to sider aendret — og saa skal forskellen
-    forklares eksplicit frem for at glide.
+    Historik, fordi den er dyr: indtil 14/11-2026 gav INGEN policy shell, og
+    denne vagt fæstnede netop det. Prisen var maalt — to agenter afleverede
+    kode uden at koere én test, og en tredje skrev 19 filer med typecheck-fejl
+    som ingen kunne se. En skrivende agent uden shell kan ikke verificere sit
+    eget arbejde.
+
+    Bjoern ophaevede begraensningen 14/11-2026 («giv claude wt_bash»), efter
+    at flagkombinationen var maalt: `--tools …Bash` + `--restricted` koerer
+    kommandoen. `--restricted` fjerner Bash KUN naar `--tools` ikke naevner det.
+
+    Laesende ruter faar den fortsat ikke — en researcher eller critic skal
+    undersoege, ikke mutere. Fejler denne test, er fordelingen aendret, og saa
+    skal det besluttes eksplicit frem for at glide.
     """
     tabel = set(tools_for_policy("read-only-runtime"))
     assert "bash" in tabel, "tabellen lover ikke laengere shell — opdatér denne vagt"
-    for policy in ("none", "read-only-runtime", "can-spawn", "worktree-write"):
-        cli = _cli_tools(policy)
-        assert "Bash" not in cli, (
-            f"CLI-ruten giver nu shell for policy {policy!r}. Det er en ny "
-            "egenskab ved backenden — afgoer eksplicit om den skal have det."
+
+    assert "Bash" in _cli_tools("worktree-write"), (
+        "den skrivende rute mistede shell — saa kan dens agent ikke koere de "
+        "tests den selv skrev, og dens «faerdig» daekker kun over at den skrev noget"
+    )
+    for policy in ("none", "read-only-runtime", "read-only-workstation", "can-spawn"):
+        assert "Bash" not in _cli_tools(policy), (
+            f"CLI-ruten giver nu shell for laesende policy {policy!r}. Det er en "
+            "ny egenskab ved backenden — afgoer eksplicit om den skal have det."
         )
 
 
@@ -107,7 +121,7 @@ def test_command_sender_policyens_vaerktoejer_til_cli():
         "claude-cli", "/usr/bin/claude", "default", "/tmp", "opgave",
         policy="worktree-write", output_path="/tmp/out.txt",
     )
-    assert cmd[cmd.index("--tools") + 1] == "Read,Glob,Grep,Edit,Write"
+    assert cmd[cmd.index("--tools") + 1] == "Read,Glob,Grep,Edit,Write,Bash"
 
     cmd_ro = backend._command(
         "claude-cli", "/usr/bin/claude", "default", "/tmp", "opgave",

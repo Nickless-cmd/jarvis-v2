@@ -208,19 +208,28 @@ def _cli_tools_for_policy(policy: str) -> str:
     «jeg har ikke maalt noget» — men valget var mit, og det byggede paa en
     tabel der ikke passede med virkeligheden.
 
-    ## Shell er BEVIDST udeladt
+    ## Shell: SKRIVENDE ruter faar den, laesende goer ikke
 
     ``_READ_ONLY_TOOLS`` indeholder ``bash``, saa ``read-only-runtime`` lover
-    shell i tabellen. CLI-agenter faar den ikke her — og det er nu en
-    STRUKTUREL egenskab ved denne funktion, ikke en regel der håndhæver den:
-    ingen policy giver shell, heller ikke ``worktree-write``.
+    shell i tabellen. Her foelger vi den kun for ``worktree-write``.
 
-    Historik: indtil 10/11-2026 stod der at ``dec_6a234cd30460`` (Bjoern,
-    5/11-2026) indskraenkede det. Den beslutning er tilbagekaldt — maalt var
-    den overfloedig, fordi koden aldrig gav shell, og den ramte samtidig
-    fil-redigeringer der blot naevnte rollenavnet. Det der stod tilbage var
-    forskellen mellem tabellen og denne funktion, og den fæstnes stadig af
-    ``tests/test_agent_cli_policy.py``.
+    Historik, fordi den er dyr: indtil 14/11-2026 gav INGEN policy shell, og
+    ``dec_6a234cd30460`` (Bjoern, 5/11-2026) blev laest som om den forbød det.
+    Konsekvensen var maalt og entydig — to agenter afleverede kode uden at
+    koere én test (``asg-dc669ecaebd54825``: «wt_bash findes ikke her»;
+    ``asg-f32b7d7f86a940fc``: nul testkald), og en tredje skrev 19 filer med
+    typecheck-fejl i baade desk og mobil som ingen kunne se. En skrivende agent
+    uden shell kan ikke verificere sit eget arbejde; dens «faerdig» daekker
+    kun over at den skrev noget.
+
+    Bjoern ophaevede begraensningen 14/11-2026: «giv claude wt_bash». Maalt
+    samme dag, foer aendringen blev skrevet: ``--tools Read,Glob,Grep,Edit,
+    Write,Bash`` sammen med ``--restricted`` koerer kommandoen og returnerer
+    ``HELLO-FROM-BASH-42`` med ``permission_decision: accept`` — ``--restricted``
+    fjerner Bash KUN naar ``--tools`` ikke naevner det.
+
+    Laesende ruter faar den fortsat ikke: en researcher eller critic skal
+    undersoege, ikke mutere, og shell er den brede vej til begge.
 
     Ukendt eller tom policy giver laeseadgang, ikke nul: en CLI der starter
     uden værktøjer kan ikke engang laese den fil den blev bedt om at vurdere,
@@ -228,7 +237,9 @@ def _cli_tools_for_policy(policy: str) -> str:
     """
     pol = str(policy or "").strip()
     if pol == "worktree-write":
-        return "Read,Glob,Grep,Edit,Write"
+        # (14/11-2026) `Bash` er med: en skrivende agent der ikke kan koere
+        # det den skrev, kan ikke verificere det — se docstringen.
+        return "Read,Glob,Grep,Edit,Write,Bash"
     # none, read-only-runtime, read-only-workstation, can-spawn og ukendt:
     # alle er laesende set fra CLI'ens side. `none` er ikke nul her — se
     # docstringen: nul værktøjer gør agenten blind, ikke sikker.

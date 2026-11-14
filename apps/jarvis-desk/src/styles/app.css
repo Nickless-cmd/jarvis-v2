@@ -915,6 +915,11 @@ button.sidebar-group svg { flex: none; opacity: .7; }
  * håndtaget flytter sig ét trin. */
 .native-control-vaerdi { color: var(--fg-1); font-variant-numeric: tabular-nums; font-size: 0.94em; }
 .native-control-felter > p { margin: 0; color: var(--fg-2); }
+/* box (14/11-2026): rammen om børn. Klasserne renderes af FladeNode i NativeRichBlock.tsx. */
+.native-box { padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-2); }
+.native-box-boern { display: flex; flex-direction: column; gap: 10px; }
+.native-box-boern > .native-rich { margin: 0; }
+.chatview .native-box-boern > .native-rich { margin-block: 0; }
 @media (prefers-reduced-motion: reduce) { .native-rich * { scroll-behavior: auto !important; transition: none !important; } }
 /* inline-kode — em-baseret padding så højden følger line-height.
  * Dæmpet visuel vægt: lavere baggrundskontrast og diskret farve, så mange

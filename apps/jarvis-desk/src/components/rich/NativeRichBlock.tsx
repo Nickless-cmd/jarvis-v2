@@ -22,6 +22,14 @@ type NativeSpec =
       | { kind: 'slider'; bind: string; label: string; min: number; max: number; step: number; value: number }
       | { kind: 'text'; text: string }
     > }
+  // `box` (14/11-2026): bærer børn og rendrer dem rekursivt, så en sammensat
+  // flade kan bygges uden modelkald. Kun rene bind-navne — ingen evaluator.
+  | { type: 'box'; title: string; children: NativeSpec[] }
+
+/** Højeste dybde en `box` må stå i (toppen er dybde 1). En box i dybde 4
+ *  afvises; blade (callout osv.) under en dybde-3-box er stadig fine. */
+const BOX_MAX_DYBDE = 3
+const BOX_MAX_BOERN = 8
 
 const text = (v: unknown, max = 500) => typeof v === 'string' ? v.trim().slice(0, max) : ''
 // `Number.isFinite` — ikke `typeof === 'number'`. Forskellen er målt: `NaN` og
@@ -33,11 +41,29 @@ const list = (v: unknown, max: number): Json[] => Array.isArray(v)
   : []
 
 export function parseNativeRichSpec(code: string): NativeSpec | null {
+  // Halv JSON under streaming: `JSON.parse` kaster her, og det er den ENESTE
+  // der må kaste. Børnene er allerede parsede objekter når `parseNode` kører.
   let raw: Json
   try { raw = JSON.parse(code) as Json } catch { return null }
+  return parseNode(raw, 1)
+}
+
+function parseNode(raw: unknown, depth: number): NativeSpec | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const node = raw as Json
+  return parseNodeObj(node, depth)
+}
+
+function parseNodeObj(raw: Json, depth: number): NativeSpec | null {
   const type = text(raw.type, 30)
   const title = text(raw.title, 120)
+  if (type === 'box') {
+    if (depth > BOX_MAX_DYBDE) return null
+    const children = list(raw.children, BOX_MAX_BOERN)
+      .map((x) => parseNode(x, depth + 1))
+      .filter((x): x is NativeSpec => x !== null)
+    return children.length ? { type, title, children } : null
+  }
   if (type === 'callout') {
     const body = text(raw.body, 1200)
     const tone = ['info', 'success', 'warning', 'danger'].includes(String(raw.tone))
@@ -148,6 +174,13 @@ export function NativeRichBlock({ code }: { code: string }) {
 
 function NativeRichIndhold({ code }: { code: string }) {
   const spec = parseNativeRichSpec(code)
+  return spec ? <FladeNode spec={spec} /> : null
+}
+
+// Én node i fladetræet. Hver node er sin EGEN komponent med sine egne hooks,
+// så `control` i et barn har sin egen state, og hook-rækkefølgen i hver
+// instans er konstant uanset fladetype.
+function FladeNode({ spec }: { spec: NativeSpec }) {
   const send = useContext(WidgetPrompt)
   const kontrolTilladt = useContext(FladeKontrolContext)
   // Lokal state for `control` (14/11-2026). Hooken SKAL stå før alle
@@ -155,7 +188,10 @@ function NativeRichIndhold({ code }: { code: string }) {
   // fladetypen, og React kaster ved næste render. Det er den fælde der gør
   // at en flade kan se rigtig ud én gang og dræbe visningen bagefter.
   const [kontrolVaerdier, setKontrolVaerdi] = useState<Record<string, number>>({})
-  if (!spec) return null
+  if (spec.type === 'box') return <section className="native-rich native-box" aria-label={spec.title || 'Samling'}>
+    <Heading title={spec.title} />
+    <div className="native-box-boern">{spec.children.map((c, i) => <FladeNode key={`${c.type}-${i}`} spec={c} />)}</div>
+  </section>
   if (spec.type === 'callout') {
     const Icon = spec.tone === 'success' ? CheckCircle2 : spec.tone === 'warning' ? AlertTriangle : spec.tone === 'danger' ? CircleAlert : Info
     return <aside className={`native-rich native-card native-callout tone-${spec.tone}`} aria-label={spec.title || 'Bemærkning'}>

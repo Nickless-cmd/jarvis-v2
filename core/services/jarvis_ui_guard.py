@@ -631,12 +631,23 @@ def _diagnosticér(data: dict, dybde: int = 1) -> tuple[str, list[str]]:
             vaerdier = s.get("values") if isinstance(s.get("values"), list) else (
                 s.get("points") if isinstance(s.get("points"), list) else []
             )
+            if len(vaerdier) > _CHART_MAX_PUNKTER:
+                fejl.append(
+                    f"maaling-over-tid serie {i} har {len(vaerdier)} punkter, "
+                    f"kun {_CHART_MAX_PUNKTER} vises"
+                )
             if len([v for v in vaerdier if _endeligt_tal(v)]) < 2:
                 fejl.append(f"maaling-over-tid serie {i} har under 2 gyldige tal")
             else:
                 brugbare += 1
         if not brugbare:
             return "død", fejl or ["maaling-over-tid har ingen brugbare serier"]
+        x_labels = data.get("xLabels") if isinstance(data.get("xLabels"), list) else []
+        if len(x_labels) > _CHART_MAX_PUNKTER:
+            fejl.append(
+                f"maaling-over-tid har {len(x_labels)} xLabels, "
+                f"kun {_CHART_MAX_PUNKTER} vises"
+            )
         return ("delvis" if fejl else "ok"), fejl
 
     if typ == "beslutningsvalg":

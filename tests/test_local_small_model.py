@@ -111,3 +111,68 @@ def test_base_url_kommer_fra_chat_vaerten(monkeypatch):
 
     monkeypatch.setattr(mpr, "_chat_ollama_base_url", lambda: "http://chat-vaert:1234")
     assert m.base_url() == "http://chat-vaert:1234"
+
+
+# ── kold start (14/11-2026) ─────────────────────────────────────────────────
+# Maalt: varm model svarer paa 0,10-0,20 s, men en kold model tager 3,20 s at
+# indlaese. Med den stramme graense paa 1,5 s kunne det FOERSTE kald efter en
+# kold model aldrig lykkes — det timede ud og returnerede None, som dommeren
+# talte som «ikke undersoegt». 170 runtime-genstarter siden 7/11 = 170 kolde
+# modeller. Testene her vaerner at den kolde frist findes, at den KUN bruges
+# foerste gang, og at en kalder med egen stram graense beholder den.
+
+def test_koldt_kald_faar_den_lange_frist(monkeypatch):
+    import core.services.local_small_model as m
+
+    monkeypatch.setattr(m, "_model_varm", False)
+    with patch("urllib.request.urlopen", return_value=_Svar("JA")) as u:
+        m.spoerg_et_ord("et system", "en bruger")
+    assert u.call_args.kwargs.get("timeout") == m.KOLD_START_TIMEOUT_S
+
+
+def test_varmt_kald_bruger_den_stramme_frist(monkeypatch):
+    """Efter foerste svar er modellen varm — saa skal den stramme graense gaelde.
+
+    Uden dette ville hvert eneste kald betale 8 s, og prompt-samlingens
+    samlede budget ville vaere brudt.
+    """
+    import core.services.local_small_model as m
+
+    monkeypatch.setattr(m, "_model_varm", True)
+    with patch("urllib.request.urlopen", return_value=_Svar("JA")) as u:
+        m.spoerg_et_ord("et system", "en bruger")
+    assert u.call_args.kwargs.get("timeout") == m.STANDARD_TIMEOUT_S
+
+
+def test_foerste_svar_markerer_modellen_varm(monkeypatch):
+    import core.services.local_small_model as m
+
+    monkeypatch.setattr(m, "_model_varm", False)
+    with patch("urllib.request.urlopen", return_value=_Svar("JA")):
+        m.spoerg_et_ord("et system", "en bruger")
+    assert m._model_varm is True
+
+
+def test_timeout_markerer_IKKE_modellen_varm(monkeypatch):
+    """Et koldt kald der timer ud beviser intet om at modellen er indlaest."""
+    import core.services.local_small_model as m
+
+    monkeypatch.setattr(m, "_model_varm", False)
+    with patch("urllib.request.urlopen", side_effect=TimeoutError("kold")):
+        assert m.spoerg_et_ord("et system", "en bruger") is None
+    assert m._model_varm is False
+
+
+def test_kalderens_egen_stramme_frist_overskrives_ikke(monkeypatch):
+    """`local_intent_gate` og `smith_noise_veto` saetter 1,5 s selv.
+
+    Den kolde frist maa ikke traede i stedet for en kalder der bevidst har
+    valgt en strammere graense — den er en udvidelse af STANDARD, ikke en
+    tilsidesaettelse af kalderen.
+    """
+    import core.services.local_small_model as m
+
+    monkeypatch.setattr(m, "_model_varm", False)
+    with patch("urllib.request.urlopen", return_value=_Svar("JA")) as u:
+        m.spoerg_et_ord("et system", "en bruger", timeout_s=0.25)
+    assert u.call_args.kwargs.get("timeout") == 0.25

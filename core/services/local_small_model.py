@@ -35,6 +35,24 @@ logger = logging.getLogger(__name__)
 MODEL = "qwen3:4b-instruct-2507-q4_K_M"
 STANDARD_TIMEOUT_S = 1.5
 
+# (14/11-2026) KOLD START ER EN ANDEN SAG END ET VARMt KALD.
+# Maalt: varm model svarer paa 0,10-0,20 s, men naar modellen ikke ligger i
+# VRAM tager det 3,20 s at indlaese de 5,37 GB. Med den stramme graense paa
+# 1,5 s kunne det FOERSTE kald efter en kold model derfor ALDRIG lykkes — det
+# timede ud, returnerede None, og dommeren talte det som «ikke undersoegt».
+# Maalt i journalen: 170 runtime-genstarter siden 7/11, og hver af dem er en
+# kold model. Det var ikke en hang — det var en graense sat efter den varme
+# tilstand, anvendt paa den kolde.
+#
+# Fristen haeves KUN for det foerste kald efter en kold model. Den stramme
+# standard bevares for alle varme kald, saa prompt-samlingens samlede budget
+# (som `test_deadlinen_er_stram_nok` vaerner) ikke aendres.
+KOLD_START_TIMEOUT_S = 8.0
+
+#: Er modellen set svare siden denne proces startede? Foerste kald betaler
+#: indlaesningen; derefter er den varm indtil ollama selv genstarter.
+_model_varm = False
+
 
 def base_url() -> str:
     """CHAT-ollamaens adresse — ikke embeddings'.
@@ -78,6 +96,14 @@ def spoerg_et_ord(
     if not system or not bruger:
         return None
 
+    # Kold model betaler indlaesningen (maalt 3,20 s for 5,37 GB). Kun det
+    # foerste kald efter en kold model faar den lange frist; en kalder der selv
+    # har sat en strammere graense beholder sin egen.
+    global _model_varm
+    effektiv_timeout = timeout_s
+    if not _model_varm and timeout_s >= STANDARD_TIMEOUT_S:
+        effektiv_timeout = max(timeout_s, KOLD_START_TIMEOUT_S)
+
     krop = json.dumps({
         "model": MODEL,
         "stream": False,
@@ -91,14 +117,18 @@ def spoerg_et_ord(
     try:
         anmodning = urllib.request.Request(  # noqa: S310 - fast lokal URL
             f"{base_url()}/api/chat", krop, {"Content-Type": "application/json"})
-        with urllib.request.urlopen(anmodning, timeout=timeout_s) as svar:  # noqa: S310
+        with urllib.request.urlopen(anmodning, timeout=effektiv_timeout) as svar:  # noqa: S310
             data = json.loads(svar.read())
         tekst = str((data.get("message") or {}).get("content") or "").strip().upper()
+        _model_varm = True
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        logger.debug("local_small_model: naaede ikke modellen (%s)", exc)
+        # INFO, ikke DEBUG: root-loggeren staar paa INFO, saa en debug-linje her
+        # var usynlig — og saa forsvandt de kolde timeouts uden spor. Det var
+        # derfor fejlen kunne leve i ni dage uden at nogen saa den.
+        logger.info("local_small_model: naaede ikke modellen (%s)", exc)
         return None
     except Exception as exc:
-        logger.debug("local_small_model: uventet svar: %s", exc)
+        logger.info("local_small_model: uventet svar: %s", exc)
         return None
 
     foerste = re.match(r"[A-ZÆØÅ]+", tekst)

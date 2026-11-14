@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import uuid
 from datetime import UTC, datetime
@@ -32,8 +33,21 @@ from core.runtime import db_agent_route
 from core.runtime.db_agent_contract import (
     ASSIGNMENT_TERMINAL, CONTRACT_VERSION, LEGACY_UNSCOPED, ContractError, _conn,
 )
+from core.services.short_ttl_cache import ShortTTLCache
 
 logger = logging.getLogger(__name__)
+
+# Feedet bygges forfra pr. kald (~10 queries + redaktion af hver besked) og pollles flere gange i
+# sekundet. Lokale skrivninger (read/ack/besked/stop/close/followup) invaliderer; skrivninger fra
+# agent-runtimen ses op til TTL senere.
+# JARVIS_FEED_CACHE_TTL_S=0 slaar cachen fra (tests saetter det; i drift er det en noedbremse).
+FEED_TTL_S = float(os.environ.get("JARVIS_FEED_CACHE_TTL_S", "3"))
+_FEED_CACHE = ShortTTLCache(ttl_s=FEED_TTL_S)
+
+
+def invalidate_feed_cache(owner_user_id: str | None = None) -> None:
+    """Kasser det cachede feed (for én ejer, eller alle)."""
+    _FEED_CACHE.invalidate(None if owner_user_id is None else _clean_owner(owner_user_id))
 
 # --- klassifikation ---------------------------------------------------------------------------
 
@@ -453,11 +467,16 @@ def _agent_card(r: dict[str, Any]) -> dict[str, Any] | None:
 
 def feed(owner_user_id: str) -> dict[str, Any]:
     """Kort til notifikationsfeedet: een reference pr. assignment + een pr. ventende approval. Hydreret fra
-    assignment/approval; read/ack er brugerens egne tilstande. Aldrig agentindhold ud over et begraenset resume."""
+    assignment/approval; read/ack er brugerens egne tilstande. Aldrig agentindhold ud over et begraenset resume.
+    Cachet ``FEED_TTL_S`` pr. ejer; fejl-svar (ingen ejer) caches aldrig."""
     owner = _clean_owner(owner_user_id)
     if not owner:
         return {"status": "error", "code": "INVALID_SCOPE", "error": "ejer mangler",
                 "contract_version": CONTRACT_VERSION}
+    return _FEED_CACHE.get_or_compute(owner, lambda: _build_feed(owner))
+
+
+def _build_feed(owner: str) -> dict[str, Any]:
     cards = [c for c in (_agent_card(r) for r in _build_rows(owner)) if c]
     refs = feed_db.refs_for_owner(owner)
     from core.runtime import db_agent_approvals as appr
@@ -484,7 +503,10 @@ def feed(owner_user_id: str) -> dict[str, Any]:
 
 
 def mark_read(owner_user_id: str, ref_kind: str, ref_id: str) -> bool:
-    return feed_db.mark_read(owner_user_id=_clean_owner(owner_user_id), ref_kind=ref_kind, ref_id=ref_id)
+    owner = _clean_owner(owner_user_id)
+    ok = feed_db.mark_read(owner_user_id=owner, ref_kind=ref_kind, ref_id=ref_id)
+    invalidate_feed_cache(owner)
+    return ok
 
 
 def acknowledge(owner_user_id: str, assignment_id: str) -> dict[str, Any]:
@@ -500,6 +522,7 @@ def acknowledge(owner_user_id: str, assignment_id: str) -> dict[str, Any]:
         return {"status": "error", "code": "INVALID_TRANSITION", "error": "kun et afsluttet assignment kan kvitteres",
                 "contract_version": CONTRACT_VERSION}
     ok = feed_db.acknowledge(owner_user_id=owner, ref_kind="agent", ref_id=assignment_id)
+    invalidate_feed_cache(owner)
     return {"status": "ok" if ok else "error", "acknowledged": ok, "assignment_id": assignment_id,
             "contract_version": CONTRACT_VERSION}
 
@@ -535,6 +558,7 @@ def send_message(owner_user_id: str, agent_id: str, content: str) -> dict[str, A
     audit = f"desk-{uuid.uuid4().hex[:12]}"
     out = svc.send_message(owner_user_id=owner, origin_session_id=session, agent_id=agent_id, content=content,
                            sender=f"menneske (Bjørns bruger) via Desk, audit {audit}")
+    invalidate_feed_cache(owner)
     logger.info("desk-besked til %s: %s audit=%s", agent_id, out.get("status"), audit)
     return {**out, "audit_id": audit, "receipt": _receipt("message", out, delivered=False)}
 
@@ -547,6 +571,7 @@ def followup(owner_user_id: str, agent_id: str, goal: str, *, idempotency_key: s
         return _unknown()
     out = svc.followup_agent(owner_user_id=owner, origin_session_id=session, agent_id=agent_id, goal=goal,
                              idempotency_key=idempotency_key)
+    invalidate_feed_cache(owner)
     return {**out, "receipt": _receipt("followup", out)}
 
 
@@ -559,6 +584,7 @@ def stop(owner_user_id: str, agent_id: str, note: str = "") -> dict[str, Any]:
         return _unknown()
     out = svc.interrupt_agent(owner_user_id=owner, origin_session_id=session, agent_id=agent_id,
                               note=note or "stop fra Desk")
+    invalidate_feed_cache(owner)
     return {**out, "receipt": _receipt("stop", out)}
 
 
@@ -569,6 +595,7 @@ def close(owner_user_id: str, agent_id: str) -> dict[str, Any]:
     if not session:
         return _unknown()
     out = svc.close_agent(owner_user_id=owner, origin_session_id=session, agent_id=agent_id)
+    invalidate_feed_cache(owner)
     return {**out, "receipt": _receipt("close", out)}
 
 

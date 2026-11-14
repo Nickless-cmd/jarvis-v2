@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10187/18709 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10188/18716 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,8 +25,8 @@ Generated from source. 10187/18709 functions/methods documented (54%). The list 
 | `core.identity` | 80 | 173 | 46% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 900 | 1613 | 55% |
-| `core.services` | 6825 | 12699 | 53% |
+| `core.runtime` | 900 | 1614 | 55% |
+| `core.services` | 6826 | 12705 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 10187/18709 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2631)
+## Undocumented public functions (2633)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L231)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -648,16 +648,16 @@ Generated from source. 10187/18709 functions/methods documented (54%). The list 
 - `core/runtime/db_sensory.py` :: `get_sensory_memory` (L226)
 - `core/runtime/db_sensory.py` :: `insert_sensory_memory` (L104)
 - `core/runtime/db_sensory.py` :: `list_sensory_memories` (L154)
-- `core/runtime/db_users.py` :: `get_google_link` (L106)
-- `core/runtime/db_users.py` :: `get_user_row` (L151)
-- `core/runtime/db_users.py` :: `get_user_row_by_email_hash` (L158)
-- `core/runtime/db_users.py` :: `get_user_row_by_google_email_hash` (L59)
-- `core/runtime/db_users.py` :: `hard_delete_user_row` (L208)
-- `core/runtime/db_users.py` :: `insert_user_row` (L130)
-- `core/runtime/db_users.py` :: `list_user_rows` (L216)
-- `core/runtime/db_users.py` :: `set_google_link` (L91)
-- `core/runtime/db_users.py` :: `soft_delete_user_row` (L204)
-- `core/runtime/db_users.py` :: `update_user_row` (L191)
+- `core/runtime/db_users.py` :: `get_google_link` (L121)
+- `core/runtime/db_users.py` :: `get_user_row` (L166)
+- `core/runtime/db_users.py` :: `get_user_row_by_email_hash` (L173)
+- `core/runtime/db_users.py` :: `get_user_row_by_google_email_hash` (L74)
+- `core/runtime/db_users.py` :: `hard_delete_user_row` (L223)
+- `core/runtime/db_users.py` :: `insert_user_row` (L145)
+- `core/runtime/db_users.py` :: `list_user_rows` (L231)
+- `core/runtime/db_users.py` :: `set_google_link` (L106)
+- `core/runtime/db_users.py` :: `soft_delete_user_row` (L219)
+- `core/runtime/db_users.py` :: `update_user_row` (L206)
 - `core/runtime/db_view_requests.py` :: `hent` (L73)
 - `core/runtime/db_view_requests.py` :: `opret` (L48)
 - `core/runtime/db_view_requests.py` :: `vent_paa_svar` (L94)
@@ -744,9 +744,9 @@ Generated from source. 10187/18709 functions/methods documented (54%). The list 
 - `core/services/agent_cli_backend.py` :: `is_cli_provider` (L85)
 - `core/services/agent_cli_backend.py` :: `resolve_executable` (L89)
 - `core/services/agent_contract_bridge.py` :: `resolve_owner_and_session` (L18)
-- `core/services/agent_contract_projection.py` :: `close` (L565)
-- `core/services/agent_contract_projection.py` :: `followup` (L542)
-- `core/services/agent_contract_projection.py` :: `mark_read` (L486)
+- `core/services/agent_contract_projection.py` :: `close` (L591)
+- `core/services/agent_contract_projection.py` :: `followup` (L566)
+- `core/services/agent_contract_projection.py` :: `mark_read` (L505)
 - `core/services/agent_contract_service.py` :: `list_approvals` (L841)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L624)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L622)
@@ -2103,6 +2103,8 @@ Generated from source. 10187/18709 functions/methods documented (54%). The list 
 - `core/services/shared_language.py` :: `build_shared_language_surface` (L61)
 - `core/services/shared_language_extended.py` :: `build_shared_language_extended_surface` (L265)
 - `core/services/shared_language_extended.py` :: `list_shorthand_terms` (L210)
+- `core/services/short_ttl_cache.py` :: `ShortTTLCache.get_or_compute` (L32)
+- `core/services/short_ttl_cache.py` :: `ShortTTLCache.invalidate` (L56)
 - `core/services/shutdown_window_daemon.py` :: `build_shutdown_window_surface` (L168)
 - `core/services/side_tasks.py` :: `get` (L738)
 - `core/services/side_tasks.py` :: `list_pending` (L535)

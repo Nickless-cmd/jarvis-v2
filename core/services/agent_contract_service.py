@@ -866,6 +866,8 @@ def decide_approval(*, approval_id: str, decision: str, actor_user_id: str, acto
     except ContractError as exc:
         logger.info("approval %s: afgoerelsen blev afvist (%s)", approval_id, exc.code)
         return _err(exc.code, exc.detail, "approval")
+    from core.services.agent_contract_projection import invalidate_feed_cache
+    invalidate_feed_cache(r.get("owner_user_id"))     # et afgjort kort er ikke laengere 'venter'
     try:
         from core.services.agent_approval_notify import cancel_wake
         cancel_wake(r, f"approvalen er {r['status']}")
@@ -900,6 +902,8 @@ def decide_approval_as_parent(*, approval_id: str, decision: str, digest: str, n
     except ContractError as exc:
         logger.info("approval %s: Jarvis' afgoerelse blev afvist (%s)", approval_id, exc.code)
         return _err(exc.code, exc.detail, "approval")
+    from core.services.agent_contract_projection import invalidate_feed_cache
+    invalidate_feed_cache(r.get("owner_user_id"))     # et afgjort kort er ikke laengere 'venter'
     try:
         from core.services.agent_approval_notify import cancel_wake
         cancel_wake(r, f"approvalen er {r['status']}")

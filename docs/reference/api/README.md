@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18709 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18716 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -56,13 +56,13 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18709 functions/
 - [`core.services.23`](core.services.23.md) — `regulation_homeostasis_signal_tracking` … `routine_inbox`
 - [`core.services.24`](core.services.24.md) — `routine_run_recorder` … `runtime_tasks`
 - [`core.services.25`](core.services.25.md) — `rupture_repair` … `self_surprise_expectation`
-- [`core.services.26`](core.services.26.md) — `self_system_code_awareness` … `side_tasks`
-- [`core.services.27`](core.services.27.md) — `signal_baseline` … `subagent_digest`
-- [`core.services.28`](core.services.28.md) — `subagent_ecology` … `tool_contract_shadow`
-- [`core.services.29`](core.services.29.md) — `tool_dansk_bro` … `user_temperature_runtime`
-- [`core.services.30`](core.services.30.md) — `user_theory_of_mind` … `visible_run_outcome_state`
-- [`core.services.31`](core.services.31.md) — `visible_run_recovery_coordinator` … `web_push_gateway`
-- [`core.services.32`](core.services.32.md) — `web_push_subscriptions` … `world_model_signal_tracking`
+- [`core.services.26`](core.services.26.md) — `self_system_code_awareness` … `side_task_lifecycle`
+- [`core.services.27`](core.services.27.md) — `side_tasks` … `structured_content_flag`
+- [`core.services.28`](core.services.28.md) — `subagent_digest` … `tool_concurrency`
+- [`core.services.29`](core.services.29.md) — `tool_contract_shadow` … `user_temperature_engine`
+- [`core.services.30`](core.services.30.md) — `user_temperature_runtime` … `visible_run_journal`
+- [`core.services.31`](core.services.31.md) — `visible_run_outcome_state` … `wall_guard`
+- [`core.services.32`](core.services.32.md) — `web_push_gateway` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

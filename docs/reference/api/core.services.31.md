@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_run_outcome_state.py`
+_Et synligt runs terminale beslutning — og vagten mod en optimistisk standard._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RunOutcomeState` | `` | Holder beslutningen og beskytter den mod at blive arvet ved et uheld. | [src](../../../core/services/visible_run_outcome_state.py#L45) |
+| method | `RunOutcomeState.__init__` | `(self)` | — | [src](../../../core/services/visible_run_outcome_state.py#L50) |
+| method | `RunOutcomeState.status` | `(self)` | — | [src](../../../core/services/visible_run_outcome_state.py#L57) |
+| method | `RunOutcomeState.error` | `(self)` | — | [src](../../../core/services/visible_run_outcome_state.py#L61) |
+| method | `RunOutcomeState.finalized` | `(self)` | Nåede runnet et eksplicit terminalt punkt? | [src](../../../core/services/visible_run_outcome_state.py#L65) |
+| method | `RunOutcomeState.is_default` | `(self)` | Står beslutningen stadig på den optimistiske standard? | [src](../../../core/services/visible_run_outcome_state.py#L70) |
+| method | `RunOutcomeState.mark` | `(self, status, *, error=…, finalized=…)` | Træf den terminale beslutning. | [src](../../../core/services/visible_run_outcome_state.py#L75) |
+| method | `RunOutcomeState.reach_finalization` | `(self)` | Marker at runnet nåede sit done-yield uden at ændre status. | [src](../../../core/services/visible_run_outcome_state.py#L89) |
+| method | `RunOutcomeState.set_error` | `(self, error)` | — | [src](../../../core/services/visible_run_outcome_state.py#L93) |
+| method | `RunOutcomeState.downgrade_if_abandoned` | `(self, abort_kind=…)` | Nedgradér en aldrig-nået standard til `interrupted`. Returnerer om | [src](../../../core/services/visible_run_outcome_state.py#L98) |
+| method | `RunOutcomeState.__repr__` | `(self)` | — | [src](../../../core/services/visible_run_outcome_state.py#L113) |
+
 ## `core/services/visible_run_recovery_coordinator.py`
 _Durable, idempotent settlement for every visible-run segment ending._
 
@@ -537,14 +554,4 @@ _Observerende vagt: opdager en «mur» — flere pointer i én prosablok._
 | function | `_prosablokke` | `(text)` | Del teksten i blokke og kast kode, tabeller, lister og native-JSON væk. | [src](../../../core/services/wall_guard.py#L42) |
 | function | `find_walls` | `(text)` | Returnér de prosablokke der ser ud som en mur. Tom liste = intet fundet. | [src](../../../core/services/wall_guard.py#L65) |
 | function | `observe` | `(text, *, run_id=…)` | Mål uden at røre teksten. Skriver en central-hændelse ved fund. | [src](../../../core/services/wall_guard.py#L86) |
-
-## `core/services/web_push_gateway.py`
-_Web-push via VAPID — fjerde udgang på push-stakken (side-67aea8c5b6)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_key` | `(name)` | Læs en VAPID-nøgle fra runtime.json. Tom streng hvis den ikke findes. | [src](../../../core/services/web_push_gateway.py#L20) |
-| function | `vapid_public_key` | `()` | Den offentlige VAPID-nøgle — gives til klienten ved abonnement. | [src](../../../core/services/web_push_gateway.py#L32) |
-| function | `_der_key` | `(raw)` | PEM → base64-DER uden headers. | [src](../../../core/services/web_push_gateway.py#L37) |
-| function | `send` | `(subscription, data)` | Send én web-push. Returnerer ``(ok, årsag)``. | [src](../../../core/services/web_push_gateway.py#L57) |
 

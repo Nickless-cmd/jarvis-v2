@@ -483,44 +483,46 @@ _Desks projektion af agentkontrakten (agent-contract-v1 G, spec 10)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `classify` | `(assignment_status, run_status)` | Bucket for ét assignment, afledt af assignment- og seneste run-status. Ren funktion. | [src](../../../core/services/agent_contract_projection.py#L56) |
-| function | `_needs_attention` | `(bucket, acknowledged)` | — | [src](../../../core/services/agent_contract_projection.py#L78) |
-| function | `_clean_owner` | `(owner_user_id)` | — | [src](../../../core/services/agent_contract_projection.py#L84) |
-| function | `safe_text` | `(value, limit=…)` | Begraenset og redigeret tekst til et kort: kontroltegn vaek, hemmeligheder maskeret, afkortet. | [src](../../../core/services/agent_contract_projection.py#L89) |
-| function | `_ts` | `(value)` | — | [src](../../../core/services/agent_contract_projection.py#L102) |
-| function | `_seconds` | `(start, end, now)` | — | [src](../../../core/services/agent_contract_projection.py#L110) |
-| function | `_all` | `(sql, args=…)` | — | [src](../../../core/services/agent_contract_projection.py#L118) |
-| function | `_outcome` | `(raw)` | — | [src](../../../core/services/agent_contract_projection.py#L122) |
-| function | `_latest_assignments` | `(owner, agent_id=…)` | Ejerens SENESTE assignment pr. agent (LEFT JOIN: en agent uden assignment er stadig en raekke). | [src](../../../core/services/agent_contract_projection.py#L133) |
-| function | `_run_facts` | `(owner)` | Seneste runstatus, antal forsoeg, forbrug og seneste fejl pr. assignment - EN forespoergsel. | [src](../../../core/services/agent_contract_projection.py#L151) |
-| function | `_leases` | `(owner)` | — | [src](../../../core/services/agent_contract_projection.py#L170) |
-| function | `_routes` | `(owner)` | — | [src](../../../core/services/agent_contract_projection.py#L176) |
-| function | `_outbox` | `(owner)` | — | [src](../../../core/services/agent_contract_projection.py#L182) |
-| function | `_pending_approvals` | `(owner)` | — | [src](../../../core/services/agent_contract_projection.py#L187) |
-| function | `_last_messages` | `(owner)` | — | [src](../../../core/services/agent_contract_projection.py#L195) |
-| function | `_error` | `(run, outcome, agent_error, bucket)` | Fejlaarsagen: runnets praecise fase/kode, ellers det fastlagte udfald. Aldrig opdigtet. | [src](../../../core/services/agent_contract_projection.py#L203) |
-| function | `_reason` | `(bucket, pending, err)` | Hvorfor staar den her - en fast tekst pr. bucket, aldrig udledt af agentens ord. | [src](../../../core/services/agent_contract_projection.py#L215) |
-| function | `_row` | `(g, *, facts, leases, routes, outbox, pend, msgs, refs, now, children)` | — | [src](../../../core/services/agent_contract_projection.py#L233) |
-| function | `_build_rows` | `(owner, agent_id=…)` | — | [src](../../../core/services/agent_contract_projection.py#L279) |
-| function | `_counts` | `(rows)` | — | [src](../../../core/services/agent_contract_projection.py#L293) |
-| function | `_groups` | `(rows)` | Et raad er en gruppering af almindelige agentruns - ingen egen sandhed. | [src](../../../core/services/agent_contract_projection.py#L305) |
-| function | `_capability` | `()` | — | [src](../../../core/services/agent_contract_projection.py#L322) |
-| function | `overview` | `(owner_user_id, *, scope=…, session_id=…)` | Liste + taellere. ``panel``: aabne runs + fejl/afbrydelse der ikke er kvitteret (succes forsvinder). | [src](../../../core/services/agent_contract_projection.py#L328) |
-| function | `agent_detail` | `(owner_user_id, agent_id)` | Alt inspectoren viser om EN agent. ``None`` = findes ikke FOR DENNE EJER (ingen skelnen til 'forbudt'). | [src](../../../core/services/agent_contract_projection.py#L349) |
-| function | `_approval_views` | `(owner)` | — | [src](../../../core/services/agent_contract_projection.py#L399) |
-| function | `read_artifact` | `(owner_user_id, agent_id, run_id, name, *, offset=…, limit=…, session_id=…)` | Fuldt output. Samme svar for 'findes ikke' og 'tilhoerer en anden' - ingen orakel. Er ``session_id`` | [src](../../../core/services/agent_contract_projection.py#L407) |
-| function | `_card_title` | `(r)` | — | [src](../../../core/services/agent_contract_projection.py#L428) |
-| function | `_agent_card` | `(r)` | — | [src](../../../core/services/agent_contract_projection.py#L432) |
-| function | `feed` | `(owner_user_id)` | Kort til notifikationsfeedet: een reference pr. assignment + een pr. ventende approval. Hydreret fra | [src](../../../core/services/agent_contract_projection.py#L454) |
-| function | `mark_read` | `(owner_user_id, ref_kind, ref_id)` | — | [src](../../../core/services/agent_contract_projection.py#L486) |
-| function | `acknowledge` | `(owner_user_id, assignment_id)` | Kvitter en TERMINAL assignment. En aaben (inkl. ``outcome_unknown``) kan ikke kvitteres vaek - den skal | [src](../../../core/services/agent_contract_projection.py#L490) |
-| function | `_session_of` | `(owner, agent_id)` | Sessionen for en handling - fra DB (agentens oprindelse), ALDRIG fra klienten. '' = ukendt agent. | [src](../../../core/services/agent_contract_projection.py#L509) |
-| function | `_unknown` | `(detail=…)` | — | [src](../../../core/services/agent_contract_projection.py#L522) |
-| function | `send_message` | `(owner_user_id, agent_id, content)` | Menneskelig besked til agenten. Maerket som menneske + audit-id (spec 5), aldrig som parent-instruks. | [src](../../../core/services/agent_contract_projection.py#L527) |
-| function | `followup` | `(owner_user_id, agent_id, goal, *, idempotency_key=…)` | — | [src](../../../core/services/agent_contract_projection.py#L542) |
-| function | `stop` | `(owner_user_id, agent_id, note=…)` | Stop-anmodning. Svaret er ``stop_requested`` - aldrig et lovet ``cancelled``; det afgoeres af projektionen. | [src](../../../core/services/agent_contract_projection.py#L553) |
-| function | `close` | `(owner_user_id, agent_id)` | — | [src](../../../core/services/agent_contract_projection.py#L565) |
-| function | `_receipt` | `(kind, out, *, delivered=…)` | Acceptkvittering adskilt fra faktisk effekt. ``confirmed`` er ALTID False her: bekraeftelsen er den | [src](../../../core/services/agent_contract_projection.py#L575) |
+| function | `invalidate_feed_cache` | `(owner_user_id=…)` | Kasser det cachede feed (for én ejer, eller alle). | [src](../../../core/services/agent_contract_projection.py#L48) |
+| function | `classify` | `(assignment_status, run_status)` | Bucket for ét assignment, afledt af assignment- og seneste run-status. Ren funktion. | [src](../../../core/services/agent_contract_projection.py#L70) |
+| function | `_needs_attention` | `(bucket, acknowledged)` | — | [src](../../../core/services/agent_contract_projection.py#L92) |
+| function | `_clean_owner` | `(owner_user_id)` | — | [src](../../../core/services/agent_contract_projection.py#L98) |
+| function | `safe_text` | `(value, limit=…)` | Begraenset og redigeret tekst til et kort: kontroltegn vaek, hemmeligheder maskeret, afkortet. | [src](../../../core/services/agent_contract_projection.py#L103) |
+| function | `_ts` | `(value)` | — | [src](../../../core/services/agent_contract_projection.py#L116) |
+| function | `_seconds` | `(start, end, now)` | — | [src](../../../core/services/agent_contract_projection.py#L124) |
+| function | `_all` | `(sql, args=…)` | — | [src](../../../core/services/agent_contract_projection.py#L132) |
+| function | `_outcome` | `(raw)` | — | [src](../../../core/services/agent_contract_projection.py#L136) |
+| function | `_latest_assignments` | `(owner, agent_id=…)` | Ejerens SENESTE assignment pr. agent (LEFT JOIN: en agent uden assignment er stadig en raekke). | [src](../../../core/services/agent_contract_projection.py#L147) |
+| function | `_run_facts` | `(owner)` | Seneste runstatus, antal forsoeg, forbrug og seneste fejl pr. assignment - EN forespoergsel. | [src](../../../core/services/agent_contract_projection.py#L165) |
+| function | `_leases` | `(owner)` | — | [src](../../../core/services/agent_contract_projection.py#L184) |
+| function | `_routes` | `(owner)` | — | [src](../../../core/services/agent_contract_projection.py#L190) |
+| function | `_outbox` | `(owner)` | — | [src](../../../core/services/agent_contract_projection.py#L196) |
+| function | `_pending_approvals` | `(owner)` | — | [src](../../../core/services/agent_contract_projection.py#L201) |
+| function | `_last_messages` | `(owner)` | — | [src](../../../core/services/agent_contract_projection.py#L209) |
+| function | `_error` | `(run, outcome, agent_error, bucket)` | Fejlaarsagen: runnets praecise fase/kode, ellers det fastlagte udfald. Aldrig opdigtet. | [src](../../../core/services/agent_contract_projection.py#L217) |
+| function | `_reason` | `(bucket, pending, err)` | Hvorfor staar den her - en fast tekst pr. bucket, aldrig udledt af agentens ord. | [src](../../../core/services/agent_contract_projection.py#L229) |
+| function | `_row` | `(g, *, facts, leases, routes, outbox, pend, msgs, refs, now, children)` | — | [src](../../../core/services/agent_contract_projection.py#L247) |
+| function | `_build_rows` | `(owner, agent_id=…)` | — | [src](../../../core/services/agent_contract_projection.py#L293) |
+| function | `_counts` | `(rows)` | — | [src](../../../core/services/agent_contract_projection.py#L307) |
+| function | `_groups` | `(rows)` | Et raad er en gruppering af almindelige agentruns - ingen egen sandhed. | [src](../../../core/services/agent_contract_projection.py#L319) |
+| function | `_capability` | `()` | — | [src](../../../core/services/agent_contract_projection.py#L336) |
+| function | `overview` | `(owner_user_id, *, scope=…, session_id=…)` | Liste + taellere. ``panel``: aabne runs + fejl/afbrydelse der ikke er kvitteret (succes forsvinder). | [src](../../../core/services/agent_contract_projection.py#L342) |
+| function | `agent_detail` | `(owner_user_id, agent_id)` | Alt inspectoren viser om EN agent. ``None`` = findes ikke FOR DENNE EJER (ingen skelnen til 'forbudt'). | [src](../../../core/services/agent_contract_projection.py#L363) |
+| function | `_approval_views` | `(owner)` | — | [src](../../../core/services/agent_contract_projection.py#L413) |
+| function | `read_artifact` | `(owner_user_id, agent_id, run_id, name, *, offset=…, limit=…, session_id=…)` | Fuldt output. Samme svar for 'findes ikke' og 'tilhoerer en anden' - ingen orakel. Er ``session_id`` | [src](../../../core/services/agent_contract_projection.py#L421) |
+| function | `_card_title` | `(r)` | — | [src](../../../core/services/agent_contract_projection.py#L442) |
+| function | `_agent_card` | `(r)` | — | [src](../../../core/services/agent_contract_projection.py#L446) |
+| function | `feed` | `(owner_user_id)` | Kort til notifikationsfeedet: een reference pr. assignment + een pr. ventende approval. Hydreret fra | [src](../../../core/services/agent_contract_projection.py#L468) |
+| function | `_build_feed` | `(owner)` | — | [src](../../../core/services/agent_contract_projection.py#L479) |
+| function | `mark_read` | `(owner_user_id, ref_kind, ref_id)` | — | [src](../../../core/services/agent_contract_projection.py#L505) |
+| function | `acknowledge` | `(owner_user_id, assignment_id)` | Kvitter en TERMINAL assignment. En aaben (inkl. ``outcome_unknown``) kan ikke kvitteres vaek - den skal | [src](../../../core/services/agent_contract_projection.py#L512) |
+| function | `_session_of` | `(owner, agent_id)` | Sessionen for en handling - fra DB (agentens oprindelse), ALDRIG fra klienten. '' = ukendt agent. | [src](../../../core/services/agent_contract_projection.py#L532) |
+| function | `_unknown` | `(detail=…)` | — | [src](../../../core/services/agent_contract_projection.py#L545) |
+| function | `send_message` | `(owner_user_id, agent_id, content)` | Menneskelig besked til agenten. Maerket som menneske + audit-id (spec 5), aldrig som parent-instruks. | [src](../../../core/services/agent_contract_projection.py#L550) |
+| function | `followup` | `(owner_user_id, agent_id, goal, *, idempotency_key=…)` | — | [src](../../../core/services/agent_contract_projection.py#L566) |
+| function | `stop` | `(owner_user_id, agent_id, note=…)` | Stop-anmodning. Svaret er ``stop_requested`` - aldrig et lovet ``cancelled``; det afgoeres af projektionen. | [src](../../../core/services/agent_contract_projection.py#L578) |
+| function | `close` | `(owner_user_id, agent_id)` | — | [src](../../../core/services/agent_contract_projection.py#L591) |
+| function | `_receipt` | `(kind, out, *, delivered=…)` | Acceptkvittering adskilt fra faktisk effekt. ``confirmed`` er ALTID False her: bekraeftelsen er den | [src](../../../core/services/agent_contract_projection.py#L602) |
 
 ## `core/services/agent_contract_service.py`
 _agent-contract-v1: den ene motor bag dispatch og styring af agenter (leverance F1)._
@@ -557,8 +559,8 @@ _agent-contract-v1: den ene motor bag dispatch og styring af agenter (leverance 
 | function | `approval_view` | `(r)` | Det en klient/en model maa se: sikker visning + digest, ALDRIG de raa argumenter. | [src](../../../core/services/agent_contract_service.py#L833) |
 | function | `list_approvals` | `(*, owner_user_id, status=…, origin_session_id=…)` | — | [src](../../../core/services/agent_contract_service.py#L841) |
 | function | `decide_approval` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…, actor_session_id=…)` | Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede | [src](../../../core/services/agent_contract_service.py#L851) |
-| function | `decide_approval_as_parent` | `(*, approval_id, decision, digest, note=…)` | Jarvis afgoer en af SINE EGNE agenters vaerktoejskald - uden et menneske imellem (14/10-2026). | [src](../../../core/services/agent_contract_service.py#L886) |
-| function | `request_integration` | `(*, owner_user_id, origin_session_id, assignment_id)` | Jarvis beder om integration af et kodeassignments arbejde. Opretter KUN en approval - han kan ikke | [src](../../../core/services/agent_contract_service.py#L912) |
+| function | `decide_approval_as_parent` | `(*, approval_id, decision, digest, note=…)` | Jarvis afgoer en af SINE EGNE agenters vaerktoejskald - uden et menneske imellem (14/10-2026). | [src](../../../core/services/agent_contract_service.py#L888) |
+| function | `request_integration` | `(*, owner_user_id, origin_session_id, assignment_id)` | Jarvis beder om integration af et kodeassignments arbejde. Opretter KUN en approval - han kan ikke | [src](../../../core/services/agent_contract_service.py#L916) |
 
 ## `core/services/agent_council.py`
 _Raad og review-kaede paa agentmotoren (agent-contract-v1 F5, spec 5.1 / 7.1 / 11)._

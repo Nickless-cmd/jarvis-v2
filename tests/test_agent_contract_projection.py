@@ -363,3 +363,89 @@ def test_legacy_rows_with_no_contract_data_do_not_crash_and_never_leak_as_an_own
     assert pj.proj_.feed(A)["cards"] == []
     assert pj.proj_.agent_detail(A, "gl0") is None
     assert pj.c_.mark_legacy_unscoped()["agents"] == 3
+
+
+# --- feed-cache (poll-storm 14/11-2026) --------------------------------------------------------------------------
+
+@pytest.fixture
+def cached(pj, monkeypatch):
+    """Slaar feed-cachen TIL (conftest saetter den fra) og taeller hvor mange gange feedet bygges."""
+    cache = pj.proj_._FEED_CACHE
+    monkeypatch.setattr(cache, "ttl_s", 60.0)
+    cache.invalidate()
+    builds: list[str] = []
+    real = pj.proj_._build_feed
+    monkeypatch.setattr(pj.proj_, "_build_feed", lambda owner: (builds.append(owner), real(owner))[1])
+    pj.builds_ = builds
+    yield pj
+    cache.invalidate()
+
+
+def test_repeated_polls_build_the_feed_once_and_return_equal_results(cached):
+    cached.agent("ok", run="completed", terminal="completed", summary="Fundet")
+    first = cached.proj_.feed(A)
+    assert cached.proj_.feed(A) == first and cached.proj_.feed(A) == first
+    assert cached.builds_ == [A]
+    assert [c["agent_id"] for c in first["cards"]] == ["ok"]
+
+
+def test_feed_is_cached_per_owner_and_never_shared_across_owners(cached):
+    cached.agent("min", owner=A)
+    cached.agent("hans", owner=B, session="sx")
+    assert [c["agent_id"] for c in cached.proj_.feed(A)["cards"]] == ["min"]
+    assert [c["agent_id"] for c in cached.proj_.feed(B)["cards"]] == ["hans"]
+    assert [c["agent_id"] for c in cached.proj_.feed(A)["cards"]] == ["min"]
+    assert sorted(cached.builds_) == sorted([A, B])
+
+
+def test_mark_read_is_visible_on_the_very_next_poll(cached):
+    acc = cached.agent("ok", run="completed", terminal="completed", summary="Fundet")
+    assert cached.proj_.feed(A)["counts"]["unread"] == 1
+    assert cached.proj_.mark_read(A, "agent", acc["assignment_id"]) is True
+    out = cached.proj_.feed(A)
+    assert out["counts"]["unread"] == 0 and out["cards"][0]["state"]["read"] is True
+
+
+def test_acknowledge_is_visible_on_the_very_next_poll(cached):
+    acc = cached.agent("ok", run="completed", terminal="completed", summary="Fundet")
+    assert len(cached.proj_.feed(A)["cards"]) == 1
+    assert cached.proj_.acknowledge(A, acc["assignment_id"])["acknowledged"] is True
+    assert cached.proj_.feed(A)["cards"] == []
+
+
+def test_a_failed_owner_lookup_is_never_cached(cached):
+    bad = cached.proj_.feed("")
+    assert bad["status"] == "error" and bad["code"] == "INVALID_SCOPE"
+    assert cached.builds_ == []
+
+
+def test_without_invalidation_a_direct_db_write_is_seen_only_after_ttl(cached):
+    """Dokumenterer prisen: skrivninger uden om projektionen ses foerst naar TTL er gaaet."""
+    cached.agent("go")
+    assert len(cached.proj_.feed(A)["cards"]) == 1
+    cached.agent("two")
+    assert len(cached.proj_.feed(A)["cards"]) == 1
+    cached.proj_.invalidate_feed_cache(A)
+    assert len(cached.proj_.feed(A)["cards"]) == 2
+
+
+def test_deciding_an_approval_removes_its_card_on_the_very_next_poll(cached):
+    w = cached.agent("wapp", run="waiting_for_approval")
+    r = cached.appr_.request(owner_user_id=A, origin_session_id=S1, assignment_id=w["assignment_id"],
+                             tool_name="bash", arguments={"command": "make"}, run_id=w["run_id"])
+    assert [c["ref_id"] for c in cached.proj_.feed(A)["cards"] if c["ref_kind"] == "approval"] == [r["approval_id"]]
+    out = cached.svc_.decide_approval(approval_id=r["approval_id"], decision="approve", actor_user_id=A,
+                                      actor_kind="human", digest=r["args_digest"])
+    assert out["status"] == "ok"
+    assert [c for c in cached.proj_.feed(A)["cards"] if c["ref_kind"] == "approval"] == []
+
+
+def test_jarvis_deciding_his_own_childs_approval_also_clears_the_card(cached):
+    w = cached.agent("wapp", run="waiting_for_approval", parent="jarvis")
+    r = cached.appr_.request(owner_user_id=A, origin_session_id=S1, assignment_id=w["assignment_id"],
+                             tool_name="bash", arguments={"command": "make"}, run_id=w["run_id"])
+    assert len([c for c in cached.proj_.feed(A)["cards"] if c["ref_kind"] == "approval"]) == 1
+    out = cached.svc_.decide_approval_as_parent(approval_id=r["approval_id"], decision="approve",
+                                                digest=r["args_digest"])
+    assert out["status"] == "ok", out
+    assert [c for c in cached.proj_.feed(A)["cards"] if c["ref_kind"] == "approval"] == []

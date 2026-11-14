@@ -13,7 +13,22 @@ import sqlite3
 from core.runtime.db import connect
 
 
+# Sikret én gang pr. proces og DB-fil. Hvert users-opslag koerte tidligere CREATE TABLE IF NOT EXISTS
+# + PRAGMA table_info — maalt 14/11-2026 (py-spy) som 13 % af API-CPU'en under poll-stormen.
+_USERS_ENSURED: set[str] = set()
+
+
 def _ensure_users_table(conn: sqlite3.Connection) -> None:
+    from core.runtime import db_core
+
+    key = str(db_core.DB_PATH)
+    if key in _USERS_ENSURED:
+        return
+    _create_users_table(conn)
+    _USERS_ENSURED.add(key)         # foerst EFTER succes: en laast DB proever igen ved naeste opslag
+
+
+def _create_users_table(conn: sqlite3.Connection) -> None:
     """Idempotent: brugerstyring. Følsomme felter lagres krypteret
     (email_enc/discord_id_enc/totp_seed_enc/api_key_enc); email_hash er et
     deterministisk opslags-hash så login kan finde brugeren uden at dekryptere."""

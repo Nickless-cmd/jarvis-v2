@@ -2,11 +2,16 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+
+# Poll-cachen i agent_contract_projection maa ikke lække feed mellem tests (samme ejer-id).
+# Skal staa FOER modulet importeres; cache-testene saetter selv en TTL.
+os.environ.setdefault("JARVIS_FEED_CACHE_TTL_S", "0")
 
 # Ensure repo root is on sys.path for ALL tests at collection time, not
 # only those that use the isolated_runtime fixture. Tests that import

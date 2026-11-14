@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/subagent_digest.py`
+_Surface recently-completed subagents into the visible prompt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_marks` | `()` | — | [src](../../../core/services/subagent_digest.py#L32) |
+| function | `_save_marks` | `(marks)` | — | [src](../../../core/services/subagent_digest.py#L39) |
+| function | `_last_seen` | `(session_id)` | — | [src](../../../core/services/subagent_digest.py#L43) |
+| function | `_mark_seen` | `(session_id, when_iso)` | — | [src](../../../core/services/subagent_digest.py#L47) |
+| function | `subagent_digest_section` | `(session_id)` | Format completed subagents (since this session last looked) as a block. | [src](../../../core/services/subagent_digest.py#L54) |
+
 ## `core/services/subagent_ecology.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -606,18 +617,4 @@ _Tool-concurrency policy (harness Part C)._
 | function | `concurrency_mode` | `()` | Current mode: 'off' | 'on'. Default 'off'. Env wins over config. Self-safe. | [src](../../../core/services/tool_concurrency.py#L43) |
 | function | `_call_name` | `(tc)` | — | [src](../../../core/services/tool_concurrency.py#L58) |
 | function | `is_parallelizable` | `(tool_calls, *, mode)` | True iff mode=='on' AND >=2 calls AND every call name is in the allowlist. | [src](../../../core/services/tool_concurrency.py#L63) |
-
-## `core/services/tool_contract_shadow.py`
-_Skygge for skema-kontrakten — ville den have afvist noget den ikke burde?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `taellere` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L37) |
-| function | `pr_vaerktoej` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L41) |
-| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L45) |
-| function | `taellere_fra_cache` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L57) |
-| function | `_gem` | `()` | Deltaer, ikke totaler — se `shadow_counters` for hvorfor. | [src](../../../core/services/tool_contract_shadow.py#L69) |
-| function | `live` | `()` | Eksplicit opt-in. Husets `is_enabled` er fail-open og ville taende en | [src](../../../core/services/tool_contract_shadow.py#L76) |
-| function | `haandhaever` | `()` | Skal HAARDE brud faktisk afvise kaldet? | [src](../../../core/services/tool_contract_shadow.py#L87) |
-| function | `observe` | `(tool_name, arguments)` | Maal ét kald. Returnerer bruddene — men afgoer intet selv. | [src](../../../core/services/tool_contract_shadow.py#L101) |
 

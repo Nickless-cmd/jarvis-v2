@@ -403,6 +403,17 @@ _Pre-commit hook: enforces test coverage for core/ code changes._
 | function | `_expected_test_path` | `(staged_path, repo_root=…)` | Given a staged file path like 'core/services/foo.py', | [src](../../../scripts/enforce_test_coverage.py#L192) |
 | function | `main` | `(argv=…)` | Entry point.  Accept optional --repo-root to override REPO_ROOT. | [src](../../../scripts/enforce_test_coverage.py#L218) |
 
+## `scripts/eval_memory_selection.py`
+_Eval-harness for MEMORY.md-udvaelgelsen — maal FOER du retter._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_norm` | `(text)` | — | [src](../../../scripts/eval_memory_selection.py#L93) |
+| function | `_df_map` | `(sektioner, terms)` | — | [src](../../../scripts/eval_memory_selection.py#L97) |
+| function | `byg_varianter` | `(mms, sektioner, aegte)` | Varianterne der maales. Hver er (coverage-funktion, min_score). | [src](../../../scripts/eval_memory_selection.py#L105) |
+| function | `koer` | `(vaeg, mms, sektioner)` | — | [src](../../../scripts/eval_memory_selection.py#L170) |
+| function | `main` | `()` | — | [src](../../../scripts/eval_memory_selection.py#L213) |
+
 ## `scripts/eval_research_lane.py`
 _Offline deterministic smoke evaluation for research routing and gates._
 
@@ -461,12 +472,4 @@ _Vagt for hollow-promise-fixet (a19939854, 9/10-2026)._
 | function | `_blokke` | `(content_json)` | — | [src](../../../scripts/hollow_verify.py#L111) |
 | function | `_maal` | `(blokke)` | Maal blok-raekkefoelgen mod klientens skillerum. | [src](../../../scripts/hollow_verify.py#L126) |
 | function | `main` | `()` | — | [src](../../../scripts/hollow_verify.py#L179) |
-
-## `scripts/honesty_metrics.py`
-_Honesty-metrics — tæl hvor ofte hvert anti-løgn-lag fyrer (16. jun 2026)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_journal` | `(unit, since)` | — | [src](../../../scripts/honesty_metrics.py#L34) |
-| function | `main` | `()` | — | [src](../../../scripts/honesty_metrics.py#L45) |
 

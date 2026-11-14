@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/verify_guard_tests.py`
+_Vagt over vagterne: hver hook skal have en test der ser den sige nej._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `vagter` | `()` | Modulnavne på de scripts hookene kører. | [src](../../../scripts/verify_guard_tests.py#L38) |
+| function | `_tester_der_naevner` | `(modul)` | — | [src](../../../scripts/verify_guard_tests.py#L45) |
+| function | `mangler` | `()` | (vagt, årsag) for hver vagt uden en test der ser den afvise. | [src](../../../scripts/verify_guard_tests.py#L56) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_guard_tests.py#L69) |
+
 ## `scripts/verify_history_reads.py`
 _Vagt: ingen NYE kaldere der læser en hel samtale-historik synkront._
 

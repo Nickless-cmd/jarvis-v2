@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10184/18702 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10185/18707 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -38,12 +38,12 @@ Generated from source. 10184/18702 functions/methods documented (54%). The list 
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 10 | 11 | 90% |
-| `scripts` | 332 | 672 | 49% |
+| `scripts` | 333 | 677 | 49% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2629)
+## Undocumented public functions (2631)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L231)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2508,6 +2508,8 @@ Generated from source. 10184/18702 functions/methods documented (54%). The list 
 - `scripts/e2e_indbakke.py` :: `Led.bestod` (L64)
 - `scripts/e2e_indbakke.py` :: `main` (L408)
 - `scripts/enforce_commit_hygiene.py` :: `main` (L89)
+- `scripts/eval_memory_selection.py` :: `koer` (L170)
+- `scripts/eval_memory_selection.py` :: `main` (L213)
 - `scripts/eval_research_lane.py` :: `evaluate_cases` (L16)
 - `scripts/find_tidsbomber.py` :: `main` (L54)
 - `scripts/forced_tool_choice_report.py` :: `main` (L65)

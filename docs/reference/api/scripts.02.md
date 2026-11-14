@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/honesty_metrics.py`
+_Honesty-metrics — tæl hvor ofte hvert anti-løgn-lag fyrer (16. jun 2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_journal` | `(unit, since)` | — | [src](../../../scripts/honesty_metrics.py#L34) |
+| function | `main` | `()` | — | [src](../../../scripts/honesty_metrics.py#L45) |
+
 ## `scripts/identity_formation_monitor.py`
 _Identity formation monitor — daily snapshot of Jarvis' becoming._
 
@@ -433,11 +441,4 @@ _Mint a JarvisX bearer token for a user._
 | function | `_registry_path` | `()` | — | [src](../../../scripts/mint_jarvisx_token.py#L35) |
 | function | `_append_registry` | `(entry)` | Append a token-issue entry to the audit registry. Best-effort. | [src](../../../scripts/mint_jarvisx_token.py#L40) |
 | function | `main` | `()` | — | [src](../../../scripts/mint_jarvisx_token.py#L52) |
-
-## `scripts/model_catalogue_sweep.py`
-_Ugentlig gennemgang af cheap lane: hvilke modeller lever, og hvad kan de?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `main` | `()` | — | [src](../../../scripts/model_catalogue_sweep.py#L36) |
 

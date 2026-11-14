@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/model_catalogue_sweep.py`
+_Ugentlig gennemgang af cheap lane: hvilke modeller lever, og hvad kan de?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/model_catalogue_sweep.py#L36) |
+
 ## `scripts/navngiv_kode_sessioner.py`
 _Døb de sessioner der aldrig fik et navn, efter deres første brugerbesked._
 
@@ -435,14 +442,4 @@ _Fase A acceptance (kør på containeren). Beviser aldrig-tør-bunden:_
 | function | `check_selection_floor_no_raise` | `()` | — | [src](../../../scripts/verify_fase_a.py#L9) |
 | function | `check_balancer_floor_no_raise` | `()` | — | [src](../../../scripts/verify_fase_a.py#L21) |
 | function | `check_central_visibility` | `()` | — | [src](../../../scripts/verify_fase_a.py#L33) |
-
-## `scripts/verify_guard_tests.py`
-_Vagt over vagterne: hver hook skal have en test der ser den sige nej._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `vagter` | `()` | Modulnavne på de scripts hookene kører. | [src](../../../scripts/verify_guard_tests.py#L38) |
-| function | `_tester_der_naevner` | `(modul)` | — | [src](../../../scripts/verify_guard_tests.py#L45) |
-| function | `mangler` | `()` | (vagt, årsag) for hver vagt uden en test der ser den afvise. | [src](../../../scripts/verify_guard_tests.py#L56) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_guard_tests.py#L69) |
 

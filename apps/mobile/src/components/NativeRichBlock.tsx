@@ -43,6 +43,10 @@ export type NativeSpec =
     > }
   | { type: 'tree'; title: string; items: Array<{ name: string; kind: 'dir' | 'file'; depth: number; note: string }> }
   | { type: 'diff'; title: string; path: string; old: string; new: string }
+  // Katalogets første skabelon (14/11-2026). Samme kontrakt som desk — de to
+  // kopier må ikke drive fra hinanden, ellers ser den samme flade forskellig ud
+  // alt efter hvilken app den åbnes i.
+  | { type: 'leverance-status'; title: string; items: Array<{ label: string; status: 'leveret' | 'igang' | 'blokeret' | 'naeste'; bevis: string }> }
 
 const text = (v: unknown, max = 500) => typeof v === 'string' ? v.trim().slice(0, max) : ''
 const tal = (v: unknown): number | null => typeof v === 'number' && Number.isFinite(v) ? v : null
@@ -255,6 +259,17 @@ function parseNodeObj(raw: Json, depth: number): NativeSpec | null {
     const efter = text(raw.new, 20000)
     if (!foer && !efter) return null
     return { type, title, path: text(raw.path, 300), old: foer, new: efter }
+  }
+  if (type === 'leverance-status') {
+    const items = list(raw.items, 12).map((x) => {
+      const label = text(x.label, 120)
+      if (!label) return null
+      const status = ['leveret', 'igang', 'blokeret', 'naeste'].includes(String(x.status))
+        ? String(x.status) as 'leveret' | 'igang' | 'blokeret' | 'naeste'
+        : 'naeste'
+      return { label, status, bevis: text(x.bevis, 300) }
+    }).filter((x): x is NonNullable<typeof x> => Boolean(x))
+    return items.length ? { type, title, items } : null
   }
   return null
 }
@@ -554,6 +569,28 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
       </View>
     </View>
   }
+  if (spec.type === 'leverance-status') {
+    // Samme kontrakt som desk. Ikonet bærer tilstanden sammen med etiketten —
+    // farve alene er ikke en etiket.
+    const farve = (s: string) => s === 'leveret' ? theme.color.ok : s === 'blokeret' ? theme.color.warn : s === 'igang' ? theme.color.fg2 : theme.color.fg3
+    const Ikon = (s: string) => s === 'leveret' ? CheckCircle2 : s === 'blokeret' ? AlertTriangle : s === 'igang' ? CircleAlert : Info
+    const ETIKET: Record<string, string> = { leveret: 'Leveret', igang: 'I gang', blokeret: 'Blokeret', naeste: 'Næste' }
+    return <View accessibilityLabel={spec.title || 'Leverance'} style={styles.card}>{heading}
+      {spec.items.map((x, i) => {
+        const I = Ikon(x.status)
+        return <View key={`${x.label}-${i}`} style={styles.levRow}>
+          <View style={styles.levStatus}>
+            <I size={13} color={farve(x.status)} />
+            <Text style={[styles.muted, { color: farve(x.status) }]}>{ETIKET[x.status]}</Text>
+          </View>
+          <View style={styles.flex}>
+            <Text style={styles.body}>{x.label}</Text>
+            {x.bevis ? <Text style={styles.muted}>{x.bevis}</Text> : null}
+          </View>
+        </View>
+      })}
+    </View>
+  }
   const q = spec.latitude !== undefined && spec.longitude !== undefined ? `${spec.latitude},${spec.longitude}` : spec.address
   const href = `https://www.openstreetmap.org/search?query=${encodeURIComponent(q)}`
   return <View accessibilityLabel={spec.title || 'Lokation'} style={[styles.card, styles.cardBox, styles.callout]}><MapPin size={22} color={theme.color.accent} /><View style={styles.flex}>{heading}{spec.address ? <Text style={styles.body}>{spec.address}</Text> : null}<Pressable accessibilityRole="link" accessibilityLabel="Åbn kort" onPress={() => void Linking.openURL(href)} style={({ pressed }) => [styles.button, styles.mapButton, pressed && styles.pressed]}><Text style={styles.buttonText}>Åbn kort</Text></Pressable></View></View>
@@ -564,6 +601,10 @@ const makeStyles = (t: Theme) => StyleSheet.create({
   // ligge i tekstens materiale. `cardBox` er for objekter der skal skille sig
   // ud (callout/choices/location). Målt 24/10-2026 mod DSH's tabel.
   card: { marginVertical: t.spacing.xs, gap: t.spacing.sm },
+  // `leverance-status` (14/11-2026): status-kolonne med fast bredde, så
+  // etiketterne står på linje uanset ordlængde.
+  levRow: { flexDirection: 'row', gap: t.spacing.sm, alignItems: 'flex-start', paddingVertical: 4 },
+  levStatus: { flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 86 },
   cardBox: { backgroundColor: t.color.bg1, borderWidth: 1, borderColor: t.color.line, borderRadius: t.radius.lg, padding: t.spacing.md },
   callout: { flexDirection: 'row', alignItems: 'flex-start', borderLeftWidth: 3 },
   flex: { flex: 1, minWidth: 0 }, title: { color: t.color.fg1, fontWeight: '800', fontSize: 15, marginBottom: 4 },

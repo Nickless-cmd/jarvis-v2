@@ -564,6 +564,37 @@ def _diagnosticér(data: dict, dybde: int = 1) -> tuple[str, list[str]]:
             return "død", ["diff mangler både old og new"]
         return "ok", fejl
 
+    if typ == "leverance-status":
+        # Katalogets første skabelon (14/11-2026): en TILSTAND pr. post, ikke et
+        # forløb. `blokeret` er en førsteklasses tilstand med en årsag.
+        #
+        # Degraderingen er hele pointen her: parseren falder tilbage til
+        # `naeste` for en ukendt status og viser posten uden `bevis`. Guarden
+        # må derfor kun sige `delvis` — aldrig `død` — for de to fejl. Ellers
+        # koster én tastefejl i ét felt hele fladen PLUS et modelkald for at
+        # «rette» en flade der var korrekt skrevet.
+        items = data.get("items") if isinstance(data.get("items"), list) else []
+        gyldige = {"leveret", "igang", "blokeret", "naeste"}
+        brugbare = 0
+        for i, x in enumerate(items):
+            if not isinstance(x, dict):
+                fejl.append(f"leverance-status item {i} er ikke et objekt")
+                continue
+            if not _tekst(x.get("label")):
+                fejl.append(f"leverance-status item {i} mangler label")
+                continue
+            st = _tekst(x.get("status"))
+            if st and st not in gyldige:
+                fejl.append(f"leverance-status item {i} har ukendt status: {st} (vises som naeste)")
+            if not _tekst(x.get("bevis")):
+                fejl.append(f"leverance-status item {i} mangler bevis")
+            brugbare += 1
+        if not brugbare:
+            return "død", fejl or ["leverance-status har ingen brugbare items"]
+        if len(items) > 12:
+            fejl.append(f"leverance-status har {len(items)} items, kun 12 vises")
+        return ("delvis" if fejl else "ok"), fejl
+
     if typ == "location":
         adresse = _tekst(data.get("address"))
         lat, lon = data.get("latitude"), data.get("longitude")

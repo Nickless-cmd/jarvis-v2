@@ -23,11 +23,11 @@ _Normaliserer og validerer ``jarvis-ui``-blokke FØR de når chatten._
 | function | `_liste` | `(vaerdi, maks)` | Spejl rendererens ``list()``: kun objekter, afkortet til ``maks``. | [src](../../../core/services/jarvis_ui_guard.py#L151) |
 | function | `_endeligt_tal` | `(vaerdi)` | Et tal vi kan regne med. ``NaN`` og ``Infinity`` ER tal for Python, men | [src](../../../core/services/jarvis_ui_guard.py#L158) |
 | function | `_diagnosticér` | `(data, dybde=…)` | Afgør om rendereren viser blokken. Returnerer (niveau, fejl). | [src](../../../core/services/jarvis_ui_guard.py#L167) |
-| function | `_validér` | `(tekst)` | — | [src](../../../core/services/jarvis_ui_guard.py#L579) |
-| function | `normalisér` | `(text, *, run_id=…)` | Normalisér alle ``jarvis-ui``-blokke i teksten. Returnerer ny tekst. | [src](../../../core/services/jarvis_ui_guard.py#L599) |
-| function | `_normalisér_indre` | `(text, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L615) |
-| function | `_registrér` | `(aendringer, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L674) |
-| function | `fejl_i_flader` | `(text)` | Returnér de fejl der gør en ``jarvis-ui``-blok død eller ufuldstændig. | [src](../../../core/services/jarvis_ui_guard.py#L694) |
+| function | `_validér` | `(tekst)` | — | [src](../../../core/services/jarvis_ui_guard.py#L610) |
+| function | `normalisér` | `(text, *, run_id=…)` | Normalisér alle ``jarvis-ui``-blokke i teksten. Returnerer ny tekst. | [src](../../../core/services/jarvis_ui_guard.py#L630) |
+| function | `_normalisér_indre` | `(text, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L646) |
+| function | `_registrér` | `(aendringer, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L705) |
+| function | `fejl_i_flader` | `(text)` | Returnér de fejl der gør en ``jarvis-ui``-blok død eller ufuldstændig. | [src](../../../core/services/jarvis_ui_guard.py#L725) |
 
 ## `core/services/jarvisx_bridge.py`
 _JarvisX tool-bridge — bidirectional dispatch over WebSocket._

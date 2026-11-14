@@ -994,6 +994,22 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .native-tree-dir .native-tree-navn { color: var(--fg-0); font-weight: 600; }
 .native-tree-dir .native-tree-navn::after { content: "/"; color: var(--fg-3); }
 .native-tree-note { color: var(--fg-3); }
+/* `leverance-status` (14/11-2026): en TILSTAND pr. post, ikke et forløb.
+ * `blokeret` er en førsteklasses tilstand og får derfor samme visuelle vægt
+ * som `leveret` — ikke en bleg «ikke færdig»-grå. Farven bærer betydningen,
+ * men etiketten bærer den også: farve alene forsvinder for en farveblind
+ * læser og i et skærmbillede. */
+.native-leverance { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.native-leverance-post { display: flex; align-items: baseline; gap: 10px; padding-block: 5px; border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
+.native-leverance-post:last-child { border-bottom: 0; }
+.native-leverance-status { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; min-width: 92px; font-size: 0.82em; font-weight: 600; color: var(--fg-3); }
+.native-leverance-indhold { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.native-leverance-navn { color: var(--fg-1); }
+.native-leverance-bevis { color: var(--fg-3); font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: 0.84em; overflow-wrap: anywhere; }
+.native-leverance-post.er-leveret .native-leverance-status { color: var(--ok); }
+.native-leverance-post.er-igang .native-leverance-status { color: var(--accent); }
+.native-leverance-post.er-blokeret .native-leverance-status { color: var(--error-fg); }
+.native-leverance-post.er-naeste .native-leverance-status { color: var(--warn-fg); }
 @media (prefers-reduced-motion: reduce) { .native-rich * { scroll-behavior: auto !important; transition: none !important; } }
 /* inline-kode — em-baseret padding så højden følger line-height.
  * Dæmpet visuel vægt: lavere baggrundskontrast og diskret farve, så mange

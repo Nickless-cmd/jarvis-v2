@@ -62,6 +62,14 @@ type NativeSpec =
   | { type: 'tree'; title: string; items: Array<{ name: string; kind: 'dir' | 'file'; depth: number; note: string }> }
   // `diff` genbruger `DiffView`, som selv regner diffen med `lib/diff.lineDiff`.
   | { type: 'diff'; title: string; path: string; old: string; new: string }
+  // (14/11-2026) KATALOGETS FØRSTE SKABELON — valgt ved navn i stedet for
+  // komponeret fra bunden. Forskellen til `timeline` er ikke udseendet men
+  // semantikken: et forløb har en retning (done → current → next), en leverance
+  // har en TILSTAND — og `blokeret` er en førsteklasses tilstand med en årsag,
+  // ikke bare «ikke nået endnu». Hver post bærer et bevis, fordi en status uden
+  // bevis er en påstand. Skabelonen sparer den komposition jeg ellers bygger
+  // som box + stats + timeline hver gang jeg rapporterer en leverance.
+  | { type: 'leverance-status'; title: string; items: Array<{ label: string; status: 'leveret' | 'igang' | 'blokeret' | 'naeste'; bevis: string }> }
 
 /** Højeste dybde en `box` må stå i (toppen er dybde 1). En box i dybde 4
  *  afvises; blade (callout osv.) under en dybde-3-box er stadig fine. */
@@ -75,6 +83,12 @@ const TABLE_MAX_RAEKKER = 100
 const CHART_MAX_SERIER = 4
 const CHART_MAX_PUNKTER = 40
 const TREE_MAX_DYBDE = 8
+
+/** Etiketten pr. leverance-tilstand. Bor her og ikke i render-grenen, så
+ *  teksten og ikonet ikke kan drive fra hinanden. */
+const LEVERANCE_ETIKET: Record<'leveret' | 'igang' | 'blokeret' | 'naeste', string> = {
+  leveret: 'Leveret', igang: 'I gang', blokeret: 'Blokeret', naeste: 'Næste',
+}
 
 const text = (v: unknown, max = 500) => typeof v === 'string' ? v.trim().slice(0, max) : ''
 // `Number.isFinite` — ikke `typeof === 'number'`. Forskellen er målt: `NaN` og
@@ -329,6 +343,20 @@ function parseNodeObj(raw: Json, depth: number): NativeSpec | null {
     const efter = text(raw.new, 20000)
     if (!foer && !efter) return null
     return { type, title, path: text(raw.path, 300), old: foer, new: efter }
+  }
+  if (type === 'leverance-status') {
+    // Ukendt `status` degraderer til `naeste` i stedet for at kassere posten:
+    // en post uden sin etiket er stadig læsbar, en forsvundet post er ikke.
+    // Samme valg som `comparison`-paddingen (30/10-2026).
+    const items = list(raw.items, 12).map((x) => {
+      const label = text(x.label, 120)
+      if (!label) return null
+      const status = ['leveret', 'igang', 'blokeret', 'naeste'].includes(String(x.status))
+        ? String(x.status) as 'leveret' | 'igang' | 'blokeret' | 'naeste'
+        : 'naeste'
+      return { label, status, bevis: text(x.bevis, 300) }
+    }).filter((x): x is NonNullable<typeof x> => Boolean(x))
+    return items.length ? { type, title, items } : null
   }
   return null
 }
@@ -661,6 +689,30 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
     return <section className="native-rich" aria-label={spec.title || 'Ændring'}>
       <Heading title={spec.title} />
       <DiffView oldText={spec.old} newText={spec.new} filename={spec.path} />
+    </section>
+  }
+  if (spec.type === 'leverance-status') {
+    // Ikon OG tekst pr. tilstand. Farve alene er ikke en etiket — den forsvinder
+    // for en farveblind læser og i en kopi af skærmbilledet.
+    return <section className="native-rich" aria-label={spec.title || 'Leverance'}>
+      <Heading title={spec.title} />
+      <ul className="native-leverance">
+        {spec.items.map((x, i) => (
+          <li key={`${x.label}-${i}`} className={`native-leverance-post er-${x.status}`}>
+            <span className="native-leverance-status">
+              {x.status === 'leveret' ? <CheckCircle2 size={14} aria-hidden="true" />
+                : x.status === 'blokeret' ? <AlertTriangle size={14} aria-hidden="true" />
+                : x.status === 'igang' ? <CircleAlert size={14} aria-hidden="true" />
+                : <Info size={14} aria-hidden="true" />}
+              {LEVERANCE_ETIKET[x.status]}
+            </span>
+            <div className="native-leverance-indhold">
+              <span className="native-leverance-navn">{x.label}</span>
+              {x.bevis && <small className="native-leverance-bevis">{x.bevis}</small>}
+            </div>
+          </li>
+        ))}
+      </ul>
     </section>
   }
   const q = spec.latitude !== undefined && spec.longitude !== undefined ? `${spec.latitude},${spec.longitude}` : spec.address

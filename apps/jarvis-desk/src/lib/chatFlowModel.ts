@@ -12,6 +12,28 @@ export interface ChatFlowInput {
 
 export type ChatFlowTerminalState = 'active' | 'completed' | 'interrupted' | 'failed'
 
+/**
+ * Arbejdets tilstand i turen — fire, ikke to.
+ *
+ * ## Hvorfor (14/11-2026)
+ *
+ * Arbejdsvisningen havde to tilstande: foldet ud eller foldet ind. Det er for
+ * få til at svare på «hvad sker der nu», og derfor blev hver klage over fladen
+ * løst med endnu en pacing-konstant i stedet for en tilstand. Seks konstanter
+ * senere var grundlaget det samme.
+ *
+ * Bjørn undersøgte hvordan ChatGPTs app gør (hans research — ikke en kopi af
+ * deres visuelle lag). Deres arbejdsrække har fire `ReasoningRowKind`:
+ * `Summary`, `History`, `Active`, `Placeholder`, med fire tilsvarende
+ * render-metoder. Pointen er ikke navnene, men at de er forskellige TING og
+ * ikke varianter af det samme: en tom skal, en kørende aktivitet, et afsluttet
+ * forløb og en opsummering opfører sig hver især forskelligt.
+ *
+ * Det er præcis den skelnen vi manglede. En tur der lige er startet (ingen
+ * blokke endnu) blev vist som en tur uden arbejde — altså som ingenting.
+ */
+export type ArbejdsTilstand = 'placeholder' | 'active' | 'history' | 'summary'
+
 export interface ChatFlowModel {
   allSynthesis: string[]
   visibleSynthesis: string[]
@@ -23,6 +45,8 @@ export interface ChatFlowModel {
   /** Turens hoved som ord — «Arbejder» mens den kører, «Arbejdet» når den er
    *  færdig, og «Tænker»/«Tænkte» på en tur uden værktøjskald (17/10-2026). */
   hovedTekst: string
+  /** Hvilken af de fire arbejds-tilstande turen er i. Se `ArbejdsTilstand`. */
+  arbejdsTilstand: ArbejdsTilstand
 }
 
 export interface AdaptiveSnapshot {
@@ -156,6 +180,38 @@ function synthesisLines(input: ChatFlowInput): string[] {
   return result
 }
 
+/**
+ * De fire tilstande, udledt af fire fakta: kører turen, har den arbejde at
+ * vise, er svaret begyndt, og står der allerede noget på skærmen.
+ *
+ * Rækkefølgen er en prioritering, ikke vilkårlig:
+ *
+ * 1. `summary` når turen er TERMINAL. Så er forløbet et faktum, og hovedet
+ *    bærer ordet i datid («Arbejdet»/«Tænkte»).
+ * 2. `history` når svaret er begyndt men turen stadig løber. Arbejdet er
+ *    overstået, men turen er ikke — det er dét vindue hvor en to-tilstands
+ *    visning enten viste for meget eller for lidt.
+ * 3. `active` når der er arbejde at vise. Den kørende tilstand.
+ * 4. `history` også når et direkte svar allerede skrives: der ER indhold på
+ *    skærmen, så der er intet at fylde ud. (Uden denne gren ville et direkte
+ *    svar vise en «Tænker»-linje oven over sin egen tekst.)
+ * 5. `placeholder` ellers: turen er startet, der er intet at vise endnu.
+ *    Det er den tilstand der tidligere slet ikke fandtes, og som gjorde
+ *    skærmen tom i det vindue hvor turen lige var begyndt.
+ */
+function arbejdsTilstandFor(
+  end: ChatFlowTerminalState,
+  harArbejde: boolean,
+  finalAnswerStarted: boolean,
+  harSvar: boolean,
+): ArbejdsTilstand {
+  if (end !== 'active') return 'summary'
+  if (finalAnswerStarted) return 'history'
+  if (harArbejde) return 'active'
+  if (harSvar) return 'history'
+  return 'placeholder'
+}
+
 /** Derives Chat presentation without changing or generating the underlying run data. */
 export function deriveChatFlow(input: ChatFlowInput): ChatFlowModel {
   const allSynthesis = synthesisLines(input)
@@ -211,6 +267,12 @@ export function deriveChatFlow(input: ChatFlowInput): ChatFlowModel {
     // «Kører» er arbejdsfasen: status er working og svaret er ikke bekræftet
     // endnu. Det er samme betingelse som visningen bruger for `aktiv`.
     hovedTekst: hovedTekst(end.terminalState, hasObservableWork, input.status === 'working' && !input.finalAnswerStarted),
+    arbejdsTilstand: arbejdsTilstandFor(
+      end.terminalState,
+      hasObservableWork,
+      input.finalAnswerStarted,
+      finalBlocks.some((block) => block.type !== 'text' || block.text.trim().length > 0),
+    ),
   }
 }
 

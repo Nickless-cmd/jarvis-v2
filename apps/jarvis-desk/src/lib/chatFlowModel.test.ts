@@ -224,6 +224,27 @@ describe('deriveChatFlow', () => {
     expect(deriveChatFlow({ ...base, status: 'done', blocks: [tekst] }).hovedTekst).toBe('Tænkte')
   })
 
+  it('har fire arbejds-tilstande — ikke to', () => {
+    // 14/11-2026: fladen havde kun «foldet ud» og «foldet ind». En tur der lige
+    // var startet (ingen blokke endnu) blev derfor vist som en tur uden arbejde
+    // — altså som ingenting, og skærmen var tom i netop det vindue.
+    const vaerktoej: ContentBlock = { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }
+    const tekst: ContentBlock = { type: 'text', text: 'Et rent svar.' }
+
+    expect(deriveChatFlow({ ...base, blocks: [] }).arbejdsTilstand).toBe('placeholder')
+    expect(deriveChatFlow({ ...base, blocks: [vaerktoej] }).arbejdsTilstand).toBe('active')
+    expect(deriveChatFlow({ ...base, blocks: [vaerktoej], finalAnswerStarted: true }).arbejdsTilstand)
+      .toBe('history')
+    expect(deriveChatFlow({ ...base, status: 'done', blocks: [vaerktoej, tekst] }).arbejdsTilstand)
+      .toBe('summary')
+  })
+
+  it('lader et direkte svar være history, ikke placeholder', () => {
+    // Ellers stod en «Tænker»-linje oven over svaret den selv beskriver.
+    const tekst: ContentBlock = { type: 'text', text: 'Hej Bjørn.' }
+    expect(deriveChatFlow({ ...base, blocks: [tekst] }).arbejdsTilstand).toBe('history')
+  })
+
   it('keeps a generated file visible while a run is still active', () => {
     const file: ContentBlock = { type: 'file', filename: 'rapport.pdf', url: '/files/rapport.pdf' }
     const model = deriveChatFlow({ ...base, blocks: [file] })

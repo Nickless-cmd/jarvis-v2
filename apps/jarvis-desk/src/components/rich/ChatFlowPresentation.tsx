@@ -308,6 +308,10 @@ export function ChatFlowPresentation({
   // rundelinjen. Mellem de konkrete forklaringer («Læser filen», «Tester …»)
   // viser den i stedet den aktuelle indre fase: «Tænker».
   const generiskArbejde = /^arbejder(?:\s*(?:…|\.\.\.))?$/i.test(activeLine?.trim() ?? '')
+  // Placeholder-tilstanden (turen er startet, intet arbejde, intet svar endnu)
+  // bærer INGEN rundetekst: turhovedet siger allerede «Tænker», og to ens ord
+  // lige under hinanden er ikke en oplysning men støj. Tilstanden viser i
+  // stedet kun tilstedeværelses-ringen — se gaten nedenfor.
   const rundeTekst = harArbejde
     ? (!activeLine || generiskArbejde ? 'Tænker' : activeLine)
     : null
@@ -380,7 +384,7 @@ export function ChatFlowPresentation({
               som kun Chromium har). */}
           <div className="chat-flow-gruppe-ydre" data-aaben={aaben ? 'true' : 'false'}>
             <div className="chat-flow-gruppe" aria-hidden={!aaben}>
-            {aaben && harArbejde && !arbejdeAabent ? (
+            {aaben && (harArbejde || model.arbejdsTilstand === 'placeholder') && !arbejdeAabent ? (
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
                 aria-label={[activeSynthesis, rundeTekst].filter(Boolean).join('. ')}>
@@ -390,7 +394,7 @@ export function ChatFlowPresentation({
                     <SynteseLinje tekst={levendeSyntese.tekst} noegle={levendeSyntese.noegle} />
                   </div>
                 ) : null}
-                {rundeTekst ? (
+                {rundeTekst || model.arbejdsTilstand === 'placeholder' ? (
                   <div className="chat-flow-round" data-testid="chat-flow-round"
                     data-pacing-skjult={skjulAktivRunde ? '' : undefined}>
                     <div className="chat-flow-round-line" data-testid="chat-flow-round-line"
@@ -398,9 +402,11 @@ export function ChatFlowPresentation({
                       <span className="chat-flow-presence" data-testid="chat-flow-presence">
                         <JarvisRing size={15} spinning tone="working" />
                       </span>
-                      <span className="chat-flow-round-label" data-testid="chat-flow-round-label">
-                        <LabelSkift tekst={rundeTekst} arbejder className="shimmer" fastIkon />
-                      </span>
+                      {rundeTekst ? (
+                        <span className="chat-flow-round-label" data-testid="chat-flow-round-label">
+                          <LabelSkift tekst={rundeTekst} arbejder className="shimmer" fastIkon />
+                        </span>
+                      ) : null}
                     </div>
                     {foldWork.length > 0 ? (
                       <button

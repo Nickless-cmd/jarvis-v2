@@ -109,6 +109,15 @@ def _ensure(conn) -> None:
     # testene (der bygger tabellen frisk) var groenne.
     _tilfoej_kolonne(conn, "fund_id", "TEXT NOT NULL DEFAULT ''")
     _tilfoej_kolonne(conn, "decision_id", "TEXT NOT NULL DEFAULT ''")
+    # (14/11-2026, GPT's fjerde indvending — maalt) `record` genbrugte
+    # `created_at` som «senest set». Det holdt dedup-vinduet glidende, men
+    # slettede den FOERSTE observation: efter en opdatering kunne intet svar
+    # paa hvornaar fundet blev opdaget, kun hvornaar det sidst blev set. De
+    # to spoergsmaal er forskellige, og kun det ene kan udledes af det andet.
+    # Nu baerer raekken begge: `created_at` er haendelsen, `last_seen_at` er
+    # tilstanden. Tom betyder «aldrig opdateret», og laeseren falder tilbage
+    # paa `created_at`.
+    _tilfoej_kolonne(conn, "last_seen_at", "TEXT NOT NULL DEFAULT ''")
     # Identiteten skal vaere haandhaevet, ikke blot gemt: to samtidige forsoeg
     # paa samme fund maa ikke begge slippe igennem et check-og-skriv.
     conn.execute(
@@ -660,18 +669,24 @@ def record(cid: str, subject: str, *, detail: str = "") -> dict[str, Any]:
             #
             # Den ENE raekke skal baere den NYESTE maaling, ellers fryser
             # dedup'en den foerste og skjuler at observationen udviklede sig.
-            # Derfor UPDATE af after_value OG created_at: raekken er «denne
-            # observation, senest set nu», ikke «den blev foerst set i gaar».
+            # (14/11-2026, GPT's fjerde indvending) Men «nyeste maaling» og
+            # «foerste observation» er to tidspunkter. Foer skrev vi begge ind
+            # i `created_at`, saa den foerste observation forsvandt ved den
+            # foerste opdatering — og en raekke der blev set hvert minut i en
+            # uge svarede «oprettet for et minut siden» hver gang. Nu gaar
+            # opdateringen paa `last_seen_at`, og vinduet laeser den, saa
+            # dedup'en glider praecis som foer uden at slette historikken.
             cutoff = (datetime.now(UTC) - timedelta(hours=24)).isoformat()
             findes = conn.execute(
                 f"""SELECT id FROM {_TABLE}
-                    WHERE cid=? AND lever='record' AND subject=? AND created_at>=?
+                    WHERE cid=? AND lever='record' AND subject=?
+                      AND COALESCE(NULLIF(last_seen_at,''), created_at)>=?
                     ORDER BY id DESC LIMIT 1""",
                 (cid, subject[:200], cutoff),
             ).fetchone()
             if findes:
                 conn.execute(
-                    f"UPDATE {_TABLE} SET after_value=?, created_at=? WHERE id=?",
+                    f"UPDATE {_TABLE} SET after_value=?, last_seen_at=? WHERE id=?",
                     (str(detail)[:200], _nu(), findes[0]),
                 )
             else:

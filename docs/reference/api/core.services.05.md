@@ -285,18 +285,18 @@ _Central consequence — hvor en karakters fund FAKTISK lander._
 | function | `_nu` | `()` | — | [src](../../../core/services/central_consequence.py#L78) |
 | function | `_connect` | `()` | — | [src](../../../core/services/central_consequence.py#L82) |
 | function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_consequence.py#L87) |
-| function | `_tilfoej_kolonne` | `(conn, navn, definition)` | Migrér en eksisterende tabel — `ALTER TABLE` fejler hvis kolonnen findes. | [src](../../../core/services/central_consequence.py#L120) |
-| function | `_landinger_sidste_doegn` | `(conn, lever, cid=…)` | Landinger i doegnet — for ÉN karakter naar `cid` er givet, ellers i alt. | [src](../../../core/services/central_consequence.py#L127) |
-| function | `_allerede_landet` | `(conn, cid, lever, subject, fund_id=…)` | Idempotens: samme FUND lander ikke to gange. | [src](../../../core/services/central_consequence.py#L152) |
-| function | `_skriv` | `(conn, *, cid, lever, subject, before=…, after=…, applied=…, reason=…, fund_id=…, decision_id=…)` | Skriv en landingsraekke — UPSERT naar fundet baerer en identitet. | [src](../../../core/services/central_consequence.py#L202) |
-| function | `_loft_ramt` | `(conn, lever, cid=…)` | To lofter: ét pr. KARAKTER og ét GLOBALT. | [src](../../../core/services/central_consequence.py#L244) |
-| function | `_gate_taend` | `(scope, name)` | Er leverens switch taendt? | [src](../../../core/services/central_consequence.py#L264) |
-| function | `land_confidence` | `(cid, hyp_id, *, falsified=…, reason=…, gate=…)` | Lad et angreb FAKTISK flytte hypotesens confidence. | [src](../../../core/services/central_consequence.py#L291) |
-| function | `_er_maalt` | `(evidence, source)` | Er dette en MÅLING — eller bare en sætning med et ciffer i? | [src](../../../core/services/central_consequence.py#L372) |
-| function | `land_decision` | `(cid, directive, *, rationale=…, trigger_cue=…, priority=…, subject=…, evidence=…, evidence_source=…, fund_id=…, gate=…)` | Lad et fund blive en BINDENDE forpligtelse. | [src](../../../core/services/central_consequence.py#L403) |
-| function | `_beslutning_for_fund` | `(conn, fund_id)` | Hvilken beslutning blev dette fund oprindeligt landet som? | [src](../../../core/services/central_consequence.py#L628) |
-| function | `record` | `(cid, subject, *, detail=…)` | Fund uden en anvendelig lever: skriv det ned som reviderbart spor. | [src](../../../core/services/central_consequence.py#L646) |
-| function | `measure_consequences` | `(*, days=…)` | Beviset: hvor mange fund flyttede faktisk noget? | [src](../../../core/services/central_consequence.py#L689) |
+| function | `_tilfoej_kolonne` | `(conn, navn, definition)` | Migrér en eksisterende tabel — `ALTER TABLE` fejler hvis kolonnen findes. | [src](../../../core/services/central_consequence.py#L129) |
+| function | `_landinger_sidste_doegn` | `(conn, lever, cid=…)` | Landinger i doegnet — for ÉN karakter naar `cid` er givet, ellers i alt. | [src](../../../core/services/central_consequence.py#L136) |
+| function | `_allerede_landet` | `(conn, cid, lever, subject, fund_id=…)` | Idempotens: samme FUND lander ikke to gange. | [src](../../../core/services/central_consequence.py#L161) |
+| function | `_skriv` | `(conn, *, cid, lever, subject, before=…, after=…, applied=…, reason=…, fund_id=…, decision_id=…)` | Skriv en landingsraekke — UPSERT naar fundet baerer en identitet. | [src](../../../core/services/central_consequence.py#L211) |
+| function | `_loft_ramt` | `(conn, lever, cid=…)` | To lofter: ét pr. KARAKTER og ét GLOBALT. | [src](../../../core/services/central_consequence.py#L253) |
+| function | `_gate_taend` | `(scope, name)` | Er leverens switch taendt? | [src](../../../core/services/central_consequence.py#L273) |
+| function | `land_confidence` | `(cid, hyp_id, *, falsified=…, reason=…, gate=…)` | Lad et angreb FAKTISK flytte hypotesens confidence. | [src](../../../core/services/central_consequence.py#L300) |
+| function | `_er_maalt` | `(evidence, source)` | Er dette en MÅLING — eller bare en sætning med et ciffer i? | [src](../../../core/services/central_consequence.py#L381) |
+| function | `land_decision` | `(cid, directive, *, rationale=…, trigger_cue=…, priority=…, subject=…, evidence=…, evidence_source=…, fund_id=…, gate=…)` | Lad et fund blive en BINDENDE forpligtelse. | [src](../../../core/services/central_consequence.py#L412) |
+| function | `_beslutning_for_fund` | `(conn, fund_id)` | Hvilken beslutning blev dette fund oprindeligt landet som? | [src](../../../core/services/central_consequence.py#L637) |
+| function | `record` | `(cid, subject, *, detail=…)` | Fund uden en anvendelig lever: skriv det ned som reviderbart spor. | [src](../../../core/services/central_consequence.py#L655) |
+| function | `measure_consequences` | `(*, days=…)` | Beviset: hvor mange fund flyttede faktisk noget? | [src](../../../core/services/central_consequence.py#L704) |
 
 ## `core/services/central_construct.py`
 _The Construct — Sentinel's Shadow Self: en sandbox der tester radikale forenklinger MOD_

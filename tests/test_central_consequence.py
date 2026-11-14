@@ -821,6 +821,43 @@ def test_record_opdaterer_den_nyeste_vaerdi(base):
     assert r is not None and "31" in r[0], f"nyeste maaling skal staa: {r}"
 
 
+def test_record_bevarer_den_foerste_observation(base):
+    """«Foerst set» og «senest set» er to tidspunkter, og kun det ene kan
+    udledes af det andet.
+
+    (14/11-2026, GPT's fjerde indvending — maalt) Dedup'en skrev den nyeste
+    maaling ind i `created_at`, saa den foerste observation forsvandt ved den
+    foerste opdatering: en raekke der blev set hvert minut i en uge svarede
+    «oprettet for et minut siden» hver gang. Vinduet skal stadig glide, men
+    det skal glide paa `last_seen_at`.
+    """
+    cc.record("analyst", "observer_effect:variation", detail="9% forskel")
+    # Tolv timer siden: INDEN for dedup-vinduet, saa opdateringsgrenen rammes —
+    # men tydeligt foer «nu», saa en overskrivning af `created_at` kan ses.
+    # Sat til januar ville testen ramme INSERT-grenen og maale det forkerte.
+    tolv_timer_siden = (
+        datetime.now(UTC) - timedelta(hours=12)
+    ).isoformat()
+    with sqlite3.connect(base) as c:
+        c.execute(
+            f"UPDATE {cc._TABLE} SET created_at=? WHERE lever='record'",
+            (tolv_timer_siden,),
+        )
+        c.commit()
+    cc.record("analyst", "observer_effect:variation", detail="31% forskel")
+    with sqlite3.connect(base) as c:
+        r = c.execute(
+            f"SELECT created_at, last_seen_at, after_value FROM {cc._TABLE} "
+            f"WHERE lever='record'"
+        ).fetchone()
+        n = c.execute(f"SELECT COUNT(*) FROM {cc._TABLE} WHERE lever='record'").fetchone()[0]
+    assert n == 1, f"en observation inden for doegnet skal blive ÉN raekke, gav {n}"
+    assert r[0] == tolv_timer_siden, (
+        f"den foerste observation blev overskrevet: {r[0]}")
+    assert r[1] and r[1] > tolv_timer_siden, f"senest set skal vaere sat: {r[1]}"
+    assert "31" in r[2], f"den nyeste maaling skal stadig staa: {r[2]}"
+
+
 def test_record_holder_forskellige_observationer_adskilt(base):
     """Dedup paa (cid, subject) — ikke paa cid alene. To forskellige fund
     fra samme karakter er to observationer."""

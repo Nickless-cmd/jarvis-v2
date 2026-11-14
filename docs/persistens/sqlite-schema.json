@@ -7336,7 +7336,7 @@
       "created_at_formats": []
     },
     "central_consequences": {
-      "digest": "19:ee:ba:84:e1:9f:f0:86:bc:e2:12:fe:66:b8:02:3a:4d:fe:54:78:79:12:19:89:c0:d0:b7:af:34:78:64:3b",
+      "digest": "c2:73:7a:a4:53:ed:cc:78:b7:5b:22:84:7c:9a:cd:ee:98:9e:30:7b:fe:f8:40:e5:23:3f:ee:4f:c3:07:01:79",
       "schema": {
         "columns": [
           {
@@ -7401,6 +7401,14 @@
             "nullable": true,
             "default": null,
             "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "last_seen_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
             "hidden": 0
           },
           {
@@ -10118,7 +10126,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "cheap_lane_admission_state": {

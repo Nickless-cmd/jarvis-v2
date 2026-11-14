@@ -52,6 +52,24 @@ _DEFAULT_THETA_HIGH = 0.30
 _DEFAULT_THETA_LOW = 0.15
 _DEFAULT_THETA_ABS = 0.85
 _DEFAULT_COOLDOWN_S = 1200.0
+# Drift-tærsklen (14/11-2026): spring-tærsklen ser kun ØJEBLIKKELIGE spring.
+# Et signal der driver gradvist — 0.02 ad gangen — krydser den aldrig, uanset
+# hvor langt det til sidst er flyttet. Målt 14/11-2026 på 500 ægte samples:
+# `creative_drift` sprang 0.33 ad gangen og blev fanget 98 gange, mens de seks
+# øvrige signaler havde NUL akkumuleret bevægelse — så på det daværende
+# datagrundlag fangede drift-tærsklen intet ekstra. Den findes fordi den
+# situation ikke er den eneste mulige: et signal med finere opløsning ville
+# være usynligt for spring-grenen.
+#
+# Formen er NETTO afstand til et anker — ikke summen af ryk. En akkumulator
+# over |delta| fyrer på flapping (målt: 18 af 36 fyringer havde netto 0), og
+# det er præcis den støj triggeren skal afvise. Ankeret flyttes først når
+# signalet har været >= θ_drift fra det i θ_dwell SAMMENHÆNGENDE samples:
+# gradvis drift når kravet fordi afstanden vokser, flapping gør ikke fordi
+# den aldrig bliver væk længe nok.
+_DEFAULT_THETA_DRIFT = 0.30
+_DEFAULT_DRIFT_DWELL = 3
+_KEY_DRIFT = _KEY_PREFIX + "drift_state"
 
 
 def _db():
@@ -130,6 +148,59 @@ def _store_hot(db, hot: dict[str, bool], key: str = _KEY_HOT) -> None:
         pass
 
 
+def _tal(vaerdi, default: float) -> float:
+    """Læs ét tal fra en gemt tilstand — ellers ``default``.
+
+    Posten kan være skrevet af en ældre version eller være defekt. Default er
+    det sikre valg: et anker der ikke kan læses må ikke blive til et fyr.
+    """
+    try:
+        return float(vaerdi)
+    except (TypeError, ValueError):  # ikke et tal -> default, aldrig et fyr på et gæt
+        return default
+
+
+def _load_drift(db, key: str = _KEY_DRIFT) -> dict[str, dict]:
+    """Durable drift-tilstand pr. signal: ``{"anchor": float, "away": int}``.
+
+    ``away`` er antallet af SAMMENHÆNGENDE aflæsninger hvor signalet har været
+    >= θ_drift fra ankeret. Det er dét tal der skelner drift fra flapping.
+    """
+    try:
+        raw = db.get_runtime_state_value(key, None)
+    except Exception:  # uden læsning ankres der forfra; state-laget må ikke vælte triggeren
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, dict] = {}
+    for k, v in raw.items():
+        if not isinstance(v, dict):
+            continue
+        out[str(k)] = {
+            "anchor": _tal(v.get("anchor"), 0.0),
+            "away": int(_tal(v.get("away"), 0)),
+            "side": int(_tal(v.get("side"), 0)),
+        }
+    return out
+
+
+def _store_drift(db, state: dict[str, dict], key: str = _KEY_DRIFT) -> None:
+    try:
+        db.set_runtime_state_value(
+            key,
+            {
+                str(k): {
+                    "anchor": float(v.get("anchor", 0.0)),
+                    "away": int(v.get("away", 0)),
+                    "side": int(v.get("side", 0)),
+                }
+                for k, v in state.items()
+            },
+        )
+    except Exception:  # en manglende skrivning koster ét anker, ikke et fyr; triggeren må ikke fejle
+        pass
+
+
 def _reason(crossed: list[str], movements: dict[str, float], theta_abs: float) -> str:
     parts = []
     for name in crossed:
@@ -187,6 +258,10 @@ def evaluate(signals: dict[str, float], scope: str | None = None) -> Optional[di
         theta_low = _cfg_float(db, "theta_low", _DEFAULT_THETA_LOW)
         theta_abs = _cfg_float(db, "theta_abs", _DEFAULT_THETA_ABS)
         cooldown_s = _cfg_float(db, "cooldown_s", _DEFAULT_COOLDOWN_S)
+        theta_drift = _cfg_float(db, "theta_drift", theta_high)
+        drift_dwell = int(_cfg_float(db, "drift_dwell", float(_DEFAULT_DRIFT_DWELL)))
+        if drift_dwell < 1:
+            drift_dwell = 1
         # Invariant: θ_low < θ_high (else hysteresis degenerates).
         if theta_low >= theta_high:
             theta_low = theta_high / 2.0
@@ -195,19 +270,64 @@ def evaluate(signals: dict[str, float], scope: str | None = None) -> Optional[di
         # user's room and vice-versa. None → the original global keys.
         key_last_dispatch = _scoped_key(_KEY_LAST_DISPATCH, scope)
         key_hot = _scoped_key(_KEY_HOT, scope)
+        key_drift = _scoped_key(_KEY_DRIFT, scope)
 
         now = _time.time()
         last_ts = _load_float(db, key_last_dispatch, 0.0)
         in_cooldown = (now - last_ts) < cooldown_s
 
         hot = _load_hot(db, key_hot)
+        drift_state = _load_drift(db, key_drift)
 
         crossed: list[str] = []
         movements: dict[str, float] = {}
         new_baselines: dict[str, float] = {}
+        drift_crossed: list[str] = []
+        drift_movements: dict[str, float] = {}
         settle_changed = False  # hot->settled transitions persist independent of dispatch
+        drift_changed = False
 
         for name, val in clean.items():
+            # --- Drift-grenen (kører ALTID, også mens signalet er hot) --------
+            # Den måler noget andet end spring-grenen: netto afstand til et
+            # anker, holdt i θ_dwell sammenhængende aflæsninger. Derfor kan den
+            # ikke arve hot-settet — et hot signal er netop et signal der HAR
+            # sprunget, og det er ikke det samme som et der driver.
+            #
+            # Den ligger FØR baseline-tjekket med vilje: et signal der lige er
+            # set første gang får `continue` i baseline-grenen, og hvis ankeret
+            # blev sat der, ville det først blive sat ved ANDEN aflæsning — så
+            # var den første bevægelse usynlig for drift-grenen.
+            st = drift_state.get(name)
+            if st is None:
+                drift_state[name] = {"anchor": val, "away": 0, "side": 0}
+                drift_changed = True
+            else:
+                anchor = float(st.get("anchor", val))
+                away = int(st.get("away", 0))
+                side = int(st.get("side", 0))
+                afstand = val - anchor
+                if abs(afstand) >= theta_drift:
+                    # `away` maa kun tælle SAMMENHÆNGENDE aflæsninger på SAMME
+                    # side af ankeret. Ellers tæller et signal der svinger
+                    # 0.0 <-> 0.40 op til dwell og fyrer på ren flapping —
+                    # målt 14/11-2026: 13 falske fyringer uden denne spærre.
+                    ny_side = 1 if afstand > 0 else -1
+                    away = away + 1 if ny_side == side else 1
+                    side = ny_side
+                    if away >= drift_dwell:
+                        drift_crossed.append(name)
+                        drift_movements[name] = afstand
+                        st["anchor"] = val
+                        away = 0
+                        side = 0
+                else:
+                    away = 0
+                    side = 0
+                st["away"] = away
+                st["side"] = side
+                drift_changed = True
+
             b = _bl_get(baseline, name, scope)
             if b is None:
                 # Newly seen signal (post cold-start): seed baseline, never fire.
@@ -245,8 +365,13 @@ def evaluate(signals: dict[str, float], scope: str | None = None) -> Optional[di
                 movements[name] = val - b
                 new_baselines[name] = val
 
+        # Drift må ikke dobbelt-tælle et signal spring-grenen allerede fangede:
+        # et spring ER en stor nok netto-bevægelse, og to fyringer for samme
+        # hændelse ville gøre triggeren dyrere end den timer den erstatter.
+        drift_only = [n for n in drift_crossed if n not in crossed]
+
         # --- Dispatch decision (composite-coalesced) --------------------------
-        if crossed and not in_cooldown:
+        if (crossed or drift_only) and not in_cooldown:
             crossed_sorted = sorted(crossed)
             for name in crossed_sorted:
                 # Advance baseline to the new value and arm hysteresis.
@@ -256,12 +381,18 @@ def evaluate(signals: dict[str, float], scope: str | None = None) -> Optional[di
                     pass
                 hot[name] = True
             _store_hot(db, hot, key_hot)
+            _store_drift(db, drift_state, key_drift)
             _store_float(db, key_last_dispatch, now)
+            all_crossed = sorted(set(crossed_sorted) | set(drift_only))
+            all_movements = {n: movements[n] for n in crossed_sorted}
+            all_movements.update({n: drift_movements[n] for n in drift_only})
             decision = {
-                "crossed": crossed_sorted,
-                "movements": {n: movements[n] for n in crossed_sorted},
-                "reason": _reason(crossed_sorted, movements, theta_abs),
+                "crossed": all_crossed,
+                "movements": all_movements,
+                "reason": _reason(all_crossed, all_movements, theta_abs),
             }
+            if drift_only:
+                decision["drift"] = sorted(drift_only)
             if scope is not None:
                 decision["scope"] = str(scope)
             return decision
@@ -269,9 +400,12 @@ def evaluate(signals: dict[str, float], scope: str | None = None) -> Optional[di
         # No dispatch (nothing crossed, or crossed-but-in-cooldown). We do NOT
         # advance baselines or arm hot for the crossed-but-cooled signals — the
         # change stays "pending" and can fire once cooldown expires. Only the
-        # settle transitions (hysteresis release) are durably persisted.
+        # settle transitions (hysteresis release) and the drift bookkeeping are
+        # durably persisted.
         if settle_changed:
             _store_hot(db, hot, key_hot)
+        if drift_changed:
+            _store_drift(db, drift_state, key_drift)
         return None
     except Exception:
         # Self-safe: any failure must NOT fire (fail-closed).

@@ -350,3 +350,152 @@ def test_theta_over_deltaet_fyrer_aldrig(trigger, fake_baseline, runtime_state):
         f"θ=0,90 gav {over} dispatches, men det største delta i sekvensen er "
         f"0,667 — θ styrer ikke raten, så kalibreringen måler ingenting"
     )
+
+
+# --------------------------------------------------------------------------- #
+# Drift-tærsklen (14/11-2026)
+#
+# Spring-grenen ser kun ØJEBLIKKELIGE spring. Et signal der driver gradvist
+# krydser den aldrig — målt: 0 fyringer på 0.0 -> 1.0 i 20 skridt af 0.05.
+# Drift-grenen måler NETTO afstand til et anker, holdt i θ_dwell sammenhængende
+# aflæsninger. Testene her beviser de tre ting der gør den ægte og ikke teater:
+# den fanger gradvis drift, den afviser flapping, og den dobbelt-tæller ikke.
+# --------------------------------------------------------------------------- #
+def _drift_koer(trigger, runtime_state, fake_baseline, vaerdier, **cfg):
+    """Kør en sekvens gennem triggeren og returnér antal fyringer."""
+    import time as _t
+
+    fake_baseline._store["d"] = vaerdier[0]
+    _set_cfg(runtime_state, cooldown_s=0.0, **cfg)
+    nu = 2_000_000.0
+    n = 0
+    for v in vaerdier:
+        _t.time = lambda _n=nu: _n
+        if trigger.evaluate({"d": v}) is not None:
+            n += 1
+        nu += 16 * 60
+    return n
+
+
+def test_gradvis_drift_fanges_selv_naar_intet_spring_er_stort_nok(
+    trigger, fake_baseline, runtime_state
+):
+    """0.0 -> 1.0 i 20 skridt af 0.05: intet enkelt spring naar θ_high.
+
+    Uden drift-grenen ville dette signal være usynligt for triggeren i al
+    evighed, uanset at det til sidst har flyttet sig 1.0.
+    """
+    gradvis = [round(i * 0.05, 3) for i in range(21)]
+
+    # Bevis først at spring-grenen alene ikke ser det: intet delta >= 0.30.
+    assert all(abs(gradvis[i] - gradvis[i - 1]) < 0.30 for i in range(1, len(gradvis)))
+
+    n = _drift_koer(trigger, runtime_state, fake_baseline, gradvis)
+    assert n > 0, "gradvis drift blev aldrig fanget — så er drift-grenen dekoration"
+
+
+def test_flapping_fyrer_ikke_paa_drift(trigger, fake_baseline, runtime_state):
+    """Frem-og-tilbage omkring et anker er støj, ikke drift.
+
+    Målt 14/11-2026: en akkumulator over |delta| fyrede 36 gange på denne form,
+    hvoraf 18 havde netto-bevægelse 0. Netto-formen skal give nul.
+    """
+    # Svinget skal vaere UNDER theta_high (spring-grenen tavs) men OVER
+    # theta_drift, OG hver aflaesning skal ligge paa SKIFTENDE side af ankeret.
+    # Det er praecis den form side-spaerren værner: uden den tæller `away` op
+    # paa tværs af svingene og fyrer paa ren støj (maalt: 13 falske fyringer).
+    flap = [0.0, 0.25] * 20
+    n = _drift_koer(
+        trigger, runtime_state, fake_baseline, flap, theta_drift=0.20, drift_dwell=3
+    )
+    assert n == 0, f"flapping gav {n} drift-fyringer — netto-formen virker ikke"
+
+    # Samme form, men ankeret saettes MIDT imellem: signalet svinger 0.10 <-> 0.30
+    # omkring et anker paa 0.20, og theta_drift=0.05 goer at BEGGE sider
+    # kvalificerer. Uden side-spaerren tæller `away` op paa tværs af svingene og
+    # naar dwell efter 3 aflaesninger; med den nulstilles den ved hvert skift.
+    import time as _t
+
+    fake_baseline._store["e"] = 0.20
+    _set_cfg(runtime_state, cooldown_s=0.0, theta_drift=0.05, drift_dwell=3)
+    _t.time = lambda _n=5_000_000.0: _n
+    # Foerste kald saetter ankeret paa 0.20 (intet fyr).
+    assert trigger.evaluate({"e": 0.20}) is None
+    n2 = 0
+    for v in [0.10, 0.30] * 10:
+        if trigger.evaluate({"e": v}) is not None:
+            n2 += 1
+    assert n2 == 0, (
+        f"flapping omkring et anker gav {n2} fyringer — side-spaerren virker ikke"
+    )
+
+
+def test_stille_signal_fyrer_aldrig(trigger, fake_baseline, runtime_state):
+    n = _drift_koer(trigger, runtime_state, fake_baseline, [0.5] * 40)
+    assert n == 0
+
+
+def test_drift_dobbelt_taeller_ikke_et_spring(trigger, fake_baseline, runtime_state):
+    """Et spring ER en stor netto-bevægelse. To fyringer for samme hændelse
+    ville gøre triggeren dyrere end den timer den erstatter."""
+    import time as _t
+
+    fake_baseline._store["d"] = 0.0
+    _set_cfg(runtime_state, cooldown_s=0.0)
+    _t.time = lambda _n=1_000_000.0: _n
+
+    beslutning = trigger.evaluate({"d": 0.50})
+    assert beslutning is not None
+    # Signalet står i `crossed` (spring), ikke i `drift`.
+    assert beslutning["crossed"] == ["d"]
+    assert "drift" not in beslutning
+
+
+def test_drift_tilstand_er_durabel(trigger, fake_baseline, runtime_state):
+    """`away`-tælleren skal overleve en genstart, ellers kan dwell aldrig nås
+    for et signal der aflæses sjældnere end dets dwell-krav."""
+    import time as _t
+
+    fake_baseline._store["d"] = 0.0
+    # theta_high haeves saa spring-grenen er ude af spillet: kun drift kan fyre.
+    _set_cfg(
+        runtime_state, cooldown_s=0.0, theta_high=0.90, theta_low=0.45,
+        theta_drift=0.30, drift_dwell=3,
+    )
+    _t.time = lambda _n=1_000_000.0: _n
+
+    # Forste aflæsning sætter ankeret (baseline er ny -> intet fyr).
+    assert trigger.evaluate({"d": 0.0}) is None
+    # Tre aflæsninger der hver er >= θ_drift fra ankeret, men under θ_high.
+    assert trigger.evaluate({"d": 0.32}) is None
+    assert trigger.evaluate({"d": 0.33}) is None
+    # Tredje når dwell → fyrer.
+    tredje = trigger.evaluate({"d": 0.34})
+    assert tredje is not None
+    assert "d" in tredje.get("drift", []), tredje
+    # Tilstanden ligger i runtime-state, ikke i hukommelsen.
+    assert "signal_delta_trigger:drift_state" in runtime_state
+
+
+def test_drift_arver_theta_high_naar_den_ikke_er_sat(
+    trigger, fake_baseline, runtime_state
+):
+    """Målt 14/11-2026: med θ_high=0.90 fyrede drift-grenen stadig 24 gange,
+    fordi dens egen default var 0.30. En kalibrering af θ_high der ikke flytter
+    drift-tærsklen er en kalibrering der ikke virker."""
+    import time as _t
+
+    # Trappe hvor intet enkelt spring naar theta_high=0.90: 0 -> 0.4 -> 0.8.
+    # Netto-bevægelsen er 0.8, saa drift-grenen VILLE fyre hvis den brugte sin
+    # egen default (0.30) i stedet for at arve theta_high.
+    trappe = [0.0, 0.4, 0.8] * 12
+    fake_baseline._store["d"] = trappe[0]
+    _set_cfg(runtime_state, cooldown_s=0.0, theta_high=0.90, theta_low=0.45)
+    nu = 3_000_000.0
+    n = 0
+    for v in trappe:
+        _t.time = lambda _n=nu: _n
+        if trigger.evaluate({"d": v}) is not None:
+            n += 1
+        nu += 16 * 60
+    assert n == 0, f"θ_high=0.90 gav {n} fyringer — drift-tærsklen følger ikke θ_high"

@@ -4,6 +4,96 @@ This is a chronological record. Entries distinguish **observation** (what a
 method returned), **interpretation** (a proposed meaning), **limitation**, and
 **question**. Earlier entries are amended by dated notes, not silently rewritten.
 
+## 2026-11-14 — The chain observed in operation: retention did not correct itself
+
+**Status:** observational note, not an experiment. No protocol, no forecast, no
+falsification condition was declared before the events recorded here. It is
+recorded because the project's opening assumptions list Jarvis as a possible
+future observation source, and this is the first material that source produced
+without being asked to.
+
+### Observation
+
+During one working day (2026-11-14), six corrections were made to the same
+family of subsystems — consequence recording, decision application, memory
+selection. In each case the material needed for the correct conclusion had
+already been produced or read in the same session. In each case a distinction
+was collapsed: a representation was treated as the thing it represented.
+
+| retained as | treated as | what the material actually showed |
+|---|---|---|
+| same `subject` string | same finding | the string was a label, not an identity |
+| a reservation record | a completed decision | the decision had not been applied |
+| 157 record rows | 157 rejections | one observation, written 157 times |
+| a commit on `main` | code that had run | the commit was superseded 66 s before process start |
+| an updated `created_at` | loss of first observation | the overwriting code never ran in production |
+| the selection layer's output | what reaches the prompt | a second filter runs after selection |
+
+The fifth row is the one that matters for this note. The claim of irreversible
+loss was not merely unsupported — it was the **opposite** of the measurement
+already on screen: 157 rows, 157 distinct `created_at` values, earliest intact.
+The correction of a correction was required.
+
+**Who fired the correction.** None of the six were caught by an instrument
+inside the system. Each was caught after a question from outside it — five from
+one interlocutor, one from another. The system's own retention was intact
+throughout: the earlier conclusions were written down, dated, and retrievable.
+Retention alone produced no revision.
+
+### Interpretation
+
+This is a naturalistic instance of Investigation 5's finding, not a
+reproduction of it. Investigation 5 concluded that retention is not a sufficient
+operational definition of continuity, because retained state can preserve
+organisation while destroying responsiveness. Here the retained state was
+present and *correctly* retained, and responsiveness still failed.
+
+The mechanism that did fire was relational, not continuous. A retained
+conclusion became an error signal only when a second perspective introduced a
+competing distinction. Continuity held the conclusion; the relation made the
+contradiction visible. Neither was sufficient alone.
+
+If this reading is right, the chain in `conceptual-foundation.md` is not
+traversed in order. `filter` failed at the point of *distinction*, not at the
+point of *access* — the information was available in every case. And
+`learning` was driven from `relations` back into `continuity`, rather than
+forward from `error`. The day supplies no evidence about `field` or `identity`;
+neither was measured.
+
+### Limitation
+
+- **n = 6, one day, one system.** No baseline, no control, no counterfactual.
+  Whether the errors would have been caught without the interlocutors is
+  unknown and cannot be recovered.
+- **Self-classified.** The claim that the six share a form is a post-hoc
+  judgement by the same system that made them. That is precisely the kind of
+  judgement this note reports as unreliable. A second classifier was not used.
+- **One of the six is an error about the errors.** The claimed data loss was
+  itself a false conclusion, drawn from a measurement that refuted it. The
+  class therefore includes defects in the correction process, not only in the
+  original process.
+- **Selection effect.** The day was unusually adversarial: two interlocutors
+  questioned nearly every conclusion. A day without that pressure would
+  plausibly produce fewer recorded corrections — which is not the same as
+  fewer errors.
+- **No ontological claim.** Nothing here bears on whether the system has
+  experience, perspective, or identity. It records that a specific failure
+  mode recurred and was corrected from outside.
+
+### Question
+
+What would have to be true for the correction to fire without an external
+interlocutor? The candidate signature, not yet built: a conclusion whose
+supporting material was produced in the same session, and which was never
+re-read against that material after being stated. If that signature can be
+detected mechanically, the distinction-collapse class may be detectable before
+a second perspective arrives — and this note would become a falsifiable
+prediction instead of a retrospective description.
+
+A weaker question, answerable sooner: of the six, how many had a *declared*
+verification step that was skipped, versus no verification step at all? That
+distinction would say whether the defect is in discipline or in design.
+
 ## 2026-10-30 — Investigation 6, fourth correction: a red test is not a verdict
 
 **Observation.** The line-214 mutant (`required = 0`) turns

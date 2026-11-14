@@ -127,17 +127,17 @@ describe('VAGT — hovedet forsvinder ikke midt i turen', () => {
     expect(vist).toBeLessThan(LANG.length)
   })
 
-  it('bærer skillestregen gennem hele vinduet', () => {
+  it('bærer ingen skillestreg — hovedet er en label, ikke en blok', () => {
     const view = renderPaceVindue('vagt-skillelinje')
     frame()
 
-    const stregen = hoved(view.container)
-    expect(stregen).not.toBeNull()
-    // `data-skillelinje` er den attribut der tegner den 1px streg — den er
-    // turens visuelle samling og forsvandt sammen med hovedet.
-    expect(stregen?.hasAttribute('data-skillelinje')).toBe(true)
+    const hovedet = hoved(view.container)
+    expect(hovedet).not.toBeNull()
+    // Bjørn 14/11-2026: «fjern skill linjen mellem hoved og besked».
+    // Attributten er det der tegner den 1px streg; uden den er hovedet ren tekst.
+    expect(hovedet?.hasAttribute('data-skillelinje')).toBe(false)
 
     while (rafKo.length > 0) frame(16)
-    expect(hoved(view.container)?.hasAttribute('data-skillelinje')).toBe(true)
+    expect(hoved(view.container)?.hasAttribute('data-skillelinje')).toBe(false)
   })
 })

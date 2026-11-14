@@ -174,9 +174,10 @@ describe('MÅLING — turhovedets lukning mod pacens ur', () => {
         streaming={false} status="done" finalAnswerStarted={false} runId="levende-nej" />,
     )
     expect(persisteret.container.querySelector('.rv-tur')).not.toHaveAttribute('data-levende')
-    // Stregen skal stadig være SYNLIG — attributten `data-skillelinje` er
-    // uændret; det er kun animationen der er slukket.
-    expect(persisteret.container.querySelector('.rv-tur')).toHaveAttribute('data-skillelinje')
+    // Bjørn 14/11-2026: chat mode har ingen streg i nogen fase — hverken
+    // levende eller persisteret. `data-levende` styrer stadig animationen for
+    // code mode, hvor stregen findes.
+    expect(persisteret.container.querySelector('.rv-tur')).not.toHaveAttribute('data-skillelinje')
   })
 
   it('C: efterslæbet i sekunder for 2000 tegn', () => {

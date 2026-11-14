@@ -453,22 +453,26 @@ describe('ChatFlowPresentation — turhovedet fra første ord', () => {
     expect(hoved).not.toBeNull()
     expect(hoved).toHaveAttribute('data-koerer')
     expect(hoved).toHaveTextContent('Tænker')
-    expect(hoved).toHaveAttribute('data-skillelinje')
+    // Bjørn 14/11-2026: chat mode bærer INGEN skillelinje — hovedet er en
+    // label over indholdet, ikke en selvstændig blok. Code mode beholder den.
+    expect(hoved).not.toHaveAttribute('data-skillelinje')
   })
 
-  it('beholder skillelinjen gennem hele chat-streamen', () => {
+  it('holder skillelinjen slukket gennem hele chat-streamen', () => {
+    // Modsat code mode, hvor stregen taendes af en gate. Chat mode har ingen
+    // streg i nogen fase — så der er intet at animere og intet at glemme.
     const view = render(<ChatFlowPresentation {...common} mode="living" blocks={[]} />)
-    expect(document.querySelector('.rv-tur')).toHaveAttribute('data-skillelinje')
+    expect(document.querySelector('.rv-tur')).not.toHaveAttribute('data-skillelinje')
 
     view.rerender(<ChatFlowPresentation {...common} mode="living" blocks={[
       { type: 'text', text: 'Mellemstatus', phase: 'commentary' },
     ]} />)
-    expect(document.querySelector('.rv-tur')).toHaveAttribute('data-skillelinje')
+    expect(document.querySelector('.rv-tur')).not.toHaveAttribute('data-skillelinje')
 
     view.rerender(<ChatFlowPresentation {...common} mode="living" blocks={[
       { type: 'text', text: 'Svaret', phase: 'final_answer' },
     ]} finalAnswerStarted />)
-    expect(document.querySelector('.rv-tur')).toHaveAttribute('data-skillelinje')
+    expect(document.querySelector('.rv-tur')).not.toHaveAttribute('data-skillelinje')
   })
 
   it('beholder hovedet og uret på en tur uden værktøjskald', () => {

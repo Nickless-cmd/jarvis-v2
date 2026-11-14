@@ -363,7 +363,11 @@ export function ChatFlowPresentation({
             meta={streaming && tokens > 0
               ? <span className="rv-turMeta">~<RullendeTokens tokens={tokens} /> output</span>
               : null}
-            skillelinje
+            /* Bjørn 14/11-2026: «fjern skill linjen mellem hoved og besked».
+               Hovedet er en label over indholdet i chat mode, ikke en
+               selvstændig blok med en streg under. Code mode beholder den —
+               der er hovedet turens eneste vandrette markør. */
+            skillelinje={false}
             levende={streaming}
             onToggle={() => {
               const naeste = !aaben

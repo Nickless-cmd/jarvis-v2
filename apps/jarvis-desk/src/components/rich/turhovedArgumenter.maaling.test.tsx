@@ -188,13 +188,15 @@ describe('TurHoved-argumenter — de to flader sammenlignet', () => {
   })
 
   it('skillelinje er reelt forskellig — og forskellen er AFGJORT, ikke en fejl', () => {
-    // AFGJORT 30/10-2026: chat beholder den bare prop. Bjørn valgte «behold
-    // som nu — stregen glider ind ved turstart og bliver», og CSS'en er
-    // bygget til det (`animation … both` i turhoved.css:59-62).
-    // chat: bar prop → data-skillelinje fra FØRSTE render
+    // OMVENDT 14/11-2026. Den 30/10 valgte Bjørn at chat skulle BEHOLDE stregen
+    // («stregen glider ind ved turstart og bliver»). Den 14/11 ombestemte han:
+    // «fjern skill linjen mellem hoved og besked» — hovedet er en label over
+    // indholdet, ikke en selvstændig blok med en streg under.
+    // chat: skillelinje={false} → ingen streg i nogen fase
     // code: visSkillelinje = !streaming || finalAnswerStarted || harSynligTekst
-    //       (code har en svar-lås at vente på; chat har ikke)
-    expect(chat.get('skillelinje')).toBe('skillelinje')
+    //       (code har en svar-lås at vente på; chat har ikke — og nu heller
+    //        ingen streg at vente på)
+    expect(chat.get('skillelinje')).toBe('skillelinje={false}')
     expect(code.get('skillelinje')).toBe('skillelinje={visSkillelinje}')
   })
 

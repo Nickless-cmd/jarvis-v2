@@ -4,6 +4,37 @@
   min-width: 0;
 }
 
+/* Hovedet er en label over indholdet i chat mode, ikke en selvstændig blok.
+ *
+ * Bjørn 14/11-2026: «fjern skill linjen mellem hoved og besked … og ryk hoved
+ * tætter på beskeden». Stregen er slukket i komponenten (`skillelinje={false}`),
+ * men `turhoved.css` reserverer stadig plads til den: 8px bund-padding beregnet
+ * til `::after`, plus 8px bund-margin når folden er lukket. Sammen med
+ * `.chat-flow`s 10,4px grid-gap blev det ~21px luft mellem den linje der
+ * beskriver turen og selve turen.
+ *
+ * Scopet til `.chat-flow`, så code mode beholder sin streg og sin højde —
+ * `turhoved.css` er delt mellem de to flader og må ikke ændres globalt. */
+.chat-flow .rv-tur,
+.chat-flow .rv-tur[aria-expanded='false'] {
+  /* 33px-højden i turhoved.css er beregnet til at rumme den reserverede
+   * skillestreg. Uden stregen er der 7,9px død luft under teksten (målt i
+   * Chromium 14/11-2026: hoved 33px, tekst 18,2px, centreret). Hovedet bliver
+   * derfor sit indhold, så teksten møder beskeden i stedet for at svæve. */
+  height: auto;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom-color: transparent;
+}
+
+/* Hoved og dets gruppe hører sammen: afstanden ned til indholdet skal være
+ * mindre end afstanden mellem to selvstændige blokke. De 6,4px spiser det
+ * meste af grid-gappet, så hovedet lægger sig til indholdet i stedet for at
+ * svæve over det. */
+.chat-flow > .rv-tur + * {
+  margin-top: -0.4rem;
+}
+
 .chat-flow-activity {
   display: block;
   min-height: 1.35rem;

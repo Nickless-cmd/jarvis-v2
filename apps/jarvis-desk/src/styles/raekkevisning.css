@@ -215,7 +215,18 @@
    Selve reglerne bor nu i `turhoved.css`, fordi chat mode deler komponenten
    og ikke ligger inden for `.raekkevisning` (17/10-2026). */
 .raekkevisning .rv-gruppe {
-  position: relative; display: flex; flex-direction: column; padding-top: 8px;
+  position: relative; display: flex; flex-direction: column;
+  /* 15/11-2026 (Bjørn: «gapet mellem det udfoldet hoved og besked»).
+     Her stod `padding-top: 8px` OVENI de 16px fra `.raekkevisning > * + *`,
+     så det udfoldede arbejde startede 24px under hovedet. Padding er 0 fordi
+     marginen bærer hele afstanden — to kilder til samme luft kan ikke
+     justeres hver for sig.
+     Derefter (samme dag): 8px var stadig for meget. Bjørn kaldte de 2px ved
+     det FOLDEDE hoved «perfekt», og hovedet er den samme label hvad enten
+     folden er åben eller lukket — så det er samme tal. Arbejdsrækken har
+     desuden sin egen 5px `padding-top` i `.rv-arbejdsdetaljer`, og de to
+     lægges sammen i øjet. */
+  margin-top: 2px; padding-top: 0;
 }
 /* `display:flex` ovenfor SLÅR browserens egen [hidden]-regel. Uden denne
    linje skjuler `hidden` ingenting — målt 22/9-2026, og den kostede tre
@@ -277,7 +288,26 @@
 /* Målt: 8px er den ENESTE overstyring af 16px i hele forlægget.
    `:not(:empty)` fordi containeren nu findes fra første frame (19/10-2026):
    en tom svar-container må ikke skubbe 8px luft ind under et foldet hoved. */
-.raekkevisning .rv-tur[aria-expanded='false'] + .rv-svar:not(:empty) { margin-top: 8px; }
+/* 15/11-2026 (Bjørn: «gapet mellem det folded hoved og slut besked er stadig
+   for stort — det burde stå lige hen over»).
+   Her stod en regel med `+` (nabo). `.rv-gruppe` ligger MELLEM hovedet og
+   svaret i DOM'en, så `+` matchede ALDRIG — og svaret arvede i stedet 16px fra
+   `.raekkevisning > * + *`. Målt i Chromium 15/11-2026: 8px padding + 4px
+   margin + 16px = 28px mellem hoved og svar.
+   `~` (general sibling) ser hen over gruppen. 2px er nok til at de to linjer
+   ikke smelter sammen; hovedet er en label, ikke en blok. */
+.raekkevisning .rv-tur ~ .rv-svar:not(:empty) { margin-top: 2px; }
+
+/* Er arbejdet foldet UD, står svaret under gruppen.
+   15/11-2026 (Bjørn: «kun gapet mellem det udfoldet hoved og besked mangler»).
+   Her stod `var(--rv-enhed)` = 16px OVENI gruppens 7px bund-padding, så
+   svaret begyndte 23px under den sidste arbejdsrække — samme afsnitsafstand
+   som mellem to selvstændige blokke. Arbejdet og svaret hører til samme tur:
+   8px markerer skiftet uden at rive dem fra hinanden.
+   Højere specificitet end reglen ovenfor, så den vinder uden `!important`. */
+.raekkevisning .rv-tur ~ .rv-gruppe:not([hidden]) ~ .rv-svar:not(:empty) {
+  margin-top: 8px;
+}
 
 /* ══ MELLEMSVAR og SVAR ══
    Brødtekstens linjehøjde følger den almindelige chat (1.375), så en sætning
@@ -297,9 +327,18 @@
 }
 /* Synteser er Jarvis' løbende besked, på samme venstrekant som slutteksten.
    Kun udfoldede værktøjsdetaljer har indrykning. */
-.raekkevisning .rv-mellem { margin: var(--rv-enhed) 0; padding-left: 0; }
+/* Syntesens top og bund. Stod på 16px i begge ender, hvilket gav et hul ned
+   til den næste rundelinje der læste som et afsnitsskift midt i en tanke.
+   15/11-2026: 6px — samme par-afstand som ovenfor, så runde og syntese
+   hænger sammen uanset hvilken vej de møder hinanden. */
+.raekkevisning .rv-mellem { margin: 6px 0; padding-left: 0; }
 .raekkevisning .rv-mellem > :last-child { margin-bottom: 0; }
-.raekkevisning .rv-gruppe > .rv-arbejdsrunde + .rv-mellem { margin-top: var(--rv-enhed); }
+/* 15/11-2026 (Bjørn: «det samme for gappet mellem rundelinjerne og top og
+   bund af synteserne»). Her stod `var(--rv-enhed)` = 16px — et helt
+   afsnitsafstand mellem den linje der beskriver runden og den syntese den
+   hører til. De to er ÉN enhed: rundelinjen er stemmen, syntesen er dens
+   indhold. 6px holder dem adskilt uden at de river fra hinanden. */
+.raekkevisning .rv-gruppe > .rv-arbejdsrunde + .rv-mellem { margin-top: 6px; }
 
 /* ══ MARKDOWN-STRUKTUR I SVAR OG SYNTESER ══
    MÅLT 14/11-2026 (Bjørn: «teksten/systemerne er bare blokke og ikk læsbar

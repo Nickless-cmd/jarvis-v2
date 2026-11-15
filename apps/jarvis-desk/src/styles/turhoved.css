@@ -28,8 +28,15 @@
  */
 
 .rv-tur {
+  /* Højden og bund-paddingen var beregnet til at rumme den reserverede
+     skillestreg (33px = 25px indhold + 8px streg-plads). Stregen blev fjernet
+     15/11-2026, men pladsen stod tilbage som død luft under teksten — i BEGGE
+     flader. Chat mode havde scopet et fix i `chat-flow.css`; her er det
+     globale: hovedet bliver sit indhold, så teksten møder beskeden.
+     Målt i Chromium 15/11-2026: 8px padding + 4px margin + 16px fra
+     `.raekkevisning > * + *` = 28px mellem hoved og svar. */
   display: flex; align-items: center; gap: 8px; width: 100%;
-  height: 33px; padding: 0 0 8px; margin: 0;
+  height: auto; padding: 0; margin: 0;
   position: relative;
   border: 0;
   background: none; text-align: left;
@@ -38,7 +45,16 @@
   color: var(--rv-tertiary, #a6a59c); cursor: pointer;
 }
 
-.rv-tur[aria-expanded='false'] { margin-bottom: 8px; }
+/* Gappet mod beskeden (Bjørn 15/11-2026: «gapet mellem hoved og besked skal
+   være mindre»). Før stod der 8px her PLUS 8px `margin-top` på søsteren
+   `.rv-svar` i `raekkevisning.css` — 16px i alt for to linjer der hører
+   sammen. Hovedet er en label over indholdet, ikke en selvstændig blok, så
+   luften skal være mindre end et afsnitsafstand. 4px er nok til at de ikke
+   smelter sammen, og de 8px på `.rv-svar` er fjernet samme sted. */
+/* Ingen bund-margin: hovedet er en label over indholdet, og luften til svaret
+   ejes ét sted (`.raekkevisning .rv-tur ~ .rv-svar`). To steder der lægger
+   luft sammen er hvordan 28px opstod. */
+.rv-tur[aria-expanded='false'] { margin-bottom: 0; }
 
 /* Hoved uden indhold at folde: samme form, ingen affordance. */
 .rv-tur--statisk { cursor: default; }

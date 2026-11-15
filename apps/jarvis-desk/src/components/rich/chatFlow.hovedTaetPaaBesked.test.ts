@@ -70,7 +70,7 @@ describe('VAGT — hovedet hænger sammen med beskeden', () => {
 
   it('rører IKKE code mode — turhoved.css er delt mellem de to flader', () => {
     // Reglen skal være scopet til `.chat-flow`. Uden scopet ville den også
-    // ramme code mode, hvor stregen og de 33px er turens eneste markør.
+    // ramme code mode, hvis typografi og luft ejes af `turhoved.css`.
     const css = kilde('chat-flow.css')
     const linjer = css.split('\n')
     const udenScope = linjer.filter(
@@ -81,5 +81,48 @@ describe('VAGT — hovedet hænger sammen med beskeden', () => {
         !l.trim().startsWith('/*'),
     )
     expect(udenScope).toEqual([])
+  })
+
+  it('det UDFOLDEDE hoved hænger også sammen med beskeden', () => {
+    // Bjørn 15/11-2026: «kun gapet mellem det udfoldet hoved og besked
+    // mangler». MÅLT i Chromium: 16px fra hoved til første arbejdsrække PLUS
+    // gruppens 8px `padding-top` = 24px. To kilder til samme luft kan ikke
+    // justeres hver for sig, så paddingen er 0 og marginen bærer hele
+    // afstanden.
+    // Derefter samme dag, anden runde: 8px var stadig for meget. Bjørn kaldte
+    // de 2px ved det FOLDEDE hoved «perfekt», og hovedet er den samme label
+    // hvad enten folden er åben eller lukket. MÅLT efter rettelsen: 2px fra
+    // hoved til første arbejdsrække.
+    const raekke = kilde('raekkevisning.css')
+
+    const gStart = raekke.indexOf('.raekkevisning .rv-gruppe {')
+    const gruppe = raekke.slice(gStart, raekke.indexOf('}', gStart))
+    expect(gruppe).toContain('padding-top: 0')
+    // Eksplicit margin: uden den arves 16px fra `.raekkevisning > * + *`.
+    expect(gruppe).toContain('margin-top: 2px')
+
+    const sStart = raekke.indexOf(
+      '.raekkevisning .rv-tur ~ .rv-gruppe:not([hidden]) ~ .rv-svar:not(:empty)',
+    )
+    expect(sStart).toBeGreaterThan(-1)
+    const svar = raekke.slice(sStart, raekke.indexOf('}', sStart))
+    expect(svar).toContain('margin-top: 8px')
+    expect(svar).not.toContain('var(--rv-enhed)')
+  })
+
+  it('ser hen over gruppe-elementet — `+` matcher aldrig i den ægte DOM', () => {
+    // MÅLT 15/11-2026: begge flader brugte `+` (nabo) til at stramme
+    // hoved→svar. Men `.rv-gruppe` / `.chat-flow-gruppe-ydre` ligger MELLEM
+    // dem, så selektoren matchede nul elementer — også når gruppen er
+    // `display: none`, fordi `+` ser på DOM'en og ikke på layoutet.
+    // Resultatet var 28px i code mode og et helt grid-gap i chat mode, mens
+    // reglen så ud som om den virkede. `~` ser hen over gruppen.
+    const chat = kilde('chat-flow.css')
+    expect(chat).toContain('.chat-flow > .rv-tur ~ .chat-flow-answer')
+    expect(chat).not.toContain('.chat-flow > .rv-tur + .chat-flow-answer')
+
+    const raekke = kilde('raekkevisning.css')
+    expect(raekke).toContain('.raekkevisning .rv-tur ~ .rv-svar')
+    expect(raekke).not.toContain(".raekkevisning .rv-tur[aria-expanded='false'] + .rv-svar")
   })
 })

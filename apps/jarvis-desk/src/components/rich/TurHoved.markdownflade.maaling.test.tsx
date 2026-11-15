@@ -78,11 +78,11 @@ describe('TurHoved — kan markdown nå hovedet?', () => {
     expect('**fed**\n\nto afsnit').toMatch(MARKDOWN)
     expect('en `kode` her').toMatch(MARKDOWN)
     expect('Arbejder').not.toMatch(MARKDOWN)
-    // `turFortalt` skal faktisk producere den sætning FRASER lover.
-    // `familier` er én post PR. VÆRKTØJSKALD — flertalsformen nås kun ved at
-    // gentage familien. Det kostede en fejlet kontrol at finde ud af.
-    expect(turFortalt(['fil', 'fil', 'fil'], 3, 0)).toContain('Læste 3 filer')
-    expect(turFortalt(['spoergsmaal'], 1, 0)).toContain('Spurgte dig')
+    // `turFortalt` skal faktisk producere den sætning hovedet viser.
+    // 15/11-2026: formen er «Arbejdet · <tid>» — opremsningen af værktøjer
+    // («Læste 3 filer») er væk, så kontrollen måler den nye producent.
+    expect(turFortalt(['fil', 'fil', 'fil'], 3, 0)).toBe('Arbejdet')
+    expect(turFortalt(['spoergsmaal'], 1, 42)).toBe('Arbejdet · 42s')
   })
 
   it('chat mode: alle otte hovedtekster er faste ord uden markdown', () => {

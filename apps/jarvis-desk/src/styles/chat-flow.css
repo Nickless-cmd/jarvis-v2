@@ -17,13 +17,11 @@
  * `turhoved.css` er delt mellem de to flader og må ikke ændres globalt. */
 .chat-flow .rv-tur,
 .chat-flow .rv-tur[aria-expanded='false'] {
-  /* 33px-højden i turhoved.css er beregnet til at rumme den reserverede
-   * skillestreg. Uden stregen er der 7,9px død luft under teksten (målt i
-   * Chromium 14/11-2026: hoved 33px, tekst 18,2px, centreret). Hovedet bliver
-   * derfor sit indhold, så teksten møder beskeden i stedet for at svæve. */
-  height: auto;
-  padding-bottom: 0;
-  margin-bottom: 0;
+  /* Højde og bund-luft ejes nu GLOBALT af `turhoved.css` (hovedet er sit
+   * indhold). Her stod tre overstyringer fra 14/11-2026, der kompenserede for
+   * den 33px-højde der var beregnet til skillestregen. Stregen er væk, og
+   * kompensationen bor nu der hvor årsagen var — to steder der retter samme
+   * tal er hvordan de driver fra hinanden. Kun typografien hører her. */
   border-bottom-color: transparent;
   /* `turhoved.css` siger `font-family: inherit`, men chatvisningen er ikke
    * altid inden for den container der sætter fonten — målt 14/11-2026 faldt
@@ -64,6 +62,21 @@
 
 .chat-flow > .rv-tur + * {
   margin-top: 0;
+}
+
+/* Hovedet og svaret er ÉN blok (Bjørn 15/11-2026: «gapet mellem hoved og
+   besked skal være mindre» → 16/11: «det burde stå lige hen over»).
+   Uden denne regel arver parret `.chat-flow`s 10,4px grid-gap — samme afstand
+   som mellem to selvstændige blokke.
+
+   FÆLDE (målt 15/11-2026): reglen brugte `+` (nabo), men
+   `.chat-flow-gruppe-ydre` ligger mellem hovedet og `.chat-flow-answer`, så
+   den matchede aldrig — heller ikke da gruppen er `display: none`, fordi `+`
+   ser på DOM'en og ikke på layoutet. Svaret beholdt derfor hele grid-gappet.
+   `~` (general sibling) ser hen over gruppen. */
+.chat-flow > .rv-tur ~ .chat-flow-answer,
+.chat-flow > .rv-tur ~ .chat-flow-gruppe-ydre {
+  margin-top: -6.4px;
 }
 
 .chat-flow-activity {
@@ -289,8 +302,22 @@
   align-items: flex-start;
   gap: 7px;
   overflow: visible;
-  padding-block: 2px;
+  /* 15/11-2026 (Bjørn: «det samme for gappet mellem rundelinjerne og top og
+     bund af synteserne»). `padding-block: 2px` oveni `.chat-flow`s 10,4px
+     grid-gap gav ~14px mellem rundelinjen og den syntese den beskriver — de
+     to er én enhed, ikke to afsnit. Padding er 0 nu, og parret strammes
+     nedenfor. */
+  padding-block: 0;
   color: var(--fg-2, #aeb6bf);
+}
+
+/* Rundelinjen og syntesen over den hører sammen. Uden denne regel arver de
+   `.chat-flow`s 10,4px grid-gap, som er afstanden mellem SELVSTÆNDIGE blokke
+   — ikke mellem en stemme og dens indhold. 6px, samme par-afstand som code
+   mode bruger i `raekkevisning.css`, så de to flader føles ens. */
+.chat-flow-live-synthesis + .chat-flow-round,
+.chat-flow-round + .chat-flow-live-synthesis {
+  margin-top: -4.4px;
 }
 
 .chat-flow-presence {

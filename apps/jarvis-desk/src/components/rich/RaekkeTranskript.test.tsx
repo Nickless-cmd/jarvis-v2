@@ -536,7 +536,8 @@ describe('RaekkeTranskript', () => {
     // Det var praecis fejlen 22/9: raekkerne blev staaende bagefter, og
     // synteserne druknede i dem.
     render(<RaekkeTranskript blocks={TUR} streaming={false} varighedSekunder={65} />)
-    expect(screen.getByText('Slog noget op og kørte en kommando')).toBeInTheDocument()
+    // 15/11-2026: hovedet siger «Arbejdet» — opremsningen af værktøjer er væk.
+    expect(screen.getByText('Arbejdet')).toBeInTheDocument()
     expect(screen.getByRole('timer', { name: '1m 5s' })).toBeInTheDocument()
     // Skjulte runder maa ikke fylde DOM'en i en lang gemt samtale.
     expect(screen.queryByText('Bash')).toBeNull()
@@ -760,6 +761,46 @@ describe('RaekkeTranskript', () => {
     expect(container.querySelector('.rv-diffstat')?.textContent?.trim()).toBe('+9 −4')
   })
 
+  it('viser kun den side af diffen der faktisk har ændringer', () => {
+    // Bjørn 15/11-2026: «hvis den ene er 0 skal den ikk vises … hvis det kun
+    // er indsættelser X+ eller hvis det er fjernelse X- … vis diffen er begge
+    // dele». Et `+0` er ikke et tal om arbejdet — en række der kun slettede
+    // linjer skal ikke se ud som om den også skrev nye.
+    const vis = (resultat: string) => {
+      const blocks: ContentBlock[] = [
+        { type: 'tool_use', id: 'w9', name: 'write_file', input: { path: 'f.ts', content: 'x' }, result: resultat },
+        tekst('Skrevet.'),
+      ]
+      const r = render(<RaekkeTranskript blocks={blocks} streaming />)
+      const stat = r.container.querySelector('.rv-diffstat')
+      const ud = {
+        tekst: stat?.textContent?.trim() ?? null,
+        add: stat?.querySelector('.git-add')?.textContent ?? null,
+        del: stat?.querySelector('.git-del')?.textContent ?? null,
+        label: stat?.getAttribute('aria-label') ?? null,
+      }
+      r.unmount()
+      return ud
+    }
+
+    // Kun indsættelser: +N, og INGEN −0.
+    expect(vis('{"linjer_tilfoejet": 2, "linjer_fjernet": 0}')).toEqual({
+      tekst: '+2', add: '+2', del: null, label: 'tilføjet 2 linjer',
+    })
+    // Kun fjernelser: −N, og INGEN +0.
+    expect(vis('{"linjer_tilfoejet": 0, "linjer_fjernet": 3}')).toEqual({
+      tekst: '−3', add: null, del: '−3', label: 'fjernet 3 linjer',
+    })
+    // Begge: begge, som før.
+    expect(vis('{"linjer_tilfoejet": 1, "linjer_fjernet": 1}')).toEqual({
+      tekst: '+1 −1', add: '+1', del: '−1', label: 'tilføjet 1 linje, fjernet 1 linje',
+    })
+    // Målt 0/0 er et svar fra serveren — men der er intet at vise.
+    expect(vis('{"linjer_tilfoejet": 0, "linjer_fjernet": 0}')).toEqual({
+      tekst: null, add: null, del: null, label: null,
+    })
+  })
+
   it('tegner INTET diff-tal på læsende værktøjer', () => {
     // «ingenting at vise» er en anden besked end «nul».
     const laesning: ContentBlock[] = [kald('read_file', { path: 'x.ts' }), tekst('Læst.')]
@@ -833,7 +874,7 @@ describe('RaekkeTranskript', () => {
 
   it('kan åbnes igen efter turen er slut', () => {
     render(<RaekkeTranskript blocks={TUR} streaming={false} varighedSekunder={65} />)
-    fireEvent.click(screen.getByRole('button', { name: /Slog noget op og kørte en kommando 1m 5s/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Arbejdet 1m 5s/ }))
     expect(screen.getByText('Bash')).toBeInTheDocument()
   })
 })

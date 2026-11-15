@@ -144,32 +144,25 @@ describe('turHoved', () => {
 })
 
 describe('turFortalt', () => {
-  it('fortæller hvad arbejdet var, ikke hvor mange kald', () => {
-    // Bjørn 23/9-2026: «hvordan forslår du punkt 5 skal se ud?» — ni kald
-    // kan være ni filer læst eller ni kommandoer kørt, og de to betyder
-    // vidt forskellige ting at læse.
+  it('siger Arbejdet og turen — ikke en opremsning af værktøjer', () => {
+    // Bjørn 15/11-2026: «denne generiske dele af hoved når det er foldet skal
+    // væk, skiftet til Arbejdet eller Worked efterfulgt af turens tid».
     const f = [...Array(6).fill('fil'), ...Array(3).fill('terminal')]
-    expect(turFortalt(f, 9, 90)).toBe('Læste 6 filer og kørte 3 kommandoer · 90s')
-  })
-  it('bøjer ental — «en fil», ikke «1 filer»', () => {
-    expect(turFortalt(['fil'], 1, 7)).toBe('Læste en fil · 7s')
-  })
-  it('sætter den største gruppe først', () => {
-    expect(turFortalt(['terminal', 'terminal', 'fil'], 3, 0))
-      .toBe('Kørte 2 kommandoer og læste en fil')
+    expect(turFortalt(f, 9, 90)).toBe('Arbejdet · 90s')
   })
   it('dropper tiden når der ikke blev tænkt', () => {
-    expect(turFortalt(['diff', 'diff'], 2, 0)).toBe('Redigerede 2 filer')
+    expect(turFortalt(['diff', 'diff'], 2, 0)).toBe('Arbejdet')
   })
-  it('klipper til tre led og siger «mere» frem for at skjule resten', () => {
-    expect(turFortalt(['fil', 'liste', 'terminal', 'skriv'], 4, 5))
-      .toBe('Læste en fil, søgte en gang, kørte en kommando og mere · 5s')
+  it('er den samme sætning uanset hvilke familier turen brugte', () => {
+    // Formen må ikke afhænge af værktøjsnavne: en ny familie skal ikke kunne
+    // ændre hvad hovedet hedder.
+    const a = turFortalt(['fil'], 1, 7)
+    const b = turFortalt(['terminal', 'web', 'diff'], 3, 7)
+    expect(a).toBe(b)
+    expect(a).toBe('Arbejdet · 7s')
   })
-  it('falder tilbage til tællingen når der slet ikke blev brugt værktøjer', () => {
-    expect(turFortalt([], 0, 12)).toBe('Thought for 12s')
-  })
-  it('giver en ukendt familie en ærlig frase frem for at forsvinde', () => {
-    expect(turFortalt(['noget-nyt'], 1, 3)).toBe('Arbejdede · 3s')
+  it('falder tilbage til Arbejdet når der slet ikke blev brugt værktøjer', () => {
+    expect(turFortalt([], 0, 12)).toBe('Arbejdet · 12s')
   })
 })
 

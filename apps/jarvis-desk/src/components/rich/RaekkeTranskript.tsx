@@ -49,6 +49,36 @@ function foersteLinje(s: string): string {
 
 /** Fold-pilen bor nu i TurHoved.tsx, så code og chat deler ÉN definition. */
 
+/** `+N −M` på en række der har ændret en fil — KUN den side der faktisk har
+ * ændringer. Bjørn 15/11-2026: «hvis den ene er 0 skal den ikk vises … hvis
+ * det kun er indsættelser X+ eller hvis det er fjernelse X- … vis diffen er
+ * begge dele».
+ *
+ * Samme regel som `ArtifactsView` bruger på artefaktlisten. Et `+0` er ikke et
+ * tal om arbejdet: en række der kun slettede linjer skal ikke se ud som om den
+ * også skrev nye. Er begge nul, tegnes intet — rækken handlede om noget andet,
+ * og `diffFraResultat` returnerer `0/0` som et MÅLT svar (ikke som «ingen
+ * data»), så det tilfælde findes i praksis.
+ *
+ * `git-add`/`git-del` er desks egne, pinnet af tokens.test.ts og brugt fem
+ * steder i forvejen (ToolCard, ToolGroupCard, ReviewPanel, ArtifactsView). Vi
+ * låner dem — rækkevisningen skal ikke have sin egen grønne og røde. */
+function DiffStat({ add, del }: { add: number; del: number }) {
+  if (add <= 0 && del <= 0) return null
+  const linjer = (n: number) => `${n} ${n === 1 ? 'linje' : 'linjer'}`
+  const label = [
+    add > 0 ? `tilføjet ${linjer(add)}` : null,
+    del > 0 ? `fjernet ${linjer(del)}` : null,
+  ].filter(Boolean).join(', ')
+  return (
+    <span className="rv-diffstat" aria-label={label}>
+      {add > 0 && <span className="git-add">+{add}</span>}
+      {add > 0 && del > 0 ? ' ' : null}
+      {del > 0 && <span className="git-del">−{del}</span>}
+    </span>
+  )
+}
+
 const Syntese = memo(function Syntese({ tekst, streaming }: { tekst: string; streaming: boolean }) {
   return <div className="rv-mellem"><MarkdownRenderer text={tekst} streaming={streaming} /></div>
 })
@@ -238,15 +268,7 @@ function Element({ e, streaming, config, beskedId }: {
     // (toolRound.ts:402). Uden den stod `.rv-diffstat` som en DOED klasse:
     // stilen fandtes, men ingen tegnede den (Bjoern 23/9-2026).
     const ds = diffFraResultat(b.result) ?? diffStat(b.name, b.input)
-    const sum = ds
-      ? <>{emne} <span className="rv-diffstat">
-          {/* `git-add`/`git-del` er desks egne, pinnet af tokens.test.ts og
-              brugt fem steder i forvejen (ToolCard, ToolGroupCard, ReviewPanel,
-              ArtifactsView). Vi laaner dem — raekkevisningen skal ikke have sin
-              egen groenne og roede. */}
-          <span className="git-add">+{ds.add}</span> <span className="git-del">−{ds.del}</span>
-        </span></>
-      : emne
+    const sum = ds ? <>{emne} <DiffStat add={ds.add} del={ds.del} /></> : emne
     return (
       <Raekke
         Ikon={meta.Icon} slags={etiket}
@@ -373,9 +395,7 @@ function ArbejdsrundeImpl({
         </span>
         <span className={`rv-arbejdsindhold${aktivRunde ? ' shimmer' : ''}`}>
           <span className="rv-arbejdsfortaelling">{beskrivelse}</span>
-          {diff && <span className="rv-diffstat" aria-label={`Tilføjet ${diff.add} linjer, fjernet ${diff.del} linjer`}>
-            <span className="git-add">+{diff.add}</span> <span className="git-del">−{diff.del}</span>
-          </span>}
+          {diff && <DiffStat add={diff.add} del={diff.del} />}
           {aktivRunde && typeof turSekunder === 'number'
             ? <span className="rv-rundeur"><RullendeUr sek={turSekunder} /></span>
             : null}

@@ -202,37 +202,11 @@ export function turHoved(kald: number, sekunder: number): string {
   return `${tid} · ${kald} tool call${kald === 1 ? '' : 's'}`
 }
 
-/**
- * Familien i klart sprog. Nøglerne er de samme `familie`-navne som kroppene
- * bruger (`raekkeKroppe.tsx`) — så hovedet og rækkerne altid fortæller samme
- * historie, og en ny familie kun skal læres ét sted.
- */
-// Fallbacken står uden for tabellen: et `Record`-opslag giver `| undefined`
-// under `noUncheckedIndexedAccess`, og så kan `FRASER.fald` ikke kaldes.
-const FALD = (n: number): string => (n === 1 ? 'arbejdede' : `arbejdede i ${n} trin`)
-
-const FRASER: Record<string, (n: number) => string> = {
-  fil: (n) => (n === 1 ? 'læste en fil' : `læste ${n} filer`),
-  liste: (n) => (n === 1 ? 'søgte en gang' : `søgte ${n} gange`),
-  terminal: (n) => (n === 1 ? 'kørte en kommando' : `kørte ${n} kommandoer`),
-  skriv: (n) => (n === 1 ? 'skrev en fil' : `skrev ${n} filer`),
-  diff: (n) => (n === 1 ? 'redigerede en fil' : `redigerede ${n} filer`),
-  web: (n) => (n === 1 ? 'slog noget op' : `slog ${n} ting op`),
-  billede: (n) => (n === 1 ? 'så på et billede' : `så på ${n} billeder`),
-  spoergsmaal: () => 'spurgte dig',
-  opgave: () => 'lagde en plan',
-  fald: FALD,
-}
-
-/** Flere end tre led, og sætningen bliver en liste man ikke læser. */
-const MAKS_LED = 3
-
-function led(dele: string[]): string {
-  // `join` frem for `dele[0]`: et indeks-opslag er `| undefined` under
-  // noUncheckedIndexedAccess, og tomt/enkelt led skal bare igennem.
-  if (dele.length <= 1) return dele.join('')
-  return `${dele.slice(0, -1).join(', ')} og ${dele[dele.length - 1]}`
-}
+/* 15/11-2026: her lå `FRASER`, `MAKS_LED` og `led()` — oversættelsen af
+   værktøjsfamilier til prosa («læste 6 filer og kørte 3 kommandoer»). Da
+   hovedet skiftede til «Arbejdet · 42s», mistede alle tre deres læsere.
+   De er fjernet frem for at blive stående: en tabel ingen kalder er
+   dokumentation der lyver om hvad koden gør. */
 
 /**
  * Turens hoved, fortalt. Bjørn 23/9-2026: «hvordan forslår du punkt 5 skal
@@ -242,28 +216,24 @@ function led(dele: string[]): string {
  * intetsigende: ni kald kan være ni filer læst eller ni kommandoer kørt, og
  * de to betyder vidt forskellige ting at læse. Her får arbejdet et sprog.
  *
- * Meningen kommer først, sekundet sidst — sekunderne bliver stående, fordi
- * de er det ene tal Bjørn selv bad om at få vist (22/9-2026).
+ * ## Opremsningen er væk (15/11-2026)
+ *
+ * Før stod der «Kørte 9 kommandoer og læste en fil · 42s». Bjørn: «denne
+ * generiske dele af hoved når det er foldet skal væk, skiftet til Arbejdet
+ * eller Worked efterfulgt af turens tid». Opremsningen var en gættet
+ * oversættelse af værktøjsnavne til prosa, og den læste som en maskinrapport
+ * oven over et svar man allerede havde læst. Hovedet er turens RESULTAT, ikke
+ * en kvittering for hvad der blev kørt — tiden er det ene tal Bjørn selv bad
+ * om (22/9-2026), og den bliver.
+ *
+ * `familier` og `kald` er stadig parametre: de bærer turen, og en fremtidig
+ * form kan få brug for dem. At fjerne dem ville tvinge hvert kaldssted til at
+ * ændre signatur for en ændring der kun er i teksten.
  */
 export function turFortalt(
-  familier: readonly string[], kald: number, sekunder: number,
+  _familier: readonly string[], _kald: number, sekunder: number,
 ): string {
-  const antal = new Map<string, number>()
-  for (const f of familier) antal.set(f, (antal.get(f) ?? 0) + 1)
-
-  // Største gruppe først — den er det man husker turen for. Map bevarer
-  // indsættelsesrækkefølgen, og sort er stabil, så lige store grupper
-  // beholder den rækkefølge de blev brugt i.
-  const sorteret = [...antal.entries()].sort((a, b) => b[1] - a[1])
-  const dele = sorteret.slice(0, MAKS_LED).map(([f, n]) => (FRASER[f] ?? FALD)(n))
-  if (sorteret.length > MAKS_LED) dele.push('mere')
-
-  // Uden værktøjer er der kun tanken tilbage, og den har kun et tal.
-  if (dele.length === 0) return turHoved(kald, sekunder)
-
-  const saetning = led(dele)
-  const stort = saetning.charAt(0).toUpperCase() + saetning.slice(1)
-  return sekunder > 0 ? `${stort} · ${sekunder}s` : stort
+  return sekunder > 0 ? `Arbejdet · ${sekunder}s` : 'Arbejdet'
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

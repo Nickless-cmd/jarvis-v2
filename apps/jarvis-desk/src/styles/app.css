@@ -5061,16 +5061,22 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
 /* ── «Redigerede N filer» under Jarvis' besked ───────────────────────────
    Formen er CC's: titel til venstre, handling til hoejre, og én raekke pr.
    fil med sti, +/- og en chevron. (Bjoern 16/9-2026, efter skaermbillede.) */
+/* 15/11-2026 (Bjørn: «Redigeret X filer … jeg kan ikk finde ud af om den skal
+   væk eller gøre mindre»). Funktionen blev beholdt — «Vis ændringer» og
+   hover-diffen er den eneste vej fra beskeden til ændringerne — men formen var
+   for tung: målt 78px for én fil, 138px for tre. Det meste var et 30px ikon
+   med knap-baggrund, som ikke er en knap, plus 8px header-padding. 22px og
+   6px giver ~62px for én fil uden at fjerne noget man kan trykke på. */
 .edited-files {
   border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden;
   margin: 8px 0 0; background: var(--bg-1);
 }
 .edited-files-head {
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px; border-bottom: 1px solid var(--line);
+  padding: 6px 10px; border-bottom: 1px solid var(--line);
 }
 .edited-files-headikon { display: inline-flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px; flex: none; border-radius: var(--radius-md); color: var(--fg-2);
+  width: 22px; height: 22px; flex: none; border-radius: var(--radius-sm); color: var(--fg-2);
   background: var(--bg-3); }
 .edited-files-titel { color: var(--fg-1); font-size: 13px; }
 .edited-files-sum { display: inline-flex; gap: 5px; font-size: 11px; font-variant-numeric: tabular-nums; }
@@ -5093,7 +5099,7 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
 .edited-files-rk {
   display: flex; align-items: center; gap: 8px; width: 100%;
   background: none; border: 0; color: inherit; cursor: pointer;
-  padding: 7px 10px; text-align: left; font-size: 13px;
+  padding: 5px 10px; text-align: left; font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 .edited-files-rk:hover { background: var(--bg-2); }

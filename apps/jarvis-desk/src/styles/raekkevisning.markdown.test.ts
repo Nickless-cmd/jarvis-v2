@@ -20,7 +20,13 @@ const css = readFileSync(resolve(__dirname, 'raekkevisning.css'), 'utf8')
 describe('markdown-struktur i rækkevisningen', () => {
   it('afsnit har bundmargin i både syntese og svar', () => {
     expect(css).toMatch(/\.raekkevisning \.rv-mellem p,[\s\S]*?margin: 0 0 0\.9em 0;/)
-    expect(css).toMatch(/\.raekkevisning \.rv-svar p,/)
+    // 15/11-2026: denne vagt krævede et KOMMA efter `.rv-svar p`, fordi reglen
+    // dengang var sidste led i en gruppe sammen med `.rv-turTekst p`. Da den
+    // døde `.rv-turTekst`-blok blev fjernet, blev `.rv-svar p` sidste led i en
+    // kortere gruppe — og vagten faldt på FORMEN, ikke på adfærden, selv om
+    // bundmarginen stod præcis hvor den skulle. Den måler nu at marginen står
+    // på `.rv-svar p`, uanset om reglen står alene eller i en gruppe.
+    expect(css).toMatch(/\.raekkevisning \.rv-svar p\b[^{}]*\{[^}]*margin: 0 0 0\.9em 0;/)
   })
 
   it('lister har indrykning i PADDING — ellers står punkterne uden for teksten', () => {

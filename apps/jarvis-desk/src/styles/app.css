@@ -5180,10 +5180,15 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
 .edited-files-diff-krop *::-webkit-scrollbar-corner { background: transparent; }
 
 /* Projekt-overskrift i sidepanelet — «jarvis-v2 · /media/projects», som i CC.
-   Ikke en knap: gruppen foldes paa KODE-overskriften ovenover, og to
-   foldeniveauer i en liste paa 260 px bliver til rod. */
+   15/11-2026 blev den en FOLD. Noten her sagde før det modsatte («ikke en
+   knap: gruppen foldes paa KODE-overskriften ovenover, og to foldeniveauer i
+   en liste paa 260 px bliver til rod»). Det var en antagelse, ikke en maaling:
+   Bjørn bad om netop det andet niveau — «projekter under projekter i venstre
+   panel i code mode skal have fold pil i enden af projektnavnet». Folden er
+   derfor indfoert, men KUN paa projekt-linjen; KODE-overskriften beholder sin
+   egen fold, saa man kan lukke hele gruppen uden at roere projekterne. */
 .sidebar-projekt {
-  display: flex; align-items: baseline; gap: 5px; min-width: 0;
+  display: flex; align-items: center; gap: 5px; min-width: 0;
   cursor: default;
   /* Samme venstre kant som samtalerne under den. Foer stod her
      `padding-left: 18px` OVEN I etikettens egne 10px, saa overskriften laa
@@ -5227,6 +5232,25 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
 }
 /* Separatoren staar UDEN FOR sti-elementet — se noten ved .sidebar-projekt-sti. */
 .sidebar-projekt-prik { color: var(--fg-3); flex: 0 0 auto; }
+
+/* Fold-pilen i ENDEN af projekt-linjen (15/11-2026). Pilen peger til hoejre
+   naar projektet er foldet ud, og roterer 90 grader ned naar det er aabent —
+   samme retning som ChevronRight i resten af panelet.
+   Raekken blev samme dag flyttet fra `align-items: baseline` til `center`:
+   `.sidebar-label` har asymmetrisk padding (14px top, 6px bund), saa
+   baseline-linjen lagde pilen 4px under navnet. Maalt i Chromium efter
+   rettelsen: pilens midte ligger praecis paa navnets midtlinje (afvigelse 0). */
+.sidebar-projekt-fold {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; padding: 0; margin-left: 2px;
+  border: 0; background: none; color: var(--fg-3);
+  cursor: pointer; border-radius: var(--radius-xs);
+  transition: transform var(--dur-snap) var(--ease-snap), color var(--dur-snap) var(--ease-snap);
+}
+.sidebar-projekt-fold:hover { color: var(--fg-1); }
+.sidebar-projekt-fold[aria-expanded='true'] { transform: rotate(90deg); }
+.sidebar-projekt-fold:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* Traekgreb paa sidepanelets hoejre kant (Bjoern 16/9-2026: «venstre panel
    mangler traek og slip til breden»). Selve stregen er 1 px bred, men

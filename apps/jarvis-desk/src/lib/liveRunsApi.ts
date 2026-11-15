@@ -1,31 +1,27 @@
-import { apiFetch, getActiveRunSessions, type ActiveRunSession, type ApiConfig } from './api'
+import { apiFetch, type ApiConfig } from './api'
 
 /**
- * Hvad der kører LIGE NU — fra to kilder, samlet til én liste.
+ * Hvad der kører LIGE NU — RUTINER, og kun rutiner.
  *
- * To kilder fordi de er to forskellige ting: `/chat/active-runs` svarer på
- * hvilke SESSIONER der har et levende run (det er den session man kan åbne),
- * og `/api/routines/active-runs` svarer på hvilke RUTINER der er i gang
- * (rutiner kører som baggrundsrun uden session — målt 15/11-2026: 190 kørsler,
- * nul med session).
+ * Bjørn 15/11-2026: «kører nu under artefakter viser den kørende samtale og
+ * ikk rutiner når de køre.. den ska kun vise rutinerne når de køre».
  *
- * Sessions-delen går gennem `getActiveRunSessions` og ikke et eget `apiFetch`:
- * den ligger bag husets `sharedRead`, så sidebarens eksisterende polling og
- * denne blok deler ét kald pr. TTL i stedet for at spørge to gange.
+ * Første udgave flettede to kilder: `/chat/active-runs` (hvilke SESSIONER der
+ * har et levende run) og `/api/routines/active-runs` (hvilke RUTINER der er i
+ * gang). Det var forkert prioriteret: den kørende samtale er noget man allerede
+ * SER — man sidder i den, eller den står i sessionslisten med sin spinner. Det
+ * man ikke kan se, er de rutiner der kører i baggrunden uden en session.
+ * Blokken viste altså det synlige og skjulte det usynlige.
  *
- * Derfor har en række en `kind` der bestemmer hvor klikket fører hen: en
- * session åbnes i chatview, en rutine åbnes i rutine-fladen. At påstå noget
- * andet ville være at vise en knap der ikke gør noget.
+ * Session-kilden er derfor fjernet helt. Rutiner kører som baggrundsrun uden
+ * session (målt 15/11-2026: 190 kørsler, nul med session), så et klik fører til
+ * rutine-fladen — ikke til et chatview der ikke findes.
  */
-export type LiveRunKind = 'rutine' | 'autonom' | 'samtale'
-
 export interface LiveRun {
   /** Stabil nøgle på tværs af pollinger — bruges til at fade ud, ikke til at slå op. */
   id: string
-  kind: LiveRunKind
   navn: string
   status: string
-  sessionId?: string
   routineId?: string
   runId?: string
   startedAt?: string
@@ -40,32 +36,14 @@ interface AktivRutineKoersel {
 }
 
 export async function hentLiveRuns(config: ApiConfig): Promise<LiveRun[]> {
-  // Parallelt: to uafhængige opslag. En fejl i det ene må ikke slukke det
-  // andet — en kørende rutine er stadig sand selv om sessions-opslaget fejler.
-  const [sessionListe, rutineSvar] = await Promise.all([
-    getActiveRunSessions(config).catch(() => [] as ActiveRunSession[]),
-    apiFetch<AktivRutineKoersel[]>(config, '/api/routines/active-runs')
-      .catch(() => [] as AktivRutineKoersel[]),
-  ])
+  const svar = await apiFetch<AktivRutineKoersel[]>(config, '/api/routines/active-runs')
+    .catch(() => [] as AktivRutineKoersel[])
 
   const ud: LiveRun[] = []
-  for (const s of sessionListe) {
-    if (!s?.session_id) continue
-    ud.push({
-      id: `s:${s.session_id}`,
-      kind: s.kind === 'autonom' ? 'autonom' : 'samtale',
-      navn: s.label || 'Samtale',
-      status: s.status || 'working',
-      sessionId: s.session_id,
-      runId: s.run_id || undefined,
-    })
-  }
-  const rutiner = Array.isArray(rutineSvar) ? rutineSvar : []
-  for (const r of rutiner) {
+  for (const r of Array.isArray(svar) ? svar : []) {
     if (!r?.run_id) continue
     ud.push({
       id: `r:${r.run_id}`,
-      kind: 'rutine',
       navn: r.name || 'Rutine',
       status: r.status || 'queued',
       routineId: r.routine_id,

@@ -11,11 +11,11 @@ vi.mock('../../lib/ro', () => ({ maaPolle: () => true }))
 const mockHent = vi.mocked(hentLiveRuns)
 const CONFIG = { apiBaseUrl: 'http://x', authToken: 't' }
 
-const SAMTALE: LiveRun = {
-  id: 's:chat-1', kind: 'samtale', navn: 'Samtale', status: 'working', sessionId: 'chat-1',
-}
 const RUTINE: LiveRun = {
-  id: 'r:run-1', kind: 'rutine', navn: 'Morgenbrief', status: 'running', routineId: 'routine-1',
+  id: 'r:run-1', navn: 'Morgenbrief', status: 'running', routineId: 'routine-1',
+}
+const RUTINE_2: LiveRun = {
+  id: 'r:run-2', navn: 'Natrutine', status: 'running', routineId: 'routine-2',
 }
 
 beforeEach(() => {
@@ -30,39 +30,30 @@ describe('KoererNu', () => {
     expect(container.querySelector('.koerer-nu')).toBeNull()
   })
 
-  it('viser de kørsler der er i gang, med et læsbart navn', async () => {
-    mockHent.mockResolvedValue([SAMTALE, RUTINE])
+  it('viser de rutiner der er i gang, med deres navn', async () => {
+    mockHent.mockResolvedValue([RUTINE, RUTINE_2])
     render(<KoererNu config={CONFIG} />)
-    expect(await screen.findByText('Samtale')).toBeInTheDocument()
-    expect(screen.getByText('Morgenbrief')).toBeInTheDocument()
+    expect(await screen.findByText('Morgenbrief')).toBeInTheDocument()
+    expect(screen.getByText('Natrutine')).toBeInTheDocument()
     expect(screen.getByText('Kører nu')).toBeInTheDocument()
-  })
-
-  it('et klik på en session skifter til DEN session', async () => {
-    mockHent.mockResolvedValue([SAMTALE])
-    const onOpenSession = vi.fn()
-    render(<KoererNu config={CONFIG} onOpenSession={onOpenSession} />)
-    fireEvent.click(await screen.findByText('Samtale'))
-    expect(onOpenSession).toHaveBeenCalledWith('chat-1')
+    expect(screen.getByText('2')).toBeInTheDocument()
   })
 
   it('et klik på en rutine åbner rutinen — ikke en session den ikke har', async () => {
     mockHent.mockResolvedValue([RUTINE])
     const onOpenRoutine = vi.fn()
-    const onOpenSession = vi.fn()
-    render(<KoererNu config={CONFIG} onOpenRoutine={onOpenRoutine} onOpenSession={onOpenSession} />)
+    render(<KoererNu config={CONFIG} onOpenRoutine={onOpenRoutine} />)
     fireEvent.click(await screen.findByText('Morgenbrief'))
+    // Rutiner kører uden session (målt 15/11-2026) — så klikket må ikke pege
+    // på et chatview der ikke findes.
     expect(onOpenRoutine).toHaveBeenCalledWith('routine-1')
-    // Rutiner kører uden session (målt 15/11-2026) — så der må ikke skiftes
-    // til en session der ikke findes.
-    expect(onOpenSession).not.toHaveBeenCalled()
   })
 
   it('folden kan lukke listen, så blokken kun er én linje', async () => {
-    mockHent.mockResolvedValue([SAMTALE])
+    mockHent.mockResolvedValue([RUTINE])
     render(<KoererNu config={CONFIG} />)
-    await screen.findByText('Samtale')
+    await screen.findByText('Morgenbrief')
     fireEvent.click(screen.getByText('Kører nu'))
-    expect(screen.queryByText('Samtale')).toBeNull()
+    expect(screen.queryByText('Morgenbrief')).toBeNull()
   })
 })

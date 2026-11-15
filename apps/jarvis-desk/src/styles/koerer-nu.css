@@ -102,13 +102,6 @@
   white-space: nowrap;
 }
 
-.koerer-nu-art {
-  flex: none;
-  font-size: 9.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--fg-3);
-}
 
 .koerer-nu-punkt {
   width: 6px;

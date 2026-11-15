@@ -12,22 +12,22 @@ const POLL_MS = 4000
 const FADE_MS = 700
 
 /**
- * «Kører nu» — de kørsler der er i gang, og kun dem.
+ * «Kører nu» — de RUTINER der er i gang, og kun dem.
  *
  * Bjørn 15/11-2026: «de kun vises mens de køre … runtime navne fader ind og ud
- * når de er aktive og men de er aktive kan man trykke på dem og så skifter
- * chatview og composer til den session».
+ * når de er aktive og men de er aktive kan man trykke på dem».
+ * Samme dag, efter første udgave: «den ska kun vise rutinerne når de køre» —
+ * den kørende SAMTALE er noget man allerede ser, så den hører ikke her.
  *
  * Derfor: listen er TOM når intet kører — den er en tilstand, ikke et arkiv.
  * En række der forsvinder får et kort `is-fading`-vindue, så øjet ser at den
  * sluttede frem for at den blev revet væk.
  *
- * Klikket fører til det sted hvor indholdet FINDES: en session åbnes i
- * chatview (hvor composer hører til), en rutine åbnes i rutine-fladen.
+ * Klikket fører til rutine-fladen: rutiner kører som baggrundsrun uden session,
+ * så der findes intet chatview at skifte til.
  */
-export function KoererNu({ config, onOpenSession, onOpenRoutine }: {
+export function KoererNu({ config, onOpenRoutine }: {
   config?: ApiConfig | null
-  onOpenSession?: (sessionId: string) => void
   onOpenRoutine?: (routineId: string) => void
 }) {
   const [runs, setRuns] = useState<LiveRun[]>([])
@@ -55,9 +55,7 @@ export function KoererNu({ config, onOpenSession, onOpenRoutine }: {
           window.setTimeout(() => { if (alive) setForsvundne([]) }, FADE_MS)
         }
       } catch {
-        // En tom liste er ikke en fejl der skal råbes op i sidebaren. De to
-        // kilder fejler hver for sig, så ét fejlet opslag skjuler ikke den
-        // anden slags kørsel.
+        // En tom liste er ikke en fejl der skal råbes op i sidebaren.
       }
     }
     void hent()
@@ -88,26 +86,18 @@ export function KoererNu({ config, onOpenSession, onOpenRoutine }: {
         <div className="koerer-nu-liste">
           {synlige.map((r) => {
             const aktiv = runs.some((x) => x.id === r.id)
-            const aabn = () => {
-              if (r.kind === 'rutine') {
-                if (r.routineId) onOpenRoutine?.(r.routineId)
-                return
-              }
-              if (r.sessionId) onOpenSession?.(r.sessionId)
-            }
             return (
               <button
                 key={r.id}
                 type="button"
                 className={`koerer-nu-raekke${aktiv ? '' : ' is-fading'}`}
-                onClick={aabn}
-                title={r.sessionId ?? r.routineId ?? ''}
+                onClick={() => { if (r.routineId) onOpenRoutine?.(r.routineId) }}
+                title={r.routineId ?? ''}
               >
                 {aktiv
                   ? <Loader2 size={12} className="spin" aria-hidden="true" />
                   : <span className="koerer-nu-punkt" aria-hidden="true" />}
                 <span className="koerer-nu-navn">{r.navn}</span>
-                <span className="koerer-nu-art">{r.kind === 'rutine' ? 'rutine' : 'session'}</span>
               </button>
             )
           })}

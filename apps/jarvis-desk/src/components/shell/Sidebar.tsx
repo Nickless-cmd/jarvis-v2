@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, Fragment } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, Fragment, type ReactNode } from 'react'
 import {
   Plus, MoreVertical, Pencil, Download, Trash2, Search, Images, Code, FileCode2,
   Pin, Archive, ArchiveRestore, FolderInput, FolderMinus, FolderPlus,
@@ -29,6 +29,21 @@ import { NotifikationSessionPanel } from './NotifikationSessionPanel'
 import { KontoMenu } from './KontoMenu'
 import '../../styles/notification-feed.css'
 import { hasHostCapability } from '../../lib/host'
+
+/* Fold-tilstand pr. projekt, husket over re-render. Noeglen er projektets
+   `workspace_root` ('' for «Uden projekt»), ikke navnet: to mapper kan hedde
+   det samme, og navnet er udledt af stien. */
+const FOLDEDE_PROJEKTER_KEY = 'jarvis-desk:foldedeProjekter'
+
+function laesFoldedeProjekter(): Set<string> {
+  try {
+    const raw = localStorage.getItem(FOLDEDE_PROJEKTER_KEY)
+    if (!raw) return new Set()
+    const arr: unknown = JSON.parse(raw)
+    if (!Array.isArray(arr)) return new Set()
+    return new Set(arr.filter((x): x is string => typeof x === 'string'))
+  } catch { return new Set() }
+}
 
 const ZONE_ICONS: Record<string, LucideIcon> = {
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
@@ -334,7 +349,6 @@ export function Sidebar({
             en rutine i rutine-fladen. */}
         <KoererNu
           config={apiConfig}
-          onOpenSession={(id) => { select(id); onSurface('chat') }}
           onOpenRoutine={onOpenRoutine}
         />
 
@@ -379,8 +393,8 @@ export function Sidebar({
                       // projekt-overskrift vaere en gruppe uden indhold.
                       g.gruppe === 'kode'
                         ? grupperEfterProjekt(g.sessioner).map((p) => (
-                          <Fragment key={p.rod || 'uden'}>
-                            <ProjektOverskrift navn={p.navn} sti={p.sti} rod={p.rod} sessioner={p.sessioner.map((s) => s.id)} />
+                          <ProjektFold key={p.rod || 'uden'} navn={p.navn} sti={p.sti} rod={p.rod}
+                                       sessioner={p.sessioner.map((s) => s.id)}>
                             {p.sessioner.map((s) => (
                               <SessionItem
                                 key={s.id}
@@ -394,7 +408,7 @@ export function Sidebar({
                                 onSelect={() => { select(s.id); onSurface(erKodeSamtale(s) ? 'code' : 'chat') }}
                               />
                             ))}
-                          </Fragment>
+                          </ProjektFold>
                         ))
                         : g.sessioner.map((s) => (
                           <SessionItem
@@ -561,8 +575,9 @@ function NytProjektKnap() {
 }
 
 
-function ProjektOverskrift({ navn, sti, rod, sessioner }: {
+function ProjektOverskrift({ navn, sti, rod, sessioner, aaben, onToggle }: {
   navn: string; sti: string; rod: string; sessioner: string[]
+  aaben: boolean; onToggle: () => void
 }) {
   const { create, setWorkspace, releaseWorkspace } = useSessions()
   const [open, setOpen] = useState(false)
@@ -632,7 +647,57 @@ function ProjektOverskrift({ navn, sti, rod, sessioner }: {
           )}
         </div>
       )}
+      {/* Fold-pilen sidder i ENDEN af projekt-linjen (Bjørn 15/11-2026:
+          «projekter under projekter i venstre panel i code mode skal have
+          fold pil i enden af projektnavnet så man kan folde det enkelte
+          projekt»). Den er en rigtig knap med aria-expanded, ikke et ikon:
+          det er den eneste vej til at folde, så den skal kunne rammes med
+          tastatur og læses af skærmlæser. */}
+      <button type="button" className="sidebar-projekt-fold" aria-expanded={aaben}
+              aria-label={aaben ? `Fold ${navn} sammen` : `Fold ${navn} ud`}
+              title={aaben ? 'Fold sammen' : 'Fold ud'}
+              onClick={onToggle}>
+        <ChevronRight size={13} />
+      </button>
     </div>
+  )
+}
+
+/** Ejer fold-tilstanden for ÉT projekt.
+ *
+ *  Overskriften og dens samtaler blev før renderet som søskende i samme
+ *  Fragment, så en fold i overskriften kunne ikke skjule rækkerne under den.
+ *  De hører sammen og skal derfor ligge i samme komponent.
+ *
+ *  Tilstanden huskes pr. projekt-sti i localStorage: sidebaren re-rendres ved
+ *  hvert aktivt-run-poll (4 s), og et fold der sprang op igen hvert fjerde
+ *  sekund ville være værre end ingen fold.
+ */
+function ProjektFold({ navn, sti, rod, sessioner, children }: {
+  navn: string; sti: string; rod: string; sessioner: string[]; children: ReactNode
+}) {
+  const noegle = rod || ''
+  const [aaben, setAaben] = useState(() => !laesFoldedeProjekter().has(noegle))
+
+  const vaelg = () => {
+    setAaben((forrige) => {
+      const naeste = !forrige
+      try {
+        const foldede = laesFoldedeProjekter()
+        if (naeste) foldede.delete(noegle)
+        else foldede.add(noegle)
+        localStorage.setItem(FOLDEDE_PROJEKTER_KEY, JSON.stringify([...foldede]))
+      } catch { /* localStorage kan være spærret — folden virker stadig i denne session */ }
+      return naeste
+    })
+  }
+
+  return (
+    <>
+      <ProjektOverskrift navn={navn} sti={sti} rod={rod} sessioner={sessioner}
+                         aaben={aaben} onToggle={vaelg} />
+      {aaben && children}
+    </>
   )
 }
 

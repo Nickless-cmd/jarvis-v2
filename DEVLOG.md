@@ -6,9 +6,11 @@ Code Mode round rows now carry the two phases of a round explicitly. While a
 round is active its row shows what Jarvis is working on, followed by the round's
 actual working steps — one per `tool_use`, each with its real state (done,
 running, failed, or abandoned). When the round is left, the step list is replaced
-by the existing result synthesis and a compact meta line stating how much history
-sits behind it ("3 arbejdstrin · Fold ud"), which expands to the unchanged tool
-detail rows.
+by the existing result synthesis. The completed row carries no step count and no
+fold hint: the row's own chevron already shows that it expands, and a count said
+nothing about the outcome. What remains on the row is only what cannot be seen
+from the synthesis itself — that a step failed or never received an answer
+("1 fejlede", "2 uden resultat").
 
 The steps are derived from the round's own blocks (`src/lib/rundeTrin.ts`); no
 step exists unless the server sent the call, and no count is inferred. A call
@@ -26,7 +28,7 @@ updates the row instead of rebuilding the list.
 Chat Mode is untouched: `ChatFlowPresentation` is a separate renderer, and only
 `RaekkeTranskript` (Code Mode) changed.
 
-Verification: 447 frontend test files passed, 3,478 tests passed and 1 skipped,
+Verification: 447 frontend test files passed, 3,480 tests passed and 1 skipped,
 including 19 new tests covering the seven required scenarios. TypeScript build
 clean. Rendering was verified in Chromium against the real component: the active
 heading measured `rgb(240, 239, 236)` against `rgb(166, 165, 156)` for the

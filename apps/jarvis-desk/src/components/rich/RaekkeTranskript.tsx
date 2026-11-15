@@ -364,6 +364,10 @@ function ArbejdsrundeImpl({
     sidsteTrin && sidsteTrin.status === 'active' && sidsteTrin.tekst === beskrivelse,
   )
   const synligeTrin = overskriftErSidste ? trin.slice(0, -1) : trin
+  // Kun det man ikke kan se af sig selv: at noget fejlede eller aldrig fik et
+  // svar. Antallet og «Fold ud» stod her før, men pilen viser allerede at
+  // rækken kan foldes, og tallet sagde intet om udfaldet (Bjørn 15/11-2026).
+  const advarsel = aktivRunde ? '' : trinMeta(trin)
   return (
     <div className="rv-arbejdsrunde"
       {...(aktivRunde ? { 'data-aktiv-runde': '', 'data-pacing-skjult': skjult ? '' : undefined } : {})}
@@ -388,11 +392,11 @@ function ArbejdsrundeImpl({
           {aktivRunde && typeof turSekunder === 'number'
             ? <span className="rv-rundeur"><RullendeUr sek={turSekunder} /></span>
             : null}
-          {/* Niveau 2: den afsluttede runde fortæller HVOR MEGET der ligger
-              bag den, og hvordan man kommer derind. Den aktive runde har
-              trinnene synlige og skal ikke tælle dem op. */}
-          {!aktivRunde && trin.length > 0
-            ? <span className="rv-arbejdsmeta">{trinMeta(trin, aaben)}</span>
+          {/* Niveau 2: kun det udfald man ikke kan se af sig selv. Den
+              afsluttede runde bærer sin syntese; fejl og kald uden svar får
+              et ord med på vejen. */}
+          {advarsel
+            ? <span className="rv-arbejdsmeta">{advarsel}</span>
             : null}
         </span>
         <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /><FoldPil aaben={aaben} className="rv-ikon-glimt" /></span>
@@ -463,6 +467,12 @@ function RaekkeTranskriptImpl({
   const transcriptBlocks = inlineQuestions.length > 0
     ? blocks.filter((blok) => !(blok.type === 'tool_use' && blok.name === 'pause_and_ask'))
     : blocks
+  // Kald uden svar bærer `status: 'running'` videre fra `foldToolResults`, og
+  // `arbejdsTrin` gør dem til «afbrudt» når runden ikke længere er aktiv.
+  // `afslutForladteKald` må IKKE bruges her: den stempler et kald som «done» så
+  // snart der kommer tekst efter det, fordi den læser tekst som «svaret er
+  // begyndt». For en rundelinje er det forkert — kaldet kan stadig køre, og
+  // «Læser app.ts» blev til «Læste app.ts» (målt 15/11-2026).
   const { arbejde, svar, kald } = opdel(transcriptBlocks, streaming && !finalAnswerStarted)
   const billedArbejde = streaming
     ? levendeBilledArbejde(afslutForladteKald(blocks, true).flatMap((b) => b.type === 'tool_use' ? [b] : []))

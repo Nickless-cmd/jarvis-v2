@@ -79,9 +79,11 @@ describe('trinMeta — hvad den afsluttede runde lover om sit indhold', () => {
     kald('c', 'bash', { command: 'whoami' }, 'done'),
   ], false)
 
-  it('tæller trinnene og fortæller hvordan man kommer derind', () => {
-    expect(trinMeta(tre, false)).toBe('3 arbejdstrin · Fold ud')
-    expect(trinMeta(tre, true)).toBe('3 arbejdstrin · Fold sammen')
+  it('siger INTET når alt gik som det skulle — antallet var staffage', () => {
+    // Bjørn 15/11-2026: «1 arbejdstrin · Fold ud» skulle væk fra selve
+    // rundelinjen. Pilen viser at rækken kan foldes; tallet sagde intet om
+    // udfaldet.
+    expect(trinMeta(tre)).toBe('')
   })
 
   it('nævner afbrudte trin — en ufuldstændig runde må ikke se færdig ud', () => {
@@ -90,7 +92,7 @@ describe('trinMeta — hvad den afsluttede runde lover om sit indhold', () => {
       kald('b', 'bash', { command: 'pwd' }, 'running'),
     ], false)
     expect(uafsluttede(blandet)).toBe(1)
-    expect(trinMeta(blandet, false)).toContain('1 uden resultat')
+    expect(trinMeta(blandet)).toContain('1 uden resultat')
   })
 
   it('nævner fejlede trin', () => {
@@ -99,10 +101,10 @@ describe('trinMeta — hvad den afsluttede runde lover om sit indhold', () => {
       kald('b', 'bash', { command: 'false' }, 'error'),
     ], false)
     expect(fejlede(medFejl)).toBe(1)
-    expect(trinMeta(medFejl, false)).toContain('1 fejlede')
+    expect(trinMeta(medFejl)).toContain('1 fejlede')
   })
 
   it('giver tom tekst for en runde uden trin', () => {
-    expect(trinMeta([], false)).toBe('')
+    expect(trinMeta([])).toBe('')
   })
 })

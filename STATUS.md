@@ -8,7 +8,8 @@ implementation.
 ## Code Mode round timeline — complete locally (2026-11-15)
 
 - An active round shows its heading plus its real working steps; a completed
-  round shows the result synthesis and a meta line counting its steps.
+  round shows the result synthesis. The completed row carries no step count and
+  no fold hint — only a warning when a step failed or never answered.
 - Steps are derived from actual `tool_use` blocks. None are invented, and no
   count is inferred from anything but the calls themselves.
 - A call that never answered is reported as abandoned ("uden resultat"); a failed
@@ -20,7 +21,7 @@ implementation.
 - Three-level visual hierarchy: active (normal contrast), completed (dimmed),
   tool details (secondary, unchanged).
 - Chat Mode is unchanged; only the Code Mode row renderer was modified.
-- Verification: 3,478 frontend tests passed (1 skipped, 447 files), TypeScript
+- Verification: 3,480 frontend tests passed (1 skipped, 447 files), TypeScript
   build clean, and the rendering measured in Chromium against the real component.
 
 Release state: frontend-only change. No service restart is required, because the

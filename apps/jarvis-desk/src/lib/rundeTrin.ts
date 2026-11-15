@@ -55,11 +55,18 @@ export function arbejdsTrin(elementer: readonly ArbejdsElement[], aktiv: boolean
     const b = e.blok
     if (b.type !== 'tool_use') continue
     const raa = b.status ?? 'running'
+    // `anomali` er husets eget stempel på et kald der aldrig fik et svar
+    // (`afslutForladteKald`). Det er den ærlige kilde: persisterede kald bærer
+    // ingen `status`, så uden den blev et historisk kald læst som «kører» →
+    // «afbrudt» — og kald MED et resultat blev meldt uden (målt 15/11-2026).
+    const forladt = b.anomali === 'uden-resultat'
     const status: TrinStatus = raa === 'error'
       ? 'failed'
-      : raa === 'running'
-        ? (aktiv ? 'active' : 'afbrudt')
-        : 'done'
+      : forladt
+        ? 'afbrudt'
+        : raa === 'running'
+          ? (aktiv ? 'active' : 'afbrudt')
+          : 'done'
     // Nutid kun for det trin der faktisk kører. Et efterladt kald får
     // datid som de andre — dets tilstand står i `status` og i `note`, ikke i
     // en verbalform der lover at det stadig arbejder.
@@ -87,15 +94,19 @@ export function fejlede(trin: readonly ArbejdsTrin[]): number {
   return trin.filter((t) => t.status === 'failed').length
 }
 
-/** Metateksten på en AFLUTTET runde: hvor meget historik der ligger bag den.
- *  Formen er Bjørns («3 arbejdstrin · Fold ud for detaljer»). */
-export function trinMeta(trin: readonly ArbejdsTrin[], aaben: boolean): string {
-  if (trin.length === 0) return ''
-  const dele = [`${trin.length} arbejdstrin`]
+/** De ærlige advarsler på en AFLUTTET runde — eller tom når alt gik som det
+ *  skulle.
+ *
+ *  Bjørn 15/11-2026: «1 arbejdstrin · Fold ud — denne del skal væk fra selve
+ *  rundelinjen». Antallet og fold-vejledningen var staffage: pilen i rækken
+ *  viser allerede at den kan foldes ud, og tallet sagde intet om udfaldet.
+ *  Tilbage står kun det man ikke kan se af sig selv — at noget fejlede eller
+ *  aldrig fik et svar. */
+export function trinMeta(trin: readonly ArbejdsTrin[]): string {
   const uaf = uafsluttede(trin)
   const fejl = fejlede(trin)
+  const dele: string[] = []
   if (uaf > 0) dele.push(uaf === trin.length ? 'uden resultat' : `${uaf} uden resultat`)
   if (fejl > 0) dele.push(fejl === 1 ? '1 fejlede' : `${fejl} fejlede`)
-  dele.push(aaben ? 'Fold sammen' : 'Fold ud')
   return dele.join(' · ')
 }

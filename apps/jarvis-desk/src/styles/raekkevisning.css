@@ -315,48 +315,37 @@
    Værdierne spejler `.jarvis-body` (app.css:806-822) med vilje, så de to modes
    læser ens. Ændres den ene, skal den anden følge med. */
 .raekkevisning .rv-mellem p,
-.raekkevisning .rv-svar p,
-.raekkevisning .rv-turTekst p { margin: 0 0 0.9em 0; }
+.raekkevisning .rv-svar p { margin: 0 0 0.9em 0; }
 .raekkevisning .rv-mellem > :last-child,
-.raekkevisning .rv-svar > :last-child,
-.raekkevisning .rv-turTekst > :last-child { margin-bottom: 0; }
+.raekkevisning .rv-svar > :last-child { margin-bottom: 0; }
 .raekkevisning .rv-mellem ul,
 .raekkevisning .rv-svar ul,
-.raekkevisning .rv-turTekst ul,
 .raekkevisning .rv-mellem ol,
-.raekkevisning .rv-svar ol,
-.raekkevisning .rv-turTekst ol {
+.raekkevisning .rv-svar ol {
   /* MÅLT 14/11-2026 i Chromium: `padding: 0` + `margin-left` gav `paddingLeft:
      0px`, så prikkerne hang UDEN FOR tekstboksen og listen læste som løse
      linjer. Indrykningen skal ligge i padding — dér hører list-markøren hjemme. */
   margin: 0.5em 0 0.8em 0; padding-left: 1.4em;
 }
 .raekkevisning .rv-mellem li,
-.raekkevisning .rv-svar li,
-.raekkevisning .rv-turTekst li { margin-bottom: 0.4em; }
+.raekkevisning .rv-svar li { margin-bottom: 0.4em; }
 .raekkevisning .rv-mellem li > p,
-.raekkevisning .rv-svar li > p,
-.raekkevisning .rv-turTekst li > p { margin: 0; }
+.raekkevisning .rv-svar li > p { margin: 0; }
 .raekkevisning .rv-mellem h1,
 .raekkevisning .rv-svar h1,
-.raekkevisning .rv-turTekst h1,
 .raekkevisning .rv-mellem h2,
 .raekkevisning .rv-svar h2,
-.raekkevisning .rv-turTekst h2,
 .raekkevisning .rv-mellem h3,
-.raekkevisning .rv-svar h3,
-.raekkevisning .rv-turTekst h3 {
+.raekkevisning .rv-svar h3 {
   margin: 0.9em 0 0.35em; font-weight: 600; line-height: 1.3;
 }
-.raekkevisning .rv-mellem h1, .raekkevisning .rv-svar h1, .raekkevisning .rv-turTekst h1 { font-size: 1.18em; }
-.raekkevisning .rv-mellem h2, .raekkevisning .rv-svar h2, .raekkevisning .rv-turTekst h2 { font-size: 1.10em; }
-.raekkevisning .rv-mellem h3, .raekkevisning .rv-svar h3, .raekkevisning .rv-turTekst h3 { font-size: 1.04em; }
+.raekkevisning .rv-mellem h1, .raekkevisning .rv-svar h1 { font-size: 1.18em; }
+.raekkevisning .rv-mellem h2, .raekkevisning .rv-svar h2 { font-size: 1.10em; }
+.raekkevisning .rv-mellem h3, .raekkevisning .rv-svar h3 { font-size: 1.04em; }
 .raekkevisning .rv-mellem strong,
-.raekkevisning .rv-svar strong,
-.raekkevisning .rv-turTekst strong { color: var(--fg-0, #f0f2f7); font-weight: 600; }
+.raekkevisning .rv-svar strong { color: var(--fg-0, #f0f2f7); font-weight: 600; }
 .raekkevisning .rv-mellem blockquote,
-.raekkevisning .rv-svar blockquote,
-.raekkevisning .rv-turTekst blockquote {
+.raekkevisning .rv-svar blockquote {
   margin: 0.5em 0; padding-left: 0.9em; border-left: 2px solid var(--line); color: var(--fg-2);
 }
 

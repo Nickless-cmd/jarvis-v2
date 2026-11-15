@@ -60,10 +60,24 @@ def test_status_er_ikke_active_naar_next_tick_er_60_min_overskredet(tmp_path, mo
     assert "60" in out["text"]  # overskridelsen er synlig
 
 
+def _som_ejerprocessen(monkeypatch):
+    """Sæt processen i ejerprocessens rolle.
+
+    `_exec_heartbeat_status` rapporterer kun tråd-tallene når den kører i
+    runtime-processen — den eneste proces hvor heartbeat-tråden faktisk lever.
+    Under pytest er rollen «api», så uden dette ville testene måle den gren hvor
+    tallene med vilje er None, mens deres navne lover det modsatte.
+    """
+    from core.services import central_xproc
+
+    monkeypatch.setattr(central_xproc, "process_role", lambda: "runtime")
+
+
 def test_status_eksponerer_iterations(tmp_path, monkeypatch):
     from core.tools.simple_tools_native import _exec_heartbeat_status
 
     _write_state(tmp_path, monkeypatch, next_tick_minutes_ago=1)
+    _som_ejerprocessen(monkeypatch)
     sched._ITERATION = 7
     out = _exec_heartbeat_status({})
     assert out["scheduler"]["iterations"] == 7
@@ -74,6 +88,7 @@ def test_status_eksponerer_watchdog_i_ejerprocessen(tmp_path, monkeypatch):
     from core.tools.simple_tools_native import _exec_heartbeat_status
 
     _write_state(tmp_path, monkeypatch, next_tick_minutes_ago=1)
+    _som_ejerprocessen(monkeypatch)
 
     class _AliveThread:
         @staticmethod

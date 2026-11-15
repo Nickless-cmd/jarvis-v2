@@ -248,7 +248,16 @@ def chat_session(routine_id: str) -> dict[str, Any]:
             getattr(principal, "canonical_user_id", "") or getattr(principal, "user_id", "") or ""
         ),
     )
-    rs.backfill(sid, _service().list_runs(routine_id), instruction=str(data.get("instruction") or ""))
+    # Instruktionen ligger som bytes i rutinens snapshot. ``str(bytes)`` giver
+    # ``b'...'`` — det stod bogstaveligt i transcriptet (målt 15/11-2026).
+    raa_instruks = data.get("instruction")
+    if isinstance(raa_instruks, (bytes, bytearray)):
+        raa_instruks = bytes(raa_instruks).decode("utf-8", "replace")
+    rs.backfill(
+        sid,
+        _service().list_runs(routine_id),
+        instruction=str(raa_instruks or "").strip(),
+    )
     return {"session_id": sid, "title": navn, "kind": "routine"}
 
 

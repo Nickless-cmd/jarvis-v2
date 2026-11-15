@@ -287,7 +287,7 @@ _Boot-reconciler: crash-zombie runs → interrupted, så de genoptages._
 | function | `reconcile_on_boot` | `(stale_after_s=…)` | Reconcile crash-zombie runs ved opstart. Fail-open. | [src](../../../core/services/session_boot_reconciler.py#L128) |
 | function | `_afregn_doede_vaekninger` | `(enforced)` | Luk indbakke-poster hvis væknings-run døde med processen (12/11-2026). | [src](../../../core/services/session_boot_reconciler.py#L230) |
 | function | `_ryd_visible_drift` | `(enforced)` | `visible_runs`-rækker der står `running` og som INTET kender. | [src](../../../core/services/session_boot_reconciler.py#L272) |
-| function | `ryd_visible_drift_periodisk` | `()` | Periodisk oprydning — samme regel som ved opstart, men uden at vente på en. | [src](../../../core/services/session_boot_reconciler.py#L432) |
+| function | `ryd_visible_drift_periodisk` | `()` | Periodisk oprydning — samme regel som ved opstart, men uden at vente på en. | [src](../../../core/services/session_boot_reconciler.py#L457) |
 
 ## `core/services/session_context_resolve.py`
 _Hvilken samtale kører vi i? — ét sted, frem for én kopi pr. værktøj._

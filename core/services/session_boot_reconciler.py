@@ -352,6 +352,7 @@ def _ryd_visible_drift(enforced: bool) -> int:
         return 0
 
     kendte: set[str] = set()
+    journal_poster: dict[str, dict[str, Any]] = {}
     try:
         # Kun LEVENDE poster er «kendte» (29/10-2026).
         #
@@ -366,10 +367,20 @@ def _ryd_visible_drift(enforced: bool) -> int:
         # SQL-grenen fandt rækken ved HVER opstart (den kræver ingen alder), og
         # filteret smed den væk hver gang. Ingen log, ingen tælling, ingen
         # advarsel: oprydningen rapporterede nul fordi den havde «set» posten.
+        journal_poster = in_flight_runs._load()
         kendte = {
             str(r.get("run_id") or "")
-            for r in in_flight_runs._load().values()
+            for r in journal_poster.values()
             if str(r.get("status") or "") not in in_flight_runs._TERMINAL_STATUSES
+            # Recovery-dispatcheren tager kun den synlige lane. En autonom
+            # `recovering`-post er derfor ikke en levende ejer eller et løfte
+            # om en fortsættelse; den har ingen vej ud af tilstanden før
+            # døgn-fejeren. Målt 15/11-2026: en shutdown-dræbt autonom kørsel
+            # havde `finished_at`, men stod sådan i begge lag i 11+ timer.
+            and not (
+                str(r.get("status") or "") == "recovering"
+                and str(r.get("kind") or "visible") != "visible"
+            )
         }
     except Exception as exc:
         # Kan vi ikke laese det andet lager, kan vi ikke vide at posten er
@@ -408,6 +419,20 @@ def _ryd_visible_drift(enforced: bool) -> int:
                     stamp_visible_run_superseded,
                 )
                 if status == "recovering":
+                    # Hold journalen og SQL-projektionen enige. Ikke-synlige
+                    # ture har ingen recovery-dispatcher, så `recovering` kan
+                    # ikke være en sand fortsættelsesstatus for dem. Bevar den
+                    # oprindelige grund (`shutdown` i den målte række).
+                    post = journal_poster.get(rid) or {}
+                    if (
+                        str(post.get("status") or "") == "recovering"
+                        and str(post.get("kind") or "visible") != "visible"
+                    ):
+                        in_flight_runs.settle_terminal(
+                            rid,
+                            status="failed_terminal",
+                            reason=str(post.get("exit_reason") or "interrupted"),
+                        )
                     # Kørslen blev afbrudt og genoptaget under et NYT run_id
                     # (målt 25/9-2026: «genoptog visible-1eb18b… som run
                     # visible-ddcc9dea…»). Den gamle række er forældreløs og

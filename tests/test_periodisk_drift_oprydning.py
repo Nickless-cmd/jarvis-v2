@@ -53,7 +53,7 @@ def _fresh_modules():
         importlib.import_module("core.services.session_boot_reconciler"))
 
 
-def _vis_row(run_id, *, age_s=1000, status="running", finished_at=""):
+def _vis_row(run_id, *, age_s=1000, status="running", finished_at="", error=None):
     """Skriv én række direkte i `visible_runs` (den isolerede DB)."""
     from core.runtime.db import connect
     from core.runtime.db_visible import ensure_visible_tables
@@ -67,7 +67,7 @@ def _vis_row(run_id, *, age_s=1000, status="running", finished_at=""):
             " text_preview, error, capability_id) "
             "VALUES (?,?,?,?,?,?,?,?,?,?)",
             (run_id, "primary", "ollama", "glm-5.2:cloud", status, started,
-             finished_at, "arbejde", None, None),
+             finished_at, "arbejde", error, None),
         )
 
 
@@ -145,6 +145,45 @@ def test_recovering_med_finished_at_LUKKES_ikke_stemples_doed(isolated_runtime):
     ) as afloest:
         assert rec._ryd_visible_drift(enforced=True) == 1
     assert afloest.call_count == 1
+
+
+def test_shutdown_draebt_autonom_run_terminaliseres_uden_recovery_vej(
+        isolated_runtime):
+    """En autonom post kan ikke tages af recovery-dispatcheren.
+
+    Den konkrete fejl fra 14/11 havde ``finished_at`` og ``error='shutdown'``
+    i ``visible_runs``, mens journalen stod ``recovering`` med
+    ``kind='autonomous'``. En sådan post er ikke en levende ejer: husets eneste
+    recovery-dispatcher tager kun ``kind='visible'``. Fejeren skal derfor lukke
+    begge sandhedslag og bevare afbrydelsesgrunden.
+    """
+    rec = _fresh_modules()
+    from core.services import in_flight_runs as runs
+
+    run_id = "autonomous-shutdown-vagt"
+    runs.mark_started(
+        run_id=run_id,
+        session_id="auto-heartbeat-20261114",
+        user_message="fortsaet sweepet",
+        kind="autonomous",
+    )
+    runs.settle_recovering(run_id, reason="shutdown", summary="shutdown")
+    _vis_row(
+        run_id, status="recovering", finished_at=_nu(), age_s=30,
+        error="shutdown",
+    )
+
+    assert rec._ryd_visible_drift(enforced=True) == 1
+    assert _vis_status(run_id) == "interrupted"
+    from core.runtime.db import connect
+    with connect() as conn:
+        assert conn.execute(
+            "SELECT error FROM visible_runs WHERE run_id=?", (run_id,),
+        ).fetchone()["error"] == "shutdown"
+    journal = runs.get_record(run_id)
+    assert journal is not None
+    assert journal["status"] == "failed_terminal"
+    assert journal["exit_reason"] == "shutdown"
 
 
 # ── udløseren: den periodiske indgang ───────────────────────────────────────

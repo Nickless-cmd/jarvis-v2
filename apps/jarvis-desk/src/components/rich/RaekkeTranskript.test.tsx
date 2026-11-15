@@ -191,6 +191,12 @@ describe('RaekkeTranskript', () => {
     expect(container.querySelector('.rv-tur')).not.toHaveAttribute('data-koerer')
     fireEvent.click(container.querySelector('.rv-tur')!)
     expect(container.querySelector('.rv-arbejdsknap')).not.toHaveAttribute('data-koerer')
+    // Bjørn 15/11-2026: «fjern iconerne foran de færdige rundelinjer men ikk
+    // den aktive». Den færdige runde er ren tekst — kun den kørende bærer
+    // Jarvis-ringen. Vagten er nødvendig fordi ikonet var betinget af
+    // `aktivRunde` og derfor nemt kunne snige sig tilbage via en fælles gren.
+    expect(container.querySelector('.rv-arbejdsikon')).toBeNull()
+    expect(container.querySelector('.rv-arbejdsknap .jarvis-ring')).toBeNull()
     expect(container.querySelector('.rv-r .rv-chev svg')).toHaveAttribute('width', '14')
   })
 
@@ -463,56 +469,29 @@ describe('RaekkeTranskript', () => {
     const knap = container.querySelector('.rv-arbejdsknap')
     expect(knap?.textContent).toContain('Kør testene')
     expect(knap?.textContent).not.toContain('Færdig')
-    expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-square-terminal')
   })
 
-  it('viser handlingens ikon også efter en runde er færdig', () => {
-    const { container } = render(<RaekkeTranskript blocks={[
-      kald('operator_channel', { action: 'open' }), tekst('Kanalen er åben.'),
-    ]} streaming={false} />)
-    fireEvent.click(container.querySelector('.rv-tur')!)
-    expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-monitor')
-  })
-
-  it('viser blandet fil- og kommandoarbejde med bogikon', () => {
-    const { container } = render(<RaekkeTranskript blocks={[
+  it('en FÆRDIG runde har intet ikon — kun den kørende bærer ringen', () => {
+    // Bjørn 15/11-2026: «fjern iconerne foran de færdige rundelinjer men ikk
+    // den aktive». Her stod fem tests der vogtede HVILKET ikon en færdig runde
+    // fik (bog for research, terminal for kommandoer, værktøjets eget ellers).
+    // Den mekanik er fjernet med vilje, så de er erstattet af denne ene vagt:
+    // den færdige runde er ren tekst, den kørende har Jarvis-ringen.
+    const faerdig: ContentBlock[] = [
       kald('read_file', { path: 'app.ts' }), kald('bash', { command: 'npm test' }), tekst('Færdig.'),
-    ]} streaming={false} />)
+    ]
+    const { container, unmount } = render(<RaekkeTranskript blocks={faerdig} streaming={false} />)
     fireEvent.click(container.querySelector('.rv-tur')!)
-    expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-book-open')
-  })
+    expect(container.querySelector('.rv-arbejdsknap')).not.toBeNull()
+    expect(container.querySelector('.rv-arbejdsikon')).toBeNull()
+    expect(container.querySelector('.rv-arbejdsknap svg.lucide-book-open')).toBeNull()
+    expect(container.querySelector('.rv-arbejdsknap svg.lucide-square-terminal')).toBeNull()
+    unmount()
 
-  it('giver ogsaa rene research-runder bogikonet', () => {
-    // Bogen hang foer paa ét eneste navn (`read_file`), saa `search`+`bash` og
-    // `recall`+`bash` faldt til terminalen. Praedikatet er nu et SAET laesere
-    // (Bjoern 24/9-2026).
-    for (const laeser of ['search', 'recall', 'web_search', 'operator_grep', 'find_files']) {
-      const { container, unmount } = render(<RaekkeTranskript blocks={[
-        kald(laeser, { pattern: 'x' }), kald('bash', { command: 'npm test' }), tekst('Færdig.'),
-      ]} streaming={false} />)
-      fireEvent.click(container.querySelector('.rv-tur')!)
-      expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-book-open')
-      unmount()
-    }
-  })
-
-  it('giver IKKE bogikon naar runden kun laeser', () => {
-    // Bogen betyder «laeste og gjorde saa noget». Uden en kommando i runden er
-    // der ikke noget «saa» — ikonet skal vaere det sidste vaerktoejs eget.
-    const { container } = render(<RaekkeTranskript blocks={[
-      kald('read_file', { path: 'a.ts' }), kald('search', { pattern: 'x' }), tekst('Fandt den.'),
-    ]} streaming={false} />)
-    fireEvent.click(container.querySelector('.rv-tur')!)
-    expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-search')
-  })
-
-  it('har ingen operator-praefiksede navne i laeser-saettet', () => {
-    // `arbejdsIkon` stripper `operator_` FOER opslaget, saa et navn med praefiks
-    // i LAESERE ville aldrig matche. Vagten laeser kilden — som CSS-vagten goer.
-    const src = readFileSync(resolve(__dirname, 'RaekkeTranskript.tsx'), 'utf8')
-    const blok = src.match(/const LAESERE = new Set\(\[([\s\S]*?)\]\)/)?.[1] ?? ''
-    expect(blok).not.toBe('')
-    expect(blok).not.toContain("'operator_")
+    const koerende = render(<RaekkeTranskript blocks={[
+      statusKald('read_file', { path: 'app.ts' }, 'running'),
+    ]} streaming />)
+    expect(koerende.container.querySelector('.rv-arbejdsikon .jarvis-ring')).toBeInTheDocument()
   })
 
   it('lægger turens fold-ud-pil efter tiden og formaterer synteser uden indrykning', () => {

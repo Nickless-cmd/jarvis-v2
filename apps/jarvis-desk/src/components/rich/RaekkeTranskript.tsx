@@ -22,7 +22,7 @@
  * billeder er nøjagtig som i bobblevisningen.
  */
 import { memo, useRef, useState } from 'react'
-import { Sparkles, Sparkle, ChevronDown, SquareTerminal, BookOpen, type LucideIcon } from 'lucide-react'
+import { Sparkles, Sparkle, ChevronDown, type LucideIcon } from 'lucide-react'
 import { FoldPil, TurHoved } from './TurHoved'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
@@ -82,50 +82,6 @@ function DiffStat({ add, del }: { add: number; del: number }) {
 const Syntese = memo(function Syntese({ tekst, streaming }: { tekst: string; streaming: boolean }) {
   return <div className="rv-mellem"><MarkdownRenderer text={tekst} streaming={streaming} /></div>
 })
-
-const KOMMANDOER = new Set(['bash', 'bash_session_run', 'bash_session_open', 'bash_session_close', 'bash_output', 'run_in_background', 'session_run'])
-
-/**
- * Værktøjer der henter viden IND — filer, kode, hukommelse, net, efterforskning
- * — uden selv at ændre noget.
- *
- * Navnene er GRUNDNAVNE: `arbejdsIkon` stripper `operator_` før opslaget, så
- * `operator_read_file` rammer `read_file`. Et navn med præfiks her ville
- * aldrig matche — samme stille dødsfald som `_CORE_TOOL_GROUPS` advarer om.
- *
- * Grænsen: drifts- og statusværktøjer (`daemon_status`, `central_query`,
- * `list_self_wakeups`) er IKKE med. De inspicerer maskineriet; de henter ikke
- * viden ind.
- */
-const LAESERE = new Set([
-  // Filer og kode
-  'read_file', 'pdf_read', 'docs_read', 'list_dir', 'find_files', 'glob', 'search', 'grep',
-  // Hukommelse
-  'recall', 'recall_memories', 'search_memory', 'search_jarvis_brain',
-  'read_memory_topic', 'curiosity_search_memory',
-  // Nettet
-  'web_search', 'web_fetch', 'drive_search',
-  // Efterforskning
-  'scout_agent',
-])
-
-/**
- * Arbejdsrundens ikon — rundens FORM, ikke dens sidste skridt.
- *
- * Læste runden noget og gjorde den så noget mekanisk, er den en undersøgelse
- * (bogen). Var ALT mekanisk, er den en kommando (terminalen). Ellers bærer den
- * det sidste værktøjs eget ikon.
- *
- * Bogen hang før på ét eneste navn (`read_file`), så `search`+`bash`,
- * `recall`+`bash` og `web_search`+`bash` — alle research-runder — faldt til
- * terminalen. Prædikatet er derfor et SÆT læsere (Bjørn 24/9-2026).
- */
-function arbejdsIkon(vaerktoejer: Extract<ContentBlock, { type: 'tool_use' }>[]): LucideIcon {
-  const navne = vaerktoejer.map((t) => t.name.replace(/^operator_/, ''))
-  if (navne.some((n) => LAESERE.has(n)) && navne.some((n) => KOMMANDOER.has(n))) return BookOpen
-  if (navne.length > 0 && navne.every((n) => KOMMANDOER.has(n))) return SquareTerminal
-  return lookupTool(vaerktoejer[vaerktoejer.length - 1]?.name ?? '').Icon
-}
 
 function Raekke({
   Ikon, slags, sum, krop, koerer, fejl, tanke, mrkat, kind,
@@ -380,7 +336,6 @@ function ArbejdsrundeImpl({
   const beskrivelse = koerer && seneste
     ? (levendeStep && isMeaningfulStatus(levendeStep) ? levendeStep : describeTool(seneste.name, seneste.input, true, seneste.partialJson, seneste.result, seneste.status))
     : etiket || mekanisk
-  const Ikon = arbejdsIkon(vaerktoejer)
   return (
     <div className="rv-arbejdsrunde"
       {...(aktivRunde ? { 'data-aktiv-runde': '', 'data-pacing-skjult': skjult ? '' : undefined } : {})}
@@ -388,11 +343,16 @@ function ArbejdsrundeImpl({
       <button type="button" ref={foldRef} className="rv-arbejdsknap" aria-expanded={aaben}
         {...(aktivRunde ? { 'data-koerer': '' } : {})}
         onClick={() => { huskFold(); setAaben((v) => !v) }}>
-        <span className="rv-arbejdsikon" aria-hidden="true">
-          {aktivRunde
-            ? <JarvisRing size={15} spinning tone="working" />
-            : <><Ikon size={13} strokeWidth={1.75} /><Ikon className="rv-ikon-glimt" size={13} strokeWidth={1.75} /></>}
-        </span>
+        {/* Kun den AKTIVE runde bærer et ikon (Bjørn 15/11-2026: «fjern
+            iconerne foran de færdige rundelinjer men ikk den aktive»).
+            Den færdige runde er ren tekst — dens form er allerede fortalt i
+            ordene, og et værktøjsikon foran hver afsluttet linje gjorde
+            kolonnen urolig uden at tilføje noget man kunne handle på. */}
+        {aktivRunde && (
+          <span className="rv-arbejdsikon" aria-hidden="true">
+            <JarvisRing size={15} spinning tone="working" />
+          </span>
+        )}
         <span className={`rv-arbejdsindhold${aktivRunde ? ' shimmer' : ''}`}>
           <span className="rv-arbejdsfortaelling">{beskrivelse}</span>
           {diff && <DiffStat add={diff.add} del={diff.del} />}

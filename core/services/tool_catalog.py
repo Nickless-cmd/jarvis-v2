@@ -200,8 +200,14 @@ def _render_catalog_text() -> str:
             lines.extend(group_lines)
     remaining = max(0, len(defs) - shown)
     if remaining:
+        # Ingen tal i teksten. `len(defs)` foelger live-tilstand (desk-bro,
+        # telefon, adb, connectors) mens vaerktoejssaettet, der sendes, er
+        # laast pr. session — og kataloget staar i systemprompten FOER
+        # historikken. Et tal der skifter 58 -> 59 midt i samtalen gav miss paa
+        # alt efter byte ~11k: 26 af 26 same-laengde-skift i telemetrien var
+        # kun denne chunk (~18 % af tur-skiftene i code mode, 15-70k miss).
         lines.append(
-            f"\n+ {remaining} flere værktøjer (operator-desktop, kalender, mail, "
+            "\n+ flere værktøjer (operator-desktop, kalender, mail, "
             "discord, billede/video, hjerne, skills, git, home-assistant m.fl.). "
             "Brug load_more_tools(query=\"…\") for at finde dem du mangler ved navn."
         )

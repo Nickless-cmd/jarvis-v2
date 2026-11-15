@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Clock3, ExternalLink, Loader2, MoreVertical, Pencil, Play, Plus, RotateCcw, Square, Trash2, X } from 'lucide-react'
+import { ChevronLeft, Clock3, ExternalLink, Loader2, Pencil, Play, Plus, RotateCcw, Square, Trash2, X } from 'lucide-react'
 import type { ApiConfig } from '../lib/api'
 import {
-  deleteRoutine, listRoutines, routineAction, runRoutine,
+  deleteRoutine, getRoutineChatSession, listRoutines, routineAction, runRoutine,
   type Routine, type RoutineAction,
 } from '../lib/routinesApi'
 import { RoutineRuns } from '../components/routines/RoutineRuns'
-import { RoutineChat } from '../components/routines/RoutineChat'
 
 type DetailTab = 'overview' | 'runs' | 'access'
 
@@ -14,6 +13,23 @@ const statusName: Record<string, string> = {
   active: 'Aktiv', paused: 'Pauset', stopped: 'Stoppet', archived: 'Arkiveret', draft: 'Forslag',
 }
 
+/**
+ * Rutinebiblioteket og den valgte rutines indstillinger.
+ *
+ * Panelet har BEVIDST ingen egen samtaleflade. Det havde det indtil
+ * 15/11-2026 — en hjemmebygget efterligning med husets `MessageRow` og
+ * `Composer` sat sammen i hånden, og den manglede hele tiden noget som
+ * ChatView har: scroll-koordinatoren, pacing, kontekst-måler, komprimering,
+ * tilbagespoling, godkendelses-kort. Bjørn: «rutiner mangler alt det chatview
+ * har og kan … kan vi ikk genbruge det chatview og composer vi allerede har?».
+ *
+ * Svaret er ja, og det kræver ingen ny kode i panelet: `select(id)` sætter
+ * `activeId` for HELE appen, og `App` monterer `ChatView` på den. Rutinens
+ * session er en almindelig session i `chat_sessions` med en almindelig
+ * besked-historik, og afsendelse går til samme `/chat/stream` som chatten
+ * bruger. Så «Åbn i chatvisningen» ER genbruget — panelet peger på den, og
+ * alt hvad ChatView kan, gælder også her.
+ */
 export function RoutinesView({ config, currentUserId, role, onClose, onEdit, initialRoutineId, onOpenSession }: {
   config: ApiConfig
   currentUserId: string
@@ -22,7 +38,7 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit, ini
   onEdit: (routine: Routine | null) => void
   /** Rutine der skal være valgt når fladen åbnes — fx fra «Kører nu». */
   initialRoutineId?: string | null
-  /** Åbner en af rutinens oprindelses-sessioner i chatview. */
+  /** Åbner rutinens session i den RIGTIGE chatvisning. */
   onOpenSession?: (sessionId: string) => void
 }) {
   const [routines, setRoutines] = useState<Routine[] | null>(null)
@@ -31,13 +47,10 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit, ini
   const [error, setError] = useState('')
   const [busy, setBusy] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
-  // Den session panelet viser — løftet op fra RoutineChat, så «Åbn i
-  // chatvisningen» kan stå i header'en ved siden af «Indstillinger».
-  const [chatSession, setChatSession] = useState<{ sessionId: string; kind: 'routine' | 'origin' } | null>(null)
-
-  // Konfigurationen er pakket væk bag «Indstillinger»: panelet viser
-  // som udgangspunkt hvad rutinen HAR gjort, ikke hvad den er sat til.
-  const [visDetaljer, setVisDetaljer] = useState(false)
+  // Rutinens session, hentet her fordi panelet ikke længere selv renderer den.
+  // Fejler opslaget, skjules knappen — en rutine uden session skal ikke give en
+  // død knap, og panelet virker fint uden.
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null)
 
   // MOBIL (15/11-2026). Under 760 px deler listen og detaljen én kolonne, så
   // kun én kan vises ad gangen. Før styrede CSS'en det med
@@ -89,10 +102,21 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit, ini
   const personal = visible.filter((routine) => routine.access_scope !== 'system_owner')
   const system = visible.filter((routine) => routine.access_scope === 'system_owner')
   const selected = visible.find((routine) => routine.routine_id === selectedId) ?? visible[0] ?? null
+  const selectedRoutineId = selected?.routine_id ?? null
 
   useEffect(() => {
     if (selected && selected.routine_id !== selectedId) setSelectedId(selected.routine_id)
   }, [selected, selectedId])
+
+  useEffect(() => {
+    if (!selectedRoutineId) { setChatSessionId(null); return }
+    let alive = true
+    setChatSessionId(null)
+    getRoutineChatSession(config, selectedRoutineId)
+      .then((session) => { if (alive) setChatSessionId(session.session_id) })
+      .catch(() => { if (alive) setChatSessionId(null) })
+    return () => { alive = false }
+  }, [config, selectedRoutineId])
 
   const act = async (action: RoutineAction) => {
     if (!selected || busy) return
@@ -160,7 +184,7 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit, ini
       <main className="routine-detail">
         {error && <p className="routine-error" role="alert">{error}</p>}
         {!selected ? (
-          <div className="routine-detail-empty"><Clock3 size={24} /><h2>Vælg eller opret en rutine</h2><p>Her kan du se hvad rutinen lavede — og skrive til Jarvis i den.</p></div>
+          <div className="routine-detail-empty"><Clock3 size={24} /><h2>Vælg eller opret en rutine</h2><p>Her ser du hvad rutinen er sat til og hvad den har lavet. Samtalen åbner du i chatvisningen.</p></div>
         ) : (
           <>
             <header className="routine-detail-head">
@@ -172,50 +196,38 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit, ini
                 <h2>{selected.name}</h2>
               </div>
               <div className="routine-actions">
-                {!visDetaljer && chatSession && onOpenSession && (
-                  <button className="routine-button secondary" type="button"
-                    onClick={() => onOpenSession(chatSession.sessionId)}>
+                {chatSessionId && onOpenSession && (
+                  <button className="routine-button primary" type="button"
+                    onClick={() => onOpenSession(chatSessionId)}>
                     <ExternalLink size={13} /> Åbn i chatvisningen
                   </button>
                 )}
-                <button className="routine-button secondary" type="button"
-                  aria-label="Rutineindstillinger" aria-expanded={visDetaljer}
-                  onClick={() => setVisDetaljer((v) => !v)}>
-                  {visDetaljer ? <ChevronRight size={13} /> : <MoreVertical size={13} />}
-                  {visDetaljer ? 'Til samtalen' : 'Indstillinger'}
-                </button>
               </div>
             </header>
-            {visDetaljer ? (
-              <>
-                <div className="routine-actions routine-actions-bar">
-                  {selected.status === 'active' && <button className="routine-button secondary" type="button" onClick={() => void act('pause')}>Pause</button>}
-                  {selected.status === 'paused' && <button className="routine-button secondary" type="button" onClick={() => void act('resume')}><RotateCcw size={13} /> Genoptag</button>}
-                  {selected.status === 'stopped' && <button className="routine-button secondary" type="button" onClick={() => void act('restart')}><RotateCcw size={13} /> Start igen</button>}
-                  {selected.status === 'active' && <button className="routine-button secondary" type="button" onClick={() => void runNow()}><Play size={13} /> Kør nu</button>}
-                  {!['stopped', 'archived'].includes(selected.status) && <button className="routine-button secondary" type="button" aria-label="Stop rutine" onClick={() => void act('stop')}><Square size={12} /> Stop</button>}
-                  <button className="routine-button secondary" type="button" aria-label="Redigér rutine" onClick={() => onEdit(selected)}><Pencil size={13} /> Redigér</button>
-                </div>
-                <nav className="routine-tabs" role="tablist" aria-label="Rutineindhold">
-                  {([['overview', 'Overblik'], ['runs', 'Kørsler'], ['access', 'Adgang']] as const).map(([key, label]) => (
-                    <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>{label}</button>
-                  ))}
-                </nav>
-                <div className="routine-detail-body">
-                  {tab === 'overview' && <RoutineOverview routine={selected} />}
-                  {tab === 'runs' && <RoutineRuns config={config} routineId={selected.routine_id} instruction={selected.instruction} onOpenSession={onOpenSession} />}
-                  {tab === 'access' && <RoutineAccess routine={selected} />}
-                  <div className="routine-danger-zone">
-                    <div><strong>Slet rutine</strong><span>Fjerner definition, kørsler og privat indhold permanent.</span></div>
-                    {!confirmDelete
-                      ? <button type="button" className="routine-button danger" aria-label="Slet rutine" onClick={() => setConfirmDelete(true)}><Trash2 size={13} /> Slet</button>
-                      : <div className="routine-confirm"><button type="button" className="routine-button secondary" onClick={() => setConfirmDelete(false)}>Fortryd</button><button type="button" className="routine-button danger" aria-label="Bekræft sletning" onClick={() => void remove()}>Bekræft sletning</button></div>}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <RoutineChat config={config} routineId={selected.routine_id} onSession={setChatSession} />
-            )}
+            <div className="routine-actions routine-actions-bar">
+              {selected.status === 'active' && <button className="routine-button secondary" type="button" onClick={() => void act('pause')}>Pause</button>}
+              {selected.status === 'paused' && <button className="routine-button secondary" type="button" onClick={() => void act('resume')}><RotateCcw size={13} /> Genoptag</button>}
+              {selected.status === 'stopped' && <button className="routine-button secondary" type="button" onClick={() => void act('restart')}><RotateCcw size={13} /> Start igen</button>}
+              {selected.status === 'active' && <button className="routine-button secondary" type="button" onClick={() => void runNow()}><Play size={13} /> Kør nu</button>}
+              {!['stopped', 'archived'].includes(selected.status) && <button className="routine-button secondary" type="button" aria-label="Stop rutine" onClick={() => void act('stop')}><Square size={12} /> Stop</button>}
+              <button className="routine-button secondary" type="button" aria-label="Redigér rutine" onClick={() => onEdit(selected)}><Pencil size={13} /> Redigér</button>
+            </div>
+            <nav className="routine-tabs" role="tablist" aria-label="Rutineindhold">
+              {([['overview', 'Overblik'], ['runs', 'Kørsler'], ['access', 'Adgang']] as const).map(([key, label]) => (
+                <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>{label}</button>
+              ))}
+            </nav>
+            <div className="routine-detail-body">
+              {tab === 'overview' && <RoutineOverview routine={selected} />}
+              {tab === 'runs' && <RoutineRuns config={config} routineId={selected.routine_id} instruction={selected.instruction} onOpenSession={onOpenSession} />}
+              {tab === 'access' && <RoutineAccess routine={selected} />}
+              <div className="routine-danger-zone">
+                <div><strong>Slet rutine</strong><span>Fjerner definition, kørsler og privat indhold permanent.</span></div>
+                {!confirmDelete
+                  ? <button type="button" className="routine-button danger" aria-label="Slet rutine" onClick={() => setConfirmDelete(true)}><Trash2 size={13} /> Slet</button>
+                  : <div className="routine-confirm"><button type="button" className="routine-button secondary" onClick={() => setConfirmDelete(false)}>Fortryd</button><button type="button" className="routine-button danger" aria-label="Bekræft sletning" onClick={() => void remove()}>Bekræft sletning</button></div>}
+              </div>
+            </div>
           </>
         )}
       </main>

@@ -481,6 +481,17 @@ function compactMessage(message: ChatMessage): ChatMessage {
  */
 function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage[] {
   server = server.map(compactMessage)
+  // En brugerboble skrevet af SYSTEMET er ikke en brugerboble (Bjørn 15/11-2026:
+  // «Kun fjern bruger beskeden der skrives af systemet. Hvis brugeren selv
+  // skriver skal den blive stående»). Rutinens opgave-linje skrives af runneren
+  // med tomt `user_id`. Målt i den levende base: 170 rutine-rækker har tomt
+  // felt, mens ALLE 7.948 bruger-rækker i Bjørns egne samtaler har hans id —
+  // reglen skjuler derfor intet han selv har skrevet.
+  //
+  // Kun den EKSPLICIT tomme streng rammes. En optimistisk lokal besked har
+  // `user_id: undefined`, og den skal blive stående indtil serveren bekræfter
+  // den — ellers forsvandt hans eget ord i det øjeblik han sendte det.
+  server = server.filter((m) => !(m.role === 'user' && m.user_id === ''))
   const serverIds = new Set(server.map((m) => m.id))
   const serverUserTexts = new Set(
     server.filter((m) => m.role === 'user').map(userText).filter(Boolean),

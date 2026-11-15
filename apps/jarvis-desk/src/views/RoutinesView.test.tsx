@@ -37,12 +37,6 @@ const routine = (over: Partial<Routine> = {}): Routine => ({
 })
 
 describe('RoutinesView', () => {
-  /** Bjørn 15/11-2026: panelet viser som udgangspunkt rutinens SAMTALE — det man
-   *  ikke kunne se — og konfigurationen ligger bag «Indstillinger». Testene der
-   *  handler om konfigurationen skal derfor åbne den først, ligesom han gør. */
-  const visIndstillinger = () =>
-    fireEvent.click(screen.getByRole('button', { name: 'Rutineindstillinger' }))
-
   beforeEach(() => {
     listRoutines.mockReset().mockResolvedValue([
       routine(),
@@ -91,7 +85,6 @@ describe('RoutinesView', () => {
     // men CI fejlede paa netop denne linje — racen viser sig under last, ikke alene.
     // De to nabotests venter allerede paa samme faktum.
     fireEvent.click(await screen.findByRole('listitem', { name: /Min rutine/i }))
-    visIndstillinger()
     fireEvent.click(screen.getByRole('button', { name: 'Redigér rutine' }))
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ routine_id: 'r-own' }))
   })
@@ -99,45 +92,29 @@ describe('RoutinesView', () => {
   it('keeps Stop and Delete separate and requires an inline deletion confirmation', async () => {
     render(<PermissionProvider><RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={() => {}} /></PermissionProvider>)
     fireEvent.click(await screen.findByRole('listitem', { name: /Min rutine/i }))
-    visIndstillinger()
     expect(screen.getByRole('button', { name: 'Stop rutine' })).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Slet rutine' }))
     expect(screen.getByRole('button', { name: 'Bekræft sletning' })).toBeVisible()
     expect(deleteRoutine).not.toHaveBeenCalled()
   })
 
-  it('viser rutinens samtale som standard — konfigurationen ligger bag Indstillinger', async () => {
-    render(<PermissionProvider><RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={() => {}} /></PermissionProvider>)
+  /** Bjørn 15/11-2026: «rutiner mangler alt det chatview har og kan … kan vi
+   *  ikk genbruge det chatview og composer vi allerede har?». Panelet har
+   *  derfor ingen egen samtaleflade: det peger paa rutinens session, og
+   *  ChatView (scroll, pacing, kontekst-maaler, kompaktering, tilbagespoling)
+   *  er den flade man lander i. */
+  it('har ingen indlejret samtale — den aabner rutinens session i chatvisningen', async () => {
+    const onOpenSession = vi.fn()
+    render(<PermissionProvider><RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={() => {}} onOpenSession={onOpenSession} /></PermissionProvider>)
     fireEvent.click(await screen.findByRole('listitem', { name: /Min rutine/i }))
-    // Samtalen er fladen: composerens felt findes, og de gamle faner gør ikke.
-    // Composerens eget felt — husets komponent, ikke en lokal textarea.
-    expect(document.querySelector('.composer-input')).toBeTruthy()
-    expect(screen.queryByRole('tab', { name: 'Kørsler' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Rutineindstillinger' })).toHaveAttribute('aria-expanded', 'false')
-    // …og de kommer frem når man åbner indstillingerne.
-    visIndstillinger()
+    // Ingen composer i panelet — den findes kun i den rigtige chatflade.
+    expect(document.querySelector('.composer-input')).toBeNull()
+    // Konfigurationen er synlig med det samme; der er ingen tilstand at aabne.
     expect(screen.getByRole('tab', { name: 'Kørsler' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Rutineindstillinger' })).toHaveAttribute('aria-expanded', 'true')
-  })
-
-  /** Bjørn 15/11-2026: «Lad os fjerne bruger beskeden» — og derefter
-   *  præciseringen: «Kun fjern bruger beskeden der skrives af systemet. Hvis
-   *  brugeren selv skriver skal den blive stående». Skelnen er `user_id`:
-   *  rutinens opgave-linje skrives af systemet med tomt felt. */
-  it('skjuler rutinens opgave-linje men beholder en besked brugeren selv skrev', async () => {
-    getSession.mockResolvedValue({
-      session: {}, etag: null,
-      messages: [
-        { id: 'm1', role: 'user', content: [{ type: 'text', text: 'SYSTEM-OPGAVE: tjek vejret' }], created_at: '2026-11-15T08:00:00Z', user_id: '' },
-        { id: 'm2', role: 'assistant', content: [{ type: 'text', text: 'Det regner.' }], created_at: '2026-11-15T08:00:05Z' },
-        { id: 'm3', role: 'user', content: [{ type: 'text', text: 'MIN-EGEN: kan du tjekke igen?' }], created_at: '2026-11-15T09:00:00Z', user_id: 'bjorn' },
-      ],
-    })
-    render(<PermissionProvider><RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={() => {}} /></PermissionProvider>)
-    fireEvent.click(await screen.findByRole('listitem', { name: /Min rutine/i }))
-    expect(await screen.findByText(/MIN-EGEN/)).toBeTruthy()
-    expect(screen.getByText(/Det regner/)).toBeTruthy()
-    expect(screen.queryByText(/SYSTEM-OPGAVE/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Rutineindstillinger' })).not.toBeInTheDocument()
+    // Knappen peger paa praecis den session panelet hentede.
+    fireEvent.click(await screen.findByRole('button', { name: /bn i chatvisningen/i }))
+    expect(onOpenSession).toHaveBeenCalledWith('routine-r-own')
   })
 
   /** Bjørn 15/11-2026: «i pwa mobil view kan man ikk se rutine listen når man

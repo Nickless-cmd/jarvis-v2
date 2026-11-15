@@ -10,6 +10,34 @@ const asstMsg = (id: string, text: string) => ({ id, role: 'assistant' as const,
 const toolMsg = (id: string) => ({ id, role: 'tool' as const, content: [{ type: 'text' as const, text: 'tool-resultat' }], created_at: 'now', parent_id: null })
 
 describe('mergeServer afdublering', () => {
+  /** Bjørn 15/11-2026: «Kun fjern bruger beskeden der skrives af systemet.
+   *  Hvis brugeren selv skriver skal den blive stående». Skelnen er `user_id`:
+   *  runneren skriver rutinens opgave-linje med tomt felt, mennesket skriver
+   *  sit eget id. Reglen ligger her fordi ALLE flader — også ChatView — henter
+   *  deres beskeder gennem denne funktion. */
+  it('skjuler en bruger-besked som systemet skrev, men beholder brugerens egen', () => {
+    const server = [
+      { ...userMsg('srv-sys', 'SYSTEM-OPGAVE: tjek vejret'), user_id: '' },
+      { ...asstMsg('srv-a', 'Det regner.') },
+      { ...userMsg('srv-egen', 'kan du tjekke igen?'), user_id: 'bjorn' },
+    ]
+
+    const merged = mergeServer([], server)
+
+    expect(merged.some((m) => m.id === 'srv-sys')).toBe(false)
+    expect(merged.some((m) => m.id === 'srv-egen')).toBe(true)
+    // Assistentens svar er urørt — kun ROLLEN 'user' med tomt felt rammes.
+    expect(merged.some((m) => m.id === 'srv-a')).toBe(true)
+  })
+
+  it('fjerner ikke den optimistiske besked — den har intet user_id endnu', () => {
+    const local = [{ ...userMsg('u-42', 'mit eget ord'), clientStatus: 'optimistic_user' as const }]
+
+    const merged = mergeServer(local, [])
+
+    expect(merged.some((m) => m.id === 'u-42')).toBe(true)
+  })
+
   it('fjerner tomme blokindeks fra hentede beskeder før de vises', () => {
     const server = [{ ...asstMsg('a-hole', 'svar'),
       content: [null, { type: 'text' as const, text: 'svar' }] as never }]

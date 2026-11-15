@@ -206,18 +206,18 @@ _Det Jarvis har LÆRT om Bjørn — læsesiden (lærings-sløjfe 2026-09-04, blo
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_terms` | `(text)` | — | [src](../../../core/services/prompt_sections/learned_about_user.py#L62) |
-| function | `lexical_coverage` | `(query, text)` | Andel af beskedens betydningsbærende ord der findes i linjen (0-1). | [src](../../../core/services/prompt_sections/learned_about_user.py#L74) |
-| function | `_read_user_md` | `(workspace_dir)` | — | [src](../../../core/services/prompt_sections/learned_about_user.py#L82) |
-| function | `section_body` | `(text, headings)` | Brødteksten under den første overskrift i ``headings`` — "" hvis ingen. | [src](../../../core/services/prompt_sections/learned_about_user.py#L101) |
-| function | `parse_line` | `(raw)` | Én Lært-linje → {text, date, source}. Suffikset er valgfrit. | [src](../../../core/services/prompt_sections/learned_about_user.py#L121) |
-| function | `learned_lines` | `(workspace_dir)` | Alle linjer i `## Lært`, nyeste sidst (filens rækkefølge). | [src](../../../core/services/prompt_sections/learned_about_user.py#L133) |
-| function | `core_lines` | `(workspace_dir)` | Linjerne i `## Kerne` — dem der altid er i prompten. | [src](../../../core/services/prompt_sections/learned_about_user.py#L146) |
-| function | `note_selected` | `(texts)` | Tæl at disse linjer blev valgt ind. Kuratorens signal. Self-safe. | [src](../../../core/services/prompt_sections/learned_about_user.py#L156) |
-| function | `selection_counts` | `()` | — | [src](../../../core/services/prompt_sections/learned_about_user.py#L175) |
-| function | `select_learned_lines` | `(user_message, *, workspace_dir, max_lines=…, max_chars=…, min_coverage=…, count_selection=…)` | De mest relevante `## Lært`-linjer for det Bjørn lige skrev. | [src](../../../core/services/prompt_sections/learned_about_user.py#L186) |
-| function | `build_profile_section` | `(*, workspace_dir, max_chars=…)` | Biografien: `## Personal` + `## People` — fast i prompten, "" hvis tom. | [src](../../../core/services/prompt_sections/learned_about_user.py#L233) |
-| function | `build_learned_section` | `(user_message, *, workspace_dir, max_lines=…, max_chars=…, header=…)` | Prompt-linjen til `[HUKOMMELSE]` — "" når intet er relevant. | [src](../../../core/services/prompt_sections/learned_about_user.py#L274) |
+| function | `_terms` | `(text)` | — | [src](../../../core/services/prompt_sections/learned_about_user.py#L71) |
+| function | `lexical_coverage` | `(query, text)` | Andel af beskedens betydningsbærende ord der findes i linjen (0-1). | [src](../../../core/services/prompt_sections/learned_about_user.py#L83) |
+| function | `_read_user_md` | `(workspace_dir)` | — | [src](../../../core/services/prompt_sections/learned_about_user.py#L91) |
+| function | `section_body` | `(text, headings)` | Brødteksten under den første overskrift i ``headings`` — "" hvis ingen. | [src](../../../core/services/prompt_sections/learned_about_user.py#L110) |
+| function | `parse_line` | `(raw)` | Én Lært-linje → {text, date, source}. Suffikset er valgfrit. | [src](../../../core/services/prompt_sections/learned_about_user.py#L130) |
+| function | `learned_lines` | `(workspace_dir)` | Alle linjer i `## Lært`, nyeste sidst (filens rækkefølge). | [src](../../../core/services/prompt_sections/learned_about_user.py#L142) |
+| function | `core_lines` | `(workspace_dir)` | Linjerne i `## Kerne` — dem der altid er i prompten. | [src](../../../core/services/prompt_sections/learned_about_user.py#L155) |
+| function | `note_selected` | `(texts)` | Tæl at disse linjer blev valgt ind. Kuratorens signal. Self-safe. | [src](../../../core/services/prompt_sections/learned_about_user.py#L165) |
+| function | `selection_counts` | `()` | — | [src](../../../core/services/prompt_sections/learned_about_user.py#L184) |
+| function | `select_learned_lines` | `(user_message, *, workspace_dir, max_lines=…, max_chars=…, min_coverage=…, count_selection=…)` | De mest relevante `## Lært`-linjer for det Bjørn lige skrev. | [src](../../../core/services/prompt_sections/learned_about_user.py#L195) |
+| function | `build_profile_section` | `(*, workspace_dir, max_chars=…)` | Biografien: `## Personal` + `## People` — fast i prompten, "" hvis tom. | [src](../../../core/services/prompt_sections/learned_about_user.py#L242) |
+| function | `build_learned_section` | `(user_message, *, workspace_dir, max_lines=…, max_chars=…, header=…)` | Prompt-linjen til `[HUKOMMELSE]` — "" når intet er relevant. | [src](../../../core/services/prompt_sections/learned_about_user.py#L283) |
 
 ## `core/services/prompt_sections/loop_compliance.py`
 _Loop-compliance self-check section._

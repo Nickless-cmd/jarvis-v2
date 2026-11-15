@@ -133,3 +133,41 @@ def test_people_is_not_displaced_by_a_long_personal_section(tmp_path):
 def test_profile_section_is_empty_without_the_sections(tmp_path):
     (tmp_path / "USER.md").write_text("# USER\n\n## Kerne\n- Dansk\n", encoding="utf-8")
     assert LAU.build_profile_section(workspace_dir=tmp_path) == ""
+
+
+# ── 15/11-2026: ejestedordene floodede udvalget ────────────────────────────
+# Målt: `min` stod i 48 af 964 linjer og var IKKE et stopord (kun `mine`/`dine`
+# var). Den opfyldte dækningskravet alene, så spørgsmål som «hvad hedder min
+# mindste datter?» og «hvor mange watt er min el-cykel?» gav nul linjer, mens
+# en tilfældig linje med «min» kunne vinde. Tærsklen blev IKKE rørt — målt var
+# fire tærskel-/regelvarianter alle ringere end at fjerne ordene.
+
+_POSSESSIVE_MD = """# USER
+
+## Lært
+- Noget ganske andet om min kop og min tallerken (2026-09-01, udledt)
+- **El-cykel:** kører allerede med 2 batterier, ét per motor (2026-09-02, sagt eksplicit)
+- Hardware: han justerer selv blæserne på værten (2026-09-03, sagt eksplicit)
+"""
+
+
+def test_possessives_are_not_content_words():
+    terms = LAU._terms("hvad hedder min mindste datter?")
+    assert "min" not in terms and "mit" not in terms
+    assert "datter" in terms and "mindste" in terms
+
+
+def test_topic_question_selects_the_topic_line(tmp_path, monkeypatch):
+    """«hvor mange watt er min el-cykel?» skal ramme el-cykel-linjen.
+
+    FØR: `min` og `mange` talte med, så dækningen blev 1/4 = 0,25 — under
+    tærsklen — og spørgsmålet fik nul linjer.
+    """
+    (tmp_path / "USER.md").write_text(_POSSESSIVE_MD, encoding="utf-8")
+    monkeypatch.setattr(LAU, "note_selected", lambda *_a, **_k: None)
+    rows = LAU.select_learned_lines(
+        "hvor mange watt er min el-cykel?", workspace_dir=tmp_path
+    )
+    texts = [r["text"] for r in rows]
+    assert any("El-cykel" in t for t in texts), texts
+    assert not any("min kop" in t for t in texts), texts

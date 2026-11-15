@@ -1691,7 +1691,7 @@ Generated from source. 10216/18757 functions/methods documented (54%). The list 
 - `core/services/prompt_section_stale_cache.py` :: `clear` (L109)
 - `core/services/prompt_sections/cross_session_arc.py` :: `invalidate_cache` (L192)
 - `core/services/prompt_sections/dead_skills.py` :: `dead_skills_section` (L23)
-- `core/services/prompt_sections/learned_about_user.py` :: `selection_counts` (L175)
+- `core/services/prompt_sections/learned_about_user.py` :: `selection_counts` (L184)
 - `core/services/prompt_sections/pattern_counterfactuals.py` :: `invalidate_cache` (L94)
 - `core/services/prompt_sections/transcript_sections.py` :: `chat_session_messages_since_last_compact` (L75)
 - `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages` (L96)

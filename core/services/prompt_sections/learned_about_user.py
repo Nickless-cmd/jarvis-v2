@@ -54,6 +54,15 @@ _STOP_TERMS = frozenset({
     "fra", "med", "for", "som", "jeg", "mig", "du", "dig", "vores", "mine",
     "dine", "siger", "sagde", "om", "og", "kan", "skal", "ikke", "eller",
     "bjørn", "bjoern", "jarvis", "the", "and", "you", "your", "that", "this",
+    # 15/11-2026 (målt): ejestedordene og de lette tillægsord manglede, mens
+    # `mine`/`dine` var med. `min` findes i 48 af 964 linjer, så den alene
+    # opfyldte dækningskravet og gjorde udvalget til støj: «hvad hedder min
+    # mindste datter?» gav nul linjer, og en hvilken som helst linje med «min»
+    # kunne vinde. Med dem fjernet — og tærsklen urørt — rammer de samme
+    # spørgsmål de rigtige linjer (datter → familielinjen, el-cykel → El-cykel).
+    "min", "mit", "din", "dit", "hans", "hendes", "deres", "sin", "sit",
+    "sine", "hedder", "sige", "sagt", "ved", "vide", "mange", "meget",
+    "noget", "nogen",
 })
 # "(2026-09-02, sagt eksplicit)" i enden af en linje.
 _SUFFIX_RE = re.compile(r"\s*\((\d{4}-\d{2}-\d{2})(?:,\s*([^)]{0,40}))?\)\s*$")

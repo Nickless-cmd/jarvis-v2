@@ -33,6 +33,42 @@ def test_no_history_enqueues_all():
     assert "weekly_manifest_refresh" in result["enqueued"]
 
 
+def test_goal_reporter_uden_historik_baade_alarmerer_og_laegges_i_koe(monkeypatch):
+    """Et aldrig koert reporter-job maa ikke kunne vaere tavst."""
+    alarmer = []
+    monkeypatch.setattr(
+        "core.services.background_attention.report_background_outcome",
+        lambda **kwargs: alarmer.append(kwargs) or {"status": "recorded"},
+    )
+    with patch("core.services.jobs_engine.all_jobs", return_value=[]), \
+         patch("core.services.jobs_engine.enqueue_job", return_value="job-goal-x"):
+        result = check_and_enqueue_due_periodic_jobs()
+
+    assert "goal_reporter" in result["enqueued"]
+    assert len(alarmer) == 1
+    assert alarmer[0]["source_kind"] == "goal-reporter"
+    assert alarmer[0]["source_id"] == "weekly-run"
+    assert alarmer[0]["status"] == "failed"
+    assert alarmer[0]["requires_attention"] is True
+
+
+def test_frisk_goal_reporter_hverken_alarmerer_eller_laegges_i_koe(monkeypatch):
+    """En frisk ugentlig maaling skal ikke give falsk alarm eller dublet."""
+    alarmer = []
+    monkeypatch.setattr(
+        "core.services.background_attention.report_background_outcome",
+        lambda **kwargs: alarmer.append(kwargs) or {"status": "recorded"},
+    )
+    with patch(
+        "core.services.jobs_engine.all_jobs",
+        return_value=[_job("goal_reporter", hours_ago=24)],
+    ), patch("core.services.jobs_engine.enqueue_job", return_value="job-x"):
+        result = check_and_enqueue_due_periodic_jobs()
+
+    assert "goal_reporter" not in result["enqueued"]
+    assert alarmer == []
+
+
 def test_recent_chronicle_skipped():
     # 2026-05-17 perf fix: scheduler nu loader job-listen ÉN gang og filtrerer
     # in-memory. fake_list returnerer derfor det fulde sæt, ikke pre-filtreret.

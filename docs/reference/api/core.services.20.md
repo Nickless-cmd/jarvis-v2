@@ -244,8 +244,9 @@ _Periodic jobs scheduler — enqueues overdue background jobs._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_extract_last_time` | `(item)` | Pick the most relevant timestamp from a job record. | [src](../../../core/services/periodic_jobs_scheduler.py#L76) |
-| function | `check_and_enqueue_due_periodic_jobs` | `()` | Idempotent — enqueue any periodic jobs whose cadence is exceeded. | [src](../../../core/services/periodic_jobs_scheduler.py#L89) |
+| function | `_extract_last_time` | `(item)` | Pick the most relevant timestamp from a job record. | [src](../../../core/services/periodic_jobs_scheduler.py#L80) |
+| function | `_report_goal_reporter_liveness` | `(*, last_run, now)` | Gør en aldrig kørt eller otte dage gammel reporter ejer-synlig. | [src](../../../core/services/periodic_jobs_scheduler.py#L93) |
+| function | `check_and_enqueue_due_periodic_jobs` | `()` | Idempotent — enqueue any periodic jobs whose cadence is exceeded. | [src](../../../core/services/periodic_jobs_scheduler.py#L122) |
 
 ## `core/services/permission_axes.py`
 _To akser: hvad et kald MÅ røre, og hvornår et menneske skal spørges._

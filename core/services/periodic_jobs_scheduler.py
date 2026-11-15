@@ -28,6 +28,10 @@ logger = logging.getLogger(__name__)
 _SCHEDULE: dict[str, timedelta] = {
     "chronicle_refresh": timedelta(hours=24),
     "weekly_manifest_refresh": timedelta(days=7),
+    # 15/11-2026: goal_reporter havde kun et CLI-script og en promptet
+    # recurring-task. Den skrev 5/10, 12/10 og 19/10 og forsvandt derefter,
+    # fordi ingen deterministisk runtime-path ejede kadencen.
+    "goal_reporter": timedelta(days=7),
     "goal_synthesis": timedelta(days=7),
     "personality_snapshot": timedelta(hours=4),  # 6x/day for stable baseline
     "provider_health_check": timedelta(minutes=5),  # 12x/hour proactive ping
@@ -84,6 +88,35 @@ def _extract_last_time(item: dict[str, Any]) -> datetime | None:
         except ValueError:
             continue
     return None
+
+
+def _report_goal_reporter_liveness(
+    *, last_run: datetime | None, now: datetime,
+) -> None:
+    """Gør en aldrig kørt eller otte dage gammel reporter ejer-synlig.
+
+    Alarmen har en stabil kilde-id og deduplikeres derfor af
+    ``background_attention``. Selve job-handleren lukker posten efter næste
+    vellykkede ``goal_update``.
+    """
+    if last_run is not None and (now - last_run) <= timedelta(days=8):
+        return
+    try:
+        from core.services.background_attention import report_background_outcome
+
+        alder = "aldrig" if last_run is None else last_run.isoformat()
+        report_background_outcome(
+            source_kind="goal-reporter",
+            source_id="weekly-run",
+            status="failed",
+            severity="high",
+            summary=f"Goal-reporteren har ikke leveret sin ugentlige måling; seneste kørsel: {alder}.",
+            suggested_next_step="Kontrollér goal_reporter-jobbet og det aktive pålidelighedsmål.",
+            requires_attention=True,
+            safe_to_continue=True,
+        )
+    except Exception as exc:
+        logger.warning("periodic_jobs_scheduler: goal_reporter liveness-alarm fejlede: %s", exc)
 
 
 def check_and_enqueue_due_periodic_jobs() -> dict[str, Any]:
@@ -154,6 +187,8 @@ def check_and_enqueue_due_periodic_jobs() -> dict[str, Any]:
             existing = last_times.get(jt)
             if existing is None or ts > existing:
                 last_times[jt] = ts
+
+    _report_goal_reporter_liveness(last_run=last_times.get("goal_reporter"), now=now)
 
     for job_type, cadence in _SCHEDULE.items():
         if job_type in pending_types:

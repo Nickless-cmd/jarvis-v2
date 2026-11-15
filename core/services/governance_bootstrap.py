@@ -139,6 +139,48 @@ def ensure_default_job_handlers() -> list[str]:
         except Exception as exc:
             return {"status": "error", "error": str(exc)}
 
+    def _goal_reporter_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        """Skriv den ugentlige måling og gør ethvert udfald ejer-synligt."""
+        try:
+            from core.services.goal_reporter import report_goal_metrics
+
+            result = report_goal_metrics(days=7)
+        except Exception as exc:
+            result = {"status": "error", "error": str(exc)}
+
+        if str(result.get("status") or "") != "ok":
+            error = str(result.get("error") or "ukendt goal_reporter-fejl")
+            try:
+                from core.services.background_attention import report_background_outcome
+
+                report_background_outcome(
+                    source_kind="goal-reporter",
+                    source_id="weekly-run",
+                    run_id=str(payload.get("job_id") or ""),
+                    status="failed",
+                    severity="high",
+                    summary=f"Den ugentlige goal-måling fejlede: {error}",
+                    suggested_next_step="Kontrollér reporterens datakilder og om målet er aktivt.",
+                    requires_attention=True,
+                    safe_to_continue=True,
+                )
+            except Exception as attention_exc:
+                logger.warning(
+                    "governance_bootstrap: goal_reporter-alarm fejlede: %s",
+                    attention_exc,
+                )
+            return {"status": "error", "error": error}
+
+        try:
+            from core.services.background_attention import report_background_recovered
+
+            report_background_recovered(
+                source_kind="goal-reporter", source_id="weekly-run",
+            )
+        except Exception as exc:
+            logger.warning("governance_bootstrap: goal_reporter recovery fejlede: %s", exc)
+        return {"status": "completed", "details": result}
+
     def _personality_snapshot_handler(payload: dict[str, Any]) -> dict[str, Any]:
         """Take a periodic mood snapshot for personality_drift baseline."""
         try:
@@ -311,6 +353,7 @@ def ensure_default_job_handlers() -> list[str]:
         "memory_decay_sweep": _memory_decay_handler,
         "dream_distillation_sweep": _dream_distillation_handler,
         "weekly_manifest_refresh": _weekly_manifest_handler,
+        "goal_reporter": _goal_reporter_handler,
         "goal_synthesis": _goal_synthesis_handler,
         "personality_snapshot": _personality_snapshot_handler,
         "provider_health_check": _provider_health_handler,

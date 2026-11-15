@@ -128,3 +128,51 @@ def test_dream_distillation_handler_kalder_den_rigtige_funktion(monkeypatch):
     assert ud["status"] == "ok", ud
     assert ud["result"]["status"] == "written"
     assert kaldt["trigger"] == "periodic-scheduled"
+
+
+def test_goal_reporter_handler_goer_manglende_maal_synligt(monkeypatch):
+    """Reporterens fejl maa ende som baade fejlet job og ejer-synlig alarm."""
+    from core.services import goal_reporter
+
+    handler = _hent_handler(monkeypatch, "goal_reporter")
+    monkeypatch.setattr(
+        goal_reporter,
+        "report_goal_metrics",
+        lambda **kwargs: {"status": "error", "error": "intet aktivt mål"},
+    )
+    alarmer = []
+    monkeypatch.setattr(
+        "core.services.background_attention.report_background_outcome",
+        lambda **kwargs: alarmer.append(kwargs) or {"status": "recorded"},
+    )
+
+    result = handler({"job_id": "job-goal-1"})
+
+    assert result["status"] == "error"
+    assert result["error"] == "intet aktivt mål"
+    assert alarmer[0]["source_kind"] == "goal-reporter"
+    assert alarmer[0]["source_id"] == "weekly-run"
+    assert alarmer[0]["requires_attention"] is True
+
+
+def test_goal_reporter_handler_lukker_alarm_efter_ny_maaling(monkeypatch):
+    """En ny goal_update er reporterens observerbare succes og lukker alarmen."""
+    from core.services import goal_reporter
+
+    handler = _hent_handler(monkeypatch, "goal_reporter")
+    monkeypatch.setattr(
+        goal_reporter,
+        "report_goal_metrics",
+        lambda **kwargs: {"status": "ok", "goal_id": "goal_x", "to_progress": 62},
+    )
+    lukket = []
+    monkeypatch.setattr(
+        "core.services.background_attention.report_background_recovered",
+        lambda **kwargs: lukket.append(kwargs) or {"status": "recorded"},
+    )
+
+    result = handler({"job_id": "job-goal-2"})
+
+    assert result["status"] == "completed"
+    assert result["details"]["goal_id"] == "goal_x"
+    assert lukket == [{"source_kind": "goal-reporter", "source_id": "weekly-run"}]

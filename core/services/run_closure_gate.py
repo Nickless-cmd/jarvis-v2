@@ -355,11 +355,41 @@ def _try_auto_commit(
         _last_auto_commit_error = "afstår — kan ikke verificere staging-state (git-fejl)"
         return None
     if pre_staged:
-        _last_auto_commit_error = (
-            f"afstår — {len(pre_staged)} allerede staged path(s): "
-            + ", ".join(sorted(pre_staged)[:3])
-        )
-        return None
+        # 15/11-2026: de stagede filer er oftest RUNETS EGNE. Agenten kører selv
+        # `git add` under sit arbejde (målt i værktøjssporet: «Godkendt: bash —
+        # … git add core/services/proactivity_bridge.py …» og `git add -A`), så
+        # gaten så runets eget spor som fremmed arbejde og afstod.
+        #
+        # Følgen var selvforstærkende: gaten returnerer FØR `git add`, så den
+        # ryddede aldrig sporet. Filerne blev liggende staged, og hvert
+        # efterfølgende run afstod på dem. Målt: 21 poster over 12 dage, hvoraf
+        # de fleste navngiver paths der er identiske med runets eget arbejde.
+        #
+        # Reglen bevares uændret for FREMMEDE paths — vi rydder kun runets eget
+        # spor og tager derefter den normale vej (add + commit).
+        fremmede = pre_staged - set(candidates)
+        if fremmede:
+            _last_auto_commit_error = (
+                f"afstår — {len(fremmede)} allerede staged path(s) uden for "
+                "runets eget arbejde: " + ", ".join(sorted(fremmede)[:3])
+            )
+            return None
+        try:
+            restore = subprocess.run(
+                ["git", "restore", "--staged", "--", *sorted(pre_staged)],
+                capture_output=True, text=True, timeout=15, cwd=_REPO_ROOT,
+            )
+            if restore.returncode != 0:
+                _last_auto_commit_error = (
+                    "afstår — kunne ikke rydde runets eget staging-spor: "
+                    + (restore.stderr or "").strip()[:200]
+                )
+                return None
+        except Exception as exc:
+            _last_auto_commit_error = (
+                f"afstår — kunne ikke rydde runets eget staging-spor: {exc}"
+            )[:300]
+            return None
 
     subject = f"auto(run): {focus or 'autonom session'} — {len(candidates)} fil(er)"
     body = f"\n\nrun_id: {run_id}\nsession_id: {session_id}\npaths: {len(candidates)}"

@@ -212,13 +212,13 @@ _Run-closure gate — fang tomme replies og unstaged changes efter agentic runs.
 | function | `_is_auto_commit_excluded` | `(path)` | True hvis en path er et arbejdsartefakt der aldrig skal committes. | [src](../../../core/services/run_closure_gate.py#L293) |
 | function | `_git_staged_paths` | `(*, cwd=…)` | Return paths currently staged in the index. | [src](../../../core/services/run_closure_gate.py#L301) |
 | function | `_try_auto_commit` | `(touched_paths, *, run_id, session_id, focus)` | Commit filer rørt under et autonomt run. Return short-hash eller None. | [src](../../../core/services/run_closure_gate.py#L320) |
-| function | `_registrer_i_indbakken` | `(*, kildetype, kilde_id, beskrivelse, run_id=…, session_id=…, kilde_ejer=…)` | Læg gatens besked i INDBAKKEN i stedet for at sende den til Discord. | [src](../../../core/services/run_closure_gate.py#L424) |
-| function | `_on_run_completed` | `(payload)` | Handle a runtime.autonomous_run_completed event. | [src](../../../core/services/run_closure_gate.py#L477) |
-| function | `_on_run_started` | `(payload)` | Handle runtime.autonomous_run_started — snapshot git state. | [src](../../../core/services/run_closure_gate.py#L833) |
-| function | `_on_tool_used` | `(payload)` | Track tool calls so we can detect silent runs. | [src](../../../core/services/run_closure_gate.py#L848) |
-| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/run_closure_gate.py#L864) |
-| function | `start_run_closure_gate` | `()` | Start the eventbus subscriber thread. Safe to call multiple times. | [src](../../../core/services/run_closure_gate.py#L892) |
-| function | `stop_run_closure_gate` | `()` | — | [src](../../../core/services/run_closure_gate.py#L917) |
+| function | `_registrer_i_indbakken` | `(*, kildetype, kilde_id, beskrivelse, run_id=…, session_id=…, kilde_ejer=…)` | Læg gatens besked i INDBAKKEN i stedet for at sende den til Discord. | [src](../../../core/services/run_closure_gate.py#L454) |
+| function | `_on_run_completed` | `(payload)` | Handle a runtime.autonomous_run_completed event. | [src](../../../core/services/run_closure_gate.py#L507) |
+| function | `_on_run_started` | `(payload)` | Handle runtime.autonomous_run_started — snapshot git state. | [src](../../../core/services/run_closure_gate.py#L863) |
+| function | `_on_tool_used` | `(payload)` | Track tool calls so we can detect silent runs. | [src](../../../core/services/run_closure_gate.py#L878) |
+| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/run_closure_gate.py#L894) |
+| function | `start_run_closure_gate` | `()` | Start the eventbus subscriber thread. Safe to call multiple times. | [src](../../../core/services/run_closure_gate.py#L922) |
+| function | `stop_run_closure_gate` | `()` | — | [src](../../../core/services/run_closure_gate.py#L947) |
 
 ## `core/services/run_event_log.py`
 _In-memory, append-only, offset-indekseret event-log PR. RUN._

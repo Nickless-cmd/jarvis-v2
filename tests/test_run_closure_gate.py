@@ -289,6 +289,59 @@ class TestAutoCommitGate:
         # git add må ALDRIG have kørt oven i brugerens staged arbejde
         assert not any(c[:2] == ["git", "add"] for c in calls)
 
+    def test_rydder_runets_eget_stagede_spor_og_committer(self):
+        """15/11-2026: låsen. Agenten kører selv `git add`, så gaten så runets
+        EGET arbejde som fremmed staging og afstod — hvorefter filerne blev
+        liggende og blokerede hvert efterfølgende run. Målt i 21 poster over
+        12 dage, heraf 5 hvor de stagede paths er identiske med runets eget
+        touched-sæt (fx `core/services/chat_response_policy.py`).
+
+        Reglen skal stadig værne mod FREMMEDE paths — men runets eget spor må
+        den rydde, ellers er blokeringen selvforstærkende.
+        """
+        from core.services import run_closure_gate as gate_mod
+        from core.services.run_closure_gate import _try_auto_commit
+        fake_run, calls = self._fake_git()
+        eget = "core/services/chat_response_policy.py"
+        with patch("core.services.run_closure_gate._git_staged_paths",
+                   return_value={eget}), \
+             patch("core.services.run_closure_gate.subprocess.run", side_effect=fake_run), \
+             patch(
+                 "core.services.run_closure_gate.commit_with_attribution",
+                 return_value=AttributedCommitResult(0, sha="feed1234"),
+             ):
+            short = _try_auto_commit(
+                {eget}, run_id="rid-4", session_id="sid-4", focus="x",
+            )
+        assert short == "feed1234", gate_mod._last_auto_commit_error
+        # Sporet skal være ryddet FØR den normale add+commit-vej.
+        restore_call = next(c for c in calls if c[:3] == ["git", "restore", "--staged"])
+        assert eget in restore_call
+        assert calls.index(restore_call) < next(
+            i for i, c in enumerate(calls) if c[:2] == ["git", "add"]
+        )
+
+    def test_afstaar_stadig_naar_fremmede_paths_er_stagede(self):
+        """Sikkerhedsreglens formål: man må ikke committe oven i andres arbejde.
+
+        Er blot ÉN staged path uden for runets eget sæt, afstår gaten — og
+        rører hverken index eller arbejdstræ.
+        """
+        from core.services import run_closure_gate as gate_mod
+        from core.services.run_closure_gate import _try_auto_commit
+        fake_run, calls = self._fake_git()
+        with patch("core.services.run_closure_gate._git_staged_paths",
+                   return_value={"core/services/eget.py", "core/bjoerns_arbejde.py"}), \
+             patch("core.services.run_closure_gate.subprocess.run", side_effect=fake_run):
+            short = _try_auto_commit(
+                {"core/services/eget.py"}, run_id="rid-5", session_id="sid-5", focus="x",
+            )
+        assert short is None
+        assert "allerede staged" in gate_mod._last_auto_commit_error
+        assert "bjoerns_arbejde.py" in gate_mod._last_auto_commit_error
+        # Hverken add eller restore må have kørt — index er urørt.
+        assert not any(c[:2] in (["git", "add"], ["git", "restore"]) for c in calls)
+
     def test_unstages_and_records_error_when_hook_blocks(self):
         from core.services import run_closure_gate as gate_mod
         from core.services.run_closure_gate import _try_auto_commit

@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from core.runtime import db_runtime_executive_signals as registry
+from core.runtime import db_runtime_open_loop_threads as thread_store
 
 
 def _loop_rows(db, thread_id: str) -> list[dict]:
@@ -125,22 +126,160 @@ def test_thread_spans_two_runs_stays_open_and_closes_only_on_evidence(
     )
 
 
-def test_silence_never_decays_a_declared_thread(isolated_runtime) -> None:
+def test_inactivity_decay_still_expires_a_thread_bound_signal(
+    isolated_runtime,
+) -> None:
     tracking = isolated_runtime.open_loop_tracking
     db = isolated_runtime.db
-    tid = _declare(tracking)["thread"]["thread_id"]
-    old = (datetime.now(UTC) - timedelta(days=30)).isoformat()
+    item = tracking._persist_open_loop_signals(
+        signals=[{
+            "signal_type": "open-loop",
+            "canonical_key": "open-loop:open-loop:decay",
+            "status": "open",
+            "title": "Open loop: Inactivity decay",
+            "summary": "Must not become a zombie.",
+        }],
+        session_id="s1",
+        run_id="run-A",
+    )[0]
+    tid = item["thread_id"]
+    stale_old = (datetime.now(UTC) - timedelta(days=6)).isoformat()
     with db.connect() as conn:
         conn.execute(
             "UPDATE runtime_open_loop_signals SET updated_at = ?, created_at = ? "
             "WHERE thread_id = ?",
-            (old, old, tid),
+            (stale_old, stale_old, tid),
         )
 
-    result = tracking.refresh_runtime_open_loop_signal_statuses()
+    stale_result = tracking.refresh_runtime_open_loop_signal_statuses()
 
-    assert result == {"stale_marked": 0, "auto_closed": 0}
-    assert [r["status"] for r in _loop_rows(db, tid)] == ["open"]
+    assert stale_result == {"stale_marked": 1, "auto_closed": 0}
+    assert [r["status"] for r in _loop_rows(db, tid)] == ["stale"]
+    assert registry.get_runtime_thread(tid)["status"] == "open"
+
+    expiry_old = (datetime.now(UTC) - timedelta(days=8)).isoformat()
+    with db.connect() as conn:
+        conn.execute(
+            "UPDATE runtime_open_loop_signals SET updated_at = ? WHERE thread_id = ?",
+            (expiry_old, tid),
+        )
+
+    expired_result = tracking.refresh_runtime_open_loop_signal_statuses()
+
+    assert expired_result == {"stale_marked": 0, "auto_closed": 1}
+    assert [r["status"] for r in _loop_rows(db, tid)] == ["closed"]
+    expired = registry.get_runtime_thread(tid)
+    assert expired["status"] == "expired"
+    assert expired["closure_evidence"] == ""
+
+
+def test_active_loop_limit_rejects_visibly_without_growing(
+    isolated_runtime, monkeypatch
+) -> None:
+    tracking = isolated_runtime.open_loop_tracking
+    db = isolated_runtime.db
+    monkeypatch.setattr(thread_store, "MAX_ACTIVE_OPEN_LOOPS", 2)
+
+    def persist(index: int) -> dict[str, object]:
+        return tracking._persist_open_loop_signals(
+            signals=[{
+                "signal_type": "open-loop",
+                "canonical_key": f"open-loop:open-loop:limit-{index}",
+                "status": "open",
+                "title": f"Open loop: Limit {index}",
+                "summary": f"Loop {index}.",
+            }],
+            session_id="s1",
+            run_id=f"run-{index}",
+        )[0]
+
+    assert persist(1)["was_created"] is True
+    assert persist(2)["was_created"] is True
+
+    rejected = persist(3)
+
+    assert rejected["was_rejected"] is True
+    assert rejected["status"] == "rejected"
+    assert rejected["limit"] == 2
+    assert "active open-loop limit 2 reached" in rejected["status_reason"]
+    assert len(db.list_runtime_open_loop_signals(limit=10)) == 2
+    assert len(registry.list_runtime_threads(status="open", limit=10)) == 2
+
+
+def test_normal_open_loop_creation_can_be_closed_with_evidence(
+    isolated_runtime,
+) -> None:
+    tracking = isolated_runtime.open_loop_tracking
+    db = isolated_runtime.db
+
+    created = tracking._persist_open_loop_signals(
+        signals=[{
+            "signal_type": "open-loop",
+            "canonical_key": "open-loop:open-loop:normal-path",
+            "status": "open",
+            "title": "Open loop: Normal path closure",
+            "summary": "Awaiting a later answer.",
+        }],
+        session_id="session-A",
+        run_id="run-A",
+    )[0]
+
+    assert created["thread_id"]
+    thread = registry.get_runtime_thread(created["thread_id"])
+    assert thread is not None
+    assert thread["status"] == "open"
+    assert thread["opened_in_run_id"] == "run-A"
+
+    closed = tracking.close_open_loop_thread(
+        created["thread_id"],
+        evidence="Besvaret i run-B med commit abc123",
+        answered_in_run_id="run-B",
+    )
+
+    assert closed["status"] == "closed"
+    row = db.get_runtime_open_loop_signal(created["signal_id"])
+    assert row["status"] == "closed"
+    assert row["status_reason"] == (
+        "Answered in run-B: Besvaret i run-B med commit abc123"
+    )
+
+
+def test_reobserving_closed_key_preserves_closure_and_creates_new_thread(
+    isolated_runtime,
+) -> None:
+    tracking = isolated_runtime.open_loop_tracking
+    db = isolated_runtime.db
+    signal = {
+        "signal_type": "open-loop",
+        "canonical_key": "open-loop:open-loop:recurring-topic",
+        "status": "open",
+        "title": "Open loop: Recurring topic",
+        "summary": "First occurrence.",
+        "status_reason": "Observed in run-A.",
+    }
+    first = tracking._persist_open_loop_signals(
+        signals=[signal], session_id="session-A", run_id="run-A"
+    )[0]
+    tracking.close_open_loop_thread(
+        first["thread_id"],
+        evidence="Første forekomst blev besvaret",
+        answered_in_run_id="run-B",
+    )
+
+    second = tracking._persist_open_loop_signals(
+        signals=[{**signal, "summary": "Second occurrence."}],
+        session_id="session-C",
+        run_id="run-C",
+    )[0]
+
+    assert second["signal_id"] != first["signal_id"]
+    assert second["thread_id"] != first["thread_id"]
+    assert second["status"] == "open"
+    old = db.get_runtime_open_loop_signal(first["signal_id"])
+    assert old["status"] == "closed"
+    assert old["status_reason"] == (
+        "Answered in run-B: Første forekomst blev besvaret"
+    )
 
 
 def test_thread_loop_cannot_be_closed_around_the_evidence_gate(
@@ -221,7 +360,7 @@ def test_supersede_matches_nothing_for_a_per_run_domain(isolated_runtime) -> Non
     assert [r["status"] for r in _loop_rows(db, tid)] == ["open"]
 
 
-def test_per_turn_candidate_with_the_same_title_does_not_merge_into_a_thread(
+def test_per_turn_candidate_with_same_title_gets_own_thread(
     isolated_runtime,
 ) -> None:
     tracking = isolated_runtime.open_loop_tracking
@@ -240,12 +379,13 @@ def test_per_turn_candidate_with_the_same_title_does_not_merge_into_a_thread(
     )
 
     assert len(_loop_rows(db, tid)) == 1
-    legacy = [
-        r for r in db.list_runtime_open_loop_signals(limit=10) if not r["thread_id"]
-    ]
-    assert [(r["canonical_key"], r["source_run_id"]) for r in legacy] == [
-        ("open-loop:open-loop:visible-xyz", "visible-xyz")
-    ]
+    candidate = next(
+        r for r in db.list_runtime_open_loop_signals(limit=10)
+        if r["canonical_key"] == "open-loop:open-loop:visible-xyz"
+    )
+    assert candidate["thread_id"]
+    assert candidate["thread_id"] != tid
+    assert candidate["source_run_id"] == "visible-xyz"
 
 
 def test_old_table_is_migrated_and_legacy_rows_get_source_run_id(

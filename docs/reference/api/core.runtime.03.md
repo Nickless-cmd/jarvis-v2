@@ -2,6 +2,61 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_runtime_relational_signals.py`
+_Persistence for Jarvis' runtime relational-* signal cluster._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `upsert_runtime_user_md_update_proposal` | `(*, proposal_id, proposal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Upsert a runtime user-MD update proposal into runtime_user_md_update_proposals. | [src](../../../core/runtime/db_runtime_relational_signals.py#L32) |
+| function | `list_runtime_user_md_update_proposals` | `(*, status=…, limit=…)` | List runtime user-MD update proposals, newest first (ORDER BY id DESC). | [src](../../../core/runtime/db_runtime_relational_signals.py#L105) |
+| function | `get_runtime_user_md_update_proposal` | `(proposal_id)` | Fetch a single user-MD update proposal by proposal_id, or None if not found. | [src](../../../core/runtime/db_runtime_relational_signals.py#L155) |
+| function | `update_runtime_user_md_update_proposal_status` | `(proposal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one proposal by proposal_id. | [src](../../../core/runtime/db_runtime_relational_signals.py#L193) |
+| function | `supersede_runtime_user_md_update_proposals_for_dimension` | `(*, dimension_key, exclude_proposal_id, updated_at, status_reason)` | Mark all open proposals for a dimension as 'superseded' except one. | [src](../../../core/runtime/db_runtime_relational_signals.py#L230) |
+| function | `upsert_runtime_user_understanding_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Upsert a runtime user-understanding signal into runtime_user_understanding_signals. | [src](../../../core/runtime/db_runtime_relational_signals.py#L267) |
+| function | `list_runtime_user_understanding_signals` | `(*, status=…, limit=…)` | List runtime user-understanding signals, newest first, optionally filtered by status. | [src](../../../core/runtime/db_runtime_relational_signals.py#L339) |
+| function | `get_runtime_user_understanding_signal` | `(signal_id)` | Fetch a single user-understanding signal by signal_id, or None if not found. | [src](../../../core/runtime/db_runtime_relational_signals.py#L389) |
+| function | `update_runtime_user_understanding_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one user-understanding signal by signal_id. | [src](../../../core/runtime/db_runtime_relational_signals.py#L427) |
+| function | `supersede_runtime_user_understanding_signals_for_dimension` | `(*, dimension_key, exclude_signal_id, updated_at, status_reason)` | Mark all open user-understanding signals for a dimension as 'superseded' except one. | [src](../../../core/runtime/db_runtime_relational_signals.py#L464) |
+| function | `upsert_runtime_inner_visible_support_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Upsert an inner-visible-support signal into runtime_inner_visible_support_signals. | [src](../../../core/runtime/db_runtime_relational_signals.py#L500) |
+| function | `list_runtime_inner_visible_support_signals` | `(*, status=…, limit=…)` | List inner-visible-support signals, newest first, optionally filtered by status. | [src](../../../core/runtime/db_runtime_relational_signals.py#L572) |
+| function | `get_runtime_inner_visible_support_signal` | `(signal_id)` | Fetch a single inner-visible-support signal by signal_id, or None if not found. | [src](../../../core/runtime/db_runtime_relational_signals.py#L622) |
+| function | `update_runtime_inner_visible_support_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one inner-visible-support signal by signal_id. | [src](../../../core/runtime/db_runtime_relational_signals.py#L662) |
+| function | `supersede_runtime_inner_visible_support_signals_for_focus` | `(*, focus_key, exclude_signal_id, updated_at, status_reason)` | Mark all open inner-visible-support signals for a focus as 'superseded' except one. | [src](../../../core/runtime/db_runtime_relational_signals.py#L699) |
+| function | `upsert_runtime_relation_state_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Upsert a relation-state signal into runtime_relation_state_signals. | [src](../../../core/runtime/db_runtime_relational_signals.py#L735) |
+| function | `list_runtime_relation_state_signals` | `(*, status=…, limit=…)` | List relation-state signals, newest first, optionally filtered by status. | [src](../../../core/runtime/db_runtime_relational_signals.py#L807) |
+| function | `get_runtime_relation_state_signal` | `(signal_id)` | Fetch a single relation-state signal by signal_id, or None if not found. | [src](../../../core/runtime/db_runtime_relational_signals.py#L857) |
+| function | `update_runtime_relation_state_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one relation-state signal by signal_id. | [src](../../../core/runtime/db_runtime_relational_signals.py#L895) |
+| function | `supersede_runtime_relation_state_signals_for_focus` | `(*, focus_key, exclude_signal_id, updated_at, status_reason)` | Mark all open relation-state signals for a focus as 'superseded' except one. | [src](../../../core/runtime/db_runtime_relational_signals.py#L932) |
+| function | `upsert_runtime_relation_continuity_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Upsert a relation-continuity signal into runtime_relation_continuity_signals. | [src](../../../core/runtime/db_runtime_relational_signals.py#L968) |
+| function | `list_runtime_relation_continuity_signals` | `(*, status=…, limit=…)` | List relation-continuity signals, newest first, optionally filtered by status. | [src](../../../core/runtime/db_runtime_relational_signals.py#L1040) |
+| function | `get_runtime_relation_continuity_signal` | `(signal_id)` | Fetch a single relation-continuity signal by signal_id, or None if not found. | [src](../../../core/runtime/db_runtime_relational_signals.py#L1090) |
+| function | `update_runtime_relation_continuity_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one relation-continuity signal by signal_id. | [src](../../../core/runtime/db_runtime_relational_signals.py#L1128) |
+| function | `supersede_runtime_relation_continuity_signals_for_focus` | `(*, focus_key, exclude_signal_id, updated_at, status_reason)` | Mark all open relation-continuity signals for a focus as 'superseded' except one. | [src](../../../core/runtime/db_runtime_relational_signals.py#L1165) |
+| function | `upsert_runtime_attachment_topology_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Upsert an attachment-topology signal into runtime_attachment_topology_signals. | [src](../../../core/runtime/db_runtime_relational_signals.py#L1201) |
+| function | `upsert_runtime_loyalty_gradient_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Upsert a loyalty-gradient signal into runtime_loyalty_gradient_signals. | [src](../../../core/runtime/db_runtime_relational_signals.py#L1273) |
+| function | `list_runtime_attachment_topology_signals` | `(*, status=…, limit=…)` | List attachment-topology signals, newest first, optionally filtered by status. | [src](../../../core/runtime/db_runtime_relational_signals.py#L1345) |
+| function | `list_runtime_loyalty_gradient_signals` | `(*, status=…, limit=…)` | List loyalty-gradient signals, newest first, optionally filtered by status. | [src](../../../core/runtime/db_runtime_relational_signals.py#L1395) |
+| function | `get_runtime_attachment_topology_signal` | `(signal_id)` | Fetch a single attachment-topology signal by signal_id, or None if not found. | [src](../../../core/runtime/db_runtime_relational_signals.py#L1445) |
+| function | `get_runtime_loyalty_gradient_signal` | `(signal_id)` | Fetch a single loyalty-gradient signal by signal_id, or None if not found. | [src](../../../core/runtime/db_runtime_relational_signals.py#L1483) |
+| function | `update_runtime_attachment_topology_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one attachment-topology signal by signal_id. | [src](../../../core/runtime/db_runtime_relational_signals.py#L1521) |
+| function | `update_runtime_loyalty_gradient_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one loyalty-gradient signal by signal_id. | [src](../../../core/runtime/db_runtime_relational_signals.py#L1558) |
+| function | `supersede_runtime_attachment_topology_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all open attachment-topology signals for a domain as 'superseded' except one. | [src](../../../core/runtime/db_runtime_relational_signals.py#L1595) |
+| function | `supersede_runtime_loyalty_gradient_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all open loyalty-gradient signals for a domain as 'superseded' except one. | [src](../../../core/runtime/db_runtime_relational_signals.py#L1631) |
+| function | `_ensure_runtime_user_md_update_proposal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_relational_signals.py#L1667) |
+| function | `_ensure_runtime_user_understanding_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_relational_signals.py#L1709) |
+| function | `_ensure_runtime_inner_visible_support_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_relational_signals.py#L1751) |
+| function | `_ensure_runtime_relation_state_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_relational_signals.py#L1795) |
+| function | `_ensure_runtime_relation_continuity_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_relational_signals.py#L1837) |
+| function | `_ensure_runtime_attachment_topology_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_relational_signals.py#L1879) |
+| function | `_ensure_runtime_loyalty_gradient_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_relational_signals.py#L1921) |
+| function | `_runtime_user_understanding_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_relational_signals.py#L1963) |
+| function | `_runtime_inner_visible_support_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_relational_signals.py#L1988) |
+| function | `_runtime_relation_state_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_relational_signals.py#L2015) |
+| function | `_runtime_relation_continuity_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_relational_signals.py#L2040) |
+| function | `_runtime_attachment_topology_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_relational_signals.py#L2065) |
+| function | `_runtime_loyalty_gradient_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_relational_signals.py#L2090) |
+| function | `_runtime_user_md_update_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_relational_signals.py#L2115) |
+
 ## `core/runtime/db_runtime_self.py`
 _Persistence for Jarvis' runtime self-* signal cluster._
 
@@ -707,17 +762,4 @@ _Workspace path resolver — single source of truth for filesystem layout._
 | function | `rent_mappe_eller_filnavn` | `(navn)` | Et BLOT navn — ingen sti, ingen `..`. Tom streng når det ikke er det. | [src](../../../core/runtime/workspace_paths.py#L157) |
 | function | `published_files_dir` | `(user_id=…, *, opret=…)` | Hvor ÉN brugers udgivne filer bor. `~/.jarvis-v2/files/u/<workspace>/`. | [src](../../../core/runtime/workspace_paths.py#L179) |
 | function | `published_file_path` | `(filnavn, user_id=…, *, opret_mappe=…)` | Den fulde sti til ÉN brugers fil. Rejser ValueError på en sti. | [src](../../../core/runtime/workspace_paths.py#L226) |
-
-## `core/runtime/ws_auth.py`
-_Legitimation paa en WebSocket — uden at skrive tokenet i adgangsloggen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_foerste_bearer` | `(vaerdi)` | — | [src](../../../core/runtime/ws_auth.py#L41) |
-| function | `token_fra_handshake` | `(headers)` | Find tokenet i et WS-handshake. | [src](../../../core/runtime/ws_auth.py#L48) |
-| function | `verificer` | `(token)` | Verificér tokenet. Returnerer claims, eller None hvis det ikke holder. | [src](../../../core/runtime/ws_auth.py#L77) |
-| function | `kraeves_auth` | `()` | Er auth slaaet til i denne runtime? | [src](../../../core/runtime/ws_auth.py#L94) |
-| function | `_private_familier` | `()` | — | [src](../../../core/runtime/ws_auth.py#L129) |
-| function | `er_ejer` | `(krav)` | Ejer = rollen «owner» i et verificeret token. Uden token (auth slået fra, | [src](../../../core/runtime/ws_auth.py#L139) |
-| function | `til_klient` | `(item, *, ejer)` | Hvad der må sendes til denne klient, eller None. | [src](../../../core/runtime/ws_auth.py#L147) |
 

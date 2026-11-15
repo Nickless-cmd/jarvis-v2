@@ -5091,7 +5091,8 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
   background: var(--bg-3); }
 .edited-files-titel { color: var(--fg-1); font-size: 13px; }
 .edited-files-sum { display: inline-flex; gap: 5px; font-size: 11px; font-variant-numeric: tabular-nums; }
-.edited-files-fold { margin-left: auto; flex: none; color: var(--fg-3); transition: transform 140ms ease; }
+.edited-files-fold { margin-left: auto; flex: none; color: var(--fg-3);
+  transition: transform var(--dur-snap) var(--ease-snap); }
 .edited-files[data-aaben='true'] .edited-files-fold { transform: rotate(180deg); }
 .edited-files-handlinger { display: flex; justify-content: flex-end; gap: 8px;
   padding: 6px 10px; border-bottom: 1px solid var(--line); }

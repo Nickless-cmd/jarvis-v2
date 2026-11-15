@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10210/18749 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10212/18752 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 10210/18749 functions/methods documented (54%). The list 
 | `core.identity` | 80 | 173 | 46% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 900 | 1614 | 55% |
+| `core.runtime` | 902 | 1617 | 55% |
 | `core.services` | 6845 | 12728 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 146 | 228 | 64% |
@@ -608,8 +608,6 @@ Generated from source. 10210/18749 functions/methods documented (54%). The list 
 - `core/runtime/db_runtime_diary.py` :: `supersede_diary_synthesis_signals_for_focus` (L131)
 - `core/runtime/db_runtime_diary.py` :: `update_diary_synthesis_signal_status` (L97)
 - `core/runtime/db_runtime_diary.py` :: `upsert_diary_synthesis_signal` (L161)
-- `core/runtime/db_runtime_executive_signals.py` :: `get_runtime_thread` (L2011)
-- `core/runtime/db_runtime_executive_signals.py` :: `list_runtime_threads` (L2032)
 - `core/runtime/db_runtime_flows.py` :: `create_runtime_flow` (L56)
 - `core/runtime/db_runtime_flows.py` :: `ensure_runtime_flows_tables` (L13)
 - `core/runtime/db_runtime_flows.py` :: `get_runtime_flow` (L109)
@@ -624,6 +622,8 @@ Generated from source. 10210/18749 functions/methods documented (54%). The list 
 - `core/runtime/db_runtime_initiatives.py` :: `get_runtime_initiative` (L188)
 - `core/runtime/db_runtime_initiatives.py` :: `list_runtime_initiatives` (L281)
 - `core/runtime/db_runtime_initiatives.py` :: `update_runtime_initiative` (L341)
+- `core/runtime/db_runtime_open_loop_threads.py` :: `get_runtime_thread` (L171)
+- `core/runtime/db_runtime_open_loop_threads.py` :: `list_runtime_threads` (L192)
 - `core/runtime/db_runtime_signals.py` :: `ensure_runtime_signals_tables` (L17)
 - `core/runtime/db_runtime_signals.py` :: `recent_runtime_action_outcomes` (L164)
 - `core/runtime/db_runtime_signals.py` :: `recent_runtime_learning_signals` (L221)
@@ -1545,10 +1545,10 @@ Generated from source. 10210/18749 functions/methods documented (54%). The list 
 - `core/services/open_loop_closure_proposal_tracking.py` :: `build_runtime_open_loop_closure_proposal_surface` (L85)
 - `core/services/open_loop_closure_proposal_tracking.py` :: `refresh_runtime_open_loop_closure_proposal_statuses` (L54)
 - `core/services/open_loop_closure_proposal_tracking.py` :: `track_runtime_open_loop_closure_proposals_for_visible_turn` (L32)
-- `core/services/open_loop_signal_tracking.py` :: `build_runtime_open_loop_signal_surface` (L183)
-- `core/services/open_loop_signal_tracking.py` :: `get_open_loop_creation_readiness` (L258)
-- `core/services/open_loop_signal_tracking.py` :: `refresh_runtime_open_loop_signal_statuses` (L89)
-- `core/services/open_loop_signal_tracking.py` :: `track_runtime_open_loop_signals_for_visible_turn` (L67)
+- `core/services/open_loop_signal_tracking.py` :: `build_runtime_open_loop_signal_surface` (L199)
+- `core/services/open_loop_signal_tracking.py` :: `get_open_loop_creation_readiness` (L274)
+- `core/services/open_loop_signal_tracking.py` :: `refresh_runtime_open_loop_signal_statuses` (L96)
+- `core/services/open_loop_signal_tracking.py` :: `track_runtime_open_loop_signals_for_visible_turn` (L69)
 - `core/services/operator_allowlist.py` :: `add_to_allowlist` (L45)
 - `core/services/operator_allowlist.py` :: `is_enforced` (L58)
 - `core/services/operator_allowlist.py` :: `list_allowlist` (L30)

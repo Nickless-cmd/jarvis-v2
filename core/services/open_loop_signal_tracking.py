@@ -26,9 +26,11 @@ from core.runtime.db import (
 from core.runtime.db_runtime_executive_signals import (
     close_runtime_thread,
     declare_runtime_thread,
+    expire_runtime_thread_for_inactivity,
     get_runtime_thread,
     supersede_runtime_open_loop_signals_for_domain,
 )
+from core.runtime.db_runtime_open_loop_threads import OpenLoopLimitReached
 
 _STALE_AFTER_DAYS = 5    # 2026-05-16: 14d var for langt — Bjørn fik 16 zombie-loops fra test-runs
 _CLOSE_STALE_AFTER_DAYS = 7  # efter stale-mark, auto-close hvis ingen update i yderligere 7 dage
@@ -74,12 +76,17 @@ def track_runtime_open_loop_signals_for_visible_turn(
         session_id=str(session_id or "").strip(),
         run_id=run_id,
     )
+    rejected = len([item for item in items if item.get("was_rejected")])
     return {
         "created": len([item for item in items if item.get("was_created")]),
         "updated": len([item for item in items if item.get("was_updated")]),
+        "rejected": rejected,
         "items": items,
         "summary": (
-            f"Tracked {len(items)} bounded open-loop signals."
+            f"Tracked {len(items) - rejected} bounded open-loop signals; "
+            f"rejected {rejected} at the active limit."
+            if rejected
+            else f"Tracked {len(items)} bounded open-loop signals."
             if items
             else "No bounded open-loop signal warranted tracking."
         ),
@@ -99,10 +106,6 @@ def refresh_runtime_open_loop_signal_statuses() -> dict[str, int]:
     for item in items:
         current_status = str(item.get("status") or "")
         if current_status not in {"open", "softening", "closed", "stale"}:
-            continue
-        # En erklæret tråd forfalder ikke af stilhed: stilhed er ikke svar. Den
-        # lukkes kun af close_open_loop_thread med bevis.
-        if str(item.get("thread_id") or ""):
             continue
         updated_at = _parse_dt(
             str(item.get("updated_at") or item.get("created_at") or "")
@@ -127,14 +130,27 @@ def refresh_runtime_open_loop_signal_statuses() -> dict[str, int]:
         # 2026-05-16 fix: forhindrer at zombie-loops bliver ved med at trigge
         # autonomy_pressure → council → CPU-spinning loop.
         if current_status == "stale" and updated_at < now - timedelta(days=_CLOSE_STALE_AFTER_DAYS):
-            closed_item = update_runtime_open_loop_signal_status(
-                str(item.get("signal_id") or ""),
-                status="closed",
-                updated_at=now.isoformat(),
-                status_reason="Auto-closed after extended stale inactivity (forhindrer feedback-loop).",
+            reason = (
+                "Auto-closed after extended stale inactivity "
+                "(forhindrer feedback-loop)."
             )
-            if closed_item is not None:
+            thread_id = str(item.get("thread_id") or "")
+            if thread_id:
+                expire_runtime_thread_for_inactivity(
+                    thread_id,
+                    expired_at=now.isoformat(),
+                    status_reason=reason,
+                )
                 auto_closed += 1
+            else:
+                closed_item = update_runtime_open_loop_signal_status(
+                    str(item.get("signal_id") or ""),
+                    status="closed",
+                    updated_at=now.isoformat(),
+                    status_reason=reason,
+                )
+                if closed_item is not None:
+                    auto_closed += 1
             continue
 
         # Trin 2: open/softening → stale efter _STALE_AFTER_DAYS
@@ -880,9 +896,11 @@ def _existing_open_loop_keys() -> tuple[dict[str, str], set[str]]:
         if not key:
             continue
         keys.add(key)
-        # En tråd har et SAT navn; en titel-match må aldrig flette en per-tur
-        # kandidat ind i den (tekst som nøgle er værdiløs, se modulets note).
-        if str(row.get("thread_id") or ""):
+        # En bevidst erklæret tråd har et SAT navn; en titel-match må aldrig
+        # flette en runtime-kandidat ind i den. Automatisk oprettede tråde er
+        # derimod netop den normale kandidats identitet og skal genbruges på
+        # tværs af kørsler.
+        if str(row.get("source_kind") or "") == "declared-thread":
             continue
         topic = _topic_key(str(row.get("title") or ""))
         if topic:
@@ -912,26 +930,50 @@ def _persist_open_loop_signals(
             elif topic:
                 known_topics[topic] = canonical_key
                 existing_keys.add(canonical_key)
-        persisted_item = upsert_runtime_open_loop_signal(
-            signal_id=f"open-loop-{uuid4().hex}",
-            signal_type=str(signal.get("signal_type") or "open-loop"),
-            canonical_key=canonical_key,
-            status=str(signal.get("status") or "open"),
-            title=str(signal.get("title") or ""),
-            summary=str(signal.get("summary") or ""),
-            rationale=str(signal.get("rationale") or ""),
-            source_kind=str(signal.get("source_kind") or "runtime-derived-support"),
-            confidence=str(signal.get("confidence") or "low"),
-            evidence_summary=str(signal.get("evidence_summary") or ""),
-            support_summary=str(signal.get("support_summary") or ""),
-            support_count=int(signal.get("support_count") or 1),
-            session_count=int(signal.get("session_count") or 1),
-            created_at=now,
-            updated_at=now,
-            status_reason=str(signal.get("status_reason") or ""),
-            run_id=run_id,
-            session_id=session_id,
-        )
+        try:
+            persisted_item = upsert_runtime_open_loop_signal(
+                signal_id=f"open-loop-{uuid4().hex}",
+                signal_type=str(signal.get("signal_type") or "open-loop"),
+                canonical_key=canonical_key,
+                status=str(signal.get("status") or "open"),
+                title=str(signal.get("title") or ""),
+                summary=str(signal.get("summary") or ""),
+                rationale=str(signal.get("rationale") or ""),
+                source_kind=str(signal.get("source_kind") or "runtime-derived-support"),
+                confidence=str(signal.get("confidence") or "low"),
+                evidence_summary=str(signal.get("evidence_summary") or ""),
+                support_summary=str(signal.get("support_summary") or ""),
+                support_count=int(signal.get("support_count") or 1),
+                session_count=int(signal.get("session_count") or 1),
+                created_at=now,
+                updated_at=now,
+                status_reason=str(signal.get("status_reason") or ""),
+                run_id=run_id,
+                session_id=session_id,
+                thread_name=str(signal.get("title") or ""),
+                thread_declared_by="jarvis",
+            )
+        except OpenLoopLimitReached as exc:
+            persisted_item = {
+                "signal_id": "",
+                "canonical_key": canonical_key,
+                "status": "rejected",
+                "title": str(signal.get("title") or ""),
+                "status_reason": str(exc),
+                "limit": exc.limit,
+                "active_signals": exc.active_signals,
+                "open_threads": exc.open_threads,
+                "was_created": False,
+                "was_updated": False,
+                "was_rejected": True,
+                "merge_state": "rejected-at-active-limit",
+            }
+            event_bus.publish(
+                "open_loop_signal.limit_reached",
+                dict(persisted_item),
+            )
+            persisted.append(persisted_item)
+            continue
         # Supersede-kaldet er fjernet (5/11-2026): det sendte kørslens run_id som
         # domain_key, så mønstret ``open-loop:%:{run_id}`` kun kunne matche den
         # række der netop var udelukket. Målt: 0 rækker ramt i hele basens

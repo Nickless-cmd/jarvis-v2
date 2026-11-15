@@ -987,6 +987,7 @@ def test_per_turn_loop_keeps_run_id_as_source_run_id_not_as_identity(
     )
 
     rows = db.list_runtime_open_loop_signals(limit=10)
-    assert [(r["thread_id"], r["run_id"], r["source_run_id"]) for r in rows] == [
-        ("", "visible-second", "visible-first")
-    ]
+    assert len(rows) == 1
+    assert rows[0]["thread_id"]
+    assert rows[0]["run_id"] == "visible-second"
+    assert rows[0]["source_run_id"] == "visible-first"

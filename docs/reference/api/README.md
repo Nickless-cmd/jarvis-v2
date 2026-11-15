@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18749 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18752 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -29,8 +29,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18749 functions/
 - [`core.memory`](core.memory.md)
 - [`core.plugins`](core.plugins.md)
 - [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_cognitive_utility`
-- [`core.runtime.02`](core.runtime.02.md) — `db_composer_choice` … `db_runtime_relational_signals`
-- [`core.runtime.03`](core.runtime.03.md) — `db_runtime_self` … `ws_auth`
+- [`core.runtime.02`](core.runtime.02.md) — `db_composer_choice` … `db_runtime_private`
+- [`core.runtime.03`](core.runtime.03.md) — `db_runtime_relational_signals` … `workspace_paths`
+- [`core.runtime.04`](core.runtime.04.md) — `ws_auth` … `ws_auth`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agent_outcomes_log`
 - [`core.services.02`](core.services.02.md) — `agent_parking` … `anticipatory_action_daemon`
 - [`core.services.03`](core.services.03.md) — `anticipatory_context` … `autonomy_pressure_signal_tracking`

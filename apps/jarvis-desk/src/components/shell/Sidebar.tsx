@@ -350,6 +350,13 @@ export function Sidebar({
         <KoererNu
           config={apiConfig}
           onOpenRoutine={onOpenRoutine}
+          onOpenSession={(sid) => {
+            // System-rutinernes arbejde ligger i en autonom session, ikke i en
+            // rutine-koersel. Et klik skal derfor aabne den session — det er
+            // dér indholdet faktisk kan laeses.
+            select(sid)
+            onSurface('chat')
+          }}
         />
 
         {/* Søgefeltet er væk 8/9-2026. Det gjorde nøjagtig det samme som

@@ -12,10 +12,10 @@ const mockHent = vi.mocked(hentLiveRuns)
 const CONFIG = { apiBaseUrl: 'http://x', authToken: 't' }
 
 const RUTINE: LiveRun = {
-  id: 'r:run-1', navn: 'Morgenbrief', status: 'running', routineId: 'routine-1',
+  id: 'r:run-1', navn: 'Morgenbrief', status: 'running', kind: 'rutine', routineId: 'routine-1',
 }
 const RUTINE_2: LiveRun = {
-  id: 'r:run-2', navn: 'Natrutine', status: 'running', routineId: 'routine-2',
+  id: 'r:run-2', navn: 'Natrutine', status: 'running', kind: 'rutine', routineId: 'routine-2',
 }
 
 beforeEach(() => {

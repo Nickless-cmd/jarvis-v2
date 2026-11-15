@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { PermissionProvider } from '../contexts/PermissionContext'
 
 const listRoutines = vi.fn()
 const listRoutineRuns = vi.fn()
@@ -53,7 +54,7 @@ describe('RoutinesView', () => {
   })
 
   it('shows an owner only their own routines plus owner-delivered system routines', async () => {
-    render(<RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={() => {}} />)
+    render(<PermissionProvider><RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={() => {}} /></PermissionProvider>)
     expect((await screen.findAllByText('Min rutine'))[0]).toBeVisible()
     expect(screen.getByText('Systemrutine')).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Mine rutiner' })).toBeVisible()
@@ -66,7 +67,7 @@ describe('RoutinesView', () => {
       routine({ owner_user_id: 'canonical-bjorn' }),
       routine({ routine_id: 'r-other', owner_user_id: 'canonical-lotte', name: 'Anden rutine' }),
     ])
-    render(<RoutinesView config={config} currentUserId="canonical-bjorn" role="owner" onClose={() => {}} onEdit={() => {}} />)
+    render(<PermissionProvider><RoutinesView config={config} currentUserId="canonical-bjorn" role="owner" onClose={() => {}} onEdit={() => {}} /></PermissionProvider>)
 
     expect((await screen.findAllByText('Min rutine'))[0]).toBeVisible()
     expect(screen.queryByText('Anden rutine')).not.toBeInTheDocument()
@@ -74,7 +75,7 @@ describe('RoutinesView', () => {
 
   it('opens create and edit in the dedicated editor surface', async () => {
     const onEdit = vi.fn()
-    render(<RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={onEdit} />)
+    render(<PermissionProvider><RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={onEdit} /></PermissionProvider>)
     fireEvent.click(await screen.findByRole('button', { name: 'Ny rutine' }))
     expect(onEdit).toHaveBeenCalledWith(null)
     // `findByRole`, ikke `getByRole`: 'Ny rutine'-knappen staar i DOM fra foerste
@@ -90,7 +91,7 @@ describe('RoutinesView', () => {
   })
 
   it('keeps Stop and Delete separate and requires an inline deletion confirmation', async () => {
-    render(<RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={() => {}} />)
+    render(<PermissionProvider><RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={() => {}} /></PermissionProvider>)
     fireEvent.click(await screen.findByRole('listitem', { name: /Min rutine/i }))
     visIndstillinger()
     expect(screen.getByRole('button', { name: 'Stop rutine' })).toBeVisible()
@@ -100,10 +101,11 @@ describe('RoutinesView', () => {
   })
 
   it('viser rutinens samtale som standard — konfigurationen ligger bag Indstillinger', async () => {
-    render(<RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={() => {}} />)
+    render(<PermissionProvider><RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={() => {}} /></PermissionProvider>)
     fireEvent.click(await screen.findByRole('listitem', { name: /Min rutine/i }))
     // Samtalen er fladen: composerens felt findes, og de gamle faner gør ikke.
-    expect(screen.getByLabelText('Skriv til Jarvis i rutinen')).toBeVisible()
+    // Composerens eget felt — husets komponent, ikke en lokal textarea.
+    expect(document.querySelector('.composer-input')).toBeTruthy()
     expect(screen.queryByRole('tab', { name: 'Kørsler' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Rutineindstillinger' })).toHaveAttribute('aria-expanded', 'false')
     // …og de kommer frem når man åbner indstillingerne.
@@ -114,7 +116,7 @@ describe('RoutinesView', () => {
 
   it('closes through the supplied return-mode action', async () => {
     const onClose = vi.fn()
-    render(<RoutinesView config={config} currentUserId="bjorn" role="member" onClose={onClose} onEdit={() => {}} />)
+    render(<PermissionProvider><RoutinesView config={config} currentUserId="bjorn" role="member" onClose={onClose} onEdit={() => {}} /></PermissionProvider>)
     await screen.findByRole('listitem', { name: /Min rutine/i })
     fireEvent.click(screen.getByRole('button', { name: 'Luk rutiner' }))
     expect(onClose).toHaveBeenCalledOnce()

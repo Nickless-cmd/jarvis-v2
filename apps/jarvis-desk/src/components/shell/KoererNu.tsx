@@ -12,23 +12,29 @@ const POLL_MS = 4000
 const FADE_MS = 700
 
 /**
- * «Kører nu» — de RUTINER der er i gang, og kun dem.
+ * «Kører nu» — det der er i gang i baggrunden, og kun det.
  *
  * Bjørn 15/11-2026: «de kun vises mens de køre … runtime navne fader ind og ud
  * når de er aktive og men de er aktive kan man trykke på dem».
  * Samme dag, efter første udgave: «den ska kun vise rutinerne når de køre» —
  * den kørende SAMTALE er noget man allerede ser, så den hører ikke her.
+ * Og efter den anden udgave: «køre nu i venstre panel skal osse vises de 3
+ * system/owner sessioner/runtiner» — for de tre system-rutiner har nul kørsler
+ * i `routine_runs`, så uden deres autonome sessioner er de usynlige.
  *
- * Derfor: listen er TOM når intet kører — den er en tilstand, ikke et arkiv.
- * En række der forsvinder får et kort `is-fading`-vindue, så øjet ser at den
- * sluttede frem for at den blev revet væk.
+ * Derfor to slags rækker, med hver sit klik:
+ *   * en RUTINE  → rutine-fladen (den kører som baggrundsrun uden session)
+ *   * en AUTONOM session → den session, hvor indholdet faktisk ligger
  *
- * Klikket fører til rutine-fladen: rutiner kører som baggrundsrun uden session,
- * så der findes intet chatview at skifte til.
+ * Listen er TOM når intet kører — den er en tilstand, ikke et arkiv. En række
+ * der forsvinder får et kort `is-fading`-vindue, så øjet ser at den sluttede
+ * frem for at den blev revet væk.
  */
-export function KoererNu({ config, onOpenRoutine }: {
+export function KoererNu({ config, onOpenRoutine, onOpenSession }: {
   config?: ApiConfig | null
   onOpenRoutine?: (routineId: string) => void
+  /** Åbner en autonom session — system-rutinernes spor ligger dér. */
+  onOpenSession?: (sessionId: string) => void
 }) {
   const [runs, setRuns] = useState<LiveRun[]>([])
   const [forsvundne, setForsvundne] = useState<LiveRun[]>([])
@@ -86,13 +92,17 @@ export function KoererNu({ config, onOpenRoutine }: {
         <div className="koerer-nu-liste">
           {synlige.map((r) => {
             const aktiv = runs.some((x) => x.id === r.id)
+            const klik = () => {
+              if (r.kind === 'autonom' && r.sessionId) onOpenSession?.(r.sessionId)
+              else if (r.routineId) onOpenRoutine?.(r.routineId)
+            }
             return (
               <button
                 key={r.id}
                 type="button"
                 className={`koerer-nu-raekke${aktiv ? '' : ' is-fading'}`}
-                onClick={() => { if (r.routineId) onOpenRoutine?.(r.routineId) }}
-                title={r.routineId ?? ''}
+                onClick={klik}
+                title={r.sessionId ?? r.routineId ?? ''}
               >
                 {aktiv
                   ? <Loader2 size={12} className="spin" aria-hidden="true" />

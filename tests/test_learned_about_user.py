@@ -86,3 +86,50 @@ def test_selection_is_counted_for_the_curator(tmp_path, monkeypatch):
     monkeypatch.setattr(LAU, "note_selected", lambda texts: seen.append(list(texts)))
     LAU.select_learned_lines("noget om mellemregninger mellem tool-kald", workspace_dir=tmp_path)
     assert seen and "mellemregninger" in seen[0][0]
+
+
+# ── Profil-sektionen (15/11-2026) ───────────────────────────────────────────
+# `## Personal` og `## People` havde nul læsere: `_workspace_file_section`
+# erstatter hele USER.md med `## Kerne`, og Lært-udvælgelsen kræver 34 %
+# ord-dækning som korte spørgsmål aldrig opnår. Familien var derfor usynlig.
+
+_PROFILE_MD = """# USER
+
+## Kerne
+- Dansk
+
+## Personal
+- **Fødselsdag:** 7. august
+- **Bor:** Graaesvej, Svendborg
+
+## People
+- **Saselin** — datter, 9 år, bor i plejefamilie
+- **Liva** — ældste datter, 19 år
+
+## Lært
+- noget lært om mellemregninger (2026-09-01, sagt eksplicit)
+"""
+
+
+def test_profile_section_reads_personal_and_people(tmp_path):
+    (tmp_path / "USER.md").write_text(_PROFILE_MD, encoding="utf-8")
+    text = LAU.build_profile_section(workspace_dir=tmp_path)
+    assert text.startswith("Om Bjørn")
+    assert "7. august" in text
+    assert "Saselin" in text and "Liva" in text
+
+
+def test_people_is_not_displaced_by_a_long_personal_section(tmp_path):
+    """Eget budget pr. sektion: Personal må ikke spise People-pladsen."""
+    long_personal = "\n".join(f"- **Felt {i}:** " + "x" * 200 for i in range(30))
+    (tmp_path / "USER.md").write_text(
+        f"# USER\n\n## Personal\n{long_personal}\n\n## People\n- **Saselin** — datter\n",
+        encoding="utf-8",
+    )
+    text = LAU.build_profile_section(workspace_dir=tmp_path, max_chars=500)
+    assert "Saselin" in text
+
+
+def test_profile_section_is_empty_without_the_sections(tmp_path):
+    (tmp_path / "USER.md").write_text("# USER\n\n## Kerne\n- Dansk\n", encoding="utf-8")
+    assert LAU.build_profile_section(workspace_dir=tmp_path) == ""

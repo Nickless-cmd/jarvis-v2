@@ -3246,11 +3246,19 @@ def _build_visible_chat_prompt_assembly_impl(
     try:
         from core.services.prompt_sections.learned_about_user import (
             build_learned_section as _bls_learned,
+            build_profile_section as _bps_profile,
         )
         _learned_text = _bls_learned(user_message, workspace_dir=workspace_dir)
         if _learned_text:
             _dyn_memory_recall.append(_learned_text)
             derived_inputs.append("learned about user (memory group)")
+        # 15/11-2026: `## Personal` + `## People` havde nul læsere — familien og
+        # de biografiske fakta var usynlige medmindre brain tilfældigt dækkede
+        # dem. Fast sektion med eget budget, uafhængig af Lært-tærsklen.
+        _profile_text = _bps_profile(workspace_dir=workspace_dir)
+        if _profile_text:
+            _dyn_memory_recall.append(_profile_text)
+            derived_inputs.append("user profile personal+people (memory group)")
     except Exception as _e:
         _sec_err("learned about user", _e)
     # Bruger-modellen (kommunikationsstil, målt hvert 10. minut) nåede kun

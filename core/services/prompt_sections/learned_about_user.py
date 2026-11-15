@@ -34,6 +34,14 @@ logger = logging.getLogger(__name__)
 LEARNED_HEADINGS = frozenset({"lært", "laert", "learned", "lært om bjørn"})
 CORE_HEADINGS = frozenset({"kerne", "core", "kerne (altid i prompten)"})
 
+# 15/11-2026: `## Personal` og `## People` havde NUL læsere i prompt-kæden.
+# Målt: `_workspace_file_section` erstatter hele USER.md med `## Kerne`, så alt
+# uden for Kerne/Lært/Hensyn var usynligt — inkl. Saselin, Liva, Michelle og
+# fødselsdagen. De to sektioner er små (4,0 + 1,9 KB) og biografiske, så de
+# injiceres fast i stedet for at konkurrere med 964 Lært-linjer om 3 pladser.
+PROFILE_HEADINGS = frozenset({"personal", "people"})
+_PROFILE_MAX_CHARS = 2600
+
 _MIN_COVERAGE = 0.34
 _MAX_LINES = 3
 _MAX_CHARS = 700
@@ -220,6 +228,47 @@ def select_learned_lines(
     if out and count_selection:
         note_selected([row["text"] for row in out])
     return out
+
+
+def build_profile_section(
+    *,
+    workspace_dir: Path,
+    max_chars: int = _PROFILE_MAX_CHARS,
+) -> str:
+    """Biografien: `## Personal` + `## People` — fast i prompten, "" hvis tom.
+
+    Målt 15/11-2026: begge sektioner havde nul læsere. `## Kerne` erstattede
+    hele filen i `_workspace_file_section`, og `## Lært`-udvælgelsen kræver
+    34 % ord-dækning — som korte spørgsmål («hvad hedder min mindste datter?»)
+    aldrig opnår. Resultatet var at familie og fakta var usynlige medmindre
+    brain tilfældigt havde en post om dem.
+
+    Klippes ved ``max_chars`` på linje-grænse, så en halv sætning ikke ender
+    i prompten. Rækkefølgen er filens egen.
+    """
+    try:
+        text = _read_user_md(workspace_dir)
+    except Exception as exc:
+        logger.debug("learned_about_user: profile read failed: %s", exc)
+        return ""
+    lines: list[str] = []
+    for heading in ("personal", "people"):
+        body = section_body(text, frozenset({heading}))
+        # Eget budget pr. sektion: et fælles loft blev spist af `## Personal`
+        # alene (målt 15/11-2026), så `## People` — hvor familien står — faldt
+        # helt ud. Biografien må ikke kunne fortrænge relationerne.
+        used = 0
+        for raw in body.splitlines():
+            line = " ".join(raw.split()).strip()
+            if not line or line.startswith("#"):
+                continue
+            if used + len(line) > max_chars and lines:
+                break
+            lines.append(line)
+            used += len(line)
+    if not lines:
+        return ""
+    return "Om Bjørn (fast profil):\n" + "\n".join(lines)
 
 
 def build_learned_section(

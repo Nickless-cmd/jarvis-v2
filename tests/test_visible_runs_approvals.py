@@ -9,8 +9,20 @@ def test_resolve_unknown_returns_error(monkeypatch):
     assert res["status"] == "error"
 
 
-def test_gold_hook_records_owner_decision_on_deny(monkeypatch):
+def test_gold_hook_records_owner_decision_on_deny(isolated_runtime, monkeypatch):
     # Part E hook 2: resolving a surfaced approval records the GOLD outcome vs the stashed prediction.
+    # `isolated_runtime` er PAKRÆVET: en afvisning skriver både en række i
+    # cognitive_ruptures og en i cognitive_regrets (visible_runs_approvals.py).
+    # Uden fixturet pegede de skrivninger på den levende DB — målt 15/11-2026 som
+    # id 8 (approval:write_file, appr-x) og approval:appr-x i regrets.
+    # De fire K5-tests nedenfor havde fixturet hele tiden; denne ene manglede det.
+    #
+    # Fixturet er ikke kosmetisk konsistens: conftests to autouse-værn
+    # (`_guard_prod_db_path`, `_afvis_skrivning_til_prod_db`) dækker kun DB-vejen.
+    # `saet_godkendelse` nedenfor går gennem `state_store.save_json` og skriver en
+    # FIL (`state/pending_approvals.json`) — den rammer aldrig `sqlite3.connect` og
+    # fanges derfor ikke af port-værnet. Kun `isolated_runtime` (HOME → tmp) dækker
+    # den vej. Målt 15/11-2026.
     pc._stash.clear()
     pc.stash_prediction("appr-x", "write_file", "approve")
     pending = {"status": "pending", "tool_name": "write_file", "session_id": "s"}

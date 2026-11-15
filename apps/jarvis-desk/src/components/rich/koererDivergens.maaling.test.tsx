@@ -29,7 +29,7 @@
  * nogen guarden tilbage i `RaekkeTranskript`, bliver code mode-testen rød —
  * det er verificeret ved at mutere koden og se den falde.
  */
-import { fireEvent, render } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { RaekkeTranskript } from './RaekkeTranskript'
 import { ChatFlowPresentation } from './ChatFlowPresentation'
@@ -49,24 +49,22 @@ const arbejdeUnderTur: ContentBlock[] = [
 ]
 
 describe('koerer — ensrettet 30/10-2026', () => {
-  it('code mode: manuel fold BEHOLDER data-koerer mens turen kører', () => {
-    const { container } = render(
+  it('code mode: der er intet hoved at folde mens turen kører', () => {
+    // VENDT 15/11-2026 (Bjørn): «turhoved forsætte som det er nu men gøres
+    // usynligt indtil hoved folder». Spørgsmålet om `data-koerer` overlever en
+    // manuel fold bliver dermed meningsløst i code mode: hovedet findes ikke
+    // mens turen kører, så der er intet at klikke på. Rundelinjen er turens
+    // ansigt, og den bærer `data-koerer` selv.
+    const { container, rerender } = render(
       <RaekkeTranskript blocks={arbejdeUnderTur} streaming runId="run-divergens" />,
     )
+    expect(container.querySelector('.rv-tur')).toBeNull()
+    expect(container.querySelector('.rv-gruppe')).not.toHaveAttribute('hidden')
+
+    // Når turen folder, lander hovedet — foldet, med turens signal på sig.
+    rerender(<RaekkeTranskript blocks={arbejdeUnderTur} streaming={false} runId="run-divergens" />)
     const hoved = container.querySelector('.rv-tur') as HTMLElement
-    expect(hoved).toHaveAttribute('data-koerer')
-
-    fireEvent.click(hoved)
-
-    // ENSRETTET 30/10-2026. Før stod der `arbejdeKoerer && aabenManuelt === null`
-    // her, så signalet forsvandt når brugeren foldede DETALJERNE væk — selv om
-    // turen kørte videre. Det var en løgn i fladen, og guarden var et levn fra
-    // før `arbejdeKoerer` fandtes (e2e300652 byttede kun `streaming` ud).
-    //
-    // Signalet beskriver TUREN, ikke folden. Folden skjuler detaljerne;
-    // den stopper ikke arbejdet.
     expect(hoved).toHaveAttribute('aria-expanded', 'false')
-    expect(hoved).toHaveAttribute('data-koerer')
   })
 
   it('chat mode: manuel fold BEHOLDER data-koerer mens turen kører', () => {

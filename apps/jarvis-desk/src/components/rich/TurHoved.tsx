@@ -11,9 +11,18 @@
  *
  * ## Kontrakten
  *
- * Højde 33px, en reserveret 1px skillelinje, tekst i `--rv-tertiary` og
- * fold-pilen i `--fg-3`. Hovedet er bevidst roligt: den levende animation bor
- * i den aktive rundelinje, så to samtidige shimmerfelter ikke konkurrerer.
+ * Højde 33px, tekst i `--rv-tertiary` og fold-pilen i `--fg-3`. Hovedet er
+ * bevidst roligt: den levende animation bor i den aktive rundelinje, så to
+ * samtidige shimmerfelter ikke konkurrerer.
+ *
+ * ## Ingen skillestreg (15/11-2026)
+ *
+ * Hovedet havde en 1px streg under sig, som gled ind når arbejdet begyndte.
+ * Bjørn fjernede den i chat mode 14/11 («fjern skill linjen mellem hoved og
+ * besked») og i code mode 15/11. Hovedet er en LABEL over indholdet, ikke en
+ * selvstændig blok med en streg under — og uden stregen er `skillelinje`,
+ * `@keyframes rv-skillelinje-ind` og `::after`-reglen også døde, så de er
+ * fjernet frem for at stå som en kapacitet ingen flade kalder.
  */
 import type { ReactNode, Ref } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
@@ -46,9 +55,6 @@ export interface TurHovedProps {
    *  rullende token-tal. Det er turens resultat, ikke en del af varigheden,
    *  så det må ikke stå mellem «Tænkte» og sekunderne (14/11-2026). */
   meta?: ReactNode
-  /** Om skillestregen under hovedet er kommet til syne. Hovedets plads er
-   *  uændret mens stregen glider ind, så `Working` kan stå der fra turstart. */
-  skillelinje?: boolean
   /** Om turen stadig er i gang i DENNE session. Sætter `data-levende`, som er
    *  det eneste der må starte indglidnings-animationen.
    *
@@ -67,11 +73,10 @@ export interface TurHovedProps {
 
 export function TurHoved({
   tekst, aaben, onToggle, koerer = false, sekunder = null, meta,
-  skillelinje = true, levende = false, foldbar = true, knapRef,
+  levende = false, foldbar = true, knapRef,
 }: TurHovedProps) {
   const tilstand = {
     ...(koerer ? { 'data-koerer': '' } : {}),
-    ...(skillelinje ? { 'data-skillelinje': '' } : {}),
     ...(levende ? { 'data-levende': '' } : {}),
   }
   const indhold = (

@@ -116,39 +116,45 @@ describe('underagent-rækken', () => {
 })
 
 describe('RaekkeTranskript', () => {
-  it('viser Arbejder med det samme, men venter med tokens og skillelinje', () => {
+  it('viser ikke hovedet mens turen kører — det er turens resultat', () => {
+    // VENDT 15/11-2026 (Bjørn): «turhoved forsætte som det er nu men gøres
+    // usynligt indtil hoved folder». Hovedet er et RESULTAT, ikke en status:
+    // mens arbejdet kører er rundelinjen turens ansigt, og hovedet lander
+    // først når folden lukker. Samme regel som chat mode fik 14/11.
     const { container, rerender } = rtlRender(
-      <RaekkeTranskript blocks={[]} streaming tokens={0} />,
+      <RaekkeTranskript blocks={[kald('read_file')]} streaming tokens={0} />,
     )
+    expect(container.querySelector('.rv-tur')).toBeNull()
+    expect(container.querySelector('.rv-gruppe')).not.toHaveAttribute('hidden')
+
+    rerender(<RaekkeTranskript blocks={[kald('read_file')]} streaming tokens={17} />)
+    expect(container.querySelector('.rv-tur')).toBeNull()
+
+    // Folden lukker → hovedet lander, foldet, med turens tal.
+    rerender(<RaekkeTranskript blocks={[kald('read_file')]} streaming={false} tokens={17} />)
     const hoved = container.querySelector('.rv-tur')!
-    expect(hoved).toHaveTextContent('Arbejder')
-    expect(hoved).not.toHaveAttribute('data-skillelinje')
-    expect(container.querySelector('.rv-turMeta')).toBeNull()
-
-    rerender(<RaekkeTranskript blocks={[]} streaming tokens={17} />)
+    expect(hoved).toHaveAttribute('aria-expanded', 'false')
     expect(container.querySelector('.rv-turMeta .rullende')).toHaveAttribute('aria-label', '17')
-    expect(hoved).not.toHaveAttribute('data-skillelinje')
-
-    rerender(<RaekkeTranskript blocks={[tekst('Jeg undersøger det.')]} streaming tokens={17} />)
-    expect(hoved).toHaveAttribute('data-skillelinje')
   })
 
-  it('holder arbejdet åbent gennem synteser og folder først ved bekræftet afslutning', () => {
+  it('holder arbejdet synligt gennem synteser og folder først ved bekræftet afslutning', () => {
     const arbejde: ContentBlock[] = [tanke('Finder årsagen.'), kald('read_file')]
     const { container, rerender } = rtlRender(<RaekkeTranskript blocks={arbejde} streaming />)
-    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'true')
+    // Hovedet er skjult mens arbejdet kører — gruppen er turens ansigt.
+    expect(container.querySelector('.rv-tur')).toBeNull()
+    expect(container.querySelector('.rv-gruppe')).not.toHaveAttribute('hidden')
 
     rerender(<RaekkeTranskript blocks={[...arbejde, tekst('Her er svaret')]} streaming />)
-    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'true')
-    expect(container.querySelector('.rv-tur')).toHaveAttribute('data-koerer')
+    expect(container.querySelector('.rv-tur')).toBeNull()
     expect(screen.getByText('Her er svaret')).toBeInTheDocument()
 
     rerender(<RaekkeTranskript blocks={[...arbejde, tekst('Jeg tjekker mere.'), kald('grep')]} streaming />)
-    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'true')
+    expect(container.querySelector('.rv-tur')).toBeNull()
     expect(screen.getByText('Jeg tjekker mere.')).toBeInTheDocument()
 
     rerender(<RaekkeTranskript blocks={[...arbejde, tekst('Jeg tjekker mere.'), kald('grep'), tekst('Færdig.')]} streaming={false} />)
     expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
+    expect(container.querySelector('.rv-gruppe')).toHaveAttribute('hidden')
     expect(screen.getByText('Færdig.')).toBeInTheDocument()
   })
 
@@ -165,19 +171,12 @@ describe('RaekkeTranskript', () => {
     expect(runde.querySelector('.rv-arbejdsfortaelling')).not.toHaveClass('shimmer')
     expect(runde.querySelector('.rv-turC .rv-ikon-glimt')).toBeInTheDocument()
     expect(runde.querySelector('.rv-turC svg')).toHaveAttribute('width', '14')
-    expect(container.querySelector('.rv-tur')).toHaveAttribute('data-koerer')
-    expect(container.querySelector('.rv-turIndhold')).not.toHaveClass('shimmer')
-    expect(container.querySelector('.rv-tur > .rv-turC .rv-ikon-glimt')).not.toBeInTheDocument()
-    expect(container.querySelector('.rv-turTekst')).not.toHaveClass('shimmer')
-    expect(container.querySelector('.rv-turMeta')).not.toHaveClass('shimmer')
-    expect(container.querySelector('.rv-turMeta .rullende')).toHaveAttribute('aria-label', '123')
-    expect(container.querySelector('.rv-turC svg')).toHaveAttribute('width', '14')
+    // Hovedet findes ikke mens turen kører (15/11-2026), så det er rundelinjen
+    // — ikke hovedet — der bærer puls, ur og token-tal gennem arbejdet.
+    expect(container.querySelector('.rv-tur')).toBeNull()
     rerender(<RaekkeTranskript blocks={[
       statusKald('read_file', { path: 'app.ts' }, 'running'),
     ]} streaming elapsedMs={66_000} tokens={124} />)
-    await waitFor(() => {
-      expect(container.querySelector('.rv-turMeta .rullende')).toHaveAttribute('aria-label', '124')
-    })
     expect(container.querySelector('.rv-rundeur [role="timer"]')).toHaveAttribute('aria-label', '1m 6s')
     // En række-overlay tegnede en stor grå firkant efter "Working…".
     const css = readFileSync(resolve(__dirname, '../../styles/raekkevisning.css'), 'utf8')
@@ -229,7 +228,6 @@ describe('RaekkeTranskript', () => {
       tekst('Jeg finder filen.'), kald('read_file'), kald('grep'),
       tekst('Jeg retter den nu.'), kald('edit_file'),
     ]} streaming />)
-    expect(screen.getByText('Arbejder')).toBeInTheDocument()
     const gruppe = container.querySelector('.rv-gruppe')!
     expect([...gruppe.children].map((e) => e.className)).toEqual([
       'rv-mellem', 'rv-arbejdsrunde', 'rv-mellem', 'rv-arbejdsrunde',
@@ -402,7 +400,7 @@ describe('RaekkeTranskript', () => {
     const { container, rerender } = render(
       <RaekkeTranskript blocks={arbejde} streaming finalAnswerStarted={false} />,
     )
-    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'true')
+    expect(container.querySelector('.rv-tur')).toBeNull()
     expect(container.querySelector('.rv-gruppe')).toHaveTextContent('God idé — jeg undersøger det.')
 
     rerender(<RaekkeTranskript blocks={[
@@ -571,23 +569,29 @@ describe('RaekkeTranskript', () => {
 
   it('viser arbejdet mens der streames — man skal kunne følge med', () => {
     render(<RaekkeTranskript blocks={TUR_UNDER_ARBEJDE} streaming />)
-    expect(screen.getByText('Arbejder')).toBeInTheDocument()
+    // Hovedet venter til folden; arbejdsrækkerne er det man følger med i.
+    expect(screen.queryByText('Arbejder')).toBeNull()
     expect(screen.getByText('Bash')).toBeInTheDocument()
   })
 
-  it('lander turhovedet før den første streamede svartekst', () => {
-    const { container } = rtlRender(
-      <RaekkeTranskript blocks={[tekst('Jeg undersøger det nu.')]} streaming />,
-    )
+  it('lander hovedet når turen folder — ikke ved første svartekst', () => {
+    const blokke: ContentBlock[] = [kald('read_file'), tekst('Jeg undersøger det nu.')]
+    const { container, rerender } = rtlRender(<RaekkeTranskript blocks={blokke} streaming />)
 
-    expect(screen.getByText('Arbejder')).toBeInTheDocument()
+    // Mens turen kører er der intet hoved: rundelinjen er turens ansigt.
+    expect(container.querySelector('.rv-tur')).toBeNull()
+    expect(screen.getByText('Jeg undersøger det nu.')).toBeInTheDocument()
+
+    rerender(<RaekkeTranskript blocks={blokke} streaming={false} />)
+    const hoved = container.querySelector('.rv-tur')!
+    expect(hoved).toHaveAttribute('aria-expanded', 'false')
     expect([...container.querySelector('.raekkevisning')!.children].map((e) => e.className))
-      .toEqual(['rv-tur rv-tur--statisk', 'rv-svar'])
+      .toEqual(['rv-tur', 'rv-gruppe', 'rv-svar'])
   })
 
   it('folder ved det bekræftede slutsvar før svarteksten er færdig med at streame', () => {
     const { container, rerender } = rtlRender(<RaekkeTranskript blocks={TUR_UNDER_ARBEJDE} streaming />)
-    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'true')
+    expect(container.querySelector('.rv-tur')).toBeNull()
     rerender(<RaekkeTranskript blocks={[...TUR_UNDER_ARBEJDE, tekst('Første del')]} streaming finalAnswerStarted />)
     expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByText('Første del')).toBeInTheDocument()

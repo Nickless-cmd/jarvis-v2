@@ -1,5 +1,5 @@
 /**
- * Turens hoved — den ENESTE vandrette streg i samtalen.
+ * Turens hoved.
  *
  * ## Hvorfor reglerne bor her og ikke i raekkevisning.css
  *
@@ -11,82 +11,36 @@
  *
  * Reglerne er scopet til `.rv-tur`, så de ikke kan ramme andre tur- eller
  * rundelinjer.
+ *
+ * ## Stregen er væk (15/11-2026)
+ *
+ * Her lå før en 1px streg under hovedet (`::after` + `@keyframes
+ * rv-skillelinje-ind`) med en reserveret transparent border som pladsholder.
+ * Bjørn fjernede stregen i chat mode 14/11 og i code mode 15/11: «skill
+ * linjen mellem turhoved og besked skal væk». Hovedet er en LABEL over
+ * indholdet, ikke en selvstændig blok med en streg under.
+ *
+ * Stregen, dens keyframes, pladsholderen og `skillelinje`-proppen er fjernet
+ * HELT frem for sat til `false`: en prop hvis to værdier begge betyder
+ * «slukket» er død kode, og et `@keyframes` der aldrig fyrer er dokumentation
+ * der lyver. `data-levende` bliver derimod — den driver stadig morph-
+ * animationen i `chat-flow.css` og er ikke bundet til stregen.
  */
 
 .rv-tur {
   display: flex; align-items: center; gap: 8px; width: 100%;
   height: 33px; padding: 0 0 8px; margin: 0;
   position: relative;
-  border: 0; border-bottom: 1px solid transparent;
+  border: 0;
   background: none; text-align: left;
   font-family: inherit;
   font-size: 14px; line-height: 1.3; font-weight: 400;
   color: var(--rv-tertiary, #a6a59c); cursor: pointer;
 }
 
-/* Pladsen til stregen er reserveret af den transparente border ovenfor.
-   Kun selve stregen skalerer ind fra venstre, når første syntese/svartekst
-   lander; turhovedet og alt under det flytter sig derfor ikke. */
-.rv-tur::after {
-  content: "";
-  position: absolute; left: 0; right: 0; bottom: -1px;
-  height: 1px; background: var(--rv-skillelinje, var(--line, rgb(255 255 255 / 12%)));
-  opacity: 0; transform: scaleX(0); transform-origin: left center;
-  transition: transform var(--dur-sheet) var(--ease-out), opacity var(--dur-snap) var(--ease-out);
-  pointer-events: none;
-}
-
-/* Stregen glider ind — den popper ikke.
- *
- * MÅLT 22/10-2026: `data-skillelinje` er sand fra FØRSTE render i chat mode
- * (ChatFlowPresentation sender den som bar prop). Med kun en `transition`
- * betyder det at `::after` monteres allerede ved slutpositionen
- * (`scaleX(1)`), så der er intet at animere FRA, og stregen popper.
- *
- * En `animation` starter derimod ved mount, uanset hvornår attributten
- * sættes: keyframes' `from` er den faktiske starttilstand. `both` holder
- * `from` indtil animationen begynder og sluttilstanden bagefter, så stregen
- * både glider ind og BLIVER stående (Bjørn 22/10: «det burde komme fra
- * starten og blive»). Samme regel dækker code mode, hvis gate sætter
- * attributten senere — der starter animationen når gaten åbner.
- *
- * Transitionen bliver stående som fallback for miljøer uden animation. */
-@keyframes rv-skillelinje-ind {
-  from { opacity: 0; transform: scaleX(0); }
-  to   { opacity: 1; transform: scaleX(1); }
-}
-
-/* Stregen er synlig saa snart den er taendt. Uden denne regel ville den falde
- * tilbage til grundtilstanden (`opacity: 0; transform: scaleX(0)`) i det
- * ojeblik animationen fjernes — fx naar turen holder op med at vaere levende. */
-.rv-tur[data-skillelinje]::after {
-  opacity: 1; transform: scaleX(1);
-}
-
-/* KUN den levende tur glider ind.
- *
- * MÅLT 30/10-2026 i Chromium (Playwright, den ægte fil, TurHoveds ægte
- * markup): med animationen paa `[data-skillelinje]` alene fyrer den ved HVER
- * mount. Reload af en samtale med 20 persisterede ture gav 20
- * `animationstart`-events — alle streger gled ind samtidigt, som om tyve ture
- * startede paa én gang. Samme maaling viste at én React-remount gen-fyrer
- * animationen midt i en samtale.
- *
- * `data-levende` saettes af begge flader mens turen streamer. Persisteret
- * historik har ingen stream og animerer derfor ikke — stregen staar bare der.
- * I code mode, hvor gaten taender `data-skillelinje` senere, er turen stadig
- * levende, saa animationen starter praecis naar stregen kommer til syne.
- *
- * `data-koerer` duede IKKE som betingelse: den er falsk naar det endelige svar
- * begynder at streame (`arbejdeKoerer` kraever `!finalAnswerStarted`), og code
- * modes gate taender netop stregen derefter. */
-.rv-tur[data-skillelinje][data-levende]::after {
-  animation: rv-skillelinje-ind 260ms cubic-bezier(.22, .61, .36, 1) both;
-}
-
 .rv-tur[aria-expanded='false'] { margin-bottom: 8px; }
 
-/* Hoved uden indhold at folde: samme streg, ingen affordance. */
+/* Hoved uden indhold at folde: samme form, ingen affordance. */
 .rv-tur--statisk { cursor: default; }
 
 .rv-turTekst {
@@ -109,7 +63,8 @@
 
    Cifrene ruller lodret (Bjørn 17/10-2026: «tallende skal rulle nedfra og op»):
    det gamle ciffer forlader viewporten opad, og det nye kommer ind nedefra.
-   Hjul og keyframes deles med rundetimeren i `liveness.css`. */
+   Hjul og keyframes deles med rundetimeren i `liveness.css`, som også er der
+   `prefers-reduced-motion` håndteres for tallet. */
 .rv-turTid {
   flex: none;
   display: inline-flex;
@@ -122,16 +77,6 @@
 }
 
 .rv-turTidHjul { display: inline-flex; align-items: baseline; }
-
-/* Respekterer dem der har slået bevægelse fra: tallet skifter stadig, men
-   hopper i stedet for at rulle. */
-@media (prefers-reduced-motion: reduce) {
-  /* Den levende selektor skal nævnes EKSPLICIT. Den har højere specificitet
-   * (0,3,1 mod 0,1,1), så `.rv-tur::after` alene ville tabe til den — og
-   * brugere med `prefers-reduced-motion` ville få glidningen alligevel. */
-  .rv-tur::after,
-  .rv-tur[data-skillelinje][data-levende]::after { transition: none; animation: none; }
-}
 
 .rv-turC {
   /* `flex: none`: uden den kan ikonet klemmes fladt når turens tekst er lang. */

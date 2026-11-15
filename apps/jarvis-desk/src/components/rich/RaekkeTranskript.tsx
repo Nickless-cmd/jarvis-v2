@@ -465,19 +465,21 @@ function RaekkeTranskriptImpl({
   // foldede hovedet i samme frame som det nye run startede.
   const arbejdeKoerer = streaming && (!finalAnswerStarted || arbejdeEfterSvar)
   const turSekunder = streaming ? Math.max(0, Math.floor(elapsedMs / 1000)) : varighedSekunder
-  // Den første tekst-delta kan lande før det første tool-kald. Turhovedet skal
-  // stadig være den første synlige del af Jarvis' tur; ellers hopper det ind
-  // over tekst, der allerede er begyndt at streame. Et rent, afsluttet svar
-  // beholder den enkle visning uden turhoved.
-  const visTurhoved = arbejde.length > 0 || streaming || (arbejdeKoerer && svar.length > 0)
-  // `Arbejder` står fra turens start. Kun skillestregen venter på det første
-  // synlige tekststykke, så den ankommer sammen med syntesen/svaret i stedet
-  // for at tegne et tomt arbejdsområde flere sekunder i forvejen.
-  const harSynligTekst = blocks.some((blok) => blok.type === 'text' && blok.text.trim().length > 0)
-  const visSkillelinje = !streaming || finalAnswerStarted || harSynligTekst
+  // Hovedet er turens RESULTAT, ikke en status — samme regel som chat mode.
+  // Bjørn 14/11-2026: «lad turhoved være som det er, gør det usynlig til hoved
+  // folder», gentaget for code mode 15/11. Mens arbejdet kører, er rundelinjen
+  // turens ansigt og bærer uret; hovedet dukker først op når folden lukker
+  // (`arbejdeKoerer` falsk), og står derefter fast på turen.
+  // Et rent, afsluttet svar uden arbejde beholder den enkle visning uden hoved.
+  const visTurhoved = !arbejdeKoerer && arbejde.length > 0
   // Tokenfeltet eksisterer først når tælleren faktisk er begyndt. Dermed står
   // der hverken `0 tokens` eller et ensomt `k tokens` ved turstart.
-  const visTokens = streaming && Number.isFinite(tokens) && tokens > 0
+  //
+  // Ikke bundet til `streaming` (15/11-2026): hovedet er turens RESULTAT og
+  // findes først når folden lukker — netop dér hvor `streaming` kan være
+  // falsk. Bandt vi tallet til streamen, ville resultatet mangle sit eget
+  // resultat i den fase det ejer. Samme regel som chat mode.
+  const visTokens = Number.isFinite(tokens) && tokens > 0
   const aaben = aabenManuelt ?? arbejdeKoerer
   const turRef = useRef<HTMLButtonElement>(null)
   const huskFold = useFoldPosition(turRef, aaben)
@@ -485,21 +487,25 @@ function RaekkeTranskriptImpl({
   return (
     <div className="raekkevisning">
       {visTurhoved && (
-        <>
-          <TurHoved
-            knapRef={turRef}
-            aaben={aaben}
-            koerer={arbejdeKoerer}
-            tekst={streaming ? 'Arbejder' : turFortalt(familier, kald, 0)}
-            meta={visTokens ? <span className="rv-turMeta">~<RullendeTokens tokens={tokens} /> output</span> : null}
-            skillelinje={visSkillelinje}
-            levende={streaming}
-            sekunder={!streaming ? turSekunder : null}
-            foldbar={arbejde.length > 0}
-            onToggle={() => { huskFold(); setAabenManuelt(!aaben) }}
-          />
-          {arbejde.length > 0 && (
-            <div className="rv-gruppe" hidden={!aaben}>
+        <TurHoved
+          knapRef={turRef}
+          aaben={aaben}
+          koerer={arbejdeKoerer}
+          tekst={streaming ? 'Arbejder' : turFortalt(familier, kald, 0)}
+          meta={visTokens ? <span className="rv-turMeta">~<RullendeTokens tokens={tokens} /> output</span> : null}
+          levende={streaming}
+          sekunder={!streaming ? turSekunder : null}
+          foldbar={arbejde.length > 0}
+          onToggle={() => { huskFold(); setAabenManuelt(!aaben) }}
+        />
+      )}
+      {/* Arbejdsgruppen har sin EGEN gate — ikke hovedets.
+          Lå den inde i hovedets fragment, forsvandt arbejdet sammen med det
+          hoved det skulle overlevere til, i præcis det øjeblik hovedet blev
+          usynligt. Chat mode målte den fejl 14/11-2026 (`.rv-tur` var barn af
+          samme gren); code mode arvede den og får samme split her. */}
+      {arbejde.length > 0 && (
+        <div className="rv-gruppe" hidden={!aaben}>
               {aaben && sektioner.map((s, i) => {
                 // Den levende runde har én fast slot nederst. Når næste
                 // syntese lander, bliver slotten stående og opdaterer på
@@ -521,8 +527,6 @@ function RaekkeTranskriptImpl({
                   workingStep={workingStep} />
               ) : null}
             </div>
-          )}
-        </>
       )}
       {billedArbejde ? <BilledArbejdeAnimation arbejde={billedArbejde} config={config} /> : null}
       {inlineQuestions.length > 0 ? (

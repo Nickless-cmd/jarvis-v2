@@ -28,12 +28,15 @@ function vis(props: { finalAnswerStarted?: boolean; arbejdeEfterSvar?: boolean }
 }
 
 describe('RaekkeTranskript — arbejde efter svar-låsen', () => {
-  it('holder hovedet ÅBENT når et nyt run arbejder efter det låste svar', () => {
+  it('skjuler hovedet igen når et nyt run arbejder efter det låste svar', () => {
+    // VENDT 15/11-2026 (Bjørn): hovedet findes kun når folden er lukket.
+    // Kommer der nyt arbejde efter svar-låsen, er turen ikke foldet længere —
+    // og så er rundelinjen igen turens ansigt. Hovedet vender tilbage når det
+    // nye arbejde er færdigt.
     const { container } = vis({ finalAnswerStarted: true, arbejdeEfterSvar: true })
 
-    const hoved = container.querySelector('.rv-tur')
-    expect(hoved).not.toBeNull()
-    expect(hoved).toHaveAttribute('aria-expanded', 'true')
+    expect(container.querySelector('.rv-tur')).toBeNull()
+    expect(container.querySelector('.rv-gruppe')).not.toHaveAttribute('hidden')
   })
 
   it('folder stadig sammen når svaret er begyndt UDEN arbejde bagefter', () => {

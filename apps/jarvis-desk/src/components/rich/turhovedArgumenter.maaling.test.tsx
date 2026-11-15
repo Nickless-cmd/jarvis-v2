@@ -9,7 +9,10 @@
  * ## Kontrakten har ni argumenter
  *
  * `tekst` · `aaben` · `onToggle` · `koerer` · `sekunder` · `meta` ·
- * `skillelinje` · `foldbar` · `knapRef`
+ * `levende` · `foldbar` · `knapRef`
+ *
+ * (`skillelinje` stod her indtil 15/11-2026 — stregen under hovedet er fjernet
+ * helt, se `turhoved.css`. `levende` manglede i listen og er tilføjet.)
  *
  * ## Hvad målingen viser
  *
@@ -106,7 +109,7 @@ function argumenter(fil: string): Map<string, string> {
   // fra kontrakten; alt andet er indhold, ikke props.
   const KONTRAKT = new Set([
     'tekst', 'aaben', 'onToggle', 'koerer', 'sekunder', 'meta',
-    'skillelinje', 'levende', 'foldbar', 'knapRef',
+    'levende', 'foldbar', 'knapRef',
   ])
   for (const linje of blok.split('\n')) {
     const m = /^\s{2,}([a-zA-Z][a-zA-Z0-9]*)(=\{|\s|$)/.exec(linje)
@@ -122,10 +125,10 @@ describe('TurHoved-argumenter — de to flader sammenlignet', () => {
   const chat = argumenter('ChatFlowPresentation.tsx')
   const code = argumenter('RaekkeTranskript.tsx')
 
-  it('begge flader sender de samme ti argumenter fra kontrakten', () => {
+  it('begge flader sender de samme ni argumenter fra kontrakten', () => {
     const kontrakt = [
       'tekst', 'aaben', 'onToggle', 'koerer', 'sekunder', 'meta',
-      'skillelinje', 'levende', 'foldbar', 'knapRef',
+      'levende', 'foldbar', 'knapRef',
     ]
     const chatNavne = [...chat.keys()].sort()
     const codeNavne = [...code.keys()].sort()
@@ -145,10 +148,10 @@ describe('TurHoved-argumenter — de to flader sammenlignet', () => {
   })
 
   it('levende er ens i begge flader — og driver indglidningen', () => {
-    // Tilføjet 30/10-2026 sammen med rettelsen (c1e2cfc57). `data-levende` er
-    // det ENESTE der starter `rv-skillelinje-ind`: uden denne prop ville
-    // stregen animere ved hvert reload af historikken (målt: 20 animationer
-    // for 20 persisterede ture).
+    // Tilføjet 30/10-2026 sammen med rettelsen (c1e2cfc57) for at styre
+    // stregens indglidning. Stregen er væk 15/11-2026, men `data-levende`
+    // bliver: den driver nu morph-animationen `chat-flow-hoved-ind` i
+    // `chat-flow.css`, så kun en tur der faktisk er levende animerer ind.
     expect(chat.get('levende')).toBe('levende={streaming}')
     expect(code.get('levende')).toBe('levende={streaming}')
   })
@@ -193,17 +196,27 @@ describe('TurHoved-argumenter — de to flader sammenlignet', () => {
     expect(tekst).toContain('<RullendeUr sek={turSekunder} />')
   })
 
-  it('skillelinje er reelt forskellig — og forskellen er AFGJORT, ikke en fejl', () => {
-    // OMVENDT 14/11-2026. Den 30/10 valgte Bjørn at chat skulle BEHOLDE stregen
-    // («stregen glider ind ved turstart og bliver»). Den 14/11 ombestemte han:
-    // «fjern skill linjen mellem hoved og besked» — hovedet er en label over
-    // indholdet, ikke en selvstændig blok med en streg under.
-    // chat: skillelinje={false} → ingen streg i nogen fase
-    // code: visSkillelinje = !streaming || finalAnswerStarted || harSynligTekst
-    //       (code har en svar-lås at vente på; chat har ikke — og nu heller
-    //        ingen streg at vente på)
-    expect(chat.get('skillelinje')).toBe('skillelinje={false}')
-    expect(code.get('skillelinje')).toBe('skillelinje={visSkillelinje}')
+  it('skillelinjen er VÆK fra begge flader — ikke længere en forskel', () => {
+    // 30/10-2026 valgte Bjørn at chat skulle BEHOLDE stregen. 14/11 ombestemte
+    // han sig for chat («fjern skill linjen mellem hoved og besked»), og 15/11
+    // for code mode. Forskellen er dermed ikke «afgjort» længere — den findes
+    // ikke.
+    //
+    // Stregen er fjernet HELT: prop, `@keyframes rv-skillelinje-ind` og
+    // `::after`-reglen. En prop hvis to værdier begge betød «slukket» er død
+    // kode, så den er ikke sat til `false` — den er ude af kontrakten.
+    expect(chat.has('skillelinje')).toBe(false)
+    expect(code.has('skillelinje')).toBe(false)
+
+    // Og CSS'en må ikke genindføre den ad bagdøren. Vagten måler REGLERNE,
+    // ikke ordet: en kommentar der forklarer hvad der blev fjernet skal kunne
+    // nævne navnet uden at vælte testen — ellers tvinger vagten dokumentationen
+    // til at være upræcis.
+    const css = readFileSync(resolve(RICH, '../../styles/turhoved.css'), 'utf8')
+    expect(css).not.toMatch(/@keyframes\s+rv-skillelinje-ind\s*\{/)
+    expect(css).not.toMatch(/\[data-skillelinje\]/)
+    expect(css).not.toMatch(/\.rv-tur::after/)
+    expect(css).not.toContain('var(--rv-skillelinje')
   })
 
   it('kun code sender knapRef — chat har intet scroll-anker', () => {

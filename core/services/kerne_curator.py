@@ -25,7 +25,19 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 KERNE_MAX_LINES = 25
-_PROMOTE_AT_SELECTIONS = 3
+
+# 15/11-2026: tærsklen var 3, men målt på Bjørns 964 Lært-linjer er MEDIANEN 15
+# valg — så 181 af 200 linjer kvalificerede og filteret filtrerede intet. En linje
+# skal vælges oftere end typisk for at være kandidat, ikke blot tre gange.
+_PROMOTE_AT_SELECTIONS = 20
+
+# Målt samme dag: antal valg korrelerer med linjens LÆNGDE (r = 0,648, n = 196).
+# Jo flere ord, jo bredere matcher linjen — og kuratoren læste det som vigtighed.
+# Den mest valgte linje var 1.704 tegn: en hel UI-spec der allerede var leveret.
+# En regel er kort; en spec hører i Lært, hvor den udvælges når den er relevant.
+# Median er 118 tegn og p90 er 187, så ægte regler slipper igennem loftet her.
+_PROMOTE_MAX_CHARS = 300
+
 _LAST_RUN_KEY = "kerne_curator_last_run"
 _MIN_INTERVAL_DAYS = 7
 
@@ -61,6 +73,9 @@ def promotion_candidates(workspace_dir: Path) -> list[dict[str, object]]:
     out: list[dict[str, object]] = []
     for row in learned_lines(workspace_dir):
         text = row["text"]
+        if len(text) > _PROMOTE_MAX_CHARS:
+            # Bredt match på grund af ordfylde, ikke fordi linjen er en regel.
+            continue
         used = int(counts.get(text.lower()[:120], 0))
         if used < _PROMOTE_AT_SELECTIONS:
             continue
@@ -72,12 +87,25 @@ def promotion_candidates(workspace_dir: Path) -> list[dict[str, object]]:
 
 
 def demotion_candidates(workspace_dir: Path) -> list[str]:
-    """De ældste Kerne-linjer der ligger ud over loftet (tomt når under)."""
+    """De dyreste Kerne-linjer der ligger ud over loftet (tomt når under).
+
+    15/11-2026: her blev de FØRSTE linjer valgt — og de første i Bjørns Kerne er
+    «Sprog: dansk», «Tone» og «Svar», altså de mest fundamentale regler i hele
+    prompten. Kuratoren foreslog at smide sproget ud for at gøre plads.
+
+    Den ærlige akse er længde, samme akse som ved promotion (målt r = 0,648 mod
+    antal valg): en lang linje koster mest i det stabile præfiks på hver tur, og
+    lange linjer er specs frem for regler. De flyttes til Lært, hvor de stadig
+    udvælges når de er relevante — intet slettes. Korte, altid-gældende regler
+    som «Sprog: dansk» bliver stående.
+    """
     from core.services.prompt_sections.learned_about_user import core_lines
     lines = [line for line in core_lines(workspace_dir) if len(line.strip()) >= 8]
     if len(lines) <= KERNE_MAX_LINES:
         return []
-    return lines[: len(lines) - KERNE_MAX_LINES]
+    over = len(lines) - KERNE_MAX_LINES
+    # Længst først; stabil sortering bevarer filordenen ved lige længde.
+    return sorted(lines, key=lambda line: -len(" ".join(line.split())))[:over]
 
 
 def _move_line(*, text: str, to_core: bool) -> dict[str, object]:
@@ -124,15 +152,11 @@ def demote_from_kerne(text: str) -> dict[str, object]:
 
 def build_proposal_text(workspace_dir: Path) -> str:
     """Ugens ÉNE forslag — "" når Kerne er sund og intet er modnet."""
-    promote = promotion_candidates(workspace_dir)
-    if promote:
-        top = promote[0]
-        return (
-            f"Kerne-kurator: «{top['text']}» er blevet hentet frem "
-            f"{top['used']} gange fra det jeg har lært om dig. "
-            "Den er ikke situationsbestemt længere — skal den op i Kerne, "
-            "så den altid er med?"
-        )
+    # Rækkefølgen er hele pointen (15/11-2026): promote blev tjekket først, og da
+    # der altid var kandidater (179 målt), kørte demotion-grenen ALDRIG — Kerne
+    # voksede til 46 linjer mod loftet på 25 mens kuratoren foreslog at fylde MERE
+    # på. Er der ikke plads, skal der gøres plads først. Intet slettes: linjen
+    # flyttes ned i Lært, hvor den stadig udvælges når den er relevant.
     demote = demotion_candidates(workspace_dir)
     if demote:
         from core.services.prompt_sections.learned_about_user import core_lines
@@ -142,6 +166,15 @@ def build_proposal_text(workspace_dir: Path) -> str:
             f"Kerne-kurator: Kerne er på {count} linjer (loft {KERNE_MAX_LINES}) — "
             f"den fylder på hver eneste tur. De ældste er: {oldest}. "
             "Skal jeg flytte dem ned i Lært, hvor de kun hentes når de er relevante?"
+        )
+    promote = promotion_candidates(workspace_dir)
+    if promote:
+        top = promote[0]
+        return (
+            f"Kerne-kurator: «{top['text']}» er blevet hentet frem "
+            f"{top['used']} gange fra det jeg har lært om dig. "
+            "Den er ikke situationsbestemt længere — skal den op i Kerne, "
+            "så den altid er med?"
         )
     return ""
 

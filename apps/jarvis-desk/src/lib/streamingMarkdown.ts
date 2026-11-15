@@ -57,10 +57,10 @@ function stabilizeFences(md: string): string {
  *
  * ## Hvad den IKKE gør
  *
- * Kun `**` og enkel inline-code. Ikke `*` eller `_`: en enkelt stjerne eller
- * underscore i dansk prosa er oftest ikke en markering, og en gættet lukning
- * ville gøre skade i stedet for at undgå den. Kode-fences tælles ikke med —
- * kode skal vises som den er skrevet.
+ * Kun `**`, `~~`, `$` (med matematik-værn) og enkel inline-code. Ikke `*`
+ * eller `_`: en enkelt stjerne eller underscore i dansk prosa er oftest ikke
+ * en markering, og en gættet lukning ville gøre skade i stedet for at undgå
+ * den. Kode-fences tælles ikke med — kode skal vises som den er skrevet.
  *
  * KENDT BEGRÆNSNING: `**` inde i inline-code tælles med. Det kræver at
  * markeringen er åben på samme tid, og resultatet er da en synlig `**` mere
@@ -87,5 +87,27 @@ export function lukAabneMarkeringer(md: string): string {
   const runs = synlig.match(/`+/g) ?? []
   const ticks = runs.filter((r) => r.length === 1).length
   if (ticks % 2 === 1) ud += '`'
+
+  // `~~` (GFM-gennemstregning) — samme regel som `**`: et ulige antal betyder
+  // at den sidste er ved at blive skrevet. Målt 15/11-2026: `~~halv` stod råt
+  // i fladen, mens `~~hel~~` var pæn. Præcis samme halve-tilstand som `**`.
+  const strikes = (synlig.match(/~~/g) ?? []).length
+  if (strikes % 2 === 1) ud += '~~'
+
+  // `$` (KaTeX inline-matematik) — men KUN når indholdet efter den åbne `$`
+  // ser ud som matematik.
+  //
+  // En blind lukning er ikke sikker her, og det er målt: `Det koster $5` har
+  // ét dollartegn, og en lukning ville gøre «5» til en formel midt i en
+  // almindelig sætning. `Det koster $5 og $10` bliver allerede i dag parret
+  // som matematik af remark-math (en eksisterende fejl, ikke indført her) —
+  // så dollartegn i prosa er i forvejen et følsomt område, og vi må ikke
+  // gøre det værre. Lukker derfor kun når der faktisk er en matematisk
+  // markør i spillet: `\`, `^`, `_`, `{`, `}` eller `=`.
+  const dollar = (synlig.match(/\$/g) ?? []).length
+  if (dollar % 2 === 1) {
+    const efter = synlig.slice(synlig.lastIndexOf('$') + 1)
+    if (/[\\^_{}]|=/.test(efter)) ud += '$'
+  }
   return ud
 }

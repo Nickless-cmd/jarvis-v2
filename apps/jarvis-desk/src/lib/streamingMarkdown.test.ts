@@ -100,6 +100,27 @@ describe('lukAabneMarkeringer — den halve markering (14/11-2026)', () => {
     expect(lukAabneMarkeringer(md)).toBe(md)
   })
 
+  it('lukker en gennemstregning der er ved at blive skrevet', () => {
+    // Målt 15/11-2026: `~~halv` stod råt i fladen, mens `~~hel~~` var pæn.
+    // Samme halve-tilstand som `**` — GFM-gennemstregning er også et par.
+    expect(lukAabneMarkeringer('Det er ~~ikke~~ og ~~halv')).toBe('Det er ~~ikke~~ og ~~halv~~')
+  })
+
+  it('lukker en formel der er ved at blive skrevet', () => {
+    // Målt 15/11-2026: `$e^{i\pi` blev vist som rå tekst fordi remark-math
+    // kun parrer LUKKEDE `$`-par. KaTeX selv klarer halve udtryk (`strict:
+    // false`) — det er parringen der mangler.
+    expect(lukAabneMarkeringer('Regn: $e^{i\\pi')).toBe('Regn: $e^{i\\pi$')
+  })
+
+  it('lukker IKKE et dollartegn der er valuta', () => {
+    // Det værn der gør `$` sikker. Uden det ville «Det koster $5» blive til
+    // en formel med «5» i, midt i en almindelig sætning. Kravet er en
+    // matematisk markør (`\ ^ _ { } =`) i spillet — et rent tal er ikke nok.
+    expect(lukAabneMarkeringer('Det koster $5')).toBe('Det koster $5')
+    expect(lukAabneMarkeringer('Pris: $5 + $3')).toBe('Pris: $5 + $3')
+  })
+
   it('stabilizeStreamingMarkdown lukker markeringen — og kun dér', () => {
     // Kontrakten: reparationen hører til streaming-vejen. En FÆRDIG tekst med
     // en halv markering skal se rå ud, for der er det en rigtig fejl.

@@ -1,5 +1,18 @@
 # Development log
 
+## 2026-11-15 — A call without a readable subject still says what it was
+
+`describeTool` falls back to a generic phrase when it cannot read a subject out
+of the call's arguments. That fallback was reached more often than it should
+have been: `bash` with an empty command, `search` and `find_files` had no entry
+in the `NO_SUBJECT` table, so the round row reported "Brugte et værktøj" — which
+says no more than that *something* was used.
+
+Each of the three now has a present/past pair, so the row can answer what was
+done even when the argument itself cannot be read. The fallback still exists for
+tools that genuinely have nothing to name; it is no longer the answer for the
+common ones.
+
 ## 2026-11-15 — Code Mode round timeline: process while active, result when done
 
 Code Mode round rows now carry the two phases of a round explicitly. While a

@@ -5,6 +5,14 @@ The repository-wide status source remains
 This file records the status of the delivered Jarvis Desk changes requested for
 implementation.
 
+## Round row wording — complete locally (2026-11-15)
+
+- `bash`, `search` and `find_files` have explicit present/past wording, so a
+  call whose arguments cannot be read still names the action instead of falling
+  back to "Brugte et værktøj".
+- The completed round row carries only outcome wording ("uden resultat",
+  "N fejlede") — no step count and no fold hint.
+
 ## Code Mode round timeline — complete locally (2026-11-15)
 
 - An active round shows its heading plus its real working steps; a completed

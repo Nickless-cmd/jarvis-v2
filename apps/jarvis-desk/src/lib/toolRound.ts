@@ -245,9 +245,15 @@ function describeMemory(input: Record<string, unknown> | undefined, partialJson:
 }
 
 const NO_SUBJECT: Record<string, [string, string]> = {
+  // Et kald uden læsbart emne skal stadig sige HVAD det var. Uden disse faldt
+  // `bash` med en tom kommando helt ud i «Brugte et værktøj», som ikke
+  // fortæller mere end at der blev brugt et eller andet (målt 15/11-2026).
+  bash: ['Kører en kommando', 'Kørte en kommando'],
   read_file: ['Læser en fil', 'Læste en fil'],
   write_file: ['Skriver en fil', 'Skrev en fil'],
   edit_file: ['Redigerer en fil', 'Redigerede en fil'],
+  search: ['Søger i koden', 'Søgte i koden'],
+  find_files: ['Leder efter filer', 'Ledte efter filer'],
   archive_brain_entry: ['Arkiverer et minde', 'Arkiverede et minde'],
   search_jarvis_brain: ['Søger i hukommelsen', 'Søgte i hukommelsen'],
   list_side_tasks: ['Viser flaggede opgaver', 'Viste flaggede opgaver'],

@@ -24,6 +24,16 @@ describe('linjen siger hvad der laves, ikke hvilket værktøj', () => {
     expect(describeTool('mystisk_ting', {}, false)).toBe('Brugte et værktøj')
   })
 
+  it('et kendt værktøj med tomme argumenter siger HVAD det var', () => {
+    // Bjørn 15/11-2026: en tom kommando må ikke ende som «Brugte et værktøj» —
+    // den generiske tekst fortæller ikke mere end at der blev brugt et eller
+    // andet. Værktøjet er kendt, så linjen kan sige hvilket arbejde det var.
+    expect(describeTool('bash', { command: '' }, false)).toBe('Kørte en kommando')
+    expect(describeTool('bash', {}, true)).toBe('Kører en kommando…')
+    expect(describeTool('read_file', {}, false)).toBe('Læste en fil')
+    expect(describeTool('search', {}, false)).toBe('Søgte i koden')
+  })
+
   it('viser mindets korte titel og kun bekræftet lagring som gemt', () => {
     const input = { title: 'Korte svar', content: 'Et meget langt privat minde, som ikke skal stå i linjen.' }
     expect(summarizeRound([t('remember_this', input, 'running')]))

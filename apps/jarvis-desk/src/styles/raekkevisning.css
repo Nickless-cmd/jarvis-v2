@@ -261,6 +261,54 @@
 }
 .raekkevisning .rv-arbejdsknap .rv-turC { flex: none; }
 
+/* ══ RUNDENS ARBEJDSTRIN (Bjørn 15/11-2026) ══
+   Den AKTIVE runde viser processen, den AFSLUTTEDE viser resultatet.
+   Trinnene er rundens faktiske værktøjskald (`lib/rundeTrin.ts`) — de er ikke
+   en ny flade, men rundens eget indhold: samme venstrekant som rækkens tekst
+   (16px ikon + 9px gap), samme typografiske trin som værktøjsdetaljerne.
+   Der er ingen prikker, ingen partikler og ingen ny animation: glyffen er et
+   rigtigt ikon, og den eneste bevægelse er husets egen `.spin` på det trin
+   der faktisk kører. */
+.raekkevisning .rv-trin {
+  display: flex; flex-direction: column; gap: 1px;
+  margin: 0; padding: 1px 0 5px 25px; list-style: none;
+  font-size: 12.5px; line-height: 1.5;
+  color: var(--rv-tertiary);
+}
+.raekkevisning .rv-trinRaekke {
+  display: flex; align-items: baseline; gap: 7px; min-width: 0;
+}
+.raekkevisning .rv-trinGlyf {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 12px; height: 12px; align-self: center;
+  color: var(--fg-3);
+}
+.raekkevisning .rv-trinTekst {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Det trin der kører nu er det eneste med normal kontrast — det er derfor
+   blikket skal lande der uden at listen bliver en farvepalet. */
+.raekkevisning .rv-trinRaekke[data-status='active'] { color: var(--fg-2); }
+.raekkevisning .rv-trinRaekke[data-status='active'] .rv-trinGlyf { color: var(--fg-2); }
+.raekkevisning .rv-trinRaekke[data-status='failed'] { color: var(--error-fg); }
+.raekkevisning .rv-trinRaekke[data-status='failed'] .rv-trinGlyf { color: var(--error-fg); }
+.raekkevisning .rv-trinRaekke[data-status='afbrudt'] { color: var(--warn-fg); }
+.raekkevisning .rv-trinRaekke[data-status='afbrudt'] .rv-trinGlyf { color: var(--warn-fg); }
+.raekkevisning .rv-trinNote { flex: none; color: var(--warn-fg); opacity: .85; }
+
+/* Niveau 1 mod niveau 2. Den aktive rundes overskrift har NORMAL kontrast —
+   den er det man følger. Den afsluttede er dæmpet: den er et resultat man
+   læser bagefter, ikke noget der kalder på opmærksomhed. Uden denne forskel
+   konkurrerede ti afsluttede runder med den ene der arbejder. */
+.raekkevisning .rv-arbejdsrunde[data-aktiv-runde] .rv-arbejdsfortaelling { color: var(--fg-1); }
+.raekkevisning .rv-arbejdsmeta {
+  flex: none; white-space: nowrap;
+  font-size: 12px; color: var(--rv-tertiary);
+}
+/* En runde der fejlede må kunne ses UDEN at man åbner den. Metalinjen bærer
+   allerede ordet; farven gør at den ikke skal læses for at blive opdaget. */
+.raekkevisning .rv-arbejdsrunde[data-fejl] .rv-arbejdsmeta { color: var(--error-fg); }
+
 /* Den aktive slot bliver stående, så tur-uret fortsætter og teksten ovenover
    ikke hopper. Under reel syntese-pacing forsvinder hele linjen visuelt;
    korte synteser når ikke hertil (420 ms gate i usePacingWorkLine). */

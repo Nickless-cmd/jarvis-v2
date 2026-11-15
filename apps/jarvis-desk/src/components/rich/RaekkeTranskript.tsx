@@ -22,13 +22,14 @@
  * billeder er nøjagtig som i bobblevisningen.
  */
 import { memo, useRef, useState } from 'react'
-import { Sparkles, Sparkle, ChevronDown, type LucideIcon } from 'lucide-react'
+import { Sparkles, Sparkle, ChevronDown, Check, X, CircleSlash, Loader2, type LucideIcon } from 'lucide-react'
 import { FoldPil, TurHoved } from './TurHoved'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
 import { opdel, opdelArbejdsrunder, turFortalt, type ArbejdsElement } from '../../lib/raekkeModel'
 import { lookupTool } from '../../lib/toolRegistry'
 import { describeTool, subjectFromInput, summarizeRound, summerDiff } from '../../lib/toolRound'
+import { arbejdsTrin, trinMeta, type TrinStatus } from '../../lib/rundeTrin'
 import { isMeaningfulStatus } from '../../lib/chatFlowModel'
 import { diffFraResultat, diffStat } from '../../lib/diffStat'
 import { postFor, kropFor } from './raekkeKroppe'
@@ -284,6 +285,18 @@ const Arbejdsdetaljer = memo(function Arbejdsdetaljer({ elementer, aaben, stream
   && a.config === b.config && a.beskedId === b.beskedId
   && sammeArbejdsElementer(a.elementer, b.elementer))
 
+/** Et trin i rundens arbejdsliste. Glyffen er STATUS, ikke dekoration: et
+ *  hak betyder «kaldet svarede», et kryds «det fejlede», den skrå streg
+ *  «det fik aldrig et svar». Den kørende række beholder rundens egen ring
+ *  som aktivitetseffekt — spinneren her er samme `.spin` som resten af huset
+ *  bruger, så der ikke kommer en ny animation ind i sproget. */
+function TrinGlyf({ status }: { status: TrinStatus }) {
+  if (status === 'done') return <Check size={12} strokeWidth={2.5} />
+  if (status === 'failed') return <X size={12} strokeWidth={2.5} />
+  if (status === 'afbrudt') return <CircleSlash size={12} strokeWidth={2} />
+  return <Loader2 size={12} strokeWidth={2.5} className="spin" />
+}
+
 function ArbejdsrundeImpl({
   elementer, streaming, sidste, config, etiket, beskedId, turSekunder, skjult = false, workingStep,
 }: {
@@ -336,9 +349,25 @@ function ArbejdsrundeImpl({
   const beskrivelse = koerer && seneste
     ? (levendeStep && isMeaningfulStatus(levendeStep) ? levendeStep : describeTool(seneste.name, seneste.input, true, seneste.partialJson, seneste.result, seneste.status))
     : etiket || mekanisk
+  // ── Arbejdstrinnene (Bjørn 15/11-2026) ──────────────────────────────────
+  // Den AKTIVE runde viser processen, den AFSLUTTEDE viser resultatet.
+  // Trinnene udledes af rundens egne `tool_use`-blokke (`lib/rundeTrin.ts`),
+  // så et trin kun kan stå der hvis serveren faktisk sendte kaldet.
+  const trin = arbejdsTrin(elementer, aktivRunde)
+  // Overskriften ER det kørende trin når serveren ikke har sin egen
+  // arbejdsbeskrivelse (`working_step`). Så må den ikke stå to gange: linjen
+  // bærer den — med ring og shimmer — og listen viser historikken op til den.
+  // Kun ved `active`: et FEJLET enkelt-kald må ikke forsvinde ind i
+  // overskriften, for så ville krydset forsvinde sammen med det.
+  const sidsteTrin = trin[trin.length - 1]
+  const overskriftErSidste = Boolean(
+    sidsteTrin && sidsteTrin.status === 'active' && sidsteTrin.tekst === beskrivelse,
+  )
+  const synligeTrin = overskriftErSidste ? trin.slice(0, -1) : trin
   return (
     <div className="rv-arbejdsrunde"
       {...(aktivRunde ? { 'data-aktiv-runde': '', 'data-pacing-skjult': skjult ? '' : undefined } : {})}
+      {...(!aktivRunde && trin.some((t) => t.status === 'failed') ? { 'data-fejl': '' } : {})}
       aria-hidden={aktivRunde && skjult ? true : undefined}>
       <button type="button" ref={foldRef} className="rv-arbejdsknap" aria-expanded={aaben}
         {...(aktivRunde ? { 'data-koerer': '' } : {})}
@@ -359,9 +388,31 @@ function ArbejdsrundeImpl({
           {aktivRunde && typeof turSekunder === 'number'
             ? <span className="rv-rundeur"><RullendeUr sek={turSekunder} /></span>
             : null}
+          {/* Niveau 2: den afsluttede runde fortæller HVOR MEGET der ligger
+              bag den, og hvordan man kommer derind. Den aktive runde har
+              trinnene synlige og skal ikke tælle dem op. */}
+          {!aktivRunde && trin.length > 0
+            ? <span className="rv-arbejdsmeta">{trinMeta(trin, aaben)}</span>
+            : null}
         </span>
         <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /><FoldPil aaben={aaben} className="rv-ikon-glimt" /></span>
       </button>
+      {/* Niveau 1: den aktive rundes proces. Ligger UDEN for knappen, så
+          trinnene ikke er klikbare som en del af folden — de er indhold man
+          læser, ikke en affordance. Hver række er nøglet på kaldets id, så en
+          statusændring opdaterer glyffen i stedet for at genopbygge listen
+          (kravet om at indholdet ikke hopper, Bjørn 15/11-2026). */}
+      {aktivRunde && synligeTrin.length > 0 && (
+        <ol className="rv-trin" aria-label="Arbejdstrin">
+          {synligeTrin.map((t) => (
+            <li key={t.id} className="rv-trinRaekke" data-status={t.status}>
+              <span className="rv-trinGlyf" aria-hidden="true"><TrinGlyf status={t.status} /></span>
+              <span className="rv-trinTekst">{t.tekst}</span>
+              {t.note ? <span className="rv-trinNote">{t.note}</span> : null}
+            </li>
+          ))}
+        </ol>
+      )}
       <Arbejdsdetaljer elementer={elementer} aaben={aaben} streaming={streaming} config={config} beskedId={beskedId} />
     </div>
   )

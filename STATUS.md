@@ -2,8 +2,29 @@
 
 The repository-wide status source remains
 [`docs/design-history/CURRENT_STATUS.md`](docs/design-history/CURRENT_STATUS.md).
-This file records the status of the 2026-10-15 Jarvis Desk Adaptive Chat Flow
-delivery requested for this implementation.
+This file records the status of the delivered Jarvis Desk changes requested for
+implementation.
+
+## Code Mode round timeline — complete locally (2026-11-15)
+
+- An active round shows its heading plus its real working steps; a completed
+  round shows the result synthesis and a meta line counting its steps.
+- Steps are derived from actual `tool_use` blocks. None are invented, and no
+  count is inferred from anything but the calls themselves.
+- A call that never answered is reported as abandoned ("uden resultat"); a failed
+  round is marked on the collapsed row so the failure is visible without
+  expanding it.
+- Completed rounds are frozen: later streaming does not rewrite them, and
+  reopening a session renders the result rather than a process that is no longer
+  running.
+- Three-level visual hierarchy: active (normal contrast), completed (dimmed),
+  tool details (secondary, unchanged).
+- Chat Mode is unchanged; only the Code Mode row renderer was modified.
+- Verification: 3,478 frontend tests passed (1 skipped, 447 files), TypeScript
+  build clean, and the rendering measured in Chromium against the real component.
+
+Release state: frontend-only change. No service restart is required, because the
+API serves the built PWA from disk.
 
 ## Routine policy/presence routing — complete locally (2026-10-26)
 

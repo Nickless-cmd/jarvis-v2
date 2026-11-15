@@ -1,5 +1,38 @@
 # Development log
 
+## 2026-11-15 — Code Mode round timeline: process while active, result when done
+
+Code Mode round rows now carry the two phases of a round explicitly. While a
+round is active its row shows what Jarvis is working on, followed by the round's
+actual working steps — one per `tool_use`, each with its real state (done,
+running, failed, or abandoned). When the round is left, the step list is replaced
+by the existing result synthesis and a compact meta line stating how much history
+sits behind it ("3 arbejdstrin · Fold ud"), which expands to the unchanged tool
+detail rows.
+
+The steps are derived from the round's own blocks (`src/lib/rundeTrin.ts`); no
+step exists unless the server sent the call, and no count is inferred. A call
+whose `status` is still `running` once the round is no longer active is reported
+as abandoned ("uden resultat") rather than as a success, and a failed round is
+marked on the collapsed row so it can be seen without expanding it.
+
+Visual hierarchy is now three levels: the active round heading uses normal text
+contrast, completed round headings are dimmed, and tool details keep their
+existing secondary treatment. No new animation, panel, or decoration was added;
+the only motion is the existing ring, shimmer, and `.spin` glyph on the step that
+is actually running. Steps are keyed by the server's call id, so a status change
+updates the row instead of rebuilding the list.
+
+Chat Mode is untouched: `ChatFlowPresentation` is a separate renderer, and only
+`RaekkeTranskript` (Code Mode) changed.
+
+Verification: 447 frontend test files passed, 3,478 tests passed and 1 skipped,
+including 19 new tests covering the seven required scenarios. TypeScript build
+clean. Rendering was verified in Chromium against the real component: the active
+heading measured `rgb(240, 239, 236)` against `rgb(166, 165, 156)` for the
+completed one, the step glyph column sits at the same x as the active heading
+text, and the rendered reading order matches the specification.
+
 ## 2026-10-26 — Routine execution policy now controls the real path
 
 Routine occurrences are now routed once, at the existing worker claim point,

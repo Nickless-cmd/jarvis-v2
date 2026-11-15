@@ -198,16 +198,69 @@ def test_et_orphaned_bord_er_DOEDT():
         assert is_alive(bord) is False, bord
 
 
-def test_en_post_der_paastaar_ingen_skrivesti_skal_vaere_sand():
-    """3/11-2026: `composer_jarvis_forslag`, `session_write_leases` og
-    `user_flags` stod alle som orphaned med «INGEN skrivesti i kilden» — og
-    alle tre havde en skriver, koblet paa efter 25/9-auditen. Klassifikationen
-    var foraeldet, og intet fangede det, fordi registret er statisk.
+def _kald_grafen(rod) -> dict[str, set[str]]:
+    """funktionsnavn -> de funktioner den kalder. Bygget med AST.
 
-    ⚠️ Graensen er vigtig: `orphaned` betyder IKKE «ingen skriver». Det betyder
-    «skriveren findes, men har ingen live-kalder» — saa en INSERT i kilden er
-    forventet og beviser intet. Det der kan afgoeres statisk er den haardeste
-    form: en post der paastaar at der slet ikke findes en skrivefunktion.
+    15/11-2026: forgængeren til denne vagt ledte efter en tekststreng og døde,
+    da rettelsen fjernede netop den streng. En tekstsoegning efter «kaldes
+    denne funktion?» er ogsaa strukturelt forkert: den tæller docstrings og
+    kommentarer med. Maalt samme dag fandt en saadan soegning `reconcile_claim`
+    i epistemics.py:21 — som er en DOCSTRING der fortæller at funktionen netop
+    ikke har kaldere. Vagten ville have rapporteret det stik modsatte af
+    sandheden. Kun et `ast.Call`-knudepunkt er et kald.
+
+    Hver konklusion er krydset med en soegning i kilden, saa de to metoder
+    ikke kan tage fejl af det samme: `_with_quota_observation` har 8
+    kaldesteder, kalder `observe_provider_quota`, som kalder
+    `record_quota_observation` (cheap_lane_quotas.py:38).
+    """
+    import ast
+    import pathlib
+
+    kald: dict[str, set[str]] = {}
+    for p in (rod / "core").rglob("*.py"):
+        if p.name == "liveness_registry.py":
+            continue
+        try:
+            trae = ast.parse(p.read_text(encoding="utf-8", errors="ignore"))
+        except SyntaxError:
+            continue
+        for knude in ast.walk(trae):
+            if not isinstance(knude, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            kalder = kald.setdefault(knude.name, set())
+            for under in ast.walk(knude):
+                if not isinstance(under, ast.Call):
+                    continue
+                f = under.func
+                navn = (
+                    f.id if isinstance(f, ast.Name)
+                    else f.attr if isinstance(f, ast.Attribute)
+                    else None
+                )
+                if navn:
+                    kalder.add(navn)
+    return kald
+
+
+def _kaldes_af(kald: dict[str, set[str]], producent: str) -> list[str]:
+    """Hvilke funktioner kalder `producent`?"""
+    return sorted(f for f, kaldte in kald.items() if producent in kaldte)
+
+
+def test_en_orphaned_post_skal_kunne_begrunde_at_den_er_naabar():
+    """`orphaned` paastaar «ingen vej til en raekke». Paastanden skal maales.
+
+    Vagtens input er HELE registrets orphaned-poster — ikke en tekststreng.
+    Forgængeren filtrerede paa «INGEN skrivesti» i `producer` og matchede 0 af
+    41 poster efter 3/11-rettelserne: dens loekkekrop koerte aldrig, og
+    `17 passed` beviste intet om det den blev bygget til at fange. Her maales
+    derimod det paastanden handler om: kan producent-funktionen kaldes?
+
+    Undtagelsen er eksplicit og maalt, ikke gaettet: en post hvis kaede ER live,
+    men hvor ingen raekke kan opstaa fordi indgangsbetingelsen aldrig opfyldes,
+    saetter `path_reachable: True`. Feltet findes for at de to slags tomhed
+    ikke blandes sammen — praecis den fejl 25/9-auditen advarede imod.
     """
     import pathlib
     import re
@@ -215,39 +268,68 @@ def test_en_post_der_paastaar_ingen_skrivesti_skal_vaere_sand():
     from core.services.liveness_registry import _REGISTRY
 
     rod = pathlib.Path(__file__).resolve().parent.parent
-    insert_pat = re.compile(r"INSERT\s+(?:OR\s+\w+\s+)?INTO\s+([^\s(]+)", re.I)
-    konst_pat = re.compile(
-        r"^\s*([A-Z_][A-Z0-9_]*)\s*(?::\s*str\s*)?=\s*[\"']([a-z][a-z0-9_]*)[\"']",
-        re.M,
+    kald = _kald_grafen(rod)
+
+    orphaned = {
+        bord: post for bord, post in _REGISTRY.items()
+        if post.get("status") == "orphaned"
+    }
+    # En vagt der maaler nul poster er dokumentation. Tallet skal staa her,
+    # saa naeste aendring i registret ikke kan goere den tavst tom igen.
+    assert len(orphaned) >= 8, (
+        f"vagten maaler {len(orphaned)} orphaned-poster — registret er aendret, "
+        "og en tom vagt beviser intet"
     )
 
-    # Tabeller skrives ofte gennem en konstant: `_TABEL = "x"` og derefter
-    # `INSERT INTO {_TABEL}`. Den første version af denne vagt samlede hele
-    # core/ til ÉN tekst og sammenlignede rå fund — saa den fandt `{_TABEL}`
-    # og var blind for præcis den fil der startede undersøgelsen,
-    # `db_composer_jarvis.py` (målt 3/11-2026). En vagt der ikke kan se den
-    # fejl den blev bygget til at fange, er dokumentation forklædt som værn.
-    inserts: set[str] = set()
-    for p in (rod / "core").rglob("*.py"):
-        if p.name == "liveness_registry.py":
-            continue
-        fil_tekst = p.read_text(encoding="utf-8", errors="ignore")
-        konstanter = dict(konst_pat.findall(fil_tekst))
-        for m in insert_pat.finditer(fil_tekst):
-            navn = m.group(1).strip("`\"'")
-            navn = re.sub(
-                r"^\{(\w+)\}$",
-                lambda x: konstanter.get(x.group(1), x.group(0)),
-                navn,
-            )
-            inserts.add(navn)
+    maalt, naabare = 0, []
+    for bord, post in orphaned.items():
+        m = re.match(r"([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)",
+                     str(post.get("producer") or "").strip())
+        if not m:
+            continue  # posten navngiver ingen funktion; intet at maale
+        maalt += 1
+        producent = m.group(2)
+        kaldes_af = _kaldes_af(kald, producent)
+        if not kaldes_af:
+            continue  # ingen kalder den: paastanden holder
+        if post.get("path_reachable"):
+            continue  # vejen er kendt naabar, og posten siger det
+        naabare.append((bord, producent, kaldes_af))
 
-    for bord, post in _REGISTRY.items():
-        if "INGEN skrivesti" not in str(post.get("producer") or ""):
-            continue
-        ramte = [t for t in inserts if bord in t]
-        assert not ramte, (
-            f"{bord} staar som «INGEN skrivesti», men der findes en INSERT mod "
-            f"{ramte}. Klassifikationen er foraeldet — find skriveren og dens "
-            "kaldere, og afgoer om den er live, betinget eller reelt doed."
-        )
+    assert maalt >= 8, f"kun {maalt} orphaned-producere kunne maales"
+    assert not naabare, (
+        "disse poster staar som «ingen vej til en raekke», men deres producent "
+        f"KALDES: {naabare}. Enten er klassifikationen foraeldet — eller vejen "
+        "er naabar og posten skal saette `path_reachable: True` med en note der "
+        "forklarer hvorfor der ikke desto mindre aldrig opstaar raekker."
+    )
+
+
+def test_naabarhedsvagten_KAN_fejle():
+    """Mutationstest: en vagt der ikke kan fejle er dokumentation.
+
+    Der indsaettes en post der paastaar `orphaned` om en funktion som
+    beviseligt kaldes, og det verificeres at samme logik som ovenfor ville
+    fange den. Uden dette trin er det en antagelse at vagten virker — og
+    forgængeren var netop groen uden at maale noget.
+    """
+    import pathlib
+    import re
+
+    rod = pathlib.Path(__file__).resolve().parent.parent
+    kald = _kald_grafen(rod)
+
+    producent = "record_quota_observation"
+    kaldes_af = _kaldes_af(kald, producent)
+    assert kaldes_af, (
+        f"{producent} kaldes ikke laengere — mutationstesten maa ikke bygge paa "
+        "en kant der er forsvundet"
+    )
+
+    # Samme beslutning som vagten traeffer, paa en post UDEN undtagelsesflaget.
+    falsk_post = {"status": "orphaned", "producer": f"x.{producent}"}
+    m = re.match(r"([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)", falsk_post["producer"])
+    assert m
+    doemt = bool(_kaldes_af(kald, m.group(2))) and not falsk_post.get(
+        "path_reachable")
+    assert doemt, "mutationstesten fanger ikke en post der beviseligt er naabar"

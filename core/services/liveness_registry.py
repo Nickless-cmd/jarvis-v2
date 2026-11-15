@@ -62,6 +62,15 @@ _REGISTRY: dict[str, dict[str, Any]] = {
     "cheap_lane_quota_observations": {
         "status": "orphaned",
         "producer": "db_cheap_lane_control.record_quota_observation",
+        # Den ENESTE orphaned-post hvor produceren faktisk KALDES. `orphaned`
+        # staar her fordi ingen raekke kan opstaa i praksis, ikke fordi der
+        # mangler en kalderkaede. Feltet goer forskellen maalbar: uden det kan
+        # en vagt ikke skelne «ingen vej» fra «vej uden trafik», og saa bliver
+        # de to slags tomhed blandet sammen — praecis den fejl 25/9-auditen
+        # advarede imod. Maalt 15/11-2026 med AST: kaeden er
+        # `_with_quota_observation` -> `observe_provider_quota` ->
+        # `record_quota_observation`.
+        "path_reachable": True,
         "note": (
             "Kaeden ER live helt ned til `_with_quota_observation`, som pakkes om "
             "SYV adaptere og koerer ved hvert cheap-kald. Men den skriver kun naar "

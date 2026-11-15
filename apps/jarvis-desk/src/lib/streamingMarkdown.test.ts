@@ -106,11 +106,19 @@ describe('lukAabneMarkeringer — den halve markering (14/11-2026)', () => {
     expect(lukAabneMarkeringer('Det er ~~ikke~~ og ~~halv')).toBe('Det er ~~ikke~~ og ~~halv~~')
   })
 
-  it('lukker en formel der er ved at blive skrevet', () => {
-    // Målt 15/11-2026: `$e^{i\pi` blev vist som rå tekst fordi remark-math
-    // kun parrer LUKKEDE `$`-par. KaTeX selv klarer halve udtryk (`strict:
-    // false`) — det er parringen der mangler.
-    expect(lukAabneMarkeringer('Regn: $e^{i\\pi')).toBe('Regn: $e^{i\\pi$')
+  it('lukker en formel der er ved at blive skrevet — når den kan tegnes', () => {
+    // Målt 15/11-2026: remark-math parrer kun LUKKEDE `$`-par, så en halv
+    // formel stod rå. KaTeX klarer halve udtryk (`strict: false`) — det er
+    // parringen der mangler. `\alpha` og `x^2` har balancerede klammer.
+    expect(lukAabneMarkeringer('Symbol: $\\alpha')).toBe('Symbol: $\\alpha$')
+    expect(lukAabneMarkeringer('Det er $x^2')).toBe('Det er $x^2$')
+  })
+
+  it('lukker IKKE en formel med ubalancerede klammer', () => {
+    // Målt: `$e^{i\pi` + lukning gav en RØD KaTeX-parsefejl i fladen —
+    // værre end den rå tekst den erstattede. En ufuldstændig formel vises
+    // som skrevet indtil den er færdig.
+    expect(lukAabneMarkeringer('Regn: $e^{i\\pi')).toBe('Regn: $e^{i\\pi')
   })
 
   it('lukker IKKE et dollartegn der er valuta', () => {

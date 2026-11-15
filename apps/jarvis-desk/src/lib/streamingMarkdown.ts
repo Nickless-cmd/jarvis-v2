@@ -107,7 +107,14 @@ export function lukAabneMarkeringer(md: string): string {
   const dollar = (synlig.match(/\$/g) ?? []).length
   if (dollar % 2 === 1) {
     const efter = synlig.slice(synlig.lastIndexOf('$') + 1)
-    if (/[\\^_{}]|=/.test(efter)) ud += '$'
+    // Klammerne skal balancere. Målt 15/11-2026: `$e^{i\pi` + en lukning gav
+    // en RØD KaTeX-parsefejl i fladen — værre end den rå tekst den erstattede.
+    // `\alpha`, `x^2` og `\frac{1}{2}` bliver derimod pæne, fordi deres
+    // klammer (hvis nogen) er afsluttet. En ufuldstændig formel er ufuldstændig;
+    // så hellere vise den som skrevet end at påstå den er tegnet.
+    const aabne = (efter.match(/\{/g) ?? []).length
+    const lukkede = (efter.match(/\}/g) ?? []).length
+    if (aabne === lukkede && /[\\^_{}]|=/.test(efter)) ud += '$'
   }
   return ud
 }

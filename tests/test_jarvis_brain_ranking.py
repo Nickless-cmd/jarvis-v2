@@ -318,3 +318,37 @@ def test_salience_term_is_smaller_than_realistic_cosine_spread(brain):
         scored = dict((eid, s) for s, eid in brain.search_brain_scored(
             query_text="x", limit=2, use_temporal_boost=False))
     assert 0.0 < scored[hi] - scored[lo] < 0.05
+
+
+# ── Titel-led (målt 15/11-2026) ─────────────────────────────────────────────
+# «hvilken cykle har jeg?» gav «Bjørns cykelrute» og «Michelle er Bjørns
+# kæreste», mens «Bjørns køretøjer: Gogobest GF750+ cykel» slet ikke kom med.
+# Emne-ordet stod bogstaveligt i den rigtige titel — ren vektor talte det ikke.
+
+
+def test_cykle_rammer_cykel_trods_ombytning(brain):
+    """e/l-ombytningen i «cykle» må ikke gøre titel-matchet blindt."""
+    assert brain._title_lexical_score(
+        "hvilken cykle har jeg?", "Bjørns køretøjer: Gogobest GF750+ cykel"
+    ) >= 0.6
+
+
+def test_titel_uden_emne_ord_giver_nul(brain):
+    """Delte bigrammer alene er ikke et match — sim-gulvet skal holde."""
+    assert brain._title_lexical_score(
+        "hvilken cykle har jeg?", "Michelle er Bjørns kæreste"
+    ) == 0.0
+
+
+def test_titel_ord_slaar_hoejere_cosinus_uden_ordet(brain):
+    """Posten hvis TITEL bærer emne-ordet skal slå en nærmere, men off-topic post."""
+    q = np.zeros(768, dtype=np.float32)
+    q[0], q[1] = 0.78, 0.70  # cos 0,74 mod stoej — 0,67 mod den rigtige
+    rigtig = _write(brain, title="Bjørns køretøjer: Gogobest cykel",
+                    vec=_unit(1), bumps=0, importance=0.8)
+    stoj = _write(brain, title="Michelle er Bjørns kæreste",
+                  vec=_unit(0), bumps=0, importance=0.8)
+    with patch.object(brain, "_embed_text", return_value=q):
+        results = brain.search_brain(
+            query_text="hvilken cykle har jeg?", limit=2, use_temporal_boost=False)
+    assert [e.id for e in results] == [rigtig, stoj]

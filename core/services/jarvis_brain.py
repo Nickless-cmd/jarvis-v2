@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 import hashlib
@@ -737,6 +738,108 @@ _SALIENCE_FLOOR = 0.02
 _COSINE_WEIGHT = 0.95
 _SALIENCE_WEIGHT = 0.05
 
+# Titel-led (målt 15/11-2026). Ren vektor kan ikke skelne et emne-ord fra en
+# tilfaeldig naerhed: nomic giver ALT i et dansk faktasæt 0,68-0,75, så
+# «Bjørn laver gærdej med mælk og smør» (0,685) slog «Bjørns køretøjer:
+# Gogobest GF750+ cykel» (0,617) på spørgsmålet «hvilken cykle har jeg?» —
+# ordet stod bogstaveligt i den rigtige titel og blev aldrig talt med.
+# Leddet er derfor leksikalsk og lille: det kan løfte en titel-match over
+# vektor-støjen, men ikke flytte poster hvis titel ikke matcher.
+_TITLE_WEIGHT = 0.15
+
+# Spørgeord og funktionsord der står i næsten enhver titel-kontekst uden at
+# sige noget om emnet. Uden dem ville «hvilken» og «hvad» give hit hos alle.
+_TITLE_STOPWORDS = frozenset({
+    "hvad", "hvilken", "hvilket", "hvilke", "hvordan", "hvornaar", "hvornår",
+    "hvorfor", "hvor", "hvem", "gerne", "ogsaa", "også", "meget", "mere",
+    "bare", "altsaa", "altså", "faktisk", "egentlig", "sadan", "sådan",
+    "noget", "nogle", "nogen", "dette", "denne", "disse", "mine", "dine",
+    "siger", "sige", "sagde", "ved", "har", "have", "haft", "kan", "kunne",
+    "skal", "skulle", "vil", "ville", "bliver", "blev", "vaere", "være",
+    "vaeret", "været", "denne", "selv", "ogsaa", "igen", "lige", "siden",
+})
+
+_TITLE_WORD_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
+
+# Under denne lighed er ordene ikke i nærheden af hinanden. Uden gulvet gav
+# «cykle» mod «michelle» stadig 0,375 (de deler bigrammet «le») og bidrog med
+# 0,056 — nok til at flytte rangordenen i støj-båndet omkring cos 0,6.
+_TITLE_MIN_SIM = 0.5
+
+
+@lru_cache(maxsize=64)
+def _title_tokens(query_text: str) -> tuple[str, ...]:
+    """Emne-ordene i et spørgsmål. Cachet: samme streng spørges for hver kandidat."""
+    return tuple(
+        t for t in _TITLE_WORD_RE.findall((query_text or "").lower())
+        if len(t) >= 4 and t not in _TITLE_STOPWORDS
+    )
+
+
+def _title_bigrams(word: str) -> set[str]:
+    return {word[i:i + 2] for i in range(len(word) - 1)}
+
+
+def _damerau_similarity(a: str, b: str) -> float:
+    """1 - (Damerau-Levenshtein afstand / længste ord). 0.0-1.0.
+
+    Damerau og ikke ren Levenshtein: «cykle» og «cykel» er ÉN ombytning fra
+    hinanden (e/l), ikke to substitutioner. Målt 15/11-2026 var det præcis den
+    ombytning der gjorde at spørgsmålet «hvilken cykle har jeg?» ikke fandt
+    «Gogobest GF750+ cykel» — en simpel tegn-praefiks ramte slet ikke.
+    """
+    la, lb = len(a), len(b)
+    if la == 0 or lb == 0:
+        return 0.0
+    prev2: list[int] = []
+    prev = list(range(lb + 1))
+    for i in range(1, la + 1):
+        cur = [i] + [0] * lb
+        for j in range(1, lb + 1):
+            cost = 0 if a[i - 1] == b[j - 1] else 1
+            cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
+            if (
+                i > 1 and j > 1
+                and a[i - 1] == b[j - 2] and a[i - 2] == b[j - 1]
+            ):
+                cur[j] = min(cur[j], prev2[j - 2] + 1)
+        prev2, prev = prev, cur
+    return max(0.0, 1.0 - prev[lb] / max(la, lb))
+
+
+def _title_lexical_score(query_text: str, title: str) -> float:
+    """Hvor meget af spørgsmålets emne-ord der faktisk står i titlen. 0.0-1.0.
+
+    Bigram-overlap bruges som GRATIS forfilter (deler to ord ikke ét eneste
+    bigram, er de ikke i nærheden af hinanden), og først derefter regnes
+    Damerau-afstanden — den er dyrere og skal kun køres på reelle kandidater.
+    """
+    tokens = _title_tokens(query_text or "")
+    if not tokens or not title:
+        return 0.0
+    words = [
+        (w, _title_bigrams(w))
+        for w in _TITLE_WORD_RE.findall(title.lower())
+        if len(w) >= 3
+    ]
+    if not words:
+        return 0.0
+
+    total = 0.0
+    for token in tokens:
+        tb = _title_bigrams(token)
+        if not tb:
+            continue
+        best = 0.0
+        for word, wb in words:
+            if not (tb & wb):
+                continue
+            sim = _damerau_similarity(token, word)
+            if sim >= _TITLE_MIN_SIM and sim > best:
+                best = sim
+        total += best
+    return total / len(tokens)
+
 
 def compute_effective_salience(entry: BrainEntry, now: datetime) -> float:
     """Compute time-decayed salience with bump amplification + importance gate.
@@ -909,7 +1012,7 @@ def search_brain_scored(
     # nøgle sammen med id'et — se modulets docstring for hvorfor det er nok.
     sql = """SELECT id, kind, visibility, salience_base, salience_bumps,
                     last_used_at, embedding_dim, created_at, tags,
-                    importance, indexed_at
+                    importance, indexed_at, title
              FROM brain_index
              WHERE embedding IS NOT NULL"""
     params: list = []
@@ -951,6 +1054,10 @@ def search_brain_scored(
             )
             importance = 1.0
         indexed_at = row[10] if len(row) > 10 else ""
+        # Titel hentes fra indekset, ikke fra filen: den ligger allerede i
+        # brain_index, så det leksikalske led koster ét felt mere i SELECT —
+        # ingen fil-I/O, ingen ny tabel. (15/11-2026)
+        entry_title = row[11] if len(row) > 11 and row[11] else ""
         if _VIS_LEVEL[vis] > ceiling_lvl:
             continue
 
@@ -971,7 +1078,8 @@ def search_brain_scored(
                 continue
 
         beholdt.append(
-            (entry_id, kind, sal_base, bumps, last_used, created_at, importance)
+            (entry_id, kind, sal_base, bumps, last_used, created_at, importance,
+             entry_title)
         )
         noegler.append((entry_id, indexed_at or ""))
 
@@ -980,9 +1088,8 @@ def search_brain_scored(
     # ANDET PAS: relevans-filter og salience, nu hvor cosinus allerede er regnet.
     candidate_ids: list[str] = []
     scored: list[tuple[float, str]] = []
-    for (entry_id, kind, sal_base, bumps, last_used, created_at, importance), cos_np in zip(
-        beholdt, cosinusser
-    ):
+    for (entry_id, kind, sal_base, bumps, last_used, created_at, importance,
+         entry_title), cos_np in zip(beholdt, cosinusser):
         cos = float(cos_np)
 
         # Relevans-floor på COS-komponenten (Jarvis-spec 2026-06-23 #3, runde 2):
@@ -1004,7 +1111,8 @@ def search_brain_scored(
         # loftet var bumps en positiv feedback-loop (R1, 2026-09-04).
         eff = max(_SALIENCE_FLOOR, min(raw_eff, importance))
 
-        score = _COSINE_WEIGHT * cos + _SALIENCE_WEIGHT * eff
+        lex = _title_lexical_score(query_text, entry_title)
+        score = _COSINE_WEIGHT * cos + _SALIENCE_WEIGHT * eff + _TITLE_WEIGHT * lex
         scored.append((score, entry_id))
         candidate_ids.append(entry_id)
 

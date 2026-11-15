@@ -382,3 +382,51 @@ def test_lease_keeper_stopper_naar_kaldet_er_faerdigt(queued_run, monkeypatch):
         assert tråd is not None and tråd.is_alive()
 
     assert not tråd.is_alive(), "lease-tråden overlevede kaldet"
+
+
+# ── Et langsomt MODELkald må ikke dræbe sin egen lease ──────────────────────
+# Målt 13/11-2026: Sansernes Arkiv-rutinen døde med
+# `lease_expired_after_retries` og blev pauset. Sidste værktøjssvar faldt
+# 17:19:19, den terminale hændelse 17:21:06 — 107 s hvor intet fornyede
+# leasen. `_LeaseKeeper` dækkede værktøjskaldet, men modelkaldet — det trin
+# der tager længst tid — var det eneste udækkede: `_LeaseProbe` tjekker kun
+# FØR en effect og MELLEM runder. Vagten var monteret, men halvt dækkende.
+
+
+class _LangsomModelDriver:
+    """Et modelkald der varer længere end leasens interval."""
+
+    def __init__(self, sekunder: float):
+        self.sekunder = sekunder
+
+    def complete(self, _request):
+        import time
+
+        time.sleep(self.sekunder)
+        return AgenticTurn(text="done")
+
+
+def test_langsomt_modelkald_fornyer_leasen(queued_run, monkeypatch):
+    """Kørslen skal forny leasen MENS modellen tænker — ikke kun omkring værktøjer."""
+    from core.services.routine_runner import RoutineRunner, _LeaseKeeper
+
+    monkeypatch.setattr(_LeaseKeeper, "INTERVAL_S", 0.05)
+
+    fornyelser = []
+    runner = RoutineRunner(
+        driver=_LangsomModelDriver(0.3), tool_executor=lambda _call: "ok",
+    )
+    ægte_renew = runner.repository.renew
+
+    def _renew(run_id, *, generation, holder):
+        fornyelser.append(generation)
+        return ægte_renew(run_id, generation=generation, holder=holder)
+
+    monkeypatch.setattr(runner.repository, "renew", _renew)
+
+    result = runner.run_once(queued_run.run_id)
+
+    assert result.status == "succeeded"
+    assert fornyelser, (
+        "modelkaldet blev ikke dækket — leasen stod stille mens modellen tænkte"
+    )

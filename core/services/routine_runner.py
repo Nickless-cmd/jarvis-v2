@@ -553,9 +553,18 @@ class _LeaseKeeper:
                     self.run_id, generation=self._generation, holder=self.holder,
                 )
                 self._generation = claim.lease_generation
-            except Exception:  # noqa: BLE001 — en tabt lease skal ikke dræbe tråden
-                _log.debug("rutine: lease-fornyelse under værktøjskald fejlede", exc_info=True)
+            except ValueError:
+                # Leasen er reelt tabt (en anden worker har overtaget). At
+                # forny videre ville være at lyve om ejerskabet — stop.
+                _log.debug("rutine: leasen er overtaget — fornyelse stopper", exc_info=True)
                 return
+            except Exception:  # noqa: BLE001 — forbigående fejl må ikke dræbe vagten
+                # Målt 15/11-2026: én fejlet fornyelse stoppede tråden for
+                # resten af kørslen, og så var leasen udækket igen — vagten
+                # døde stille, præcis som den fejl den skulle lukke. En låst
+                # DB er forbigående; næste interval prøver igen.
+                _log.warning("rutine: lease-fornyelse fejlede — prøver igen", exc_info=True)
+                continue
 
     def __enter__(self) -> "_LeaseKeeper":
         try:
@@ -665,11 +674,22 @@ class RoutineRunner:
             tools_payload=tools_payload,
             max_rounds=_rutine_max_rounds(context),
         )
-        result = execute_agentic(
-            adapter,
-            _RunSink(self.recorder, run_id, claim.lease_generation),
-            _LeaseProbe(self.repository, claim, self.holder),
-        )
+        # Leasen skal holdes i live gennem HELE kørslen — også modelkaldet.
+        #
+        # Målt 13/11-2026: Sansernes Arkiv-rutinen døde med
+        # ``lease_expired_after_retries``. Sidste værktøjssvar faldt 17:19:19,
+        # den terminale hændelse 17:21:06 — 107 s hvor intet fornyede leasen.
+        # ``_LeaseKeeper`` dækkede værktøjskaldet, men modelkaldet — det trin
+        # der tager længst tid — var det eneste udækkede, fordi ``_LeaseProbe``
+        # kun tjekker FØR en effect og MELLEM runder. Et modelkald over 90 s
+        # dræbte derfor sin egen lease, og tre i træk pausede rutinen.
+        with _LeaseKeeper(self.repository, run_id, self.holder) as keeper:
+            keeper.set_generation(claim.lease_generation)
+            result = execute_agentic(
+                adapter,
+                _RunSink(self.recorder, run_id, claim.lease_generation),
+                _LeaseProbe(self.repository, claim, self.holder),
+            )
         if result.status == "succeeded":
             delivery_policy = dict(row["definition_snapshot"].get("delivery_policy") or {})
             channel = str(delivery_policy.get("channel") or "desk").strip().lower()

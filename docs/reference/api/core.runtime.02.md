@@ -486,43 +486,43 @@ _SQLite repository for first-class, owner-scoped Routines._
 | function | `stop_routine` | `(routine_id, *, expected_version=…)` | Stop a definition and revoke/cancel all unfinished work atomically. | [src](../../../core/runtime/db_routines.py#L657) |
 | function | `create_run` | `(*, routine_id, idempotency_key, trigger_source=…, execution_context=…)` | — | [src](../../../core/runtime/db_routines.py#L692) |
 | function | `get_run` | `(run_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L737) |
-| function | `list_runs` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L757) |
-| function | `cancel_run` | `(run_id)` | — | [src](../../../core/runtime/db_routines.py#L767) |
-| function | `list_stopped_routines` | `(*, before)` | — | [src](../../../core/runtime/db_routines.py#L788) |
-| function | `delete_routine_content` | `(routine_id, *, reason_code=…)` | Erase all private material and retain only a content-free audit tombstone. | [src](../../../core/runtime/db_routines.py#L798) |
-| function | `read_run_events` | `(run_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L841) |
-| function | `claim_run` | `(run_id, *, holder, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L857) |
-| function | `renew_run_lease` | `(run_id, *, holder, expected_generation, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L887) |
-| function | `release_run_claim` | `(run_id, *, holder, expected_generation)` | Return an unstarted dispatch to the queue without changing occurrence identity. | [src](../../../core/runtime/db_routines.py#L905) |
-| function | `reclaim_run` | `(run_id, *, expected_generation, holder, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L924) |
-| function | `assert_current_run_lease` | `(run_id, *, expected_generation, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L943) |
-| function | `list_active_runs` | `(*, owner_user_id, limit=…)` | Kørsler der er i gang LIGE NU for én ejer — på tværs af alle rutiner. | [src](../../../core/runtime/db_routines.py#L963) |
-| function | `list_origin_sessions` | `(origin, *, limit=…)` | De autonome sessioner for én oprindelse, nyeste først. | [src](../../../core/runtime/db_routines.py#L1003) |
-| function | `next_queued_run` | `()` | — | [src](../../../core/runtime/db_routines.py#L1029) |
-| function | `record_tool_effect_started` | `(*, run_id, call_id, tool_name, expected_generation, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L1038) |
-| function | `settle_tool_effect` | `(*, run_id, call_id, expected_generation, succeeded, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L1079) |
-| function | `list_open_tool_effects` | `(run_id)` | — | [src](../../../core/runtime/db_routines.py#L1121) |
-| function | `_visible_run_status` | `(visible_run_id)` | Status paa det visible run et rutine-run blev bundet til — eller "". | [src](../../../core/runtime/db_routines.py#L1142) |
-| function | `_settle_from_visible` | `(row, *, visible, now)` | Afregn et rutine-run ud fra det visible runs terminale status. | [src](../../../core/runtime/db_routines.py#L1160) |
-| function | `bind_session` | `(run_id, *, session_id)` | Gem hvilken SAMTALE rutine-runnet blev sendt til. | [src](../../../core/runtime/db_routines.py#L1191) |
-| function | `bind_visible_run` | `(run_id, *, visible_run_id, session_id=…)` | Bind et rutine-run til det visible run der FAKTISK udfoerer det. | [src](../../../core/runtime/db_routines.py#L1212) |
-| function | `reconcile_expired_runs` | `(*, now)` | — | [src](../../../core/runtime/db_routines.py#L1238) |
-| function | `update_execution_failure_count` | `(routine_id, *, success)` | — | [src](../../../core/runtime/db_routines.py#L1323) |
-| function | `get_execution_failure_count` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L1344) |
-| function | `append_run_event` | `(*, run_id, kind, payload, terminal=…, event_id=…, expected_generation=…)` | — | [src](../../../core/runtime/db_routines.py#L1355) |
-| function | `transition_run` | `(run_id, *, to_status, expected_generation=…, result=…, diagnostic_code=…)` | — | [src](../../../core/runtime/db_routines.py#L1388) |
-| function | `complete_run_success` | `(run_id, *, expected_generation, result, delivery_channel)` | Atomically persist success, its terminal event, and private outbox row. | [src](../../../core/runtime/db_routines.py#L1417) |
-| function | `create_delivery` | `(*, run_id, channel, payload=…)` | — | [src](../../../core/runtime/db_routines.py#L1473) |
-| function | `claim_delivery_for_run` | `(run_id, *, holder)` | — | [src](../../../core/runtime/db_routines.py#L1500) |
-| function | `claim_next_delivery` | `(*, holder)` | Claim the oldest due outbox item across all Routine runs. | [src](../../../core/runtime/db_routines.py#L1543) |
-| function | `settle_delivery` | `(delivery_id, *, holder, outcome, next_attempt_at=…, receipt=…)` | — | [src](../../../core/runtime/db_routines.py#L1568) |
-| function | `count_runs` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L1606) |
-| function | `set_inbox_preference` | `(owner_user_id, *, routine_id=…, policy)` | — | [src](../../../core/runtime/db_routines.py#L1614) |
-| function | `get_inbox_preference` | `(owner_user_id, *, routine_id=…)` | — | [src](../../../core/runtime/db_routines.py#L1633) |
-| function | `put_quarantine` | `(*, source_kind, source_id_hash, source_reference, classifier_evidence, reason_code, sealed_for=…)` | — | [src](../../../core/runtime/db_routines.py#L1646) |
-| function | `get_legacy_routine_id` | `(*, source_kind, source_id)` | — | [src](../../../core/runtime/db_routines.py#L1672) |
-| function | `hidden_migrated_source_ids` | `(*, source_kind, source_ids)` | Return only legacy rows covered by applied migration artifacts. | [src](../../../core/runtime/db_routines.py#L1682) |
-| function | `run_exists_for_trigger` | `(*, routine_id, idempotency_key)` | — | [src](../../../core/runtime/db_routines.py#L1717) |
+| function | `list_runs` | `(routine_id, *, decrypt_for=…)` | Rutinens kørsler, ældste først. | [src](../../../core/runtime/db_routines.py#L757) |
+| function | `cancel_run` | `(run_id)` | — | [src](../../../core/runtime/db_routines.py#L795) |
+| function | `list_stopped_routines` | `(*, before)` | — | [src](../../../core/runtime/db_routines.py#L816) |
+| function | `delete_routine_content` | `(routine_id, *, reason_code=…)` | Erase all private material and retain only a content-free audit tombstone. | [src](../../../core/runtime/db_routines.py#L826) |
+| function | `read_run_events` | `(run_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L869) |
+| function | `claim_run` | `(run_id, *, holder, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L885) |
+| function | `renew_run_lease` | `(run_id, *, holder, expected_generation, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L915) |
+| function | `release_run_claim` | `(run_id, *, holder, expected_generation)` | Return an unstarted dispatch to the queue without changing occurrence identity. | [src](../../../core/runtime/db_routines.py#L933) |
+| function | `reclaim_run` | `(run_id, *, expected_generation, holder, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L952) |
+| function | `assert_current_run_lease` | `(run_id, *, expected_generation, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L971) |
+| function | `list_active_runs` | `(*, owner_user_id, limit=…)` | Kørsler der er i gang LIGE NU for én ejer — på tværs af alle rutiner. | [src](../../../core/runtime/db_routines.py#L991) |
+| function | `list_origin_sessions` | `(origin, *, limit=…)` | De autonome sessioner for én oprindelse, nyeste først. | [src](../../../core/runtime/db_routines.py#L1031) |
+| function | `next_queued_run` | `()` | — | [src](../../../core/runtime/db_routines.py#L1057) |
+| function | `record_tool_effect_started` | `(*, run_id, call_id, tool_name, expected_generation, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L1066) |
+| function | `settle_tool_effect` | `(*, run_id, call_id, expected_generation, succeeded, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L1107) |
+| function | `list_open_tool_effects` | `(run_id)` | — | [src](../../../core/runtime/db_routines.py#L1149) |
+| function | `_visible_run_status` | `(visible_run_id)` | Status paa det visible run et rutine-run blev bundet til — eller "". | [src](../../../core/runtime/db_routines.py#L1170) |
+| function | `_settle_from_visible` | `(row, *, visible, now)` | Afregn et rutine-run ud fra det visible runs terminale status. | [src](../../../core/runtime/db_routines.py#L1188) |
+| function | `bind_session` | `(run_id, *, session_id)` | Gem hvilken SAMTALE rutine-runnet blev sendt til. | [src](../../../core/runtime/db_routines.py#L1219) |
+| function | `bind_visible_run` | `(run_id, *, visible_run_id, session_id=…)` | Bind et rutine-run til det visible run der FAKTISK udfoerer det. | [src](../../../core/runtime/db_routines.py#L1240) |
+| function | `reconcile_expired_runs` | `(*, now)` | — | [src](../../../core/runtime/db_routines.py#L1266) |
+| function | `update_execution_failure_count` | `(routine_id, *, success)` | — | [src](../../../core/runtime/db_routines.py#L1351) |
+| function | `get_execution_failure_count` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L1372) |
+| function | `append_run_event` | `(*, run_id, kind, payload, terminal=…, event_id=…, expected_generation=…)` | — | [src](../../../core/runtime/db_routines.py#L1383) |
+| function | `transition_run` | `(run_id, *, to_status, expected_generation=…, result=…, diagnostic_code=…)` | — | [src](../../../core/runtime/db_routines.py#L1416) |
+| function | `complete_run_success` | `(run_id, *, expected_generation, result, delivery_channel)` | Atomically persist success, its terminal event, and private outbox row. | [src](../../../core/runtime/db_routines.py#L1445) |
+| function | `create_delivery` | `(*, run_id, channel, payload=…)` | — | [src](../../../core/runtime/db_routines.py#L1501) |
+| function | `claim_delivery_for_run` | `(run_id, *, holder)` | — | [src](../../../core/runtime/db_routines.py#L1528) |
+| function | `claim_next_delivery` | `(*, holder)` | Claim the oldest due outbox item across all Routine runs. | [src](../../../core/runtime/db_routines.py#L1571) |
+| function | `settle_delivery` | `(delivery_id, *, holder, outcome, next_attempt_at=…, receipt=…)` | — | [src](../../../core/runtime/db_routines.py#L1596) |
+| function | `count_runs` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L1634) |
+| function | `set_inbox_preference` | `(owner_user_id, *, routine_id=…, policy)` | — | [src](../../../core/runtime/db_routines.py#L1642) |
+| function | `get_inbox_preference` | `(owner_user_id, *, routine_id=…)` | — | [src](../../../core/runtime/db_routines.py#L1661) |
+| function | `put_quarantine` | `(*, source_kind, source_id_hash, source_reference, classifier_evidence, reason_code, sealed_for=…)` | — | [src](../../../core/runtime/db_routines.py#L1674) |
+| function | `get_legacy_routine_id` | `(*, source_kind, source_id)` | — | [src](../../../core/runtime/db_routines.py#L1700) |
+| function | `hidden_migrated_source_ids` | `(*, source_kind, source_ids)` | Return only legacy rows covered by applied migration artifacts. | [src](../../../core/runtime/db_routines.py#L1710) |
+| function | `run_exists_for_trigger` | `(*, routine_id, idempotency_key)` | — | [src](../../../core/runtime/db_routines.py#L1745) |
 
 ## `core/runtime/db_runtime_browser.py`
 _Persistence for the `runtime_browser_bodies` table — Jarvis' browser bodies._

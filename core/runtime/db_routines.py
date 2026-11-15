@@ -754,14 +754,42 @@ def get_run(run_id: str, *, decrypt_for: str | None = None) -> dict[str, Any] | 
     return result
 
 
-def list_runs(routine_id: str) -> list[dict[str, Any]]:
+def list_runs(
+    routine_id: str, *, decrypt_for: str | None = None
+) -> list[dict[str, Any]]:
+    """Rutinens kørsler, ældste først.
+
+    ``decrypt_for`` lukker ``result_enc`` og definitionens instruktion op.
+    Uden den kommer rækkerne RÅ ud — og da både svaret og instruktionen bor i
+    krypterede BLOB-kolonner, ser læseren dem slet ikke. Målt 15/11-2026:
+    ``backfill`` skrev «(kørslen gav intet svar)» for kørsler der havde 5.662
+    tegns svar, fordi den ledte efter et ``result``-felt der først findes
+    efter dekryptering. Standard er None, så en kaldende part der kun skal
+    have status og id ikke betaler for dekrypteringen.
+    """
     with connect() as conn:
         _ensure_tables(conn)
         rows = conn.execute(
             "SELECT * FROM routine_runs WHERE routine_id=? ORDER BY created_at,run_id",
             (routine_id,),
         ).fetchall()
-    return [dict(row) for row in rows]
+    items = [dict(row) for row in rows]
+    if decrypt_for is None:
+        return items
+    for item in items:
+        if item.get("result_enc") is not None:
+            item["result"] = open_sealed(decrypt_for, bytes(item["result_enc"]))
+        if item.get("execution_context_enc") is not None:
+            item["execution_context"] = _open_json(
+                decrypt_for, item["execution_context_enc"]
+            )
+        if item.get("definition_snapshot_enc") is not None:
+            snapshot = _open_json(decrypt_for, item["definition_snapshot_enc"])
+            raa = snapshot.pop("instruction_b64", None)
+            if raa is not None:
+                snapshot["instruction"] = base64.b64decode(raa)
+            item["definition_snapshot"] = snapshot
+    return items
 
 
 def cancel_run(run_id: str) -> dict[str, Any]:

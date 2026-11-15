@@ -471,7 +471,15 @@ class RoutineService:
         if row is None:
             raise KeyError(routine_id)
         require_authorized(actor, Action.READ_CONTENT, row)
-        return [_run_view(item) for item in db_routines.list_runs(routine_id)]
+        # Kørslernes svar og instruktion ligger i krypterede BLOB-kolonner.
+        # Uden `decrypt_for` er `result` feltet ikke til stede, og både
+        # kørselslisten og rutinens transcript ville se tomt ud (målt 15/11-2026).
+        return [
+            _run_view(item)
+            for item in db_routines.list_runs(
+                routine_id, decrypt_for=str(row["owner_user_id"])
+            )
+        ]
 
     def list_run_events(self, *args: Any) -> list[dict[str, Any]]:
         actor, rest = self._actor_and_rest(args)

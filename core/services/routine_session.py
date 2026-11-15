@@ -100,6 +100,23 @@ def _har_identisk(session_id: str, role: str, content: str) -> bool:
     return row is not None
 
 
+def _tom_tekst(status: str, diagnostic_code: str = "") -> str:
+    """Hvad fladen siger når kørslen ikke efterlod et svar.
+
+    «(kørslen gav intet svar)» var før den eneste tekst, også for kørsler der
+    FEJLEDE eller blev afbrudt — så en fejl så ud som en tavs kørsel. Målt
+    15/11-2026: to kørsler med status `failed` stod som «intet svar».
+    """
+    kode = str(diagnostic_code or "").strip()
+    if status == "failed":
+        return f"(kørslen fejlede{' — ' + kode if kode else ''})"
+    if status in ("cancelled", "cancelling"):
+        return "(kørslen blev afbrudt)"
+    if status == "waiting_approval":
+        return "(kørslen venter på godkendelse)"
+    return "(kørslen gav intet svar)"
+
+
 def append_run(
     session_id: str,
     *,
@@ -107,6 +124,8 @@ def append_run(
     instruction: str = "",
     result: str = "",
     created_at: str = "",
+    status: str = "",
+    diagnostic_code: str = "",
 ) -> bool:
     """Skriv én kørsel ind i rutinens session som opgave + svar.
 
@@ -127,7 +146,7 @@ def append_run(
     if not sid or not rid:
         return False
     ts = str(created_at or datetime.now(UTC).isoformat())
-    tekst = str(result or "").strip() or "(kørslen gav intet svar)"
+    tekst = str(result or "").strip() or _tom_tekst(status, diagnostic_code)
     try:
         # SVARET er kørselens markør. Opgaven kan ikke være det: hver kørsel af
         # samme rutine har samme instruks, så en indholds-dedup på opgave-linjen
@@ -175,7 +194,13 @@ def backfill(
         svar = _felt(run, "result")
         if isinstance(svar, bytes):
             svar = svar.decode("utf-8", "replace")
+        # Den HISTORISKE instruks, ikke rutinens nuværende: en rutine der er
+        # redigeret siden, skal stadig vise hvad den blev bedt om den gang.
         opgave = _felt(run, "instruction")
+        if opgave is None:
+            snapshot = _felt(run, "definition_snapshot") or {}
+            if isinstance(snapshot, dict):
+                opgave = snapshot.get("instruction")
         if isinstance(opgave, bytes):
             opgave = opgave.decode("utf-8", "replace")
         if append_run(
@@ -184,6 +209,8 @@ def backfill(
             instruction=str(opgave or instruction or ""),
             result=str(svar or ""),
             created_at=str(_felt(run, "created_at") or ""),
+            status=str(_felt(run, "status") or ""),
+            diagnostic_code=str(_felt(run, "diagnostic_code") or ""),
         ):
             skrevet += 1
     return skrevet

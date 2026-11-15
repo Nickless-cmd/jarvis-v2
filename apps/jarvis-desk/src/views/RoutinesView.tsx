@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronRight, Clock3, Loader2, MoreVertical, Pencil, Play, Plus, RotateCcw, Square, Trash2, X } from 'lucide-react'
+import { ChevronRight, Clock3, ExternalLink, Loader2, MoreVertical, Pencil, Play, Plus, RotateCcw, Square, Trash2, X } from 'lucide-react'
 import type { ApiConfig } from '../lib/api'
 import {
   deleteRoutine, listRoutines, routineAction, runRoutine,
@@ -31,6 +31,10 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit, ini
   const [error, setError] = useState('')
   const [busy, setBusy] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  // Den session panelet viser — løftet op fra RoutineChat, så «Åbn i
+  // chatvisningen» kan stå i header'en ved siden af «Indstillinger».
+  const [chatSession, setChatSession] = useState<{ sessionId: string; kind: 'routine' | 'origin' } | null>(null)
+
   // Konfigurationen er pakket væk bag «Indstillinger»: panelet viser
   // som udgangspunkt hvad rutinen HAR gjort, ikke hvad den er sat til.
   const [visDetaljer, setVisDetaljer] = useState(false)
@@ -151,6 +155,12 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit, ini
             <header className="routine-detail-head">
               <div><div className="routine-kicker">{selected.access_scope === 'system_owner' ? 'System · owner' : 'Privat rutine'}</div><h2>{selected.name}</h2></div>
               <div className="routine-actions">
+                {!visDetaljer && chatSession && onOpenSession && (
+                  <button className="routine-button secondary" type="button"
+                    onClick={() => onOpenSession(chatSession.sessionId)}>
+                    <ExternalLink size={13} /> Åbn i chatvisningen
+                  </button>
+                )}
                 <button className="routine-button secondary" type="button"
                   aria-label="Rutineindstillinger" aria-expanded={visDetaljer}
                   onClick={() => setVisDetaljer((v) => !v)}>
@@ -187,7 +197,7 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit, ini
                 </div>
               </>
             ) : (
-              <RoutineChat config={config} routineId={selected.routine_id} onOpenSession={onOpenSession} />
+              <RoutineChat config={config} routineId={selected.routine_id} onSession={setChatSession} />
             )}
           </>
         )}

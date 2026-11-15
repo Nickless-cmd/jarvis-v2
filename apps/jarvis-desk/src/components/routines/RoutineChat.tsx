@@ -35,12 +35,14 @@ type Besked = {
  *  læsning og skriver gennem samme stream-endpoint som chat-fladen, så svaret
  *  er et rigtigt run i netop denne session.
  */
-export function RoutineChat({ config, routineId, onOpenSession }: {
+export function RoutineChat({ config, routineId, onSession }: {
   config: ApiConfig
   routineId: string
-  /** Åbner sessionen i den rigtige chatvisning (til system-rutinernes autonome
-   *  sessioner, hvor der også kan ligge værktøjsspor). */
-  onOpenSession?: (sessionId: string) => void
+  /** Melder den session panelet viser op til view'et. Knappen «Åbn i
+   *  chatvisningen» hører i header'en ved siden af «Indstillinger» (Bjørn
+   *  15/11-2026), og den skal vide hvilken session der er tale om — derfor
+   *  rapporteres den op i stedet for at knappen ligger nederst i panelet. */
+  onSession?: (info: { sessionId: string; kind: 'routine' | 'origin' } | null) => void
 }) {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [kind, setKind] = useState<'routine' | 'origin'>('routine')
@@ -55,17 +57,22 @@ export function RoutineChat({ config, routineId, onOpenSession }: {
   useEffect(() => {
     let alive = true
     setSessionId(null); setBeskeder(null); setFejl('')
+    onSession?.(null)
     getRoutineChatSession(config, routineId)
       .then((svar) => {
         if (!alive) return
         setSessionId(svar.session_id)
         setKind(svar.kind === 'origin' ? 'origin' : 'routine')
+        onSession?.({
+          sessionId: svar.session_id,
+          kind: svar.kind === 'origin' ? 'origin' : 'routine',
+        })
       })
       .catch((reason) => {
         if (alive) setFejl(reason instanceof Error ? reason.message : 'Kunne ikke åbne rutinens samtale')
       })
     return () => { alive = false }
-  }, [config, routineId])
+  }, [config, routineId, onSession])
 
   const hent = useCallback(async () => {
     if (!sessionId) return
@@ -160,11 +167,6 @@ export function RoutineChat({ config, routineId, onOpenSession }: {
         visKontekstRing={false}
         draftKey={`rutine-${routineId}`}
       />
-      {kind === 'origin' && sessionId && onOpenSession && (
-        <button type="button" className="routine-chat-aabn" onClick={() => onOpenSession(sessionId)}>
-          Åbn i chatvisningen
-        </button>
-      )}
     </div>
   )
 }

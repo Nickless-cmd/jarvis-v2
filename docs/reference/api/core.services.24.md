@@ -99,11 +99,11 @@ _Authorized lifecycle service for versioned Routine definitions and runs._
 | method | `RoutineService.cancel_run` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L436) |
 | method | `RoutineService.list` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L455) |
 | method | `RoutineService.list_runs` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L465) |
-| method | `RoutineService.list_run_events` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L476) |
-| method | `RoutineService.get_inbox_defaults` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L489) |
-| method | `RoutineService.set_inbox_defaults` | `(self, policy, *args)` | — | [src](../../../core/services/routine_service.py#L495) |
-| method | `RoutineService.get_redacted_diagnostic` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L505) |
-| method | `RoutineService.archive_stopped_before` | `(self, *, now=…)` | — | [src](../../../core/services/routine_service.py#L528) |
+| method | `RoutineService.list_run_events` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L484) |
+| method | `RoutineService.get_inbox_defaults` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L497) |
+| method | `RoutineService.set_inbox_defaults` | `(self, policy, *args)` | — | [src](../../../core/services/routine_service.py#L503) |
+| method | `RoutineService.get_redacted_diagnostic` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L513) |
+| method | `RoutineService.archive_stopped_before` | `(self, *, now=…)` | — | [src](../../../core/services/routine_service.py#L536) |
 
 ## `core/services/routine_session.py`
 _Rutinens egen samtale — fladen hvor man kan SE hvad den gjorde, og svare den._
@@ -115,8 +115,9 @@ _Rutinens egen samtale — fladen hvor man kan SE hvad den gjorde, og svare den.
 | function | `ensure_routine_session` | `(routine_id, *, title, owner_user_id=…)` | Sikr at rutinens session findes. Idempotent (INSERT OR IGNORE). | [src](../../../core/services/routine_session.py#L58) |
 | function | `_felt` | `(obj, key)` | Læs et felt fra både en dataclass/række og en dict. | [src](../../../core/services/routine_session.py#L75) |
 | function | `_har_identisk` | `(session_id, role, content)` | Findes beskeden allerede i sessionen? | [src](../../../core/services/routine_session.py#L82) |
-| function | `append_run` | `(session_id, *, run_id, instruction=…, result=…, created_at=…)` | Skriv én kørsel ind i rutinens session som opgave + svar. | [src](../../../core/services/routine_session.py#L103) |
-| function | `backfill` | `(session_id, runs, *, instruction=…, limit=…)` | Skriv de seneste kørsler ind i en NY rutine-session. | [src](../../../core/services/routine_session.py#L152) |
+| function | `_tom_tekst` | `(status, diagnostic_code=…)` | Hvad fladen siger når kørslen ikke efterlod et svar. | [src](../../../core/services/routine_session.py#L103) |
+| function | `append_run` | `(session_id, *, run_id, instruction=…, result=…, created_at=…, status=…, diagnostic_code=…)` | Skriv én kørsel ind i rutinens session som opgave + svar. | [src](../../../core/services/routine_session.py#L120) |
+| function | `backfill` | `(session_id, runs, *, instruction=…, limit=…)` | Skriv de seneste kørsler ind i en NY rutine-session. | [src](../../../core/services/routine_session.py#L171) |
 
 ## `core/services/routine_types.py`
 _Value objects shared by the Routine domain._

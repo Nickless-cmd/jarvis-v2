@@ -75,6 +75,34 @@ def test_tomt_svar_bliver_stadig_en_raekke(isolated_runtime):
     assert rows[-1][2] == "(kørslen gav intet svar)"
 
 
+def test_en_fejlet_koersel_siger_at_den_fejlede(isolated_runtime):
+    """«intet svar» må ikke dække over en fejl — de to er forskellige ting.
+
+    Målt 15/11-2026: to kørsler med status `failed` stod som «(kørslen gav
+    intet svar)» i rutinens transcript, så en fejl lignede en tavs kørsel.
+    """
+    sid = rs.ensure_routine_session("r3b", title="Fejl")
+    rs.append_run(sid, run_id="f1", instruction="Opgave", result="", status="failed")
+    rs.append_run(sid, run_id="f2", instruction="Opgave", result="", status="cancelled")
+    rs.append_run(sid, run_id="f3", instruction="Opgave", result="", status="succeeded")
+    svar = [r[2] for r in _beskeder(sid) if r[1] == "assistant"]
+    assert svar == [
+        "(kørslen fejlede)",
+        "(kørslen blev afbrudt)",
+        "(kørslen gav intet svar)",
+    ]
+
+
+def test_fejlkoden_staar_i_teksten(isolated_runtime):
+    """En fejl uden sin kode er en fejl man ikke kan handle på."""
+    sid = rs.ensure_routine_session("r3c", title="Fejlkode")
+    rs.append_run(
+        sid, run_id="f4", instruction="Opgave", result="",
+        status="failed", diagnostic_code="provider_timeout",
+    )
+    assert _beskeder(sid)[-1][2] == "(kørslen fejlede — provider_timeout)"
+
+
 def test_backfill_skriver_de_seneste_koersler_i_raekkefoelge(isolated_runtime):
     sid = rs.ensure_routine_session("r4", title="Historik")
     runs = [

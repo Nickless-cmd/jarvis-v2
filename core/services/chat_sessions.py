@@ -811,7 +811,7 @@ def get_chat_session(session_id: str) -> dict[str, object] | None:
             return None
         messages = conn.execute(
             """
-            SELECT message_id, role, content, content_json, created_at
+            SELECT message_id, role, content, content_json, created_at, user_id
             FROM chat_messages
             WHERE session_id = ?
             ORDER BY id ASC
@@ -857,6 +857,14 @@ def get_chat_session(session_id: str) -> dict[str, object] | None:
             "content_json": blocks,
             "ts": _time_label(str(row["created_at"])),
             "created_at": str(row["created_at"]),
+            # HVEM DER SKREV RÆKKEN (15/11-2026). Tom betyder «skrevet af
+            # systemet, ikke af et menneske». Det er sådan rutinens
+            # opgave-linje — opgave/svar-parets første halvdel, skrevet af
+            # `routine_session.append_run` — kan skelnes fra en besked Bjørn
+            # selv skrev i samme session. Målt samme dag: 169 system-rækker
+            # med tomt felt mod 3 med hans id. Uden feltet måtte fladen gætte
+            # ud fra indholdet, og så ville hans EGEN besked forsvinde.
+            "user_id": str(row["user_id"] or ""),
         }
         # RUN-ID MED UD (6/10-2026). Klienten holder en bro-kopi af det
         # streamede svar efter `message_stop` og skal kunne se hvilken af

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronRight, Clock3, ExternalLink, Loader2, MoreVertical, Pencil, Play, Plus, RotateCcw, Square, Trash2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock3, ExternalLink, Loader2, MoreVertical, Pencil, Play, Plus, RotateCcw, Square, Trash2, X } from 'lucide-react'
 import type { ApiConfig } from '../lib/api'
 import {
   deleteRoutine, listRoutines, routineAction, runRoutine,
@@ -39,6 +39,15 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit, ini
   // som udgangspunkt hvad rutinen HAR gjort, ikke hvad den er sat til.
   const [visDetaljer, setVisDetaljer] = useState(false)
 
+  // MOBIL (15/11-2026). Under 760 px deler listen og detaljen én kolonne, så
+  // kun én kan vises ad gangen. Før styrede CSS'en det med
+  // `:has(.routine-list-row.active)` — men `selected` falder altid tilbage på
+  // `visible[0]`, så der var ALTID en aktiv række, og biblioteket blev skjult
+  // i samme øjeblik fladen åbnede. Bjørn: «i pwa mobil view kan man ikk se
+  // rutine listen når man trykker på rutiner i venstre menu». Nu er det en
+  // eksplicit tilstand: listen vises først, detaljen når man vælger.
+  const [mobilListe, setMobilListe] = useState(!initialRoutineId)
+
   const load = useCallback(async () => {
     setError('')
     try { setRoutines(await listRoutines(config)) }
@@ -51,7 +60,9 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit, ini
   // frem for bare listen. `selectedId` er intern, så valget kommer ind som et
   // startpunkt og rører ikke brugerens senere klik (15/11-2026).
   useEffect(() => {
-    if (initialRoutineId) setSelectedId(initialRoutineId)
+    if (!initialRoutineId) return
+    setSelectedId(initialRoutineId)
+    setMobilListe(false)
   }, [initialRoutineId])
 
   // Rutiner kan ændre status i baggrunden (migration, auto-pause og runner).
@@ -116,7 +127,7 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit, ini
     <button key={routine.routine_id} type="button" role="listitem"
       aria-label={`${routine.name} · ${statusName[routine.status] ?? routine.status}`}
       className={`routine-list-row${selected?.routine_id === routine.routine_id ? ' active' : ''}`}
-      onClick={() => { setSelectedId(routine.routine_id); setTab('overview'); setConfirmDelete(false) }}>
+      onClick={() => { setSelectedId(routine.routine_id); setTab('overview'); setConfirmDelete(false); setMobilListe(false) }}>
       <span className="routine-list-name">{routine.name}</span>
       <span className="routine-list-meta">
         <span className={`routine-dot is-${routine.status}`} />{statusName[routine.status] ?? routine.status}
@@ -125,7 +136,7 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit, ini
   ))
 
   return (
-    <section className="routines-view">
+    <section className={`routines-view${mobilListe ? ' vis-liste' : ''}`}>
       <aside className="routine-library" aria-label="Rutinebibliotek">
         <header className="routine-library-head">
           <div><h1>Rutiner</h1><p>Dit arbejde, der kan køre af sig selv</p></div>
@@ -153,7 +164,13 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit, ini
         ) : (
           <>
             <header className="routine-detail-head">
-              <div><div className="routine-kicker">{selected.access_scope === 'system_owner' ? 'System · owner' : 'Privat rutine'}</div><h2>{selected.name}</h2></div>
+              <div>
+                <button type="button" className="routine-tilbage" aria-label="Til rutinelisten" onClick={() => setMobilListe(true)}>
+                  <ChevronLeft size={14} /> Alle rutiner
+                </button>
+                <div className="routine-kicker">{selected.access_scope === 'system_owner' ? 'System · owner' : 'Privat rutine'}</div>
+                <h2>{selected.name}</h2>
+              </div>
               <div className="routine-actions">
                 {!visDetaljer && chatSession && onOpenSession && (
                   <button className="routine-button secondary" type="button"

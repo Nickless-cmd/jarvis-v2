@@ -45,6 +45,11 @@ export interface ChatMessage {
   content: ContentBlock[]       // ændret fra string — understøtter tool_use/image
   created_at: string
   parent_id?: string | null     // branch-søm
+  /** Hvem der skrev rækken. TOM betyder «skrevet af systemet» — rutinens
+   *  opgave-linje har tomt felt, mens en besked Bjørn selv skrev i samme
+   *  session har hans id. Rutinefladen skjuler netop systemets linje og
+   *  beholder hans egen (15/11-2026). */
+  user_id?: string
   /** Run'et der skrev beskeden. Serveren sender det KUN når den ved det, så
    *  `undefined` betyder «uvist» — aldrig «et andet run». Bruges til at droppe
    *  bro-kopien præcist i stedet for at sammenligne prosa serveren selv har

@@ -20,6 +20,10 @@
 .routine-dot.is-active { background: var(--ok); }.routine-dot.is-paused { background: var(--warn-fg); }.routine-dot.is-stopped { background: var(--error-fg); }
 .routine-detail { min-width: 0; min-height: 0; overflow-y: auto; background: var(--page-bg); }
 .routine-detail-head { min-height: 76px; padding: 13px 22px; }
+/* Kun på mobil: vejen tilbage fra detaljen til listen. Skjult på bred skærm,
+   hvor begge står side om side. */
+.routine-tilbage { display: none; align-items: center; gap: 3px; margin: 0 0 6px -3px; padding: 2px 4px; border: 0; background: transparent; color: var(--fg-3); font: inherit; font-size: 12px; cursor: pointer; }
+.routine-tilbage:hover, .routine-tilbage:focus-visible { color: var(--fg-1); outline: none; }
 .routine-kicker { margin-bottom: 2px; color: var(--fg-3); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
 .routine-detail-head h2 { font-size: 19px; font-weight: 600; }
 .routine-actions, .routine-form-actions, .routine-confirm { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
@@ -46,7 +50,9 @@
 .routine-form { display: grid; gap: 17px; width: min(720px, calc(100% - 40px)); margin: 0 auto; padding: 32px 0 56px; }.routine-form-intro h1 { font-size: 22px; }.routine-form-intro p { margin-top: 5px; color: var(--fg-3); font-size: 13px; }
 .routine-form label { display: grid; gap: 6px; color: var(--fg-2); font-size: 12px; font-weight: 550; }.routine-form input, .routine-form textarea, .routine-form select { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); outline: none; background: var(--field-bg); color: var(--fg-1); font: inherit; font-size: 13px; }.routine-form textarea { resize: vertical; line-height: 1.55; }.routine-form input:focus, .routine-form textarea:focus, .routine-form select:focus { border-color: var(--accent); }
 .routine-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }.routine-form .routine-check { display: flex; align-items: center; gap: 8px; font-weight: 400; }.routine-form .routine-check input { width: auto; accent-color: var(--accent); }.routine-inbox-options { padding: 15px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg-2); }.routine-inbox-options legend { padding: 0 6px; color: var(--fg-2); font-size: 12px; font-weight: 600; }.routine-inbox-options > p { margin-bottom: 12px; color: var(--fg-3); font-size: 12px; }.routine-inbox-options > div { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }.routine-state-note { color: var(--warn-fg); font-size: 12px; }.routine-form-actions { justify-content: flex-end; padding-top: 5px; }
-@media (max-width: 760px) { .routines-view { grid-template-columns: 1fr; }.routine-library:has(.routine-list-row.active) { display: none; }.routine-facts { grid-template-columns: 1fr 1fr; }.routine-detail-head { align-items: flex-start; flex-direction: column; }.routine-form-grid { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .routines-view { grid-template-columns: 1fr; }.routines-view.vis-liste .routine-detail { display: none; }
+  .routine-tilbage { display: inline-flex; }
+  .routines-view:not(.vis-liste) .routine-library { display: none; }.routine-facts { grid-template-columns: 1fr 1fr; }.routine-detail-head { align-items: flex-start; flex-direction: column; }.routine-form-grid { grid-template-columns: 1fr; } }
 
 /* Resultatet er det mennesket kom for — det skal læses som prosa, ikke som log.
    Målt 26/10-2026: fladen viste kun routine_run_events (rå værktøjskald), mens
@@ -96,70 +102,22 @@
   margin: 0 auto;
 }
 
-.routine-chat > .composer {
+/* Composerens ROD hedder `composer-shell` — ikke `composer` (som er den
+   indre pille). Reglen her ramte derfor intet, og composeren faldt tilbage
+   til `width: 100%` af panelet mens boblerne stod på 820px (målt 15/11-2026:
+   det var netop den forskel Bjørn så på mobilen). */
+.routine-chat > .composer-shell {
   width: 100%;
   max-width: 820px;
   margin: 0 auto;
 }
 
-.routine-chat-msg {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+/* Samme pille og samme luft under som i chatten (chat-viewport.css sætter
+   `margin: 4px auto 14px` på `.composer`). Uden den klæbede pillen til
+   panelets bundkant og så mindre ud end den Bjørn kender fra PWA'en. */
+.routine-chat .composer { margin: 4px auto 14px; }
 
-.routine-chat-role {
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--fg-3);
-}
 
-.routine-chat-tekst {
-  margin: 0;
-  white-space: pre-wrap;
-  color: var(--fg-2);
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-.routine-chat-msg.is-user .routine-chat-tekst {
-  padding: 6px 9px;
-  background: var(--bg-4);
-  border-radius: var(--radius-xs);
-}
-
-.routine-chat-composer {
-  display: flex;
-  gap: 8px;
-  align-items: flex-end;
-  border-top: 1px solid var(--bg-4);
-  padding-top: 8px;
-}
-
-.routine-chat-composer textarea {
-  flex: 1;
-  resize: none;
-  background: var(--bg-2);
-  color: var(--fg-2);
-  border: 1px solid var(--bg-4);
-  border-radius: var(--radius-xs);
-  padding: 7px 9px;
-  font: inherit;
-  font-size: 13px;
-}
-
-.routine-chat-aabn {
-  align-self: flex-start;
-  background: none;
-  border: 0;
-  color: var(--fg-3);
-  font: inherit;
-  font-size: 11.5px;
-  cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-}
 
 .routine-actions-bar {
   border-top: 0;

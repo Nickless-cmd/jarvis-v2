@@ -8,6 +8,11 @@ const listRoutineEvents = vi.fn()
 const routineAction = vi.fn()
 const deleteRoutine = vi.fn()
 const getRoutineChatSession = vi.fn()
+const getSession = vi.fn()
+vi.mock('../lib/api', async (original) => ({
+  ...(await original<typeof import('../lib/api')>()),
+  getSession: (...args: unknown[]) => getSession(...args),
+}))
 vi.mock('../lib/routinesApi', async (original) => ({
   ...(await original<typeof import('../lib/routinesApi')>()),
   listRoutines: (...args: unknown[]) => listRoutines(...args),
@@ -51,6 +56,7 @@ describe('RoutinesView', () => {
     getRoutineChatSession.mockReset().mockResolvedValue({
       session_id: 'routine-r-own', title: 'Rutine · Min rutine', kind: 'routine',
     })
+    getSession.mockReset().mockResolvedValue({ session: {}, messages: [], etag: null })
   })
 
   it('shows an owner only their own routines plus owner-delivered system routines', async () => {
@@ -112,6 +118,40 @@ describe('RoutinesView', () => {
     visIndstillinger()
     expect(screen.getByRole('tab', { name: 'Kørsler' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Rutineindstillinger' })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  /** Bjørn 15/11-2026: «Lad os fjerne bruger beskeden» — og derefter
+   *  præciseringen: «Kun fjern bruger beskeden der skrives af systemet. Hvis
+   *  brugeren selv skriver skal den blive stående». Skelnen er `user_id`:
+   *  rutinens opgave-linje skrives af systemet med tomt felt. */
+  it('skjuler rutinens opgave-linje men beholder en besked brugeren selv skrev', async () => {
+    getSession.mockResolvedValue({
+      session: {}, etag: null,
+      messages: [
+        { id: 'm1', role: 'user', content: [{ type: 'text', text: 'SYSTEM-OPGAVE: tjek vejret' }], created_at: '2026-11-15T08:00:00Z', user_id: '' },
+        { id: 'm2', role: 'assistant', content: [{ type: 'text', text: 'Det regner.' }], created_at: '2026-11-15T08:00:05Z' },
+        { id: 'm3', role: 'user', content: [{ type: 'text', text: 'MIN-EGEN: kan du tjekke igen?' }], created_at: '2026-11-15T09:00:00Z', user_id: 'bjorn' },
+      ],
+    })
+    render(<PermissionProvider><RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={() => {}} /></PermissionProvider>)
+    fireEvent.click(await screen.findByRole('listitem', { name: /Min rutine/i }))
+    expect(await screen.findByText(/MIN-EGEN/)).toBeTruthy()
+    expect(screen.getByText(/Det regner/)).toBeTruthy()
+    expect(screen.queryByText(/SYSTEM-OPGAVE/)).not.toBeInTheDocument()
+  })
+
+  /** Bjørn 15/11-2026: «i pwa mobil view kan man ikk se rutine listen når man
+   *  trykker på rutiner i venstre menu». Aarsagen var at `selected` altid
+   *  falder tilbage paa `visible[0]`, saa CSS'ens `:has(.active)` skjulte
+   *  biblioteket i samme oejeblik fladen aabnede. Nu er det en tilstand. */
+  it('aabner paa rutineLISTEN, og en tilbage-knap foerer dertil igen', async () => {
+    render(<PermissionProvider><RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={() => {}} /></PermissionProvider>)
+    const flade = document.querySelector('.routines-view')
+    expect(flade?.className).toContain('vis-liste')
+    fireEvent.click(await screen.findByRole('listitem', { name: /Min rutine/i }))
+    expect(document.querySelector('.routines-view')?.className).not.toContain('vis-liste')
+    fireEvent.click(screen.getByRole('button', { name: 'Til rutinelisten' }))
+    expect(document.querySelector('.routines-view')?.className).toContain('vis-liste')
   })
 
   it('closes through the supplied return-mode action', async () => {

@@ -83,6 +83,13 @@ export function RoutineChat({ config, routineId, onSession }: {
         // Rutinens kørsler skrives som opgave/svar. Værktøjs- og
         // system-rækker hører i chatvisningen, ikke i rutinens oversigt.
         if (m.role !== 'user' && m.role !== 'assistant') continue
+        // Rutinens opgave-linje skrives af systemet med TOMT `user_id`: den er
+        // arbejdsordren, ikke en samtale. Bjørn 15/11-2026: «Lad os fjerne
+        // bruger beskeden» — og derefter: «Kun fjern bruger beskeden der
+        // skrives af systemet. Hvis brugeren selv skriver skal den blive
+        // stående». Derfor skelnes der på FELTET, ikke på rollen: hans egen
+        // besked i samme session har hans id og bliver stående.
+        if (m.role === 'user' && !m.user_id) continue
         raekker.push({ id: m.id, role: m.role, blokke: m.content, tid: m.created_at })
       }
       setBeskeder(raekker)

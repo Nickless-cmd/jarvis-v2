@@ -18,6 +18,21 @@
   letter-spacing: .07em;
   text-transform: uppercase;
 }
+/* Krydset: samme form som banner-dismiss i ErrorBanner/GenoptagelsesVarsel —
+   spørgsmålet skal kunne afvises uden at man svarer på det (15/11-2026). */
+.pauseask-luk {
+  margin-left: auto;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--fg-3);
+  font: inherit;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+.pauseask-luk:hover { color: var(--fg-1); }
+.pauseask-luk:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
 .pauseask-pulse {
   width: 7px;
   height: 7px;

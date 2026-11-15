@@ -79,4 +79,56 @@ export function onPauseSvar(l: Lytter): () => void {
   lyttere.add(l)
   return () => { lyttere.delete(l) }
 }
+
+/** Spørgsmålets identitet — samme nøgle som kortet selv nulstiller på. */
+export function pauseIdentitet(ask: PauseAsk): string {
+  return JSON.stringify([ask.question, ask.options, ask.allowMultiple])
+}
+
+/** Lukkede spørgsmål. Ligger på modul-niveau og ikke i React-state, fordi
+ *  kortet monteres i BÅDE ChatView og CodeView: et view-skift unmounter den
+ *  ene og mounter den anden, og et lokalt flag ville vække spørgsmålet igen.
+ *
+ *  15/11-2026 (Bjørn): «pause_and_ask forsvinder ikk når man trykker send».
+ *  Blokken ligger varigt i stream-state — den forsvinder først når run'et
+ *  ryddes — så kortet blev stående som «Svar sendt» længe efter svaret var
+ *  givet. Nu husker vi hvilke spørgsmål der er besvaret eller afvist. */
+const lukkede = new Set<string>()
+let version = 0
+const abonnenter = new Set<() => void>()
+
+export function erPauseLukket(ident: string): boolean {
+  return lukkede.has(ident)
+}
+
+export function lukPause(ident: string): void {
+  if (!ident || lukkede.has(ident)) return
+  lukkede.add(ident)
+  version += 1
+  for (const a of abonnenter) { try { a() } catch { /* én abonnent må ikke vælte de andre */ } }
+}
+
+export function pauseLukketSnapshot(): number {
+  return version
+}
+
+export function abonnérPauseLukket(l: () => void): () => void {
+  abonnenter.add(l)
+  return () => { abonnenter.delete(l) }
+}
+
+/** Krydset: brugeren vil ikke svare på spørgsmålet. Kortet lukkes, og et
+ *  levende run får besked om at fortsætte — ellers ville det vente for evigt
+ *  på et svar, og composeren ville låse (køen tømmes først når run'et slutter). */
+type LukLytter = () => void
+const lukLyttere = new Set<LukLytter>()
+
+export function emitPauseLuk(): void {
+  for (const l of lukLyttere) { try { l() } catch { /* en lytter må ikke vælte de andre */ } }
+}
+
+export function onPauseLuk(l: LukLytter): () => void {
+  lukLyttere.add(l)
+  return () => { lukLyttere.delete(l) }
+}
 import type { ContentBlock } from './sseProtocol'

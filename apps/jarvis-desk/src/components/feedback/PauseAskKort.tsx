@@ -1,7 +1,11 @@
+import { useEffect, useSyncExternalStore } from 'react'
 import { PauseAndAskCard } from '../rich/PauseAndAskCard'
 import { useStream } from '../../hooks/useStream'
 import { liveChatBlokke } from '../../lib/streamReducer'
-import { pauseAskIn } from '../../lib/pauseAsk'
+import {
+  abonnérPauseLukket, emitPauseLuk, erPauseLukket, lukPause, onPauseSvar,
+  pauseAskIn, pauseIdentitet, pauseLukketSnapshot,
+} from '../../lib/pauseAsk'
 
 /** `pause_and_ask`-kortet, vist over composeren — ikke i transcriptet.
  *
@@ -19,10 +23,35 @@ import { pauseAskIn } from '../../lib/pauseAsk'
  * StreamContext, og svaret sendes gennem `emitPauseSvar` — den pub/sub som
  * begge views allerede lytter på (`onPauseSvar`), så svaret bliver den næste
  * brugerbesked uden at kortet skal kende viewet.
+ *
+ * 15/11-2026 (Bjørn): «pause_and_ask forsvinder ikk når man trykker send og det
+ * mangler et kryds». Blokken ligger VARIGT i stream-state — den forsvinder først
+ * når run'et ryddes — så kortet blev stående som «Svar sendt» længe efter
+ * svaret var givet. Lukke-tilstanden bor derfor i `lib/pauseAsk.ts` på
+ * modul-niveau, ikke i React-state: kortet monteres i både ChatView og
+ * CodeView, og et view-skift ville ellers vække spørgsmålet igen.
  */
 export function PauseAskKort() {
   const stream = useStream()
+  // Re-render når et spørgsmål lukkes — ellers står kortet til næste stream-tick.
+  useSyncExternalStore(abonnérPauseLukket, pauseLukketSnapshot, pauseLukketSnapshot)
+
   const ask = pauseAskIn(liveChatBlokke(stream))
-  if (!ask) return null
-  return <PauseAndAskCard ask={ask} />
+  const ident = ask ? pauseIdentitet(ask) : ''
+
+  // Et svar — sendt herfra eller ad en anden vej — lukker spørgsmålet med det
+  // samme. Svaret bliver selv den næste brugerbesked, så det er synligt i
+  // tråden; kortet behøver ikke stå tilbage som kvittering.
+  useEffect(() => {
+    if (!ident) return
+    return onPauseSvar(() => lukPause(ident))
+  }, [ident])
+
+  if (!ask || erPauseLukket(ident)) return null
+  return (
+    <PauseAndAskCard
+      ask={ask}
+      onLuk={() => { lukPause(ident); emitPauseLuk() }}
+    />
+  )
 }

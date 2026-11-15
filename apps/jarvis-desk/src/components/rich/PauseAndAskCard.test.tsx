@@ -60,6 +60,20 @@ describe('PauseAndAskCard', () => {
     render(<PauseAndAskCard ask={{ ...ask, options: [] }} />)
     expect(screen.getByRole('textbox', { name: 'Skriv dit eget svar' })).toBeTruthy()
   })
+
+  it('har et kryds der lukker uden at sende et svar', () => {
+    // 15/11-2026 (Bjørn): «det mangler et kryds til at trykke den væk hvis man
+    // ikk vil bruge den». Krydset må ikke gå gennem svar-kanalen — et afvist
+    // spørgsmål er ikke et svar og skal ikke sende en opdigtet besked i run'et.
+    const sendt = vi.fn()
+    const lukket = vi.fn()
+    const af = onPauseSvar(sendt)
+    render(<PauseAndAskCard ask={ask} onLuk={lukket} />)
+    fireEvent.click(screen.getByLabelText('luk'))
+    expect(lukket).toHaveBeenCalledTimes(1)
+    expect(sendt).not.toHaveBeenCalled()
+    af()
+  })
 })
 
 describe('ToolCard · pause_and_ask', () => {

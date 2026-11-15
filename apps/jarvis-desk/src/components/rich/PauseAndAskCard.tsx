@@ -2,8 +2,12 @@ import { useEffect, useId, useState } from 'react'
 import { emitPauseSvar, type PauseAsk } from '../../lib/pauseAsk'
 import '../../styles/pause-ask.css'
 
-/** Only option labels become interactive. Tool text remains inert. */
-export function PauseAndAskCard({ ask }: { ask: PauseAsk }) {
+/** Only option labels become interactive. Tool text remains inert.
+ *
+ *  `onLuk` er krydset: brugeren vil ikke svare på spørgsmålet. Uden en vej ud
+ *  ville et levende run vente for evigt på et svar, og composeren ville låse —
+ *  dens kø tømmes først når run'et slutter (15/11-2026, Bjørn). */
+export function PauseAndAskCard({ ask, onLuk }: { ask: PauseAsk; onLuk?: () => void }) {
   const [selected, setSelected] = useState<string[]>([])
   const [ownAnswer, setOwnAnswer] = useState('')
   const [submittedAnswer, setSubmittedAnswer] = useState('')
@@ -37,7 +41,13 @@ export function PauseAndAskCard({ ask }: { ask: PauseAsk }) {
 
   return (
     <section className={`pauseask haste-${ask.urgency}`} aria-label="Spørgsmål fra Jarvis">
-      <div className="pauseask-head"><span className="pauseask-pulse" aria-hidden="true" />Jarvis venter på dig</div>
+      <div className="pauseask-head">
+        <span className="pauseask-pulse" aria-hidden="true" />
+        <span>Jarvis venter på dig</span>
+        {onLuk && (
+          <button type="button" className="pauseask-luk" aria-label="luk" title="Luk uden at svare" onClick={onLuk}>×</button>
+        )}
+      </div>
       <p className="pauseask-q">{ask.question}</p>
       {ask.context && <p className="pauseask-ctx">{ask.context}</p>}
       {ask.options.length > 0 && (

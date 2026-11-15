@@ -4,7 +4,7 @@ import { useRammeReducer } from '../lib/useRammeReducer'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useVoiceConversation } from '../hooks/useVoiceConversation'
 import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff, Bot, Globe, ListTodo, Monitor } from 'lucide-react'
-import { onPauseSvar, withoutPauseAsk } from '../lib/pauseAsk'
+import { onPauseLuk, onPauseSvar, withoutPauseAsk } from '../lib/pauseAsk'
 import { useStream } from '../hooks/useStream'
 import { usePermission } from '../hooks/usePermission'
 import { useSettings } from '../hooks/useSettings'
@@ -859,6 +859,15 @@ export function CodeView({
     resend(svar)
   }
   useEffect(() => onPauseSvar((svar) => pauseSvarRef.current(svar)), [])
+  // Krydset på pause_and_ask — se ChatView. Et levende run skal have besked,
+  // ellers venter det for evigt og composeren låser; uden aktivt run sendes intet.
+  const pauseLukRef = useRef<() => void>(() => {})
+  pauseLukRef.current = () => {
+    const runId = stream.activeRunId
+    if (!runId || !config) return
+    void steerRun(config, runId, 'Lukket uden svar — fortsæt som du vurderer bedst.')
+  }
+  useEffect(() => onPauseLuk(() => pauseLukRef.current()), [])
 
   const trustBanner = trusted === false ? (
     <div className="trust-banner">

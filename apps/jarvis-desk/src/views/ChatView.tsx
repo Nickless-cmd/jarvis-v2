@@ -15,7 +15,7 @@ import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { paaAendringsFokus } from '../lib/aendringsFokus'
 import { useRefPanelLytting } from '../lib/refAabn'
 import { registrerSkaerm } from '../lib/skaermRegister'
-import { onPauseSvar, withoutPauseAsk } from '../lib/pauseAsk'
+import { onPauseLuk, onPauseSvar, withoutPauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState, liveChatBlokke } from '../lib/streamReducer'
 import { varighedFraTider } from '../lib/turTid'
@@ -638,6 +638,21 @@ export function ChatView({
     resend(svar)
   }
   useEffect(() => onPauseSvar((svar) => pauseSvarRef.current(svar)), [])
+  // Krydset på pause_and_ask: spørgsmålet afvises uden svar. Et levende run
+  // skal have besked, ellers venter det for evigt — og composeren låser, fordi
+  // dens kø først tømmes når run'et slutter. Uden aktivt run er der intet at
+  // fortsætte, så der sendes intet (et historisk kort må ikke starte en tur).
+  const pauseLukRef = useRef<() => void>(() => {})
+  pauseLukRef.current = () => {
+    const runId = stream.activeRunId
+    if (!runId || !settings) return
+    void steerRun(
+      { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken },
+      runId,
+      'Lukket uden svar — fortsæt som du vurderer bedst.',
+    )
+  }
+  useEffect(() => onPauseLuk(() => pauseLukRef.current()), [])
   // Visningen (normal/Tænkning/Alt) — Claude Desktops tre, pr. samtale på serveren.
   const { visning, skift: skiftVisning } = useVisning(
     settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined, sessionId,

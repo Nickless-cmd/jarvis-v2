@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { parsePauseAsk, emitPauseSvar, onPauseSvar } from './pauseAsk'
+import {
+  parsePauseAsk, emitPauseSvar, onPauseSvar,
+  onPauseLuk, emitPauseLuk, lukPause, erPauseLukket, pauseIdentitet, abonnérPauseLukket,
+} from './pauseAsk'
 
 const svar = (o: Record<string, unknown>) => JSON.stringify(o)
 
@@ -73,5 +76,50 @@ describe('pause-svar pub/sub', () => {
     emitPauseSvar('x')
     expect(god).toHaveBeenCalledWith('x')
     af1(); af2()
+  })
+})
+
+describe('lukke-tilstand (15/11-2026)', () => {
+  const ask = (question: string) => ({ question, options: [], context: '', urgency: 'normal' as const })
+
+  it('husker et lukket spørgsmål og varsler abonnenterne', () => {
+    const lyt = vi.fn()
+    const af = abonnérPauseLukket(lyt)
+    const ident = pauseIdentitet(ask('skal jeg splitte?'))
+    expect(erPauseLukket(ident)).toBe(false)
+    lukPause(ident)
+    expect(erPauseLukket(ident)).toBe(true)
+    expect(lyt).toHaveBeenCalledTimes(1)
+    af()
+  })
+
+  it('er idempotent — to svar må ikke give to varsler', () => {
+    const lyt = vi.fn()
+    const af = abonnérPauseLukket(lyt)
+    const ident = pauseIdentitet(ask('kun ét varsel'))
+    lukPause(ident)
+    lukPause(ident)
+    expect(lyt).toHaveBeenCalledTimes(1)
+    af()
+  })
+
+  it('lukker ikke et andet spørgsmål ved et uheld', () => {
+    const a = pauseIdentitet(ask('spørgsmål A'))
+    const b = pauseIdentitet(ask('spørgsmål B'))
+    lukPause(a)
+    expect(erPauseLukket(a)).toBe(true)
+    expect(erPauseLukket(b)).toBe(false)
+  })
+
+  it('krydset har sin egen kanal — en afvisning er ikke et svar', () => {
+    // Ellers ville et afvist spørgsmål sende en opdigtet besked ind i run'et.
+    const svar = vi.fn()
+    const luk = vi.fn()
+    const afS = onPauseSvar(svar)
+    const afL = onPauseLuk(luk)
+    emitPauseLuk()
+    expect(luk).toHaveBeenCalledTimes(1)
+    expect(svar).not.toHaveBeenCalled()
+    afS(); afL()
   })
 })

@@ -5067,27 +5067,41 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
    for tung: målt 78px for én fil, 138px for tre. Det meste var et 30px ikon
    med knap-baggrund, som ikke er en knap, plus 8px header-padding. 22px og
    6px giver ~62px for én fil uden at fjerne noget man kan trykke på. */
+/* 15/11-2026, samme dag, andet hug (Bjørn: «kan det ikk starte foldet, altså
+   skjult bag en fold ud eller helt væk?? ændrings panelet vises jo osse
+   diff»). Lettere var ikke nok — 62px under hver besked for at gentage hvad
+   rækkerne over beskeden allerede har sagt. Nu er HELE kroppen en fold, og
+   head-linjen er selv knappen: 34px lukket, alt indhold åbent. */
 .edited-files {
   border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden;
   margin: 8px 0 0; background: var(--bg-1);
 }
+/* Head er en KNAP nu, ikke en div. Uden nulstillingen arver den browserens
+   knap-form (grå baggrund, egen font, midterstillet tekst) og ser fremmed ud
+   midt i fladen. */
 .edited-files-head {
-  display: flex; align-items: center; gap: 10px;
-  padding: 6px 10px; border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 6px 10px; background: none; border: 0;
+  color: inherit; font-family: inherit; text-align: left; cursor: pointer;
 }
+.edited-files-head:hover { background: var(--bg-2); }
+.edited-files[data-aaben='true'] .edited-files-head { border-bottom: 1px solid var(--line); }
 .edited-files-headikon { display: inline-flex; align-items: center; justify-content: center;
   width: 22px; height: 22px; flex: none; border-radius: var(--radius-sm); color: var(--fg-2);
   background: var(--bg-3); }
 .edited-files-titel { color: var(--fg-1); font-size: 13px; }
 .edited-files-sum { display: inline-flex; gap: 5px; font-size: 11px; font-variant-numeric: tabular-nums; }
+.edited-files-fold { margin-left: auto; flex: none; color: var(--fg-3); transition: transform 140ms ease; }
+.edited-files[data-aaben='true'] .edited-files-fold { transform: rotate(180deg); }
+.edited-files-handlinger { display: flex; justify-content: flex-end; gap: 8px;
+  padding: 6px 10px; border-bottom: 1px solid var(--line); }
 .edited-files-vis {
-  margin-left: auto; background: var(--bg-3); border: 1px solid var(--line);
+  background: var(--bg-3); border: 1px solid var(--line);
   color: var(--fg-1); border-radius: var(--radius-sm); padding: 3px 9px;
   font-size: 12px; cursor: pointer;
 }
 .edited-files-vis:hover { background: var(--bg-4); }
 .edited-files-vis:has(svg) { display: inline-flex; align-items: center; gap: 5px; }
-.edited-files-vis:has(svg) + .edited-files-vis { margin-left: 0; }
 .edited-files-vis:disabled { opacity: .55; cursor: wait; }
 .edited-files-kvittering { margin-left: auto; color: var(--ok); font-size: 12px; }
 .edited-files-bekraeft { display: flex; align-items: center; flex-wrap: wrap; gap: 8px;

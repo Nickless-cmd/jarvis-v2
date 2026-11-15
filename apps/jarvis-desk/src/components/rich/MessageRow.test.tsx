@@ -149,6 +149,9 @@ describe('MessageRow', () => {
     const stop = paaAendringsFokus(fokus)
     try {
       render(<MessageRow role="assistant" blocks={REDIGERING} density="compact" streaming={false} />)
+      // Kortet starter foldet (15/11-2026), så filrækken findes først når
+      // head-linjen er åbnet — præcis som brugeren gør det.
+      fireEvent.click(document.querySelector('.edited-files-head')!)
       fireEvent.click(screen.getByRole('button', { name: /app\.ts/ }))
       expect(fokus).toHaveBeenCalledWith('src/app.ts')
     } finally { stop(); localStorage.removeItem(RAEKKE_KEY) }

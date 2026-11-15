@@ -19,6 +19,21 @@ import { DiffView } from './DiffView'
  * feltet så kommer der en diff visning med scrool»). Den viser ændringen UDEN
  * at man først skal åbne Ændringer-ruden — et klik åbner stadig ruden, men nu
  * kan man se hvad der skete ved bare at pege på rækken.
+ *
+ * ## Foldet fra start (15/11-2026)
+ *
+ * Bjørn: «kan det ikk starte foldet, altså skjult bag en fold ud eller helt
+ * væk?? ændrings panelet vises jo osse diff». Kortet fyldte 62px under hver
+ * besked for at gentage noget rækkerne over beskeden allerede har sagt, og
+ * diffen findes i Ændringer-panelet. Svaret er ikke at fjerne det — «Vis
+ * ændringer» ER vejen til panelet — men at gøre hele kroppen til en fold:
+ * én linje når den er lukket, alt indhold når den er åben.
+ *
+ * Prisen er målt og accepteret: hover-diffen kræver at filrækkerne er synlige,
+ * så den virker først når folden er åben. Det er ikke et tab — panelet viser
+ * den samme diff, og kortet er nu 34px i stedet for 62px når man ikke bruger
+ * det. Fortryd ligger OGSÅ bag folden: en farlig knap skal ikke stå ét
+ * fejlklik fra en læsende tommelfinger.
  */
 export interface FilTal { added: number; removed: number }
 
@@ -41,6 +56,7 @@ export function EditedFilesCard({
   onAabn: (sti: string) => void
   onFortryd?: () => Promise<{ status: string; files?: number; error?: string }>
 }) {
+  const [aaben, setAaben] = useState(false)
   const [alle, setAlle] = useState(false)
   const [bekraeft, setBekraeft] = useState(false)
   const [venter, setVenter] = useState(false)
@@ -101,25 +117,34 @@ export function EditedFilesCard({
   const hoverPar = hover ? diffs?.[hover.path] : undefined
 
   return (
-    <div className="edited-files">
-      <div className="edited-files-head">
-        <span className="edited-files-headikon" aria-hidden="true"><FileDiff size={16} /></span>
+    <div className="edited-files" data-aaben={aaben ? 'true' : 'false'}>
+      {/* Folden ER head-linjen. Lukket er kortet én linje på 34px; åben viser
+          den hvad den dækkede over. `aria-expanded` gør tilstanden læsbar for
+          skærmlæseren — en fold uden den er usynlig for alle der ikke ser. */}
+      <button type="button" className="edited-files-head" aria-expanded={aaben}
+              onClick={() => setAaben((v) => !v)}>
+        <span className="edited-files-headikon" aria-hidden="true"><FileDiff size={15} /></span>
         <span className="edited-files-titel">
           Redigerede {n} {n === 1 ? 'fil' : 'filer'}
         </span>
         {sum && <span className="edited-files-sum">
           <span className="git-add">+{sum.added}</span> <span className="git-del">−{sum.removed}</span>
         </span>}
-        {onFortryd && (fortrudt
-          ? <span className="edited-files-kvittering">{n} {n === 1 ? 'fil fortrudt' : 'filer fortrudt'}</span>
-          : <button type="button" className="edited-files-vis" disabled={venter}
-              onClick={() => { setFejl(''); setBekraeft(true) }}>
-              <RotateCcw size={12} /> Fortryd
-            </button>)}
+        {fortrudt && <span className="edited-files-kvittering">{n} {n === 1 ? 'fil fortrudt' : 'filer fortrudt'}</span>}
+        <ChevronDown size={13} className="edited-files-fold" aria-hidden="true" />
+      </button>
+      {aaben && <>
+      <div className="edited-files-handlinger">
         <button type="button" className="edited-files-vis"
                 onClick={() => onAabn(filer[0]!.path)}>
           Vis ændringer
         </button>
+        {onFortryd && !fortrudt && (
+          <button type="button" className="edited-files-vis" disabled={venter}
+                  onClick={() => { setFejl(''); setBekraeft(true) }}>
+            <RotateCcw size={12} /> Fortryd
+          </button>
+        )}
       </div>
       {bekraeft && !fortrudt && <div className="edited-files-bekraeft">
         <span>Fortryd denne beskeds {n} {n === 1 ? 'filændring' : 'filændringer'}? Nyere ændringer i filerne bliver beskyttet.</span>
@@ -175,6 +200,7 @@ export function EditedFilesCard({
           <ChevronDown size={13} className={alle ? 'er-aaben' : ''} aria-hidden="true" />
         </button>
       )}
+      </>}
 
       {hover && hoverPar && createPortal(
         <div className="edited-files-diff" role="tooltip"

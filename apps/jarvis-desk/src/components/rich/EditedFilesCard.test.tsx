@@ -6,16 +6,45 @@ import { EditedFilesCard } from './EditedFilesCard'
 
 const FILER = [{ path: 'apps/x/ChangesPanel.tsx', gange: 1 }, { path: 'apps/x/ChangesPanel.test.tsx', gange: 1 }]
 
+/** Kortet starter FOLDET (15/11-2026). Enhver test der måler indholdet skal
+ *  åbne folden først — ellers måler den en tilstand der ikke findes længere.
+ *  Folden er head-linjen, så klikket er det samme som brugerens. */
+const foldUd = () => fireEvent.click(document.querySelector('.edited-files-head')!)
+
 describe('EditedFilesCard', () => {
   it('siger hvor mange filer — og viser dem', () => {
     render(<EditedFilesCard filer={FILER} onAabn={() => {}} />)
     expect(screen.getByText('Redigerede 2 filer')).toBeInTheDocument()
+    foldUd()
     expect(screen.getByText('x/ChangesPanel.tsx')).toBeInTheDocument()
   })
 
   it('bøjer ental rigtigt', () => {
     render(<EditedFilesCard filer={[FILER[0]!]} onAabn={() => {}} />)
     expect(screen.getByText('Redigerede 1 fil')).toBeInTheDocument()
+  })
+
+  it('starter FOLDET — kroppen er skjult indtil man åbner den', () => {
+    // Bjørn 15/11-2026: «kan det ikk starte foldet, altså skjult bag en fold
+    // ud». Kortet gentog hvad rækkerne over beskeden allerede har sagt, og
+    // diffen findes i Ændringer-panelet. Head-linjen alene er nok.
+    const { container } = render(<EditedFilesCard filer={FILER} onAabn={() => {}} />)
+    const head = container.querySelector('.edited-files-head')!
+    expect(head).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('x/ChangesPanel.tsx')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Vis ændringer' })).not.toBeInTheDocument()
+    // Fortryd er en farlig knap — den må ikke ligge ét fejlklik fra en læser.
+    expect(screen.queryByRole('button', { name: /Fortryd/ })).not.toBeInTheDocument()
+    expect(screen.getByText('Redigerede 2 filer')).toBeInTheDocument()
+  })
+
+  it('folden kan lukkes igen', () => {
+    const { container } = render(<EditedFilesCard filer={FILER} onAabn={() => {}} />)
+    foldUd()
+    expect(screen.getByText('x/ChangesPanel.tsx')).toBeInTheDocument()
+    fireEvent.click(container.querySelector('.edited-files-head')!)
+    expect(screen.queryByText('x/ChangesPanel.tsx')).not.toBeInTheDocument()
+    expect(container.querySelector('.edited-files-head')).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('viser INTET når der ikke er redigeret noget', () => {
@@ -26,6 +55,7 @@ describe('EditedFilesCard', () => {
   it('klik på en fil åbner NETOP den fil', () => {
     const aabn = vi.fn()
     render(<EditedFilesCard filer={FILER} onAabn={aabn} />)
+    foldUd()
     fireEvent.click(screen.getByText('x/ChangesPanel.test.tsx'))
     expect(aabn).toHaveBeenCalledWith('apps/x/ChangesPanel.test.tsx')
   })
@@ -33,6 +63,7 @@ describe('EditedFilesCard', () => {
   it('«Vis ændringer» åbner ruden på den første fil', () => {
     const aabn = vi.fn()
     render(<EditedFilesCard filer={FILER} onAabn={aabn} />)
+    foldUd()
     fireEvent.click(screen.getByRole('button', { name: 'Vis ændringer' }))
     expect(aabn).toHaveBeenCalledWith('apps/x/ChangesPanel.tsx')
   })
@@ -40,17 +71,20 @@ describe('EditedFilesCard', () => {
   it('tallene vises når de KENDES', () => {
     render(<EditedFilesCard filer={FILER} onAabn={() => {}}
       tal={{ 'apps/x/ChangesPanel.tsx': { added: 166, removed: 0 } }} />)
+    foldUd()
     expect(screen.getByText('+166')).toBeInTheDocument()
   })
 
   it('en fil UDEN kendte tal får ikke «+0 −0»', () => {
     // Tallene kommer fra værktøjets resultat. Mangler de, ville 0 være et gæt.
     render(<EditedFilesCard filer={FILER} onAabn={() => {}} tal={{}} />)
+    foldUd()
     expect(screen.queryByText('+0')).not.toBeInTheDocument()
   })
 
   it('en fil rettet flere gange er ÉN række — men antallet siges', () => {
     render(<EditedFilesCard filer={[{ path: 'a.ts', gange: 3 }]} onAabn={() => {}} />)
+    foldUd()
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
     expect(screen.getByText('3×')).toBeInTheDocument()
   })
@@ -58,6 +92,7 @@ describe('EditedFilesCard', () => {
   it('viser tre filer først og kan folde resten ud', () => {
     const filer = Array.from({ length: 5 }, (_, i) => ({ path: `src/fil-${i}.ts`, gange: 1 }))
     render(<EditedFilesCard filer={filer} onAabn={() => {}} />)
+    foldUd()
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
     fireEvent.click(screen.getByRole('button', { name: 'Vis 2 filer mere' }))
     expect(screen.getAllByRole('listitem')).toHaveLength(5)
@@ -75,6 +110,7 @@ describe('EditedFilesCard', () => {
   it('beder om bekræftelse før fortryd og viser kvittering', async () => {
     const onFortryd = vi.fn().mockResolvedValue({ status: 'ok', files: 2 })
     render(<EditedFilesCard filer={FILER} onAabn={() => {}} onFortryd={onFortryd} />)
+    foldUd()
     fireEvent.click(screen.getByRole('button', { name: 'Fortryd' }))
     expect(onFortryd).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Ja, fortryd 2 filer' }))
@@ -85,6 +121,7 @@ describe('EditedFilesCard', () => {
   it('viser konflikt uden at kalde ændringen for fortrudt', async () => {
     const onFortryd = vi.fn().mockResolvedValue({ status: 'conflict', error: 'Filen er ændret siden.' })
     render(<EditedFilesCard filer={FILER} onAabn={() => {}} onFortryd={onFortryd} />)
+    foldUd()
     fireEvent.click(screen.getByRole('button', { name: 'Fortryd' }))
     fireEvent.click(screen.getByRole('button', { name: 'Ja, fortryd 2 filer' }))
     expect(await screen.findByText('Filen er ændret siden.')).toBeInTheDocument()
@@ -94,6 +131,7 @@ describe('EditedFilesCard', () => {
   it('viser diffen naar man holder musen over filnavnet', () => {
     render(<EditedFilesCard filer={FILER} onAabn={() => {}}
       diffs={{ 'apps/x/ChangesPanel.tsx': [{ gammel: 'gammel linje', ny: 'ny linje' }] }} />)
+    foldUd()
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
     fireEvent.mouseEnter(screen.getByText('x/ChangesPanel.tsx'))
     const tip = screen.getByRole('tooltip')
@@ -103,6 +141,7 @@ describe('EditedFilesCard', () => {
 
   it('viser ingen popup for en fil uden par', () => {
     render(<EditedFilesCard filer={FILER} onAabn={() => {}} diffs={{}} />)
+    foldUd()
     fireEvent.mouseEnter(screen.getByText('x/ChangesPanel.tsx'))
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
@@ -110,6 +149,7 @@ describe('EditedFilesCard', () => {
   it('viser hver redigering af samme fil i raekkefoelge', () => {
     render(<EditedFilesCard filer={[{ path: 'a.ts', gange: 2 }]} onAabn={() => {}}
       diffs={{ 'a.ts': [{ gammel: 'v1', ny: 'v2' }, { gammel: 'v2', ny: 'v3' }] }} />)
+    foldUd()
     fireEvent.mouseEnter(screen.getByText('a.ts'))
     const tip = screen.getByRole('tooltip')
     expect(tip).toHaveTextContent('2 ændringer')
@@ -120,6 +160,7 @@ describe('EditedFilesCard', () => {
   it('Escape lukker diffen igen', () => {
     render(<EditedFilesCard filer={FILER} onAabn={() => {}}
       diffs={{ 'apps/x/ChangesPanel.tsx': [{ gammel: 'a', ny: 'b' }] }} />)
+    foldUd()
     fireEvent.mouseEnter(screen.getByText('x/ChangesPanel.tsx'))
     expect(screen.getByRole('tooltip')).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
@@ -168,6 +209,7 @@ describe('hover-diffens placering i panelet', () => {
           diffs={{ 'apps/x/ChangesPanel.tsx': [{ gammel: 'a', ny: 'b' }] }} />
       </main>,
     )
+    foldUd()
     fireEvent.mouseEnter(screen.getByText('x/ChangesPanel.tsx'))
     const { left, hoejre } = iChatten(screen.getByRole('tooltip'))
     expect(left, 'popup\'en stikker ind over sidepanelet').toBeGreaterThanOrEqual(260)
@@ -194,6 +236,7 @@ describe('hover-diffens placering i panelet', () => {
         </div>
       </main>,
     )
+    foldUd()
     fireEvent.mouseEnter(screen.getByText('x/ChangesPanel.tsx'))
     const { left, hoejre } = iChatten(screen.getByRole('tooltip'))
     expect(left).toBe(420)
@@ -208,6 +251,7 @@ describe('hover-diffens placering i panelet', () => {
           diffs={{ 'apps/x/ChangesPanel.tsx': [{ gammel: 'a', ny: 'b' }] }} />
       </main>,
     )
+    foldUd()
     fireEvent.mouseEnter(screen.getByText('x/ChangesPanel.tsx'))
     const tip = screen.getByRole('tooltip')
     const top = Number(tip.style.top.replace('px', ''))

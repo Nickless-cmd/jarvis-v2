@@ -48,8 +48,8 @@ describe('hentLiveRuns', () => {
     apiFetch.mockResolvedValue([{ run_id: 'run-2', routine_id: 'r2' }])
     const { hentLiveRuns } = await import('./liveRunsApi')
     const ud = await hentLiveRuns(CONFIG)
-    expect(ud[0].navn).toBe('Rutine')
-    expect(ud[0].status).toBe('queued')
+    expect(ud[0]?.navn).toBe('Rutine')
+    expect(ud[0]?.status).toBe('queued')
   })
 
   it('et fejlet opslag giver en tom liste — ikke en kastet fejl i sidebaren', async () => {
@@ -83,6 +83,6 @@ describe('hentLiveRuns', () => {
     const { hentLiveRuns } = await import('./liveRunsApi')
     const ud = await hentLiveRuns(CONFIG)
     expect(ud).toHaveLength(1)
-    expect(ud[0].sessionId).toBe('auto-dream-20261115')
+    expect(ud[0]?.sessionId).toBe('auto-dream-20261115')
   })
 })

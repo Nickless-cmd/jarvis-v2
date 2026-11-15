@@ -81,6 +81,19 @@ def chat_active_runs() -> dict:
             "run_id": location.run_id if authoritative else "",
             "status": "working",
         }
+        # Et navn mennesket kan læse (15/11-2026). Sidebaren viser «Hjerteslag»,
+        # ikke «auto-heartbeat-20261115» — id'et er teknisk sandt men ulæseligt.
+        try:
+            from core.services.autonomous_sessions import origin_label
+            from core.services.visible_outcome_text import origin_of_session
+
+            if session_id.startswith("auto-"):
+                item["kind"] = "autonom"
+                item["label"] = origin_label(origin_of_session(session_id))
+            else:
+                item["kind"] = "samtale"
+        except Exception:  # et manglende navn må ikke skjule den levende kørsel
+            item["kind"] = "samtale"
         if authoritative:
             try:
                 from core.services.research_store import active_for_session

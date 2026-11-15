@@ -109,3 +109,12 @@ export const listRoutineEvents = (config: ApiConfig, runId: string) =>
 
 export const cancelRoutineRun = (config: ApiConfig, runId: string) =>
   apiFetch<RoutineRun>(config, `/api/routines/runs/${encodeURIComponent(runId)}/cancel`, { method: 'POST' })
+
+/** En system-rutines arbejde ligger i autonome sessioner, ikke i `routine_runs`.
+ *  «System · heartbeat» har nul kørsler men 672 beskeder i `auto-heartbeat-…`.
+ *  Uden dette opslag står dens Kørsler-fane tom (målt 15/11-2026). */
+export const listOriginSessions = (config: ApiConfig, routineId: string) =>
+  apiFetch<{ session_id: string; title: string; updated_at: string }[]>(
+    config,
+    `/api/routines/${encodeURIComponent(routineId)}/origin-sessions`,
+  )

@@ -17,6 +17,7 @@ import { maaPolle } from '../../lib/ro'
 import { COWORK_ZONES, emitZone, getCurrentZone, onZone, normalizeZone, type Zone } from '../../lib/coworkZone'
 import { grupperSessioner, GRUPPER_I_MODE, grupperEfterProjekt, erKodeSamtale, type SessionGruppe } from '../../lib/sessionGroups'
 import { SidebarGreb } from './SidebarGreb'
+import { KoererNu } from './KoererNu'
 import { ModeDropdown, type Mode } from './ModeDropdown'
 import { ModeBladrer } from './ModeBladrer'
 import { JarvisRing } from './JarvisRing'
@@ -68,6 +69,7 @@ export function Sidebar({
   onOpenAgent,
   routineReturnMode = 'chat',
   onMode,
+  onOpenRoutine,
 }: {
   surface: Surface
   onSurface: (s: Surface) => void
@@ -87,6 +89,10 @@ export function Sidebar({
    *  overskriver modeskiftet det klik brugeren netop lavede. Falder tilbage til
    *  `onSurface` hvis den ikke er givet, så en kalder uden den stadig virker. */
   onMode?: (m: Mode) => void
+  /** Klik på en kørende RUTINE — fører til rutinen, ikke til en session.
+   *  Rutiner kører som baggrundsrun uden session (målt 15/11-2026: 190
+   *  kørsler, nul med session), så der findes ikke et chatview at skifte til. */
+  onOpenRoutine?: (routineId: string) => void
 }) {
   const { sessions, activeId, select, newChat } = useSessions()
   const { settings, auth, update } = useSettings()
@@ -319,6 +325,18 @@ export function Sidebar({
             <FileCode2 size={14} /> Artefakter
           </button>
         )}
+
+        {/* «Kører nu» — de kørsler der er i gang, og kun dem. Blokken findes
+            ikke når intet kører; den er en tilstand, ikke et arkiv
+            (Bjørn 15/11-2026: «de kun vises mens de køre … man kan trykke på
+            dem og så skifter chatview og composer til den session»).
+            Klikket fører til det sted indholdet FINDES: en session i chatview,
+            en rutine i rutine-fladen. */}
+        <KoererNu
+          config={apiConfig}
+          onOpenSession={(id) => { select(id); onSurface('chat') }}
+          onOpenRoutine={onOpenRoutine}
+        />
 
         {/* Søgefeltet er væk 8/9-2026. Det gjorde nøjagtig det samme som
             Ctrl+K-paletten — samme `searchSessions`, samme uddrag — og

@@ -517,11 +517,12 @@ _Autonome sessioner — rotér pr. oprindelse+dag, og gør historien synlig._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `normalize_origin` | `(origin)` | — | [src](../../../core/services/autonomous_sessions.py#L38) |
-| function | `_today` | `()` | — | [src](../../../core/services/autonomous_sessions.py#L43) |
-| function | `resolve_autonomous_session` | `(origin)` | Returnér (opret idempotent) sessionen for (oprindelse, i dag). | [src](../../../core/services/autonomous_sessions.py#L47) |
-| function | `is_system_session` | `(session_id)` | Er sessionen en system-silo frem for et sted Bjørn kan være? | [src](../../../core/services/autonomous_sessions.py#L74) |
-| function | `_origin_of_session` | `(session_id)` | Udled oprindelse fra et ``auto-{origin}-{dato}``-id. | [src](../../../core/services/autonomous_sessions.py#L87) |
-| function | `build_autonomous_history_surface` | `(*, days=…, per_origin_limit=…)` | Projicér den autonome historie for owner-visning (§24.4-sikker). | [src](../../../core/services/autonomous_sessions.py#L97) |
+| function | `origin_label` | `(origin)` | Menneskets ord for en oprindelse — «heartbeat» → «Hjerteslag». | [src](../../../core/services/autonomous_sessions.py#L43) |
+| function | `_today` | `()` | — | [src](../../../core/services/autonomous_sessions.py#L53) |
+| function | `resolve_autonomous_session` | `(origin)` | Returnér (opret idempotent) sessionen for (oprindelse, i dag). | [src](../../../core/services/autonomous_sessions.py#L57) |
+| function | `is_system_session` | `(session_id)` | Er sessionen en system-silo frem for et sted Bjørn kan være? | [src](../../../core/services/autonomous_sessions.py#L84) |
+| function | `_origin_of_session` | `(session_id)` | Udled oprindelse fra et ``auto-{origin}-{dato}``-id. | [src](../../../core/services/autonomous_sessions.py#L97) |
+| function | `build_autonomous_history_surface` | `(*, days=…, per_origin_limit=…)` | Projicér den autonome historie for owner-visning (§24.4-sikker). | [src](../../../core/services/autonomous_sessions.py#L107) |
 
 ## `core/services/autonomous_side_task_dispatcher.py`
 _Lease and dispatch one explicitly autonomous side task while Jarvis is idle._

@@ -1,0 +1,119 @@
+/* ── «Kører nu» — de kørsler der er i gang, og kun dem ─────────────────────
+   Blokken findes ikke når intet kører; den er en tilstand, ikke et arkiv.
+   (Bjørn 15/11-2026.) */
+
+.koerer-nu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 6px;
+}
+
+.koerer-nu-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 8px;
+  border: 0;
+  background: none;
+  color: var(--fg-2);
+  font: inherit;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+}
+
+.koerer-nu-head:hover {
+  background: var(--bg-3);
+}
+
+/* Den levende prik. Skalaen er lav med vilje: et blinkende ikon i en sidebar
+   der altid er åben bliver en distraktion, ikke et signal. */
+.koerer-nu-prik {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-cirkel);
+  background: var(--ok, #3fb950);
+  animation: koerer-nu-aande 2.4s var(--ease-snap) infinite;
+}
+
+@keyframes koerer-nu-aande {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+.koerer-nu-titel {
+  flex: 1 1 auto;
+  font-weight: 600;
+  color: var(--fg-1);
+}
+
+.koerer-nu-tal {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-3);
+  font-size: 10.5px;
+}
+
+.koerer-nu-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-left: 4px;
+}
+
+.koerer-nu-raekke {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 6px;
+  border: 0;
+  background: none;
+  color: var(--fg-2);
+  font: inherit;
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+  transition: opacity var(--dur-snap) var(--ease-snap),
+              background var(--dur-snap) var(--ease-snap);
+}
+
+.koerer-nu-raekke:hover {
+  background: var(--bg-3);
+  color: var(--fg-1);
+}
+
+/* Navnet toner ud når kørslen slutter — så man ser at den gik i mål frem for
+   at rækken blev revet væk. */
+.koerer-nu-raekke.is-fading {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.koerer-nu-navn {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.koerer-nu-art {
+  flex: none;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+}
+
+.koerer-nu-punkt {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-cirkel);
+  background: var(--fg-3);
+  opacity: 0.6;
+}

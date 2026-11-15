@@ -70,6 +70,7 @@ import './styles/chat-reading.css'
 import 'katex/dist/katex.min.css'
 import './styles/web-sidebar.css'
 import './styles/routines.css'
+import './styles/koerer-nu.css'
 import './styles/git-panel.css'
 
 /** App = ren wiring. SettingsProvider er wrappet i main.tsx, så useSettings
@@ -285,6 +286,9 @@ function Shell({
   const [bugOpen, setBugOpen] = useState(false)
   const [routineReturnMode, setRoutineReturnMode] = useState<'chat' | 'code'>('chat')
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null)
+  // «Kører nu» i sidebaren peger på en bestemt rutine. `RoutinesView` ejer
+  // sit eget valg, så valget gives ind som et startpunkt (15/11-2026).
+  const [valgtRutineId, setValgtRutineId] = useState<string | null>(null)
 
   const navigate = (next: Surface) => {
     if (next === 'routines' && surface !== 'routines' && surface !== 'routine-editor') {
@@ -310,6 +314,7 @@ function Shell({
     <WebSidebarFrame web={__WEB_BUILD__} sidebar={
       <Sidebar surface={surface} onSurface={navigate} onMode={skiftFlade} routineReturnMode={routineReturnMode} userName={userName} onSearch={() => setSearchOpen(true)}
                onOpenBug={() => setBugOpen(true)}
+               onOpenRoutine={(id) => { setValgtRutineId(id); navigate('routines') }}
                onOpenAgent={(agent) => panel.openTarget({ type: 'agent', agent, canMessage: true })} />
     }>
       <main className="main">
@@ -375,6 +380,8 @@ function Shell({
             config={cfg!}
             currentUserId={currentUserId}
             role={role}
+            initialRoutineId={valgtRutineId}
+            onOpenSession={(id) => { select(id); setSurface('chat') }}
             onClose={() => setSurface(routineReturnMode)}
             onEdit={(routine) => { setEditingRoutine(routine); setSurface('routine-editor') }}
           />}

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10216/18757 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10221/18762 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 10216/18757 functions/methods documented (54%). The list 
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 749 | 1050 | 71% |
+| `apps.api.jarvis_api.routes` | 751 | 1052 | 71% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,8 +25,8 @@ Generated from source. 10216/18757 functions/methods documented (54%). The list 
 | `core.identity` | 80 | 173 | 46% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 902 | 1617 | 55% |
-| `core.services` | 6848 | 12732 | 53% |
+| `core.runtime` | 904 | 1619 | 55% |
+| `core.services` | 6849 | 12733 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -140,19 +140,19 @@ Generated from source. 10216/18757 functions/methods documented (54%). The list 
 - `apps/api/jarvis_api/routes/push.py` :: `unregister` (L36)
 - `apps/api/jarvis_api/routes/push.py` :: `web_subscribe` (L59)
 - `apps/api/jarvis_api/routes/review_traeer.py` :: `numstat_til_filer` (L82)
-- `apps/api/jarvis_api/routes/routines.py` :: `cancel_run` (L262)
+- `apps/api/jarvis_api/routes/routines.py` :: `cancel_run` (L307)
 - `apps/api/jarvis_api/routes/routines.py` :: `create_routine` (L148)
-- `apps/api/jarvis_api/routes/routines.py` :: `delete_routine` (L195)
+- `apps/api/jarvis_api/routes/routines.py` :: `delete_routine` (L240)
 - `apps/api/jarvis_api/routes/routines.py` :: `get_inbox_defaults` (L155)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_redacted_diagnostic` (L270)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_routine` (L165)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_run` (L243)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_run_events` (L254)
-- `apps/api/jarvis_api/routes/routines.py` :: `lifecycle_action` (L206)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_redacted_diagnostic` (L315)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_routine` (L210)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_run` (L288)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_run_events` (L299)
+- `apps/api/jarvis_api/routes/routines.py` :: `lifecycle_action` (L251)
 - `apps/api/jarvis_api/routes/routines.py` :: `list_routines` (L143)
-- `apps/api/jarvis_api/routes/routines.py` :: `list_runs` (L235)
-- `apps/api/jarvis_api/routes/routines.py` :: `patch_routine` (L176)
-- `apps/api/jarvis_api/routes/routines.py` :: `run_now` (L219)
+- `apps/api/jarvis_api/routes/routines.py` :: `list_runs` (L280)
+- `apps/api/jarvis_api/routes/routines.py` :: `patch_routine` (L221)
+- `apps/api/jarvis_api/routes/routines.py` :: `run_now` (L264)
 - `apps/api/jarvis_api/routes/routines.py` :: `set_inbox_defaults` (L160)
 - `apps/api/jarvis_api/routes/sensory.py` :: `get_memory` (L59)
 - `apps/api/jarvis_api/routes/sensory.py` :: `list_memories` (L31)
@@ -567,38 +567,38 @@ Generated from source. 10216/18757 functions/methods documented (54%). The list 
 - `core/runtime/db_private_states.py` :: `record_private_promotion_decision` (L217)
 - `core/runtime/db_private_states.py` :: `record_private_self_model` (L64)
 - `core/runtime/db_private_states.py` :: `record_private_state` (L143)
-- `core/runtime/db_routines.py` :: `append_run_event` (L1289)
+- `core/runtime/db_routines.py` :: `append_run_event` (L1355)
 - `core/runtime/db_routines.py` :: `assert_current_run_lease` (L943)
 - `core/runtime/db_routines.py` :: `cancel_run` (L767)
-- `core/runtime/db_routines.py` :: `claim_delivery_for_run` (L1434)
+- `core/runtime/db_routines.py` :: `claim_delivery_for_run` (L1500)
 - `core/runtime/db_routines.py` :: `claim_run` (L857)
-- `core/runtime/db_routines.py` :: `count_runs` (L1540)
-- `core/runtime/db_routines.py` :: `create_delivery` (L1407)
+- `core/runtime/db_routines.py` :: `count_runs` (L1606)
+- `core/runtime/db_routines.py` :: `create_delivery` (L1473)
 - `core/runtime/db_routines.py` :: `create_routine` (L270)
 - `core/runtime/db_routines.py` :: `create_run` (L692)
-- `core/runtime/db_routines.py` :: `get_execution_failure_count` (L1278)
-- `core/runtime/db_routines.py` :: `get_inbox_preference` (L1567)
-- `core/runtime/db_routines.py` :: `get_legacy_routine_id` (L1606)
+- `core/runtime/db_routines.py` :: `get_execution_failure_count` (L1344)
+- `core/runtime/db_routines.py` :: `get_inbox_preference` (L1633)
+- `core/runtime/db_routines.py` :: `get_legacy_routine_id` (L1672)
 - `core/runtime/db_routines.py` :: `get_routine` (L330)
 - `core/runtime/db_routines.py` :: `get_run` (L737)
-- `core/runtime/db_routines.py` :: `list_open_tool_effects` (L1055)
+- `core/runtime/db_routines.py` :: `list_open_tool_effects` (L1121)
 - `core/runtime/db_routines.py` :: `list_routines` (L337)
 - `core/runtime/db_routines.py` :: `list_runs` (L757)
 - `core/runtime/db_routines.py` :: `list_stopped_routines` (L788)
-- `core/runtime/db_routines.py` :: `next_queued_run` (L963)
-- `core/runtime/db_routines.py` :: `put_quarantine` (L1580)
+- `core/runtime/db_routines.py` :: `next_queued_run` (L1029)
+- `core/runtime/db_routines.py` :: `put_quarantine` (L1646)
 - `core/runtime/db_routines.py` :: `read_run_events` (L841)
 - `core/runtime/db_routines.py` :: `reclaim_run` (L924)
-- `core/runtime/db_routines.py` :: `reconcile_expired_runs` (L1172)
-- `core/runtime/db_routines.py` :: `record_tool_effect_started` (L972)
+- `core/runtime/db_routines.py` :: `reconcile_expired_runs` (L1238)
+- `core/runtime/db_routines.py` :: `record_tool_effect_started` (L1038)
 - `core/runtime/db_routines.py` :: `renew_run_lease` (L887)
-- `core/runtime/db_routines.py` :: `run_exists_for_trigger` (L1651)
-- `core/runtime/db_routines.py` :: `set_inbox_preference` (L1548)
-- `core/runtime/db_routines.py` :: `settle_delivery` (L1502)
-- `core/runtime/db_routines.py` :: `settle_tool_effect` (L1013)
+- `core/runtime/db_routines.py` :: `run_exists_for_trigger` (L1717)
+- `core/runtime/db_routines.py` :: `set_inbox_preference` (L1614)
+- `core/runtime/db_routines.py` :: `settle_delivery` (L1568)
+- `core/runtime/db_routines.py` :: `settle_tool_effect` (L1079)
 - `core/runtime/db_routines.py` :: `transition_routine` (L406)
-- `core/runtime/db_routines.py` :: `transition_run` (L1322)
-- `core/runtime/db_routines.py` :: `update_execution_failure_count` (L1257)
+- `core/runtime/db_routines.py` :: `transition_run` (L1388)
+- `core/runtime/db_routines.py` :: `update_execution_failure_count` (L1323)
 - `core/runtime/db_runtime_browser.py` :: `ensure_runtime_browser_tables` (L13)
 - `core/runtime/db_runtime_browser.py` :: `get_runtime_browser_body` (L41)
 - `core/runtime/db_runtime_browser.py` :: `list_runtime_browser_bodies` (L149)

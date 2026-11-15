@@ -960,6 +960,72 @@ def assert_current_run_lease(
     return dict(row)
 
 
+def list_active_runs(*, owner_user_id: str, limit: int = 20) -> list[dict[str, Any]]:
+    """Kørsler der er i gang LIGE NU for én ejer — på tværs af alle rutiner.
+
+    ``list_runs`` er pr. rutine, så en sideblok der skal vise «hvad kører nu»
+    ville kræve ét kald pr. rutine (målt 15/11-2026: 10 synlige rutiner = 10
+    kald). Her er det ét opslag. Navnet dekrypteres for ejeren, fordi blokken
+    skal vise menneskets eget ord for rutinen — ikke et id.
+    """
+    owner = str(owner_user_id or "").strip()
+    if not owner:
+        return []
+    with connect() as conn:
+        _ensure_tables(conn)
+        rows = conn.execute(
+            "SELECT rr.run_id, rr.routine_id, rr.status, rr.created_at, rr.updated_at, "
+            "rr.lease_expires_at, r.name_enc, r.access_scope "
+            "FROM routine_runs rr JOIN routines r ON r.routine_id=rr.routine_id "
+            "WHERE r.owner_user_id=? AND rr.status IN ('queued','running') "
+            "ORDER BY rr.created_at DESC LIMIT ?",
+            (owner, int(limit)),
+        ).fetchall()
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        try:
+            name = open_sealed(owner, bytes(row["name_enc"])).decode("utf-8")
+        except Exception:  # et ulæseligt navn må ikke skjule at kørslen findes
+            name = ""
+        result.append({
+            "run_id": row["run_id"],
+            "routine_id": row["routine_id"],
+            "name": name,
+            "status": row["status"],
+            "started_at": row["created_at"],
+            "updated_at": row["updated_at"],
+            "lease_expires_at": row["lease_expires_at"],
+            "access_scope": row["access_scope"],
+        })
+    return result
+
+
+def list_origin_sessions(origin: str, *, limit: int = 20) -> list[dict[str, Any]]:
+    """De autonome sessioner for én oprindelse, nyeste først.
+
+    En system-rutine som «System · heartbeat» har ingen ``routine_runs`` — dens
+    arbejde ligger i ``auto-heartbeat-YYYYMMDD``. Uden dette opslag står dens
+    Kørsler-fane tom, og så kan man ikke se hvad der faktisk skete.
+    """
+    o = str(origin or "").strip().lower()
+    if not o:
+        return []
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT session_id, title, updated_at FROM chat_sessions "
+            "WHERE session_id LIKE ? ORDER BY updated_at DESC LIMIT ?",
+            (f"auto-{o}-%", int(limit)),
+        ).fetchall()
+    return [
+        {
+            "session_id": row["session_id"],
+            "title": row["title"],
+            "updated_at": row["updated_at"],
+        }
+        for row in rows
+    ]
+
+
 def next_queued_run() -> dict[str, Any] | None:
     with connect() as conn:
         _ensure_tables(conn)

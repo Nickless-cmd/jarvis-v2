@@ -859,7 +859,15 @@ export async function denyTool(config: ApiConfig, approvalId: string): Promise<v
  *  Delt læsning: Sidebar, TakeoverHost, ChatView og CodeView poller alle denne (hver med
  *  eget interval) → 95 req/min mod backenden. sharedRead kollapser dem til ét kald pr.
  *  TTL, og bakker hårdt af mens et run streamer (se sharedRead). */
-export interface ActiveRunSession { session_id: string; run_id: string; status: string }
+export interface ActiveRunSession {
+  session_id: string
+  run_id: string
+  status: string
+  /** Sat af serveren: «autonom» for en baggrundssession, ellers «samtale». */
+  kind?: string
+  /** Læsbart navn — «Hjerteslag» frem for `auto-heartbeat-20261115`. */
+  label?: string
+}
 
 export async function getActiveRunSessions(config: ApiConfig): Promise<ActiveRunSession[]> {
   const data = await sharedRead(

@@ -3,7 +3,7 @@ import { ChevronRight, Loader2 } from 'lucide-react'
 import type { ApiConfig } from '../../lib/api'
 import { MarkdownRenderer } from '../rich/MarkdownRenderer'
 import {
-  getRoutineRun, listRoutineEvents, listRoutineRuns,
+  getRoutineRun, listOriginSessions, listRoutineEvents, listRoutineRuns,
   type RoutineEvent, type RoutineRun,
 } from '../../lib/routinesApi'
 
@@ -23,14 +23,18 @@ const visiblePayload = (payload: Record<string, unknown> | undefined): string[] 
   })
 }
 
-export function RoutineRuns({ config, routineId, instruction }: {
+export function RoutineRuns({ config, routineId, instruction, onOpenSession }: {
   config: ApiConfig
   routineId: string
   /** Rutinens opgave. Bjørn 27/10-2026: en kørsel skal vise opgave + svar —
    *  opgaven er det mennesket bad om, svaret er det de fik. Alt andet er log. */
   instruction?: string
+  /** Åbner en oprindelses-session. En system-rutine har ingen kørsler, så
+   *  dens indhold kan kun ses ved at åbne sessionen (15/11-2026). */
+  onOpenSession?: (sessionId: string) => void
 }) {
   const [runs, setRuns] = useState<RoutineRun[] | null>(null)
+  const [originSessioner, setOriginSessioner] = useState<{ session_id: string; title: string; updated_at: string }[] | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [detail, setDetail] = useState<RoutineRun | null>(null)
   const [events, setEvents] = useState<RoutineEvent[] | null>(null)
@@ -43,6 +47,12 @@ export function RoutineRuns({ config, routineId, instruction }: {
     setRuns(null); setSelected(null); setDetail(null); setEvents(null); setError('')
     listRoutineRuns(config, routineId).then((items) => { if (alive) setRuns(items) })
       .catch((reason) => { if (alive) setError(reason instanceof Error ? reason.message : 'Kunne ikke hente kørsler') })
+    // System-rutiner («System · heartbeat», «System · dream», «System · wakeup»)
+    // har nul `routine_runs` — deres spor er autonome sessioner. Uden dette
+    // opslag stod fanen tom og det så ud som om rutinen aldrig havde kørt
+    // (Bjørn 15/11-2026: «så jeg kan aldrig se hvad der sker i sessionerne»).
+    listOriginSessions(config, routineId).then((items) => { if (alive) setOriginSessioner(items) })
+      .catch(() => { if (alive) setOriginSessioner([]) })
     return () => { alive = false }
   }, [config, routineId])
 
@@ -72,7 +82,30 @@ export function RoutineRuns({ config, routineId, instruction }: {
   return (
     <div className="routine-runs">
       {error && <p className="routine-error" role="alert">{error}</p>}
-      {runs?.length === 0 && <p className="routine-empty">Rutinen har ikke kørt endnu.</p>}
+      {runs?.length === 0 && (originSessioner?.length ?? 0) === 0 && (
+        <p className="routine-empty">Rutinen har ikke kørt endnu.</p>
+      )}
+      {(originSessioner?.length ?? 0) > 0 && (
+        <section className="routine-origin" aria-label="Rutinens sessioner">
+          <h4>Sessioner</h4>
+          <p className="routine-origin-note">
+            Rutinen har ingen kørsler i kørsels-loggen — dens arbejde ligger i
+            disse sessioner.
+          </p>
+          {originSessioner?.map((session) => (
+            <button
+              key={session.session_id}
+              type="button"
+              className="routine-run-row"
+              onClick={() => onOpenSession?.(session.session_id)}
+            >
+              <ChevronRight size={14} />
+              <span className="routine-origin-titel">{session.title || session.session_id}</span>
+              <time>{new Date(session.updated_at).toLocaleString('da-DK')}</time>
+            </button>
+          ))}
+        </section>
+      )}
       {runs?.map((run) => (
         <div className="routine-run" key={run.run_id}>
           <button type="button" className="routine-run-row" aria-expanded={selected === run.run_id} onClick={() => open(run.run_id)}>

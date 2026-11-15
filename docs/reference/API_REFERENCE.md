@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-11-14 from app.routes (live) — 697 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-15 from app.routes (live) — 699 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -121,6 +121,7 @@
 | POST | `/api/project/watch/poll` | dict | jarvisx_project |
 | GET | `/api/routines` | list | routines |
 | POST | `/api/routines` | dict | routines |
+| GET | `/api/routines/active-runs` | list | routines |
 | GET | `/api/routines/diagnostics/runs/{run_id}` | dict | routines |
 | GET | `/api/routines/inbox-defaults` | dict | routines |
 | PUT | `/api/routines/inbox-defaults` | dict | routines |
@@ -131,6 +132,7 @@
 | GET | `/api/routines/{routine_id}` | dict | routines |
 | PATCH | `/api/routines/{routine_id}` | dict | routines |
 | POST | `/api/routines/{routine_id}/actions/{action}` | dict | routines |
+| GET | `/api/routines/{routine_id}/origin-sessions` | list | routines |
 | GET | `/api/routines/{routine_id}/runs` | list | routines |
 | POST | `/api/routines/{routine_id}/runs` | dict | routines |
 | GET | `/api/scheduling/state` | dict | jarvisx_channels |

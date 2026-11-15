@@ -13,12 +13,16 @@ const statusName: Record<string, string> = {
   active: 'Aktiv', paused: 'Pauset', stopped: 'Stoppet', archived: 'Arkiveret', draft: 'Forslag',
 }
 
-export function RoutinesView({ config, currentUserId, role, onClose, onEdit }: {
+export function RoutinesView({ config, currentUserId, role, onClose, onEdit, initialRoutineId, onOpenSession }: {
   config: ApiConfig
   currentUserId: string
   role: 'owner' | 'partner' | 'member' | 'guest'
   onClose: () => void
   onEdit: (routine: Routine | null) => void
+  /** Rutine der skal være valgt når fladen åbnes — fx fra «Kører nu». */
+  initialRoutineId?: string | null
+  /** Åbner en af rutinens oprindelses-sessioner i chatview. */
+  onOpenSession?: (sessionId: string) => void
 }) {
   const [routines, setRoutines] = useState<Routine[] | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -34,6 +38,13 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit }: {
   }, [config])
 
   useEffect(() => { void load() }, [load])
+
+  // Et klik i «Kører nu» peger på én bestemt rutine, så fladen skal åbne DEN
+  // frem for bare listen. `selectedId` er intern, så valget kommer ind som et
+  // startpunkt og rører ikke brugerens senere klik (15/11-2026).
+  useEffect(() => {
+    if (initialRoutineId) setSelectedId(initialRoutineId)
+  }, [initialRoutineId])
 
   // Rutiner kan ændre status i baggrunden (migration, auto-pause og runner).
   // En allerede åben flade må derfor ikke fastholde et gammelt "Pauset"-snapshot.
@@ -151,7 +162,7 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit }: {
             </nav>
             <div className="routine-detail-body">
               {tab === 'overview' && <RoutineOverview routine={selected} />}
-              {tab === 'runs' && <RoutineRuns config={config} routineId={selected.routine_id} instruction={selected.instruction} />}
+              {tab === 'runs' && <RoutineRuns config={config} routineId={selected.routine_id} instruction={selected.instruction} onOpenSession={onOpenSession} />}
               {tab === 'access' && <RoutineAccess routine={selected} />}
               <div className="routine-danger-zone">
                 <div><strong>Slet rutine</strong><span>Fjerner definition, kørsler og privat indhold permanent.</span></div>

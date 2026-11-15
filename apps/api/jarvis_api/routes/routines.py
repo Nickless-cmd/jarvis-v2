@@ -161,6 +161,51 @@ def set_inbox_defaults(body: InboxPolicyBody) -> dict[str, object]:
     return _service().set_inbox_defaults(body.model_dump(exclude_none=True))
 
 
+@router.get("/active-runs")
+def active_runs() -> list[dict[str, Any]]:
+    """Rutine-kørsler der er i gang lige nu.
+
+    Defineres FØR ``/{routine_id}``, ellers fanger den «active-runs» som et id.
+    """
+    from core.runtime import db_routines
+
+    principal = _principal()
+    owner = str(
+        getattr(principal, "canonical_user_id", "")
+        or getattr(principal, "user_id", "")
+        or ""
+    )
+    if not owner:
+        return []
+    return db_routines.list_active_runs(owner_user_id=owner)
+
+
+@router.get("/{routine_id}/origin-sessions")
+def origin_sessions(routine_id: str) -> list[dict[str, Any]]:
+    """Hvor en system-rutines arbejde FAKTISK ligger.
+
+    «System · heartbeat» har nul ``routine_runs``; dens spor er de autonome
+    sessioner ``auto-heartbeat-YYYYMMDD``. Uden dette svar er dens Kørsler-fane
+    tom, og det ser ud som om rutinen aldrig har kørt.
+    """
+    from core.runtime import db_routines
+
+    try:
+        item = _service().get(routine_id)
+    except (RoutineForbidden, KeyError) as exc:
+        raise _not_found(exc) from exc
+    if item is None:
+        raise HTTPException(status_code=404, detail="routine not found")
+    producer = ""
+    try:
+        producer = str((asdict(item).get("trigger_config") or {}).get("producer") or "")
+    except Exception:
+        producer = ""
+    if not producer:
+        return []
+    return db_routines.list_origin_sessions(producer)
+
+
 @router.get("/{routine_id}")
 def get_routine(routine_id: str) -> dict[str, Any]:
     try:

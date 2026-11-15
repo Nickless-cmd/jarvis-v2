@@ -40,6 +40,16 @@ def normalize_origin(origin: str | None) -> str:
     return o if o in ORIGINS else "autonomous"
 
 
+def origin_label(origin: str) -> str:
+    """Menneskets ord for en oprindelse — «heartbeat» → «Hjerteslag».
+
+    Offentlig fordi sidebaren viser et navn, ikke et id: en række der siger
+    ``auto-heartbeat-20261115`` er teknisk sand men ulæselig.
+    """
+    o = normalize_origin(origin)
+    return _LABELS.get(o, o.capitalize())
+
+
 def _today() -> str:
     return datetime.now(UTC).strftime("%Y%m%d")
 

@@ -63,3 +63,89 @@
 .routine-events { margin-top: 4px; }
 .routine-events > summary { padding: 6px 0; color: var(--fg-3); font-size: 11.5px; cursor: pointer; }
 .routine-events > summary:hover { color: var(--fg-2); }
+
+/* ── Rutinens samtale ─────────────────────────────────────────────────────
+   Højre pane var ren konfiguration: man kunne se HVAD rutinen var sat til, men
+   ikke hvad den HAVDE gjort — og slet ikke svare den. Panelet viser nu samtalen;
+   konfigurationen ligger bag «Indstillinger» (Bjørn 15/11-2026). */
+.routine-chat {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 8px;
+}
+
+.routine-chat-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 2px 12px;
+}
+
+.routine-chat-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.routine-chat-role {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+
+.routine-chat-tekst {
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--fg-2);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.routine-chat-msg.is-user .routine-chat-tekst {
+  padding: 6px 9px;
+  background: var(--bg-4);
+  border-radius: var(--radius-xs);
+}
+
+.routine-chat-composer {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  border-top: 1px solid var(--bg-4);
+  padding-top: 8px;
+}
+
+.routine-chat-composer textarea {
+  flex: 1;
+  resize: none;
+  background: var(--bg-2);
+  color: var(--fg-2);
+  border: 1px solid var(--bg-4);
+  border-radius: var(--radius-xs);
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.routine-chat-aabn {
+  align-self: flex-start;
+  background: none;
+  border: 0;
+  color: var(--fg-3);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.routine-actions-bar {
+  border-top: 0;
+  padding-top: 0;
+}

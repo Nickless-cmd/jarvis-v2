@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_run_firstpass.py`
+_Ventetiden foer modellens FOERSTE element — livstegn, sandhed og et loft._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `genforsoeg_ventetid_s` | `(*, provider, status_code, error_code, forsoeg, har_streamet_event)` | Ventetid for et sikkert nyt first-pass-kald, ellers ``None``. | [src](../../../core/services/visible_run_firstpass.py#L106) |
+| function | `hjerteslag_fase` | `(ventet_s)` | Hvad hjerteslaget skal sige at den laver. | [src](../../../core/services/visible_run_firstpass.py#L132) |
+| function | `loft_naaet` | `(ventet_s)` | Har vi ventet laengere end nogen sund koersel nogensinde har gjort? | [src](../../../core/services/visible_run_firstpass.py#L145) |
+| function | `opgiv_tekst` | `(ventet_s, *, provider, model)` | Den besked brugeren faar. Den skal sige HVAD der skete og HVOR. | [src](../../../core/services/visible_run_firstpass.py#L150) |
+
 ## `core/services/visible_run_guard_notices.py`
 _Værns-noterne — hvad Bjørn ser, og hvad modellen må se._
 
@@ -539,15 +549,4 @@ _Voice daemon — runs the Hey Jarvis voice loop as a background thread._
 | function | `start_voice_daemon` | `()` | — | [src](../../../core/services/voice_daemon.py#L60) |
 | function | `stop_voice_daemon` | `()` | — | [src](../../../core/services/voice_daemon.py#L73) |
 | function | `build_voice_daemon_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/voice_daemon.py#L84) |
-
-## `core/services/wake_gateway.py`
-_Én indgang til at vække — kilderne SIGNALERER, indbakken VURDERER og vækker._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kvittering` | `(status, grund, **ekstra)` | — | [src](../../../core/services/wake_gateway.py#L53) |
-| function | `vaekning_kilde_id` | `(sag)` | Stabil post-nøgle for en sag. Tom streng hvis sagen er tom. | [src](../../../core/services/wake_gateway.py#L57) |
-| function | `wakeup_id_fra_vaekning` | `(kilde_id)` | Wakeup-id'et bag en `vaekning`-post, eller tom streng. | [src](../../../core/services/wake_gateway.py#L68) |
-| function | `_bruger` | `()` | — | [src](../../../core/services/wake_gateway.py#L87) |
-| function | `anmod_om_vaekning` | `(*, kilde, sag, tekst, bruger_id=…, session_id=…, importance=…, task_id=…, permission_session=…, origin=…, max_tool_calls=…, max_seconds=…, tool_scope=…)` | Bed indbakken om at vække. Starter ikke noget selv. | [src](../../../core/services/wake_gateway.py#L94) |
 

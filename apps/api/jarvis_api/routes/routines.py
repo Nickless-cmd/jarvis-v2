@@ -206,6 +206,52 @@ def origin_sessions(routine_id: str) -> list[dict[str, Any]]:
     return db_routines.list_origin_sessions(producer)
 
 
+@router.get("/{routine_id}/chat-session")
+def chat_session(routine_id: str) -> dict[str, Any]:
+    """Rutinens samtale — hvor man SER hvad den gjorde, og kan svare den.
+
+    Defineres FØR ``/{routine_id}``, ligesom ``active-runs``.
+
+    Personlige rutiner får deres egen session (``routine-{id}``) og får deres
+    hidtidige kørsler skrevet ind i den, så fladen ikke er tom for en rutine der
+    har kørt i ugevis. System-rutiner peger på den NYESTE autonome session, fordi
+    det er dér deres arbejde faktisk ligger (målt 15/11-2026: nul ``routine_runs``
+    for dream/heartbeat/wakeup, 672 beskeder i ``auto-heartbeat-…``).
+    """
+    from core.services import routine_session as rs
+
+    try:
+        item = _service().get(routine_id)
+    except (RoutineForbidden, KeyError) as exc:
+        raise _not_found(exc) from exc
+    if item is None:
+        raise HTTPException(status_code=404, detail="routine not found")
+    data = asdict(item)
+    navn = str(data.get("name") or routine_id)
+    origin = rs.origin_for_routine(routine_id, data.get("trigger_config"))
+    if origin:
+        from core.runtime import db_routines
+
+        sessions = db_routines.list_origin_sessions(origin)
+        if sessions:
+            newest = sessions[0]
+            return {
+                "session_id": str(newest.get("session_id") or ""),
+                "title": str(newest.get("title") or navn),
+                "kind": "origin",
+            }
+    principal = _principal()
+    sid = rs.ensure_routine_session(
+        routine_id,
+        title=navn,
+        owner_user_id=str(
+            getattr(principal, "canonical_user_id", "") or getattr(principal, "user_id", "") or ""
+        ),
+    )
+    rs.backfill(sid, _service().list_runs(routine_id), instruction=str(data.get("instruction") or ""))
+    return {"session_id": sid, "title": navn, "kind": "routine"}
+
+
 @router.get("/{routine_id}")
 def get_routine(routine_id: str) -> dict[str, Any]:
     try:

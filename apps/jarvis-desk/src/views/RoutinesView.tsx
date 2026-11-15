@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Clock3, Loader2, Pencil, Play, Plus, RotateCcw, Square, Trash2, X } from 'lucide-react'
+import { ChevronRight, Clock3, Loader2, MoreVertical, Pencil, Play, Plus, RotateCcw, Square, Trash2, X } from 'lucide-react'
 import type { ApiConfig } from '../lib/api'
 import {
   deleteRoutine, listRoutines, routineAction, runRoutine,
   type Routine, type RoutineAction,
 } from '../lib/routinesApi'
 import { RoutineRuns } from '../components/routines/RoutineRuns'
+import { RoutineChat } from '../components/routines/RoutineChat'
 
 type DetailTab = 'overview' | 'runs' | 'access'
 
@@ -30,6 +31,9 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit, ini
   const [error, setError] = useState('')
   const [busy, setBusy] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  // Konfigurationen er pakket væk bag «Indstillinger»: panelet viser
+  // som udgangspunkt hvad rutinen HAR gjort, ikke hvad den er sat til.
+  const [visDetaljer, setVisDetaljer] = useState(false)
 
   const load = useCallback(async () => {
     setError('')
@@ -141,36 +145,50 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit, ini
       <main className="routine-detail">
         {error && <p className="routine-error" role="alert">{error}</p>}
         {!selected ? (
-          <div className="routine-detail-empty"><Clock3 size={24} /><h2>Vælg eller opret en rutine</h2><p>Her kan du styre, hvad der kører, og se hvad der skete.</p></div>
+          <div className="routine-detail-empty"><Clock3 size={24} /><h2>Vælg eller opret en rutine</h2><p>Her kan du se hvad rutinen lavede — og skrive til Jarvis i den.</p></div>
         ) : (
           <>
             <header className="routine-detail-head">
               <div><div className="routine-kicker">{selected.access_scope === 'system_owner' ? 'System · owner' : 'Privat rutine'}</div><h2>{selected.name}</h2></div>
               <div className="routine-actions">
-                {selected.status === 'active' && <button className="routine-button secondary" type="button" onClick={() => void act('pause')}>Pause</button>}
-                {selected.status === 'paused' && <button className="routine-button secondary" type="button" onClick={() => void act('resume')}><RotateCcw size={13} /> Genoptag</button>}
-                {selected.status === 'stopped' && <button className="routine-button secondary" type="button" onClick={() => void act('restart')}><RotateCcw size={13} /> Start igen</button>}
-                {selected.status === 'active' && <button className="routine-button secondary" type="button" onClick={() => void runNow()}><Play size={13} /> Kør nu</button>}
-                {!['stopped', 'archived'].includes(selected.status) && <button className="routine-button secondary" type="button" aria-label="Stop rutine" onClick={() => void act('stop')}><Square size={12} /> Stop</button>}
-                <button className="routine-button secondary" type="button" aria-label="Redigér rutine" onClick={() => onEdit(selected)}><Pencil size={13} /> Redigér</button>
+                <button className="routine-button secondary" type="button"
+                  aria-label="Rutineindstillinger" aria-expanded={visDetaljer}
+                  onClick={() => setVisDetaljer((v) => !v)}>
+                  {visDetaljer ? <ChevronRight size={13} /> : <MoreVertical size={13} />}
+                  {visDetaljer ? 'Til samtalen' : 'Indstillinger'}
+                </button>
               </div>
             </header>
-            <nav className="routine-tabs" role="tablist" aria-label="Rutineindhold">
-              {([['overview', 'Overblik'], ['runs', 'Kørsler'], ['access', 'Adgang']] as const).map(([key, label]) => (
-                <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>{label}</button>
-              ))}
-            </nav>
-            <div className="routine-detail-body">
-              {tab === 'overview' && <RoutineOverview routine={selected} />}
-              {tab === 'runs' && <RoutineRuns config={config} routineId={selected.routine_id} instruction={selected.instruction} onOpenSession={onOpenSession} />}
-              {tab === 'access' && <RoutineAccess routine={selected} />}
-              <div className="routine-danger-zone">
-                <div><strong>Slet rutine</strong><span>Fjerner definition, kørsler og privat indhold permanent.</span></div>
-                {!confirmDelete
-                  ? <button type="button" className="routine-button danger" aria-label="Slet rutine" onClick={() => setConfirmDelete(true)}><Trash2 size={13} /> Slet</button>
-                  : <div className="routine-confirm"><button type="button" className="routine-button secondary" onClick={() => setConfirmDelete(false)}>Fortryd</button><button type="button" className="routine-button danger" aria-label="Bekræft sletning" onClick={() => void remove()}>Bekræft sletning</button></div>}
-              </div>
-            </div>
+            {visDetaljer ? (
+              <>
+                <div className="routine-actions routine-actions-bar">
+                  {selected.status === 'active' && <button className="routine-button secondary" type="button" onClick={() => void act('pause')}>Pause</button>}
+                  {selected.status === 'paused' && <button className="routine-button secondary" type="button" onClick={() => void act('resume')}><RotateCcw size={13} /> Genoptag</button>}
+                  {selected.status === 'stopped' && <button className="routine-button secondary" type="button" onClick={() => void act('restart')}><RotateCcw size={13} /> Start igen</button>}
+                  {selected.status === 'active' && <button className="routine-button secondary" type="button" onClick={() => void runNow()}><Play size={13} /> Kør nu</button>}
+                  {!['stopped', 'archived'].includes(selected.status) && <button className="routine-button secondary" type="button" aria-label="Stop rutine" onClick={() => void act('stop')}><Square size={12} /> Stop</button>}
+                  <button className="routine-button secondary" type="button" aria-label="Redigér rutine" onClick={() => onEdit(selected)}><Pencil size={13} /> Redigér</button>
+                </div>
+                <nav className="routine-tabs" role="tablist" aria-label="Rutineindhold">
+                  {([['overview', 'Overblik'], ['runs', 'Kørsler'], ['access', 'Adgang']] as const).map(([key, label]) => (
+                    <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>{label}</button>
+                  ))}
+                </nav>
+                <div className="routine-detail-body">
+                  {tab === 'overview' && <RoutineOverview routine={selected} />}
+                  {tab === 'runs' && <RoutineRuns config={config} routineId={selected.routine_id} instruction={selected.instruction} onOpenSession={onOpenSession} />}
+                  {tab === 'access' && <RoutineAccess routine={selected} />}
+                  <div className="routine-danger-zone">
+                    <div><strong>Slet rutine</strong><span>Fjerner definition, kørsler og privat indhold permanent.</span></div>
+                    {!confirmDelete
+                      ? <button type="button" className="routine-button danger" aria-label="Slet rutine" onClick={() => setConfirmDelete(true)}><Trash2 size={13} /> Slet</button>
+                      : <div className="routine-confirm"><button type="button" className="routine-button secondary" onClick={() => setConfirmDelete(false)}>Fortryd</button><button type="button" className="routine-button danger" aria-label="Bekræft sletning" onClick={() => void remove()}>Bekræft sletning</button></div>}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <RoutineChat config={config} routineId={selected.routine_id} onOpenSession={onOpenSession} />
+            )}
           </>
         )}
       </main>

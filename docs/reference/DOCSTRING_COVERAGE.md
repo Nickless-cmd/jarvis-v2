@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10221/18762 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10229/18770 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 10221/18762 functions/methods documented (54%). The list 
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 751 | 1052 | 71% |
+| `apps.api.jarvis_api.routes` | 752 | 1053 | 71% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -26,7 +26,7 @@ Generated from source. 10221/18762 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 904 | 1619 | 55% |
-| `core.services` | 6849 | 12733 | 53% |
+| `core.services` | 6856 | 12740 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -140,19 +140,19 @@ Generated from source. 10221/18762 functions/methods documented (54%). The list 
 - `apps/api/jarvis_api/routes/push.py` :: `unregister` (L36)
 - `apps/api/jarvis_api/routes/push.py` :: `web_subscribe` (L59)
 - `apps/api/jarvis_api/routes/review_traeer.py` :: `numstat_til_filer` (L82)
-- `apps/api/jarvis_api/routes/routines.py` :: `cancel_run` (L307)
+- `apps/api/jarvis_api/routes/routines.py` :: `cancel_run` (L353)
 - `apps/api/jarvis_api/routes/routines.py` :: `create_routine` (L148)
-- `apps/api/jarvis_api/routes/routines.py` :: `delete_routine` (L240)
+- `apps/api/jarvis_api/routes/routines.py` :: `delete_routine` (L286)
 - `apps/api/jarvis_api/routes/routines.py` :: `get_inbox_defaults` (L155)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_redacted_diagnostic` (L315)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_routine` (L210)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_run` (L288)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_run_events` (L299)
-- `apps/api/jarvis_api/routes/routines.py` :: `lifecycle_action` (L251)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_redacted_diagnostic` (L361)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_routine` (L256)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_run` (L334)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_run_events` (L345)
+- `apps/api/jarvis_api/routes/routines.py` :: `lifecycle_action` (L297)
 - `apps/api/jarvis_api/routes/routines.py` :: `list_routines` (L143)
-- `apps/api/jarvis_api/routes/routines.py` :: `list_runs` (L280)
-- `apps/api/jarvis_api/routes/routines.py` :: `patch_routine` (L221)
-- `apps/api/jarvis_api/routes/routines.py` :: `run_now` (L264)
+- `apps/api/jarvis_api/routes/routines.py` :: `list_runs` (L326)
+- `apps/api/jarvis_api/routes/routines.py` :: `patch_routine` (L267)
+- `apps/api/jarvis_api/routes/routines.py` :: `run_now` (L310)
 - `apps/api/jarvis_api/routes/routines.py` :: `set_inbox_defaults` (L160)
 - `apps/api/jarvis_api/routes/sensory.py` :: `get_memory` (L59)
 - `apps/api/jarvis_api/routes/sensory.py` :: `list_memories` (L31)
@@ -1836,11 +1836,11 @@ Generated from source. 10221/18762 functions/methods documented (54%). The list 
 - `core/services/routine_runner.py` :: `RoutineRunRepository.renew` (L373)
 - `core/services/routine_runner.py` :: `RoutineRunRepository.settle_tool_dispatch` (L403)
 - `core/services/routine_runner.py` :: `RoutineRunRepository.transition` (L418)
-- `core/services/routine_runner.py` :: `RoutineRunner.cancel` (L796)
+- `core/services/routine_runner.py` :: `RoutineRunner.cancel` (L820)
 - `core/services/routine_runner.py` :: `RoutineRunner.dispatch_tool` (L602)
-- `core/services/routine_runner.py` :: `RoutineRunner.record_execution_failure` (L802)
-- `core/services/routine_runner.py` :: `RoutineRunner.record_execution_success` (L799)
-- `core/services/routine_runner.py` :: `RoutineRunner.run_next` (L743)
+- `core/services/routine_runner.py` :: `RoutineRunner.record_execution_failure` (L826)
+- `core/services/routine_runner.py` :: `RoutineRunner.record_execution_success` (L823)
+- `core/services/routine_runner.py` :: `RoutineRunner.run_next` (L767)
 - `core/services/routine_runner.py` :: `RoutineRunner.run_once` (L652)
 - `core/services/routine_runtime.py` :: `RoutineRuntime.claim_count_after_stop` (L104)
 - `core/services/routine_runtime.py` :: `RoutineRuntime.reconciler_is_alive` (L101)

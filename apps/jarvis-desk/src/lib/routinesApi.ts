@@ -118,3 +118,35 @@ export const listOriginSessions = (config: ApiConfig, routineId: string) =>
     config,
     `/api/routines/${encodeURIComponent(routineId)}/origin-sessions`,
   )
+
+/** Rutinens samtale — hvor man SER hvad den gjorde, og kan svare den.
+ *
+ *  Personlige rutiner får deres egen session (`routine-{id}`); system-rutiner
+ *  peger på den nyeste autonome session, fordi det er dér deres arbejde faktisk
+ *  ligger (målt 15/11-2026: nul `routine_runs` for dream/heartbeat/wakeup). */
+export const getRoutineChatSession = (config: ApiConfig, routineId: string) =>
+  apiFetch<{ session_id: string; title: string; kind: 'routine' | 'origin' }>(
+    config, `/api/routines/${encodeURIComponent(routineId)}/chat-session`,
+  )
+
+/** Send en besked i rutinens samtale.
+ *
+ *  Går gennem samme stream-endpoint som chat-fladen, så svaret er et rigtigt
+ *  visible-run i netop denne session — men uden at røre `SessionContext`, hvis
+ *  `select()` ville kapre den samtale man sad i. SSE'en læses ikke: vi venter
+ *  til strømmen lukker og henter så sessionen igen. */
+export async function sendRoutineMessage(
+  config: ApiConfig, sessionId: string, message: string,
+): Promise<void> {
+  const res = await fetch(`${config.apiBaseUrl}/chat/stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(config.authToken ? { Authorization: `Bearer ${config.authToken}` } : {}),
+    },
+    body: JSON.stringify({ session_id: sessionId, message }),
+  })
+  if (!res.ok) throw new Error(`Kunne ikke sende beskeden (HTTP ${res.status})`)
+  // Læs strømmen til ende: først da er svaret persisteret på serveren.
+  await res.text()
+}

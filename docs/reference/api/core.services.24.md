@@ -105,6 +105,19 @@ _Authorized lifecycle service for versioned Routine definitions and runs._
 | method | `RoutineService.get_redacted_diagnostic` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L505) |
 | method | `RoutineService.archive_stopped_before` | `(self, *, now=…)` | — | [src](../../../core/services/routine_service.py#L528) |
 
+## `core/services/routine_session.py`
+_Rutinens egen samtale — fladen hvor man kan SE hvad den gjorde, og svare den._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `routine_session_id` | `(routine_id)` | Den deterministiske session for én rutine. | [src](../../../core/services/routine_session.py#L35) |
+| function | `origin_for_routine` | `(routine_id, trigger_config=…)` | Hvilken autonom oprindelse rutinen arbejder under — eller ``''``. | [src](../../../core/services/routine_session.py#L40) |
+| function | `ensure_routine_session` | `(routine_id, *, title, owner_user_id=…)` | Sikr at rutinens session findes. Idempotent (INSERT OR IGNORE). | [src](../../../core/services/routine_session.py#L58) |
+| function | `_felt` | `(obj, key)` | Læs et felt fra både en dataclass/række og en dict. | [src](../../../core/services/routine_session.py#L75) |
+| function | `_har_identisk` | `(session_id, role, content)` | Findes beskeden allerede i sessionen? | [src](../../../core/services/routine_session.py#L82) |
+| function | `append_run` | `(session_id, *, run_id, instruction=…, result=…, created_at=…)` | Skriv én kørsel ind i rutinens session som opgave + svar. | [src](../../../core/services/routine_session.py#L103) |
+| function | `backfill` | `(session_id, runs, *, instruction=…, limit=…)` | Skriv de seneste kørsler ind i en NY rutine-session. | [src](../../../core/services/routine_session.py#L152) |
+
 ## `core/services/routine_types.py`
 _Value objects shared by the Routine domain._
 
@@ -671,30 +684,4 @@ _Runtime self-model — identity awareness (self-insight, narrative identity,_
 | function | `_idle_consolidation_surface` | `()` | — | [src](../../../core/services/runtime_self_model_identity.py#L1032) |
 | function | `_epistemic_runtime_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_identity.py#L1054) |
 | function | `_subagent_ecology_surface` | `()` | — | [src](../../../core/services/runtime_self_model_identity.py#L1074) |
-
-## `core/services/runtime_self_model_state.py`
-_Runtime self-model — base state surfaces + temporal/mineness awareness._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_facade` | `()` | Return the facade module so monkeypatch-through-facade is honored. | [src](../../../core/services/runtime_self_model_state.py#L17) |
-| function | `_embodied_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L29) |
-| function | `_loop_runtime_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L45) |
-| function | `_runtime_task_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L64) |
-| function | `_runtime_flow_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L87) |
-| function | `_runtime_hook_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L110) |
-| function | `_browser_body_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L144) |
-| function | `_standing_orders_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L176) |
-| function | `_layered_memory_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L197) |
-| function | `_affective_meta_state_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L218) |
-| function | `_experiential_runtime_context_surface` | `()` | — | [src](../../../core/services/runtime_self_model_state.py#L233) |
-| function | `_inner_voice_daemon_surface` | `()` | Read inner voice daemon state for self-model integration. | [src](../../../core/services/runtime_self_model_state.py#L249) |
-| function | `_derive_support_stream_awareness` | `(experiential, inner_voice)` | Derive compact self-aware support stream state. | [src](../../../core/services/runtime_self_model_state.py#L265) |
-| function | `_runtime_self_appraisal_record` | `(*, kind, state, evidence, confidence, allowed_effects, ttl_minutes)` | Structured source-truth record for runtime self-model renderings. | [src](../../../core/services/runtime_self_model_state.py#L342) |
-| function | `_derive_subjective_temporal_feel` | `(experiential, inner_voice)` | Derive a compact subjective temporal feel from existing runtime truth. | [src](../../../core/services/runtime_self_model_state.py#L367) |
-| function | `_temporal_narrative` | `(temporal_state, felt_proximity, return_signal, persistence_feel, gap_minutes)` | Compact self-awareness narrative for felt time. | [src](../../../core/services/runtime_self_model_state.py#L468) |
-| function | `_mineness_source_snapshot` | `()` | Gather the minimal runtime truth needed for mineness derivation. | [src](../../../core/services/runtime_self_model_state.py#L528) |
-| function | `_derive_mineness_ownership` | `(*, experiential, inner_voice, support_stream, temporal_feel, sources)` | Derive a bounded mineness/ownership surface from existing runtime truth. | [src](../../../core/services/runtime_self_model_state.py#L578) |
-| function | `_mineness_narrative` | `(*, ownership_state, carried_thread_state, carried_thread_count, brain_top_focus, brain_continuity, open_loop_signal, voice_mode, support_posture, felt_proximity)` | Compact mineness narrative. Empty in ambient default. | [src](../../../core/services/runtime_self_model_state.py#L680) |
-| function | `build_mineness_ownership_prompt_section` | `()` | Compact heartbeat-side prompt section for mineness/ownership. | [src](../../../core/services/runtime_self_model_state.py#L714) |
 

@@ -6,6 +6,7 @@ const listRoutineRuns = vi.fn()
 const listRoutineEvents = vi.fn()
 const routineAction = vi.fn()
 const deleteRoutine = vi.fn()
+const getRoutineChatSession = vi.fn()
 vi.mock('../lib/routinesApi', async (original) => ({
   ...(await original<typeof import('../lib/routinesApi')>()),
   listRoutines: (...args: unknown[]) => listRoutines(...args),
@@ -13,6 +14,7 @@ vi.mock('../lib/routinesApi', async (original) => ({
   listRoutineEvents: (...args: unknown[]) => listRoutineEvents(...args),
   routineAction: (...args: unknown[]) => routineAction(...args),
   deleteRoutine: (...args: unknown[]) => deleteRoutine(...args),
+  getRoutineChatSession: (...args: unknown[]) => getRoutineChatSession(...args),
 }))
 
 import { RoutineRuns } from '../components/routines/RoutineRuns'
@@ -29,6 +31,12 @@ const routine = (over: Partial<Routine> = {}): Routine => ({
 })
 
 describe('RoutinesView', () => {
+  /** Bjørn 15/11-2026: panelet viser som udgangspunkt rutinens SAMTALE — det man
+   *  ikke kunne se — og konfigurationen ligger bag «Indstillinger». Testene der
+   *  handler om konfigurationen skal derfor åbne den først, ligesom han gør. */
+  const visIndstillinger = () =>
+    fireEvent.click(screen.getByRole('button', { name: 'Rutineindstillinger' }))
+
   beforeEach(() => {
     listRoutines.mockReset().mockResolvedValue([
       routine(),
@@ -39,6 +47,9 @@ describe('RoutinesView', () => {
     listRoutineEvents.mockReset().mockResolvedValue([])
     routineAction.mockReset()
     deleteRoutine.mockReset()
+    getRoutineChatSession.mockReset().mockResolvedValue({
+      session_id: 'routine-r-own', title: 'Rutine · Min rutine', kind: 'routine',
+    })
   })
 
   it('shows an owner only their own routines plus owner-delivered system routines', async () => {
@@ -73,6 +84,7 @@ describe('RoutinesView', () => {
     // men CI fejlede paa netop denne linje — racen viser sig under last, ikke alene.
     // De to nabotests venter allerede paa samme faktum.
     fireEvent.click(await screen.findByRole('listitem', { name: /Min rutine/i }))
+    visIndstillinger()
     fireEvent.click(screen.getByRole('button', { name: 'Redigér rutine' }))
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ routine_id: 'r-own' }))
   })
@@ -80,10 +92,24 @@ describe('RoutinesView', () => {
   it('keeps Stop and Delete separate and requires an inline deletion confirmation', async () => {
     render(<RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={() => {}} />)
     fireEvent.click(await screen.findByRole('listitem', { name: /Min rutine/i }))
+    visIndstillinger()
     expect(screen.getByRole('button', { name: 'Stop rutine' })).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Slet rutine' }))
     expect(screen.getByRole('button', { name: 'Bekræft sletning' })).toBeVisible()
     expect(deleteRoutine).not.toHaveBeenCalled()
+  })
+
+  it('viser rutinens samtale som standard — konfigurationen ligger bag Indstillinger', async () => {
+    render(<RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={() => {}} />)
+    fireEvent.click(await screen.findByRole('listitem', { name: /Min rutine/i }))
+    // Samtalen er fladen: composerens felt findes, og de gamle faner gør ikke.
+    expect(screen.getByLabelText('Skriv til Jarvis i rutinen')).toBeVisible()
+    expect(screen.queryByRole('tab', { name: 'Kørsler' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Rutineindstillinger' })).toHaveAttribute('aria-expanded', 'false')
+    // …og de kommer frem når man åbner indstillingerne.
+    visIndstillinger()
+    expect(screen.getByRole('tab', { name: 'Kørsler' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Rutineindstillinger' })).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('closes through the supplied return-mode action', async () => {

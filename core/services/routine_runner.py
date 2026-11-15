@@ -707,6 +707,30 @@ class RoutineRunner:
                 "event_type": "succeeded",
             })
             self.record_execution_success(claim.routine_id)
+            # Skriv kørslen ind i rutinens EGEN samtale, så den kan læses og
+            # besvares fra rutinefladen. Uden dette ligger svaret kun i
+            # `routine_runs.result` og er usynligt fra enhver samtale
+            # (målt 15/11-2026: 190 kørsler, nul med session).
+            try:
+                from core.services import routine_session as _rs
+
+                _sid = _rs.ensure_routine_session(
+                    claim.routine_id,
+                    title=str(
+                        (row.get("definition_snapshot") or {}).get("name") or claim.routine_id
+                    ),
+                    owner_user_id=claim.owner_user_id,
+                )
+                _rs.append_run(
+                    _sid,
+                    run_id=run_id,
+                    instruction=instruction.decode("utf-8", "replace"),
+                    result=result.text,
+                )
+            except Exception as _exc:  # transcript må ikke vælte en kørsel der lykkedes
+                logging.getLogger(__name__).warning(
+                    "routine session write failed for %s: %s", run_id, type(_exc).__name__
+                )
         elif result.status == "waiting_approval":
             self.repository.transition(
                 run_id, status="failed", generation=claim.lease_generation,

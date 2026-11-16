@@ -42,6 +42,7 @@ class MessageStart:
     provider: str
     lane: str
     session_id: str | None = None
+    origin: str = ""
 
     def to_sse_line(self) -> str:
         """Returnér message_start SSE-blokken med run-metadata og nul-usage."""
@@ -53,6 +54,7 @@ class MessageStart:
                 "provider": self.provider,
                 "lane": self.lane,
                 "session_id": self.session_id,
+                "origin": self.origin,
                 "usage": {"input_tokens": 0, "output_tokens": 0},
             },
         })

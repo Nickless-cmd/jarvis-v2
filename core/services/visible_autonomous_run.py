@@ -542,6 +542,9 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
                     _vr._stream_visible_run(run, **stream_kwargs),
                     run_id=run.run_id, model=run.model, provider=run.provider,
                     lane=run.lane, session_id=resolved_session,
+                    # Rå origin, ikke den normaliserede: klienten skal kunne se
+                    # at turen er fremmed, uanset hvilket navn kilden har.
+                    origin=str(origin or ""),
                     ping_interval_s=10.0,
                 )
                 try:

@@ -308,19 +308,14 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       const _indkommende = event.message.id || ''
       const _sameRun = !_indkommende || state.activeRunId === _indkommende
       // ── LÅSEN SLÅR FØRST (Bjørn 28/10-2026) ─────────────────────────────
-      // `client_turn_start` er den ENESTE autoritative turgrænse (brugerens
-      // send). Alt der kommer bagefter med et nyt run-id er en RUNDE i samme
-      // tur — ikke en ny besked. Er svaret låst, må en ny runde derfor hverken
-      // rydde blokkene eller åbne låsen; ellers blev skærmen tom og pacen
-      // startede forfra.
+      // `client_turn_start` er brugerens autoritative turgrænse. En fremmed
+      // tur har ikke den frame i denne klient, men serverens `origin` på
+      // message_start er dens tilsvarende faktum.
       // ── SELVSTÆNDIG TUR SLÅR LÅSEN (11/11-2026) ──────────────────────────
-      // `message_start` kommer FØR `run`-framen (sse_v2's fallback-gren
-      // emitter den først), så origin er endnu ikke kendt her. Men et run-id
-      // vi allerede har set som selvstændigt er kendt — og så må låsen fra
-      // den FORRIGE tur ikke holde dets blokke fanget. Uden dette arvede
-      // wakeup'ens message_start den forrige turs blokke, og dens tekst
-      // strømmede ind i den besked brugeren allerede havde læst.
-      const _selvstaendig = !!_indkommende && state.selvstaendigRunId === _indkommende
+      // Markøren bevarer bagudkompatibilitet ved replay; på første frame er
+      // origin nu tilgængelig og kan slå låsen fra den forrige tur.
+      const _selvstaendig = Boolean(event.message.origin)
+        || (!!_indkommende && state.selvstaendigRunId === _indkommende)
       const _bevar = _sameRun || (state.svarLaast && !_selvstaendig)
       return {
         ...state,
@@ -348,7 +343,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         // ogsaa, kommer der et nyt.
         recoveryNotice: _sameRun ? state.recoveryNotice : undefined,
         finalAnswerStarted: _bevar ? state.finalAnswerStarted : false,
-        // Låsen ryddes KUN af `client_turn_start`. Et nyt run-id er en runde.
+        // En bruger-runde bevarer låsen; en fremmed tur med origin rydder den.
         svarLaast: _bevar ? state.svarLaast : false,
         // En ny runde i samme tur ER arbejde — også når svaret er låst. Uden
         // dette foldede hovedet mens runden skrev ind i den foldede liste.

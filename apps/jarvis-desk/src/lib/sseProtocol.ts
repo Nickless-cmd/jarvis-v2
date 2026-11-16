@@ -16,6 +16,7 @@ export interface MessageStartEvent {
     provider: string
     lane: string
     session_id: string | null
+    origin?: string
     usage: { input_tokens: number; output_tokens: number }
   }
 }

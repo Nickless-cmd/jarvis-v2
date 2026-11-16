@@ -324,6 +324,7 @@ async def translate_to_v2(
     provider: str = "",
     lane: str = "",
     session_id: str | None = None,
+    origin: str = "",
     ping_interval_s: float = 5.0,
 ) -> AsyncIterator[str]:
     """Konverter legacy SSE-stream til Anthropic-style v2 protokol.
@@ -365,6 +366,7 @@ async def translate_to_v2(
         "provider": provider,
         "lane": lane,
         "session_id": session_id,
+        "origin": origin,
         "has_tool": False,
         # Er fold-signalet sendt? Det maa ikke afhaenge af, om der
         # tilfaeldigt laa tekst i koen (se done-grenen).
@@ -416,6 +418,7 @@ async def translate_to_v2(
             model=str(_state["model"] or ""),
             provider=str(_state["provider"] or ""),
             lane=str(_state["lane"] or ""),
+            origin=str(_state["origin"] or ""),
             session_id=(
                 str(_state["session_id"]) if _state["session_id"] is not None else None
             ),
@@ -875,6 +878,8 @@ async def translate_to_v2(
                 # reasoning_delta bærer det selv (visible_runs.py:1727).
                 if payload.get("run_id"):
                     _state["run_id"] = _state["run_id"] or str(payload.get("run_id") or "")
+                if payload.get("origin"):
+                    _state["origin"] = _state["origin"] or str(payload.get("origin") or "")
 
                 if event_name == "reasoning_delta":
                     # Live thinking-trace → foldbart 'tænker…'-felt i frontend.

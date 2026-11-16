@@ -32,6 +32,7 @@ class TestMessageStart:
         evt = MessageStart(
             run_id="visible-abc", model="deepseek-v4-flash",
             provider="deepseek", lane="primary", session_id="chat-xyz",
+            origin="wakeup",
         )
         name, payload = _parse_sse(evt.to_sse_line())
         assert name == "message_start"
@@ -39,6 +40,7 @@ class TestMessageStart:
         assert payload["message"]["id"] == "visible-abc"
         assert payload["message"]["model"] == "deepseek-v4-flash"
         assert payload["message"]["session_id"] == "chat-xyz"
+        assert payload["message"]["origin"] == "wakeup"
         assert payload["message"]["usage"]["input_tokens"] == 0
 
     def test_session_id_optional(self):
@@ -47,6 +49,7 @@ class TestMessageStart:
         )
         _, payload = _parse_sse(evt.to_sse_line())
         assert payload["message"]["session_id"] is None
+        assert payload["message"]["origin"] == ""
 
 
 class TestContentBlockStart:

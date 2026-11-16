@@ -314,6 +314,7 @@ def start_autonomous_stream_run(
                 provider=run.provider,
                 lane=run.lane,
                 session_id=sid,
+                origin=origin,
                 ping_interval_s=5.0,
             )
             try:

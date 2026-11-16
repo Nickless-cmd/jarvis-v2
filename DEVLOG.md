@@ -1,5 +1,37 @@
 # Development log
 
+## 2026-11-16 — A prune function nobody called, and a guard that cried wolf
+
+Bjørn asked whether the database needed a different solution as it grows. The
+measurement said no — 6.03 GB with 320 GB free is not a fire — but it turned up
+two defects worth fixing, and both are the same shape: a mechanism that looks
+alive because it exists.
+
+`prune_cadence_decisions` was written, tested, and correct. It was called from
+exactly one place: `tests/test_db_cadence_journal.py`. Zero production callers.
+The table held 231,645 rows growing ~19,000/day. That is the same figure as
+`cheap_lane_route_decisions`, which became 45 % of the entire database in
+September because nobody had put it on the list — except this time the function
+already existed. It just never ran.
+
+The retention guard had the opposite problem. `tabeller_uden_politik()` reported
+`signal_archive` and `cadence_decisions` as having no agreed cleanup, while both
+had a prune function. The guard looked for a `created_at` column; `signal_archive`
+uses `archived_at`, `cadence_decisions` uses `closed_at`/`last_seen_at`. A guard
+that cries wolf about tables that are in order is worse than no guard, because
+you learn to ignore it.
+
+Both are now placed in `_EGEN_OPRYDNING` with their actual time column written
+into the reason, and `prune_cadence_decisions` runs from
+`cache_maintenance_daemon` alongside the other retention calls. Measured after:
+the guard reports four tables instead of six, and still catches a genuinely
+uncovered table.
+
+The test that matters is not that the function works — it already did. It is
+that the call exists in the production path. Removing the call fails
+`test_prune_cadence_decisions_kaldes_fra_produktionsstien`; that mutation was
+measured, not assumed.
+
 ## 2026-11-16 — A stale wakeup is marked, never cancelled
 
 Bjørn: *"det var det her jeg mente [...] Ikke afbestil. Mærk. En post der får et

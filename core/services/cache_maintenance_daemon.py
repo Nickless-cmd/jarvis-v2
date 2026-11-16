@@ -84,6 +84,7 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
         events_pruned = 0
         telemetry_pruned: dict[str, object] = {}
         versioned_pruned: dict[str, object] = {}
+        cadence_pruned: dict[str, int] = {}
         try:
             from core.services.events_retention import (
                 prune_old_events, prune_telemetry_tables, prune_versioned_tables,
@@ -93,6 +94,18 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
             versioned_pruned = prune_versioned_tables()
         except Exception:
             pass
+
+        # Kadence-journalen havde en prune-funktion der KUN blev kaldt fra en
+        # test. Målt 16/11-2026: 231.645 rækker og ~19.000/dag, nul
+        # produktionskald — samme figur som `cheap_lane_route_decisions`, der
+        # blev 45 % af databasen i september fordi ingen havde sat den på
+        # listen. Den kobles her frem for på en egen liste, så den følger den
+        # kørsel der allerede rydder op.
+        try:
+            from core.runtime.db_cadence_journal import prune_cadence_decisions
+            cadence_pruned = prune_cadence_decisions()
+        except Exception as exc:  # noqa: BLE001 — best-effort oprydning, men den skal ses
+            _log.warning("kadence-oprydning fejlede: %s", exc)
 
         # State-fil-rotation: de operationelle JSON-filer i ~/.jarvis-v2/state
         # havde aldrig fået ryddet (målt 30-08: plan_proposals havde 400 poster
@@ -176,6 +189,7 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
             "events_pruned": events_pruned,
             "telemetry_pruned": telemetry_pruned,
             "versioned_pruned": versioned_pruned,
+            "cadence_pruned": cadence_pruned,
             "state_files_pruned": state_files_pruned,
             "orphan_uploads": orphan_uploads,
             "orphan_slots": orphan_slots,

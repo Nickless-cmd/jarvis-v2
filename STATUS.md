@@ -5,6 +5,24 @@ The repository-wide status source remains
 This file records the status of the delivered Jarvis Desk changes requested for
 implementation.
 
+## Cadence retention wired up, guard no longer cries wolf — complete locally (2026-11-16)
+
+- `prune_cadence_decisions` now runs from `cache_maintenance_daemon` alongside
+  `prune_old_events` / `prune_telemetry_tables` / `prune_versioned_tables`.
+  Before: zero production callers — only `tests/test_db_cadence_journal.py`.
+  The table held 231,645 rows growing ~19,000/day.
+- `retention_coverage._EGEN_OPRYDNING` now lists `signal_archive` (uses
+  `archived_at`) and `cadence_decisions` (uses `closed_at`/`last_seen_at`) with
+  their actual time column in the written reason. The guard looked only for
+  `created_at` and reported both as uncovered.
+- Measured after: the guard reports four tables instead of six, and still
+  catches a genuinely uncovered table.
+- Mutation measured: removing the call fails
+  `test_prune_cadence_decisions_kaldes_fra_produktionsstien`.
+- Not done, deliberately: no VACUUM (253 MB fragmentation, needs downtime), no
+  data deleted, no telemetry/history split. That split is an architecture
+  decision for Bjørn, not a fix.
+
 ## Stale wakeups are marked, not cancelled — complete locally (2026-11-16)
 
 A wakeup booked on an outdated world view now fires **with the evidence in front

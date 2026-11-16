@@ -68,6 +68,15 @@ _EGEN_OPRYDNING: dict[str, str] = {
         "timer, rækken slettes efter 14 dage, og et hårdt loft på 100.000 "
         "rækker bounder den selv når ingest overhaler alderen. Kørt hver "
         "30. minut fra api_connection_nerve.",
+    "signal_archive":
+        "signal_decay_daemon.tick_signal_decay_daemon → "
+        "signal_archive_cleanup(max_age_days=30). Bruger `archived_at`, ikke "
+        "`created_at` — derfor kunne vagten ikke se den. Kørt hvert 6. time.",
+    "cadence_decisions":
+        "db_cadence_journal.prune_cadence_decisions — 30 dage for LUKKEDE "
+        "poster plus et hårdt loft på 50.000 rækker; åbne poster er fredede. "
+        "Bruger `closed_at`/`last_seen_at`, ikke `created_at`. Kørt fra "
+        "cache_maintenance_daemon sammen med de øvrige retention-kald.",
 }
 
 #: Tabeller der bliver liggende for evigt — med grunden. Værdien er ikke

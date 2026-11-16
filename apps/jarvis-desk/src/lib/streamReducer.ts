@@ -476,6 +476,28 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       return state
 
     case 'system_event': {
+      // ── FØLG-ABONNEMENT ER BUNDET TIL ÉT RUN (Bjørn 16/11-2026) ───────────
+      // «Cross-device streaming blander ny tur med tidligere besked.» En passiv
+      // klients `followState` overlever mellem runs. Var forrige svar låst og
+      // den nye turs `origin` tom (en brugertur fra den anden enhed), læste
+      // `message_start` det nye run-id som en RUNDE i samme tur og bevarede den
+      // forrige turs blokke. `followRun` abonnerer på ét bestemt run-id, så et
+      // skifte af id er en ny tur — det siger `follow_start` eksplicit, i stedet
+      // for at reduceren gætter ud fra origin/svarLaast. Samme id (reconnect) er
+      // en no-op: replayet sætter blok-indeksene på ny uden dobling.
+      if (event.kind === 'follow_start') {
+        const rid = String((event.payload as { run_id?: unknown } | undefined)?.run_id ?? '')
+        if (!rid || state.activeRunId === rid) return state
+        return {
+          ...initialStreamState(),
+          status: 'working',
+          activeRunId: rid,
+          model: state.model,
+          provider: state.provider,
+          lane: state.lane,
+          turStart: Date.now(),
+        }
+      }
       if (event.kind === 'client_turn_start') {
         // Brugerens send er den tidligste autoritative turgrænse i klienten.
         // Serverens første `message_start` bærer ofte tomt run-id; uden denne

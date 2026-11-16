@@ -373,6 +373,9 @@ export function ChatView({
     let alive = true
     let stopped = false
     let retryTimer: ReturnType<typeof setTimeout> | null = null
+    // Abonnementet er bundet til bgRunId: et andet id end det followState
+    // sidst viste er en NY tur og må ikke arve forrige turs blokke/lås.
+    if (bgRunId) followDispatch({ type: 'system_event', kind: 'follow_start', payload: { run_id: bgRunId } } as never)
     followCtrlRef.current = followRun(
       cfg, sessionId,
       (ev) => {

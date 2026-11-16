@@ -522,6 +522,23 @@ function RaekkeTranskriptImpl({
   // resultat i den fase det ejer. Samme regel som chat mode.
   const visTokens = Number.isFinite(tokens) && tokens > 0
   const aaben = aabenManuelt ?? arbejdeKoerer
+  // ── Rundelinjen findes fra turstart (Bjørn 16/11-2026) ──────────────────
+  //
+  // «den aktive rundelinje skal være synlig fra starten for det er den der
+  // bærer livet... sådan er det os i chat mode».
+  //
+  // Målt: `senesteRunde` kræver mindst ét `tool_use`-element, og `visTurhoved`
+  // kræver `arbejde.length > 0`. Fra turen starter til det første værktøjskald
+  // lander, var code mode derfor HELT tom — turen havde intet ansigt, hverken
+  // ring eller ord, i præcis det vindue hvor brugeren venter på et livstegn.
+  // Chat mode har haft en placeholder hele tiden (`rundeTekst` falder tilbage
+  // på `model.hovedTekst`); det er den samme form her, med code-modens egne
+  // klasser så den ventende linje og den rigtige runde står på samme plads.
+  //
+  // Teksten er serverens rapporterede arbejde når det findes — ellers «Tænker»,
+  // som er den ærlige tilstand: turen kører, og der er endnu intet at fortælle.
+  const ventendeArbejde = (workingStep ?? '').replace(/\s+/g, ' ').trim()
+  const venterTekst = isMeaningfulStatus(ventendeArbejde) ? ventendeArbejde : 'Tænker'
   const turRef = useRef<HTMLButtonElement>(null)
   const huskFold = useFoldPosition(turRef, aaben)
 
@@ -545,6 +562,22 @@ function RaekkeTranskriptImpl({
           hoved det skulle overlevere til, i præcis det øjeblik hovedet blev
           usynligt. Chat mode målte den fejl 14/11-2026 (`.rv-tur` var barn af
           samme gren); code mode arvede den og får samme split her. */}
+      {/* Den ventende rundelinje — turens ansigt før det første værktøjskald.
+          Samme wrapper, ikon og tekststil som den aktive runde, så overgangen
+          til rigtigt arbejde ikke flytter noget: rækken skifter indhold, ikke
+          plads. Uden fold-pil, for der er intet at folde endnu. */}
+      {arbejdeKoerer && arbejde.length === 0 && (
+        <div className="rv-arbejdsrunde" data-aktiv-runde="">
+          <div className="rv-arbejdsknap rv-venter" data-koerer="">
+            <span className="rv-arbejdsikon" aria-hidden="true">
+              <JarvisRing size={15} spinning tone="working" />
+            </span>
+            <span className="rv-arbejdsindhold shimmer">
+              <span className="rv-arbejdsfortaelling">{venterTekst}</span>
+            </span>
+          </div>
+        </div>
+      )}
       {arbejde.length > 0 && (
         <div className="rv-gruppe" hidden={!aaben}>
               {aaben && sektioner.map((s, i) => {

@@ -241,6 +241,11 @@
   font-size: 14px; line-height: 26px; font-weight: 400; cursor: pointer;
 }
 .raekkevisning .rv-arbejdsknap:hover .rv-turC { color: var(--fg-1); }
+/* Den ventende rundelinje (Bjørn 16/11-2026): turen er startet, men der er
+   endnu intet værktøjskald at folde ud. Den arver knappens layout — samme
+   højde, samme venstrekant — så den rigtige runde overtager pladsen uden at
+   flytte noget. Kun affordancen er anderledes: der er intet at klikke på. */
+.raekkevisning .rv-arbejdsknap.rv-venter { cursor: default; }
 .raekkevisning .rv-arbejdsikon {
   flex: none; position: relative; display: inline-flex;
   width: 16px; height: 16px; align-items: center; justify-content: center;

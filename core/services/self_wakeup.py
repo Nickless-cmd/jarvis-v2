@@ -553,10 +553,23 @@ def direktiv_for(record: dict[str, Any]) -> str:
     prompt = str(record.get("prompt") or "")
     reason = str(record.get("reason") or "")
     extra = str(record.get("extra") or "").strip()
+    # 16/11-2026, Bjørn: «Ikke afbestil. Mærk.» En post der blev booket på et
+    # verdensbillede der ikke findes længere fyrer stadig — men nu med beviset
+    # foran sig i stedet for at se ud som en frisk ordre. `maerk` læser kun;
+    # den kan ikke afbestille noget, og returnerer None når den ikke kan
+    # underbygge mærkningen (se modulet).
+    try:
+        from core.services.wakeup_staleness import maerk as _maerk
+
+        maerkning = _maerk(record)
+    except Exception:  # noqa: BLE001 — en mærkning må aldrig vælte fyringen
+        logger.warning("wakeup-staleness mærkning fejlede", exc_info=True)
+        maerkning = None
     return (
         f"[SELF-WAKEUP FIRED — wakeup_id={wid}]\n"
         f"Du bad dig selv: {prompt}\n"
         f"Kontekst: {reason or '(ingen begrundelse angivet)'}\n"
+        + (f"{maerkning}\n" if maerkning else "")
         + (f"Tilføjelse: {extra}\n" if extra else "")
         + "\nUDFØR opgaven nu med dine tools — beskriv den ikke bare. "
         "Hvis prompten siger 'tjek Discord', så BRUG discord_channel-værktøjet. "

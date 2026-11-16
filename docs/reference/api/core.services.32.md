@@ -38,6 +38,18 @@ _Wakeup dispatcher — autonomous fire of self-wakeups._
 | function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L308) |
 | function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L493) |
 
+## `core/services/wakeup_staleness.py`
+_Mærk en fyret vækning: hvad er der sket siden den blev booket?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_dansk` | `(vaerdi)` | ISO-streng → «15/11 17:44» i dansk tid. Tom streng hvis ulæselig. | [src](../../../core/services/wakeup_staleness.py#L51) |
+| function | `_alder_tekst` | `(minutter)` | — | [src](../../../core/services/wakeup_staleness.py#L66) |
+| function | `_side_opgave_fakta` | `(record)` | Er den side-opgave posten peger på blevet lukket siden? Ellers ``None``. | [src](../../../core/services/wakeup_staleness.py#L75) |
+| function | `_senere_post_fakta` | `(record)` | Findes der en SENERE post om samme sag der allerede er afviklet? | [src](../../../core/services/wakeup_staleness.py#L98) |
+| function | `_samtale_fakta` | `(record)` | Hvor mange ture er der afsluttet i samtalen siden posten blev booket? | [src](../../../core/services/wakeup_staleness.py#L137) |
+| function | `maerk` | `(record, *, nu=…)` | Fakta om hvad der er sket siden posten blev booket — eller ``None``. | [src](../../../core/services/wakeup_staleness.py#L169) |
+
 ## `core/services/wakeup_ticker.py`
 _Dedikeret vækker-tråd: fyr forfaldne vækninger inden for sekunder (12/11-2026)._
 

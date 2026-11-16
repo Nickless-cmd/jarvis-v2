@@ -5,6 +5,27 @@ The repository-wide status source remains
 This file records the status of the delivered Jarvis Desk changes requested for
 implementation.
 
+## Stale wakeups are marked, not cancelled — complete locally (2026-11-16)
+
+A wakeup booked on an outdated world view now fires **with the evidence in front
+of it** instead of looking like a fresh order:
+
+```
+[MULIGVIS FORÆLDET] Posten blev booket 15/11 17:40 — 24 timer før den fyrede.
+- Der er afsluttet 86 ture i denne samtale siden posten blev booket.
+Præmissen er IKKE efterprøvet. Er opgaven stadig relevant? Ja → udfør den.
+Nej → luk med [wakeup:no-update] og skriv én linje om hvorfor.
+Denne mærkning afbestiller intet og beslutter intet.
+```
+
+- New `core/services/wakeup_staleness.py` — pure reader, no write path.
+- Hooked into `self_wakeup.direktiv_for`, the single entry point for both the
+  dispatcher and the inbox waker.
+- Three facts, each with a checkable timestamp: age at firing, a closed side
+  task the post points at, and completed turns in the conversation since booking.
+- Fails towards keeping: undateable post or unreadable sources → no marking.
+- Under 60 minutes old → left alone (65 of 69 live posts are that short).
+
 ## The round line exists from the first frame — complete locally (2026-11-16)
 
 - Code mode rendered **nothing** from turn start until the first tool call landed: `senesteRunde` requires a `tool_use` element and `visTurhoved` requires `arbejde.length > 0`. The window where the user waits for a sign of life had no face on it.

@@ -1,5 +1,58 @@
 # Development log
 
+## 2026-11-16 — A stale wakeup is marked, never cancelled
+
+Bjørn: *"det var det her jeg mente [...] Ikke afbestil. Mærk. En post der får et
+flag: «muligvis forældet — sagen blev lukket 15/11 kl. 17:44». Så fyrer den som
+den skal, men med beviset foran mig i stedet for gætteriet."*
+
+The occasion was measured the same day: a wakeup booked 15/11 16:40 with a
+24-hour delay fired on 16/11 17:40 about a matter that had been settled a few
+hours after the booking. The post was perfectly healthy. It pointed at a world
+that no longer existed.
+
+Every guard in the wakeup system turned out to be **mechanical**: `er_stadig_fyret`
+asks "is it receipted", `dispatch_skipped` asks "was it already forwarded",
+`cleanup_old_wakeups` asks "is it too old", and `booking_dedup.find_dublet`
+compares text and time. Not one of them asks *is the premise still true*. The
+system knows whether a booking is **alive**. It never knows whether it is
+**true**.
+
+The obvious fix — a scanner that cancels what has already happened — was
+rejected, and the reason is the same one that shaped the stop fix earlier the
+same day. A scanner that decides "this is done" is making a judgement about the
+world. When it is wrong it removes work **without a trace**, which is exactly
+the hole the stop fix was built to close: a stop must not vanish silently, but
+it must not raise itself either. Cancelling automatically recreates the hole
+from the other side.
+
+So `core/services/wakeup_staleness.py` reads and marks. It has no write path at
+all — the test patches `_save`, `cancel_wakeup` and `mark_wakeup_consumed` to
+raise, so any future "helpful" auto-cancel fails the suite. It gathers three
+facts, each with a timestamp the reader can check: how long before firing the
+post was booked; whether a side task the post points at has been closed; and how
+many turns have completed in the conversation since. The third is the same rule
+as `stopped_for_session` — *the conversation moved on* is derived from state,
+not from a consumption flag.
+
+It fails towards keeping. A post that cannot be dated, or whose sources cannot
+be read, gets no marking and fires exactly as before. And under an hour old it
+is left alone: 65 of 69 posts in the live store had a delay under an hour, and a
+warning on every short check is a warning nobody reads.
+
+Marking lives in `direktiv_for`, which is the single entry point for **both** the
+dispatcher and the inbox waker — so one hook covers both paths.
+
+Measured against the actual post from yesterday: the text now reads *"booket
+15/11 17:40 — 24 timer før den fyrede. Der er afsluttet 86 ture i denne samtale
+siden posten blev booket."* The premise is put in front of the reader instead of
+being assumed.
+
+One test was green for the wrong reason and had to be fixed: the first version
+of the no-write guard ran with all sources stubbed to `None`, so `fakta` was
+empty and an inserted auto-cancel was never reached. A guard that cannot reach
+the branch it protects proves nothing about it.
+
 ## 2026-11-16 — The round line carries the life, so it must exist before the work does
 
 Bjørn: *"den aktive rundelinje skal være synlig fra starten for det er den der bærer livet... sådan er det os i chat mode"*.

@@ -64,7 +64,11 @@ def stage_wake(*, task_id: str, session_id: str, owner_user_id: str, message: st
             "started_at": now, "last_progress_at": now, "settled_at": now,
             "interrupted_at": now, "first_interrupted_at": now,
             "exit_reason": "agent-wake", "interruption_reason": "agent-wake",
-            "recovery_generation": 0, "recovery_attempt": 0, "recovery_limit": 1,
+            # Ét normalt dispatch-forsøg plus ét reclaim hvis dispatcheren dør
+            # efter claim men før arbejdet faktisk starter. Med limit=1 blev et
+            # udløbet lease permanent uclaimbart, netop den fejl leasen skal
+            # forhindre.
+            "recovery_generation": 0, "recovery_attempt": 0, "recovery_limit": 2,
             "recovery_owner": "", "recovery_lease_until": "", "next_attempt_at": "",
             "notice_pending": False, "final_synthesis_pending": False,
             "recovery_deferrals": 0,

@@ -515,14 +515,15 @@ _Desks projektion af agentkontrakten (agent-contract-v1 G, spec 10)._
 | function | `feed` | `(owner_user_id)` | Kort til notifikationsfeedet: een reference pr. assignment + een pr. ventende approval. Hydreret fra | [src](../../../core/services/agent_contract_projection.py#L468) |
 | function | `_build_feed` | `(owner)` | — | [src](../../../core/services/agent_contract_projection.py#L479) |
 | function | `mark_read` | `(owner_user_id, ref_kind, ref_id)` | — | [src](../../../core/services/agent_contract_projection.py#L505) |
-| function | `acknowledge` | `(owner_user_id, assignment_id)` | Kvitter en TERMINAL assignment. En aaben (inkl. ``outcome_unknown``) kan ikke kvitteres vaek - den skal | [src](../../../core/services/agent_contract_projection.py#L512) |
-| function | `_session_of` | `(owner, agent_id)` | Sessionen for en handling - fra DB (agentens oprindelse), ALDRIG fra klienten. '' = ukendt agent. | [src](../../../core/services/agent_contract_projection.py#L532) |
-| function | `_unknown` | `(detail=…)` | — | [src](../../../core/services/agent_contract_projection.py#L545) |
-| function | `send_message` | `(owner_user_id, agent_id, content)` | Menneskelig besked til agenten. Maerket som menneske + audit-id (spec 5), aldrig som parent-instruks. | [src](../../../core/services/agent_contract_projection.py#L550) |
-| function | `followup` | `(owner_user_id, agent_id, goal, *, idempotency_key=…)` | — | [src](../../../core/services/agent_contract_projection.py#L566) |
-| function | `stop` | `(owner_user_id, agent_id, note=…)` | Stop-anmodning. Svaret er ``stop_requested`` - aldrig et lovet ``cancelled``; det afgoeres af projektionen. | [src](../../../core/services/agent_contract_projection.py#L578) |
-| function | `close` | `(owner_user_id, agent_id)` | — | [src](../../../core/services/agent_contract_projection.py#L591) |
-| function | `_receipt` | `(kind, out, *, delivered=…)` | Acceptkvittering adskilt fra faktisk effekt. ``confirmed`` er ALTID False her: bekraeftelsen er den | [src](../../../core/services/agent_contract_projection.py#L602) |
+| function | `_acknowledge_results` | `(owner, assignment_id)` | Flyt assignmentets outbox-beskeder til ``acknowledged``. | [src](../../../core/services/agent_contract_projection.py#L512) |
+| function | `acknowledge` | `(owner_user_id, assignment_id)` | Kvitter en TERMINAL assignment. En aaben (inkl. ``outcome_unknown``) kan ikke kvitteres vaek - den skal | [src](../../../core/services/agent_contract_projection.py#L533) |
+| function | `_session_of` | `(owner, agent_id)` | Sessionen for en handling - fra DB (agentens oprindelse), ALDRIG fra klienten. '' = ukendt agent. | [src](../../../core/services/agent_contract_projection.py#L555) |
+| function | `_unknown` | `(detail=…)` | — | [src](../../../core/services/agent_contract_projection.py#L568) |
+| function | `send_message` | `(owner_user_id, agent_id, content)` | Menneskelig besked til agenten. Maerket som menneske + audit-id (spec 5), aldrig som parent-instruks. | [src](../../../core/services/agent_contract_projection.py#L573) |
+| function | `followup` | `(owner_user_id, agent_id, goal, *, idempotency_key=…)` | — | [src](../../../core/services/agent_contract_projection.py#L589) |
+| function | `stop` | `(owner_user_id, agent_id, note=…)` | Stop-anmodning. Svaret er ``stop_requested`` - aldrig et lovet ``cancelled``; det afgoeres af projektionen. | [src](../../../core/services/agent_contract_projection.py#L601) |
+| function | `close` | `(owner_user_id, agent_id)` | — | [src](../../../core/services/agent_contract_projection.py#L614) |
+| function | `_receipt` | `(kind, out, *, delivered=…)` | Acceptkvittering adskilt fra faktisk effekt. ``confirmed`` er ALTID False her: bekraeftelsen er den | [src](../../../core/services/agent_contract_projection.py#L625) |
 
 ## `core/services/agent_contract_service.py`
 _agent-contract-v1: den ene motor bag dispatch og styring af agenter (leverance F1)._

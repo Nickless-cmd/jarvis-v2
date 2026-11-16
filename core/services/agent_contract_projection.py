@@ -31,7 +31,7 @@ from core.runtime import db_agent_artifacts as art
 from core.runtime import db_agent_feed as feed_db
 from core.runtime import db_agent_route
 from core.runtime.db_agent_contract import (
-    ASSIGNMENT_TERMINAL, CONTRACT_VERSION, LEGACY_UNSCOPED, ContractError, _conn,
+    ASSIGNMENT_TERMINAL, CONTRACT_VERSION, LEGACY_UNSCOPED, ContractError, _conn, advance_delivery,
 )
 from core.services.short_ttl_cache import ShortTTLCache
 
@@ -509,6 +509,27 @@ def mark_read(owner_user_id: str, ref_kind: str, ref_id: str) -> bool:
     return ok
 
 
+def _acknowledge_results(owner: str, assignment_id: str) -> int:
+    """Flyt assignmentets outbox-beskeder til ``acknowledged``.
+
+    ``unprocessed`` i ``list_agents`` laeser ``agent_result_outbox.delivery_status`` — en ANDEN
+    tilstand end feed-referencens ``acknowledged_at``. Uden denne kobling forsvandt kortet mens
+    flaget blev staaende paa 1 for evigt (maalt 16/11-2026: 267 raekker, nul kvitterede, fordi
+    ``advance_delivery`` havde nul produktionskaldere).
+    """
+    rows = _conn().execute(
+        "SELECT message_id FROM agent_result_outbox WHERE assignment_id=? AND owner_user_id=? "
+        "AND delivery_status != 'acknowledged'", (assignment_id, owner)).fetchall()
+    moved = 0
+    for r in rows:
+        try:
+            advance_delivery(message_id=r["message_id"], owner_user_id=owner, to_status="acknowledged")
+            moved += 1
+        except ContractError:
+            logger.warning("kunne ikke kvittere resultatet for %s", assignment_id, exc_info=True)
+    return moved
+
+
 def acknowledge(owner_user_id: str, assignment_id: str) -> dict[str, Any]:
     """Kvitter en TERMINAL assignment. En aaben (inkl. ``outcome_unknown``) kan ikke kvitteres vaek - den skal
     afgoeres; ellers kunne en kvittering skjule en uafklaret skrivning."""
@@ -522,6 +543,8 @@ def acknowledge(owner_user_id: str, assignment_id: str) -> dict[str, Any]:
         return {"status": "error", "code": "INVALID_TRANSITION", "error": "kun et afsluttet assignment kan kvitteres",
                 "contract_version": CONTRACT_VERSION}
     ok = feed_db.acknowledge(owner_user_id=owner, ref_kind="agent", ref_id=assignment_id)
+    # To kvitteringer, ikke én: feed-referencen styrer kortet, outboxen styrer ``unprocessed``.
+    _acknowledge_results(owner, assignment_id)
     invalidate_feed_cache(owner)
     return {"status": "ok" if ok else "error", "acknowledged": ok, "assignment_id": assignment_id,
             "contract_version": CONTRACT_VERSION}

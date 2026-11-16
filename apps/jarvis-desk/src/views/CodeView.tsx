@@ -24,7 +24,7 @@ import { HistoriskGodkendelse, type GodkendelsesHaendelse } from '../components/
 import { fletGodkendelser, forsteGodkendelse } from '../lib/godkendelseIFolden'
 import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
 import { PauseAskKort } from '../components/feedback/PauseAskKort'
-import { findesSynligGodkendelseRaekke } from '../lib/ventendeGodkendelse'
+import { findesSynligGodkendelseRaekke, medVentendeGodkendelse } from '../lib/ventendeGodkendelse'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
@@ -57,7 +57,7 @@ import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
 import { useRefPanelLytting } from '../lib/refAabn'
-import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRunSessions, followRun, warmSession, steerRun, type CompactionStats } from '../lib/api'
+import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRunSessions, followRun, warmSession, steerRun, cancelRun, cancelActiveRun, type CompactionStats } from '../lib/api'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
 import { useOnline } from '../hooks/useOnline'
@@ -193,6 +193,8 @@ export function CodeView({
   // Cross-device live-state (effekter wires længere nede): bruges allerede her i
   // miljø-felt-beregningen, så deklarationen skal stå før den.
   const [bgActive, setBgActive] = useState(false)
+  // run-id'et på det baggrunds-run active-runs fandt (null hvis serveren ikke oplyser det)
+  const [bgRunId, setBgRunId] = useState<string | null>(null)
   const [followState, followDispatch] = useRammeReducer(streamReducer, initialStreamState)
   const followCtrlRef = useRef<{ abort: () => void } | null>(null)
 
@@ -635,6 +637,7 @@ export function CodeView({
           const serverHasRun = !!currentRun
           const active = serverHasRun && stream.status !== 'working'
             && (!currentRun?.run_id || currentRun.run_id !== stream.activeRunId)
+          setBgRunId(active ? currentRun?.run_id || null : null)
           if (active) bgUntil = Date.now() + 6000
           setBgActive(active || Date.now() < bgUntil)
           if (active) { cooldown = 3; void sessions.refreshMessages() }
@@ -971,11 +974,21 @@ export function CodeView({
 
   const composer = (
     <Composer
-      streaming={stream.status === 'working'}
+      streaming={stream.status === 'working' || bgActive || followState.status === 'working'}
       onSend={handleSend}
       onVoice={voice.enter}
       voiceSupported={voice.supported}
-      onStop={() => void stream.abort()}
+      onStop={() => {
+        // Mit eget svar har en lokal stream der kan afbrydes. Alt andet kører på
+        // serveren: ram det præcist med run-id hvis vi kender det, ellers
+        // (fallback) bed serveren stoppe sessionens aktive run.
+        if (stream.status !== 'working') {
+          const runId = followState.activeRunId ?? bgRunId
+          if (runId && config) { void cancelRun(config, runId); return }
+          if (sessionId && config) { void cancelActiveRun(config, sessionId); return }
+        }
+        void stream.abort()
+      }}
       model="deepseek-flash"
       config={config}
       getSessionId={async () => sessionId ?? sessions.activeId ?? (await sessions.create('Kode-session', 'code')).id}
@@ -1030,7 +1043,10 @@ export function CodeView({
 // `fletGodkendelser` grupperer pending+afgoerelse til ÉN linje og laegger den
 // ind i den assistent-tur den hørte til. En raekke hvis tur endnu ikke er
 // skrevet bliver staaende — den skal kunne besvares NU.
-  const flettede = fletGodkendelser(sessions.messages)
+  // Den HENTEDE ventende godkendelse flettes ind som en række (16/11-2026), så
+  // kortet står i transcriptet også når den persisterede række mangler.
+  const beskederMedVentende = medVentendeGodkendelse(sessions.messages, stream.pendingApproval, sessionId ?? null)
+  const flettede = fletGodkendelser(beskederMedVentende)
   const transcriptMessages = flettede.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker' || m.role === 'approval_request')
   // Mens den levende sluttekst ruller faerdig, findes samme svar allerede som
   // persisteret serverraekke. Skjul KUN samme run indtil den levende raekke
@@ -1045,7 +1061,7 @@ export function CodeView({
   // hvorfor: raekken vinder naar den findes, ellers bærer det flydende kort
   // svaret. Betingelsen er ÉN funktion, saa de to flader ikke kan divergere.
   const pendingIRækken = findesSynligGodkendelseRaekke(
-    sessions.messages,
+    beskederMedVentende,
     stream.pendingApproval?.approvalId ?? null,
   )
 

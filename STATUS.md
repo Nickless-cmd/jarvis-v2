@@ -5,6 +5,15 @@ The repository-wide status source remains
 This file records the status of the delivered Jarvis Desk changes requested for
 implementation.
 
+## CodeView stop and pending-approval projection — complete locally (2026-11-16)
+
+- CodeView shows the stop button for all work in the conversation and stops it
+  without a known run id (`cancelRun` when the id is known, otherwise
+  `POST /chat/sessions/{id}/cancel-active`).
+- A fetched pending approval is merged into the transcript as an
+  `approval_request` row; a persisted row with the same id wins, so there is
+  one card, and it disappears when decided.
+
 ## Session-bound background work — complete locally (2026-11-16)
 
 - An explicit origin session is authoritative: an unusable one leaves the

@@ -1365,6 +1365,22 @@ export async function cancelRun(config: ApiConfig, runId: string): Promise<void>
   }
 }
 
+/** Stop det run der kører for SESSIONEN — uden at klienten kender et run-id.
+ *  Fallback for stop-knappen når runnet er startet af en anden enhed / en
+ *  vækning og vi hverken har en lokal stream eller et run-id fra active-runs.
+ *  Serveren slår selv runnet op (POST /chat/sessions/{id}/cancel-active).
+ *  Best-effort som cancelRun. */
+export async function cancelActiveRun(config: ApiConfig, sessionId: string): Promise<void> {
+  const url = new URL(`/chat/sessions/${encodeURIComponent(sessionId)}/cancel-active`, config.apiBaseUrl).toString()
+  const headers: Record<string, string> = {}
+  if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
+  try {
+    await fetch(url, { method: 'POST', headers })
+  } catch {
+    // best-effort: netværksfejl ignoreres
+  }
+}
+
 /** Mid-flight steer (3/10-2026): injicér en bruger-besked i et KØRENDE run.
  *  Agent-loopet samler den op ved næste runde-grænse — det afbryder derfor
  *  ikke turen. Bruges af køens «Send nu». Spejler mobilens `steerRun`;

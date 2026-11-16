@@ -46,7 +46,7 @@ _Hvem kaldte hvilket vaerktoej — gjort taelleligt._
 | function | `byg_payload` | `(name, arguments)` | Selve eventet. Adskilt fra udgivelsen, saa formen kan testes alene. | [src](../../../core/tools/tool_call_telemetry.py#L177) |
 | function | `udgiv_tool_invoked` | `(name, arguments)` | Udgiv `tool.invoked`. Maa ALDRIG braekke et vaerktoejskald. | [src](../../../core/tools/tool_call_telemetry.py#L186) |
 | function | `udgiv_execution_timing` | `(payload)` | Publish one terminal timing summary without affecting the tool call. | [src](../../../core/tools/tool_call_telemetry.py#L196) |
-| function | `byg_completed_payload` | `(name, status, arguments, result=…, pre_read=…)` | `tool.completed` — nu med de to felter der goer parringen mulig. | [src](../../../core/tools/tool_call_telemetry.py#L228) |
+| function | `byg_completed_payload` | `(name, status, arguments, result=…, pre_read=…)` | `tool.completed` — nu med de to felter der goer parringen mulig. | [src](../../../core/tools/tool_call_telemetry.py#L249) |
 
 ## `core/tools/tool_definition_v2.py`
 _De tre akser skilt ad — Fase 3, K1._

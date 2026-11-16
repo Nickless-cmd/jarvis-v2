@@ -470,3 +470,92 @@ def test_en_raekke_med_tom_ejer_giver_ogsaa_tom(monkeypatch):
 
     monkeypatch.setattr(db, "connect", lambda *a, **k: _Conn())
     assert t._ejer_fra_run("visible-tom") == ""
+
+
+# ── Verify-maalet i completed-eventet (17/11-2026) ────────────────────────
+#
+# `verify_file_contains` havde 187 events i `events` og NUL af dem bar en sti.
+# Payloaden var `{tool, status, run_id, tool_use_id}`, saa R2-telemetriens
+# udfaldsakse ikke kunne afgoere om en strict verify gjaldt netop den fil der
+# blev muteret — den maalte kun tidslig naerhed. Testene her laaser at maalet
+# nu staar i payloaden, OG at det staar i de grene hvor verifikationen fejlede.
+
+
+def test_verify_file_contains_baerer_STIEN_i_completed_eventet():
+    """Selve fejlen: reaktionen kunne ikke kobles til sin mutation."""
+    p = t.byg_completed_payload(
+        "verify_file_contains", "ok",
+        {"path": "/tmp/a.md", "expected_substring": "hej"},
+        {"status": "ok", "path": "/tmp/a.md", "found_substring": True},
+    )
+    assert p["path"] == "/tmp/a.md", "verify-eventet bar ingen sti — parringen er umulig"
+    assert p["verify_expected"] == "hej"
+    assert p["verify_found_substring"] is True
+
+
+def test_stien_er_den_SAMME_noegle_som_mutationen_baerer():
+    """Parringen sker paa `path`. Baerer de to events hver sin noegle, kan de
+    ikke matches — uanset hvor praecise de ellers er."""
+    mutation = t.byg_completed_payload(
+        "write_file", "ok", {"path": "/tmp/a.md"}, {"status": "ok", "path": "/tmp/a.md"})
+    verify = t.byg_completed_payload(
+        "verify_file_contains", "ok",
+        {"path": "/tmp/a.md", "expected_substring": "hej"},
+        {"status": "ok", "path": "/tmp/a.md", "found_substring": True},
+    )
+    assert mutation["path"] == verify["path"] == "/tmp/a.md"
+
+
+def test_verify_der_FEJLER_har_ogsaa_en_sti():
+    """En verify der svarede `failed` er netop det interessante tilfaelde.
+    Mangler stien her, forsvinder den daarlige halvdel ud af maalingen."""
+    p = t.byg_completed_payload(
+        "verify_file_contains", "failed",
+        {"path": "/tmp/findes-ikke.md", "expected_substring": "x"},
+        {"status": "failed", "path": "/tmp/findes-ikke.md", "reason": "file does not exist"},
+    )
+    assert p["path"] == "/tmp/findes-ikke.md"
+    assert p["status"] == "failed"
+
+
+def test_verify_uden_resultat_falder_tilbage_paa_ARGUMENTET():
+    """`path is required` returnerer ingen `path` i resultatet. Argumentet er
+    den aerlige kilde — ogsaa naar det er tomt."""
+    p = t.byg_completed_payload(
+        "verify_file_contains", "error",
+        {"path": "/tmp/kun-i-argumentet.md"},
+        {"status": "error", "error": "read failed"},
+    )
+    assert p["path"] == "/tmp/kun-i-argumentet.md"
+
+
+def test_verify_service_active_baerer_UNITNAVNET():
+    p = t.byg_completed_payload(
+        "verify_service_active", "ok", {"name": "jarvis-api"},
+        {"status": "ok", "service": "jarvis-api", "active": True},
+    )
+    assert p["verify_target"] == "jarvis-api"
+
+
+def test_verify_endpoint_responds_baerer_URLEN():
+    p = t.byg_completed_payload(
+        "verify_endpoint_responds", "ok", {"url": "http://127.0.0.1:8080/health"},
+        {"status": "ok", "url": "http://127.0.0.1:8080/health", "actual_status": 200},
+    )
+    assert p["verify_target"] == "http://127.0.0.1:8080/health"
+
+
+def test_en_fejlet_endpoint_verify_har_ogsaa_et_maal():
+    p = t.byg_completed_payload(
+        "verify_endpoint_responds", "failed", {"url": "http://127.0.0.1:9/x"},
+        {"status": "failed", "url": "http://127.0.0.1:9/x", "actual_status": None},
+    )
+    assert p["verify_target"] == "http://127.0.0.1:9/x"
+
+
+def test_almindelige_vaerktoejer_faar_ikke_verify_felter():
+    """Loeftningen maa ikke smitte: et bash-kald er ikke en verifikation."""
+    p = t.byg_completed_payload("bash", "ok", {"command": "ls"}, {"status": "ok"})
+    assert "verify_target" not in p
+    assert "verify_expected" not in p
+    assert "path" not in p

@@ -224,6 +224,27 @@ FILE_TOOLS = frozenset({"read_file", "edit_file", "write_file"})
 #: sti, ikke mod normal brug.
 PATH_GRAENSE = 500
 
+#: Verify-vaerktoejer (maalt 17/11-2026). Deres completed-event bar INGEN
+#: maal-identifikator: 187 `verify_file_contains`-events i `events` havde nul
+#: sti — payloaden var `{tool, status, run_id, tool_use_id}` og intet mere.
+#: Foelgen var at R2-telemetriens udfaldsakse ikke kunne afgoere om en strict
+#: verify gjaldt netop den fil der blev muteret. Den maalte derfor kun tidslig
+#: naerhed: `_REACTION_WINDOW_SECONDS = 60`, mens median latenstid fra mutation
+#: til verify er 243 s — vinduet fangede 4 af 27 tilfaelde. Samme fejlform som
+#: fil-stien ovenfor: et event der ikke baerer det man vil maale.
+#:
+#: `verify_file_contains` faar `path` — praecis samme noegle som
+#: read_file/write_file/edit_file baerer — fordi det er den noegle parringen
+#: mellem en mutation og dens verifikation skal ske paa. De to andre har intet
+#: filsystem-maal og faar `verify_target` (unit-navn / URL).
+VERIFY_FILE_TOOLS = frozenset({"verify_file_contains"})
+VERIFY_TARGET_TOOLS = frozenset({"verify_service_active", "verify_endpoint_responds"})
+
+#: Det forventede substring gemmes i completed-eventet op til denne graense.
+#: Uden det kan man se AT en verify svarede ok, men ikke om den gjaldt det man
+#: faktisk skrev.
+VERIFY_TEXT_GRAENSE = 200
+
 
 def byg_completed_payload(
     name: str,
@@ -282,4 +303,35 @@ def byg_completed_payload(
         # Sat af `execute_tool` FOER handleren koerte — se simple_tools.
         if pre_read is not None:
             payload["pre_read"] = bool(pre_read)
+    # Verify-maalet (17/11-2026). Samme loeftning som fil-stien ovenfor:
+    # handleren returnerer allerede maalet i `result` — `verify_file_contains`
+    # baerer `path` i ALLE grene (ogsaa naar filen mangler), de to andre baerer
+    # `service` / `url`. Ved en fejl findes maalet ikke, saa vi falder tilbage
+    # til argumentet: en verify der fejlede ER netop det interessante tilfaelde
+    # og maa ikke forsvinde ud af maalingen.
+    if str(name) in VERIFY_FILE_TOOLS:
+        sti = ""
+        if isinstance(result, dict):
+            sti = str(result.get("path") or "")
+        if not sti:
+            sti = _fra_args(args, "path")
+        if sti:
+            payload["path"] = sti[:PATH_GRAENSE]
+        # Hvad verifikationen bad om, og hvad den svarede. Uden begge kan et
+        # `status: ok` ikke skelnes fra en verify der gjaldt noget andet.
+        forventet = _fra_args(args, "expected_substring")
+        if forventet:
+            payload["verify_expected"] = forventet[:VERIFY_TEXT_GRAENSE]
+        if isinstance(result, dict):
+            for noegle in ("found_substring", "exists"):
+                if result.get(noegle) is not None:
+                    payload[f"verify_{noegle}"] = bool(result[noegle])
+    elif str(name) in VERIFY_TARGET_TOOLS:
+        maal = ""
+        if isinstance(result, dict):
+            maal = str(result.get("service") or result.get("url") or "")
+        if not maal:
+            maal = _fra_args(args, "name") or _fra_args(args, "url")
+        if maal:
+            payload["verify_target"] = maal[:PATH_GRAENSE]
     return payload

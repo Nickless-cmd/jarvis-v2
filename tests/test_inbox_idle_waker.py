@@ -764,3 +764,65 @@ def test_dispatched_udgives_kun_naar_en_wakeup_faktisk_har_faaet_sit_run(
     assert r == {"status": "ok", "vaekket": 0 if startet is False else 1}
     ud = [(k, p.get("wakeup_id")) for k, p in publiceret if k.startswith("self_wakeup.")]
     assert ud == forventet
+
+
+# ── Mærkningen skal nå FRE (16/11-2026) ──────────────────────────────────────
+#
+# `direktiv_for` dannede `[MULIGVIS FORÆLDET]` korrekt, men `_dispatch_tekst`
+# sprang den over: `wakeup` står i KAN_DISPATCHES_KILDETYPER men IKKE i
+# IKKE_GATENDE_KILDETYPER, så ejerens egen vækning fik `kraever_handling=1` og
+# faldt hele vejen til `_direktiv(post)` — som læser postens `beskrivelse`, der
+# blev klippet til 200 tegn da posten blev registreret. Vækningen fyrede derfor
+# uden mærkning OG med en afkortet prompt.
+
+def _wakeup_post(**over):
+    post = {"id": "wake-abc", "kilde_id": "wake-abc", "kildetype": "wakeup",
+            "kraever_handling": True,
+            "beskrivelse": "tjek Discord (denne tekst er KLIPPET)"}
+    post.update(over)
+    return post
+
+
+def _wakeup_rec(**over):
+    rec = {"wakeup_id": "wake-abc", "prompt": "tjek Discord",
+           "reason": "fordi jeg bad om det"}
+    rec.update(over)
+    return rec
+
+
+def test_maerkning_naar_frem_selv_nar_posten_kraever_handling(monkeypatch):
+    """Gating og tekst er to spørgsmål: `kraever_handling` må ikke afgøre hvad runnet læser."""
+    from core.services import inbox_idle_waker as w
+    from core.services import wakeup_staleness
+
+    monkeypatch.setattr(wakeup_staleness, "maerk",
+                        lambda rec, **kw: "[MULIGVIS FORÆLDET] Posten blev booket i går.")
+    monkeypatch.setattr(w, "_wakeup_records", lambda: {"wake-abc": _wakeup_rec()})
+
+    tekst = w._dispatch_tekst(_wakeup_post())
+
+    assert "MULIGVIS FORÆLDET" in tekst
+    assert "Du bad dig selv: tjek Discord" in tekst
+
+
+def test_klippet_beskrivelse_bruges_ikke_som_direktiv_for_en_wakeup(monkeypatch):
+    """Beskrivelsen er en beskrivelse. Direktivet kommer fra recordet."""
+    from core.services import inbox_idle_waker as w
+
+    monkeypatch.setattr(w, "_wakeup_records", lambda: {"wake-abc": _wakeup_rec()})
+
+    tekst = w._dispatch_tekst(_wakeup_post())
+
+    assert "KLIPPET" not in tekst
+    assert "[SELF-WAKEUP FIRED" in tekst
+
+
+def test_uden_record_falder_den_til_det_generiske_direktiv(monkeypatch):
+    """Er recordet væk, er et run med den rigtige post bedre end intet run."""
+    from core.services import inbox_idle_waker as w
+
+    monkeypatch.setattr(w, "_wakeup_records", lambda: {})
+
+    tekst = w._dispatch_tekst(_wakeup_post())
+
+    assert "INBOX VÆKKEDE" in tekst

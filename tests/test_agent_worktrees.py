@@ -474,3 +474,77 @@ def test_en_ikke_tom_foraelder_bevares(wt):
     wt.W_.sweep(now=t0 + timedelta(days=7, minutes=1))
     assert not os.path.exists(w["path"])
     assert os.path.isdir(parent) and os.path.exists(fremmed)
+
+# ── Beslutningskravet måler ARBEJDE, ikke rækker (16/11-2026) ────────────────
+#
+# Målt 16/11 kl. 19:20: 18 af 20 «venter på beslutning»-poster pegede på en sti
+# der ikke fandtes på disken, og de to resterende grene var allerede merget i
+# main. Indbakken bad altså om et svar på arbejde der forlængst var på plads.
+# Et krav om en beslutning der allerede ER taget er ikke et værn — det er støj
+# der lærer Bjørn at ignorere posten.
+
+class _FakeConn:
+    """Kun til at levere rækker: filtreringen der testes ligger i PYTHON, ikke i SQL."""
+
+    def __init__(self, rows):
+        self._rows = rows
+
+    def execute(self, *_a, **_k):
+        return self
+
+    def fetchall(self):
+        return self._rows
+
+
+def _raekke(*, aid, path, branch):
+    nu = datetime.now(UTC).isoformat()
+    return {"worktree_id": f"wt-{aid}", "assignment_id": aid, "agent_id": "a",
+            "path": path, "branch": branch, "repo_path": "/repo",
+            "status": "retained", "decision": "", "retained_at": nu,
+            "updated_at": nu, "created_at": nu, "owner_user_id": "bjorn",
+            "size_bytes": 0}
+
+
+def test_worktree_uden_sti_paa_disken_kraever_ingen_beslutning(monkeypatch, tmp_path):
+    import core.services.agent_worktrees as W
+
+    r = _raekke(aid="asg-borte", path=str(tmp_path / "findes-ikke"), branch="agent/asg-borte")
+    monkeypatch.setattr(W, "_conn", lambda: _FakeConn([r]))
+    monkeypatch.setattr(W, "_mergede_grene", lambda repo, cache: set())
+
+    assert W.pending_decisions() == []
+
+
+def test_gren_der_er_merget_kraever_ingen_beslutning(monkeypatch, tmp_path):
+    import core.services.agent_worktrees as W
+
+    d = tmp_path / "wt"
+    d.mkdir()
+    r = _raekke(aid="asg-merget", path=str(d), branch="agent/asg-merget")
+    monkeypatch.setattr(W, "_conn", lambda: _FakeConn([r]))
+    monkeypatch.setattr(W, "_mergede_grene", lambda repo, cache: {"agent/asg-merget"})
+
+    assert W.pending_decisions() == []
+
+
+def test_ugrenet_arbejde_kraever_stadig_en_beslutning(monkeypatch, tmp_path):
+    """Sikkerheden: filteret må ikke skjule arbejde der faktisk ikke er integreret."""
+    import core.services.agent_worktrees as W
+
+    d = tmp_path / "wt"
+    d.mkdir()
+    r = _raekke(aid="asg-aaben", path=str(d), branch="agent/asg-aaben")
+    monkeypatch.setattr(W, "_conn", lambda: _FakeConn([r]))
+    monkeypatch.setattr(W, "_mergede_grene", lambda repo, cache: set())
+
+    ud = W.pending_decisions()
+
+    assert [w["assignment_id"] for w in ud] == ["asg-aaben"]
+    assert ud[0]["age_days"] >= 0
+
+
+def test_mergede_grene_fejler_sikkert_uden_repo():
+    """Kan vi ikke læse git, filtrerer vi intet væk på en påstand vi ikke kan underbygge."""
+    import core.services.agent_worktrees as W
+
+    assert W._mergede_grene("", {}) == set()

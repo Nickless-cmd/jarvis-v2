@@ -526,21 +526,32 @@ def _dispatch_tekst(post: dict[str, Any]) -> str:
     `_maal_session` for ALLE poster. Indtil 14/10-2026 blandede de to spørgsmål
     sig her, og kun wakeup-typen fik et svar på det andet.
     """
-    from core.services.inbox_state import kan_dispatch
-
     # En gateway-vækning bærer sin EGEN instruktion i beskrivelsen — det er
     # kildens tekst, ikke et generisk «du har en post»-direktiv.
     if str(post.get("kildetype") or "") == "vaekning":
         tekst = str(post.get("beskrivelse") or "").strip()
         if tekst:
             return tekst
-    if not post.get("kraever_handling") and kan_dispatch(post.get("kildetype")):
-        if str(post.get("kildetype") or "") == "wakeup":
-            rec = _wakeup_records().get(str(post.get("kilde_id") or ""))
-            if rec:
-                from core.services.self_wakeup import direktiv_for
+    # En wakeup-post bærer sin tekst i RECORDET — ikke i postens beskrivelse.
+    # Beskrivelsen er klippet til 200 tegn da posten blev registreret
+    # (`self_wakeup`: `beskrivelse=prompt[:200]`), så den kan hverken bære den
+    # fulde prompt eller den `[MULIGVIS FORÆLDET]`-blok som `direktiv_for`
+    # indsætter EFTER prompt-linjen.
+    #
+    # Målt 16/11-2026: mærkningen blev dannet korrekt og skåret væk igen, fordi
+    # `kraever_handling` var 1 — `wakeup` står i `KAN_DISPATCHES_KILDETYPER` men
+    # IKKE i `IKKE_GATENDE_KILDETYPER`, så ejerens egen vækning fik
+    # `kraever_handling=1` og faldt hele vejen til `_direktiv(post)`.
+    #
+    # Gating og tekst er to spørgsmål: `kraever_handling` afgør om posten må
+    # nægte en mutation, ikke hvad runnet skal læse. Derfor ligger opslaget nu
+    # FØR den betingelse.
+    if str(post.get("kildetype") or "") == "wakeup":
+        rec = _wakeup_records().get(str(post.get("kilde_id") or ""))
+        if rec:
+            from core.services.self_wakeup import direktiv_for
 
-                return direktiv_for(rec)
+            return direktiv_for(rec)
     return _direktiv(post)
 
 

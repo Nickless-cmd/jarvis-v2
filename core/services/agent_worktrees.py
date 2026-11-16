@@ -486,6 +486,31 @@ def sweep(*, now: datetime | None = None) -> dict[str, list[str]]:
     return out
 
 
+def _mergede_grene(repo: str, cache: dict[str, set[str]]) -> set[str]:
+    """Grennavne der er fuldt merget i ``main`` — ét git-kald pr. repo, ikke pr. raekke.
+
+    Self-safe: kan vi ikke laese git, svarer vi det tomme saet, og saa bliver
+    ingen post filtreret vaek paa en paastand vi ikke kan underbygge.
+    """
+    if not repo:
+        return set()
+    if repo in cache:
+        return cache[repo]
+    navne: set[str] = set()
+    for ref in ("main", "HEAD"):
+        try:
+            proc = g.run_git(["branch", "--merged", ref, "--format=%(refname:short)"],
+                             cwd=repo, check=False)
+        except Exception:  # noqa: BLE001 — et git-svar vi ikke kan laese maa ikke skjule arbejde
+            logger.debug("pending_decisions: kunne ikke liste merged-grene i %s", repo, exc_info=True)
+            break
+        if proc.returncode == 0:
+            navne = {n.strip() for n in proc.stdout.decode("utf-8", "replace").split() if n.strip()}
+            break
+    cache[repo] = navne
+    return navne
+
+
 def pending_decisions(*, min_age: timedelta = timedelta(0)) -> list[dict[str, Any]]:
     """Bevarede worktrees der venter paa en beslutning - altsaa arbejde nogen skal tage stilling til.
 
@@ -493,14 +518,34 @@ def pending_decisions(*, min_age: timedelta = timedelta(0)) -> list[dict[str, An
     fra 5/11. Uden denne liste ryddes de foerst af ``ARCHIVE_AFTER`` (30 dage), saa "ingen
     beslutning" i praksis betoed "behold i en maaned og arkivér". Det er ikke et valg, det er
     fravaeret af et. Listen er indgangen til at kraeve det.
+
+    ## To led der ikke er en beslutning (16/11-2026)
+
+    Listen svarede foer paa "hvilke raekker staar i retained" — ikke paa "hvilket arbejde
+    skal nogen tage stilling til". Maalt 16/11 kl. 19:20: 18 af 20 poster pegede paa en
+    sti der ikke fandtes paa disken, og de to resterende grene var allerede merget i
+    ``main``. Indbakken bad altsaa om en beslutning om arbejde der forlaengst var paa
+    plads — og Bjørn skulle svare paa den hver gang han kiggede.
+
+    Derfor to maalte led:
+    1. Worktreet skal FINDES paa disken. Er det væk, er der ingen filer at gemme.
+    2. Grenen maa IKKE vaere fuldt merget i ``main``. Er den det, ER beslutningen taget:
+       arbejdet ligger i hovedgrenen. Det daekker ogsaa integration der sker uden om
+       ``decide()`` — fx et manuelt merge — saa posten lukker sig selv i stedet for at
+       kraeve et svar paa noget der allerede er gjort.
     """
     t = datetime.now(UTC)
     out: list[dict[str, Any]] = []
+    cache: dict[str, set[str]] = {}
     for r in _conn().execute("SELECT * FROM agent_worktrees WHERE status='retained' "
                              "ORDER BY retained_at, created_at").fetchall():
         wt = dict(r)
         age = t - _parse(wt["retained_at"] or wt["updated_at"])
         if age < min_age:
+            continue
+        if not os.path.isdir(str(wt.get("path") or "")):
+            continue
+        if str(wt.get("branch") or "") in _mergede_grene(str(wt.get("repo_path") or ""), cache):
             continue
         wt["age_days"] = round(age.total_seconds() / 86400, 1)
         out.append(wt)

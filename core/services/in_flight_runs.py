@@ -1272,6 +1272,68 @@ def interrupted_for_session(session_id: str | None) -> dict[str, Any] | None:
     return candidates[0]
 
 
+#: Årsager der betyder «brugeren trykkede stop». Bevidst kun det EKSPLICITTE
+#: stop: `user-steer-stop` er en ny besked der styrer turen, og der ER den nye
+#: tur fortsættelsen — et «du stoppede mig»-varsel ville være støj oven på den.
+_STOP_REASONS = frozenset({"user-cancelled"})
+
+#: Status der beviser at samtalen er kommet videre EFTER stoppet.
+_EFTER_STOP = ("completed", "failed_terminal")
+
+
+def stopped_for_session(session_id: str | None) -> dict[str, Any] | None:
+    """Returnér det run brugeren stoppede i denne samtale — hvis stoppet stadig
+    er det sidste der skete her. Ellers None.
+
+    Hvorfor den findes (16/11-2026, Bjørn): «de burde ikk dø, men endten lande i
+    din inbox eller i en kø». Et stop ER endeligt med vilje — før 17/9 blev
+    stoppet behandlet som en afbrudt tur, og så startede brugerens eget stop af
+    sig selv. Men arbejdet forsvandt også: `settle_terminal` skrev posten som
+    `cancelled`, og den eneste læser, `interrupted_for_session`, kræver
+    `interrupted`. Checkpointet blev liggende på disken uden en eneste læser —
+    sporet fandtes, men indgangsbetingelsen kunne aldrig opfyldes.
+
+    Den her funktion åbner IKKE genoptagelse. Den giver næste tur noget at
+    SPØRGE om. Forskellen er hele pointen: en post der venter på brugeren er
+    ikke en kørsel der starter sig selv.
+
+    Reglen om «sidste begivenhed» er udledt, ikke flaget: så snart en senere tur
+    er sluttet normalt, er samtalen kommet videre, og varselet forsvinder af sig
+    selv. Et forbrugs-flag ville kræve at man stolede på at præcis den prompt der
+    blev bygget, også nåede modellen.
+    """
+    if not session_id:
+        return None
+    sid = str(session_id)
+    graense = datetime.now(UTC) - timedelta(hours=GENOPTAGELSES_VINDUE_TIMER)
+    records = _load()
+    stopped = [
+        r for r in records.values()
+        if str(r.get("session_id") or "") == sid
+        and str(r.get("kind") or "visible") == "visible"
+        and str(r.get("status") or "") == "cancelled"
+        and str(r.get("exit_reason") or "") in _STOP_REASONS
+        and _friskere_end(r, graense)
+    ]
+    if not stopped:
+        return None
+    stopped.sort(
+        key=lambda r: str(r.get("settled_at") or r.get("started_at") or ""),
+        reverse=True,
+    )
+    nyeste = stopped[0]
+    stoppet_tid = str(nyeste.get("settled_at") or "")
+    if stoppet_tid:
+        for r in records.values():
+            if str(r.get("session_id") or "") != sid:
+                continue
+            if str(r.get("status") or "") not in _EFTER_STOP:
+                continue
+            if str(r.get("settled_at") or "") > stoppet_tid:
+                return None
+    return nyeste
+
+
 def list_running_orphans(
     stale_after_s: float,
     *,
@@ -1474,4 +1536,35 @@ def interruption_prompt_section(
         f"{checkpoint + chr(10) if checkpoint else ''}"
         f"{conclusion + chr(10) if conclusion else ''}"
         f"{policy}"
+    )
+
+
+def stopped_prompt_section(session_id: str | None) -> str | None:
+    """Formatér et brugerstoppet run som system-prompt-blok — eller None.
+
+    Svarer til `interruption_prompt_section`, men med den MODSATTE politik: et
+    stop må ikke genoptages af sig selv. Blokken bærer checkpointet, så næste tur
+    ved hvad der faktisk blev gjort, og beder om at spørge — ikke om at fortsætte.
+    """
+    rec = stopped_for_session(session_id)
+    if not rec:
+        return None
+    excerpt = str(rec.get("excerpt") or "(intet uddrag)")
+    last_tool = str(rec.get("last_tool") or "")
+    started_iso = str(rec.get("started_at") or "")
+    started_at = started_iso[11:19] if started_iso else ""
+    tool_clause = f" — sidste tool var {last_tool}" if last_tool else ""
+    checkpoint = ""
+    try:
+        from core.services.agentic_checkpoints import checkpoint_prompt_section
+        checkpoint = checkpoint_prompt_section(session_id) or ""
+    except Exception:
+        checkpoint = ""
+    return (
+        "Brugeren STOPPEDE dig midt i en opgave (startet "
+        f"{started_at}{tool_clause}):\n"
+        f"  \"{excerpt}\"\n"
+        f"{checkpoint + chr(10) if checkpoint else ''}"
+        "Stoppet var bevidst og er endeligt — genoptag det IKKE af dig selv. "
+        "Sig kort hvad der nåede at blive gjort, og spørg om du skal fortsætte."
     )

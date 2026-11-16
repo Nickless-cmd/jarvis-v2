@@ -1766,6 +1766,15 @@ def _build_visible_chat_prompt_assembly_impl(
     except Exception as _e:
         _sec_err("resume-after-interrupt notice", _e)
     try:
+        from core.services.in_flight_runs import stopped_prompt_section
+        _awareness_add(
+            11,
+            "stopped-mid-work notice",
+            stopped_prompt_section(session_id),
+        )
+    except Exception as _e:
+        _sec_err("stopped-mid-work notice", _e)
+    try:
         from core.services.plan_proposals import pending_plan_section
         _awareness_add(15, "pending plan awaiting approval", pending_plan_section(session_id))
     except Exception as _e:

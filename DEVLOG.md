@@ -1,5 +1,21 @@
 # Development log
 
+## 2026-11-16 — A stop leaves a trace you can find, and does not resume itself
+
+Bjørn asked the question the mechanism could not answer: *"de burde ikk dø, men endten lande i din inbox eller i en kø … eller risikere vi jo noget kunne gå tabt"*.
+
+The stop itself was already durable. Since 17/9 a user stop is settled **before** the run is aborted, precisely so it does not look like an interrupted turn — an interrupted turn resumes itself, so the user's own stop would start again. `settle_terminal` wrote the record as `cancelled`.
+
+The defect sat one level up. The only reader, `interrupted_for_session`, requires `status == "interrupted"`, so a `cancelled` record was invisible to every consumer — and the agentic checkpoint written by the stopped run (full exchanges, partial text, `phase="user-cancelled"`) sat on disk with **zero readers**. The trace existed; the entry condition could never be satisfied. Same shape as the defects above: a mechanism that looks alive because it writes something.
+
+`stopped_for_session` closes it without touching the auto-resume path. It returns the most recent `user-cancelled` run for the session, and only while that stop is still the last thing that happened there — as soon as a later turn settles `completed`, the notice disappears on its own. The rule is derived from state, not from a consumed flag: a flag would require trusting that the exact prompt that was built also reached the model.
+
+`stopped_prompt_section` renders it with the **opposite** policy of the interruption block: do not resume; say what was done and ask. Deliberately not a queue entry — a post that waits for the user is not a run that starts itself.
+
+`user-steer-stop` is excluded on purpose: there the new message *is* the continuation, and a "you stopped me" notice on top of it would make Jarvis ask about something the user had just answered.
+
+Verified: 10 tests, including one end-to-end that asserts the block is present in the actually assembled prompt (the two `_awareness_add` gates could otherwise discard it silently). Mutations: removing the "conversation moved on" rule, and admitting `user-steer-stop`, each fell exactly their own test.
+
 ## 2026-11-16 — The stop button stops the conversation's work, not just the newest run
 
 The entry below closed with its own limitation: *"two runs in the same session resolve to the newest ... the older one is not reachable by this endpoint"*. That was true, and it is the case the user actually hits — a wakeup starts while he is sending, two runs live in one session, and pressing stop left the older one running.

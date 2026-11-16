@@ -5,6 +5,13 @@ The repository-wide status source remains
 This file records the status of the delivered Jarvis Desk changes requested for
 implementation.
 
+## A user stop leaves a findable trace — complete locally (2026-11-16)
+
+- `stopped_for_session(session_id)` returns the run the user stopped, but only while that stop is still the last thing that happened in the session. A later `completed` turn makes it disappear; the rule is derived from state rather than a consumed flag.
+- `stopped_prompt_section` puts it in the prompt with the opposite policy of the interruption block: state what was done, then **ask** — never resume on its own. `user-steer-stop` is excluded, since the new message is itself the continuation.
+- The agentic checkpoint from a stopped run was already on disk (`phase="user-cancelled"`) but had zero readers: the only consumer, `interrupted_for_session`, requires `interrupted`. The auto-resume path is unchanged.
+- Verified: 10 tests in `tests/test_in_flight_stopped.py`, including an end-to-end assertion that the block appears in the assembled prompt.
+
 ## `cancel-active` stops the conversation's work — complete locally (2026-11-16)
 
 - `POST /chat/sessions/{id}/cancel-active` cancels **every** `running` run in the

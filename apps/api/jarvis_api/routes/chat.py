@@ -19,7 +19,7 @@ from core.services.chat_sessions import (
 )
 from core.services.attributed_git_commit import commit_with_attribution
 from core.services.commit_attribution import CommitAttribution, new_manual_run_id
-from core.services.run_stream_locator import live_run_for_session
+from core.services.run_stream_locator import active_locations, live_run_for_session
 from core.services.visible_runs import (
     cancel_visible_run,
     resolve_pending_approval,
@@ -1312,6 +1312,12 @@ def chat_cancel_active(session_id: str) -> dict:
     stop i din egen samtale svarede `cancelled: false` mens dit run kørte videre.
     Slotten blev aldrig et forkert mord (den sammenlignede `session_id`), men den
     kunne ikke ramme det rigtige run.
+
+    16/11-2026 (anden rettelse): stop rammer ALLE kørende runs i samtalen, ikke
+    kun det nyeste. `live_run_for_session` giver `candidates[-1]`, så et
+    samtidigt run i samme session — fx en vækning mens brugeren selv sender —
+    blev efterladt kørende. Brugeren trykkede stop og så arbejdet fortsætte.
+    En stop-knap i en samtale stopper samtalens arbejde.
     """
     _kraev_adgang(session_id)  # 19/9-2026: «luk hullet i de gamle»
     sid = (session_id or "").strip()
@@ -1321,8 +1327,21 @@ def chat_cancel_active(session_id: str) -> dict:
     if location is None or location.lifecycle != "running":
         return {"cancelled": False}
     rid = location.run_id
-    _settle_user_stop(rid, sid)
-    return {"cancelled": bool(cancel_visible_run(rid)), "run_id": rid}
+    # `active_locations` dækker både den proces-lokale log og runs ejet af den
+    # anden proces, så en vækning startet i runtime også rammes herfra.
+    alle = [
+        item.run_id
+        for item in active_locations()
+        if item.session_id == sid and item.lifecycle == "running"
+    ]
+    if rid not in alle:
+        alle.append(rid)
+    ramte: list[str] = []
+    for run_id in alle:
+        _settle_user_stop(run_id, sid)
+        if cancel_visible_run(run_id):
+            ramte.append(run_id)
+    return {"cancelled": bool(ramte), "run_id": rid, "run_ids": ramte}
 
 
 # Bevar de gamle importnavne; kontekst-ruterne har deres egen afgraensede enhed.

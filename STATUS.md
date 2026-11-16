@@ -5,6 +5,20 @@ The repository-wide status source remains
 This file records the status of the delivered Jarvis Desk changes requested for
 implementation.
 
+## `cancel-active` stops the conversation's work — complete locally (2026-11-16)
+
+- `POST /chat/sessions/{id}/cancel-active` cancels **every** `running` run in the
+  session via `active_locations()`, not only the newest. A wakeup running
+  alongside the user's own turn no longer survives the stop button.
+- The cross-process case is covered: `active_locations()` resolves runs owned by
+  `jarvis-runtime` from `jarvis-api` through `in_flight_runs`.
+- Response keeps `run_id` (newest) and adds `run_ids` (all cancelled). A run in
+  another session is never touched.
+- `stale_owner` is still refused — the owner process is dead, so there is
+  nothing running to stop; that is journal cleanup, not a stop.
+- Mutation-verified: collapsing the collection back to the single newest run
+  fails both new tests.
+
 ## `cancel-active` lookup — complete locally (2026-11-16)
 
 - `POST /chat/sessions/{id}/cancel-active` resolves the run per session

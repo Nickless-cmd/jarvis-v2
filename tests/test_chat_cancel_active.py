@@ -60,7 +60,9 @@ def test_stop_rammer_samtalens_eget_run_ikke_det_globalt_seneste(monkeypatch):
 
     ud = chat.chat_cancel_active("session-a")
 
-    assert ud == {"cancelled": True, "run_id": "run-a"}
+    assert ud["cancelled"] is True
+    assert ud["run_id"] == "run-a"
+    assert ud["run_ids"] == ["run-a"]
     # B må ikke være rørt: den kører i en anden samtale.
     assert ramte == ["run-a"]
 
@@ -89,7 +91,9 @@ def test_den_anden_samtales_run_bliver_ikke_draebt(monkeypatch):
 
     ud = chat.chat_cancel_active("session-b")
 
-    assert ud == {"cancelled": True, "run_id": "run-b"}
+    assert ud["cancelled"] is True
+    assert ud["run_id"] == "run-b"
+    assert ud["run_ids"] == ["run-b"]
     assert ramte == ["run-b"]
 
 
@@ -121,8 +125,14 @@ def test_et_afsluttet_run_kan_ikke_stoppes(monkeypatch):
     assert chat.chat_cancel_active("session-x") == {"cancelled": False}
 
 
-def test_to_runs_i_samme_samtale_rammer_den_nyeste(monkeypatch):
-    """Semantikken er «det jeg ser» — den nyeste kørsel i samtalen."""
+def test_to_runs_i_samme_samtale_stopper_begge(monkeypatch):
+    """En stop-knap i samtalen stopper SAMTALENS arbejde — ikke kun det nyeste.
+
+    16/11-2026: `live_run_for_session` returnerer `candidates[-1]`, så et
+    samtidigt run i samme session (fx en vækning mens brugeren selv sender)
+    blev efterladt kørende. Brugeren trykkede stop og så arbejdet fortsætte.
+    Det er ikke «det jeg ser» — det er halvt arbejde tilbage.
+    """
     from apps.api.jarvis_api.routes import chat
 
     rel.create("run-aeldre", "session-y")
@@ -135,5 +145,26 @@ def test_to_runs_i_samme_samtale_rammer_den_nyeste(monkeypatch):
 
     ud = chat.chat_cancel_active("session-y")
 
+    assert sorted(ramte) == ["run-aeldre", "run-nyeste"]
+    assert ud["cancelled"] is True
+    # Bagudkompatibilitet: `run_id` er stadig den nyeste, som før.
     assert ud["run_id"] == "run-nyeste"
-    assert ramte == ["run-nyeste"]
+
+
+def test_stop_alle_rammer_ikke_en_anden_samtale(monkeypatch):
+    """«Alle» betyder alle i DENNE samtale — ikke alle i processen."""
+    from apps.api.jarvis_api.routes import chat
+
+    rel.create("run-y1", "session-y")
+    rel.create("run-y2", "session-y")
+    rel.create("run-fremmed", "session-z")
+
+    ramte: list[str] = []
+    monkeypatch.setattr(
+        chat, "cancel_visible_run", lambda rid: ramte.append(rid) or True
+    )
+
+    chat.chat_cancel_active("session-y")
+
+    assert sorted(ramte) == ["run-y1", "run-y2"]
+    assert "run-fremmed" not in ramte

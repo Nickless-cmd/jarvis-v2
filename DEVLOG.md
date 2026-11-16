@@ -1,5 +1,15 @@
 # Development log
 
+## 2026-11-16 — The stop button stops the conversation's work, not just the newest run
+
+The entry below closed with its own limitation: *"two runs in the same session resolve to the newest ... the older one is not reachable by this endpoint"*. That was true, and it is the case the user actually hits — a wakeup starts while he is sending, two runs live in one session, and pressing stop left the older one running.
+
+`live_run_for_session` returns `candidates[-1]`; that is right for "which stream do I attach to" and wrong for "stop what I am looking at". `chat_cancel_active` now collects every `running` location in the session from `active_locations()` — which covers both the process-local journal and runs owned by the other process through `in_flight_runs` — and cancels each, keeping the newest as `run_id` for compatibility and adding `run_ids` for the full list. A foreign session's runs are filtered out by `session_id`, so "all" means all of *this* conversation.
+
+`stale_owner` is deliberately still refused. It is not a stop target: `_from_record` sets it when `owner_still_alive(owner)` is false, so nothing is running. Cancelling it would report success for stopping something already gone; closing that journal row is cleanup, not a stop.
+
+`tests/test_chat_cancel_active.py` grew two tests: two runs in one session both get cancelled (replacing the test that asserted the opposite), and a run in another session is not touched while two in the target session are. Mutation-verified: replacing the collection with `alle = [rid]` fails both, restored 6 passed. Broader: 51 passed across the cancel-active, run-stream-route, run-event-log and supersession suites; import smoke confirms the endpoint uses both lookups.
+
 ## 2026-11-16 — `cancel-active` looks up the run per session, not in the global slot
 
 The stop button's server-side fallback had a lookup defect that the entry above named as its own limitation: *"backend `cancel-active` only matches the single globally active visible run"*.
@@ -12,7 +22,7 @@ The per-session lookup already existed: `live_run_for_session` in `core.services
 
 `tests/test_chat_cancel_active.py` is the first test for this endpoint — there was none. It registers real runs through `run_event_log.create` and drives the real `live_run_for_session`, so it measures the lookup rather than mocking it. Mutation-verified: replacing the per-session lookup with "globally newest" fails both cross-session tests, one in each direction (A stopping B's run, and B stopping A's). Reverted, 5 passed.
 
-Not covered: two runs in the *same* session resolve to the newest, which is the intended "what I see" semantics but means the older one is not reachable by this endpoint; a `stale_owner` run is refused rather than cancelled.
+Not covered: a `stale_owner` run is refused rather than cancelled. Two runs in the *same* session originally resolved to the newest only — the entry above fixes that.
 
 ## 2026-11-16 — CodeView stop for all work, and the pending approval card goes into the transcript
 

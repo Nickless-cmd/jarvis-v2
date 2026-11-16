@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prompt_section_stale_cache.py`
+_Kort stale-while-revalidate-cache til dyre, brugeruafhængige promptdele._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `_Entry` | `` | — | [src](../../../core/services/prompt_section_stale_cache.py#L22) |
+| function | `_default_spawn` | `(callback)` | — | [src](../../../core/services/prompt_section_stale_cache.py#L32) |
+| function | `_store` | `(key, value, *, stored_at=…)` | — | [src](../../../core/services/prompt_section_stale_cache.py#L38) |
+| function | `get_or_refresh` | `(key, builder, *, now=…, spawn=…)` | Hent snapshot; refresh stale data uden at blokere den synlige lane. | [src](../../../core/services/prompt_section_stale_cache.py#L48) |
+| function | `context_key` | `(section, *, session_id=…, variant=…)` | Isolér snapshots pr. identitet/workspace/session og promptvariant. | [src](../../../core/services/prompt_section_stale_cache.py#L93) |
+| function | `clear` | `()` | — | [src](../../../core/services/prompt_section_stale_cache.py#L109) |
+
 ## `core/services/prompt_support_signals.py`
 _Bounded inner-layer support signal builders._
 
@@ -640,24 +652,4 @@ _Reflection cycle daemon — pure experience without action, every 10 minutes._
 | function | `_store_reflection` | `(reflection)` | — | [src](../../../core/services/reflection_cycle_daemon.py#L110) |
 | function | `get_latest_reflection` | `()` | — | [src](../../../core/services/reflection_cycle_daemon.py#L142) |
 | function | `build_reflection_surface` | `()` | — | [src](../../../core/services/reflection_cycle_daemon.py#L146) |
-
-## `core/services/reflection_signal_tracking.py`
-_Reflection signal tracking — migrated onto signal_tracking_framework._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_reflection_signals_for_visible_turn` | `(*, session_id, run_id, user_message)` | — | [src](../../../core/services/reflection_signal_tracking.py#L36) |
-| function | `refresh_runtime_reflection_signal_statuses` | `()` | — | [src](../../../core/services/reflection_signal_tracking.py#L47) |
-| function | `build_runtime_reflection_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/reflection_signal_tracking.py#L51) |
-| function | `_extract_reflection_candidates` | `(*_args, **_kwargs)` | — | [src](../../../core/services/reflection_signal_tracking.py#L56) |
-| function | `_build_candidate` | `(*, domain_key, signal_type, status, title, summary, rationale, status_reason, source_items)` | — | [src](../../../core/services/reflection_signal_tracking.py#L157) |
-| function | `_history_item_from_signal` | `(item)` | — | [src](../../../core/services/reflection_signal_tracking.py#L186) |
-| function | `_reflection_early_retire` | `(item)` | — | [src](../../../core/services/reflection_signal_tracking.py#L205) |
-| function | `_reflection_track_summary` | `(items, message)` | — | [src](../../../core/services/reflection_signal_tracking.py#L213) |
-| function | `_domain_key_from_focus` | `(canonical_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L254) |
-| function | `_domain_key_from_critic` | `(canonical_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L278) |
-| function | `_domain_key_from_self_model` | `(canonical_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L303) |
-| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L312) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L316) |
-| function | `_history_transition_label` | `(*, signal_type, status)` | — | [src](../../../core/services/reflection_signal_tracking.py#L324) |
 

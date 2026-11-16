@@ -2,6 +2,39 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/jarvis_brain_daemon.py`
+_Jarvis Brain background daemon — tre uafhængige loops._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `reindex_once` | `()` | Et enkelt reindex-pass. Returnerer antal file changes opdaget. | [src](../../../core/services/jarvis_brain_daemon.py#L26) |
+| function | `reindex_loop` | `(stop_event)` | Long-running loop. Stops cleanly when stop_event is set. | [src](../../../core/services/jarvis_brain_daemon.py#L42) |
+| function | `find_duplicate_proposals` | `(*, threshold=…, kinds=…)` | Returnerer liste af (a_id, b_id, similarity) hvor sim ≥ threshold. | [src](../../../core/services/jarvis_brain_daemon.py#L67) |
+| function | `_call_ollamafreeapi` | `(prompt)` | Free OllamaFreeAPI — public-safe job. Returns parsed JSON or None on fail. | [src](../../../core/services/jarvis_brain_daemon.py#L121) |
+| function | `_model_is_available` | `(tag_names, model)` | Pure: er `model` til stede blandt Ollamas /api/tags-navne? Matcher både | [src](../../../core/services/jarvis_brain_daemon.py#L142) |
+| function | `_call_local_ollama` | `(prompt)` | Ollama-kald for personal/intimate brain-jobs (summaries + contradiction). | [src](../../../core/services/jarvis_brain_daemon.py#L155) |
+| function | `_resolve_local_chat_target` | `()` | Find configured local-lane chat model + HOST from provider router. | [src](../../../core/services/jarvis_brain_daemon.py#L214) |
+| function | `_resolve_local_chat_model` | `()` | Bagudkompatibel wrapper: kun modellen. Se `_resolve_local_chat_target`. | [src](../../../core/services/jarvis_brain_daemon.py#L239) |
+| function | `_parse_json_loose` | `(text)` | Parse JSON from possibly noisy LLM output. Looks for first {...} block. | [src](../../../core/services/jarvis_brain_daemon.py#L244) |
+| function | `_llm_contradiction_check` | `(a, b)` | Privacy-routed contradiction check. | [src](../../../core/services/jarvis_brain_daemon.py#L265) |
+| function | `_state_path` | `()` | Override target in tests via monkeypatch. | [src](../../../core/services/jarvis_brain_daemon.py#L292) |
+| function | `_read_state` | `()` | — | [src](../../../core/services/jarvis_brain_daemon.py#L299) |
+| function | `_write_state` | `(state)` | — | [src](../../../core/services/jarvis_brain_daemon.py#L310) |
+| function | `record_proposal_rejection` | `(phase, *, proposal_id)` | Track rejection. After 3 in a row for 'theme' phase, auto-pause. | [src](../../../core/services/jarvis_brain_daemon.py#L319) |
+| function | `record_proposal_acceptance` | `(phase, *, proposal_id)` | Reset rejection streak on acceptance. | [src](../../../core/services/jarvis_brain_daemon.py#L341) |
+| function | `is_theme_consolidation_paused` | `()` | — | [src](../../../core/services/jarvis_brain_daemon.py#L350) |
+| function | `resume_theme_consolidation` | `()` | Manuel reaktivering. Nulstiller streak + paused flag. | [src](../../../core/services/jarvis_brain_daemon.py#L354) |
+| function | `_run_theme_consolidation_pass` | `()` | Søndags-pass: group observations efter domain, find temaer. | [src](../../../core/services/jarvis_brain_daemon.py#L362) |
+| function | `run_theme_consolidation_if_active` | `()` | Kør tema-pass hvis ikke paused. Returnerer antal forslag genereret. | [src](../../../core/services/jarvis_brain_daemon.py#L371) |
+| function | `regenerate_summary` | `(*, target_visibility=…)` | Regenererer state/jarvis_brain_summary.md. | [src](../../../core/services/jarvis_brain_daemon.py#L409) |
+| function | `auto_archive_low_salience` | `()` | Arkivér entries hvis effective_salience < 0.05 i ≥ 90 dage. | [src](../../../core/services/jarvis_brain_daemon.py#L490) |
+| function | `b4_catchup_infer_once` | `(*, batch_size=…)` | Find active entries with no temporal edges and run inference on them. | [src](../../../core/services/jarvis_brain_daemon.py#L559) |
+| function | `b4_edge_maintenance_once` | `()` | Run one pass of B4 edge maintenance: catchup + prune. | [src](../../../core/services/jarvis_brain_daemon.py#L628) |
+| function | `_consolidation_summary_loop` | `(stop_event)` | Daily consolidation + summary + B4 edge maintenance scheduler. | [src](../../../core/services/jarvis_brain_daemon.py#L666) |
+| function | `run_consolidation_pass` | `()` | Single consolidation pass: phase 1 (dedup) + phase 2 (contradictions). | [src](../../../core/services/jarvis_brain_daemon.py#L752) |
+| function | `start_brain_daemon` | `()` | Start the three brain daemon threads. Idempotent. | [src](../../../core/services/jarvis_brain_daemon.py#L771) |
+| function | `stop_brain_daemon` | `()` | Signal stop and wait briefly for threads to exit. Idempotent. | [src](../../../core/services/jarvis_brain_daemon.py#L794) |
+
 ## `core/services/jarvis_brain_reflection.py`
 _End-of-day refleksions-slot — visible Jarvis spørger sig selv hvad han lærte._
 
@@ -609,30 +642,4 @@ _OAuth/bearer til remote MCP-servere._
 | function | `needs_refresh` | `(name)` | — | [src](../../../core/services/mcp_auth.py#L102) |
 | function | `refresh` | `(name)` | Kør refresh_token-grantet. False = intet at fornye, eller det fejlede. | [src](../../../core/services/mcp_auth.py#L117) |
 | function | `resolve_headers` | `(name, config)` | Headers til en request mod *name*. | [src](../../../core/services/mcp_auth.py#L143) |
-
-## `core/services/mcp_client.py`
-_MCP-klient — stdio og HTTP, med trust-gate foran hver forbindelse._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `parse_mcp_http_body` | `(tekst, content_type=…)` | Læs et MCP-over-HTTP-svar — JSON *eller* SSE. | [src](../../../core/services/mcp_client.py#L48) |
-| class | `MCPClient` | `` | Én forbindelse til én MCP-server. | [src](../../../core/services/mcp_client.py#L91) |
-| method | `MCPClient.__init__` | `(self, name, config)` | — | [src](../../../core/services/mcp_client.py#L94) |
-| method | `MCPClient.connect` | `(self)` | Trust-gate først, DERNÆST forbindelse. Rækkefølgen er hele pointen. | [src](../../../core/services/mcp_client.py#L115) |
-| method | `MCPClient._connect_stdio` | `(self)` | — | [src](../../../core/services/mcp_client.py#L132) |
-| method | `MCPClient._connect_http` | `(self)` | — | [src](../../../core/services/mcp_client.py#L158) |
-| method | `MCPClient.disconnect` | `(self)` | — | [src](../../../core/services/mcp_client.py#L173) |
-| method | `MCPClient.connected` | `(self)` | — | [src](../../../core/services/mcp_client.py#L188) |
-| method | `MCPClient._send_request` | `(self, method, params=…)` | — | [src](../../../core/services/mcp_client.py#L197) |
-| method | `MCPClient._send_stdio` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L206) |
-| method | `MCPClient._send_stdio_locked` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L215) |
-| method | `MCPClient._http_headers` | `(self)` | — | [src](../../../core/services/mcp_client.py#L246) |
-| method | `MCPClient._send_http` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L265) |
-| method | `MCPClient._send_notification` | `(self, method)` | — | [src](../../../core/services/mcp_client.py#L287) |
-| method | `MCPClient._initialize` | `(self)` | MCP kræver dette håndtryk før alt andet — mange servere afviser | [src](../../../core/services/mcp_client.py#L300) |
-| method | `MCPClient._discover_tools` | `(self)` | — | [src](../../../core/services/mcp_client.py#L321) |
-| method | `MCPClient.tool` | `(self, tool_name)` | Den fulde tool-definition, inkl. MCP Apps `_meta`. | [src](../../../core/services/mcp_client.py#L328) |
-| method | `MCPClient.read_resource` | `(self, uri)` | Læs én MCP-resource i dens rå protokolform. | [src](../../../core/services/mcp_client.py#L333) |
-| method | `MCPClient.call_tool_raw` | `(self, tool_name, arguments)` | Kald et tool og behold MCP-strukturen urørt. | [src](../../../core/services/mcp_client.py#L347) |
-| method | `MCPClient.call_tool` | `(self, tool_name, arguments)` | — | [src](../../../core/services/mcp_client.py#L367) |
 

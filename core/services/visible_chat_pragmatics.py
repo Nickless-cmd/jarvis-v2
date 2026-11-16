@@ -157,15 +157,21 @@ def build_chat_mode_dynamic_tail(
         return "\n\n".join(part for part in (base, contract) if part)
     if scope != "chat":
         return base
+    # Feedback, ikke feedforward: ét målt tal om FORRIGE svars form. Står i
+    # halen (efter cache-grænsen) og er uforanderlig inden for turen.
+    from core.services.chat_form_feedback import previous_answer_form_line
+    form_feedback = previous_answer_form_line(session_id)
     if mode_layout_v2_enabled():
         additions = [
             _chat_style_contract(message, session_id).strip(),
+            form_feedback,
             recency_anchor(scope="chat"),
         ]
         return "\n\n".join(part for part in [base, *additions] if part)
     additions = [
         CHAT_MODE_HOW_I_TALK.strip(),
         _chat_style_contract(message, session_id).strip(),
+        form_feedback,
     ]
     return "\n\n".join(part for part in [base, *additions] if part)
 

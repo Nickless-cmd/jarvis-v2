@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/device_tokens.py`
+_Per-bruger FCM device-tokens. Egen tabel — rører ikke db.py's 33k linjer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/device_tokens.py#L11) |
+| function | `register` | `(user_id, token, platform=…)` | — | [src](../../../core/services/device_tokens.py#L28) |
+| function | `list_for_user` | `(user_id)` | — | [src](../../../core/services/device_tokens.py#L45) |
+| function | `delete` | `(token)` | — | [src](../../../core/services/device_tokens.py#L57) |
+
 ## `core/services/diagnosis_gate.py`
 _Diagnosis-gate (spec 2026-06-14) — fanger uverificerede diagnostiske konklusioner._
 
@@ -708,27 +718,4 @@ _Embodied Presence — situational grounding in the physical now._
 | function | `_severity` | `(bucket)` | — | [src](../../../core/services/embodied_state.py#L353) |
 | function | `_strain_level_for_state` | `(state)` | — | [src](../../../core/services/embodied_state.py#L362) |
 | function | `_parse_iso` | `(value)` | — | [src](../../../core/services/embodied_state.py#L372) |
-
-## `core/services/emergence.py`
-_Emergence — evidence-based pattern detection across recent activity._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `EmergenceCandidate` | `` | — | [src](../../../core/services/emergence.py#L44) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/emergence.py#L54) |
-| function | `_ensure_table` | `()` | Create emergent_patterns table if missing. Idempotent. | [src](../../../core/services/emergence.py#L58) |
-| function | `_fetch_recent_events` | `(*, window_days=…, limit=…)` | Pull recent events from the eventbus events table. | [src](../../../core/services/emergence.py#L80) |
-| function | `_count_by_kind_prefix` | `(events, prefix)` | — | [src](../../../core/services/emergence.py#L108) |
-| function | `_count_blocked` | `(events)` | Count events that look like blocked/denied signals. | [src](../../../core/services/emergence.py#L118) |
-| function | `_fetch_procedures_count` | `(*, window_days=…)` | Tæl rutiner der er NYE i vinduet og faktisk blevet vist eller pinnet. | [src](../../../core/services/emergence.py#L135) |
-| function | `_fetch_decisions_count` | `(*, window_days=…)` | — | [src](../../../core/services/emergence.py#L168) |
-| function | `_detect_candidates` | `(*, window_days=…)` | — | [src](../../../core/services/emergence.py#L181) |
-| function | `_create_or_update_pattern` | `(*, pattern_key, title, summary, confidence, evidence_count, competing_explanations, confounders, status)` | Insert or update a pattern row. Returns the persisted row. | [src](../../../core/services/emergence.py#L264) |
-| function | `detect_and_score_patterns` | `(*, window_days=…)` | Main entry — detect candidates, score via apophenia, persist, emit events. | [src](../../../core/services/emergence.py#L324) |
-| function | `list_patterns` | `(*, status=…, limit=…)` | Return persisted patterns, optionally filtered by status. | [src](../../../core/services/emergence.py#L409) |
-| function | `summarize_patterns` | `()` | — | [src](../../../core/services/emergence.py#L432) |
-| function | `_decode_json_list` | `(value)` | — | [src](../../../core/services/emergence.py#L451) |
-| function | `_band` | `(confidence)` | — | [src](../../../core/services/emergence.py#L467) |
-| function | `brewing_patterns` | `(*, limit=…)` | Mønstre i brewing-båndet (0.5 ≤ conf < 0.78) — strengthening men endnu ikke emergent. | [src](../../../core/services/emergence.py#L476) |
-| function | `build_emergence_surface` | `(*, limit=…)` | Surface persisted emergence candidates without running detection. | [src](../../../core/services/emergence.py#L502) |
 

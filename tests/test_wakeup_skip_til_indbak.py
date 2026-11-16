@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import sqlite3
 from contextlib import contextmanager
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -169,6 +170,70 @@ def test_loeftet_run_bruger_vaekningens_direktiv_og_session(inbox_db, monkeypatc
     assert kaldt[0]["session_id"] == "chat-1", (
         "en sprunget vækning hører til sin egen samtale, ikke en auto-session"
     )
+
+
+def test_booket_lang_vaekning_fyrer_gennem_indbakken_med_maerkning(
+        inbox_db, monkeypatch):
+    """Booking-rækken må ikke afkorte ordren, og fyringen skal mærkes nu.
+
+    Regressionen kræver begge led i den virkelige kæde: ``schedule_self_wakeup``
+    skriver posten, og ``inbox_idle_waker`` løfter netop den række efter fyring.
+    En test af ``direktiv_for`` alene kan ikke opdage, at indbakke-grenen i
+    stedet læser den gamle, afkortede ``beskrivelse``.
+    """
+    from core.identity import workspace_context as wc
+    from core.runtime import db_inbox
+    from core.services import inbox_idle_waker as w
+    from core.services import self_wakeup as sw
+    from core.services import wakeup_staleness
+
+    records: list[dict] = []
+    monkeypatch.setattr(sw, "_sikker_skrivning", lambda: None)
+    monkeypatch.setattr(sw, "_load", lambda: list(records))
+    monkeypatch.setattr(sw, "_save", lambda nye: records.__setitem__(slice(None), nye))
+    monkeypatch.setattr(sw, "_vaeknings_forbrug_sidste_doegn",
+                        lambda bruger: {"usd": 0.0, "runs": 0, "usd_kendt": True})
+    monkeypatch.setattr(wc, "current_user_id", lambda: "bjorn")
+    monkeypatch.setattr("core.services.session_context_resolve.aktivt_run_id",
+                        lambda fallback="": "visible-booking")
+
+    prompt = "Undersøg den lange produktionsstatus: " + ("detalje " * 35) + "SLUT"
+    resultat = sw.schedule_self_wakeup(
+        delay_seconds=300,
+        prompt=prompt,
+        reason="verificér igen senere",
+        session_id="chat-1",
+        user_id="bjorn",
+    )
+    assert resultat["status"] == "ok"
+    wid = resultat["wakeup"]["wakeup_id"]
+    post = db_inbox.hent(bruger_id="bjorn", kilde_id=wid)
+    assert post["beskrivelse"] == prompt, (
+        "booking-rækken klippede den ordre, som fallback-visningen bygger på"
+    )
+
+    records[0].update({
+        "status": "fired",
+        "dispatch_skipped": True,
+        "scheduled_at": (datetime.now(UTC) - timedelta(hours=24)).isoformat(),
+        "fire_at": datetime.now(UTC).isoformat(),
+    })
+    monkeypatch.setattr(wakeup_staleness, "_side_opgave_fakta", lambda r: None)
+    monkeypatch.setattr(wakeup_staleness, "_senere_post_fakta", lambda r: None)
+    monkeypatch.setattr(wakeup_staleness, "_samtale_fakta", lambda r: None)
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    monkeypatch.setattr(w, "_session_er_aktiv", lambda session_id: False)
+    startet: list[str] = []
+    monkeypatch.setattr(
+        w, "_start_run", lambda tekst, **kw: startet.append(tekst),
+    )
+
+    svar = w.vaek_paa_aabne_poster(bruger_id="bjorn")
+
+    assert svar["vaekket"] == 1
+    assert len(startet) == 1
+    assert prompt in startet[0]
+    assert "MULIGVIS FORÆLDET" in startet[0]
 
 
 def test_loeftet_post_gater_stadig_ikke(inbox_db, monkeypatch):

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10253/18795 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10256/18798 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10253/18795 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 905 | 1619 | 55% |
-| `core.services` | 6877 | 12764 | 53% |
+| `core.services` | 6880 | 12767 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -749,10 +749,10 @@ Generated from source. 10253/18795 functions/methods documented (54%). The list 
 - `core/services/agent_contract_projection.py` :: `followup` (L566)
 - `core/services/agent_contract_projection.py` :: `mark_read` (L505)
 - `core/services/agent_contract_service.py` :: `list_approvals` (L841)
-- `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L624)
-- `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L622)
-- `core/services/agent_loop_core.py` :: `LoopIO.model` (L617)
-- `core/services/agent_loop_core.py` :: `LoopIO.tool` (L620)
+- `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L617)
+- `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L615)
+- `core/services/agent_loop_core.py` :: `LoopIO.model` (L610)
+- `core/services/agent_loop_core.py` :: `LoopIO.tool` (L613)
 - `core/services/agent_observation_compressor.py` :: `get_agent_observation` (L179)
 - `core/services/agent_observation_compressor.py` :: `list_agent_observations` (L137)
 - `core/services/agent_prompt_layers.py` :: `ensure_prompt_tables` (L37)
@@ -2067,7 +2067,7 @@ Generated from source. 10253/18795 functions/methods documented (54%). The list 
 - `core/services/self_review_unified.py` :: `build_self_review_surface` (L384)
 - `core/services/self_review_unified.py` :: `list_self_reviews` (L365)
 - `core/services/self_system_code_awareness.py` :: `build_self_system_code_awareness_surface` (L16)
-- `core/services/self_wakeup.py` :: `list_wakeups` (L812)
+- `core/services/self_wakeup.py` :: `list_wakeups` (L818)
 - `core/services/selfhood_proposal_tracking.py` :: `build_runtime_selfhood_proposal_surface` (L83)
 - `core/services/selfhood_proposal_tracking.py` :: `refresh_runtime_selfhood_proposal_statuses` (L52)
 - `core/services/selfhood_proposal_tracking.py` :: `track_runtime_selfhood_proposals_for_visible_turn` (L30)

@@ -368,7 +368,13 @@ def schedule_self_wakeup(
             kildetype="wakeup",
             kilde_id=wakeup_id,
             oprettende_run_id=aktivt_run_id(""),
-            beskrivelse=prompt[:200] or reason[:200],
+            # Brug den samme, validerede tekst som wakeup-recordet. En lokal
+            # 200-tegns præsentationsgrænse gjorde indbakke-rækken til en
+            # anden (og afkortet) sandhed end kilden; UI'et må selv forkorte
+            # ved visning. Den dynamiske staleness-mærkning dannes først ved
+            # fyring af `direktiv_for(record)` og kan derfor ikke materialiseres
+            # her ved bookingen.
+            beskrivelse=str(record.get("prompt") or record.get("reason") or ""),
         )
         if _ib.get("status") != "ok":
             logger.warning("self_wakeup: %s blev IKKE registreret i indbakken: %s",

@@ -2,6 +2,32 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/mcp_client.py`
+_MCP-klient — stdio og HTTP, med trust-gate foran hver forbindelse._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `parse_mcp_http_body` | `(tekst, content_type=…)` | Læs et MCP-over-HTTP-svar — JSON *eller* SSE. | [src](../../../core/services/mcp_client.py#L48) |
+| class | `MCPClient` | `` | Én forbindelse til én MCP-server. | [src](../../../core/services/mcp_client.py#L91) |
+| method | `MCPClient.__init__` | `(self, name, config)` | — | [src](../../../core/services/mcp_client.py#L94) |
+| method | `MCPClient.connect` | `(self)` | Trust-gate først, DERNÆST forbindelse. Rækkefølgen er hele pointen. | [src](../../../core/services/mcp_client.py#L115) |
+| method | `MCPClient._connect_stdio` | `(self)` | — | [src](../../../core/services/mcp_client.py#L132) |
+| method | `MCPClient._connect_http` | `(self)` | — | [src](../../../core/services/mcp_client.py#L158) |
+| method | `MCPClient.disconnect` | `(self)` | — | [src](../../../core/services/mcp_client.py#L173) |
+| method | `MCPClient.connected` | `(self)` | — | [src](../../../core/services/mcp_client.py#L188) |
+| method | `MCPClient._send_request` | `(self, method, params=…)` | — | [src](../../../core/services/mcp_client.py#L197) |
+| method | `MCPClient._send_stdio` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L206) |
+| method | `MCPClient._send_stdio_locked` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L215) |
+| method | `MCPClient._http_headers` | `(self)` | — | [src](../../../core/services/mcp_client.py#L246) |
+| method | `MCPClient._send_http` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L265) |
+| method | `MCPClient._send_notification` | `(self, method)` | — | [src](../../../core/services/mcp_client.py#L287) |
+| method | `MCPClient._initialize` | `(self)` | MCP kræver dette håndtryk før alt andet — mange servere afviser | [src](../../../core/services/mcp_client.py#L300) |
+| method | `MCPClient._discover_tools` | `(self)` | — | [src](../../../core/services/mcp_client.py#L321) |
+| method | `MCPClient.tool` | `(self, tool_name)` | Den fulde tool-definition, inkl. MCP Apps `_meta`. | [src](../../../core/services/mcp_client.py#L328) |
+| method | `MCPClient.read_resource` | `(self, uri)` | Læs én MCP-resource i dens rå protokolform. | [src](../../../core/services/mcp_client.py#L333) |
+| method | `MCPClient.call_tool_raw` | `(self, tool_name, arguments)` | Kald et tool og behold MCP-strukturen urørt. | [src](../../../core/services/mcp_client.py#L347) |
+| method | `MCPClient.call_tool` | `(self, tool_name, arguments)` | — | [src](../../../core/services/mcp_client.py#L367) |
+
 ## `core/services/mcp_manager.py`
 _MCP-manager — forbinder registerets servere og eksponerer deres værktøjer._
 
@@ -637,15 +663,4 @@ _Findes den valgte model hos den valgte udbyder?_
 | function | `kandidater` | `(navne, model)` | Hvilke navne på listen kunne `model` mene? | [src](../../../core/services/model_pair_resolver.py#L119) |
 | function | `resolve` | `(provider, model, *, base_url=…)` | Returnér (provider, model) med modellen oversat hvis det er entydigt. | [src](../../../core/services/model_pair_resolver.py#L133) |
 | function | `resolve_safe` | `(provider, model, *, base_url=…)` | Som `resolve`, men returnerer fejlen frem for at kaste. | [src](../../../core/services/model_pair_resolver.py#L171) |
-
-## `core/services/model_probe.py`
-_Prøv én model: kan den kaldes, kan den bruge værktøjer, kan den kode._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_er_forbigaaende` | `(fejl)` | — | [src](../../../core/services/model_probe.py#L61) |
-| function | `_fulgte_resultatet` | `(svar)` | Bestået kræver TO ting: at svaret bærer det plantede faktum, og at det | [src](../../../core/services/model_probe.py#L132) |
-| function | `_score` | `(bestået, sprunget)` | Vægtene afspejler hvad agent-arbejde faktisk falder på. | [src](../../../core/services/model_probe.py#L150) |
-| function | `bedøm_kode` | `(tekst)` | True hvis svaret indeholder en Python-funktion der kan parses. | [src](../../../core/services/model_probe.py#L168) |
-| function | `probe_model` | `(*, provider, model, auth_profile=…, base_url=…, kald=…)` | Kør de fire prøver mod én model. Kaster aldrig. | [src](../../../core/services/model_probe.py#L199) |
 

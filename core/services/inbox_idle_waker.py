@@ -532,11 +532,10 @@ def _dispatch_tekst(post: dict[str, Any]) -> str:
         tekst = str(post.get("beskrivelse") or "").strip()
         if tekst:
             return tekst
-    # En wakeup-post bærer sin tekst i RECORDET — ikke i postens beskrivelse.
-    # Beskrivelsen er klippet til 200 tegn da posten blev registreret
-    # (`self_wakeup`: `beskrivelse=prompt[:200]`), så den kan hverken bære den
-    # fulde prompt eller den `[MULIGVIS FORÆLDET]`-blok som `direktiv_for`
-    # indsætter EFTER prompt-linjen.
+    # En wakeup-post bærer sin afviklingstekst i RECORDET — ikke i postens
+    # beskrivelse. Beskrivelsen stammer fra bookingen og kan derfor aldrig
+    # bære den dynamiske `[MULIGVIS FORÆLDET]`-blok som `direktiv_for`
+    # først danner ved fyring.
     #
     # Målt 16/11-2026: mærkningen blev dannet korrekt og skåret væk igen, fordi
     # `kraever_handling` var 1 — `wakeup` står i `KAN_DISPATCHES_KILDETYPER` men

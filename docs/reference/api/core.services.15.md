@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gmail_connector.py`
+_Gmail-connector — API-klient + tool-handlers (vertical: search + list)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_token` | `(user_id)` | — | [src](../../../core/services/gmail_connector.py#L144) |
+| function | `_headers` | `(token)` | — | [src](../../../core/services/gmail_connector.py#L151) |
+| function | `_clamp` | `(n, lo, hi, default)` | — | [src](../../../core/services/gmail_connector.py#L155) |
+| function | `_fetch_messages` | `(user_id, query, max_results)` | Fælles kerne for search/list: hent id-liste → berig med headers/snippet. | [src](../../../core/services/gmail_connector.py#L163) |
+| function | `search` | `(user_id, query, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L208) |
+| function | `list_inbox` | `(user_id, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L214) |
+| function | `_extract_body` | `(payload)` | Fold payload-træet ud og returnér (ren_tekst, html). | [src](../../../core/services/gmail_connector.py#L218) |
+| function | `get_message` | `(user_id, message_id)` | Hent ÉN mail med fuld brødtekst (format=full). | [src](../../../core/services/gmail_connector.py#L251) |
+| function | `modify_messages` | `(user_id, message_ids, *, action=…, dry_run=…)` | Flyt/arkivér/fortryd på EKSPLICITTE message-id'er. | [src](../../../core/services/gmail_connector.py#L314) |
+| function | `send_message` | `(user_id, to, subject, body)` | Send en mail på brugerens vegne. KRÆVER approval-flow før den eksponeres som tool. | [src](../../../core/services/gmail_connector.py#L375) |
+
 ## `core/services/goal_reporter.py`
 _Goal reporter — fører systemets egne målinger tilbage til målet der bad om dem._
 
@@ -606,16 +622,4 @@ _Identity drift daemon — detect unauthorized changes to identity files._
 | function | `_check_one_file` | `(workspace_dir, filename, now)` | Examine one watched file. Returns a per-file result dict. | [src](../../../core/services/identity_drift_daemon.py#L173) |
 | function | `tick_identity_drift_daemon` | `()` | Run one identity-drift detection cycle if cadence elapsed. | [src](../../../core/services/identity_drift_daemon.py#L280) |
 | function | `build_identity_drift_surface` | `()` | — | [src](../../../core/services/identity_drift_daemon.py#L318) |
-
-## `core/services/identity_drift_guard.py`
-_Anti-drift-validator — kernen i den kanoniske identitets-store (Spec H §2.3)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_enforce` | `()` | Shadow-først: strip er OFF indtil flag EKSPLICIT flippes efter shadow-eval. Self-safe. | [src](../../../core/services/identity_drift_guard.py#L20) |
-| function | `_patterns` | `()` | Aktive acknowledged_corrections. Self-safe (tom liste ved fejl). | [src](../../../core/services/identity_drift_guard.py#L30) |
-| function | `_matches` | `(text_low, claim_pattern)` | Returnér det første matchende nøgleord/alternativ (pipe-separeret) — ellers None. Self-safe. | [src](../../../core/services/identity_drift_guard.py#L39) |
-| function | `_observe` | `(source, flags)` | Metadata-only observe (correction_id/source/count) — ALDRIG narrativ-teksten (§24.4). Self-safe. | [src](../../../core/services/identity_drift_guard.py#L52) |
-| function | `identity_drift_guard` | `(text, *, source)` | Scan `text` for kendte konfabulationer → observe drift. | [src](../../../core/services/identity_drift_guard.py#L68) |
-| function | `_strip` | `(text, flags)` | Fjern sætninger der indeholder et matchende nøgleord (senere-fase enforce). Self-safe. | [src](../../../core/services/identity_drift_guard.py#L104) |
 

@@ -102,6 +102,15 @@ _Authenticated per-user presentation preferences for Desk Chat Mode._
 | function | `record_chat_flow_observation` | `(principal_id, *, meaningful_steps, expanded_work, manual_override)` | — | [src](../../../core/services/chat_flow_preferences.py#L152) |
 | function | `record_chat_flow_suggestion` | `(principal_id, *, kind, outcome)` | — | [src](../../../core/services/chat_flow_preferences.py#L176) |
 
+## `core/services/chat_form_feedback.py`
+_Feedback i stedet for feedforward: mål FORRIGE svars form, vis ét tal._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `measure_answer_form` | `(text)` | Tæl form: ord, prosa-afsnit, native flader (tabel/liste/kode/jarvis-ui). | [src](../../../core/services/chat_form_feedback.py#L29) |
+| function | `form_line` | `(measure)` | Ét konkret tal-udsagn. Ingen formaning. | [src](../../../core/services/chat_form_feedback.py#L88) |
+| function | `previous_answer_form_line` | `(session_id)` | Målelinjen for sessionens seneste assistent-svar — eller None. | [src](../../../core/services/chat_form_feedback.py#L96) |
+
 ## `core/services/chat_response_policy.py`
 _One chat-only decision vocabulary for closure and presentation._
 
@@ -650,21 +659,4 @@ _Chronicle Engine — Jarvis' narrative autobiography that grows over time._
 | function | `_extract_key_events` | `(recent_runs)` | — | [src](../../../core/services/chronicle_engine.py#L570) |
 | function | `_extract_lessons` | `(recent_runs)` | — | [src](../../../core/services/chronicle_engine.py#L580) |
 | function | `_parse_iso` | `(value)` | — | [src](../../../core/services/chronicle_engine.py#L591) |
-
-## `core/services/ci_status_watch.py`
-_CI-status — set, ikke gættet._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_nu` | `()` | — | [src](../../../core/services/ci_status_watch.py#L77) |
-| class | `ApiUkendt` | `` | Vi kunne ikke se CI. | [src](../../../core/services/ci_status_watch.py#L81) |
-| function | `_rapporterede` | `()` | {run_id: iso-tidsstempel} for det vi allerede har set. | [src](../../../core/services/ci_status_watch.py#L91) |
-| function | `_husk` | `(ids)` | Skriv id'erne som sete — atomisk, så api og runtime ikke overskriver | [src](../../../core/services/ci_status_watch.py#L114) |
-| function | `_grundlinje` | `()` | Tidsstemplet for hvornår vagtposten vågnede. Sættes én gang. | [src](../../../core/services/ci_status_watch.py#L130) |
-| function | `_hent_url` | `(url)` | Kørslerne bag én Actions-URL. Rejser `ApiUkendt` når vi ikke kunne se dem. | [src](../../../core/services/ci_status_watch.py#L146) |
-| function | `_hent_runs` | `()` | Kørslerne vi holder øje med — på `main` OG desk-release (tag-styret). | [src](../../../core/services/ci_status_watch.py#L170) |
-| function | `scan_roede` | `()` | Nye røde kørsler på `main` siden sidst — efter grundlinjen. | [src](../../../core/services/ci_status_watch.py#L192) |
-| function | `_beskriv` | `(run)` | — | [src](../../../core/services/ci_status_watch.py#L233) |
-| function | `_sekunder_siden` | `(sidste)` | Sekunder siden forrige tjek — eller None når stemplet mangler eller er | [src](../../../core/services/ci_status_watch.py#L243) |
-| function | `tik` | `()` | Tjek CI på `main` og læg én followup for nye røde kørsler. | [src](../../../core/services/ci_status_watch.py#L255) |
 

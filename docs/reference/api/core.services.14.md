@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/felt_surface_store.py`
+_Delt lager for de følte overflader — så de overlever en procesgrænse._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_state_key` | `(name)` | — | [src](../../../core/services/felt_surface_store.py#L40) |
+| function | `is_empty_payload` | `(payload)` | Er overfladen reelt tom? | [src](../../../core/services/felt_surface_store.py#L44) |
+| function | `save_surface` | `(name, payload)` | Gem en overflade så andre processer kan læse den. Aldrig kastende. | [src](../../../core/services/felt_surface_store.py#L71) |
+| function | `load_surface` | `(name)` | Læs en gemt overflade. {} hvis der intet er, eller ved enhver fejl. | [src](../../../core/services/felt_surface_store.py#L85) |
+| function | `shared_surface` | `(name, local_builder)` | Overfladen som den skal se ud, uanset hvilken proces der spørger. | [src](../../../core/services/felt_surface_store.py#L96) |
+| function | `persist_local_surfaces` | `()` | Gem de følte overflader som DENNE proces kan se dem. | [src](../../../core/services/felt_surface_store.py#L128) |
+
 ## `core/services/file_awareness_daemon.py`
 _File Awareness Daemon — proprioception: "I feel when my files change."_
 
@@ -510,20 +522,4 @@ _Global Workspace — shared broadcast buffer (Experiment 3: Global Workspace Th
 | function | `_listener_loop` | `(q)` | — | [src](../../../core/services/global_workspace.py#L104) |
 | function | `register_event_listeners` | `()` | Start background eventbus listener thread. | [src](../../../core/services/global_workspace.py#L120) |
 | function | `stop_event_listeners` | `()` | Stop the background listener thread. | [src](../../../core/services/global_workspace.py#L141) |
-
-## `core/services/gmail_connector.py`
-_Gmail-connector — API-klient + tool-handlers (vertical: search + list)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_token` | `(user_id)` | — | [src](../../../core/services/gmail_connector.py#L144) |
-| function | `_headers` | `(token)` | — | [src](../../../core/services/gmail_connector.py#L151) |
-| function | `_clamp` | `(n, lo, hi, default)` | — | [src](../../../core/services/gmail_connector.py#L155) |
-| function | `_fetch_messages` | `(user_id, query, max_results)` | Fælles kerne for search/list: hent id-liste → berig med headers/snippet. | [src](../../../core/services/gmail_connector.py#L163) |
-| function | `search` | `(user_id, query, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L208) |
-| function | `list_inbox` | `(user_id, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L214) |
-| function | `_extract_body` | `(payload)` | Fold payload-træet ud og returnér (ren_tekst, html). | [src](../../../core/services/gmail_connector.py#L218) |
-| function | `get_message` | `(user_id, message_id)` | Hent ÉN mail med fuld brødtekst (format=full). | [src](../../../core/services/gmail_connector.py#L251) |
-| function | `modify_messages` | `(user_id, message_ids, *, action=…, dry_run=…)` | Flyt/arkivér/fortryd på EKSPLICITTE message-id'er. | [src](../../../core/services/gmail_connector.py#L314) |
-| function | `send_message` | `(user_id, to, subject, body)` | Send en mail på brugerens vegne. KRÆVER approval-flow før den eksponeres som tool. | [src](../../../core/services/gmail_connector.py#L375) |
 

@@ -460,11 +460,6 @@ _REF_EVIDENCE_RE = re.compile(
     r"[\w./-]+\.(?:py|ts|tsx|js|jsx|md|json|ya?ml|toml|sql)\b(?::\d+)?"
     r"|\b(?:linje|line)\s*\d+", re.IGNORECASE)
 
-#: Et svar der er kortere end dette, efter at agenten HAR brugt værktøjer, kan ikke være
-#: en undersøgelse der er blevet afleveret. Tærsklen er lav med vilje: den skal fange det
-#: åbenlyst tomme, ikke dømme et kortfattet svar.
-_DELIVERY_MIN_CHARS = 160
-
 #: MAALT 11/11-2026: laengde er det FORKERTE maal for om en undersoegelse er afleveret.
 #: I raad `council-ae9a075e13514694` blev et svar paa 89 tegn faeldet af taersklen, mens
 #: arbejdsintentioner paa 214, 233 og 500 tegn gik lige igennem. Det der kendetegner dem
@@ -479,7 +474,9 @@ _DELIVERY_MIN_CHARS = 160
 #: hullet den lukker.
 _FORWARD_TAIL_RE = re.compile(
     r"(?:^|[\s(\[])(?:let'?s|lad\s+os|lad\s+mig|let\s+me)\s+\w+"
-    r"|\bnow\s+check\b|\bnow\s+let'?s\b|\bnu\s+tjekker\b",
+    r"|\bnow\s+check\b|\bnow\s+let'?s\b"
+    r"|\bnu\s+(?:tjekker|skal\s+jeg\s+\w+)\b"
+    r"|^\s*nu\s+(?:linj(?:en|erne)?|fil(?:en|erne)?)\s+(?:omkring|fra|i)\b",
     re.IGNORECASE)
 #: Hvor meget af slutningen der undersoeges. En intention staar til sidst; at soege i
 #: hele teksten ville ramme et svar der naevner en plan midt i og konkluderer bagefter.
@@ -541,10 +538,9 @@ def _delivery_gap(expected_result: str, final_text: str, total_tool_calls: int,
     TIL agenten som tekst i prompten — aldrig laest som et vilkaar TIL agenten. Det er den
     samme fejlform som resten af dagen: kontrakten findes, men ingen laeser den.
 
-    To maalbare fakta, begge uden en model:
-      1. Et svar kortere end ``_DELIVERY_MIN_CHARS`` efter >=1 vaerktoejskald kan ikke
-         baere en undersøgelse.
-      2. Bestiller kontrakten filnavne/linjenumre, skal svaret indeholde mindst ét.
+    De maalbare signaler er modalitet, nummereret daekning og eksplicitte formkrav.
+    Laengde er ikke et signal: et kort svar kan opfylde en kort kontrakt, mens en lang
+    arbejdsintention stadig ikke er en leverance.
     """
     if write_capable:
         # En agent der KAN skrive har aendringen som leverance, ikke teksten. Spoergsmaalet
@@ -582,9 +578,6 @@ def _delivery_gap(expected_result: str, final_text: str, total_tool_calls: int,
     if _FORWARD_TAIL_RE.search(tail):
         return ("svaret slutter med en arbejdsintention i stedet for en leverance "
                 f"(«…{tail[-70:].strip()}»)")
-    if len(text) < _DELIVERY_MIN_CHARS:
-        return (f"svaret er {len(text)} tegn efter {total_tool_calls} værktøjskald — "
-                "undersøgelsen blev ikke afleveret")
     # Kravene kan staa i PROMPTEN selv om kontrakten er kort: `Task` saetter
     # `expected_result` til description, mens "citer linjenumre, gæt ikke" staar i
     # prompten. Maalt 10/11-2026 paa 139 assignments: 1 bestilte en form, 89 var under
@@ -894,6 +887,13 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
 
     if unanswered_total:
         incomplete = True
+        # 16/11-2026: grunden skal baeres med ud, ikke kun faktum. Uden denne linje stod
+        # `incomplete` uden `stop_reason` naar den afsluttende svar-runde fejlede — og
+        # kalderen kunne se AT noget manglede, men ikke HVAD. Det var den ene gren der
+        # slap igennem efter at laengdetaersklen blev fjernet: et bullet-svar der daekker
+        # 1 af 2 spoergsmaal blev maalt korrekt (unanswered=2) men uden en grund.
+        stop_reason = stop_reason or (
+            f"{unanswered_total} {unanswered_ord or 'spørgsmål uden dækning'}")
 
     return _outcome(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0,
                     None, incomplete=incomplete, unanswered=unanswered_total,

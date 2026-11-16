@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/context_proveniens.py`
+_Kontekst-proveniens: hvad var FAKTISK i den prompt der blev bygget._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `marker_memory_i_kontekst` | `(session_id, antal_linjer)` | Registrér at `[HUKOMMELSE]` blev bygget med `antal_linjer` linjer. | [src](../../../core/services/context_proveniens.py#L47) |
+| function | `memory_i_kontekst` | `(session_id)` | Var der memory-linjer i den seneste byggede prompt for sessionen? | [src](../../../core/services/context_proveniens.py#L60) |
+| function | `ryd_register` | `()` | Tøm registeret. Kun til tests — ellers lever det som en lille dict. | [src](../../../core/services/context_proveniens.py#L80) |
+
 ## `core/services/context_window_manager.py`
 _Context window manager — strategies for keeping prompts within budget._
 
@@ -609,22 +618,4 @@ _Live kill switch for daemon-lanens public-safe-rute._
 | function | `set_public_safe_free_first` | `(enabled)` | Flip flaget i runtime.json (atomisk, med backup) og invalider cachen. | [src](../../../core/services/daemon_lane_switch.py#L130) |
 | function | `invalidate_cache` | `()` | Tving næste ``public_safe_free_first()`` til at læse filen igen. | [src](../../../core/services/daemon_lane_switch.py#L152) |
 | function | `_main` | `(argv)` | — | [src](../../../core/services/daemon_lane_switch.py#L158) |
-
-## `core/services/daemon_llm.py`
-_Shared LLM call for daemons — cheap lane first, heartbeat model fallback._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_note_call` | `(daemon_name, hit)` | Registrér ét daemon_llm-kald + om det ramte cachen → central_timeseries. Self-safe. | [src](../../../core/services/daemon_llm.py#L25) |
-| function | `daemon_llm_cache_snapshot` | `()` | Read-only: pr. daemon kald + cache-hits + hit-rate. Lav hit-rate + højt kald = | [src](../../../core/services/daemon_llm.py#L58) |
-| function | `_get_cache_ttl` | `(daemon_name)` | Return TTL in seconds for a daemon. 0 means no caching. | [src](../../../core/services/daemon_llm.py#L99) |
-| function | `_check_cache` | `(cache_key)` | Return cached response if present and not expired, else None. | [src](../../../core/services/daemon_llm.py#L104) |
-| function | `_store_cache` | `(cache_key, text, daemon_name)` | Store response in cache with daemon-specific TTL. | [src](../../../core/services/daemon_llm.py#L116) |
-| function | `daemon_llm_call` | `(prompt, *, max_len=…, fallback=…, daemon_name=…)` | Call LLM for daemon output. Tries cache first, then cheap lane (Groq), | [src](../../../core/services/daemon_llm.py#L129) |
-| function | `tegn_for_tokens` | `(tokens)` | Oversaet et token-budget til den TEGN-graense `max_len` klipper paa. | [src](../../../core/services/daemon_llm.py#L166) |
-| function | `quality_daemon_llm_call` | `(prompt, *, max_len=…, fallback=…, daemon_name=…)` | Call path for QUALITY-CRITICAL daemons (self-review, decision-review, | [src](../../../core/services/daemon_llm.py#L184) |
-| function | `daemon_public_safe_llm_call` | `(prompt, *, max_len=…, fallback=…, daemon_name=…)` | Call path reserved for PUBLIC-SAFE prompts. | [src](../../../core/services/daemon_llm.py#L300) |
-| function | `_gratis_balancer_foerst` | `()` | Live kill switch for public-safe-daemons. Fejler ALDRIG. | [src](../../../core/services/daemon_llm.py#L322) |
-| function | `_estimer_tokens` | `(text)` | Grov token-estimat når provideren ikke returnerer et tal. | [src](../../../core/services/daemon_llm.py#L339) |
-| function | `_daemon_llm_call_impl` | `(prompt, *, max_len, fallback, daemon_name, public_safe)` | — | [src](../../../core/services/daemon_llm.py#L354) |
 

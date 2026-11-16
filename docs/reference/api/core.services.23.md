@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/reflection_signal_tracking.py`
+_Reflection signal tracking — migrated onto signal_tracking_framework._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_reflection_signals_for_visible_turn` | `(*, session_id, run_id, user_message)` | — | [src](../../../core/services/reflection_signal_tracking.py#L36) |
+| function | `refresh_runtime_reflection_signal_statuses` | `()` | — | [src](../../../core/services/reflection_signal_tracking.py#L47) |
+| function | `build_runtime_reflection_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/reflection_signal_tracking.py#L51) |
+| function | `_extract_reflection_candidates` | `(*_args, **_kwargs)` | — | [src](../../../core/services/reflection_signal_tracking.py#L56) |
+| function | `_build_candidate` | `(*, domain_key, signal_type, status, title, summary, rationale, status_reason, source_items)` | — | [src](../../../core/services/reflection_signal_tracking.py#L157) |
+| function | `_history_item_from_signal` | `(item)` | — | [src](../../../core/services/reflection_signal_tracking.py#L186) |
+| function | `_reflection_early_retire` | `(item)` | — | [src](../../../core/services/reflection_signal_tracking.py#L205) |
+| function | `_reflection_track_summary` | `(items, message)` | — | [src](../../../core/services/reflection_signal_tracking.py#L213) |
+| function | `_domain_key_from_focus` | `(canonical_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L254) |
+| function | `_domain_key_from_critic` | `(canonical_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L278) |
+| function | `_domain_key_from_self_model` | `(canonical_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L303) |
+| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L312) |
+| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L316) |
+| function | `_history_transition_label` | `(*, signal_type, status)` | — | [src](../../../core/services/reflection_signal_tracking.py#L324) |
+
 ## `core/services/reflection_to_plan.py`
 _Reflection → Plan — konvertér reflection/tanke til eksekverbar plan._
 
@@ -644,18 +664,4 @@ _Content-free operational failure projections for owner and Jarvis._
 | function | `project_failure` | `(exc, metadata)` | — | [src](../../../core/services/routine_diagnostics.py#L39) |
 | function | `render_projection` | `(projection)` | — | [src](../../../core/services/routine_diagnostics.py#L62) |
 | function | `publish_failure` | `(projection)` | Publish the same fixed-schema projection to operational inbox and app chat. | [src](../../../core/services/routine_diagnostics.py#L72) |
-
-## `core/services/routine_dispatch.py`
-_Deterministic execution-path routing for queued Routine occurrences._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `RouteOutcome` | `` | — | [src](../../../core/services/routine_dispatch.py#L19) |
-| function | `_classification` | `(row)` | — | [src](../../../core/services/routine_dispatch.py#L25) |
-| function | `resolve_owner_session` | `(owner_user_id)` | Return (session, state); only a positive ownership stamp may wake. | [src](../../../core/services/routine_dispatch.py#L31) |
-| function | `runtime_presence` | `(session_id)` | Return idle/busy/unknown from shared runtime truth and cooldown state. | [src](../../../core/services/routine_dispatch.py#L65) |
-| function | `_context` | `(row, generation)` | — | [src](../../../core/services/routine_dispatch.py#L92) |
-| function | `_dispatch_session_claimed` | `(row, *, session_id)` | — | [src](../../../core/services/routine_dispatch.py#L98) |
-| function | `_dispatch_session` | `(row, *, session_id)` | Serialize the final presence check and synchronous visible-run birth. | [src](../../../core/services/routine_dispatch.py#L165) |
-| function | `route_next` | `(runner)` | Route one occurrence. Unknown state leaves it visibly queued. | [src](../../../core/services/routine_dispatch.py#L176) |
 

@@ -103,8 +103,7 @@ def test_a_reading_agent_that_stops_mid_reading_is_not_completed(tomt_svar):
     out = _run(io, expected_result=KONTRAKT)
 
     assert out.get("incomplete") is True, "en undersøgelse der stoppede midt i er ikke en leverance"
-    assert "tegn" in out["stop_reason"], out["stop_reason"]
-    assert "3 værktøjskald" in out["stop_reason"]
+    assert "arbejdsintention" in out["stop_reason"], out["stop_reason"]
     # Teksten bevares — Jarvis skal kunne se HVAD agenten naaede, ikke kun at noget manglede.
     assert out["final_text"] == tomt_svar
 
@@ -124,7 +123,7 @@ def test_the_agent_gets_one_order_naming_the_gap_not_a_verdict():
     # og dets sidste besked er stadig værktøjs-resultatet.
     nudge = io.model_calls[2]["messages"][-1]["content"]
     assert "kan ikke accepteres" in nudge
-    assert "tegn" in nudge
+    assert "arbejdsintention" in nudge
     # Den rettede sig → leverancen accepteres.
     assert not out.get("incomplete")
     assert out["final_text"] == RIGTIGT
@@ -142,6 +141,23 @@ def test_a_real_investigation_passes_without_a_nudge():
     assert len(io.model_calls) == 2, "et fuldt svar skal ikke have en ekstra runde"
     assert not out.get("incomplete")
     assert out["final_text"] == RIGTIGT
+
+
+def test_a_short_conclusion_to_a_short_contract_is_a_delivery():
+    """Længde alene må ikke gøre et konkret svar til en manglende leverance.
+
+    Bridge-agenten har allerede udført det ene bestilte filkald. Svaret beskriver
+    det afsluttede resultat og lover ikke mere arbejde, så kontrakten er opfyldt.
+    """
+    io = FakeIO([
+        {"text": "", "tool_calls": [_tc(1)]},
+        _text("faerdig: indholdet er laest"),
+    ])
+    out = _run(io, prompt="laes en fil", expected_result="laes en fil")
+
+    assert len(io.model_calls) == 2
+    assert not out.get("incomplete"), out.get("stop_reason")
+    assert out["final_text"] == "faerdig: indholdet er laest"
 
 
 # ── Ingen kontrakt = ingen ny adfaerd ─────────────────────────────────────
@@ -453,7 +469,10 @@ def test_a_bullet_answer_with_fewer_points_than_questions_is_still_a_gap():
     out = _run(io, prompt=BULLET_OPGAVE, expected_result=KONTRAKT)
 
     assert out.get("incomplete") is True
-    assert "tegn" in out["stop_reason"]
+    # 16/11-2026: grunden er daeknings-målingen, ikke en laengdetaerskel. Da taersklen
+    # blev fjernet (den var det forkerte maal — se `_delivery_gap`), er det den eneste
+    # gren der kan faelde dette svar, og den skal baere sin egen grund ud.
+    assert "spørgsmål uden dækning" in out["stop_reason"], out["stop_reason"]
 
 
 def test_the_agents_own_declaration_still_wins_over_the_bullet_count():

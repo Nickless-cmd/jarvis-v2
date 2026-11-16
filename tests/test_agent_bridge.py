@@ -463,6 +463,16 @@ def eng(dsp, monkeypatch):
     dsp.container_tool_calls = []
     monkeypatch.setattr(base, "_execute_agent_tool_call",
                         lambda tc, agent_id: dsp.container_tool_calls.append(tc) or json.dumps({"status": "ok"}))
+    import core.services.agent_contract_service as contract_service
+    import core.services.agent_worker_runner as worker
+    monkeypatch.setattr(contract_service, "_worker_unavailable", lambda: None)
+    monkeypatch.setattr(
+        worker,
+        "run_agent_in_worker",
+        lambda *, agent, prompt, requires_tools, run_id, **kw: base._run_agent_tool_loop(
+            agent=agent, prompt=prompt, requires_tools=requires_tools, run_id=run_id
+        ),
+    )
     return dsp
 
 

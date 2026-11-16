@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/emergence.py`
+_Emergence — evidence-based pattern detection across recent activity._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `EmergenceCandidate` | `` | — | [src](../../../core/services/emergence.py#L44) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/emergence.py#L54) |
+| function | `_ensure_table` | `()` | Create emergent_patterns table if missing. Idempotent. | [src](../../../core/services/emergence.py#L58) |
+| function | `_fetch_recent_events` | `(*, window_days=…, limit=…)` | Pull recent events from the eventbus events table. | [src](../../../core/services/emergence.py#L80) |
+| function | `_count_by_kind_prefix` | `(events, prefix)` | — | [src](../../../core/services/emergence.py#L108) |
+| function | `_count_blocked` | `(events)` | Count events that look like blocked/denied signals. | [src](../../../core/services/emergence.py#L118) |
+| function | `_fetch_procedures_count` | `(*, window_days=…)` | Tæl rutiner der er NYE i vinduet og faktisk blevet vist eller pinnet. | [src](../../../core/services/emergence.py#L135) |
+| function | `_fetch_decisions_count` | `(*, window_days=…)` | — | [src](../../../core/services/emergence.py#L168) |
+| function | `_detect_candidates` | `(*, window_days=…)` | — | [src](../../../core/services/emergence.py#L181) |
+| function | `_create_or_update_pattern` | `(*, pattern_key, title, summary, confidence, evidence_count, competing_explanations, confounders, status)` | Insert or update a pattern row. Returns the persisted row. | [src](../../../core/services/emergence.py#L264) |
+| function | `detect_and_score_patterns` | `(*, window_days=…)` | Main entry — detect candidates, score via apophenia, persist, emit events. | [src](../../../core/services/emergence.py#L324) |
+| function | `list_patterns` | `(*, status=…, limit=…)` | Return persisted patterns, optionally filtered by status. | [src](../../../core/services/emergence.py#L409) |
+| function | `summarize_patterns` | `()` | — | [src](../../../core/services/emergence.py#L432) |
+| function | `_decode_json_list` | `(value)` | — | [src](../../../core/services/emergence.py#L451) |
+| function | `_band` | `(confidence)` | — | [src](../../../core/services/emergence.py#L467) |
+| function | `brewing_patterns` | `(*, limit=…)` | Mønstre i brewing-båndet (0.5 ≤ conf < 0.78) — strengthening men endnu ikke emergent. | [src](../../../core/services/emergence.py#L476) |
+| function | `build_emergence_surface` | `(*, limit=…)` | Surface persisted emergence candidates without running detection. | [src](../../../core/services/emergence.py#L502) |
+
 ## `core/services/emergence_initiative_bridge.py`
 _Emergence → initiative bridge: et opdaget mønster bliver en handling._
 
@@ -656,16 +679,4 @@ _FCM HTTP v1 gateway — data-only push rendered once by the mobile app._
 | function | `_access_token` | `()` | Mint en OAuth-access-token fra service-account via google-auth. | [src](../../../core/services/fcm_gateway.py#L38) |
 | function | `_build_message` | `(token, data)` | — | [src](../../../core/services/fcm_gateway.py#L51) |
 | function | `send` | `(token, data)` | Send data-only push. Returnerer (ok, code). code='invalid' => slet token. | [src](../../../core/services/fcm_gateway.py#L67) |
-
-## `core/services/felt_surface_store.py`
-_Delt lager for de følte overflader — så de overlever en procesgrænse._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_state_key` | `(name)` | — | [src](../../../core/services/felt_surface_store.py#L40) |
-| function | `is_empty_payload` | `(payload)` | Er overfladen reelt tom? | [src](../../../core/services/felt_surface_store.py#L44) |
-| function | `save_surface` | `(name, payload)` | Gem en overflade så andre processer kan læse den. Aldrig kastende. | [src](../../../core/services/felt_surface_store.py#L71) |
-| function | `load_surface` | `(name)` | Læs en gemt overflade. {} hvis der intet er, eller ved enhver fejl. | [src](../../../core/services/felt_surface_store.py#L85) |
-| function | `shared_surface` | `(name, local_builder)` | Overfladen som den skal se ud, uanset hvilken proces der spørger. | [src](../../../core/services/felt_surface_store.py#L96) |
-| function | `persist_local_surfaces` | `()` | Gem de følte overflader som DENNE proces kan se dem. | [src](../../../core/services/felt_surface_store.py#L128) |
 

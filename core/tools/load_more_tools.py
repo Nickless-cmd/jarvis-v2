@@ -34,6 +34,42 @@ def _tool_load_more_tools(arguments: dict) -> dict:
     all_by_name = {name: definition for name, definition in all_by_name.items()
                    if _autonomous_allowed(name)}
 
+    # ── Scope-porten (maalt 16/11-2026) ────────────────────────────────────
+    #
+    # Uden dette slog hentningen op i HELE kataloget og returnerede schemas
+    # som scope-porten aldrig ville annoncere. Maalt i chat-scope: porten
+    # afviste `bash`, `write_file`, `operator_bash` og `edit_file` — men
+    # `load_more_tools` gav alle fire tilbage, og de kunne derefter kaldes.
+    # Porten var altsaa formel, ikke virkelig: et vaerktoej uden for scopet
+    # var ét `load_more_tools`-kald vaek.
+    #
+    # Hensigten med vaerktoejet er katalogets LANGE HALE — de vaerktoejer
+    # scopet tillader, men pruneren ikke annoncerede — ikke at hente uden
+    # for scopet. Filtreringen bruger praecis den samme funktion som porten
+    # selv (`allowed_tool_names`), saa der ikke opstaar en anden sandhed.
+    #
+    # Fail-open paa tomt scope: legacy-vejen ("" = ubegraenset) skal vaere
+    # byte-identisk med foer. Kan rollen eller scopet ikke laeses, filtreres
+    # der ikke — en hentning maa ikke doe af en manglende ContextVar.
+    try:
+        from core.identity.workspace_context import current_role as _current_role
+        from core.tools.tool_scoping import (
+            allowed_tool_names as _allowed_tool_names,
+            current_tool_scope as _current_tool_scope,
+        )
+        _scope = _current_tool_scope()
+        if _scope:
+            _tilladte = _allowed_tool_names(
+                role=_current_role(), scope=_scope, all_names=list(all_by_name),
+            )
+            all_by_name = {
+                name: definition
+                for name, definition in all_by_name.items()
+                if name in _tilladte
+            }
+    except Exception:  # en hentning maa ikke doe af en manglende ContextVar
+        pass
+
     resolved: list[str] = []
     unknown: list[str] = []
     for n in names:

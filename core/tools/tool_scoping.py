@@ -354,10 +354,26 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "followup_agent", "interrupt_agent", "close_agent", "review_agent_work",
     "integrate_agent_work",
     # Repo-dokumentation (23/10-2026). Hoerer netop her: en kode-opgave er dér
-    # man har brug for at laese hvad der ER skrevet om systemet. (Bemaerk at
-    # `recall` selv ikke staar i denne liste — memory-soegning er i dag kun
-    # naaelig i chat-scope. Det er en separat mangel, ikke aendret her.)
+    # man har brug for at laese hvad der ER skrevet om systemet.
     "repo_recall",
+    # ── Web og hukommelse i code mode (rettet 16/11-2026) ──────────────────
+    #
+    # Maalt: chat-scopet havde alle seks, code-scopet ingen af dem. I code mode
+    # kunne jeg hverken soege paa nettet eller i mine egne minder — praecis dér
+    # hvor en fejlsoegning oftest begynder. Koden bemærkede det selv lige
+    # ovenfor («`recall` selv staar ikke i denne liste … en separat mangel»).
+    #
+    # Hullet blev ikke skabt her, men det blev PERMANENT af scope-laasen
+    # (fe5aad1e7): foer faldt en code-session tilbage til det ubegraensede
+    # katalog og fik vaerktoejerne ved et uheld. Nu bliver scopet staaende, saa
+    # en udeladelse er ikke laengere «flimren» — den er en varig blind plet.
+    #
+    # `load_more_tools` hoerer med af samme grund som i chat-listen: den er
+    # katalogets lange hale. Den filtrerer nu selv gennem scope-porten, saa den
+    # kan ikke laengere bruges til at hente noget uden for dette saet.
+    "web_search", "web_fetch",
+    "recall", "search_memory", "remember_this",
+    "load_more_tools",
     # Plan mode afslutter med et forslag, ikke med implementering. De tre
     # værktøjer findes kun på code-fladen; selve Plan mode indsnævrer derefter
     # kataloget og tillader netop denne ene plan-mutation.
@@ -421,8 +437,21 @@ except Exception:  # pragma: no cover — defensiv: scoping må ikke dø ved imp
 # §17: værktøjer der eksekverer LOKALT på brugerens maskine i code mode. Deres rå
 # resultat bliver på maskinen; kun summary krydser via bro_broker. bridge.ts bruger
 # dette til mode-aware routing (§17.6.1).
+#
+# UNDTAGELSE (16/11-2026): sættet arvede hele `CODE_MODE_TOOLS_BASE`, men det er
+# ikke samme mængde. Base-listen siger «hvad der er TILLADT i code», ikke «hvad
+# der kører på klienten» — og de to var sammenfaldende indtil web- og
+# hukommelsesværktøjerne kom ind i code-scopet. Uden undtagelsen ville
+# `jarvisx_bridge` løfte mode chat→code for fx `web_search`, så broen troede et
+# server-side opslag skulle køre på Bjørns maskine. Fældet af
+# `tests/test_tool_scoping.py::test_is_local_execution_tool`.
+SERVER_SIDE_I_CODE_SCOPE: frozenset[str] = frozenset({
+    "web_search", "web_fetch", "recall", "search_memory", "remember_this",
+    "load_more_tools",
+})
+
 LOCAL_EXECUTION_TOOLS: frozenset[str] = (
-    CODE_MODE_TOOLS_BASE
+    (CODE_MODE_TOOLS_BASE - SERVER_SIDE_I_CODE_SCOPE)
     | CODE_MODE_OWNER_EXTRA
     | LOCAL_EXEC_ONLY_TOOLS
     | COMPUTER_USE_TOOLS

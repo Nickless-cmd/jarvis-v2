@@ -168,3 +168,57 @@ def test_stop_alle_rammer_ikke_en_anden_samtale(monkeypatch):
 
     assert sorted(ramte) == ["run-y1", "run-y2"]
     assert "run-fremmed" not in ramte
+
+
+def test_run_ejet_af_den_anden_proces_kan_stoppes(monkeypatch):
+    """Den ægte cross-process-vej — målt 16/11-2026, ikke antaget.
+
+    `run_event_log` er in-memory PR. PROCES. Et run startet af jarvis-runtime
+    (en vækning) findes derfor IKKE i API-processens log; det findes kun i
+    `in_flight_runs` (state/in_flight_runs.json under flock) og i
+    `visible_runs.control.<run_id>` i runtime-state.
+
+    Testen registrerer runnet ad PRÆCIS den vej runtime bruger — `mark_started`
+    plus control-state — og kræver at endpointet finder og annullerer det.
+    Uden `active_locations`-grenen i endpointet ville opslaget svare «intet run».
+    """
+    from apps.api.jarvis_api.routes import chat
+    from core.services import in_flight_runs as ifr
+    from core.services.visible_runs import (
+        _get_visible_run_control,
+        _set_visible_run_control,
+    )
+
+    sid, rid = "session-runtime-ejet", "run-runtime-ejet"
+    ifr.mark_started(run_id=rid, session_id=sid, user_message="vækning", kind="visible")
+    _set_visible_run_control(rid, {"run_id": rid, "session_id": sid, "cancelled": False})
+    try:
+        ud = chat.chat_cancel_active(sid)
+
+        assert ud["cancelled"] is True, "stop skal ramme et run ejet af den anden proces"
+        assert rid in ud["run_ids"]
+        # Flaget er det runtime læser — det er selve annulleringen, ikke et svar.
+        assert _get_visible_run_control(rid).get("cancelled") is True
+    finally:
+        ifr.mark_completed(rid)
+        _set_visible_run_control(rid, {})
+
+
+def test_run_uden_control_state_afvises_ikke_som_succes(monkeypatch):
+    """Et run der ikke kan annulleres må ikke rapporteres som stoppet.
+
+    Målt 16/11-2026: `cancel_visible_run` kræver en controller ELLER en
+    control-state-post. Mangler begge, findes intet at annullere — og svaret
+    skal være `cancelled: false`, ikke en tavs succes.
+    """
+    from apps.api.jarvis_api.routes import chat
+    from core.services import in_flight_runs as ifr
+
+    sid, rid = "session-uden-kontrol", "run-uden-kontrol"
+    ifr.mark_started(run_id=rid, session_id=sid, user_message="x", kind="visible")
+    try:
+        ud = chat.chat_cancel_active(sid)
+        assert ud["cancelled"] is False
+        assert ud["run_ids"] == []
+    finally:
+        ifr.mark_completed(rid)

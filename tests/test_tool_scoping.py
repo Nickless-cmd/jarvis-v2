@@ -36,6 +36,28 @@ class TestChatScope:
             assert set(names) <= allowed_tool_names(role="owner", scope=scope, all_names=names)
             assert not allowed_tool_names(role="member", scope=scope, all_names=names)
 
+    def test_owner_can_take_a_position_in_code_mode(self):
+        """`suggest_next_task` og `pause_and_ask` skal kunne kaldes i CODE mode.
+
+        Målt 16/11-2026: begge var registreret i `composer_suggest_tools` og
+        stod i INGEN scope-liste — hverken chat eller code. Samme fejlform som
+        `git_status` (27/10-2026): kataloget peger på dem, porten giver dem
+        ikke, så de findes reelt ikke for modellen.
+
+        Konsekvensen ramte præcis den adfærd Bjørn beder om: når turen
+        efterlader et næste skridt, skal det stå som et forslag — ikke som
+        prosa. Uden værktøjet i scopet kan reglen stå nok så mange gange i
+        prompten uden at kunne efterleves.
+
+        Testen måler CODE mode alene, fordi det er dér en opgave efterlader et
+        konkret næste træk. Medlemmer må ikke få dem: de er stillingtagen til
+        ejerens arbejde, ikke et medlems.
+        """
+        names = ["suggest_next_task", "pause_and_ask"]
+        allow = allowed_tool_names(role="owner", scope="code", all_names=names)
+        assert set(names) <= allow, f"mangler i code-scope: {set(names) - allow}"
+        assert not allowed_tool_names(role="member", scope="code", all_names=names)
+
     def test_owner_chat_gets_base_plus_file_reads(self):
         allow = allowed_tool_names(role="owner", scope="chat", all_names=ALL)
         assert "web_search" in allow

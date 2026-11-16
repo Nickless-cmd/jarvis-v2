@@ -288,6 +288,19 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "request_app_action",
     # Companion-push — naa brugeren proaktivt paa deres egne enheder (device-routet)
     "send_push_notification",
+    # ── Stilling: hvad er naeste traek (maalt 16/11-2026) ──────────────────
+    #
+    # `suggest_next_task` og `pause_and_ask` er de to værktøjer der AFLUTTER
+    # en tur med en stilling i stedet for et løfte. Begge er registreret i
+    # `composer_suggest_tools` og begge stod i INGEN scope-liste — hverken
+    # chat eller code. Samme fejlform som `git_status` (27/10-2026): kataloget
+    # peger paa dem, porten giver dem ikke, saa de findes reelt ikke.
+    #
+    # Det rammer praecis den adfaerd Bjørn beder om: naar turen efterlader et
+    # naeste skridt, skal det staa som et forslag — ikke som prosa. Uden
+    # værktøjet i scopet kan jeg ikke levere det, uanset hvor mange gange
+    # reglen staar i prompten.
+    "suggest_next_task", "pause_and_ask",
 })
 
 # Ekstra værktøjer owner (kun) får i chat — fil-læsning til kode-snak.
@@ -422,6 +435,14 @@ CODE_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
     # NOT in the member/guest base scope — a non-owner must never get the
     # dialog-free operator reroute.
     "operator_session_open", "operator_session_run", "operator_session_close",
+    # ── Stilling i code mode (maalt 16/11-2026) ────────────────────────────
+    #
+    # Bjørn: «mere suggest next task i code». Værktøjet stod i ingen scope-
+    # liste, saa det kunne ikke kaldes her — og code mode er netop dér en
+    # opgave efterlader et konkret næste træk. `pause_and_ask` hører med:
+    # de to er samme beslutning (forslag vs. spørgsmål) og skal kunne vælges
+    # i samme mode, ellers tvinger porten mig til at gætte.
+    "suggest_next_task", "pause_and_ask",
 })
 
 # Local-exec-ONLY tools: har INGEN server-side executor og kan KUN køre klient-lokalt

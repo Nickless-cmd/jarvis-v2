@@ -83,9 +83,14 @@ def test_session_warm_sender_sessionens_scopede_toolsaet(monkeypatch):
     _reset_throttle()
     monkeypatch.setattr(sp, "session_prewarm_enabled", lambda: True, raising=True)
     monkeypatch.setattr(sp, "_deepseek_key", lambda: "key", raising=True)
+    builder_scopes: list[str] = []
+    def _messages(*_args, **_kwargs):
+        from core.tools.tool_scoping import current_tool_scope
+        builder_scopes.append(current_tool_scope())
+        return [{"role": "system", "content": "sys"}]
     monkeypatch.setattr(
         "core.services.visible_model._build_visible_chat_messages_for_github",
-        lambda *a, **k: [{"role": "system", "content": "sys"}],
+        _messages,
     )
     scopes: list[str] = []
     monkeypatch.setattr(
@@ -112,6 +117,7 @@ def test_session_warm_sender_sessionens_scopede_toolsaet(monkeypatch):
     )
 
     assert result["status"] == "ok"
+    assert builder_scopes == ["code"]
     assert scopes == ["code"]
     assert [t["function"]["name"] for t in payloads[0]["tools"]] == ["code_tool"]
 

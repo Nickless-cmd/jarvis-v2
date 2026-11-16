@@ -178,11 +178,20 @@ def warm_session_prefix(
             _apw._local.prewarm_active = True
         except Exception:
             _apw = None
+        _scope_token = None
         try:
+            from core.tools.tool_scoping import set_tool_scope
+            _scope_token = set_tool_scope(str(tool_scope or ""))
             messages = _build_visible_chat_messages_for_github(
                 "(prewarm)", session_id=sid, provider="deepseek", model=model,
             )
         finally:
+            if _scope_token is not None:
+                try:
+                    from core.tools.tool_scoping import reset_tool_scope
+                    reset_tool_scope(_scope_token)
+                except Exception as exc:  # Worker-traaden genbruges; reset er best-effort.
+                    logger.debug("session_prewarm: scope-reset fejlede: %s", exc)
             try:
                 if _apw is not None:
                     _apw._local.prewarm_active = False

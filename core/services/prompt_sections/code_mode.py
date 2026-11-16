@@ -159,11 +159,43 @@ def base_section(*, compact: bool = False) -> str | None:
             "arbejdsgrene inden for opgaven, verificér hvad der faktisk stoppede, og "
             "fortsæt eller genudsend ikke det annullerede arbejde."
         ),
+        # Bjørn 16/11-2026: «Flere tool kald per runde. Sørg for det bliver en
+        # fast del af dig.» Reglen fandtes allerede — men som en bisætning midt
+        # i punkt 2's tolv linjer, hvor den druknede, præcis som
+        # `suggest_next_task` druknede i `output_discipline` (se
+        # `suggest_standing_guard`). Den står nu som sit eget punkt, fordi et
+        # punkt man kan finde er et punkt man følger.
+        (
+            "**14. Saml uafhængige kald i samme runde.** Standarden er batch; "
+            "serialisering er undtagelsen og skal have en grund. Før hver runde: "
+            "hvilke kald afhænger IKKE af hinandens svar? Dem sender du sammen. "
+            "Testen er konkret — kan du skrive kald B's argumenter nu, uden at "
+            "kende A's resultat, hører de i samme runde. Typiske batches: flere "
+            "fillæsninger, søgning plus filfund, tilstandstjek side om side. "
+            "Sekventér når B skal BRUGE A's resultat, og sig hvorfor. Et muterende "
+            "kald må aldrig batche med den læsning der skulle afgøre om mutationen "
+            "var nødvendig, og aldrig to skrivninger på samme fil. Hold batchen på "
+            "3-8 kald, og læs ALLE resultater før næste skridt — også når ét fejlede."
+        ),
+        # Samme dag: «Og mere suggest next task i code.» Værktøjet kom i
+        # code-scope 16/11-2026, men tilladelse er ikke en opfordring — derfor
+        # står reglen her, i den sektion der KUN gælder code mode.
+        (
+            "**15. Tag stilling til næste skridt før du slutter.** Har løkken et "
+            "næste skridt → kald `suggest_next_task` med den instruks Bjørn selv "
+            "ville sende: én linje, højst ti ord, dansk, en befaling — ikke et svar "
+            "og ikke en kommentar. Er næste træk et SPØRGSMÅL → kald `pause_and_ask` "
+            "i stedet og afslut turen der; den anbefalede mulighed står først med "
+            "«(anbefalet)» i teksten. Er tråden faktisk slut, spring over — «intet "
+            "næste skridt» er et gyldigt svar, og et tomt felt er ærligere end et "
+            "påhæftet forslag. Kaldet ligger FØR din afsluttende tekstblok, aldrig efter."
+        ),
     ]
     if compact:
         lines = [
             lines[0], lines[1], lines[2], lines[3], lines[4], lines[5], lines[6],
             lines[7], lines[10], lines[11], lines[12], lines[13], lines[14],
+            lines[15], lines[16],
         ]
     return "\n".join(lines)
 

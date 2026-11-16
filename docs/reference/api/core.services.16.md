@@ -182,7 +182,10 @@ _Indbakkens to-trins forudsætning i mutationspunktet._
 | function | `_spor` | `(kind, payload)` | Publicér til eventbussen. Kaster aldrig. | [src](../../../core/services/inbox_gate.py#L231) |
 | function | `_varsel` | `(poster)` | — | [src](../../../core/services/inbox_gate.py#L249) |
 | function | `_naegtelse` | `(poster, navn)` | — | [src](../../../core/services/inbox_gate.py#L257) |
-| function | `evaluer_inbox_mutation` | `(bruger_id, vaerktoejsnavn, argumenter=…, *, tur=…)` | Skal `vaerktoejsnavn` nægtes, eller skal der bare påmindes? | [src](../../../core/services/inbox_gate.py#L266) |
+| function | `_ukvitterede_fejlede_agenter` | `(bruger_id)` | Id'er på ejerens TERMINALE assignments med ubehandlede resultater. Kaster ved DB-fejl. | [src](../../../core/services/inbox_gate.py#L273) |
+| function | `_agent_kvittering_naegtelse` | `(ider, navn)` | — | [src](../../../core/services/inbox_gate.py#L294) |
+| function | `_agent_kvittering_gate` | `(bruger_id, navn)` | Naegtelsen hvis `navn` er låst af ukvitterede fejl, ellers None. | [src](../../../core/services/inbox_gate.py#L305) |
+| function | `evaluer_inbox_mutation` | `(bruger_id, vaerktoejsnavn, argumenter=…, *, tur=…)` | Skal `vaerktoejsnavn` nægtes, eller skal der bare påmindes? | [src](../../../core/services/inbox_gate.py#L346) |
 
 ## `core/services/inbox_idle_waker.py`
 _Indbakken skal kunne VÆKKE — ikke kun gate._

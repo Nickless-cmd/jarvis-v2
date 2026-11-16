@@ -572,6 +572,10 @@ export function ChatView({
   )
 
   const streaming = stream.status === 'working'
+  // Runnet lever paa serveren ogsaa mens klientens forbindelse er nede
+  // (reconnecting/hung — status er `override ?? reducer`). Kø, steer og stop
+  // skal følge RUNNET, ikke forbindelsen (Bjørn 16/11-2026).
+  const runLever = streaming || stream.status === 'reconnecting' || stream.status === 'hung'
   const historicalChatMode = chatFlow.state.preference === 'calm' ? 'calm' : 'living'
   const primaryChatMode = stream.activeRunId
     ? chatFlow.activeModeForRun(stream.activeRunId)
@@ -612,15 +616,15 @@ export function ChatView({
   }
 
   const koe = useSendeKoe({
-    arbejder: streaming, online, send: doSend,
+    arbejder: runLever, online, send: doSend,
     // «Send nu» midt i et run: serverens steer samler beskeden op ved næste
     // runde-grænse, så den afbryder ikke turen (Bjørn 3/10-2026).
     steer: async (text) => {
-      const runId = stream.activeRunId
+      const runId = stream.activeRunId ?? followState.activeRunId ?? bgRunId
       if (!settings || !runId) throw new Error('Venter på run-id. Prøv igen om lidt.')
       await steerRun({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }, runId, text)
     },
-    kanSteer: !!stream.activeRunId,
+    kanSteer: !!(stream.activeRunId ?? followState.activeRunId ?? bgRunId),
   })
   // pause_and_ask holder det aktuelle run åbent og venter på svaret. Det må
   // derfor aldrig ende i den almindelige kø, som først tømmes NÅR run'et er
@@ -895,7 +899,7 @@ export function ChatView({
            12/11-2026: «jeg har aldrig mulighed for at afbryde en wakeup stream».
            Stop skal vises for ALT arbejde i samtalen, ikke kun det jeg selv
            startede her. */
-        streaming={streaming || bgActive || followState.status === 'working'}
+        streaming={runLever || bgActive || followState.status === 'working'}
         onSend={handleSend}
         onVoice={voice.enter}
         voiceSupported={voice.supported}
@@ -908,6 +912,9 @@ export function ChatView({
             void cancelRun(apiConfig, runId)
             return
           }
+          // Under reconnect aborter stream.abort() kun den lokale (døde) SSE —
+          // serverens run skal stoppes eksplicit.
+          if (runLever && !streaming && stream.activeRunId && apiConfig) void cancelRun(apiConfig, stream.activeRunId)
           void stream.abort()
         }}
         model="deepseek-flash"
@@ -1379,7 +1386,7 @@ export function ChatView({
         <JumpToLatest synlig={!scroll.atBottom} live={streaming || (bgActive && followState.status === 'working')} ulaeste={scroll.unread} onClick={() => melder('til-bund')} />
         <TilbagespolBanner fjernet={tilbage.tilbagespolet?.fjernet ?? null} fejl={tilbage.fejl} onFortryd={() => void tilbage.fortryd()} onLuk={tilbage.glem} />
         <KoeChip
-          items={koe.items} busy={streaming} kanSteer={!!stream.activeRunId} error={koe.error} online={online}
+          items={koe.items} busy={runLever} kanSteer={!!(stream.activeRunId ?? followState.activeRunId ?? bgRunId)} error={koe.error} online={online}
           onRediger={koe.rediger} onFjern={koe.fjern} onFlyt={koe.flyt} onSendNu={(id) => { void koe.sendNu(id) }}
         />
         {composer}

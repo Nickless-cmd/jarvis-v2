@@ -442,6 +442,56 @@ def _archive(wt: dict[str, Any]) -> bool:
         return False
 
 
+def _ghost_work_safe(wt: dict[str, Any]) -> bool:
+    """Er der INTET unikt arbejde tilbage uden for den manglende mappe? Sandt kun naar agentens
+    importerede tip (``refs/agent-work/<asg>``, evt. hentet fra den private gitdir) er fuldt merget
+    i ``main``/``HEAD`` - eller slet ikke findes. Kan vi ikke afgoere det, er svaret nej."""
+    repo, path, aid = wt["repo_path"], wt["path"], wt["assignment_id"]
+    if not repo or not os.path.isdir(repo):
+        return False
+    try:
+        tip = agd.import_agent_work(repo, path, wt["branch"], aid) if os.path.isdir(agd.gitdir_path(path)) \
+            else None
+        if tip is None and g.ref_exists(repo, agd.work_ref(aid)):
+            tip = g.run_git(["rev-parse", "--verify", f"{agd.work_ref(aid)}^{{commit}}"],
+                            cwd=repo).stdout.decode().strip()
+        if tip is None:
+            return True
+        for ref in ("main", "HEAD"):
+            if g.run_git(["merge-base", "--is-ancestor", tip, ref], cwd=repo, check=False).returncode == 0:
+                return True
+        return False
+    except Exception:  # noqa: BLE001 — usikkerhed betyder bevar
+        logger.warning("ghost-tjek af %s fejlede - bevares", wt["worktree_id"], exc_info=True)
+        return False
+
+
+def _release_ghost(wt: dict[str, Any], t: datetime) -> bool:
+    """Luk en post hvis mappe er væk, efter verificeret sti/ejer og at intet unikt arbejde gaar tabt."""
+    root = worktree_root()
+    expected = str(root / wt["agent_id"] / wt["assignment_id"])
+    if os.path.realpath(wt["path"]) != os.path.realpath(expected) or not g.path_is_inside(wt["path"], str(root)):
+        return False
+    if not _ghost_work_safe(wt):
+        return False
+    agd.remove(wt["repo_path"], wt["path"])    # kun den private gitdir-soester + det merged ref
+    _prune_empty_parent(wt["path"])
+    _set(wt["worktree_id"], status="removed", closed_at=_iso(t),
+         last_error="worktree var væk fra disken; arbejdet er merget i main eller intet")
+    return True
+
+
+def drift_report() -> dict[str, Any]:
+    """Skrivebeskyttet vagt: poster der holder kvote (HOLDING) men hvis sti ikke findes paa disken."""
+    ghosts = []
+    for r in _conn().execute("SELECT worktree_id, assignment_id, status, path FROM agent_worktrees "
+                             f"WHERE status IN ({','.join('?' * len(HOLDING))})", HOLDING).fetchall():
+        if r["status"] not in ("reserved", "creating") and not os.path.isdir(r["path"]):
+            ghosts.append({"worktree_id": r["worktree_id"], "assignment_id": r["assignment_id"],
+                           "status": r["status"]})
+    return {"ghost_count": len(ghosts), "ghosts": ghosts}
+
+
 def sweep(*, now: datetime | None = None) -> dict[str, list[str]]:
     """Retentionrunde. Afgjort + 7 dage -> fjernes. Ubehandlet: opmaerksomhed efter 14 dage, arkiveres
     (diff + commits) og fjernes efter 30. ``unknown``/stale ``creating`` blokerer ALT og roeres ikke."""
@@ -473,6 +523,10 @@ def sweep(*, now: datetime | None = None) -> dict[str, list[str]]:
             elif t - _parse(wt["decided_at"]) >= frist and _verified_remove(wt):
                 _set(wid, status="removed", closed_at=_iso(t))
                 out["removed"].append(wid)
+        elif not os.path.isdir(wt["path"]):
+            # Spogelsespost: mappen er revet ned uden om databasen (manuel oprydning). Frigoer kun
+            # naar intet unikt arbejde gaar tabt; ellers staar den som blokeret, ikke som fjernet.
+            (out["removed"] if _release_ghost(wt, t) else out["blocked"]).append(wid)
         else:   # retained, ubehandlet
             age = t - _parse(wt["retained_at"] or wt["updated_at"])
             if age >= ARCHIVE_AFTER:

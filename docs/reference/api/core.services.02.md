@@ -79,7 +79,7 @@ _Retention for agentartefakter og agentens hukommelse (agent-contract-v1 leveran
 | function | `sweep_artifacts` | `(*, now=…)` | — | [src](../../../core/services/agent_retention.py#L137) |
 | function | `sweep_memory` | `(*, now=…)` | Luk-retention for agentens egen hukommelse. Roerer aldrig en agent der ikke er ``closed``. | [src](../../../core/services/agent_retention.py#L165) |
 | function | `run` | `(*, now=…)` | Hele retentionrunden: worktrees (7/14/30 dage), artefakter, hukommelse. Hver del er uafhaengig. | [src](../../../core/services/agent_retention.py#L202) |
-| function | `run_if_due` | `()` | Throttlet til højst én runde i timen pr. proces (runden er idempotent, saa to processer er ufarligt). | [src](../../../core/services/agent_retention.py#L227) |
+| function | `run_if_due` | `()` | Throttlet til højst én runde i timen pr. proces (runden er idempotent, saa to processer er ufarligt). | [src](../../../core/services/agent_retention.py#L232) |
 
 ## `core/services/agent_runtime.py`
 _Agent runtime — sub-agents, councils, swarms (facade)._
@@ -493,10 +493,13 @@ _Worktrees til skrivende kodeagenter (agent-contract-v1 C5a, spec 8.1 og 12.3)._
 | function | `decide` | `(*, owner_user_id, worktree_id, decision)` | Registrer ejerens/approverens beslutning om det bevarede arbejde. Selve integrationen i hovedgrenen | [src](../../../core/services/agent_worktrees.py#L376) |
 | function | `_verified_remove` | `(wt)` | Fjern et worktree - KUN hvis posten, ejeren og stien hænger sammen. Returnerer om det lykkedes. | [src](../../../core/services/agent_worktrees.py#L399) |
 | function | `_archive` | `(wt)` | Pak diff + commits (bundle) i checksumverificerede artefakter foer fysisk oprydning. | [src](../../../core/services/agent_worktrees.py#L422) |
-| function | `sweep` | `(*, now=…)` | Retentionrunde. Afgjort + 7 dage -> fjernes. Ubehandlet: opmaerksomhed efter 14 dage, arkiveres | [src](../../../core/services/agent_worktrees.py#L445) |
-| function | `_mergede_grene` | `(repo, cache)` | Grennavne der er fuldt merget i ``main`` — ét git-kald pr. repo, ikke pr. raekke. | [src](../../../core/services/agent_worktrees.py#L489) |
-| function | `pending_decisions` | `(*, min_age=…)` | Bevarede worktrees der venter paa en beslutning - altsaa arbejde nogen skal tage stilling til. | [src](../../../core/services/agent_worktrees.py#L514) |
-| function | `reconcile` | `()` | Markér aktive/bevarede poster hvis worktree er forsvundet fra disken som ``unknown`` (ikke 'removed'). | [src](../../../core/services/agent_worktrees.py#L555) |
+| function | `_ghost_work_safe` | `(wt)` | Er der INTET unikt arbejde tilbage uden for den manglende mappe? Sandt kun naar agentens | [src](../../../core/services/agent_worktrees.py#L445) |
+| function | `_release_ghost` | `(wt, t)` | Luk en post hvis mappe er væk, efter verificeret sti/ejer og at intet unikt arbejde gaar tabt. | [src](../../../core/services/agent_worktrees.py#L469) |
+| function | `drift_report` | `()` | Skrivebeskyttet vagt: poster der holder kvote (HOLDING) men hvis sti ikke findes paa disken. | [src](../../../core/services/agent_worktrees.py#L484) |
+| function | `sweep` | `(*, now=…)` | Retentionrunde. Afgjort + 7 dage -> fjernes. Ubehandlet: opmaerksomhed efter 14 dage, arkiveres | [src](../../../core/services/agent_worktrees.py#L495) |
+| function | `_mergede_grene` | `(repo, cache)` | Grennavne der er fuldt merget i ``main`` — ét git-kald pr. repo, ikke pr. raekke. | [src](../../../core/services/agent_worktrees.py#L543) |
+| function | `pending_decisions` | `(*, min_age=…)` | Bevarede worktrees der venter paa en beslutning - altsaa arbejde nogen skal tage stilling til. | [src](../../../core/services/agent_worktrees.py#L568) |
+| function | `reconcile` | `()` | Markér aktive/bevarede poster hvis worktree er forsvundet fra disken som ``unknown`` (ikke 'removed'). | [src](../../../core/services/agent_worktrees.py#L609) |
 
 ## `core/services/agentic_checkpoints.py`
 _Durable checkpoints for visible agentic loops._

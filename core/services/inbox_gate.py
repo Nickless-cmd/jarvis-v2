@@ -263,6 +263,86 @@ def _naegtelse(poster: list[dict[str, Any]], navn: str) -> str:
             "Et blik paa `inbox` frigiver ikke — afgoerelsen goer.")
 
 
+#: Værktøjer agent-kvitterings-gaten låser. BEVIDST kun `bash`: `bash_session_run`
+#: og `operator_bash_session_*` er Bjørns aftalte flugtvej udenom gates
+#: (`er_bagdoer`) og rammes aldrig — også fordi kvitteringen ellers ikke kunne
+#: gives, hvis alt andet var låst.
+_AGENT_KVITTERING_LAAST: Final[frozenset[str]] = frozenset({"bash"})
+
+
+def _ukvitterede_fejlede_agenter(bruger_id: str) -> list[str]:
+    """Id'er på ejerens TERMINALE assignments med ubehandlede resultater. Kaster ved DB-fejl.
+
+    Tilstanden er `agent_result_outbox.delivery_status != 'acknowledged'` — præcis
+    det `list_agents.unprocessed` viser. IKKE `agent_feed_refs.acknowledged_at`
+    (styrer kun feed-kortet). En færdig agent er ikke behandlet før resultatet er
+    kvitteret. Kun terminale assignments tæller: `acknowledge()` afviser åbne, så
+    en gate på dem ville kræve noget intet kan give. Navnet er historisk.
+    """
+    from core.runtime.db_agent_contract import ASSIGNMENT_TERMINAL, _conn
+    marks = ",".join("?" for _ in ASSIGNMENT_TERMINAL)
+    rows = _conn().execute(
+        "SELECT a.assignment_id FROM agent_assignments a "
+        f"WHERE a.owner_user_id=? AND a.status IN ({marks}) AND EXISTS ("
+        "SELECT 1 FROM agent_result_outbox o WHERE o.assignment_id=a.assignment_id "
+        "AND o.delivery_status != 'acknowledged') "
+        "ORDER BY a.created_at, a.rowid",
+        (bruger_id, *sorted(ASSIGNMENT_TERMINAL))).fetchall()
+    return [str(r["assignment_id"]) for r in rows]
+
+
+def _agent_kvittering_naegtelse(ider: list[str], navn: str) -> str:
+    vist = ", ".join(ider[:5]) + (f" (+{len(ider) - 5} mere)" if len(ider) > 5 else "")
+    return (f"{_system_maerke()}\n"
+            f"`{navn}` er naegtet: {len(ider)} afsluttet(de) agent-koersel(er) har ikke-kvitterede "
+            f"resultater: {vist}.\n"
+            "Kvitter hver: `POST /agents/contract/assignments/{assignment_id}/acknowledge` "
+            "(service: `agent_contract_projection.acknowledge(owner, assignment_id)`). "
+            "At slette worktree/gren rydder IKKE `agent_assignments` — kun kvitteringen "
+            "goer. `bash_session_run` er upaavirket.")
+
+
+def _agent_kvittering_gate(bruger_id: str, navn: str) -> dict[str, Any] | None:
+    """Naegtelsen hvis `navn` er låst af ukvitterede fejl, ellers None.
+
+    Fald-retning: kan tilstanden ikke læses, STANDSER vi (og logger hvorfor) —
+    modsat indbakke-posterne ovenfor. Flugtvejen er `bash_session_run`.
+
+    Gaten hører til EJERENS tur. En agent-worker kan ikke kvittere (værktøjet
+    er ikke i dens sæt), og den bærer ejerens id — så uden denne undtagelse
+    ville en FÆRDIG agents ukvitterede resultat låse dens endnu kørende
+    søskende midt i arbejdet, uden nogen vej ud. Målt 16/11-2026: tre agenter
+    kørte parallelt og ville ramme præcis det.
+    """
+    if navn not in _AGENT_KVITTERING_LAAST:
+        return None
+    try:
+        from core.services.operator_channel import er_agent_koersel
+        if er_agent_koersel():
+            return None
+    except Exception as exc:  # noqa: BLE001
+        # Kan skellet ikke afgøres, gælder gaten — den er den sikre side for
+        # ejeren, og en agent har `bash_session_run`.
+        logger.warning("inbox_gate: kunne ikke afgoere agent-koersel: %s", exc)
+    try:
+        ider = _ukvitterede_fejlede_agenter(bruger_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("inbox_gate: kunne ikke laese agent-assignments for %r — "
+                       "%s NAEGTES (fail-closed): %s", bruger_id, navn, exc)
+        _spor("inbox_gate.fail_closed", {"bruger_id": bruger_id, "tool_name": navn,
+                                         "aarsag": "db-fejl"})
+        return {"blokeret": True, "poster": [], "grund": "fail-closed: kunne ikke laese agent-assignments",
+                "varsel": (f"{_system_maerke()}\n`{navn}` er naegtet: tilstanden for "
+                           f"agent-koersler kunne ikke laeses ({type(exc).__name__}). "
+                           "Proev igen, eller brug `bash_session_run`.")}
+    if not ider:
+        return None
+    _spor("inbox_gate.blocked", {"bruger_id": bruger_id, "tool_name": navn,
+                                 "poster": ider, "aarsag": "ukvitteret_agent_fejl"})
+    return {"blokeret": True, "poster": ider, "varsel": _agent_kvittering_naegtelse(ider, navn),
+            "grund": f"{len(ider)} afsluttet(de) agent-koersel(er) med ukvitterede resultater"}
+
+
 def evaluer_inbox_mutation(
     bruger_id: str,
     vaerktoejsnavn: str,
@@ -298,6 +378,11 @@ def evaluer_inbox_mutation(
     # læsbar frem for at hvile på en anden funktions interne detalje.
     if er_bagdoer(navn):
         return {**tomt, "grund": "bagdoer"}
+    # Agent-kvittering: `bash` låses til fejlede agent-kørsler er kvitteret —
+    # uanset kommandoens art (en «ryd op»-kommando er netop det der snyder).
+    _akv = _agent_kvittering_gate(bruger_id, navn)
+    if _akv is not None:
+        return {**tomt, **_akv}
     # 12/10-2026: udgående besked til en ANDEN bruger er ikke en mutation i
     # Bjørns navn — se `_gaar_til_en_anden`. Den skal slippe, ellers kan en
     # post i MIN indbakke lamme kanalen til Michelle og Mikkel (målt 8,5 timer).

@@ -215,6 +215,11 @@ def run(*, now: datetime | None = None) -> dict[str, Any]:
     # Bevarede worktrees UDEN beslutning. Uden denne liste ville de foerst blive ryddet af
     # ``ARCHIVE_AFTER`` (30 dage), saa "ingen beslutning" betoed "behold i en maaned".
     try:
+        result["worktree_drift"] = wtm.drift_report()
+    except Exception as exc:
+        logger.warning("retention: drift_report fejlede", exc_info=True)
+        result["errors"].append(f"drift_report: {type(exc).__name__}: {exc}"[:200])
+    try:
         result["pending_decisions"] = [{"assignment_id": w["assignment_id"], "age_days": w["age_days"],
                                         "branch": w["branch"], "size_bytes": w["size_bytes"]}
                                        for w in wtm.pending_decisions()]

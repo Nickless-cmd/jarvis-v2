@@ -548,3 +548,49 @@ def test_mergede_grene_fejler_sikkert_uden_repo():
     import core.services.agent_worktrees as W
 
     assert W._mergede_grene("", {}) == set()
+
+
+# --- spogelsesposter: retained uden mappe (16/11-2026: 9 af 107 raekker) -------------------------------
+
+def _vanish(wt, w):
+    """Riv worktree + gren ned uden om databasen, som en manuel oprydning goer."""
+    import shutil
+
+    shutil.rmtree(w["path"])
+    sh("git", "worktree", "prune", cwd=wt.repo_)
+    sh("git", "branch", "-D", w["branch"], cwd=wt.repo_)
+
+
+def test_sweep_releases_a_retained_ghost_with_no_unique_work_and_is_idempotent(wt):
+    w = _retained(wt)
+    _vanish(wt, w)
+    assert wt.W_.drift_report()["ghost_count"] == 1
+    assert wt.W_.sweep(now=NOW)["removed"] == [w["worktree_id"]]
+    row = wt.rows()[0]
+    assert row["status"] == "removed" and not os.path.exists(wt.W_.agd.gitdir_path(w["path"]))
+    assert wt.W_.quota_status()["retained"] == 0 and wt.W_.drift_report()["ghost_count"] == 0
+    assert wt.W_.sweep(now=NOW)["removed"] == []
+
+
+def test_sweep_keeps_a_retained_ghost_whose_work_is_unmerged(wt):
+    w, _ = wt.prov()
+    gd = wt.W_.agd.gitdir_path(w["path"])
+    env = {**ENV, "GIT_DIR": gd, "GIT_WORK_TREE": w["path"]}
+    open(os.path.join(w["path"], "ny.txt"), "w").write("unik\n")
+    subprocess.run(["git", "add", "-A"], env=env, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-q", "-m", "unik"], env=env, check=True, capture_output=True)
+    wt.W_.snapshot_for_assignment(assignment_id=w["assignment_id"])
+    assert wt.rows()[0]["status"] == "retained"
+    import shutil
+
+    shutil.rmtree(w["path"])
+    out = wt.W_.sweep(now=NOW)
+    assert out["removed"] == [] and out["blocked"] == [w["worktree_id"]]
+    assert wt.rows()[0]["status"] == "retained" and os.path.isdir(gd)
+    assert sh("git", "rev-parse", "--verify", wt.W_.agd.work_ref(w["assignment_id"]), cwd=wt.repo_).strip()
+
+
+def test_sweep_leaves_a_live_retained_worktree_alone(wt):
+    w = _retained(wt)
+    assert wt.W_.sweep(now=NOW)["removed"] == [] and os.path.isdir(w["path"])
+    assert wt.W_.drift_report()["ghost_count"] == 0

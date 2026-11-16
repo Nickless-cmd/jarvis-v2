@@ -409,6 +409,42 @@ describe('ChatView integration', () => {
     await waitFor(() => expect(api.steerRun).toHaveBeenCalledWith(cfg, 'r1', 'A'))
   })
 
+  // Rod (16/11-2026): `streaming` var `stream.status === 'working'`, men status er
+  // `override ?? reducer`. Under reconnecting/hung er runnet stadig LEVENDE paa
+  // serveren — men klienten troede det var ledigt. Resultat: en ny besked blev
+  // POSTet som ny tur i stedet for at koe, og «send nu» (steer) var slukket.
+  it('en besked under reconnecting koes og «send nu» steerer det levende run', async () => {
+    const { container } = render(
+      <SettingsProvider initialConfig={cfg}>
+        <SessionProvider config={cfg}>
+          <StreamProvider config={cfg}>
+            <PermissionProvider>
+              <PanelProvider defaultWidth={400}>
+                <ChatView sessionId="s1" />
+              </PanelProvider>
+            </PermissionProvider>
+          </StreamProvider>
+        </SessionProvider>
+      </SettingsProvider>,
+    )
+    await userEvent.type(screen.getByRole('textbox'), 'start{Enter}')
+    act(() => {
+      handlersRef.current?.onRunId('r1')
+      handlersRef.current?.onEvent({ type: 'message_start', message: { id: 'r1', model: 'm', provider: 'p', lane: 'l', session_id: 's1', usage: { input_tokens: 0, output_tokens: 0 } } })
+    })
+    await act(() => new Promise<void>((r) => setTimeout(r, 120)))
+    const foer = handlersRef.current
+    act(() => { (handlersRef.current as unknown as { onReconnecting: () => void }).onReconnecting() })
+    await userEvent.type(screen.getByRole('textbox'), 'midt i{Enter}')
+    // Koes — ikke sendt som ny tur (ville have erstattet handlers via ny startStream).
+    expect(container.querySelector('[data-testid="koe-chip"]')).toBeInTheDocument()
+    expect(handlersRef.current).toBe(foer)
+    const sendNu = screen.getByRole('button', { name: 'Send nu til det kørende run' })
+    expect(sendNu).toBeEnabled()
+    await userEvent.click(sendNu)
+    await waitFor(() => expect(api.steerRun).toHaveBeenCalledWith(cfg, 'r1', 'midt i'))
+  })
+
   // ── Varslet om arbejde der aldrig blev faerdigt (24/9-2026) ──────────────
   //
   // `run_recovery` fandtes KUN som live SSE-event. Et run der blev opgivet i

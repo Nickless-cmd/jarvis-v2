@@ -63,30 +63,29 @@ describe('godkendelses-kortet', () => {
       + '— saa ser den ud som om Jarvis er staaet af').toEqual([])
   })
 
-  it('det flydende kort findes kun som betinget fallback', () => {
-    // 31/10-2026 — KONTRAKTEN BLEV AENDRET AF EN MAALING, ikke af en ide.
+  it('hver flade med en composer har BAADE historik og et besvarbart kort', () => {
+    // 16/11-2026 — KONTRAKTEN BLEV VENDT AF EN MAALING IGEN.
     //
-    // Foerste version af DEL 3 forbød det flydende kort helt: «raekken ER
-    // fladen». Det holdt ikke. Raekken hentes af `refreshMessages`, og nogle
-    // godkendelser persisteres slet ikke — maalt samme dag sad Bjoern i
-    // PWA'en uden noget kort og maatte ind i APK'en (gamle bundle) for at
-    // svare. Spoergsmaalet forsvandt, og det er den tavse fejlform.
+    // 31/10 (DEL 3) gjorde raekken i transcriptet til den primaere flade og
+    // dette kort til en fallback bag `!pendingIRækken`. Bjoern: «approval cards
+    // lander over turhoved og ikk over composer som de skulle??? hver gang der
+    // kommer en skal jeg scrolle til toppen af din tur for at godkende!»
     //
-    // Den nye kontrakt: raekken vinder naar den findes, ellers baerer det
-    // flydende kort svaret. Derfor maa komponenten GERNE optraede i et view —
-    // men kun bag negationen af den ENE betingelse. Den dybe maaling af
-    // gaten ligger i `lib/ventendeGodkendelse.test.ts` (AST + ren funktion);
-    // her maales at koblingen overhovedet er der.
-    const udenGate = tsxFiler(VIEWS)
-      .filter((f) => jsxNavne(f).includes('GodkendelsesKort'))
+    // Spoergsmaalet stod oeverst i turen og skulle FINDES. Nu er
+    // `.composer-notices` altid fladen — den ligger uden for scroll-containeren
+    // — og raekken er ren historik. Begge skal vaere der: historikken for at
+    // svaret kan findes igen, kortet for at spoergsmaalet kan besvares.
+    //
+    // At gaten ikke maa vaere der, og at raekken ikke maa have knapper, maales i
+    // `lib/ventendeGodkendelse.test.ts` — her maales kun at begge flader findes.
+    const mangler = tsxFiler(VIEWS)
+      .filter((f) => jsxNavne(f).includes('Composer'))
       .filter((f) => {
-        const kilde = readFileSync(f, 'utf-8')
-        return !kilde.includes('findesSynligGodkendelseRaekke')
-          || !kilde.includes('!pendingIRækken')
+        const navne = jsxNavne(f)
+        return !navne.includes('HistoriskGodkendelse') || !navne.includes('GodkendelsesKort')
       })
       .map((f) => f.slice(VIEWS.length + 1))
-    expect(udenGate, 'det flydende kort tegnes uden betingelsen — saa kan den '
-      + 'samme godkendelse staa to steder, eller spoergsmaalet forsvinde')
-      .toEqual([])
+    expect(mangler, 'en flade kan sende, men kan ikke baade svare paa en '
+      + 'godkendelse og finde svaret igen').toEqual([])
   })
 })

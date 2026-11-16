@@ -2,19 +2,26 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import ts from 'typescript'
-import { findesGodkendelseIRækken, findesSynligGodkendelseRaekke } from './ventendeGodkendelse'
+import { findesGodkendelseIRækken, afstemVentendeGodkendelse } from './ventendeGodkendelse'
 
 /** Godkendelsen maa ikke kunne forsvinde — og den maa ikke staa to steder.
  *
  *  MAALT 31/10-2026: efter 0.6.294 saa Bjoern INTET kort i PWA'en. DEL 3
  *  havde flyttet kortet ind i transcriptet og fjernet det flydende — men den
  *  persisterede raekke kom aldrig, saa spoergsmaalet fandtes ikke paa skaermen.
- *  Han maatte ind i APK'en (gamle bundle) for at godkende.
  *
- *  Kontrakten er derfor: ÉN betingelse, to flader. Raekken vinder naar den
- *  findes; ellers bærer det flydende kort svaret. Testen maaler baade
- *  funktionen og at viewene faktisk bruger dens negation som gate — en
- *  kommentar er ikke en vagt.
+ *  16/11-2026 — VENDT TILBAGE, og aarsagen er den modsatte fejl. DEL 3 gjorde
+ *  raekken til den PRIMAERE flade og det flydende kort til en fallback bag
+ *  `!pendingIRækken`. Bjoern: «approval cards lander over turhoved og ikk over
+ *  composer som de skulle??? hver gang der kommer en skal jeg scrolle til
+ *  toppen af din tur for at godkende!»
+ *
+ *  Spoergsmaalet stod altsaa oeverst i turen og skulle FINDES, ikke bare
+ *  besvares. Kontrakten er nu: `.composer-notices` er ALTID fladen (den ligger
+ *  uden for scroll-containeren), og raekken i transcriptet er ren historik uden
+ *  knapper. Der er praecis ÉN flade at svare paa.
+ *
+ *  En kommentar er ikke en vagt — derfor maaler testen kilden.
  */
 
 const SRC = resolve(__dirname, '..')
@@ -31,14 +38,14 @@ describe('findesGodkendelseIRækken', () => {
     expect(findesGodkendelseIRækken([kort('a1')], 'a1')).toBe(true)
   })
 
-  it('svarer nej naar rækken ikke er kommet endnu — saa vises fallbacken', () => {
+  it('svarer nej naar rækken ikke er kommet endnu', () => {
     expect(findesGodkendelseIRækken([], 'a1')).toBe(false)
     expect(findesGodkendelseIRækken([{ role: 'user', content_json: null }], 'a1')).toBe(false)
   })
 
   it('matcher ALDRIG paa tekst: to godkendelser med samme kommando', () => {
-    // Samme kommando, forskelligt id. Et tekst-match ville give knapper paa
-    // den forkerte raekke — og et svar paa det forkerte spoergsmaal.
+    // Samme kommando, forskelligt id. Et tekst-match ville pege paa den
+    // forkerte raekke — og et svar paa det forkerte spoergsmaal.
     expect(findesGodkendelseIRækken([kort('a2')], 'a1')).toBe(false)
   })
 
@@ -56,96 +63,36 @@ describe('findesGodkendelseIRækken', () => {
   })
 })
 
-/** AST, ikke grep: navnet staar ogsaa i import-linjen. */
-function fallbackGate(view: string): string {
-  const fil = resolve(SRC, 'views', view)
-  const kilde = ts.createSourceFile(fil, readFileSync(fil, 'utf-8'),
-    ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
-  let fundet: ts.Node | undefined
-  const gaa = (n: ts.Node) => {
-    if ((ts.isJsxSelfClosingElement(n) || ts.isJsxOpeningElement(n))
-      && n.tagName.getText() === 'GodkendelsesKort') fundet = n
-    ts.forEachChild(n, gaa)
-  }
-  gaa(kilde)
-  if (!fundet) return ''
-  // Gaa op til den naermeste betingelse og laes HELE dens udtryk.
-  let n: ts.Node | undefined = fundet
-  while (n) {
-    if (ts.isConditionalExpression(n) || ts.isBinaryExpression(n) || ts.isJsxExpression(n)) {
-      const tekst = n.getText()
-      if (tekst.includes('pendingIRækken')) return tekst
-    }
-    n = n.parent
-  }
-  return ''
-}
-
-describe('fallback-kortet er betinget, ikke dubleret', () => {
+describe('kortet over composeren er den ENESTE flade der kan besvares', () => {
+  // 16/11-2026. Den gamle kontrakt hed «raekken vinder naar den findes» og blev
+  // maalt med `findesSynligGodkendelseRaekke`. Den funktion er slettet sammen
+  // med sin gate: spoergsmaalet skal staa fast over composeren, ikke findes.
+  //
+  // Den maaling der stadig er vaerd at huske (12/11, godkendelse 272681): en
+  // afventende raekke blev flettet ind i en heartbeat-besked og forsvandt som
+  // fri raekke — spoergsmaalet var hverken raekke eller kort i ca. 3 minutter.
+  // Netop derfor maa kortet ikke afhaenge af raekken overhovedet.
   for (const view of ['ChatView.tsx', 'CodeView.tsx']) {
-    it(`${view} viser kun det flydende kort naar raekken MANGLER`, () => {
-      const gate = fallbackGate(view)
-      expect(gate, 'det flydende kort blev fjernet uden en fallback — saa '
-        + 'forsvinder spoergsmaalet indtil raekken lander (maalt 31/10)').not.toBe('')
-      expect(gate).toContain('!pendingIRækken')
-      expect(gate).toContain('pendingApproval')
+    it(`${view} gater IKKE kortet paa om raekken findes`, () => {
+      const kilde = readFileSync(resolve(SRC, 'views', view), 'utf-8')
+      expect(kilde, 'gaten `!pendingIRækken` er tilbage — saa forsvinder kortet '
+        + 'fra composeren praecis naar det skal staa der').not.toContain('pendingIRækken')
+      expect(kilde).toContain('GodkendelsesKort')
+    })
+
+    it(`${view} giver IKKE raekken knapper`, () => {
+      const kilde = readFileSync(resolve(SRC, 'views', view), 'utf-8')
+      expect(kilde, 'raekken fik knapper igen — saa er der to steder at svare, '
+        + 'og det ene skal man scrolle til').not.toContain('liveGodkendelse')
+    })
+
+    it(`${view} tegner kortet praecis ét sted`, () => {
+      const kilde = readFileSync(resolve(SRC, 'views', view), 'utf-8')
+      const antal = kilde.split('<GodkendelsesKort').length - 1
+      expect(antal).toBe(1)
     })
   }
 })
-
-describe('en afventende godkendelse der er flettet ind i en andens besked', () => {
-  // MÅLT 12/11-2026 på CT105 (chat_messages, session chat-ed2df…): en
-  // heartbeat-besked (id 272703) landede 15:53:03 MIDT i et run, mens
-  // godkendelsen 272681 stadig ventede (afgjort 15:54:11). `fletGodkendelser`
-  // lagde den afventende række ind i den besked — uden knapper, i en fold — og
-  // fjernede den som fri række. Men `findesGodkendelseIRækken` læste de RÅ
-  // beskeder og svarede «rækken findes», så composer-kortet blev skjult.
-  // Resultat: hverken række eller kort i ca. 3 minutter.
-  const pending = {
-    id: 'm1', role: 'approval_request', content: 'Godkendelse afventer: bash — ls',
-    content_json: [{ approval_id: 'a1', tool: 'bash', action: 'ls', status: 'pending' }],
-    created_at: '2026-11-12T15:51:16+00:00', parent_id: null,
-  }
-  const hjerteslag = {
-    id: 'm2', role: 'assistant',
-    content: [{ type: 'text', text: '🌙 Hjerteslag — hvad jeg lavede mens du var væk' }],
-    created_at: '2026-11-12T15:53:03+00:00', parent_id: null,
-  }
-
-  it('tæller IKKE som en synlig række — composer-kortet skal bære den', () => {
-    expect(findesSynligGodkendelseRaekke([pending, hjerteslag] as never, 'a1')).toBe(false)
-  })
-
-  it('tæller som en række når intet følger efter — rækken har selv knapperne', () => {
-    expect(findesSynligGodkendelseRaekke([pending] as never, 'a1')).toBe(true)
-  })
-
-  it('en tom id giver false uden at flette', () => {
-    expect(findesSynligGodkendelseRaekke([pending] as never, null)).toBe(false)
-  })
-})
-
-describe('viewene spørger den FLETTEDE liste, ikke de rå beskeder', () => {
-  for (const view of ['ChatView.tsx', 'CodeView.tsx']) {
-    it(`${view} beregner pendingIRækken med findesSynligGodkendelseRaekke`, () => {
-      const fil = resolve(SRC, 'views', view)
-      const kilde = ts.createSourceFile(fil, readFileSync(fil, 'utf-8'),
-        ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
-      let init = ''
-      const gaa = (n: ts.Node) => {
-        if (ts.isVariableDeclaration(n) && n.name.getText() === 'pendingIRækken') {
-          init = n.initializer?.getText() ?? ''
-        }
-        ts.forEachChild(n, gaa)
-      }
-      gaa(kilde)
-      expect(init, 'pendingIRækken blev ikke fundet').not.toBe('')
-      expect(init).toContain('findesSynligGodkendelseRaekke(')
-    })
-  }
-})
-
-import { afstemVentendeGodkendelse } from './ventendeGodkendelse'
 
 describe('afstemning af kortet klienten HOLDER mod hvad serveren siger venter', () => {
   // MÅLT 12/11-2026 (CT105, 15:45–15:57): 19 godkendelser, og ALLE blev afgjort

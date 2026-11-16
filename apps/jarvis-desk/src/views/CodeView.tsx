@@ -20,11 +20,11 @@ import { GenoptagelsesVarsel } from '../components/feedback/GenoptagelsesVarsel'
 import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
 import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
-import { HistoriskGodkendelse, type GodkendelsesHaendelse } from '../components/rich/HistoriskGodkendelse'
+import { HistoriskGodkendelse } from '../components/rich/HistoriskGodkendelse'
 import { fletGodkendelser, forsteGodkendelse } from '../lib/godkendelseIFolden'
 import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
 import { PauseAskKort } from '../components/feedback/PauseAskKort'
-import { findesSynligGodkendelseRaekke, medVentendeGodkendelse } from '../lib/ventendeGodkendelse'
+import { medVentendeGodkendelse } from '../lib/ventendeGodkendelse'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
@@ -1057,14 +1057,6 @@ export function CodeView({
     visLevendeTur ? normaliseretTekst(liveBlokke(stream)) : '',
   )
 
-  // 31/10-2026 — FALLBACK, ikke dublet. Se `lib/ventendeGodkendelse.ts` for
-  // hvorfor: raekken vinder naar den findes, ellers bærer det flydende kort
-  // svaret. Betingelsen er ÉN funktion, saa de to flader ikke kan divergere.
-  const pendingIRækken = findesSynligGodkendelseRaekke(
-    beskederMedVentende,
-    stream.pendingApproval?.approvalId ?? null,
-  )
-
   const varighedForBesked = useMemo(() => {
     const ud = new Map<string, number>()
     let sidsteBruger: string | null = null
@@ -1354,13 +1346,6 @@ export function CodeView({
             <div key={m.id} data-rail-id={m.id} className="msg-block">
               <HistoriskGodkendelse
                 data={forsteGodkendelse(m.content_json)}
-                live={liveGodkendelse(
-                  forsteGodkendelse(m.content_json),
-                  stream.pendingApproval,
-                  isOwner,
-                  (id) => stream.approve(id),
-                  (id) => stream.deny(id),
-                )}
               />
             </div>
           ) : (
@@ -1413,9 +1398,10 @@ export function CodeView({
         <div className="composer-area">
         <GenoptagelsesVarsel />
           <div className="composer-notices">
-            {/* FALLBACK (31/10-2026) — se ChatView. Raekken i samtalen
-                vinder naar den findes; indtil da bærer dette kort svaret. */}
-            {stream.pendingApproval && !pendingIRækken && (
+            {/* KORTET STÅR HER — ikke i samtalen (16/11-2026). Se ChatView:
+                spoergsmaalet skal staa fast over composeren, ikke findes ved
+                at scrolle op i turen. Raekken er historik uden knapper. */}
+            {stream.pendingApproval && (
               <GodkendelsesKort sessionId={sessionId ?? null} />
             )}
             {/* pause_and_ask hører HER, ikke i tråden (9/11-2026) — se ChatView. */}
@@ -1511,24 +1497,4 @@ export function CodeView({
  *  Serveren gemmer `content_json` som en LISTE af blokke. En tom eller
  *  ukendt form maa ikke kaste under render — en enkelt daarlig raekke ville
  *  ellers tage hele transcriptet med sig. */
-/** Er denne historik-række den godkendelse der venter LIGE NU?
- *
- *  31/10-2026 — DEL 3. Kortet flyttede fra `.composer-area` ind i transcriptet.
- *  En persisteret række er historik og kan ikke besvares — men den raekke der
- *  matcher den ventende godkendelse ER ikke historik endnu. Den får knapperne.
- *
- *  Match paa `approval_id`, ikke paa vaerdier: to godkendelser kan have samme
- *  kommando, og et match paa tekst ville give knapper paa den forkerte række.
- */
-function liveGodkendelse(
-  data: GodkendelsesHaendelse,
-  pending: { approvalId: string; expiresAt?: string } | null,
-  canApprove: boolean,
-  onApprove: (id: string) => void,
-  onDeny: (id: string) => void,
-) {
-  if (!pending || !data.approval_id || pending.approvalId !== data.approval_id) return undefined
-  if (data.status !== 'pending') return undefined
-  return { canApprove, expiresAt: pending.expiresAt, onApprove, onDeny }
-}
 

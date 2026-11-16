@@ -53,15 +53,11 @@ describe('HistoriskGodkendelse — udfaldet har sin egen tekst', () => {
     expect(screen.getByText('Kørte aldrig')).toBeInTheDocument()
   })
 
-  it('en afgjort række får ALDRIG knapper, uanset hvad kalderen sender', () => {
-    // Baandet holdes i komponenten, ikke kun hos kalderen: ellers kunne et
-    // gammelt svar se ud som et åbent spørgsmål.
-    render(
-      <HistoriskGodkendelse
-        data={haendelse({ status: 'failed' })}
-        live={{ canApprove: true, onApprove: () => {}, onDeny: () => {} }}
-      />,
-    )
+  it('en afgjort række får ALDRIG knapper', () => {
+    // 16/11-2026: rækken kan slet ikke besvares længere — knapperne bor over
+    // composeren. Prøven står stadig, fordi den fanger den dag nogen giver
+    // rækken knapper igen.
+    render(<HistoriskGodkendelse data={haendelse({ status: 'failed' })} />)
     expect(screen.queryByText('Godkend')).toBeNull()
     expect(screen.getByText('Kørte ikke igennem')).toBeInTheDocument()
   })

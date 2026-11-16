@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { Check, X } from 'lucide-react'
+import { X } from 'lucide-react'
 
 /** Et AFGJORT (eller forladt) godkendelses-kort, læst fra historikken.
  *
@@ -53,38 +53,14 @@ const STATUS: Record<string, { tekst: string; klasse: string }> = {
 
 export function HistoriskGodkendelse({
   data,
-  live,
 }: {
   data: GodkendelsesHaendelse
-  /** Sat naar denne række ER den godkendelse der venter lige nu.
-   *
-   *  31/10-2026 — DEL 3. Kortet laa i `.composer-area` og skubbede transcriptet
-   *  op. Nu ligger det hvor det hører: som en række i samtalen. Men en
-   *  persisteret række er historik og kan ikke besvares — så når rækken
-   *  matcher den ventende godkendelse, får den knapperne tilbage.
-   *
-   *  Det er ÉN flade, ikke to: uden dette ville den samme godkendelse stå to
-   *  steder (historik-rækken uden knapper + det flydende kort med), og man
-   *  ville kunne se sit eget svar stå to gange.
-   */
-  live?: {
-    canApprove: boolean
-    expiresAt?: string
-    onApprove: (id: string) => void
-    onDeny: (id: string) => void
-  }
 }) {
   const [visDetaljer, setVisDetaljer] = useState(false)
   const status = STATUS[data.status] ?? { tekst: data.status, klasse: 'ukendt' }
-  // Baandet holdes HER, ikke kun hos kalderen: status er sandheden om hvorvidt
-  // der kan svares. En afgjort raekke maa aldrig faa knapper, heller ikke hvis
-  // en kalder sender `live` ved en fejl — saa ville et gammelt svar se ud som
-  // et aabent spoergsmaal.
-  const erLevende = Boolean(live) && data.status === 'pending'
-  const kanSvare = erLevende && Boolean(live?.canApprove)
 
   return (
-    <div className={`approvalcard risk-${data.risk || ''}${erLevende ? ' approvalcard-live' : ' approvalcard-historik'}`}>
+    <div className={`approvalcard risk-${data.risk || ''} approvalcard-historik`}>
       <div className="approvallinje">
         <button
           type="button"
@@ -99,41 +75,10 @@ export function HistoriskGodkendelse({
           <span className="approvallinje-detaljer" aria-hidden="true">Detaljer</span>
         </button>
 
-        {!erLevende ? (
-          <span className={`approvallinje-status status-${status.klasse}`}>
-            {status.tekst}
-          </span>
-        ) : null}
+        <span className={`approvallinje-status status-${status.klasse}`}>
+          {status.tekst}
+        </span>
       </div>
-
-      {erLevende && live ? (
-        <div className="approvalcard-actionbar">
-          {kanSvare ? (
-            <span className="approvalcard-actions">
-              <button
-                type="button"
-                className="approval-knap approval-knap-nej"
-                aria-label="Afvis"
-                title="Afvis"
-                onClick={() => live.onDeny(data.approval_id)}
-              >
-                <X size={14} strokeWidth={2.5} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="approval-knap approval-knap-ja"
-                aria-label="Godkend"
-                title="Godkend"
-                onClick={() => live.onApprove(data.approval_id)}
-              >
-                <Check size={14} strokeWidth={2.5} aria-hidden="true" />
-              </button>
-            </span>
-          ) : (
-            <span className="approvalcard-readonly">Kun owner kan godkende</span>
-          )}
-        </div>
-      ) : null}
 
       {visDetaljer ? (
         <GodkendelsesDetaljer tool={data.tool} action={data.action} onClose={() => setVisDetaljer(false)} />

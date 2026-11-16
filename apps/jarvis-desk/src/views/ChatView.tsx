@@ -71,7 +71,7 @@ import { skalGenhente } from '../lib/komprimeringsVagt'
 import { useFastgjorte } from '../hooks/useFastgjorte'
 import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
 import { PauseAskKort } from '../components/feedback/PauseAskKort'
-import { findesSynligGodkendelseRaekke, medVentendeGodkendelse } from '../lib/ventendeGodkendelse'
+import { medVentendeGodkendelse } from '../lib/ventendeGodkendelse'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { useChatFlow } from '../hooks/useChatFlow'
 import { deriveChatFlow } from '../lib/chatFlowModel'
@@ -80,7 +80,7 @@ import { udenErstattede } from '../lib/gensendDublet'
 import { svarPacingGate } from '../lib/svarPacing'
 import { ChatFlowOnboarding } from '../components/rich/ChatFlowOnboarding'
 import { ChatFlowSuggestion } from '../components/rich/ChatFlowSuggestion'
-import { HistoriskGodkendelse, type GodkendelsesHaendelse } from '../components/rich/HistoriskGodkendelse'
+import { HistoriskGodkendelse } from '../components/rich/HistoriskGodkendelse'
 import { fletGodkendelser, forsteGodkendelse } from '../lib/godkendelseIFolden'
 
 
@@ -747,14 +747,6 @@ export function ChatView({
     el.scrollTop = el.scrollHeight - maalt.hoejde + maalt.top
   }, [visteTranscriptMessages, scroll.containerRef])
 
-  // 31/10-2026 — FALLBACK, ikke dublet. Se `lib/ventendeGodkendelse.ts` for
-  // hvorfor: raekken vinder naar den findes, ellers bærer det flydende kort
-  // svaret. Betingelsen er ÉN funktion, saa de to flader ikke kan divergere.
-  const pendingIRækken = findesSynligGodkendelseRaekke(
-    beskederMedVentende,
-    stream.pendingApproval?.approvalId ?? null,
-  )
-
   // Persisterede ture bærer ingen varighed i sig — men assistentrækken
   // skrives ved turens SLUTNING og brugertrækken ved dens START, så spændet
   // mellem de to er turen, målt på serveren. Uden dette forsvandt uret i
@@ -1257,13 +1249,6 @@ export function ChatView({
           <div key={m.id} data-rail-id={m.id} className="msg-block">
             <HistoriskGodkendelse
               data={forsteGodkendelse(m.content_json)}
-              live={liveGodkendelse(
-                forsteGodkendelse(m.content_json),
-                stream.pendingApproval,
-                auth?.role === 'owner',
-                (id) => stream.approve(id),
-                (id) => stream.deny(id),
-              )}
             />
           </div>
         ) : (
@@ -1347,7 +1332,7 @@ export function ChatView({
               nogle godkendelser persisteres slet ikke. Saa længe den mangler,
               bærer dette kort svaret — ellers forsvinder spoergsmaalet, og det
               maalte vi: Bjoern saa intet kort i PWA'en. */}
-          {stream.pendingApproval && !pendingIRækken && (
+          {stream.pendingApproval && (
             <GodkendelsesKort sessionId={sessionId ?? null} />
           )}
           {/* pause_and_ask hører HER, ikke i tråden (9/11-2026). Bjørn: «det er
@@ -1411,24 +1396,4 @@ export function ChatView({
  *  Serveren gemmer `content_json` som en LISTE af blokke. En tom eller
  *  ukendt form maa ikke kaste under render — en enkelt daarlig raekke ville
  *  ellers tage hele transcriptet med sig. */
-/** Er denne historik-række den godkendelse der venter LIGE NU?
- *
- *  31/10-2026 — DEL 3. Kortet flyttede fra `.composer-area` ind i transcriptet.
- *  En persisteret række er historik og kan ikke besvares — men den raekke der
- *  matcher den ventende godkendelse ER ikke historik endnu. Den får knapperne.
- *
- *  Match paa `approval_id`, ikke paa vaerdier: to godkendelser kan have samme
- *  kommando, og et match paa tekst ville give knapper paa den forkerte række.
- */
-function liveGodkendelse(
-  data: GodkendelsesHaendelse,
-  pending: { approvalId: string; expiresAt?: string } | null,
-  canApprove: boolean,
-  onApprove: (id: string) => void,
-  onDeny: (id: string) => void,
-) {
-  if (!pending || !data.approval_id || pending.approvalId !== data.approval_id) return undefined
-  if (data.status !== 'pending') return undefined
-  return { canApprove, expiresAt: pending.expiresAt, onApprove, onDeny }
-}
 

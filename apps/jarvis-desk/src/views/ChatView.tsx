@@ -71,7 +71,7 @@ import { skalGenhente } from '../lib/komprimeringsVagt'
 import { useFastgjorte } from '../hooks/useFastgjorte'
 import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
 import { PauseAskKort } from '../components/feedback/PauseAskKort'
-import { findesSynligGodkendelseRaekke } from '../lib/ventendeGodkendelse'
+import { findesSynligGodkendelseRaekke, medVentendeGodkendelse } from '../lib/ventendeGodkendelse'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { useChatFlow } from '../hooks/useChatFlow'
 import { deriveChatFlow } from '../lib/chatFlowModel'
@@ -685,7 +685,13 @@ export function ChatView({
 // ind i den assistent-tur den hørte til. En raekke hvis tur endnu ikke er
 // skrevet bliver staaende — den skal kunne besvares NU.
   // Samme grund som `visibleMessages`: begge koerte paa hele listen ved hver render.
-  const flettede = useMemo(() => fletGodkendelser(sessions.messages), [sessions.messages])
+  // Den HENTEDE ventende godkendelse flettes ind som en række (16/11-2026), så
+  // kortet står i transcriptet også når den persisterede række mangler.
+  const beskederMedVentende = useMemo(
+    () => medVentendeGodkendelse(sessions.messages, stream.pendingApproval, sessionId ?? null),
+    [sessions.messages, stream.pendingApproval, sessionId],
+  )
+  const flettede = useMemo(() => fletGodkendelser(beskederMedVentende), [beskederMedVentende])
   // Bobler der er ERSTATTET af et gensend. Den gamle kopi bliver liggende i
   // `sessions.messages` (historikken må ikke ændres), men skjules i visningen —
   // ellers stod to ens bobler (Bjørn 12/11-2026).
@@ -745,7 +751,7 @@ export function ChatView({
   // hvorfor: raekken vinder naar den findes, ellers bærer det flydende kort
   // svaret. Betingelsen er ÉN funktion, saa de to flader ikke kan divergere.
   const pendingIRækken = findesSynligGodkendelseRaekke(
-    sessions.messages,
+    beskederMedVentende,
     stream.pendingApproval?.approvalId ?? null,
   )
 

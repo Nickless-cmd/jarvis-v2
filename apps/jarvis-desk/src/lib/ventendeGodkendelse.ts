@@ -55,6 +55,57 @@ export function findesSynligGodkendelseRaekke(
   return findesGodkendelseIRækken(fletGodkendelser(beskeder), approvalId)
 }
 
+/** Den hentede, ventende godkendelse — kun de felter projektionen behøver. */
+export interface VentendeKort {
+  approvalId: string
+  tool: string
+  action: string
+  sessionId?: string
+}
+
+/** Flet den HENTEDE ventende godkendelse ind i beskedlisten som en
+ *  `approval_request`-række (16/11-2026).
+ *
+ *  MÅLT: kortet manglede ikke, men stod i `.composer-notices` — «oven på
+ *  turen» — så længe den persisterede række ikke fandt vej. Persisteringen er
+ *  bevidst fail-open (`approval_runtime` kan returnere None), og
+ *  `refreshMessages` halter op til 1,5 s efter en genstart. `StreamContext`
+ *  poller `/chat/approvals/pending` og HAR altså svaret; det blev bare aldrig
+ *  til en række.
+ *
+ *  Rækken lægges SIDST: en afventende godkendelse hører til den tur der kører
+ *  nu, og `fletGodkendelser` lader en række uden efterfølgende assistent blive
+ *  stående som selvstændig — samme sted som en persisteret række ville stå.
+ *  Kør denne FØR `fletGodkendelser`.
+ *
+ *  Dublet-regel: findes der allerede en række med samme `approval_id`
+ *  (persisteret, uanset status) gør vi INTET — den rigtige række vinder.
+ *  Hører kortet til en anden session end den åbne, røres listen heller ikke;
+ *  så bærer det flydende kort det som før. Afgøres godkendelsen, bliver
+ *  `pending` null og rækken er væk igen. */
+export function medVentendeGodkendelse<T extends ChatMessage>(
+  beskeder: readonly T[],
+  ventende: VentendeKort | null | undefined,
+  sessionId: string | null | undefined,
+): readonly T[] {
+  if (!ventende?.approvalId) return beskeder
+  if (ventende.sessionId && sessionId && ventende.sessionId !== sessionId) return beskeder
+  if (findesGodkendelseIRækken(beskeder, ventende.approvalId)) return beskeder
+  const raekke = {
+    id: `pending-approval-${ventende.approvalId}`,
+    role: 'approval_request',
+    content: [],
+    content_json: [{
+      approval_id: ventende.approvalId,
+      tool: ventende.tool,
+      action: ventende.action,
+      status: 'pending',
+    }],
+    created_at: new Date().toISOString(),
+  } as unknown as T
+  return [...beskeder, raekke]
+}
+
 /** Hvor mange tomme svar i træk der skal til før et holdt kort regnes for afgjort. */
 export const TOMME_SVAR_FOER_RYD = 2
 

@@ -1,5 +1,17 @@
 # Development log
 
+## 2026-11-16 — CodeView stop for all work, and the pending approval card goes into the transcript
+
+Two client defects in Jarvis Desk, both fixed in `apps/jarvis-desk/src/**` (so installed Desk and PWA move together).
+
+**Stop button.** `CodeView` was a forgotten copy of `ChatView` from before 12/11: `streaming` was only the client's own run and stop called `stream.abort()`, a no-op for a run this client never started. It now shows stop for any work in the conversation (`stream.status === 'working' || bgActive || followState.status === 'working'`), keeps the run id the active-runs poll already found (`bgRunId`), and stop calls `cancelRun(runId)` when an id is known, falling back to the new `cancelActiveRun(sessionId)` (`POST /chat/sessions/{id}/cancel-active`, which no client called before). A run the client streams itself still goes through `stream.abort()`.
+
+**Approval projection.** The fetched `pendingApproval` lived only in state, so with no persisted `approval_request` row (persistence is fail-open; `refreshMessages` lags up to 1.5 s after a restart) both views drew it in `.composer-notices`, "on top of the turn". `medVentendeGodkendelse` now merges it into the message list as a synthetic `approval_request` row before `fletGodkendelser`, so it stands where a persisted row would. A persisted row with the same `approval_id` wins (one card, never two); a card for another session is left alone; once decided, `pendingApproval` is null and the row is gone.
+
+Mutation-verified: stop — reverting the `streaming` condition fails all three new tests, removing the fallback fails the cancel-active test, removing the cancelRun branch or the stored `bgRunId` fails the cancelRun test. Approval — a no-op projection fails (a), (c) and both view tests, removing the dedupe fails (b), removing the null guard fails (c), removing the session guard fails its test, un-wiring either view fails that view's test.
+
+Not covered: the real server endpoint is only called through a mocked client (backend `cancel-active` only matches the single globally active visible run); the synthetic row's `created_at` is client time; a session with no user/assistant message still shows the empty state instead of the card.
+
 ## 2026-11-16 — Real process restarts and a real claim race, and the bug they found
 
 The session-bound continuation above was characterized through the durable store and the lease/generation semantics — not through an actual restart. That gap is now closed, and closing it exposed a genuine defect.

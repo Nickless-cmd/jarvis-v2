@@ -905,3 +905,38 @@ describe('ChatView — transkriptets vindue', () => {
     expect(screen.queryByRole('button', { name: /Vis ældre/i })).toBeNull()
   })
 })
+
+/**
+ * Den hentede ventende godkendelse står i TRANSCRIPTET (16/11-2026) — ikke i
+ * `.composer-notices` — også når ingen persisteret række findes.
+ */
+describe('ChatView — ventende godkendelse som transcript-række', () => {
+  it('tegner kortet i transcriptet uden persisteret række, og ikke over composeren', async () => {
+    vi.mocked(api.hentVentendeGodkendelseOveralt).mockResolvedValue(
+      { approvalId: 'ap1', tool: 'exec_command', action: 'rm -rf /tmp/x', sessionId: 's1', expiresAt: new Date(Date.now() + 3_600_000).toISOString() },
+    )
+    // En samtale med et spørgsmål — ellers er viewet i tom-tilstand uden transcript.
+    vi.mocked(api.getSession).mockResolvedValue({
+      session: { id: 's1', title: 'T', updated_at: '2026-09-16T10:00:00Z' }, etag: null,
+      messages: [{ id: 'u1', role: 'user', content: [{ type: 'text', text: 'ryd op' }], created_at: '2026-09-16T10:00:00Z' }],
+    })
+    try {
+      const { container } = render(
+      <SettingsProvider initialConfig={cfg}>
+        <SessionProvider config={cfg}>
+          <StreamProvider config={cfg}>
+            <PermissionProvider>
+              <PanelProvider defaultWidth={400}><ChatView sessionId="s1" /></PanelProvider>
+            </PermissionProvider>
+          </StreamProvider>
+        </SessionProvider>
+      </SettingsProvider>,
+    )
+      await waitFor(() => expect(container.querySelector('.transcript .approvalcard')).toBeInTheDocument(), { timeout: 3000 })
+      expect(container.querySelectorAll('.approvalcard')).toHaveLength(1)
+      expect(container.querySelector('.composer-notices .approvalcard')).toBeNull()
+    } finally {
+      vi.mocked(api.hentVentendeGodkendelseOveralt).mockResolvedValue(null)
+    }
+  })
+})

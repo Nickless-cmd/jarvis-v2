@@ -108,3 +108,12 @@ De tre tests i `streamReducer.passivKlient.test.ts` skal VENDE:
 - test 3: uændret grøn (den aktive klient må ikke regrediere)
 
 Og mutationsverifikation: fjern rettelsen, bekræft at test 1 og 2 fejler igen.
+
+## BYGGET 16/11-2026 — sådan blev det løst
+
+Vej A er bygget: den eksisterende `origin` fra den autonome run-kilde bæres nu
+gennem SSE-v2's `message_start`. Reduceren bruger feltet som autoritativ
+turgrænse, så en passiv klient rydder forrige turs blokke og `svarLaast`, før
+den fremmede turs tekst åbnes. Tom/manglende `origin` bevarer brugerens egne
+runder som før. De vendte klientmålinger, backend-kontrakttests og begge
+renderer/web-builds er grønne; mutation uden origin-grenen fælder test 1 og 2.

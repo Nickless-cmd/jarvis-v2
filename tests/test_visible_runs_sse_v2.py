@@ -45,6 +45,7 @@ async def _collect(gen: AsyncIterator[str]) -> list[str]:
 async def test_basic_text_flow():
     """Standard: delta'er + done → message_start, text-block, deltas, stop."""
     async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("run", {"type": "run", "run_id": "visible-1", "origin": "wakeup"})
         yield _legacy_sse("delta", {"type": "delta", "run_id": "visible-1", "delta": "Hej "})
         yield _legacy_sse("delta", {"type": "delta", "run_id": "visible-1", "delta": "verden"})
         yield _legacy_sse("done", {
@@ -61,7 +62,8 @@ async def test_basic_text_flow():
 
     # Forventet sekvens
     assert event_names[0] == "message_start"
-    assert event_names[1] == "content_block_start"
+    assert events[0][1]["message"]["origin"] == "wakeup"
+    assert "content_block_start" in event_names
     # Delta-events ind imellem
     delta_events = [e for e in events if e[0] == "content_block_delta"]
     assert len(delta_events) == 2

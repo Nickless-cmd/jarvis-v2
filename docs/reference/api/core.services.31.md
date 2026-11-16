@@ -297,7 +297,7 @@ _Translator: legacy SSE-events → Anthropic-style v2-protokol._
 | function | `_live_udgivne_blokke` | `(tool_use_id, allerede_sendt)` | Alt turen har UDGIVET og endnu ikke sendt — klar til den levende stream. | [src](../../../core/services/visible_runs_sse_v2.py#L202) |
 | function | `_run_still_active` | `(run_id)` | True hvis dette run stadig kører server-side. Fail-safe: antag AKTIVT ved fejl, | [src](../../../core/services/visible_runs_sse_v2.py#L276) |
 | function | `_laes_tempo` | `(run_id, output_tokens)` | TTFT og tok/s for dette run. Tomt dict ved enhver fejl. | [src](../../../core/services/visible_runs_sse_v2.py#L304) |
-| function | `translate_to_v2` | `(legacy_iter, *, run_id=…, model=…, provider=…, lane=…, session_id=…, ping_interval_s=…)` | Konverter legacy SSE-stream til Anthropic-style v2 protokol. | [src](../../../core/services/visible_runs_sse_v2.py#L319) |
+| function | `translate_to_v2` | `(legacy_iter, *, run_id=…, model=…, provider=…, lane=…, session_id=…, origin=…, ping_interval_s=…)` | Konverter legacy SSE-stream til Anthropic-style v2 protokol. | [src](../../../core/services/visible_runs_sse_v2.py#L319) |
 
 ## `core/services/visible_runs_watchdog.py`
 _Agentic-round watchdog — hvornår skal en runde opgives?_

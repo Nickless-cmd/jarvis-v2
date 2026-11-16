@@ -12,7 +12,7 @@
  *   Rydder et nyt runs `message_start` den forrige turs blokke i den passive
  *   klient, eller bliver de stående?
  *
- * Denne fil måler det. Den retter ingenting.
+ * Denne fil måler turgrænsen fra serverens `origin`-faktum.
  */
 import { describe, expect, it } from 'vitest'
 import { initialStreamState, streamReducer, type StreamState } from './streamReducer'
@@ -30,14 +30,17 @@ function passivKlientEfterLaestSvar(): StreamState {
 }
 
 describe('streamReducer — passiv klient ser en anden klients tur', () => {
-  it('SPØRGSMÅL: beholder den passive klient forrige turs blokke ved nyt message_start?', () => {
+  it('rydder den passive klient forrige turs blokke ved fremmed message_start', () => {
     const foer = passivKlientEfterLaestSvar()
 
     // Den anden klient trykker send. Serveren emitterer message_start for det
     // nye run. Den passive klient har ALDRIG set dette run-id som selvstændigt.
     const efter = streamReducer(foer, {
       type: 'message_start',
-      message: { id: 'run-ny', model: 'm', provider: 'p', lane: 'l', usage: { input_tokens: 0 } },
+      message: {
+        id: 'run-ny', model: 'm', provider: 'p', lane: 'l', origin: 'wakeup',
+        usage: { input_tokens: 0, output_tokens: 0 },
+      },
     } as never)
 
     // Målingen: er den forrige turs blokke væk?
@@ -45,29 +48,39 @@ describe('streamReducer — passiv klient ser en anden klients tur', () => {
       (b) => b?.type === 'text' && b.text === 'Forrige turs svar.',
     )
 
-    // Vi ASSERTER IKKE at den er væk endnu — vi dokumenterer den målte adfærd,
-    // så rettelsen kan fælde præcis denne linje.
     expect({
       forrigeSvarStaarTilbage,
       svarLaast: efter.svarLaast,
       aktivtRun: efter.activeRunId,
       antalBlokke: efter.blocks.length,
     }).toEqual({
-      forrigeSvarStaarTilbage: true,
-      svarLaast: true,
+      forrigeSvarStaarTilbage: false,
+      svarLaast: false,
       aktivtRun: 'run-ny',
-      antalBlokke: 1,
+      antalBlokke: 0,
     })
   })
 
-  it('SPØRGSMÅL: hvad sker der når det nye runs tekst strømmer ind oveni?', () => {
+  it('lægger kun den fremmede turs tekst i den friske blok', () => {
     const foer = passivKlientEfterLaestSvar()
     const startet = streamReducer(foer, {
       type: 'message_start',
-      message: { id: 'run-ny', model: 'm', provider: 'p', lane: 'l', usage: { input_tokens: 0 } },
+      message: {
+        id: 'run-ny', model: 'm', provider: 'p', lane: 'l', origin: 'wakeup',
+        usage: { input_tokens: 0, output_tokens: 0 },
+      },
     } as never)
 
-    const medTekst = streamReducer(startet, {
+    // Turgrænsen skal være synlig allerede før den nye blok åbnes.
+    expect(startet.blocks).toEqual([])
+
+    const medBlok = streamReducer(startet, {
+      type: 'content_block_start',
+      index: 0,
+      content_block: { type: 'text', text: '', phase: 'final_answer' },
+    } as never)
+
+    const medTekst = streamReducer(medBlok, {
       type: 'content_block_delta',
       index: 0,
       delta: { type: 'text_delta', text: 'Ny turs svar.' },
@@ -79,7 +92,7 @@ describe('streamReducer — passiv klient ser en anden klients tur', () => {
       .map((b) => (b as { text: string }).text)
 
     expect({ tekst, antalBlokke: medTekst.blocks.length }).toEqual({
-      tekst: ['Forrige turs svar.Ny turs svar.'],
+      tekst: ['Ny turs svar.'],
       antalBlokke: 1,
     })
   })

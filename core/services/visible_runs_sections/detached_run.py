@@ -299,6 +299,18 @@ def start_user_run_detached(
     from core.services.visible_runs_sse_v2 import translate_to_v2
 
     sid = (session_id or "").strip()
+    # ÉT scope pr. SESSION (16/11-2026) — også for de kørsler der ikke kommer fra
+    # en klient. En agent-vækning og en genoptagelse starter HER med
+    # `tool_scope=""` (ubegrænset), så de brød sessionens faste scope: målt
+    # 19:16-19:23 samme dag sendte tre vækninger i code-sessionen 112-113
+    # værktøjer mod 44-52 ellers, og hvert skift gav 66-72k miss. `resolve_scope`
+    # lader et tomt scope arve det gemte; et eksplicit scope vinder som før.
+    # Her og ikke hos hver kalder, ellers mangler den næste oprindelse den igen.
+    try:
+        from core.services.session_tool_scope import resolve_scope
+        tool_scope = resolve_scope(sid, tool_scope)
+    except Exception as _scope_exc:  # scope-opslaget er en optimering: fejler det, kører turen med kaldets eget scope
+        logger.warning("detached-run: kunne ikke fastgøre scope for %s: %s", sid[:24], _scope_exc)
     if not run_id:
         run_id = f"visible-{uuid4().hex}"
         rel.create(run_id, sid)  # synkront FØR retur → straks synlig i live_run_ids

@@ -435,3 +435,56 @@ def test_origin_foeres_fra_detached_run_ned_til_den_synlige_tur(monkeypatch):
             break
         time.sleep(0.05)
     assert {k["session_id"]: k.get("origin", "") for k in set_args} == {"s1": "wakeup", "s2": ""}
+
+
+def _scope_kald(monkeypatch, kald):
+    """Start de angivne kørsler og returnér `tool_scope` de sendte til `start_visible_run`."""
+    import core.services.visible_runs as vr
+    from core.services.visible_runs_sections.detached_run import start_user_run_detached
+
+    _patch(monkeypatch, [])
+    set_args: list[dict] = []
+    monkeypatch.setattr(vr, "start_visible_run",
+                        lambda **kw: (set_args.append(kw), _make_async_iter([]))[1])
+    for kw in kald:
+        start_user_run_detached(**kw)
+    for _ in range(60):
+        if len(set_args) >= len(kald):
+            break
+        time.sleep(0.05)
+    assert len(set_args) == len(kald)
+    return sorted((k["message"], k["tool_scope"]) for k in set_args)
+
+
+def test_vaekning_arver_sessionens_scope_i_stedet_for_at_vaere_ubegraenset(monkeypatch):
+    """Agent-vækninger startede med scope "" og sendte 112 værktøjer i en code-session.
+
+    Fejlen var ikke i scope-logikken (den er rigtig i begge klient-ruter) men i en
+    tredje rute der aldrig gik igennem den.
+    """
+    from core.services import session_tool_scope as sts
+    sts.clear("s-vaekning-code")
+    # Klienten sætter code; vækningen kommer bagefter uden scope.
+    assert _scope_kald(monkeypatch, [
+        {"message": "klient", "session_id": "s-vaekning-code", "tool_scope": "code"},
+    ]) == [("klient", "code")]
+    assert _scope_kald(monkeypatch, [
+        {"message": "vaekning", "session_id": "s-vaekning-code", "origin": "wakeup"},
+    ]) == [("vaekning", "code")]
+
+
+@pytest.mark.parametrize("gemt,kaldt,forventet", [
+    (None, "", ""),          # intet gemt: uændret adfærd (ubegrænset)
+    ("chat", "", "chat"),    # tomt arver
+    ("code", "chat", "chat"),  # eksplicit vinder …
+    ("chat", "code", "code"),  # … begge veje
+])
+def test_scope_for_detached_run_gemt_kaldt_forventet(monkeypatch, gemt, kaldt, forventet):
+    from core.services import session_tool_scope as sts
+    sid = f"s-scope-{gemt}-{kaldt or 'tom'}"
+    sts.clear(sid)
+    if gemt is not None:
+        sts.resolve_scope(sid, gemt)
+    assert _scope_kald(monkeypatch, [
+        {"message": "m", "session_id": sid, "tool_scope": kaldt},
+    ]) == [("m", forventet)]

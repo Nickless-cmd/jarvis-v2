@@ -12,7 +12,14 @@ def fresh_db(monkeypatch, tmp_path):
     """Steer connect() at a fresh on-disk DB for each test."""
     db_path = tmp_path / "jarvis.db"
     from core.runtime import db as db_mod
-    monkeypatch.setattr(db_mod, "DB_PATH", db_path)
+    from core.runtime import db_core
+    # `connect()` og `init_db()` bor i db_core og laeser DB_PATH fra DETS
+    # namespace. En patch paa core.runtime.db.DB_PATH tilfoejer blot en ny
+    # attribut der aldrig laeses — testene skrev og slettede saa i den LEVENDE
+    # database (maalt 16/11-2026: tmp-filen blev aldrig oprettet, mens
+    # dream_bias_active viste produktionsraekker).
+    monkeypatch.setattr(db_core, "DB_PATH", db_path)
+    monkeypatch.setattr(db_mod, "DB_PATH", db_path, raising=False)
     db_mod.init_db()
     return db_path
 

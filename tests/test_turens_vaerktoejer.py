@@ -205,3 +205,38 @@ def test_router_faar_lane_og_run_id_fra_kalderen(monkeypatch):
         }]
     finally:
         clear("tv-lane")
+
+
+def test_garanterede_uden_for_scopets_katalog_tabes_ikke_lydloest(monkeypatch, caplog):
+    """Maalt 16/11-2026: `_med_garanterede` lover bl.a. `load_more_tools`, men
+    code-kataloget har den ikke, saa den faldt lydloest ud af arrayet (31 tabte
+    i code, 23 i chat). De hentes bevidst ikke fra det fulde katalog — scope er
+    politik, og arrayet er cache-noeglen. Invarianten er derfor: hvert garanteret
+    navn er ENTEN i arrayet ELLER navngivet i en advarsel. Aldrig ingen af delene.
+    """
+    import logging
+
+    import core.services.turens_vaerktoejer as tv
+    from core.services.session_tool_pin import _med_garanterede
+
+    monkeypatch.setattr(tv, "_MELDT", set())
+    garanterede = set(_med_garanterede([]))
+    for scope in ("chat", "code"):
+        sid = f"tv-garanti-{scope}"
+        clear(sid)
+        caplog.clear()
+        try:
+            with caplog.at_level(logging.WARNING, logger=tv.__name__):
+                ud = _navne(vaerktoejer_for_turen(
+                    get_tool_definitions(scope=scope),
+                    user_message="hej", session_id=sid))
+            meldt: set[str] = set()
+            for r in caplog.records:
+                if r.name == tv.__name__ and "uden for scopets katalog" in r.getMessage():
+                    meldt |= set(r.getMessage().split(": ", 1)[1].split(", "))
+            tavse = sorted(garanterede - ud - meldt)
+            assert not tavse, f"scope={scope}: tabt lydloest: {tavse[:8]}"
+            if scope == "code":
+                assert "load_more_tools" in ud | meldt
+        finally:
+            clear(sid)

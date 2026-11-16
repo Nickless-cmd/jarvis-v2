@@ -5,6 +5,17 @@ The repository-wide status source remains
 This file records the status of the delivered Jarvis Desk changes requested for
 implementation.
 
+## Session-bound background work — complete locally (2026-11-16)
+
+- An explicit origin session is authoritative: an unusable one leaves the
+  result pending with a visible block reason instead of redirecting to another
+  session. Sessionless system initiatives keep their existing resolver home.
+- Side tasks persist `owner_user_id`, `origin_session_id` and `parent_run_id`;
+  `session_id` remains for backward compatibility.
+- Twelve scenarios characterize origin isolation, idle wake, busy deferral,
+  closed client, restart durability, coalescing, duplicate delivery, invalid
+  origin, user stop, agent/side-task parity and the system-initiative home.
+
 ## Round row wording — complete locally (2026-11-15)
 
 - `bash`, `search` and `find_files` have explicit present/past wording, so a

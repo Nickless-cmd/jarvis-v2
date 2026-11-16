@@ -1,5 +1,19 @@
 # Development log
 
+## 2026-11-16 — Session-bound background work: origin is authoritative, continuation is characterized
+
+An initiative that starts in a conversation now keeps that conversation as its authoritative origin through the whole lifecycle. Two layers were missing; the rest of the chain already existed and was reused, not replaced.
+
+**Routing (`wakeup_dispatcher.pick_wakeup_run_target`).** An explicit origin that is an external or unusable channel previously fell back to *any* app session, which is exactly the silent redirection the contract forbids. It now returns `None`, so the caller leaves the row pending with a visible block reason. The resolver fallback is used only when the origin is empty — i.e. for sessionless system initiatives, which keep their own home.
+
+**Lineage (`side_tasks.flag`).** A flagged task now persists `owner_user_id`, `origin_session_id` and `parent_run_id` explicitly, derived from the running context when not supplied. `session_id` is retained for older readers.
+
+**Characterization (`tests/test_session_bound_background_continuation.py`).** The twelve requested scenarios run against the real chain — `stage_wake` → `in_flight_runs.claim_due_recovery` → `recover_due_once` → `claim_for_model_step` — and against the real `agent_result_outbox` table in an isolated DB, not mocks of the functions under test.
+
+Measured, not assumed: four deliberate mutations each failed exactly their protected scenario — routing restored to the old redirect (scenario 9), coalescing removed (scenario 7), lineage fields emptied (scenarios 1 and 11), and session scoping dropped from the claim query (scenario 2). Restored: 12 passed, 234 passed across the affected wake/recovery/side-task surface.
+
+Not covered: no test drives a real process restart or a real multi-worker race; both are characterized through the durable store and the lease/generation semantics, not through an actual restart.
+
 ## 2026-11-16 — Docs-drift gate: scoped by file type, and regenerates once instead of blocking
 
 Two fixes to the pre-commit docs-drift gate, both measured against real inbox evidence rather than assumed.

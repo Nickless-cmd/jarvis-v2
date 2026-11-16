@@ -421,11 +421,14 @@ describe('CodeView — stop for baggrunds-run', () => {
 })
 
 /**
- * Den hentede ventende godkendelse står i TRANSCRIPTET (16/11-2026) — ikke i
- * `.composer-notices` — også når ingen persisteret række findes.
+ * Den ventende godkendelse står OVER COMPOSEREN (16/11-2026, anden vending).
+ *
+ * 31/10 flyttede kortet ind i transcriptet som primær flade. Målt 16/11:
+ * Bjørn måtte scrolle til toppen af turen for at godkende. Rækken i
+ * transcriptet er historik; det besvarbare kort hører til hvor han skriver.
  */
-describe('CodeView — ventende godkendelse som transcript-række', () => {
-  it('tegner kortet i transcriptet uden persisteret række, og ikke over composeren', async () => {
+describe('CodeView — ventende godkendelse over composeren', () => {
+  it('tegner kortet over composeren uden persisteret række, ikke i transcriptet', async () => {
     vi.mocked(api.hentVentendeGodkendelseOveralt).mockResolvedValue(
       { approvalId: 'ap1', tool: 'exec_command', action: 'rm -rf /tmp/x', sessionId: 's1', expiresAt: new Date(Date.now() + 3_600_000).toISOString() },
     )
@@ -436,9 +439,9 @@ describe('CodeView — ventende godkendelse som transcript-række', () => {
     })
     try {
       const { container } = wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
-      await waitFor(() => expect(container.querySelector('.transcript .approvalcard')).toBeInTheDocument(), { timeout: 3000 })
+      await waitFor(() => expect(container.querySelector('.composer-notices .approvalcard')).toBeInTheDocument(), { timeout: 3000 })
       expect(container.querySelectorAll('.approvalcard')).toHaveLength(1)
-      expect(container.querySelector('.composer-notices .approvalcard')).toBeNull()
+      expect(container.querySelector('.transcript .approvalcard')).toBeNull()
     } finally {
       vi.mocked(api.hentVentendeGodkendelseOveralt).mockResolvedValue(null)
     }

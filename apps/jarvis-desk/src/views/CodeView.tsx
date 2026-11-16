@@ -24,7 +24,6 @@ import { HistoriskGodkendelse } from '../components/rich/HistoriskGodkendelse'
 import { fletGodkendelser, forsteGodkendelse } from '../lib/godkendelseIFolden'
 import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
 import { PauseAskKort } from '../components/feedback/PauseAskKort'
-import { medVentendeGodkendelse } from '../lib/ventendeGodkendelse'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
@@ -1043,10 +1042,11 @@ export function CodeView({
 // `fletGodkendelser` grupperer pending+afgoerelse til ÉN linje og laegger den
 // ind i den assistent-tur den hørte til. En raekke hvis tur endnu ikke er
 // skrevet bliver staaende — den skal kunne besvares NU.
-  // Den HENTEDE ventende godkendelse flettes ind som en række (16/11-2026), så
-  // kortet står i transcriptet også når den persisterede række mangler.
-  const beskederMedVentende = medVentendeGodkendelse(sessions.messages, stream.pendingApproval, sessionId ?? null)
-  const flettede = fletGodkendelser(beskederMedVentende)
+  // Den HENTEDE ventende godkendelse flettes IKKE længere ind som række
+  // (16/11-2026, anden vending). Den var broen til det gamle mønster hvor
+  // transcriptet var den besvarbare flade; nu står kortet over composeren, og
+  // en syntetisk række ville vise det samme spørgsmål to steder på skærmen.
+  const flettede = fletGodkendelser(sessions.messages)
   const transcriptMessages = flettede.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker' || m.role === 'approval_request')
   // Mens den levende sluttekst ruller faerdig, findes samme svar allerede som
   // persisteret serverraekke. Skjul KUN samme run indtil den levende raekke

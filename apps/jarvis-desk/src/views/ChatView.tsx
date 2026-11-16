@@ -71,7 +71,6 @@ import { skalGenhente } from '../lib/komprimeringsVagt'
 import { useFastgjorte } from '../hooks/useFastgjorte'
 import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
 import { PauseAskKort } from '../components/feedback/PauseAskKort'
-import { medVentendeGodkendelse } from '../lib/ventendeGodkendelse'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { useChatFlow } from '../hooks/useChatFlow'
 import { deriveChatFlow } from '../lib/chatFlowModel'
@@ -685,13 +684,11 @@ export function ChatView({
 // ind i den assistent-tur den hørte til. En raekke hvis tur endnu ikke er
 // skrevet bliver staaende — den skal kunne besvares NU.
   // Samme grund som `visibleMessages`: begge koerte paa hele listen ved hver render.
-  // Den HENTEDE ventende godkendelse flettes ind som en række (16/11-2026), så
-  // kortet står i transcriptet også når den persisterede række mangler.
-  const beskederMedVentende = useMemo(
-    () => medVentendeGodkendelse(sessions.messages, stream.pendingApproval, sessionId ?? null),
-    [sessions.messages, stream.pendingApproval, sessionId],
-  )
-  const flettede = useMemo(() => fletGodkendelser(beskederMedVentende), [beskederMedVentende])
+  // Den HENTEDE ventende godkendelse flettes IKKE længere ind som række
+  // (16/11-2026, anden vending). Den var broen til det gamle mønster hvor
+  // transcriptet var den besvarbare flade; nu står kortet over composeren, og
+  // en syntetisk række ville vise det samme spørgsmål to steder på skærmen.
+  const flettede = useMemo(() => fletGodkendelser(sessions.messages), [sessions.messages])
   // Bobler der er ERSTATTET af et gensend. Den gamle kopi bliver liggende i
   // `sessions.messages` (historikken må ikke ændres), men skjules i visningen —
   // ellers stod to ens bobler (Bjørn 12/11-2026).

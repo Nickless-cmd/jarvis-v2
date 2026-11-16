@@ -6,8 +6,10 @@ def _output_discipline_instruction(*, strength: str) -> str:
     lines = [
         "Output discipline:",
         "- A tool-assisted turn has two visible lanes. Call the first tool BEFORE writing prose.",
-        "  Short text between tool rounds is commentary: a concise synthesis of what changed and",
-        "  what you will check next. The client may fold that workstream under the turn header.",
+        "  Short text between tool rounds is commentary: a synthesis of what changed and what",
+        "  you will check next. Let the structure follow the content — one point is one sentence,",
+        "  three findings are three lines, never one run-on line. Keep it short only when there is",
+        "  little to say. The client may fold that workstream under the turn header.",
         "- Your terminal, tool-free response completes the current turn. In task/code work, make it",
         "  a self-contained, outcome-led final answer. In chat mode it may instead be a reaction,",
         "  a direct answer, or an open conversational turn; do not force every chat turn into a report.",
@@ -86,7 +88,7 @@ def _output_discipline_instruction(*, strength: str) -> str:
     if str(strength) == "strong":
         lines += [
             "- Go straight to the point. Try the simplest approach first without going in circles. Do not overdo it.",
-            "- Keep text between tool calls to ≤25 words. Keep final responses to ≤100 words unless the task genuinely requires more.",
+            "- Keep text between tool calls to ≤25 words, and let the structure follow the content: one point is one sentence, three findings are three lines — never one run-on line. Keep final responses to ≤100 words unless the task genuinely requires more.",
             # Uden denne linje slaar de to instruktioner hinanden ihjel: et
             # diagram er altid over 100 ord, saa ordloftet ville i praksis
             # forbyde det han lige fik at vide at han kunne.

@@ -3132,8 +3132,10 @@ def _build_visible_chat_prompt_assembly_impl(
         "four. Only split when a call genuinely needs the previous result. "
         "After a round of tool "
         "results: write one short synthesis of what you found and what it means "
-        "BEFORE starting the next round. Cap it: one decisive finding plus the next "
-        "step — max two lines (~150 characters), not a summary of everything you saw. "
+        "BEFORE starting the next round. Let the structure follow the content: one "
+        "point is one sentence, three findings are three lines — never one run-on "
+        "line that merges them. Keep it short only when there is little to say; "
+        "when several findings carry the round, the lines carry them. "
         "Never run a round silently — Bjørn must be "
         "able to follow your thinking as you go, not just see the final result."
     )

@@ -120,3 +120,48 @@ def test_forslaget_loves_at_overleve_en_genstart():
     i prompten uden daekning i koden er vaerre end ingen linje."""
     t = _output_discipline_instruction(strength="weak")
     assert "survives an app restart" in t
+
+
+# ── Syntesen: strukturen følger indholdet (16/11-2026) ─────────────────────
+
+
+def test_syntesen_struktureres_efter_indholdet_i_begge_niveauer():
+    """MAALT 16/11-2026 over 5.246 mellemsynteser: **97 % havde nul
+    linjeskift**, og 0 % bar en egentlig liste. Slutsvaret i samme maaling:
+    2 % uden linjeskift, 28 % med liste, 21 linjeskift i snit.
+
+    Aarsagen stod i prompten selv. To steder bad om det modsatte af struktur:
+    workflow-kontrakten sagde «max two lines (~150 characters)», og
+    kommentar-linjen sagde «a concise synthesis». Medianen paa mine synteser
+    var 163 tegn — jeg ramte loftet paa decimalen.
+
+    Loftet er vaek. Det der staar nu er at strukturen foelger indholdet: én
+    pointe er én saetning, tre fund er tre linjer. Kortheden er stadig der,
+    men den er bundet til at der er lidt at sige — ikke til et tegntal.
+    """
+    for s in ("weak", "strong"):
+        t = _output_discipline_instruction(strength=s)
+        assert "three findings are three lines" in t, f"{s}: struktur-reglen mangler"
+        assert "150 characters" not in t, f"{s}: tegn-loftet er tilbage"
+
+
+def test_workflow_kontrakten_baerer_struktur_reglen_og_ikke_tegntallet():
+    """Workflow-blokken ligger inline i `prompt_contract.py` — den er statisk
+    og cache-sikker og kan derfor ikke kaldes isoleret. Saa maales kilden.
+
+    Her ER prompten en streng-literal, saa grep er den rigtige maaling og ikke
+    en erstatning for en. Vagtens pointe er regressionen: genindfoerer nogen
+    tegntallet, skal den fælde — ellers vender de flade synteser tilbage uden
+    at nogen opdager hvorfor.
+    """
+    from pathlib import Path
+
+    kilde = Path(__file__).resolve().parents[1] / "core" / "services" / "prompt_contract.py"
+    tekst = kilde.read_text(encoding="utf-8")
+    assert "three findings are three lines" in tekst, (
+        "workflow-kontrakten mangler struktur-reglen — saa er syntesen igen kun 'vaer kort'"
+    )
+    assert "~150 characters" not in tekst, (
+        "tegntallet er genindfoert i workflow-kontrakten; det var det der gjorde 97 % af "
+        "synteserne flade"
+    )

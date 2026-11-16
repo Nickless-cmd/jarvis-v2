@@ -1,5 +1,15 @@
 # Development log
 
+## 2026-11-16 — Real process restarts and a real claim race, and the bug they found
+
+The session-bound continuation above was characterized through the durable store and the lease/generation semantics — not through an actual restart. That gap is now closed, and closing it exposed a genuine defect.
+
+**`tests/test_session_bound_process_restart.py` launches fresh interpreters as subprocesses.** The workers share an isolated on-disk SQLite database and an isolated recovery journal but no Python module state. One worker writes a wake intention and is killed with `os._exit`; a second claims it and is killed the same way; a third must then collect the intention and dispatch it. The race test runs twelve rounds with four simultaneous workers released through a file gate and requires exactly one winner per round. Both patch `db_core.DB_PATH` explicitly in every worker, because patching `core.runtime.db.DB_PATH` alone does not affect `connect()`.
+
+**The defect it found.** With `recovery_limit = 1`, an expired lease became permanently unclaimable: the single attempt had been spent by the dispatcher that died, so the reclaim the lease exists to enable could never happen. The limit is now 2 — one normal dispatch attempt plus one reclaim. The proof is the mutation: set back to 1, the restart test fails with `'started': 0` where it expects `1`; restored, it passes. The whole wake/recovery surface is green with the change (212 passed).
+
+**A note on the measurement itself.** `tests/test_a*.py` and `tests/test_b*.py`–`test_e*.py` were run to completion for the first time: 38 failures and 9,905 passes across 915 files. Thirty-eight failures across a file set this large is not a number to trust at face value, so the failing files were re-run on the base commit `2a51a9234`: 25 of them fail identically there, and the remaining 13 — in `test_brain_index_orphans`, `test_causal_graph` and `test_central_brain_link` — pass 42/42 when run in isolation on the same tree. Those 13 were contention artifacts from `--timeout=30` on a single core with 694 files in one process, not regressions. The earlier appearance of large `F` blocks in these files was a different cause entirely: `/tmp` is a 16 GB tmpfs and had filled with `pytest-of-bs` directories from killed runs, so tests could not write their temp files.
+
 ## 2026-11-16 — Session-bound background work: origin is authoritative, continuation is characterized
 
 An initiative that starts in a conversation now keeps that conversation as its authoritative origin through the whole lifecycle. Two layers were missing; the rest of the chain already existed and was reused, not replaced.

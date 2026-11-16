@@ -177,6 +177,7 @@ async def chat_warm(body: _WarmBody) -> dict:
         user_id=current_user_id() or "",
         role=_role,
         workspace_name=current_workspace_name() or "bjorn",
+        tool_scope=str(body.mode or "chat").strip().lower() or "chat",
     )
     return {"status": "warming", "session_id": sid}
 

@@ -1460,6 +1460,7 @@ def chat_session(session_id: str, request: Request, response: Response):
                 provider="deepseek", model="deepseek-v4-flash",
                 user_id=current_user_id() or "", role="owner",
                 workspace_name=current_workspace_name() or "bjorn",
+                tool_scope="chat",
             )
     except Exception:
         pass

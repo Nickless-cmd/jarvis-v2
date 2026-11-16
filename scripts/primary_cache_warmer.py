@@ -318,7 +318,9 @@ def _nyeste_session_id() -> str | None:
         return None
 
 
-def _fetch_warmer_tools(session_id: str | None = None) -> list[dict] | None:
+def _fetch_warmer_tools(
+    session_id: str | None = None, *, tool_scope: str = "chat",
+) -> list[dict] | None:
     """Hent det tools-array som visible-chats FAKTISK sender.
 
     DeepSeek's prompt-cache-nøgle inkluderer tools-arrayet, og det ligger lige
@@ -342,7 +344,7 @@ def _fetch_warmer_tools(session_id: str | None = None) -> list[dict] | None:
     try:
         from core.tools.simple_tools import get_tool_definitions
         from core.services.cheap_provider_runtime import _normalize_tools_for_openai_chat
-        all_tools = get_tool_definitions()
+        all_tools = get_tool_definitions(scope=str(tool_scope or ""))
 
         valgt = None
         if session_id:
@@ -374,7 +376,8 @@ def _fetch_warmer_tools(session_id: str | None = None) -> list[dict] | None:
 
 
 def _build_payload(
-    system_prompt: str, *, session_id: str | None = None
+    system_prompt: str, *, session_id: str | None = None,
+    tool_scope: str = "chat",
 ) -> dict[str, Any]:
     """Byg request body til DeepSeek chat completions.
 
@@ -393,7 +396,7 @@ def _build_payload(
         "temperature": DEFAULT_TEMPERATURE,
         "stream": False,
     }
-    tools = _fetch_warmer_tools(session_id=session_id)
+    tools = _fetch_warmer_tools(session_id=session_id, tool_scope=tool_scope)
     if tools:
         payload["tools"] = tools
     return payload
@@ -691,7 +694,9 @@ def _warm_one_workspace(
         logger.error("[%s] Kunne ikke hente system prompt — skip", workspace_name)
         return
 
-    payload = _build_payload(system_prompt, session_id=session_id)
+    payload = _build_payload(
+        system_prompt, session_id=session_id, tool_scope=tool_scope,
+    )
 
     log_entry: dict[str, Any] = {
         "ts": datetime.now(UTC).isoformat(),

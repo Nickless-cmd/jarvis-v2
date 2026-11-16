@@ -25,7 +25,7 @@ def build_agentic_toolbox(
     """Return the pinned toolbox for follow-up rounds using explicit scope."""
     from core.services.turens_vaerktoejer import vaerktoejer_for_turen
 
-    scope = str(tool_scope or "").strip().lower()
+    scope = str(tool_scope or getattr(run, "tool_scope", "") or "").strip().lower()
     alle = get_definitions(scope=scope)
     return vaerktoejer_for_turen(
         alle,

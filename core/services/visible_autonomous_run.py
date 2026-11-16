@@ -255,6 +255,19 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
     else:
         resolved_session = session_id.strip()
 
+    # En vaekning i en code-samtale skal beholde samtalens scope. De fleste
+    # autonome kaldere kender kun session-id'et og sender derfor tomt scope;
+    # foer betoed det, at foerste pas arvede ``code`` fra konteksten, mens
+    # agent-loopet laeste runnets tomme felt og aabnede hele kataloget.
+    tool_scope = str(tool_scope or "").strip().lower()
+    if not tool_scope:
+        try:
+            from core.services.chat_sessions import session_kind
+            if str(session_kind(resolved_session) or "").strip().lower() == "code":
+                tool_scope = "code"
+        except Exception as exc:  # En ukendt/legacy-session bevarer tomt scope.
+            logger.debug("kunne ikke udlede autonomt tool-scope: %s", exc)
+
     # EJER-TJEK (12/11-2026): et autonomt run maa ikke skrive i en ANDEN
     # brugers stemplede samtale. Slipper igennem: ukendt session, tom/'system'-
     # ejer (legacy), system-silo. Afviser med False (aldrig exception).
@@ -448,6 +461,7 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
         ),
         user_id=str(force_user_id or ""),
         origin=_origin,
+        tool_scope=tool_scope,
     )
     if started_callback is not None:
         try:

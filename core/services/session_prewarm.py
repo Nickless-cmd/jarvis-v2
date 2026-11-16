@@ -114,6 +114,7 @@ def warm_session_prefix(
     user_id: str = "",
     role: str = "owner",
     workspace_name: str = "bjorn",
+    tool_scope: str = "chat",
     force: bool = False,
 ) -> dict[str, Any]:
     """Varm en sessions [system][historik]-prefix i DeepSeeks disk-cache.
@@ -213,6 +214,18 @@ def warm_session_prefix(
             "temperature": 0.0,
             "stream": False,
         }
+        # Tools ligger i DeepSeeks cache-prefix. Uden dem varmede denne sti
+        # kun messages og kunne derfor aldrig ramme en rigtig visible-request.
+        try:
+            from core.services.cheap_provider_runtime import _normalize_tools_for_openai_chat
+            from core.services.turens_vaerktoejer import vaerktoejer_for_session
+            from core.tools.simple_tools import get_tool_definitions
+            _alle = get_tool_definitions(scope=str(tool_scope or ""))
+            _tools = vaerktoejer_for_session(_alle, session_id=sid)
+            if _tools:
+                payload["tools"] = _normalize_tools_for_openai_chat(_tools)
+        except Exception as exc:  # Manglende pin maa ikke blokere sessionens warm.
+            logger.debug("session_prewarm: kunne ikke bygge tools-array: %s", exc)
         if isinstance(extra, dict):
             payload.update(extra)
 

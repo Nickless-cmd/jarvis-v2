@@ -405,7 +405,7 @@ def test_fetch_warmer_tools_are_normalized_with_type(monkeypatch):
     monkeypatch.setattr(w, "_fetch_warmer_tools", w._fetch_warmer_tools)  # ensure real
     import core.tools.simple_tools as st
     import core.tools.copilot_tool_pruning as ctp
-    monkeypatch.setattr(st, "get_tool_definitions", lambda: raw)
+    monkeypatch.setattr(st, "get_tool_definitions", lambda **_kw: raw)
     monkeypatch.setattr(ctp, "select_tools_for_visible",
                         lambda tools, **kw: list(tools))
     out = w._fetch_warmer_tools()
@@ -428,7 +428,7 @@ def test_varmeren_sender_det_LAaste_saet_ikke_prunerens(monkeypatch):
     import core.services.turens_vaerktoejer as tv
 
     laast = [{"type": "function", "function": {"name": "kun_fra_laasen"}}]
-    monkeypatch.setattr(st, "get_tool_definitions", lambda: [{"type": "function",
+    monkeypatch.setattr(st, "get_tool_definitions", lambda **_kw: [{"type": "function",
                         "function": {"name": "fra_kataloget"}}])
     monkeypatch.setattr(tv, "vaerktoejer_for_session",
                         lambda alle, *, session_id: list(laast))
@@ -448,7 +448,7 @@ def test_varmeren_falder_tilbage_naar_intet_er_laast(monkeypatch):
     import core.services.turens_vaerktoejer as tv
     import core.tools.copilot_tool_pruning as ctp
 
-    monkeypatch.setattr(st, "get_tool_definitions", lambda: [
+    monkeypatch.setattr(st, "get_tool_definitions", lambda **_kw: [
         {"type": "function", "function": {"name": "fra_kataloget"}}])
     monkeypatch.setattr(tv, "vaerktoejer_for_session", lambda alle, *, session_id: None)
     monkeypatch.setattr(ctp, "select_tools_for_visible",
@@ -457,6 +457,25 @@ def test_varmeren_falder_tilbage_naar_intet_er_laast(monkeypatch):
     out = w._fetch_warmer_tools(session_id="en-session")
     navne = {(t.get("function") or {}).get("name") for t in out or []}
     assert navne == {"fra_kataloget"}, "faldt ikke tilbage til pruneren"
+
+
+def test_varmeren_henter_kataloget_i_samme_scope_som_prompten(monkeypatch):
+    import scripts.primary_cache_warmer as w
+    import core.tools.simple_tools as st
+
+    scopes: list[str] = []
+    monkeypatch.setattr(
+        st, "get_tool_definitions",
+        lambda *, scope: scopes.append(scope) or [
+            {"type": "function", "function": {"name": "scope_tool"}},
+        ],
+    )
+    monkeypatch.setattr(
+        "core.tools.copilot_tool_pruning.select_tools_for_visible",
+        lambda tools, **_kw: tools,
+    )
+    w._fetch_warmer_tools(tool_scope="code")
+    assert scopes == ["code"]
 
 
 def test_den_tomme_scope_varmes_ikke():

@@ -64,6 +64,26 @@ def test_agentic_toolbox_preserves_autonomous_lane(monkeypatch):
     assert seen["run_id"] == "visible-auto"
 
 
+def test_agentic_toolbox_falls_back_to_scope_persisted_on_run(monkeypatch):
+    """Tom kalder-parameter må ikke åbne kataloget efter en trådgrænse."""
+    from core.services import visible_agentic_toolbox as at
+
+    scopes: list[str] = []
+    monkeypatch.setattr(
+        "core.services.turens_vaerktoejer.vaerktoejer_for_turen",
+        lambda alle, **_kwargs: alle,
+    )
+    run = SimpleNamespace(
+        user_message="fortsæt", session_id="chat-code", autonomous=True,
+        run_id="visible-auto-code", tool_scope="code",
+    )
+    at.build_agentic_toolbox(
+        run, tool_scope="",
+        get_definitions=lambda *, scope: scopes.append(scope) or [],
+    )
+    assert scopes == ["code"]
+
+
 def test_first_pass_and_agentic_round_are_byte_identical_for_same_scope():
     """The production invariant: no 84→105 rewrite after the first call."""
     from core.services import visible_agentic_toolbox as at

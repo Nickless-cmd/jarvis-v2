@@ -79,6 +79,43 @@ def test_successful_warm_records_stats(monkeypatch):
     assert recorded.get("cache_hit_tokens") == 900
 
 
+def test_session_warm_sender_sessionens_scopede_toolsaet(monkeypatch):
+    _reset_throttle()
+    monkeypatch.setattr(sp, "session_prewarm_enabled", lambda: True, raising=True)
+    monkeypatch.setattr(sp, "_deepseek_key", lambda: "key", raising=True)
+    monkeypatch.setattr(
+        "core.services.visible_model._build_visible_chat_messages_for_github",
+        lambda *a, **k: [{"role": "system", "content": "sys"}],
+    )
+    scopes: list[str] = []
+    monkeypatch.setattr(
+        "core.tools.simple_tools.get_tool_definitions",
+        lambda *, scope: scopes.append(scope) or [
+            {"type": "function", "function": {"name": "code_tool"}},
+        ],
+    )
+    monkeypatch.setattr(
+        "core.services.turens_vaerktoejer.vaerktoejer_for_session",
+        lambda alle, *, session_id: alle,
+    )
+    payloads: list[dict] = []
+    monkeypatch.setattr(
+        sp, "_post_deepseek",
+        lambda _key, payload, **_kw: payloads.append(payload) or {
+            "usage": {"prompt_tokens": 1, "prompt_cache_miss_tokens": 1},
+        },
+    )
+    monkeypatch.setattr("core.costing.ledger.record_cost", lambda **_kw: None)
+
+    result = sp.warm_session_prefix(
+        "chat-code-warm", tool_scope="code", force=True,
+    )
+
+    assert result["status"] == "ok"
+    assert scopes == ["code"]
+    assert [t["function"]["name"] for t in payloads[0]["tools"]] == ["code_tool"]
+
+
 def test_warm_bogfoerer_en_beregnet_pris_ikke_nul(monkeypatch):
     """Warmer-forbruget må ikke bogføres som $0,00.
 

@@ -245,6 +245,14 @@ def test_uden_en_pin_bliver_vaekningen_paa_den_billige_lane(isolated_runtime, mo
     assert (run.provider, run.model) == _billig_lane()
 
 
+def test_vaekning_i_code_session_persisterer_code_scope(isolated_runtime, monkeypatch):
+    monkeypatch.setattr(
+        "core.services.chat_sessions.session_kind", lambda _sid: "code",
+    )
+    run = _start_og_fang_run(monkeypatch, "chat-code-scope")
+    assert run.tool_scope == "code"
+
+
 def test_en_auto_silo_bruger_aldrig_en_pin_selv_om_der_findes_en(isolated_runtime, monkeypatch):
     """Heartbeat, drømme og rutiner lander i `auto-*` — dem er det den billige lane til."""
     from core.services import session_model_pin as smp

@@ -634,3 +634,62 @@ def test_en_UDLOEBET_post_gater_IKKE_selv_om_raekken_staar_aaben(inbox_db):
     # ... og posten kan stadig LÆSES. Udløb er en tilstand, ikke en sletning.
     p = db_inbox.hent(bruger_id=BJORN, kilde_id="wake-udloebet")
     assert p is not None and p["kraever_handling"] is False
+
+
+# ── Agent-kvitterings-gaten: en lås uden nøgle (målt 16/11-2026) ──────────────
+#
+# Gaten nægter `bash` indtil hver terminal agent-kørsel er kvitteret, og peger
+# selv på `bash_session_run` som vejen ud. Men flugtvejen lå i
+# `OWNER_ONLY_TOOLS` og i INGEN scope-liste, så i code-scope — dér hvor
+# deadlocken opstår — kunne den ikke hentes. Resultatet var en TOTAL lås:
+# kvitteringen kræver `bash`, `bash` er låst indtil kvitteringen, og den
+# annoncerede udgang fandtes ikke. Den måtte brydes i hånden via operator-broen.
+#
+# De to tests nedenfor er de to halvdele: at gaten STADIG blokerer når vejen ud
+# findes, og at den slipper når den ikke gør. Uden den første ville rettelsen
+# være «gaten gater ikke længere» — og det er ikke det samme.
+
+
+def _gate_med_en_ukvitteret_agent(monkeypatch):
+    """Sæt gaten i den tilstand der udløste deadlocken: én ukvitteret agent."""
+    import core.services.inbox_gate as ig
+    import core.services.operator_channel as oc
+    monkeypatch.setattr(oc, "er_agent_koersel", lambda: False)
+    monkeypatch.setattr(ig, "_ukvitterede_fejlede_agenter",
+                        lambda _b: ["asg-ukvitteret"])
+
+
+def test_agent_kvittering_blokerer_NAAR_flugtvejen_findes(inbox_db, monkeypatch):
+    """Første halvdel: findes `bash_session_run`, gælder nægtelsen som før."""
+    import core.services.inbox_gate as ig
+    _gate_med_en_ukvitteret_agent(monkeypatch)
+    monkeypatch.setattr(ig, "_flugtvej_findes", lambda: True)
+    v = evaluer_inbox_mutation(BJORN, "bash", tur="t1")
+    assert v["blokeret"] is True, v
+    assert "asg-ukvitteret" in v["poster"]
+
+
+def test_agent_kvittering_slipper_NAAR_flugtvejen_mangler(inbox_db, monkeypatch):
+    """Anden halvdel: er flugtvejen ikke i scopet, må gaten ikke låse.
+
+    En nægtelse uden vej ud er en lås, ikke en gate — den kan ikke forlade sin
+    egen tilstand. Målt 16/11-2026, hvor den måtte brydes via operator-broen.
+    """
+    import core.services.inbox_gate as ig
+    _gate_med_en_ukvitteret_agent(monkeypatch)
+    monkeypatch.setattr(ig, "_flugtvej_findes", lambda: False)
+    v = evaluer_inbox_mutation(BJORN, "bash", tur="t2")
+    assert v["blokeret"] is False, v
+
+
+def test_flugtvejen_ER_i_code_scope_for_owner():
+    """Porten skal annoncere den vej ud som gaten selv henviser til.
+
+    Uden denne ville de to tests ovenfor kunne bestå med en flugtvej der stadig
+    er usynlig i praksis — `_flugtvej_findes` blev patchet i begge.
+    """
+    from core.tools.tool_scoping import is_tool_allowed
+    assert is_tool_allowed(role="owner", scope="code", name="bash_session_run")
+    assert is_tool_allowed(role="owner", scope="code", name="bash_session_open")
+    # ... og et medlem må ALDRIG få container-shellen: samme familie som `bash`.
+    assert not is_tool_allowed(role="member", scope="code", name="bash_session_run")

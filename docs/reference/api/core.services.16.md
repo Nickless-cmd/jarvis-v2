@@ -184,8 +184,9 @@ _Indbakkens to-trins forudsætning i mutationspunktet._
 | function | `_naegtelse` | `(poster, navn)` | — | [src](../../../core/services/inbox_gate.py#L257) |
 | function | `_ukvitterede_fejlede_agenter` | `(bruger_id)` | Id'er på ejerens TERMINALE assignments med ubehandlede resultater. Kaster ved DB-fejl. | [src](../../../core/services/inbox_gate.py#L273) |
 | function | `_agent_kvittering_naegtelse` | `(ider, navn)` | — | [src](../../../core/services/inbox_gate.py#L294) |
-| function | `_agent_kvittering_gate` | `(bruger_id, navn)` | Naegtelsen hvis `navn` er låst af ukvitterede fejl, ellers None. | [src](../../../core/services/inbox_gate.py#L305) |
-| function | `evaluer_inbox_mutation` | `(bruger_id, vaerktoejsnavn, argumenter=…, *, tur=…)` | Skal `vaerktoejsnavn` nægtes, eller skal der bare påmindes? | [src](../../../core/services/inbox_gate.py#L346) |
+| function | `_flugtvej_findes` | `()` | Er den flugtvej gaten SELV annoncerer faktisk tilgaengelig? | [src](../../../core/services/inbox_gate.py#L305) |
+| function | `_agent_kvittering_gate` | `(bruger_id, navn)` | Naegtelsen hvis `navn` er låst af ukvitterede fejl, ellers None. | [src](../../../core/services/inbox_gate.py#L341) |
+| function | `evaluer_inbox_mutation` | `(bruger_id, vaerktoejsnavn, argumenter=…, *, tur=…)` | Skal `vaerktoejsnavn` nægtes, eller skal der bare påmindes? | [src](../../../core/services/inbox_gate.py#L394) |
 
 ## `core/services/inbox_idle_waker.py`
 _Indbakken skal kunne VÆKKE — ikke kun gate._

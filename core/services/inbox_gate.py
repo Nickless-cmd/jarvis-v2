@@ -302,6 +302,42 @@ def _agent_kvittering_naegtelse(ider: list[str], navn: str) -> str:
             "goer. `bash_session_run` er upaavirket.")
 
 
+def _flugtvej_findes() -> bool:
+    """Er den flugtvej gaten SELV annoncerer faktisk tilgaengelig?
+
+    `_agent_kvittering_naegtelse` siger «`bash_session_run` er upaavirket» — men
+    et værktøj der ikke er i det aktive scope findes reelt ikke for modellen.
+    Maalt 16/11-2026: `is_tool_allowed(role='owner', scope='code',
+    name='bash_session_run')` svarede False, mens gaten pegede paa den som den
+    eneste vej ud. Naegtelsen var dermed en laas uden noegle, og den maatte
+    brydes i haanden via operator-broen.
+
+    Det er praecis den fejlform filens egen indledning advarer om: en gate der
+    blokerer naar den ikke kan laese — eller ikke kan frigives — er vaerre end
+    ingen gate, fordi den ikke kan slaaes fri.
+
+    Fail-open: kan scopet ikke afgoeres, antages flugtvejen at findes, saa
+    gammel adfaerd bevares uaendret.
+    """
+    try:
+        from core.identity.workspace_context import current_role
+        from core.tools.tool_scoping import allowed_tool_names, current_tool_scope
+        scope = current_tool_scope()
+        if not scope:
+            # Ubegraenset katalog (legacy-vejen): alt er naaeligt.
+            return True
+        # SAMME funktion som `load_more_tools` selv filtrerer med. `is_tool_allowed`
+        # er en ANDEN sandhed: maalt 16/11-2026 svarede den True i chat-scope for
+        # et vaerktoej der ikke laa i nogen chat-liste. To definitioner af samme
+        # regel driver fra hinanden — det er praecis den drift filen advarer om.
+        tilladte = allowed_tool_names(role=current_role(), scope=scope,
+                                      all_names=["bash_session_run"])
+        return "bash_session_run" in tilladte
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("inbox_gate: kunne ikke afgoere om flugtvejen findes: %s", exc)
+        return True
+
+
 def _agent_kvittering_gate(bruger_id: str, navn: str) -> dict[str, Any] | None:
     """Naegtelsen hvis `navn` er låst af ukvitterede fejl, ellers None.
 
@@ -336,6 +372,18 @@ def _agent_kvittering_gate(bruger_id: str, navn: str) -> dict[str, Any] | None:
                            f"agent-koersler kunne ikke laeses ({type(exc).__name__}). "
                            "Proev igen, eller brug `bash_session_run`.")}
     if not ider:
+        return None
+    # En naegtelse uden en vej ud er en laas, ikke en gate. Er flugtvejen ikke
+    # i scopet, slippes mutationen igennem med et SPORET varsel — ellers kan
+    # hverken jeg eller nogen anden kvittere, og tilstanden kan aldrig forlade
+    # sig selv. Maalt 16/11-2026: deadlocken maatte brydes via operator-broen.
+    if not _flugtvej_findes():
+        logger.warning("inbox_gate: %s ville vaere naegtet, men flugtvejen "
+                       "`bash_session_run` er ikke i scopet — slipper igennem "
+                       "for at undgaa en laas uden noegle", navn)
+        _spor("inbox_gate.fail_open", {"bruger_id": bruger_id, "tool_name": navn,
+                                       "poster": ider,
+                                       "aarsag": "flugtvej ikke i scope"})
         return None
     _spor("inbox_gate.blocked", {"bruger_id": bruger_id, "tool_name": navn,
                                  "poster": ider, "aarsag": "ukvitteret_agent_fejl"})

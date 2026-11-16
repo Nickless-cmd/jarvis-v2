@@ -392,6 +392,30 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
 })
 CODE_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
     "read_file", "write_file", "edit_file", "search", "find_files", "bash",
+    # ── Flugtvejen der ikke fandtes (maalt 16/11-2026) ─────────────────────
+    #
+    # `inbox_gate` laaser `bash` naar et agentresultat ikke er kvitteret, og
+    # peger selv paa `bash_session_run` som den vej ud. Men den laa i
+    # `OWNER_ONLY_TOOLS` og i INGEN scope-liste — saa i code-scope, hvor
+    # deadlocken opstaar, var flugtvejen usynlig. Maalt: `allowed_tool_names
+    # (role='owner', scope='code')` svarede False for baade `bash_session_run`
+    # og `bash_session_open`.
+    #
+    # Konsekvensen var en TOTAL deadlock: kvitteringen kraever `bash`, `bash`
+    # er laast indtil kvitteringen, og den annoncerede flugtvej kunne ikke
+    # hentes. Den blev brudt i haanden via operator-broen (ssh til containeren),
+    # hvilket er praecis det `bash_session` findes for at goere overfloedigt.
+    #
+    # De hoerer her og ikke i BASE: samme familiesom `bash` — en shell i
+    # CONTAINEREN, ikke paa brugerens egen maskine. Et medlem maa ikke faa den.
+    "bash_session_open", "bash_session_run",
+    "bash_session_close", "bash_session_list",
+    # `restart_self` stod heller ikke i nogen scope-liste, mens
+    # `is_tool_allowed("restart_self", role="owner", mode="code")` svarede True
+    # i permission-laget. To sandheder om samme spoergsmaal; porten vandt, og
+    # værktøjet var doedt. Den hoerer i code: det er dér man har rettet noget
+    # der skal genstartes.
+    "restart_self",
     "flag_side_task", "activate_side_task", "dismiss_side_task", "list_side_tasks",
     "snooze_side_task", "wake_side_task", "update_side_task",
     # Owner-only operator backup-channel (jarvis-code bash reroute). Deliberately

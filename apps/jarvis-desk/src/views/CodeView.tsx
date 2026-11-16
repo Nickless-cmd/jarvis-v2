@@ -100,6 +100,14 @@ async function pickFolder(): Promise<string | null> {
   return bridge.pickFolder()
 }
 
+/** Genstarter af follow-strømmen UDEN fremgang før vi giver op (16/11-2026).
+ *  Samme loft som ChatView: `followRun` har sit eget loft på 7 forsøg pr.
+ *  forbindelse, men hver ny `followRun` starter det forfra — så uden dette loft
+ *  kunne et run der aldrig blev terminalt holde klienten i en uendelig løkke.
+ *  Code mode havde slet ikke mekanismen: et enkelt netværksbrud midt i et run
+ *  efterlod den passive klient død resten af runnet. */
+const MAX_FOLLOW_GENSTART = 5
+
 /** Code mode: Jarvis koder i et valgt workspace — server (repo/dit workspace) eller
  *  en mappe på din egen computer (via operator-bridgen). Stream i midten; foldbare
  *  fil-træ- og preview-paneler i højre. Layout spejler chat (centreret velkomst). */
@@ -196,6 +204,12 @@ export function CodeView({
   const [bgRunId, setBgRunId] = useState<string | null>(null)
   const [followState, followDispatch] = useRammeReducer(streamReducer, initialStreamState)
   const followCtrlRef = useRef<{ abort: () => void } | null>(null)
+  // Genstarter af follow-strømmen (16/11-2026, portet fra ChatView): tælleren
+  // hæves kun ved et ægte netværksbrud og nulstilles af ÆGTE fremgang, så et
+  // langt, sundt run stadig må genoptage mange gange.
+  const [followRetry, setFollowRetry] = useState(0)
+  const followForsoegRef = useRef(0)
+  const followSidsteRunRef = useRef<string | null>(null)
 
   // Hjælper: indlæs gemte session-stats fra localStorage.
   function _loadStats(sid: string | null): { tokens: number; toolCalls: number } {
@@ -654,11 +668,30 @@ export function CodeView({
   }, [settings, sessionId, stream.status, stream.activeRunId])
   useEffect(() => {
     if (!bgActive || !sessionId || !settings) return
-    if (followCtrlRef.current) return
+    if (followCtrlRef.current) return // følger allerede
+    // Nyt run i sessionen = frisk chance. Samme run = tælleren fortsætter, så
+    // en række der aldrig bliver terminal ikke kan holdes i live af os selv.
+    if (followSidsteRunRef.current !== bgRunId) {
+      followSidsteRunRef.current = bgRunId
+      followForsoegRef.current = 0
+    }
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
+    let alive = true
+    let stopped = false
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
+    // Abonnementet er bundet til bgRunId: et andet id end det followState
+    // sidst viste er en NY tur og må ikke arve forrige turs blokke/lås.
+    // Uden dette læste reduceren det nye run-id som en RUNDE i samme tur, og
+    // ny tekst blev lagt oven i den forrige besked (Bjørn 16/11-2026).
+    if (bgRunId) followDispatch({ type: 'system_event', kind: 'follow_start', payload: { run_id: bgRunId } } as never)
     followCtrlRef.current = followRun(
       cfg, sessionId,
       (ev) => {
+        if (!alive) return
+        if (ev.type === 'message_stop') stopped = true
+        // Ægte fremgang: nulstil genstarts-loftet. Pings tæller ikke — de er
+        // keepalive og beviser ikke at runnet rører sig.
+        if (ev.type !== 'ping') followForsoegRef.current = 0
         // Akkumulér tool_use på EVENT-niveau (uafhængigt af blocks-reset pr. tur)
         // så miljø-feltet fanger ALLE tool-kald i et agentisk mobil-run.
         if (ev && ev.type === 'content_block_start') {
@@ -669,14 +702,30 @@ export function CodeView({
         }
         followDispatch(ev)
       },
-      () => {
+      (reason) => {
+        if (!alive) return
         followCtrlRef.current = null
         setTimeout(() => { void sessions.refresh() }, 600)
         setTimeout(() => { void sessions.refresh() }, 2000)
+        // En tabt passiv SSE må ikke stå stille resten af runnet. Et normalt
+        // message_stop afventer næste run-id; et netværksbrud prøver igen —
+        // men kun indtil loftet, ellers blev hver fejl til en ny `followRun`
+        // med et nulstillet `attempt`, altså en løkke uden ende.
+        if (reason === 'error' && !stopped && bgRunId) {
+          if (followForsoegRef.current >= MAX_FOLLOW_GENSTART) return
+          followForsoegRef.current += 1
+          retryTimer = setTimeout(() => setFollowRetry((n) => n + 1), 1000)
+        }
       },
+      bgRunId,
     )
-    return () => { followCtrlRef.current?.abort(); followCtrlRef.current = null }
-  }, [bgActive, sessionId, settings])
+    return () => {
+      alive = false
+      if (retryTimer) clearTimeout(retryTimer)
+      followCtrlRef.current?.abort()
+      followCtrlRef.current = null
+    }
+  }, [bgActive, bgRunId, followRetry, sessionId, settings])
 
   // Én scroll-koordinator — samme som ChatView (spec'ens punkt 1a+1c, 29/9-2026).
   // Før havde dette view KUN pin-ved-start: interval-nettet fra 17/9 og

@@ -447,3 +447,94 @@ describe('CodeView — ventende godkendelse over composeren', () => {
     }
   })
 })
+
+/**
+ * Cross-device i CODE MODE (Bjørn 16/11-2026): «to Code Mode-klienter på samme
+ * session» — den passive klient mister run 2 eller blander dets tekst ind i
+ * run 1's besked.
+ *
+ * Fixet i ChatView (5d3b987c7) blev ALDRIG portet hertil: CodeView kaldte
+ * `followRun` uden run-id, dispatchede ikke `follow_start`, og havde ikke
+ * `bgRunId` i effektens deps. Konsekvensen er målt nedenfor — ikke gættet:
+ * med 6-sekunders-latchen på `bgActive` forbliver den sand mellem to runs, så
+ * effekten kører ikke igen, og den passive klient abonnerer kun på det FØRSTE
+ * run. Den arver derefter forrige turs `followState`.
+ *
+ * Testen driver den ægte sti: poll → bgActive → followRun, og måler både at
+ * abonnementet bærer run-id'et, og at et nyt run genstarter det.
+ */
+describe('CodeView — cross-device: to runs på samme session', () => {
+  type FollowKald = { onEvent: (e: unknown) => void; onDone: (r: string) => void; runId?: string | null }
+  const kald: FollowKald[] = []
+  /** Kaldet nr. `i` — kaster hvis det ikke findes, så en manglende genstart
+   *  melder sig som en konkret fejl i stedet for `undefined` på en property. */
+  const kaldet = (i: number): FollowKald => {
+    const k = kald[i]
+    if (!k) throw new Error(`followRun blev kun kaldt ${kald.length} gang(e) — forventede mindst ${i + 1}`)
+    return k
+  }
+
+  beforeEach(() => {
+    kald.length = 0
+    vi.mocked(api.followRun).mockImplementation(((_c: unknown, _s: unknown, onEvent: FollowKald['onEvent'], onDone: FollowKald['onDone'], runId?: string | null) => {
+      kald.push({ onEvent, onDone, runId })
+      return { abort: vi.fn() }
+    }) as never)
+    vi.mocked(api.getActiveRunSessions).mockResolvedValue([])
+  })
+
+  const tur = (runId: string, tekst: string) => [
+    { type: 'message_start', message: { id: runId, model: 'm', provider: 'p', lane: 'l', origin: '', usage: { input_tokens: 0, output_tokens: 0 } } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '', phase: 'final_answer' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: tekst } },
+  ]
+
+  it('binder abonnementet til run-id og genstarter det når et NYT run tager over', async () => {
+    vi.mocked(api.getActiveRunSessions).mockResolvedValue([{ session_id: 's1', run_id: 'run-A', status: 'working' }])
+    wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
+
+    await waitFor(() => expect(kald.length).toBe(1), { timeout: 3000 })
+    // (2) run-id'et SKAL med — uden det kan reduceren ikke skelne nyt run fra reconnect.
+    expect(kaldet(0).runId).toBe('run-A')
+
+    // Tur A leverer sit svar ind i followState.
+    act(() => { for (const e of tur('run-A', 'Svar fra tur A.')) kaldet(0).onEvent(e) })
+    await act(() => new Promise<void>((r) => setTimeout(r, 50)))
+
+    // Tur B starter MENS bgActive stadig er sand (6s-latchen) — præcis det
+    // tilfælde hvor den gamle effekt aldrig kørte igen.
+    vi.mocked(api.getActiveRunSessions).mockResolvedValue([{ session_id: 's1', run_id: 'run-B', status: 'working' }])
+
+    // (3) bgRunId skal stå i deps, ellers sker der intet her.
+    await waitFor(() => expect(kald.length).toBe(2), { timeout: 4000 })
+    expect(kaldet(1).runId).toBe('run-B')
+
+    // (1) follow_start: tur A's blokke må ikke arves af tur B.
+    act(() => { for (const e of tur('run-B', 'Svar fra tur B.')) kaldet(1).onEvent(e) })
+    await act(() => new Promise<void>((r) => setTimeout(r, 50)))
+
+    const svar = Array.from(document.querySelectorAll('.transcript, [data-live]')).map((n) => n.textContent ?? '').join(' ')
+    expect(svar).toContain('Svar fra tur B.')
+    // Uden follow_start stod A's tekst tilbage under B — den fejl Bjørn ser.
+    const bIndex = svar.indexOf('Svar fra tur B.')
+    expect(svar.slice(bIndex + 'Svar fra tur B.'.length)).not.toContain('Svar fra tur A.')
+  })
+
+  it('reconnect midt i SAMME run genstarter ikke turen (samme run-id = no-op)', async () => {
+    vi.mocked(api.getActiveRunSessions).mockResolvedValue([{ session_id: 's1', run_id: 'run-A', status: 'working' }])
+    wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
+    await waitFor(() => expect(kald.length).toBe(1), { timeout: 3000 })
+
+    act(() => { for (const e of tur('run-A', 'Svar fra tur A.')) kaldet(0).onEvent(e) })
+    await act(() => new Promise<void>((r) => setTimeout(r, 50)))
+
+    // Et netværksbrud: follow-enden melder 'error' mens runnet LEVER. Samme
+    // run-id skal derfor ikke give en frisk tur — kun en genoptaget strøm.
+    act(() => { kaldet(0).onDone('error') })
+    vi.mocked(api.getActiveRunSessions).mockResolvedValue([{ session_id: 's1', run_id: 'run-A', status: 'working' }])
+    await act(() => new Promise<void>((r) => setTimeout(r, 1500)))
+
+    if (kald.length > 1) expect(kaldet(1).runId).toBe('run-A')
+    expect(document.body.textContent).toContain('Svar fra tur A.')
+  })
+})

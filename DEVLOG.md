@@ -1,5 +1,19 @@
 # Development log
 
+## 2026-11-16 — The round line carries the life, so it must exist before the work does
+
+Bjørn: *"den aktive rundelinje skal være synlig fra starten for det er den der bærer livet... sådan er det os i chat mode"*.
+
+He was right, and the measurement is blunt: `senesteRunde` requires at least one `tool_use` element, and `visTurhoved` requires `arbejde.length > 0`. From the moment a turn starts until the first tool call lands, code mode rendered **nothing** — no ring, no word. The one window where the user is waiting for a sign of life was the one window with no face on it.
+
+Chat mode never had this hole. `rundeTekst` falls back to `model.hovedTekst` when there is no work yet, so the presence ring and the word "Tænker" are there from the first frame. Code mode had the fallback removed somewhere along the way, or never received it.
+
+The waiting line reuses the round line's wrapper, icon and text style, so the real round takes over the same slot without moving anything. It has no fold arrow — there is nothing to fold yet — and `cursor: default` says the same thing to the mouse. The text is the server's reported `working_step` when it passes the same `isMeaningfulStatus` guard the round line uses (so a raw tool name cannot leak through), otherwise "Tænker".
+
+The gate is `arbejdeKoerer && arbejde.length === 0` — the same `arbejdeKoerer` the rest of the surface uses, so the line disappears when the answer begins and returns if work arrives after the answer lock.
+
+Verified: six new tests. Mutation measured — removing the gate drops the three that require the line to be visible; the three "it disappears" tests pass by design, because they guard the opposite direction. 767 green across the rich and view suites, `tsc` clean, both bundles built, and `rv-venter` verified present in `dist/` **and** `dist-web/` rather than assumed.
+
 ## 2026-11-16 — A stop leaves a trace you can find, and does not resume itself
 
 Bjørn asked the question the mechanism could not answer: *"de burde ikk dø, men endten lande i din inbox eller i en kø … eller risikere vi jo noget kunne gå tabt"*.

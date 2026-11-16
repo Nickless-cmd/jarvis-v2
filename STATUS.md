@@ -5,6 +5,14 @@ The repository-wide status source remains
 This file records the status of the delivered Jarvis Desk changes requested for
 implementation.
 
+## The round line exists from the first frame — complete locally (2026-11-16)
+
+- Code mode rendered **nothing** from turn start until the first tool call landed: `senesteRunde` requires a `tool_use` element and `visTurhoved` requires `arbejde.length > 0`. The window where the user waits for a sign of life had no face on it.
+- A waiting line now fills it, reusing the round line's wrapper, icon and text style so the real round takes over the same slot without moving anything. No fold arrow, `cursor: default`.
+- Text is the server's `working_step` when it passes `isMeaningfulStatus` (the same guard as the round line, so a raw tool name cannot leak), otherwise "Tænker" — the same fallback chat mode has always used.
+- Gate: `arbejdeKoerer && arbejde.length === 0`, so it disappears when the answer begins and returns if work arrives after the answer lock.
+- Verified: 6 tests in `RaekkeTranskript.ventelinje.test.tsx`; mutation drops the three that require the line. 767 green across rich + view suites, `tsc` clean, both bundles built, `rv-venter` confirmed in `dist/` and `dist-web/`. Desk 0.6.369.
+
 ## A user stop leaves a findable trace — complete locally (2026-11-16)
 
 - `stopped_for_session(session_id)` returns the run the user stopped, but only while that stop is still the last thing that happened in the session. A later `completed` turn makes it disappear; the rule is derived from state rather than a consumed flag.

@@ -831,8 +831,12 @@ def list_alle(*, maks: int = 50) -> list[dict[str, Any]]:
 
 _REDIGERBARE_FELTER: Final[frozenset[str]] = frozenset(
     {"title", "prompt", "tldr", "autonomy_mode", "max_minutes", "max_tool_calls",
-     "not_before"}
+     "not_before", "path", "behavior", "evidence"}
 )
+
+# Hvor mange spor-poster en post bærer. Et loft, så en opgave der rettes igen
+# og igen ikke vokser uden grænse.
+_MAKS_REDIGERINGER: Final[int] = 20
 
 
 def opdater(side_task_id: str, **aendringer: Any) -> dict[str, Any]:
@@ -874,6 +878,8 @@ def opdater(side_task_id: str, **aendringer: Any) -> dict[str, Any]:
                     "error": ("sideopgaven er i gang og kan ikke redigeres — "
                               "et run læser den lige nu")}
 
+        foer = {k: found.get(k) for k in _REDIGERBARE_FELTER | {"max_minutes", "max_tool_calls"}}
+
         # Samme validering som `flag`. En redigering må ikke kunne omgå en
         # grænse som oprettelsen håndhæver.
         if "title" in aendringer:
@@ -888,6 +894,9 @@ def opdater(side_task_id: str, **aendringer: Any) -> dict[str, Any]:
             found["prompt"] = prompt[:12000]
         if "tldr" in aendringer:
             found["tldr"] = str(aendringer["tldr"] or "")[:600]
+        for _felt, _grense in (("path", 300), ("behavior", 300), ("evidence", 1000)):
+            if _felt in aendringer:
+                found[_felt] = str(aendringer[_felt] or "").strip()[:_grense]
         if "autonomy_mode" in aendringer:
             autonomy = str(aendringer["autonomy_mode"] or "none").strip().lower()
             if autonomy not in _AUTONOMY_MODES:
@@ -921,11 +930,21 @@ def opdater(side_task_id: str, **aendringer: Any) -> dict[str, Any]:
                 else:
                     found.pop("not_before", None)
 
-        found["redigeret_at"] = datetime.now(UTC).isoformat()
-        _save_all(items)
+        # Spor: kun hvad der FAKTISK ændrede sig. En identisk redigering to
+        # gange er derfor en no-op — intet nyt spor, ingen skrivning, ingen fejl.
+        diff = {k: {"fra": foer[k], "til": found.get(k)}
+                for k in foer if foer[k] != found.get(k)}
+        if diff:
+            nu = datetime.now(UTC).isoformat()
+            found["redigeret_at"] = nu
+            spor = list(found.get("redigeringer") or [])
+            spor.append({"at": nu, "felter": diff})
+            found["redigeringer"] = spor[-_MAKS_REDIGERINGER:]
+            _save_all(items)
     return {"status": "ok", "side_task_id": side_task_id,
             "title": found.get("title", ""),
-            "autonomy_mode": found.get("autonomy_mode", "none")}
+            "autonomy_mode": found.get("autonomy_mode", "none"),
+            "aendret": sorted(diff), "uændret": not diff}
 
 
 def resolve(side_task_id: str, *, decision: str,
@@ -1255,6 +1274,20 @@ def _exec_activate_side_task(args: dict[str, Any]) -> dict[str, Any]:
                    lukket_af="jarvis")
 
 
+def _exec_update_side_task(args: dict[str, Any]) -> dict[str, Any]:
+    """Ret en åben sideopgave på plads — id og finding_key bevares.
+
+    Ingen mode-gate her: tilgængeligheden i chat og code afgøres kun af
+    scope-listerne i tool_scoping (samme som flag/dismiss). Redigering er ikke
+    farligere end oprettelse, og at tvinge dismiss+ny tabte historik.
+    """
+    felter = {k: v for k, v in args.items() if k in _REDIGERBARE_FELTER
+              or k in ("max_minutes", "max_tool_calls")}
+    if not felter:
+        return {"status": "error", "error": "ingen felter at rette"}
+    return opdater(str(args.get("side_task_id") or ""), **felter)
+
+
 def _exec_snooze_side_task(args: dict[str, Any]) -> dict[str, Any]:
     """Udskyd en sideopgave til et tidspunkt (16/10-2026).
 
@@ -1329,6 +1362,35 @@ SIDE_TASK_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "name": "list_side_tasks",
             "description": "List open side-tasks — pending, queued and active — across all sessions.",
             "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_side_task",
+            "description": (
+                "Edit an OPEN side-task in place (fix a title, sharpen the prompt, change "
+                "budget/autonomy/not_before) instead of dismiss + flag again — id, "
+                "finding_key and history are kept, and the edit is traced in "
+                "`redigeringer`. Pass only the fields to change. Refused for closed "
+                "(completed/dismissed) tasks and for tasks a run is working on right "
+                "now. Same edit twice is a no-op. Status is NOT editable here."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "side_task_id": {"type": "string"},
+                    "title": {"type": "string"}, "prompt": {"type": "string"},
+                    "tldr": {"type": "string"}, "path": {"type": "string"},
+                    "behavior": {"type": "string"}, "evidence": {"type": "string"},
+                    "not_before": {"type": "string",
+                                   "description": "ISO timestamp; empty string clears it."},
+                    "autonomy_mode": {"type": "string"},
+                    "max_minutes": {"type": "integer"},
+                    "max_tool_calls": {"type": "integer"},
+                },
+                "required": ["side_task_id"],
+            },
         },
     },
     {

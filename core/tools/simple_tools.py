@@ -306,6 +306,7 @@ from core.services.side_tasks import (
     _exec_dismiss_side_task,
     _exec_activate_side_task,
     _exec_snooze_side_task,
+    _exec_update_side_task,
     _exec_wake_side_task,
 )
 from core.tools.smart_outline import (
@@ -2227,6 +2228,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "list_side_tasks": _exec_list_side_tasks,
     "dismiss_side_task": _exec_dismiss_side_task,
     "snooze_side_task": _exec_snooze_side_task,
+    "update_side_task": _exec_update_side_task,
     "wake_side_task": _exec_wake_side_task,
     "activate_side_task": _exec_activate_side_task,
     "smart_outline": _exec_smart_outline,

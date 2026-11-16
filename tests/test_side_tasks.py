@@ -707,3 +707,65 @@ def test_verify_side_task_skelner_ikke_fundet_fra_ulaeseligt(monkeypatch, tmp_pa
     ulaeseligt = side_tasks.verify_side_task("side-whatever")
     assert ulaeseligt["status"] == "error"
     assert ulaeseligt["error"] == "lager_ulaeseligt"
+
+
+# ── update_side_task: redigering på plads ───────────────────────────────────
+def _isolate(_tmp_path, monkeypatch):
+    from contextlib import nullcontext
+    state = []
+    monkeypatch.setattr(side_tasks, "load_json", lambda _k, _d: list(state))
+    monkeypatch.setattr(side_tasks, "save_json",
+                        lambda _k, items: state.__setitem__(slice(None), items))
+    monkeypatch.setattr(side_tasks, "med_laas", lambda _k: nullcontext())
+    return state
+
+
+def _ny_opgave(**kw):
+    base = dict(title="Gammel titel", prompt="Gammel prompt", finding_key="fk-upd-1")
+    base.update(kw)
+    return side_tasks.flag(**base)["side_task_id"]
+
+
+def _hent(tid):
+    return next(r for r in side_tasks.list_alle() if r["side_task_id"] == tid)
+
+
+def test_update_ret_titel_og_prompt_bevarer_id_og_finding_key(tmp_path, monkeypatch):
+    _isolate(tmp_path, monkeypatch)
+    tid = _ny_opgave()
+    r = side_tasks._exec_update_side_task(
+        {"side_task_id": tid, "title": "Ny titel", "prompt": "Ny prompt", "path": "a/b.py"})
+    assert r["status"] == "ok"
+    rec = _hent(tid)
+    assert rec["side_task_id"] == tid and rec["finding_key"] == "fk-upd-1"
+    assert rec["title"] == "Ny titel" and rec["prompt"] == "Ny prompt"
+    assert rec["path"] == "a/b.py" and rec["status"] == "pending"
+
+
+def test_update_afviser_terminal_post_og_status_kan_ikke_rettes(tmp_path, monkeypatch):
+    _isolate(tmp_path, monkeypatch)
+    tid = _ny_opgave()
+    assert side_tasks._exec_update_side_task(
+        {"side_task_id": tid, "status": "completed"})["status"] == "error"
+    side_tasks._exec_dismiss_side_task({"side_task_id": tid, "reason": "irrelevant"})
+    r = side_tasks._exec_update_side_task({"side_task_id": tid, "title": "x"})
+    assert r["status"] == "error" and "kan ikke redigeres" in r["error"]
+    assert _hent(tid)["title"] == "Gammel titel"
+
+
+def test_update_efterlader_spor_og_er_idempotent(tmp_path, monkeypatch):
+    _isolate(tmp_path, monkeypatch)
+    tid = _ny_opgave()
+    side_tasks._exec_update_side_task({"side_task_id": tid, "title": "Ny titel"})
+    spor = _hent(tid)["redigeringer"]
+    assert len(spor) == 1 and spor[0]["at"]
+    assert spor[0]["felter"]["title"] == {"fra": "Gammel titel", "til": "Ny titel"}
+    again = side_tasks._exec_update_side_task({"side_task_id": tid, "title": "Ny titel"})
+    assert again["status"] == "ok" and again["uændret"] is True
+    assert len(_hent(tid)["redigeringer"]) == 1
+
+
+def test_update_er_i_chat_og_code_scope():
+    from core.tools import tool_scoping as ts
+    assert "update_side_task" in ts.CHAT_MODE_TOOLS_BASE
+    assert "update_side_task" in ts.CODE_MODE_OWNER_EXTRA

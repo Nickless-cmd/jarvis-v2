@@ -210,6 +210,7 @@ DANSKE_UDTRYK: dict[str, str] = {
     "flag_side_task": "noter til senere, gem som sideopgave, skriv det på listen, tag den senere",
     "dismiss_side_task": "drop sideopgaven, afvis sideopgaven, glem sideopgaven",
     "activate_side_task": "sæt sideopgaven i gang, aktivér sideopgaven, tag sideopgaven nu",
+    "update_side_task": "ret sideopgaven, rediger sideopgaven, ændr titel eller prompt på sideopgaven",
     "snooze_side_task": "udskyd sideopgaven, vent med den, tag den senere",
     "wake_side_task": "væk sideopgaven, tag den op nu, den skal køre nu",
     # Kontinuitet og selvstart

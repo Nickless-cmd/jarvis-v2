@@ -533,6 +533,7 @@ _INTERNE_HALE_VAERKTOEJER = frozenset({
     "suggest_next_task",
     "activate_side_task",
     "dismiss_side_task",
+    "update_side_task",
     "write_handover",
     "note_add",
     "set_flag",

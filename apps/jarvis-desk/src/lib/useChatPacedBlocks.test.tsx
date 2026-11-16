@@ -169,6 +169,24 @@ describe('useChatPacedBlocks', () => {
     expect(requestAnimationFrame).not.toHaveBeenCalled()
   })
 
+  it('flusher den resterende levende tekst straks naar turen er done', () => {
+    const text = 'Et langt levende svar. '.repeat(80)
+    const blocks: ContentBlock[] = [{ type: 'text', text }]
+    const { result, rerender } = renderHook(
+      ({ flush }) => useChatPacedBlocks(blocks, {
+        live: true, finalAnswerStarted: false, paceAllText: true,
+        runId: 'run-flush', flush,
+      }),
+      { initialProps: { flush: false } },
+    )
+    nextFrame()
+    expect((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text.length)
+      .toBeLessThan(text.length)
+
+    rerender({ flush: true })
+    expect((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text).toBe(text)
+  })
+
   it('shows tools and deliveries immediately while pacing only text', () => {
     const tool: ContentBlock = { type: 'tool_use', id: 't1', name: 'search', input: {}, status: 'running' }
     const file: ContentBlock = { type: 'file', filename: 'svar.txt', url: '/files/svar.txt' }

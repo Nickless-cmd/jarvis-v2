@@ -1294,7 +1294,8 @@ export function ChatView({
               finalAnswerStarted={stream.finalAnswerStarted || stream.svarLaast} arbejdeEfterSvar={stream.arbejdeEfterSvar} rundeEtiketter={stream.rundeEtiketter}
               tankeResumeer={stream.tankeResumeer} config={raekkeConfig}
               tokens={stream.usage.output}
-              paceFinalAnswer={afslutterSvarPacing} onAnswerPaced={markerSvarPacet} />
+              paceFinalAnswer={afslutterSvarPacing} flushFinalAnswer={stream.status === 'done'}
+              onAnswerPaced={markerSvarPacet} />
           </>
         )}
         {/* Autonomt wakeup-run: token-stream live mens det kører. Når det er
@@ -1336,16 +1337,16 @@ export function ChatView({
               inline så det ruller med transcriptet». Spørgsmålet skal stå fast
               over composeren indtil han svarer — se `PauseAskKort`. */}
           <PauseAskKort />
-          {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
-          {stream.status === 'hung' && (
-            <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />
-          )}
-          {stream.status === 'reconnecting' && (
-            <div className="banner banner-reconnecting" role="status">
-              <span className="banner-message">Forbindelsen røg — genforbinder…</span>
-              <button type="button" className="banner-dismiss" aria-label="afbryd" onClick={() => void stream.abort()}>×</button>
-            </div>
-          )}
+          <InterruptedBanner
+            status={stream.status}
+            onResume={() => stream.continueFromPartial()}
+            onAbort={() => void stream.abort()}
+          />
+          <HangPrompt
+            status={stream.status}
+            onResume={() => stream.continueFromPartial()}
+            onAbort={() => void stream.abort()}
+          />
           {stream.status === 'error' && stream.canonicalError && stream.canonicalError.kind ? (
             // Fase 2: rig ErrorCard når fejlen har en kanonisk kind; ellers fallback nedenfor.
             <ErrorCard

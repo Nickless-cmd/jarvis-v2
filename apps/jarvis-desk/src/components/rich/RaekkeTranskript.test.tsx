@@ -241,21 +241,29 @@ describe('RaekkeTranskript', () => {
     expect(gruppe.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(2)
   })
 
-  it('bevarer den aktive rundelinjes faste DOM-slot mellem synteser', () => {
+  it('tegner rundelinjen på sin egen plads — syntesen efter den må ikke overhale', () => {
     const første = [
       tekst('Jeg undersøger først.'),
       statusKald('read_file', { path: 'a.ts' }, 'running'),
     ]
     const { container, rerender } = render(<RaekkeTranskript blocks={første} streaming />)
-    const aktivKnap = container.querySelector('.rv-arbejdsknap')
+    const aktivRunde = container.querySelector('.rv-arbejdsrunde')
+    const aktivKnap = aktivRunde?.querySelector('.rv-arbejdsknap')
     expect(aktivKnap).toBeInTheDocument()
+    fireEvent.click(aktivKnap!)
+    expect(aktivKnap).toHaveAttribute('aria-expanded', 'true')
 
     rerender(<RaekkeTranskript blocks={[
       tekst('Jeg undersøger først.'),
       statusKald('read_file', { path: 'a.ts' }, 'done'),
       tekst('Jeg fandt næste spor.'),
     ]} streaming />)
-    expect(container.querySelector('.rv-arbejdsknap')).toBe(aktivKnap)
+    const efterSyntese = container.querySelector('.rv-gruppe')!
+    expect([...efterSyntese.children].map((e) => e.className)).toEqual([
+      'rv-mellem', 'rv-arbejdsrunde', 'rv-mellem',
+    ])
+    expect(efterSyntese.children[1]).toBe(aktivRunde)
+    expect(aktivKnap).toHaveAttribute('aria-expanded', 'true')
 
     rerender(<RaekkeTranskript blocks={[
       tekst('Jeg undersøger først.'),
@@ -263,10 +271,15 @@ describe('RaekkeTranskript', () => {
       tekst('Jeg fandt næste spor.'),
       statusKald('edit_file', { path: 'a.ts' }, 'running'),
     ]} streaming />)
-    const runder = container.querySelectorAll('.rv-arbejdsrunde')
-    expect(runder).toHaveLength(2)
-    expect(runder[1]?.querySelector('.rv-arbejdsknap')).toBe(aktivKnap)
-    expect(aktivKnap).toHaveTextContent('Redigerer a.ts')
+    const efterNæsteRunde = container.querySelector('.rv-gruppe')!
+    expect([...efterNæsteRunde.children].map((e) => e.className)).toEqual([
+      'rv-mellem', 'rv-arbejdsrunde', 'rv-mellem', 'rv-arbejdsrunde',
+    ])
+    const runder = efterNæsteRunde.querySelectorAll('.rv-arbejdsrunde')
+    expect(runder[0]).toBe(aktivRunde)
+    expect(runder[0]?.querySelector('.rv-arbejdsknap')).toBe(aktivKnap)
+    expect(runder[1]).toHaveAttribute('data-aktiv-runde')
+    expect(runder[1]?.querySelector('.rv-arbejdsknap')).toHaveTextContent('Redigerer a.ts')
   })
 
   it('skjuler den aktive linje visuelt uden at afmontere dens ur', () => {

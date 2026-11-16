@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HangPrompt } from './HangPrompt'
+import { InterruptedBanner } from './InterruptedBanner'
 import { LivenessIndicator } from './LivenessIndicator'
 
 describe('feedback', () => {
@@ -53,10 +54,24 @@ describe('feedback', () => {
   })
   it('HangPrompt fires onResume and onAbort', async () => {
     const onResume = vi.fn(), onAbort = vi.fn()
-    render(<HangPrompt onResume={onResume} onAbort={onAbort} />)
+    const { rerender } = render(<HangPrompt status="hung" onResume={onResume} onAbort={onAbort} />)
     await userEvent.click(screen.getByRole('button', { name: /genoptag/i }))
     expect(onResume).toHaveBeenCalled()
     await userEvent.click(screen.getByRole('button', { name: /afbryd/i }))
     expect(onAbort).toHaveBeenCalled()
+
+    rerender(<HangPrompt status="working" onResume={onResume} onAbort={onAbort} />)
+    expect(screen.queryByText('Jarvis svarer ikke.')).not.toBeInTheDocument()
+  })
+
+  it('InterruptedBanner forsvinder uden klik, naar forbindelsen bliver sund', () => {
+    const { rerender } = render(
+      <InterruptedBanner status="interrupted" onResume={vi.fn()} onAbort={vi.fn()} />,
+    )
+    expect(screen.getByRole('status')).toHaveTextContent('Forbindelse afbrudt')
+
+    rerender(<InterruptedBanner status="working" onResume={vi.fn()} onAbort={vi.fn()} />)
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })

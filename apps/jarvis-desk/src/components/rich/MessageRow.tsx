@@ -131,6 +131,7 @@ function MessageRowImpl({
   tokens,
   onWorkExpanded,
   paceFinalAnswer,
+  flushFinalAnswer,
   onAnswerPaced,
   density,
   streaming,
@@ -167,6 +168,7 @@ function MessageRowImpl({
   tokens?: number
   onWorkExpanded?: () => void
   paceFinalAnswer?: boolean
+  flushFinalAnswer?: boolean
   onAnswerPaced?: () => void
   density: 'compact' | 'full'
   streaming: boolean
@@ -286,7 +288,8 @@ function MessageRowImpl({
                   tokens={tokens}
                   beskedId={beskedId} config={config} onWorkExpanded={onWorkExpanded}
                   sessionId={sessionId}
-                  paceFinalAnswer={paceFinalAnswer} onAnswerPaced={onAnswerPaced} />
+                  paceFinalAnswer={paceFinalAnswer} flushFinalAnswer={flushFinalAnswer}
+                  onAnswerPaced={onAnswerPaced} />
               : <CodeAssistantTranscript blocks={blocks} density={density} streaming={streaming} onPaced={onAnswerPaced}
                   finalAnswerStarted={finalAnswerStarted} arbejdeEfterSvar={arbejdeEfterSvar} beskedId={beskedId} config={config}
                   rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} raekker={raekker}

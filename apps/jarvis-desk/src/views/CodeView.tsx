@@ -1406,10 +1406,16 @@ export function CodeView({
             )}
             {/* pause_and_ask hører HER, ikke i tråden (9/11-2026) — se ChatView. */}
             <PauseAskKort />
-            {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
-            {stream.status === 'hung' && (
-              <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />
-            )}
+            <InterruptedBanner
+              status={stream.status}
+              onResume={() => stream.continueFromPartial()}
+              onAbort={() => void stream.abort()}
+            />
+            <HangPrompt
+              status={stream.status}
+              onResume={() => stream.continueFromPartial()}
+              onAbort={() => void stream.abort()}
+            />
             {/* Bjørn 4/10-2026: «network error og kryds til at trykke — network
                 error kan være meget, den er nødt til at vise en fejl.»
 

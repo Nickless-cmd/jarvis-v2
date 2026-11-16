@@ -50,6 +50,8 @@ export interface ChatFlowPresentationProps {
   /** Hold slutsvarets visuelle pacing i live efter message_stop, indtil den
    *  persisterede besked kan overtage uden et dump. */
   paceFinalAnswer?: boolean
+  /** Turen er terminal: vis hele den allerede modtagne tekst før overtagelsen. */
+  flushFinalAnswer?: boolean
   onAnswerPaced?: () => void
 }
 
@@ -100,6 +102,7 @@ export function ChatFlowPresentation({
   config,
   onWorkExpanded,
   paceFinalAnswer = false,
+  flushFinalAnswer = false,
   onAnswerPaced,
 }: ChatFlowPresentationProps) {
   const deferredTurn = useMemo(() => (
@@ -119,6 +122,7 @@ export function ChatFlowPresentation({
     live: streaming || paceFinalAnswer,
     finalAnswerStarted: pacingFinal,
     paceAllText: streaming,
+    flush: flushFinalAnswer,
     // Nøglen er TUREN, ikke runnet (28/10-2026). Cursoren ligger under
     // `${nøgle}:chat-text`; gav et follow-up-run en ny nøgle, faldt cursoren
     // til `''` og svaret blev pacet FORFRA — det Bjørn beskrev som «tom skærm,

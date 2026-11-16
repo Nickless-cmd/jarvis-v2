@@ -157,6 +157,46 @@ describe('StreamContext', () => {
     expect(result.current.streamError).toBeNull() // ikke en terminal fejl
   })
 
+  it('onInterrupted starter sikker reattach foer det manuelle kort vises', () => {
+    vi.useFakeTimers()
+    try {
+      followRunMock.mockClear()
+      const { result } = renderHook(() => useStream(), { wrapper })
+      act(() => { result.current.send('hej', { sessionId: 's' }) })
+
+      act(() => { handlersRef.current?.onInterrupted() })
+
+      expect(result.current.status).toBe('reconnecting')
+      expect(result.current.status).not.toBe('interrupted')
+      act(() => { vi.advanceTimersByTime(1000) })
+      expect(followRunMock).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('et gammelt Genoptag-klik er harmlost efter forbindelsen er sund igen', () => {
+    vi.useFakeTimers()
+    try {
+      followRunMock.mockClear()
+      const { result } = renderHook(() => useStream(), { wrapper })
+      act(() => { result.current.send('hej', { sessionId: 's' }) })
+      act(() => { handlersRef.current?.onInterrupted() })
+      const gammeltGenoptag = result.current.continueFromPartial
+      act(() => { vi.advanceTimersByTime(1000) })
+      const onEvent = followRunMock.mock.calls[0]?.[2] as ((event: unknown) => void) | undefined
+      act(() => { onEvent?.({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'tilbage' } }) })
+      expect(result.current.status).toBe('working')
+
+      act(() => { gammeltGenoptag() })
+
+      expect(result.current.status).toBe('working')
+      expect(followRunMock).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('ikke-retryable fejl → terminal error med struktureret besked', () => {
     const { result } = renderHook(() => useStream(), { wrapper })
     act(() => { result.current.send('hej', { sessionId: 's' }) })

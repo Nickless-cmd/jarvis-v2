@@ -191,7 +191,7 @@ describe('ChatView integration', () => {
     expect(container.querySelector('.msg-block[data-just-completed]')).toHaveTextContent('svar')
   })
 
-  it('fortsætter den samme rolige pacing efter message_stop uden final_answer_start', async () => {
+  it('viser hele den resterende pacing-tekst ved message_stop uden final_answer_start', async () => {
     // Svar uden tools får ingen final_answer_start fra relæet. DeepSeek kan
     // levere dem i store bidder; wakeup/follow-modellen leverer typisk små og
     // skjulte derfor fejlen. Den lokale Chat-række skal pace fra første delta
@@ -219,14 +219,14 @@ describe('ChatView integration', () => {
     const synligTekst = () => view.container
       .querySelector('.chat-flow-answer, .chat-flow-live-synthesis')?.textContent?.length ?? 0
     await waitFor(() => expect(synligTekst()).toBeGreaterThan(0))
-    const førStop = synligTekst()
     act(() => { handlersRef.current?.onEvent({ type: 'message_stop' }) })
-
-    const answer = view.container.querySelector('.chat-flow-answer')
-    expect(answer).toBeInTheDocument()
-    expect(answer?.textContent?.length ?? 0).toBeGreaterThanOrEqual(førStop)
-    expect(answer?.textContent?.length ?? 0).toBeLessThan(text.length)
-    expect(view.container.textContent).not.toContain(text)
+    const synligtMaal = text.trimEnd() // Markdown tegner ikke terminal whitespace.
+    await waitFor(() => {
+      const answer = view.container.querySelector('.chat-flow-answer')
+      expect(answer).toBeInTheDocument()
+      expect(answer?.textContent).toBe(synligtMaal)
+      expect(answer?.textContent?.length).toBe(synligtMaal.length)
+    })
     view.unmount()
   })
 

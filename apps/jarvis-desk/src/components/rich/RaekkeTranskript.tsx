@@ -437,6 +437,13 @@ function etiketFor(elementer: ArbejdsElement[], etiketter: Record<string, string
   return undefined
 }
 
+function noegleForRunde(elementer: ArbejdsElement[]): string | undefined {
+  for (const e of elementer) {
+    if (e.slags === 'blok' && e.blok.type === 'tool_use') return `runde:${e.blok.id}`
+  }
+  return undefined
+}
+
 function RaekkeTranskriptImpl({
   blocks, streaming, finalAnswerStarted = false, arbejdeEfterSvar = false, beskedId, runId, config, rundeEtiketter,
   elapsedMs = 0, tokens = 0, varighedSekunder = null,
@@ -478,14 +485,16 @@ function RaekkeTranskriptImpl({
     ? levendeBilledArbejde(afslutForladteKald(blocks, true).flatMap((b) => b.type === 'tool_use' ? [b] : []))
     : null
   const sektioner = opdelArbejdsrunder(arbejde)
-  // En syntese kan lande efter et afsluttet tool-kald, før næste kald starter.
-  // Den må ikke stjæle "aktiv" fra den seneste runde i det mellemrum.
+  // Kun en runde der faktisk er sidste sektion ejer den levende bundplads.
+  // Når dens syntese lander bagefter, bliver runden stående historisk foran
+  // syntesen i stedet for at blive løftet ned under den.
   let sidsteRundeIndex = -1
   for (let i = 0; i < sektioner.length; i++) {
     if (sektioner[i]?.slags === 'runde') sidsteRundeIndex = i
   }
-  const rundeKandidat = streaming ? sektioner[sidsteRundeIndex] : undefined
-  const senesteRunde = rundeKandidat?.slags === 'runde' ? rundeKandidat : null
+  const aktivRundeIndex = streaming && sidsteRundeIndex === sektioner.length - 1
+    ? sidsteRundeIndex
+    : -1
   // Familien pr. kald — SAMME kilde som kroppene (`postFor`), så turens
   // hoved og rækkerne aldrig kan fortælle to forskellige historier.
   const familier = arbejde.flatMap((e) =>
@@ -581,25 +590,15 @@ function RaekkeTranskriptImpl({
       {arbejde.length > 0 && (
         <div className="rv-gruppe" hidden={!aaben}>
               {aaben && sektioner.map((s, i) => {
-                // Den levende runde har én fast slot nederst. Når næste
-                // syntese lander, bliver slotten stående og opdaterer på
-                // stedet; den gamle runde falder først tilbage på sin
-                // historiske plads, når næste runde overtager slotten.
-                if (streaming && i === sidsteRundeIndex && s.slags === 'runde') return null
                 if (s.slags === 'syntese') return <Syntese key={i} tekst={s.tekst} streaming={streaming} />
                 if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} beskedId={beskedId} />
-                return <Arbejdsrunde key={i} elementer={s.elementer} streaming={streaming}
-                  sidste={i === sidsteRundeIndex}
+                const aktiv = i === aktivRundeIndex
+                return <Arbejdsrunde key={noegleForRunde(s.elementer) ?? i}
+                  elementer={s.elementer} streaming={streaming} sidste={aktiv}
                   config={config} etiket={etiketFor(s.elementer, etiketter)} beskedId={beskedId}
-                  turSekunder={turSekunder} />
+                  turSekunder={turSekunder} skjult={aktiv && skjulAktivRunde}
+                  workingStep={aktiv ? workingStep : undefined} />
               })}
-              {aaben && senesteRunde ? (
-                <Arbejdsrunde key="aktiv-runde" elementer={senesteRunde.elementer}
-                  streaming sidste config={config}
-                  etiket={etiketFor(senesteRunde.elementer, etiketter)}
-                  beskedId={beskedId} turSekunder={turSekunder} skjult={skjulAktivRunde}
-                  workingStep={workingStep} />
-              ) : null}
             </div>
       )}
       {billedArbejde ? <BilledArbejdeAnimation arbejde={billedArbejde} config={config} /> : null}

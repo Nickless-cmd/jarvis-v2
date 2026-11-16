@@ -63,6 +63,13 @@ describe('svarPacingGate', () => {
     expect(gate.filterAktiv).toBe(true)
   })
 
+  it('holder den levende tur monteret ved done uden slutsignal naar runnet har tekst', () => {
+    const gate = svarPacingGate(grund({ harSlutblok: false, finalAnswerStarted: false }))
+    expect(gate.afslutterSvarPacing).toBe(true)
+    expect(gate.visLevendeTur).toBe(true)
+    expect(gate.filterAktiv).toBe(true)
+  })
+
   it('er faerdig naar runnet allerede er markeret pacet', () => {
     const gate = svarPacingGate(grund({ pacedAnswerRunId: 'visible-x' }))
     expect(gate.paceVindue).toBe(false)

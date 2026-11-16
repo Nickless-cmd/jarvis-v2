@@ -30,6 +30,8 @@ const MAX_FRAME_DELTA_S = 0.1
 export interface ChatPacingOptions {
   live: boolean
   finalAnswerStarted: boolean
+  /** Vis hele det modtagne mål i samme render som turen går til `done`. */
+  flush?: boolean
   /** Pace også levende synteser før serveren kender slutsvarsgrænsen. */
   paceAllText?: boolean
   runId?: string | null
@@ -299,7 +301,7 @@ export function useChatPacedBlocks(
     frame.current = null
   }, [])
 
-  if (!active) return blocks as ContentBlock[]
+  if (options.flush || !active) return blocks as ContentBlock[]
   const shown = cursor.key === key ? cursor.shown : ''
   if (shown === target) return blocks as ContentBlock[]
   let resterende = codePoints(shown).length

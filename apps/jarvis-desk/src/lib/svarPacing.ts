@@ -65,7 +65,12 @@ export function svarPacingGate(input: PacingInput): PacingGate {
   // det overlever at et værktøj efter teksten flytter blokken ud af
   // `finalBlocks` — hvilket `harSlutblok` ikke gør. Målt 29/10-2026: uden det
   // faldt pacen bort midt i sit eget vindue.
-  const afslutterSvarPacing = paceVindue && (input.harSlutblok || input.finalAnswerStarted)
+  // No-tool-svar kan afslutte uden begge signaler. Når et aktivt run allerede
+  // har levende tekst, skal rækken stadig overleve `done`-renderen, så hooken
+  // kan flushe det fulde mål. `paceVindue` kræver fortsat `activeRunId`, så en
+  // persisteret besked uden aktivt run aldrig aktiverer pacingen.
+  const afslutterSvarPacing = paceVindue
+    && (input.harSlutblok || input.finalAnswerStarted || input.levendeTekst.length > 0)
 
   // DEN LEVENDE TUR tegnes mens strømmen løber og mens pacen indhenter den.
   const visLevendeTur = input.status === 'working' || afslutterSvarPacing

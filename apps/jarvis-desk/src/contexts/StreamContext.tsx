@@ -278,6 +278,10 @@ export function StreamProvider({
   const controlGenRef = useRef(0)
   const reconnectAttemptRef = useRef(0)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Synkront hegn for et klik fra et kort, som React er ved at afmontere.
+  // State alene er for sent i den ene event-loop-runde, hvor forbindelsen netop
+  // er kommet tilbage, men det gamle Genoptag-element stadig kan modtage klik.
+  const connectionHealthyRef = useRef(false)
   const sessionRef = useRef<string | null>(null)
   // Hvilken session det aktive run hører til — så Sidebar kan vise en
   // arbejds-indikator på den, også når en ANDEN session er fremme (#8).
@@ -295,6 +299,7 @@ export function StreamProvider({
   // i stedet for at re-POSTe beskeden (= dublet). Backoff 1s→30s, vent på 'online'
   // hvis vi er offline. Serverens run kører videre detached (A3) → vi følger det bare.
   const reattach = useCallback((sessionId: string) => {
+    connectionHealthyRef.current = false
     if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
     const delay = _RECONNECT_BACKOFF_MS[Math.min(reconnectAttemptRef.current, _RECONNECT_BACKOFF_MS.length - 1)]
     setOverride('reconnecting')
@@ -316,6 +321,7 @@ export function StreamProvider({
         (e: StreamEvent) => {
           if (!erAktuel()) return
           if (e.type === 'message_start' || e.type === 'content_block_delta') {
+            connectionHealthyRef.current = true
             reconnectAttemptRef.current = 0
             setOverride(null) // genforbundet og streamer igen
           }
@@ -391,6 +397,7 @@ export function StreamProvider({
     setStreamError(null)
     canonical.dismiss()
     sessionRef.current = opts.sessionId
+    connectionHealthyRef.current = false
     reconnectAttemptRef.current = 0
     setOverride(null)
     setPendingApproval(null)
@@ -428,6 +435,7 @@ export function StreamProvider({
       {
         onEvent: (e: StreamEvent) => {
           if (!koerslenErAktuel()) return
+          connectionHealthyRef.current = true
           // En frame er landet: er vi ved at genforbinde, er vi det ikke
           // laengere. Uden dette ville «genforbinder» blive haengende paa
           // skaermen resten af turen.
@@ -466,13 +474,29 @@ export function StreamProvider({
           }
           dispatch(e)
         },
-        onRunId: (id) => { runIdRef.current = id; deskRunBridge()?.setActiveRun?.(id) },
+        onRunId: (id) => {
+          connectionHealthyRef.current = true
+          runIdRef.current = id
+          deskRunBridge()?.setActiveRun?.(id)
+        },
         // Fase 10: klienten genforbinder nu til et koerende run fra sit
         // vandmaerke. Uden denne linje ville genforbindelsen vaere USYNLIG —
         // skaermen stod stille indtil 90s-vagten fyrede «haengt».
-        onReconnecting: () => setOverride('reconnecting'),
-        onHung: () => setOverride('hung'),
-        onInterrupted: () => { setOverride('interrupted'); deskRunBridge()?.setActiveRun?.(null) },
+        onReconnecting: () => {
+          connectionHealthyRef.current = false
+          setOverride('reconnecting')
+        },
+        onHung: () => {
+          connectionHealthyRef.current = false
+          setOverride('hung')
+        },
+        onInterrupted: () => {
+          connectionHealthyRef.current = false
+          // streamClient har udtoemt sin cursor-genoptagelse. Proev nu den
+          // sikre session-reattach, foer vi viser det manuelle sidste-udvej-kort.
+          if (sessionRef.current) reattach(sessionRef.current)
+          else setOverride('interrupted')
+        },
         onError: (err) => {
           if (err.statusCode === 401) reportUnauthorized()
           // Netværksfejl → genforbind AUTOMATISK til det levende run (re-attach,
@@ -489,6 +513,7 @@ export function StreamProvider({
           }
         },
         onComplete: () => {
+          connectionHealthyRef.current = true
           deskRunBridge()?.setActiveRun?.(null)
           // Terminal-garanti klient-side: ved bruger-abort kappes forbindelsen
           // lokalt, så serverens message_stop aldrig når frem → status ville
@@ -516,9 +541,11 @@ export function StreamProvider({
   }, [config])
 
   const continueFromPartial = useCallback(() => {
-    // Rydder override; caller (ChatView) starter en ny tur via send().
-    setOverride(null)
-  }, [])
+    // Et sent klik fra et kort, der er ved at forsvinde, maa aldrig starte en
+    // parallel stream eller rydde status paa en allerede sund forbindelse.
+    if (connectionHealthyRef.current) return
+    if (sessionRef.current) reattach(sessionRef.current)
+  }, [reattach])
 
   /** Afgør det ventende kort — ad den vej posten kom fra.
    *

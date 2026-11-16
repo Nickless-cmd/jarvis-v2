@@ -46,6 +46,7 @@ from __future__ import annotations
 import logging
 import queue
 import subprocess
+import sys
 import threading
 from pathlib import Path
 from typing import Any
@@ -317,6 +318,111 @@ def _git_staged_paths(*, cwd: Path = _REPO_ROOT) -> set[str] | None:
         return None  # fail-closed
 
 
+#: Generatorens EGET output — de eneste paths en regenererings-retry må tilføje.
+#: Læst fra kilderne, ikke gættet: ``api_docs_gen.API_DIR``/``COV_OUT``,
+#: ``api_reference_gen.OUT`` og ``capabilities_gen.OUT``.
+#: Uden denne afgrænsning kunne en regenerering trække runet uvedkommende
+#: filer med ind i commit'en.
+_GENERATED_DOCS_PREFIXES = (
+    "docs/reference/api/",
+    "docs/reference/DOCSTRING_COVERAGE.md",
+    "docs/reference/API_REFERENCE.md",
+    "docs/reference/CAPABILITIES.md",
+)
+
+#: Målt: `api_docs_gen` bruger ~5 s på 82 sider. 180 s er margin uden at hænge
+#: gaten, som kører i en post-run-hook.
+_DOCS_REGEN_TIMEOUT_S = 180
+
+
+def _er_docs_drift_fejl(stderr: str) -> bool:
+    """Nægtede commit'en fordi de genererede docs er forældede?
+
+    Kun DEN fejl må udløse en regenerering. En attributions-fejl eller et
+    secrets-hit skal give et ærligt afslag — ikke starte en generator.
+    """
+    tekst = (stderr or "").lower()
+    return "docs-drift" in tekst or "hard drift item" in tekst
+
+
+def _dirty_generated_docs() -> set[str]:
+    """De genererede docs der lige nu afviger fra HEAD."""
+    try:
+        r = subprocess.run(
+            ["git", "status", "--porcelain", "--", *_GENERATED_DOCS_PREFIXES],
+            capture_output=True, text=True, timeout=15, cwd=_REPO_ROOT,
+        )
+    except Exception:  # git utilgængelig → vi kender ingen dirty docs; retry springes over
+        return set()
+    if r.returncode != 0:
+        return set()
+    ud: set[str] = set()
+    for linje in (r.stdout or "").splitlines():
+        if len(linje) < 4:
+            continue
+        sti = linje[3:].strip()
+        if " -> " in sti:  # rename: tag "new"-siden
+            sti = sti.split(" -> ", 1)[1].strip()
+        if sti.startswith(_GENERATED_DOCS_PREFIXES):
+            ud.add(sti)
+    return ud
+
+
+def _regenerer_genererede_docs() -> list[str]:
+    """Kør doc-generatorerne og returnér de output-paths de ændrede.
+
+    Returnerer ``[]`` hvis ingen generator kunne køres — så giver en retry
+    ingen mening, og den oprindelige commit-fejl står uændret.
+    """
+    foer = _dirty_generated_docs()
+    for script in ("api_docs_gen.py", "api_reference_gen.py", "capabilities_gen.py"):
+        try:
+            subprocess.run(
+                [sys.executable, str(_REPO_ROOT / "scripts" / script)],
+                capture_output=True, text=True,
+                timeout=_DOCS_REGEN_TIMEOUT_S, cwd=_REPO_ROOT,
+            )
+        except Exception:  # generator utilgængelig eller timeout → de øvrige kører videre
+            continue
+    return sorted(_dirty_generated_docs() - foer)
+
+
+def _commit_paths(
+    paths: list[str],
+    *,
+    run_id: str,
+    session_id: str,
+    focus: str,
+) -> tuple[Any, str]:
+    """Stage og commit de givne paths.
+
+    Returnerer ``(commit-resultat, add-fejl)``. Er ``add`` fejlet, er
+    resultatet ``None`` og fejlteksten sat; ellers er det andet element tomt.
+    """
+    subject = f"auto(run): {focus or 'autonom session'} — {len(paths)} fil(er)"
+    body = f"\n\nrun_id: {run_id}\nsession_id: {session_id}\npaths: {len(paths)}"
+    add = subprocess.run(
+        ["git", "add", "--", *paths],
+        capture_output=True, text=True, timeout=15, cwd=_REPO_ROOT,
+    )
+    if add.returncode != 0:
+        return None, (add.stderr or add.stdout or "git add fejlede").strip()[:300]
+    return commit_with_attribution(
+        repo=_REPO_ROOT,
+        message=subject + body,
+        attribution=CommitAttribution(
+            actor="jarvis",
+            actor_type="agent",
+            run_id=run_id,
+            session_id=session_id or "none",
+            origin="autonomous",
+            approved_by="policy:auto-commit-v1",
+        ),
+        paths=tuple(paths),
+        timeout=120,
+    ), ""
+
+
 def _try_auto_commit(
     touched_paths: set[str],
     *,
@@ -391,37 +497,47 @@ def _try_auto_commit(
             )[:300]
             return None
 
-    subject = f"auto(run): {focus or 'autonom session'} — {len(candidates)} fil(er)"
-    body = f"\n\nrun_id: {run_id}\nsession_id: {session_id}\npaths: {len(candidates)}"
     try:
-        add = subprocess.run(
-            ["git", "add", "--", *candidates],
-            capture_output=True, text=True, timeout=15, cwd=_REPO_ROOT,
+        commit, add_fejl = _commit_paths(
+            candidates, run_id=run_id, session_id=session_id, focus=focus
         )
-        if add.returncode != 0:
-            _last_auto_commit_error = (add.stderr or add.stdout or "git add fejlede").strip()[:300]
+        if commit is None:
+            _last_auto_commit_error = add_fejl
             return None
 
-        commit = commit_with_attribution(
-            repo=_REPO_ROOT,
-            message=subject + body,
-            attribution=CommitAttribution(
-                actor="jarvis",
-                actor_type="agent",
-                run_id=run_id,
-                session_id=session_id or "none",
-                origin="autonomous",
-                approved_by="policy:auto-commit-v1",
-            ),
-            paths=tuple(candidates),
-            timeout=120,
-        )
         if commit.returncode != 0:
+            fejl = (commit.stderr or commit.stdout or "git commit fejlede").strip()
+            # 16/11-2026: docs-drift-hooket nægter når de genererede docs er
+            # forældede — og det ramte også runs der ikke selv havde rørt
+            # Python, fordi scopingen matchede mappenavn frem for filtype
+            # (rettet i scripts/docs_drift_check.py). For de ÆGTE tilfælde
+            # (målt 15/11: 2 af 5) kunne intet autonomt run der rører core/
+            # forsegles uden manuel regenerering. Vi prøver derfor ÉN gang
+            # mere med generatorens eget output tilføjet. Fejler det igen,
+            # står den oprindelige fejl uændret og ændringerne forbliver synlige.
+            if _er_docs_drift_fejl(fejl):
+                nye = [p for p in _regenerer_genererede_docs() if p not in candidates]
+                if nye:
+                    udvidede = candidates + nye
+                    commit2, add_fejl2 = _commit_paths(
+                        udvidede, run_id=run_id, session_id=session_id, focus=focus
+                    )
+                    if commit2 is not None and commit2.returncode == 0:
+                        short = (commit2.sha or "?")[:12]
+                        logger.info(
+                            "run_closure_gate: auto-commit %s efter docs-regenerering "
+                            "→ %s (%d paths, run %s)",
+                            short, focus[:60], len(udvidede), run_id[:12],
+                        )
+                        return short or "?"
+                    fejl = (
+                        (commit2.stderr or commit2.stdout).strip()
+                        if commit2 is not None else add_fejl2
+                    ) or fejl
+                    candidates = udvidede
             # Hook blokerede eller git fejlede → rul staging tilbage, behold
             # ændringerne synlige, gem årsagen (sidste 400 tegn af stderr).
-            _last_auto_commit_error = (
-                commit.stderr or commit.stdout or "git commit fejlede"
-            ).strip()[-400:]
+            _last_auto_commit_error = fejl[-400:]
             try:
                 subprocess.run(
                     ["git", "restore", "--staged", "--", *candidates],
@@ -434,7 +550,7 @@ def _try_auto_commit(
         short = (commit.sha or "?")[:12]
         logger.info(
             "run_closure_gate: auto-commit %s → %s (%d paths, run %s)",
-            short[:12], subject[:60], len(candidates), run_id[:12],
+            short[:12], focus[:60], len(candidates), run_id[:12],
         )
         return short or "?"
     except Exception as exc:

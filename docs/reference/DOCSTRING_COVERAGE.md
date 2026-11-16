@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10231/18771 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10236/18775 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10231/18771 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 905 | 1619 | 55% |
-| `core.services` | 6857 | 12741 | 53% |
+| `core.services` | 6861 | 12745 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -38,7 +38,7 @@ Generated from source. 10231/18771 functions/methods documented (54%). The list 
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 10 | 11 | 90% |
-| `scripts` | 335 | 679 | 49% |
+| `scripts` | 336 | 679 | 49% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -1896,7 +1896,7 @@ Generated from source. 10231/18771 functions/methods documented (54%). The list 
 - `core/services/run_autonomy_context.py` :: `reset_user_present` (L134)
 - `core/services/run_autonomy_context.py` :: `set_autonomous_budget` (L79)
 - `core/services/run_autonomy_context.py` :: `set_run_identity` (L174)
-- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L947)
+- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L1063)
 - `core/services/run_event_log.py` :: `active_run_for_session` (L370)
 - `core/services/run_event_log.py` :: `append` (L239)
 - `core/services/run_event_log.py` :: `create` (L102)

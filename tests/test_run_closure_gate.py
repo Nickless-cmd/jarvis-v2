@@ -363,6 +363,100 @@ class TestAutoCommitGate:
         # staging rullet tilbage så ændringerne forbliver synlige
         assert any(c[:2] == ["git", "restore"] for c in calls)
 
+    # ── docs-drift: regenerér og prøv ÉN gang igen (16/11-2026) ─────────────
+    def test_docs_drift_regenererer_og_proever_igen(self):
+        """Docs-drift-hooket nægtede → generatoren køres → commit forsøges igen
+        med generatorens eget output tilføjet. Målt 15/11: 2 af 5 blokeringer
+        var ægte drift, og intet autonomt run kunne forsegles uden dette."""
+        from core.services import run_closure_gate as gate_mod
+        fake_run, _ = self._fake_git()
+        resultater = [
+            AttributedCommitResult(1, stderr="docs-drift: 1 HARD drift item(s)\n"),
+            AttributedCommitResult(0, sha="regen5678"),
+        ]
+        with patch.object(gate_mod, "_git_staged_paths", return_value=set()), \
+             patch.object(gate_mod, "subprocess") as sp, \
+             patch.object(
+                 gate_mod, "_regenerer_genererede_docs",
+                 return_value=["docs/reference/api/core.services.24.md"],
+             ) as regen, \
+             patch.object(
+                 gate_mod, "commit_with_attribution", side_effect=resultater,
+             ) as commit:
+            sp.run = fake_run
+            short = gate_mod._try_auto_commit(
+                {"core/services/run_closure_gate.py"},
+                run_id="rid-regen", session_id="sid-regen", focus="x",
+            )
+
+        assert short == "regen5678"
+        assert regen.call_count == 1
+        assert commit.call_count == 2
+        assert commit.call_args_list[1].kwargs["paths"] == (
+            "core/services/run_closure_gate.py",
+            "docs/reference/api/core.services.24.md",
+        )
+
+    def test_anden_commit_fejl_udloeser_ikke_regenerering(self):
+        """Kun docs-drift må starte en generator. En attributions-fejl eller et
+        secrets-hit skal give et ærligt afslag — ellers committer gaten filer
+        runet ikke rørte, for at løse en fejl der ikke handler om docs."""
+        from core.services import run_closure_gate as gate_mod
+        fake_run, calls = self._fake_git()
+        with patch.object(gate_mod, "_git_staged_paths", return_value=set()), \
+             patch.object(gate_mod, "subprocess") as sp, \
+             patch.object(gate_mod, "_regenerer_genererede_docs") as regen, \
+             patch.object(
+                 gate_mod, "commit_with_attribution",
+                 return_value=AttributedCommitResult(
+                     1, stderr="commit-attribution-message: missing Actor trailer\n"),
+             ):
+            sp.run = fake_run
+            short = gate_mod._try_auto_commit(
+                {"core/services/run_closure_gate.py"},
+                run_id="rid-attr", session_id="sid-attr", focus="x",
+            )
+
+        assert short is None
+        assert regen.call_count == 0
+        assert "Actor" in gate_mod._last_auto_commit_error
+        assert any(c[:2] == ["git", "restore"] for c in calls)
+
+    def test_ingen_nye_docs_giver_ingen_retry(self):
+        """Regenereringen ændrede intet → et nyt commit-forsøg ville være
+        identisk med det første og fejle af samme grund. Vi springer det over
+        og lader den oprindelige fejl stå."""
+        from core.services import run_closure_gate as gate_mod
+        fake_run, _ = self._fake_git()
+        with patch.object(gate_mod, "_git_staged_paths", return_value=set()), \
+             patch.object(gate_mod, "subprocess") as sp, \
+             patch.object(gate_mod, "_regenerer_genererede_docs", return_value=[]), \
+             patch.object(
+                 gate_mod, "commit_with_attribution",
+                 return_value=AttributedCommitResult(
+                     1, stderr="docs-drift: 1 HARD drift item(s)\n"),
+             ) as commit:
+            sp.run = fake_run
+            short = gate_mod._try_auto_commit(
+                {"core/services/run_closure_gate.py"},
+                run_id="rid-noop", session_id="sid-noop", focus="x",
+            )
+
+        assert short is None
+        assert commit.call_count == 1
+        assert "docs-drift" in gate_mod._last_auto_commit_error
+
+    def test_docs_drift_detektering_er_smal(self):
+        """Vagten for hvilke fejl der udløser regenerering — den skal ikke
+        fange alt der nævner 'docs'."""
+        from core.services.run_closure_gate import _er_docs_drift_fejl
+
+        assert _er_docs_drift_fejl("docs-drift: 1 HARD drift item(s) — regenerate")
+        assert _er_docs_drift_fejl("hook docs-drift-check exit 1")
+        assert not _er_docs_drift_fejl("commit-attribution-message: missing trailer")
+        assert not _er_docs_drift_fejl("detect-secrets: potential secret found")
+        assert not _er_docs_drift_fejl("")
+
     def test_commit_has_pathspec_not_kitchen_sink(self):
         """Fund 2: git commit must have -- pathspec, never commit everything."""
         from core.services.run_closure_gate import _try_auto_commit

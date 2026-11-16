@@ -114,3 +114,82 @@ def test_prose_path_re_ignores_paths_nested_in_longer_paths(tmp_path):
         "- `/home/bs/Skrivebord/deepseek-harness/packages/core/session/README.md`")
     out = d.prose_drift(docs, tmp_path)
     assert out == [], out
+
+
+# ── Scopingen: mappenavn er ikke det samme som filtype (målt og rettet 15/11-2026) ──
+def _fake_generator(kaldt: list, name: str = "api_docs_gen") -> dict:
+    def expected() -> dict:
+        kaldt.append(name)
+        return {}
+
+    return {"name": name, "source_dirs": ["core", "apps", "scripts"],
+            "source_suffixes": (".py",), "expected": expected}
+
+
+def test_scoping_springer_generator_over_for_ikke_python(monkeypatch, tmp_path):
+    """Den falske trigger. `api_docs_gen` læser kun `*.py`, men scopingen matchede
+    mappenavnet `apps/` — så en `.tsx`-ændring under jarvis-desk startede en
+    Python-docs-check der umuligt kunne blive forældet af den fil. Den kørte,
+    fandt en ANDEN ældre drift, og blokerede commit'en for et run der ikke rørte
+    Python. Målt 15/11-2026: 3 af 5 docs-drift-blokeringer var den slags."""
+    kaldt: list = []
+    monkeypatch.setattr(d, "_GENERATORS", [_fake_generator(kaldt)])
+
+    ud = d.stale_generated(only_dirs=["apps/jarvis-desk/src/lib/rundeTrin.ts"], repo=tmp_path)
+
+    assert ud == []
+    assert kaldt == [], "generatoren blev kørt for en fil den ikke læser"
+
+
+def test_scoping_springer_over_css_og_json(monkeypatch, tmp_path):
+    """Samme fejl, andre filtyper: en `.css` eller `package.json` under `apps/`."""
+    kaldt: list = []
+    monkeypatch.setattr(d, "_GENERATORS", [_fake_generator(kaldt)])
+
+    ud = d.stale_generated(
+        only_dirs=["apps/jarvis-desk/src/styles/routines.css", "apps/jarvis-desk/package.json"],
+        repo=tmp_path,
+    )
+
+    assert ud == []
+    assert kaldt == []
+
+
+def test_scoping_koerer_for_python_under_kildemappen(monkeypatch, tmp_path):
+    """Den ægte trigger må ikke forsvinde i samme rettelse."""
+    kaldt: list = []
+    monkeypatch.setattr(d, "_GENERATORS", [_fake_generator(kaldt)])
+
+    d.stale_generated(only_dirs=["core/services/agentic_execution.py"], repo=tmp_path)
+
+    assert kaldt == ["api_docs_gen"]
+
+
+def test_scoping_fanger_stadig_foraeldet_doc(monkeypatch, tmp_path):
+    """Scopingen må ikke gøre værnet blindt: en `.py`-ændring SKAL stadig fælde
+    en doc der er løbet fra sin generator."""
+    doc = tmp_path / "docs" / "x.md"
+    doc.parent.mkdir(parents=True)
+    doc.write_text("gammel")
+    monkeypatch.setattr(d, "_GENERATORS", [
+        {"name": "api_docs_gen", "source_dirs": ["core"], "source_suffixes": (".py",),
+         "expected": lambda: {"docs/x.md": "ny"}},
+    ])
+
+    ud = d.stale_generated(only_dirs=["core/x.py"], repo=tmp_path)
+
+    assert ud == [{"generator": "api_docs_gen", "kind": "stale", "path": "docs/x.md"}]
+
+
+def test_scoping_springer_over_python_uden_for_kildemappen(monkeypatch, tmp_path):
+    """En `.py`-fil uden for generatorens kildemapper er stadig irrelevant."""
+    kaldt: list = []
+    monkeypatch.setattr(d, "_GENERATORS", [_fake_generator(kaldt)])
+
+    d.stale_generated(only_dirs=["scripts/api_docs_gen.py"], repo=tmp_path)
+    assert kaldt == ["api_docs_gen"]  # scripts/ er i kildemapperne → kørt
+
+    kaldt.clear()
+    d.stale_generated(only_dirs=["tests/test_docs_drift_check.py"], repo=tmp_path)
+    assert kaldt == [], "tests/ er ikke en kildemappe"
+

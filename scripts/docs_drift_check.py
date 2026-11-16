@@ -99,15 +99,30 @@ def _expected_capabilities() -> dict[str, str]:
     return {str(g.OUT.relative_to(REPO)): g.render_md(rows)}
 
 
+#: `source_suffixes` er ikke kosmetik. Hver generator læser UDELUKKENDE Python
+#: (`api_docs_gen` og `api_reference_gen` via `rglob("*.py")`, `capabilities_gen`
+#: via import af tool-registret). Uden filtype-filteret udløste en `.tsx`-ændring
+#: under `apps/jarvis-desk` en Python-docs-check der umuligt kunne blive forældet
+#: af den fil — og blokerede commit'en for et run der ikke rørte Python.
+#: Målt 15/11-2026: 3 af 5 docs-drift-blokeringer var den slags falske triggere.
 _GENERATORS = [
-    {"name": "api_docs_gen", "source_dirs": ["core", "apps", "scripts"], "expected": _expected_api_docs},
-    {"name": "api_reference_gen", "source_dirs": ["apps/api"], "expected": _expected_api_reference},
-    {"name": "capabilities_gen", "source_dirs": ["core/tools", "core/services"], "expected": _expected_capabilities},
+    {"name": "api_docs_gen", "source_dirs": ["core", "apps", "scripts"],
+     "source_suffixes": (".py",), "expected": _expected_api_docs},
+    {"name": "api_reference_gen", "source_dirs": ["apps/api"],
+     "source_suffixes": (".py",), "expected": _expected_api_reference},
+    {"name": "capabilities_gen", "source_dirs": ["core/tools", "core/services"],
+     "source_suffixes": (".py",), "expected": _expected_capabilities},
 ]
 
 
-def _staged_under(source_dirs: list[str], staged: list[str]) -> bool:
-    return any(sp == sd or sp.startswith(sd + "/") for sd in source_dirs for sp in staged)
+def _staged_under(
+    source_dirs: list[str],
+    staged: list[str],
+    suffixes: tuple[str, ...] = (".py",),
+) -> bool:
+    """Er en STAGET fil af en type generatoren læser, under en af dens kildemapper?"""
+    relevante = [sp for sp in staged if sp.endswith(suffixes)]
+    return any(sp == sd or sp.startswith(sd + "/") for sd in source_dirs for sp in relevante)
 
 
 def stale_generated(only_dirs: list[str] | None = None, repo: Path = REPO) -> list[dict]:
@@ -117,7 +132,9 @@ def stale_generated(only_dirs: list[str] | None = None, repo: Path = REPO) -> li
     whose source dirs weren't touched."""
     out: list[dict] = []
     for gen in _GENERATORS:
-        if only_dirs is not None and not _staged_under(gen["source_dirs"], only_dirs):
+        if only_dirs is not None and not _staged_under(
+            gen["source_dirs"], only_dirs, gen.get("source_suffixes", (".py",))
+        ):
             continue
         try:
             expected = gen["expected"]()

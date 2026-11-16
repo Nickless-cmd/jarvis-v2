@@ -5,6 +5,18 @@ The repository-wide status source remains
 This file records the status of the delivered Jarvis Desk changes requested for
 implementation.
 
+## `cancel-active` lookup — complete locally (2026-11-16)
+
+- `POST /chat/sessions/{id}/cancel-active` resolves the run per session
+  (`live_run_for_session`) instead of reading the single global
+  `visible_runs.active_run` slot. A run in another conversation can no longer
+  make your own run unreachable by the stop button, and a foreign run is never
+  touched.
+- Only a `running` run is a stop target; a terminal one answers
+  `{cancelled: false}` instead of claiming success.
+- First test for the endpoint: `tests/test_chat_cancel_active.py`, driving real
+  runs through `run_event_log.create`. Mutation-verified in both directions.
+
 ## CodeView stop and pending-approval projection — complete locally (2026-11-16)
 
 - CodeView shows the stop button for all work in the conversation and stops it

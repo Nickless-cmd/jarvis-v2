@@ -19,6 +19,7 @@ from core.services.chat_sessions import (
 )
 from core.services.attributed_git_commit import commit_with_attribution
 from core.services.commit_attribution import CommitAttribution, new_manual_run_id
+from core.services.run_stream_locator import live_run_for_session
 from core.services.visible_runs import (
     cancel_visible_run,
     resolve_pending_approval,
@@ -1303,23 +1304,25 @@ def chat_session_recovery(session_id: str, response: Response) -> dict:
 @router.post("/sessions/{session_id}/cancel-active")
 def chat_cancel_active(session_id: str) -> dict:
     """Afbryd det run der kører for sessionen (mobil/desk stop-knap naar klienten
-    ikke selv streamer runnet — fx efter baggrund hvor serveren stadig arbejder)."""
+    ikke selv streamer runnet — fx efter baggrund hvor serveren stadig arbejder).
+
+    16/11-2026: opslaget er PER SESSION (`live_run_for_session`), ikke den globale
+    slot `visible_runs.active_run`. Slotten er ÉN nøgle uden session-suffiks og
+    har plads til ét run, saa et samtidigt run i en anden samtale overskrev den:
+    stop i din egen samtale svarede `cancelled: false` mens dit run kørte videre.
+    Slotten blev aldrig et forkert mord (den sammenlignede `session_id`), men den
+    kunne ikke ramme det rigtige run.
+    """
     _kraev_adgang(session_id)  # 19/9-2026: «luk hullet i de gamle»
-    from core.services.visible_runs import (
-        _get_active_visible_run_state,
-        cancel_visible_run,
-    )
     sid = (session_id or "").strip()
-    try:
-        st = _get_active_visible_run_state() or {}
-        if str(st.get("session_id") or "") == sid:
-            rid = str(st.get("run_id") or "")
-            if rid:
-                _settle_user_stop(rid, sid)
-                return {"cancelled": bool(cancel_visible_run(rid)), "run_id": rid}
-    except Exception:
-        pass
-    return {"cancelled": False}
+    if not sid:
+        return {"cancelled": False}
+    location = live_run_for_session(sid)
+    if location is None or location.lifecycle != "running":
+        return {"cancelled": False}
+    rid = location.run_id
+    _settle_user_stop(rid, sid)
+    return {"cancelled": bool(cancel_visible_run(rid)), "run_id": rid}
 
 
 # Bevar de gamle importnavne; kontekst-ruterne har deres egen afgraensede enhed.

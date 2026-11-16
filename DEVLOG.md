@@ -1,5 +1,19 @@
 # Development log
 
+## 2026-11-16 — `cancel-active` looks up the run per session, not in the global slot
+
+The stop button's server-side fallback had a lookup defect that the entry above named as its own limitation: *"backend `cancel-active` only matches the single globally active visible run"*.
+
+`visible_runs.active_run` is **one key without a session suffix**, and `register_visible_run` overwrites it. So when a run registered last in another conversation, the slot pointed at that conversation. `chat_cancel_active` compared the slot's `session_id` with the requested one, found no match, and answered `cancelled: false` while the user's own run kept going. It never killed a foreign run — the comparison made that safe — but it could not stop the right one, which is the worse failure for a stop button.
+
+The per-session lookup already existed: `live_run_for_session` in `core.services.run_stream_locator`, used by `/sessions/{id}/live`. It reads the process-local journal first and falls back to `active_locations()`, which resolves cross-process runs through `in_flight_runs` — so a run owned by `jarvis-runtime` is found from `jarvis-api`. The endpoint now uses it and cancels only when `lifecycle == "running"`; a terminal run is not a stop target and no longer reports success.
+
+`cancel_visible_run(run_id)` was already correct per run: it checks the controller dict *and* `visible_runs.control.<run_id>`, and `is_cancelled()` falls back to the DB flag, so a cancellation set in `jarvis-api` is read by `jarvis-runtime`.
+
+`tests/test_chat_cancel_active.py` is the first test for this endpoint — there was none. It registers real runs through `run_event_log.create` and drives the real `live_run_for_session`, so it measures the lookup rather than mocking it. Mutation-verified: replacing the per-session lookup with "globally newest" fails both cross-session tests, one in each direction (A stopping B's run, and B stopping A's). Reverted, 5 passed.
+
+Not covered: two runs in the *same* session resolve to the newest, which is the intended "what I see" semantics but means the older one is not reachable by this endpoint; a `stale_owner` run is refused rather than cancelled.
+
 ## 2026-11-16 — CodeView stop for all work, and the pending approval card goes into the transcript
 
 Two client defects in Jarvis Desk, both fixed in `apps/jarvis-desk/src/**` (so installed Desk and PWA move together).
@@ -10,7 +24,7 @@ Two client defects in Jarvis Desk, both fixed in `apps/jarvis-desk/src/**` (so i
 
 Mutation-verified: stop — reverting the `streaming` condition fails all three new tests, removing the fallback fails the cancel-active test, removing the cancelRun branch or the stored `bgRunId` fails the cancelRun test. Approval — a no-op projection fails (a), (c) and both view tests, removing the dedupe fails (b), removing the null guard fails (c), removing the session guard fails its test, un-wiring either view fails that view's test.
 
-Not covered: the real server endpoint is only called through a mocked client (backend `cancel-active` only matches the single globally active visible run); the synthetic row's `created_at` is client time; a session with no user/assistant message still shows the empty state instead of the card.
+Not covered: the real server endpoint is only called through a mocked client (the backend lookup defect behind that mock — `cancel-active` matching only the single globally active visible run — is fixed in the entry above); the synthetic row's `created_at` is client time; a session with no user/assistant message still shows the empty state instead of the card.
 
 ## 2026-11-16 — Real process restarts and a real claim race, and the bug they found
 

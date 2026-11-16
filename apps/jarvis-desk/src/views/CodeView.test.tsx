@@ -537,4 +537,34 @@ describe('CodeView — cross-device: to runs på samme session', () => {
     if (kald.length > 1) expect(kaldet(1).runId).toBe('run-A')
     expect(document.body.textContent).toContain('Svar fra tur A.')
   })
+
+  /**
+   * Reconciliation-hullet (punkt C i Bjørns opgave, 16/11-2026).
+   *
+   * `udenAktivRun` fik KUN den lokale stream: `stream.activeRunId` og
+   * `liveBlokke(stream)`. For den passive klient er begge tomme — dens levende
+   * tur ligger i `followState`. Så blev den persisterede række for run-A IKKE
+   * skjult mens follow-strømmen tegnede det samme svar, og beskeden stod to
+   * gange på skærmen. Kravet er eksplicit: samme assistentbesked må aldrig
+   * eksistere som to synlige rækker.
+   */
+  it('tegner ikke den persisterede række samtidig med follow-strømmen', async () => {
+    vi.mocked(api.getSession).mockResolvedValue({
+      session: { id: 's1', title: 'T', updated_at: '2026-11-16T10:00:00Z' },
+      messages: [{
+        id: 'a1', role: 'assistant', created_at: '2026-11-16T10:00:00Z',
+        run_id: 'run-A', content: [{ type: 'text', text: 'Svar fra tur A.' }],
+      }],
+      etag: null,
+    })
+    vi.mocked(api.getActiveRunSessions).mockResolvedValue([{ session_id: 's1', run_id: 'run-A', status: 'working' }])
+    wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
+    await waitFor(() => expect(kald.length).toBe(1), { timeout: 3000 })
+
+    act(() => { for (const e of tur('run-A', 'Svar fra tur A.')) kaldet(0).onEvent(e) })
+    await act(() => new Promise<void>((r) => setTimeout(r, 120)))
+
+    const antal = (document.body.textContent ?? '').split('Svar fra tur A.').length - 1
+    expect(antal).toBe(1)
+  })
 })

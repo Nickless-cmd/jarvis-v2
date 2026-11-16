@@ -1105,10 +1105,23 @@ export function CodeView({
   // Mens den levende sluttekst ruller faerdig, findes samme svar allerede som
   // persisteret serverraekke. Skjul KUN samme run indtil den levende raekke
   // melder faerdig — ellers staar hele svaret ved siden af pacingen.
-  const renderedTranscriptMessages = udenAktivRun(
-    transcriptMessages, stream.activeRunId, visLevendeTur,
+  // Cross-device (16/11-2026): den PASSIVE klient har intet lokalt run — dens
+  // levende tur ligger i `followState`, ikke i `stream`. Foer fik filteret kun
+  // den lokale stream, saa for et run startet paa den ANDEN enhed var baade
+  // run-id og levende tekst tomme: den persisterede raekke blev ikke skjult
+  // mens follow-stroemmen tegnede det samme svar, og beskeden stod to gange.
+  // Samme rangorden som `steerRunId` laengere oppe: lokal stream foerst.
+  const followErLevende = bgActive || followState.status === 'working'
+  const tegnerLevende = visLevendeTur || followErLevende
+  const aktivRunIdForVisning = stream.activeRunId
+    ?? (followErLevende ? followState.activeRunId : null)
+  const levendeTekstForVisning = visLevendeTur
+    ? normaliseretTekst(liveBlokke(stream))
     // Faldback naar server-raekken endnu ikke baerer `run_id` (maalt 20/10).
-    visLevendeTur ? normaliseretTekst(liveBlokke(stream)) : '',
+    : followErLevende ? normaliseretTekst(liveBlokke(followState)) : ''
+  const renderedTranscriptMessages = udenAktivRun(
+    transcriptMessages, aktivRunIdForVisning, tegnerLevende,
+    levendeTekstForVisning,
   )
 
   const varighedForBesked = useMemo(() => {

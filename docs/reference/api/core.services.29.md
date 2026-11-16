@@ -390,7 +390,7 @@ _Ét værktøjssæt for HELE turen — begge trin ser det samme._
 | function | `_navn` | `(d)` | — | [src](../../../core/services/turens_vaerktoejer.py#L41) |
 | function | `_filtrer` | `(alle, saet, eget)` | Katalog-rækkefølgen, filtreret på navn — og med prunerens egne som hale. | [src](../../../core/services/turens_vaerktoejer.py#L45) |
 | function | `vaerktoejer_for_session` | `(alle, *, session_id)` | Det LÅSTE værktøjssæt for sessionen — samme array som turen sender. | [src](../../../core/services/turens_vaerktoejer.py#L65) |
-| function | `vaerktoejer_for_turen` | `(alle, *, user_message, session_id)` | Værktøjerne for DENNE tur — samme sæt i begge trin. | [src](../../../core/services/turens_vaerktoejer.py#L96) |
+| function | `vaerktoejer_for_turen` | `(alle, *, user_message, session_id, lane=…, run_id=…)` | Værktøjerne for DENNE tur — samme sæt i begge trin. | [src](../../../core/services/turens_vaerktoejer.py#L96) |
 
 ## `core/services/turn_changelog.py`
 _End-of-turn changelog — auto-summarize what this turn changed._

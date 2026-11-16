@@ -173,3 +173,35 @@ def test_en_fejl_koster_ikke_turen_dens_vaerktoejer(monkeypatch):
         assert len(v) == ctp.VISIBLE_MAX_TOOLS
     finally:
         clear("tv-fejl")
+
+
+def test_router_faar_lane_og_run_id_fra_kalderen(monkeypatch):
+    """Agentløkken og første pas må dele builder uden at miste telemetrien."""
+    set_calls: list[dict] = []
+
+    class Valg:
+        fallback_used = False
+        selected_names = ["bash"]
+
+    def _router(**kwargs):
+        set_calls.append(kwargs)
+        return Valg()
+
+    monkeypatch.setattr("core.services.tool_router.select_tools", _router)
+    clear("tv-lane")
+    try:
+        vaerktoejer_for_turen(
+            get_tool_definitions(scope="code"),
+            user_message="arbejd videre",
+            session_id="tv-lane",
+            lane="autonomous",
+            run_id="visible-regression",
+        )
+        assert set_calls == [{
+            "user_message": "arbejd videre",
+            "session_id": "tv-lane",
+            "lane": "autonomous",
+            "run_id": "visible-regression",
+        }]
+    finally:
+        clear("tv-lane")

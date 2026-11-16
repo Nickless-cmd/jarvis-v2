@@ -98,6 +98,8 @@ def vaerktoejer_for_turen(
     *,
     user_message: str,
     session_id: str | None,
+    lane: str = "visible",
+    run_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Værktøjerne for DENNE tur — samme sæt i begge trin.
 
@@ -119,7 +121,12 @@ def vaerktoejer_for_turen(
             return eget
         from core.services.session_tool_pin import resolve as _pin_resolve
         from core.services.tool_router import select_tools as _router
-        valg = _router(user_message=user_message, session_id=str(session_id), lane="visible")
+        valg = _router(
+            user_message=user_message,
+            session_id=str(session_id),
+            lane=str(lane or "visible"),
+            run_id=run_id,
+        )
         kandidater = (list(valg.selected_names) if not valg.fallback_used
                       else [_navn(d) for d in eget])
         navne, _kilde = _pin_resolve(str(session_id), kandidater)

@@ -242,6 +242,13 @@ _Adaptive veto gate — pre-execution hook that pauses tool calls when pushback 
 | function | `record_jarvis_override` | `(tool_name, feeling)` | Registrér at JARVIS — ikke brugeren — overstyrede en gate for dette (tool, feeling). | [src](../../../core/services/veto_gate.py#L1073) |
 | function | `_emit_veto_gate_event` | `(kind, payload=…)` | Emit a scoped event — defensive, never blocks caller. | [src](../../../core/services/veto_gate.py#L1103) |
 
+## `core/services/visible_agentic_toolbox.py`
+_Canonical tool-array builder for visible agentic follow-up rounds._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_agentic_toolbox` | `(run, *, tool_scope, get_definitions)` | Return the pinned toolbox for follow-up rounds using explicit scope. | [src](../../../core/services/visible_agentic_toolbox.py#L19) |
+
 ## `core/services/visible_autonomous_run.py`
 _Autonome (heartbeat-startede) synlige runs: starter og observation._
 
@@ -629,11 +636,4 @@ _Hvad der sker naar et run doer midt-flugt._
 | function | `_loop_lag` | `()` | Hvor sultent var event-loopet lige nu? | [src](../../../core/services/visible_run_abandonment.py#L40) |
 | function | `report_abandoned_run` | `(run, *, abort_kind, run_stage, visible_len)` | Rapportér et run der aldrig naaede sin beslutning. Kaster aldrig. | [src](../../../core/services/visible_run_abandonment.py#L53) |
 | function | `abandon_bridge_records` | `(run)` | K6: giv runnets uafklarede godkendelses-poster deres AERLIGE udfald. | [src](../../../core/services/visible_run_abandonment.py#L92) |
-
-## `core/services/visible_run_cost.py`
-_Bogfoer en koersels omkostning — ét sted._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `bogfoer_koerslens_omkostning` | `(run, *, input_tokens, output_tokens, cache_hit_tokens, cache_miss_tokens, cost_usd=…)` | Skriv koerslens raekke i hovedbogen. | [src](../../../core/services/visible_run_cost.py#L37) |
 

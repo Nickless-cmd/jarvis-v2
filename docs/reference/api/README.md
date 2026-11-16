@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18777 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18778 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -61,9 +61,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18777 functions/
 - [`core.services.27`](core.services.27.md) — `shell_confinement_report` … `stream_degeneration`
 - [`core.services.28`](core.services.28.md) — `stream_failure_kind` … `tiny_webchat_execution_pilot`
 - [`core.services.29`](core.services.29.md) — `tool_calling_evidence` … `user_hensyn`
-- [`core.services.30`](core.services.30.md) — `user_md_update_proposal_tracking` … `visible_run_cost`
-- [`core.services.31`](core.services.31.md) — `visible_run_firstpass` … `voice_daemon`
-- [`core.services.32`](core.services.32.md) — `wake_gateway` … `world_model_signal_tracking`
+- [`core.services.30`](core.services.30.md) — `user_md_update_proposal_tracking` … `visible_run_abandonment`
+- [`core.services.31`](core.services.31.md) — `visible_run_cost` … `voice_curator`
+- [`core.services.32`](core.services.32.md) — `voice_daemon` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

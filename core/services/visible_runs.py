@@ -2320,54 +2320,22 @@ async def _stream_visible_run(
                 # (no-progress spin / hollow promise / and — at finalize — failed/interrupted status).
                 # Read at run finalize by record_run_outcome. Additive; changes no control flow.
                 _run_degenerated = False
-                _agentic_tools = _get_tool_defs()
-                # ── Tool router: scope tool defs to a relevant subset ──
-                # Falls back to the full list silently if anything goes wrong.
+                # Boy Scout split (16/11-2026): agent-loopens toolbox-bygning
+                # bor nu i en fokuseret enhed og bruger SAMME builder som
+                # første pas. Scope gives eksplicit; en ContextVar der tabes
+                # over generator-/trådgrænsen må ikke skifte 84 ↔ 105 tools og
+                # invalidere hele DeepSeek-præfikset.
                 try:
-                    from core.services.tool_router import select_tools as _select_tools
-                    _selection = _select_tools(
-                        user_message=run.user_message,
-                        session_id=run.session_id,
-                        lane="autonomous" if run.autonomous else "visible",
-                        run_id=run.run_id,
+                    from core.services.visible_agentic_toolbox import build_agentic_toolbox
+                    _agentic_tools = build_agentic_toolbox(
+                        run,
+                        tool_scope=tool_scope or "",
+                        get_definitions=_get_tool_defs,
                     )
-                    if not _selection.fallback_used:
-                        # ── PRÆFIKS-LÅS (2026-09-05) ────────────────────────
-                        # Routeren valgte et NYT sæt pr. besked (målt 4/9: 58,
-                        # 59, 61, 80-88 værktøjer på forskellige ture). Tools-
-                        # arrayet ligger lige efter systembeskeden i DeepSeeks
-                        # template, så et nyt sæt bryder cachen dér og hele
-                        # historikken bagefter — op til 160k tokens — betales
-                        # fuldt hver tur. Hovedbogen viste hit frosset på
-                        # 6.400-8.320 (= systembeskeden) mens miss voksede til
-                        # 76k. Nu bestemmer routeren ÉN gang pr. session.
-                        from core.services.session_tool_pin import resolve as _pin_resolve
-                        # Atomaritet (2/10-2026): prompten kan nævne et skill
-                        # («[SKILLS DER MATCHER DENNE OPGAVE]»), men målt samme
-                        # dag overlevede INTET skill-værktøj router+pin i de
-                        # agentiske runder — kun `load_more_tools` og
-                        # `call_loaded_tool`. Den betingede pin fandtes kun i
-                        # første pas. Samme betingelse, samme delte opslag, så
-                        # prompt og værktøjssæt ikke kan sige hver sit.
-                        try:
-                            from core.tools.copilot_tool_pruning import _betinget_kraevede
-                            _betinget = _betinget_kraevede(run.user_message)
-                        except Exception:
-                            _betinget = ()
-                        _names, _pin_src = _pin_resolve(
-                            run.session_id, list(_selection.selected_names), _betinget)
-                        _selected_set = set(_names)
-                        _agentic_tools = [
-                            d for d in _agentic_tools
-                            if ((d.get("function") or {}).get("name") or d.get("name") or "") in _selected_set
-                        ]
-                        logger.info(
-                            "tool-router run_id=%s valgt=%d sendt=%d kilde=%s",
-                            run.run_id, len(_selection.selected_names),
-                            len(_agentic_tools), _pin_src,
-                        )
                 except Exception:
-                    pass  # keep full list on any error
+                    # Samme fail-open som før: en router-/pin-fejl må ikke
+                    # koste turen alle dens værktøjer. Stadig eksplicit scope.
+                    _agentic_tools = _get_tool_defs(scope=tool_scope or "")
                 _all_followup_parts: list[str] = []
                 # I1-heal (2026-06-30): thinking-modeller (deepseek-v4-flash m.fl.) lægger
                 # nogle gange HELE svaret i reasoning. Vi akkumulerer reasoning-deltaerne
@@ -3014,7 +2982,7 @@ async def _stream_visible_run(
                         from core.services.hentede_vaerktoejer import flet_ind
                         _round_tool_definitions = flet_ind(
                             _round_tool_definitions, _round_extra_tools,
-                            _get_tool_defs() or [])
+                            _get_tool_defs(scope=tool_scope or "") or [])
 
                     # ── Hale-telemetri (8/10-2026) ──────────────────────────
                     # Halen sendes i HVER runde, men der fandtes intet tal paa

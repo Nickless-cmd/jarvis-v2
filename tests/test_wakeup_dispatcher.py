@@ -262,16 +262,16 @@ def test_app_wakeup_never_routes_to_discord_via_owner_resolver():
     assert not _ext(target)
 
 
-def test_app_wakeup_rejects_explicit_discord_session():
-    # Selv en eksplicit Discord-session_id afvises for app-wakeups.
+def test_app_wakeup_does_not_redirect_an_explicit_discord_origin():
+    # En eksplicit origin er autoritativ. App-vejen maa ikke levere til Discord,
+    # men den maa heller ikke erstatte origin med en tilfældig app-session.
     target = pick_wakeup_run_target(
         channel="app", record_session="disc-7",
         app_resolver=lambda: "app-1",
         owner_resolver=lambda: "disc-7",
         is_external=_ext,
     )
-    assert target == "app-1"
-    assert not _ext(target)
+    assert target is None
 
 
 def test_app_wakeup_falls_back_to_fresh_when_no_app_session():
@@ -294,7 +294,7 @@ def test_default_channel_is_app_guarded():
         owner_resolver=lambda: "disc-x",
         is_external=_ext,
     )
-    assert target == "app-9"
+    assert target is None
 
 
 def test_explicit_discord_channel_still_allowed():

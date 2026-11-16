@@ -261,12 +261,16 @@ def pick_wakeup_run_target(
         return (record_session or "").strip() or owner_resolver() or None
     # app/webchat: guard mod eksterne kanaler
     cand = (record_session or "").strip()
-    if cand and is_external(cand):
-        logger.info("wakeup guard: eksplicit session %s er ekstern kanal — afvist for app-wakeup", cand)
-        cand = ""
-    if not cand:
-        cand = app_resolver() or ""  # springer allerede eksterne over
-    return cand or None
+    if cand:
+        if is_external(cand):
+            logger.info(
+                "wakeup guard: eksplicit session %s er ekstern kanal — "
+                "afvist uden omdirigering for app-wakeup",
+                cand,
+            )
+            return None
+        return cand
+    return (app_resolver() or "").strip() or None  # springer allerede eksterne over
 
 
 #: Baggrundstråden der kører heartbeat-tick'et efter en vækning. Single-flight:

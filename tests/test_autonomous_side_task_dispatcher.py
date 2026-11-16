@@ -227,3 +227,30 @@ def test_ingen_samtale_frigiver_claim_og_starter_intet(monkeypatch):
     # Leasen må ikke blive hængende på en opgave der aldrig blev startet.
     assert rows[0]["status"] == "queued"
     assert not rows[0].get("autonomy_lease_owner")
+
+
+def test_eksplicit_utilgaengelig_origin_omdirigeres_ikke(monkeypatch):
+    """En kendt origin maa vente; ejerens aktuelle app-session er ikke en fallback."""
+    rows = _state(monkeypatch)
+    side_tasks.flag(
+        title="Undersøg", prompt="Find årsagen", autonomy_mode="inspect",
+        session_id="disc-origin",
+    )
+    _klar_til_start(monkeypatch)
+    monkeypatch.setattr(dispatcher, "_target_session", lambda: "chat-tilfaeldig")
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.session_is_external_channel",
+        lambda sid: str(sid).startswith("disc-"),
+    )
+    started = []
+    monkeypatch.setattr(
+        dispatcher, "_start",
+        lambda text, **kwargs: started.append(kwargs) or True,
+    )
+
+    result = dispatcher.dispatch_one()
+
+    assert result == {"status": "ok", "started": 0, "reason": "no-session"}
+    assert started == []
+    assert rows[0]["status"] == "queued"
+    assert rows[0]["autonomy_last_blocked_reason"] == "ingen samtale at lande i"

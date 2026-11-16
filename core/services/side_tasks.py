@@ -347,13 +347,34 @@ def _ventende_vaekning_ids() -> set[str] | None:
 def flag(*, title: str, prompt: str, tldr: str = "", session_id: str | None = None,
          finding_key: str = "", source_run_id: str = "", evidence: str = "",
          not_before: str = "", autonomy_mode: str = "none",
-         max_minutes: int = 20, max_tool_calls: int = 12) -> dict[str, Any]:
+         max_minutes: int = 20, max_tool_calls: int = 12,
+         owner_user_id: str = "", origin_session_id: str | None = None,
+         parent_run_id: str = "") -> dict[str, Any]:
     """Rejs et flag. `not_before` (16/10-2026) gør det til en TIDSINDSTILLET
     opgave: den står åben og synlig, men må ikke tages op før tidspunktet."""
     title = (title or "").strip()
     prompt = (prompt or "").strip()
     if not title or not prompt:
         return {"status": "error", "error": "title and prompt are required"}
+    origin_session = str(
+        origin_session_id if origin_session_id is not None else (session_id or "")
+    ).strip()
+    owner = str(owner_user_id or "").strip()
+    if not owner:
+        try:
+            from core.identity.workspace_context import current_user_id
+
+            owner = str(current_user_id() or "").strip()
+        except Exception:
+            owner = ""
+    parent_run = str(parent_run_id or source_run_id or "").strip()
+    if not parent_run:
+        try:
+            from core.services.run_autonomy_context import current_run_id
+
+            parent_run = str(current_run_id() or "").strip()
+        except Exception:
+            parent_run = ""
     autonomy = str(autonomy_mode or "none").strip().lower()
     if autonomy not in _AUTONOMY_MODES:
         return {"status": "error", "error": "unknown autonomy_mode"}
@@ -389,7 +410,12 @@ def flag(*, title: str, prompt: str, tldr: str = "", session_id: str | None = No
             "prompt": prompt[:12000],
             "tldr": tldr[:600] if tldr else "",
             "status": "pending",
-            "session_id": str(session_id or "_default"),
+            # ``session_id`` bevares for gamle læsere. De eksplicitte felter
+            # er lineage-kontrakten for nye dispatchere og observability.
+            "session_id": origin_session or "_default",
+            "origin_session_id": origin_session,
+            "owner_user_id": owner,
+            "parent_run_id": parent_run[:160],
             "created_at": datetime.now(UTC).isoformat(),
             # Default `none` preserves the old contract: a side task is a
             # reminder, never an implicit autonomous work order.  Only an

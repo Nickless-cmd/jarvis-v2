@@ -1,6 +1,30 @@
 from core.services import side_tasks
 
 
+def test_flag_persists_authoritative_lineage(monkeypatch):
+    """En senere dispatcher skal kunne bevise hvor opgaven og mandatet kom fra."""
+    state = []
+    monkeypatch.setattr(side_tasks, "load_json", lambda _key, _default: list(state))
+    monkeypatch.setattr(
+        side_tasks, "save_json",
+        lambda _key, items: state.__setitem__(slice(None), items),
+    )
+
+    result = side_tasks.flag(
+        title="Undersøg", prompt="Find årsagen", autonomy_mode="inspect",
+        session_id="chat-origin", owner_user_id="owner-7",
+        origin_session_id="chat-origin", parent_run_id="visible-parent",
+    )
+
+    assert result["status"] == "ok"
+    assert state[0]["side_task_id"] == result["side_task_id"]
+    assert state[0]["owner_user_id"] == "owner-7"
+    assert state[0]["origin_session_id"] == "chat-origin"
+    assert state[0]["session_id"] == "chat-origin"
+    assert state[0]["parent_run_id"] == "visible-parent"
+    assert state[0]["autonomy_mode"] == "inspect"
+
+
 def test_prompt_loftet_tillader_ankere(monkeypatch):
     """15/10-2026: loftet var 2000 tegn, og en sideopgave med ankere blev
     klippet i STILHED — accept-kriterierne faldt i gulvet.

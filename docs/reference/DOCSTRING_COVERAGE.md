@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10244/18784 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10246/18786 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10244/18784 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 905 | 1619 | 55% |
-| `core.services` | 6869 | 12754 | 53% |
+| `core.services` | 6871 | 12756 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -2092,7 +2092,7 @@ Generated from source. 10244/18784 functions/methods documented (54%). The list 
 - `core/services/session_inbox.py` :: `pending_count` (L402)
 - `core/services/session_inbox.py` :: `stop_session_inbox` (L534)
 - `core/services/session_permission.py` :: `saet_permission` (L82)
-- `core/services/session_tool_pin.py` :: `build_session_tool_pin_surface` (L217)
+- `core/services/session_tool_pin.py` :: `build_session_tool_pin_surface` (L236)
 - `core/services/session_tool_pin.py` :: `clear` (L120)
 - `core/services/session_view.py` :: `saet_visning` (L58)
 - `core/services/session_wakeup.py` :: `last_seen_event_id` (L88)

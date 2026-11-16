@@ -130,6 +130,16 @@ def _med_garanterede(navne: list[str]) -> list[str]:
     fra tur til tur — og sorteringen er ikke kosmetik: raekkefoelgen ER
     cache-noeglen, saa samme saet i to raekkefoelger er to praefikser.
 
+    Garantien gaelder INDEN FOR scopets katalog — ikke ud over det. Det her er
+    navne, ikke definitioner; arrayet materialiseres af `turens_vaerktoejer`,
+    som kun kan sende hvad kataloget (eller pruneren) har. Maalt 16/11-2026:
+    23 af de garanterede ligger uden for chat-kataloget og 31 uden for
+    code-kataloget (bl.a. `load_more_tools`). De hentes bevidst IKKE fra det
+    fulde katalog: scope er et politik-filter (for non-owner er det
+    `permission_engine`), og code-arrayet ville vokse fra 34 til 65 og bryde
+    cachen. I stedet navngiver `uleverbare_garanterede` dem, og
+    `turens_vaerktoejer` melder dem hoejt i stedet for at tabe dem lydloest.
+
     Self-sikker: kan listerne ikke importeres, returneres navnene uaendret.
     En forening der kaster ville braekke hvert vaerktoejskald.
     """
@@ -148,6 +158,15 @@ def _med_garanterede(navne: list[str]) -> list[str]:
         logger.debug("session_tool_pin: kunne ikke hente agent-vaerktoejerne: %s", exc)
         agent = set()
     return sorted(set(navne) | set(REQUIRED_LAZY_TOOL_NAMES) | set(SAFETY_FLOOR) | agent)
+
+
+def uleverbare_garanterede(leverbare: set[str]) -> list[str]:
+    """De garanterede navne som `leverbare` (katalog + prunerens egne) IKKE har.
+
+    Ren funktion: det er de navne `_med_garanterede` lover, men som intet array
+    bygget af det katalog kan baere. Tom liste = garantien holder fuldt ud.
+    """
+    return sorted(set(_med_garanterede([])) - set(leverbare))
 
 
 def resolve(

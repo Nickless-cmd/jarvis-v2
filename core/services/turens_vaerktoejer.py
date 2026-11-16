@@ -42,6 +42,32 @@ def _navn(d: dict[str, Any]) -> str:
     return str((d.get("function") or d).get("name") or "")
 
 
+# Hvilke saet af uleverbare garanterede er allerede meldt i denne proces. Uden
+# dedup ville hver agentisk runde (median 9 pr. tur) gentage samme advarsel.
+_MELDT: set[frozenset[str]] = set()
+
+
+def _meld_uleverbare(alle: list[dict[str, Any]], eget: list[dict[str, Any]]) -> None:
+    """Meld HOEJT de garanterede som scopets katalog ikke kan baere.
+
+    `_med_garanterede` lover navne; arrayet kan kun bestaa af definitioner fra
+    `alle` eller `eget`. Resten faldt foer lydloest ud (maalt 16/11-2026: 23 i
+    chat, 31 i code, heriblandt `load_more_tools`). Arrayet aendres IKKE her —
+    det er cache-noeglen — der meldes kun, én gang pr. saet pr. proces.
+    """
+    try:
+        from core.services.session_tool_pin import uleverbare_garanterede
+        tabte = uleverbare_garanterede({_navn(d) for d in alle} | {_navn(d) for d in eget})
+        if not tabte or frozenset(tabte) in _MELDT:
+            return
+        _MELDT.add(frozenset(tabte))
+        logger.warning(
+            "garanterede vaerktoejer uden for scopets katalog (%d) — kan ikke "
+            "materialiseres i arrayet: %s", len(tabte), ", ".join(tabte))
+    except Exception as exc:  # en melding maa aldrig koste turen dens vaerktoejer
+        logger.debug("melding af uleverbare garanterede fejlede: %s", exc)
+
+
 def _filtrer(
     alle: list[dict[str, Any]],
     saet: set[str],
@@ -87,6 +113,7 @@ def vaerktoejer_for_session(
             return None
         from core.tools.copilot_tool_pruning import select_tools_for_visible
         eget = select_tools_for_visible(alle, user_message="", session_id=None)
+        _meld_uleverbare(alle, eget)
         return _filtrer(alle, set(_med_garanterede(laast)), eget)
     except Exception as exc:  # en læsning maa aldrig koste kalderen dens saet
         logger.debug("laast vaerktoejssaet fejlede for %s: %s", sid, exc)
@@ -138,6 +165,7 @@ def vaerktoejer_for_turen(
         for n in saet - {_navn(d) for d in ud}:
             if n in fra_eget:
                 ud.append(fra_eget[n])
+        _meld_uleverbare(alle, eget)
         return ud or eget
     except Exception as exc:  # en forening maa aldrig koste turen dens vaerktoejer
         logger.debug("forenet vaerktoejssaet fejlede, bruger foerste pas: %s", exc)

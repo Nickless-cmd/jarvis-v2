@@ -157,6 +157,102 @@ def record_choice(
     return decision_id
 
 
+def record_agent_outcome_choice(
+    *,
+    assignment_id: str,
+    agent_id: str,
+    parent_run_id: str,
+    status: str,
+    summary: str = "",
+    error_code: str = "",
+    error_phase: str = "",
+    attempt_run_ids: list[str] | None = None,
+) -> str | None:
+    """Frys beslutningsgrundlaget i det øjeblik et agentresultat bliver terminalt.
+
+    Eksperimentet «beslutningskvalitet vs. udfald» (16/11-2026) kan ikke måles
+    uden dette led: `cognitive_decisions` bar 262.394 rækker og 6 med udfyldte
+    `refs`, fordi beslutninger blev skrevet som prosa EFTER handlingen. En
+    begrundelse der formuleres bagefter kan ikke skelnes fra efterrationalisering.
+
+    Her skrives rækken når udfaldet committes (`commit_terminal_outcome`),
+    altså før forælderen har handlet på det. `refs` bærer `assignment_id`, så
+    koblingen til udfaldet er mekanisk: `link_outcome_to_decision` kan senere
+    score den uden at gætte hvilken beslutning der hørte til hvilket udfald.
+
+    `options` er de handlinger der var mulige PÅ DET TIDSPUNKT — ikke en
+    vurdering af dem. `decision` er tom indtil forælderen vælger; det er
+    hele pointen: grundlaget er frosset, valget er ikke.
+
+    Returnerer decision_id, eller None hvis rækken ikke kunne skrives. En fejl
+    her må ALDRIG vælte udfalds-committet — udfaldet er det primære.
+    """
+    decision_id = f"dec-{uuid4().hex[:12]}"
+    now = _now_iso()
+    options = [
+        "accepter udfaldet og gå videre",
+        "ret fejlen og kør assignmentet igen",
+        "skift metode eller rute",
+        "spørg Bjørn",
+        "drop opgaven",
+    ]
+    context = json.dumps(
+        {
+            "assignment_id": assignment_id,
+            "agent_id": agent_id,
+            "parent_run_id": parent_run_id,
+            "status": status,
+            "error_code": error_code,
+            "error_phase": error_phase,
+            "attempt_run_ids": attempt_run_ids or [],
+            "summary": summary[:2000],
+        },
+        ensure_ascii=False,
+    )
+    try:
+        with connect() as conn:
+            # `ensure_credit_assignment_tables` tilføjer kun KOLONNER — den
+            # antager at tabellen findes. I en frisk base gør den ikke, og så
+            # ville grundlaget tavst udeblive. `_ensure_cognitive_decisions_table`
+            # er den funktion der ejer CREATE TABLE.
+            from core.runtime.db_cognitive import _ensure_cognitive_decisions_table
+            _ensure_cognitive_decisions_table(conn)
+            ensure_credit_assignment_tables(conn)
+            conn.execute(
+                """INSERT INTO cognitive_decisions
+                   (decision_id, title, context, options, decision, why, regrets,
+                    refs, created_at, kind, outcome_aggregate)
+                   VALUES (?, ?, ?, ?, '', '', '[]', ?, ?, 'agent_outcome', NULL)""",
+                (
+                    decision_id,
+                    f"Agentudfald {status}: {assignment_id}",
+                    context,
+                    json.dumps(options, ensure_ascii=False),
+                    json.dumps([{"kind": "agent_assignment", "id": assignment_id}],
+                               ensure_ascii=False),
+                    now,
+                ),
+            )
+            conn.commit()
+    except Exception:  # grundlaget er sekundaert: udfaldet er allerede committet, og en fejl her maa ikke vaelte det
+        return None
+
+    try:
+        event_bus.publish(
+            "credit_assignment.agent_outcome_frozen",
+            {
+                "decision_id": decision_id,
+                "assignment_id": assignment_id,
+                "status": status,
+                "created_at": now,
+            },
+        )
+    except Exception:  # abonnenter er valgfrie: raekken er skrevet, og en doed subscriber maa ikke kaste
+        pass
+
+    return decision_id
+
+
 def list_unreviewed_decisions(
     *, kind: str | None = "prompt_variant", limit: int = 10
 ) -> list[dict[str, Any]]:

@@ -90,3 +90,82 @@ def test_ensure_credit_assignment_tables_with_existing_table():
     assert "credit_score" in rsro_cols
 
     conn.close()
+
+
+# ── Beslutningsgrundlag frosset ved agent-udfald (16/11-2026) ──────────────
+#
+# Eksperimentet «beslutningskvalitet vs. udfald» kan ikke måles hvis
+# begrundelsen skrives EFTER handlingen. Disse tests beviser at rækken
+# skrives når udfaldet bliver terminalt, at den bærer assignment_id i refs,
+# og at `decision` er TOM — grundlaget er frosset, valget er ikke taget.
+
+
+def _frosset_db(monkeypatch):
+    """Midlertidig DB med de tabeller funktionen rører."""
+    import core.runtime.db_credit_assignment as mod
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute(
+        """CREATE TABLE cognitive_decisions (
+               decision_id TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT '',
+               context TEXT NOT NULL DEFAULT '', options TEXT NOT NULL DEFAULT '[]',
+               decision TEXT NOT NULL DEFAULT '', why TEXT NOT NULL DEFAULT '',
+               regrets TEXT NOT NULL DEFAULT '[]', refs TEXT NOT NULL DEFAULT '[]',
+               created_at TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'conversational',
+               outcome_aggregate REAL)"""
+    )
+    conn.commit()
+    monkeypatch.setattr(mod, "connect", lambda: conn)
+    return mod, conn
+
+
+def test_agent_udfald_fryser_grundlag_med_assignment_i_refs(monkeypatch):
+    mod, conn = _frosset_db(monkeypatch)
+
+    decision_id = mod.record_agent_outcome_choice(
+        assignment_id="asg-test123",
+        agent_id="agent-abc",
+        parent_run_id="run-parent",
+        status="failed",
+        summary="agenten fejlede i værktøjskaldet",
+        error_code="TOOL_ERROR",
+        error_phase="execute",
+        attempt_run_ids=["run-1", "run-2"],
+    )
+
+    assert decision_id is not None
+    row = conn.execute(
+        "SELECT * FROM cognitive_decisions WHERE decision_id=?", (decision_id,)
+    ).fetchone()
+    assert row is not None
+    assert row["kind"] == "agent_outcome"
+    # Koblingen til udfaldet er mekanisk, ikke rekonstrueret bagefter.
+    refs = __import__("json").loads(row["refs"])
+    assert refs == [{"kind": "agent_assignment", "id": "asg-test123"}]
+    # Grundlaget er frosset: valget er IKKE taget endnu.
+    assert row["decision"] == ""
+    assert row["why"] == ""
+    assert row["outcome_aggregate"] is None
+    # Alternativerne er de handlinger der var mulige på det tidspunkt.
+    options = __import__("json").loads(row["options"])
+    assert len(options) >= 3
+    # Fejlkonteksten er bevaret, så grundlaget kan læses uden at slå op igen.
+    ctx = __import__("json").loads(row["context"])
+    assert ctx["assignment_id"] == "asg-test123"
+    assert ctx["error_code"] == "TOOL_ERROR"
+    assert ctx["attempt_run_ids"] == ["run-1", "run-2"]
+    conn.close()
+
+
+def test_agent_udfald_skriver_ikke_naar_db_fejler(monkeypatch):
+    """En fejl i grundlags-skrivningen må ikke kaste — udfaldet er det primære."""
+    import core.runtime.db_credit_assignment as mod
+
+    def _boom():
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(mod, "connect", _boom)
+    assert mod.record_agent_outcome_choice(
+        assignment_id="asg-x", agent_id="a", parent_run_id="r", status="failed"
+    ) is None

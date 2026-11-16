@@ -199,3 +199,36 @@ def test_schema_migration_is_idempotent_on_pre_existing_tables(m):
     m.ensure_agent_contract_tables(c)
     cols = {r[1] for r in c.execute("PRAGMA table_info(agent_runs)")}
     assert {"assignment_id", "owner_user_id", "attempt_no"} <= cols
+
+
+def test_terminalt_udfald_fryser_beslutningsgrundlag(m):
+    """Eksperimentet «beslutningskvalitet vs. udfald» (16/11-2026).
+
+    Grundlaget skal skrives i det øjeblik udfaldet bliver terminalt — ikke
+    rekonstrueres bagefter. Uden dette led kan en begrundelse ikke skelnes
+    fra efterrationalisering, og eksperimentet måler formuleringsevne.
+    """
+    m.make_agent("a1", "bjorn")
+    out = _accept(m, idempotency_key="k-frys")
+    aid = out["assignment_id"]
+
+    m.commit_terminal_outcome(
+        assignment_id=aid, status="failed", summary="værktøj fejlede",
+        error_code="TOOL_ERROR", error_phase="execute",
+    )
+
+    c = m._conn()
+    row = c.execute(
+        "SELECT * FROM cognitive_decisions WHERE kind='agent_outcome' "
+        "AND refs LIKE ?", (f"%{aid}%",)
+    ).fetchone()
+    assert row is not None, "intet beslutningsgrundlag blev frosset for udfaldet"
+    refs = json.loads(row["refs"])
+    assert refs == [{"kind": "agent_assignment", "id": aid}]
+    # Valget er IKKE taget: grundlaget er frosset, beslutningen mangler.
+    assert row["decision"] == ""
+    assert row["outcome_aggregate"] is None
+    ctx = json.loads(row["context"])
+    assert ctx["status"] == "failed"
+    assert ctx["error_code"] == "TOOL_ERROR"
+    assert ctx["parent_run_id"] == "pr1"

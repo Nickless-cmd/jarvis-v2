@@ -415,6 +415,26 @@ def commit_terminal_outcome(
     except BaseException:
         conn.rollback()
         raise
+    # Beslutningsgrundlaget fryses EFTER udfalds-committet, men før forælderen
+    # kan have handlet på det: ventekontrakten er netop fyret, og vækningen sker
+    # i et senere tick. Rækken bærer assignment_id i `refs`, så eksperimentet
+    # «beslutningskvalitet vs. udfald» kan koble valg til udfald mekanisk i
+    # stedet for at rekonstruere begrundelsen bagefter (16/11-2026).
+    try:
+        from core.runtime.db_credit_assignment import record_agent_outcome_choice
+        record_agent_outcome_choice(
+            assignment_id=assignment_id,
+            agent_id=a["agent_id"],
+            parent_run_id=a["parent_run_id"],
+            status=status,
+            summary=summary,
+            error_code=error_code,
+            error_phase=error_phase,
+            attempt_run_ids=attempts,
+        )
+    except Exception:
+        logger.warning("beslutningsgrundlag kunne ikke fryses for %s", assignment_id,
+                       exc_info=True)
     # Agentens egen erindring: deterministisk resume af DETTE assignment, efter committet. En fejl
     # her registreres som hukommelsesfejl og aendrer aldrig udfaldet (§7.2).
     from core.runtime.db_agent_memory import project_summary

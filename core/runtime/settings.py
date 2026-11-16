@@ -365,6 +365,15 @@ class RuntimeSettings:
     # voksede til 76k. Med laasen bestemmer routeren én gang pr. session.
     # Saet False for at koere pr. tur igen (gammel adfaerd, uden deploy).
     session_tool_pin_enabled: bool = True
+    #: Ett scope pr. SESSION, ikke ett pr. tur (16/11-2026).
+    #:
+    #: Maalt paa Bjoerns egen session: saettet skiftede 38 <-> 44 <-> 110
+    #: mellem to ture, fordi scopet blev udledt af klientens `mode` OG af
+    #: hvilken rute beskeden kom ind ad (`chat.py` sender "" = ubegraenset,
+    #: `chat_stream_v2` udleder chat/code). Hvert skift koster hele praefikset:
+    #: maalt cache-hit 58,7 % paa runden efter et skift mod 96,6 % ellers —
+    #: og 38 -> 110 gav 18 %. Saet False for at udlede pr. tur igen.
+    session_tool_scope_sticky: bool = True
     #: Samme laas, ét lag op: ÉN model pr. session (3/10-2026).
     #:
     #: Bjoern: «stortset alle mine beskeder kolder starter». Maalt paa CT105:
@@ -779,7 +788,7 @@ _TIDLIGERE_UINDLAESTE = (
     "cognitive_state_cache_ttl", "cognitive_state_cache_enabled",
     "agentic_followup_temperature", "agentic_followup_top_p",
     "context_compact_threshold_fraction", "session_tool_pin_enabled",
-    "session_model_pin_enabled",
+    "session_model_pin_enabled", "session_tool_scope_sticky",
     "inbox_gate_enabled", "inbox_paamindelser_foer_blok",
     "visible_tools_unified", "visible_tools_frozen",
     "markdown_split_lange_linjer",

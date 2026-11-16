@@ -96,6 +96,21 @@ def _kraev_adgang(session_id: str) -> None:
     from apps.api.jarvis_api.routes.chat_session_view import kraev_adgang
     kraev_adgang(session_id)
 
+
+def _resolve_tool_scope(session_id: str, requested: str) -> str:
+    """Ét scope pr. session — se `core.services.session_tool_scope`.
+
+    Denne rute sender ``""`` (ubegrænset) for ejeren, mens v2-ruten udleder
+    chat/code. Uden en fast værdi pr. session skifter værktøjssættet midt i en
+    samtale, og så er hele præfikset koldt hver gang. Self-safe: en fejl her
+    må ikke koste turen dens værktøjer, så det kaldte scope returneres uændret.
+    """
+    try:
+        from core.services.session_tool_scope import resolve_scope
+        return resolve_scope(session_id, requested)
+    except Exception:
+        return requested
+
 @router.get("/file")
 async def chat_read_file(
     path: str = Query(...), root: str = "", kind: str = "container",
@@ -1693,7 +1708,14 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
             # Den ældre rute giver ingen mode og kører derfor UBEGRÆNSET. Er
             # enheds-reglen tændt og enheden ikke tilføjet, bliver den til chat
             # (19/9-2026) — ellers var den en bagdør udenom reglen.
-            tool_scope="" if _kode_tilladt() else "chat",
+            #
+            # Men den må ikke give en IGANGVÆRENDE samtale et andet sæt end den
+            # rute brugeren skriver i (16/11-2026): samme session skiftede
+            # 38 ↔ 110 værktøjer mellem to ture, og hvert skift gjorde hele
+            # præfikset koldt. Derfor arver et tomt scope det sessionen husker.
+            tool_scope=_resolve_tool_scope(
+                session_id, "" if _kode_tilladt() else "chat",
+            ),
         ),
         media_type="text/event-stream",
         headers={

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10246/18786 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10251/18793 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 10246/18786 functions/methods documented (54%). The list 
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 752 | 1053 | 71% |
+| `apps.api.jarvis_api.routes` | 753 | 1054 | 71% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -26,7 +26,7 @@ Generated from source. 10246/18786 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 905 | 1619 | 55% |
-| `core.services` | 6871 | 12756 | 53% |
+| `core.services` | 6875 | 12762 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -707,9 +707,9 @@ Generated from source. 10246/18786 functions/methods documented (54%). The list 
 - `core/runtime/session_handle.py` :: `read_header` (L119)
 - `core/runtime/session_ledger_crypto.py` :: `protect_event` (L12)
 - `core/runtime/session_ledger_crypto.py` :: `reveal_event` (L34)
-- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L740)
-- `core/runtime/settings.py` :: `load_settings` (L796)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1274)
+- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L749)
+- `core/runtime/settings.py` :: `load_settings` (L805)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1283)
 - `core/runtime/work_ref.py` :: `fra_task` (L129)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)

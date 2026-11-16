@@ -12,6 +12,8 @@ understøtte den nye jarvis-desk app der bygges sideløbende.
 """
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -23,6 +25,8 @@ from core.services.visible_runs import start_visible_run
 from core.services.visible_runs_sse_v2 import translate_to_v2
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+logger = logging.getLogger(__name__)
 
 
 def udled_tool_scope(mode: str, kind: str | None) -> str:
@@ -409,6 +413,16 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
             if _m == "code":
                 raise HTTPException(status_code=403, detail=KODE_NAEGTET)
             _tool_scope = "chat"
+    # ÉT scope pr. SESSION (16/11-2026). Denne rute udleder chat/code, mens den
+    # ældre rute sender "" (ubegrænset) for ejeren — samme samtale fik derfor
+    # 38 ↔ 110 værktøjer mellem to ture, og hvert skift gjorde hele præfikset
+    # koldt: målt 58,7 % cache-hit på runden efter et skift mod 96,6 % ellers.
+    # Et eksplicit mode vinder stadig og bliver den nye faste værdi.
+    try:
+        from core.services.session_tool_scope import resolve_scope
+        _tool_scope = resolve_scope(session_id, _tool_scope)
+    except Exception as _scope_exc:  # scope-opslaget er en optimering: fejler det, kører turen med rutens eget scope
+        logger.warning("chat_stream_v2: kunne ikke fastgøre scope: %s", _scope_exc)
     # Path B (server-owned transcript, LOCAL tool execution): only honoured in code
     # scope — the jarvis-code client is the one that runs the tools locally. Default
     # OFF everywhere → existing clients are byte-identical.

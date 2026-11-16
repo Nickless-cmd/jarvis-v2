@@ -479,6 +479,18 @@ _Fastlås tool-sættet pr. session, så prompt-præfikset holder (2026-09-05)._
 | function | `resolve` | `(session_id, selected_names, extra_required=…)` | Hvilke værktøjer skal denne tur sende? | [src](../../../core/services/session_tool_pin.py#L172) |
 | function | `build_session_tool_pin_surface` | `(session_id=…)` | — | [src](../../../core/services/session_tool_pin.py#L236) |
 
+## `core/services/session_tool_scope.py`
+_Ét værktøjs-scope pr. SESSION — ikke ét pr. tur._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `sticky_enabled` | `()` | Er scopet fast pr. session? Fail-safe: enhver fejl → til. | [src](../../../core/services/session_tool_scope.py#L35) |
+| function | `_key` | `(session_id)` | — | [src](../../../core/services/session_tool_scope.py#L44) |
+| function | `_read` | `(session_id)` | Det gemte scope, eller ``None`` når sessionen ikke har en post. | [src](../../../core/services/session_tool_scope.py#L48) |
+| function | `_write` | `(session_id, scope)` | — | [src](../../../core/services/session_tool_scope.py#L66) |
+| function | `resolve_scope` | `(session_id, requested)` | Det scope turen skal køre med — og den værdi sessionen husker. | [src](../../../core/services/session_tool_scope.py#L74) |
+| function | `clear` | `(session_id)` | Glem sessionens scope (tests og eksplicit nulstilling). | [src](../../../core/services/session_tool_scope.py#L99) |
+
 ## `core/services/session_topic_tracker.py`
 _Session topic tracker — real-time topic extraction and accumulation._
 
@@ -624,20 +636,4 @@ _Shared Language — tracks shorthand terms that develop between Jarvis and user
 | function | `scan_for_shared_terms` | `(*, user_message, assistant_response, run_id=…)` | Scan conversation for potential shared language terms. | [src](../../../core/services/shared_language.py#L25) |
 | function | `build_shared_language_surface` | `()` | — | [src](../../../core/services/shared_language.py#L61) |
 | function | `_is_common_phrase` | `(phrase)` | — | [src](../../../core/services/shared_language.py#L82) |
-
-## `core/services/shared_language_extended.py`
-_Shared Language Extended — shorthand-udvikling og -resolution._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/shared_language_extended.py#L34) |
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/shared_language_extended.py#L38) |
-| function | `_ngrams` | `(text)` | — | [src](../../../core/services/shared_language_extended.py#L60) |
-| function | `_load_recent_user_messages` | `(days=…, limit=…)` | — | [src](../../../core/services/shared_language_extended.py#L71) |
-| function | `propose_shorthand_terms` | `(*, min_occurrences=…, max_proposals=…)` | Scan chat messages for repeated n-grams; propose as shorthand. | [src](../../../core/services/shared_language_extended.py#L87) |
-| function | `_latest_suggestion_ts` | `()` | — | [src](../../../core/services/shared_language_extended.py#L151) |
-| function | `maybe_weekly_shorthand_suggestion` | `()` | Max 1 shorthand per 7 days. Returns the new term if added. | [src](../../../core/services/shared_language_extended.py#L166) |
-| function | `list_shorthand_terms` | `(*, limit=…)` | — | [src](../../../core/services/shared_language_extended.py#L210) |
-| function | `resolve_shorthand_text` | `(text)` | Expand shorthand in text. Returns {resolved_text, matched_terms}. | [src](../../../core/services/shared_language_extended.py#L229) |
-| function | `build_shared_language_extended_surface` | `()` | — | [src](../../../core/services/shared_language_extended.py#L265) |
 

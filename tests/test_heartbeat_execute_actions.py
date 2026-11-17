@@ -801,3 +801,57 @@ def test_chronicle_engine_error_reports_blocked(isolated_runtime, monkeypatch) -
 
     assert result["status"] == "blocked", result
     assert result["blocked_reason"] == "chronicle-error"
+
+
+def test_kun_proposed_er_ikke_contract_write_arbejde(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    """Maalt 17/11-2026: 199 af 229 kald svarede "no governed contract writes
+    ready". Aarsagen var at 'proposed' talte som arbejde, men apply-vejen
+    anvender kun godkendte og safe kandidater. Kun 'approved' er beviseligt
+    arbejde — ellers brænder hvert slag et model-kald paa at konstatere tomhed.
+    """
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+
+    monkeypatch.setattr(
+        heartbeat_runtime,
+        "runtime_contract_candidate_counts",
+        lambda: {"preference_update:proposed": 7, "memory_promotion:proposed": 3},
+    )
+
+    result = heartbeat_runtime._execute_heartbeat_model(
+        prompt="heartbeat test",
+        target={"provider": "phase1-runtime", "model": "phase1-runtime"},
+        policy={"allow_execute": True},
+        open_loops=[],
+        liveness={
+            "liveness_summary": "",
+            "liveness_pressure": "low",
+            "liveness_threshold_state": "quiet-threshold",
+        },
+    )
+
+    payload = json.loads(result["text"])
+    assert payload["execute_action"] != "process_contract_writes", (
+        "kun 'proposed' kandidater maa ikke vaekke contract-write-dispatch"
+    )
+
+
+def test_analyze_cross_signals_er_ikke_laengere_et_heartbeat_slag(
+    isolated_runtime,
+) -> None:
+    """Maalt 17/11-2026: 650 kald med 9 unikke artefakter, de sidste identiske
+    ('high_recurrence_habit' gentaget). Slaget var statisk stoj. Det er fjernet
+    fra heartbeat-repertoiret; modulet selv bestaar til Mission Control.
+    """
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+
+    assert "analyze_cross_signals" not in heartbeat_runtime.HEARTBEAT_ALLOWED_EXECUTE_ACTIONS
+
+    result = heartbeat_runtime._execute_heartbeat_internal_action(
+        action_type="analyze_cross_signals",
+        tick_id="heartbeat-tick:test",
+        workspace_dir=Path("/tmp/test-workspace"),
+    )
+    assert result["blocked_reason"] == "unsupported-execute-action"

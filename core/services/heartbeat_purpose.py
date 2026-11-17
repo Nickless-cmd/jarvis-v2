@@ -89,6 +89,9 @@ _OBSERVED: Final[dict[str, str]] = {
     "webchat-heartbeat-proposal": SESSION,
     # ── indre liv: filer og tilstande jeg selv læser senere ───────────────
     # analyze_cross_signals → liste af mønsternavne
+    # PENSIONERET fra heartbeat 17/11-2026: 650 kald gav 9 unikke artefakter,
+    # de sidste identiske. Posten bliver her fordi historiske rækker stadig
+    # backfilles og skal kunne læses — men slaget kan ikke længere fyres.
     "analyze_cross_signals": INNER_LIFE,
     # run_sleep_batch → liste (drømme)
     "run_sleep_batch": INNER_LIFE,

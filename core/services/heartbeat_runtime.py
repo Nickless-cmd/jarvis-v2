@@ -190,7 +190,6 @@ HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {
     # Level 1 autonomy — actually writes to Jarvis' own territory
     "autonomous_daily_note",
     # Consciousness roadmap actions
-    "analyze_cross_signals",
     "generate_narrative_identity",
     "update_boredom_state",
     "generate_emergent_goal",
@@ -3540,12 +3539,13 @@ def _phase1_rule_based_decision(
         )
     )
     contract_candidate_counts = runtime_contract_candidate_counts()
+    # Maalt 17/11-2026: 199 af 229 kald svarede "no governed contract writes ready",
+    # fordi 'proposed' talte som arbejde — men apply-vejen anvender kun godkendte og
+    # safe kandidater. Kun 'approved' er beviseligt arbejde her.
     has_contract_write_work = any(
         int(contract_candidate_counts.get(key) or 0) > 0
         for key in (
-            "preference_update:proposed",
             "preference_update:approved",
-            "memory_promotion:proposed",
             "memory_promotion:approved",
             "soul_update:approved",
             "identity_update:approved",
@@ -5710,29 +5710,6 @@ def _execute_heartbeat_internal_action(
                 "summary": str(exc)[:200],
                 "artifact": "",
                 "blocked_reason": "evolution-error",
-            }
-
-    if action_type == "analyze_cross_signals":
-        try:
-            from core.services.cross_signal_analysis import (
-                analyze_signal_patterns,
-            )
-
-            patterns = analyze_signal_patterns()
-            return {
-                "status": "executed",
-                "summary": f"{len(patterns)} cross-signal patterns found",
-                "artifact": json.dumps(
-                    [p.get("pattern") for p in patterns], ensure_ascii=False
-                ),
-                "blocked_reason": "",
-            }
-        except Exception as exc:
-            return {
-                "status": "blocked",
-                "summary": str(exc)[:200],
-                "artifact": "",
-                "blocked_reason": "cross-signal-error",
             }
 
     if action_type == "generate_narrative_identity":

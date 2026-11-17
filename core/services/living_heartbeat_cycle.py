@@ -96,7 +96,6 @@ _LIFE_PHASES = {
             "decay_forgotten_signals",
             "check_seed_activation",
             "generate_narrative_identity",
-            "analyze_cross_signals",
             "generate_emergent_goal",
             "write_chronicle_entry",
         ],

@@ -219,3 +219,29 @@ def test_centralen_faar_KASTEDE_flader_ikke_bare_tomme(monkeypatch):
         "en ærligt tom flade blev meldt som en fejl til Centralen"
     )
     assert observeret[-1]["error"] is None
+
+
+def test_hver_whitelist_post_har_en_gren() -> None:
+    """Whitelisten er den centrale gate: den styrer baade hvad modellen faar
+    tilbudt som execute_action, og hvad der slippes gennem valideringen.
+    En post uden en gren er en loefte der ikke kan indfries — slaget ville
+    blive accepteret og derefter falde til 'unsupported-execute-action'.
+    """
+    import inspect
+    import re
+
+    from core.services import heartbeat_runtime as hr
+
+    src = inspect.getsource(hr._execute_heartbeat_internal_action)
+    grene = set(re.findall(r'if action_type == "([a-z_\-]+)"', src))
+    manglende = sorted(hr.HEARTBEAT_ALLOWED_EXECUTE_ACTIONS - grene)
+    assert manglende == [], f"whitelist-poster uden gren: {manglende}"
+
+
+def test_analyze_cross_signals_er_pensioneret_fra_heartbeat() -> None:
+    """Maalt 17/11-2026: 650 kald, 9 unikke artefakter, de sidste identiske.
+    Slaget blev fjernet — det maa ikke snige sig ind igen via whitelisten.
+    """
+    from core.services import heartbeat_runtime as hr
+
+    assert "analyze_cross_signals" not in hr.HEARTBEAT_ALLOWED_EXECUTE_ACTIONS

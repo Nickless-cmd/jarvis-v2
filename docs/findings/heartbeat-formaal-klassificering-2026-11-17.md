@@ -186,13 +186,32 @@ skriver til sig selv.
 Kun de indre tick-rækker er talt. `tick_dispatched` er fasens bogføring af det
 samme slag og tælles ikke som en handling.
 
-## Åbne punkter
+## Lukket 17/11-2026 — de to skævheder
 
-- `process_contract_writes` er 100 % tom. Den bør enten finde sit input eller
-  fjernes — 47 tomme kald i ugen er den slags mekanisme der ser ud som om den
-  virker.
-- `analyze_cross_signals` gentager et stabilt input 149 gange. Freshness-gate
-  eller lavere kadence.
+Begge punkter nedenfor er nu målt igen på hele historikken og håndteret. De var
+**ikke** samme fejlform, og det ændrede hvad det rigtige indgreb var.
+
+**`process_contract_writes` — fejldispatchet, ikke tom.** Målt over hele
+historikken: 199 af 229 kald svarede «Heartbeat found no governed contract
+writes ready to process»; 30 gjorde reelt arbejde. Grenen selv virker — den
+skriver til USER.md og IDENTITY.md når der er noget at anvende, og det er den
+**eneste** kaldevej til `apply_approved_runtime_contract_candidates`. Fejlen sad
+i dispatch: `has_contract_write_work` talte `*:proposed` med som arbejde, men
+apply-vejen anvender kun godkendte og safe kandidater. Rettelsen er derfor ikke
+at slette grenen, men at lade kun `*:approved` tælle. Grenen bliver; de 199
+tomme kald forsvinder.
+
+**`analyze_cross_signals` — statisk, fjernet.** Målt: 650 kald, 9 unikke
+artefakter, og de seneste mange identiske (`high_recurrence_habit` gentaget).
+Der var ingen friskhed at redde. Slaget er fjernet fra
+`HEARTBEAT_ALLOWED_EXECUTE_ACTIONS`, grenen er slettet, og det er ude af
+drømmefasens forslagsliste. Modulet `cross_signal_analysis` består uændret —
+det læses af Mission Control-routen og af daemon-fladen, som ikke er heartbeat.
+
+Forskellen er værd at holde fast: den ene havde et formål men blev kaldt
+forkert; den anden havde ikke noget formål tilbage. Kun den anden skulle fjernes.
+
+## Åbne punkter
 - Klassificeringen er lavet på 7 dage. `productive_idle`-historikken viser at
   fordelingen kan skifte brat når en betingelse holder op med at være opfyldt —
   så tallene skal måles igen, ikke citeres.

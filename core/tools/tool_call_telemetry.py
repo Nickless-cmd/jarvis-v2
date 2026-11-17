@@ -303,6 +303,16 @@ def byg_completed_payload(
         # Sat af `execute_tool` FOER handleren koerte — se simple_tools.
         if pre_read is not None:
             payload["pre_read"] = bool(pre_read)
+        # Readback (17/11-2026). Tredje loeftning i samme moenster som stien
+        # ovenfor: `file_tools_exec` laeser filen tilbage fra disken efter
+        # skrivningen og lægger svaret i `result["readback"]`. Uden denne
+        # linje kunne gatens readback-gren ALDRIG fyre — den laeste
+        # `payload["result"]`, som denne funktion ikke saetter og aldrig har
+        # sat. Maalt 17/11-2026: 2.186 fil-skrivninger paa syv doegn, NUL bar
+        # feltet, og 101 af R2-gatens 149 uverificerede advarsler var netop
+        # skrivninger der allerede havde verificeret sig selv.
+        if isinstance(result, dict) and "readback" in result:
+            payload["readback"] = bool(result["readback"])
     # Verify-maalet (17/11-2026). Samme loeftning som fil-stien ovenfor:
     # handleren returnerer allerede maalet i `result` — `verify_file_contains`
     # baerer `path` i ALLE grene (ogsaa naar filen mangler), de to andre baerer

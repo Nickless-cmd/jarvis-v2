@@ -613,8 +613,15 @@ def _scan(events: list[dict[str, Any]]) -> dict[str, Any]:
             # den vigtigste grund til at heed-raten stod stille: metrikken
             # målte en adfærd vi med vilje havde fjernet (målt 19/9-2026).
             if tool in _MUTATION_TOOLS_FILE:
-                _res = payload.get("result")
-                if isinstance(_res, dict) and _res.get("readback") is True:
+                # Feltet hedder `readback` og ligger paa payloaden — ikke i
+                # en `result`-noegle. Frem til 17/11-2026 laeste denne gren
+                # `payload["result"]`, som `byg_completed_payload` aldrig
+                # saetter, saa grenen var doed: 2.186 skrivninger bar et
+                # readback i deres svar, nul naaede hertil, og hver eneste
+                # blev talt som uverificeret. En vagt hvis betingelse intet
+                # kan opfylde maaler ingenting — den skal pege paa det felt
+                # producenten faktisk udgiver.
+                if payload.get("readback") is True:
                     light_verifies.append(item)
                     continue
             mutations.append(item)

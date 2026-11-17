@@ -388,8 +388,13 @@ def test_sqlite3_er_kontekst_foelsom():
 
 def test_fil_mutation_med_indbygget_readback_taeller_som_verify():
     """edit_file/write_file bærer siden cf2f6b3f8 selv filstumpen fra disken.
-    Beviset ligger i samme kald — mutationen må ikke tælle som uverificeret."""
-    events = [_evt("write_file", extra_payload={"result": {"readback": True}})]
+    Beviset ligger i samme kald — mutationen må ikke tælle som uverificeret.
+
+    Feltet hedder `readback` og ligger direkte på payloaden. Testen brugte
+    tidligere `{"result": {"readback": True}}` — en form `byg_completed_payload`
+    aldrig har udgivet, så den var grøn uden at kunne fyre i drift.
+    """
+    events = [_evt("write_file", extra_payload={"readback": True})]
     s = _scan(events)
     assert len(s["mutations"]) == 0
     assert len(s["light_verifies"]) == 1
@@ -397,10 +402,43 @@ def test_fil_mutation_med_indbygget_readback_taeller_som_verify():
 
 def test_fil_mutation_uden_readback_taeller_som_mutation():
     """Readback der AFVIGER (eller mangler) er ingen verifikation."""
-    for payload in ({"result": {"readback": False}}, {}):
+    for payload in ({"readback": False}, {}):
         s = _scan([_evt("write_file", extra_payload=payload)])
         assert len(s["mutations"]) == 1, payload
         assert len(s["light_verifies"]) == 0, payload
+
+
+def test_producenten_udgiver_readback_saa_gaten_kan_se_det():
+    """Ende-til-ende: den ÆGTE result-form fra file_tools_exec skal give et
+    payload gaten tæller som verificeret.
+
+    Målt 17/11-2026: `_exec_write_file` satte `result["readback"]` i 2.186
+    kald, men `byg_completed_payload` løftede den ikke op, og gatens gren
+    læste en `result`-nøgle der ikke fandtes. Hver skrivning blev derfor talt
+    som uverificeret. Denne test binder de to ender sammen — uden den kan
+    begge sider være grønne hver for sig mens forbindelsen er død.
+    """
+    from core.tools.tool_call_telemetry import byg_completed_payload
+
+    payload = byg_completed_payload(
+        "write_file",
+        "ok",
+        {"path": "/tmp/x.py"},
+        {"status": "ok", "path": "/tmp/x.py", "readback": True},
+    )
+    assert payload["readback"] is True
+
+    s = _scan(
+        [
+            {
+                "kind": "tool.completed",
+                "created_at": datetime.now(UTC).isoformat(),
+                "payload": payload,
+            }
+        ]
+    )
+    assert len(s["mutations"]) == 0
+    assert len(s["light_verifies"]) == 1
 
 
 # ── Anførselstegn er ikke separatorer (12/10-2026) ────────────────────────

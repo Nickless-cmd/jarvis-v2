@@ -165,6 +165,19 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
         except Exception as exc:
             _log.debug("cleanup_old_results fejlede: %s", exc)
 
+        # Daemon-output-loggen. `daemon_output_log_cleanup` blev kaldt fra ÉN
+        # heartbeat-gren, og den gren kunne aldrig fyres fordi den manglede i
+        # whitelisten — saa oprydningen kørte i praksis aldrig. Da grenen blev
+        # fjernet 17/11-2026 stod funktionen helt uden kalder, og loggen ville
+        # vokse frit. Samme mønster som de tre poster ovenfor: bygget, men
+        # aldrig tilsluttet noget der faktisk kører.
+        daemon_log_pruned = 0
+        try:
+            from core.runtime.db import daemon_output_log_cleanup
+            daemon_log_pruned = daemon_output_log_cleanup(max_age_days=7)
+        except Exception as exc:
+            _log.debug("daemon_output_log_cleanup fejlede: %s", exc)
+
         # Forældreløse balancer-slots: profiler der aldrig vælges (backup-mapper,
         # provider-navngivne profiler). Målt 01-09: 166 af 264 poster var inert
         # historik, så state-filen så dobbelt så stor ud som virkeligheden.
@@ -195,6 +208,7 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
             "orphan_slots": orphan_slots,
             "rotated_logs": rotated_logs,
             "tool_results_pruned": tool_results_pruned,
+            "daemon_log_pruned": daemon_log_pruned,
             "uden_politik": uden_politik,
             "wal_checkpoint": wal_checkpoint,
         }

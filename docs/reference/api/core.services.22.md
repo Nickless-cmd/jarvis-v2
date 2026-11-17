@@ -627,19 +627,20 @@ _Recurring tasks service — lets Jarvis schedule repeating reminders/actions._
 | function | `_klokkeslaet_paa_dag` | `(tid, now, ugedage, weekday_tider)` | Flyt et tidspunkt til den klokke ugedagen har i tidsplanen. | [src](../../../core/services/recurring_tasks.py#L730) |
 | function | `_naeste_tid` | `(planlagt_iso, interval_minutes, now, ugedage=…, weekday_tider=…)` | Næste affyring — regnet fra den PLANLAGTE tid, ikke fra den faktiske. | [src](../../../core/services/recurring_tasks.py#L763) |
 | function | `_advance` | `(task_id, interval_minutes, now, planlagt_iso=…, ugedage=…, weekday_tider=…)` | — | [src](../../../core/services/recurring_tasks.py#L813) |
-| function | `_cancel` | `(task_id, now_iso)` | — | [src](../../../core/services/recurring_tasks.py#L831) |
-| function | `_list` | `(limit=…)` | — | [src](../../../core/services/recurring_tasks.py#L851) |
-| function | `_get_one` | `(task_id)` | — | [src](../../../core/services/recurring_tasks.py#L867) |
-| function | `create_recurring_task` | `(*, focus, interval_minutes, source=…, delay_minutes=…, weekdays=…, session_id=…, inbox_on_complete=…)` | Schedule a recurring task. Returns task info dict. | [src](../../../core/services/recurring_tasks.py#L884) |
-| function | `cancel_recurring_task` | `(task_id)` | — | [src](../../../core/services/recurring_tasks.py#L978) |
-| function | `list_recurring_tasks` | `()` | — | [src](../../../core/services/recurring_tasks.py#L986) |
-| function | `get_recurring_tasks_state` | `()` | Summary for observability / Mission Control. | [src](../../../core/services/recurring_tasks.py#L991) |
-| function | `_fire_due` | `()` | — | [src](../../../core/services/recurring_tasks.py#L1011) |
-| function | `_enter_owner_context` | `(user_id)` | Sæt workspace-konteksten til task-ejeren for affyringen. Returnerer en | [src](../../../core/services/recurring_tasks.py#L1117) |
-| function | `_exit_owner_context` | `(token)` | — | [src](../../../core/services/recurring_tasks.py#L1131) |
-| function | `_poller_loop` | `()` | — | [src](../../../core/services/recurring_tasks.py#L1141) |
-| function | `start_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L1160) |
-| function | `stop_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L1169) |
+| function | `_advance_after_error` | `(task_id, interval_minutes, now, planlagt_iso=…, ugedage=…, weekday_tider=…)` | Ryk planlægningen frem efter en fejl — uden at tælle en levering. | [src](../../../core/services/recurring_tasks.py#L831) |
+| function | `_cancel` | `(task_id, now_iso)` | — | [src](../../../core/services/recurring_tasks.py#L851) |
+| function | `_list` | `(limit=…)` | — | [src](../../../core/services/recurring_tasks.py#L871) |
+| function | `_get_one` | `(task_id)` | — | [src](../../../core/services/recurring_tasks.py#L887) |
+| function | `create_recurring_task` | `(*, focus, interval_minutes, source=…, delay_minutes=…, weekdays=…, session_id=…, inbox_on_complete=…)` | Schedule a recurring task. Returns task info dict. | [src](../../../core/services/recurring_tasks.py#L904) |
+| function | `cancel_recurring_task` | `(task_id)` | — | [src](../../../core/services/recurring_tasks.py#L998) |
+| function | `list_recurring_tasks` | `()` | — | [src](../../../core/services/recurring_tasks.py#L1006) |
+| function | `get_recurring_tasks_state` | `()` | Summary for observability / Mission Control. | [src](../../../core/services/recurring_tasks.py#L1011) |
+| function | `_fire_due` | `()` | — | [src](../../../core/services/recurring_tasks.py#L1031) |
+| function | `_enter_owner_context` | `(user_id)` | Sæt workspace-konteksten til task-ejeren for affyringen. Returnerer en | [src](../../../core/services/recurring_tasks.py#L1145) |
+| function | `_exit_owner_context` | `(token)` | — | [src](../../../core/services/recurring_tasks.py#L1159) |
+| function | `_poller_loop` | `()` | — | [src](../../../core/services/recurring_tasks.py#L1169) |
+| function | `start_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L1188) |
+| function | `stop_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L1197) |
 
 ## `core/services/recursion_guard.py`
 _Recursion guard for autonomous agent dispatch._

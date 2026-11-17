@@ -421,6 +421,24 @@ _Flyt USER.md «## Durable Preferences» ind i «## Lært» (lærings-sløjfe, b
 | function | `migrate` | `(*, workspace, apply)` | — | [src](../../../scripts/user_md_learned_migration.py#L48) |
 | function | `main` | `()` | — | [src](../../../scripts/user_md_learned_migration.py#L118) |
 
+## `scripts/vaert_boot_vagt.py`
+_Boot-vagt paa pve i9: klassificér hver boot som REN eller CUT._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Boot` | `` | — | [src](../../../scripts/vaert_boot_vagt.py#L62) |
+| method | `Boot.udfald` | `(self)` | — | [src](../../../scripts/vaert_boot_vagt.py#L70) |
+| method | `Boot.varighed_s` | `(self)` | Sekunder mellem start og slut. Korte boots er i sig selv et signal. | [src](../../../scripts/vaert_boot_vagt.py#L76) |
+| function | `parse_boot_liste` | `(tekst)` | `journalctl --list-boots` → Boot-objekter. Header og tomme linjer springes over. | [src](../../../scripts/vaert_boot_vagt.py#L86) |
+| function | `klassificer` | `(haler)` | Journal-halen for ÉN boot → True hvis REN nedlukning, False hvis CUT. | [src](../../../scripts/vaert_boot_vagt.py#L99) |
+| function | `_ssh` | `(host, kommando, timeout=…)` | — | [src](../../../scripts/vaert_boot_vagt.py#L108) |
+| function | `maal` | `(host, antal=…)` | Hent boot-liste og klassificér de nyeste `antal` boots. | [src](../../../scripts/vaert_boot_vagt.py#L120) |
+| function | `nye_siden` | `(boots, kendte)` | Boots der ikke er rapporteret foer. Boot-id er noeglen — idx flytter sig. | [src](../../../scripts/vaert_boot_vagt.py#L132) |
+| function | `indlaes_state` | `(sti)` | — | [src](../../../scripts/vaert_boot_vagt.py#L137) |
+| function | `gem_state` | `(sti, kendte)` | — | [src](../../../scripts/vaert_boot_vagt.py#L144) |
+| function | `rapport` | `(boots, nye)` | — | [src](../../../scripts/vaert_boot_vagt.py#L154) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/vaert_boot_vagt.py#L178) |
+
 ## `scripts/validate_commit_attribution.py`
 _Validate commit attribution for commit-msg and pre-push hooks._
 
@@ -434,13 +452,4 @@ _Validate commit attribution for commit-msg and pre-push hooks._
 | function | `_print_failures` | `(failures)` | — | [src](../../../scripts/validate_commit_attribution.py#L88) |
 | function | `_pre_push` | `(repo)` | — | [src](../../../scripts/validate_commit_attribution.py#L95) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/validate_commit_attribution.py#L122) |
-
-## `scripts/verify_fase_a.py`
-_Fase A acceptance (kør på containeren). Beviser aldrig-tør-bunden:_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `check_selection_floor_no_raise` | `()` | — | [src](../../../scripts/verify_fase_a.py#L9) |
-| function | `check_balancer_floor_no_raise` | `()` | — | [src](../../../scripts/verify_fase_a.py#L21) |
-| function | `check_central_visibility` | `()` | — | [src](../../../scripts/verify_fase_a.py#L33) |
 

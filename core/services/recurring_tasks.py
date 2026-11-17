@@ -828,6 +828,26 @@ def _advance(task_id: str, interval_minutes: int, now: datetime,
         conn.commit()
 
 
+def _advance_after_error(task_id: str, interval_minutes: int, now: datetime,
+                         planlagt_iso: str = "", ugedage: set[int] | None = None,
+                         weekday_tider: dict[int, tuple[int, int]] | None = None) -> None:
+    """Ryk planlægningen frem efter en fejl — uden at tælle en levering.
+
+    ``_advance`` opdaterer både ``next_fire_at`` OG ``fire_count``/
+    ``last_fired_at``. En fejling er ikke en levering, så tællerne må ikke
+    røres; men tiden SKAL flyttes. Ellers bliver rækken forfalden for evigt
+    og fyrer ved hver poll — den fejlform der gav 1.440 loglinjer i døgnet.
+    """
+    next_fire = _naeste_tid(planlagt_iso, interval_minutes, now, ugedage,
+                            weekday_tider).isoformat()
+    with runtime_db.connect() as conn:
+        conn.execute(
+            "UPDATE recurring_tasks SET next_fire_at = ?, updated_at = ? WHERE task_id = ?",
+            (next_fire, now.isoformat(), task_id),
+        )
+        conn.commit()
+
+
 def _cancel(task_id: str, now_iso: str) -> bool:
     # Bruger-vendt: et medlem må ikke kunne annullere en andens task.
     uid = _scope()
@@ -1109,6 +1129,14 @@ def _fire_due() -> None:
                 task_id, interval_minutes, task.get("user_id") or "-",
             )
         except Exception as exc:
+            # Fejlen flytter OGSÅ planlægningen. Uden det blev rækken
+            # forfalden for evigt og blev samlet op ved HVER poll — målt
+            # 17/11-2026: 1.440 fejl i døgnet for én permanent blokeret opgave
+            # (`recurring source has no verified Routine migration link`).
+            # `_advance` kan ikke bruges her: den tæller leveringer, og en
+            # fejling er ingen levering.
+            _advance_after_error(task_id, interval_minutes, now,
+                                 str(task.get('next_fire_at') or ''), ugedage, weekday_tider)
             logger.error("recurring_tasks: error firing %s: %s", task_id, exc)
         finally:
             _exit_owner_context(token)

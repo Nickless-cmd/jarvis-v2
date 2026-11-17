@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10277/18821 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10284/18833 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10277/18821 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 908 | 1622 | 55% |
-| `core.services` | 6898 | 12787 | 53% |
+| `core.services` | 6900 | 12788 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -38,12 +38,12 @@ Generated from source. 10277/18821 functions/methods documented (54%). The list 
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 10 | 11 | 90% |
-| `scripts` | 336 | 679 | 49% |
+| `scripts` | 341 | 690 | 49% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2635)
+## Undocumented public functions (2640)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L234)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1721,10 +1721,10 @@ Generated from source. 10277/18821 functions/methods documented (54%). The list 
 - `core/services/recall_ownership_migration.py` :: `ensure_recall_ownership_migration_tables` (L96)
 - `core/services/recall_ownership_migration.py` :: `report_path` (L142)
 - `core/services/recall_ownership_migration.py` :: `rollback_report` (L502)
-- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L978)
-- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L986)
-- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L1160)
-- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L1169)
+- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L998)
+- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L1006)
+- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L1188)
+- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L1197)
 - `core/services/reflection_cycle_daemon.py` :: `build_reflection_surface` (L146)
 - `core/services/reflection_cycle_daemon.py` :: `get_latest_reflection` (L142)
 - `core/services/reflection_signal_tracking.py` :: `build_runtime_reflection_signal_surface` (L51)
@@ -1870,16 +1870,16 @@ Generated from source. 10277/18821 functions/methods documented (54%). The list 
 - `core/services/routine_service.py` :: `RoutineService.stop` (L347)
 - `core/services/routine_service.py` :: `RoutineService.update` (L277)
 - `core/services/routine_service.py` :: `RoutineView.id` (L55)
-- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_recurring` (L110)
-- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_scheduled` (L104)
-- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_system` (L153)
-- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.fire` (L163)
-- `core/services/routine_trigger_adapters.py` :: `dispatch_recurring` (L192)
-- `core/services/routine_trigger_adapters.py` :: `dispatch_scheduled` (L205)
-- `core/services/routine_trigger_adapters.py` :: `dispatch_system` (L215)
-- `core/services/routine_trigger_adapters.py` :: `enqueue_recurring` (L175)
-- `core/services/routine_trigger_adapters.py` :: `enqueue_scheduled` (L171)
-- `core/services/routine_trigger_adapters.py` :: `enqueue_system` (L183)
+- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_recurring` (L113)
+- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_scheduled` (L107)
+- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_system` (L156)
+- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.fire` (L166)
+- `core/services/routine_trigger_adapters.py` :: `dispatch_recurring` (L195)
+- `core/services/routine_trigger_adapters.py` :: `dispatch_scheduled` (L220)
+- `core/services/routine_trigger_adapters.py` :: `dispatch_system` (L230)
+- `core/services/routine_trigger_adapters.py` :: `enqueue_recurring` (L178)
+- `core/services/routine_trigger_adapters.py` :: `enqueue_scheduled` (L174)
+- `core/services/routine_trigger_adapters.py` :: `enqueue_system` (L186)
 - `core/services/routine_types.py` :: `RoutineClassification.as_dict` (L124)
 - `core/services/routine_types.py` :: `RoutinePatch.changes` (L177)
 - `core/services/routine_types.py` :: `RoutinePrincipal.user_id` (L82)
@@ -2661,6 +2661,11 @@ Generated from source. 10277/18821 functions/methods documented (54%). The list 
 - `scripts/tool_router_bootstrap.py` :: `main` (L22)
 - `scripts/user_md_learned_migration.py` :: `main` (L118)
 - `scripts/user_md_learned_migration.py` :: `migrate` (L48)
+- `scripts/vaert_boot_vagt.py` :: `Boot.udfald` (L70)
+- `scripts/vaert_boot_vagt.py` :: `gem_state` (L144)
+- `scripts/vaert_boot_vagt.py` :: `indlaes_state` (L137)
+- `scripts/vaert_boot_vagt.py` :: `main` (L178)
+- `scripts/vaert_boot_vagt.py` :: `rapport` (L154)
 - `scripts/validate_commit_attribution.py` :: `main` (L122)
 - `scripts/verify_fase_a.py` :: `check_balancer_floor_no_raise` (L21)
 - `scripts/verify_fase_a.py` :: `check_central_visibility` (L33)

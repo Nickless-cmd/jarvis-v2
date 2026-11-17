@@ -447,8 +447,17 @@ def _load_report(report_id: str) -> dict[str, object]:
 
 
 def _legacy_link_exists(conn: sqlite3.Connection, kind: str, source_id: str) -> bool:
+    """Et link tæller kun når det BÆRER en routine.
+
+    En række med ``routine_id IS NULL`` er en rest af en halvkørt migration:
+    den peger på intet, og ``get_legacy_routine_id`` svarer ``None`` for den.
+    Blev den alligevel talt som «findes», sprang ``apply_report`` kilden over
+    som ``already`` — og kunne derfor aldrig reparere hullet. Målt 17/11-2026:
+    fire sådanne rækker, hvoraf én var ``active`` og forfalden.
+    """
     return conn.execute(
-        "SELECT 1 FROM routine_legacy_links WHERE source_kind=? AND source_id=?",
+        "SELECT 1 FROM routine_legacy_links "
+        "WHERE source_kind=? AND source_id=? AND routine_id IS NOT NULL",
         (kind, source_id),
     ).fetchone() is not None
 
@@ -530,14 +539,25 @@ def apply_report(report_id: str) -> ApplyResult:
             )
             created += 1
         with connect() as conn:
-            conn.execute(
-                "INSERT OR IGNORE INTO routine_legacy_links "
-                "(legacy_link_id,routine_id,run_id,source_kind,source_id,source_ref_enc,created_at) "
-                "VALUES (?,?,?,?,?,?,?)",
-                (f"legacy_{str(raw['source_id_hash'])[:24]}", routine_id, None, kind,
-                 source_id, seal(owner, json.dumps(source).encode("utf-8")),
-                 datetime.now(UTC).isoformat()),
-            )
+            # FØRST fuldføres et halvt link, DEREFTER indsættes et nyt.
+            # `INSERT OR IGNORE` alene kunne ikke reparere noget: rækken
+            # fandtes allerede med `routine_id IS NULL`, så indsættelsen blev
+            # ignoreret og hullet bestod uanset hvor mange gange migrationen
+            # kørte. Se `_legacy_link_exists`.
+            repaired = conn.execute(
+                "UPDATE routine_legacy_links SET routine_id=? "
+                "WHERE source_kind=? AND source_id=? AND routine_id IS NULL",
+                (routine_id, kind, source_id),
+            ).rowcount
+            if not repaired:
+                conn.execute(
+                    "INSERT OR IGNORE INTO routine_legacy_links "
+                    "(legacy_link_id,routine_id,run_id,source_kind,source_id,source_ref_enc,created_at) "
+                    "VALUES (?,?,?,?,?,?,?)",
+                    (f"legacy_{str(raw['source_id_hash'])[:24]}", routine_id, None, kind,
+                     source_id, seal(owner, json.dumps(source).encode("utf-8")),
+                     datetime.now(UTC).isoformat()),
+                )
     return ApplyResult(created, quarantined, already)
 
 

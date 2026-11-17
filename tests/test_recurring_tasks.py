@@ -382,3 +382,36 @@ def test_baggrundsrutine_med_flag_faar_stadig_post(tmp_path, monkeypatch):
         focus="Runtime-inspektion", interval_minutes=360, inbox_on_complete=True,
     )
     assert rt.skal_i_indbakken(t["task_id"]) is True
+
+
+def test_fejl_rykker_planlaegningen_uden_at_taelle_en_levering(tmp_path, monkeypatch):
+    """Regression 17/11-2026: except-grenen lod ``next_fire_at`` staa stille.
+
+    Maalt: 1.440 fejl i doegnet for én permanent blokeret opgave, fordi raekken
+    blev forfalden for evigt og blev samlet op ved hver poll. En fejling er
+    ingen levering, saa ``fire_count`` og ``last_fired_at`` maa ikke roeres.
+    """
+    _fresh(tmp_path, monkeypatch)
+    t = rt.create_recurring_task(focus="blokeret", interval_minutes=60)
+    tid = t["task_id"]
+    gammel_fire = "2026-11-15T18:48:20.176051+00:00"
+    gammel_levering = "2026-11-01T18:49:12.101284+00:00"
+    with db.connect() as c:
+        c.execute(
+            "UPDATE recurring_tasks SET next_fire_at=?, fire_count=4, last_fired_at=? "
+            "WHERE task_id=?",
+            (gammel_fire, gammel_levering, tid),
+        )
+        c.commit()
+
+    rt._advance_after_error(tid, 60, datetime.now(UTC), gammel_fire)
+
+    with db.connect() as c:
+        row = c.execute(
+            "SELECT next_fire_at, fire_count, last_fired_at FROM recurring_tasks "
+            "WHERE task_id=?",
+            (tid,),
+        ).fetchone()
+    assert row[0] > gammel_fire, "tiden SKAL flyttes, ellers fyrer den hvert minut"
+    assert row[1] == 4, "en fejling er ikke en levering"
+    assert row[2] == gammel_levering, "last_fired_at maa ikke lyve om en levering"

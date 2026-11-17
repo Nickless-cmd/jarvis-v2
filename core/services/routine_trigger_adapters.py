@@ -1,6 +1,7 @@
 """Single-path adapters from legacy producers to isolated Routine runs."""
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from typing import Callable, Mapping
@@ -8,6 +9,8 @@ from typing import Callable, Mapping
 from core.runtime import db_routines
 from core.services.routine_service import RunView, RoutineService
 from core.services.routine_types import RoutinePrincipal
+
+logger = logging.getLogger(__name__)
 
 
 SYSTEM_PRODUCERS = frozenset(
@@ -195,9 +198,21 @@ def dispatch_recurring(
     occurrence_id: str | None = None,
 ) -> TriggerResult | None:
     if cutover_allows("recurring", source_id):
-        return (adapters or RoutineTriggerAdapters()).enqueue_recurring(
-            source_id, occurrence_id=occurrence_id,
-        )
+        try:
+            return (adapters or RoutineTriggerAdapters()).enqueue_recurring(
+                source_id, occurrence_id=occurrence_id,
+            )
+        except UnmigratedRoutineSource:
+            # Cutover-listen er en HENSIGT, ikke en garanti: den kan pege på
+            # en kilde der aldrig blev migreret. Uden dette led dør opgaven
+            # hver gang — den kan hverken gå rutine-vejen (intet link) eller
+            # legacy-vejen (cutover spærrer). Målt 17/11-2026: 1.440 døde
+            # forsøg i døgnet på én sådan række. Fejlen logges; den skjules
+            # ikke, og legacy-vejen er den vej der faktisk virker.
+            logger.error(
+                "routine-cutover: %s har intet migrerings-link — kører legacy",
+                source_id,
+            )
     legacy()
     return None
 

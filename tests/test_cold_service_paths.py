@@ -53,5 +53,5 @@ def test_nudge_core_names_cold_db_read_then_warm_cache_hit(monkeypatch):
     assert cache == {"navne": frozenset({"bash"}), "hentet": 1000.0}
     assert nudge._kernens_navne() == frozenset({"bash"})
     assert calls == [
-        "SELECT always_core_names_json FROM tool_router_decisions ORDER BY id DESC LIMIT 1"
+        "SELECT selected_names_json FROM tool_router_decisions ORDER BY id DESC LIMIT 1"
     ]

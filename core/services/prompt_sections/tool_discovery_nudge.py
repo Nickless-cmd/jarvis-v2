@@ -303,7 +303,7 @@ _KERNE_TTL_S = 300
 
 
 def _kernens_navne() -> frozenset[str]:
-    """De vaerktoejer der ALTID sendes med — dem behoever han intet nudge om.
+    """De vaerktoejer der FAKTISK blev sendt — dem behoever han intet nudge om.
 
     ## Hvorfor kataloget ikke raekker
 
@@ -321,11 +321,24 @@ def _kernens_navne() -> frozenset[str]:
     nudge: laerer han at kanalen er stoej, holder han op med at laese den, og
     saa er den doed for altid.»
 
-    Vi laeser routerens SENESTE beslutning frem for at genberegne kernen: det
-    er praecis det saet der faktisk blev sendt, og det er ét raekke-opslag i
-    stedet for en GROUP BY over syv doegns events paa den hotte sti. Er der
-    ingen beslutning endnu, filtrerer vi ikke — hellere et nudge for meget end
-    en tom kanal.
+    ## Det sendte saet er ikke kernen (17/11-2026)
+
+    Filteret laeste tidligere `always_core_names_json` og kaldte det «praecis
+    det saet der faktisk blev sendt». Det var forkert, og det kostede 31 % af
+    kanalen: `selected_names_json` = kerne + embedding-picks (maalt 70 + 24 =
+    94, mod kernens 70). De 24 i mellemrummet var sendt til modellen uden at
+    filteret vidste det.
+
+    Maalt over de 111 nudges der slap gennem intent-gaten: **0 ramte
+    `always_core`, 34 ramte `selected`** — nul overlap, hele laekagen laa i
+    mellemrummet. `get_weather` stod bag 18 af dem, naesten alle kl. 05-06,
+    hvor morgenbriefen selv vaelger det som embedding-pick: to mekanismer
+    fangede samme signal og modellen fik besked to gange om noget den havde.
+
+    Vi laeser derfor `selected_names_json` — det saet der faktisk blev sendt —
+    og det er ét raekke-opslag i stedet for en GROUP BY over syv doegns events
+    paa den hotte sti. Er der ingen beslutning endnu, filtrerer vi ikke:
+    hellere et nudge for meget end en tom kanal.
     """
     import time as _t
     naa = _t.monotonic()
@@ -337,7 +350,7 @@ def _kernens_navne() -> frozenset[str]:
         from core.runtime.db import connect
         with connect() as c:
             r = c.execute(
-                "SELECT always_core_names_json FROM tool_router_decisions "
+                "SELECT selected_names_json FROM tool_router_decisions "
                 "ORDER BY id DESC LIMIT 1"
             ).fetchone()
         if r and r[0]:

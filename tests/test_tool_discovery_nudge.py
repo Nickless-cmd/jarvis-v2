@@ -756,6 +756,51 @@ def test_kernen_laeses_fra_routerens_SENESTE_beslutning(monkeypatch):
     assert _AEGTE_KERNENS_NAVNE() == frozenset({"bash", "read_file"})
 
 
+def test_et_EMBEDDING_PICK_blev_SENDT_og_skal_derfor_ikke_nudges(monkeypatch):
+    """17/11-2026: filteret laeste `always_core` og missede embedding-picks.
+
+    `selected_names_json` = kerne + embedding-picks (maalt 70 + 24 = 94, mod
+    kernens 70). Laeste vi kun kernen, pegede kanalen paa vaerktoejer der
+    allerede laa foran modellen: **34 af 111 nudges (31 %)**, og `get_weather`
+    stod bag 18 af dem — morgenbriefen vaelger selv det samme vaerktoej som
+    embedding-pick, saa modellen fik besked to gange om noget den havde.
+
+    Denne test svarer FORSKELLIGT paa de to kolonner. De oevrige kerne-tests
+    returnerer samme JSON uanset hvad der bliver spurgt om, saa de er
+    felt-blinde og kan ikke se en tilbageskiftning — det kan denne.
+    """
+    import json as _json
+
+    class _Con:
+        def execute(self, sql, *a, **k):
+            vaerdi = (
+                ["bash", "get_weather"]
+                if "selected_names_json" in sql
+                else ["bash"]
+            )
+
+            class _C:
+                def fetchone(_self):
+                    return (_json.dumps(vaerdi),)
+
+            return _C()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    import core.runtime.db as _db
+    monkeypatch.setattr(_db, "connect", lambda: _Con())
+    T._KERNE_CACHE["hentet"] = 0.0
+    navne = _AEGTE_KERNENS_NAVNE()
+    assert "get_weather" in navne, (
+        "filteret laeser ikke det SENDTE saet — et embedding-pick der laa "
+        f"foran modellen blev nudget. Fik: {sorted(navne)}"
+    )
+
+
 def test_en_DB_der_fejler_giver_en_TOM_kerne_ikke_en_undtagelse(monkeypatch):
     """Sektionens kontrakt er at den aldrig vaelter prompt-bygningen."""
     def _boom():

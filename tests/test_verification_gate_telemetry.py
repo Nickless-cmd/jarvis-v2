@@ -42,6 +42,17 @@ def _fake_state_store(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     monkeypatch.setattr(
         "core.services.verification_gate_telemetry.save_json", fake_save
     )
+    # Udfaldsaksen cacher sit DB-opslag i 5 min. Uden denne reset ville én
+    # tests tal lække ind i den næste.
+    vgt._reset_outcome_cache()
+    # En unit-test skal ikke ramme produktionens database. Standard er derfor
+    # «ingen events» — de tests der måler udfaldsaksen patcher `connect` selv
+    # via `_patch_events`.
+    import core.runtime.db as _db
+
+    monkeypatch.setattr(
+        _db, "connect", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no db"))
+    )
     return store
 
 
@@ -713,3 +724,46 @@ class TestMeasureOutcomeAxis:
         r = vgt.measure_outcome_axis(hours=24)
         # 10 min og 20 min → median 15 min = 900 s
         assert r["median_seconds_to_verify"] == pytest.approx(900.0, rel=0.02)
+
+
+class TestSectionViserAegteDaekning:
+    """Koblingen: uden disse to er `measure_outcome_axis` en funktion ingen
+    kalder — præcis den teater-form den skal afløse."""
+
+    def test_sektionen_viser_aegte_daekning(self, _fake_state_store, monkeypatch):
+        now = datetime.now(UTC)
+        _fake_state_store[vgt._TELEMETRY_KEY] = {
+            "surfaces": [
+                _surface({
+                    "at": (now - timedelta(hours=2, minutes=i)).isoformat(),
+                    "resolved": True,
+                    "ignored_at": now.isoformat(),
+                })
+                for i in range(5)
+            ],
+            "reactions": [],
+        }
+        _patch_events(
+            monkeypatch,
+            [_verify_row("verify_file_contains", now - timedelta(minutes=30))],
+        )
+        section = telemetry_section()
+        assert section is not None
+        assert "ægte dækning" in section
+        assert "1/5" in section
+
+    def test_uden_db_viser_kun_den_gamle_akse(self, _fake_state_store):
+        """DB-fejl må ikke tage prompten med sig — sektionen skal stadig
+        rendere, bare uden den ægte akse."""
+        now = datetime.now(UTC)
+        _fake_state_store[vgt._TELEMETRY_KEY] = {
+            "surfaces": [
+                _surface({"at": (now - timedelta(hours=i)).isoformat()})
+                for i in range(5)
+            ],
+            "reactions": [],
+        }
+        section = telemetry_section()
+        assert section is not None
+        assert "R2-gate" in section
+        assert "ægte dækning" not in section

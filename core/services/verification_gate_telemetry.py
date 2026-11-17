@@ -379,22 +379,36 @@ def measure_outcome_axis(
         "heeded_light_but_unverified": 0,
     }
     widest = max(horizons_minutes)
-    for s in surfaces:
-        start = bisect.bisect_right(verifies, s["at"])
-        first_delta: float | None = None
-        for h in sorted(horizons_minutes):
-            end = s["at"] + timedelta(minutes=h)
-            stop = bisect.bisect_right(verifies, end)
-            if stop > start:
-                per_horizon[int(h)] += 1
-                if first_delta is None:
-                    first_delta = (verifies[start] - s["at"]).total_seconds()
-        if first_delta is not None:
-            deltas.append(first_delta)
 
-        verified_widest = bisect.bisect_right(
-            verifies, s["at"] + timedelta(minutes=widest)
-        ) > start
+    # 1:1-matching, ikke «findes der et kald i nærheden». Ét verify-kald kan
+    # kun kontrollere ÉT mål (én fil, én service, én URL), så det må højst
+    # dække én advarsel. Uden dette loft markerede ét kald fem advarsler som
+    # verificerede — den opblæsning koden selv advarer om.
+    def _match(horizon_minutes: int) -> dict[int, float]:
+        """Returnér {surface-indeks: sekunder til match} for én horisont."""
+        brugt: set[int] = set()
+        ud: dict[int, float] = {}
+        for i, s in enumerate(sorted(range(len(surfaces)), key=lambda k: surfaces[k]["at"])):
+            s_at = surfaces[s]["at"]
+            slut = s_at + timedelta(minutes=horizon_minutes)
+            start = bisect.bisect_right(verifies, s_at)
+            for j in range(start, len(verifies)):
+                if verifies[j] > slut:
+                    break
+                if j in brugt:
+                    continue
+                brugt.add(j)
+                ud[i] = (verifies[j] - s_at).total_seconds()
+                break
+        return ud
+
+    matched_widest = _match(widest)
+    for h in sorted(horizons_minutes):
+        per_horizon[int(h)] = len(_match(h))
+    deltas = sorted(matched_widest.values())
+
+    for i, s in enumerate(surfaces):
+        verified_widest = i in matched_widest
         if s["ignored"]:
             key = "ignored_but_verified" if verified_widest else "ignored_and_unverified"
             cross[key] += 1
@@ -405,7 +419,6 @@ def measure_outcome_axis(
 
     total = len(surfaces)
     verified = per_horizon[int(widest)]
-    deltas.sort()
     median = None
     if deltas:
         mid = len(deltas) // 2
@@ -424,6 +437,40 @@ def measure_outcome_axis(
     }
 
 
+#: Udfaldsaksen laver et DB-opslag (målt 17 ms). `telemetry_section` kaldes
+#: ved HVER prompt-bygning, så uden cache ville hver tur koste en forespørgsel.
+#: 5 minutter er kort nok til at tallet følger med, langt nok til at det ikke
+#: mærkes.
+_OUTCOME_CACHE_TTL_SECONDS = 300
+_outcome_cache: dict[str, Any] = {"at": None, "value": None}
+
+
+def _reset_outcome_cache() -> None:
+    """Ryd cachen. Bruges af tests, så én tests tal ikke lækker ind i den næste."""
+    _outcome_cache["at"] = None
+    _outcome_cache["value"] = None
+
+
+def _cached_outcome_axis(*, hours: int = 24) -> dict[str, Any]:
+    """Cacher `measure_outcome_axis`. Fejler den, viser sektionen bare ikke
+    den ægte akse — en DB-fejl må ikke tage prompten med sig."""
+    now = datetime.now(UTC)
+    at = _outcome_cache.get("at")
+    if isinstance(at, datetime) and (
+        now - at
+    ).total_seconds() < _OUTCOME_CACHE_TTL_SECONDS:
+        cached = _outcome_cache.get("value")
+        return cached if isinstance(cached, dict) else {}
+    try:
+        value = measure_outcome_axis(hours=hours)
+    except Exception as exc:  # aksens fejl må ikke blokere prompt-bygningen
+        logger.debug("r2_outcome: cache-opslag fejlede: %s", exc)
+        return {}
+    _outcome_cache["at"] = now
+    _outcome_cache["value"] = value
+    return value
+
+
 def telemetry_section() -> str | None:
     """Render telemetry as a prompt-awareness section. Only shows when there's
     a meaningful pattern (>= 5 surfaces in the last 24h)."""
@@ -437,12 +484,25 @@ def telemetry_section() -> str | None:
     flag = ""
     if eff_rate is not None and eff_rate < 0.4:
         flag = " ⚠ under 40% — readback-followup below threshold"
-    return (
+    base = (
         f"R2-gate telemetry (24t): surfaced={s['surfaced_total']} "
         f"strict_heeded={s['heeded_strict']} light_heeded={s['heeded_light']} "
         f"ignored={s['ignored_total']} "
         f"strict={strict_str} effective={eff_str}{flag}"
     )
+    # Den gamle del måler HVOR HURTIGT der reageres (60 s vindue). Uden den
+    # ægte akse ved siden af læses den som et dækningsmål, og «ignored» lyder
+    # som «verificerede ikke». Målt 17/11-2026 var 49 af 55 «ignored» i
+    # virkeligheden verificeret inden for 240 min.
+    outcome = _cached_outcome_axis(hours=24)
+    if outcome.get("rate") is not None and outcome.get("surfaces", 0) >= 5:
+        median = outcome.get("median_seconds_to_verify")
+        median_str = f", median {int(median / 60)} min" if median else ""
+        base += (
+            f" · ægte dækning: {outcome['verified']}/{outcome['surfaces']} "
+            f"({int(outcome['rate'] * 100)}%) verificeret ≤240 min{median_str}"
+        )
+    return base
 
 
 # ── Eventbus DB-polling listener ───────────────────────────────────────────

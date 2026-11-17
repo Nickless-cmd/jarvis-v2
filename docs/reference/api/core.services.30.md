@@ -239,9 +239,11 @@ _R2 verification gate telemetry — track whether warnings get heeded._
 | function | `sweep_expired_surfaces` | `()` | Mark surfaces as 'ignored' once they're past the reaction window with | [src](../../../core/services/verification_gate_telemetry.py#L180) |
 | function | `get_telemetry_summary` | `(*, hours=…)` | Aggregate counts + heed rates over the lookback window. | [src](../../../core/services/verification_gate_telemetry.py#L211) |
 | function | `measure_outcome_axis` | `(*, hours=…, horizons_minutes=…)` | Mål om advarslen førte til en ÆGTE verifikation — ikke hvor hurtigt. | [src](../../../core/services/verification_gate_telemetry.py#L275) |
-| function | `telemetry_section` | `()` | Render telemetry as a prompt-awareness section. Only shows when there's | [src](../../../core/services/verification_gate_telemetry.py#L427) |
-| function | `_poll_db_for_verify_events` | `()` | Poll the events table for new tool.completed verify_* events. | [src](../../../core/services/verification_gate_telemetry.py#L465) |
-| function | `subscribe` | `()` | Start the DB-polling telemetry listener. Idempotent per process. | [src](../../../core/services/verification_gate_telemetry.py#L545) |
+| function | `_reset_outcome_cache` | `()` | Ryd cachen. Bruges af tests, så én tests tal ikke lækker ind i den næste. | [src](../../../core/services/verification_gate_telemetry.py#L448) |
+| function | `_cached_outcome_axis` | `(*, hours=…)` | Cacher `measure_outcome_axis`. Fejler den, viser sektionen bare ikke | [src](../../../core/services/verification_gate_telemetry.py#L454) |
+| function | `telemetry_section` | `()` | Render telemetry as a prompt-awareness section. Only shows when there's | [src](../../../core/services/verification_gate_telemetry.py#L474) |
+| function | `_poll_db_for_verify_events` | `()` | Poll the events table for new tool.completed verify_* events. | [src](../../../core/services/verification_gate_telemetry.py#L525) |
+| function | `subscribe` | `()` | Start the DB-polling telemetry listener. Idempotent per process. | [src](../../../core/services/verification_gate_telemetry.py#L605) |
 
 ## `core/services/versioneret_json_svar.py`
 _Et færdigt HTTP-svar pr. version — serialiseret og komprimeret ÉN gang._

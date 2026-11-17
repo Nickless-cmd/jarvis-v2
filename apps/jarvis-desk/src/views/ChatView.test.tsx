@@ -60,6 +60,17 @@ vi.mock('../lib/api', () => ({
 // Sideopgaverne (spec desk-sideopgaver): tom liste som standard, saa de
 // oevrige tests ser den chat de altid har set.
 const sideopgaver = vi.hoisted(() => ({ liste: [] as unknown[] }))
+// Jobspanelets stroem taelles, ikke aabnes (17/11-2026). Panelet er betinget
+// rendret paa `cfgSkinne`, og uden useMemo fik det et NYT config-objekt ved
+// hver render af ChatView — hvilket remountede panelet og aabnede en frisk
+// SSE-stroem hver gang. Maalt i journalen: syv /api/jobs/stream-kald i ét
+// opstartsvindue. Denne mock goer antallet af kald til det vi kan maale.
+const startJobsStream = vi.fn(() => ({ abort: vi.fn() }))
+vi.mock('../lib/jobsStream', () => ({
+  startJobsStream: (...a: unknown[]) => startJobsStream(...(a as [])),
+  JobsStreamError: class extends Error {},
+}))
+
 vi.mock('../lib/sideTasksApi', () => ({
   getSideTasks: vi.fn(async () => sideopgaver.liste),
   setSideTaskStatus: vi.fn(),
@@ -976,6 +987,42 @@ describe('ChatView — ventende godkendelse over composeren', () => {
       expect(container.querySelector('.transcript .approvalcard')).toBeNull()
     } finally {
       vi.mocked(api.hentVentendeGodkendelseOveralt).mockResolvedValue(null)
+    }
+  })
+
+  it('aabner ikke en ny jobstroem naar ChatView renderer igen', async () => {
+    // 17/11-2026. `cfgSkinne` blev bygget som et råt objekt-literal, saa hver
+    // render af ChatView gav JobsPanel en ny `config`-reference. Fordi panelets
+    // useEffect har `config` i sine afhaengigheder, blev panelet remountet og
+    // aabnede en frisk SSE-stroem — syv kald i ét opstartsvindue, fem af dem
+    // uden session_id. Det saa ud som en ustabil stroem, men var en komponent
+    // der blev genopbygget. CodeView havde allerede useMemo; ChatView havde ikke.
+    localStorage.setItem('jarvis-desk:panel:jobs', 'true')
+    startJobsStream.mockClear()
+    try {
+      const { rerender } = render(
+        <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
+          <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+            <ChatView sessionId="s1" />
+          </PanelProvider></PermissionProvider></StreamProvider>
+        </SessionProvider></SettingsProvider>,
+      )
+      await waitFor(() => expect(startJobsStream).toHaveBeenCalled())
+      const efterFoersteRender = startJobsStream.mock.calls.length
+
+      // Samme props igen: en ny render, men SAMME config-indhold. Uden useMemo
+      // faar panelet en ny reference og aabner endnu en stroem.
+      rerender(
+        <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
+          <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+            <ChatView sessionId="s1" />
+          </PanelProvider></PermissionProvider></StreamProvider>
+        </SessionProvider></SettingsProvider>,
+      )
+      await new Promise((r) => setTimeout(r, 50))
+      expect(startJobsStream.mock.calls.length).toBe(efterFoersteRender)
+    } finally {
+      localStorage.removeItem('jarvis-desk:panel:jobs')
     }
   })
 })

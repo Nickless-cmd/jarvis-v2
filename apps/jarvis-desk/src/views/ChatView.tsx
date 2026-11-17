@@ -1046,8 +1046,17 @@ export function ChatView({
   // eller baggrundsjob i forvejen stod åbne, og kloden var en død knap når man
   // trykkede på den alene. Den fejl fandtes fra dag ét (Bjørn 21/9-2026).
   const skinneAaben = !!settings && (jobsOpen || changesOpen || browserOpen || desktopOpen || artifactsOpen || plansOpen || prOpen || sideOpgaveOpen)
-  const cfgSkinne = settings
-    ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
+  // Samme vaern som i CodeView (17/11-2026). Uden useMemo fik hvert panel et
+  // NYT config-objekt ved hver render af ChatView — og fordi baade JobsPanel og
+  // SideOpgaveListe har `config` i deres useEffect-afhaengigheder, rev det
+  // panelet ned og aabnede en frisk SSE-stroem hver gang. Maalt i journalen:
+  // syv /api/jobs/stream-kald i ét opstartsvindue, fem af dem uden session_id
+  // fordi samtalen endnu ikke var indlaest. Det var ikke en ustabil stroem —
+  // det var en komponent der blev genopbygget.
+  const cfgSkinne = useMemo(
+    () => (settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined),
+    [settings?.apiBaseUrl, settings?.authToken], // eslint-disable-line react-hooks/exhaustive-deps
+  )
   // Aendringer oeverst, jobs nederst — samme raekkefoelge som i CC.
   // Er én rude i fuld visning, staar KUN den — det er hele pointen med ⤢.
   // Jarvis' browser bor i samme højre-stak som ændringer og baggrundsjob

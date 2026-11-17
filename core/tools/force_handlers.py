@@ -111,9 +111,16 @@ def _force_write_file(args: dict[str, Any]) -> dict[str, Any]:
     if _ec.classification == "guard_blocked":
         return {"status": "guard_blocked", "error": _ec.reason}
     target.parent.mkdir(parents=True, exist_ok=True)
-    from core.tools.file_tools_exec import _ws_write_text
+    from core.tools.file_tools_exec import _safe_readback, _ws_write_text
     _ws_write_text(target, content)
     result = {"status": "ok", "path": str(target), "size": len(content)}
+    # Read-back fra disken (17/11-2026). Maalt: 2.088 af 2.192 fil-skrivninger
+    # paa syv doegn gik gennem DENNE handler — saa `_exec_write_file`s readback
+    # naaede kun de 4,7 %, og R2-gaten talte resten som uverificerede selv om
+    # skrivningen var sket. Samme semantik som der: `readback` siger om disken
+    # indeholder PRAECIS det vi skrev, og en fil der ikke kan laeses tilbage
+    # giver False — det er det aerlige svar, ikke en tavs udeladelse.
+    result["readback"] = (_safe_readback(target) == content)
     if redirected_from:
         result["redirected_from"] = redirected_from
         result["note"] = f"Path redirected to canonical workspace location: {target}"
@@ -142,7 +149,9 @@ def _force_edit_file(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": f"Edit blocked for safety: {path}", "status": "blocked"}
     if _ec.classification == "guard_blocked":
         return {"status": "guard_blocked", "error": _ec.reason}
-    from core.tools.file_tools_exec import _ws_read_text, _ws_write_text, _ws_path_exists
+    from core.tools.file_tools_exec import (
+        _safe_readback, _ws_read_text, _ws_write_text, _ws_path_exists,
+    )
     if not _ws_path_exists(target):
         return {"error": f"File not found: {path}", "status": "error"}
     content = _ws_read_text(target) or ""
@@ -152,6 +161,17 @@ def _force_edit_file(args: dict[str, Any]) -> dict[str, Any]:
     new_content, _esc_note = _guard_py_escapes(new_content, str(target))
     _ws_write_text(target, new_content)
     result = {"status": "ok", "path": str(target), "replacements": 1}
+    # Read-back (17/11-2026): se begrundelsen i `_force_write_file`. En edit er
+    # en DELVIS aendring, saa beviset er at det nye staar der — eller, ved en
+    # sletning, at det gamle er væk. Kan filen ikke laeses tilbage, er svaret
+    # False: en edit vi ikke kan se resultatet af er ikke verificeret.
+    _fresh = _safe_readback(target)
+    if _fresh is None:
+        result["readback"] = False
+    elif new_text:
+        result["readback"] = new_text in _fresh
+    else:
+        result["readback"] = old_text not in _fresh
     if _esc_note:
         result["escape_guard"] = _esc_note
     if redirected_from:

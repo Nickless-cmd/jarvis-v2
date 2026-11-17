@@ -441,7 +441,70 @@ def test_producenten_udgiver_readback_saa_gaten_kan_se_det():
     assert len(s["light_verifies"]) == 1
 
 
-# ── Anførselstegn er ikke separatorer (12/10-2026) ────────────────────────
+def test_force_vejen_baerer_samme_bevis_som_exec_vejen(tmp_path):
+    """Force-handlerne er den vej 95,3 % af alle skrivninger tager.
+
+    Målt 17/11-2026: 2.088 af 2.192 fil-skrivninger paa syv doegn gik gennem
+    `_force_write_file`/`_force_edit_file` (simple_tool_executor, force=True),
+    og de to handlere laeste ALDRIG filen tilbage — kun `_exec_write_file`
+    gjorde, og den bruges i 4,7 % af kaldene. Gaten spurgte derfor forgaeves
+    efter et bevis der kun fandtes paa den vej ingen gik.
+
+    Testen kalder den AEGTE handler og foerer resultatet gennem den AEGTE
+    payload-bygger ind i den AEGTE gate — tre led, som hver isaer kan vaere
+    groenne mens forbindelsen mellem dem er doed.
+    """
+    from core.tools.force_handlers import _force_edit_file, _force_write_file
+    from core.tools.tool_call_telemetry import byg_completed_payload
+
+    fil = tmp_path / "bevis.txt"
+
+    w = _force_write_file({"path": str(fil), "content": "oprindelig\n"})
+    assert w["readback"] is True
+    pw = byg_completed_payload("write_file", "ok", {"path": str(fil)}, w)
+    assert pw["readback"] is True
+    sw = _scan([{
+        "kind": "tool.completed",
+        "created_at": datetime.now(UTC).isoformat(),
+        "payload": pw,
+    }])
+    assert len(sw["mutations"]) == 0
+    assert len(sw["light_verifies"]) == 1
+
+    e = _force_edit_file(
+        {"path": str(fil), "old_text": "oprindelig", "new_text": "rettet"}
+    )
+    assert e["readback"] is True
+    pe = byg_completed_payload("edit_file", "ok", {"path": str(fil)}, e)
+    se = _scan([{
+        "kind": "tool.completed",
+        "created_at": datetime.now(UTC).isoformat(),
+        "payload": pe,
+    }])
+    assert len(se["mutations"]) == 0
+    assert len(se["light_verifies"]) == 1
+
+
+def test_force_edit_der_ikke_kan_laeses_tilbage_er_ikke_verificeret(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+):
+    """Kan filen ikke laeses tilbage, er editen ikke et bevis.
+
+    `_safe_readback` returnerer None naar filen ikke kan laeses — det er det
+    staerkeste faresignal vi har, og det maa ikke glide igennem som «ok».
+    """
+    from core.tools import force_handlers
+
+    fil = tmp_path / "ulaeselig.txt"
+    fil.write_text("noget\n", encoding="utf-8")
+
+    monkeypatch.setattr(
+        "core.tools.file_tools_exec._safe_readback", lambda _p: None
+    )
+    e = force_handlers._force_edit_file(
+        {"path": str(fil), "old_text": "noget", "new_text": "andet"}
+    )
+    assert e["readback"] is False
 #
 # `_SEG_SPLIT` delte den RÅ streng på `|`, ogsaa inde i anfoerselstegn.
 # `grep "a\\|b" fil` blev derfor laest som `grep "a\\` + `b" fil` — en ukendt

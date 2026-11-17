@@ -37,12 +37,15 @@ class TestTaskSubagentSchema:
         assert "Task" in _by_name(), "Task-schema mangler → modellen kan ikke delegere"
 
     def test_task_schema_shape(self):
+        """subagent_type er BEVIDST valgfri (commit 7830ded10, 10/11-2026:
+        «en override, ikke en port»). derive() i agent_task_facade falder tilbage
+        til `researcher` (læseret) når typen udelades — udledning må kun
+        nedgradere, skrivning kræver et bevidst valg. Kontrolleres også af
+        test_agent_task_facade (`subagent_type` ikke i required)."""
         fn = _by_name()["Task"]["function"]
         params = fn["parameters"]
         props = params.get("properties") or {}
-        assert set(params.get("required") or []) == {
-            "description", "prompt", "subagent_type",
-        }
+        assert set(params.get("required") or []) == {"description", "prompt"}
         for key in ("description", "prompt", "subagent_type"):
             assert key in props, f"Task-param {key!r} mangler"
         assert "delegate" in fn["description"].lower()

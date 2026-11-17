@@ -4275,11 +4275,13 @@ def _channel_context_section(session_id: str | None) -> str | None:
     """
     if not session_id:
         return None
-    from core.services.chat_sessions import get_chat_session, parse_channel_from_session_title
-    session = get_chat_session(session_id)
-    if not session:
+    from core.services.chat_sessions import parse_channel_from_session_title
+    from core.services.session_header import get_session_title
+    # Kun titlen — `get_chat_session` ville læse hele samtalen (300 ms pr. kald).
+    raw_title = get_session_title(session_id)
+    if raw_title is None:
         return None
-    title = str(session.get("title") or "").strip()
+    title = str(raw_title or "").strip()
     channel_type, channel_detail = parse_channel_from_session_title(title)
     if channel_type == "unknown":
         return None

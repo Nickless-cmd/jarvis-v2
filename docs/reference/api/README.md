@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18812 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18813 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -57,13 +57,13 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18812 functions/
 - [`core.services.23`](core.services.23.md) — `reflection_signal_tracking` … `routine_diagnostics`
 - [`core.services.24`](core.services.24.md) — `routine_dispatch` … `runtime_self_model_builder`
 - [`core.services.25`](core.services.25.md) — `runtime_self_model_identity` … `self_review_record_tracking`
-- [`core.services.26`](core.services.26.md) — `self_review_run_tracking` … `shared_cache`
-- [`core.services.27`](core.services.27.md) — `shared_language` … `state_file_retention`
-- [`core.services.28`](core.services.28.md) — `state_flag_store` … `thought_thread`
-- [`core.services.29`](core.services.29.md) — `tick_cache` … `user_contradiction_tracker`
-- [`core.services.30`](core.services.30.md) — `user_emotional_resonance` … `visible_post_tool_synthesis`
-- [`core.services.31`](core.services.31.md) — `visible_preview_crypto` … `visual_memory`
-- [`core.services.32`](core.services.32.md) — `voice_anchor` … `world_model_signal_tracking`
+- [`core.services.26`](core.services.26.md) — `self_review_run_tracking` … `share_guard_store`
+- [`core.services.27`](core.services.27.md) — `shared_cache` … `standing_orders_registry`
+- [`core.services.28`](core.services.28.md) — `state_file_retention` … `thought_stream_daemon`
+- [`core.services.29`](core.services.29.md) — `thought_thread` … `user_activity`
+- [`core.services.30`](core.services.30.md) — `user_contradiction_tracker` … `visible_outcome_text`
+- [`core.services.31`](core.services.31.md) — `visible_post_tool_synthesis` … `vision_preview`
+- [`core.services.32`](core.services.32.md) — `visual_memory` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

@@ -192,7 +192,7 @@ _Auto-inject of relevant brain fakta into prompt awareness._
 |---|---|---|---|---|
 | function | `_is_contentless_greeting` | `(message)` | True hvis beskeden kun er hilsen/pleasantry uden noget emne at være relevant til. | [src](../../../core/services/prompt_sections/jarvis_brain_facts.py#L32) |
 | function | `_ceiling_from_session_id` | `(session_id)` | Map session_id → visibility ceiling. | [src](../../../core/services/prompt_sections/jarvis_brain_facts.py#L44) |
-| function | `build_brain_facts_section` | `(*, user_message, session_id, top_k=…, threshold=…)` | Return markdown section with top-K relevant fakta, or "" if none. | [src](../../../core/services/prompt_sections/jarvis_brain_facts.py#L87) |
+| function | `build_brain_facts_section` | `(*, user_message, session_id, top_k=…, threshold=…)` | Return markdown section with top-K relevant fakta, or "" if none. | [src](../../../core/services/prompt_sections/jarvis_brain_facts.py#L86) |
 
 ## `core/services/prompt_sections/jarvis_brain_nudge.py`
 _Post-web-search nudge — encourages remember_this after Jarvis uses web tools._
@@ -254,15 +254,15 @@ _Memory recall section builder — udskilt fra prompt_contract.py (Boy Scout)._
 | function | `_save_md_vecs_to_disk` | `(vecs, user_id=…)` | Skriv linjevektorer til disk. Self-safe — en fejl her maa aldrig ramme turen. | [src](../../../core/services/prompt_sections/memory_recall.py#L83) |
 | function | `_md_line_vecs` | `(user_id=…)` | Cached {linje: vektor} for MEMORY.md. Embeddes ÉN gang pr. mtime i baggrunden. | [src](../../../core/services/prompt_sections/memory_recall.py#L109) |
 | function | `_resolve_user_id` | `(session_id=…)` | Resolve user_id eksplicit (recall-sektionerne kører UDEN current_user_id()-kontekst | [src](../../../core/services/prompt_sections/memory_recall.py#L188) |
-| function | `_memory_md_lines` | `(user_id=…)` | Cached MEMORY.md-LINJER (kun tekst, ingen embedding → nul cold-start-cost). | [src](../../../core/services/prompt_sections/memory_recall.py#L205) |
-| function | `_keywords` | `(text)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L223) |
-| function | `_semantic_dedup_lines` | `(lines, threshold=…)` | Drop linjer der semantisk dublerer en TIDLIGERE beholdt linje (samme budskab, | [src](../../../core/services/prompt_sections/memory_recall.py#L231) |
-| function | `_is_semantic_dup_of_memory` | `(text, user_id=…)` | True hvis `text` semantisk matcher en MEMORY.md-linje (allerede gemt, anden ordlyd). | [src](../../../core/services/prompt_sections/memory_recall.py#L268) |
-| function | `_visible_memory_recall_bundle_section` | `(*, session_id, user_message, compact)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L303) |
-| function | `_private_brain_recall_lines` | `(*, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L358) |
-| function | `_recent_tool_recall_lines` | `(session_id, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L385) |
-| function | `_memory_candidate_recall_lines` | `(*, limit, session_id=…)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L421) |
-| function | `_clip_line` | `(value, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L481) |
+| function | `_memory_md_lines` | `(user_id=…)` | Cached MEMORY.md-LINJER (kun tekst, ingen embedding → nul cold-start-cost). | [src](../../../core/services/prompt_sections/memory_recall.py#L207) |
+| function | `_keywords` | `(text)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L225) |
+| function | `_semantic_dedup_lines` | `(lines, threshold=…)` | Drop linjer der semantisk dublerer en TIDLIGERE beholdt linje (samme budskab, | [src](../../../core/services/prompt_sections/memory_recall.py#L233) |
+| function | `_is_semantic_dup_of_memory` | `(text, user_id=…)` | True hvis `text` semantisk matcher en MEMORY.md-linje (allerede gemt, anden ordlyd). | [src](../../../core/services/prompt_sections/memory_recall.py#L270) |
+| function | `_visible_memory_recall_bundle_section` | `(*, session_id, user_message, compact)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L305) |
+| function | `_private_brain_recall_lines` | `(*, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L360) |
+| function | `_recent_tool_recall_lines` | `(session_id, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L387) |
+| function | `_memory_candidate_recall_lines` | `(*, limit, session_id=…)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L423) |
+| function | `_clip_line` | `(value, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L483) |
 
 ## `core/services/prompt_sections/memory_scoring.py`
 _core/services/prompt_sections/memory_scoring.py_

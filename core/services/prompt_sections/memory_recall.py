@@ -189,12 +189,14 @@ def _resolve_user_id(session_id: str = "") -> str:
     """Resolve user_id eksplicit (recall-sektionerne kører UDEN current_user_id()-kontekst
     i fuld-build → workspace_dir() ville fejle). Fra session → ellers owner."""
     try:
-        if session_id:
-            from core.services.chat_sessions import get_chat_session
-            sess = get_chat_session(session_id) or {}
-            uid = str(sess.get("user_id") or "").strip()
-            if uid:
-                return uid
+        # Sessions-opslaget er FJERNET (17/11-2026). `get_chat_session()` returnerer
+        # ingen `user_id`-nøgle (målt på en rigtig session: nøglerne er id, title,
+        # created_at, updated_at, last_message, message_count, workspace_*, pinned,
+        # archived, kind), så grenen gav altid "" og faldt til ejeren — efter at have
+        # hentet og dekrypteret hele samtalen (ca. 250 ms). Adfærden er uændret:
+        # svaret var og er ejeren. Skal en anden brugers session NOGENSINDE vælge
+        # sin egen bruger her, så brug `get_session_owner(session_id)` — det er en
+        # adfærdsændring for ikke-ejer-samtaler og skal vælges, ikke arves.
         # Owner-user_id ER discord_id i dette system (owner_resolver: sess_user_id==owner_id).
         from core.identity.owner_resolver import get_owner_discord_id
         return str(get_owner_discord_id() or "").strip()

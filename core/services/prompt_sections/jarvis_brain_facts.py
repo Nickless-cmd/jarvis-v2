@@ -58,14 +58,13 @@ def _ceiling_from_session_id(session_id: str | None) -> str:
         return "public_safe"
 
     try:
-        from core.services.chat_sessions import (
-            get_chat_session,
-            parse_channel_from_session_title,
-        )
-        sess = get_chat_session(session_id)
-        if not sess:
+        from core.services.chat_sessions import parse_channel_from_session_title
+        from core.services.session_header import get_session_title
+        # Kun titlen: `get_chat_session` henter hele samtalen (300 ms pr. kald).
+        raw_title = get_session_title(session_id)
+        if raw_title is None:
             return "public_safe"
-        title = str(sess.get("title") or "")
+        title = str(raw_title or "")
         channel_type, _detail = parse_channel_from_session_title(title)
     except Exception:
         return "public_safe"

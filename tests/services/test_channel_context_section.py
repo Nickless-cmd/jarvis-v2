@@ -8,7 +8,7 @@ def test_discord_dm_with_workspace_file(tmp_path):
     (channels_dir / "discord.md").write_text("Discord er uformelt.")
 
     with patch("core.services.prompt_contract._channel_workspace_path", return_value=channels_dir):
-        with patch("core.services.chat_sessions.get_chat_session", return_value={"title": "Discord DM", "session_id": "s1"}):
+        with patch("core.services.session_header.get_session_title", return_value="Discord DM"):
             from core.services.prompt_contract import _channel_context_section
             result = _channel_context_section("s1")
 
@@ -22,7 +22,7 @@ def test_discord_dm_without_workspace_file(tmp_path):
     channels_dir.mkdir()
 
     with patch("core.services.prompt_contract._channel_workspace_path", return_value=channels_dir):
-        with patch("core.services.chat_sessions.get_chat_session", return_value={"title": "Discord DM", "session_id": "s1"}):
+        with patch("core.services.session_header.get_session_title", return_value="Discord DM"):
             from core.services.prompt_contract import _channel_context_section
             result = _channel_context_section("s1")
 
@@ -40,7 +40,7 @@ def test_webchat_without_workspace_file_returns_none(tmp_path):
     channels_dir.mkdir()
 
     with patch("core.services.prompt_contract._channel_workspace_path", return_value=channels_dir):
-        with patch("core.services.chat_sessions.get_chat_session", return_value={"title": "New chat", "session_id": "s2"}):
+        with patch("core.services.session_header.get_session_title", return_value="New chat"):
             from core.services.prompt_contract import _channel_context_section
             result = _channel_context_section("s2")
 
@@ -52,7 +52,7 @@ def test_unknown_channel_returns_none(tmp_path):
     channels_dir.mkdir()
 
     with patch("core.services.prompt_contract._channel_workspace_path", return_value=channels_dir):
-        with patch("core.services.chat_sessions.get_chat_session", return_value={"title": "Something weird", "session_id": "s3"}):
+        with patch("core.services.session_header.get_session_title", return_value="Something weird"):
             from core.services.prompt_contract import _channel_context_section
             result = _channel_context_section("s3")
 

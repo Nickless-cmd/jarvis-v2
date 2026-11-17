@@ -134,8 +134,18 @@ def test_et_muterende_shell_kald_loefter_ikke(bus):
 
 
 def test_en_skrivning_der_baerer_sit_readback_loefter_blokken(bus):
+    """Feltet ligger direkte på payloaden — ikke i en `result`-nøgle.
+
+    Testen brugte tidligere `result={"readback": True}`, en form
+    `byg_completed_payload` aldrig har udgivet. Den var grøn uden at kunne
+    fyre i drift, og da gaten 17/11-2026 blev rettet til at læse det ægte
+    felt, afslørede den sin egen utæthed: den målte en form ingen producent
+    sender.
+    """
     _aaben()
-    bus.tool("edit_file", result={"readback": True})
+    bus.events.append({"kind": "tool.completed",
+                       "payload": {"tool": "edit_file", "status": "ok", "readback": True},
+                       "created_at": (T0 + timedelta(seconds=3)).isoformat()})
     assert h.afvis_mutation("write_file", {}, nu=NU) is None
 
 

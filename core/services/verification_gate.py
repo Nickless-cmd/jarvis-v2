@@ -575,6 +575,7 @@ def _scan(events: list[dict[str, Any]]) -> dict[str, Any]:
     strict_verifies: list[dict[str, Any]] = []
     light_verifies: list[dict[str, Any]] = []
     failed_verifies: list[dict[str, Any]] = []
+    failed_shell: list[dict[str, Any]] = []
 
     for e in events:
         if str(e.get("kind", "")) != "tool.completed":
@@ -604,6 +605,29 @@ def _scan(events: list[dict[str, Any]]) -> dict[str, Any]:
                 # (19/9-2026, da R2.5 begyndte at håndhæve).
                 light_verifies.append(item)
                 continue
+            # Shell-mutationer bærer deres eget bevis i `exit_code` (17/11-2026).
+            # `bash` er ugens største mutationstype (24.504 kald) og den eneste
+            # uden et verify_*-værktøj: `_suggested_verify("bash")` returnerer
+            # None, så advarslen kunne sige «12× bash» uden at tilbyde en vej
+            # ud. Målt: 10.174 af 12.895 shell-mutationer havde exit_code=0 —
+            # kommandoen kørte og rapporterede succes — men gaten havde NUL
+            # referencer til feltet og talte dem alle som uverificerede.
+            #
+            # Det er en LIGHT-verifikation, ikke en strict: exit 0 beviser at
+            # kommandoen ikke fejlede, ikke at udfaldet er det rigtige. En
+            # `sed -i` kan returnere 0 og skrive noget forkert. Derfor tælles
+            # den som «kiggede tilbage», aldrig som «verificeret».
+            if tool in _MUTATION_TOOLS_SHELL:
+                kode = payload.get("exit_code")
+                if kode == 0:
+                    light_verifies.append(item)
+                    continue
+                if isinstance(kode, int) and kode != 0:
+                    # Kommandoen FEJLEDE, men `status` er 'ok' fordi værktøjet
+                    # selv kørte fint. Målt 17/11-2026: 1.872 shell-mutationer
+                    # med exit != 0 blev talt som vellykkede mutationer, og
+                    # ingen test dækkede det. De skal ses, ikke skjules.
+                    failed_shell.append(item)
             # Fil-mutationer der SELV bærer et readback fra disken er
             # verificeret i samme kald. Siden cf2f6b3f8 (10/9-2026) læser
             # edit_file/write_file filen tilbage og lægger resultatet i sit
@@ -632,6 +656,7 @@ def _scan(events: list[dict[str, Any]]) -> dict[str, Any]:
         "strict_verifies": strict_verifies,
         "light_verifies": light_verifies,
         "failed_verifies": failed_verifies,
+        "failed_shell": failed_shell,
     }
 
 
@@ -643,6 +668,7 @@ def evaluate_verification_gate(*, minutes: int = _LOOKBACK_MINUTES) -> dict[str,
     strict_verifies = scan["strict_verifies"]
     light_verifies = scan["light_verifies"]
     failed = scan["failed_verifies"]
+    failed_shell = scan.get("failed_shell") or []
 
     by_tool: dict[str, int] = {}
     for m in mutations:
@@ -669,6 +695,7 @@ def evaluate_verification_gate(*, minutes: int = _LOOKBACK_MINUTES) -> dict[str,
         "strict_verify_count": len(strict_verifies),
         "light_verify_count": len(light_verifies),
         "failed_verify_count": len(failed),
+        "failed_shell_count": len(failed_shell),
         "unverified_count": unverified_strict,              # back-compat
         "unverified_strict": unverified_strict,
         "unverified_effective": unverified_effective,
@@ -735,11 +762,12 @@ def verification_gate_section(*, record: bool = False) -> str | None:
     """
     result = evaluate_verification_gate()
     failed = result.get("failed_verifies") or []
+    failed_shell = result.get("failed_shell") or []
     unverified_effective = int(result.get("unverified_effective") or 0)
     unverified_strict = int(result.get("unverified_strict") or 0)
     suggestions = result.get("suggestions") or []
 
-    if not failed and unverified_effective <= 0:
+    if not failed and not failed_shell and unverified_effective <= 0:
         _observe_verification_decision(passed=True, failed=0, unverified=0)
         return None
 
@@ -772,6 +800,19 @@ def verification_gate_section(*, record: bool = False) -> str | None:
         for f in failed:
             reason = f.get("reason") or "se eventbus for detaljer"
             lines.append(f"  - {f['tool']}: {reason}")
+    if failed_shell:
+        # En kommando der returnerede exit != 0 er ikke en vellykket mutation.
+        # Frem til 17/11-2026 blev den talt som `status='ok'` og forsvandt i
+        # mutations-tallet — 1.872 tilfælde på syv døgn. Den skal stå her, for
+        # det er den eneste advarsel hvor beviset peger den ANDEN vej.
+        lines.append(
+            f"❌ {len(failed_shell)} shell-kommando(er) returnerede exit != 0 "
+            f"i sidste {result['window_minutes']} min — de kørte, men fejlede:"
+        )
+        for s in failed_shell[:_MAX_WARNINGS_SURFACED]:
+            kode = (s.get("payload") or {}).get("exit_code")
+            cmd = str((s.get("payload") or {}).get("command") or "")[:80]
+            lines.append(f"  - {s['tool']} (exit {kode}): {cmd}")
     if unverified_effective > 0:
         strict = int(result.get("strict_verify_count") or 0)
         light = int(result.get("light_verify_count") or 0)

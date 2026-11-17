@@ -408,6 +408,59 @@ def test_fil_mutation_uden_readback_taeller_som_mutation():
         assert len(s["light_verifies"]) == 0, payload
 
 
+def test_shell_mutation_med_exit_nul_er_et_kig_tilbage():
+    """`bash` bærer sit eget bevis i exit_code — og gaten skal læse det.
+
+    Målt 17/11-2026: 10.174 af 12.895 shell-mutationer havde exit_code=0, men
+    gaten havde NUL referencer til feltet. `bash` er ugens største
+    mutationstype (24.504 kald) og den eneste uden et verify_*-værktøj, så
+    advarslen kunne sige «12× bash» uden at tilbyde nogen vej ud.
+
+    Det er en LIGHT-verifikation: exit 0 beviser at kommandoen ikke fejlede,
+    ikke at udfaldet er rigtigt. Den må derfor aldrig tælle som strict.
+    """
+    s = _scan([_evt("bash", extra_payload={"mutating": True, "exit_code": 0})])
+    assert len(s["mutations"]) == 0
+    assert len(s["light_verifies"]) == 1
+    assert len(s["strict_verifies"]) == 0
+
+
+def test_shell_mutation_med_exit_ikke_nul_rejser_et_flag():
+    """En kommando der fejlede er ikke en vellykket mutation.
+
+    `status` er 'ok' fordi værktøjet selv kørte fint, så frem til 17/11-2026
+    forsvandt 1.872 fejlede kommandoer i mutations-tallet. De skal både
+    tælles som mutation (intet bevis for at de virkede) OG stå i
+    `failed_shell`, så advarslen kan sige hvad der faktisk skete.
+    """
+    s = _scan([_evt("bash", extra_payload={"mutating": True, "exit_code": 1})])
+    assert len(s["mutations"]) == 1
+    assert len(s["light_verifies"]) == 0
+    assert len(s["failed_shell"]) == 1
+    assert s["failed_shell"][0]["payload"]["exit_code"] == 1
+
+
+def test_shell_mutation_uden_exit_code_er_stadig_en_mutation():
+    """Mangler feltet, er der intet bevis — konservativt en mutation.
+
+    Producenten sætter kun `exit_code` når `result` er en dict og koden ikke
+    er None. Et manglende felt må ikke læses som succes.
+    """
+    s = _scan([_evt("bash", extra_payload={"mutating": True})])
+    assert len(s["mutations"]) == 1
+    assert len(s["light_verifies"]) == 0
+    assert len(s["failed_shell"]) == 0
+
+
+def test_read_only_shell_er_light_uanset_exit_code():
+    """Read-only-grenen kommer først: et `ls` er et kig tilbage, også når det
+    fejler. Det må ikke blive et `failed_shell`-flag."""
+    s = _scan([_evt("bash", extra_payload={"mutating": False, "exit_code": 2})])
+    assert len(s["mutations"]) == 0
+    assert len(s["light_verifies"]) == 1
+    assert len(s["failed_shell"]) == 0
+
+
 def test_producenten_udgiver_readback_saa_gaten_kan_se_det():
     """Ende-til-ende: den ÆGTE result-form fra file_tools_exec skal give et
     payload gaten tæller som verificeret.

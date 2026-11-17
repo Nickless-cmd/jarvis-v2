@@ -164,6 +164,10 @@ export function JobsPanel({
           setBroOk(event.bridge_ok !== false)
           setUspecificeret(event.uspecificeret ?? 0)
         }
+        // Ingen `hent()` her: den ville overskrive det streamede forløb med et
+        // frisk snapshot, så et `job_finished` der lige er ankommet forsvandt
+        // igen. Kontrakten og fejl-posterne hentes af intervallet nedenfor —
+        // én mekanisme, ikke to der kæmper om samme tilstand.
         // 12/10-2026 (Bjørn): auto-ekspanderingen af «Færdige» ved en fejl er
         // FJERNET. Den foldede sektionen ud af sig selv midt i læsningen og
         // foldede aldrig selv sammen igen — brugerens valg tabte til maskinens.
@@ -228,6 +232,22 @@ export function JobsPanel({
     const id = window.setInterval(() => setTik((t) => t + 1), 1000)
     return () => window.clearInterval(id)
   }, [koerende.length])
+
+  // Periodisk re-hent mens panelet er ÅBENT — det er det eneste sted `hent()`
+  // kører af sig selv. Komponenten er kun monteret når panelet vises, så dette
+  // er ikke en poll bag et lukket panel.
+  //
+  // Strømmen leverer KUN denne samtales job-events (hub'ens publish-filter
+  // kræver `event.session_id === subscriber.session_id`). Kontrakten, agent-
+  // kørslerne, fejl-posterne og broens tilstand findes udelukkende i `hent()`.
+  // Uden intervallet blev de stående indtil en genåbning — målt 17/11-2026:
+  // serveren svarede `bridge_ok: true` mens panelet fortsat skrev «Kan ikke se
+  // din maskine», og et nyt kvitteringskrav dukkede først op ved remount.
+  // `undervejs`-vagten i `hent()` forhindrer overlappende kald.
+  useEffect(() => {
+    const id = window.setInterval(hent, 10_000)
+    return () => window.clearInterval(id)
+  }, [hent])
 
   const aabnAgent = (r: ContractAgentRow) => onOpenAgent?.({
     agentId: r.agent_id, role: r.role, goal: r.goal, status: r.bucket, dispatchToolUseId: '',

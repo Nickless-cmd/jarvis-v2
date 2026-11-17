@@ -241,12 +241,48 @@ describe('JobsPanel — belastningen på broen', () => {
     expect(abortJobsStream).toHaveBeenCalledTimes(1)
   })
 
-  it('poller ikke længere hvert 10. sekund', async () => {
+  it('henter igen mens panelet er åbent — en genrejst bro forsvinder af sig selv', async () => {
+    // Målt 17/11-2026: serveren svarede `bridge_ok: true` mens panelet fortsat
+    // skrev «Kan ikke se din maskine». Tilstanden blev sat én gang og genrejst
+    // aldrig, fordi intet kaldte `hent()` igen — brugeren måtte lukke og åbne
+    // panelet. Strømmen kan ikke redde det: hub'ens publish-filter leverer kun
+    // events for ÉGEN session, og broens tilstand bor i `/api/jobs`.
     vi.useFakeTimers()
-    listJobs.mockResolvedValue({ jobs: [], bridge_ok: true })
+    listJobs.mockResolvedValue({ jobs: [], bridge_ok: false })
     render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
-    await vi.advanceTimersByTimeAsync(30_000)
-    expect(listJobs).toHaveBeenCalledTimes(1)
+    await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+    expect(screen.getByText(/Kan ikke se din maskine/)).toBeInTheDocument()
+
+    listJobs.mockResolvedValue({ jobs: [], bridge_ok: true })
+    await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
+    expect(screen.queryByText(/Kan ikke se din maskine/)).not.toBeInTheDocument()
+  })
+
+  it('et nyt kvitteringskrav dukker op uden at panelet genåbnes', async () => {
+    // Samme rod: agent-kontrakten findes ikke i job-strømmen, så et run der
+    // begynder at kræve kvittering blev først synligt ved en frisk mount.
+    vi.useFakeTimers()
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+    expect(screen.queryByTestId('ac-opmaerksomhed')).not.toBeInTheDocument()
+
+    getKontraktOverblik.mockResolvedValue({
+      status: 'ok', groups: [], contract_version: 'agent-contract-v1',
+      capability: { enabled: true, reason: '', contract_version: 'agent-contract-v1' },
+      counts: { active: 1, queued: 0, waiting: 0, blocked: 0, attention: 1, open: 1 },
+      agents: [{
+        agent_id: 'agent-kvitter', parent_agent_id: '', role: 'executor',
+        goal: 'Byg klienten', council_id: '', children: 0,
+        lifecycle_status: 'active', target: '', assignment_id: 'a1',
+        assignment_status: 'accepted', origin_session_id: 'chat-7', run_id: 'r1',
+        run_status: 'waiting', attempts: 1, bucket: 'attention', attention: true,
+        reason: 'kræver kvittering', error: null, started_at: '', finished_at: '',
+        duration_s: 1, updated_at: '', heartbeat: null, tokens: 0, cost_usd: null,
+        route: null, last_message: null, summary: '', pending_approvals: 1,
+      }],
+    })
+    await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
+    expect(screen.getByTestId('ac-opmaerksomhed')).toBeInTheDocument()
   })
 
   it('stream-output opdaterer kortet og terminal fejl viser årsagen', async () => {

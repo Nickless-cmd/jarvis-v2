@@ -441,3 +441,78 @@ def test_definition_bærer_klassifikation_for_migrerede_opgaver():
     bundet_klassifikation = bundet["delivery_policy"]["classification"]
     assert bundet_klassifikation["execution_mode"] == "session"
     assert bundet_klassifikation["cool_down_minutes"] == 5
+
+
+def test_gammel_payload_uden_system_producer_konvergerer_paa_producer_rutinen(
+    migration_fixture, monkeypatch
+):
+    """Aelder rapporter har ingen ``system_producer`` i deres definition.
+
+    Blev routingen laest udelukkende fra payloaden, faldt de igennem til
+    ``routine_migrated_<hash>`` — én rutine pr. historisk session. Maalt
+    17/11-2026: fem saadanne rapporter paa disk, og 197 saadanne raekker i den
+    levende base. Kilden (session-id'ets ``auto-<origin>-``-praefiks) er derfor
+    autoritativ.
+    """
+    import core.services.routine_migration as migration
+
+    monkeypatch.setattr(migration, "_system_owner", lambda: "canonical-owner")
+    original_definition = migration._definition
+
+    def uden_noegle(row):
+        definition = original_definition(row)
+        definition.pop("system_producer", None)
+        return definition
+
+    monkeypatch.setattr(migration, "_definition", uden_noegle)
+    migration_fixture.autonomous_session("auto-dream-20261012")
+    migration_fixture.autonomous_session("auto-dream-20261013")
+
+    report = migration.classify_legacy_sources(migration_fixture.conn)
+    result = migration.apply_report(report.report_id)
+
+    assert result.created_routines == 1
+    with migration_fixture.conn:
+        links = migration_fixture.conn.execute(
+            "SELECT DISTINCT routine_id FROM routine_legacy_links "
+            "WHERE source_kind='autonomous_session'"
+        ).fetchall()
+        per_session = migration_fixture.conn.execute(
+            "SELECT COUNT(*) FROM routines WHERE routine_id LIKE 'routine_migrated_%'"
+        ).fetchone()[0]
+    assert [row[0] for row in links] == ["routine_system_dream"]
+    assert per_session == 0
+
+
+def test_autonom_session_uden_registreret_producent_afvises_foer_mutation(
+    migration_fixture, monkeypatch
+):
+    """Et tildelt item med ukendt origin maa ikke blive en per-session-rutine."""
+    import core.services.routine_migration as migration
+
+    monkeypatch.setattr(migration, "_system_owner", lambda: "canonical-owner")
+    original_classify = migration._classify
+
+    def tildel_alt(row):
+        if row["source_kind"] == "autonomous_session":
+            return "canonical-owner", "system_owner", ("tvunget",)
+        return original_classify(row)
+
+    monkeypatch.setattr(migration, "_classify", tildel_alt)
+    migration_fixture.autonomous_session("auto-ukendt-20260101")
+
+    report = migration.classify_legacy_sources(migration_fixture.conn)
+    assert report.assigned_count == 1
+
+    with pytest.raises(migration.InvalidMigrationReport):
+        migration.apply_report(report.report_id)
+
+    with migration_fixture.conn:
+        routines = migration_fixture.conn.execute(
+            "SELECT COUNT(*) FROM routines"
+        ).fetchone()[0]
+        links = migration_fixture.conn.execute(
+            "SELECT COUNT(*) FROM routine_legacy_links"
+        ).fetchone()[0]
+    assert routines == 0
+    assert links == 0

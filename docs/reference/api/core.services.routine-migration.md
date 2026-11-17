@@ -39,6 +39,7 @@ _Fail-closed, evidence-driven migration of legacy autonomous sources._
 | function | `classify_legacy_sources` | `(conn)` | Classify without mutating source, Routine, link, or quarantine rows. | [src](../../../core/services/routine_migration.py#L382) |
 | function | `_load_report` | `(report_id)` | — | [src](../../../core/services/routine_migration.py#L436) |
 | function | `_legacy_link_exists` | `(conn, kind, source_id)` | Et link tæller kun når det BÆRER en routine. | [src](../../../core/services/routine_migration.py#L449) |
-| function | `apply_report` | `(report_id)` | Apply one signed report iff its exact legacy source watermark is current. | [src](../../../core/services/routine_migration.py#L465) |
-| function | `reconcile_system_definitions` | `(*, apply=…)` | Materialize one paused owner Routine per proven legacy system producer. | [src](../../../core/services/routine_migration.py#L564) |
+| function | `_system_producer_for_item` | `(raw)` | Systemproducenten for et autonomt-session-item, udledt af KILDEN. | [src](../../../core/services/routine_migration.py#L465) |
+| function | `apply_report` | `(report_id)` | Apply one signed report iff its exact legacy source watermark is current. | [src](../../../core/services/routine_migration.py#L482) |
+| function | `reconcile_system_definitions` | `(*, apply=…)` | Materialize one paused owner Routine per proven legacy system producer. | [src](../../../core/services/routine_migration.py#L604) |
 

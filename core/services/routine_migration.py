@@ -462,6 +462,23 @@ def _legacy_link_exists(conn: sqlite3.Connection, kind: str, source_id: str) -> 
     ).fetchone() is not None
 
 
+def _system_producer_for_item(raw: dict[str, object]) -> str:
+    """Systemproducenten for et autonomt-session-item, udledt af KILDEN.
+
+    ``system_producer`` findes også i den forseglede definition, men ældre
+    rapporter (skrevet før konvergensen) har ikke nøglen. Blev routingen
+    læst udelukkende fra payloaden, faldt de igennem til
+    ``routine_migrated_<hash>`` — én rutine pr. historisk session, hvilket er
+    præcis den siloform konvergensen findes for at fjerne. Kilden er derfor
+    den autoritative: session-id'et bærer ``auto-<origin>-``-præfikset.
+    """
+    owner = str(raw.get("owner_user_id") or "").strip()
+    if str(raw.get("source_kind")) != "autonomous_session" or not owner:
+        return ""
+    source = _open_json(owner, str(raw.get("source_ref_enc") or ""))
+    return _registered_system_producer({"session_id": str(source.get("source_id") or "")})
+
+
 def apply_report(report_id: str) -> ApplyResult:
     """Apply one signed report iff its exact legacy source watermark is current."""
     from core.runtime.db_core import connect
@@ -470,6 +487,23 @@ def apply_report(report_id: str) -> ApplyResult:
     with connect() as conn:
         if _watermark(_source_rows(conn)) != payload.get("watermark"):
             raise MigrationSourceChanged("legacy sources changed; run a new dry-run")
+    # Pre-flight FØR nogen mutation: en autonom session hvis origin ikke er en
+    # registreret systemproducent må ikke materialiseres som per-session-rutine.
+    # Klassificeringen quarantine'r allerede dem (fail-closed), så et tildelt
+    # item med ukendt origin er et inkonsistent report — og et halvt anvendt
+    # report er værre end et afvist.
+    for raw in payload.get("items", []):
+        if not isinstance(raw, dict):
+            raise InvalidMigrationReport("invalid migration item")
+        if str(raw.get("source_kind")) != "autonomous_session":
+            continue
+        if not str(raw.get("owner_user_id") or "").strip():
+            continue
+        if not _system_producer_for_item(raw):
+            raise InvalidMigrationReport(
+                "autonomous_session without a registered system producer; "
+                "refusing to create a per-session routine"
+            )
     created = 0
     quarantined = 0
     already = 0
@@ -505,11 +539,17 @@ def apply_report(report_id: str) -> ApplyResult:
             quarantined += 1
             continue
         definition = _open_json(owner, str(raw["definition_enc"]))
-        system_producer = str(definition.get("system_producer") or "").strip()
         # En session er en historisk kørsel, ikke en definition. Alle
         # historiske sessioner fra samme registrerede systemproducent peger
         # derfor på én stabil Routine. Bruger-ejede recurring/scheduled
         # kilder beholder fortsat deres egen deterministiske definition.
+        # Producenten læses af kilden, ikke af payloadens nøgle — se
+        # `_system_producer_for_item`.
+        system_producer = (
+            _registered_system_producer({"session_id": source_id})
+            if kind == "autonomous_session"
+            else ""
+        )
         routine_id = (
             f"routine_system_{system_producer}"
             if kind == "autonomous_session" and system_producer

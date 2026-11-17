@@ -42,3 +42,37 @@ def test_halvt_link_taeller_ikke_som_migreret():
     conn.commit()
 
     assert _legacy_link_exists(conn, "recurring", "rec-x") is True
+
+
+def test_system_producer_udledes_af_kilden_ikke_af_payloaden(monkeypatch):
+    """Routing maa ikke afhaenge af en noegle aeldre payloads ikke har.
+
+    Regression 17/11-2026: fem rapporter paa disken har autonome sessioner hvis
+    forseglede definition mangler ``system_producer``. Blev routingen laest fra
+    payloaden, faldt de igennem til ``routine_migrated_<hash>`` — én rutine pr.
+    historisk session (197 saadanne raekker i den levende base).
+    """
+    import core.services.routine_migration as migration
+
+    monkeypatch.setattr(migration, "_report_master_key", lambda: b"m" * 32)
+
+    item = {
+        "source_kind": "autonomous_session",
+        "owner_user_id": "canonical-owner",
+        "source_ref_enc": migration._sealed_json(
+            "canonical-owner", {"source_id": "auto-dream-20261012"}
+        ),
+    }
+    assert migration._system_producer_for_item(item) == "dream"
+
+    ukendt = dict(
+        item,
+        source_ref_enc=migration._sealed_json(
+            "canonical-owner", {"source_id": "auto-recurring-20261012"}
+        ),
+    )
+    assert migration._system_producer_for_item(ukendt) == ""
+
+    assert migration._system_producer_for_item(
+        {"source_kind": "recurring", "owner_user_id": "canonical-owner"}
+    ) == ""

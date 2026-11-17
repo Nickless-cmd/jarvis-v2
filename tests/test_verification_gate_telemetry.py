@@ -503,3 +503,213 @@ class TestSaveAldersBeskaering:
                    "reactions": []})
         gemt = _fake_state_store[vgt._TELEMETRY_KEY]
         assert len(gemt["surfaces"]) == 1
+
+
+# ── measure_outcome_axis ────────────────────────────────────────────────────
+#
+# Den gamle akse (`get_telemetry_summary`) måler om der kom et verify-kald
+# inden for 60 sekunder. Målt 17/11-2026 faldt 97,5 % af den ægte verifikation
+# uden for det vindue, så «ignored» betød «svarede ikke hurtigt nok» — ikke
+# «verificerede ikke». Disse tests låser den nye akses kontrakt fast.
+
+
+class _FakeConn:
+    """Minimal DB-stand-in: returnerer de rækker testen giver den."""
+
+    def __init__(self, rows: list[tuple]) -> None:
+        self._rows = rows
+        self.queries: list[tuple] = []
+
+    def execute(self, sql: str, params: tuple = ()) -> "_FakeConn":
+        self.queries.append((sql, params))
+        return self
+
+    def fetchall(self) -> list[tuple]:
+        return self._rows
+
+    def __enter__(self) -> "_FakeConn":
+        return self
+
+    def __exit__(self, *a: object) -> bool:
+        return False
+
+
+def _patch_events(monkeypatch: pytest.MonkeyPatch, rows: list[tuple]) -> _FakeConn:
+    """Patch `core.runtime.db.connect` — funktionen importerer den ved kald."""
+    import core.runtime.db as _db
+
+    conn = _FakeConn(rows)
+    monkeypatch.setattr(_db, "connect", lambda *a, **k: conn)
+    return conn
+
+
+def _verify_row(tool: str, when: datetime, status: str = "ok") -> tuple:
+    import json as _json
+
+    return (
+        _json.dumps({"tool": tool, "status": status, "run_id": "r1"}),
+        when.isoformat(),
+    )
+
+
+class TestMeasureOutcomeAxis:
+    def test_no_surfaces_returns_empty(self):
+        """Ingen advarsler → ingen rate, ingen DB-forespørgsel."""
+        r = vgt.measure_outcome_axis(hours=24)
+        assert r["surfaces"] == 0
+        assert r["rate"] is None
+        assert r["cross_tab"] == {}
+
+    def test_verify_after_old_window_still_counts(
+        self, _fake_state_store, monkeypatch
+    ):
+        """Kernefejlen: verify 30 min efter advarslen er ude af 60s-vinduet,
+        men er stadig en ægte verifikation."""
+        now = datetime.now(UTC)
+        _fake_state_store[vgt._TELEMETRY_KEY] = {
+            "surfaces": [
+                _surface({
+                    "at": (now - timedelta(minutes=40)).isoformat(),
+                    "resolved": True,
+                    "ignored_at": (now - timedelta(minutes=39)).isoformat(),
+                })
+            ],
+            "reactions": [],
+        }
+        _patch_events(
+            monkeypatch,
+            [_verify_row("verify_file_contains", now - timedelta(minutes=10))],
+        )
+        r = vgt.measure_outcome_axis(hours=24)
+        assert r["surfaces"] == 1
+        assert r["verified"] == 1
+        assert r["rate"] == 1.0
+        # 30 min efter advarslen → med i 30/60/240, ikke i 1/5/10
+        assert r["per_horizon"][1] == 0
+        assert r["per_horizon"][5] == 0
+        assert r["per_horizon"][10] == 0
+        assert r["per_horizon"][30] == 1
+        assert r["per_horizon"][240] == 1
+
+    def test_ignored_but_verified_lands_in_cross_tab(
+        self, _fake_state_store, monkeypatch
+    ):
+        """Den ægte fejlform: gammel akse sagde «ignored», ny akse ser
+        verifikationen. Uenigheden SKAL være synlig i cross_tab."""
+        now = datetime.now(UTC)
+        _fake_state_store[vgt._TELEMETRY_KEY] = {
+            "surfaces": [
+                _surface({
+                    "at": (now - timedelta(minutes=90)).isoformat(),
+                    "resolved": True,
+                    "ignored_at": (now - timedelta(minutes=89)).isoformat(),
+                })
+            ],
+            "reactions": [],
+        }
+        _patch_events(
+            monkeypatch,
+            [_verify_row("verify_file_contains", now - timedelta(minutes=20))],
+        )
+        r = vgt.measure_outcome_axis(hours=24)
+        assert r["cross_tab"]["ignored_but_verified"] == 1
+        assert r["cross_tab"]["ignored_and_unverified"] == 0
+
+    def test_genuint_uverificeret_taelles_som_uverificeret(
+        self, _fake_state_store, monkeypatch
+    ):
+        """Modstykket: uden verify-kald er advarslen reelt uverificeret."""
+        now = datetime.now(UTC)
+        _fake_state_store[vgt._TELEMETRY_KEY] = {
+            "surfaces": [
+                _surface({
+                    "at": (now - timedelta(minutes=90)).isoformat(),
+                    "resolved": True,
+                    "ignored_at": (now - timedelta(minutes=89)).isoformat(),
+                })
+            ],
+            "reactions": [],
+        }
+        _patch_events(monkeypatch, [])
+        r = vgt.measure_outcome_axis(hours=24)
+        assert r["verified"] == 0
+        assert r["cross_tab"]["ignored_and_unverified"] == 1
+
+    def test_light_tool_taelles_ikke_som_verifikation(
+        self, _fake_state_store, monkeypatch
+    ):
+        """En læsning er ikke en kontrol. `read_file` står i _LIGHT_VERIFY_TOOLS
+        og må ikke gøre en advarsel «verificeret» på udfaldsaksen."""
+        now = datetime.now(UTC)
+        _fake_state_store[vgt._TELEMETRY_KEY] = {
+            "surfaces": [
+                _surface({"at": (now - timedelta(minutes=40)).isoformat(),
+                          "resolved": True,
+                          "ignored_at": (now - timedelta(minutes=39)).isoformat()})
+            ],
+            "reactions": [],
+        }
+        _patch_events(monkeypatch, [_verify_row("read_file", now)])
+        r = vgt.measure_outcome_axis(hours=24)
+        assert r["verified"] == 0
+        assert r["rate"] == 0.0
+
+    def test_verify_foer_advarslen_taelles_ikke(
+        self, _fake_state_store, monkeypatch
+    ):
+        """Tidslig orden: et verify-kald der kom FØR advarslen kan ikke være
+        en reaktion på den."""
+        now = datetime.now(UTC)
+        _fake_state_store[vgt._TELEMETRY_KEY] = {
+            "surfaces": [
+                _surface({"at": (now - timedelta(minutes=40)).isoformat(),
+                          "resolved": True,
+                          "ignored_at": (now - timedelta(minutes=39)).isoformat()})
+            ],
+            "reactions": [],
+        }
+        _patch_events(
+            monkeypatch,
+            [_verify_row("verify_file_contains", now - timedelta(minutes=60))],
+        )
+        r = vgt.measure_outcome_axis(hours=24)
+        assert r["verified"] == 0
+
+    def test_feajlet_verify_taelles_ikke(self, _fake_state_store, monkeypatch):
+        """Et verify-kald der selv fejlede beviser ingenting."""
+        now = datetime.now(UTC)
+        _fake_state_store[vgt._TELEMETRY_KEY] = {
+            "surfaces": [
+                _surface({"at": (now - timedelta(minutes=40)).isoformat(),
+                          "resolved": True,
+                          "ignored_at": (now - timedelta(minutes=39)).isoformat()})
+            ],
+            "reactions": [],
+        }
+        _patch_events(
+            monkeypatch,
+            [_verify_row("verify_file_contains", now, status="failed")],
+        )
+        r = vgt.measure_outcome_axis(hours=24)
+        assert r["verified"] == 0
+
+    def test_median_seconds_to_verify(self, _fake_state_store, monkeypatch):
+        """Median reaktionstid måles på dem der BLEV verificeret."""
+        now = datetime.now(UTC)
+        _fake_state_store[vgt._TELEMETRY_KEY] = {
+            "surfaces": [
+                _surface({"at": (now - timedelta(minutes=50)).isoformat()}),
+                _surface({"at": (now - timedelta(minutes=30)).isoformat()}),
+            ],
+            "reactions": [],
+        }
+        _patch_events(
+            monkeypatch,
+            [
+                _verify_row("verify_file_contains", now - timedelta(minutes=40)),
+                _verify_row("verify_file_contains", now - timedelta(minutes=10)),
+            ],
+        )
+        r = vgt.measure_outcome_axis(hours=24)
+        # 10 min og 20 min → median 15 min = 900 s
+        assert r["median_seconds_to_verify"] == pytest.approx(900.0, rel=0.02)

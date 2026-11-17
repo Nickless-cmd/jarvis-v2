@@ -263,6 +263,167 @@ def get_telemetry_summary(*, hours: int = 24) -> dict[str, Any]:
     }
 
 
+#: Horisonter for udfaldsaksen — hvor længe efter en advarsel vi stadig
+#: anerkender at verifikationen kom. Den gamle akse
+#: (`_REACTION_WINDOW_SECONDS` = 60) måler reaktionstid; målt 17/11-2026 faldt
+#: 97,5 % af den ægte verifikation uden for det vindue, så «ignored» betød
+#: «svarede ikke inden 60 s» — ikke «verificerede ikke». Den akse er derfor
+#: ikke forkert, men den måler noget andet end dækning.
+_OUTCOME_HORIZONS_MINUTES: tuple[int, ...] = (1, 5, 10, 30, 60, 240)
+
+
+def measure_outcome_axis(
+    *,
+    hours: int = 24,
+    horizons_minutes: tuple[int, ...] = _OUTCOME_HORIZONS_MINUTES,
+) -> dict[str, Any]:
+    """Mål om advarslen førte til en ÆGTE verifikation — ikke hvor hurtigt.
+
+    Læser advarslerne fra telemetri-filen og slår op i `events` om der kom et
+    strict verify-kald efter hver enkelt. Forskellen fra
+    `get_telemetry_summary` er de to ting der gjorde den metric misvisende:
+    den ser på et tidsrum frem for et 60-sekunders vindue, og den tæller ikke
+    en simpel læsning som verifikation.
+
+    `cross_tab` viser hvor ofte de to akser er uenige — dvs. advarsler den
+    gamle metric kaldte «ignored» som alligevel blev verificeret, og omvendt.
+    Det er selve pointen: er uenigheden stor, måler den gamle akse reaktion
+    og ikke kontrol.
+
+    Ren læsning — muterer hverken telemetri-filen eller `events`.
+    """
+    import bisect
+    import json as _json
+
+    empty = {
+        "window_hours": hours,
+        "surfaces": 0,
+        "verified": 0,
+        "rate": None,
+        "per_horizon": {int(h): 0 for h in horizons_minutes},
+        "cross_tab": {},
+        "median_seconds_to_verify": None,
+    }
+
+    cutoff = datetime.now(UTC) - timedelta(hours=hours)
+    data = _load()
+    surfaces: list[dict[str, Any]] = []
+    for s in data.get("surfaces", []):
+        try:
+            s_at = datetime.fromisoformat(str(s.get("at", "")))
+        except ValueError:  # uparseligt tidsstempel: posten kan ikke placeres i tid
+            continue
+        if s_at < cutoff:
+            continue
+        surfaces.append(
+            {
+                "at": s_at,
+                "kind": str(s.get("kind") or "unknown"),
+                "heeded_kind": str(s.get("heeded_kind") or ""),
+                "heeded": bool(s.get("heeded_by")),
+                "ignored": bool(s.get("ignored_at")),
+            }
+        )
+    if not surfaces:
+        return empty
+
+    try:
+        from core.runtime.db import connect
+        from core.services.verification_gate import _VERIFY_TOOLS as _strict
+    except Exception as exc:
+        logger.debug("r2_outcome: kan ikke importere db/gate: %s", exc)
+        return {**empty, "surfaces": len(surfaces), "error": "import"}
+
+    oldest = min(s["at"] for s in surfaces)
+    newest = max(s["at"] for s in surfaces) + timedelta(minutes=max(horizons_minutes))
+    verifies: list[datetime] = []
+    try:
+        with connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT payload_json, created_at
+                FROM events
+                WHERE kind = 'tool.completed'
+                  AND created_at >= ?
+                  AND created_at <= ?
+                ORDER BY created_at ASC
+                """,
+                (oldest.isoformat(), newest.isoformat()),
+            ).fetchall()
+        for payload_json, created_at in rows:
+            try:
+                payload = _json.loads(payload_json or "{}")
+            except (ValueError, TypeError):  # ikke-JSON kan ikke bære et værktøjsnavn
+                continue
+            if not isinstance(payload, dict):
+                continue
+            if str(payload.get("status") or "") != "ok":
+                continue
+            if str(payload.get("tool") or "") not in _strict:
+                continue
+            try:
+                verifies.append(datetime.fromisoformat(str(created_at)))
+            except ValueError:  # uparseligt created_at: rækken kan ikke tidsordnes
+                continue
+    except Exception as exc:
+        logger.debug("r2_outcome: events-opslag fejlede: %s", exc)
+        return {**empty, "surfaces": len(surfaces), "error": "db"}
+
+    verifies.sort()
+    per_horizon = {int(h): 0 for h in horizons_minutes}
+    deltas: list[float] = []
+    cross = {
+        "ignored_but_verified": 0,
+        "ignored_and_unverified": 0,
+        "heeded_strict": 0,
+        "heeded_light_but_unverified": 0,
+    }
+    widest = max(horizons_minutes)
+    for s in surfaces:
+        start = bisect.bisect_right(verifies, s["at"])
+        first_delta: float | None = None
+        for h in sorted(horizons_minutes):
+            end = s["at"] + timedelta(minutes=h)
+            stop = bisect.bisect_right(verifies, end)
+            if stop > start:
+                per_horizon[int(h)] += 1
+                if first_delta is None:
+                    first_delta = (verifies[start] - s["at"]).total_seconds()
+        if first_delta is not None:
+            deltas.append(first_delta)
+
+        verified_widest = bisect.bisect_right(
+            verifies, s["at"] + timedelta(minutes=widest)
+        ) > start
+        if s["ignored"]:
+            key = "ignored_but_verified" if verified_widest else "ignored_and_unverified"
+            cross[key] += 1
+        elif s["heeded_kind"] == "light" and not verified_widest:
+            cross["heeded_light_but_unverified"] += 1
+        elif s["heeded_kind"] == "strict":
+            cross["heeded_strict"] += 1
+
+    total = len(surfaces)
+    verified = per_horizon[int(widest)]
+    deltas.sort()
+    median = None
+    if deltas:
+        mid = len(deltas) // 2
+        median = round(
+            deltas[mid] if len(deltas) % 2 else (deltas[mid - 1] + deltas[mid]) / 2, 1
+        )
+
+    return {
+        "window_hours": hours,
+        "surfaces": total,
+        "verified": verified,
+        "rate": round(verified / total, 3) if total else None,
+        "per_horizon": per_horizon,
+        "cross_tab": cross,
+        "median_seconds_to_verify": median,
+    }
+
+
 def telemetry_section() -> str | None:
     """Render telemetry as a prompt-awareness section. Only shows when there's
     a meaningful pattern (>= 5 surfaces in the last 24h)."""

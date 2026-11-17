@@ -6099,45 +6099,6 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "consent-error",
             }
 
-    if action_type == "cleanup_web_cache":
-        try:
-            from core.runtime.db import connect, web_cache_cleanup
-
-            with connect() as cache_conn:
-                deleted = web_cache_cleanup(conn=cache_conn)
-            return {
-                "status": "executed",
-                "summary": f"Web cache cleanup: {deleted} expired entries removed.",
-                "artifact": json.dumps({"deleted_count": deleted}),
-                "blocked_reason": "",
-            }
-        except Exception as exc:
-            return {
-                "status": "blocked",
-                "summary": f"Web cache cleanup failed: {exc!s}"[:200],
-                "artifact": "",
-                "blocked_reason": "web-cache-cleanup-error",
-            }
-
-    if action_type == "cleanup_daemon_output_log":
-        try:
-            from core.runtime.db import daemon_output_log_cleanup
-
-            deleted = daemon_output_log_cleanup(max_age_days=7)
-            return {
-                "status": "executed",
-                "summary": f"Daemon output log cleanup: {deleted} old entries removed.",
-                "artifact": json.dumps({"deleted_count": deleted}),
-                "blocked_reason": "",
-            }
-        except Exception as exc:
-            return {
-                "status": "blocked",
-                "summary": f"Daemon log cleanup failed: {exc!s}"[:200],
-                "artifact": "",
-                "blocked_reason": "daemon-log-cleanup-error",
-            }
-
     if action_type == "cleanup_stale_signals":
         try:
             from core.runtime.db import signal_decay_archive_and_delete, signal_archive_cleanup

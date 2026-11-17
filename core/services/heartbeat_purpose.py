@@ -82,8 +82,6 @@ _OBSERVED: Final[dict[str, str]] = {
     "decay_forgotten_signals": SURVIVAL,
     # cleanup_stale_signals → archived/tables_scanned
     "cleanup_stale_signals": SURVIVAL,
-    "cleanup_web_cache": SURVIVAL,
-    "cleanup_daemon_output_log": SURVIVAL,
     # ── session: leverer TIL samtalen ─────────────────────────────────────
     # webchat-heartbeat-proposal → session_id + message_id + delivery_channel
     "webchat-heartbeat-proposal": SESSION,

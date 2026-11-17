@@ -237,6 +237,13 @@ def test_hver_whitelist_post_har_en_gren() -> None:
     manglende = sorted(hr.HEARTBEAT_ALLOWED_EXECUTE_ACTIONS - grene)
     assert manglende == [], f"whitelist-poster uden gren: {manglende}"
 
+    # Den omvendte retning: en gren uden whitelist-post kan aldrig fyres.
+    # Maalt 17/11-2026: cleanup_web_cache og cleanup_daemon_output_log var
+    # skrevet men uopnaaelige; begge var desuden dubletter af
+    # cache_maintenance_daemon (6 t) og retention._TELEMETRY_POLICIES (30 d).
+    doede = sorted(grene - hr.HEARTBEAT_ALLOWED_EXECUTE_ACTIONS)
+    assert doede == [], f"grene der aldrig kan fyres (ikke i whitelist): {doede}"
+
 
 def test_analyze_cross_signals_er_pensioneret_fra_heartbeat() -> None:
     """Maalt 17/11-2026: 650 kald, 9 unikke artefakter, de sidste identiske.

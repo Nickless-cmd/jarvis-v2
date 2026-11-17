@@ -400,11 +400,11 @@ _Hvad var heartbeat-slaget TIL? — én definition, fire formål._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `purpose_for_action` | `(action_type)` | Formålet med et slag ud fra dets handlingstype. | [src](../../../core/services/heartbeat_purpose.py#L156) |
-| function | `known_action_types` | `()` | Alle klassificerede handlingstyper — til vagten mod tavs forældelse. | [src](../../../core/services/heartbeat_purpose.py#L169) |
-| function | `action_types_in` | `(purpose)` | Handlingstyperne i én klasse. | [src](../../../core/services/heartbeat_purpose.py#L174) |
-| function | `is_real_purpose` | `(purpose)` | True for de fire formål — False for bogføring, tomgang og ukendt. | [src](../../../core/services/heartbeat_purpose.py#L179) |
-| function | `describe` | `()` | Klassificeringen som data — til docs, tests og værktøjer. | [src](../../../core/services/heartbeat_purpose.py#L184) |
+| function | `purpose_for_action` | `(action_type)` | Formålet med et slag ud fra dets handlingstype. | [src](../../../core/services/heartbeat_purpose.py#L154) |
+| function | `known_action_types` | `()` | Alle klassificerede handlingstyper — til vagten mod tavs forældelse. | [src](../../../core/services/heartbeat_purpose.py#L167) |
+| function | `action_types_in` | `(purpose)` | Handlingstyperne i én klasse. | [src](../../../core/services/heartbeat_purpose.py#L172) |
+| function | `is_real_purpose` | `(purpose)` | True for de fire formål — False for bogføring, tomgang og ukendt. | [src](../../../core/services/heartbeat_purpose.py#L177) |
+| function | `describe` | `()` | Klassificeringen som data — til docs, tests og værktøjer. | [src](../../../core/services/heartbeat_purpose.py#L182) |
 
 ## `core/services/heartbeat_runtime.py`
 
@@ -458,27 +458,27 @@ _Hvad var heartbeat-slaget TIL? — én definition, fire formål._
 | function | `_execute_continue_internal` | `(*, conflict_trace, trigger)` | Execute a bounded internal continuation when conflict chose continue_internal. | [src](../../../core/services/heartbeat_runtime.py#L4712) |
 | function | `_heartbeat_ping_candidate_ready` | `(*, policy)` | — | [src](../../../core/services/heartbeat_runtime.py#L4767) |
 | function | `_execute_heartbeat_internal_action` | `(*, action_type, tick_id, workspace_dir)` | — | [src](../../../core/services/heartbeat_runtime.py#L4788) |
-| function | `_summarize_heartbeat_capability_invocations` | `(invocations)` | — | [src](../../../core/services/heartbeat_runtime.py#L6170) |
-| function | `_record_heartbeat_outcome` | `(*, policy, persisted, tick_id, trigger, tick_status, decision_type, decision_summary, decision_reason, blocked_reason, currently_ticking, last_trigger_source, provider, model, lane, budget_status, model_source=…, resolution_status=…, fallback_used=…, execution_status=…, parse_status=…, ping_eligible, ping_result, action_status, action_summary, action_type, action_artifact, raw_response, input_tokens, output_tokens, cost_usd, started_at, finished_at, workspace_dir)` | — | [src](../../../core/services/heartbeat_runtime.py#L6210) |
-| function | `_merge_runtime_state` | `(*, policy, persisted, now)` | — | [src](../../../core/services/heartbeat_runtime.py#L6388) |
-| function | `_tick_blocked_reason` | `(merged_state)` | — | [src](../../../core/services/heartbeat_runtime.py#L6478) |
-| function | `_compute_next_tick_at` | `(*, interval_minutes, last_tick_at, enabled)` | — | [src](../../../core/services/heartbeat_runtime.py#L6492) |
-| function | `_resolve_tick_activity_state` | `(*, persisted, now)` | — | [src](../../../core/services/heartbeat_runtime.py#L6502) |
-| function | `_write_heartbeat_state_artifact` | `(*, workspace_dir, payload)` | — | [src](../../../core/services/heartbeat_runtime.py#L6538) |
-| function | `_default_persisted_state` | `()` | — | [src](../../../core/services/heartbeat_runtime.py#L6553) |
-| function | `_heartbeat_state_summary` | `(*, enabled, schedule_status, last_decision_type, last_result)` | — | [src](../../../core/services/heartbeat_runtime.py#L6592) |
-| function | `_persist_runtime_state` | `(*, policy, persisted, now, overrides)` | — | [src](../../../core/services/heartbeat_runtime.py#L6606) |
-| function | `_load_provider_api_key` | `(*, provider, profile)` | — | [src](../../../core/services/heartbeat_runtime.py#L6669) |
-| function | `record_phased_tick` | `(*, name, trigger, result)` | Skriv et faset tik ind i uret — saa kadencen faktisk rykker. | [src](../../../core/services/heartbeat_runtime.py#L6696) |
-| function | `_heartbeat_busy_result` | `(*, name, trigger)` | — | [src](../../../core/services/heartbeat_runtime.py#L6771) |
-| function | `_detect_startup_drift` | `(*, name, phase, overrides, actual_state)` | Compare intended overrides against what SELECT-back actually returned. | [src](../../../core/services/heartbeat_runtime.py#L6822) |
-| function | `_persist_runtime_state_with_diagnostics` | `(*, name, phase, policy, persisted, now, overrides)` | Wrapper around _persist_runtime_state that re-raises with stack trace | [src](../../../core/services/heartbeat_runtime.py#L6886) |
-| function | `_prepare_scheduler_startup` | `(*, name)` | — | [src](../../../core/services/heartbeat_runtime.py#L6927) |
-| function | `_mark_scheduler_health` | `(*, name, health)` | Sæt scheduler_health — kaldes af dæmon-tråden selv efter første iteration. | [src](../../../core/services/heartbeat_runtime.py#L7065) |
-| function | `_mark_scheduler_stopped` | `(*, name)` | — | [src](../../../core/services/heartbeat_runtime.py#L7079) |
-| function | `_emit_schedule_transitions` | `(state)` | — | [src](../../../core/services/heartbeat_runtime.py#L7104) |
-| function | `_heartbeat_runtime_bias_from_recent_work` | `(*, kind)` | — | [src](../../../core/services/heartbeat_runtime.py#L7145) |
-| function | `call_heartbeat_llm_simple` | `(prompt, *, max_tokens=…)` | Call the heartbeat model with a plain prompt. Returns the response text. | [src](../../../core/services/heartbeat_runtime.py#L7185) |
+| function | `_summarize_heartbeat_capability_invocations` | `(invocations)` | — | [src](../../../core/services/heartbeat_runtime.py#L6131) |
+| function | `_record_heartbeat_outcome` | `(*, policy, persisted, tick_id, trigger, tick_status, decision_type, decision_summary, decision_reason, blocked_reason, currently_ticking, last_trigger_source, provider, model, lane, budget_status, model_source=…, resolution_status=…, fallback_used=…, execution_status=…, parse_status=…, ping_eligible, ping_result, action_status, action_summary, action_type, action_artifact, raw_response, input_tokens, output_tokens, cost_usd, started_at, finished_at, workspace_dir)` | — | [src](../../../core/services/heartbeat_runtime.py#L6171) |
+| function | `_merge_runtime_state` | `(*, policy, persisted, now)` | — | [src](../../../core/services/heartbeat_runtime.py#L6349) |
+| function | `_tick_blocked_reason` | `(merged_state)` | — | [src](../../../core/services/heartbeat_runtime.py#L6439) |
+| function | `_compute_next_tick_at` | `(*, interval_minutes, last_tick_at, enabled)` | — | [src](../../../core/services/heartbeat_runtime.py#L6453) |
+| function | `_resolve_tick_activity_state` | `(*, persisted, now)` | — | [src](../../../core/services/heartbeat_runtime.py#L6463) |
+| function | `_write_heartbeat_state_artifact` | `(*, workspace_dir, payload)` | — | [src](../../../core/services/heartbeat_runtime.py#L6499) |
+| function | `_default_persisted_state` | `()` | — | [src](../../../core/services/heartbeat_runtime.py#L6514) |
+| function | `_heartbeat_state_summary` | `(*, enabled, schedule_status, last_decision_type, last_result)` | — | [src](../../../core/services/heartbeat_runtime.py#L6553) |
+| function | `_persist_runtime_state` | `(*, policy, persisted, now, overrides)` | — | [src](../../../core/services/heartbeat_runtime.py#L6567) |
+| function | `_load_provider_api_key` | `(*, provider, profile)` | — | [src](../../../core/services/heartbeat_runtime.py#L6630) |
+| function | `record_phased_tick` | `(*, name, trigger, result)` | Skriv et faset tik ind i uret — saa kadencen faktisk rykker. | [src](../../../core/services/heartbeat_runtime.py#L6657) |
+| function | `_heartbeat_busy_result` | `(*, name, trigger)` | — | [src](../../../core/services/heartbeat_runtime.py#L6732) |
+| function | `_detect_startup_drift` | `(*, name, phase, overrides, actual_state)` | Compare intended overrides against what SELECT-back actually returned. | [src](../../../core/services/heartbeat_runtime.py#L6783) |
+| function | `_persist_runtime_state_with_diagnostics` | `(*, name, phase, policy, persisted, now, overrides)` | Wrapper around _persist_runtime_state that re-raises with stack trace | [src](../../../core/services/heartbeat_runtime.py#L6847) |
+| function | `_prepare_scheduler_startup` | `(*, name)` | — | [src](../../../core/services/heartbeat_runtime.py#L6888) |
+| function | `_mark_scheduler_health` | `(*, name, health)` | Sæt scheduler_health — kaldes af dæmon-tråden selv efter første iteration. | [src](../../../core/services/heartbeat_runtime.py#L7026) |
+| function | `_mark_scheduler_stopped` | `(*, name)` | — | [src](../../../core/services/heartbeat_runtime.py#L7040) |
+| function | `_emit_schedule_transitions` | `(state)` | — | [src](../../../core/services/heartbeat_runtime.py#L7065) |
+| function | `_heartbeat_runtime_bias_from_recent_work` | `(*, kind)` | — | [src](../../../core/services/heartbeat_runtime.py#L7106) |
+| function | `call_heartbeat_llm_simple` | `(prompt, *, max_tokens=…)` | Call the heartbeat model with a plain prompt. Returns the response text. | [src](../../../core/services/heartbeat_runtime.py#L7146) |
 
 ## `core/services/heartbeat_runtime_helpers.py`
 _Pure leaf helpers extracted from ``heartbeat_runtime``._

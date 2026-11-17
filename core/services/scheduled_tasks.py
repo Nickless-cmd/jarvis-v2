@@ -258,7 +258,9 @@ def _fire_due_tasks() -> None:
             # Build the per-task dispatch work as a callback so it can be
             # injected into fire_scheduled_task (which sets workspace_context
             # before calling it) or called directly for legacy tasks.
-            def _dispatch(focus: str = focus, task_id: str = task_id, now_iso: str = now_iso, **_kwargs) -> None:
+            def _dispatch(focus: str = focus, task_id: str = task_id, now_iso: str = now_iso,
+                          task_session: str = str(task.get("session_id") or ""),
+                          **_kwargs) -> None:
                 try:
                     # Route through outbound_nudges (2026-05-13): scheduled
                     # reminders are INTERNAL signals to Jarvis (not DMs to user).
@@ -325,6 +327,10 @@ def _fire_due_tasks() -> None:
                                 source="scheduled-task",
                                 source_id=task_id,
                                 priority="medium",
+                                # Opgaven kender sin samtale (58 af 179 har en).
+                                # Uden den her vender det autonome arbejde aldrig
+                                # tilbage til den samtale der bestilte det.
+                                session_id=task_session,
                             )
                             logger.info("scheduled_tasks: pushed %s to initiative queue", task_id)
                         except Exception as init_exc:

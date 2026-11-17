@@ -116,6 +116,10 @@ def _exec_push_initiative(args: dict[str, Any]) -> dict[str, Any]:
             focus=focus,
             source="jarvis-tool",
             priority=priority,
+            # Samtalen værktøjet blev kaldt i. Uden den lander initiativet i
+            # `auto-heartbeat-{dato}`-siloen når det bliver aktet, og arbejdet
+            # vender aldrig tilbage til den samtale der bestilte det (17/11-2026).
+            session_id=str(args.get("_runtime_session_id") or ""),
         )
         return {
             "status": "ok",

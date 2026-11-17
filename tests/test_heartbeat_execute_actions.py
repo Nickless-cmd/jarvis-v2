@@ -415,7 +415,13 @@ def test_manage_runtime_work_materializes_curriculum_tasks(
 
 def test_propose_decision_delivers_message_to_webchat_when_available(
     isolated_runtime,
+    monkeypatch,
 ) -> None:
+    # Leveringen er fail-closed paa ejer-identitet: sessionen skal vaere stemplet
+    # med ejerens id. Testen stiller en ejer og opretter sessionen som ham.
+    ejer = "owner-test-1"
+    monkeypatch.setattr("core.identity.owner_resolver.owner_user_id", lambda: ejer)
+    monkeypatch.setattr("core.identity.workspace_context.current_user_id", lambda: ejer)
     heartbeat_runtime = isolated_runtime.heartbeat_runtime
     chat_sessions = __import__(
         "core.services.chat_sessions",

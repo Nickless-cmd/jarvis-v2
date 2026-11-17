@@ -25,6 +25,18 @@ def _base_policy(workspace: Path, ping_channel: str = "none") -> dict:
     }
 
 
+def _ejer_session(monkeypatch, sid: str = "sess-1") -> None:
+    """Giv leveringen en ejer-stemplet destination.
+
+    Produktionskoden (`_owner_chat_session_id`) er fail-closed: uden en ejer og
+    en session stemplet med ejerens id svarer den "" og leveringen bliver
+    `missing-webchat-session`. Det er med vilje (privatlivsgraense), saa testene
+    maa selv stille en ejer-session til raadighed i stedet for at haabe paa en DB.
+    """
+    import core.services.heartbeat_delivery as hd
+    monkeypatch.setattr(hd, "_owner_chat_session_id", lambda **k: sid)
+
+
 def test_propose_silent_when_channel_none_and_no_trigger(workspace: Path) -> None:
     result = heartbeat_runtime._deliver_heartbeat_proposal(
         policy=_base_policy(workspace),
@@ -65,6 +77,7 @@ def test_propose_posts_when_trigger_present(workspace: Path, monkeypatch) -> Non
     # testmiljoeets DB var tom; nu staar den som en paastand, saa testen ikke
     # stiltiende skifter til koe-vejen hvis miljoeet aendrer sig.
     monkeypatch.setattr(inbox, "is_session_active", lambda sid, **k: False)
+    _ejer_session(monkeypatch)
 
     result = heartbeat_runtime._deliver_heartbeat_proposal(
         policy=_base_policy(workspace),
@@ -101,6 +114,7 @@ def test_ping_posts_when_trigger_present(workspace: Path, monkeypatch) -> None:
     monkeypatch.setattr(cs, "append_chat_message", fake_append)
     monkeypatch.setattr(cs, "list_chat_sessions", lambda: [{"id": "sess-1"}])
     monkeypatch.setattr(cs, "get_chat_session", lambda sid: {"id": sid})
+    _ejer_session(monkeypatch)
 
     result = heartbeat_runtime._deliver_heartbeat_ping_directly(
         policy=_base_policy(workspace),
@@ -156,6 +170,7 @@ def test_aktiv_session_DROPPER_forslaget(workspace: Path, monkeypatch) -> None:
     monkeypatch.setattr(cs, "get_chat_session", lambda sid: {"id": sid})
     monkeypatch.setattr(inbox, "is_session_active", lambda sid, **k: True)
     monkeypatch.setattr(inbox, "enqueue", fake_enqueue)
+    _ejer_session(monkeypatch)
 
     result = heartbeat_runtime._deliver_heartbeat_proposal(
         policy=_base_policy(workspace),

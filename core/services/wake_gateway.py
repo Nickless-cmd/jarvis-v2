@@ -142,6 +142,9 @@ def anmod_om_vaekning(
         from core.services.inbox_state import normaliser_indbakke_bruger
 
         bruger = str(bruger_id or "").strip() or _bruger()
+        # Normaliseres EFTER fallback og FØR første db_inbox-kald: både
+        # dedup-opslaget og skrivningen skal ramme samme indbakke.
+        bruger = normaliser_indbakke_bruger(bruger)
         if not bruger:
             # En post i den forkerte indbakke er værre end ingen post.
             return _kvittering(REJECTED, "ingen_bruger", kilde=kilde,

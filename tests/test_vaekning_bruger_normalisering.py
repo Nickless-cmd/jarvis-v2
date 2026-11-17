@@ -82,3 +82,24 @@ def test_gatewayen_skriver_paa_den_loesbare_identitet(isoleret):
     assert db_inbox.hent(
         bruger_id=LEGACY, kilde_id=wake_gateway.vaekning_kilde_id("run-abc")
     ) is None
+
+
+def test_fallback_bruger_normaliseres_ogsaa(isoleret, monkeypatch):
+    """Normaliseringen sidder EFTER fallbacken: uden `bruger_id` ender kilden på
+    `_bruger()`, og også den identitet skal opløses. Fjernes kaldet, fælder
+    denne test (og `test_gatewayen_skriver_paa_den_loesbare_identitet`)."""
+    monkeypatch.setattr(wake_gateway, "_bruger", lambda: LEGACY)
+    kvit = wake_gateway.anmod_om_vaekning(
+        kilde="recurring", sag="fallback-1", tekst="x", session_id="chat-1")
+    assert kvit["status"] == "queued", kvit
+    kid = wake_gateway.vaekning_kilde_id("fallback-1")
+    assert db_inbox.hent(bruger_id=ÆGTE, kilde_id=kid) is not None
+    assert db_inbox.hent(bruger_id=LEGACY, kilde_id=kid) is None
+
+
+def test_ukendt_identitet_boeres_uaendret_gennem_gatewayen(isoleret):
+    kvit = wake_gateway.anmod_om_vaekning(
+        kilde="recurring", sag="ukendt-1", tekst="x", bruger_id="helt-ukendt")
+    assert kvit["status"] == "queued", kvit
+    kid = wake_gateway.vaekning_kilde_id("ukendt-1")
+    assert db_inbox.hent(bruger_id="helt-ukendt", kilde_id=kid) is not None

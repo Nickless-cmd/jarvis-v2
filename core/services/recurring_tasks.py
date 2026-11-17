@@ -1093,6 +1093,10 @@ def _fire_due() -> None:
 
                 _kv = anmod_om_vaekning(
                     kilde="recurring",
+                    # EJEREN bæres med: `_fire_due` har sat ejerens kontekst,
+                    # og uden `bruger_id` kasserer gatewayen den og gætter
+                    # via workspace-navnet.
+                    bruger_id=str(task.get("user_id") or ""),
                     # FOREKOMSTEN er dedup-nøglen — samme udtryk som
                     # `dispatch_recurring` nedenfor får som `occurrence_id`.
                     # `task_id` alene ville dedupes mod den første post for

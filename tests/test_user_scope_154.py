@@ -59,24 +59,51 @@ def test_autonomy_isolation(isolated_runtime):
         assert {p["proposal_id"] for p in list_autonomy_proposals()} == {"pa"}
 
 
-def test_recurring_fires_in_owner_context(isolated_runtime, monkeypatch):
-    # #154-followup: en gentagen task affyrer i task-EJERENS kontekst, ikke owner.
+def test_recurring_fires_in_owner_context(isolated_runtime):
+    """En gentagen opgave affyres i EJERENS indbakke, ikke i ejerens-ejer.
+
+    ÉN VÆKKER (11/11-2026): `_legacy` kalder `anmod_om_vaekning`, ikke
+    `start_autonomous_run`. Testen måler derfor hvor POSTEN lander: den skal
+    ligge i ejerens indbakke (under den identitet indbakken normaliserer til),
+    med `beskrivelse == focus`, og kvitteringen må ikke være `rejected`.
+    """
     import core.services.recurring_tasks as rt
-    import core.services.visible_runs as vr
     from core.identity.user_db import add_user
-    from core.identity.workspace_context import current_user_id
+    from core.runtime import db_inbox
+    from core.services import wake_gateway
+    from core.services.inbox_state import normaliser_indbakke_bruger
+
+    # db_inbox husker i en modul-flag at skemaet er lavet; en tidligere test med
+    # anden DB-sti ellers gør dette til en ordens-afhængig `no such table`.
+    db_inbox._skema_klar = False
     u = add_user(email="rec@b.dk", name="R", password="hemmelig123",
                  role="member", workspace="recws")
     uid = u["user_id"]
     rt._ensure_table()
     with user_context(discord_id=uid):
-        rt._create(task_id="t1", focus="gør det", source="x", interval_minutes=60,
+        rt._create(task_id="t1", focus="g\u00f8r det", source="x", interval_minutes=60,
                    next_fire_at="2000-01-01T00:00:00", now="2026-01-01T00:00:00")
-    captured = {}
-    def fake_run(*, message, session_id=None, origin=None, **kwargs):
-        captured["uid"] = current_user_id()
-        captured["msg"] = message
-    monkeypatch.setattr(vr, "start_autonomous_run", fake_run)
-    rt._fire_due()
-    assert captured.get("uid") == uid       # kørte i ejerens kontekst
-    assert captured.get("msg") == "gør det"
+    kvitteringer = []
+    ægte = wake_gateway.anmod_om_vaekning
+
+    def spion(**kw):
+        k = ægte(**kw)
+        kvitteringer.append((kw, k))
+        return k
+
+    import pytest
+    mp = pytest.MonkeyPatch()
+    mp.setattr(wake_gateway, "anmod_om_vaekning", spion)
+    try:
+        rt._fire_due()
+    finally:
+        mp.undo()
+
+    assert len(kvitteringer) == 1
+    kw, kv = kvitteringer[0]
+    assert kw["bruger_id"] == uid            # ejeren bæres med fra opgaven
+    assert kv["status"] != "rejected", kv
+    indbakke = normaliser_indbakke_bruger(uid)
+    post = db_inbox.hent(bruger_id=indbakke, kilde_id=kv["kilde_id"])
+    assert post is not None, "posten ligger ikke i ejerens indbakke"
+    assert post["beskrivelse"] == "g\u00f8r det"

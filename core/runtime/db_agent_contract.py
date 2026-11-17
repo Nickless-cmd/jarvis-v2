@@ -609,7 +609,59 @@ def adopt_run(*, agent_id: str, run_id: str) -> str:
         raise
 
 
-def partial_delivery_error(*, full: str, registry_status: str) -> tuple[str, str]:
+#: Kendte infrastruktur-aarsager i `agent_registry.last_error` -> (kode, fase).
+#: Teksterne skrives af `agent_runtime_spawn` selv (`_auto_cleanup` og
+#: `recover_crashed_agents`), saa de er et lukket, kendt saet — ikke fri tekst
+#: der skal tolkes. Uden denne tabel faldt begge tilbage paa `model`.
+_INFRA_LAST_ERROR = (
+    ("auto_cleanup_stale_failed_after_", "AGENT_RECLAIMED", "recovery"),
+    ("process restarted while agent was active", "AGENT_RESTARTED", "recovery"),
+)
+
+
+def _infra_aarsag(last_error: str) -> tuple[str, str]:
+    """(kode, fase) for en kendt infrastruktur-aarsag — ellers ("", "")."""
+    tekst = str(last_error or "")
+    for praefiks, kode, fase in _INFRA_LAST_ERROR:
+        if praefiks in tekst:
+            return kode, fase
+    return "", ""
+
+
+def _run_fejlkode(conn: Any, assignment_id: str) -> tuple[str, str]:
+    """(error_code, error_phase) fra det seneste run under assignmentet der HAR en kode.
+
+    En orphan-marker kan vaere skrevet EFTER assignmentet blev terminalt og er tom
+    paa settle-tidspunktet — men det underliggende run har koden. Derfor: nyeste
+    run med en ikke-tom kode, ikke blot det nyeste run.
+
+    17/11-2026: funktionen findes fordi `settle_agent_status` faldt tilbage paa en
+    fast tabel (`AGENT_FAILED`/`model`) naar agentens tekst var tom. Maalt paa de
+    65 fejlede assignments: runnet bar `LEASE_EXPIRED`, `CLI_QUOTA_EXHAUSTED`,
+    `RUN_STALE` eller `CLI_BACKEND_FAILED` — kun 2 af 26 var aegte model-fejl.
+    """
+    row = conn.execute(
+        "SELECT error_code, error_phase FROM agent_runs WHERE assignment_id=? "
+        "AND COALESCE(error_code,'') != '' "
+        # `RUN_ORPHANED` beskriver at ASSIGNMENTET blev lukket, ikke hvad der gik
+        # galt — og den skrives typisk EFTER det ægte run. Maalt paa
+        # `asg-d96dabe04904478c`: LEASE_EXPIRED kl. 21:00:03, orphan-markeren kl.
+        # 21:05:38. Uden denne sortering arvede vi meta-koden og skjulte aarsagen.
+        "ORDER BY (error_code='RUN_ORPHANED'), finished_at DESC, attempt_no DESC LIMIT 1",
+        (assignment_id,)).fetchone()
+    if row is None:
+        return "", ""
+    return str(row["error_code"] or ""), str(row["error_phase"] or "")
+
+
+def partial_delivery_error(
+    *,
+    full: str,
+    registry_status: str,
+    run_error_code: str = "",
+    run_error_phase: str = "",
+    last_error: str = "",
+) -> tuple[str, str]:
     """(error_code, error_phase) for et terminalt udfald.
 
     26/10-2026: en DELVIS leverance er ikke en model-fejl.
@@ -621,10 +673,31 @@ def partial_delivery_error(*, full: str, registry_status: str) -> tuple[str, str
     og leverede et korrekt svar paa det foerste spoergsmaal. En agent der stoppede
     midt i, fejlede i LEVERANCEN, ikke i modelkaldet. Fasen skal sige det den ved,
     ellers leder den naeste mig efter den forkerte aarsag.
+
+    17/11-2026: tabellen var FOERSTE udvej, ikke sidste.
+
+    Maalt paa de 65 fejlede assignments: 26 blev stemplet `AGENT_FAILED`/`model`,
+    men runnet under dem bar `LEASE_EXPIRED`, `CLI_QUOTA_EXHAUSTED`, `RUN_STALE`
+    eller `CLI_BACKEND_FAILED` — kun 2 af de 26 var aegte model-fejl. Tabellen
+    blev brugt hver gang teksten var tom (17 af 26), og den paastod dermed
+    "modellen fejlede" om infrastruktur. Konsekvensen var ikke kosmetisk: 23 af
+    de 26 fik intet nyt forsoeg, fordi assignmentet blev terminalt foer leasen
+    udloeb — et arbejde der blev draebt af en genstart og bagefter bebrejdet
+    modellen.
+
+    Raekkefoelgen er derfor: markeringen (den mest specifikke) -> runnets egen
+    kode (den observerede aarsag) -> kendt infrastruktur-tekst -> tabellen.
     """
     text = str(full or "")
     if text.strip() and "UFULDSTÆNDIG" in text:
         return _incomplete_kode(text)
+    kode = str(run_error_code or "").strip()
+    if kode:
+        fase = str(run_error_phase or "").strip() or _ERROR_PHASE.get(registry_status, "")
+        return kode, fase
+    kode, fase = _infra_aarsag(last_error)
+    if kode:
+        return kode, fase
     return _ERROR_CODE.get(registry_status, ""), _ERROR_PHASE.get(registry_status, "")
 
 
@@ -820,6 +893,11 @@ def settle_agent_status(*, agent_id: str, registry_status: str) -> dict[str, Any
     if a is None:
         return None
     full = latest_agent_reply(conn, agent_id)
+    # 17/11-2026: dommen skal laese runnets EGEN kode foer den falder tilbage paa
+    # tabellen. Maalt paa de 65 fejlede assignments: runnet bar `LEASE_EXPIRED`,
+    # `CLI_QUOTA_EXHAUSTED`, `RUN_STALE` eller `CLI_BACKEND_FAILED`, mens
+    # assignmentet blev stemplet `AGENT_FAILED`/`model`.
+    _run_kode, _run_fase = _run_fejlkode(conn, a["assignment_id"])
     # 26/10-2026: en DELVIS leverance er ikke en model-fejl.
     #
     # Maalt paa `asg-4a79ab1ca3094db2`: agenten svarede paa 1 af 3 spoergsmaal, og
@@ -830,7 +908,9 @@ def settle_agent_status(*, agent_id: str, registry_status: str) -> dict[str, Any
     # midt i, fejlede i LEVERANCEN, ikke i modelkaldet. Fasen skal sige det den ved,
     # ellers leder den naeste mig efter den forkerte aarsag.
     _error_code, _error_phase = partial_delivery_error(
-        full=full, registry_status=registry_status)
+        full=full, registry_status=registry_status,
+        run_error_code=_run_kode, run_error_phase=_run_fase,
+        last_error=str(agent["last_error"] or ""))
     owner = conn.execute("SELECT owner_user_id FROM agent_assignments WHERE assignment_id=?",
                          (a["assignment_id"],)).fetchone()["owner_user_id"]
     # Resultatfilen faerdiggoeres FOER den terminale DB-transaktion (§9).

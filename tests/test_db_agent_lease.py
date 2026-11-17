@@ -248,7 +248,17 @@ def test_second_expiry_exhausts_the_safe_attempts_and_ends_with_one_failed_resul
     assert a["status"] == "failed"
     (m,) = ls.c_.list_pending_results(owner_user_id="bjorn", origin_session_id="s1")
     payload = json.loads(m["payload_json"])
-    assert payload["attempt_run_ids"] == [acc["run_id"], "run-2"] and payload["error_code"] == "AGENT_FAILED"
+    # 17/11-2026: koden er `LEASE_EXPIRED`, ikke `AGENT_FAILED`.
+    #
+    # Denne test vogtede tidligere den falske etiket: begge forsøg døde fordi
+    # workeren forsvandt, og alligevel blev udfaldet kaldt en model-fejl. Runnet
+    # bar `LEASE_EXPIRED` hele tiden — `settle_agent_status` faldt blot tilbage paa
+    # sin faste tabel fordi agentens tekst var tom. Rettelsen i
+    # `partial_delivery_error` arver nu runnets kode, saa aarsagen overlever.
+    # Testens egentlige formaal — ÉN terminalbesked og begge run-id'er — staar uaendret.
+    assert payload["attempt_run_ids"] == [acc["run_id"], "run-2"]
+    assert payload["error_code"] == "LEASE_EXPIRED", (
+        f"forventede den maalte aarsag, fik {payload['error_code']!r}")
 
 
 def test_a_terminal_assignment_is_left_alone(ls):

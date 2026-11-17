@@ -99,7 +99,13 @@ def test_raa_result_uden_markering_er_ikke_falsk_delvis(conn):
 
 
 def test_aegte_fejl_uden_tekst_er_stadig_model(conn):
-    """Den anden vej: en rigtig fejl skal ikke pakkes ind som 'delivery'."""
+    """Den anden vej: en rigtig fejl skal ikke pakkes ind som 'delivery'.
+
+    17/11-2026: tabellen er SIDSTE udvej, ikke et udsagn om virkeligheden. Uden
+    et run og uden en `last_error` findes intet bevis, og `AGENT_FAILED`/`model`
+    er da det bedste gæt der findes. `settle_agent_status` sender begge kilder
+    med, saa i drift vinder den observerede aarsag — se `_run_fejlkode`.
+    """
     _besked(conn, "failure", "Connection reset by peer", "2026-10-26T22:21:50.932120Z")
 
     full = _opslag(conn)
@@ -116,6 +122,66 @@ def test_ingen_besked_giver_tom_tekst(conn):
         "AGENT_FAILED",
         "model",
     )
+
+
+# ── 17/11-2026: dommen skal laese RUNNET, ikke kun tabellen ──────────────────
+# Maalt paa de 65 fejlede assignments: 26 blev stemplet `AGENT_FAILED`/`model`
+# mens runnet under dem bar en helt anden aarsag. Kun 2 af de 26 var aegte
+# model-fejl. Vagten her maaler den RIGTIGE funktion mod en DB med de faktiske
+# rækkeformer — ikke en kopi af dens SQL.
+
+def _runs_db() -> sqlite3.Connection:
+    c = sqlite3.connect(":memory:")
+    c.row_factory = sqlite3.Row
+    c.execute(
+        "CREATE TABLE agent_runs (run_id TEXT, assignment_id TEXT, status TEXT, "
+        "error_code TEXT, error_phase TEXT, finished_at TEXT, attempt_no INTEGER)"
+    )
+    return c
+
+
+def _run(c, run_id, aid, code, phase, finished, attempt):
+    c.execute("INSERT INTO agent_runs VALUES (?,?,?,?,?,?,?)",
+              (run_id, aid, "failed", code, phase, finished, attempt))
+
+
+def test_run_koden_arves_naar_agentens_tekst_er_tom():
+    """Den maalte fejl: tom tekst gjorde at tabellen vandt over runnet."""
+    c = _runs_db()
+    _run(c, "run-a", "asg-1", "LEASE_EXPIRED", "recovery", "2026-11-16T21:00:03Z", 1)
+    kode, fase = dac._run_fejlkode(c, "asg-1")
+    assert (kode, fase) == ("LEASE_EXPIRED", "recovery")
+    assert dac.partial_delivery_error(
+        full="", registry_status="failed",
+        run_error_code=kode, run_error_phase=fase,
+    ) == ("LEASE_EXPIRED", "recovery")
+
+
+def test_orphan_markeren_skyder_ikke_den_aegte_aarsag_vaek():
+    """`RUN_ORPHANED` skrives EFTER det ægte run og beskriver kun lukningen.
+
+    Maalt paa `asg-d96dabe04904478c`: LEASE_EXPIRED kl. 21:00:03,
+    orphan-markeren kl. 21:05:38. Uden sorteringen arvede vi meta-koden.
+    """
+    c = _runs_db()
+    _run(c, "run-aegte", "asg-2", "LEASE_EXPIRED", "recovery", "2026-11-16T21:00:03Z", 1)
+    _run(c, "agent-run-orphan", "asg-2", "RUN_ORPHANED", "recovery", "2026-11-16T21:05:38Z", 2)
+    assert dac._run_fejlkode(c, "asg-2") == ("LEASE_EXPIRED", "recovery")
+
+
+def test_kun_en_orphan_giver_stadig_orphan_koden():
+    """Findes intet andet, er `RUN_ORPHANED` sandt nok — bedre end "model"."""
+    c = _runs_db()
+    _run(c, "agent-run-orphan", "asg-3", "RUN_ORPHANED", "recovery", "2026-11-16T19:19:56Z", 1)
+    assert dac._run_fejlkode(c, "asg-3") == ("RUN_ORPHANED", "recovery")
+
+
+def test_run_uden_kode_giver_tomme_felter():
+    """Et run der ikke selv ved noget maa ikke opfinde en aarsag."""
+    c = _runs_db()
+    _run(c, "run-tom", "asg-4", "", "", "2026-11-16T19:19:56Z", 1)
+    assert dac._run_fejlkode(c, "asg-4") == ("", "")
+    assert dac._run_fejlkode(c, "findes-ikke") == ("", "")
 
 FULL_TEXT = (
     "**Summary** — Jeg kunne verificere svar 3 med stor sikkerhed.\n\n"

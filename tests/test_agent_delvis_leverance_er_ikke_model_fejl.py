@@ -29,11 +29,78 @@ def test_delvis_leverance_faar_delivery_og_incomplete():
     assert fase == "delivery", f"fik {fase!r}"
 
 
-# ── Acceptkriterium 2: en AEGTE fejl maa ikke blive "delivery" ───────────────
-def test_aegte_fejl_uden_tekst_beholder_model_fasen():
-    """En agent der fejlede uden at levere noget er stadig en model-fejl."""
+# ── Acceptkriterium 2: tabellen er SIDSTE udvej, ikke foerste ───────────────
+def test_uden_observeret_aarsag_er_tabellen_det_bedste_gaet():
+    """Uden tekst, uden run-kode og uden last_error findes intet bevis.
+
+    Tabellen er saa det bedste gaet der findes — men den er nu SIDSTE udvej.
+    Indtil 17/11-2026 var den foerste, og den paastod "model" om infrastruktur.
+    """
     kode, fase = partial_delivery_error(full="", registry_status="failed")
     assert (kode, fase) == ("AGENT_FAILED", "model")
+
+
+def test_arvet_run_kode_slaar_tabellen():
+    """17/11-2026: runnet ved HVAD der skete — tabellen gaetter.
+
+    Maalt paa de 65 fejlede assignments: 26 blev stemplet `AGENT_FAILED`/`model`,
+    mens runnet under dem bar `LEASE_EXPIRED` eller `CLI_QUOTA_EXHAUSTED`.
+    Kun 2 af de 26 var aegte model-fejl.
+    """
+    kode, fase = partial_delivery_error(
+        full="", registry_status="failed",
+        run_error_code="LEASE_EXPIRED", run_error_phase="recovery")
+    assert (kode, fase) == ("LEASE_EXPIRED", "recovery"), f"fik {(kode, fase)!r}"
+
+    kode, fase = partial_delivery_error(
+        full="", registry_status="failed",
+        run_error_code="CLI_QUOTA_EXHAUSTED", run_error_phase="provider")
+    assert (kode, fase) == ("CLI_QUOTA_EXHAUSTED", "provider")
+
+
+def test_run_kode_uden_fase_faar_status_fasen():
+    """En kode uden fase maa ikke give en tom fase — saa forsvinder sporet."""
+    kode, fase = partial_delivery_error(
+        full="", registry_status="failed", run_error_code="RUN_STALE")
+    assert kode == "RUN_STALE"
+    assert fase == "model", f"fasen skal falde tilbage paa status-tabellen, fik {fase!r}"
+
+
+def test_kendt_infrastruktur_tekst_i_last_error_slaar_tabellen():
+    """De to tekster `agent_runtime_spawn` selv skriver — et lukket, kendt saet.
+
+    Maalt i den levende DB: alle 26 bar en af dem, mens assignmentet sagde "model".
+    """
+    kode, fase = partial_delivery_error(
+        full="", registry_status="cancelled",
+        last_error="auto_cleanup_stale_failed_after_363min")
+    assert (kode, fase) == ("AGENT_RECLAIMED", "recovery")
+
+    kode, fase = partial_delivery_error(
+        full="", registry_status="failed",
+        last_error="process restarted while agent was active")
+    assert (kode, fase) == ("AGENT_RESTARTED", "recovery")
+
+
+def test_ukendt_last_error_aendrer_ikke_fallback():
+    """Fri tekst maa ikke tolkes — kun de kendte praefikser."""
+    kode, fase = partial_delivery_error(
+        full="", registry_status="failed", last_error="noget vi aldrig har set")
+    assert (kode, fase) == ("AGENT_FAILED", "model")
+
+
+def test_markeringen_slaar_begge_de_andre_kilder():
+    """Markeringen er den mest specifikke: den beskriver LEVERANCEN.
+
+    Selv om runnet baerer en infrastruktur-kode, skal en eksplicit
+    UFULDSTÆNDIG-markering vinde — ellers mister vi den eneste kilde der
+    siger HVORFOR leverancen var mangelfuld.
+    """
+    kode, fase = partial_delivery_error(
+        full=DELVIS, registry_status="failed",
+        run_error_code="LEASE_EXPIRED", run_error_phase="recovery",
+        last_error="process restarted while agent was active")
+    assert (kode, fase) == ("AGENT_INCOMPLETE", "delivery")
 
 
 def test_fejl_med_tekst_uden_markering_er_stadig_model():

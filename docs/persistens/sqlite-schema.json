@@ -20950,7 +20950,7 @@
       "created_at_formats": []
     },
     "heartbeat_runtime_ticks": {
-      "digest": "58:83:fe:47:3d:50:84:c0:af:9a:36:da:e2:8e:c2:45:e5:3e:fa:f5:ee:8a:5e:78:80:e5:70:10:0c:76:b4:71",
+      "digest": "ab:9b:8e:a2:2c:af:2a:a1:99:8c:f3:7c:b6:a3:0d:f3:2d:71:72:05:87:57:3f:ac:32:1a:c0:c5:c8:9b:0f:0d",
       "schema": {
         "columns": [
           {
@@ -21131,6 +21131,14 @@
           },
           {
             "name": "provider",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "purpose",
             "type": "TEXT",
             "nullable": false,
             "default": "''",

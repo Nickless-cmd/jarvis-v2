@@ -10,6 +10,7 @@ import logging as _logging
 import sqlite3
 
 from core.runtime.db_core import connect
+from core.services.heartbeat_purpose import purpose_for_action
 
 _logger = _logging.getLogger("uvicorn.error")
 
@@ -296,6 +297,45 @@ def _ensure_heartbeat_runtime_tick_columns(conn: sqlite3.Connection) -> None:
             ADD COLUMN parse_status TEXT NOT NULL DEFAULT ''
             """
         )
+    if "purpose" not in existing:
+        # Hvad slaget var TIL — se core/services/heartbeat_purpose.py.
+        # Kolonnen backfilles af `backfill_tick_purposes` i samme migration,
+        # så gamle rækker ikke står tomme og feltet aldrig bliver tavst.
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_ticks
+            ADD COLUMN purpose TEXT NOT NULL DEFAULT ''
+            """
+        )
+        _backfill_tick_purposes(conn)
+
+
+def _backfill_tick_purposes(conn: sqlite3.Connection) -> int:
+    """Sæt formålet på rækker der blev skrevet før kolonnen fandtes.
+
+    Én UPDATE pr. handlingstype — klassificeringen læses fra
+    `heartbeat_purpose`, ikke duplikeret i SQL. Returnerer antal ramte rækker.
+    """
+    rows = conn.execute(
+        """
+        SELECT action_type, COUNT(*) AS n
+        FROM heartbeat_runtime_ticks
+        WHERE purpose = ''
+        GROUP BY action_type
+        """
+    ).fetchall()
+    ramte = 0
+    for row in rows:
+        action_type = str(row["action_type"] or "")
+        n = int(row["n"] or 0)
+        conn.execute(
+            "UPDATE heartbeat_runtime_ticks SET purpose = ? WHERE purpose = '' AND action_type = ?",
+            (purpose_for_action(action_type), action_type),
+        )
+        ramte += n
+    if ramte:
+        _logger.info("heartbeat ticks: backfilled purpose på %d rækker", ramte)
+    return ramte
 
 
 def _heartbeat_runtime_state_from_row(row: sqlite3.Row) -> dict[str, object]:
@@ -361,6 +401,7 @@ def _heartbeat_runtime_tick_from_row(row: sqlite3.Row) -> dict[str, object]:
         "action_summary": row["action_summary"],
         "action_type": row["action_type"],
         "action_artifact": row["action_artifact"],
+        "purpose": row["purpose"],
         "raw_response": row["raw_response"],
         "input_tokens": int(row["input_tokens"] or 0),
         "output_tokens": int(row["output_tokens"] or 0),
@@ -652,6 +693,7 @@ def record_heartbeat_runtime_tick(
                 action_summary,
                 action_type,
                 action_artifact,
+                purpose,
                 raw_response,
                 input_tokens,
                 output_tokens,
@@ -659,7 +701,7 @@ def record_heartbeat_runtime_tick(
                 started_at,
                 finished_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 tick_id,
@@ -684,6 +726,7 @@ def record_heartbeat_runtime_tick(
                 action_summary,
                 action_type,
                 action_artifact,
+                purpose_for_action(action_type),
                 raw_response,
                 int(input_tokens or 0),
                 int(output_tokens or 0),
@@ -726,6 +769,7 @@ def get_heartbeat_runtime_tick(tick_id: str) -> dict[str, object] | None:
                 action_summary,
                 action_type,
                 action_artifact,
+                purpose,
                 raw_response,
                 input_tokens,
                 output_tokens,
@@ -770,6 +814,7 @@ def recent_heartbeat_runtime_ticks(limit: int = 10) -> list[dict[str, object]]:
                 action_summary,
                 action_type,
                 action_artifact,
+                purpose,
                 raw_response,
                 input_tokens,
                 output_tokens,

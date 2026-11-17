@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10270/18813 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10276/18819 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,8 +25,8 @@ Generated from source. 10270/18813 functions/methods documented (54%). The list 
 | `core.identity` | 80 | 173 | 46% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 907 | 1621 | 55% |
-| `core.services` | 6892 | 12780 | 53% |
+| `core.runtime` | 908 | 1622 | 55% |
+| `core.services` | 6897 | 12785 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -527,12 +527,12 @@ Generated from source. 10270/18813 functions/methods documented (54%). The list 
 - `core/runtime/db_governance.py` :: `record_runtime_webchat_execution_pilot` (L452)
 - `core/runtime/db_governance.py` :: `resolve_tool_intent_approval_request` (L183)
 - `core/runtime/db_governance.py` :: `runtime_contract_file_write_counts` (L387)
-- `core/runtime/db_heartbeat.py` :: `ensure_heartbeat_tables` (L17)
-- `core/runtime/db_heartbeat.py` :: `get_heartbeat_runtime_state` (L373)
-- `core/runtime/db_heartbeat.py` :: `get_heartbeat_runtime_tick` (L702)
-- `core/runtime/db_heartbeat.py` :: `recent_heartbeat_runtime_ticks` (L746)
-- `core/runtime/db_heartbeat.py` :: `record_heartbeat_runtime_tick` (L598)
-- `core/runtime/db_heartbeat.py` :: `upsert_heartbeat_runtime_state` (L421)
+- `core/runtime/db_heartbeat.py` :: `ensure_heartbeat_tables` (L18)
+- `core/runtime/db_heartbeat.py` :: `get_heartbeat_runtime_state` (L414)
+- `core/runtime/db_heartbeat.py` :: `get_heartbeat_runtime_tick` (L745)
+- `core/runtime/db_heartbeat.py` :: `recent_heartbeat_runtime_ticks` (L790)
+- `core/runtime/db_heartbeat.py` :: `record_heartbeat_runtime_tick` (L639)
+- `core/runtime/db_heartbeat.py` :: `upsert_heartbeat_runtime_state` (L462)
 - `core/runtime/db_instrument.py` :: `set_file_hash` (L68)
 - `core/runtime/db_lessons.py` :: `count_lessons` (L212)
 - `core/runtime/db_lessons.py` :: `ensure_lessons_table` (L72)

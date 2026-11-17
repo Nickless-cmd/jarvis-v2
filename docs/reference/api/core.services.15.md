@@ -395,6 +395,17 @@ _Heartbeat provider fallback — cheap cloud lane when primary (Groq) fails._
 | function | `execute_openai_compat_heartbeat_prompt` | `(*, prompt, target, max_tokens=…, temperature=…, timeout=…)` | Call an OpenAI-chat/completions-compatible provider for heartbeat. | [src](../../../core/services/heartbeat_provider_fallback.py#L62) |
 | function | `try_heartbeat_cheap_fallback` | `(prompt, *, budget_s=…)` | Try cheap lane providers (skip groq + ollamafreeapi) as heartbeat fallback. | [src](../../../core/services/heartbeat_provider_fallback.py#L184) |
 
+## `core/services/heartbeat_purpose.py`
+_Hvad var heartbeat-slaget TIL? — én definition, fire formål._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `purpose_for_action` | `(action_type)` | Formålet med et slag ud fra dets handlingstype. | [src](../../../core/services/heartbeat_purpose.py#L153) |
+| function | `known_action_types` | `()` | Alle klassificerede handlingstyper — til vagten mod tavs forældelse. | [src](../../../core/services/heartbeat_purpose.py#L166) |
+| function | `action_types_in` | `(purpose)` | Handlingstyperne i én klasse. | [src](../../../core/services/heartbeat_purpose.py#L171) |
+| function | `is_real_purpose` | `(purpose)` | True for de fire formål — False for bogføring, tomgang og ukendt. | [src](../../../core/services/heartbeat_purpose.py#L176) |
+| function | `describe` | `()` | Klassificeringen som data — til docs, tests og værktøjer. | [src](../../../core/services/heartbeat_purpose.py#L181) |
+
 ## `core/services/heartbeat_runtime.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -608,18 +619,4 @@ _Identity Composer — entity name lookup and signal-driven preamble._
 | function | `_read_energy` | `()` | Read energy_level from body_state surface. Returns '' on failure. | [src](../../../core/services/identity_composer.py#L87) |
 | function | `build_identity_preamble` | `()` | Return signal-driven identity string: '{name}. {bearing}. {energy}.' | [src](../../../core/services/identity_composer.py#L97) |
 | function | `build_identity_composer_surface` | `()` | Mission Control surface for the identity preamble composer. | [src](../../../core/services/identity_composer.py#L130) |
-
-## `core/services/identity_drift_daemon.py`
-_Identity drift daemon — detect unauthorized changes to identity files._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/identity_drift_daemon.py#L58) |
-| function | `_sha256` | `(content)` | — | [src](../../../core/services/identity_drift_daemon.py#L62) |
-| function | `_workspace_dir` | `()` | Resolve the shared state dir for identity files. | [src](../../../core/services/identity_drift_daemon.py#L71) |
-| function | `_was_change_logged` | `(filename, change_at)` | Check identity_mutation_log for any entry on this file within | [src](../../../core/services/identity_drift_daemon.py#L82) |
-| function | `_classify_drift_via_llm` | `(*, filename, prior_content, current_content)` | Ask the quality lane to classify the change. | [src](../../../core/services/identity_drift_daemon.py#L110) |
-| function | `_check_one_file` | `(workspace_dir, filename, now)` | Examine one watched file. Returns a per-file result dict. | [src](../../../core/services/identity_drift_daemon.py#L173) |
-| function | `tick_identity_drift_daemon` | `()` | Run one identity-drift detection cycle if cadence elapsed. | [src](../../../core/services/identity_drift_daemon.py#L280) |
-| function | `build_identity_drift_surface` | `()` | — | [src](../../../core/services/identity_drift_daemon.py#L318) |
 

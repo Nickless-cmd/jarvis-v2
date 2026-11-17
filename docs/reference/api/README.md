@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18813 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18819 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -46,24 +46,24 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18813 functions/
 - [`core.services.12`](core.services.12.md) — `device_tokens` … `embodied_state`
 - [`core.services.13`](core.services.13.md) — `emergence` … `fcm_gateway`
 - [`core.services.14`](core.services.14.md) — `felt_surface_store` … `global_workspace`
-- [`core.services.15`](core.services.15.md) — `gmail_connector` … `identity_drift_daemon`
-- [`core.services.16`](core.services.16.md) — `identity_drift_guard` … `jarvis_brain`
-- [`core.services.17`](core.services.17.md) — `jarvis_brain_daemon` … `mcp_auth`
-- [`core.services.18`](core.services.18.md) — `mcp_client` … `model_pair_resolver`
-- [`core.services.19`](core.services.19.md) — `model_probe` … `orb_phase`
-- [`core.services.20`](core.services.20.md) — `outbound_nudges` … `private_inner_interplay_signal_tracking`
-- [`core.services.21`](core.services.21.md) — `private_inner_note_signal_tracking` … `prompt_section_reevaluation`
-- [`core.services.22`](core.services.22.md) — `prompt_section_stale_cache` … `reflection_cycle_daemon`
-- [`core.services.23`](core.services.23.md) — `reflection_signal_tracking` … `routine_diagnostics`
-- [`core.services.24`](core.services.24.md) — `routine_dispatch` … `runtime_self_model_builder`
-- [`core.services.25`](core.services.25.md) — `runtime_self_model_identity` … `self_review_record_tracking`
-- [`core.services.26`](core.services.26.md) — `self_review_run_tracking` … `share_guard_store`
-- [`core.services.27`](core.services.27.md) — `shared_cache` … `standing_orders_registry`
-- [`core.services.28`](core.services.28.md) — `state_file_retention` … `thought_stream_daemon`
-- [`core.services.29`](core.services.29.md) — `thought_thread` … `user_activity`
-- [`core.services.30`](core.services.30.md) — `user_contradiction_tracker` … `visible_outcome_text`
-- [`core.services.31`](core.services.31.md) — `visible_post_tool_synthesis` … `vision_preview`
-- [`core.services.32`](core.services.32.md) — `visual_memory` … `world_model_signal_tracking`
+- [`core.services.15`](core.services.15.md) — `gmail_connector` … `identity_composer`
+- [`core.services.16`](core.services.16.md) — `identity_drift_daemon` … `irony_daemon`
+- [`core.services.17`](core.services.17.md) — `jarvis_brain` … `mcp_apps`
+- [`core.services.18`](core.services.18.md) — `mcp_auth` … `model_context`
+- [`core.services.19`](core.services.19.md) — `model_pair_resolver` … `operator_channel`
+- [`core.services.20`](core.services.20.md) — `orb_phase` … `private_initiative_tension_signal_tracking`
+- [`core.services.21`](core.services.21.md) — `private_inner_interplay_signal_tracking` … `prompt_section_impact`
+- [`core.services.22`](core.services.22.md) — `prompt_section_reevaluation` … `recursion_guard`
+- [`core.services.23`](core.services.23.md) — `reflection_cycle_daemon` … `routine_delivery`
+- [`core.services.24`](core.services.24.md) — `routine_diagnostics` … `runtime_self_model_boundary`
+- [`core.services.25`](core.services.25.md) — `runtime_self_model_builder` … `self_review_outcome_tracking`
+- [`core.services.26`](core.services.26.md) — `self_review_record_tracking` … `shadow_scan_daemon`
+- [`core.services.27`](core.services.27.md) — `share_guard_store` … `staged_edits`
+- [`core.services.28`](core.services.28.md) — `standing_orders_registry` … `thought_leak_guard`
+- [`core.services.29`](core.services.29.md) — `thought_stream_daemon` … `upload_sandbox`
+- [`core.services.30`](core.services.30.md) — `user_activity` … `visible_model_types`
+- [`core.services.31`](core.services.31.md) — `visible_outcome_text` … `vision_backend`
+- [`core.services.32`](core.services.32.md) — `vision_preview` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

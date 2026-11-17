@@ -388,8 +388,14 @@ def score_memories_by_relevance(
     candidates: list[dict[str, object]],
     context_text: str,
     emotional_state: dict[str, object],
+    deadline_s: float | None = None,
 ) -> dict[str, float]:
     """Score candidate memories for relevance. Returns {memory_id: score} 0.0–1.0.
+
+    ``deadline_s``: for kaldere der staar paa en BRUGERS vej (prompt-opbygningen).
+    LLM-kaldet faar saa hoejst så lang tid; derefter bruges embedding-scoring, og
+    LLM'en springes over i ``_LLM_DEGRADED_FOR_S`` sekunder (nødbremse). Uden den
+    er adfaerden uaendret — baggrundskaldere maa gerne vente.
 
     Mode (runtime-state ``memory_scoring_mode``):
       - 'llm'       — cloud-LLM-scoring (nuværende, ~13s kold)
@@ -413,12 +419,21 @@ def score_memories_by_relevance(
     target = _resolve_scoring_llm_target()
     if not target:
         return emb_scores or {}
-    prompt = _build_scoring_prompt(candidates, context_text, emotional_state)
     import time as _t
+    if deadline_s is not None and _t.monotonic() < _llm_degraded_until:
+        # Nødbremsen er slaaet: LLM'en var for langsom for nylig. Embedding, straks.
+        return emb_scores or _score_memories_by_embedding(candidates, context_text)
+    prompt = _build_scoring_prompt(candidates, context_text, emotional_state)
     _s = _t.monotonic()
     try:
-        response = _call_scoring_llm(target, prompt)
+        if deadline_s is None:
+            response = _call_scoring_llm(target, prompt)
+        else:
+            response = _call_scoring_llm_within(target, prompt, deadline_s)
         llm_scores = _parse_scoring_response(response, candidates)
+    except _ScoringDeadline:
+        _begin_llm_degraded(deadline_s or 0.0)
+        return emb_scores or _score_memories_by_embedding(candidates, context_text)
     except Exception:
         logger.debug("experiential_memory: LLM scoring failed", exc_info=True)
         llm_scores = {}
@@ -427,6 +442,47 @@ def score_memories_by_relevance(
     if mode == "shadow" and emb_scores is not None and llm_scores:
         _observe_scoring_shadow(llm_scores, emb_scores, llm_ms, emb_ms, len(candidates))
     return llm_scores
+
+
+class _ScoringDeadline(Exception):
+    """LLM-scoringen naaede ikke fristen."""
+
+
+#: Nødbremse. Maalt 17/11-2026 med py-spy: en besked ventede 40-50 s i et blokerende
+#: https-kald til en gratis LLM-udbyder (dejavu-scoringen i `tick_matrix_lifecycle`,
+#: kaldt fra prompt-opbygningen). Docstringen siger «~13 s kold». Efter en overskredet
+#: frist springes LLM'en over i et par minutter, saa EN langsom udbyder ikke koster
+#: HVER besked en frist.
+_LLM_DEGRADED_FOR_S = 120.0
+_llm_degraded_until = 0.0
+_scoring_pool = None
+_scoring_pool_lock = threading.Lock()
+
+
+def _begin_llm_degraded(deadline_s: float) -> None:
+    import time as _t
+    global _llm_degraded_until
+    _llm_degraded_until = _t.monotonic() + _LLM_DEGRADED_FOR_S
+    logger.warning(
+        "experiential_memory: LLM-scoring over %.1f s — bruger embedding i %d s "
+        "(brugerens besked venter ikke paa en langsom udbyder)",
+        deadline_s, int(_LLM_DEGRADED_FOR_S),
+    )
+
+
+def _call_scoring_llm_within(target: dict[str, object], prompt: str, deadline_s: float) -> str:
+    """`_call_scoring_llm` med en haard frist. Traaden faar lov at gøre sig færdig i baggrunden."""
+    global _scoring_pool
+    import concurrent.futures as _cf
+    with _scoring_pool_lock:
+        if _scoring_pool is None:
+            _scoring_pool = _cf.ThreadPoolExecutor(max_workers=2, thread_name_prefix="scoring-llm")
+        pool = _scoring_pool
+    fut = pool.submit(_call_scoring_llm, target, prompt)
+    try:
+        return fut.result(timeout=deadline_s)
+    except _cf.TimeoutError as exc:
+        raise _ScoringDeadline() from exc
 
 
 def _resolve_scoring_llm_target() -> dict[str, object] | None:

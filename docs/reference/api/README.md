@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18830 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18821 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -82,8 +82,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18830 functions/
 - [`core.util`](core.util.md)
 - [`scripts.01`](scripts.01.md) — `__init__` … `hollow_verify`
 - [`scripts.02`](scripts.02.md) — `honesty_metrics` … `mint_jarvisx_token`
-- [`scripts.03`](scripts.03.md) — `model_catalogue_sweep` … `validate_commit_attribution`
-- [`scripts.04`](scripts.04.md) — `verify_fase_a` … `verify_vagt_graenser`
+- [`scripts.03`](scripts.03.md) — `model_catalogue_sweep` … `verify_fase_a`
+- [`scripts.04`](scripts.04.md) — `verify_guard_tests` … `verify_vagt_graenser`
 - [`scripts.acceptance`](scripts.acceptance.md)
 - [`scripts.diagnostics`](scripts.diagnostics.md)
 - [`scripts.pipelines`](scripts.pipelines.md)

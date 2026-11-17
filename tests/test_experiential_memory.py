@@ -296,3 +296,85 @@ def test_score_memories_returns_dict():
     # May be empty if no LLM target resolves, but must not crash
     for score in result.values():
         assert 0.0 <= score <= 1.0
+
+
+# ── LLM-frist + nødbremse (brugerens vej, 17/11-2026) ──
+#
+# Maalt med py-spy: en besked ventede 40-50 s i et blokerende https-kald til en gratis
+# LLM-udbyder, fordi dejavu-scoringen koerer i prompt-opbygningen.
+
+import threading
+import time
+
+from core.services import experiential_memory as em
+
+
+def _cands():
+    return [{"memory_id": "a", "topic": "alfa", "narrative": "x"},
+            {"memory_id": "b", "topic": "beta", "narrative": "y"}]
+
+
+@pytest.fixture
+def _scoring(monkeypatch):
+    """Modet er 'llm' (som i produktion); embedding giver en genkendelig rangering."""
+    monkeypatch.setattr(em, "_memory_scoring_mode", lambda: "llm")
+    monkeypatch.setattr(em, "_resolve_scoring_llm_target", lambda: {"active": True})
+    monkeypatch.setattr(em, "_score_memories_by_embedding",
+                        lambda c, ctx: {"a": 0.2, "b": 0.9})
+    monkeypatch.setattr(em, "_llm_degraded_until", 0.0)
+    return monkeypatch
+
+
+def test_langsom_llm_overskrider_fristen_og_embedding_bruges(_scoring):
+    frigiv = threading.Event()
+    kald = []
+
+    def _langsom(target, prompt):
+        kald.append(1)
+        frigiv.wait(5)               # udbyderen "hænger"
+        return '{"a": 1.0, "b": 0.0}'
+
+    _scoring.setattr(em, "_call_scoring_llm", _langsom)
+    t0 = time.monotonic()
+    ud = score_memories_by_relevance(candidates=_cands(), context_text="hej",
+                                     emotional_state={}, deadline_s=0.2)
+    brugt = time.monotonic() - t0
+    frigiv.set()
+    assert ud == {"a": 0.2, "b": 0.9}, "skal være embedding-scoren, ikke LLM'ens"
+    assert brugt < 1.5, f"ventede {brugt:.1f} s paa en udbyder der haenger"
+    assert kald == [1]
+
+
+def test_noedbremsen_springer_llm_over_efter_et_oversprunget_frist(_scoring):
+    kald = []
+    frigiv = threading.Event()
+
+    def _langsom(target, prompt):
+        kald.append(1); frigiv.wait(5); return "{}"
+
+    _scoring.setattr(em, "_call_scoring_llm", _langsom)
+    score_memories_by_relevance(candidates=_cands(), context_text="x",
+                                emotional_state={}, deadline_s=0.1)
+    t0 = time.monotonic()
+    ud = score_memories_by_relevance(candidates=_cands(), context_text="y",
+                                     emotional_state={}, deadline_s=5.0)
+    frigiv.set()
+    assert ud == {"a": 0.2, "b": 0.9}
+    assert time.monotonic() - t0 < 0.5, "andet kald skal ikke vente: nødbremsen er slået"
+    assert kald == [1], "LLM'en må ikke kaldes igen mens nødbremsen er slået"
+
+
+def test_hurtig_llm_inden_fristen_giver_llm_scoren(_scoring):
+    _scoring.setattr(em, "_call_scoring_llm", lambda t, p: '{"a": 0.8, "b": 0.1}')
+    ud = score_memories_by_relevance(candidates=_cands(), context_text="hej",
+                                     emotional_state={}, deadline_s=2.0)
+    assert ud == {"a": 0.8, "b": 0.1}
+    assert em._llm_degraded_until == 0.0, "en hurtig udbyder slår ikke nødbremsen"
+
+
+def test_uden_frist_er_adfaerden_uaendret_og_venter(_scoring):
+    """Baggrundskaldere maa vente: ingen frist -> ingen nødbremse, ingen embedding-fald."""
+    _scoring.setattr(em, "_call_scoring_llm", lambda t, p: (time.sleep(0.3), '{"a": 0.7}')[1])
+    ud = score_memories_by_relevance(candidates=_cands(), context_text="hej", emotional_state={})
+    assert ud == {"a": 0.7}
+    assert em._llm_degraded_until == 0.0

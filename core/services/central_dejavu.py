@@ -22,6 +22,9 @@ logger = logging.getLogger(__name__)
 
 # Déjà-vu-båndet: svagt nok til at være associativt (ikke et opslag), stærkt nok til at røre noget.
 _WEAK_FLOOR = 0.35
+#: Hoejst så lang tid må LLM-scoringen tage, når dejavu bygges paa en brugers vej.
+#: Derefter bruges embedding (ms) — se `score_memories_by_relevance(deadline_s=...)`.
+_SCORING_DEADLINE_S = 1.5
 
 
 def _present_context() -> str:
@@ -123,8 +126,11 @@ def surface_dejavu(context: str = "", *, candidates: list[dict[str, Any]] | None
         # en liste af rækker. Koden itererede over den og kaldte .get("score") på en
         # streng, kastede, slugte undtagelsen og svarede «ingen resonans». 16 kandidater
         # lå i båndet hele tiden. Formatet læses nu som det faktisk er.
+        # FRIST (17/11-2026): dette kald staar paa brugerens vej (tick_matrix_lifecycle
+        # kaldes fra prompt-opbygningen). En langsom LLM-udbyder holdt en besked i 40-50 s.
         raw = score_memories_by_relevance(
-            candidates=cands, context_text=ctx, emotional_state={}) or {}
+            candidates=cands, context_text=ctx, emotional_state={},
+            deadline_s=_SCORING_DEADLINE_S) or {}
         if isinstance(raw, dict):
             by_id = {str(m.get("memory_id") or ""): m for m in cands}
             scored = [{**by_id.get(str(k), {}), "score": float(v)}

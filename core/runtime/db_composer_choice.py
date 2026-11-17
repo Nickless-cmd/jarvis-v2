@@ -131,6 +131,25 @@ def er_vist(*, forslag_id: str) -> bool:
     return raekke is not None
 
 
+def valg_for(*, forslag_id: str) -> str:
+    """Hvad der skete med netop dette forslag — `""` hvis rækken ikke findes.
+
+    Til `chat_sessions._ryd_komponist_forslag`, som fra 17/11-2026 skal kunne
+    skelne «han afviste det» fra «det blev blot vist én gang». Før spurgte
+    rydningen kun `er_vist`, og så blev et forslag fjernet ved næste turstart
+    uanset om han havde taget stilling til det.
+    """
+    fid = (forslag_id or "").strip()
+    if not fid:
+        return ""
+    with connect() as conn:
+        _sikr_tabel(conn)
+        raekke = conn.execute(
+            f"SELECT valg FROM {_TABEL} WHERE forslag_id = ? LIMIT 1", (fid,)
+        ).fetchone()
+    return str(raekke["valg"] or "") if raekke else ""
+
+
 def noter_valg(*, forslag_id: str, valg: str, nu: str | None = None) -> bool:
     """Hvad der skete med forslaget. Returnerer False ved et ukendt valg.
 

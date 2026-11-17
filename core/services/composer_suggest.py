@@ -21,7 +21,7 @@ Et tomt felt er ærligere end et dårligt forslag.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Final
 
 logger = logging.getLogger(__name__)
@@ -42,11 +42,10 @@ logger = logging.getLogger(__name__)
 #: kilde-beskeden; de øvrige afgør om turen er i gang.
 MAKS_HISTORIK: Final[int] = 6
 
-#: Under det er assistentens sidste besked en stump — «4.», «Generation
-#: cancelled.», «OK» — og der er intet at bygge et næste skridt på. Målt
-#: 17/9-2026: netop dér svarede modellen «Fire. Det er nemt.» og «Jeg forstår
-#: ikke, hvad du mener», altså replikker i samtalen frem for forslag.
-MIN_SVAR_TEGN: Final[int] = 40
+#: (Reglen om en «stump til sidst» — `MIN_SVAR_TEGN` — stod her indtil
+#: 17/11-2026. Den gjaldt et forslag bygget på samtalen; et forslag Jarvis selv
+#: har lagt ned bærer sin egen kontekst og skal ikke afvises fordi det sidste
+#: svar er kort. Efter en genstart er det netop tilfældet.)
 
 
 def _samtale(session_id: str) -> list[dict[str, str]]:
@@ -68,13 +67,12 @@ def _samtale(session_id: str) -> list[dict[str, str]]:
     return recent_chat_session_messages_by_user_turns(session_id, user_turns=MAKS_HISTORIK)
 
 
-#: Hvor mange assistent-svar der hentes naar foraeldelsen afgoeres. Vi skal
-#: kun vide om der er 0, 1 eller 2+ — men tællingen maa ikke komme fra
-#: `_samtale`s vindue. I en tool-tung session fylder `tool`-raekker vinduet, og
-#: tællingen saa kun ÉT svar efter forslaget og kaldte et foraeldet bud for
-#: aktuelt. Maalt 7/10-2026: et forslag skrevet 18:23 blev returneret som
-#: «aktuelt» efter hver tur resten af aftenen, og raekken blev aldrig ryddet.
-_FORAELDELSE_VINDUE: Final[int] = 50
+#: Hvor længe et forslag fra Jarvis stadig må tilbydes. Loftet erstattede
+#: 17/11-2026 forældelses-reglen (2+ assistent-svar → ryd): den målte «samtalen
+#: er kørt videre» og ramte dermed også et forslag Bjørn lige havde taget med
+#: Tab, så snart næste tur begyndte. Alders-loftet rammer kun det der faktisk
+#: er gammelt, og lader forslaget overleve både genstart og flere ture.
+FORSLAG_MAKS_ALDER_H: Final[int] = 24
 
 
 def _til_tid(iso: str):
@@ -94,31 +92,17 @@ def _til_tid(iso: str):
         return None
 
 
-def _svar_efter(session_id: str, skrevet_at: str) -> int:
-    """Antal assistent-svar NYERE end `skrevet_at` — talt i SQL, ikke i et vindue.
+def _foraeldet(skrevet_at: str) -> bool:
+    """Er forslaget ældre end `FORSLAG_MAKS_ALDER_H`?
 
-    Egen funktion, saa testene kan saette tallet direkte: reglen (0 = turen er
-    ikke landet, 1 = forslaget hoerer til svaret nederst, 2+ = samtalen er
-    koert videre) er dét der proves, og den skal ikke afhaenge af hvor mange
-    `tool`-raekker der tilfaeldigt ligger i et vindue.
+    Ukendt eller ulæselig tid giver False — den sikre side er at tilbyde det
+    for meget frem for at rydde et bud vi ikke kan aldersbestemme.
     """
-    from core.runtime.db import connect
-    graense = _til_tid(skrevet_at)
-    if graense is None:
-        return 0
-    with connect() as conn:
-        raekker = conn.execute(
-            "SELECT created_at FROM chat_messages "
-            "WHERE session_id = ? AND role = 'assistant' "
-            "ORDER BY id DESC LIMIT ?",
-            (session_id, _FORAELDELSE_VINDUE),
-        ).fetchall()
-    n = 0
-    for raekke in raekker:
-        tid = _til_tid(str(raekke["created_at"] or ""))
-        if tid is not None and tid > graense:
-            n += 1
-    return n
+    tid = _til_tid(skrevet_at)
+    if tid is None:
+        return False
+    alder = datetime.now(UTC) - tid
+    return alder > timedelta(hours=FORSLAG_MAKS_ALDER_H)
 
 
 def _tomt() -> dict[str, str]:
@@ -144,6 +128,36 @@ def foreslaa_naeste_detaljer(session_id: str) -> dict[str, str]:
     tilbage når forslaget vises og når det bliver valgt eller vraget.
 
     Tomt forslag → tomme id'er. Der er ikke noget at melde tilbage om.
+
+    ## Omlagt 17/11-2026: forslaget hører til SESSIONEN, ikke til turen
+
+    Bjørn: «der ligger ikk noget i komponisten... han har været genstartet og
+    så forsvinder dit forslag». Målt i `composer_choices` og `chat_messages`:
+    forslaget blev vist 11:30:31, taget med Tab 11:31:00 og ryddet ved
+    turstart 11:31 — 58 minutter før han kiggede. Det var ikke genstarten der
+    slettede det; det var to regler der begge målte «samtalen er kørt videre»:
+
+      1. `chat_sessions._ryd_komponist_forslag` ryddede ved nyt tur-start så
+         snart forslaget blot var SET (`er_vist`).
+      2. Forældelses-reglen her ryddede efter 2+ assistent-svar.
+
+    Tilsammen gjorde de hentningen éngangs: forslaget kunne ikke hentes igen
+    efter en genstart, fordi den næste tur allerede havde fjernet det. Begge
+    er nu erstattet af ét spørgsmål — blev forslaget BRUGT? — plus et alders-
+    loft, så et gammelt bud ikke kan hænge for evigt:
+
+      * `afvist` (Escape) eller `eget` (han skrev selv) → ryddes. Han sagde nej.
+      * hans besked indeholder forslagets tekst → ryddes. Det blev brugt.
+      * nyere forslag i samme session → afløser det (`gem_forslag` holder ét).
+      * ældre end `FORSLAG_MAKS_ALDER_H` → ryddes. Det peger på arbejde der er
+        kørt videre.
+
+    Det var den anden halvdel af fejlen at opslaget lå BAG fire tidlige
+    return (tom samtale, tur i gang, stump til sidst). Efter en genstart er
+    vinduet kort, og så returnerede funktionen tomt uden at kigge i basen —
+    rækken kunne ligge der hele dagen uden at blive vist. Opslaget sker derfor
+    nu først; kun «hans besked venter stadig på svar» kan holde det tilbage,
+    for dér er der ingen næste besked at foreslå.
     """
     sid = (session_id or "").strip()
     if not sid:
@@ -152,22 +166,16 @@ def foreslaa_naeste_detaljer(session_id: str) -> dict[str, str]:
         raekker = _samtale(sid)
     except Exception:
         logger.debug("composer_suggest: kunne ikke læse samtalen", exc_info=True)
-        return _tomt()
+        raekker = []
     beskeder = [
         b for b in raekker
         if str(b.get("role") or "") in ("user", "assistant")
         and str(b.get("content") or "").strip()
     ]
-    if not beskeder:
-        return _tomt()
     # Står der en ubesvaret besked fra ham, er turen i gang. At foreslå en ny
-    # besked dér er at tale i munden på et svar der er på vej.
-    if str(beskeder[-1].get("role") or "") != "assistant":
-        return _tomt()
-    # En stump til sidst («4.», «Generation cancelled.») er ikke et svar der
-    # peger nogen steder hen — og et forslag på den ville være et bud uden
-    # noget at bygge på.
-    if len(" ".join(str(beskeder[-1].get("content") or "").split())) < MIN_SVAR_TEGN:
+    # besked dér er at tale i munden på et svar der er på vej — og forslaget
+    # skal blive liggende, ikke forbruges.
+    if beskeder and str(beskeder[-1].get("role") or "") == "user":
         return _tomt()
 
     # Jarvis' EGET forslag (24/9-2026). Bjørn: «det burde endelig osse være
@@ -176,25 +184,10 @@ def foreslaa_naeste_detaljer(session_id: str) -> dict[str, str]:
     # har lavet, og hvad næste skridt er. Findes det ikke, står pladsholderen
     # tom — den lokale model blev droppet 28/9-2026.
     #
-    # Hentningen FORBRUGER IKKE laengere (Bjoern 6/10-2026: forslaget skal
-    # overleve en app-genstart). Foer slettede `tag_forslag` raekken, saa
-    # klienten der hentede holdt den eneste kopi — en genstart tabte baade
-    # hukommelsen og raekken, og forslaget var vaek uden at nogen havde set det.
-    #
-    # Foraeldelsen afgoeres nu paa TID. Forslaget skrives MENS turen koerer,
-    # altsaa foer svaret persisteres, saa antallet af assistent-beskeder EFTER
-    # `skrevet_at` siger alt: 0 = turen er ikke landet endnu, 1 = forslaget
-    # hoerer til svaret nederst, 2+ = samtalen er koert videre og buddet er
-    # foraeldet. Se modul-docstringen i `db_composer_jarvis`.
-    #
-    # MEN foraeldelse alene rydder IKKE (maalt 16/10-2026). Et forslag der
-    # aldrig naaede skaermen er ikke foraeldet — det er UBESVARET. Maalt i
-    # drift: klienten hentede forslaget, viste det ikke (feltet var ikke tomt,
-    # svaret streamede), og ved naeste hentning ryddede foraeldelsen det. Et
-    # tilbud Bjørn aldrig fik. Rydningen spoerger derfor `er_vist` — samme
-    # skel som `chat_sessions._ryd_komponist_forslag`. Et uset forslag bliver
-    # derfor ved med at blive tilbudt indtil det ses; det hober sig ikke op,
-    # for `gem_forslag` holder hoejst ét pr. session.
+    # Hentningen FORBRUGER IKKE (Bjørn 6/10-2026: forslaget skal overleve en
+    # app-genstart). `kig_forslag` læser uden at slette, så en genstart er
+    # blot endnu en hentning.
+    eget = None
     try:
         from core.runtime.db_composer_jarvis import (
             kig_forslag,
@@ -202,37 +195,28 @@ def foreslaa_naeste_detaljer(session_id: str) -> dict[str, str]:
             ryd_forslag,
         )
         eget = kig_forslag(session_id=sid)
-        if eget:
-            skrevet = str(eget.get("skrevet_at") or "")
-            if skrevet and _svar_efter(sid, skrevet) >= 2:
-                # Foraeldet — men KUN hvis det blev SET. Fejler afgoerelsen,
-                # behandles det som USET: den sikre side er at rydde for lidt,
-                # ikke at tabe et tilbud der aldrig kom paa skaermen.
-                vis = False
-                try:
-                    from core.runtime.db_composer_choice import er_vist
-                    vis = er_vist(forslag_id=str(eget.get("forslag_id") or ""))
-                except Exception:
-                    logger.debug("composer_suggest: kunne ikke afgoere set/uset", exc_info=True)
-                if vis:
-                    ryd_forslag(session_id=sid)
-                    eget = None
+        if eget and _foraeldet(str(eget.get("skrevet_at") or "")):
+            ryd_forslag(session_id=sid)
+            eget = None
         # 30/10-2026: er der intet forslag i HANS session, falder vi tilbage
         # til et USET, friskt forslag fra en autonom koersel. Maalt: 6 af 8
         # auto-forslag blev aldrig vist, fordi opslaget var bundet til den
-        # session de blev skrevet i. Foraeldelses-tjekket ovenfor gaelder kun
-        # hans EGET forslag — et auto-forslags `skrevet_at` ligger i en anden
-        # samtale, saa `_svar_efter` her ville vaere et meningsloest tal.
+        # session de blev skrevet i.
         if not eget:
             eget = kig_forslag_til_klient(session_id=sid)
     except Exception:
         logger.debug("composer_suggest: kunne ikke læse Jarvis' forslag", exc_info=True)
         eget = None
     if eget and str(eget.get("forslag") or "").strip():
+        kilde = next(
+            (str(b.get("message_id") or "") for b in reversed(beskeder)
+             if str(b.get("role") or "") == "assistant"),
+            "",
+        )
         return {
             "forslag": str(eget["forslag"]).strip(),
             "forslag_id": str(eget.get("forslag_id") or ""),
-            "kilde_besked_id": str(beskeder[-1].get("message_id") or ""),
+            "kilde_besked_id": kilde,
         }
 
     # Her stod den lokale models forslag (qwen3:4b) indtil 28/9-2026.

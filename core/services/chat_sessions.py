@@ -916,37 +916,59 @@ def set_session_workspace(session_id: str, *, kind: str | None, root: str | None
         conn.commit()
 
 
-def _ryd_komponist_forslag(session_id: str) -> None:
-    """Ryd komponistens forslag naar en NY TUR begynder — MEN KUN hvis det blev SET.
+def _besked_brugte_forslaget(besked: str, forslag: str) -> bool:
+    """Står forslagets tekst i den besked han sendte?
+
+    Sammenligningen er normaliseret (whitespace og store/små bogstaver), men
+    ellers bogstavelig: et forslag han rettede i, tæller ikke som brugt. Det er
+    den forsigtige side — bliver et brugt forslag hængende én gang for meget,
+    er det en linje i feltet; bliver et ubrugt forslag ryddet, er det et tab.
+    """
+    a = " ".join((besked or "").split()).lower()
+    b = " ".join((forslag or "").split()).lower()
+    return bool(a and b and b in a)
+
+
+def _ryd_komponist_forslag(session_id: str, content: str = "") -> None:
+    """Ryd komponistens forslag naar det er BRUGT, AFVIST eller AFLØST.
+
+    ## Omlagt 17/11-2026: rydningen spørger nu om BRUG, ikke om visning
 
     Bjoern 7/10-2026: «dine suggested next task skal altid nulstilles i
     composer naar en ny tur starter, ellers haenger gamle ved over mange
-    beskeder». Den regel staar ved magt — for et forslag han SAA.
+    beskeder». Reglen staar ved magt — men den blev implementeret som «blev
+    det SET, ryddes det», og det gjorde hentningen éngangs.
 
-    Maalt 16/10-2026: rydningen var UBETINGET, og et forslag der aldrig naaede
-    skaermen forsvandt med den. Det skete for et forslag lagt 15:55 og ryddet
-    16:15 — tyve minutter senere, uden at klienten nogensinde havde hentet det
-    (nul raekker i `composer_choices` for sessionen). Et USET forslag er ikke
-    foraeldet; det er ubesvaret, og at rydde det taber et tilbud han aldrig fik.
+    Maalt 17/11-2026 i `composer_choices` + `chat_messages`: et forslag blev
+    vist 11:30:31, taget med Tab 11:31:00 og ryddet ved turstart 11:31 — 58
+    minutter før Bjørn kiggede efter det og konstaterede at komponisten var
+    tom. Han kaldte det en genstart der spiste forslaget; det var denne regel.
+    Et forslag der blot er vist er ikke forældet — det er UDELUKKENDE set.
 
-    Skellet findes allerede: klienten melder `vist` naar teksten staar i feltet
-    (`Composer.tsx`), og `composer_choices` baerer raekken. Er den der, er
-    forslaget set og skal ryddes. Er den ikke, ligger forslaget til
-    foraeldelses-reglen i `foreslaa_naeste_detaljer` tager det (2+ assistent-svar
-    efter `skrevet_at`) — den rydder ogsaa usete forslag, saa intet hober sig op.
+    Rydningen sker derfor nu paa tre vilkaar, og kun dem:
 
-    Egen funktion, saa kaldestedet i `append_chat_message` kan holde sit `try`
-    til ÉN sætning (se `scripts/verify_silent_except.py`) — og saa den tunge
-    import bliver liggende hvor den hoerer: lokalt ved kaldet, ikke ved
-    modul-load.
+      * `afvist` (Escape) eller `eget` (han skrev selv) — han tog stilling.
+      * hans besked indeholder forslagets tekst — det blev brugt.
+      * et nyere forslag i samme session — `gem_forslag` sletter det gamle.
+
+    Et forslag han hverken brugte eller afviste bliver liggende, saa det kan
+    hentes igen efter en genstart. Det hober sig ikke op: der er højst ét pr.
+    session, og alders-loftet i `foreslaa_naeste_detaljer` rydder det naar det
+    er `FORSLAG_MAKS_ALDER_H` gammelt.
+
+    Fejler afgørelsen, ryddes der IKKE — den sikre side er at rydde for lidt.
     """
-    from core.runtime.db_composer_choice import er_vist
+    from core.runtime.db_composer_choice import valg_for
     from core.runtime.db_composer_jarvis import kig_forslag, ryd_forslag
 
     eget = kig_forslag(session_id=session_id)
     if not eget:
         return
-    if er_vist(forslag_id=str(eget.get("forslag_id") or "")):
+    valg = valg_for(forslag_id=str(eget.get("forslag_id") or ""))
+    if valg in ("afvist", "eget"):
+        ryd_forslag(session_id=session_id)
+        return
+    if _besked_brugte_forslaget(content, str(eget.get("forslag") or "")):
         ryd_forslag(session_id=session_id)
 
 
@@ -1025,7 +1047,7 @@ def append_chat_message(
         # efter denne raekke — en frisk tur rammes derfor ikke af sin egen
         # rydning. Fejler den, maa chat-persisteringen ikke maerke det.
         try:
-            _ryd_komponist_forslag(normalized_session)
+            _ryd_komponist_forslag(normalized_session, normalized_content)
         except Exception:  # en rydning maa ikke kunne vaelte chat-persisteringen
             pass
 

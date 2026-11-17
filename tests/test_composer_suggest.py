@@ -235,66 +235,48 @@ def test_forslaget_OVERLEVER_en_ny_hentning(isolated_runtime, monkeypatch):
     assert dj.kig_forslag(session_id="s1") is not None
 
 
-def _svar_efter(monkeypatch, antal: int):
-    """Saet antallet af assistent-svar efter forslaget — reglen der proves.
+def test_forslaget_overlever_at_samtalen_koerer_videre(isolated_runtime, monkeypatch):
+    """To eller flere svar efter forslaget rydder det IKKE længere (17/11-2026).
 
-    Tællingen er sit eget søm efter 7/10-2026: den kom fra et vindue paa seks
-    raekker, og i en tool-tung session kunne vinduet kun se ÉT svar efter
-    forslaget (se den nederste test). Reglen kan derfor proves direkte her uden
-    at bygge en tool-tung samtale op først.
+    Reglen var «2+ assistent-svar → forældet, ryd». Målt i drift: et forslag
+    vist 11:30:31 og taget med Tab 11:31:00 var ryddet ved turstart 11:31 —
+    58 minutter før Bjørn kiggede, og han kaldte det en genstart der spiste
+    det. Reglen målte «samtalen er kørt videre» og ramte dermed også et
+    forslag han lige havde taget. Nu afgør BRUG og ALDER, ikke ture.
     """
-    monkeypatch.setattr(cs, "_svar_efter", lambda sid, skrevet: antal)
-
-
-def test_ÉT_svar_efter_forslaget_er_AKTUELT(isolated_runtime, monkeypatch):
-    """Forslaget skrives MENS turen koerer, saa dens eget svar lander bagefter.
-    Ét svar efter betyder derfor «hoerer til det der staar nederst»."""
     _med_svar(monkeypatch)
-    _svar_efter(monkeypatch, 1)
-    dj.gem_forslag(session_id="s1", forslag="fra Jarvis", nu="2026-10-06T10:00:00")
-    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "fra Jarvis"
-
-
-def test_TO_svar_efter_forslaget_er_FORAELDET_og_ryddes(isolated_runtime, monkeypatch):
-    """Samtalen er koert videre. Et bud skrevet til en anden tur er vaerre end
-    ingenting — og raekken ryddes, saa den ikke bliver maalt igen.
-
-    MEN KUN hvis det blev SET (maalt 16/10-2026): et uset forslag er
-    ubesvaret, ikke foraeldet. Se testen lige under."""
-    _med_svar(monkeypatch)
-    _svar_efter(monkeypatch, 2)
-    fid = dj.gem_forslag(session_id="s1", forslag="fra Jarvis", nu="2026-10-06T10:00:00")
+    fid = dj.gem_forslag(session_id="s1", forslag="fra Jarvis")
     dc.noter_vist(forslag_id=fid, session_id="s1", forslag="fra Jarvis")
-    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == ""
-    assert dj.kig_forslag(session_id="s1") is None, "det foraeldede forslag skal ryddes"
-
-
-def test_TO_svar_efter_et_USET_forslag_rydder_det_IKKE(isolated_runtime, monkeypatch):
-    """Gren C i maalingen 16/10-2026: klienten HENTEDE forslaget, men viste det
-    ikke — feltet var ikke tomt, eller svaret streamede. Ved naeste hentning
-    var foraeldelsen naaet, og den ryddede det USET. Praecis samme tab som om
-    morgenen, ad en anden doer: et tilbud Bjørn aldrig fik.
-
-    Foraeldelse alene maa derfor ikke rydde. Et uset forslag er ubesvaret, og
-    det skal blive ved med at blive tilbudt indtil det ses — det hober sig ikke
-    op, for `gem_forslag` holder hoejst ét pr. session."""
-    _med_svar(monkeypatch)
-    _svar_efter(monkeypatch, 2)
-    dj.gem_forslag(session_id="s1", forslag="fra Jarvis", nu="2026-10-06T10:00:00")
-    assert dc.optaelling(session_id="s1")["vist"] == 0, "ingen vist-raekke endnu"
-
-    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "fra Jarvis", (
-        "et USET forslag er ubesvaret, ikke foraeldet — det skal stadig tilbydes"
-    )
-    assert dj.kig_forslag(session_id="s1") is not None, "det usete forslag maa IKKE ryddes"
-
-
-def test_INGEN_svar_efter_forslaget_lader_det_VENTE(isolated_runtime, monkeypatch):
-    """Turen er ikke landet endnu. Forslaget er paa vej, ikke foraeldet."""
-    _med_svar(monkeypatch)
-    _svar_efter(monkeypatch, 0)
-    dj.gem_forslag(session_id="s1", forslag="fra Jarvis", nu="2026-10-06T10:05:00")
     assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "fra Jarvis"
+    assert dj.kig_forslag(session_id="s1") is not None
+
+
+def test_et_GAMMELT_forslag_ryddes_paa_alder(isolated_runtime, monkeypatch):
+    """Alders-loftet er det eneste der rydder et ubrugt forslag.
+
+    Uden det ville et bud kunne hænge for evigt i en session ingen rører.
+    """
+    _med_svar(monkeypatch)
+    monkeypatch.setattr(cs, "_foraeldet", lambda skrevet: True)
+    dj.gem_forslag(session_id="s1", forslag="fra Jarvis")
+    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == ""
+    assert dj.kig_forslag(session_id="s1") is None, "det gamle forslag skal ryddes"
+
+
+def test_forslaget_hentes_igen_EFTER_han_har_taget_det(isolated_runtime, monkeypatch):
+    """`accepteret` er Tab — teksten lægges i feltet, den sendes ikke.
+
+    Målt 17/11-2026: netop det skete. Forslaget blev taget 11:31:00, han
+    skrev noget andet, og forslaget var væk. Et forslag han tog men ikke
+    sendte, skal stadig kunne hentes.
+    """
+    _med_svar(monkeypatch)
+    fid = dj.gem_forslag(session_id="s1", forslag="fra Jarvis")
+    dc.noter_vist(forslag_id=fid, session_id="s1", forslag="fra Jarvis")
+    dc.noter_valg(forslag_id=fid, valg="accepteret")
+
+    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "fra Jarvis"
+    assert dj.kig_forslag(session_id="s1") is not None
 
 
 def test_hans_forslag_bruges_ikke_naar_turen_IKKE_er_faerdig(isolated_runtime, monkeypatch):
@@ -308,10 +290,18 @@ def test_hans_forslag_bruges_ikke_naar_turen_IKKE_er_faerdig(isolated_runtime, m
     assert dj.kig_forslag(session_id="s1") is not None, "forslaget skal vente, ikke forbruges"
 
 
-def test_hans_forslag_bruges_ikke_paa_en_STUMP(isolated_runtime, monkeypatch):
+def test_et_gemt_forslag_vises_OGSAA_naar_sidste_svar_er_en_STUMP(isolated_runtime, monkeypatch):
+    """En stump til sidst stopper ikke et forslag Jarvis selv har lagt ned.
+
+    Reglen om `MIN_SVAR_TEGN` gjaldt et forslag bygget PAA samtalen: «OK.» er
+    intet at bygge videre på. Et gemt forslag blev skrevet mens Jarvis kendte
+    turen og bærer sin egen kontekst — og efter en genstart er det sidste svar
+    ofte kort netop fordi samtalen lige er genåbnet. Reglen stoppede derfor
+    forslaget dér hvor det skulle vises.
+    """
     monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", "OK.")))
     dj.gem_forslag(session_id="s1", forslag="fra Jarvis")
-    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == ""
+    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "fra Jarvis"
 
 
 # ─────────── tællingen maa ikke komme fra et vindue (maalt 7/10-2026) ───────────
@@ -331,13 +321,17 @@ def test_hans_forslag_bruges_ikke_paa_en_STUMP(isolated_runtime, monkeypatch):
 # ét svar, hvor der er to.
 
 
-def test_tool_raekker_skjuler_ikke_det_andet_svar(isolated_runtime):
-    """Fem `tool`-raekker mellem to svar maa ikke gøre et foraeldet forslag aktuelt."""
+def test_tool_raekker_skjuler_ikke_forslaget(isolated_runtime):
+    """Fem `tool`-raekker og to svar efter forslaget maa ikke gøre det usynligt.
+
+    Testen bevogtede oprindeligt at forældelses-tællingen kom fra SQL og ikke
+    fra et vindue paa seks rækker. Den regel er væk (17/11-2026) — men kravet
+    er det samme: vinduets form maa ikke afgøre om forslaget kan hentes.
+    """
     from core.services.chat_sessions import append_chat_message, create_chat_session
 
     sid = str(create_chat_session(title="tool-tung")["id"])
-    fid = dj.gem_forslag(session_id=sid, forslag="fra Jarvis",
-                         nu="2026-10-07T18:23:52.809105Z")
+    fid = dj.gem_forslag(session_id=sid, forslag="fra Jarvis")
     dc.noter_vist(forslag_id=fid, session_id=sid, forslag="fra Jarvis")
     append_chat_message(session_id=sid, role="assistant", content=_ASSISTENT_SVAR,
                         created_at="2026-10-07T18:24:00+00:00")
@@ -348,25 +342,18 @@ def test_tool_raekker_skjuler_ikke_det_andet_svar(isolated_runtime):
     append_chat_message(session_id=sid, role="assistant", content=_ASSISTENT_SVAR,
                         created_at="2026-10-07T18:26:00+00:00")
 
-    # To svar efter forslaget — og de seks nyeste raekker indeholder kun ét af
-    # dem. Tællingen skal stadig give to.
-    assert cs._svar_efter(sid, "2026-10-07T18:23:52.809105Z") == 2
-    assert cs.foreslaa_naeste_detaljer(sid)["forslag"] == ""
-    assert dj.kig_forslag(session_id=sid) is None, "det foraeldede forslag skal ryddes"
+    assert cs.foreslaa_naeste_detaljer(sid)["forslag"] == "fra Jarvis"
+    assert dj.kig_forslag(session_id=sid) is not None
 
 
-def test_en_ny_tur_rydder_forslaget_ved_START(isolated_runtime):
-    """Bjoern 7/10-2026: «dine suggested next task skal altid nulstilles i
-    composer naar en ny tur starter».
+def test_en_ny_tur_rydder_IKKE_et_forslag_der_bare_blev_set(isolated_runtime):
+    """En ny tur rydder ikke et forslag blot fordi det kom på skærmen (17/11-2026).
 
-    Turen BEGYNDER naar hans besked lander. Det er et faktum — ikke et gaet paa
-    et tidsvindue — og derfor ryddes forslaget dér, i append-vejen. Begge flader
-    (desk og mobil) laeser samme raekke gennem `/composer/suggest`, saa rydningen
-    rammer dem begge uden at nogen af dem skal huske noget selv.
-
-    Gælder for et forslag han SAA. `vist`-raekken meldes af klienten naar
-    teksten staar i feltet (`Composer.tsx`), og det er den der afgoer skellet
-    (se testen nedenfor for det modsatte tilfaelde).
+    Bjoern 7/10-2026 bad om at gamle forslag nulstilles ved en ny tur — og det
+    blev implementeret som «blev det SET, ryddes det». Målt i drift 17/11:
+    forslaget blev vist 11:30:31, taget med Tab 11:31:00 og ryddet ved turstart
+    11:31, 58 minutter før han kiggede. Han kaldte det en genstart der spiste
+    forslaget. Et forslag der er set er ikke forældet — det er kun set.
     """
     from core.services.chat_sessions import append_chat_message, create_chat_session
 
@@ -377,7 +364,39 @@ def test_en_ny_tur_rydder_forslaget_ved_START(isolated_runtime):
 
     append_chat_message(session_id=sid, role="user", content="naeste opgave, tak")
 
-    assert dj.kig_forslag(session_id=sid) is None, "en ny tur skal rydde et SET forslag"
+    assert dj.kig_forslag(session_id=sid) is not None, (
+        "et SET forslag maa ikke ryddes blot fordi en ny tur begynder — det "
+        "skal kunne hentes igen efter en genstart"
+    )
+
+
+def test_en_ny_tur_rydder_forslaget_naar_hans_besked_BRUGER_det(isolated_runtime):
+    """Brugte han forslaget, er det brugt op — så ryddes det ved turstart."""
+    from core.services.chat_sessions import append_chat_message, create_chat_session
+
+    sid = str(create_chat_session(title="brugt")["id"])
+    dj.gem_forslag(session_id=sid, forslag="Ret forslaget så det overlever en genstart")
+
+    append_chat_message(
+        session_id=sid, role="user",
+        content="Ret forslaget så det overlever en genstart",
+    )
+
+    assert dj.kig_forslag(session_id=sid) is None, "et brugt forslag skal ryddes"
+
+
+def test_ESCAPE_rydder_forslaget(isolated_runtime):
+    """`afvist` er et nej. Så skal forslaget ikke tilbydes igen."""
+    from core.services.chat_sessions import append_chat_message, create_chat_session
+
+    sid = str(create_chat_session(title="afvist")["id"])
+    fid = dj.gem_forslag(session_id=sid, forslag="fra Jarvis")
+    dc.noter_vist(forslag_id=fid, session_id=sid, forslag="fra Jarvis")
+    dc.noter_valg(forslag_id=fid, valg="afvist")
+
+    append_chat_message(session_id=sid, role="user", content="noget helt andet")
+
+    assert dj.kig_forslag(session_id=sid) is None, "et afvist forslag skal ryddes"
 
 
 def test_en_ny_tur_rydder_IKKE_et_forslag_der_aldrig_blev_set(isolated_runtime):

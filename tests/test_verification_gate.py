@@ -425,19 +425,39 @@ def test_shell_mutation_med_exit_nul_er_et_kig_tilbage():
     assert len(s["strict_verifies"]) == 0
 
 
-def test_shell_mutation_med_exit_ikke_nul_rejser_et_flag():
-    """En kommando der fejlede er ikke en vellykket mutation.
+def test_shell_exit_1_er_TVETYDIG_og_rejser_ikke_et_flag():
+    """`exit 1` betyder ikke «kommandoen fejlede».
 
-    `status` er 'ok' fordi værktøjet selv kørte fint, så frem til 17/11-2026
-    forsvandt 1.872 fejlede kommandoer i mutations-tallet. De skal både
-    tælles som mutation (intet bevis for at de virkede) OG stå i
-    `failed_shell`, så advarslen kan sige hvad der faktisk skete.
+    Målt 17/11-2026 på 25.921 bash-events: 2.379 kald havde exit 1, og de er
+    blandede — `grep`/`rg` uden match og `diff` med forskel returnerer 1 som
+    et GYLDIGT svar, mens en python-heredoc der rejser giver samme kode. Et
+    flag på alle dem ville være 3.005 advarsler om ugen hvoraf de 70 betyder
+    noget. De tælles derfor i `nonzero_shell` og advares der ikke om.
+
+    Mutation skal den stadig være: exit 1 er intet bevis for at den virkede.
     """
     s = _scan([_evt("bash", extra_payload={"mutating": True, "exit_code": 1})])
     assert len(s["mutations"]) == 1
     assert len(s["light_verifies"]) == 0
-    assert len(s["failed_shell"]) == 1
-    assert s["failed_shell"][0]["payload"]["exit_code"] == 1
+    assert len(s["failed_shell"]) == 0
+    assert len(s["nonzero_shell"]) == 1
+
+
+def test_shell_der_ikke_kunne_koere_rejser_et_flag():
+    """Koderne der betyder «kommandoen kørte ALDRIG færdig» skal ses.
+
+    `status` er 'ok' fordi værktøjet selv kørte fint, så frem til 17/11-2026
+    forsvandt de i mutations-tallet. 127 = kommandoen findes ikke, 124 =
+    timeout, 143 = dræbt. De giver tom output der ligner succes, og det er
+    præcis dem advarslen skal pege på.
+    """
+    for kode in (124, 126, 127, 143, 255):
+        s = _scan([_evt("bash", extra_payload={"mutating": True, "exit_code": kode})])
+        assert len(s["mutations"]) == 1, f"exit {kode} skal stadig være en mutation"
+        assert len(s["light_verifies"]) == 0
+        assert len(s["failed_shell"]) == 1, f"exit {kode} skal rejse flaget"
+        assert len(s["nonzero_shell"]) == 0
+        assert s["failed_shell"][0]["payload"]["exit_code"] == kode
 
 
 def test_shell_mutation_uden_exit_code_er_stadig_en_mutation():

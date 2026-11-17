@@ -72,7 +72,9 @@ def _exec_suggest_next_task(args: dict[str, Any]) -> dict[str, Any]:
         "forslag": str(gemt.get("forslag") if gemt else tekst),
         "note": (
             "Forslaget ligger klar i komponisten når feltet er tomt og svaret "
-            "er færdigt. Det forbruges ved første hentning."
+            "er færdigt. Det bliver liggende i sessionen — også over en "
+            "genstart — indtil Bjørn bruger det, afviser det, eller du lægger "
+            "et nyere."
         ),
     }
 

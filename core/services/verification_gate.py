@@ -479,6 +479,27 @@ _MUTATION_TOOLS_FILE: frozenset[str] = frozenset({
 _MUTATION_TOOLS_SHELL: frozenset[str] = frozenset({
     "bash", "bash_session_run",
 })
+
+#: Exit-koder der betyder at kommandoen ALDRIG kørte færdig: den blev ikke
+#: fundet, kunne ikke startes, nåede sin tidsgrænse eller blev dræbt.
+#:
+#: Målt 17/11-2026 på 25.921 bash-events: 3.005 kald havde exit != 0, men kun
+#: 70 af dem var denne slags. Resten var 1 og 2, og DE ER TVETYDIGE: `grep` og
+#: `rg` returnerer 1 når de ikke finder noget, `diff` når filerne er forskellige
+#: — det er et gyldigt svar, ikke en fejl. Præcis samme kode kommer fra en
+#: python-heredoc der rejser, og fra pytest der fejler. Ét tal kan ikke skelne
+#: dem, så en advarsel der tæller alle 3.005 ville være støj der druknede de 70
+#: der faktisk betyder «målingen blev aldrig lavet».
+_SHELL_EXIT_KUNNE_IKKE_KOERE: frozenset[int] = frozenset({
+    124,  # timeout(1) nåede sin grænse
+    125,  # selve timeout(1) fejlede
+    126,  # filen kunne ikke eksekveres
+    127,  # kommandoen findes ikke
+    130,  # dræbt med SIGINT
+    137,  # dræbt med SIGKILL
+    143,  # dræbt med SIGTERM
+    255,  # ssh/remote-fejl — exit uden for 0-254
+})
 _MUTATION_TOOLS_SERVICE: frozenset[str] = frozenset({
     "control_daemon", "restart_overdue_daemons",
 })
@@ -576,6 +597,9 @@ def _scan(events: list[dict[str, Any]]) -> dict[str, Any]:
     light_verifies: list[dict[str, Any]] = []
     failed_verifies: list[dict[str, Any]] = []
     failed_shell: list[dict[str, Any]] = []
+    #: Shell-kald med exit != 0 hvor koden er TVETYDIG (`grep` uden match er et
+    #: svar, ikke en fejl). Tælles for at kunne ses — advares der ikke om.
+    nonzero_shell: list[dict[str, Any]] = []
 
     for e in events:
         if str(e.get("kind", "")) != "tool.completed":
@@ -626,8 +650,17 @@ def _scan(events: list[dict[str, Any]]) -> dict[str, Any]:
                     # Kommandoen FEJLEDE, men `status` er 'ok' fordi værktøjet
                     # selv kørte fint. Målt 17/11-2026: 1.872 shell-mutationer
                     # med exit != 0 blev talt som vellykkede mutationer, og
-                    # ingen test dækkede det. De skal ses, ikke skjules.
-                    failed_shell.append(item)
+                    # ingen test dækkede det.
+                    #
+                    # MEN ikke alle ikke-nul-koder er fejl (målt samme dag på
+                    # 25.921 events): `grep` uden match og `diff` med forskel
+                    # returnerer 1 som et gyldigt svar. Kun de koder hvor
+                    # kommandoen aldrig kørte færdig advares der om; resten
+                    # tælles, så de kan ses, uden at fylde advarslen.
+                    if kode in _SHELL_EXIT_KUNNE_IKKE_KOERE:
+                        failed_shell.append(item)
+                    else:
+                        nonzero_shell.append(item)
             # Fil-mutationer der SELV bærer et readback fra disken er
             # verificeret i samme kald. Siden cf2f6b3f8 (10/9-2026) læser
             # edit_file/write_file filen tilbage og lægger resultatet i sit
@@ -657,6 +690,7 @@ def _scan(events: list[dict[str, Any]]) -> dict[str, Any]:
         "light_verifies": light_verifies,
         "failed_verifies": failed_verifies,
         "failed_shell": failed_shell,
+        "nonzero_shell": nonzero_shell,
     }
 
 
@@ -669,6 +703,7 @@ def evaluate_verification_gate(*, minutes: int = _LOOKBACK_MINUTES) -> dict[str,
     light_verifies = scan["light_verifies"]
     failed = scan["failed_verifies"]
     failed_shell = scan.get("failed_shell") or []
+    nonzero_shell = scan.get("nonzero_shell") or []
 
     by_tool: dict[str, int] = {}
     for m in mutations:
@@ -696,6 +731,7 @@ def evaluate_verification_gate(*, minutes: int = _LOOKBACK_MINUTES) -> dict[str,
         "light_verify_count": len(light_verifies),
         "failed_verify_count": len(failed),
         "failed_shell_count": len(failed_shell),
+        "nonzero_shell_count": len(nonzero_shell),
         "unverified_count": unverified_strict,              # back-compat
         "unverified_strict": unverified_strict,
         "unverified_effective": unverified_effective,
@@ -801,13 +837,15 @@ def verification_gate_section(*, record: bool = False) -> str | None:
             reason = f.get("reason") or "se eventbus for detaljer"
             lines.append(f"  - {f['tool']}: {reason}")
     if failed_shell:
-        # En kommando der returnerede exit != 0 er ikke en vellykket mutation.
+        # En kommando der aldrig kørte færdig er ikke en vellykket mutation.
         # Frem til 17/11-2026 blev den talt som `status='ok'` og forsvandt i
-        # mutations-tallet — 1.872 tilfælde på syv døgn. Den skal stå her, for
-        # det er den eneste advarsel hvor beviset peger den ANDEN vej.
+        # mutations-tallet. Kun de koder hvor kommandoen ikke kunne gennemføres
+        # (ikke fundet, dræbt, timeout) står her — `exit 1` fra `grep` uden
+        # match er et svar, ikke en fejl, og hører ikke i en advarsel.
         lines.append(
-            f"❌ {len(failed_shell)} shell-kommando(er) returnerede exit != 0 "
-            f"i sidste {result['window_minutes']} min — de kørte, men fejlede:"
+            f"❌ {len(failed_shell)} shell-kommando(er) kunne ikke køre færdig "
+            f"i sidste {result['window_minutes']} min — de blev ikke fundet, "
+            f"nåede en tidsgrænse eller blev dræbt:"
         )
         for s in failed_shell[:_MAX_WARNINGS_SURFACED]:
             kode = (s.get("payload") or {}).get("exit_code")

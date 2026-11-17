@@ -77,6 +77,28 @@ async def test_after_cursor_replays_only_missed_events(client):
 
 
 @pytest.mark.asyncio
+async def test_cursor_fra_tidligere_proces_giver_snapshot(client):
+    """Efter en API-genstart genoptager klienten med en cursor fra den gamle proces.
+
+    Hub'en lever kun i hukommelsen, så genstarten nulstiller den til 0. Klientens
+    cursor ligger så FORAN vores egen. Endpointet skal svare med et snapshot —
+    ellers står panelet tomt mens forbindelsen er sund (heartbeat hvert 15. s).
+
+    Målt 17/11-2026 mod den kørende server: `after=0` gav snapshot,
+    `after=99999` gav kun heartbeat.
+    """
+    _publish("job_started")
+    gammel_cursor = live_job_events.snapshot_cursor()
+
+    live_job_events.reset_for_tests()  # "API-genstart": hub nulstilles
+
+    frame = await _first_frame(after=gammel_cursor + 500)
+
+    assert frame["event"] == "snapshot"
+    assert json.loads(frame["data"])["jobs"][0]["id"] == "worker"
+
+
+@pytest.mark.asyncio
 async def test_last_event_id_is_used_when_after_is_absent(client):
     first = _publish("job_started")
     second = _publish("job_output")

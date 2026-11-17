@@ -389,12 +389,12 @@ _Bounded, process-local live projection of background-job events._
 | method | `LiveJobEventHub.__init__` | `(self, *, replay_size=…)` | — | [src](../../../core/services/live_job_events.py#L131) |
 | method | `LiveJobEventHub.publish` | `(self, event_type, *, job_key, session_id, source, payload)` | — | [src](../../../core/services/live_job_events.py#L139) |
 | method | `LiveJobEventHub.subscribe` | `(self, *, session_id, after, queue_size=…)` | — | [src](../../../core/services/live_job_events.py#L166) |
-| method | `LiveJobEventHub._unsubscribe` | `(self, subscription)` | — | [src](../../../core/services/live_job_events.py#L197) |
-| method | `LiveJobEventHub.snapshot_cursor` | `(self)` | — | [src](../../../core/services/live_job_events.py#L201) |
-| function | `publish` | `(event_type, *, job_key, session_id, source, payload)` | — | [src](../../../core/services/live_job_events.py#L209) |
-| function | `subscribe` | `(*, session_id, after, queue_size=…)` | — | [src](../../../core/services/live_job_events.py#L226) |
-| function | `snapshot_cursor` | `()` | — | [src](../../../core/services/live_job_events.py#L232) |
-| function | `reset_for_tests` | `()` | — | [src](../../../core/services/live_job_events.py#L236) |
+| method | `LiveJobEventHub._unsubscribe` | `(self, subscription)` | — | [src](../../../core/services/live_job_events.py#L209) |
+| method | `LiveJobEventHub.snapshot_cursor` | `(self)` | — | [src](../../../core/services/live_job_events.py#L213) |
+| function | `publish` | `(event_type, *, job_key, session_id, source, payload)` | — | [src](../../../core/services/live_job_events.py#L221) |
+| function | `subscribe` | `(*, session_id, after, queue_size=…)` | — | [src](../../../core/services/live_job_events.py#L238) |
+| function | `snapshot_cursor` | `()` | — | [src](../../../core/services/live_job_events.py#L244) |
+| function | `reset_for_tests` | `()` | — | [src](../../../core/services/live_job_events.py#L248) |
 
 ## `core/services/live_job_sources.py`
 _Incremental adapters from canonical background jobs to live job events._

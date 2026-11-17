@@ -176,7 +176,19 @@ class LiveJobEventHub:
             initial: list[JobEvent] = []
             if after is not None:
                 oldest = events[0].cursor if events else self._cursor + 1
-                needs_snapshot = int(after) < oldest - 1
+                # To grunde til et frisk snapshot:
+                #  1. cursoren er ældre end replay-vinduet (den er udløbet)
+                #  2. cursoren ligger FORAN vores egen — den kommer fra en
+                #     tidligere proces. Hub'en lever kun i hukommelsen, så en
+                #     API-genstart nulstiller den til 0, mens klienten genoptager
+                #     med den cursor den sidst så. Uden denne gren regnede vi
+                #     `1126 < 0` som falsk og sendte intet snapshot: forbindelsen
+                #     var sund (heartbeat hvert 15. s), men panelet var tomt.
+                #     Målt 17/11-2026: `after=0` → snapshot, `after=99999` → kun
+                #     heartbeat.
+                needs_snapshot = (
+                    int(after) > self._cursor or int(after) < oldest - 1
+                )
                 if not needs_snapshot:
                     initial = [
                         event for event in events

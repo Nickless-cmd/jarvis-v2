@@ -57,6 +57,29 @@ def test_expired_cursor_requires_a_fresh_snapshot():
     sub.close()
 
 
+def test_cursor_fra_tidligere_proces_kraever_frisk_snapshot():
+    """En API-genstart nulstiller hub'en — klientens cursor er saa "fra fremtiden".
+
+    Hub'en lever kun i hukommelsen. Efter en genstart staar dens cursor paa 0,
+    mens klienten genoptager med den cursor den sidst saa (fx 1126). Uden denne
+    gren regner serveren `1126 < 0` som falsk, konkluderer "ingen nye events" og
+    sender INTET snapshot: forbindelsen er sund (heartbeat kommer hvert 15. s),
+    men panelet er tomt indtil et tilfaeldigt nyt job-event.
+
+    Maalt 17/11-2026 mod den koerende server: `after=0` gav et snapshot,
+    `after=99999` gav kun heartbeat.
+    """
+    hub.publish(
+        "job_started", job_key="tool:a", session_id="s1", source="tool", payload={}
+    )
+
+    sub = hub.subscribe(session_id="s1", after=99999)
+
+    assert sub.needs_snapshot is True
+    assert sub.initial_events == []
+    sub.close()
+
+
 @pytest.mark.asyncio
 async def test_mismatched_session_receives_no_event_but_global_event_does():
     sub = hub.subscribe(session_id="s2", after=None)

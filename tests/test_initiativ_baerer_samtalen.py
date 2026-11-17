@@ -86,3 +86,50 @@ def test_en_rigtig_samtale_bindes(isolated_runtime):
     )
 
     assert _session_for(iid) == "chat-9ab77c10de4f2"
+
+
+def test_den_rigtige_fyr_sti_baerer_samtalen(isolated_runtime):
+    """`_fire_due_tasks` — ikke bare `push_initiative` — skal bære samtalen.
+
+    Målt 17/11-2026: kæden var intakt i koden (`task_session` læses fra
+    `scheduled_tasks.session_id` og sendes til `push_initiative`), men
+    `runtime_initiatives.session_id` var udfyldt i 1 af 5.871 rækker — og den
+    ene var en test. Ingen havde målt den VEJ der faktisk fyrer.
+
+    Testen indsætter en forfalden task med en samtale og kalder den ægte
+    `_fire_due_tasks`. Den fejler hvis nogen fjerner `session_id=task_session`
+    fra dispatch-kaldet, eller hvis fyr-stien en dag tager en anden gren.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from core.runtime import db as runtime_db
+    from core.services import scheduled_tasks as st
+
+    session = "chat-1fa646106874479db4c6c4b8b8868f59"
+    task_id = "sched-baerer-samtalen"
+    foraldret = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+
+    with runtime_db.connect() as conn:
+        runtime_db._ensure_scheduled_tasks_table(conn)
+        conn.execute(
+            "INSERT INTO scheduled_tasks "
+            "(task_id, focus, source, status, run_at, created_at, updated_at, session_id) "
+            "VALUES (?, ?, 'jarvis-tool', 'pending', ?, ?, ?, ?)",
+            (task_id, "Følg op på kalibreringen", foraldret, foraldret, foraldret, session),
+        )
+        conn.commit()
+
+    st._fire_due_tasks()
+
+    from core.runtime import db_core
+
+    with db_core.connect() as conn:
+        row = conn.execute(
+            "SELECT session_id FROM runtime_initiatives WHERE source_id = ?",
+            (task_id,),
+        ).fetchone()
+
+    assert row is not None, "fyr-stien oprettede intet initiativ for den forfaldne task"
+    assert str(row[0] or "") == session, (
+        f"initiativet mistede samtalen: fik {row[0]!r}, ventede {session!r}"
+    )

@@ -12,7 +12,19 @@ function response(text: string): Response {
   }), { status: 200, headers: { 'Content-Type': 'text/event-stream' } })
 }
 
-afterEach(() => vi.unstubAllGlobals())
+/** En forbindelse der står åben men aldrig sender noget — den halvåbne socket. */
+function stilleResponse(): Response {
+  return new Response(new ReadableStream({
+    start() {
+      // bevidst tom: ingen frames, ingen lukning
+    },
+  }), { status: 200, headers: { 'Content-Type': 'text/event-stream' } })
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.useRealTimers()
+})
 
 describe('jobsStream', () => {
   it('sender bearer-token og resume-cursor og leverer eventet', async () => {
@@ -38,5 +50,37 @@ describe('jobsStream', () => {
     startJobsStream(config, { onEvent: vi.fn(), onError })
     await vi.waitFor(() => expect(onError).toHaveBeenCalledTimes(1))
     expect(onError.mock.calls[0]?.[0]).toMatchObject({ kind: 'protocol' })
+  })
+
+  it('giver ikke op: genforbinder forbi det gamle loft på fem forsøg', async () => {
+    // Før 17/11-2026 kaldte den `onError` efter fem forsøg (15,5 s) og standsede.
+    // Et API-deploy dræber forbindelsen og panelet rejste sig aldrig igen.
+    vi.useFakeTimers()
+    const fetchMock = vi.fn().mockRejectedValue(new Error('netværk nede'))
+    vi.stubGlobal('fetch', fetchMock)
+    const onError = vi.fn()
+    startJobsStream(config, { onEvent: vi.fn(), onError })
+
+    await vi.advanceTimersByTimeAsync(60_000)
+
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(6)
+    expect(onError).not.toHaveBeenCalled()
+  })
+
+  it('bryder en halvåben forbindelse efter idle-timeout og genforbinder', async () => {
+    // Serveren sender heartbeat hver 15. s. Kommer der intet i 45 s, er
+    // soklen død i den ene retning — og `reader.read()` ville vente for evigt.
+    vi.useFakeTimers()
+    const fetchMock = vi.fn().mockResolvedValue(stilleResponse())
+    vi.stubGlobal('fetch', fetchMock)
+    const onError = vi.fn()
+    startJobsStream(config, { onEvent: vi.fn(), onError })
+
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(50_000)
+    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2)
+    expect(onError).not.toHaveBeenCalled()
   })
 })

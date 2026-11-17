@@ -406,13 +406,13 @@ _Skrivning i et agent-worktree - KUN gennem en sandbox (agent-contract-v1 C5b, s
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `ExecError` | `` | Kommandoen blev afvist foer den koerte (stabil ``code``). | [src](../../../core/services/agent_worktree_exec.py#L51) |
-| method | `ExecError.__init__` | `(self, code, detail=…)` | — | [src](../../../core/services/agent_worktree_exec.py#L54) |
-| function | `_active_worktree` | `(worktree_id)` | — | [src](../../../core/services/agent_worktree_exec.py#L59) |
-| function | `_clip` | `(data)` | — | [src](../../../core/services/agent_worktree_exec.py#L72) |
-| function | `_run` | `(wt, command, *, timeout_s, stdin_bytes=…, with_git=…)` | — | [src](../../../core/services/agent_worktree_exec.py#L77) |
-| function | `run_in_worktree` | `(*, worktree_id, command, timeout_s=…)` | Koer en shell-kommando med worktree'et som /work. Kaster ``ExecError`` hvis den afvises. | [src](../../../core/services/agent_worktree_exec.py#L112) |
-| function | `write_file_in_worktree` | `(*, worktree_id, path, content)` | Skriv en fil (relativ sti) i worktree'et. Stien loeses INDE i sandboxen og afvises hvis den | [src](../../../core/services/agent_worktree_exec.py#L120) |
+| class | `ExecError` | `` | Kommandoen blev afvist foer den koerte (stabil ``code``). | [src](../../../core/services/agent_worktree_exec.py#L62) |
+| method | `ExecError.__init__` | `(self, code, detail=…)` | — | [src](../../../core/services/agent_worktree_exec.py#L65) |
+| function | `_active_worktree` | `(worktree_id)` | — | [src](../../../core/services/agent_worktree_exec.py#L70) |
+| function | `_clip` | `(data)` | — | [src](../../../core/services/agent_worktree_exec.py#L83) |
+| function | `_run` | `(wt, command, *, timeout_s, stdin_bytes=…, with_git=…)` | — | [src](../../../core/services/agent_worktree_exec.py#L88) |
+| function | `run_in_worktree` | `(*, worktree_id, command, timeout_s=…)` | Koer en shell-kommando med worktree'et som /work. Kaster ``ExecError`` hvis den afvises. | [src](../../../core/services/agent_worktree_exec.py#L123) |
+| function | `write_file_in_worktree` | `(*, worktree_id, path, content)` | Skriv en fil (relativ sti) i worktree'et. Stien loeses INDE i sandboxen og afvises hvis den | [src](../../../core/services/agent_worktree_exec.py#L131) |
 
 ## `core/services/agent_worktree_git.py`
 _Git-operationer for agent-worktrees (agent-contract-v1 C5a, spec 8.1)._

@@ -75,6 +75,20 @@ def test_write_file_writes_unicode_and_creates_directories(ex):
     assert open(os.path.join(w["path"], "src", "pkg", "ny.py"), encoding="utf-8").read() == "print('æøå')\n"
 
 
+def test_write_file_laeser_filen_tilbage_og_beviser_indholdet(ex):
+    """Skrivningen skal bære sit eget bevis. `bytes` er en PÅSTAND fra
+    skriveren; `readback` siger om disken faktisk indeholder det vi skrev.
+    Uden feltet kunne R2-gaten ikke se forskel på «skrevet» og «skrevet
+    rigtigt», og hver worktree-skrivning blev talt som uverificeret."""
+    w = ex.wt()
+    res = ex.E_.write_file_in_worktree(worktree_id=w["worktree_id"], path="bevis.txt", content="indhold\n")
+    assert res["readback"] is True
+    # Beviset skal være ægte: muteres filen bagefter, ville et nyt kald se det.
+    res2 = ex.E_.write_file_in_worktree(worktree_id=w["worktree_id"], path="bevis.txt", content="andet\n")
+    assert res2["readback"] is True
+    assert open(os.path.join(w["path"], "bevis.txt"), encoding="utf-8").read() == "andet\n"
+
+
 def test_the_agent_can_run_python_tests_inside(ex):
     w = ex.wt()
     ex.E_.write_file_in_worktree(worktree_id=w["worktree_id"], path="t.py", content="assert 1 + 1 == 2\nprint('GROEN')\n")

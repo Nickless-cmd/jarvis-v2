@@ -44,6 +44,17 @@ _WRITE_SCRIPT = (
     "data = sys.stdin.buffer.read()\n"
     "with open(real, 'wb') as fh:\n"
     "    fh.write(data)\n"
+    # Read-back fra disken (17/11-2026). Uden den var `bytes` en PÅSTAND fra
+    # skriveren: R2-gaten kunne ikke se om filen faktisk indeholdt det vi
+    # skrev, og hver worktree-skrivning blev talt som uverificeret mutation.
+    # Samme semantik som file_tools_exec._disk_readback — beviset lægges i
+    # svaret fra SAMME kald, så det ikke skal genopdages bagefter.
+    "try:\n"
+    "    with open(real, 'rb') as fh:\n"
+    "        back = fh.read()\n"
+    "    print('READBACK', 1 if back == data else 0)\n"
+    "except OSError:\n"
+    "    print('READBACK 0')\n"
     "print(len(data))\n"
 )
 
@@ -131,4 +142,14 @@ def write_file_in_worktree(*, worktree_id: str, path: str, content: str) -> dict
         raise ExecError("INVALID_SCOPE", "stien forlader worktree'et")
     if res["exit_code"] != 0:
         raise ExecError("WRITE_FAILED", (res["stderr"] or res["stdout"])[:200])
-    return {"path": path, "bytes": len(data), "over_quota": res["over_quota"]}
+    # Sandboxen læser filen tilbage og melder `READBACK 1|0` FØR byte-tallet.
+    # Kan linjen ikke findes, er beviset ikke indhentet — så er svaret False,
+    # ikke en tavs udeladelse: gaten skal kunne se forskel på «verificeret»
+    # og «vi ved det ikke».
+    readback = False
+    for linje in str(res.get("stdout") or "").splitlines():
+        if linje.startswith("READBACK "):
+            readback = linje.split()[1] == "1"
+            break
+    return {"path": path, "bytes": len(data), "over_quota": res["over_quota"],
+            "readback": readback}

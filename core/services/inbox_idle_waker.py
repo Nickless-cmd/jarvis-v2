@@ -281,10 +281,17 @@ def _maal_session(post: dict[str, Any]) -> str:
     dette lande» driver fra hinanden, og så bliver den ene stille virkningsløs:
 
       1. Vækningens egen samtale (en wakeup bærer sin session i recorden).
-      2. Ejerens app-samtale — resolvert, og med guard mod eksterne kanaler
-         (Discord/Telegram), så et app-run ikke re-engagerer en ekstern kanal.
+      2. Postens egen adresse (`session_id` skrevet ved bookingen).
       3. Tom streng ⇒ INGEN vækning. Et run uden en samtale er præcis den
          silo vi fjerner; posten venter hellere til næste runde.
+
+    INGEN GÆT (17/11-2026). Her stod før «ejerens app-samtale — resolvert»,
+    altså den samme fallback som dispatcheren bruger. Den gjorde vent-reglen
+    nedenfor virkningsløs: en post UDEN adresse fik en adresse ved at gætte på
+    ejerens senest aktive samtale, og `_vaek` kunne derfor aldrig se at den
+    skulle have ventet. Målt 17/11-2026: siloen fik 318 beskeder, og
+    `vaekning`-poster uden hjem endte midt i igangværende tråde. Bjørn:
+    «lad self-wakeups kræve en samtale som vækkeren — posten venter i stedet».
     """
     from core.identity.owner_resolver import (
         resolve_owner_app_session,
@@ -310,6 +317,9 @@ def _maal_session(post: dict[str, Any]) -> str:
         app_resolver=resolve_owner_app_session,
         owner_resolver=resolve_owner_target_session,
         is_external=session_is_external_channel,
+        # Bærer posten ingen adresse, findes der ingen modtager — og så venter
+        # den. Se docstringen: gættet her var det der gjorde vent-reglen død.
+        allow_guess=False,
     ) or ""
 
 

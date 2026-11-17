@@ -53,10 +53,10 @@ _Wakeup dispatcher — autonomous fire of self-wakeups._
 | function | `_jarvis_skrev_for_nylig` | `(session_id)` | Skrev JEG inden for karantænen? Self-safe → False ved enhver fejl. | [src](../../../core/services/wakeup_dispatcher.py#L71) |
 | function | `_nylig_rolle_i_session` | `(session_id, *, rolle, vindue_s)` | Findes der en besked fra `rolle` yngre end `vindue_s`? Self-safe. | [src](../../../core/services/wakeup_dispatcher.py#L84) |
 | function | `_active_turn_blocks` | `(session_id, *, karantaene=…)` | Returnér en skip-årsag hvis en FERSK visible-tur kører i sessionen. | [src](../../../core/services/wakeup_dispatcher.py#L118) |
-| function | `pick_wakeup_run_target` | `(*, channel, record_session, app_resolver, owner_resolver, is_external)` | Beslut hvilken session et wakeup-run skal lande i — med Discord-guard. | [src](../../../core/services/wakeup_dispatcher.py#L241) |
-| function | `_udloes_heartbeat_tick` | `()` | Kør heartbeat-tick'et UDEN for dispatchens kritiske sti (12/11-2026). | [src](../../../core/services/wakeup_dispatcher.py#L283) |
-| function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L308) |
-| function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L493) |
+| function | `pick_wakeup_run_target` | `(*, channel, record_session, app_resolver, owner_resolver, is_external, allow_guess=…)` | Beslut hvilken session et wakeup-run skal lande i — med Discord-guard. | [src](../../../core/services/wakeup_dispatcher.py#L241) |
+| function | `_udloes_heartbeat_tick` | `()` | Kør heartbeat-tick'et UDEN for dispatchens kritiske sti (12/11-2026). | [src](../../../core/services/wakeup_dispatcher.py#L312) |
+| function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L337) |
+| function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L531) |
 
 ## `core/services/wakeup_staleness.py`
 _Mærk en fyret vækning: hvad er der sket siden den blev booket?_

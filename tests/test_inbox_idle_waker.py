@@ -23,6 +23,14 @@ import pytest
 
 from core.runtime import db_inbox
 
+# Autouse-fixturen `_samtale` nedenfor monkeypatcher `_maal_session` for ALLE
+# tests i denne fil. De tests der måler NETOP dét valg skal bruge den ægte
+# funktion, så referencen gemmes ved import — før nogen fixture har rørt
+# modulet. Uden den ville testen måle sin egen lambda.
+from core.services import inbox_idle_waker as _waker_mod
+
+_ÆGTE_MAAL_SESSION = _waker_mod._maal_session
+
 
 @pytest.fixture
 def inbox_db(monkeypatch, tmp_path):
@@ -374,6 +382,70 @@ def test_maal_session_er_dispatcherens_egen_definition():
     assert "session_is_external_channel" in krop, (
         "app-vækninger må ikke re-engagere en ekstern kanal (Discord/Telegram)"
     )
+
+
+def test_maal_session_spoerger_IKKE_resolveren_uden_adresse(monkeypatch):
+    """En post uden adresse må ikke få en ved at spørge ejer-resolveren.
+
+    MUTATIONSBEVIS: fjernes `allow_guess=False` i `_maal_session`, kaldes
+    resolveren og svarer «chat-senest» — så vækker posten midt i en tråd den
+    ikke hører til.
+    """
+    from core.identity import owner_resolver
+    from core.services import inbox_idle_waker as w
+
+    kaldt: list[str] = []
+
+    def app_resolver() -> str:
+        kaldt.append("app")
+        return "chat-senest"
+
+    monkeypatch.setattr(owner_resolver, "resolve_owner_app_session", app_resolver)
+    monkeypatch.setattr(w, "_maal_session", _ÆGTE_MAAL_SESSION)
+    assert w._maal_session(
+        {"kildetype": "vaekning", "session_id": "", "kilde_id": ""}
+    ) == ""
+    assert kaldt == [], "posten har ingen adresse — resolveren må ikke spørges"
+
+
+def test_maal_session_bruger_postens_egen_adresse():
+    """Den anden halvdel: en ÆGTE adresse skal stadig virke."""
+    from core.services import inbox_idle_waker as w
+
+    assert w._maal_session(
+        {"kildetype": "vaekning", "session_id": "chat-1", "kilde_id": ""}
+    ) == "chat-1"
+
+
+def test_en_post_uden_adresse_venter_selv_naar_ejerens_samtale_findes(
+    inbox_db, monkeypatch,
+):
+    """Den målte fejl (17/11-2026), gennem den RIGTIGE søm.
+
+    Her mockes `_maal_session` ikke: posten har ingen adresse, men ejerens
+    senest aktive samtale findes og ville før være blevet valgt. Posten skal
+    alligevel ikke vække — den venter med sin grund synlig.
+    """
+    from core.identity import owner_resolver
+    from core.services import inbox_idle_waker as w
+
+    _post(id="min", ejer=db_inbox.EJER_JARVIS, kraever_handling=True)
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    # Autouse-fixturen giver hver post en samtale; her skal den ægte funktion
+    # afgøre spørgsmålet, ellers måler testen sin egen lambda.
+    monkeypatch.setattr(w, "_maal_session", _ÆGTE_MAAL_SESSION)
+    monkeypatch.setattr(
+        owner_resolver, "resolve_owner_app_session", lambda: "chat-senest")
+    startet: list[str] = []
+    monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: startet.append(tekst))
+
+    r = w.vaek_paa_aabne_poster(bruger_id="bjorn")
+    assert r["vaekket"] == 0, (
+        "en post uden adresse må ikke vække i en tilfældig samtale"
+    )
+    assert startet == []
+    assert db_inbox.hent(bruger_id="bjorn", kilde_id="min")[
+        "sidste_vaekning_tur"] == "", "posten må ikke stå som vækket"
 
 
 def test_start_run_kraever_en_session():

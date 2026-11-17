@@ -201,11 +201,11 @@ _Indbakken skal kunne VÆKKE — ikke kun gate._
 | function | `_session_er_aktiv` | `(session_id)` | Tjek den konkrete målsamtale, ikke kun ejerens aktuelle standardsession. | [src](../../../core/services/inbox_idle_waker.py#L206) |
 | function | `_alder_minutter` | `(post, *, nu=…)` | Hvor længe posten har været AKTUEL — ikke hvor længe rækken har eksisteret. | [src](../../../core/services/inbox_idle_waker.py#L238) |
 | function | `_maal_session` | `(post)` | Hvilken SAMTALE hører denne post til? | [src](../../../core/services/inbox_idle_waker.py#L270) |
-| function | `_start_run` | `(tekst, *, session_id, user_id, task_id=…, permission_session=…, origin=…, max_tool_calls=…, max_seconds=…, tool_scope=…, kilde_id=…, kildetype=…)` | Start det autonome run i den samtale posten hører til. Adskilt, så | [src](../../../core/services/inbox_idle_waker.py#L316) |
-| function | `_direktiv` | `(post)` | — | [src](../../../core/services/inbox_idle_waker.py#L500) |
-| function | `_dispatch_tekst` | `(post)` | Run-direktivet for posten. | [src](../../../core/services/inbox_idle_waker.py#L517) |
-| function | `_publicer_vaekning_startet` | `(post, kilde_id)` | Udgiv `self_wakeup.dispatched` NÅR runnet er startet — ikke før. | [src](../../../core/services/inbox_idle_waker.py#L557) |
-| function | `vaek_paa_aabne_poster` | `(*, bruger_id)` | Væk ét run for de øverste gatende poster — hvis intet kører. | [src](../../../core/services/inbox_idle_waker.py#L588) |
+| function | `_start_run` | `(tekst, *, session_id, user_id, task_id=…, permission_session=…, origin=…, max_tool_calls=…, max_seconds=…, tool_scope=…, kilde_id=…, kildetype=…)` | Start det autonome run i den samtale posten hører til. Adskilt, så | [src](../../../core/services/inbox_idle_waker.py#L326) |
+| function | `_direktiv` | `(post)` | — | [src](../../../core/services/inbox_idle_waker.py#L510) |
+| function | `_dispatch_tekst` | `(post)` | Run-direktivet for posten. | [src](../../../core/services/inbox_idle_waker.py#L527) |
+| function | `_publicer_vaekning_startet` | `(post, kilde_id)` | Udgiv `self_wakeup.dispatched` NÅR runnet er startet — ikke før. | [src](../../../core/services/inbox_idle_waker.py#L567) |
+| function | `vaek_paa_aabne_poster` | `(*, bruger_id)` | Væk ét run for de øverste gatende poster — hvis intet kører. | [src](../../../core/services/inbox_idle_waker.py#L598) |
 
 ## `core/services/inbox_importance.py`
 _Shared importance and delivery policy for Jarvis' inbox surfaces._

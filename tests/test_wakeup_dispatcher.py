@@ -297,6 +297,66 @@ def test_default_channel_is_app_guarded():
     assert target is None
 
 
+def test_uden_adresse_og_uden_gaette_tilladelse_giver_ingen_target():
+    """En post uden hjem må ikke få et hjem ved at gætte (17/11-2026).
+
+    Bjørn: «lad self-wakeups kræve en samtale som vækkeren — posten venter i
+    stedet». Uden dette flag ville `app_resolver` give posten en adresse den
+    ikke har, og vækkeren kunne ikke længere se at den skulle have ventet.
+
+    MUTATIONSBEVIS: fjernes `if not allow_guess: return None`, svarer kaldet
+    «app-42» og testen fejler.
+    """
+    kaldt: list[str] = []
+
+    def app_resolver() -> str:
+        kaldt.append("app")
+        return "app-42"
+
+    target = pick_wakeup_run_target(
+        channel="app", record_session="",
+        app_resolver=app_resolver,
+        owner_resolver=lambda: "disc-99",
+        is_external=_ext,
+        allow_guess=False,
+    )
+    assert target is None, "en vækning uden adresse skal vente, ikke gættes"
+    assert kaldt == [], "resolveren må slet ikke spørges når der ikke må gættes"
+
+
+def test_en_eksplicit_adresse_bruges_ogsaa_naar_gaet_er_forbudt():
+    """Flaget forbyder GÆT — ikke adresser. En post der bærer sin samtale skal
+    stadig kunne vække, ellers ville rettelsen dræbe alle ægte vækninger.
+    """
+    target = pick_wakeup_run_target(
+        channel="app", record_session="chat-7",
+        app_resolver=lambda: "app-42",
+        owner_resolver=lambda: "disc-99",
+        is_external=_ext,
+        allow_guess=False,
+    )
+    assert target == "chat-7"
+
+
+def test_en_auto_silo_er_ikke_en_modtager():
+    """Målt 12.–17/11-2026: 7 self-wakeup-poster landte i `auto-heartbeat-*`.
+
+    Vækningen var booket inde fra siloen og arvede dens session, så adressen
+    var EKSPLICIT — ikke et gæt. Men en silo er en logbog uden læser, ikke en
+    samtale, så posten skal vente.
+
+    MUTATIONSBEVIS: fjernes `cand.startswith("auto-")`-grenen, svarer kaldet
+    «auto-heartbeat-20261117» og testen fejler.
+    """
+    target = pick_wakeup_run_target(
+        channel="app", record_session="auto-heartbeat-20261117",
+        app_resolver=lambda: "app-42",
+        owner_resolver=lambda: "disc-99",
+        is_external=_ext,
+    )
+    assert target is None, "en autonom silo må ikke være en væknings adresse"
+
+
 def test_explicit_discord_channel_still_allowed():
     # Eksplicit channel=="discord" må stadig levere til Discord (separat kanal).
     target = pick_wakeup_run_target(

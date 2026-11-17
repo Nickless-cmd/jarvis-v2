@@ -245,6 +245,7 @@ def pick_wakeup_run_target(
     app_resolver,
     owner_resolver,
     is_external,
+    allow_guess: bool = True,
 ) -> str | None:
     """Beslut hvilken session et wakeup-run skal lande i — med Discord-guard.
 
@@ -253,8 +254,18 @@ def pick_wakeup_run_target(
     session_id peger derhen, eller owner-resolveren ville vælge den. Kun
     eksplicit channel=="discord" tillader ekstern levering (Bjørn 2026-06-13).
 
+    `allow_guess` (17/11-2026) skelner en ADRESSE fra et GÆT. Uden en
+    `record_session` findes der ingen adresse — kun en formodning om at ejerens
+    senest aktive samtale er den rigtige modtager. Den formodning er rigtig når
+    kalderen selv skal BRUGE svaret med det samme (fx en scheduled opgave der
+    skal køre nu), men skadelig når svaret bliver postens adresse: så får en
+    post uden hjem et hjem den ikke har, og vækkeren kan ikke længere se at den
+    skulle have ventet. Bjørn 17/11-2026: «lad self-wakeups kræve en samtale
+    som vækkeren — posten venter i stedet».
+
     Ren funktion (injicerbare resolvers) → kan testes uden DB.
-    Returnerer en session-id, eller None → kalderen opretter en frisk app-session.
+    Returnerer en session-id, eller None → kalderen opretter en frisk
+    app-session, eller (med `allow_guess=False`) lader posten vente.
     """
     ch = (channel or "app").strip().lower()
     if ch == "discord":
@@ -269,7 +280,25 @@ def pick_wakeup_run_target(
                 cand,
             )
             return None
+        if cand.startswith("auto-"):
+            # EN AUTO-SILO ER EN LOGBOG, IKKE EN MODTAGER (17/11-2026).
+            # Målt: 7 self-wakeup-poster landte i `auto-heartbeat-*` mellem
+            # 12. og 17. november, alle med siloen som EKSPLICIT adresse —
+            # vækningen var booket inde fra siloen og arvede dens session.
+            # Det er ikke et gæt, men det er heller ikke en modtager: ingen
+            # læser siloen, og runnet skriver sit svar i en log. Posten venter
+            # i stedet, hvor den kan ses.
+            logger.info(
+                "wakeup guard: adresse %s er en autonom silo, ikke en samtale "
+                "— posten venter",
+                cand,
+            )
+            return None
         return cand
+    if not allow_guess:
+        # Ingen adresse og ingen tilladelse til at gætte ⇒ posten har intet
+        # hjem. Kalderen skal lade den vente, ikke oprette et run.
+        return None
     return (app_resolver() or "").strip() or None  # springer allerede eksterne over
 
 
@@ -408,6 +437,15 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                         app_resolver=resolve_owner_app_session,
                         owner_resolver=resolve_owner_target_session,
                         is_external=session_is_external_channel,
+                        # INGEN GÆT HER (17/11-2026). Svaret bliver postens
+                        # ADRESSE, ikke bare et run vi starter nu. Gættede vi,
+                        # fik en vækning uden hjem et hjem den ikke har — og
+                        # `inbox_idle_waker` kunne ikke længere se at den
+                        # skulle have ventet. Målt: posten blev «adresseret» til
+                        # ejerens senest aktive samtale og vækkede midt i en
+                        # tråd der handlede om noget andet (blæser-målingen
+                        # 16/11). Tom ⇒ posten venter med en synlig grund.
+                        allow_guess=False,
                     )
                     # 11/11-2026: aktiv-guarden bor IKKE laengere her. Dispatcheren
                     # afleverer kun signalet til indbakken (wake_gateway); det er

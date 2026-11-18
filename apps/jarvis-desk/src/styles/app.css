@@ -3596,6 +3596,9 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 
 /* Matrix-karakterer (Systemstatus) — navn+funktion fylder, de tre målinger står som kolonner */
 .mk-raekke { flex-wrap: wrap; }
+/* Figuren er identitet, ikke tilstand: fast bredde saa den ikke straekkes af
+   flex, og saa raekken ikke hopper naar teksten ombrydes. */
+.mk-figur { flex: 0 0 22px; display: block; }
 .mk-navn { flex: 1 1 220px; min-width: 0; }
 .mk-sidste { flex: 0 0 90px; }
 .mk-cooldown { flex: 0 0 120px; }

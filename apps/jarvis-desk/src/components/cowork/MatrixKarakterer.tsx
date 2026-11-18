@@ -4,6 +4,7 @@ import { usePollWhenVisible } from '../../hooks/usePollWhenVisible'
 import {
   formatCooldown, formatSidste, karakterListe, splitFunktion, udfaldVisning,
 } from '../../lib/matrixKarakterer'
+import { KarakterFigur } from './KarakterFigur'
 
 const POLL_MS = 30_000
 
@@ -31,6 +32,10 @@ export function MatrixKarakterer({ config }: { config?: ApiConfig }) {
           const u = udfaldVisning(k)
           return (
             <div key={k.name} className="jm-feed-row mk-raekke">
+              {/* Figuren er karakterens identitet og udledes af MASKINNAVNET
+                  (`k.name`), ikke af det viste navn — så skifter den ikke når
+                  nogen retter beskrivelsen efter tankestregen. */}
+              <KarakterFigur navn={k.name} stoerrelse={22} className="mk-figur" />
               <span className={`jm-dot ${k.last_run_at ? 'on' : 'off'}`} />
               <span className="mk-navn">
                 <b>{navn}</b>

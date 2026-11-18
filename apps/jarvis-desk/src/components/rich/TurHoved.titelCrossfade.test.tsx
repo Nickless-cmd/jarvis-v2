@@ -1,6 +1,7 @@
 import { act, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TitelCrossfade } from './TurHoved'
+import type { VisuelTransition } from '../../lib/visuelTransition'
 
 describe('TitelCrossfade — serverstyret loft', () => {
   afterEach(() => vi.useRealTimers())
@@ -20,6 +21,21 @@ describe('TitelCrossfade — serverstyret loft', () => {
     expect(efter).not.toBe(foer)
     expect(efter).toHaveAttribute('data-crossfade')
     expect(view.queryByText('Læser konfigurationen')).toBeNull()
+  })
+
+  it('skifter uden fade når transitionens crossfade-flag er falsk', () => {
+    const transition = {
+      model: 'duration',
+      durationMs: 180,
+      curve: 'ease-out',
+      crossfade: false,
+    } satisfies VisuelTransition
+    const view = render(<TitelCrossfade tekst="Læser" aktiv transition={transition} />)
+
+    view.rerender(<TitelCrossfade tekst="Tester" aktiv transition={transition} />)
+
+    expect(view.getByText('Tester')).not.toHaveAttribute('data-crossfade')
+    expect(view.queryByText('Læser')).toBeNull()
   })
 
   // Regression vagtet mod den fejl der blev målt 18/11-2026: med

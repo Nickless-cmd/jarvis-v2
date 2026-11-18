@@ -24,9 +24,13 @@
  * `@keyframes rv-skillelinje-ind` og `::after`-reglen også døde, så de er
  * fjernet frem for at stå som en kapacitet ingen flade kalder.
  */
-import { useEffect, useState, type ReactNode, type Ref } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode, type Ref } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { formaterTurTid } from '../../lib/turTid'
+import {
+  visuelTransitionTilCss,
+  type VisuelTransition,
+} from '../../lib/visuelTransition'
 import { RullendeTid } from './RullendeTid'
 import '../../styles/turhoved.css'
 
@@ -37,8 +41,17 @@ export interface TitelCrossfadeProps {
   aktiv?: boolean
   /** Maksimal tid før den samme titel får en ny transition. */
   intervalMs?: number
+  /** Én eksklusiv tids- eller fjedermodel med crossfade som boolsk flag. */
+  transition?: VisuelTransition
   className?: string
 }
+
+const TITEL_TRANSITION = {
+  model: 'duration',
+  durationMs: 180,
+  curve: 'ease-out',
+  crossfade: true,
+} satisfies VisuelTransition
 
 /**
  * Rundelinjens titeltransition som et loft — ikke et ur der roterer fraser.
@@ -64,9 +77,15 @@ export function TitelCrossfade({
   tekst,
   aktiv = false,
   intervalMs = 3500,
+  transition = TITEL_TRANSITION,
   className = '',
 }: TitelCrossfadeProps) {
   const [vist, setVist] = useState({ tekst, transition: 0 })
+  const transitionCss = visuelTransitionTilCss(transition)
+  const transitionStyle = {
+    '--titel-transition-varighed': `${transitionCss.durationMs}ms`,
+    '--titel-transition-kurve': transitionCss.easing,
+  } as CSSProperties
 
   // Serverens trin er den primære trigger og skal kunne ses i samme render.
   if (vist.tekst !== tekst) {
@@ -89,7 +108,8 @@ export function TitelCrossfade({
       <span
         key={vist.transition}
         className="rv-titelCrossfadeTekst"
-        {...(vist.transition > 0 ? { 'data-crossfade': '' } : {})}
+        style={transitionStyle}
+        {...(vist.transition > 0 && transitionCss.crossfade ? { 'data-crossfade': '' } : {})}
       >
         {vist.tekst}
       </span>

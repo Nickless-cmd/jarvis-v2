@@ -70,7 +70,7 @@
   /* Samme 180 ms fade som desks eksisterende svar-ankomst. De målte
      0.24/0.18-doubles fra oai_reasoning er ikke knyttet sikkert til TITLE og
      bruges derfor ikke som specifikation her. */
-  animation: rv-titel-crossfade 180ms ease-out;
+  animation: rv-titel-crossfade var(--titel-transition-varighed) var(--titel-transition-kurve);
 }
 
 @keyframes rv-titel-crossfade {

@@ -49,7 +49,7 @@
    MÅLT 4/10-2026 med headless chromium: hjulet er 8,05 × 13 px på en linje
    med 20,15 px line-height — det sidder uden at flytte linjen. Ulaempet
    token-rulning stod stille 20 % af tiden ved ~60 opdateringer/sek; derfor
-   har token-hjulene en kortere overgang (se `hjul-hurtig`). */
+   har token-hjulene en strammere fjeder (se `HJUL_HURTIG_TRANSITION`). */
 .rullende {
   display: inline-flex; align-items: baseline;
   color: var(--fg-2);
@@ -95,11 +95,10 @@
   align-items: center; justify-content: center;
   will-change: transform;
 }
-.rullende .hjul-ciffer--ind-op { animation: hjul-ind-op .45s cubic-bezier(.22, 1, .36, 1) both; }
-.rullende .hjul-ciffer--ud-op { animation: hjul-ud-op .45s cubic-bezier(.22, 1, .36, 1) both; }
-.rullende .hjul-ciffer--ind-ned { animation: hjul-ind-ned .45s cubic-bezier(.22, 1, .36, 1) both; }
-.rullende .hjul-ciffer--ud-ned { animation: hjul-ud-ned .45s cubic-bezier(.22, 1, .36, 1) both; }
-.rullende .hjul.hjul-hurtig .hjul-ciffer { animation-duration: .22s; }
+.rullende .hjul-ciffer--ind-op { animation: hjul-ind-op var(--hjul-transition-varighed) var(--hjul-transition-kurve) both; }
+.rullende .hjul-ciffer--ud-op { animation: hjul-ud-op var(--hjul-transition-varighed) var(--hjul-transition-kurve) both; }
+.rullende .hjul-ciffer--ind-ned { animation: hjul-ind-ned var(--hjul-transition-varighed) var(--hjul-transition-kurve) both; }
+.rullende .hjul-ciffer--ud-ned { animation: hjul-ud-ned var(--hjul-transition-varighed) var(--hjul-transition-kurve) both; }
 @keyframes hjul-ind-op { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes hjul-ud-op { from { transform: translateY(0); } to { transform: translateY(-100%); } }
 @keyframes hjul-ind-ned { from { transform: translateY(-100%); } to { transform: translateY(0); } }

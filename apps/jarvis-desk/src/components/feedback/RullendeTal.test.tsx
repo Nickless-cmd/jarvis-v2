@@ -31,6 +31,15 @@ describe('RullendeTal', () => {
     expect(container.querySelectorAll('.hjul-ciffer--ind-op')).toHaveLength(1)
   })
 
+  it('driver hjulenes bevægelse med den genererede fjederkurve', () => {
+    const { container, rerender } = render(<RullendeUr sek={9} />)
+    rerender(<RullendeUr sek={10} />)
+
+    const hjul = container.querySelector('.hjul-ciffer--ind-op')?.closest('.hjul') as HTMLElement
+    expect(hjul.style.getPropertyValue('--hjul-transition-kurve')).toMatch(/^linear\(/)
+    expect(hjul.style.getPropertyValue('--hjul-transition-varighed')).toMatch(/^\d+ms$/)
+  })
+
   /** Uret skriver «5s»/«45s»/«1m 12s» — ikke «00:05». */
   it('uret skriver varigheden som «1m 12s»', () => {
     const { container } = render(<RullendeUr sek={72} />)

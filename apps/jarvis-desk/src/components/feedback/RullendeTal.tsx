@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { varighed } from '../../lib/jobsApi'
+import { visuelTransitionTilCss, type VisuelTransition } from '../../lib/visuelTransition'
 
 /** Rullende tal til liveness-linjen (Bjørn 4/10-2026).
  *
@@ -15,6 +16,15 @@ import { varighed } from '../../lib/jobsApi'
  */
 
 type Retning = 'op' | 'ned'
+
+const HJUL_TRANSITION = {
+  model: 'spring', stiffness: 320, damping: 18, mass: 1, velocity: 0, crossfade: false,
+} satisfies VisuelTransition
+const HJUL_HURTIG_TRANSITION = {
+  model: 'spring', stiffness: 420, damping: 32, mass: 0.85, velocity: 0, crossfade: false,
+} satisfies VisuelTransition
+const HJUL_TRANSITION_CSS = visuelTransitionTilCss(HJUL_TRANSITION)
+const HJUL_HURTIG_TRANSITION_CSS = visuelTransitionTilCss(HJUL_HURTIG_TRANSITION)
 
 /** Ét ciffer-hjul. `cyklus` er antallet af tal på hjulet (6 eller 10). */
 function CifferHjul({
@@ -32,12 +42,21 @@ function CifferHjul({
   const forrigeRef = useRef<number | null>(null)
   const forrige = forrigeRef.current
   const animer = forrige !== null && forrige !== v
+  const transition = hurtig ? HJUL_HURTIG_TRANSITION_CSS : HJUL_TRANSITION_CSS
+  const transitionStyle = {
+    '--hjul-transition-varighed': `${transition.durationMs}ms`,
+    '--hjul-transition-kurve': transition.easing,
+  } as CSSProperties
   useEffect(() => {
     forrigeRef.current = v
   }, [v])
 
   return (
-    <span className={hurtig ? 'hjul hjul-hurtig' : 'hjul'} aria-hidden="true">
+    <span
+      className={hurtig ? 'hjul hjul-hurtig' : 'hjul'}
+      style={transitionStyle}
+      aria-hidden="true"
+    >
       {animer ? (
         <span key={`forrige-${forrige}`} className={`hjul-ciffer hjul-ciffer--forrige hjul-ciffer--ud-${retning}`}>
           {forrige}

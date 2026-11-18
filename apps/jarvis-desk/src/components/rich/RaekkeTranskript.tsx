@@ -21,7 +21,7 @@
  * Prosaen går stadig gennem `BlocksRenderer`, så markdown, kodeblokke og
  * billeder er nøjagtig som i bobblevisningen.
  */
-import { memo, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { Sparkles, Sparkle, ChevronDown, Check, X, CircleSlash, Loader2, type LucideIcon } from 'lucide-react'
 import { FoldPil, TurHoved } from './TurHoved'
 import type { ContentBlock } from '../../lib/sseProtocol'
@@ -40,7 +40,7 @@ import { useFoldPosition } from './useFoldPosition'
 import { useFoldHukommelse } from '../../lib/foldHukommelse'
 import { BilledArbejdeAnimation, levendeBilledArbejde } from './ImageGeneration'
 import { JarvisRing } from '../shell/JarvisRing'
-import { RullendeTokens, RullendeUr } from '../feedback/RullendeTal'
+import { RullendeCifre, RullendeTokens, RullendeUr } from '../feedback/RullendeTal'
 
 /** Første linje af en tanke — resten ligger i kroppen. */
 function foersteLinje(s: string): string {
@@ -64,6 +64,25 @@ function foersteLinje(s: string): string {
  * `git-add`/`git-del` er desks egne, pinnet af tokens.test.ts og brugt fem
  * steder i forvejen (ToolCard, ToolGroupCard, ReviewPanel, ArtifactsView). Vi
  * låner dem — rækkevisningen skal ikke have sin egen grønne og røde. */
+
+/** Et diff-tal der ruller som uret (Bjørn 18/11-2026: «kan de gøres
+ *  rullende? lige som timeren?»). Retningen følger ændringen, så hjulet
+ *  ruller ned hvis tallet falder — samme regel som token-tælleren.
+ *
+ *  `+`/`−` står UDEN om `RullendeCifre`: de er notation, ikke tal, og
+ *  `.rullende .tegn` ville male dem grå. Inde i `git-add`/`git-del` beholder
+ *  de rækkens grønne/røde. Hjulene arver heller ikke farven af sig selv —
+ *  `.rullende` sætter `color: var(--fg-2)`, så `raekkevisning.css` binder
+ *  `.hjul-ciffer` til `--rv-tilf`/`--rv-fjern` eksplicit. */
+function RullendeDiffTal({ vaerdi }: { vaerdi: number }) {
+  const forrige = useRef(vaerdi)
+  const retning: 'op' | 'ned' = vaerdi >= forrige.current ? 'op' : 'ned'
+  useEffect(() => {
+    forrige.current = vaerdi
+  }, [vaerdi])
+  return <RullendeCifre tekst={String(vaerdi)} retning={retning} />
+}
+
 function DiffStat({ add, del }: { add: number; del: number }) {
   if (add <= 0 && del <= 0) return null
   const linjer = (n: number) => `${n} ${n === 1 ? 'linje' : 'linjer'}`
@@ -73,9 +92,17 @@ function DiffStat({ add, del }: { add: number; del: number }) {
   ].filter(Boolean).join(', ')
   return (
     <span className="rv-diffstat" aria-label={label}>
-      {add > 0 && <span className="git-add">+{add}</span>}
+      {add > 0 && (
+        <span className="git-add">
+          +<RullendeDiffTal vaerdi={add} />
+        </span>
+      )}
       {add > 0 && del > 0 ? ' ' : null}
-      {del > 0 && <span className="git-del">−{del}</span>}
+      {del > 0 && (
+        <span className="git-del">
+          −<RullendeDiffTal vaerdi={del} />
+        </span>
+      )}
     </span>
   )
 }

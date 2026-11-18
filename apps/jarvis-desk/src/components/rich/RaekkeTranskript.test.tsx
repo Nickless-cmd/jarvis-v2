@@ -725,6 +725,33 @@ describe('RaekkeTranskript', () => {
     expect(container.querySelector('.rv-diffstat .git-del')?.textContent).toBe('−2')
   })
 
+  it('lader diff-tallene rulle som uret når de ændrer sig', () => {
+    // Bjørn 18/11-2026: «kan de gøres rullende? lige som timeren?»
+    // Cifrene er `RullendeCifre`s hjul, men `+`/`−` står UDEN om dem, så
+    // notationen beholder sin grønne/røde farve. Målt i chromium før og
+    // efter: rgb(86,211,100) og rgb(255,123,134) — uændret, også gennem
+    // shimmerens tekstmaske. Hjulene arver ikke farven af sig selv
+    // (`.rullende` sætter --fg-2), så `raekkevisning.css` binder dem.
+    const med = (tilfoejet: number): ContentBlock[] => [
+      { type: 'tool_use', id: 'w7', name: 'write_file', input: { path: 'f.ts', content: 'x' },
+        result: `{"linjer_tilfoejet": ${tilfoejet}, "linjer_fjernet": 2}` },
+      tekst('Skrevet.'),
+    ]
+    const { container, rerender } = render(<RaekkeTranskript blocks={med(4)} streaming />)
+    // Første visning ruller ikke — hjulet monteres direkte på sit tal.
+    expect(container.querySelectorAll('.rv-diffstat .hjul-ciffer--ind-op')).toHaveLength(0)
+    expect(container.querySelector('.rv-diffstat .git-add .hjul-ciffer')?.textContent).toBe('4')
+    expect(container.querySelector('.rv-diffstat .git-add')?.firstChild?.textContent).toBe('+')
+
+    rerender(<RaekkeTranskript blocks={med(5)} streaming />)
+    // 4 → 5: præcis én rulning pr. diffstat (rækken OG den foldbare
+    // arbejdsknap tegner den), og `+` står stadig uden for hjulet.
+    const addStats = container.querySelectorAll('.rv-diffstat .git-add')
+    expect(addStats.length).toBeGreaterThan(0)
+    for (const s of addStats) expect(s.querySelectorAll('.hjul-ciffer--ind-op')).toHaveLength(1)
+    for (const s of addStats) expect(s.firstChild?.textContent).toBe('+')
+  })
+
   it('viser grønne og røde diff-tal på den foldbare arbejdsrække', () => {
     const redigering: ContentBlock[] = [
       kald('edit_file', { path: 'a.ts', old_text: 'a', new_text: 'a\nb' }),

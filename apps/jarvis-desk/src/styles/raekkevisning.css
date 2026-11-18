@@ -717,6 +717,20 @@
 .raekkevisning .shimmer .rv-diffstat .git-add { -webkit-text-fill-color: var(--rv-tilf); }
 .raekkevisning .shimmer .rv-diffstat .git-del { -webkit-text-fill-color: var(--rv-fjern); }
 
+/* Diff-TALLENE ruller som uret (Bjørn 18/11-2026: «kan de gøres rullende?
+   lige som timeren?»). `+`/`−` er notation og står stille — de ligger uden
+   om hjulene, så de beholder farven ovenfor.
+
+   Hjulene arver den IKKE af sig selv: `.rullende` sætter `color:
+   var(--fg-2)`, så uden reglen herunder stod tallene grå inde i en grøn
+   række. Fire klasser slår `.rullende .hjul-ciffer`s to. Fyldfarven sættes
+   også eksplicit — samme grund som rundeurene: shimmerens transparente
+   tekstfyld vinder ellers i Electron gennem flex-laget. */
+.raekkevisning .rv-diffstat .git-add .hjul-ciffer { color: var(--rv-tilf); }
+.raekkevisning .rv-diffstat .git-del .hjul-ciffer { color: var(--rv-fjern); }
+.raekkevisning .shimmer .rv-diffstat .git-add .hjul-ciffer { -webkit-text-fill-color: var(--rv-tilf); }
+.raekkevisning .shimmer .rv-diffstat .git-del .hjul-ciffer { -webkit-text-fill-color: var(--rv-fjern); }
+
 /* Rundeurenes cifre er målingen og står i `--fg-2`; tidsleddene `m`/`s` er
    notation og følger den samme rolige grå som resten af rundelinjen. Begge
    sættes eksplicit, fordi shimmerens transparente tekstfyld ellers vinder i

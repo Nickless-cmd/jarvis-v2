@@ -645,13 +645,23 @@ export function ChatFlowPresentation({
               </div>
             ) : null}
 
-            {/* Arbejdsdetaljerne er en hel blok-liste, ikke en linje. De bliver
-                derfor AFMONTERET når folden er lukket — i modsætning til
-                aktivitetsblokken ovenfor. Prisen for at holde dem monteret
-                permanent (ydeevne, skjult indhold i tilgængelighedstræet) er
-                større end gevinsten: det er den levende linje der blinker,
-                ikke detaljerne, og de skal først kunne ses når man folder ud. */}
-            {foldWork.length > 0 && arbejdeAabent ? (
+            {/* Arbejdsdetaljerne bliver OGSÅ i DOM'en (18/11-2026 — blink 1,
+                anden halvdel). De var de sidste der blev afmonteret ved lukket
+                fold: man foldede ud, klikkede luk, og i samme frame som rækken
+                begyndte at glide var indholdet væk — rækken gled tom.
+                Gaten er derfor ikke `arbejdeAabent` alene, men tre tilfælde:
+                  · brugeren har åbnet folden        → monteret og synligt
+                  · turen er slut                    → monteret, rammen skjuler
+                  · turen kører og er ikke åbnet     → IKKE monteret
+                Det sidste er ikke en undtagelse for nemhedens skyld: i den
+                levende fold har detaljerne aldrig været vist (rundelinjen er
+                turens ansigt), så der er intet at animere — og `foldWork` er
+                fyldt allerede under streaming, så en ubetinget montering ville
+                vælte hele arbejdsloggen ind under rundelinjen midt i turen.
+                Prisen i de to første tilfælde holdes nede af rammen: den
+                lukkede gruppe er `display: none`, så browseren springer layout
+                og maling af undertræet over. */}
+            {foldWork.length > 0 && (arbejdeAabent || !turenKoerer) ? (
               <div className="chat-flow-work-details">
                 <BlocksRenderer blocks={foldWork} density={density} streaming={streaming}
                   rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}

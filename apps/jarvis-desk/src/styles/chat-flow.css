@@ -190,6 +190,28 @@
   display: none;
 }
 
+/* ÅBNINGEN (18/11-2026 — blink 1, anden halvdel).
+ *
+ * `allow-discrete` giver lukningen en glidning, men ikke åbningen: et element
+ * der er `display: none` har ingen FØR-tilstand, så den første frame efter
+ * skiftet viser allerede fuld højde. Målt 18/11-2026: 24,78px ved t=0 — et hop
+ * ind, mens lukningen gled pænt ud. Asymmetrien var hele det blink der blev
+ * tilbage.
+ *
+ * `@starting-style` giver netop den manglende før-tilstand: den gælder den
+ * første style-beregning efter elementet bliver renderet (altså når `display`
+ * skifter væk fra `none`), og transitionen løber derfra. Uden den er reglen
+ * ovenfor stadig korrekt — den er bare kun halv.
+ *
+ * Kræver Chromium 117+/Safari 17.4+; begge er under det Desk og telefonen
+ * kører. Er den ikke understøttet, falder den tilbage til det gamle hop —
+ * den er en forbedring, ikke en forudsætning. */
+@starting-style {
+  .chat-flow-gruppe-ydre[data-aaben='true'] {
+    grid-template-rows: 0fr;
+  }
+}
+
 .chat-flow-gruppe-ydre > .chat-flow-gruppe {
   /* Uden `min-height: 0` nægter et grid-barn at krympe under sit indhold, og
      rækken kan ikke lukkes i det hele taget. */

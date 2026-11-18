@@ -77,6 +77,22 @@ describe('chat mode — foldet glider i stedet for at blinke', () => {
     expect(regel('.chat-flow-gruppe-ydre')).not.toMatch(/display:\s*none/)
   })
 
+  it('åbningen har en før-tilstand — ellers hopper folden ind', () => {
+    // 18/11-2026, anden halvdel af blink 1. `allow-discrete` giver LUKNINGEN
+    // en glidning, men ikke åbningen: et element der er `display: none` har
+    // ingen før-tilstand, så første frame efter skiftet viser fuld højde.
+    // Målt: 24,78px ved t=0 mens lukningen gled pænt ud. Asymmetrien VAR
+    // det blink der blev tilbage.
+    //
+    // `@starting-style` er den eneste CSS-mekanisme der giver den manglende
+    // før-tilstand. Fjernes den, er reglen om `allow-discrete` stadig grøn —
+    // den er bare kun halv. Derfor står den her som sin egen påstand.
+    expect(css).toMatch(/@starting-style\s*\{/)
+    expect(css).toMatch(
+      /@starting-style\s*\{\s*\.chat-flow-gruppe-ydre\[data-aaben='true'\]\s*\{\s*grid-template-rows:\s*0fr/,
+    )
+  })
+
   it('respekterer prefers-reduced-motion', () => {
     expect(css).toMatch(
       /prefers-reduced-motion[\s\S]{0,200}?\.chat-flow-gruppe-ydre\s*\{\s*transition:\s*none/,

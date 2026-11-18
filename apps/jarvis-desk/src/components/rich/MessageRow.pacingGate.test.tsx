@@ -49,7 +49,14 @@ describe('MessageRow — bunden venter på pacen', () => {
     const { container } = render(<MessageRow presentation="chat" chatMode="living" status="done"
       role="assistant" blocks={REDIGERING} density="compact" streaming={false} />)
     expect(container.querySelector('.edited-files')).toBeNull()
-    expect(screen.queryByText(/Redigerede/)).not.toBeInTheDocument()
+    // 18/11-2026: arbejdsloggen bliver nu i DOM'en også når folden er lukket
+    // (blink 1), så «Redigerede» kan stå som en linje i den LUKKEDE fold.
+    // Reglen gælder bund-FELTET, ikke loggens egne linjer — så påstanden er at
+    // hver forekomst er inde i den lukkede fold, ikke at ordet er fraværende.
+    const lukketFold = container.querySelector(".chat-flow-gruppe-ydre[data-aaben='false']")
+    for (const forekomst of screen.queryAllByText(/Redigerede/)) {
+      expect(lukketFold?.contains(forekomst)).toBe(true)
+    }
   })
 
   it('holder kilderne tilbage mens pacen stadig ruller', () => {

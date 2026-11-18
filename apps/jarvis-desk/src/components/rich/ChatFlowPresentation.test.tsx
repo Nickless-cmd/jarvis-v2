@@ -194,6 +194,10 @@ describe('ChatFlowPresentation', () => {
     // — den hører i svar-lanen. Den kan stadig stå i den levende synteselinje,
     // som er turens ansigt mens den kører; det er en anden flade med en anden
     // rolle, og den forsvinder når turen slutter.
+    //
+    // 18/11-2026: under streaming er den levende fold ikke åbnet, og detaljerne
+    // er bevidst ikke monteret (se gaten i komponenten) — så kravet er stadig
+    // «findes ikke her».
     expect(gruppe.querySelector('.chat-flow-work-details')).toBeNull()
     expect(view.container.querySelector('.chat-flow-answer')).toHaveTextContent('Første bekræftede svar.')
     expect(view.container.querySelector('.chat-flow-answer')).toHaveTextContent('Supplerende svar.')
@@ -644,5 +648,31 @@ describe('ChatFlowPresentation — turhovedet fra første ord', () => {
       onAnswerPaced={onAnswerPaced} />)
 
     expect(onAnswerPaced).toHaveBeenCalledOnce()
+  })
+
+  it('lader arbejdsdetaljerne blive i DOM\'en når folden lukkes (blink 1)', () => {
+    // Bjørn 18/11-2026: «lad indholdet blive i DOM'en». Detaljerne var de sidste
+    // der blev afmonteret ved lukket fold — man foldede ud, klikkede luk, og i
+    // samme frame som rækken begyndte at glide var indholdet væk: rækken gled
+    // TOM i stedet for at glide sammen.
+    const blokke: ContentBlock[] = [
+      { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+      { type: 'text', text: 'Det færdige svar.' },
+    ]
+    const { container } = render(<ChatFlowPresentation {...common} mode="living"
+      blocks={blokke} streaming={false} status="done" finalAnswerStarted />)
+
+    const ydre = container.querySelector('.chat-flow-gruppe-ydre') as HTMLElement
+    expect(ydre).toHaveAttribute('data-aaben', 'false')
+
+    // Kernen: den LUKKEDE fold har stadig sit indhold.
+    const detaljer = ydre.querySelector('.chat-flow-work-details')
+    expect(detaljer).not.toBeNull()
+
+    // Og det er SAMME node når folden åbnes. Er identiteten ny, er der sket en
+    // af- og genmontering undervejs — og så er der intet at animere fra.
+    fireEvent.click(container.querySelector('.rv-tur') as HTMLElement)
+    expect(container.querySelector('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
+    expect(container.querySelector('.chat-flow-work-details')).toBe(detaljer)
   })
 })

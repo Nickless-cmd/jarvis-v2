@@ -79,7 +79,13 @@ describe('godkendelsen når folden gennem MessageRow', () => {
     )
 
     // Folden er lukket som udgangspunkt — godkendelsen må ikke stå frit.
-    expect(screen.queryByText(/Godkendt/)).toBeNull()
+    // 18/11-2026: indholdet bliver i DOM'en (blink 1), så påstanden er ikke
+    // længere «findes ikke», men «står kun inde i den lukkede fold».
+    const lukketFold = container.querySelector(".chat-flow-gruppe-ydre[data-aaben='false']")
+    expect(lukketFold).not.toBeNull()
+    for (const forekomst of screen.queryAllByText(/Godkendt/)) {
+      expect(lukketFold!.contains(forekomst)).toBe(true)
+    }
 
     // Åbn arbejdet: turhovedet ER knappen (`.rv-tur`), og den findes kun når
     // der er arbejde at folde ud. Den anden fold-knap (`.chat-flow-round-fold`)

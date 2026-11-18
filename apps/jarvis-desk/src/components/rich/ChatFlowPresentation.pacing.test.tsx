@@ -316,8 +316,12 @@ describe('ChatFlowPresentation — hovedet under pacen (30/10-2026)', () => {
     // 3. Foldet er lukket, så pacen ikke ruller inde i hovedet.
     expect(hoved).toHaveAttribute('aria-expanded', 'false')
 
-    // 4. Arbejdsvisningen er ikke monteret — svaret har ingen vej ind i den.
-    expect(view.container.querySelector('.chat-flow-work-details')).toBeNull()
+    // 4. Arbejdsvisningen bliver i DOM'en (blink 1, 18/11-2026) — men folden er
+    //    lukket, og svaret har stadig ingen vej ind i den.
+    expect(view.container.querySelector('.chat-flow-gruppe-ydre'))
+      .toHaveAttribute('data-aaben', 'false')
+    expect(view.container.querySelector('.chat-flow-work-details')?.textContent ?? '')
+      .not.toContain(LANG.slice(0, 24))
     // Og teksten står i svar-lanen, som er en SØSKEN til hovedet.
     expect(answerText(view.container).length).toBeGreaterThan(0)
   })

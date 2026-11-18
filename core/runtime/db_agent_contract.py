@@ -550,6 +550,44 @@ _ERROR_PHASE = {"failed": "model", "cancelled": "recovery", "expired": "budget"}
 _ERROR_CODE = {"failed": "AGENT_FAILED", "cancelled": "CANCELLED", "expired": "TIMED_OUT"}
 
 
+#: Workerens egne koder (``agent_worker_runner.WorkerError``) -> (kode, fase).
+#:
+#: 18/11-2026: fejlhandleren i ``agent_runtime_spawn`` laeste
+#: ``getattr(exc, "error_code", "")`` — men ``WorkerError`` gemmer koden i
+#: ``.code``. Feltet fandtes ikke, saa hver worker-fejl faldt til tabellen og
+#: paastod at MODELLEN fejlede. Maalt i den levende DB: 5 af 5 runs med
+#: ``CANCELLED: agenten blev annulleret`` stod som ``AGENT_FAILED``/``model``,
+#: og de 5 var 5 af de 8 ``AGENT_FAILED`` der findes.
+#:
+#: Fasen er familien, koden er praecisionen — samme moenster som
+#: ``LEASE_EXPIRED``/``recovery`` og ``CLI_BACKEND_FAILED``/``execution``.
+#: ``cancelled`` og ``approval`` er nye faser, fordi de to ellers ville blive
+#: rapporteret som fejl i noget der ikke fejlede: en annullering er et tilsigtet
+#: stop, og en afventende godkendelse er en pause — ikke et sammenbrud.
+_WORKER_FEJL: dict[str, tuple[str, str]] = {
+    "PROTOCOL": ("WORKER_PROTOCOL", "execution"),
+    "TOOL_NOT_ALLOWED": ("TOOL_NOT_ALLOWED", "execution"),
+    "CAPACITY": ("WORKER_CAPACITY", "budget"),
+    "APPROVAL_PENDING": ("APPROVAL_PENDING", "approval"),
+    "OUTCOME_UNKNOWN": ("OUTCOME_UNKNOWN", "recovery"),
+    "LEASE_LOST": ("LEASE_LOST", "recovery"),
+    "TIMEOUT": ("WORKER_TIMEOUT", "execution"),
+    "CANCELLED": ("CANCELLED", "cancelled"),
+    "WORKER_DIED": ("WORKER_DIED", "execution"),
+    "WORKER_ERROR": ("WORKER_ERROR", "execution"),
+}
+
+
+def worker_error_kode(code: str) -> tuple[str, str]:
+    """(error_code, error_phase) for en ``WorkerError``-kode — ellers ("", "").
+
+    Eksakt match, ikke ``.upper()``: ``CheapProviderError`` baerer ogsaa en
+    ``.code``, men i smaa bogstaver (``timeout``, ``unreachable``). En
+    normalisering ville goere en provider-timeout til en worker-fejl.
+    """
+    return _WORKER_FEJL.get(str(code or ""), ("", ""))
+
+
 def bind_agent_owner(*, agent_id: str, owner_user_id: str, owner_session_id: str) -> None:
     """Stempl den autentificerede ejer paa agenten. Skriver kun naar agenten
     endnu er `legacy_unscoped`; en eksisterende ejer ændres aldrig (§4)."""
@@ -699,6 +737,41 @@ def partial_delivery_error(
     if kode:
         return kode, fase
     return _ERROR_CODE.get(registry_status, ""), _ERROR_PHASE.get(registry_status, "")
+
+
+def error_fra_exception(
+    exc: BaseException,
+    *,
+    registry_status: str = "failed",
+    full: str = "",
+    last_error: str = "",
+) -> tuple[str, str]:
+    """(error_code, error_phase) for en vilkaarlig undtagelse fra agent-koerslen.
+
+    18/11-2026: raekkefoelgen er markeringen -> undtagelsens egne felter ->
+    workerens kode -> den eksisterende kaede i :func:`partial_delivery_error`.
+
+    Undtagelsens ``code`` gates paa TYPEN og ikke paa feltnavnet, fordi flere
+    undtagelser baerer et ``.code`` med hver sin betydning (``ContractError``,
+    ``CheapProviderError``, ``WorkerError``).
+    """
+    text = str(full or "")
+    if text.strip() and "UFULDSTÆNDIG" in text:
+        return _incomplete_kode(text)
+    kode = str(getattr(exc, "error_code", "") or "").strip()
+    if kode:
+        fase = str(getattr(exc, "error_phase", "") or "").strip()
+        return kode, fase or _ERROR_PHASE.get(registry_status, "")
+    try:
+        from core.services.agent_worker_runner import WorkerError
+    except Exception:  # pragma: no cover — worker-modulet er altid der
+        WorkerError = ()  # type: ignore[assignment]
+    if isinstance(exc, WorkerError):
+        kode, fase = worker_error_kode(str(getattr(exc, "code", "") or ""))
+        if kode:
+            return kode, fase
+    return partial_delivery_error(
+        full=full, registry_status=registry_status, last_error=last_error)
 
 
 def _markering_grund(text: str) -> str:

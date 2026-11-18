@@ -1066,14 +1066,24 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
         # `agent_runs`-raekken uden de to felter. Samme koersel stod derfor med to
         # sandheder — og den raekke jeg selv slaar op i foerst, sagde ingenting.
         # En delvis leverance er ikke en model-fejl; fasen skal sige det den ved.
+        # 18/11-2026: WorkerError baerer `.code`, ikke `.error_code`.
+        #
+        # Maalt i den levende DB: 5 af 5 runs hvis fejltekst var
+        # `CANCELLED: agenten blev annulleret` stod som `AGENT_FAILED`/`model` —
+        # og de 5 var 5 af de 8 `AGENT_FAILED` der findes. `getattr(exc,
+        # "error_code", "")` er altid tom for en WorkerError
+        # (`agent_worker_runner.py:50` gemmer koden i `.code`), saa hver
+        # worker-fejl faldt til tabellen og paastod at MODELLEN fejlede.
+        # En annullering er ikke en modelfejl; koden skal med.
         _err_code = str(getattr(exc, "error_code", "") or "")
         _err_phase = str(getattr(exc, "error_phase", "") or "")
-        if not _err_code:
-            try:
-                from core.runtime.db_agent_contract import partial_delivery_error
-                _err_code, _err_phase = partial_delivery_error(full=message, registry_status="failed")
-            except Exception:
-                logger.warning("partial_delivery_error fejlede for %s", run_id, exc_info=True)
+        try:
+            from core.runtime.db_agent_contract import error_fra_exception
+            _err_code, _err_phase = error_fra_exception(
+                exc, registry_status="failed", full=message)
+        except Exception:
+            logger.warning("fejlkode-udledning fejlede for %s — bruger raa felter",
+                           run_id, exc_info=True)
         # 27/10-2026: `output_summary` blev KUN sat paa SUCCES-stien (linje ~899).
         # Maalt i den levende DB: 6 af 6 fejlede koersler havde en TOM summary, mens
         # 0 af 9 `completed` havde det. `scout_inbox_delivery` laeser praecis det felt

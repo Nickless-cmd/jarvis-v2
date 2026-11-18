@@ -124,8 +124,12 @@ export function AgentInspector({
     }
   }
 
-  const send = async () => {
-    const message = draft.trim()
+  const send = async (tekstOverstyring?: string) => {
+    // Teksten kan komme fra FELTET i stedet for fra `draft`: Enter-handleren
+    // sender `event.currentTarget.value`, fordi React-state kan vaere et tick
+    // bagud i forhold til DOM'en under last. Maalt i Composer 18/11-2026:
+    // samme moenster sendte beskeden uden sit sidste tegn.
+    const message = (tekstOverstyring ?? draft).trim()
     if (!message || busy) return
     setBusy(true)
     setError('')
@@ -215,7 +219,7 @@ export function AgentInspector({
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) void send()
+                if (event.key === 'Enter' && !event.shiftKey) void send(event.currentTarget.value)
               }}
               placeholder="Send en besked til agenten"
             />

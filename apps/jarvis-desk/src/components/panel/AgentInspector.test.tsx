@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentInspector } from './AgentInspector'
 import * as api from '../../lib/agentPoolApi'
@@ -60,6 +60,23 @@ describe('AgentInspector', () => {
     await waitFor(() => expect(api.sendTilAgent).toHaveBeenCalledWith(config, 'agent-1', 'Fortsæt'))
     await waitFor(() => expect(input).toHaveValue(''))
     expect(api.getAgentDetalje).toHaveBeenCalledTimes(2)
+  })
+
+  it('Enter sender teksten der STAAR i feltet, ikke en state der er et tick bagud', async () => {
+    vi.spyOn(api, 'sendTilAgent').mockResolvedValue({ status: 'ok' })
+    render(<AgentInspector config={config} agent={reference} canMessage />)
+    const input = (await screen.findByRole('textbox', {
+      name: 'Besked til agenten',
+    })) as HTMLInputElement
+    // Bevidst UDEN `fireEvent.change`: teksten staar i feltet, men React-state
+    // er stadig tom — det er state-efterslaeber, ikke en test-genvej. Maalt i
+    // Composer 18/11-2026: `send()` laeste `draft`, og beskeden gik ud uden
+    // sit sidste tegn naar det sidste input-event ikke var committet endnu.
+    input.value = 'Følg også linket'
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await waitFor(() =>
+      expect(api.sendTilAgent).toHaveBeenCalledWith(config, 'agent-1', 'Følg også linket'),
+    )
   })
 
   it('viser afsluttede agenter uden handlinger eller composer', async () => {

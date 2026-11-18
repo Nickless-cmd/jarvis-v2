@@ -277,6 +277,15 @@ def _command(provider: str, executable: str, model: str, root: str, prompt: str,
                 # derfor hverken køre vitest eller en sammensat kommando, og
                 # afleverede uden at have målt noget (asg-17fb07b6bf1b4ea9).
                 # `--allowedTools Bash` lukker den forskel; målt grøn bagefter.
+                #
+                # (18/11-2026) Flaget er ikke længere det der AFGØR sagen: målt
+                # mod CLI 2.1.9 kører `echo X && python3 --version` også UDEN
+                # `--allowedTools`, både med og uden `--restricted`, så længe
+                # `Bash` står i `--tools`. Det afgørende er `--tools`: fjernes
+                # `Bash` dér, afvises kaldet (`permission_denials` ikke-tom).
+                # Flaget bliver stående — det er målt virksomt og harmløst — men
+                # en fremtidig oprydning må ikke læse denne linje som om
+                # `--tools` kan undvære `Bash`. Det kan den ikke.
                 "--allowedTools", "Bash"]
     if selected and selected != "default":
         cmd += ["--model", selected]

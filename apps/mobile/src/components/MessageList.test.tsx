@@ -44,7 +44,10 @@ it('lader en stor live-tekst komme frem i flere trin og viser alt ved afslutning
     expect(view.queryByText(text)).toBeNull()
     await view.rerender(<MessageList messages={[]} blocks={[{ type: 'text', text }]} working={false} />)
     expect(view.queryByText(text)).toBeNull()
-    await act(async () => { jest.advanceTimersByTime(2000) })
+    // 18/11-2026: 2000 ms var den gamle kadence (848 tegn/s, et loft). Pacen
+    // er nu desks model, der fordeler efterslæbet i stedet for at klippe det:
+    // 348 tegn lander på ~4 s. Kontrakten er at ALT er vist ved afslutning.
+    await act(async () => { jest.advanceTimersByTime(6000) })
     expect(view.getByText(text)).toBeTruthy()
   } finally { jest.useRealTimers() }
 })

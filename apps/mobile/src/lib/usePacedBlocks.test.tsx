@@ -22,7 +22,12 @@ it('mobilen viser en hurtig tekstbid over flere trin og fortsætter pacen ved st
   const afterStop = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text
   expect(afterStop.length).toBeGreaterThan(first.length)
   expect(afterStop.length).toBeLessThan(text.length)
-  await act(async () => { jest.advanceTimersByTime(2000) })
+  // 18/11-2026: budgettet var 2000 ms, som var den gamle kadence (28 tegn pr.
+  // 33 ms-tick = 848 tegn/s). Modellen er nu desks, og den fordeler
+  // efterslæbet over 2 s i stedet for at klippe det: 360 tegn lander på
+  // ~4 s — samme kurve som desk er målt til (300 tegn = 3,45 s, 500 = 4,45 s).
+  // Kontrakten er at teksten BLIVER færdig, ikke hvor hurtigt.
+  await act(async () => { jest.advanceTimersByTime(6000) })
   expect((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text).toBe(text)
 })
 

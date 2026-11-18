@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+import json
 
 import pytest
 
@@ -245,7 +246,12 @@ def test_module_imports_only_the_standard_library():
     # 11/11-2026: `datetime` tilfoejet. Den er standardbibliotek og altid monteret,
     # saa vagtens hensigt (ingen tredjepart i sandkassen) er uaendret. Den bruges til
     # at laese kontraktens `deadline_at`, som ellers var dekoration i loopet.
-    assert mods <= {"__future__", "datetime", "logging", "re", "time", "typing"}, mods
+    # 18/11-2026: `ipaddress`, `json` og `os` tilfoejet af samme grund — alle tre er
+    # standardbibliotek og altid monteret. `json` og `ipaddress` baerer
+    # blokeringssignalet (vaerktoejssvaret ER JSON, og CIDR-daekning kraever
+    # ipaddress); `os` laeser flaget der slaar signalet til.
+    assert mods <= {"__future__", "datetime", "ipaddress", "json", "logging", "os",
+                    "re", "time", "typing"}, mods
 
 
 def test_a_plain_answer_ends_after_one_round():
@@ -574,3 +580,96 @@ def test_en_afsluttet_leverance_bliver_ikke_doemt_som_loefte():
     # blev målt som modtræk og forkastet: det fjernede to ÆGTE træf (færdige leverancer
     # der blev dømt på `jeg <verb>` inde i et kodecitat). Heuristikken kan ikke skelne
     # omtale fra brug uden at svække vagten, så grænsen står her frem for at være usynlig.
+
+
+# ── Blokeringssignal bag flag (18/11-2026) ────────────────────────────────────
+# Målt på de otte kørsler der blev stemplet «agenten kunne skrive men skrev intet»:
+# syv var ægte cliffhangere, én var en ærlig blokering (`asg-fe4d17b42e594a4f`,
+# pihole 16/11). Ankeret fangede 1/1 med 0/7 falske positive og fyrer på 1 af 255
+# kørsler i alt. n=1 er grunden til at det står bag et flag.
+#
+# Beviset for blokeringen stod i **stdout** — stderr var tom. Det er hele pointen:
+# en vagt der kun læser stderr fyrer aldrig på den sag den blev bygget til.
+
+_BLOK_PROMPT = "Find og ret blokeringen af 10.0.0.0/24 — pihole svarer ikke."
+_GAMMEL_DOM = "agenten kunne skrive men skrev intet"
+
+
+def _kald(stdout="", stderr="", exit_code=0, status="ok"):
+    """Et værktøjssvar i produktionens format: ydre JSON med ``text`` = indre JSON."""
+    return json.dumps({"status": status, "text": json.dumps(
+        {"stdout": stdout, "stderr": stderr, "exit_code": exit_code})})
+
+
+def _tc_args(i, name, args):
+    return {"id": f"c{i}", "function": {"name": name, "arguments": json.dumps(args)}}
+
+
+class _KaldIO(FakeIO):
+    """FakeIO hvor hvert værktøjssvar er forskelligt — som i virkeligheden."""
+
+    def __init__(self, replies, tool_outs):
+        super().__init__(replies)
+        self.tool_outs = list(tool_outs)
+
+    def tool(self, tc):
+        self.tool_calls.append(tc["id"])
+        return self.tool_outs.pop(0)
+
+
+def _blokerings_io():
+    """Pihole-kørslens form: to kald mod samme ressource, begge stoppet af sandkassen."""
+    return _KaldIO(
+        replies=[
+            {"text": "", "tool_calls": [_tc_args(1, "wt_bash", {"command": "ping -c1 10.0.0.2"})]},
+            {"text": "Blokeringen sidder foran 10.0.0.2: sandkassen nægter rå netværk."},
+            {"text": "Blokeringen sidder foran 10.0.0.2: sandkassen nægter rå netværk."},
+        ],
+        tool_outs=[_kald(
+            stdout="ping: socket: Operation not permitted\nmissing cap_net_raw+p capability",
+            exit_code=2)],
+    )
+
+
+def test_en_aerlig_blokering_bliver_ikke_stemplet_som_et_svigt(monkeypatch):
+    monkeypatch.setenv("JARVIS_AGENT_BLOCK_SIGNAL", "1")
+    out = _run(_blokerings_io(), prompt=_BLOK_PROMPT, tools_payload=_WT_TOOLS, max_rounds=3)
+    assert out["incomplete"] is True
+    assert "blev blokeret af miljøet" in out["stop_reason"], out["stop_reason"]
+    assert "10.0.0.2" in out["stop_reason"]
+
+
+def test_en_cliffhanger_uden_ressource_beholder_den_gamle_dom(monkeypatch):
+    """Den ægte cliffhanger har OGSAA ``denied``-kald. Det eneste der skiller den fra
+    blokeringen er at dens kald ikke navngiver en ressource fra opgaven."""
+    monkeypatch.setenv("JARVIS_AGENT_BLOCK_SIGNAL", "1")
+    io = _KaldIO(
+        replies=[
+            {"text": "", "tool_calls": [_tc_args(1, "read_file", {"path": "/tmp/x.py"})]},
+            {"text": "Nu undersøger jeg status-skriveren."},
+            {"text": "Nu undersøger jeg status-skriveren."},
+        ],
+        tool_outs=[json.dumps({"status": "denied", "text": "adgang nægtet"})],
+    )
+    out = _run(io, prompt=_BLOK_PROMPT, tools_payload=_WT_TOOLS, max_rounds=3)
+    assert out["stop_reason"] == _GAMMEL_DOM
+
+
+def test_flaget_fra_giver_praecis_den_gamle_dom(monkeypatch):
+    """Standardtilstanden må ikke ændre en eneste dom — signalet er ikke bevist generelt."""
+    monkeypatch.delenv("JARVIS_AGENT_BLOCK_SIGNAL", raising=False)
+    out = _run(_blokerings_io(), prompt=_BLOK_PROMPT, tools_payload=_WT_TOOLS, max_rounds=3)
+    assert out["stop_reason"] == _GAMMEL_DOM
+
+
+def test_den_nye_dom_har_sin_egen_fejlkode():
+    """En blokeret agent sendte den næste jagt efter «leverancen». Den skal efter
+    miljøet — derfor en anden kode, ikke en anden etiket på den samme."""
+    from core.runtime.db_agent_contract import _incomplete_kode
+
+    assert _incomplete_kode(
+        "UFULDSTÆNDIG (agenten blev blokeret af miljøet: 10.0.0.2)"
+    ) == ("AGENT_BLOCKED_BY_ENVIRONMENT", "environment")
+    assert _incomplete_kode(
+        f"UFULDSTÆNDIG ({_GAMMEL_DOM})"
+    ) == ("AGENT_NO_WRITE", "delivery")

@@ -880,6 +880,12 @@ def _incomplete_kode(text: str) -> tuple[str, str]:
     grund = _markering_grund(text)
     if any(n in grund for n in _KAPACITETS_GRUND):
         return "AGENT_BUDGET_EXHAUSTED", "capacity"
+    # 18/11-2026: en blokeret agent skrev heller intet — men det var miljøet der
+    # stoppede den, ikke dens leverance. Teksten sættes i `agent_loop_core`
+    # (`_blokerings_grund`); den må ikke forveksles med den nedenstående, for de
+    # sender den næste jagt to forskellige steder hen.
+    if "blev blokeret af miljøet" in grund:
+        return "AGENT_BLOCKED_BY_ENVIRONMENT", "environment"
     if "kunne skrive men skrev intet" in grund:
         return "AGENT_NO_WRITE", "delivery"
     if "løfte" in grund:

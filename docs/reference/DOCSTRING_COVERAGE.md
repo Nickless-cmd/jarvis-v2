@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10293/18842 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10298/18848 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10293/18842 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 913 | 1627 | 56% |
-| `core.services` | 6904 | 12792 | 53% |
+| `core.services` | 6909 | 12798 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -404,7 +404,7 @@ Generated from source. 10293/18842 functions/methods documented (54%). The list 
 - `core/runtime/db_agent_bridge.py` :: `unknown_for_assignment` (L163)
 - `core/runtime/db_agent_bridge.py` :: `unresolved_for_client` (L156)
 - `core/runtime/db_agent_capacity.py` :: `ensure_capacity_columns` (L22)
-- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L1123)
+- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L1129)
 - `core/runtime/db_agent_council.py` :: `create` (L96)
 - `core/runtime/db_agent_council.py` :: `ensure_council_tables` (L55)
 - `core/runtime/db_agent_council.py` :: `find_by_key` (L120)
@@ -749,10 +749,10 @@ Generated from source. 10293/18842 functions/methods documented (54%). The list 
 - `core/services/agent_contract_projection.py` :: `followup` (L589)
 - `core/services/agent_contract_projection.py` :: `mark_read` (L505)
 - `core/services/agent_contract_service.py` :: `list_approvals` (L841)
-- `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L633)
-- `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L631)
-- `core/services/agent_loop_core.py` :: `LoopIO.model` (L626)
-- `core/services/agent_loop_core.py` :: `LoopIO.tool` (L629)
+- `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L779)
+- `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L777)
+- `core/services/agent_loop_core.py` :: `LoopIO.model` (L772)
+- `core/services/agent_loop_core.py` :: `LoopIO.tool` (L775)
 - `core/services/agent_observation_compressor.py` :: `get_agent_observation` (L179)
 - `core/services/agent_observation_compressor.py` :: `list_agent_observations` (L137)
 - `core/services/agent_prompt_layers.py` :: `ensure_prompt_tables` (L37)

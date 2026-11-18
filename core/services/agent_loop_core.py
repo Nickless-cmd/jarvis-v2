@@ -10,7 +10,10 @@ en sandbox hvor intet andet er monteret.
 """
 from __future__ import annotations
 
+import ipaddress
+import json
 import logging
+import os
 import re
 import time
 from datetime import datetime
@@ -530,6 +533,149 @@ def _io_wrote_something(io: Any) -> bool:
         return False
 
 
+#: Miljøfejl der betyder at agenten blev STOPPET af sin omverden — ikke at dens
+#: leverance var mangelfuld. Målt 18/11-2026 på de otte kørsler der blev stemplet
+#: «agenten kunne skrive men skrev intet»: syv var ægte cliffhangere, og kun én var
+#: en ærlig blokering. Dens bevis stod i **stdout** — ``stderr`` var tom (0 tegn).
+#: Mønstrene læses derfor fra begge strømme; en vagt der kun læser stderr fyrer
+#: aldrig på den sag den blev bygget til.
+_BLOK_MOENSTRE = (
+    "network is unreachable", "no route to host", "could not resolve host",
+    "connection refused", "timed out", "cap_net_raw", "no user exists for uid",
+    "operation not permitted", "permission denied", "sandbox",
+)
+
+_IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}(?:/\d{1,2})?\b")
+_HOST_RE = re.compile(
+    r"\b[a-z0-9][a-z0-9.-]{3,}\.(?:local|lan|dk|com|net|org|io)\b", re.IGNORECASE)
+
+#: Flag for blokeringssignalet. Standard FRA: målingen havde **n=1** ægte blokering,
+#: og mønstrene er delvist tilpasset netop den sag. Recall ud over én sag er umålt.
+#: Ankeret OMDØBER kun dommen (``AGENT_NO_WRITE``/``delivery`` →
+#: ``AGENT_BLOCKED_BY_ENVIRONMENT``/``environment``); det gør aldrig en fejl til
+#: succes. Derfor er det sikkert at slå til — men ikke bevist generelt.
+_BLOK_FLAG = "JARVIS_AGENT_BLOCK_SIGNAL"
+
+
+def _blok_flag_paa() -> bool:
+    """Er blokeringssignalet slået til? Læses pr. kald, så en test kan skifte den."""
+    raa = os.environ.get(_BLOK_FLAG, "0").strip().lower()
+    return raa not in ("", "0", "false", "no", "off")
+
+
+def _ud_felter(ud: Any) -> dict[str, Any]:
+    """(status, exit, tekst) fra et værktøjssvar.
+
+    Svaret er JSON med ``text``, som selv er JSON med ``stdout``/``stderr``. En
+    læser der kun kigger på det ydre eller kun på ``stderr`` ser intet bevis —
+    derfor samles begge strømme her.
+    """
+    try:
+        ydre = json.loads(ud) if isinstance(ud, str) else ud
+    except (TypeError, ValueError):
+        ydre = None
+    if not isinstance(ydre, dict):
+        return {"status": "", "exit": None, "timed_out": False, "tekst": str(ud or "")}
+    status = str(ydre.get("status") or "")
+    tekst = str(ydre.get("text") or "")
+    try:
+        indre = json.loads(tekst)
+    except (TypeError, ValueError):
+        indre = None
+    if not isinstance(indre, dict):
+        indre = {}
+    stroem = f"{indre.get('stdout') or ''}\n{indre.get('stderr') or ''}".strip()
+    return {"status": status, "exit": indre.get("exit_code"),
+            "timed_out": bool(indre.get("timed_out")), "tekst": stroem or tekst}
+
+
+def _ressourcer(tekst: str) -> set[str]:
+    """IPv4/CIDR og værtsnavne i en tekst — det anker der binder et kald til opgaven."""
+    ud: set[str] = set()
+    for m in _IPV4_RE.findall(tekst or ""):
+        ud.add(m)
+    for m in _HOST_RE.findall(tekst or ""):
+        ud.add(m.lower())
+    return ud
+
+
+def _daekker(naal: str, ress: set[str]) -> bool:
+    """CIDR-indeslutning: ``10.0.0.2`` dækkes af ``10.0.0.0/24``."""
+    for r in ress:
+        if r == naal:
+            return True
+        try:
+            par = (ipaddress.ip_network(r, strict=False), ipaddress.ip_address(naal))
+        except ValueError:  # en streng der hverken er net eller adresse er ikke et bevis
+            continue
+        if par[1] in par[0]:
+            return True
+    return False
+
+
+def _kaldet_fejlede(felter: dict[str, Any]) -> bool:
+    return (felter["status"] in ("error", "denied")
+            or felter["exit"] not in (None, 0) or felter["timed_out"])
+
+
+def _blokerings_grund(kald_log: list[dict[str, Any]], *, prompt: str,
+                      expected_result: str, final_text: str) -> str:
+    """Grund til at en tom leverance var en ÆRLIG BLOKERING — eller ``""``.
+
+    Hvorfor den findes (18/11-2026, side-e2e78f3beb)
+    ------------------------------------------------
+    ``must_write`` dømmer en agent der kunne skrive men intet skrev. Det er rigtigt
+    for en cliffhanger, men forkert når agenten faktisk FORSØGTE og blev stoppet af
+    miljøet: ``asg-fe4d17b42e594a4f`` (pihole, 16/11) kaldte ``wt_bash`` to gange,
+    fik «No user exists for uid 1000» og «missing cap_net_raw+p capability», navngav
+    ressourcen i sit svar — og blev alligevel stemplet som et leverancesvigt. Den
+    næste jagt blev derfor «hvorfor skrev agenten ikke?» i stedet for «hvad blokerer
+    netværket?».
+
+    De fem kriterier er målt, ikke gættet. På de otte kørsler med samme dom gav de
+    **1 sand positiv, 0 falske positive**, og på hele korpusset (255 kørsler) fyrer
+    de på præcis én: pihole-sagen. Kriterium 3 er den tynde tråd: en ægte
+    cliffhanger (``run-cd4486a0160f45f0``) har også ``denied``-kald, og det eneste
+    der skiller den fra blokeringen er at dens kald ikke navngiver en ressource fra
+    opgaven.
+
+    Forbeholdet hører med: recall ud over én sag er umålt, og mønstrene er delvist
+    tilpasset den samme sag. Derfor står signalet bag et flag (``_BLOK_FLAG``), og
+    derfor omdøber det kun — det frikender intet.
+    """
+    if not kald_log or _promises_action(final_text):
+        return ""
+    opg_ress = _ressourcer(prompt) | _ressourcer(expected_result)
+    if not opg_ress:
+        return ""
+    for kald in kald_log:
+        felter = _ud_felter(kald.get("ud"))
+        miljoe = any(m in felter["tekst"].lower() for m in _BLOK_MOENSTRE)
+        if not (_kaldet_fejlede(felter) or miljoe):
+            continue
+        arg_ress = _ressourcer(json.dumps(kald.get("args") or {}, ensure_ascii=False))
+        # Begge retninger: opgaven kan skrive et netværk og kalden en adresse i det,
+        # eller omvendt. `_daekker` tager HELE sættet som andet argument — at give
+        # den ét element får den til at iterere over tegn.
+        ramte = {r for r in arg_ress
+                 if r in opg_ress or _daekker(r, opg_ress)
+                 or any(_daekker(o, arg_ress) for o in opg_ress)}
+        if not ramte:
+            continue
+        slut = _ressourcer(final_text)
+        if not any(_daekker(r, slut) or r in slut for r in ramte):
+            continue
+        # Et SENERE kald af samme værktøj på samme ressource der lykkedes beviser at
+        # vejen var åben — så var det ikke miljøet der stoppede agenten.
+        if any(o.get("navn") == kald.get("navn")
+               and not _kaldet_fejlede(_ud_felter(o.get("ud")))
+               and (_ressourcer(json.dumps(o.get("args") or {}, ensure_ascii=False)) & ramte)
+               for o in kald_log):
+            continue
+        return f"agenten blev blokeret af miljøet: {', '.join(sorted(ramte))}"
+    return ""
+
+
 def _delivery_gap(expected_result: str, final_text: str, total_tool_calls: int,
                   prompt: str = "", write_calls: int = 0,
                   write_capable: bool = False) -> str:
@@ -658,6 +804,12 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
     #: ubesvarede efter nudgen. Uden den gik loekken hjem med stoffet i haanden.
     forced_answers = False
     write_calls = 0
+    #: 18/11-2026: hvad agenten faktisk FORSØGTE. `write_calls` tæller kun navne i
+    #: `_WRITE_TOOL_NAMES`; blokeringssignalet har brug for selve kaldet og dets
+    #: svar for at kunne skelne «kunne ikke» fra «kom ikke i gang». Fyldes i
+    #: `run_calls`. Ved genoptagelse efter en parkering er tidligere kald væk —
+    #: ankeret ser da færre beviser og fyrer sjældnere, hvilket er den sikre retning.
+    kald_log: list[dict[str, Any]] = []
     incomplete = False
     # 26/10-2026: antallet af ubesvarede nummererede spoergsmaal. Baeres med ud til
     # kalderen, saa Jarvis kan se HVOR MEGET der manglede — ikke bare AT der manglede
@@ -693,9 +845,17 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
 
     def run_calls(calls: list[dict], round_calls: list[dict]) -> bool:
         """Udfoer kald i raekkefoelge. ``True`` hvis loekken blev parkeret."""
-        nonlocal total_tool_calls, parked, write_calls
+        nonlocal total_tool_calls, parked, write_calls, kald_log
         for i, tc in enumerate(calls):
             tc_id = str(tc.get("id") or "")
+            fun = tc.get("function") or {}
+            navn = str(fun.get("name") or "")
+            args = fun.get("arguments") or {}
+            if isinstance(args, str):
+                try:
+                    args = json.loads(args)
+                except (TypeError, ValueError):
+                    args = {"_raa": args}
             try:
                 tool_out = io.tool(tc)
             except ApprovalPending as ap:
@@ -703,9 +863,10 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                           "checkpoint": checkpoint(calls[i:], round_calls)}
                 return True
             total_tool_calls += 1
-            if str((tc.get("function") or {}).get("name") or "") in _WRITE_TOOL_NAMES:
+            if navn in _WRITE_TOOL_NAMES:
                 write_calls += 1
             io.after_tool(tc, tool_out)
+            kald_log.append({"navn": navn, "args": args, "ud": tool_out})
             messages.append({"role": "tool", "tool_call_id": tc_id, "content": tool_out})
         io.after_round(rounds, round_calls)
         return False
@@ -825,7 +986,14 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                 # - en grund der ikke findes for en skriveopgave.
                 if must_write:
                     incomplete = True
-                    stop_reason = stop_reason or "agenten kunne skrive men skrev intet"
+                    # 18/11-2026: en tom leverance er ikke altid et svigt. Se
+                    # `_blokerings_grund` for målingen bag de fem kriterier — og for
+                    # hvorfor svaret kun omdøbes, aldrig frikendes.
+                    blokering = (_blokerings_grund(
+                        kald_log, prompt=prompt, expected_result=expected_result,
+                        final_text=final_text) if _blok_flag_paa() else "")
+                    stop_reason = (stop_reason or blokering
+                                   or "agenten kunne skrive men skrev intet")
                 # Nudgen er givet, og leverancen kan STADIG ikke accepteres. Grunden baeres
                 # med ud, saa kalderen kan se HVAD der manglede — ikke bare at noget gjorde.
                 if gap:

@@ -336,3 +336,41 @@ def test_unknown_role_falls_back_to_the_cheap_cli_model(pol, monkeypatch):
     monkeypatch.setattr("core.services.agent_cli_backend.admission_reason", lambda provider: "")
     route = pol.route(BJORN, requested_model="claude-cli", role="en-rolle-der-ikke-findes")
     assert route["model"] == "sonnet"
+
+
+# ── Kapabilitetsgulvet maa ikke vaere en doer paa et NAVNE-GAET ──────────
+#
+# MAALT 18/11-2026: `_model_capability` gaetter udelukkende ud fra modelnavnet
+# (param-stoerrelse og en liste af kendte familier). `codex-cli/default` har
+# hverken tal eller kendt familie og falder tilbage paa 0.45 — under gulvet paa
+# 0.6 — saa ruten blev afvist med `kapabilitet:under_vaerktoejsgulvet`.
+#
+# Det er ikke en maaling af codex. Det er et fravaer af et navn funktionen
+# kender. Til at RANGERE kandidater er et gaet acceptabelt; som DOER lukker det
+# en rute der virker, og begrundelsen ser maalt ud.
+#
+# Samme fejlklasse som `tool_calls`-feltnavnet: en dom der hviler paa noget
+# andet end det den paastaar at maale.
+
+
+def test_et_navnegaet_under_gulvet_lukker_ikke_doeren():
+    """`codex-cli/default` scorer 0.45 fordi navnet intet siger funktionen.
+    Den skal slippe igennem — vi ved ikke at den er svag."""
+    from core.services.agent_model_policy import _evaluate
+
+    why, _ukendt = _evaluate("codex-cli", "default",
+                             owner="1246415163603816499", role="executor",
+                             needs_tools=True)
+    assert why == "", f"en rute blev afvist paa et navne-gaet: {why!r}"
+
+
+def test_en_beviseligt_svag_rute_lukkes_stadig():
+    """Vaernet skal ikke blive tandloest: en model hvis navn UDTALER at den er
+    lille (8B) skal stadig under gulvet."""
+    from core.services.agent_model_policy import _evaluate
+
+    why, _ukendt = _evaluate("nvidia-nim", "llama-3.1-8b",
+                             owner="1246415163603816499", role="executor",
+                             needs_tools=True)
+    assert why == "kapabilitet:under_vaerktoejsgulvet", (
+        f"en beviseligt svag model slap igennem: {why!r}")

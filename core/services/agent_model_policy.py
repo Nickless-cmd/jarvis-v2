@@ -31,6 +31,38 @@ TOOL_CAPABILITY_FLOOR = 0.6          # samme gulv som agent_runtime_spawn bruger
 DEFAULT_EST_TOKENS = 20_000
 
 
+def _navnet_udsiger_svaghed(model: str) -> bool:
+    """Udsiger MODELNAVNET selv at modellen er lille — eller er det bare ukendt?
+
+    ``_model_capability`` gaetter ud fra navnet og falder tilbage paa 0.45 naar
+    navnet intet siger. Det tal er fint til at RANGERE kandidater, men som DOER
+    lukker det ruter der virker: ``codex-cli/default`` har hverken parameter-tal
+    eller kendt familie og blev afvist med ``kapabilitet:under_vaerktoejsgulvet``
+    — ikke fordi nogen har maalt den svag, men fordi funktionen ikke kender
+    navnet. MAALT 18/11-2026: den rute leverede filer hele dagen.
+
+    Derfor spoerger doeren her, om navnet faktisk BAERER et svaghedstegn. Goer
+    det ikke, er der intet grundlag for at lukke — samme fail-open som
+    ``kan_kalde_vaerktoejer`` bruger for umaalte modeller.
+    """
+    from core.services.central_route import _WEAK_MARKERS
+
+    m = (model or "").lower()
+    if any(k in m for k in _WEAK_MARKERS):
+        return True
+    # Et lille parameter-tal skrevet ind i navnet (7b, 3b, 1.8b) er ogsaa et
+    # udsagn — men kun naar det staar som en stoerrelse, ikke som en dato.
+    import re as _re
+    for num, unit in _re.findall(r"(\d+(?:\.\d+)?)\s*([bm])\b", m):
+        try:
+            stoerrelse = float(num) * (0.001 if unit == "m" else 1.0)
+        except ValueError:  # regex'en giver kun tal; en ikke-parsbar streng siger intet om modellen
+            continue
+        if stoerrelse < 12:
+            return True
+    return False
+
+
 MAX_REJECTED = 40          # CT105 maalte 86 afvisninger for en almindelig bruger; raekken skal ikke vokse med dem
 
 
@@ -124,7 +156,7 @@ def _evaluate(provider: str, model: str, *, owner: str, role: str, needs_tools: 
         from core.services.tool_calling_evidence import kan_kalde_vaerktoejer
         if not kan_kalde_vaerktoejer(provider, model):
             return "kapabilitet:maalt_til_ikke_at_kalde_vaerktoejer", ukendt
-        if _model_capability(provider, model) < TOOL_CAPABILITY_FLOOR:
+        if _navnet_udsiger_svaghed(model) and _model_capability(provider, model) < TOOL_CAPABILITY_FLOOR:
             return "kapabilitet:under_vaerktoejsgulvet", ukendt
     return "", ukendt
 

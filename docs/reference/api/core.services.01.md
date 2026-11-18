@@ -695,21 +695,22 @@ _Modelvalg for agenter: premium-agentpulje -> ejerafhaengig fallback (agent-cont
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_capped` | `(rows)` | — | [src](../../../core/services/agent_model_policy.py#L37) |
-| class | `ModelUnavailable` | `` | ``MODEL_UNAVAILABLE``: ingen tilladt rute. ``reasons`` er hver afvisning med aarsag. | [src](../../../core/services/agent_model_policy.py#L44) |
-| method | `ModelUnavailable.__init__` | `(self, detail, reasons=…)` | — | [src](../../../core/services/agent_model_policy.py#L49) |
-| class | `ProviderDenied` | `` | Ejeren maa ikke bruge denne provider (haandhaevet ved selve kaldet). | [src](../../../core/services/agent_model_policy.py#L54) |
-| function | `is_platform_owner` | `(owner_user_id)` | Bjoern? Fail-closed: kan ejeren ikke afgoeres, er svaret nej. | [src](../../../core/services/agent_model_policy.py#L63) |
-| function | `provider_denied_reason` | `(owner_user_id, provider)` | Tom streng = tilladt, ellers aarsagen. | [src](../../../core/services/agent_model_policy.py#L78) |
-| function | `guard_call` | `(*, owner_user_id, provider, model=…)` | Kontrollen VED providerkaldet. Kaldes af hver modelanmodning for en bundet agent. | [src](../../../core/services/agent_model_policy.py#L85) |
-| function | `_agent_candidates` | `(*, role, min_tokens, exclude, allow_paid)` | — | [src](../../../core/services/agent_model_policy.py#L96) |
-| function | `_cost_class` | `(provider)` | — | [src](../../../core/services/agent_model_policy.py#L104) |
-| function | `_evaluate` | `(provider, model, *, owner, role, needs_tools)` | (afvisningsaarsag eller '', fitness_ukendt). | [src](../../../core/services/agent_model_policy.py#L109) |
-| function | `_split_requested` | `(requested)` | ('provider','model') for ``provider/model`` eller et bart modelnavn fra kataloget; ellers ('',''). | [src](../../../core/services/agent_model_policy.py#L132) |
-| function | `_deepseek_budget_reason` | `()` | Tom = indenfor budget. Fail-closed: et ukendt budget er et afslag, ikke et ja. | [src](../../../core/services/agent_model_policy.py#L155) |
-| function | `_estimate_cost` | `(provider, model, budget_tokens)` | — | [src](../../../core/services/agent_model_policy.py#L170) |
-| function | `_cli_model_for` | `(provider, role, requested)` | Rollens model — men KUN naar intet valg er taget. | [src](../../../core/services/agent_model_policy.py#L216) |
-| function | `decide_route` | `(*, owner_user_id, requested_model=…, hard=…, role=…, needs_tools=…, min_tokens=…, budget_tokens=…, exclude=…)` | Faststil ruten FOER agenten oprettes. Rejser ``ModelUnavailable`` hvis ingen rute er tilladt. | [src](../../../core/services/agent_model_policy.py#L235) |
+| function | `_navnet_udsiger_svaghed` | `(model)` | Udsiger MODELNAVNET selv at modellen er lille — eller er det bare ukendt? | [src](../../../core/services/agent_model_policy.py#L34) |
+| function | `_capped` | `(rows)` | — | [src](../../../core/services/agent_model_policy.py#L69) |
+| class | `ModelUnavailable` | `` | ``MODEL_UNAVAILABLE``: ingen tilladt rute. ``reasons`` er hver afvisning med aarsag. | [src](../../../core/services/agent_model_policy.py#L76) |
+| method | `ModelUnavailable.__init__` | `(self, detail, reasons=…)` | — | [src](../../../core/services/agent_model_policy.py#L81) |
+| class | `ProviderDenied` | `` | Ejeren maa ikke bruge denne provider (haandhaevet ved selve kaldet). | [src](../../../core/services/agent_model_policy.py#L86) |
+| function | `is_platform_owner` | `(owner_user_id)` | Bjoern? Fail-closed: kan ejeren ikke afgoeres, er svaret nej. | [src](../../../core/services/agent_model_policy.py#L95) |
+| function | `provider_denied_reason` | `(owner_user_id, provider)` | Tom streng = tilladt, ellers aarsagen. | [src](../../../core/services/agent_model_policy.py#L110) |
+| function | `guard_call` | `(*, owner_user_id, provider, model=…)` | Kontrollen VED providerkaldet. Kaldes af hver modelanmodning for en bundet agent. | [src](../../../core/services/agent_model_policy.py#L117) |
+| function | `_agent_candidates` | `(*, role, min_tokens, exclude, allow_paid)` | — | [src](../../../core/services/agent_model_policy.py#L128) |
+| function | `_cost_class` | `(provider)` | — | [src](../../../core/services/agent_model_policy.py#L136) |
+| function | `_evaluate` | `(provider, model, *, owner, role, needs_tools)` | (afvisningsaarsag eller '', fitness_ukendt). | [src](../../../core/services/agent_model_policy.py#L141) |
+| function | `_split_requested` | `(requested)` | ('provider','model') for ``provider/model`` eller et bart modelnavn fra kataloget; ellers ('',''). | [src](../../../core/services/agent_model_policy.py#L164) |
+| function | `_deepseek_budget_reason` | `()` | Tom = indenfor budget. Fail-closed: et ukendt budget er et afslag, ikke et ja. | [src](../../../core/services/agent_model_policy.py#L187) |
+| function | `_estimate_cost` | `(provider, model, budget_tokens)` | — | [src](../../../core/services/agent_model_policy.py#L202) |
+| function | `_cli_model_for` | `(provider, role, requested)` | Rollens model — men KUN naar intet valg er taget. | [src](../../../core/services/agent_model_policy.py#L248) |
+| function | `decide_route` | `(*, owner_user_id, requested_model=…, hard=…, role=…, needs_tools=…, min_tokens=…, budget_tokens=…, exclude=…)` | Faststil ruten FOER agenten oprettes. Rejser ``ModelUnavailable`` hvis ingen rute er tilladt. | [src](../../../core/services/agent_model_policy.py#L267) |
 
 ## `core/services/agent_model_router.py`
 _Modelkald for en agent: genvalidering ved kaldet og failover i kandidatkaeden (agent-contract-v1 D)._

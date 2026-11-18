@@ -179,3 +179,76 @@ def test_cachen_noegles_paa_DATABASEN_ikke_kun_paa_tiden(isolated_runtime):
     kilde = inspect.getsource(t.tool_calling_record)
     assert "_cache_db == _db" in kilde, (
         "cachen sammenligner ikke databasen — svaret kan komme fra et andet hus")
+
+
+# ── Porten laeste ÉT feltnavn — og spaerrede de ruter der virkede ────────
+#
+# MAALT 18/11-2026 over de sidste 200 agent_runs med payload:
+#
+#   claude-cli      tool_calls=0/70   total_tool_calls=42/70
+#   codex-cli       tool_calls=0/59   total_tool_calls=19/59
+#   copilot-premium tool_calls=21/57  total_tool_calls=0/57
+#
+# `_aggreger` laeste kun `tool_calls`. CLI-ruterne skriver deres taelling i
+# `total_tool_calls`, saa 64 claude-cli-koersler — 32 af dem med op til 62
+# reelle kald — blev talt som «nul vaerktoejskald» og spaerret med
+# `kapabilitet:maalt_til_ikke_at_kalde_vaerktoejer`. Routeren faldt derefter
+# tilbage paa en anden rute. Det var praecis hvad der skete med to executorer
+# samme dag: de bad om en CLI-rute, blev afvist paa et feltnavn, og landede
+# et andet sted.
+#
+# Det er samme fejlklasse som docstringen advarer om: «tomt lager» er ikke
+# «ingen maaling». Her var det «andet feltnavn» der blev laest som «intet kald».
+
+
+def test_taellingen_laeses_uanset_feltnavn(isolated_runtime):
+    """CLI-ruterne skriver `total_tool_calls`. Porten skal se det samme tal."""
+    import core.runtime.db_agent_runtime as db
+    db.create_agent_registry_entry(agent_id="a", role="r", goal="g")
+    for i in range(MIN_KOERSLER + 5):
+        db.create_agent_run(
+            run_id=f"r-cli-{i}", agent_id="a", provider="cli", model="sonnet",
+            status="completed",
+            output_payload_json=json.dumps({"total_tool_calls": 26}),
+        )
+
+    r = tool_calling_record()["cli/sonnet"]
+    assert r["med_kald"] == MIN_KOERSLER + 5, (
+        f"porten talte {r['med_kald']} kald trods 26 pr. koersel — feltnavnet blev ikke laest")
+    assert r["dom"] == "kan"
+    assert kan_kalde_vaerktoejer("cli", "sonnet") is True
+
+
+def test_en_rute_der_IKKE_rapporterer_tallet_doemmes_ikke(isolated_runtime):
+    """`codex-cli` skriver slet ikke feltet i 40 af 59 koersler. Et fravaerende
+    felt er ikke et nul — det er ingen maaling, og porten maa ikke spaerre paa
+    det. Kun en rute der RAPPORTERER nul, kan doemmes."""
+    import core.runtime.db_agent_runtime as db
+    db.create_agent_registry_entry(agent_id="a", role="r", goal="g")
+    for i in range(MIN_KOERSLER + 5):
+        db.create_agent_run(
+            run_id=f"r-tax-{i}", agent_id="a", provider="tax", model="default",
+            status="completed",
+            output_payload_json=json.dumps({"status": "completed", "text": "svar"}),
+        )
+
+    r = tool_calling_record()["tax/default"]
+    assert r["dom"] == "umaalt", (
+        "en rute der ikke rapporterer tallet blev doemt som «kan-ikke»")
+    assert kan_kalde_vaerktoejer("tax", "default") is True
+
+
+def test_et_eksplicit_nul_doemmes_stadig(isolated_runtime):
+    """Vaernet skal ikke blive tandloest: rapporterer ruten UDTALT nul i alle
+    sine koersler, er det en maalt dom — praecis som foer."""
+    import core.runtime.db_agent_runtime as db
+    db.create_agent_registry_entry(agent_id="a", role="r", goal="g")
+    for i in range(MIN_KOERSLER + 5):
+        db.create_agent_run(
+            run_id=f"r-nul-{i}", agent_id="a", provider="nul", model="m",
+            status="completed",
+            output_payload_json=json.dumps({"total_tool_calls": 0}),
+        )
+
+    assert tool_calling_record()["nul/m"]["dom"] == "kan-ikke"
+    assert kan_kalde_vaerktoejer("nul", "m") is False

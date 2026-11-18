@@ -81,6 +81,35 @@ def _nulstil_cache_for_tests() -> None:
     _cache, _cache_tid, _cache_min, _cache_db = None, 0.0, -1, ""
 
 
+def _kald_i_nyttelast(nyttelast: dict[str, Any]) -> int | None:
+    """Antal vaerktoejskald i én koersels nyttelast — eller ``None`` naar intet tal findes.
+
+    ``None`` og ``0`` er FORSKELLIGE svar, og hele pointen med denne funktion.
+    MAALT 18/11-2026 over de sidste 200 ``agent_runs`` med payload:
+
+        claude-cli      tool_calls=0/70   total_tool_calls=42/70
+        codex-cli       tool_calls=0/59   total_tool_calls=19/59
+        copilot-premium tool_calls=21/57  total_tool_calls=0/57
+
+    Porten laeste kun ``tool_calls``. CLI-ruterne skriver deres taelling i
+    ``total_tool_calls``, saa 64 claude-cli-koersler — 32 af dem med op til 62
+    reelle kald — blev talt som nul og spaerret med
+    ``kapabilitet:maalt_til_ikke_at_kalde_vaerktoejer``. Routeren faldt
+    derefter tilbage paa en anden rute; det ramte to executorer samme dag.
+
+    Et FRAVAERENDE felt er ingen maaling. Bliver det laest som nul, spaerrer
+    porten de ruter der virker — og goer det med en dom der ser maalt ud.
+    """
+    for noegle in ("tool_calls", "total_tool_calls"):
+        if noegle not in nyttelast:
+            continue
+        try:
+            return int(nyttelast.get(noegle) or 0)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
 def _aggreger(raekker: Any, min_koersler: int) -> dict[str, dict[str, Any]]:
     """Raa agent_runs-raekker -> (provider/model) -> {koersler, med_kald, andel, dom}.
 
@@ -92,19 +121,26 @@ def _aggreger(raekker: Any, min_koersler: int) -> dict[str, dict[str, Any]]:
         n = f"{r['provider']}/{r['model']}"
         p = ud.setdefault(n, {"provider": str(r["provider"]),
                               "model": str(r["model"]),
-                              "koersler": 0, "med_kald": 0})
+                              "koersler": 0, "med_kald": 0, "rapporteret": 0})
         p["koersler"] += 1
         try:
-            if int((json.loads(r["output_payload_json"] or "{}") or {}).get("tool_calls") or 0):
-                p["med_kald"] += 1
-        except Exception:  # raekke uden laesbar nyttelast taeller som «intet kald» — dommen kraever en maengde
-            pass
+            nyttelast = json.loads(r["output_payload_json"] or "{}") or {}
+        except Exception:  # ulaesbar nyttelast er ingen maaling — ikke et nul
+            continue
+        kald = _kald_i_nyttelast(nyttelast)
+        if kald is None:
+            continue
+        p["rapporteret"] += 1
+        if kald > 0:
+            p["med_kald"] += 1
 
     for p in ud.values():
         p["andel"] = p["med_kald"] / max(p["koersler"], 1)
-        if p["koersler"] < int(min_koersler):
+        # Dommen hviler paa de koersler der FAKTISK rapporterede et tal. En
+        # rute der aldrig skriver feltet er umaalt — ikke «kan-ikke».
+        if p["rapporteret"] < int(min_koersler):
             p["dom"] = "umaalt"
-        elif p["andel"] < MIN_ANDEL:
+        elif (p["med_kald"] / p["rapporteret"]) < MIN_ANDEL:
             p["dom"] = "kan-ikke"
         else:
             p["dom"] = "kan"

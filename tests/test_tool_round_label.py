@@ -460,6 +460,21 @@ def test_egen_linje_i_openai_form(monkeypatch):
     assert trl.etiket([v]) == "Listede mappen"
 
 
+def test_runde_etiket_har_forrang_over_description_ved_ET_kald(monkeypatch):
+    """Ellers blev feltet tavst ignoreret netop når runden var ét kald.
+
+    `_har_egen_beskrivelse` returnerer `""` for ét kald med en brugbar
+    `description` — så et `runde_etiket` skrevet i samme kald forsvandt uden
+    spor. Feltet ville se ud som om det virkede, men aldrig gøre det.
+    """
+    kaldt = []
+    monkeypatch.setattr(trl, "_kald_model", lambda p: kaldt.append(p) or "Modellens linje")
+    v = _v("bash", {"command": "git status", "description": "Vis arbejdstræets status",
+                    "runde_etiket": "Tjekkede om træet var rent"})
+    assert trl.etiket([v]) == "Tjekkede om træet var rent"
+    assert kaldt == [], "hans egen linje skal bruges — ikke modellen"
+
+
 def test_OPDIGTET_navn_i_egen_linje_kasseres(monkeypatch):
     """Værnet læser KALDENE, ikke hans egen tekst. Ellers kunne han opfinde et
     filnavn og få det godkendt fordi det stod i hans egen sætning."""

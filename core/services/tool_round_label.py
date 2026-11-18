@@ -510,14 +510,17 @@ def etiket(
     kald = [v for v in (vaerktoejer or []) if _navn_og_input(v)[0]]
     if not kald:
         return ""
-    if _har_egen_beskrivelse(kald):
+    # Jarvis' egen linje for HELE runden har forrang over `description`, der kun
+    # beskriver ÉT kald. Uden dette ville et `runde_etiket` han skrev i en runde
+    # med præcis ét kald blive ignoreret i tavshed — feltet ville se ud som om
+    # det virkede, men aldrig gøre det.
+    egen = (egen or "").strip() or egen_runde_etiket(kald)
+    if not egen and _har_egen_beskrivelse(kald):
         # Jarvis skrev selv linjen i kaldet — Claude Desktops vej. En etiket
         # oven på ville overdøve den, og kaldet til modellen er spildt.
         return ""
     billede = byg_prompt(kald, hensigt)
-    # Jarvis' egen linje, hvis han skrev en i et af rundens kald. Den går
-    # gennem samme værn som modellens svar — se `_doem`.
-    egen = (egen or "").strip() or egen_runde_etiket(kald)
+    # Den går gennem samme værn som modellens svar — se `_doem`.
     if egen:
         doemt = _doem(_ryd(egen), kald, billede)
         if doemt:

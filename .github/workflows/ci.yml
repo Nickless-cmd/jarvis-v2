@@ -125,7 +125,12 @@ jobs:
   # præcis fejlen: `streamingTextTail.layout.maaling` stod skippet fra den
   # blev skrevet, fordi intet workflow satte flaget. Crossfade-målingen værner
   # puls-fejlen fra samme dag: fade'en må ikke genstarte på uændret tekst —
-  # jsdom kan ikke se det, Chromium kan.
+  # jsdom kan ikke se det, Chromium kan. Karakter-målingen (lag 7) værner at
+  # figuren faktisk TEGNER: en `<path>` findes i DOM'en uanset om dens kurve
+  # er degenereret, og `getBBox()` ser ikke en gruppe skubbet ud af billedet.
+  #
+  # Jobbet kører HELE suiten med flaget, ikke en fil-liste — se begrundelsen
+  # ved step'et nedenfor.
   #
   # Eget job på 24.04: `ubuntu-latest` er nu 26.04, og Playwright 1.58 kan
   # ikke installere sine system-afhængigheder der. Målt 18/11-2026:
@@ -147,13 +152,19 @@ jobs:
         run: npm ci
       - name: Install browser (Chromium)
         run: npx playwright install --with-deps chromium
+      # Hele suiten, ikke en fil-liste.
+      #
+      # Fil-listen var selv fejlen: den blev skrevet med de to davaerende filer,
+      # og da den tredje browser-maaling (`KarakterFigur.maaling`) kom til
+      # 18/11-2026, koerte den ikke. Jobbet meldte groent paa 2 filer / 5 tests
+      # mens den nye fil stod `3 skipped` i desk-jobbet — en groen vagt der ikke
+      # blev fyret. Uden en liste kan en ny maaling ikke glemmes; de oevrige
+      # filer koerer blot igen, og det er prisen for at flaget er den eneste
+      # sandhed om hvilke filer der er browser-maalinger.
       - name: Browser-målinger
         env:
           RUN_BROWSER_LAYOUT_MEASUREMENT: "1"
-        run: >-
-          npx vitest run
-          src/lib/streamingTextTail.layout.maaling.test.ts
-          src/components/rich/TurHoved.crossfade.maaling.test.ts
+        run: npx vitest run
 
   # Mobil-appen (apps/mobile) havde INGEN CI indtil 23/10-2026: desk blev
   # lintet, typetjekket og testet på hver push, men mobilen — den app Bjørn

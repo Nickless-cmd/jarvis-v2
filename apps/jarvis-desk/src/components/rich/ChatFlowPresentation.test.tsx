@@ -280,6 +280,7 @@ describe('ChatFlowPresentation', () => {
 
     const synteseFoer = screen.getByTestId('chat-flow-live-synthesis')
     const runde = screen.getByTestId('chat-flow-round-line')
+    const titelLag = runde.querySelector('.linje-titel')
     expect(runde.querySelector('[data-testid="chat-flow-presence"] .jarvis-pulse.is-working')).toBeInTheDocument()
     expect(runde.querySelector('.linje-titel')).toHaveClass('shimmer')
     // Syntesen er indhold, ikke aktivitet: intet shimmer på den (Bjørn
@@ -292,14 +293,15 @@ describe('ChatFlowPresentation', () => {
 
     expect(screen.getByTestId('chat-flow-live-synthesis')).toBe(synteseFoer)
     expect(synteseFoer).toHaveTextContent('Jeg læser videre uden at hoppe')
-    expect(within(screen.getByTestId('chat-flow-round-line')).getByText('Læser konfigurationen'))
-      .toHaveAttribute('aria-hidden', 'true')
-    // Animationen bor nu i det indre tekst-lag, og shimmeret på det stabile
-    // lag udenom — så sweepet ikke starter forfra ved hvert skift
-    // (Bjørn 17/10-2026: «shimmeren staller»).
+    expect(within(screen.getByTestId('chat-flow-round-line')).queryByText('Læser konfigurationen'))
+      .toBeNull()
+    // Crossfade er et flag på den ene nye tekstnode — ikke et gammelt lag
+    // oven i et nyt. Shimmeret bor fortsat på det stabile lag udenom, så
+    // sweepet ikke starter forfra ved hvert skift.
     const nytLabel = within(screen.getByTestId('chat-flow-round-line')).getByText('Tester løsningen')
-    expect(nytLabel).toHaveClass('ls-ind')
-    expect(nytLabel.closest('.linje-titel')).toHaveClass('shimmer')
+    expect(nytLabel).toHaveAttribute('data-crossfade')
+    expect(nytLabel.closest('.linje-titel')).toBe(titelLag)
+    expect(titelLag).toHaveClass('shimmer')
   })
 
   it('viser hele den levende syntese uden et trelinjers loft', () => {

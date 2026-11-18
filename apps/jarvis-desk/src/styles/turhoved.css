@@ -64,6 +64,24 @@
   text-overflow: ellipsis; white-space: nowrap;
 }
 
+/* Én titelnode, én animationskilde. `data-crossfade` sættes af den delte
+   loft-model i TurHoved.tsx ved et ægte servertrin eller ved loftets udløb. */
+.rv-titelCrossfadeTekst[data-crossfade] {
+  /* Samme 180 ms fade som desks eksisterende svar-ankomst. De målte
+     0.24/0.18-doubles fra oai_reasoning er ikke knyttet sikkert til TITLE og
+     bruges derfor ikke som specifikation her. */
+  animation: rv-titel-crossfade 180ms ease-out;
+}
+
+@keyframes rv-titel-crossfade {
+  from { opacity: .72; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rv-titelCrossfadeTekst[data-crossfade] { animation: none; }
+}
+
 .rv-turIndhold {
   display: inline-flex; flex: 0 1 auto; min-width: 0;
   align-items: center; gap: 8px;

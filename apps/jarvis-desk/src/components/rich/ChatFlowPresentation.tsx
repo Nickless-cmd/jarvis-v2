@@ -10,8 +10,8 @@ import { usePacingWorkLine } from '../../lib/usePacingWorkLine'
 import '../../styles/chat-flow.css'
 import { BlocksRenderer } from './BlocksRenderer'
 import { JarvisRing } from '../shell/JarvisRing'
-import { LabelSkift, SynteseLinje } from './LabelSkift'
-import { TurHoved } from './TurHoved'
+import { SynteseLinje } from './LabelSkift'
+import { TitelCrossfade, TurHoved } from './TurHoved'
 import { FladeKontrolContext } from './NativeRichBlock'
 import { FladeDeferredTurnContext } from '../../lib/fladeDeferredTurn'
 import { udførDeferredTool } from '../../lib/fladeHandling'
@@ -617,7 +617,7 @@ export function ChatFlowPresentation({
                       </span>
                       {rundeTekst ? (
                         <span className="chat-flow-round-label" data-testid="chat-flow-round-label">
-                          <LabelSkift tekst={rundeTekst} arbejder className="shimmer" fastIkon />
+                          <TitelCrossfade tekst={rundeTekst} aktiv className="linje-titel shimmer" />
                         </span>
                       ) : null}
                       {/* Uret og token-tallet bor i HOVEDET, ikke her.

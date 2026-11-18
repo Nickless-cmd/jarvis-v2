@@ -23,7 +23,7 @@
  */
 import { memo, useEffect, useRef, useState } from 'react'
 import { Sparkles, Sparkle, ChevronDown, Check, X, CircleSlash, Loader2, type LucideIcon } from 'lucide-react'
-import { FoldPil, TurHoved } from './TurHoved'
+import { FoldPil, TitelCrossfade, TurHoved } from './TurHoved'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
 import { opdel, opdelArbejdsrunder, turFortalt, type ArbejdsElement } from '../../lib/raekkeModel'
@@ -414,7 +414,9 @@ function ArbejdsrundeImpl({
           </span>
         )}
         <span className={`rv-arbejdsindhold${aktivRunde ? ' shimmer' : ''}`}>
-          <span className="rv-arbejdsfortaelling">{beskrivelse}</span>
+          {aktivRunde
+            ? <TitelCrossfade tekst={beskrivelse} aktiv className="rv-arbejdsfortaelling" />
+            : <span className="rv-arbejdsfortaelling">{beskrivelse}</span>}
           {diff && <DiffStat add={diff.add} del={diff.del} />}
           {aktivRunde && typeof turSekunder === 'number'
             ? <span className="rv-rundeur"><RullendeUr sek={turSekunder} /></span>
@@ -609,7 +611,7 @@ function RaekkeTranskriptImpl({
               <JarvisRing size={15} spinning tone="working" />
             </span>
             <span className="rv-arbejdsindhold shimmer">
-              <span className="rv-arbejdsfortaelling">{venterTekst}</span>
+              <TitelCrossfade tekst={venterTekst} aktiv className="rv-arbejdsfortaelling" />
             </span>
           </div>
         </div>

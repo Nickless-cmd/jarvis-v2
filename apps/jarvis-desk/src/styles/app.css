@@ -1816,6 +1816,31 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   .video-generation-hoved { animation: none; width: 100%; opacity: 0.4; }
 }
 
+/* BILLED-PARTEN. Et medie-kald er ÉN plads i indholdet — ikke en animation
+   ved siden af en værktøjslinje og et billede et tredje sted. Målt 18/11-2026
+   på 171 gemte billeder: 42 % er 9:16 og 20 % er 16:9, så der findes intet
+   dominerende aspekt at gætte ud fra. Er aspektet ukendt reserveres den
+   MAKSIMALE højde, ikke nul: tom plads der bliver stående er ikke et hop —
+   tom plads der forsvinder er. */
+.billed-part { width: min(320px, 100%); margin: 14px 0; }
+.billed-part-plads {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; min-height: 120px; max-height: 320px;
+  border-radius: var(--radius-md);
+  background: var(--bg-2, rgba(127, 127, 127, 0.06));
+  overflow: hidden;
+}
+/* Aspektet er ukendt → reserver den maksimale højde på PARTEN, ikke på
+   pladsen. Målt i Chromium 18/11-2026: sad højden kun på pladsen, faldt
+   containeren 140 px (320 → 180) i det øjeblik billedet erstattede den.
+   Højden skal blive stående efter ankomsten — ellers er det præcis det hop
+   parten findes for at fjerne. */
+.billed-part[data-aspekt='ukendt'] { min-height: 320px; }
+.billed-part[data-aspekt='ukendt'] .billed-part-plads { height: 320px; }
+.billed-part-billeder { display: flex; flex-direction: column; gap: 8px; }
+.billed-part-billeder img { display: block; width: 100%; max-height: 320px; object-fit: contain; }
+.billed-part-fejl { color: var(--fg-3); font-size: 13px; }
+
 .image-generation { width: min(320px, 100%); margin: 14px 0; color: var(--fg-2); }
 .image-generation-label { display: block; margin-bottom: 16px; font-size: 13px; }
 .image-generation-grid {

@@ -264,6 +264,56 @@ export type ContentBlock =
       tool_use_id?: string
     }
   | {
+      /**
+       * Et medie-kald som en PART — født ved `tool_use`, død som `done`.
+       *
+       * ## Hvorfor den findes (18/11-2026)
+       *
+       * Indtil nu var billed-arbejdet AFledt: `BlocksRenderer` kaldte
+       * `levendeBilledArbejde(block.tools)` og tegnede en animation mens
+       * kaldet kørte. Den forsvandt i samme øjeblik kaldet sluttede — og
+       * billedet ankom som en separat blok på et NYT indeks, som
+       * `chatFlowModel.isDelivery` derefter flyttede til bunden. Resultatet
+       * var det Bjørn beskrev: «billeder havner i top eller bund».
+       *
+       * Parten her bærer hele livscyklussen på ÉN plads: den fødes når
+       * værktøjskaldet starter, reserverer sin plads hvis aspektet er kendt,
+       * og fyldes når billedet ankommer. Den flyttes aldrig.
+       *
+       * Den er IKKE i serverens `content_json` — den bygges af
+       * `streamReducer` ud fra `tool_use` + de `image`-blokke der bærer
+       * samme `tool_use_id`. Det er med vilje: en ny wire-type ville ramme
+       * `default: return null` i en ældre klient, og så forsvandt billedet
+       * helt i stedet for at ligge det forkerte sted.
+       */
+      type: 'image_generation_call'
+      /** `tool_use_id` — stabil på tværs af live og persisteret visning. */
+      id: string
+      /** Værktøjets navn, til etiketten (`openrouter_image` m.fl.). */
+      navn: string
+      status: 'running' | 'done' | 'error'
+      /** Hvor mange billeder kaldet bad om. Ukendt → 1. */
+      forventet_antal: number
+      /** Kun når kaldet SELV oplyste det (`aspect_ratio`). Målt 18/11-2026:
+       *  42 % af vores billeder er 9:16 og 20 % er 16:9, så et median-gæt
+       *  ville være forkert i 58 % af tilfældene. Ukendt → ingen reserveret
+       *  højde, kun en container med fast max-højde. */
+      aspekt?: string
+      /** Billederne i ankomst-rækkefølge. Tom mens status er `running`.
+       *  Felterne spejler `image`-blokken med vilje — samme reference-vej. */
+      billeder: Array<{
+        src?: string
+        alt?: string
+        attachment_id?: string
+        url?: string
+        filename?: string
+        mime_type?: string
+        kilde?: string
+      }>
+      /** Klientens ur da kaldet startede — til «Genererer… 8 s». */
+      startet?: number
+    }
+  | {
       // Video. SAMME reference-felter som `image`, med vilje: en video hentes
       // ad samme vej og skal overleve reload af samme grund. Blokken kom til
       // 28/9-2026 — indtil da lavede `as_blocks` en `file` ud af enhver video,

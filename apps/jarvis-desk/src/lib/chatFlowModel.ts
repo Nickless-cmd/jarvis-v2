@@ -93,6 +93,12 @@ export interface AdaptiveSnapshot {
 // typer følger turens kronologiske rækkefølge og markerer sidste arbejdsrunde.
 const ANSWER_BOUNDARY_TYPES = new Set<ContentBlock['type']>([
   'thinking', 'skill_surface', 'tool_use_summary', 'tool_use',
+  // 18/11-2026: et medie-kald er ikke længere en `tool_use` (det blev sin
+  // egen part, se `image_generation_call`), men det er stadig et STYKKE
+  // ARBEJDE der skiller commentary fra slutsvaret. Uden den her ville tekst
+  // skrevet efter et billedkald blive læst som slutsvar — og så forsvandt
+  // Jarvis' mellemregning ned i svaret.
+  'image_generation_call',
 ])
 
 function normalizeLine(value: string | null | undefined): string {

@@ -16,6 +16,7 @@ import { SKILL_VAERKTOEJER } from '../../lib/skillLinje'
 import { useVisningen, type Visning } from '../../lib/visning'
 import { TankeResumeLinje } from './TankeResumeLinje'
 import { BilledArbejdeAnimation, GeneratedImageGallery, levendeBilledArbejde } from './ImageGeneration'
+import { BilledPart } from './BilledPart'
 import { HistoriskGodkendelse } from './HistoriskGodkendelse'
 
 type ProgressBlock = Extract<ContentBlock, { type: 'progress' }>
@@ -294,6 +295,11 @@ function BlockView({
       // Live baerer en data-URL fra streamen; persisteret baerer en reference
       // der skal hentes med token. VideoBlock kender begge veje.
       return <VideoBlock block={block} />
+    case 'image_generation_call':
+      // Parten bærer hele livscyklussen på én plads: animation mens kaldet
+      // kører, billedet når det ankommer. Den er bevidst IKKE i `isDelivery`,
+      // så den bliver hvor den blev født i stedet for at hoppe til bunden.
+      return <BilledPart part={block} />
     case 'image_gallery':
       return <GeneratedImageGallery images={block.images} />
     case 'file':

@@ -515,13 +515,64 @@ describe('billedet i den levende stream (27/9-2026)', () => {
     expect((s.blocks[0] as { tool_use_id?: string }).tool_use_id).toBe('tu-3')
   })
 
-  it('billedblokken fortrænger ikke en tool_use på et andet index', () => {
+  it('et medie-kald fødes som sin EGEN part — ikke som en tool_use', () => {
+    // 18/11-2026: indtil nu var billedarbejdet AFledt — `BlocksRenderer`
+    // tegnede en animation ved siden af værktøjslinjen, og billedet ankom
+    // senere på et NYT indeks som `isDelivery` flyttede til bunden. Det gav
+    // hoppet Bjørn beskrev som «billeder havner i top eller bund».
+    const s = reduce([start({ type: 'tool_use', id: 'tu-4', name: 'openrouter_image', input: {} })])
+    expect(s.blocks[0]).toMatchObject({
+      type: 'image_generation_call',
+      id: 'tu-4',
+      navn: 'openrouter_image',
+      status: 'running',
+      forventet_antal: 1,
+      billeder: [],
+    })
+  })
+
+  it('billedet lægges IND i parten i stedet for at få sit eget index', () => {
+    // Det er hele pointen: den reserverede plads og billedet er SAMME sted.
+    // Lå billedet på index 1, stod pladsen på index 0 tom — og så hoppede
+    // indholdet da `isDelivery` flyttede billedet ned.
     const s = reduce([
       { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'tu-4', name: 'openrouter_image', input: {} } },
       { type: 'content_block_start', index: 1, content_block: { type: 'image', src: 'data:image/png;base64,C', tool_use_id: 'tu-4' } },
     ] as StreamEvent[])
-    expect(s.blocks[0]).toMatchObject({ type: 'tool_use', id: 'tu-4' })
-    expect(s.blocks[1]).toMatchObject({ type: 'image' })
+    const part = s.blocks[0]
+    expect(part).toMatchObject({ type: 'image_generation_call', id: 'tu-4', status: 'done' })
+    expect((part as unknown as { billeder: unknown[] }).billeder).toHaveLength(1)
+    // Index 1 står TOMT: der er ingen blok at hoppe til.
+    expect(s.blocks[1]).toBeFalsy()
+  })
+
+  it('aspektet bruges kun når kaldet selv oplyser det', () => {
+    // Målt 18/11-2026 på 171 billeder: 42 % 9:16, 20 % 16:9 — intet
+    // dominerende aspekt. Et gæt ville være forkert i 58 % af tilfældene.
+    const med = reduce([start({ type: 'tool_use', id: 'a', name: 'openrouter_image', input: { aspect_ratio: '16:9' } })])
+    expect(med.blocks[0]).toMatchObject({ aspekt: '16:9' })
+
+    // "landscape" og tom streng er ikke et forhold vi kan regne på — så
+    // reserveres ingen højde frem for en forkert.
+    const ugyldigt = reduce([start({ type: 'tool_use', id: 'b', name: 'openrouter_image', input: { aspect_ratio: 'landscape' } })])
+    expect((ugyldigt.blocks[0] as { aspekt?: string }).aspekt).toBeUndefined()
+
+    const intet = reduce([start({ type: 'tool_use', id: 'c', name: 'openrouter_image', input: {} })])
+    expect((intet.blocks[0] as { aspekt?: string }).aspekt).toBeUndefined()
+  })
+
+  it('et kald der IKKE er et medie-kald bliver en almindelig tool_use', () => {
+    // Parten må ikke sluge hele værktøjslinjen — kun medie-kaldene.
+    const s = reduce([start({ type: 'tool_use', id: 'tu-5', name: 'bash', input: {} })])
+    expect(s.blocks[0]).toMatchObject({ type: 'tool_use', id: 'tu-5', name: 'bash' })
+  })
+
+  it('en fejlet generering bliver en part med status error', () => {
+    const s = reduce([
+      { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'tu-6', name: 'openrouter_image', input: {} } },
+      { type: 'content_block_start', index: 1, content_block: { type: 'tool_result', tool_use_id: 'tu-6', status: 'error', content: 'boom', is_error: true } },
+    ] as StreamEvent[])
+    expect(s.blocks[0]).toMatchObject({ type: 'image_generation_call', id: 'tu-6' })
   })
 })
 

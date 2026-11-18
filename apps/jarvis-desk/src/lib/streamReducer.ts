@@ -1,4 +1,5 @@
 import type { StreamEvent, ContentBlock } from './sseProtocol'
+import { aspektFraKald, erMedieVaerktoej, forventetAntal } from './medieVaerktoejer'
 
 const LIVE_TOOL_OUTPUT_MAX_CHARS = 65_536
 
@@ -377,24 +378,66 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         type: 'thinking', thinking: cb.thinking ?? '',
         startet: forrige && forrige.type === 'thinking' && forrige.startet != null ? forrige.startet : nu,
       }
-      else if (cb.type === 'tool_use') blocks[event.index] = {
-        type: 'tool_use', id: cb.id, name: cb.name, input: cb.input ?? {}, partialJson: '', status: 'running',
-        startet: forrige && forrige.type === 'tool_use' && forrige.startet != null ? forrige.startet : nu,
+      else if (cb.type === 'tool_use') {
+        // Et medie-kald bliver sin EGEN part, ikke en værktøjslinje i
+        // runde-gruppen (18/11-2026). Parten bærer hele livscyklussen på én
+        // plads: den fødes her, reserverer sin plads hvis kaldet oplyste et
+        // aspekt, og fyldes når billedet ankommer nedenfor. Uden den ankom
+        // billedet på et NYT indeks og blev derefter flyttet til bunden af
+        // `isDelivery` — det var det hop Bjørn beskrev som «billeder havner i
+        // top eller bund».
+        const input = cb.input ?? {}
+        if (erMedieVaerktoej(cb.name)) {
+          const aspekt = aspektFraKald(input)
+          blocks[event.index] = {
+            type: 'image_generation_call',
+            id: cb.id,
+            navn: cb.name,
+            status: 'running',
+            forventet_antal: forventetAntal(input),
+            ...(aspekt ? { aspekt } : {}),
+            billeder: [],
+            startet: forrige && forrige.type === 'image_generation_call' && forrige.startet != null
+              ? forrige.startet : nu,
+          }
+        } else {
+          blocks[event.index] = {
+            type: 'tool_use', id: cb.id, name: cb.name, input, partialJson: '', status: 'running',
+            startet: forrige && forrige.type === 'tool_use' && forrige.startet != null ? forrige.startet : nu,
+          }
+        }
       }
       // Billedet fandtes ikke i streamen før 27/9-2026: værktøjet lagde en
       // note fra sig, og blokken blev først bygget når svaret blev gemt.
       // Renderen har haft grenen hele tiden (`BlocksRenderer`: `block.src ?
       // <ImageBlock/> : …`) — den fik bare aldrig noget. Nu gør den.
-      else if (cb.type === 'image') blocks[event.index] = {
-        type: 'image',
-        src: cb.src,
-        alt: cb.alt,
-        attachment_id: cb.attachment_id,
-        url: cb.url,
-        filename: cb.filename,
-        mime_type: cb.mime_type,
-        kilde: cb.kilde,
-        tool_use_id: cb.tool_use_id,
+      //
+      // 18/11-2026: bærer billedet et `tool_use_id` vi allerede har født en
+      // part for, lægges det IND i den part og får IKKE sit eget indeks. Ellers
+      // stod den reserverede plads tom mens billedet lå et andet sted.
+      else if (cb.type === 'image') {
+        const billede = {
+          src: cb.src,
+          alt: cb.alt,
+          attachment_id: cb.attachment_id,
+          url: cb.url,
+          filename: cb.filename,
+          mime_type: cb.mime_type,
+          kilde: cb.kilde,
+        }
+        const partIdx = cb.tool_use_id
+          ? blocks.findIndex((b) => !!b && b.type === 'image_generation_call' && b.id === cb.tool_use_id)
+          : -1
+        const part = partIdx >= 0 ? blocks[partIdx] : undefined
+        if (part && part.type === 'image_generation_call') {
+          blocks[partIdx] = {
+            ...part,
+            status: 'done',
+            billeder: [...part.billeder, billede],
+          }
+        } else {
+          blocks[event.index] = { type: 'image', ...billede, tool_use_id: cb.tool_use_id }
+        }
       }
       // UDGIVET fil eller video UNDER kørslen (7/10-2026).
       //

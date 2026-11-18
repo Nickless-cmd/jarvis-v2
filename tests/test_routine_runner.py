@@ -76,6 +76,50 @@ def test_kerne_saettet_indeholder_det_rutinen_faktisk_skal_bruge():
         assert forventet in navne, f"{forventet} mangler i kerne-sættet"
 
 
+def test_kerne_saettet_kan_levere_til_en_anden_end_ejeren():
+    """En rutine hvis formål er at NÅ nogen skal have en vej ud.
+
+    MÅLT 13.–18/11-2026: Michelles morgenbrief kørte hver dag og svarede
+    «værktøjet findes ikke i denne kørsel». `notify_user` går pr. definition
+    til EJEREN, så den eneste kanal til Michelle var `send_discord_dm` — som
+    var tilladt for origin `routine`, men ikke stod i kerne-sættet. Rutinen
+    gemte briefen som note og meldte alligevel `succeeded`.
+
+    Den 11/11 virkede den: det var den sidste kørsel på session-stien, som bar
+    sessionens eget værktøjssæt. Da rutinerne 12/11 flyttede til baggrund,
+    arvede de kerne-sættet i stedet, og leveringsevnen forsvandt uden en fejl.
+
+    Testen kræver BEGGE: uden `send_discord_dm` kan rutinen ikke nå en anden
+    person, og uden `vis_widget` kan den ikke vise resultatet i en samtale.
+    """
+    from core.services.routine_runner import _rutine_tools_payload
+
+    navne = _navne(_rutine_tools_payload(_kontekst()))
+
+    for forventet in ("send_discord_dm", "vis_widget"):
+        assert forventet in navne, (
+            f"{forventet} mangler i kerne-sættet — en rutine kan ikke levere sit "
+            "resultat, og fejlen er usynlig fordi kørslen melder `succeeded`"
+        )
+
+
+def test_leveringsvaerktoejerne_er_tilladte_for_rutine_origin():
+    """Krydset i `_rutine_tools_payload` filtrerer ukendte navne STILLE væk.
+
+    Står et værktøj i kerne-sættet men ikke i origin-listen, forsvinder det
+    uden en fejl — det er præcis den fælde sanseværktøjerne faldt i 28/10.
+    """
+    from core.tools.autonomous_tool_policy import allowed_tools_for_origin
+
+    tilladte = allowed_tools_for_origin("routine")
+
+    for forventet in ("send_discord_dm", "vis_widget"):
+        assert forventet in tilladte, (
+            f"{forventet} er ikke tilladt for origin `routine` — så bliver den "
+            "filtreret væk selv når en rutine peger på den selv"
+        )
+
+
 def test_system_rutiner_forbliver_vaerktoejs_fri():
     """Heartbeat/dream er rammer, ikke opgaver — de skal ikke nå ud i verden."""
     from core.services.routine_runner import _rutine_tools_payload

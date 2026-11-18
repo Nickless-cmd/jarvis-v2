@@ -3603,6 +3603,25 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .mk-sidste { flex: 0 0 90px; }
 .mk-cooldown { flex: 0 0 120px; }
 .mk-udfald { flex: 0 0 170px; font-weight: 600; text-align: right; }
+/* Under 720 px kan de tre faste kolonner (90+120+170) plus navnets 220 ikke
+   vaere der, og raekken knækkede: maalt i Chromium 18/11-2026 gik hoejden fra
+   32 til 54 px ved 620 og 60 px ved 420, med udfaldet alene paa anden linje.
+   Kolonnerne strammer ind i stedet — de skal blive paa figurens linje. */
+@media (max-width: 720px) {
+  .mk-navn { flex: 1 1 140px; }
+  .mk-sidste { flex: 0 0 62px; }
+  .mk-cooldown { flex: 0 0 74px; }
+  .mk-udfald { flex: 0 0 96px; }
+}
+/* Under 560 px er der ikke plads til seks dele paa én linje: maalt kraevede
+   raekken 508 px ved 420 px bredde. Navnet bliver paa figurens linje (saa
+   identiteten aldrig staar alene), og de tre maalinger samler sig under det. */
+@media (max-width: 560px) {
+  .mk-navn { flex: 1 1 auto; }
+  .mk-sidste { order: 2; flex: 0 0 auto; }
+  .mk-cooldown { order: 3; flex: 0 0 auto; }
+  .mk-udfald { order: 4; flex: 0 0 auto; margin-left: auto; }
+}
 .mk-tone-ok { color: #34d399; }
 .mk-tone-warn { color: #fbbf24; }
 .mk-tone-bad { color: var(--error-fg); }

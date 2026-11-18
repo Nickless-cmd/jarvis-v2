@@ -526,7 +526,6 @@ export function ChatFlowPresentation({
   // have > i ende og kunne foldes ud»). Efter turen følger de turhovedets
   // fold, som før.
   const arbejdeAabent = aktiv ? aabenManuelt === true : aaben
-  const visArbejdsdetaljer = foldWork.length > 0 && arbejdeAabent
 
   return (
     // `control` er kun en chat-flade (14/11-2026). `BlocksRenderer` deles med
@@ -575,9 +574,25 @@ export function ChatFlowPresentation({
           Chromium og Safari; `height: auto` ville kræve `interpolate-size`,
           som kun Chromium har). */}
       {visArbejdsgruppe ? (
-          <div className="chat-flow-gruppe-ydre" data-aaben={aaben ? 'true' : 'false'}>
+          <div className="chat-flow-gruppe-ydre" data-aaben={aaben ? 'true' : 'false'}
+            /* `inert` er den ærlige erklæring om den lukkede fold (18/11-2026):
+               indholdet bliver i DOM'en så rækken kan animere, men det er
+               fjernet fra tilgængelighedstræet og tab-rækkefølgen. Uden den
+               ville skjult arbejde være læsbart for skærmlæsere og søgbart i
+               DOM'en — prisen for at fjerne blinket må ikke være usynligt
+               indhold der alligevel kan tilgås. */
+            {...(aaben ? {} : { inert: true })}>
             <div className="chat-flow-gruppe" aria-hidden={!aaben}>
-            {aaben && (harArbejde || turenKoerer || levendeSyntese || model.arbejdsTilstand === 'placeholder') ? (
+            {/* INDHOLDET BLIVER I DOM'EN (18/11-2026 — blink 1).
+                Før var denne blok betinget af `aaben`, så den blev AFMONTERET
+                i samme frame som rammen begyndte at glide fra `1fr` til
+                `0fr`. Der var da intet indhold tilbage at animere, og folden
+                blev et hop i stedet for en glidning — præcis det CSS'en blev
+                bygget til at undgå 20/10-2026.
+                Nu styrer `visArbejdsgruppe` om indholdet FINDES, og `aaben`
+                styrer kun om det er SYNLIGT (via rammens rækkehøjde og
+                `aria-hidden`). Så glider det ud i stedet for at forsvinde. */}
+            {harArbejde || turenKoerer || levendeSyntese || model.arbejdsTilstand === 'placeholder' ? (
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
                 aria-label={[activeSynthesis, rundeTekst].filter(Boolean).join('. ')}>
@@ -630,7 +645,13 @@ export function ChatFlowPresentation({
               </div>
             ) : null}
 
-            {visArbejdsdetaljer ? (
+            {/* Arbejdsdetaljerne er en hel blok-liste, ikke en linje. De bliver
+                derfor AFMONTERET når folden er lukket — i modsætning til
+                aktivitetsblokken ovenfor. Prisen for at holde dem monteret
+                permanent (ydeevne, skjult indhold i tilgængelighedstræet) er
+                større end gevinsten: det er den levende linje der blinker,
+                ikke detaljerne, og de skal først kunne ses når man folder ud. */}
+            {foldWork.length > 0 && arbejdeAabent ? (
               <div className="chat-flow-work-details">
                 <BlocksRenderer blocks={foldWork} density={density} streaming={streaming}
                   rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}

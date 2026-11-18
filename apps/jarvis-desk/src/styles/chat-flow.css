@@ -43,22 +43,10 @@
   letter-spacing: 0.005em;
 }
 
-/* Hoved og dets indhold er ÉN blok, ikke to grid-items med et gap imellem.
- *
- * MÅLT 14/11-2026 i Chromium: `.chat-flow` er et grid med `gap: 10,4px`, og
- * mellem hovedet og svaret lå `chat-flow-gruppe-ydre` som et TOMT grid-item
- * (højde 0). Et tomt item koster stadig to gaps — ét over og ét under — så
- * der stod 20,8px luft mellem to ting der ikke havde noget imellem sig.
- * Bjørn: «turhoved skal stå lige over starten af beskeden».
- *
- * `:empty` duede IKKE: gruppen har altid et indre `div`-barn, så den er aldrig
- * tom i CSS'ens forstand (målt — reglen ramte nul elementer). Den lukkede
- * gruppe bærer derimod allerede `data-aaben='false'`, og den er sand netop når
- * der intet er at vise. `display: none` fjerner den fra grid-flowet helt, så
- * kun ét gap står tilbage. */
-.chat-flow > .chat-flow-gruppe-ydre[data-aaben='false'] {
-  display: none;
-}
+/* Den lukkede gruppe må ikke koste grid-plads — men den må heller ikke
+ * fjernes fra layoutet. Se den samlede regel efter `.chat-flow-gruppe-ydre`
+ * nedenfor (18/11-2026). */
+
 
 .chat-flow > .rv-tur + * {
   margin-top: 0;
@@ -170,10 +158,37 @@
 .chat-flow-gruppe-ydre {
   display: grid;
   grid-template-rows: 1fr;
-  transition: grid-template-rows var(--dur-sheet) var(--ease-out);
+  /* `display` er med i transitionen med `allow-discrete` (18/11-2026 — blink 1).
+     Det er den eneste måde at få BÅDE glidning og nul plads: rækken animerer
+     fra `1fr` til `0fr`, og `display: none` sætter først ind når transitionen
+     er færdig. Uden `allow-discrete` vinder `display: none` med det samme, og
+     der er intet at animere — det var hele blinket. */
+  transition:
+    grid-template-rows var(--dur-sheet) var(--ease-out),
+    display var(--dur-sheet) allow-discrete;
 }
 
 .chat-flow-gruppe-ydre[data-aaben='false'] { grid-template-rows: 0fr; }
+
+/* DEN LUKKEDE GRUPPE: glider ud, og forsvinder SÅ fra layoutet (18/11-2026).
+ *
+ * To krav stod i direkte modstrid, og begge var rigtige:
+ * 20/10-2026 blev `display: none` fjernet, fordi den slog fold-transitionen
+ * ud — der var intet at animere, så folden hoppede.
+ * 14/11-2026 blev den GENINDFØRT, fordi den lukkede gruppe ellers stod som et
+ * tomt grid-item og kostede to grid-gaps (20,8px luft mellem hoved og besked).
+ *
+ * `display: none` vinder normalt med det samme og slår transitionen ud. Men
+ * med `transition-behavior: allow-discrete` på `display` (sat på reglen
+ * ovenfor) sker skiftet FØRST når transitionen er færdig. Så rækken glider
+ * fra `1fr` til `0fr` over `--dur-sheet`, og derefter forsvinder elementet
+ * helt fra layoutet — uden at efterlade den luft reglen fra 14/11 fjernede.
+ *
+ * MÅLT 18/11-2026 i Chromium: åben 40px → midt (150ms) 2,14px → lukket 0px
+ * med `display: none`. Både glidningen og nul-pladsen er der. */
+.chat-flow > .chat-flow-gruppe-ydre[data-aaben='false'] {
+  display: none;
+}
 
 .chat-flow-gruppe-ydre > .chat-flow-gruppe {
   /* Uden `min-height: 0` nægter et grid-barn at krympe under sit indhold, og

@@ -33,7 +33,7 @@ describe('chat mode — foldet glider i stedet for at blinke', () => {
     expect(r).toMatch(/transition:\s*grid-template-rows\s+var\(--dur-(snap|fast|base|sheet|slow)\)/)
   })
 
-  it('lukket tilstand er 0fr — ikke display: none', () => {
+  it('lukket tilstand er 0fr — det er rækken der animerer, ikke synligheden', () => {
     expect(regel(".chat-flow-gruppe-ydre[data-aaben='false']"))
       .toMatch(/grid-template-rows:\s*0fr/)
   })
@@ -56,7 +56,25 @@ describe('chat mode — foldet glider i stedet for at blinke', () => {
 
   it('den gamle kontrakt må ikke komme tilbage', () => {
     expect(css).not.toMatch(/\.chat-flow-gruppe\[hidden\]/)
-    expect(css).not.toMatch(/\.chat-flow-gruppe\s*\{[^}]*display:\s*none/)
+  })
+
+  it('display: none på den lukkede gruppe kræver allow-discrete — ellers hopper folden', () => {
+    // 18/11-2026. `display: none` kom tilbage for at fjerne de 20,8px luft
+    // mellem hoved og besked (målt 14/11-2026), men den slår transitionen
+    // ihjel medmindre `display` selv er transitioneret med `allow-discrete`:
+    // så sker skiftet først når rækken er løbet til 0fr.
+    //
+    // Reglen her er den ENESTE grund til at kombinationen er tilladt, og den
+    // er skærpet fordi den gamle vagt blev omgået: den greppede efter
+    // `.chat-flow-gruppe { … display: none }` og kunne derfor ikke se den nye
+    // regel, som skrev `.chat-flow > .chat-flow-gruppe-ydre[data-aaben=false]`.
+    // En vagt der ikke kan se formen den vogter over, vogter ingenting.
+    expect(regel('.chat-flow-gruppe-ydre'))
+      .toMatch(/display\s+var\(--dur-(snap|fast|base|sheet|slow)\)\s+allow-discrete/)
+    expect(regel(".chat-flow > .chat-flow-gruppe-ydre[data-aaben='false']"))
+      .toMatch(/display:\s*none/)
+    // Aldrig ubetinget: den lukkede tilstand er den eneste der må fjerne den.
+    expect(regel('.chat-flow-gruppe-ydre')).not.toMatch(/display:\s*none/)
   })
 
   it('respekterer prefers-reduced-motion', () => {

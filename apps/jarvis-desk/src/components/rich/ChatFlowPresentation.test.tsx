@@ -431,6 +431,38 @@ describe('ChatFlowPresentation', () => {
     expect(container.querySelector('.rv-turTid')).not.toBeNull()
   })
 
+  it('beholder indholdet i DOM\'en når folden lukker — blink 1', () => {
+    // Bjørn 18/11-2026: «lad indholdet blive i DOM'en». Før var blokken
+    // betinget af `aaben`, så den blev AFMONTERET i samme frame som rammen
+    // begyndte at glide fra `1fr` til `0fr`. Der var da intet indhold tilbage
+    // at animere, og folden blev et hop i stedet for en glidning — målt i
+    // Chromium 18/11-2026: 24,78px → 0px i én frame.
+    const blocks: ContentBlock[] = [
+      { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+      { type: 'text', text: 'Færdig.' },
+    ]
+    const view = render(<ChatFlowPresentation {...common} mode="living" streaming
+      status="working" blocks={blocks} rundeEtiketter={{ t1: 'Læste filen' }} />)
+    expect(document.querySelector('.chat-flow-gruppe-ydre'))
+      .toHaveAttribute('data-aaben', 'true')
+    const aktivitet = document.querySelector('.chat-flow-activity')
+    expect(aktivitet).not.toBeNull()
+
+    // Turen slutter → folden lukker.
+    view.rerender(<ChatFlowPresentation {...common} mode="living" streaming={false} status="done"
+      finalAnswerStarted blocks={blocks} rundeEtiketter={{ t1: 'Læste filen' }} />)
+
+    const lukket = document.querySelector('.chat-flow-gruppe-ydre') as HTMLElement
+    expect(lukket).toHaveAttribute('data-aaben', 'false')
+    // SAMME node, ikke en ny: indholdet blev ikke afmonteret og genmonteret.
+    expect(document.querySelector('.chat-flow-activity')).toBe(aktivitet)
+    // Men det er erklæret utilgængeligt, så skjult arbejde hverken kan læses
+    // af skærmlæsere eller nås med tab. Prisen for at fjerne blinket må ikke
+    // være usynligt indhold der alligevel kan tilgås.
+    expect(lukket).toHaveAttribute('inert')
+    expect(lukket.querySelector('.chat-flow-gruppe')).toHaveAttribute('aria-hidden', 'true')
+  })
+
   it('fjerner den levende syntese efter turen, men bevarer arbejdsdetaljerne', () => {
     render(<ChatFlowPresentation {...common} mode="living" streaming={false} status="done"
       finalAnswerStarted blocks={[

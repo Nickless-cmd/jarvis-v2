@@ -116,17 +116,22 @@ def update_task(
         artifact_ref=str(artifact_ref or "").strip() if artifact_ref is not None else None,
         updated_at=datetime.now(UTC).isoformat(),
     )
-    if opdateret is not None and normalized_status in _AFSLUTTEDE:
-        _luk_flowet(opdateret, normalized_status)
+    if opdateret is not None and normalized_status is not None:
+        _foer_flowet_med(opdateret, normalized_status)
     return opdateret
 
 
 #: En opgave i en af disse er faerdig — og saa er dens flow det ogsaa.
 _AFSLUTTEDE = frozenset({"succeeded", "failed", "cancelled"})
 
+#: Statusser hvor flowet spejler opgaven UDEN at blive lukket. Maalt 18/11-2026:
+#: 661 flows stod `queued` mens deres opgave var `blocked` — opgaven kan ikke
+#: samles op, men flowet blev ved med at staa i koen og blev samlet op forgæves.
+_SPEJLES = frozenset({"blocked"})
 
-def _luk_flowet(opgave: dict[str, object], status: str) -> None:
-    """Afslut opgavens flow med samme udfald. Selv-sikker.
+
+def _foer_flowet_med(opgave: dict[str, object], status: str) -> None:
+    """Lad flowet spejle sin opgaves status. Selv-sikker.
 
     ## Hvorfor (15/9-2026)
 
@@ -135,6 +140,16 @@ def _luk_flowet(opgave: dict[str, object], status: str) -> None:
     med, fordi intet i koden nogensinde satte et flow til faerdigt. To sandheder
     om det samme stykke arbejde — og det var den forkerte, hans selvbillede
     (`runtime_self_model_state`) og `manage_runtime_work` laeste.
+
+    ## Hvorfor ALLE statusser og ikke kun de afsluttede (18/11-2026)
+
+    Retningen ovenfor blev kun anvendt naar opgaven var `succeeded`/`failed`/
+    `cancelled`. Maalt 18/11-2026: 661 flows stod `queued` mens deres opgave var
+    `blocked` — og ingen af dem var foraeldreloese (alle 667 havde en levende
+    raekke i `runtime_tasks`). En blokeret opgave efterlod altsaa sit flow i
+    koen for evigt, og `manage_runtime_work` blev ved med at samle det op.
+    `step_state="done"` saettes derfor kun ved afslutning; ellers spejles
+    status som den er.
 
     Kun et flow der stadig er aabent roeres: et flow der allerede er afsluttet
     har sin egen historie, og den skrives ikke om.
@@ -147,9 +162,16 @@ def _luk_flowet(opgave: dict[str, object], status: str) -> None:
         flow = runtime_flows.get_flow(flow_id)
         if flow is None or str(flow.get("status") or "") in _AFSLUTTEDE:
             return
-        runtime_flows.update_flow(flow_id, status=status, step_state="done")
+        if status in _AFSLUTTEDE:
+            runtime_flows.update_flow(flow_id, status=status, step_state="done")
+        elif status in _SPEJLES:
+            # `running`/`queued` roerer ikke flowet — det styres af
+            # `manage_runtime_work` selv (`test_en_aaben_status_roerer_ikke_flowet`).
+            # `blocked` er undtagelsen: en blokeret opgave kan ikke samles op, saa
+            # flowet maa ikke blive staaende i koen.
+            runtime_flows.update_flow(flow_id, status=status)
     except Exception:
-        logger.warning("runtime_tasks: kunne ikke lukke flow %s for opgave %s",
+        logger.warning("runtime_tasks: kunne ikke foere flow %s med opgave %s",
                        flow_id, opgave.get("task_id"), exc_info=True)
 
 

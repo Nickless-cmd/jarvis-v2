@@ -43,8 +43,20 @@ _PROMISE_VERBS = ("tilføjer", "tilføje", "retter", "opdaterer", "skriver", "æ
                   # skrive — og gik hjem uden at gøre det. Målt på en rigtig researcher:
                   # "Task schema har kun 5 felter … Lad mig verificere required-listen."
                   # Den svarede på 1 af 3 spørgsmål og kaldte intet værktøj bagefter.
-                  "verificerer", "verificere", "tjekker", "tjekke")
-_PROMISE_EN = ("i'll ", "i will ", "let me ", "now i'll", "now i will")
+                  "verificerer", "verificere", "tjekker", "tjekke",
+                  # 18/11-2026: LÆSE-verber der manglede. Målt på 455 gemte
+                  # agent-sluttekster (kind='result'): 14 skiftede til promised=True med
+                  # disse tilføjet, og ALLE 14 var ægte cliffhangere — «Nu læser jeg
+                  # backend-bygningen», «Jeg ser på de øverste docs», «Jeg læser de
+                  # relevante blokke». Nul falske positiver i håndmærkningen. For en
+                  # LÆSENDE agent er `promised` det eneste signal, så et ufanget løfte
+                  # blev meldt `completed`.
+                  "finder", "ser på", "leder efter", "læser")
+_PROMISE_EN = ("i'll ", "i will ", "let me ", "now i'll", "now i will",
+               # 18/11-2026: «let's » manglede mens «let me » var dækket — samme
+               # enkeltsprogs-hul som `lad mig` havde 26/10. Målt: «Now let's look at
+               # db_inbox.py» slap gennem som færdig.
+               "let's ")
 #: 26/10-2026: `let me ` stod i listen — `lad mig ` gjorde ikke. Præcis den engelske form
 #: var dækket og den danske manglede, så en dansk cliffhanger slap gennem vagten og
 #: agenten blev meldt ``completed`` midt i en sætning. Samme fejlklasse som MEMORY-
@@ -186,6 +198,10 @@ def _promises_action(text: str) -> bool:
     if low.startswith(_PROGRESS_PREFIXES):
         return True
     if any(f"jeg {v}" in low or f"{v} jeg" in low for v in _PROMISE_VERBS):
+        return True
+    # 18/11-2026: dansk cliffhanger stiller gerne verbet UDEN «jeg»: «Nu finder den
+    # anden starter i visible_runs_memory.py:». Formen «jeg <verb>» dækkede den ikke.
+    if any(f"nu {v}" in low for v in _PROMISE_VERBS):
         return True
     return any(m in low for m in _PROMISE_EN) or any(m in low for m in _PROMISE_DA)
 

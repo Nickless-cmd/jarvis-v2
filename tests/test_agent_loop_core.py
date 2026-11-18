@@ -540,3 +540,37 @@ def test_other_tool_errors_still_become_error_str_and_do_not_park():
 
     out = _run(Boom([{"text": "", "tool_calls": [_tc(1)]}]))
     assert out["error_str"] == "almindelig fejl" and "parked" not in out
+
+
+# ── Promise-ordforrådets to huller (18/11-2026) ───────────────────────────────
+# Målt på 455 gemte agent-sluttekster (kind='result'): 14 skiftede til
+# promised=True da hullerne blev lukket, og alle 14 var ægte cliffhangere.
+# For en LÆSENDE agent er `promised` det ENESTE signal — et ufanget løfte blev
+# derfor meldt `completed`.
+def test_engelske_lets_og_danske_laeseverber_fanges_som_loefter():
+    from core.services.agent_loop_core import _promises_action
+
+    # De fire målte tekster — hver var et løfte uden en efterfølgende handling.
+    assert _promises_action("Now let's look at db_inbox.py relevant sections.")
+    assert _promises_action("Nu finder den anden starter i visible_runs_memory.py:")
+    assert _promises_action("Now let's look at examples of correctly migrated callers")
+    assert _promises_action("Nu læser jeg backend-bygningen og desk sseProtocol/BlocksRenderer")
+    # De øvrige målte former, så listen ikke kun dækker fire eksempler.
+    assert _promises_action("The actual source is likely under ~/.jarvis-v2. Let's explore.")
+    assert _promises_action("Listen er afkortet. Jeg ser på de øverste docs.")
+    assert _promises_action("Jeg leder efter den anden kalder.")
+
+
+def test_en_afsluttet_leverance_bliver_ikke_doemt_som_loefte():
+    """Modstykket: ordforrådet må ikke gøre en færdig leverance ufuldstændig."""
+    from core.services.agent_loop_core import _promises_action
+
+    # Datid og konstateringer — ikke løfter. Ingen af dem må fælde vagten.
+    assert not _promises_action("Jeg fandt den anden kalder i visible_runs_memory.py.")
+    assert not _promises_action("Jeg læste filen og rettede de tre fejl.")
+    assert not _promises_action("Ændringen er skrevet og testene er grønne.")
+    # KENDT GRÆNSE (målt 18/11-2026, ikke rettet): en agent der CITERER frasen i
+    # backticks — «Fundet: `let's ` manglede» — bliver dømt som løfte. Backtick-strip
+    # blev målt som modtræk og forkastet: det fjernede to ÆGTE træf (færdige leverancer
+    # der blev dømt på `jeg <verb>` inde i et kodecitat). Heuristikken kan ikke skelne
+    # omtale fra brug uden at svække vagten, så grænsen står her frem for at være usynlig.

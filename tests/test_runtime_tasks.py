@@ -112,3 +112,27 @@ def test_et_allerede_afsluttet_flow_skrives_ikke_om(isolated_runtime) -> None:
     runtime_flows.update_flow(flow["flow_id"], status="failed")
     runtime_tasks.update_task(opgave["task_id"], status="succeeded")
     assert runtime_flows.get_flow(flow["flow_id"])["status"] == "failed"
+
+
+def test_en_blokeret_opgave_efterlader_ikke_sit_flow_i_koen(isolated_runtime) -> None:
+    """Målt 18/11-2026: 661 flows stod `queued` mens deres opgave var `blocked`.
+
+    Ingen af dem var forældreløse — alle havde en levende række i `runtime_tasks`.
+    `update_task` lukkede kun flowet ved succeeded/failed/cancelled, så en
+    blokeret opgave efterlod sit flow i køen, hvor `manage_runtime_work` blev ved
+    med at samle det op forgæves. Køen kunne derfor aldrig dræne.
+    """
+    from core.services import runtime_flows, runtime_tasks
+
+    opgave = runtime_tasks.create_task(kind="initiative-followup", goal="g", origin="t")
+    flow = runtime_flows.create_flow(task_id=opgave["task_id"])
+
+    runtime_tasks.update_task(opgave["task_id"], status="blocked", blocked_reason="venter")
+
+    efter = runtime_flows.get_flow(flow["flow_id"])
+    assert efter["status"] == "blocked"
+    # Blokeret er ikke færdigt: step_state må ikke stempl es som "done".
+    assert efter["step_state"] != "done"
+    # Og det må ikke længere stå i den kø manage_runtime_work tømmer.
+    i_koeen = [f["flow_id"] for f in runtime_flows.list_flows(status="queued")]
+    assert flow["flow_id"] not in i_koeen

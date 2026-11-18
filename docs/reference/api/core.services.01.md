@@ -634,30 +634,30 @@ _Agentens model-/vaerktoejsloekke som ren logik (agent-contract-v1 C6, spec 12.1
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_budget_note` | `(rounds, max_rounds, messages)` | Rundebudget-noten, eller ``""`` naar den ikke skal injiceres. | [src](../../../core/services/agent_loop_core.py#L82) |
-| function | `_deadline_epoch` | `(deadline_at)` | Deadline som epoch-sekunder, eller ``0.0`` naar der ingen gyldig er. | [src](../../../core/services/agent_loop_core.py#L124) |
-| function | `_deadline_note` | `(minutter)` | — | [src](../../../core/services/agent_loop_core.py#L142) |
-| function | `_answers_directive` | `(unanswered)` | Ordre om at svare NU ud fra det agenten allerede har fundet (26/10-2026). | [src](../../../core/services/agent_loop_core.py#L149) |
-| function | `_promises_action` | `(text)` | True naar teksten lover en handling i stedet for at udfoere den. | [src](../../../core/services/agent_loop_core.py#L178) |
-| function | `_declared_coverage` | `(final_text)` | Spoergsmaalsnumrene agenten SELV erklaerer besvaret. ``None`` = ingen erklaering. | [src](../../../core/services/agent_loop_core.py#L249) |
-| function | `_own_task` | `(prompt)` | Kun den del af prompten der er DENNE agents opgave. | [src](../../../core/services/agent_loop_core.py#L276) |
-| function | `_question_numbers` | `(prompt)` | Spoergsmaalsnumrene i opgaven, uanset om de er skrevet med ord eller som ren nummerering. | [src](../../../core/services/agent_loop_core.py#L316) |
-| function | `_answered_numbers` | `(final_text, qs)` | Hvilke af opgavens spoergsmaalsnumre der faktisk er besvaret i resultatet. | [src](../../../core/services/agent_loop_core.py#L340) |
-| function | `_bullet_answers` | `(final_text)` | Antal punkter i svaret der baerer indhold. | [src](../../../core/services/agent_loop_core.py#L393) |
-| function | `_unanswered_questions` | `(prompt, final_text)` | Antal nummererede spoergsmaal i opgaven uden et NUMMERERET svar i resultatet. | [src](../../../core/services/agent_loop_core.py#L403) |
-| function | `_unanswered_detail` | `(prompt, final_text)` | (antal, ord) — tallet OG hvad der faktisk blev maalt. | [src](../../../core/services/agent_loop_core.py#L418) |
-| function | `_io_wrote_something` | `(io)` | Har agenten aendret sin worktree — uanset hvilket vaerktoej den brugte? | [src](../../../core/services/agent_loop_core.py#L486) |
-| function | `_delivery_gap` | `(expected_result, final_text, total_tool_calls, prompt=…, write_calls=…, write_capable=…)` | Grunden til at leverancen ikke kan accepteres — eller ``""`` hvis den kan. | [src](../../../core/services/agent_loop_core.py#L517) |
-| function | `_delivery_nudge` | `(gap)` | Ordre til en agent hvis leverance ikke kan accepteres. Navngiver hullet, ikke dommen. | [src](../../../core/services/agent_loop_core.py#L591) |
-| class | `ApprovalPending` | `` | Et vaerktoejskald kraever en menneskelig godkendelse: loekken PARKERER (checkpoint) i stedet for at | [src](../../../core/services/agent_loop_core.py#L600) |
-| method | `ApprovalPending.__init__` | `(self, approval_id, tool_call_id=…)` | — | [src](../../../core/services/agent_loop_core.py#L604) |
-| class | `LoopIO` | `` | — | [src](../../../core/services/agent_loop_core.py#L609) |
-| method | `LoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_loop_core.py#L610) |
-| method | `LoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_loop_core.py#L613) |
-| method | `LoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_loop_core.py#L615) |
-| method | `LoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_loop_core.py#L617) |
-| function | `run_tool_loop` | `(io, *, prompt, tools_payload, requires_tools, provider, model, scout, max_rounds, synthesis_directive, resume=…, expected_result=…, deadline_at=…)` | Koer loekken og returner raa tal + tekst. Kaster aldrig: en fejl bliver ``error_str``. | [src](../../../core/services/agent_loop_core.py#L620) |
-| function | `_outcome` | `(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0, parked, incomplete=…, unanswered=…, unanswered_ord=…, stop_reason=…)` | — | [src](../../../core/services/agent_loop_core.py#L903) |
+| function | `_budget_note` | `(rounds, max_rounds, messages)` | Rundebudget-noten, eller ``""`` naar den ikke skal injiceres. | [src](../../../core/services/agent_loop_core.py#L94) |
+| function | `_deadline_epoch` | `(deadline_at)` | Deadline som epoch-sekunder, eller ``0.0`` naar der ingen gyldig er. | [src](../../../core/services/agent_loop_core.py#L136) |
+| function | `_deadline_note` | `(minutter)` | — | [src](../../../core/services/agent_loop_core.py#L154) |
+| function | `_answers_directive` | `(unanswered)` | Ordre om at svare NU ud fra det agenten allerede har fundet (26/10-2026). | [src](../../../core/services/agent_loop_core.py#L161) |
+| function | `_promises_action` | `(text)` | True naar teksten lover en handling i stedet for at udfoere den. | [src](../../../core/services/agent_loop_core.py#L190) |
+| function | `_declared_coverage` | `(final_text)` | Spoergsmaalsnumrene agenten SELV erklaerer besvaret. ``None`` = ingen erklaering. | [src](../../../core/services/agent_loop_core.py#L265) |
+| function | `_own_task` | `(prompt)` | Kun den del af prompten der er DENNE agents opgave. | [src](../../../core/services/agent_loop_core.py#L292) |
+| function | `_question_numbers` | `(prompt)` | Spoergsmaalsnumrene i opgaven, uanset om de er skrevet med ord eller som ren nummerering. | [src](../../../core/services/agent_loop_core.py#L332) |
+| function | `_answered_numbers` | `(final_text, qs)` | Hvilke af opgavens spoergsmaalsnumre der faktisk er besvaret i resultatet. | [src](../../../core/services/agent_loop_core.py#L356) |
+| function | `_bullet_answers` | `(final_text)` | Antal punkter i svaret der baerer indhold. | [src](../../../core/services/agent_loop_core.py#L409) |
+| function | `_unanswered_questions` | `(prompt, final_text)` | Antal nummererede spoergsmaal i opgaven uden et NUMMERERET svar i resultatet. | [src](../../../core/services/agent_loop_core.py#L419) |
+| function | `_unanswered_detail` | `(prompt, final_text)` | (antal, ord) — tallet OG hvad der faktisk blev maalt. | [src](../../../core/services/agent_loop_core.py#L434) |
+| function | `_io_wrote_something` | `(io)` | Har agenten aendret sin worktree — uanset hvilket vaerktoej den brugte? | [src](../../../core/services/agent_loop_core.py#L502) |
+| function | `_delivery_gap` | `(expected_result, final_text, total_tool_calls, prompt=…, write_calls=…, write_capable=…)` | Grunden til at leverancen ikke kan accepteres — eller ``""`` hvis den kan. | [src](../../../core/services/agent_loop_core.py#L533) |
+| function | `_delivery_nudge` | `(gap)` | Ordre til en agent hvis leverance ikke kan accepteres. Navngiver hullet, ikke dommen. | [src](../../../core/services/agent_loop_core.py#L607) |
+| class | `ApprovalPending` | `` | Et vaerktoejskald kraever en menneskelig godkendelse: loekken PARKERER (checkpoint) i stedet for at | [src](../../../core/services/agent_loop_core.py#L616) |
+| method | `ApprovalPending.__init__` | `(self, approval_id, tool_call_id=…)` | — | [src](../../../core/services/agent_loop_core.py#L620) |
+| class | `LoopIO` | `` | — | [src](../../../core/services/agent_loop_core.py#L625) |
+| method | `LoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_loop_core.py#L626) |
+| method | `LoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_loop_core.py#L629) |
+| method | `LoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_loop_core.py#L631) |
+| method | `LoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_loop_core.py#L633) |
+| function | `run_tool_loop` | `(io, *, prompt, tools_payload, requires_tools, provider, model, scout, max_rounds, synthesis_directive, resume=…, expected_result=…, deadline_at=…)` | Koer loekken og returner raa tal + tekst. Kaster aldrig: en fejl bliver ``error_str``. | [src](../../../core/services/agent_loop_core.py#L636) |
+| function | `_outcome` | `(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0, parked, incomplete=…, unanswered=…, unanswered_ord=…, stop_reason=…)` | — | [src](../../../core/services/agent_loop_core.py#L919) |
 
 ## `core/services/agent_message_receipt.py`
 _En besked til et barn maa ikke fryse foraelderens tur — Fase 6._

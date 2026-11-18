@@ -23,16 +23,50 @@ def test_codex_command_uses_task_root_and_native_sandbox(tmp_path):
     assert "--ephemeral" in cmd and "--model" not in cmd
 
 
-def test_claude_command_is_restricted_and_has_no_shell(tmp_path):
+def test_claude_command_is_restricted_and_writing_routes_have_shell(tmp_path):
+    """Skrivende CLI-ruter har shell; læsende har den ikke.
+
+    Denne test hed tidligere ``..._has_no_shell`` og krævede ``Bash not in tools``
+    for ``worktree-write``. Den var skrevet før 14/11-2026 og fæstnede et forbud
+    Bjørn aldrig havde givet: ``dec_6a234cd30460`` handler om *researcher til
+    git-historik* og er ``revoked`` — den blev læst som et bredere forbud.
+
+    Bjørn ophævede begrænsningen 14/11-2026 («giv claude wt_bash»). Prisen for
+    den var målt: to agenter afleverede kode uden at køre én test, og en tredje
+    skrev 19 filer med typecheck-fejl som ingen kunne se. En skrivende agent uden
+    shell kan ikke verificere sit eget arbejde — dens «færdig» dækker kun over at
+    den skrev noget.
+
+    ``--restricted`` er ikke i sig selv en shell-grænse: den fjerner Bash KUN når
+    ``--tools`` ikke nævner det. Derfor skal fraværet fæstnes eksplicit for de
+    læsende ruter (se ``tests/test_agent_cli_policy.py``), ikke opnås ved at
+    fjerne værktøjet fra de skrivende.
+    """
     from core.services.agent_cli_backend import _command
 
     cmd = _command("claude-cli", "/bin/claude", "sonnet", str(tmp_path), "gør det",
                    policy="worktree-write", output_path=str(tmp_path / "unused"))
     assert "--restricted" in cmd and "--permission-prompts" in cmd
     tools = cmd[cmd.index("--tools") + 1]
-    assert "Edit" in tools and "Write" in tools and "Bash" not in tools
+    assert "Edit" in tools and "Write" in tools
+    # Skrivende rute: shell er med, ellers kan agenten ikke køre sine egne tests.
+    assert "Bash" in tools, (
+        "den skrivende rute mistede shell — så kan dens agent ikke køre de tests "
+        "den selv skrev, og dens «færdig» dækker kun over at den skrev noget"
+    )
+    # `--tools` giver værktøjet, `--allowedTools` giver tilladelsen. Uden den
+    # anden afvises hvert Bash-kald uden for CLI'ens egen sikre liste — målt
+    # 14/11-2026: agenten kunne køre `echo` men ikke `&&` eller vitest.
+    assert cmd[cmd.index("--allowedTools") + 1] == "Bash"
     assert cmd[cmd.index("--permission-mode") + 1] == "acceptEdits"
     assert cmd[cmd.index("--model") + 1] == "sonnet"
+
+    # Læsende rute: shell er ikke med. Det er den grænse der faktisk gælder.
+    læsende = _command("claude-cli", "/bin/claude", "sonnet", str(tmp_path), "vurdér",
+                       policy="read-only-runtime", output_path=str(tmp_path / "unused"))
+    læsende_tools = læsende[læsende.index("--tools") + 1]
+    assert "Bash" not in læsende_tools
+    assert "--allowedTools" not in læsende
 
 
 def test_cli_prompt_translates_the_workers_virtual_work_path():

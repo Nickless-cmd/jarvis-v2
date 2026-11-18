@@ -58,14 +58,18 @@ export function LabelSkift({
   useEffect(() => {
     if (vist.id === 0 || reduced) { ind.setValue(1); return }
     ind.setValue(0)
-    Animated.timing(ind, {
-      toValue: 1, duration: 250, delay: efterSpark ? 210 : 0,
-      easing: Easing.inOut(Easing.ease), useNativeDriver: true,
+    // RN's native spring er allerede den dæmpede oscillator; desks analytiske
+    // JS-kurve ville derfor være både dyrere og dårligere end useNativeDriver.
+    // 320/18/1 er valgt fra de målte produktionsværdier: hurtig synlig landing
+    // omkring de hidtidige 250 ms, med et let fysisk efterløb uden sløvhed.
+    Animated.spring(ind, {
+      toValue: 1, stiffness: 320, damping: 18, mass: 1,
+      delay: efterSpark ? 210 : 0, useNativeDriver: true,
     }).start()
   }, [vist.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!gammel) return
+    if (!gammel || reduced) return
     ud.setValue(1)
     const a = Animated.timing(ud, { toValue: 0, duration: 150, easing: Easing.out(Easing.ease), useNativeDriver: true })
     a.start(({ finished }) => { if (finished) setGammel(null) })
@@ -75,7 +79,7 @@ export function LabelSkift({
   }, [gammel?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!spark) return
+    if (!spark || reduced) return
     sparkLys.setValue(1)
     const a = Animated.sequence([
       Animated.delay(210),

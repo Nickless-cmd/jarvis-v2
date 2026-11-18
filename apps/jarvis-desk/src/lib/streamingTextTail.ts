@@ -49,6 +49,19 @@ export const STREAMING_TEXT_VARIANTS: Record<StreamingTextVariant, StreamingText
 export const STREAMING_TAIL_WORD_LIMIT = 3
 
 /**
+ * Halens variant. Desk brugte `Normal` (240 ms) indtil 18/11-2026.
+ *
+ * Det sidste ords samlede landing er `duration + colorDelay + 2×
+ * timeOffsetBetweenParts` (tredje ord har order 2, og farve-animationen
+ * starter efter `colorDelay`). Målt i Chromium 18/11-2026 med de faktiske
+ * CSS-variabler: `Normal` 426 ms, `Snappy` 292 ms — 134 ms kortere, 31 %.
+ *
+ * Valget står HER og ikke som et argument på hvert kald, så det kan vendes
+ * med én linje — og så de tre øvrige varianter ikke er tal ingen kan bruge.
+ */
+export const STANDARD_VARIANT: StreamingTextVariant = 'Snappy'
+
+/**
  * Sidste grænse som ender i whitespace. Det viste præfiks kan ende midt i et
  * ord; det ord er ikke afsluttet og må derfor ikke flytte animationshalen.
  */
@@ -87,7 +100,7 @@ function erParent(node: HastNode): node is HastParent {
  * Rehype-transformen pakker kun de sidste tre afsluttede, synlige ord. Den
  * rører ikke kode/matematik og tilføjer ingen wrapper omkring resten af DOM'en.
  */
-export function rehypeStreamingTextTail(options: { completedAtEnd: boolean }) {
+export function rehypeStreamingTextTail(options: { completedAtEnd: boolean; variant?: StreamingTextVariant }) {
   return (tree: HastNode) => {
     const parts: WordPart[] = []
 
@@ -117,7 +130,7 @@ export function rehypeStreamingTextTail(options: { completedAtEnd: boolean }) {
     const selected = new Set(completedParts.slice(-STREAMING_TAIL_WORD_LIMIT))
     if (selected.size === 0) return
     const order = new Map([...selected].map((part, index) => [part, index]))
-    const parameters = STREAMING_TEXT_VARIANTS.Normal
+    const parameters = STREAMING_TEXT_VARIANTS[options.variant ?? STANDARD_VARIANT]
     const controlPoints = parameters.controlPoints.join(', ')
 
     const replace = (node: HastNode) => {

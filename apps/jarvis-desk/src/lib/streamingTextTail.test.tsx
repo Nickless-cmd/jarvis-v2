@@ -1,6 +1,7 @@
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { MarkdownRenderer } from '../components/rich/MarkdownRenderer'
+import { STANDARD_VARIANT, STREAMING_TEXT_VARIANTS, rehypeStreamingTextTail } from './streamingTextTail'
 
 describe('ordhalen i streamet Desk-markdown', () => {
   it.each([
@@ -62,5 +63,62 @@ describe('ordhalen i streamet Desk-markdown', () => {
     // jsdom har ingen `getAnimations()`. Det er målt i Chromium i stedet —
     // se `streamingTextTail.layout.maaling.test.ts`, hvor `getAnimations()`
     // giver præcis to CSS-drevne animationer og nul JS-drevne.
+  })
+})
+
+// ── Varianten skal faktisk kunne vælges (18/11-2026) ──────────────────────
+//
+// `STREAMING_TEXT_VARIANTS` bar fire navngivne sæt tal, men transformen læste
+// hårdt `Normal`. Tre varianter var derfor tal ingen kunne bruge — en
+// kapacitet der så ud som en kapacitet. Testen her går gennem transformen, så
+// den måler de CSS-variabler der ender i DOM'en, ikke konstanten selv.
+
+type HastNode = {
+  type: string
+  tagName?: string
+  properties?: Record<string, unknown>
+  value?: string
+  children?: HastNode[]
+}
+
+function trae(tekst: string): HastNode {
+  return {
+    type: 'root',
+    children: [
+      { type: 'element', tagName: 'p', properties: {}, children: [{ type: 'text', value: tekst }] },
+    ],
+  }
+}
+
+function stilFor(variant?: 'Neutral' | 'Disabled' | 'Normal' | 'Snappy'): string {
+  const t = trae('et to tre ')
+  rehypeStreamingTextTail({ completedAtEnd: true, ...(variant ? { variant } : {}) })(t as never)
+  const spans = (t.children?.[0]?.children ?? []) as HastNode[]
+  const foerste = spans.find((n) => n.tagName === 'jarvis-stream-word')
+  return String(foerste?.properties?.style ?? '')
+}
+
+describe('ordhalens variant', () => {
+  it('bruger STANDARD_VARIANT naar ingen variant er angivet', () => {
+    const standard = STREAMING_TEXT_VARIANTS[STANDARD_VARIANT]
+    expect(stilFor()).toContain(`--streaming-tail-duration:${standard.duration}ms`)
+  })
+
+  it.each(['Neutral', 'Disabled', 'Normal', 'Snappy'] as const)(
+    'sender %s-variantens egne tal til CSS',
+    (variant) => {
+      const p = STREAMING_TEXT_VARIANTS[variant]
+      const stil = stilFor(variant)
+      expect(stil).toContain(`--streaming-tail-duration:${p.duration}ms`)
+      expect(stil).toContain(`--streaming-tail-color-delay:${p.colorDelay}ms`)
+      expect(stil).toContain(`--streaming-tail-part-offset:${p.timeOffsetBetweenParts}ms`)
+    },
+  )
+
+  it('giver fire forskellige varigheder — ingen variant er en kopi', () => {
+    const varigheder = (['Neutral', 'Disabled', 'Normal', 'Snappy'] as const).map(
+      (v) => STREAMING_TEXT_VARIANTS[v].duration,
+    )
+    expect(new Set(varigheder).size).toBe(4)
   })
 })

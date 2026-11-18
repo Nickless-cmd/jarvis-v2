@@ -202,6 +202,44 @@ describe('ChatView integration', () => {
     expect(container.querySelector('.msg-block[data-just-completed]')).toHaveTextContent('svar')
   })
 
+  it('sender teksten der STAAR i feltet, ikke en state der er et tick bagud', async () => {
+    // 18/11-2026. Testen ovenfor faldt periodisk paa CI med «Unable to find an
+    // element with the text: hej» EFTER 3225 ms — altsaa efter at `findByText`
+    // havde brugt hele sin 3000 ms-graense. Tempoet var derfor ikke aarsagen:
+    // beskeden naaede aldrig DOM'en, mens turen faktisk KOERTE (DOM-dumpet
+    // viste `jarvis-pulse is-working`).
+    //
+    // Aarsagen er en closure, ikke en langsom maskine: Enter-handleren kaldte
+    // `send()`, som laeste `text` fra React-state. Under CI-last kan det
+    // sidste input-event vaere processeret i DOM'en uden at React har
+    // committet state endnu. Saa blev beskeden sendt UDEN sit sidste tegn
+    // («he» i stedet for «hej») — turen startede, men den optimistiske boble
+    // indeholdt den forkerte tekst, og soegningen efter «hej» fejlede.
+    //
+    // Reproen her er deterministisk: DOM'en faar teksten, React-state goer
+    // ikke. Det er praecis det vindue racen aabner. Paastanden er den samme
+    // som i den flaky test — kun vejen derhen er uden timing.
+    render(
+      <SettingsProvider initialConfig={cfg}>
+        <SessionProvider config={cfg}>
+          <StreamProvider config={cfg}>
+            <PermissionProvider>
+              <PanelProvider defaultWidth={400}>
+                <ChatView sessionId="s1" />
+              </PanelProvider>
+            </PermissionProvider>
+          </StreamProvider>
+        </SessionProvider>
+      </SettingsProvider>,
+    )
+    const ta = screen.getByRole('textbox') as HTMLTextAreaElement
+    // Bevidst UDEN `fireEvent.change`: teksten staar i feltet, men React-state
+    // er stadig tom — det er state-efterslaebet, ikke en test-genvej.
+    ta.value = 'hej'
+    fireEvent.keyDown(ta, { key: 'Enter' })
+    expect(await screen.findByText('hej', {}, { timeout: 1500 })).toBeInTheDocument()
+  })
+
   it('viser hele den resterende pacing-tekst ved message_stop uden final_answer_start', async () => {
     // Svar uden tools får ingen final_answer_start fra relæet. DeepSeek kan
     // levere dem i store bidder; wakeup/follow-modellen leverer typisk små og

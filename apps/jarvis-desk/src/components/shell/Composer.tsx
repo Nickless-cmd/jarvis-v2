@@ -451,7 +451,7 @@ export function Composer({
   // Enter sender altid (også under streaming — ChatView lægger den i kø).
   // useCallback så identiteten er stabil mellem stream-tickets (deps ændrer sig
   // kun ved faktisk input/valg) → den memo'd textarea re-renderer ikke unødigt.
-  const doSend = useCallback(() => {
+  const doSend = useCallback((tekstOverstyring?: string) => {
     // Er en upload stadig i gang, har den intet `id` endnu — og `ready`
     // nedenfor ville filtrere den stille ud. Beskeden holdes derfor tilbage
     // her og sendes af effekten længere nede, så snart uploaden har svar.
@@ -460,7 +460,13 @@ export function Composer({
       setVenterPaaUpload(true)
       return
     }
-    const t = emojify(text.trim())  // :) ;) :P → 🙂 😉 😛 (vises som emoji i boblen)
+    // 18/11-2026: teksten kan komme fra FELTET frem for fra state. Under last
+    // kan det sidste input-event vaere processeret i DOM'en uden at React har
+    // committet `text` endnu — og saa blev beskeden sendt uden sit sidste tegn.
+    // Enter-handleren giver derfor `e.currentTarget.value` med, som er den
+    // tekst brugeren faktisk ser. Kald uden argument (fx kø-effekten) bruger
+    // fortsat state, som der ER committet naar effekten kører.
+    const t = emojify((tekstOverstyring ?? text).trim())  // :) ;) :P → 🙂 😉 😛 (vises som emoji i boblen)
     const ready = attachments.filter((a) => a.id && !a.error)
     if (!t && ready.length === 0 && pendingPastes.length === 0) return
     if (persistPrivateText) pushComposerHistory(t)
@@ -533,7 +539,7 @@ export function Composer({
 
   /** Sættes af forslags-blokken nedenfor; kaldes fra `send`. */
   const meldEget = useRef<() => void>(() => { /* intet forslag endnu */ })
-  const send = useCallback(() => {
+  const send = useCallback((tekstOverstyring?: string) => {
     // Sender han sin EGEN besked mens et forslag stod der, er forslaget
     // vraget. Kun ét bit: at det ikke blev brugt. Hans tekst følger aldrig
     // med (se `meldValg`). Gennem en ref, fordi `meld` hører til
@@ -542,13 +548,13 @@ export function Composer({
     meldEget.current()
     // `/side <opgave>` er en KOMMANDO, ikke en besked. Den åbner opret-boksen
     // med teksten forudfyldt og sendes ALDRIG til modellen.
-    const somKommando = text.trim()
+    const somKommando = (tekstOverstyring ?? text).trim()
     if (/^\/side(\s|$)/i.test(somKommando)) {
       setSideDialog(somKommando.replace(/^\/side\s*/i, ''))
       rydText()
       return
     }
-    doSend()
+    doSend(tekstOverstyring)
   }, [doSend, text, setText])
 
   // @fil-komplettering. Kun for ejeren: endpointet læser værtens disk.
@@ -661,7 +667,14 @@ export function Composer({
         return
       }
     }
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); return }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      // Feltets faktiske vaerdi, ikke React-state: under last kan det sidste
+      // input-event vaere i DOM'en uden at state er committet, og saa mistede
+      // beskeden sit sidste tegn (18/11-2026).
+      send(e.currentTarget.value)
+      return
+    }
     const ta = e.currentTarget
     const caretToEnd = (v: string) => requestAnimationFrame(() => {
       try { ta.selectionStart = ta.selectionEnd = v.length } catch { /* noop */ }
@@ -994,7 +1007,7 @@ export function Composer({
             <button
               type="button"
               className="composer-send composer-waiting"
-              onClick={send}
+              onClick={() => send()}
               aria-label="Venter på upload — sender automatisk"
               title="Uploaden er ikke færdig — beskeden sendes automatisk om et øjeblik"
             >
@@ -1005,7 +1018,7 @@ export function Composer({
               type="button"
               className="composer-send"
               disabled={tomt}
-              onClick={send}
+              onClick={() => send()}
               aria-label="Send"
             >
               <ArrowUp size={14} strokeWidth={2.5} />

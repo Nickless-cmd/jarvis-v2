@@ -212,6 +212,16 @@ _RUTINE_KERNE_TOOLS: frozenset[str] = frozenset({
     # Data og handling
     "madopskrift", "get_weather", "home_assistant",
     "notify_user", "send_push_notification",
+    # Levering (18/11-2026). `notify_user` går pr. definition til EJEREN, så en
+    # rutine der skal nå en ANDEN person (Michelles og Mikkels morgenbrief)
+    # havde ingen vej ud: `send_discord_dm` var tilladt for origin `routine`,
+    # men stod ikke i dette sæt — og sættet er det der afgør hvad modellen ser.
+    # Målt 13.–18/11-2026: hver kørsel svarede «værktøjet findes ikke i denne
+    # kørsel», gemte briefen som note og meldte alligevel `succeeded`. Den
+    # 11/11 virkede den — den sidste kørsel på session-stien, som bar
+    # sessionens eget værktøjssæt. Da rutinerne 12/11 flyttede til baggrund,
+    # arvede de dette sæt i stedet, og leveringsevnen forsvandt uden en fejl.
+    "send_discord_dm", "vis_widget",
     # Skrive og notere
     "write_file", "edit_file", "note_add", "note_list",
     # Planer

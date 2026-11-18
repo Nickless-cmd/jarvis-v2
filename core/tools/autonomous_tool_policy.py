@@ -128,6 +128,13 @@ ORIGIN_TOOLS: dict[str, frozenset[str]] = {
         "discord_channel", "send_webchat_message",
         "web_search", "web_fetch", "get_weather", "get_news", "madopskrift",
         "bash",
+        # Præsentation (18/11-2026). En rutine hvis formål er at levere et
+        # resultat til en samtale skal kunne VISE det. Uden denne nøgle blev
+        # `vis_widget` filtreret væk af `_rutine_tools_payload` — også når
+        # rutinen selv pegede på det med `permission_policy["tools"]`, fordi
+        # politikken krydses mod netop denne liste. Samme fælde som
+        # sanseværktøjerne 28/10: et navn der ikke står her, når aldrig modellen.
+        "vis_widget",
         # Sansearkiv (28/10-2026): natrutinen og dybdesessionen ER rutiner
         # hvis formål er at sanse og arkivere. Uden disse svarede kørslen
         # «ikke i capability scope» og skrev intet i fire døgn.

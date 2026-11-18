@@ -87,9 +87,20 @@ describe('chat mode — foldet glider i stedet for at blinke', () => {
     // `@starting-style` er den eneste CSS-mekanisme der giver den manglende
     // før-tilstand. Fjernes den, er reglen om `allow-discrete` stadig grøn —
     // den er bare kun halv. Derfor står den her som sin egen påstand.
+    //
+    // SKÆRPET samme dag: `0fr` ALENE var død kode. Målt i Chromium var
+    // transitionens keyframes `3,1875px → 3,1875px` — start og slut den
+    // samme værdi, så transitionen kørte ingenting — fordi en grid-række ikke
+    // kan blive lavere end barnets `padding-top` (0,2rem = 3,19px). Vagten
+    // var grøn hele tiden, fordi den kun spurgte om `0fr` stod der, ikke om
+    // det gav 0px. Den kræver nu også den nulstilling der gør `0fr` til nul.
     expect(css).toMatch(/@starting-style\s*\{/)
     expect(css).toMatch(
       /@starting-style\s*\{\s*\.chat-flow-gruppe-ydre\[data-aaben='true'\]\s*\{\s*grid-template-rows:\s*0fr/,
+    )
+    const start = css.match(/@starting-style\s*\{([\s\S]*?)\n\}/)?.[1] ?? ''
+    expect(start).toMatch(
+      /\.chat-flow-gruppe-ydre\[data-aaben='true'\]\s*>\s*\.chat-flow-gruppe\s*\{\s*padding-top:\s*0/,
     )
   })
 

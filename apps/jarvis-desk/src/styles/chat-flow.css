@@ -205,10 +205,25 @@
  *
  * Kræver Chromium 117+/Safari 17.4+; begge er under det Desk og telefonen
  * kører. Er den ikke understøttet, falder den tilbage til det gamle hop —
- * den er en forbedring, ikke en forudsætning. */
+ * den er en forbedring, ikke en forudsætning.
+ *
+ * MÅLT 18/11-2026 (Chromium, ægte flade): `0fr` alene gav IKKE en 0-start.
+ * `getAnimations()` viste keyframes `3,1875px → 3,1875px` — start og slut var
+ * den SAMME værdi, så transitionen kørte ingenting, og den første frame stod
+ * allerede på 6,39px af 24,78px. Grunden er fysisk: en grid-række kan ikke
+ * blive lavere end barnets `padding-top` (0,2rem = 3,19px). `0fr` blev derfor
+ * beregnet til 3,19px, ikke 0. Nulstilles padding'en også i start-tilstanden,
+ * er der intet gulv tilbage, og rækken starter faktisk på 0px — målt
+ * 0px → 1,22 → 2,44 → 4,47 … i stedet for 3,19 → 4,83 → 7,09 …
+ *
+ * Det er den samme 3,19px-residual som 20/10-2026 kostede en regel på
+ * `.chat-flow-gruppe`; her dukkede den op igen, ét lag længere ude. */
 @starting-style {
   .chat-flow-gruppe-ydre[data-aaben='true'] {
     grid-template-rows: 0fr;
+  }
+  .chat-flow-gruppe-ydre[data-aaben='true'] > .chat-flow-gruppe {
+    padding-top: 0;
   }
 }
 

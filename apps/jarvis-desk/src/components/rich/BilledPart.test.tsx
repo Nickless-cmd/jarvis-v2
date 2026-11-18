@@ -1,7 +1,8 @@
-import { render } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { BilledPart } from './BilledPart'
+import { WidgetPrompt } from './WidgetBlock'
 
 type Part = Extract<ContentBlock, { type: 'image_generation_call' }>
 
@@ -75,5 +76,69 @@ describe('BilledPart — én plads gennem hele livscyklussen', () => {
       ],
     })} />)
     expect(container.querySelectorAll('.billed-part-billeder img')).toHaveLength(3)
+  })
+
+  it('reserverer én flise per forventet billede mens flere genereres', () => {
+    const { container } = render(<BilledPart part={part({
+      forventet_antal: 4,
+      aspekt: '16:9',
+    })} />)
+    const fliser = container.querySelectorAll('.billed-grid-flise')
+    expect(fliser).toHaveLength(4)
+    expect(container.querySelectorAll('.billed-grid-pladsholder')).toHaveLength(4)
+    expect(Array.from(fliser).every((flise) => (flise as HTMLElement).style.aspectRatio === '16 / 9')).toBe(true)
+  })
+
+  it('bevarer det forventede antal pladser når billeder lander løbende', () => {
+    const { container } = render(<BilledPart part={part({
+      forventet_antal: 4,
+      billeder: [
+        { src: 'data:image/png;base64,A' },
+        { src: 'data:image/png;base64,B' },
+      ],
+    })} />)
+    expect(container.querySelectorAll('.billed-grid-flise')).toHaveLength(4)
+    expect(container.querySelectorAll('.billed-grid-flise img')).toHaveLength(2)
+    expect(container.querySelectorAll('.billed-grid-pladsholder')).toHaveLength(2)
+  })
+
+  it('viser landet og forventet antal mens et flerbilledkald kører', () => {
+    render(<BilledPart part={part({
+      forventet_antal: 4,
+      billeder: [
+        { src: 'data:image/png;base64,A' },
+        { src: 'data:image/png;base64,B' },
+      ],
+    })} />)
+    expect(screen.getByText('2/4')).toBeInTheDocument()
+  })
+
+  it('viser ingen tælling for et enkelt færdigt billede', () => {
+    const { container } = render(<BilledPart part={part({
+      status: 'done',
+      billeder: [{ src: 'data:image/png;base64,A' }],
+    })} />)
+    expect(container.querySelector('.billed-part-taelling')).toBeNull()
+  })
+
+  it.each(['done', 'error'] as const)('viser regenerering når status er %s', (status) => {
+    render(<BilledPart part={part({ status })} />)
+    expect(screen.getByRole('button', { name: 'Regenerér billede' })).toBeInTheDocument()
+  })
+
+  it('viser ikke regenerering mens kaldet kører', () => {
+    render(<BilledPart part={part()} />)
+    expect(screen.queryByRole('button', { name: 'Regenerér billede' })).toBeNull()
+  })
+
+  it('sender regenerering gennem den eksisterende rich-blok-kanal', () => {
+    const send = vi.fn()
+    render(
+      <WidgetPrompt.Provider value={send}>
+        <BilledPart part={part({ status: 'done', id: 'tu-42', navn: 'openrouter_image' })} />
+      </WidgetPrompt.Provider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerér billede' }))
+    expect(send).toHaveBeenCalledWith('[fra billedpart] Regenerér billedet fra værktøjskald tu-42 med openrouter_image.')
   })
 })

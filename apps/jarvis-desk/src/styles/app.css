@@ -1822,10 +1822,10 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    dominerende aspekt at gætte ud fra. Er aspektet ukendt reserveres den
    MAKSIMALE højde, ikke nul: tom plads der bliver stående er ikke et hop —
    tom plads der forsvinder er. */
-.billed-part { width: min(320px, 100%); margin: 14px 0; }
+.billed-part { width: 100%; max-width: 100%; margin: 14px 0; }
 .billed-part-plads {
   display: flex; align-items: center; justify-content: center;
-  width: 100%; min-height: 120px; max-height: 320px;
+  width: min(320px, 100%); min-height: 120px; max-height: 320px;
   border-radius: var(--radius-md);
   background: var(--bg-2, rgba(127, 127, 127, 0.06));
   overflow: hidden;
@@ -1837,8 +1837,26 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    parten findes for at fjerne. */
 .billed-part[data-aspekt='ukendt'] { min-height: 320px; }
 .billed-part[data-aspekt='ukendt'] .billed-part-plads { height: 320px; }
-.billed-part-billeder { display: flex; flex-direction: column; gap: 8px; }
-.billed-part-billeder img { display: block; width: 100%; max-height: 320px; object-fit: contain; }
+.billed-part-billeder { max-width: 100%; }
+.billed-part-enkelt { width: min(320px, 100%); }
+.billed-part-enkelt img { display: block; width: 100%; max-height: 320px; object-fit: contain; }
+.billed-grid { display: flex; flex-direction: column; gap: 2px; width: 100%; max-width: 100%; }
+.billed-grid-raekke { display: flex; align-items: flex-start; gap: 2px; max-width: 100%; }
+.billed-grid-flise {
+  position: relative; flex: 1 1 72px; overflow: hidden;
+  border-radius: var(--radius-sm); background: var(--bg-2, rgba(127, 127, 127, 0.06));
+}
+.billed-grid-flise > .billed-knap { width: 100%; height: 100%; }
+.billed-grid-flise img { display: block; width: 100%; height: 100%; max-height: none; object-fit: cover; }
+.billed-grid-pladsholder { display: grid; place-items: center; }
+.billed-grid-pladsholder[data-aspekt='ukendt'] { min-height: 72px; }
+.billed-part-taelling { display: block; margin-top: 4px; color: var(--fg-3); font-size: 11px; }
+.billed-part-regenerer {
+  margin-top: 6px; border: 0; padding: 2px 0; color: var(--fg-3);
+  background: transparent; font: inherit; font-size: 12px; cursor: pointer;
+}
+.billed-part-regenerer:hover:not(:disabled) { color: var(--fg-1); }
+.billed-part-regenerer:disabled { cursor: default; opacity: .45; }
 .billed-part-fejl { color: var(--fg-3); font-size: 13px; }
 
 .image-generation { width: min(320px, 100%); margin: 14px 0; color: var(--fg-2); }

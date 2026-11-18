@@ -1,8 +1,11 @@
+import { useContext } from 'react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { aspektCss } from '../../lib/medieVaerktoejer'
 import { ImageBlock } from './ImageBlock'
 import { AttachmentBlock } from './AttachmentBlock'
 import { ImageGenerationProgress } from './ImageGeneration'
+import { BilledGrid, type BilledGridFlise } from './BilledGrid'
+import { WidgetPrompt } from './WidgetBlock'
 
 type Part = Extract<ContentBlock, { type: 'image_generation_call' }>
 
@@ -34,9 +37,39 @@ type Part = Extract<ContentBlock, { type: 'image_generation_call' }>
  *   kommer fra relayoutet, ikke fra højden.
  */
 export function BilledPart({ part }: { part: Part }) {
+  const send = useContext(WidgetPrompt)
   const forhold = aspektCss(part.aspekt)
   const arbejder = part.status === 'running'
   const fejlet = part.status === 'error'
+  const imageCount = part.billeder.length
+  const brugerGrid = imageCount > 1 || (arbejder && part.forventet_antal > 1)
+  const antalFliser = arbejder
+    ? Math.max(part.forventet_antal, imageCount)
+    : imageCount
+  const fliser: BilledGridFlise[] = Array.from({ length: antalFliser }, (_, i) => {
+    const billede = part.billeder[i]
+    if (!billede) {
+      return {
+        key: `${part.id}-plads-${i}`,
+        aspekt: part.aspekt,
+        pladsholder: true,
+        indhold: null,
+      }
+    }
+    // Aspektet findes KUN paa parten, ikke paa det enkelte billede
+    // (ContentBlock.billeder har src/alt/attachment_id/url/filename/mime_type).
+    return {
+      key: `${part.id}-${i}`,
+      aspekt: part.aspekt,
+      indhold: billede.src
+        ? <ImageBlock src={billede.src} alt={billede.alt} />
+        : <AttachmentBlock block={{ ...billede, type: 'image' }} />,
+    }
+  })
+
+  const regenerer = () => {
+    send?.(`[fra billedpart] Regenerér billedet fra værktøjskald ${part.id} med ${part.navn}.`)
+  }
 
   return (
     <div
@@ -44,8 +77,14 @@ export function BilledPart({ part }: { part: Part }) {
       data-billed-part={part.id}
       data-status={part.status}
       data-aspekt={part.aspekt ?? 'ukendt'}
+      data-image-count={imageCount}
+      data-forventet-antal={part.forventet_antal}
     >
-      {arbejder ? (
+      {arbejder && part.forventet_antal > 1 ? (
+        <div className="billed-part-billeder">
+          <BilledGrid fliser={fliser} />
+        </div>
+      ) : arbejder ? (
         <div
           className="billed-part-plads"
           style={forhold ? { aspectRatio: forhold } : undefined}
@@ -54,25 +93,35 @@ export function BilledPart({ part }: { part: Part }) {
         </div>
       ) : null}
 
+      {arbejder && part.forventet_antal > 1 ? (
+        <span className="billed-part-taelling" aria-label="Genererede billeder">
+          {imageCount}/{part.forventet_antal}
+        </span>
+      ) : null}
+
       {fejlet && part.billeder.length === 0 ? (
         <div className="billed-part-fejl" role="note">
           <span>Billedet kunne ikke genereres</span>
         </div>
       ) : null}
 
-      {part.billeder.length > 0 ? (
+      {!arbejder && imageCount > 0 ? (
         <div className="billed-part-billeder">
-          {part.billeder.map((billede, i) => (
-            billede.src
-              ? <ImageBlock key={`${part.id}-${i}`} src={billede.src} alt={billede.alt} />
-              // Persisteret form: kun en reference. `AttachmentBlock` henter
-              // den med token — samme vej som en `image`-blok altid har brugt.
-              : <AttachmentBlock
-                  key={`${part.id}-${i}`}
-                  block={{ ...billede, type: 'image' }}
-                />
-          ))}
+          {brugerGrid
+            ? <BilledGrid fliser={fliser} />
+            : <div className="billed-part-enkelt">{fliser[0]?.indhold}</div>}
         </div>
+      ) : null}
+
+      {!arbejder ? (
+        <button
+          type="button"
+          className="billed-part-regenerer"
+          disabled={!send}
+          onClick={regenerer}
+        >
+          Regenerér billede
+        </button>
       ) : null}
     </div>
   )

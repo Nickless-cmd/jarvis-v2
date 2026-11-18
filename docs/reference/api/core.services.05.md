@@ -441,16 +441,19 @@ _Déjà Vu — ufrivillig erindring._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_present_context` | `()` | Hvad rører sig i nuet — hans nuværende fokus/fortælling som 'duften der trigger'. Self-safe. | [src](../../../core/services/central_dejavu.py#L30) |
-| class | `_UndersoegelseFejlede` | `` | Kandidaterne kunne ikke hentes — af en UVENTET grund. | [src](../../../core/services/central_dejavu.py#L45) |
-| method | `_UndersoegelseFejlede.__init__` | `(self, grund)` | — | [src](../../../core/services/central_dejavu.py#L58) |
-| function | `_candidates` | `(limit=…)` | Hent kandidater fra experiential memory — inden for ÉN autoritativ bruger-scope. | [src](../../../core/services/central_dejavu.py#L63) |
-| function | `surface_dejavu` | `(context=…, *, candidates=…, strong=…)` | Find ét associativt (svagt-bånd) minde der resonerer med nuet → ufrivilligt fragment. | [src](../../../core/services/central_dejavu.py#L102) |
-| function | `_observe` | `(frag)` | — | [src](../../../core/services/central_dejavu.py#L174) |
-| function | `build_dejavu_surface` | `()` | Seneste ufrivillige fragment + følt linje. Self-safe. | [src](../../../core/services/central_dejavu.py#L183) |
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_dejavu.py#L223) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_dejavu.py#L232) |
-| function | `record_dejavu` | `(*, trigger=…, last_visible_at=…)` | Cadence: lad et fragment boble op — og lad et UVENTET tab af måleevne lande. | [src](../../../core/services/central_dejavu.py#L240) |
+| function | `_present_context` | `()` | Hvad rører sig i nuet — hans nuværende fokus/fortælling som 'duften der trigger'. Self-safe. | [src](../../../core/services/central_dejavu.py#L31) |
+| class | `_UndersoegelseFejlede` | `` | Kandidaterne kunne ikke hentes — af en UVENTET grund. | [src](../../../core/services/central_dejavu.py#L46) |
+| method | `_UndersoegelseFejlede.__init__` | `(self, grund)` | — | [src](../../../core/services/central_dejavu.py#L59) |
+| function | `_candidates` | `(limit=…)` | Hent kandidater fra experiential memory — inden for ÉN autoritativ bruger-scope. | [src](../../../core/services/central_dejavu.py#L64) |
+| function | `surface_dejavu` | `(context=…, *, candidates=…, strong=…)` | Find ét associativt (svagt-bånd) minde der resonerer med nuet → ufrivilligt fragment. | [src](../../../core/services/central_dejavu.py#L103) |
+| function | `_observe` | `(frag)` | — | [src](../../../core/services/central_dejavu.py#L175) |
+| function | `build_dejavu_surface` | `()` | Seneste ufrivillige fragment + følt linje. Self-safe. | [src](../../../core/services/central_dejavu.py#L184) |
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_dejavu.py#L226) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_dejavu.py#L235) |
+| function | `_laes_daekning` | `()` | Den varige dækningsbegrænsning, hvis der er en. Self-safe. | [src](../../../core/services/central_dejavu.py#L257) |
+| function | `_noter_daekning` | `(grund, *, at=…)` | Bogfør en FORVENTET afvisning som varig tilstand. | [src](../../../core/services/central_dejavu.py#L263) |
+| function | `_luk_daekning` | `(*, at=…)` | Markér at begrænsningen ikke længere står i vejen — den KAN være væk. | [src](../../../core/services/central_dejavu.py#L283) |
+| function | `record_dejavu` | `(*, trigger=…, last_visible_at=…)` | Cadence: lad et fragment boble op — og lad et UVENTET tab af måleevne lande. | [src](../../../core/services/central_dejavu.py#L300) |
 
 ## `core/services/central_dissent.py`
 _HAL's Silence — den usagte uenighed._

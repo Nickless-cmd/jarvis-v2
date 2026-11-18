@@ -200,3 +200,112 @@ class TestVisningsfladen:
                             lambda limit=20: [{"memory_id": "exp-1", "narrative": ""}])
         monkeypatch.setattr(em, "score_memories_by_relevance", lambda **kw: {"exp-1": 0.5})
         assert dj.surface_dejavu()["access"] == "ok", "minde uden tekst"
+
+
+# ── Dækningsbegrænsningen som VARIG tilstand (18/11-2026) ─────────────────────
+# Bjørns valg: «mål dækningsbegrænsningen som varig tilstand — rør ikke ved hvis
+# minder den læser». Før dette levede `denied` kun i returværdien: `noter_udfald`
+# gemmer kun når svaret har et `outcome`, og `landing` har kun `applied`/`reason`.
+# Målt: `cadence_udfald:dejavu` fandtes ikke, og KV'en havde kun den pensionerede
+# `dejavu_blind_streak`. 50 korrekte afvisninger i døgnet efterlod nul holdbart spor.
+
+
+class FakeKV:
+    def __init__(self, initial=None):
+        self.store = dict(initial or {})
+
+    def get(self, key, default=None):
+        return self.store.get(key, default)
+
+    def set(self, key, value, *, updated_at=""):
+        self.store[key] = value
+
+
+def _kv(monkeypatch, kv):
+    monkeypatch.setattr("core.runtime.db_core.get_runtime_state_value",
+                        lambda k, d=None: kv.get(k, d))
+    monkeypatch.setattr("core.runtime.db_core.set_runtime_state_value",
+                        lambda k, v, **kw: kv.set(k, v))
+    return kv
+
+
+def _svar(access: str, reason: str = "") -> dict:
+    return {"fragment": None, "access": access, "reason": reason}
+
+
+class TestVarigDaekning:
+    def test_afvisning_bliver_en_taelling_der_overlever(self, monkeypatch):
+        """Én afvisning er en hændelse. Tres er en tilstand — og den skal stå et sted."""
+        kv = _kv(monkeypatch, FakeKV({}))
+        monkeypatch.setattr(dj, "surface_dejavu",
+                            lambda **kw: _svar("denied", "private minder kræver scope"))
+
+        foerste = dj.record_dejavu()
+        anden = dj.record_dejavu()
+
+        post = kv.get("dejavu_daekning")
+        assert post is not None, "afvisningen skal efterlade et holdbart spor"
+        assert post["afvisninger"] == 2, post
+        assert post["foerste_gang"] == foerste["daekning_varig"]["foerste_gang"]
+        assert post["sidste_gang"] == anden["daekning_varig"]["sidste_gang"]
+        assert post["aktiv"] is True
+        assert "scope" in post["grund"]
+        # Den uventede-tab-tæller må ikke blive forurenet af en korrekt afvisning.
+        assert anden["uventet_streak"] == 0
+        assert "dejavu_uventet_streak" not in kv.store
+
+    def test_tilstanden_lukker_sig_nar_vi_faktisk_kiggede(self, monkeypatch):
+        """En post der bliver stående på «aktiv» for evigt er en gravsten, ikke en måling."""
+        kv = _kv(monkeypatch, FakeKV({}))
+        monkeypatch.setattr(dj, "surface_dejavu",
+                            lambda **kw: _svar("denied", "ingen scope"))
+        dj.record_dejavu()
+        assert kv.get("dejavu_daekning")["aktiv"] is True
+
+        monkeypatch.setattr(dj, "surface_dejavu", lambda **kw: _svar("ok", "intet i båndet"))
+        ud = dj.record_dejavu()
+
+        post = kv.get("dejavu_daekning")
+        assert post["aktiv"] is False and post["ophoert"], post
+        assert ud["daekning_varig"]["aktiv"] is False
+        # Historikken bevares: hvor mange gange den stod i vejen er stadig sandt.
+        assert post["afvisninger"] == 1
+
+    def test_et_uventet_tab_lukker_ikke_tilstanden(self, monkeypatch):
+        """Vi kiggede ikke — så vi ved ikke om scopet findes. Fald mod det der standser."""
+        kv = _kv(monkeypatch, FakeKV({}))
+        monkeypatch.setattr(dj, "surface_dejavu",
+                            lambda **kw: _svar("denied", "ingen scope"))
+        dj.record_dejavu()
+
+        monkeypatch.setattr(dj, "surface_dejavu",
+                            lambda **kw: _svar("error", "kandidatkilden fejlede: db nede"))
+        dj.record_dejavu()
+
+        assert kv.get("dejavu_daekning")["aktiv"] is True
+
+    def test_tilstanden_baerer_ingen_minder(self, monkeypatch):
+        """Grænsen må måles — men indholdet bag den må ikke følge med ud."""
+        kv = _kv(monkeypatch, FakeKV({}))
+        monkeypatch.setattr(dj, "surface_dejavu",
+                            lambda **kw: _svar("denied", "private minder kræver scope"))
+        dj.record_dejavu()
+
+        post = kv.get("dejavu_daekning")
+        assert set(post) == {"afvisninger", "foerste_gang", "sidste_gang", "grund", "aktiv"}
+        raa = repr(post).lower()
+        for forbudt in ("narrative", "user_id", "memory_id", "exp-"):
+            assert forbudt not in raa, f"posten bærer minder-indhold: {forbudt}"
+
+    def test_fladen_viser_hvor_laenge_den_har_staaet_i_vejen(self, monkeypatch):
+        """En skrivning uden læser er den fejlform vi bygger imod: fladen skal bære den."""
+        kv = _kv(monkeypatch, FakeKV({}))
+        monkeypatch.setattr(dj, "surface_dejavu",
+                            lambda **kw: _svar("denied", "ingen scope"))
+        dj.record_dejavu()
+        dj.record_dejavu()
+
+        s = dj.build_dejavu_surface()
+        assert s["access"] == "denied"
+        assert s["daekning_varig"]["afvisninger"] == 2
+        assert s["daekning_varig"]["aktiv"] is True

@@ -16,6 +16,7 @@ nerve/surface han kan følge; kan flippes ind i awareness senere. Self-safe: kas
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -200,6 +201,7 @@ def build_dejavu_surface() -> dict[str, Any]:
                 "felt": d["felt"], "access": access}
     if access == "denied":
         return {"fragment": None, "access": "denied", "reason": reason,
+                "daekning_varig": _laes_daekning(),
                 "felt": "Stille — men ikke fordi der intet er. Jeg må ikke kigge: "
                         "private minder kræver en bruger-scope jeg ikke har her."}
     if access == "error":
@@ -208,6 +210,7 @@ def build_dejavu_surface() -> dict[str, Any]:
                         f"{reason or 'ukendt grund'}. Det er et tab af måleevne, "
                         "ikke et tomt fund."}
     return {"fragment": None, "access": access, "reason": reason,
+            "daekning_varig": _laes_daekning(),
             "felt": "Stille. Intet bobler op af sig selv lige nu."}
 
 
@@ -235,6 +238,63 @@ def _kv_set(key: str, value: Any) -> None:
         set_runtime_state_value(key, value)
     except Exception:  # KV utilgængelig → næste tik prøver igen; ikke fatalt
         pass
+
+
+# (18/11-2026 — Bjørns valg: «mål dækningsbegrænsningen som varig tilstand — rør
+# ikke ved hvis minder den læser».) `denied`-grenen svarede korrekt hver gang, men
+# svaret levede kun i returværdien: `noter_udfald` gemmer kun når svaret har et
+# `outcome`, og `landing` har kun `applied`/`reason`. Målt: `cadence_udfald:dejavu`
+# findes ikke, og KV'en indeholdt kun den pensionerede `dejavu_blind_streak`.
+# Resultatet var 50 korrekte afvisninger i døgnet uden ét holdbart spor — en
+# grænse der virker, men som ingen kan se omfanget af.
+#
+# Posten beskriver BEGRÆNSNINGEN, ikke minderne: den bærer intet bruger-id, ingen
+# tekst og ingen rækker fra experiential memory. Scopepolitikken er urørt — det
+# her er kun en tæller over hvor længe den har stået i vejen.
+_DAEKNING_KEY = "dejavu_daekning"
+
+
+def _laes_daekning() -> dict[str, Any] | None:
+    """Den varige dækningsbegrænsning, hvis der er en. Self-safe."""
+    post = _kv_get(_DAEKNING_KEY, None)
+    return dict(post) if isinstance(post, dict) else None
+
+
+def _noter_daekning(grund: str, *, at: str = "") -> dict[str, Any]:
+    """Bogfør en FORVENTET afvisning som varig tilstand.
+
+    Tælleren måler ikke karakterens evne — den måler hvor længe den korrekte
+    policy har stået i vejen for den. Det er en anden slags fund end det uventede
+    tab, og de to må ikke blandes sammen i samme nøgle.
+    """
+    nu = at or datetime.now(UTC).isoformat()
+    forrige = _kv_get(_DAEKNING_KEY, None)
+    post: dict[str, Any] = dict(forrige) if isinstance(forrige, dict) else {}
+    post["afvisninger"] = int(post.get("afvisninger") or 0) + 1
+    post["foerste_gang"] = post.get("foerste_gang") or nu
+    post["sidste_gang"] = nu
+    post["grund"] = str(grund or "")[:200]
+    post["aktiv"] = True
+    post.pop("ophoert", None)
+    _kv_set(_DAEKNING_KEY, post)
+    return post
+
+
+def _luk_daekning(*, at: str = "") -> None:
+    """Markér at begrænsningen ikke længere står i vejen — den KAN være væk.
+
+    Uden dette ville posten blive stående som «aktiv» for evigt efter den første
+    afvisning, og så var den ikke en måling men en gravsten. Kaldes kun når vi
+    faktisk kiggede: ved `error` ved vi ikke om scopet findes, og der gætter vi
+    ikke i den retning der ser pænest ud.
+    """
+    forrige = _kv_get(_DAEKNING_KEY, None)
+    if not isinstance(forrige, dict) or not forrige.get("aktiv"):
+        return
+    post = dict(forrige)
+    post["aktiv"] = False
+    post["ophoert"] = at or datetime.now(UTC).isoformat()
+    _kv_set(_DAEKNING_KEY, post)
 
 
 def record_dejavu(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
@@ -267,6 +327,7 @@ def record_dejavu(*, trigger: str = "cadence", last_visible_at: str = "") -> dic
     streak = int(_kv_get(_UVENTET_KEY, 0) or 0)
     landing: dict[str, Any] = {"applied": False, "reason": "kunne undersøge"}
     daekning = ""
+    daekning_varig: dict[str, Any] | None = None
     if access == "denied":
         if streak:
             _kv_set(_UVENTET_KEY, 0)
@@ -274,6 +335,7 @@ def record_dejavu(*, trigger: str = "cadence", last_visible_at: str = "") -> dic
         daekning = ("Dækningsbegrænsning: cadence har ingen bruger-scope, så private "
                     "minder kan ikke undersøges her. Policyen afviser korrekt.")
         landing = {"applied": False, "reason": "forventet afvisning — policyen virker"}
+        daekning_varig = _noter_daekning(str(d.get("reason") or ""))
     elif access == "error":
         streak += 1
         _kv_set(_UVENTET_KEY, streak)
@@ -306,6 +368,9 @@ def record_dejavu(*, trigger: str = "cadence", last_visible_at: str = "") -> dic
         if streak:
             _kv_set(_UVENTET_KEY, 0)
         streak = 0
+        _luk_daekning()
+        daekning_varig = _laes_daekning()
     return {"status": "ok", "surfaced": bool(d.get("fragment")),
             "access": access, "uventet_streak": streak,
-            "daekning": daekning, "landing": landing}
+            "daekning": daekning, "daekning_varig": daekning_varig,
+            "landing": landing}

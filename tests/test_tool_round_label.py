@@ -376,6 +376,36 @@ def test_et_forholdsord_til_sidst_ryger_ogsaa_UDEN_klipning(monkeypatch):
     assert trl.etiket([_v("write_file", {"path": "a.py"})]) == "Skrev den nye fil til disken"
 
 
+def test_en_klippet_etiket_uden_led_MARKERES(monkeypatch):
+    """«Undersøgte hvordan etiketter bliver» ser faerdig ud og er det ikke.
+
+    Maalt 18/11-2026 paa Jarvis' egne runde-linjer: tre af dem endte paa et
+    verbum hvis objekt var klippet vaek, og hverken et led eller et bindeord
+    kunne fjernes. Uden markering staar der en uafsluttet saetning foran
+    brugeren som om den var hel.
+    """
+    monkeypatch.setattr(
+        trl, "_kald_model",
+        lambda p: "Undersøgte hvordan etiketter bliver klippet når de er for lange")
+    ud = trl.etiket([_v("read_file", {"path": "a.py"})])
+    assert ud.endswith("…"), ud
+    assert len(ud) <= trl.MAKS_ETIKET, ud
+
+
+def test_en_klippet_etiket_MED_led_faar_ingen_markering(monkeypatch):
+    """Skete der en oprydning, er saetningen hel og skal staa uden markering.
+
+    Ellers ville vaernet goere hver eneste klippede etiket til en afbrydelse,
+    ogsaa dem der slutter praecist.
+    """
+    monkeypatch.setattr(
+        trl, "_kald_model",
+        lambda p: "Restartede crash-beacon og hentede logfilerne bagefter ogsaa")
+    ud = trl.etiket([_v("bash", {"command": "systemctl restart crash-beacon"})])
+    assert ud == "Restartede crash-beacon", ud
+    assert not ud.endswith("…"), ud
+
+
 # ─────────────────────────────────────────── verbet må ikke lyve (19/9-2026)
 
 def test_skrive_verbum_over_en_ren_laesning_kasseres(monkeypatch):

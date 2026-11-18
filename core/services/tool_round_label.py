@@ -272,6 +272,7 @@ def _klip_haengende(s: str, blev_klippet: bool) -> str:
     noget faktisk slutter. Var den IKKE klippet, er «og» forfatterens egen
     sætning og skal blive stående.
     """
+    foer_oprydning = s
     if blev_klippet:
         for skel in _LED_SKEL:
             i = s.lower().rfind(skel)
@@ -281,7 +282,16 @@ def _klip_haengende(s: str, blev_klippet: bool) -> str:
     ord_ = s.split()
     while ord_ and ord_[-1].lower().strip(",;:") in _HAENGENDE:
         ord_.pop()
-    return " ".join(ord_)
+    s = " ".join(ord_)
+    # Kunne hverken et led eller et bindeord redde sætningen, står der en
+    # uafsluttet sætning — «Undersøgte hvordan etiketter bliver». Den lyver
+    # ikke, men den ser færdig ud og er det ikke. Målt 18/11-2026: tre af
+    # Jarvis' egne linjer endte sådan. Markeringen koster ét tegn og gør
+    # afkortningen synlig; skete der en oprydning, er sætningen hel og skal
+    # stå uden.
+    if blev_klippet and s == foer_oprydning:
+        s = s.rstrip(" .,;:") + "…"
+    return s
 
 
 def _ryd(s: str) -> str:

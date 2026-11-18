@@ -133,3 +133,61 @@ def test_web_search_er_faktisk_i_den_policy_en_researcher_faar():
     assert {"web_search", "web_fetch"} <= navne, (
         f"payload mangler web-vaerktoejer: {sorted(navne)}"
     )
+
+
+# ── Skrive-dommen maa ikke laase et NEJ fast (18/11-2026) ────────────────
+#
+# Maalt i drift: to agenter blev stemplet ``AGENT_NO_WRITE``/``delivery``.
+# Den ene (researcher) skulle slet ikke skrive. Den anden HAVDE skrevet —
+# dens fil laa staged i worktree'en — men dommen var allerede maalt foerste
+# gang agenten ville afslutte, og ``wrote_something`` cacher sit svar.
+#
+# ``must_write`` beregnes inde i ``while rounds < max_rounds``: den foerste
+# afslutning (uden skrivning) laaser svaret til ``False``, og naar agenten
+# skriver efter nudgen, spoerges den aldrig igen. Dens arbejde blev kasseret
+# som «agenten kunne skrive men skrev intet» — praecis den fejlform
+# ``_maalt_skrivning`` selv blev bygget til at fjerne 12/11-2026.
+#
+# Et NEJ er et tidsbillede; et JA er en egenskab. Kun det ene maa caches.
+
+
+def test_wrote_something_maa_ikke_cache_et_nej(monkeypatch):
+    """Agenten skriver EFTER den foerste maaling — dommen skal foelge med."""
+    from core.services import agent_runtime_base as arb
+
+    io = object.__new__(arb._InProcessLoopIO)
+    io._wrote = None
+    svar = iter([False, True])
+    maalinger: list[int] = []
+
+    def _maalt() -> bool:
+        maalinger.append(1)
+        return next(svar)
+
+    monkeypatch.setattr(io, "_maalt_skrivning", _maalt)
+
+    # Runde 3: agenten vil afslutte uden at have skrevet. Nudge gives.
+    assert io.wrote_something() is False
+    # Runde 4: agenten HAR nu skrevet (fx gennem wt_bash, som ikke taeller i
+    # write_calls). Den gamle kode svarede False her — og kasserede arbejdet.
+    assert io.wrote_something() is True
+    assert len(maalinger) == 2, "et nej skal maales igen, ikke huskes"
+
+
+def test_wrote_something_cacher_et_ja(monkeypatch):
+    """Er der foerst skrevet, er der skrevet — den dyre git-maaling skal ikke gentages."""
+    from core.services import agent_runtime_base as arb
+
+    io = object.__new__(arb._InProcessLoopIO)
+    io._wrote = None
+    maalinger: list[int] = []
+
+    def _maalt() -> bool:
+        maalinger.append(1)
+        return True
+
+    monkeypatch.setattr(io, "_maalt_skrivning", _maalt)
+
+    assert io.wrote_something() is True
+    assert io.wrote_something() is True
+    assert len(maalinger) == 1, "et ja er endeligt og maa caches"

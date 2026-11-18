@@ -383,7 +383,8 @@ class _InProcessLoopIO:
         pend = (resume or {}).get("pending_calls") or []
         self._resume_ids = ({str(pend[0].get("id") or ""): str(resume["approval_id"])}
                             if pend and resume.get("approval_id") else {})
-        # ``None`` = ikke maalt endnu. En maalt ``False`` er et svar og maa ikke maales igen.
+        # ``None`` = ikke maalt endnu. Et maalt ``True`` er endeligt (der ER skrevet);
+        # et maalt ``False`` er kun et tidsbillede — agenten kan skrive senere i runnet.
         self._wrote: bool | None = None
 
     def model(self, *, messages, tools, requires_tools, provider, model):
@@ -438,11 +439,20 @@ class _InProcessLoopIO:
         ``AGENT_NO_WRITE`` — dens arbejde blev kasseret og lavet om i haanden.
 
         Svarer paa det eneste spoergsmaal der kan afgoeres uden at gaette: er der en
-        diff mod base? Maales én gang og huskes — det er en git-operation, ikke en
-        gratis egenskab, og svaret aendrer sig ikke efter den foerste maaling.
+        diff mod base? Et ``True`` maales én gang og huskes — det er en git-operation,
+        ikke en gratis egenskab, og et ja kan ikke blive til et nej.
+
+        18/11-2026: den foerste version huskede OGSAA et ``False`` med begrundelsen
+        «svaret aendrer sig ikke efter den foerste maaling». Det er maalt forkert:
+        ``must_write`` beregnes inde i ``while rounds < max_rounds``, saa den foerste
+        afslutning — foer agenten har skrevet — laaste svaret til ``False``. Skrev
+        agenten derefter (fx gennem ``wt_bash``, som ikke taeller i ``write_calls``),
+        blev den aldrig spurgt igen og blev stemplet ``AGENT_NO_WRITE`` med sit arbejde
+        liggende i worktree'en. Et nej er et tidsbillede, ikke en egenskab.
         """
-        if self._wrote is None:
-            self._wrote = self._maalt_skrivning()
+        if self._wrote:
+            return True
+        self._wrote = self._maalt_skrivning()
         return self._wrote
 
     def _maalt_skrivning(self) -> bool:

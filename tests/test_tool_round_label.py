@@ -513,6 +513,32 @@ def test_OPDIGTET_navn_i_egen_linje_kasseres(monkeypatch):
     assert trl.etiket([a]) == "Læste konfigurationen", "den opdigtede sti skal kasseres"
 
 
+def test_danske_sammensætninger_med_bindestreg_slipper_igennem(monkeypatch):
+    """Bindestreg er dansk ortografi, ikke en sti-separator.
+
+    Målt 18/11-2026: fem af seks ægte linjer blev kasseret — «tænke-resuméet»,
+    «runde-etiketten», «tool-linjen», «selv-tilliden», «etiket-maskineriet» —
+    fordi navne-vægten læste dem som opdigtede filnavne. En vagt der afviser
+    korrekt sprog er ikke en vagt; den er en tavs etiket-dræber, og runden
+    faldt tilbage til den lokale model uden at nogen så hvorfor.
+    """
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "skal ikke kaldes")
+    a = _v("read_file", {"path": "/x/y.py", "runde_etiket": "Læste tænke-resuméet"})
+    assert trl.etiket([a]) == "Læste tænke-resuméet"
+
+
+def test_en_sti_med_bindestreg_efterproeves_STADIG(monkeypatch):
+    """Undtagelsen gælder sammensatte ORD — ikke stier.
+
+    En sti med bindestreg har stadig et skråstreg eller en endelse, så den
+    skal fanges på præcis samme måde som før. Ellers ville rettelsen ovenfor
+    have åbnet et hul hvor opdigtede filnavne slap igennem.
+    """
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Læste konfigurationen")
+    a = _v("read_file", {"path": "/x/y.py", "runde_etiket": "Rettede auth-login.ts"})
+    assert trl.etiket([a]) == "Læste konfigurationen", "stien skal stadig kasseres"
+
+
 def test_SKRIVE_verbum_over_ren_laesning_kasseres(monkeypatch):
     """Målt 19/9: modellen skrev «Redigerede …» over en ren læsning. Jarvis må
     ikke kunne gøre det samme bare fordi det er ham."""

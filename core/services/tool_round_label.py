@@ -316,7 +316,14 @@ def _ryd(s: str) -> str:
 #: Almindelige ord efterprøves IKKE: krævede vi at hvert ord stod i kaldet,
 #: ville enhver omskrivning blive kasseret, og en etiket der kun må gentage
 #: sit input er ikke en etiket.
-_NAVNAGTIGT = re.compile(r"[A-Za-zÆØÅæøå][\wÆØÅæøå.\-/]*[./_\-][\wÆØÅæøå.\-/]*")
+#:
+#: Bindestreg alene gør IKKE et ord navneagtigt (målt 18/11-2026): på dansk er
+#: den ortografi, ikke en sti-separator. Fem af seks ægte linjer blev kasseret
+#: — «tænke-resuméet», «runde-etiketten», «tool-linjen», «selv-tilliden»,
+#: «etiket-maskineriet» — fordi vægten læste dem som opdigtede filnavne. En
+#: sti med bindestreg har stadig et skråstreg eller en endelse og fanges derfor
+#: fortsat; det er kun det sammensatte ORD der nu slipper igennem.
+_NAVNAGTIGT = re.compile(r"[A-Za-zÆØÅæøå][\wÆØÅæøå.\-/]*[./_][\wÆØÅæøå.\-/]*")
 
 
 def _opdigtet(tekst: str, billede: str) -> str:

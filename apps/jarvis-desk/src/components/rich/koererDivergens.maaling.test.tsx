@@ -79,10 +79,12 @@ describe('koerer — ensrettet 30/10-2026', () => {
         runId="run-divergens"
       />,
     )
-    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Under turen
-    // findes hovedet ikke i chat mode — rundelinjen er turens ansigt. Det er
-    // nu den ægte divergens mod code mode, og den måles på gruppen.
-    expect(container.querySelector('.rv-tur')).toBeNull()
+    // VENDT 18/11-2026: hovedet findes nu under turen i chat mode — og det er
+    // netop derfor det kan bære `data-koerer`. Divergensen mod code mode er
+    // væk: begge flader har et hoved der står gennem turen.
+    const hoved = container.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).not.toBeNull()
+    expect(hoved).toHaveAttribute('data-koerer')
     const gruppe = container.querySelector('.chat-flow-gruppe-ydre') as HTMLElement
     expect(gruppe).toHaveAttribute('data-aaben', 'true')
     expect(container.querySelector('[data-testid="chat-flow-round-line"]')).not.toBeNull()

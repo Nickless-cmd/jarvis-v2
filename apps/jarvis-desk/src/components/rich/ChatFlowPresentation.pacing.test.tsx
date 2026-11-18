@@ -217,12 +217,11 @@ describe('ChatFlowPresentation — aktiv rundelinje under pacing', () => {
         streaming status="working" finalAnswerStarted runId="run-vindue" />,
     )
     frame()
-    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Mens turen
-    // kører findes hovedet ikke — så det er ikke længere hovedet der lukker
-    // gruppen. Gruppen bliver ÅBEN, fordi rundelinjen er turens ansigt indtil
-    // turen er slut. Det er den samme én-gate-form som code mode: gaten følger
-    // turen, ikke pacen.
-    expect(view.container.querySelector('.rv-tur')).toBeNull()
+    // VENDT 18/11-2026: hovedet STÅR hele turen (det er ordet der skifter,
+    // ikke elementet der ankommer). Gruppen er stadig ÅBEN, fordi rundelinjen
+    // er turens ansigt indtil turen er slut — samme én-gate-form som code
+    // mode: gaten følger turen, ikke pacen.
+    expect(view.container.querySelector('.rv-tur')).not.toBeNull()
     const ydre = view.container.querySelector('.chat-flow-gruppe-ydre') as HTMLElement
     expect(ydre).toHaveAttribute('data-aaben', 'true')
     // Rundelinjen ER monteret her — det er hele pointen i den nye regel:

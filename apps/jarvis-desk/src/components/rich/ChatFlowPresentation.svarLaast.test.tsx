@@ -41,10 +41,10 @@ describe('ChatFlowPresentation — arbejde efter svar-låsen', () => {
       />,
     )
 
-    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Hovedet findes
-    // ikke mens turen kører — så det er GRUPPEN der bærer den åbne tilstand.
+    // VENDT 18/11-2026: hovedet findes nu hele turen, så det er hovedets
+    // fold der bærer den åbne tilstand — og gruppen følger den.
     // Kravet er uændret: arbejde efter svar-låsen skal stadig være synligt.
-    expect(container.querySelector('.rv-tur')).toBeNull()
+    expect(container.querySelector('.rv-tur')).not.toBeNull()
     expect(container.querySelector('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
   })
 
@@ -81,9 +81,11 @@ describe('ChatFlowPresentation — arbejde efter svar-låsen', () => {
     )
 
     // `data-koerer` er en boolean-attribut: den står der eller står der ikke.
-    // Hovedet findes ikke under det nye run, så det er gruppen der skal vise
-    // at turen kører — den er åben, og rundelinjen står i den.
-    expect(container.querySelector('.rv-tur')).toBeNull()
+    // VENDT 18/11-2026: hovedet findes nu under det nye run — og det er
+    // netop derfor det kan melde «kører» i stedet for at være fraværende.
+    const hoved = container.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).not.toBeNull()
+    expect(hoved).toHaveAttribute('data-koerer')
     expect(container.querySelector('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
     expect(container.querySelector('[data-testid="chat-flow-round-line"]')).not.toBeNull()
   })

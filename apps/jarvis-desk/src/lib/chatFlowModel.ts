@@ -8,6 +8,10 @@ export interface ChatFlowInput {
   tankeResumeer?: Readonly<Record<string, string>>
   finalAnswerStarted: boolean
   status: StreamStatus
+  /** Et nyt run arbejder EFTER svar-låsen. Uden dette felt ville modellen kun
+   *  kende `status`, og et run mellem to streams ville se afsluttet ud mens
+   *  hovedet skulle stå i `aktiv`. (18/11-2026) */
+  arbejdeEfterSvar?: boolean
 }
 
 export type ChatFlowTerminalState = 'active' | 'completed' | 'interrupted' | 'failed'
@@ -34,6 +38,30 @@ export type ChatFlowTerminalState = 'active' | 'completed' | 'interrupted' | 'fa
  */
 export type ArbejdsTilstand = 'placeholder' | 'active' | 'history' | 'summary'
 
+/**
+ * Turens hoved som fire tilstande — ikke en komponent med en fødsel og en død.
+ *
+ * ## Hvorfor de er eksplicitte (18/11-2026)
+ *
+ * MÅLT i ChatGPT-mobilens udpakkede `oai_reasoning`-modul
+ * (`~/rea/reasoning/`, `ReasoningView.js`): deres hoved er ÉN komponent med
+ * fire række-typer — `Summary`, `History`, `Active`, `Placeholder` — og
+ * overgangen mellem dem er et `kind`-skift på en række der ALLEREDE står der.
+ * Der findes ingen frame hvor turens ansigt er væk, fordi der ikke er noget
+ * der monteres eller afmonteres.
+ *
+ * Vores hoved var gated på `!turenKoerer`, altså AFMONTERET når turen
+ * sluttede — og gaten blev genåbnet ved hver ekstra runde
+ * (`arbejdeEfterSvar`). Hver runde var en hel fold-cyklus, så det blinkede
+ * proportionalt med antallet af runder, ikke med tiden.
+ *
+ * Fejlen var ikke gaten alene: ordet (`hovedTekst`) og gaten (`visTurhoved`)
+ * blev udledt af HVER SIN definition af «kører». Derfor kunne hovedet sige
+ * «Tænkte» mens turen stadig kørte. Tilstanden her er den ene sandhed begge
+ * læser fra.
+ */
+export type HovedTilstand = 'aktiv' | 'formidlet' | 'afbrudt' | 'fejlet'
+
 export interface ChatFlowModel {
   allSynthesis: string[]
   visibleSynthesis: string[]
@@ -45,6 +73,8 @@ export interface ChatFlowModel {
   /** Turens hoved som ord — «Arbejder» mens den kører, «Arbejdet» når den er
    *  færdig, og «Tænker»/«Tænkte» på en tur uden værktøjskald (17/10-2026). */
   hovedTekst: string
+  /** Hvilken af de fire hoved-tilstande turen er i. Se `HovedTilstand`. */
+  hovedTilstand: HovedTilstand
   /** Hvilken af de fire arbejds-tilstande turen er i. Se `ArbejdsTilstand`. */
   arbejdsTilstand: ArbejdsTilstand
 }
@@ -98,11 +128,44 @@ function terminal(status: StreamStatus): Pick<ChatFlowModel, 'terminalState'> {
  * Før stod der «Arbejdsforløb» i alle faser, hvilket hverken sagde hvad der
  * foregik eller om den var ovre.
  */
-function hovedTekst(state: ChatFlowTerminalState, harArbejde: boolean, koerer: boolean): string {
-  if (koerer) return harArbejde ? 'Arbejder' : 'Tænker'
-  if (state === 'interrupted') return harArbejde ? 'Arbejdet afbrudt' : 'Afbrudt'
-  if (state === 'failed') return harArbejde ? 'Arbejdet fejlede' : 'Fejlede'
-  return harArbejde ? 'Arbejdet' : 'Tænkte'
+/**
+ * De fire tilstande, udledt af ÉN «kører»-definition.
+ *
+ * Rækkefølgen er det, der gør dem ærlige:
+ *
+ * - `fejlet`/`afbrudt` vinder over alt andet — et terminalt udfald er turens
+ *   sandhed, uanset hvad der ellers er i gang.
+ * - `aktiv` kræver at ARBEJDET foregår: turen kører OG slutsvaret er ikke
+ *   begyndt. Skriver jeg svaret, er arbejdet formidlet — også mens turen
+ *   stadig løber. Den skelnen fandtes før som `!finalAnswerStarted` i
+ *   `hovedTekst`; nu er den en del af tilstanden i stedet for en løs boolean.
+ * - `arbejdeEfterSvar` slår `finalAnswerStarted`: et nyt run kan arbejde efter
+ *   den låste besked, og så er turen aktiv igen selv om svaret står der.
+ */
+function hovedTilstandFor(
+  state: ChatFlowTerminalState,
+  koerer: boolean,
+  finalAnswerStarted: boolean,
+  arbejdeEfterSvar: boolean,
+): HovedTilstand {
+  if (state === 'failed') return 'fejlet'
+  if (state === 'interrupted') return 'afbrudt'
+  if (arbejdeEfterSvar) return 'aktiv'
+  if (koerer && !finalAnswerStarted) return 'aktiv'
+  return 'formidlet'
+}
+
+function hovedTekst(tilstand: HovedTilstand, harArbejde: boolean): string {
+  switch (tilstand) {
+    case 'aktiv':
+      return harArbejde ? 'Arbejder' : 'Tænker'
+    case 'afbrudt':
+      return harArbejde ? 'Arbejdet afbrudt' : 'Afbrudt'
+    case 'fejlet':
+      return harArbejde ? 'Arbejdet fejlede' : 'Fejlede'
+    case 'formidlet':
+      return harArbejde ? 'Arbejdet' : 'Tænkte'
+  }
 }
 
 function isDelivery(block: ContentBlock): boolean {
@@ -217,6 +280,9 @@ export function deriveChatFlow(input: ChatFlowInput): ChatFlowModel {
   const allSynthesis = synthesisLines(input)
   const visibleSynthesis = allSynthesis.slice(-3)
   const end = terminal(input.status)
+  // Den ENE «kører»-definition. `arbejdeEfterSvar` dækker vinduet mellem to
+  // streams, hvor `status` allerede er `done` men et nyt run er i gang.
+  const koerer = input.status === 'working' || !!input.arbejdeEfterSvar
   const terminalFallback = end.terminalState !== 'active' && !input.finalAnswerStarted
 
   let lastWorkIndex = -1
@@ -270,9 +336,26 @@ export function deriveChatFlow(input: ChatFlowInput): ChatFlowModel {
     finalBlocks: leveranceIBunden(finalBlocks),
     hasObservableWork,
     ...end,
-    // «Kører» er arbejdsfasen: status er working og svaret er ikke bekræftet
-    // endnu. Det er samme betingelse som visningen bruger for `aktiv`.
-    hovedTekst: hovedTekst(end.terminalState, hasObservableWork, input.status === 'working' && !input.finalAnswerStarted),
+    // «Kører» er arbejdsfasen. Det er den ENE definition: hovedets tilstand,
+    // hovedets ord og visningens gate læser alle denne. Før blev ordet udledt
+    // af `status === 'working' && !finalAnswerStarted`, mens gaten brugte
+    // `streaming || arbejdeEfterSvar` — to svar på samme spørgsmål, og derfor
+    // kunne hovedet sige «Tænkte» mens turen kørte (målt 18/11-2026).
+    hovedTilstand: hovedTilstandFor(
+      end.terminalState,
+      koerer,
+      input.finalAnswerStarted,
+      !!input.arbejdeEfterSvar,
+    ),
+    hovedTekst: hovedTekst(
+      hovedTilstandFor(
+        end.terminalState,
+        koerer,
+        input.finalAnswerStarted,
+        !!input.arbejdeEfterSvar,
+      ),
+      hasObservableWork,
+    ),
     arbejdsTilstand: arbejdsTilstandFor(
       end.terminalState,
       hasObservableWork,

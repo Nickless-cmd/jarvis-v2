@@ -64,14 +64,23 @@ describe('ChatFlowPresentation', () => {
     expect(screen.queryByText('Jarvis tænker ...')).not.toBeInTheDocument()
   })
 
-  it('viser den levende status i rundelinjen — uden et turhoved over den', () => {
-    // VENDT 14/11-2026 (Bjørn): mens turen kører er rundelinjen turens ansigt.
-    // Hovedet findes ikke endnu, så der er ingen «åben header» at lægge
-    // statusen i — den står i gruppen, som stadig er åben.
+  it('viser den levende status i rundelinjen — hovedet står over den med sin egen tekst', () => {
+    // VENDT 18/11-2026 (Bjørn: «det sker ofte hovedets fold bliver til et
+    // blink»). Den gamle regel var at hovedet ikke FANDTES mens turen kørte,
+    // så rundelinjen var turens ansigt alene. Målt i ChatGPT-mobilens
+    // `ReasoningView` er deres hoved ÉN komponent med fire række-typer, hvor
+    // overgangen er et `kind`-skift på en række der allerede står der — der
+    // findes ingen frame hvor turens ansigt er væk. Vores hoved bliver derfor
+    // stående hele turen og skifter ORD i stedet for at skifte eksistens.
+    //
+    // De to linjer har stadig hver sin opgave: hovedet siger hvad turen ER
+    // («Arbejder»), rundelinjen siger hvad der sker NU («Samler svaret»).
     render(<ChatFlowPresentation {...common} mode="living" streaming status="working"
       blocks={[summary('Samler svaret', 1)]} />)
 
-    expect(document.querySelector('.rv-tur')).toBeNull()
+    const hoved = document.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).not.toBeNull()
+    expect(hoved).toHaveTextContent('Arbejder')
     const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
     expect(gruppe.closest('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
     expect(within(gruppe).getByTestId('chat-flow-round-label')).toHaveTextContent('Samler svaret')
@@ -84,9 +93,13 @@ describe('ChatFlowPresentation', () => {
         blocks={[{ type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }]}
         workingStep={workingStep} />)
 
-      // Hovedet findes ikke mens turen kører (14/11-2026), så der er ingen
-      // «Arbejder»-etiket at sammenligne med — kun rundelinjens eget ord.
-      expect(document.querySelector('.rv-tur')).toBeNull()
+      // Hovedet står hele turen (18/11-2026) og bærer «Arbejder» — men den
+      // generiske working_step må ikke gentage det ord i rundelinjen. De to
+      // linjer skal sige hver sit: hovedet HVAD turen er, rundelinjen HVAD der
+      // sker nu. Derfor «Tænker» i runden når backendens step er generisk.
+      const hoved = document.querySelector('.rv-tur') as HTMLElement
+      expect(hoved).not.toBeNull()
+      expect(hoved).toHaveTextContent('Arbejder')
       const runde = screen.getByTestId('chat-flow-round-line')
       expect(within(runde).getByText('Tænker')).toBeInTheDocument()
       expect(within(runde).queryByText(/^Arbejder/)).not.toBeInTheDocument()
@@ -112,7 +125,11 @@ describe('ChatFlowPresentation', () => {
     expect(within(rail).queryByText('To')).not.toBeInTheDocument()
 
     rerender(<ChatFlowPresentation {...common} mode="calm" blocks={[]} />)
-    expect(screen.getByText('Tænker')).toBeInTheDocument()
+    // To steder siger nu «Tænker»: hovedet (turens tilstand) og rundelinjen
+    // (den generiske fallback). Det er ikke en dublet i betydning — hovedet
+    // siger hvad turen ER, runden hvad der sker NU — men det betyder at
+    // opslaget skal være scopet til runden, ikke til dokumentet.
+    expect(within(screen.getByTestId('chat-flow-round-line')).getByText('Tænker')).toBeInTheDocument()
   })
 
   it('keeps raw tool logs out of the activity rail', () => {
@@ -134,10 +151,12 @@ describe('ChatFlowPresentation', () => {
     ]
     render(<ChatFlowPresentation {...common} mode="living" blocks={blocks}
       finalAnswerStarted status="working" onWorkExpanded={onWorkExpanded} />)
-    // VENDT 14/11-2026 (Bjørn): hovedet findes først når turen er slut, så
-    // der er ingen «Arbejdet»-knap at folde ud under streamen. Folden bor nu
-    // på rundelinjen, som ER turens ansigt indtil turen slutter.
-    expect(screen.queryByText('Arbejdet')).not.toBeInTheDocument()
+    // VENDT 18/11-2026: hovedet står hele turen, så der ER en «Arbejdet»-knap
+    // at folde ud under streamen — men folden er lukket indtil man trykker.
+    // (Datid, fordi fixturen har `finalAnswerStarted`: svaret er begyndt, så
+    // turen arbejder ikke længere.) Det der stadig skal holde: svaret og
+    // leverancen hører UDEN FOR gruppen.
+    expect(screen.getByText('Arbejdet')).toBeInTheDocument()
     const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
     expect(gruppe).not.toBeNull()
     expect(within(gruppe).queryByText('Her er resultatet.')).not.toBeInTheDocument()
@@ -200,10 +219,12 @@ describe('ChatFlowPresentation', () => {
       summary('Læste filen', 2),
     ]
     render(<ChatFlowPresentation {...common} mode="living" streaming status="working" blocks={blocks} />)
-    // VENDT 14/11-2026 (Bjørn): hovedet findes først når turen er slut, så
-    // der er intet hoved at folde ud under streamen — gruppen står åben af
-    // sig selv, fordi rundelinjen ER turens ansigt.
-    expect(document.querySelector('.rv-tur')).toBeNull()
+    // VENDT 18/11-2026: hovedet står hele turen, så der ER et hoved over
+    // gruppen — men gruppen står stadig åben af sig selv, fordi rundelinjen
+    // er turens ansigt mens den kører.
+    const hoved = document.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).not.toBeNull()
+    expect(hoved).toHaveTextContent('Arbejder')
     const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
     expect(gruppe).not.toBeNull()
     expect(gruppe.closest('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
@@ -235,7 +256,11 @@ describe('ChatFlowPresentation', () => {
     // Hverken hoved eller ur findes mens turen kører (14/11-2026): hovedet er
     // resultatet, og rundelinjen bærer ikke hovedets tal. De to linjer er
     // adskilte — rundelinjen er ikke en kopi af hovedet.
-    expect(document.querySelector('.rv-tur')).toBeNull()
+    //
+    // VENDT 18/11-2026: hovedet STÅR nu hele turen (det er ordet der skifter,
+    // ikke elementet der ankommer). Det der stadig holder: rundelinjen bærer
+    // ikke hovedets ur — de to linjer er ikke kopier af hinanden.
+    expect(document.querySelector('.rv-tur')).not.toBeNull()
     expect(runde.querySelector('.chat-flow-round-tid')).toBeNull()
     expect(within(runde).queryByText('Læste konfigurationen')).toBeInTheDocument()
     expect(document.querySelector('.chat-flow-answer')).toBeNull()
@@ -495,9 +520,14 @@ describe('ChatFlowPresentation — turhovedet fra første ord', () => {
   // skal turhoved vises hele tiden før de første ord») satte hovedet først,
   // men dengang var der ingen rundelinje at give scenen til. Resultatet var
   // en død etiket over en puls der sagde præcis det samme.
-  it('viser rundelinjen med det samme turen kører — hovedet venter', () => {
+  it('viser rundelinjen med det samme turen kører — hovedet står over den', () => {
+    // VENDT 18/11-2026: hovedet venter ikke længere. Det står fra første
+    // frame og bærer «Tænker», mens rundelinjen bærer det samme ord som
+    // status. To linjer, to opgaver — men ingen af dem ankommer senere.
     render(<ChatFlowPresentation {...common} mode="living" blocks={[]} />)
-    expect(document.querySelector('.rv-tur')).toBeNull()
+    const hoved = document.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).not.toBeNull()
+    expect(hoved).toHaveTextContent('Tænker')
     const runde = screen.getByTestId('chat-flow-round-line')
     expect(runde).toHaveTextContent('Tænker')
   })
@@ -505,27 +535,22 @@ describe('ChatFlowPresentation — turhovedet fra første ord', () => {
   it('holder skillelinjen slukket gennem hele chat-streamen', () => {
     // Modsat code mode, hvor stregen taendes af en gate. Chat mode har ingen
     // streg i nogen fase — så der er intet at animere og intet at glemme.
+    // VENDT 18/11-2026: hovedet findes nu i ALLE faser, så testen måler det
+    // der faktisk betyder noget — at der aldrig sættes en streg på det.
     const view = render(<ChatFlowPresentation {...common} mode="living" blocks={[]} />)
-    // Fase 1 af overleveringen: hovedet venter, så der er intet element at
-    // sætte en streg på. Det er den stærkeste form for «ingen skillelinje».
-    expect(document.querySelector('.rv-tur')).toBeNull()
+    expect(document.querySelector('.rv-tur')).not.toBeNull()
+    expect(document.querySelector('.rv-tur')).not.toHaveAttribute('data-skillelinje')
 
-    view.rerender(<ChatFlowPresentation {...common} mode="living" blocks={[
-      { type: 'text', text: 'Mellemstatus', phase: 'commentary' },
-    ]} />)
-    expect(document.querySelector('.rv-tur')).toBeNull()
-
-    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Hovedet findes
-    // først når turen er slut — så mens svaret skriver sig er der stadig intet
-    // hoved, og dermed intet at sætte en streg på.
     view.rerender(<ChatFlowPresentation {...common} mode="living" streaming status="working" blocks={[
       { type: 'text', text: 'Svaret', phase: 'final_answer' },
     ]} finalAnswerStarted />)
-    expect(document.querySelector('.rv-tur')).toBeNull()
+    expect(document.querySelector('.rv-tur')).not.toHaveAttribute('data-skillelinje')
 
     // Den afsluttede tur uden runder har intet hoved (målt: `harRunder` falsk
     // og ingen varighed) — så der er stadig intet at sætte en streg på.
-    view.rerender(<ChatFlowPresentation {...common} mode="living" blocks={[
+    // `streaming` skal slås FRA her: `common` har den sat, og så kører turen
+    // fortsat, hvor hovedet nu står (18/11-2026).
+    view.rerender(<ChatFlowPresentation {...common} mode="living" streaming={false} status="done" blocks={[
       { type: 'text', text: 'Svaret', phase: 'final_answer' },
     ]} finalAnswerStarted />)
     expect(document.querySelector('.rv-tur')).toBeNull()

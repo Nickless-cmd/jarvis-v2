@@ -109,9 +109,18 @@ describe('MÅLING — turhovedets lukning mod pacens ur', () => {
     frame()
     frame()
 
-    // VENDT 14/11-2026, tredje gang (Bjørn): «gem turhoved til det foldes».
-    // Mens turen kører er rundelinjen turens ansigt — hovedet findes ikke.
-    expect(hovedStaar(view.container)).toBe(false)
+    // VENDT 18/11-2026 (Bjørn: «det sker ofte hovedets fold bliver til et
+    // blink»). Den gamle regel var at hovedet ikke FANDTES mens turen kørte.
+    // Målt i ChatGPT-mobilens `ReasoningView` er deres hoved én komponent med
+    // fire række-typer, hvor overgangen er et `kind`-skift på en række der
+    // allerede står der. Vores hoved står derfor nu hele turen — det er ORDET
+    // der skifter, ikke elementet der genopstår.
+    expect(hovedStaar(view.container)).toBe(true)
+    // «Tænkte» — ikke «Tænker»: fixturen har `finalAnswerStarted`, så modellens
+    // `koerer` er falsk og ordet står i datid. Det er den ærlige tekst: svaret
+    // er begyndt, så turen tænker ikke længere. Pointen her er at elementet
+    // STÅR — ordet skifter med tilstanden, ikke med elementets eksistens.
+    expect(view.container.querySelector('.rv-tur')).toHaveTextContent('Tænkte')
     expect(view.container.querySelector('[data-testid="chat-flow-round-line"]')).not.toBeNull()
     const vist = vistTekst(view.container).length
     expect(vist).toBeGreaterThan(0)
@@ -119,10 +128,10 @@ describe('MÅLING — turhovedets lukning mod pacens ur', () => {
 
     const frames = rulTilPaceErFaerdig(view.container)
     expect(frames).toBeGreaterThan(60)
-    // Turen er slut. Uden runder er der intet at folde ud, og uden en varighed
-    // er der intet tal — så hovedet findes ikke. Det er den ærlige ende på en
-    // tur der kun bestod af et svar: der er intet resultat at vise.
-    expect(hovedStaar(view.container)).toBe(false)
+    // Fixturen har `streaming` sat, så turen kører stadig efter pacen — og så
+    // STÅR hovedet (18/11-2026). Den gamle regel fjernede det her, fordi
+    // hovedet var et resultat der først måtte findes når turen var slut.
+    expect(hovedStaar(view.container)).toBe(true)
   })
 
   it('A2: MED runder bliver hovedet stående gennem samme vindue', () => {
@@ -136,19 +145,23 @@ describe('MÅLING — turhovedets lukning mod pacens ur', () => {
     frame()
     frame()
 
-    // Også MED runder venter hovedet: der er ingen etiket over et svar der
-    // stadig skriver sig. Rundelinjen bærer turen indtil den er slut.
-    expect(hovedStaar(view.container)).toBe(false)
+    // Også MED runder står hovedet fra første frame (18/11-2026) — det er
+    // ordet der skifter, ikke elementet der ankommer. Det er hele pointen:
+    // der findes ingen frame hvor turens ansigt er væk.
+    expect(hovedStaar(view.container)).toBe(true)
+    // Samme grund som A: `finalAnswerStarted` gør modellens `koerer` falsk, så
+    // ordet står i datid — men elementet står, og det er hele ændringen.
+    expect(view.container.querySelector('.rv-tur')).toHaveTextContent('Arbejdet')
     const vist = vistTekst(view.container).length
     expect(vist).toBeGreaterThan(0)
     expect(vist).toBeLessThan(LANG.length)
 
     rulTilPaceErFaerdig(view.container)
     // MÅLT 14/11-2026: fixturen har `streaming` sat, så turen kører stadig
-    // efter pacen — og så venter hovedet fortsat. Det er selve kontrakten:
-    // hovedet er et RESULTAT og findes først når turen er slut, ikke når
-    // teksten er rullet ud. Casen der måler den afsluttede tur er B.
-    expect(hovedStaar(view.container)).toBe(false)
+    // efter pacen — og så står hovedet fortsat med arbejds-ordet. Casen der
+    // måler den afsluttede tur er B.
+    expect(hovedStaar(view.container)).toBe(true)
+    expect(view.container.querySelector('.rv-tur')).toHaveTextContent('Arbejdet')
     expect(view.container.querySelector('[data-testid="chat-flow-round-line"]')).not.toBeNull()
   })
 

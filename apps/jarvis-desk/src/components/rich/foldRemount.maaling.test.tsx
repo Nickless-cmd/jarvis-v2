@@ -173,10 +173,10 @@ describe('fold overlever ikke et remount — målt på begge flader', () => {
         streaming status="working" finalAnswerStarted={false}
       />,
     )
-    // VENDT 14/11-2026 (Bjørn): «gem turhoved til det foldes». Under turen
-    // findes hovedet ikke — rundelinjen er turens ansigt — så der er ingen
-    // `button.rv-tur` at måle på. Den levende tilstand måles på gruppen.
-    expect(foldTilstand(live.container)).toBeNull()
+    // VENDT 18/11-2026: hovedet STÅR hele turen (det er ordet der skifter,
+    // ikke elementet der ankommer). Den levende tilstand måles derfor på
+    // hovedets fold — som er ÅBEN af sig selv mens arbejdet kører.
+    expect(foldTilstand(live.container)).toBe('true')
     expect(live.container.querySelector('.chat-flow-gruppe-ydre'))
       .toHaveAttribute('data-aaben', 'true')
 
@@ -214,8 +214,9 @@ describe('fold overlever ikke et remount — målt på begge flader', () => {
         streaming status="working" finalAnswerStarted={false}
       />,
     )
-    // VENDT 14/11-2026: hovedet findes ikke under turen — gruppen bærer den.
-    expect(foldTilstand(live.container)).toBeNull()
+    // VENDT 18/11-2026: hovedet findes nu under turen — gruppen bærer stadig
+    // den åbne tilstand, og hovedets fold følger den.
+    expect(foldTilstand(live.container)).toBe('true')
     expect(live.container.querySelector('.chat-flow-gruppe-ydre'))
       .toHaveAttribute('data-aaben', 'true')
 

@@ -137,6 +137,7 @@ export function ChatFlowPresentation({
     tankeResumeer,
     finalAnswerStarted,
     status,
+    arbejdeEfterSvar,
   })
   const targetModel = deriveChatFlow({
     blocks,
@@ -145,6 +146,7 @@ export function ChatFlowPresentation({
     tankeResumeer,
     finalAnswerStarted,
     status,
+    arbejdeEfterSvar,
   })
   const confirmedRef = useRef<{ runKey: string; texts: string[] }>({ runKey: '', texts: [] })
   const runKey = runId ?? '__historical-message__'
@@ -425,9 +427,41 @@ export function ChatFlowPresentation({
   // en status — det findes først når turen er slut. Persisteret historik uden
   // runder får intet hoved: dér ville tallet stå stille på noget der allerede
   // er sket.
+  // «Turen lever» og «hvad laver hovedet» er TO spørgsmål, og de må ikke
+  // besvares af samme boolean. Hovedet står gennem hele turen — også mens
+  // svaret skrives, hvor tilstanden er `formidlet` og ikke `aktiv`. Blandede
+  // man dem, forsvandt hovedet i det vindue (målt 18/11-2026).
   const turenKoerer = streaming || arbejdeEfterSvar
-  const visTurhoved = !turenKoerer
-    && (harRunder || model.terminalState === 'interrupted' || model.terminalState === 'failed')
+  // HOVEDET ER FIRE TILSTANDE, IKKE EN KOMPONENT MED EN FØDSEL OG EN DØD
+  // (Bjørn 18/11-2026: «hvornår og hvorfor folder deres hoved? … det sker ofte
+  // hovedets fold bliver til et blink»).
+  //
+  // MÅLT 18/11-2026 i ChatGPT-mobilens udpakkede `oai_reasoning`-modul
+  // (`~/rea/reasoning/`, `ReasoningView.js`): deres hoved er ÉN komponent med
+  // fire række-typer — `Summary`, `History`, `Active`, `Placeholder` — og
+  // overgangen mellem dem er et `kind`-skift på en række der ALLEREDE står
+  // der. Der findes ingen frame hvor turens ansigt er væk, fordi der ikke er
+  // noget der monteres eller afmonteres. `Summary` er den foldede form af
+  // præcis det samme indhold som `History` viser udfoldet.
+  //
+  // Vores regel var det modsatte: `!turenKoerer` betød at hovedet blev
+  // AFMONTERET når turen sluttede, og gruppen åbnede igen ved hver ekstra
+  // runde (`arbejdeEfterSvar`). Hver runde var en hel fold-cyklus — derfor
+  // blinker det proportionalt med antallet af runder, ikke med tiden.
+  //
+  // Reglen er derfor vendt: hovedet STÅR gennem hele turen og skifter ord i
+  // stedet for at skifte eksistens. Ordene findes allerede i `hovedTekst`
+  // (`chatFlowModel.ts:101`) — «Tænker»/«Arbejder» mens den kører,
+  // «Tænkte»/«Arbejdet» når den er færdig, «Afbrudt» og «Fejlede» som de to
+  // terminale. Fire tilstande, ét element.
+  //
+  // Persisteret historik uden runder får stadig intet hoved: dér ville der
+  // stå et resultat på en tur der ikke har noget at folde ud, og `harRunder`
+  // er den ærlige grænse mellem «denne tur har et forløb» og «den har ikke».
+  const visTurhoved = turenKoerer
+    || harRunder
+    || model.hovedTilstand === 'afbrudt'
+    || model.hovedTilstand === 'fejlet'
   // Mens turen kører, er rundelinjen turens ansigt. Den ejer sin EGEN gate:
   // lå den inde i hovedets fragment, forsvandt den sammen med det hoved den
   // skulle overlevere til (målt 14/11-2026: `.rv-tur` var barn af samme gren,

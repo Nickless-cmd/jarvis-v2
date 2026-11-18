@@ -1797,6 +1797,7 @@ async def _stream_visible_run(
             set_last_visible_run_outcome(
                 run,
                 status="cancelled",
+                error=_cancel_reason,
             )
             for cancelled_chunk in _cancel_visible_run(run):
                 yield cancelled_chunk
@@ -5710,6 +5711,7 @@ async def _stream_visible_run(
             set_last_visible_run_outcome(
                 run,
                 status="cancelled",
+                error="user-cancelled",
             )
             for cancelled_chunk in _cancel_visible_run(run):
                 yield cancelled_chunk

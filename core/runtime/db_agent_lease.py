@@ -290,6 +290,12 @@ def close_orphan_runs(conn, assignment_id: str, *, reason: str) -> int:
         "WHERE assignment_id=? AND status IN ('queued','starting','running','active')",
         (reason[:300], now_s, now_s, assignment_id))
     conn.commit()
+    # 18/11-2026: koden blev netop skrevet EFTER assignmentet var terminalt — saa
+    # settle kunne ikke se den. Ret den gættede fase bagud, ellers staar
+    # assignmentet med `model` mens runnet baerer den ægte kode (14 af 19 maalte).
+    from core.runtime.db_agent_contract import reclassify_terminal_outcome
+    if reclassify_terminal_outcome(conn, assignment_id):
+        conn.commit()
     return int(cur.rowcount or 0)
 
 
@@ -343,6 +349,15 @@ def close_stale_runs(*, timeout_minutes: int = 360, max_rows: int = 50) -> list[
              now_s, now_s, run_id))
         closed.append(run_id)
     conn.commit()
+    # Samme bagud-rettelse som `close_orphan_runs`: en gættet `model`-fase paa et
+    # terminalt assignment skal vige for den kode runnet faktisk baerer.
+    from core.runtime.db_agent_contract import reclassify_terminal_outcome
+    rettede = False
+    for row in rows:
+        if str(row["assignment_id"] or "") and reclassify_terminal_outcome(conn, row["assignment_id"]):
+            rettede = True
+    if rettede:
+        conn.commit()
     return closed
 
 

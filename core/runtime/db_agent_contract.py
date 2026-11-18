@@ -546,8 +546,27 @@ _SETTLING = {"completed": "completed", "failed": "failed",
              "cancelled": "cancelled", "expired": "timed_out",
              # en persistent agent gaar til `scheduled` naar en aktivering er faerdig (G, §12.1)
              "scheduled": "completed"}
-_ERROR_PHASE = {"failed": "model", "cancelled": "recovery", "expired": "budget"}
-_ERROR_CODE = {"failed": "AGENT_FAILED", "cancelled": "CANCELLED", "expired": "TIMED_OUT"}
+_ERROR_PHASE = {"failed": "model", "cancelled": "recovery", "expired": "budget",
+                # 18/11-2026: `timed_out` er en TERMINAL status (`_SETTLING` mapper
+                # `expired` hertil), men manglede som noegle — saa et opslag paa den
+                # terminale status gav ("", "") i stedet for en fase. Maalt: en
+                # QUEUE_DEADLINE-raekke stod med en tom etikette.
+                "timed_out": "budget"}
+_ERROR_CODE = {"failed": "AGENT_FAILED", "cancelled": "CANCELLED", "expired": "TIMED_OUT",
+               "timed_out": "TIMED_OUT"}
+
+#: Koder der beskriver at ASSIGNMENTET blev lukket — ikke hvorfor det fejlede.
+#: `RUN_ORPHANED` skrives af `close_orphan_runs` naar assignmentet var terminalt foer
+#: leasen udloeb; `RUN_STALE` af `close_stale_runs` naar ingen ejede raekken laengere.
+#: De er observationer af en LUKNING, og en fase bygget paa dem ville paastaa en aarsag
+#: vi ikke har. Maalt 18/11-2026: 16 runs baerer en af dem, og 9 af 19 faseskift var
+#: en meta-kode der blev laest som en aarsag.
+_META_KODER = frozenset({"RUN_ORPHANED", "RUN_STALE"})
+
+#: Den ene fase der er GAETTET af tabellen frem for observeret. Kun den maa en
+#: senere, bedre kilde rette bagud — en specifik fase (`execution`, `budget`) kan
+#: vaere skrevet af en kilde der vidste mere end leasing-stien goer.
+_GAETTET_FASE = frozenset({"model"})
 
 
 #: Workerens egne koder (``agent_worker_runner.WorkerError``) -> (kode, fase).
@@ -685,11 +704,56 @@ def _run_fejlkode(conn: Any, assignment_id: str) -> tuple[str, str]:
         # galt — og den skrives typisk EFTER det ægte run. Maalt paa
         # `asg-d96dabe04904478c`: LEASE_EXPIRED kl. 21:00:03, orphan-markeren kl.
         # 21:05:38. Uden denne sortering arvede vi meta-koden og skjulte aarsagen.
-        "ORDER BY (error_code='RUN_ORPHANED'), finished_at DESC, attempt_no DESC LIMIT 1",
+        # Begge meta-koder nedprioriteres: `RUN_STALE` skrives af den periodiske
+        # fanger og kan lande efter den aegte kode praecis som `RUN_ORPHANED`.
+        "ORDER BY (error_code IN ('RUN_ORPHANED','RUN_STALE')), "
+        "finished_at DESC, attempt_no DESC LIMIT 1",
         (assignment_id,)).fetchone()
     if row is None:
         return "", ""
     return str(row["error_code"] or ""), str(row["error_phase"] or "")
+
+
+def reclassify_terminal_outcome(conn: Any, assignment_id: str) -> bool:
+    """Ret en GAETTET fase paa et allerede terminalt assignment.
+
+    18/11-2026 (defekt 1, vej b): koden kan ankomme EFTER settle.
+    ``close_orphan_runs`` kaldes netop fordi assignmentet blev terminalt foer leasen
+    udloeb — saa ``settle_agent_status`` skrev ``AGENT_FAILED``/``model`` (tabellens
+    gaet), og bagefter skrev leasing-stien ``RUN_ORPHANED`` paa runnet. Ingen rettede
+    assignmentets ``outcome_json`` bagud.
+
+    Maalt paa 288 gemte assignments: 26 stod med fase ``model``, 19 blev modsagt af
+    runnets egen kode — og **14 af de 19 fik koden efter** assignmentets terminale
+    tid. Vej (a) (settle slaar koden op igen) kan ikke loese dem: koden fandtes ikke.
+
+    Kun ``_GAETTET_FASE`` rettes. En fase der allerede er specifik roeres ikke — den
+    kan vaere skrevet af en kilde der vidste mere end leasing-stien goer. Returnerer
+    True naar rækken blev rettet.
+    """
+    row = conn.execute("SELECT outcome_json FROM agent_assignments WHERE assignment_id=?",
+                       (assignment_id,)).fetchone()
+    if row is None or not row["outcome_json"]:
+        return False
+    try:
+        outcome = json.loads(row["outcome_json"])
+    except Exception:
+        logger.warning("outcome_json kunne ikke læses for %s", assignment_id)
+        return False
+    if str(outcome.get("error_phase") or "") not in _GAETTET_FASE:
+        return False
+    kode, fase = _run_fejlkode(conn, assignment_id)
+    if not kode:
+        return False
+    if kode in _META_KODER:
+        fase = "unknown"
+    if kode == str(outcome.get("error_code") or "") and fase == str(outcome.get("error_phase") or ""):
+        return False
+    outcome["error_code"] = kode
+    outcome["error_phase"] = fase
+    conn.execute("UPDATE agent_assignments SET outcome_json=? WHERE assignment_id=?",
+                 (json.dumps(outcome, ensure_ascii=False), assignment_id))
+    return True
 
 
 def partial_delivery_error(
@@ -731,6 +795,11 @@ def partial_delivery_error(
         return _incomplete_kode(text)
     kode = str(run_error_code or "").strip()
     if kode:
+        if kode in _META_KODER:
+            # Koden bevares — den er observeret. Men fasen maa ikke paastaa en aarsag:
+            # `recovery` siger "vi genoprettede", og det er ikke det samme som
+            # "vi ved ikke hvorfor". `unknown` er den aerlige etikette.
+            return kode, "unknown"
         fase = str(run_error_phase or "").strip() or _ERROR_PHASE.get(registry_status, "")
         return kode, fase
     kode, fase = _infra_aarsag(last_error)

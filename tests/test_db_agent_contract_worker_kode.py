@@ -92,3 +92,54 @@ def test_markeringen_slaar_worker_koden():
     tekst = "UFULDSTÆNDIG (2 ubesvarede spørgsmål) — agentens tekst:\nsvar"
     assert error_fra_exception(WorkerError("CANCELLED", "d"), full=tekst) == (
         "AGENT_INCOMPLETE", "delivery")
+
+
+# ── Meta-koder, tom etikette og koden-der-kom-bagefter (18/11-2026) ───────────
+# Målt på 288 gemte assignments: 26 stod med `error_phase='model'`, og 19 af dem
+# blev modsagt af runnets EGEN kode. 14 af de 19 fik koden EFTER assignmentet blev
+# terminalt — settle kunne ikke se den. 5 bar en meta-kode (RUN_STALE/RUN_ORPHANED)
+# som er "assignmentet blev lukket", ikke "hvorfor".
+from core.runtime.db_agent_contract import partial_delivery_error  # noqa: E402
+
+
+def test_timed_out_har_en_fase_ikke_en_tom_etikette():
+    """`timed_out` manglede i begge tabeller — QUEUE_DEADLINE fik ("", "")."""
+    kode, fase = partial_delivery_error(full="", registry_status="timed_out")
+    assert (kode, fase) != ("", ""), "en terminal status uden fase er en tom etikette"
+    assert fase == "budget"
+
+
+def test_meta_kode_giver_en_aerlig_ukendt_fase():
+    """RUN_STALE/RUN_ORPHANED siger at assignmentet blev LUKKET — ikke hvorfor."""
+    for meta in ("RUN_STALE", "RUN_ORPHANED"):
+        kode, fase = partial_delivery_error(
+            full="", registry_status="failed", run_error_code=meta, run_error_phase="recovery")
+        assert kode == meta, "koden skal bevares — den er observeret, ikke gættet"
+        assert fase == "unknown", f"{meta} må ikke påstå en fase vi ikke kender"
+
+
+def test_orphan_kode_retter_en_gaettet_fase_bagefter(isolated_runtime):
+    """Koden ankommer EFTER settle — assignmentets outcome skal følge med."""
+    import json
+
+    import core.runtime.db_agent_contract as mod
+    from core.runtime.db_agent_lease import close_orphan_runs
+    from core.runtime.db_agent_runtime import create_agent_registry_entry
+
+    create_agent_registry_entry(agent_id="a1", role="scout", goal="g")
+    c = mod._conn()
+    c.execute("UPDATE agent_registry SET owner_user_id=? WHERE agent_id=?", ("bjorn", "a1"))
+    c.commit()
+    out = mod.accept_assignment(
+        agent_id="a1", owner_user_id="bjorn", origin_session_id="s1", goal="g",
+        parent_agent_id="jarvis", parent_run_id="pr1", idempotency_key="k1")
+    aid = out["assignment_id"]
+    mod.commit_terminal_outcome(
+        assignment_id=aid, status="failed", error_code="AGENT_FAILED", error_phase="model")
+    # Leasing-stien skriver den ægte kode bagefter — det er defekten.
+    close_orphan_runs(mod._conn(), aid, reason="test: assignment_terminal_before_lease_expiry")
+    o = json.loads(mod._conn().execute(
+        "SELECT outcome_json FROM agent_assignments WHERE assignment_id=?", (aid,)
+    ).fetchone()["outcome_json"])
+    assert o["error_phase"] != "model", f"fasen blev aldrig rettet: {o}"
+    assert o["error_code"] == "RUN_ORPHANED"

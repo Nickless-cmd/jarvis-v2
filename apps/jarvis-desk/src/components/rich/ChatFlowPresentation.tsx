@@ -601,6 +601,7 @@ export function ChatFlowPresentation({
                 <BlocksRenderer blocks={foldWork} density={density} streaming={streaming}
                   rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
                   visTankeResumeer
+                  samletTanke
                   beskedId={beskedId} config={config} />
               </div>
             ) : null}

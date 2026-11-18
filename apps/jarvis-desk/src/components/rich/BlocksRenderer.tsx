@@ -1,6 +1,6 @@
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
-import { groupToolRounds, type RenderBlock } from '../../lib/toolRounds'
+import { groupToolRounds, mergeActiveItem, type RenderBlock } from '../../lib/toolRounds'
 import { denseBlocks } from '../../lib/blockHelpers'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ToolCard } from './ToolCard'
@@ -146,6 +146,7 @@ export function BlocksRenderer({
   visTankeResumeer = false,
   beskedId,
   config,
+  samletTanke = false,
 }: {
   blocks: ContentBlock[]
   density: 'compact' | 'full'
@@ -164,6 +165,18 @@ export function BlocksRenderer({
   tankeResumeer?: Record<string, string>
   /** Chat-forløbet viser rundens korte syntese også i normal visning. */
   visTankeResumeer?: boolean
+  /**
+   * Smelt sammenhængende aktiviteter til ÉN række — chat mode.
+   *
+   * `groupToolRounds` bryder runden ved enhver tekstblok, så et forløb med
+   * mellemtekst bliver en log af linjer. Med dette flag køres
+   * `mergeActiveItem` bagefter, og forløbet bliver én række med detaljerne
+   * bag folden. Se `mergeActiveItem`.
+   *
+   * Kun chat mode sætter den: code mode har sin egen rækkevisning, hvor
+   * synteser bevidst står frit som `syntese`-sektioner.
+   */
+  samletTanke?: boolean
 }) {
   const visning = useVisningen()
   // denseBlocks FØRST: fjern sparsomme huller (foldede tool_result-indices) FØR
@@ -178,7 +191,12 @@ export function BlocksRenderer({
   const resumeer = { ...resumeerFraBlokke(taet), ...(tankeResumeer ?? {}) }
   // «Alt» (verbose): ingen gruppering — hvert kald står for sig og åbent.
   const afsluttet = afslutForladteKald(udenEtiketter, streaming)
-  const rendered = coalesceImages(coalesceProgress(visning === 'verbose' ? afsluttet : groupToolRounds(afsluttet)))
+  const grupperet = visning === 'verbose' ? afsluttet : groupToolRounds(afsluttet)
+  // `mergeActiveItem` kører EFTER grupperingen og KUN når fladen beder om det
+  // (chat mode). Rækkefølgen er ikke ligegyldig: grupperingen ejer fejl- og
+  // anomali-undtagelserne, sammenlægningen må ikke kunne pakke dem ind.
+  const forloeb = samletTanke ? mergeActiveItem(grupperet) : grupperet
+  const rendered = coalesceImages(coalesceProgress(forloeb))
   const lastIdx = rendered.length - 1
 
   return (

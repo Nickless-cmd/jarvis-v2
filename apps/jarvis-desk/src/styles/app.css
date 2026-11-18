@@ -2469,6 +2469,22 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   background: color-mix(in srgb, var(--bg-0) 50%, transparent);
 }
 
+/* En samlet tanke bærer HELE forløbet, ikke én runde — så 200 px ville skjule
+   det meste bag en scrollbar i en fold man netop har åbnet for at se det. */
+.toolgroup.er-tanke .toolgroup-body { max-height: 420px; }
+
+/* Mellemteksten mellem to kald. Den er det der gør rækken til et forløb og
+   ikke en liste, så den skal læses som prosa — ikke som endnu et kort. Den
+   venstre kant er den samme stille markering som citatet bruger, ikke en ny
+   visuel opfindelse. */
+.toolgroup-mellemtekst {
+  margin: 6px 0; padding: 2px 12px;
+  border-left: 2px solid var(--line);
+  color: var(--fg-1); font-size: 13.5px; line-height: 1.5;
+}
+.toolgroup-mellemtekst > * > :first-child { margin-top: 0; }
+.toolgroup-mellemtekst > * > :last-child { margin-bottom: 0; }
+
 /* --- Reduced motion -----------------------------------------------------------
    Kildens regel: entréen bliver en ren fade, skift-lagene og sparken står
    ikke og animerer (de udgående skjules helt), prikkerne står stille og fulde.

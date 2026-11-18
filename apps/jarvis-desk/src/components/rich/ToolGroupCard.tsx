@@ -7,6 +7,7 @@ import { Prikker, udenEllipse } from './Prikker'
 import { Fold } from './Fold'
 import { LabelSkift, formatTid } from './LabelSkift'
 import { ToolCard } from './ToolCard'
+import { MarkdownRenderer } from './MarkdownRenderer'
 
 /**
  * Én sammenfoldet linje for en HEL runde værktøjsarbejde — 1:1 med mobilens
@@ -42,7 +43,16 @@ function ToolGroupCardImpl({
    */
   etiket?: string
 }) {
-  const [open, setOpen] = useState(false)
+  // En samlet tanke ER forløbet — den skal ikke gemmes bag endnu en fold, når
+  // man netop har åbnet arbejdsvisningen for at se hvad der skete. En almindelig
+  // runde starter lukket, som før; tanken starter åben og kan lukkes manuelt.
+  //
+  // Målt 18/11-2026: uden denne gren lå mellemteksten to klik væk (turhoved →
+  // række), og to eksisterende tests fangede det med det samme. Det er den
+  // rigtige slags fejl — kontrakten «syntesen skal kunne læses i folden» er
+  // ældre end sammenlægningen og gælder stadig.
+  const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
+  const open = aabenManuelt ?? !!block.dele
   // Beregnes kun når rundens værktøjer faktisk ændrer sig (se memo nederst).
   const resume = useMemo(() => summarizeRound(block.tools), [block.tools])
   const sum = useMemo(() => summerDiff(block.tools), [block.tools])
@@ -73,13 +83,13 @@ function ToolGroupCardImpl({
   const tekst = !erMinde && etiket && !tekniskEtiket ? etiket : koerer ? udenEllipse(resume) : resume
 
   return (
-    <div className={`toolgroup${koerer ? ' er-koerende' : ''}${open ? ' er-aaben' : ''}`}>
+    <div className={`toolgroup${koerer ? ' er-koerende' : ''}${open ? ' er-aaben' : ''}${block.dele ? ' er-tanke' : ''}`}>
       <button
         type="button"
         className="toolgroup-head"
         aria-expanded={open}
         aria-label={tekst}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setAabenManuelt((o) => !(o ?? !!block.dele))}
       >
         {/* `</>` står fast foran linjen — også når runden er færdig (Bjørn
             19/9-2026: «må gerne komme tilbage»). Claude Desktop viser kun
@@ -120,9 +130,23 @@ function ToolGroupCardImpl({
       </button>
       <Fold aaben={open}>
         <div className="toolgroup-body">
-          {block.tools.map((t) => (
-            <ToolCard key={t.id} block={t} density={density} />
-          ))}
+          {/* `dele` er hele tanken i rækkefølge (kald og mellemtekst blandet);
+              uden den er rækken én runde, som før. Mellemteksten er ikke en
+              arbejdsdetalje der skal skjules — den er det der binder kaldene
+              sammen til et forløb, så den står på sin egen plads mellem dem. */}
+          {block.dele
+            ? block.dele.map((del, i) => (
+                del.slags === 'kald'
+                  ? <ToolCard key={del.kald.id} block={del.kald} density={density} />
+                  : (
+                    <div className="toolgroup-mellemtekst" key={`tekst-${i}`}>
+                      <MarkdownRenderer text={del.tekst} streaming={false} />
+                    </div>
+                  )
+              ))
+            : block.tools.map((t) => (
+                <ToolCard key={t.id} block={t} density={density} />
+              ))}
         </div>
       </Fold>
     </div>
@@ -137,8 +161,22 @@ function ToolGroupCardImpl({
  * diff-sum (summarizeRound/summerDiff) ved hver delta: 4,5 % af en streaming
  * i profilen, og en del af de 34 ms-renders der tabte frames.
  */
-export const ToolGroupCard = memo(ToolGroupCardImpl, (a, b) =>
-  a.density === b.density
-  && a.etiket === b.etiket
-  && a.block.tools.length === b.block.tools.length
-  && a.block.tools.every((t, i) => t === b.block.tools[i]))
+export const ToolGroupCard = memo(ToolGroupCardImpl, (a, b) => {
+  if (a.density !== b.density || a.etiket !== b.etiket) return false
+  if (a.block.tools.length !== b.block.tools.length) return false
+  if (!a.block.tools.every((t, i) => t === b.block.tools[i])) return false
+  // `dele` kan ændre sig mens kaldene er de samme — en mellemtekst der vokser
+  // under streamen. Uden denne sammenligning ville rækken stå frosset med den
+  // tekst der stod da den blev memoiseret.
+  const da = a.block.dele
+  const db = b.block.dele
+  if ((da?.length ?? -1) !== (db?.length ?? -1)) return false
+  if (!da) return true
+  return da.every((del, i) => {
+    const anden = db![i]
+    if (!anden || anden.slags !== del.slags) return false
+    return del.slags === 'kald'
+      ? del.kald === (anden as { kald: unknown }).kald
+      : del.tekst === (anden as { tekst: string }).tekst
+  })
+})

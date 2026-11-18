@@ -378,6 +378,42 @@ def _er_kommandolinje(s: str) -> bool:
     return False
 
 
+#: Nutids- og bydeformer af de verber huset bruger i en rundelinje.
+#:
+#: Den FÆRDIGE rundes linje beskriver et afsluttet forløb, altså datid. En
+#: nutidsform beskriver noget der sker NU, og en bydeform beskriver noget der
+#: skal gøres — ingen af dem er et forløb. Den KØRENDE rundes linje er en
+#: anden linje og skrives i klienten (`summarizeRound`, «Læser 3 filer»).
+#:
+#: Målt 18/11-2026 over 400 linjer: datid dominerede («Søgte» 110, «Læste» 81,
+#: «Byggede» 48, «Rettede» 43), men «Gør måling til test» stod 11 gange og
+#: «Måler 19/11-fødslen» / «Rørende …» enkelte — alle i den færdige rundes
+#: linje, hvor de lyver om tiden.
+_NUTID_ELLER_BYDE: Final[frozenset[str]] = frozenset({
+    # nutid
+    "søger", "læser", "bygger", "retter", "henter", "kører", "måler",
+    "skriver", "redigerer", "verificerer", "tjekker", "viser", "fjerner",
+    "opdaterer", "deployer", "restarter", "regenererer", "committer",
+    "undersøger", "lukker", "suggererer", "beviser", "bekræfter", "åbner",
+    "lister", "udfører", "gør", "rørende", "skrivende", "læsende",
+    # bydeform
+    "lav", "skriv", "læs", "kør", "ret", "byg", "hent", "fjern", "tjek",
+    "vis", "mål", "find", "søg", "undersøg", "opdater", "list",
+})
+
+
+def _ikke_datid(tekst: str) -> bool:
+    """Står linjen i nutid eller bydeform? Så beskriver den ikke et afsluttet forløb.
+
+    Kun FØRSTE ord afgør det. Et datids-ord længere inde gør ingen skade —
+    linjen er en sætning, og det er dens udsagnsord forrest der sætter tiden.
+    """
+    ord0 = (tekst or "").strip().split()
+    if not ord0:
+        return False
+    return ord0[0].lower().strip(".,;:!?«»\"'") in _NUTID_ELLER_BYDE
+
+
 #: Verber der påstår at runden ÆNDREDE noget.
 _SKRIVE_VERBER: Final[frozenset[str]] = frozenset({
     "redigerede", "rettede", "ændrede", "opdaterede", "tilføjede", "skrev",
@@ -484,6 +520,9 @@ def _doem(ud: str, kald: list[dict[str, Any]], billede: str) -> str:
         return ""
     if _er_kommandolinje(ud):
         logger.info("runde-etiket kasseret — den gentager bare kommandoen: %r", ud)
+        return ""
+    if _ikke_datid(ud):
+        logger.info("runde-etiket kasseret — linjen staar i nutid/bydeform, ikke datid: %r", ud)
         return ""
     if _verbum_lyver(ud, kald):
         logger.info("runde-etiket kasseret — skrive-verbum over en runde der kun laeste: %r", ud)

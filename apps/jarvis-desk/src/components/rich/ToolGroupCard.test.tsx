@@ -132,4 +132,33 @@ describe('ToolGroupCard', () => {
     render(<ToolGroupCard block={block} density="compact" etiket="Kørte list_side_tasks" />)
     expect(screen.getByRole('button', { name: 'Viste flaggede opgaver' })).toBeInTheDocument()
   })
+
+  /**
+   * To linjer, to tider (Bjørn 18/11-2026): «det aktive runde linje skal være
+   * nutid og den færdige runde linjes samlet forløb datid».
+   *
+   * Før vandt `etiket` ubetinget, så den KØRENDE runde kunne stå i datid om
+   * noget der ikke var sket endnu. Testen her fælder netop det: en etiket der
+   * beskriver et afsluttet forløb må ikke sætte sig over den kørende linje.
+   */
+  it('den KØRENDE rundes linje er nutid — også når rundens sætning findes', () => {
+    const block: ToolGroupBlock = {
+      type: 'tool_group', kind: 'round', count: 1,
+      tools: [{ type: 'tool_use', id: 'k1', name: 'read_file',
+        input: { path: '/f/x' }, status: 'running' as const }],
+    }
+    render(<ToolGroupCard block={block} density="compact" etiket="Læste fejlen i filen" />)
+    expect(screen.queryByText('Læste fejlen i filen')).toBeNull()
+    expect(screen.getByRole('button', { name: /Læser/ })).toBeInTheDocument()
+  })
+
+  it('den FÆRDIGE rundes linje er rundens sætning i datid', () => {
+    const block: ToolGroupBlock = {
+      type: 'tool_group', kind: 'round', count: 1,
+      tools: [{ type: 'tool_use', id: 'k2', name: 'read_file',
+        input: { path: '/f/x' }, status: 'done' as const, result: 'ok' }],
+    }
+    render(<ToolGroupCard block={block} density="compact" etiket="Læste fejlen i filen" />)
+    expect(screen.getByRole('button', { name: 'Læste fejlen i filen' })).toBeInTheDocument()
+  })
 })

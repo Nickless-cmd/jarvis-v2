@@ -71,8 +71,7 @@ function ToolGroupCardImpl({
   if (!resume) return null
   // Claude Desktop 1:1 (19/9-2026, læst i `Tf`: `summary || … || mekanisk`):
   // modellens sætning ERSTATTER den mekaniske tekst, når den findes. Før stod
-  // den som overskrift OVER linjen. Den kommer først når runden er talt op,
-  // så skiftet går gennem label-skiftet som et almindeligt tekstskift.
+  // den som overskrift OVER linjen.
   // Hukommelsesskrivning skal følge det faktiske resultat. En genereret
   // rundetekst kan stadig sige "Huskede remember_this" eller påstå succes ved fejl.
   const erMinde = block.tools.length === 1 && block.tools[0]?.name.replace(/^operator_/, '') === 'remember_this'
@@ -80,7 +79,18 @@ function ToolGroupCardImpl({
     const escaped = tool.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     return etiket && new RegExp(`(^|\\W)${escaped}(?=\\W|$)`).test(etiket)
   })
-  const tekst = !erMinde && etiket && !tekniskEtiket ? etiket : koerer ? udenEllipse(resume) : resume
+  // To linjer, to tider (Bjørn 18/11-2026): «det aktive runde linje skal være
+  // nutid og den færdige runde linjes samlet forløb datid».
+  //
+  // `summarizeRound` skifter selv til datid når intet kører («Læser 3 filer»
+  // → «Læste 3 filer»), så skiftet er netop `koerer` — der skal ingen
+  // datids-tabel ved siden af. Men `etiket` beskriver et AFLUTTET forløb, og
+  // før vandt den ubetinget: så stod den kørende runde i datid om noget der
+  // ikke var sket endnu. Kommentaren her antog at etiketten «først kommer når
+  // runden er talt op» — den antagelse holdt ikke, så nu håndhæves den.
+  const tekst = koerer
+    ? udenEllipse(resume)
+    : (!erMinde && etiket && !tekniskEtiket ? etiket : resume)
 
   return (
     <div className={`toolgroup${koerer ? ' er-koerende' : ''}${open ? ' er-aaben' : ''}${block.dele ? ' er-tanke' : ''}`}>

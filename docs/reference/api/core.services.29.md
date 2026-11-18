@@ -335,13 +335,14 @@ _Én kort etiket for en afsluttet værktøjs-runde — «Rettede NPE i UserServi
 | function | `_ryd` | `(s)` | Én linje, uden instruktion, uden anførselstegn, uden punktum, klippet | [src](../../../core/services/tool_round_label.py#L297) |
 | function | `_opdigtet` | `(tekst, billede)` | Hvilket navn i etiketten står IKKE i kaldene? `""` når alt er dækket. | [src](../../../core/services/tool_round_label.py#L322) |
 | function | `_er_kommandolinje` | `(s)` | Er etiketten bare kommandoen igen? | [src](../../../core/services/tool_round_label.py#L365) |
-| function | `_verbum_lyver` | `(tekst, kald)` | Påstår etiketten en ændring i en runde der kun læste? | [src](../../../core/services/tool_round_label.py#L399) |
-| function | `_input_dict` | `(v)` | Kaldets argumenter som dict, uanset om de kom som streng eller objekt. | [src](../../../core/services/tool_round_label.py#L421) |
-| function | `egen_runde_etiket` | `(kald)` | Jarvis' egen linje for runden, hvis han skrev en. Ellers `""`. | [src](../../../core/services/tool_round_label.py#L432) |
-| function | `_har_egen_beskrivelse` | `(kald)` | Er runden ÉT kald der bærer en brugbar `description`? | [src](../../../core/services/tool_round_label.py#L455) |
-| function | `_doem` | `(ud, kald, billede)` | Kør en færdig tekst gennem værnene. `""` = kasseret. | [src](../../../core/services/tool_round_label.py#L471) |
-| function | `etiket` | `(vaerktoejer, hensigt=…, egen=…)` | Én kort etiket for runden, eller `""`. | [src](../../../core/services/tool_round_label.py#L498) |
-| function | `tool_use_ids` | `(vaerktoejer)` | Hvilke kald etiketten dækker. | [src](../../../core/services/tool_round_label.py#L547) |
+| function | `_ikke_datid` | `(tekst)` | Står linjen i nutid eller bydeform? Så beskriver den ikke et afsluttet forløb. | [src](../../../core/services/tool_round_label.py#L405) |
+| function | `_verbum_lyver` | `(tekst, kald)` | Påstår etiketten en ændring i en runde der kun læste? | [src](../../../core/services/tool_round_label.py#L435) |
+| function | `_input_dict` | `(v)` | Kaldets argumenter som dict, uanset om de kom som streng eller objekt. | [src](../../../core/services/tool_round_label.py#L457) |
+| function | `egen_runde_etiket` | `(kald)` | Jarvis' egen linje for runden, hvis han skrev en. Ellers `""`. | [src](../../../core/services/tool_round_label.py#L468) |
+| function | `_har_egen_beskrivelse` | `(kald)` | Er runden ÉT kald der bærer en brugbar `description`? | [src](../../../core/services/tool_round_label.py#L491) |
+| function | `_doem` | `(ud, kald, billede)` | Kør en færdig tekst gennem værnene. `""` = kasseret. | [src](../../../core/services/tool_round_label.py#L507) |
+| function | `etiket` | `(vaerktoejer, hensigt=…, egen=…)` | Én kort etiket for runden, eller `""`. | [src](../../../core/services/tool_round_label.py#L537) |
+| function | `tool_use_ids` | `(vaerktoejer)` | Hvilke kald etiketten dækker. | [src](../../../core/services/tool_round_label.py#L586) |
 
 ## `core/services/tool_router.py`
 _Per-turn tool selection._

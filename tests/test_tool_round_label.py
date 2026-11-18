@@ -564,3 +564,48 @@ def test_uden_egen_linje_er_adfaerden_uaendret(monkeypatch):
     a = _v("bash", {"command": "git status"})
     b = _v("bash", {"command": "git log"})
     assert trl.etiket([a, b]) == "Tjekkede repoet"
+
+
+# ─────────────────────────────────────────── tiden: aktiv = nutid, færdig = datid
+#
+# Bjørn 18/11-2026: «det aktive runde linje skal være nutid og den færdige runde
+# linjes samlet forløb datid». Den kørende linje skrives i klienten
+# (`summarizeRound`, «Læser 3 filer»). Denne funktion skriver den FÆRDIGE, og
+# den skal derfor stå i datid. Målt over 400 linjer 18/11: «Gør måling til
+# test» stod 11 gange og «Måler …» enkelte — alle tre i den færdige rundes
+# linje, hvor de lyver om tiden.
+
+
+def test_linje_i_NUTID_kasseres(monkeypatch):
+    """«Måler …» beskriver noget der sker nu — ikke et afsluttet forløb."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Måler 19/11-fødslen")
+    v = _v("bash", {"command": "ls"})
+    assert trl.etiket([v]) == ""
+
+
+def test_linje_i_BYDEform_kasseres(monkeypatch):
+    """«Gør måling til test» er en opgave, ikke et forløb — målt 11 gange."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Gør måling til test")
+    v = _v("bash", {"command": "ls"})
+    assert trl.etiket([v]) == ""
+
+
+def test_linje_i_DATID_slipper_igennem(monkeypatch):
+    """Værnet må ikke afvise det rigtige: datid er hele pointen."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Målte fødslen")
+    v = _v("bash", {"command": "ls"})
+    assert trl.etiket([v]) == "Målte fødslen"
+
+
+def test_egen_linje_i_NUTID_kasseres_ogsaa(monkeypatch):
+    """Værnet gælder BEGGE forfattere.
+
+    Ellers ville «jeg skriver den selv» betyde «jeg godkender den selv», og så
+    forsvandt den eneste uafhængige læser af kaldene. Min linje afvises, og
+    modellen overtager — med datid.
+    """
+    kaldt: list[str] = []
+    monkeypatch.setattr(trl, "_kald_model", lambda p: kaldt.append(p) or "Søgte i filerne")
+    v = _v("bash", {"command": "ls", "runde_etiket": "Søger i filerne"})
+    assert trl.etiket([v]) == "Søgte i filerne"
+    assert kaldt, "modellen skulle have overtaget efter afvisningen"

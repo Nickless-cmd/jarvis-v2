@@ -1793,7 +1793,7 @@ async def _stream_visible_run(
                 },
             )
             _persist_session_assistant_message(run, "Generation cancelled.")
-            _outcome_state.mark("cancelled")
+            _outcome_state.mark("cancelled", error=_cancel_reason)
             set_last_visible_run_outcome(
                 run,
                 status="cancelled",
@@ -1816,7 +1816,7 @@ async def _stream_visible_run(
                 },
             )
             _persist_session_assistant_message(run, bounded_message)
-            _outcome_state.mark("failed")
+            _outcome_state.mark("failed", error=stage_error)
             set_last_visible_run_outcome(
                 run,
                 status="failed",
@@ -1866,7 +1866,7 @@ async def _stream_visible_run(
                 },
             )
             _persist_session_assistant_message(run, user_message)
-            _outcome_state.mark("failed")
+            _outcome_state.mark("failed", error=stage_error)
             set_last_visible_run_outcome(
                 run,
                 status="failed",
@@ -1892,15 +1892,15 @@ async def _stream_visible_run(
                 },
             )
             _persist_session_assistant_message(run, _deg_user_msg)
-            _outcome_state.mark("failed")
+            _outcome_state.mark("failed", error=stage_error)
             set_last_visible_run_outcome(run, status="failed", error=stage_error)
             for failure_chunk in _fail_visible_run(run, stage_error):
                 yield failure_chunk
             return
 
         if result is None:
-            _outcome_state.mark("failed")  # ellers overskriver _post_process (finally) med "completed"+tom → falsk survival
             stage_error = "first-pass-provider-error: Visible model stream completed without final result"
+            _outcome_state.mark("failed", error=stage_error)  # ellers overskriver _post_process (finally) med "completed"+tom → falsk survival
             _update_visible_execution_trace(
                 run,
                 {
@@ -5707,7 +5707,7 @@ async def _stream_visible_run(
                 )
             except Exception:
                 pass
-            _outcome_state.mark("cancelled")
+            _outcome_state.mark("cancelled", error="user-cancelled")
             set_last_visible_run_outcome(
                 run,
                 status="cancelled",

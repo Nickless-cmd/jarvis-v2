@@ -635,3 +635,67 @@ def test_egen_linje_i_NUTID_kasseres_ogsaa(monkeypatch):
     v = _v("bash", {"command": "ls", "runde_etiket": "Søger i filerne"})
     assert trl.etiket([v]) == "Søgte i filerne"
     assert kaldt, "modellen skulle have overtaget efter afvisningen"
+
+
+# ──────────────────── feltet skal sidde paa de vaerktoejer der ARBEJDER
+#
+# Maalt 18/11-2026: `runde_etiket` blev monteret paa elleve fil- og
+# soegevaerktoejer, men `bash_session_run` — netop den kanal husets egne regler
+# foretraekker frem for loese bash-kald — fik det ikke. Ingen test fangede det;
+# det blev opdaget ved at maale det INDLAESTE skema. En runde der kun koerer
+# gennem sessionen fik derfor modellens linje, og det er de runder hvor hans
+# eget sprog betyder mest.
+
+#: De vaerktoejer en RUNDE kan bestaa af. Kommer der en ny shell- eller
+#: fil-kanal, hoerer den her — ellers faar dens runder modellens linje.
+_RUNDE_VAERKTOEJER = (
+    "bash",
+    "operator_bash",
+    "bash_session_run",
+    "operator_bash_session_run",
+    "operator_session_run",
+    "read_file",
+    "operator_read_file",
+    "write_file",
+    "operator_write_file",
+    "edit_file",
+    "operator_edit_file",
+    "operator_multi_edit",
+    "search",
+    "find_files",
+)
+
+
+def test_feltet_sidder_paa_de_vaerktoejer_der_ARBEJDER():
+    """Vagten der ville have fanget hullet den 18/11."""
+    from core.tools.simple_tools_definitions import TOOL_DEFINITIONS
+
+    props: dict[str, dict] = {}
+    for d in TOOL_DEFINITIONS:
+        f = d.get("function") or {}
+        navn = f.get("name")
+        if navn:
+            props[str(navn)] = (f.get("parameters") or {}).get("properties") or {}
+
+    # Et navn der er forsvundet maa ikke goere vagten tavst groen: saa pegede
+    # listen paa noget andet end det der koerer, og den vogtede ingenting.
+    forsvundet = [n for n in _RUNDE_VAERKTOEJER if n not in props]
+    assert not forsvundet, f"listen peger paa vaerktoejer der ikke findes: {forsvundet}"
+
+    mangler = [n for n in _RUNDE_VAERKTOEJER if "runde_etiket" not in props[n]]
+    assert not mangler, (
+        f"disse kan baere en runde, men mangler runde_etiket: {mangler}. "
+        "Uden feltet skriver den lokale model linjen for deres runder."
+    )
+
+
+def test_et_SESSION_kald_baerer_linjen(monkeypatch):
+    """Den kanal husets regler foretraekker skal ogsaa kunne baere linjen."""
+    kaldt: list[str] = []
+    monkeypatch.setattr(trl, "_kald_model", lambda p: kaldt.append(p) or "Modellens linje")
+    v = _v("bash_session_run", {
+        "session_id": "s1", "command": "pytest -q",
+        "runde_etiket": "Kørte testene i sessionen",
+    })
+    assert trl.etiket([v]) == "Kørte testene i sessionen"
+    assert not kaldt, "modellen skulle ikke vaere kaldt naar linjen holdt"

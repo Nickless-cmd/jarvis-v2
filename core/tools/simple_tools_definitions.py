@@ -3799,3 +3799,35 @@ def _ensret_tool_definitions(defs: list[dict[str, Any]]) -> list[dict[str, Any]]
 
 
 TOOL_DEFINITIONS = _ensret_tool_definitions(TOOL_DEFINITIONS)
+
+
+#: Runde-etiketten monteres ogsaa paa session-shellene. Deres definitioner bor i
+#: deres egne moduler, som er stdlib-only paa modulniveau — `bash_session` koerer
+#: ogsaa som selvstaendig daemon, og en `core.`-import i toppen ville braekke den
+#: naar den startes som script. Derfor monteres feltet her, efter ensretningen,
+#: hvor kataloget er den endelige form.
+_SESSION_RUN_TOOLS = (
+    "bash_session_run",
+    "operator_bash_session_run",
+    "operator_session_run",
+)
+
+
+def _tilfoej_runde_etiket(
+    defs: list[dict[str, Any]], navne: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    """Giv de navngivne vaerktoejer `runde_etiket`, hvis de ikke har det.
+
+    Et navn der ikke findes i kataloget springes over: kataloget er sammensat
+    af mange moduler, og en flyttet definition skal ikke vaelte hele skemaet.
+    """
+    for t in defs:
+        f = t.get("function") or {}
+        if f.get("name") not in navne:
+            continue
+        props = (f.get("parameters") or {}).setdefault("properties", {})
+        props.setdefault("runde_etiket", RUNDE_ETIKET_PARAM)
+    return defs
+
+
+TOOL_DEFINITIONS = _tilfoej_runde_etiket(TOOL_DEFINITIONS, _SESSION_RUN_TOOLS)

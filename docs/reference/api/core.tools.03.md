@@ -232,6 +232,7 @@ _Tool definitions catalog for Jarvis' visible-lane tools._
 |---|---|---|---|---|
 | function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3772) |
 | function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3789) |
+| function | `_tilfoej_runde_etiket` | `(defs, navne)` | Giv de navngivne vaerktoejer `runde_etiket`, hvis de ikke har det. | [src](../../../core/tools/simple_tools_definitions.py#L3816) |
 
 ## `core/tools/simple_tools_enforcement.py`
 _Commit-enforcement (repo-state attachment) for Jarvis' tool results._

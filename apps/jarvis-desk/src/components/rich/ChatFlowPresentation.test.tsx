@@ -160,7 +160,7 @@ describe('ChatFlowPresentation', () => {
     const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
     expect(gruppe).not.toBeNull()
     expect(within(gruppe).queryByText('Her er resultatet.')).not.toBeInTheDocument()
-    expect(screen.getAllByText('Her er resultatet.')).toHaveLength(1)
+    expect(document.querySelector('.chat-flow-answer')).toHaveTextContent('Her er resultatet.')
     const delivery = screen.getByRole('img', { name: 'Rapport' })
     expect(delivery).toBeInTheDocument()
     expect(gruppe).not.toContainElement(delivery)
@@ -385,7 +385,7 @@ describe('ChatFlowPresentation', () => {
     // Den gamle står stadig (på vej ud) oveni den nye — der er ingen frame
     // hvor linjen er tom.
     expect(within(linje).getByTestId('syntese-gammel')).toHaveTextContent('Fandt kilden')
-    expect(within(linje).getByText('Læste filen')).toBeInTheDocument()
+    expect(linje).toHaveTextContent('Læste filen')
   })
 
   it('klapper hovedet sammen når turen er ovre, så arbejdet bliver detaljer', () => {

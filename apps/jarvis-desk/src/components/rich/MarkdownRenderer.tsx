@@ -16,6 +16,7 @@ import { ChatCodeBlock } from './ChatCodeBlock'
 import { MermaidBlock, MermaidStreamingContext } from './MermaidBlock'
 import { NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
 import { logFlade } from '../../lib/fladeLog'
+import { afsluttetGraense, rehypeStreamingTextTail } from '../../lib/streamingTextTail'
 
 const githubMark = new URL('../../assets/github.svg', import.meta.url).href
 
@@ -53,7 +54,9 @@ const PLUGINS = [remarkGfm, remarkMath, linkifyRefs]
 // hele beskeden. KaTeX tegner så fejlen rødt i stedet, og resten af svaret
 // står uændret. `strict: false` gør det samme for halvfærdige udtryk — mens
 // svaret streames er `$e^{i\pi` en lovlig mellemtilstand.
-const REHYPE_PLUGINS = [[rehypeKatex, { throwOnError: false, strict: false, output: 'html' }]] as const
+const REHYPE_PLUGINS = [
+  [rehypeKatex, { throwOnError: false, strict: false, output: 'html' }],
+] as const
 /** `pre`-grenen: kode, mermaid og flader.
  *
  *  Egen komponent fordi den kalder `useContext` — React's rules-of-hooks
@@ -130,11 +133,34 @@ function Pre({ children }: { children?: React.ReactNode }) {
   return <ChatCodeBlock code={code} lang={lang} className={props.className} />
 }
 
-const KOMPONENTER: Components = {
+type StreamingWordProps = React.HTMLAttributes<HTMLSpanElement> & {
+  node?: unknown
+  'data-stream-part-key'?: string
+  'data-stream-tail-order'?: string | number
+}
+
+/** Halen animeres af CSS alene.
+ *
+ *  MÅLT 18/11-2026 i Chromium: et JS-lag oven på CSS'en gav TO animationer på
+ *  samme element — `streaming-word-opacity` og `streaming-word-color` fra CSS,
+ *  plus to fra `element.animate()` — der alle skrev `opacity` og `color`. De
+ *  kørte i parallel om de samme egenskaber: dobbelt arbejde og to kilder til
+ *  hvem der bestemmer farven. CSS'en er nu den eneste.
+ *
+ *  Genstarten per ord kommer i stedet fra `key`: når span-positionen genbruges
+ *  til et NYT ord, ændrer `data-stream-part-key` sig, React afmonterer den
+ *  gamle span og monterer en frisk — og en frisk CSS-animation starter forfra.
+ */
+function StreamingWord({ node: _node, ...props }: StreamingWordProps) {
+  return <span {...props} />
+}
+
+const KOMPONENTER = {
   // Navnet SKAL starte med stort: `useContext` kaldes indeni, og React's
   // rules-of-hooks afviser en hook i en funktion der ikke ligner en komponent.
   // Målt 30/10-2026 — lint fejlede på `pre` med 1 error, og CI kører lint.
   pre: Pre,
+  'jarvis-stream-word': StreamingWord,
   a: ({ href, children }) => {
     const safe = href ? safeLinkHref(href) : null
     if (!safe) return <span>{children}</span>
@@ -179,7 +205,7 @@ const KOMPONENTER: Components = {
       </a>
     )
   },
-}
+} as Components
 
 /** Ikonet foran en reference. Én tabel, så et nyt id ikke kan få et tilfældigt
  *  ikon fordi nogen glemte en gren. */
@@ -221,6 +247,14 @@ export const MarkdownBlok = memo(function MarkdownBlok({
   // 29/9-2026: en frossen blok har stabil tekst, så strukturarbejdet skal
   // følge blokkens levetid i stedet for at genkøre på hele streamets historie.
   const struktureret = useMemo(() => enforceStructure(md), [md])
+  const rehypePlugins = useMemo(
+    () => streaming
+      ? [...REHYPE_PLUGINS, [rehypeStreamingTextTail, {
+          completedAtEnd: afsluttetGraense(struktureret) === struktureret.length,
+        }]]
+      : REHYPE_PLUGINS,
+    [streaming, struktureret],
+  )
   // De to udfald `pre`-grenen ALDRIG kan se (25/10-2026, side-155f2dc398):
   //
   //   wrong-lang  — blokken HAR en fence med jarvis-ui, men linjen er ikke
@@ -253,7 +287,7 @@ export const MarkdownBlok = memo(function MarkdownBlok({
   return (
     <FladeStreamingContext.Provider value={streaming}>
       <MermaidStreamingContext.Provider value={streaming}>
-        <ReactMarkdown remarkPlugins={PLUGINS} rehypePlugins={REHYPE_PLUGINS as never} components={KOMPONENTER}>{struktureret}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={PLUGINS} rehypePlugins={rehypePlugins as never} components={KOMPONENTER}>{struktureret}</ReactMarkdown>
       </MermaidStreamingContext.Provider>
     </FladeStreamingContext.Provider>
   )

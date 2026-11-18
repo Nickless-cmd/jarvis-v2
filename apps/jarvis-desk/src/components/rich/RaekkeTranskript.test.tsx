@@ -146,11 +146,11 @@ describe('RaekkeTranskript', () => {
 
     rerender(<RaekkeTranskript blocks={[...arbejde, tekst('Her er svaret')]} streaming />)
     expect(container.querySelector('.rv-tur')).toBeNull()
-    expect(screen.getByText('Her er svaret')).toBeInTheDocument()
+    expect(container).toHaveTextContent('Her er svaret')
 
     rerender(<RaekkeTranskript blocks={[...arbejde, tekst('Jeg tjekker mere.'), kald('grep')]} streaming />)
     expect(container.querySelector('.rv-tur')).toBeNull()
-    expect(screen.getByText('Jeg tjekker mere.')).toBeInTheDocument()
+    expect(container).toHaveTextContent('Jeg tjekker mere.')
 
     rerender(<RaekkeTranskript blocks={[...arbejde, tekst('Jeg tjekker mere.'), kald('grep'), tekst('Færdig.')]} streaming={false} />)
     expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
@@ -573,7 +573,7 @@ describe('RaekkeTranskript', () => {
 
     // Mens turen kører er der intet hoved: rundelinjen er turens ansigt.
     expect(container.querySelector('.rv-tur')).toBeNull()
-    expect(screen.getByText('Jeg undersøger det nu.')).toBeInTheDocument()
+    expect(container).toHaveTextContent('Jeg undersøger det nu.')
 
     rerender(<RaekkeTranskript blocks={blokke} streaming={false} />)
     const hoved = container.querySelector('.rv-tur')!
@@ -587,10 +587,10 @@ describe('RaekkeTranskript', () => {
     expect(container.querySelector('.rv-tur')).toBeNull()
     rerender(<RaekkeTranskript blocks={[...TUR_UNDER_ARBEJDE, tekst('Første del')]} streaming finalAnswerStarted />)
     expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByText('Første del')).toBeInTheDocument()
+    expect(container.querySelector('.rv-svar')).toHaveTextContent('Første del')
     rerender(<RaekkeTranskript blocks={[...TUR_UNDER_ARBEJDE, tekst('Første del og resten')]} streaming finalAnswerStarted />)
     expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByText('Første del og resten')).toBeInTheDocument()
+    expect(container.querySelector('.rv-svar')).toHaveTextContent('Første del og resten')
   })
 
   it('lægger den korte syntese INDE i arbejdet, ikke i svaret', () => {

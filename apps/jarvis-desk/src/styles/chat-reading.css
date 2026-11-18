@@ -13,6 +13,41 @@
 .chatview .jarvis-body h3 { font-size: 1.15em; }
 .chatview .native-rich { margin-block: 1.1em 1.35em; }
 
+/* Ord-for-ord-halen optager sin endelige plads fra første frame. Kun paint /
+ * compositing-egenskaber animeres: opacity, color og transform. */
+.streaming-word-tail {
+  --streaming-tail-duration: 240ms;
+  --streaming-tail-color-delay: 110ms;
+  --streaming-tail-part-offset: 38ms;
+  --streaming-tail-easing: cubic-bezier(0.2, 0.75, 0.25, 1);
+  color: #8f8f8f;
+  animation:
+    streaming-word-opacity var(--streaming-tail-duration) var(--streaming-tail-easing)
+      calc(var(--streaming-tail-order, 0) * var(--streaming-tail-part-offset)) both,
+    streaming-word-color var(--streaming-tail-duration) var(--streaming-tail-easing)
+      calc(var(--streaming-tail-color-delay) + var(--streaming-tail-order, 0) * var(--streaming-tail-part-offset)) both;
+}
+
+@keyframes streaming-word-opacity {
+  0% { opacity: var(--streaming-tail-opacity-start, 0); transform: translateY(0.08em); }
+  72% { opacity: var(--streaming-tail-opacity-mid, 1); transform: translateY(0); }
+  100% { opacity: var(--streaming-tail-opacity-end, 1); transform: translateY(0); }
+}
+
+@keyframes streaming-word-color {
+  from { color: #3a83f7; }
+  to { color: #8f8f8f; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .streaming-word-tail {
+    animation: none;
+    opacity: 1;
+    color: #8f8f8f;
+    transform: none;
+  }
+}
+
 /* ── Fladens ankomst (29/10-2026, Bjørn: «kode boksen … og så blink») ──
  *
  * Paceren springer nu over en komplet `jarvis-ui`-fence, så fladen lander i

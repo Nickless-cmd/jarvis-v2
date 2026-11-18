@@ -86,7 +86,11 @@ describe('MarkdownRenderer under streaming', () => {
   })
 
   it('bevarer settled-layout for ekko, krammet tabel og inline-struktur', () => {
-    const norm = (h: string) => h.replace(/>\s+</g, '><')
+    // Live-halen må tilføje paint-only spans; sammenlign det semantiske træ
+    // efter at netop de wrappers er pakket ud. Alt øvrigt HTML skal matche.
+    const norm = (h: string) => h
+      .replace(/<span class="streaming-word-tail"[^>]*>([^<]*)<\/span>/g, '$1')
+      .replace(/>\s+</g, '><')
     const tekster = [
       '[list_proposals]: intern echo\n\nRigtigt svar.\n\n**Vigtig overskrift**\n\n- et\n\n- to',
       'Intro.\n\n| A | B | --- | --- | en | to |\n\nEfter tabellen.',

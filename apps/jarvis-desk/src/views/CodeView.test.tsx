@@ -513,9 +513,17 @@ describe('CodeView — cross-device: to runs på samme session', () => {
     act(() => { for (const e of tur('run-B', 'Svar fra tur B.')) kaldet(1).onEvent(e) })
     await act(() => new Promise<void>((r) => setTimeout(r, 50)))
 
-    const svar = Array.from(document.querySelectorAll('.transcript, [data-live]')).map((n) => n.textContent ?? '').join(' ')
-    expect(svar).toContain('Svar fra tur B.')
+    // `waitFor` ovenfor venter på at ABONNEMENTET er genstartet — ikke på at
+    // React har committet B's tekst i DOM'en. Læste vi DOM'en synkront her,
+    // kunne vi ramme vinduet mellem `onEvent` og commit: under CI-last fejlede
+    // den derfor tilfældigt med «expected ... to contain 'Svar fra tur B.'».
+    // Vi venter nu på præcis det vi påstår, i stedet for på et sidestykke.
+    const laesSvar = () =>
+      Array.from(document.querySelectorAll('.transcript, [data-live]')).map((n) => n.textContent ?? '').join(' ')
+    await waitFor(() => expect(laesSvar()).toContain('Svar fra tur B.'), { timeout: 3000 })
+
     // Uden follow_start stod A's tekst tilbage under B — den fejl Bjørn ser.
+    const svar = laesSvar()
     const bIndex = svar.indexOf('Svar fra tur B.')
     expect(svar.slice(bIndex + 'Svar fra tur B.'.length)).not.toContain('Svar fra tur A.')
   })

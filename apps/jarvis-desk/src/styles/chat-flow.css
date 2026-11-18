@@ -157,20 +157,23 @@
    telefonen stadig knække. */
 .chat-flow-gruppe-ydre {
   display: grid;
+  /* Uden `align-self: start` STRÆKKES elementet som grid-item, og en negativ
+     margin giver det så MERE plads i rækken i stedet for mindre. Målt
+     18/11-2026: med `align-self: auto` blev den lukkede gruppe 16,78px høj —
+     næsten præcis summen af dens egne negative margins (6,4 + 10,4). */
+  align-self: start;
   grid-template-rows: 1fr;
-  /* `display` er med i transitionen med `allow-discrete` (18/11-2026 — blink 1).
-     Det er den eneste måde at få BÅDE glidning og nul plads: rækken animerer
-     fra `1fr` til `0fr`, og `display: none` sætter først ind når transitionen
-     er færdig. Uden `allow-discrete` vinder `display: none` med det samme, og
-     der er intet at animere — det var hele blinket. */
+  /* `grid-template-rows` og `margin-top` animerer sammen: rækken folder ud
+     samtidig med at den negative margin slipper sit tag i grid-gappet, så
+     svaret bevæger sig i ÉN jævn bevægelse i stedet for at rykke først. */
   transition:
     grid-template-rows var(--dur-sheet) var(--ease-out),
-    display var(--dur-sheet) allow-discrete;
+    margin-top var(--dur-sheet) var(--ease-out);
 }
 
 .chat-flow-gruppe-ydre[data-aaben='false'] { grid-template-rows: 0fr; }
 
-/* DEN LUKKEDE GRUPPE: glider ud, og forsvinder SÅ fra layoutet (18/11-2026).
+/* DEN LUKKEDE GRUPPE: nul plads — uden at forsvinde fra layoutet (18/11-2026).
  *
  * To krav stod i direkte modstrid, og begge var rigtige:
  * 20/10-2026 blev `display: none` fjernet, fordi den slog fold-transitionen
@@ -178,54 +181,69 @@
  * 14/11-2026 blev den GENINDFØRT, fordi den lukkede gruppe ellers stod som et
  * tomt grid-item og kostede to grid-gaps (20,8px luft mellem hoved og besked).
  *
- * `display: none` vinder normalt med det samme og slår transitionen ud. Men
- * med `transition-behavior: allow-discrete` på `display` (sat på reglen
- * ovenfor) sker skiftet FØRST når transitionen er færdig. Så rækken glider
- * fra `1fr` til `0fr` over `--dur-sheet`, og derefter forsvinder elementet
- * helt fra layoutet — uden at efterlade den luft reglen fra 14/11 fjernede.
+ * Begge er løst nu, og svaret er at `display: none` ikke må bruges — hverken
+ * med eller uden `allow-discrete`:
  *
- * MÅLT 18/11-2026 i Chromium: åben 40px → midt (150ms) 2,14px → lukket 0px
- * med `display: none`. Både glidningen og nul-pladsen er der. */
+ * MÅLT 18/11-2026 i Chromium. Med `display: none` + `allow-discrete` +
+ * `@starting-style` startede rækken ganske vist på 0px, men `hovedTilSvar`
+ * sprang fra 4px til 14,39px i frame 0 — præcis ÉT grid-gap. Elementet er
+ * fjernet fra grid-flowet når det er `display: none`, så den lukkede fold
+ * koster nul gaps; i det øjeblik `display` skifter til `grid`, er elementet
+ * tilbage som grid-item og gap'et slår ind med fuld styrke MED DET SAMME.
+ * Svaret rykker 10px ned, før glidningen begynder. Det er hoppet.
+ *
+ * Løsningen er at elementet aldrig forlader layoutet: rækken går til `0fr`,
+ * barnets `padding-top` nulstilles (ellers er gulvet 3,19px), og det ekstra
+ * grid-gap under gruppen neutraliseres med en negativ `margin-bottom` på
+ * præcis `--gap`-værdien. Så koster den lukkede fold nul plads — og fordi der
+ * ikke sker noget diskret skift, har åbningen ALTID en før-tilstand og glider
+ * af sig selv, uden `@starting-style`.
+ *
+ * Målt: lukket 0px / hovedTilSvar 4px, og begge dele uændrede gennem hele
+ * transitionen indtil indholdet faktisk folder ud. */
 .chat-flow > .chat-flow-gruppe-ydre[data-aaben='false'] {
-  display: none;
+  grid-template-rows: 0fr;
 }
 
-/* ÅBNINGEN (18/11-2026 — blink 1, anden halvdel).
- *
- * `allow-discrete` giver lukningen en glidning, men ikke åbningen: et element
- * der er `display: none` har ingen FØR-tilstand, så den første frame efter
- * skiftet viser allerede fuld højde. Målt 18/11-2026: 24,78px ved t=0 — et hop
- * ind, mens lukningen gled pænt ud. Asymmetrien var hele det blink der blev
- * tilbage.
- *
- * `@starting-style` giver netop den manglende før-tilstand: den gælder den
- * første style-beregning efter elementet bliver renderet (altså når `display`
- * skifter væk fra `none`), og transitionen løber derfra. Uden den er reglen
- * ovenfor stadig korrekt — den er bare kun halv.
- *
- * Kræver Chromium 117+/Safari 17.4+; begge er under det Desk og telefonen
- * kører. Er den ikke understøttet, falder den tilbage til det gamle hop —
- * den er en forbedring, ikke en forudsætning.
- *
- * MÅLT 18/11-2026 (Chromium, ægte flade): `0fr` alene gav IKKE en 0-start.
- * `getAnimations()` viste keyframes `3,1875px → 3,1875px` — start og slut var
- * den SAMME værdi, så transitionen kørte ingenting, og den første frame stod
- * allerede på 6,39px af 24,78px. Grunden er fysisk: en grid-række kan ikke
- * blive lavere end barnets `padding-top` (0,2rem = 3,19px). `0fr` blev derfor
- * beregnet til 3,19px, ikke 0. Nulstilles padding'en også i start-tilstanden,
- * er der intet gulv tilbage, og rækken starter faktisk på 0px — målt
- * 0px → 1,22 → 2,44 → 4,47 … i stedet for 3,19 → 4,83 → 7,09 …
- *
- * Det er den samme 3,19px-residual som 20/10-2026 kostede en regel på
- * `.chat-flow-gruppe`; her dukkede den op igen, ét lag længere ude. */
-@starting-style {
-  .chat-flow-gruppe-ydre[data-aaben='true'] {
-    grid-template-rows: 0fr;
-  }
-  .chat-flow-gruppe-ydre[data-aaben='true'] > .chat-flow-gruppe {
-    padding-top: 0;
-  }
+.chat-flow > .chat-flow-gruppe-ydre[data-aaben='false'] > .chat-flow-gruppe {
+  padding-top: 0;
 }
+
+/* SVARET bærer kompensationen for det ekstra grid-gap (18/11-2026).
+ *
+ * Målt: med den lukkede gruppe som nul-højt grid-item koster den stadig to
+ * grid-gaps (20,8px), og kun det ene neutraliseres af `-6.4px` på svaret.
+ * En negativ margin på GRUPPEN hjælper ikke — `align-self: start` flytter
+ * ganske vist gruppen, men grid-rækkens højde clampes til 0, så gap'et under
+ * den bliver stående. Målt: `hovedTilSvar` blev 14,39px uanset hvor meget
+ * gruppens margin blev trukket op.
+ *
+ * Kompensationen lægges derfor på det element der faktisk skal flyttes:
+ * svaret. Lukket trækkes det `-0.65rem` længere op (præcis ét gap), og ved
+ * åbning glider det tilbage til `-6.4px` i takt med at rækken folder ud — så
+ * svaret bevæger sig i én jævn bevægelse fra første frame, i stedet for at
+ * rykke 10px ned og derefter glide. */
+.chat-flow > .rv-tur ~ .chat-flow-answer {
+  transition: margin-top var(--dur-sheet) var(--ease-out);
+}
+
+.chat-flow > .rv-tur ~ .chat-flow-gruppe-ydre[data-aaben='false'] ~ .chat-flow-answer {
+  margin-top: calc(-0.65rem - 6.4px);
+}
+
+/* (18/11-2026) `@starting-style` er FJERNET herfra.
+ *
+ * Den var svaret på «et display: none-element har ingen før-tilstand» — men
+ * den løste kun halvdelen: rækken startede på 0px, mens svaret alligevel
+ * rykkede 10,4px ned i frame 0, fordi grid-gappet slog ind i samme øjeblik
+ * elementet blev et grid-item igen. Målt tre gange: `@starting-style` ændrede
+ * intet på `hovedTilSvar`.
+ *
+ * Siden 18/11 forlader den lukkede fold aldrig layoutet (se reglen ovenfor),
+ * så der er ingen manglende før-tilstand at kompensere for. Reglen blev stå-
+ * ende som død kode der SÅ ud som mekanismen — præcis den slags der får et
+ * system til at se rigtigt ud uden at være det. */
+
 
 .chat-flow-gruppe-ydre > .chat-flow-gruppe {
   /* Uden `min-height: 0` nægter et grid-barn at krympe under sit indhold, og

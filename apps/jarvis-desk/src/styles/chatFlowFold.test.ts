@@ -58,50 +58,46 @@ describe('chat mode — foldet glider i stedet for at blinke', () => {
     expect(css).not.toMatch(/\.chat-flow-gruppe\[hidden\]/)
   })
 
-  it('display: none på den lukkede gruppe kræver allow-discrete — ellers hopper folden', () => {
-    // 18/11-2026. `display: none` kom tilbage for at fjerne de 20,8px luft
-    // mellem hoved og besked (målt 14/11-2026), men den slår transitionen
-    // ihjel medmindre `display` selv er transitioneret med `allow-discrete`:
-    // så sker skiftet først når rækken er løbet til 0fr.
+  it('den lukkede fold forlader ALDRIG layoutet — så har åbningen altid en før-tilstand', () => {
+    // 18/11-2026. Tre løsninger blev målt i Chromium og forkastet før denne:
+    //   1. `display: none` alene — intet at animere, folden hoppede.
+    //   2. `display: none` + `allow-discrete` — lukningen gled, åbningen hoppede.
+    //   3. samme + `@starting-style` — rækken startede korrekt på 0px, men
+    //      `hovedTilSvar` sprang alligevel fra 4px til 14,39px i frame 0.
     //
-    // Reglen her er den ENESTE grund til at kombinationen er tilladt, og den
-    // er skærpet fordi den gamle vagt blev omgået: den greppede efter
-    // `.chat-flow-gruppe { … display: none }` og kunne derfor ikke se den nye
-    // regel, som skrev `.chat-flow > .chat-flow-gruppe-ydre[data-aaben=false]`.
-    // En vagt der ikke kan se formen den vogter over, vogter ingenting.
-    expect(regel('.chat-flow-gruppe-ydre'))
-      .toMatch(/display\s+var\(--dur-(snap|fast|base|sheet|slow)\)\s+allow-discrete/)
-    expect(regel(".chat-flow > .chat-flow-gruppe-ydre[data-aaben='false']"))
-      .toMatch(/display:\s*none/)
-    // Aldrig ubetinget: den lukkede tilstand er den eneste der må fjerne den.
-    expect(regel('.chat-flow-gruppe-ydre')).not.toMatch(/display:\s*none/)
+    // Fælles rod: et element der fjernes fra layoutet har ingen før-tilstand.
+    // Så snart `display` skifter til `grid`, er elementet tilbage som grid-item
+    // og grid-gappet slår ind med det samme — svaret rykker 10px ned, FØR
+    // glidningen begynder. Det var hoppet, hele tiden.
+    //
+    // Løsningen er at elementet bliver stående: nul-plads kommer fra `0fr`,
+    // nulstillet `padding-top` på barnet (ellers er gulvet 3,19px) og en
+    // gap-kompensation på svaret — ikke fra at fjerne det fra layoutet.
+    expect(css).not.toMatch(/\.chat-flow-gruppe-ydre[^{]*\{[^}]*display:\s*none/)
+    expect(css).not.toMatch(/display\s+var\(--dur-[a-z]+\)\s+allow-discrete/)
+    // Uden `align-self: start` STRÆKKES elementet som grid-item, og så bliver
+    // den lukkede gruppe højere end nul (målt 16,78px = summen af dens margins).
+    expect(regel('.chat-flow-gruppe-ydre')).toMatch(/align-self:\s*start/)
   })
 
-  it('åbningen har en før-tilstand — ellers hopper folden ind', () => {
-    // 18/11-2026, anden halvdel af blink 1. `allow-discrete` giver LUKNINGEN
-    // en glidning, men ikke åbningen: et element der er `display: none` har
-    // ingen før-tilstand, så første frame efter skiftet viser fuld højde.
-    // Målt: 24,78px ved t=0 mens lukningen gled pænt ud. Asymmetrien VAR
-    // det blink der blev tilbage.
+  it('svaret bærer gap-kompensationen — ellers rykker positionen i frame 0', () => {
+    // Målt 18/11-2026: den lukkede gruppe er et nul-højt grid-item og koster
+    // stadig TO grid-gaps (20,8px). Kun det ene neutraliseres af `-6.4px` på
+    // svaret. En negativ margin på GRUPPEN hjælper ikke: `align-self: start`
+    // flytter den ganske vist, men grid-rækkens højde clampes til 0, så gap'et
+    // under den bliver stående — målt 14,39px uanset hvor meget der blev
+    // trukket op.
     //
-    // `@starting-style` er den eneste CSS-mekanisme der giver den manglende
-    // før-tilstand. Fjernes den, er reglen om `allow-discrete` stadig grøn —
-    // den er bare kun halv. Derfor står den her som sin egen påstand.
-    //
-    // SKÆRPET samme dag: `0fr` ALENE var død kode. Målt i Chromium var
-    // transitionens keyframes `3,1875px → 3,1875px` — start og slut den
-    // samme værdi, så transitionen kørte ingenting — fordi en grid-række ikke
-    // kan blive lavere end barnets `padding-top` (0,2rem = 3,19px). Vagten
-    // var grøn hele tiden, fordi den kun spurgte om `0fr` stod der, ikke om
-    // det gav 0px. Den kræver nu også den nulstilling der gør `0fr` til nul.
-    expect(css).toMatch(/@starting-style\s*\{/)
-    expect(css).toMatch(
-      /@starting-style\s*\{\s*\.chat-flow-gruppe-ydre\[data-aaben='true'\]\s*\{\s*grid-template-rows:\s*0fr/,
+    // Kompensationen sidder derfor på det element der faktisk skal flyttes,
+    // og er med i transitionen, så positionen står stille i frame 0 og glider
+    // i takt med at rækken folder ud. Målt efter rettelsen: 3,98px lukket,
+    // 3,98px i frame 0 og 1 — derefter jævn kurve opad.
+    expect(regel('.chat-flow > .rv-tur ~ .chat-flow-answer')).toMatch(
+      /transition:[^;]*margin-top/,
     )
-    const start = css.match(/@starting-style\s*\{([\s\S]*?)\n\}/)?.[1] ?? ''
-    expect(start).toMatch(
-      /\.chat-flow-gruppe-ydre\[data-aaben='true'\]\s*>\s*\.chat-flow-gruppe\s*\{\s*padding-top:\s*0/,
-    )
+    expect(
+      regel(".chat-flow > .rv-tur ~ .chat-flow-gruppe-ydre[data-aaben='false'] ~ .chat-flow-answer"),
+    ).toMatch(/margin-top:\s*calc\(-0\.65rem - 6\.4px\)/)
   })
 
   it('respekterer prefers-reduced-motion', () => {

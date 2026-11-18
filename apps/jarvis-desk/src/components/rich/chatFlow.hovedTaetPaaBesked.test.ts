@@ -25,17 +25,25 @@ const kilde = (fil: string) =>
   readFileSync(resolve(__dirname, '../../styles', fil), 'utf8')
 
 describe('VAGT — hovedet hænger sammen med beskeden', () => {
-  it('fjerner den LUKKEDE gruppe fra grid-flowet', () => {
+  it('giver den LUKKEDE gruppe nul plads — uden at fjerne den fra layoutet', () => {
     const css = kilde('chat-flow.css')
     // Den præcise selektor — ikke en delstreng der også matcher en mutation.
     expect(css).toContain(
       ".chat-flow > .chat-flow-gruppe-ydre[data-aaben='false']",
     )
-    // Og den skal faktisk fjerne den, ikke bare style den.
+    // 18/11-2026: nul-pladsen kommer fra `0fr` + nulstillet `padding-top` +
+    // gap-kompensation på svaret — ikke fra `display: none`. `display: none`
+    // blev målt og forkastet: den giver ganske vist nul plads, men et element
+    // uden box har ingen før-tilstand, så ÅBNINGEN hoppede 10,4px (ét
+    // grid-gap) før glidningen begyndte. Målt tre gange i Chromium.
     const blok = css.slice(
       css.indexOf(".chat-flow > .chat-flow-gruppe-ydre[data-aaben='false']"),
     )
-    expect(blok.slice(0, 200)).toContain('display: none')
+    expect(blok.slice(0, 200)).toContain('grid-template-rows: 0fr')
+    expect(blok.slice(0, 200)).not.toContain('display: none')
+    // Uden `align-self: start` strækkes elementet som grid-item, og så bliver
+    // den lukkede gruppe højere end nul (målt 16,78px).
+    expect(css).toContain('align-self: start')
   })
 
   it('bruger ikke :empty — gruppen har altid et indre barn', () => {
@@ -124,5 +132,32 @@ describe('VAGT — hovedet hænger sammen med beskeden', () => {
     const raekke = kilde('raekkevisning.css')
     expect(raekke).toContain('.raekkevisning .rv-tur ~ .rv-svar')
     expect(raekke).not.toContain(".raekkevisning .rv-tur[aria-expanded='false'] + .rv-svar")
+  })
+
+  it('kompensationen for det ekstra gap ligger på SVARET — og glider', () => {
+    // MÅLT 18/11-2026 i Chromium, tre varianter, samme DOM:
+    //   display: none + allow-discrete  → lukket -6,41px, HOP 10,39px i frame 0
+    //   negativ margin på GRUPPEN       → lukket 14,39px uanset hvor meget den
+    //                                     blev trukket op (rækken clampes til 0,
+    //                                     så gap'et under den blev stående)
+    //   negativ margin på SVARET        → lukket 3,98px, HOP 0px
+    //
+    // Den tredje er den der gælder. Uden denne test er det ikke bundet: fjerner
+    // nogen reglen nedenfor, står den lukkede afstand på 14,39px igen — og
+    // testen ovenfor ville stadig være grøn, fordi den kun ser på gruppen.
+    const css = kilde('chat-flow.css')
+    const selektor =
+      ".chat-flow > .rv-tur ~ .chat-flow-gruppe-ydre[data-aaben='false'] ~ .chat-flow-answer"
+    const start = css.indexOf(selektor)
+    expect(start).toBeGreaterThan(-1)
+    const blok = css.slice(start, css.indexOf('}', start))
+    expect(blok).toContain('calc(-0.65rem - 6.4px)')
+
+    // Og den skal transitionere, ellers hopper svaret når gruppen åbner.
+    // Ankret på `{`, så `indexOf` ikke rammer den delte selektor ovenfor.
+    const sStart = css.indexOf('.chat-flow > .rv-tur ~ .chat-flow-answer {')
+    expect(sStart).toBeGreaterThan(-1)
+    const svar = css.slice(sStart, css.indexOf('}', sStart))
+    expect(svar).toContain('transition: margin-top')
   })
 })

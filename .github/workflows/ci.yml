@@ -119,6 +119,23 @@ jobs:
       - name: Test
         run: npx vitest run
 
+      # Browser-målingerne (18/11-2026). De er bag et flag fordi `npm test`
+      # skal kunne køre på en maskine uden Playwright-browsere — men DETTE
+      # step er det der gør dem til vagter. Uden det er de filer der aldrig
+      # fyrer, og det var præcis fejlen: `streamingTextTail.layout.maaling`
+      # stod skippet fra den blev skrevet, fordi intet workflow satte flaget.
+      # Crossfade-målingen værner puls-fejlen fra samme dag: fade'en må ikke
+      # genstarte på uændret tekst — jsdom kan ikke se det, Chromium kan.
+      - name: Install browser (Chromium)
+        run: npx playwright install --with-deps chromium
+      - name: Browser-målinger
+        env:
+          RUN_BROWSER_LAYOUT_MEASUREMENT: "1"
+        run: >-
+          npx vitest run
+          src/lib/streamingTextTail.layout.maaling.test.ts
+          src/components/rich/TurHoved.crossfade.maaling.test.ts
+
   # Mobil-appen (apps/mobile) havde INGEN CI indtil 23/10-2026: desk blev
   # lintet, typetjekket og testet på hver push, men mobilen — den app Bjørn
   # faktisk bruger på telefonen — blev kun opdaget ved at bygge den i hånden.

@@ -119,13 +119,32 @@ jobs:
       - name: Test
         run: npx vitest run
 
-      # Browser-målingerne (18/11-2026). De er bag et flag fordi `npm test`
-      # skal kunne køre på en maskine uden Playwright-browsere — men DETTE
-      # step er det der gør dem til vagter. Uden det er de filer der aldrig
-      # fyrer, og det var præcis fejlen: `streamingTextTail.layout.maaling`
-      # stod skippet fra den blev skrevet, fordi intet workflow satte flaget.
-      # Crossfade-målingen værner puls-fejlen fra samme dag: fade'en må ikke
-      # genstarte på uændret tekst — jsdom kan ikke se det, Chromium kan.
+  # Browser-målingerne (18/11-2026). De er bag et flag fordi `npm test` skal
+  # kunne køre på en maskine uden Playwright-browsere — men DETTE job er det
+  # der gør dem til vagter. Uden det er de filer der aldrig fyrer, og det var
+  # præcis fejlen: `streamingTextTail.layout.maaling` stod skippet fra den
+  # blev skrevet, fordi intet workflow satte flaget. Crossfade-målingen værner
+  # puls-fejlen fra samme dag: fade'en må ikke genstarte på uændret tekst —
+  # jsdom kan ikke se det, Chromium kan.
+  #
+  # Eget job på 24.04: `ubuntu-latest` er nu 26.04, og Playwright 1.58 kan
+  # ikke installere sine system-afhængigheder der. Målt 18/11-2026:
+  # «Playwright does not support chromium on ubuntu26.04-x64».
+  desk-browser:
+    name: desk (browser-målinger)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/jarvis-desk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/jarvis-desk/package-lock.json
+      - name: Install deps
+        run: npm ci
       - name: Install browser (Chromium)
         run: npx playwright install --with-deps chromium
       - name: Browser-målinger

@@ -139,3 +139,60 @@ def test_faldet_er_ikke_skrevet_som_et_tavst_get():
     src = inspect.getsource(M)
     assert 'AGENT_ROLE_TEMPLATES.get(role, AGENT_ROLE_TEMPLATES["researcher"])' not in src
     assert "ukendt agent-rolle" in src
+
+
+# ── agent_runs maa ikke staa paa 'starting' mens koerslen ARBEJDER ──────
+#
+# Maalt 18/11-2026: to raekker (run-0c8beb4a41c84185, run-c35d5780f2d9441b)
+# stod 64 minutter efter oprettelsen med `updated_at` lig oprettelsestiden,
+# mens deres agenter koerte. `create_agent_run` skrev 'starting', men den
+# eneste efterfoelgende statusaendring gik til `agent_registry`.
+#
+# `close_stale_runs` daekker IKKE hullet: den fanger kun en DOED proces
+# (terminalt assignment eller >6 timer). En levende koersel stod derfor og
+# loej i op til seks timer — og en tabel der siger 'starting' om en koersel
+# der koerer kan ikke bruges til at afgoere om noget haenger.
+
+
+def test_agent_runs_forlader_starting_naar_koerslen_gaar_aktiv(monkeypatch):
+    from core.services import agent_runtime_spawn as M
+
+    sat = []
+
+    def _fang(run_id, **kw):
+        sat.append((run_id, kw.get("status")))
+        return {"run_id": run_id}
+
+    # Eksekveringen standses lige efter statusskiftet: vi maaler SKRIVNINGEN,
+    # ikke om en worker kan starte i testmiljoeet.
+    class _Stop(Exception):
+        pass
+
+    def _stop(**kw):
+        raise _Stop()
+
+    monkeypatch.setattr(M, "get_agent_registry_entry",
+                        lambda aid: {"agent_id": aid, "status": "active", "role": "executor",
+                                     "provider": "", "model": "", "goal": "x"})
+    monkeypatch.setattr(M, "update_agent_registry_entry", lambda *a, **kw: None)
+    monkeypatch.setattr(M, "create_agent_run", lambda **kw: {"run_id": kw.get("run_id")})
+    monkeypatch.setattr(M, "update_agent_run", _fang)
+    monkeypatch.setattr(M, "build_agent_detail_surface", lambda aid: {"agent_id": aid})
+    monkeypatch.setattr(M, "_role_needs_tools", lambda role: False)
+    monkeypatch.setattr(M, "agent_tools_enabled", _stop)
+
+    import core.services.agent_prompt_layers as layers
+    monkeypatch.setattr(layers, "build_layered_prompt", lambda **kw: None)
+
+    try:
+        M._execute_agent_task_impl(agent_id="agent-test")
+    except _Stop:
+        pass
+    except Exception as exc:  # andre veje er ikke det vi maaler her
+        print("uventet:", type(exc).__name__, exc)
+
+    statusser = [s for _, s in sat]
+    assert "active" in statusser, (
+        f"agent_runs blev aldrig sat til 'active' — kun {statusser}. "
+        "Raekken staar derfor paa 'starting' mens agenten arbejder."
+    )

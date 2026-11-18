@@ -679,6 +679,14 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
     _result_noted = False  # agent_result skal fyre PRÆCIS én gang pr. dispatch
     try:
         update_agent_registry_entry(agent_id, status="active")
+        # To tabeller, to sandheder (18/11-2026). `create_agent_run` skrev
+        # 'starting', men den ENESTE efterfoelgende statusaendring gik til
+        # `agent_registry` — saa en koersel der arbejdede stod som 'starting' i
+        # `agent_runs` indtil den blev terminal. Maalt 18/11: to raekker stod
+        # 64 minutter efter oprettelsen med `updated_at` lig oprettelsestiden,
+        # mens agenterne koerte. `close_stale_runs` fanger kun en DOED proces
+        # (terminalt assignment eller >6 timer), saa den daekker ikke dette hul.
+        update_agent_run(run_id, status="active")
         _needs_tools = _role_needs_tools(str(agent.get("role") or ""))
         # Kontraktagenter bruger altid en isoleret worker. Kun agenter uden
         # assignment bruger de gamle reversible worker-/toolflags.

@@ -18,7 +18,7 @@ from __future__ import annotations
 import re
 from typing import Any, Final
 
-__all__ = ["BESKRIVELSE_PARAM", "BLOEDT_PAAKRAEVET", "brugbar_beskrivelse"]
+__all__ = ["BESKRIVELSE_PARAM", "BLOEDT_PAAKRAEVET", "RUNDE_ETIKET_PARAM", "brugbar_beskrivelse"]
 
 BESKRIVELSE_PARAM: Final[dict[str, Any]] = {
     "type": "string",
@@ -47,6 +47,31 @@ BESKRIVELSE_PARAM: Final[dict[str, Any]] = {
 BLOEDT_PAAKRAEVET: Final[dict[str, frozenset[str]]] = {
     "bash": frozenset({"description"}),
     "operator_bash": frozenset({"description"}),
+}
+
+#: Jarvis' egen linje for HELE runden — ikke for dette ene kald.
+#:
+#: `description` beskriver ét kald og bruges kun når runden ER det ene kald.
+#: Ved flere kald fandtes ingen plads til hans eget sprog, så overskriften blev
+#: altid den lokale models. Feltet her læses fra ethvert kald i runden, så én
+#: linje skrevet i det første kald dækker hele forløbet.
+#:
+#: Det er ikke en fritagelse: teksten går gennem samme klipning og de samme
+#: værn som modellens svar (`tool_round_label._doem`), og modellen kaldes kun
+#: hvis linjen bliver kasseret.
+RUNDE_ETIKET_PARAM: Final[dict[str, Any]] = {
+    "type": "string",
+    "description": (
+        "Optional. One line describing what the WHOLE round accomplished — "
+        "not this single call. Shown as the round's heading in the app, "
+        "truncated around 40 characters, so think commit subject, not "
+        "sentence. Write it in Danish, in past tense, about what actually "
+        "happened: «Fandt de tre kaldesteder», «Rettede knækket under 720 px». "
+        "Only names, paths and numbers that appear in the calls themselves — "
+        "an invented name is rejected by the same guards that judge the local "
+        "model's text, and the model then writes the line instead. Omit it "
+        "when the round has nothing worth summarising."
+    ),
 }
 
 _MELLEMRUM = re.compile(r"\s+")

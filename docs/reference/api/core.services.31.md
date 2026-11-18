@@ -176,9 +176,9 @@ _Sporet gennem én synlig kørsel — og runde-grænserne i den._
 | function | `_set_last_visible_execution_trace` | `(trace)` | — | [src](../../../core/services/visible_run_trace.py#L150) |
 | function | `_visible_trace_payload` | `(run)` | — | [src](../../../core/services/visible_run_trace.py#L159) |
 | function | `_publish_agentic_round_start` | `(*, run_id, round_num)` | Publish runtime.agentic_round_start event and return its event_id. | [src](../../../core/services/visible_run_trace.py#L168) |
-| function | `_etiket` | `(vaerktoejer, hensigt)` | Indirektion så tråden kan byttes ud i en test uden at røre modellen. | [src](../../../core/services/visible_run_trace.py#L214) |
+| function | `_etiket` | `(vaerktoejer, hensigt, egen=…)` | Indirektion så tråden kan byttes ud i en test uden at røre modellen. | [src](../../../core/services/visible_run_trace.py#L214) |
 | function | `_tanke_resume` | `(tanke, hensigt)` | Indirektion så tråden kan testes uden at røre modellen. | [src](../../../core/services/visible_run_trace.py#L220) |
-| function | `udsend_runde_etiket` | `(*, run_id, round_num, vaerktoejer, hensigt=…, tanke=…)` | Skriv én kort etiket for runden og udsend den. Blokerer ALDRIG. | [src](../../../core/services/visible_run_trace.py#L226) |
+| function | `udsend_runde_etiket` | `(*, run_id, round_num, vaerktoejer, hensigt=…, tanke=…, egen=…)` | Skriv én kort etiket for runden og udsend den. Blokerer ALDRIG. | [src](../../../core/services/visible_run_trace.py#L226) |
 | function | `haent_ventende` | `(run_id)` | Tøm køen af færdige etiketter for en kørsel. | [src](../../../core/services/visible_run_trace.py#L300) |
 | function | `hoest_etiketter` | `(run_id, tur=…, frist_s=…)` | Hent faerdige runde-etiketter — og laeg dem i turen, saa de GEMMES. | [src](../../../core/services/visible_run_trace.py#L311) |
 | function | `ryd_ventende` | `(run_id)` | Smid en kørsels kø OG dens tråd-bogholderi væk. | [src](../../../core/services/visible_run_trace.py#L330) |

@@ -165,6 +165,32 @@ def _navn_og_input(v: dict[str, Any]) -> tuple[str, Any]:
     return str(v.get("name") or v.get("navn") or ""), v.get("input")
 
 
+def _uden_egen_tekst(raa_input: Any) -> Any:
+    """Kaldets input uden de felter hvor Jarvis selv skriver en linje.
+
+    ## Hvorfor dette er et værn og ikke kosmetik
+
+    `_opdigtet` efterprøver etiketten mod `billede`, som bygges af kaldene.
+    Stod `runde_etiket` stadig i inputtet, ville Jarvis' egen påstand være en
+    del af det bevis der skulle afprøve påstanden — og så godkendte værnet
+    præcis det den skulle fange. Målt 18/11-2026: «Rettede fejlen i
+    auth/login.py» slap igennem over et `ls`, fordi stien stod i hans eget felt.
+
+    `description` har samme egenskab: den er også hans egen tekst, ikke et
+    observation af hvad der skete.
+    """
+    if isinstance(raa_input, str):
+        try:
+            raa_input = json.loads(raa_input)
+        except ValueError:
+            return raa_input
+    if not isinstance(raa_input, dict):
+        return raa_input
+    renset = {k: v for k, v in raa_input.items()
+              if k not in (EGEN_ETIKET_FELT, "description")}
+    return renset
+
+
 def byg_prompt(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
     """Det kompakte billede af runden som modellen får.
 
@@ -172,6 +198,10 @@ def byg_prompt(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
     sig. At klippe hele blokken under ét ville lade ét stort `bash`-output
     skubbe de øvrige kald ud af billedet, og etiketten ville så beskrive én
     tilfældig del af runden som om den var det hele.
+
+    Billedet er også det `_opdigtet` efterprøver imod, så det må kun indeholde
+    det der faktisk blev gjort — ikke de linjer nogen har skrevet OM det.
+    Se `_uden_egen_tekst`.
     """
     dele: list[str] = []
     if hensigt.strip():
@@ -185,7 +215,7 @@ def byg_prompt(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
             continue
         dele.append(
             f"Værktøj: {navn}\n"
-            f"Input: {_klip(raa_input, MAKS_PR_VAERKTOEJ)}\n"
+            f"Input: {_klip(_uden_egen_tekst(raa_input), MAKS_PR_VAERKTOEJ)}\n"
             f"Output: {_klip(v.get('result') or v.get('output'), MAKS_PR_VAERKTOEJ)}"
         )
     if resten > 0:
@@ -371,46 +401,71 @@ def _verbum_lyver(tekst: str, kald: list[dict[str, Any]]) -> bool:
     return bool(navne) and all(n in _KUN_LAESENDE for n in navne)
 
 
+#: Feltet hvor Jarvis selv kan skrive rundens linje. Det læses fra ETHVERT kald
+#: i runden, så én linje dækker hele forløbet — også når runden har tyve kald.
+#: Navnet er valgt så det ikke kan forveksles med `description`, der beskriver
+#: ÉT kald og vises ved siden af det.
+EGEN_ETIKET_FELT: Final[str] = "runde_etiket"
+
+
+def _input_dict(v: dict[str, Any]) -> dict[str, Any]:
+    """Kaldets argumenter som dict, uanset om de kom som streng eller objekt."""
+    raa = _navn_og_input(v)[1]
+    if isinstance(raa, str):
+        try:
+            raa = json.loads(raa)
+        except ValueError:  # ugyldig JSON = ingen felter, ikke en fejl der skal op
+            return {}
+    return raa if isinstance(raa, dict) else {}
+
+
+def egen_runde_etiket(kald: list[dict[str, Any]]) -> str:
+    """Jarvis' egen linje for runden, hvis han skrev en. Ellers `""`.
+
+    ## Hvorfor feltet findes
+
+    `description` beskriver ÉT kald og bruges kun når runden ER det ene kald
+    (`_har_egen_beskrivelse`). Ved flere kald tegnede klienten den mekaniske
+    gruppelinje, og etiketten blev overladt til den lokale model — så Jarvis'
+    eget sprog om sin egen runde fandtes ikke som mulighed.
+
+    Feltet læses fra ethvert kald i runden, fordi runden er forløbet, ikke
+    kaldet. Skriver han det i det første kald, dækker det hele runden.
+
+    Teksten er IKKE godkendt i kraft af at være hans: `etiket()` sender den
+    gennem samme værn som modellens svar.
+    """
+    for v in kald or []:
+        tekst = _input_dict(v).get(EGEN_ETIKET_FELT)
+        if isinstance(tekst, str) and tekst.strip():
+            return tekst.strip()
+    return ""
+
+
 def _har_egen_beskrivelse(kald: list[dict[str, Any]]) -> bool:
     """Er runden ÉT kald der bærer en brugbar `description`?
 
     Kun ét: over flere kald tegner klienterne den mekaniske gruppelinje
     (Claude Desktops `Cf`), og dér har etiketten stadig noget at sige.
+    `runde_etiket` er undtagelsen — se `egen_runde_etiket`.
     """
     if len(kald) != 1:
         return False
     from core.tools.kommando_beskrivelse import brugbar_beskrivelse
-    raa = _navn_og_input(kald[0])[1]
-    if isinstance(raa, str):
-        try:
-            raa = json.loads(raa)
-        except ValueError:
-            return False
-    if not isinstance(raa, dict):
+    raa = _input_dict(kald[0])
+    if not raa:
         return False
     return bool(brugbar_beskrivelse(raa.get("description"), raa.get("command")))
 
 
-def etiket(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
-    """Én kort etiket for runden, eller `""`.
+def _doem(ud: str, kald: list[dict[str, Any]], billede: str) -> str:
+    """Kør en færdig tekst gennem værnene. `""` = kasseret.
 
-    Kaster aldrig. En etiket er en overskrift; en tur må aldrig vælte fordi
-    overskriften ikke kunne skrives.
+    Delt af begge forfattere med vilje: en etiket skrevet af Jarvis selv skal
+    kunne afvises på præcis samme måde som en skrevet af den lokale model.
+    Ellers ville «jeg skriver den selv» betyde «jeg godkender den selv», og så
+    forsvandt den eneste uafhængige læser af kaldene.
     """
-    kald = [v for v in (vaerktoejer or []) if _navn_og_input(v)[0]]
-    if not kald:
-        return ""
-    if _har_egen_beskrivelse(kald):
-        # Jarvis skrev selv linjen i kaldet — Claude Desktops vej. En etiket
-        # oven på ville overdøve den, og kaldet til modellen er spildt.
-        return ""
-    billede = byg_prompt(kald, hensigt)
-    try:
-        raa = _kald_model(billede)
-    except Exception:
-        logger.debug("tool_round_label: kald fejlede", exc_info=True)
-        return ""
-    ud = _ryd(raa)
     # Et nøgent verbum er ikke en overskrift. Målt 17/9-2026: modellen svarede
     # «Søgte agent-21cc158c0a274d98ae2e4c0fb56bb57», og klipningen ved 40 tegn
     # åd hele objektet, så der stod «Søgte». Bedre ingen linje end en der ikke
@@ -428,6 +483,52 @@ def etiket(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
         logger.info("runde-etiket kasseret — %r staar ikke i kaldene: %r", fundet, ud)
         return ""
     return ud
+
+
+def etiket(
+    vaerktoejer: list[dict[str, Any]],
+    hensigt: str = "",
+    egen: str = "",
+) -> str:
+    """Én kort etiket for runden, eller `""`.
+
+    Kaster aldrig. En etiket er en overskrift; en tur må aldrig vælte fordi
+    overskriften ikke kunne skrives.
+
+    ## `egen` — Jarvis' egen linje, dømt af værnene
+
+    Runden må ikke selv kunne afgøre hvad der stod om den. Derfor går `egen`
+    gennem PRÆCIS samme klipning og de samme tre værn som modellens svar
+    (`_doem`), og den lokale model kaldes kun hvis linjen bliver kasseret.
+    Jarvis får pennen, ikke fritagelsen.
+
+    Værnene læser `billede`, som bygges af KALDENE — ikke af `egen`. Jarvis
+    kan altså ikke opfinde et navn der «står i hans egen tekst».
+
+    Uden `egen` er adfærden uændret: modellen skriver, værnene dømmer.
+    """
+    kald = [v for v in (vaerktoejer or []) if _navn_og_input(v)[0]]
+    if not kald:
+        return ""
+    if _har_egen_beskrivelse(kald):
+        # Jarvis skrev selv linjen i kaldet — Claude Desktops vej. En etiket
+        # oven på ville overdøve den, og kaldet til modellen er spildt.
+        return ""
+    billede = byg_prompt(kald, hensigt)
+    # Jarvis' egen linje, hvis han skrev en i et af rundens kald. Den går
+    # gennem samme værn som modellens svar — se `_doem`.
+    egen = (egen or "").strip() or egen_runde_etiket(kald)
+    if egen:
+        doemt = _doem(_ryd(egen), kald, billede)
+        if doemt:
+            return doemt
+        logger.info("runde-etiket: Jarvis' egen linje blev kasseret — falder tilbage paa modellen")
+    try:
+        raa = _kald_model(billede)
+    except Exception:
+        logger.debug("tool_round_label: kald fejlede", exc_info=True)
+        return ""
+    return _doem(_ryd(raa), kald, billede)
 
 
 def tool_use_ids(vaerktoejer: list[dict[str, Any]]) -> list[str]:

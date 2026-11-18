@@ -266,7 +266,7 @@ def test_koeen_TOEMMES_naar_den_er_hentet(monkeypatch):
 
 def test_koeen_holder_koerslerne_ADSKILT(monkeypatch):
     """To samtidige kørsler må ikke få hinandens overskrifter."""
-    monkeypatch.setattr(vrt, "_etiket", lambda v, h: h)
+    monkeypatch.setattr(vrt, "_etiket", lambda v, h, e="": h)
     monkeypatch.setattr(vrt.event_bus, "publish", lambda *a, **k: None)
     for r in ("visible-a1", "visible-b1"):
         vrt.ryd_ventende(r)
@@ -425,3 +425,42 @@ def test_resumeet_udsendes_ogsaa_uden_etiket(monkeypatch):
     vrt.udsend_runde_etiket(run_id="r3", round_num=1, vaerktoejer=[{"name": "bash", "input": {}, "id": "t1"}],
                             tanke="...").join(timeout=5)
     assert sendt and sendt[0]["etiket"] == "" and sendt[0]["tanke_resume"]
+
+
+# ─────────────── Jarvis' egen linje naar helt frem til eventet (18/11-2026)
+
+def test_egen_linje_gaar_gennem_udsend_og_lander_i_eventet(monkeypatch):
+    """Kanalen skal være åben hele vejen: parameter → etiket() → event.
+
+    Uden denne test kunne `egen` være blevet tabt i indirektionen, og ingen
+    ville se det — etiketten ville bare være modellens, som før.
+    """
+    sette = []
+    monkeypatch.setattr(vrt.event_bus, "publish", lambda navn, nyttelast: sette.append((navn, nyttelast)))
+    from core.services import tool_round_label as trl
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Modellens linje")
+    vrt.ryd_ventende("visible-egen")
+    vrt.udsend_runde_etiket(
+        run_id="visible-egen", round_num=1,
+        vaerktoejer=[{"name": "bash", "input": {"command": "ls"}, "id": "t1"}],
+        egen="Listede mappen",
+    ).join(timeout=5)
+    assert sette, "intet event blev sendt"
+    navn, nyttelast = sette[0]
+    assert navn == "runtime.tool_round_label"
+    assert nyttelast["etiket"] == "Listede mappen"
+    assert nyttelast["tool_use_ids"] == ["t1"]
+
+
+def test_egen_linje_i_kaldets_felt_naar_ogsaa_frem(monkeypatch):
+    """Den anden vej ind: feltet i kaldet, uden at kalderen sender noget."""
+    sette = []
+    monkeypatch.setattr(vrt.event_bus, "publish", lambda navn, nyttelast: sette.append((navn, nyttelast)))
+    from core.services import tool_round_label as trl
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Modellens linje")
+    vrt.ryd_ventende("visible-felt")
+    vrt.udsend_runde_etiket(
+        run_id="visible-felt", round_num=1,
+        vaerktoejer=[{"name": "bash", "input": {"command": "ls", "runde_etiket": "Listede mappen"}}],
+    ).join(timeout=5)
+    assert sette and sette[0][1]["etiket"] == "Listede mappen"

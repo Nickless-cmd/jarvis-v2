@@ -426,3 +426,96 @@ def test_flere_kald_faar_stadig_etiket(monkeypatch):
     a = _v("bash", {"command": "git status", "description": "Vis status"})
     b = _v("bash", {"command": "git log", "description": "Vis historik"})
     assert trl.etiket([a, b]) == "Tjekkede repoet"
+
+
+# ────────────────────── Jarvis' egen linje for HELE runden (18/11-2026)
+#
+# `description` beskriver ÉT kald og bruges kun når runden ER det ene kald.
+# Ved flere kald fandtes ingen plads til hans eget sprog, så etiketten blev
+# altid modellens. `runde_etiket` er den plads — og den er ikke en fritagelse:
+# teksten går gennem PRÆCIS samme værn som modellens svar.
+
+def test_egen_linje_bruges_ved_FLERE_kald(monkeypatch):
+    """Kernen i laget: én linje skrevet i ét kald dækker hele forløbet."""
+    kaldt = []
+    monkeypatch.setattr(trl, "_kald_model", lambda p: kaldt.append(p) or "Modellens linje")
+    a = _v("bash", {"command": "grep -rn x", "runde_etiket": "Fandt de tre kaldesteder"})
+    b = _v("read_file", {"path": "/x/y.py"})
+    assert trl.etiket([a, b]) == "Fandt de tre kaldesteder"
+    assert kaldt == [], "modellen skal ikke kaldes når Jarvis selv skrev linjen"
+
+
+def test_egen_linje_kan_staa_i_et_SENERE_kald(monkeypatch):
+    """Runden er forløbet, ikke det første kald — feltet læses fra alle."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Modellens linje")
+    a = _v("bash", {"command": "ls"})
+    b = _v("bash", {"command": "git log", "runde_etiket": "Sammenlignede to logs"})
+    assert trl.etiket([a, b]) == "Sammenlignede to logs"
+
+
+def test_egen_linje_i_openai_form(monkeypatch):
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Modellens linje")
+    v = {"id": "c1", "type": "function", "function": {
+        "name": "bash", "arguments": '{"command": "ls", "runde_etiket": "Listede mappen"}'}}
+    assert trl.etiket([v]) == "Listede mappen"
+
+
+def test_OPDIGTET_navn_i_egen_linje_kasseres(monkeypatch):
+    """Værnet læser KALDENE, ikke hans egen tekst. Ellers kunne han opfinde et
+    filnavn og få det godkendt fordi det stod i hans egen sætning."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Læste konfigurationen")
+    a = _v("bash", {"command": "ls", "runde_etiket": "Rettede fejlen i auth/login.py"})
+    assert trl.etiket([a]) == "Læste konfigurationen", "den opdigtede sti skal kasseres"
+
+
+def test_SKRIVE_verbum_over_ren_laesning_kasseres(monkeypatch):
+    """Målt 19/9: modellen skrev «Redigerede …» over en ren læsning. Jarvis må
+    ikke kunne gøre det samme bare fordi det er ham."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Læste filen")
+    a = _v("read_file", {"path": "/x/y.py", "runde_etiket": "Redigerede y.py"})
+    assert trl.etiket([a]) == "Læste filen"
+
+
+def test_KOMMANDOLINJE_som_egen_linje_kasseres(monkeypatch):
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Søgte i filen")
+    a = _v("bash", {"command": "grep -rn x", "runde_etiket": "grep -rn x"})
+    assert trl.etiket([a]) == "Søgte i filen"
+
+
+def test_et_noegent_verbum_som_egen_linje_kasseres(monkeypatch):
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Søgte i filen")
+    a = _v("bash", {"command": "grep -rn x", "runde_etiket": "Søgte"})
+    assert trl.etiket([a]) == "Søgte i filen"
+
+
+def test_egen_linje_klippes_og_ryddes_som_modellens(monkeypatch):
+    """Anførselstegn, punktum og længde: samme `_ryd` som modellens svar."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Modellens linje")
+    a = _v("bash", {"command": "ls", "runde_etiket": '"Listede mappen."'})
+    assert trl.etiket([a]) == "Listede mappen"
+
+
+def test_egen_runde_etiket_finder_feltet_og_ellers_tom():
+    assert trl.egen_runde_etiket([_v("bash", {"runde_etiket": "  Noget  "})]) == "Noget"
+    assert trl.egen_runde_etiket([_v("bash", {"command": "ls"})]) == ""
+    assert trl.egen_runde_etiket([]) == ""
+
+
+def test_egen_runde_etiket_taaler_oedelagt_json():
+    v = {"name": "bash", "input": "{ikke json"}
+    assert trl.egen_runde_etiket([v]) == ""
+
+
+def test_parameter_egen_gaar_forud_for_feltet(monkeypatch):
+    """Kalderen kan sende linjen direkte; feltet er den anden vej ind."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Modellens linje")
+    a = _v("bash", {"command": "ls", "runde_etiket": "Fra feltet"})
+    assert trl.etiket([a], egen="Fra parameteren") == "Fra parameteren"
+
+
+def test_uden_egen_linje_er_adfaerden_uaendret(monkeypatch):
+    """Ingen regression: uden feltet skriver modellen som før."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Tjekkede repoet")
+    a = _v("bash", {"command": "git status"})
+    b = _v("bash", {"command": "git log"})
+    assert trl.etiket([a, b]) == "Tjekkede repoet"

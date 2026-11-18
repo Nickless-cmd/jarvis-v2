@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from core.tools.kommando_beskrivelse import BESKRIVELSE_PARAM
+from core.tools.kommando_beskrivelse import BESKRIVELSE_PARAM, RUNDE_ETIKET_PARAM
 from core.tools.browser_tools import (BROWSER_TOOL_DEFINITIONS)
 from core.tools.comfyui_tools import (COMFYUI_TOOL_DEFINITIONS)
 from core.tools.pollinations_tools import (POLLINATIONS_TOOL_DEFINITIONS)
@@ -535,6 +535,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     },
                     # Jarvis' egen linje i klienterne — se kommando_beskrivelse.
                     "description": BESKRIVELSE_PARAM,
+                    "runde_etiket": RUNDE_ETIKET_PARAM,
                     "cwd": {
                         "type": "string",
                         "description": "Working directory (defaults to operator's home)",
@@ -1574,6 +1575,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     },
                     # Jarvis' egen linje i klienterne — se kommando_beskrivelse.
                     "description": BESKRIVELSE_PARAM,
+                    "runde_etiket": RUNDE_ETIKET_PARAM,
                 },
                 "required": ["command", "description"],
             },

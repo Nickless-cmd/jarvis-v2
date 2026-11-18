@@ -328,16 +328,20 @@ _Én kort etiket for en afsluttet værktøjs-runde — «Rettede NPE i UserServi
 | function | `_base_url` | `()` | — | [src](../../../core/services/tool_round_label.py#L134) |
 | function | `_klip` | `(v, maks)` | Kort, én linje, og aldrig `None` som teksten «None». | [src](../../../core/services/tool_round_label.py#L145) |
 | function | `_navn_og_input` | `(v)` | Navn og argumenter, uanset hvilken form kaldet har. | [src](../../../core/services/tool_round_label.py#L154) |
-| function | `byg_prompt` | `(vaerktoejer, hensigt=…)` | Det kompakte billede af runden som modellen får. | [src](../../../core/services/tool_round_label.py#L168) |
-| function | `_kald_model` | `(prompt)` | — | [src](../../../core/services/tool_round_label.py#L196) |
-| function | `_klip_haengende` | `(s, blev_klippet)` | Få en klippet etiket til at slutte hvor et led slutter. | [src](../../../core/services/tool_round_label.py#L233) |
-| function | `_ryd` | `(s)` | Én linje, uden instruktion, uden anførselstegn, uden punktum, klippet | [src](../../../core/services/tool_round_label.py#L257) |
-| function | `_opdigtet` | `(tekst, billede)` | Hvilket navn i etiketten står IKKE i kaldene? `""` når alt er dækket. | [src](../../../core/services/tool_round_label.py#L282) |
-| function | `_er_kommandolinje` | `(s)` | Er etiketten bare kommandoen igen? | [src](../../../core/services/tool_round_label.py#L325) |
-| function | `_verbum_lyver` | `(tekst, kald)` | Påstår etiketten en ændring i en runde der kun læste? | [src](../../../core/services/tool_round_label.py#L359) |
-| function | `_har_egen_beskrivelse` | `(kald)` | Er runden ÉT kald der bærer en brugbar `description`? | [src](../../../core/services/tool_round_label.py#L374) |
-| function | `etiket` | `(vaerktoejer, hensigt=…)` | Én kort etiket for runden, eller `""`. | [src](../../../core/services/tool_round_label.py#L394) |
-| function | `tool_use_ids` | `(vaerktoejer)` | Hvilke kald etiketten dækker. | [src](../../../core/services/tool_round_label.py#L433) |
+| function | `_uden_egen_tekst` | `(raa_input)` | Kaldets input uden de felter hvor Jarvis selv skriver en linje. | [src](../../../core/services/tool_round_label.py#L168) |
+| function | `byg_prompt` | `(vaerktoejer, hensigt=…)` | Det kompakte billede af runden som modellen får. | [src](../../../core/services/tool_round_label.py#L194) |
+| function | `_kald_model` | `(prompt)` | — | [src](../../../core/services/tool_round_label.py#L226) |
+| function | `_klip_haengende` | `(s, blev_klippet)` | Få en klippet etiket til at slutte hvor et led slutter. | [src](../../../core/services/tool_round_label.py#L263) |
+| function | `_ryd` | `(s)` | Én linje, uden instruktion, uden anførselstegn, uden punktum, klippet | [src](../../../core/services/tool_round_label.py#L287) |
+| function | `_opdigtet` | `(tekst, billede)` | Hvilket navn i etiketten står IKKE i kaldene? `""` når alt er dækket. | [src](../../../core/services/tool_round_label.py#L312) |
+| function | `_er_kommandolinje` | `(s)` | Er etiketten bare kommandoen igen? | [src](../../../core/services/tool_round_label.py#L355) |
+| function | `_verbum_lyver` | `(tekst, kald)` | Påstår etiketten en ændring i en runde der kun læste? | [src](../../../core/services/tool_round_label.py#L389) |
+| function | `_input_dict` | `(v)` | Kaldets argumenter som dict, uanset om de kom som streng eller objekt. | [src](../../../core/services/tool_round_label.py#L411) |
+| function | `egen_runde_etiket` | `(kald)` | Jarvis' egen linje for runden, hvis han skrev en. Ellers `""`. | [src](../../../core/services/tool_round_label.py#L422) |
+| function | `_har_egen_beskrivelse` | `(kald)` | Er runden ÉT kald der bærer en brugbar `description`? | [src](../../../core/services/tool_round_label.py#L445) |
+| function | `_doem` | `(ud, kald, billede)` | Kør en færdig tekst gennem værnene. `""` = kasseret. | [src](../../../core/services/tool_round_label.py#L461) |
+| function | `etiket` | `(vaerktoejer, hensigt=…, egen=…)` | Én kort etiket for runden, eller `""`. | [src](../../../core/services/tool_round_label.py#L488) |
+| function | `tool_use_ids` | `(vaerktoejer)` | Hvilke kald etiketten dækker. | [src](../../../core/services/tool_round_label.py#L534) |
 
 ## `core/services/tool_router.py`
 _Per-turn tool selection._

@@ -211,10 +211,10 @@ def _publish_agentic_round_start(*, run_id: str, round_num: int) -> int:
     return int(row["id"]) if row else 0
 
 
-def _etiket(vaerktoejer: list[dict[str, Any]], hensigt: str) -> str:
+def _etiket(vaerktoejer: list[dict[str, Any]], hensigt: str, egen: str = "") -> str:
     """Indirektion så tråden kan byttes ud i en test uden at røre modellen."""
     from core.services.tool_round_label import etiket
-    return etiket(vaerktoejer, hensigt)
+    return etiket(vaerktoejer, hensigt, egen)
 
 
 def _tanke_resume(tanke: str, hensigt: str) -> str:
@@ -226,7 +226,7 @@ def _tanke_resume(tanke: str, hensigt: str) -> str:
 def udsend_runde_etiket(
     *, run_id: str, round_num: int,
     vaerktoejer: list[dict[str, Any]], hensigt: str = "",
-    tanke: str = "",
+    tanke: str = "", egen: str = "",
 ) -> threading.Thread | None:
     """Skriv én kort etiket for runden og udsend den. Blokerer ALDRIG.
 
@@ -264,7 +264,7 @@ def udsend_runde_etiket(
     def _arbejd() -> None:
         try:
             from core.services.tool_round_label import tool_use_ids
-            tekst = _etiket(vaerktoejer, hensigt)
+            tekst = _etiket(vaerktoejer, hensigt, egen)
             # Tænke-resuméet (visningstilstanden «Tænkning», 19/9-2026): kun
             # når kalderen gav tænkningen med — dvs. når klienten bad om det.
             resume = _tanke_resume(tanke, hensigt) if (tanke or "").strip() else ""

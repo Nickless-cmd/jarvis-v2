@@ -689,6 +689,9 @@ _Er denne model egnet til agent-arbejde? Svaret bygger på MÅLINGER._
 | function | `er_blokeret` | `(provider, model, *, rolle=…)` | True kun når vi har MÅLT at modellen ikke duer til værktøjs-arbejde. | [src](../../../core/services/agent_model_fitness.py#L83) |
 | function | `bedste_egnede` | `(*, undtagen=…)` | Den højest scorende målte model der bestod `follows`. ('','') hvis ingen. | [src](../../../core/services/agent_model_fitness.py#L90) |
 | function | `egnede_modeller` | `(*, undtagen=…, maks=…, kraever_vaerktoejer=…)` | Målte, egnede modeller — bedste først. Til rotation. | [src](../../../core/services/agent_model_fitness.py#L114) |
+| function | `_levering_taelling` | `(provider, model, rolle)` | (gennemført, leveringsfejl) for kørsler der FAKTISK fik wt_write_file. | [src](../../../core/services/agent_model_fitness.py#L193) |
+| function | `leveringsfejlrate` | `(provider, model, *, rolle)` | Andel leveringsfejl, eller None ved for tynd/umålt stikprøve. Kaster aldrig. | [src](../../../core/services/agent_model_fitness.py#L213) |
+| function | `skal_nedflyttes` | `(provider, model, *, rolle)` | True når ruten har MÅLT høj leveringsfejl på en SKRIVEROLLE. | [src](../../../core/services/agent_model_fitness.py#L224) |
 
 ## `core/services/agent_model_policy.py`
 _Modelvalg for agenter: premium-agentpulje -> ejerafhaengig fallback (agent-contract-v1 D, spec 7.1)._

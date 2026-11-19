@@ -1,11 +1,7 @@
 {
-  "generated_at": "2026-11-16T05:14:19.769879+00:00",
+  "generated_at": "2026-11-19T11:58:01.789365+00:00",
   "hard": [],
   "soft": [
-    {
-      "kind": "requirement_missing",
-      "module": "CoreFoundation"
-    },
     {
       "kind": "requirement_missing",
       "module": "PIL"
@@ -13,14 +9,6 @@
     {
       "kind": "requirement_missing",
       "module": "PyQt5"
-    },
-    {
-      "kind": "requirement_missing",
-      "module": "Quartz"
-    },
-    {
-      "kind": "requirement_missing",
-      "module": "TestMac"
     },
     {
       "kind": "requirement_missing",
@@ -36,15 +24,7 @@
     },
     {
       "kind": "requirement_missing",
-      "module": "badge"
-    },
-    {
-      "kind": "requirement_missing",
       "module": "binance"
-    },
-    {
-      "kind": "requirement_missing",
-      "module": "biplist"
     },
     {
       "kind": "requirement_missing",
@@ -53,10 +33,6 @@
     {
       "kind": "requirement_missing",
       "module": "central_cli"
-    },
-    {
-      "kind": "requirement_missing",
-      "module": "colors"
     },
     {
       "kind": "requirement_missing",
@@ -84,10 +60,6 @@
     },
     {
       "kind": "requirement_missing",
-      "module": "ds_store"
-    },
-    {
-      "kind": "requirement_missing",
       "module": "edge_tts"
     },
     {
@@ -105,10 +77,6 @@
     {
       "kind": "requirement_missing",
       "module": "googleapiclient"
-    },
-    {
-      "kind": "requirement_missing",
-      "module": "gyp"
     },
     {
       "kind": "requirement_missing",
@@ -132,10 +100,6 @@
     },
     {
       "kind": "requirement_missing",
-      "module": "mac_alias"
-    },
-    {
-      "kind": "requirement_missing",
       "module": "matplotlib"
     },
     {
@@ -144,19 +108,7 @@
     },
     {
       "kind": "requirement_missing",
-      "module": "parse_tfm"
-    },
-    {
-      "kind": "requirement_missing",
-      "module": "pkg_resources"
-    },
-    {
-      "kind": "requirement_missing",
       "module": "pptx"
-    },
-    {
-      "kind": "requirement_missing",
-      "module": "pretty_vcproj"
     },
     {
       "kind": "requirement_missing",
@@ -188,10 +140,6 @@
     },
     {
       "kind": "requirement_missing",
-      "module": "urlparse"
-    },
-    {
-      "kind": "requirement_missing",
       "module": "watchdog"
     },
     {
@@ -201,6 +149,6 @@
   ],
   "counts": {
     "hard": 0,
-    "soft": 49
+    "soft": 36
   }
 }

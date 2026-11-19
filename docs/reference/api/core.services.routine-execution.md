@@ -115,12 +115,12 @@ _Fenced, session-neutral execution of one Routine run._
 | method | `RoutineRunner.dispatch_tool` | `(self, run_id, *, generation, call, raw_executor=…)` | — | [src](../../../core/services/routine_runner.py#L612) |
 | method | `RoutineRunner._context` | `(self, row, generation)` | — | [src](../../../core/services/routine_runner.py#L637) |
 | method | `RoutineRunner.run_once` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L662) |
-| method | `RoutineRunner.run_next` | `(self)` | — | [src](../../../core/services/routine_runner.py#L777) |
-| method | `RoutineRunner._record_wait` | `(self, run_id, reason)` | Gør ventetiden synlig: en kø-kørsel uden events ser hængt ud. | [src](../../../core/services/routine_runner.py#L787) |
-| method | `RoutineRunner._check_ollama_while_waiting` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L804) |
-| method | `RoutineRunner.cancel` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L830) |
-| method | `RoutineRunner.record_execution_success` | `(self, routine_id)` | — | [src](../../../core/services/routine_runner.py#L833) |
-| method | `RoutineRunner.record_execution_failure` | `(self, routine_id, *, run_id, terminal_diagnostic_code=…)` | — | [src](../../../core/services/routine_runner.py#L836) |
+| method | `RoutineRunner.run_next` | `(self)` | — | [src](../../../core/services/routine_runner.py#L819) |
+| method | `RoutineRunner._record_wait` | `(self, run_id, reason)` | Gør ventetiden synlig: en kø-kørsel uden events ser hængt ud. | [src](../../../core/services/routine_runner.py#L829) |
+| method | `RoutineRunner._check_ollama_while_waiting` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L846) |
+| method | `RoutineRunner.cancel` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L872) |
+| method | `RoutineRunner.record_execution_success` | `(self, routine_id)` | — | [src](../../../core/services/routine_runner.py#L875) |
+| method | `RoutineRunner.record_execution_failure` | `(self, routine_id, *, run_id, terminal_diagnostic_code=…)` | — | [src](../../../core/services/routine_runner.py#L878) |
 
 ## `core/services/routine_runtime.py`
 _Bounded worker and reconciler threads for Routines._

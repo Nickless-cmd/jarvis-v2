@@ -430,3 +430,88 @@ def test_langsomt_modelkald_fornyer_leasen(queued_run, monkeypatch):
     assert fornyelser, (
         "modelkaldet blev ikke dækket — leasen stod stille mens modellen tænkte"
     )
+
+
+# ── Rutinens kørsel skal SE sin egen samtale ────────────────────────────────
+# Målt 19/11-2026: morgenbriefen kaldte `vis_widget` 16 gange i træk, alle med
+# «kunne ikke registreres som vedhæftning». Aarsagen var ikke widgetten:
+# registreringen kraever en session, og et baggrundsrun havde ingen — selv om
+# rutinens egen session allerede fandtes. Kørslen skrev sit svar ind i den
+# bagefter, men værktøjerne inde i kørslen kunne ikke se den.
+#
+# Uden denne kontekst kan en rutine kun levere TEKST. Ingen flade, intet
+# genereret medie — uanset hvor mange forsøg modellen gør.
+
+
+class _SamtaleLaeserDriver:
+    """Læser session-konteksten midt i kørslen — som et værktøj ville."""
+
+    def __init__(self) -> None:
+        self.set_sid: str | None = None
+
+    def complete(self, _request):
+        from core.services.session_context_resolve import aktiv_session_id
+
+        self.set_sid = aktiv_session_id("")
+        return AgenticTurn(text="done")
+
+
+def test_koerslen_ser_rutinens_EGEN_samtale(queued_run, active_routine):
+    from core.services.routine_runner import RoutineRunner
+
+    driver = _SamtaleLaeserDriver()
+    runner = RoutineRunner(driver=driver, tool_executor=lambda _call: "ok")
+
+    result = runner.run_once(queued_run.run_id)
+
+    assert result.status == "succeeded"
+    assert driver.set_sid == f"routine-{active_routine.id}", (
+        "et værktøj i rutine-kørslen så ingen samtale — så kan intet knyttes til fladen"
+    )
+
+
+def test_samtale_konteksten_ryddes_efter_koerslen(queued_run, active_routine):
+    """Konteksten må ikke lække videre til nabo-kørsler i samme worker-tråd."""
+    from core.services.routine_runner import RoutineRunner
+    from core.services.session_context_resolve import aktiv_session_id
+
+    runner = RoutineRunner(driver=_OneToolDriver(), tool_executor=lambda _call: "ok")
+    runner.run_once(queued_run.run_id)
+
+    assert aktiv_session_id("") != f"routine-{active_routine.id}", (
+        "rutinens samtale blev hængende i konteksten efter kørslen"
+    )
+
+
+class _WidgetDriver:
+    """Kalder det ægte widget-værktøj inde i kørslen — som morgenbriefen gjorde."""
+
+    def __init__(self) -> None:
+        self.ud: dict = {}
+
+    def complete(self, _request):
+        from core.tools.widget_tools import _exec_vis_widget
+
+        self.ud = _exec_vis_widget({"html": "<b>94,2</b>", "_runtime_tool_use_id": "tu"})
+        return AgenticTurn(text="done")
+
+
+def test_en_widget_i_en_rutine_bliver_registreret(queued_run, active_routine, tmp_path, monkeypatch):
+    """Den ægte kæde: rutine-kørsel → vis_widget → attachment knyttet til fladen.
+
+    De to andre vagter beviser hver sin halvdel. Denne beviser at de mødes —
+    og det er præcis hvad der fejlede 19/11: begge halvdele var i orden, men
+    kæden blev aldrig samlet.
+    """
+    import core.tools.widget_tools as W
+    from core.services.routine_runner import RoutineRunner
+
+    monkeypatch.setattr(W, "_widget_dir", lambda: tmp_path / "widgets")
+    driver = _WidgetDriver()
+    runner = RoutineRunner(driver=driver, tool_executor=lambda _call: "ok")
+
+    result = runner.run_once(queued_run.run_id)
+
+    assert result.status == "succeeded"
+    assert driver.ud.get("status") == "ok", f"widgetten fejlede i et rutine-run: {driver.ud}"
+    assert driver.ud.get("attachment_id"), "fladen blev ikke knyttet til nogen samtale"

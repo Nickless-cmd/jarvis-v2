@@ -693,13 +693,55 @@ class RoutineRunner:
         # der tager længst tid — var det eneste udækkede, fordi ``_LeaseProbe``
         # kun tjekker FØR en effect og MELLEM runder. Et modelkald over 90 s
         # dræbte derfor sin egen lease, og tre i træk pausede rutinen.
-        with _LeaseKeeper(self.repository, run_id, self.holder) as keeper:
-            keeper.set_generation(claim.lease_generation)
-            result = execute_agentic(
-                adapter,
-                _RunSink(self.recorder, run_id, claim.lease_generation),
-                _LeaseProbe(self.repository, claim, self.holder),
+        # Rutinens EGEN samtale sættes som kontekst FØR kørslen, så et værktøj
+        # der knytter noget til «den aktive samtale» rammer den flade kørslen
+        # vises i.
+        #
+        # Målt 19/11-2026: morgenbriefen kaldte `vis_widget` 16 gange forgæves.
+        # Registreringen kræver en session (uden ophav ville filen dukke op i
+        # ENHVER samtale), og et baggrundsrun har ingen — selv om rutinens egen
+        # session allerede findes. Uden dette kan en rutine aldrig levere en
+        # flade eller et genereret medie; den kan kun skrive tekst.
+        #
+        # Konteksten er en bekvemmelighed, ikke et krav: fejler den, kører
+        # rutinen som før.
+        _rutine_sid = ""
+        _session_token = None
+        try:
+            from core.identity.workspace_context import set_session_id
+            from core.services import routine_session as _rs_foer
+
+            _rutine_sid = _rs_foer.ensure_routine_session(
+                claim.routine_id,
+                title=str(
+                    (row.get("definition_snapshot") or {}).get("name") or claim.routine_id
+                ),
+                owner_user_id=claim.owner_user_id,
             )
+            _session_token = set_session_id(_rutine_sid)
+        except Exception as _exc:
+            logging.getLogger(__name__).warning(
+                "routine session context failed for %s: %s", run_id, type(_exc).__name__
+            )
+
+        try:
+            with _LeaseKeeper(self.repository, run_id, self.holder) as keeper:
+                keeper.set_generation(claim.lease_generation)
+                result = execute_agentic(
+                    adapter,
+                    _RunSink(self.recorder, run_id, claim.lease_generation),
+                    _LeaseProbe(self.repository, claim, self.holder),
+                )
+        finally:
+            if _session_token is not None:
+                try:
+                    from core.identity.workspace_context import reset_context
+
+                    reset_context(_session_token)
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "routine session context reset failed for %s", run_id, exc_info=True
+                    )
         if result.status == "succeeded":
             delivery_policy = dict(row["definition_snapshot"].get("delivery_policy") or {})
             channel = str(delivery_policy.get("channel") or "desk").strip().lower()
@@ -724,7 +766,7 @@ class RoutineRunner:
             try:
                 from core.services import routine_session as _rs
 
-                _sid = _rs.ensure_routine_session(
+                _sid = _rutine_sid or _rs.ensure_routine_session(
                     claim.routine_id,
                     title=str(
                         (row.get("definition_snapshot") or {}).get("name") or claim.routine_id

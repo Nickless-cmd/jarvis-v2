@@ -83,6 +83,63 @@ def test_uden_attachment_id_er_det_en_FEJL(monkeypatch, tmp_path):
     assert noteret == [], "intet maa laegges paa turen naar fladen ikke kan vises"
 
 
+def test_uden_samtale_siger_HVORFOR_og_lover_ikke_et_forsoeg_mere(monkeypatch, tmp_path):
+    """Et baggrundsrun har ingen samtale — og det er ikke en fejl der går over.
+
+    Målt 19/11-2026: morgenbriefen kaldte `vis_widget` 16 gange i træk, fordi
+    beskeden sagde «prøv igen» om en strukturel årsag. Et forsøg mere giver
+    præcis samme svar, så beskeden må sige hvad der faktisk er galt.
+    """
+    import core.tools.widget_tools as W
+
+    monkeypatch.setattr(W, "_widget_dir", lambda: tmp_path / "w")
+    monkeypatch.setattr(
+        "core.services.attachment_service.register_generated_media",
+        lambda **kw: "",
+    )
+    monkeypatch.setattr(
+        "core.services.session_context_resolve.aktiv_session_id",
+        lambda standard="": "",
+    )
+    noteret: list = []
+    monkeypatch.setattr("core.services.published_files.note",
+                        lambda *a, **k: noteret.append(1))
+
+    ud = _exec_vis_widget({"html": _FRAG, "_runtime_tool_use_id": "tu"})
+
+    assert ud["status"] == "error"
+    tekst = ud["error"].lower()
+    assert "proev igen" not in tekst and "prøv igen" not in tekst, (
+        "beskeden lover et forsoeg mere om en aarsag der er strukturel"
+    )
+    assert "ingen aktiv samtale" in tekst, "aarsagen skal staa i beskeden"
+    assert "tekst" in tekst, "den skal sige hvad han kan gøre i stedet"
+    assert ud["path"], "filen er gemt — stien skal med, saa den ikke er tabt"
+    assert noteret == []
+
+
+def test_registrering_der_fejler_MED_en_samtale_siger_det(monkeypatch, tmp_path):
+    """Modsat: her findes samtalen, saa det er registreringen der svigtede."""
+    import core.tools.widget_tools as W
+
+    monkeypatch.setattr(W, "_widget_dir", lambda: tmp_path / "w")
+    monkeypatch.setattr(
+        "core.services.attachment_service.register_generated_media",
+        lambda **kw: "",
+    )
+    monkeypatch.setattr(
+        "core.services.session_context_resolve.aktiv_session_id",
+        lambda standard="": "chat-abc",
+    )
+    monkeypatch.setattr("core.services.published_files.note", lambda *a, **k: None)
+
+    ud = _exec_vis_widget({"html": _FRAG, "_runtime_tool_use_id": "tu"})
+
+    assert ud["status"] == "error"
+    assert "ingen aktiv samtale" not in ud["error"]
+    assert "vedhaeftning" in ud["error"] or "vedhæftning" in ud["error"]
+
+
 @pytest.mark.parametrize("html,maerke", [
     ("", "tom"),
     ("<!doctype html><html><body>x</body></html>", "FRAGMENT"),

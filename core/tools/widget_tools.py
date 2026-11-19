@@ -74,10 +74,25 @@ def _exec_vis_widget(args: dict[str, Any]) -> dict[str, Any]:
 
     if not attachment_id:
         # UDEN et attachment_id kan ingen klient hente dokumentet, og en post
-        # paa turen ville love en flade der ikke kan vises. Sig det i stedet.
+        # paa turen ville love en flade der ikke kan vises.
+        #
+        # Beskeden skal sige HVAD der er galt, ikke bede om et forsoeg mere.
+        # Målt 19/11-2026: et baggrundsrun (morgenbriefen) kaldte dette
+        # vaerktoej 16 gange i traek, fordi beskeden sagde «proev igen» om en
+        # aarsag der er strukturel — uden en samtale findes der ingen traad at
+        # saette fladen i. Et forsoeg mere giver praecis samme svar.
+        from core.services.session_context_resolve import aktiv_session_id
+
+        if not aktiv_session_id("").strip():
+            return {"status": "error",
+                    "error": "widget'en er gemt, men der er ingen aktiv samtale at vise den i "
+                             "(fx et baggrundsrun) — den kan derfor ikke vises her; "
+                             "skriv indholdet som tekst i svaret i stedet",
+                    "path": str(sti)}
         return {"status": "error",
                 "error": "widget'en blev gemt, men kunne ikke registreres som vedhaeftning "
-                         "— den kan derfor ikke vises; proev igen"}
+                         "— den kan derfor ikke vises her",
+                "path": str(sti)}
 
     try:
         from core.services.published_files import note as _note

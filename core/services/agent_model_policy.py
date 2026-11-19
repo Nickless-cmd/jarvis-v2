@@ -291,6 +291,21 @@ def decide_route(*, owner_user_id: str, requested_model: str = "", hard: bool = 
         else:
             pool_ok.append((p, m))
 
+    # NEDFLYTNING paa LEVERINGSSIGNAL: ruter der maalt ikke faerdiggoer skrivearbejde
+    # (AGENT_NO_WRITE) staar sidst i puljen for skriveroller. Ikke fjernet, kun
+    # rangeret ned; laeseroller beroeres ikke. Stabil sortering bevarer ellers raekkefoelgen.
+    nedflyttet: set[tuple[str, str]] = set()
+    try:
+        from core.services.agent_model_fitness import skal_nedflyttes
+        nedflyttet = {(p, m) for p, m in pool_ok if skal_nedflyttes(p, m, rolle=role)}
+        if nedflyttet:
+            pool_ok = [pm for pm in pool_ok if pm not in nedflyttet]
+            for p, m in nedflyttet:
+                rejected.append({"stage": "agent_pool", "provider": p, "model": m,
+                                 "reason": "levering:nedflyttet_hoej_fejlrate_paa_skriverolle"})
+    except Exception:
+        logger.warning("leveringssignalet fejlede - ingen nedflytning", exc_info=True)
+
     chain: list[dict[str, str]] = []
 
     def add(source: str, p: str, m: str) -> None:
@@ -370,6 +385,9 @@ def decide_route(*, owner_user_id: str, requested_model: str = "", hard: bool = 
             if not chain:
                 reject("cheap_lane_fallback", "", "",
                        "ingen_egnet_kandidat" if floor_targets() else "bunden_er_tom")
+        # Nedflyttede ruter er sidste udvej: stadig mulige, men efter alt der ikke fejler.
+        for p, m in sorted(nedflyttet):
+            add("agent_pool_nedflyttet", p, m)
     if not chain:
         raise ModelUnavailable("ingen tilladt og egnet model", rejected)
     head = chain[0]

@@ -170,3 +170,63 @@ def egnede_modeller(*, undtagen: frozenset[tuple[str, str]] = frozenset(),
         if len(valgt) >= maks:
             break
     return valgt
+
+
+# ── LEVERINGSSIGNAL (ikke kapabilitet) ──────────────────────────────────────
+# `er_blokeret` måler om en model KAN kalde et værktøj. Den måler aldrig om
+# arbejdet bliver FÆRDIGT. MÅLT 18/11-2026 på kørsler der faktisk fik
+# `wt_write_file` i prompt-skemaet (agent_run_prompts.tool_names_json):
+#     copilot-premium/claude-sonnet-5  ok=9  AGENT_NO_WRITE=8 (19 leveringsfejl i alt) = 58 %
+#     codex-cli/default                ok=17 fejl=0   claude-cli/sonnet ok=19 fejl=0
+# Modellen stopper med en plan i stedet for et kald. Ruten er god til
+# LÆSE-arbejde (168 gennemførte kørsler), så signalet gælder kun skriveroller
+# og NEDFLYTTER (rangering), den fjerner ikke.
+
+SKRIVE_ROLLER = frozenset({"executor"})
+LEVERING_MIN_KOERSLER = 10      # under dette er stikprøven for tynd → ukendt → ingen nedflytning
+LEVERING_MAX_FEJLRATE = 0.30    # over dette nedflyttes ruten for skriveroller
+
+# Fejlkoder der betyder «agenten fik værktøjerne men leverede ikke».
+_LEVERINGSFEJL = ("AGENT_NO_WRITE", "AGENT_PROMISED_NOT_DONE", "AGENT_INCOMPLETE")
+
+
+def _levering_taelling(provider: str, model: str, rolle: str) -> tuple[int, int]:
+    """(gennemført, leveringsfejl) for kørsler der FAKTISK fik wt_write_file.
+
+    Kun disse tæller: en kørsel uden skriveværktøj kan ikke fejle på at skrive.
+    """
+    from core.runtime.db_core import connect
+    sql = (
+        "SELECT SUM(r.status='completed'), "
+        f"SUM(r.error_code IN ({','.join('?' * len(_LEVERINGSFEJL))})) "
+        "FROM agent_runs r "
+        "JOIN agent_registry g ON g.agent_id = r.agent_id "
+        "JOIN agent_run_prompts p ON p.run_id = r.run_id "
+        "WHERE r.provider = ? AND r.model = ? AND g.role = ? "
+        "AND p.tool_names_json LIKE '%wt_write_file%'"
+    )
+    with connect() as c:
+        row = c.execute(sql, (*_LEVERINGSFEJL, provider, model, rolle)).fetchone()
+    return int(row[0] or 0), int(row[1] or 0)
+
+
+def leveringsfejlrate(provider: str, model: str, *, rolle: str) -> float | None:
+    """Andel leveringsfejl, eller None ved for tynd/umålt stikprøve. Kaster aldrig."""
+    try:
+        ok, fejl = _levering_taelling(str(provider or ""), str(model or ""), rolle)
+    except Exception:
+        logger.debug("levering: kunne ikke måle %s/%s", provider, model, exc_info=True)
+        return None
+    n = ok + fejl
+    return None if n < LEVERING_MIN_KOERSLER else fejl / n
+
+
+def skal_nedflyttes(provider: str, model: str, *, rolle: str) -> bool:
+    """True når ruten har MÅLT høj leveringsfejl på en SKRIVEROLLE.
+
+    Rolle-afgrænset: læseroller får altid False. Ukendt → False (som resten).
+    """
+    if rolle not in SKRIVE_ROLLER:
+        return False
+    rate = leveringsfejlrate(provider, model, rolle=rolle)
+    return rate is not None and rate > LEVERING_MAX_FEJLRATE

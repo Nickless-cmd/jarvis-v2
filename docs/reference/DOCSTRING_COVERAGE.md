@@ -1555,7 +1555,7 @@ Generated from source. 10306/18856 functions/methods documented (54%). The list 
 - `core/services/operator_allowlist.py` :: `set_allowlist` (L39)
 - `core/services/operator_allowlist.py` :: `set_enforced` (L65)
 - `core/services/operator_channel.py` :: `close_channel` (L172)
-- `core/services/operator_channel.py` :: `looks_like_workstation_path` (L285)
+- `core/services/operator_channel.py` :: `looks_like_workstation_path` (L284)
 - `core/services/operator_channel.py` :: `open_channel` (L156)
 - `core/services/outcome_learning.py` :: `build_outcome_learning_surface` (L213)
 - `core/services/outcome_projector.py` :: `OutcomeLedger.is_terminal` (L198)

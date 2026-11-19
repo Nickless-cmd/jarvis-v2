@@ -199,7 +199,6 @@ def current_session_id() -> str:
     """
     for modul, navn in (
         ("core.identity.workspace_context", "current_session_id"),
-        ("core.services.chat_sessions", "current_session_id_ctx"),
     ):
         try:
             sid = str(getattr(__import__(modul, fromlist=[navn]), navn)() or "")

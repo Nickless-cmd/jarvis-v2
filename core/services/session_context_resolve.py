@@ -1,15 +1,30 @@
 """Hvilken samtale kører vi i? — ét sted, frem for én kopi pr. værktøj.
 
-Der er TO ContextVars der kan bære svaret, fordi der er to veje ind:
-`visible_run_context` sættes af den synlige run-løkke, og `chat_sessions`'
-egen sættes af chat-maskineriet. Ingen af dem er sat i alle tilfælde, og
-rækkefølgen betyder noget — den synlige løkke er tættere på det brugeren
-kigger på.
+Der er praecis ÉN ContextVar der baerer svaret: `workspace_context`s
+`session_id`. Den saettes af alle tre veje ind — den synlige run-loekke
+(`visible_runs.py`), værktøjs-executoren (`visible_tool_exec.py`) og
+rutine-runneren (`routine_runner.py`).
 
-Resolveren har eksisteret siden staged_edits blev bygget, men lå som en
-privat funktion i ét værktøjsmodul. Næste værktøj der havde brug for den
-ville have skrevet sin egen, og så ville de to kunne blive uenige om
-rækkefølgen uden at nogen opdagede det.
+## To kilder var doede i månedsvis (maalt 19/11-2026)
+
+Indtil i dag provede denne resolver to andre kilder FOERST:
+
+  * `core.services.visible_run_context` — modulet findes ikke.
+  * `core.services.chat_sessions.current_session_id_ctx` — attributten findes ikke.
+
+Begge import-forsoeg fejlede i det stille og faldt videre, saa det saa ud som
+om der blev spurgt tre steder. Det gjorde der ikke: kun det tredje forsøg
+kunne nogensinde svare. Fejlen var usynlig fordi testen selv opdigtede de to
+moduler med `monkeypatch.setitem(sys.modules, ...)` — den bemaalte en
+raekkefoelge der ikke kunne indtraeffe i virkeligheden.
+
+Vaernet mod at det sker igen staar i `tests/test_session_context_resolve.py`:
+hvert modul og hvert navn der spoerges, skal kunne importeres for rigtigt.
+
+Resolveren har eksisteret siden staged_edits blev bygget, men laa som en
+privat funktion i ét værktøjsmodul. Naeste værktøj der havde brug for den
+ville have skrevet sin egen — og `staged_edits_tools` gjorde praecis det, med
+kun de to doede kilder. Resultatet var at ALLE sessioner delte `_default`.
 """
 from __future__ import annotations
 
@@ -17,26 +32,13 @@ from __future__ import annotations
 def aktiv_session_id(standard: str = "") -> str:
     """Sessionens id, eller `standard` hvis ingen kilde kender den.
 
-    Self-safe hele vejen: en manglende ContextVar må aldrig kunne vælte det
-    værktøj der spurgte.
+    Self-safe: en manglende ContextVar må aldrig kunne vælte det værktøj der
+    spurgte. Men «self-safe» betyder ikke «prøv alt muligt» — en kilde der
+    ikke findes kan ikke svare, og skal derfor ikke stå her.
     """
     try:
-        from core.services.visible_run_context import current_session_id
+        from core.identity.workspace_context import current_session_id
         sid = (current_session_id() or "").strip()
-        if sid:
-            return sid
-    except Exception:
-        pass
-    try:
-        from core.services.chat_sessions import current_session_id_ctx
-        sid = (current_session_id_ctx() or "").strip()
-        if sid:
-            return sid
-    except Exception:
-        pass
-    try:
-        from core.identity.workspace_context import current_session_id as _wc
-        sid = (_wc() or "").strip()
         if sid:
             return sid
     except Exception:

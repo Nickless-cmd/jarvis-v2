@@ -9,9 +9,10 @@ call inline:
   commit_staged_edits    — apply all (or named) staged edits atomically
   discard_staged_edits   — drop staged edits without applying
 
-Session resolution: the visible-run loop binds a session_id ContextVar
-before executing tools. We pull it from there so each chat session has
-its own staging area. Falls back to "_default" if not bound.
+Session resolution: `workspace_context`s `session_id` ContextVar baeres af
+alle tre veje ind (synlig run-loekke, værktøjs-executor, rutine-runner). Vi
+laeser den via den faelles resolver, saa staging-scope foelger samtalen.
+Falder tilbage til "_default" hvis ingen kontekst er sat.
 """
 from __future__ import annotations
 
@@ -27,26 +28,21 @@ from core.services.staged_edits import (
 
 
 def _current_session_id() -> str:
-    """Resolve the session_id for staging scope.
+    """Sessionens id til staging-scope — via den fælles resolver.
 
-    Tries multiple ContextVars in order — visible run loop sets one,
-    chat session machinery may set another. Falls back to "_default".
+    Målt 19/11-2026: denne funktion havde sin EGEN kopi af opslaget, og den
+    prøvede kun to kilder — `visible_run_context` og `chat_sessions`, som
+    begge er døde imports. Den ramte derfor ALDRIG den levende ContextVar og
+    returnerede `_default` for enhver session: målt med
+    `set_session_id('chat-ABC123')` sat svarede den stadig `_default`.
+
+    Konsekvensen var at alle samtaler delte ét staging-scope, så en kladde fra
+    én tur kunne committes fra en anden. Resolveren findes for at forhindre
+    præcis den slags kopier, så den bruges nu i stedet.
     """
-    try:
-        from core.services.visible_run_context import current_session_id
-        sid = current_session_id() or ""
-        if sid:
-            return sid
-    except Exception:
-        pass
-    try:
-        from core.services.chat_sessions import current_session_id_ctx
-        sid = current_session_id_ctx() or ""
-        if sid:
-            return sid
-    except Exception:
-        pass
-    return "_default"
+    from core.services.session_context_resolve import aktiv_session_id
+
+    return aktiv_session_id("_default")
 
 
 # ── Tool exec wrappers ────────────────────────────────────────────

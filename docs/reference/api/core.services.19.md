@@ -660,14 +660,14 @@ _Operator-kanalen — owner-gated bro fra containerens bash til Bjørns maskine.
 | function | `open_channel` | `(session_id, *, is_owner)` | — | [src](../../../core/services/operator_channel.py#L156) |
 | function | `close_channel` | `(session_id, *, is_owner)` | — | [src](../../../core/services/operator_channel.py#L172) |
 | function | `current_session_id` | `()` | Kanalens nøgle — og den SKAL være den samme som bash'ens. | [src](../../../core/services/operator_channel.py#L185) |
-| function | `current_is_owner` | `()` | Owner-gaten. Fail-CLOSED: kan rollen ikke afgoeres, er svaret nej. | [src](../../../core/services/operator_channel.py#L213) |
-| function | `er_agent_koersel` | `()` | Er kalderen en agent-worker — ikke Bjørn selv? | [src](../../../core/services/operator_channel.py#L227) |
-| function | `_absolutte_stier` | `(command)` | — | [src](../../../core/services/operator_channel.py#L272) |
-| function | `looks_like_workstation_path` | `(command, cwd=…)` | — | [src](../../../core/services/operator_channel.py#L285) |
-| function | `_koer_over_broen` | `(command, cwd)` | Selve bro-kaldet — skilt fra BESLUTNINGEN om at kalde det. | [src](../../../core/services/operator_channel.py#L292) |
-| function | `_naaede_frem` | `(r)` | Kom svaret fra hans maskine — eller var det broen der svigtede? | [src](../../../core/services/operator_channel.py#L310) |
-| function | `_forny` | `(session_id)` | Genåbn en kanal der faldt af sig selv. Kaldes KUN når broen svarede. | [src](../../../core/services/operator_channel.py#L325) |
-| function | `maybe_reroute_bash` | `(command, cwd, *, is_owner, session_id)` | Kør kommandoen på Bjørns maskine hvis kanalen er åben. Ellers None. | [src](../../../core/services/operator_channel.py#L331) |
-| function | `closed_channel_hint` | `(command, cwd, *, is_owner, session_id)` | Én linje til modellen når et kald tydeligvis sigtede mod hans maskine. | [src](../../../core/services/operator_channel.py#L373) |
-| function | `kanal_note` | `(session_id)` | Én linje når kanalen faldt af sig selv — til bash-svaret. | [src](../../../core/services/operator_channel.py#L390) |
+| function | `current_is_owner` | `()` | Owner-gaten. Fail-CLOSED: kan rollen ikke afgoeres, er svaret nej. | [src](../../../core/services/operator_channel.py#L212) |
+| function | `er_agent_koersel` | `()` | Er kalderen en agent-worker — ikke Bjørn selv? | [src](../../../core/services/operator_channel.py#L226) |
+| function | `_absolutte_stier` | `(command)` | — | [src](../../../core/services/operator_channel.py#L271) |
+| function | `looks_like_workstation_path` | `(command, cwd=…)` | — | [src](../../../core/services/operator_channel.py#L284) |
+| function | `_koer_over_broen` | `(command, cwd)` | Selve bro-kaldet — skilt fra BESLUTNINGEN om at kalde det. | [src](../../../core/services/operator_channel.py#L291) |
+| function | `_naaede_frem` | `(r)` | Kom svaret fra hans maskine — eller var det broen der svigtede? | [src](../../../core/services/operator_channel.py#L309) |
+| function | `_forny` | `(session_id)` | Genåbn en kanal der faldt af sig selv. Kaldes KUN når broen svarede. | [src](../../../core/services/operator_channel.py#L324) |
+| function | `maybe_reroute_bash` | `(command, cwd, *, is_owner, session_id)` | Kør kommandoen på Bjørns maskine hvis kanalen er åben. Ellers None. | [src](../../../core/services/operator_channel.py#L330) |
+| function | `closed_channel_hint` | `(command, cwd, *, is_owner, session_id)` | Én linje til modellen når et kald tydeligvis sigtede mod hans maskine. | [src](../../../core/services/operator_channel.py#L372) |
+| function | `kanal_note` | `(session_id)` | Én linje når kanalen faldt af sig selv — til bash-svaret. | [src](../../../core/services/operator_channel.py#L389) |
 

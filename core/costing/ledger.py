@@ -40,6 +40,26 @@ def record_cost(
     """
     if provider == "deepseek" and model in ("deepseek-chat", "deepseek-reasoner"):
         model = "deepseek-v4-flash"
+    # ── KØRSLENS EGEN NØGLE, NAAR KALDEREN IKKE GIVER EN (19/11-2026) ──────────
+    # Målt: `costs.run_id` var tom i 1.144.881 rækker, og for lane='agent' i
+    # ALLE 4.256. Kun 5 af 15 kaldesteder sender run_id selv. Konsekvensen var
+    # ikke manglende beløb — pengene stod der — men at intet kald kunne henføres
+    # til den kørsel der brugte dem: 0 af 1.880 agent_runs kunne kobles til en
+    # costs-række, så enhver pris pr. kørsel var en tidsheuristik.
+    #
+    # Kilden findes allerede og sættes af rutiner, synlige runs og
+    # første-gennemløbet (`run_autonomy_context.set_run_identity`). Den blev
+    # blot aldrig spurgt her — samme fejlform som session-resolveren. Ét sted
+    # dækker nu alle kalderne; en kalder der selv ved bedre, vinder stadig.
+    if not str(run_id or "").strip():
+        try:
+            from core.services.run_autonomy_context import current_run_id
+            run_id = str(current_run_id() or "").strip()
+        except Exception:
+            # Koblingen er en bekvemmelighed, bogføringen er ikke: kan kilden
+            # ikke importeres, skal beløbet stadig skrives. En tom nøgle er
+            # ærlig — en tabt omkostningspost er det ikke.
+            pass
     try:
         from core.services import turn_trace as _tt
         if _tt.active():

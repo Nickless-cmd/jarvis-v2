@@ -310,9 +310,9 @@ _Scor frosne forudsigelser om min egen adfaerd — mekanisk, ikke paa hukommelse
 | function | `_hent_fra_state` | `(spec)` | Laes en aggregeret vaerdi fra en state_store JSON-noegle. | [src](../../../scripts/score_frozen_predictions.py#L391) |
 | function | `evaluer` | `(post, conn, nu=…)` | Afgoer om én post kan scores nu, og i saa fald om den ramte. | [src](../../../scripts/score_frozen_predictions.py#L420) |
 | function | `kalibrering` | `(poster)` | Kalibrering paa HAENDELSE-niveau, ikke post-niveau. | [src](../../../scripts/score_frozen_predictions.py#L450) |
-| function | `score` | `(fil=…, db=…, *, dry_run=…, nu=…, arkiver=…)` | Scor alle modne poster. Skriver kun til filen hvis noget faktisk blev scoret. | [src](../../../scripts/score_frozen_predictions.py#L520) |
-| function | `_vis` | `(resultat)` | — | [src](../../../scripts/score_frozen_predictions.py#L675) |
-| function | `main` | `()` | — | [src](../../../scripts/score_frozen_predictions.py#L725) |
+| function | `score` | `(fil=…, db=…, *, dry_run=…, nu=…, arkiver=…)` | Scor alle modne poster. Skriver kun til filen hvis noget faktisk blev scoret. | [src](../../../scripts/score_frozen_predictions.py#L537) |
+| function | `_vis` | `(resultat)` | — | [src](../../../scripts/score_frozen_predictions.py#L692) |
+| function | `main` | `()` | — | [src](../../../scripts/score_frozen_predictions.py#L744) |
 
 ## `scripts/seed_cognitive_state.py`
 _Seed cognitive state tables with initial values based on known context._

@@ -460,8 +460,17 @@ def kalibrering(poster: list[dict[str, Any]]) -> dict[str, Any]:
     uden at forurene Brier-scoren.
     """
     grupper: dict[str, list[dict[str, Any]]] = {}
+    udeladt: list[dict[str, Any]] = []
     for p in poster:
         if not isinstance(p, dict) or p.get("hit") is None:
+            continue
+        # En post kan vaere scoret paa et grundlag der ikke findes. `hit` og
+        # `udfalds_hash` bliver staaende UENDREDE — posten ekskluderes kun fra
+        # kalibreringen, saa et bom ikke toelles som videnssvigt naar det i
+        # virkeligheden var en maaling der svigtede. Aarsagen skal staa i
+        # postens `maale_fejl`, ellers taeller den som et almindeligt udfald.
+        if p.get("maale_fejl"):
+            udeladt.append({"id": p.get("id"), "grund": p.get("maale_fejl")})
             continue
         gruppe = str(p.get("event_group") or p.get("id"))
         grupper.setdefault(gruppe, []).append(p)
@@ -492,7 +501,14 @@ def kalibrering(poster: list[dict[str, Any]]) -> dict[str, Any]:
         )
 
     if not haendelser:
-        return {"n_events": 0, "n_poster": 0, "brier": None, "bucket": [], "haendelser": []}
+        return {
+            "n_events": 0,
+            "n_poster": 0,
+            "brier": None,
+            "bucket": [],
+            "haendelser": [],
+            "udeladt_maale_fejl": udeladt,
+        }
 
     brier = sum((h["probability"] - h["outcome"]) ** 2 for h in haendelser) / len(haendelser)
     bucket: list[dict[str, Any]] = []
@@ -514,6 +530,7 @@ def kalibrering(poster: list[dict[str, Any]]) -> dict[str, Any]:
         "brier": round(brier, 4),
         "bucket": bucket,
         "haendelser": haendelser,
+        "udeladt_maale_fejl": udeladt,
     }
 
 
@@ -712,6 +729,8 @@ def _vis(resultat: dict[str, Any]) -> None:
 
     k = resultat["kalibrering"]
     print(f"\n  haendelser={k['n_events']}  poster={k['n_poster']}  brier={k['brier']}")
+    for u in k.get("udeladt_maale_fejl") or []:
+        print(f"    UDELADT (maale-fejl, udfald og hash uroert): {u['id']} — {u['grund']}")
     for b in k["bucket"]:
         print(f"    sagt {b['sagt']:.2f} -> faktisk {b['faktisk']:.2f}  (n={b['n']})")
     for h in k["haendelser"]:

@@ -174,6 +174,42 @@ def test_brier_regnes_paa_haendelser_ikke_poster() -> None:
     assert k["brier"] == pytest.approx(0.04)
 
 
+def test_maale_fejl_udelades_af_kalibreringen_men_beholder_udfaldet() -> None:
+    """En post scoret paa et tomt grundlag er ikke et bom.
+
+    ``hit`` og dermed ``udfalds_hash`` skal staa UROERT — eksklusionen maa
+    ikke kunne bruges til at slette et tabt vaeddemaal i eftertid. Posten
+    forsvinder kun fra Brier, og aarsagen skal vaere synlig i resultatet.
+    """
+    god = _post(id="F1", event_group="g1", probability=0.8, hit=True)
+    fejl = _post(
+        id="N2",
+        event_group="g2",
+        probability=0.2,
+        hit=False,
+        maale_fejl="tabellen var tom den dag — registreringen svigtede",
+    )
+
+    k = sfp.kalibrering([god, fejl])
+
+    assert k["n_events"] == 1
+    assert k["brier"] == pytest.approx(0.04)
+    assert [u["id"] for u in k["udeladt_maale_fejl"]] == ["N2"]
+    # Udfaldet selv er ikke aendret af eksklusionen.
+    assert fejl["hit"] is False
+
+
+def test_post_uden_maale_fejl_taeller_som_vanligt() -> None:
+    """Fraværet af feltet må ikke ændre noget — ellers ville hver post forsvinde."""
+    a = _post(id="F1", event_group="g1", hit=True)
+    b = _post(id="N2", event_group="g2", hit=False)
+
+    k = sfp.kalibrering([a, b])
+
+    assert k["n_events"] == 2
+    assert k["udeladt_maale_fejl"] == []
+
+
 def test_ikke_moden_post_scores_ikke(rigtig_db: Path, tmp_path: Path) -> None:
     post = _post(score_at=(NU + timedelta(days=3)).isoformat())
     fil = _fil(tmp_path, [post])

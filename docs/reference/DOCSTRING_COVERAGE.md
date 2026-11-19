@@ -2647,7 +2647,7 @@ Generated from source. 10309/18859 functions/methods documented (54%). The list 
 - `scripts/reset_heartbeat_state.py` :: `main` (L36)
 - `scripts/rewrite_legacy_memory_provenance.py` :: `main` (L57)
 - `scripts/ryd_ejerloese_kandidater.py` :: `main` (L33)
-- `scripts/score_frozen_predictions.py` :: `main` (L725)
+- `scripts/score_frozen_predictions.py` :: `main` (L744)
 - `scripts/setup_google_calendar.py` :: `main` (L17)
 - `scripts/signal_noise_cleanup.py` :: `cleanup_signal_noise` (L103)
 - `scripts/signal_noise_cleanup.py` :: `main` (L191)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { gyldigBindSti, interpolérUdtryk, slaaOp, vurderUdtryk } from './udtryk'
+import { gyldigBindSti, interpolérUdtryk, udfoldKontrol, slaaOp, vurderUdtryk } from './udtryk'
 
 const ctx = { seats: 12, pris: 29, navn: 'Bord', tom: '', liste: [3, 7, 11], objekt: { a: 1, b: 2 } }
 

@@ -48,3 +48,6 @@ scripts/judge_run_q4*.log
 
 # Midlertidig analyse af ChatGPT-appens Valdi-moduler (20/11-2026)
 .gpt-rea-tekst/
+
+# Midlertidigt DIL lag 3-arbejde fra afbrudt agent (20/11-2026)
+.dil-lag3-wip/

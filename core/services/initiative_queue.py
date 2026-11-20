@@ -531,7 +531,7 @@ def mark_attempted(
         if str(existing.get("initiative_type") or "initiative") == "long_term_intention":
             retry_at = now + timedelta(days=_LONG_TERM_REASSESS_DAYS)
         attempt_count = int(existing.get("attempt_count") or 0) + 1
-        if attempt_count > _MAX_ATTEMPTS:
+        if attempt_count >= _MAX_ATTEMPTS:
             # Loftet: forsoegt nok gange uden at nogen kunne udfoere det. Udløb
             # frem for endnu et forsoeg — ellers er det samme loekke, blot
             # langsommere (maalt: 306 gentagelser over 50 dage).

@@ -5267,6 +5267,44 @@ def _execute_heartbeat_internal_action(
                         "priority": priority,
                     },
                 )
+                # LUKKE-VEJEN (20/11-2026). Maalt: init-1107bcb628 blev
+                # materialiseret fire gange paa tre timer — fire tasks og fire
+                # flows, alle attempt_count 0 — fordi `mark_acted` kun kaldes fra
+                # proactivity_bridge og runtime_action_executor, som ikke er i
+                # heartbeat-banen. Materialisering var derfor et forsoeg uden
+                # returvej. Denne callback ER returvejen: runnets eget udfald
+                # afgoer om initiativet er loest, og tasken lukkes samtidig.
+                def _luk_initiativ(
+                    *, outcome: str = "", visible_run_id: str = "",
+                    session_id: str = "", error: str = "",
+                ) -> None:
+                    from core.services.initiative_queue import mark_acted
+
+                    ok = str(outcome or "").strip().lower() in {
+                        "completed", "success", "succeeded",
+                    }
+                    try:
+                        if ok:
+                            mark_acted(
+                                initiative_id,
+                                action_summary=(
+                                    f"Run {visible_run_id or '?'} afsluttede initiativet"
+                                )[:200],
+                            )
+                        runtime_tasks.update_task(
+                            str(task.get("task_id") or ""),
+                            status="completed" if ok else "blocked",
+                            result_summary=(
+                                f"visible_run={visible_run_id or '?'}"
+                                + (f" error={str(error)[:120]}" if error else "")
+                            )[:400],
+                            blocked_reason=(
+                                "" if ok else str(error or "run-uden-udfald")[:160]
+                            ),
+                        )
+                    except Exception:
+                        logger.warning("initiativ-lukning fejlede", exc_info=True)
+
                 # Extracted dispatch boundary: feature gating chooses exactly
                 # one of the Routine and legacy autonomous execution paths.
                 from core.services.routine_trigger_adapters import (
@@ -5276,10 +5314,23 @@ def _execute_heartbeat_internal_action(
                     focus=focus,
                     initiative_id=initiative_id or tick_id,
                     session_id=str(initiative.get("session_id") or ""),
+                    task_id=str(task.get("task_id") or ""),
+                    completion_callback=_luk_initiativ,
                 )
                 return {
                     "status": "executed",
-                    "summary": f"Acted on initiative: {focus[:120]}",
+                    # UDVAELGELSE (20/11-2026): `pending[0]` tages bevidst —
+                    # beslutningens fritekst kan ikke mappes til et
+                    # initiativ-id, saa vi skriver eksplicit hvilket initiativ
+                    # der faktisk blev ramt i stedet for at lade det se ud som
+                    # om beslutningen valgte det. Maalt: tick 11818 og 11820
+                    # besluttede to forskellige ting og materialiserede samme
+                    # initiativ.
+                    "summary": (
+                        f"Acted on queue-head initiative {initiative_id or tick_id} "
+                        f"(chosen by queue order, not by the decision text): "
+                        f"{focus[:100]}"
+                    ),
                     "artifact": json.dumps(
                         {
                             **initiative,

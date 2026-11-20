@@ -244,12 +244,19 @@ def dispatch_system(
 
 def dispatch_heartbeat_initiative(
     *, focus: str, initiative_id: str, session_id: str = "",
+    task_id: str = "",
+    completion_callback: Callable[..., None] | None = None,
 ) -> TriggerResult | Mapping[str, object] | None:
     """Extracted heartbeat execution boundary for the oversized runtime module.
 
     ``session_id`` (14/10-2026): initiativet kan bære den samtale det kom fra
     (fx et scheduled-job der lagde det i køen — se ``initiative_queue``). Tom =
     systemets eget initiativ; der findes ingen samtale at vende tilbage til.
+
+    ``task_id`` + ``completion_callback`` (20/11-2026): materialisering var et
+    forsøg uden returvej. Runnet får nu task-id'et med, og dets eget udfald
+    sendes tilbage gennem callbacken, så initiativet kan lukkes når det
+    faktisk er løst i stedet for at blive materialiseret igen hver tick.
     """
     legacy_started: list[bool] = []
 
@@ -258,6 +265,7 @@ def dispatch_heartbeat_initiative(
 
         legacy_started.append(bool(start_autonomous_run(
             focus, session_id=str(session_id or "") or None, origin="heartbeat",
+            task_id=str(task_id or ""), completion_callback=completion_callback,
         )))
 
     dispatched = dispatch_system(

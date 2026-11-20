@@ -156,6 +156,20 @@ def set_role(
         did or uid, role_c, actor or "ukendt", kilder,
     )
 
+    # Revisionssporet: uden dette findes et rolleskift kun i Python-loggen, som
+    # roterer væk. `_audit` skriver til runtime-state under `user_audit_log`.
+    gammel = str((konto or {}).get("role") or "?")
+    try:
+        from core.identity import user_db as _udb
+
+        _udb._audit(
+            user_id=uid or did,
+            action=f"role_change:{gammel}->{role_c}",
+            actor=actor or "ukendt",
+        )
+    except Exception as exc:  # revision må ikke vælte et ellers gennemført skift
+        logger.warning("role_sync: kunne ikke skrive revision: %s", exc)
+
     ud: dict[str, Any] = {
         "ok": not fejl,
         "discord_id": did,

@@ -152,3 +152,27 @@ def test_patch_ruten_flytter_alle_tre_kilder(isolated_runtime) -> None:
     assert find_user_by_discord_id(did).role == "partner"          # lag 1
     assert user_db.get_user(mid)["role"] == "partner"              # lag 2
     assert dbu.get_google_link("gh-rute")["role"] == "partner"     # lag 3
+
+
+def test_rolleskift_efterlader_spor_med_actor(bruger_i_alle_tre_kilder) -> None:
+    """Et rolleskift skal kunne spores — ikke kun ligge i en roterende log.
+
+    MÅLT 20/11-2026: `role_sync` kaldte aldrig `user_db._audit`, så et skift
+    efterlod nul poster i `user_audit_log`. Et rolleskift uden spor kan ikke
+    efterprøves bagefter — og det var netop hvad der gjorde formiddagens
+    halve skift så svært at finde.
+    """
+    from core.identity.role_sync import set_role
+    from core.identity.user_db import read_audit_log
+
+    foer = len(read_audit_log())
+    ud = set_role(discord_id=bruger_i_alle_tre_kilder["discord_id"],
+                  role="partner", actor="test-owner")
+    assert ud["ok"] is True
+
+    log = read_audit_log()
+    assert len(log) == foer + 1
+    post = log[-1]
+    assert post["actor"] == "test-owner"
+    assert post["action"] == "role_change:member->partner"
+    assert post["user_id"] == bruger_i_alle_tre_kilder["user_id"]

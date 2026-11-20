@@ -14,7 +14,10 @@ Never raises into the hot loop.
 """
 from __future__ import annotations
 
+import hashlib
 import os
+from pathlib import Path
+import threading
 from typing import Callable
 
 from core.services.visible_followup_events import ToolExchange, ToolResult
@@ -53,6 +56,53 @@ _VALID_MODES = ("off", "shadow", "active")
 _AGING_TRIGGER_TOKENS_DEFAULT = 120_000
 
 
+def _tool_results_dir() -> Path:
+    """Runtime-store for originals, matching the existing TOOL_RESULTS_DIR."""
+    jarvis_home = Path(os.environ.get("JARVIS_HOME") or Path.home() / ".jarvis-v2")
+    return jarvis_home / "tool_results"
+
+
+def _recovery_path(recovery_key: str) -> Path:
+    digest = hashlib.sha256(recovery_key.encode("utf-8")).hexdigest()
+    return _tool_results_dir() / f"{digest}.txt"
+
+
+def _recovery_key(tool_call_id: str, content: str) -> str:
+    key = str(tool_call_id or "").strip()
+    if key:
+        return key
+    return f"sha256:{hashlib.sha256(content.encode('utf-8')).hexdigest()}"
+
+
+def _store_tool_result(recovery_key: str, content: str) -> Path:
+    """Persist exact content atomically; propagate failure so aging can abstain."""
+    path = _recovery_path(recovery_key)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(
+        path.suffix + f".{os.getpid()}.{threading.get_ident()}.tmp")
+    try:
+        tmp.write_text(content, encoding="utf-8")
+        os.replace(tmp, path)
+    finally:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+    return path
+
+
+def recover_tool_result(tool_use_id: str) -> str | None:
+    """Return an aged tool result's exact original text, or ``None`` if absent.
+
+    Originals live under ``~/.jarvis-v2/tool_results/`` (or
+    ``$JARVIS_HOME/tool_results/`` when that runtime override is set).
+    """
+    try:
+        return _recovery_path(str(tool_use_id)).read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return None
+
+
 def aging_trigger_tokens() -> int:
     """Configured full-content token trigger for aging. Default 120k. Self-safe."""
     try:
@@ -81,8 +131,12 @@ def tool_result_aging_mode() -> str:
         return "shadow"
 
 
-def _clear_placeholder(n: int) -> str:
-    return f"[tool-resultat ryddet — {n} tegn. Kald værktøjet igen hvis du har brug for det.]"
+def _recovery_hint(recovery_key: str, path: Path) -> str:
+    return f"original: {path} (nøgle: {recovery_key})"
+
+
+def _clear_placeholder(n: int, recovery_key: str, path: Path) -> str:
+    return f"[tool-resultat ryddet — {n} tegn; {_recovery_hint(recovery_key, path)}.]"
 
 
 def _is_already_aged(content: str) -> bool:
@@ -155,6 +209,17 @@ def age_tool_results(
                 if not content or _is_already_aged(content):
                     new_results.append(tr)
                     continue
+                recovery_key = _recovery_key(tr.tool_call_id, content)
+                if mode == "active":
+                    try:
+                        recovery_path = _store_tool_result(recovery_key, content)
+                    except Exception:
+                        # Uden en holdbar original maa active mode ikke destruere
+                        # den eneste kopi. Aging er self-safe og springer resultatet over.
+                        new_results.append(tr)
+                        continue
+                else:
+                    recovery_path = _recovery_path(recovery_key)
                 do_compress = (deep and len(content) >= _AGING_COMPRESS_MIN_CHARS
                                and compress_fn is not None)
                 replacement = ""
@@ -166,13 +231,18 @@ def age_tool_results(
                     if replacement:
                         # Maerk den, saa naeste runde lader den vaere. Uden
                         # maerket komprimeres den igen med et nyt resultat.
-                        replacement = f"{_COMPRESS_PREFIX} fra {len(content)} tegn]\n{replacement}"
+                        replacement = (
+                            f"{_COMPRESS_PREFIX} fra {len(content)} tegn]\n"
+                            f"[{_recovery_hint(recovery_key, recovery_path)}]\n"
+                            f"{replacement}")
                         compressed += 1
                     else:
-                        replacement = _clear_placeholder(len(content))
+                        replacement = _clear_placeholder(
+                            len(content), recovery_key, recovery_path)
                         cleared += 1
                 else:
-                    replacement = _clear_placeholder(len(content))
+                    replacement = _clear_placeholder(
+                        len(content), recovery_key, recovery_path)
                     cleared += 1
                 freed += max(0, len(content) - len(replacement))
                 touched = True

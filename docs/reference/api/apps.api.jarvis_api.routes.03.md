@@ -503,7 +503,7 @@ _Owner-only user-administration (spec 2026-06-15 §4/§6). CRUD + GDPR-erasure._
 | function | `list_all` | `(claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L35) |
 | function | `get_one` | `(user_id, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L40) |
 | function | `patch_one` | `(user_id, req, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L48) |
-| function | `delete_one` | `(user_id, req, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L75) |
+| function | `delete_one` | `(user_id, req, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L94) |
 
 ## `apps/api/jarvis_api/routes/visning.py`
 _Visning — serverer et lokalt billede til desk' rækkevisning._

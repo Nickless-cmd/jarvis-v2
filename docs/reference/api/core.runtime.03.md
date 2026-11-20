@@ -366,21 +366,22 @@ _DB helpers for users-tabellen (spec 2026-06-15)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_ensure_users_table` | `(conn)` | — | [src](../../../core/runtime/db_users.py#L21) |
-| function | `_create_users_table` | `(conn)` | Idempotent: brugerstyring. Følsomme felter lagres krypteret | [src](../../../core/runtime/db_users.py#L31) |
-| function | `get_user_row_by_google_email_hash` | `(h)` | — | [src](../../../core/runtime/db_users.py#L74) |
-| function | `_ensure_google_links_table` | `(conn)` | — | [src](../../../core/runtime/db_users.py#L92) |
-| function | `set_google_link` | `(email_hash, user_id, role, updated_at)` | — | [src](../../../core/runtime/db_users.py#L106) |
-| function | `get_google_link` | `(email_hash)` | — | [src](../../../core/runtime/db_users.py#L121) |
-| function | `has_google_link_for_user` | `(user_id)` | Har brugeren (user_id) en Google-konto linket? (vedvarende indikator). | [src](../../../core/runtime/db_users.py#L133) |
-| function | `insert_user_row` | `(*, user_id, email_hash, email_enc, name, role, workspace, password_hash, discord_id_enc, totp_seed_enc, created_at, updated_at)` | — | [src](../../../core/runtime/db_users.py#L145) |
-| function | `get_user_row` | `(user_id)` | — | [src](../../../core/runtime/db_users.py#L166) |
-| function | `get_user_row_by_email_hash` | `(email_hash)` | — | [src](../../../core/runtime/db_users.py#L173) |
-| function | `get_user_row_by_workspace` | `(workspace)` | Opslag pr. workspace-mappenavn (omvendt lookup). Bruges af cutover-resolveren | [src](../../../core/runtime/db_users.py#L180) |
-| function | `update_user_row` | `(user_id, fields)` | — | [src](../../../core/runtime/db_users.py#L206) |
-| function | `soft_delete_user_row` | `(user_id, *, deleted_at)` | — | [src](../../../core/runtime/db_users.py#L219) |
-| function | `hard_delete_user_row` | `(user_id)` | — | [src](../../../core/runtime/db_users.py#L223) |
-| function | `list_user_rows` | `(*, include_deleted=…)` | — | [src](../../../core/runtime/db_users.py#L231) |
+| function | `_ensure_users_table` | `(conn)` | — | [src](../../../core/runtime/db_users.py#L23) |
+| function | `_create_users_table` | `(conn)` | Idempotent: brugerstyring. Følsomme felter lagres krypteret | [src](../../../core/runtime/db_users.py#L33) |
+| function | `get_user_row_by_google_email_hash` | `(h)` | — | [src](../../../core/runtime/db_users.py#L76) |
+| function | `_ensure_google_links_table` | `(conn)` | — | [src](../../../core/runtime/db_users.py#L94) |
+| function | `set_google_link` | `(email_hash, user_id, role, updated_at)` | — | [src](../../../core/runtime/db_users.py#L108) |
+| function | `get_google_link` | `(email_hash)` | — | [src](../../../core/runtime/db_users.py#L123) |
+| function | `has_google_link_for_user` | `(user_id)` | Har brugeren (user_id) en Google-konto linket? (vedvarende indikator). | [src](../../../core/runtime/db_users.py#L135) |
+| function | `update_google_link_role` | `(user_ids, role)` | Opdatér rollen på alle Google-links der peger på en af `user_ids`. | [src](../../../core/runtime/db_users.py#L147) |
+| function | `insert_user_row` | `(*, user_id, email_hash, email_enc, name, role, workspace, password_hash, discord_id_enc, totp_seed_enc, created_at, updated_at)` | — | [src](../../../core/runtime/db_users.py#L173) |
+| function | `get_user_row` | `(user_id)` | — | [src](../../../core/runtime/db_users.py#L194) |
+| function | `get_user_row_by_email_hash` | `(email_hash)` | — | [src](../../../core/runtime/db_users.py#L201) |
+| function | `get_user_row_by_workspace` | `(workspace)` | Opslag pr. workspace-mappenavn (omvendt lookup). Bruges af cutover-resolveren | [src](../../../core/runtime/db_users.py#L208) |
+| function | `update_user_row` | `(user_id, fields)` | — | [src](../../../core/runtime/db_users.py#L234) |
+| function | `soft_delete_user_row` | `(user_id, *, deleted_at)` | — | [src](../../../core/runtime/db_users.py#L247) |
+| function | `hard_delete_user_row` | `(user_id)` | — | [src](../../../core/runtime/db_users.py#L251) |
+| function | `list_user_rows` | `(*, include_deleted=…)` | — | [src](../../../core/runtime/db_users.py#L259) |
 
 ## `core/runtime/db_view_requests.py`
 _Visnings-forespørgsler: Jarvis spørger desk, desk SVARER._

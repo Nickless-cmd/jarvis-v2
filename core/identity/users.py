@@ -239,6 +239,22 @@ def set_totp_seed(*, discord_id: str, seed: str) -> bool:
     return _update_user_field(discord_id, "totp_seed", str(seed or ""))
 
 
+def set_role(*, discord_id: str, role: str) -> bool:
+    """Sæt en brugers rolle i `users.json` — ÉT af tre lag.
+
+    Kaldes normalt ikke direkte: brug `core.identity.role_sync.set_role`, som
+    også rammer `users`-tabellen og `google_login_links`. Målt 20/11-2026 lod et
+    skift her alene Google-login udstede den GAMLE rolle, fordi link-tabellen
+    har sin egen kopi — og for en bruger uden password er det den eneste vej ind.
+    """
+    role_c = str(role or "").strip().lower()
+    if role_c not in _VALID_ROLES:
+        logger.warning("set_role: ukendt rolle %r — afvist (gyldige: %s)",
+                       role, sorted(_VALID_ROLES))
+        return False
+    return _update_user_field(discord_id, "role", role_c)
+
+
 def get_totp_seed(*, discord_id: str) -> str:
     """Hent en brugers TOTP-seed ("" hvis ikke sat / ukendt bruger)."""
     u = find_user_by_discord_id(discord_id)

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10366/18946 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10369/18949 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -22,10 +22,10 @@ Generated from source. 10366/18946 functions/methods documented (54%). The list 
 | `core.costing` | 6 | 8 | 75% |
 | `core.desktop` | 26 | 35 | 74% |
 | `core.eventbus` | 22 | 39 | 56% |
-| `core.identity` | 80 | 173 | 46% |
+| `core.identity` | 82 | 175 | 46% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 917 | 1634 | 56% |
+| `core.runtime` | 918 | 1635 | 56% |
 | `core.services` | 6968 | 12883 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
@@ -163,7 +163,7 @@ Generated from source. 10366/18946 functions/methods documented (54%). The list 
 - `apps/api/jarvis_api/routes/tool_router.py` :: `get_state` (L25)
 - `apps/api/jarvis_api/routes/totp.py` :: `totp_status` (L62)
 - `apps/api/jarvis_api/routes/transcribe.py` :: `transcribe` (L22)
-- `apps/api/jarvis_api/routes/users.py` :: `delete_one` (L75)
+- `apps/api/jarvis_api/routes/users.py` :: `delete_one` (L94)
 - `apps/api/jarvis_api/routes/users.py` :: `get_one` (L40)
 - `apps/api/jarvis_api/routes/users.py` :: `list_all` (L35)
 - `apps/api/jarvis_api/routes/users.py` :: `patch_one` (L48)
@@ -351,7 +351,7 @@ Generated from source. 10366/18946 functions/methods documented (54%). The list 
 - `core/identity/users.py` :: `User.as_dict` (L59)
 - `core/identity/users.py` :: `find_user_by_name` (L134)
 - `core/identity/users.py` :: `find_user_by_workspace` (L144)
-- `core/identity/users.py` :: `is_known_discord_id` (L256)
+- `core/identity/users.py` :: `is_known_discord_id` (L272)
 - `core/identity/visible_identity.py` :: `load_visible_identity_prompt` (L17)
 - `core/identity/visible_identity.py` :: `load_visible_identity_summary` (L39)
 - `core/identity/workspace_bootstrap.py` :: `WorkspaceBootstrapResult.summary` (L41)
@@ -650,16 +650,16 @@ Generated from source. 10366/18946 functions/methods documented (54%). The list 
 - `core/runtime/db_sensory.py` :: `get_sensory_memory` (L226)
 - `core/runtime/db_sensory.py` :: `insert_sensory_memory` (L104)
 - `core/runtime/db_sensory.py` :: `list_sensory_memories` (L154)
-- `core/runtime/db_users.py` :: `get_google_link` (L121)
-- `core/runtime/db_users.py` :: `get_user_row` (L166)
-- `core/runtime/db_users.py` :: `get_user_row_by_email_hash` (L173)
-- `core/runtime/db_users.py` :: `get_user_row_by_google_email_hash` (L74)
-- `core/runtime/db_users.py` :: `hard_delete_user_row` (L223)
-- `core/runtime/db_users.py` :: `insert_user_row` (L145)
-- `core/runtime/db_users.py` :: `list_user_rows` (L231)
-- `core/runtime/db_users.py` :: `set_google_link` (L106)
-- `core/runtime/db_users.py` :: `soft_delete_user_row` (L219)
-- `core/runtime/db_users.py` :: `update_user_row` (L206)
+- `core/runtime/db_users.py` :: `get_google_link` (L123)
+- `core/runtime/db_users.py` :: `get_user_row` (L194)
+- `core/runtime/db_users.py` :: `get_user_row_by_email_hash` (L201)
+- `core/runtime/db_users.py` :: `get_user_row_by_google_email_hash` (L76)
+- `core/runtime/db_users.py` :: `hard_delete_user_row` (L251)
+- `core/runtime/db_users.py` :: `insert_user_row` (L173)
+- `core/runtime/db_users.py` :: `list_user_rows` (L259)
+- `core/runtime/db_users.py` :: `set_google_link` (L108)
+- `core/runtime/db_users.py` :: `soft_delete_user_row` (L247)
+- `core/runtime/db_users.py` :: `update_user_row` (L234)
 - `core/runtime/db_view_requests.py` :: `hent` (L73)
 - `core/runtime/db_view_requests.py` :: `opret` (L48)
 - `core/runtime/db_view_requests.py` :: `vent_paa_svar` (L94)

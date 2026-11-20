@@ -108,6 +108,13 @@ _Project context — current "where am I working" as set by JarvisX._
 | function | `set_project_root` | `(path)` | Set the project root for the current context. | [src](../../../core/identity/project_context.py#L28) |
 | function | `reset_project_root` | `(token)` | — | [src](../../../core/identity/project_context.py#L38) |
 
+## `core/identity/role_sync.py`
+_Én rolle, tre kilder — og ét sted der skriver til dem alle._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `set_role` | `(*, role, discord_id=…, user_id=…, actor=…)` | Sæt en brugers rolle i alle tre kilder. | [src](../../../core/identity/role_sync.py#L44) |
+
 ## `core/identity/runtime_candidates.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -222,10 +229,11 @@ _User Registry — per-user workspace mapping for multi-user Jarvis._
 | function | `_update_user_field` | `(discord_id, field, value)` | Opdatér ét felt på en bruger (immutabel replace) og persistér. False hvis ukendt. | [src](../../../core/identity/users.py#L210) |
 | function | `set_app_id` | `(*, discord_id, app_id)` | Bind en jarvis-desk-app (UUID4) til en bruger — kryptografisk session-binding. | [src](../../../core/identity/users.py#L231) |
 | function | `set_totp_seed` | `(*, discord_id, seed)` | Sæt/rotér en brugers TOTP-override-seed. SECRET (§6.0): kun owner-session | [src](../../../core/identity/users.py#L236) |
-| function | `get_totp_seed` | `(*, discord_id)` | Hent en brugers TOTP-seed ("" hvis ikke sat / ukendt bruger). | [src](../../../core/identity/users.py#L242) |
-| function | `get_owner` | `()` | Return the single owner user (there should be exactly one). | [src](../../../core/identity/users.py#L248) |
-| function | `is_known_discord_id` | `(discord_id)` | — | [src](../../../core/identity/users.py#L256) |
-| function | `list_member_workspaces` | `()` | Return all registered workspace names (for UI / admin). | [src](../../../core/identity/users.py#L260) |
+| function | `set_role` | `(*, discord_id, role)` | Sæt en brugers rolle i `users.json` — ÉT af tre lag. | [src](../../../core/identity/users.py#L242) |
+| function | `get_totp_seed` | `(*, discord_id)` | Hent en brugers TOTP-seed ("" hvis ikke sat / ukendt bruger). | [src](../../../core/identity/users.py#L258) |
+| function | `get_owner` | `()` | Return the single owner user (there should be exactly one). | [src](../../../core/identity/users.py#L264) |
+| function | `is_known_discord_id` | `(discord_id)` | — | [src](../../../core/identity/users.py#L272) |
+| function | `list_member_workspaces` | `()` | Return all registered workspace names (for UI / admin). | [src](../../../core/identity/users.py#L276) |
 
 ## `core/identity/visible_identity.py`
 

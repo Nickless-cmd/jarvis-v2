@@ -9,6 +9,8 @@ Tabellen lagrer allerede-krypterede/hashede værdier.
 from __future__ import annotations
 
 import sqlite3
+from datetime import UTC, datetime
+from typing import Sequence
 
 from core.runtime.db import connect
 
@@ -140,6 +142,32 @@ def has_google_link_for_user(user_id: str) -> bool:
             "SELECT 1 FROM google_login_links WHERE user_id = ? LIMIT 1", (user_id,),
         ).fetchone()
     return row is not None
+
+
+def update_google_link_role(user_ids: Sequence[str], role: str) -> int:
+    """Opdatér rollen på alle Google-links der peger på en af `user_ids`.
+
+    `google_login_links.user_id` er ikke normaliseret: nogle rækker bærer
+    Discord-id'et, andre den kanoniske UUID. Målt 20/11-2026 bar Michelles link
+    discord-id, mens `users`-tabellen bar UUID — en opdatering på kun det ene id
+    ramte nul rækker, og hendes login udstedte fortsat den gamle rolle.
+    Derfor tages begge former, og opdateringen sker på tværs af dem.
+
+    Returnerer antal ramte rækker.
+    """
+    ids = [str(u or "").strip() for u in user_ids if str(u or "").strip()]
+    if not ids:
+        return 0
+    marks = ", ".join("?" for _ in ids)
+    with connect() as conn:
+        _ensure_google_links_table(conn)
+        cur = conn.execute(
+            f"UPDATE google_login_links SET role = ?, updated_at = ? "
+            f"WHERE user_id IN ({marks})",
+            [str(role or "member"), datetime.now(UTC).isoformat(), *ids],
+        )
+        conn.commit()
+    return cur.rowcount
 
 
 def insert_user_row(

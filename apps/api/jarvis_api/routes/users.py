@@ -63,11 +63,30 @@ def patch_one(user_id: str, req: PatchUserReq,
     extra: dict[str, Any] = {}
     if req.name is not None:
         extra["name"] = req.name
-    if req.role is not None:
-        extra["role"] = req.role
     if extra:
         from core.runtime.db import update_user_row
         update_user_row(user_id, extra)
+    if req.role is not None:
+        # Rollen bor i tre kilder (users.json, users-tabellen, google_login_links).
+        # Målt 20/11-2026: denne rute skrev kun lag 2, så et skift her lod
+        # Google-login udstede den gamle rolle — og for en bruger uden password
+        # er det den eneste vej ind. `set_role` rammer alle tre og rapporterer
+        # hvad der faktisk skete pr. kilde.
+        from core.identity.role_sync import set_role
+
+        skift = set_role(
+            user_id=user_id, role=req.role,
+            actor=str(claims.get("sub") or "owner"),
+        )
+        if not skift.get("ok"):
+            return JSONResponse(
+                status_code=400,
+                content={"ok": False, "error": skift.get("error"),
+                         "kilder": skift.get("kilder")},
+            )
+        return JSONResponse(content={"ok": True, "user": user_db.get_user(user_id),
+                                     "kilder": skift.get("kilder"),
+                                     "bemaerk": skift.get("bemaerk")})
     return JSONResponse(content={"ok": True, "user": user_db.get_user(user_id)})
 
 

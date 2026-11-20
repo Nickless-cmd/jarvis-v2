@@ -184,6 +184,81 @@ def test_delete_writes_audit_entry(isolated_runtime) -> None:
                and e["actor"] == "bjorn" for e in log)
 
 
+def test_samtidige_audit_skrivninger_taber_ingen_post(isolated_runtime) -> None:
+    """Revisionsloggen må ikke tabe poster ved samtidige skrivninger.
+
+    MÅLT 20/11-2026: `_audit` læste hele listen, appende i Python og skrev hele
+    blobben tilbage over to forbindelser. To processer der skrev samtidigt tabte
+    den ene post. En revisionslog der kan tabe poster er ikke et revisionsspor.
+
+    Append'en er nu én atomisk SQL-sætning, så alle kald skal lande — uanset
+    hvor mange der rammer samtidigt.
+    """
+    import threading
+
+    from core.identity import user_db
+
+    antal = 16
+    start = threading.Barrier(antal)
+    fejl: list[BaseException] = []
+
+    def skriv(i: int) -> None:
+        try:
+            start.wait(timeout=10)
+            user_db._audit(user_id=f"u{i}", action=f"handling{i}", actor="test")
+        except BaseException as exc:  # noqa: BLE001 — samles og rapporteres nedenfor
+            fejl.append(exc)
+
+    traade = [threading.Thread(target=skriv, args=(i,)) for i in range(antal)]
+    for t in traade:
+        t.start()
+    for t in traade:
+        t.join(timeout=30)
+
+    assert not fejl, f"skrivninger fejlede: {fejl}"
+    handlinger = {p["action"] for p in user_db.read_audit_log()}
+    manglende = {f"handling{i}" for i in range(antal)} - handlinger
+    assert not manglende, f"tabte poster: {sorted(manglende)}"
+
+
+def test_audit_cap_bevarer_de_nyeste_i_kronologisk_orden(isolated_runtime, monkeypatch) -> None:
+    """Cap'en skal skære de ÆLDSTE væk — ikke de nyeste, og ikke rækkefølgen."""
+    from core.identity import user_db
+
+    monkeypatch.setattr(user_db, "_AUDIT_MAX", 3)
+    for i in range(5):
+        user_db._audit(user_id=f"u{i}", action=f"handling{i}", actor="test")
+
+    log = user_db.read_audit_log()
+    assert [p["action"] for p in log] == ["handling2", "handling3", "handling4"]
+
+
+def test_audit_taaler_korrupt_indhold(isolated_runtime) -> None:
+    """Et korrupt array skal erstattes, ikke kaste — loggen er en sikkerhedsflade."""
+    from core.identity.user_db import _AUDIT_KEY, _audit, read_audit_log
+    from core.runtime.db import connect
+
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO runtime_state_kv (key, value_json, updated_at) VALUES (?, ?, ?)",
+            (_AUDIT_KEY, "ikke-json", "t"),
+        )
+    _audit(user_id="u1", action="efter-korrupt", actor="test")
+    assert [p["action"] for p in read_audit_log()] == ["efter-korrupt"]
+
+
+def test_audit_er_laesbar_straks_efter_skrivning(isolated_runtime) -> None:
+    """Egen proces skal se sin egen post med det samme — ikke efter cache-TTL.
+
+    MÅLT 20/11-2026: read-cachen har TTL 2 s, så et separat script læste en tom
+    liste mens posten lå i DB. Det fik et virkende fix til at se dødt ud.
+    """
+    from core.identity import user_db
+
+    user_db._audit(user_id="u1", action="straks", actor="test")
+    assert any(p["action"] == "straks" for p in user_db.read_audit_log())
+
+
 def _bootstrapped_ws_dir(workspace: str):
     # bootstrap skriver til WORKSPACES_DIR/<workspace> direkte (uden users.json-
     # opslag, som workspace_dir() ellers kræver — det er #154-cutover-gappet).

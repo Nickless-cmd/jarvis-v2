@@ -333,20 +333,92 @@ def add_user(*, email: str, name: str, password: str, role: str = "member",
 
 # ── GDPR-sletning + audit (spec §6) ──────────────────────────────────────────
 _AUDIT_KEY = "user_audit_log"
+_AUDIT_MAX = 1000
 
 
 def _audit(*, user_id: str, action: str, actor: str) -> None:
-    from core.runtime.db import get_runtime_state_value, set_runtime_state_value
-    log = get_runtime_state_value(_AUDIT_KEY, [])
-    if not isinstance(log, list):
-        log = []
-    log.append({"user_id": user_id, "action": action, "actor": actor, "at": _now()})
-    set_runtime_state_value(_AUDIT_KEY, log[-1000:])
+    """Append ÉN post til revisionsloggen — atomisk i SQL.
+
+    MÅLT 20/11-2026: den tidligere udgave læste hele listen, appende i Python og
+    skrev hele blobben tilbage over to forbindelser. To processer der skrev
+    samtidigt tabte en post, og ``db_core``'s read-cache gjorde vinduet større.
+    En revisionslog der kan tabe poster er ikke et revisionsspor.
+
+    Nu er append'en én sætning: ``json_insert(..., '$[#]', ...)`` lægger posten
+    på arrayet inde i SQLite, så samtidige skrivninger serialiseres af SQLite
+    selv. Cap'en skærer til de nyeste poster i kronologisk rækkefølge — også i
+    samme sætning — og korrupt indhold erstattes frem for at kaste.
+    """
+    import json as _json
+
+    from core.runtime.db import connect
+    from core.runtime.db_core import clear_runtime_state_cache
+
+    post = _json.dumps(
+        {"user_id": user_id, "action": action, "actor": actor, "at": _now()},
+        ensure_ascii=False,
+    )
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO runtime_state_kv (key, value_json, updated_at)
+            VALUES (:key, json_array(json(:post)), :ts)
+            ON CONFLICT(key) DO UPDATE SET
+                value_json = CASE
+                    WHEN json_valid(runtime_state_kv.value_json) = 0
+                        THEN json_array(json(:post))
+                    WHEN json_type(runtime_state_kv.value_json) != 'array'
+                        THEN json_array(json(:post))
+                    WHEN json_array_length(runtime_state_kv.value_json) >= :cap
+                        THEN json_insert(
+                            (SELECT json_group_array(json(value)) FROM (
+                                SELECT value FROM (
+                                    SELECT key, value
+                                    FROM json_each(runtime_state_kv.value_json)
+                                    ORDER BY key DESC LIMIT :keep
+                                ) ORDER BY key ASC
+                            )),
+                            '$[#]', json(:post))
+                    ELSE json_insert(runtime_state_kv.value_json, '$[#]', json(:post))
+                END,
+                updated_at = excluded.updated_at
+            """,
+            {
+                "key": _AUDIT_KEY,
+                "post": post,
+                "ts": _now(),
+                "cap": _AUDIT_MAX,
+                "keep": _AUDIT_MAX - 1,
+            },
+        )
+    # Read-cachen har TTL 2 s og invalideres ikke af en skrivning uden om den.
+    # Uden dette læser egen proces en forældet liste lige efter et skift — den
+    # målefælde der fik et virkende fix til at se dødt ud (målt 20/11-2026).
+    clear_runtime_state_cache()
 
 
 def read_audit_log() -> list[dict[str, Any]]:
-    from core.runtime.db import get_runtime_state_value
-    log = get_runtime_state_value(_AUDIT_KEY, [])
+    """Læs revisionsloggen direkte fra DB — uden om read-cachen.
+
+    Loggen skal kunne efterprøves lige efter et skift, også fra en anden
+    proces. Cachen giver op til 2 s efterslæb, og det gjorde et virkende
+    rolleskift usynligt for den der verificerede det (målt 20/11-2026). Loggen
+    læses ikke i en varm sti, så en frisk DB-læsning er den rigtige pris.
+    """
+    import json as _json
+
+    from core.runtime.db import connect
+
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT value_json FROM runtime_state_kv WHERE key = ?", (_AUDIT_KEY,)
+        ).fetchone()
+    if row is None:
+        return []
+    try:
+        log = _json.loads(str(row["value_json"]))
+    except Exception:  # korrupt JSON: hellere en tom log end et brudt kald
+        return []
     return log if isinstance(log, list) else []
 
 

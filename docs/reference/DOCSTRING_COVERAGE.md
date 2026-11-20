@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10370/18950 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10371/18949 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -22,7 +22,7 @@ Generated from source. 10370/18950 functions/methods documented (54%). The list 
 | `core.costing` | 6 | 8 | 75% |
 | `core.desktop` | 26 | 35 | 74% |
 | `core.eventbus` | 22 | 39 | 56% |
-| `core.identity` | 82 | 175 | 46% |
+| `core.identity` | 84 | 175 | 48% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 918 | 1635 | 56% |
@@ -38,12 +38,12 @@ Generated from source. 10370/18950 functions/methods documented (54%). The list 
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 10 | 11 | 90% |
-| `scripts` | 346 | 696 | 49% |
+| `scripts` | 345 | 695 | 49% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2643)
+## Undocumented public functions (2642)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L234)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -342,7 +342,6 @@ Generated from source. 10370/18950 functions/methods documented (54%). The list 
 - `core/identity/user_db.py` :: `is_api_key_revoked` (L272)
 - `core/identity/user_db.py` :: `list_users` (L213)
 - `core/identity/user_db.py` :: `mute_user` (L180)
-- `core/identity/user_db.py` :: `read_audit_log` (L347)
 - `core/identity/user_db.py` :: `set_consent` (L201)
 - `core/identity/user_db.py` :: `set_email_verified` (L175)
 - `core/identity/user_db.py` :: `set_quota_tier` (L188)

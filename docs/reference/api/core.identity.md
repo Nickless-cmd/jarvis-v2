@@ -205,9 +205,9 @@ _Højniveau-bruger-adapter (spec 2026-06-15) ovenpå users-tabellen._
 | function | `register_user` | `(*, email, name, password, base_url, role=…)` | Selvregistrering (officiel vej): opret bruger (email_verified=0) + | [src](../../../core/identity/user_db.py#L295) |
 | function | `verify_email_token` | `(token)` | Forbrug et verifikations-token → markér brugeren email_verified. | [src](../../../core/identity/user_db.py#L310) |
 | function | `add_user` | `(*, email, name, password, role=…, workspace=…, tier=…)` | Owner/Jarvis' manuelle oprettelse: opretter en FÆRDIG-verificeret bruger | [src](../../../core/identity/user_db.py#L319) |
-| function | `_audit` | `(*, user_id, action, actor)` | — | [src](../../../core/identity/user_db.py#L338) |
-| function | `read_audit_log` | `()` | — | [src](../../../core/identity/user_db.py#L347) |
-| function | `delete_user` | `(user_id, *, mode=…, actor=…)` | mode='soft' → deleted_at-timestamp (fortryd-venlig, grace-period). | [src](../../../core/identity/user_db.py#L353) |
+| function | `_audit` | `(*, user_id, action, actor)` | Append ÉN post til revisionsloggen — atomisk i SQL. | [src](../../../core/identity/user_db.py#L339) |
+| function | `read_audit_log` | `()` | Læs revisionsloggen direkte fra DB — uden om read-cachen. | [src](../../../core/identity/user_db.py#L400) |
+| function | `delete_user` | `(user_id, *, mode=…, actor=…)` | mode='soft' → deleted_at-timestamp (fortryd-venlig, grace-period). | [src](../../../core/identity/user_db.py#L425) |
 
 ## `core/identity/users.py`
 _User Registry — per-user workspace mapping for multi-user Jarvis._

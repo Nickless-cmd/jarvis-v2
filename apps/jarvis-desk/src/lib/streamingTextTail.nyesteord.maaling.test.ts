@@ -34,7 +34,11 @@ interface Maaling {
   sidsteHarHale: boolean
 }
 
-describe('det nyeste ord under streaming', () => {
+// Browser-måling: kræver en rigtig Chromium (Playwright). Uden flaget springes
+// den over, så det almindelige desk-job — der ikke installerer en browser —
+// ikke fejler på et miljø det ikke har. MÅLT 20/11-2026: uden denne vagt
+// fejlede `desk (lint + typecheck + test)` med «Failed to launch chromium».
+describe.skipIf(process.env.RUN_BROWSER_LAYOUT_MEASUREMENT !== '1')('det nyeste ord under streaming', () => {
   it('farves i det øjeblik det lander, ikke først når det næste kommer', async () => {
     const baenk = await aabnBaenk({ theme: 'dark' })
     try {

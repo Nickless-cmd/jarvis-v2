@@ -106,7 +106,12 @@ async function maalFlade(flade: 'chat' | 'code', tekst: string): Promise<FladeMa
   }
 }
 
-describe('ordhalen i begge flader', () => {
+// Browser-måling: kræver en rigtig Chromium (Playwright). Uden flaget springes
+// den over, så det almindelige desk-job — der ikke installerer en browser —
+// ikke fejler på et miljø det ikke har. MÅLT 20/11-2026: uden denne vagt
+// fejlede `desk (lint + typecheck + test)` med «Failed to launch chromium»,
+// og den grønne browser-vagt blev dermed til en rød CI for alle.
+describe.skipIf(process.env.RUN_BROWSER_LAYOUT_MEASUREMENT !== '1')('ordhalen i begge flader', () => {
   it('kører i chat og i code — samme pakning, samme farve-ur', async () => {
     // Seks ord uden efterfølgende mellemrum, som SSE leverer dem. Halen er de
     // sidste tre (`STREAMING_TAIL_WORD_LIMIT`); resten skal stå `settled`.

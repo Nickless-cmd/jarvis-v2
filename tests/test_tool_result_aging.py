@@ -213,3 +213,45 @@ def test_maerket_naevner_den_OPRINDELIGE_laengde():
     ud, _ = age_tool_results(ex, mode="active", strength="strong",
                              round_index=12, compress_fn=lambda c: "kort")
     assert ud[0].results[0].content.startswith("[tool-resultat forkortet fra 3000 tegn]")
+
+
+# ── Recovery-store: originalen maa aldrig gaa tabt ved aging ──────────────
+
+
+def test_ryddet_resultat_gemmes_og_kan_hentes(tmp_path, monkeypatch):
+    """Manglende persistens foer clear skal faa testen til at fejle."""
+    from core.services.tool_result_aging import recover_tool_result
+
+    runtime_home = tmp_path / "jarvis-home"
+    monkeypatch.setenv("JARVIS_HOME", str(runtime_home))
+    original = "oprindeligt resultat med æøå"
+    ex = _exchanges(6, content=original)
+
+    out, metrics = age_tool_results(
+        ex, mode="active", strength="strong", round_index=7, keep_full=5)
+
+    stored = list((runtime_home / "tool_results").glob("*.txt"))
+    assert metrics["changed"] is True
+    assert len(stored) == 1
+    assert stored[0].read_text(encoding="utf-8") == original
+    assert recover_tool_result("1") == original
+    assert "nøgle: 1" in out[0].results[0].content
+    assert str(stored[0]) in out[0].results[0].content
+
+
+def test_komprimeret_resultat_gemmer_originalen(tmp_path, monkeypatch):
+    """Recovery-skrivningen skal ogsaa ligge foran compress-grenen."""
+    from core.services.tool_result_aging import recover_tool_result
+
+    runtime_home = tmp_path / "jarvis-home"
+    monkeypatch.setenv("JARVIS_HOME", str(runtime_home))
+    original = "q" * 3000
+    ex = _exchanges(6, content=original)
+
+    out, metrics = age_tool_results(
+        ex, mode="active", strength="strong", round_index=12, keep_full=5,
+        compress_fn=lambda _content: "kort sammendrag")
+
+    assert metrics["compressed"] == 1
+    assert recover_tool_result("1") == original
+    assert "nøgle: 1" in out[0].results[0].content

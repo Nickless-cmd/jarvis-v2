@@ -113,4 +113,30 @@ describe('et nyt run efter slutbeskeden', () => {
     expect(gruppeSkjult(view.container)).toBe(true)
     expect(hoved(view.container)).not.toBeNull()
   })
+
+  // Den utætte kant: naar det nye run STREAMER, er `svarRuller` sand igen — saa
+  // er det alene brugerens `aabenManuelt` der afgoer folden. Uden denne gren
+  // forsvandt hovedet netop i det vindue, fordi `arbejdeKoerer` var sand.
+  it('beholder hovedet ogsaa naar det nye run streamer med folden lukket', () => {
+    const view = render(
+      <RaekkeTranskript blocks={TUR} streaming finalAnswerStarted svarRuller={false} />,
+    )
+    const knap = hoved(view.container)
+    expect(knap).toBeTruthy()
+    // Brugeren folder UD og SAMMEN: et valg om svaret.
+    fireEvent.click(knap!)
+    fireEvent.click(knap!)
+    expect(gruppeSkjult(view.container)).toBe(true)
+
+    // Det nye run leverer nu data — `svarRuller` er sand, og `arbejdeEfterSvar`
+    // staar stadig. Folden skal blive lukket, og hovedet skal blive.
+    view.rerender(
+      <RaekkeTranskript
+        blocks={TUR} streaming finalAnswerStarted svarRuller arbejdeEfterSvar
+      />,
+    )
+
+    expect(gruppeSkjult(view.container)).toBe(true)
+    expect(hoved(view.container)).not.toBeNull()
+  })
 })

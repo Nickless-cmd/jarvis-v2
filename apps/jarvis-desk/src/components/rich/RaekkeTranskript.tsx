@@ -564,6 +564,10 @@ function RaekkeTranskriptImpl({
   // ansigt — hovedet bliver staaende som den knap der viser at der arbejdes.
   const nytRunEfterSvar = arbejdeEfterSvar && !svarRullerAktiv
   const arbejdeKoerer = arbejdeEfterSvar || svarRullerAktiv
+  // Folden er brugerens valg om SVARET og holdes: et nyt run maa ikke aabne
+  // den. Uden et valg aabner den naar arbejdet koerer — undtagen i vinduet
+  // efter et laest svar, hvor `nytRunEfterSvar` holder den lukket.
+  const aaben = aabenManuelt ?? (arbejdeKoerer && !nytRunEfterSvar)
   const turSekunder = streaming ? Math.max(0, Math.floor(elapsedMs / 1000)) : varighedSekunder
   // Hovedet er turens RESULTAT, ikke en status — samme regel som chat mode.
   // Bjørn 14/11-2026: «lad turhoved være som det er, gør det usynlig til hoved
@@ -571,7 +575,7 @@ function RaekkeTranskriptImpl({
   // turens ansigt og bærer uret; hovedet dukker først op når folden lukker
   // (`arbejdeKoerer` falsk), og står derefter fast på turen.
   // Et rent, afsluttet svar uden arbejde beholder den enkle visning uden hoved.
-  const visTurhoved = arbejde.length > 0 && (!arbejdeKoerer || nytRunEfterSvar)
+  const visTurhoved = arbejde.length > 0 && !(arbejdeKoerer && aaben)
   // Tokenfeltet eksisterer først når tælleren faktisk er begyndt. Dermed står
   // der hverken `0 tokens` eller et ensomt `k tokens` ved turstart.
   //
@@ -580,7 +584,6 @@ function RaekkeTranskriptImpl({
   // falsk. Bandt vi tallet til streamen, ville resultatet mangle sit eget
   // resultat i den fase det ejer. Samme regel som chat mode.
   const visTokens = Number.isFinite(tokens) && tokens > 0
-  const aaben = aabenManuelt ?? (arbejdeKoerer && !nytRunEfterSvar)
   // ── Rundelinjen findes fra turstart (Bjørn 16/11-2026) ──────────────────
   //
   // «den aktive rundelinje skal være synlig fra starten for det er den der

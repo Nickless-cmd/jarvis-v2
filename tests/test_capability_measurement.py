@@ -114,3 +114,61 @@ def test_skrivningen_gaar_gennem_den_faelles_vej(
         "emotional_baseline",
     }, kald
     assert json.loads(str(kald["confidence_by_domain"])) == {"ny-evne": 0.71}
+
+
+# ── Sporet skal kunne skelne og ikke kunne forurenes (20/11-2026) ────────────
+
+
+def test_en_rettelse_taeller_ikke_som_en_maaling(
+    skrivninger: list[dict[str, object]],
+) -> None:
+    """At rulle et forkert løft tilbage er en RETTELSE, ikke en måling.
+
+    MÅLT 20/11-2026: `dil_widgets animationstal` blev rullet 0,41 → 0,36, og
+    sporet skrev det som en måling. `_mekanisk_maalte` ville derefter kalde
+    tallet «målt» — selv om ingen nogensinde havde målt evnen. En korrektion
+    flytter tallet; den beviser det ikke.
+    """
+    svar = cm.set_domain_confidence(
+        "rettelses-doemme", 0.36, evidence="rullet tilbage", kind="correction"
+    )
+    assert svar["recorded"] is True, svar
+    assert svar["kind"] == "correction", svar
+    assert "rettelses-doemme" not in cm.maalte_vaerdier()
+
+
+def test_en_maaling_taeller_i_sporet(skrivninger: list[dict[str, object]]) -> None:
+    """Den modsatte side: en ægte måling SKAL kunne læses tilbage.
+
+    Uden denne ville en vagt der altid svarer «ikke målt» se grøn ud.
+    """
+    cm.set_domain_confidence("maale-doemme", 0.81, evidence="353/353 tabeller")
+    assert cm.maalte_vaerdier().get("maale-doemme") == 0.81
+
+
+def test_en_ukendt_kind_skrives_ikke(
+    skrivninger: list[dict[str, object]],
+) -> None:
+    """`kind` er en kontrakt, ikke en fri tekst — ellers kan den omgås med et gæt."""
+    svar = cm.set_domain_confidence("x", 0.5, evidence="bevis", kind="gaet")
+    assert svar["recorded"] is False, svar
+    assert "kind" in svar["reason"], svar
+    assert skrivninger == []
+
+
+def test_sporet_foelger_husets_state_mappe(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """Stien afgøres ved KALDSTID, så husets testværn også dækker sporet.
+
+    MÅLT 20/11-2026: stien var en modul-konstant beregnet ved import. `clamp`,
+    `ny-evne` og «Souls-Build  Analyse» med beviset «målt i test» lå derfor i
+    den LEVENDE log sammen med de ægte målinger.
+    """
+    from pathlib import Path
+
+    from core.runtime import state_store
+
+    monkeypatch.setattr(state_store, "_STATE_DIR", Path(str(tmp_path)))
+    assert cm._ledger_path().parent == Path(str(tmp_path))
+

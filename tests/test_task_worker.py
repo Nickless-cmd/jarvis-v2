@@ -554,9 +554,17 @@ def test_bevis_porten_maaler_runnet_ikke_sessionen(isolated_runtime) -> None:
         with connect() as conn:
             conn.execute(
                 "INSERT INTO visible_runs"
-                " (run_id, lane, provider, model, status, text_preview)"
-                " VALUES (?,?,?,?,?,?)",
-                (run_id, "visible", "ollama", "test", "completed", tekst),
+                " (run_id, lane, provider, model, status, text_preview, finished_at)"
+                " VALUES (?,?,?,?,?,?,?)",
+                (
+                    run_id,
+                    "visible",
+                    "ollama",
+                    "test",
+                    "completed",
+                    tekst,
+                    "2026-11-20T00:00:00Z",
+                ),
             )
 
     # 1) intet spor overhovedet

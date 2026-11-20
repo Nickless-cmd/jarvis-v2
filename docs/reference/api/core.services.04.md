@@ -536,9 +536,10 @@ _Fælles skrivevej for MÅLTE capability-værdier._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_skriv_maalingsspor` | `(domain, value, evidence)` | Én linje pr. måling. Uden sporet er «målt» et ord uden indhold. | [src](../../../core/services/capability_measurement.py#L39) |
-| function | `maalte_vaerdier` | `()` | Domæne → den senest MÅLTE værdi. Tom når sporet ikke findes. | [src](../../../core/services/capability_measurement.py#L66) |
-| function | `set_domain_confidence` | `(domain, value, *, evidence)` | Sæt domænets confidence til en MÅLT værdi. | [src](../../../core/services/capability_measurement.py#L86) |
+| function | `_ledger_path` | `()` | Stien afgøres ved KALDSTID, ikke ved import. | [src](../../../core/services/capability_measurement.py#L52) |
+| function | `_skriv_maalingsspor` | `(domain, value, evidence, kind)` | Én linje pr. hændelse. Uden sporet er «målt» et ord uden indhold. | [src](../../../core/services/capability_measurement.py#L73) |
+| function | `maalte_vaerdier` | `()` | Domæne → den senest MÅLTE værdi. Tom når sporet ikke findes. | [src](../../../core/services/capability_measurement.py#L102) |
+| function | `set_domain_confidence` | `(domain, value, *, evidence, kind=…)` | Sæt domænets confidence til en MÅLT værdi. | [src](../../../core/services/capability_measurement.py#L130) |
 
 ## `core/services/causal_graph.py`
 _Causal graph query API._

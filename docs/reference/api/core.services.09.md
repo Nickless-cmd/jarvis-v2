@@ -403,9 +403,9 @@ _Canonical, audit-only attribution metadata for Git commit messages._
 | function | `new_manual_run_id` | `(now=…, suffix=…)` | Return a sortable id for a commit without an existing runtime run. | [src](../../../core/services/commit_attribution.py#L95) |
 | function | `parse_git_trailers` | `(message)` | Parse the final trailer block with Git's own trailer semantics. | [src](../../../core/services/commit_attribution.py#L111) |
 | function | `validate_trailers` | `(trailers)` | Validate parsed trailers without reading process or repository state. | [src](../../../core/services/commit_attribution.py#L132) |
-| function | `validate_commit_message` | `(message)` | Return every attribution error in a complete commit message. | [src](../../../core/services/commit_attribution.py#L191) |
-| function | `_split_final_trailer_block` | `(message)` | — | [src](../../../core/services/commit_attribution.py#L197) |
-| function | `render_attributed_message` | `(message, attribution)` | Replace managed trailers and return a deterministic commit message. | [src](../../../core/services/commit_attribution.py#L212) |
+| function | `validate_commit_message` | `(message)` | Return every attribution error in a complete commit message. | [src](../../../core/services/commit_attribution.py#L204) |
+| function | `_split_final_trailer_block` | `(message)` | — | [src](../../../core/services/commit_attribution.py#L210) |
+| function | `render_attributed_message` | `(message, attribution)` | Replace managed trailers and return a deterministic commit message. | [src](../../../core/services/commit_attribution.py#L225) |
 
 ## `core/services/commit_gate_arbiter.py`
 _Pre-eksekverings commit-gate arbitrage — udskilt fra visible_runs (Boy Scout, 2026-07-08)._

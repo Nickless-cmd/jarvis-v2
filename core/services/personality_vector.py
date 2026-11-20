@@ -89,6 +89,12 @@ Mulige felter:
 - confidence_by_domain: {{"python": 0.0-1.0, "frontend": 0.0-1.0, "ops": 0.0-1.0, ...}}
   Er domænet ikke i vektoren endnu, så SÆT det første gang turen siger noget om
   det. Et domæne uden et tal kan aldrig justeres senere.
+  MEN et NYT domæne kræver at turen faktisk rørte det: et værktøjskald, en
+  måling, en test, en fil. Navngiv det som det arbejde der blev gjort
+  («database-skema opslag»), ikke som det emne samtalen strejfede
+  («souls-build analyse»). Målt 20/11-2026: 689 domæner har stået i vektoren,
+  509 har ALDRIG ændret tal, og flere af dem findes ikke i koden. De blev ikke
+  svagheder — de blev læringsmål der ikke kunne arbejdes med eller lukkes.
 - communication_style: {{"directness": 0.0-1.0, "humor": 0.0-1.0, "formality": 0.0-1.0}}
 - learned_preferences: ["præference"] (tilføj nye, behold gamle)
 - recurring_mistakes: ["fejl i menneskelig form"]

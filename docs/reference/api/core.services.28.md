@@ -382,20 +382,20 @@ _Task worker — consumes queued runtime_tasks in heartbeat tick cadence._
 | function | `_run_did_work` | `(session_id, goal, *, run_id=…)` | Beviser sessionen at runnet FAKTISK gjorde noget for dette mål? | [src](../../../core/services/task_worker.py#L259) |
 | function | `_confidence_delta` | `(outcome, did_work)` | Kun et FEJLET run flytter noget. Arbejde er ikke en måling. | [src](../../../core/services/task_worker.py#L294) |
 | function | `record_curriculum_outcome` | `(domain, *, outcome, did_work)` | Registrér et afsluttet curriculum-run mod domænets confidence. | [src](../../../core/services/task_worker.py#L318) |
-| function | `_make_curriculum_completion_callback` | `(domain, goal)` | — | [src](../../../core/services/task_worker.py#L367) |
-| function | `_handle_curriculum_focus` | `(task)` | Læringsmål fra self_experiments — sendes til en autonom bane med værktøjer. | [src](../../../core/services/task_worker.py#L383) |
-| function | `_execute_task` | `(task)` | Execute a single task and persist its final status. Never raises. | [src](../../../core/services/task_worker.py#L472) |
-| function | `tick_task_worker` | `(budget=…)` | Run one worker tick: claim and execute up to ``budget`` tasks. | [src](../../../core/services/task_worker.py#L501) |
-| function | `_matching_agency_edge` | `(*, scope, goal)` | — | [src](../../../core/services/task_worker.py#L546) |
-| function | `_edge_by_id` | `(edges, edge_id)` | — | [src](../../../core/services/task_worker.py#L568) |
-| function | `_store_agency_repair_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L575) |
-| function | `_store_observability_repair_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L583) |
-| function | `_store_theater_refactor_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L591) |
-| function | `_matching_theater_file` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L599) |
-| function | `_suggested_agency_files` | `(*, scope, edge)` | — | [src](../../../core/services/task_worker.py#L614) |
-| function | `_suggested_observability_files` | `(*, scope, service)` | — | [src](../../../core/services/task_worker.py#L650) |
-| function | `_suggested_theater_files` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L664) |
-| function | `build_task_worker_surface` | `()` | Mission Control-surface: hvad ligger der i koeen, og hvad endte de i? | [src](../../../core/services/task_worker.py#L685) |
+| function | `_make_curriculum_completion_callback` | `(domain, goal)` | — | [src](../../../core/services/task_worker.py#L382) |
+| function | `_handle_curriculum_focus` | `(task)` | Læringsmål fra self_experiments — sendes til en autonom bane med værktøjer. | [src](../../../core/services/task_worker.py#L398) |
+| function | `_execute_task` | `(task)` | Execute a single task and persist its final status. Never raises. | [src](../../../core/services/task_worker.py#L487) |
+| function | `tick_task_worker` | `(budget=…)` | Run one worker tick: claim and execute up to ``budget`` tasks. | [src](../../../core/services/task_worker.py#L516) |
+| function | `_matching_agency_edge` | `(*, scope, goal)` | — | [src](../../../core/services/task_worker.py#L561) |
+| function | `_edge_by_id` | `(edges, edge_id)` | — | [src](../../../core/services/task_worker.py#L583) |
+| function | `_store_agency_repair_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L590) |
+| function | `_store_observability_repair_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L598) |
+| function | `_store_theater_refactor_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L606) |
+| function | `_matching_theater_file` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L614) |
+| function | `_suggested_agency_files` | `(*, scope, edge)` | — | [src](../../../core/services/task_worker.py#L629) |
+| function | `_suggested_observability_files` | `(*, scope, service)` | — | [src](../../../core/services/task_worker.py#L665) |
+| function | `_suggested_theater_files` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L679) |
+| function | `build_task_worker_surface` | `()` | Mission Control-surface: hvad ligger der i koeen, og hvad endte de i? | [src](../../../core/services/task_worker.py#L700) |
 
 ## `core/services/taste_profile.py`
 _Taste Profile — accumulating aesthetic preferences for code, design, and communication._

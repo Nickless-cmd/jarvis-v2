@@ -123,10 +123,10 @@ _Søg i en bundtet app (asar) og få MODULSTIEN med, ikke bare et byte-offset._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `laes_header` | `(sti)` | Returnér (header-JSON, data-start). Rejser ValueError hvis filen ikke er en asar. | [src](../../../scripts/bundt_soeg.py#L57) |
-| function | `filkort` | `(header)` | Returnér {modulsti: (offset, størrelse)} for alle filer i headeren. | [src](../../../scripts/bundt_soeg.py#L84) |
-| function | `modul_for` | `(offset_i_data, kort)` | Find modulstien der dækker et offset relativt til data-start. | [src](../../../scripts/bundt_soeg.py#L111) |
-| function | `soeg` | `(fil, moenster, *, kontekst, maks)` | Søg efter `moenster` og berig hvert træf med modulsti. | [src](../../../scripts/bundt_soeg.py#L119) |
-| function | `_hoved` | `(argv=…)` | — | [src](../../../scripts/bundt_soeg.py#L148) |
+| function | `filkort` | `(header)` | Returnér {modulsti: (offset, størrelse)} for alle filer i headeren. | [src](../../../scripts/bundt_soeg.py#L89) |
+| function | `modul_for` | `(offset_i_data, kort)` | Find modulstien der dækker et offset relativt til data-start. | [src](../../../scripts/bundt_soeg.py#L116) |
+| function | `soeg` | `(fil, moenster, *, kontekst, maks)` | Søg efter `moenster` og berig hvert træf med modulsti. | [src](../../../scripts/bundt_soeg.py#L124) |
+| function | `_hoved` | `(argv=…)` | — | [src](../../../scripts/bundt_soeg.py#L153) |
 
 ## `scripts/cache_break_report.py`
 _Hvor braekker praefiks-cachen — og hvilken besked gjorde det?_

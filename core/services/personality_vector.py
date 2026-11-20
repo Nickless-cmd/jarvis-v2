@@ -109,6 +109,42 @@ Regler:
 """
 
 
+_BEVIS_LOFT = 400
+
+
+def _bevis_vindue(tekst: object, *, loft: int = _BEVIS_LOFT) -> str:
+    """Bevis-vinduet dommeren ser — med HALEN med, og med klippet navngivet.
+
+    Målt 20/11-2026: vinduet var `tekst[:400]` UDEN markering af at det var
+    klippet. 59 % af mine svar længere end 400 tegn (6.214 af 10.494) ender
+    midt i et ord ved præcis den grænse. Dommeren så derfor et brat stop og
+    skrev det ind som `recurring_mistakes`: «Afbrød sit eget svar midt i
+    sætningen». 14 sådanne poster stod i vektoren — alle med et citat der
+    stopper midt i et ord («…frem for at løft», «…ikke deterministis»), mens
+    de samme beskeder i `chat_messages` slutter korrekt. Fejlen var i
+    MÅLINGEN, ikke i svaret.
+
+    Derfor: hoved + eksplicit note + den ÆGTE slutning. Spørgsmålet «blev
+    svaret afbrudt?» afgøres af slutningen, ikke af hvor vinduet klipper.
+    """
+    from core.services.text_clip import clip_text
+
+    t = str(tekst or "").strip()
+    if len(t) <= loft:
+        return t
+    hale = max(loft // 4, 60)
+    hoved = clip_text(t, limit=max(loft - hale, 1))
+    slut = t[-hale:].strip()
+    udeladt = max(len(t) - len(hoved) - len(slut), 0)
+    return (
+        f"{hoved}\n"
+        f"[… {udeladt} tegn udeladt MIDT i svaret. Det er VINDUET der klipper — "
+        f"ikke Jarvis der afbryder. Bedøm aldrig afbrydelse ud fra dette; "
+        f"den ægte slutning står nedenfor.]\n"
+        f"{slut}"
+    )
+
+
 def update_personality_vector_from_run(
     *,
     run_id: str,
@@ -127,8 +163,8 @@ def update_personality_vector_from_run(
     user_prompt = (
         f"Nuværende vektor:\n{current_json}\n\n"
         f"Status: {outcome_status}\n"
-        f"Bruger: {user_message[:400]}\n"
-        f"Svar: {assistant_response[:400]}\n\n"
+        f"Bruger: {_bevis_vindue(user_message)}\n"
+        f"Svar: {_bevis_vindue(assistant_response)}\n\n"
         f"Returner opdateret JSON:"
     )
 

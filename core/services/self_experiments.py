@@ -216,7 +216,12 @@ def generate_learning_curriculum() -> dict[str, object]:
             best = result.get("best_cohort", "")
             if best and result.get("significant"):
                 curriculum.append({
-                    "focus": exp.get("hypothesis", "")[:60],
+                    # `[:60]` klippede midt i ordet — samme fejlklasse som
+                    # `mistake[:60]` blev rettet for. Maalt 20/11-2026 endte
+                    # 6 af de 8 nyeste curriculum-focus-raekker midt i et ord
+                    # («...ud fra proce», «...jeg skal vide om det er fronte»),
+                    # og de var derfor ikke til at arbejde med som maal.
+                    "focus": _klip_ord_graense(exp.get("hypothesis", "")),
                     "type": "experiment_conclusion",
                     "suggestion": f"Anvend: {best} er bedre (diff={result.get('difference', 0):.0%})",
                     "priority": 0.6,
@@ -284,7 +289,7 @@ def _curriculum_summary(
     «No curriculum generated yet» sagde intet om det. Nu staar det der.
     """
     if curriculum:
-        navne = ", ".join(str(c["focus"])[:20] for c in curriculum[:3])
+        navne = ", ".join(_klip_ord_graense(c["focus"], 40) for c in curriculum[:3])
         return f"{len(curriculum)} learning focuses: {navne}"
     if kilde_fejl:
         return f"Ingen plan — kilderne fejlede: {', '.join(sorted(set(kilde_fejl)))}"
@@ -449,7 +454,7 @@ def materialize_learning_curriculum_tasks(
         priority = _curriculum_priority(float(item.get("priority") or 0.0))
         task = runtime_tasks.create_task(
             kind="curriculum-focus",
-            goal=suggestion[:240],
+            goal=_klip_ord_graense(suggestion, 240),
             origin=origin,
             scope=focus,
             priority=priority,

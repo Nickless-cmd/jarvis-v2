@@ -175,3 +175,50 @@ def test_planen_gaar_videre_til_naeste_kandidat_naar_de_svageste_er_i_koeen(
         for tid in anden["task_ids"]
     }
     assert scopes == {"vision capability analysis", "godkendelses- og kortanalyse"}
+
+
+# ── Eksperiment-konklusionerne klippede stadig midt i ordet (20/11-2026) ─────
+
+
+def test_konklusion_fra_eksperiment_klippes_ved_ordgraense(monkeypatch):
+    """`exp.get("hypothesis", "")[:60]` var den sidste rå klipning i planen.
+
+    Samme fejlklasse som `mistake[:60]` — men den overlevede den første
+    rettelse, fordi den ligger i en anden gren af samme funktion. Et
+    læringsmål der ender i «...ud fra proce» kan ikke arbejdes med.
+    """
+    import json
+
+    import core.services.self_experiments as SE
+
+    hypotese = ("Konkluderer at processerne 'kører som det skal' ud fra "
+                "proces-tilstedeværelse alene — uden at måle arbejdet i de "
+                "to ender, og uden at verificere starttid mod commit-tid")
+    assert len(hypotese) > 60
+
+    monkeypatch.setattr(
+        SE, "list_cognitive_experiments",
+        lambda **_: [{
+            "hypothesis": hypotese,
+            "result": json.dumps({"best_cohort": "kort", "significant": True,
+                                  "difference": 0.22}),
+        }],
+    )
+    monkeypatch.setattr(
+        "core.runtime.db.get_latest_cognitive_personality_vector",
+        lambda: {"confidence_by_domain": json.dumps({}),
+                 "recurring_mistakes": json.dumps([])},
+    )
+
+    flade = SE.generate_learning_curriculum()
+    konklusioner = [c for c in flade["curriculum"]
+                    if c["type"] == "experiment_conclusion"]
+    assert konklusioner, "eksperiment-konklusionen mangler i planen"
+
+    fokus = str(konklusioner[0]["focus"])
+    assert fokus in hypotese, "klippet er ikke et forstykke af originalen"
+    rester = hypotese[len(fokus):]
+    assert rester == "" or rester.startswith(" "), (
+        f"klippet rammer midt i et ord: «{fokus[-12:]}»"
+    )
+

@@ -38,6 +38,45 @@ def test_personality_vector_module_imports():
     assert hasattr(pv, "_merge_vector")
 
 
+def test_dommerens_bevis_vindue_viser_den_aegte_slutning():
+    """Dommeren må ikke kunne læse et KLIP som et afbrudt svar.
+
+    Målt 20/11-2026: `assistant_response[:400]` blev sendt til dommeren uden
+    markering. 59 % af mine svar over 400 tegn (6.214 af 10.494) ender midt i
+    et ord ved præcis den grænse, så dommeren skrev «Afbrød sit eget svar midt
+    i sætningen» ind som en gentagen fejl — 14 gange — mens beskederne i
+    `chat_messages` slutter korrekt. Fejlen var i målingen.
+    """
+    from core.services.personality_vector import _bevis_vindue
+
+    # Slutningen er det der AFGØR spørgsmålet, og den ligger langt efter 400.
+    slutning = "Det er derfor målingen kom først."
+    svar = ("og den skal lukkes med et konkret tal. " * 60) + slutning
+    assert len(svar) > 2000
+
+    # Forudsætningen for testen: et råt [:400]-klip hugger midt i et ord.
+    raat = svar[:400]
+    assert raat[-1].isalnum() and raat[-2].isalnum(), "klippet ramte ikke midt i et ord"
+
+    bevis = _bevis_vindue(svar)
+
+    # 1) Den ægte slutning er med — så afbrydelse kan afgøres.
+    assert bevis.rstrip().endswith(slutning), bevis[-80:]
+    # 2) Klippet er NAVNGIVET, så det ikke læses som Jarvis' eget stop.
+    assert "VINDUET" in bevis
+    assert "afbryder" in bevis
+    # 3) Beviset slutter ikke midt i et ord (det gjorde det rå klip).
+    assert not (bevis[-1].isalnum() and bevis[-2].isalnum())
+
+
+def test_kort_svar_gaar_uaendret_igennem():
+    """Under loftet må beviset ikke ændres — ingen støj på korte svar."""
+    from core.services.personality_vector import _bevis_vindue
+
+    kort = "Kort og korrekt svar."
+    assert _bevis_vindue(kort) == kort
+
+
 # ── Tre felter var uopnåelige fra tomme (målt 25/9-2026) ───────────────────
 #
 # Over ALLE 1007 versioner af vektoren på CT105:

@@ -1313,7 +1313,7 @@ export function ChatView({
               finalAnswerStarted={stream.finalAnswerStarted || stream.svarLaast} arbejdeEfterSvar={stream.arbejdeEfterSvar} rundeEtiketter={stream.rundeEtiketter}
               tankeResumeer={stream.tankeResumeer} config={raekkeConfig}
               tokens={stream.usage.output}
-              paceFinalAnswer={afslutterSvarPacing} flushFinalAnswer={stream.status === 'done'}
+              paceFinalAnswer={afslutterSvarPacing}
               onAnswerPaced={markerSvarPacet} />
           </>
         )}

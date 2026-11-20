@@ -5,6 +5,15 @@ The repository-wide status source remains
 This file records the status of the delivered Jarvis Desk changes requested for
 implementation.
 
+## Desk: no visual dump at `message_stop` — complete locally (2026-11-20)
+
+- `ChatView` no longer passes `flushFinalAnswer` on `status === 'done'`; the
+  pacer rolls the remaining text out while `paceFinalAnswer` holds the row.
+  `flushFinalAnswer` remains as an explicit escape hatch (documented on the prop).
+- Regression test in `ChatView.test.tsx` (largest per-sample jump after
+  `message_stop` must stay below 25 % of the text). Before: 27 → 1679 in one step.
+- Open: fold-handover (hypothesis B) not reproduced; word-animation tuning not started.
+
 ## Cadence retention wired up, guard no longer cries wolf — complete locally (2026-11-16)
 
 - `prune_cadence_decisions` now runs from `cache_maintenance_daemon` alongside

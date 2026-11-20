@@ -50,7 +50,12 @@ export interface ChatFlowPresentationProps {
   /** Hold slutsvarets visuelle pacing i live efter message_stop, indtil den
    *  persisterede besked kan overtage uden et dump. */
   paceFinalAnswer?: boolean
-  /** Turen er terminal: vis hele den allerede modtagne tekst før overtagelsen. */
+  /** Eksplicit nødudgang: vis hele den modtagne tekst NU og forbigå paceren.
+   *  Bruges IKKE ved `done` — serverens stream-slut, pacerens slut og den
+   *  sidste ordanimations slut er tre forskellige hændelser, og `done` alene
+   *  må ikke give et visuelt dump (side-f9ab36ac9d). Rækken holdes live af
+   *  `paceFinalAnswer` til `onAnswerPaced`. Kun til situationer hvor
+   *  øjeblikkelig visning er påkrævet (fx afbrudt tur der skal vise alt). */
   flushFinalAnswer?: boolean
   onAnswerPaced?: () => void
 }

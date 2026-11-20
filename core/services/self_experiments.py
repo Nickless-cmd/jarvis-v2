@@ -167,6 +167,72 @@ def _evaluate_experiment(cohorts: dict) -> tuple[str, str]:
     return json.dumps(result, ensure_ascii=False), status
 
 
+#: Hvor mange af de nyeste vektorer historikken laeses over, naar «er dette
+#: domaene nogensinde maalt?» afgoeres. 500 raekker ned i halvdelen af
+#: historikken og giver 23 svage+maalte domaener (maalt 20/11-2026) — rigeligt
+#: til kandidatpuljen paa 12.
+_HISTORIK_VINDOW = 500
+
+#: Cache for «hvilke domaener har bevaaget sig». Noeglen er den NYESTE vektors
+#: id+version+updated_at: saa laenge der ikke er skrevet en ny vektor, er
+#: svaret det samme, og vi betaler ikke ~0,3 s ved hvert hjerteslag. En ny
+#: vektor kan kun TILFOEJE maalte domaener, saa noeglen er praecis — ikke en
+#: TTL-gaetning. `updated_at` er med, fordi `vector_id` er `pv-{version}` og
+#: derfor gentages paa tvaers af isolerede test-baser.
+_MAALTE_CACHE: dict[str, object] = {"noegle": None, "domaener": None}
+
+
+def _maalte_domaener(noegle: str) -> set[str] | None:
+    """Domaener hvis confidence har aendret sig mindst én gang for nylig.
+
+    Maalt 20/11-2026: 689 domaener har nogensinde staaet i vektoren, og 509 af
+    dem har ALDRIG aendret vaerdi. `face recognition` stod paa 0,35 i alle
+    1.011 vektorer — en konstant, ikke en maaling. Der findes ingen
+    ansigtsgenkendelse i kodebasen (strengen findes kun som fixture i
+    `tests/test_self_experiments.py`); navnet blev opfundet af modellen, fordi
+    prompten i `personality_vector.py` siger «Er domaenet ikke i vektoren
+    endnu, saa SAET det» — og intet har roert tallet siden.
+
+    Alligevel pegede curriculum'et paa den som «svaghed», fordi 0,35 ligger
+    under 0,5 og sorterer nederst: den var altid blandt de tre foerste. Et
+    laeringsmaal bygget paa en konstant kan ikke arbejdes med og kan ikke
+    lukkes — det er teater med et tal paa.
+
+    Returnerer None naar historikken ikke kan laeses; kalderen skal sige det
+    hoejt i stedet for at gaette.
+    """
+    if _MAALTE_CACHE.get("noegle") == noegle and isinstance(
+        _MAALTE_CACHE.get("domaener"), set
+    ):
+        return _MAALTE_CACHE["domaener"]  # type: ignore[return-value]
+    try:
+        from core.runtime.db import list_cognitive_personality_vectors
+
+        rows = list_cognitive_personality_vectors(limit=_HISTORIK_VINDOW)
+    except Exception as exc:
+        logger.warning("curriculum: domaene-historik kunne ikke laeses: %s", exc)
+        return None
+    if len(rows) < 2:
+        # Én vektor = ingen historik. Saa kan en konstant og en maaling ikke
+        # skelnes, og vi skal ikke lade som om vi kan.
+        return None
+    vaerdier: dict[str, set[float]] = {}
+    for rad in rows:
+        try:
+            domaener = json.loads(str(rad.get("confidence_by_domain") or "{}"))
+        except Exception:
+            continue
+        for navn, tal in domaener.items():
+            try:
+                vaerdier.setdefault(str(navn), set()).add(round(float(tal), 4))
+            except (TypeError, ValueError):
+                continue
+    maalte = {navn for navn, saet in vaerdier.items() if len(saet) > 1}
+    _MAALTE_CACHE["noegle"] = noegle
+    _MAALTE_CACHE["domaener"] = maalte
+    return maalte
+
+
 def generate_learning_curriculum() -> dict[str, object]:
     """3.8 Curriculum learning — analyze weaknesses, generate learning plan.
 
@@ -176,6 +242,8 @@ def generate_learning_curriculum() -> dict[str, object]:
     curriculum: list[dict[str, object]] = []
     #: Kilder der KASTEDE. Uden den kunne «tom» ikke skelnes fra «braekket».
     kilde_fejl: list[str] = []
+    #: Svage domaener der aldrig har flyttet sig — altsaa ikke maalt svagheder.
+    umalte_svage = 0
 
     # From personality vector — low confidence domains
     try:
@@ -186,6 +254,25 @@ def generate_learning_curriculum() -> dict[str, object]:
             domains = _json.loads(str(pv.get("confidence_by_domain") or "{}"))
             weak = [(d, float(v)) for d, v in domains.items() if float(v) < 0.5]
             weak.sort(key=lambda x: x[1])
+            # En svaghed der aldrig har flyttet sig er ikke en MAALT svaghed —
+            # se `_maalte_domaener`. Maalt 20/11-2026 var 141 af 177 svage
+            # domaener frosne, og fordi de sorterer nederst laa de altid i
+            # toppen: planen pegede paa `face recognition` (0,35 i alle 1.011
+            # vektorer, ingen kode bag navnet) i stedet for paa noget der kan
+            # arbejdes med.
+            noegle = ":".join(
+                str(pv.get(felt) or "")
+                for felt in ("vector_id", "version", "updated_at")
+            )
+            maalte = _maalte_domaener(noegle)
+            if maalte is None:
+                # Vi KAN ikke skelne. Saa siger vi det, i stedet for at lade
+                # som om filteret koerte.
+                kilde_fejl.append("domain_history")
+            else:
+                foer = len(weak)
+                weak = [(d, c) for d, c in weak if d in maalte]
+                umalte_svage = foer - len(weak)
             # Puljen var `weak[:3]` — de samme tre domaener hver gang. Maalt
             # 20/11-2026: 175 domaener under 0,5, og planen sendte tre, som
             # derefter sad fast i `queued`. Materialiseringen kunne derfor
@@ -271,14 +358,21 @@ def generate_learning_curriculum() -> dict[str, object]:
         # blandt hele puljen — ellers binder display-loftet arbejdsloftet.
         "candidates": curriculum,
         "focus_count": len(curriculum),
+        # Hvor mange svage domaener der blev sorteret fra fordi de aldrig har
+        # flyttet sig. Uden tallet ville fravalget vaere usynligt — og et
+        # usynligt fravalg er praecis den tavshed der gjorde konstanterne til
+        # laeringsmaal i 1.011 vektorer.
+        "unmeasured_weak_domains": umalte_svage,
         "kilde_fejl": kilde_fejl,
-        "summary": _curriculum_summary(curriculum, kilde_fejl),
+        "summary": _curriculum_summary(curriculum, kilde_fejl, umalte=umalte_svage),
     }
 
 
 def _curriculum_summary(
     curriculum: list[dict[str, object]],
     kilde_fejl: list[str],
+    *,
+    umalte: int = 0,
 ) -> str:
     """En tom plan skal sige HVORFOR den er tom.
 
@@ -294,7 +388,12 @@ def _curriculum_summary(
     """
     if curriculum:
         navne = ", ".join(_klip_ord_graense(c["focus"], 40) for c in curriculum[:3])
-        return f"{len(curriculum)} learning focuses: {navne}"
+        note = (
+            f" ({umalte} svage domaener er aldrig maalt og indgaar ikke)"
+            if umalte
+            else ""
+        )
+        return f"{len(curriculum)} learning focuses: {navne}{note}"
     if kilde_fejl:
         return f"Ingen plan — kilderne fejlede: {', '.join(sorted(set(kilde_fejl)))}"
     return ("Ingen plan — ingen svage domaener, ingen gentagne fejl og ingen "

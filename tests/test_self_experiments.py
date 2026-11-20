@@ -177,7 +177,82 @@ def test_planen_gaar_videre_til_naeste_kandidat_naar_de_svageste_er_i_koeen(
     assert scopes == {"vision capability analysis", "godkendelses- og kortanalyse"}
 
 
-# ── Eksperiment-konklusionerne klippede stadig midt i ordet (20/11-2026) ─────
+# ── En konstant er ikke en svaghed (20/11-2026) ───────────────────────────────
+
+
+def test_frosne_domaener_bliver_ikke_laeringsmaal(isolated_runtime):
+    """`face recognition` stod på 0,35 i alle 1.011 vektorer — og var et mål.
+
+    Målt 20/11-2026: 689 domæner har nogensinde stået i vektoren, 509 af dem
+    har ALDRIG ændret værdi. `face recognition` er en af dem: 0,35 i hver
+    eneste version, og der findes ingen ansigtsgenkendelse i kodebasen —
+    strengen findes kun som fixture i denne fil. Navnet blev opfundet af
+    modellen i `confidence_by_domain`, og intet har rørt tallet siden.
+
+    Fordi 0,35 sorterer nederst, lå den altid blandt de tre første, og
+    curriculum'et gjorde den til et læringsmål: «Bliv bedre til face
+    recognition — confidence er kun 35 %». Et mål der ikke kan arbejdes med og
+    ikke kan lukkes.
+
+    Testen kræver to vektorer: med én kan konstant og måling ikke skelnes, og
+    så skal planen sige det højt i stedet for at gætte.
+    """
+    import core.services.self_experiments as SE
+
+    # Cachen lever mellem tests i samme proces; nøglen er vektor-rækken, men vi
+    # rydder den alligevel så testen ikke arver en anden bases svar.
+    getattr(SE, "_MAALTE_CACHE", {}).update({"noegle": None, "domaener": None})
+
+    isolated_runtime.db.upsert_cognitive_personality_vector(
+        confidence_by_domain=json.dumps({
+            "face recognition": 0.35,          # konstant
+            "desk render capabilities": 0.45,  # målt
+        }),
+        recurring_mistakes=json.dumps([]),
+    )
+    isolated_runtime.db.upsert_cognitive_personality_vector(
+        confidence_by_domain=json.dumps({
+            "face recognition": 0.35,          # stadig 0,35 — aldrig rørt
+            "desk render capabilities": 0.38,  # har flyttet sig
+        }),
+        recurring_mistakes=json.dumps([]),
+    )
+
+    plan = SE.generate_learning_curriculum()
+    pulje = list(plan.get("candidates") or plan.get("curriculum") or [])
+    domaener = {str(c.get("domain")) for c in pulje if c.get("type") == "weakness"}
+
+    assert "face recognition" not in domaener, (
+        "en domæne der aldrig har ændret værdi blev gjort til læringsmål"
+    )
+    assert "desk render capabilities" in domaener, (
+        "en domæne der FAKTISK har flyttet sig faldt ud — filteret er for hårdt"
+    )
+    assert int(plan.get("unmeasured_weak_domains") or 0) == 1
+    assert "aldrig maalt" in str(plan.get("summary") or "")
+
+
+def test_uden_historik_gaetter_planen_ikke(isolated_runtime):
+    """Én vektor = ingen historik. Så må planen ikke lade som om den filtrerer.
+
+    Alternativet — at behandle alt som målt — ville være den samme tavshed der
+    gjorde konstanterne til mål i 1.011 vektorer.
+    """
+    import core.services.self_experiments as SE
+
+    getattr(SE, "_MAALTE_CACHE", {}).update({"noegle": None, "domaener": None})
+
+    isolated_runtime.db.upsert_cognitive_personality_vector(
+        confidence_by_domain=json.dumps({"face recognition": 0.35}),
+        recurring_mistakes=json.dumps([]),
+    )
+
+    plan = SE.generate_learning_curriculum()
+
+    assert "domain_history" in list(plan.get("kilde_fejl") or []), (
+        "planen kunne ikke skelne, men sagde det ikke"
+    )
+
 
 
 def test_konklusion_fra_eksperiment_klippes_ved_ordgraense(monkeypatch):

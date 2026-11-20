@@ -25,6 +25,8 @@ def rt(isolated_runtime, monkeypatch):
         """Falsk facade: scriptede svar pr. (provider/model); logger hvert kald."""
         def __init__(self): self.calls, self.fail = [], set()
         def execute_with_role_or_fallback(self, **kw):
+            from core.services.run_autonomy_context import current_run_id
+            kw["observed_run_id"] = current_run_id()
             self.calls.append(kw)
             key = f"{kw['provider']}/{kw['model']}"
             if key in self.fail:
@@ -73,6 +75,20 @@ def test_a_healthy_first_candidate_is_called_with_the_authenticated_owner_and_no
     assert rt.f.calls[0]["owner_user_id"] == ANDEN
     assert [r["attempt"] for r in rt.R_.attempts_for_assignment(
         rt.R_.latest_for_agent("a1")["assignment_id"])] == [1]
+
+
+def test_the_model_call_is_bound_to_its_agent_run_without_leaking_over_the_parent(rt):
+    from core.services import run_autonomy_context as context
+
+    ag = rt.agent()
+    context.set_run_identity("visible-parent", "interactive")
+    try:
+        rt.call(ag, run_id="agent-run-child")
+        assert rt.f.calls[0]["observed_run_id"] == "agent-run-child"
+        assert context.current_run_id() == "visible-parent"
+        assert context.current_origin() == "interactive"
+    finally:
+        context.set_run_identity("", "")
 
 
 def test_a_failing_model_moves_to_the_next_pool_candidate_before_the_owners_fallback(rt):

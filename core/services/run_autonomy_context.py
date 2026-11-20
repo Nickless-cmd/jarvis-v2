@@ -25,6 +25,8 @@ from __future__ import annotations
 
 import contextvars
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 _autonom: contextvars.ContextVar[bool] = contextvars.ContextVar(
     "jarvis_run_autonom", default=False,
@@ -174,6 +176,18 @@ _origin: contextvars.ContextVar[str] = contextvars.ContextVar(
 def set_run_identity(run_id: str, origin: str = "") -> None:
     _run_id.set(str(run_id or "").strip())
     _origin.set(str(origin or "").strip())
+
+
+@contextmanager
+def run_identity_scope(run_id: str, origin: str = "") -> Iterator[None]:
+    """Bind one run while work is executed, then restore the caller's identity."""
+    run_token = _run_id.set(str(run_id or "").strip())
+    origin_token = _origin.set(str(origin or "").strip())
+    try:
+        yield
+    finally:
+        _origin.reset(origin_token)
+        _run_id.reset(run_token)
 
 
 def current_run_id() -> str:

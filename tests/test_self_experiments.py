@@ -416,19 +416,6 @@ def _nulstil_cache() -> None:
     )
 
 
-def test_mekaniske_skridt_matcher_task_worker():
-    """Konstanterne skal spejle dem `record_curriculum_outcome` skriver.
-
-    Glider de fra hinanden, genkender `_mekanisk_maalte` ikke laengere et
-    aegte skridt — og saa tier den i stedet for at sige det.
-    """
-    import core.services.self_experiments as SE
-    import core.services.task_worker as TW
-
-    assert SE._MEKANISK_LOEFT == TW._LIFT_EVIDENCED
-    assert SE._MEKANISK_FALD == TW._DROP_FAILED
-
-
 def test_selvrapporteret_svaghed_bliver_ikke_kaldt_maalt(isolated_runtime):
     """Et domaene med kun smaa selvrapporterede skridt maa ikke kaldes maalt.
 
@@ -456,6 +443,16 @@ def test_selvrapporteret_svaghed_bliver_ikke_kaldt_maalt(isolated_runtime):
             confidence_by_domain=json.dumps(vektor)
         )
 
+    # «kadence» bliver kun målt fordi den staar i MÅLINGSSPORET — ikke fordi
+    # dens sidste skridt tilfaeldigt er +0,05. (Ændret 20/11-2026: spooret er
+    # autoriteten, se test_skridtstoerrelse_er_ikke_et_bevis.)
+    from core.services import capability_measurement as cm
+
+    cm.set_domain_confidence(
+        "kadence-maaling i drift", 0.45, evidence="test: maalt i spooret"
+    )
+    _nulstil_cache()
+
     import core.services.self_experiments as SE
 
     plan = SE.generate_learning_curriculum()
@@ -472,10 +469,17 @@ def test_selvrapporteret_svaghed_bliver_ikke_kaldt_maalt(isolated_runtime):
     )
     assert "uden en maaling bag" in tekst
 
-    mekanisk = poster.get("kadence-maaling i drift")
-    assert mekanisk is not None, "domaenet med et mekanisk skridt faldt ud"
-    assert mekanisk["measured"] is True
-    assert "maalt confidence" in str(mekanisk.get("suggestion") or "")
+    # 20/11-2026: DENNE KONTRAKT BLEV VENDT. Den kraevede foer at et +0,05-skridt
+    # blev kaldt «maalt». Men skridtet blev skrevet af `_confidence_delta` paa
+    # «completed + did_work», og `did_work` betoed «runnet kaldte et vaerktoej».
+    # Engagement, ikke maaling. Testen var dermed selv med til at goere et
+    # spoegelse til en maalt svaghed.
+    kadence = poster.get("kadence-maaling i drift")
+    assert kadence is not None, "domaenet faldt helt ud af planen"
+    assert kadence["measured"] is False, (
+        "et +0,05-skridt fra den fjernede lofts-mekanisme blev kaldt maalt"
+    )
+    assert "uden en maaling bag" in str(kadence.get("suggestion") or "")
 
 
 # ── Det sidste skridt ejer tallet (20/11-2026) ───────────────────────────────
@@ -516,7 +520,43 @@ def test_mekanisk_skridt_der_er_overskrevet_gor_tallet_umalt(isolated_runtime):
     assert "uden en maaling bag" in str(post.get("suggestion") or "")
 
 
-# ── Et forsøg maa ikke konkludere paa stoej (20/11-2026) ──────────────────────
+# ── Skridtstørrelse er ikke et bevis (20/11-2026) ────────────────────────────
+
+def test_skridtstoerrelse_er_ikke_et_bevis(isolated_runtime):
+    """`souls-build analyse`: 0,45 -> 0,38 -> 0,43 (+0,05) — og IKKE målt.
+
+    MÅLT 20/11-2026 i den levende base: domænet havde fem skift, og det sidste
+    var præcis +0,05 kl. 06:48:24. Planen skrev «maalt confidence 43 %» — og
+    gav mig det som dagens opgave. Men +0,05 var arbejds-løftet fra
+    `record_curriculum_outcome`, som blev fjernet kl. 10:00 netop fordi arbejde
+    ikke er en måling. Domænet findes ikke i målingssporet.
+
+    Et skridt på den rigtige størrelse er derfor ikke et bevis. Sporet er.
+    """
+    import json
+
+    from core.runtime.db import upsert_cognitive_personality_vector
+
+    _nulstil_cache()
+    historik = [
+        {"souls-build analyse": 0.45},
+        {"souls-build analyse": 0.38},
+        {"souls-build analyse": 0.43},  # +0,05 — ser mekanisk ud
+    ]
+    for vektor in historik:
+        upsert_cognitive_personality_vector(confidence_by_domain=json.dumps(vektor))
+
+    import core.services.self_experiments as SE
+
+    post = {
+        str(c.get("domain") or ""): c
+        for c in SE.generate_learning_curriculum().get("curriculum") or []
+    }.get("souls-build analyse")
+    assert post is not None, "domaenet faldt ud af planen"
+    assert post["measured"] is False, (
+        "et skridt paa +0,05 uden en maaling i sporet blev kaldt maalt"
+    )
+    assert "uden en maaling bag" in str(post.get("suggestion") or "")
 
 
 def test_fisher_skelner_stoej_fra_effekt():
@@ -600,3 +640,70 @@ def test_konklusionens_tekst_baerer_samplet():
     )
     assert "n=2 mod 22" in tekst, "samplet mangler i laeringsmaalet"
     assert "p=" in tekst, "p-vaerdien mangler i laeringsmaalet"
+
+
+# ── Sporet er den eneste kilde til ordet «målt» (20/11-2026) ──────────────────
+
+def test_kun_sporet_kan_kalde_et_tal_maalt(isolated_runtime):
+    """To domaener med IDENTISK historik — kun spoeret afgoer.
+
+    Begge slutter med et spring paa praecis +0,05, som er den form den
+    fjernede proxy tog fejl af. Forskellen er ikke skridtets stoerrelse, men
+    hvem der skrev det: en maaling eller en rettelse.
+    """
+    import json
+
+    from core.runtime.db import upsert_cognitive_personality_vector
+    from core.services import capability_measurement as cm
+
+    # Sporet maa ALDRIG pege paa produktionsfilen i en test.
+    assert "pytest" in str(cm._ledger_path()) or "/tmp/" in str(cm._ledger_path()), (
+        f"testen ville skrive i den aegte spoer-fil: {cm._ledger_path()}"
+    )
+
+    _nulstil_cache()
+    for vaerdi in (0.40, 0.45):
+        upsert_cognitive_personality_vector(
+            confidence_by_domain=json.dumps(
+                {"maalte-evne": vaerdi, "kun-rettet": vaerdi}
+            )
+        )
+
+    sti = cm._ledger_path()
+    sti.parent.mkdir(parents=True, exist_ok=True)
+    sti.write_text(
+        json.dumps(
+            {
+                "domain": "maalte-evne",
+                "value": 0.45,
+                "evidence": "målt: 5/5 runder mod grundsandhed",
+                "kind": "measurement",
+            }
+        )
+        + "\n"
+        + json.dumps(
+            {
+                "domain": "kun-rettet",
+                "value": 0.45,
+                "evidence": "tilbagerullet et forkert løft",
+                "kind": "correction",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    import core.services.self_experiments as SE
+
+    poster = {
+        str(c.get("domain") or ""): c
+        for c in SE.generate_learning_curriculum().get("curriculum") or []
+    }
+    assert "maalte-evne" in poster, "det maalte domaene faldt ud af planen"
+    assert poster["maalte-evne"]["measured"] is True
+    assert "maalt confidence" in str(poster["maalte-evne"].get("suggestion") or "")
+    assert "kun-rettet" in poster, "det rettede domaene faldt ud af planen"
+    assert poster["kun-rettet"]["measured"] is False, (
+        "en rettelse i spoeret blev laest som en maaling"
+    )
+    assert "uden en maaling bag" in str(poster["kun-rettet"].get("suggestion") or "")

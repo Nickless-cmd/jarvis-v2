@@ -346,84 +346,76 @@ def _maalte_domaener(noegle: str) -> set[str] | None:
 
 
 def _mekanisk_maalte(noegle: str) -> set[str] | None:
-    """Domaener hvis confidence er flyttet af en MEKANISK kilde.
+    """Domaener hvis NUVARENDE confidence staar paa en MAALT vaerdi.
 
-    `_maalte_domaener` svarer paa «har domaenet flyttet sig mindst to gange».
-    Det er en noedvendig, men ikke tilstraekkelig betingelse: en flytning kan
-    komme fra `record_curriculum_outcome` (bevist arbejde) ELLER fra modellens
-    eget skoen i `personality_vector` (ingen beviskaede).
+    ## Hvorfor kun spoeret taeller (20/11-2026)
 
-    Maalt 20/11-2026 over 500 vektorer: 23 af de 24 domaener der slap igennem
-    havde UDELUKKENDE selvrapporterede skridt paa 0,01-0,04. Kun
-    «kadence-maaling i drift» havde et mekanisk skridt (-0,03). De 23 blev
-    alligevel kaldt svagheder, og planen skrev «confidence er kun 38 %» som om
-    tallet var maalt. Det er praecis den paastand denne funktion goer det
-    muligt at undgaa.
+    Indtil i dag godtog denne funktion ogsaa et «mekanisk skridt»: et spring paa
+    praecis +0,05 eller -0,03 i vektor-historikken. Det var en PROXY, og
+    praemissen for den var forkert.
 
-    Returnerer None naar historikken ikke kan laeses — saa ved vi det ikke, og
-    kalderen skal sige det hoejt i stedet for at gaette.
+    +0,05 blev skrevet af `task_worker._confidence_delta` naar et run var
+    `completed` OG `did_work` — og `did_work` betoed «runnet kaldte mindst et
+    vaerktoej». Engagement, ikke maaling. Maalt 20/11-2026:
+
+    - `dil_widgets animationstal` blev loeftet 0,36 -> 0,41 to sekunder efter et
+      run hvis EGEN konklusion var at tallene ikke findes paa maskinen.
+    - `database-skema opslag` blev maalt til 0,85 og derefter pumpet til 0,90 af
+      det samme loeft — maalingen blev dobbelttalt.
+    - `face recognition` blev FOEDT som 0,30 + 0,05 for et run der intet maalte,
+      og stod derefter stille i 1.011 vektorer som en «svaghed».
+
+    Loftet er fjernet fra koden. Men det betyder ogsaa at ETHVERT +0,05 i
+    historikken er skrevet af den fjernede mekanisme: proxy'en kan ikke laengere
+    pege paa en maaling, fordi der ikke findes et skridt der kommer fra en.
+    Derfor afgoer spoeret alene.
+
+    Spoeret kan sige NEJ. En `correction` flytter tallet uden at bevise evnen, saa
+    et domaene med kun rettelser er IKKE maalt — heller ikke naar dets sidste
+    skridt tilfaeldigt ligner et mekanisk.
+
+    Returnerer None naar spoeret eller den nyeste vektor ikke kan laeses — saa ved
+    vi det ikke, og kalderen skal sige det hoejt i stedet for at gaette.
     """
     if _MAALTE_CACHE.get("mekanisk_noegle") == noegle and isinstance(
         _MAALTE_CACHE.get("mekaniske"), set
     ):
         return _MAALTE_CACHE["mekaniske"]  # type: ignore[return-value]
     try:
-        from core.runtime.db import list_cognitive_personality_vectors
-
-        rows = list_cognitive_personality_vectors(limit=_HISTORIK_VINDOW)
-    except Exception as exc:
-        logger.warning("curriculum: mekanisk historik kunne ikke laeses: %s", exc)
-        return None
-    if len(rows) < 2:
-        return None
-    # NYESTE FOERST (`ORDER BY version DESC`). Vi vender om, saa et skridt
-    # laeses «fra gammel til ny» — ellers ville et mekanisk +0,05 staa som
-    # -0,05 og blive kasseret.
-    reekker: dict[str, list[float]] = {}
-    for rad in reversed(rows):
-        try:
-            domaener = json.loads(str(rad.get("confidence_by_domain") or "{}"))
-        except Exception:
-            # Uparsbar JSON: raekken kan ikke laeses, saa den taeles ikke.
-            continue
-        for navn, tal in domaener.items():
-            try:
-                reekker.setdefault(str(navn), []).append(round(float(tal), 4))
-            except (TypeError, ValueError):
-                # Ikke-numerisk vaerdi: springes over frem for at forurene serien.
-                continue
-    # Maalt 20/11-2026 (kontrol af funktionen selv): 16 domaener har NOGENSINDE
-    # faaet et mekanisk skridt, men kun 10 har det som deres SIDSTE skridt.
-    # `dil_widgets animationstal` er 0,40 -> 0,36 (selvrapport) -> 0,41 (+0,05,
-    # mekanisk) -> 0,36 (-0,05, selvrapport). Det nuvarende tal er altsaa
-    # skrevet af modellen EFTER maalingen, og «maalt confidence 36 %» var en
-    # paastand om et tal der ikke hviler paa noget. Derfor: kun den SIDSTE
-    # ikke-nul-overgang taeller — det er den der ejer tallet lige nu.
-    mekaniske: set[str] = set()
-    for navn, seq in reekker.items():
-        skridt = [
-            round(b - a, 4) for a, b in zip(seq, seq[1:]) if round(b - a, 4) != 0.0
-        ]
-        if not skridt:
-            continue
-        sidste = skridt[-1]
-        if abs(sidste - _MEKANISK_LOEFT) < 1e-6 or abs(sidste + _MEKANISK_FALD) < 1e-6:
-            mekaniske.add(navn)
-    # Skridt-detektoren alene kan tage fejl: et skøn der lander på 0,05 ser
-    # mekanisk ud, og en korrektion af et forkert løft skriver også et skridt.
-    # Målingssporet afgør det: står der en måling for domænet, og er det DEN
-    # værdi der står i vektoren nu, så er tallet målt — ellers ikke.
-    try:
         from core.services.capability_measurement import maalte_vaerdier
 
         maalt_map = maalte_vaerdier()
-    except Exception as exc:  # noqa: BLE001 — uden sporet kan intet domæne kaldes målt
-        logger.warning("curriculum: målingsspor kunne ikke læses: %s", exc)
-        maalt_map = {}
-    nyeste = {navn: seq[-1] for navn, seq in reekker.items() if seq}
-    for navn, maalt in maalt_map.items():
-        if navn in nyeste and abs(nyeste[navn] - maalt) < 1e-9:
-            mekaniske.add(navn)
+    except Exception as exc:  # noqa: BLE001 — uden spoeret kan intet domaene kaldes maalt
+        logger.warning("curriculum: maalingsspor kunne ikke laeses: %s", exc)
+        return None
+    try:
+        from core.runtime.db import list_cognitive_personality_vectors
+
+        rows = list_cognitive_personality_vectors(limit=1)
+    except Exception as exc:  # noqa: BLE001 — uden den nyeste vektor er der intet at holde spoeret op imod
+        logger.warning("curriculum: nyeste vektor kunne ikke laeses: %s", exc)
+        return None
+    if not rows:
+        return None
+    try:
+        nuvaerende = json.loads(str(rows[0].get("confidence_by_domain") or "{}"))
+    except ValueError:
+        # Uparsbar JSON: vi kan ikke afgoere om den maalte vaerdi staar der.
+        logger.warning("curriculum: nyeste vektor har uparsbar confidence_by_domain")
+        return None
+    if not isinstance(nuvaerende, dict):
+        return None
+    mekaniske: set[str] = set()
+    for navn, vaerdi in nuvaerende.items():
+        maalt = maalt_map.get(str(navn))
+        if maalt is None:
+            continue
+        try:
+            if abs(round(float(vaerdi), 4) - round(float(maalt), 4)) < 1e-9:
+                mekaniske.add(str(navn))
+        except (TypeError, ValueError):
+            # Ikke-numerisk vaerdi: den kan ikke vaere en maalt confidence.
+            continue
     _MAALTE_CACHE["mekanisk_noegle"] = noegle
     _MAALTE_CACHE["mekaniske"] = mekaniske
     return mekaniske

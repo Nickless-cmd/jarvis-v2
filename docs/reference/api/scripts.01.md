@@ -126,7 +126,8 @@ _Søg i en bundtet app (asar) og få MODULSTIEN med, ikke bare et byte-offset._
 | function | `filkort` | `(header)` | Returnér {modulsti: (offset, størrelse)} for alle filer i headeren. | [src](../../../scripts/bundt_soeg.py#L89) |
 | function | `modul_for` | `(offset_i_data, kort)` | Find modulstien der dækker et offset relativt til data-start. | [src](../../../scripts/bundt_soeg.py#L116) |
 | function | `soeg` | `(fil, moenster, *, kontekst, maks)` | Søg efter `moenster` og berig hvert træf med modulsti. | [src](../../../scripts/bundt_soeg.py#L124) |
-| function | `_hoved` | `(argv=…)` | — | [src](../../../scripts/bundt_soeg.py#L153) |
+| function | `maal` | `(fil, *, antal=…)` | Mål om værktøjet kan svare: hvilken modul kom dette træf fra? | [src](../../../scripts/bundt_soeg.py#L153) |
+| function | `_hoved` | `(argv=…)` | — | [src](../../../scripts/bundt_soeg.py#L222) |
 
 ## `scripts/cache_break_report.py`
 _Hvor braekker praefiks-cachen — og hvilken besked gjorde det?_

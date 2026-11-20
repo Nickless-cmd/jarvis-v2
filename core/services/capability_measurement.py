@@ -167,6 +167,11 @@ def set_domain_confidence(
     before = float(domains.get(name, 0.3))
     after = max(0.0, min(1.0, round(float(value), 3)))
     if existing is not None and after == before:
+        # Værdien står allerede — men målingen er stadig en måling. Uden
+        # sporet her kunne et domæne der blev målt til PRÆCIS det tal
+        # selvrapporten gættede, aldrig blive kaldt målt. Målt 20/11-2026:
+        # netop den gren fældede testen for «kadence-maaling i drift».
+        _skriv_maalingsspor(name, after, evidence, kind)
         return {
             "recorded": False,
             "reason": "uændret",

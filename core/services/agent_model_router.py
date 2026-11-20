@@ -105,8 +105,12 @@ def call_agent_model(*, agent: dict[str, Any], tools_executed: bool = False, fac
     agent_id = str(agent.get("agent_id") or "")
     owner = bound_owner(agent_id)
     facade = facade or _facade()
+    from core.services.run_autonomy_context import run_identity_scope
     if not owner:                                           # legacy_unscoped: uaendret adfaerd
-        return facade.execute_with_role_or_fallback(**execute_kwargs)
+        if not str(run_id or "").strip():
+            return facade.execute_with_role_or_fallback(**execute_kwargs)
+        with run_identity_scope(run_id, "agent"):
+            return facade.execute_with_role_or_fallback(**execute_kwargs)
     latest, cands = _chain(agent_id)
     cur_p, cur_m = str(agent.get("provider") or ""), str(agent.get("model") or "")
     if latest is not None and int(latest["attempt"]) > 1:
@@ -131,7 +135,9 @@ def call_agent_model(*, agent: dict[str, Any], tools_executed: bool = False, fac
             latest, _ = _chain(agent_id)
         kw = dict(execute_kwargs, provider=p, model=m, owner_user_id=owner)
         try:
-            return facade.execute_with_role_or_fallback(**kw)
+            current_run = _current_run(latest, run_id) if latest is not None else run_id
+            with run_identity_scope(current_run, "agent"):
+                return facade.execute_with_role_or_fallback(**kw)
         except ModelCallFailed as exc:
             attempts.append({"provider": p, "model": m, "reason": f"kald:{exc.detail}"[:200]})
             if tools_executed and _effectful(agent):

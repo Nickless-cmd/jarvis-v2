@@ -443,16 +443,9 @@ def test_selvrapporteret_svaghed_bliver_ikke_kaldt_maalt(isolated_runtime):
             confidence_by_domain=json.dumps(vektor)
         )
 
-    # «kadence» bliver kun målt fordi den staar i MÅLINGSSPORET — ikke fordi
-    # dens sidste skridt tilfaeldigt er +0,05. (Ændret 20/11-2026: spooret er
-    # autoriteten, se test_skridtstoerrelse_er_ikke_et_bevis.)
-    from core.services import capability_measurement as cm
-
-    cm.set_domain_confidence(
-        "kadence-maaling i drift", 0.45, evidence="test: maalt i spooret"
-    )
-    _nulstil_cache()
-
+    # Skridt alene er ikke et bevis: foer sporet faar en linje er kadence
+    # umaaalt — selv om dens SIDSTE skridt tilfaeldigt er +0,05. (Ændret
+    # 20/11-2026: sporet er autoriteten, se test_skridtstoerrelse_er_ikke_et_bevis.)
     import core.services.self_experiments as SE
 
     plan = SE.generate_learning_curriculum()
@@ -480,6 +473,25 @@ def test_selvrapporteret_svaghed_bliver_ikke_kaldt_maalt(isolated_runtime):
         "et +0,05-skridt fra den fjernede lofts-mekanisme blev kaldt maalt"
     )
     assert "uden en maaling bag" in str(kadence.get("suggestion") or "")
+
+    # Og den anden retning: naar sporet faar en kind=measurement-linje, er
+    # domaenet maalt — skridtet var aldrig grunden, sporet er det.
+    from core.services import capability_measurement as cm
+
+    cm.set_domain_confidence(
+        "kadence-maaling i drift", 0.45, evidence="test: maalt i spooret"
+    )
+    _nulstil_cache()
+    plan_efter = SE.generate_learning_curriculum()
+    poster_efter = {
+        str(c.get("domain") or ""): c for c in plan_efter.get("curriculum") or []
+    }
+    kadence_efter = poster_efter.get("kadence-maaling i drift")
+    assert kadence_efter is not None, "domaenet faldt ud af planen efter maaling"
+    assert kadence_efter["measured"] is True, (
+        "sporet er autoriteten: en kind=measurement-linje gor domaenet maalt"
+    )
+    assert "maalt confidence" in str(kadence_efter.get("suggestion") or "")
 
 
 # ── Det sidste skridt ejer tallet (20/11-2026) ───────────────────────────────

@@ -278,6 +278,36 @@ _MEKANISK_FALD = 0.03
 _MAALTE_CACHE: dict[str, object] = {"noegle": None, "domaener": None}
 
 
+def _sporet_domaener() -> set[str]:
+    """Domaener der har NOGEN linje i maalingssporet — enhver kind.
+
+    Linjen er basis uanset kind: en maaling viser at et instrument har
+    skrevet tallet, en rettelse at en bevidst handling har roert det.
+    Om domaenet KALDES maalt afgoeres af `_mekanisk_maalte` (kun
+    kind=measurement); her afgor linjen kun indgangen til planen.
+    """
+    import json
+
+    from core.services.capability_measurement import _ledger_path
+
+    try:
+        sti = _ledger_path()
+        if not sti.exists():
+            return set()
+        domaener: set[str] = set()
+        for linje in sti.read_text(encoding="utf-8").splitlines():
+            try:
+                post = json.loads(linje)
+            except Exception:  # ufuldstaendig linje (fx halv skrivning) taeller ikke
+                continue
+            navn = str(post.get("domain") or "")
+            if navn:
+                domaener.add(navn)
+        return domaener
+    except OSError:  # ulaeselig fil = ingen basis; to-skift-reglen taenger alene
+        return set()
+
+
 def _maalte_domaener(noegle: str) -> set[str] | None:
     """Domaener hvis confidence har aendret sig mindst én gang for nylig.
 
@@ -472,13 +502,23 @@ def generate_learning_curriculum() -> dict[str, object]:
                 for felt in ("vector_id", "version", "updated_at")
             )
             maalte = _maalte_domaener(noegle)
+            sporet_domaener = _sporet_domaener()
             if maalte is None:
                 # Vi KAN ikke skelne. Saa siger vi det, i stedet for at lade
                 # som om filteret koerte.
                 kilde_fejl.append("domain_history")
             else:
                 foer = len(weak)
-                weak = [(d, c) for d, c in weak if d in maalte]
+                # Indgangsbilletten er to skift i historikken — ELLER en linje
+                # i maalingssporet. En aegte maaling til en svag vaerdi (fx
+                # 0,45 -> 0,30 ved een skrivning) blev udelukket af to-skift-
+                # reglen og naaede aldrig planen — netop den svaghed en
+                # maaling afslaerer. Maalt 20/11-2026:
+                # test_kun_sporet_kan_kalde_et_tal_maalt.
+                weak = [
+                    (d, c) for d, c in weak
+                    if d in maalte or d in sporet_domaener
+                ]
                 umalte_svage = foer - len(weak)
             # Puljen var `weak[:3]` — de samme tre domaener hver gang. Maalt
             # 20/11-2026: 175 domaener under 0,5, og planen sendte tre, som
@@ -488,8 +528,9 @@ def generate_learning_curriculum() -> dict[str, object]:
             # Nu sendes en kandidatpulje; materialize vaelger de 3 der ikke
             # allerede ligger i koen.
             kandidat_pulje = 12
-            #: Hvilke domaener der har et MEKANISK skridt bag sig. `None` naar
-            #: historikken ikke kunne laeses — saa ved vi det ikke.
+            #: Hvilke domaener sporet KALDER maalt (kind=measurement, og
+            #: vaerdien stadig i vektoren). `None` naar spoeret ikke kunne
+            #: laeses — saa ved vi det ikke.
             mekaniske = _mekanisk_maalte(noegle)
             for domain, conf in weak[:kandidat_pulje]:
                 # «confidence er kun 38 %» var en paastand om en maaling. For

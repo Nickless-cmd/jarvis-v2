@@ -7456,6 +7456,7 @@ def _update_cognitive_systems_async(
             )
             update_personality_vector_async(
                 run_id=run_id,
+                session_id=session_id,
                 user_message=user_message,
                 assistant_response=assistant_response,
                 outcome_status=outcome_status,

@@ -258,6 +258,145 @@ def test_et_tomt_svar_logges_frem_for_at_tie(monkeypatch, caplog):
         "done_reason skal med — den siger HVORFOR det var tomt"
 
 
+# ── Dommeren må ikke læse runnets PREVIEW som hele svaret (målt 20/11) ─────
+#
+# Run 54590 («Hvad siger vejret idag?» 11:53Z): dommeren fik work_preview —
+# 320 tegn + dekorativ '…' efter «…knap tre timers dags» — læste klippet som
+# afbrydelse og skrev «den ægte slutning klipper midt i ordet 'dags'» ind som
+# gentagen fejl, mens den ægte besked (690 tegn) slutter fuldstændigt med
+# «…AQI 1, «god».». Og det er ikke ét tilfælde: 19.415 af 26.295 previews i
+# den levende base slutter med '…' (320 tegn: 15.359 · 319: 3.016 · 120: 861 ·
+# 119: 162 — byte-klip-familier), så signaturen kan ikke være én længde.
+# Rettelsen: kalder-kæden træder session_id igennem (den blev smidt væk ved
+# kaldet til update_personality_vector_async), og den ægte besked læses med
+# husets dekrypterende læser.
+
+
+def _indsaet_besked(session: str, rolle: str, indhold: str) -> None:
+    from core.runtime.db import connect
+
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO chat_messages (message_id, session_id, role, content, "
+            "created_at, encrypted) VALUES (?, ?, ?, ?, ?, 0)",
+            (f"msg-test-{session[-8:]}-{rolle}-{len(indhold)}", session, rolle,
+             indhold, "2026-11-20T12:00:00+00:00"),
+        )
+        conn.commit()
+
+
+def test_preview_opgraderes_til_den_aegte_besked(isolated_runtime):
+    """Den ægte besked i sessionen VINDER over previewet.
+
+    Previewet klippes midt i «dagslys» — præcis «dags…» som i målet — og
+    hjælperen skal hente beskeden der slutter med «AQI 1, «god». 🧣».
+    """
+    from core.services.personality_vector import _hent_rigtigt_svar
+
+    session = "chat-test-preview-aegte"
+    aegte = (
+        "Vejret bliver klart og køligt i aften — knap tre timers dagslys. "
+        "Luftkvaliteten er i øvrigt i top: AQI 1, «god». 🧣"
+    )
+    _indsaet_besked(session, "user", "Hvad siger vejret idag?")
+    _indsaet_besked(session, "assistant", aegte)
+
+    preview = aegte[:aegte.index("dagslys") + 4] + "…"
+    assert preview.endswith("dags…"), "testens klip ramte ikke midt i 'dagslys'"
+
+    assert _hent_rigtigt_svar(session, preview) == aegte
+
+
+def test_uden_session_bevaar_previewet_og_gaetter_ikke(isolated_runtime):
+    """Ingen session → intet opslag → intet gæt. Previewet beholdes."""
+    from core.services.personality_vector import _hent_rigtigt_svar
+
+    preview = "Vejret bliver klart og køligt i aften — knap tre timers dags…"
+    assert _hent_rigtigt_svar(None, preview) == preview
+    assert _hent_rigtigt_svar("   ", preview) == preview
+
+
+def test_besked_der_ikke_matcher_hovedet_bevaar_previewet(isolated_runtime):
+    """En FREMMED besked i sessionen må ikke erstatte previewet.
+
+    Beviset for at hente er indholds-match: previewet minus '…' skal være
+    et ægte præfiks af den fundne besked. Ellers beholdes previewet.
+    """
+    from core.services.personality_vector import _hent_rigtigt_svar
+
+    session = "chat-test-preview-fremmed"
+    _indsaet_besked(session, "assistant", "Et helt andet svar om noget andet.")
+    preview = "Vejret bliver klart og køligt i aften — knap tre timers dags…"
+
+    assert _hent_rigtigt_svar(session, preview) == preview
+
+
+def test_stilistisk_ellipsis_loeser_sig_selv(isolated_runtime):
+    """En ægte besked der stylistisk slutter med '…' må ikke mistænkeliggøres.
+
+    Den brede signatur (endswith '…') rammer også ægte tekst — men beskeden
+    matcher sit eget hoved og er ikke længere end inputtet, så den
+    returneres uændret. Vagten, ikke signaturen, er sikkerheden.
+    """
+    from core.services.personality_vector import _hent_rigtigt_svar
+
+    session = "chat-test-stil-ellipsis"
+    besked = "Fortsættelsen følger i næste tur…"
+    _indsaet_besked(session, "assistant", besked)
+
+    assert _hent_rigtigt_svar(session, besked) == besked
+
+
+def test_async_wrapperen_baerer_session_id():
+    """Kædens søm: visible_runs HAR session_id — wrapperen må ikke smide den
+    væk igen (det var præcis dér previewet blev til dommerens eneste bevis)."""
+    import inspect
+
+    from core.services.personality_vector import update_personality_vector_async
+
+    params = inspect.signature(update_personality_vector_async).parameters
+    assert "session_id" in params, "async wrapperen mistede session_id igen"
+
+
+def test_dommerens_prompt_ser_den_aegte_slutning(monkeypatch, isolated_runtime):
+    """Ende-til-ende: from_run med preview-input → dommerens prompt indeholder
+    den ægte slutning («god». 🧣) og IKKE preview-halen («dags…»)."""
+    from core.services import personality_vector as PV
+
+    session = "chat-test-prompt-e2e"
+    aegte = (
+        "Vejret bliver klart og køligt i aften — knap tre timers dagslys. "
+        "Luftkvaliteten er i øvrigt i top: AQI 1, «god». 🧣"
+    )
+    _indsaet_besked(session, "user", "Hvad siger vejret idag?")
+    _indsaet_besked(session, "assistant", aegte)
+    preview = aegte[:aegte.index("dagslys") + 4] + "…"
+    assert preview.endswith("dags…")
+
+    fang = {}
+    monkeypatch.setattr(
+        PV, "_resolve_local_llm_target", lambda: {"provider": "x", "model": "m"}
+    )
+
+    def _fang(target, system, user):
+        fang["prompt"] = user
+        return "{}"
+
+    monkeypatch.setattr(PV, "_call_llm", _fang)
+
+    PV.update_personality_vector_from_run(
+        run_id="r-preview-e2e",
+        session_id=session,
+        user_message="Hvad siger vejret idag?",
+        assistant_response=preview,
+        outcome_status="completed",
+    )
+
+    prompt = fang["prompt"]
+    assert "«god». 🧣" in prompt, "dommeren fik ikke den ægte slutning"
+    assert "dags…" not in prompt, "preview-halen nåede dommeren"
+
+
 # ── Pensionsvej for strengths_discovered og self_model_signals (20/11-2026) ──
 
 _FALSK_DOM = "Afbrød sit eget svar midt i sætningen"

@@ -169,9 +169,67 @@ def _bevis_vindue(tekst: object, *, loft: int = _BEVIS_LOFT) -> str:
     )
 
 
+# Runnets `text_preview`-loft er målt til 320 tegn i den levende base — men
+# byte-klip giver svingende tegnlængder (319, 120 og 119 er også set), så
+# signaturen kan ikke være én længde. Målt 20/11 over 26.295 ikke-tomme
+# previews: 19.415 slutter med '…' (320: 15.359 · 319: 3.016 · 120: 861 ·
+# 119: 162). Signaturen er derfor kun '…' til sidst — sikkerheden ligger i
+# startswith-vagten: en ægte besked der stylistisk slutter med '…' matcher
+# sit eget hoved og returneres uændret.
+
+
+def _hent_rigtigt_svar(session_id: str | None, assistant_response: str) -> str:
+    """Preview-kortet (runnets tekst + dekorativ '…') er IKKE svaret.
+
+    20/11 11:53Z fik dommeren previewet af run 54590 («…knap tre timers
+    dags…»), læste det dekorative '…' som afbrydelse og skrev «den ægte
+    slutning klipper midt i ordet 'dags'» — mens den ægte besked (690 tegn)
+    slutter fuldstændigt med «…AQI 1, «god».». Meningen blev dannet på
+    previewet, ikke på den ægte slutning.
+
+    Kilden er målt: `visible_runs_outcomes` sender `assistant_response=
+    work_preview`, og kalder-kæden HAR session_id — den blev bare smidt
+    væk ved kaldet til `update_personality_vector_async`. Derfor trædes
+    session_id igennem her, og den ægte besked læses med husets læser
+    (`recent_chat_session_messages` — sessions-læserne er de ENESTE der
+    dekrypterer). Kan opslaget ikke BEVISes (ingen session, ingen
+    assistent-besked, ciffertekst, hoved matcher ikke), beholdes previewet
+    og det logges — det gættes ikke.
+    """
+    tekst = str(assistant_response or "")
+    if not tekst.endswith("…"):
+        return tekst
+    session = str(session_id or "").strip()
+    if not session:
+        logger.debug("personality_vector: preview uden session_id — beholder previewet")
+        return tekst
+    try:
+        from core.services.chat_sessions import recent_chat_session_messages
+
+        beskeder = recent_chat_session_messages(session, limit=20)
+    except Exception:
+        # Læsefejl (fx skema-afvigelse i test-basen) — behold previewet frem
+        # for at gætte, og lad resten af vektor-opdateringen leve.
+        logger.debug("personality_vector: preview-opslag fejlede", exc_info=True)
+        return tekst
+    indhold = ""
+    for besked in reversed(beskeder):  # kronologisk liste → nyeste først herfra
+        if str(besked.get("role") or "") == "assistant":
+            indhold = str(besked.get("content") or "")
+            break
+    hoved = tekst[:-1]  # previewet er ægte tekst + ét dekorativt '…'
+    if not indhold or indhold.startswith("enc:") or not indhold.startswith(hoved):
+        logger.debug(
+            "personality_vector: sidste assistent-besked matcher previewet ikke — beholder previewet"
+        )
+        return tekst
+    return indhold if len(indhold) > len(tekst) else tekst
+
+
 def update_personality_vector_from_run(
     *,
     run_id: str,
+    session_id: str | None = None,
     user_message: str,
     assistant_response: str,
     outcome_status: str,
@@ -181,6 +239,7 @@ def update_personality_vector_from_run(
     Called fire-and-forget after write_private_terminal_layers.
     Uses the local lane for LLM analysis, with an internal fallback lane only when needed.
     """
+    assistant_response = _hent_rigtigt_svar(session_id, assistant_response)
     current = get_latest_cognitive_personality_vector()
     current_json = json.dumps(current, ensure_ascii=False) if current else "{}"
 
@@ -256,6 +315,7 @@ def update_personality_vector_from_run(
 def update_personality_vector_async(
     *,
     run_id: str,
+    session_id: str | None = None,
     user_message: str,
     assistant_response: str,
     outcome_status: str,
@@ -265,6 +325,7 @@ def update_personality_vector_async(
         target=_safe_update,
         kwargs={
             "run_id": run_id,
+            "session_id": session_id,
             "user_message": user_message,
             "assistant_response": assistant_response,
             "outcome_status": outcome_status,

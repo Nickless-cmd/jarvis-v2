@@ -33,7 +33,7 @@ type NativeSpec =
     > }
   // `box` (14/11-2026): bærer børn og rendrer dem rekursivt, så en sammensat
   // flade kan bygges uden modelkald. Kun rene bind-navne — ingen evaluator.
-  | { type: 'box'; title: string; children: NativeSpec[] }
+  | { type: 'box'; title: string; children: NativeSpec[]; retning: 'kolonne' | 'raekke' | 'grid' }
   // (14/11-2026) Katalogudvidelse, første bølge: fem typer valgt efter gevinst
   // per risiko. Resten af de ~20 er bevidst IKKE bygget — de skal måles først.
   //
@@ -140,7 +140,10 @@ function parseNodeObj(raw: Json, depth: number): NativeSpec | null {
     const children = list(raw.children, BOX_MAX_BOERN)
       .map((x) => parseNode(x, depth + 1))
       .filter((x): x is NativeSpec => x !== null)
-    return children.length ? { type, title, children } : null
+    // `retning` er valgfri: kun `raekke`/`grid` kendes; alt andet = kolonne (gammel adfærd).
+    const r = text(raw.retning, 10)
+    const retning = r === 'raekke' || r === 'grid' ? r : 'kolonne'
+    return children.length ? { type, title, children, retning } : null
   }
   if (type === 'keyvalue') {
     const items = list(raw.items, 12).map((x) => ({
@@ -509,7 +512,7 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
   const [toolKoerer, setToolKoerer] = useState(false)
   if (spec.type === 'box') return <section className="native-rich native-box" aria-label={spec.title || 'Samling'}>
     <Heading title={spec.title} />
-    <div className="native-box-boern">{spec.children.map((c, i) => <FladeNode key={`${c.type}-${i}`} spec={c} />)}</div>
+    <div className={`native-box-boern${spec.retning === 'kolonne' ? '' : ` native-box-boern--${spec.retning}`}`}>{spec.children.map((c, i) => <FladeNode key={`${c.type}-${i}`} spec={c} />)}</div>
   </section>
   if (spec.type === 'callout') {
     const Icon = spec.tone === 'success' ? CheckCircle2 : spec.tone === 'warning' ? AlertTriangle : spec.tone === 'danger' ? CircleAlert : Info

@@ -30,7 +30,7 @@ export type NativeSpec =
   // `box` + katalogudvidelsen (14/11-2026). Samme fem typer som desk — og
   // samme krav: hver type SKAL have en gren i `jarvis_ui_guard.py`, ellers
   // erklaerer guarden den doed og fyrer et modelkald for at «rette» den.
-  | { type: 'box'; title: string; children: NativeSpec[] }
+  | { type: 'box'; title: string; children: NativeSpec[]; retning: 'kolonne' | 'raekke' | 'grid' }
   | { type: 'keyvalue'; title: string; items: Array<{ key: string; value: string; detail: string }> }
   | { type: 'progress'; title: string; items: Array<{ label: string; value: number; max: number; detail: string }> }
   | { type: 'quote'; title: string; text: string; source: string; href: string }
@@ -101,7 +101,10 @@ function parseNodeObj(raw: Json, depth: number): NativeSpec | null {
     const children = list(raw.children, BOX_MAX_BOERN)
       .map((x) => parseNode(x, depth + 1))
       .filter((x): x is NativeSpec => x !== null)
-    return children.length ? { type, title, children } : null
+    // `retning` er valgfri: kun `raekke`/`grid` kendes; alt andet = kolonne (gammel adfærd).
+    const r = text(raw.retning, 10)
+    const retning = r === 'raekke' || r === 'grid' ? r : 'kolonne'
+    return children.length ? { type, title, children, retning } : null
   }
   if (type === 'tabs') {
     if (depth > BOX_MAX_DYBDE) return null
@@ -389,7 +392,7 @@ function FladeNode({ spec }: { spec: NativeSpec }) {
   const [sortering, setSortering] = useState<{ kolonne: number; retning: 1 | -1 } | null>(null)
   // `control` har ingen titel — den er et lille haandtag, ikke et kort.
   const heading = 'title' in spec && spec.title ? <Text style={styles.title}>{spec.title}</Text> : null
-  if (spec.type === 'box') return <View accessibilityLabel={spec.title || 'Samling'} style={styles.card}>{heading}
+  if (spec.type === 'box') return <View accessibilityLabel={spec.title || 'Samling'} style={[styles.card, spec.retning === 'raekke' && styles.boxRaekke, spec.retning === 'grid' && styles.boxGrid]}>{heading}
     {spec.children.map((c, i) => <FladeNode key={`${c.type}-${i}`} spec={c} />)}
   </View>
   if (spec.type === 'tabs') {
@@ -755,6 +758,8 @@ const makeStyles = (t: Theme) => StyleSheet.create({
   // etiketterne står på linje uanset ordlængde.
   levRow: { flexDirection: 'row', gap: t.spacing.sm, alignItems: 'flex-start', paddingVertical: 4 },
   levStatus: { flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 86 },
+  boxRaekke: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start' },
+  boxGrid: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start' },
   cardBox: { backgroundColor: t.color.bg1, borderWidth: 1, borderColor: t.color.line, borderRadius: t.radius.lg, padding: t.spacing.md },
   callout: { flexDirection: 'row', alignItems: 'flex-start', borderLeftWidth: 3 },
   flex: { flex: 1, minWidth: 0 }, title: { color: t.color.fg1, fontWeight: '800', fontSize: 15, marginBottom: 4 },

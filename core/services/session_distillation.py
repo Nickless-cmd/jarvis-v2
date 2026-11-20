@@ -948,7 +948,9 @@ def generate_session_summary(
         source = "Bruger" if human_user_message else "Automatisk opgave"
         context_parts.append(f"{source}: {user_message[:300]}")
     if assistant_response:
-        context_parts.append(f"Jarvis: {assistant_response[:500]}")
+        from core.services.personality_vector import _bevis_vindue
+
+        context_parts.append(f"Jarvis: {_bevis_vindue(assistant_response, loft=500)}")
 
     # If no messages provided, try to get from chat history
     if not context_parts:

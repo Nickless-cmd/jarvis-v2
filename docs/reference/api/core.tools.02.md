@@ -365,16 +365,19 @@ _Unified outgoing notification pipeline — ntfy, Discord, Slack, generic webhoo
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_load` | `()` | — | [src](../../../core/tools/notify_out_tools.py#L14) |
-| function | `_save` | `(data)` | — | [src](../../../core/tools/notify_out_tools.py#L21) |
-| function | `_send_ntfy` | `(message, title, priority)` | — | [src](../../../core/tools/notify_out_tools.py#L28) |
-| function | `_send_discord` | `(url, message, title)` | — | [src](../../../core/tools/notify_out_tools.py#L36) |
-| function | `_send_slack` | `(url, message, title)` | — | [src](../../../core/tools/notify_out_tools.py#L49) |
-| function | `_send_generic` | `(url, message, title, extra)` | — | [src](../../../core/tools/notify_out_tools.py#L63) |
-| function | `_dispatch` | `(channel_cfg, message, title, priority)` | — | [src](../../../core/tools/notify_out_tools.py#L80) |
-| function | `_exec_notify_out` | `(args)` | — | [src](../../../core/tools/notify_out_tools.py#L97) |
-| function | `_exec_notify_channel_add` | `(args)` | — | [src](../../../core/tools/notify_out_tools.py#L133) |
-| function | `_exec_notify_channel_list` | `(args)` | — | [src](../../../core/tools/notify_out_tools.py#L157) |
-| function | `_exec_notify_channel_delete` | `(args)` | — | [src](../../../core/tools/notify_out_tools.py#L168) |
+| function | `_save` | `(data)` | — | [src](../../../core/tools/notify_out_tools.py#L26) |
+| function | `_caller_uid` | `()` | user_id for medlem-kalderen, eller "" hvis kalderen er ejeren. | [src](../../../core/tools/notify_out_tools.py#L36) |
+| function | `_bucket` | `(data, uid, *, create=…)` | Kanal-dict for ``uid`` ("" = ejer). Muterbar kun hvis den findes/create. | [src](../../../core/tools/notify_out_tools.py#L63) |
+| function | `_send_ntfy` | `(message, title, priority)` | — | [src](../../../core/tools/notify_out_tools.py#L82) |
+| function | `_send_discord` | `(url, message, title)` | — | [src](../../../core/tools/notify_out_tools.py#L90) |
+| function | `_send_slack` | `(url, message, title)` | — | [src](../../../core/tools/notify_out_tools.py#L103) |
+| function | `_send_generic` | `(url, message, title, extra)` | — | [src](../../../core/tools/notify_out_tools.py#L117) |
+| function | `_send_ntfy_url` | `(url, message, title, priority)` | Medlems-ntfy: POST til medlemmets EGET topic-url (aldrig ejerens topic). | [src](../../../core/tools/notify_out_tools.py#L134) |
+| function | `_dispatch` | `(channel_cfg, message, title, priority, *, member=…)` | — | [src](../../../core/tools/notify_out_tools.py#L146) |
+| function | `_exec_notify_out` | `(args)` | — | [src](../../../core/tools/notify_out_tools.py#L167) |
+| function | `_exec_notify_channel_add` | `(args)` | — | [src](../../../core/tools/notify_out_tools.py#L207) |
+| function | `_exec_notify_channel_list` | `(args)` | — | [src](../../../core/tools/notify_out_tools.py#L231) |
+| function | `_exec_notify_channel_delete` | `(args)` | — | [src](../../../core/tools/notify_out_tools.py#L243) |
 
 ## `core/tools/nudge_broend_tools.py`
 _Nudge-brønd tools — Jarvis inspicerer, sender og afviser nudges._

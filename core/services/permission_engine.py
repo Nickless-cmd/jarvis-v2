@@ -129,12 +129,17 @@ _MEMBER_GOOGLE = frozenset({
 #   i db_inbox — hver bruger ser og afgoer kun sine EGNE poster. Det er den
 #   samme isolation `CHAT_MODE_TOOLS_BASE` allerede regner med for ejeren.
 #
-# BEVIDST UDELADT — `notify_out`, `notify_channel_add/list/delete`:
-# de laeser og skriver `~/.jarvis-v2/state/notify_channels.json`, som er ÉN
-# global fil uden ejerskab. En husstandsbrugers `notify_channel_list` ville
-# vise Bjoerns webhooks, og `notify_channel_delete` kunne fjerne dem. Det er
-# ikke et rollevalg der mangler — det er en fil der mangler en ejer. Familien
-# bliver tilgaengelig i det oejeblik kanalerne er per-bruger.
+# `notify_*` var BEVIDST UDELADT indtil 20/11-2026, fordi
+# `notify_channels.json` var ÉN global fil uden ejerskab: en husstandsbrugers
+# `notify_channel_list` ville vise Bjoerns webhooks, og `notify_channel_delete`
+# kunne fjerne dem. Det var ikke et rollevalg der manglede — det var en fil der
+# manglede en ejer.
+#
+# Filen har nu en ejer (`_bucket` i `core/tools/notify_out_tools.py`): ejerens
+# kanaler ligger uaendret i top-level `channels`, medlemmer faar deres egen
+# bucket under `users[<user_id>].channels`, og den indbyggede ntfy er lukket
+# for alle andre end ejeren. Porten kan derfor aabnes uden at nogen ser eller
+# sletter andres kanaler — praecis den betingelse kommentaren ovenfor satte.
 #
 # BEVIDST UDELADT — `schedule_recurring`, `set_recurring_weekday_times`:
 # de skriver til Jarvis' EGEN scheduler og opretter varige jobs der overlever
@@ -148,6 +153,9 @@ _MEMBER_HVERDAG = frozenset({
     "todo_add", "todo_list", "todo_set", "todo_update_status", "todo_remove",
     # Indbakken — isoleret per bruger_id
     "inbox", "inbox_done", "inbox_drop",
+    # Notifikationskanaler — isoleret per bruger_id i notify_channels.json
+    # (se begrundelsen ovenfor). Ejerens kanaler er usynlige for medlemmer.
+    "notify_out", "notify_channel_add", "notify_channel_list", "notify_channel_delete",
     # Katalogets lange hale (20/11-2026). Uden den kunne husstanden kun bruge
     # de værktøjer der tilfældigvis stod på deres liste — resten var usynligt,
     # og svaret «tool_not_permitted» blev læst som «låst» i stedet for

@@ -13,14 +13,68 @@ _STATE_PATH = Path.home() / ".jarvis-v2" / "state" / "notify_channels.json"
 
 def _load() -> dict:
     try:
-        return json.loads(_STATE_PATH.read_text(encoding="utf-8"))
+        data = json.loads(_STATE_PATH.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
-        return {"channels": {}}
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    if not isinstance(data.get("channels"), dict):
+        data["channels"] = {}
+    return data
 
 
 def _save(data: dict) -> None:
     _STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
     _STATE_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+# ── Per-bruger scoping ────────────────────────────────────────────────────────
+# Filformat (bagudkompatibelt, INGEN migrering): top-level ``channels`` er
+# ejerens bucket — præcis som før, så Bjørns eksisterende fil virker uændret.
+# Husstandsmedlemmer får deres egen bucket under ``users[<user_id>].channels``.
+
+def _caller_uid() -> str:
+    """user_id for medlem-kalderen, eller "" hvis kalderen er ejeren.
+
+    Ejer = ingen bruger-kontekst (daemon/autonomt), role=owner, eller user_id
+    lig ejerens id. Alle andre får deres egen bucket.
+    """
+    try:
+        from core.identity.workspace_context import current_role, current_user_id
+        uid = (current_user_id() or "").strip()
+        if not uid or current_role() == "owner":
+            return ""
+        try:
+            from core.identity.owner_resolver import get_owner_discord_id
+            if uid == (get_owner_discord_id() or "").strip():
+                return ""
+        except ImportError:
+            # Uden owner_resolver kan ejerens id ikke slaas op. Vi behandler da
+            # uid som medlem — den sikre side: et medlem faar sin EGEN bucket,
+            # aldrig ejerens.
+            pass
+        return uid
+    except ImportError:
+        # Uden workspace_context findes ingen bruger-kontekst, og kalderen er
+        # daemon/autonomt arbejde — altsaa ejeren. Samme regel som foer.
+        return ""
+
+
+def _bucket(data: dict, uid: str, *, create: bool = False) -> dict:
+    """Kanal-dict for ``uid`` ("" = ejer). Muterbar kun hvis den findes/create."""
+    if not uid:
+        return data["channels"]
+    users = data.get("users")
+    if not isinstance(users, dict):
+        if not create:
+            return {}
+        users = data["users"] = {}
+    entry = users.get(uid)
+    if not isinstance(entry, dict) or not isinstance(entry.get("channels"), dict):
+        if not create:
+            return {}
+        entry = users[uid] = {"channels": {}}
+    return entry["channels"]
 
 
 # ── Channel adapters ──────────────────────────────────────────────────────────
@@ -77,12 +131,28 @@ def _send_generic(url: str, message: str, title: str, extra: dict) -> dict:
         return {"status": "error", "error": str(e)}
 
 
-def _dispatch(channel_cfg: dict, message: str, title: str, priority: str) -> dict:
+def _send_ntfy_url(url: str, message: str, title: str, priority: str) -> dict:
+    """Medlems-ntfy: POST til medlemmets EGET topic-url (aldrig ejerens topic)."""
+    headers = {"Title": title.encode("utf-8").decode("latin-1", "ignore") or "Jarvis",
+               "Priority": priority}
+    req = urllib.request.Request(url, data=message.encode("utf-8"), headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return {"status": "ok", "http": r.status}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+def _dispatch(channel_cfg: dict, message: str, title: str, priority: str, *, member: bool = False) -> dict:
     kind = str(channel_cfg.get("type") or "generic").lower()
     url = str(channel_cfg.get("url") or "")
     extra = {k: v for k, v in channel_cfg.items() if k not in ("type", "url", "name", "created_at")}
 
     if kind == "ntfy":
+        if member:
+            if not url:
+                return {"status": "error", "error": "ntfy channel has no url"}
+            return _send_ntfy_url(url, message, title, priority)
         return _send_ntfy(message, title, priority)
     elif kind == "discord":
         return _send_discord(url, message, title)
@@ -106,14 +176,18 @@ def _exec_notify_out(args: dict[str, Any]) -> dict[str, Any]:
         channels = [channels]
 
     data = _load()
+    uid = _caller_uid()
+    mine = _bucket(data, uid)
     results = {}
     errors = []
 
     for ch in channels:
-        if ch == "ntfy":
+        if ch in mine:
+            r = _dispatch(mine[ch], message, title, priority, member=bool(uid))
+        elif ch == "ntfy" and not uid:
             r = _send_ntfy(message, title, priority)
-        elif ch in data["channels"]:
-            r = _dispatch(data["channels"][ch], message, title, priority)
+        elif ch == "ntfy":
+            r = {"status": "error", "error": "Built-in ntfy is the owner's. Register your own with notify_channel_add (type ntfy, url=topic url)."}
         else:
             r = {"status": "error", "error": f"Channel '{ch}' not registered. Use notify_channel_add."}
 
@@ -144,7 +218,7 @@ def _exec_notify_channel_add(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": "url is required for non-ntfy channels"}
 
     data = _load()
-    data["channels"][name] = {
+    _bucket(data, _caller_uid(), create=True)[name] = {
         "name": name,
         "type": kind,
         "url": url,
@@ -156,25 +230,28 @@ def _exec_notify_channel_add(args: dict[str, Any]) -> dict[str, Any]:
 
 def _exec_notify_channel_list(args: dict[str, Any]) -> dict[str, Any]:
     data = _load()
+    uid = _caller_uid()
     channels = [
         {"name": n, "type": c.get("type"), "url": c.get("url", ""), "created_at": c.get("created_at", "")}
-        for n, c in data["channels"].items()
+        for n, c in _bucket(data, uid).items()
     ]
-    # Always show ntfy as built-in
-    builtin = [{"name": "ntfy", "type": "ntfy", "url": "(configured in runtime.json)", "builtin": True}]
-    return {"status": "ok", "channels": builtin + channels, "count": len(channels) + 1}
+    # Built-in ntfy (runtime.json) er ejerens — vises ikke for medlemmer
+    builtin = [] if uid else [{"name": "ntfy", "type": "ntfy", "url": "(configured in runtime.json)", "builtin": True}]
+    return {"status": "ok", "channels": builtin + channels, "count": len(channels) + len(builtin)}
 
 
 def _exec_notify_channel_delete(args: dict[str, Any]) -> dict[str, Any]:
     name = str(args.get("name") or "").strip()
     if not name:
         return {"status": "error", "error": "name is required"}
-    if name == "ntfy":
+    uid = _caller_uid()
+    if name == "ntfy" and not uid:
         return {"status": "error", "error": "Cannot delete built-in ntfy channel."}
     data = _load()
-    if name not in data["channels"]:
+    mine = _bucket(data, uid)
+    if name not in mine:
         return {"status": "error", "error": f"Channel '{name}' not found."}
-    del data["channels"][name]
+    del mine[name]
     _save(data)
     return {"status": "ok", "deleted": name}
 

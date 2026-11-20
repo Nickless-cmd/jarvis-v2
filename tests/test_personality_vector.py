@@ -77,6 +77,37 @@ def test_kort_svar_gaar_uaendret_igennem():
     assert _bevis_vindue(kort) == kort
 
 
+def test_en_bevist_forkert_post_kan_traekkes_tilbage():
+    """Selvmodellen skal kunne AFLÆRE, ikke kun lære.
+
+    Målt 20/11-2026: 14 af 20 poster i `recurring_mistakes` var «Afbrød sit
+    eget svar midt i sætningen». De kom fra dommerens klippede bevis-vindue —
+    de citerede beskeder slutter korrekt i `chat_messages` (fx 885 tegn og et
+    fuldstændigt spørgsmål). Men listen kunne kun vokse, så hver falsk post
+    blev et læringsmål, som hjerteslaget gjorde til en opgave. Uden denne gren
+    er en falsk selvdom evig.
+    """
+    from core.services.personality_vector import _merge_vector
+
+    falsk = "Afbrød sit eget svar midt i sætningen ('...Den '), så intet blev leveret"
+    aegte = "Gættede på kolonnenavne i runtime_tasks før schemaet var læst"
+    current = {"recurring_mistakes": [falsk, aegte]}
+
+    merged = _merge_vector(current, {"retire_mistakes": [falsk]})
+    assert merged["recurring_mistakes"] == [aegte]
+
+    # En post der ikke findes må ikke gøre noget — en afvigelse i dommerens
+    # citat må ikke tømme listen.
+    uaendret = _merge_vector(current, {"retire_mistakes": ["findes ikke"]})
+    assert uaendret["recurring_mistakes"] == [falsk, aegte]
+
+    # Uden retire-feltet opfører listen sig præcis som før.
+    assert _merge_vector(current, {})["recurring_mistakes"] == [falsk, aegte]
+
+    # `retire_mistakes` er en INSTRUKS, ikke et felt der gemmes i vektoren.
+    assert "retire_mistakes" not in merged
+
+
 # ── Tre felter var uopnåelige fra tomme (målt 25/9-2026) ───────────────────
 #
 # Over ALLE 1007 versioner af vektoren på CT105:

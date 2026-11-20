@@ -93,6 +93,14 @@ Mulige felter:
 - learned_preferences: ["præference"] (tilføj nye, behold gamle)
 - recurring_mistakes: ["fejl i menneskelig form"]
   Tilføj den fejl DENNE tur faktisk viser — også første gang du ser den.
+- retire_mistakes: ["post der er BEVIST forkert"]
+  En post må FJERNES, men kun når denne kørsel beviser at den er forkert.
+  Skriv posten ordret som den står i vektoren. To tilfælde tæller:
+  (a) posten citerer et sted hvor BEVIS-VINDUET klipper, mens beskeden selv
+      slutter korrekt — så var fejlen i målingen, ikke i svaret;
+  (b) kørslen viser at det posten påstod, ikke skete.
+  Er du i tvivl, lad posten stå. En liste der kun kan vokse, gør en falsk
+  selvdom evig — og den driver så arbejde der aldrig var nødvendigt.
 - strengths_discovered: ["styrke i menneskelig form"]
   Tilføj den styrke DENNE tur faktisk viser — også første gang du ser den.
 - current_bearing: "kort sætning om nuværende fokus"
@@ -471,6 +479,22 @@ def _merge_vector(current: dict, updates: dict) -> dict:
             result[key] = merged[-20:]  # cap at 20
         else:
             result[key] = current_val
+
+    # En post kan TRAEKKES TILBAGE. Uden denne gren kunne listen kun vokse, og
+    # en falsk selvdom blev dermed evig: dommeren skrev 14 gange «afbrød sit
+    # eget svar midt i saetningen», fordi dens bevis-vindue klippede ved 400
+    # tegn — de samme beskeder slutter korrekt i `chat_messages` (maalt
+    # 20/11-2026, se `_bevis_vindue`). Hver post blev til et laeringsmaal, som
+    # hjerteslaget gjorde til en opgave. En selvmodel der kun kan laere og
+    # aldrig aflaere, producerer arbejde om fejl den ikke har.
+    retire = updates.get("retire_mistakes")
+    if isinstance(retire, list) and isinstance(result.get("recurring_mistakes"), list):
+        drop = {str(x).strip() for x in retire if str(x).strip()}
+        if drop:
+            result["recurring_mistakes"] = [
+                m for m in result["recurring_mistakes"]
+                if str(m).strip() not in drop
+            ]
 
     # Simple string fields
     result["current_bearing"] = str(

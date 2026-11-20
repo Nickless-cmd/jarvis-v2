@@ -173,6 +173,19 @@ def _evaluate_experiment(cohorts: dict) -> tuple[str, str]:
 #: til kandidatpuljen paa 12.
 _HISTORIK_VINDOW = 500
 
+#: De praecise skridt `record_curriculum_outcome` skriver (`task_worker.py`):
+#: +0,05 ved BEVIST arbejde og -0,03 ved et fejlet run. Alle andre skridt i
+#: vektoren kommer fra modellens eget skoen i `personality_vector.py` — de er
+#: smaa (0,01-0,04) og uden beviskaede.
+#:
+#: Maalt 20/11-2026: af de 24 domaener der slap gennem «to skift»-reglen havde
+#: KUN 1 nogensinde et mekanisk skridt. De 23 andre blev stadig kaldt
+#: «svagheder» paa et tal ingen havde maalt — samme fejlklasse som
+#: `_maalte_domaener` fjernede, bare et lag dybere.
+#: `tests/test_self_experiments.py` holder dem synkroniseret med task_worker.
+_MEKANISK_LOEFT = 0.05
+_MEKANISK_FALD = 0.03
+
 #: Cache for «hvilke domaener har bevaaget sig». Noeglen er den NYESTE vektors
 #: id+version+updated_at: saa laenge der ikke er skrevet en ny vektor, er
 #: svaret det samme, og vi betaler ikke ~0,3 s ved hvert hjerteslag. En ny
@@ -216,7 +229,9 @@ def _maalte_domaener(noegle: str) -> set[str] | None:
         # Én vektor = ingen historik. Saa kan en konstant og en maaling ikke
         # skelnes, og vi skal ikke lade som om vi kan.
         return None
-    vaerdier: dict[str, set[float]] = {}
+    #: Hver domaenes vaerdier i KRONOLOGISK raekkefoelge — ikke et saet.
+    #: Et saet kan kun sige «har flyttet sig», ikke «hvor mange gange».
+    vaerdier: dict[str, list[float]] = {}
     for rad in rows:
         try:
             domaener = json.loads(str(rad.get("confidence_by_domain") or "{}"))
@@ -224,13 +239,85 @@ def _maalte_domaener(noegle: str) -> set[str] | None:
             continue
         for navn, tal in domaener.items():
             try:
-                vaerdier.setdefault(str(navn), set()).add(round(float(tal), 4))
+                vaerdier.setdefault(str(navn), []).append(round(float(tal), 4))
             except (TypeError, ValueError):
                 continue
-    maalte = {navn for navn, saet in vaerdier.items() if len(saet) > 1}
+    # Et SKIFT, ikke en distinkt vaerdi. Maalt 20/11-2026: `souls-build
+    # analyse` stod paa 0,45 i 10 vektorer og 0,38 i de naeste 205 — praecis
+    # ÉN aendring, og den faldt lige efter domaenets fødsel. Reglen «to
+    # forskellige vaerdier» gjorde den derfor til en MAALT svaghed, og den
+    # blev et laeringsmaal: «Bliv bedre til souls-build analyse». Der findes
+    # ikke én linje kode med det navn, og tallet er to selvrapporter i traek.
+    # Et domaene der kun har flyttet sig én gang er en mening der skiftede —
+    # ikke en maaling. Kraevet er derfor to skift.
+    maalte = {
+        navn
+        for navn, seq in vaerdier.items()
+        if sum(1 for i in range(1, len(seq)) if seq[i] != seq[i - 1]) >= 2
+    }
     _MAALTE_CACHE["noegle"] = noegle
     _MAALTE_CACHE["domaener"] = maalte
     return maalte
+
+
+def _mekanisk_maalte(noegle: str) -> set[str] | None:
+    """Domaener hvis confidence er flyttet af en MEKANISK kilde.
+
+    `_maalte_domaener` svarer paa «har domaenet flyttet sig mindst to gange».
+    Det er en noedvendig, men ikke tilstraekkelig betingelse: en flytning kan
+    komme fra `record_curriculum_outcome` (bevist arbejde) ELLER fra modellens
+    eget skoen i `personality_vector` (ingen beviskaede).
+
+    Maalt 20/11-2026 over 500 vektorer: 23 af de 24 domaener der slap igennem
+    havde UDELUKKENDE selvrapporterede skridt paa 0,01-0,04. Kun
+    «kadence-maaling i drift» havde et mekanisk skridt (-0,03). De 23 blev
+    alligevel kaldt svagheder, og planen skrev «confidence er kun 38 %» som om
+    tallet var maalt. Det er praecis den paastand denne funktion goer det
+    muligt at undgaa.
+
+    Returnerer None naar historikken ikke kan laeses — saa ved vi det ikke, og
+    kalderen skal sige det hoejt i stedet for at gaette.
+    """
+    if _MAALTE_CACHE.get("mekanisk_noegle") == noegle and isinstance(
+        _MAALTE_CACHE.get("mekaniske"), set
+    ):
+        return _MAALTE_CACHE["mekaniske"]  # type: ignore[return-value]
+    try:
+        from core.runtime.db import list_cognitive_personality_vectors
+
+        rows = list_cognitive_personality_vectors(limit=_HISTORIK_VINDOW)
+    except Exception as exc:
+        logger.warning("curriculum: mekanisk historik kunne ikke laeses: %s", exc)
+        return None
+    if len(rows) < 2:
+        return None
+    # NYESTE FOERST (`ORDER BY version DESC`). Vi vender om, saa et skridt
+    # laeses «fra gammel til ny» — ellers ville et mekanisk +0,05 staa som
+    # -0,05 og blive kasseret.
+    reekker: dict[str, list[float]] = {}
+    for rad in reversed(rows):
+        try:
+            domaener = json.loads(str(rad.get("confidence_by_domain") or "{}"))
+        except Exception:
+            continue
+        for navn, tal in domaener.items():
+            try:
+                reekker.setdefault(str(navn), []).append(round(float(tal), 4))
+            except (TypeError, ValueError):
+                continue
+    mekaniske: set[str] = set()
+    for navn, seq in reekker.items():
+        for a, b in zip(seq, seq[1:]):
+            skridt = round(b - a, 4)
+            if (
+                abs(skridt - _MEKANISK_LOEFT) < 1e-6
+                or abs(skridt + _MEKANISK_FALD) < 1e-6
+            ):
+                mekaniske.add(navn)
+                break
+    _MAALTE_CACHE["mekanisk_noegle"] = noegle
+    _MAALTE_CACHE["mekaniske"] = mekaniske
+    return mekaniske
 
 
 def generate_learning_curriculum() -> dict[str, object]:
@@ -281,13 +368,38 @@ def generate_learning_curriculum() -> dict[str, object]:
             # Nu sendes en kandidatpulje; materialize vaelger de 3 der ikke
             # allerede ligger i koen.
             kandidat_pulje = 12
+            #: Hvilke domaener der har et MEKANISK skridt bag sig. `None` naar
+            #: historikken ikke kunne laeses — saa ved vi det ikke.
+            mekaniske = _mekanisk_maalte(noegle)
             for domain, conf in weak[:kandidat_pulje]:
+                # «confidence er kun 38 %» var en paastand om en maaling. For
+                # 23 af 24 domaener findes ingen: tallet er modellens eget
+                # skoen, og det er praecis den fejlklasse `_maalte_domaener`
+                # fjernede et lag hoejere oppe. Maalt 20/11-2026 pegede
+                # laeringsmaalet «Bliv bedre til app reverse engineering —
+                # confidence er kun 38 %» paa netop et saadant tal.
+                if mekaniske is None:
+                    forslag = (
+                        f"Bliv bedre til {domain} — confidence {conf:.0%}, "
+                        f"maalehistorikken kunne ikke laeses"
+                    )
+                    maalt = False
+                elif domain in mekaniske:
+                    forslag = f"Bliv bedre til {domain} — maalt confidence {conf:.0%}"
+                    maalt = True
+                else:
+                    forslag = (
+                        f"{domain} staar paa {conf:.0%} uden en maaling bag — "
+                        f"faa det maalt foer du oever"
+                    )
+                    maalt = False
                 curriculum.append({
                     "focus": domain,
                     "domain": domain,
                     "type": "weakness",
                     "current_confidence": conf,
-                    "suggestion": f"Bliv bedre til {domain} — confidence er kun {conf:.0%}",
+                    "measured": maalt,
+                    "suggestion": forslag,
                     "priority": 1.0 - conf,
                 })
     except Exception as exc:

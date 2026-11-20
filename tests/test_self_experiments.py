@@ -217,6 +217,15 @@ def test_frosne_domaener_bliver_ikke_laeringsmaal(isolated_runtime):
         }),
         recurring_mistakes=json.dumps([]),
     )
+    # To skift, ikke ét: et domæne der kun har flyttet sig én gang er en
+    # selvrapport der skiftede mening — se `test_et_enkelt_skift_er_ikke_en_maaling`.
+    isolated_runtime.db.upsert_cognitive_personality_vector(
+        confidence_by_domain=json.dumps({
+            "face recognition": 0.35,
+            "desk render capabilities": 0.32,
+        }),
+        recurring_mistakes=json.dumps([]),
+    )
 
     plan = SE.generate_learning_curriculum()
     pulje = list(plan.get("candidates") or plan.get("curriculum") or [])
@@ -252,6 +261,48 @@ def test_uden_historik_gaetter_planen_ikke(isolated_runtime):
     assert "domain_history" in list(plan.get("kilde_fejl") or []), (
         "planen kunne ikke skelne, men sagde det ikke"
     )
+
+
+def test_et_enkelt_skift_er_ikke_en_maaling(isolated_runtime):
+    """`souls-build analyse`: 0,45 i 10 vektorer, 0,38 i de næste 205.
+
+    Præcis ÉN ændring — og den faldt lige efter domænets fødsel. Reglen «to
+    forskellige værdier» gjorde den derfor til en MÅLT svaghed, og den blev et
+    læringsmål: «Bliv bedre til souls-build analyse — confidence er kun 38 %».
+
+    Der findes ikke én linje kode med det navn. Der findes til gengæld rigtige
+    tråde om «souls-appen» — så navnet er ikke grebet ud af luften: et PROJEKT
+    blev skrevet ind som en KOMPETENCE. Et tal der kun har flyttet sig én gang
+    er en mening der skiftede, ikke en måling.
+
+    Målt 20/11-2026 i den levende base: 177 svage domæner, 24 med mindst ét
+    skift, kun 7 med to eller flere.
+    """
+    import core.services.self_experiments as SE
+
+    getattr(SE, "_MAALTE_CACHE", {}).update({"noegle": None, "domaener": None})
+
+    isolated_runtime.db.upsert_cognitive_personality_vector(
+        confidence_by_domain=json.dumps({"souls-build analyse": 0.45}),
+        recurring_mistakes=json.dumps([]),
+    )
+    isolated_runtime.db.upsert_cognitive_personality_vector(
+        confidence_by_domain=json.dumps({"souls-build analyse": 0.38}),
+        recurring_mistakes=json.dumps([]),
+    )
+    isolated_runtime.db.upsert_cognitive_personality_vector(
+        confidence_by_domain=json.dumps({"souls-build analyse": 0.38}),
+        recurring_mistakes=json.dumps([]),
+    )
+
+    plan = SE.generate_learning_curriculum()
+    pulje = list(plan.get("candidates") or plan.get("curriculum") or [])
+    domaener = {str(c.get("domain")) for c in pulje if c.get("type") == "weakness"}
+
+    assert "souls-build analyse" not in domaener, (
+        "et domæne der kun har skiftet mening én gang blev gjort til et læringsmål"
+    )
+    assert int(plan.get("unmeasured_weak_domains") or 0) == 1
 
 
 
@@ -352,3 +403,74 @@ def test_ukendt_fejl_bliver_ikke_til_en_task(isolated_runtime):
     scopes = [isolated_runtime.db.get_runtime_task(t)["scope"] for t in ud["task_ids"]]
     assert "ukendt-fejl" not in scopes
     assert "planning" in scopes
+
+
+# ── Selvrapporteret er ikke målt (20/11-2026) ────────────────────────────────
+
+def _nulstil_cache() -> None:
+    import core.services.self_experiments as SE
+
+    SE._MAALTE_CACHE.clear()
+    SE._MAALTE_CACHE.update(
+        {"noegle": None, "domaener": None, "mekanisk_noegle": None, "mekaniske": None}
+    )
+
+
+def test_mekaniske_skridt_matcher_task_worker():
+    """Konstanterne skal spejle dem `record_curriculum_outcome` skriver.
+
+    Glider de fra hinanden, genkender `_mekanisk_maalte` ikke laengere et
+    aegte skridt — og saa tier den i stedet for at sige det.
+    """
+    import core.services.self_experiments as SE
+    import core.services.task_worker as TW
+
+    assert SE._MEKANISK_LOEFT == TW._LIFT_EVIDENCED
+    assert SE._MEKANISK_FALD == TW._DROP_FAILED
+
+
+def test_selvrapporteret_svaghed_bliver_ikke_kaldt_maalt(isolated_runtime):
+    """Et domaene med kun smaa selvrapporterede skridt maa ikke kaldes maalt.
+
+    Maalt 20/11-2026: 23 af 24 domaener der slap gennem «to skift»-reglen
+    havde udelukkende skridt paa 0,01-0,04. Planen skrev «confidence er kun
+    38 %» som om tallet var maalt — og sendte mig ud efter en svaghed der
+    ikke findes.
+    """
+    import json
+
+    from core.runtime.db import upsert_cognitive_personality_vector
+
+    _nulstil_cache()
+    # app: 0,44 -> 0,42 -> 0,40 — to skift, men ingen mekaniske (0,02).
+    # kadence: 0,42 -> 0,47 -> 0,45 — to skift, hvoraf +0,05 er mekanisk.
+    historik = [
+        {"app reverse engineering": 0.44, "kadence-maaling i drift": 0.42},
+        {"app reverse engineering": 0.42, "kadence-maaling i drift": 0.47},
+        {"app reverse engineering": 0.40, "kadence-maaling i drift": 0.45},
+    ]
+    for vektor in historik:
+        upsert_cognitive_personality_vector(
+            confidence_by_domain=json.dumps(vektor)
+        )
+
+    import core.services.self_experiments as SE
+
+    plan = SE.generate_learning_curriculum()
+    poster = {
+        str(c.get("domain") or ""): c for c in plan.get("curriculum") or []
+    }
+
+    selvrap = poster.get("app reverse engineering")
+    assert selvrap is not None, "selvrapporteret domaene faldt helt ud af planen"
+    assert selvrap["measured"] is False
+    tekst = str(selvrap.get("suggestion") or "")
+    assert "confidence er kun" not in tekst, (
+        f"selvrapporteret tal blev kaldt en maaling: {tekst!r}"
+    )
+    assert "uden en maaling bag" in tekst
+
+    mekanisk = poster.get("kadence-maaling i drift")
+    assert mekanisk is not None, "domaenet med et mekanisk skridt faldt ud"
+    assert mekanisk["measured"] is True
+    assert "maalt confidence" in str(mekanisk.get("suggestion") or "")

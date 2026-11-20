@@ -256,3 +256,89 @@ def test_et_tomt_svar_logges_frem_for_at_tie(monkeypatch, caplog):
         "et afkortet svar blev slugt i tavshed"
     assert any("length" in str(r.args) for r in caplog.records), \
         "done_reason skal med — den siger HVORFOR det var tomt"
+
+
+# ── Pensionsvej for strengths_discovered og self_model_signals (20/11-2026) ──
+
+_FALSK_DOM = "Afbrød sit eget svar midt i sætningen"
+
+
+def test_pensioneret_styrke_baeres_ikke_videre_men_uberoerte_goer():
+    from core.services.personality_vector import _merge_vector
+
+    aegte = "Grundig fejlsøgning"
+    current = {"strengths_discovered": [_FALSK_DOM, aegte]}
+
+    merged = _merge_vector(current, {"retire_strengths": [_FALSK_DOM]})
+    assert merged["strengths_discovered"] == [aegte]  # (a)
+    assert "retire_strengths" not in merged
+
+    # (b) ikke-pensioneret bæres stadig; ukendt post tømmer intet
+    assert _merge_vector(current, {})["strengths_discovered"] == [_FALSK_DOM, aegte]
+    assert _merge_vector(current, {"retire_strengths": ["findes ikke"]})[
+        "strengths_discovered"
+    ] == [_FALSK_DOM, aegte]
+
+
+def test_styrke_pension_roerer_ikke_recurring_mistakes_og_omvendt():
+    from core.services.personality_vector import _merge_vector
+
+    current = {
+        "strengths_discovered": [_FALSK_DOM],
+        "recurring_mistakes": [_FALSK_DOM],  # identisk tekst i begge felter
+    }
+    s = _merge_vector(current, {"retire_strengths": [_FALSK_DOM]})
+    assert s["strengths_discovered"] == []
+    assert s["recurring_mistakes"] == [_FALSK_DOM]  # (c)
+
+    m = _merge_vector(current, {"retire_mistakes": [_FALSK_DOM]})
+    assert m["recurring_mistakes"] == []
+    assert m["strengths_discovered"] == [_FALSK_DOM]
+
+
+def _signal(sid: str, key: str, title: str) -> None:
+    from core.runtime.db import upsert_runtime_self_model_signal
+
+    upsert_runtime_self_model_signal(
+        signal_id=sid, signal_type="strength", canonical_key=key, status="active",
+        title=title, summary=title, rationale="t", source_kind="runtime-derived-support",
+        confidence="medium", evidence_summary="e", support_summary="s",
+        support_count=1, session_count=1,
+        created_at="2026-11-20T01:00:00+00:00", updated_at="2026-11-20T01:00:00+00:00",
+    )
+
+
+def test_pensioneret_self_model_signal_forlader_overfladen(isolated_runtime):
+    from core.runtime.db import get_runtime_self_model_signal
+    from core.services.personality_vector import retire_self_model_signals
+    from core.services.self_model_signal_tracking import (
+        build_runtime_self_model_signal_surface,
+    )
+
+    _signal("sig-falsk", "k-falsk", f"Strength: {_FALSK_DOM}")
+    _signal("sig-aegte", "k-aegte", "Strength: grundig fejlsøgning")
+
+    retire_self_model_signals(["sig-falsk"], reason="Bevis-vinduet klippede; målefejl")
+
+    falsk = get_runtime_self_model_signal("sig-falsk")
+    assert falsk["status"] == "retired"
+    assert "målefejl" in falsk["status_reason"]
+    # (b) den uberørte er stadig aktiv og vises
+    assert get_runtime_self_model_signal("sig-aegte")["status"] == "active"
+    ids = [i["signal_id"] for i in build_runtime_self_model_signal_surface()["items"]]
+    assert "sig-aegte" in ids and "sig-falsk" not in ids  # (a)
+
+
+def test_pension_af_self_model_signal_fejler_hoejt(isolated_runtime):
+    import pytest
+    from core.runtime.db import get_runtime_self_model_signal
+    from core.services.personality_vector import retire_self_model_signals
+
+    _signal("sig-1", "k-1", "Strength: x y")
+    with pytest.raises(ValueError):
+        retire_self_model_signals(["sig-1"], reason="  ")
+    with pytest.raises(ValueError):
+        retire_self_model_signals([], reason="r")
+    with pytest.raises(ValueError):  # ét ukendt id → intet ændres
+        retire_self_model_signals(["sig-1", "findes-ikke"], reason="r")
+    assert get_runtime_self_model_signal("sig-1")["status"] == "active"

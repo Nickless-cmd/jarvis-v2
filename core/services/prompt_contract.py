@@ -4455,12 +4455,126 @@ def _quick_facts_section(*, workspace_dir: Path, max_chars: int = 20000) -> str 
     text = raw.strip()
     if not text:
         return None
-    if len(text) > max_chars:
+    full_len = len(text)
+    cut = full_len > max_chars
+    notice = _quick_facts_capacity_notice(
+        text, max_chars=max_chars, cut_at=(max_chars - 1) if cut else None,
+    )
+    if cut:
         text = text[: max_chars - 1].rstrip() + "…"
-    return (
+    body = (
         "Quick Facts (altid gældende — tjek her FØR du leder lokalt eller på nettet):\n"
         f"{text}"
     )
+    if notice:
+        body += "\n\n" + notice
+    return body
+
+
+# ── Hukommelses-loft-advarsel (20/11-2026) ───────────────────────────────────
+# MÅLT KLIPNING: `text[: max_chars - 1]` på den strippede (og secret-redigerede)
+# tekst — et TEGN-snit, ikke linje/sektion. Det fjerner SLUTNINGEN af filen og kan
+# lande midt i en linje. 23/10-2026: 85.742 tegn, 77 % usynligt, opdaget bagefter.
+#
+# BESLUTNINGER
+# 1) TÆRSKEL = 90 % af loftet (18.000 af 20.000). Relativ, så den følger loftet.
+#    90 % levner ~2.000 tegn = ca. én almindelig redigeringsrunde at rydde op i;
+#    lavere (fx 70 %) ville fyre konstant på en fil der naturligt ligger højt og
+#    blive støj; højere levner ikke tid til at handle før klippet.
+# 2) MODTAGER = agenten (mig), i PROMPTEN, så jeg selv kan rydde op. Derudover ÉN
+#    central incident (dedup, kun ved TILSTANDSSKIFT) som spor — ikke en
+#    notifikation til Bjørn. Incidenten er kun observerbarhed; prompten er kanalen.
+# 3) INDHOLD: tegn nu / loft / procent / over-under, de største sektioner (efter
+#    overskrifter) og HVAD DER FORSVINDER hvis intet gøres (resp. hvad der ER
+#    forsvundet). Plus handlingen: komprimér/flyt — men slet intet uden Bjørns ord.
+# 4) KLIP FORBLIVER IKKE TAVST: når klippet sker, siger prompten det eksplicit
+#    (tegn tabt, hvilke sektioner helt/delvist væk) og incidenten hæves til
+#    severity=error. Et klip der ikke melder sig er fejlen fra 23/10.
+# 5) CACHE: advarslen er BETINGET. Under tærsklen returneres INGEN ekstra bytes, så
+#    den stabile tilstand er byte-identisk med før. Over tærsklen afhænger teksten
+#    KUN af filens indhold (ingen tid, ingen tæller, ingen tilfældig rækkefølge) —
+#    tallene skifter altså kun når filen skrives, og et skriv er allerede et
+#    cache-reset. Advarslen ligger EFTER teksten (slutningen af sektionen), så den
+#    heller ikke selv bliver klippet væk.
+# 6) INGEN auto-oprydning: intet i denne sti skriver til QUICK_FACTS.md.
+QUICK_FACTS_WARN_RATIO = 0.90
+_quick_facts_last_reported: dict[str, str] = {}
+
+
+def _quick_facts_sections(text: str) -> list[tuple[str, int, int]]:
+    """(titel, start, længde) pr. overskrift-sektion. Tekst før første overskrift
+    hedder «(indledning)». Deterministisk."""
+    import re as _re
+    starts = [(m.start(), m.group(0).strip()) for m in _re.finditer(r"(?m)^#{1,6}\s+.*$", text)]
+    out: list[tuple[str, int, int]] = []
+    if not starts or starts[0][0] > 0:
+        first = starts[0][0] if starts else len(text)
+        out.append(("(indledning)", 0, first))
+    for i, (pos, title) in enumerate(starts):
+        end = starts[i + 1][0] if i + 1 < len(starts) else len(text)
+        out.append((title.lstrip("#").strip()[:60], pos, end - pos))
+    return [s for s in out if s[2] > 0]
+
+
+def _quick_facts_capacity_notice(
+    text: str, *, max_chars: int, cut_at: int | None,
+) -> str | None:
+    """Advarsel/klip-rapport, eller None under tærsklen (→ byte-identisk prompt)."""
+    n = len(text)
+    threshold = int(max_chars * QUICK_FACTS_WARN_RATIO)
+    if n < threshold:
+        _quick_facts_last_reported.pop("state", None)
+        return None
+    sections = _quick_facts_sections(text)
+    biggest = sorted(sections, key=lambda s: (-s[2], s[1]))[:3]
+    big_txt = ", ".join(f"«{t}» {ln} tegn" for t, _s, ln in biggest)
+    pct = round(100 * n / max_chars)
+    if cut_at is None:
+        left = max_chars - n
+        msg = (
+            f"⚠ QUICK_FACTS.md er næsten fuld: {n} af {max_chars} tegn ({pct} %), "
+            f"{left} tegn til loftet. Største sektioner: {big_txt}. "
+            f"Overskrides loftet, klippes SLUTNINGEN af filen tavst væk i prompten. "
+            f"Handling: komprimér eller flyt historik/detaljer til MEMORY.md — "
+            f"slet intet uden Bjørns ord."
+        )
+        severity = "info"
+    else:
+        lost = n - cut_at
+        gone = [t for t, s, ln in sections if s >= cut_at]
+        partial = [t for t, s, ln in sections if s < cut_at < s + ln]
+        gone_txt = ", ".join(f"«{t}»" for t in gone[:8]) or "ingen hele sektioner"
+        if len(gone) > 8:
+            gone_txt += f" (+{len(gone) - 8} flere)"
+        part_txt = ", ".join(f"«{t}»" for t in partial) or "ingen"
+        msg = (
+            f"⚠ QUICK_FACTS.md er KLIPPET: {n} tegn mod loft {max_chars} — "
+            f"{lost} tegn ({round(100 * lost / n)} %) er IKKE synlige for dig. "
+            f"Helt væk: {gone_txt}. Delvist væk: {part_txt}. "
+            f"Største sektioner: {big_txt}. "
+            f"Handling: komprimér eller flyt indhold så filen kommer under loftet — "
+            f"slet intet uden Bjørns ord."
+        )
+        severity = "error"
+    _report_quick_facts_pressure(msg, severity)
+    return msg
+
+
+def _report_quick_facts_pressure(msg: str, severity: str) -> None:
+    """Central incident som spor — kun ved tilstandsskifte (ikke hver tur), dedup'et,
+    selv-sikker. Ingen notifikation til Bjørn."""
+    key = f"{severity}|{msg}"
+    if _quick_facts_last_reported.get("state") == key:
+        return
+    _quick_facts_last_reported["state"] = key
+    try:
+        from core.runtime.db_central_incidents import record_central_incident
+        record_central_incident(
+            cluster="memory", nerve="quick_facts_capacity", kind="capacity",
+            severity=severity, message=msg, dedup=True,
+        )
+    except Exception:
+        pass
 
 
 from core.services.prompt_sections.chat_mode import (  # noqa: E402,F401

@@ -215,6 +215,12 @@ describe('kontrolstrukturer (DIL lag 2)', () => {
     expect(udfoldKontrol('{#each xs som x}[{x}]{/each}', { xs: [1, 2, 3] }).tekst).toBe('[1][2][3]')
   })
 
+  it('udfolder #each over objekter og laeser felter', () => {
+    const data = { rs: [{ navn: 'a', status: 'ok' }, { navn: 'b', status: 2 }] }
+    expect(udfoldKontrol('{#each rs som r}{r.navn}={r.status};{/each}', data).tekst).toBe('a=ok;b=2;')
+    expect(udfoldKontrol('{#each rs som r}{r.nope}{/each}', { rs: [{ navn: 'a' }] }).tekst).toBe('{r.nope}')
+  })
+
   it('udfolder #if/:else', () => {
     expect(udfoldKontrol('{#if a > 1}stor{:else}lille{/if}', { a: 0 }).tekst).toBe('lille')
   })

@@ -59,6 +59,16 @@ CASES: dict[str, str] = {
     "data_er_null_fejl": _flade("{#each xs som x}{x}{/each}", None),
     "data_mangler_fejl": _flade("{#each xs som x}{x}{/each}", med_data=False),
     "data_ikke_dict_men_ingen_struktur": _flade("almindelig tekst", [1, 2]),
+    "objekt_each_felter": _flade(
+        "{#each rs som r}{r.navn}={r.status};{/each}",
+        {"rs": [{"navn": "a", "status": "ok"}, {"navn": "b", "status": 2}]},
+    ),
+    "objekt_each_nested_sti": _flade("{#each rs som r}{r.d.x}/{r.l[1]};{/each}", {"rs": [{"d": {"x": 7}, "l": [1, 2]}]}),
+    "objekt_each_manglende_felt_urort": _flade("{#each rs som r}{r.nope}{/each}", {"rs": [{"navn": "a"}]}),
+    "objekt_each_felt_ikke_skalar_urort": _flade("{#each rs som r}{r.d}{/each}", {"rs": [{"d": {"x": 1}}]}),
+    "objekt_each_med_if": _flade("{#each rs som r}{#if r.ok}J{:else}N{/if}{/each}", {"rs": [{"ok": True}, {"ok": False}]}),
+    "objekt_each_liste_i_liste_fejl": _flade("{#each rs som r}{r}{/each}", {"rs": [[1]]}),
+    "objekt_each_null_element_fejl": _flade("{#each rs som r}{r}{/each}", {"rs": [None]}),
     "data_fjernes": _flade("uden struktur", {"xs": [1]}),
 }
 

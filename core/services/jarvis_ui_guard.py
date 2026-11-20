@@ -315,6 +315,29 @@ def _sandhed(v: object) -> bool:
     return not (v is None or v is False or v == 0 and _er_tal(v) or v == "")
 
 
+def _er_each_element(v: object) -> bool:
+    return _er_skalar(v) or isinstance(v, dict)
+
+
+def _indsaet_element(indre: str, navn: str, element: object) -> str:
+    """``{navn}`` for skalarer, ``{navn.felt}``/``{navn.a[0]}`` for objekter. Mangler => uroert."""
+    if _er_skalar(element):
+        return indre.replace("{" + navn + "}", _skalar_tekst(element))
+    mønster = re.compile(
+        r"\{(" + re.escape(navn) + r"(?:\.[a-zA-Z_][a-zA-Z0-9_]*|\[\d+\])+)\}"
+    )
+
+    def _skift(m: "re.Match[str]") -> str:
+        dele = _sti_dele(m.group(1))
+        try:
+            v = _slaa_op(dele, {navn: element}, m.group(1)) if dele else None
+        except _KontrolFejl:  # felt mangler: degrader ved at lade pladsholderen staa uroert
+            return m.group(0)
+        return _skalar_tekst(v) if _er_skalar(v) else m.group(0)
+
+    return mønster.sub(_skift, indre)
+
+
 def _skalar_tekst(v: object) -> str:
     if isinstance(v, bool):
         return "true" if v else "false"
@@ -576,15 +599,15 @@ def _udfold_noder(noder: list, scope: Mapping[str, object]) -> str:
             _, liste_sti, navn, krop = n
             dele = _sti_dele(liste_sti)
             liste = _slaa_op(dele, scope, liste_sti) if dele else None
-            if not isinstance(liste, list) or not all(_er_skalar(x) for x in liste):
-                raise _KontrolFejl(f"#each {liste_sti}: er ikke en liste af skalarer")
+            if not isinstance(liste, list) or not all(_er_each_element(x) for x in liste):
+                raise _KontrolFejl(f"#each {liste_sti}: er ikke en liste af skalarer eller objekter")
             if len(liste) > KONTROL_MAX_LISTE:
                 raise _KontrolFejl(
                     f"#each {liste_sti}: listen har {len(liste)} elementer (max {KONTROL_MAX_LISTE})"
                 )
             for element in liste:
                 indre = _udfold_noder(krop, {**scope, navn: element})
-                ud += indre.replace("{" + navn + "}", _skalar_tekst(element))
+                ud += _indsaet_element(indre, navn, element)
         else:
             _, udtryk, da, ellers = n
             ud += _udfold_noder(da if _sandhed(_eval_udtryk(udtryk, scope)) else ellers, scope)

@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/runtime_self_model_affect.py`
+_Runtime self-model — affective awareness (flow, wonder, longing, relation)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_facade` | `()` | Return the facade module so monkeypatch-through-facade is honored. | [src](../../../core/services/runtime_self_model_affect.py#L19) |
+| function | `_derive_flow_state_awareness` | `(*, experiential, inner_voice, support_stream, temporal_feel, mineness)` | Derive a bounded flow-state awareness surface from runtime truth. | [src](../../../core/services/runtime_self_model_affect.py#L78) |
+| function | `_flow_narrative` | `(*, flow_state, flow_coherence, interruption_signal, carried_flow, voice_mode, pressure_state)` | Compact flow narrative. Empty when flow_state is clear. | [src](../../../core/services/runtime_self_model_affect.py#L211) |
+| function | `build_flow_state_awareness_prompt_section` | `()` | Compact heartbeat-side prompt section for flow-state awareness. | [src](../../../core/services/runtime_self_model_affect.py#L248) |
+| function | `_wonder_source_snapshot` | `()` | Safely pull dream carry signal for wonder derivation. | [src](../../../core/services/runtime_self_model_affect.py#L307) |
+| function | `_derive_wonder_awareness` | `(*, inner_voice, flow_state, temporal_feel, mineness, support_stream, sources, wonder_sources)` | Derive a bounded wonder/undren surface from existing runtime truth. | [src](../../../core/services/runtime_self_model_affect.py#L327) |
+| function | `_wonder_narrative` | `(*, wonder_state, wonder_source, opening_stream)` | Compact wonder narrative. Empty when quiet. | [src](../../../core/services/runtime_self_model_affect.py#L436) |
+| function | `build_wonder_awareness_prompt_section` | `()` | Compact heartbeat-side prompt section for wonder awareness. | [src](../../../core/services/runtime_self_model_affect.py#L471) |
+| function | `_longing_source_snapshot` | `()` | Safely gather bounded absence/relationship support for longing derivation. | [src](../../../core/services/runtime_self_model_affect.py#L556) |
+| function | `_derive_longing_awareness` | `(*, temporal_feel, mineness, support_stream, inner_voice, sources, longing_sources)` | Derive a bounded longing/absence surface from existing runtime truth. | [src](../../../core/services/runtime_self_model_affect.py#L623) |
+| function | `_longing_narrative` | `(*, longing_state, absence_relation, longing_source)` | Compact longing narrative. Empty when quiet. | [src](../../../core/services/runtime_self_model_affect.py#L729) |
+| function | `build_longing_awareness_prompt_section` | `()` | Compact heartbeat-side prompt section for longing awareness. | [src](../../../core/services/runtime_self_model_affect.py#L759) |
+| function | `_relation_continuity_self_source_snapshot` | `()` | Gather bounded substrates for relation continuity as self-truth. | [src](../../../core/services/runtime_self_model_affect.py#L809) |
+| function | `_derive_relation_continuity_self_awareness` | `(*, temporal_feel, mineness, longing, relation_sources)` | Derive a small runtime truth when relation continuity touches the self-stream. | [src](../../../core/services/runtime_self_model_affect.py#L892) |
+| function | `_relation_continuity_self_narrative` | `(*, relation_continuity_state, relation_self_relation, relation_continuity_source, relation_anchor)` | Compact relation continuity narrative. Empty when quiet. | [src](../../../core/services/runtime_self_model_affect.py#L1026) |
+| function | `build_relation_continuity_self_awareness_prompt_section` | `()` | Compact heartbeat-side prompt section for relation continuity as self-truth. | [src](../../../core/services/runtime_self_model_affect.py#L1053) |
+
 ## `core/services/runtime_self_model_boundary.py`
 _Runtime self-model — self-boundary clarity + world-contact awareness._
 
@@ -530,16 +552,16 @@ _Self-Experiments — A/B testing on Jarvis' own behavior._
 | function | `_klip_ord_graense` | `(tekst, loft=…)` | Klip ved ORD-grænse, ikke midt i ordet. | [src](../../../core/services/self_experiments.py#L403) |
 | function | `observe_recent_visible_runs_for_self_experiments` | `(*, limit=…)` | Auto-observe recent visible runs for active self-experiments. | [src](../../../core/services/self_experiments.py#L420) |
 | function | `materialize_learning_curriculum_tasks` | `(*, limit=…, origin=…, owner=…, run_id=…)` | Turn top curriculum focuses into bounded runtime tasks. | [src](../../../core/services/self_experiments.py#L498) |
-| function | `build_self_experiments_surface` | `()` | — | [src](../../../core/services/self_experiments.py#L609) |
-| function | `_parse_result_payload` | `(raw)` | — | [src](../../../core/services/self_experiments.py#L626) |
-| function | `_cohort_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L634) |
-| function | `_success_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L649) |
-| function | `_build_visible_run_observation_note` | `(*, experiment, run, cohort, success)` | — | [src](../../../core/services/self_experiments.py#L660) |
-| function | `_normaliser_fejltekst` | `(tekst)` | — | [src](../../../core/services/self_experiments.py#L704) |
-| function | `normaliser_fejl_til_domaene` | `(tekst)` | Map en rå fejlformulering til en stabil kategori-nøgle. | [src](../../../core/services/self_experiments.py#L711) |
-| function | `_item_domaene` | `(item)` | Domænenøglen for et curriculum-item. Ingen fallback til rå ``focus``: | [src](../../../core/services/self_experiments.py#L725) |
-| function | `_curriculum_focus_key` | `(value)` | — | [src](../../../core/services/self_experiments.py#L731) |
-| function | `_curriculum_priority` | `(priority)` | — | [src](../../../core/services/self_experiments.py#L735) |
+| function | `build_self_experiments_surface` | `()` | — | [src](../../../core/services/self_experiments.py#L616) |
+| function | `_parse_result_payload` | `(raw)` | — | [src](../../../core/services/self_experiments.py#L633) |
+| function | `_cohort_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L641) |
+| function | `_success_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L656) |
+| function | `_build_visible_run_observation_note` | `(*, experiment, run, cohort, success)` | — | [src](../../../core/services/self_experiments.py#L667) |
+| function | `_normaliser_fejltekst` | `(tekst)` | — | [src](../../../core/services/self_experiments.py#L711) |
+| function | `normaliser_fejl_til_domaene` | `(tekst)` | Map en rå fejlformulering til en stabil kategori-nøgle. | [src](../../../core/services/self_experiments.py#L718) |
+| function | `_item_domaene` | `(item)` | Domænenøglen for et curriculum-item. Ingen fallback til rå ``focus``: | [src](../../../core/services/self_experiments.py#L732) |
+| function | `_curriculum_focus_key` | `(value)` | — | [src](../../../core/services/self_experiments.py#L738) |
+| function | `_curriculum_priority` | `(priority)` | — | [src](../../../core/services/self_experiments.py#L742) |
 
 ## `core/services/self_history_grounding.py`
 _Prompten maa ikke forveksle et rygte med en kendsgerning._
@@ -772,26 +794,4 @@ _Self-repair engine — runtime-instigated repair actions for known patterns._
 | function | `start_listener` | `()` | Start the eventbus listener daemon. Idempotent. | [src](../../../core/services/self_repair_engine.py#L751) |
 | function | `stop_listener` | `()` | Signal the listener to exit. Best-effort. | [src](../../../core/services/self_repair_engine.py#L768) |
 | function | `_listener_loop` | `(q)` | — | [src](../../../core/services/self_repair_engine.py#L778) |
-
-## `core/services/self_review_cadence_signal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_self_review_cadence_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L22) |
-| function | `refresh_runtime_self_review_cadence_signal_statuses` | `()` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L64) |
-| function | `build_runtime_self_review_cadence_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L109) |
-| function | `_extract_self_review_cadence_candidates` | `()` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L135) |
-| function | `_persist_self_review_cadence_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L191) |
-| function | `_build_cadence_snapshots` | `()` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L267) |
-| function | `_with_runtime_view` | `(item, signal)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L287) |
-| function | `_with_surface_view` | `(item, *, snapshots)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L297) |
-| function | `_build_cadence_state` | `(*, review_age, outcome_status)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L310) |
-| function | `_build_cadence_reason` | `(*, cadence_state, review_type)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L318) |
-| function | `_build_status_reason` | `(*, cadence_state)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L326) |
-| function | `_build_due_hint` | `(*, cadence_state)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L334) |
-| function | `_cadence_state_from_summary` | `(summary)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L342) |
-| function | `_self_review_cadence_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L353) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L358) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L363) |
-| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L373) |
 

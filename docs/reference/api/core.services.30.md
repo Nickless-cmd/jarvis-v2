@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/unfinished_intent.py`
+_Unfinished-intent detector for visible-run output._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `UnfinishedIntent` | `` | Resultat af detector: hvilken pattern matched. | [src](../../../core/services/unfinished_intent.py#L30) |
+| function | `_tail` | `(text, n=…)` | Returner sidste ~n tegn af teksten. | [src](../../../core/services/unfinished_intent.py#L154) |
+| function | `_er_negeret` | `(tail, m)` | True hvis pausenøgleordet er indledt af en negation («uden at …»). | [src](../../../core/services/unfinished_intent.py#L180) |
+| function | `_sætning_omkring` | `(tail, m)` | Returner (sætning, startindeks) for sætningen matchet står i. | [src](../../../core/services/unfinished_intent.py#L283) |
+| function | `_er_sætningsblokeret` | `(tail, m, *, registrering=…)` | True hvis sætningen omkring matchet er negeret eller spørgende. | [src](../../../core/services/unfinished_intent.py#L295) |
+| function | `detect_unfinished_intent` | `(text)` | Returner UnfinishedIntent hvis teksten antyder Jarvis stoppede midt | [src](../../../core/services/unfinished_intent.py#L360) |
+| function | `detect_promise_intent` | `(text)` | Registrerings-gate (rodårsag 2, side-02afb491ea 10/11-2026). | [src](../../../core/services/unfinished_intent.py#L415) |
+| function | `_detect_intent_core` | `(stripped, *, registrering=…)` | Alle detektor-mønstrene på en allerede strippet tekst — uden | [src](../../../core/services/unfinished_intent.py#L447) |
+| function | `is_in_cooldown` | `(session_id)` | True hvis session_id har triggered en continuation indenfor cooldown-vinduet. | [src](../../../core/services/unfinished_intent.py#L544) |
+| function | `mark_triggered` | `(session_id)` | Marker at en continuation netop er triggered for session_id. | [src](../../../core/services/unfinished_intent.py#L553) |
+| function | `reset_cooldown_for_tests` | `()` | Test-helper: tøm cooldown-state mellem test cases. | [src](../../../core/services/unfinished_intent.py#L561) |
+
 ## `core/services/untrusted_fencing.py`
 _Indhegning af utroet indhold — porteret fra jarvis-code._
 
@@ -652,23 +669,4 @@ _Ollama visible-lane adapter (execute + native NDJSON streaming)._
 | function | `_stream_ollama_model` | `(*, message, model, session_id=…, controller=…, thinking_mode=…)` | — | [src](../../../core/services/visible_model_ollama.py#L282) |
 | function | `_probe_ollama_visible_target` | `(*, model, base_url)` | — | [src](../../../core/services/visible_model_ollama.py#L610) |
 | function | `_build_ollama_prompt` | `(message, *, model, session_id)` | — | [src](../../../core/services/visible_model_ollama.py#L651) |
-
-## `core/services/visible_model_prompt.py`
-_Continuity / support-signal / capability prompt builders for the visible lane._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_visible_session_continuity_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L30) |
-| function | `_visible_continuity_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L60) |
-| function | `_capability_continuity_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L87) |
-| function | `_visible_work_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L118) |
-| function | `_private_support_signal_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L159) |
-| function | `_growth_support_signal_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L186) |
-| function | `_self_model_support_signal_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L220) |
-| function | `_retained_memory_support_signal_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L253) |
-| function | `_temporal_support_signal_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L285) |
-| function | `visible_capability_continuity_summary` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L314) |
-| function | `visible_session_continuity_summary` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L346) |
-| function | `visible_continuity_summary` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L355) |
-| function | `_capability_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L391) |
 

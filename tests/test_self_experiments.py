@@ -336,3 +336,19 @@ def test_materialiseret_scope_er_kategori_ikke_raa_saetning(isolated_runtime):
     ud = materialize_learning_curriculum_tasks(limit=3)
     scopes = [str(isolated_runtime.db.get_runtime_task(t)["scope"]) for t in ud["task_ids"]]
     assert scopes == ["afbryder-midt-i-saetning"]  # to sætninger → ét domæne, dedupet
+
+
+# ── Curriculum paa fast kadence, uafhaengigt af action-vaelgeren (20/11-2026) ──
+
+
+def test_ukendt_fejl_bliver_ikke_til_en_task(isolated_runtime):
+    isolated_runtime.db.upsert_cognitive_personality_vector(
+        confidence_by_domain=json.dumps({"planning": 0.35}),
+        recurring_mistakes=json.dumps(["uforstaaeligt a", "uforstaaeligt b"]),
+    )
+    from core.services.self_experiments import materialize_learning_curriculum_tasks
+
+    ud = materialize_learning_curriculum_tasks(limit=5)
+    scopes = [isolated_runtime.db.get_runtime_task(t)["scope"] for t in ud["task_ids"]]
+    assert "ukendt-fejl" not in scopes
+    assert "planning" in scopes

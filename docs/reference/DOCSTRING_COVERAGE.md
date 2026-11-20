@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10344/18915 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10346/18917 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10344/18915 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 915 | 1631 | 56% |
-| `core.services` | 6952 | 12860 | 54% |
+| `core.services` | 6954 | 12862 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1342,7 +1342,7 @@ Generated from source. 10344/18915 functions/methods documented (54%). The list 
 - `core/services/hardware_body.py` :: `build_hardware_body_surface` (L204)
 - `core/services/heartbeat_manage_runtime_work.py` :: `execute_manage_runtime_work` (L18)
 - `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L492)
-- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2303)
+- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2313)
 - `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L307)
 - `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1261)
 - `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L277)
@@ -2036,7 +2036,7 @@ Generated from source. 10344/18915 functions/methods documented (54%). The list 
 - `core/services/self_deception_guard.py` :: `DeceptionGuardTrace.has_reframes` (L60)
 - `core/services/self_deception_guard.py` :: `DeceptionGuardTrace.to_dict` (L69)
 - `core/services/self_dream_state_surface.py` :: `group_names` (L83)
-- `core/services/self_experiments.py` :: `build_self_experiments_surface` (L609)
+- `core/services/self_experiments.py` :: `build_self_experiments_surface` (L616)
 - `core/services/self_model_blind_spots.py` :: `list_blind_spots` (L292)
 - `core/services/self_model_signal_tracking.py` :: `build_runtime_self_model_signal_surface` (L169)
 - `core/services/self_model_signal_tracking.py` :: `refresh_runtime_self_model_signal_statuses` (L68)

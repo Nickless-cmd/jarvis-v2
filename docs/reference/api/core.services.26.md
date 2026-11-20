@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_review_cadence_signal_tracking.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_self_review_cadence_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L22) |
+| function | `refresh_runtime_self_review_cadence_signal_statuses` | `()` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L64) |
+| function | `build_runtime_self_review_cadence_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L109) |
+| function | `_extract_self_review_cadence_candidates` | `()` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L135) |
+| function | `_persist_self_review_cadence_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L191) |
+| function | `_build_cadence_snapshots` | `()` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L267) |
+| function | `_with_runtime_view` | `(item, signal)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L287) |
+| function | `_with_surface_view` | `(item, *, snapshots)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L297) |
+| function | `_build_cadence_state` | `(*, review_age, outcome_status)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L310) |
+| function | `_build_cadence_reason` | `(*, cadence_state, review_type)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L318) |
+| function | `_build_status_reason` | `(*, cadence_state)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L326) |
+| function | `_build_due_hint` | `(*, cadence_state)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L334) |
+| function | `_cadence_state_from_summary` | `(summary)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L342) |
+| function | `_self_review_cadence_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L353) |
+| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L358) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L363) |
+| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L373) |
+
 ## `core/services/self_review_outcome_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -660,13 +682,4 @@ _core/services/shadow_experiment_registry.py_
 | function | `tick_shadow_review_reminder` | `(now_ts=…)` | Tick: byg surface, og naar noget er modent OG klokken er forfalden, | [src](../../../core/services/shadow_experiment_registry.py#L248) |
 | function | `_byg_besked` | `(modne)` | Teksten Bjoern faar. Naevner de mest forfaldne ved navn og hvor laenge — | [src](../../../core/services/shadow_experiment_registry.py#L283) |
 | function | `_send_paamindelse` | `(modne)` | Lever paamindelsen gennem daemon-vagten. True hvis den blev antaget. | [src](../../../core/services/shadow_experiment_registry.py#L306) |
-
-## `core/services/shadow_ledger_writer.py`
-_Skygge-skrivning — den første kobling mellem drift og ledgeren._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `taellere` | `()` | — | [src](../../../core/services/shadow_ledger_writer.py#L51) |
-| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/shadow_ledger_writer.py#L55) |
-| function | `shadow_append` | `(session_id, *, message_id, role, content, created_at, user_id=…, workspace_name=…, reasoning_content=…, git_sha=…, content_json=…)` | Skriv beskeden i ledgeren HVIS sessionen er i skygge-tilstand. | [src](../../../core/services/shadow_ledger_writer.py#L60) |
 

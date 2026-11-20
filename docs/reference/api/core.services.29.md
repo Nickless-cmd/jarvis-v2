@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/thought_action_proposal_daemon.py`
+_Thought-action proposal daemon — turns action impulses in thought stream into MC proposals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_persist_proposals` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L26) |
+| function | `tick_thought_action_proposal_daemon` | `(fragment)` | Classify fragment and create a proposal if an action impulse is detected. | [src](../../../core/services/thought_action_proposal_daemon.py#L35) |
+| function | `resolve_proposal` | `(proposal_id, decision)` | Move a proposal from pending to resolved. decision: 'approved' | 'dismissed'. | [src](../../../core/services/thought_action_proposal_daemon.py#L114) |
+| function | `get_pending_proposals` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L138) |
+| function | `build_proposal_surface` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L142) |
+
 ## `core/services/thought_leak_guard.py`
 _Er dette en tanke — eller er det maskineriet der taler?_
 
@@ -542,21 +553,4 @@ _Unconscious temperature field — backwards-compat wrapper for Lag 10._
 |---|---|---|---|---|
 | function | `build_unconscious_temperature_hint` | `()` | Backwards-compat: returns heartbeat-formatted hint string or None. | [src](../../../core/services/unconscious_temperature_field.py#L15) |
 | function | `build_unconscious_temperature_field_surface` | `(*, force_refresh=…)` | Backwards-compat: surface dict for Mission Control consumers. | [src](../../../core/services/unconscious_temperature_field.py#L30) |
-
-## `core/services/unfinished_intent.py`
-_Unfinished-intent detector for visible-run output._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `UnfinishedIntent` | `` | Resultat af detector: hvilken pattern matched. | [src](../../../core/services/unfinished_intent.py#L30) |
-| function | `_tail` | `(text, n=…)` | Returner sidste ~n tegn af teksten. | [src](../../../core/services/unfinished_intent.py#L154) |
-| function | `_er_negeret` | `(tail, m)` | True hvis pausenøgleordet er indledt af en negation («uden at …»). | [src](../../../core/services/unfinished_intent.py#L180) |
-| function | `_sætning_omkring` | `(tail, m)` | Returner (sætning, startindeks) for sætningen matchet står i. | [src](../../../core/services/unfinished_intent.py#L283) |
-| function | `_er_sætningsblokeret` | `(tail, m, *, registrering=…)` | True hvis sætningen omkring matchet er negeret eller spørgende. | [src](../../../core/services/unfinished_intent.py#L295) |
-| function | `detect_unfinished_intent` | `(text)` | Returner UnfinishedIntent hvis teksten antyder Jarvis stoppede midt | [src](../../../core/services/unfinished_intent.py#L360) |
-| function | `detect_promise_intent` | `(text)` | Registrerings-gate (rodårsag 2, side-02afb491ea 10/11-2026). | [src](../../../core/services/unfinished_intent.py#L415) |
-| function | `_detect_intent_core` | `(stripped, *, registrering=…)` | Alle detektor-mønstrene på en allerede strippet tekst — uden | [src](../../../core/services/unfinished_intent.py#L447) |
-| function | `is_in_cooldown` | `(session_id)` | True hvis session_id har triggered en continuation indenfor cooldown-vinduet. | [src](../../../core/services/unfinished_intent.py#L544) |
-| function | `mark_triggered` | `(session_id)` | Marker at en continuation netop er triggered for session_id. | [src](../../../core/services/unfinished_intent.py#L553) |
-| function | `reset_cooldown_for_tests` | `()` | Test-helper: tøm cooldown-state mellem test cases. | [src](../../../core/services/unfinished_intent.py#L561) |
 

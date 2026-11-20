@@ -447,11 +447,11 @@ _Desk render capabilities — fra gæt til måling._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_standard_runner` | `(timeout_s)` | Kør browser-målingerne. Returnerer (exit-kode, samlet output). | [src](../../../core/services/desk_render_capability.py#L66) |
-| function | `parse_vitest` | `(output)` | Læs vitest-opsummeringen. Ren funktion — testbar uden browser. | [src](../../../core/services/desk_render_capability.py#L80) |
-| function | `measure` | `(*, runner=…, timeout_s=…)` | Kør målingen og returnér en MÅLT confidence. Skriver intet. | [src](../../../core/services/desk_render_capability.py#L122) |
-| function | `set_domain_confidence` | `(domain, value, *, evidence)` | Sæt domænets confidence til en MÅLT værdi. | [src](../../../core/services/desk_render_capability.py#L183) |
-| function | `record` | `(*, runner=…, timeout_s=…)` | Mål og skriv resultatet ind i domænet. Ét kald = én målt sandhed. | [src](../../../core/services/desk_render_capability.py#L247) |
+| function | `_standard_runner` | `(timeout_s)` | Kør browser-målingerne. Returnerer (exit-kode, samlet output). | [src](../../../core/services/desk_render_capability.py#L72) |
+| function | `parse_vitest` | `(output)` | Læs vitest-opsummeringen. Ren funktion — testbar uden browser. | [src](../../../core/services/desk_render_capability.py#L86) |
+| function | `measure` | `(*, runner=…, timeout_s=…)` | Kør målingen og returnér en MÅLT confidence. Skriver intet. | [src](../../../core/services/desk_render_capability.py#L135) |
+| function | `set_domain_confidence` | `(domain, value, *, evidence)` | Sæt domænets confidence til en MÅLT værdi. | [src](../../../core/services/desk_render_capability.py#L204) |
+| function | `record` | `(*, runner=…, timeout_s=…)` | Mål og skriv resultatet ind i domænet. Ét kald = én målt sandhed. | [src](../../../core/services/desk_render_capability.py#L268) |
 
 ## `core/services/desktop_notifications.py`
 _Per-bruger in-memory kø af proaktive desktop-notifikationer. Desktop poller_

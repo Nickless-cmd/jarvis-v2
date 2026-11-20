@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18915 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18917 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -46,24 +46,24 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18915 functions/
 - [`core.services.12`](core.services.12.md) — `device_presence` … `embodied_presence`
 - [`core.services.13`](core.services.13.md) — `embodied_state` … `fact_gate`
 - [`core.services.14`](core.services.14.md) — `fcm_gateway` … `github_connector`
-- [`core.services.15`](core.services.15.md) — `global_workspace` … `identity_canon`
-- [`core.services.16`](core.services.16.md) — `identity_composer` … `invocation_record`
-- [`core.services.17`](core.services.17.md) — `irony_daemon` … `matrix_karakterer`
-- [`core.services.18`](core.services.18.md) — `mcp_apps` … `model_catalogue_sweep`
-- [`core.services.19`](core.services.19.md) — `model_context` … `operator_allowlist`
-- [`core.services.20`](core.services.20.md) — `operator_channel` … `priors_feedback`
-- [`core.services.21`](core.services.21.md) — `private_initiative_tension_signal_tracking` … `prompt_relevance_backend`
-- [`core.services.22`](core.services.22.md) — `prompt_section_impact` … `recurring_tasks`
-- [`core.services.23`](core.services.23.md) — `recursion_guard` … `routine_crypto`
-- [`core.services.24`](core.services.24.md) — `routine_delivery` … `runtime_self_model_affect`
-- [`core.services.25`](core.services.25.md) — `runtime_self_model_boundary` … `self_review_cadence_signal_tracking`
-- [`core.services.26`](core.services.26.md) — `self_review_outcome_tracking` … `shadow_ledger_writer`
-- [`core.services.27`](core.services.27.md) — `shadow_scan_daemon` … `spild`
-- [`core.services.28`](core.services.28.md) — `staged_edits` … `thought_action_proposal_daemon`
-- [`core.services.29`](core.services.29.md) — `thought_leak_guard` … `unfinished_intent`
-- [`core.services.30`](core.services.30.md) — `untrusted_fencing` … `visible_model_prompt`
-- [`core.services.31`](core.services.31.md) — `visible_model_sse` … `visible_turn_blocks`
-- [`core.services.32`](core.services.32.md) — `visible_work_surfaces` … `world_model_signal_tracking`
+- [`core.services.15`](core.services.15.md) — `global_workspace` … `hollow_promise_round`
+- [`core.services.16`](core.services.16.md) — `identity_canon` … `interruption_notice`
+- [`core.services.17`](core.services.17.md) — `invocation_record` … `markdown_structure`
+- [`core.services.18`](core.services.18.md) — `matrix_karakterer` … `model_benchmark`
+- [`core.services.19`](core.services.19.md) — `model_catalogue_sweep` … `open_loop_signal_tracking`
+- [`core.services.20`](core.services.20.md) — `operator_allowlist` … `pressure_threshold_gate`
+- [`core.services.21`](core.services.21.md) — `priors_feedback` … `prompt_overhead`
+- [`core.services.22`](core.services.22.md) — `prompt_relevance_backend` … `recurrence_loop_daemon`
+- [`core.services.23`](core.services.23.md) — `recurring_tasks` … `routine_classification`
+- [`core.services.24`](core.services.24.md) — `routine_crypto` … `runtime_self_model`
+- [`core.services.25`](core.services.25.md) — `runtime_self_model_affect` … `self_repair_engine`
+- [`core.services.26`](core.services.26.md) — `self_review_cadence_signal_tracking` … `shadow_experiment_registry`
+- [`core.services.27`](core.services.27.md) — `shadow_ledger_writer` … `spatial_entity_ledger`
+- [`core.services.28`](core.services.28.md) — `spild` … `think_language`
+- [`core.services.29`](core.services.29.md) — `thought_action_proposal_daemon` … `unconscious_temperature_field`
+- [`core.services.30`](core.services.30.md) — `unfinished_intent` … `visible_model_ollama`
+- [`core.services.31`](core.services.31.md) — `visible_model_prompt` … `visible_turn_accumulator`
+- [`core.services.32`](core.services.32.md) — `visible_turn_blocks` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

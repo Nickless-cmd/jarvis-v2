@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/invocation_record.py`
+_Durabel invokations-tilstand for kald ingen bliver spurgt om._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `taellere` | `()` | — | [src](../../../core/services/invocation_record.py#L37) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/invocation_record.py#L41) |
+| function | `recorded` | `(tool_name, arguments, *, run_id=…, session_id=…)` | Omslut et MUTERENDE kald med prepared → dispatching → completed/failed. | [src](../../../core/services/invocation_record.py#L48) |
+| function | `markaer_mislykket` | `(iid)` | Sig at kaldet fejlede UDEN at kaste. | [src](../../../core/services/invocation_record.py#L103) |
+| function | `_afslut` | `(iid, *, ok)` | — | [src](../../../core/services/invocation_record.py#L116) |
+
 ## `core/services/irony_daemon.py`
 _Irony daemon — situational self-distance and absurd self-observations._
 
@@ -693,18 +704,4 @@ _Rekonstruér markdown-blokstruktur fra inline-markører._
 | function | `_split_slaaet_til` | `()` | Skal lange prosa-linjer braekkes op i afsnit? | [src](../../../core/services/markdown_structure.py#L289) |
 | function | `_normalize_segment` | `(text)` | — | [src](../../../core/services/markdown_structure.py#L303) |
 | function | `normalize_markdown_structure` | `(text)` | Genskab blokstruktur fra inline-markører. Beskytter kode-fences. | [src](../../../core/services/markdown_structure.py#L349) |
-
-## `core/services/matrix_karakterer.py`
-_Matrix-karaktererne som en MÅLING — ikke en navneliste (13/11-2026)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `matrix_navne` | `(register_fn=…)` | Navnene på det Matrix-modulet registrerer — uden at røre registret. | [src](../../../core/services/matrix_karakterer.py#L56) |
-| function | `udled_udfald` | `(result)` | Udfaldet i et producer-svar: `landing.outcome`, dernæst `outcome`. | [src](../../../core/services/matrix_karakterer.py#L66) |
-| function | `beskriv_udfald` | `(outcome)` | — | [src](../../../core/services/matrix_karakterer.py#L81) |
-| function | `noter_udfald` | `(name, result, *, at)` | Gem seneste udfald holdbart (deles af API- og runtime-processen). | [src](../../../core/services/matrix_karakterer.py#L88) |
-| function | `_laes_udfald` | `(name)` | — | [src](../../../core/services/matrix_karakterer.py#L106) |
-| function | `funktion_af` | `(name)` | Første linje af `central_<name>.py`s docstring. Læses som tekst (ast) — | [src](../../../core/services/matrix_karakterer.py#L118) |
-| function | `byg_raekker` | `(specs, navne, *, tempo, effektiv_cooldown, sidste_koersel, udfald_af, funktion)` | Ren sammenstilling: registrets specs filtreret til karaktererne. | [src](../../../core/services/matrix_karakterer.py#L135) |
-| function | `build_matrix_karakterer_surface` | `()` | Flade til Desk → Systemstatus. Self-safe: tom liste ved fejl. | [src](../../../core/services/matrix_karakterer.py#L166) |
 

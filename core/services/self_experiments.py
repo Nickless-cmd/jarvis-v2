@@ -426,7 +426,7 @@ def observe_recent_visible_runs_for_self_experiments(
 
     try:
         from core.runtime.db import recent_visible_runs
-    except Exception:
+    except Exception:  # import kan fejle naar DB-laget ikke er indlaest; saa er fladen utilgaengelig
         return {
             "observed": 0,
             "running": 0,
@@ -545,7 +545,14 @@ def materialize_learning_curriculum_tasks(
     ready: list[dict[str, object]] = []
     for item in items:
         focus_key = _curriculum_focus_key(_item_domaene(item))
-        if not focus_key or focus_key in existing_keys:
+        # «ukendt-fejl» er en ikke-maalbar skraldespand (flere forskellige fejl
+        # under samme nøgle) — en task paa den lofter/saenker ingenting
+        # meningsfuldt i confidence_by_domain og optog de to oeverste pladser.
+        if (
+            not focus_key
+            or focus_key == UKENDT_FEJL_DOMAENE
+            or focus_key in existing_keys
+        ):
             skipped += 1
             continue
         existing_keys.add(focus_key)
@@ -626,7 +633,7 @@ def build_self_experiments_surface() -> dict[str, object]:
 def _parse_result_payload(raw: object) -> dict[str, object]:
     try:
         payload = json.loads(str(raw or "{}"))
-    except Exception:
+    except Exception:  # ugyldig JSON betyder "ingen payload", ikke en fejl der skal op
         return {}
     return payload if isinstance(payload, dict) else {}
 

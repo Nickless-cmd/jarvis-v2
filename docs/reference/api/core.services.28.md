@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/spild.py`
+_Overstort værktøjs-output gemmes i en fil i stedet for at blive klippet væk._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_rod` | `()` | Under `state_store`s mappe — ikke `Path.home()` direkte. | [src](../../../core/services/spild.py#L47) |
+| function | `_mappe` | `(session_id)` | Sessionens egen mappe, oprettet med 0700. Navnet renses. | [src](../../../core/services/spild.py#L59) |
+| function | `gem` | `(tekst, *, session_id=…, vaerktoej=…)` | Skriv teksten til en privat fil og giv stien. "" hvis det ikke lykkes. | [src](../../../core/services/spild.py#L72) |
+| function | `henvisning` | `(sti, *, vist, i_alt)` | Den tekst der erstatter halen. Siger hvad der mangler OG hvor det er. | [src](../../../core/services/spild.py#L91) |
+| function | `ryd` | `(*, dage=…)` | Slet spildfiler ældre end `dage`. Giver antallet der blev slettet. | [src](../../../core/services/spild.py#L101) |
+
 ## `core/services/staged_edits.py`
 _Staged edits — compose multi-file changes, review, then commit atomically._
 
@@ -631,15 +642,4 @@ _Tænke-sprog — killswitch for hvilket sprog ræsonnementet føres i._
 | function | `is_english` | `()` | True når tænkningen skal føres på engelsk. | [src](../../../core/services/think_language.py#L63) |
 | function | `set_language` | `(lang)` | Sæt tænke-sprog. Ukendt værdi afvises — returnerer det aktive sprog. | [src](../../../core/services/think_language.py#L68) |
 | function | `directive` | `()` | Instruktionen til prompt-halen — tom streng når dansk er aktivt. | [src](../../../core/services/think_language.py#L77) |
-
-## `core/services/thought_action_proposal_daemon.py`
-_Thought-action proposal daemon — turns action impulses in thought stream into MC proposals._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_persist_proposals` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L26) |
-| function | `tick_thought_action_proposal_daemon` | `(fragment)` | Classify fragment and create a proposal if an action impulse is detected. | [src](../../../core/services/thought_action_proposal_daemon.py#L35) |
-| function | `resolve_proposal` | `(proposal_id, decision)` | Move a proposal from pending to resolved. decision: 'approved' | 'dismissed'. | [src](../../../core/services/thought_action_proposal_daemon.py#L114) |
-| function | `get_pending_proposals` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L138) |
-| function | `build_proposal_surface` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L142) |
 

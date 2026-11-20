@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/model_catalogue_sweep.py`
+_Ugentlig gennemgang: hvilke modeller lever, og hvad kan de?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/model_catalogue_sweep.py#L58) |
+| function | `_foretræk_gratis` | `(navne)` | `:free` først. En gratis model der virker er mere værd for cheap lane | [src](../../../core/services/model_catalogue_sweep.py#L62) |
+| function | `kandidater_for` | `(provider, *, registrerede, fra_api, statiske, maks_nye=…)` | Hvad skal prøves hos denne udbyder? | [src](../../../core/services/model_catalogue_sweep.py#L68) |
+| function | `beslut` | `(resultat)` | (skal_være_aktiv, grund). Ren funktion — al politik ét sted. | [src](../../../core/services/model_catalogue_sweep.py#L94) |
+| function | `_basis_navn` | `(navn)` | Navnet uden variantsuffiks: `minimax/minimax-m3:free` → `minimax/minimax-m3`. | [src](../../../core/services/model_catalogue_sweep.py#L146) |
+| function | `_er_gratis_slot` | `(navn)` | Er slottet i udbyderens GRATIS pulje? | [src](../../../core/services/model_catalogue_sweep.py#L151) |
+| function | `_er_navne_drift` | `(fejl)` | — | [src](../../../core/services/model_catalogue_sweep.py#L162) |
+| function | `foreslaa_navn` | `(model, fejl, fra_api, *, kendte=…)` | Udbyderens navn for en model vi har under et forældet navn, ellers None. | [src](../../../core/services/model_catalogue_sweep.py#L171) |
+| function | `egnet_til_agentarbejde` | `(resultat)` | Explore og andre opgave-agenter må kun få modeller der kan bruge et | [src](../../../core/services/model_catalogue_sweep.py#L206) |
+| function | `sweep_provider` | `(provider, *, hent_modeller=…, proev=…, skriv=…, maks_nye=…)` | Gennemgå én udbyder. Returnerer en ændringsrapport. | [src](../../../core/services/model_catalogue_sweep.py#L213) |
+| function | `_registrerede_modeller` | `(provider)` | — | [src](../../../core/services/model_catalogue_sweep.py#L327) |
+| function | `_hent_modeller_fra_api` | `(provider, profil)` | — | [src](../../../core/services/model_catalogue_sweep.py#L343) |
+| function | `_skriv_registret` | `(*, provider, model, aktiv, grund, score, detalje, profil)` | Skriv én models tilstand. Returnerer True hvis noget ÆNDREDE sig. | [src](../../../core/services/model_catalogue_sweep.py#L354) |
+| function | `sammendrag` | `(rapporter)` | Én besked til mobilen. Kun ÆNDRINGER — en push der hver uge siger | [src](../../../core/services/model_catalogue_sweep.py#L427) |
+| function | `underret_ejeren` | `(besked, *, send=…)` | Kun ejeren. Cheap-lane-helbred er driftsdata om HANS konti og penge — | [src](../../../core/services/model_catalogue_sweep.py#L460) |
+| function | `_benchmark_loft` | `()` | Loft pr. kørsel, læst fra runtime-config. 0 = slået fra. | [src](../../../core/services/model_catalogue_sweep.py#L481) |
+| function | `_modeller_uden_kvalitetsdom` | `()` | Registrerede modeller der ikke har en kvalitets-dom endnu. | [src](../../../core/services/model_catalogue_sweep.py#L497) |
+| function | `_benchmark_umalte` | `(rapporter, *, maks=…, koer=…, gem=…)` | Giv op til `maks` agent-egnede modeller en kvalitets-dom. | [src](../../../core/services/model_catalogue_sweep.py#L510) |
+| function | `sweep_alle` | `(*, providers=…, underret=…, proev=…, skriv=…, benchmark=…)` | Gennemgå hele cheap lane. Returnerer rapporter + den sendte besked. | [src](../../../core/services/model_catalogue_sweep.py#L563) |
+
 ## `core/services/model_context.py`
 _Per-model context-vinduer + model-bevidst beskeds-trimning (delt kilde)._
 
@@ -639,20 +664,4 @@ _Opløs et bart ollama-modelnavn til det tag ollama faktisk serverer._
 | function | `declare_open_loop_thread` | `(*, name, declared_by, run_id, session_id=…, summary=…)` | DET BEVIDSTE VALG-PUNKT: erklær at noget er en tråd, med et navn der sættes | [src](../../../core/services/open_loop_signal_tracking.py#L1297) |
 | function | `touch_open_loop_thread` | `(thread_id, *, run_id, session_id=…, summary=…)` | En ny kørsel berører samme tråd: samme række, ``run_id`` flytter med, | [src](../../../core/services/open_loop_signal_tracking.py#L1324) |
 | function | `close_open_loop_thread` | `(thread_id, *, evidence, answered_in_run_id)` | Luk en tråd KUN med bevis for at spørgsmålet blev besvaret. En kørsels | [src](../../../core/services/open_loop_signal_tracking.py#L1337) |
-
-## `core/services/operator_allowlist.py`
-_Operator app-allowlist (leak-kandidat #5, CHICAGO-guard-mønster, 2026-07-10)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_norm` | `(app)` | — | [src](../../../core/services/operator_allowlist.py#L26) |
-| function | `list_allowlist` | `()` | — | [src](../../../core/services/operator_allowlist.py#L30) |
-| function | `set_allowlist` | `(apps)` | — | [src](../../../core/services/operator_allowlist.py#L39) |
-| function | `add_to_allowlist` | `(app)` | — | [src](../../../core/services/operator_allowlist.py#L45) |
-| function | `remove_from_allowlist` | `(app)` | — | [src](../../../core/services/operator_allowlist.py#L53) |
-| function | `is_enforced` | `()` | — | [src](../../../core/services/operator_allowlist.py#L58) |
-| function | `set_enforced` | `(on)` | — | [src](../../../core/services/operator_allowlist.py#L65) |
-| function | `_matches` | `(app, allowlist)` | En app matcher hvis dens navn/sti indeholder en allowlist-post (substring, | [src](../../../core/services/operator_allowlist.py#L70) |
-| function | `check_app` | `(app)` | Vurdér om Jarvis må GUI-styre `app`. OBSERVE-by-default: | [src](../../../core/services/operator_allowlist.py#L77) |
-| function | `build_operator_allowlist_surface` | `()` | Central-CLI: jc raw /central/operator-allowlist. | [src](../../../core/services/operator_allowlist.py#L102) |
 

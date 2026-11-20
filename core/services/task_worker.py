@@ -211,6 +211,112 @@ def _handle_generic(task: dict[str, Any]) -> dict[str, str]:
     }
 
 
+#: Nyt domæne starter UNDER midten: et læringsmål findes fordi domænet er svagt
+#: (planen sorterer svage domæner først). 0.5 ville være en påstand ingen har
+#: dækning for. Samme niveau som de svageste målte domæner (~0.3).
+_NEW_DOMAIN_START = 0.3
+#: Løft kun ved BEVIST arbejde; lille, så ét run aldrig kan flytte et domæne meget.
+_LIFT_EVIDENCED = 0.05
+#: Et run der fejlede er et (svagt) tegn på at domænet ikke er mestret.
+_DROP_FAILED = 0.03
+
+
+def _run_did_work(session_id: str, goal: str) -> bool:
+    """Beviser sessionen at runnet FAKTISK gjorde noget for dette mål?
+
+    Kræver, efter den seneste besked der bærer målet, mindst ét værktøjskald
+    OG et ikke-tomt assistent-svar. «Runnet sluttede uden fejl» er ikke bevis:
+    det er præcis 1/11-fejlen (5.776 tasks ``succeeded`` uden at noget var gjort).
+    """
+    try:
+        from core.services.chat_sessions import recent_chat_session_messages
+
+        rows = recent_chat_session_messages(session_id, limit=80)
+    except Exception:  # noqa: BLE001 — kan beviset ikke læses, er svaret "intet bevist"
+        return False
+    chrono = list(reversed(rows))  # nyeste-først -> kronologisk
+    start = None
+    for i, row in enumerate(chrono):
+        if str(row.get("role")) == "user" and goal and goal in str(row.get("content") or ""):
+            start = i
+    if start is None:
+        return False
+    after = chrono[start + 1:]
+    tools = any(str(r.get("role")) == "tool" for r in after)
+    answer = any(
+        str(r.get("role")) == "assistant" and str(r.get("content") or "").strip()
+        for r in after
+    )
+    return tools and answer
+
+
+def _confidence_delta(outcome: str, did_work: bool) -> float:
+    if outcome == "completed" and did_work:
+        return _LIFT_EVIDENCED
+    if outcome == "failed":
+        return -_DROP_FAILED
+    # completed uden bevis, interrupted: observationen registreres, men intet
+    # løftes og intet sænkes — vi ved det ikke.
+    return 0.0
+
+
+def record_curriculum_outcome(
+    domain: str, *, outcome: str, did_work: bool
+) -> dict[str, Any]:
+    """Registrér et afsluttet curriculum-run mod domænets confidence.
+
+    Opretter domænet i ``confidence_by_domain`` hvis det mangler. Retning:
+    +0.05 kun for ``completed`` MED bevis for arbejde; −0.03 ved ``failed``;
+    ellers uændret. En task der melder succes uden at noget blev gjort løfter
+    ALDRIG noget.
+    """
+    import json
+
+    from core.runtime.db_cognitive import (
+        get_latest_cognitive_personality_vector,
+        upsert_cognitive_personality_vector,
+    )
+
+    key = " ".join(str(domain or "").lower().split())[:120]
+    if not key:
+        return {"recorded": False, "reason": "intet domæne"}
+    current = get_latest_cognitive_personality_vector() or {}
+    try:
+        domains = json.loads(str(current.get("confidence_by_domain") or "{}"))
+    except ValueError:
+        domains = {}
+    if not isinstance(domains, dict):
+        domains = {}
+    # Genbrug eksisterende nøgle uanset store/små bogstaver.
+    existing = next((k for k in domains if str(k).lower().split() == key.split()), None)
+    name = existing or key
+    created = name not in domains
+    before = float(domains.get(name, _NEW_DOMAIN_START))
+    delta = _confidence_delta(outcome, did_work)
+    after = max(0.0, min(1.0, round(before + delta, 4)))
+    if not created and after == before:
+        return {"recorded": False, "reason": "uændret", "before": before, "after": after}
+    domains[name] = after
+    upsert_cognitive_personality_vector(
+        confidence_by_domain=json.dumps(domains, ensure_ascii=False),
+        communication_style=str(current.get("communication_style", "{}")),
+        learned_preferences=str(current.get("learned_preferences", "[]")),
+        recurring_mistakes=str(current.get("recurring_mistakes", "[]")),
+        strengths_discovered=str(current.get("strengths_discovered", "[]")),
+        current_bearing=str(current.get("current_bearing", "")),
+        emotional_baseline=str(current.get("emotional_baseline", "{}")),
+    )
+    return {"recorded": True, "created": created, "before": before, "after": after}
+
+
+def _make_curriculum_completion_callback(domain: str, goal: str):
+    def _cb(*, outcome: str = "", session_id: str = "", **_kw: Any) -> None:
+        did_work = outcome == "completed" and _run_did_work(session_id, goal)
+        record_curriculum_outcome(domain, outcome=outcome, did_work=did_work)
+
+    return _cb
+
+
 def _handle_curriculum_focus(task: dict[str, Any]) -> dict[str, str]:
     """Læringsmål fra self_experiments — sendes til en autonom bane med værktøjer.
 
@@ -232,6 +338,8 @@ def _handle_curriculum_focus(task: dict[str, Any]) -> dict[str, str]:
             "artifact_ref": "",
             "blocked_reason": "",
         }
+    scope = str(task.get("scope") or "").strip()
+    prompt_goal = goal
     prompt = (
         "LÆRINGSMÅL (fra self_experiments): "
         f"{goal}\n\n"
@@ -248,6 +356,12 @@ def _handle_curriculum_focus(task: dict[str, Any]) -> dict[str, str]:
             task_id=str(task.get("task_id") or ""),
             max_tool_calls=24,
             max_seconds=600.0,
+            # Koblingen RUN -> CONFIDENCE: domænet er task.scope. Uden scope
+            # kender vi intet domæne, og så registreres intet (ingen opfundet nøgle).
+            completion_callback=(
+                _make_curriculum_completion_callback(scope, prompt_goal)
+                if scope else None
+            ),
         )
     except Exception as exc:  # noqa: BLE001
         return {

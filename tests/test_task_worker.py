@@ -436,3 +436,62 @@ def test_health_rapporterer_unclaimable_kinds(isolated_runtime) -> None:
     assert sig["claimable_queued"] == 1
     assert sig["unclaimable_queued"] == 1
     assert sig["unclaimable_kinds"] == {"ingen-handler-kind": 1}
+
+
+# --- RUN -> CONFIDENCE (20/11-2026) ----------------------------------------
+def _pv_domaener() -> dict:
+    import json
+
+    from core.runtime.db_cognitive import get_latest_cognitive_personality_vector
+
+    pv = get_latest_cognitive_personality_vector() or {}
+    return json.loads(str(pv.get("confidence_by_domain") or "{}"))
+
+
+def _koer_curriculum_med_callback(isolated_runtime, monkeypatch, *, scope, outcome, did_work):
+    import core.services.visible_autonomous_run as var
+
+    runtime_tasks, task_worker = _import_modules()
+    monkeypatch.setattr(task_worker, "_run_did_work", lambda sid, goal: did_work)
+    captured: dict = {}
+
+    def _fake_start(message, **kw):
+        captured.update(kw)
+        return True
+
+    monkeypatch.setattr(var, "start_autonomous_run", _fake_start)
+    runtime_tasks.create_task(
+        kind="curriculum-focus", goal="inspicér desktop-apps", origin="test", scope=scope
+    )
+    task_worker.tick_task_worker(budget=1)
+    cb = captured.get("completion_callback")
+    assert cb is not None, "koblingen mangler: ingen completion_callback sendt til runnet"
+    cb(outcome=outcome, visible_run_id="r1", session_id="s1", error="")
+
+
+def test_curriculum_run_opretter_manglende_domaene_og_loefter_ved_bevist_arbejde(
+    isolated_runtime, monkeypatch
+) -> None:
+    _koer_curriculum_med_callback(
+        isolated_runtime, monkeypatch,
+        scope="desktop app inspection", outcome="completed", did_work=True,
+    )
+    d = _pv_domaener()
+    assert d["desktop app inspection"] == 0.35  # 0.30 start + 0.05
+
+
+def test_curriculum_run_uden_bevis_loefter_aldrig(isolated_runtime, monkeypatch) -> None:
+    """Succeeded uden at noget blev gjort må ikke løfte noget (1/11-fejlen)."""
+    _koer_curriculum_med_callback(
+        isolated_runtime, monkeypatch,
+        scope="desk render capabilities", outcome="completed", did_work=False,
+    )
+    assert _pv_domaener()["desk render capabilities"] == 0.3  # oprettet, ikke løftet
+
+
+def test_curriculum_run_der_fejler_saenker(isolated_runtime, monkeypatch) -> None:
+    _koer_curriculum_med_callback(
+        isolated_runtime, monkeypatch,
+        scope="desk render capabilities", outcome="failed", did_work=False,
+    )
+    assert _pv_domaener()["desk render capabilities"] == 0.27

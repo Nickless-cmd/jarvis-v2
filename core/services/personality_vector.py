@@ -480,7 +480,17 @@ def _merge_vector(current: dict, updates: dict) -> dict:
                         continue
                     try:
                         merged[str(navn)] = max(0.0, min(1.0, round(float(tal), 4)))
-                    except (TypeError, ValueError):
+                    except (TypeError, ValueError) as exc:
+                        # Modellen kan skrive en confidence der ikke er et tal.
+                        # Domaenet springes over — men fejlen siges hoejt, saa
+                        # en model der gentagne gange skriver skrald kan ses i
+                        # stedet for at forsvinde som et tavst `continue`.
+                        logger.warning(
+                            "personality_vector: confidence for %r er ikke et tal: %r (%s)",
+                            navn,
+                            tal,
+                            exc,
+                        )
                         continue
                 result[key] = merged
                 continue

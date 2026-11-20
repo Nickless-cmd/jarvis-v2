@@ -1529,7 +1529,19 @@ def _run_heartbeat_tick_locked(
         tick_desk_measurement_cadence,
     )
 
+    from core.services import db_schema_capability
+
     tick_desk_measurement_cadence()
+
+    # Skema-maalingen (`database-skema opslag`). Billig og deterministisk —
+    # 353 tabeller paa ~0,2 s — saa den kan ligge i tikket. `record()` skriver
+    # INTET naar vaerdien er uaendret, saa den er idempotent; den fanger
+    # kolonne-drift, som er den fejl jeg faktisk lavede natten til 20/11-2026:
+    # jeg gaettede `costs.timestamp`, og den heder `created_at`.
+    try:
+        db_schema_capability.record()
+    except Exception:
+        logger.warning("db-schema measurement failed", exc_info=True)
 
     # Every 6th tick: scan for user contradictions (Bjørn→Jarvis)
     # Lightweight DB query — no LLM calls.

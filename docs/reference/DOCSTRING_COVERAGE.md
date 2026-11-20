@@ -1342,7 +1342,7 @@ Generated from source. 10355/18931 functions/methods documented (54%). The list 
 - `core/services/hardware_body.py` :: `build_hardware_body_surface` (L204)
 - `core/services/heartbeat_manage_runtime_work.py` :: `execute_manage_runtime_work` (L18)
 - `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L492)
-- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2321)
+- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2333)
 - `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L307)
 - `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1261)
 - `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L277)

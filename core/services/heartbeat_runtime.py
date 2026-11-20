@@ -1523,6 +1523,14 @@ def _run_heartbeat_tick_locked(
 
     tick_curriculum_cadence()
 
+    # Desk-render-maalingen (vitest i Chromium) paa eget, laengere interval.
+    # Uden dette kald havde record() nul produktionskaldesteder (maalt 20/11).
+    from core.services.heartbeat_curriculum_cadence import (
+        tick_desk_measurement_cadence,
+    )
+
+    tick_desk_measurement_cadence()
+
     # Every 6th tick: scan for user contradictions (Bjørn→Jarvis)
     # Lightweight DB query — no LLM calls.
     if tick_count % 6 == 0:

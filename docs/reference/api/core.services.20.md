@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/operator_channel.py`
+_Operator-kanalen — owner-gated bro fra containerens bash til Bjørns maskine._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/operator_channel.py#L48) |
+| function | `_opdater_post` | `(session_id, post)` | Skriv ÉN sessions post — atomisk. | [src](../../../core/services/operator_channel.py#L64) |
+| function | `_aktiv` | `(post)` | — | [src](../../../core/services/operator_channel.py#L106) |
+| function | `_udloebet` | `(post)` | Posten siger stadig åben, men TTL er passeret — ingen lukkede den. | [src](../../../core/services/operator_channel.py#L113) |
+| function | `status` | `(session_id)` | Læse-kun. Ingen owner-gate — at spørge er harmløst. | [src](../../../core/services/operator_channel.py#L126) |
+| function | `is_open` | `(session_id)` | Er kanalen åben? KASTER ved læsefejl — med vilje. | [src](../../../core/services/operator_channel.py#L145) |
+| function | `open_channel` | `(session_id, *, is_owner)` | — | [src](../../../core/services/operator_channel.py#L156) |
+| function | `close_channel` | `(session_id, *, is_owner)` | — | [src](../../../core/services/operator_channel.py#L172) |
+| function | `current_session_id` | `()` | Kanalens nøgle — og den SKAL være den samme som bash'ens. | [src](../../../core/services/operator_channel.py#L185) |
+| function | `current_is_owner` | `()` | Owner-gaten. Fail-CLOSED: kan rollen ikke afgoeres, er svaret nej. | [src](../../../core/services/operator_channel.py#L212) |
+| function | `er_agent_koersel` | `()` | Er kalderen en agent-worker — ikke Bjørn selv? | [src](../../../core/services/operator_channel.py#L226) |
+| function | `_absolutte_stier` | `(command)` | — | [src](../../../core/services/operator_channel.py#L271) |
+| function | `looks_like_workstation_path` | `(command, cwd=…)` | — | [src](../../../core/services/operator_channel.py#L284) |
+| function | `_koer_over_broen` | `(command, cwd)` | Selve bro-kaldet — skilt fra BESLUTNINGEN om at kalde det. | [src](../../../core/services/operator_channel.py#L291) |
+| function | `_naaede_frem` | `(r)` | Kom svaret fra hans maskine — eller var det broen der svigtede? | [src](../../../core/services/operator_channel.py#L309) |
+| function | `_forny` | `(session_id)` | Genåbn en kanal der faldt af sig selv. Kaldes KUN når broen svarede. | [src](../../../core/services/operator_channel.py#L324) |
+| function | `maybe_reroute_bash` | `(command, cwd, *, is_owner, session_id)` | Kør kommandoen på Bjørns maskine hvis kanalen er åben. Ellers None. | [src](../../../core/services/operator_channel.py#L330) |
+| function | `closed_channel_hint` | `(command, cwd, *, is_owner, session_id)` | Én linje til modellen når et kald tydeligvis sigtede mod hans maskine. | [src](../../../core/services/operator_channel.py#L372) |
+| function | `kanal_note` | `(session_id)` | Én linje når kanalen faldt af sig selv — til bash-svaret. | [src](../../../core/services/operator_channel.py#L389) |
+
 ## `core/services/orb_phase.py`
 _Desktop orb phase — writes current Jarvis pipeline state to a temp file._
 
@@ -561,28 +586,4 @@ _Priors feedback — surfaces past patterns relevant to NOW._
 | function | `_quality_outlier_priors` | `(days=…)` | If recent ticks dropped sharply, surface that as context. | [src](../../../core/services/priors_feedback.py#L84) |
 | function | `build_priors_feedback` | `()` | Return up to ~6 prior lines. Empty list = no signal. | [src](../../../core/services/priors_feedback.py#L109) |
 | function | `priors_feedback_section` | `()` | — | [src](../../../core/services/priors_feedback.py#L118) |
-
-## `core/services/private_initiative_tension_signal_tracking.py`
-_Private initiative-tension signal tracking — migrated onto signal_tracking_framework._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_private_initiative_tension_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L36) |
-| function | `refresh_runtime_private_initiative_tension_signal_statuses` | `()` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L71) |
-| function | `build_runtime_private_initiative_tension_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L75) |
-| function | `_extract_candidate_for_run` | `(*, run_id)` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L81) |
-| function | `_latest_visible_work_note_for_run` | `(run_id)` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L188) |
-| function | `_latest_open_loop_pressure` | `()` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L201) |
-| function | `_latest_development_focus` | `()` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L209) |
-| function | `_latest_inner_note_support` | `(*, run_id)` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L217) |
-| function | `_with_runtime_view` | `(item, signal)` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L228) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L249) |
-| function | `_private_initiative_tension_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L276) |
-| function | `_domain_key` | `(item, *, fallback)` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L320) |
-| function | `_source_anchor_from_visible_note` | `(visible_note)` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L327) |
-| function | `_support_anchor` | `(item)` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L339) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L349) |
-| function | `_quote` | `(text)` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L361) |
-| function | `_canonical_tension_type` | `(canonical_key)` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L371) |
-| function | `_title_target` | `(title)` | — | [src](../../../core/services/private_initiative_tension_signal_tracking.py#L378) |
 

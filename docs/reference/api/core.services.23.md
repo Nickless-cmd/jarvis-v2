@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/recursion_guard.py`
+_Recursion guard for autonomous agent dispatch._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tunable_int` | `(key, default)` | Read an int threshold from runtime-state; fall back to ``default``. | [src](../../../core/services/recursion_guard.py#L43) |
+| function | `_tunable_float` | `(key, default)` | — | [src](../../../core/services/recursion_guard.py#L53) |
+| function | `can_spawn` | `(current_depth, max_depth=…)` | True while a spawn chain still has depth budget. | [src](../../../core/services/recursion_guard.py#L63) |
+| function | `fanout_allowed` | `(requested, max_fanout=…)` | True when a single dispatch's requested child count is within budget. | [src](../../../core/services/recursion_guard.py#L77) |
+| function | `_load_entries` | `()` | — | [src](../../../core/services/recursion_guard.py#L91) |
+| function | `_save_entries` | `(entries)` | — | [src](../../../core/services/recursion_guard.py#L107) |
+| function | `_fresh_entries` | `(entries, now_ts, ttl)` | Drop entries older than ``ttl`` — reclaims slots left by crashed runs. | [src](../../../core/services/recursion_guard.py#L114) |
+| function | `try_enter` | `(now_ts=…)` | Claim a concurrency slot. | [src](../../../core/services/recursion_guard.py#L119) |
+| function | `exit` | `(now_ts=…)` | Release one concurrency slot (also reclaims stale entries). | [src](../../../core/services/recursion_guard.py#L142) |
+| function | `effective_max_fanout` | `()` | The live fan-out ceiling (runtime-state override or default). Callers use it | [src](../../../core/services/recursion_guard.py#L154) |
+| function | `active_count` | `(now_ts=…)` | Number of live (non-stale) concurrency slots currently held. | [src](../../../core/services/recursion_guard.py#L160) |
+
 ## `core/services/reflection_cycle_daemon.py`
 _Reflection cycle daemon — pure experience without action, every 10 minutes._
 
@@ -643,25 +660,4 @@ _Owner-bound authenticated encryption for Routine content._
 | function | `_owner_key` | `(owner_user_id)` | — | [src](../../../core/services/routine_crypto.py#L7) |
 | function | `seal` | `(owner_user_id, payload)` | — | [src](../../../core/services/routine_crypto.py#L17) |
 | function | `open_sealed` | `(owner_user_id, blob)` | — | [src](../../../core/services/routine_crypto.py#L23) |
-
-## `core/services/routine_delivery.py`
-_Fenced delivery outbox for Routine results._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `StaleDeliveryLease` | `` | A worker attempted to settle a delivery it no longer owns. | [src](../../../core/services/routine_delivery.py#L25) |
-| class | `DeliveryClaim` | `` | — | [src](../../../core/services/routine_delivery.py#L30) |
-| class | `DeliveryView` | `` | — | [src](../../../core/services/routine_delivery.py#L41) |
-| class | `_RepositoryView` | `` | — | [src](../../../core/services/routine_delivery.py#L52) |
-| method | `_RepositoryView.count_runs` | `(routine_id)` | — | [src](../../../core/services/routine_delivery.py#L54) |
-| function | `_push_owner` | `(claim)` | Giv ejeren et push naar resultatet ligger klar paa rutinens egen flade. | [src](../../../core/services/routine_delivery.py#L58) |
-| function | `_claim` | `(row)` | — | [src](../../../core/services/routine_delivery.py#L117) |
-| function | `_view` | `(row)` | — | [src](../../../core/services/routine_delivery.py#L129) |
-| class | `RoutineDeliveryService` | `` | — | [src](../../../core/services/routine_delivery.py#L142) |
-| method | `RoutineDeliveryService.__init__` | `(self, *, holder=…)` | — | [src](../../../core/services/routine_delivery.py#L143) |
-| method | `RoutineDeliveryService.claim_for_run` | `(self, run_id, holder)` | — | [src](../../../core/services/routine_delivery.py#L147) |
-| method | `RoutineDeliveryService.claim_next` | `(self)` | — | [src](../../../core/services/routine_delivery.py#L151) |
-| method | `RoutineDeliveryService.deliver_next` | `(self)` | Deliver one due item to its private Routine surface. | [src](../../../core/services/routine_delivery.py#L155) |
-| method | `RoutineDeliveryService.settle` | `(self, delivery_id, *, holder, outcome, next_attempt_at=…, receipt=…)` | — | [src](../../../core/services/routine_delivery.py#L190) |
-| method | `RoutineDeliveryService.record_terminal_failure` | `(self, *, run_id)` | Record no execution failure state; delivery owns its retry budget. | [src](../../../core/services/routine_delivery.py#L219) |
 

@@ -446,7 +446,14 @@ def materialize_learning_curriculum_tasks(
     ready: list[dict[str, object]] = []
     for item in items:
         focus_key = _curriculum_focus_key(_item_domaene(item))
-        if not focus_key or focus_key in existing_keys:
+        # «ukendt-fejl» er en ikke-maalbar skraldespand (flere forskellige fejl
+        # under samme nøgle) — en task paa den lofter/saenker ingenting
+        # meningsfuldt i confidence_by_domain og optog de to oeverste pladser.
+        if (
+            not focus_key
+            or focus_key == UKENDT_FEJL_DOMAENE
+            or focus_key in existing_keys
+        ):
             skipped += 1
             continue
         existing_keys.add(focus_key)

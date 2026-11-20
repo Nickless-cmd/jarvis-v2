@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/irony_daemon.py`
+_Irony daemon — situational self-distance and absurd self-observations._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_irony_daemon` | `(*, skip_event_gate=…)` | — | [src](../../../core/services/irony_daemon.py#L20) |
+| function | `get_latest_irony_observation` | `()` | — | [src](../../../core/services/irony_daemon.py#L52) |
+| function | `build_irony_surface` | `()` | — | [src](../../../core/services/irony_daemon.py#L56) |
+| function | `_maybe_reset_daily_count` | `()` | — | [src](../../../core/services/irony_daemon.py#L65) |
+| function | `_collect_snapshot` | `()` | — | [src](../../../core/services/irony_daemon.py#L73) |
+| function | `_detect_irony_conditions` | `(snapshot)` | — | [src](../../../core/services/irony_daemon.py#L98) |
+| function | `_generate_observation` | `(snapshot, condition)` | — | [src](../../../core/services/irony_daemon.py#L111) |
+| function | `_store_observation` | `(observation, condition)` | — | [src](../../../core/services/irony_daemon.py#L136) |
+
 ## `core/services/jarvis_brain.py`
 _Jarvis Brain — kurateret vidensjournal. Kerne-CRUD-laget._
 
@@ -693,16 +707,4 @@ _Matrix-karaktererne som en MÅLING — ikke en navneliste (13/11-2026)._
 | function | `funktion_af` | `(name)` | Første linje af `central_<name>.py`s docstring. Læses som tekst (ast) — | [src](../../../core/services/matrix_karakterer.py#L118) |
 | function | `byg_raekker` | `(specs, navne, *, tempo, effektiv_cooldown, sidste_koersel, udfald_af, funktion)` | Ren sammenstilling: registrets specs filtreret til karaktererne. | [src](../../../core/services/matrix_karakterer.py#L135) |
 | function | `build_matrix_karakterer_surface` | `()` | Flade til Desk → Systemstatus. Self-safe: tom liste ved fejl. | [src](../../../core/services/matrix_karakterer.py#L166) |
-
-## `core/services/mcp_apps.py`
-_MCP Apps host-bro: `ui://` resource -> sikker widget i samtalen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `resource_uri` | `(tool)` | Foretræk den endelige nested form; behold legacy-interoperabilitet. | [src](../../../core/services/mcp_apps.py#L38) |
-| function | `tool_visible_to` | `(tool, audience)` | Håndhæv MCP Apps' model/app-skel; manglende metadata betyder begge. | [src](../../../core/services/mcp_apps.py#L49) |
-| function | `extract_html` | `(resource)` | Hent den første HTML-tekstblok fra et `resources/read`-resultat. | [src](../../../core/services/mcp_apps.py#L63) |
-| function | `harden_html` | `(html)` | Indsæt en fail-closed CSP uden at omskrive appens dokument. | [src](../../../core/services/mcp_apps.py#L80) |
-| function | `_result_for_block` | `(result)` | Bevar MCP-resultatet til View'et, men aldrig ubegrænset. | [src](../../../core/services/mcp_apps.py#L89) |
-| function | `publish` | `(*, server, tool_name, arguments, result, html, run_id, tool_use_id)` | Gem HTML'en og hæft en MCP App-blok på det synlige run. | [src](../../../core/services/mcp_apps.py#L100) |
 

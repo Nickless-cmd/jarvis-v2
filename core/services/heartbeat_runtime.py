@@ -1513,6 +1513,16 @@ def _run_heartbeat_tick_locked(
     # De betingede blokke nedenfor (`tick_count % N`) blev her: de er arbejde,
     # ikke sansning, og de haenger paa tik-taelleren.
 
+    # Curriculum-materialisering paa fast kadence — uafhaengig af action-vaelgeren.
+    # Maalt 20/11-2026: `generate_curriculum` blev aldrig valgt (0 raekker i
+    # heartbeat_runtime_ticks), saa der blev ingen laeringstasks foedt og
+    # confidence_by_domain stod fast. Ingen LLM; dedup ligger i funktionen.
+    # Kadencen maaler TID, ikke tik: et tik tager ~8,2 min (maalt), og
+    # tik-taelleren nulstilles ved genstart — se modulets docstring.
+    from core.services.heartbeat_curriculum_cadence import tick_curriculum_cadence
+
+    tick_curriculum_cadence()
+
     # Every 6th tick: scan for user contradictions (Bjørn→Jarvis)
     # Lightweight DB query — no LLM calls.
     if tick_count % 6 == 0:

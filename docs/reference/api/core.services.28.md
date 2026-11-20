@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/staged_edits.py`
+_Staged edits — compose multi-file changes, review, then commit atomically._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `StagedEdit` | `` | — | [src](../../../core/services/staged_edits.py#L52) |
+| method | `StagedEdit.to_dict` | `(self)` | — | [src](../../../core/services/staged_edits.py#L63) |
+| method | `StagedEdit.from_dict` | `(cls, d)` | — | [src](../../../core/services/staged_edits.py#L67) |
+| class | `StagedBatch` | `` | All staged edits for a single session (the unit of commit/discard). | [src](../../../core/services/staged_edits.py#L82) |
+| method | `StagedBatch.to_dict` | `(self)` | — | [src](../../../core/services/staged_edits.py#L89) |
+| method | `StagedBatch.from_dict` | `(cls, d)` | — | [src](../../../core/services/staged_edits.py#L98) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/staged_edits.py#L110) |
+| function | `_path_for` | `(session_id)` | — | [src](../../../core/services/staged_edits.py#L114) |
+| function | `_load` | `(session_id)` | — | [src](../../../core/services/staged_edits.py#L119) |
+| function | `_save` | `(batch)` | — | [src](../../../core/services/staged_edits.py#L132) |
+| function | `_make_diff` | `(path, old, new)` | — | [src](../../../core/services/staged_edits.py#L142) |
+| function | `stage_edit` | `(*, session_id, path, old_text, new_text, replace_all=…, note=…)` | Stage an edit_file-style change without writing to disk. | [src](../../../core/services/staged_edits.py#L157) |
+| function | `stage_write` | `(*, session_id, path, content, note=…)` | Stage a write_file-style overwrite/create. If the target exists, | [src](../../../core/services/staged_edits.py#L205) |
+| function | `_persist_edit` | `(*, session_id, kind, path, old_content, new_content, note, file_existed)` | — | [src](../../../core/services/staged_edits.py#L234) |
+| function | `list_staged` | `(session_id, *, full_diffs=…)` | Return all staged edits for the session. | [src](../../../core/services/staged_edits.py#L280) |
+| function | `commit_staged` | `(session_id, *, stage_ids=…)` | Apply staged edits to disk in stage order. | [src](../../../core/services/staged_edits.py#L319) |
+| function | `discard_staged` | `(session_id, *, stage_ids=…)` | Drop staged edits without applying. | [src](../../../core/services/staged_edits.py#L417) |
+
 ## `core/services/standing_orders_registry.py`
 _Standing-orders registry — INDEPENDENT grounding for the reasoning-interceptor's standing-orders_
 
@@ -618,13 +641,4 @@ _Thought-action proposal daemon — turns action impulses in thought stream into
 | function | `resolve_proposal` | `(proposal_id, decision)` | Move a proposal from pending to resolved. decision: 'approved' | 'dismissed'. | [src](../../../core/services/thought_action_proposal_daemon.py#L114) |
 | function | `get_pending_proposals` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L138) |
 | function | `build_proposal_surface` | `()` | — | [src](../../../core/services/thought_action_proposal_daemon.py#L142) |
-
-## `core/services/thought_leak_guard.py`
-_Er dette en tanke — eller er det maskineriet der taler?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_uafbalanceret` | `(tekst)` | Flere lukke- end aabne-tegn = teksten begyndte foer den blev revet ud. | [src](../../../core/services/thought_leak_guard.py#L91) |
-| function | `_ender_midt_i_et_ord` | `(tekst)` | «... if genuine, el» — afkortet mellem to bogstaver uden tegnsaetning. | [src](../../../core/services/thought_leak_guard.py#L99) |
-| function | `ligner_ikke_en_tanke` | `(tekst)` | Grund til at kassere teksten. Tom streng = behold den. | [src](../../../core/services/thought_leak_guard.py#L112) |
 

@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/device_presence.py`
+_Device-presence pr. bruger. Lever i hukommelsen — og OVERLEVER en genstart._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `DeviceState` | `` | — | [src](../../../core/services/device_presence.py#L63) |
+| function | `_gem` | `(*, tving=…)` | Skriv et snapshot med vægurstid. Self-safe — må aldrig vælte et ping. | [src](../../../core/services/device_presence.py#L80) |
+| function | `_indlaes` | `()` | Genskab tilstanden fra disken ved import. Forældede poster droppes. | [src](../../../core/services/device_presence.py#L109) |
+| function | `reset` | `()` | Kun til tests. | [src](../../../core/services/device_presence.py#L137) |
+| function | `record_ping` | `(user_id, device_key, platform, *, foreground, awake, network, interaction=…, location=…, push_token=…, device_name=…, active_session_id=…, battery_saver=…)` | — | [src](../../../core/services/device_presence.py#L144) |
+| function | `_sanitize_location` | `(location)` | Validér og normalisér en indkommen lokation. Returnerer None ved ugyldigt. | [src](../../../core/services/device_presence.py#L205) |
+| class | `RankedDevice` | `` | — | [src](../../../core/services/device_presence.py#L223) |
+| function | `_recency_weight` | `(now, last_interaction_at)` | — | [src](../../../core/services/device_presence.py#L235) |
+| function | `rank` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L242) |
+| function | `prune` | `(user_id=…)` | — | [src](../../../core/services/device_presence.py#L315) |
+| function | `summary` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L328) |
+| function | `location_for` | `(user_id)` | Bedst-kendte lokation for en bruger på tværs af enheder (til geo-tools). | [src](../../../core/services/device_presence.py#L367) |
+| function | `debug_snapshot` | `(user_id)` | Diagnostik: live presence-tilstande + rank-resultat for én bruger. | [src](../../../core/services/device_presence.py#L387) |
+
 ## `core/services/device_tokens.py`
 _Per-bruger FCM device-tokens. Egen tabel — rører ikke db.py's 33k linjer._
 
@@ -697,25 +716,4 @@ _Embodied Presence — situational grounding in the physical now._
 | function | `get_presence_line` | `(db_conn=…)` | Get just the summary line for assembly injection. | [src](../../../core/services/embodied_presence.py#L236) |
 | function | `build_embodied_presence_surface` | `()` | — | [src](../../../core/services/embodied_presence.py#L249) |
 | function | `_emit_presence_event` | `(state)` | — | [src](../../../core/services/embodied_presence.py#L258) |
-
-## `core/services/embodied_state.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_embodied_state_surface` | `()` | — | [src](../../../core/services/embodied_state.py#L13) |
-| function | `build_embodied_state_from_facts` | `(facts, *, previous=…)` | — | [src](../../../core/services/embodied_state.py#L25) |
-| function | `build_embodied_state_prompt_section` | `(surface=…)` | — | [src](../../../core/services/embodied_state.py#L91) |
-| function | `collect_host_facts` | `()` | — | [src](../../../core/services/embodied_state.py#L157) |
-| function | `_build_cpu_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L201) |
-| function | `_build_memory_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L217) |
-| function | `_build_disk_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L233) |
-| function | `_build_thermal_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L249) |
-| function | `_derive_primary_state` | `(facts_surface)` | — | [src](../../../core/services/embodied_state.py#L261) |
-| function | `_derive_recovery_state` | `(*, previous, current_primary_state, built_at)` | — | [src](../../../core/services/embodied_state.py#L283) |
-| function | `_read_meminfo` | `()` | — | [src](../../../core/services/embodied_state.py#L303) |
-| function | `_read_thermal_celsius` | `()` | — | [src](../../../core/services/embodied_state.py#L322) |
-| function | `_bucket_from_thresholds` | `(value, thresholds)` | — | [src](../../../core/services/embodied_state.py#L342) |
-| function | `_severity` | `(bucket)` | — | [src](../../../core/services/embodied_state.py#L353) |
-| function | `_strain_level_for_state` | `(state)` | — | [src](../../../core/services/embodied_state.py#L362) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/embodied_state.py#L372) |
 

@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/runtime_self_model_boundary.py`
+_Runtime self-model — self-boundary clarity + world-contact awareness._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_facade` | `()` | Return the facade module so monkeypatch-through-facade is honored. | [src](../../../core/services/runtime_self_model_boundary.py#L28) |
+| function | `_internal_pressure_snapshot` | `()` | Pull internal pressure signals for self-boundary derivation. | [src](../../../core/services/runtime_self_model_boundary.py#L55) |
+| function | `_external_pressure_snapshot` | `()` | Pull external pressure signals for self-boundary derivation. | [src](../../../core/services/runtime_self_model_boundary.py#L123) |
+| function | `_derive_self_boundary_clarity` | `(*, internal, external)` | Synthesise internal + external pressure into a boundary-clarity surface. | [src](../../../core/services/runtime_self_model_boundary.py#L140) |
+| function | `_self_boundary_narrative` | `(*, pressure_source, primary_internal, context_pressure, in_tension)` | Compact self-boundary narrative. Empty when ambient. | [src](../../../core/services/runtime_self_model_boundary.py#L209) |
+| function | `build_self_boundary_clarity_prompt_section` | `()` | Compact prompt section for self-boundary clarity. None when ambient. | [src](../../../core/services/runtime_self_model_boundary.py#L236) |
+| function | `_self_boundary_clarity_surface` | `()` | — | [src](../../../core/services/runtime_self_model_boundary.py#L264) |
+| function | `_derive_world_contact` | `(*, tool_intent, browser_body, system_code)` | Synthesise tool/browser/system into a unified world-contact field. | [src](../../../core/services/runtime_self_model_boundary.py#L295) |
+| function | `_world_contact_narrative` | `(*, contact_state, parts, concerns)` | Felt-sense world-contact narrative — signal-first, 6-14 words. | [src](../../../core/services/runtime_self_model_boundary.py#L389) |
+| function | `build_world_contact_prompt_section` | `()` | Felt-sense prompt section for unified world awareness. None when idle. | [src](../../../core/services/runtime_self_model_boundary.py#L409) |
+| function | `_world_contact_surface` | `()` | — | [src](../../../core/services/runtime_self_model_boundary.py#L436) |
+
 ## `core/services/runtime_self_model_builder.py`
 _Runtime self-model — top-level builder (assembles the full snapshot)._
 
@@ -507,21 +524,22 @@ _Self-Experiments — A/B testing on Jarvis' own behavior._
 | function | `ensure_default_experiments` | `()` | Create default experiments if none exist. | [src](../../../core/services/self_experiments.py#L39) |
 | function | `record_experiment_observation` | `(*, experiment_id, cohort, success, observed_run_id=…, observation_note=…)` | Record an observation for an experiment. | [src](../../../core/services/self_experiments.py#L58) |
 | function | `_evaluate_experiment` | `(cohorts)` | Simple evaluation: compare success rates between cohorts. | [src](../../../core/services/self_experiments.py#L141) |
-| function | `generate_learning_curriculum` | `()` | 3.8 Curriculum learning — analyze weaknesses, generate learning plan. | [src](../../../core/services/self_experiments.py#L170) |
-| function | `_curriculum_summary` | `(curriculum, kilde_fejl)` | En tom plan skal sige HVORFOR den er tom. | [src](../../../core/services/self_experiments.py#L279) |
-| function | `_klip_ord_graense` | `(tekst, loft=…)` | Klip ved ORD-grænse, ikke midt i ordet. | [src](../../../core/services/self_experiments.py#L304) |
-| function | `observe_recent_visible_runs_for_self_experiments` | `(*, limit=…)` | Auto-observe recent visible runs for active self-experiments. | [src](../../../core/services/self_experiments.py#L321) |
-| function | `materialize_learning_curriculum_tasks` | `(*, limit=…, origin=…, owner=…, run_id=…)` | Turn top curriculum focuses into bounded runtime tasks. | [src](../../../core/services/self_experiments.py#L399) |
-| function | `build_self_experiments_surface` | `()` | — | [src](../../../core/services/self_experiments.py#L510) |
-| function | `_parse_result_payload` | `(raw)` | — | [src](../../../core/services/self_experiments.py#L527) |
-| function | `_cohort_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L535) |
-| function | `_success_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L550) |
-| function | `_build_visible_run_observation_note` | `(*, experiment, run, cohort, success)` | — | [src](../../../core/services/self_experiments.py#L561) |
-| function | `_normaliser_fejltekst` | `(tekst)` | — | [src](../../../core/services/self_experiments.py#L605) |
-| function | `normaliser_fejl_til_domaene` | `(tekst)` | Map en rå fejlformulering til en stabil kategori-nøgle. | [src](../../../core/services/self_experiments.py#L612) |
-| function | `_item_domaene` | `(item)` | Domænenøglen for et curriculum-item. Ingen fallback til rå ``focus``: | [src](../../../core/services/self_experiments.py#L626) |
-| function | `_curriculum_focus_key` | `(value)` | — | [src](../../../core/services/self_experiments.py#L632) |
-| function | `_curriculum_priority` | `(priority)` | — | [src](../../../core/services/self_experiments.py#L636) |
+| function | `_maalte_domaener` | `(noegle)` | Domaener hvis confidence har aendret sig mindst én gang for nylig. | [src](../../../core/services/self_experiments.py#L185) |
+| function | `generate_learning_curriculum` | `()` | 3.8 Curriculum learning — analyze weaknesses, generate learning plan. | [src](../../../core/services/self_experiments.py#L236) |
+| function | `_curriculum_summary` | `(curriculum, kilde_fejl, *, umalte=…)` | En tom plan skal sige HVORFOR den er tom. | [src](../../../core/services/self_experiments.py#L371) |
+| function | `_klip_ord_graense` | `(tekst, loft=…)` | Klip ved ORD-grænse, ikke midt i ordet. | [src](../../../core/services/self_experiments.py#L403) |
+| function | `observe_recent_visible_runs_for_self_experiments` | `(*, limit=…)` | Auto-observe recent visible runs for active self-experiments. | [src](../../../core/services/self_experiments.py#L420) |
+| function | `materialize_learning_curriculum_tasks` | `(*, limit=…, origin=…, owner=…, run_id=…)` | Turn top curriculum focuses into bounded runtime tasks. | [src](../../../core/services/self_experiments.py#L498) |
+| function | `build_self_experiments_surface` | `()` | — | [src](../../../core/services/self_experiments.py#L609) |
+| function | `_parse_result_payload` | `(raw)` | — | [src](../../../core/services/self_experiments.py#L626) |
+| function | `_cohort_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L634) |
+| function | `_success_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L649) |
+| function | `_build_visible_run_observation_note` | `(*, experiment, run, cohort, success)` | — | [src](../../../core/services/self_experiments.py#L660) |
+| function | `_normaliser_fejltekst` | `(tekst)` | — | [src](../../../core/services/self_experiments.py#L704) |
+| function | `normaliser_fejl_til_domaene` | `(tekst)` | Map en rå fejlformulering til en stabil kategori-nøgle. | [src](../../../core/services/self_experiments.py#L711) |
+| function | `_item_domaene` | `(item)` | Domænenøglen for et curriculum-item. Ingen fallback til rå ``focus``: | [src](../../../core/services/self_experiments.py#L725) |
+| function | `_curriculum_focus_key` | `(value)` | — | [src](../../../core/services/self_experiments.py#L731) |
+| function | `_curriculum_priority` | `(priority)` | — | [src](../../../core/services/self_experiments.py#L735) |
 
 ## `core/services/self_history_grounding.py`
 _Prompten maa ikke forveksle et rygte med en kendsgerning._
@@ -776,33 +794,4 @@ _Self-repair engine — runtime-instigated repair actions for known patterns._
 | function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L358) |
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L363) |
 | function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/self_review_cadence_signal_tracking.py#L373) |
-
-## `core/services/self_review_outcome_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_self_review_outcomes_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L39) |
-| function | `refresh_runtime_self_review_outcome_statuses` | `()` | — | [src](../../../core/services/self_review_outcome_tracking.py#L61) |
-| function | `build_runtime_self_review_outcome_surface` | `(*, limit=…)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L106) |
-| function | `_extract_self_review_outcome_candidates` | `()` | — | [src](../../../core/services/self_review_outcome_tracking.py#L151) |
-| function | `_persist_self_review_outcomes` | `(*, outcomes, session_id, run_id)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L219) |
-| function | `_build_outcome_snapshots` | `()` | — | [src](../../../core/services/self_review_outcome_tracking.py#L296) |
-| function | `_with_outcome_view` | `(item, outcome)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L356) |
-| function | `_with_surface_outcome_view` | `(item, *, snapshots)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L366) |
-| function | `_build_outcome_type` | `(*, item, snapshot)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L378) |
-| function | `_build_short_outcome` | `(*, outcome_type, snapshot)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L394) |
-| function | `_build_status_reason` | `(*, outcome_type)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L406) |
-| function | `_build_review_focus` | `(*, snapshot)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L416) |
-| function | `_closure_confidence_from_snapshot` | `(*, snapshot)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L435) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L440) |
-| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L449) |
-| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L454) |
-| function | `_witness_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L459) |
-| function | `_open_loop_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L464) |
-| function | `_internal_opposition_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L469) |
-| function | `_self_review_outcome_domain_key` | `(canonical_key)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L474) |
-| function | `_review_type_from_key` | `(canonical_key)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L479) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L484) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L489) |
-| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/self_review_outcome_tracking.py#L499) |
 

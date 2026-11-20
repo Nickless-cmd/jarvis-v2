@@ -442,6 +442,17 @@ _Desire daemon — emergent appetites based on Jarvis' actual experiences._
 | function | `_build_raw_appetite_label` | `(spawning_type)` | Byg label udelukkende fra rå intensiteter — ingen LLM. | [src](../../../core/services/desire_daemon.py#L242) |
 | function | `_generate_appetite_label` | `(signal_text, appetite_type)` | — | [src](../../../core/services/desire_daemon.py#L260) |
 
+## `core/services/desk_render_capability.py`
+_Desk render capabilities — fra gæt til måling._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_standard_runner` | `(timeout_s)` | Kør browser-målingerne. Returnerer (exit-kode, samlet output). | [src](../../../core/services/desk_render_capability.py#L66) |
+| function | `parse_vitest` | `(output)` | Læs vitest-opsummeringen. Ren funktion — testbar uden browser. | [src](../../../core/services/desk_render_capability.py#L80) |
+| function | `measure` | `(*, runner=…, timeout_s=…)` | Kør målingen og returnér en MÅLT confidence. Skriver intet. | [src](../../../core/services/desk_render_capability.py#L122) |
+| function | `set_domain_confidence` | `(domain, value, *, evidence)` | Sæt domænets confidence til en MÅLT værdi. | [src](../../../core/services/desk_render_capability.py#L183) |
+| function | `record` | `(*, runner=…, timeout_s=…)` | Mål og skriv resultatet ind i domænet. Ét kald = én målt sandhed. | [src](../../../core/services/desk_render_capability.py#L247) |
+
 ## `core/services/desktop_notifications.py`
 _Per-bruger in-memory kø af proaktive desktop-notifikationer. Desktop poller_
 
@@ -576,23 +587,4 @@ _QR-device-pairing (mobile companion ↔ desktop). Kort-levende engangs-koder._
 | class | `TotpFejl` | `` | Parring afvist: ingen totrinsbekræftelse sat op, forkert kode eller for mange forsøg. | [src](../../../core/services/device_pairing.py#L85) |
 | method | `TotpFejl.__init__` | `(self, besked, kode)` | — | [src](../../../core/services/device_pairing.py#L88) |
 | function | `kraev_totp` | `(user_id, kode)` | Codex kræver MFA for at forbinde en enhed; vi kræver brugerens TOTP. | [src](../../../core/services/device_pairing.py#L93) |
-
-## `core/services/device_presence.py`
-_Device-presence pr. bruger. Lever i hukommelsen — og OVERLEVER en genstart._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `DeviceState` | `` | — | [src](../../../core/services/device_presence.py#L63) |
-| function | `_gem` | `(*, tving=…)` | Skriv et snapshot med vægurstid. Self-safe — må aldrig vælte et ping. | [src](../../../core/services/device_presence.py#L80) |
-| function | `_indlaes` | `()` | Genskab tilstanden fra disken ved import. Forældede poster droppes. | [src](../../../core/services/device_presence.py#L109) |
-| function | `reset` | `()` | Kun til tests. | [src](../../../core/services/device_presence.py#L137) |
-| function | `record_ping` | `(user_id, device_key, platform, *, foreground, awake, network, interaction=…, location=…, push_token=…, device_name=…, active_session_id=…, battery_saver=…)` | — | [src](../../../core/services/device_presence.py#L144) |
-| function | `_sanitize_location` | `(location)` | Validér og normalisér en indkommen lokation. Returnerer None ved ugyldigt. | [src](../../../core/services/device_presence.py#L205) |
-| class | `RankedDevice` | `` | — | [src](../../../core/services/device_presence.py#L223) |
-| function | `_recency_weight` | `(now, last_interaction_at)` | — | [src](../../../core/services/device_presence.py#L235) |
-| function | `rank` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L242) |
-| function | `prune` | `(user_id=…)` | — | [src](../../../core/services/device_presence.py#L315) |
-| function | `summary` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L328) |
-| function | `location_for` | `(user_id)` | Bedst-kendte lokation for en bruger på tværs af enheder (til geo-tools). | [src](../../../core/services/device_presence.py#L367) |
-| function | `debug_snapshot` | `(user_id)` | Diagnostik: live presence-tilstande + rank-resultat for én bruger. | [src](../../../core/services/device_presence.py#L387) |
 

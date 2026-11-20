@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/embodied_state.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_embodied_state_surface` | `()` | — | [src](../../../core/services/embodied_state.py#L13) |
+| function | `build_embodied_state_from_facts` | `(facts, *, previous=…)` | — | [src](../../../core/services/embodied_state.py#L25) |
+| function | `build_embodied_state_prompt_section` | `(surface=…)` | — | [src](../../../core/services/embodied_state.py#L91) |
+| function | `collect_host_facts` | `()` | — | [src](../../../core/services/embodied_state.py#L157) |
+| function | `_build_cpu_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L201) |
+| function | `_build_memory_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L217) |
+| function | `_build_disk_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L233) |
+| function | `_build_thermal_fact` | `(facts)` | — | [src](../../../core/services/embodied_state.py#L249) |
+| function | `_derive_primary_state` | `(facts_surface)` | — | [src](../../../core/services/embodied_state.py#L261) |
+| function | `_derive_recovery_state` | `(*, previous, current_primary_state, built_at)` | — | [src](../../../core/services/embodied_state.py#L283) |
+| function | `_read_meminfo` | `()` | — | [src](../../../core/services/embodied_state.py#L303) |
+| function | `_read_thermal_celsius` | `()` | — | [src](../../../core/services/embodied_state.py#L322) |
+| function | `_bucket_from_thresholds` | `(value, thresholds)` | — | [src](../../../core/services/embodied_state.py#L342) |
+| function | `_severity` | `(bucket)` | — | [src](../../../core/services/embodied_state.py#L353) |
+| function | `_strain_level_for_state` | `(state)` | — | [src](../../../core/services/embodied_state.py#L362) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/embodied_state.py#L372) |
+
 ## `core/services/emergence.py`
 _Emergence — evidence-based pattern detection across recent activity._
 
@@ -669,17 +690,4 @@ _Fact-Gate — blocking output gate for unverifiable factual claims._
 | function | `_has_tool_evidence` | `(text, pattern, required, tool_names)` | Tjek om påstanden i text har tool-evidens. | [src](../../../core/services/fact_gate.py#L78) |
 | function | `fact_gate_enforce` | `(text, tool_names=…)` | Detekterende gate — kald FØR append_chat_message. | [src](../../../core/services/fact_gate.py#L104) |
 | function | `blocking_categories` | `()` | Returnér liste af aktive blokerbare kategorier. | [src](../../../core/services/fact_gate.py#L174) |
-
-## `core/services/fcm_gateway.py`
-_FCM HTTP v1 gateway — data-only push rendered once by the mobile app._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_runtime` | `()` | — | [src](../../../core/services/fcm_gateway.py#L19) |
-| function | `_project_id` | `()` | — | [src](../../../core/services/fcm_gateway.py#L26) |
-| function | `_sa_path` | `()` | — | [src](../../../core/services/fcm_gateway.py#L30) |
-| function | `is_configured` | `()` | — | [src](../../../core/services/fcm_gateway.py#L34) |
-| function | `_access_token` | `()` | Mint en OAuth-access-token fra service-account via google-auth. | [src](../../../core/services/fcm_gateway.py#L38) |
-| function | `_build_message` | `(token, data)` | — | [src](../../../core/services/fcm_gateway.py#L51) |
-| function | `send` | `(token, data)` | Send data-only push. Returnerer (ok, code). code='invalid' => slet token. | [src](../../../core/services/fcm_gateway.py#L67) |
 

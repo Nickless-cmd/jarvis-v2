@@ -221,13 +221,54 @@ _LIFT_EVIDENCED = 0.05
 _DROP_FAILED = 0.03
 
 
-def _run_did_work(session_id: str, goal: str) -> bool:
+def _run_did_work_from_outcomes(run_id: str) -> bool:
+    """Bevis pr. RUN — ikke pr. session.
+
+    MÅLT 20/11-2026: den session-baserede port kunne ALDRIG passere for et
+    autonomt run. Sessionen ``auto-work-<dato>`` indeholdt 465 tool-rækker og
+    8 assistent-svar — og NUL ``user``-rækker, fordi den autonome prompt ikke
+    persisteres som en brugerbesked. Porten ledte efter målet i en user-række
+    der ikke findes, returnerede False hver gang, og ``_confidence_delta`` gav
+    0.0. Derfor stod ``adherence-analyse`` på 0.35 i alle 1.011 vektor-versioner:
+    tallet blev aldrig målt, kun arvet.
+
+    ``runtime_action_outcomes`` bærer ``run_id`` (1.963 distinkte runs, også
+    autonome) og er dermed den ægte per-run-evidens. Sessionen er delt mellem
+    dagens runs, så et tidsvindue kunne kreditere naboens arbejde; run_id kan ikke.
+    """
+    if not run_id:
+        return False
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            tools = conn.execute(
+                "SELECT COUNT(*) FROM runtime_action_outcomes WHERE run_id = ?",
+                (run_id,),
+            ).fetchone()[0]
+            answer = conn.execute(
+                "SELECT LENGTH(COALESCE(text_preview, '')) FROM visible_runs"
+                " WHERE run_id = ?",
+                (run_id,),
+            ).fetchone()
+    except Exception:  # noqa: BLE001 — kan beviset ikke læses, er svaret "intet bevist"
+        return False
+    return int(tools or 0) > 0 and bool(answer and int(answer[0] or 0) > 0)
+
+
+def _run_did_work(session_id: str, goal: str, *, run_id: str = "") -> bool:
     """Beviser sessionen at runnet FAKTISK gjorde noget for dette mål?
 
     Kræver, efter den seneste besked der bærer målet, mindst ét værktøjskald
     OG et ikke-tomt assistent-svar. «Runnet sluttede uden fejl» er ikke bevis:
     det er præcis 1/11-fejlen (5.776 tasks ``succeeded`` uden at noget var gjort).
+
+    Er ``run_id`` kendt, bruges per-run-evidensen i stedet — se
+    ``_run_did_work_from_outcomes``. Den session-baserede vej nedenfor kan kun
+    bruges hvor målet faktisk blev gemt som en brugerbesked.
     """
+    if run_id:
+        return _run_did_work_from_outcomes(run_id)
     try:
         from core.services.chat_sessions import recent_chat_session_messages
 
@@ -310,8 +351,16 @@ def record_curriculum_outcome(
 
 
 def _make_curriculum_completion_callback(domain: str, goal: str):
-    def _cb(*, outcome: str = "", session_id: str = "", **_kw: Any) -> None:
-        did_work = outcome == "completed" and _run_did_work(session_id, goal)
+    def _cb(
+        *,
+        outcome: str = "",
+        session_id: str = "",
+        visible_run_id: str = "",
+        **_kw: Any,
+    ) -> None:
+        did_work = outcome == "completed" and _run_did_work(
+            session_id, goal, run_id=str(visible_run_id or "")
+        )
         record_curriculum_outcome(domain, outcome=outcome, did_work=did_work)
 
     return _cb

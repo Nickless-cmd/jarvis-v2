@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/mcp_apps.py`
+_MCP Apps host-bro: `ui://` resource -> sikker widget i samtalen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `resource_uri` | `(tool)` | Foretræk den endelige nested form; behold legacy-interoperabilitet. | [src](../../../core/services/mcp_apps.py#L38) |
+| function | `tool_visible_to` | `(tool, audience)` | Håndhæv MCP Apps' model/app-skel; manglende metadata betyder begge. | [src](../../../core/services/mcp_apps.py#L49) |
+| function | `extract_html` | `(resource)` | Hent den første HTML-tekstblok fra et `resources/read`-resultat. | [src](../../../core/services/mcp_apps.py#L63) |
+| function | `harden_html` | `(html)` | Indsæt en fail-closed CSP uden at omskrive appens dokument. | [src](../../../core/services/mcp_apps.py#L80) |
+| function | `_result_for_block` | `(result)` | Bevar MCP-resultatet til View'et, men aldrig ubegrænset. | [src](../../../core/services/mcp_apps.py#L89) |
+| function | `publish` | `(*, server, tool_name, arguments, result, html, run_id, tool_use_id)` | Gem HTML'en og hæft en MCP App-blok på det synlige run. | [src](../../../core/services/mcp_apps.py#L100) |
+
 ## `core/services/mcp_auth.py`
 _OAuth/bearer til remote MCP-servere._
 
@@ -655,14 +667,4 @@ _Ugentlig gennemgang: hvilke modeller lever, og hvad kan de?_
 | function | `_modeller_uden_kvalitetsdom` | `()` | Registrerede modeller der ikke har en kvalitets-dom endnu. | [src](../../../core/services/model_catalogue_sweep.py#L497) |
 | function | `_benchmark_umalte` | `(rapporter, *, maks=…, koer=…, gem=…)` | Giv op til `maks` agent-egnede modeller en kvalitets-dom. | [src](../../../core/services/model_catalogue_sweep.py#L510) |
 | function | `sweep_alle` | `(*, providers=…, underret=…, proev=…, skriv=…, benchmark=…)` | Gennemgå hele cheap lane. Returnerer rapporter + den sendte besked. | [src](../../../core/services/model_catalogue_sweep.py#L563) |
-
-## `core/services/model_context.py`
-_Per-model context-vinduer + model-bevidst beskeds-trimning (delt kilde)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `model_context_window` | `(provider, model)` | Bedste bud på modellens context-vindue (tokens). 0 = ukendt. | [src](../../../core/services/model_context.py#L33) |
-| function | `effective_context_limit` | `(provider, model, compact_threshold)` | Det første loft der rammer: min(modellens vindue, autocompact-tærskel). | [src](../../../core/services/model_context.py#L50) |
-| function | `_est_tokens` | `(text)` | — | [src](../../../core/services/model_context.py#L65) |
-| function | `fit_messages_to_window` | `(messages, *, provider, model, output_budget=…, tools_reserve=…, safety_margin=…)` | Model-bevidst sikkerhedsnet: drop ÆLDSTE ikke-system-beskeder indtil den | [src](../../../core/services/model_context.py#L69) |
 

@@ -452,7 +452,9 @@ def _koer_curriculum_med_callback(isolated_runtime, monkeypatch, *, scope, outco
     import core.services.visible_autonomous_run as var
 
     runtime_tasks, task_worker = _import_modules()
-    monkeypatch.setattr(task_worker, "_run_did_work", lambda sid, goal: did_work)
+    monkeypatch.setattr(
+        task_worker, "_run_did_work", lambda sid, goal, **kw: did_work
+    )
     captured: dict = {}
 
     def _fake_start(message, **kw):
@@ -514,3 +516,73 @@ def test_normaliseret_scope_loefter_og_saenker_stadig_paa_samme_noegle(
     )
     assert _pv_domaener()[noegle] == 0.32
     assert [k for k in _pv_domaener() if "midt" in k or "saetning" in k] == [noegle]
+
+
+def test_bevis_porten_maaler_runnet_ikke_sessionen(isolated_runtime) -> None:
+    """MÅLT 20/11-2026 — hvorfor «adherence-analyse» stod stille på 0.35.
+
+    Den gamle port krævede at målet stod i en ``user``-række i sessionen.
+    Målt i den levende base: **0 af 8.742 user-rækker** indeholdt nogensinde
+    «LÆRINGSMÅL» — den autonome prompt bliver aldrig en brugerbesked. Porten
+    returnerede derfor False hver gang, ``_confidence_delta`` gav 0.0, og
+    domænet stod på 0.35 i alle 1.011 vektor-versioner. Tallet blev aldrig
+    målt, kun arvet.
+
+    Porten måles derfor på RUNNET: ``runtime_action_outcomes`` bærer run_id
+    (1.963 distinkte runs, også autonome). Sessionen er delt mellem dagens
+    runs og kan derfor ikke bruges som anker.
+    """
+    _runtime_tasks, task_worker = _import_modules()
+    from core.runtime.db import connect
+
+    def _outcome(run_id: str) -> None:
+        with connect() as conn:
+            conn.execute(
+                "INSERT INTO runtime_action_outcomes"
+                " (outcome_id, action_id, decision_mode, result_status, run_id, recorded_at)"
+                " VALUES (?,?,?,?,?,?)",
+                (f"o-{run_id}", "a1", "auto", "ok", run_id, "2026-11-20T00:00:00Z"),
+            )
+
+    def _svar(run_id: str, tekst: str) -> None:
+        with connect() as conn:
+            conn.execute(
+                "INSERT INTO visible_runs"
+                " (run_id, lane, provider, model, status, text_preview)"
+                " VALUES (?,?,?,?,?,?)",
+                (run_id, "visible", "ollama", "test", "completed", tekst),
+            )
+
+    # 1) intet spor overhovedet
+    assert task_worker._run_did_work_from_outcomes("r-tom") is False
+
+    # 2) værktøjskald, men intet svar
+    _outcome("r-vaerktoej")
+    assert task_worker._run_did_work_from_outcomes("r-vaerktoej") is False
+
+    # 3) svar, men ingen værktøjer — «sluttede uden fejl» er ikke bevis (1/11-fejlen)
+    _svar("r-svar", "noget tekst")
+    assert task_worker._run_did_work_from_outcomes("r-svar") is False
+
+    # 4) begge dele: bevis
+    _outcome("r-bevis")
+    _svar("r-bevis", "noget tekst")
+    assert task_worker._run_did_work_from_outcomes("r-bevis") is True
+
+    # 5) ankret på run_id — naboens arbejde i samme session krediterer ikke
+    assert task_worker._run_did_work_from_outcomes("r-nabo") is False
+
+
+def test_callbacken_sender_run_id_videre_til_bevis_porten(isolated_runtime, monkeypatch) -> None:
+    """Uden run_id videre ville per-run-porten aldrig blive kaldt — ren teater."""
+    _runtime_tasks, task_worker = _import_modules()
+    set_metode: dict = {}
+
+    def _fake_gate(sid, goal, *, run_id=""):
+        set_metode["run_id"] = run_id
+        return True
+
+    monkeypatch.setattr(task_worker, "_run_did_work", _fake_gate)
+    cb = task_worker._make_curriculum_completion_callback("adherence-analyse", "mål x")
+    cb(outcome="completed", session_id="s1", visible_run_id="autonomous-abc")
+    assert set_metode["run_id"] == "autonomous-abc"

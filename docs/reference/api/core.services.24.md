@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/routine_delivery.py`
+_Fenced delivery outbox for Routine results._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `StaleDeliveryLease` | `` | A worker attempted to settle a delivery it no longer owns. | [src](../../../core/services/routine_delivery.py#L25) |
+| class | `DeliveryClaim` | `` | — | [src](../../../core/services/routine_delivery.py#L30) |
+| class | `DeliveryView` | `` | — | [src](../../../core/services/routine_delivery.py#L41) |
+| class | `_RepositoryView` | `` | — | [src](../../../core/services/routine_delivery.py#L52) |
+| method | `_RepositoryView.count_runs` | `(routine_id)` | — | [src](../../../core/services/routine_delivery.py#L54) |
+| function | `_push_owner` | `(claim)` | Giv ejeren et push naar resultatet ligger klar paa rutinens egen flade. | [src](../../../core/services/routine_delivery.py#L58) |
+| function | `_claim` | `(row)` | — | [src](../../../core/services/routine_delivery.py#L117) |
+| function | `_view` | `(row)` | — | [src](../../../core/services/routine_delivery.py#L129) |
+| class | `RoutineDeliveryService` | `` | — | [src](../../../core/services/routine_delivery.py#L142) |
+| method | `RoutineDeliveryService.__init__` | `(self, *, holder=…)` | — | [src](../../../core/services/routine_delivery.py#L143) |
+| method | `RoutineDeliveryService.claim_for_run` | `(self, run_id, holder)` | — | [src](../../../core/services/routine_delivery.py#L147) |
+| method | `RoutineDeliveryService.claim_next` | `(self)` | — | [src](../../../core/services/routine_delivery.py#L151) |
+| method | `RoutineDeliveryService.deliver_next` | `(self)` | Deliver one due item to its private Routine surface. | [src](../../../core/services/routine_delivery.py#L155) |
+| method | `RoutineDeliveryService.settle` | `(self, delivery_id, *, holder, outcome, next_attempt_at=…, receipt=…)` | — | [src](../../../core/services/routine_delivery.py#L190) |
+| method | `RoutineDeliveryService.record_terminal_failure` | `(self, *, run_id)` | Record no execution failure state; delivery owns its retry budget. | [src](../../../core/services/routine_delivery.py#L219) |
+
 ## `core/services/routine_diagnostics.py`
 _Content-free operational failure projections for owner and Jarvis._
 
@@ -667,21 +688,4 @@ _Runtime self-model — affective awareness (flow, wonder, longing, relation)._
 | function | `_derive_relation_continuity_self_awareness` | `(*, temporal_feel, mineness, longing, relation_sources)` | Derive a small runtime truth when relation continuity touches the self-stream. | [src](../../../core/services/runtime_self_model_affect.py#L892) |
 | function | `_relation_continuity_self_narrative` | `(*, relation_continuity_state, relation_self_relation, relation_continuity_source, relation_anchor)` | Compact relation continuity narrative. Empty when quiet. | [src](../../../core/services/runtime_self_model_affect.py#L1026) |
 | function | `build_relation_continuity_self_awareness_prompt_section` | `()` | Compact heartbeat-side prompt section for relation continuity as self-truth. | [src](../../../core/services/runtime_self_model_affect.py#L1053) |
-
-## `core/services/runtime_self_model_boundary.py`
-_Runtime self-model — self-boundary clarity + world-contact awareness._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_facade` | `()` | Return the facade module so monkeypatch-through-facade is honored. | [src](../../../core/services/runtime_self_model_boundary.py#L28) |
-| function | `_internal_pressure_snapshot` | `()` | Pull internal pressure signals for self-boundary derivation. | [src](../../../core/services/runtime_self_model_boundary.py#L55) |
-| function | `_external_pressure_snapshot` | `()` | Pull external pressure signals for self-boundary derivation. | [src](../../../core/services/runtime_self_model_boundary.py#L123) |
-| function | `_derive_self_boundary_clarity` | `(*, internal, external)` | Synthesise internal + external pressure into a boundary-clarity surface. | [src](../../../core/services/runtime_self_model_boundary.py#L140) |
-| function | `_self_boundary_narrative` | `(*, pressure_source, primary_internal, context_pressure, in_tension)` | Compact self-boundary narrative. Empty when ambient. | [src](../../../core/services/runtime_self_model_boundary.py#L209) |
-| function | `build_self_boundary_clarity_prompt_section` | `()` | Compact prompt section for self-boundary clarity. None when ambient. | [src](../../../core/services/runtime_self_model_boundary.py#L236) |
-| function | `_self_boundary_clarity_surface` | `()` | — | [src](../../../core/services/runtime_self_model_boundary.py#L264) |
-| function | `_derive_world_contact` | `(*, tool_intent, browser_body, system_code)` | Synthesise tool/browser/system into a unified world-contact field. | [src](../../../core/services/runtime_self_model_boundary.py#L295) |
-| function | `_world_contact_narrative` | `(*, contact_state, parts, concerns)` | Felt-sense world-contact narrative — signal-first, 6-14 words. | [src](../../../core/services/runtime_self_model_boundary.py#L389) |
-| function | `build_world_contact_prompt_section` | `()` | Felt-sense prompt section for unified world awareness. None when idle. | [src](../../../core/services/runtime_self_model_boundary.py#L409) |
-| function | `_world_contact_surface` | `()` | — | [src](../../../core/services/runtime_self_model_boundary.py#L436) |
 

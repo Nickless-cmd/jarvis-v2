@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/model_context.py`
+_Per-model context-vinduer + model-bevidst beskeds-trimning (delt kilde)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `model_context_window` | `(provider, model)` | Bedste bud på modellens context-vindue (tokens). 0 = ukendt. | [src](../../../core/services/model_context.py#L33) |
+| function | `effective_context_limit` | `(provider, model, compact_threshold)` | Det første loft der rammer: min(modellens vindue, autocompact-tærskel). | [src](../../../core/services/model_context.py#L50) |
+| function | `_est_tokens` | `(text)` | — | [src](../../../core/services/model_context.py#L65) |
+| function | `fit_messages_to_window` | `(messages, *, provider, model, output_budget=…, tools_reserve=…, safety_margin=…)` | Model-bevidst sikkerhedsnet: drop ÆLDSTE ikke-system-beskeder indtil den | [src](../../../core/services/model_context.py#L69) |
+
 ## `core/services/model_pair_resolver.py`
 _Findes den valgte model hos den valgte udbyder?_
 
@@ -645,29 +655,4 @@ _Operator app-allowlist (leak-kandidat #5, CHICAGO-guard-mønster, 2026-07-10)._
 | function | `_matches` | `(app, allowlist)` | En app matcher hvis dens navn/sti indeholder en allowlist-post (substring, | [src](../../../core/services/operator_allowlist.py#L70) |
 | function | `check_app` | `(app)` | Vurdér om Jarvis må GUI-styre `app`. OBSERVE-by-default: | [src](../../../core/services/operator_allowlist.py#L77) |
 | function | `build_operator_allowlist_surface` | `()` | Central-CLI: jc raw /central/operator-allowlist. | [src](../../../core/services/operator_allowlist.py#L102) |
-
-## `core/services/operator_channel.py`
-_Operator-kanalen — owner-gated bro fra containerens bash til Bjørns maskine._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/operator_channel.py#L48) |
-| function | `_opdater_post` | `(session_id, post)` | Skriv ÉN sessions post — atomisk. | [src](../../../core/services/operator_channel.py#L64) |
-| function | `_aktiv` | `(post)` | — | [src](../../../core/services/operator_channel.py#L106) |
-| function | `_udloebet` | `(post)` | Posten siger stadig åben, men TTL er passeret — ingen lukkede den. | [src](../../../core/services/operator_channel.py#L113) |
-| function | `status` | `(session_id)` | Læse-kun. Ingen owner-gate — at spørge er harmløst. | [src](../../../core/services/operator_channel.py#L126) |
-| function | `is_open` | `(session_id)` | Er kanalen åben? KASTER ved læsefejl — med vilje. | [src](../../../core/services/operator_channel.py#L145) |
-| function | `open_channel` | `(session_id, *, is_owner)` | — | [src](../../../core/services/operator_channel.py#L156) |
-| function | `close_channel` | `(session_id, *, is_owner)` | — | [src](../../../core/services/operator_channel.py#L172) |
-| function | `current_session_id` | `()` | Kanalens nøgle — og den SKAL være den samme som bash'ens. | [src](../../../core/services/operator_channel.py#L185) |
-| function | `current_is_owner` | `()` | Owner-gaten. Fail-CLOSED: kan rollen ikke afgoeres, er svaret nej. | [src](../../../core/services/operator_channel.py#L212) |
-| function | `er_agent_koersel` | `()` | Er kalderen en agent-worker — ikke Bjørn selv? | [src](../../../core/services/operator_channel.py#L226) |
-| function | `_absolutte_stier` | `(command)` | — | [src](../../../core/services/operator_channel.py#L271) |
-| function | `looks_like_workstation_path` | `(command, cwd=…)` | — | [src](../../../core/services/operator_channel.py#L284) |
-| function | `_koer_over_broen` | `(command, cwd)` | Selve bro-kaldet — skilt fra BESLUTNINGEN om at kalde det. | [src](../../../core/services/operator_channel.py#L291) |
-| function | `_naaede_frem` | `(r)` | Kom svaret fra hans maskine — eller var det broen der svigtede? | [src](../../../core/services/operator_channel.py#L309) |
-| function | `_forny` | `(session_id)` | Genåbn en kanal der faldt af sig selv. Kaldes KUN når broen svarede. | [src](../../../core/services/operator_channel.py#L324) |
-| function | `maybe_reroute_bash` | `(command, cwd, *, is_owner, session_id)` | Kør kommandoen på Bjørns maskine hvis kanalen er åben. Ellers None. | [src](../../../core/services/operator_channel.py#L330) |
-| function | `closed_channel_hint` | `(command, cwd, *, is_owner, session_id)` | Én linje til modellen når et kald tydeligvis sigtede mod hans maskine. | [src](../../../core/services/operator_channel.py#L372) |
-| function | `kanal_note` | `(session_id)` | Én linje når kanalen faldt af sig selv — til bash-svaret. | [src](../../../core/services/operator_channel.py#L389) |
 

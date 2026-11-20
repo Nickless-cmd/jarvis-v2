@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_model_sse.py`
+_SSE / Chat-Completions stream parsing + small cost/token utilities._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_estimate_tokens` | `(text)` | — | [src](../../../core/services/visible_model_sse.py#L34) |
+| function | `_parse_utc` | `(value)` | — | [src](../../../core/services/visible_model_sse.py#L39) |
+| function | `_calculate_openai_cost_usd` | `(*, model, input_tokens, output_tokens)` | — | [src](../../../core/services/visible_model_sse.py#L43) |
+| function | `_chunk_text` | `(text, size=…)` | — | [src](../../../core/services/visible_model_sse.py#L57) |
+| function | `_extract_chat_completion_delta` | `(event)` | — | [src](../../../core/services/visible_model_sse.py#L61) |
+| function | `_extract_chat_completion_reasoning` | `(event)` | Pull reasoning_content delta from a streaming Chat Completions chunk. | [src](../../../core/services/visible_model_sse.py#L83) |
+| function | `_finalize_openai_tool_calls` | `(tool_calls)` | Normalize OpenAI-style tool_calls so arguments is a dict, not a JSON string. | [src](../../../core/services/visible_model_sse.py#L102) |
+| function | `_merge_openai_tool_call_deltas` | `(accumulator, event)` | Merge OpenAI SSE tool_calls delta chunks into a per-index accumulator. | [src](../../../core/services/visible_model_sse.py#L130) |
+| function | `_chat_completion_stream_is_terminal` | `(event)` | — | [src](../../../core/services/visible_model_sse.py#L167) |
+| function | `_raa_linjer` | `(response, maale_noegle=…)` | Rå linjer fra streamen — og, når sporet er tændt, HVOR tiden gik. | [src](../../../core/services/visible_model_sse.py#L177) |
+| function | `_iter_sse_events` | `(response, *, provider=…, model=…, maale_noegle=…)` | Hærdet SSE-decoder (spec §1A + §11.1 A11). | [src](../../../core/services/visible_model_sse.py#L226) |
+
 ## `core/services/visible_model_types.py`
 _Value/result classes and typed exceptions for the visible model lane._
 
@@ -504,16 +521,4 @@ _Den kanoniske content-blok-array for en assistent-tur (spec §4)._
 | function | `_tanke_blok` | `(par)` | Én tanke-blok. Halen er nok: klienten viser den foldet ud, og en hel | [src](../../../core/services/visible_turn_blocks.py#L108) |
 | function | `_mark_text_phases` | `(blocks)` | Gem den autoritative chat-lane på hver tekstblok. | [src](../../../core/services/visible_turn_blocks.py#L124) |
 | function | `_build_turn_blocks` | `(*, text, tool_calls, tool_results, interleave=…, text_segments=…, thinking_segments=…, thinking_seconds=…)` | Byg den kanoniske content-blok-array for en assistant-tur (spec §4). | [src](../../../core/services/visible_turn_blocks.py#L163) |
-
-## `core/services/visible_work_surfaces.py`
-_Visible-work-flader: skrivebeskyttede projektioner af hvad den synlige lane laver._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_vr` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L15) |
-| function | `get_visible_work` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L21) |
-| function | `get_visible_work_surface` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L53) |
-| function | `get_visible_selected_work_surface` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L80) |
-| function | `get_visible_selected_work_item` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L111) |
-| function | `get_visible_selected_work_note` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L163) |
 

@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/fcm_gateway.py`
+_FCM HTTP v1 gateway — data-only push rendered once by the mobile app._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_runtime` | `()` | — | [src](../../../core/services/fcm_gateway.py#L19) |
+| function | `_project_id` | `()` | — | [src](../../../core/services/fcm_gateway.py#L26) |
+| function | `_sa_path` | `()` | — | [src](../../../core/services/fcm_gateway.py#L30) |
+| function | `is_configured` | `()` | — | [src](../../../core/services/fcm_gateway.py#L34) |
+| function | `_access_token` | `()` | Mint en OAuth-access-token fra service-account via google-auth. | [src](../../../core/services/fcm_gateway.py#L38) |
+| function | `_build_message` | `(token, data)` | — | [src](../../../core/services/fcm_gateway.py#L51) |
+| function | `send` | `(token, data)` | Send data-only push. Returnerer (ok, code). code='invalid' => slet token. | [src](../../../core/services/fcm_gateway.py#L67) |
+
 ## `core/services/felt_surface_store.py`
 _Delt lager for de følte overflader — så de overlever en procesgrænse._
 
@@ -508,18 +521,4 @@ _GitHub-connector — API-klient + tool-handlers (v1: issues + PRs)._
 | function | `list_prs` | `(user_id, repo, *, state=…)` | Pull requests i `repo` (owner/name). state: open|closed|all. | [src](../../../core/services/github_connector.py#L92) |
 | function | `_post` | `(user_id, path, payload)` | — | [src](../../../core/services/github_connector.py#L107) |
 | function | `create_pr` | `(user_id, repo, *, head, base, title, body=…)` | Opret PR i `repo` (owner/name). head/base = branch-navne. | [src](../../../core/services/github_connector.py#L123) |
-
-## `core/services/global_workspace.py`
-_Global Workspace — shared broadcast buffer (Experiment 3: Global Workspace Theory)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `publish_to_workspace` | `(source, topic, signal_type, payload_summary)` | Add an entry to the shared workspace buffer. | [src](../../../core/services/global_workspace.py#L45) |
-| function | `get_workspace_snapshot` | `()` | Return current workspace buffer as a list (newest last). | [src](../../../core/services/global_workspace.py#L63) |
-| function | `_extract_topic` | `(event_kind, payload)` | Extract a short topic string from an event payload. | [src](../../../core/services/global_workspace.py#L69) |
-| function | `_topic_jaccard` | `(topic_a, topic_b)` | Jaccard similarity between two topic strings (word-level). | [src](../../../core/services/global_workspace.py#L80) |
-| function | `_handle_event` | `(kind, payload)` | Map eventbus event to workspace entry. | [src](../../../core/services/global_workspace.py#L91) |
-| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/global_workspace.py#L104) |
-| function | `register_event_listeners` | `()` | Start background eventbus listener thread. | [src](../../../core/services/global_workspace.py#L120) |
-| function | `stop_event_listeners` | `()` | Stop the background listener thread. | [src](../../../core/services/global_workspace.py#L141) |
 

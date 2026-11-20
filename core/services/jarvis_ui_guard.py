@@ -197,7 +197,7 @@ def _er_skalar(vaerdi: object) -> bool:
     return False
 
 
-def _bind_indhold(
+def _bind_refs(
     tekst: str,
     *,
     tool_results: Mapping[str, object] | None,
@@ -276,6 +276,384 @@ def _bind_indhold(
     if fejl or not aendret:
         return tekst, fejl
     return json.dumps(bundet, ensure_ascii=False), []
+
+
+# --- DIL lag 2: kontrolstrukturer -------------------------------------------------------
+#
+# ``{#each liste som navn}…{/each}`` og ``{#if udtryk}…{:else}…{/if}`` over SKALARE lister.
+# Python-spejl af ``udfoldKontrol`` i ``apps/*/src/lib/udtryk.ts`` — paritet vogtes af
+# ``tests/test_dil_bind_sti_paritet.py``. Serveren evaluerer en lille delmængde af klientens
+# udtrykssprog (navne, tal, tekst, ``! && || == != < <= > >= + - * / %``), uden JS og uden
+# ``eval``. Funktionskald understøttes ikke her: en betingelse der bruger dem er en hård fejl.
+# Lister kommer fra et ``data``-objekt øverst i fladen (``{"data": {"xs": [1, 2]}}``), som
+# fjernes igen efter udfoldning. Fejl følger lag 1: nodePath/property/grund.
+
+KONTROL_MAX_DYBDE = 3
+KONTROL_MAX_LISTE = 50
+KONTROL_MAX_TEGN = 20000
+
+_KONTROL_TAG = re.compile(r"\{(#each [^{}]*|#if [^{}]*|:else|/each|/if)\}")
+_EACH = re.compile(
+    r"^#each\s+(?P<liste>[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*|\[\d+\])*)"
+    r"\s+som\s+(?P<navn>[a-zA-Z_][a-zA-Z0-9_]*)$"
+)
+_UDTRYK_TOKEN = re.compile(
+    r"\s*(?:(?P<tal>\d+(?:[.,]\d+)?|\.\d+)|(?P<tekst>\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*')"
+    r"|(?P<navn>[a-zA-Z_][a-zA-Z0-9_]*)|(?P<op><=|>=|==|!=|&&|\|\||[+\-*/%<>!()\[\].]))"
+)
+
+
+class _KontrolFejl(Exception):
+    pass
+
+
+def _er_tal(v: object) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _sandhed(v: object) -> bool:
+    return not (v is None or v is False or v == 0 and _er_tal(v) or v == "")
+
+
+def _skalar_tekst(v: object) -> str:
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, int):
+        return str(v)
+    if isinstance(v, float):
+        return str(int(v)) if v.is_integer() else repr(v).replace(".", ",")
+    return str(v)
+
+
+def _tokens(kilde: str) -> list[tuple[str, str]]:
+    ud: list[tuple[str, str]] = []
+    i = 0
+    kilde = kilde.rstrip()
+    while i < len(kilde):
+        m = _UDTRYK_TOKEN.match(kilde, i)
+        if not m:
+            raise _KontrolFejl(f"ukendt tegn i udtryk: {kilde[i:i + 10]!r}")
+        for art in ("tal", "tekst", "navn", "op"):
+            if m.group(art) is not None:
+                ud.append((art, m.group(art)))
+        i = m.end()
+    return ud
+
+
+def _eval_udtryk(kilde: str, scope: Mapping[str, object]) -> object:
+    toks = _tokens(kilde.strip())
+    if not toks:
+        raise _KontrolFejl("tomt udtryk")
+    pos = 0
+
+    def kig() -> tuple[str, str] | None:
+        return toks[pos] if pos < len(toks) else None
+
+    def er_op(*ops: str) -> str | None:
+        t = kig()
+        return t[1] if t and t[0] == "op" and t[1] in ops else None
+
+    def eller() -> object:
+        nonlocal pos
+        v = og()
+        while er_op("||"):
+            pos += 1
+            h = og()
+            v = _sandhed(v) or _sandhed(h)
+        return v
+
+    def og() -> object:
+        nonlocal pos
+        v = lighed()
+        while er_op("&&"):
+            pos += 1
+            h = lighed()
+            v = _sandhed(v) and _sandhed(h)
+        return v
+
+    def ens(a: object, b: object) -> bool:
+        if isinstance(a, bool) != isinstance(b, bool):
+            return False
+        if _er_tal(a) != _er_tal(b):
+            return False
+        return a == b
+
+    def lighed() -> object:
+        nonlocal pos
+        v = sammenlign()
+        while (op := er_op("==", "!=")):
+            pos += 1
+            h = sammenlign()
+            v = ens(v, h) if op == "==" else not ens(v, h)
+        return v
+
+    def sammenlign() -> object:
+        nonlocal pos
+        v = additiv()
+        while (op := er_op("<", "<=", ">", ">=")):
+            pos += 1
+            h = additiv()
+            if not (_er_tal(v) and _er_tal(h)):
+                raise _KontrolFejl(f"{op} kræver to tal på serveren")
+            v = {"<": v < h, "<=": v <= h, ">": v > h, ">=": v >= h}[op]
+        return v
+
+    def tal(v: object, op: str) -> float | int:
+        if not _er_tal(v):
+            raise _KontrolFejl(f"{op} kræver tal")
+        return v  # type: ignore[return-value]
+
+    def additiv() -> object:
+        nonlocal pos
+        v = mult()
+        while (op := er_op("+", "-")):
+            pos += 1
+            h = mult()
+            if op == "+" and _er_tal(v) and _er_tal(h):
+                v = v + h  # type: ignore[operator]
+            elif op == "+" and (isinstance(v, str) or isinstance(h, str)):
+                v = _skalar_tekst(v) + _skalar_tekst(h)
+            else:
+                v = tal(v, op) + tal(h, op) if op == "+" else tal(v, op) - tal(h, op)
+        return v
+
+    def mult() -> object:
+        nonlocal pos
+        v = unaer()
+        while (op := er_op("*", "/", "%")):
+            pos += 1
+            h = unaer()
+            a, b = tal(v, op), tal(h, op)
+            if op == "*":
+                v = a * b
+            elif b == 0:
+                raise _KontrolFejl(f"{op} med nul")
+            elif op == "/":
+                v = a / b
+            else:
+                v = math.fmod(a, b)
+        return v
+
+    def unaer() -> object:
+        nonlocal pos
+        if er_op("!"):
+            pos += 1
+            return not _sandhed(unaer())
+        if er_op("-"):
+            pos += 1
+            return -tal(unaer(), "-")
+        return primaer()
+
+    def primaer() -> object:
+        nonlocal pos
+        t = kig()
+        if t is None:
+            raise _KontrolFejl("udtrykket slutter for tidligt")
+        pos += 1
+        art, v = t
+        if art == "tal":
+            f = float(v.replace(",", "."))
+            return int(f) if f.is_integer() and "." not in v and "," not in v else f
+        if art == "tekst":
+            ud, j, q = "", 1, v[0]
+            while j < len(v) - 1:
+                if v[j] == "\\" and j + 1 < len(v) - 1:
+                    ud += v[j + 1]
+                    j += 2
+                    continue
+                ud += v[j]
+                j += 1
+            return ud
+        if art == "op" and v == "(":
+            r = eller()
+            if not er_op(")"):
+                raise _KontrolFejl('forventede ")"')
+            pos += 1
+            return r
+        if art == "navn":
+            if er_op("("):
+                raise _KontrolFejl(f"funktionskald ({v}) understøttes ikke på serveren")
+            sti = v
+            while True:
+                if er_op("."):
+                    pos += 1
+                    n = kig()
+                    if not n or n[0] != "navn":
+                        raise _KontrolFejl("sti mangler et navn efter punktum")
+                    sti += "." + n[1]
+                    pos += 1
+                elif er_op("["):
+                    pos += 1
+                    n = kig()
+                    if not n or n[0] != "tal" or not n[1].isdigit():
+                        raise _KontrolFejl("sti-indeks skal være et heltal")
+                    sti += f"[{int(n[1])}]"
+                    pos += 1
+                    if not er_op("]"):
+                        raise _KontrolFejl('forventede "]"')
+                    pos += 1
+                else:
+                    break
+            dele = _sti_dele(sti)
+            if dele is None:
+                raise _KontrolFejl(f"ugyldig bind-sti: {sti}")
+            return _slaa_op(dele, scope, sti)
+        raise _KontrolFejl(f"uventet token: {v!r}")
+
+    resultat = eller()
+    if pos < len(toks):
+        raise _KontrolFejl(f"uventet token: {toks[pos][1]!r}")
+    return resultat
+
+
+def _slaa_op(dele: list, scope: Mapping[str, object], sti: str) -> object:
+    v: object = scope
+    for d in dele:
+        if isinstance(d, int):
+            if not isinstance(v, list) or d >= len(v):
+                raise _KontrolFejl(f"{sti} findes ikke")
+            v = v[d]
+        else:
+            if not isinstance(v, Mapping) or d not in v:
+                raise _KontrolFejl(f"{sti} findes ikke")
+            v = v[d]
+    return v
+
+
+def _pars_kontrol(tekst: str) -> list:
+    """Træ af ``("tekst", s)`` / ``("each", liste, navn, krop)`` / ``("if", udtryk, da, ellers)``."""
+    rod: list = []
+    stak: list[dict] = [{"liste": rod, "node": None, "else": False}]
+    sidste = 0
+    for m in _KONTROL_TAG.finditer(tekst):
+        if m.start() > sidste:
+            stak[-1]["liste"].append(("tekst", tekst[sidste:m.start()]))
+        sidste = m.end()
+        tag = m.group(1)
+        if tag.startswith("#each "):
+            em = _EACH.match(tag)
+            if not em or _sti_dele(em.group("liste")) is None:
+                raise _KontrolFejl(f"ugyldig #each: {m.group(0)}")
+            if len(stak) > KONTROL_MAX_DYBDE:
+                raise _KontrolFejl(f"kontrolstrukturer er for dybt nested (max {KONTROL_MAX_DYBDE})")
+            krop: list = []
+            stak[-1]["liste"].append(("each", em.group("liste"), em.group("navn"), krop))
+            stak.append({"liste": krop, "node": "each", "else": False})
+        elif tag.startswith("#if "):
+            if len(stak) > KONTROL_MAX_DYBDE:
+                raise _KontrolFejl(f"kontrolstrukturer er for dybt nested (max {KONTROL_MAX_DYBDE})")
+            udtryk = tag[4:].strip()
+            if not udtryk:
+                raise _KontrolFejl("#if uden udtryk")
+            da: list = []
+            ellers: list = []
+            stak[-1]["liste"].append(("if", udtryk, da, ellers))
+            stak.append({"liste": da, "node": "if", "else": False, "ellers": ellers})
+        elif tag == ":else":
+            top = stak[-1]
+            if top["node"] != "if" or top["else"]:
+                raise _KontrolFejl("{:else} uden tilhørende #if")
+            top["else"] = True
+            top["liste"] = top["ellers"]
+        else:
+            vent = "each" if tag == "/each" else "if"
+            if stak[-1]["node"] != vent:
+                raise _KontrolFejl(f"{{{tag}}} uden tilhørende #{vent}")
+            stak.pop()
+    if sidste < len(tekst):
+        stak[-1]["liste"].append(("tekst", tekst[sidste:]))
+    if len(stak) > 1:
+        raise _KontrolFejl("kontrolstruktur er ikke lukket")
+    return rod
+
+
+def _udfold_noder(noder: list, scope: Mapping[str, object]) -> str:
+    ud = ""
+    for n in noder:
+        if n[0] == "tekst":
+            ud += n[1]
+        elif n[0] == "each":
+            _, liste_sti, navn, krop = n
+            dele = _sti_dele(liste_sti)
+            liste = _slaa_op(dele, scope, liste_sti) if dele else None
+            if not isinstance(liste, list) or not all(_er_skalar(x) for x in liste):
+                raise _KontrolFejl(f"#each {liste_sti}: er ikke en liste af skalarer")
+            if len(liste) > KONTROL_MAX_LISTE:
+                raise _KontrolFejl(
+                    f"#each {liste_sti}: listen har {len(liste)} elementer (max {KONTROL_MAX_LISTE})"
+                )
+            for element in liste:
+                indre = _udfold_noder(krop, {**scope, navn: element})
+                ud += indre.replace("{" + navn + "}", _skalar_tekst(element))
+        else:
+            _, udtryk, da, ellers = n
+            ud += _udfold_noder(da if _sandhed(_eval_udtryk(udtryk, scope)) else ellers, scope)
+    return ud
+
+
+def udfold_kontrol(tekst: str, scope: Mapping[str, object]) -> str:
+    """Udfold kontrolstrukturer i én tekst. Kaster ``_KontrolFejl`` ved fejl."""
+    if "{#" not in tekst:
+        return tekst
+    ud = _udfold_noder(_pars_kontrol(tekst), scope)
+    if len(ud) > KONTROL_MAX_TEGN:
+        raise _KontrolFejl(f"udfoldet tekst er for lang ({len(ud)} tegn, max {KONTROL_MAX_TEGN})")
+    return ud
+
+
+def _udfold_indhold(tekst: str) -> tuple[str, list[str]]:
+    """Udfold kontrolstrukturer i alle strenge i en flades JSON. Hård fejl pr. streng."""
+    try:
+        data = json.loads(tekst)
+    except ValueError:  # ikke JSON: intet at udfolde, validering melder det selv
+        return tekst, []
+    if not isinstance(data, dict):
+        return tekst, []
+    scope = data.get("data", {})
+    if not isinstance(scope, dict):
+        scope = {}
+    fejl: list[str] = []
+    aendret = "data" in data
+
+    def _gaa(vaerdi: object, node_path: str, property_name: str) -> object:
+        nonlocal aendret
+        if isinstance(vaerdi, dict):
+            return {k: _gaa(v, f"{node_path}.{k}", str(k)) for k, v in vaerdi.items() if node_path != "$" or k != "data"}
+        if isinstance(vaerdi, list):
+            return [_gaa(v, f"{node_path}[{i}]", f"[{i}]") for i, v in enumerate(vaerdi)]
+        if not isinstance(vaerdi, str) or "{#" not in vaerdi:
+            return vaerdi
+        try:
+            ud = udfold_kontrol(vaerdi, scope)
+        except _KontrolFejl as e:
+            parent = node_path.rsplit(".", 1)[0] if "." in node_path else "$"
+            fejl.append(f"kontrolstruktur: nodePath={parent}; property={property_name}; grund={e}")
+            return vaerdi
+        aendret = True
+        return ud
+
+    ud = _gaa(data, "$", "$")
+    if fejl:
+        return tekst, fejl
+    if not aendret:
+        return tekst, []
+    return json.dumps(ud, ensure_ascii=False), []
+
+
+def _bind_indhold(
+    tekst: str,
+    *,
+    tool_results: Mapping[str, object] | None,
+    run_id: str,
+) -> tuple[str, list[str]]:
+    """Lag 1 (``{ref:…}``) og derefter lag 2 (``{#each}``/``{#if}``)."""
+    bundet, fejl = _bind_refs(tekst, tool_results=tool_results, run_id=run_id)
+    if fejl:
+        return tekst, fejl
+    udfoldet, fejl = _udfold_indhold(bundet)
+    if fejl:
+        return tekst, fejl
+    return udfoldet, []
 
 
 def _liste(vaerdi: object, maks: int) -> list[dict]:

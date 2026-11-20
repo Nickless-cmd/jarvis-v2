@@ -61,18 +61,9 @@
  * er brodtekstens `--fg-1`. Gloeden doer efter 55 % af varigheden, saa ordet
  * staar rent naar naeste ord lander. */
 @keyframes streaming-word-color {
-  0% {
-    color: var(--accent);
-    text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 65%, transparent);
-  }
-  55% {
-    color: var(--accent);
-    text-shadow: 0 0 5px color-mix(in srgb, var(--accent) 30%, transparent);
-  }
-  100% {
-    color: var(--fg-1);
-    text-shadow: none;
-  }
+  0% { color: var(--accent); }
+  70% { color: var(--accent); }
+  100% { color: var(--fg-1); }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -321,7 +321,7 @@ def test_a_decided_worktree_that_still_exists_waits_the_seven_days(wt):
     assert os.path.isdir(w["path"])
     assert wt.W_.sweep(now=t0 + timedelta(minutes=1))["removed"] == []
     assert wt.rows()[0]["status"] == "decided"
-    assert wt.W_.quota_status()["retained"] == 1
+    assert wt.W_.quota_status()["retained"] == 0        # afgjort taeller ikke i antal-loftet (disk-bytes goer)
 
 
 def test_an_undecided_worktree_needs_attention_at_14_days_and_is_archived_at_30(wt):
@@ -594,3 +594,52 @@ def test_sweep_leaves_a_live_retained_worktree_alone(wt):
     w = _retained(wt)
     assert wt.W_.sweep(now=NOW)["removed"] == [] and os.path.isdir(w["path"])
     assert wt.W_.drift_report()["ghost_count"] == 0
+
+
+# --- kapacitets-faelde: decided-raekker maa ikke laase antal-loftet ------------------------------------------
+
+def _ved_loftet(wt, monkeypatch, *, decide_one):
+    """Loft paa 2: a1 og a2 er retained; a1 afgoeres hvis decide_one. Returnerer (a1-worktree, a3-assignment)."""
+    monkeypatch.setattr(wt.W_, "MAX_RETAINED", 2)
+    w1, a1 = wt.prov(wt.task("a1"))
+    w2, a2 = wt.prov(wt.task("a2"))
+    for a in (a1, a2):
+        wt.c_.commit_terminal_outcome(assignment_id=a["assignment_id"], status="completed")
+        wt.W_.snapshot_for_assignment(assignment_id=a["assignment_id"])
+    d = None
+    if decide_one:
+        d = wt.W_.decide(owner_user_id="bjorn", worktree_id=w1["worktree_id"], decision="integrated")
+    return (w1, d), wt.task("a3")
+
+
+def test_a_decided_worktree_does_not_block_a_new_task_at_the_cap(wt, monkeypatch):
+    (w1, d), acc = _ved_loftet(wt, monkeypatch, decide_one=True)
+    assert os.path.isdir(w1["path"]) and wt.W_.get(worktree_id=w1["worktree_id"])["status"] == "decided"
+    assert wt.W_.quota_status()["retained"] == 1
+    res = wt.W_.reserve(owner_user_id="bjorn", assignment_id=acc["assignment_id"], repo_path=wt.repo_)
+    assert res                                                           # ingen CAPACITY
+
+
+def test_retained_rows_still_block_at_the_cap(wt, monkeypatch):
+    _, acc = _ved_loftet(wt, monkeypatch, decide_one=False)
+    assert wt.W_.quota_status()["retained"] == 2
+    with pytest.raises(wt.c_.ContractError) as e:
+        wt.W_.reserve(owner_user_id="bjorn", assignment_id=acc["assignment_id"], repo_path=wt.repo_)
+    assert e.value.code == "CAPACITY" and "bevarede" in e.value.detail
+
+
+def test_sweep_still_removes_a_decided_row_after_the_deadline_even_when_uncounted(wt, monkeypatch):
+    (w1, d), _ = _ved_loftet(wt, monkeypatch, decide_one=True)
+    t0 = datetime.fromisoformat(d["decided_at"].replace("Z", "+00:00"))
+    assert wt.W_.sweep(now=t0 + timedelta(days=6))["removed"] == [] and os.path.isdir(w1["path"])
+    out = wt.W_.sweep(now=t0 + timedelta(days=7, minutes=1))
+    assert out["removed"] == [w1["worktree_id"]] and not os.path.exists(w1["path"])
+    assert wt.W_.get(worktree_id=w1["worktree_id"])["status"] == "removed"
+
+
+def test_a_decided_worktree_still_counts_toward_the_disk_byte_quota(wt, monkeypatch):
+    """Antal-loftet slækkes, men disken er stadig optaget indtil sweep: bytes-kvoten skal stadig se den."""
+    (w1, _), _ = _ved_loftet(wt, monkeypatch, decide_one=True)
+    with wt.c_._conn() as conn:
+        assert wt.W_._holding_bytes(conn, "runtime-container") > 0
+        assert "decided" in wt.W_.HOLDING and "decided" not in wt.W_.COUNTED

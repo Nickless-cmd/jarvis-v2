@@ -48,7 +48,13 @@ ARCHIVE_AFTER = timedelta(days=30)
 STALE_CREATING = timedelta(hours=1)
 
 WRITING = ("reserved", "creating", "active")
+#: Alt der stadig optager DISK (bytes-kvote, drift-vagt). ``decided`` ligger her fordi mappen foerst
+#: rives ned af sweep() efter fristen.
 HOLDING = ("reserved", "creating", "active", "retained", "decided", "unknown")
+#: Hvad der taeller mod ANTAL-loftet MAX_RETAINED: arbejde i live eller som venter paa en beslutning.
+#: ``decided`` er en afslutning (integreret/kasseret) og optager ingen plads i loftet, mens den
+#: venter paa sweep() — ellers laaste afgjorte raekker loftet i 7 dage (90 for ``kept``).
+COUNTED = ("reserved", "creating", "active", "retained", "unknown")
 
 
 def ensure_worktree_tables(conn) -> None:
@@ -125,7 +131,7 @@ def _quota(conn, target: str) -> dict[str, Any]:
     writing = conn.execute(f"SELECT COUNT(*) FROM agent_worktrees WHERE target=? AND status IN "
                            f"({','.join('?' * len(WRITING))})", (target, *WRITING)).fetchone()[0]
     holding = conn.execute(f"SELECT COUNT(*) FROM agent_worktrees WHERE target=? AND status IN "
-                           f"({','.join('?' * len(HOLDING))})", (target, *HOLDING)).fetchone()[0]
+                           f"({','.join('?' * len(COUNTED))})", (target, *COUNTED)).fetchone()[0]
     return {"target": target, "writing": int(writing), "max_writing": MAX_CONCURRENT_WRITING,
             "retained": int(holding), "max_retained": MAX_RETAINED,
             "bytes": _holding_bytes(conn, target), "max_bytes": TARGET_TOTAL_BYTES}

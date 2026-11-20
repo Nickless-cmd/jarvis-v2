@@ -25,10 +25,13 @@ karakter-figuren, matrix-layoutet, titel-crossfade og ordhalens
 layout-stabilitet — ikke markdown, værktøjslinjer eller layout på alle
 bredder. Derfor kan en fuld grøn kørsel ikke give 1.0.
 
-## Kun on demand
+## Kadence
 
-Målingen tager ~9 sekunder og kræver node + Chromium. Den hører derfor
-IKKE i heartbeat. Kald den eksplicit:
+Målingen tager ~9 sekunder og kræver node + Chromium, så den kører ikke hvert
+tik: `heartbeat_curriculum_cadence.tick_desk_measurement_cadence` starter den i
+en baggrundstråd hver `DESK_MEASUREMENT_INTERVAL_SECONDS` (6 t). Uden den kobling
+havde `record()` nul produktionskaldesteder, og 0.85 var loftet, ikke en måling.
+Manuelt:
 
     python -c "from core.services.desk_render_capability import record; print(record())"
 """
@@ -52,7 +55,10 @@ DOMAIN = "desk render capabilities"
 #: `package.json` med vitest bor.
 DESK_DIR = Path(__file__).resolve().parents[2] / "apps" / "jarvis-desk"
 
-#: Et grønt run beviser det målte, ikke det umålte.
+#: Loft, ikke mål: suiten dækker kun figur, matrix, titel-crossfade og ordhale
+#: (se modul-docstring «Loftet på 0.85»). Begrundelsen stod i filen fra første
+#: commit (git log -S _CAP: kun b2d36b650, merge af 48b6d2f07) — ingen senere
+#: ændring; loftet er bevidst og beholdes, og en grøn kørsel måler derfor 0.85.
 _CAP = 0.85
 
 #: Vitest' opsummeringslinje. Formen varierer med hvad der skete:

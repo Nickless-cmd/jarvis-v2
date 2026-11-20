@@ -164,6 +164,19 @@ def validate_trailers(
             f"Run-ID {run_id!r} is a template placeholder, not a run id"
         )
 
+    # 20/11-2026: `a1b2c3d4` er ikke en tilfaeldig hex — den er en indtastet
+    # placeholder. Maalt med `git log --all`: den stod i 17 commits, bl.a.
+    # 16687fdf6 og 265415d73. Vagtens MARKOER-liste kendte den ikke, saa en
+    # konstant gik gennem som en unik koersel — praecis den fejlklasse
+    # traileren findes for at forhindre.
+    _kendte_hex = {"a1b2c3d4", "deadbeef", "00000000", "12345678", "abcdef01"}
+    _hale = run_id.rsplit("-", 1)[-1].lower() if run_id else ""
+    if _hale in _kendte_hex:
+        errors.append(
+            f"Run-ID {run_id!r} ends in the placeholder hex {_hale!r}, "
+            "not a random run id"
+        )
+
     rule = ACTOR_REGISTRY.get(actor)
     if len(values["Actor"]) > 1:
         errors.append(

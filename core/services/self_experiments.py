@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -196,6 +197,7 @@ def generate_learning_curriculum() -> dict[str, object]:
             for domain, conf in weak[:kandidat_pulje]:
                 curriculum.append({
                     "focus": domain,
+                    "domain": domain,
                     "type": "weakness",
                     "current_confidence": conf,
                     "suggestion": f"Bliv bedre til {domain} — confidence er kun {conf:.0%}",
@@ -222,6 +224,7 @@ def generate_learning_curriculum() -> dict[str, object]:
                     # («...ud fra proce», «...jeg skal vide om det er fronte»),
                     # og de var derfor ikke til at arbejde med som maal.
                     "focus": _klip_ord_graense(exp.get("hypothesis", "")),
+                    "domain": EKSPERIMENT_DOMAENE,
                     "type": "experiment_conclusion",
                     "suggestion": f"Anvend: {best} er bedre (diff={result.get('difference', 0):.0%})",
                     "priority": 0.6,
@@ -241,6 +244,7 @@ def generate_learning_curriculum() -> dict[str, object]:
             for mistake in mistakes[:2]:
                 curriculum.append({
                     "focus": _klip_ord_graense(mistake),
+                    "domain": normaliser_fejl_til_domaene(mistake),
                     "type": "mistake_pattern",
                     "suggestion": f"Undgå: {_klip_ord_graense(mistake)}",
                     "priority": 0.7,
@@ -441,7 +445,7 @@ def materialize_learning_curriculum_tasks(
     # Nu frasorteres FOERST; limit klipper i det der faktisk er tilbage.
     ready: list[dict[str, object]] = []
     for item in items:
-        focus_key = _curriculum_focus_key(str(item.get("focus") or "").strip())
+        focus_key = _curriculum_focus_key(_item_domaene(item))
         if not focus_key or focus_key in existing_keys:
             skipped += 1
             continue
@@ -456,7 +460,9 @@ def materialize_learning_curriculum_tasks(
             kind="curriculum-focus",
             goal=_klip_ord_graense(suggestion, 240),
             origin=origin,
-            scope=focus,
+            # scope er DOMÆNENØGLEN som koblingen løfter/sænker i
+            # confidence_by_domain — aldrig den rå fejlbeskrivelse.
+            scope=_item_domaene(item),
             priority=priority,
             # `run_id` blev til `origin_ref` i 4b53916a3 (13/9); denne kalder
             # fulgte ikke med, og TypeError'en blev slugt af hjerteslagets
@@ -567,6 +573,60 @@ def _build_visible_run_observation_note(
         f"for metric={metric}, cohort={cohort}, success={str(success).lower()}, "
         f"status={status}, capability={capability}."
     )
+
+
+#: Domænenøgle for afsluttede eksperimenter (hypotesen er ikke en fejl).
+EKSPERIMENT_DOMAENE = "eksperiment-konklusion"
+#: Eksplicit nøgle for en fejlformulering ingen kategori kender. Må ALDRIG
+#: erstattes af tom streng eller den rå tekst — så kan den ikke måles.
+UKENDT_FEJL_DOMAENE = "ukendt-fejl"
+
+# (kategori-nøgle, mønstre på normaliseret tekst: lowercase, æøå→ae/oe/aa).
+_FEJL_KATEGORIER: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "afbryder-midt-i-saetning",
+        (
+            r"afbr(oe|o)d.*(svar|saetning)",
+            r"(holder|stopper|slutter) (op )?midt i (en |et |sit )?(saetning|svar)",
+            r"midt i (en |et |sin |sit )?saetning",
+        ),
+    ),
+    (
+        "konkluderer-uden-bevis",
+        (
+            r"konkluderer.*(ud fra|uden|bare|blot)",
+            r"k(oe)rer som det skal",
+            r"paastaar.*uden (at )?(verific|tjek|bevis)",
+        ),
+    ),
+)
+
+
+def _normaliser_fejltekst(tekst: str) -> str:
+    t = " ".join(str(tekst or "").lower().split())
+    for fra, til in (("æ", "ae"), ("ø", "oe"), ("å", "aa")):
+        t = t.replace(fra, til)
+    return t
+
+
+def normaliser_fejl_til_domaene(tekst: str) -> str:
+    """Map en rå fejlformulering til en stabil kategori-nøgle.
+
+    Samme fejltype → samme nøgle, så gentagne forekomster rammer samme domæne
+    i ``confidence_by_domain``. Ukendt formulering → ``UKENDT_FEJL_DOMAENE``
+    (eksplicit, aldrig tom og aldrig den rå tekst).
+    """
+    t = _normaliser_fejltekst(tekst)
+    for noegle, moenstre in _FEJL_KATEGORIER:
+        if any(re.search(m, t) for m in moenstre):
+            return noegle
+    return UKENDT_FEJL_DOMAENE
+
+
+def _item_domaene(item: dict[str, object]) -> str:
+    """Domænenøglen for et curriculum-item. Ingen fallback til rå ``focus``:
+    et item uden ``domain`` springes over frem for at lave en ny støjnøgle."""
+    return str(item.get("domain") or "").strip()
 
 
 def _curriculum_focus_key(value: str) -> str:

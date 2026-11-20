@@ -495,3 +495,22 @@ def test_curriculum_run_der_fejler_saenker(isolated_runtime, monkeypatch) -> Non
         scope="desk render capabilities", outcome="failed", did_work=False,
     )
     assert _pv_domaener()["desk render capabilities"] == 0.27
+
+
+def test_normaliseret_scope_loefter_og_saenker_stadig_paa_samme_noegle(
+    isolated_runtime, monkeypatch
+) -> None:
+    from core.services.self_experiments import normaliser_fejl_til_domaene as n
+
+    noegle = n("Afbrød sit eget svar midt i sætningen ('og den skal lukkes m")
+    _koer_curriculum_med_callback(
+        isolated_runtime, monkeypatch, scope=noegle, outcome="completed", did_work=True
+    )
+    assert _pv_domaener()[noegle] == 0.35
+    # anden formulering af samme fejltype → samme nøgle, ingen ny støjnøgle
+    noegle2 = n("Holder op midt i en sætning ('jeg skal vide om det er fronte")
+    _koer_curriculum_med_callback(
+        isolated_runtime, monkeypatch, scope=noegle2, outcome="failed", did_work=False
+    )
+    assert _pv_domaener()[noegle] == 0.32
+    assert [k for k in _pv_domaener() if "midt" in k or "saetning" in k] == [noegle]

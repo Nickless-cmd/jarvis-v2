@@ -222,3 +222,42 @@ def test_konklusion_fra_eksperiment_klippes_ved_ordgraense(monkeypatch):
         f"klippet rammer midt i et ord: «{fokus[-12:]}»"
     )
 
+
+
+# ── Curriculum-scope er en stabil domænenøgle, ikke en rå fejlsætning ────────
+
+
+def test_to_formuleringer_af_samme_fejltype_rammer_samme_noegle():
+    from core.services.self_experiments import normaliser_fejl_til_domaene as n
+
+    a = n("Afbrød sit eget svar midt i sætningen ('og den skal lukkes m")
+    b = n("Holder op midt i en sætning ('jeg skal vide om det er fronte")
+    assert a == b == "afbryder-midt-i-saetning"
+    c = n("Konkluderer at processerne 'kører som det skal' ud fra proce")
+    assert c == "konkluderer-uden-bevis" and c != a
+
+
+def test_ukendt_fejlformulering_giver_eksplicit_noegle():
+    from core.services.self_experiments import (
+        UKENDT_FEJL_DOMAENE,
+        normaliser_fejl_til_domaene as n,
+    )
+
+    for tekst in ("noget helt andet og nyt", "", "   "):
+        ud = n(tekst)
+        assert ud == UKENDT_FEJL_DOMAENE == "ukendt-fejl"
+
+
+def test_materialiseret_scope_er_kategori_ikke_raa_saetning(isolated_runtime):
+    isolated_runtime.db.upsert_cognitive_personality_vector(
+        confidence_by_domain=json.dumps({"desk render capabilities": 0.9}),
+        recurring_mistakes=json.dumps([
+            "Afbrød sit eget svar midt i sætningen ('og den skal lukkes m",
+            "Holder op midt i en sætning ('jeg skal vide om det er fronte",
+        ]),
+    )
+    from core.services.self_experiments import materialize_learning_curriculum_tasks
+
+    ud = materialize_learning_curriculum_tasks(limit=3)
+    scopes = [str(isolated_runtime.db.get_runtime_task(t)["scope"]) for t in ud["task_ids"]]
+    assert scopes == ["afbryder-midt-i-saetning"]  # to sætninger → ét domæne, dedupet

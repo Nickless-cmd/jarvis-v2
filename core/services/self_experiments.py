@@ -318,14 +318,14 @@ def _maalte_domaener(noegle: str) -> set[str] | None:
     for rad in rows:
         try:
             domaener = json.loads(str(rad.get("confidence_by_domain") or "{}"))
-        # Uparsbar JSON: raekken kan ikke laeses, saa den taeles ikke som et udfald.
         except Exception:
+            # Uparsbar JSON: raekken kan ikke laeses, saa den taeles ikke.
             continue
         for navn, tal in domaener.items():
             try:
                 vaerdier.setdefault(str(navn), []).append(round(float(tal), 4))
-            # Ikke-numerisk vaerdi: springes over frem for at forurene serien.
             except (TypeError, ValueError):
+                # Ikke-numerisk vaerdi: springes over frem for at forurene serien.
                 continue
     # Et SKIFT, ikke en distinkt vaerdi. Maalt 20/11-2026: `souls-build
     # analyse` stod paa 0,45 i 10 vektorer og 0,38 i de naeste 205 — praecis
@@ -383,14 +383,14 @@ def _mekanisk_maalte(noegle: str) -> set[str] | None:
     for rad in reversed(rows):
         try:
             domaener = json.loads(str(rad.get("confidence_by_domain") or "{}"))
-        # Uparsbar JSON: raekken kan ikke laeses, saa den taeles ikke som et udfald.
         except Exception:
+            # Uparsbar JSON: raekken kan ikke laeses, saa den taeles ikke.
             continue
         for navn, tal in domaener.items():
             try:
                 reekker.setdefault(str(navn), []).append(round(float(tal), 4))
-            # Ikke-numerisk vaerdi: springes over frem for at forurene serien.
             except (TypeError, ValueError):
+                # Ikke-numerisk vaerdi: springes over frem for at forurene serien.
                 continue
     # Maalt 20/11-2026 (kontrol af funktionen selv): 16 domaener har NOGENSINDE
     # faaet et mekanisk skridt, men kun 10 har det som deres SIDSTE skridt.

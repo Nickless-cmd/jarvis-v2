@@ -19,33 +19,36 @@ from typing import Any
 from . import runtime_tasks
 from core.runtime.state_store import load_json, save_json
 
-_DEFAULT_KINDS: tuple[str, ...] = (
-    "initiative-followup",
-    "heartbeat-followup",
-    "generic",
-    "open-loop-follow-up",
-    "agency_bridge_repair",
-    "observability_bridge_repair",
-    "theater_refactor",
-)
+_WORKER_ID = "task-worker"
+
+
+def claimable_kinds() -> tuple[str, ...]:
+    """Kinds workeren kan claime — AFLEDT af handler-registret.
+
+    Én sandhed: en kind kan kun claimes hvis der er en handler til den. Den
+    gamle håndskrevne allowlist kunne drive fra producenterne (`curriculum-focus`
+    blev produceret men aldrig claimet).
+    """
+    return tuple(_KIND_HANDLERS)
 
 
 def claim_next_task(
     kinds: tuple[str, ...] | list[str] | None = None,
 ) -> dict[str, Any] | None:
-    """Claim the next queued task and mark it `running`.
+    """Claim the next queued task atomically (queued -> running + lease).
 
-    Returns the updated task dict, or ``None`` if nothing is queued.
+    Returns the claimed task dict, or ``None`` if nothing claimable is queued.
     """
-    allowed = tuple(kinds) if kinds else _DEFAULT_KINDS
+    allowed = tuple(kinds) if kinds else claimable_kinds()
     # runtime_tasks.list_tasks already sorts by (priority_rank, retry_at/updated_at).
     queued = runtime_tasks.list_tasks(status="queued", limit=50)
-    candidates = [t for t in queued if str(t.get("kind") or "") in allowed]
-    if not candidates:
-        return None
-    task = candidates[0]
-    updated = runtime_tasks.update_task(str(task["task_id"]), status="running")
-    return updated or task
+    for task in queued:
+        if str(task.get("kind") or "") not in allowed:
+            continue
+        claimed = runtime_tasks.claim_task(str(task["task_id"]), owner=_WORKER_ID)
+        if claimed is not None:  # None = en anden claimer vandt racet
+            return claimed
+    return None
 
 
 #: Hvorfor followup-handlers melder `blocked` og ikke `succeeded`
@@ -199,75 +202,69 @@ def _handle_theater_refactor(task: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def _handle_generic(task: dict[str, Any]) -> dict[str, str]:
+    return {
+        "status": "succeeded",
+        "summary": f"generic task acknowledged: {str(task.get('goal') or '')[:120]}",
+        "artifact_ref": "",
+        "blocked_reason": "",
+    }
+
+
+def _handle_curriculum_focus(task: dict[str, Any]) -> dict[str, str]:
+    """Læringsmål fra self_experiments. Workeren kan ikke udføre læring.
+
+    Ærligt `blocked` med næste nødvendige bane frem for at lade tasken rådne i
+    køen (målt 20/11-2026: 6 queued + 2 running, ældste fra 30/10).
+    """
+    goal = str(task.get("goal") or "").strip()
+    return {
+        "status": "blocked",
+        "summary": f"curriculum-focus: registreret, ikke udført — {goal[:200]}",
+        "artifact_ref": "",
+        "blocked_reason": (
+            "læringsmål kræver en kørende bane med værktøjsadgang "
+            "(visible/autonom run) — workeren kan ikke udføre det"
+        ),
+    }
+
+
+#: ÉT handler-register. `claimable_kinds()` afledes herfra.
+_KIND_HANDLERS: dict[str, Any] = {
+    "initiative-followup": _handle_initiative_followup,
+    "heartbeat-followup": _handle_heartbeat_followup,
+    "generic": _handle_generic,
+    "open-loop-follow-up": _handle_open_loop_followup,
+    "agency_bridge_repair": _handle_agency_bridge_repair,
+    "observability_bridge_repair": _handle_observability_bridge_repair,
+    "theater_refactor": _handle_theater_refactor,
+    "curriculum-focus": _handle_curriculum_focus,
+}
+
+# Bagudkompatibelt navn (afledt, ikke håndskrevet).
+_DEFAULT_KINDS: tuple[str, ...] = tuple(_KIND_HANDLERS)
+
+
 def _execute_task(task: dict[str, Any]) -> None:
     """Execute a single task and persist its final status. Never raises."""
     kind = str(task.get("kind") or "")
     task_id = str(task.get("task_id") or "")
     try:
-        if kind == "initiative-followup":
-            result = _handle_initiative_followup(task)
-        elif kind == "heartbeat-followup":
-            result = _handle_heartbeat_followup(task)
-        elif kind == "open-loop-follow-up":
-            result = _handle_open_loop_followup(task)
-        elif kind == "agency_bridge_repair":
-            result = _handle_agency_bridge_repair(task)
-            runtime_tasks.update_task(
-                task_id,
-                status=result["status"],
-                blocked_reason=result["blocked_reason"],
-                result_summary=result["summary"],
-                artifact_ref=result["artifact_ref"],
-            )
-            return
-        elif kind == "observability_bridge_repair":
-            result = _handle_observability_bridge_repair(task)
-            runtime_tasks.update_task(
-                task_id,
-                status=result["status"],
-                blocked_reason=result["blocked_reason"],
-                result_summary=result["summary"],
-                artifact_ref=result["artifact_ref"],
-            )
-            return
-        elif kind == "theater_refactor":
-            result = _handle_theater_refactor(task)
-            runtime_tasks.update_task(
-                task_id,
-                status=result["status"],
-                blocked_reason=result["blocked_reason"],
-                result_summary=result["summary"],
-                artifact_ref=result["artifact_ref"],
-            )
-            return
-        elif kind == "generic":
-            summary = f"generic task acknowledged: {str(task.get('goal') or '')[:120]}"
-        else:
+        handler = _KIND_HANDLERS.get(kind)
+        if handler is None:
             runtime_tasks.update_task(
                 task_id,
                 status="failed",
                 result_summary=f"unknown kind: {kind}",
             )
             return
-        if kind in (
-            "initiative-followup",
-            "heartbeat-followup",
-            "open-loop-follow-up",
-        ):
-            # Disse tre kan ikke udfoere deres eget maal — de melder `blocked`
-            # med en grund i stedet for at lukke koen paa en loegn.
-            runtime_tasks.update_task(
-                task_id,
-                status=result["status"],
-                blocked_reason=result["blocked_reason"],
-                result_summary=result["summary"],
-                artifact_ref=result["artifact_ref"],
-            )
-            return
+        result = handler(task)
         runtime_tasks.update_task(
             task_id,
-            status="succeeded",
-            result_summary=(summary or "ok")[:500],
+            status=result["status"],
+            blocked_reason=result.get("blocked_reason", ""),
+            result_summary=(result.get("summary") or "ok")[:500],
+            artifact_ref=result.get("artifact_ref", ""),
         )
     except Exception as exc:  # noqa: BLE001
         runtime_tasks.update_task(
@@ -286,7 +283,13 @@ def tick_task_worker(budget: int = 3) -> dict[str, Any]:
     succeeded = 0
     failed = 0
     blocked = 0
-    allowed = _DEFAULT_KINDS
+    allowed = claimable_kinds()
+    # Reaper først: en task der blev claimet af en worker der døde, må ikke stå
+    # `running` for evigt.
+    try:
+        reaped = len(runtime_tasks.reap_expired_leases())
+    except Exception:  # noqa: BLE001
+        reaped = 0
     for _ in range(max(0, int(budget))):
         task = claim_next_task(kinds=allowed)
         if task is None:
@@ -312,6 +315,7 @@ def tick_task_worker(budget: int = 3) -> dict[str, Any]:
         "failed": failed,
         "blocked": blocked,
         "remaining_queued": len(remaining),
+        "reaped": reaped,
     }
 
 
@@ -462,7 +466,7 @@ def build_task_worker_surface() -> dict[str, Any]:
     kinds ALTID ender `blocked` (se `_FOLLOWUP_BLOCKED`), og hvor mange
     `running` der aldrig blev afsluttet.
     """
-    base = {"mode": "task-worker", "claimable_kinds": list(_DEFAULT_KINDS)}
+    base = {"mode": "task-worker", "claimable_kinds": list(claimable_kinds())}
     try:
         from core.runtime.db import connect
         with connect() as conn:
@@ -484,11 +488,15 @@ def build_task_worker_surface() -> dict[str, Any]:
                 "signals": {}, "summary": "task-koe ulaeselig"}
     by_status: dict[str, int] = {}
     claimable = 0
+    unclaimable: dict[str, int] = {}
     followup_blocked = 0
     for kind, status, n in rows:
         by_status[str(status)] = by_status.get(str(status), 0) + int(n)
-        if status == "queued" and kind in _DEFAULT_KINDS:
-            claimable += int(n)
+        if status == "queued":
+            if kind in _KIND_HANDLERS:
+                claimable += int(n)
+            else:
+                unclaimable[str(kind)] = unclaimable.get(str(kind), 0) + int(n)
         if status == "blocked" and str(kind).endswith(("followup", "follow-up")):
             followup_blocked += int(n)
     total = sum(by_status.values())
@@ -496,10 +504,13 @@ def build_task_worker_surface() -> dict[str, Any]:
         **base, "active": total > 0,
         **({} if total else {"reason": "runtime_tasks er tom"}),
         "signals": {"total": total, "by_status": by_status, "claimable_queued": claimable,
+                    "unclaimable_queued": sum(unclaimable.values()),
+                    "unclaimable_kinds": unclaimable,
                     "followup_blocked": followup_blocked,
                     "blocked_reasons": [{"reason": str(r[0])[:160], "count": int(r[1])} for r in reasons],
                     "oldest_queued_at": oldest_queued, "oldest_running_updated_at": oldest_running,
                     "newest_update_at": newest},
         "summary": (f"{total} tasks; {claimable} kan claimes, {by_status.get('running', 0)} kører, "
-                    f"{by_status.get('blocked', 0)} blokeret ({followup_blocked} followup)"),
+                    f"{by_status.get('blocked', 0)} blokeret ({followup_blocked} followup)"
+                    + (f"; {sum(unclaimable.values())} queued kan IKKE claimes: {unclaimable}" if unclaimable else "")),
     }

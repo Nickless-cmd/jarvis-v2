@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10319/18876 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10325/18885 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,8 +25,8 @@ Generated from source. 10319/18876 functions/methods documented (54%). The list 
 | `core.identity` | 80 | 173 | 46% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 913 | 1627 | 56% |
-| `core.services` | 6929 | 12825 | 54% |
+| `core.runtime` | 915 | 1631 | 56% |
+| `core.services` | 6933 | 12830 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 10319/18876 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2642)
+## Undocumented public functions (2643)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L234)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -628,11 +628,12 @@ Generated from source. 10319/18876 functions/methods documented (54%). The list 
 - `core/runtime/db_runtime_signals.py` :: `recent_runtime_learning_signals` (L221)
 - `core/runtime/db_runtime_signals.py` :: `record_runtime_action_outcome` (L246)
 - `core/runtime/db_runtime_signals.py` :: `record_runtime_learning_signal` (L322)
-- `core/runtime/db_runtime_tasks.py` :: `create_runtime_task` (L103)
-- `core/runtime/db_runtime_tasks.py` :: `ensure_runtime_tasks_tables` (L41)
-- `core/runtime/db_runtime_tasks.py` :: `get_runtime_task` (L174)
-- `core/runtime/db_runtime_tasks.py` :: `list_runtime_tasks` (L207)
-- `core/runtime/db_runtime_tasks.py` :: `update_runtime_task` (L253)
+- `core/runtime/db_runtime_tasks.py` :: `create_runtime_task` (L124)
+- `core/runtime/db_runtime_tasks.py` :: `ensure_runtime_tasks_tables` (L59)
+- `core/runtime/db_runtime_tasks.py` :: `get_runtime_task` (L195)
+- `core/runtime/db_runtime_tasks.py` :: `lease_expiry_from` (L53)
+- `core/runtime/db_runtime_tasks.py` :: `list_runtime_tasks` (L229)
+- `core/runtime/db_runtime_tasks.py` :: `update_runtime_task` (L276)
 - `core/runtime/db_scheduled_tasks.py` :: `create_scheduled_task` (L79)
 - `core/runtime/db_scheduled_tasks.py` :: `get_due_scheduled_tasks` (L111)
 - `core/runtime/db_scheduled_tasks.py` :: `get_scheduled_task` (L102)

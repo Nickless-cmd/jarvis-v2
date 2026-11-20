@@ -741,7 +741,9 @@ def test_manage_runtime_work_orchestrates_hooks_tasks_flows_and_browser_body(
 
     assert result["status"] == "executed"
     assert "hook dispatches" in result["summary"]
-    assert task_updates[0]["task_id"] == "task-1"
+    # Heartbeat observerer tasks; kun task_worker må claime dem (ellers
+    # låses de fast i `running` uden at blive udført).
+    assert task_updates == []
     assert flow_updates[0]["flow_id"] == "flow-1"
 
 

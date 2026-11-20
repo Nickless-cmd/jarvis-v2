@@ -417,6 +417,8 @@ from core.runtime.db_runtime_tasks import (  # noqa: E402,F401
     get_runtime_task,
     list_runtime_tasks,
     update_runtime_task,
+    claim_runtime_task,
+    reap_expired_runtime_task_leases,
 )
 
 

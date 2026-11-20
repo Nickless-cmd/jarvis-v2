@@ -183,9 +183,11 @@ _Runtime self-model — small producer/subsystem surfaces + role helpers._
 | function | `list_tasks` | `(*, status=…, kind=…, limit=…)` | — | [src](../../../core/services/runtime_tasks.py#L62) |
 | function | `get_task` | `(task_id)` | — | [src](../../../core/services/runtime_tasks.py#L81) |
 | function | `update_task` | `(task_id, *, status=…, flow_id=…, session_id=…, origin_ref=…, owner=…, retry_at=…, blocked_reason=…, result_summary=…, artifact_ref=…)` | — | [src](../../../core/services/runtime_tasks.py#L85) |
-| function | `_foer_flowet_med` | `(opgave, status)` | Lad flowet spejle sin opgaves status. Selv-sikker. | [src](../../../core/services/runtime_tasks.py#L133) |
-| function | `_task_sort_key` | `(task)` | — | [src](../../../core/services/runtime_tasks.py#L178) |
-| function | `_priority_with_runtime_bias` | `(requested_priority, *, kind, goal, scope, origin)` | — | [src](../../../core/services/runtime_tasks.py#L188) |
+| function | `claim_task` | `(task_id, *, owner)` | Atomisk claim (queued -> running med lease). None hvis en anden vandt. | [src](../../../core/services/runtime_tasks.py#L124) |
+| function | `reap_expired_leases` | `()` | Requeue tasks hvis `running`-lease er udløbet. Kaldes ved worker-tick. | [src](../../../core/services/runtime_tasks.py#L136) |
+| function | `_foer_flowet_med` | `(opgave, status)` | Lad flowet spejle sin opgaves status. Selv-sikker. | [src](../../../core/services/runtime_tasks.py#L152) |
+| function | `_task_sort_key` | `(task)` | — | [src](../../../core/services/runtime_tasks.py#L197) |
+| function | `_priority_with_runtime_bias` | `(requested_priority, *, kind, goal, scope, origin)` | — | [src](../../../core/services/runtime_tasks.py#L207) |
 
 ## `core/services/rupture_repair.py`
 _Rupture & Repair — relationel tension-tracking._

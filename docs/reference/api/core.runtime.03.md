@@ -155,12 +155,16 @@ _Persistence for the `runtime_tasks` table — Jarvis' durable task queue._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_omdoeb_run_id_til_origin_ref` | `(conn)` | Kolonnen hed `run_id` og indeholdt ikke et run. | [src](../../../core/runtime/db_runtime_tasks.py#L13) |
-| function | `ensure_runtime_tasks_tables` | `(conn)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L41) |
-| function | `_runtime_task_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L81) |
-| function | `create_runtime_task` | `(*, task_id, kind, origin, status, goal, scope=…, priority=…, flow_id=…, session_id=…, origin_ref=…, owner=…, retry_at=…, blocked_reason=…, result_summary=…, artifact_ref=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L103) |
-| function | `get_runtime_task` | `(task_id)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L174) |
-| function | `list_runtime_tasks` | `(*, status=…, kind=…, limit=…)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L207) |
-| function | `update_runtime_task` | `(task_id, *, status=…, flow_id=…, session_id=…, origin_ref=…, owner=…, retry_at=…, blocked_reason=…, result_summary=…, artifact_ref=…, updated_at)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L253) |
+| function | `_tilfoej_lease_kolonne` | `(conn)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L45) |
+| function | `lease_expiry_from` | `(now_iso, seconds=…)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L53) |
+| function | `ensure_runtime_tasks_tables` | `(conn)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L59) |
+| function | `_runtime_task_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L101) |
+| function | `create_runtime_task` | `(*, task_id, kind, origin, status, goal, scope=…, priority=…, flow_id=…, session_id=…, origin_ref=…, owner=…, retry_at=…, blocked_reason=…, result_summary=…, artifact_ref=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L124) |
+| function | `get_runtime_task` | `(task_id)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L195) |
+| function | `list_runtime_tasks` | `(*, status=…, kind=…, limit=…)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L229) |
+| function | `update_runtime_task` | `(task_id, *, status=…, flow_id=…, session_id=…, origin_ref=…, owner=…, retry_at=…, blocked_reason=…, result_summary=…, artifact_ref=…, updated_at)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L276) |
+| function | `claim_runtime_task` | `(task_id, *, owner, updated_at)` | Atomisk compare-and-set: queued -> running med lease. None hvis tabt. | [src](../../../core/runtime/db_runtime_tasks.py#L337) |
+| function | `reap_expired_runtime_task_leases` | `(*, now_iso)` | Requeue `running`-rækker hvis lease er udløbet eller manglende (arv). | [src](../../../core/runtime/db_runtime_tasks.py#L356) |
 
 ## `core/runtime/db_runtime_temporal_memory_signals.py`
 _Persistence for Jarvis' runtime temporal/memory-* signal cluster._

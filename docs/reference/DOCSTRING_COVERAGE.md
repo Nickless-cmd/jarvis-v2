@@ -69,7 +69,7 @@ Generated from source. 10349/18926 functions/methods documented (54%). The list 
 - `apps/api/jarvis_api/routes/agent_pool_control.py` :: `start` (L142)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `list_models` (L156)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `messages` (L171)
-- `apps/api/jarvis_api/routes/app_release.py` :: `stop_release_vagt` (L405)
+- `apps/api/jarvis_api/routes/app_release.py` :: `stop_release_vagt` (L423)
 - `apps/api/jarvis_api/routes/auth.py` :: `login` (L97)
 - `apps/api/jarvis_api/routes/auth.py` :: `register` (L72)
 - `apps/api/jarvis_api/routes/auth.py` :: `verify_email` (L87)

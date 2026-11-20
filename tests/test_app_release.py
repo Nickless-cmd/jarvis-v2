@@ -312,3 +312,54 @@ def test_baselinen_rykker_naar_udsendelsen_lykkes(monkeypatch, tmp_path):
         "baselinen rykkede, men ingen fik det at vide"
     )
     assert mod._laes_sidste_tag() == "jarvis-desktop-v0.6.61"
+
+
+def test_vagten_falder_tilbage_paa_atom_feedet_naar_ci_apiet_svarer_403(monkeypatch, tmp_path):
+    """CI-API'et er uautentificeret (60 kald i timen) og svarer 403 naar loftet
+    er naaet — maalt 20/11-2026: 0/60 tilbage.
+
+    Foer fallback'en gjorde vagten INTET i den tilstand: `hent_seneste_ci()`
+    returnerede None, `if data:` var falsk, og hele gennemloebet blev sprunget
+    over uden en log-linje. Konsekvensen var maalt: 0.6.402 laa klar paa GitHub
+    fra 05:35Z, men blev aldrig meldt til nogen klient — Bjørn sad paa 0.6.397
+    og fik ingen besked om at der laa en ny version.
+    """
+    import asyncio
+
+    import pytest
+
+    from core.eventbus import bus as bus_mod
+
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    mod._skriv_sidste_tag("jarvis-desktop-v0.6.401")
+    # Rate limit-tilstanden: CI-kaldet fejler, atom-feedet svarer fint.
+    monkeypatch.setattr(mod, "hent_seneste_ci", lambda: None)
+    monkeypatch.setattr(
+        mod,
+        "hent_seneste",
+        lambda: {"tag": "jarvis-desktop-v0.6.402", "version": "0.6.402",
+                 "url": "https://github.com/Nickless-cmd/jarvis-v2/releases/tag/"
+                        "jarvis-desktop-v0.6.402",
+                 "published_at": "2026-11-20T05:42:53Z"},
+    )
+
+    udsendte: list[dict] = []
+    monkeypatch.setattr(
+        bus_mod.event_bus, "publish", lambda kind, payload=None, **kw: udsendte.append(payload or {})
+    )
+
+    class Stop(Exception):
+        pass
+
+    async def stop(_sekunder):
+        raise Stop()
+
+    monkeypatch.setattr(asyncio, "sleep", stop)
+    with pytest.raises(Stop):
+        asyncio.run(mod._vagt_loop())
+
+    assert [p.get("version") for p in udsendte if p.get("version")] == ["0.6.402"], (
+        "vagten var blind for en faerdig release fordi CI-API'et svarede 403"
+    )
+    assert mod._laes_sidste_tag() == "jarvis-desktop-v0.6.402"
+

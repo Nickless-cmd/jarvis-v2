@@ -321,6 +321,24 @@ async def _vagt_loop() -> None:
     while True:
         try:
             data = await asyncio.to_thread(hent_seneste_ci)
+            if not data:
+                # Actions-API'et kaldes uautentificeret: 60 kald i timen, mens
+                # vagten spoerger hvert 3. minut. Den rammer derfor loftet og
+                # faar 403 (maalt 20/11-2026: 0/60 tilbage, HTTP 403), og UDEN
+                # denne fallback udsender vagten intet i den tilstand — saa en
+                # faerdig release naar aldrig klienten. Maalt konsekvens:
+                # 0.6.402 laa klar fra 05:35Z og blev aldrig meldt.
+                # Atom-feedet er en almindelig side uden for API-loftet, og en
+                # entry der ER i feedet er per definition et faerdigt build —
+                # derfor de tre felter CI-varianten ellers leverer.
+                fald_tilbage = await asyncio.to_thread(hent_seneste)
+                if fald_tilbage:
+                    data = {
+                        **fald_tilbage,
+                        "phase": "ready",
+                        "progress": 100,
+                        "label": "Klar til installation",
+                    }
             if data:
                 tag = str(data.get("tag") or "")
                 # /latest maa aldrig se et build som stadig mangler assets.

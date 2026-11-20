@@ -162,8 +162,8 @@ _App-release-vagt — push i stedet for poll._
 | function | `_opdater_build` | `(data)` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L265) |
 | function | `_udsend` | `(data)` | Laeg release-eventet paa bussen. /ws sender det videre til klienterne. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L278) |
 | function | `_vagt_loop` | `()` | Foerste gennemloeb saetter baseline. Derefter udsender vi KUN ved aendring. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L309) |
-| function | `start_release_vagt` | `()` | Idempotent — gentagne kald (fx flere workers i samme proces) goer intet. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L392) |
-| function | `stop_release_vagt` | `()` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L405) |
+| function | `start_release_vagt` | `()` | Idempotent — gentagne kald (fx flere workers i samme proces) goer intet. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L410) |
+| function | `stop_release_vagt` | `()` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L423) |
 
 ## `apps/api/jarvis_api/routes/attachments.py`
 _Attachment upload and serve endpoints._

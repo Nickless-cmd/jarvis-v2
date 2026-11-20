@@ -48,7 +48,7 @@ describe.skipIf(process.env.RUN_BROWSER_LAYOUT_MEASUREMENT !== '1')(
       await writeFile(join(mappe, 'bundle.js'), js.contents)
       await writeFile(join(mappe, 'index.html'),
         `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body><div id="root"></div><script src="bundle.js"></script></body></html>`)
-      const browser = await chromium.launch({ headless: true })
+      const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome' })
       try {
         const page = await browser.newPage({ viewport: { width: 640, height: 480 } })
         const fejl: string[] = []

@@ -918,6 +918,10 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 /* box (14/11-2026): rammen om børn. Klasserne renderes af FladeNode i NativeRichBlock.tsx. */
 .native-box { padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-2); }
 .native-box-boern { display: flex; flex-direction: column; gap: 10px; }
+.native-box-boern--raekke { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+.native-box-boern--raekke > .native-rich { flex: 1 1 140px; min-width: 0; }
+.native-box-boern--grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); align-items: start; }
+.native-box-boern--grid > .native-rich { min-width: 0; }
 .native-box-boern > .native-rich { margin: 0; }
 .chatview .native-box-boern > .native-rich { margin-block: 0; }
 /* Katalogudvidelse (14/11-2026): keyvalue · progress · quote · code · tabs.

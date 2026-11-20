@@ -843,6 +843,9 @@ def _diagnosticér(data: dict, dybde: int = 1) -> tuple[str, list[str]]:
         # ikke passiv: den ØDELÆGGER den.
         if dybde > _BOX_MAX_DYBDE:
             return "død", [f"box står i dybde {dybde}, højst {_BOX_MAX_DYBDE} tillades"]
+        # `retning` (raekke|grid) er valgfri og rent visuel: guarden accepterer
+        # feltet og afviser ALDRIG en box for en ukendt værdi — klienterne
+        # falder selv tilbage til kolonne.
         born = data.get("children") if isinstance(data.get("children"), list) else []
         brugbare = 0
         for i, x in enumerate(born):

@@ -145,11 +145,11 @@ _Normaliserer og validerer ``jarvis-ui``-blokke FØR de når chatten._
 | function | `_liste` | `(vaerdi, maks)` | Spejl rendererens ``list()``: kun objekter, afkortet til ``maks``. | [src](../../../core/services/jarvis_ui_guard.py#L659) |
 | function | `_endeligt_tal` | `(vaerdi)` | Et tal vi kan regne med. ``NaN`` og ``Infinity`` ER tal for Python, men | [src](../../../core/services/jarvis_ui_guard.py#L666) |
 | function | `_diagnosticér` | `(data, dybde=…)` | Afgør om rendereren viser blokken. Returnerer (niveau, fejl). | [src](../../../core/services/jarvis_ui_guard.py#L675) |
-| function | `_validér` | `(tekst)` | — | [src](../../../core/services/jarvis_ui_guard.py#L1192) |
-| function | `normalisér` | `(text, *, run_id=…, tool_results=…)` | Normalisér alle ``jarvis-ui``-blokke i teksten. Returnerer ny tekst. | [src](../../../core/services/jarvis_ui_guard.py#L1212) |
-| function | `_normalisér_indre` | `(text, *, run_id, tool_results)` | — | [src](../../../core/services/jarvis_ui_guard.py#L1240) |
-| function | `_registrér` | `(aendringer, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L1316) |
-| function | `fejl_i_flader` | `(text, *, run_id=…, tool_results=…)` | Returnér de fejl der gør en ``jarvis-ui``-blok død eller ufuldstændig. | [src](../../../core/services/jarvis_ui_guard.py#L1336) |
+| function | `_validér` | `(tekst)` | — | [src](../../../core/services/jarvis_ui_guard.py#L1195) |
+| function | `normalisér` | `(text, *, run_id=…, tool_results=…)` | Normalisér alle ``jarvis-ui``-blokke i teksten. Returnerer ny tekst. | [src](../../../core/services/jarvis_ui_guard.py#L1215) |
+| function | `_normalisér_indre` | `(text, *, run_id, tool_results)` | — | [src](../../../core/services/jarvis_ui_guard.py#L1243) |
+| function | `_registrér` | `(aendringer, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L1319) |
+| function | `fejl_i_flader` | `(text, *, run_id=…, tool_results=…)` | Returnér de fejl der gør en ``jarvis-ui``-blok død eller ufuldstændig. | [src](../../../core/services/jarvis_ui_guard.py#L1339) |
 
 ## `core/services/jarvisx_bridge.py`
 _JarvisX tool-bridge — bidirectional dispatch over WebSocket._

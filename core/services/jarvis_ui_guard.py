@@ -175,7 +175,10 @@ def _sti_dele(sti: str) -> list[str | int] | None:
         if sti[i] == "[":
             slut = sti.find("]", i + 1)
             indeks = sti[i + 1:slut] if slut >= 0 else ""
-            if slut < 0 or not indeks.isdigit():
+            # ``isdigit()`` accepterer unicode-cifre (``²``, ``٣``, ``１２``) hvor
+            # TS-sidens ``/^\d+$/`` kun tager ASCII — og ``int("²")`` kaster. Kravet
+            # er derfor ASCII, ikke blot "et ciffer".
+            if slut < 0 or not indeks.isdigit() or not indeks.isascii():
                 return None
             dele.append(int(indeks))
             i = slut + 1

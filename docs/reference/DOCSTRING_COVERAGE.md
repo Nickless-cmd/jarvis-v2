@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10309/18859 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10323/18879 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,8 +25,8 @@ Generated from source. 10309/18859 functions/methods documented (54%). The list 
 | `core.identity` | 80 | 173 | 46% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 913 | 1627 | 56% |
-| `core.services` | 6919 | 12808 | 54% |
+| `core.runtime` | 915 | 1631 | 56% |
+| `core.services` | 6931 | 12824 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 10309/18859 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2640)
+## Undocumented public functions (2641)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L234)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -628,11 +628,12 @@ Generated from source. 10309/18859 functions/methods documented (54%). The list 
 - `core/runtime/db_runtime_signals.py` :: `recent_runtime_learning_signals` (L221)
 - `core/runtime/db_runtime_signals.py` :: `record_runtime_action_outcome` (L246)
 - `core/runtime/db_runtime_signals.py` :: `record_runtime_learning_signal` (L322)
-- `core/runtime/db_runtime_tasks.py` :: `create_runtime_task` (L103)
-- `core/runtime/db_runtime_tasks.py` :: `ensure_runtime_tasks_tables` (L41)
-- `core/runtime/db_runtime_tasks.py` :: `get_runtime_task` (L174)
-- `core/runtime/db_runtime_tasks.py` :: `list_runtime_tasks` (L207)
-- `core/runtime/db_runtime_tasks.py` :: `update_runtime_task` (L253)
+- `core/runtime/db_runtime_tasks.py` :: `create_runtime_task` (L124)
+- `core/runtime/db_runtime_tasks.py` :: `ensure_runtime_tasks_tables` (L59)
+- `core/runtime/db_runtime_tasks.py` :: `get_runtime_task` (L195)
+- `core/runtime/db_runtime_tasks.py` :: `lease_expiry_from` (L53)
+- `core/runtime/db_runtime_tasks.py` :: `list_runtime_tasks` (L229)
+- `core/runtime/db_runtime_tasks.py` :: `update_runtime_task` (L276)
 - `core/runtime/db_scheduled_tasks.py` :: `create_scheduled_task` (L79)
 - `core/runtime/db_scheduled_tasks.py` :: `get_due_scheduled_tasks` (L111)
 - `core/runtime/db_scheduled_tasks.py` :: `get_scheduled_task` (L102)
@@ -1667,7 +1668,7 @@ Generated from source. 10309/18859 functions/methods documented (54%). The list 
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L173)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L121)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L148)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4879)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4993)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L229)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L474)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)
@@ -1891,11 +1892,11 @@ Generated from source. 10309/18859 functions/methods documented (54%). The list 
 - `core/services/rule_engine.py` :: `RuleEngine.rules_by_domain` (L142)
 - `core/services/rule_engine.py` :: `build_rule_engine_surface` (L224)
 - `core/services/rule_engine.py` :: `get_engine` (L185)
-- `core/services/run_autonomy_context.py` :: `autonomous_budget_state` (L103)
-- `core/services/run_autonomy_context.py` :: `reset_autonomous` (L39)
-- `core/services/run_autonomy_context.py` :: `reset_user_present` (L134)
-- `core/services/run_autonomy_context.py` :: `set_autonomous_budget` (L79)
-- `core/services/run_autonomy_context.py` :: `set_run_identity` (L174)
+- `core/services/run_autonomy_context.py` :: `autonomous_budget_state` (L105)
+- `core/services/run_autonomy_context.py` :: `reset_autonomous` (L41)
+- `core/services/run_autonomy_context.py` :: `reset_user_present` (L136)
+- `core/services/run_autonomy_context.py` :: `set_autonomous_budget` (L81)
+- `core/services/run_autonomy_context.py` :: `set_run_identity` (L176)
 - `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L1063)
 - `core/services/run_event_log.py` :: `active_run_for_session` (L370)
 - `core/services/run_event_log.py` :: `append` (L239)

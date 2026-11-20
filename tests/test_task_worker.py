@@ -260,3 +260,116 @@ def test_brief_generatorerne_foreslaar_kun_filer_der_findes() -> None:
     assert forslag, "generatorerne skal foreslå mindst én fil"
     manglende = sorted({p for p in forslag if not (repo_rod / p).exists()})
     assert manglende == [], f"briefene peger på filer der ikke findes: {manglende}"
+
+
+# --- Regression: falsk heartbeat-claim + kind-drift (asg-3910bc0cdaaf4c61) ---
+
+def test_heartbeat_saetter_aldrig_en_task_til_running(isolated_runtime, monkeypatch) -> None:
+    """Heartbeat må observere, ikke claime: ingen task forlader `queued` her."""
+    from pathlib import Path
+
+    runtime_tasks, _ = _import_modules()
+    import core.services.runtime_browser_body as rbb
+    import core.services.runtime_hooks as rh
+    import core.services.self_experiments as se
+    from core.services.heartbeat_manage_runtime_work import execute_manage_runtime_work
+
+    monkeypatch.setattr(rh, "dispatch_unhandled_hook_events", lambda limit=4: [])
+    monkeypatch.setattr(rbb, "ensure_browser_body", lambda **kw: {"body_id": "b"})
+    monkeypatch.setattr(se, "observe_recent_visible_runs_for_self_experiments",
+                        lambda limit=6: {"observed": 0})
+    monkeypatch.setattr(se, "materialize_learning_curriculum_tasks",
+                        lambda **kw: {"created": 0, "task_ids": []})
+    t = runtime_tasks.create_task(kind="generic", goal="g", origin="test")
+
+    execute_manage_runtime_work(tick_id="t1", workspace_dir=Path("/tmp"))
+
+    assert runtime_tasks.get_task(t["task_id"])["status"] == "queued"
+
+
+def test_running_har_altid_lease_og_andre_statusser_ingen(isolated_runtime) -> None:
+    runtime_tasks, _ = _import_modules()
+    t = runtime_tasks.create_task(kind="generic", goal="g", origin="test")
+    # Selv en sti der blot sætter `running` får en lease (ingen evig running).
+    r = runtime_tasks.update_task(t["task_id"], status="running")
+    assert r["lease_expires_at"]
+    r = runtime_tasks.update_task(t["task_id"], status="succeeded")
+    assert r["lease_expires_at"] == ""
+
+
+def test_reaper_requeuer_udloebet_og_leaseloes_running(isolated_runtime) -> None:
+    from core.runtime import db as runtime_db
+
+    runtime_tasks, task_worker = _import_modules()
+    stale = runtime_tasks.create_task(kind="generic", goal="stale", origin="test")
+    legacy = runtime_tasks.create_task(kind="generic", goal="legacy", origin="test")
+    fresh = runtime_tasks.create_task(kind="generic", goal="fresh", origin="test")
+    for t in (stale, legacy, fresh):
+        runtime_tasks.update_task(t["task_id"], status="running")
+    with runtime_db.connect() as conn:
+        conn.execute("UPDATE runtime_tasks SET lease_expires_at='2000-01-01T00:00:00+00:00' WHERE task_id=?",
+                     (stale["task_id"],))
+        conn.execute("UPDATE runtime_tasks SET lease_expires_at='' WHERE task_id=?",
+                     (legacy["task_id"],))
+        conn.commit()
+
+    reaped = set(runtime_tasks.reap_expired_leases())
+
+    assert reaped == {stale["task_id"], legacy["task_id"]}
+    assert runtime_tasks.get_task(stale["task_id"])["status"] == "queued"
+    assert runtime_tasks.get_task(legacy["task_id"])["status"] == "queued"
+    assert runtime_tasks.get_task(fresh["task_id"])["status"] == "running"
+
+
+def test_tick_reaper_foer_claim_efter_worker_crash(isolated_runtime) -> None:
+    from core.runtime import db as runtime_db
+
+    runtime_tasks, task_worker = _import_modules()
+    t = runtime_tasks.create_task(kind="generic", goal="crash", origin="test")
+    claimed = task_worker.claim_next_task()  # worker "dør" her — ingen execute
+    assert claimed["status"] == "running"
+    with runtime_db.connect() as conn:
+        conn.execute("UPDATE runtime_tasks SET lease_expires_at='2000-01-01T00:00:00+00:00'")
+        conn.commit()
+
+    result = task_worker.tick_task_worker(budget=1)
+
+    assert result["reaped"] == 1
+    assert runtime_tasks.get_task(t["task_id"])["status"] == "succeeded"
+
+
+def test_claim_er_atomisk_anden_claim_taber(isolated_runtime) -> None:
+    runtime_tasks, _ = _import_modules()
+    t = runtime_tasks.create_task(kind="generic", goal="g", origin="test")
+    assert runtime_tasks.claim_task(t["task_id"], owner="a") is not None
+    assert runtime_tasks.claim_task(t["task_id"], owner="b") is None
+    assert runtime_tasks.get_task(t["task_id"])["owner"] == "a"
+
+
+def test_claimable_kinds_afledt_af_handler_registret(isolated_runtime) -> None:
+    _, task_worker = _import_modules()
+    assert set(task_worker.claimable_kinds()) == set(task_worker._KIND_HANDLERS)
+    assert "curriculum-focus" in task_worker.claimable_kinds()
+
+
+def test_curriculum_focus_naar_terminal_tilstand_inden_ét_tick(isolated_runtime) -> None:
+    runtime_tasks, task_worker = _import_modules()
+    t = runtime_tasks.create_task(kind="curriculum-focus", goal="lær x", origin="test")
+
+    task_worker.tick_task_worker(budget=1)
+
+    got = runtime_tasks.get_task(t["task_id"])
+    assert got["status"] == "blocked"
+    assert got["blocked_reason"]
+
+
+def test_health_rapporterer_unclaimable_kinds(isolated_runtime) -> None:
+    runtime_tasks, task_worker = _import_modules()
+    runtime_tasks.create_task(kind="ingen-handler-kind", goal="x", origin="test")
+    runtime_tasks.create_task(kind="generic", goal="y", origin="test")
+
+    sig = task_worker.build_task_worker_surface()["signals"]
+
+    assert sig["claimable_queued"] == 1
+    assert sig["unclaimable_queued"] == 1
+    assert sig["unclaimable_kinds"] == {"ingen-handler-kind": 1}

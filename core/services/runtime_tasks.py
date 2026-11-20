@@ -121,6 +121,25 @@ def update_task(
     return opdateret
 
 
+def claim_task(task_id: str, *, owner: str) -> dict[str, object] | None:
+    """Atomisk claim (queued -> running med lease). None hvis en anden vandt."""
+    claimed = runtime_db.claim_runtime_task(
+        str(task_id or "").strip(),
+        owner=str(owner or "").strip(),
+        updated_at=datetime.now(UTC).isoformat(),
+    )
+    if claimed is not None:
+        _foer_flowet_med(claimed, "running")
+    return claimed
+
+
+def reap_expired_leases() -> list[str]:
+    """Requeue tasks hvis `running`-lease er udløbet. Kaldes ved worker-tick."""
+    return runtime_db.reap_expired_runtime_task_leases(
+        now_iso=datetime.now(UTC).isoformat()
+    )
+
+
 #: En opgave i en af disse er faerdig — og saa er dens flow det ogsaa.
 _AFSLUTTEDE = frozenset({"succeeded", "failed", "cancelled"})
 

@@ -38,6 +38,24 @@ def _omdoeb_run_id_til_origin_ref(conn: sqlite3.Connection) -> None:
         pass
 
 
+#: Hvor længe en `running`-task må stå uden at nogen forlænger/afslutter den.
+RUNNING_LEASE_SECONDS = 15 * 60
+
+
+def _tilfoej_lease_kolonne(conn: sqlite3.Connection) -> None:
+    kolonner = {r[1] for r in conn.execute("PRAGMA table_info(runtime_tasks)")}
+    if "lease_expires_at" not in kolonner:
+        conn.execute(
+            "ALTER TABLE runtime_tasks ADD COLUMN lease_expires_at TEXT NOT NULL DEFAULT ''"
+        )
+
+
+def lease_expiry_from(now_iso: str, seconds: int = RUNNING_LEASE_SECONDS) -> str:
+    from datetime import datetime, timedelta
+
+    return (datetime.fromisoformat(now_iso) + timedelta(seconds=seconds)).isoformat()
+
+
 def ensure_runtime_tasks_tables(conn: sqlite3.Connection) -> None:
     _omdoeb_run_id_til_origin_ref(conn)
     conn.execute(
@@ -60,10 +78,12 @@ def ensure_runtime_tasks_tables(conn: sqlite3.Connection) -> None:
             result_summary TEXT NOT NULL DEFAULT '',
             artifact_ref TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            lease_expires_at TEXT NOT NULL DEFAULT ''
         )
         """
     )
+    _tilfoej_lease_kolonne(conn)
     conn.execute(
         """
         CREATE INDEX IF NOT EXISTS idx_runtime_tasks_status_priority
@@ -97,6 +117,7 @@ def _runtime_task_from_row(row: sqlite3.Row) -> dict[str, object]:
         "artifact_ref": row["artifact_ref"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
+        "lease_expires_at": row["lease_expires_at"] if "lease_expires_at" in row.keys() else "",
     }
 
 
@@ -192,7 +213,8 @@ def get_runtime_task(task_id: str) -> dict[str, object] | None:
                 result_summary,
                 artifact_ref,
                 created_at,
-                updated_at
+                updated_at,
+                lease_expires_at
             FROM runtime_tasks
             WHERE task_id = ?
             LIMIT 1
@@ -239,7 +261,8 @@ def list_runtime_tasks(
                 result_summary,
                 artifact_ref,
                 created_at,
-                updated_at
+                updated_at,
+                lease_expires_at
             FROM runtime_tasks
             {where_sql}
             ORDER BY id DESC
@@ -282,6 +305,15 @@ def update_runtime_task(
             continue
         updates.append(f"{column} = ?")
         params.append(value)
+    # INVARIANT: `running` har altid en lease; alt andet har ingen. En sti der
+    # sætter `running` uden at udføre kan dermed aldrig låse en række for evigt —
+    # reaperen requeuer den, når leasen udløber.
+    if status == "running":
+        updates.append("lease_expires_at = ?")
+        params.append(lease_expiry_from(updated_at))
+    elif status is not None:
+        updates.append("lease_expires_at = ?")
+        params.append("")
     params.append(task_id)
     with connect() as conn:
         row = conn.execute(
@@ -300,3 +332,51 @@ def update_runtime_task(
         )
         conn.commit()
     return get_runtime_task(task_id)
+
+
+def claim_runtime_task(
+    task_id: str, *, owner: str, updated_at: str
+) -> dict[str, object] | None:
+    """Atomisk compare-and-set: queued -> running med lease. None hvis tabt."""
+    with connect() as conn:
+        cur = conn.execute(
+            """
+            UPDATE runtime_tasks
+            SET status = 'running', owner = ?, updated_at = ?, lease_expires_at = ?
+            WHERE task_id = ? AND status = 'queued'
+            """,
+            (owner, updated_at, lease_expiry_from(updated_at), task_id),
+        )
+        conn.commit()
+        if cur.rowcount != 1:
+            return None
+    return get_runtime_task(task_id)
+
+
+def reap_expired_runtime_task_leases(*, now_iso: str) -> list[str]:
+    """Requeue `running`-rækker hvis lease er udløbet eller manglende (arv)."""
+    with connect() as conn:
+        ids = [
+            r[0]
+            for r in conn.execute(
+                """
+                SELECT task_id FROM runtime_tasks
+                WHERE status = 'running'
+                  AND (lease_expires_at = '' OR lease_expires_at < ?)
+                """,
+                (now_iso,),
+            ).fetchall()
+        ]
+        for tid in ids:
+            conn.execute(
+                """
+                UPDATE runtime_tasks
+                SET status = 'queued', lease_expires_at = '', updated_at = ?,
+                    result_summary = 'lease expired; requeued by reaper'
+                WHERE task_id = ? AND status = 'running'
+                  AND (lease_expires_at = '' OR lease_expires_at < ?)
+                """,
+                (now_iso, tid, now_iso),
+            )
+        conn.commit()
+    return ids

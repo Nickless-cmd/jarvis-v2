@@ -27,7 +27,7 @@ def execute_manage_runtime_work(*, tick_id: str, workspace_dir: Path) -> dict[st
     from core.services.runtime_hooks import (
         dispatch_unhandled_hook_events,
     )
-    from core.services.runtime_tasks import list_tasks, update_task
+    from core.services.runtime_tasks import list_tasks
 
     experiment_observation = {
         "observed": 0,
@@ -74,13 +74,10 @@ def execute_manage_runtime_work(*, tick_id: str, workspace_dir: Path) -> dict[st
         str((queued_flows[0] or {}).get("flow_id") or "") if queued_flows else ""
     )
 
-    if active_task_id:
-        update_task(
-            active_task_id,
-            status="running",
-            result_summary="Heartbeat moved queued runtime work into active orchestration.",
-            artifact_ref=f"heartbeat:{tick_id}",
-        )
+    # Heartbeatet OBSERVERER køen; det claimer ikke. Kun task_worker (atomisk
+    # claim med lease) må sætte en task til `running` — fordi kun den udfører
+    # den. Tidligere satte vi `running` her uden at udføre noget, og tre rækker
+    # stod fast i 20,7 / 8,3 / 3,8 døgn.
     if active_flow_id:
         update_flow(
             active_flow_id,

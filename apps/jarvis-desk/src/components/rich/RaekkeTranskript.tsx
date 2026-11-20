@@ -552,6 +552,17 @@ function RaekkeTranskriptImpl({
   // paceren dumpede resten ind bagefter. `svarRuller` er det ærlige signal:
   // sand til det sidste tegn er vist, ogsaa efter `message_stop`.
   const svarRullerAktiv = svarRuller ?? (streaming && (!finalAnswerStarted || arbejdeEfterSvar))
+  // Et nyt run EFTER svaret er rullet ud. Det maa ikke aabne folden igen
+  // (MÅLT 20/11-2026, Bjørn: «Hoved foldet fejlet så snart du kører en runde
+  // efter slut beskeden»): `aaben` faldt tilbage paa `arbejdeKoerer`, som var
+  // sand fordi `arbejdeEfterSvar` var sat — saa folden sprang op af sig selv
+  // over et svar brugeren havde laest. Og havde brugeren selv foldet sammen,
+  // vandt `aabenManuelt`, mens `visTurhoved` blev falsk af `!arbejdeKoerer`:
+  // tilbage var en TOM flade, hverken arbejde eller hoved.
+  //
+  // Folden er et valg om SVARET og skal holdes. Det nye run skal stadig have et
+  // ansigt — hovedet bliver staaende som den knap der viser at der arbejdes.
+  const nytRunEfterSvar = arbejdeEfterSvar && !svarRullerAktiv
   const arbejdeKoerer = arbejdeEfterSvar || svarRullerAktiv
   const turSekunder = streaming ? Math.max(0, Math.floor(elapsedMs / 1000)) : varighedSekunder
   // Hovedet er turens RESULTAT, ikke en status — samme regel som chat mode.
@@ -560,7 +571,7 @@ function RaekkeTranskriptImpl({
   // turens ansigt og bærer uret; hovedet dukker først op når folden lukker
   // (`arbejdeKoerer` falsk), og står derefter fast på turen.
   // Et rent, afsluttet svar uden arbejde beholder den enkle visning uden hoved.
-  const visTurhoved = !arbejdeKoerer && arbejde.length > 0
+  const visTurhoved = arbejde.length > 0 && (!arbejdeKoerer || nytRunEfterSvar)
   // Tokenfeltet eksisterer først når tælleren faktisk er begyndt. Dermed står
   // der hverken `0 tokens` eller et ensomt `k tokens` ved turstart.
   //
@@ -569,7 +580,7 @@ function RaekkeTranskriptImpl({
   // falsk. Bandt vi tallet til streamen, ville resultatet mangle sit eget
   // resultat i den fase det ejer. Samme regel som chat mode.
   const visTokens = Number.isFinite(tokens) && tokens > 0
-  const aaben = aabenManuelt ?? arbejdeKoerer
+  const aaben = aabenManuelt ?? (arbejdeKoerer && !nytRunEfterSvar)
   // ── Rundelinjen findes fra turstart (Bjørn 16/11-2026) ──────────────────
   //
   // «den aktive rundelinje skal være synlig fra starten for det er den der

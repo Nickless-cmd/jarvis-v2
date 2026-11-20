@@ -103,6 +103,8 @@ Mulige felter:
   selvdom evig — og den driver så arbejde der aldrig var nødvendigt.
 - strengths_discovered: ["styrke i menneskelig form"]
   Tilføj den styrke DENNE tur faktisk viser — også første gang du ser den.
+- retire_strengths: ["styrke der er BEVIST forkert"]
+  Samme regel som retire_mistakes: ordret, kun ved bevis, ved tvivl lad stå.
 - current_bearing: "kort sætning om nuværende fokus"
 - emotional_baseline: {{"curiosity": 0.0-1.0, "confidence": 0.0-1.0, "fatigue": 0.0-1.0, "frustration": 0.0-1.0}}
 
@@ -496,6 +498,20 @@ def _merge_vector(current: dict, updates: dict) -> dict:
                 if str(m).strip() not in drop
             ]
 
+    # Samme kontrakt for `strengths_discovered`: en falsk styrke var lige så
+    # evig som en falsk fejl (målt 20/11-2026: «Afbrød sit eget svar midt i
+    # sætningen» stod som styrke i 23 af 40 nye rækker og forsvandt kun fordi
+    # den holdt op med at blive båret med). Egen instruks-nøgle, så en pension
+    # af en styrke aldrig kan røre `recurring_mistakes` og omvendt.
+    retire_strengths = updates.get("retire_strengths")
+    if isinstance(retire_strengths, list) and isinstance(result.get("strengths_discovered"), list):
+        drop_s = {str(x).strip() for x in retire_strengths if str(x).strip()}
+        if drop_s:
+            result["strengths_discovered"] = [
+                m for m in result["strengths_discovered"]
+                if str(m).strip() not in drop_s
+            ]
+
     # Simple string fields
     result["current_bearing"] = str(
         updates.get("current_bearing")
@@ -504,6 +520,52 @@ def _merge_vector(current: dict, updates: dict) -> dict:
     )
 
     return result
+
+
+RETIRED_SELF_MODEL_STATUS = "retired"
+
+
+def retire_self_model_signals(
+    signal_ids: list[str],
+    *,
+    reason: str,
+) -> list[dict[str, object]]:
+    """Træk self_model_signals tilbage (status `retired`) — modstykke til `retire_mistakes`.
+
+    Et signal med status `retired` indgår hverken i prompt-sektionen eller i
+    overfladen (de kigger kun på active/uncertain/...), og `upsert` fletter
+    kun ind i active/uncertain/stale — så rækken bæres ikke videre.
+
+    Ingen tavs fallback: tom `reason`, tomt id eller ukendt signal_id rejser
+    ValueError, og INTET er ændret før alle id'er er valideret.
+    """
+    from core.runtime.db import (
+        get_runtime_self_model_signal,
+        update_runtime_self_model_signal_status,
+    )
+
+    ids = [str(s).strip() for s in (signal_ids or [])]
+    if not ids or any(not s for s in ids):
+        raise ValueError("retire_self_model_signals: signal_ids må ikke være tomme")
+    if not str(reason or "").strip():
+        raise ValueError("retire_self_model_signals: reason er påkrævet")
+    unknown = [s for s in ids if get_runtime_self_model_signal(s) is None]
+    if unknown:
+        raise ValueError(f"retire_self_model_signals: ukendt signal_id {unknown}")
+
+    now = datetime.now(UTC).isoformat()
+    retired: list[dict[str, object]] = []
+    for sid in ids:
+        row = update_runtime_self_model_signal_status(
+            sid,
+            status=RETIRED_SELF_MODEL_STATUS,
+            updated_at=now,
+            status_reason=str(reason).strip(),
+        )
+        if row is None:
+            raise RuntimeError(f"retire_self_model_signals: {sid} forsvandt under pension")
+        retired.append(row)
+    return retired
 
 
 def _baseline_changed(old: dict[str, object] | None, new_baseline: dict) -> bool:

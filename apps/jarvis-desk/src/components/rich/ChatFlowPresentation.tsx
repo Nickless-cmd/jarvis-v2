@@ -330,6 +330,14 @@ export function ChatFlowPresentation({
     // mens rundelinjen blev. Syntesen skal blive stående gennem
     // pacing-vinduet, så vi falder tilbage til de RÅ blokke. Kun teksten
     // bruges til visning; paceren rører ikke denne vej.
+    //
+    // KUN når slutsvaret er begyndt (side-f9ab36ac9d, fejl 2). Før da er de
+    // pacede arbejdsblokke ikke «tømt» — cursoren står bare på nul, fordi
+    // paceren endnu ikke har sat første tegn. Faldt vi dér tilbage til de rå
+    // blokke, blev HELE den modtagne tekst tegnet i folden i første frame
+    // (målt: 290 tegn) og faldt så til 2 i næste: et dump i folden efterfulgt
+    // af en nulstilling. Rå tekst må aldrig komme uden om paceren.
+    if (!finalAnswerStarted) return null
     for (let i = targetModel.workBlocks.length - 1; i >= 0; i--) {
       const blok = targetModel.workBlocks[i]
       if (blok && blok.type === 'text' && blok.text.trim()) {

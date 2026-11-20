@@ -134,8 +134,15 @@ export function rehypeStreamingTextTail(options: { completedAtEnd: boolean; vari
     // Hvis det viste præfiks ender midt i et ord, er sidste synlige AST-del
     // endnu ikke afsluttet. Halen vælges fra delene FØR den.
     const completedParts = options.completedAtEnd ? parts : parts.slice(0, -1)
+    if (completedParts.length === 0) return
+    // ALLE afsluttede ord pakkes ind — kun de sidste tre bærer animationsklassen.
+    // Grunden er React-nøglerne: react-markdown nøgler børn `<tagName>-<antal>`,
+    // så med kun tre wrappers rykkede hvert nyt ord alle positioner ét ned, og
+    // hver wrapper blev genmonteret → hvert ord animerede op til 3 gange
+    // (MÅLT i Chromium 20/11-2026). Når hvert ord har sin egen stabile position,
+    // genbruger React dets node, og animationen kører præcis én gang.
     const selected = new Set(completedParts.slice(-STREAMING_TAIL_WORD_LIMIT))
-    if (selected.size === 0) return
+    const wrapped = new Set(completedParts)
     const order = new Map([...selected].map((part, index) => [part, index]))
     const parameters = STREAMING_TEXT_VARIANTS[options.variant ?? STANDARD_VARIANT]
     const controlPoints = parameters.controlPoints.join(', ')
@@ -150,7 +157,7 @@ export function rehypeStreamingTextTail(options: { completedAtEnd: boolean; vari
           continue
         }
         const text = child as HastText
-        const nodeParts = parts.filter((part) => part.node === text && selected.has(part))
+        const nodeParts = parts.filter((part) => part.node === text && wrapped.has(part))
         if (nodeParts.length === 0) {
           children.push(child)
           continue
@@ -158,25 +165,28 @@ export function rehypeStreamingTextTail(options: { completedAtEnd: boolean; vari
         let cursor = 0
         for (const part of nodeParts) {
           if (part.start > cursor) children.push({ type: 'text', value: text.value.slice(cursor, part.start) })
+          const inTail = selected.has(part)
           children.push({
             type: 'element',
             tagName: 'jarvis-stream-word',
-            properties: {
-              className: ['streaming-word-tail'],
-              'data-stream-part-key': `${parts.indexOf(part)}:${text.value.slice(part.start, part.end)}`,
-              'data-stream-tail-order': order.get(part) ?? 0,
-              style: [
-                `--streaming-tail-order:${order.get(part) ?? 0}`,
-                `--streaming-tail-duration:${parameters.duration}ms`,
-                `--streaming-tail-color-delay:${parameters.colorDelay}ms`,
-                `--streaming-tail-part-offset:${parameters.timeOffsetBetweenParts}ms`,
-                `--streaming-tail-opacity-start:${parameters.opacityKeyframes[0] ?? 0}`,
-                `--streaming-tail-opacity-early:${parameters.opacityKeyframes[1] ?? 0.18}`,
-                `--streaming-tail-opacity-mid:${parameters.opacityKeyframes[2] ?? 0.72}`,
-                `--streaming-tail-opacity-end:${parameters.opacityKeyframes[3] ?? 1}`,
-                `--streaming-tail-easing:cubic-bezier(${controlPoints})`,
-              ].join(';'),
-            },
+            properties: inTail
+              ? {
+                  className: ['streaming-word-tail'],
+                  'data-stream-part-key': `${parts.indexOf(part)}:${text.value.slice(part.start, part.end)}`,
+                  'data-stream-tail-order': order.get(part) ?? 0,
+                  style: [
+                    `--streaming-tail-order:${order.get(part) ?? 0}`,
+                    `--streaming-tail-duration:${parameters.duration}ms`,
+                    `--streaming-tail-color-delay:${parameters.colorDelay}ms`,
+                    `--streaming-tail-part-offset:${parameters.timeOffsetBetweenParts}ms`,
+                    `--streaming-tail-opacity-start:${parameters.opacityKeyframes[0] ?? 0}`,
+                    `--streaming-tail-opacity-early:${parameters.opacityKeyframes[1] ?? 0.18}`,
+                    `--streaming-tail-opacity-mid:${parameters.opacityKeyframes[2] ?? 0.72}`,
+                    `--streaming-tail-opacity-end:${parameters.opacityKeyframes[3] ?? 1}`,
+                    `--streaming-tail-easing:cubic-bezier(${controlPoints})`,
+                  ].join(';'),
+                }
+              : { className: ['streaming-word-settled'] },
             children: [{ type: 'text', value: text.value.slice(part.start, part.end) }],
           })
           cursor = part.end

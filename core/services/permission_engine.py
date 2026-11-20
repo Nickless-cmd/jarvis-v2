@@ -148,6 +148,19 @@ _MEMBER_HVERDAG = frozenset({
     "todo_add", "todo_list", "todo_set", "todo_update_status", "todo_remove",
     # Indbakken — isoleret per bruger_id
     "inbox", "inbox_done", "inbox_drop",
+    # Katalogets lange hale (20/11-2026). Uden den kunne husstanden kun bruge
+    # de værktøjer der tilfældigvis stod på deres liste — resten var usynligt,
+    # og svaret «tool_not_permitted» blev læst som «låst» i stedet for
+    # «ikke annonceret». Målt: Michelle gættede på elleve værktøjer der ALLE
+    # var tilladte, men som hun ikke kunne se navnene på.
+    #
+    # Den er sikker at åbne, og af en STRUKTUREL grund: handleren i
+    # `core/tools/load_more_tools.py` filtrerer selv gennem `allowed_tool_names`
+    # — præcis den samme funktion som scope-porten bruger. Den kan derfor kun
+    # returnere schemas for værktøjer rollen og scopet ALLEREDE tillader.
+    # Uden den filtrering ville den være en omvej uden om porten; med den er
+    # den kun en måde at læse sit eget sæt.
+    "load_more_tools",
 })
 
 _MEMBER_CHAT = (_MEMBER_CHAT_WEB | _MEMBER_CHAT_UTIL | _MEMBER_CHAT_MEM

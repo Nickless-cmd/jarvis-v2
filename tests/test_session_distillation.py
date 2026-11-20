@@ -810,3 +810,24 @@ def test_lifecycle_er_IKKE_fifo(isolated_runtime):
     res = run_private_brain_lifecycle()
     assert res["transitions"]["settled"] == 0
     assert len(list_private_brain_records(limit=50, status="active")) == 10
+
+
+def test_session_summary_marks_clipped_assistant_response(monkeypatch):
+    """Et langt svar må ikke sendes som umarkeret rå [:500]-klip (20/11-2026)."""
+    import core.services.daemon_llm as daemon_llm
+    from core.services import session_distillation as sd
+
+    seen: dict[str, str] = {}
+
+    def fake_call(prompt, **kwargs):
+        seen["prompt"] = prompt
+        return ""
+
+    monkeypatch.setattr(daemon_llm, "daemon_llm_call", fake_call)
+    svar = ("ord " * 300) + "SLUTMARKOER."
+    sd.generate_session_summary(
+        session_id="s-klip", user_message="hej", assistant_response=svar
+    )
+    prompt = seen["prompt"]
+    assert "udeladt MIDT i svaret" in prompt
+    assert "SLUTMARKOER." in prompt  # den ægte hale er med

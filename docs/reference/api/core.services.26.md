@@ -406,7 +406,7 @@ _Session distillation and private brain continuity._
 | function | `build_private_brain_surface` | `(*, limit=…)` | Return the current private brain state for observability. | [src](../../../core/services/session_distillation.py#L890) |
 | function | `build_session_distillation_surface` | `(*, limit=…)` | Return recent distillation records for observability. | [src](../../../core/services/session_distillation.py#L911) |
 | function | `generate_session_summary` | `(*, session_id, run_id=…, user_message=…, assistant_response=…, human_user_message=…)` | Generate and store a compact conversation summary for the given session. | [src](../../../core/services/session_distillation.py#L931) |
-| function | `build_previous_session_summaries` | `(*, limit=…)` | Build a text block with recent session summaries for prompt injection. | [src](../../../core/services/session_distillation.py#L1028) |
+| function | `build_previous_session_summaries` | `(*, limit=…)` | Build a text block with recent session summaries for prompt injection. | [src](../../../core/services/session_distillation.py#L1030) |
 
 ## `core/services/session_header.py`
 _Sessionens titel UDEN at læse samtalen._

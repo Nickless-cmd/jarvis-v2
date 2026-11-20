@@ -86,6 +86,18 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
   const alleTekst = blocks.flatMap((b) => (b?.type === 'text' ? [b.text] : [])).join('')
   const vistTekst = paced.flatMap((b) => (b?.type === 'text' ? [b.text] : [])).join('')
   const pacingFaerdig = alleTekst.length > 0 && vistTekst === alleTekst
+  // ── Ruller svaret stadig? (målt 20/11-2026) ──────────────────────────────
+  //
+  // `finalAnswerStarted` svarede paa «er svaret BEGYNDT», men code-modens fold
+  // brugte det som «er svaret FÆRDIGT». Det er to forskellige tidspunkter: i
+  // samme frame som det første delta lander, lukkede folden, hovedet dukkede
+  // op — og `paced` stod stadig paa nul tegn. Bjørn: «retter det folder og saa
+  // tom skærm og saa dumper den det hele ind».
+  //
+  // Sand fra turen starter til det SIDSTE tegn er vist, ogsaa efter
+  // `message_stop` hvor paceren indhenter resten. Falsk for en persisteret
+  // besked (alt er vist fra start) og for en tur uden tekst.
+  const svarRuller = streaming || (alleTekst.length > 0 && !pacingFaerdig)
   // Kun mellemsynteser: slutsvaret har sin egen overgang. En 420 ms tærskel
   // gør at korte synteser aldrig får arbejdslinjen til at blinke.
   const skjulAktivRunde = usePacingWorkLine(
@@ -101,6 +113,7 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
   }, [streaming, pacingFaerdig])
   return raekker
     ? <RaekkeTranskript blocks={paced} streaming={streaming} finalAnswerStarted={finalAnswerStarted}
+        svarRuller={svarRuller}
         arbejdeEfterSvar={arbejdeEfterSvar}
         beskedId={beskedId} runId={runId} config={config} rundeEtiketter={rundeEtiketter}
         elapsedMs={elapsedMs} tokens={tokens} varighedSekunder={varighedSekunder}

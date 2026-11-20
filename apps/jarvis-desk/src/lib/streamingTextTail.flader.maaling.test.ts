@@ -84,6 +84,15 @@ async function maalFlade(flade: 'chat' | 'code', tekst: string): Promise<FladeMa
         // måles også ord hvis BEREGNEDE farve afviger fra brødtekstens.
         accentOrd: spans.filter((s) => getComputedStyle(s).color
           !== getComputedStyle(document.getElementById('krop')!).color).length,
+        // 20/11-2026 (Bjørn: «palettes farve … skal den vaere skarpere»):
+        // ankomsten baerer nu en kort gloed i accentfarven. Den maales som en
+        // BEREGNET text-shadow der ikke er `none` — det er det eneste bevis
+        // der kan skelne «skarpere» fra «en anden hex», og det virker uanset
+        // om temaet er moerkt (hvor --accent og --accent-text er ens).
+        gloedOrd: spans.filter((s) => {
+          const skygge = getComputedStyle(s).textShadow
+          return Boolean(skygge) && skygge !== 'none'
+        }).length,
       }
     })
 

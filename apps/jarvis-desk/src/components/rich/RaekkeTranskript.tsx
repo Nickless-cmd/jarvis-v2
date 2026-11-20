@@ -474,7 +474,7 @@ function noegleForRunde(elementer: ArbejdsElement[]): string | undefined {
 }
 
 function RaekkeTranskriptImpl({
-  blocks, streaming, finalAnswerStarted = false, arbejdeEfterSvar = false, beskedId, runId, config, rundeEtiketter,
+  blocks, streaming, finalAnswerStarted = false, svarRuller, arbejdeEfterSvar = false, beskedId, runId, config, rundeEtiketter,
   elapsedMs = 0, tokens = 0, varighedSekunder = null,
   skjulAktivRunde = false, workingStep,
 }: {
@@ -483,6 +483,9 @@ function RaekkeTranskriptImpl({
   blocks: ContentBlock[]
   streaming: boolean
   finalAnswerStarted?: boolean
+  /** Ruller svaret stadig? Sand til det sidste tegn er vist — ogsaa efter
+   *  `message_stop`, hvor paceren indhenter resten. Folden lukker først her. */
+  svarRuller?: boolean
   /** Der er kommet arbejde efter svar-låsen — hovedet skal folde ud igen. */
   arbejdeEfterSvar?: boolean
   beskedId?: string
@@ -540,9 +543,16 @@ function RaekkeTranskriptImpl({
   const [aabenManuelt, setAabenManuelt] = useFoldHukommelse(runId ?? beskedId)
   // Låsen beskytter SVARET, ikke hovedets tilstand (Bjørn 29/10-2026). Er der
   // kommet arbejde efter låsen, kører turen stadig — og hovedet skal være
-  // ÅBENT, så rundens tekst er synlig mens den skriver. Uden det andet led
-  // foldede hovedet i samme frame som det nye run startede.
-  const arbejdeKoerer = streaming && (!finalAnswerStarted || arbejdeEfterSvar)
+  // ÅBENT, så rundens tekst er synlig mens den skriver.
+  //
+  // RETTET 20/11-2026 (Bjørn: «foldet i code mode sker ikk, retter det folder
+  // og så tom skærm og så dumper den det hele ind»): før lukkede folden i
+  // samme frame som `finalAnswerStarted` blev sand — altså da svaret BEGYNDTE,
+  // ikke da det var rullet ud. Hovedet dukkede op over en tom flade, og
+  // paceren dumpede resten ind bagefter. `svarRuller` er det ærlige signal:
+  // sand til det sidste tegn er vist, ogsaa efter `message_stop`.
+  const svarRullerAktiv = svarRuller ?? (streaming && (!finalAnswerStarted || arbejdeEfterSvar))
+  const arbejdeKoerer = arbejdeEfterSvar || svarRullerAktiv
   const turSekunder = streaming ? Math.max(0, Math.floor(elapsedMs / 1000)) : varighedSekunder
   // Hovedet er turens RESULTAT, ikke en status — samme regel som chat mode.
   // Bjørn 14/11-2026: «lad turhoved være som det er, gør det usynlig til hoved

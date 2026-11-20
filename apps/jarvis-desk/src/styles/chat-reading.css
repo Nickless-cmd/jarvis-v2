@@ -51,12 +51,28 @@
  * MÅLT 20/11-2026 (Bjørn: «farven er stadig blaa» derefter «farven skal foelge
  * farve paletten valgt i desk»): `#3a83f7` var hardkodet fra GPT's `Snappy`-
  * variant, saa ordet blev blaat uanset om Bjørn havde valgt groen, teal, lilla,
- * rav, blaa eller rose. `--accent-text` er den token der baerer accenten som
- * TEKSTfarve: paa moerk flade er den den lysende accent, paa lys flade den
- * moerknede variant — praecis den forskel en tekstfarve har brug for. */
+ * rav, blaa eller rose.
+ *
+ * SKAERPET 20/11-2026 (Bjørn: «palettes farve … skal den vaere skarpere»):
+ * foerste udgave brugte `--accent-text`, som paa LYS flade er den moerknede
+ * variant (`#3d7f5c` mod `#6ee7a8`). Ordets ankomst saa derfor daempet ud.
+ * Her bruges `--accent` — palettens rene, umoerknede farve — og en kort gloed
+ * i SAMME farve goer ankomsten markant uden at roere slutfarven, som stadig
+ * er brodtekstens `--fg-1`. Gloeden doer efter 55 % af varigheden, saa ordet
+ * staar rent naar naeste ord lander. */
 @keyframes streaming-word-color {
-  from { color: var(--accent-text); }
-  to { color: var(--fg-1); }
+  0% {
+    color: var(--accent);
+    text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 65%, transparent);
+  }
+  55% {
+    color: var(--accent);
+    text-shadow: 0 0 5px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+  100% {
+    color: var(--fg-1);
+    text-shadow: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

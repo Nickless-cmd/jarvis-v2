@@ -99,6 +99,14 @@ Mulige felter:
 - learned_preferences: ["præference"] (tilføj nye, behold gamle)
 - recurring_mistakes: ["fejl i menneskelig form"]
   Tilføj den fejl DENNE tur faktisk viser — også første gang du ser den.
+  AFBRUDTE SVAR — læs dette før du skriver sådan en post:
+  Beviset for svaret er delt i et HOVED og en ÆGTE SLUTNING, og der står
+  eksplicit i teksten hvor vinduet klipper. Dommen «blev afbrudt midt i en
+  sætning» må KUN bygges på den ÆGTE SLUTNING. Stopper den midt i et ord,
+  er svaret afbrudt. Slutter den med punktum, spørgsmålstegn, udråbstegn
+  eller emoji, er svaret IKKE afbrudt — uanset hvordan hovedet ser ud.
+  Målt 20/11-2026: 255 af 342 poster nogensinde var denne fejl, og de var
+  alle sammen målefejl. Citér aldrig et sted fra hovedet som bevis.
 - retire_mistakes: ["post der er BEVIST forkert"]
   En post må FJERNES, men kun når denne kørsel beviser at den er forkert.
   Skriv posten ordret som den står i vektoren. To tilfælde tæller:

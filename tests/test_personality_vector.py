@@ -374,3 +374,27 @@ def test_selvrapport_saetter_stadig_et_nyt_domaene():
 
     assert merged["confidence_by_domain"]["python"] == 0.7
     assert merged["confidence_by_domain"]["nyt domæne"] == 0.31
+
+
+# ── Dommen skal bygges på den ægte slutning (20/11-2026) ─────────────────────
+
+def test_prompten_binder_afbrudt_dom_til_den_aegte_slutning():
+    """MÅLT 20/11-2026: 255 af 342 poster nogensinde var «afbrudt midt i
+    sætningen». Seks af seks efterprøvede citater fortsatte i den faktiske
+    besked og sluttede korrekt — fejlen var i dommerens vindue, ikke i
+    svaret. En note i dataene blev ikke læst; reglen skal stå i prompten."""
+    p = _prompt()
+    assert "ÆGTE SLUTNING" in p, "prompten siger ikke hvor dommen må bygges"
+    assert "Citér aldrig et sted fra hovedet" in p, "citat-forbuddet mangler"
+
+
+def test_bevis_vinduet_viser_en_hel_slutning():
+    """Et afbrudt hoved må ikke være det eneste dommeren ser."""
+    from core.services.personality_vector import _bevis_vindue
+
+    tekst = ("Første sætning her. " * 40) + "Og den ægte slutning er hel og færdig."
+    b = _bevis_vindue(tekst)
+    assert "Og den ægte slutning er hel og færdig." in b, "slutningen mangler"
+    assert "VINDUET der klipper" in b, "klippet er ikke navngivet"
+    # den ægte slutning skal stå SIDST — det er den dommen skal læse
+    assert b.rstrip().endswith("hel og færdig.")

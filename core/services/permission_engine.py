@@ -111,9 +111,48 @@ _MEMBER_GOOGLE = frozenset({
     "slides_read",
 })
 
+# Hverdagen — naa, planlaeg, husk (20/11-2026, Bjoern: «partner tool saet
+# udvides med disse»). Oenskelisten kom fra en samtale mellem Michelle og
+# Jarvis, hvor hun bad om de vaerktoejer en almindelig dag kraever.
+#
+# Hvert eneste af dem er sikre af en STRUKTUREL grund, ikke en vurdering:
+#
+#   `send_push_notification` laeser `current_user_id()` og pusher til den
+#   bruger Jarvis betjener NU. Der findes ingen parameter for en modtager —
+#   den kan per konstruktion ikke naa nogen andre end hende selv.
+#
+#   `pollinations_image` er noeglefri og gratis (samme familie som
+#   `openrouter_image`, der allerede er tillad), saa den tilfoejer ingen
+#   udgift ved siden af det hun allerede kan.
+#
+#   `todo_*` er bundet til sessionen, og `inbox*` er isoleret paa `bruger_id`
+#   i db_inbox — hver bruger ser og afgoer kun sine EGNE poster. Det er den
+#   samme isolation `CHAT_MODE_TOOLS_BASE` allerede regner med for ejeren.
+#
+# BEVIDST UDELADT — `notify_out`, `notify_channel_add/list/delete`:
+# de laeser og skriver `~/.jarvis-v2/state/notify_channels.json`, som er ÉN
+# global fil uden ejerskab. En husstandsbrugers `notify_channel_list` ville
+# vise Bjoerns webhooks, og `notify_channel_delete` kunne fjerne dem. Det er
+# ikke et rollevalg der mangler — det er en fil der mangler en ejer. Familien
+# bliver tilgaengelig i det oejeblik kanalerne er per-bruger.
+#
+# BEVIDST UDELADT — `schedule_recurring`, `set_recurring_weekday_times`:
+# de skriver til Jarvis' EGEN scheduler og opretter varige jobs der overlever
+# samtalen. Det er en anden slags handling end at naa sit eget liv.
+_MEMBER_HVERDAG = frozenset({
+    # Proaktiv push — self-scoped gennem current_user_id()
+    "send_push_notification",
+    # Gratis billedgenerering (openrouter_image er allerede tillad)
+    "pollinations_image",
+    # Arbejdsliste — per session
+    "todo_add", "todo_list", "todo_set", "todo_update_status", "todo_remove",
+    # Indbakken — isoleret per bruger_id
+    "inbox", "inbox_done", "inbox_drop",
+})
+
 _MEMBER_CHAT = (_MEMBER_CHAT_WEB | _MEMBER_CHAT_UTIL | _MEMBER_CHAT_MEM
                 | _MEMBER_IMAGE | _MEMBER_VISNING | _MEMBER_DOKUMENTER
-                | _MEMBER_GOOGLE)
+                | _MEMBER_GOOGLE | _MEMBER_HVERDAG)
 
 
 # ── Member CODE (= det Claude har) ──────────────────────────────────────────

@@ -156,7 +156,13 @@ type StreamingWordProps = React.HTMLAttributes<HTMLSpanElement> & {
  *  gamle span og monterer en frisk — og en frisk CSS-animation starter forfra.
  */
 function StreamingWord({ node: _node, ...props }: StreamingWordProps) {
-  return <span {...props} />
+  // `key` er det der faktisk genstarter animationen. react-markdown nøgler
+  // børn som `<tagName>-<antal>`, så med ét tagName genbruges de samme tre
+  // spans for hele svaret, og en genbrugt span starter aldrig sin CSS-animation
+  // forfra. MÅLT i Chromium: 81 ord gav 3 `streaming-word-opacity`-starter.
+  // Nøglen her er ordets unikke part-nøgle, så et nyt ord = en frisk span.
+  // tagName holdes bevidst fast (`rehypeStreamingTextTail` + dens tests).
+  return <span key={props['data-stream-part-key']} {...props} />
 }
 
 const KOMPONENTER = {

@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/hollow_verify.py`
+_Vagt for hollow-promise-fixet (a19939854, 9/10-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fyringer` | `(since)` | — | [src](../../../scripts/hollow_verify.py#L33) |
+| function | `_beskeder` | `(run_id, session_id, created_at)` | Beskeden for et run — filtreret på SESSION + tidsvindue. | [src](../../../scripts/hollow_verify.py#L60) |
+| function | `_blokke` | `(content_json)` | — | [src](../../../scripts/hollow_verify.py#L111) |
+| function | `_maal` | `(blokke)` | Maal blok-raekkefoelgen mod klientens skillerum. | [src](../../../scripts/hollow_verify.py#L126) |
+| function | `main` | `()` | — | [src](../../../scripts/hollow_verify.py#L179) |
+
 ## `scripts/honesty_metrics.py`
 _Honesty-metrics — tæl hvor ofte hvert anti-løgn-lag fyrer (16. jun 2026)._
 
@@ -432,13 +443,4 @@ _Minimal-mode-basislinje — hvad kan modellen UDEN Jarvis' stillads?_
 | function | `_udfoer_vaerktoej` | `(navn, args, mappe)` | — | [src](../../../scripts/minimal_mode_baseline.py#L184) |
 | function | `koer_opgave` | `(navn, spec, *, maks_runder)` | — | [src](../../../scripts/minimal_mode_baseline.py#L206) |
 | function | `main` | `()` | — | [src](../../../scripts/minimal_mode_baseline.py#L248) |
-
-## `scripts/mint_jarvisx_token.py`
-_Mint a JarvisX bearer token for a user._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_registry_path` | `()` | — | [src](../../../scripts/mint_jarvisx_token.py#L35) |
-| function | `_append_registry` | `(entry)` | Append a token-issue entry to the audit registry. Best-effort. | [src](../../../scripts/mint_jarvisx_token.py#L40) |
-| function | `main` | `()` | — | [src](../../../scripts/mint_jarvisx_token.py#L52) |
 

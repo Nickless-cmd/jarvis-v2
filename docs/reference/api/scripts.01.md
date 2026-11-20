@@ -117,6 +117,17 @@ _One-off: cap runaway salience_bumps in Jarvis' brain (memory repair 2026-09-04,
 | function | `reset_salience_bumps` | `(*, cap=…, apply=…)` | Cap ``salience_bumps`` at ``cap`` for every entry above it. | [src](../../../scripts/brain_salience_reset.py#L21) |
 | function | `main` | `()` | — | [src](../../../scripts/brain_salience_reset.py#L65) |
 
+## `scripts/bundt_soeg.py`
+_Søg i en bundtet app (asar) og få MODULSTIEN med, ikke bare et byte-offset._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `laes_header` | `(sti)` | Returnér (header-JSON, data-start). Rejser ValueError hvis filen ikke er en asar. | [src](../../../scripts/bundt_soeg.py#L57) |
+| function | `filkort` | `(header)` | Returnér {modulsti: (offset, størrelse)} for alle filer i headeren. | [src](../../../scripts/bundt_soeg.py#L84) |
+| function | `modul_for` | `(offset_i_data, kort)` | Find modulstien der dækker et offset relativt til data-start. | [src](../../../scripts/bundt_soeg.py#L111) |
+| function | `soeg` | `(fil, moenster, *, kontekst, maks)` | Søg efter `moenster` og berig hvert træf med modulsti. | [src](../../../scripts/bundt_soeg.py#L119) |
+| function | `_hoved` | `(argv=…)` | — | [src](../../../scripts/bundt_soeg.py#L148) |
+
 ## `scripts/cache_break_report.py`
 _Hvor braekker praefiks-cachen — og hvilken besked gjorde det?_
 
@@ -462,15 +473,4 @@ _Read-only god-fil-kort: alle egne .py-filer ≥1500 linjer, karakteriseret (lin
 |---|---|---|---|---|
 | function | `own_py_files` | `()` | — | [src](../../../scripts/god_file_map.py#L14) |
 | function | `blast` | `(dotted, target_rel)` | — | [src](../../../scripts/god_file_map.py#L24) |
-
-## `scripts/hollow_verify.py`
-_Vagt for hollow-promise-fixet (a19939854, 9/10-2026)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_fyringer` | `(since)` | — | [src](../../../scripts/hollow_verify.py#L33) |
-| function | `_beskeder` | `(run_id, session_id, created_at)` | Beskeden for et run — filtreret på SESSION + tidsvindue. | [src](../../../scripts/hollow_verify.py#L60) |
-| function | `_blokke` | `(content_json)` | — | [src](../../../scripts/hollow_verify.py#L111) |
-| function | `_maal` | `(blokke)` | Maal blok-raekkefoelgen mod klientens skillerum. | [src](../../../scripts/hollow_verify.py#L126) |
-| function | `main` | `()` | — | [src](../../../scripts/hollow_verify.py#L179) |
 

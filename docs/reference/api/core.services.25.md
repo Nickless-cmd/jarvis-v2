@@ -570,22 +570,22 @@ _Self-Experiments — A/B testing on Jarvis' own behavior._
 | function | `_evaluate_experiment` | `(cohorts)` | Sammenlign kohorter — men kun paa et sample der kan baere konklusionen. | [src](../../../core/services/self_experiments.py#L185) |
 | function | `_maalte_domaener` | `(noegle)` | Domaener hvis confidence har aendret sig mindst én gang for nylig. | [src](../../../core/services/self_experiments.py#L281) |
 | function | `_mekanisk_maalte` | `(noegle)` | Domaener hvis confidence er flyttet af en MEKANISK kilde. | [src](../../../core/services/self_experiments.py#L348) |
-| function | `_eksperiment_forslag` | `(best, result)` | Et laeringsmaal fra et forsøg skal baere SAMPLEt, ikke kun forskellen. | [src](../../../core/services/self_experiments.py#L417) |
-| function | `generate_learning_curriculum` | `()` | 3.8 Curriculum learning — analyze weaknesses, generate learning plan. | [src](../../../core/services/self_experiments.py#L436) |
-| function | `_curriculum_summary` | `(curriculum, kilde_fejl, *, umalte=…)` | En tom plan skal sige HVORFOR den er tom. | [src](../../../core/services/self_experiments.py#L596) |
-| function | `_klip_ord_graense` | `(tekst, loft=…)` | Klip ved ORD-grænse, ikke midt i ordet. | [src](../../../core/services/self_experiments.py#L628) |
-| function | `observe_recent_visible_runs_for_self_experiments` | `(*, limit=…)` | Auto-observe recent visible runs for active self-experiments. | [src](../../../core/services/self_experiments.py#L645) |
-| function | `materialize_learning_curriculum_tasks` | `(*, limit=…, origin=…, owner=…, run_id=…)` | Turn top curriculum focuses into bounded runtime tasks. | [src](../../../core/services/self_experiments.py#L728) |
-| function | `build_self_experiments_surface` | `()` | — | [src](../../../core/services/self_experiments.py#L846) |
-| function | `_parse_result_payload` | `(raw)` | — | [src](../../../core/services/self_experiments.py#L863) |
-| function | `_cohort_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L871) |
-| function | `_success_for_visible_run` | `(*, experiment, run)` | Om runnet lykkedes. `None` = vi kan ikke afgoere det, og maa ikke gaette. | [src](../../../core/services/self_experiments.py#L886) |
-| function | `_build_visible_run_observation_note` | `(*, experiment, run, cohort, success)` | — | [src](../../../core/services/self_experiments.py#L909) |
-| function | `_normaliser_fejltekst` | `(tekst)` | — | [src](../../../core/services/self_experiments.py#L953) |
-| function | `normaliser_fejl_til_domaene` | `(tekst)` | Map en rå fejlformulering til en stabil kategori-nøgle. | [src](../../../core/services/self_experiments.py#L960) |
-| function | `_item_domaene` | `(item)` | Domænenøglen for et curriculum-item. Ingen fallback til rå ``focus``: | [src](../../../core/services/self_experiments.py#L974) |
-| function | `_curriculum_focus_key` | `(value)` | — | [src](../../../core/services/self_experiments.py#L980) |
-| function | `_curriculum_priority` | `(priority)` | — | [src](../../../core/services/self_experiments.py#L984) |
+| function | `_eksperiment_forslag` | `(best, result)` | Et laeringsmaal fra et forsøg skal baere SAMPLEt, ikke kun forskellen. | [src](../../../core/services/self_experiments.py#L432) |
+| function | `generate_learning_curriculum` | `()` | 3.8 Curriculum learning — analyze weaknesses, generate learning plan. | [src](../../../core/services/self_experiments.py#L451) |
+| function | `_curriculum_summary` | `(curriculum, kilde_fejl, *, umalte=…)` | En tom plan skal sige HVORFOR den er tom. | [src](../../../core/services/self_experiments.py#L611) |
+| function | `_klip_ord_graense` | `(tekst, loft=…)` | Klip ved ORD-grænse, ikke midt i ordet. | [src](../../../core/services/self_experiments.py#L643) |
+| function | `observe_recent_visible_runs_for_self_experiments` | `(*, limit=…)` | Auto-observe recent visible runs for active self-experiments. | [src](../../../core/services/self_experiments.py#L660) |
+| function | `materialize_learning_curriculum_tasks` | `(*, limit=…, origin=…, owner=…, run_id=…)` | Turn top curriculum focuses into bounded runtime tasks. | [src](../../../core/services/self_experiments.py#L743) |
+| function | `build_self_experiments_surface` | `()` | — | [src](../../../core/services/self_experiments.py#L861) |
+| function | `_parse_result_payload` | `(raw)` | — | [src](../../../core/services/self_experiments.py#L878) |
+| function | `_cohort_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L886) |
+| function | `_success_for_visible_run` | `(*, experiment, run)` | Om runnet lykkedes. `None` = vi kan ikke afgoere det, og maa ikke gaette. | [src](../../../core/services/self_experiments.py#L901) |
+| function | `_build_visible_run_observation_note` | `(*, experiment, run, cohort, success)` | — | [src](../../../core/services/self_experiments.py#L924) |
+| function | `_normaliser_fejltekst` | `(tekst)` | — | [src](../../../core/services/self_experiments.py#L968) |
+| function | `normaliser_fejl_til_domaene` | `(tekst)` | Map en rå fejlformulering til en stabil kategori-nøgle. | [src](../../../core/services/self_experiments.py#L975) |
+| function | `_item_domaene` | `(item)` | Domænenøglen for et curriculum-item. Ingen fallback til rå ``focus``: | [src](../../../core/services/self_experiments.py#L989) |
+| function | `_curriculum_focus_key` | `(value)` | — | [src](../../../core/services/self_experiments.py#L995) |
+| function | `_curriculum_priority` | `(priority)` | — | [src](../../../core/services/self_experiments.py#L999) |
 
 ## `core/services/self_history_grounding.py`
 _Prompten maa ikke forveksle et rygte med en kendsgerning._

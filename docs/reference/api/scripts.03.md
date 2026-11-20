@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/mint_jarvisx_token.py`
+_Mint a JarvisX bearer token for a user._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_registry_path` | `()` | — | [src](../../../scripts/mint_jarvisx_token.py#L35) |
+| function | `_append_registry` | `(entry)` | Append a token-issue entry to the audit registry. Best-effort. | [src](../../../scripts/mint_jarvisx_token.py#L40) |
+| function | `main` | `()` | — | [src](../../../scripts/mint_jarvisx_token.py#L52) |
+
 ## `scripts/model_catalogue_sweep.py`
 _Ugentlig gennemgang af cheap lane: hvilke modeller lever, og hvad kan de?_
 
@@ -438,18 +447,4 @@ _Boot-vagt paa pve i9: klassificér hver boot som REN eller CUT._
 | function | `gem_state` | `(sti, kendte)` | — | [src](../../../scripts/vaert_boot_vagt.py#L180) |
 | function | `rapport` | `(boots, nye)` | — | [src](../../../scripts/vaert_boot_vagt.py#L190) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/vaert_boot_vagt.py#L219) |
-
-## `scripts/validate_commit_attribution.py`
-_Validate commit attribution for commit-msg and pre-push hooks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_git` | `(repo, *args)` | — | [src](../../../scripts/validate_commit_attribution.py#L20) |
-| function | `validate_message_file` | `(path)` | Validate one COMMIT_EDITMSG-style file. | [src](../../../scripts/validate_commit_attribution.py#L29) |
-| function | `_rev_list` | `(repo, revision)` | — | [src](../../../scripts/validate_commit_attribution.py#L39) |
-| function | `commits_in_enforced_range` | `(repo, baseline, from_ref, to_ref)` | Return pushed commits that are also newer than the activation baseline. | [src](../../../scripts/validate_commit_attribution.py#L47) |
-| function | `validate_range` | `(repo, commits)` | Return validation failures keyed by commit hash. | [src](../../../scripts/validate_commit_attribution.py#L68) |
-| function | `_print_failures` | `(failures)` | — | [src](../../../scripts/validate_commit_attribution.py#L88) |
-| function | `_pre_push` | `(repo)` | — | [src](../../../scripts/validate_commit_attribution.py#L95) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/validate_commit_attribution.py#L122) |
 

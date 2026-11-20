@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18931 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18945 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -30,8 +30,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18931 functions/
 - [`core.plugins`](core.plugins.md)
 - [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_cognitive_utility`
 - [`core.runtime.02`](core.runtime.02.md) — `db_composer_choice` … `db_runtime_private`
-- [`core.runtime.03`](core.runtime.03.md) — `db_runtime_relational_signals` … `workspace_paths`
-- [`core.runtime.04`](core.runtime.04.md) — `ws_auth` … `ws_auth`
+- [`core.runtime.03`](core.runtime.03.md) — `db_runtime_relational_signals` … `work_ref`
+- [`core.runtime.04`](core.runtime.04.md) — `workspace_paths` … `ws_auth`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agent_outcomes_log`
 - [`core.services.02`](core.services.02.md) — `agent_parking` … `anticipatory_action_daemon`
 - [`core.services.03`](core.services.03.md) — `anticipatory_context` … `autonomy_pressure_signal_tracking`
@@ -59,11 +59,11 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18931 functions/
 - [`core.services.25`](core.services.25.md) — `runtime_self_knowledge` … `self_narrative_continuity_signal_tracking`
 - [`core.services.26`](core.services.26.md) — `self_narrative_self_model_review_bridge` … `settlement_shadow`
 - [`core.services.27`](core.services.27.md) — `shadow_counters` … `source_confidence_gate`
-- [`core.services.28`](core.services.28.md) — `spaced_repetition` … `theory_of_mind`
-- [`core.services.29`](core.services.29.md) — `theory_of_mind_engine` … `ui_panel_store`
-- [`core.services.30`](core.services.30.md) — `unconscious_modulation` … `visible_model_adapters`
-- [`core.services.31`](core.services.31.md) — `visible_model_observe` … `visible_tool_exec`
-- [`core.services.32`](core.services.32.md) — `visible_tool_labels` … `world_model_signal_tracking`
+- [`core.services.28`](core.services.28.md) — `spaced_repetition` … `theater_audit`
+- [`core.services.29`](core.services.29.md) — `theory_of_mind` … `turn_trace`
+- [`core.services.30`](core.services.30.md) — `ui_panel_store` … `visible_model`
+- [`core.services.31`](core.services.31.md) — `visible_model_adapters` … `visible_thinking_trace`
+- [`core.services.32`](core.services.32.md) — `visible_tool_exec` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`
@@ -80,10 +80,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18931 functions/
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)
 - [`core.util`](core.util.md)
-- [`scripts.01`](scripts.01.md) — `__init__` … `hollow_verify`
-- [`scripts.02`](scripts.02.md) — `honesty_metrics` … `mint_jarvisx_token`
-- [`scripts.03`](scripts.03.md) — `model_catalogue_sweep` … `validate_commit_attribution`
-- [`scripts.04`](scripts.04.md) — `verify_fase_a` … `verify_vagt_graenser`
+- [`scripts.01`](scripts.01.md) — `__init__` … `god_file_map`
+- [`scripts.02`](scripts.02.md) — `hollow_verify` … `minimal_mode_baseline`
+- [`scripts.03`](scripts.03.md) — `mint_jarvisx_token` … `vaert_boot_vagt`
+- [`scripts.04`](scripts.04.md) — `validate_commit_attribution` … `verify_vagt_graenser`
 - [`scripts.acceptance`](scripts.acceptance.md)
 - [`scripts.diagnostics`](scripts.diagnostics.md)
 - [`scripts.pipelines`](scripts.pipelines.md)

@@ -170,6 +170,16 @@ _`StreamSettlement` — ét sted der afgør hvad et udbyder-forsøg BLEV til._
 | method | `AttemptLedger.is_settled` | `(self, attempt_id)` | — | [src](../../../core/services/stream_settlement.py#L289) |
 | method | `AttemptLedger.guard` | `(self, attempt_id)` | Kaster hvis forsøget er afregnet. Til pumper der vil skrive. | [src](../../../core/services/stream_settlement.py#L292) |
 
+## `core/services/streaming_capability.py`
+_Streaming og perceived performance — fra skøn til måling._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_median` | `(values)` | — | [src](../../../core/services/streaming_capability.py#L51) |
+| function | `_percentil` | `(values, p)` | — | [src](../../../core/services/streaming_capability.py#L60) |
+| function | `_confidence_for` | `(median_ms)` | — | [src](../../../core/services/streaming_capability.py#L68) |
+| function | `measure` | `(*, limit=…, write=…)` | Mål streaming-evnen på de faktiske TTFT-målinger. | [src](../../../core/services/streaming_capability.py#L75) |
+
 ## `core/services/structured_content_flag.py`
 _Governed kill-switch for struktureret content-persist + wire. Default ON._
 
@@ -370,22 +380,22 @@ _Task worker — consumes queued runtime_tasks in heartbeat tick cadence._
 | function | `_handle_generic` | `(task)` | — | [src](../../../core/services/task_worker.py#L205) |
 | function | `_run_did_work_from_outcomes` | `(run_id)` | Bevis pr. RUN — ikke pr. session. | [src](../../../core/services/task_worker.py#L224) |
 | function | `_run_did_work` | `(session_id, goal, *, run_id=…)` | Beviser sessionen at runnet FAKTISK gjorde noget for dette mål? | [src](../../../core/services/task_worker.py#L259) |
-| function | `_confidence_delta` | `(outcome, did_work)` | — | [src](../../../core/services/task_worker.py#L294) |
-| function | `record_curriculum_outcome` | `(domain, *, outcome, did_work)` | Registrér et afsluttet curriculum-run mod domænets confidence. | [src](../../../core/services/task_worker.py#L304) |
-| function | `_make_curriculum_completion_callback` | `(domain, goal)` | — | [src](../../../core/services/task_worker.py#L353) |
-| function | `_handle_curriculum_focus` | `(task)` | Læringsmål fra self_experiments — sendes til en autonom bane med værktøjer. | [src](../../../core/services/task_worker.py#L369) |
-| function | `_execute_task` | `(task)` | Execute a single task and persist its final status. Never raises. | [src](../../../core/services/task_worker.py#L458) |
-| function | `tick_task_worker` | `(budget=…)` | Run one worker tick: claim and execute up to ``budget`` tasks. | [src](../../../core/services/task_worker.py#L487) |
-| function | `_matching_agency_edge` | `(*, scope, goal)` | — | [src](../../../core/services/task_worker.py#L532) |
-| function | `_edge_by_id` | `(edges, edge_id)` | — | [src](../../../core/services/task_worker.py#L554) |
-| function | `_store_agency_repair_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L561) |
-| function | `_store_observability_repair_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L569) |
-| function | `_store_theater_refactor_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L577) |
-| function | `_matching_theater_file` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L585) |
-| function | `_suggested_agency_files` | `(*, scope, edge)` | — | [src](../../../core/services/task_worker.py#L600) |
-| function | `_suggested_observability_files` | `(*, scope, service)` | — | [src](../../../core/services/task_worker.py#L636) |
-| function | `_suggested_theater_files` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L650) |
-| function | `build_task_worker_surface` | `()` | Mission Control-surface: hvad ligger der i koeen, og hvad endte de i? | [src](../../../core/services/task_worker.py#L671) |
+| function | `_confidence_delta` | `(outcome, did_work)` | Kun et FEJLET run flytter noget. Arbejde er ikke en måling. | [src](../../../core/services/task_worker.py#L294) |
+| function | `record_curriculum_outcome` | `(domain, *, outcome, did_work)` | Registrér et afsluttet curriculum-run mod domænets confidence. | [src](../../../core/services/task_worker.py#L318) |
+| function | `_make_curriculum_completion_callback` | `(domain, goal)` | — | [src](../../../core/services/task_worker.py#L367) |
+| function | `_handle_curriculum_focus` | `(task)` | Læringsmål fra self_experiments — sendes til en autonom bane med værktøjer. | [src](../../../core/services/task_worker.py#L383) |
+| function | `_execute_task` | `(task)` | Execute a single task and persist its final status. Never raises. | [src](../../../core/services/task_worker.py#L472) |
+| function | `tick_task_worker` | `(budget=…)` | Run one worker tick: claim and execute up to ``budget`` tasks. | [src](../../../core/services/task_worker.py#L501) |
+| function | `_matching_agency_edge` | `(*, scope, goal)` | — | [src](../../../core/services/task_worker.py#L546) |
+| function | `_edge_by_id` | `(edges, edge_id)` | — | [src](../../../core/services/task_worker.py#L568) |
+| function | `_store_agency_repair_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L575) |
+| function | `_store_observability_repair_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L583) |
+| function | `_store_theater_refactor_brief` | `(*, task_id, brief)` | — | [src](../../../core/services/task_worker.py#L591) |
+| function | `_matching_theater_file` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L599) |
+| function | `_suggested_agency_files` | `(*, scope, edge)` | — | [src](../../../core/services/task_worker.py#L614) |
+| function | `_suggested_observability_files` | `(*, scope, service)` | — | [src](../../../core/services/task_worker.py#L650) |
+| function | `_suggested_theater_files` | `(*, scope)` | — | [src](../../../core/services/task_worker.py#L664) |
+| function | `build_task_worker_surface` | `()` | Mission Control-surface: hvad ligger der i koeen, og hvad endte de i? | [src](../../../core/services/task_worker.py#L685) |
 
 ## `core/services/taste_profile.py`
 _Taste Profile — accumulating aesthetic preferences for code, design, and communication._
@@ -632,24 +642,4 @@ _Theater Audit -- find narrative-first inner-life patterns._
 | function | `_counts` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L333) |
 | function | `_priority_label` | `(score)` | — | [src](../../../core/services/theater_audit.py#L341) |
 | function | `_excerpt` | `(line)` | — | [src](../../../core/services/theater_audit.py#L349) |
-
-## `core/services/theory_of_mind.py`
-_Theory of Mind — Step A.v1 of meta-evne stack._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/theory_of_mind.py#L97) |
-| function | `_connect` | `()` | Frisk forbindelse der LUKKES ved `with`-exit (rettet 12/10-2026). | [src](../../../core/services/theory_of_mind.py#L123) |
-| function | `_normalize_to_key` | `(text)` | Build a stable dedupe key from a sentence. | [src](../../../core/services/theory_of_mind.py#L144) |
-| function | `_split_factual_sentences` | `(text)` | Return sentences from text that look like factual claims. | [src](../../../core/services/theory_of_mind.py#L160) |
-| function | `record_fact` | `(*, partner_id, origin, fact_summary, session_id=…, message_id=…, evidence=…)` | Upsert a fact into the ledger. | [src](../../../core/services/theory_of_mind.py#L179) |
-| function | `_is_autonomous_session` | `(session_id)` | — | [src](../../../core/services/theory_of_mind.py#L250) |
-| function | `record_message` | `(*, role, content, partner_id=…, session_id=…, message_id=…)` | Extract factual sentences from a message and record each one. | [src](../../../core/services/theory_of_mind.py#L255) |
-| function | `recent_facts` | `(*, partner_id=…, origin=…, hours=…, limit=…)` | — | [src](../../../core/services/theory_of_mind.py#L297) |
-| function | `has_been_told` | `(fact_text, *, partner_id=…, hours=…)` | Has Jarvis told partner this fact within the time window? | [src](../../../core/services/theory_of_mind.py#L323) |
-| function | `repetition_warnings` | `(*, partner_id=…, hours=…, threshold=…)` | Facts Jarvis has repeated to partner at or above threshold within window. | [src](../../../core/services/theory_of_mind.py#L348) |
-| function | `communication_ledger_section` | `(*, partner_id=…)` | Quiet by default. Surfaces only when Jarvis is repeating himself. | [src](../../../core/services/theory_of_mind.py#L374) |
-| function | `_listener_loop` | `()` | Poll events table for channel.chat_message_appended events. | [src](../../../core/services/theory_of_mind.py#L401) |
-| function | `start_theory_of_mind_tracker` | `()` | Start the DB-polling listener. Idempotent. | [src](../../../core/services/theory_of_mind.py#L465) |
-| function | `stop_theory_of_mind_tracker` | `()` | — | [src](../../../core/services/theory_of_mind.py#L482) |
 

@@ -310,10 +310,26 @@ def _laes_tempo(run_id: str, output_tokens: int) -> dict[str, float | None]:
     """
     try:
         from core.services import svar_tempo
-        return svar_tempo.afslut(run_id, output_tokens=output_tokens)
+        tempo = svar_tempo.afslut(run_id, output_tokens=output_tokens)
     except Exception as exc:  # noqa: BLE001
         logger.warning("sse_v2: kunne ikke aflaese svar-tempoet: %s", exc)
         return {}
+    # MÅLT 20/11-2026: tallet gik herfra og KUN i SSE-payloaden. Det blev
+    # tegnet i composeren og forsvandt, så domænet «streaming og perceived
+    # performance» ikke kunne måles over tid — det stod på 42 % som et rent
+    # skøn gennem 1.027 vektorer. Nu gemmes det samme tal samme sted, så der
+    # ikke opstår to definitioner af hvornår det aflæses.
+    try:
+        from core.runtime import db_tempo
+        db_tempo.gem(
+            run_id,
+            ttft_ms=tempo.get("ttft_ms"),
+            tok_per_sek=tempo.get("tok_per_sek"),
+            output_tokens=output_tokens,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("sse_v2: kunne ikke gemme svar-tempoet: %s", exc)
+    return tempo
 
 
 async def translate_to_v2(

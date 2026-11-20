@@ -275,9 +275,51 @@ describe('ChatView integration', () => {
       expect(answer).toBeInTheDocument()
       expect(answer?.textContent).toBe(synligtMaal)
       expect(answer?.textContent?.length).toBe(synligtMaal.length)
-    })
+    }, { timeout: 15000 })
     view.unmount()
-  })
+  }, 30000)
+
+  it('dumper ikke den resterende pacing-tekst i samme render som message_stop', async () => {
+    // Repro (side-f9ab36ac9d): ChatView sendte `flushFinalAnswer={status === 'done'}`,
+    // så `useChatPacedBlocks` returnerede hele målet i done-renderen — selvom
+    // rækken netop holdes monteret for at paceren kan rulle færdig. Serverens
+    // «færdig» og pacerens «færdig» er to hændelser og må ikke slås sammen.
+    const text = 'Et længere normalt chatsvar uden værktøj. '.repeat(40)
+    const view = render(
+      <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
+        <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+          <ChatView sessionId="s1" />
+        </PanelProvider></PermissionProvider></StreamProvider>
+      </SessionProvider></SettingsProvider>,
+    )
+    await userEvent.type(screen.getByRole('textbox'), 'ingen dump{Enter}')
+    act(() => {
+      handlersRef.current?.onRunId('r-no-dump')
+      handlersRef.current?.onEvent({ type: 'message_start', message: {
+        id: 'r-no-dump', model: 'm', provider: 'p', lane: 'l', session_id: 's1',
+        usage: { input_tokens: 0, output_tokens: 0 },
+      } })
+      handlersRef.current?.onEvent({ type: 'content_block_start', index: 0,
+        content_block: { type: 'text', text: '' } })
+      handlersRef.current?.onEvent({ type: 'content_block_delta', index: 0,
+        delta: { type: 'text_delta', text } })
+    })
+    const laengde = () => view.container
+      .querySelector('.chat-flow-answer, .chat-flow-live-synthesis')?.textContent?.length ?? 0
+    await waitFor(() => expect(laengde()).toBeGreaterThan(0))
+    act(() => { handlersRef.current?.onEvent({ type: 'message_stop' }) })
+    // Mål forløbet efter done: ingen enkelt måling må hoppe over resten af
+    // teksten. Det var flush-sporet: 27 → 1679 tegn i ét skridt.
+    const maalinger: number[] = [laengde()]
+    for (let i = 0; i < 6; i += 1) {
+      await act(() => new Promise<void>((r) => setTimeout(r, 8)))
+      maalinger.push(laengde())
+    }
+    const stoersteSpring = Math.max(...maalinger.slice(1).map((v, i) => v - maalinger[i]!))
+    expect(stoersteSpring).toBeLessThan(text.trimEnd().length / 4)
+    await waitFor(() => expect(laengde()).toBe(text.trimEnd().length), { timeout: 15000 })
+    view.unmount()
+  }, 30000)
 
   it('viser eget uploadet billede straks og skjuler kørselstal i chat', async () => {
     URL.createObjectURL = vi.fn(() => 'blob:chat-preview')

@@ -1,4 +1,21 @@
 # Development log
+## 2026-11-20 — `done` is not "the pacer is finished"
+
+Desk Chat Mode dumped the tail of an answer at `message_stop`. `ChatView` passed
+`flushFinalAnswer={stream.status === 'done'}`, and `useChatPacedBlocks` returns
+the full target whenever `options.flush` is set. The flush was added in
+54fa0d850 when the live row was unmounted before the pacer drained; the row is
+now held mounted by `paceFinalAnswer` until `onAnswerPaced`, so the flush had
+become redundant and only caused the dump.
+
+Measured in `ChatView.test.tsx` (real pacer, 1,680-char answer, samples every
+8 ms after `message_stop`): visible text went 14 → 27 → 1679 characters, i.e.
+27 → 1679 in one step. After removing the flush: it rolls out monotonically and
+completes in ~6.9 s (the existing catch-up curve, `PACE_CATCH_UP_SECONDS = 2`,
+unchanged). `flushFinalAnswer` stays as an explicit, documented escape hatch.
+
+Not reproduced / not done: text streaming inside the turn-header fold
+(hypothesis B), and the word-animation tuning. No change was made for those.
 
 ## 2026-11-16 — A prune function nobody called, and a guard that cried wolf
 

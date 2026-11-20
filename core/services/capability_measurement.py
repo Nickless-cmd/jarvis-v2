@@ -22,9 +22,65 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+#: Målings-loggen. `self_experiments._mekanisk_maalte` skal kunne afgøre om det
+#: tal der STÅR i vektoren kom fra en måling eller fra et skøn. Skridt-detektoren
+#: kan ikke se forskellen: en måling skriver en absolut værdi (0,32 → 0,85), men
+#: en korrektion skriver også et skridt, og et skøn kan lande tilfældigt på 0,05.
+#: Sporet gør svaret efterprøveligt i stedet for gættet.
+_LEDGER = Path.home() / ".jarvis-v2" / "state" / "capability_measurements.jsonl"
+
+
+def _skriv_maalingsspor(domain: str, value: float, evidence: str) -> None:
+    """Én linje pr. måling. Uden sporet er «målt» et ord uden indhold."""
+
+    def _write() -> None:
+        _LEDGER.parent.mkdir(parents=True, exist_ok=True)
+        with _LEDGER.open("a", encoding="utf-8") as fh:
+            fh.write(
+                json.dumps(
+                    {
+                        "domain": domain,
+                        "value": value,
+                        "evidence": evidence,
+                        "measured_at": datetime.now(UTC).isoformat(),
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
+
+    try:
+        _write()
+    except OSError as exc:
+        # Sporet er et supplement, ikke betingelsen for at skrive værdien —
+        # men et manglende spor skal kunne ses i loggen, ikke forsvinde.
+        logger.warning("capability_measurement: målingsspor kunne ikke skrives: %s", exc)
+
+
+def maalte_vaerdier() -> dict[str, float]:
+    """Domæne → den senest MÅLTE værdi. Tom når sporet ikke findes."""
+    if not _LEDGER.exists():
+        return {}
+    nyeste: dict[str, float] = {}
+    try:
+        lines = _LEDGER.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        logger.warning("capability_measurement: målingsspor kunne ikke læses: %s", exc)
+        return {}
+    for linje in lines:
+        try:
+            rad = json.loads(linje)
+            nyeste[str(rad["domain"])] = round(float(rad["value"]), 4)
+        except (ValueError, KeyError, TypeError):
+            # Uparsbar linje: den kan ikke bære et bevis, så den tælles ikke.
+            continue
+    return nyeste
 
 
 def set_domain_confidence(
@@ -79,6 +135,7 @@ def set_domain_confidence(
         current_bearing=str(current.get("current_bearing", "")),
         emotional_baseline=str(current.get("emotional_baseline", "{}")),
     )
+    _skriv_maalingsspor(name, after, evidence)
     logger.info(
         "capability_measurement: %s %s -> %s (%s)", name, before, after, evidence
     )

@@ -409,6 +409,21 @@ def _mekanisk_maalte(noegle: str) -> set[str] | None:
         sidste = skridt[-1]
         if abs(sidste - _MEKANISK_LOEFT) < 1e-6 or abs(sidste + _MEKANISK_FALD) < 1e-6:
             mekaniske.add(navn)
+    # Skridt-detektoren alene kan tage fejl: et skøn der lander på 0,05 ser
+    # mekanisk ud, og en korrektion af et forkert løft skriver også et skridt.
+    # Målingssporet afgør det: står der en måling for domænet, og er det DEN
+    # værdi der står i vektoren nu, så er tallet målt — ellers ikke.
+    try:
+        from core.services.capability_measurement import maalte_vaerdier
+
+        maalt_map = maalte_vaerdier()
+    except Exception as exc:  # noqa: BLE001 — uden sporet kan intet domæne kaldes målt
+        logger.warning("curriculum: målingsspor kunne ikke læses: %s", exc)
+        maalt_map = {}
+    nyeste = {navn: seq[-1] for navn, seq in reekker.items() if seq}
+    for navn, maalt in maalt_map.items():
+        if navn in nyeste and abs(nyeste[navn] - maalt) < 1e-9:
+            mekaniske.add(navn)
     _MAALTE_CACHE["mekanisk_noegle"] = noegle
     _MAALTE_CACHE["mekaniske"] = mekaniske
     return mekaniske

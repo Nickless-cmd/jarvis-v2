@@ -471,15 +471,20 @@ def _koer_curriculum_med_callback(isolated_runtime, monkeypatch, *, scope, outco
     cb(outcome=outcome, visible_run_id="r1", session_id="s1", error="")
 
 
-def test_curriculum_run_opretter_manglende_domaene_og_loefter_ved_bevist_arbejde(
-    isolated_runtime, monkeypatch
-) -> None:
+def test_arbejde_er_ikke_en_maaling(isolated_runtime, monkeypatch) -> None:
+    """MAALT 20/11-2026: `dil_widgets animationstal` blev loeftet 0,36 til 0,41
+    af et run hvis egen konklusion var at tallene ikke findes paa denne maskine.
+
+    Loeftets «bevis» var `_run_did_work_from_outcomes`: runnet kaldte mindst ét
+    vaerktoej (24 kald, hvoraf 2 naevnte domaenet - som soegning). Engagement blev
+    talt som maaling. Et gennemfoert run maa derfor hverken oprette domaenet eller
+    flytte det: kun en maaling flytter et tal.
+    """
     _koer_curriculum_med_callback(
         isolated_runtime, monkeypatch,
         scope="desktop app inspection", outcome="completed", did_work=True,
     )
-    d = _pv_domaener()
-    assert d["desktop app inspection"] == 0.35  # 0.30 start + 0.05
+    assert "desktop app inspection" not in _pv_domaener()
 
 
 def test_curriculum_run_uden_bevis_loefter_aldrig(isolated_runtime, monkeypatch) -> None:
@@ -488,7 +493,8 @@ def test_curriculum_run_uden_bevis_loefter_aldrig(isolated_runtime, monkeypatch)
         isolated_runtime, monkeypatch,
         scope="desk render capabilities", outcome="completed", did_work=False,
     )
-    assert _pv_domaener()["desk render capabilities"] == 0.3  # oprettet, ikke løftet
+    # Hverken oprettet eller loeftet: et run uden arbejde er ingen observation.
+    assert "desk render capabilities" not in _pv_domaener()
 
 
 def test_curriculum_run_der_fejler_saenker(isolated_runtime, monkeypatch) -> None:
@@ -508,13 +514,13 @@ def test_normaliseret_scope_loefter_og_saenker_stadig_paa_samme_noegle(
     _koer_curriculum_med_callback(
         isolated_runtime, monkeypatch, scope=noegle, outcome="completed", did_work=True
     )
-    assert _pv_domaener()[noegle] == 0.35
+    assert noegle not in _pv_domaener()  # arbejde loefter ikke
     # anden formulering af samme fejltype → samme nøgle, ingen ny støjnøgle
     noegle2 = n("Holder op midt i en sætning ('jeg skal vide om det er fronte")
     _koer_curriculum_med_callback(
         isolated_runtime, monkeypatch, scope=noegle2, outcome="failed", did_work=False
     )
-    assert _pv_domaener()[noegle] == 0.32
+    assert _pv_domaener()[noegle] == 0.27  # 0.30 start - 0.03 for fejlet run
     assert [k for k in _pv_domaener() if "midt" in k or "saetning" in k] == [noegle]
 
 

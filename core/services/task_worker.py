@@ -292,12 +292,26 @@ def _run_did_work(session_id: str, goal: str, *, run_id: str = "") -> bool:
 
 
 def _confidence_delta(outcome: str, did_work: bool) -> float:
-    if outcome == "completed" and did_work:
-        return _LIFT_EVIDENCED
+    """Kun et FEJLET run flytter noget. Arbejde er ikke en måling.
+
+    MÅLT 20/11-2026, to beviser i hver sin retning:
+
+    1. `dil_widgets animationstal` blev løftet 0,36 → 0,41 (+0,05) to sekunder
+       efter et run hvis egen konklusion var at tallene **ikke findes på denne
+       maskine**. Løftets «bevis» var `_run_did_work_from_outcomes`: runnet
+       kaldte mindst ét værktøj. 24 kald, hvoraf 2 nævnte domænet — som søgning.
+       Engagement blev talt som måling.
+    2. `database-skema opslag` blev MÅLT til 0,85 af `db_schema_capability`
+       (353/353 tabeller ad to uafhængige veje) og derefter pumpet til 0,90 af
+       det samme arbejds-løft. Målingen blev dobbelttalt.
+
+    Et løft skal derfor komme fra `capability_measurement.set_domain_confidence`,
+    som skriver den målte værdi direkte og kræver et bevis. Et fejlet run er
+    stadig et (svagt) tegn på det modsatte, så det sænker.
+    """
     if outcome == "failed":
         return -_DROP_FAILED
-    # completed uden bevis, interrupted: observationen registreres, men intet
-    # løftes og intet sænkes — vi ved det ikke.
+    # completed, uanset hvor meget der blev arbejdet: intet løftes.
     return 0.0
 
 
@@ -306,10 +320,9 @@ def record_curriculum_outcome(
 ) -> dict[str, Any]:
     """Registrér et afsluttet curriculum-run mod domænets confidence.
 
-    Opretter domænet i ``confidence_by_domain`` hvis det mangler. Retning:
-    +0.05 kun for ``completed`` MED bevis for arbejde; −0.03 ved ``failed``;
-    ellers uændret. En task der melder succes uden at noget blev gjort løfter
-    ALDRIG noget.
+    Retning: −0.03 ved ``failed``; intet andet flytter tallet. Et gennemført
+    run registreres som en observation, ikke som en måling — og opretter derfor
+    heller ikke domænet. Se `_confidence_delta` for de to målinger bag.
     """
     import json
 
@@ -335,6 +348,22 @@ def record_curriculum_outcome(
     before = float(domains.get(name, _NEW_DOMAIN_START))
     delta = _confidence_delta(outcome, did_work)
     after = max(0.0, min(1.0, round(before + delta, 4)))
+    if delta == 0.0:
+        # Arbejdet registreres som OBSERVATION, ikke som måling — og domænet
+        # oprettes ikke. `face recognition` blev født præcis sådan: 0,30 fra
+        # oprettelsen plus 0,05 for et run der aldrig målte noget, og derefter
+        # stod det på 0,35 i alle 1.011 vektorer som en «svaghed».
+        return {
+            "recorded": False,
+            "reason": (
+                "arbejde er ikke en maaling — intet loeft"
+                if did_work
+                else "intet bevis for arbejde — intet loeft"
+            ),
+            "before": before,
+            "after": before,
+            "lifted": False,
+        }
     if not created and after == before:
         return {"recorded": False, "reason": "uændret", "before": before, "after": after}
     domains[name] = after

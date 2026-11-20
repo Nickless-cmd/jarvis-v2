@@ -1,4 +1,4 @@
-import { gyldigBindSti, interpolérUdtryk, slaaOp, vurderUdtryk } from './udtryk'
+import { gyldigBindSti, interpolérUdtryk, udfoldKontrol, slaaOp, vurderUdtryk } from './udtryk'
 
 const ctx = { seats: 12, pris: 29, navn: 'Bord', tom: '', liste: [3, 7, 11], objekt: { a: 1, b: 2 } }
 
@@ -206,5 +206,25 @@ describe('interpolation i tekst', () => {
     expect(() => interpolérUdtryk('{', ctx)).not.toThrow()
     expect(() => interpolérUdtryk('{}', ctx)).not.toThrow()
     expect(() => interpolérUdtryk('{ }{ }', ctx)).not.toThrow()
+  })
+})
+
+describe('kontrolstrukturer (DIL lag 2)', () => {
+  it('udfolder #each over en skalar liste', () => {
+    expect(udfoldKontrol('{#each xs som x}[{x}]{/each}', { xs: [1, 2, 3] }).tekst).toBe('[1][2][3]')
+  })
+
+  it('udfolder #if/:else', () => {
+    expect(udfoldKontrol('{#if a > 1}stor{:else}lille{/if}', { a: 0 }).tekst).toBe('lille')
+  })
+
+  it('degraderer til kildeteksten med en advarsel — kaster ikke', () => {
+    const r = udfoldKontrol('{#each nope som x}{x}{/each}', {})
+    expect(r.tekst).toBe('{#each nope som x}{x}{/each}')
+    expect(r.advarsler.length).toBeGreaterThan(0)
+  })
+
+  it('interpolérUdtryk udfolder først og regner bagefter', () => {
+    expect(interpolérUdtryk('{#each xs som x}{x};{/each}{1+1}', { xs: [1, 2] }).tekst).toBe('1;2;2')
   })
 })

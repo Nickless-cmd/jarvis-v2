@@ -535,9 +535,14 @@ export function interpolérUdtryk(
   tekst: string,
   kontekst: Record<string, unknown> = {},
 ): { tekst: string; advarsler: Advarsel[] } {
-  const advarsler: Advarsel[] = []
-  if (!tekst || !tekst.includes('{')) return { tekst, advarsler }
+  if (!tekst || !tekst.includes('{')) return { tekst, advarsler: [] }
+  // Kontrolstrukturer (lag 2) udfoldes FØR interpolering; en uudfoldelig struktur bliver tekst.
+  const udfoldet = udfoldKontrol(tekst, kontekst)
+  tekst = udfoldet.tekst
+  const advarsler: Advarsel[] = [...udfoldet.advarsler]
   const ud = tekst.replace(/\{([^{}]+)\}/g, (hel, indre: string) => {
+    // Uudfoldede kontrol-tags (se udfoldKontrol) er ikke udtryk.
+    if (/^\s*(#|\/(each|if)\s*$|:else\s*$)/.test(indre)) return hel
     const r = vurderUdtryk(indre, kontekst)
     for (const a of r.advarsler) advarsler.push(a)
     if (r.vaerdi === undefined) return hel
@@ -548,5 +553,133 @@ export function interpolérUdtryk(
     }
     return somTekst(r.vaerdi)
   })
+  return { tekst: ud, advarsler }
+}
+
+// --- kontrolstrukturer (DIL lag 2) --------------------------------------------------------------------
+//
+// `{#each liste som navn}…{/each}` og `{#if udtryk}…{:else}…{/if}` over SKALARE lister.
+// Samme grammatik og samme grænser som `_udfold_kontrol` i `core/services/jarvis_ui_guard.py`
+// (paritet vogtes af `tests/test_dil_bind_sti_paritet.py`). Der er INGEN ny evaluator:
+// betingelser går gennem `vurderUdtryk` ovenfor. Kaster aldrig — en struktur der ikke kan
+// udfoldes bliver stående som sin oprindelige tekst, og en advarsel forklarer hvorfor.
+
+export const KONTROL_MAX_DYBDE = 3
+export const KONTROL_MAX_LISTE = 50
+export const KONTROL_MAX_TEGN = 20000
+
+const KONTROL_TAG = /\{(#each [^{}]*|#if [^{}]*|:else|\/each|\/if)\}/g
+const EACH_RE = /^#each\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*|\[\d+\])*)\s+som\s+([a-zA-Z_][a-zA-Z0-9_]*)$/
+
+type KontrolNode =
+  | { t: 'tekst'; s: string }
+  | { t: 'each'; liste: string; navn: string; krop: KontrolNode[]; kilde: string }
+  | { t: 'if'; udtryk: string; da: KontrolNode[]; ellers: KontrolNode[]; kilde: string }
+
+function erSkalarVaerdi(v: unknown): boolean {
+  return typeof v === 'string' || typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v))
+}
+
+function sandhed(v: unknown): boolean {
+  return v !== undefined && v !== null && v !== false && v !== 0 && v !== ''
+}
+
+function skalarTekst(v: unknown): string {
+  if (typeof v === 'number') return Number.isInteger(v) ? String(v) : String(v).replace('.', ',')
+  return somTekst(v)
+}
+
+function parsKontrol(tekst: string, advarsler: Advarsel[]): KontrolNode[] | null {
+  type Ramme = { node: KontrolNode | null; liste: KontrolNode[]; efterElse: boolean; start: number }
+  const rod: KontrolNode[] = []
+  const stak: Ramme[] = [{ node: null, liste: rod, efterElse: false, start: 0 }]
+  let sidste = 0
+  KONTROL_TAG.lastIndex = 0
+  let m: RegExpExecArray | null
+  const top = () => stak[stak.length - 1]
+  while ((m = KONTROL_TAG.exec(tekst)) !== null) {
+    if (m.index > sidste) top().liste.push({ t: 'tekst', s: tekst.slice(sidste, m.index) })
+    sidste = m.index + m[0].length
+    const tag = m[1]
+    if (tag.startsWith('#each ')) {
+      const em = EACH_RE.exec(tag)
+      if (!em || !gyldigBindSti(em[1])) { advarsler.push(`ugyldig #each: "${m[0]}"`); return null }
+      if (stak.length > KONTROL_MAX_DYBDE) { advarsler.push(`kontrolstrukturer er for dybt nested (max ${KONTROL_MAX_DYBDE})`); return null }
+      const node: KontrolNode = { t: 'each', liste: em[1], navn: em[2], krop: [], kilde: '' }
+      top().liste.push(node)
+      stak.push({ node, liste: node.krop, efterElse: false, start: m.index })
+    } else if (tag.startsWith('#if ')) {
+      if (stak.length > KONTROL_MAX_DYBDE) { advarsler.push(`kontrolstrukturer er for dybt nested (max ${KONTROL_MAX_DYBDE})`); return null }
+      const udtryk = tag.slice(4).trim()
+      if (!udtryk) { advarsler.push('#if uden udtryk'); return null }
+      const node: KontrolNode = { t: 'if', udtryk, da: [], ellers: [], kilde: '' }
+      top().liste.push(node)
+      stak.push({ node, liste: node.da, efterElse: false, start: m.index })
+    } else if (tag === ':else') {
+      const r = top()
+      if (!r.node || r.node.t !== 'if' || r.efterElse) { advarsler.push('{:else} uden tilhørende #if'); return null }
+      r.efterElse = true
+      r.liste = r.node.ellers
+    } else {
+      const r = top()
+      const vent = tag === '/each' ? 'each' : 'if'
+      if (!r.node || r.node.t !== vent) { advarsler.push(`{${tag}} uden tilhørende #${vent}`); return null }
+      r.node.kilde = tekst.slice(r.start, sidste)
+      stak.pop()
+    }
+  }
+  if (sidste < tekst.length) top().liste.push({ t: 'tekst', s: tekst.slice(sidste) })
+  if (stak.length > 1) { advarsler.push('kontrolstruktur er ikke lukket'); return null }
+  return rod
+}
+
+function udfoldNoder(noder: KontrolNode[], kontekst: Record<string, unknown>, advarsler: Advarsel[]): string {
+  let ud = ''
+  for (const n of noder) {
+    if (n.t === 'tekst') { ud += n.s; continue }
+    if (n.t === 'each') {
+      const liste = slaaOp(n.liste, kontekst)
+      if (!Array.isArray(liste) || !liste.every(erSkalarVaerdi)) {
+        advarsler.push(`#each ${n.liste}: er ikke en liste af skalarer`)
+        ud += n.kilde
+        continue
+      }
+      if (liste.length > KONTROL_MAX_LISTE) {
+        advarsler.push(`#each ${n.liste}: listen har ${liste.length} elementer (max ${KONTROL_MAX_LISTE})`)
+        ud += n.kilde
+        continue
+      }
+      for (const element of liste) {
+        const indre = udfoldNoder(n.krop, { ...kontekst, [n.navn]: element }, advarsler)
+        ud += indre.split(`{${n.navn}}`).join(skalarTekst(element))
+      }
+      continue
+    }
+    const r = vurderUdtryk(n.udtryk, kontekst)
+    if (r.vaerdi === undefined) {
+      for (const a of r.advarsler) advarsler.push(a)
+      advarsler.push(`#if ${n.udtryk}: kunne ikke afgøres`)
+      ud += n.kilde
+      continue
+    }
+    ud += udfoldNoder(sandhed(r.vaerdi) ? n.da : n.ellers, kontekst, advarsler)
+  }
+  return ud
+}
+
+/** Udfold `{#each}`/`{#if}` i en tekst. Kaster ALDRIG. */
+export function udfoldKontrol(
+  tekst: string,
+  kontekst: Record<string, unknown> = {},
+): { tekst: string; advarsler: Advarsel[] } {
+  const advarsler: Advarsel[] = []
+  if (!tekst || !tekst.includes('{#')) return { tekst, advarsler }
+  const noder = parsKontrol(tekst, advarsler)
+  if (noder === null) return { tekst, advarsler }
+  const ud = udfoldNoder(noder, kontekst, advarsler)
+  if (ud.length > KONTROL_MAX_TEGN) {
+    advarsler.push(`udfoldet tekst er for lang (${ud.length} tegn, max ${KONTROL_MAX_TEGN})`)
+    return { tekst, advarsler }
+  }
   return { tekst: ud, advarsler }
 }

@@ -129,15 +129,27 @@ _Normaliserer og validerer ``jarvis-ui``-blokke FØR de når chatten._
 | function | `_tekst` | `(vaerdi)` | Spejl rendererens ``text()``: kun strenge, trimmet, tom = falsk. | [src](../../../core/services/jarvis_ui_guard.py#L152) |
 | function | `_sti_dele` | `(sti)` | Python-spejl af ``gyldigBindSti`` i desk-klienten. | [src](../../../core/services/jarvis_ui_guard.py#L157) |
 | function | `_er_skalar` | `(vaerdi)` | — | [src](../../../core/services/jarvis_ui_guard.py#L192) |
-| function | `_bind_indhold` | `(tekst, *, tool_results, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L200) |
-| function | `_liste` | `(vaerdi, maks)` | Spejl rendererens ``list()``: kun objekter, afkortet til ``maks``. | [src](../../../core/services/jarvis_ui_guard.py#L281) |
-| function | `_endeligt_tal` | `(vaerdi)` | Et tal vi kan regne med. ``NaN`` og ``Infinity`` ER tal for Python, men | [src](../../../core/services/jarvis_ui_guard.py#L288) |
-| function | `_diagnosticér` | `(data, dybde=…)` | Afgør om rendereren viser blokken. Returnerer (niveau, fejl). | [src](../../../core/services/jarvis_ui_guard.py#L297) |
-| function | `_validér` | `(tekst)` | — | [src](../../../core/services/jarvis_ui_guard.py#L814) |
-| function | `normalisér` | `(text, *, run_id=…, tool_results=…)` | Normalisér alle ``jarvis-ui``-blokke i teksten. Returnerer ny tekst. | [src](../../../core/services/jarvis_ui_guard.py#L834) |
-| function | `_normalisér_indre` | `(text, *, run_id, tool_results)` | — | [src](../../../core/services/jarvis_ui_guard.py#L862) |
-| function | `_registrér` | `(aendringer, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L938) |
-| function | `fejl_i_flader` | `(text, *, run_id=…, tool_results=…)` | Returnér de fejl der gør en ``jarvis-ui``-blok død eller ufuldstændig. | [src](../../../core/services/jarvis_ui_guard.py#L958) |
+| function | `_bind_refs` | `(tekst, *, tool_results, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L200) |
+| class | `_KontrolFejl` | `` | — | [src](../../../core/services/jarvis_ui_guard.py#L306) |
+| function | `_er_tal` | `(v)` | — | [src](../../../core/services/jarvis_ui_guard.py#L310) |
+| function | `_sandhed` | `(v)` | — | [src](../../../core/services/jarvis_ui_guard.py#L314) |
+| function | `_skalar_tekst` | `(v)` | — | [src](../../../core/services/jarvis_ui_guard.py#L318) |
+| function | `_tokens` | `(kilde)` | — | [src](../../../core/services/jarvis_ui_guard.py#L328) |
+| function | `_eval_udtryk` | `(kilde, scope)` | — | [src](../../../core/services/jarvis_ui_guard.py#L343) |
+| function | `_slaa_op` | `(dele, scope, sti)` | — | [src](../../../core/services/jarvis_ui_guard.py#L509) |
+| function | `_pars_kontrol` | `(tekst)` | Træ af ``("tekst", s)`` / ``("each", liste, navn, krop)`` / ``("if", udtryk, da, ellers)``. | [src](../../../core/services/jarvis_ui_guard.py#L523) |
+| function | `_udfold_noder` | `(noder, scope)` | — | [src](../../../core/services/jarvis_ui_guard.py#L570) |
+| function | `udfold_kontrol` | `(tekst, scope)` | Udfold kontrolstrukturer i én tekst. Kaster ``_KontrolFejl`` ved fejl. | [src](../../../core/services/jarvis_ui_guard.py#L594) |
+| function | `_udfold_indhold` | `(tekst)` | Udfold kontrolstrukturer i alle strenge i en flades JSON. Hård fejl pr. streng. | [src](../../../core/services/jarvis_ui_guard.py#L604) |
+| function | `_bind_indhold` | `(tekst, *, tool_results, run_id)` | Lag 1 (``{ref:…}``) og derefter lag 2 (``{#each}``/``{#if}``). | [src](../../../core/services/jarvis_ui_guard.py#L643) |
+| function | `_liste` | `(vaerdi, maks)` | Spejl rendererens ``list()``: kun objekter, afkortet til ``maks``. | [src](../../../core/services/jarvis_ui_guard.py#L659) |
+| function | `_endeligt_tal` | `(vaerdi)` | Et tal vi kan regne med. ``NaN`` og ``Infinity`` ER tal for Python, men | [src](../../../core/services/jarvis_ui_guard.py#L666) |
+| function | `_diagnosticér` | `(data, dybde=…)` | Afgør om rendereren viser blokken. Returnerer (niveau, fejl). | [src](../../../core/services/jarvis_ui_guard.py#L675) |
+| function | `_validér` | `(tekst)` | — | [src](../../../core/services/jarvis_ui_guard.py#L1192) |
+| function | `normalisér` | `(text, *, run_id=…, tool_results=…)` | Normalisér alle ``jarvis-ui``-blokke i teksten. Returnerer ny tekst. | [src](../../../core/services/jarvis_ui_guard.py#L1212) |
+| function | `_normalisér_indre` | `(text, *, run_id, tool_results)` | — | [src](../../../core/services/jarvis_ui_guard.py#L1240) |
+| function | `_registrér` | `(aendringer, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L1316) |
+| function | `fejl_i_flader` | `(text, *, run_id=…, tool_results=…)` | Returnér de fejl der gør en ``jarvis-ui``-blok død eller ufuldstændig. | [src](../../../core/services/jarvis_ui_guard.py#L1336) |
 
 ## `core/services/jarvisx_bridge.py`
 _JarvisX tool-bridge — bidirectional dispatch over WebSocket._

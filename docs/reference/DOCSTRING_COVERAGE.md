@@ -2036,7 +2036,7 @@ Generated from source. 10349/18926 functions/methods documented (54%). The list 
 - `core/services/self_deception_guard.py` :: `DeceptionGuardTrace.has_reframes` (L60)
 - `core/services/self_deception_guard.py` :: `DeceptionGuardTrace.to_dict` (L69)
 - `core/services/self_dream_state_surface.py` :: `group_names` (L83)
-- `core/services/self_experiments.py` :: `build_self_experiments_surface` (L728)
+- `core/services/self_experiments.py` :: `build_self_experiments_surface` (L735)
 - `core/services/self_model_blind_spots.py` :: `list_blind_spots` (L292)
 - `core/services/self_model_signal_tracking.py` :: `build_runtime_self_model_signal_surface` (L169)
 - `core/services/self_model_signal_tracking.py` :: `refresh_runtime_self_model_signal_statuses` (L68)

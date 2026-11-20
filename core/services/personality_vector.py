@@ -464,6 +464,26 @@ def _merge_vector(current: dict, updates: dict) -> dict:
         current_val = _safe_json_field(current.get(key), {})
         update_val = updates.get(key)
         if isinstance(update_val, dict):
+            if key == "confidence_by_domain":
+                # Målt 20/11-2026: kl. 05:45:13 skrev den mekaniske sti 0,43 for
+                # «souls-build analyse» — et +0,05-løft fra et run der faktisk
+                # gjorde noget. 3,9 s senere skrev LLM-opdateringen 0,38
+                # tilbage, sit eget skøn, og målingen var væk (v55864 -> v55865).
+                # Det var ikke et enkelt uheld: skønnet vandt hver gang, så
+                # confidence aldrig kunne akkumulere en måling.
+                # Regel: en SELVRAPPORT må sætte et NYT domæne — det er dens
+                # eneste job — men aldrig flytte et der allerede står. Kun en
+                # måling flytter en eksisterende værdi.
+                merged = dict(current_val)
+                for navn, tal in update_val.items():
+                    if navn in current_val:
+                        continue
+                    try:
+                        merged[str(navn)] = max(0.0, min(1.0, round(float(tal), 4)))
+                    except (TypeError, ValueError):
+                        continue
+                result[key] = merged
+                continue
             merged = {**current_val, **update_val}
             # Fix 4: clamp emotional_baseline axes to [0.0, 1.0] so invalid LLM
             # output (negatives, values > 1) cannot corrupt the baseline.

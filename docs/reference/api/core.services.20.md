@@ -414,12 +414,12 @@ _Personality Vector — cumulative personality that grows over time._
 | function | `build_personality_vector_surface` | `()` | MC surface for personality vector. | [src](../../../core/services/personality_vector.py#L308) |
 | function | `_deterministic_update` | `(outcome_status, current)` | Fallback: small deterministic adjustments without LLM. | [src](../../../core/services/personality_vector.py#L329) |
 | function | `_merge_vector` | `(current, updates)` | Deep merge updates into current vector. | [src](../../../core/services/personality_vector.py#L458) |
-| function | `retire_self_model_signals` | `(signal_ids, *, reason)` | Træk self_model_signals tilbage (status `retired`) — modstykke til `retire_mistakes`. | [src](../../../core/services/personality_vector.py#L534) |
-| function | `_baseline_changed` | `(old, new_baseline)` | Fix 5 helper: return True if emotional_baseline values differ by > 0.001. | [src](../../../core/services/personality_vector.py#L577) |
-| function | `_safe_json_field` | `(value, default)` | — | [src](../../../core/services/personality_vector.py#L591) |
-| function | `_resolve_local_llm_target` | `()` | — | [src](../../../core/services/personality_vector.py#L604) |
-| function | `_call_llm` | `(target, system_prompt, user_prompt)` | Minimal LLM call via provider router target. | [src](../../../core/services/personality_vector.py#L615) |
-| function | `_parse_json_response` | `(text)` | — | [src](../../../core/services/personality_vector.py#L681) |
+| function | `retire_self_model_signals` | `(signal_ids, *, reason)` | Træk self_model_signals tilbage (status `retired`) — modstykke til `retire_mistakes`. | [src](../../../core/services/personality_vector.py#L554) |
+| function | `_baseline_changed` | `(old, new_baseline)` | Fix 5 helper: return True if emotional_baseline values differ by > 0.001. | [src](../../../core/services/personality_vector.py#L597) |
+| function | `_safe_json_field` | `(value, default)` | — | [src](../../../core/services/personality_vector.py#L611) |
+| function | `_resolve_local_llm_target` | `()` | — | [src](../../../core/services/personality_vector.py#L624) |
+| function | `_call_llm` | `(target, system_prompt, user_prompt)` | Minimal LLM call via provider router target. | [src](../../../core/services/personality_vector.py#L635) |
+| function | `_parse_json_response` | `(text)` | — | [src](../../../core/services/personality_vector.py#L701) |
 
 ## `core/services/pfsense_syslog.py`
 _core/services/pfsense_syslog.py_

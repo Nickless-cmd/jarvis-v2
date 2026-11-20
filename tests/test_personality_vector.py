@@ -342,3 +342,35 @@ def test_pension_af_self_model_signal_fejler_hoejt(isolated_runtime):
     with pytest.raises(ValueError):  # ét ukendt id → intet ændres
         retire_self_model_signals(["sig-1", "findes-ikke"], reason="r")
     assert get_runtime_self_model_signal("sig-1")["status"] == "active"
+
+
+# ── Skønnet må ikke overskrive en måling (20/11-2026) ───────────────────────
+
+
+def test_selvrapport_flytter_ikke_en_maalt_vaerdi():
+    """Målt 20/11-2026: v55864 bar 0,43 for «souls-build analyse» — skrevet af
+    den mekaniske sti efter et run der faktisk gjorde noget. v55865, 3,9 s
+    senere, stod der 0,38 igen: LLM-opdateringens eget skøn overskrev målingen.
+    Skete det hver gang, kunne confidence aldrig akkumulere noget som helst."""
+    from core.services.personality_vector import _merge_vector
+
+    current = {"confidence_by_domain": '{"souls-build analyse": 0.43}'}
+    merged = _merge_vector(current, {"confidence_by_domain": {"souls-build analyse": 0.38}})
+
+    assert merged["confidence_by_domain"]["souls-build analyse"] == 0.43, (
+        "skønnet overskrev en målt værdi — så kan confidence aldrig flytte sig"
+    )
+
+
+def test_selvrapport_saetter_stadig_et_nyt_domaene():
+    """Filteret må ikke gøre vektoren død: et domæne der IKKE står der endnu er
+    netop hvad selvrapporten skal kunne tilføje — som startpunkt, ikke som dom."""
+    from core.services.personality_vector import _merge_vector
+
+    current = {"confidence_by_domain": '{"python": 0.7}'}
+    merged = _merge_vector(
+        current, {"confidence_by_domain": {"python": 0.1, "nyt domæne": 0.31}}
+    )
+
+    assert merged["confidence_by_domain"]["python"] == 0.7
+    assert merged["confidence_by_domain"]["nyt domæne"] == 0.31

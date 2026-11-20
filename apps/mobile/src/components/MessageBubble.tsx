@@ -1,5 +1,5 @@
 import { Brain, Check, Copy, MoreHorizontal, Pin, PinOff, RotateCw, Share2, Square, TextCursorInput, ThumbsDown, ThumbsUp, Volume2, History } from 'lucide-react-native'
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import Markdown from 'react-native-markdown-display'
 import MarkdownIt from 'markdown-it'
 import { enforceStructure } from '../lib/enforceStructure'
@@ -12,7 +12,7 @@ import { useAuthOptional } from '../state/AuthContext'
 import { sendMessageFeedback } from '../lib/apiClient'
 import { Animated, Linking, Modal, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native'
 import { CodeBlock } from './CodeBlock'
-import { NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
+import { FladeStreamingContext, NativeRichBlock } from './NativeRichBlock'
 import { MessageAttachments } from './MessageAttachments'
 import type { ChatMessage } from '../lib/types'
 import type { PersistedBlock } from '../lib/persistedBlocks'
@@ -36,11 +36,24 @@ const SOURCE_RE = /https?:\/\/([^\s/)\]]+)/gi
 // Kodeblokke tegnes af CodeBlock (afrundet flade, syntaksfarver, kopiér-knap)
 // i stedet for markdown-bibliotekets flade <Text>. Reglerne ligger her frem
 // for i `style`, fordi det ikke er en STIL-forskel men en anden komponent.
+/** `jarvis-ui`-blok (DIL lag 3+4). Under streaming tegnes en halv blok som delvis flade, og en
+ *  flade der ikke kan tegnes falder tilbage til koden — men aldrig over en flade der virkede. */
+function FladeFence({ code, language }: { code: string; language?: string }) {
+  const streaming = useContext(FladeStreamingContext)
+  return (
+    <NativeRichBlock
+      code={code}
+      hostMessageIsStreaming={streaming}
+      fallbackNode={streaming ? null : <CodeBlock code={code} language={language} />}
+    />
+  )
+}
+
 const MARKDOWN_REGLER = {
   fence: (node: { key: string; content: string; sourceInfo?: string }) => {
     const lang = String(node.sourceInfo ?? '').trim().toLowerCase()
-    if (lang === 'jarvis-ui' && parseNativeRichSpec(node.content)) {
-      return <NativeRichBlock key={node.key} code={node.content} />
+    if (lang === 'jarvis-ui') {
+      return <FladeFence key={node.key} code={node.content} language={node.sourceInfo} />
     }
     return <CodeBlock key={node.key} code={node.content} language={node.sourceInfo} />
   },
@@ -89,8 +102,9 @@ function haandterLink(url: string): boolean {
 /** Én markdown-blok. En færdig blok er en uforanderlig streng og parses aldrig
  *  igen; under streaming er det kun den sidste blok der ændrer sig (se
  *  lib/markdownBlokke — samme opdeling som desk). */
-const MarkdownBlok = memo(function MarkdownBlok({ tekst, stil }: { tekst: string; stil: StyleSheet.NamedStyles<any> }) {
+const MarkdownBlok = memo(function MarkdownBlok({ tekst, stil, streaming = false }: { tekst: string; stil: StyleSheet.NamedStyles<any>; streaming?: boolean }) {
   return (
+    <FladeStreamingContext.Provider value={streaming}>
     <Markdown
       markdownit={markdownItInstance}
       style={stil}
@@ -99,6 +113,7 @@ const MarkdownBlok = memo(function MarkdownBlok({ tekst, stil }: { tekst: string
     >
       {tekst}
     </Markdown>
+    </FladeStreamingContext.Provider>
   )
 })
 
@@ -306,7 +321,7 @@ export const MessageBubble = memo(function MessageBubble({
           {/* Samme blokstruktur-rettelse som desk: modellen skriver tit tabeller
               og overskrifter på én linje (19/9-2026, Bjørns tråd). */}
           <View>
-            {blokke.map((b, i) => <MarkdownBlok key={i} tekst={b} stil={markdownStyles} />)}
+            {blokke.map((b, i) => <MarkdownBlok key={i} tekst={b} stil={markdownStyles} streaming={streaming && i === blokke.length - 1} />)}
           </View>
         </Pressable>
       )}

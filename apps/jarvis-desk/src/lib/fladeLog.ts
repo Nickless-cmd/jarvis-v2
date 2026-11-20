@@ -27,7 +27,7 @@
  * session, så en ukendt fejlform ikke kan oversvømme serveren.
  */
 
-export type FladeUdfald = 'native' | 'native-delvis' | 'parse-null' | 'wrong-lang' | 'no-pre-node'
+export type FladeUdfald = 'native' | 'native-delvis' | 'settle-afvigelse' | 'parse-null' | 'wrong-lang' | 'no-pre-node'
 
 export interface FladeSnapshot {
   udfald: FladeUdfald

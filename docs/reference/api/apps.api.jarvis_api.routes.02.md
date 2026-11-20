@@ -213,9 +213,9 @@ _Klientlog ved renderbeslutningen — fire målepunkter, ingen guard._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `FladeSnapshot` | `` | Ét øjebliksbillede af en renderbeslutning. | [src](../../../apps/api/jarvis_api/routes/flade_log.py#L63) |
-| function | `_antal_i_dag` | `()` | Antal linjer skrevet i dag. Læses kun når filen findes. | [src](../../../apps/api/jarvis_api/routes/flade_log.py#L77) |
-| function | `flade_log` | `(snapshot)` | Modtag ét snapshot og skriv det. Svarer altid 202. | [src](../../../apps/api/jarvis_api/routes/flade_log.py#L91) |
+| class | `FladeSnapshot` | `` | Ét øjebliksbillede af en renderbeslutning. | [src](../../../apps/api/jarvis_api/routes/flade_log.py#L66) |
+| function | `_antal_i_dag` | `()` | Antal linjer skrevet i dag. Læses kun når filen findes. | [src](../../../apps/api/jarvis_api/routes/flade_log.py#L82) |
+| function | `flade_log` | `(snapshot)` | Modtag ét snapshot og skriv det. Svarer altid 202. | [src](../../../apps/api/jarvis_api/routes/flade_log.py#L96) |
 
 ## `apps/api/jarvis_api/routes/geo.py`
 _HTTP-indgang til Nominatim-opslagene (PWA har ingen Electron-bro)._

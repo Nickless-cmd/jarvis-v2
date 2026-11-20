@@ -1,4 +1,4 @@
-import { useContext, useId, useState } from 'react'
+import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { AlertTriangle, CheckCircle2, CircleAlert, Info, MapPin } from 'lucide-react-native'
 import Svg, { Line, Polyline, Rect as SvgRect } from 'react-native-svg'
@@ -9,6 +9,8 @@ import { FladeDeferredTurnContext } from '../lib/fladeDeferredTurn'
 import type { DeferredToolUdfald } from '../lib/fladeHandling'
 import { lineDiff } from '../lib/diff'
 import { interpolérUdtryk } from '../lib/udtryk'
+import { kompilérFlade, type FladeProgram } from '../lib/fladeProgram'
+import { fladeStatus, settleKontrol, vaelgVisning } from '../lib/fladeVisning'
 
 type Json = Record<string, unknown>
 export type NativeSpec =
@@ -68,10 +70,19 @@ const CHART_MAX_SERIER = 4
 const CHART_MAX_PUNKTER = 40
 const TREE_MAX_DYBDE = 8
 
-export function parseNativeRichSpec(code: string): NativeSpec | null {
-  let raw: Json
-  try { raw = JSON.parse(code) as Json } catch { return null }
-  return parseNode(raw, 1)
+/** Er beskeden fladen sidder i stadig ved at blive streamet? Sat af `MessageBubble`. */
+export const FladeStreamingContext = createContext(false)
+
+/** Compile-laget (DIL lag 3). Mobil manglede delvis-JSON helt: en halv blok faldt til rå kode.
+ *  `delvis` er KUN sat mens blokken streames — se `lib/delvisJson.ts`. */
+export function parseNativeRichSpec(code: string, delvis = false): NativeSpec | null {
+  return parseNativeRichProgram(code, delvis).spec
+}
+
+export function parseNativeRichProgram(code: string, delvis = false): { spec: NativeSpec | null; program: FladeProgram | null } {
+  const program = kompilérFlade(code, delvis)
+  if (!program) return { spec: null, program: null }
+  return { spec: parseNode(program.rod, 1), program }
 }
 
 // Rekursion (14/11-2026): mobil-parseren var FLAD, saa `box` kunne ikke
@@ -324,9 +335,38 @@ const trinVaerdier = (f: { min: number; max: number; step: number }): number[] =
   return Array.from({ length: maks }, (_, i) => Number((f.min + i * f.step).toFixed(4)))
 }
 
-export function NativeRichBlock({ code }: { code: string }) {
-  const spec = parseNativeRichSpec(code)
-  return spec ? <FladeNode spec={spec} /> : null
+export function NativeRichBlock({
+  code,
+  hostMessageIsStreaming = false,
+  fallbackNode = null,
+}: {
+  code: string
+  hostMessageIsStreaming?: boolean
+  /** Vises kun når der hverken er en ny eller en sidst virkende flade. */
+  fallbackNode?: ReactNode
+}) {
+  // DIL lag 4: et nyt program der fejler lader det SIDST VIRKENDE stå.
+  const { spec: ny, program } = parseNativeRichProgram(code, hostMessageIsStreaming)
+  const sidst = useRef<NativeSpec | null>(null)
+  if (ny) sidst.current = ny
+  const visning = vaelgVisning(ny, sidst.current)
+  const isSourceStreaming = hostMessageIsStreaming && (program === null || program.trunkeret)
+  const afsluttet = !isSourceStreaming && !hostMessageIsStreaming
+  const [afvigelser, setAfvigelser] = useState<string[]>([])
+  // S3: efterkontrol af det tolkede resultat når streamen er stoppet (mobil har ingen DOM-tekst).
+  useEffect(() => {
+    if (!afsluttet || !ny || !program) { setAfvigelser([]); return }
+    setAfvigelser(settleKontrol(program, ny).afvigelser)
+  }, [afsluttet, code]) // eslint-disable-line react-hooks/exhaustive-deps
+  const styles = useStyles(makeStyles)
+  if (!visning.spec) return <>{fallbackNode}</>
+  const status = fladeStatus({ isSourceStreaming, hostMessageIsStreaming, fallback: visning.fallback, afvigelser })
+  return (
+    <View>
+      <FladeNode spec={visning.spec} />
+      {status ? <Text style={styles.muted} accessibilityLiveRegion="polite">{status}</Text> : null}
+    </View>
+  )
 }
 
 // Hver node er sin EGEN komponent (14/11-2026), saa `control` og `tabs` i et

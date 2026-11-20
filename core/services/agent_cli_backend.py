@@ -253,7 +253,7 @@ def _command(provider: str, executable: str, model: str, root: str, prompt: str,
     if provider == "codex-cli":
         cmd = [executable, "exec", "--ephemeral", "--color", "never", "-C", root,
                "--sandbox", "workspace-write" if writes else "read-only",
-               "--output-last-message", output_path]
+               "--json", "--output-last-message", output_path]
         if selected and selected != "default":
             cmd += ["--model", selected]
         return [*cmd, prompt]
@@ -325,6 +325,47 @@ def _claude_text(stdout: str) -> tuple[str, int, int]:
     """
     parsed = _claude_parse(stdout)
     return parsed["text"], parsed["input_tokens"], parsed["output_tokens"]
+
+
+_CODEX_TOOL_ITEM_TYPES = frozenset({
+    "command_execution",
+    "file_change",
+    "mcp_tool_call",
+    "dynamic_tool_call",
+    "collab_tool_call",
+    "collab_agent_tool_call",
+    "web_search",
+    "image_generation",
+})
+
+
+def _codex_tool_calls(stdout: str) -> int | None:
+    """Tæl afsluttede værktøjs-items fra ``codex exec --json``.
+
+    Codex 0.166.0 udsender samme kald som både ``item.started`` og
+    ``item.completed``. Kun sidstnævnte tælles, og item-id'et deduplikeres.
+    Hvis der slet ikke findes Codex JSON-events, kan versionens måleevne ikke
+    bekræftes; ``None`` bevarer forskellen på "ikke målt" og "målt nul".
+    """
+    så_vi_event = False
+    afsluttede_ids: set[str] = set()
+    for linje in stdout.splitlines():
+        try:
+            event = json.loads(linje)
+        except (TypeError, ValueError):
+            continue
+        if not isinstance(event, dict) or not isinstance(event.get("type"), str):
+            continue
+        så_vi_event = True
+        if event["type"] != "item.completed":
+            continue
+        item = event.get("item")
+        if not isinstance(item, dict) or item.get("type") not in _CODEX_TOOL_ITEM_TYPES:
+            continue
+        item_id = str(item.get("id") or "")
+        if item_id:
+            afsluttede_ids.add(item_id)
+    return len(afsluttede_ids) if så_vi_event else None
 
 
 def _claude_parse(stdout: str) -> dict[str, Any]:
@@ -518,16 +559,20 @@ def run_task_cli(*, agent: dict[str, Any], prompt: str, run_id: str,
             text = Path(output_path).read_text(encoding="utf-8").strip()
             input_tokens = max(1, len(prompt) // 4)
             output_tokens = max(1, len(text) // 4)
-            cli_tool_calls = 0
+            cli_tool_calls = _codex_tool_calls(stdout)
         if not text:
             raise CliBackendError(f"{provider} returnerede ingen leverance")
-        return {
+        result = {
             "status": "completed", "text": text, "provider": provider, "model": model,
             "execution_mode": "task-cli-backend", "source": "Task.model",
             "input_tokens": input_tokens, "output_tokens": output_tokens, "cost_usd": 0.0,
             "run_id": run_id,
-            "total_tool_calls": cli_tool_calls,
         }
+        # Et fraværende felt betyder "ikke målt" for fitness-porten. Den
+        # fortolker et tilstedeværende null som nul, så None må ikke serialiseres.
+        if cli_tool_calls is not None:
+            result["total_tool_calls"] = cli_tool_calls
+        return result
     finally:
         try:
             os.unlink(output_path)

@@ -20,6 +20,7 @@ def test_codex_command_uses_task_root_and_native_sandbox(tmp_path):
     assert cmd[:2] == ["/bin/codex", "exec"]
     assert cmd[cmd.index("-C") + 1] == str(tmp_path)
     assert cmd[cmd.index("--sandbox") + 1] == "workspace-write"
+    assert "--json" in cmd
     assert "--ephemeral" in cmd and "--model" not in cmd
 
 
@@ -375,3 +376,103 @@ def test_et_fejlet_vaerktoejskald_bogfoeres_som_error(monkeypatch, tmp_path):
         conn.close()
     assert row[0] == "error", f"fejlet kald stod som {row[0]!r}"
     assert "No such file" in row[1]
+
+
+# Ægte stdout fra `codex-cli 0.166.0 exec --json` målt 20/11-2026. Samme
+# command_execution udsendes både som started og completed; kun completed må
+# tælles, ellers bliver hvert værktøjskald fordoblet.
+_CODEX_JSONL_PROVE = "\n".join([
+    '{"type":"thread.started","thread_id":"01a1f6a2-53e4-7911-8c11-eedde4311120"}',
+    '{"type":"turn.started"}',
+    '{"type":"item.started","item":{"id":"item_0","type":"command_execution",'
+    '"command":"/bin/bash -lc pwd","aggregated_output":"","exit_code":null,'
+    '"status":"in_progress"}}',
+    '{"type":"item.completed","item":{"id":"item_0","type":"command_execution",'
+    '"command":"/bin/bash -lc pwd","aggregated_output":"/work\\n","exit_code":0,'
+    '"status":"completed"}}',
+    '{"type":"item.completed","item":{"id":"item_1","type":"agent_message",'
+    '"text":"done"}}',
+    '{"type":"turn.completed","usage":{"input_tokens":35062,'
+    '"cached_input_tokens":28672,"output_tokens":167}}',
+])
+
+
+def test_codex_json_events_udfylder_total_tool_calls(monkeypatch, tmp_path):
+    """Codex-feltet kommer fra målte JSON-events, ikke en hardcodet nulværdi."""
+    import core.services.agent_cli_backend as b
+
+    class FakeProc:
+        returncode = 0
+        pid = 12345
+
+        def communicate(self, timeout=None):
+            return _CODEX_JSONL_PROVE, ""
+
+        def poll(self):
+            return 0
+
+        def wait(self, timeout=None):
+            return 0
+
+    def fake_popen(cmd, **kwargs):
+        output_path = cmd[cmd.index("--output-last-message") + 1]
+        from pathlib import Path
+        Path(output_path).write_text("done", encoding="utf-8")
+        return FakeProc()
+
+    monkeypatch.setattr(b, "resolve_executable", lambda p: "/bin/codex")
+    monkeypatch.setattr(b, "admission_reason", lambda p: "")
+    monkeypatch.setattr(b, "_assignment", lambda aid: {})
+    monkeypatch.setattr(b, "_working_root", lambda agent, asg: (str(tmp_path), False))
+    monkeypatch.setattr(b.subprocess, "Popen", fake_popen)
+
+    ud = b.run_task_cli(
+        agent={"agent_id": "agent-x", "provider": "codex-cli", "model": "default",
+               "tool_policy": "read-only-runtime"},
+        prompt="kør pwd", run_id="run-x",
+    )
+
+    assert ud["status"] == "completed"
+    assert ud["total_tool_calls"] == 1
+
+
+def test_codex_uden_json_events_udelader_total_tool_calls(monkeypatch, tmp_path):
+    """Manglende måling må ikke serialiseres som nul eller null.
+
+    Fitness-porten læser et tilstedeværende ``null`` som nul, så feltet skal
+    være helt fraværende, når Codex-versionen ikke leverer JSON-events.
+    """
+    import core.services.agent_cli_backend as b
+
+    class FakeProc:
+        returncode = 0
+        pid = 12345
+
+        def communicate(self, timeout=None):
+            return "advarsel: denne version leverer ikke JSON-events", ""
+
+        def poll(self):
+            return 0
+
+        def wait(self, timeout=None):
+            return 0
+
+    def fake_popen(cmd, **kwargs):
+        output_path = cmd[cmd.index("--output-last-message") + 1]
+        from pathlib import Path
+        Path(output_path).write_text("done", encoding="utf-8")
+        return FakeProc()
+
+    monkeypatch.setattr(b, "resolve_executable", lambda p: "/bin/codex")
+    monkeypatch.setattr(b, "admission_reason", lambda p: "")
+    monkeypatch.setattr(b, "_assignment", lambda aid: {})
+    monkeypatch.setattr(b, "_working_root", lambda agent, asg: (str(tmp_path), False))
+    monkeypatch.setattr(b.subprocess, "Popen", fake_popen)
+
+    ud = b.run_task_cli(
+        agent={"agent_id": "agent-x", "provider": "codex-cli", "model": "default",
+               "tool_policy": "read-only-runtime"},
+        prompt="svar", run_id="run-x",
+    )
+
+    assert "total_tool_calls" not in ud

@@ -14,7 +14,16 @@ import { chromium, type Browser, type Page } from 'playwright'
 
 const APP_DIR = fileURLToPath(new URL('../..', import.meta.url))
 
-const BAENK = `
+/** De to fladers forældre-ramme. Ordhalen er den SAMME komponent i begge —
+ *  det der kan gå galt er CSS-konteksten omkring den. Derfor skal bænken
+ *  kunne åbne begge: en måling der kun ser `.chatview` kan ikke svare på om
+ *  animationen også kører i code-fladen (målt 20/11-2026). */
+const RAMMER: Record<'chat' | 'code', { aabn: string; luk: string }> = {
+  chat: { aabn: '<div className="chatview">', luk: '</div>' },
+  code: { aabn: '<div className="raekkevisning"><div className="rv-svar">', luk: '</div></div>' },
+}
+
+const baenkKilde = (flade: 'chat' | 'code') => `
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MarkdownRenderer } from './src/components/rich/MarkdownRenderer'
@@ -23,7 +32,7 @@ function Baenk() {
   const [tekst, setTekst] = useState('')
   const [streaming, setStreaming] = useState(true)
   useEffect(() => { (window as any).__saetTekst = setTekst; (window as any).__saetStreaming = setStreaming }, [])
-  return <div className="chatview"><div id="krop" className="jarvis-body" style={{ width: 560 }}><MarkdownRenderer text={tekst} streaming={streaming} /></div></div>
+  return ${RAMMER[flade].aabn}<div id="krop" className="jarvis-body" style={{ width: 560 }}><MarkdownRenderer text={tekst} streaming={streaming} /></div>${RAMMER[flade].luk}
 }
 createRoot(document.getElementById('root')!).render(<Baenk />)
 `
@@ -36,11 +45,17 @@ export interface Baenk {
 }
 
 /** CSS kan overskrives pr. kald — mutationstests ændrer kilden, ikke bænken. */
-export async function aabnBaenk(opts: { theme: 'dark' | 'light'; reducedMotion?: boolean } = { theme: 'dark' }): Promise<Baenk> {
+export async function aabnBaenk(
+  opts: { theme: 'dark' | 'light'; reducedMotion?: boolean; flade?: 'chat' | 'code' } = { theme: 'dark' },
+): Promise<Baenk> {
+  const flade = opts.flade ?? 'chat'
   const css = (await readFile(join(APP_DIR, 'src/styles/tokens.css'), 'utf8'))
     + (await readFile(join(APP_DIR, 'src/styles/chat-reading.css'), 'utf8'))
+    // Code-fladen har sin egen transskript-styling. Uden den er «code»-kørslen
+    // bare chat-CSS i en anden wrapper, og så måler den intet om code mode.
+    + (flade === 'code' ? (await readFile(join(APP_DIR, 'src/styles/raekkevisning.css'), 'utf8')) : '')
   const res = await build({
-    stdin: { contents: BAENK, resolveDir: APP_DIR, loader: 'tsx', sourcefile: 'ord-baenk.tsx' },
+    stdin: { contents: baenkKilde(flade), resolveDir: APP_DIR, loader: 'tsx', sourcefile: 'ord-baenk.tsx' },
     bundle: true, write: false, outdir: 'out', format: 'iife', jsx: 'automatic',
     define: { 'process.env.NODE_ENV': '"production"', 'import.meta.url': '"file:///baenk/x.js"' }, logLevel: 'silent',
     loader: { '.svg': 'dataurl', '.png': 'dataurl', '.woff': 'dataurl', '.woff2': 'dataurl', '.ttf': 'dataurl' },

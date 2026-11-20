@@ -185,7 +185,15 @@ def generate_learning_curriculum() -> dict[str, object]:
             domains = _json.loads(str(pv.get("confidence_by_domain") or "{}"))
             weak = [(d, float(v)) for d, v in domains.items() if float(v) < 0.5]
             weak.sort(key=lambda x: x[1])
-            for domain, conf in weak[:3]:
+            # Puljen var `weak[:3]` — de samme tre domaener hver gang. Maalt
+            # 20/11-2026: 175 domaener under 0,5, og planen sendte tre, som
+            # derefter sad fast i `queued`. Materialiseringen kunne derfor
+            # aldrig naa kandidat 4 og nedefter, og svaret var «Curriculum is
+            # current» mens 172 svage domaener aldrig var blevet forsoegt.
+            # Nu sendes en kandidatpulje; materialize vaelger de 3 der ikke
+            # allerede ligger i koen.
+            kandidat_pulje = 12
+            for domain, conf in weak[:kandidat_pulje]:
                 curriculum.append({
                     "focus": domain,
                     "type": "weakness",
@@ -227,9 +235,9 @@ def generate_learning_curriculum() -> dict[str, object]:
             mistakes = _json.loads(str(pv.get("recurring_mistakes") or "[]"))
             for mistake in mistakes[:2]:
                 curriculum.append({
-                    "focus": str(mistake)[:60],
+                    "focus": _klip_ord_graense(mistake),
                     "type": "mistake_pattern",
-                    "suggestion": f"Undgå: {mistake[:60]}",
+                    "suggestion": f"Undgå: {_klip_ord_graense(mistake)}",
                     "priority": 0.7,
                 })
     except Exception as exc:
@@ -250,6 +258,9 @@ def generate_learning_curriculum() -> dict[str, object]:
         # samme fejlklasse som de otte flader 25/9-2026.
         "active": True,
         "curriculum": curriculum[:6],
+        # Visningen klipper til 6, men materialiseringen skal kunne vaelge
+        # blandt hele puljen — ellers binder display-loftet arbejdsloftet.
+        "candidates": curriculum,
         "focus_count": len(curriculum),
         "kilde_fejl": kilde_fejl,
         "summary": _curriculum_summary(curriculum, kilde_fejl),
@@ -279,6 +290,23 @@ def _curriculum_summary(
         return f"Ingen plan — kilderne fejlede: {', '.join(sorted(set(kilde_fejl)))}"
     return ("Ingen plan — ingen svage domaener, ingen gentagne fejl og ingen "
             "afsluttede eksperimenter at bygge paa")
+
+
+def _klip_ord_graense(tekst: object, loft: int = 180) -> str:
+    """Klip ved ORD-grænse, ikke midt i ordet.
+
+    Målt 20/11-2026: `mistake[:60]` klippede læringsmål midt i et ord
+    («ud fra proce») — målet mistede netop de ord der bar meningen, og
+    task'en kunne ikke arbejdes med konkret. Alle 5 seneste
+    curriculum-focus-task'er i runtime_tasks var klippet ved oprettelse.
+    """
+    s = str(tekst or "").strip()
+    if len(s) <= loft:
+        return s
+    afkortet = s[:loft]
+    if " " not in afkortet:
+        return afkortet
+    return afkortet.rsplit(" ", 1)[0]
 
 
 def observe_recent_visible_runs_for_self_experiments(
@@ -368,7 +396,10 @@ def materialize_learning_curriculum_tasks(
 ) -> dict[str, object]:
     """Turn top curriculum focuses into bounded runtime tasks."""
     curriculum = generate_learning_curriculum()
-    items = list(curriculum.get("curriculum") or [])
+    # `candidates` er den fulde pulje; `curriculum` er visningens 6.
+    items = list(
+        curriculum.get("candidates") or curriculum.get("curriculum") or []
+    )
     if not items:
         return {
             "created": 0,
@@ -395,13 +426,26 @@ def materialize_learning_curriculum_tasks(
     created_flow_ids: list[str] = []
     skipped = 0
 
-    for item in items[: max(limit, 1)]:
-        focus = str(item.get("focus") or "").strip()
-        suggestion = str(item.get("suggestion") or focus).strip()
-        focus_key = _curriculum_focus_key(focus)
+    # Frasorteringen laa EFTER klippet. `items[:limit]` tog de tre foerste —
+    # og fordi planen sorterer svage domaener stigende, er de tre altid de
+    # samme. Er de i forvejen i koen, blev de frasorteret, `created` var 0, og
+    # svaret var «Curriculum is current» — mens kandidat 4 og nedefter
+    # (gentagne fejl, afsluttede eksperimenter) aldrig blev naaet.
+    # Maalt 20/11-2026: 175 domaener under 0,5, og 5 curriculum-focus-tasker
+    # stod fast i `queued` — planen var et fast punkt.
+    # Nu frasorteres FOERST; limit klipper i det der faktisk er tilbage.
+    ready: list[dict[str, object]] = []
+    for item in items:
+        focus_key = _curriculum_focus_key(str(item.get("focus") or "").strip())
         if not focus_key or focus_key in existing_keys:
             skipped += 1
             continue
+        existing_keys.add(focus_key)
+        ready.append(item)
+
+    for item in ready[: max(limit, 1)]:
+        focus = str(item.get("focus") or "").strip()
+        suggestion = str(item.get("suggestion") or focus).strip()
         priority = _curriculum_priority(float(item.get("priority") or 0.0))
         task = runtime_tasks.create_task(
             kind="curriculum-focus",
@@ -436,7 +480,6 @@ def materialize_learning_curriculum_tasks(
         )
         created_task_ids.append(str(task.get("task_id") or ""))
         created_flow_ids.append(str(flow.get("flow_id") or ""))
-        existing_keys.add(focus_key)
 
     return {
         "created": len(created_items),

@@ -467,39 +467,39 @@ _Worktrees til skrivende kodeagenter (agent-contract-v1 C5a, spec 8.1 og 12.3)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `ensure_worktree_tables` | `(conn)` | — | [src](../../../core/services/agent_worktrees.py#L54) |
-| function | `worktree_root` | `()` | — | [src](../../../core/services/agent_worktrees.py#L84) |
-| function | `allowed_workspace_roots` | `()` | — | [src](../../../core/services/agent_worktrees.py#L88) |
-| function | `_iso` | `(dt)` | — | [src](../../../core/services/agent_worktrees.py#L93) |
-| function | `_parse` | `(value)` | — | [src](../../../core/services/agent_worktrees.py#L97) |
-| function | `_estimate_bytes` | `(repo, commit)` | — | [src](../../../core/services/agent_worktrees.py#L101) |
-| function | `_free_floor` | `(path)` | — | [src](../../../core/services/agent_worktrees.py#L111) |
-| function | `_holding_bytes` | `(conn, target)` | — | [src](../../../core/services/agent_worktrees.py#L116) |
-| function | `_quota` | `(conn, target)` | Taellingerne paa en GIVEN forbindelse. VIGTIGT: ``connect()`` ruller en aaben transaktion tilbage | [src](../../../core/services/agent_worktrees.py#L122) |
-| function | `quota_status` | `(*, target=…)` | — | [src](../../../core/services/agent_worktrees.py#L134) |
-| function | `reserve` | `(*, owner_user_id, assignment_id, repo_path, base_ref=…, target=…)` | Reserver plads og en plads i kvoten ATOMISK. Intet er oprettet paa disk endnu. | [src](../../../core/services/agent_worktrees.py#L140) |
-| function | `get` | `(*, worktree_id)` | — | [src](../../../core/services/agent_worktrees.py#L190) |
-| function | `get_for_assignment` | `(*, owner_user_id, assignment_id)` | — | [src](../../../core/services/agent_worktrees.py#L194) |
-| function | `repo_path_for_agent` | `(*, owner_user_id, agent_id)` | Repo-stien agenten allerede arbejder i — kilden naar et NYT assignment skal have sit eget worktree. | [src](../../../core/services/agent_worktrees.py#L199) |
-| function | `get_for_run` | `(*, run_id)` | Worktree'et for det run der kører lige nu — ``None`` hvis agenten ikke har ét. | [src](../../../core/services/agent_worktrees.py#L217) |
-| function | `_set` | `(worktree_id, **fields)` | — | [src](../../../core/services/agent_worktrees.py#L239) |
-| function | `materialize` | `(*, worktree_id)` | Opret selve git-worktree'et. Alt-eller-intet: ved fejl ryddes det halve, og reservationen frigives. | [src](../../../core/services/agent_worktrees.py#L247) |
-| function | `_prune_empty_parent` | `(path)` | Fjern den nu tomme foraelder (``agent-<hash>/``) efter et worktree er revet ned. | [src](../../../core/services/agent_worktrees.py#L270) |
-| function | `_discard_partial` | `(wt)` | — | [src](../../../core/services/agent_worktrees.py#L290) |
-| function | `provision` | `(*, owner_user_id, assignment_id, repo_path, base_ref=…, target=…)` | reserve + materialize som ét skridt; ved fejl er intet efterladt og reservationen frigivet. | [src](../../../core/services/agent_worktrees.py#L300) |
-| function | `writes_allowed` | `(*, worktree_id)` | — | [src](../../../core/services/agent_worktrees.py#L310) |
-| function | `check_growth` | `(*, worktree_id)` | Maal diskforbruget. Over kvoten (eller for lidt ledig plads) stopper NYE skrivninger og bevarer | [src](../../../core/services/agent_worktrees.py#L315) |
-| function | `snapshot_for_assignment` | `(*, assignment_id)` | Ved terminalt udfald: gem diff, aendrede filer og commits som artefakter, og bevar worktree'et | [src](../../../core/services/agent_worktrees.py#L331) |
-| function | `decide` | `(*, owner_user_id, worktree_id, decision)` | Registrer ejerens/approverens beslutning om det bevarede arbejde. Selve integrationen i hovedgrenen | [src](../../../core/services/agent_worktrees.py#L376) |
-| function | `_verified_remove` | `(wt)` | Fjern et worktree - KUN hvis posten, ejeren og stien hænger sammen. Returnerer om det lykkedes. | [src](../../../core/services/agent_worktrees.py#L399) |
-| function | `_archive` | `(wt)` | Pak diff + commits (bundle) i checksumverificerede artefakter foer fysisk oprydning. | [src](../../../core/services/agent_worktrees.py#L422) |
-| function | `_ghost_work_safe` | `(wt)` | Er der INTET unikt arbejde tilbage uden for den manglende mappe? Sandt kun naar agentens | [src](../../../core/services/agent_worktrees.py#L445) |
-| function | `_release_ghost` | `(wt, t)` | Luk en post hvis mappe er væk, efter verificeret sti/ejer og at intet unikt arbejde gaar tabt. | [src](../../../core/services/agent_worktrees.py#L469) |
-| function | `drift_report` | `()` | Skrivebeskyttet vagt: poster der holder kvote (HOLDING) men hvis sti ikke findes paa disken. | [src](../../../core/services/agent_worktrees.py#L484) |
-| function | `sweep` | `(*, now=…)` | Retentionrunde. Afgjort + 7 dage -> fjernes. Ubehandlet: opmaerksomhed efter 14 dage, arkiveres | [src](../../../core/services/agent_worktrees.py#L495) |
-| function | `_mergede_grene` | `(repo, cache)` | Grennavne der er fuldt merget i ``main`` — ét git-kald pr. repo, ikke pr. raekke. | [src](../../../core/services/agent_worktrees.py#L543) |
-| function | `pending_decisions` | `(*, min_age=…)` | Bevarede worktrees der venter paa en beslutning - altsaa arbejde nogen skal tage stilling til. | [src](../../../core/services/agent_worktrees.py#L568) |
-| function | `reconcile` | `()` | Markér aktive/bevarede poster hvis worktree er forsvundet fra disken som ``unknown`` (ikke 'removed'). | [src](../../../core/services/agent_worktrees.py#L609) |
+| function | `ensure_worktree_tables` | `(conn)` | — | [src](../../../core/services/agent_worktrees.py#L60) |
+| function | `worktree_root` | `()` | — | [src](../../../core/services/agent_worktrees.py#L90) |
+| function | `allowed_workspace_roots` | `()` | — | [src](../../../core/services/agent_worktrees.py#L94) |
+| function | `_iso` | `(dt)` | — | [src](../../../core/services/agent_worktrees.py#L99) |
+| function | `_parse` | `(value)` | — | [src](../../../core/services/agent_worktrees.py#L103) |
+| function | `_estimate_bytes` | `(repo, commit)` | — | [src](../../../core/services/agent_worktrees.py#L107) |
+| function | `_free_floor` | `(path)` | — | [src](../../../core/services/agent_worktrees.py#L117) |
+| function | `_holding_bytes` | `(conn, target)` | — | [src](../../../core/services/agent_worktrees.py#L122) |
+| function | `_quota` | `(conn, target)` | Taellingerne paa en GIVEN forbindelse. VIGTIGT: ``connect()`` ruller en aaben transaktion tilbage | [src](../../../core/services/agent_worktrees.py#L128) |
+| function | `quota_status` | `(*, target=…)` | — | [src](../../../core/services/agent_worktrees.py#L140) |
+| function | `reserve` | `(*, owner_user_id, assignment_id, repo_path, base_ref=…, target=…)` | Reserver plads og en plads i kvoten ATOMISK. Intet er oprettet paa disk endnu. | [src](../../../core/services/agent_worktrees.py#L146) |
+| function | `get` | `(*, worktree_id)` | — | [src](../../../core/services/agent_worktrees.py#L196) |
+| function | `get_for_assignment` | `(*, owner_user_id, assignment_id)` | — | [src](../../../core/services/agent_worktrees.py#L200) |
+| function | `repo_path_for_agent` | `(*, owner_user_id, agent_id)` | Repo-stien agenten allerede arbejder i — kilden naar et NYT assignment skal have sit eget worktree. | [src](../../../core/services/agent_worktrees.py#L205) |
+| function | `get_for_run` | `(*, run_id)` | Worktree'et for det run der kører lige nu — ``None`` hvis agenten ikke har ét. | [src](../../../core/services/agent_worktrees.py#L223) |
+| function | `_set` | `(worktree_id, **fields)` | — | [src](../../../core/services/agent_worktrees.py#L245) |
+| function | `materialize` | `(*, worktree_id)` | Opret selve git-worktree'et. Alt-eller-intet: ved fejl ryddes det halve, og reservationen frigives. | [src](../../../core/services/agent_worktrees.py#L253) |
+| function | `_prune_empty_parent` | `(path)` | Fjern den nu tomme foraelder (``agent-<hash>/``) efter et worktree er revet ned. | [src](../../../core/services/agent_worktrees.py#L276) |
+| function | `_discard_partial` | `(wt)` | — | [src](../../../core/services/agent_worktrees.py#L296) |
+| function | `provision` | `(*, owner_user_id, assignment_id, repo_path, base_ref=…, target=…)` | reserve + materialize som ét skridt; ved fejl er intet efterladt og reservationen frigivet. | [src](../../../core/services/agent_worktrees.py#L306) |
+| function | `writes_allowed` | `(*, worktree_id)` | — | [src](../../../core/services/agent_worktrees.py#L316) |
+| function | `check_growth` | `(*, worktree_id)` | Maal diskforbruget. Over kvoten (eller for lidt ledig plads) stopper NYE skrivninger og bevarer | [src](../../../core/services/agent_worktrees.py#L321) |
+| function | `snapshot_for_assignment` | `(*, assignment_id)` | Ved terminalt udfald: gem diff, aendrede filer og commits som artefakter, og bevar worktree'et | [src](../../../core/services/agent_worktrees.py#L337) |
+| function | `decide` | `(*, owner_user_id, worktree_id, decision)` | Registrer ejerens/approverens beslutning om det bevarede arbejde. Selve integrationen i hovedgrenen | [src](../../../core/services/agent_worktrees.py#L382) |
+| function | `_verified_remove` | `(wt)` | Fjern et worktree - KUN hvis posten, ejeren og stien hænger sammen. Returnerer om det lykkedes. | [src](../../../core/services/agent_worktrees.py#L405) |
+| function | `_archive` | `(wt)` | Pak diff + commits (bundle) i checksumverificerede artefakter foer fysisk oprydning. | [src](../../../core/services/agent_worktrees.py#L428) |
+| function | `_ghost_work_safe` | `(wt)` | Er der INTET unikt arbejde tilbage uden for den manglende mappe? Sandt kun naar agentens | [src](../../../core/services/agent_worktrees.py#L451) |
+| function | `_release_ghost` | `(wt, t)` | Luk en post hvis mappe er væk, efter verificeret sti/ejer og at intet unikt arbejde gaar tabt. | [src](../../../core/services/agent_worktrees.py#L475) |
+| function | `drift_report` | `()` | Skrivebeskyttet vagt: poster der holder kvote (HOLDING) men hvis sti ikke findes paa disken. | [src](../../../core/services/agent_worktrees.py#L490) |
+| function | `sweep` | `(*, now=…)` | Retentionrunde. Afgjort + 7 dage -> fjernes. Ubehandlet: opmaerksomhed efter 14 dage, arkiveres | [src](../../../core/services/agent_worktrees.py#L501) |
+| function | `_mergede_grene` | `(repo, cache)` | Grennavne der er fuldt merget i ``main`` — ét git-kald pr. repo, ikke pr. raekke. | [src](../../../core/services/agent_worktrees.py#L549) |
+| function | `pending_decisions` | `(*, min_age=…)` | Bevarede worktrees der venter paa en beslutning - altsaa arbejde nogen skal tage stilling til. | [src](../../../core/services/agent_worktrees.py#L574) |
+| function | `reconcile` | `()` | Markér aktive/bevarede poster hvis worktree er forsvundet fra disken som ``unknown`` (ikke 'removed'). | [src](../../../core/services/agent_worktrees.py#L615) |
 
 ## `core/services/agentic_checkpoints.py`
 _Durable checkpoints for visible agentic loops._

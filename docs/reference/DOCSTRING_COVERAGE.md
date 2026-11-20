@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10325/18885 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10326/18886 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10325/18885 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 915 | 1631 | 56% |
-| `core.services` | 6933 | 12830 | 54% |
+| `core.services` | 6934 | 12831 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -813,13 +813,13 @@ Generated from source. 10325/18885 functions/methods documented (54%). The list 
 - `core/services/agent_worktree_git.py` :: `stage_all` (L110)
 - `core/services/agent_worktree_gitdir.py` :: `sandbox_env` (L120)
 - `core/services/agent_worktree_gitdir.py` :: `work_ref` (L62)
-- `core/services/agent_worktrees.py` :: `allowed_workspace_roots` (L88)
-- `core/services/agent_worktrees.py` :: `ensure_worktree_tables` (L54)
-- `core/services/agent_worktrees.py` :: `get` (L190)
-- `core/services/agent_worktrees.py` :: `get_for_assignment` (L194)
-- `core/services/agent_worktrees.py` :: `quota_status` (L134)
-- `core/services/agent_worktrees.py` :: `worktree_root` (L84)
-- `core/services/agent_worktrees.py` :: `writes_allowed` (L310)
+- `core/services/agent_worktrees.py` :: `allowed_workspace_roots` (L94)
+- `core/services/agent_worktrees.py` :: `ensure_worktree_tables` (L60)
+- `core/services/agent_worktrees.py` :: `get` (L196)
+- `core/services/agent_worktrees.py` :: `get_for_assignment` (L200)
+- `core/services/agent_worktrees.py` :: `quota_status` (L140)
+- `core/services/agent_worktrees.py` :: `worktree_root` (L90)
+- `core/services/agent_worktrees.py` :: `writes_allowed` (L316)
 - `core/services/agentic_checkpoints.py` :: `checkpoint_prompt_section` (L146)
 - `core/services/agentic_checkpoints.py` :: `clear_run` (L124)
 - `core/services/agentic_checkpoints.py` :: `clear_session` (L133)
@@ -2036,7 +2036,7 @@ Generated from source. 10325/18885 functions/methods documented (54%). The list 
 - `core/services/self_deception_guard.py` :: `DeceptionGuardTrace.has_reframes` (L60)
 - `core/services/self_deception_guard.py` :: `DeceptionGuardTrace.to_dict` (L69)
 - `core/services/self_dream_state_surface.py` :: `group_names` (L83)
-- `core/services/self_experiments.py` :: `build_self_experiments_surface` (L456)
+- `core/services/self_experiments.py` :: `build_self_experiments_surface` (L499)
 - `core/services/self_model_blind_spots.py` :: `list_blind_spots` (L292)
 - `core/services/self_model_signal_tracking.py` :: `build_runtime_self_model_signal_surface` (L169)
 - `core/services/self_model_signal_tracking.py` :: `refresh_runtime_self_model_signal_statuses` (L68)

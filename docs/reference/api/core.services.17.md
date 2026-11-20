@@ -237,8 +237,8 @@ _Hvilken udgave af appen sidder der i den anden ende?_
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_rent` | `(vaerdi, tilladte=…)` | — | [src](../../../core/services/klient_versioner.py#L44) |
-| function | `noter` | `(klient, version)` | Skriv den seneste version for én klient. True hvis noget blev skrevet. | [src](../../../core/services/klient_versioner.py#L53) |
-| function | `alle` | `()` | Hvad kører der lige nu, pr. klient. Tom dict hvis ingen har sagt det. | [src](../../../core/services/klient_versioner.py#L84) |
+| function | `noter` | `(klient, version, build=…)` | Skriv den seneste version for én klient. True hvis noget blev skrevet. | [src](../../../core/services/klient_versioner.py#L53) |
+| function | `alle` | `()` | Hvad kører der lige nu, pr. klient. Tom dict hvis ingen har sagt det. | [src](../../../core/services/klient_versioner.py#L106) |
 
 ## `core/services/layer_tension_daemon.py`
 _Layer Tension daemon — detects when two or more cognitive layers pull in opposite directions._

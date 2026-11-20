@@ -1052,15 +1052,23 @@ describe('ChatView — ventende godkendelse over composeren', () => {
       // testen paa CI med 2 mod 1 af praecis den grund, mens den bestod
       // lokalt. Derfor ventes der paa at antallet staar STILLE, ikke paa at
       // det foerste kald er sket.
-      let efterFoersteRender = startJobsStream.mock.calls.length
+      // Vent paa RO, ikke paa et oejebliksbillede: `waitFor` med
+      // `expect(nu).toBe(efterFoersteRender)` lykkes i FOERSTE evaluering
+      // (tallene er ens fra start), saa den venter reelt ikke — den fanger
+      // tallet foer et evt. andet kald lander, og fejler bagefter. Maalt
+      // 20/11-2026: testen fejlede paa CI med 2 mod 1 af praecis den grund.
+      // Her kraeves at antallet er UAENDRET gennem et helt vindue.
+      let stabilt = startJobsStream.mock.calls.length
+      let uaendretSiden = Date.now()
       await waitFor(
         () => {
           const nu = startJobsStream.mock.calls.length
-          expect(nu).toBe(efterFoersteRender)
-          efterFoersteRender = nu
+          if (nu !== stabilt) { stabilt = nu; uaendretSiden = Date.now() }
+          expect(Date.now() - uaendretSiden).toBeGreaterThanOrEqual(300)
         },
-        { timeout: 1000, interval: 100 },
+        { timeout: 5000, interval: 50 },
       )
+      const efterFoersteRender = stabilt
 
       // Samme props igen: en ny render, men SAMME config-indhold. Uden useMemo
       // faar panelet en ny reference og aabner endnu en stroem.

@@ -122,3 +122,16 @@ describe('ordhalens variant', () => {
     expect(new Set(varigheder).size).toBe(4)
   })
 })
+
+describe('ordhalen genstarter animationen pr. ord', () => {
+  it('monterer en FRISK span når et nyt ord indtager samme position (ellers ingen animationstart)', () => {
+    const { container, rerender } = render(<MarkdownRenderer text="et to tre " streaming />)
+    const foer = container.querySelector('.streaming-word-tail')
+    expect(foer?.textContent).toBe('et ')
+    rerender(<MarkdownRenderer text="et to tre fire " streaming />)
+    const efter = container.querySelector('.streaming-word-tail')
+    expect(efter?.textContent).toBe('to ')
+    // Samme position, nyt ord: samme DOM-node ville genbruge en kørt animation.
+    expect(efter).not.toBe(foer)
+  })
+})

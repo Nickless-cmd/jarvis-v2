@@ -49,16 +49,6 @@ export interface FladeProgram {
 const erObjekt = (v: unknown): v is Json => !!v && typeof v === 'object' && !Array.isArray(v)
 const harType = (v: unknown): v is Json => erObjekt(v) && typeof v.type === 'string' && v.type !== ''
 
-/** Containere der bærer børn: `box.children` og `tabs[].children`. */
-function boernListerI(node: Json): unknown[][] {
-  const ud: unknown[][] = []
-  if (Array.isArray(node.children)) ud.push(node.children)
-  if (Array.isArray(node.tabs)) {
-    for (const t of node.tabs) if (erObjekt(t) && Array.isArray(t.children)) ud.push(t.children)
-  }
-  return ud
-}
-
 export function kompilérFlade(raa: string, delvis = false): FladeProgram | null {
   let raw: unknown
   let trunkeret = false

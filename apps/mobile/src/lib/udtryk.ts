@@ -596,23 +596,28 @@ function parsKontrol(tekst: string, advarsler: Advarsel[]): KontrolNode[] | null
   let sidste = 0
   KONTROL_TAG.lastIndex = 0
   let m: RegExpExecArray | null
-  const top = () => stak[stak.length - 1]
+  // Stakken initialiseres med rod-rammen og poppes kun efter et push,
+  // saa den er aldrig tom. Uden assertionen ser tsc'en en mulig undefined
+  // fordi noUncheckedIndexedAccess er slaaet til.
+  const top = (): Ramme => stak[stak.length - 1]!
   while ((m = KONTROL_TAG.exec(tekst)) !== null) {
     if (m.index > sidste) top().liste.push({ t: 'tekst', s: tekst.slice(sidste, m.index) })
     sidste = m.index + m[0].length
-    const tag = m[1]
+    const tag = m[1] ?? ''
     if (tag.startsWith('#each ')) {
       const em = EACH_RE.exec(tag)
-      if (!em || !gyldigBindSti(em[1])) { advarsler.push(`ugyldig #each: "${m[0]}"`); return null }
+      const sti = em?.[1] ?? ''
+      const navn = em?.[2] ?? ''
+      if (!em || !navn || !gyldigBindSti(sti)) { advarsler.push(`ugyldig #each: "${m[0]}"`); return null }
       if (stak.length > KONTROL_MAX_DYBDE) { advarsler.push(`kontrolstrukturer er for dybt nested (max ${KONTROL_MAX_DYBDE})`); return null }
-      const node: KontrolNode = { t: 'each', liste: em[1], navn: em[2], krop: [], kilde: '' }
+      const node: Extract<KontrolNode, { t: 'each' }> = { t: 'each', liste: sti, navn, krop: [], kilde: '' }
       top().liste.push(node)
       stak.push({ node, liste: node.krop, efterElse: false, start: m.index })
     } else if (tag.startsWith('#if ')) {
       if (stak.length > KONTROL_MAX_DYBDE) { advarsler.push(`kontrolstrukturer er for dybt nested (max ${KONTROL_MAX_DYBDE})`); return null }
       const udtryk = tag.slice(4).trim()
       if (!udtryk) { advarsler.push('#if uden udtryk'); return null }
-      const node: KontrolNode = { t: 'if', udtryk, da: [], ellers: [], kilde: '' }
+      const node: Extract<KontrolNode, { t: 'if' }> = { t: 'if', udtryk, da: [], ellers: [], kilde: '' }
       top().liste.push(node)
       stak.push({ node, liste: node.da, efterElse: false, start: m.index })
     } else if (tag === ':else') {

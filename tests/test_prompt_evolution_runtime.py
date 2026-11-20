@@ -76,6 +76,93 @@ def test_prompt_evolution_builds_bounded_proposal_from_runtime_inputs() -> None:
     assert artifact["canonical_key"].startswith("runtime-prompt-evolution:focus-nudge:")
 
 
+def test_prompt_evolution_deduplicates_by_fragment_not_loop_text(isolated_runtime) -> None:
+    runtime_mod = isolated_runtime.prompt_evolution_runtime
+    db = isolated_runtime.db
+    now = datetime.now(UTC)
+
+    base_inputs = {
+        "dream_articulation": {},
+        "dream_influence": {},
+        "self_model_surface": {
+            "items": [{"canonical_key": "self-model:improving:prompt-shape"}],
+            "summary": {"active_count": 1, "current_signal": "Prompt shape"},
+        },
+        "inner_voice_state": {
+            "last_result": {"inner_voice_created": True, "focus": "Stay bounded."},
+        },
+        "emergent_surface": {},
+        "embodied_state": {"state": "steady"},
+        "adaptive_learning": {
+            "learning_engine_mode": "reinforce",
+            "reinforcement_target": "prompt-shape",
+        },
+        "guided_learning": {
+            "learning_mode": "practice",
+            "learning_focus": "planning",
+        },
+        "adaptive_reasoning": {},
+        "now": now,
+    }
+
+    def build(loop_text: str, *, learning_focus: str = "planning") -> dict[str, object]:
+        inputs = {
+            **base_inputs,
+            "guided_learning": {
+                "learning_mode": "practice",
+                "learning_focus": learning_focus,
+            },
+            "loop_runtime": {
+                "summary": {
+                    "loop_count": 1,
+                    "current_loop": loop_text,
+                    "current_status": "active",
+                },
+            },
+        }
+        return dict(
+            runtime_mod.build_prompt_evolution_from_inputs(**inputs)["artifact"]
+            or {}
+        )
+
+    def persist(artifact: dict[str, object], proposal_id: str) -> None:
+        db.upsert_runtime_self_authored_prompt_proposal(
+            proposal_id=proposal_id,
+            proposal_type=str(artifact["proposal_type"]),
+            canonical_key=str(artifact["canonical_key"]),
+            status="fresh",
+            title="Prompt evolution regression",
+            summary="Regression candidate",
+            rationale="Test semantic deduplication.",
+            source_kind="internal-runtime-prompt-evolution",
+            confidence="medium",
+            evidence_summary="test",
+            support_summary="test",
+            support_count=1,
+            session_count=1,
+            created_at=now.isoformat(),
+            updated_at=now.isoformat(),
+            candidate_fragment=str(artifact["candidate_fragment"]),
+        )
+
+    first = build("First volatile loop")
+    same_fragment = build("Completely different volatile loop")
+    different_fragment = build("Third volatile loop", learning_focus="verification")
+
+    assert first["candidate_fragment"] == same_fragment["candidate_fragment"]
+    assert first["candidate_fragment"] != different_fragment["candidate_fragment"]
+
+    persist(first, "proposal-first")
+    persist(same_fragment, "proposal-same-fragment")
+    rows_after_duplicate = db.list_runtime_self_authored_prompt_proposals(limit=10)
+    assert len(rows_after_duplicate) == 1
+    assert rows_after_duplicate[0]["proposal_id"] == "proposal-first"
+
+    persist(different_fragment, "proposal-different-fragment")
+    rows_after_distinct = db.list_runtime_self_authored_prompt_proposals(limit=10)
+    assert len(rows_after_distinct) == 2
+
+
 def test_prompt_evolution_learning_changes_proposal_direction() -> None:
     from core.services import prompt_evolution_runtime as runtime_mod
 

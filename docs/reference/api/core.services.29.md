@@ -291,11 +291,17 @@ _Provider-agnostic tool-result aging for the visible agentic loop._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `aging_trigger_tokens` | `()` | Configured full-content token trigger for aging. Default 120k. Self-safe. | [src](../../../core/services/tool_result_aging.py#L56) |
-| function | `tool_result_aging_mode` | `()` | Current aging mode: 'off' | 'shadow' | 'active'. Default 'shadow'. | [src](../../../core/services/tool_result_aging.py#L67) |
-| function | `_clear_placeholder` | `(n)` | — | [src](../../../core/services/tool_result_aging.py#L84) |
-| function | `_is_already_aged` | `(content)` | Er resultatet ALLEREDE aeldet? Baade ryddet og forkortet taeller. | [src](../../../core/services/tool_result_aging.py#L88) |
-| function | `age_tool_results` | `(exchanges, *, keep_full=…, mode, strength, round_index, compress_fn=…, trigger_tokens=…)` | Age tool-result content on exchanges older than the ``keep_full`` most recent. | [src](../../../core/services/tool_result_aging.py#L98) |
+| function | `_tool_results_dir` | `()` | Runtime-store for originals, matching the existing TOOL_RESULTS_DIR. | [src](../../../core/services/tool_result_aging.py#L59) |
+| function | `_recovery_path` | `(recovery_key)` | — | [src](../../../core/services/tool_result_aging.py#L65) |
+| function | `_recovery_key` | `(tool_call_id, content)` | — | [src](../../../core/services/tool_result_aging.py#L70) |
+| function | `_store_tool_result` | `(recovery_key, content)` | Persist exact content atomically; propagate failure so aging can abstain. | [src](../../../core/services/tool_result_aging.py#L77) |
+| function | `recover_tool_result` | `(tool_use_id)` | Return an aged tool result's exact original text, or ``None`` if absent. | [src](../../../core/services/tool_result_aging.py#L94) |
+| function | `aging_trigger_tokens` | `()` | Configured full-content token trigger for aging. Default 120k. Self-safe. | [src](../../../core/services/tool_result_aging.py#L106) |
+| function | `tool_result_aging_mode` | `()` | Current aging mode: 'off' | 'shadow' | 'active'. Default 'shadow'. | [src](../../../core/services/tool_result_aging.py#L117) |
+| function | `_recovery_hint` | `(recovery_key, path)` | — | [src](../../../core/services/tool_result_aging.py#L134) |
+| function | `_clear_placeholder` | `(n, recovery_key, path)` | — | [src](../../../core/services/tool_result_aging.py#L138) |
+| function | `_is_already_aged` | `(content)` | Er resultatet ALLEREDE aeldet? Baade ryddet og forkortet taeller. | [src](../../../core/services/tool_result_aging.py#L142) |
+| function | `age_tool_results` | `(exchanges, *, keep_full=…, mode, strength, round_index, compress_fn=…, trigger_tokens=…)` | Age tool-result content on exchanges older than the ``keep_full`` most recent. | [src](../../../core/services/tool_result_aging.py#L152) |
 
 ## `core/services/tool_result_store.py`
 

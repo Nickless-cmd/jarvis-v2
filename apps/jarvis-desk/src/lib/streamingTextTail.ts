@@ -17,32 +17,32 @@ export interface StreamingTextParameters {
  */
 export const STREAMING_TEXT_VARIANTS: Record<StreamingTextVariant, StreamingTextParameters> = {
   Neutral: {
-    colorDelay: 90,
-    duration: 220,
-    timeOffsetBetweenParts: 34,
-    opacityKeyframes: [0, 0.72, 1],
-    controlPoints: [0.2, 0.75, 0.25, 1],
+    colorDelay: 360,
+    duration: 800,
+    timeOffsetBetweenParts: 60,
+    opacityKeyframes: [0, 0.18, 0.72, 1],
+    controlPoints: [0.25, 0.1, 0.25, 1],
   },
   Disabled: {
     colorDelay: 0,
     duration: 0,
     timeOffsetBetweenParts: 0,
-    opacityKeyframes: [1, 1, 1],
+    opacityKeyframes: [1, 1, 1, 1],
     controlPoints: [0, 0, 1, 1],
   },
   Normal: {
-    colorDelay: 110,
-    duration: 240,
-    timeOffsetBetweenParts: 38,
-    opacityKeyframes: [0, 0.72, 1],
-    controlPoints: [0.2, 0.75, 0.25, 1],
+    colorDelay: 315,
+    duration: 700,
+    timeOffsetBetweenParts: 35,
+    opacityKeyframes: [0, 0.18, 0.72, 1],
+    controlPoints: [0.25, 0.1, 0.25, 1],
   },
   Snappy: {
-    colorDelay: 70,
-    duration: 170,
-    timeOffsetBetweenParts: 26,
-    opacityKeyframes: [0, 0.82, 1],
-    controlPoints: [0.16, 0.84, 0.22, 1],
+    colorDelay: 99,
+    duration: 220,
+    timeOffsetBetweenParts: 30,
+    opacityKeyframes: [0, 0.18, 0.72, 1],
+    controlPoints: [0.25, 0.1, 0.25, 1],
   },
 }
 
@@ -51,10 +51,17 @@ export const STREAMING_TAIL_WORD_LIMIT = 3
 /**
  * Halens variant. Desk brugte `Normal` (240 ms) indtil 18/11-2026.
  *
+ * Tallene er GPT-appens egne, laest ud af `/opt/codex-desktop/resources/
+ * app.asar` 20/11-2026 (`dil_text/src/rendering/DILStreamingText`). Der er
+ * fire saet: `Neutral` og `Normal` deler skabelonen `s`, `Snappy` er `c`
+ * (= `s` med kortere tid), og `Disabled` er nul. GPT vaelger `Snappy` naar
+ * `snappyStreamingAnimations` er slaaet til, ellers `Normal`.
+ *
  * Det sidste ords samlede landing er `duration + colorDelay + 2×
  * timeOffsetBetweenParts` (tredje ord har order 2, og farve-animationen
- * starter efter `colorDelay`). Målt i Chromium 18/11-2026 med de faktiske
- * CSS-variabler: `Normal` 426 ms, `Snappy` 292 ms — 134 ms kortere, 31 %.
+ * starter efter `colorDelay`). Med GPT's snappy-tal: 220 + 99 + 60 = 379 ms.
+ * Den tidligere maaling i Chromium (18/11-2026) gav 292 ms for et saet tal
+ * der ikke var GPT's — derfor er de erstattet.
  *
  * Valget står HER og ikke som et argument på hvert kald, så det kan vendes
  * med én linje — og så de tre øvrige varianter ikke er tal ingen kan bruge.
@@ -127,8 +134,15 @@ export function rehypeStreamingTextTail(options: { completedAtEnd: boolean; vari
     // Hvis det viste præfiks ender midt i et ord, er sidste synlige AST-del
     // endnu ikke afsluttet. Halen vælges fra delene FØR den.
     const completedParts = options.completedAtEnd ? parts : parts.slice(0, -1)
+    if (completedParts.length === 0) return
+    // ALLE afsluttede ord pakkes ind — kun de sidste tre bærer animationsklassen.
+    // Grunden er React-nøglerne: react-markdown nøgler børn `<tagName>-<antal>`,
+    // så med kun tre wrappers rykkede hvert nyt ord alle positioner ét ned, og
+    // hver wrapper blev genmonteret → hvert ord animerede op til 3 gange
+    // (MÅLT i Chromium 20/11-2026). Når hvert ord har sin egen stabile position,
+    // genbruger React dets node, og animationen kører præcis én gang.
     const selected = new Set(completedParts.slice(-STREAMING_TAIL_WORD_LIMIT))
-    if (selected.size === 0) return
+    const wrapped = new Set(completedParts)
     const order = new Map([...selected].map((part, index) => [part, index]))
     const parameters = STREAMING_TEXT_VARIANTS[options.variant ?? STANDARD_VARIANT]
     const controlPoints = parameters.controlPoints.join(', ')
@@ -143,7 +157,7 @@ export function rehypeStreamingTextTail(options: { completedAtEnd: boolean; vari
           continue
         }
         const text = child as HastText
-        const nodeParts = parts.filter((part) => part.node === text && selected.has(part))
+        const nodeParts = parts.filter((part) => part.node === text && wrapped.has(part))
         if (nodeParts.length === 0) {
           children.push(child)
           continue
@@ -151,24 +165,28 @@ export function rehypeStreamingTextTail(options: { completedAtEnd: boolean; vari
         let cursor = 0
         for (const part of nodeParts) {
           if (part.start > cursor) children.push({ type: 'text', value: text.value.slice(cursor, part.start) })
+          const inTail = selected.has(part)
           children.push({
             type: 'element',
             tagName: 'jarvis-stream-word',
-            properties: {
-              className: ['streaming-word-tail'],
-              'data-stream-part-key': `${parts.indexOf(part)}:${text.value.slice(part.start, part.end)}`,
-              'data-stream-tail-order': order.get(part) ?? 0,
-              style: [
-                `--streaming-tail-order:${order.get(part) ?? 0}`,
-                `--streaming-tail-duration:${parameters.duration}ms`,
-                `--streaming-tail-color-delay:${parameters.colorDelay}ms`,
-                `--streaming-tail-part-offset:${parameters.timeOffsetBetweenParts}ms`,
-                `--streaming-tail-opacity-start:${parameters.opacityKeyframes[0] ?? 0}`,
-                `--streaming-tail-opacity-mid:${parameters.opacityKeyframes[1] ?? 1}`,
-                `--streaming-tail-opacity-end:${parameters.opacityKeyframes[2] ?? 1}`,
-                `--streaming-tail-easing:cubic-bezier(${controlPoints})`,
-              ].join(';'),
-            },
+            properties: inTail
+              ? {
+                  className: ['streaming-word-tail'],
+                  'data-stream-part-key': `${parts.indexOf(part)}:${text.value.slice(part.start, part.end)}`,
+                  'data-stream-tail-order': order.get(part) ?? 0,
+                  style: [
+                    `--streaming-tail-order:${order.get(part) ?? 0}`,
+                    `--streaming-tail-duration:${parameters.duration}ms`,
+                    `--streaming-tail-color-delay:${parameters.colorDelay}ms`,
+                    `--streaming-tail-part-offset:${parameters.timeOffsetBetweenParts}ms`,
+                    `--streaming-tail-opacity-start:${parameters.opacityKeyframes[0] ?? 0}`,
+                    `--streaming-tail-opacity-early:${parameters.opacityKeyframes[1] ?? 0.18}`,
+                    `--streaming-tail-opacity-mid:${parameters.opacityKeyframes[2] ?? 0.72}`,
+                    `--streaming-tail-opacity-end:${parameters.opacityKeyframes[3] ?? 1}`,
+                    `--streaming-tail-easing:cubic-bezier(${controlPoints})`,
+                  ].join(';'),
+                }
+              : { className: ['streaming-word-settled'] },
             children: [{ type: 'text', value: text.value.slice(part.start, part.end) }],
           })
           cursor = part.end

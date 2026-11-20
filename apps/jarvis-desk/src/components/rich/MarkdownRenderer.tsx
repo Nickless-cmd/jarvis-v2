@@ -1,4 +1,4 @@
-import { createContext, isValidElement, memo, useContext, useEffect, useMemo } from 'react'
+import { createContext, isValidElement, memo, useContext, useEffect, useMemo, useState } from 'react'
 import { Globe, ListTodo, Bot, GitBranch, AlarmClock, Activity, FileCode } from 'lucide-react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -16,7 +16,7 @@ import { ChatCodeBlock } from './ChatCodeBlock'
 import { MermaidBlock, MermaidStreamingContext } from './MermaidBlock'
 import { NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
 import { logFlade } from '../../lib/fladeLog'
-import { afsluttetGraense, rehypeStreamingTextTail } from '../../lib/streamingTextTail'
+import { STREAMING_TAIL_WORD_LIMIT, afsluttetGraense, rehypeStreamingTextTail } from '../../lib/streamingTextTail'
 
 const githubMark = new URL('../../assets/github.svg', import.meta.url).href
 
@@ -137,32 +137,63 @@ function Pre({ children }: { children?: React.ReactNode }) {
   return <ChatCodeBlock code={code} lang={lang} className={props.className} />
 }
 
+/** Halen animeres af CSS alene.
+ *
+ *  MÅLT 18/11-2026 i Chromium: et JS-lag oven på CSS'en gav TO animationer på
+ *  samme element. CSS'en er den eneste animationskilde; JS her styrer kun
+ *  IDENTITET og levetid, aldrig opacity/color/transform.
+ *
+ *  Genstarter (MÅLT 20/11-2026): react-markdown nøgler børn `<tagName>-<antal>`.
+ *  Dengang kun de tre sidste ord var pakket ind, rykkede hvert nyt ord alle
+ *  tre ét trin ned, React genmonterede dem, og HVERT ord animerede op til tre
+ *  gange (ord2: 3 opacity- og 3 color-starter). Nu pakker transformen alle
+ *  afsluttede ord ind, så hvert ord har en stabil nøgle og en stabil node.
+ *
+ *  Derfor fryser komponenten sin klasse og sin rækkefølge ved første render:
+ *  når ordet senere forlader «de sidste tre», må dets animation ikke kappes.
+ *  Når farve-animationen (den længste) er færdig, slipper ordet klassen — og
+ *  slutværdierne er identiske med almindelig tekst, så der er intet spring.
+ */
 type StreamingWordProps = React.HTMLAttributes<HTMLSpanElement> & {
   node?: unknown
   'data-stream-part-key'?: string
   'data-stream-tail-order'?: string | number
 }
 
-/** Halen animeres af CSS alene.
- *
- *  MÅLT 18/11-2026 i Chromium: et JS-lag oven på CSS'en gav TO animationer på
- *  samme element — `streaming-word-opacity` og `streaming-word-color` fra CSS,
- *  plus to fra `element.animate()` — der alle skrev `opacity` og `color`. De
- *  kørte i parallel om de samme egenskaber: dobbelt arbejde og to kilder til
- *  hvem der bestemmer farven. CSS'en er nu den eneste.
- *
- *  Genstarten per ord kommer i stedet fra `key`: når span-positionen genbruges
- *  til et NYT ord, ændrer `data-stream-part-key` sig, React afmonterer den
- *  gamle span og monterer en frisk — og en frisk CSS-animation starter forfra.
- */
+/** Rækkefølge inden for ÉT commit: ord der monteres sammen forskydes, et enkelt
+ *  nyt ord starter straks (order 0) i stedet for at vente 2× forskydningen. */
+let batchOrder = 0
+let batchOpen = false
+function naesteBatchOrder(): number {
+  if (!batchOpen) {
+    batchOpen = true
+    batchOrder = 0
+    queueMicrotask(() => { batchOpen = false })
+  }
+  return batchOrder++
+}
+
 function StreamingWord({ node: _node, ...props }: StreamingWordProps) {
-  // `key` er det der faktisk genstarter animationen. react-markdown nøgler
-  // børn som `<tagName>-<antal>`, så med ét tagName genbruges de samme tre
-  // spans for hele svaret, og en genbrugt span starter aldrig sin CSS-animation
-  // forfra. MÅLT i Chromium: 81 ord gav 3 `streaming-word-opacity`-starter.
-  // Nøglen her er ordets unikke part-nøgle, så et nyt ord = en frisk span.
-  // tagName holdes bevidst fast (`rehypeStreamingTextTail` + dens tests).
-  return <span key={props['data-stream-part-key']} {...props} />
+  const erHale = typeof props.className === 'string' && props.className.includes('streaming-word-tail')
+  const [frossen] = useState(() => ({
+    className: props.className,
+    style: props.style,
+    order: erHale ? Math.min(naesteBatchOrder(), STREAMING_TAIL_WORD_LIMIT - 1) : 0,
+  }))
+  const [faerdig, setFaerdig] = useState(false)
+  if (!erHale && !frossen.className?.includes('streaming-word-tail')) {
+    return <span {...props} />
+  }
+  if (faerdig) return <span className="streaming-word-settled">{props.children}</span>
+  return (
+    <span
+      {...props}
+      className={frossen.className}
+      data-stream-tail-order={frossen.order}
+      style={{ ...frossen.style, '--streaming-tail-order': frossen.order } as React.CSSProperties}
+      onAnimationEnd={(e) => { if (e.animationName === 'streaming-word-color') setFaerdig(true) }}
+    />
+  )
 }
 
 const KOMPONENTER = {
@@ -250,20 +281,25 @@ export function harAabentHegn(tekst: string): boolean {
 export const MarkdownBlok = memo(function MarkdownBlok({
   md,
   streaming = false,
+  hale = streaming,
 }: {
   md: string
   streaming?: boolean
+  /** Ordhalen kører også efter streamens slutning (`HALE_AFVIKLING_MS`) — uden
+   *  at fladernes streaming-kontekst gør det. Standard: følger `streaming`. */
+  hale?: boolean
 }) {
   // 29/9-2026: en frossen blok har stabil tekst, så strukturarbejdet skal
   // følge blokkens levetid i stedet for at genkøre på hele streamets historie.
   const struktureret = useMemo(() => enforceStructure(md), [md])
   const rehypePlugins = useMemo(
-    () => streaming
+    () => hale
       ? [...REHYPE_PLUGINS, [rehypeStreamingTextTail, {
-          completedAtEnd: afsluttetGraense(struktureret) === struktureret.length,
+          // Efter streamens slutning er ALT afsluttet — også et sidste ord uden mellemrum.
+          completedAtEnd: !streaming || afsluttetGraense(struktureret) === struktureret.length,
         }]]
       : REHYPE_PLUGINS,
-    [streaming, struktureret],
+    [hale, streaming, struktureret],
   )
   // De to udfald `pre`-grenen ALDRIG kan se (25/10-2026, side-155f2dc398):
   //
@@ -303,7 +339,28 @@ export const MarkdownBlok = memo(function MarkdownBlok({
   )
 })
 
+/** Hvor længe halen får lov at løbe færdig når streamen slutter. Længere end
+ *  den langsomste variants landing (Normal 426 ms), kortere end et blik. Teksten
+ *  er HELE tiden fuldt synlig — dette holder intet tilbage, det afbryder bare
+ *  ikke de sidste ords animation ved at skifte til færdig-render. */
+export const HALE_AFVIKLING_MS = 500
+
 export function MarkdownRenderer({ text, streaming }: { text: string; streaming: boolean }) {
+  // Afvikling: streaming true→false i samme instans. Afledt tilstand under
+  // render (ikke i en effekt), så der ikke nås en færdig-render imellem, som
+  // ville afmontere de sidste ord midt i deres animation.
+  const [forrigeStreaming, setForrigeStreaming] = useState(streaming)
+  const [afvikler, setAfvikler] = useState(false)
+  if (forrigeStreaming !== streaming) {
+    setForrigeStreaming(streaming)
+    setAfvikler(forrigeStreaming && !streaming)
+  }
+  useEffect(() => {
+    if (!afvikler) return
+    const id = setTimeout(() => setAfvikler(false), HALE_AFVIKLING_MS)
+    return () => clearTimeout(id)
+  }, [afvikler])
+  const levende = streaming || afvikler
   const md = useMemo(() => {
     const stabilized = streaming ? stabilizeStreamingMarkdown(text) : text
     return stripToolEchoes(stabilized)
@@ -333,7 +390,7 @@ export function MarkdownRenderer({ text, streaming }: { text: string; streaming:
   // Under streaming: blokke, så kun den sidste (levende) parses ved hver
   // delta (lib/markdownBlokke). Færdig tekst: ét samlet parse — det er den
   // endelige gengivelse, og blokdelingen skal aldrig kunne ændre den.
-  const blokke = useMemo(() => (streaming ? delIBlokke(md) : null), [md, streaming])
+  const blokke = useMemo(() => (levende ? delIBlokke(md) : null), [md, levende])
   if (!blokke) return <MarkdownBlok md={md} />
   // Kun den SIDSTE blok er levende — de øvrige er frosne og færdige. Det er
   // samme antagelse delIBlokke selv bygger på (kun halen parses igen). Derfor
@@ -341,7 +398,7 @@ export function MarkdownRenderer({ text, streaming }: { text: string; streaming:
   const sidste = blokke.length - 1
   return (
     <>
-      {blokke.map((b, i) => <MarkdownBlok key={i} md={b} streaming={i === sidste} />)}
+      {blokke.map((b, i) => <MarkdownBlok key={i} md={b} streaming={streaming && i === sidste} hale={levende && i === sidste} />)}
     </>
   )
 }

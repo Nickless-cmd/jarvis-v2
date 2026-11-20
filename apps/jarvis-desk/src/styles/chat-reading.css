@@ -16,11 +16,15 @@
 /* Ord-for-ord-halen optager sin endelige plads fra første frame. Kun paint /
  * compositing-egenskaber animeres: opacity, color og transform. */
 .streaming-word-tail {
-  --streaming-tail-duration: 240ms;
-  --streaming-tail-color-delay: 110ms;
-  --streaming-tail-part-offset: 38ms;
-  --streaming-tail-easing: cubic-bezier(0.2, 0.75, 0.25, 1);
-  color: #8f8f8f;
+  --streaming-tail-duration: 220ms;
+  --streaming-tail-color-delay: 99ms;
+  --streaming-tail-part-offset: 30ms;
+  --streaming-tail-easing: cubic-bezier(0.25, 0.1, 0.25, 1);
+  /* Slutfarven er den arvede brodtekst-farve, ikke en graa. GPT's variant
+   * `Neutral` er den eneste der lander i `#8f8f8f`; `Normal` og `Snappy`
+   * lander i `color-text-prose`. En graa slutfarve efterlod de tre sidste ord
+   * permanent daempede — det er den "blaa der ikke holder". */
+  color: var(--fg-1);
   animation:
     streaming-word-opacity var(--streaming-tail-duration) var(--streaming-tail-easing)
       calc(var(--streaming-tail-order, 0) * var(--streaming-tail-part-offset)) both,
@@ -28,22 +32,31 @@
       calc(var(--streaming-tail-color-delay) + var(--streaming-tail-order, 0) * var(--streaming-tail-part-offset)) both;
 }
 
+/* Fire punkter ved 0/6/12/15 % af varigheden, med GPT's eget easing pr.
+ * segment. Teksten er fuldt synlig efter 15 % — resten af varigheden er den
+ * tid ordet venter paa at naeste ord lander. */
 @keyframes streaming-word-opacity {
-  0% { opacity: var(--streaming-tail-opacity-start, 0); transform: translateY(0.08em); }
-  72% { opacity: var(--streaming-tail-opacity-mid, 1); transform: translateY(0); }
+  0% { opacity: var(--streaming-tail-opacity-start, 0); transform: translateY(0.08em);
+       animation-timing-function: cubic-bezier(0, 0, 0.58, 1); }
+  6% { opacity: var(--streaming-tail-opacity-early, 0.18); transform: translateY(0.06em);
+       animation-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1); }
+  12% { opacity: var(--streaming-tail-opacity-mid, 0.72); transform: translateY(0.02em);
+       animation-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1); }
+  15% { opacity: var(--streaming-tail-opacity-end, 1); transform: translateY(0); }
   100% { opacity: var(--streaming-tail-opacity-end, 1); transform: translateY(0); }
 }
 
+/* GPT's animationsfarve for `Normal` og `Snappy` — den samme blaa. */
 @keyframes streaming-word-color {
   from { color: #3a83f7; }
-  to { color: #8f8f8f; }
+  to { color: var(--fg-1); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .streaming-word-tail {
     animation: none;
     opacity: 1;
-    color: #8f8f8f;
+    color: var(--fg-1);
     transform: none;
   }
 }

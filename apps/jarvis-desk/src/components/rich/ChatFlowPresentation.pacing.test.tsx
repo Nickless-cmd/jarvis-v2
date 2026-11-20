@@ -360,3 +360,26 @@ describe('ChatFlowPresentation — hovedet under pacen (30/10-2026)', () => {
   })
 })
 
+
+describe('ChatFlowPresentation — fold-linjen omgår ikke paceren', () => {
+  it('tegner ikke den rå, upacede tekst i folden før pacerens første tegn (side-f9ab36ac9d fejl 2)', () => {
+    const blokke: ContentBlock[] = [arbejde, { type: 'text', text: LANG }]
+    const synlig = (c: HTMLElement) =>
+      c.querySelector('.chat-flow-live-synthesis')?.textContent ?? ''
+
+    // Første render: cursoren står på nul. Folden må ikke vise hele målet.
+    const view = render(
+      <ChatFlowPresentation blocks={blokke} mode="living" density="compact"
+        streaming status="working" finalAnswerStarted={false} runId="run-raa" />,
+    )
+    expect(synlig(view.container).length).toBeLessThan(LANG.length)
+
+    // Og teksten må aldrig skrumpe: ingen nulstilling efter første frame.
+    const foer = synlig(view.container).length
+    frame()
+    frame()
+    const efter = synlig(view.container).length
+    expect(efter).toBeGreaterThanOrEqual(foer)
+    expect(efter).toBeLessThan(LANG.length)
+  })
+})

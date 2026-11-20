@@ -580,6 +580,21 @@ function erSkalarVaerdi(v: unknown): boolean {
   return typeof v === 'string' || typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v))
 }
 
+function erEachElement(v: unknown): boolean {
+  return erSkalarVaerdi(v) || (v !== null && typeof v === 'object' && !Array.isArray(v))
+}
+
+/** Erstat `{navn}` (skalar) eller `{navn.felt}`/`{navn.a[0]}` (objekt) i en udfoldet krop.
+ *  Felter der mangler eller ikke er skalarer lades staa uroert. */
+function indsaetElement(indre: string, navn: string, element: unknown): string {
+  if (erSkalarVaerdi(element)) return indre.split(`{${navn}}`).join(skalarTekst(element))
+  const re = new RegExp(`\\{(${navn}(?:\\.[a-zA-Z_][a-zA-Z0-9_]*|\\[\\d+\\])+)\\}`, 'g')
+  return indre.replace(re, (hele, sti: string) => {
+    const v = slaaOp(sti, { [navn]: element })
+    return erSkalarVaerdi(v) ? skalarTekst(v) : hele
+  })
+}
+
 function sandhed(v: unknown): boolean {
   return v !== undefined && v !== null && v !== false && v !== 0 && v !== ''
 }
@@ -644,8 +659,8 @@ function udfoldNoder(noder: KontrolNode[], kontekst: Record<string, unknown>, ad
     if (n.t === 'tekst') { ud += n.s; continue }
     if (n.t === 'each') {
       const liste = slaaOp(n.liste, kontekst)
-      if (!Array.isArray(liste) || !liste.every(erSkalarVaerdi)) {
-        advarsler.push(`#each ${n.liste}: er ikke en liste af skalarer`)
+      if (!Array.isArray(liste) || !liste.every(erEachElement)) {
+        advarsler.push(`#each ${n.liste}: er ikke en liste af skalarer eller objekter`)
         ud += n.kilde
         continue
       }
@@ -656,7 +671,7 @@ function udfoldNoder(noder: KontrolNode[], kontekst: Record<string, unknown>, ad
       }
       for (const element of liste) {
         const indre = udfoldNoder(n.krop, { ...kontekst, [n.navn]: element }, advarsler)
-        ud += indre.split(`{${n.navn}}`).join(skalarTekst(element))
+        ud += indsaetElement(indre, n.navn, element)
       }
       continue
     }

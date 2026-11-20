@@ -50,14 +50,25 @@ def _rent(vaerdi: str, tilladte: tuple[str, ...] = ()) -> str:
     return v
 
 
-def noter(klient: str, version: str) -> bool:
+def noter(klient: str, version: str, build: str = "") -> bool:
     """Skriv den seneste version for én klient. True hvis noget blev skrevet.
 
     Kaster aldrig: det her hænger på hver eneste request, og en app der
     rapporterer noget mærkeligt må ikke kunne vælte kaldet.
+
+    ``build`` er klientens git-sha, bagt ind ved build. Den findes fordi
+    VERSIONEN ikke kan skelne to builds af samme udgivelse: målt 25/10-2026
+    stod ``__DESK_VERSION__`` som 0.6.263 i både det gamle og det nye build.
+    Klienten sendte derfor ``X-Jarvis-Build`` — men serveren læste den ikke,
+    så spørgsmålet «kører Bjørns Desk det build jeg lige udgav?» var stadig et
+    gæt (målt 20/11-2026: headeren fandtes kun i ``api.ts``, intet læser den).
+
+    Identiteten er derfor (version, build), ikke version alene: et nyt build
+    med samme versionsnummer er en NY klient og skal have frisk ``foerst_set``.
     """
     k = _rent(klient, _KLIENTER)
     v = _rent(version)
+    b = _rent(build)
     if not k or not v:
         return False
     try:
@@ -67,13 +78,24 @@ def noter(klient: str, version: str) -> bool:
             alle = {}
         nu = datetime.now(timezone.utc).isoformat()
         tidligere = alle.get(k) or {}
-        if isinstance(tidligere, dict) and tidligere.get("version") == v:
-            # Samme version som sidst: opdatér kun tidsstemplet, så «sidst set»
+        # En klient der ikke sender build (mobilen gør ikke) skal ikke se sin
+        # post nulstillet ved hvert kald — derfor kun build-kravet naar det
+        # faktisk er oplyst.
+        samme = (
+            isinstance(tidligere, dict)
+            and tidligere.get("version") == v
+            and (not b or tidligere.get("build") == b)
+        )
+        if samme:
+            # Samme klient som sidst: opdatér kun tidsstemplet, så «sidst set»
             # stadig er sandt uden at vi skriver en ny værdi ved hvert kald.
             tidligere["sidst_set"] = nu
             alle[k] = tidligere
         else:
-            alle[k] = {"version": v, "sidst_set": nu, "foerst_set": nu}
+            post: dict[str, Any] = {"version": v, "sidst_set": nu, "foerst_set": nu}
+            if b:
+                post["build"] = b
+            alle[k] = post
         save_json(NOEGLE, alle)
         return True
     except Exception:  # noqa: BLE001 — en version er ikke turen værd

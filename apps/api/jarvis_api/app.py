@@ -971,9 +971,14 @@ def create_app() -> FastAPI:
             import asyncio
             klient = request.headers.get("x-jarvis-klient") or ""
             version = request.headers.get("x-jarvis-klientversion") or ""
+            # Build-id'et (git-sha) er det ENESTE der kan skelne to builds af
+            # samme version — målt 25/10-2026 stod begge som 0.6.263. Klienten
+            # har sendt det siden da; her blev det kastet væk (målt 20/11-2026).
+            build = request.headers.get("x-jarvis-build") or ""
             if klient and version:
                 from core.services.klient_versioner import noter
-                asyncio.get_running_loop().run_in_executor(None, noter, klient, version)
+                asyncio.get_running_loop().run_in_executor(
+                    None, noter, klient, version, build)
         except Exception as exc:  # noqa: BLE001 — en version er ikke kaldet vaerd
             logger.debug("kunne ikke notere klientversion: %s", exc)
         return await call_next(request)

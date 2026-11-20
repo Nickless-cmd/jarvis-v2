@@ -1,8 +1,10 @@
-import { createContext, useContext, useId, useState } from 'react'
+import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { AlertTriangle, CheckCircle2, CircleAlert, Info, MapPin } from 'lucide-react'
 import { openExternalUrl } from '../../lib/host'
 import { interpolérUdtryk } from '../../lib/udtryk'
-import { reparérDelvisJson } from '../../lib/delvisJson'
+import { kompilérFlade, type FladeProgram } from '../../lib/fladeProgram'
+import { fladeStatus, settleKontrol, vaelgVisning } from '../../lib/fladeVisning'
+import { logFlade } from '../../lib/fladeLog'
 import { WidgetPrompt } from './WidgetBlock'
 import { DiffView } from './DiffView'
 import { beskrivUdfald, normalisérUdfald, type FladeUdfald } from '../../lib/fladeHandling'
@@ -111,24 +113,17 @@ const list = (v: unknown, max: number): Json[] => Array.isArray(v)
   : []
 
 export function parseNativeRichSpec(code: string, delvis = false): NativeSpec | null {
-  // Halv JSON under streaming: `JSON.parse` kaster her, og det er den ENESTE
-  // der må kaste. Børnene er allerede parsede objekter når `parseNode` kører.
-  //
-  // 14/11-2026: `delvis` er KUN sat mens blokken streames. Reparatoren tegner
-  // de strukturer der er bevisligt lukket og klipper resten væk — se
-  // `lib/delvisJson.ts`. Uden for streaming må en ødelagt blok ikke blive til
-  // en halv flade: der skal den vise «kunne ikke tegnes», ellers ville en
-  // faktisk fejl se ud som en flade der bare mangler lidt.
-  let raw: Json
-  try {
-    raw = JSON.parse(code) as Json
-  } catch {
-    if (!delvis) return null
-    const repareret = reparérDelvisJson(code)
-    if (!repareret) return null
-    try { raw = JSON.parse(repareret) as Json } catch { return null }
-  }
-  return parseNode(raw, 1)
+  return parseNativeRichProgram(code, delvis).spec
+}
+
+/** Compile-laget (DIL lag 3) + tolkning. `JSON.parse` er stadig den ENESTE der må kaste, og
+ *  `kompilérFlade` fanger det. `delvis` er KUN sat mens blokken streames: halv JSON trunkeres
+ *  til sidste komplette konstruktion (se `lib/delvisJson.ts`); uden for streaming må en
+ *  ødelagt blok ikke blive til en halv flade. */
+export function parseNativeRichProgram(code: string, delvis = false): { spec: NativeSpec | null; program: FladeProgram | null } {
+  const program = kompilérFlade(code, delvis)
+  if (!program) return { spec: null, program: null }
+  return { spec: parseNode(program.rod, 1), program }
 }
 
 function parseNode(raw: unknown, depth: number): NativeSpec | null {
@@ -427,24 +422,59 @@ function Heading({ title }: { title: string }) { return title ? <h4 className="n
  *  forsvinder fladen i stedet for at dukke op det forkerte sted. */
 export const FladeKontrolContext = createContext(false)
 
-export function NativeRichBlock({ code }: { code: string }) {
-  // Ankomst-laget (29/10-2026). Bjørn så fladen poppe ind i ét hug når
-  // paceren sprang over JSON'en: «så blink».
-  //
-  // `key` er bundet til fladens INDHOLD, ikke til renderet. Skiftede nøglen
-  // ved hver re-render, ville fladen danse hver gang paceren rykker ét tegn i
-  // prosaen ovenover — værre end den kodeboks den afløser. Nu remountes noden
-  // kun når en NY flade lander, og CSS-animationen fyrer præcis én gang.
-  return (
-    <div className="flade-ankomst" key={code}>
-      <NativeRichIndhold code={code} />
-    </div>
-  )
-}
+export function NativeRichBlock({
+  code,
+  hostMessageIsStreaming = false,
+  fallbackNode = null,
+}: {
+  code: string
+  /** Beskeden fladen sidder i streamer stadig. Kilden regnes som streamende indtil JSON'en er komplet. */
+  hostMessageIsStreaming?: boolean
+  /** Vises kun når der hverken er en ny eller en sidst virkende flade. */
+  fallbackNode?: ReactNode
+}) {
+  // DIL lag 4. Et nyt program der fejler lader det SIDST VIRKENDE stå.
+  const { spec: ny, program } = parseNativeRichProgram(code, hostMessageIsStreaming)
+  const sidst = useRef<{ spec: NativeSpec; code: string } | null>(null)
+  if (ny) sidst.current = { spec: ny, code }
+  const visning = vaelgVisning(ny, sidst.current?.spec ?? null)
+  // Kilden streamer så længe JSON'en ikke kan parses komplet (trunkeret eller helt ulæselig).
+  const isSourceStreaming = hostMessageIsStreaming && (program === null || program.trunkeret)
+  const [afvigelser, setAfvigelser] = useState<string[]>([])
+  const domRef = useRef<HTMLDivElement | null>(null)
+  const afsluttet = !isSourceStreaming && !hostMessageIsStreaming
 
-function NativeRichIndhold({ code }: { code: string }) {
-  const spec = parseNativeRichSpec(code)
-  return spec ? <FladeNode spec={spec} /> : null
+  // S3: efterkontrol af det TEGNEDE resultat når streamen er stoppet.
+  useEffect(() => {
+    if (!afsluttet || !ny || !program) { setAfvigelser([]); return }
+    const r = settleKontrol(program, ny, domRef.current?.textContent ?? '')
+    setAfvigelser(r.afvigelser)
+    if (!r.ok) {
+      logFlade({
+        udfald: 'settle-afvigelse', foer: '', efter: '', blok: code,
+        className: 'language-jarvis-ui', lang: 'jarvis-ui', kode: r.afvigelser.join(' | '),
+      })
+    }
+  }, [afsluttet, code]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!visning.spec) return <>{fallbackNode}</>
+  const status = fladeStatus({
+    isSourceStreaming,
+    hostMessageIsStreaming,
+    fallback: visning.fallback,
+    afvigelser,
+  })
+  // `key` er bundet til INDHOLDET af den viste flade (29/10-2026), ikke til renderet. Ved en
+  // fallback står nøglen stille, så den gamle flade ikke remountes og erstattes.
+  const nøgle = sidst.current?.code ?? code
+  return (
+    <>
+      <div className="flade-ankomst" key={nøgle} ref={domRef}>
+        <FladeNode spec={visning.spec} />
+      </div>
+      {status ? <div className="flade-status" role="status" aria-live="polite">{status}</div> : null}
+    </>
+  )
 }
 
 // Én node i fladetræet. Hver node er sin EGEN komponent med sine egne hooks,

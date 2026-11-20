@@ -26,6 +26,9 @@ observabilitets-behov; derfor en smal rute med samme auth som resten.
 og `kode` er hvad `pre`-grenen så. `udfald` er én af:
 
   - `native`       — blokken blev en flade
+  - `native-delvis` — en flade tegnet af en HALV blok under streaming (afvist af
+                     serveren indtil DIL lag 4: klienten sendte den allerede)
+  - `settle-afvigelse` — S3: efterkontrol af det tegnede resultat fandt en afvigelse
   - `parse-null`   — `lang` var rigtig, men `parseNativeRichSpec` gav null
   - `wrong-lang`   — teksten nævner jarvis-ui, men `lang` blev ikke `jarvis-ui`
   - `no-pre-node`  — blokken blev aldrig et `<pre>`, så `pre`-grenen så den aldrig
@@ -63,7 +66,9 @@ _MAKS_PR_DAG = 2000
 class FladeSnapshot(BaseModel):
     """Ét øjebliksbillede af en renderbeslutning."""
 
-    udfald: Literal["native", "parse-null", "wrong-lang", "no-pre-node"]
+    udfald: Literal[
+        "native", "native-delvis", "settle-afvigelse", "parse-null", "wrong-lang", "no-pre-node"
+    ]
     besked_id: str = Field(default="", max_length=200)
     blok: str = Field(default="", max_length=8000)
     foer: str = Field(default="", max_length=2000)

@@ -97,7 +97,7 @@ function Pre({ children }: { children?: React.ReactNode }) {
       lang,
       kode: code,
     })
-    if (spec) return <NativeRichBlock code={code} />
+    const fallbackNode = (() => {
     // 29/10-2026 (Bjørn): «kode boksen der udvider sig og så blink».
     //
     // Uden denne gren faldt en ufuldstændig flade til `ChatCodeBlock`, så
@@ -129,6 +129,10 @@ function Pre({ children }: { children?: React.ReactNode }) {
         <span className="flade-utilgaengelig-tekst">Fladen kunne ikke tegnes</span>
       </div>
     )
+    })()
+    // DIL lag 4: NativeRichBlock ejer «sidst virkende» — også når det nyeste forsøg ikke kan
+    // parses. Placeholderen/noten ovenfor bruges kun hvis der aldrig var en flade.
+    return <NativeRichBlock code={code} hostMessageIsStreaming={streaming} fallbackNode={fallbackNode} />
   }
   return <ChatCodeBlock code={code} lang={lang} className={props.className} />
 }

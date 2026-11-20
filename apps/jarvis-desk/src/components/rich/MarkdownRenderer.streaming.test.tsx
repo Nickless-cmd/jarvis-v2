@@ -78,8 +78,13 @@ describe('MarkdownRenderer under streaming', () => {
   it('giver PRÆCIS samme HTML som ét samlet parse', () => {
     // Et samlet parse lægger linjeskift-tekstnoder MELLEM blokelementerne;
     // de delte blokke gør ikke. Det er mellemrum mellem blokke — usynligt —
-    // så det fjernes før sammenligningen. Alt andet skal være identisk.
-    const norm = (h: string) => h.replace(/>\s+</g, '><')
+    // så det fjernes før sammenligningen. Halens paint-only spans pakkes ud
+    // (som i nabo-testen nedenfor): de ændrer farve, ikke struktur. Uden det
+    // krævede testen at det nyeste ord stod uden animation — den fejl Bjørn
+    // kalder «det sidste ord bliver aldrig blåt».
+    const norm = (h: string) => h
+      .replace(/<span class="streaming-word-(?:tail|settled)"[^>]*>([^<]*)<\/span>/g, '$1')
+      .replace(/>\s+</g, '><')
     const del = render(<MarkdownRenderer text={doc} streaming />).container.innerHTML
     const hel = render(<MarkdownRenderer text={doc} streaming={false} />).container.innerHTML
     expect(norm(del)).toBe(norm(hel))

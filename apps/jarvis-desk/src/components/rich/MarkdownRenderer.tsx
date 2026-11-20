@@ -16,7 +16,7 @@ import { ChatCodeBlock } from './ChatCodeBlock'
 import { MermaidBlock, MermaidStreamingContext } from './MermaidBlock'
 import { NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
 import { logFlade } from '../../lib/fladeLog'
-import { STREAMING_TAIL_WORD_LIMIT, afsluttetGraense, rehypeStreamingTextTail } from '../../lib/streamingTextTail'
+import { STREAMING_TAIL_WORD_LIMIT, rehypeStreamingTextTail } from '../../lib/streamingTextTail'
 
 const githubMark = new URL('../../assets/github.svg', import.meta.url).href
 
@@ -293,13 +293,8 @@ export const MarkdownBlok = memo(function MarkdownBlok({
   // følge blokkens levetid i stedet for at genkøre på hele streamets historie.
   const struktureret = useMemo(() => enforceStructure(md), [md])
   const rehypePlugins = useMemo(
-    () => hale
-      ? [...REHYPE_PLUGINS, [rehypeStreamingTextTail, {
-          // Efter streamens slutning er ALT afsluttet — også et sidste ord uden mellemrum.
-          completedAtEnd: !streaming || afsluttetGraense(struktureret) === struktureret.length,
-        }]]
-      : REHYPE_PLUGINS,
-    [hale, streaming, struktureret],
+    () => (hale ? [...REHYPE_PLUGINS, [rehypeStreamingTextTail, {}]] : REHYPE_PLUGINS),
+    [hale],
   )
   // De to udfald `pre`-grenen ALDRIG kan se (25/10-2026, side-155f2dc398):
   //

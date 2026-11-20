@@ -72,6 +72,9 @@ export interface OrdHaendelse {
   type: 'start' | 'end' | 'cancel'
   navn: string
   ord: string
+  /** Ordets POSITION i dokumentet — stabil mens teksten vokser, i modsætning
+   *  til `ord`, som under SSE kan være et halvt ord («o», «or», «ord1»). */
+  nokkel: string
 }
 
 /** Lytter på animationsevents og på rAF-prøver af hvert halords farve/opacity. */
@@ -87,6 +90,7 @@ export async function installerMaaler(page: Page): Promise<void> {
         const el = a.target as HTMLElement
         // Farven aflæses i CAPTURE, før React nåede at re-rendere.
         w.__ev.push({ t: performance.now(), type, navn: a.animationName.replace('streaming-word-', ''), ord: (el.textContent ?? '').trim(),
+          nokkel: (el.dataset.streamPartKey ?? '').split(':')[0] ?? '',
           farve: getComputedStyle(el).color, opacity: Number(getComputedStyle(el).opacity) })
       }, true)
     }

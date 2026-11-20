@@ -75,7 +75,12 @@ describe.skipIf(!KOERT)('pacer/animations-samspil', () => {
                 const vist = fuld.slice(0, skema[i]!.shown)
                 ;(window as any).__saetTekst(vist)
                 const t = performance.now()
-                for (const mm of vist.matchAll(/(\S+)\s/g)) if (!(mm[1]! in reveal)) reveal[mm[1]!] = t
+                // Ordets FØRSTE synlige øjeblik, keyed på dets POSITION i
+                // dokumentet — ikke på teksten. Halen farver ordet mens det
+                // skrives, så ventetiden skal måles fra da det dukkede op, og
+                // teksten kan være halv («o», «or») på netop det tidspunkt.
+                let ordNr = 0
+                for (const _mm of vist.matchAll(/\S+/g)) { const k = String(ordNr++); if (!(k in reveal)) reveal[k] = t }
                 i++
               }
               if (i < skema.length) requestAnimationFrame(tick); else klar()
@@ -88,12 +93,12 @@ describe.skipIf(!KOERT)('pacer/animations-samspil', () => {
           const dom = document.getElementById('krop')!.textContent!.replace(/\s+/g, ' ').trim()
           if (dom !== fuld.replace(/\s+/g, ' ').trim()) tekstFejl.push(dom.slice(-40))
           await new Promise((r) => setTimeout(r, 900))
-          return { reveal, tekstFejl, ev: (window as any).__ev as { t: number; type: string; navn: string; ord: string }[] }
+          return { reveal, tekstFejl, ev: (window as any).__ev as { t: number; type: string; navn: string; ord: string; nokkel: string }[] }
         }, { fuld, skema })
 
         const starter = m.ev.filter((e) => e.type === 'start' && e.navn === 'opacity')
         const slutter = m.ev.filter((e) => e.type === 'end' && e.navn === 'color')
-        const holdBack = starter.map((e) => e.t - (m.reveal[e.ord] ?? e.t))
+        const holdBack = starter.map((e) => e.t - (m.reveal[e.nokkel] ?? e.t))
         const gaps = starter.slice(1).map((e, k) => e.t - starter[k]!.t)
         const sammeFrame = gaps.filter((g) => g < 12).length
         const maksHold = Math.max(...holdBack)
@@ -106,7 +111,7 @@ describe.skipIf(!KOERT)('pacer/animations-samspil', () => {
         expect(b.fejl).toEqual([])
         expect(m.tekstFejl).toEqual([])
         // Ét ord = én start (ingen genstart), og alle landede (ingen afbrudt hale).
-        const brugt = new Set(starter.map((e) => e.ord))
+        const brugt = new Set(starter.map((e) => e.nokkel))
         expect(starter.length).toBe(brugt.size)
         expect(slutter.length).toBe(starter.length)
         // Hold-back: ordet må højst vente sin egen forskydning (2 × offset) + to frames

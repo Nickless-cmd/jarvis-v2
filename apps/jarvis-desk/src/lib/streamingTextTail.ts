@@ -68,19 +68,6 @@ export const STREAMING_TAIL_WORD_LIMIT = 3
  */
 export const STANDARD_VARIANT: StreamingTextVariant = 'Snappy'
 
-/**
- * Sidste grænse som ender i whitespace. Det viste præfiks kan ende midt i et
- * ord; det ord er ikke afsluttet og må derfor ikke flytte animationshalen.
- */
-export function afsluttetGraense(text: string): number {
-  let boundary = 0
-  DIL_TEXT_STREAMING_PART_PATTERN.lastIndex = 0
-  for (const match of text.matchAll(DIL_TEXT_STREAMING_PART_PATTERN)) {
-    if (/\s$/u.test(match[0])) boundary = (match.index ?? 0) + match[0].length
-  }
-  return boundary
-}
-
 type HastText = { type: 'text'; value: string }
 type HastElement = {
   type: 'element'
@@ -107,7 +94,7 @@ function erParent(node: HastNode): node is HastParent {
  * Rehype-transformen pakker kun de sidste tre afsluttede, synlige ord. Den
  * rører ikke kode/matematik og tilføjer ingen wrapper omkring resten af DOM'en.
  */
-export function rehypeStreamingTextTail(options: { completedAtEnd: boolean; variant?: StreamingTextVariant }) {
+export function rehypeStreamingTextTail(options: { variant?: StreamingTextVariant } = {}) {
   return (tree: HastNode) => {
     const parts: WordPart[] = []
 
@@ -131,10 +118,18 @@ export function rehypeStreamingTextTail(options: { completedAtEnd: boolean; vari
     }
     collect(tree, false)
 
-    // Hvis det viste præfiks ender midt i et ord, er sidste synlige AST-del
-    // endnu ikke afsluttet. Halen vælges fra delene FØR den.
-    const completedParts = options.completedAtEnd ? parts : parts.slice(0, -1)
-    if (completedParts.length === 0) return
+    if (parts.length === 0) return
+    // ALLE synlige ord pakkes — også det sidste, som under SSE ofte er midt i
+    // et ord. Det er netop det ord brugeren ser blive skrevet, så det skal
+    // farves nu, ikke først når næste token ankommer.
+    //
+    // Målt 20/11-2026 i Chromium: med `parts.slice(0, -1)` var der ALTID ét
+    // ord mindre pakket end der var ord i teksten — «ord1 … ord6» gav fem
+    // spans — så det nyeste ord stod gråt indtil det næste kom. Bjørns ord:
+    // «det sidste ord bliver aldrig blåt». `StreamingWord` genbruger sin node
+    // og læser teksten fra live props, så et ord der vokser bliver opdateret
+    // uden at animationen starter forfra — derfor er der intet at beskytte.
+    const completedParts = parts
     // ALLE afsluttede ord pakkes ind — kun de sidste tre bærer animationsklassen.
     // Grunden er React-nøglerne: react-markdown nøgler børn `<tagName>-<antal>`,
     // så med kun tre wrappers rykkede hvert nyt ord alle positioner ét ned, og
@@ -142,7 +137,6 @@ export function rehypeStreamingTextTail(options: { completedAtEnd: boolean; vari
     // (MÅLT i Chromium 20/11-2026). Når hvert ord har sin egen stabile position,
     // genbruger React dets node, og animationen kører præcis én gang.
     const selected = new Set(completedParts.slice(-STREAMING_TAIL_WORD_LIMIT))
-    const wrapped = new Set(completedParts)
     const order = new Map([...selected].map((part, index) => [part, index]))
     const parameters = STREAMING_TEXT_VARIANTS[options.variant ?? STANDARD_VARIANT]
     const controlPoints = parameters.controlPoints.join(', ')
@@ -157,7 +151,7 @@ export function rehypeStreamingTextTail(options: { completedAtEnd: boolean; vari
           continue
         }
         const text = child as HastText
-        const nodeParts = parts.filter((part) => part.node === text && wrapped.has(part))
+        const nodeParts = parts.filter((part) => part.node === text)
         if (nodeParts.length === 0) {
           children.push(child)
           continue
@@ -169,24 +163,30 @@ export function rehypeStreamingTextTail(options: { completedAtEnd: boolean; vari
           children.push({
             type: 'element',
             tagName: 'jarvis-stream-word',
-            properties: inTail
-              ? {
-                  className: ['streaming-word-tail'],
-                  'data-stream-part-key': `${parts.indexOf(part)}:${text.value.slice(part.start, part.end)}`,
-                  'data-stream-tail-order': order.get(part) ?? 0,
-                  style: [
-                    `--streaming-tail-order:${order.get(part) ?? 0}`,
-                    `--streaming-tail-duration:${parameters.duration}ms`,
-                    `--streaming-tail-color-delay:${parameters.colorDelay}ms`,
-                    `--streaming-tail-part-offset:${parameters.timeOffsetBetweenParts}ms`,
-                    `--streaming-tail-opacity-start:${parameters.opacityKeyframes[0] ?? 0}`,
-                    `--streaming-tail-opacity-early:${parameters.opacityKeyframes[1] ?? 0.18}`,
-                    `--streaming-tail-opacity-mid:${parameters.opacityKeyframes[2] ?? 0.72}`,
-                    `--streaming-tail-opacity-end:${parameters.opacityKeyframes[3] ?? 1}`,
-                    `--streaming-tail-easing:cubic-bezier(${controlPoints})`,
-                  ].join(';'),
-                }
-              : { className: ['streaming-word-settled'] },
+            properties: {
+              className: [inTail ? 'streaming-word-tail' : 'streaming-word-settled'],
+              // Nøglen bærer ordets POSITION først, så en måling kan skelne et
+              // ord der vokser («o» → «or» → «ord1») fra et ord der genstarter.
+              // Den ligger på begge grene: et ord der endnu ikke er i halen skal
+              // også kunne identificeres.
+              'data-stream-part-key': `${parts.indexOf(part)}:${text.value.slice(part.start, part.end)}`,
+              ...(inTail
+                ? {
+                    'data-stream-tail-order': order.get(part) ?? 0,
+                    style: [
+                      `--streaming-tail-order:${order.get(part) ?? 0}`,
+                      `--streaming-tail-duration:${parameters.duration}ms`,
+                      `--streaming-tail-color-delay:${parameters.colorDelay}ms`,
+                      `--streaming-tail-part-offset:${parameters.timeOffsetBetweenParts}ms`,
+                      `--streaming-tail-opacity-start:${parameters.opacityKeyframes[0] ?? 0}`,
+                      `--streaming-tail-opacity-early:${parameters.opacityKeyframes[1] ?? 0.18}`,
+                      `--streaming-tail-opacity-mid:${parameters.opacityKeyframes[2] ?? 0.72}`,
+                      `--streaming-tail-opacity-end:${parameters.opacityKeyframes[3] ?? 1}`,
+                      `--streaming-tail-easing:cubic-bezier(${controlPoints})`,
+                    ].join(';'),
+                  }
+                : {}),
+            },
             children: [{ type: 'text', value: text.value.slice(part.start, part.end) }],
           })
           cursor = part.end

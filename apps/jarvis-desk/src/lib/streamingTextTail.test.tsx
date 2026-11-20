@@ -19,15 +19,19 @@ describe('ordhalen i streamet Desk-markdown', () => {
     )
   })
 
-  it('lægger halen efter afsluttet-grænsen, ikke efter alle viste tegn', () => {
+  it('farver det nyeste ord — også når det ikke er afsluttet med mellemrum', () => {
+    // 20/11-2026 (Bjørn): «det sidste ord bliver aldrig blåt». Denne test
+    // FASTHOLDT den fejl: den krævede at «halv» stod uden for halen. Under
+    // SSE kommer mellemrummet først med næste token, så reglen ramte hvert
+    // eneste ord — det nyeste var altid gråt. Halen skal følge de sidste tre
+    // SYNLIGE ord, uanset om det sidste er afsluttet med whitespace.
     const { container } = render(
       <MarkdownRenderer text="nul en to tre fire halv" streaming />,
     )
 
     const animated = [...container.querySelectorAll('.streaming-word-tail')]
-    expect(animated.map((node) => node.textContent?.trim())).toEqual(['to', 'tre', 'fire'])
+    expect(animated.map((node) => node.textContent?.trim())).toEqual(['tre', 'fire', 'halv'])
     expect(container.querySelector('p')?.textContent).toBe('nul en to tre fire halv')
-    expect(animated.some((node) => node.textContent?.includes('halv'))).toBe(false)
   })
 
   it('animerer ikke en færdig eller historisk besked', () => {
@@ -102,7 +106,7 @@ function trae(tekst: string): HastNode {
 
 function stilFor(variant?: 'Neutral' | 'Disabled' | 'Normal' | 'Snappy'): string {
   const t = trae('et to tre ')
-  rehypeStreamingTextTail({ completedAtEnd: true, ...(variant ? { variant } : {}) })(t as never)
+  rehypeStreamingTextTail(variant ? { variant } : {})(t as never)
   const spans = (t.children?.[0]?.children ?? []) as HastNode[]
   const foerste = spans.find((n) => n.tagName === 'jarvis-stream-word')
   return String(foerste?.properties?.style ?? '')

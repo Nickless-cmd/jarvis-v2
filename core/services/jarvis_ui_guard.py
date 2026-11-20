@@ -31,7 +31,9 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
+from collections.abc import Mapping
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +45,10 @@ _FENCE_BLOK = re.compile(r"```jarvis-ui[ \t]*(.*?)```", re.S)
 #: Mønstret er grådigt frem til den sidste ``}`` på linjen, fordi JSON'en kan
 #: indeholde ``}`` i sine egne objekter.
 _BAR_BLOK = re.compile(r"(?<!`)jarvis-ui[ \t]*(\{.*\})[ \t]*$", re.M)
+_REF = re.compile(
+    r"^\{ref:(?P<tool>[A-Za-z0-9_-]+)\.(?P<sti>[^{}]+)\}$"
+)
+_NAVN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 #: Mønstre der aldrig kan være gyldig JSON. Hver reparation er smal og entydig.
 _REPARATIONER: tuple[tuple[re.Pattern[str], str], ...] = (
@@ -146,6 +152,127 @@ def _ret_laengder(tekst: str) -> str:
 def _tekst(vaerdi: object) -> str:
     """Spejl rendererens ``text()``: kun strenge, trimmet, tom = falsk."""
     return vaerdi.strip() if isinstance(vaerdi, str) else ""
+
+
+def _sti_dele(sti: str) -> list[str | int] | None:
+    """Python-spejl af ``gyldigBindSti`` i desk-klienten."""
+    dele: list[str | int] = []
+    i = 0
+    forvent_navn = True
+    while i < len(sti):
+        if forvent_navn:
+            match = _NAVN.match(sti, i)
+            if not match:
+                return None
+            dele.append(match.group(0))
+            i = match.end()
+            forvent_navn = False
+            continue
+        if sti[i] == ".":
+            i += 1
+            forvent_navn = True
+            continue
+        if sti[i] == "[":
+            slut = sti.find("]", i + 1)
+            indeks = sti[i + 1:slut] if slut >= 0 else ""
+            if slut < 0 or not indeks.isdigit():
+                return None
+            dele.append(int(indeks))
+            i = slut + 1
+            continue
+        return None
+    if forvent_navn or not dele or dele[0] == "state":
+        return None
+    return dele
+
+
+def _er_skalar(vaerdi: object) -> bool:
+    if isinstance(vaerdi, bool) or isinstance(vaerdi, str):
+        return True
+    if isinstance(vaerdi, (int, float)) and not isinstance(vaerdi, bool):
+        return math.isfinite(vaerdi)
+    return False
+
+
+def _bind_indhold(
+    tekst: str,
+    *,
+    tool_results: Mapping[str, object] | None,
+    run_id: str,
+) -> tuple[str, list[str]]:
+    try:
+        data = json.loads(tekst)
+    except ValueError:  # ikke JSON: intet at binde, validering melder det selv
+        return tekst, []
+
+    def _hent_resultat(tool_id: str) -> object | None:
+        if tool_results is not None:
+            return tool_results.get(tool_id)
+        try:
+            from core.services.tool_result_binding_store import hent
+        except ImportError:  # store utilgængelig: referencen står uløst => hård fejl
+            return None
+        return hent(run_id, tool_id)
+
+    fejl: list[str] = []
+    aendret = False
+
+    def _gaa(vaerdi: object, node_path: str, property_name: str) -> object:
+        nonlocal aendret
+        if isinstance(vaerdi, dict):
+            return {
+                key: _gaa(item, f"{node_path}.{key}", str(key))
+                for key, item in vaerdi.items()
+            }
+        if isinstance(vaerdi, list):
+            return [
+                _gaa(item, f"{node_path}[{i}]", f"[{i}]")
+                for i, item in enumerate(vaerdi)
+            ]
+        if not isinstance(vaerdi, str) or "{ref:" not in vaerdi:
+            return vaerdi
+
+        match = _REF.fullmatch(vaerdi)
+        grund = ""
+        fundet: object | None = None
+        if not match:
+            grund = "referenceformat eller bind-sti er ugyldig"
+        else:
+            dele = _sti_dele(match.group("sti"))
+            if dele is None:
+                grund = "bind-stien er ugyldig"
+            else:
+                fundet = _hent_resultat(match.group("tool"))
+                if fundet is None:
+                    grund = "tool-resultatet findes ikke i samme tur"
+                else:
+                    for del_ in dele:
+                        if isinstance(del_, int):
+                            if not isinstance(fundet, list) or del_ >= len(fundet):
+                                grund = "stien findes ikke i tool-resultatet"
+                                break
+                            fundet = fundet[del_]
+                        else:
+                            if not isinstance(fundet, Mapping) or del_ not in fundet:
+                                grund = "stien findes ikke i tool-resultatet"
+                                break
+                            fundet = fundet[del_]
+                    if not grund and not _er_skalar(fundet):
+                        grund = "den fundne værdi er ikke en skalar"
+        if grund:
+            parent = node_path.rsplit(".", 1)[0] if "." in node_path else "$"
+            fejl.append(
+                f"binding: nodePath={parent}; property={property_name}; "
+                f"reference={vaerdi}; grund={grund}"
+            )
+            return vaerdi
+        aendret = True
+        return fundet
+
+    bundet = _gaa(data, "$", "$")
+    if fejl or not aendret:
+        return tekst, fejl
+    return json.dumps(bundet, ensure_ascii=False), []
 
 
 def _liste(vaerdi: object, maks: int) -> list[dict]:
@@ -701,7 +828,12 @@ def _validér(tekst: str) -> tuple[bool, str]:
     return True, ""
 
 
-def normalisér(text: str, *, run_id: str = "") -> str:
+def normalisér(
+    text: str,
+    *,
+    run_id: str = "",
+    tool_results: Mapping[str, object] | None = None,
+) -> str:
     """Normalisér alle ``jarvis-ui``-blokke i teksten. Returnerer ny tekst.
 
     Kun formen ændres når JSON'en er gyldig (eller kan repareres). Kan den
@@ -710,23 +842,47 @@ def normalisér(text: str, *, run_id: str = "") -> str:
     """
     if not text or "```jarvis-ui" not in text:
         return text
+    if not run_id:
+        try:
+            from core.services.run_autonomy_context import current_run_id
+        except ImportError:  # uden run-kontekst bindes kun via eksplicit tool_results
+            current_run_id = None
+        if current_run_id is not None:
+            run_id = current_run_id()  # kaster aldrig (se run_autonomy_context)
     try:
-        return _normalisér_indre(text, run_id=run_id)
+        return _normalisér_indre(text, run_id=run_id, tool_results=tool_results)
     except Exception:
         logger.debug("jarvis_ui_guard: normalisering fejlede", exc_info=True)
         return text
 
 
-def _normalisér_indre(text: str, *, run_id: str) -> str:
+def _normalisér_indre(
+    text: str,
+    *,
+    run_id: str,
+    tool_results: Mapping[str, object] | None,
+) -> str:
     aendringer: list[str] = []
 
     def _erstat(match: re.Match[str]) -> str:
         indhold = match.group(1).strip()
         if not indhold:
             return match.group(0)
+        indhold, bind_fejl = _bind_indhold(
+            indhold, tool_results=tool_results, run_id=run_id,
+        )
+        if bind_fejl:
+            aendringer.extend(bind_fejl)
+            return _DEGRADERET
         gyldig, fejl = _validér(indhold)
         if not gyldig:
             repareret = _reparer_json(indhold)
+            repareret, bind_fejl = _bind_indhold(
+                repareret, tool_results=tool_results, run_id=run_id,
+            )
+            if bind_fejl:
+                aendringer.extend(bind_fejl)
+                return _DEGRADERET
             if not _validér(repareret)[0]:
                 # JSON'en kan være syntaktisk gyldig mens data er inkonsistent
                 # (values kortere end columns). Det rettes entydigt.
@@ -796,7 +952,12 @@ def _registrér(aendringer: list[str], *, run_id: str) -> None:
         logger.debug("jarvis_ui_guard: kunne ikke registrere hændelse", exc_info=True)
 
 
-def fejl_i_flader(text: str) -> list[str]:
+def fejl_i_flader(
+    text: str,
+    *,
+    run_id: str = "",
+    tool_results: Mapping[str, object] | None = None,
+) -> list[str]:
     """Returnér de fejl der gør en ``jarvis-ui``-blok død eller ufuldstændig.
 
     Baggrund (målt 25/10-2026, Bjørn): «disse fejler stadig … kan vi ikke
@@ -820,6 +981,13 @@ def fejl_i_flader(text: str) -> list[str]:
     """
     if not text or "jarvis-ui" not in text:
         return []
+    if not run_id:
+        try:
+            from core.services.run_autonomy_context import current_run_id
+        except ImportError:  # uden run-kontekst bindes kun via eksplicit tool_results
+            current_run_id = None
+        if current_run_id is not None:
+            run_id = current_run_id()  # kaster aldrig (se run_autonomy_context)
     fejl: list[str] = []
     try:
         for match in _FENCE_BLOK.finditer(text):
@@ -827,15 +995,42 @@ def fejl_i_flader(text: str) -> list[str]:
             if not indhold:
                 fejl.append("en jarvis-ui-blok er tom")
                 continue
+            bundet, bind_fejl = _bind_indhold(
+                indhold, tool_results=tool_results, run_id=run_id,
+            )
+            if bind_fejl:
+                fejl.extend(bind_fejl)
+                continue
+            indhold = bundet
             gyldig, grund = _validér(indhold)
             if not gyldig:
                 # Kan den repareres, er der intet at spørge om — normalisér klarer den.
                 repareret = _reparer_json(indhold)
+                json_repareret = repareret != indhold
+                laengder_repareret = False
+                repareret, bind_fejl = _bind_indhold(
+                    repareret, tool_results=tool_results, run_id=run_id,
+                )
+                if bind_fejl:
+                    fejl.extend(bind_fejl)
+                    continue
                 if not _validér(repareret)[0]:
                     justeret = _ret_laengder(repareret)
                     if justeret != repareret and _validér(justeret)[0]:
                         repareret = justeret
+                        laengder_repareret = True
                 if _validér(repareret)[0]:
+                    slags = (
+                        "json repareret"
+                        if json_repareret
+                        else "længder repareret"
+                        if laengder_repareret
+                        else "automatisk repareret"
+                    )
+                    fejl.append(
+                        f"auto-reparation: nodePath=$; property=(blok); "
+                        f"reference=(ingen); grund={slags}: {grund}"
+                    )
                     continue
                 fejl.append(f"blokken kan ikke parses: {grund}")
                 continue
@@ -846,7 +1041,8 @@ def fejl_i_flader(text: str) -> list[str]:
             niveau, skema_fejl = _diagnosticér(data)
             if niveau != "ok" and skema_fejl:
                 typ = _tekst(data.get("type")) or "ukendt"
-                fejl.append(f"{typ}: {'; '.join(skema_fejl)[:300]}")
+                prefiks = "delvist tab i " if niveau == "delvis" else ""
+                fejl.append(f"{prefiks}{typ}: {'; '.join(skema_fejl)[:300]}")
 
         # Form 2: bar ``jarvis-ui {…}`` uden fence. ``normalisér`` ser den ikke,
         # så den når chatten som rå tekst. Det er den fejl brugeren faktisk ser.

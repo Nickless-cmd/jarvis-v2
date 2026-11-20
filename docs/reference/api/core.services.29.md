@@ -291,11 +291,25 @@ _Provider-agnostic tool-result aging for the visible agentic loop._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `aging_trigger_tokens` | `()` | Configured full-content token trigger for aging. Default 120k. Self-safe. | [src](../../../core/services/tool_result_aging.py#L56) |
-| function | `tool_result_aging_mode` | `()` | Current aging mode: 'off' | 'shadow' | 'active'. Default 'shadow'. | [src](../../../core/services/tool_result_aging.py#L67) |
-| function | `_clear_placeholder` | `(n)` | — | [src](../../../core/services/tool_result_aging.py#L84) |
-| function | `_is_already_aged` | `(content)` | Er resultatet ALLEREDE aeldet? Baade ryddet og forkortet taeller. | [src](../../../core/services/tool_result_aging.py#L88) |
-| function | `age_tool_results` | `(exchanges, *, keep_full=…, mode, strength, round_index, compress_fn=…, trigger_tokens=…)` | Age tool-result content on exchanges older than the ``keep_full`` most recent. | [src](../../../core/services/tool_result_aging.py#L98) |
+| function | `_tool_results_dir` | `()` | Runtime-store for originals, matching the existing TOOL_RESULTS_DIR. | [src](../../../core/services/tool_result_aging.py#L59) |
+| function | `_recovery_path` | `(recovery_key)` | — | [src](../../../core/services/tool_result_aging.py#L65) |
+| function | `_recovery_key` | `(tool_call_id, content)` | — | [src](../../../core/services/tool_result_aging.py#L70) |
+| function | `_store_tool_result` | `(recovery_key, content)` | Persist exact content atomically; propagate failure so aging can abstain. | [src](../../../core/services/tool_result_aging.py#L77) |
+| function | `recover_tool_result` | `(tool_use_id)` | Return an aged tool result's exact original text, or ``None`` if absent. | [src](../../../core/services/tool_result_aging.py#L94) |
+| function | `aging_trigger_tokens` | `()` | Configured full-content token trigger for aging. Default 120k. Self-safe. | [src](../../../core/services/tool_result_aging.py#L106) |
+| function | `tool_result_aging_mode` | `()` | Current aging mode: 'off' | 'shadow' | 'active'. Default 'shadow'. | [src](../../../core/services/tool_result_aging.py#L117) |
+| function | `_recovery_hint` | `(recovery_key, path)` | — | [src](../../../core/services/tool_result_aging.py#L134) |
+| function | `_clear_placeholder` | `(n, recovery_key, path)` | — | [src](../../../core/services/tool_result_aging.py#L138) |
+| function | `_is_already_aged` | `(content)` | Er resultatet ALLEREDE aeldet? Baade ryddet og forkortet taeller. | [src](../../../core/services/tool_result_aging.py#L142) |
+| function | `age_tool_results` | `(exchanges, *, keep_full=…, mode, strength, round_index, compress_fn=…, trigger_tokens=…)` | Age tool-result content on exchanges older than the ``keep_full`` most recent. | [src](../../../core/services/tool_result_aging.py#L152) |
+
+## `core/services/tool_result_binding_store.py`
+_Kortlivet opslag af strukturerede tool-resultater til DIL-binding._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `registrer` | `(run_id, tool_use_id, resultat)` | — | [src](../../../core/services/tool_result_binding_store.py#L19) |
+| function | `hent` | `(run_id, tool_use_id)` | — | [src](../../../core/services/tool_result_binding_store.py#L31) |
 
 ## `core/services/tool_result_store.py`
 
@@ -548,21 +562,4 @@ _Indhegning af utroet indhold — porteret fra jarvis-code._
 | function | `should_fence` | `(navn)` | Skal dette vaerktoejs resultat hegnes ind? Ren. | [src](../../../core/services/untrusted_fencing.py#L88) |
 | function | `_hegn_blok` | `(kilde, blok)` | Hegn teksten i én indholdsblok. Ikke-tekst-blokke roeres ikke. | [src](../../../core/services/untrusted_fencing.py#L101) |
 | function | `fence_tool_result` | `(navn, resultat)` | Hegn den laesbare krop af et vaerktoejs-resultat. Self-safe. | [src](../../../core/services/untrusted_fencing.py#L112) |
-
-## `core/services/upload_sandbox.py`
-_Uploadede filer og arkiver — pakket ud ét sted, og aldrig eksekverbart._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ExtractResult` | `` | — | [src](../../../core/services/upload_sandbox.py#L47) |
-| method | `ExtractResult.as_dict` | `(self)` | — | [src](../../../core/services/upload_sandbox.py#L55) |
-| function | `looks_like_archive` | `(path)` | Er filen et arkiv? Afgøres på INDHOLD, ikke på navn. | [src](../../../core/services/upload_sandbox.py#L61) |
-| function | `harden_upload` | `(path)` | Gør en uploadet fil ulæselig for andre og umulig at eksekvere. | [src](../../../core/services/upload_sandbox.py#L76) |
-| function | `sandbox_root_for` | `(attachment_id)` | Mappen et bestemt arkiv pakkes ud i. Én pr. vedhæftning. | [src](../../../core/services/upload_sandbox.py#L89) |
-| function | `_is_inside` | `(root, candidate)` | Ligger `candidate` under `root` — også efter symlink-opløsning? | [src](../../../core/services/upload_sandbox.py#L95) |
-| function | `_reject_name` | `(name)` | Tom streng hvis navnet er i orden, ellers grunden til at det ikke er. | [src](../../../core/services/upload_sandbox.py#L109) |
-| function | `_write_entry` | `(dest, data_iter, remaining)` | Skriv én post og returnér antal skrevne bytes. Rejser ValueError ved loft. | [src](../../../core/services/upload_sandbox.py#L122) |
-| function | `_chunks` | `(fileobj, size=…)` | — | [src](../../../core/services/upload_sandbox.py#L136) |
-| function | `safe_extract` | `(archive_path, attachment_id)` | Pak et arkiv ud i sin egen sandkasse — post for post. | [src](../../../core/services/upload_sandbox.py#L144) |
-| function | `scan_tree` | `(root)` | Kør ClamAV på en udpakket sandkasse. (ren, begrundelse). | [src](../../../core/services/upload_sandbox.py#L234) |
 

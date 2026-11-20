@@ -361,3 +361,95 @@ def test_control_med_slider_er_ok_og_bevarer_bind() -> None:
     ud = normalisér(blok)
     assert '"control"' in ud
     assert "styrke" in ud
+
+
+# ── DIL lag 1: server-side data-binding ──────────────────────────────────────
+
+
+def _progress_med_ref(reference: str) -> str:
+    return (
+        '```jarvis-ui\n'
+        '{"type":"progress","items":[{"label":"Pris","value":"'
+        + reference
+        + '"}]}\n```'
+    )
+
+
+def test_ref_erstattes_med_native_skalar_foer_validering() -> None:
+    tekst = _progress_med_ref("{ref:call_1.data.price}")
+
+    ud = normalisér(
+        tekst,
+        tool_results={"call_1": {"data": {"price": 6.91}}},
+    )
+
+    data = json.loads(_blok(ud))
+    assert data["items"][0]["value"] == 6.91
+    assert isinstance(data["items"][0]["value"], float)
+
+
+def test_uloest_ref_er_haard_fejl_med_fuld_diagnostik() -> None:
+    from core.services.jarvis_ui_guard import fejl_i_flader
+
+    reference = "{ref:missing.data.price}"
+    tekst = _progress_med_ref(reference)
+    fejl = fejl_i_flader(tekst, tool_results={})
+    ud = normalisér(tekst, tool_results={})
+
+    assert fejl
+    assert "nodePath=$.items[0]" in fejl[0]
+    assert "property=value" in fejl[0]
+    assert f"reference={reference}" in fejl[0]
+    assert "resultat" in fejl[0]
+    assert "— (mangler)" not in ud
+    assert '"value":""' not in ud
+    assert _DEGRADERET in ud
+
+
+def test_ref_til_ikke_skalar_afvises() -> None:
+    from core.services.jarvis_ui_guard import fejl_i_flader
+
+    reference = "{ref:call_1.data}"
+    tekst = _progress_med_ref(reference)
+    resultater = {"call_1": {"data": {"price": 6.91}}}
+
+    fejl = fejl_i_flader(tekst, tool_results=resultater)
+    ud = normalisér(tekst, tool_results=resultater)
+
+    assert fejl
+    assert "ikke en skalar" in fejl[0]
+    assert _DEGRADERET in ud
+
+
+def test_ref_bevarer_decimalpraecision_uden_lokalisering() -> None:
+    tekst = _progress_med_ref("{ref:call_1.values[0]}")
+
+    ud = normalisér(tekst, tool_results={"call_1": {"values": [6.91]}})
+
+    assert '"value": 6.91' in ud
+    assert "6,91" not in ud
+    assert json.loads(_blok(ud))["items"][0]["value"] == 6.91
+
+
+def test_stille_reparationer_rapporteres_til_korrektionsrunden() -> None:
+    from core.services.jarvis_ui_guard import fejl_i_flader
+
+    reparerbar_json = (
+        '```jarvis-ui\n'
+        '{"type":"comparison","columns":["A","B"],'
+        '"rows":[{"label":"x","values":["1","2",]}]}\n```'
+    )
+    skaev_laengde = (
+        '```jarvis-ui\n'
+        '{"type":"comparison","columns":["A","B"],'
+        '"rows":[{"label":"x","values":["1"]}]}\n```'
+    )
+    delvist_tab = (
+        '```jarvis-ui\n'
+        '{"type":"stats","items":[{"label":"a","value":"1"},'
+        '{"label":"b"}]}\n```'
+    )
+
+    assert any("json repareret" in f for f in fejl_i_flader(reparerbar_json))
+    assert any("længder repareret" in f for f in fejl_i_flader(skaev_laengde))
+    assert any("delvist tab" in f for f in fejl_i_flader(delvist_tab))

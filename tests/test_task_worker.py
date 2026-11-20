@@ -359,8 +359,71 @@ def test_curriculum_focus_naar_terminal_tilstand_inden_ét_tick(isolated_runtime
     task_worker.tick_task_worker(budget=1)
 
     got = runtime_tasks.get_task(t["task_id"])
+    assert got["status"] in {"blocked", "succeeded"}
+    assert got["status"] != "queued"
+
+
+def test_curriculum_focus_sender_maal_til_autonom_bane(isolated_runtime, monkeypatch) -> None:
+    """Læringsmålet skal MATERIALISERES, ikke bare markeres blocked.
+
+    Målt 20/11-2026: otte læringsmål stod fast siden 30/10 fordi handleren pegede
+    på en bane ingen kode startede. `succeeded` kræver derfor et født run.
+    """
+    import core.services.visible_autonomous_run as var
+
+    runtime_tasks, task_worker = _import_modules()
+    kald: list[dict] = []
+
+    def _fake_start(message, **kw):
+        kald.append({"message": message, **kw})
+        return True
+
+    monkeypatch.setattr(var, "start_autonomous_run", _fake_start)
+    t = runtime_tasks.create_task(
+        kind="curriculum-focus", goal="Undgå: afbryder sit eget svar", origin="test"
+    )
+
+    task_worker.tick_task_worker(budget=1)
+
+    got = runtime_tasks.get_task(t["task_id"])
+    assert got["status"] == "succeeded"
+    assert got["artifact_ref"] == f"run:work:{t['task_id']}"
+    assert len(kald) == 1
+    assert "afbryder sit eget svar" in kald[0]["message"]
+    assert kald[0]["origin"] == "work"
+
+
+def test_curriculum_focus_blocked_naar_run_guard_afviser(isolated_runtime, monkeypatch) -> None:
+    """Et afvist run må IKKE meldes som succes — det var 1/11-fejlen."""
+    import core.services.visible_autonomous_run as var
+
+    runtime_tasks, task_worker = _import_modules()
+    monkeypatch.setattr(var, "start_autonomous_run", lambda *a, **k: False)
+    t = runtime_tasks.create_task(kind="curriculum-focus", goal="lær y", origin="test")
+
+    task_worker.tick_task_worker(budget=1)
+
+    got = runtime_tasks.get_task(t["task_id"])
     assert got["status"] == "blocked"
-    assert got["blocked_reason"]
+    assert "run-guard" in (got["blocked_reason"] or "")
+
+
+def test_curriculum_focus_blocked_naar_run_start_kaster(isolated_runtime, monkeypatch) -> None:
+    import core.services.visible_autonomous_run as var
+
+    runtime_tasks, task_worker = _import_modules()
+
+    def _boom(*a, **k):
+        raise RuntimeError("ingen bane")
+
+    monkeypatch.setattr(var, "start_autonomous_run", _boom)
+    t = runtime_tasks.create_task(kind="curriculum-focus", goal="lær z", origin="test")
+
+    task_worker.tick_task_worker(budget=1)
+
+    got = runtime_tasks.get_task(t["task_id"])
+    assert got["status"] == "blocked"
+    assert "run-start fejlede" in (got["blocked_reason"] or "")
 
 
 def test_health_rapporterer_unclaimable_kinds(isolated_runtime) -> None:

@@ -212,20 +212,67 @@ def _handle_generic(task: dict[str, Any]) -> dict[str, str]:
 
 
 def _handle_curriculum_focus(task: dict[str, Any]) -> dict[str, str]:
-    """Læringsmål fra self_experiments. Workeren kan ikke udføre læring.
+    """Læringsmål fra self_experiments — sendes til en autonom bane med værktøjer.
 
-    Ærligt `blocked` med næste nødvendige bane frem for at lade tasken rådne i
-    køen (målt 20/11-2026: 6 queued + 2 running, ældste fra 30/10).
+    MÅLT 20/11-2026: den tidligere handler meldte ``blocked`` og pegede på «en
+    kørende bane med værktøjsadgang» — men ingen kode startede den bane. Otte
+    læringsmål stod fast siden 30/10, og en `blocked`-tilstand intet kan forlade
+    er ikke ærlig, den er en død ende.
+
+    Nu materialiseres målet som et autonomt run (origin ``work``, så det lander i
+    en synlig ``auto-work-<dato>``-session). ``succeeded`` meldes KUN når runnet
+    faktisk blev født — ellers gentog vi 1/11-2026-fejlen, hvor 5.776 tasks stod
+    ``succeeded`` uden at noget var gjort.
     """
     goal = str(task.get("goal") or "").strip()
+    if not goal:
+        return {
+            "status": "failed",
+            "summary": "curriculum-focus uden goal",
+            "artifact_ref": "",
+            "blocked_reason": "",
+        }
+    prompt = (
+        "LÆRINGSMÅL (fra self_experiments): "
+        f"{goal}\n\n"
+        "Arbejd med målet konkret: find den adfærd det peger på i koden eller "
+        "loggen, ret den hvis rettelsen ligger inden for rammen, og skriv hvad "
+        "du målte — ikke hvad du forventer."
+    )
+    try:
+        from core.services.visible_autonomous_run import start_autonomous_run
+
+        started = start_autonomous_run(
+            prompt,
+            origin="work",
+            task_id=str(task.get("task_id") or ""),
+            max_tool_calls=24,
+            max_seconds=600.0,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "status": "blocked",
+            "summary": (
+                f"curriculum-focus: kunne ikke starte bane — "
+                f"{type(exc).__name__}: {exc}"
+            )[:240],
+            "artifact_ref": "",
+            "blocked_reason": f"run-start fejlede: {type(exc).__name__}",
+        }
+    if not started:
+        return {
+            "status": "blocked",
+            "summary": f"curriculum-focus: run-guarden afviste banen — {goal[:150]}",
+            "artifact_ref": "",
+            "blocked_reason": (
+                "run-guard/gut-gate afviste det autonome run; intet blev sendt afsted"
+            ),
+        }
     return {
-        "status": "blocked",
-        "summary": f"curriculum-focus: registreret, ikke udført — {goal[:200]}",
-        "artifact_ref": "",
-        "blocked_reason": (
-            "læringsmål kræver en kørende bane med værktøjsadgang "
-            "(visible/autonom run) — workeren kan ikke udføre det"
-        ),
+        "status": "succeeded",
+        "summary": f"curriculum-focus: sendt til autonom bane — {goal[:150]}",
+        "artifact_ref": f"run:work:{task.get('task_id')}",
+        "blocked_reason": "",
     }
 
 

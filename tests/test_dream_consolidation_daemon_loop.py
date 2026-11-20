@@ -325,6 +325,9 @@ class TestCarryOverKobling:
             "core.services.dream_carry_over.adopt_dream",
             lambda **kw: kald.append(kw),
         )
+        monkeypatch.setattr(
+            "core.services.dream_domains.domaene_for_tur", lambda t, **k: "memory"
+        )
 
         out = d._produce_dream_artifacts(
             {"dream_hypothesis": "En overraskende paastand om natten",
@@ -336,6 +339,7 @@ class TestCarryOverKobling:
         assert out["carry_over"] is True
         assert kald and kald[0]["dream_id"] == "dream-carry01"
         assert kald[0]["confidence"] == 0.72
+        assert kald[0]["domain"] == "memory", "producenten skal give drømmen domæne"
 
     def test_uden_hypotese_adopteres_intet(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setattr(d, "_dreams_dir", lambda: tmp_path)

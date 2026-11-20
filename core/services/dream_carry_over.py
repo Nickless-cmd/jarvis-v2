@@ -208,14 +208,25 @@ def adopt_dream(
     content: str,
     confidence: float = 0.5,
     source_memories: list[str] | None = None,
+    domain: str | None = None,
 ) -> dict[str, object]:
-    """Adopt a dream hypothesis for carry-over to next session."""
+    """Adopt a dream hypothesis for carry-over to next session.
+
+    ``domain`` er et af `dream_domains.DOMAENER`. Et ugyldigt navn gemmes IKKE
+    (hellere intet domæne end et gættet — samme princip som `domaene_for_tur`).
+    En drøm uden domæne kan ikke få sin confidence løftet af evidens.
+    """
     _ensure_loaded()
     now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    from core.services.dream_domains import er_gyldigt_domaene
+    dom = str(domain or "").strip().lower()
+    dom = dom if er_gyldigt_domaene(dom) else ""
 
     # If already active, preserve session history and boost confidence
     existing = next((d for d in _ACTIVE_DREAMS if d["dream_id"] == dream_id), None)
     if existing:
+        if dom:
+            existing["domain"] = dom
         existing["content"] = content[:300]
         existing["confidence"] = round(
             min(_MAX_CONFIDENCE, max(float(existing.get("confidence", 0.5)), confidence)),
@@ -239,6 +250,8 @@ def adopt_dream(
         "adopted_at": now,
         "updated_at": now,
     }
+    if dom:
+        dream["domain"] = dom
 
     _ACTIVE_DREAMS.append(dream)
     _enforce_active_cap()
@@ -434,8 +447,19 @@ def record_dream_evidence(
     source: str,
     evidence: str,
     evidence_ref: str,
+    domain: str | None = None,
 ) -> dict[str, object]:
     """Registrér ÉN ekstern observation for eller imod en drøm.
+
+    DOMÆNEKRAV: beviset skal bære samme domæne (`dream_domains.DOMAENER`) som
+    drømmen. Fremmed domæne → afvist. Bevis UDEN domæne (eller med ugyldigt
+    navn) → AFVIST, ikke talt som «svagere». Grunden: husets fejlmodel er at
+    et manglende grundlag ikke tæller som svag støtte, det tæller ikke. Samme
+    mønster som tom kilde/pegepind her og «None frem for et gættet domæne» i
+    `dream_domains`. Et «svagere» løft ville kræve en opfundet vægt, og
+    `_EVIDENS_TIL_AFGOERELSE` tæller pegepinde — ikke vægte — så en halv
+    pegepind kan ikke udtrykkes uden at åbne en ny talmodel. Samme gælder en
+    drøm uden domæne: ingen match kan fastslås, så den løftes ikke.
 
     ``source`` er hvem der målte (fx ``meta_learning_hypotheses`` eller
     ``record_hypothesis_sample``), ``evidence`` er hvad der blev set, og
@@ -463,11 +487,21 @@ def record_dream_evidence(
         return {"status": "rejected", "reason": "evidence_ref er tom — der skal være en pegepind til målingen"}
     if not tekst:
         return {"status": "rejected", "reason": "evidence er tom — der skal stå HVAD der blev målt"}
+    from core.services.dream_domains import er_gyldigt_domaene
+    bevis_dom = str(domain or "").strip().lower()
+    if not er_gyldigt_domaene(bevis_dom):
+        return {"status": "rejected",
+                "reason": "beviset mangler et gyldigt domæne — domæneløst bevis løfter ikke confidence"}
 
     with _LOCK:
         dream = next((d for d in _ACTIVE_DREAMS if d.get("dream_id") == dream_id), None)
         if dream is None:
             return {"status": "error", "error": f"ukendt eller arkiveret drøm {dream_id!r}"}
+        if str(dream.get("domain") or "") != bevis_dom:
+            return {"status": "rejected",
+                    "reason": (f"domæne-mismatch: beviset er {bevis_dom!r}, drømmen er "
+                               f"{dream.get('domain') or 'uden domæne'!r} — bevis fra et andet "
+                               "domæne løfter ikke confidence")}
 
         optegnelser = list(dream.get("evidence") or [])
         if any(str(e.get("evidence_ref") or "") == ref for e in optegnelser):
@@ -523,6 +557,7 @@ def record_evidence_for_hypothesis(
     source: str,
     evidence: str,
     evidence_ref: str,
+    domain: str | None = None,
 ) -> list[str]:
     """Før en afgjort hypotese-måling videre til de drømme der nævner den.
 
@@ -538,12 +573,23 @@ def record_evidence_for_hypothesis(
     for d in list(_ACTIVE_DREAMS):
         did = str(d.get("dream_id") or "")
         if did == hyp or hyp in str(d.get("content") or ""):
+            # Ældre drømme (adopteret før domænekravet) har intet domæne og
+            # ville ellers være permanent uløftelige. Giv dem domæne ud fra
+            # deres EGET indhold — aldrig fra beviset (så var matchet cirkulært).
+            # None → forbliver uden domæne og afvises; prøves igen næste gang.
+            if not d.get("domain"):
+                from core.services.dream_domains import domaene_for_tur
+                nyt = domaene_for_tur(str(d.get("content") or ""))
+                if nyt:
+                    d["domain"] = nyt
+                    _save()
             ud = record_dream_evidence(
                 did,
                 supports=supports,
                 source=source,
                 evidence=evidence,
                 evidence_ref=evidence_ref,
+                domain=domain,
             )
             if ud.get("status") in {"ok", "duplicate"}:
                 ramte.append(did)

@@ -44,6 +44,14 @@ def _indsæt_hypotese(hyp_id: str, *, sample_size: int = 2) -> None:
         conn.commit()
 
 
+@pytest.fixture(autouse=True)
+def _ingen_net_til_domaene(monkeypatch):
+    """Producenten kalder `domaene_for_tur` (en LLM-klassifikation) — aldrig nettet i test."""
+    from core.services import dream_domains
+
+    monkeypatch.setattr(dream_domains, "domaene_for_tur", lambda t, **k: "memory")
+
+
 def test_afgjort_hypotese_foeres_videre_til_droemmene(isolated_runtime, monkeypatch):
     """Kernen: en supported-afgørelse SKAL kalde drømme-broen."""
     from core.services import dream_carry_over as dco
@@ -65,6 +73,7 @@ def test_afgjort_hypotese_foeres_videre_til_droemmene(isolated_runtime, monkeypa
     assert len(kald) == 1, "broen skal kaldes præcis én gang — ved afgørelsen"
     assert kald[0]["hypothesis_id"] == "HC-DREAM-TEST-A"
     assert kald[0]["supports"] is True
+    assert kald[0]["domain"] == "memory", "producenten skal levere domæne"
     assert kald[0]["source"] == "meta_learning_hypotheses"
     assert kald[0]["evidence_ref"].startswith("meta-learning-sample:")
 
@@ -124,27 +133,70 @@ def test_bro_fejl_vaelter_ikke_afgoerelsen(isolated_runtime, monkeypatch):
     assert ud["auto_resolved"]["outcome"] == "supported"
 
 
-def test_ende_til_ende_droem_faar_evidens(isolated_runtime, monkeypatch):
-    """Hele kæden: afgjort hypotese → drøm der nævner den får ekstern evidens."""
+def _e2e_setup(monkeypatch, *, dream_domain):
     from core.services import dream_carry_over as dco
-    from core.services import meta_learning_hypotheses as mlh
 
     monkeypatch.setattr(dco, "_ACTIVE_DREAMS", [])
     monkeypatch.setattr(dco, "_DREAM_ARCHIVE", [])
     monkeypatch.setattr(dco, "_LOADED", True)
     monkeypatch.setattr(dco, "_save", lambda: None)
+    kw = {"domain": dream_domain} if dream_domain else {}
     dco.adopt_dream(
         dream_id="dream-e2e",
-        content="HC-DREAM-TEST-E forudsagde at de tre ville overleve",
-        confidence=0.8,
+        content="HC-DREAM-TEST-E og HC-DREAM-TEST-F forudsagde at de tre ville overleve",
+        confidence=0.5, **kw,
     )
     _indsæt_hypotese("HC-DREAM-TEST-E")
+    _indsæt_hypotese("HC-DREAM-TEST-F")
+    return dco
 
-    mlh.record_hypothesis_sample(hypothesis_id="HC-DREAM-TEST-E", supports=True)
-    mlh.record_hypothesis_sample(hypothesis_id="HC-DREAM-TEST-E", supports=True)
 
+def _afgoer_begge(mlh):
+    for h in ("HC-DREAM-TEST-E", "HC-DREAM-TEST-F"):
+        mlh.record_hypothesis_sample(hypothesis_id=h, supports=True)
+        mlh.record_hypothesis_sample(hypothesis_id=h, supports=True)
+
+
+def test_ende_til_ende_confidence_loeftes_med_domaene_fra_producenten(isolated_runtime, monkeypatch):
+    """ÆGTE vej: producent → domaene_for_tur → bro → record_dream_evidence → confirm_dream."""
+    from core.services import dream_domains
+    from core.services import meta_learning_hypotheses as mlh
+
+    dco = _e2e_setup(monkeypatch, dream_domain="memory")
+    monkeypatch.setattr(dream_domains, "domaene_for_tur", lambda t, **k: "memory")
     d = next(x for x in dco._ACTIVE_DREAMS if x["dream_id"] == "dream-e2e")
-    evidens = d.get("evidence") or []
-    assert len(evidens) == 1
-    assert evidens[0]["source"] == "meta_learning_hypotheses"
-    assert evidens[0]["supports"] is True
+    assert d["confidence"] == 0.5  # før
+
+    _afgoer_begge(mlh)
+
+    assert len(d["evidence"]) == 2
+    assert all(e["source"] == "meta_learning_hypotheses" for e in d["evidence"])
+    assert d["confirmed"] is True
+    assert d["confidence"] == 0.65  # efter: 0.5 + _CONFIRM_BOOST
+
+
+def test_ende_til_ende_producent_uden_domaene_loefter_intet(isolated_runtime, monkeypatch):
+    """domaene_for_tur → None: beviset afvises (husets fejlmodel), confidence uændret."""
+    from core.services import dream_domains
+    from core.services import meta_learning_hypotheses as mlh
+
+    dco = _e2e_setup(monkeypatch, dream_domain="memory")
+    monkeypatch.setattr(dream_domains, "domaene_for_tur", lambda t, **k: None)
+    _afgoer_begge(mlh)
+    d = next(x for x in dco._ACTIVE_DREAMS if x["dream_id"] == "dream-e2e")
+    assert (d.get("evidence") or []) == []
+    assert d["confidence"] == 0.5
+
+
+def test_ende_til_ende_aeldre_droem_uden_domaene_kan_loeftes(isolated_runtime, monkeypatch):
+    """En drøm fra DREAM_CARRY.json uden domæne får domæne af eget indhold — og kan løftes."""
+    from core.services import dream_domains
+    from core.services import meta_learning_hypotheses as mlh
+
+    dco = _e2e_setup(monkeypatch, dream_domain=None)
+    d = next(x for x in dco._ACTIVE_DREAMS if x["dream_id"] == "dream-e2e")
+    assert "domain" not in d
+    monkeypatch.setattr(dream_domains, "domaene_for_tur", lambda t, **k: "memory")
+    _afgoer_begge(mlh)
+    assert d["domain"] == "memory"
+    assert d["confidence"] == 0.65

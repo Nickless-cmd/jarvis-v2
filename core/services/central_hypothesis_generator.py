@@ -340,9 +340,14 @@ def record_governed_sample(hyp_id: str, *, supports: bool, falsifies: bool = Fal
     if new_status in {"resolved", "dead"} and outcome:
         try:
             from core.services.dream_carry_over import record_evidence_for_hypothesis
+            from core.services.dream_domains import domaene_for_tur
 
+            # Domænet kommer af hypotesens EGEN påstand (ikke en gættet etiket).
+            # None → beviset afvises i broen (husets fejlmodel: intet grundlag
+            # tæller ikke som svagt grundlag) og løftet udebliver.
             record_evidence_for_hypothesis(
                 hyp_id,
+                domain=domaene_for_tur(str(h.get("statement") or "")),
                 supports=outcome == "supported",
                 source="central_hypothesis_generator",
                 evidence=(

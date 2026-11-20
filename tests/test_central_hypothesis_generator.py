@@ -65,7 +65,8 @@ def test_full_generation_tick_registers(isolated_runtime):
     assert res2["registered"] == 0 and res2["duplicate"] >= 1
 
 
-def test_grounded_samples_resolve_hypothesis(isolated_runtime):
+def test_grounded_samples_resolve_hypothesis(isolated_runtime, monkeypatch):
+    monkeypatch.setattr("core.services.dream_domains.domaene_for_tur", lambda t, **k: None)
     _seed_edges(isolated_runtime, [("memory.recall_fail", "somatic.stress", 4, "inferred-kind")])
     gen.run_hypothesis_generation_tick()
     hyp_id = gen.list_active_hypotheses()[0]["hyp_id"]

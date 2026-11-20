@@ -28,7 +28,7 @@ def _isolated(monkeypatch, tmp_path):
 
 
 def _droem(dream_id: str = "HC-DREAM-TEST", *, carry: int = 0, confidence: float = 0.8):
-    dco.adopt_dream(dream_id=dream_id, content="Testdrøm om carry-mekanikken", confidence=confidence)
+    dco.adopt_dream(dream_id=dream_id, content="Testdrøm om carry-mekanikken", confidence=confidence, domain="memory")
     d = next(x for x in dco._ACTIVE_DREAMS if x["dream_id"] == dream_id)
     d["session_carry_count"] = carry
     return d
@@ -41,6 +41,7 @@ def _evidens(dream_id: str, *, supports: bool, ref: str, source: str = "meta_lea
         source=source,
         evidence="målt i en ekstern kørsel",
         evidence_ref=ref,
+        domain="memory",
     )
 
 
@@ -154,6 +155,7 @@ def test_hypotese_broen_rammer_droemmen_der_naevner_den(monkeypatch):
         dream_id="dream-x",
         content="HC-DREAM-111 forudsagde at de tre ville overleve",
         confidence=0.8,
+        domain="memory",
     )
     ramte = dco.record_evidence_for_hypothesis(
         "HC-DREAM-111",
@@ -161,6 +163,7 @@ def test_hypotese_broen_rammer_droemmen_der_naevner_den(monkeypatch):
         source="meta_learning_hypotheses",
         evidence="hypotese afgjort som supported",
         evidence_ref="meta-learning-sample:hsamp-1",
+        domain="memory",
     )
     assert ramte == ["dream-x"]
     d = next(x for x in dco._ACTIVE_DREAMS if x["dream_id"] == "dream-x")

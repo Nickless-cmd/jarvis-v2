@@ -288,7 +288,8 @@ def test_sent_sample_efter_sweep_genopliver_ikke_kontrakten(isolated_runtime):
     assert _status(hyp) == "expired"
 
 
-def test_sample_inden_for_horisonten_taeller_stadig(isolated_runtime):
+def test_sample_inden_for_horisonten_taeller_stadig(isolated_runtime, monkeypatch):
+    monkeypatch.setattr("core.services.dream_domains.domaene_for_tur", lambda t, **k: None)
     """Modproeven: den tidslige invariant maa ikke kaste gyldig evidens vaek.
     Fem samples INDEN for fristen skal stadig afgoere hypotesen."""
     hyp = _insert("hyp-indenfor", age_hours=24 * 3, ttl_seconds=7 * 24 * 3600)

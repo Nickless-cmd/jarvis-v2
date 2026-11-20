@@ -684,9 +684,11 @@ def _produce_dream_artifacts(
     if hypothesis:
         try:
             from core.services.dream_carry_over import adopt_dream
+            from core.services.dream_domains import domaene_for_tur
 
             adopt_dream(
                 dream_id=f"dream-{consolidation_id}",
+                domain=domaene_for_tur(hypothesis),  # drømmens eget indhold; None = intet domæne
                 content=hypothesis,
                 confidence=confidence,
                 source_memories=[consolidation_id],

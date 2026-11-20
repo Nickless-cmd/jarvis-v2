@@ -185,9 +185,13 @@ def record_hypothesis_sample(
     if auto_resolved.get("outcome") in {"supported", "contradicted"}:
         try:
             from core.services.dream_carry_over import record_evidence_for_hypothesis
+            from core.services.dream_domains import domaene_for_tur
 
+            # Domænet kommer af hypotesens EGEN påstand (ikke en gættet etiket).
+            # None → beviset afvises i broen (husets fejlmodel) og løftet udebliver.
             record_evidence_for_hypothesis(
                 hypothesis_id,
+                domain=domaene_for_tur(str(hyp["statement"] or "")),
                 supports=auto_resolved["outcome"] == "supported",
                 source="meta_learning_hypotheses",
                 evidence=(

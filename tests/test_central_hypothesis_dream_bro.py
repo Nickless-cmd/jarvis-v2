@@ -45,6 +45,9 @@ def _verdict(*, alive: bool, confidence: float, quarantined: bool = False):
 
 def _kobl(monkeypatch, *, grounded: bool = True):
     kald: list[dict] = []
+    # Producenten kalder `domaene_for_tur` (LLM) — aldrig nettet i test.
+    from core.services import dream_domains
+    monkeypatch.setattr(dream_domains, "domaene_for_tur", lambda t, **k: "memory")
     monkeypatch.setattr(
         dco,
         "record_evidence_for_hypothesis",
@@ -74,6 +77,7 @@ def test_supported_hypotese_foerer_evidens_videre(isolated_runtime, monkeypatch)
     assert len(kald) == 1
     assert kald[0]["hyp_id"] == "clh-test-1"
     assert kald[0]["supports"] is True
+    assert kald[0]["domain"] == "memory", "producenten skal levere domæne"
     assert kald[0]["source"] == "central_hypothesis_generator"
     assert kald[0]["evidence_ref"].startswith("central-hypothesis:")
 
@@ -126,3 +130,39 @@ def test_bro_fejl_vaelter_ikke_afgoerelsen(isolated_runtime, monkeypatch):
 
     assert ud["status"] == "ok"
     assert ud["outcome"] == "supported"
+
+
+def _ægte_bro(monkeypatch, *, domaene):
+    """Den ÆGTE bro (ikke fanget) — kun domæne-klassifikationen og governance er stubbet."""
+    from core.services import dream_domains
+    monkeypatch.setattr(dream_domains, "domaene_for_tur", lambda t, **k: domaene)
+    monkeypatch.setattr(dco, "_ACTIVE_DREAMS", [])
+    monkeypatch.setattr(dco, "_DREAM_ARCHIVE", [])
+    monkeypatch.setattr(dco, "_LOADED", True)
+    monkeypatch.setattr(dco, "_save", lambda: None)
+    dco.adopt_dream(dream_id="dream-c", content="clh-test-1 og clh-test-2 hænger sammen",
+                    confidence=0.5, domain="memory")
+    monkeypatch.setattr(gen, "_load", lambda hid: {**_hyp(), "hyp_id": hid})
+    monkeypatch.setattr(gen, "_to_evidence", lambda _s: [{"supports": True}])
+    monkeypatch.setattr(gen.gov, "is_externally_grounded", lambda _e, verifier=None: True)
+    monkeypatch.setattr(gen.gov, "evaluate",
+                        lambda *a, **kw: _verdict(alive=True, confidence=0.9))
+    return next(d for d in dco._ACTIVE_DREAMS if d["dream_id"] == "dream-c")
+
+
+def test_aegte_bro_loefter_confidence_naar_producenten_leverer_domaene(isolated_runtime, monkeypatch):
+    d = _ægte_bro(monkeypatch, domaene="memory")
+    assert d["confidence"] == 0.5  # før
+    gen.record_governed_sample("clh-test-1", supports=True, source="test")
+    gen.record_governed_sample("clh-test-2", supports=True, source="test")
+    assert len(d["evidence"]) == 2
+    assert d["confirmed"] is True
+    assert d["confidence"] == 0.65  # efter
+
+
+def test_aegte_bro_loefter_intet_naar_domaene_er_none(isolated_runtime, monkeypatch):
+    d = _ægte_bro(monkeypatch, domaene=None)
+    gen.record_governed_sample("clh-test-1", supports=True, source="test")
+    gen.record_governed_sample("clh-test-2", supports=True, source="test")
+    assert (d.get("evidence") or []) == []
+    assert d["confidence"] == 0.5

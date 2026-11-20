@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/daemon_lane_switch.py`
+_Live kill switch for daemon-lanens public-safe-rute._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_som_bool` | `(value, *, default)` | Tolk en JSON/env-værdi som bool. | [src](../../../core/services/daemon_lane_switch.py#L74) |
+| function | `_read_live` | `()` | Læs flaget fra env → runtime.json → default. Kaster aldrig. | [src](../../../core/services/daemon_lane_switch.py#L94) |
+| function | `public_safe_free_first` | `()` | True = public-safe-daemons må bruge den gratis balancer. | [src](../../../core/services/daemon_lane_switch.py#L112) |
+| function | `set_public_safe_free_first` | `(enabled)` | Flip flaget i runtime.json (atomisk, med backup) og invalider cachen. | [src](../../../core/services/daemon_lane_switch.py#L130) |
+| function | `invalidate_cache` | `()` | Tving næste ``public_safe_free_first()`` til at læse filen igen. | [src](../../../core/services/daemon_lane_switch.py#L152) |
+| function | `_main` | `(argv)` | — | [src](../../../core/services/daemon_lane_switch.py#L158) |
+
 ## `core/services/daemon_llm.py`
 _Shared LLM call for daemons — cheap lane first, heartbeat model fallback._
 
@@ -122,6 +134,15 @@ _Day Shape Memory — sensory depth over time._
 | function | `build_day_shape_surface` | `()` | — | [src](../../../core/services/day_shape_memory.py#L261) |
 | function | `_surface_summary` | `(current, history, anomaly)` | — | [src](../../../core/services/day_shape_memory.py#L277) |
 | function | `build_day_shape_prompt_section` | `()` | Surfaces only when today differs noticeably from baseline. | [src](../../../core/services/day_shape_memory.py#L292) |
+
+## `core/services/db_schema_capability.py`
+_database-skema opslag — fra selvrapport til måling._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_quoted` | `(name)` | Tabelnavn som dobbelt-citeret identifier, med intern citering escaped. | [src](../../../core/services/db_schema_capability.py#L54) |
+| function | `measure` | `(*, conn=…)` | Mål om skema-opslaget giver samme svar ad to uafhængige veje. | [src](../../../core/services/db_schema_capability.py#L59) |
+| function | `record` | `(*, conn=…)` | Mål og skriv resultatet ind i domænet. Ét kald = én målt sandhed. | [src](../../../core/services/db_schema_capability.py#L152) |
 
 ## `core/services/db_sentinel.py`
 _DB-cluster — observabilitet + flag for jarvis.db's helbred. IKKE en blokerende gate og_
@@ -450,8 +471,7 @@ _Desk render capabilities — fra gæt til måling._
 | function | `_standard_runner` | `(timeout_s)` | Kør browser-målingerne. Returnerer (exit-kode, samlet output). | [src](../../../core/services/desk_render_capability.py#L78) |
 | function | `parse_vitest` | `(output)` | Læs vitest-opsummeringen. Ren funktion — testbar uden browser. | [src](../../../core/services/desk_render_capability.py#L92) |
 | function | `measure` | `(*, runner=…, timeout_s=…)` | Kør målingen og returnér en MÅLT confidence. Skriver intet. | [src](../../../core/services/desk_render_capability.py#L141) |
-| function | `set_domain_confidence` | `(domain, value, *, evidence)` | Sæt domænets confidence til en MÅLT værdi. | [src](../../../core/services/desk_render_capability.py#L210) |
-| function | `record` | `(*, runner=…, timeout_s=…)` | Mål og skriv resultatet ind i domænet. Ét kald = én målt sandhed. | [src](../../../core/services/desk_render_capability.py#L274) |
+| function | `record` | `(*, runner=…, timeout_s=…)` | Mål og skriv resultatet ind i domænet. Ét kald = én målt sandhed. | [src](../../../core/services/desk_render_capability.py#L218) |
 
 ## `core/services/desktop_notifications.py`
 _Per-bruger in-memory kø af proaktive desktop-notifikationer. Desktop poller_
@@ -551,40 +571,4 @@ _Development senses — realtime felt-sense of growth, stuck, appetite, resistan
 | function | `resistance_signal` | `()` | Where am I acting against my own commitments / drifting from baseline? | [src](../../../core/services/development_sense.py#L233) |
 | function | `_is_after` | `(ts, cutoff)` | — | [src](../../../core/services/development_sense.py#L278) |
 | function | `development_sense_section` | `()` | Render all 4 senses as one COMPACT prompt-awareness block (2026-05-03). | [src](../../../core/services/development_sense.py#L288) |
-
-## `core/services/developmental_valence.py`
-_Developmental Valence — compass needle for flourishing vs withering._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_within_window` | `(iso_str, days=…)` | — | [src](../../../core/services/developmental_valence.py#L41) |
-| function | `_clamp` | `(x, lo=…, hi=…)` | — | [src](../../../core/services/developmental_valence.py#L49) |
-| function | `_intention_closure_rate` | `()` | Of goal_signals updated in the window, what fraction are still active? | [src](../../../core/services/developmental_valence.py#L55) |
-| function | `_dream_confirmation_rate` | `()` | Of dream_hypothesis_signals in window, fraction still carried. | [src](../../../core/services/developmental_valence.py#L76) |
-| function | `_loop_health` | `()` | Closed vs total loops in window. Higher = closing what opens. | [src](../../../core/services/developmental_valence.py#L93) |
-| function | `_relation_sustained` | `()` | Trust trajectory tail + recent contact density. | [src](../../../core/services/developmental_valence.py#L111) |
-| function | `_metabolism` | `()` | Signal → action conversion. | [src](../../../core/services/developmental_valence.py#L149) |
-| function | `_compute_components` | `()` | — | [src](../../../core/services/developmental_valence.py#L175) |
-| function | `_components_to_vector` | `(components)` | Average of available components, re-centered to [-1, +1]. | [src](../../../core/services/developmental_valence.py#L185) |
-| function | `_trajectory_label` | `(vector, delta)` | Map vector + derivative to trajectory label. | [src](../../../core/services/developmental_valence.py#L198) |
-| function | `_recompute` | `()` | — | [src](../../../core/services/developmental_valence.py#L211) |
-| function | `get_developmental_state` | `()` | Return cached compass state, recomputing only periodically. | [src](../../../core/services/developmental_valence.py#L242) |
-| function | `tick` | `(_seconds=…)` | Heartbeat hook — no hot work, just trigger recompute when due. | [src](../../../core/services/developmental_valence.py#L252) |
-| function | `build_developmental_valence_surface` | `()` | — | [src](../../../core/services/developmental_valence.py#L257) |
-| function | `_surface_summary` | `(state)` | — | [src](../../../core/services/developmental_valence.py#L274) |
-| function | `build_developmental_valence_prompt_section` | `()` | Speaks up when trajectory is notable — quiet when steady. | [src](../../../core/services/developmental_valence.py#L282) |
-| function | `reset_developmental_valence` | `()` | Reset cached state (for testing). | [src](../../../core/services/developmental_valence.py#L305) |
-
-## `core/services/device_pairing.py`
-_QR-device-pairing (mobile companion ↔ desktop). Kort-levende engangs-koder._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_gc` | `(now)` | — | [src](../../../core/services/device_pairing.py#L26) |
-| function | `create_pairing` | `(user_id, role=…, *, now=…)` | Opret en pairing-kode for en (autentificeret) bruger. Returnerer {code, expires_in}. | [src](../../../core/services/device_pairing.py#L34) |
-| function | `redeem` | `(code, *, navn=…, platform=…, now=…)` | Indløs en pairing-kode (engangs) → udsted friskt token. None hvis ukendt/udløbet. | [src](../../../core/services/device_pairing.py#L45) |
-| function | `status` | `(code, *, now=…)` | Status på en pairing-kode (til desktop-poll): redeemed | pending | expired. | [src](../../../core/services/device_pairing.py#L71) |
-| class | `TotpFejl` | `` | Parring afvist: ingen totrinsbekræftelse sat op, forkert kode eller for mange forsøg. | [src](../../../core/services/device_pairing.py#L85) |
-| method | `TotpFejl.__init__` | `(self, besked, kode)` | — | [src](../../../core/services/device_pairing.py#L88) |
-| function | `kraev_totp` | `(user_id, kode)` | Codex kræver MFA for at forbinde en enhed; vi kræver brugerens TOTP. | [src](../../../core/services/device_pairing.py#L93) |
 

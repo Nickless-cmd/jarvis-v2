@@ -299,3 +299,51 @@ def test_definitionerne_nævner_prisen():
     """Værktøjet er BETALT — det skal stå i beskrivelsen, ikke skjules."""
     for d in t.OPENROUTER_IMAGE_TOOL_DEFINITIONS:
         assert "PAID" in d["function"]["description"]
+
+
+# ── Standardmodellen skal kunne generere (målt 20/11-2026) ────────────────────
+
+#: Modeller der er målt til at svare HTTP 400 «Gemini could not generate an
+#: image (STOP)». De må ikke stå som default — så fejler hvert eneste
+#: billedkald, og domænet «billedgenerering» kan aldrig blive øvet.
+_KENDT_BRUDTE_MODELLER = {"google/gemini-2.5-flash-image"}
+
+
+def test_standardmodellen_kan_faktisk_generere():
+    """MÅLT LIVE 20/11-2026, tre kald i træk med samme prompt og nøgle.
+
+    `google/gemini-2.5-flash-image` svarede HTTP 400 «Gemini could not
+    generate an image (STOP)» på 1,2 s. Den havde 42 registrerede kald i
+    `costs` frem til 28/9-2026 — altså virkede den engang, og holdt så op.
+
+    De to 3.1-modeller virkede samme dag:
+      flash-lite-image: 4,7 s, 44 KB JPEG, $0,0336
+      flash-image     : 7,3 s, 815 KB PNG,  $0,0672
+
+    Vagten fanger ikke en fremtidig afskaffelse — kun at den model vi VED
+    er brudt, ikke sniger sig tilbage som default.
+    """
+    from core.tools import openrouter_image_tools as t
+
+    assert t._DEFAULT_MODEL not in _KENDT_BRUDTE_MODELLER, (
+        f"defaulten {t._DEFAULT_MODEL} er målt brudt (HTTP 400) 20/11-2026"
+    )
+    assert t._DEFAULT_MODEL == "google/gemini-3.1-flash-lite-image"
+
+
+def test_den_brudte_model_er_ikke_naevnt_som_anbefalet():
+    """En docstring der anbefaler en model der svarer 400 er værre end ingen."""
+    from pathlib import Path
+
+    import core.tools.openrouter_image_tools as t
+
+    import json
+
+    # Kommentaren SKAL kunne navngive den brudte model — det er den eneste
+    # grund til at nogen kan se hvorfor defaulten blev skiftet. Det der ikke
+    # maa ske, er at den staar som default eller som valgmuighed i det skema
+    # modellen selv laeser.
+    skema = json.dumps(t.OPENROUTER_IMAGE_TOOL_DEFINITIONS, ensure_ascii=False)
+    for model in _KENDT_BRUDTE_MODELLER:
+        assert t._DEFAULT_MODEL != model, f"{model} er stadig default"
+        assert model not in skema, f"{model} staar stadig som valgmuighed i skemaet"

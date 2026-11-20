@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/chronicle_engine.py`
+_Chronicle Engine — Jarvis' narrative autobiography that grows over time._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ChronicleAppraisal` | `` | Structured chronicle context — replaces hardcoded narrative prompts. | [src](../../../core/services/chronicle_engine.py#L36) |
+| function | `maybe_write_chronicle_entry` | `()` | Write a chronicle entry if enough time has passed since the last one. | [src](../../../core/services/chronicle_engine.py#L57) |
+| function | `compare_self_over_time` | `()` | Temporal self-perception — how have I changed? | [src](../../../core/services/chronicle_engine.py#L208) |
+| function | `build_chronicle_surface` | `()` | — | [src](../../../core/services/chronicle_engine.py#L236) |
+| function | `get_chronicle_context_for_prompt` | `(n=…, max_chars=…)` | Return recent chronicle entries formatted for prompt injection. | [src](../../../core/services/chronicle_engine.py#L249) |
+| function | `_build_appraisal` | `(recent_runs, period, previous_entries=…)` | Build a structured ChronicleAppraisal from raw run data. | [src](../../../core/services/chronicle_engine.py#L295) |
+| function | `_build_narrative` | `(recent_runs, period, previous_entries=…)` | Build a chronicle entry narrative, preferring LLM prose. | [src](../../../core/services/chronicle_engine.py#L349) |
+| function | `_render_template_narrative` | `(appraisal)` | Render a deterministic fallback narrative from a structured appraisal. | [src](../../../core/services/chronicle_engine.py#L379) |
+| function | `_render_narrative_prompt` | `(appraisal)` | Render an LLM narrative prompt from a structured ChronicleAppraisal. | [src](../../../core/services/chronicle_engine.py#L400) |
+| function | `_collect_topics` | `(recent_runs)` | — | [src](../../../core/services/chronicle_engine.py#L448) |
+| function | `_sanitize_narrative` | `(text)` | — | [src](../../../core/services/chronicle_engine.py#L468) |
+| function | `project_entry_to_markdown` | `(entry)` | — | [src](../../../core/services/chronicle_engine.py#L483) |
+| function | `_chronicle_markdown_path` | `()` | — | [src](../../../core/services/chronicle_engine.py#L514) |
+| function | `_rotate_chronicle_if_needed` | `(chronicle_path)` | — | [src](../../../core/services/chronicle_engine.py#L518) |
+| function | `_coerce_text_list` | `(value)` | — | [src](../../../core/services/chronicle_engine.py#L545) |
+| function | `_emit_degraded_event` | `(*, period, reason)` | — | [src](../../../core/services/chronicle_engine.py#L560) |
+| function | `_extract_key_events` | `(recent_runs)` | — | [src](../../../core/services/chronicle_engine.py#L570) |
+| function | `_extract_lessons` | `(recent_runs)` | — | [src](../../../core/services/chronicle_engine.py#L580) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/chronicle_engine.py#L591) |
+
 ## `core/services/ci_status_watch.py`
 _CI-status — set, ikke gættet._
 
@@ -708,12 +733,4 @@ _Consolidation-target signal tracking — migrated onto signal_tracking_framewor
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L448) |
 | function | `_find_support_value` | `(support_summary, key, default)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L460) |
 | function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L471) |
-
-## `core/services/content_blocks.py`
-_Rene content-blok-funktioner: tekst-projektion + serve-on-read rekonstruktion._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `content_blocks_to_text` | `(blocks)` | Flad en content-blok-array til markdown-tekst-projektionen. KUN text-blokke | [src](../../../core/services/content_blocks.py#L17) |
-| function | `reconstruct_blocks_from_legacy` | `(role, content, *, load_result)` | Serve-on-read: byg blok-array for en GAMMEL besked (uden content_json). | [src](../../../core/services/content_blocks.py#L24) |
 

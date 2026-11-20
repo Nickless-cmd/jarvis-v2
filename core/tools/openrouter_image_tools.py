@@ -59,10 +59,16 @@ _PROVIDER = "openrouter"
 # det var netop den kobling der var tavst brudt 13/9-2026.
 _EVENT_KIND = "tool.openrouter_image_generated"
 
-# Default = den model Bjørn husker, og den der blev målt 12/9. Den tegner skarpt.
-# Billigere alternativ: google/gemini-3.1-flash-lite-image (~$0,034).
-# Dyrere/bedre: google/gemini-3-pro-image (~$0,13).
-_DEFAULT_MODEL = "google/gemini-2.5-flash-image"
+# MÅLT LIVE 20/11-2026 (samme prompt, samme nøgle, tre kald i træk):
+#   google/gemini-2.5-flash-image          -> HTTP 400 «Gemini could not generate
+#                                         an image (STOP)». Den virkede frem til
+#                                         28/9 (42 kald i costs) og er holdt op.
+#   google/gemini-3.1-flash-lite-image -> OK, 4,7 s, 44 KB JPEG, $0,0336
+#   google/gemini-3.1-flash-image      -> OK, 7,3 s, 815 KB PNG,  $0,0672
+# Defaulten er derfor den billigste af dem der FAKTISK kan generere — ikke den
+# der stod her før, som nu kun svarer 400. Se
+# tests/test_openrouter_image_tools.py::test_standardmodellen_kan_faktisk_generere.
+_DEFAULT_MODEL = "google/gemini-3.1-flash-lite-image"
 
 _TIMEOUT = 180
 _USER_AGENT = "Jarvis-v2/openrouter-image"
@@ -603,8 +609,8 @@ OPENROUTER_IMAGE_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "diagrams, clean illustrations. The Gemini image models DRAW rather than "
                 "diffuse, so edges are hard and strokes even; for soft photographic "
                 "looks use pollinations_image (free) instead. "
-                "Models: google/gemini-2.5-flash-image (default, proven), "
-                "google/gemini-3.1-flash-lite-image (cheapest), "
+                "Models: google/gemini-3.1-flash-lite-image (default, proven), "
+                "google/gemini-3.1-flash-image (higher detail, ~$0.067), "
                 "google/gemini-3-pro-image (best, ~$0.13). "
                 "Returns the saved image path; the image is also registered so it is "
                 "visible in the conversation."
@@ -619,8 +625,8 @@ OPENROUTER_IMAGE_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "model": {
                         "type": "string",
                         "description": (
-                            "google/gemini-2.5-flash-image (default) | "
-                            "google/gemini-3.1-flash-lite-image (cheapest) | "
+                            "google/gemini-3.1-flash-lite-image (default, cheapest) | "
+                            "google/gemini-3.1-flash-image | "
                             "google/gemini-3-pro-image (best) | "
                             "google/gemini-3.1-flash-image | "
                             "black-forest-labs/flux.2-pro | openai/gpt-image-1"
@@ -691,8 +697,8 @@ OPENROUTER_IMAGE_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "model": {
                         "type": "string",
                         "description": (
-                            "google/gemini-2.5-flash-image (default) | "
-                            "google/gemini-3.1-flash-lite-image (cheapest) | "
+                            "google/gemini-3.1-flash-lite-image (default, cheapest) | "
+                            "google/gemini-3.1-flash-image | "
                             "google/gemini-3-pro-image (best)"
                         ),
                     },

@@ -225,3 +225,38 @@ def test_legitime_run_id_formater_afvises_ikke(legitimt: str) -> None:
     assert not any("Run-ID" in error for error in errors), (
         f"legitimt Run-ID {legitimt!r} blev afvist: {errors}"
     )
+
+
+def test_placeholder_hex_i_run_id_afvises() -> None:
+    """`a1b2c3d4` stod i 17 commits og gik gennem som en unik koersel.
+
+    Maalt 20/11-2026 med `git log --all`: baade 16687fdf6 og 265415d73 bar
+    den samme hale. Traileren findes for at kunne spore HVEM der gjorde
+    hvad; en konstant der ligner en tilfaeldig hex kan ikke svare paa det.
+    Vagten skal afvise den OG slippe en aegte koersel igennem — ellers er
+    den bare en streng der altid siger nej.
+    """
+    # Hookens vej er en BESKED (git commit -F), ikke et renderet objekt.
+    # `render_attributed_message` afviser den allerede ved opbygningen —
+    # det er den anden af to indgange og skal ogsaa maales.
+    skabelon = (
+        "fix: x\n\n"
+        "Actor: jarvis\n"
+        "Actor-Type: agent\n"
+        "Run-ID: manual-20261120T023626Z-a1b2c3d4\n"
+        "Session-ID: none\n"
+        "Origin: interactive\n"
+        "Approved-By: bjorn\n"
+    )
+    fejl = validate_commit_message(skabelon)
+    assert any("placeholder hex" in f for f in fejl), fejl
+
+    with pytest.raises(AttributionError):
+        render_attributed_message(
+            "fix: x", _attribution(run_id="manual-20261120T023626Z-a1b2c3d4")
+        )
+
+    aegte = render_attributed_message(
+        "fix: x", _attribution(run_id=new_manual_run_id())
+    )
+    assert validate_commit_message(aegte) == ()

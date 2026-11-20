@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10349/18926 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10355/18931 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10349/18926 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 915 | 1631 | 56% |
-| `core.services` | 6957 | 12871 | 54% |
+| `core.services` | 6963 | 12876 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -2036,7 +2036,7 @@ Generated from source. 10349/18926 functions/methods documented (54%). The list 
 - `core/services/self_deception_guard.py` :: `DeceptionGuardTrace.has_reframes` (L60)
 - `core/services/self_deception_guard.py` :: `DeceptionGuardTrace.to_dict` (L69)
 - `core/services/self_dream_state_surface.py` :: `group_names` (L83)
-- `core/services/self_experiments.py` :: `build_self_experiments_surface` (L735)
+- `core/services/self_experiments.py` :: `build_self_experiments_surface` (L846)
 - `core/services/self_model_blind_spots.py` :: `list_blind_spots` (L292)
 - `core/services/self_model_signal_tracking.py` :: `build_runtime_self_model_signal_surface` (L169)
 - `core/services/self_model_signal_tracking.py` :: `refresh_runtime_self_model_signal_statuses` (L68)

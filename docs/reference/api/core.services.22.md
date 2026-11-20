@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prompt_observer.py`
+_Prompt-cluster (Den Intelligente Central) — Phase 1: live on/off + trace for de_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `load_overrides` | `()` | Læs ALLE eksplicit satte prompt-sektion-switches i ÉN query (pr. build). | [src](../../../core/services/prompt_observer.py#L127) |
+| function | `section_enabled` | `(label, *, blacklisted, overrides)` | Skal denne prompt-sektion med? | [src](../../../core/services/prompt_observer.py#L155) |
+| function | `observe_discarded_content` | `(label, content)` | En slukket sektions indhold blev netop kasseret — prøvetag det. | [src](../../../core/services/prompt_observer.py#L165) |
+| function | `observe_build` | `(*, lane, included, dropped_disabled, dropped_budget, dropped_error=…)` | Ét central.observe pr. prompt-build → trace af hvad der kom med + hvorfor noget | [src](../../../core/services/prompt_observer.py#L181) |
+| function | `observe_section_error` | `(label, error, *, lane=…)` | En enkelt prompt-sektion-builder kastede → observe straks (synlig + pollbar). | [src](../../../core/services/prompt_observer.py#L207) |
+| function | `set_section` | `(label, enabled)` | Slå en prompt-sektion ON/OFF LIVE (ingen genstart) — Bjørn/MC-kaldbar. | [src](../../../core/services/prompt_observer.py#L221) |
+| function | `list_overrides` | `()` | Read-only projektion af aktive overrides (til MC/debug). | [src](../../../core/services/prompt_observer.py#L229) |
+
+## `core/services/prompt_overhead.py`
+_Den faste prompt-prefix' størrelse i tokens — DELT kilde for trigger og visning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_workspace_for_session` | `(session_id)` | Workspace-navnet der styrer hvilke identitetsfiler prefixen bærer. | [src](../../../core/services/prompt_overhead.py#L47) |
+| function | `stable_prefix_tokens` | `(provider=…, model=…, session_id=…)` | Tokens i den stabile system-prefix. 0 når den ikke kan måles. | [src](../../../core/services/prompt_overhead.py#L69) |
+| function | `reset_cache` | `()` | Ryd memoen. Bruges af tests; prefixen selv ændrer sig kun ved workspace-edit. | [src](../../../core/services/prompt_overhead.py#L96) |
+
 ## `core/services/prompt_relevance_backend.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -618,25 +640,4 @@ _Signed, fail-closed ownership migration for legacy private recall data._
 | function | `_apply_observation_items` | `(report_id, items)` | — | [src](../../../core/services/recall_ownership_migration.py#L404) |
 | function | `apply_report` | `(report_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L434) |
 | function | `rollback_report` | `(report_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L502) |
-
-## `core/services/recall_scheduler.py`
-_core/services/recall_scheduler.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `background_recall_enabled` | `()` | Er baggrunds-recall aktiv? Default True. Self-safe → True (den nye, hurtige sti). | [src](../../../core/services/recall_scheduler.py#L41) |
-| function | `_build_emotional_state` | `()` | Byg emotionel baseline til scoringen (samme kilde som cognitive_state_assembly). | [src](../../../core/services/recall_scheduler.py#L51) |
-| function | `_run_recall` | `(user_id, message_text, emotional_state)` | — | [src](../../../core/services/recall_scheduler.py#L64) |
-| function | `trigger_background_recall` | `(user_message, emotional_state=…)` | Kør ``recall_for_message`` i en baggrundstråd, kædet på den rigtige besked. | [src](../../../core/services/recall_scheduler.py#L75) |
-
-## `core/services/recurrence_loop_daemon.py`
-_Recurrence Loop — feeds inner voice output back as context input (Experiment 1: IIT/Φ)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_recurrence_loop_daemon` | `()` | Run one recurrence iteration. Returns dict with generated/reason/stability. | [src](../../../core/services/recurrence_loop_daemon.py#L23) |
-| function | `build_recurrence_surface` | `()` | MC surface for recurrence loop experiment. | [src](../../../core/services/recurrence_loop_daemon.py#L94) |
-| function | `_call_recurrence_llm` | `(content)` | Call cheap lane (Groq/etc.) first, Ollama fallback. Timeout 15s. | [src](../../../core/services/recurrence_loop_daemon.py#L135) |
-| function | `_extract_keywords` | `(text)` | Extract meaningful keywords from text (words >= 4 chars, deduped, max 20). | [src](../../../core/services/recurrence_loop_daemon.py#L195) |
-| function | `_jaccard_similarity` | `(a, b)` | Jaccard similarity between two keyword sets. Returns 1.0 if both empty. | [src](../../../core/services/recurrence_loop_daemon.py#L201) |
 

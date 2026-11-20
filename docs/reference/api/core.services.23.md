@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/recall_scheduler.py`
+_core/services/recall_scheduler.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `background_recall_enabled` | `()` | Er baggrunds-recall aktiv? Default True. Self-safe → True (den nye, hurtige sti). | [src](../../../core/services/recall_scheduler.py#L41) |
+| function | `_build_emotional_state` | `()` | Byg emotionel baseline til scoringen (samme kilde som cognitive_state_assembly). | [src](../../../core/services/recall_scheduler.py#L51) |
+| function | `_run_recall` | `(user_id, message_text, emotional_state)` | — | [src](../../../core/services/recall_scheduler.py#L64) |
+| function | `trigger_background_recall` | `(user_message, emotional_state=…)` | Kør ``recall_for_message`` i en baggrundstråd, kædet på den rigtige besked. | [src](../../../core/services/recall_scheduler.py#L75) |
+
+## `core/services/recurrence_loop_daemon.py`
+_Recurrence Loop — feeds inner voice output back as context input (Experiment 1: IIT/Φ)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_recurrence_loop_daemon` | `()` | Run one recurrence iteration. Returns dict with generated/reason/stability. | [src](../../../core/services/recurrence_loop_daemon.py#L23) |
+| function | `build_recurrence_surface` | `()` | MC surface for recurrence loop experiment. | [src](../../../core/services/recurrence_loop_daemon.py#L94) |
+| function | `_call_recurrence_llm` | `(content)` | Call cheap lane (Groq/etc.) first, Ollama fallback. Timeout 15s. | [src](../../../core/services/recurrence_loop_daemon.py#L135) |
+| function | `_extract_keywords` | `(text)` | Extract meaningful keywords from text (words >= 4 chars, deduped, max 20). | [src](../../../core/services/recurrence_loop_daemon.py#L195) |
+| function | `_jaccard_similarity` | `(a, b)` | Jaccard similarity between two keyword sets. Returns 1.0 if both empty. | [src](../../../core/services/recurrence_loop_daemon.py#L201) |
+
 ## `core/services/recurring_tasks.py`
 _Recurring tasks service — lets Jarvis schedule repeating reminders/actions._
 
@@ -673,25 +694,4 @@ _Fortael ham hvor mange runder han har tilbage, foer doeren smaekker._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `round_budget_notice` | `(*, round_index, max_rounds)` | Varsel til modellen naar rundebudgettet slipper op. "" ellers. | [src](../../../core/services/round_budget_notice.py#L34) |
-
-## `core/services/routine_authorization.py`
-_The single authorization matrix for Routine records._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Action` | `` | — | [src](../../../core/services/routine_authorization.py#L11) |
-| class | `Decision` | `` | — | [src](../../../core/services/routine_authorization.py#L23) |
-| class | `RoutineForbidden` | `` | The principal is not allowed to perform a Routine action. | [src](../../../core/services/routine_authorization.py#L28) |
-| function | `_deny` | `(reason)` | — | [src](../../../core/services/routine_authorization.py#L44) |
-| function | `authorize` | `(principal, action, record)` | Evaluate access without decrypting or including record content in reasons. | [src](../../../core/services/routine_authorization.py#L48) |
-| function | `require_authorized` | `(principal, action, record)` | — | [src](../../../core/services/routine_authorization.py#L95) |
-
-## `core/services/routine_classification.py`
-_Klassifikation af en rutine ved oprettelsen — valget, ikke gættet._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_parse_execution_mode` | `(raw)` | — | [src](../../../core/services/routine_classification.py#L57) |
-| function | `_parse_importance` | `(raw)` | — | [src](../../../core/services/routine_classification.py#L72) |
-| function | `classify_routine` | `(*, execution_mode=…, importance=…)` | Validér valget og udled de felter indbakken og runneren læser. | [src](../../../core/services/routine_classification.py#L85) |
 

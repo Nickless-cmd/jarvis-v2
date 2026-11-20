@@ -2,6 +2,42 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/developmental_valence.py`
+_Developmental Valence — compass needle for flourishing vs withering._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_within_window` | `(iso_str, days=…)` | — | [src](../../../core/services/developmental_valence.py#L41) |
+| function | `_clamp` | `(x, lo=…, hi=…)` | — | [src](../../../core/services/developmental_valence.py#L49) |
+| function | `_intention_closure_rate` | `()` | Of goal_signals updated in the window, what fraction are still active? | [src](../../../core/services/developmental_valence.py#L55) |
+| function | `_dream_confirmation_rate` | `()` | Of dream_hypothesis_signals in window, fraction still carried. | [src](../../../core/services/developmental_valence.py#L76) |
+| function | `_loop_health` | `()` | Closed vs total loops in window. Higher = closing what opens. | [src](../../../core/services/developmental_valence.py#L93) |
+| function | `_relation_sustained` | `()` | Trust trajectory tail + recent contact density. | [src](../../../core/services/developmental_valence.py#L111) |
+| function | `_metabolism` | `()` | Signal → action conversion. | [src](../../../core/services/developmental_valence.py#L149) |
+| function | `_compute_components` | `()` | — | [src](../../../core/services/developmental_valence.py#L175) |
+| function | `_components_to_vector` | `(components)` | Average of available components, re-centered to [-1, +1]. | [src](../../../core/services/developmental_valence.py#L185) |
+| function | `_trajectory_label` | `(vector, delta)` | Map vector + derivative to trajectory label. | [src](../../../core/services/developmental_valence.py#L198) |
+| function | `_recompute` | `()` | — | [src](../../../core/services/developmental_valence.py#L211) |
+| function | `get_developmental_state` | `()` | Return cached compass state, recomputing only periodically. | [src](../../../core/services/developmental_valence.py#L242) |
+| function | `tick` | `(_seconds=…)` | Heartbeat hook — no hot work, just trigger recompute when due. | [src](../../../core/services/developmental_valence.py#L252) |
+| function | `build_developmental_valence_surface` | `()` | — | [src](../../../core/services/developmental_valence.py#L257) |
+| function | `_surface_summary` | `(state)` | — | [src](../../../core/services/developmental_valence.py#L274) |
+| function | `build_developmental_valence_prompt_section` | `()` | Speaks up when trajectory is notable — quiet when steady. | [src](../../../core/services/developmental_valence.py#L282) |
+| function | `reset_developmental_valence` | `()` | Reset cached state (for testing). | [src](../../../core/services/developmental_valence.py#L305) |
+
+## `core/services/device_pairing.py`
+_QR-device-pairing (mobile companion ↔ desktop). Kort-levende engangs-koder._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_gc` | `(now)` | — | [src](../../../core/services/device_pairing.py#L26) |
+| function | `create_pairing` | `(user_id, role=…, *, now=…)` | Opret en pairing-kode for en (autentificeret) bruger. Returnerer {code, expires_in}. | [src](../../../core/services/device_pairing.py#L34) |
+| function | `redeem` | `(code, *, navn=…, platform=…, now=…)` | Indløs en pairing-kode (engangs) → udsted friskt token. None hvis ukendt/udløbet. | [src](../../../core/services/device_pairing.py#L45) |
+| function | `status` | `(code, *, now=…)` | Status på en pairing-kode (til desktop-poll): redeemed | pending | expired. | [src](../../../core/services/device_pairing.py#L71) |
+| class | `TotpFejl` | `` | Parring afvist: ingen totrinsbekræftelse sat op, forkert kode eller for mange forsøg. | [src](../../../core/services/device_pairing.py#L85) |
+| method | `TotpFejl.__init__` | `(self, besked, kode)` | — | [src](../../../core/services/device_pairing.py#L88) |
+| function | `kraev_totp` | `(user_id, kode)` | Codex kræver MFA for at forbinde en enhed; vi kræver brugerens TOTP. | [src](../../../core/services/device_pairing.py#L93) |
+
 ## `core/services/device_presence.py`
 _Device-presence pr. bruger. Lever i hukommelsen — og OVERLEVER en genstart._
 
@@ -689,31 +725,4 @@ _SSRF-vaern for udgaaende hentninger — porteret fra jarvis-code._
 | function | `classify_egress` | `(command)` | {"egress": bool, "tool": str, "reason": str} for en bash-kommando. Ren. | [src](../../../core/services/egress_guard.py#L119) |
 | function | `urls_in_command` | `(command)` | URL'er i en kommando, saa de kan klassificeres hver for sig. Ren. | [src](../../../core/services/egress_guard.py#L141) |
 | function | `internal_targets_in_command` | `(command)` | De URL'er i kommandoen der peger INDAD. Ren. | [src](../../../core/services/egress_guard.py#L149) |
-
-## `core/services/egress_routing.py`
-_Egress routing — which network egress a (provider, auth_profile) slot uses._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `resolve_egress` | `(provider, auth_profile)` | Which egress a slot uses. default profile -> 'home'; other profiles -> | [src](../../../core/services/egress_routing.py#L84) |
-| function | `resolve_v6bind_source` | `(provider, auth_profile)` | Native-IPv6 account2 egress: bind the outbound socket to a distinct v6 | [src](../../../core/services/egress_routing.py#L97) |
-| function | `_source_addr_usable` | `(addr)` | True if ``addr`` can be bound as an IPv6 source on this host (cheap check). | [src](../../../core/services/egress_routing.py#L132) |
-| function | `resolve_nat64` | `(provider, auth_profile)` | True if this (provider, auth_profile) slot should egress via NAT64 instead | [src](../../../core/services/egress_routing.py#L157) |
-| function | `nat64_synthesize` | `(host)` | Resolve ``host`` to a NAT64 synthetic IPv6 address via a DNS64 server. | [src](../../../core/services/egress_routing.py#L182) |
-| function | `proxy_endpoints` | `()` | Return {egress: url|None}. Reads runtime config override if present, else | [src](../../../core/services/egress_routing.py#L223) |
-
-## `core/services/embodied_presence.py`
-_Embodied Presence — situational grounding in the physical now._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `PresenceSignal` | `` | — | [src](../../../core/services/embodied_presence.py#L36) |
-| function | `_hour_to_temporal_context` | `(hour)` | Map hour (0-23) to temporal context label. | [src](../../../core/services/embodied_presence.py#L43) |
-| function | `_compute_grounding` | `(has_visual, has_audio, has_atmosphere)` | Grounding increases with more sensory channels present. | [src](../../../core/services/embodied_presence.py#L57) |
-| function | `_compute_arousal` | `(visual_activity=…, audio_amplitude=…, atmosphere_energy=…)` | Arousal from ambient sensory energy. | [src](../../../core/services/embodied_presence.py#L68) |
-| function | `_summarize_presence` | `(grounding, arousal, temporal_context)` | Produce a compact presence line for assembly injection. | [src](../../../core/services/embodied_presence.py#L103) |
-| function | `compute_embodied_presence` | `(db_conn=…, now=…)` | Compute embodied presence signal from sensory data + time. | [src](../../../core/services/embodied_presence.py#L130) |
-| function | `get_presence_line` | `(db_conn=…)` | Get just the summary line for assembly injection. | [src](../../../core/services/embodied_presence.py#L236) |
-| function | `build_embodied_presence_surface` | `()` | — | [src](../../../core/services/embodied_presence.py#L249) |
-| function | `_emit_presence_event` | `(state)` | — | [src](../../../core/services/embodied_presence.py#L258) |
 

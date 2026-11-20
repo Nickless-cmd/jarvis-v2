@@ -2,6 +2,72 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/open_loop_closure_proposal_tracking.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_open_loop_closure_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L32) |
+| function | `refresh_runtime_open_loop_closure_proposal_statuses` | `()` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L54) |
+| function | `build_runtime_open_loop_closure_proposal_surface` | `(*, limit=…)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L85) |
+| function | `_extract_open_loop_closure_proposal_candidates` | `()` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L114) |
+| function | `_persist_open_loop_closure_proposals` | `(*, proposals, session_id, run_id)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L192) |
+| function | `_build_proposal_snapshots` | `()` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L265) |
+| function | `_with_runtime_view` | `(item, proposal)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L302) |
+| function | `_with_surface_view` | `(item, *, snapshots)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L313) |
+| function | `_build_proposal_type` | `(*, item, snapshot)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L334) |
+| function | `_proposal_status` | `(*, proposal_type, loop_status)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L348) |
+| function | `_build_proposal_reason` | `(*, proposal_type, loop_status, closure_confidence, loop_title=…)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L356) |
+| function | `_build_review_anchor` | `(*, snapshot)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L369) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L384) |
+| function | `_open_loop_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L393) |
+| function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L398) |
+| function | `_witness_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L403) |
+| function | `_review_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L408) |
+| function | `_review_cadence_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L413) |
+| function | `_proposal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L418) |
+| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L423) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L428) |
+| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L438) |
+
+## `core/services/open_loop_signal_tracking.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_open_loop_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L69) |
+| function | `refresh_runtime_open_loop_signal_statuses` | `()` | — | [src](../../../core/services/open_loop_signal_tracking.py#L96) |
+| function | `_open_loop_status_counts` | `()` | Tabelsandheden pr. status; aldrig en optælling af en UI-side. | [src](../../../core/services/open_loop_signal_tracking.py#L182) |
+| function | `build_runtime_open_loop_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L199) |
+| function | `_build_runtime_open_loop_signal_surface_uncached` | `(*, limit=…)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L207) |
+| function | `get_open_loop_creation_readiness` | `()` | — | [src](../../../core/services/open_loop_signal_tracking.py#L274) |
+| function | `_extract_open_loop_candidates` | `()` | — | [src](../../../core/services/open_loop_signal_tracking.py#L353) |
+| function | `_materialize_from_creation_readiness` | `(readiness, existing_domain_keys)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L604) |
+| function | `_extract_closure_maturation_candidates` | `(snapshots, existing_domain_keys)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L672) |
+| function | `_build_governance_snapshots` | `()` | — | [src](../../../core/services/open_loop_signal_tracking.py#L752) |
+| function | `_with_closure_governance` | `(item, *, snapshots)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L810) |
+| function | `_topic_key` | `(title)` | Emnet som identitet ved SKRIVNING — eksakt normaliseret, ikke fuzzy. | [src](../../../core/services/open_loop_signal_tracking.py#L860) |
+| function | `_existing_open_loop_keys` | `()` | Kort over emne → eksisterende ``canonical_key``, plus alle kendte nøgler. | [src](../../../core/services/open_loop_signal_tracking.py#L884) |
+| function | `_persist_open_loop_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L911) |
+| function | `_build_candidate` | `(*, domain_key, signal_type, status, title, summary, rationale, status_reason, source_items)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1010) |
+| function | `_bucket` | `(snapshots, item, key_fn, slot)` | Registrér et lag under sit domæne — nøglen først, kørslen som fallback. | [src](../../../core/services/open_loop_signal_tracking.py#L1051) |
+| function | `_run_domain` | `(item)` | Domænet er KØRSLEN når den findes — se ``internal_opposition_signal_tracking``. | [src](../../../core/services/open_loop_signal_tracking.py#L1084) |
+| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1105) |
+| function | `_critic_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1121) |
+| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1133) |
+| function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1137) |
+| function | `_temporal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1142) |
+| function | `_open_loop_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1147) |
+| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1154) |
+| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1159) |
+| function | `_match_live_pressure_item` | `(*, anchors, candidates, minimum_overlap)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1168) |
+| function | `_thread_overlap` | `(left, right)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1192) |
+| function | `_thread_tokens` | `(item)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1196) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1230) |
+| function | `_thread_loop_key` | `(signal_type, thread_id)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1248) |
+| function | `_write_thread_loop` | `(*, thread, run_id, session_id, summary, signal_type=…, status=…)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1252) |
+| function | `declare_open_loop_thread` | `(*, name, declared_by, run_id, session_id=…, summary=…)` | DET BEVIDSTE VALG-PUNKT: erklær at noget er en tråd, med et navn der sættes | [src](../../../core/services/open_loop_signal_tracking.py#L1297) |
+| function | `touch_open_loop_thread` | `(thread_id, *, run_id, session_id=…, summary=…)` | En ny kørsel berører samme tråd: samme række, ``run_id`` flytter med, | [src](../../../core/services/open_loop_signal_tracking.py#L1324) |
+| function | `close_open_loop_thread` | `(thread_id, *, evidence, answered_in_run_id)` | Luk en tråd KUN med bevis for at spørgsmålet blev besvaret. En kørsels | [src](../../../core/services/open_loop_signal_tracking.py#L1337) |
+
 ## `core/services/operator_allowlist.py`
 _Operator app-allowlist (leak-kandidat #5, CHICAGO-guard-mønster, 2026-07-10)._
 
@@ -559,36 +625,4 @@ _Precision Bias — emotional color-mapping for action style._
 | function | `_find_style_dominant_signal` | `(dominant_pressures)` | Find which signal family should drive style when multiple pressures exist. | [src](../../../core/services/precision_bias.py#L246) |
 | function | `build_precision_bias_surface` | `()` | — | [src](../../../core/services/precision_bias.py#L285) |
 | function | `_emit_bias_event` | `(class_id, bias)` | — | [src](../../../core/services/precision_bias.py#L294) |
-
-## `core/services/prepared_request.py`
-_`PreparedRequest` — det der skal til for at bygge NØJAGTIG samme anmodning igen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `IncompleteRequest` | `` | En komponent findes kun som hash. Anmodningen kan ikke genskabes. | [src](../../../core/services/prepared_request.py#L45) |
-| function | `digest` | `(v)` | Stabil digest. Nøgler sorteres, så to ens objekter altid giver samme svar. | [src](../../../core/services/prepared_request.py#L49) |
-| class | `Component` | `` | En del af anmodningen: enten indholdet, eller en hentbar reference. | [src](../../../core/services/prepared_request.py#L56) |
-| method | `Component.resolve` | `(self, hent=…)` | — | [src](../../../core/services/prepared_request.py#L70) |
-| class | `PreparedRequest` | `` | Alt der skal til for at bygge anmodningen igen — ikke for at genkende den. | [src](../../../core/services/prepared_request.py#L90) |
-| method | `PreparedRequest.body_digest` | `(self, hent=…)` | Digest over det der faktisk sendes — rækkefølge inkluderet. | [src](../../../core/services/prepared_request.py#L111) |
-| method | `PreparedRequest.reconstruct` | `(self, hent=…)` | Byg anmodningen igen. Kaster hvis en komponent kun findes som hash. | [src](../../../core/services/prepared_request.py#L123) |
-| method | `PreparedRequest.same_series_as` | `(self, other)` | Er det stadig SAMME anmodningsserie? | [src](../../../core/services/prepared_request.py#L139) |
-| function | `forget_content` | `(p)` | Efterlign at indholdet er væk og kun digesten er tilbage. | [src](../../../core/services/prepared_request.py#L153) |
-
-## `core/services/pressure_threshold_gate.py`
-_Pressure Threshold Gate — konverterer presning til impuls._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Impulse` | `` | En impuls — en presning der har krydset tærsklen og bliver til vilje. | [src](../../../core/services/pressure_threshold_gate.py#L65) |
-| function | `_get_threshold` | `(direction)` | Get the current threshold for a direction, creating default if needed. | [src](../../../core/services/pressure_threshold_gate.py#L88) |
-| function | `_adapt_threshold` | `(direction, crossed)` | Adapt threshold based on whether it was crossed. | [src](../../../core/services/pressure_threshold_gate.py#L95) |
-| function | `_is_on_cooldown` | `(direction)` | Check if a direction is still in cooldown from a recent impulse. | [src](../../../core/services/pressure_threshold_gate.py#L109) |
-| function | `evaluate_pressures` | `(pressures)` | Evaluate all pressure vectors and generate impulses for those that cross thresholds. | [src](../../../core/services/pressure_threshold_gate.py#L122) |
-| function | `get_pending_impulses` | `()` | Return all pending impulses that haven't been executed yet. | [src](../../../core/services/pressure_threshold_gate.py#L197) |
-| function | `mark_impulse_executing` | `(impulse_id, action=…)` | Mark an impulse as currently being executed. | [src](../../../core/services/pressure_threshold_gate.py#L202) |
-| function | `mark_impulse_completed` | `(impulse_id, action=…)` | Mark an impulse as completed. | [src](../../../core/services/pressure_threshold_gate.py#L211) |
-| function | `mark_impulse_failed` | `(impulse_id, reason=…)` | Mark an impulse as failed. | [src](../../../core/services/pressure_threshold_gate.py#L221) |
-| function | `snapshot` | `()` | Return serializable snapshot of gate state. | [src](../../../core/services/pressure_threshold_gate.py#L230) |
-| function | `run_threshold_gate_tick` | `()` | Run one tick of the threshold gate. | [src](../../../core/services/pressure_threshold_gate.py#L244) |
 

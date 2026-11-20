@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/git_workspace_actions.py`
+_Git-handlinger for code-mode's workspace-vaelgere._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_koer_lokalt` | `(root, args)` | — | [src](../../../core/services/git_workspace_actions.py#L34) |
+| function | `_koer_over_bro` | `(root, args, uid)` | — | [src](../../../core/services/git_workspace_actions.py#L52) |
+| function | `_koer` | `(kind, root, args, uid)` | Koer git og faa ét output pr. argument-liste. False = kunne ikke. | [src](../../../core/services/git_workspace_actions.py#L72) |
+| function | `_rens` | `(navne)` | Git-linjer → rene navne. Fjerner markoerer, HEAD-pilen og dubletter. | [src](../../../core/services/git_workspace_actions.py#L81) |
+| function | `list_branches` | `(*, kind, root, uid=…)` | Alle branches plus den aktuelle. Tomt resultat = ikke et repo. | [src](../../../core/services/git_workspace_actions.py#L94) |
+| function | `checkout_branch` | `(*, kind, root, navn, opret=…, uid=…)` | Skift til en branch, eller opret og skift til en ny. | [src](../../../core/services/git_workspace_actions.py#L122) |
+| function | `create_worktree` | `(*, kind, root, navn, sti=…, uid=…)` | Opret en ny lokal worktree med sin egen branch. | [src](../../../core/services/git_workspace_actions.py#L150) |
+
+## `core/services/github_connector.py`
+_GitHub-connector — API-klient + tool-handlers (v1: issues + PRs)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_headers` | `(token)` | — | [src](../../../core/services/github_connector.py#L53) |
+| function | `_get` | `(user_id, path, params=…)` | — | [src](../../../core/services/github_connector.py#L61) |
+| function | `list_issues` | `(user_id, repo, *, state=…)` | Issues i `repo` (owner/name). state: open|closed|all. | [src](../../../core/services/github_connector.py#L77) |
+| function | `list_prs` | `(user_id, repo, *, state=…)` | Pull requests i `repo` (owner/name). state: open|closed|all. | [src](../../../core/services/github_connector.py#L92) |
+| function | `_post` | `(user_id, path, payload)` | — | [src](../../../core/services/github_connector.py#L107) |
+| function | `create_pr` | `(user_id, repo, *, head, base, title, body=…)` | Opret PR i `repo` (owner/name). head/base = branch-navne. | [src](../../../core/services/github_connector.py#L123) |
+
 ## `core/services/global_workspace.py`
 _Global Workspace — shared broadcast buffer (Experiment 3: Global Workspace Theory)._
 
@@ -594,27 +619,4 @@ _Optælling af tomme løfter — så Centralen kan SE Jarvis' værste mønster._
 | function | `_since` | `(hours)` | ISO-UTC-grænse. DB'en gemmer `2026-09-05T16:20:19.213749+00:00`, så en | [src](../../../core/services/hollow_promise_census.py#L71) |
 | function | `census` | `(hours=…)` | Den ægte rate pr. model + hvor meget værnet fangede. Self-safe. | [src](../../../core/services/hollow_promise_census.py#L79) |
 | function | `_guard_counts` | `(grænse)` | Hvad værnet selv greb, fra dets egne events. Self-safe. | [src](../../../core/services/hollow_promise_census.py#L129) |
-
-## `core/services/hollow_promise_guard.py`
-_Hollow-promise guard (4. jul) — fang "lovede handling, kaldte intet værktøj"._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_last_sentence` | `(text)` | Sidste hele sætning. Løftet står dér — det er dét man efterlades med. | [src](../../../core/services/hollow_promise_guard.py#L140) |
-| function | `is_promise_of_action` | `(text)` | True hvis `text` lover at assistenten tager en handling imminent. Self-safe. | [src](../../../core/services/hollow_promise_guard.py#L146) |
-| function | `is_deferred_text_promise` | `(text)` | True for a promise to emit another prose section after this run ends. | [src](../../../core/services/hollow_promise_guard.py#L179) |
-| function | `is_hollow_promise` | `(final_text, total_tool_calls, user_message=…, nudged_already=…, last_round_tool_calls=…)` | Tom løfte = lovede handling + NUL tool-kald i SIDSTE runde + ikke allerede nudget. | [src](../../../core/services/hollow_promise_guard.py#L190) |
-| function | `hollow_promise_guard_enabled` | `()` | Default TRUE (Bjørn bad om værnet 4. jul). Env `JARVIS_HOLLOW_PROMISE_GUARD` vinder; | [src](../../../core/services/hollow_promise_guard.py#L222) |
-
-## `core/services/hollow_promise_round.py`
-_Hollow-promise follow-through (redesign 2026-09-04)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `supports_forced_tool_choice` | `(provider)` | — | [src](../../../core/services/hollow_promise_round.py#L33) |
-| function | `next_round_tool_choice` | `(*, force_summary, hollow_force, provider)` | Sampling param for the next follow-up round. | [src](../../../core/services/hollow_promise_round.py#L37) |
-| function | `_publish` | `(kind, payload)` | — | [src](../../../core/services/hollow_promise_round.py#L50) |
-| function | `note_detected` | `(*, run_id, provider, model, round_index, session_id, forced)` | — | [src](../../../core/services/hollow_promise_round.py#L58) |
-| function | `note_outcome` | `(*, run_id, provider, model, round_index, session_id, forced, tool_calls)` | Persist the outcome of the round after a hollow promise. Returns resolved. | [src](../../../core/services/hollow_promise_round.py#L65) |
-| function | `hollow_promise_note` | `(model=…)` | Sætningen der siges højt når BEGGE tvungne forsøg gav nul værktøjskald. | [src](../../../core/services/hollow_promise_round.py#L83) |
 

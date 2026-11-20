@@ -2,6 +2,39 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/internal_opposition_signal_tracking.py`
+_Internal-opposition signal tracking — migrated onto signal_tracking_framework._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_opposition_early_retire` | `(item)` | Kun det tidslige signal pensioneres tidligt — ikke de semantiske. | [src](../../../core/services/internal_opposition_signal_tracking.py#L55) |
+| function | `track_runtime_internal_opposition_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L61) |
+| function | `refresh_runtime_internal_opposition_signal_statuses` | `()` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L69) |
+| function | `build_runtime_internal_opposition_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L73) |
+| function | `_run_domain` | `(item, key_fn)` | Domaenet er KOERSLEN, ikke et semantisk emne. | [src](../../../core/services/internal_opposition_signal_tracking.py#L84) |
+| function | `_extract_internal_opposition_candidates` | `(*_args, **_kwargs)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L107) |
+| function | `_build_candidate` | `(*, domain_key, signal_type, status, title, summary, rationale, status_reason, source_items)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L293) |
+| function | `_internal_opposition_track_summary` | `(items, message)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L323) |
+| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L360) |
+| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L371) |
+| function | `_critic_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L376) |
+| function | `_self_model_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L384) |
+| function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L389) |
+| function | `_temporal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L394) |
+| function | `_open_loop_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L399) |
+| function | `_world_domain_key` | `(canonical_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L404) |
+| function | `_snapshot_label` | `(snapshot, domain_key)` | Et læsbart emne til titlen — run-id'et er domænet, ikke en titel. | [src](../../../core/services/internal_opposition_signal_tracking.py#L409) |
+| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/internal_opposition_signal_tracking.py#L424) |
+| function | `_lag_pair_label` | `(snapshot)` | Begge lags tekst i ÉN linje — fordi det kun er titlen der når prompten. | [src](../../../core/services/internal_opposition_signal_tracking.py#L429) |
+
+## `core/services/interruption_notice.py`
+_Afbrydelses-noten — en besked til MENNESKET, ikke til modellen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_interruption_notice` | `(text)` | Er dette runtimens afbrydelses-note frem for et aegte svar? Self-safe. | [src](../../../core/services/interruption_notice.py#L38) |
+| function | `strip_interruption_notices` | `(history)` | Fjern afbrydelses-noter fra den historik modellen faar. Self-safe. | [src](../../../core/services/interruption_notice.py#L49) |
+
 ## `core/services/invocation_record.py`
 _Durabel invokations-tilstand for kald ingen bliver spurgt om._
 
@@ -675,33 +708,4 @@ _Mail checker daemon — checks jarvis@srvlab.dk inbox for new mail._
 | function | `get_latest_mail_info` | `()` | Return latest check info for other consumers. | [src](../../../core/services/mail_checker_daemon.py#L550) |
 | function | `mail_awareness_section` | `()` | Ny post som en KENDSGERNING i prompten. "" naar der intet er. | [src](../../../core/services/mail_checker_daemon.py#L565) |
 | function | `_mail_time_label` | `(timer)` | — | [src](../../../core/services/mail_checker_daemon.py#L608) |
-
-## `core/services/malware_scan.py`
-_Malware-scanning af uploads/vedhæftninger (spec §15.3.1)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ScanReport` | `` | — | [src](../../../core/services/malware_scan.py#L21) |
-| method | `ScanReport.safe` | `(self)` | — | [src](../../../core/services/malware_scan.py#L27) |
-| method | `ScanReport.as_dict` | `(self)` | — | [src](../../../core/services/malware_scan.py#L30) |
-| function | `clamav_available` | `()` | — | [src](../../../core/services/malware_scan.py#L35) |
-| function | `scan_file` | `(path)` | Scan en fil med clamscan. Returnerer ScanReport. Blokerer aldrig på | [src](../../../core/services/malware_scan.py#L39) |
-| function | `is_upload_allowed` | `(path, *, block_on_unavailable=…)` | Politik-helper: må denne upload gemmes/behandles? (§15.3.1) | [src](../../../core/services/malware_scan.py#L68) |
-
-## `core/services/markdown_structure.py`
-_Rekonstruér markdown-blokstruktur fra inline-markører._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_split_protected` | `(text)` | — | [src](../../../core/services/markdown_structure.py#L43) |
-| function | `_split_cells` | `(region)` | Split en `|`-afgrænset region i celler; drop ydre tomme (før første / | [src](../../../core/services/markdown_structure.py#L124) |
-| function | `_reflow_line_table` | `(line)` | Hvis `line` indeholder en HEL tabel mast sammen på én linje | [src](../../../core/services/markdown_structure.py#L135) |
-| function | `_reflow_crammed_tables` | `(text)` | Genskab tabeller hvis hele rækken er mast sammen på én linje. | [src](../../../core/services/markdown_structure.py#L195) |
-| function | `_is_bullet_line` | `(line)` | — | [src](../../../core/services/markdown_structure.py#L206) |
-| function | `_is_structured_line` | `(line)` | En eksisterende markdownblok må ikke omskrives som flad prosa. | [src](../../../core/services/markdown_structure.py#L214) |
-| function | `_ensure_blank_before_lists` | `(text)` | Indsæt en blank linje før første bullet i en liste der følger prosa, så | [src](../../../core/services/markdown_structure.py#L219) |
-| function | `_split_lange_linjer` | `(text)` | Bryd sætninger i prosa-linjer over tærsklen ud som egne afsnit. | [src](../../../core/services/markdown_structure.py#L263) |
-| function | `_split_slaaet_til` | `()` | Skal lange prosa-linjer braekkes op i afsnit? | [src](../../../core/services/markdown_structure.py#L289) |
-| function | `_normalize_segment` | `(text)` | — | [src](../../../core/services/markdown_structure.py#L303) |
-| function | `normalize_markdown_structure` | `(text)` | Genskab blokstruktur fra inline-markører. Beskytter kode-fences. | [src](../../../core/services/markdown_structure.py#L349) |
 

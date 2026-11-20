@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/content_blocks.py`
+_Rene content-blok-funktioner: tekst-projektion + serve-on-read rekonstruktion._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `content_blocks_to_text` | `(blocks)` | Flad en content-blok-array til markdown-tekst-projektionen. KUN text-blokke | [src](../../../core/services/content_blocks.py#L17) |
+| function | `reconstruct_blocks_from_legacy` | `(role, content, *, load_result)` | Serve-on-read: byg blok-array for en GAMMEL besked (uden content_json). | [src](../../../core/services/content_blocks.py#L24) |
+
 ## `core/services/context_proveniens.py`
 _Kontekst-proveniens: hvad var FAKTISK i den prompt der blev bygget._
 
@@ -606,16 +614,4 @@ _Daemon-helbred (Fase 1) — gør de standalone daemon-tråde + silent eventbus-
 | function | `note_error` | `(daemon, error, **data)` | En daemon/listener fejlede. → observe (cluster=system, nerve=daemon_health, ok=False). | [src](../../../core/services/daemon_health.py#L17) |
 | function | `note_tick` | `(daemon, *, ok=…, **data)` | En daemon kørte en cyklus. Valgfri helbreds-puls (brug sparsomt — fejl er hovedsignalet). | [src](../../../core/services/daemon_health.py#L30) |
 | function | `daemon_health_summary` | `(*, window=…)` | Read-only: hvilke daemons har fejlet i seneste trace (til MC/debug). Self-safe. | [src](../../../core/services/daemon_health.py#L42) |
-
-## `core/services/daemon_lane_switch.py`
-_Live kill switch for daemon-lanens public-safe-rute._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_som_bool` | `(value, *, default)` | Tolk en JSON/env-værdi som bool. | [src](../../../core/services/daemon_lane_switch.py#L74) |
-| function | `_read_live` | `()` | Læs flaget fra env → runtime.json → default. Kaster aldrig. | [src](../../../core/services/daemon_lane_switch.py#L94) |
-| function | `public_safe_free_first` | `()` | True = public-safe-daemons må bruge den gratis balancer. | [src](../../../core/services/daemon_lane_switch.py#L112) |
-| function | `set_public_safe_free_first` | `(enabled)` | Flip flaget i runtime.json (atomisk, med backup) og invalider cachen. | [src](../../../core/services/daemon_lane_switch.py#L130) |
-| function | `invalidate_cache` | `()` | Tving næste ``public_safe_free_first()`` til at læse filen igen. | [src](../../../core/services/daemon_lane_switch.py#L152) |
-| function | `_main` | `(argv)` | — | [src](../../../core/services/daemon_lane_switch.py#L158) |
 

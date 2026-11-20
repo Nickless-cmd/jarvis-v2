@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_profiles.py`
+_Profil-overfladen til Centralen — Fase 9._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_profil_rækker` | `()` | — | [src](../../../core/services/central_profiles.py#L36) |
+| function | `_seneste_kørsler` | `(graense=…)` | Hvad koerslerne FAKTISK koerte under. Tom liste hvis kolonnerne ikke | [src](../../../core/services/central_profiles.py#L56) |
+| function | `build_profiles_surface` | `()` | Alt Centralen skal bruge for at kunne forklare en koersels regler. | [src](../../../core/services/central_profiles.py#L87) |
+
 ## `core/services/central_projection_cache.py`
 _Kortlivet cache for Centralens projektioner — så polling ikke koster._
 
@@ -620,21 +629,4 @@ _The Twins — gentagelses-detektor på tværs af tid._
 | function | `_observe` | `(out)` | — | [src](../../../core/services/central_twins.py#L183) |
 | function | `build_twins_surface` | `()` | Detekterede gentagende mønstre + følt linje. READ-ONLY. Self-safe. | [src](../../../core/services/central_twins.py#L200) |
 | function | `record_twins` | `(*, trigger=…, last_visible_at=…)` | Cadence (240 min): scan for gentagelser → twins://-signaler (observe/surface only). Self-safe. | [src](../../../core/services/central_twins.py#L219) |
-
-## `core/services/central_valence.py`
-_core/services/central_valence.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_valence.py#L18) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_valence.py#L27) |
-| function | `_read_valence_trajectory` | `()` | — | [src](../../../core/services/central_valence.py#L35) |
-| function | `_read_somatic` | `()` | — | [src](../../../core/services/central_valence.py#L49) |
-| function | `_read_stance` | `()` | — | [src](../../../core/services/central_valence.py#L60) |
-| function | `_tone_label` | `(score)` | Ét felt-ord for tilstanden ud fra den FRISKE (present-moment) score. Bevidst få, tydelige toner. | [src](../../../core/services/central_valence.py#L72) |
-| function | `integrate_valence` | `()` | Integrér de fire organer til ÉN følt tilstand {tone, score, intensitet}. Valens-trajektorien er | [src](../../../core/services/central_valence.py#L92) |
-| function | `get_valence_state` | `()` | Centralens durable følte tilstand (senest integrerede). Self-safe. | [src](../../../core/services/central_valence.py#L120) |
-| function | `run_valence_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: integrér følelses-organerne → gem durabelt + egress-fri observe (kun skalarer/tone-label, | [src](../../../core/services/central_valence.py#L126) |
-| function | `register_valence_producer` | `()` | Registrér følt-tilstands-integrationen som cadence-producer (~hvert 15 min). Egress-frit. | [src](../../../core/services/central_valence.py#L142) |
-| function | `build_valence_surface` | `()` | Mission Control — read-only: Centralens ene følte tilstand. | [src](../../../core/services/central_valence.py#L154) |
 

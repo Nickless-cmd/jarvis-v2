@@ -11,6 +11,7 @@ import json
 import logging
 import re
 from datetime import UTC, datetime
+from math import comb
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
@@ -138,21 +139,88 @@ def record_experiment_observation(
     }
 
 
+#: Mindste antal observationer i HVER kohorte foer et udfald maa konkluderes.
+#: Maalt 20/11-2026: `exp-999c67b6` blev konkluderet «treatment er bedre
+#: (diff=18 %)» paa 2 observationer i treatment mod 22 i control. 2/2 mod
+#: 18/22 er inden for stoejen (p=0,66), men forskellen blev et laeringsmaal
+#: der bad mig «anvende» et resultat der ikke fandtes.
+_MIN_KOHORTE_N = 8
+
+#: Groft, men aerligt: et udfald maa foerst konkluderes naar en exakt test
+#: siger at forskellen ikke kan forklares af tilfaeldigt traek.
+_SIGNIFIKANS_NIVEAU = 0.05
+
+
+def _fisher_exact_p(a: int, b: int, c: int, d: int) -> float:
+    """Exakt to-halet Fisher-test paa en 2x2-tabel. Ren Python, ingen scipy.
+
+    Tabellen er [[a, b], [c, d]]. Summen af sandsynlighederne for alle
+    tabeller der er mindst lige saa ekstreme som den observerede giver
+    p-vaerdien. Bruges i stedet for en diff-taerskel, fordi en taerskel
+    ikke kan skelne «2 af 2» fra «200 af 200».
+    """
+    n = a + b + c + d
+    raekke1 = a + b
+    kolonne1 = a + c
+    if n == 0 or raekke1 == 0 or kolonne1 == 0:
+        return 1.0
+    naevner = comb(n, kolonne1)
+    if naevner == 0:
+        return 1.0
+
+    def _sandsynlighed(x: int) -> float:
+        return comb(raekke1, x) * comb(n - raekke1, kolonne1 - x) / naevner
+
+    lav = max(0, kolonne1 - (n - raekke1))
+    hoej = min(raekke1, kolonne1)
+    observeret = _sandsynlighed(a)
+    total = 0.0
+    for x in range(lav, hoej + 1):
+        p = _sandsynlighed(x)
+        if p <= observeret + 1e-12:
+            total += p
+    return min(1.0, total)
+
+
 def _evaluate_experiment(cohorts: dict) -> tuple[str, str]:
-    """Simple evaluation: compare success rates between cohorts."""
-    rates = {}
+    """Sammenlign kohorter — men kun paa et sample der kan baere konklusionen.
+
+    Tre ting blev maalt 20/11-2026 og er rettet her:
+    1. `success / max(n, 1)` gjorde en kohorte med NUL observationer til
+       «0 % succes». En kohorte ingen har betraadt kunne altsaa tabe til en
+       anden, og forskellen blev en konklusion.
+    2. `diff > 0.15` blev kaldt «significant» uden at se paa n. En raa
+       forskel paa 18 % fra 2 mod 22 observationer er stoej.
+    3. Derfor blev forsøg konkluderet paa det sample der tilfaeldigt var
+       naaet, og konklusionen blev et laeringsmaal.
+    """
+    rates: dict[str, float] = {}
+    antal: dict[str, int] = {}
+    succes: dict[str, int] = {}
     for name, data in cohorts.items():
         n = int(data.get("n", 0))
-        success = int(data.get("success", 0))
-        rates[name] = success / max(n, 1)
+        if n <= 0:
+            # En tom kohorte er ikke en maaling paa 0 %. Den er fravaerende.
+            continue
+        rates[name] = int(data.get("success", 0)) / n
+        antal[name] = n
+        succes[name] = int(data.get("success", 0))
 
     if len(rates) < 2:
         return "{}", "running"
 
-    sorted_rates = sorted(rates.items(), key=lambda x: x[1], reverse=True)
-    best_name, best_rate = sorted_rates[0]
-    worst_name, worst_rate = sorted_rates[-1]
+    sorteret = sorted(rates.items(), key=lambda x: x[1], reverse=True)
+    best_name, best_rate = sorteret[0]
+    worst_name, worst_rate = sorteret[-1]
     diff = best_rate - worst_rate
+
+    n_best, n_worst = antal[best_name], antal[worst_name]
+    p_vaerdi = _fisher_exact_p(
+        succes[best_name], n_best - succes[best_name],
+        succes[worst_name], n_worst - succes[worst_name],
+    )
+    nok_sample = min(n_best, n_worst) >= _MIN_KOHORTE_N
+    signifikant = bool(nok_sample and p_vaerdi < _SIGNIFIKANS_NIVEAU)
 
     result = {
         "best_cohort": best_name,
@@ -160,10 +228,25 @@ def _evaluate_experiment(cohorts: dict) -> tuple[str, str]:
         "worst_cohort": worst_name,
         "worst_rate": round(worst_rate, 3),
         "difference": round(diff, 3),
-        "significant": diff > 0.15,  # crude threshold
+        "n_best": n_best,
+        "n_worst": n_worst,
+        "p_value": round(p_vaerdi, 4),
+        "sample_ok": nok_sample,
+        "significant": signifikant,
+        # Hvorfor det IKKE er konkluderet — saa fladen kan sige det hoejt.
+        "reason": (
+            ""
+            if signifikant
+            else (
+                f"for faa observationer (n={n_best} mod {n_worst}, "
+                f"mindst {_MIN_KOHORTE_N} kraeves)"
+                if not nok_sample
+                else f"forskellen kan vaere tilfaeldig (p={p_vaerdi:.2f})"
+            )
+        ),
     }
 
-    status = "concluded" if diff > 0.15 else "running"
+    status = "concluded" if signifikant else "running"
     return json.dumps(result, ensure_ascii=False), status
 
 
@@ -235,11 +318,13 @@ def _maalte_domaener(noegle: str) -> set[str] | None:
     for rad in rows:
         try:
             domaener = json.loads(str(rad.get("confidence_by_domain") or "{}"))
+        # Uparsbar JSON: raekken kan ikke laeses, saa den taeles ikke som et udfald.
         except Exception:
             continue
         for navn, tal in domaener.items():
             try:
                 vaerdier.setdefault(str(navn), []).append(round(float(tal), 4))
+            # Ikke-numerisk vaerdi: springes over frem for at forurene serien.
             except (TypeError, ValueError):
                 continue
     # Et SKIFT, ikke en distinkt vaerdi. Maalt 20/11-2026: `souls-build
@@ -298,26 +383,54 @@ def _mekanisk_maalte(noegle: str) -> set[str] | None:
     for rad in reversed(rows):
         try:
             domaener = json.loads(str(rad.get("confidence_by_domain") or "{}"))
+        # Uparsbar JSON: raekken kan ikke laeses, saa den taeles ikke som et udfald.
         except Exception:
             continue
         for navn, tal in domaener.items():
             try:
                 reekker.setdefault(str(navn), []).append(round(float(tal), 4))
+            # Ikke-numerisk vaerdi: springes over frem for at forurene serien.
             except (TypeError, ValueError):
                 continue
+    # Maalt 20/11-2026 (kontrol af funktionen selv): 16 domaener har NOGENSINDE
+    # faaet et mekanisk skridt, men kun 10 har det som deres SIDSTE skridt.
+    # `dil_widgets animationstal` er 0,40 -> 0,36 (selvrapport) -> 0,41 (+0,05,
+    # mekanisk) -> 0,36 (-0,05, selvrapport). Det nuvarende tal er altsaa
+    # skrevet af modellen EFTER maalingen, og «maalt confidence 36 %» var en
+    # paastand om et tal der ikke hviler paa noget. Derfor: kun den SIDSTE
+    # ikke-nul-overgang taeller — det er den der ejer tallet lige nu.
     mekaniske: set[str] = set()
     for navn, seq in reekker.items():
-        for a, b in zip(seq, seq[1:]):
-            skridt = round(b - a, 4)
-            if (
-                abs(skridt - _MEKANISK_LOEFT) < 1e-6
-                or abs(skridt + _MEKANISK_FALD) < 1e-6
-            ):
-                mekaniske.add(navn)
-                break
+        skridt = [
+            round(b - a, 4) for a, b in zip(seq, seq[1:]) if round(b - a, 4) != 0.0
+        ]
+        if not skridt:
+            continue
+        sidste = skridt[-1]
+        if abs(sidste - _MEKANISK_LOEFT) < 1e-6 or abs(sidste + _MEKANISK_FALD) < 1e-6:
+            mekaniske.add(navn)
     _MAALTE_CACHE["mekanisk_noegle"] = noegle
     _MAALTE_CACHE["mekaniske"] = mekaniske
     return mekaniske
+
+
+def _eksperiment_forslag(best: str, result: dict) -> str:
+    """Et laeringsmaal fra et forsøg skal baere SAMPLEt, ikke kun forskellen.
+
+    Maalt 20/11-2026: «Anvend: treatment er bedre (diff=18 %)» blev dannet af
+    2 observationer i treatment mod 22 i control. Uden n og p i teksten ser
+    et stoejresultat ud som en instruks om at aendre sin adfaerd.
+    """
+    diff = float(result.get("difference", 0) or 0)
+    n_best = result.get("n_best")
+    n_worst = result.get("n_worst")
+    p_vaerdi = result.get("p_value")
+    if n_best is None or n_worst is None or p_vaerdi is None:
+        return f"Anvend: {best} er bedre (diff={diff:.0%})"
+    return (
+        f"Anvend: {best} er bedre (diff={diff:.0%}, "
+        f"n={n_best} mod {n_worst}, p={float(p_vaerdi):.2f})"
+    )
 
 
 def generate_learning_curriculum() -> dict[str, object]:
@@ -425,7 +538,7 @@ def generate_learning_curriculum() -> dict[str, object]:
                     "focus": _klip_ord_graense(exp.get("hypothesis", "")),
                     "domain": EKSPERIMENT_DOMAENE,
                     "type": "experiment_conclusion",
-                    "suggestion": f"Anvend: {best} er bedre (diff={result.get('difference', 0):.0%})",
+                    "suggestion": _eksperiment_forslag(best, result),
                     "priority": 0.6,
                 })
         except Exception as exc:
@@ -571,6 +684,11 @@ def observe_recent_visible_runs_for_self_experiments(
                 skipped += 1
                 continue
             success = _success_for_visible_run(experiment=experiment, run=run)
+            if success is None:
+                # Metrikken kan ikke afgoeres fra en run-raekke alene. Vi
+                # springer over i stedet for at bogfoere et gaet som data.
+                skipped += 1
+                continue
             observation = record_experiment_observation(
                 experiment_id=str(experiment.get("experiment_id") or ""),
                 cohort=cohort,
@@ -765,15 +883,27 @@ def _cohort_for_visible_run(*, experiment: dict[str, object], run: dict[str, obj
     return ""
 
 
-def _success_for_visible_run(*, experiment: dict[str, object], run: dict[str, object]) -> bool:
+def _success_for_visible_run(
+    *, experiment: dict[str, object], run: dict[str, object]
+) -> bool | None:
+    """Om runnet lykkedes. `None` = vi kan ikke afgoere det, og maa ikke gaette.
+
+    `correction_rate` var en TAUTOLOGI (maalt 20/11-2026): kohorten blev sat
+    til «treatment» naar `preview_words <= 40`, og succesen blev afgjort af
+    PRAECIS samme betingelse. Control kunne derfor aldrig lykkes, og forsøget
+    «konkluderede» 0 % mod 100 % — det var grupperingsreglen der citerede sig
+    selv, ikke en maaling.
+
+    Hypotesen er «korte svar giver faerre korrektioner». Succes skal derfor
+    maales som FRAVAER af en korrektion bagefter, og en `visible_runs`-raekke
+    baerer ikke det signal. Vi returnerer `None` og springer observationen
+    over, i stedet for at opfinde et udfald.
+    """
     metric = str(experiment.get("metric") or "").strip().lower()
     status = str(run.get("status") or "").strip().lower()
-    preview = str(run.get("text_preview") or "").strip()
-    preview_words = len([part for part in preview.split() if part.strip()])
-    successful_completion = status in {"completed", "success"}
     if metric == "correction_rate":
-        return successful_completion and (preview_words == 0 or preview_words <= 40)
-    return successful_completion
+        return None
+    return status in {"completed", "success"}
 
 
 def _build_visible_run_observation_note(

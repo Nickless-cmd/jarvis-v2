@@ -2,6 +2,38 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/missions_pipeline.py`
+_Missions Pipeline — flerfase opgaver med state-machine._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `MissionError` | `` | — | [src](../../../core/services/missions_pipeline.py#L52) |
+| method | `MissionError.__init__` | `(self, code, message)` | — | [src](../../../core/services/missions_pipeline.py#L53) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/missions_pipeline.py#L58) |
+| function | `_ensure_tables` | `()` | — | [src](../../../core/services/missions_pipeline.py#L62) |
+| function | `_row_to_mission` | `(row)` | — | [src](../../../core/services/missions_pipeline.py#L107) |
+| function | `create_mission` | `(*, title, description=…, goal=…, constraints=…, success_criteria=…, roles=…, metadata=…)` | Create a new mission in 'created' status. | [src](../../../core/services/missions_pipeline.py#L120) |
+| function | `get_mission` | `(*, mission_id)` | — | [src](../../../core/services/missions_pipeline.py#L176) |
+| function | `transition_mission_state` | `(*, mission_id, new_status, reason=…)` | Transition mission to new status, respecting _ALLOWED_TRANSITIONS. | [src](../../../core/services/missions_pipeline.py#L188) |
+| function | `send_mission_message` | `(*, mission_id, role=…, content, metadata=…)` | Post a message on the mission channel. Roles: researcher/implementer/reviewer etc. | [src](../../../core/services/missions_pipeline.py#L258) |
+| function | `list_mission_messages` | `(*, mission_id, limit=…)` | — | [src](../../../core/services/missions_pipeline.py#L311) |
+| function | `list_missions` | `(*, status=…, limit=…)` | — | [src](../../../core/services/missions_pipeline.py#L331) |
+| function | `build_missions_surface` | `()` | — | [src](../../../core/services/missions_pipeline.py#L350) |
+
+## `core/services/model_benchmark.py`
+_Rangér modeller på ÆGTE opgaver med facit hentet fra repoet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_rod` | `()` | — | [src](../../../core/services/model_benchmark.py#L59) |
+| function | `vælg_filer` | `(*, antal=…, rod=…, frø=…)` | Filer der er store nok til at være en rigtig opgave, små nok til at | [src](../../../core/services/model_benchmark.py#L67) |
+| function | `facit_for` | `(fil, *, rod=…)` | {funktionsnavn: linjenummer} — hentet fra kilden, ikke fra en liste. | [src](../../../core/services/model_benchmark.py#L91) |
+| function | `_nævnte_navne` | `(svar, facit)` | Navne modellen faktisk nævner. Vi leder KUN efter funktionsnavne-agtige | [src](../../../core/services/model_benchmark.py#L106) |
+| function | `bedøm_svar` | `(svar, facit)` | Præcision, dækning og linje-nøjagtighed for ét svar. | [src](../../../core/services/model_benchmark.py#L121) |
+| function | `opgave_for` | `(fil, *, rod=…)` | Spørgsmålet stilles i den FORM der udløser fejlen: en liste med mange | [src](../../../core/services/model_benchmark.py#L175) |
+| function | `kør_benchmark` | `(*, provider, model, antal_filer=…, frø=…, kald=…, rod=…)` | Kør benchmarken for én model. Kaster aldrig. | [src](../../../core/services/model_benchmark.py#L187) |
+| function | `gem_kvalitet` | `(*, provider, model, resultat)` | Skriv `kvalitets_score` ved siden af `probe_score` i registret. | [src](../../../core/services/model_benchmark.py#L239) |
+
 ## `core/services/model_catalogue_sweep.py`
 _Ugentlig gennemgang: hvilke modeller lever, og hvad kan de?_
 
@@ -598,70 +630,4 @@ _Opløs et bart ollama-modelnavn til det tag ollama faktisk serverer._
 | function | `_serialize_system_block` | `(system_parts)` | — | [src](../../../core/services/ollama_visible_prompt.py#L63) |
 | function | `serialize_ollama_chat_messages` | `(items)` | Convert visible input items to Ollama /api/chat messages format. | [src](../../../core/services/ollama_visible_prompt.py#L75) |
 | function | `_serialize_conversation_block` | `(conversation_parts)` | — | [src](../../../core/services/ollama_visible_prompt.py#L132) |
-
-## `core/services/open_loop_closure_proposal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_open_loop_closure_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L32) |
-| function | `refresh_runtime_open_loop_closure_proposal_statuses` | `()` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L54) |
-| function | `build_runtime_open_loop_closure_proposal_surface` | `(*, limit=…)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L85) |
-| function | `_extract_open_loop_closure_proposal_candidates` | `()` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L114) |
-| function | `_persist_open_loop_closure_proposals` | `(*, proposals, session_id, run_id)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L192) |
-| function | `_build_proposal_snapshots` | `()` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L265) |
-| function | `_with_runtime_view` | `(item, proposal)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L302) |
-| function | `_with_surface_view` | `(item, *, snapshots)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L313) |
-| function | `_build_proposal_type` | `(*, item, snapshot)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L334) |
-| function | `_proposal_status` | `(*, proposal_type, loop_status)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L348) |
-| function | `_build_proposal_reason` | `(*, proposal_type, loop_status, closure_confidence, loop_title=…)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L356) |
-| function | `_build_review_anchor` | `(*, snapshot)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L369) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L384) |
-| function | `_open_loop_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L393) |
-| function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L398) |
-| function | `_witness_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L403) |
-| function | `_review_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L408) |
-| function | `_review_cadence_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L413) |
-| function | `_proposal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L418) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L423) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L428) |
-| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/open_loop_closure_proposal_tracking.py#L438) |
-
-## `core/services/open_loop_signal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_open_loop_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L69) |
-| function | `refresh_runtime_open_loop_signal_statuses` | `()` | — | [src](../../../core/services/open_loop_signal_tracking.py#L96) |
-| function | `_open_loop_status_counts` | `()` | Tabelsandheden pr. status; aldrig en optælling af en UI-side. | [src](../../../core/services/open_loop_signal_tracking.py#L182) |
-| function | `build_runtime_open_loop_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L199) |
-| function | `_build_runtime_open_loop_signal_surface_uncached` | `(*, limit=…)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L207) |
-| function | `get_open_loop_creation_readiness` | `()` | — | [src](../../../core/services/open_loop_signal_tracking.py#L274) |
-| function | `_extract_open_loop_candidates` | `()` | — | [src](../../../core/services/open_loop_signal_tracking.py#L353) |
-| function | `_materialize_from_creation_readiness` | `(readiness, existing_domain_keys)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L604) |
-| function | `_extract_closure_maturation_candidates` | `(snapshots, existing_domain_keys)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L672) |
-| function | `_build_governance_snapshots` | `()` | — | [src](../../../core/services/open_loop_signal_tracking.py#L752) |
-| function | `_with_closure_governance` | `(item, *, snapshots)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L810) |
-| function | `_topic_key` | `(title)` | Emnet som identitet ved SKRIVNING — eksakt normaliseret, ikke fuzzy. | [src](../../../core/services/open_loop_signal_tracking.py#L860) |
-| function | `_existing_open_loop_keys` | `()` | Kort over emne → eksisterende ``canonical_key``, plus alle kendte nøgler. | [src](../../../core/services/open_loop_signal_tracking.py#L884) |
-| function | `_persist_open_loop_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L911) |
-| function | `_build_candidate` | `(*, domain_key, signal_type, status, title, summary, rationale, status_reason, source_items)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1010) |
-| function | `_bucket` | `(snapshots, item, key_fn, slot)` | Registrér et lag under sit domæne — nøglen først, kørslen som fallback. | [src](../../../core/services/open_loop_signal_tracking.py#L1051) |
-| function | `_run_domain` | `(item)` | Domænet er KØRSLEN når den findes — se ``internal_opposition_signal_tracking``. | [src](../../../core/services/open_loop_signal_tracking.py#L1084) |
-| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1105) |
-| function | `_critic_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1121) |
-| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1133) |
-| function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1137) |
-| function | `_temporal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1142) |
-| function | `_open_loop_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1147) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1154) |
-| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1159) |
-| function | `_match_live_pressure_item` | `(*, anchors, candidates, minimum_overlap)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1168) |
-| function | `_thread_overlap` | `(left, right)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1192) |
-| function | `_thread_tokens` | `(item)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1196) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1230) |
-| function | `_thread_loop_key` | `(signal_type, thread_id)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1248) |
-| function | `_write_thread_loop` | `(*, thread, run_id, session_id, summary, signal_type=…, status=…)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1252) |
-| function | `declare_open_loop_thread` | `(*, name, declared_by, run_id, session_id=…, summary=…)` | DET BEVIDSTE VALG-PUNKT: erklær at noget er en tråd, med et navn der sættes | [src](../../../core/services/open_loop_signal_tracking.py#L1297) |
-| function | `touch_open_loop_thread` | `(thread_id, *, run_id, session_id=…, summary=…)` | En ny kørsel berører samme tråd: samme række, ``run_id`` flytter med, | [src](../../../core/services/open_loop_signal_tracking.py#L1324) |
-| function | `close_open_loop_thread` | `(thread_id, *, evidence, answered_in_run_id)` | Luk en tråd KUN med bevis for at spørgsmålet blev besvaret. En kørsels | [src](../../../core/services/open_loop_signal_tracking.py#L1337) |
 

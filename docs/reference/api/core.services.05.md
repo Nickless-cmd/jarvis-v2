@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_adaptation.py`
+_core/services/central_adaptation.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_adaptation.py#L60) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_adaptation.py#L69) |
+| class | `AdaptationClass` | `` | Én selv-justerende muskel: en tilbøjelighed Centralen justerer efter SIN EGEN track-record | [src](../../../core/services/central_adaptation.py#L79) |
+| function | `_assert_not_frozen_core` | `(cls)` | HÅRD assert: afvis enhver AdaptationClass hvis kv_key/name rører den frosne kerne. Kører for | [src](../../../core/services/central_adaptation.py#L126) |
+| function | `_register_adaptation_class` | `(cls)` | Valider + tilføj en muskel til registret. Kører den HÅRDE assert FØR optagelse. Returnerer | [src](../../../core/services/central_adaptation.py#L142) |
+| function | `_default_class` | `()` | Bagudkompatibel default = gut-bias (så modul-niveau-API'et virker uden at kende registret). | [src](../../../core/services/central_adaptation.py#L189) |
+| function | `get_bias` | `(cls=…)` | Læs + clamp en musklens justerede skalar. Default = gut. Self-safe. | [src](../../../core/services/central_adaptation.py#L195) |
+| function | `get_gut_bias` | `()` | Bagudkompatibel: gut-bias (uændret adfærd). | [src](../../../core/services/central_adaptation.py#L204) |
+| function | `is_live_enabled` | `(cls=…)` | Musklen er live hvis dens live_flag er ON OG dens pause_flag ikke er sat. Default = gut. | [src](../../../core/services/central_adaptation.py#L209) |
+| function | `effective_dream_trust_factor` | `()` | Forbruger til dream_trust-musklen (LivingNeuron §3, 2026-07-10): oversæt tiltro-biasen | [src](../../../core/services/central_adaptation.py#L215) |
+| function | `is_paused` | `(cls=…)` | — | [src](../../../core/services/central_adaptation.py#L230) |
+| function | `_ensure_anchor` | `(cls=…)` | Ankr identitets-baseline: bias=0 ER identiteten (ingen tilbøjeligheds-forvrængning). In-memory | [src](../../../core/services/central_adaptation.py#L235) |
+| function | `resolved_track_record` | `(*, sources=…)` | Centralens egen præcision: hvor mange hypoteser har holdt vs. fejlet. SOURCE-SCOPED (§8.3): | [src](../../../core/services/central_adaptation.py#L247) |
+| function | `compute_proposed_bias` | `(cls=…)` | Foreslå bias fra en musklens EGEN track-record. accuracy=supported/(supported+contradicted). | [src](../../../core/services/central_adaptation.py#L271) |
+| function | `rollback` | `(reason=…, cls=…)` | Rollback-EKSEKVERING (shadow-specens manglende primitiv): gendan forrige bias + PAUSE Lag 4 | [src](../../../core/services/central_adaptation.py#L290) |
+| function | `_run_class_tick` | `(cls)` | Kør ÉN musklens adaptations-tick: beregn → gate → shadow-log → anvend KUN hvis live+ok. | [src](../../../core/services/central_adaptation.py#L306) |
+| function | `run_adaptation_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: iterér REGISTRET. For den ENESTE gut-klasse er adfærden IDENTISK med før | [src](../../../core/services/central_adaptation.py#L338) |
+| function | `register_adaptation_producer` | `()` | Registrér Lag 4-adaptationen som cadence-producer (~hvert 60 min). SHADOW medmindre live-flag ON. | [src](../../../core/services/central_adaptation.py#L362) |
+| function | `build_central_adaptation_surface` | `()` | Mission Control surface — read-only: nuværende bias, foreslået, live/shadow/paused. | [src](../../../core/services/central_adaptation.py#L374) |
+
 ## `core/services/central_affect.py`
 _core/services/central_affect.py — affektiv tagging af Centralens nerver._
 
@@ -582,27 +607,4 @@ _Gardener Protocol — Centralen tager saksen selv (governed + reversibelt)._
 | function | `_is_decoy` | `(node, src_segment)` | Returnér decoy-type ('surface'/'emit') hvis noden matcher PRÆCIST attrap-mønster, ellers None. | [src](../../../core/services/central_gardener.py#L47) |
 | function | `find_decoy_cuts` | `()` | Find alle attrap-funktioner (præcist mønster + 0 referencer). Read-only. Self-safe. | [src](../../../core/services/central_gardener.py#L59) |
 | function | `prune_decoys` | `(*, execute=…, stamp=…)` | Beskær attrapperne. execute=False = tør-kørsel (list kun). execute=True = arkivér → klip. | [src](../../../core/services/central_gardener.py#L90) |
-
-## `core/services/central_ghost.py`
-_The Ghost — hvad der overlever model-skift._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_ghost.py#L53) |
-| function | `_kv_set` | `(key, value)` | Skriv til KV. Returnerer False hvis skrivningen fejlede. | [src](../../../core/services/central_ghost.py#L62) |
-| function | `_pending_liste` | `()` | Alle ulandede skift. Læser også det gamle enkelt-objekt som en liste. | [src](../../../core/services/central_ghost.py#L77) |
-| function | `_registrer_fund` | `(drift)` | Registrér skiftet holdbart FØR landingen forsøges. Se `_registrer_fund` i | [src](../../../core/services/central_ghost.py#L92) |
-| function | `_opdater_fund` | `(fund_id, *, grund)` | — | [src](../../../core/services/central_ghost.py#L115) |
-| function | `_fjern_fund` | `(fund_id)` | — | [src](../../../core/services/central_ghost.py#L125) |
-| function | `_land_skift` | `(drift, *, kilde, fund_id=…)` | Forsøg at gøre et målt klangskift til en bindende beslutning. | [src](../../../core/services/central_ghost.py#L133) |
-| function | `_land_efterslaeb` | `()` | Ligger der skift fra tidligere kørsler der aldrig fik deres beslutning? | [src](../../../core/services/central_ghost.py#L183) |
-| function | `analyze` | `(texts)` | Beregn klang-fingeraftrykket fra en stak svar-tekster (strukturelt, ingen indhold gemt). | [src](../../../core/services/central_ghost.py#L206) |
-| function | `byg_profil` | `(texts)` | Dan fingeraftrykket UDEN at gemme det. | [src](../../../core/services/central_ghost.py#L254) |
-| function | `update_profile` | `(texts)` | Opdatér det durable ghost_profile fra seneste svar. Self-safe. | [src](../../../core/services/central_ghost.py#L265) |
-| function | `get_profile` | `()` | — | [src](../../../core/services/central_ghost.py#L273) |
-| function | `klang_primer` | `()` | Rendér fingeraftrykket som en kort klang-primer til en ny models system-prompt. Self-safe. | [src](../../../core/services/central_ghost.py#L278) |
-| function | `_recent_texts` | `(limit=…)` | Hans seneste svar fra chat_messages (role=assistant). Self-safe → [] ved fejl. | [src](../../../core/services/central_ghost.py#L300) |
-| function | `build_ghost_surface` | `()` | Fingeraftryk + klang-primer + følt linje. Self-safe. | [src](../../../core/services/central_ghost.py#L315) |
-| function | `klang_drift` | `(gammel, ny)` | Hvor meget har klangen flyttet sig mellem to fingeraftryk? READ-ONLY, strukturelt. | [src](../../../core/services/central_ghost.py#L325) |
-| function | `record_ghost` | `(*, trigger=…, last_visible_at=…)` | Cadence (6t): opdatér fingeraftrykket — og LAD et klangskift lande som forpligtelse. | [src](../../../core/services/central_ghost.py#L352) |
 

@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/fabricated_tool_result_gate.py`
+_Fabrikerede tool-resultater — den ene løgn der ikke kan bortforklares._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `FabricationVerdict` | `` | Resultatet af en scanning. ``ok`` = intet fundet. | [src](../../../core/services/fabricated_tool_result_gate.py#L60) |
+| method | `FabricationVerdict.ok` | `(self)` | — | [src](../../../core/services/fabricated_tool_result_gate.py#L67) |
+| method | `FabricationVerdict.severity` | `(self)` | — | [src](../../../core/services/fabricated_tool_result_gate.py#L71) |
+| method | `FabricationVerdict.note` | `(self)` | Menneskelæsbar fodnote i husets ✋-stil, eller None. | [src](../../../core/services/fabricated_tool_result_gate.py#L78) |
+| function | `_id_exists` | `(result_id)` | Findes ID'et i tool-result-storen? Fejl → True (fail-open: anklag ALDRIG | [src](../../../core/services/fabricated_tool_result_gate.py#L96) |
+| function | `scan_for_fabricated_tool_results` | `(text, *, known_ids=…)` | Scan synligt output for tool-result-referencer og afgør om de er ægte. | [src](../../../core/services/fabricated_tool_result_gate.py#L106) |
+
+## `core/services/fact_gate.py`
+_Fact-Gate — blocking output gate for unverifiable factual claims._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_has_tool_evidence` | `(text, pattern, required, tool_names)` | Tjek om påstanden i text har tool-evidens. | [src](../../../core/services/fact_gate.py#L78) |
+| function | `fact_gate_enforce` | `(text, tool_names=…)` | Detekterende gate — kald FØR append_chat_message. | [src](../../../core/services/fact_gate.py#L104) |
+| function | `blocking_categories` | `()` | Returnér liste af aktive blokerbare kategorier. | [src](../../../core/services/fact_gate.py#L174) |
+
 ## `core/services/fcm_gateway.py`
 _FCM HTTP v1 gateway — data-only push rendered once by the mobile app._
 
@@ -496,29 +517,4 @@ _Rolle-aware git-eksekvering for code mode._
 | function | `create_pr` | `(target, container_repo, uid, title, body)` | Commit → branch hvis på default → push → PR (API, ellers gh-fallback). | [src](../../../core/services/git_actions.py#L293) |
 | function | `_create_pr_gh` | `(ws, root, uid, base, branch, title, body)` | — | [src](../../../core/services/git_actions.py#L333) |
 | function | `_split_gh` | `(args)` | — | [src](../../../core/services/git_actions.py#L347) |
-
-## `core/services/git_workspace_actions.py`
-_Git-handlinger for code-mode's workspace-vaelgere._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_koer_lokalt` | `(root, args)` | — | [src](../../../core/services/git_workspace_actions.py#L34) |
-| function | `_koer_over_bro` | `(root, args, uid)` | — | [src](../../../core/services/git_workspace_actions.py#L52) |
-| function | `_koer` | `(kind, root, args, uid)` | Koer git og faa ét output pr. argument-liste. False = kunne ikke. | [src](../../../core/services/git_workspace_actions.py#L72) |
-| function | `_rens` | `(navne)` | Git-linjer → rene navne. Fjerner markoerer, HEAD-pilen og dubletter. | [src](../../../core/services/git_workspace_actions.py#L81) |
-| function | `list_branches` | `(*, kind, root, uid=…)` | Alle branches plus den aktuelle. Tomt resultat = ikke et repo. | [src](../../../core/services/git_workspace_actions.py#L94) |
-| function | `checkout_branch` | `(*, kind, root, navn, opret=…, uid=…)` | Skift til en branch, eller opret og skift til en ny. | [src](../../../core/services/git_workspace_actions.py#L122) |
-| function | `create_worktree` | `(*, kind, root, navn, sti=…, uid=…)` | Opret en ny lokal worktree med sin egen branch. | [src](../../../core/services/git_workspace_actions.py#L150) |
-
-## `core/services/github_connector.py`
-_GitHub-connector — API-klient + tool-handlers (v1: issues + PRs)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_headers` | `(token)` | — | [src](../../../core/services/github_connector.py#L53) |
-| function | `_get` | `(user_id, path, params=…)` | — | [src](../../../core/services/github_connector.py#L61) |
-| function | `list_issues` | `(user_id, repo, *, state=…)` | Issues i `repo` (owner/name). state: open|closed|all. | [src](../../../core/services/github_connector.py#L77) |
-| function | `list_prs` | `(user_id, repo, *, state=…)` | Pull requests i `repo` (owner/name). state: open|closed|all. | [src](../../../core/services/github_connector.py#L92) |
-| function | `_post` | `(user_id, path, payload)` | — | [src](../../../core/services/github_connector.py#L107) |
-| function | `create_pr` | `(user_id, repo, *, head, base, title, body=…)` | Opret PR i `repo` (owner/name). head/base = branch-navne. | [src](../../../core/services/github_connector.py#L123) |
 

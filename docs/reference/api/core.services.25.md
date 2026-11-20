@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/runtime_self_knowledge.py`
+_Runtime self-knowledge — a bounded map of what Jarvis can do, what_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_runtime_self_knowledge_map` | `(*, heartbeat_state=…)` | Build a bounded self-knowledge map from existing runtime surfaces. | [src](../../../core/services/runtime_self_knowledge.py#L28) |
+| function | `_build_active_capabilities` | `(*, heartbeat_state=…)` | Things Jarvis can actively use right now. | [src](../../../core/services/runtime_self_knowledge.py#L75) |
+| function | `_build_approval_gated` | `()` | Things that exist but require user approval. | [src](../../../core/services/runtime_self_knowledge.py#L217) |
+| function | `_build_passive_inner_forces` | `()` | Things that influence Jarvis but are not directly actionable tools. | [src](../../../core/services/runtime_self_knowledge.py#L265) |
+| function | `_build_structural_constraints` | `()` | Things that are part of Jarvis' nature and boundaries. | [src](../../../core/services/runtime_self_knowledge.py#L522) |
+| function | `_build_unavailable_or_inactive` | `()` | Things in the system that are currently not active. | [src](../../../core/services/runtime_self_knowledge.py#L607) |
+| function | `build_self_knowledge_prompt_section` | `()` | Build a compact self-knowledge section suitable for prompt inclusion. | [src](../../../core/services/runtime_self_knowledge.py#L665) |
+| function | `build_runtime_self_knowledge_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/runtime_self_knowledge.py#L720) |
+
+## `core/services/runtime_self_model.py`
+_Bounded runtime self-model._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_self_model_prompt_lines` | `()` | Build compact prompt lines for the visible self-report section. | [src](../../../core/services/runtime_self_model.py#L61) |
+
 ## `core/services/runtime_self_model_affect.py`
 _Runtime self-model — affective awareness (flow, wonder, longing, relation)._
 
@@ -543,26 +564,28 @@ _Self-Experiments — A/B testing on Jarvis' own behavior._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `ensure_default_experiments` | `()` | Create default experiments if none exist. | [src](../../../core/services/self_experiments.py#L39) |
-| function | `record_experiment_observation` | `(*, experiment_id, cohort, success, observed_run_id=…, observation_note=…)` | Record an observation for an experiment. | [src](../../../core/services/self_experiments.py#L58) |
-| function | `_evaluate_experiment` | `(cohorts)` | Simple evaluation: compare success rates between cohorts. | [src](../../../core/services/self_experiments.py#L141) |
-| function | `_maalte_domaener` | `(noegle)` | Domaener hvis confidence har aendret sig mindst én gang for nylig. | [src](../../../core/services/self_experiments.py#L198) |
-| function | `_mekanisk_maalte` | `(noegle)` | Domaener hvis confidence er flyttet af en MEKANISK kilde. | [src](../../../core/services/self_experiments.py#L263) |
-| function | `generate_learning_curriculum` | `()` | 3.8 Curriculum learning — analyze weaknesses, generate learning plan. | [src](../../../core/services/self_experiments.py#L330) |
-| function | `_curriculum_summary` | `(curriculum, kilde_fejl, *, umalte=…)` | En tom plan skal sige HVORFOR den er tom. | [src](../../../core/services/self_experiments.py#L490) |
-| function | `_klip_ord_graense` | `(tekst, loft=…)` | Klip ved ORD-grænse, ikke midt i ordet. | [src](../../../core/services/self_experiments.py#L522) |
-| function | `observe_recent_visible_runs_for_self_experiments` | `(*, limit=…)` | Auto-observe recent visible runs for active self-experiments. | [src](../../../core/services/self_experiments.py#L539) |
-| function | `materialize_learning_curriculum_tasks` | `(*, limit=…, origin=…, owner=…, run_id=…)` | Turn top curriculum focuses into bounded runtime tasks. | [src](../../../core/services/self_experiments.py#L617) |
-| function | `build_self_experiments_surface` | `()` | — | [src](../../../core/services/self_experiments.py#L735) |
-| function | `_parse_result_payload` | `(raw)` | — | [src](../../../core/services/self_experiments.py#L752) |
-| function | `_cohort_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L760) |
-| function | `_success_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L775) |
-| function | `_build_visible_run_observation_note` | `(*, experiment, run, cohort, success)` | — | [src](../../../core/services/self_experiments.py#L786) |
-| function | `_normaliser_fejltekst` | `(tekst)` | — | [src](../../../core/services/self_experiments.py#L830) |
-| function | `normaliser_fejl_til_domaene` | `(tekst)` | Map en rå fejlformulering til en stabil kategori-nøgle. | [src](../../../core/services/self_experiments.py#L837) |
-| function | `_item_domaene` | `(item)` | Domænenøglen for et curriculum-item. Ingen fallback til rå ``focus``: | [src](../../../core/services/self_experiments.py#L851) |
-| function | `_curriculum_focus_key` | `(value)` | — | [src](../../../core/services/self_experiments.py#L857) |
-| function | `_curriculum_priority` | `(priority)` | — | [src](../../../core/services/self_experiments.py#L861) |
+| function | `ensure_default_experiments` | `()` | Create default experiments if none exist. | [src](../../../core/services/self_experiments.py#L40) |
+| function | `record_experiment_observation` | `(*, experiment_id, cohort, success, observed_run_id=…, observation_note=…)` | Record an observation for an experiment. | [src](../../../core/services/self_experiments.py#L59) |
+| function | `_fisher_exact_p` | `(a, b, c, d)` | Exakt to-halet Fisher-test paa en 2x2-tabel. Ren Python, ingen scipy. | [src](../../../core/services/self_experiments.py#L154) |
+| function | `_evaluate_experiment` | `(cohorts)` | Sammenlign kohorter — men kun paa et sample der kan baere konklusionen. | [src](../../../core/services/self_experiments.py#L185) |
+| function | `_maalte_domaener` | `(noegle)` | Domaener hvis confidence har aendret sig mindst én gang for nylig. | [src](../../../core/services/self_experiments.py#L281) |
+| function | `_mekanisk_maalte` | `(noegle)` | Domaener hvis confidence er flyttet af en MEKANISK kilde. | [src](../../../core/services/self_experiments.py#L348) |
+| function | `_eksperiment_forslag` | `(best, result)` | Et laeringsmaal fra et forsøg skal baere SAMPLEt, ikke kun forskellen. | [src](../../../core/services/self_experiments.py#L417) |
+| function | `generate_learning_curriculum` | `()` | 3.8 Curriculum learning — analyze weaknesses, generate learning plan. | [src](../../../core/services/self_experiments.py#L436) |
+| function | `_curriculum_summary` | `(curriculum, kilde_fejl, *, umalte=…)` | En tom plan skal sige HVORFOR den er tom. | [src](../../../core/services/self_experiments.py#L596) |
+| function | `_klip_ord_graense` | `(tekst, loft=…)` | Klip ved ORD-grænse, ikke midt i ordet. | [src](../../../core/services/self_experiments.py#L628) |
+| function | `observe_recent_visible_runs_for_self_experiments` | `(*, limit=…)` | Auto-observe recent visible runs for active self-experiments. | [src](../../../core/services/self_experiments.py#L645) |
+| function | `materialize_learning_curriculum_tasks` | `(*, limit=…, origin=…, owner=…, run_id=…)` | Turn top curriculum focuses into bounded runtime tasks. | [src](../../../core/services/self_experiments.py#L728) |
+| function | `build_self_experiments_surface` | `()` | — | [src](../../../core/services/self_experiments.py#L846) |
+| function | `_parse_result_payload` | `(raw)` | — | [src](../../../core/services/self_experiments.py#L863) |
+| function | `_cohort_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L871) |
+| function | `_success_for_visible_run` | `(*, experiment, run)` | Om runnet lykkedes. `None` = vi kan ikke afgoere det, og maa ikke gaette. | [src](../../../core/services/self_experiments.py#L886) |
+| function | `_build_visible_run_observation_note` | `(*, experiment, run, cohort, success)` | — | [src](../../../core/services/self_experiments.py#L909) |
+| function | `_normaliser_fejltekst` | `(tekst)` | — | [src](../../../core/services/self_experiments.py#L953) |
+| function | `normaliser_fejl_til_domaene` | `(tekst)` | Map en rå fejlformulering til en stabil kategori-nøgle. | [src](../../../core/services/self_experiments.py#L960) |
+| function | `_item_domaene` | `(item)` | Domænenøglen for et curriculum-item. Ingen fallback til rå ``focus``: | [src](../../../core/services/self_experiments.py#L974) |
+| function | `_curriculum_focus_key` | `(value)` | — | [src](../../../core/services/self_experiments.py#L980) |
+| function | `_curriculum_priority` | `(priority)` | — | [src](../../../core/services/self_experiments.py#L984) |
 
 ## `core/services/self_history_grounding.py`
 _Prompten maa ikke forveksle et rygte med en kendsgerning._
@@ -730,69 +753,4 @@ _Self-narrative continuity signal tracking — migrated onto signal_tracking_fra
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/self_narrative_continuity_signal_tracking.py#L461) |
 | function | `_value` | `(*values, default)` | — | [src](../../../core/services/self_narrative_continuity_signal_tracking.py#L471) |
 | function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/self_narrative_continuity_signal_tracking.py#L479) |
-
-## `core/services/self_narrative_self_model_review_bridge.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_runtime_self_narrative_self_model_review_bridge_surface` | `(*, limit=…)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L13) |
-| function | `_build_bridge_item` | `(*, narrative_item, self_model_item)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L162) |
-| function | `_pattern_view` | `(item)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L362) |
-| function | `_review_input_view` | `(item)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L378) |
-| function | `_sharpening_input_view` | `(item)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L400) |
-| function | `_proposal_input_view` | `(item)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L424) |
-| function | `_pattern_type` | `(*, narrative_state, narrative_direction, review_state)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L456) |
-| function | `_self_model_alignment` | `(self_model_item)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L475) |
-| function | `_persistence_state` | `(*, session_count, support_count)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L486) |
-| function | `_threshold_state` | `(*, narrative_weight, pattern_confidence, persistence_state, self_model_alignment)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L494) |
-| function | `_sharpening_threshold_state` | `(*, review_input_state, pattern_confidence, persistence_state, self_model_alignment)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L511) |
-| function | `_sharpening_input_reason` | `(*, review_input_state, pattern_confidence, persistence_state, self_model_alignment)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L528) |
-| function | `_sharpening_input_summary` | `(*, sharpening_input_state, sharpening_threshold_state, self_model_title)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L549) |
-| function | `_stable_alignment_state` | `(*, self_model_alignment, self_model_status, pattern_confidence)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L562) |
-| function | `_stability_window_state` | `(*, session_count, support_count)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L577) |
-| function | `_identity_relevance_state` | `(*, bridge_state, self_model_title, pattern_type)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L583) |
-| function | `_proposal_input_threshold_state` | `(*, sharpening_input_state, session_count, stable_alignment_state, stability_window_state, identity_relevance_state, governance_state)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L605) |
-| function | `_proposal_input_reason` | `(*, sharpening_input_state, session_count, stable_alignment_state, stability_window_state, identity_relevance_state, governance_state)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L626) |
-| function | `_proposal_input_summary` | `(*, proposal_input_state, proposal_input_threshold_state, stability_window_state)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L653) |
-| function | `_review_input_reason` | `(*, narrative_weight, pattern_confidence, persistence_state, self_model_alignment)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L669) |
-| function | `_review_input_summary` | `(*, review_input_state, threshold_state, self_model_title)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L690) |
-| function | `_pattern_summary` | `(*, pattern_type, narrative_direction, narrative_weight, self_model_title)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L703) |
-| function | `_bridge_summary` | `(*, narrative_state, narrative_direction, self_model_title)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L721) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L738) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/self_narrative_self_model_review_bridge.py#L750) |
-
-## `core/services/self_repair_engine.py`
-_Self-repair engine — runtime-instigated repair actions for known patterns._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SelfRepairPattern` | `` | — | [src](../../../core/services/self_repair_engine.py#L30) |
-| function | `_decode_pattern` | `(row)` | Build a SelfRepairPattern from a DB row dict. May raise on malformed JSON. | [src](../../../core/services/self_repair_engine.py#L47) |
-| function | `_pattern_matches_event` | `(pattern, event)` | True if event matches pattern's trigger_event_kind + trigger_match predicates. | [src](../../../core/services/self_repair_engine.py#L94) |
-| function | `_payload_predicate_matches` | `(expected, actual)` | Predicate forms supported in trigger_match values: | [src](../../../core/services/self_repair_engine.py#L107) |
-| function | `_now` | `()` | Indirected for monkeypatching in tests. | [src](../../../core/services/self_repair_engine.py#L132) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/self_repair_engine.py#L137) |
-| function | `_action_control_daemon` | `(params)` | Allowlisted handler for control_daemon. Validates params then delegates. | [src](../../../core/services/self_repair_engine.py#L146) |
-| function | `_check_cooldown` | `(pattern)` | Return 'ok' if attempt allowed, else reason string explaining why blocked. | [src](../../../core/services/self_repair_engine.py#L174) |
-| function | `register_pattern` | `(*, pattern_id, name, trigger_event_kind, trigger_match=…, action_type, action_params=…, enabled=…, cooldown_seconds=…, max_attempts_per_window=…, window_seconds=…, auto_disable_after_escalations=…, auto_disable_window_hours=…, source=…, source_evidence=…)` | Register a self-repair pattern. Validates action_type against allowlist. | [src](../../../core/services/self_repair_engine.py#L224) |
-| function | `list_patterns` | `(*, enabled=…, trigger_event_kind=…)` | — | [src](../../../core/services/self_repair_engine.py#L287) |
-| function | `enable_pattern` | `(pattern_id)` | — | [src](../../../core/services/self_repair_engine.py#L297) |
-| function | `disable_pattern` | `(pattern_id)` | — | [src](../../../core/services/self_repair_engine.py#L301) |
-| function | `delete_pattern` | `(pattern_id)` | — | [src](../../../core/services/self_repair_engine.py#L305) |
-| function | `list_recent_attempts` | `(*, pattern_id=…, limit=…)` | — | [src](../../../core/services/self_repair_engine.py#L309) |
-| function | `build_self_repair_surface` | `()` | Compact surface for Mission Control consumption. | [src](../../../core/services/self_repair_engine.py#L315) |
-| function | `_engine_enabled` | `()` | — | [src](../../../core/services/self_repair_engine.py#L328) |
-| function | `_notify_owner_async` | `(message)` | Best-effort Discord DM to owner. Failure is silently swallowed. | [src](../../../core/services/self_repair_engine.py#L345) |
-| function | `_repair_context_features` | `(pattern, *, triggered_by, outcome, error=…)` | — | [src](../../../core/services/self_repair_engine.py#L354) |
-| function | `_capture_repair_emotional_anchor` | `(pattern, *, triggered_by, outcome, error=…)` | Best-effort emotional memory capture for repair outcomes. | [src](../../../core/services/self_repair_engine.py#L372) |
-| function | `_find_repair_emotional_precedents` | `(pattern, *, triggered_by)` | Return similar repair anchors with outcomes, if emotional memory is available. | [src](../../../core/services/self_repair_engine.py#L399) |
-| function | `_record_executed` | `(pattern, triggered_by, result, elapsed_ms)` | — | [src](../../../core/services/self_repair_engine.py#L420) |
-| function | `_record_attempt_and_escalate` | `(pattern, triggered_by, *, outcome, error, elapsed_ms)` | — | [src](../../../core/services/self_repair_engine.py#L469) |
-| function | `_auto_disable_pattern` | `(pattern, failure_count)` | — | [src](../../../core/services/self_repair_engine.py#L538) |
-| function | `_attempt_repair` | `(pattern, event)` | Run cooldown check, execute action, record audit, escalate if needed. | [src](../../../core/services/self_repair_engine.py#L571) |
-| function | `_process_event` | `(event)` | Match event against enabled patterns, execute if any match. | [src](../../../core/services/self_repair_engine.py#L655) |
-| function | `_process_emotional_gate_event` | `(event)` | Observe repeated emotional gates as candidates for repair pattern design. | [src](../../../core/services/self_repair_engine.py#L682) |
-| function | `start_listener` | `()` | Start the eventbus listener daemon. Idempotent. | [src](../../../core/services/self_repair_engine.py#L751) |
-| function | `stop_listener` | `()` | Signal the listener to exit. Best-effort. | [src](../../../core/services/self_repair_engine.py#L768) |
-| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/self_repair_engine.py#L778) |
 

@@ -2,6 +2,35 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/malware_scan.py`
+_Malware-scanning af uploads/vedhæftninger (spec §15.3.1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ScanReport` | `` | — | [src](../../../core/services/malware_scan.py#L21) |
+| method | `ScanReport.safe` | `(self)` | — | [src](../../../core/services/malware_scan.py#L27) |
+| method | `ScanReport.as_dict` | `(self)` | — | [src](../../../core/services/malware_scan.py#L30) |
+| function | `clamav_available` | `()` | — | [src](../../../core/services/malware_scan.py#L35) |
+| function | `scan_file` | `(path)` | Scan en fil med clamscan. Returnerer ScanReport. Blokerer aldrig på | [src](../../../core/services/malware_scan.py#L39) |
+| function | `is_upload_allowed` | `(path, *, block_on_unavailable=…)` | Politik-helper: må denne upload gemmes/behandles? (§15.3.1) | [src](../../../core/services/malware_scan.py#L68) |
+
+## `core/services/markdown_structure.py`
+_Rekonstruér markdown-blokstruktur fra inline-markører._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_split_protected` | `(text)` | — | [src](../../../core/services/markdown_structure.py#L43) |
+| function | `_split_cells` | `(region)` | Split en `|`-afgrænset region i celler; drop ydre tomme (før første / | [src](../../../core/services/markdown_structure.py#L124) |
+| function | `_reflow_line_table` | `(line)` | Hvis `line` indeholder en HEL tabel mast sammen på én linje | [src](../../../core/services/markdown_structure.py#L135) |
+| function | `_reflow_crammed_tables` | `(text)` | Genskab tabeller hvis hele rækken er mast sammen på én linje. | [src](../../../core/services/markdown_structure.py#L195) |
+| function | `_is_bullet_line` | `(line)` | — | [src](../../../core/services/markdown_structure.py#L206) |
+| function | `_is_structured_line` | `(line)` | En eksisterende markdownblok må ikke omskrives som flad prosa. | [src](../../../core/services/markdown_structure.py#L214) |
+| function | `_ensure_blank_before_lists` | `(text)` | Indsæt en blank linje før første bullet i en liste der følger prosa, så | [src](../../../core/services/markdown_structure.py#L219) |
+| function | `_split_lange_linjer` | `(text)` | Bryd sætninger i prosa-linjer over tærsklen ud som egne afsnit. | [src](../../../core/services/markdown_structure.py#L263) |
+| function | `_split_slaaet_til` | `()` | Skal lange prosa-linjer braekkes op i afsnit? | [src](../../../core/services/markdown_structure.py#L289) |
+| function | `_normalize_segment` | `(text)` | — | [src](../../../core/services/markdown_structure.py#L303) |
+| function | `normalize_markdown_structure` | `(text)` | Genskab blokstruktur fra inline-markører. Beskytter kode-fences. | [src](../../../core/services/markdown_structure.py#L349) |
+
 ## `core/services/matrix_karakterer.py`
 _Matrix-karaktererne som en MÅLING — ikke en navneliste (13/11-2026)._
 
@@ -624,36 +653,4 @@ _Mirror Engine — compassionate self-reflection during idle time._
 | function | `generate_mirror_insight` | `(*, idle_hours=…, open_loop_count=…, recent_error_count=…, recent_success_count=…, top_loop_summary=…)` | Generate a deterministic mirror insight. | [src](../../../core/services/mirror_engine.py#L20) |
 | function | `build_mirror_surface` | `()` | — | [src](../../../core/services/mirror_engine.py#L56) |
 | function | `_deterministic_insight` | `(*, idle_hours, open_loop_count, recent_error_count, recent_success_count, top_loop_summary)` | — | [src](../../../core/services/mirror_engine.py#L65) |
-
-## `core/services/missions_pipeline.py`
-_Missions Pipeline — flerfase opgaver med state-machine._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `MissionError` | `` | — | [src](../../../core/services/missions_pipeline.py#L52) |
-| method | `MissionError.__init__` | `(self, code, message)` | — | [src](../../../core/services/missions_pipeline.py#L53) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/missions_pipeline.py#L58) |
-| function | `_ensure_tables` | `()` | — | [src](../../../core/services/missions_pipeline.py#L62) |
-| function | `_row_to_mission` | `(row)` | — | [src](../../../core/services/missions_pipeline.py#L107) |
-| function | `create_mission` | `(*, title, description=…, goal=…, constraints=…, success_criteria=…, roles=…, metadata=…)` | Create a new mission in 'created' status. | [src](../../../core/services/missions_pipeline.py#L120) |
-| function | `get_mission` | `(*, mission_id)` | — | [src](../../../core/services/missions_pipeline.py#L176) |
-| function | `transition_mission_state` | `(*, mission_id, new_status, reason=…)` | Transition mission to new status, respecting _ALLOWED_TRANSITIONS. | [src](../../../core/services/missions_pipeline.py#L188) |
-| function | `send_mission_message` | `(*, mission_id, role=…, content, metadata=…)` | Post a message on the mission channel. Roles: researcher/implementer/reviewer etc. | [src](../../../core/services/missions_pipeline.py#L258) |
-| function | `list_mission_messages` | `(*, mission_id, limit=…)` | — | [src](../../../core/services/missions_pipeline.py#L311) |
-| function | `list_missions` | `(*, status=…, limit=…)` | — | [src](../../../core/services/missions_pipeline.py#L331) |
-| function | `build_missions_surface` | `()` | — | [src](../../../core/services/missions_pipeline.py#L350) |
-
-## `core/services/model_benchmark.py`
-_Rangér modeller på ÆGTE opgaver med facit hentet fra repoet._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_rod` | `()` | — | [src](../../../core/services/model_benchmark.py#L59) |
-| function | `vælg_filer` | `(*, antal=…, rod=…, frø=…)` | Filer der er store nok til at være en rigtig opgave, små nok til at | [src](../../../core/services/model_benchmark.py#L67) |
-| function | `facit_for` | `(fil, *, rod=…)` | {funktionsnavn: linjenummer} — hentet fra kilden, ikke fra en liste. | [src](../../../core/services/model_benchmark.py#L91) |
-| function | `_nævnte_navne` | `(svar, facit)` | Navne modellen faktisk nævner. Vi leder KUN efter funktionsnavne-agtige | [src](../../../core/services/model_benchmark.py#L106) |
-| function | `bedøm_svar` | `(svar, facit)` | Præcision, dækning og linje-nøjagtighed for ét svar. | [src](../../../core/services/model_benchmark.py#L121) |
-| function | `opgave_for` | `(fil, *, rod=…)` | Spørgsmålet stilles i den FORM der udløser fejlen: en liste med mange | [src](../../../core/services/model_benchmark.py#L175) |
-| function | `kør_benchmark` | `(*, provider, model, antal_filer=…, frø=…, kald=…, rod=…)` | Kør benchmarken for én model. Kaster aldrig. | [src](../../../core/services/model_benchmark.py#L187) |
-| function | `gem_kvalitet` | `(*, provider, model, resultat)` | Skriv `kvalitets_score` ved siden af `probe_score` i registret. | [src](../../../core/services/model_benchmark.py#L239) |
 

@@ -2,6 +2,38 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prepared_request.py`
+_`PreparedRequest` — det der skal til for at bygge NØJAGTIG samme anmodning igen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `IncompleteRequest` | `` | En komponent findes kun som hash. Anmodningen kan ikke genskabes. | [src](../../../core/services/prepared_request.py#L45) |
+| function | `digest` | `(v)` | Stabil digest. Nøgler sorteres, så to ens objekter altid giver samme svar. | [src](../../../core/services/prepared_request.py#L49) |
+| class | `Component` | `` | En del af anmodningen: enten indholdet, eller en hentbar reference. | [src](../../../core/services/prepared_request.py#L56) |
+| method | `Component.resolve` | `(self, hent=…)` | — | [src](../../../core/services/prepared_request.py#L70) |
+| class | `PreparedRequest` | `` | Alt der skal til for at bygge anmodningen igen — ikke for at genkende den. | [src](../../../core/services/prepared_request.py#L90) |
+| method | `PreparedRequest.body_digest` | `(self, hent=…)` | Digest over det der faktisk sendes — rækkefølge inkluderet. | [src](../../../core/services/prepared_request.py#L111) |
+| method | `PreparedRequest.reconstruct` | `(self, hent=…)` | Byg anmodningen igen. Kaster hvis en komponent kun findes som hash. | [src](../../../core/services/prepared_request.py#L123) |
+| method | `PreparedRequest.same_series_as` | `(self, other)` | Er det stadig SAMME anmodningsserie? | [src](../../../core/services/prepared_request.py#L139) |
+| function | `forget_content` | `(p)` | Efterlign at indholdet er væk og kun digesten er tilbage. | [src](../../../core/services/prepared_request.py#L153) |
+
+## `core/services/pressure_threshold_gate.py`
+_Pressure Threshold Gate — konverterer presning til impuls._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Impulse` | `` | En impuls — en presning der har krydset tærsklen og bliver til vilje. | [src](../../../core/services/pressure_threshold_gate.py#L65) |
+| function | `_get_threshold` | `(direction)` | Get the current threshold for a direction, creating default if needed. | [src](../../../core/services/pressure_threshold_gate.py#L88) |
+| function | `_adapt_threshold` | `(direction, crossed)` | Adapt threshold based on whether it was crossed. | [src](../../../core/services/pressure_threshold_gate.py#L95) |
+| function | `_is_on_cooldown` | `(direction)` | Check if a direction is still in cooldown from a recent impulse. | [src](../../../core/services/pressure_threshold_gate.py#L109) |
+| function | `evaluate_pressures` | `(pressures)` | Evaluate all pressure vectors and generate impulses for those that cross thresholds. | [src](../../../core/services/pressure_threshold_gate.py#L122) |
+| function | `get_pending_impulses` | `()` | Return all pending impulses that haven't been executed yet. | [src](../../../core/services/pressure_threshold_gate.py#L197) |
+| function | `mark_impulse_executing` | `(impulse_id, action=…)` | Mark an impulse as currently being executed. | [src](../../../core/services/pressure_threshold_gate.py#L202) |
+| function | `mark_impulse_completed` | `(impulse_id, action=…)` | Mark an impulse as completed. | [src](../../../core/services/pressure_threshold_gate.py#L211) |
+| function | `mark_impulse_failed` | `(impulse_id, reason=…)` | Mark an impulse as failed. | [src](../../../core/services/pressure_threshold_gate.py#L221) |
+| function | `snapshot` | `()` | Return serializable snapshot of gate state. | [src](../../../core/services/pressure_threshold_gate.py#L230) |
+| function | `run_threshold_gate_tick` | `()` | Run one tick of the threshold gate. | [src](../../../core/services/pressure_threshold_gate.py#L244) |
+
 ## `core/services/priors_feedback.py`
 _Priors feedback — surfaces past patterns relevant to NOW._
 
@@ -692,26 +724,4 @@ _Prompt Mutation Loop — apply, score, auto-rollback on negative score._
 | function | `build_prompt_mutation_loop_surface` | `()` | — | [src](../../../core/services/prompt_mutation_loop.py#L476) |
 | function | `_surface_summary` | `(monitoring, adopted, rolled_back, auto_rolled)` | — | [src](../../../core/services/prompt_mutation_loop.py#L509) |
 | function | `build_prompt_mutation_loop_prompt_section` | `()` | — | [src](../../../core/services/prompt_mutation_loop.py#L529) |
-
-## `core/services/prompt_observer.py`
-_Prompt-cluster (Den Intelligente Central) — Phase 1: live on/off + trace for de_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `load_overrides` | `()` | Læs ALLE eksplicit satte prompt-sektion-switches i ÉN query (pr. build). | [src](../../../core/services/prompt_observer.py#L127) |
-| function | `section_enabled` | `(label, *, blacklisted, overrides)` | Skal denne prompt-sektion med? | [src](../../../core/services/prompt_observer.py#L155) |
-| function | `observe_discarded_content` | `(label, content)` | En slukket sektions indhold blev netop kasseret — prøvetag det. | [src](../../../core/services/prompt_observer.py#L165) |
-| function | `observe_build` | `(*, lane, included, dropped_disabled, dropped_budget, dropped_error=…)` | Ét central.observe pr. prompt-build → trace af hvad der kom med + hvorfor noget | [src](../../../core/services/prompt_observer.py#L181) |
-| function | `observe_section_error` | `(label, error, *, lane=…)` | En enkelt prompt-sektion-builder kastede → observe straks (synlig + pollbar). | [src](../../../core/services/prompt_observer.py#L207) |
-| function | `set_section` | `(label, enabled)` | Slå en prompt-sektion ON/OFF LIVE (ingen genstart) — Bjørn/MC-kaldbar. | [src](../../../core/services/prompt_observer.py#L221) |
-| function | `list_overrides` | `()` | Read-only projektion af aktive overrides (til MC/debug). | [src](../../../core/services/prompt_observer.py#L229) |
-
-## `core/services/prompt_overhead.py`
-_Den faste prompt-prefix' størrelse i tokens — DELT kilde for trigger og visning._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_workspace_for_session` | `(session_id)` | Workspace-navnet der styrer hvilke identitetsfiler prefixen bærer. | [src](../../../core/services/prompt_overhead.py#L47) |
-| function | `stable_prefix_tokens` | `(provider=…, model=…, session_id=…)` | Tokens i den stabile system-prefix. 0 når den ikke kan måles. | [src](../../../core/services/prompt_overhead.py#L69) |
-| function | `reset_cache` | `()` | Ryd memoen. Bruges af tests; prefixen selv ændrer sig kun ved workspace-edit. | [src](../../../core/services/prompt_overhead.py#L96) |
 

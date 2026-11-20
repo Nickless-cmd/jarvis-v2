@@ -443,10 +443,12 @@ def test_selvrapporteret_svaghed_bliver_ikke_kaldt_maalt(isolated_runtime):
 
     _nulstil_cache()
     # app: 0,44 -> 0,42 -> 0,40 — to skift, men ingen mekaniske (0,02).
-    # kadence: 0,42 -> 0,47 -> 0,45 — to skift, hvoraf +0,05 er mekanisk.
+    # kadence: 0,42 -> 0,40 -> 0,45 — det SIDSTE skridt er mekanisk (+0,05).
+    # (20/11-2026: kravet er det sidste skridt, ikke et hvilket som helst —
+    # se test_mekanisk_skridt_der_er_overskrevet_gor_tallet_umalt.)
     historik = [
         {"app reverse engineering": 0.44, "kadence-maaling i drift": 0.42},
-        {"app reverse engineering": 0.42, "kadence-maaling i drift": 0.47},
+        {"app reverse engineering": 0.42, "kadence-maaling i drift": 0.40},
         {"app reverse engineering": 0.40, "kadence-maaling i drift": 0.45},
     ]
     for vektor in historik:
@@ -474,3 +476,127 @@ def test_selvrapporteret_svaghed_bliver_ikke_kaldt_maalt(isolated_runtime):
     assert mekanisk is not None, "domaenet med et mekanisk skridt faldt ud"
     assert mekanisk["measured"] is True
     assert "maalt confidence" in str(mekanisk.get("suggestion") or "")
+
+
+# ── Det sidste skridt ejer tallet (20/11-2026) ───────────────────────────────
+
+def test_mekanisk_skridt_der_er_overskrevet_gor_tallet_umalt(isolated_runtime):
+    """`dil_widgets animationstal`: 0,40 -> 0,36 -> 0,41 (+0,05) -> 0,36.
+
+    Det mekaniske skridt ligger i MIDTEN. Tallet der staar nu (0,36) blev
+    skrevet af modellen bagefter — og netop dette domaene blev 20/11-2026
+    givet til mig som opgave med ordene «maalt confidence 36 %». Det var
+    ikke maalt: det var en selvrapport der engang havde vaeret forbi en
+    maaling, og som derefter var skrevet tilbage.
+    """
+    import json
+
+    from core.runtime.db import upsert_cognitive_personality_vector
+
+    _nulstil_cache()
+    historik = [
+        {"dil_widgets animationstal": 0.40},
+        {"dil_widgets animationstal": 0.36},
+        {"dil_widgets animationstal": 0.41},  # +0,05 — mekanisk
+        {"dil_widgets animationstal": 0.36},  # selvrapport ovenpaa
+    ]
+    for vektor in historik:
+        upsert_cognitive_personality_vector(confidence_by_domain=json.dumps(vektor))
+
+    import core.services.self_experiments as SE
+
+    post = {
+        str(c.get("domain") or ""): c
+        for c in SE.generate_learning_curriculum().get("curriculum") or []
+    }.get("dil_widgets animationstal")
+    assert post is not None, "domaenet faldt ud af planen"
+    assert post["measured"] is False, (
+        "et mekanisk skridt der er overskrevet af en selvrapport blev kaldt maalt"
+    )
+    assert "uden en maaling bag" in str(post.get("suggestion") or "")
+
+
+# ── Et forsøg maa ikke konkludere paa stoej (20/11-2026) ──────────────────────
+
+
+def test_fisher_skelner_stoej_fra_effekt():
+    from core.services.self_experiments import _fisher_exact_p
+
+    # 2 af 2 mod 18 af 22 — praecis den konklusion der blev et laeringsmaal.
+    assert _fisher_exact_p(2, 0, 18, 4) > 0.5
+    # 18 af 20 mod 4 af 20 — en forskel der ikke kan forklares af tilfaeld.
+    assert _fisher_exact_p(18, 2, 4, 16) < 0.001
+
+
+def test_to_observationer_konkluderer_ikke():
+    import json as _json
+
+    from core.services.self_experiments import _evaluate_experiment
+
+    cohorts = {
+        "control": {"n": 22, "success": 18},
+        "treatment": {"n": 2, "success": 2},
+    }
+    result_json, status = _evaluate_experiment(cohorts)
+    result = _json.loads(result_json)
+
+    assert status == "running", "2 observationer blev konkluderet"
+    assert result["significant"] is False
+    assert result["sample_ok"] is False
+    assert "for faa observationer" in result["reason"]
+    assert result["n_best"] == 2 and result["n_worst"] == 22
+
+
+def test_reelt_sample_konkluderer():
+    import json as _json
+
+    from core.services.self_experiments import _evaluate_experiment
+
+    cohorts = {
+        "control": {"n": 20, "success": 4},
+        "treatment": {"n": 20, "success": 18},
+    }
+    result_json, status = _evaluate_experiment(cohorts)
+    result = _json.loads(result_json)
+
+    assert status == "concluded"
+    assert result["significant"] is True
+    assert result["best_cohort"] == "treatment"
+    assert result["p_value"] < 0.001
+
+
+def test_tom_kohorte_er_ikke_nul_procent_succes():
+    from core.services.self_experiments import _evaluate_experiment
+
+    # Foer: success/max(n,1) gjorde en uberoert kohorte til 0 % succes, saa
+    # den kunne tabe til en anden kohorte uden at nogen havde betraadt den.
+    cohorts = {
+        "control": {"n": 40, "success": 30},
+        "treatment": {"n": 0, "success": 0},
+    }
+    result_json, status = _evaluate_experiment(cohorts)
+
+    assert result_json == "{}" and status == "running"
+
+
+def test_correction_rate_er_ikke_laengere_en_tautologi():
+    from core.services.self_experiments import _success_for_visible_run
+
+    eksp = {"metric": "correction_rate"}
+    kort = {"status": "completed", "text_preview": "kort svar her"}
+    langt = {"status": "completed", "text_preview": "ord " * 60}
+
+    # Foer gav begge et udfald bestemt af kohorte-reglen selv: kort -> True,
+    # langt -> False, uanset om nogen faktisk rettede svaret.
+    assert _success_for_visible_run(experiment=eksp, run=kort) is None
+    assert _success_for_visible_run(experiment=eksp, run=langt) is None
+
+
+def test_konklusionens_tekst_baerer_samplet():
+    from core.services.self_experiments import _eksperiment_forslag
+    tekst = _eksperiment_forslag(
+        "treatment",
+        {"difference": 0.18, "n_best": 2, "n_worst": 22, "p_value": 1.0},
+    )
+    assert "n=2 mod 22" in tekst, "samplet mangler i laeringsmaalet"
+    assert "p=" in tekst, "p-vaerdien mangler i laeringsmaalet"

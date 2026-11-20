@@ -464,9 +464,10 @@ _Claude Code og Codex CLI som eksekveringsbackends for ``Task``._
 | function | `_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L295) |
 | function | `_stop` | `(proc)` | — | [src](../../../core/services/agent_cli_backend.py#L302) |
 | function | `_claude_text` | `(stdout)` | Læs CLI'ens stdout — både `stream-json` (én JSON pr. linje) og `json`. | [src](../../../core/services/agent_cli_backend.py#L313) |
-| function | `_claude_parse` | `(stdout)` | Normalisér CLI-output til tekst, tokens og værktøjskald. | [src](../../../core/services/agent_cli_backend.py#L330) |
-| function | `_bogfoer_cli_vaerktoejskald` | `(agent, run_id, tool_uses, tool_results)` | Skriv CLI-agentens værktøjskald til ``agent_tool_calls``. Returnerer antallet. | [src](../../../core/services/agent_cli_backend.py#L404) |
-| function | `run_task_cli` | `(*, agent, prompt, run_id, timeout_s=…)` | Koer den valgte CLI én gang og returner agent-runtimens resultatform. | [src](../../../core/services/agent_cli_backend.py#L455) |
+| function | `_codex_tool_calls` | `(stdout)` | Tæl afsluttede værktøjs-items fra ``codex exec --json``. | [src](../../../core/services/agent_cli_backend.py#L342) |
+| function | `_claude_parse` | `(stdout)` | Normalisér CLI-output til tekst, tokens og værktøjskald. | [src](../../../core/services/agent_cli_backend.py#L371) |
+| function | `_bogfoer_cli_vaerktoejskald` | `(agent, run_id, tool_uses, tool_results)` | Skriv CLI-agentens værktøjskald til ``agent_tool_calls``. Returnerer antallet. | [src](../../../core/services/agent_cli_backend.py#L445) |
+| function | `run_task_cli` | `(*, agent, prompt, run_id, timeout_s=…)` | Koer den valgte CLI én gang og returner agent-runtimens resultatform. | [src](../../../core/services/agent_cli_backend.py#L496) |
 
 ## `core/services/agent_contract_bridge.py`
 _Binder spawn_agent_task til agent-contract-v1 (leverance A2)._
@@ -728,7 +729,7 @@ _Modelkald for en agent: genvalidering ved kaldet og failover i kandidatkaeden (
 | function | `_current_run` | `(latest, run_id)` | Det forsoeg der koerer nu: kalderens run (foelg failover-kaeden), ellers assignmentets seneste run. | [src](../../../core/services/agent_model_router.py#L59) |
 | function | `_switch` | `(agent_id, latest, cand, why, run_id=…)` | Failover som NYT synligt runforsoeg (G, spec 7.1): det svigtede forsoeg faar sin egen fejlpost, et nyt | [src](../../../core/services/agent_model_router.py#L69) |
 | function | `call_agent_model` | `(*, agent, tools_executed=…, facade=…, run_id=…, **execute_kwargs)` | Kald agentens model. ``execute_kwargs`` er argumenterne til ``execute_with_role_or_fallback``. | [src](../../../core/services/agent_model_router.py#L96) |
-| function | `_facade` | `()` | — | [src](../../../core/services/agent_model_router.py#L144) |
+| function | `_facade` | `()` | — | [src](../../../core/services/agent_model_router.py#L150) |
 
 ## `core/services/agent_observation_compressor.py`
 _Agent observation compressor — Mastra-style intra-session compression._

@@ -51,6 +51,23 @@ def to_followup_results(
             or ((tc.get("function") or {}).get("name") or tc.get("name") or "tool")
         )
         status = str(sr.get("status") or "")
+        # DIL lag 1 læser den STRUKTUREREDE værdi, ikke den formatterede
+        # modeltekst. Registrér ved den fælles konvertering, efter approval og
+        # lokal execution er afgjort, så alle resultatveje får samme semantik.
+        if sr.get("result") is not None and status not in {
+            "duplicate_suppressed", "gate_blocked", "approval_needed",
+        }:
+            try:
+                from core.services.tool_result_binding_store import registrer
+            except ImportError:  # binding er additiv; mangler storen, svarer turen som før
+                registrer = None
+            if registrer is not None:
+                argumenter = sr.get("arguments") or {}
+                registrer(
+                    str(argumenter.get("_runtime_turn_id") or ""),
+                    str(tc.get("id") or ""),
+                    sr.get("result"),
+                )
         if not content:
             if idx >= len(round_results):
                 content = (

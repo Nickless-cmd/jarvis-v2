@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18859 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18876 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -60,10 +60,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18859 functions/
 - [`core.services.26`](core.services.26.md) — `self_review_record_tracking` … `shadow_scan_daemon`
 - [`core.services.27`](core.services.27.md) — `share_guard_store` … `staged_edits`
 - [`core.services.28`](core.services.28.md) — `standing_orders_registry` … `thought_leak_guard`
-- [`core.services.29`](core.services.29.md) — `thought_stream_daemon` … `upload_sandbox`
-- [`core.services.30`](core.services.30.md) — `user_activity` … `visible_model_types`
-- [`core.services.31`](core.services.31.md) — `visible_outcome_text` … `vision_backend`
-- [`core.services.32`](core.services.32.md) — `vision_preview` … `world_model_signal_tracking`
+- [`core.services.29`](core.services.29.md) — `thought_stream_daemon` … `untrusted_fencing`
+- [`core.services.30`](core.services.30.md) — `upload_sandbox` … `visible_model_sse`
+- [`core.services.31`](core.services.31.md) — `visible_model_types` … `visible_work_surfaces`
+- [`core.services.32`](core.services.32.md) — `vision_backend` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

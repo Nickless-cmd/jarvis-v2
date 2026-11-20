@@ -349,11 +349,6 @@ def build_prompt_evolution_from_inputs(
     )
     target_asset = _target_asset_from_proposal_type(proposal_type)
     prompt_target = _prompt_target_from_proposal_type(proposal_type)
-    anchor = _build_anchor(
-        dream_articulation=dream,
-        self_model_surface=self_model,
-        loop_runtime=loops,
-    )
     learning_influence = _build_learning_influence(learning)
     dream_influence_summary = _build_dream_influence_summary(dream_influence_surface)
     guided = guided_learning or {}
@@ -400,7 +395,11 @@ def build_prompt_evolution_from_inputs(
     proposal_state = _proposal_state_from_type(proposal_type)
     artifact = {
         "proposal_type": proposal_type,
-        "canonical_key": f"runtime-prompt-evolution:{proposal_type}:{anchor}",
+        "canonical_key": _build_semantic_key(
+            proposal_type=proposal_type,
+            prompt_target=prompt_target,
+            candidate_fragment=candidate_fragment,
+        ),
         "title": f"Runtime prompt evolution: {target_asset}",
         "summary": (
             f"Bounded {proposal_type} proposal for {target_asset}. "
@@ -666,6 +665,24 @@ def _prompt_target_from_proposal_type(proposal_type: str) -> str:
         "world-caution-nudge": "world-caution",
     }
     return mapping.get(proposal_type, "direction-framing")
+
+
+def _build_semantic_key(
+    *,
+    proposal_type: str,
+    prompt_target: str,
+    candidate_fragment: str,
+) -> str:
+    """Stable dedup key: proposal_type + prompt_target + hash(normalized fragment).
+
+    Deliberately independent of volatile loop/dream text so identical proposals
+    collapse onto one row in the exact-canonical_key upsert.
+    """
+    import hashlib
+
+    normalized = " ".join(str(candidate_fragment or "").lower().split())
+    digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
+    return f"runtime-prompt-evolution:{proposal_type}:{prompt_target}:{digest}"
 
 
 def _build_anchor(

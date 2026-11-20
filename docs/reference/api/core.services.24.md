@@ -206,18 +206,19 @@ _Er DEN HER koersel uovervaaget? — run-scopet, ikke gaettet._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `set_autonomous` | `(vaerdi)` | Markér koerslen. Returnerer token'et saa kalderen kan nulstille. | [src](../../../core/services/run_autonomy_context.py#L34) |
-| function | `reset_autonomous` | `(token)` | — | [src](../../../core/services/run_autonomy_context.py#L39) |
-| function | `is_autonomous` | `()` | Kaster aldrig. Ved vi det ikke, er svaret NEJ — og saa opfoerer alt sig | [src](../../../core/services/run_autonomy_context.py#L55) |
-| function | `set_autonomous_budget` | `(*, max_tool_calls=…, max_seconds=…)` | — | [src](../../../core/services/run_autonomy_context.py#L79) |
-| function | `consume_autonomous_tool_budget` | `()` | Reserve one tool call, or refuse it after the deadline/ceiling. | [src](../../../core/services/run_autonomy_context.py#L88) |
-| function | `autonomous_budget_state` | `()` | — | [src](../../../core/services/run_autonomy_context.py#L103) |
-| function | `set_user_present` | `(vaerdi)` | Markér om der er et menneske i den anden ende. Returnerer token'et. | [src](../../../core/services/run_autonomy_context.py#L129) |
-| function | `reset_user_present` | `(token)` | — | [src](../../../core/services/run_autonomy_context.py#L134) |
-| function | `user_present` | `()` | Er der et menneske i den anden ende af DENNE kørsel? Kaster aldrig. | [src](../../../core/services/run_autonomy_context.py#L141) |
-| function | `set_run_identity` | `(run_id, origin=…)` | — | [src](../../../core/services/run_autonomy_context.py#L174) |
-| function | `current_run_id` | `()` | "" naar ingen koersel har sat det. Kaster aldrig. | [src](../../../core/services/run_autonomy_context.py#L179) |
-| function | `current_origin` | `()` | "" for en almindelig brugertur, eller naar vi ikke ved det. | [src](../../../core/services/run_autonomy_context.py#L187) |
+| function | `set_autonomous` | `(vaerdi)` | Markér koerslen. Returnerer token'et saa kalderen kan nulstille. | [src](../../../core/services/run_autonomy_context.py#L36) |
+| function | `reset_autonomous` | `(token)` | — | [src](../../../core/services/run_autonomy_context.py#L41) |
+| function | `is_autonomous` | `()` | Kaster aldrig. Ved vi det ikke, er svaret NEJ — og saa opfoerer alt sig | [src](../../../core/services/run_autonomy_context.py#L57) |
+| function | `set_autonomous_budget` | `(*, max_tool_calls=…, max_seconds=…)` | — | [src](../../../core/services/run_autonomy_context.py#L81) |
+| function | `consume_autonomous_tool_budget` | `()` | Reserve one tool call, or refuse it after the deadline/ceiling. | [src](../../../core/services/run_autonomy_context.py#L90) |
+| function | `autonomous_budget_state` | `()` | — | [src](../../../core/services/run_autonomy_context.py#L105) |
+| function | `set_user_present` | `(vaerdi)` | Markér om der er et menneske i den anden ende. Returnerer token'et. | [src](../../../core/services/run_autonomy_context.py#L131) |
+| function | `reset_user_present` | `(token)` | — | [src](../../../core/services/run_autonomy_context.py#L136) |
+| function | `user_present` | `()` | Er der et menneske i den anden ende af DENNE kørsel? Kaster aldrig. | [src](../../../core/services/run_autonomy_context.py#L143) |
+| function | `set_run_identity` | `(run_id, origin=…)` | — | [src](../../../core/services/run_autonomy_context.py#L176) |
+| function | `run_identity_scope` | `(run_id, origin=…)` | Bind one run while work is executed, then restore the caller's identity. | [src](../../../core/services/run_autonomy_context.py#L182) |
+| function | `current_run_id` | `()` | "" naar ingen koersel har sat det. Kaster aldrig. | [src](../../../core/services/run_autonomy_context.py#L193) |
+| function | `current_origin` | `()` | "" for en almindelig brugertur, eller naar vi ikke ved det. | [src](../../../core/services/run_autonomy_context.py#L201) |
 
 ## `core/services/run_closure_gate.py`
 _Run-closure gate — fang tomme replies og unstaged changes efter agentic runs._

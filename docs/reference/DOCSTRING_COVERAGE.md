@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10309/18859 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10319/18876 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10309/18859 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 913 | 1627 | 56% |
-| `core.services` | 6919 | 12808 | 54% |
+| `core.services` | 6929 | 12825 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 10309/18859 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2640)
+## Undocumented public functions (2642)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L234)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1667,9 +1667,9 @@ Generated from source. 10309/18859 functions/methods documented (54%). The list 
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L173)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L121)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L148)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4879)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4993)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L229)
-- `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L474)
+- `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L473)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_surface` (L476)
 - `core/services/prompt_mutation_loop.py` :: `get_mutation` (L457)
@@ -1891,11 +1891,11 @@ Generated from source. 10309/18859 functions/methods documented (54%). The list 
 - `core/services/rule_engine.py` :: `RuleEngine.rules_by_domain` (L142)
 - `core/services/rule_engine.py` :: `build_rule_engine_surface` (L224)
 - `core/services/rule_engine.py` :: `get_engine` (L185)
-- `core/services/run_autonomy_context.py` :: `autonomous_budget_state` (L103)
-- `core/services/run_autonomy_context.py` :: `reset_autonomous` (L39)
-- `core/services/run_autonomy_context.py` :: `reset_user_present` (L134)
-- `core/services/run_autonomy_context.py` :: `set_autonomous_budget` (L79)
-- `core/services/run_autonomy_context.py` :: `set_run_identity` (L174)
+- `core/services/run_autonomy_context.py` :: `autonomous_budget_state` (L105)
+- `core/services/run_autonomy_context.py` :: `reset_autonomous` (L41)
+- `core/services/run_autonomy_context.py` :: `reset_user_present` (L136)
+- `core/services/run_autonomy_context.py` :: `set_autonomous_budget` (L81)
+- `core/services/run_autonomy_context.py` :: `set_run_identity` (L176)
 - `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L1063)
 - `core/services/run_event_log.py` :: `active_run_for_session` (L370)
 - `core/services/run_event_log.py` :: `append` (L239)
@@ -2254,6 +2254,8 @@ Generated from source. 10309/18859 functions/methods documented (54%). The list 
 - `core/services/tool_intent_approval_runtime.py` :: `tool_intent_approval_key` (L373)
 - `core/services/tool_intent_runtime.py` :: `build_tool_intent_runtime_surface` (L27)
 - `core/services/tool_outcome_memory.py` :: `classify_tool_family` (L89)
+- `core/services/tool_result_binding_store.py` :: `hent` (L31)
+- `core/services/tool_result_binding_store.py` :: `registrer` (L19)
 - `core/services/tool_result_store.py` :: `build_tool_result_reference` (L184)
 - `core/services/tool_result_store.py` :: `cleanup_old_results` (L157)
 - `core/services/tool_result_store.py` :: `parse_tool_result_reference` (L196)

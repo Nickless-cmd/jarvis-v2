@@ -123,18 +123,21 @@ _Normaliserer og validerer ``jarvis-ui``-blokke FØR de når chatten._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_normaliser_form` | `(raw)` | Flyt JSON'en ned på sin egen linje og lukke-fencen på sin egen linje. | [src](../../../core/services/jarvis_ui_guard.py#L88) |
-| function | `_reparer_json` | `(tekst)` | Ret de entydige JSON-fejl. Rører intet der allerede er gyldigt. | [src](../../../core/services/jarvis_ui_guard.py#L101) |
-| function | `_ret_laengder` | `(tekst)` | Juster ``comparison``-values op til kolonneantallet. Returnerer ny JSON. | [src](../../../core/services/jarvis_ui_guard.py#L109) |
-| function | `_tekst` | `(vaerdi)` | Spejl rendererens ``text()``: kun strenge, trimmet, tom = falsk. | [src](../../../core/services/jarvis_ui_guard.py#L146) |
-| function | `_liste` | `(vaerdi, maks)` | Spejl rendererens ``list()``: kun objekter, afkortet til ``maks``. | [src](../../../core/services/jarvis_ui_guard.py#L151) |
-| function | `_endeligt_tal` | `(vaerdi)` | Et tal vi kan regne med. ``NaN`` og ``Infinity`` ER tal for Python, men | [src](../../../core/services/jarvis_ui_guard.py#L158) |
-| function | `_diagnosticér` | `(data, dybde=…)` | Afgør om rendereren viser blokken. Returnerer (niveau, fejl). | [src](../../../core/services/jarvis_ui_guard.py#L167) |
-| function | `_validér` | `(tekst)` | — | [src](../../../core/services/jarvis_ui_guard.py#L684) |
-| function | `normalisér` | `(text, *, run_id=…)` | Normalisér alle ``jarvis-ui``-blokke i teksten. Returnerer ny tekst. | [src](../../../core/services/jarvis_ui_guard.py#L704) |
-| function | `_normalisér_indre` | `(text, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L720) |
-| function | `_registrér` | `(aendringer, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L779) |
-| function | `fejl_i_flader` | `(text)` | Returnér de fejl der gør en ``jarvis-ui``-blok død eller ufuldstændig. | [src](../../../core/services/jarvis_ui_guard.py#L799) |
+| function | `_normaliser_form` | `(raw)` | Flyt JSON'en ned på sin egen linje og lukke-fencen på sin egen linje. | [src](../../../core/services/jarvis_ui_guard.py#L94) |
+| function | `_reparer_json` | `(tekst)` | Ret de entydige JSON-fejl. Rører intet der allerede er gyldigt. | [src](../../../core/services/jarvis_ui_guard.py#L107) |
+| function | `_ret_laengder` | `(tekst)` | Juster ``comparison``-values op til kolonneantallet. Returnerer ny JSON. | [src](../../../core/services/jarvis_ui_guard.py#L115) |
+| function | `_tekst` | `(vaerdi)` | Spejl rendererens ``text()``: kun strenge, trimmet, tom = falsk. | [src](../../../core/services/jarvis_ui_guard.py#L152) |
+| function | `_sti_dele` | `(sti)` | Python-spejl af ``gyldigBindSti`` i desk-klienten. | [src](../../../core/services/jarvis_ui_guard.py#L157) |
+| function | `_er_skalar` | `(vaerdi)` | — | [src](../../../core/services/jarvis_ui_guard.py#L189) |
+| function | `_bind_indhold` | `(tekst, *, tool_results, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L197) |
+| function | `_liste` | `(vaerdi, maks)` | Spejl rendererens ``list()``: kun objekter, afkortet til ``maks``. | [src](../../../core/services/jarvis_ui_guard.py#L278) |
+| function | `_endeligt_tal` | `(vaerdi)` | Et tal vi kan regne med. ``NaN`` og ``Infinity`` ER tal for Python, men | [src](../../../core/services/jarvis_ui_guard.py#L285) |
+| function | `_diagnosticér` | `(data, dybde=…)` | Afgør om rendereren viser blokken. Returnerer (niveau, fejl). | [src](../../../core/services/jarvis_ui_guard.py#L294) |
+| function | `_validér` | `(tekst)` | — | [src](../../../core/services/jarvis_ui_guard.py#L811) |
+| function | `normalisér` | `(text, *, run_id=…, tool_results=…)` | Normalisér alle ``jarvis-ui``-blokke i teksten. Returnerer ny tekst. | [src](../../../core/services/jarvis_ui_guard.py#L831) |
+| function | `_normalisér_indre` | `(text, *, run_id, tool_results)` | — | [src](../../../core/services/jarvis_ui_guard.py#L859) |
+| function | `_registrér` | `(aendringer, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L935) |
+| function | `fejl_i_flader` | `(text, *, run_id=…, tool_results=…)` | Returnér de fejl der gør en ``jarvis-ui``-blok død eller ufuldstændig. | [src](../../../core/services/jarvis_ui_guard.py#L955) |
 
 ## `core/services/jarvisx_bridge.py`
 _JarvisX tool-bridge — bidirectional dispatch over WebSocket._

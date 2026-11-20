@@ -57,6 +57,15 @@ export const STREAMING_TAIL_WORD_LIMIT = 3
  * (= `s` med kortere tid), og `Disabled` er nul. GPT vaelger `Snappy` naar
  * `snappyStreamingAnimations` er slaaet til, ellers `Normal`.
  *
+ * BEMAERK — kun VAERDIERNE er portet, ikke strukturen. GPT's keyframes er
+ * progress-vaegtede: `{p .06 -> v .18}`, `{p .12 -> v .72}`, `{p .15 -> v 1}`,
+ * hver med sin egen bezier. `opacityKeyframes` er en flad liste og kan ikke
+ * baere positionerne, saa de fire tal her er kun vaerdierne. Positionerne
+ * (6 %, 12 %, 15 %) staar i `styles/chat-reading.css` i
+ * `@keyframes streaming-word-opacity`, hvor de hoerer — CSS kan udtrykke dem.
+ * Aendrer man den ene side uden den anden, beskriver de to ikke laengere
+ * samme animation.
+ *
  * Det sidste ords samlede landing er `duration + colorDelay + 2×
  * timeOffsetBetweenParts` (tredje ord har order 2, og farve-animationen
  * starter efter `colorDelay`). Med GPT's snappy-tal: 220 + 99 + 60 = 379 ms.

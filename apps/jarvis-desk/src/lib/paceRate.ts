@@ -159,6 +159,13 @@ export const PACE_ANKOMST_VINDUE_S = 0.3
  *  at indhentningen ikke føles tøvende, langsomt nok til at kurven er jævn. */
 export const PACE_GLIDNING = 0.12
 
+/** Hvor hurtigt indhentningstempoet må glide OP mod behovet.
+ *
+ * MÅLT 20/11-2026: 0,25 pr. frame tager et fold-hop på 600 tegn uden at
+ * tempoet hugger (ujævnhed 0,03 mod 0,15 ved et fast spring), og det glider
+ * ALDRIG ned — se `naesteRate` trin 2. */
+export const PACE_INDHENTNING_GLIDNING = 0.25
+
 /** Pacerens hukommelse. Bæres af kalderen mellem frames. */
 export interface RateTilstand {
   /** Kildens glattede tempo i kodepunkter pr. sekund. */
@@ -221,19 +228,27 @@ export function naesteRate({
   //    slutbeskeden samme ro som synteserne: tempoet følger strømmen.
   if (maalt) {
     kilde = PACE_KILDE_EMA * (ankomst as number) + (1 - PACE_KILDE_EMA) * kilde
-    // Kilden leverer: en fastsat indhentning er ikke længere sandheden.
-    indh = 0
-  } else if (indh === 0 && pending > PACE_GULV * PACE_CATCH_UP_SECONDS) {
-    // Kilden leverer ikke, og efterslæbet kan ikke indhentes i grundtempoet.
-    // Fastlæg tempoet ÉN gang — herefter holdes det, så resten af svaret
-    // ruller med samme fart som midten i stedet for at decelerere.
-    indh = pending / PACE_CATCH_UP_SECONDS
   }
 
-  // 2. Ratens mål: kildens tempo, eller et fastsat indhentningstempo.
+  // 2. Indhentning. MÅLT 20/11-2026: to fejlformer her, begge set i drift.
+  //
+  //    (a) Blev tempoet fastsat ÉN gang og derefter holdt, kollapsede det til
+  //        grundtempoet da efterslæbet skrumpede — svaret sneg sig af sted til
+  //        sidst. Det er Bjørns «sænker farten til sidste».
+  //    (b) Blev det genberegnet som `pending / vindue` hver frame, HOPPEDE det
+  //        op ved et fold (316 → 582) og faldt igen bagefter. Det er hans
+  //        «løber stærkere for slut beskeden».
+  //
+  //    Reglen der holder begge: tempoet glider OP mod behovet, men aldrig ned.
+  //    Et efterslæb der én gang er taget, rulles ud med samme fart resten af
+  //    svaret — så midten og slutningen taler samme sprog.
+  const behov = pending / PACE_CATCH_UP_SECONDS
+  if (behov > indh) indh = indh + (behov - indh) * PACE_INDHENTNING_GLIDNING
+
+  // 3. Ratens mål: kildens tempo, eller indhentningstempoet.
   const maalRate = Math.min(PACE_LOFT, Math.max(PACE_GULV, kilde, indh))
 
-  // 3. Glid mod målet — aldrig et spring. Tilbagefaldet går mod `maalRate`
+  // 4. Glid mod målet — aldrig et spring. Tilbagefaldet går mod `maalRate`
   //    (ikke mod grundtempoet), så en hurtig kilde ikke pludselig rulles ud i
   //    48 tegn/s til sidst.
   let rate = forrigeRate

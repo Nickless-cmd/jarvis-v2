@@ -82,14 +82,16 @@ function resumé(log: Punkt[]) {
   const median = sorteret[Math.floor(sorteret.length / 2)] || 1
   let stoersteSpring = 0
   for (let i = 1; i < rater.length; i++) {
-    stoersteSpring = Math.max(stoersteSpring, Math.abs(rater[i] - rater[i - 1]))
+    const nuVaerdi = rater[i] ?? 0
+    const foerVaerdi = rater[i - 1] ?? 0
+    stoersteSpring = Math.max(stoersteSpring, Math.abs(nuVaerdi - foerVaerdi))
   }
   const ved = (andel: number) => aktive[Math.floor(aktive.length * andel)]?.rate ?? -1
   return {
-    slutPending: log[log.length - 1].pending,
+    slutPending: log[log.length - 1]?.pending ?? 0,
     v50: ved(0.5),
     v90: ved(0.9),
-    slutRate: rater[rater.length - 1],
+    slutRate: rater[rater.length - 1] ?? -1,
     ujaevn: Number((stoersteSpring / median).toFixed(2)),
   }
 }

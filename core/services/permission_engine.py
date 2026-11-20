@@ -88,8 +88,32 @@ _MEMBER_VISNING = frozenset({"vis_graf", "vis_widget", "render_mermaid"})
 # derfor owner-only, som `read_file`.
 _MEMBER_DOKUMENTER = frozenset({"pdf_create", "docx_create", "xlsx_create", "pptx_create"})
 
+# Google-familien — kalender, mail, Drive, dokumenter (20/11-2026).
+#
+# Bjørn bad om at udvide husstandens værktøjer. Det her er den ene familie hvor
+# udvidelsen er sikker af en STRUKTUREL grund og ikke af en vurdering: hvert kald
+# går gennem `get_fresh_token(user_id, "google")`, og den slår op på den
+# KALDENDE brugers EGEN forbindelse. Den falder ikke tilbage til ejeren — den
+# returnerer None når brugeren ikke har forbundet sin konto. Michelle har sin
+# egen Google-konto, så hun læser sin egen mail og sit eget drev, ikke Bjørns.
+#
+# Grænsen går ved de værktøjer der læser Jarvis' EGEN hukommelse på tværs af
+# husstanden (`search_chat_history`, `search_sessions`, `recall`,
+# `search_jarvis_brain`). De er BEVIDST ikke her: en samtale er privat, og det
+# er netop den grænse §16.2's kryptering værner.
+_MEMBER_GOOGLE = frozenset({
+    "calendar_list_events", "calendar_create_event",
+    "list_events", "create_event",
+    "gmail_search", "gmail_list", "gmail_get", "gmail_modify", "gmail_send",
+    "drive_search", "drive_download",
+    "docs_read", "docs_append",
+    "sheets_read", "sheets_write",
+    "slides_read",
+})
+
 _MEMBER_CHAT = (_MEMBER_CHAT_WEB | _MEMBER_CHAT_UTIL | _MEMBER_CHAT_MEM
-                | _MEMBER_IMAGE | _MEMBER_VISNING | _MEMBER_DOKUMENTER)
+                | _MEMBER_IMAGE | _MEMBER_VISNING | _MEMBER_DOKUMENTER
+                | _MEMBER_GOOGLE)
 
 
 # ── Member CODE (= det Claude har) ──────────────────────────────────────────

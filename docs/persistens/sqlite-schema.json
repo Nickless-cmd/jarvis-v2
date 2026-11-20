@@ -48244,6 +48244,96 @@
         "iso_utc_offset"
       ]
     },
+    "svar_tempo_maalinger": {
+      "digest": "53:11:3a:9a:4c:38:31:68:5c:e5:f1:26:4c:ba:a7:60:e8:e9:19:44:93:cb:56:00:27:62:66:a4:c9:18:27:71",
+      "schema": {
+        "columns": [
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "output_tokens",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "run_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "tok_per_sek",
+            "type": "REAL",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "ttft_ms",
+            "type": "REAL",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_svar_tempo_created",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "created_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_svar_tempo_created ON svar_tempo_maalinger(created_at)"
+          },
+          {
+            "name": "sqlite_autoindex_svar_tempo_maalinger_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "run_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "unobserved"
+      ]
+    },
     "tool_intent_approval_requests": {
       "digest": "ad:5b:64:bf:5f:f4:2a:1a:89:45:5f:fa:01:d8:8a:b2:78:19:e5:12:18:9d:96:b9:3a:66:d5:68:3f:22:55:5b",
       "schema": {

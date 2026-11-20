@@ -352,7 +352,7 @@ def _codex_tool_calls(stdout: str) -> int | None:
     for linje in stdout.splitlines():
         try:
             event = json.loads(linje)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError):  # ikke-JSON-linje (Codex' egen stderr/log) — ikke et event
             continue
         if not isinstance(event, dict) or not isinstance(event.get("type"), str):
             continue

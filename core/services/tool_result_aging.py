@@ -86,7 +86,7 @@ def _store_tool_result(recovery_key: str, content: str) -> Path:
     finally:
         try:
             tmp.unlink(missing_ok=True)
-        except OSError:
+        except OSError:  # temp-filen kan allerede være væk efter os.replace; oprydning må ikke kaste
             pass
     return path
 
@@ -99,7 +99,7 @@ def recover_tool_result(tool_use_id: str) -> str | None:
     """
     try:
         return _recovery_path(str(tool_use_id)).read_text(encoding="utf-8")
-    except (OSError, UnicodeError):
+    except (OSError, UnicodeError):  # intet gemt original for dette id — fravær er det normale svar
         return None
 
 
@@ -110,7 +110,7 @@ def aging_trigger_tokens() -> int:
         v = int(load_settings().extra.get(
             "tool_aging_trigger_tokens", _AGING_TRIGGER_TOKENS_DEFAULT))
         return max(0, v)
-    except Exception:
+    except Exception:  # config kan mangle/vaere utcet — standardtaersklen er den sikre vaerdi
         return _AGING_TRIGGER_TOKENS_DEFAULT
 
 
@@ -127,7 +127,7 @@ def tool_result_aging_mode() -> str:
         from core.runtime.settings import load_settings
         v = str(load_settings().extra.get("tool_result_aging_mode", "shadow")).strip().lower()
         return v if v in _VALID_MODES else "shadow"
-    except Exception:
+    except Exception:  # ukendt config-vaerdi — 'shadow' er den sikre tilstand (skriver intet)
         return "shadow"
 
 
@@ -272,5 +272,5 @@ def age_tool_results(
             return exchanges, metrics
         metrics["changed"] = True
         return new_old + recent, metrics
-    except Exception:
+    except Exception:  # aging maa aldrig kaste ind i en samtale; fejlen rapporteres i metrics
         return exchanges, {"changed": False, "mode": mode, "error": True}

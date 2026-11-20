@@ -46,9 +46,16 @@
   100% { opacity: var(--streaming-tail-opacity-end, 1); transform: translateY(0); }
 }
 
-/* GPT's animationsfarve for `Normal` og `Snappy` — den samme blaa. */
+/* Ordets ankomstfarve er PALETTENS accent — ikke GPT's faste blaa.
+ *
+ * MÅLT 20/11-2026 (Bjørn: «farven er stadig blaa» derefter «farven skal foelge
+ * farve paletten valgt i desk»): `#3a83f7` var hardkodet fra GPT's `Snappy`-
+ * variant, saa ordet blev blaat uanset om Bjørn havde valgt groen, teal, lilla,
+ * rav, blaa eller rose. `--accent-text` er den token der baerer accenten som
+ * TEKSTfarve: paa moerk flade er den den lysende accent, paa lys flade den
+ * moerknede variant — praecis den forskel en tekstfarve har brug for. */
 @keyframes streaming-word-color {
-  from { color: #3a83f7; }
+  from { color: var(--accent-text); }
   to { color: var(--fg-1); }
 }
 

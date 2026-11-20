@@ -32,6 +32,8 @@ interface FladeMaaling {
   farveStart: number
   /** Antal ord hvis målte farve var animationsfarven (blå) undervejs. */
   blaOrd: number
+  /** Ord der bærer palettens accentfarve — det farve-uafhængige bevis. */
+  accentOrd: number
 }
 
 async function maalFlade(flade: 'chat' | 'code', tekst: string): Promise<FladeMaaling> {
@@ -77,6 +79,11 @@ async function maalFlade(flade: 'chat' | 'code', tekst: string): Promise<FladeMa
         sidsteHarHale: (spans[spans.length - 1]?.className ?? '').includes('streaming-word-tail'),
         farveStart: w.__ev.filter((e) => e.navn === 'streaming-word-color').length,
         blaOrd: spans.filter((s) => erBlaa(getComputedStyle(s).color)).length,
+        // 20/11-2026: farven er ikke længere en fast blå men palettens accent
+        // (Bjørn: «farven skal følge farve paletten valgt i desk»). Derfor
+        // måles også ord hvis BEREGNEDE farve afviger fra brødtekstens.
+        accentOrd: spans.filter((s) => getComputedStyle(s).color
+          !== getComputedStyle(document.getElementById('krop')!).color).length,
       }
     })
 
@@ -119,8 +126,8 @@ describe('ordhalen i begge flader', () => {
     //    startede ved første render. Det var min måling der var skæv, ikke
     //    produktet. `blaOrd` er det ægte bevis: den læser den BEREGNEDE farve
     //    på de pakkede ord, uanset hvornår uret startede.
-    expect(chat.blaOrd).toBe(3)
-    expect(code.blaOrd).toBe(3)
+    expect(chat.accentOrd).toBe(3)
+    expect(code.accentOrd).toBe(3)
 
     // 4. Og de målte tal skal være ENS. Er de ikke det, er det CSS-konteksten
     //    der gør forskellen — og så er halen reelt kun for én flade.

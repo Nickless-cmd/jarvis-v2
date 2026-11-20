@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ContentBlock } from './sseProtocol'
-import { naesteRate, PACE_GULV } from './paceRate'
+import { naesteRate, startPace, PACE_GULV, type RateTilstand } from './paceRate'
 
 const TICK_MS = 33
 const MIN_CHARS = 5
@@ -130,6 +130,8 @@ export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBl
   // midt i udrulningen.
   const rateRef = useRef(PACE_GULV)
   const forrigeLaengde = useRef<number | null>(null)
+  // Pacerens hukommelse — kildens tempo og et fastsat indhentningstempo.
+  const paceTilstand = useRef<RateTilstand>(startPace())
 
   // MÅLT 29/10-2026: uden denne nulstilling starter et NYT svar i fuld
   // hastighed. `forrigeLaengde` stod tilbage fra det forrige svar, så det
@@ -146,6 +148,7 @@ export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBl
     maaltForKey.current = key
     forrigeLaengde.current = null
     rateRef.current = PACE_GULV
+    paceTilstand.current = startPace()
   }
 
   useEffect(() => {
@@ -179,11 +182,15 @@ export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBl
         // Samme regel som chat mode: grundtempo er gulv, ankomst glattes,
         // indhentningskravet (pending / 3 s) er den nedre grænse. Uden det
         // sidste ville et svar på 5000 tegn tage 6,5 s — målt.
-        rateRef.current = naesteRate({
+        const paceSvar = naesteRate({
           pending,
           forrigeRate: rateRef.current,
           ankomst,
+          dt: TICK_MS / 1000,
+          tilstand: paceTilstand.current,
         })
+        rateRef.current = paceSvar.rate
+        paceTilstand.current = paceSvar.tilstand
 
         // Ratens tidsrum er ét tick. Gulvet på MIN_CHARS bevarer den rolige
         // kadence på korte svar.

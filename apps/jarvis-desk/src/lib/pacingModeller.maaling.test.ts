@@ -20,7 +20,7 @@
  * det føles som om der sker noget.
  */
 import { describe, expect, it } from 'vitest'
-import { naesteRate, PACE_ANKOMST_VINDUE_S, PACE_GULV } from './paceRate'
+import { naesteRate, startPace, type RateTilstand, PACE_ANKOMST_VINDUE_S, PACE_GULV } from './paceRate'
 
 const FPS = 60
 const FRAME_S = 1 / FPS
@@ -43,6 +43,7 @@ function modelA(target: string, ankomstTegnPerS: number): Resultat {
   const total = targetPoints.length
   let shown = 0
   let rate = PACE_GULV
+  let paceTilstand: RateTilstand = startPace()
   let kredit = 0
   let sekunder = 0
   let stoersteSpring = 0
@@ -77,12 +78,15 @@ function modelA(target: string, ankomstTegnPerS: number): Resultat {
       continue
     }
 
-    rate = naesteRate({
+    const paceSvar = naesteRate({
       pending,
       forrigeRate: rate,
       ankomst: maaltAnkomst,
       dt: FRAME_S,
+      tilstand: paceTilstand,
     })
+    rate = paceSvar.rate
+    paceTilstand = paceSvar.tilstand
     const maksPrFrame = Math.max(6, Math.ceil(rate * 0.1))
     kredit = Math.min(maksPrFrame, kredit + rate * FRAME_S)
     const step = Math.min(maksPrFrame, Math.floor(kredit))

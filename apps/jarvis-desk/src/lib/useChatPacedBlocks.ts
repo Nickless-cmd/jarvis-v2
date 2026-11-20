@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ContentBlock } from './sseProtocol'
 import { scanFences, type FenceSpan } from './fenceScanner'
-import { naesteRate, PACE_GULV, PACE_ANKOMST_VINDUE_S } from './paceRate'
+import { naesteRate, startPace, PACE_GULV, PACE_ANKOMST_VINDUE_S, type RateTilstand } from './paceRate'
 
 /** Læsbar grundhastighed. Et svar der lander i ét hug må ikke blinke frem. */
 const BASE_CODE_POINTS_PER_SECOND = PACE_GULV
@@ -166,12 +166,17 @@ export function useChatPacedBlocks(
   // forskellen mellem dem ER ankomsthastigheden, og `rate` bærer historikken
   // ind i `naesteRate`, så ét stort delta ikke kaster kurven.
   const ankomst = useRef({ maal: 0, tid: 0, rate: BASE_CODE_POINTS_PER_SECOND })
+  // Pacerens hukommelse: kildens tempo og et eventuelt fastsat
+  // indhentningstempo. Den nulstilles sammen med ankomstmålingen ved et nyt
+  // svar — ellers arver svaret det forriges tempo (målt 20/11-2026).
+  const paceTilstand = useRef<RateTilstand>(startPace())
   const sidsteKey = useRef('')
   if (sidsteKey.current !== key) {
     sidsteKey.current = key
     sidst.current = 0
     kredit.current = 0
     ankomst.current = { maal: 0, tid: 0, rate: BASE_CODE_POINTS_PER_SECOND }
+    paceTilstand.current = startPace()
   }
   const tickRef = useRef<FrameRequestCallback>(() => undefined)
 
@@ -223,8 +228,16 @@ export function useChatPacedBlocks(
       a.maal = targetPoints.length
       a.tid = nu
     }
-    const rate = naesteRate({ pending, forrigeRate: a.rate, ankomst: maaltAnkomst, dt })
+    const svar = naesteRate({
+      pending,
+      forrigeRate: a.rate,
+      ankomst: maaltAnkomst,
+      dt,
+      tilstand: paceTilstand.current,
+    })
+    const rate = svar.rate
     a.rate = rate
+    paceTilstand.current = svar.tilstand
     // Bevar brøkdelen mellem frames. `ceil` eller et minimum pr. frame gør
     // ellers 48 tegn/s til mindst 60 tegn/s på en 60 Hz-skærm og endnu mere
     // på hurtigere paneler. Kreditten giver samme rolige tempo uanset fps.

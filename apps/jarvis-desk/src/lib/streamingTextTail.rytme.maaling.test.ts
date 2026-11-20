@@ -9,7 +9,7 @@
  * realtid mod den ægte `MarkdownRenderer` + CSS i Chromium.
  */
 import { describe, expect, it } from 'vitest'
-import { PACE_ANKOMST_VINDUE_S, PACE_GULV, naesteRate } from './paceRate'
+import { PACE_ANKOMST_VINDUE_S, PACE_GULV, naesteRate, startPace, type RateTilstand } from './paceRate'
 import { STREAMING_TEXT_VARIANTS, type StreamingTextVariant } from './streamingTextTail'
 import { aabnBaenk, installerMaaler, ordTekst } from './streamingTextTail.baenk'
 import { HALE_AFVIKLING_MS } from '../components/rich/MarkdownRenderer'
@@ -20,6 +20,7 @@ const FRAME_S = 1 / 60
 /** (tid ms, antal viste tegn) pr. frame hvor noget blev afsløret. */
 function pacerSkema(total: number, ankomst: (frame: number) => number | null): { t: number; shown: number }[] {
   let shown = 0, rate = PACE_GULV, maal = 0, vStartMaal = 0, vStartTid = 0, kredit = 0
+  let tilstand: RateTilstand = startPace()
   const ud: { t: number; shown: number }[] = []
   for (let frame = 1; shown < total && frame < 100_000; frame++) {
     const nu = frame * FRAME_S
@@ -31,7 +32,9 @@ function pacerSkema(total: number, ankomst: (frame: number) => number | null): {
     const vindueUde = dtA >= PACE_ANKOMST_VINDUE_S
     const a = maal - vStartMaal > 0 && vindueUde ? (maal - vStartMaal) / dtA : null
     if (vindueUde || vStartTid === 0) { vStartMaal = maal; vStartTid = nu }
-    rate = naesteRate({ pending, forrigeRate: rate, ankomst: a, dt: FRAME_S })
+    const paceSvar = naesteRate({ pending, forrigeRate: rate, ankomst: a, dt: FRAME_S, tilstand })
+    rate = paceSvar.rate
+    tilstand = paceSvar.tilstand
     const maks = Math.max(6, Math.ceil(rate * 0.1))
     kredit = Math.min(maks, kredit + rate * FRAME_S)
     const step = Math.min(maks, Math.floor(kredit))
@@ -179,7 +182,14 @@ describe.skipIf(!KOERT)('rytme: Snappy / Normal under identiske betingelser', ()
             let t90op = -1, maxTy = 0, t90farve = -1, tFoerste = -1
             const parse = (c: string) => c.match(/[\d.]+/g)!.slice(0, 3).map(Number)
             const f = parse(fg)
-            const start = [58, 131, 247]
+            // Startfarven er PALETTENS accent, ikke en hardkodet blå
+            // (Bjørn 20/11-2026: «farven skal følge farve paletten valgt i desk»).
+            // Den læses fra CSS'en, så målingen følger det tema testen kører i.
+            const probe = document.createElement('span')
+            probe.style.color = 'var(--accent-text)'
+            document.getElementById('krop')!.appendChild(probe)
+            const start = getComputedStyle(probe).color.match(/[\d.]+/g)!.slice(0, 3).map(Number)
+            probe.remove()
             for (let t = 0; t <= land + 20; t += 4) {
               anims.forEach((a) => { a.currentTime = t })
               const cs = getComputedStyle(el)

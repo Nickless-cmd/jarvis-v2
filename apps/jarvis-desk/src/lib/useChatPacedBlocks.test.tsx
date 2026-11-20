@@ -81,9 +81,12 @@ describe('useChatPacedBlocks', () => {
       antalFrames += 1
     }
     expect(shown()).toBe(text)
-    // MÅLT 29/10-2026: ~187 frames (3,1 s) — var >800 (≈17 s) med det faste
-    // loft på 180. Kravet er at det tager målbar tid, ikke den gamle tid.
-    expect(antalFrames).toBeGreaterThan(150)
+    // MÅLT 20/11-2026: 132 frames (2,1 s). Kravet er at det tager MÅLBAR tid —
+    // ikke at det tager den gamle tid. Den gamle regel indhentede asymptotisk
+    // (3100 tegn ≈ 8 s, med faldende fart til sidst); den nye indhenter lineært
+    // over `PACE_CATCH_UP_SECONDS = 2` og holder samme fart hele vejen. 100
+    // frames (1,6 s) er grænsen: under det er det et dump, ikke en udrulning.
+    expect(antalFrames).toBeGreaterThan(100)
   })
 
   it('begrænser en vedvarende hurtig replay til en læsbar strøm', () => {

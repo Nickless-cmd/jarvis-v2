@@ -24,6 +24,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   naesteRate,
+  startPace,
+  type RateTilstand,
   PACE_GULV,
   PACE_CATCH_UP_SECONDS,
   PACE_LOFT,
@@ -62,6 +64,7 @@ function simulér(total: number, ankomstVed: (frame: number) => number | null): 
   let maksRate = 0
   let frame = 0
   let kredit = 0
+  let tilstand: RateTilstand = startPace()
 
   while (shown < total && frame < 100_000) {
     frame += 1
@@ -80,7 +83,9 @@ function simulér(total: number, ankomstVed: (frame: number) => number | null): 
       vindueStartTid = nu
     }
 
-    rate = naesteRate({ pending, forrigeRate: rate, ankomst, dt: FRAME_S })
+    const svar = naesteRate({ pending, forrigeRate: rate, ankomst, dt: FRAME_S, tilstand })
+    rate = svar.rate
+    tilstand = svar.tilstand
     maksRate = Math.max(maksRate, rate)
 
     const maksPrFrame = Math.max(6, Math.ceil(rate * MAX_FRAME_DELTA_S))
@@ -145,10 +150,15 @@ describe('PACE-MÅLING — hvor stærkt løber pacen?', () => {
   })
 
   it('D: én burst på 100 tegn — falder raten tilbage?', () => {
-    const rate1 = naesteRate({ pending: 100, forrigeRate: PACE_GULV, ankomst: 100 / 0.3, dt: FRAME_S })
+    let tilstand: RateTilstand = startPace()
+    const foerste = naesteRate({ pending: 100, forrigeRate: PACE_GULV, ankomst: 100 / 0.3, dt: FRAME_S, tilstand })
+    const rate1 = foerste.rate
+    tilstand = foerste.tilstand
     let rate = rate1
     for (let i = 0; i < 30; i += 1) {
-      rate = naesteRate({ pending: Math.max(1, 90 - i), forrigeRate: rate, ankomst: null, dt: FRAME_S })
+      const svar = naesteRate({ pending: Math.max(1, 90 - i), forrigeRate: rate, ankomst: null, dt: FRAME_S, tilstand })
+      rate = svar.rate
+      tilstand = svar.tilstand
     }
     console.log('D én burst på 100 tegn (målt over 300 ms = 333 tegn/s):')
     console.log('  rate efter burst:', Math.round(rate1))
@@ -160,7 +170,10 @@ describe('PACE-MÅLING — hvor stærkt løber pacen?', () => {
   })
 
   it('E: sikkerhedsloftet holder stadig', () => {
-    const absurd = naesteRate({ pending: 100_000, forrigeRate: PACE_GULV, ankomst: 50_000, dt: FRAME_S })
+    const absurd = naesteRate({
+      pending: 100_000, forrigeRate: PACE_GULV, ankomst: 50_000, dt: FRAME_S,
+      tilstand: startPace(),
+    }).rate
     console.log('E absurd target:', Math.round(absurd), '/ loft', PACE_LOFT)
     expect(absurd).toBeLessThanOrEqual(PACE_LOFT)
   })

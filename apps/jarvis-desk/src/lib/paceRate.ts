@@ -141,6 +141,15 @@ export const PACE_LOFT = 4000
  *  pludselig rulles ud i 48. */
 export const PACE_DECAY_HALFLIFE_S = 1.0
 
+/** Hvor hurtigt kildens målte tempo glemmes når der ikke længere måles.
+ *
+ *  MÅLT 20/11-2026: brugte kilden samme halveringstid som raten (1,0 s), stod
+ *  den på 190 tegn/s et helt sekund efter et burst på 100 tegn — og raten
+ *  nåede 266 hvor kontrakten kræver under 96. Et burst skal glemmes hurtigere
+ *  end raten falder; ellers farver ét hug resten af svaret. Ved jævn ankomst
+ *  måles der hvert tick, så glemslen rammer ikke en vedvarende strøm. */
+export const PACE_KILDE_GLEMSEL_S = 0.1
+
 /** Hvor langt et vindue ankomsthastigheden måles over, i sekunder.
  *
  *  MÅLT 30/10-2026: blev ankomsten målt pr. FRAME, gav en SSE-chunk på 100
@@ -174,9 +183,16 @@ export interface RateTilstand {
   indh: number
 }
 
-/** Frisk tilstand ved starten af et svar. */
+/** Frisk tilstand ved starten af et svar.
+ *
+ *  `kilde: 0` betyder «intet målt endnu», ikke «kilden kører 0». MÅLT
+ *  20/11-2026: startede den på `PACE_GULV` (48), krympede EMA'en (vægt 0,02)
+ *  forskellen til en hurtig kilde med ~4 s halveringstid — og i de sekunder
+ *  halede paceren bagud uden nogensinde at indhente det. Testen målte 1962
+ *  tegns efterslæb hvor kontrakten kræver under 1200.
+ */
 export function startPace(): RateTilstand {
-  return { kilde: PACE_GULV, indh: 0 }
+  return { kilde: 0, indh: 0 }
 }
 
 export interface RateInput {
@@ -193,6 +209,12 @@ export interface RateInput {
   dt?: number
   /** Pacerens hukommelse. Skal være den samme gennem hele svaret. */
   tilstand: RateTilstand
+  /** Dette tick er et HOP: hele eller halvdelen af efterslæbet landede på én
+   *  gang. Der er ingen jævn ankomst at glatte, så raten skal ramme målet
+   *  med det samme — glidningen ville ellers bremse præcis det spring den
+   *  skulle muliggøre. Kalderens eget loft (MAX_CHARS) klipper stadig den
+   *  faktiske visning pr. tick, så «accelerér, spring aldrig» holder. */
+  spring?: boolean
 }
 
 export interface RateSvar {
@@ -217,17 +239,30 @@ export function naesteRate({
   ankomst,
   dt,
   tilstand,
+  spring = false,
 }: RateInput): RateSvar {
   if (pending <= 0) return { rate: PACE_GULV, tilstand: startPace() }
 
   let { kilde, indh } = tilstand
   const maalt = ankomst !== null && Number.isFinite(ankomst) && ankomst > 0
 
-  // 1. Kildens tempo. Langsom EMA, så ét hug ikke farver resten — men den
-  //    glemmer heller ikke at kilden VAR hurtig. Det er dét der giver
-  //    slutbeskeden samme ro som synteserne: tempoet følger strømmen.
+  // 1. Kildens tempo. FØRSTE måling sættes direkte: tilstanden starter på 0 =
+  //    «intet målt», og en EMA fra 0 ville bruge ~4 s på at nå kilden — i de
+  //    sekunder haler paceren bagud uden at kunne indhente det. Derefter
+  //    langsom EMA, så ét hug ikke farver resten, men den glemmer heller ikke
+  //    at kilden VAR hurtig. Det er dét der giver slutbeskeden samme ro som
+  //    synteserne: tempoet følger strømmen.
   if (maalt) {
-    kilde = PACE_KILDE_EMA * (ankomst as number) + (1 - PACE_KILDE_EMA) * kilde
+    const a = ankomst as number
+    kilde = kilde <= 0 ? a : PACE_KILDE_EMA * a + (1 - PACE_KILDE_EMA) * kilde
+  } else {
+    // Ingen måling i dette vindue: kilden er holdt op med at levere, så dens
+    // tempo skal falde tilbage — ellers arver ét enkelt burst resten af
+    // svaret (målt 20/11-2026: 333 tegn/s blev stående 30 frames efter at
+    // strømmen var stoppet, og raten STEG mod den i stedet for at falde).
+    const sek = Math.max(0, Math.min(0.5, dt ?? 1 / 60))
+    const tilbage = Math.pow(0.5, sek / PACE_KILDE_GLEMSEL_S)
+    kilde = PACE_GULV + (kilde - PACE_GULV) * tilbage
   }
 
   // 2. Indhentning. MÅLT 20/11-2026: to fejlformer her, begge set i drift.
@@ -242,6 +277,10 @@ export function naesteRate({
   //    Reglen der holder begge: tempoet glider OP mod behovet, men aldrig ned.
   //    Et efterslæb der én gang er taget, rulles ud med samme fart resten af
   //    svaret — så midten og slutningen taler samme sprog.
+  //
+  //    Ved et HOP glides der ikke: der er ingen jævn ankomst at hugge i, og
+  //    glidningen bremsede tidligere præcis det spring den skulle muliggøre
+  //    (målt 20/11-2026: 7 tegn i første tick mod kontraktens 28).
   const behov = pending / PACE_CATCH_UP_SECONDS
   if (behov > indh) indh = indh + (behov - indh) * PACE_INDHENTNING_GLIDNING
 
@@ -251,15 +290,31 @@ export function naesteRate({
   // 4. Glid mod målet — aldrig et spring. Tilbagefaldet går mod `maalRate`
   //    (ikke mod grundtempoet), så en hurtig kilde ikke pludselig rulles ud i
   //    48 tegn/s til sidst.
+  //
+  //    Undtagelsen er et HOP så stort at efterslæbet ikke kan fordeles jævnt
+  //    inden for rimelig tid: der sætter raten sig på målet straks. MÅLT
+  //    20/11-2026: glidningen bremsede præcis det spring den skulle
+  //    muliggøre — 7 tegn i første tick mod kontraktens 28. Grænsen er
+  //    `PACE_LOFT`, for under den kan efterslæbet stadig rulles ud over tid
+  //    (2000 tegn skal tage ~3 s, ikke 2,4 s — målt begge veje).
+  const springTilLoft = spring && behov >= PACE_LOFT
   let rate = forrigeRate
-  if (maalt) {
-    rate = PACE_EMA * (ankomst as number) + (1 - PACE_EMA) * rate
+  if (springTilLoft) {
+    rate = maalRate
+  } else if (maalt) {
+    // Visningen må aldrig ligge UNDER kildens målte tempo: så vokser
+    // efterslæbet uundgåeligt, uanset hvor længe den glider. Den må gerne
+    // ligge over (det er indhentning), men aldrig under.
+    // MÅLT 20/11-2026: med ren glidning (12 % pr. frame) nåede visningen
+    // aldrig en kilde på 3030 tegn/s inden for 40 ticks — efterslæbet blev
+    // 1985 tegn hvor kontrakten kræver under 1200.
+    rate = Math.max(rate, Math.min(ankomst as number, PACE_LOFT))
   } else if (rate > maalRate) {
     const sekunder = Math.max(0, Math.min(0.5, dt ?? 1 / 60))
     const tilbage = Math.pow(0.5, sekunder / PACE_DECAY_HALFLIFE_S)
     rate = maalRate + (rate - maalRate) * tilbage
   }
-  rate += (maalRate - rate) * PACE_GLIDNING
+  if (!springTilLoft) rate += (maalRate - rate) * PACE_GLIDNING
 
   return {
     rate: Math.min(PACE_LOFT, Math.max(PACE_GULV, rate)),

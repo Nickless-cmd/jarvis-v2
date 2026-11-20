@@ -188,6 +188,7 @@ export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBl
           ankomst,
           dt: TICK_MS / 1000,
           tilstand: paceTilstand.current,
+          spring: erHop,
         })
         rateRef.current = paceSvar.rate
         paceTilstand.current = paceSvar.tilstand

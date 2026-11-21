@@ -546,28 +546,7 @@ function RaekkeTranskriptImpl({
   // nøgle: den levende række har `activeRunId`, den persisterede besked bærer
   // samme id i `run_id`. Uden nøgle opfører den sig som før (rent lokal state).
   const [aabenManuelt, setAabenManuelt] = useFoldHukommelse(runId ?? beskedId)
-  // Låsen beskytter SVARET, ikke hovedets tilstand (Bjørn 29/10-2026). Er der
-  // kommet arbejde efter låsen, kører turen stadig — og hovedet skal være
-  // ÅBENT, så rundens tekst er synlig mens den skriver.
-  //
-  // RETTET 20/11-2026 (Bjørn: «foldet i code mode sker ikk, retter det folder
-  // og så tom skærm og så dumper den det hele ind»): før lukkede folden i
-  // samme frame som `finalAnswerStarted` blev sand — altså da svaret BEGYNDTE,
-  // ikke da det var rullet ud. Hovedet dukkede op over en tom flade, og
-  // paceren dumpede resten ind bagefter. `svarRuller` er det ærlige signal:
-  // sand til det sidste tegn er vist, ogsaa efter `message_stop`.
   const svarRullerAktiv = svarRuller ?? (streaming && (!finalAnswerStarted || arbejdeEfterSvar))
-  // Et nyt run EFTER svaret er rullet ud. Det maa ikke aabne folden igen
-  // (MÅLT 20/11-2026, Bjørn: «Hoved foldet fejlet så snart du kører en runde
-  // efter slut beskeden»): `aaben` faldt tilbage paa `arbejdeKoerer`, som var
-  // sand fordi `arbejdeEfterSvar` var sat — saa folden sprang op af sig selv
-  // over et svar brugeren havde laest. Og havde brugeren selv foldet sammen,
-  // vandt `aabenManuelt`, mens `visTurhoved` blev falsk af `!arbejdeKoerer`:
-  // tilbage var en TOM flade, hverken arbejde eller hoved.
-  //
-  // Folden er et valg om SVARET og skal holdes. Det nye run skal stadig have et
-  // ansigt — hovedet bliver staaende som den knap der viser at der arbejdes.
-  const nytRunEfterSvar = arbejdeEfterSvar && !svarRullerAktiv
   const arbejdeKoerer = arbejdeEfterSvar || svarRullerAktiv
   // Ordhalen skal leve mens TEKSTEN ruller — ikke mens SSE-socket'en er aaben.
   // MÅLT 20/11-2026 (Bjørn: «Kan det passe farven forsvinder fra ord
@@ -575,18 +554,33 @@ function RaekkeTranskriptImpl({
   // som bliver falsk ved `message_stop`, mens paceren stadig indhentede de
   // sidste ord. `svarRuller` er sand til det sidste tegn er vist.
   const hale = svarRuller ?? streaming
-  // Folden er brugerens valg om SVARET og holdes: et nyt run maa ikke aabne
-  // den. Uden et valg aabner den naar arbejdet koerer — undtagen i vinduet
-  // efter et laest svar, hvor `nytRunEfterSvar` holder den lukket.
-  const aaben = aabenManuelt ?? (arbejdeKoerer && !nytRunEfterSvar)
+  // ── Folden lukker naar SVARET FINDES, ikke naar det er faerdigt ──────────
+  //
+  // VENDT 21/11-2026 (Bjørn: «Hoved folder foerst naar beskeden er faerdig..
+  // Det skal ske naar slutbeskeden fortsaetter? Hvad goer GPT?»). Svar: GPT
+  // afleder `completed` af om der FINDES assistent-indhold — ikke af om
+  // streamen er slut. Deres hoved folder altsaa i det oejeblik svaret begynder,
+  // og teksten ruller videre inde i det feredige hoved.
+  //
+  // Den gamle regel bandt folden til `svarRuller` (sand til sidste tegn), saa
+  // arbejdet blev revet vaek i praecis den frame teksten landede — oejets hop.
+  // `svarLaas` i `opdel` goer at teksten bliver i `svar` naar den foerst er
+  // begyndt, saa der ER et svar at folde om; den tomme flade fra 20/11 kan
+  // derfor ikke opstaa her.
+  //
+  // `arbejdeEfterSvar` er daekket: naar et nyt run arbejder efter svaret, er
+  // `svarBegyndt` stadig sand — folden bliver lukket, og hovedet bliver
+  // turens ansigt. Det var netop fejlen 20/11 at den sprang OP i stedet.
+  const svarBegyndt = finalAnswerStarted || svar.length > 0
+  const aaben = aabenManuelt ?? (arbejdeKoerer && !svarBegyndt)
   const turSekunder = streaming ? Math.max(0, Math.floor(elapsedMs / 1000)) : varighedSekunder
-  // Hovedet er turens RESULTAT, ikke en status — samme regel som chat mode.
-  // Bjørn 14/11-2026: «lad turhoved være som det er, gør det usynlig til hoved
-  // folder», gentaget for code mode 15/11. Mens arbejdet kører, er rundelinjen
-  // turens ansigt og bærer uret; hovedet dukker først op når folden lukker
-  // (`arbejdeKoerer` falsk), og står derefter fast på turen.
-  // Et rent, afsluttet svar uden arbejde beholder den enkle visning uden hoved.
-  const visTurhoved = arbejde.length > 0 && !(arbejdeKoerer && aaben)
+  // Invarianten: hovedet er turens resultat og dens fold-knap. Paa en FÆRDIG
+  // tur findes det altid — ogsaa naar folden staar aaben, for det er hovedet
+  // man folder sammen med. Mens arbejdet koerer, er rundelinjen turens ansigt,
+  // og hovedet vises kun hvis folden er lukket (saa det er det eneste ansigt).
+  // Den formel daekker begge: der findes ingen tilstand hvor arbejdet er
+  // skjult OG hovedet vaek — det var den tomme flade.
+  const visTurhoved = arbejde.length > 0 && (!arbejdeKoerer || !aaben)
   // Tokenfeltet eksisterer først når tælleren faktisk er begyndt. Dermed står
   // der hverken `0 tokens` eller et ensomt `k tokens` ved turstart.
   //

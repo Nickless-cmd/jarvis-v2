@@ -28,15 +28,23 @@ function vis(props: { finalAnswerStarted?: boolean; arbejdeEfterSvar?: boolean }
 }
 
 describe('RaekkeTranskript — arbejde efter svar-låsen', () => {
-  it('skjuler hovedet igen når et nyt run arbejder efter det låste svar', () => {
-    // VENDT 15/11-2026 (Bjørn): hovedet findes kun når folden er lukket.
-    // Kommer der nyt arbejde efter svar-låsen, er turen ikke foldet længere —
-    // og så er rundelinjen igen turens ansigt. Hovedet vender tilbage når det
-    // nye arbejde er færdigt.
+  it('holder det nye arbejde inde i det foldede hoved', () => {
+    // VENDT 21/11-2026 (Bjørn: «Hoved folder foerst naar beskeden er faerdig..
+    // Det skal ske naar slutbeskeden fortsaetter? Hvad goer GPT?»).
+    //
+    // Den forrige regel (15/11) lod det nye arbejde rive folden OP, saa
+    // rundelinjen igen blev turens ansigt. Det gav to fejl maalt 20/11: folden
+    // sprang op over et svar brugeren havde laest, og naar brugeren selv havde
+    // foldet sammen, blev baade arbejdet og hovedet vaek — en TOM flade.
+    //
+    // GPT holder hovedet foldet og lægger det nye arbejde ind i det: deres
+    // `completed` er sand saa laenge der findes assistent-indhold, uanset
+    // `isStreaming`. Brugeren kan folde ud og se det, men turen skifter ikke
+    // ansigt under dem.
     const { container } = vis({ finalAnswerStarted: true, arbejdeEfterSvar: true })
 
-    expect(container.querySelector('.rv-tur')).toBeNull()
-    expect(container.querySelector('.rv-gruppe')).not.toHaveAttribute('hidden')
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
+    expect(container.querySelector('.rv-gruppe')).toHaveAttribute('hidden')
   })
 
   it('folder stadig sammen når svaret er begyndt UDEN arbejde bagefter', () => {

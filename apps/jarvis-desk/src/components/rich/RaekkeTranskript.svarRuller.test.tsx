@@ -5,18 +5,25 @@ import { RAEKKE_KEY } from '../../lib/visningsPref'
 import type { ContentBlock } from '../../lib/sseProtocol'
 
 /**
- * Folden i code mode må ikke lukke før svaret er RULLET UD.
+ * Folden lukker naar SVARET FINDES — ikke naar det er rullet ud.
  *
- * MÅLT 20/11-2026 (Bjørn: «foldet i code mode sker ikk, retter det folder og
- * saa tom skærm og saa dumper den det hele ind»): `arbejdeKoerer` brugte
- * `finalAnswerStarted` — altså «svaret er BEGYNDT» — som om det betød «svaret
- * er FÆRDIGT». I samme frame som det første delta landede, lukkede folden,
- * turhovedet dukkede op over en tom flade, og paceren dumpede resten ind
- * bagefter.
+ * VENDT 21/11-2026 (Bjørn: «Hoved folder foerst naar beskeden er faerdig..
+ * Det skal ske naar slutbeskeden fortsaetter? Hvad goer GPT?»).
  *
- * `svarRuller` er det ærlige signal: sand til det sidste tegn er vist, ogsaa
- * efter `message_stop`. Testene her vogter at folden følger DET og ikke
- * `finalAnswerStarted`.
+ * Den FORRIGE regel blev skrevet 20/11 for at undgaa en tom flade: folden
+ * lukkede i samme frame som `finalAnswerStarted` blev sand, hovedet dukkede op
+ * over ingenting, og paceren dumpede resten ind bagefter. Løsningen blev at
+ * binde folden til `svarRuller` — sand til det sidste tegn var vist.
+ *
+ * Det flyttede problemet: arbejdet blev revet vaek i praecis den frame teksten
+ * landede, saa oejeblikket hvor turen gik fra «arbejde» til «resultat» blev et
+ * hop. GPT goer det modsatte — deres `completed` afledes af om der FINDES
+ * assistent-indhold, ikke af om streamen er slut. Hovedet folder i det oejeblik
+ * svaret begynder, og teksten ruller videre inde i det faerdige hoved.
+ *
+ * Den tomme flade kan ikke komme tilbage herfra: `svarLaas` i `opdel` sørger
+ * for at teksten bliver i `svar` naar den foerst er begyndt, saa der ER et
+ * svar at folde om. Det er den vagt (`svarLaast.test.tsx`), ikke denne.
  */
 
 const kald = (navn: string): ContentBlock => ({
@@ -34,42 +41,46 @@ beforeEach(() => { localStorage.setItem(RAEKKE_KEY, '1') })
 const gruppeSkjult = (c: HTMLElement) =>
   c.querySelector('.rv-gruppe')?.hasAttribute('hidden') ?? null
 
-describe('code-modens fold lukker først når svaret er rullet ud', () => {
-  it('holder folden AABEN naar svaret er begyndt men ikke faerdigt', () => {
-    // Praecis den tilstand der fejlede: svaret er begyndt
-    // (`finalAnswerStarted`), men der er stadig tekst tilbage at rulle.
+describe('code-modens fold lukker naar svaret findes', () => {
+  it('lukker folden naar svaret er begyndt — ogsaa mens det ruller', () => {
+    // Praecis den tilstand GPT folder i: svaret er begyndt, men der er stadig
+    // tekst tilbage at rulle. Hovedet er turens ansigt fra nu af.
     const view = render(
       <RaekkeTranskript blocks={TUR} streaming finalAnswerStarted svarRuller />,
     )
 
-    expect(gruppeSkjult(view.container)).toBe(false)
-    // Turhovedet er turens RESULTAT og maa ikke staa over en tom flade.
-    expect(view.container.querySelector('.rv-tur')).toBeNull()
+    expect(gruppeSkjult(view.container)).toBe(true)
+    expect(view.container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
+    // …og svaret staar uden for folden, saa ord-animationen ruller uforstyrret.
+    expect(view.container.querySelector('.rv-svar')).not.toBeNull()
   })
 
-  it('lukker folden og viser hovedet naar rullingen er faerdig', () => {
+  it('ser ens ud foer og efter rullingen er faerdig — ingen hop', () => {
+    // Det er hele pointen: fasen «ruller» og fasen «faerdig» skal se ens ud.
+    // Foer flyttede arbejdet sig vaek praecis her, og det var hoppet Bjørn saa.
     const view = render(
       <RaekkeTranskript blocks={TUR} streaming finalAnswerStarted svarRuller />,
     )
-    expect(gruppeSkjult(view.container)).toBe(false)
+    const foerSkjult = gruppeSkjult(view.container)
+    const foerHoved = view.container.querySelector('.rv-tur')?.getAttribute('aria-expanded')
 
     view.rerender(
       <RaekkeTranskript blocks={TUR} streaming finalAnswerStarted svarRuller={false} />,
     )
 
+    expect(gruppeSkjult(view.container)).toBe(foerSkjult)
+    expect(view.container.querySelector('.rv-tur')?.getAttribute('aria-expanded')).toBe(foerHoved)
     expect(gruppeSkjult(view.container)).toBe(true)
-    expect(view.container.querySelector('.rv-tur')).not.toBeNull()
   })
 
-  it('lukker ogsaa naar strommen er slut men paceren stadig indhenter', () => {
+  it('er ogsaa lukket naar strommen er slut men paceren stadig indhenter', () => {
     // `streaming` er falsk efter `message_stop`, men der er stadig efterslæb.
-    // Blev folden bundet til `streaming`, ville den lukke her — og resten
-    // lande i ét hug. Det er netop «dumper den det hele ind».
+    // Folden er ligeglad med begge dele — svaret findes.
     const view = render(
       <RaekkeTranskript blocks={TUR} streaming={false} finalAnswerStarted svarRuller />,
     )
-    expect(gruppeSkjult(view.container)).toBe(false)
-    expect(view.container.querySelector('.rv-tur')).toBeNull()
+    expect(gruppeSkjult(view.container)).toBe(true)
+    expect(view.container.querySelector('.rv-tur')).not.toBeNull()
   })
 
   it('falder tilbage til den gamle regel naar signalet ikke er givet', () => {

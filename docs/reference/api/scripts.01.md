@@ -258,7 +258,9 @@ _Detektor for ture der ender uden assistent-svar ("tavse cutoffs")._
 | function | `run_ids_pr_session` | `(con, cutoff_ts)` | session_id -> [run_id] for autonome runs startet i vinduet. | [src](../../../scripts/cutoff_detector.py#L305) |
 | function | `svar_leveret_eksternt` | `(con, sid, run_ids, tavs_ts)` | Leverede et PAENT afsluttet run konkret sit svar i en anden session? | [src](../../../scripts/cutoff_detector.py#L336) |
 | function | `run_startet_for_session` | `(con, sid, efter_ts)` | Blev der overhovedet STARTET et run for denne session efter beskeden? | [src](../../../scripts/cutoff_detector.py#L388) |
-| function | `main` | `()` | — | [src](../../../scripts/cutoff_detector.py#L413) |
+| function | `_rutine_run_startet` | `(con, sid, efter_ts)` | Blev der startet en RUTINEKOERSEL der svarer til beskeden? | [src](../../../scripts/cutoff_detector.py#L426) |
+| function | `beskeder_for_session` | `(con, sid, limit=…)` | Nyeste besked foerst — med INSERTIONSRAEKKEFOELGE som tie-break. | [src](../../../scripts/cutoff_detector.py#L460) |
+| function | `main` | `()` | — | [src](../../../scripts/cutoff_detector.py#L478) |
 
 ## `scripts/db_backup_daglig.py`
 _Daglig konsistent backup af den LEVENDE jarvis.db + rotation._

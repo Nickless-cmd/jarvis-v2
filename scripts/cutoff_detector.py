@@ -405,9 +405,74 @@ def run_startet_for_session(con, sid: str, efter_ts: str) -> bool | None:
             "('runtime.visible_run_tail', 'runtime.autonomous_run_started') "
             "AND created_at > ? AND payload_json LIKE ? LIMIT 1",
             (efter_ts, f'%"{sid}"%')).fetchone()
-        return r is not None
     except Exception:  # skema-drift: hellere ingen dom end en gaettet
         return None
+    if r is not None:
+        return True
+    # En rutinekoersel efterlader sig ingen af de to events — dens levetid staar
+    # i `routine_runs`. Uden dette fald er svaret altid "aldrig startet" for en
+    # rutine-session, uanset hvor mange gange den faktisk koerte.
+    return _rutine_run_startet(con, sid, efter_ts)
+
+
+RUTINE_SESSION_PRAEFIKS = "routine-"
+# Rutinens beskeder skrives ved AFLUTNING, saa `finished_at` ligger typisk
+# millisekunder foer beskedens tidsstempel. Vinduet skal vaere snavert: et run
+# fra en TIDLIGERE tur maa ikke goere en afvist tur til en kappet tur — samme
+# vaern som `test_event_foer_beskeden_taeller_ikke` vogter.
+RUTINE_VINDUE_SEKUNDER = 120
+
+
+def _rutine_run_startet(con, sid: str, efter_ts: str) -> bool | None:
+    """Blev der startet en RUTINEKOERSEL der svarer til beskeden?
+
+    Maalt 21/11-2026 (incident 17698): nattrutinen «Sansernes Arkiv» koerte
+    `run_0a40d4c0be…` fra 21:02:43 til 21:05:19 og skrev BAADE bruger- og
+    assistent-raekken kl. 21:05:19.355217. Detektoren kaldte turen «aldrig
+    startet», fordi den kun kigger efter events EFTER beskedens tidsstempel —
+    og rutinens start ligger 157 sekunder FOER den.
+
+    `session_id` er tom i 235 af 238 `routine_runs`-raekker, saa koblingen gaar
+    gennem navnet: rutinens session er `routine-<routine_id>`.
+    """
+    if not sid.startswith(RUTINE_SESSION_PRAEFIKS):
+        return False
+    besked_ts = til_utc(efter_ts)
+    if besked_ts is None:
+        return None
+    try:
+        rows = con.execute(
+            "SELECT finished_at FROM routine_runs "
+            "WHERE routine_id = ? AND finished_at IS NOT NULL "
+            "ORDER BY finished_at DESC LIMIT 3",
+            (sid[len(RUTINE_SESSION_PRAEFIKS):],)).fetchall()
+    except Exception:  # aeldre db uden tabellen: "ved ikke", ikke "afvist"
+        return None
+    for r in rows:
+        slut = til_utc(r["finished_at"])
+        if slut is None:
+            continue
+        if abs((besked_ts - slut).total_seconds()) <= RUTINE_VINDUE_SEKUNDER:
+            return True
+    return False
+
+
+def beskeder_for_session(con, sid: str, limit: int = 60) -> list:
+    """Nyeste besked foerst — med INSERTIONSRAEKKEFOELGE som tie-break.
+
+    Maalt 21/11-2026 (incident 17698): en rutinekoersel persisterer baade
+    bruger- og assistent-raekken ved afslutning, saa de har IDENTISK
+    `created_at` (begge 21:05:19.355217). Uden et tie-break returnerede SQLite
+    `user` foerst, og detektoren saa en tur uden svar — selv om assistent-
+    svaret laa paa naeste raekke og turen sluttede paent.
+
+    `rowid` frem for `id`: i produktion er `id` INTEGER PRIMARY KEY og altsaa
+    det samme, men test-fixturene opretter tabellen uden den kolonne.
+    """
+    return con.execute(
+        "SELECT message_id, role, content, created_at FROM chat_messages "
+        "WHERE session_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ?",
+        (sid, limit)).fetchall()
 
 
 def main() -> int:
@@ -441,9 +506,7 @@ def main() -> int:
             f"fejl: {_d['fejl'] or '(ingen fejlstreng gemt)'}")
 
     for sid in sessions:
-        rows = con.execute(
-            "SELECT message_id, role, content, created_at FROM chat_messages "
-            "WHERE session_id = ? ORDER BY created_at DESC LIMIT 60", (sid,)).fetchall()
+        rows = beskeder_for_session(con, sid)
         if not rows:
             continue
         last = rows[0]

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10378/18956 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10379/18957 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -30,7 +30,7 @@ Generated from source. 10378/18956 functions/methods documented (54%). The list 
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 147 | 229 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
-| `core.services.visible_runs_sections` | 28 | 44 | 63% |
+| `core.services.visible_runs_sections` | 29 | 45 | 64% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
 | `core.tools` | 644 | 1233 | 52% |
@@ -2343,7 +2343,7 @@ Generated from source. 10378/18956 functions/methods documented (54%). The list 
 - `core/services/visible_runs.py` :: `unregister_visible_run` (L7321)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L772)
-- `core/services/visible_runs_sections/approval_wait.py` :: `unregister_live_approval` (L77)
+- `core/services/visible_runs_sections/approval_wait.py` :: `unregister_live_approval` (L113)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L108)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L157)
 - `core/services/visible_stream_gate.py` :: `enter_visible_stream` (L38)

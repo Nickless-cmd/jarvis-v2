@@ -38,6 +38,26 @@ runnet overlever ventetiden, `run_event_log.is_live` forbliver frisk, og kliente
 kan se at han venter på et menneske i stedet for at se en død stream.
 
 De 300 sekunder er dermed ægte ventetid for første gang — før var det reelt 180.
+
+## Vinduet følger nu kortets levetid (22/11-2026)
+
+De 300 sekunder var valgt som et MINIMUM — nok til at overleve tavshedsloftet på
+180s — men de blev læst som et loft over hvor længe Bjørn må tænke. Det gav to
+tidsgrænser der ikke var enige:
+
+    kortets levetid   3600s   (`db_approval_bridge.DEFAULT_TTL_S`, vist som
+                               nedtælling i Desk)
+    turens ventevindue 300s   (denne konstant)
+
+Målt i `approval_claims` 21/11-2026: to kort stillet 22:17:06 og 22:22:09 blev
+godkendt 22:37:54 og 22:37:50 — 20 og 15 minutter senere. Begge stod `completed`,
+så kommandoen kørte; men turen havde opgivet 10-15 minutter før og skrevet
+«Please confirm» til samtalen. Bjørn godkendte, kommandoen kørte, og intet kom
+tilbage. Det er præcis den oplevelse han kaldte «godkendes aldrig godkendes».
+
+Vinduet udledes derfor af kortets TTL i stedet for at gentage tallet: én kilde,
+ingen divergens. Det er ikke et uendeligt vindue — ved udløb sender runnet stadig
+besked og afslutter sig selv, som Bjørn bad om 25/10-2026.
 """
 from __future__ import annotations
 
@@ -51,7 +71,23 @@ logger = logging.getLogger(__name__)
 # Under idle-tick'ets 20s OG is_live-vinduets 45s, med margin til et travlt
 # event-loop. Hæves den over 20s, er bug'en tilbage.
 HEARTBEAT_INTERVAL_S = 10.0
-DEFAULT_APPROVAL_WINDOW_S = 300.0
+
+
+def _kortets_levetid_s() -> float:
+    """Kortets TTL — den ENESTE kilde til hvor længe et kort kan besvares.
+
+    Importeres inde i funktionen: `db_approval_bridge` er runtime-laget, og
+    denne fil skal kunne importeres af tests uden en database.
+    """
+    from core.runtime.db_approval_bridge import DEFAULT_TTL_S
+
+    return float(DEFAULT_TTL_S)
+
+
+#: Hvor længe turen venter på et menneske. Udledt af kortets levetid, så Desk's
+#: nedtælling og turens tålmodighed ikke kan divergere (målt 21/11-2026: 3600 mod
+#: 300, hvilket tabte to godkendelser der kom 15-20 minutter for sent).
+DEFAULT_APPROVAL_WINDOW_S = _kortets_levetid_s()
 _POLL_INTERVAL_S = 0.25
 _LIVE_APPROVALS: dict[str, dict] = {}
 _LIVE_APPROVALS_LOCK = threading.Lock()

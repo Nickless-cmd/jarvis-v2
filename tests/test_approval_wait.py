@@ -114,6 +114,24 @@ class TestKeepalive:
             "så var der aldrig en konflikt at fikse")
         assert aw.HEARTBEAT_INTERVAL_S < _IDLE_TICK_S
 
+    def test_vinduet_foelger_kortets_levetid(self):
+        """Vinduet og kortets TTL må ikke kunne divergere (målt 21/11-2026).
+
+        Kortet levede 3600s og Desk viste den nedtælling, men turen gav op efter
+        300s. To kort blev godkendt 15 og 20 minutter senere: kommandoen kørte,
+        og resultatet nåede aldrig samtalen fordi runnet var væk.
+
+        Testen kræver LIGHED, ikke blot «vinduet er stort nok»: en fremtidig
+        hævning af kortets TTL skal tvinge vinduet med, ellers genåbnes hullet
+        tavst — og det er præcis den tavshed der kostede to godkendelser.
+        """
+        from core.runtime.db_approval_bridge import DEFAULT_TTL_S
+
+        assert aw.DEFAULT_APPROVAL_WINDOW_S == float(DEFAULT_TTL_S), (
+            f"turen venter {aw.DEFAULT_APPROVAL_WINDOW_S:.0f}s, men kortet kan "
+            f"besvares i {DEFAULT_TTL_S}s — en godkendelse efter vinduet kører "
+            "kommandoen uden at nogen får svaret")
+
 
 class TestResultat:
     def test_godkendt_giver_resultatteksten(self):

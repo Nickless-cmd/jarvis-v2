@@ -44,7 +44,7 @@ describe('RaekkeTranskript — arbejde efter svar-låsen', () => {
     const { container } = vis({ finalAnswerStarted: true, arbejdeEfterSvar: true })
 
     expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
-    expect(container.querySelector('.rv-gruppe')).toHaveAttribute('hidden')
+    expect(container.querySelector('.rv-gruppe-ydre')).toHaveAttribute('data-aaben', 'false')
   })
 
   it('folder stadig sammen når svaret er begyndt UDEN arbejde bagefter', () => {

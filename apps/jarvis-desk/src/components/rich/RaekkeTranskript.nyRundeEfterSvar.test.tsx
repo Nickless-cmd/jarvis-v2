@@ -33,8 +33,10 @@ const TUR: ContentBlock[] = [
 
 beforeEach(() => { localStorage.setItem(RAEKKE_KEY, '1') })
 
-const gruppe = (c: HTMLElement) => c.querySelector('.rv-gruppe')
-const gruppeSkjult = (c: HTMLElement) => gruppe(c)?.hasAttribute('hidden') ?? null
+// 21/11-2026: folden er ikke laengere `hidden` (display:none) — den er en
+// grid-raekke der glider `1fr → 0fr`, saa tilstanden laeses af `data-aaben`.
+const gruppeSkjult = (c: HTMLElement) =>
+  c.querySelector('.rv-gruppe-ydre')?.getAttribute('data-aaben') === 'false'
 const hoved = (c: HTMLElement) => c.querySelector('.rv-tur')
 
 describe('et nyt run efter slutbeskeden', () => {

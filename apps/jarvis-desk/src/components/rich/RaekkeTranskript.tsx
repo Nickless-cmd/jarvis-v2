@@ -573,6 +573,34 @@ function RaekkeTranskriptImpl({
   // turens ansigt. Det var netop fejlen 20/11 at den sprang OP i stedet.
   const svarBegyndt = finalAnswerStarted || svar.length > 0
   const aaben = aabenManuelt ?? (arbejdeKoerer && !svarBegyndt)
+  // ── Folden skal GLIDE, ikke blinke (målt 21/11-2026) ────────────────────
+  //
+  // Bjørn: «så skal foldet bar matche ord animationen.. lige nu sker foldet i
+  // et blink». Folden blev fjernet med `hidden` — `display: none` i ÉN frame —
+  // så der var ingen højde at animere fra, og billedet rykked sammen med
+  // præcis linjernes højde. Samme fejl som chat mode målte 20/10-2026, og
+  // løsningen er den samme: rammen bliver i layoutet og glider `1fr → 0fr`.
+  //
+  // Indholdet må heller ikke forsvinde i samme frame som rammen begynder at
+  // glide. Uden børn er der intet at animere, og folden bliver et hop igen —
+  // så det bliver stående `FOLD_MS` efter folden er lukket.
+  //
+  // Hvorfor ikke bare lade det stå altid? Fordi skjulte runder ikke må fylde
+  // DOM'en i en lang gemt samtale (målt 22/9-2026, se `monterer først
+  // rækkerne`). Forsinkelsen er præcis så lang som folden varer.
+  //
+  // 379 ms = `--dur-fold` i `styles/tokens.css`, som er ord-animationens
+  // samlede landing for `Snappy` (220 + 99 + 2×30 i `lib/streamingTextTail.ts`).
+  // To tal for samme varighed er en kendt pris: CSS kan ikke læse en TS-konstant,
+  // og en transition kan ikke vente på en tilstand. Ændres den ene, skal den
+  // anden følge med — derfor står udregningen begge steder.
+  const FOLD_MS = 379
+  const [indholdVises, setIndholdVises] = useState(aaben)
+  useEffect(() => {
+    if (aaben) { setIndholdVises(true); return }
+    const t = setTimeout(() => setIndholdVises(false), FOLD_MS)
+    return () => clearTimeout(t)
+  }, [aaben])
   const turSekunder = streaming ? Math.max(0, Math.floor(elapsedMs / 1000)) : varighedSekunder
   // Invarianten: hovedet er turens resultat og dens fold-knap. Paa en FÆRDIG
   // tur findes det altid — ogsaa naar folden staar aaben, for det er hovedet
@@ -646,8 +674,10 @@ function RaekkeTranskriptImpl({
         </div>
       )}
       {arbejde.length > 0 && (
-        <div className="rv-gruppe" hidden={!aaben}>
-              {aaben && sektioner.map((s, i) => {
+        <div className="rv-gruppe-ydre" data-aaben={aaben ? 'true' : 'false'}
+          {...(aaben ? {} : { inert: true })}>
+          <div className="rv-gruppe" aria-hidden={!aaben}>
+              {indholdVises && sektioner.map((s, i) => {
                 if (s.slags === 'syntese') return <Syntese key={i} tekst={s.tekst} streaming={streaming} hale={hale} />
                 if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} hale={hale} config={config} beskedId={beskedId} />
                 const aktiv = i === aktivRundeIndex
@@ -657,7 +687,8 @@ function RaekkeTranskriptImpl({
                   turSekunder={turSekunder} skjult={aktiv && skjulAktivRunde}
                   workingStep={aktiv ? workingStep : undefined} />
               })}
-            </div>
+          </div>
+        </div>
       )}
       {billedArbejde ? <BilledArbejdeAnimation arbejde={billedArbejde} config={config} /> : null}
       {inlineQuestions.length > 0 ? (

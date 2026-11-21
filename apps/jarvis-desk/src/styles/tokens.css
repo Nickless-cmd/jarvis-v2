@@ -111,6 +111,20 @@
   --dur-base: 200ms;
   --dur-sheet: 300ms;
   --dur-slow: 450ms;
+  /* Foldens varighed er ord-animationens, ikke en tilfældig «hurtig» tid
+   * (21/11-2026, Bjørn: «så skal foldet bar matche ord animationen»).
+   *
+   * 379 ms = duration 220 + colorDelay 99 + 2×timeOffsetBetweenParts 60 for
+   * `Snappy`, som er `STANDARD_VARIANT` i `lib/streamingTextTail.ts`. Det er
+   * præcis det tidspunkt det SIDSTE ord lander på — altså hvor lang tid
+   * folden har, hvis den skal være færdig samtidig med teksten.
+   *
+   * Tallet står her fordi `--streaming-tail-*` kun findes på
+   * `.streaming-word-tail` (chat-reading.css:19) og derfor ikke kan arves af
+   * foldens ramme. Ændres varianten, skal dette tal følge med — kilden er
+   * kommentaren i `streamingTextTail.ts`, ikke denne linje. */
+  --dur-fold: 379ms;
+  --ease-fold: cubic-bezier(0.25, 0.1, 0.25, 1);
 
   /* Kurverne. `--ease-out` er den brede udgang (hurtig start, bloed landing).
      `--ease-snap` er Claude Desktops egen folde-kurve — den er pinnet 1:1 og

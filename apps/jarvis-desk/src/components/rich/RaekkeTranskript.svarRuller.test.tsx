@@ -38,8 +38,10 @@ const TUR: ContentBlock[] = [
 
 beforeEach(() => { localStorage.setItem(RAEKKE_KEY, '1') })
 
+// 21/11-2026: folden er ikke laengere `hidden` (display:none) — den er en
+// grid-raekke der glider `1fr → 0fr`, saa tilstanden laeses af `data-aaben`.
 const gruppeSkjult = (c: HTMLElement) =>
-  c.querySelector('.rv-gruppe')?.hasAttribute('hidden') ?? null
+  c.querySelector('.rv-gruppe-ydre')?.getAttribute('data-aaben') === 'false'
 
 describe('code-modens fold lukker naar svaret findes', () => {
   it('lukker folden naar svaret er begyndt — ogsaa mens det ruller', () => {

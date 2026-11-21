@@ -226,12 +226,49 @@
      folden er åben eller lukket — så det er samme tal. Arbejdsrækken har
      desuden sin egen 5px `padding-top` i `.rv-arbejdsdetaljer`, og de to
      lægges sammen i øjet. */
-  margin-top: 2px; padding-top: 0;
+  padding-top: 0;
 }
-/* `display:flex` ovenfor SLÅR browserens egen [hidden]-regel. Uden denne
-   linje skjuler `hidden` ingenting — målt 22/9-2026, og den kostede tre
-   symptomer der lignede tre fejl. */
-.raekkevisning .rv-gruppe[hidden] { display: none; }
+/* ══ FOLDEN GLIDER — den forsvinder ikke (målt 21/11-2026) ══
+   Bjørn: «så skal foldet bar matche ord animationen.. lige nu sker foldet i et
+   blink». Det er samme formulering som chat mode fik 20/10-2026 («synteser og
+   runder forsvinder i et blink»), og samme årsag: `hidden` er `display: none`
+   i ÉN frame. Der er da ingen højde at animere fra, så hele billedet rykker
+   sammen med præcis linjernes højde.
+
+   Løsningen er chat-fladens, ord for ord: den ydre ramme bliver i layoutet og
+   glider `1fr → 0fr`. Grid-rækker animerer i både Chromium og Safari;
+   `height: auto` ville kræve `interpolate-size`, som kun Chromium har — og så
+   ville PWA'en på telefonen stadig knække.
+
+   Varigheden er `--dur-fold` (379 ms), ikke `--dur-sheet`: folden skal lande
+   samtidig med det sidste ord, ikke bare være «hurtig».
+
+   `min-height: 0` + `overflow: hidden` på barnet er ikke kosmetik. Uden dem
+   kan en grid-række ikke kollapse under sit indholds mindste højde, og `0fr`
+   bliver til indholdets fulde højde — folden ville se ud som om den intet
+   gjorde.
+
+   Marginen flyttede med ud på rammen og animeres sammen med rækkehøjden. Lå
+   de 2px tilbage på det lukkede indhold, ville de koste 2px luft under det
+   foldede hoved — og hovedet er den samme label hvad enten folden er åben
+   eller lukket, så det er samme tal begge veje. */
+.raekkevisning .rv-gruppe-ydre {
+  display: grid;
+  align-self: start;
+  grid-template-rows: 1fr;
+  margin-top: 2px;
+  transition:
+    grid-template-rows var(--dur-fold) var(--ease-fold),
+    margin-top var(--dur-fold) var(--ease-fold);
+}
+.raekkevisning .rv-gruppe-ydre[data-aaben='false'] {
+  grid-template-rows: 0fr;
+  margin-top: 0;
+}
+.raekkevisning .rv-gruppe-ydre > .rv-gruppe {
+  min-height: 0;
+  overflow: hidden;
+}
 
 /* Mellem to synteser samles detaljerne bag Jarvis' arbejdsrække. */
 .raekkevisning .rv-arbejdsknap {
@@ -358,7 +395,12 @@
    som mellem to selvstændige blokke. Arbejdet og svaret hører til samme tur:
    8px markerer skiftet uden at rive dem fra hinanden.
    Højere specificitet end reglen ovenfor, så den vinder uden `!important`. */
-.raekkevisning .rv-tur ~ .rv-gruppe:not([hidden]) ~ .rv-svar:not(:empty) {
+/* 21/11-2026: selektoren pegede paa `.rv-gruppe:not([hidden])`, men gruppen
+   har ikke laengere en `hidden`-attribut — den er en grid-raekke der glider.
+   `:not([hidden])` matchede derfor ALTID, og svaret fik 8px luft ogsaa under
+   en lukket fold. Tilstanden laeses nu af `data-aaben` paa den ydre ramme,
+   som er det element der faktisk ligger mellem hovedet og svaret. */
+.raekkevisning .rv-tur ~ .rv-gruppe-ydre[data-aaben='true'] ~ .rv-svar:not(:empty) {
   margin-top: 8px;
 }
 

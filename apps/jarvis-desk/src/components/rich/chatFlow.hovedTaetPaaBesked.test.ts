@@ -107,10 +107,17 @@ describe('VAGT — hovedet hænger sammen med beskeden', () => {
     const gruppe = raekke.slice(gStart, raekke.indexOf('}', gStart))
     expect(gruppe).toContain('padding-top: 0')
     // Eksplicit margin: uden den arves 16px fra `.raekkevisning > * + *`.
-    expect(gruppe).toContain('margin-top: 2px')
+    // 21/11-2026: marginen bor nu paa den YDRE fold-ramme — det er den der
+    // ligger mellem hovedet og arbejdet, og den animeres sammen med
+    // raekkehoejden. Laa de 2px tilbage paa det lukkede indhold, ville de
+    // koste 2px luft under det foldede hoved.
+    const yStart = raekke.indexOf('.raekkevisning .rv-gruppe-ydre {')
+    expect(yStart).toBeGreaterThan(-1)
+    const ydre = raekke.slice(yStart, raekke.indexOf('}', yStart))
+    expect(ydre).toContain('margin-top: 2px')
 
     const sStart = raekke.indexOf(
-      '.raekkevisning .rv-tur ~ .rv-gruppe:not([hidden]) ~ .rv-svar:not(:empty)',
+      ".raekkevisning .rv-tur ~ .rv-gruppe-ydre[data-aaben='true'] ~ .rv-svar:not(:empty)",
     )
     expect(sStart).toBeGreaterThan(-1)
     const svar = raekke.slice(sStart, raekke.indexOf('}', sStart))

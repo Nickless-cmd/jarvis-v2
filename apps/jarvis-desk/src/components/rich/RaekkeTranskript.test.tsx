@@ -125,7 +125,7 @@ describe('RaekkeTranskript', () => {
       <RaekkeTranskript blocks={[kald('read_file')]} streaming tokens={0} />,
     )
     expect(container.querySelector('.rv-tur')).toBeNull()
-    expect(container.querySelector('.rv-gruppe')).not.toHaveAttribute('hidden')
+    expect(container.querySelector('.rv-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
 
     rerender(<RaekkeTranskript blocks={[kald('read_file')]} streaming tokens={17} />)
     expect(container.querySelector('.rv-tur')).toBeNull()
@@ -142,7 +142,7 @@ describe('RaekkeTranskript', () => {
     const { container, rerender } = rtlRender(<RaekkeTranskript blocks={arbejde} streaming />)
     // Hovedet er skjult mens arbejdet kører — gruppen er turens ansigt.
     expect(container.querySelector('.rv-tur')).toBeNull()
-    expect(container.querySelector('.rv-gruppe')).not.toHaveAttribute('hidden')
+    expect(container.querySelector('.rv-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
 
     rerender(<RaekkeTranskript blocks={[...arbejde, tekst('Her er svaret')]} streaming />)
     expect(container.querySelector('.rv-tur')).toBeNull()
@@ -154,7 +154,7 @@ describe('RaekkeTranskript', () => {
 
     rerender(<RaekkeTranskript blocks={[...arbejde, tekst('Jeg tjekker mere.'), kald('grep'), tekst('Færdig.')]} streaming={false} />)
     expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
-    expect(container.querySelector('.rv-gruppe')).toHaveAttribute('hidden')
+    expect(container.querySelector('.rv-gruppe-ydre')).toHaveAttribute('data-aaben', 'false')
     expect(screen.getByText('Færdig.')).toBeInTheDocument()
   })
 
@@ -427,11 +427,11 @@ describe('RaekkeTranskript', () => {
       { type: 'text', text: 'Her er resultatet.', phase: 'final_answer' },
     ]} streaming finalAnswerStarted />)
     expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
-    expect(container.querySelector('.rv-gruppe')).toHaveAttribute('hidden')
+    expect(container.querySelector('.rv-gruppe-ydre')).toHaveAttribute('data-aaben', 'false')
     expect(container.querySelector('.rv-svar')).toHaveTextContent('Her er resultatet.')
 
     fireEvent.click(container.querySelector('.rv-tur')!)
-    expect(container.querySelector('.rv-gruppe')).not.toHaveAttribute('hidden')
+    expect(container.querySelector('.rv-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
     expect(container.querySelector('.rv-gruppe')).toHaveTextContent('God idé — jeg undersøger det.')
   })
 
@@ -536,14 +536,18 @@ describe('RaekkeTranskript', () => {
     expect(screen.getByText(/ikke betalingsklar/)).toBeInTheDocument()
   })
 
-  it('monterer først rækkerne når hele turen foldes ud', () => {
+  it('monterer først rækkerne når hele turen foldes ud', async () => {
     const { container } = render(<RaekkeTranskript blocks={TUR} streaming={false} />)
     expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(0)
     fireEvent.click(container.querySelector('.rv-tur')!)
     expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(2)
     expect(container.querySelectorAll('.rv-r').length).toBeGreaterThan(0)
     fireEvent.click(container.querySelector('.rv-tur')!)
-    expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(0)
+    // 21/11-2026: rækkerne bliver i DOM'en mens folden glider (379 ms) — ellers
+    // har grid-overgangen intet at animere, og folden bliver et blink igen.
+    // De forsvinder når folden er færdig; kontrakten er ellers den samme:
+    // skjulte runder må ikke fylde DOM'en i en lang gemt samtale.
+    await waitFor(() => expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(0))
   })
 
   it('holder foldelinjen på samme sted i viewport når arbejdet åbnes', () => {
@@ -557,7 +561,7 @@ describe('RaekkeTranskript', () => {
 
     expect(button).toHaveAttribute('aria-expanded', 'true')
     expect(scroller.scrollTop).toBe(0)
-    expect(container.querySelector('.rv-gruppe')?.previousElementSibling).toBe(button)
+    expect(container.querySelector('.rv-gruppe-ydre')?.previousElementSibling).toBe(button)
   })
 
   it('viser arbejdet mens der streames — man skal kunne følge med', () => {
@@ -579,7 +583,7 @@ describe('RaekkeTranskript', () => {
     const hoved = container.querySelector('.rv-tur')!
     expect(hoved).toHaveAttribute('aria-expanded', 'false')
     expect([...container.querySelector('.raekkevisning')!.children].map((e) => e.className))
-      .toEqual(['rv-tur', 'rv-gruppe', 'rv-svar'])
+      .toEqual(['rv-tur', 'rv-gruppe-ydre', 'rv-svar'])
   })
 
   it('folder ved det bekræftede slutsvar før svarteksten er færdig med at streame', () => {
@@ -902,14 +906,23 @@ describe('raekkevisning.css', () => {
   // Stien er fra pakkeroden: vitest koerer med cwd = apps/jarvis-desk.
   const css = readFileSync(resolve('src/styles/raekkevisning.css'), 'utf8')
 
-  it('overstyrer [hidden] — ellers skjuler `hidden` INTET', () => {
-    // Den dyreste fejl i hele arbejdet (22/9-2026): `.rv-gruppe` fik
-    // `display:flex`, og en author-regel slaar browserens egen [hidden].
-    // Gruppen blev staaende, fold-knappen saa doed ud, og synteserne
-    // druknede mellem raekker der skulle vaere foldet vaek. Tre symptomer,
-    // een manglende linje. jsdom kan ikke se det — derfor maales kilden.
+  it('folder med en grid-raekke — ikke med display:none', () => {
+    // 21/11-2026 (Bjørn: «så skal foldet bar matche ord animationen.. lige nu
+    // sker foldet i et blink»). Gruppen blev fjernet med `hidden`, altsaa
+    // `display: none` i ÉN frame, og der var ingen hoejde at animere fra.
+    // Nu bliver den ydre ramme i layoutet og glider `1fr → 0fr`.
+    //
+    // Historikken staar: 22/9-2026 kostede den manglende `[hidden]`-regel tre
+    // symptomer, fordi `.rv-gruppe` fik `display:flex`. Den regel er ikke
+    // glemt — den er overfloedig, fordi gruppen ikke laengere fjernes.
+    // jsdom kan ikke se en transition, saa kilden maales.
     expect(css).toMatch(/\.rv-gruppe\s*\{[^}]*display:\s*flex/)
-    expect(css).toMatch(/\.rv-gruppe\[hidden\]\s*\{\s*display:\s*none/)
+    expect(css).toMatch(/\.rv-gruppe-ydre\s*\{[^}]*grid-template-rows:\s*1fr/)
+    expect(css).toMatch(/\.rv-gruppe-ydre\[data-aaben='false'\]\s*\{[^}]*grid-template-rows:\s*0fr/)
+    // Uden disse to kollapser raekken ikke under sit indholds mindste hoejde,
+    // og `0fr` bliver til fuld hoejde — folden ville se ud som om den intet
+    // gjorde, hvilket er praecis det blink vi fjerner.
+    expect(css).toMatch(/\.rv-gruppe-ydre > \.rv-gruppe\s*\{[^}]*min-height:\s*0[^}]*overflow:\s*hidden/)
     expect(css).toMatch(/\.rv-arbejdsdetaljer\[hidden\]\s*\{\s*display:\s*none/)
   })
 

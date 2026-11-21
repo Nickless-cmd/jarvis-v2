@@ -107,8 +107,8 @@ function DiffStat({ add, del }: { add: number; del: number }) {
   )
 }
 
-const Syntese = memo(function Syntese({ tekst, streaming }: { tekst: string; streaming: boolean }) {
-  return <div className="rv-mellem"><MarkdownRenderer text={tekst} streaming={streaming} /></div>
+const Syntese = memo(function Syntese({ tekst, streaming, hale }: { tekst: string; streaming: boolean; hale?: boolean }) {
+  return <div className="rv-mellem"><MarkdownRenderer text={tekst} streaming={streaming} hale={hale} /></div>
 })
 
 function Raekke({
@@ -183,13 +183,13 @@ function Raekke({
   )
 }
 
-function Element({ e, streaming, config, beskedId }: {
-  e: ArbejdsElement; streaming: boolean; config?: ApiConfig; beskedId?: string
+function Element({ e, streaming, hale, config, beskedId }: {
+  e: ArbejdsElement; streaming: boolean; hale?: boolean; config?: ApiConfig; beskedId?: string
 }) {
   if (e.slags === 'mellemsvar') {
     // Jarvis' korte narration MELLEM kaldene. Den bor i gruppen og folder sig
     // sammen med arbejdet — den er ikke en besked (Bjoern 22/9-2026).
-    return <Syntese tekst={e.tekst} streaming={streaming} />
+    return <Syntese tekst={e.tekst} streaming={streaming} hale={hale} />
   }
   if (e.slags === 'spor') {
     // ÉN linje der opdaterer sig — den viser det SENESTE trin, og hele
@@ -296,19 +296,20 @@ function sammeArbejdsElementer(a: ArbejdsElement[], b: ArbejdsElement[]): boolea
   return true
 }
 
-const Arbejdsdetaljer = memo(function Arbejdsdetaljer({ elementer, aaben, streaming, config, beskedId }: {
+const Arbejdsdetaljer = memo(function Arbejdsdetaljer({ elementer, aaben, streaming, hale, config, beskedId }: {
   elementer: ArbejdsElement[]
   aaben: boolean
   streaming: boolean
+  hale?: boolean
   config?: ApiConfig
   beskedId?: string
 }) {
   return (
     <div className="rv-arbejdsdetaljer" hidden={!aaben}>
-      {elementer.map((e, i) => <Element key={i} e={e} streaming={streaming} config={config} beskedId={beskedId} />)}
+      {elementer.map((e, i) => <Element key={i} e={e} streaming={streaming} hale={hale} config={config} beskedId={beskedId} />)}
     </div>
   )
-}, (a, b) => a.aaben === b.aaben && a.streaming === b.streaming
+}, (a, b) => a.aaben === b.aaben && a.streaming === b.streaming && a.hale === b.hale
   && a.config === b.config && a.beskedId === b.beskedId
   && sammeArbejdsElementer(a.elementer, b.elementer))
 
@@ -325,11 +326,12 @@ function TrinGlyf({ status }: { status: TrinStatus }) {
 }
 
 function ArbejdsrundeImpl({
-  elementer, streaming, sidste, config, etiket, beskedId, turSekunder, skjult = false, workingStep,
+  elementer, streaming, hale, sidste, config, etiket, beskedId, turSekunder, skjult = false, workingStep,
 }: {
   workingStep?: string | null
   elementer: ArbejdsElement[]
   streaming: boolean
+  hale?: boolean
   sidste: boolean
   config?: ApiConfig
   beskedId?: string
@@ -446,13 +448,13 @@ function ArbejdsrundeImpl({
           ))}
         </ol>
       )}
-      <Arbejdsdetaljer elementer={elementer} aaben={aaben} streaming={streaming} config={config} beskedId={beskedId} />
+      <Arbejdsdetaljer elementer={elementer} aaben={aaben} streaming={streaming} hale={hale} config={config} beskedId={beskedId} />
     </div>
   )
 }
 
 const Arbejdsrunde = memo(ArbejdsrundeImpl, (a, b) =>
-  a.streaming === b.streaming && a.sidste === b.sidste
+  a.streaming === b.streaming && a.hale === b.hale && a.sidste === b.sidste
   && a.turSekunder === b.turSekunder
   && a.skjult === b.skjult && a.workingStep === b.workingStep
   && a.config === b.config && a.beskedId === b.beskedId && a.etiket === b.etiket
@@ -564,6 +566,12 @@ function RaekkeTranskriptImpl({
   // ansigt — hovedet bliver staaende som den knap der viser at der arbejdes.
   const nytRunEfterSvar = arbejdeEfterSvar && !svarRullerAktiv
   const arbejdeKoerer = arbejdeEfterSvar || svarRullerAktiv
+  // Ordhalen skal leve mens TEKSTEN ruller — ikke mens SSE-socket'en er aaben.
+  // MÅLT 20/11-2026 (Bjørn: «Kan det passe farven forsvinder fra ord
+  // animationen efter hoveds fold?»): `MarkdownRenderer` fik kun `streaming`,
+  // som bliver falsk ved `message_stop`, mens paceren stadig indhentede de
+  // sidste ord. `svarRuller` er sand til det sidste tegn er vist.
+  const hale = svarRuller ?? streaming
   // Folden er brugerens valg om SVARET og holdes: et nyt run maa ikke aabne
   // den. Uden et valg aabner den naar arbejdet koerer — undtagen i vinduet
   // efter et laest svar, hvor `nytRunEfterSvar` holder den lukket.
@@ -643,11 +651,11 @@ function RaekkeTranskriptImpl({
       {arbejde.length > 0 && (
         <div className="rv-gruppe" hidden={!aaben}>
               {aaben && sektioner.map((s, i) => {
-                if (s.slags === 'syntese') return <Syntese key={i} tekst={s.tekst} streaming={streaming} />
-                if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} beskedId={beskedId} />
+                if (s.slags === 'syntese') return <Syntese key={i} tekst={s.tekst} streaming={streaming} hale={hale} />
+                if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} hale={hale} config={config} beskedId={beskedId} />
                 const aktiv = i === aktivRundeIndex
                 return <Arbejdsrunde key={noegleForRunde(s.elementer) ?? i}
-                  elementer={s.elementer} streaming={streaming} sidste={aktiv}
+                  elementer={s.elementer} streaming={streaming} hale={hale} sidste={aktiv}
                   config={config} etiket={etiketFor(s.elementer, etiketter)} beskedId={beskedId}
                   turSekunder={turSekunder} skjult={aktiv && skjulAktivRunde}
                   workingStep={aktiv ? workingStep : undefined} />
@@ -658,7 +666,7 @@ function RaekkeTranskriptImpl({
       {inlineQuestions.length > 0 ? (
         <div className="rv-inline-question">
           <BlocksRenderer
-            blocks={inlineQuestions} density="compact" streaming={streaming}
+            blocks={inlineQuestions} density="compact" streaming={streaming} hale={hale}
             beskedId={beskedId} config={config}
           />
         </div>
@@ -672,7 +680,7 @@ function RaekkeTranskriptImpl({
           holder marginen væk så længe. */}
       <div className="rv-svar">
         <BlocksRenderer
-          blocks={svar} density="compact" streaming={streaming}
+          blocks={svar} density="compact" streaming={streaming} hale={hale}
           beskedId={beskedId} config={config}
         />
       </div>

@@ -142,6 +142,7 @@ export function BlocksRenderer({
   blocks,
   density,
   streaming,
+  hale,
   rundeEtiketter,
   tankeResumeer,
   visTankeResumeer = false,
@@ -152,6 +153,8 @@ export function BlocksRenderer({
   blocks: ContentBlock[]
   density: 'compact' | 'full'
   streaming: boolean
+  /** Ruller teksten stadig? Se `MarkdownRenderer.hale`. Udeladt = foelger `streaming`. */
+  hale?: boolean
   /** Beskeden blokkene hører til — så et afkortet værktøjs-resultat kan hentes. */
   beskedId?: string
   config?: ApiConfig
@@ -203,7 +206,7 @@ export function BlocksRenderer({
   return (
     <>
       {rendered.map((b, i) => (
-        <BlockView key={i} block={b} density={density} streaming={streaming} isLast={i === lastIdx} rundeEtiketter={etiketter} tankeResumeer={resumeer} visning={visning} visTankeResumeer={visTankeResumeer} beskedId={beskedId} config={config} />
+        <BlockView key={i} block={b} density={density} streaming={streaming} hale={hale} isLast={i === lastIdx} rundeEtiketter={etiketter} tankeResumeer={resumeer} visning={visning} visTankeResumeer={visTankeResumeer} beskedId={beskedId} config={config} />
       ))}
     </>
   )
@@ -213,6 +216,7 @@ function BlockView({
   block,
   density,
   streaming,
+  hale,
   isLast,
   rundeEtiketter,
   tankeResumeer,
@@ -224,6 +228,7 @@ function BlockView({
   block: VisibleBlock
   density: 'compact' | 'full'
   streaming: boolean
+  hale?: boolean
   isLast: boolean
   /** Se `BlocksRenderer` — til at hente et afkortet værktøjs-resultat. */
   beskedId?: string
@@ -253,7 +258,7 @@ function BlockView({
     case 'approval':
       return <HistoriskGodkendelse data={block} />
     case 'text':
-      return <MarkdownRenderer text={block.text} streaming={streaming} />
+      return <MarkdownRenderer text={block.text} streaming={streaming} hale={hale} />
     case 'tool_group':
       {
         // Etiketten daekker HELE runden, saa det foerste kald der har en, er

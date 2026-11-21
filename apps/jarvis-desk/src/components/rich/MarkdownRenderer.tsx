@@ -340,22 +340,35 @@ export const MarkdownBlok = memo(function MarkdownBlok({
  *  ikke de sidste ords animation ved at skifte til færdig-render. */
 export const HALE_AFVIKLING_MS = 500
 
-export function MarkdownRenderer({ text, streaming }: { text: string; streaming: boolean }) {
-  // Afvikling: streaming true→false i samme instans. Afledt tilstand under
+export function MarkdownRenderer({ text, streaming, hale = streaming }: {
+  text: string
+  streaming: boolean
+  /** Ruller teksten stadig? Sand mens paceren indhenter efter `message_stop`.
+   *  Standard: følger `streaming`, så en persisteret besked aldrig farves. */
+  hale?: boolean
+}) {
+  // Afvikling: hale true→false i samme instans. Afledt tilstand under
   // render (ikke i en effekt), så der ikke nås en færdig-render imellem, som
   // ville afmontere de sidste ord midt i deres animation.
-  const [forrigeStreaming, setForrigeStreaming] = useState(streaming)
+  //
+  // MÅLT 20/11-2026 (Bjørn: «Kan det passe farven forsvinder fra ord
+  // animationen efter hoveds fold?»): kanten fulgte `streaming`, som bliver
+  // falsk ved `message_stop`. Paceren fortsætter bagefter — `usePacedBlocks`
+  // har `active = live || harVaeretLive`, og den kan indhente ~900 tegn på
+  // ~1 s. Halen døde derfor 500 ms inde i udrulningen, og de sidste ord
+  // landede uden ankomstfarve. `hale` bærer den ægte tilstand: ruller teksten?
+  const [forrigeHale, setForrigeHale] = useState(hale)
   const [afvikler, setAfvikler] = useState(false)
-  if (forrigeStreaming !== streaming) {
-    setForrigeStreaming(streaming)
-    setAfvikler(forrigeStreaming && !streaming)
+  if (forrigeHale !== hale) {
+    setForrigeHale(hale)
+    setAfvikler(forrigeHale && !hale)
   }
   useEffect(() => {
     if (!afvikler) return
     const id = setTimeout(() => setAfvikler(false), HALE_AFVIKLING_MS)
     return () => clearTimeout(id)
   }, [afvikler])
-  const levende = streaming || afvikler
+  const levende = hale || afvikler
   const md = useMemo(() => {
     const stabilized = streaming ? stabilizeStreamingMarkdown(text) : text
     return stripToolEchoes(stabilized)

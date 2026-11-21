@@ -118,7 +118,7 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
         beskedId={beskedId} runId={runId} config={config} rundeEtiketter={rundeEtiketter}
         elapsedMs={elapsedMs} tokens={tokens} varighedSekunder={varighedSekunder}
         skjulAktivRunde={skjulAktivRunde} workingStep={workingStep} />
-    : <BlocksRenderer blocks={paced} density={density} streaming={streaming}
+    : <BlocksRenderer blocks={paced} density={density} streaming={streaming} hale={svarRuller}
         rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
         beskedId={beskedId} config={config} />
 }

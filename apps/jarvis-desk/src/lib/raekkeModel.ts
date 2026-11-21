@@ -126,13 +126,40 @@ function erLeverance(b: ContentBlock): boolean {
  * Del en assistent-besked op. Rækkefølgen bevares nøjagtigt — en syntese
  * skal stå mellem de to kald den faktisk stod imellem.
  */
-export function opdel(blokke: readonly ContentBlock[], underArbejde = false): RaekkeOpdeling {
+export function opdel(blokke: readonly ContentBlock[], underArbejde = false, svarLaast = false): RaekkeOpdeling {
   // Skillelinjen: indekset EFTER det sidste vaerktoejskald. Findes der ingen
   // kald, er hele beskeden svar, og arbejdsomraadet forbliver tomt.
   let sidsteKald = -1
   for (let i = 0; i < blokke.length; i++) {
     const b = blokke[i]
     if (b && b.type === 'tool_use') sidsteKald = i
+  }
+
+  // Er svaret BEGYNDT, kan et senere vaerktoejskald ikke goere det til arbejde.
+  //
+  // MÅLT 21/11-2026 (Bjørn: «du kalder en extra runde efter din slut besked og
+  // det forvirre hovede.. og giver de tomme skærme efter foldet og dump»): en
+  // tur der skriver sit svar og DEREFTER kalder et vaerktoej — fx en
+  // hukommelses-skrivning — flyttede skillelinjen frem til det kald. Saa faldt
+  // slutteksten ned i arbejdet, som ligger inde i folden: tom skaerm, og
+  // teksten dumpet bagefter.
+  //
+  // Reglen: naar der ingen tekst er efter det sidste kald, hoerer den tekst der
+  // staar FOER det til svaret — kaldet er en efterhaands-handling, ikke en ny
+  // runde. Vi gaar tilbage kald for kald indtil graensen har tekst efter sig.
+  if (svarLaast && sidsteKald >= 0) {
+    let graense = sidsteKald
+    while (graense >= 0) {
+      const harTekstEfter = blokke.slice(graense + 1)
+        .some((b) => b?.type === 'text' && b.text.trim() !== '')
+      if (harTekstEfter) break
+      let forrige = -1
+      for (let i = 0; i < graense; i++) {
+        if (blokke[i]?.type === 'tool_use') forrige = i
+      }
+      graense = forrige
+    }
+    sidsteKald = graense
   }
 
   const arbejde: ArbejdsElement[] = []

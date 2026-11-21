@@ -514,7 +514,10 @@ function RaekkeTranskriptImpl({
   // snart der kommer tekst efter det, fordi den læser tekst som «svaret er
   // begyndt». For en rundelinje er det forkert — kaldet kan stadig køre, og
   // «Læser app.ts» blev til «Læste app.ts» (målt 15/11-2026).
-  const { arbejde, svar, kald } = opdel(transcriptBlocks, streaming && !finalAnswerStarted)
+  // `finalAnswerStarted` sendes ogsaa som SVAR-LAAS: naar serveren har
+  // bekræftet at svaret er begyndt, maa et senere vaerktoejskald ikke flytte
+  // skillelinjen og goere slutteksten til arbejde (målt 21/11-2026).
+  const { arbejde, svar, kald } = opdel(transcriptBlocks, streaming && !finalAnswerStarted, finalAnswerStarted)
   const billedArbejde = streaming
     ? levendeBilledArbejde(afslutForladteKald(blocks, true).flatMap((b) => b.type === 'tool_use' ? [b] : []))
     : null

@@ -123,6 +123,29 @@ describe('opdel', () => {
     expect(svar).toEqual([fil, tekst('Klar.')])
   })
 
+  it('beholder slutteksten som svar naar et kald kommer EFTER den', () => {
+    // MÅLT 21/11-2026 (Bjørn: «du kalder en extra runde efter din slut besked
+    // og det forvirre hovede.. og giver de tomme skærme efter foldet og dump»).
+    //
+    // Skillelinjen laa efter det SIDSTE værktøjskald — ogsaa et kald der kom
+    // efter svaret var skrevet. Saa faldt slutteksten ned i arbejdet, som
+    // ligger inde i folden: tom skærm, og teksten «dumpet» bagefter.
+    const blocks = [
+      kald('bash'),
+      tekst('Slutteksten som brugeren skal laese.'),
+      kald('remember_this'),
+    ]
+    const { arbejde, svar } = opdel(blocks, false, true)
+    expect(svar).toEqual([tekst('Slutteksten som brugeren skal laese.')])
+    expect(arbejde.map((e) => e.slags)).toEqual(['blok', 'blok'])
+  })
+
+  it('flytter ikke graensen naar svaret IKKE er begyndt', () => {
+    // Uden `svarLaast` er et kald efter teksten stadig et led i arbejdet.
+    const blocks = [kald('bash'), tekst('Næste runde undersøges nu.'), kald('bash')]
+    expect(opdel(blocks, false).svar).toEqual([])
+  })
+
   it('er tom for en tom besked', () => {
     expect(opdel([])).toEqual({ arbejde: [], svar: [], kald: 0, sekunder: 0 })
   })

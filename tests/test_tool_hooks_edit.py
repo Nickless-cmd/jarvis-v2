@@ -187,3 +187,23 @@ def test_ikke_ejer_afvises_403(monkeypatch) -> None:
         routes._kraev_ejer()
 
     assert denied.value.status_code == 403
+
+
+def test_ukendt_felt_og_udeladt_hooks_afvises() -> None:
+    """Et forkert feltnavn må ikke tavst blive en tom konfiguration.
+
+    Målt 22/11-2026: uden ``extra="forbid"`` og et påkrævet ``hooks``
+    ignorerede pydantic det ukendte felt og brugte tomme defaults. En
+    klient der sendte ``{"config": {...}}`` gemte dermed en TOM config —
+    hver regel forsvandt uden en eneste fejlmeddelelse.
+    """
+    from pydantic import ValidationError
+
+    from apps.api.jarvis_api.routes.tool_hooks import HooksConfigBody
+
+    with pytest.raises(ValidationError):
+        HooksConfigBody.model_validate({"config": {"hooks": [{"name": "a", "match": "."}]}})
+
+    with pytest.raises(ValidationError):
+        HooksConfigBody.model_validate({"enabled": True})
+

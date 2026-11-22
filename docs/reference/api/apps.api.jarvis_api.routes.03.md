@@ -589,9 +589,9 @@ _Owner-facing read/reload surface for configured shell hooks and their JSONL log
 | function | `get_tool_hook_config` | `()` | Det rå dokument redigeringen arbejder på — med kommandoerne. | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L138) |
 | function | `_kraev_ejer` | `()` | En hook-regel er en shell-kommando på hvert tool-kald — kun ejeren rører den. | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L144) |
 | class | `HookRule` | `` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L158) |
-| class | `HooksConfigBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L167) |
-| function | `put_tool_hooks` | `(body)` | Erstat hook-konfigurationen. Validering sker før filen røres. | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L174) |
-| function | `validate_tool_hooks` | `(body)` | Tør kørsel: svarer hvad der ville fejle, uden at skrive noget. | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L191) |
+| class | `HooksConfigBody` | `` | Body for gem og tør-kørsel. | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L167) |
+| function | `put_tool_hooks` | `(body)` | Erstat hook-konfigurationen. Validering sker før filen røres. | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L185) |
+| function | `validate_tool_hooks` | `(body)` | Tør kørsel: svarer hvad der ville fejle, uden at skrive noget. | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L202) |
 
 ## `apps/api/jarvis_api/routes/tool_router.py`
 _MC observability for tool_router._

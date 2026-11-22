@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from core.services import tool_shell_hooks
 
@@ -165,8 +165,19 @@ class HookRule(BaseModel):
 
 
 class HooksConfigBody(BaseModel):
+    """Body for gem og tør-kørsel.
+
+    ``extra="forbid"`` og et påkrævet ``hooks`` er ikke kosmetik. Målt
+    22/11-2026: uden dem ignorede pydantic et ukendt feltnavn og brugte
+    tomme defaults — så en klient der sendte ``{"config": {...}}`` i stedet
+    for ``{"hooks": [...]}`` gemte en TOM konfiguration og afvæbnede hver
+    regel uden en eneste fejlmeddelelse.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
     enabled: bool = True
-    hooks: list[HookRule] = []
+    hooks: list[HookRule]
     approved: bool = False
 
 

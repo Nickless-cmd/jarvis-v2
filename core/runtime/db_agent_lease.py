@@ -112,6 +112,23 @@ def is_current(*, assignment_id: str, token: int, now: datetime | None = None) -
                 and _parse(row["lease_until"]) > t)
 
 
+def agent_has_live_lease(agent_id: str, *, now: datetime | None = None) -> bool:
+    """Whether an open assignment for ``agent_id`` still has a valid lease.
+
+    Startup recovery must treat the lease as authoritative until it expires,
+    even when the registry's process marker already looks dead. The expiry
+    supervisor owns the later fenced takeover.
+    """
+    row = _conn().execute(
+        "SELECT l.lease_until FROM agent_assignments a "
+        "JOIN agent_leases l ON l.assignment_id=a.assignment_id "
+        "WHERE a.agent_id=? AND a.status IN ('queued','active','waiting') "
+        "AND l.state='held' ORDER BY l.lease_until DESC LIMIT 1",
+        (agent_id,),
+    ).fetchone()
+    return bool(row and _parse(row["lease_until"]) > _now(now))
+
+
 def release(*, assignment_id: str, holder: str, token: int) -> bool:
     conn = _conn()
     cur = conn.execute("UPDATE agent_leases SET state='released' WHERE assignment_id=? AND holder=? "

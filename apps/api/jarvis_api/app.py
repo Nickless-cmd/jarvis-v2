@@ -576,6 +576,13 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("raads-afregning fejlede: %s", _exc)
             try:
+                from core.services.agent_contract_service import resume_after_restart
+                _agent_resume = resume_after_restart()
+                if _agent_resume:
+                    logger.info("contract agent restart recovery: %s", _agent_resume)
+            except Exception as _exc:
+                logger.warning("contract agent restart recovery failed: %s", _exc)
+            try:
                 from core.services.agent_runtime import recover_crashed_agents
                 recovery = recover_crashed_agents()
                 if recovery["recovered"]:

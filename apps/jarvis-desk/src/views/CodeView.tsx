@@ -3,7 +3,7 @@ import { Fragment } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useVoiceConversation } from '../hooks/useVoiceConversation'
-import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff, Bot, Globe, ListTodo, Monitor } from 'lucide-react'
+import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff, Bot, Globe, ListTodo, Monitor, Search } from 'lucide-react'
 import { onPauseLuk, onPauseSvar, withoutPauseAsk } from '../lib/pauseAsk'
 import { useStream } from '../hooks/useStream'
 import { usePermission } from '../hooks/usePermission'
@@ -43,6 +43,8 @@ import { hasHostCapability } from '../lib/host'
 import { ArtifactsPanel } from '../components/panel/ArtifactsPanel'
 import { PlansPanel } from '../components/panel/PlansPanel'
 import { PrPanel } from '../components/panel/PrPanel'
+import { AgentPanel } from '../components/AgentPanel'
+import { UsagesPanel } from '../components/UsagesPanel'
 import { SkinneGreb } from '../components/shell/SkinneGreb'
 import { paaAendringsFokus, visAendring } from '../lib/aendringsFokus'
 import { registrerSkaerm } from '../lib/skaermRegister'
@@ -374,6 +376,8 @@ export function CodeView({
   const [artifactsOpen, setArtifactsOpen] = usePersistedState('jarvis-desk:panel:artifacts', false)
   const [plansOpen, setPlansOpen] = usePersistedState('jarvis-desk:panel:plans', false)
   const [prOpen, setPrOpen] = usePersistedState('jarvis-desk:panel:pr', false)
+  const [agentsOpen, setAgentsOpen] = usePersistedState('jarvis-desk:panel:agents', false)
+  const [usagesOpen, setUsagesOpen] = usePersistedState('jarvis-desk:panel:usages', false)
   // Sideopgaver (8/10-2026) — samme rude som i chatten, samme grund: Bjørn
   // havde intet sted at se dem, og krydset i kortet afskrev dem permanent.
   const [sideOpgaveOpen, setSideOpgaveOpen] = usePersistedState('jarvis-desk:panel:sideopgaver', false)
@@ -1219,6 +1223,8 @@ export function CodeView({
         valg={[
           ...(figurVist !== null ? [{ id: 'figur', navn: 'Jarvis-figuren på skrivebordet', ikon: <Bot size={14} />, aktiv: figurVist, onClick: () => saetFigur(!figurVist) }] : []),
           { id: 'sideopgaver', navn: 'Side-opgaver', ikon: <ListTodo size={14} />, aktiv: sideOpgaveOpen, onClick: () => setSideOpgaveOpen((o) => !o) },
+          { id: 'agenter', navn: 'Agenter', ikon: <Bot size={14} />, aktiv: agentsOpen, onClick: () => setAgentsOpen((o) => !o) },
+          { id: 'usages', navn: 'Usages', ikon: <Search size={14} />, aktiv: usagesOpen, onClick: () => setUsagesOpen((o) => !o) },
           { id: 'filer', navn: 'Filer', ikon: <FolderTree size={14} />, aktiv: filesOpen, onClick: () => setFilesOpen((o) => !o) },
           { id: 'preview', navn: 'Preview', ikon: <PanelRight size={14} />, aktiv: panel.open, onClick: panel.toggle },
         ]}
@@ -1255,7 +1261,7 @@ export function CodeView({
     </div>
   )
 
-  const skinneAaben = jobsOpen || changesOpen || browserOpen || desktopOpen || artifactsOpen || plansOpen || prOpen || sideOpgaveOpen
+  const skinneAaben = jobsOpen || changesOpen || browserOpen || desktopOpen || artifactsOpen || plansOpen || prOpen || agentsOpen || usagesOpen || sideOpgaveOpen
   // Miljø-feltet og ruderne deler ÉN højre-stak: feltet øverst, ruden under.
   // Før skjulte hver rude feltet, så de to aldrig stod sammen — Bjørn
   // 3/10-2026: «så skal de 3 paneler kunne vises under miljøfeltet». Filer og
@@ -1360,6 +1366,18 @@ export function CodeView({
         {artifactsOpen && <ArtifactsPanel onOpenCode={() => {}} onClose={() => setArtifactsOpen(false)} />}
         {plansOpen && <PlansPanel config={config} onClose={() => setPlansOpen(false)} />}
         {prOpen && <PrPanel config={config} onClose={() => setPrOpen(false)} />}
+        {agentsOpen && <AgentPanel config={config} canMessage={isOwner} onClose={() => setAgentsOpen(false)} />}
+        {usagesOpen && (
+          <UsagesPanel
+            tools={environmentEvidence.tools}
+            onOpenFile={(path) => {
+              setFilesOpen(true)
+              setHighlightPath(' ')
+              requestAnimationFrame(() => setHighlightPath(path))
+            }}
+            onClose={() => setUsagesOpen(false)}
+          />
+        )}
       </div>
   ) : null
 

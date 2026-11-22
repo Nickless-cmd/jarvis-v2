@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowUp, GitBranch, Loader2, Minus, Plus, RefreshCw } from 'lucide-react'
+import { ArrowUp, GitBranch, GitPullRequest, Loader2, Minus, Plus, RefreshCw } from 'lucide-react'
 import type { ApiConfig } from '../../lib/api'
 import { opretWorktree } from '../../lib/gitWorkspace'
 import {
@@ -9,6 +9,8 @@ import {
   type GitCommitPost, type GitFil, type GitStatusPanel, type GitWorktree, type Maal,
 } from '../../lib/gitPanel'
 import { BranchVaelger } from '../code/BranchVaelger'
+import { CI_NAVN, hentCiStatus, opretPr, type CiStatus } from '../../lib/gitPr'
+import '../../styles/kode-flader.css'
 
 type Sektion = 'staged' | 'aendret' | 'nye' | 'konflikt'
 const SEKTION_TITEL: Record<Sektion, string> = {
@@ -42,6 +44,10 @@ export function GitPanel({
   const [log, setLog] = useState<GitCommitPost[]>([])
   const [trær, setTrær] = useState<GitWorktree[]>([])
   const [nytTrae, setNytTrae] = useState('')
+  const [bekraeftPr, setBekraeftPr] = useState(false)
+  const [prUrl, setPrUrl] = useState('')
+  const [ci, setCi] = useState<CiStatus | null>(null)
+  const [ciFejl, setCiFejl] = useState('')
 
   const opdater = useCallback(async () => {
     try {
@@ -61,6 +67,17 @@ export function GitPanel({
   }, [config, maal])
 
   useEffect(() => { void opdater() }, [opdater])
+
+  // CI-status for den aktuelle branch. Fejl vises (ikke tavst) — ruten ejes af backend.
+  const branchNavn = status?.ok ? status.branch : ''
+  useEffect(() => {
+    if (!branchNavn) { setCi(null); setCiFejl(''); return }
+    let annulleret = false
+    hentCiStatus(config, maal, branchNavn)
+      .then((c) => { if (!annulleret) { setCi(c); setCiFejl(c.ok ? '' : (c.error || 'CI-status utilgængelig')) } })
+      .catch((e) => { if (!annulleret) { setCi(null); setCiFejl(fejlTekst(e, 'Kunne ikke hente CI-status')) } })
+    return () => { annulleret = true }
+  }, [config, maal, branchNavn, status])
 
   // Diff for den valgte fil. Forsvinder filen fra listen (fx efter commit),
   // nulstilles valget i stedet for at vise en diff der ikke længere findes.
@@ -116,6 +133,17 @@ export function GitPanel({
     setBekraeftPush(false)
     const r = await kør('push', () => pushBranch(config, maal))
     if (r?.ok) setInfo('Pushet ✓')
+  }
+
+  const pr = async () => {
+    setBekraeftPr(false)
+    let url = ''
+    const r = await kør('pr', async () => {
+      const svar = await opretPr(config, maal, '')
+      url = svar.url
+      return { ok: svar.ok, error: svar.error }
+    })
+    if (r?.ok) { setPrUrl(url); setInfo(url ? 'PR oprettet ✓' : 'PR oprettet ✓ (ingen URL returneret)') }
   }
 
   const opret = async () => {
@@ -213,12 +241,37 @@ export function GitPanel({
             {arbejder === 'push' ? <Loader2 size={12} className="spin" /> : <ArrowUp size={12} />} Push
           </button>
         )}
+        {bekraeftPr ? (
+          <span className="gitpanel-bekraeft">
+            Opret PR fra {status.branch}?
+            <button type="button" className="gitpanel-lille" onClick={() => void pr()}>Ja, opret</button>
+            <button type="button" className="gitpanel-lille" onClick={() => setBekraeftPr(false)}>Annullér</button>
+          </span>
+        ) : (
+          <button type="button" className="gitpanel-knap" disabled={!!arbejder || !status.ok || status.detached || !status.branch}
+            title="Opret pull request fra den aktuelle branch (committer, pusher og opretter PR)"
+            onClick={() => setBekraeftPr(true)}>
+            {arbejder === 'pr' ? <Loader2 size={12} className="spin" /> : <GitPullRequest size={12} />} Opret PR
+          </button>
+        )}
         <button type="button" className="gitpanel-ikon" title="Opdatér" aria-label="Opdatér git-status"
           disabled={!!arbejder} onClick={() => void opdater()}>
           <RefreshCw size={12} />
         </button>
       </div>
 
+      {status.ok && (ci || ciFejl || prUrl) && (
+        <div className="gitpanel-pr gitpanel-ci" role="status">
+          {ci && <span className={`ci-${ci.state}`}>{CI_NAVN[ci.state]}</span>}
+          {ci?.checks.map((c) => (
+            <span key={c.name} className={`ci-${c.state}`} title={c.state}>
+              {c.url ? <a href={c.url} target="_blank" rel="noreferrer">{c.name}</a> : c.name}
+            </span>
+          ))}
+          {ciFejl && <span className="gitpanel-hint">CI: {ciFejl}</span>}
+          {prUrl && <a href={prUrl} target="_blank" rel="noreferrer">Åbn PR</a>}
+        </div>
+      )}
       {fejl && <div className="gitpanel-fejl" role="alert">{fejl}</div>}
       {info && !fejl && <div className="gitpanel-info" role="status">{info}</div>}
 

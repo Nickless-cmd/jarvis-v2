@@ -43,13 +43,52 @@ def _parse(ts: Any) -> datetime | None:
         return None
 
 
+#: Tik-scoped cache af event-stroemmen (22/11-2026).
+#:
+#: `event_bus.recent()` laver en fuld DB-forespoergsel (ORDER BY id DESC LIMIT
+#: 3000). Evaluatorerne hentede de SAMME events for HVER hypotese: maalt 150
+#: hypoteser = 147,9 s, altsaa ~1 s pr. evaluator, naesten alt brugt paa
+#: identiske laesninger. Med cachen er der ÉN laesning pr. tik.
+_evt_cache: list[dict[str, Any]] | None = None
+_evt_cache_limit = 0
+
+
+def _hent_events(limit: int) -> list[dict[str, Any]]:
+    """Event-stroemmen. Cachen fyldes KUN af tikken — aldrig af dette kald.
+
+    Maalt 22/11-2026: uden den graense arvede en direkte kaldt evaluator den
+    foregaaende kalds stroem, og testen for «ingen lift» fik «lift».
+    """
+    if _evt_cache is not None and _evt_cache_limit >= limit:
+        return _evt_cache
+    from core.eventbus.bus import event_bus
+
+    return event_bus.recent(limit=int(limit))
+
+
+def _fyld_evt_cache() -> None:
+    """Forudlaes event-stroemmen ÉN gang for tikken."""
+    global _evt_cache, _evt_cache_limit
+    try:
+        from core.eventbus.bus import event_bus
+
+        _evt_cache = event_bus.recent(limit=int(_WINDOW))
+        _evt_cache_limit = int(_WINDOW)
+    except Exception:  # en stroem der ikke kan laeses skal ikke vaelte tikken
+        _evt_cache, _evt_cache_limit = None, 0
+
+
+def _nulstil_evt_cache() -> None:
+    global _evt_cache, _evt_cache_limit
+    _evt_cache, _evt_cache_limit = None, 0
+
+
 def test_causal_hypothesis(x_fam: str, y_fam: str, *, window: int = _WINDOW,
                            follow_s: int = _FOLLOW_S) -> dict[str, Any] | None:
     """Betinget rate P(Y følger X inden for follow_s) vs. baseline P(Y overhovedet). Self-safe.
     Returnerer None ved for lidt data (ingen falsk resolution)."""
     try:
-        from core.eventbus.bus import event_bus
-        rows = event_bus.recent(limit=int(window))
+        rows = _hent_events(int(window))
     except Exception:
         return None
     evs = []
@@ -634,6 +673,7 @@ def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
     sample. OBSERVE-ONLY. Self-safe."""
     from core.services import central_hypothesis_generator as gen
     gen.ensure_schema()
+    _fyld_evt_cache()
     tested, supported, contradicted = 0, 0, 0
     # `skipped` var ÉT tal for to helt forskellige ting: hypoteser der ALDRIG kan testes
     # (ingen evaluator — strukturel gæld) og hypoteser der ikke KUNNE måles lige nu

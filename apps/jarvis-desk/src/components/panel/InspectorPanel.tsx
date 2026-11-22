@@ -4,6 +4,7 @@ import type { InspectorTarget } from '../../lib/inspectorTargets'
 import { lookupTool } from '../../lib/toolRegistry'
 import { ArtifactInspectorBody } from './ArtifactPanel'
 import { AgentInspector } from './AgentInspector'
+import { CanvasPanel } from '../CanvasPanel'
 import { DokPreview } from './DokPreview'
 import { FilPreview } from './FilPreview'
 import { SourceInspector } from './SourceInspector'
@@ -24,6 +25,7 @@ function meta(target: InspectorTarget | null) {
   if (target.type === 'agent') return { title: target.agent.role || target.agent.goal || target.agent.agentId, Icon: Bot }
   if (target.type === 'source') return { title: target.source.domaene, Icon: Globe }
   if (target.type === 'file') return { title: target.file.navn, Icon: FileText }
+  if (target.type === 'canvas') return { title: target.canvas.titel, Icon: FileText }
   if (target.type === 'dok') return { title: lookupTool(target.dok.vaerktoej).label, Icon: Table2 }
   return { title: lookupTool(target.tool.name).label, Icon: Wrench }
 }
@@ -70,6 +72,7 @@ export function InspectorPanel({
         : <div className="artifact-body artifact-empty">Agentdetaljen kræver forbindelse til serveren.</div>)}
       {target?.type === 'file' && <FilPreview fil={target.file} config={config} />}
       {target?.type === 'dok' && <DokPreview dok={target.dok} />}
+      {target?.type === 'canvas' && <CanvasPanel key={target.canvas.titel} canvas={target.canvas} />}
       {!target && <div className="artifact-body artifact-empty">Intet at vise endnu.</div>}
     </div>
   )

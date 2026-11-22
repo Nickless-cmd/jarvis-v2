@@ -28,6 +28,7 @@ import { diffPar } from '../../lib/diffStat'
 import { hentAgentKald, agentIdFra, type AgentKald } from '../../lib/agentKald'
 import { fetchBlobWithAuth, type ApiConfig } from '../../lib/api'
 import { KlikbartBillede } from './BilledLightbox'
+import { AttachmentBlock } from './AttachmentBlock'
 import { kommandoEmne } from '../../lib/toolRound'
 
 export type Familie = 'terminal' | 'diff' | 'fil' | 'skriv' | 'liste' | 'web' | 'spoergsmaal' | 'billede' | 'opgave' | 'fald'
@@ -1003,6 +1004,28 @@ export function Underagent({
   )
 }
 
+/** Download-adressen i et `publish_file`-svar — eller null.
+ *
+ *  Kun en adresse under `/files/` tæller: det er den eneste serveren kan
+ *  udstede et signeret link til, og en fremmed URL i et tool-svar skal ikke
+ *  blive et klikbart link i boblen. Absolutte URL'er gøres til stien. */
+export function udgivetFil(værdi: unknown): { url: string; filename: string } | null {
+  if (!objekt(værdi)) return null
+  for (const k of ['url', 'download_url', 'file_url']) {
+    const raa = streng(værdi[k]).trim()
+    if (!raa) continue
+    let sti = raa
+    if (/^https?:\/\//i.test(raa)) {
+      try { const u = new URL(raa); sti = u.pathname + u.search } catch { continue }
+    }
+    if (!sti.startsWith('/files/')) continue
+    const navn = streng(værdi.filename) || streng(værdi.name)
+      || decodeURIComponent(sti.slice('/files/'.length).split('?')[0] || '')
+    return { url: sti, filename: navn || 'fil' }
+  }
+  return null
+}
+
 /** Vælg krop ud fra familie. Én indgang, så rækken ikke kender formerne. */
 export function kropFor(
   navn: string,
@@ -1045,6 +1068,13 @@ export function kropFor(
   if (!terminalMedOutput && (fejl || fejltekst || ['error', 'blocked', 'approval_needed', 'guard_blocked'].includes(streng(ramme?.status)))) {
     const besked = fejltekst || streng(ramme?.message) || foersteLinje(ud)
     return <Resultat tekst={besked || 'The tool could not complete'} ind={ind} ud={result || ''} />
+  }
+
+  // `publish_file` med en download-URL → klikbart fil-link (AttachmentBlock
+  // henter med auth / signeret link). Uden URL falder den til den gamle krop.
+  if (navn === 'publish_file') {
+    const fil = udgivetFil(værdi)
+    if (fil) return <AttachmentBlock block={{ type: 'file', filename: fil.filename, url: fil.url }} />
   }
 
   if (familie === 'terminal') {

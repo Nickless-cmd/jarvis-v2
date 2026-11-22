@@ -37,6 +37,8 @@ export function UiPanelWatcher({
   const busy = useRef(false)
   const openRef = useRef(panel.open_)
   openRef.current = panel.open_
+  const openTargetRef = useRef(panel.openTarget)
+  openTargetRef.current = panel.openTarget
   const closeRef = useRef(panel.close)
   closeRef.current = panel.close
 
@@ -75,6 +77,15 @@ export function UiPanelWatcher({
                 ? { kind: 'file', title: fp.split('/').pop() || fp, filePath: fp }
                 : { kind: 'markdown', title: 'Jarvis åbnede et panel', content: fp },
             )
+            await ackUiPanel(config, req.id)
+            continue
+          }
+
+          // canvas — Jarvis lægger et redigérbart dokument i sidepanelet.
+          // `detail` er dokumentets tekst; `scope` ignoreres.
+          if (req.panel === 'canvas') {
+            setSurface('chat')
+            openTargetRef.current({ type: 'canvas', canvas: { titel: 'Canvas', tekst: req.detail || '' } })
             await ackUiPanel(config, req.id)
             continue
           }

@@ -5845,3 +5845,48 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
 .transcript-aeldre-antal {
   font-variant-numeric: tabular-nums;
 }
+
+/* Projekt-vælger i komposeren (ProjektVaelger.tsx). */
+.projekt-vaelger { position: relative; display: flex; align-items: center; gap: 8px; margin: 4px 0 0; }
+.projekt-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px;
+  border: 1px solid var(--overlay-line); border-radius: var(--radius-lg);
+  background: transparent; color: var(--fg-2); font: inherit; font-size: 12px; cursor: pointer;
+}
+.projekt-chip:hover, .projekt-chip.bundet { color: var(--fg-1); border-color: var(--fg-3); }
+.projekt-menu {
+  position: absolute; bottom: 100%; left: 0; z-index: 20; min-width: 16rem; max-height: 18rem; overflow-y: auto;
+  margin-bottom: 6px; padding: 4px;
+  background: var(--overlay-bg); border: 1px solid var(--overlay-line);
+  border-radius: var(--radius-lg); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+}
+.projekt-rk {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 6px 9px; border: none;
+  border-radius: var(--radius-sm); background: transparent; color: var(--fg-1);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.projekt-rk:hover, .projekt-rk.valgt { background: var(--bg-3); }
+.projekt-rk.valgt { box-shadow: inset 2px 0 0 var(--accent); }
+.projekt-navn { font-weight: 600; }
+.projekt-besk, .projekt-fil, .projekt-tom, .projekt-materiale-hoved { color: var(--fg-3); font-size: 0.85em; }
+.projekt-tom, .projekt-fil, .projekt-materiale-hoved { padding: 4px 9px; }
+.projekt-materiale { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--overlay-line); }
+.projekt-fejl { color: var(--err); font-size: 12px; padding: 4px 9px; }
+
+/* Canvas-panelet (CanvasPanel.tsx) — redigérbart dokument i sidepanelet. */
+.canvas-flade { display: flex; flex-direction: column; gap: 10px; }
+.canvas-flade > * { max-width: none; }
+.canvas-tekst {
+  flex: 1; min-height: 50vh; width: 100%; resize: none; padding: 12px;
+  background: var(--bg-2); color: var(--fg-1); border: 1px solid var(--overlay-line);
+  border-radius: var(--radius-md); font: inherit; line-height: 1.6;
+}
+.canvas-bund { display: flex; align-items: center; gap: 10px; }
+.canvas-send {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px;
+  border: 1px solid var(--accent); border-radius: var(--radius-md);
+  background: transparent; color: var(--fg-1); font: inherit; cursor: pointer;
+}
+.canvas-send:disabled { opacity: 0.4; cursor: default; }
+.canvas-status { color: var(--fg-3); font-size: 12px; }
+.canvas-fejl { color: var(--err); }

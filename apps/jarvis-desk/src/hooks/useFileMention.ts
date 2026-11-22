@@ -56,13 +56,14 @@ export function useFileMention(config: ApiConfig | undefined, aktiveret: boolean
     setValgt((v) => (forslag.length === 0 ? 0 : (v + d + forslag.length) % forslag.length))
   }, [forslag.length])
 
-  /** Indsætter det valgte forslag. Returnerer null hvis intet er åbent. */
+  /** Indsætter det valgte forslag. Returnerer null hvis intet er åbent.
+   *  `fil` er den valgte post, så komposeren kan sende den som struktureret reference. */
   const vælg = useCallback((tekst: string, indeks = valgt) => {
     if (!mention) return null
     const f = forslag[indeks]
     if (!f) return null
     setMention(null)
-    return indsætMention(tekst, mention, f.rel)
+    return { ...indsætMention(tekst, mention, f.rel), fil: f }
   }, [mention, forslag, valgt])
 
   return { åben, forslag, valgt, opdater, luk, flyt, vælg }

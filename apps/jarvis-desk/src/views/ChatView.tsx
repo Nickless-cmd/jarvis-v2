@@ -3,7 +3,8 @@ import { Fragment, useCallback } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useChatScroll } from '../lib/useChatScroll'
-import { PanelRight, AudioWaveform, Bot, Globe, ListTodo, Monitor } from 'lucide-react'
+import { onCanvasSend, canvasBesked } from '../lib/canvasBus'
+import { PanelRight, FileEdit, AudioWaveform, Bot, Globe, ListTodo, Monitor } from 'lucide-react'
 import { DesktopPanel } from '../components/desktop/DesktopPanel'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { SideOpgaveListe } from '../components/shell/SideOpgaveListe'
@@ -517,6 +518,8 @@ export function ChatView({
       sessionId: sid,
       approvalMode: opts.permission,
       attachmentIds: opts.attachments.map((a) => a.id),
+      fileRefs: opts.mentions,
+      projectId: opts.projectId,
       model: opts.model,
       providerChoice: opts.providerChoice,
       thinkingMode: opts.thinkingMode,
@@ -676,6 +679,18 @@ export function ChatView({
     }
     koe.sendEllerKoe(text, opts)
   }
+
+  // Canvas-panelet sender sin rettede tekst tilbage som en almindelig besked.
+  // Lytteren går via en ref, så handleSend (genskabt hver render) altid er den friske.
+  const handleSendRef = useRef(handleSend)
+  handleSendRef.current = handleSend
+  useEffect(() => onCanvasSend((c) => {
+    const prefs = readModelPrefs()
+    handleSendRef.current(canvasBesked(c), {
+      planMode: false, permission, attachments: [],
+      model: prefs.model, providerChoice: prefs.providerChoice, thinkingMode: readThinkingMode(),
+    })
+  }), [permission])
 
   // MAALT 11/11-2026: sessioner vokser til 13.165 beskeder (13 mio. tegn), og
   // alle fem afledninger nedenfor koerte paa HELE listen ved hvert tastetryk —
@@ -933,6 +948,7 @@ export function ChatView({
         visKontekstRing={false}
         isOwner={auth?.role === 'owner'}
         onOpenPrivacy={onOpenPrivacy}
+        visProjekter
         indsaet={tilbage.indsaet}
         draftKey="chat"
       />
@@ -1185,6 +1201,7 @@ export function ChatView({
             ...(voice.supported ? [{ id: 'stemme', navn: 'Samtale med Jarvis (stemme)', ikon: <AudioWaveform size={14} />, onClick: voice.enter }] : []),
             ...(figurVist !== null ? [{ id: 'figur', navn: 'Jarvis-figuren på skrivebordet', ikon: <Bot size={14} />, aktiv: figurVist, onClick: () => saetFigur(!figurVist) }] : []),
             { id: 'sideopgaver', navn: 'Side-opgaver', ikon: <ListTodo size={14} />, aktiv: sideOpgaveOpen, onClick: () => setSideOpgaveOpen((o) => !o) },
+            { id: 'canvas', navn: 'Canvas (redigérbart dokument)', ikon: <FileEdit size={14} />, onClick: () => panel.openTarget({ type: 'canvas', canvas: { titel: 'Canvas', tekst: '' } }) },
             { id: 'panel', navn: 'Panel', ikon: <PanelRight size={14} />, aktiv: panel.open, onClick: panel.toggle },
           ]}
         />

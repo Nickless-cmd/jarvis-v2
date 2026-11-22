@@ -14,6 +14,7 @@ import {
   pasteLineCount, pasteStoreEnabled, savePaste, shouldExternalizePaste,
 } from '../../lib/pasteStore'
 import { usePermission } from '../../hooks/usePermission'
+import { ProjektVaelger } from '../ProjektVaelger'
 import { useFileMention } from '../../hooks/useFileMention'
 import { useForslag } from '../../hooks/useForslag'
 import { meldValg, type Forslag, type Valg } from '../../lib/forslag'
@@ -36,8 +37,19 @@ const THINK_HJAELP: Record<ThinkingMode, string> = {
   deep: 'Taenk grundigt igennem foer svaret — langsomst.',
 }
 
+/** En @-nævnt fil som STRUKTURERET reference. Serveren resolver `path` selv;
+ *  `rel` er det brugeren ser i teksten. Rå `@rel` i beskeden er kun visning. */
+export interface FilMention {
+  path: string
+  rel: string
+}
+
 export interface ComposerSendOpts {
   planMode: boolean
+  /** Filer valgt via @ og stadig nævnt i den sendte tekst. Tom/udeladt = ingen. */
+  mentions?: FilMention[]
+  /** Projektet sessionen er bundet til (varig kontekst). */
+  projectId?: string | null
   permission: 'ask' | 'trust'
   attachments: SentAttachment[]
   /** Rolle-bevidst routing: konkret model-id + provider-valg (owner-only). */
@@ -152,6 +164,7 @@ export function Composer({
   indsaet,
   draftKey = 'chat',
   footerSlot,
+  visProjekter = false,
 }: {
   streaming: boolean
   onSend: (text: string, opts: ComposerSendOpts) => void
@@ -217,6 +230,9 @@ export function Composer({
    * handling, og hører ved foden hvor resten af «om appen» står.
    */
   footerSlot?: ReactNode
+  /** Vis projekt-vælgeren (binder sessionen til et projekt). Grenen bor HER, så
+   *  en flade tænder den med én prop i stedet for at bygge sin egen. */
+  visProjekter?: boolean
   /**
    * Hvilken flade kladden hører til (chat / code / cowork). Teksten gemmes i
    * localStorage under denne nøgle, så den overlever mode-skift og genstart.
@@ -230,6 +246,9 @@ export function Composer({
   const persistPrivateText = isOwner || Boolean((window as unknown as { jarvisDesk?: unknown }).jarvisDesk)
   const [text, setText, rydText] = usePersistedState<string>(draftKeyFor(draftKey), '', persistPrivateText)
   const memberHistory = useRef<string[]>([])
+  // rel → absolut sti for filer valgt via @. Ref, ikke state: den læses kun ved send.
+  const [projektId, setProjektId] = useState<string | null>(null)
+  const mentionsRef = useRef<Map<string, string>>(new Map())
   useEffect(() => {
     if (indsaet) setText(indsaet.tekst)
   }, [indsaet?.n]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -483,7 +502,14 @@ export function Composer({
     const readyAttachments = ready.map((a) => ({ id: a.id as string, src: a.src, name: a.name, isImage: a.isImage }))
     const pastes = pendingPastes
 
+    // Kun mentions der STADIG står i teksten — sletter brugeren «@fil», skal
+    // referencen ikke med. Ordgrænse-tjek så @a.py ikke matcher @a.pyc.
+    const mentions: FilMention[] = [...mentionsRef.current.entries()]
+      .filter(([rel]) => new RegExp(`(^|\\s)@${rel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`).test(t))
+      .map(([rel, path]) => ({ rel, path }))
+
     const emit = (finalText: string) => {
+      mentionsRef.current = new Map()
       // RÆKKEFØLGEN ER BÆRENDE (målt 28/10-2026): kladden skal tømmes FØR
       // `onSend`, ikke efter. `onSend` kan skifte samtale, og så unmountes
       // denne Composer i samme cyklus — og `usePersistedState`s unmount-effekt
@@ -498,6 +524,8 @@ export function Composer({
         planMode,
         permission,
         attachments: readyAttachments,
+        mentions,
+        projectId: projektId,
         model: sendModel,
         providerChoice: sendProvider,
         thinkingMode: thinkMode,
@@ -523,7 +551,7 @@ export function Composer({
       const finalText = t ? `${t}\n\n${suffix}` : suffix
       emit(finalText)
     })
-  }, [text, attachments, pendingPastes, config, isOwner, persistPrivateText, selModel, memberTier, provChoice, planMode, permission, thinkMode, onSend])
+  }, [text, attachments, pendingPastes, config, isOwner, persistPrivateText, selModel, memberTier, provChoice, planMode, permission, thinkMode, projektId, onSend])
 
   // Anden halvdel af vent-og-send: når den sidste upload har fået svar (eller
   // fejlet), sendes den besked der blev holdt tilbage. `doSend` lukker over de
@@ -639,6 +667,7 @@ export function Composer({
         const r = filnavne.vælg(e.currentTarget.value)
         if (r) {
           const ta = e.currentTarget
+          mentionsRef.current.set(r.fil.rel, r.fil.path)
           setText(r.tekst)
           requestAnimationFrame(() => {
             try { ta.selectionStart = ta.selectionEnd = r.caret } catch { /* noop */ }
@@ -781,7 +810,7 @@ export function Composer({
               onMouseDown={(e) => {
                 e.preventDefault()  // behold fokus i feltet
                 const r = filnavne.vælg(text, i)
-                if (r) { setText(r.tekst); ref.current?.focus() }
+                if (r) { mentionsRef.current.set(r.fil.rel, r.fil.path); setText(r.tekst); ref.current?.focus() }
               }}
             >
               <span className="mention-navn">{f.rel.slice(f.rel.lastIndexOf('/') + 1)}</span>
@@ -1033,6 +1062,9 @@ export function Composer({
         <> · <button type="button" className="composer-privacy-link" onClick={onOpenPrivacy}>Privatliv &amp; cookies</button></>
       )}
     </p>
+    {visProjekter && config && (
+      <ProjektVaelger config={config} sessionId={sessionId} getSessionId={getSessionId} onChange={setProjektId} />
+    )}
     {footerSlot && <div className="composer-footer-slot">{footerSlot}</div>}
     {sideDialog !== null && (
       <SideOpgaveDialog

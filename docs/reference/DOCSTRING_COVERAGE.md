@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10382/18960 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10384/18962 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -38,7 +38,7 @@ Generated from source. 10382/18960 functions/methods documented (54%). The list 
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 10 | 11 | 90% |
-| `scripts` | 347 | 697 | 49% |
+| `scripts` | 349 | 699 | 49% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -2498,7 +2498,7 @@ Generated from source. 10382/18960 functions/methods documented (54%). The list 
 - `scripts/commit_with_attribution.py` :: `main` (L58)
 - `scripts/cutoff_detector.py` :: `load_seen` (L114)
 - `scripts/cutoff_detector.py` :: `log` (L108)
-- `scripts/cutoff_detector.py` :: `main` (L478)
+- `scripts/cutoff_detector.py` :: `main` (L547)
 - `scripts/cutoff_detector.py` :: `save_seen` (L121)
 - `scripts/db_backup_daglig.py` :: `main` (L157)
 - `scripts/db_decomposition_map.py` :: `comp_of` (L55)

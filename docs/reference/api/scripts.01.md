@@ -260,7 +260,9 @@ _Detektor for ture der ender uden assistent-svar ("tavse cutoffs")._
 | function | `run_startet_for_session` | `(con, sid, efter_ts)` | Blev der overhovedet STARTET et run for denne session efter beskeden? | [src](../../../scripts/cutoff_detector.py#L388) |
 | function | `_rutine_run_startet` | `(con, sid, efter_ts)` | Blev der startet en RUTINEKOERSEL der svarer til beskeden? | [src](../../../scripts/cutoff_detector.py#L426) |
 | function | `beskeder_for_session` | `(con, sid, limit=…)` | Nyeste besked foerst — med INSERTIONSRAEKKEFOELGE som tie-break. | [src](../../../scripts/cutoff_detector.py#L460) |
-| function | `main` | `()` | — | [src](../../../scripts/cutoff_detector.py#L478) |
+| function | `_kort_udfald` | `(con, message_id)` | Et godkendelses-korts udfald — ``pending`` naar det ikke kan afgoeres. | [src](../../../scripts/cutoff_detector.py#L478) |
+| function | `svar_foer_sene_kort` | `(con, rows)` | Svarede turen — og kom de nyeste raekker fra godkendelses-afviklingen? | [src](../../../scripts/cutoff_detector.py#L508) |
+| function | `main` | `()` | — | [src](../../../scripts/cutoff_detector.py#L547) |
 
 ## `scripts/db_backup_daglig.py`
 _Daglig konsistent backup af den LEVENDE jarvis.db + rotation._

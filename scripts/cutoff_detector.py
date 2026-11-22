@@ -475,6 +475,75 @@ def beskeder_for_session(con, sid: str, limit: int = 60) -> list:
         (sid, limit)).fetchall()
 
 
+def _kort_udfald(con, message_id: str) -> str:
+    """Et godkendelses-korts udfald — ``pending`` naar det ikke kan afgoeres.
+
+    Maalt 22/11-2026: raekken baerer ``status`` i ``content_json``
+    (``approved``/``denied``/``pending``). Kan feltet ikke laeses — fx i en
+    test-fixture uden kolonnen — behandles kortet som ``pending``. Tvivl maa
+    ikke goere en tavs tur til en besvaret tur.
+    """
+    try:
+        row = con.execute(
+            "SELECT content_json FROM chat_messages WHERE message_id = ?",
+            (message_id,)).fetchone()
+    except Exception:      # skema uden content_json: svar ikke skarpere end maalt
+        return "pending"
+    if row is None or not row["content_json"]:
+        return "pending"
+    try:
+        blokke = json.loads(row["content_json"])
+    except Exception:      # ulaesbar JSON: svar «ved ikke» frem for at gætte et udfald
+        return "pending"
+    if not isinstance(blokke, list):
+        return "pending"
+    for blok in blokke:
+        if isinstance(blok, dict) and blok.get("type") == "approval":
+            status = str(blok.get("status") or "").strip()
+            if status:
+                return status
+    return "pending"
+
+
+def svar_foer_sene_kort(con, rows) -> bool:
+    """Svarede turen — og kom de nyeste raekker fra godkendelses-afviklingen?
+
+    Maalt 22/11-2026 (incident 17722): turen svarede kl. 22:28:07 og sluttede
+    paent. Ni minutter senere blev to kort afgjort, og
+    `resolve_pending_approval` skrev `approval_request` + `tool` ind i
+    SAMTALEN — efter svaret. Detektoren kigger paa den NYESTE raekke, saa den
+    skrev «turen endte uden assistent-svar» om en tur der havde svaret.
+
+    Et AFVENTENDE kort er det modsatte tilfaelde: det blev vist MIDT i turen,
+    foer svaret. Det maa ikke springes over — en tur der doede med et aabent
+    kort ER en tavs tur, og fejlen skal blive staaende.
+
+    Det parrede `tool`-svar skrives i samme sekund som kortet; derfor parres
+    de paa tidsstemplet og ikke paa raekkefoelgen alene.
+    """
+    i = 0
+    set_kort = False
+    kort_ts = None
+    while i < len(rows):
+        rolle = str(rows[i]["role"] or "")
+        if rolle == "approval_request":
+            if _kort_udfald(con, str(rows[i]["message_id"])) == "pending":
+                return False
+            set_kort = True
+            kort_ts = til_utc(rows[i]["created_at"])
+            i += 1
+            continue
+        if rolle == "tool" and set_kort:
+            ts = til_utc(rows[i]["created_at"])
+            if kort_ts is not None and ts is not None and abs((ts - kort_ts).total_seconds()) <= 2:
+                i += 1
+                continue
+        break
+    if not set_kort or i >= len(rows):
+        return False
+    return str(rows[i]["role"] or "") == "assistant"
+
+
 def main() -> int:
     if not os.path.exists(DB):
         return 0
@@ -526,6 +595,11 @@ def main() -> int:
                     break
             if svarede:
                 continue  # turen svarede, markoeren kom bagefter
+
+        if svar_foer_sene_kort(con, rows):
+            # Turen svarede, og de nyeste raekker er et AFGJORT kort skrevet af
+            # godkendelses-afviklingen bagefter. Ikke en tavs tur.
+            continue
 
         last_at = til_utc(last["created_at"])
         if last_at is None:

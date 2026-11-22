@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10379/18957 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10382/18960 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -28,7 +28,7 @@ Generated from source. 10379/18957 functions/methods documented (54%). The list 
 | `core.runtime` | 918 | 1635 | 56% |
 | `core.services` | 6970 | 12885 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
-| `core.services.prompt_sections` | 147 | 229 | 64% |
+| `core.services.prompt_sections` | 150 | 232 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 29 | 45 | 64% |
 | `core.skills` | 0 | 0 | 0% |
@@ -1692,10 +1692,10 @@ Generated from source. 10379/18957 functions/methods documented (54%). The list 
 - `core/services/prompt_sections/dead_skills.py` :: `dead_skills_section` (L23)
 - `core/services/prompt_sections/learned_about_user.py` :: `selection_counts` (L184)
 - `core/services/prompt_sections/pattern_counterfactuals.py` :: `invalidate_cache` (L94)
-- `core/services/prompt_sections/transcript_sections.py` :: `chat_session_messages_since_last_compact` (L75)
-- `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages` (L96)
-- `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages_by_user_turns` (L101)
-- `core/services/prompt_sections/transcript_sections.py` :: `visible_session_continuity` (L106)
+- `core/services/prompt_sections/transcript_sections.py` :: `chat_session_messages_since_last_compact` (L154)
+- `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages` (L175)
+- `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages_by_user_turns` (L180)
+- `core/services/prompt_sections/transcript_sections.py` :: `visible_session_continuity` (L185)
 - `core/services/proprioception_metrics.py` :: `build_proprioception_metrics_surface` (L147)
 - `core/services/proprioception_metrics.py` :: `recent_snapshots` (L143)
 - `core/services/proprioception_metrics.py` :: `reset_proprioception_metrics` (L216)

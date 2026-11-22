@@ -141,3 +141,110 @@ def test_begge_samtaleroller_beholder_tid_i_modellens_transskript():
         )
     assert out[0]["content"] == "[2026-10-23 21:58] hej"
     assert out[1]["content"] == "[2026-10-23 21:59] hej igen"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Afgjorte godkendelses-kort i transskriptet (målt 22/11-2026).
+#
+# `approval_request` blev slettet fra prompten som «en UI-række». Men et AFGJORT
+# kort bærer udfaldet, og når det forsvandt, stod det efterfølgende tool-svar
+# tilbage som et svar på ingenting. Målt i samtalen
+# chat-f5a6b0d9630c425fb8e4f6220c5fcb81: to kort blev godkendt 22:37 — 10-15 min
+# efter turen havde svaret — og resultatet landede som bare tool-rækker.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _transskript(history):
+    with patch.object(ts, "chat_session_messages_since_last_compact", return_value=history), \
+         patch("core.services.prompt_contract._get_compact_marker_for_transcript",
+               return_value=None), \
+         patch("core.services.prompt_contract._maybe_auto_compact_session"):
+        return ts._build_structured_transcript_messages("s-appr", limit=60, include=True)
+
+
+def test_afgjort_godkendelse_kommer_med_i_transskriptet():
+    """Et godkendt kort må ikke forsvinde: det forklarer hvorfor tool-svaret er der."""
+    history = [
+        {"id": 1, "role": "user", "content": "kør kommandoen", "user_id": "", "reasoning_content": ""},
+        {"id": 2, "role": "assistant", "content": "Jeg venter på dit svar.", "user_id": "",
+         "reasoning_content": ""},
+        {"id": 3, "role": "approval_request", "content": "Godkendt: bash — ls -la",
+         "user_id": "", "reasoning_content": ""},
+        {"id": 4, "role": "tool", "content": "[tool_result:tool-result-abc] [bash]: fil.txt",
+         "user_id": "", "reasoning_content": ""},
+    ]
+    ud = _transskript(history)
+    tekst = "\n".join(str(m.get("content") or "") for m in ud)
+    assert "Godkendt: bash" in tekst, "det afgjorte kort skal stå i transskriptet"
+    assert "afgjort efter turen" in tekst, "det skal fremgå at afgørelsen faldt efter turen"
+
+
+def test_pending_kort_skjules_stadig():
+    """Et kort der IKKE er afgjort er ren UI — det skal ikke fylde i prompten."""
+    history = [
+        {"id": 1, "role": "user", "content": "kør", "user_id": "", "reasoning_content": ""},
+        {"id": 2, "role": "approval_request", "content": "Godkendelse afventer: bash — ls",
+         "user_id": "", "reasoning_content": ""},
+    ]
+    ud = _transskript(history)
+    tekst = "\n".join(str(m.get("content") or "") for m in ud)
+    assert "Godkendelse afventer" not in tekst
+
+
+def test_afvist_kort_siger_at_handlingen_ikke_skete():
+    history = [
+        {"id": 1, "role": "user", "content": "kør", "user_id": "", "reasoning_content": ""},
+        {"id": 2, "role": "approval_request", "content": "Afvist: bash — rm -rf /tmp/x",
+         "user_id": "", "reasoning_content": ""},
+    ]
+    ud = _transskript(history)
+    tekst = "\n".join(str(m.get("content") or "") for m in ud)
+    assert "Afvist: bash" in tekst
+    assert "blev ikke udført" in tekst
+
+
+def test_ukendt_kortform_skjules_frem_for_at_gaettes():
+    """Kan udfaldet ikke tydes, behandles det som pending — vi påstår intet."""
+    history = [
+        {"id": 1, "role": "user", "content": "kør", "user_id": "", "reasoning_content": ""},
+        {"id": 2, "role": "approval_request", "content": "et eller andet uklart",
+         "user_id": "", "reasoning_content": ""},
+    ]
+    ud = _transskript(history)
+    tekst = "\n".join(str(m.get("content") or "") for m in ud)
+    assert "et eller andet uklart" not in tekst
+
+
+def test_afgjort_kort_uden_tool_svar_skjules():
+    """Et kort hvis resultat den levende tur allerede læste forklarer intet.
+
+    Målt 22/11-2026: 12 af 19 afgjorte kort i én session havde intet tool-svar
+    efter sig. At skrive dem ind ville være 12 linjer støj for nul betydning.
+    """
+    history = [
+        {"id": 1, "role": "user", "content": "kør", "user_id": "", "reasoning_content": ""},
+        {"id": 2, "role": "approval_request", "content": "Godkendt: bash — ls",
+         "user_id": "", "reasoning_content": ""},
+        {"id": 3, "role": "assistant", "content": "Færdig.", "user_id": "",
+         "reasoning_content": ""},
+    ]
+    ud = _transskript(history)
+    tekst = "\n".join(str(m.get("content") or "") for m in ud)
+    assert "Godkendt: bash" not in tekst
+
+
+def test_kort_par_foer_tool_svar_taeller_med():
+    """Kort står ofte parvis (afventer + godkendt) — parret må ikke skjule resultatet."""
+    history = [
+        {"id": 1, "role": "user", "content": "kør", "user_id": "", "reasoning_content": ""},
+        {"id": 2, "role": "approval_request", "content": "Godkendelse afventer: bash — ls",
+         "user_id": "", "reasoning_content": ""},
+        {"id": 3, "role": "approval_request", "content": "Godkendt: bash — ls",
+         "user_id": "", "reasoning_content": ""},
+        {"id": 4, "role": "tool", "content": "[tool_result:tool-result-x] [bash]: fil.txt",
+         "user_id": "", "reasoning_content": ""},
+    ]
+    ud = _transskript(history)
+    tekst = "\n".join(str(m.get("content") or "") for m in ud)
+    assert "Godkendt: bash" in tekst
+    assert "Godkendelse afventer" not in tekst

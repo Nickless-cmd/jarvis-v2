@@ -429,24 +429,27 @@ _Transcript rendering + session compaction for prompts._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_prefix_absolute_transcript_time` | `(content, raw_created_at)` | Prefix one utterance with its immutable Copenhagen wall-clock time. | [src](../../../core/services/prompt_sections/transcript_sections.py#L24) |
-| function | `_tool_results_as_input` | `()` | Skal historiske tool-resultater bæres på USER-siden i stedet for at blive flettet | [src](../../../core/services/prompt_sections/transcript_sections.py#L48) |
-| function | `chat_session_messages_since_last_compact` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L75) |
-| function | `_lifecycle_enabled` | `()` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L80) |
-| function | `_cold_floor_for` | `(session_id)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L88) |
-| function | `recent_chat_session_messages` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L96) |
-| function | `recent_chat_session_messages_by_user_turns` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L101) |
-| function | `visible_session_continuity` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L106) |
-| function | `_visible_session_continuity_instruction` | `()` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L111) |
-| function | `_recent_transcript_section` | `(session_id, *, limit, include)` | Legacy flat-text fallback — used only when structured messages are not viable. | [src](../../../core/services/prompt_sections/transcript_sections.py#L166) |
-| function | `_resolve_speaker_display` | `(user_id)` | Map a chat_messages.user_id (Discord ID, etc.) to et afsender-præfiks med | [src](../../../core/services/prompt_sections/transcript_sections.py#L219) |
-| function | `_build_structured_transcript_messages` | `(session_id, *, limit, include, bivirkninger=…)` | Build structured chat messages from recent transcript. | [src](../../../core/services/prompt_sections/transcript_sections.py#L257) |
-| function | `_round_collapse_enabled` | `()` | Kollaps konsekutive COLD tool-results til ÉT rundesummary. Default OFF. | [src](../../../core/services/prompt_sections/transcript_sections.py#L610) |
-| function | `_tool_name_from_stub` | `(stub)` | Træk tool-navnet ud af en cold-stub. Formatet er | [src](../../../core/services/prompt_sections/transcript_sections.py#L647) |
-| function | `_render_collapsed_round` | `(tool_names)` | Ét deterministisk summary for en sekvens af kollapsede cold-results. | [src](../../../core/services/prompt_sections/transcript_sections.py#L658) |
-| function | `_get_compact_marker_for_transcript` | `(session_id)` | Fetch the most recent compact marker for this session (monkeypatchable). | [src](../../../core/services/prompt_sections/transcript_sections.py#L676) |
-| function | `_make_structured_summariser` | `(focus=…, *, session_id=…)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L719) |
-| function | `_run_session_compaction` | `(session_id, keep_recent, *, low_water_tokens=…, focus=…)` | Baggrundstraaden. Selve arbejdet sker i kompaktering.komprimer_session; | [src](../../../core/services/prompt_sections/transcript_sections.py#L724) |
-| function | `_maybe_auto_compact_session` | `(session_id, current_messages, settings)` | Trigger session compact hvis transcript-tokens overstiger tærsklen — i BAGGRUNDEN. | [src](../../../core/services/prompt_sections/transcript_sections.py#L760) |
+| function | `_approval_udfald` | `(item)` | Hvilket udfald baerer et godkendelses-kort? ``pending`` hvis ukendt. | [src](../../../core/services/prompt_sections/transcript_sections.py#L48) |
+| function | `_approval_udfald_tekst` | `(item)` | Én linje der forklarer HVORFOR et tool-svar ligger i historikken. | [src](../../../core/services/prompt_sections/transcript_sections.py#L89) |
+| function | `_efterfoelges_af_tool` | `(window, index)` | Kommer der et ``tool``-svar umiddelbart efter dette kort? | [src](../../../core/services/prompt_sections/transcript_sections.py#L110) |
+| function | `_tool_results_as_input` | `()` | Skal historiske tool-resultater bæres på USER-siden i stedet for at blive flettet | [src](../../../core/services/prompt_sections/transcript_sections.py#L127) |
+| function | `chat_session_messages_since_last_compact` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L154) |
+| function | `_lifecycle_enabled` | `()` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L159) |
+| function | `_cold_floor_for` | `(session_id)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L167) |
+| function | `recent_chat_session_messages` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L175) |
+| function | `recent_chat_session_messages_by_user_turns` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L180) |
+| function | `visible_session_continuity` | `(*args, **kwargs)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L185) |
+| function | `_visible_session_continuity_instruction` | `()` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L190) |
+| function | `_recent_transcript_section` | `(session_id, *, limit, include)` | Legacy flat-text fallback — used only when structured messages are not viable. | [src](../../../core/services/prompt_sections/transcript_sections.py#L245) |
+| function | `_resolve_speaker_display` | `(user_id)` | Map a chat_messages.user_id (Discord ID, etc.) to et afsender-præfiks med | [src](../../../core/services/prompt_sections/transcript_sections.py#L298) |
+| function | `_build_structured_transcript_messages` | `(session_id, *, limit, include, bivirkninger=…)` | Build structured chat messages from recent transcript. | [src](../../../core/services/prompt_sections/transcript_sections.py#L336) |
+| function | `_round_collapse_enabled` | `()` | Kollaps konsekutive COLD tool-results til ÉT rundesummary. Default OFF. | [src](../../../core/services/prompt_sections/transcript_sections.py#L715) |
+| function | `_tool_name_from_stub` | `(stub)` | Træk tool-navnet ud af en cold-stub. Formatet er | [src](../../../core/services/prompt_sections/transcript_sections.py#L752) |
+| function | `_render_collapsed_round` | `(tool_names)` | Ét deterministisk summary for en sekvens af kollapsede cold-results. | [src](../../../core/services/prompt_sections/transcript_sections.py#L763) |
+| function | `_get_compact_marker_for_transcript` | `(session_id)` | Fetch the most recent compact marker for this session (monkeypatchable). | [src](../../../core/services/prompt_sections/transcript_sections.py#L781) |
+| function | `_make_structured_summariser` | `(focus=…, *, session_id=…)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L824) |
+| function | `_run_session_compaction` | `(session_id, keep_recent, *, low_water_tokens=…, focus=…)` | Baggrundstraaden. Selve arbejdet sker i kompaktering.komprimer_session; | [src](../../../core/services/prompt_sections/transcript_sections.py#L829) |
+| function | `_maybe_auto_compact_session` | `(session_id, current_messages, settings)` | Trigger session compact hvis transcript-tokens overstiger tærsklen — i BAGGRUNDEN. | [src](../../../core/services/prompt_sections/transcript_sections.py#L865) |
 
 ## `core/services/prompt_sections/visible_capability_truth.py`
 _Scope-aware capability truth for visible prompts._

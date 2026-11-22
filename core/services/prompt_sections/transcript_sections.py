@@ -45,6 +45,85 @@ def _prefix_absolute_transcript_time(content: str, raw_created_at: object) -> st
     return f"[{stamp}] {content}"
 
 
+def _approval_udfald(item: dict) -> str:
+    """Hvilket udfald baerer et godkendelses-kort? ``pending`` hvis ukendt.
+
+    ## Hvorfor (22/11-2026)
+
+    `content_json` er en liste af blokke med ``status`` (se
+    `approval_runtime.persist_approval_message`). Ældre rækker kan mangle den —
+    derfor læses teksten som fallback: præfikset står bogstaveligt i `content`
+    («Godkendt:», «Afvist:», «Udløb uden svar:», «Godkendelse afventer:»).
+
+    Ukendt udfald behandles som ``pending``: hellere skjule et kort vi ikke kan
+    tyde end at paastaa et udfald der aldrig blev skrevet.
+    """
+    import json as _json
+
+    raa = item.get("content_json")
+    if raa:
+        try:
+            blokke = _json.loads(raa) if isinstance(raa, str) else raa
+            if isinstance(blokke, list):
+                for blok in blokke:
+                    if isinstance(blok, dict) and blok.get("type") == "approval":
+                        status = str(blok.get("status") or "").strip()
+                        if status:
+                            return status
+        except (ValueError, TypeError):
+            # Ulaesbar JSON er ikke en fejl vi skal rapportere: raekken kan vaere
+            # skrevet af en aeldre version. Tekst-fallbacken nedenfor daekker den.
+            pass
+    tekst = str(item.get("content") or "")
+    for praefiks, status in (
+        ("Godkendt:", "approved"),
+        ("Afvist:", "denied"),
+        ("Udløb uden svar:", "expired"),
+        ("Godkendelse afventer:", "pending"),
+    ):
+        if tekst.startswith(praefiks):
+            return status
+    return "pending"
+
+
+def _approval_udfald_tekst(item: dict) -> str:
+    """Én linje der forklarer HVORFOR et tool-svar ligger i historikken.
+
+    Kortets egen tekst baerer allerede værktøj og kommando («Godkendt: bash —
+    cd …»). Vi tilføjer kun det der ellers ikke kan læses ud af rækkefølgen:
+    at afgørelsen faldt EFTER turen, så resultatet ikke er svar på noget jeg
+    lige har spurgt om.
+    """
+    tekst = " ".join(str(item.get("content") or "").split()).strip()
+    if not tekst:
+        tekst = "godkendelses-kort"
+    udfald = _approval_udfald(item)
+    if udfald == "approved":
+        return f"{tekst} — afgjort efter turen; resultatet nedenfor kom tilbage til samtalen"
+    if udfald == "denied":
+        return f"{tekst} — afvist; handlingen blev ikke udført"
+    if udfald == "expired":
+        return f"{tekst} — udløb uden svar; handlingen blev ikke udført"
+    return tekst
+
+
+def _efterfoelges_af_tool(window: list[dict], index: int) -> bool:
+    """Kommer der et ``tool``-svar umiddelbart efter dette kort?
+
+    Kun dér er kortet nødvendigt: det forklarer hvorfor resultatet ligger i
+    historikken uden en tur der bad om det. Et kort hvis resultat den levende
+    tur selv læste, skal ikke fylde i prompten.
+
+    «Umiddelbart» er målt, ikke gættet: med en løsere regel (spring over alle
+    mellemliggende kort) kom 18 af 38 kort med i én session — de 17 var kort
+    hvis resultat var læst for længst. Med denne regel er det kun de kort der
+    faktisk efterlader et svar uden en tur.
+    """
+    if index + 1 >= len(window):
+        return False
+    return str(window[index + 1].get("role") or "") == "tool"
+
+
 def _tool_results_as_input() -> bool:
     """Skal historiske tool-resultater bæres på USER-siden i stedet for at blive flettet
     ind i den foregående assistant-besked?
@@ -397,7 +476,33 @@ def _build_structured_transcript_messages(
         # falde i `else`-grenen nedenfor og blive laest som ASSISTANT-tekst —
         # altsaa som noget jeg selv havde skrevet. Maalt 31/10-2026: grenen
         # daekker alt der ikke er user/tool, saa den antagelse holdt ikke.
+        #
+        # MEN et AFGJORT kort er ikke UI (22/11-2026). Raekken baerer udfaldet
+        # («Godkendt: bash — …»), og naar den blev slettet, stod det efterfoelgende
+        # `tool`-svar tilbage som et svar paa ingenting: maalt i samtalen
+        # chat-f5a6b0d9630c425fb8e4f6220c5fcb81, hvor to kort blev godkendt
+        # 22:37 — 10-15 min efter turen havde svaret — og resultatet landede som
+        # bare tool-raekker uden en tur der bad om dem. Naeste tur kunne ikke se
+        # at kommandoen var koert EFTER turen var doed.
+        #
+        # Kun naar kortet FAKTISK efterlader et tool-svar maa det fylde: maalt i
+        # samme session havde 7 af 19 afgjorte kort et tool-svar som naeste raekke.
+        # De oevrige 12 blev laest af den levende tur og forklarer intet — at
+        # skrive dem ind ville vaere 12 linjer stoej for nul betydning.
+        #
+        # UNDTAGELSE: et afslag eller udloeb har pr. definition intet tool-svar
+        # (handlingen skete aldrig), og netop dét skal naeste tur vide — ellers
+        # kan den finde paa at koere den igen som om intet var sket.
         if raw_role == "approval_request":
+            _udfald = _approval_udfald(item)
+            if _udfald == "pending":
+                continue
+            if _udfald == "approved" and not _efterfoelges_af_tool(window, index):
+                continue
+            merged.append({
+                "role": "user",
+                "content": f"{_TOOL_INPUT_FRAME} {_approval_udfald_tekst(item)}",
+            })
             continue
         # render_tool_result_for_prompt was being called for *all* roles with
         # max_chars=240, which silently chopped any user/assistant message

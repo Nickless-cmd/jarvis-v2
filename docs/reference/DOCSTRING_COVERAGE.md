@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10443/19090 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10444/19090 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10443/19090 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 921 | 1638 | 56% |
-| `core.services` | 7005 | 12962 | 54% |
+| `core.services` | 7006 | 12962 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 151 | 233 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1379,8 +1379,8 @@ Generated from source. 10443/19090 functions/methods documented (54%). The list 
 - `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L1087)
 - `core/services/inbox_importance.py` :: `is_round_worthy` (L16)
 - `core/services/inbox_importance.py` :: `normalize_importance` (L11)
-- `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L297)
-- `core/services/infra_weather_daemon.py` :: `get_weather` (L275)
+- `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L369)
+- `core/services/infra_weather_daemon.py` :: `get_weather` (L347)
 - `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L743)
 - `core/services/initiative_queue.py` :: `list_active_long_term_intentions` (L728)
 - `core/services/inner_dialectic_engine.py` :: `build_inner_dialectic_prompt_section` (L42)

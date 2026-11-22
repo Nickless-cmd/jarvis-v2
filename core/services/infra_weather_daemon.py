@@ -23,9 +23,30 @@ _CRITICAL_COOLDOWN_MINUTES = 360  # 6 hours — kun éngang per døgn i praksis
 _last_state: dict[str, Any] = {}
 _last_computed_ts: float = 0.0
 
-_DISK_PATHS = ("/", "/media/projects")
+#: Stier der måles. `/` og `/media/projects` ligger på samme device i dag, men
+#: begge beholdes: en fremtidig opdeling skal ikke kræve en kodeændring.
+#:
+#: `/tmp` er med fordi den IKKE blev målt før 22/11-2026 — og det er netop
+#: derfor den kunne fyldes til 100 % ubemærket. `infra_sense` måler PVE-værten
+#: med `df -x tmpfs` (udelukker tmpfs ved design), og `embodied_state` måler
+#: `Path.cwd()`. Ingen af dem så `/tmp`, som er en tmpfs på 16 GB. Følgen var
+#: ikke en pytest-fejl men en systemfejl: sampleren tog 148 s med 3 s CPU-tid,
+#: codex-agenten døde med CLI_BACKEND_FAILED, og 36 tests fejlede med Errno 28.
+_DISK_PATHS = ("/", "/media/projects", "/tmp")
 _DISK_WARN_PCT = 85.0
 _DISK_CRITICAL_PCT = 95.0
+
+#: Tærskler pr. sti som (warn, critical). `/tmp` advarer tidligere end de store
+#: diske: 16 GB fyldes af pytest-mapper der hver kan fylde hundredvis af MB
+#: (målt 22/11-2026: 25 mapper spiste alle 16 GB), så 85 % levner kun ~4 mapper
+#: — for sent at nå at reagere. Ved 75 % er der ~4 GB tilbage.
+_DISK_TAERSKLER: dict[str, tuple[float, float]] = {
+    "/tmp": (75.0, 90.0),
+}
+
+#: Rangorden for disk-niveau. En lille tmpfs der er kritisk må ikke tabes til
+#: en stor disk der blot er «under pres», selv om disken har højere procent.
+_NIVEAU_RANG = {"clear": 0, "under-pressure": 1, "critical": 2}
 _LOAD_WARN = 0.75
 _LOAD_CRITICAL = 0.92
 _API_COST_WARN_USD = 5.0
@@ -56,23 +77,56 @@ def _system_load() -> dict[str, float]:
 
 
 def _disk_pressure() -> dict[str, Any]:
+    """Mål hver sti og afgør niveau — ikke kun den højeste procent.
+
+    Niveauet beregnes pr. sti mod den tærskel der hører til netop den sti, og
+    den værste sti vinder på NIVEAU før procent. Ellers kunne en tmpfs på
+    90 % (kritisk for `/tmp`) tabes til en stor disk på 92 % (blot under pres
+    for `/`), og alarmen ville tie om den tmpfs der faktisk er ved at løbe tør.
+    """
     worst_pct = 0.0
-    per_path: dict[str, dict[str, float]] = {}
+    worst_path = ""
+    worst_niveau = "clear"
+    per_path: dict[str, dict[str, Any]] = {}
     for path in _DISK_PATHS:
         if not os.path.exists(path):
             continue
         try:
             du = shutil.disk_usage(path)
             used_pct = round(((du.total - du.free) / du.total) * 100, 2) if du.total > 0 else 0.0
+            warn, critical = _DISK_TAERSKLER.get(path, (_DISK_WARN_PCT, _DISK_CRITICAL_PCT))
+            if used_pct >= critical:
+                niveau = "critical"
+            elif used_pct >= warn:
+                niveau = "under-pressure"
+            else:
+                niveau = "clear"
             per_path[path] = {
                 "total_gb": round(du.total / (1024**3), 2),
                 "free_gb": round(du.free / (1024**3), 2),
                 "used_pct": used_pct,
+                "warn_pct": warn,
+                "critical_pct": critical,
+                "level": niveau,
             }
-            worst_pct = max(worst_pct, used_pct)
+            if (
+                _NIVEAU_RANG[niveau] > _NIVEAU_RANG[worst_niveau]
+                or (
+                    _NIVEAU_RANG[niveau] == _NIVEAU_RANG[worst_niveau]
+                    and used_pct > worst_pct
+                )
+            ):
+                worst_pct = used_pct
+                worst_path = path
+                worst_niveau = niveau
         except Exception:
             continue
-    return {"per_path": per_path, "worst_used_pct": worst_pct}
+    return {
+        "per_path": per_path,
+        "worst_used_pct": worst_pct,
+        "worst_path": worst_path,
+        "level": worst_niveau,
+    }
 
 
 def _network_latency() -> dict[str, Any]:
@@ -165,7 +219,14 @@ def _process_health() -> dict[str, Any]:
 
 
 def _weather_label(load: float, disk_pct: float, cost: float) -> tuple[str, str]:
-    """Return (label, emoji) — ☀️ clear, 🌧 under pressure, ⛈ critical."""
+    """Return (label, emoji) — ☀️ clear, 🌧 under pressure, ⛈ critical.
+
+    `disk_pct` vurderes mod de GLOBALE tærskler. Per-sti tærskler (se
+    `_DISK_TAERSKLER`) kan være strengere — 91 % på en 16 GB tmpfs er kritisk,
+    mens 91 % på 467 GB blot er under pres — og det afgøres i
+    `_compose_report`, som hæver niveauet når den værste sti er hårdere ramt
+    end procenten alene antyder.
+    """
     if (
         load >= _LOAD_CRITICAL
         or disk_pct >= _DISK_CRITICAL_PCT
@@ -190,13 +251,23 @@ def _compose_report() -> dict[str, Any]:
 
     load_val = float(load.get("load_0_1") or 0.0)
     disk_pct = float(disk.get("worst_used_pct") or 0.0)
+    disk_niveau = str(disk.get("level") or "clear")
     label, emoji = _weather_label(load_val, disk_pct, cost)
+    # Den værste stis eget niveau kan være strengere end den globale procent:
+    # 91 % på en 16 GB tmpfs er kritisk, mens 91 % på 467 GB blot er under
+    # pres. Uden dette løft ville /tmp's lavere tærskel aldrig slå igennem.
+    if _NIVEAU_RANG.get(disk_niveau, 0) > _NIVEAU_RANG.get(label, 0):
+        label = disk_niveau
+        emoji = "⛈" if disk_niveau == "critical" else "🌧"
 
     reasons: list[str] = []
     if load_val >= _LOAD_WARN:
         reasons.append(f"load={load_val}")
-    if disk_pct >= _DISK_WARN_PCT:
-        reasons.append(f"disk={disk_pct}%")
+    # Stien navngives: «disk=88%» kunne ikke skelne den store disk fra den
+    # lille tmpfs, og det var netop tmpfs'en der lød alarmen.
+    for sti, tal in (disk.get("per_path") or {}).items():
+        if tal.get("level") in ("under-pressure", "critical"):
+            reasons.append(f"disk {sti}={tal.get('used_pct')}%")
     if cost >= _API_COST_WARN_USD:
         reasons.append(f"api-cost=${cost:.2f}")
 
@@ -256,6 +327,7 @@ def _maybe_emit_critical(report: dict[str, Any]) -> None:
                 "reasons": report.get("reasons"),
                 "load_0_1": report.get("load", {}).get("load_0_1"),
                 "disk_worst_pct": report.get("disk", {}).get("worst_used_pct"),
+                "disk_worst_path": report.get("disk", {}).get("worst_path"),
                 "api_cost": report.get("api_cost_today_usd"),
                 "at": report.get("computed_at"),
             },

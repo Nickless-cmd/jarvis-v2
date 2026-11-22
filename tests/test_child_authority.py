@@ -122,10 +122,15 @@ def test_et_AEGTE_barn_ser_ingen_ejer_godkendelse(isolated_runtime, monkeypatch)
 # Tabellen i denne fils modul-docstring sagde indtil i dag at `tool_scoping`
 # BEVARES. Det var forkert for kontraktagenter: deres værktøjer kommer fra
 # `allowed_tools_json`, og `chat`/`code` beskriver hvilken fane MENNESKET
-# sidder i — ikke hvad agenten må. Målt: en researcher-politik gav 10
+# sidder i — ikke hvad agenten må. Målt 11/11: en researcher-politik gav 10
 # værktøjer uden scope, 6 i chat og 4 i code. En agent dispatchet fra code
 # mode mistede `web_search`, meldte det ærligt og blev stemplet
 # AGENT_INCOMPLETE. 31 af 38 agentfejl lå i delivery-fasen.
+#
+# Maalt igen 22/11 efter at code-scopet med vilje fik web- og
+# kode-navigationsværktøjer: 6 i chat, 8 i code. Tallet flytter sig derfor
+# ikke som en fejl — det er derfor forudsætningen nedenfor er en ægte
+# delmængde og ikke et fast tal.
 
 _RESEARCHER_POLICY = [
     "read_file", "find_files", "search", "semantic_search_code", "find_symbol",
@@ -141,8 +146,18 @@ def test_værnet_giver_agenten_hele_sin_politik():
 
     t = TS._scope_var.set("code")
     try:
-        assert len(_build_agent_tools_payload(_RESEARCHER_POLICY)) == 4, \
-            "forudsætning: code-scope skærer til fire"
+        # Forudsætningen maa ikke være et fast tal. Code-scopet vokser med
+        # vilje — 16/11 fik det `web_search`/`web_fetch`, senere kom
+        # kode-navigationen — saa et hardcodet tal bliver en falsk fejl hver
+        # gang scopet gør det rigtige. (Maalt 22/11: 8 af politikkens 10.)
+        # Det forudsætningen SKAL bevise er at scopet faktisk skærer noget
+        # væk: gør det ikke, er det egentlige værn nedenfor tomt, fordi der
+        # saa ikke er nogen flade at vinde over.
+        i_scope = {d["function"]["name"]
+                   for d in _build_agent_tools_payload(_RESEARCHER_POLICY)}
+        assert i_scope < set(_RESEARCHER_POLICY), (
+            "forudsætning: code-scope skal skære politikken ned, "
+            f"fik {sorted(i_scope)}")
         with uden_foraeldrens_vaerktoejsscope():
             navne = {t2["function"]["name"]
                      for t2 in _build_agent_tools_payload(_RESEARCHER_POLICY)}

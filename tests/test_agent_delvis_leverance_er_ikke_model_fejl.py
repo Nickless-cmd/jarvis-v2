@@ -59,11 +59,26 @@ def test_arvet_run_kode_slaar_tabellen():
 
 
 def test_run_kode_uden_fase_faar_status_fasen():
-    """En kode uden fase maa ikke give en tom fase — saa forsvinder sporet."""
+    """En kode uden fase maa ikke give en tom fase — saa forsvinder sporet.
+
+    22/11-2026: forventningen var `model`, altsaa status-tabellens gaet for
+    `failed`. Den blev forældet 17/11, da `_META_KODER` (`RUN_STALE`,
+    `RUN_ORPHANED`) fik deres egen gren i `partial_delivery_error`: begge
+    beskriver at RUNNET blev forladt eller stod stille — ikke at modellen
+    fejlede. `recovery` ville paastaa at vi genoprettede noget, og det er en
+    anden historie end "vi ved ikke hvorfor". `unknown` er den aerlige etiket.
+
+    Maalt 22/11 i `agent_runs`: alle 21 raekker med en meta-kode staar selv
+    `recovery` — de skrives af runnets egen lease-vej (`db_agent_lease`), ikke
+    af denne funktion. Det her er altsaa assignmentets etiket oven paa en fase
+    runnet ikke selv kendte, og den maa hverken gaette (`model`) eller lyve
+    (`recovery`).
+    """
     kode, fase = partial_delivery_error(
         full="", registry_status="failed", run_error_code="RUN_STALE")
-    assert kode == "RUN_STALE"
-    assert fase == "model", f"fasen skal falde tilbage paa status-tabellen, fik {fase!r}"
+    assert kode == "RUN_STALE", "koden er observeret — den skal bevares"
+    assert fase == "unknown", f"en meta-kode maa ikke paastaa en aarsag, fik {fase!r}"
+    assert fase != "", "fasen maa ikke vaere tom — saa forsvinder sporet"
 
 
 def test_kendt_infrastruktur_tekst_i_last_error_slaar_tabellen():

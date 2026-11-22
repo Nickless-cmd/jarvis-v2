@@ -61,11 +61,37 @@ _PEER_TEXT = (
     "statusopdateringer, intet 'jeg er i gang' - dit resultat gaar til Jarvis, ikke til peers."
 )
 
+# 22/11-2026: reglen er UBETINGET, listen er det dynamiske element.
+#
+# Foer blev hele blokken udeladt naar `peer_agent_ids` var tom VED PROMPT-KONSTRUKTIONEN.
+# Et team oprettes spredt (maalt i `agent_assignments`: op til 708 s mellem foerste og
+# sidste soeskende), saa den TIDLIGE agent fik en tom liste — og dermed hverken reglen
+# eller kendskab til at kanalen fandtes. Den havde værktøjet (fixet i `10e2c9d11`) men
+# kunne ikke vide hvad hun skulle bruge det til, og kunne ikke svare paa en besked hun
+# godt kunne modtage. Samme fejlform som `_AGENT_COVERAGE_RULE`: mekanismen var monteret,
+# men naaede aldrig frem i en form agenten faktisk laeser.
+#
+# `peer_agent_ids` laeser LIVE fra DB'en, saa en soester der oprettes senere ER i listen
+# naar den beregnes igen. Derfor siger teksten ogsaa at listen kan vokse undervejs.
+_PEER_TEXT_ALENE = (
+    "Du er alene i din opgave lige nu, men kanalen er aaben: oprettes der en soester "
+    "undervejs, kan I skrive til hinanden med `send_message_to_agent`, og beskeden dukker "
+    "op som `[fra <agent_id>] ...` ved din naeste runde. Brug den KUN naar du har noget en "
+    "peer har brug for: en modstrid mellem jeres fund, et fund der aendrer deres opgave, "
+    "eller en graenseflade I deler. Ingen smalltalk, ingen statusopdateringer - dit resultat "
+    "gaar til Jarvis, ikke til peers."
+)
+
 
 def peer_section(peer_ids: list[str]) -> str:
-    """Peer-reglen til en agents prompt; tom hvis agenten ingen peers har."""
-    ids = [str(p).strip() for p in peer_ids if str(p).strip()]
-    return _PEER_TEXT.format(peers=", ".join(ids)) if ids else ""
+    """Peer-reglen til en agents prompt. Altid ikke-tom for en kontraktagent.
+
+    Listen er det dynamiske element: er den tom nu, siger teksten at kanalen er aaben
+    og at en soester kan dukke op senere. Det er ikke kosmetik — uden reglen kender
+    agenten hverken værktøjet eller sin ret til at svare.
+    """
+    ids = [str(p).strip() for p in peer_ids if p is not None and str(p).strip()]
+    return _PEER_TEXT.format(peers=", ".join(ids)) if ids else _PEER_TEXT_ALENE
 
 
 def _render_orchestrator_section() -> str:

@@ -84,4 +84,10 @@ def test_prompt_lists_peer_ids_and_the_strict_rule(sv):
     assert b in ly["text"] and "KUN naar du har noget" in ly["text"]
     lone = sv.dispatch(parent_run_id="visible-alene")
     ly2 = build_layered_prompt(agent=get_agent_registry_entry(lone), messages_text="", execution_mode="x")
-    assert "peers" not in ly2["text"]
+    # 22/11-2026: reglen er UBETINGET — kun navnene er dynamiske. Foer blev hele blokken
+    # udeladt for en agent uden peers ved start, og saa kendte hun hverken vaerktoejet
+    # eller sin ret til at svare paa en besked hun godt kunne modtage (et team oprettes
+    # spredt: op til 708 s mellem foerste og sidste soeskende).
+    assert "send_message_to_agent" in ly2["text"], "kanalen skal vaere naevnt ogsaa for en ensom agent"
+    assert "alene" in ly2["text"].lower(), ly2["text"]
+    assert b not in ly2["text"], "en ensom agent maa ikke faa en fremmed soesters id"

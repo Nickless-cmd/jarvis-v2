@@ -8,7 +8,7 @@ This group: cache-warmer + reassessment sweeps + health/usage observers
 relation_map_refresh, counterfactual_predictions_sweep, shared_cache_cleanup,
 central_self_health, central_learning, stream_stall_sweep, config_drift_check,
 instrument_scan, provider_health_check, db_health_scan, tool_usage_stats,
-endpoint_usage_stats).
+endpoint_usage_stats, tmp_cleanup).
 """
 from __future__ import annotations
 
@@ -18,6 +18,10 @@ from typing import Callable
 from core.services.internal_cadence import ProducerSpec
 
 logger = logging.getLogger(__name__)
+
+#: Rod-mappen pytest bruger til sine `pytest-N/`-arbejdsmapper. Modul-konstant
+#: saa testen kan pege den paa en tmp_path i stedet for den levende /tmp.
+_TMP_PYTEST_ROD = "/tmp/pytest-of-bs"
 
 
 def register_maintenance_producers(register_producer: Callable[[ProducerSpec], None]) -> None:
@@ -389,4 +393,76 @@ def register_maintenance_producers(register_producer: Callable[[ProducerSpec], N
         visible_grace_minutes=0,
         run_fn=_run_endpoint_usage_stats,
         priority=36,
+    ))
+
+    def _run_tmp_cleanup(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """Ryd gamle pytest-tempmapper i /tmp (22/11-2026).
+
+        `/tmp` er en tmpfs paa 16 GB. pytest laver en `pytest-N/`-mappe pr.
+        koersel og rydder den kun selv naar koerslen slutter normalt — en
+        afbrudt eller timeoutet koersel efterlader sin mappe for evigt. Maalt
+        22/11-2026: 25 mapper havde spist alle 16 GB, saa `/tmp` var 100 %
+        fuld med 4 KB tilbage. Foelgen var ikke en pytest-fejl men en
+        systemfejl: sampleren tog 148 s med 3 s CPU-tid (hver DB-skrivning
+        ventede paa plads), codex-agenten doede med CLI_BACKEND_FAILED fordi
+        den ikke kunne skrive sit svar, og 36 tests fejlede med Errno 28.
+
+        Bevarer de NYESTE mapper: en koersel der er i gang lige nu skal ikke
+        have slettet sit eget arbejdsomraade under sig.
+        """
+        import os
+        import shutil
+        import time
+        from pathlib import Path
+
+        rod = Path(_TMP_PYTEST_ROD)
+        if not rod.is_dir():
+            return {"status": "ok", "slettet": 0, "reason": "ingen pytest-mapper"}
+
+        # Kun mapper der matcher pytest's eget moenster — aldrig en bred sletning.
+        mapper = [p for p in rod.glob("pytest-*") if p.is_dir() and p.name != "pytest-current"]
+        mapper.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+
+        # En mappe der er roert inden for de sidste 30 min kan vaere en aktiv
+        # koersel. Aldersgraensen er den primaere vagt; de to nyeste er den
+        # sekundaere, saa en netop startet koersel ogsaa er sikker.
+        graense = time.time() - 30 * 60
+        slettet, frigjort, fejl = 0, 0, 0
+        for i, mappe in enumerate(mapper):
+            if i < 2:
+                continue
+            try:
+                if mappe.stat().st_mtime > graense:
+                    continue
+                # du foer sletning: vi vil kunne rapportere hvad vi frigjorde.
+                storrelse = sum(
+                    f.stat().st_size for f in mappe.rglob("*") if f.is_file()
+                )
+                shutil.rmtree(mappe)
+                slettet += 1
+                frigjort += storrelse
+            except OSError:
+                # En mappe der forsvinder under os eller ikke kan slettes maa
+                # ikke standse sweepet — de oevrige skal stadig ryddes.
+                fejl += 1
+
+        if slettet:
+            logger.info(
+                "tmp_cleanup: slettede %d pytest-mapper, frigjorde %.1f MB, %d fejlede",
+                slettet, frigjort / (1024 * 1024), fejl,
+            )
+        return {
+            "status": "ok",
+            "slettet": slettet,
+            "frigjort_mb": round(frigjort / (1024 * 1024), 1),
+            "fejl": fejl,
+            "tilbage": len(mapper) - slettet,
+        }
+
+    register_producer(ProducerSpec(
+        name="tmp_cleanup",
+        cooldown_minutes=60,  # hourly — nok til at /tmp aldrig vokser ukontrolleret
+        visible_grace_minutes=0,
+        run_fn=_run_tmp_cleanup,
+        priority=37,
     ))

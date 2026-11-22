@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10384/18962 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10385/18963 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 10384/18962 functions/methods documented (54%). The list 
 | `core.identity` | 84 | 175 | 48% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 918 | 1635 | 56% |
+| `core.runtime` | 919 | 1636 | 56% |
 | `core.services` | 6970 | 12885 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 150 | 232 | 64% |
@@ -438,19 +438,19 @@ Generated from source. 10384/18962 functions/methods documented (54%). The list 
 - `core/runtime/db_bounded_action.py` :: `upsert_bounded_action_continuity_state` (L105)
 - `core/runtime/db_capability.py` :: `ensure_capability_tables` (L14)
 - `core/runtime/db_capability.py` :: `recent_capability_invocations` (L38)
-- `core/runtime/db_capability_approval.py` :: `approval_feedback_stats_by_tool` (L712)
+- `core/runtime/db_capability_approval.py` :: `approval_feedback_stats_by_tool` (L771)
 - `core/runtime/db_capability_approval.py` :: `approve_capability_approval_request` (L179)
 - `core/runtime/db_capability_approval.py` :: `capability_approval_envelope_fingerprint` (L55)
 - `core/runtime/db_capability_approval.py` :: `capability_approval_request_is_stale` (L38)
 - `core/runtime/db_capability_approval.py` :: `capability_approval_stale_seconds` (L30)
 - `core/runtime/db_capability_approval.py` :: `claim_capability_approval_request_execution` (L315)
 - `core/runtime/db_capability_approval.py` :: `complete_capability_approval_request_execution` (L386)
-- `core/runtime/db_capability_approval.py` :: `count_approval_feedback` (L742)
+- `core/runtime/db_capability_approval.py` :: `count_approval_feedback` (L801)
 - `core/runtime/db_capability_approval.py` :: `get_capability_approval_request` (L132)
-- `core/runtime/db_capability_approval.py` :: `insert_approval_feedback` (L619)
-- `core/runtime/db_capability_approval.py` :: `latest_approved_capability_approval_request` (L565)
-- `core/runtime/db_capability_approval.py` :: `latest_capability_approval_request` (L512)
-- `core/runtime/db_capability_approval.py` :: `list_approval_feedback` (L697)
+- `core/runtime/db_capability_approval.py` :: `insert_approval_feedback` (L678)
+- `core/runtime/db_capability_approval.py` :: `latest_approved_capability_approval_request` (L624)
+- `core/runtime/db_capability_approval.py` :: `latest_capability_approval_request` (L571)
+- `core/runtime/db_capability_approval.py` :: `list_approval_feedback` (L756)
 - `core/runtime/db_capability_approval.py` :: `recent_capability_approval_requests` (L85)
 - `core/runtime/db_capability_approval.py` :: `record_capability_approval_request_execution` (L247)
 - `core/runtime/db_cheap_lane_control.py` :: `finalize_cheap_lane_audit` (L323)

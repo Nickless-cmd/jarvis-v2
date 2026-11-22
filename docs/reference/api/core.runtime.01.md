@@ -518,15 +518,16 @@ _Capability approval + approval feedback CRUD._
 | function | `record_capability_approval_request_execution` | `(request_id, *, executed_at, invocation_status, invocation_execution_mode, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L247) |
 | function | `claim_capability_approval_request_execution` | `(request_id, *, approved_at, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L315) |
 | function | `complete_capability_approval_request_execution` | `(request_id, *, executed_at, invocation_status, invocation_execution_mode, execution_result_json, user_id, include_unassigned=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L386) |
-| function | `_capability_approval_request_from_row` | `(row, *, status=…, approved_at=…, executed=…, executed_at=…, invocation_status=…, invocation_execution_mode=…, execution_result_json=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L427) |
-| function | `_ensure_capability_approval_request_columns` | `(conn)` | — | [src](../../../core/runtime/db_capability_approval.py#L486) |
-| function | `latest_capability_approval_request` | `(*, execution_mode=…, include_executed=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L512) |
-| function | `latest_approved_capability_approval_request` | `(*, execution_mode=…, capability_id=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L565) |
-| function | `insert_approval_feedback` | `(*, recorded_at, intent_key, approval_state, approval_source, tool_name=…, resolution_reason=…, resolution_message=…, session_id=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L619) |
-| function | `list_approval_feedback` | `(limit=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L697) |
-| function | `approval_feedback_stats_by_tool` | `(days=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L712) |
-| function | `count_approval_feedback` | `()` | — | [src](../../../core/runtime/db_capability_approval.py#L742) |
-| function | `_approval_feedback_from_row` | `(row)` | — | [src](../../../core/runtime/db_capability_approval.py#L750) |
+| function | `expire_stale_capability_approval_requests` | `(*, now=…, limit=…)` | Giv forældede, uafviklede kort deres terminale tilstand. Selv-sikker. | [src](../../../core/runtime/db_capability_approval.py#L427) |
+| function | `_capability_approval_request_from_row` | `(row, *, status=…, approved_at=…, executed=…, executed_at=…, invocation_status=…, invocation_execution_mode=…, execution_result_json=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L486) |
+| function | `_ensure_capability_approval_request_columns` | `(conn)` | — | [src](../../../core/runtime/db_capability_approval.py#L545) |
+| function | `latest_capability_approval_request` | `(*, execution_mode=…, include_executed=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L571) |
+| function | `latest_approved_capability_approval_request` | `(*, execution_mode=…, capability_id=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L624) |
+| function | `insert_approval_feedback` | `(*, recorded_at, intent_key, approval_state, approval_source, tool_name=…, resolution_reason=…, resolution_message=…, session_id=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L678) |
+| function | `list_approval_feedback` | `(limit=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L756) |
+| function | `approval_feedback_stats_by_tool` | `(days=…)` | — | [src](../../../core/runtime/db_capability_approval.py#L771) |
+| function | `count_approval_feedback` | `()` | — | [src](../../../core/runtime/db_capability_approval.py#L801) |
+| function | `_approval_feedback_from_row` | `(row)` | — | [src](../../../core/runtime/db_capability_approval.py#L809) |
 
 ## `core/runtime/db_central_incidents.py`
 _Central-incidents — persistent log af det Den Intelligente Central GRIBER._

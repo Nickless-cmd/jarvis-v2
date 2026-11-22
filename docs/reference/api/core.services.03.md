@@ -65,8 +65,8 @@ _Fejeren for udløbne godkendelser — den kalder `expire_stale()`._
 |---|---|---|---|---|
 | function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/approval_expiry_daemon.py#L51) |
 | function | `tick_approval_expiry_daemon` | `(now=…)` | Fej udløbne godkendelser hvis kadencen er gået. Selv-sikker. | [src](../../../core/services/approval_expiry_daemon.py#L57) |
-| function | `sidste_resultat` | `()` | Hvad fejeren sidst udrettede — så en læser kan se om den kører. | [src](../../../core/services/approval_expiry_daemon.py#L176) |
-| function | `build_approval_expiry_daemon_surface` | `()` | Mission Control-surface: hvad udløb, og kører fejeren overhovedet? | [src](../../../core/services/approval_expiry_daemon.py#L181) |
+| function | `sidste_resultat` | `()` | Hvad fejeren sidst udrettede — så en læser kan se om den kører. | [src](../../../core/services/approval_expiry_daemon.py#L194) |
+| function | `build_approval_expiry_daemon_surface` | `()` | Mission Control-surface: hvad udløb, og kører fejeren overhovedet? | [src](../../../core/services/approval_expiry_daemon.py#L199) |
 
 ## `core/services/approval_feedback_subscriber.py`
 

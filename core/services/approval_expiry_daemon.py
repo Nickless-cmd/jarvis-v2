@@ -135,6 +135,23 @@ def tick_approval_expiry_daemon(now: datetime | None = None) -> dict[str, object
             # -1 af samme grund som ovenfor: «kunne ikke køre» må ikke se ud
             # som «intet at feje».
             udloebne_kandidater = -1
+        # ── Capability-kortenes fejer (22/11-2026) ──────────────────────────
+        #
+        # FJERDE forekomst af samme fejlform i denne fil. `is_stale` nægtede
+        # eksekvering af et gammelt kort fra dag ét — men ingen skrev tilstanden.
+        # Målt 22/11-2026: 22 poster stod `pending` og 8 stod `approved` uden at
+        # være kørt, de ældste syv måneder gamle. Ingen kunne eksekveres, og
+        # tabellen løj om sin egen tilstand: «venter på dig» og «glemt» så ens.
+        try:
+            from core.runtime.db_capability_approval import (
+                expire_stale_capability_approval_requests as _cap_expire,
+            )
+            udloebne_capability = int(_cap_expire(now=nu))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("approval_expiry: capability-kortenes fejer kunne ikke køre: %s", exc)
+            # -1 af samme grund som de øvrige: «kunne ikke køre» må ikke se ud
+            # som «intet at feje».
+            udloebne_capability = -1
     except Exception as exc:
         # Familien isolerer allerede fejl, men en fejer der stille holder op
         # med at virke er praecis den fejl denne fil blev skrevet for at rette.
@@ -148,7 +165,8 @@ def tick_approval_expiry_daemon(now: datetime | None = None) -> dict[str, object
                     "foraeldreloese_afsendelser": foraeldreloese,
                     "udloebne_indbakke": udloebne_indbakke,
                     "opryddede_indbakke": opryddede_indbakke,
-                    "udloebne_kandidater": udloebne_kandidater}
+                    "udloebne_kandidater": udloebne_kandidater,
+                    "udloebne_capability_kort": udloebne_capability}
 
     if foraeldreloese:
         logger.warning("approval_expiry: %d afsendelse(r) uden afslutning — "

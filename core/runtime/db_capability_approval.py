@@ -424,6 +424,65 @@ def complete_capability_approval_request_execution(
     )
 
 
+def expire_stale_capability_approval_requests(
+    *, now: datetime | None = None, limit: int = 500
+) -> int:
+    """Giv forældede, uafviklede kort deres terminale tilstand. Selv-sikker.
+
+    ## Hvorfor (22/11-2026)
+
+    `capability_approval_request_is_stale` og claim-stien har siden de blev
+    skrevet nægtet at eksekvere et kort ældre end
+    `capability_approval_stale_seconds`. Men intet skrev tilstanden: målt
+    22/11-2026 stod 22 poster som `pending` i op til syv måneder, plus 8 som
+    `approved` uden nogensinde at være kørt. Ingen af dem kunne eksekveres — og
+    ingen kunne se forskel på «venter på dig» og «glemt». Det er samme fejlform
+    som `expire_stale` i broen havde: mekanismen fandtes, den var testet, og
+    den havde nul kaldere.
+
+    ## Hvorfor udvælgelsen går gennem prædikatet
+
+    Det der nægter eksekvering, og det der skriver den terminale tilstand, må
+    ikke kunne blive uenige. To regler der driver fra hinanden er præcis den
+    fejl huset har lavet før, så udvælgelsen kalder
+    `capability_approval_request_is_stale` frem for at gentage dens tærskel.
+
+    ## Hvad den aldrig rører
+
+    `executing`: en eksekvering der er i gang har et ukendt udfald, og dens
+    tilstand må ikke skrives bagud — samme regel som `dispatching` i broen.
+    `executed = 1`: kørt er kørt, uanset hvor gammelt kortet er.
+    """
+    nu = now or datetime.now(UTC)
+    with connect() as conn:
+        rows = list(conn.execute(
+            "SELECT * FROM capability_approval_requests "
+            "WHERE status IN ('pending', 'approved') AND executed = 0 "
+            "ORDER BY requested_at LIMIT ?",
+            (int(limit),),
+        ))
+        udloebne = [
+            str(row["request_id"])
+            for row in rows
+            if capability_approval_request_is_stale(
+                _capability_approval_request_from_row(row), reference_now=nu
+            )
+        ]
+        if not udloebne:
+            return 0
+        pladsholdere = ",".join("?" * len(udloebne))
+        # Vagten gentages i UPDATE'en: et samtidigt claim kan have sat rækken til
+        # `executing` mellem SELECT og UPDATE, og den tilstand må ikke skrives bagud.
+        cursor = conn.execute(
+            f"UPDATE capability_approval_requests SET status = 'expired' "
+            f"WHERE request_id IN ({pladsholdere}) "
+            f"AND status IN ('pending', 'approved') AND executed = 0",
+            tuple(udloebne),
+        )
+        conn.commit()
+        return int(cursor.rowcount)
+
+
 def _capability_approval_request_from_row(
     row: sqlite3.Row,
     *,

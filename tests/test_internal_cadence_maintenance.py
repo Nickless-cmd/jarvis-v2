@@ -210,3 +210,98 @@ def test_spild_cleanup_kalder_ryd_og_bevarer_nye_filer(tmp_path, monkeypatch):
     assert out["slettet"] == 1, out
     assert not gammel.exists(), "fil ældre end retentionen blev ikke slettet"
     assert ny.exists(), "en fil inden for retentionen blev slettet"
+
+
+# ---------------------------------------------------------------------------
+# state_backup_cleanup — .bak-filer og forældreløse SQLite-sidefiler
+# ---------------------------------------------------------------------------
+#
+# Målt 22/11/2026: 17 `.bak*`-filer (12 MB) i `state/` og 8 forældreløse
+# `.db-shm`/`.db-wal` i `state/backups/`. `rg` efter `.bak` i al oprydningskode
+# gav nul: nogen skriver dem, ingen rydder dem — samme fejlform som `spild/`.
+# Den farlige del er at nogle `.bak`-filer er STØRRE end deres kilde og bærer
+# historik der ellers er tabt (`autonomous_goals.json`: 10 MB bak mod 1,9 MB
+# levende). Derfor vogter disse tests begge retninger.
+
+
+def test_state_backup_cleanup_er_registreret_som_producer():
+    assert "state_backup_cleanup" in _registered()
+
+
+def test_state_backup_cleanup_koerer_hver_tolvte_time():
+    assert _registered()["state_backup_cleanup"].cooldown_minutes == 720
+
+
+def test_state_backup_cleanup_sletter_doedvaegt_men_bevarer_unik_historik(
+    tmp_path, monkeypatch
+):
+    """Ren dødvægt væk — men en bak der er STØRRE end sin kilde skal overleve.
+    Det er hele grunden til at reglen ikke bare er «slet alle .bak»."""
+    import os
+    import time
+
+    state = tmp_path / "state"
+    state.mkdir()
+    gammel = time.time() - 30 * 86400
+
+    # Dødvægt: kilden er større end bakken.
+    (state / "side_tasks.json").write_text("x" * 5000)
+    doed = state / "side_tasks.json.bak-20261031"
+    doed.write_text("x" * 1000)
+    os.utime(doed, (gammel, gammel))
+
+    # Unik historik: bakken er større end kilden.
+    (state / "pending_approvals.json").write_text("{}")
+    unik = state / "pending_approvals.json.bak-20260910"
+    unik.write_text("x" * 50000)
+    os.utime(unik, (gammel, gammel))
+
+    # Frisk bak: inden for 7-dages-grænsen, skal overleve uanset størrelse.
+    frisk = state / "side_tasks.json.bak-20261122"
+    frisk.write_text("x" * 10)
+
+    monkeypatch.setattr(M, "_STATE_ROD", str(state))
+    monkeypatch.setattr(M, "_BACKUP_ROD", str(tmp_path / "ingen-backups"))
+    out = _registered()["state_backup_cleanup"].run_fn(trigger="test")
+
+    assert out["status"] == "ok"
+    assert out["slettet"] == 1, out
+    assert not doed.exists(), "ren dødvægt blev ikke slettet"
+    assert unik.exists(), "en bak STØRRE end sin kilde blev slettet — historik tabt"
+    assert frisk.exists(), "en bak inden for 7 dage blev slettet"
+    assert out["bevaret_unik"] == 1
+
+
+def test_state_backup_cleanup_sletter_foraeldroese_sidefiler(tmp_path, monkeypatch):
+    """En `.db-shm` hvis `.db` er væk er skrald; en hvis `.db` findes er i brug."""
+    backup = tmp_path / "backups"
+    backup.mkdir()
+
+    (backup / "jarvis-daglig-20261103T021701Z.db-shm").write_bytes(b"x" * 32768)
+    (backup / "jarvis-daglig-20261104T021701Z.db").write_bytes(b"x" * 100)
+    (backup / "jarvis-daglig-20261104T021701Z.db-wal").write_bytes(b"x" * 10)
+    # Komprimeret original tæller også som levende.
+    (backup / "cutover.db.zst").write_bytes(b"x" * 100)
+    (backup / "cutover.db-wal").write_bytes(b"x" * 10)
+
+    monkeypatch.setattr(M, "_STATE_ROD", str(tmp_path / "ingen-state"))
+    monkeypatch.setattr(M, "_BACKUP_ROD", str(backup))
+    out = _registered()["state_backup_cleanup"].run_fn(trigger="test")
+
+    assert out["status"] == "ok"
+    assert out["slettet"] == 1, out
+    assert not (backup / "jarvis-daglig-20261103T021701Z.db-shm").exists()
+    assert (backup / "jarvis-daglig-20261104T021701Z.db-wal").exists(), (
+        "sidefil hvis .db findes blev slettet"
+    )
+    assert (backup / "cutover.db-wal").exists(), (
+        "sidefil hvis komprimerede original findes blev slettet"
+    )
+
+
+def test_state_backup_cleanup_uden_mapper_er_groen(tmp_path, monkeypatch):
+    monkeypatch.setattr(M, "_STATE_ROD", str(tmp_path / "ingen-state"))
+    monkeypatch.setattr(M, "_BACKUP_ROD", str(tmp_path / "ingen-backups"))
+    out = _registered()["state_backup_cleanup"].run_fn(trigger="test")
+
+    assert out["status"] == "ok" and out["slettet"] == 0

@@ -8,11 +8,12 @@ This group: cache-warmer + reassessment sweeps + health/usage observers
 relation_map_refresh, counterfactual_predictions_sweep, shared_cache_cleanup,
 central_self_health, central_learning, stream_stall_sweep, config_drift_check,
 instrument_scan, provider_health_check, db_health_scan, tool_usage_stats,
-endpoint_usage_stats, tmp_cleanup, spild_cleanup).
+endpoint_usage_stats, tmp_cleanup, spild_cleanup, state_backup_cleanup).
 """
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Callable
 
 from core.services.internal_cadence import ProducerSpec
@@ -22,6 +23,11 @@ logger = logging.getLogger(__name__)
 #: Rod-mappen pytest bruger til sine `pytest-N/`-arbejdsmapper. Modul-konstant
 #: saa testen kan pege den paa en tmp_path i stedet for den levende /tmp.
 _TMP_PYTEST_ROD = "/tmp/pytest-of-bs"
+
+#: Runtime-state og backup-mappen. Modul-konstanter af samme grund: testen skal
+#: kunne pege dem paa en tmp_path, saa den aldrig roerer de levende filer.
+_STATE_ROD = str(Path.home() / ".jarvis-v2" / "state")
+_BACKUP_ROD = str(Path.home() / ".jarvis-v2" / "state" / "backups")
 
 
 def register_maintenance_producers(register_producer: Callable[[ProducerSpec], None]) -> None:
@@ -522,4 +528,86 @@ def register_maintenance_producers(register_producer: Callable[[ProducerSpec], N
         visible_grace_minutes=0,
         run_fn=_run_spild_cleanup,
         priority=38,
+    ))
+
+    def _run_state_backup_cleanup(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """Ryd doedvaegt i `state/` og `state/backups/` (22/11-2026).
+
+        To rester havde ingen ejer. Maalt 22/11-2026:
+
+        - 17 `.bak*`-filer (12 MB) i `state/`. Hver er en kopi af en levende
+          fil, men ingen retention saa dem: `rg` efter `.bak` i al
+          oprydningskode gav nul. Nogen skriver dem, ingen rydder dem.
+        - Foraeldroese `.db-shm`/`.db-wal`-sidefiler i `backups/`: skrald fra
+          backups der blev slettet, hvor SQLite-sidefilerne blev ladt tilbage.
+
+        Reglen for `.bak` er med vilje konservativ: en bak-fil slettes KUN naar
+        dens kilde stadig findes OG er stoerre eller lig bakken. Er bakken
+        stoerre, baerer den historik kilden har mistet — maalt 22/11-2026
+        gjaldt det 9 af 17 filer (`autonomous_goals.json` 10 MB mod 1,9 MB
+        levende, `pending_approvals.json` 59 KB mod 2 bytes). Dem bevarer vi.
+        En oprydning der ikke kan skelne doedvaegt fra unik historik er vaerre
+        end ingen oprydning.
+        """
+        import time
+
+        slettet, frigjort, fejl, bevaret = 0, 0, 0, 0
+        # En bak-fil fra i gaar kan stadig vaere i brug; en uge er rigeligt.
+        graense = time.time() - 7 * 86400
+
+        state = Path(_STATE_ROD)
+        if state.is_dir():
+            for f in state.glob("*.bak*"):
+                try:
+                    if not f.is_file() or f.stat().st_mtime > graense:
+                        continue
+                    kilde = f.parent / f.name.split(".bak", 1)[0]
+                    if not kilde.is_file() or kilde.stat().st_size < f.stat().st_size:
+                        # Kilden er vaek, eller bakken baerer mere end den.
+                        bevaret += 1
+                        continue
+                    storrelse = f.stat().st_size
+                    f.unlink()
+                    slettet += 1
+                    frigjort += storrelse
+                except OSError:
+                    # En fil der forsvinder under os maa ikke standse sweepet.
+                    fejl += 1
+
+        backup = Path(_BACKUP_ROD)
+        if backup.is_dir():
+            for f in list(backup.glob("*.db-shm")) + list(backup.glob("*.db-wal")):
+                try:
+                    if not f.is_file():
+                        continue
+                    base = f.name.rsplit(".db-", 1)[0] + ".db"
+                    if (f.parent / base).exists() or (f.parent / (base + ".zst")).exists():
+                        continue
+                    storrelse = f.stat().st_size
+                    f.unlink()
+                    slettet += 1
+                    frigjort += storrelse
+                except OSError:
+                    fejl += 1
+
+        if slettet:
+            logger.info(
+                "state_backup_cleanup: slettede %d doedvaegt-filer, frigjorde %.1f MB, "
+                "bevarede %d unikke .bak",
+                slettet, frigjort / (1024 * 1024), bevaret,
+            )
+        return {
+            "status": "ok",
+            "slettet": slettet,
+            "frigjort_mb": round(frigjort / (1024 * 1024), 1),
+            "bevaret_unik": bevaret,
+            "fejl": fejl,
+        }
+
+    register_producer(ProducerSpec(
+        name="state_backup_cleanup",
+        cooldown_minutes=720,  # hver 12. time — doedvaegt vokser i dage, ikke minutter
+        visible_grace_minutes=0,
+        run_fn=_run_state_backup_cleanup,
+        priority=39,
     ))

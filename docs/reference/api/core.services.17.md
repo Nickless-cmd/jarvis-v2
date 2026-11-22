@@ -14,7 +14,7 @@ _Maintenance / health cadence producers (split from internal_cadence.py)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `register_maintenance_producers` | `(register_producer)` | Register the maintenance / health producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_maintenance.py#L27) |
+| function | `register_maintenance_producers` | `(register_producer)` | Register the maintenance / health producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_maintenance.py#L33) |
 
 ## `core/services/internal_cadence_matrix.py`
 _Matrix-themed cadence producers (split from internal_cadence.py)._

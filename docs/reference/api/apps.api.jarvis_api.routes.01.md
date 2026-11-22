@@ -35,21 +35,23 @@ _Self-profile-route for cowork command center (spec §4.1 Account)._
 | function | `build_apps_overview` | `(*, available, get_status)` | Connectede apps (§4.5) = plugin-registry filtreret til kind='connector'. | [src](../../../apps/api/jarvis_api/routes/account.py#L432) |
 | function | `account_apps` | `()` | Connectede apps (§4.5): plugin-registry filtreret til kind='connector' | [src](../../../apps/api/jarvis_api/routes/account.py#L455) |
 | function | `account_mcp` | `()` | List registrerede MCP-servere. Returnerer {"servers": [...]}. | [src](../../../apps/api/jarvis_api/routes/account.py#L467) |
-| function | `account_mcp_add` | `(payload=…)` | Owner-only: tilføj en MCP-server. Body: {name, url}. Ikke-owner → 403. | [src](../../../apps/api/jarvis_api/routes/account.py#L475) |
-| function | `account_mcp_remove` | `(server_id)` | Owner-only: fjern MCP-serveren med `server_id`. Ikke-owner → 403. | [src](../../../apps/api/jarvis_api/routes/account.py#L489) |
-| function | `account_mcp_trust` | `()` | Hvilke servere er GODKENDT, og hvad er de pinnet til? | [src](../../../apps/api/jarvis_api/routes/account.py#L501) |
-| function | `account_mcp_allow` | `(server_name)` | Owner-only: godkend en MCP-server til at koere paa Bjoerns vegne. | [src](../../../apps/api/jarvis_api/routes/account.py#L513) |
-| function | `account_mcp_revoke` | `(server_name)` | Owner-only: tilbagekald godkendelsen OG drop pinnen. | [src](../../../apps/api/jarvis_api/routes/account.py#L528) |
-| function | `account_mcp_app_call` | `(server_name, payload=…)` | MCP App -> dens egen godkendte server. | [src](../../../apps/api/jarvis_api/routes/account.py#L542) |
-| function | `account_mcp_app_resource` | `(server_name, payload=…)` | MCP App -> `resources/read` på dens egen godkendte server. | [src](../../../apps/api/jarvis_api/routes/account.py#L568) |
-| function | `account_quota` | `()` | Self-scope kvote-overblik for den aktuelle bruger: tier + forbrug pr. type | [src](../../../apps/api/jarvis_api/routes/account.py#L582) |
-| function | `build_data_export` | `(user_id, *, get_user, get_tier)` | GDPR-dataportabilitet (Art. 20): saml brugerens EGNE data i ét bundt. | [src](../../../apps/api/jarvis_api/routes/account.py#L590) |
-| function | `account_export` | `()` | Hent ALLE dine egne data som JSON (GDPR-portabilitet). Self-scoped. | [src](../../../apps/api/jarvis_api/routes/account.py#L644) |
-| function | `build_export_zip` | `(bundle, *, now=…)` | Pak eksport-bundtet som et ZIP-arkiv i hukommelsen. | [src](../../../apps/api/jarvis_api/routes/account.py#L692) |
-| function | `account_export_zip` | `()` | Samme bundt som /export, pakket som ZIP og streamet. Self-scoped. | [src](../../../apps/api/jarvis_api/routes/account.py#L719) |
-| function | `account_erase` | `(payload=…)` | GDPR Art. 17: slet dine EGNE data. Self-scoped + email-bekræftelse påkrævet. | [src](../../../apps/api/jarvis_api/routes/account.py#L744) |
-| function | `account_data_overview` | `()` | Hvad har vi om dig, lag for lag. Rene tal — intet indhold. | [src](../../../apps/api/jarvis_api/routes/account.py#L810) |
-| function | `account_delete_layer` | `(layer)` | Slet ét lag: sessions | senses | brain | identity — eller `all`. | [src](../../../apps/api/jarvis_api/routes/account.py#L823) |
+| function | `account_mcp_catalog` | `()` | List kuraterede MCP-servere og markér dem der allerede er registreret. | [src](../../../apps/api/jarvis_api/routes/account.py#L475) |
+| function | `account_mcp_catalog_install` | `(catalog_id)` | Owner-only: installer en kurateret server gennem det eksisterende registry. | [src](../../../apps/api/jarvis_api/routes/account.py#L485) |
+| function | `account_mcp_add` | `(payload=…)` | Owner-only: tilføj en MCP-server. Body: {name, url}. Ikke-owner → 403. | [src](../../../apps/api/jarvis_api/routes/account.py#L511) |
+| function | `account_mcp_remove` | `(server_id)` | Owner-only: fjern MCP-serveren med `server_id`. Ikke-owner → 403. | [src](../../../apps/api/jarvis_api/routes/account.py#L525) |
+| function | `account_mcp_trust` | `()` | Hvilke servere er GODKENDT, og hvad er de pinnet til? | [src](../../../apps/api/jarvis_api/routes/account.py#L537) |
+| function | `account_mcp_allow` | `(server_name)` | Owner-only: godkend en MCP-server til at koere paa Bjoerns vegne. | [src](../../../apps/api/jarvis_api/routes/account.py#L549) |
+| function | `account_mcp_revoke` | `(server_name)` | Owner-only: tilbagekald godkendelsen OG drop pinnen. | [src](../../../apps/api/jarvis_api/routes/account.py#L564) |
+| function | `account_mcp_app_call` | `(server_name, payload=…)` | MCP App -> dens egen godkendte server. | [src](../../../apps/api/jarvis_api/routes/account.py#L578) |
+| function | `account_mcp_app_resource` | `(server_name, payload=…)` | MCP App -> `resources/read` på dens egen godkendte server. | [src](../../../apps/api/jarvis_api/routes/account.py#L604) |
+| function | `account_quota` | `()` | Self-scope kvote-overblik for den aktuelle bruger: tier + forbrug pr. type | [src](../../../apps/api/jarvis_api/routes/account.py#L618) |
+| function | `build_data_export` | `(user_id, *, get_user, get_tier)` | GDPR-dataportabilitet (Art. 20): saml brugerens EGNE data i ét bundt. | [src](../../../apps/api/jarvis_api/routes/account.py#L626) |
+| function | `account_export` | `()` | Hent ALLE dine egne data som JSON (GDPR-portabilitet). Self-scoped. | [src](../../../apps/api/jarvis_api/routes/account.py#L680) |
+| function | `build_export_zip` | `(bundle, *, now=…)` | Pak eksport-bundtet som et ZIP-arkiv i hukommelsen. | [src](../../../apps/api/jarvis_api/routes/account.py#L728) |
+| function | `account_export_zip` | `()` | Samme bundt som /export, pakket som ZIP og streamet. Self-scoped. | [src](../../../apps/api/jarvis_api/routes/account.py#L755) |
+| function | `account_erase` | `(payload=…)` | GDPR Art. 17: slet dine EGNE data. Self-scoped + email-bekræftelse påkrævet. | [src](../../../apps/api/jarvis_api/routes/account.py#L780) |
+| function | `account_data_overview` | `()` | Hvad har vi om dig, lag for lag. Rene tal — intet indhold. | [src](../../../apps/api/jarvis_api/routes/account.py#L846) |
+| function | `account_delete_layer` | `(layer)` | Slet ét lag: sessions | senses | brain | identity — eller `all`. | [src](../../../apps/api/jarvis_api/routes/account.py#L859) |
 
 ## `apps/api/jarvis_api/routes/agent_approvals.py`
 _Agent-approvals: list og afgoer (agent-contract-v1 F4c, spec 8.2)._

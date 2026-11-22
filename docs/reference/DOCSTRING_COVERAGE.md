@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10409/19034 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10416/19042 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 10409/19034 functions/methods documented (54%). The list 
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 763 | 1074 | 71% |
+| `apps.api.jarvis_api.routes` | 765 | 1076 | 71% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,8 +25,8 @@ Generated from source. 10409/19034 functions/methods documented (54%). The list 
 | `core.identity` | 84 | 175 | 48% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 919 | 1636 | 56% |
-| `core.services` | 6982 | 12931 | 53% |
+| `core.runtime` | 920 | 1637 | 56% |
+| `core.services` | 6986 | 12936 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 150 | 232 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -425,7 +425,7 @@ Generated from source. 10409/19034 functions/methods documented (54%). The list 
 - `core/runtime/db_agent_lease.py` :: `ensure_lease_tables` (L35)
 - `core/runtime/db_agent_lease.py` :: `holder_identity` (L62)
 - `core/runtime/db_agent_lease.py` :: `is_current` (L107)
-- `core/runtime/db_agent_lease.py` :: `release` (L115)
+- `core/runtime/db_agent_lease.py` :: `release` (L132)
 - `core/runtime/db_agent_mandate.py` :: `ensure_mandate_tables` (L26)
 - `core/runtime/db_agent_mandate.py` :: `get` (L127)
 - `core/runtime/db_agent_mandate.py` :: `side_effect_exceeds` (L134)
@@ -756,7 +756,7 @@ Generated from source. 10409/19034 functions/methods documented (54%). The list 
 - `core/services/agent_contract_projection.py` :: `close` (L614)
 - `core/services/agent_contract_projection.py` :: `followup` (L589)
 - `core/services/agent_contract_projection.py` :: `mark_read` (L505)
-- `core/services/agent_contract_service.py` :: `list_approvals` (L841)
+- `core/services/agent_contract_service.py` :: `list_approvals` (L859)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L779)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L777)
 - `core/services/agent_loop_core.py` :: `LoopIO.model` (L772)

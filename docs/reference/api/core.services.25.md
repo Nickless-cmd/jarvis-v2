@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/runtime_hook_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `start_runtime_hook_runtime` | `()` | — | [src](../../../core/services/runtime_hook_runtime.py#L19) |
+| function | `stop_runtime_hook_runtime` | `()` | — | [src](../../../core/services/runtime_hook_runtime.py#L36) |
+| function | `_hook_runtime_loop` | `(*, subscriber)` | — | [src](../../../core/services/runtime_hook_runtime.py#L49) |
+
 ## `core/services/runtime_hooks.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -704,29 +712,4 @@ _Selv-modellens oejebliksbilleder, versioneret saa de kan SAMMENLIGNES._
 | function | `list_self_model_snapshots` | `(*, limit=…, before=…, after=…)` | Nyeste foerst. `before`/`after` afgraenser paa tidsstempel. | [src](../../../core/services/self_model_history.py#L151) |
 | function | `compare_self_model_snapshots` | `(older_id, newer_id)` | Hvad aendrede sig mellem to billeder? | [src](../../../core/services/self_model_history.py#L169) |
 | function | `build_self_model_history_surface` | `(*, limit=…)` | Fladen: de seneste billeder, og hvad der skiftede mellem de to nyeste. | [src](../../../core/services/self_model_history.py#L202) |
-
-## `core/services/self_model_predictive.py`
-_Predictive self-model — frequencies, not aspirations._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tick_quality_stats` | `(days=…)` | — | [src](../../../core/services/self_model_predictive.py#L32) |
-| function | `_mood_baseline` | `(days=…)` | — | [src](../../../core/services/self_model_predictive.py#L48) |
-| function | `_decision_adherence` | `()` | — | [src](../../../core/services/self_model_predictive.py#L56) |
-| function | `_crisis_frequency` | `(days=…)` | — | [src](../../../core/services/self_model_predictive.py#L64) |
-| function | `_productive_idle_ratio` | `(days=…)` | Fraction of ticks that ran productive idle vs all ticks. | [src](../../../core/services/self_model_predictive.py#L84) |
-| function | `build_predictive_self_model` | `(days=…)` | Compute the empirical self-model. Cheap; fresh each call. | [src](../../../core/services/self_model_predictive.py#L111) |
-| function | `_maybe_record_from_model` | `(model)` | Uddrag en FALSIFICERBAR prediktion fra modellen og persistér den. | [src](../../../core/services/self_model_predictive.py#L148) |
-| function | `predictive_self_model_section` | `()` | Render predictive self-model as a prompt awareness section. | [src](../../../core/services/self_model_predictive.py#L208) |
-| function | `_parse_iso` | `(raw)` | Parse ISO-tidsstempel fra state-storen. ``Z`` og ``+00:00`` er samme tid. | [src](../../../core/services/self_model_predictive.py#L327) |
-| function | `_load_predictions` | `()` | Læs udestående/scorede prediktions-records. Aldrig kast. | [src](../../../core/services/self_model_predictive.py#L343) |
-| function | `_save_predictions` | `(preds)` | Persistér prediktions-records (kompakt, capped). Aldrig kast. | [src](../../../core/services/self_model_predictive.py#L353) |
-| function | `_tick_scores_in_window` | `(start, end)` | Tick-scores hvis ``evaluated_at`` ligger i ``[start, end]``. | [src](../../../core/services/self_model_predictive.py#L362) |
-| function | `_absorb` | `(cluster, nerve, value, **kwargs)` | Indirektion over central_absorb.absorb — patchbar i test, self-safe. | [src](../../../core/services/self_model_predictive.py#L389) |
-| function | `record_prediction` | `(metric, threshold, predicted_above, probability, made_at=…, *, horizon_hours=…, baseline=…)` | Persistér en FALSIFICERBAR prediktions-record. Skalar, self-safe. | [src](../../../core/services/self_model_predictive.py#L398) |
-| function | `_age_hours` | `(made_at)` | — | [src](../../../core/services/self_model_predictive.py#L449) |
-| function | `_score_record` | `(p, now)` | Afgør én v2-records skæbne: pending | scored | insufficient | void. | [src](../../../core/services/self_model_predictive.py#L456) |
-| function | `_calibration` | `(scored)` | Kalibrering: passerer den udtalte sandsynlighed med virkeligheden? | [src](../../../core/services/self_model_predictive.py#L502) |
-| function | `score_predictions` | `(min_age_hours=…)` | Scor modne forudsigelser i deres eget adskilte fremtidsvindue. | [src](../../../core/services/self_model_predictive.py#L533) |
-| function | `build_self_model_predictive_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/self_model_predictive.py#L630) |
 

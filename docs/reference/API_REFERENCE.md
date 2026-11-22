@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-11-22 from app.routes (live) — 711 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-22 from app.routes (live) — 713 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -16,6 +16,8 @@
 | PATCH | `/account/language` | dict | account |
 | GET | `/account/mcp` | dict | account |
 | POST | `/account/mcp` | dict | account |
+| GET | `/account/mcp/catalog` | dict | account |
+| POST | `/account/mcp/catalog/{catalog_id}/install` | dict | account |
 | GET | `/account/mcp/trust` | dict | account |
 | DELETE | `/account/mcp/{server_id}` | dict | account |
 | POST | `/account/mcp/{server_name}/allow` | dict | account |

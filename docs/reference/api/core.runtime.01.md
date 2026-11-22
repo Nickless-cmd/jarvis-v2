@@ -274,17 +274,18 @@ _Workerlease med stigende fencing-token + supervisor-genopretning (agent-contrac
 | function | `acquire` | `(*, assignment_id, holder, lease_seconds=…, now=…)` | Erhverv leasen og returner det nye fencing-token. ``LEASE_HELD`` hvis en anden har en levende. | [src](../../../core/runtime/db_agent_lease.py#L66) |
 | function | `renew` | `(*, assignment_id, holder, token, lease_seconds=…, now=…)` | Forny. Kun den nuvaerende holder med det nuvaerende token, og kun foer udloeb: en worker | [src](../../../core/runtime/db_agent_lease.py#L93) |
 | function | `is_current` | `(*, assignment_id, token, now=…)` | — | [src](../../../core/runtime/db_agent_lease.py#L107) |
-| function | `release` | `(*, assignment_id, holder, token)` | — | [src](../../../core/runtime/db_agent_lease.py#L115) |
-| function | `current_assignment_id` | `()` | The fenced assignment in this worker, or empty outside an agent run. | [src](../../../core/runtime/db_agent_lease.py#L129) |
-| function | `scope_is_current` | `()` | Maa den NUVAERENDE tråd stadig skrive? Sandt uden scope (legacy-agenter), ellers kun | [src](../../../core/runtime/db_agent_lease.py#L137) |
-| function | `er_i_agent_koersel` | `()` | Er den nuvaerende traad inde i en agent-koersel? | [src](../../../core/runtime/db_agent_lease.py#L174) |
-| function | `agent_koersel_marker` | `()` | Maerk traaden som «inde i en agent-koersel» — uafhaengigt af leasen. | [src](../../../core/runtime/db_agent_lease.py#L187) |
-| function | `agent_lease_scope` | `(agent_id, *, lease_seconds=…, renew_seconds=…)` | Hold leasen for agentens aabne assignment mens blokken koerer. Uden et assignment | [src](../../../core/runtime/db_agent_lease.py#L197) |
-| function | `_claim` | `(assignment_id, token, t)` | Overtag en udloebet lease med ét atomisk UPDATE. Kun den ene supervisor faar ``True``. | [src](../../../core/runtime/db_agent_lease.py#L241) |
-| function | `reconcile_expired_leases` | `(*, now=…)` | Find udloebne leases, overtag hver med ét atomisk UPDATE og afgoer sikkert. | [src](../../../core/runtime/db_agent_lease.py#L251) |
-| function | `close_orphan_runs` | `(conn, assignment_id, *, reason)` | Luk run-raekker der stadig staar aabne for et assignment der ikke laengere er det. | [src](../../../core/runtime/db_agent_lease.py#L273) |
-| function | `close_stale_runs` | `(*, timeout_minutes=…, max_rows=…)` | Luk run-raekker der ikke laengere har nogen der ejer dem — periodisk fangst. | [src](../../../core/runtime/db_agent_lease.py#L302) |
-| function | `_decide` | `(assignment_id, t)` | — | [src](../../../core/runtime/db_agent_lease.py#L364) |
+| function | `agent_has_live_lease` | `(agent_id, *, now=…)` | Whether an open assignment for ``agent_id`` still has a valid lease. | [src](../../../core/runtime/db_agent_lease.py#L115) |
+| function | `release` | `(*, assignment_id, holder, token)` | — | [src](../../../core/runtime/db_agent_lease.py#L132) |
+| function | `current_assignment_id` | `()` | The fenced assignment in this worker, or empty outside an agent run. | [src](../../../core/runtime/db_agent_lease.py#L146) |
+| function | `scope_is_current` | `()` | Maa den NUVAERENDE tråd stadig skrive? Sandt uden scope (legacy-agenter), ellers kun | [src](../../../core/runtime/db_agent_lease.py#L154) |
+| function | `er_i_agent_koersel` | `()` | Er den nuvaerende traad inde i en agent-koersel? | [src](../../../core/runtime/db_agent_lease.py#L191) |
+| function | `agent_koersel_marker` | `()` | Maerk traaden som «inde i en agent-koersel» — uafhaengigt af leasen. | [src](../../../core/runtime/db_agent_lease.py#L204) |
+| function | `agent_lease_scope` | `(agent_id, *, lease_seconds=…, renew_seconds=…)` | Hold leasen for agentens aabne assignment mens blokken koerer. Uden et assignment | [src](../../../core/runtime/db_agent_lease.py#L214) |
+| function | `_claim` | `(assignment_id, token, t)` | Overtag en udloebet lease med ét atomisk UPDATE. Kun den ene supervisor faar ``True``. | [src](../../../core/runtime/db_agent_lease.py#L258) |
+| function | `reconcile_expired_leases` | `(*, now=…)` | Find udloebne leases, overtag hver med ét atomisk UPDATE og afgoer sikkert. | [src](../../../core/runtime/db_agent_lease.py#L268) |
+| function | `close_orphan_runs` | `(conn, assignment_id, *, reason)` | Luk run-raekker der stadig staar aabne for et assignment der ikke laengere er det. | [src](../../../core/runtime/db_agent_lease.py#L290) |
+| function | `close_stale_runs` | `(*, timeout_minutes=…, max_rows=…)` | Luk run-raekker der ikke laengere har nogen der ejer dem — periodisk fangst. | [src](../../../core/runtime/db_agent_lease.py#L319) |
+| function | `_decide` | `(assignment_id, t)` | — | [src](../../../core/runtime/db_agent_lease.py#L381) |
 
 ## `core/runtime/db_agent_mandate.py`
 _Durable, mechanically enforceable mandate for one agent assignment._

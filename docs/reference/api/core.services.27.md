@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_tool_scope.py`
+_Ét værktøjs-scope pr. SESSION — ikke ét pr. tur._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `sticky_enabled` | `()` | Er scopet fast pr. session? Fail-safe: enhver fejl → til. | [src](../../../core/services/session_tool_scope.py#L35) |
+| function | `_key` | `(session_id)` | — | [src](../../../core/services/session_tool_scope.py#L44) |
+| function | `_read` | `(session_id)` | Det gemte scope, eller ``None`` når sessionen ikke har en post. | [src](../../../core/services/session_tool_scope.py#L48) |
+| function | `_write` | `(session_id, scope)` | — | [src](../../../core/services/session_tool_scope.py#L66) |
+| function | `resolve_scope` | `(session_id, requested)` | Det scope turen skal køre med — og den værdi sessionen husker. | [src](../../../core/services/session_tool_scope.py#L74) |
+| function | `clear` | `(session_id)` | Glem sessionens scope (tests og eksplicit nulstilling). | [src](../../../core/services/session_tool_scope.py#L99) |
+
 ## `core/services/session_topic_tracker.py`
 _Session topic tracker — real-time topic extraction and accumulation._
 
@@ -591,12 +603,4 @@ _Trin 3: Smith standser handlingen i realtid og tvinger et nyt valg._
 | function | `_har_adfaerds_noegle` | `()` | Self-safe: uden svar behandler vi det som INGEN noegle, saa et opslags- | [src](../../../core/services/smith_confrontation.py#L123) |
 | function | `_trin3_moenstre` | `()` | — | [src](../../../core/services/smith_confrontation.py#L134) |
 | function | `smith_confront_on_action` | `(reasoning_text, ctx)` | RED naar et trin-3-moenster er ved at blive gentaget. ``None`` ellers. | [src](../../../core/services/smith_confrontation.py#L151) |
-
-## `core/services/smith_noise_veto.py`
-_Veto mod Smiths sproglige stoej — modellen kan kun sige nej, aldrig ja._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_er_risikabel` | `(etiket, cfg)` | Risiko afgoeres af den liste stigen allerede bruger — ikke af en model. | [src](../../../core/services/smith_noise_veto.py#L80) |
-| function | `maa_minte` | `(pattern_key, etiket=…, cfg=…, metric=…)` | Skal Smith have lov at minte dette moenster? | [src](../../../core/services/smith_noise_veto.py#L99) |
 

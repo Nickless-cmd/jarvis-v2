@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prompt_heartbeat_self_knowledge.py`
+_Heartbeat self-knowledge section builder._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_heartbeat_self_knowledge_section` | `()` | Build a compact self-knowledge section for the heartbeat prompt. | [src](../../../core/services/prompt_heartbeat_self_knowledge.py#L19) |
+
+## `core/services/prompt_memory_recall.py`
+_Supplementary non-blocking recall during visible prompt assembly._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `append_background_recall` | `(user_message, session_id, _dyn_memory_recall, derived_inputs, _sec_err)` | Surface prepared associations only when they match the current message. | [src](../../../core/services/prompt_memory_recall.py#L18) |
+
+## `core/services/prompt_mode_layout.py`
+_Reversible prompt-layout policy for the visible chat and code lanes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `mode_layout_v2_enabled` | `()` | Return whether the cache-first mode layout is active. | [src](../../../core/services/prompt_mode_layout.py#L21) |
+| function | `scope_stable_blocks_v3_enabled` | `(*, scope=…)` | Route proven-stable blocks into the warmed chat/code prefix. | [src](../../../core/services/prompt_mode_layout.py#L43) |
+| function | `filter_visible_rules` | `(text, *, scope)` | Keep universal rules in code mode and conversational rules in chat. | [src](../../../core/services/prompt_mode_layout.py#L76) |
+| function | `recency_anchor` | `(*, scope)` | A short cache-late reminder; stable contracts live cache-first in V2. | [src](../../../core/services/prompt_mode_layout.py#L99) |
+
 ## `core/services/prompt_mutation_loop.py`
 _Prompt Mutation Loop — apply, score, auto-rollback on negative score._
 
@@ -579,53 +603,4 @@ _Reasoning Store — Phase 1 of Generalized Learning._
 | function | `set_enabled` | `(value)` | Set killswitch — toggle reasoning store on/off without restart. | [src](../../../core/services/reasoning_store.py#L320) |
 | function | `compact_stale` | `(days=…, min_confidence=…)` | Delete stale low-confidence conclusions. Returns count removed. | [src](../../../core/services/reasoning_store.py#L326) |
 | function | `compute_embedding` | `(text)` | Compute embedding vector for semantic search. | [src](../../../core/services/reasoning_store.py#L348) |
-
-## `core/services/reboot_awareness_daemon.py`
-_Reboot Awareness Daemon — proprioception: "I feel when I restart"._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/reboot_awareness_daemon.py#L35) |
-| function | `_load` | `()` | — | [src](../../../core/services/reboot_awareness_daemon.py#L39) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/reboot_awareness_daemon.py#L53) |
-| function | `_update_last_seen` | `(pid)` | — | [src](../../../core/services/reboot_awareness_daemon.py#L65) |
-| function | `_graceful_shutdown_marker` | `()` | Called via signal handler. Writes a clean shutdown marker. | [src](../../../core/services/reboot_awareness_daemon.py#L72) |
-| function | `_signal_handler` | `(signum, _frame)` | Write graceful-shutdown marker then re-raise to default handler. | [src](../../../core/services/reboot_awareness_daemon.py#L84) |
-| function | `_install_signal_handlers` | `()` | — | [src](../../../core/services/reboot_awareness_daemon.py#L101) |
-| function | `detect_reboot` | `()` | Compare previous last_seen to now; emit an event if this is a fresh boot. | [src](../../../core/services/reboot_awareness_daemon.py#L112) |
-| function | `tick` | `(_seconds=…)` | Heartbeat hook: first call triggers detect_reboot(), thereafter | [src](../../../core/services/reboot_awareness_daemon.py#L193) |
-| function | `get_last_boot_event` | `()` | — | [src](../../../core/services/reboot_awareness_daemon.py#L202) |
-| function | `_tikket_for_nylig` | `(last_seen, now)` | Har nogen proces tikket inden for vinduet? Ukendt tid regnes som nej. | [src](../../../core/services/reboot_awareness_daemon.py#L215) |
-| function | `build_reboot_awareness_surface` | `()` | — | [src](../../../core/services/reboot_awareness_daemon.py#L227) |
-| function | `_surface_summary` | `(event, uptime)` | — | [src](../../../core/services/reboot_awareness_daemon.py#L264) |
-| function | `build_reboot_awareness_prompt_section` | `()` | Announce recent reboot once; stays silent after first ~10 min. | [src](../../../core/services/reboot_awareness_daemon.py#L287) |
-
-## `core/services/recall.py`
-_One recall path over every memory source (memory repair 2026-09-04, R5)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_clip` | `(text, cap=…)` | — | [src](../../../core/services/recall.py#L63) |
-| function | `_dedupe_key` | `(text)` | — | [src](../../../core/services/recall.py#L68) |
-| function | `_terms` | `(text)` | — | [src](../../../core/services/recall.py#L73) |
-| function | `_lexical_coverage` | `(query, text)` | — | [src](../../../core/services/recall.py#L85) |
-| function | `_default_sources_for_query` | `(query)` | — | [src](../../../core/services/recall.py#L93) |
-| function | `_source_workspace` | `(query, limit)` | — | [src](../../../core/services/recall.py#L103) |
-| function | `_source_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L119) |
-| function | `_source_private_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L145) |
-| function | `_source_sensory` | `(query, limit)` | — | [src](../../../core/services/recall.py#L170) |
-| function | `_rank_score` | `(index)` | FTS5 bm25() giver 0,05-0,09 efter 1/(1+|rank|) — aldrig konkurrencedygtig | [src](../../../core/services/recall.py#L188) |
-| function | `_source_session_summary` | `(query, limit)` | — | [src](../../../core/services/recall.py#L195) |
-| function | `_source_chat` | `(query, limit)` | — | [src](../../../core/services/recall.py#L209) |
-| function | `_source_chronicle` | `(query, limit)` | — | [src](../../../core/services/recall.py#L223) |
-| function | `fuse` | `(query, candidates)` | Re-score candidates: 0.6 × native + 0.4 × BM25 (over the candidate texts), | [src](../../../core/services/recall.py#L253) |
-| function | `empty_message` | `(query)` | — | [src](../../../core/services/recall.py#L297) |
-| function | `recall` | `(query, *, limit=…, sources=…, session_id=…, min_score=…, per_source=…, deadline_s=…)` | Search every memory source with one fused ranking. | [src](../../../core/services/recall.py#L301) |
-
-## `core/services/recall_observability.py`
-_Scalar-only outcome telemetry for scoped recall._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `emit_recall_outcome` | `(**metadata)` | — | [src](../../../core/services/recall_observability.py#L14) |
 

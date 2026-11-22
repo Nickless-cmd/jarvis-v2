@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/efterladt_run_vagt.py`
+_Den periodiske sweep der manglede: en ``running``-række uden ejer bliver aldrig lukket._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_running_raekker` | `(stilstand_s)` | ``(run_id, started_at)`` for ``running``-rækker ældre end tærsklen. | [src](../../../core/services/efterladt_run_vagt.py#L75) |
+| function | `sweep_efterladte_runs` | `(*, stilstand_s=…)` | Stempl ``running``-rækker der hverken lever eller er terminale. | [src](../../../core/services/efterladt_run_vagt.py#L94) |
+| function | `_loop` | `()` | Kadence-loop. Venter ``KADENCE_S`` mellem runder, ikke på et fast ur. | [src](../../../core/services/efterladt_run_vagt.py#L152) |
+| function | `start_efterladt_run_vagt` | `()` | Start vagten én gang pr. proces. Idempotent. Returnerer True hvis startet. | [src](../../../core/services/efterladt_run_vagt.py#L168) |
+| function | `stop_efterladt_run_vagt` | `()` | Stop loopet. Idempotent; no-op hvis det aldrig startede. | [src](../../../core/services/efterladt_run_vagt.py#L196) |
+
 ## `core/services/egress_guard.py`
 _SSRF-vaern for udgaaende hentninger — porteret fra jarvis-code._
 
@@ -678,19 +689,4 @@ _Experiential Memory — not just facts, but lived experiences with emotion._
 | function | `_influence_narrative` | `(bearing, posture, initiative, continuity)` | One compact sentence explaining how experience shapes inner bearing. | [src](../../../core/services/experiential_runtime_context.py#L570) |
 | function | `_derive_experiential_support` | `(influence)` | Derive a bounded support surface from experiential influence. | [src](../../../core/services/experiential_runtime_context.py#L633) |
 | function | `_support_narrative` | `(posture, bias, mode)` | One compact sentence for how experiential support shapes conductor posture. | [src](../../../core/services/experiential_runtime_context.py#L686) |
-
-## `core/services/experiment_runner.py`
-_Experiment runner — controlled A/B trials of prompt variants._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/experiment_runner.py#L35) |
-| function | `_save` | `(d)` | — | [src](../../../core/services/experiment_runner.py#L42) |
-| function | `start_experiment` | `(*, scope, variant_a_label, variant_a_text, variant_b_label, variant_b_text, trials_target=…)` | Begin a new A/B experiment for a scope. | [src](../../../core/services/experiment_runner.py#L46) |
-| function | `get_active_variant` | `(scope)` | Return the variant currently scheduled for this scope, or None. | [src](../../../core/services/experiment_runner.py#L80) |
-| function | `conclude_experiment` | `(experiment_id)` | Analyze an experiment's data via prompt_variant_tracker, declare winner. | [src](../../../core/services/experiment_runner.py#L112) |
-| function | `list_experiments` | `(*, status=…)` | — | [src](../../../core/services/experiment_runner.py#L177) |
-| function | `_exec_start_experiment` | `(args)` | — | [src](../../../core/services/experiment_runner.py#L185) |
-| function | `_exec_conclude_experiment` | `(args)` | — | [src](../../../core/services/experiment_runner.py#L196) |
-| function | `_exec_list_experiments` | `(args)` | — | [src](../../../core/services/experiment_runner.py#L200) |
 

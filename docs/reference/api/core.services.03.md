@@ -149,6 +149,21 @@ _Arc rule extractor — turns narrative arcs into actionable rules._
 | function | `arc_rules_section` | `(*, max_lines=…)` | Retired 2026-09-04 (memory repair, R4): arc rules reach the prompt only | [src](../../../core/services/arc_rule_extractor.py#L180) |
 | function | `_legacy_arc_rules_section` | `(*, max_lines=…)` | Pre-2026-09-04 renderer, kept for reference/tests of the file format. | [src](../../../core/services/arc_rule_extractor.py#L188) |
 
+## `core/services/artifact_document.py`
+_Persistent, versioned documents for the chat canvas._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `DocumentNotFound` | `` | — | [src](../../../core/services/artifact_document.py#L11) |
+| class | `VersionConflict` | `` | — | [src](../../../core/services/artifact_document.py#L15) |
+| function | `_now` | `()` | — | [src](../../../core/services/artifact_document.py#L19) |
+| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/artifact_document.py#L23) |
+| function | `_as_dict` | `(row)` | — | [src](../../../core/services/artifact_document.py#L44) |
+| function | `create_document` | `(*, session_id, title, content, content_type=…)` | — | [src](../../../core/services/artifact_document.py#L48) |
+| function | `get_document` | `(document_id)` | — | [src](../../../core/services/artifact_document.py#L86) |
+| function | `list_documents` | `(session_id)` | — | [src](../../../core/services/artifact_document.py#L98) |
+| function | `update_document` | `(document_id, *, content, expected_version, title=…, content_type=…)` | — | [src](../../../core/services/artifact_document.py#L112) |
+
 ## `core/services/assembly_load_probe.py`
 _Hvad lavede maskinen MENS prompten blev samlet?_
 
@@ -601,24 +616,4 @@ _Autonomous Work Daemon — Jarvis works on his own when Bjørn is away._
 | function | `build_autonomous_work_surface` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L681) |
 | function | `_surface_summary` | `(pending, all_items)` | Summarise the queue — og sig naar den ikke bliver forbruget. | [src](../../../core/services/autonomous_work_daemon.py#L714) |
 | function | `build_autonomous_work_prompt_section` | `()` | Sig hvad der venter — med type, dato og hvad der blokerer. | [src](../../../core/services/autonomous_work_daemon.py#L773) |
-
-## `core/services/autonomy_budget.py`
-_Dagligt budget for selvvalgte handlinger + tælling af stilheden (blok E, 4/9)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_state_get` | `(key, default=…)` | — | [src](../../../core/services/autonomy_budget.py#L41) |
-| function | `_state_set` | `(key, value)` | — | [src](../../../core/services/autonomy_budget.py#L50) |
-| function | `daily_budget` | `()` | — | [src](../../../core/services/autonomy_budget.py#L58) |
-| function | `set_daily_budget` | `(value)` | — | [src](../../../core/services/autonomy_budget.py#L65) |
-| function | `_today` | `(now=…)` | — | [src](../../../core/services/autonomy_budget.py#L71) |
-| function | `_spent_today` | `(now=…)` | — | [src](../../../core/services/autonomy_budget.py#L75) |
-| function | `remaining` | `(now=…)` | — | [src](../../../core/services/autonomy_budget.py#L86) |
-| function | `may_act` | `(action=…, *, now=…)` | Er der plads i dagens budget? Fail-open: enhver fejl → ja. | [src](../../../core/services/autonomy_budget.py#L90) |
-| function | `note_action` | `(action, *, now=…)` | Registrér en selvvalgt handling. Synlig log, ikke en tavs bremse. | [src](../../../core/services/autonomy_budget.py#L102) |
-| function | `note_silence` | `(*, outcome, reason_code=…)` | Han valgte at tie. Tæl det — det er den eneste måde vægten kan vurderes. | [src](../../../core/services/autonomy_budget.py#L122) |
-| function | `silence_counts` | `()` | — | [src](../../../core/services/autonomy_budget.py#L135) |
-| function | `build_weekly_summary` | `()` | Ugens stilhed i én linje — "" når han ikke har tiet nævneværdigt. | [src](../../../core/services/autonomy_budget.py#L142) |
-| function | `run_weekly_review` | `(*, force=…, now=…)` | Ugentligt: læg stilheds-resuméet i den proaktive kø og nulstil tælleren. | [src](../../../core/services/autonomy_budget.py#L161) |
-| function | `build_autonomy_budget_surface` | `()` | — | [src](../../../core/services/autonomy_budget.py#L190) |
 

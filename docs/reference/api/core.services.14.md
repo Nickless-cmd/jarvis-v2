@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/experiment_runner.py`
+_Experiment runner — controlled A/B trials of prompt variants._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/experiment_runner.py#L35) |
+| function | `_save` | `(d)` | — | [src](../../../core/services/experiment_runner.py#L42) |
+| function | `start_experiment` | `(*, scope, variant_a_label, variant_a_text, variant_b_label, variant_b_text, trials_target=…)` | Begin a new A/B experiment for a scope. | [src](../../../core/services/experiment_runner.py#L46) |
+| function | `get_active_variant` | `(scope)` | Return the variant currently scheduled for this scope, or None. | [src](../../../core/services/experiment_runner.py#L80) |
+| function | `conclude_experiment` | `(experiment_id)` | Analyze an experiment's data via prompt_variant_tracker, declare winner. | [src](../../../core/services/experiment_runner.py#L112) |
+| function | `list_experiments` | `(*, status=…)` | — | [src](../../../core/services/experiment_runner.py#L177) |
+| function | `_exec_start_experiment` | `(args)` | — | [src](../../../core/services/experiment_runner.py#L185) |
+| function | `_exec_conclude_experiment` | `(args)` | — | [src](../../../core/services/experiment_runner.py#L196) |
+| function | `_exec_list_experiments` | `(args)` | — | [src](../../../core/services/experiment_runner.py#L200) |
+
 ## `core/services/explore_claim_check.py`
 _Tjek explore-agentens påstande mod virkeligheden._
 
@@ -92,6 +107,21 @@ _Kortlivede, signerede links til udgivne filer._
 | function | `_signatur` | `(ws, navn, udloeb, noegle)` | — | [src](../../../core/services/file_links.py#L104) |
 | function | `signer` | `(filnavn, *, workspace, levetid_s=…, nu=…)` | Udsted et link. `{"status": "ok", "sig": ..., "udloeb": ...}` eller en fejl. | [src](../../../core/services/file_links.py#L109) |
 | function | `verificer` | `(filnavn, udloeb, sig, *, workspace, nu=…)` | Holder signaturen, og er den stadig i live? Falsk ved enhver tvivl. | [src](../../../core/services/file_links.py#L136) |
+
+## `core/services/file_mention_resolver.py`
+_Resolve desk-style ``@relative/path`` mentions to real file contents._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `FileMentionNotFound` | `` | — | [src](../../../core/services/file_mention_resolver.py#L16) |
+| class | `FileMentionAmbiguous` | `` | — | [src](../../../core/services/file_mention_resolver.py#L20) |
+| class | `FileMentionTooLarge` | `` | — | [src](../../../core/services/file_mention_resolver.py#L24) |
+| function | `_session_workspace_root` | `(session_id)` | — | [src](../../../core/services/file_mention_resolver.py#L28) |
+| function | `_project_file_paths` | `(session_id, reference)` | — | [src](../../../core/services/file_mention_resolver.py#L42) |
+| function | `_workspace_file_path` | `(root, reference)` | — | [src](../../../core/services/file_mention_resolver.py#L64) |
+| function | `_resolve_path` | `(session_id, workspace_root, reference)` | — | [src](../../../core/services/file_mention_resolver.py#L79) |
+| function | `_read_text` | `(path)` | — | [src](../../../core/services/file_mention_resolver.py#L92) |
+| function | `resolve_file_mentions` | `(message, *, session_id, workspace_root=…)` | Replace file mentions and append the bytes read from their resolved paths. | [src](../../../core/services/file_mention_resolver.py#L99) |
 
 ## `core/services/file_watch_daemon.py`
 _File Watch Daemon — proprioception: "I feel when my own files change"._
@@ -482,32 +512,4 @@ _Unified TruthGate (cluster B). Smelter Truth-klyngens tre homogene Verdict-gate
 |---|---|---|---|---|
 | function | `truth_gate` | `(ctx)` | Kør de tre Truth-checks på samme ctx og kombinér til ét Verdict. | [src](../../../core/services/gate_truth.py#L17) |
 | function | `register_truth_nerve` | `(central)` | Registrér den unified TruthGate som post_output-nerve i Centralen. | [src](../../../core/services/gate_truth.py#L33) |
-
-## `core/services/gate_verdict_ledger.py`
-_Gate-verdict-ledger — in-memory akkumulator + batchet flush til persistent tabel._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record` | `(nerve, cluster, decision, reason=…)` | Akkumulér ét verdict in-memory. Billig, låst, kaster ALDRIG. | [src](../../../core/services/gate_verdict_ledger.py#L27) |
-| function | `_drain` | `()` | Snapshot + nulstil akkumulatoren under lås. Returnerer delta-liste til UPSERT. | [src](../../../core/services/gate_verdict_ledger.py#L53) |
-| function | `_requeue` | `(deltas)` | Læg ubekræftede deltas TILBAGE i akkumulatoren (merge-forward), så en fejlet flush | [src](../../../core/services/gate_verdict_ledger.py#L67) |
-| function | `flush` | `()` | Skriv akkumulerede deltas til den persistente tabel. Returnerer antal rækker rørt. | [src](../../../core/services/gate_verdict_ledger.py#L100) |
-| function | `summary` | `()` | Aggregeret verdict-fordeling pr. nerve fra den persistente tabel (survives restart). | [src](../../../core/services/gate_verdict_ledger.py#L125) |
-
-## `core/services/ghost_networks.py`
-_Ghost Networks — spor af mønstre der holdt op med at være aktive._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kernen` | `(navn)` | Skaer kildens praefiks fra: «Private inner note: X» -> «X». | [src](../../../core/services/ghost_networks.py#L70) |
-| function | `_load` | `()` | — | [src](../../../core/services/ghost_networks.py#L82) |
-| function | `_save` | `(spoegelser)` | — | [src](../../../core/services/ghost_networks.py#L92) |
-| function | `_henfald` | `(doede_ved)` | Alderen som henfald. Var 0.0 og blev aldrig opdateret. | [src](../../../core/services/ghost_networks.py#L96) |
-| function | `archive_dead_nodes` | `(node_ids, slags=…, doede_ved=…)` | Arkiver doede moenstre. Giver antallet der var nye. | [src](../../../core/services/ghost_networks.py#L106) |
-| function | `_med_henfald` | `()` | Spoegelserne med deres AKTUELLE henfald — beregnet, ikke gemt. | [src](../../../core/services/ghost_networks.py#L129) |
-| function | `tick` | `(_seconds=…)` | Hjerteslags-krog: saml de moenstre der er doet siden sidst. | [src](../../../core/services/ghost_networks.py#L135) |
-| function | `describe_ghost_network` | `()` | Det MINDST falmede spoegelse — ikke det aeldste. | [src](../../../core/services/ghost_networks.py#L162) |
-| function | `format_ghost_for_prompt` | `()` | — | [src](../../../core/services/ghost_networks.py#L175) |
-| function | `reset_ghost_networks` | `()` | — | [src](../../../core/services/ghost_networks.py#L180) |
-| function | `build_ghost_networks_surface` | `()` | — | [src](../../../core/services/ghost_networks.py#L184) |
 

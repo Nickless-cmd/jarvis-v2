@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10393/18974 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10394/18997 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10393/18974 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 919 | 1636 | 56% |
-| `core.services` | 6978 | 12896 | 54% |
+| `core.services` | 6979 | 12919 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 150 | 232 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 10393/18974 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2642)
+## Undocumented public functions (2652)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L234)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -864,6 +864,10 @@ Generated from source. 10393/18974 functions/methods documented (54%). The list 
 - `core/services/approval_runtime.py` :: `new_id` (L41)
 - `core/services/arc_rule_extractor.py` :: `extract_rules_for_unprocessed_arcs` (L161)
 - `core/services/arc_rule_extractor.py` :: `extract_rules_from_arc` (L74)
+- `core/services/artifact_document.py` :: `create_document` (L48)
+- `core/services/artifact_document.py` :: `get_document` (L86)
+- `core/services/artifact_document.py` :: `list_documents` (L98)
+- `core/services/artifact_document.py` :: `update_document` (L112)
 - `core/services/attachment_topology_signal_tracking.py` :: `build_runtime_attachment_topology_signal_surface` (L85)
 - `core/services/attachment_topology_signal_tracking.py` :: `refresh_runtime_attachment_topology_signal_statuses` (L81)
 - `core/services/attachment_topology_signal_tracking.py` :: `track_runtime_attachment_topology_signals_for_visible_turn` (L44)
@@ -1652,6 +1656,12 @@ Generated from source. 10393/18974 functions/methods documented (54%). The list 
 - `core/services/process_watcher.py` :: `set_watch_enabled` (L239)
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
+- `core/services/project_context.py` :: `add_file_material` (L148)
+- `core/services/project_context.py` :: `add_text_material` (L162)
+- `core/services/project_context.py` :: `bind_session` (L102)
+- `core/services/project_context.py` :: `create_project` (L71)
+- `core/services/project_context.py` :: `get_project` (L173)
+- `core/services/project_context.py` :: `get_project_for_session` (L192)
 - `core/services/projection_chat_messages.py` :: `register` (L198)
 - `core/services/projection_runtime.py` :: `registered` (L80)
 - `core/services/projection_tool_router.py` :: `register` (L212)

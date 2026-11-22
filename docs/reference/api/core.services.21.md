@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/post_run_compaction.py`
+_Luk kontekst-budgettet igen efter en lang synlig tur._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_completed_visible_session` | `(event)` | Session-id for et gemt, afsluttende visible-run-svar — ellers ``""``. | [src](../../../core/services/post_run_compaction.py#L28) |
+| function | `compact_after_completed_turn` | `(session_id)` | Vurdér og evt. start den normale compaction for den afsluttede session. | [src](../../../core/services/post_run_compaction.py#L41) |
+| function | `_handle` | `(event)` | — | [src](../../../core/services/post_run_compaction.py#L65) |
+| function | `_loop` | `(subscriber)` | — | [src](../../../core/services/post_run_compaction.py#L77) |
+| function | `_catch_up_recent_sessions` | `()` | Efter en genstart: eftertjek få nyligt afsluttede sessioner én gang. | [src](../../../core/services/post_run_compaction.py#L88) |
+| function | `start_post_run_compaction` | `()` | Start subscriber + et asynkront catch-up. Idempotent. | [src](../../../core/services/post_run_compaction.py#L106) |
+| function | `stop_post_run_compaction` | `()` | — | [src](../../../core/services/post_run_compaction.py#L124) |
+
+## `core/services/post_tool_answer_guard.py`
+_Guards for tool turns that end in hollow final prose._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tool_call_count` | `(exchanges)` | — | [src](../../../core/services/post_tool_answer_guard.py#L13) |
+| function | `is_hollow_post_tool_answer` | `(answer_text, exchanges)` | — | [src](../../../core/services/post_tool_answer_guard.py#L17) |
+| function | `should_replace_with_synthesis` | `(current_text, candidate_text)` | — | [src](../../../core/services/post_tool_answer_guard.py#L26) |
+
 ## `core/services/precision_bias.py`
 _Precision Bias — emotional color-mapping for action style._
 
@@ -437,6 +459,23 @@ _core/services/producer_novelty.py_
 | function | `snapshot` | `()` | Read-only overblik: pr. producer antal kald + gennemsnitlig nyhed. Lav avg = repetitiv | [src](../../../core/services/producer_novelty.py#L115) |
 | function | `_reset_for_tests` | `()` | — | [src](../../../core/services/producer_novelty.py#L127) |
 
+## `core/services/project_context.py`
+_Durable chat projects that bind sessions to files and text material._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ProjectNotFound` | `` | — | [src](../../../core/services/project_context.py#L12) |
+| function | `_now` | `()` | — | [src](../../../core/services/project_context.py#L16) |
+| function | `_ensure_tables` | `(conn)` | — | [src](../../../core/services/project_context.py#L20) |
+| function | `_require_project` | `(conn, project_id)` | — | [src](../../../core/services/project_context.py#L64) |
+| function | `create_project` | `(*, session_id, name, owner_user_id=…)` | — | [src](../../../core/services/project_context.py#L71) |
+| function | `bind_session` | `(project_id, session_id)` | — | [src](../../../core/services/project_context.py#L102) |
+| function | `_add_material` | `(project_id, *, kind, title, path=…, content=…)` | — | [src](../../../core/services/project_context.py#L122) |
+| function | `add_file_material` | `(project_id, *, path, title=…)` | — | [src](../../../core/services/project_context.py#L148) |
+| function | `add_text_material` | `(project_id, *, content, title=…)` | — | [src](../../../core/services/project_context.py#L162) |
+| function | `get_project` | `(project_id)` | — | [src](../../../core/services/project_context.py#L173) |
+| function | `get_project_for_session` | `(session_id)` | — | [src](../../../core/services/project_context.py#L192) |
+
 ## `core/services/projection_chat_messages.py`
 _Kompatibilitets-projektoren — ledger-hændelser → `chat_messages`-rækker._
 
@@ -685,28 +724,4 @@ _Bounded runtime prompt evolution / self-authored prompt proposals light._
 | function | `_review_light_from_latest` | `(latest)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1103) |
 | function | `_blocked` | `(*, reason, cadence_state, trigger, now, reference)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1115) |
 | function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1157) |
-
-## `core/services/prompt_heartbeat_self_knowledge.py`
-_Heartbeat self-knowledge section builder._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_heartbeat_self_knowledge_section` | `()` | Build a compact self-knowledge section for the heartbeat prompt. | [src](../../../core/services/prompt_heartbeat_self_knowledge.py#L19) |
-
-## `core/services/prompt_memory_recall.py`
-_Supplementary non-blocking recall during visible prompt assembly._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `append_background_recall` | `(user_message, session_id, _dyn_memory_recall, derived_inputs, _sec_err)` | Surface prepared associations only when they match the current message. | [src](../../../core/services/prompt_memory_recall.py#L18) |
-
-## `core/services/prompt_mode_layout.py`
-_Reversible prompt-layout policy for the visible chat and code lanes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `mode_layout_v2_enabled` | `()` | Return whether the cache-first mode layout is active. | [src](../../../core/services/prompt_mode_layout.py#L21) |
-| function | `scope_stable_blocks_v3_enabled` | `(*, scope=…)` | Route proven-stable blocks into the warmed chat/code prefix. | [src](../../../core/services/prompt_mode_layout.py#L43) |
-| function | `filter_visible_rules` | `(text, *, scope)` | Keep universal rules in code mode and conversational rules in chat. | [src](../../../core/services/prompt_mode_layout.py#L76) |
-| function | `recency_anchor` | `(*, scope)` | A short cache-late reminder; stable contracts live cache-first in V2. | [src](../../../core/services/prompt_mode_layout.py#L99) |
 

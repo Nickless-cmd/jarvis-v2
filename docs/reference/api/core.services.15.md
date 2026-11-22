@@ -2,6 +2,34 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gate_verdict_ledger.py`
+_Gate-verdict-ledger — in-memory akkumulator + batchet flush til persistent tabel._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `record` | `(nerve, cluster, decision, reason=…)` | Akkumulér ét verdict in-memory. Billig, låst, kaster ALDRIG. | [src](../../../core/services/gate_verdict_ledger.py#L27) |
+| function | `_drain` | `()` | Snapshot + nulstil akkumulatoren under lås. Returnerer delta-liste til UPSERT. | [src](../../../core/services/gate_verdict_ledger.py#L53) |
+| function | `_requeue` | `(deltas)` | Læg ubekræftede deltas TILBAGE i akkumulatoren (merge-forward), så en fejlet flush | [src](../../../core/services/gate_verdict_ledger.py#L67) |
+| function | `flush` | `()` | Skriv akkumulerede deltas til den persistente tabel. Returnerer antal rækker rørt. | [src](../../../core/services/gate_verdict_ledger.py#L100) |
+| function | `summary` | `()` | Aggregeret verdict-fordeling pr. nerve fra den persistente tabel (survives restart). | [src](../../../core/services/gate_verdict_ledger.py#L125) |
+
+## `core/services/ghost_networks.py`
+_Ghost Networks — spor af mønstre der holdt op med at være aktive._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kernen` | `(navn)` | Skaer kildens praefiks fra: «Private inner note: X» -> «X». | [src](../../../core/services/ghost_networks.py#L70) |
+| function | `_load` | `()` | — | [src](../../../core/services/ghost_networks.py#L82) |
+| function | `_save` | `(spoegelser)` | — | [src](../../../core/services/ghost_networks.py#L92) |
+| function | `_henfald` | `(doede_ved)` | Alderen som henfald. Var 0.0 og blev aldrig opdateret. | [src](../../../core/services/ghost_networks.py#L96) |
+| function | `archive_dead_nodes` | `(node_ids, slags=…, doede_ved=…)` | Arkiver doede moenstre. Giver antallet der var nye. | [src](../../../core/services/ghost_networks.py#L106) |
+| function | `_med_henfald` | `()` | Spoegelserne med deres AKTUELLE henfald — beregnet, ikke gemt. | [src](../../../core/services/ghost_networks.py#L129) |
+| function | `tick` | `(_seconds=…)` | Hjerteslags-krog: saml de moenstre der er doet siden sidst. | [src](../../../core/services/ghost_networks.py#L135) |
+| function | `describe_ghost_network` | `()` | Det MINDST falmede spoegelse — ikke det aeldste. | [src](../../../core/services/ghost_networks.py#L162) |
+| function | `format_ghost_for_prompt` | `()` | — | [src](../../../core/services/ghost_networks.py#L175) |
+| function | `reset_ghost_networks` | `()` | — | [src](../../../core/services/ghost_networks.py#L180) |
+| function | `build_ghost_networks_surface` | `()` | — | [src](../../../core/services/ghost_networks.py#L184) |
+
 ## `core/services/git_actions.py`
 _Rolle-aware git-eksekvering for code mode._
 
@@ -613,24 +641,4 @@ _Hjerteslagets dæmon — tråden der spørger «er det tid?» hvert 30. sekund.
 | function | `start_watchdog` | `()` | Idempotent. Stoppes ikke af stop() — et bevidst stop sætter | [src](../../../core/services/heartbeat_scheduler.py#L293) |
 | function | `stop_watchdog` | `()` | — | [src](../../../core/services/heartbeat_scheduler.py#L306) |
 | function | `_loop` | `(*, name, startup_recovery_requested)` | — | [src](../../../core/services/heartbeat_scheduler.py#L312) |
-
-## `core/services/hentede_vaerktoejer.py`
-_Hvad der sker EFTER en `load_more_tools`-hentning — og hvorfor det kan slukkes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `frosset` | `()` | Skal værktøjsarrayet holdes helt stille efter en hentning? | [src](../../../core/services/hentede_vaerktoejer.py#L71) |
-| function | `hentede_navne` | `(tool_results)` | Navnene fra `load_more_tools`-resultater i denne runde, i rækkefølge. | [src](../../../core/services/hentede_vaerktoejer.py#L85) |
-| function | `udvid_laasen` | `(session_id, navne)` | Læg de hentede navne i session-låsen — med mindre arrayet er frosset. | [src](../../../core/services/hentede_vaerktoejer.py#L100) |
-| function | `flet_ind` | `(definitions, navne, alle)` | Flet de hentede definitioner ind i rundens array — med mindre frosset. | [src](../../../core/services/hentede_vaerktoejer.py#L118) |
-
-## `core/services/hf_connector.py`
-_Hugging Face-connector — søg modeller/datasets via Hub API._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_headers` | `()` | — | [src](../../../core/services/hf_connector.py#L43) |
-| function | `_get` | `(path, params=…)` | — | [src](../../../core/services/hf_connector.py#L52) |
-| function | `search_models` | `(query, *, limit=…)` | — | [src](../../../core/services/hf_connector.py#L67) |
-| function | `model_info` | `(model_id)` | — | [src](../../../core/services/hf_connector.py#L85) |
 

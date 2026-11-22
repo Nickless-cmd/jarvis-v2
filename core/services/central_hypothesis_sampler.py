@@ -21,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -640,6 +641,15 @@ def evaluator_provenance() -> dict[str, int]:
 #: flere tik. 150 giver ~7 s isoleret og ~19 s under fuld runtime-belastning.
 _MAX_PER_TICK = 150
 
+#: Tidsbudget pr. tik. Antals-graensen alene binder IKKE tiden: maalt 22/11-2026
+#: tog 150 hypoteser 148 s — med kun 3 s CPU-tid, saa ventetiden ligger i
+#: DB-I/O pr. evaluator og pr. sample-skrivning. En fast deadline bryder ud
+#: uanset om en hypotese koster 0,05 s eller 5 s; resten bliver «deferred» til
+#: naeste tik, og den roterende cursor sikrer at de ikke sulter.
+#: 45 s er valgt under producer-loftet paa 75 s med 30 s margin til skrivning
+#: og rapport efter loekken.
+_TIDSBUDGET_S = 45.0
+
 #: Sidste hyp_id i forrige batch. In-memory med vilje: sampleren koerer i EN
 #: persistent worker-traad, og efter en genstart er det rigtigt at starte forfra.
 _cursor = ""
@@ -702,7 +712,13 @@ def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
         active = []
     batch = _batch(active)
     deferred = len(active) - len(batch)
-    for hyp_id, prov, contract in batch:
+    _deadline = time.monotonic() + _TIDSBUDGET_S
+    for _i, (hyp_id, prov, contract) in enumerate(batch):
+        if time.monotonic() > _deadline:
+            # Tidsbudgettet er brugt. Resten af batchen hoerer til naeste tik —
+            # ellers bryder tikket ikke af foer alle 150 er koert (maalt 148 s).
+            deferred += len(batch) - _i
+            break
         name, why, _kilde = evaluator_for(prov, contract)
         if name is None:
             # Strukturel gæld: ingen evaluator kan teste denne hypotese — heller ikke selv om

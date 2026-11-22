@@ -553,6 +553,111 @@ def send_message(
             "contract_version": CONTRACT_VERSION}
 
 
+def peer_agent_ids(agent_id: str, owner: str) -> list[str]:
+    """De ANDRE agenter i samme assignment-træ som `agent_id`: samme ejer og enten samme
+    `parent_run_id` (søskende - et team er netop søskende fra ét `Task`-kald) eller samme
+    `parent_agent_id`. Kun ÅBNE assignments: en færdig agent kan ikke læse noget længere.
+    Tom parent-værdi og roden "jarvis" matcher aldrig (to uafhængige rødder er ikke i samme træ)."""
+    mine = c._conn().execute(
+        "SELECT parent_run_id, parent_agent_id FROM agent_assignments WHERE agent_id=? "
+        "AND owner_user_id=? AND status IN ('queued','active','waiting')",
+        (agent_id, owner)).fetchall()
+    runs = {r["parent_run_id"] for r in mine if r["parent_run_id"]}
+    # "jarvis" er roden for ALLE Jarvis-dispatches - at matche på den ville gøre alle agenter til
+    # peers. Kun en ægte agent-forælder (en agent der selv har dispatchet) definerer et træ.
+    parents = {r["parent_agent_id"] for r in mine if r["parent_agent_id"] not in ("", "jarvis")}
+    if not runs and not parents:
+        return []
+    out: list[str] = []
+    for row in c._conn().execute(
+            "SELECT DISTINCT agent_id, parent_run_id, parent_agent_id FROM agent_assignments "
+            "WHERE owner_user_id=? AND agent_id!=? AND status IN ('queued','active','waiting') "
+            "ORDER BY agent_id", (owner, agent_id)).fetchall():
+        if ((row["parent_run_id"] and row["parent_run_id"] in runs)
+                or (row["parent_agent_id"] in parents)):
+            out.append(str(row["agent_id"]))
+    return out
+
+
+def send_agent_to_agent(*, owner_user_id: str, origin_session_id: str, sender_agent_id: str,
+                        agent_id: str, content: str) -> dict[str, Any]:
+    """En AGENT skriver til en anden agent i SAMME træ (`direction='agent->agent'`).
+
+    Afvises med `INVALID_SCOPE` hvis modtageren er ukendt/uden for træet, og med
+    `INVALID_TRANSITION` hvis modtageren ikke har et åbent run (beskeden ville aldrig blive læst).
+    Leverance er `accepted`: modtageren læser den ved sin NÆSTE runde, ikke midt i et værktøjskald."""
+    if (bad := _guard(owner_user_id, origin_session_id, control=True)):
+        return bad
+    content = (content or "").strip()
+    if not content:
+        return _err("INVALID_SCOPE", "content mangler")
+    if not sender_agent_id or sender_agent_id == agent_id:
+        return _err("INVALID_SCOPE", "en agent kan ikke skrive til sig selv")
+    if _owned_agent(agent_id, owner_user_id) is None or _owned_agent(sender_agent_id, owner_user_id) is None:
+        return _err("INVALID_SCOPE", "ukendt agent")
+    if agent_id not in peer_agent_ids(sender_agent_id, owner_user_id):
+        return _err("POLICY_DENIED", "modtageren er uden for dit assignment-træ (andet parent_run_id/team)")
+    open_a = c.open_assignment_for_agent(agent_id)
+    if open_a is None:
+        return _err("INVALID_TRANSITION", "modtageren har intet aabent run - beskeden ville ikke blive laest")
+    from uuid import uuid4
+    from core.runtime.db_agent_runtime import create_agent_message
+    mid = f"agent-msg-{uuid4().hex}"
+    create_agent_message(message_id=mid, thread_id=f"agent-thread-{agent_id}", agent_id=agent_id,
+                         peer_agent_id=sender_agent_id, direction="agent->agent", role="user",
+                         kind="agent-message", content=content)
+    return {"status": "accepted", "message_id": mid, "agent_id": agent_id,
+            "peer_agent_id": sender_agent_id, "assignment_id": open_a["assignment_id"],
+            "delivery": "accepted", "note": "laeses ved modtagerens naeste runde",
+            "contract_version": CONTRACT_VERSION}
+
+
+#: Beskedtyper en kørende agent læser fra sin indbakke midt i et run. `task-brief` er
+#: spawn-opgaven (allerede i prompten) og hører ikke herind.
+INBOX_KINDS = ("parent-message", "agent-message")
+
+
+def _inbox_text(row: dict[str, Any]) -> str:
+    """`[fra <afsender>] <indhold>` - agenten skal kunne se hvem der skrev."""
+    content = str(row.get("content") or "").strip()
+    if str(row.get("direction") or "") == "agent->agent":
+        sender = str(row.get("peer_agent_id") or "ukendt agent")
+    else:
+        sender = "jarvis"
+        # send_message skriver `[afsender]\n<indhold>`; mærket sættes her, så det ikke står to gange
+        if content.startswith("[") and "\n" in content:
+            content = content.split("\n", 1)[1].strip()
+    return f"[fra {sender}] {content}"
+
+
+def make_inbox_drain(agent_id: str, *, since: str = "") -> Callable[[], list[str]]:
+    """En `drain_inbox` til `run_tool_loop`: ny post til `agent_id` siden sidst, ellers [].
+
+    Cursoren er `since` (default: nu) plus de message_id'er der allerede er leveret.
+    Sammenligningen i basen er `>=`, så to beskeder i samme tidsstempel ikke tabes;
+    `seen` sørger for at ingen gentages. Kaster ved læsefejl - loekken fanger og logger."""
+    from core.runtime.db_agent_runtime import list_agent_messages
+    from core.runtime.db_core import _now_iso
+    state = {"since": since or _now_iso()}
+    seen: set[str] = set()
+
+    def drain() -> list[str]:
+        rows = list_agent_messages(agent_id=agent_id, since=state["since"], kinds=INBOX_KINDS)
+        out: list[str] = []
+        for row in rows:
+            mid = str(row.get("message_id") or "")
+            if mid in seen:
+                continue
+            if str(row.get("direction") or "") not in ("jarvis->agent", "agent->agent"):
+                continue
+            seen.add(mid)
+            state["since"] = max(state["since"], str(row.get("created_at") or ""))
+            out.append(_inbox_text(row))
+        return out
+
+    return drain
+
+
 def interrupt_agent(*, owner_user_id: str, origin_session_id: str, agent_id: str,
                     note: str = "") -> dict[str, Any]:
     """Anmod om stop af den aktuelle tur. `stop_requested`, aldrig et lovet `cancelled`."""

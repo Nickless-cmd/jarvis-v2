@@ -357,30 +357,30 @@ _Persistence for Jarvis' agent + council runtime cluster._
 | function | `list_agent_runs` | `(*, agent_id=…, limit=…)` | Return agent_runs rows as dicts, newest-created first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L621) |
 | function | `create_agent_message` | `(*, message_id, thread_id, run_id=…, council_id=…, agent_id=…, peer_agent_id=…, direction=…, role=…, content=…, kind=…)` | Insert a new row into agent_messages and return the stored message as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L639) |
 | function | `get_agent_message` | `(message_id)` | Return the agent_messages row for message_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L686) |
-| function | `list_agent_messages` | `(*, thread_id=…, run_id=…, council_id=…, agent_id=…, limit=…, tail=…)` | Return agent_messages rows as dicts, oldest-created first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L699) |
-| function | `create_agent_tool_call` | `(*, tool_call_id, run_id, agent_id, tool_name, status=…, arguments_json=…, result_preview=…, started_at=…, finished_at=…)` | Insert a new row into agent_tool_calls and return the stored call as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L744) |
-| function | `get_agent_tool_call` | `(tool_call_id)` | Return the agent_tool_calls row for tool_call_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L792) |
-| function | `list_agent_tool_calls` | `(*, run_id=…, agent_id=…, limit=…)` | Return agent_tool_calls rows as dicts, newest-created first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L805) |
-| function | `create_agent_schedule` | `(*, schedule_id, agent_id, schedule_kind=…, schedule_expr=…, next_fire_at=…, last_fire_at=…, missed_run_policy=…, active=…)` | Upsert a row in agent_schedules by schedule_id and return the stored dict. | [src](../../../core/runtime/db_agent_runtime.py#L827) |
-| function | `get_agent_schedule` | `(schedule_id)` | Return the agent_schedules row for schedule_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L881) |
-| function | `update_agent_schedule` | `(schedule_id, *, schedule_expr=…, next_fire_at=…, last_fire_at=…, active=…)` | Patch selected columns of one agent_schedules row and return the updated dict. | [src](../../../core/runtime/db_agent_runtime.py#L894) |
-| function | `list_agent_schedules` | `(*, agent_id=…, active_only=…, due_before=…, limit=…)` | Return agent_schedules rows as dicts, ordered by next_fire_at then created_at. | [src](../../../core/runtime/db_agent_runtime.py#L933) |
-| function | `create_council_session` | `(*, council_id, owner_agent_id=…, topic=…, status=…, mode=…, summary=…)` | Insert a new row into council_sessions and return the stored session as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L958) |
-| function | `get_council_session` | `(council_id)` | Return the council_sessions row for council_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L990) |
-| function | `update_council_session` | `(council_id, *, status=…, summary=…, finished_at=…)` | Patch selected columns of one council_sessions row and return the updated dict. | [src](../../../core/runtime/db_agent_runtime.py#L1009) |
-| function | `list_council_sessions` | `(limit=…, *, statuses=…)` | Return council_sessions rows as dicts, newest-updated first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L1053) |
-| function | `add_council_member` | `(*, council_id, agent_id, role, position_summary=…, vote=…, confidence=…)` | Upsert a council member by (council_id, agent_id) and return the stored dict. | [src](../../../core/runtime/db_agent_runtime.py#L1080) |
-| function | `update_council_member` | `(*, council_id, agent_id, position_summary=…, vote=…, confidence=…)` | Patch a council member's position/vote/confidence by (council_id, agent_id). | [src](../../../core/runtime/db_agent_runtime.py#L1116) |
-| function | `get_council_member` | `(*, council_id, agent_id)` | Return the council_members row for (council_id, agent_id) as a dict, or None. | [src](../../../core/runtime/db_agent_runtime.py#L1154) |
-| function | `list_council_members` | `(*, council_id)` | Return all council_members rows for council_id as dicts, oldest-created first. | [src](../../../core/runtime/db_agent_runtime.py#L1167) |
-| function | `_agent_registry_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1181) |
-| function | `_json_or_empty` | `(raa)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1225) |
-| function | `_agent_run_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1234) |
-| function | `_agent_message_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1274) |
-| function | `_agent_tool_call_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1290) |
-| function | `_agent_schedule_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1305) |
-| function | `_council_session_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1320) |
-| function | `_council_member_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1337) |
+| function | `list_agent_messages` | `(*, thread_id=…, run_id=…, council_id=…, agent_id=…, limit=…, tail=…, since=…, kinds=…)` | Return agent_messages rows as dicts, oldest-created first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L699) |
+| function | `create_agent_tool_call` | `(*, tool_call_id, run_id, agent_id, tool_name, status=…, arguments_json=…, result_preview=…, started_at=…, finished_at=…)` | Insert a new row into agent_tool_calls and return the stored call as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L756) |
+| function | `get_agent_tool_call` | `(tool_call_id)` | Return the agent_tool_calls row for tool_call_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L804) |
+| function | `list_agent_tool_calls` | `(*, run_id=…, agent_id=…, limit=…)` | Return agent_tool_calls rows as dicts, newest-created first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L817) |
+| function | `create_agent_schedule` | `(*, schedule_id, agent_id, schedule_kind=…, schedule_expr=…, next_fire_at=…, last_fire_at=…, missed_run_policy=…, active=…)` | Upsert a row in agent_schedules by schedule_id and return the stored dict. | [src](../../../core/runtime/db_agent_runtime.py#L839) |
+| function | `get_agent_schedule` | `(schedule_id)` | Return the agent_schedules row for schedule_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L893) |
+| function | `update_agent_schedule` | `(schedule_id, *, schedule_expr=…, next_fire_at=…, last_fire_at=…, active=…)` | Patch selected columns of one agent_schedules row and return the updated dict. | [src](../../../core/runtime/db_agent_runtime.py#L906) |
+| function | `list_agent_schedules` | `(*, agent_id=…, active_only=…, due_before=…, limit=…)` | Return agent_schedules rows as dicts, ordered by next_fire_at then created_at. | [src](../../../core/runtime/db_agent_runtime.py#L945) |
+| function | `create_council_session` | `(*, council_id, owner_agent_id=…, topic=…, status=…, mode=…, summary=…)` | Insert a new row into council_sessions and return the stored session as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L970) |
+| function | `get_council_session` | `(council_id)` | Return the council_sessions row for council_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L1002) |
+| function | `update_council_session` | `(council_id, *, status=…, summary=…, finished_at=…)` | Patch selected columns of one council_sessions row and return the updated dict. | [src](../../../core/runtime/db_agent_runtime.py#L1021) |
+| function | `list_council_sessions` | `(limit=…, *, statuses=…)` | Return council_sessions rows as dicts, newest-updated first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L1065) |
+| function | `add_council_member` | `(*, council_id, agent_id, role, position_summary=…, vote=…, confidence=…)` | Upsert a council member by (council_id, agent_id) and return the stored dict. | [src](../../../core/runtime/db_agent_runtime.py#L1092) |
+| function | `update_council_member` | `(*, council_id, agent_id, position_summary=…, vote=…, confidence=…)` | Patch a council member's position/vote/confidence by (council_id, agent_id). | [src](../../../core/runtime/db_agent_runtime.py#L1128) |
+| function | `get_council_member` | `(*, council_id, agent_id)` | Return the council_members row for (council_id, agent_id) as a dict, or None. | [src](../../../core/runtime/db_agent_runtime.py#L1166) |
+| function | `list_council_members` | `(*, council_id)` | Return all council_members rows for council_id as dicts, oldest-created first. | [src](../../../core/runtime/db_agent_runtime.py#L1179) |
+| function | `_agent_registry_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1193) |
+| function | `_json_or_empty` | `(raa)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1237) |
+| function | `_agent_run_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1246) |
+| function | `_agent_message_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1286) |
+| function | `_agent_tool_call_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1302) |
+| function | `_agent_schedule_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1317) |
+| function | `_council_session_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1332) |
+| function | `_council_member_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1349) |
 
 ## `core/runtime/db_agent_wait.py`
 _Ventekontrakter og brugerstop-spaerre for agent-contract-v1 (B2, §6)._

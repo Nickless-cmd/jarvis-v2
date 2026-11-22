@@ -42,8 +42,8 @@ _De tre versionsmaerkede promptlag for en agentrequest + snapshot foer foerste m
 | function | `_sha` | `(text)` | — | [src](../../../core/services/agent_prompt_layers.py#L58) |
 | function | `_redact` | `(text)` | — | [src](../../../core/services/agent_prompt_layers.py#L62) |
 | function | `build_layered_prompt` | `(*, agent, messages_text, execution_mode, extra_instruction=…)` | Byg de tre lag, eller ``None`` for en agent uden aabent assignment (legacy-vejen). | [src](../../../core/services/agent_prompt_layers.py#L71) |
-| function | `snapshot_prompt` | `(*, run_id, agent, layers, tools_payload=…)` | Gem den effektive prompt + versioner + modelrute + vaerktoejsskema FOER foerste modelkald. | [src](../../../core/services/agent_prompt_layers.py#L128) |
-| function | `get_prompt_snapshot` | `(*, owner_user_id, run_id)` | Ejer-kontrolleret opslag; en andens run er ``None``. | [src](../../../core/services/agent_prompt_layers.py#L154) |
+| function | `snapshot_prompt` | `(*, run_id, agent, layers, tools_payload=…)` | Gem den effektive prompt + versioner + modelrute + vaerktoejsskema FOER foerste modelkald. | [src](../../../core/services/agent_prompt_layers.py#L136) |
+| function | `get_prompt_snapshot` | `(*, owner_user_id, run_id)` | Ejer-kontrolleret opslag; en andens run er ``None``. | [src](../../../core/services/agent_prompt_layers.py#L162) |
 
 ## `core/services/agent_relay.py`
 _Agent relay — direct A→B messaging between sub-agents._
@@ -99,22 +99,22 @@ _Agent runtime — shared foundation (imports, constants, role templates, helper
 | function | `_build_agent_tools_payload` | `(allowed_tools, *, ceiling=…)` | Build an OpenAI-compat tools array from an agent's allowed_tools. | [src](../../../core/services/agent_runtime_base.py#L188) |
 | function | `_execute_agent_tool_call` | `(tool_call, *, agent_id)` | Execute one model-issued tool call through the guarded dispatcher. | [src](../../../core/services/agent_runtime_base.py#L232) |
 | function | `_run_agent_tool_loop` | `(*, agent, prompt, requires_tools, run_id=…, resume=…)` | Run an agent turn WITH a real tools array + tool-execution loop. | [src](../../../core/services/agent_runtime_base.py#L312) |
-| class | `_InProcessLoopIO` | `` | Loekkens I/O naar den koerer i serverprocessen (dagens adfaerd, uaendret). | [src](../../../core/services/agent_runtime_base.py#L373) |
-| method | `_InProcessLoopIO.__init__` | `(self, *, agent, run_id, resume=…)` | — | [src](../../../core/services/agent_runtime_base.py#L376) |
-| method | `_InProcessLoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L390) |
-| method | `_InProcessLoopIO.run_id` | `(self)` | — | [src](../../../core/services/agent_runtime_base.py#L405) |
-| method | `_InProcessLoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_runtime_base.py#L408) |
-| method | `_InProcessLoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_runtime_base.py#L429) |
-| method | `_InProcessLoopIO.wrote_something` | `(self)` | Har agenten aendret worktree'en — uanset hvilket vaerktoej den brugte? | [src](../../../core/services/agent_runtime_base.py#L432) |
-| method | `_InProcessLoopIO._maalt_skrivning` | `(self)` | — | [src](../../../core/services/agent_runtime_base.py#L458) |
-| method | `_InProcessLoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_runtime_base.py#L469) |
-| function | `_bogfoer_start` | `(agent, run_id, tc)` | Startposten for et vaerktoejskald (status ``running``, ``started_at`` sat, ingen ``finished_at``). | [src](../../../core/services/agent_runtime_base.py#L478) |
-| function | `_bogfoer_vaerktoejskald` | `(agent, run_id, tc, tool_out)` | BOGFOER KALDET (db + per-agent transcript). `agent_tool_calls` havde foer NUL kaldere: | [src](../../../core/services/agent_runtime_base.py#L494) |
-| function | `_loop_result` | `(o, *, scout, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L532) |
-| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L723) |
-| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L782) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L922) |
-| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L926) |
+| class | `_InProcessLoopIO` | `` | Loekkens I/O naar den koerer i serverprocessen (dagens adfaerd, uaendret). | [src](../../../core/services/agent_runtime_base.py#L388) |
+| method | `_InProcessLoopIO.__init__` | `(self, *, agent, run_id, resume=…)` | — | [src](../../../core/services/agent_runtime_base.py#L391) |
+| method | `_InProcessLoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L405) |
+| method | `_InProcessLoopIO.run_id` | `(self)` | — | [src](../../../core/services/agent_runtime_base.py#L420) |
+| method | `_InProcessLoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_runtime_base.py#L423) |
+| method | `_InProcessLoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_runtime_base.py#L444) |
+| method | `_InProcessLoopIO.wrote_something` | `(self)` | Har agenten aendret worktree'en — uanset hvilket vaerktoej den brugte? | [src](../../../core/services/agent_runtime_base.py#L447) |
+| method | `_InProcessLoopIO._maalt_skrivning` | `(self)` | — | [src](../../../core/services/agent_runtime_base.py#L473) |
+| method | `_InProcessLoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_runtime_base.py#L484) |
+| function | `_bogfoer_start` | `(agent, run_id, tc)` | Startposten for et vaerktoejskald (status ``running``, ``started_at`` sat, ingen ``finished_at``). | [src](../../../core/services/agent_runtime_base.py#L493) |
+| function | `_bogfoer_vaerktoejskald` | `(agent, run_id, tc, tool_out)` | BOGFOER KALDET (db + per-agent transcript). `agent_tool_calls` havde foer NUL kaldere: | [src](../../../core/services/agent_runtime_base.py#L509) |
+| function | `_loop_result` | `(o, *, scout, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L547) |
+| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L738) |
+| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L797) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L937) |
+| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L941) |
 
 ## `core/services/agent_runtime_council.py`
 _Agent runtime — council & swarm collective rounds._

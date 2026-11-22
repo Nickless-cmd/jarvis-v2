@@ -17,7 +17,7 @@ import os
 import re
 import time
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -768,6 +768,17 @@ class ApprovalPending(Exception):
         self.approval_id, self.tool_call_id = approval_id, tool_call_id
 
 
+def _drain_messages(drain_inbox: Callable[[], list[str]] | None) -> list[str]:
+    """Hent nye indgaaende beskeder. Fejler tavst-til-tom for RUNNET, men hoejt i loggen."""
+    if drain_inbox is None:
+        return []
+    try:
+        return [t for t in (str(x).strip() for x in (drain_inbox() or [])) if t]
+    except Exception:
+        logger.warning("drain af agent-inbox fejlede - runnet fortsaetter uden", exc_info=True)
+        return []
+
+
 class LoopIO(Protocol):
     def model(self, *, messages: list[dict], tools: list[dict], requires_tools: bool,
               provider: str, model: str) -> dict[str, Any]: ...
@@ -782,13 +793,20 @@ class LoopIO(Protocol):
 def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], requires_tools: bool,
                   provider: str, model: str, scout: bool, max_rounds: int,
                   synthesis_directive: str, resume: dict[str, Any] | None = None,
-                  expected_result: str = "", deadline_at: str = "") -> dict[str, Any]:
+                  expected_result: str = "", deadline_at: str = "",
+                  drain_inbox: Callable[[], list[str]] | None = None) -> dict[str, Any]:
     """Koer loekken og returner raa tal + tekst. Kaster aldrig: en fejl bliver ``error_str``.
 
     Kraever et kald en godkendelse (``ApprovalPending`` fra ``io.tool``), STOPPER loekken og returnerer
     ``parked`` med en checkpoint (beskeder, de kald der staar tilbage, taellere). Gives checkpointen tilbage
     som ``resume``, genoptages praecis dér: de ventende kald koeres foerst (det foerste afgoeres nu af
-    brugerens beslutning), derefter fortsaetter runderne."""
+    brugerens beslutning), derefter fortsaetter runderne.
+
+    ``drain_inbox`` (valgfri) er indgangen for beskeder UDEFRA midt i et run: ved hver rundestart kaldes
+    den, og hver returneret tekst bliver en user-besked FOER modelkaldet - saa en rettelse virker paa
+    NAESTE runde, aldrig midt i et vaerktoejskald. Cursoren (hvad der allerede er set) ejes af den
+    injicerede callable, ikke af loekken, saa loekken forbliver ren logik. Den maa ikke blokere; en
+    fejl i den doeraer aldrig runnet (se ``_drain_messages``)."""
     messages: list[dict] = [{"role": "user", "content": prompt}]
     total_input = 0
     total_output = 0
@@ -898,6 +916,8 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                 stop_reason = f"deadline nået efter {rounds} runder"
                 break
             rounds += 1
+            for _indgaaende in _drain_messages(drain_inbox):
+                messages.append({"role": "user", "content": _indgaaende})
             # 5/11-2026: knapheden skal staa i konteksten, ikke kun i `while`-betingelsen.
             # Se `_BUDGET_NOTE_AT_REMAINING` for hvorfor den ligger her og ikke i prompten.
             budget_note = _budget_note(rounds, max_rounds, messages)

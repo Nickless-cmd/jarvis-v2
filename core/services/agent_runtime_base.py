@@ -329,7 +329,21 @@ def _run_agent_tool_loop(
     with an added ``tool_rounds`` count for observability.
     """
     allowed = _json_loads(str(agent.get("allowed_tools_json") or "[]"), [])
-    tools_payload = _build_agent_tools_payload(allowed if isinstance(allowed, list) else [])
+    allowed = list(allowed) if isinstance(allowed, list) else []
+    aid = str(agent.get("agent_id") or "")
+    owner = str(agent.get("owner_user_id") or "")
+    # Peer-kanalen: kun en agent MED peers (team/søskende) får `send_message_to_agent`, og kun
+    # for kontrakt-bundne agenter. En ensom agent har ingen at skrive til.
+    drain_inbox = None
+    if aid and owner and owner != "legacy_unscoped":
+        try:
+            from core.services.agent_contract_service import make_inbox_drain, peer_agent_ids
+            if peer_agent_ids(aid, owner) and "send_message_to_agent" not in allowed:
+                allowed.append("send_message_to_agent")
+            drain_inbox = make_inbox_drain(aid)
+        except Exception:
+            logger.warning("peer-kanal/inbox kunne ikke sættes op for %s", aid, exc_info=True)
+    tools_payload = _build_agent_tools_payload(allowed)
     provider = str(agent.get("provider") or "")
     model = str(agent.get("model") or "")
     if not tools_payload:
@@ -366,7 +380,8 @@ def _run_agent_tool_loop(
         _InProcessLoopIO(agent=agent, run_id=run_id, resume=resume), prompt=prompt, tools_payload=tools_payload,
         requires_tools=requires_tools, provider=provider, model=model, scout=scout,
         max_rounds=_AGENT_TOOL_LOOP_MAX_ROUNDS, synthesis_directive=_AGENT_SYNTHESIS_DIRECTIVE,
-        resume=resume, expected_result=expected_result, deadline_at=deadline_at)
+        resume=resume, expected_result=expected_result, deadline_at=deadline_at,
+        drain_inbox=drain_inbox)
     return _loop_result(outcome, scout=scout, provider=provider, model=model)
 
 

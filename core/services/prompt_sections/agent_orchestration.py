@@ -53,6 +53,21 @@ _TEXT = (
 )
 
 
+_PEER_TEXT = (
+    "Dine peers i samme opgave (agent_id): {peers}. Du kan skrive til dem med "
+    "`send_message_to_agent`, og de kan skrive til dig; beskeden dukker op som `[fra <agent_id>] ...` "
+    "ved din naeste runde. Skriv KUN naar du har noget en peer har brug for: en modstrid mellem jeres "
+    "fund, et fund der aendrer deres opgave, eller en graenseflade I deler. Ingen smalltalk, ingen "
+    "statusopdateringer, intet 'jeg er i gang' - dit resultat gaar til Jarvis, ikke til peers."
+)
+
+
+def peer_section(peer_ids: list[str]) -> str:
+    """Peer-reglen til en agents prompt; tom hvis agenten ingen peers har."""
+    ids = [str(p).strip() for p in peer_ids if str(p).strip()]
+    return _PEER_TEXT.format(peers=", ".join(ids)) if ids else ""
+
+
 def _render_orchestrator_section() -> str:
     """Render den konstante instruktion, hvis motoren er aktiv."""
     try:

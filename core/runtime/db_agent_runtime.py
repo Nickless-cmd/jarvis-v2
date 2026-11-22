@@ -704,8 +704,14 @@ def list_agent_messages(
     agent_id: str = "",
     limit: int = 200,
     tail: bool = False,
+    since: str = "",
+    kinds: tuple[str, ...] = (),
 ) -> list[dict[str, object]]:
     """Return agent_messages rows as dicts, oldest-created first, capped at limit.
+
+    `since` keeps rows with created_at >= since (inclusive, so a tie on the
+    timestamp is never lost - the caller dedups by message_id). `kinds` keeps
+    only those message kinds.
 
     `tail=True` keeps the NEWEST `limit` rows instead of the oldest — still
     returned oldest-first. Prompt building needs the tail; display callers
@@ -728,6 +734,12 @@ def list_agent_messages(
     if agent_id:
         query.append("AND agent_id = ?")
         params.append(agent_id)
+    if since:
+        query.append("AND created_at >= ?")
+        params.append(since)
+    if kinds:
+        query.append("AND kind IN (%s)" % ",".join("?" * len(kinds)))
+        params.extend(kinds)
     # `tail=True` vaelger de NYESTE `limit` beskeder — men leverer dem stadig
     # aeldst-foerst, saa kalderen ser en samtale, ikke en baglaens liste.
     # Uden det mistede en lang traad praecis det nyeste: prompt-byggeren bad om

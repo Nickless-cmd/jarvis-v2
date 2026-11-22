@@ -31,10 +31,10 @@ _Modelvendte agent-vaerktoejer over agent-contract-v1 (leverance F2)._
 | function | `_exec_close_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L349) |
 | function | `_is_contract_bound` | `(agent_id, owner)` | — | [src](../../../core/tools/agent_contract_tools.py#L355) |
 | function | `_exec_send_message_to_agent` | `(args)` | Kontrakt-udgaven for bundne agenter; den gamle (inline) for resten. | [src](../../../core/tools/agent_contract_tools.py#L363) |
-| function | `_exec_list_agents` | `(args)` | Naar motoren er taendt: ejerens kontrakt-agenter (+ de gamle under `legacy`). | [src](../../../core/tools/agent_contract_tools.py#L375) |
-| function | `_exec_integrate_agent_work` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L388) |
-| function | `_exec_decide_agent_approval` | `(args)` | Jarvis afgoer en af SINE EGNE agenters vaerktoejskald (14/10-2026). | [src](../../../core/tools/agent_contract_tools.py#L394) |
-| function | `_exec_review_agent_work` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L409) |
+| function | `_exec_list_agents` | `(args)` | Naar motoren er taendt: ejerens kontrakt-agenter (+ de gamle under `legacy`). | [src](../../../core/tools/agent_contract_tools.py#L381) |
+| function | `_exec_integrate_agent_work` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L394) |
+| function | `_exec_decide_agent_approval` | `(args)` | Jarvis afgoer en af SINE EGNE agenters vaerktoejskald (14/10-2026). | [src](../../../core/tools/agent_contract_tools.py#L400) |
+| function | `_exec_review_agent_work` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L415) |
 
 ## `core/tools/agent_memory_tools.py`
 _Agent-kun-vaerktoej til agentens EGEN hukommelse (agent-contract-v1 leverance C, hul 3; spec 7.2)._

@@ -97,6 +97,13 @@ def build_layered_prompt(*, agent: dict[str, Any], messages_text: str, execution
     except Exception:
         # et manglende kontekstblok maa ikke vaelte promptbygningen; agenten kører så fresh (synligt i loggen)
         logger.warning("fork-kontekst kunne ikke laeses for %s", a["assignment_id"], exc_info=True)
+    peer_text = ""
+    try:
+        from core.services.agent_contract_service import peer_agent_ids
+        from core.services.prompt_sections.agent_orchestration import peer_section
+        peer_text = peer_section(peer_agent_ids(str(agent.get("agent_id") or ""), a["owner_user_id"]))
+    except Exception:
+        logger.warning("peer-liste kunne ikke bygges for %s", agent.get("agent_id"), exc_info=True)
     layer1 = DELEGATION_TEXT.format(assignment_id=a["assignment_id"])
     layer2 = str(agent.get("system_prompt") or "")
     layer3 = "\n".join([
@@ -110,6 +117,7 @@ def build_layered_prompt(*, agent: dict[str, Any], messages_text: str, execution
         "",
         *([memory, ""] if memory else []),
         *([fork_text, ""] if fork_text else []),
+        *([peer_text, ""] if peer_text else []),
         f"Samtalen hidtil:\n{messages_text}",
         "",
         extra_instruction,

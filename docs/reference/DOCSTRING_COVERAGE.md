@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10431/19076 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10437/19082 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,9 +26,9 @@ Generated from source. 10431/19076 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 921 | 1638 | 56% |
-| `core.services` | 6994 | 12949 | 54% |
+| `core.services` | 6999 | 12954 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
-| `core.services.prompt_sections` | 150 | 232 | 64% |
+| `core.services.prompt_sections` | 151 | 233 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 29 | 45 | 64% |
 | `core.skills` | 0 | 0 | 0% |
@@ -762,11 +762,11 @@ Generated from source. 10431/19076 functions/methods documented (54%). The list 
 - `core/services/agent_contract_projection.py` :: `close` (L614)
 - `core/services/agent_contract_projection.py` :: `followup` (L589)
 - `core/services/agent_contract_projection.py` :: `mark_read` (L505)
-- `core/services/agent_contract_service.py` :: `list_approvals` (L859)
-- `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L779)
-- `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L777)
-- `core/services/agent_loop_core.py` :: `LoopIO.model` (L772)
-- `core/services/agent_loop_core.py` :: `LoopIO.tool` (L775)
+- `core/services/agent_contract_service.py` :: `list_approvals` (L964)
+- `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L790)
+- `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L788)
+- `core/services/agent_loop_core.py` :: `LoopIO.model` (L783)
+- `core/services/agent_loop_core.py` :: `LoopIO.tool` (L786)
 - `core/services/agent_observation_compressor.py` :: `get_agent_observation` (L179)
 - `core/services/agent_observation_compressor.py` :: `list_agent_observations` (L137)
 - `core/services/agent_prompt_layers.py` :: `ensure_prompt_tables` (L37)

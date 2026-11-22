@@ -673,3 +673,46 @@ def test_den_nye_dom_har_sin_egen_fejlkode():
     assert _incomplete_kode(
         f"UFULDSTÆNDIG ({_GAMMEL_DOM})"
     ) == ("AGENT_NO_WRITE", "delivery")
+
+
+# --- drain_inbox: beskeder udefra midt i et run ------------------------------------
+
+def _user_msgs(call):
+    return [m["content"] for m in call["messages"] if m["role"] == "user"]
+
+
+def test_drain_inbox_lands_as_user_message_before_the_next_model_call():
+    io = FakeIO([{"text": "", "tool_calls": [_tc(1)]}, {"text": "klar"}])
+    batches = [[], ["[fra jarvis] ret kursen"]]      # tom runde 1, besked til runde 2
+    out = _run(io, drain_inbox=lambda: batches.pop(0) if batches else [])
+    assert "[fra jarvis] ret kursen" not in _user_msgs(io.model_calls[0])
+    assert _user_msgs(io.model_calls[1])[-1] == "[fra jarvis] ret kursen"
+    assert io.tool_calls == ["c1"]                   # værktøjskaldet blev ikke afbrudt
+    assert out["final_text"] == "klar"
+
+
+def test_drain_inbox_cursor_delivers_each_message_once():
+    from core.services.agent_contract_service import _inbox_text  # noqa: F401
+    queue = ["a"]
+
+    def drain():                                     # cursor-adfærd: leveret én gang, så tom
+        ud, queue[:] = list(queue), []
+        return ud
+
+    io = FakeIO([{"text": "", "tool_calls": [_tc(1)]}, {"text": "", "tool_calls": [_tc(2)]},
+                 {"text": "slut"}])
+    _run(io, drain_inbox=drain)
+    last = io.model_calls[2]["messages"]
+    assert sum(1 for m in last if m["content"] == "a") == 1
+
+
+def test_a_failing_drain_never_kills_the_run_and_is_logged(caplog):
+    def boom():
+        raise OSError("db låst")
+
+    io = FakeIO([{"text": "", "tool_calls": [_tc(1)]}, {"text": "færdig"}])
+    with caplog.at_level("WARNING"):
+        out = _run(io, drain_inbox=boom)
+    assert out["final_text"] == "færdig" and not out.get("error")
+    assert len(io.model_calls) == 2
+    assert any("drain" in r.getMessage() for r in caplog.records)

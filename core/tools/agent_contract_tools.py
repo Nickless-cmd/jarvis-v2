@@ -365,6 +365,12 @@ def _exec_send_message_to_agent(args: dict[str, Any]) -> dict[str, Any]:
     from core.tools.simple_tools_native import _exec_send_message_to_agent as legacy
     owner, session, run = _principal(args)
     agent_id = str(args.get("agent_id") or "").strip()
+    # En AGENT (serverstemplet `_runtime_agent_id` i en fenced child-run) skriver til en PEER.
+    scoped = _scoped_parent(args)
+    if scoped:
+        return _svc().send_agent_to_agent(
+            owner_user_id=owner, origin_session_id=session, sender_agent_id=scoped[0],
+            agent_id=agent_id, content=str(args.get("content") or ""))
     if not (_svc().capability_enabled() and _is_contract_bound(agent_id, owner)):
         return legacy(args)
     return _svc().send_message(owner_user_id=owner, origin_session_id=session,

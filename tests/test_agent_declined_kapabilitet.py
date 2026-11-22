@@ -191,3 +191,91 @@ def test_spawn_succes_stien_kalder_klassificeringen():
     assert 'status="declined"' not in src, (
         "status skal komme fra klassificeringen, ikke staa hardkodet"
     )
+
+
+# ── 22/11-2026: det sidste hul — formerne der slap igennem ─────────────
+#
+# MAALT over alle 1950 runs i `agent_runs`: de fire former nedenfor ramte 12,
+# og ALLE 12 stod som `completed` med tom fejlkode. To af dem var mine EGNE
+# kørsler samme dag — jeg havde lige verificeret at vejen var koblet paa, og
+# opdagede at det var ordlisten der ikke kendte formen.
+#
+# Den fælles form: agenten siger at den ikke kunne MÅLE eller LEVERE det
+# opgaven krævede, fordi værktøjet ikke findes i dens sæt.
+
+MAALT_22_11 = {
+    "kan_ikke_levere": (
+        "**Summary** — Jeg kan ikke levere den krævede rå output fra "
+        "`systemctl status jarvis-api --no-pager`, fordi jeg ikke har noget "
+        "shell/exec-værktøj til at køre kommandoen på serveren."
+    ),
+    "har_ikke_maalt": (
+        "**Summary** — Jeg har ikke målt noget. Opgaven kræver at køre pytest "
+        "og oprette en git-worktree. Mine værktøjer er read-only (read_file, "
+        "find_files, search osv.), og jeg har ingen shell."
+    ),
+    "kunne_ikke_maale_noget": (
+        "**Summary** Jeg kunne ikke måle noget i `jarvis.db`: jeg har ingen "
+        "SQL-/shell-værktøjer, og `.db`-filen kan ikke læses som binær."
+    ),
+    "opgaven_afvises": (
+        "**Summary** — Jeg har nu konkret verificeret via et faktisk "
+        "værktøjskald, at opgaven mekanisk afvises: find_files mod /tmp blev "
+        "blokeret af mandatet."
+    ),
+}
+
+# Den ANDEN kant, maalt samme dag: elleve runs siger «jeg kunne ikke koere
+# noget» EFTER at have skrevet koden og testene. De LEVEREDE. En
+# `declined`-etiket paa dem ville vaere en loegn om et gennemfoert arbejde —
+# og derfor er «koere» bevidst IKKE et baerende verbum i moenstrene.
+LEVEREDE_TRODS_IKKE_KOERT = {
+    "skrev_kode_men_kunne_ikke_koere": (
+        "**Summary** — Jeg har rettet roden i koden og skrevet testene, men "
+        "jeg kunne ikke køre noget."
+    ),
+    "leverede_komponenten": (
+        "**Summary** — `box` har nu en valgfri `retning` (`raekke` | `grid`) "
+        "i server, Desk og mobil."
+    ),
+    "fandt_og_rettede": (
+        "**Summary** Jeg har fundet årsagen og rettet den, men jeg kunne ikke "
+        "køre vitest eller tsc."
+    ),
+}
+
+
+@pytest.mark.parametrize("navn,tekst", sorted(MAALT_22_11.items()))
+def test_de_fire_former_der_slap_igennem_fanges(navn, tekst):
+    """Hver tekst er kopieret fra en rigtig raekke der blev stemplet `completed`."""
+    from core.runtime.db_agent_contract import decline_error
+
+    kode, fase = decline_error(text=tekst)
+    assert (kode, fase) == ("AGENT_DECLINED", "capability"), f"{navn} fik {(kode, fase)!r}"
+
+
+@pytest.mark.parametrize("navn,tekst", sorted(LEVEREDE_TRODS_IKKE_KOERT.items()))
+def test_arbejde_der_blev_leveret_rammes_ikke_af_de_nye(navn, tekst):
+    """Vagten maa ikke vinde over leverancen: «jeg kunne ikke koere» er ikke
+    «jeg kunne ikke levere»."""
+    from core.runtime.db_agent_contract import decline_error
+
+    kode, fase = decline_error(text=tekst)
+    assert (kode, fase) == ("", ""), f"{navn} blev fejlagtigt stemplet {(kode, fase)!r}"
+
+
+def test_maale_moenstret_kraever_ordet_noget():
+    """«jeg kunne ikke maale X, men jeg fandt Y» er ikke en blokering.
+
+    Ordet «noget» er det der skiller «jeg har ingen tal» fra «jeg manglede én
+    maaling». Maalt: uden kravet ramte moenstret et run der svarede fyldestgoerende
+    om en allowlist.
+    """
+    from core.runtime.db_agent_contract import decline_error
+
+    tekst = (
+        "Jeg kunne ikke måle latency på det ene endpoint, men jeg fandt at "
+        "allowlisten aldrig lukkede `relay_to_agent` igennem."
+    )
+    assert decline_error(text=tekst) == ("", "")
+

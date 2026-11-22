@@ -946,6 +946,28 @@ _DECLINE_MOENSTRE = tuple(re.compile(p, re.IGNORECASE) for p in (
     r"jeg\s+kan\s+ikke\s+udf[øo]re",
     r"jeg\s+kunne\s+ikke\s+udf[øo]re",
     r"jeg\s+mangler\s+(et|en|den|de)\s+",
+    # 22/11-2026 — det sidste hul, målt på mine EGNE to kørsler samme dag: begge
+    # blev stemplet `completed` med tom fejlkode, selv om den ene skrev «Jeg kan
+    # ikke levere den krævede rå output … jeg ikke har noget shell/exec-værktøj»
+    # og den anden «opgaven mekanisk afvises: find_files mod /tmp blev blokeret
+    # af mandatet». Vejen var koblet på (`agent_runtime_spawn` kalder denne
+    # funktion); det var ORDLISTEN der ikke kendte formen.
+    #
+    # Målt over alle 1950 runs: de fire mønstre rammer 12, og ALLE 12 stod som
+    # `completed` med tom fejlkode — ingen af dem er en leverance. Formen er
+    # fælles: agenten siger at den ikke kunne MÅLE eller LEVERE det opgaven
+    # krævede, fordi værktøjet ikke findes i dens sæt.
+    #
+    # Grænsen er også målt, og den er grunden til at «jeg kunne ikke køre» IKKE
+    # er med: elleve runs siger netop det EFTER at have skrevet koden og testene
+    # («Jeg har rettet roden i koden og skrevet testene, men jeg kunne ikke køre
+    # noget»). De LEVEREDE; en `declined`-etiket ville være en løgn om dem.
+    # Derfor kræver måle-mønstret ordet «noget», og derfor er «levere» og ikke
+    # «køre» det bærende verbum.
+    r"jeg\s+(kan|kunne)\s+ikke\s+levere",
+    r"jeg\s+har\s+ikke\s+m[åa]lt\s+noget",
+    r"jeg\s+(kan|kunne)\s+ikke\s+m[åa]le\s+noget",
+    r"opgaven\s+(mekanisk\s+)?(afvises|blev\s+afvist)",
 ))
 
 

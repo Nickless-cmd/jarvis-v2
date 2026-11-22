@@ -897,6 +897,15 @@ def _incomplete_kode(text: str) -> tuple[str, str]:
     # sender den næste jagt to forskellige steder hen.
     if "blev blokeret af miljøet" in grund:
         return "AGENT_BLOCKED_BY_ENVIRONMENT", "environment"
+    # 22/11-2026: den strukturelle erklæring baeres i GRUNDEN, ikke i teksten.
+    # Maalt i drift paa `run-6d55df6665f64e79`: agenten skrev `DÆKNING: ingen`, men
+    # markeringen er klippet til 393 tegn, og linjen stod til sidst — saa
+    # `decline_error` saa den aldrig og etiketten blev `delivery`, altsaa
+    # «leverancen var mangelfuld» om et run der meldte at det ikke KUNNE levere.
+    # Grunden staar i parentesen FORREST og overlever klippet; derfor laeses den her
+    # og ikke i den klippede tekst nedenfor.
+    if "erklærede selv at den ikke leverede" in grund:
+        return "AGENT_DECLINED", "capability"
     # 22/11-2026: den sidste ægte rest. To kørsler (18/11) skrev ordret «Jeg kan
     # ikke besvare nogen af de 4 nummererede spørgsmål, da jeg mangler et
     # eksekveringsværktøj til `gh` CLI» — og blev alligevel stemplet

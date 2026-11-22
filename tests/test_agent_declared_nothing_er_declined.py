@@ -146,3 +146,23 @@ def test_reglen_i_prompten_er_ubetinget():
 def test_formen_er_fast_men_store_smaa_bogstaver_og_synonymer_taeller(form):
     """Agenten skriver den form den blev bedt om; vi accepterer de tre varianter."""
     assert decline_error(text=f"{FAKTISK}\n{form}") == ("AGENT_DECLINED", "capability")
+
+
+def test_den_klippede_markering_baerer_stadig_etiketten():
+    """MAALT I DRIFT 22/11-2026 paa `run-6d55df6665f64e79`.
+
+    Agenten skrev `DÆKNING: ingen`, den femte indgang satte markeringen — og
+    etiketten blev alligevel `AGENT_INCOMPLETE`/`delivery`. Aarsagen var ikke
+    logikken men KLIPPET: markeringen gemmes som 393 tegn, og linjen stod til
+    sidst. Grunden staar i parentesen FORREST og overlever, saa den maa baere
+    etiketten — ellers sendes den næste læser efter en leverance der aldrig
+    kunne komme.
+    """
+    klippet = (
+        "Agent afsluttede uden et brugbart resultat: UFULDSTÆNDIG (agenten "
+        "erklærede selv at den ikke leverede noget) — agentens tekst:\n"
+        "Nu har jeg konkret evidens for mekanismen. **Summary** — Jeg har stadig "
+        "ikke noget værktøj til at udføre kommandoen på serveren."
+    )
+    assert "DÆKNING" not in klippet, "forudsætning: linjen skal være klippet væk"
+    assert _incomplete_kode(klippet) == ("AGENT_DECLINED", "capability")

@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/ollama_balance.py`
+_Ollama-lanens tilstand — målt, aldrig gættet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `OllamaReading` | `` | — | [src](../../../core/services/ollama_balance.py#L50) |
+| method | `OllamaReading.blocked` | `(self)` | — | [src](../../../core/services/ollama_balance.py#L56) |
+| function | `reset_cache` | `()` | — | [src](../../../core/services/ollama_balance.py#L63) |
+| function | `_post` | `(base_url, model, timeout)` | — | [src](../../../core/services/ollama_balance.py#L68) |
+| function | `probe_ollama` | `(model, *, base_url=…, timeout=…, prober=…, now=…)` | Ægte 1-token-kald, cachet i :data:`CACHE_TTL_SECONDS`. | [src](../../../core/services/ollama_balance.py#L92) |
+| function | `render_reason` | `(reading)` | — | [src](../../../core/services/ollama_balance.py#L110) |
+
+## `core/services/ollama_model_names.py`
+_Opløs et bart ollama-modelnavn til det tag ollama faktisk serverer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_base_url` | `()` | — | [src](../../../core/services/ollama_model_names.py#L41) |
+| function | `served_tags` | `()` | De modelnavne ollama serverer lige nu. Cachet 120 s; tom maengde ved fejl. | [src](../../../core/services/ollama_model_names.py#L53) |
+| function | `resolve_model_name` | `(model)` | `glm-5.2` → `glm-5.2:cloud` naar den variant findes. Ellers uaendret. | [src](../../../core/services/ollama_model_names.py#L75) |
+
 ## `core/services/ollama_visible_prompt.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -600,26 +621,4 @@ _Policy Abstraktion — Phase 2 of Generalized Learning._
 | function | `_llm_generalize` | `(*, specific_rule, target_context, evidence_count, confidence, source_domain)` | Generate a generalized principle via cheap-lane LLM. | [src](../../../core/services/policy_abstraction.py#L382) |
 | function | `_compute_relevance` | `(*, principle, transfer_domains, task_description, context_domain, base_confidence)` | Score how relevant a generalized policy is to the current task. | [src](../../../core/services/policy_abstraction.py#L457) |
 | function | `build_policy_abstraction_prompt_section` | `(*, limit=…)` | Build a compact awareness section with top generalized policies. | [src](../../../core/services/policy_abstraction.py#L499) |
-
-## `core/services/post_run_compaction.py`
-_Luk kontekst-budgettet igen efter en lang synlig tur._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_completed_visible_session` | `(event)` | Session-id for et gemt, afsluttende visible-run-svar — ellers ``""``. | [src](../../../core/services/post_run_compaction.py#L28) |
-| function | `compact_after_completed_turn` | `(session_id)` | Vurdér og evt. start den normale compaction for den afsluttede session. | [src](../../../core/services/post_run_compaction.py#L41) |
-| function | `_handle` | `(event)` | — | [src](../../../core/services/post_run_compaction.py#L65) |
-| function | `_loop` | `(subscriber)` | — | [src](../../../core/services/post_run_compaction.py#L77) |
-| function | `_catch_up_recent_sessions` | `()` | Efter en genstart: eftertjek få nyligt afsluttede sessioner én gang. | [src](../../../core/services/post_run_compaction.py#L88) |
-| function | `start_post_run_compaction` | `()` | Start subscriber + et asynkront catch-up. Idempotent. | [src](../../../core/services/post_run_compaction.py#L106) |
-| function | `stop_post_run_compaction` | `()` | — | [src](../../../core/services/post_run_compaction.py#L124) |
-
-## `core/services/post_tool_answer_guard.py`
-_Guards for tool turns that end in hollow final prose._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tool_call_count` | `(exchanges)` | — | [src](../../../core/services/post_tool_answer_guard.py#L13) |
-| function | `is_hollow_post_tool_answer` | `(answer_text, exchanges)` | — | [src](../../../core/services/post_tool_answer_guard.py#L17) |
-| function | `should_replace_with_synthesis` | `(current_text, candidate_text)` | — | [src](../../../core/services/post_tool_answer_guard.py#L26) |
 

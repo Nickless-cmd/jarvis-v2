@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/development_ritual.py`
+_Ugentligt udviklings-ritual — Jarvis' egen vej til at ændre sig (blok D, 4/9)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_state_get` | `(key, default=…)` | — | [src](../../../core/services/development_ritual.py#L43) |
+| function | `_state_set` | `(key, value)` | — | [src](../../../core/services/development_ritual.py#L52) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/development_ritual.py#L60) |
+| function | `_due` | `(last_run, now)` | — | [src](../../../core/services/development_ritual.py#L68) |
+| function | `gather_material` | `(*, limit=…)` | Hvad har han lært om sig selv og om arbejdet den seneste uge? | [src](../../../core/services/development_ritual.py#L73) |
+| function | `build_paragraph` | `(material)` | Ét afsnit om ugen. Tom streng når der ikke er noget at sige. | [src](../../../core/services/development_ritual.py#L97) |
+| function | `current_focus` | `(workspace_dir)` | Den nyeste `## Udvikling`-linje — hans aktive udviklingsfokus. | [src](../../../core/services/development_ritual.py#L108) |
+| function | `propose` | `(*, now=…)` | Stil ugens udviklings-forslag. Ét ad gangen — aldrig to i kø. | [src](../../../core/services/development_ritual.py#L125) |
+| function | `veto` | `(*, reason=…)` | Bjørn sagde fra. Forslaget droppes, intet skrives. | [src](../../../core/services/development_ritual.py#L153) |
+| function | `apply_if_due` | `(*, now=…)` | Skriv forslaget når vetoperioden er udløbet. Tavshed er et ja. | [src](../../../core/services/development_ritual.py#L163) |
+| function | `run_development_ritual` | `(*, force=…, now=…)` | Ugentligt: stil forslaget. Dagligt: skriv det der har ligget 24 timer. | [src](../../../core/services/development_ritual.py#L192) |
+| function | `build_development_ritual_surface` | `()` | — | [src](../../../core/services/development_ritual.py#L214) |
+
 ## `core/services/development_sense.py`
 _Development senses — realtime felt-sense of growth, stuck, appetite, resistance._
 
@@ -718,15 +736,4 @@ _Hvad GJALDT der faktisk for denne koersel — Fase 9._
 | function | `_maal` | `()` | — | [src](../../../core/services/effective_policy.py#L115) |
 | function | `_hash` | `(felter)` | sha256 over de politik-baerende felter — uden tidsstempler og id'er, | [src](../../../core/services/effective_policy.py#L134) |
 | function | `afviger` | `(a, b)` | Hvilke politik-felter er forskellige? Til at forklare et hash-skift. | [src](../../../core/services/effective_policy.py#L147) |
-
-## `core/services/efterladt_run_vagt.py`
-_Den periodiske sweep der manglede: en ``running``-række uden ejer bliver aldrig lukket._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_running_raekker` | `(stilstand_s)` | ``(run_id, started_at)`` for ``running``-rækker ældre end tærsklen. | [src](../../../core/services/efterladt_run_vagt.py#L75) |
-| function | `sweep_efterladte_runs` | `(*, stilstand_s=…)` | Stempl ``running``-rækker der hverken lever eller er terminale. | [src](../../../core/services/efterladt_run_vagt.py#L94) |
-| function | `_loop` | `()` | Kadence-loop. Venter ``KADENCE_S`` mellem runder, ikke på et fast ur. | [src](../../../core/services/efterladt_run_vagt.py#L152) |
-| function | `start_efterladt_run_vagt` | `()` | Start vagten én gang pr. proces. Idempotent. Returnerer True hvis startet. | [src](../../../core/services/efterladt_run_vagt.py#L168) |
-| function | `stop_efterladt_run_vagt` | `()` | Stop loopet. Idempotent; no-op hvis det aldrig startede. | [src](../../../core/services/efterladt_run_vagt.py#L196) |
 

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18974 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18997 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -34,36 +34,36 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18974 functions/
 - [`core.runtime.04`](core.runtime.04.md) — `workspace_paths` … `ws_auth`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agent_outcomes_log`
 - [`core.services.02`](core.services.02.md) — `agent_parking` … `anticipatory_action_daemon`
-- [`core.services.03`](core.services.03.md) — `anticipatory_context` … `autonomy_budget`
-- [`core.services.04`](core.services.04.md) — `autonomy_pressure_signal_tracking` … `causal_inference_daemon`
-- [`core.services.05`](core.services.05.md) — `central_absorb` … `central_form_judge`
-- [`core.services.06`](core.services.06.md) — `central_gardener` … `central_private_observe`
-- [`core.services.07`](core.services.07.md) — `central_private_reducer` … `central_trinity`
-- [`core.services.08`](core.services.08.md) — `central_twins` … `chronicle_consolidation_proposal_tracking`
-- [`core.services.09`](core.services.09.md) — `chronicle_consolidation_signal_tracking` … `consolidation_judge_daemon`
-- [`core.services.10`](core.services.10.md) — `consolidation_target_signal_tracking` … `current_pull`
-- [`core.services.11`](core.services.11.md) — `daemon_health` … `development_ritual`
-- [`core.services.12`](core.services.12.md) — `development_sense` … `efterladt_run_vagt`
-- [`core.services.13`](core.services.13.md) — `egress_guard` … `experiment_runner`
-- [`core.services.14`](core.services.14.md) — `explore_claim_check` … `ghost_networks`
-- [`core.services.15`](core.services.15.md) — `git_actions` … `hf_connector`
-- [`core.services.16`](core.services.16.md) — `hollow_promise_census` … `internal_cadence_maintenance`
-- [`core.services.17`](core.services.17.md) — `internal_cadence_matrix` … `loyalty_gradient_signal_tracking`
-- [`core.services.18`](core.services.18.md) — `mail_checker_daemon` … `metacognitive_integration`
-- [`core.services.19`](core.services.19.md) — `mirror_engine` … `ollama_model_names`
-- [`core.services.20`](core.services.20.md) — `ollama_visible_prompt` … `post_tool_answer_guard`
-- [`core.services.21`](core.services.21.md) — `precision_bias` … `prompt_mode_layout`
-- [`core.services.22`](core.services.22.md) — `prompt_mutation_loop` … `recall_observability`
-- [`core.services.23`](core.services.23.md) — `recall_ownership_migration` … `role_registry`
-- [`core.services.24`](core.services.24.md) — `round_budget_notice` … `runtime_operational_memory`
-- [`core.services.25`](core.services.25.md) — `runtime_resource_signal` … `self_mutation_lineage`
-- [`core.services.26`](core.services.26.md) — `self_narrative_continuity_signal_tracking` … `session_wakeup`
-- [`core.services.27`](core.services.27.md) — `settlement_shadow` … `somatic_runtime_body`
-- [`core.services.28`](core.services.28.md) — `source_confidence_gate` … `text_resonance`
-- [`core.services.29`](core.services.29.md) — `theater_audit` … `turn_tail_timing`
-- [`core.services.30`](core.services.30.md) — `turn_trace` … `visible_memory_grounding`
-- [`core.services.31`](core.services.31.md) — `visible_model` … `visible_text_scrub`
-- [`core.services.32`](core.services.32.md) — `visible_thinking_trace` … `world_model_signal_tracking`
+- [`core.services.03`](core.services.03.md) — `anticipatory_context` … `autonomous_work_daemon`
+- [`core.services.04`](core.services.04.md) — `autonomy_budget` … `causal_graph`
+- [`core.services.05`](core.services.05.md) — `causal_inference_daemon` … `central_existence_feel`
+- [`core.services.06`](core.services.06.md) — `central_form_judge` … `central_persephone`
+- [`core.services.07`](core.services.07.md) — `central_private_observe` … `central_trainman`
+- [`core.services.08`](core.services.08.md) — `central_trinity` … `chronicle_consolidation_brief_tracking`
+- [`core.services.09`](core.services.09.md) — `chronicle_consolidation_proposal_tracking` … `consent_registry`
+- [`core.services.10`](core.services.10.md) — `consolidation_judge_daemon` … `curiosity_hypothesis_debt`
+- [`core.services.11`](core.services.11.md) — `current_pull` … `development_narrative_daemon`
+- [`core.services.12`](core.services.12.md) — `development_ritual` … `effective_policy`
+- [`core.services.13`](core.services.13.md) — `efterladt_run_vagt` … `experiential_runtime_context`
+- [`core.services.14`](core.services.14.md) — `experiment_runner` … `gate_truth`
+- [`core.services.15`](core.services.15.md) — `gate_verdict_ledger` … `heartbeat_scheduler`
+- [`core.services.16`](core.services.16.md) — `hentede_vaerktoejer` … `internal_cadence_core`
+- [`core.services.17`](core.services.17.md) — `internal_cadence_inner_life` … `longing_signal_daemon`
+- [`core.services.18`](core.services.18.md) — `loop_runtime` … `metabolism_state_signal_tracking`
+- [`core.services.19`](core.services.19.md) — `metacognition_signal_tracker` … `offline_recomposition_engine`
+- [`core.services.20`](core.services.20.md) — `ollama_balance` … `policy_abstraction`
+- [`core.services.21`](core.services.21.md) — `post_run_compaction` … `prompt_evolution_runtime`
+- [`core.services.22`](core.services.22.md) — `prompt_heartbeat_self_knowledge` … `reasoning_store`
+- [`core.services.23`](core.services.23.md) — `reboot_awareness_daemon` … `retry_runtime`
+- [`core.services.24`](core.services.24.md) — `rhythm_engine` … `runtime_hook_runtime`
+- [`core.services.25`](core.services.25.md) — `runtime_hooks` … `self_model_predictive`
+- [`core.services.26`](core.services.26.md) — `self_model_signal_tracking` … `session_tool_scope`
+- [`core.services.27`](core.services.27.md) — `session_topic_tracker` … `smith_noise_veto`
+- [`core.services.28`](core.services.28.md) — `social_labilizer` … `temporal_self_continuity`
+- [`core.services.29`](core.services.29.md) — `terminal_sanitize` … `truth_gate_v2`
+- [`core.services.30`](core.services.30.md) — `turens_vaerktoejer` … `visible_followup_results`
+- [`core.services.31`](core.services.31.md) — `visible_inner_life` … `visible_stream_gate_wrapper`
+- [`core.services.32`](core.services.32.md) — `visible_synthesis_stream` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

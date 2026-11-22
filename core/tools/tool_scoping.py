@@ -301,6 +301,21 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # værktøjet i scopet kan jeg ikke levere det, uanset hvor mange gange
     # reglen staar i prompten.
     "suggest_next_task", "pause_and_ask",
+    # ── Beregning og hus (maalt 22/11-2026) ───────────────────────────────
+    #
+    # Begge stod i kataloget og i INGEN af mode-listerne — samme moenster som
+    # `read_attachment` (6/9), billedvaerktoejerne (13/9) og
+    # `vis_graf`/`vis_widget` (27/10): bygget, korrekt og usynligt dér hvor
+    # samtalen foregaar. `calculate` er ren sympy uden bivirkning; en samtale
+    # der ikke kan regne paa det den selv har lagt frem, er en samtale der
+    # gaetter.
+    #
+    # `home_assistant` er her fordi ejeren skal SE den i chat-scope. For
+    # member/guest filtreres den bort af permission_engine, og `partner`
+    # (husstanden) faar den via sit eget tillæg dér — se
+    # `_PARTNER_BY_MODE` i permission_engine.py. Den kan derfor ikke naa
+    # eksterne brugere gennem denne linje.
+    "calculate", "home_assistant",
 })
 
 # Ekstra værktøjer owner (kun) får i chat — fil-læsning til kode-snak.
@@ -402,6 +417,21 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # Billeder. Ogsaa i kode-mode: et diagram, en mockup eller en illustration
     # til en README hoerer til i arbejdet, ikke i en anden fane.
     "openrouter_image", "openrouter_image_edit",
+    # ── Kode-intelligens og beregning (maalt 22/11-2026) ──────────────────
+    #
+    # `find_usages` og `find_symbol` findes via Serena LSP i
+    # core/tools/code_navigation_tools.py — men stod i INGEN mode-liste, saa
+    # kode-intelligensen var bygget og usynlig. Claude Code koerer type-fejl
+    # efter hver edit; uden de to kan jeg ikke engang finde kalderne.
+    #
+    # `calculate` hoerer ogsaa her: en parser eller en protokol graenses ofte
+    # ved at regne efter, og et vaerktoej der kun findes i chat findes reelt
+    # ikke for den der arbejder i kode.
+    #
+    # `home_assistant` staar her af samme grund som i chat-listen: ejeren skal
+    # se den, member/guest filtreres af permission_engine, og `partner` faar
+    # den via `_PARTNER_BY_MODE`.
+    "find_usages", "find_symbol", "calculate", "home_assistant",
 })
 CODE_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
     "read_file", "write_file", "edit_file", "search", "find_files", "bash",

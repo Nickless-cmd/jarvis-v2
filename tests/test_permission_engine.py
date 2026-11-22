@@ -42,6 +42,35 @@ def test_member_chat_no_cross_agent_recall() -> None:
     assert is_tool_allowed("cross_agent_recall", role="member", mode="chat") is False
 
 
+# ── Partner: husstand, ellers medlems-rettigheder ───────────────────────────
+
+def test_partner_has_husadgang_member_does_not() -> None:
+    # `partner` er husstand (ROLE_HOUSEHOLD i core/identity/household.py),
+    # `member` er ekstern. Bjørn 22/11-2026: «husagang er tilgængelige for
+    # både Michelle og jeg.. resten er ikk brugere her i huset, de er externe.»
+    # Husadgangen må derfor ikke følge med member-sættet.
+    from core.services.permission_engine import is_tool_allowed
+
+    assert is_tool_allowed("home_assistant", role="partner", mode="chat") is True
+    assert is_tool_allowed("home_assistant", role="partner", mode="code") is True
+    assert is_tool_allowed("home_assistant", role="member", mode="chat") is False
+    assert is_tool_allowed("home_assistant", role="member", mode="code") is False
+    assert is_tool_allowed("home_assistant", role="guest", mode="chat") is False
+
+
+def test_partner_otherwise_member_rights() -> None:
+    # Husadgang er det ENESTE tillæg. Alt andet skal partner dele med member —
+    # ellers er rollen blevet en skjult owner. Testen fejler hvis nogen lægger
+    # mere i _PARTNER_CHAT_EXTRA uden at tage stilling til member-sættet.
+    from core.services.permission_engine import allowed_tools
+
+    for mode in ("chat", "code"):
+        partner = allowed_tools(role="partner", mode=mode)
+        member = allowed_tools(role="member", mode=mode)
+        assert partner - member == {"home_assistant"}, mode
+        assert not (member - partner), mode
+
+
 # ── Member CODE ─────────────────────────────────────────────────────────────
 
 def test_member_code_has_operator_not_server_shell() -> None:

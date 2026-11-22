@@ -449,3 +449,48 @@ class TestComputerUseKunICodeMode:
         from core.services.computer_use_samtykke import HANDLENDE, LAESENDE
         assert COMPUTER_USE_TOOLS == (HANDLENDE | LAESENDE)
         assert not (HANDLENDE & LAESENDE)
+
+
+class TestHusadgangOgKodeIntelligensScoping:
+    """Målt 22/11-2026: `home_assistant`, `calculate`, `find_usages` og
+    `find_symbol` stod alle i kataloget og i INGEN af mode-listerne — samme
+    mønster som `read_attachment` (6/9) og `vis_graf` (27/10): bygget, korrekt
+    og usynligt dér hvor arbejdet foregår.
+
+    Bro-flagene patches væk, så testen måler SCOPE-LISTEN og ikke om en
+    desk-bro tilfældigvis er paret på den maskine den kører på.
+    """
+
+    ALLE = frozenset({
+        "home_assistant", "calculate", "find_usages", "find_symbol", "web_search",
+    })
+
+    def _scope(self, monkeypatch, role: str, scope: str) -> set[str]:
+        import core.tools.tool_scoping as ts
+        monkeypatch.setattr(ts, "_owner_has_live_bridge", lambda: False)
+        monkeypatch.setattr(ts, "_owner_has_live_phone", lambda: False)
+        monkeypatch.setattr(ts, "_adb_er_opsat", lambda: False)
+        monkeypatch.setattr(ts, "_forbundne_connector_vaerktoejer", lambda: frozenset())
+        return allowed_tool_names(role=role, scope=scope, all_names=self.ALLE)
+
+    def test_owner_ser_husadgang_og_beregning_i_chat(self, monkeypatch):
+        allow = self._scope(monkeypatch, "owner", "chat")
+        assert "home_assistant" in allow
+        assert "calculate" in allow
+
+    def test_owner_ser_lsp_i_code_men_ikke_i_chat(self, monkeypatch):
+        """`find_usages`/`find_symbol` hører i code: det er dér man finder
+        kalderne. I chat ville de være en kode-flade uden en fil at pege på."""
+        code = self._scope(monkeypatch, "owner", "code")
+        chat = self._scope(monkeypatch, "owner", "chat")
+        assert {"find_usages", "find_symbol"} <= code
+        assert not ({"find_usages", "find_symbol"} & chat)
+
+    def test_husadgang_naar_ikke_eksterne_brugere(self, monkeypatch):
+        """Non-owner går gennem permission_engine, og husadgangen ligger i
+        partner-tillægget — ikke i member-sættet. En ekstern bruger må derfor
+        aldrig se `home_assistant`, uanset mode."""
+        for role in ("member", "guest"):
+            for scope in ("chat", "code"):
+                allow = self._scope(monkeypatch, role, scope)
+                assert "home_assistant" not in allow, (role, scope)

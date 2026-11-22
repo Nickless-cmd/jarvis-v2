@@ -176,6 +176,28 @@ _MEMBER_CHAT = (_MEMBER_CHAT_WEB | _MEMBER_CHAT_UTIL | _MEMBER_CHAT_MEM
                 | _MEMBER_GOOGLE | _MEMBER_HVERDAG)
 
 
+# ── Partner-tillæg (22/11-2026) ─────────────────────────────────────────────
+# `partner` er HUSSTAND (`ROLE_HOUSEHOLD` i core/identity/household.py), men
+# har ellers nøjagtig medlems-rettigheder. Det er ikke det samme som `member`:
+# member-sættet dækker også eksterne brugere.
+#
+# Bjørn 22/11-2026: «husagang er tilgængelige for både Michelle og jeg.. resten
+# er ikk brugere her i huset, de er externe.» Husadgangen kan derfor ikke ligge
+# i `_MEMBER_HVERDAG` — den ville følge med til alle medlemmer. Den ligger her,
+# som et tillæg der kun lægges på for `partner`.
+#
+# Maalt før ændringen: `allowed_tools(role='partner', mode='chat')` indeholdt
+# IKKE `home_assistant`. Michelle kunne altsaa ikke naa huset gennem
+# permission-laget, uanset hvad tool-scoping-listen sagde.
+_PARTNER_CHAT_EXTRA = frozenset({"home_assistant"})
+_PARTNER_CODE_EXTRA = frozenset({"home_assistant"})
+_PARTNER_BY_MODE: dict[str, frozenset[str]] = {
+    "chat": _PARTNER_CHAT_EXTRA,
+    "code": _PARTNER_CODE_EXTRA,
+    "cowork": frozenset(),
+}
+
+
 # ── Member CODE (= det Claude har) ──────────────────────────────────────────
 # Operator-tools kører på brugerens EGEN maskine via bridge.
 _MEMBER_CODE_OPERATOR = frozenset({
@@ -242,6 +264,7 @@ def allowed_tools(*, role: str, mode: str) -> "frozenset[str] | _AllTools":
     """Returnér de tools en (rolle, mode) må bruge.
 
     Owner → ALL_TOOLS-sentinel (enhver tool). Member → eksplicit sæt pr. mode.
+    Partner → member-sættet PLUS partner-tillægget (husadgang).
     Guest / ukendt rolle / ukendt mode → tom frozenset (fail-closed).
     """
     if role == "owner":
@@ -250,7 +273,12 @@ def allowed_tools(*, role: str, mode: str) -> "frozenset[str] | _AllTools":
     # Arkiv) er en SEPARAT gate og giver ingen ekstra tools.
     from core.identity.household import is_member_like
     if is_member_like(role):
-        return _MEMBER_BY_MODE.get(mode, frozenset())
+        base = _MEMBER_BY_MODE.get(mode, frozenset())
+        # Husadgang er det ENESTE partner faar ud over medlemssættet. Den kan
+        # ikke ligge i member-sættet, fordi det også dækker eksterne brugere.
+        if role == "partner":
+            base = base | _PARTNER_BY_MODE.get(mode, frozenset())
+        return base
     return frozenset()
 
 

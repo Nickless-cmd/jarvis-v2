@@ -238,7 +238,7 @@ def test_real_execution_failure_settles_failed_with_the_same_single_run(env, mon
     (m,) = c.list_pending_results(owner_user_id="bjorn", origin_session_id="sess-1")
     payload = json.loads(m["payload_json"])
     assert (payload["status"], payload["error_code"], payload["last_run_id"]) == (
-        "failed", "AGENT_FAILED", contract_run)
+        "failed", "WORKER_ERROR", contract_run)
 
 
 def test_persistent_failed_is_an_attempt_not_a_terminal_outcome(env):

@@ -53,7 +53,7 @@ def test_wait_registered_then_child_finishes_writes_exactly_one_system_marked_wa
     assert task == f"agentwake-{ct['contract_id']}"
     assert (rec["status"], rec["session_id"], rec["force_user_id"], rec["kind"],
             rec["wake_kind"], rec["notice_pending"], rec["recovery_limit"]) == (
-        "recovering", SESS, OWNER, "visible", "agent_wait", False, 1)
+        "recovering", SESS, OWNER, "visible", "agent_wait", False, 2)
     assert rec["original_request"].startswith("[SYSTEM — agentvækning, ikke en besked fra brugeren]")
     assert a in rec["original_request"]
     assert w.wait_.get_contract(ct["contract_id"])["wake_task_id"] == task

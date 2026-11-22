@@ -196,7 +196,8 @@ def spawn_agent_task(
     if not allowed_tools:
         from core.services.agent_runtime_base import tools_for_policy
         allowed_tools = tools_for_policy(tool_policy)
-        if contract is not None and allowed_tools and "agent_note" not in allowed_tools:
+        if (contract is not None and allowed_tools and "agent_note" not in allowed_tools
+                and bool(template.get("memory_tools", True))):
             # Kontrakt-bundne agenter med vaerktoejer faar deres egen hukommelse (spec 7.2). Navnet er en
             # funktion af politikken og at agenten er kontrakt-bundet - ikke af opgaveteksten - saa
             # agentens vaerktoejsarray er fast for dens levetid.

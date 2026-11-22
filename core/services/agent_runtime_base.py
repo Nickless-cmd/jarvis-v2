@@ -809,6 +809,7 @@ AGENT_ROLE_TEMPLATES = {
     "planner": {
         "title": "Planner",
         "default_tool_policy": "read-only-runtime",
+        "memory_tools": False,
         "system_prompt": _role_prompt(
             "You are a Planner spawned by Jarvis. Turn the goal into a concrete, "
             "decision-ready plan: the ordered steps, the key risks, and the single "

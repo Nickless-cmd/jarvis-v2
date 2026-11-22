@@ -218,7 +218,9 @@ def test_a_text_only_policy_and_a_non_contract_spawn_get_no_memory_tool(mt):
                               auto_execute=False)
     reg = {r["agent_id"]: json.loads(r["allowed_tools_json"]) for r in
            mt.c_._conn().execute("SELECT agent_id, allowed_tools_json FROM agent_registry")}
-    assert reg[out["agent_id"]] == [] and "agent_note" not in reg[legacy["agent_id"]]
+    assert reg[out["agent_id"]] == mt.base_.tools_for_policy("read-only-runtime")
+    assert "agent_note" not in reg[out["agent_id"]]
+    assert "agent_note" not in reg[legacy["agent_id"]]
 
 
 def test_a_code_agent_keeps_both_its_worktree_tools_and_the_note_tool(mt, tmp_path, monkeypatch):

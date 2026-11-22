@@ -66,7 +66,9 @@ def test_a_signal_carries_only_ids_and_state_and_is_sent_once_per_state_change(f
     c.commit()
     assert [p["state"] for p in fd.feed_.signal_changes()] == ["active:running"]
     fd.c_.commit_terminal_outcome(assignment_id=a1["assignment_id"], status="completed", summary="HEMMELIGT RESUME")
-    assert len(fd.sent_) == 3 and fd.sent_[-1][1]["state"] == "completed:running"      # via commit-hooken
+    signals = [event for event in fd.sent_ if event[0] == "notifikation.agent"]
+    assert len(signals) == 3 and signals[-1][1]["state"] == "completed:running"         # via commit-hooken
+    assert [event[0] for event in fd.sent_].count("credit_assignment.agent_outcome_frozen") == 1
     assert "HEMMELIGT" not in repr(fd.sent_)                                           # aldrig agentindhold
 
 

@@ -72,7 +72,7 @@ export function InspectorPanel({
         : <div className="artifact-body artifact-empty">Agentdetaljen kræver forbindelse til serveren.</div>)}
       {target?.type === 'file' && <FilPreview fil={target.file} config={config} />}
       {target?.type === 'dok' && <DokPreview dok={target.dok} />}
-      {target?.type === 'canvas' && <CanvasPanel key={target.canvas.titel} canvas={target.canvas} />}
+      {target?.type === 'canvas' && <CanvasPanel key={target.canvas.titel} canvas={target.canvas} config={config} />}
       {!target && <div className="artifact-body artifact-empty">Intet at vise endnu.</div>}
     </div>
   )

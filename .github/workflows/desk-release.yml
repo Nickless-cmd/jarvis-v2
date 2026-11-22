@@ -22,6 +22,12 @@ on:
 
 permissions:
   contents: write
+  # Gate-jobbet læser `actions/runs` for samme SHA. Når permissions-blokken
+  # er angivet eksplicit, sætter GitHub ALLE uspecificerede scopes til `none`
+  # — så uden denne linje ville opslaget få 403, og gaten ville afvise hver
+  # eneste release. Fail-safe, men blind: præcis den fejlform gaten findes
+  # for at forhindre.
+  actions: read
 
 jobs:
   # Opretter releasen ÉN gang før build-matrixen, så de 3 parallelle platform-jobs

@@ -188,3 +188,26 @@ def test_pull_request_koersel_taeller_ikke(gate_script: str) -> None:
     """En PR-kørsel for samme SHA beviser intet om den commit der udgives."""
     runs = [_run(1, event="pull_request", conclusion="failure")]
     assert _vurder(gate_script, runs) == "INGEN"
+
+
+def test_gaten_har_lov_at_laese_actions(workflow: dict, gate_script: str) -> None:
+    """Gaten læser `actions/runs` — så workflowet skal have `actions: read`.
+
+    MÅLT 22/11-2026: `permissions: contents: write` stod alene. Når blokken
+    er angivet eksplicit, sætter GitHub ALLE uspecificerede scopes til
+    `none` — så opslaget ville få 403, `for`-løkken ville ramme sin
+    «kunne ikke læse»-gren og afvise HVER release. Det er fail-safe, men
+    blindt: gaten ville se ud som om den virkede, mens den blokerede alt.
+
+    Testen binder de to sider sammen: scriptet SKAL slå actions op, og
+    workflowet SKAL have lov til det. Ændres det ene uden det andet,
+    fejler den her.
+    """
+    assert "actions/runs" in gate_script, (
+        "gate-scriptet slår ikke actions/runs op — så er denne test forældet"
+    )
+    tilladelser = workflow.get("permissions") or {}
+    assert tilladelser.get("actions") == "read", (
+        f"workflowet må ikke læse actions (permissions={tilladelser}). "
+        "Gaten ville få 403 og afvise alle releases."
+    )

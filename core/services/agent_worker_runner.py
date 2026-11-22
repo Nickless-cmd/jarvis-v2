@@ -118,6 +118,7 @@ class _Broker:
         self.max_tool_calls = max_tool_calls
         self.tool_calls = 0
         self._started: set[str] = set()
+        self._drain_fn = None
         self._io = base._InProcessLoopIO(agent=agent, run_id=run_id, resume=resume)
         self.last_text_result: dict[str, Any] | None = None
 
@@ -139,7 +140,26 @@ class _Broker:
             self._io.after_round(int(msg.get("rounds") or 0),
                                  [{"function": {"name": n}} for n in (msg.get("tool_names") or [])])
             return None
+        if op == "drain":
+            return self._drain()
         raise WorkerError("PROTOCOL", f"ukendt op {op!r}")
+
+    def _drain(self) -> list[str]:
+        """Indbakken for den KOERENDE worker — samme kaede som in-process-stien.
+
+        Workeren er sandboxet: den kan ikke selv laese `agent_messages`. Uden denne
+        op blev `drain_inbox` aldrig sendt med i worker-stien, saa et run i worker-mode
+        modtog ingen beskeder midt i turen (maalt 22/11-2026: `run_tool_loop` i
+        `agent_worker_main.py` blev kaldt uden parameteren).
+        """
+        if self._drain_fn is None:
+            aid = str(self.agent.get("agent_id") or "")
+            owner = str(self.agent.get("owner_user_id") or "")
+            if not aid or not owner or owner == "legacy_unscoped":
+                return []
+            from core.services.agent_contract_service import make_inbox_drain
+            self._drain_fn = make_inbox_drain(aid)
+        return list(self._drain_fn() or [])
 
     def _model(self, msg: dict[str, Any]) -> dict[str, Any]:
         messages = msg.get("messages")

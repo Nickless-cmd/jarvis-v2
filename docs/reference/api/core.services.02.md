@@ -363,8 +363,9 @@ _Entry for en sandboxet agent-worker (agent-contract-v1 C6b)._
 | method | `RpcIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_worker_main.py#L53) |
 | method | `RpcIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_worker_main.py#L63) |
 | method | `RpcIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_worker_main.py#L66) |
-| function | `_apply_limits` | `(limits)` | Kun stramninger (en soft-graense under den arvede hard-graense); aldrig en haevning. | [src](../../../core/services/agent_worker_main.py#L71) |
-| function | `main` | `(argv)` | — | [src](../../../core/services/agent_worker_main.py#L81) |
+| method | `RpcIO.drain` | `(self)` | — | [src](../../../core/services/agent_worker_main.py#L72) |
+| function | `_apply_limits` | `(limits)` | Kun stramninger (en soft-graense under den arvede hard-graense); aldrig en haevning. | [src](../../../core/services/agent_worker_main.py#L76) |
+| function | `main` | `(argv)` | — | [src](../../../core/services/agent_worker_main.py#L86) |
 
 ## `core/services/agent_worker_protocol.py`
 _Wire-protokollen mellem serverens broker og en sandboxet agent-worker (C6b)._
@@ -392,14 +393,15 @@ _Server-siden af en sandboxet agent-worker: spawn, broker og draeb (agent-contra
 | function | `_safe` | `(obj)` | — | [src](../../../core/services/agent_worker_runner.py#L103) |
 | class | `_Broker` | `` | Politik ved sømmen: hvad en worker maa faa serveren til at goere. | [src](../../../core/services/agent_worker_runner.py#L107) |
 | method | `_Broker.__init__` | `(self, *, agent, run_id, prompt, tools_payload, provider, model, max_tool_calls, resume=…)` | — | [src](../../../core/services/agent_worker_runner.py#L110) |
-| method | `_Broker.handle` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L124) |
-| method | `_Broker._model` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L144) |
-| method | `_Broker._adopt_live_run` | `(self)` | G: et failover har afloest runnet - bogfoering og logs foelger det nye forsoeg. | [src](../../../core/services/agent_worker_runner.py#L162) |
-| method | `_Broker._model_text` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L167) |
-| method | `_Broker._tool` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L180) |
-| function | `_agent_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_worker_runner.py#L202) |
-| function | `_save_logs` | `(agent, run_id, out_path, err_path)` | — | [src](../../../core/services/agent_worker_runner.py#L211) |
-| function | `run_agent_in_worker` | `(*, agent, prompt, requires_tools, run_id, tools_payload=…, timeout_s=…, max_tool_calls=…, address_space=…, worker_files=…, worker_command=…, resume=…)` | Koer agentens tur i en sandboxet worker og returner resultatet i SAMME form som in-process-vejen. | [src](../../../core/services/agent_worker_runner.py#L229) |
+| method | `_Broker.handle` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L125) |
+| method | `_Broker._drain` | `(self)` | Indbakken for den KOERENDE worker — samme kaede som in-process-stien. | [src](../../../core/services/agent_worker_runner.py#L147) |
+| method | `_Broker._model` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L164) |
+| method | `_Broker._adopt_live_run` | `(self)` | G: et failover har afloest runnet - bogfoering og logs foelger det nye forsoeg. | [src](../../../core/services/agent_worker_runner.py#L182) |
+| method | `_Broker._model_text` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L187) |
+| method | `_Broker._tool` | `(self, msg)` | — | [src](../../../core/services/agent_worker_runner.py#L200) |
+| function | `_agent_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_worker_runner.py#L222) |
+| function | `_save_logs` | `(agent, run_id, out_path, err_path)` | — | [src](../../../core/services/agent_worker_runner.py#L231) |
+| function | `run_agent_in_worker` | `(*, agent, prompt, requires_tools, run_id, tools_payload=…, timeout_s=…, max_tool_calls=…, address_space=…, worker_files=…, worker_command=…, resume=…)` | Koer agentens tur i en sandboxet worker og returner resultatet i SAMME form som in-process-vejen. | [src](../../../core/services/agent_worker_runner.py#L249) |
 
 ## `core/services/agent_worktree_exec.py`
 _Skrivning i et agent-worktree - KUN gennem en sandbox (agent-contract-v1 C5b, spec 8.1 og 12.1)._

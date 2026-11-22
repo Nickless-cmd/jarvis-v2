@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10437/19082 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10438/19084 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10437/19082 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 921 | 1638 | 56% |
-| `core.services` | 6999 | 12954 | 54% |
+| `core.services` | 7000 | 12956 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 151 | 233 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 10437/19082 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2679)
+## Undocumented public functions (2680)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L236)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -805,9 +805,10 @@ Generated from source. 10437/19082 functions/methods documented (54%). The list 
 - `core/services/agent_worker_main.py` :: `RpcIO.after_round` (L66)
 - `core/services/agent_worker_main.py` :: `RpcIO.after_tool` (L63)
 - `core/services/agent_worker_main.py` :: `RpcIO.call` (L34)
+- `core/services/agent_worker_main.py` :: `RpcIO.drain` (L72)
 - `core/services/agent_worker_main.py` :: `RpcIO.model` (L48)
 - `core/services/agent_worker_main.py` :: `RpcIO.tool` (L53)
-- `core/services/agent_worker_main.py` :: `main` (L81)
+- `core/services/agent_worker_main.py` :: `main` (L86)
 - `core/services/agent_worker_protocol.py` :: `FrameReader.read` (L42)
 - `core/services/agent_worker_protocol.py` :: `send` (L27)
 - `core/services/agent_worktree_git.py` :: `add_worktree` (L101)

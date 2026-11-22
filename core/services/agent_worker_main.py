@@ -67,6 +67,11 @@ class RpcIO:
         self.call("after_round", rounds=rounds,
                   tool_names=[str((t.get("function") or {}).get("name") or "") for t in tool_calls])
 
+    # LoopIO-tillaeg: beskeder UDEFRA midt i runnet. Workeren har ingen DB og ingen
+    # credentials, saa indbakken laeses af brokeren og leveres her som faerdige linjer.
+    def drain(self) -> list[str]:
+        return [str(t) for t in (self.call("drain") or [])]
+
 
 def _apply_limits(limits: dict[str, Any]) -> None:
     """Kun stramninger (en soft-graense under den arvede hard-graense); aldrig en haevning."""
@@ -101,7 +106,8 @@ def main(argv: list[str]) -> int:
                 max_rounds=int(job.get("max_rounds") or 8),
                 synthesis_directive=str(job.get("synthesis_directive") or ""),
                 expected_result=str(job.get("expected_result") or ""),
-                resume=job.get("resume") or None)
+                resume=job.get("resume") or None,
+                drain_inbox=io.drain)
         send(sock, {"op": "result", "outcome": outcome})
         return 0
     except BaseException as exc:                       # noqa: BLE001 - alt rapporteres til serveren

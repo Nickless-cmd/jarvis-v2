@@ -136,9 +136,128 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
+  # GATEN. Målt 22/11-2026: release 0.6.420 blev publiceret med 11 artefakter
+  # mens `ci` for SAMME commit (d624a4075, run 45019130847) fejlede — to røde
+  # jobs, «desk (lint + typecheck + test)» og «desk (browser-målinger)».
+  # `desk-release` havde ingen afhængighed til `ci`, så en rød testkørsel kunne
+  # ikke blokere publiceringen. Det er den tavse fejlklasse: releasen ser grøn
+  # ud, fordi den eneste der spørger den, er updateren.
+  #
+  # Jobbet ligger MELLEM build og publish, ikke før build: de tre platforme
+  # bygger parallelt (10-15 min), og gaten venter på `ci` i det vindue. Lå den
+  # først, ville den lægge sin ventetid oveni i stedet for ved siden af.
+  #
+  # `ci` trigges på `push` — også på tag-pushes — så der FINDES en kørsel for
+  # tag-ref'en. Målt 22/11-2026: run 45028233539 (ref=jarvis-desktop-v0.6.423,
+  # sha 8f3b82a08) → success. Vi slår op på SHA, ikke på ref, fordi det er
+  # commit'en der bliver udgivet — ikke grenen den blev tagget fra.
+  gate:
+    name: ci skal være grøn for samme commit
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vent på ci for denne SHA — og afvis hvis den er rød
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          echo "Commit: $SHA"
+
+          # Vi venter i op til 40 minutter. `ci` kører typisk 8-12 min, men
+          # desk-browser-jobbet på ubuntu-24.04 med Playwright-installation
+          # kan trække ud. Loftet er der for at undgå at hænge i GitHub's
+          # 6-timers grænse uden at nogen får besked.
+          #
+          # OPSLAGET SKER PÅ FULD SHA. Målt 22/11-2026: både
+          # `gh run list --commit 8f3b82a08` og
+          # `gh api .../runs?head_sha=8f3b82a08` svarer `[]` — tomt, ikke
+          # fejl — fordi API'et kræver den fulde 40-tegns SHA. Med kort SHA
+          # ville gaten stå og vente 40 minutter på en kørsel den aldrig så,
+          # og derefter fejle på timeout. `github.sha` ER fuld, men vi
+          # normaliserer alligevel, så et kort input ikke kan gøre den blind.
+          FULL="$(git rev-parse "$SHA" 2>/dev/null || echo "$SHA")"
+          echo "Fuld SHA: $FULL"
+
+          # Python, ikke jq: jq er ikke installeret i alle miljøer vi kører
+          # gaten fra (målt 22/11-2026: mangler i runtime-containeren), og en
+          # gate der fejler på et manglende værktøj er blind på samme måde som
+          # en der ikke kan læse API'et. python3 findes på ubuntu-latest.
+          vurder() {
+            python3 - "$1" <<'PYEOF'
+          import json, sys
+          raa = json.loads(sys.argv[1])
+          runs = [r for r in raa.get("workflow_runs", [])
+                  if r.get("name") == "ci" and r.get("event") == "push"]
+          if not runs:
+              print("INGEN"); raise SystemExit
+          roede = [r for r in runs if r.get("conclusion") == "failure"]
+          if roede:
+              print("ROED")
+              for r in runs:
+                  print(f"  run {r['id']}: {r.get('status')}/{r.get('conclusion')}")
+              raise SystemExit
+          uafsluttede = [r for r in runs
+                         if r.get("status") != "completed" or r.get("conclusion") is None]
+          if uafsluttede:
+              print(f"KOERER {len(uafsluttede)}"); raise SystemExit
+          ikke_groen = [r for r in runs if r.get("conclusion") != "success"]
+          if ikke_groen:
+              print("IKKE_GROEN")
+              for r in runs:
+                  print(f"  run {r['id']}: {r.get('status')}/{r.get('conclusion')}")
+              raise SystemExit
+          print("GROEN")
+          for r in runs:
+              print(f"  run {r['id']}: {r.get('status')}/{r.get('conclusion')}")
+          PYEOF
+          }
+
+          for i in $(seq 1 80); do
+            raa="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$FULL&per_page=50" 2>&1)" || {
+              echo "Kunne ikke læse ci-kørsler: $raa"
+              # Kan vi ikke SE ci, må vi ikke publicere. En gate der svarer
+              # «alt fint» når API'et tier, er samme fejlklasse som
+              # ci_status_watch blev skrevet for at fange.
+              exit 1
+            }
+
+            udfald="$(vurder "$raa")"
+            dom="$(printf '%s' "$udfald" | head -1)"
+
+            case "$dom" in
+              INGEN)
+                echo "Forsoeg $i: ingen ci-koersel for $FULL endnu — venter 30s."
+                sleep 30 ;;
+              KOERER*)
+                echo "Forsoeg $i: ci koerer endnu (${dom#KOERER }) — venter 30s."
+                sleep 30 ;;
+              GROEN)
+                echo "ci er GROEN for $FULL — gaten aabner."
+                printf '%s\n' "$udfald" | tail -n +2
+                exit 0 ;;
+              ROED)
+                echo "ci er ROED for $FULL — releasen publiceres ikke."
+                printf '%s\n' "$udfald" | tail -n +2
+                exit 1 ;;
+              IKKE_GROEN)
+                echo "ci er ikke groen for $FULL (conclusion != success) — publicerer ikke."
+                printf '%s\n' "$udfald" | tail -n +2
+                exit 1 ;;
+              *)
+                echo "Ukendt udfald fra vurderingen: $udfald"
+                exit 1 ;;
+            esac
+          done
+
+          echo "Timeout: ci blev ikke faerdig for $FULL inden for 40 minutter."
+          echo "Releasen forbliver en kladde — en uverificeret version skal ikke kunne hentes."
+          exit 1
+
   # Den eneste der skriver til release'en.
   publish:
-    needs: build
+    needs: [build, gate]
     runs-on: ubuntu-latest
     steps:
       - name: Hent alle platformes artefakter

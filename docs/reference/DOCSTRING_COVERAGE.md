@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10394/18997 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10397/19012 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,14 +26,14 @@ Generated from source. 10394/18997 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 919 | 1636 | 56% |
-| `core.services` | 6979 | 12919 | 54% |
+| `core.services` | 6980 | 12929 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 150 | 232 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 29 | 45 | 64% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 644 | 1233 | 52% |
+| `core.tools` | 646 | 1238 | 52% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
@@ -43,7 +43,7 @@ Generated from source. 10394/18997 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2652)
+## Undocumented public functions (2662)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L234)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1109,7 +1109,7 @@ Generated from source. 10394/18997 functions/methods documented (54%). The list 
 - `core/services/conflict_resolution.py` :: `ConflictTrace.to_dict` (L40)
 - `core/services/conflict_resolution.py` :: `QuietInitiative.to_dict` (L73)
 - `core/services/conflict_resolution.py` :: `build_conflict_resolution_surface` (L615)
-- `core/services/connectors.py` :: `set_enabled` (L196)
+- `core/services/connectors.py` :: `set_enabled` (L199)
 - `core/services/consent_registry.py` :: `build_consent_registry_surface` (L143)
 - `core/services/consent_registry.py` :: `get_active_consents` (L112)
 - `core/services/consolidation_judge_daemon.py` :: `now_date_str` (L423)
@@ -2263,6 +2263,14 @@ Generated from source. 10394/18997 functions/methods documented (54%). The list 
 - `core/services/tool_intent_approval_runtime.py` :: `sudo_approval_window_scope_from_request` (L224)
 - `core/services/tool_intent_approval_runtime.py` :: `tool_intent_approval_key` (L373)
 - `core/services/tool_intent_runtime.py` :: `build_tool_intent_runtime_surface` (L27)
+- `core/services/tool_lifecycle_hooks.py` :: `HookDecision.block` (L23)
+- `core/services/tool_lifecycle_hooks.py` :: `ToolLifecycleHook.after_tool` (L32)
+- `core/services/tool_lifecycle_hooks.py` :: `ToolLifecycleHook.before_tool` (L28)
+- `core/services/tool_lifecycle_hooks.py` :: `clear_hooks` (L54)
+- `core/services/tool_lifecycle_hooks.py` :: `is_enabled` (L65)
+- `core/services/tool_lifecycle_hooks.py` :: `register_hook` (L42)
+- `core/services/tool_lifecycle_hooks.py` :: `set_enabled` (L59)
+- `core/services/tool_lifecycle_hooks.py` :: `unregister_hook` (L48)
 - `core/services/tool_outcome_memory.py` :: `classify_tool_family` (L89)
 - `core/services/tool_result_binding_store.py` :: `hent` (L31)
 - `core/services/tool_result_binding_store.py` :: `registrer` (L19)
@@ -2433,6 +2441,8 @@ Generated from source. 10394/18997 functions/methods documented (54%). The list 
 - `core/tools/geolocation_tools.py` :: `exec_nearby_search` (L958)
 - `core/tools/geolocation_tools.py` :: `exec_reverse_geocode` (L944)
 - `core/tools/geolocation_tools.py` :: `exec_route_directions` (L950)
+- `core/tools/github_pr_tools.py` :: `execute_github_ci_status` (L39)
+- `core/tools/github_pr_tools.py` :: `execute_github_create_pr` (L15)
 - `core/tools/identity_pin_tools.py` :: `IdentityPinsState.to_dict` (L58)
 - `core/tools/identity_pin_tools.py` :: `add_pin` (L92)
 - `core/tools/identity_pin_tools.py` :: `list_pins` (L87)

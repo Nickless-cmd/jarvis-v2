@@ -41,7 +41,10 @@ _CATALOG: list[dict] = [
     {
         "id": "github", "name": "GitHub", "kind": "oauth",
         # Vaerktoejer denne connector laaser op. Se docstringen oeverst.
-        "tools": ["github_list_issues", "github_list_prs"],
+        "tools": [
+            "github_list_issues", "github_list_prs",
+            "github_create_pr", "github_ci_status",
+        ],
         "category": "Udvikling", "icon": "github",
         "desc": "Issues, PRs, kode", "scopes": ["repo", "read:user"],
         "post_connect_hint": "Nu kan jeg kigge i dine GitHub-issues — skal jeg?",

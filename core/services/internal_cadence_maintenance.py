@@ -8,7 +8,7 @@ This group: cache-warmer + reassessment sweeps + health/usage observers
 relation_map_refresh, counterfactual_predictions_sweep, shared_cache_cleanup,
 central_self_health, central_learning, stream_stall_sweep, config_drift_check,
 instrument_scan, provider_health_check, db_health_scan, tool_usage_stats,
-endpoint_usage_stats, tmp_cleanup).
+endpoint_usage_stats, tmp_cleanup, spild_cleanup).
 """
 from __future__ import annotations
 
@@ -465,4 +465,61 @@ def register_maintenance_producers(register_producer: Callable[[ProducerSpec], N
         visible_grace_minutes=0,
         run_fn=_run_tmp_cleanup,
         priority=37,
+    ))
+
+    def _run_spild_cleanup(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """Ryd gamle spildfiler i `state/spild` (22/11-2026).
+
+        `spild` er anti-cutoff-mekanismen: naar et vaerktoejsresultat er for
+        stort, skrives HELE resultatet til en fil, og kalderen faar stien i
+        stedet for et klip — intet gaar tabt, konteksten bliver alligevel lille.
+
+        Modulet har haft `OPBEVARING_DAGE = 7` og en `ryd()` fra dag ét. Maalt
+        22/11-2026 blev `ryd()` ALDRIG kaldt uden for sin egen test: 9.698 af
+        11.171 filer var aeldre end retentionen (143 MB), og 56 af 64
+        dagmapper var foraeldede. Det er husets klassiske fejl — koden skrives,
+        og ingen kalder den. Uden denne producent vokser mappen til den fylder
+        disken, praecis som `/tmp` gjorde samme dag.
+
+        Retentionen ejes af `spild` selv: vi kalder `ryd()` uden argument, saa
+        der er ÉN kilde til sandhed for hvor laenge en fil ligger.
+        """
+        from pathlib import Path
+
+        from core.services import spild
+
+        rod = Path(spild._rod())
+        if not rod.is_dir():
+            return {"status": "ok", "slettet": 0, "reason": "ingen spild-mappe"}
+
+        def _storrelse() -> int:
+            try:
+                return sum(f.stat().st_size for f in rod.rglob("*") if f.is_file())
+            except OSError:
+                # En fil der forsvinder mellem rglob og stat (eller en vi ikke
+                # maa laese) skal ikke vaelte oprydningen — tallet er til
+                # rapportering, ikke til beslutningen om hvad der slettes.
+                return 0
+
+        foer = _storrelse()
+        slettet = spild.ryd()
+        frigjort = max(0, foer - _storrelse())
+
+        if slettet:
+            logger.info(
+                "spild_cleanup: slettede %d filer, frigjorde %.1f MB",
+                slettet, frigjort / (1024 * 1024),
+            )
+        return {
+            "status": "ok",
+            "slettet": slettet,
+            "frigjort_mb": round(frigjort / (1024 * 1024), 1),
+        }
+
+    register_producer(ProducerSpec(
+        name="spild_cleanup",
+        cooldown_minutes=360,  # hver 6. time — spild vokser med turen, ikke sekundet
+        visible_grace_minutes=0,
+        run_fn=_run_spild_cleanup,
+        priority=38,
     ))

@@ -162,3 +162,51 @@ def test_tmp_cleanup_uden_mapper_er_groen(tmp_path, monkeypatch):
     out = _registered()["tmp_cleanup"].run_fn(trigger="test")
 
     assert out["status"] == "ok" and out["slettet"] == 0
+
+
+# ---------------------------------------------------------------------------
+# spild_cleanup — retentionen fandtes, men blev aldrig kaldt
+# ---------------------------------------------------------------------------
+#
+# `core/services/spild.py` har haft `OPBEVARING_DAGE = 7` og en `ryd()` siden
+# 20/9-2026: oversize værktøjsresultater skrives til en fil, og kalderen får
+# stien i stedet for et klip. Målt 22/11-2026 var `ryd()` ALDRIG kaldt uden for
+# sin egen test — 9.698 af 11.171 filer var ældre end retentionen (143 MB), og
+# 56 af 64 dagmapper var forældede. Det er husets klassiske fejl: koden skrives,
+# og ingen kalder den. Disse tests vogter at der nu er nogen der gør.
+
+
+def test_spild_cleanup_er_registreret_som_producer():
+    assert "spild_cleanup" in _registered()
+
+
+def test_spild_cleanup_koerer_hver_sjette_time():
+    assert _registered()["spild_cleanup"].cooldown_minutes == 360
+
+
+def test_spild_cleanup_kalder_ryd_og_bevarer_nye_filer(tmp_path, monkeypatch):
+    """Gammel fil væk, ny fil intakt — og tallet skal komme fra `ryd()`, ikke
+    fra et gæt. Beviser gennem effekt at retentionen faktisk håndhæves."""
+    import os
+    import time
+
+    from core.services import spild
+
+    rod = tmp_path / "spild"
+    (rod / "dag-gammel").mkdir(parents=True)
+    gammel = rod / "dag-gammel" / "read_file-abc.txt"
+    gammel.write_text("x" * 100)
+    t = time.time() - 10 * 86400  # 10 dage — ældre end OPBEVARING_DAGE (7)
+    os.utime(gammel, (t, t))
+
+    (rod / "dag-ny").mkdir()
+    ny = rod / "dag-ny" / "read_file-def.txt"
+    ny.write_text("y" * 100)
+
+    monkeypatch.setattr(spild, "_rod", lambda: rod)
+    out = _registered()["spild_cleanup"].run_fn(trigger="test")
+
+    assert out["status"] == "ok"
+    assert out["slettet"] == 1, out
+    assert not gammel.exists(), "fil ældre end retentionen blev ikke slettet"
+    assert ny.exists(), "en fil inden for retentionen blev slettet"

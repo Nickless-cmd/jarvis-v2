@@ -151,6 +151,7 @@ from apps.api.jarvis_api.routes.agent_pool_control import router as agent_pool_c
 from apps.api.jarvis_api.routes.agent_approvals import router as agent_approvals_router
 from apps.api.jarvis_api.routes.agent_contract_view import router as agent_contract_view_router
 from apps.api.jarvis_api.routes.chat_projects import router as chat_projects_router
+from apps.api.jarvis_api.routes.chat_documents import router as chat_documents_router
 from apps.api.jarvis_api.routes.agentic_guards import router as agentic_guards_router
 from apps.api.jarvis_api.routes.tool_router import router as tool_router_router
 from apps.api.jarvis_api.routes.anthropic_compat import router as anthropic_compat_router
@@ -1157,6 +1158,7 @@ def create_app() -> FastAPI:
     app.include_router(agent_approvals_router)
     app.include_router(agent_contract_view_router)
     app.include_router(chat_projects_router)
+    app.include_router(chat_documents_router)
     app.include_router(agentic_guards_router)
     app.include_router(tool_router_router)
     app.include_router(anthropic_compat_router)

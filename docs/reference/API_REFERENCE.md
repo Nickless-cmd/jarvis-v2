@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-11-22 from app.routes (live) — 705 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-22 from app.routes (live) — 710 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -289,6 +289,9 @@
 | POST | `/chat/compact-now` | dict | chat_context_usage |
 | GET | `/chat/context-info` | dict | chat_context_usage |
 | GET | `/chat/context-usage` | dict | chat_context_usage |
+| GET | `/chat/documents/{document_id}` | dict | chat_documents |
+| PUT | `/chat/documents/{document_id}` | dict | chat_documents |
+| POST | `/chat/documents/{document_id}/publish` | dict | chat_documents |
 | GET | `/chat/file` | dict | chat |
 | POST | `/chat/file` | dict | chat |
 | POST | `/chat/file/commit` | dict | chat |
@@ -329,6 +332,8 @@
 | DELETE | `/chat/sessions/{session_id}` | dict | chat |
 | GET | `/chat/sessions/{session_id}` |  | chat |
 | POST | `/chat/sessions/{session_id}/cancel-active` | dict | chat |
+| GET | `/chat/sessions/{session_id}/documents` | dict | chat_documents |
+| POST | `/chat/sessions/{session_id}/documents` | dict | chat_documents |
 | PATCH | `/chat/sessions/{session_id}/flags` | dict | chat |
 | GET | `/chat/sessions/{session_id}/follow` |  | chat_run_streams |
 | GET | `/chat/sessions/{session_id}/live` |  | chat_run_streams |

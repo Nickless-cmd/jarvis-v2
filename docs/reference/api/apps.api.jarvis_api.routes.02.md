@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/chat_flow_preferences.py`
+_Self-scoped API for Desk Chat Flow presentation preferences._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `_StrictModel` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L23) |
+| class | `PreferenceUpdate` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L27) |
+| class | `OnboardingClaim` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L32) |
+| class | `OnboardingAck` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L36) |
+| class | `Observation` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L40) |
+| class | `SuggestionOutcome` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L46) |
+| function | `_principal` | `()` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L51) |
+| function | `preferences_get` | `()` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L59) |
+| function | `preferences_patch` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L64) |
+| function | `onboarding_claim` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L76) |
+| function | `onboarding_ack` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L81) |
+| function | `observations_post` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L89) |
+| function | `suggestion_outcome` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L99) |
+
 ## `apps/api/jarvis_api/routes/chat_inbox.py`
 _Bjørns egen vej ind i indbakken — den fjerde skriver._
 
@@ -607,16 +626,4 @@ _Shared foundation for Mission Control routes._
 | function | `_jarvis_emergent_summary` | `(emergent_signals)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1200) |
 | function | `_jarvis_emergent_summary` | `(emergent_signals)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1216) |
 | function | `_preview_text` | `(value, *, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1232) |
-
-## `apps/api/jarvis_api/routes/mission_control_dashboard.py`
-_Mission Control dashboard-endpoints — de tre data-kilder som kontrolcenter-UI'et_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `mc_scheduled_tasks` | `(limit=…)` | Afventende planlagte/tilbagevendende opgaver for nuværende bruger (owner uden | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L23) |
-| function | `mc_costs_daily` | `(days=…)` | Pris/tokens pr. dag (op til 30 dage bagud) til MC's Cost-panel. Self-safe. | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L35) |
-| function | `_event_to_step` | `(row)` | events-række → kompakt trin til run-detaljens tidslinje/træ. | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L47) |
-| function | `_run_synlig_for_kalder` | `(conn, run_id)` | Maa den nuvaerende kalder se dette run? | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L68) |
-| function | `mc_run_detail` | `(run_id, event_limit=…)` | Enkelt-run-detalje: selve run-rækken (visible_runs) + de hændelser der bærer dens | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L91) |
-| function | `mc_run_prompt` | `(run_id)` | Hvad byggede han svaret paa? Sektionerne i prompten for netop dette run. | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L139) |
 

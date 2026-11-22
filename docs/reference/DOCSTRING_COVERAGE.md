@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10404/19025 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10408/19033 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 10404/19025 functions/methods documented (54%). The list 
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 758 | 1065 | 71% |
+| `apps.api.jarvis_api.routes` | 762 | 1073 | 71% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -43,9 +43,9 @@ Generated from source. 10404/19025 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2666)
+## Undocumented public functions (2670)
 
-- `apps/api/jarvis_api/app.py` :: `create_app` (L235)
+- `apps/api/jarvis_api/app.py` :: `create_app` (L236)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
@@ -79,6 +79,10 @@ Generated from source. 10404/19025 functions/methods documented (54%). The list 
 - `apps/api/jarvis_api/routes/central_healers.py` :: `get_healers` (L23)
 - `apps/api/jarvis_api/routes/central_healers.py` :: `set_healer` (L30)
 - `apps/api/jarvis_api/routes/central_profiles.py` :: `get_profiles` (L24)
+- `apps/api/jarvis_api/routes/chat_documents.py` :: `laes_dokument` (L124)
+- `apps/api/jarvis_api/routes/chat_documents.py` :: `list_dokumenter` (L104)
+- `apps/api/jarvis_api/routes/chat_documents.py` :: `opdater_dokument` (L130)
+- `apps/api/jarvis_api/routes/chat_documents.py` :: `opret_dokument` (L111)
 - `apps/api/jarvis_api/routes/chat_flow_preferences.py` :: `observations_post` (L89)
 - `apps/api/jarvis_api/routes/chat_flow_preferences.py` :: `onboarding_ack` (L81)
 - `apps/api/jarvis_api/routes/chat_flow_preferences.py` :: `onboarding_claim` (L76)

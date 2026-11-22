@@ -634,22 +634,20 @@ _Kontekstforbrug og komprimeringsstatus til Desk._
 | class | `_CompactNowBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L152) |
 | function | `chat_compact_now` | `(body)` | Manuel compaction (som Claude Codes /compact). Udløser den SAMME baggrunds-motor som | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L158) |
 
-## `apps/api/jarvis_api/routes/chat_flow_preferences.py`
-_Self-scoped API for Desk Chat Flow presentation preferences._
+## `apps/api/jarvis_api/routes/chat_documents.py`
+_Chat-artefakter: dokumenter med version og et delbart link._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `_StrictModel` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L23) |
-| class | `PreferenceUpdate` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L27) |
-| class | `OnboardingClaim` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L32) |
-| class | `OnboardingAck` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L36) |
-| class | `Observation` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L40) |
-| class | `SuggestionOutcome` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L46) |
-| function | `_principal` | `()` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L51) |
-| function | `preferences_get` | `()` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L59) |
-| function | `preferences_patch` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L64) |
-| function | `onboarding_claim` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L76) |
-| function | `onboarding_ack` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L81) |
-| function | `observations_post` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L89) |
-| function | `suggestion_outcome` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L99) |
+| class | `OpretDokumentBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L45) |
+| class | `OpdaterDokumentBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L51) |
+| class | `PublicerBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L58) |
+| function | `_doc_ud` | `(dokument)` | Service-form → Desk-kontrakt. Felterne er dem klienten læser. | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L64) |
+| function | `_kraev_dokument` | `(document_id, uid)` | Dokumentet skal findes OG tilhøre kalderen. Ellers 404 i begge tilfælde. | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L78) |
+| function | `_sikkert_filnavn` | `(oenske, titel)` | Et filnavn uden sti. Et navn med ``/`` eller ``..`` ville skrive uden | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L87) |
+| function | `list_dokumenter` | `(session_id)` | — | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L104) |
+| function | `opret_dokument` | `(session_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L111) |
+| function | `laes_dokument` | `(document_id)` | — | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L124) |
+| function | `opdater_dokument` | `(document_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L130) |
+| function | `publicer_dokument` | `(document_id, body)` | Skriv dokumentet til kalderens filmappe og udsted et kortlivet link. | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L150) |
 

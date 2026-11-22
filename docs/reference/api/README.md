@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 19042 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 19051 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -60,10 +60,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 19042 functions/
 - [`core.services.26`](core.services.26.md) — `self_model_predictive` … `session_tool_pin`
 - [`core.services.27`](core.services.27.md) — `session_tool_scope` … `smith_confrontation`
 - [`core.services.28`](core.services.28.md) — `smith_noise_veto` … `temporal_rhythm`
-- [`core.services.29`](core.services.29.md) — `temporal_self_continuity` … `tool_world_change`
-- [`core.services.30`](core.services.30.md) — `totp_verifier` … `visible_followup_events`
-- [`core.services.31`](core.services.31.md) — `visible_followup_lean` … `visible_self_state_summary`
-- [`core.services.32`](core.services.32.md) — `visible_stream_gate` … `world_model_signal_tracking`
+- [`core.services.29`](core.services.29.md) — `temporal_self_continuity` … `tool_usage_store`
+- [`core.services.30`](core.services.30.md) — `tool_world_change` … `visible_followup_adapters`
+- [`core.services.31`](core.services.31.md) — `visible_followup_events` … `visible_runs_watchdog`
+- [`core.services.32`](core.services.32.md) — `visible_self_state_summary` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

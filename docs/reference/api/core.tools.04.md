@@ -87,7 +87,7 @@ _Outer gateway for schema checks, lifecycle interception and observation._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `execute_tool_call` | `(name, arguments, *, execute, internal)` | Run the pre-dispatch contract and the post-dispatch observation once. | [src](../../../core/tools/tool_execution_gateway.py#L10) |
-| function | `execute_force_tool_call` | `(name, arguments, *, execute, internal)` | Lifecycle and observation gateway for the autonomous/approved path. | [src](../../../core/tools/tool_execution_gateway.py#L48) |
+| function | `execute_force_tool_call` | `(name, arguments, *, execute, internal)` | Lifecycle and observation gateway for the autonomous/approved path. | [src](../../../core/tools/tool_execution_gateway.py#L59) |
 
 ## `core/tools/tool_limits.py`
 _Grænser for værktøjs-kørsel — ét sted, så de to bash-stier ikke driver fra hinanden._

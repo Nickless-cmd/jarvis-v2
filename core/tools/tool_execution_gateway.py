@@ -36,6 +36,17 @@ def execute_tool_call(
     if internal:
         return execute()
 
+    # Brugerdefinerede shell-hooks (config/tool_hooks.json). Indlæses her og
+    # ikke ved opstart, så de virker i enhver proces der udfører tool-kald —
+    # en CLI, en test, en genstartet worker — uden et registreringssted nogen
+    # skal huske. Et kald uden config er et flag-tjek og koster intet.
+    try:
+        from core.services import tool_shell_hooks
+
+        tool_shell_hooks.ensure_loaded()
+    except Exception:  # en defekt config må ikke gøre tools ubrugelige
+        logger.warning("kunne ikke indlæse tool-hooks", exc_info=True)
+
     from core.services.tool_lifecycle_hooks import execute_with_hooks
 
     result = execute_with_hooks(name, arguments, execute)
@@ -55,6 +66,13 @@ def execute_force_tool_call(
     """Lifecycle and observation gateway for the autonomous/approved path."""
     if internal:
         return execute()
+
+    try:
+        from core.services import tool_shell_hooks
+
+        tool_shell_hooks.ensure_loaded()
+    except Exception:  # en defekt config må ikke gøre tools ubrugelige
+        logger.warning("kunne ikke indlæse tool-hooks", exc_info=True)
 
     from core.services.tool_lifecycle_hooks import execute_with_hooks
 

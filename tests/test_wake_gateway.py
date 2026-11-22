@@ -226,6 +226,9 @@ STARTERE = {"start_autonomous_run", "start_autonomous_stream_run"}
 #:   infra   — definerer/re-eksporterer starteren
 #:   waker   — den ENESTE vækker (indbakken)
 #:   kanal   — svar på et menneskes besked (ikke en vækning)
+#:   arbejde — baggrundsarbejde uden en modtager: et run der materialiserer
+#:             noget for SYSTEMET, ikke en besked til et menneske. Det hører
+#:             ikke i wake_gateway, fordi der ikke findes nogen at vække.
 #:   gaeld   — en rigtig vækning der endnu kalder direkte og SKAL migreres
 #: Listen må kun blive kortere. Et nyt kaldested uden om gatewayen fejler her.
 TILLADT: dict[str, str] = {
@@ -233,6 +236,14 @@ TILLADT: dict[str, str] = {
     "core/services/autonomous_stream_run.py": "infra",
     "core/services/visible_runs.py": "infra",
     "core/services/inbox_idle_waker.py": "waker",
+    # Tilføjet 22/11-2026, og det gør listen længere — med vilje, fordi
+    # kategorien er ny og ikke gæld. curriculum-focus-handleren startede
+    # 20/11 et autonomt run (origin ``work``) for at indfri et læringsmål:
+    # et run for systemets skyld, ikke en vækning af et menneske. Det er
+    # præcis sondringen der blev målt 12/11 — rutiner og arbejde er autonome
+    # sessioner, ikke vækninger. Uden denne linje fejlede vagten på en
+    # kørsel der gør det rigtige.
+    "core/services/task_worker.py": "arbejde",
     "core/services/discord_gateway.py": "kanal",
     "core/services/telegram_gateway.py": "kanal",
     "apps/api/jarvis_api/routes/plugins.py": "kanal",

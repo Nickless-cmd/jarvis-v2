@@ -541,6 +541,23 @@ _Nightly daemon: refresh always-core ranking, recompute embeddings,_
 | function | `stop_tool_router_runtime` | `()` | — | [src](../../../core/services/tool_router_runtime.py#L85) |
 | function | `build_tool_router_runtime_surface` | `()` | Mission Control-surface: koerer router-daemonen, og hvad sagde dens sidste kørsel? | [src](../../../core/services/tool_router_runtime.py#L89) |
 
+## `core/services/tool_shell_hooks.py`
+_Brugerdefinerbare tool-hooks som shell-kommandoer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `HookResultat` | `` | Hvad en enkelt hook-kørsel svarede. Bruges af tests og af status. | [src](../../../core/services/tool_shell_hooks.py#L75) |
+| class | `ShellHook` | `` | Én konfigureret hook. Implements ``ToolLifecycleHook`` strukturelt. | [src](../../../core/services/tool_shell_hooks.py#L86) |
+| method | `ShellHook.rammer` | `(self, tool_name)` | — | [src](../../../core/services/tool_shell_hooks.py#L97) |
+| method | `ShellHook._miljoe` | `(self, *, fase, tool_name)` | — | [src](../../../core/services/tool_shell_hooks.py#L101) |
+| method | `ShellHook._koer` | `(self, kommando, *, fase, tool_name, arguments)` | — | [src](../../../core/services/tool_shell_hooks.py#L108) |
+| method | `ShellHook.before_tool` | `(self, tool_name, arguments)` | — | [src](../../../core/services/tool_shell_hooks.py#L166) |
+| method | `ShellHook.after_tool` | `(self, tool_name, arguments, result)` | — | [src](../../../core/services/tool_shell_hooks.py#L184) |
+| function | `_parse` | `(raw)` | Config-dokument → (enabled, hooks, fejl). Kaster aldrig. | [src](../../../core/services/tool_shell_hooks.py#L211) |
+| function | `ensure_loaded` | `(*, tving=…)` | Læs config én gang pr. proces. Returnerer True hvis hooks er aktive. | [src](../../../core/services/tool_shell_hooks.py#L248) |
+| function | `status` | `()` | Hvad er indlæst, og hvorfor ikke? Måling i stedet for formodning. | [src](../../../core/services/tool_shell_hooks.py#L297) |
+| function | `_nulstil_for_test` | `()` | Kun til tests: glem hvad der er indlæst, så en fixture kan styre det. | [src](../../../core/services/tool_shell_hooks.py#L316) |
+
 ## `core/services/tool_tagger.py`
 _Tool tag taxonomy._
 
@@ -568,14 +585,4 @@ _Tools-cluster Phase 2 — persistent forbrugs-statistik (DB-backed, cross-proce
 | function | `dead_tools` | `(registered)` | Registrerede tools der ALDRIG er kaldt (count 0). Vises sidst / kandidater til at | [src](../../../core/services/tool_usage_store.py#L116) |
 | function | `observe_stats` | `(registered=…)` | Periodisk (cadence): central.observe forbrugs-summary + flag antal døde tools. | [src](../../../core/services/tool_usage_store.py#L123) |
 | function | `build_tool_usage_store_surface` | `()` | Mission Control-surface: hvad er der faktisk talt i `tool_usage`? | [src](../../../core/services/tool_usage_store.py#L147) |
-
-## `core/services/tool_world_change.py`
-_Ændrede dette værktøjskald verden? (loop-fix 2026-09-05)_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_shell_command` | `(arguments)` | — | [src](../../../core/services/tool_world_change.py#L37) |
-| function | `_mutation_tool_names` | `()` | Navne fra verification_gate — ét sted at vedligeholde listen. | [src](../../../core/services/tool_world_change.py#L45) |
-| function | `call_changed_the_world` | `(*, tool_name, arguments=…, status=…)` | True når kaldet reelt ændrede state (og lykkedes). | [src](../../../core/services/tool_world_change.py#L54) |
-| function | `round_changed_the_world` | `(results)` | Ændrede mindst ét kald i denne agentiske runde verden? | [src](../../../core/services/tool_world_change.py#L83) |
 

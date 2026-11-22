@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10416/19042 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10420/19051 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10416/19042 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 920 | 1637 | 56% |
-| `core.services` | 6986 | 12936 | 54% |
+| `core.services` | 6990 | 12945 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 150 | 232 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 10416/19042 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2670)
+## Undocumented public functions (2673)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L236)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2290,6 +2290,9 @@ Generated from source. 10416/19042 functions/methods documented (54%). The list 
 - `core/services/tool_result_store.py` :: `summarize_result` (L26)
 - `core/services/tool_router_runtime.py` :: `start_tool_router_runtime` (L73)
 - `core/services/tool_router_runtime.py` :: `stop_tool_router_runtime` (L85)
+- `core/services/tool_shell_hooks.py` :: `ShellHook.after_tool` (L184)
+- `core/services/tool_shell_hooks.py` :: `ShellHook.before_tool` (L166)
+- `core/services/tool_shell_hooks.py` :: `ShellHook.rammer` (L97)
 - `core/services/tool_tagger.py` :: `get_pinned_set` (L75)
 - `core/services/tool_tagger.py` :: `invalidate_cache` (L80)
 - `core/services/trading/grid_bot.py` :: `FeeTracker.deduct` (L50)

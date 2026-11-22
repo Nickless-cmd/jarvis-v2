@@ -48,7 +48,14 @@ def test_contract_tool_allowlist_does_not_depend_on_legacy_tools_flag(env, monke
     row = rt.get_agent_registry_entry(agent["agent_id"])
 
     tools = M._snapshot_tools(row)
-    assert {tool["function"]["name"] for tool in tools} == {"read_file"}
+    names = {tool["function"]["name"] for tool in tools}
+    # Det testen vogter: legacy-flaget maa ikke fjerne et kontraktvaerktoej.
+    assert "read_file" in names
+    # 22/11-2026: symmetri-reglen (`_snapshot_tools`) tilfoejer svar-vaerktoejet til
+    # enhver kontraktagent, fordi en agent der KAN modtage en besked midt i runnet
+    # ogsaa skal kunne svare. Den tidligere eksakte lighed med {"read_file"} blev
+    # derfor en foraeldet forventning — ikke et brud paa det testen maaler.
+    assert names == {"read_file", "send_message_to_agent"}
 
 
 def test_contract_tool_scope_lookup_failure_cannot_silently_remove_tools(env, monkeypatch):

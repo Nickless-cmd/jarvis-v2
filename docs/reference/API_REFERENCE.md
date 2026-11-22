@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-11-20 from app.routes (live) — 700 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-22 from app.routes (live) — 705 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -119,6 +119,8 @@
 | POST | `/api/project/watch/add` | dict | jarvisx_project |
 | POST | `/api/project/watch/clear` | dict | jarvisx_project |
 | POST | `/api/project/watch/poll` | dict | jarvisx_project |
+| GET | `/api/projects` | dict | chat_projects |
+| POST | `/api/projects` | dict | chat_projects |
 | GET | `/api/routines` | list | routines |
 | POST | `/api/routines` | dict | routines |
 | GET | `/api/routines/active-runs` | list | routines |
@@ -304,6 +306,7 @@
 | GET | `/chat/git-status` | dict | chat |
 | GET | `/chat/git/branches` | dict | chat |
 | POST | `/chat/git/checkout` | dict | chat |
+| GET | `/chat/git/ci-status` | dict | chat_projects |
 | POST | `/chat/git/commit-all` | dict | chat |
 | POST | `/chat/git/create-pr` | dict | chat |
 | POST | `/chat/git/worktree` | dict | chat |
@@ -332,6 +335,8 @@
 | GET | `/chat/sessions/{session_id}/pending-approval` | dict | chat |
 | GET | `/chat/sessions/{session_id}/permission` | dict | chat |
 | POST | `/chat/sessions/{session_id}/permission` | dict | chat |
+| GET | `/chat/sessions/{session_id}/project` | dict | chat_projects |
+| PUT | `/chat/sessions/{session_id}/project` | dict | chat_projects |
 | GET | `/chat/sessions/{session_id}/recovery` | dict | chat |
 | PUT | `/chat/sessions/{session_id}/rename` | dict | chat |
 | POST | `/chat/sessions/{session_id}/rewind` | dict | chat_rewind |

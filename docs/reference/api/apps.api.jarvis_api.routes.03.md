@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/mission_control_helpers.py`
+_Mission Control: tool/skill/hardening/lab-hjælpere._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_get_all_tools` | `()` | Return the OpenAI-style tool definitions registered in the runtime. | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L9) |
+| function | `_skills_recent_invocations` | `(limit=…)` | Return the most recent tool/capability invocations. | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L23) |
+| function | `_skills_calls_today` | `()` | Count tool invocations made today. | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L87) |
+| function | `_hardening_approval_counts` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L122) |
+| function | `_hardening_autonomy_level` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L139) |
+| function | `_hardening_integrations` | `()` | Report which external integrations are configured. | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L150) |
+| function | `_hardening_recent_approvals` | `(limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L192) |
+| function | `_lab_costs_today` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L217) |
+| function | `_lab_providers_today` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L241) |
+| function | `_lab_db_stats` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L272) |
+| function | `_lab_recent_events` | `(limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L289) |
+
 ## `apps/api/jarvis_api/routes/mission_control_imports.py`
 
 _(no top-level classes or functions)_

@@ -199,3 +199,47 @@ def get_project_for_session(session_id: str) -> dict[str, Any] | None:
             "SELECT project_id FROM chat_project_sessions WHERE session_id = ?", (sid,)
         ).fetchone()
     return get_project(str(row["project_id"])) if row is not None else None
+
+
+def unbind_session(session_id: str) -> None:
+    """Fjern samtalens projekt-binding. Materialet på projektet røres ikke."""
+    sid = str(session_id or "").strip()
+    if not sid:
+        raise ValueError("session_id is required")
+    with db_core.connect() as conn:
+        _ensure_tables(conn)
+        conn.execute(
+            "DELETE FROM chat_project_sessions WHERE session_id = ?", (sid,)
+        )
+
+
+def list_projects(*, owner_user_id: str = "", limit: int = 200) -> list[dict[str, Any]]:
+    """Projekter nyeste først, hver med sit materiale.
+
+    Uden ``owner_user_id`` returneres alle — kalderen (ruten) filtrerer selv på ejer,
+    så en tom ejer ikke ved et uheld skjuler projekter oprettet før ejer-feltet fandtes.
+    """
+    owner = str(owner_user_id or "").strip()
+    sql = "SELECT * FROM chat_projects"
+    args: list[Any] = []
+    if owner:
+        sql += " WHERE owner_user_id = ?"
+        args.append(owner)
+    sql += " ORDER BY updated_at DESC, project_id LIMIT ?"
+    args.append(max(1, int(limit)))
+    with db_core.connect() as conn:
+        _ensure_tables(conn)
+        projects = [dict(row) for row in conn.execute(sql, tuple(args)).fetchall()]
+        if not projects:
+            return []
+        ids = [str(p["project_id"]) for p in projects]
+        marks = ",".join("?" for _ in ids)
+        rows = conn.execute(
+            "SELECT * FROM chat_project_materials WHERE project_id IN "
+            f"({marks}) ORDER BY created_at, material_id",
+            tuple(ids),
+        ).fetchall()
+    by_project: dict[str, list[dict[str, Any]]] = {pid: [] for pid in ids}
+    for row in rows:
+        by_project.setdefault(str(row["project_id"]), []).append(dict(row))
+    return [{**p, "materials": by_project.get(str(p["project_id"]), [])} for p in projects]

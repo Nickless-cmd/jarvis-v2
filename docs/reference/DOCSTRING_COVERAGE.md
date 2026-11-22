@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10397/19012 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10404/19025 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 10397/19012 functions/methods documented (54%). The list 
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 753 | 1054 | 71% |
+| `apps.api.jarvis_api.routes` | 758 | 1065 | 71% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -26,7 +26,7 @@ Generated from source. 10397/19012 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 919 | 1636 | 56% |
-| `core.services` | 6980 | 12929 | 53% |
+| `core.services` | 6982 | 12931 | 53% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 150 | 232 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,9 +43,9 @@ Generated from source. 10397/19012 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2662)
+## Undocumented public functions (2666)
 
-- `apps/api/jarvis_api/app.py` :: `create_app` (L234)
+- `apps/api/jarvis_api/app.py` :: `create_app` (L235)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
@@ -85,6 +85,10 @@ Generated from source. 10397/19012 functions/methods documented (54%). The list 
 - `apps/api/jarvis_api/routes/chat_flow_preferences.py` :: `preferences_get` (L59)
 - `apps/api/jarvis_api/routes/chat_flow_preferences.py` :: `preferences_patch` (L64)
 - `apps/api/jarvis_api/routes/chat_flow_preferences.py` :: `suggestion_outcome` (L99)
+- `apps/api/jarvis_api/routes/chat_projects.py` :: `bind_session_projekt` (L115)
+- `apps/api/jarvis_api/routes/chat_projects.py` :: `hent_session_projekt` (L105)
+- `apps/api/jarvis_api/routes/chat_projects.py` :: `list_projekter` (L80)
+- `apps/api/jarvis_api/routes/chat_projects.py` :: `opret_projekt` (L89)
 - `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `audit` (L192)
 - `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `capacity` (L123)
 - `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `control` (L218)

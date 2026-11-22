@@ -10,6 +10,25 @@ _Bjørns egen vej ind i indbakken — den fjerde skriver._
 | class | `InboxFlagRequest` | `` | Det et menneske flagger. | [src](../../../apps/api/jarvis_api/routes/chat_inbox.py#L39) |
 | function | `flag_i_indbakken` | `(req)` | Opret en post i den autentificerede brugers indbakke. | [src](../../../apps/api/jarvis_api/routes/chat_inbox.py#L53) |
 
+## `apps/api/jarvis_api/routes/chat_projects.py`
+_Projekt-kontekst og CI-status til Desk._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `BindProjektBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_projects.py#L26) |
+| class | `OpretProjektBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_projects.py#L30) |
+| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/chat_projects.py#L35) |
+| function | `_kraev_session` | `(session_id, uid)` | Samtalen skal tilhøre kalderen. Ellers 404 — ikke 403, så et gæt ikke kan bekræftes. | [src](../../../apps/api/jarvis_api/routes/chat_projects.py#L44) |
+| function | `_filstoerrelse` | `(sti)` | — | [src](../../../apps/api/jarvis_api/routes/chat_projects.py#L54) |
+| function | `_projekt_ud` | `(projekt)` | Service-form (project_id/materials) → Desk-kontrakt (id/files). | [src](../../../apps/api/jarvis_api/routes/chat_projects.py#L61) |
+| function | `list_projekter` | `()` | — | [src](../../../apps/api/jarvis_api/routes/chat_projects.py#L80) |
+| function | `opret_projekt` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/chat_projects.py#L89) |
+| function | `hent_session_projekt` | `(session_id)` | — | [src](../../../apps/api/jarvis_api/routes/chat_projects.py#L105) |
+| function | `bind_session_projekt` | `(session_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/chat_projects.py#L115) |
+| function | `_git` | `(root, *args)` | Kør git i ``root`` uden shell. Fejler lukket — tom streng, ingen gæt. | [src](../../../apps/api/jarvis_api/routes/chat_projects.py#L133) |
+| function | `_repo_fra_root` | `(root)` | ``git@github.com:eier/rep.git`` eller https-URL → ``eier/rep``. | [src](../../../apps/api/jarvis_api/routes/chat_projects.py#L149) |
+| function | `git_ci_status` | `(root=…, branch=…, kind=…)` | CI-status for en branch i et lokalt repo. | [src](../../../apps/api/jarvis_api/routes/chat_projects.py#L164) |
+
 ## `apps/api/jarvis_api/routes/chat_rewind.py`
 _`POST /chat/sessions/{id}/rewind` og `…/rewind/{rewind_id}/undo`._
 
@@ -600,21 +619,4 @@ _Mission Control dashboard-endpoints — de tre data-kilder som kontrolcenter-UI
 | function | `_run_synlig_for_kalder` | `(conn, run_id)` | Maa den nuvaerende kalder se dette run? | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L68) |
 | function | `mc_run_detail` | `(run_id, event_limit=…)` | Enkelt-run-detalje: selve run-rækken (visible_runs) + de hændelser der bærer dens | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L91) |
 | function | `mc_run_prompt` | `(run_id)` | Hvad byggede han svaret paa? Sektionerne i prompten for netop dette run. | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L139) |
-
-## `apps/api/jarvis_api/routes/mission_control_helpers.py`
-_Mission Control: tool/skill/hardening/lab-hjælpere._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_get_all_tools` | `()` | Return the OpenAI-style tool definitions registered in the runtime. | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L9) |
-| function | `_skills_recent_invocations` | `(limit=…)` | Return the most recent tool/capability invocations. | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L23) |
-| function | `_skills_calls_today` | `()` | Count tool invocations made today. | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L87) |
-| function | `_hardening_approval_counts` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L122) |
-| function | `_hardening_autonomy_level` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L139) |
-| function | `_hardening_integrations` | `()` | Report which external integrations are configured. | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L150) |
-| function | `_hardening_recent_approvals` | `(limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L192) |
-| function | `_lab_costs_today` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L217) |
-| function | `_lab_providers_today` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L241) |
-| function | `_lab_db_stats` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L272) |
-| function | `_lab_recent_events` | `(limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_helpers.py#L289) |
 

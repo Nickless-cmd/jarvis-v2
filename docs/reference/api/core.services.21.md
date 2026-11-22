@@ -475,6 +475,8 @@ _Durable chat projects that bind sessions to files and text material._
 | function | `add_text_material` | `(project_id, *, content, title=…)` | — | [src](../../../core/services/project_context.py#L162) |
 | function | `get_project` | `(project_id)` | — | [src](../../../core/services/project_context.py#L173) |
 | function | `get_project_for_session` | `(session_id)` | — | [src](../../../core/services/project_context.py#L192) |
+| function | `unbind_session` | `(session_id)` | Fjern samtalens projekt-binding. Materialet på projektet røres ikke. | [src](../../../core/services/project_context.py#L204) |
+| function | `list_projects` | `(*, owner_user_id=…, limit=…)` | Projekter nyeste først, hver med sit materiale. | [src](../../../core/services/project_context.py#L216) |
 
 ## `core/services/projection_chat_messages.py`
 _Kompatibilitets-projektoren — ledger-hændelser → `chat_messages`-rækker._

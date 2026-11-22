@@ -332,13 +332,17 @@ def _run_agent_tool_loop(
     allowed = list(allowed) if isinstance(allowed, list) else []
     aid = str(agent.get("agent_id") or "")
     owner = str(agent.get("owner_user_id") or "")
-    # Peer-kanalen: kun en agent MED peers (team/søskende) får `send_message_to_agent`, og kun
-    # for kontrakt-bundne agenter. En ensom agent har ingen at skrive til.
+    # 22/11-2026: kanalen er SYMMETRISK eller den findes ikke. Foer blev
+    # `send_message_to_agent` kun givet naar `peer_agent_ids` var ikke-tom VED RUN-START —
+    # og et team oprettes spredt (maalt i `agent_assignments`: op til 708 s mellem foerste
+    # og sidste soeskende). En tidlig agent kunne derfor MODTAGE en besked fra en soester
+    # den ikke selv kunne svare. Kan den modtage, skal den kunne svare; afvisningen af en
+    # ugyldig modtager ligger i `send_agent_to_agent`, som svarer med en konkret fejl.
     drain_inbox = None
     if aid and owner and owner != "legacy_unscoped":
         try:
-            from core.services.agent_contract_service import make_inbox_drain, peer_agent_ids
-            if peer_agent_ids(aid, owner) and "send_message_to_agent" not in allowed:
+            from core.services.agent_contract_service import make_inbox_drain
+            if "send_message_to_agent" not in allowed:
                 allowed.append("send_message_to_agent")
             drain_inbox = make_inbox_drain(aid)
         except Exception:

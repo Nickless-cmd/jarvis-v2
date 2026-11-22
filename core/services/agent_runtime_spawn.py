@@ -516,7 +516,13 @@ def _snapshot_tools(agent: dict[str, object]) -> list[dict]:
             return []
         from core.services.agent_runtime_base import _build_agent_tools_payload
         allowed = _json_loads(str(agent.get("allowed_tools_json") or "[]"), [])
-        return _build_agent_tools_payload(allowed if isinstance(allowed, list) else [])
+        allowed = allowed if isinstance(allowed, list) else []
+        # Samme symmetri-regel som in-process-stien (`agent_runtime_base`): en
+        # kontraktagent der KAN modtage en besked midt i runnet skal ogsaa kunne svare.
+        # Uden dette fryses skemaet her og giver workeren en ensrettet kanal.
+        if contract_agent and "send_message_to_agent" not in allowed:
+            allowed = [*allowed, "send_message_to_agent"]
+        return _build_agent_tools_payload(allowed)
     except Exception:
         logger.warning("kunne ikke bygge vaerktoejsskema til promptsnapshot", exc_info=True)
         if contract_agent:

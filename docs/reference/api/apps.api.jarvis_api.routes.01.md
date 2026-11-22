@@ -649,5 +649,6 @@ _Chat-artefakter: dokumenter med version og et delbart link._
 | function | `opret_dokument` | `(session_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L111) |
 | function | `laes_dokument` | `(document_id)` | — | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L124) |
 | function | `opdater_dokument` | `(document_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L130) |
-| function | `publicer_dokument` | `(document_id, body)` | Skriv dokumentet til kalderens filmappe og udsted et kortlivet link. | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L150) |
+| function | `foreslaa_fortsaettelse` | `(document_id)` | Et tilbud på den næste sætning — ikke en afbrydelse. | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L150) |
+| function | `publicer_dokument` | `(document_id, body)` | Skriv dokumentet til kalderens filmappe og udsted et kortlivet link. | [src](../../../apps/api/jarvis_api/routes/chat_documents.py#L193) |
 

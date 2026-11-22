@@ -146,6 +146,49 @@ def opdater_dokument(document_id: str, body: OpdaterDokumentBody) -> dict[str, A
     return {"document": _doc_ud(dokument)}
 
 
+@router.post("/chat/documents/{document_id}/suggest")
+def foreslaa_fortsaettelse(document_id: str) -> dict[str, str]:
+    """Et tilbud på den næste sætning — ikke en afbrydelse.
+
+    Bjørn 17/9-2026 afviste den klassiske ghost-text med sine egne ord: «det
+    kommer dumpende mens jeg skriver, det er virkelig træls». Formen her er
+    derfor et forslag der hentes når HAN beder om det, og som først bliver
+    tekst hvis han tager imod. Der findes ingen automatisk hentning under
+    tastning — det er hele forskellen mellem et tilbud og en afbrydelse.
+
+    Kilden er ``daemon_llm_call``, husets egen model-indgang. Den lokale
+    4b-model blev droppet i komponisten 28/9-2026, fordi dens forslag blev
+    valgt 2,9 % af gangene mod Jarvis' egne 23,5 % — et dårligt forslag er
+    værre end intet.
+
+    Svarer altid 200 med en tom streng ved enhver fejl: et forslag er en
+    bekvemmelighed, og et manglende forslag må ikke ligne en ødelagt editor.
+    """
+    uid = _bruger()
+    dokument = _kraev_dokument(document_id, uid)
+    tekst = str(dokument.get("content") or "").strip()
+    if len(tekst) < 40:
+        # Intet at fortsætte. Et gæt på et næsten tomt dokument er ikke et
+        # forslag, og det ville koste et model-kald at finde ud af.
+        return {"forslag": ""}
+    try:
+        from core.services.daemon_llm import daemon_llm_call
+        hale = tekst[-2000:]
+        prompt = (
+            "Du fortsætter et dokument skrevet på dansk. Skriv KUN den næste "
+            "sætning eller det næste korte afsnit — højst 40 ord. Ingen "
+            "indledning, ingen forklaring, ingen anførselstegn. Matér tonen.\n\n"
+            f"Dokumentet indtil nu:\n{hale}\n\nFortsættelse:"
+        )
+        forslag = daemon_llm_call(
+            prompt, max_len=400, fallback="", daemon_name="canvas_forslag",
+        )
+        return {"forslag": str(forslag or "").strip()}
+    except Exception:
+        logger.debug("canvas-forslag fejlede", exc_info=True)
+        return {"forslag": ""}
+
+
 @router.post("/chat/documents/{document_id}/publish")
 def publicer_dokument(document_id: str, body: PublicerBody) -> dict[str, Any]:
     """Skriv dokumentet til kalderens filmappe og udsted et kortlivet link."""

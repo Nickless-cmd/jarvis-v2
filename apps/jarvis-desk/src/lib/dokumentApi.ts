@@ -68,6 +68,21 @@ export async function opdaterDokument(
   return tilDokument(d.document)
 }
 
+/** Et tilbud på den næste sætning i dokumentet.
+ *
+ *  Tom streng betyder «intet forslag» — ikke en fejl. Backend svarer altid 200,
+ *  så editoren kan skrives i uanset hvad der sker med modellen.
+ *
+ *  Forslaget hentes kun når brugeren beder om det (Bjørn 17/9-2026: grå tekst
+ *  der kommer dumpende mens man skriver er «virkelig træls»).
+ */
+export async function foreslaaFortsaettelse(config: ApiConfig, id: string): Promise<string> {
+  const d = await apiFetch<{ forslag?: string }>(
+    config, `/chat/documents/${encodeURIComponent(id)}/suggest`, { method: 'POST' },
+  )
+  return (d.forslag ?? '').trim()
+}
+
 export interface Udgivelse {
   url: string
   filnavn: string

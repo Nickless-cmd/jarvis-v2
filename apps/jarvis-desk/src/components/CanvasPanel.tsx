@@ -1,22 +1,32 @@
 import { useContext, useEffect, useState } from 'react'
-import { Link2, Save, Send } from 'lucide-react'
+import { Link2, Save, Send, Sparkles } from 'lucide-react'
 import type { ApiConfig } from '../lib/api'
 import { SessionContext } from '../contexts/SessionContext'
 import type { CanvasReference } from '../lib/inspectorTargets'
 import { sendCanvas } from '../lib/canvasBus'
 import {
-  listDokumenter, opdaterDokument, opretDokument, udgivDokument,
+  foreslaaFortsaettelse, listDokumenter, opdaterDokument, opretDokument, udgivDokument,
 } from '../lib/dokumentApi'
 
 /** Redigérbart dokument i sidepanelet.
  *
- *  Tre ting, og de er forskellige:
+ *  Fire ting, og de er forskellige:
  *  - **Send til samtalen** lægger den rettede tekst ind som en besked (canvasBus).
  *  - **Gem** gør den varig i backend. Uden den levede canvas kun i panelet, og
  *    lukkede man det, var rettelserne væk (målt 22/11-2026: CanvasPanel havde
  *    nul API-kald).
  *  - **Udgiv** skriver den til brugerens filmappe og giver et kortlivet link —
  *    det er den delbare artefakt, ikke bare teksten i tråden.
+ *  - **Foreslå** henter et tilbud på den næste sætning.
+ *
+ *  ## Hvorfor forslaget er en knap og ikke grå tekst
+ *
+ *  Bjørn 17/9-2026: «det kommer dumpende mens jeg skriver, det er virkelig
+ *  træls». Et forslag der konkurrerer med hans egne ord er en afbrydelse; et
+ *  forslag der venter på at blive spurgt er et tilbud. Derfor hentes det kun
+ *  når han klikker, det står i sin egen boks under teksten, og det bliver
+ *  først til tekst når han trykker Indsæt. Der findes ingen automatisk
+ *  hentning under tastning.
  *
  *  Versionen følger med: to faner der redigerer samme dokument må ikke kunne
  *  overskrive hinanden i tavshed.
@@ -37,6 +47,9 @@ export function CanvasPanel({
   const [gemmer, setGemmer] = useState(false)
   const [gemt, setGemt] = useState<'' | 'ok' | 'fejl'>('')
   const [udgivelse, setUdgivelse] = useState<string>('')
+  const [forslag, setForslag] = useState('')
+  const [henterForslag, setHenterForslag] = useState(false)
+  const [forslagFejl, setForslagFejl] = useState(false)
 
   // Find et dokument med samme titel i samtalen, så panelet genåbner det man
   // redigerede i stedet for at lave en ny kopi hver gang.
@@ -97,6 +110,31 @@ export function CanvasPanel({
     }
   }
 
+  const foreslaa = async () => {
+    if (!config || !dokumentId) return
+    setHenterForslag(true)
+    setForslagFejl(false)
+    try {
+      const f = await foreslaaFortsaettelse(config, dokumentId)
+      setForslag(f)
+      // Et tomt svar er et gyldigt svar (intet at fortsætte endnu), men det
+      // skal ikke se ud som om knappen ikke virkede.
+      if (!f) setForslagFejl(true)
+    } catch {
+      setForslagFejl(true)
+    } finally {
+      setHenterForslag(false)
+    }
+  }
+
+  const indsaetForslag = () => {
+    if (!forslag) return
+    const skilletegn = tekst === '' || /[\s\n]$/.test(tekst) ? '' : ' '
+    setTekst(`${tekst}${skilletegn}${forslag}`)
+    setForslag('')
+    setGemt('')
+  }
+
   return (
     <div className="artifact-body canvas-flade">
       <textarea
@@ -106,12 +144,37 @@ export function CanvasPanel({
         spellCheck={false}
         onChange={(e) => { setTekst(e.target.value); setStatus(''); setGemt('') }}
       />
+      {forslag && (
+        <div className="canvas-forslag" data-testid="canvas-forslag">
+          <span className="canvas-forslag-tekst">{forslag}</span>
+          <button type="button" className="canvas-send" onClick={indsaetForslag}>
+            Indsæt
+          </button>
+          <button type="button" className="canvas-send" onClick={() => setForslag('')}>
+            Luk
+          </button>
+        </div>
+      )}
+      {forslagFejl && !forslag && (
+        <div className="canvas-status canvas-fejl" role="status">
+          Intet forslag endnu — skriv lidt mere, eller prøv igen.
+        </div>
+      )}
       <div className="canvas-bund">
         <button type="button" className="canvas-send" disabled={tekst.trim() === ''} onClick={send}>
           <Send size={13} /> Send til samtalen
         </button>
         <button type="button" className="canvas-send" disabled={!kanGemme} onClick={gem}>
           <Save size={13} /> {gemmer ? 'Gemmer…' : 'Gem'}
+        </button>
+        <button
+          type="button"
+          className="canvas-send"
+          disabled={!config || !dokumentId || henterForslag}
+          title={dokumentId ? 'Hent et tilbud på den næste sætning' : 'Gem først'}
+          onClick={foreslaa}
+        >
+          <Sparkles size={13} /> {henterForslag ? 'Tænker…' : 'Foreslå'}
         </button>
         <button
           type="button"

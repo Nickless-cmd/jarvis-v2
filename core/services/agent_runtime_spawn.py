@@ -1769,6 +1769,10 @@ def recover_crashed_agents() -> dict:
     # fordel.
     crashed, sprunget_over = [], 0
     for _a in kandidater:
+        from core.runtime.db_agent_lease import agent_has_live_lease
+        if agent_has_live_lease(str(_a.get("agent_id") or "")):
+            sprunget_over += 1          # leasen ejer recovery indtil den udloeber
+            continue
         try:
             from core.services.process_identity import lever
             _liv = lever(str(_a.get("runtime_owner") or ""))

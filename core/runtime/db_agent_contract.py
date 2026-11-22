@@ -843,6 +843,17 @@ def error_fra_exception(
         full=full, registry_status=registry_status, last_error=last_error)
 
 
+def _agentens_tekst(text: str) -> str:
+    """Agentens egne ord inde i markeringen — ikke runtime-præamblen.
+
+    Markeringen er ``… UFULDSTÆNDIG (<grund>) — agentens tekst: <svar>``.
+    ``decline_error`` måler kun de første :data:`_DECLINE_VINDUE` tegn, så
+    uden dette snit blev vinduet brugt på præamblen og erklæringen faldt ud.
+    """
+    m = re.search(r"agentens tekst:\s*(.*)", str(text or ""), re.S)
+    return m.group(1) if m else str(text or "")
+
+
 def _markering_grund(text: str) -> str:
     """Årsagen inde i markeringen: ``UFULDSTÆNDIG (<grund>) — agentens tekst:``.
 
@@ -886,6 +897,22 @@ def _incomplete_kode(text: str) -> tuple[str, str]:
     # sender den næste jagt to forskellige steder hen.
     if "blev blokeret af miljøet" in grund:
         return "AGENT_BLOCKED_BY_ENVIRONMENT", "environment"
+    # 22/11-2026: den sidste ægte rest. To kørsler (18/11) skrev ordret «Jeg kan
+    # ikke besvare nogen af de 4 nummererede spørgsmål, da jeg mangler et
+    # eksekveringsværktøj til `gh` CLI» — og blev alligevel stemplet
+    # `AGENT_INCOMPLETE`/`delivery`, altså «leverancen var mangelfuld». Den næste
+    # læser blev dermed sendt efter et arbejde der aldrig kunne komme, i stedet
+    # for efter det værktøj der manglede. `decline_error` fandtes allerede, men
+    # blev kun kaldt i spawn-vejen ved normal afslutning — ikke her, hvor
+    # markeringen sættes. Rækkefølgen er bevidst: kapacitet og miljø er
+    # RUNTIME-målte fakta og vejer tungere end agentens egen fortolkning.
+    #
+    # Vinduet måles på agentens EGEN tekst (efter «agentens tekst:»), ikke på
+    # hele markeringen: ellers brugte de første 250 tegn på runtime-præamblen og
+    # erklæringen faldt uden for vinduet.
+    _decl_kode, _decl_fase = decline_error(text=_agentens_tekst(text))
+    if _decl_kode:
+        return _decl_kode, _decl_fase
     if "kunne skrive men skrev intet" in grund:
         return "AGENT_NO_WRITE", "delivery"
     if "løfte" in grund:
@@ -909,6 +936,16 @@ _DECLINE_MOENSTRE = tuple(re.compile(p, re.IGNORECASE) for p in (
     r"jeg\s+kan\s+ikke\s+gennemf[øo]re\s+opgaven",
     r"jeg\s+er\s+ikke\s+i\s+stand\s+til\s+at\s+l[øo]se\s+opgaven",
     r"opgaven\s+kan\s+ikke\s+l[øo]ses",
+    # 22/11-2026 — målt over 1807 afsluttede runs: disse tre rammer ÉN, og den
+    # er ægte («Værktøjerne gav ingen brugbare data»). De fanger den form der
+    # ellers slap igennem: agenten navngiver hvad den ikke kan besvare, uden at
+    # ordet «opgaven» optræder. De to falske positiver i `AGENT_INCOMPLETE`
+    # (18/11 12:05 og 15:37) svarede faktisk og rammes ikke.
+    r"jeg\s+kan\s+ikke\s+besvare",
+    r"jeg\s+kunne\s+ikke\s+besvare",
+    r"jeg\s+kan\s+ikke\s+udf[øo]re",
+    r"jeg\s+kunne\s+ikke\s+udf[øo]re",
+    r"jeg\s+mangler\s+(et|en|den|de)\s+",
 ))
 
 

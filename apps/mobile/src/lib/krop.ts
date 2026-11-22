@@ -530,6 +530,26 @@ export function fejlBesked(result: string | null | undefined): string {
   return linje.length > 240 ? `${linje.slice(0, 240)}…` : linje
 }
 
+/** Download-adressen i et `publish_file`-svar — kun under `/files/` (samme regel
+ *  som desks `udgivetFil`); en fremmed URL i et tool-svar bliver ikke et link. */
+export function udgivetFil(result: string | null | undefined): { url: string; filename: string } | null {
+  const { vaerdi } = pakUd(result ?? undefined)
+  if (!objekt(vaerdi)) return null
+  for (const k of ['url', 'download_url', 'file_url']) {
+    const raa = streng(vaerdi[k]).trim()
+    if (!raa) continue
+    let sti = raa
+    if (/^https?:\/\//i.test(raa)) {
+      try { const u = new URL(raa); sti = u.pathname + u.search } catch { continue }
+    }
+    if (!sti.startsWith('/files/')) continue
+    const navn = streng(vaerdi.filename) || streng(vaerdi.name)
+      || decodeURIComponent(sti.slice('/files/'.length).split('?')[0] || '')
+    return { url: sti, filename: navn || 'fil' }
+  }
+  return null
+}
+
 /** Skrivningens bevis — filens nye stoerrelse, antallet af udskiftninger, status. */
 export function skrivBesked(result: string | null | undefined): string {
   const { vaerdi, ramme } = pakUd(result ?? undefined)

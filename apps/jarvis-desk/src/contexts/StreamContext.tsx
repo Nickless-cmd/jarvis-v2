@@ -104,6 +104,9 @@ export interface SendOpts {
   approvalMode?: 'ask' | 'trust'
   thinkingMode?: 'think' | 'fast' | 'deep'
   attachmentIds?: string[]
+  /** @-nævnte filer (struktureret) og projekt-binding — se StreamRequest. */
+  fileRefs?: Array<{ path: string; rel: string }>
+  projectId?: string | null
   mode?: 'chat' | 'cowork' | 'code'
   workspaceKind?: 'container' | 'workstation'
   workspaceRoot?: string
@@ -424,6 +427,8 @@ export function StreamProvider({
         approvalMode: opts.approvalMode,
         thinkingMode: opts.thinkingMode,
         attachmentIds: opts.attachmentIds,
+        fileRefs: opts.fileRefs,
+        projectId: opts.projectId,
         mode: opts.mode,
         workspaceKind: opts.workspaceKind,
         workspaceRoot: opts.workspaceRoot,

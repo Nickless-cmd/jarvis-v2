@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native'
+import { Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { highlight, type Span, type SpanKind } from '../lib/highlight'
 import { ANSI_FARVER, ansiStykker, ryd, type AnsiStil } from '../lib/ansiTekst'
 import {
   filTekst, exitKode, kropFor, listePoster, udDel,
   mindeIndhold, webTraef, spoergsmaalIndhold, opgavePoster, skrivBesked, fejlBesked,
-  billedeIndhold, agentIdFra,
+  billedeIndhold, agentIdFra, udgivetFil,
   type KropFamilie,
 } from '../lib/krop'
 import { useAuthOptional } from '../state/AuthContext'
-import { hentAgentKald } from '../lib/apiClient'
+import { hentAgentKald, hentSigneretFilLink } from '../lib/apiClient'
 import { hentTilCache } from './AuthImage'
 
 const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' })
@@ -454,6 +454,33 @@ export function SkrivKrop({ besked, ind, ud }: { besked: string; ind: string; ud
   )
 }
 
+/** Klikbart download-link for en udgivet fil. Henter et signeret link ved TRYK
+ *  (60 s levetid) og åbner det; fejl vises, aldrig tavst. */
+export function FilLinkKrop({ url, filename }: { url: string; filename: string }) {
+  const styles = useStyles(makestyles)
+  const { config } = useAuthOptional()
+  const [optaget, setOptaget] = useState(false)
+  const [fejl, setFejl] = useState('')
+  const aabn = () => {
+    if (!config || optaget) return
+    setOptaget(true)
+    setFejl('')
+    const navn = decodeURIComponent(url.slice('/files/'.length).split('?')[0] || '')
+    hentSigneretFilLink(config, navn)
+      .then((link) => Linking.openURL(link))
+      .catch((e: unknown) => setFejl(e instanceof Error ? e.message : 'Kunne ikke åbne filen'))
+      .finally(() => setOptaget(false))
+  }
+  return (
+    <View style={styles.skriv} testID="krop-fillink">
+      <Pressable accessibilityRole="link" accessibilityLabel={`Hent ${filename}`} onPress={aabn} disabled={!config || optaget}>
+        <Text style={styles.skrivBesked} selectable>{optaget ? 'Henter…' : `⬇ ${filename}`}</Text>
+      </Pressable>
+      {fejl ? <Text style={styles.skrivBesked}>{fejl}</Text> : null}
+    </View>
+  )
+}
+
 /* ══ Fejl ═══════════════════════════════════════════════════════════════ */
 
 /**
@@ -620,6 +647,8 @@ export function Krop({
     return poster ? <OpgaveKrop poster={poster} /> : null
   }
   if (familie === 'skriv') {
+    const fil = udgivetFil(rå)
+    if (fil) return <FilLinkKrop url={fil.url} filename={fil.filename} />
     return <SkrivKrop besked={skrivBesked(rå)} ind={ind} ud={udDel(rå)} />
   }
   if (familie === 'fejl') {

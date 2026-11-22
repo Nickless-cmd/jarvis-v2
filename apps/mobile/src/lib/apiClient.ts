@@ -458,6 +458,17 @@ export async function hentAgentKald(config: ApiConfig, agentId: string): Promise
   return data.tool_calls ?? []
 }
 
+/** Kortlivet signeret link til én udgivet fil (`POST /files/link`, samme som desk).
+ *  `/files/…` kræver Authorization, og `Linking.openURL` kan ikke bære en header. */
+export async function hentSigneretFilLink(config: ApiConfig, filnavn: string): Promise<string> {
+  const r = await apiFetch<{ url?: string }>(config, '/files/link', {
+    method: 'POST', body: { filename: filnavn },
+  })
+  const sti = String(r?.url || '').trim()
+  if (!sti) throw new ApiError('unknown', 'serveren gav intet link', null)
+  return new URL(sti, config.apiBaseUrl).toString()
+}
+
 export interface ActiveRunSnapshot {
   sessionId: string
   runId: string

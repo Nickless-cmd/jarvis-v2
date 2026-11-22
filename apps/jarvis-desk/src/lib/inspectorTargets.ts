@@ -8,6 +8,13 @@ export type InspectorTarget =
   | { type: 'tool'; tool: ToolEvidence }
   | { type: 'file'; file: FilReference }
   | { type: 'dok'; dok: DokReference }
+  | { type: 'canvas'; canvas: CanvasReference }
+
+/** Et redigérbart dokument ved siden af samtalen (canvas). */
+export interface CanvasReference {
+  titel: string
+  tekst: string
+}
 
 /** Svaret fra en af de tre Google-læsere, som en flade man kan læse.
  *

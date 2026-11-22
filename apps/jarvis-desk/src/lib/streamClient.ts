@@ -183,6 +183,10 @@ export interface StreamRequest {
   approvalMode?: 'ask' | 'trust'
   thinkingMode?: 'think' | 'fast' | 'deep'
   attachmentIds?: string[]
+  /** @-nævnte filer som struktureret reference (serveren resolver `path`). */
+  fileRefs?: Array<{ path: string; rel: string }>
+  /** Projekt sessionen er bundet til. */
+  projectId?: string | null
   /** UI-mode → backend tool-scope. 'chat' begrænser til samtale-værktøjer.
    *  Default 'chat' (appen er chat-only pt.; cowork/code sender egen mode). */
   mode?: 'chat' | 'cowork' | 'code'
@@ -496,6 +500,8 @@ export function startStream(
           session_id: request.sessionId,
           message: request.message,
           attachment_ids: request.attachmentIds ?? [],
+          file_refs: request.fileRefs ?? [],
+          project_id: request.projectId ?? null,
           approval_mode: request.approvalMode ?? 'ask',
           // Hvilken flade beskeden kommer fra. Serveren bruger den til at
           // sende et godkendelses-kort tilbage til DEN skærm han sidder ved,

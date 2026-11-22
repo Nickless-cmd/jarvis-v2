@@ -78,4 +78,16 @@ describe('Composer · @fil', () => {
     expect(listProjectFiles).not.toHaveBeenCalled()
     expect(screen.queryByRole('listbox')).toBeNull()
   })
+
+  it('sender den valgte fil som struktureret reference — og dropper den hvis @ slettes', async () => {
+    const { felt, onSend } = opsæt()
+    skriv(felt, '@simple')
+    await waitFor(() => screen.getByRole('listbox'))
+    fireEvent.keyDown(felt, { key: 'Enter' })
+    fireEvent.keyDown(felt, { key: 'Enter' })
+    expect(onSend).toHaveBeenCalledTimes(1)
+    expect(onSend.mock.calls[0]![1].mentions).toEqual([
+      { rel: 'core/tools/simple_tools.py', path: '/r/core/tools/simple_tools.py' },
+    ])
+  })
 })

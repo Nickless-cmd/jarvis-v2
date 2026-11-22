@@ -322,6 +322,18 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     except Exception:
         model_message = effective_message
 
+    # `@sti` i beskeden (22/11-2026): uden dette er file_mention_resolver død kode, og
+    # en mention når modellen som rå tekst den kan tage for filindhold. Opløsningen
+    # læser bytes fra disk og mærker dem som server-læste. Fejler den — ukendt,
+    # tvetydig eller for stor fil — passerer beskeden uændret: en tastefejl i en
+    # mention må ikke dræbe turen, og et gæt på filens indhold er værre end ingen fil.
+    if "@" in model_message:
+        try:
+            from core.services.file_mention_resolver import resolve_file_mentions
+            model_message = resolve_file_mentions(model_message, session_id=session_id)
+        except Exception as exc:
+            logger.warning("fil-mention blev ikke opløst: %s", exc)
+
     # Load model/provider/lane settings så vi kan inkludere dem i
     # message_start metadata (klienten skal bruge dem til at display'e
     # "kører på X-model" + til debugging).

@@ -185,6 +185,31 @@ def test_kontrol_paritet_med_klientens_udfoldKontrol() -> None:
         assert svar["advarsler"], (t, svar)
 
 
+@pytest.mark.skipif(shutil.which("node") is None, reason="node mangler")
+def test_kontrol_direkte_paritet_python_mod_ts() -> None:
+    """Kører SAMME cases gennem Python ``udfold_kontrol`` og TS ``udfoldKontrol`` og
+    sammenligner direkte (ikke via en hårdkodet forventning).
+
+    Succes-cases: tekst skal være ens og begge sider uden advarsler.
+    Fejl-cases: Python kaster ``_KontrolFejl`` ⇔ TS har advarsler og lader teksten stå.
+    """
+    alle = [[t, s] for t, s, _ in KONTROL_CASES] + [[t, s] for t, s in KONTROL_FEJL]
+    klient = _node_koer(alle)
+    assert len(klient) == len(alle)
+    uenige: list[str] = []
+    for (tekst, scope), ts in zip(alle, klient):
+        try:
+            py_tekst, py_fejl = udfold_kontrol(tekst, scope), False
+        except _KontrolFejl:
+            py_tekst, py_fejl = tekst, True
+        ts_fejl = bool(ts["advarsler"])
+        if py_fejl != ts_fejl:
+            uenige.append(f"fejl-uenighed: {tekst!r} py_fejl={py_fejl} ts_advarsler={ts['advarsler']}")
+        elif py_tekst != ts["tekst"]:
+            uenige.append(f"tekst-uenighed: {tekst!r} py={py_tekst!r} ts={ts['tekst']!r}")
+    assert not uenige, "\n".join(uenige)
+
+
 def test_udtryk_kopierne_er_byte_identiske() -> None:
     assert _DESK_UDTRYK.read_bytes() == _MOBIL_UDTRYK.read_bytes()
 

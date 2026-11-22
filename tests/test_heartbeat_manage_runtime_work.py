@@ -48,3 +48,37 @@ def test_hjerteslaget_delegerer_hertil(monkeypatch):
     ud = hr._execute_heartbeat_internal_action(
         action_type="manage_runtime_work", tick_id="t", workspace_dir=Path("/tmp"))
     assert ud["status"] == "fra-modulet"
+
+
+def test_koeet_task_forbliver_koeet_til_en_worker_ejer_den(
+    isolated_runtime, monkeypatch
+):
+    """Heartbeat må observere køen, men må ikke foregive at udføre dens task."""
+    task = rt.create_task(
+        kind="generic", goal="udfør mig", origin="test", priority="high"
+    )
+    monkeypatch.setattr(rh, "dispatch_unhandled_hook_events", lambda limit=4: [])
+    monkeypatch.setattr(rf, "list_flows", lambda status="", limit=4: [])
+    monkeypatch.setattr(
+        rbb,
+        "ensure_browser_body",
+        lambda **kw: {"body_id": "b", **kw},
+    )
+    monkeypatch.setattr(
+        se,
+        "observe_recent_visible_runs_for_self_experiments",
+        lambda limit=6: {"observed": 0},
+    )
+    monkeypatch.setattr(
+        se,
+        "materialize_learning_curriculum_tasks",
+        lambda **kw: {"created": 0, "task_ids": []},
+    )
+
+    ud = execute_manage_runtime_work(tick_id="tick-1", workspace_dir=Path("/tmp"))
+
+    persisted = rt.get_task(str(task["task_id"]))
+    assert persisted is not None
+    assert persisted["status"] == "queued"
+    assert persisted["owner"] == ""
+    assert str(task["task_id"]) in ud["artifact"]

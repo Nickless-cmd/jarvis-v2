@@ -471,6 +471,42 @@ async def account_mcp() -> dict[str, Any]:
     return {"servers": servers}
 
 
+@router.get("/mcp/catalog")
+async def account_mcp_catalog() -> dict[str, Any]:
+    """List kuraterede MCP-servere og markér dem der allerede er registreret."""
+    from core.services.mcp_catalog import catalog_with_installation_status
+    from core.services.mcp_registry import list_mcp_servers
+
+    installed = await asyncio.to_thread(list_mcp_servers)
+    return {"servers": catalog_with_installation_status(installed)}
+
+
+@router.post("/mcp/catalog/{catalog_id}/install")
+async def account_mcp_catalog_install(catalog_id: str) -> dict[str, Any]:
+    """Owner-only: installer en kurateret server gennem det eksisterende registry."""
+    snap = current_context_snapshot()
+    if _current_role(snap.get("user_id") or "") != "owner":
+        raise HTTPException(status_code=403, detail="MCP-servere kan kun ændres af owner")
+
+    from core.services.mcp_catalog import get_mcp_catalog_entry
+    from core.services.mcp_registry import add_mcp_server
+
+    entry = get_mcp_catalog_entry(catalog_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail=f"Ukendt MCP-katalog-id: {catalog_id}")
+
+    # Installation er kun registrering. Den må aldrig auto-godkende serveren;
+    # mcp_trust.allow er fortsat Bjørns separate, eksplicitte beslutning.
+    return await asyncio.to_thread(
+        add_mcp_server,
+        entry["name"],
+        entry.get("url", ""),
+        command=entry.get("command", ""),
+        args=entry.get("args"),
+        transport=entry["transport"],
+    )
+
+
 @router.post("/mcp")
 async def account_mcp_add(payload: dict = Body(default={})) -> dict[str, Any]:
     """Owner-only: tilføj en MCP-server. Body: {name, url}. Ikke-owner → 403.

@@ -260,6 +260,36 @@ def test_after_hook_kan_ikke_stoppe_resultatet(config_fil) -> None:
     assert kaldt == [True]
 
 
+def test_after_hook_modtager_bashens_faktiske_confinement(config_fil, tmp_path) -> None:
+    ud_fil = tmp_path / "after.json"
+    config_fil([{"name": "spor", "match": "^bash$", "after": f"cat > {ud_fil}"}])
+    shell.ensure_loaded()
+    execute, _ = _executor({
+        "status": "ok",
+        "confinement": {"requested": True, "actual": False, "honored": False},
+    })
+
+    execute_tool_call("bash", {"command": "pwd"}, execute=execute, internal=False)
+
+    payload = json.loads(ud_fil.read_text(encoding="utf-8"))
+    assert payload["arguments"]["__result__"]["confinement"] == {
+        "requested": True, "actual": False, "honored": False,
+    }
+
+
+def test_log_rotation_beholder_en_generation(tmp_path, monkeypatch) -> None:
+    log = tmp_path / "tool_hooks.jsonl"
+    rotated = tmp_path / "tool_hooks.jsonl.1"
+    log.write_bytes(b"new-log")
+    rotated.write_bytes(b"old-log")
+    monkeypatch.setattr(shell, "LOG_STI", log)
+    monkeypatch.setattr(shell, "LOG_ROTATION_BYTES", 7)
+
+    assert shell.rotate_log_if_needed() is True
+    assert not log.exists()
+    assert rotated.read_bytes() == b"new-log"
+
+
 def test_after_hook_faar_status_ikke_hele_resultatet(config_fil, tmp_path) -> None:
     """En observatør må ikke gøre hver log-linje til en kopi af alle data.
 

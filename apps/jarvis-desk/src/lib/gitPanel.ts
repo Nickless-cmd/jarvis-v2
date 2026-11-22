@@ -25,6 +25,7 @@ export interface GitFil {
 
 export interface GitStatusPanel {
   ok: boolean
+  repo: string
   branch: string
   upstream: string
   ahead: number
@@ -59,6 +60,7 @@ export async function hentGitStatus(config: ApiConfig, m: Maal): Promise<GitStat
   const r = await apiFetch<Partial<GitStatusPanel>>(config, `${BASE}/status?${q(m)}`)
   return {
     ok: !!r?.ok,
+    repo: String(r?.repo ?? ''),
     branch: String(r?.branch ?? ''),
     upstream: String(r?.upstream ?? ''),
     ahead: Number(r?.ahead ?? 0),

@@ -120,6 +120,17 @@ def parse_log(tekst: str) -> list[dict[str, str]]:
     return ud
 
 
+def parse_github_repo(url: str) -> str:
+    """GitHub remote URL → owner/repo; andre remotes giver tom streng."""
+    value = (url or "").strip().removesuffix(".git")
+    if value.startswith("git@github.com:"):
+        return value.split(":", 1)[1]
+    marker = "github.com/"
+    if marker in value:
+        return value.split(marker, 1)[1].strip("/")
+    return ""
+
+
 def parse_worktrees(tekst: str) -> list[dict[str, Any]]:
     """`git worktree list --porcelain` → liste. Første post er hovedtræet."""
     ud: list[dict[str, Any]] = []
@@ -189,7 +200,9 @@ def _status_sync(kind: str, rod: str, uid: str) -> dict[str, Any]:
                   ["-c", "core.quotepath=false", "status", "--porcelain=v1", "--branch"])
     if not ok or not ud or not ud[0].strip():
         return _fejl(ud, "ikke et git-repo")
-    return {"ok": True, **parse_status(ud[0])}
+    remote_ok, remote_out = _git(kind, rod, uid, ["remote", "get-url", "origin"])
+    remote = remote_out[0] if remote_ok and remote_out else ""
+    return {"ok": True, "repo": parse_github_repo(remote), **parse_status(ud[0])}
 
 
 def _diff_sync(kind: str, rod: str, uid: str, path: str, mode: str) -> dict[str, Any]:

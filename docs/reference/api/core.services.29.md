@@ -546,17 +546,18 @@ _Brugerdefinerbare tool-hooks som shell-kommandoer._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `HookResultat` | `` | Hvad en enkelt hook-kørsel svarede. Bruges af tests og af status. | [src](../../../core/services/tool_shell_hooks.py#L75) |
-| class | `ShellHook` | `` | Én konfigureret hook. Implements ``ToolLifecycleHook`` strukturelt. | [src](../../../core/services/tool_shell_hooks.py#L86) |
-| method | `ShellHook.rammer` | `(self, tool_name)` | — | [src](../../../core/services/tool_shell_hooks.py#L97) |
-| method | `ShellHook._miljoe` | `(self, *, fase, tool_name)` | — | [src](../../../core/services/tool_shell_hooks.py#L101) |
-| method | `ShellHook._koer` | `(self, kommando, *, fase, tool_name, arguments)` | — | [src](../../../core/services/tool_shell_hooks.py#L108) |
-| method | `ShellHook.before_tool` | `(self, tool_name, arguments)` | — | [src](../../../core/services/tool_shell_hooks.py#L166) |
-| method | `ShellHook.after_tool` | `(self, tool_name, arguments, result)` | — | [src](../../../core/services/tool_shell_hooks.py#L184) |
-| function | `_parse` | `(raw)` | Config-dokument → (enabled, hooks, fejl). Kaster aldrig. | [src](../../../core/services/tool_shell_hooks.py#L211) |
-| function | `ensure_loaded` | `(*, tving=…)` | Læs config én gang pr. proces. Returnerer True hvis hooks er aktive. | [src](../../../core/services/tool_shell_hooks.py#L248) |
-| function | `status` | `()` | Hvad er indlæst, og hvorfor ikke? Måling i stedet for formodning. | [src](../../../core/services/tool_shell_hooks.py#L297) |
-| function | `_nulstil_for_test` | `()` | Kun til tests: glem hvad der er indlæst, så en fixture kan styre det. | [src](../../../core/services/tool_shell_hooks.py#L316) |
+| function | `rotate_log_if_needed` | `()` | Rotér hook-loggen før næste hook-skrivning; behold én generation. | [src](../../../core/services/tool_shell_hooks.py#L76) |
+| class | `HookResultat` | `` | Hvad en enkelt hook-kørsel svarede. Bruges af tests og af status. | [src](../../../core/services/tool_shell_hooks.py#L91) |
+| class | `ShellHook` | `` | Én konfigureret hook. Implements ``ToolLifecycleHook`` strukturelt. | [src](../../../core/services/tool_shell_hooks.py#L102) |
+| method | `ShellHook.rammer` | `(self, tool_name)` | — | [src](../../../core/services/tool_shell_hooks.py#L113) |
+| method | `ShellHook._miljoe` | `(self, *, fase, tool_name)` | — | [src](../../../core/services/tool_shell_hooks.py#L117) |
+| method | `ShellHook._koer` | `(self, kommando, *, fase, tool_name, arguments)` | — | [src](../../../core/services/tool_shell_hooks.py#L124) |
+| method | `ShellHook.before_tool` | `(self, tool_name, arguments)` | — | [src](../../../core/services/tool_shell_hooks.py#L186) |
+| method | `ShellHook.after_tool` | `(self, tool_name, arguments, result)` | — | [src](../../../core/services/tool_shell_hooks.py#L204) |
+| function | `_parse` | `(raw)` | Config-dokument → (enabled, hooks, fejl). Kaster aldrig. | [src](../../../core/services/tool_shell_hooks.py#L234) |
+| function | `ensure_loaded` | `(*, tving=…)` | Læs config én gang pr. proces. Returnerer True hvis hooks er aktive. | [src](../../../core/services/tool_shell_hooks.py#L271) |
+| function | `status` | `()` | Hvad er indlæst, og hvorfor ikke? Måling i stedet for formodning. | [src](../../../core/services/tool_shell_hooks.py#L320) |
+| function | `_nulstil_for_test` | `()` | Kun til tests: glem hvad der er indlæst, så en fixture kan styre det. | [src](../../../core/services/tool_shell_hooks.py#L339) |
 
 ## `core/services/tool_tagger.py`
 _Tool tag taxonomy._

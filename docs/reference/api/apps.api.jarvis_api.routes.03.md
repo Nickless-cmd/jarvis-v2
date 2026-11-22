@@ -2,6 +2,104 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/mission_control_agents.py`
+_Mission Control routes: agenter, watcher/agent-lineage, council/swarm-config og -runtime_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `mc_agents` | `(limit=…)` | Return live and persistent agent runtime state for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L14) |
+| function | `mc_agent_detail` | `(agent_id)` | Return full detail-surface for one agent; 404 hvis agenten ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L20) |
+| function | `mc_agent_messages` | `(agent_id)` | Return agentens beskeder og deres antal; 404 hvis agenten ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L29) |
+| function | `mc_agent_runs` | `(agent_id)` | Return agentens runs; 404 hvis agenten ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L42) |
+| function | `mc_agent_tool_calls` | `(agent_id)` | Return agentens tool-calls og deres antal; 404 hvis agenten ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L54) |
+| function | `mc_watcher_lineage` | `()` | Return persistent watcher history — agents with kind=persistent-watcher. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L67) |
+| function | `mc_agent_lineage` | `()` | Return full agent spawn lineage — parent→child chains with outcomes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L101) |
+| function | `mc_get_council_model_config` | `()` | Return persisted per-role model overrides. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L161) |
+| function | `mc_set_council_model_config` | `(payload)` | Persist per-role model overrides. payload: {role_models: [{role, provider, model}]} | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L175) |
+| function | `mc_get_council_activation_config` | `()` | Return council activation sensitivity config. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L195) |
+| function | `mc_set_council_activation_config` | `(payload)` | Persist council activation sensitivity config. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L211) |
+| function | `mc_council` | `(limit=…)` | Return roster and council sessions for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L227) |
+| function | `mc_council_detail` | `(council_id)` | Return full detail-surface for én council-session; 404 hvis den ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L233) |
+| function | `mc_council_messages` | `(council_id)` | Return beskederne i én council-session; 404 hvis den ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L242) |
+| function | `mc_spawn_agent` | `(payload)` | Spawn en ny agent-task ud fra payload (role, goal, tools, budget, provider/model osv.). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L254) |
+| function | `mc_execute_agent` | `(agent_id, payload=…)` | Kør agentens task nu (valgfrit thread_id og execution_mode fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L296) |
+| function | `_kraev_ejer` | `()` | Ejer-gate for de ruter der GRIBER IND i en agent. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L306) |
+| function | `mc_message_agent` | `(agent_id, payload=…)` | Send en besked til agenten (content/role/kind); auto-eksekverer som standard. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L326) |
+| function | `mc_peer_message_agent` | `(agent_id, payload=…)` | Send en peer-besked fra denne agent til en anden agent (to_agent_id fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L341) |
+| function | `mc_schedule_agent` | `(agent_id, payload=…)` | Planlæg agentens task (schedule_kind, delay_seconds, schedule_expr, activate). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L353) |
+| function | `mc_run_due_agents` | `(payload=…)` | Kør de agent-schedules der er forfaldne nu (op til limit, default 10). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L366) |
+| function | `mc_cancel_agent` | `(agent_id, payload=…)` | Annullér agenten (valgfri note fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L373) |
+| function | `mc_suspend_agent` | `(agent_id, payload=…)` | Suspendér agenten (valgfri note fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L381) |
+| function | `mc_resume_agent` | `(agent_id)` | Genoptag en suspenderet agent. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L389) |
+| function | `mc_expire_agent` | `(agent_id, payload=…)` | Lad agenten udløbe (valgfri reason fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L396) |
+| function | `mc_promote_agent_result` | `(agent_id, payload=…)` | Promovér agentens resultat (valgfri note fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L404) |
+| function | `mc_spawn_council` | `(payload)` | Opret en ny council-session runtime (topic, roles, owner_agent_id, member_models). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L411) |
+| function | `mc_spawn_swarm` | `(payload)` | Opret en ny swarm-session runtime (topic, roles, owner_agent_id, member_models). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L422) |
+| function | `mc_message_council` | `(council_id, payload=…)` | Post en besked til en council-session (content/kind/role fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L433) |
+| function | `mc_run_council_round` | `(council_id)` | Kør én runde i den angivne council-session. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L445) |
+| function | `mc_run_swarm_round` | `(council_id)` | Kør én runde i den angivne swarm-session. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L451) |
+
+## `apps/api/jarvis_api/routes/mission_control_common.py`
+_Shared foundation for Mission Control routes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_mc_facade` | `(name)` | Resolve ``name`` gennem aggregator-modulet ``mission_control`` hvis muligt. | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L16) |
+| function | `_get_cached_mc_payload` | `(cache_key, ttl_seconds)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L64) |
+| function | `_store_cached_mc_payload` | `(cache_key, ttl_seconds, payload)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L73) |
+| function | `_get_or_build_cached_mc_payload` | `(cache_key, ttl_seconds, builder)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L82) |
+| function | `_build_attention_budget_snapshot_uncached` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L102) |
+| function | `_mc_runtime_inspection_bundle_uncached` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L146) |
+| function | `_mc_runtime_inspection_bundle` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L157) |
+| function | `_mc_runtime` | `()` | Cached ``/mc/runtime`` payload (facade delt af mc_runtime-ruten samt af | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L166) |
+| function | `_mc_runtime_uncached` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L178) |
+| function | `_latest_item` | `(items)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L351) |
+| function | `_with_private_lane_source_discipline` | `(item)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L355) |
+| function | `_private_lane_surface_summary` | `(item)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L373) |
+| function | `_path_state` | `(path)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L387) |
+| function | `_mc_key_is_secret` | `(key)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L413) |
+| function | `_redact_mc_secrets` | `(value)` | Return an MC-safe copy with configured secrets masked, not exposed. | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L424) |
+| function | `_visible_execution_surface` | `(settings)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L441) |
+| function | `_main_agent_selection_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L487) |
+| function | `_maybe_configure_live_main_agent_target` | `(*, provider, model, auth_profile)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L498) |
+| function | `_available_openai_profiles` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L551) |
+| function | `_visible_run_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L569) |
+| function | `_visible_work_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L583) |
+| function | `_capability_invocation_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L591) |
+| function | `_private_inner_note_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L608) |
+| function | `_private_growth_note_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L616) |
+| function | `_private_self_model_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L630) |
+| function | `_private_reflective_selection_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L638) |
+| function | `_private_development_state_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L652) |
+| function | `_private_state_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L660) |
+| function | `_protected_inner_voice_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L668) |
+| function | `_current_protected_inner_voice` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L676) |
+| function | `_select_current_protected_inner_voice` | `(voices)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L682) |
+| function | `_protected_inner_voice_priority` | `(voice, *, freshness_floor)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L711) |
+| function | `_parse_runtime_iso_datetime` | `(value)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L737) |
+| function | `_private_inner_interplay_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L751) |
+| function | `_private_initiative_tension_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L762) |
+| function | `_private_relation_state_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L780) |
+| function | `_private_operational_preference_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L791) |
+| function | `_operational_preference_alignment_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L801) |
+| function | `_private_temporal_curiosity_state_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L811) |
+| function | `_private_temporal_promotion_signal_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L819) |
+| function | `_private_promotion_decision_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L830) |
+| function | `_private_retained_memory_record_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L839) |
+| function | `_private_retained_memory_projection_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L857) |
+| function | `_recent_visible_run_events` | `(limit=…, scan_limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L884) |
+| function | `_recent_capability_invocation_events` | `(limit=…, scan_limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L890) |
+| function | `_jarvis_identity_summary` | `(visible_identity)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L900) |
+| function | `_jarvis_state_signal` | `(protected_voice, initiative_tension, private_state)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L911) |
+| function | `_jarvis_retained_summary` | `(retained_projection, retained_record)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L935) |
+| function | `_jarvis_development_summary` | `(self_model, development_state, development_focuses=…, reflective_critics=…, self_model_signals=…, goal_signals=…, reflection_signals=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L971) |
+| function | `_jarvis_continuity_summary` | `(relation_state, visible_session, promotion_signal, world_model_signals=…, runtime_awareness_signals=…, runtime_work=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1032) |
+| function | `_jarvis_heartbeat_summary` | `(heartbeat)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1084) |
+| function | `_runtime_work_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1133) |
+| function | `_jarvis_emergent_summary` | `(emergent_signals)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1200) |
+| function | `_jarvis_emergent_summary` | `(emergent_signals)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1216) |
+| function | `_preview_text` | `(value, *, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1232) |
+
 ## `apps/api/jarvis_api/routes/mission_control_dashboard.py`
 _Mission Control dashboard-endpoints — de tre data-kilder som kontrolcenter-UI'et_
 
@@ -473,6 +571,21 @@ _Status-endpoints til forsiden — én rig og én offentlig._
 | function | `system_git` | `()` | Return current git branch and diff stats (insertions/deletions since HEAD). | [src](../../../apps/api/jarvis_api/routes/system_health.py#L39) |
 | class | `CommitRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/system_health.py#L85) |
 | function | `system_git_commit` | `(body)` | Stage tracked changes and commit with the given message. | [src](../../../apps/api/jarvis_api/routes/system_health.py#L90) |
+
+## `apps/api/jarvis_api/routes/tool_hooks.py`
+_Owner-facing read/reload surface for configured shell hooks and their JSONL log._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_log_metadata` | `()` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L16) |
+| function | `_timestamp` | `(entry)` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L32) |
+| function | `_confinement` | `(entry)` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L45) |
+| function | `_normalise_entry` | `(entry)` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L57) |
+| function | `_coverage` | `(entries)` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L74) |
+| function | `_read_entries` | `()` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L90) |
+| function | `get_tool_hooks` | `()` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L113) |
+| function | `reload_tool_hooks` | `()` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L119) |
+| function | `get_tool_hook_log` | `(limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L125) |
 
 ## `apps/api/jarvis_api/routes/tool_router.py`
 _MC observability for tool_router._

@@ -209,6 +209,11 @@ _Cowork-dashboard routes. Tynde — al opsamling sker i core.services.cowork_fee
 | function | `cowork_app_dispatch_pending` | `()` | Ventende runtime→app-instruktioner via app_dispatch_store.list_pending i | [src](../../../apps/api/jarvis_api/routes/cowork.py#L523) |
 | function | `cowork_app_dispatch_ack` | `(dispatch_id)` | Kvittér en app-dispatch som udført via app_dispatch_store.ack i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L532) |
 
+## `apps/api/jarvis_api/routes/desk_operations.py`
+_Small Desk-facing operational routers grouped for app registration._
+
+_(no top-level classes or functions)_
+
 ## `apps/api/jarvis_api/routes/desktop_stream.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -272,31 +277,44 @@ _Git-panelets ruter: status, diff, stage, unstage, commit, log, push, worktrees.
 | function | `_afkvot` | `(sti)` | `git status` citerer stier med mellemrum/specialtegn: "a b.txt". | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L46) |
 | function | `parse_status` | `(tekst)` | `git status --porcelain=v1 --branch` → branch, tracking og filliste. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L54) |
 | function | `parse_log` | `(tekst)` | Format `%H\x1f%h\x1f%an\x1f%aI\x1f%s\x1e` → liste af commits. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L109) |
-| function | `parse_worktrees` | `(tekst)` | `git worktree list --porcelain` → liste. Første post er hovedtræet. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L123) |
-| function | `rens_sti` | `(sti)` | Afvis stier der kunne læses som flag eller bryde ud af repoet. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L147) |
-| function | `_mål` | `(kind, root)` | Validér target → (kind, rod, uid). Container = owner + server-repo. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L163) |
-| function | `_git` | `(kind, rod, uid, *args)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L177) |
-| function | `_fejl` | `(ud, standard=…)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L182) |
-| function | `_status_sync` | `(kind, rod, uid)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L187) |
-| function | `_diff_sync` | `(kind, rod, uid, path, mode)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L195) |
-| function | `_stage_sync` | `(kind, rod, uid, paths, alle)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L224) |
-| function | `_unstage_sync` | `(kind, rod, uid, paths, alle)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L230) |
-| function | `_commit_sync` | `(kind, rod, uid, besked)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L245) |
-| function | `_log_sync` | `(kind, rod, uid, grænse)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L268) |
-| function | `_push_sync` | `(kind, rod, uid)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L280) |
-| function | `_worktrees_sync` | `(kind, rod, uid)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L304) |
-| class | `_PathsBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L317) |
-| class | `_CommitBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L324) |
-| class | `_PushBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L330) |
-| function | `git_panel_status` | `(kind=…, root=…)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L336) |
-| function | `git_panel_diff` | `(kind=…, root=…, path=…, mode=…)` | Diff for én fil (`path`) eller samlet (uden `path`). | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L342) |
-| function | `_paths_eller_alle` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L357) |
-| function | `git_panel_stage` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L366) |
-| function | `git_panel_unstage` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L373) |
-| function | `git_panel_commit` | `(body)` | Commit KUN det staged, med serverens attribution-trailere. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L380) |
-| function | `git_panel_log` | `(kind=…, root=…, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L390) |
-| function | `git_panel_push` | `(body)` | Push den aktuelle branch (sætter upstream til origin første gang). | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L396) |
-| function | `git_panel_worktrees` | `(kind=…, root=…)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L406) |
+| function | `parse_github_repo` | `(url)` | GitHub remote URL → owner/repo; andre remotes giver tom streng. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L123) |
+| function | `parse_worktrees` | `(tekst)` | `git worktree list --porcelain` → liste. Første post er hovedtræet. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L134) |
+| function | `rens_sti` | `(sti)` | Afvis stier der kunne læses som flag eller bryde ud af repoet. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L158) |
+| function | `_mål` | `(kind, root)` | Validér target → (kind, rod, uid). Container = owner + server-repo. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L174) |
+| function | `_git` | `(kind, rod, uid, *args)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L188) |
+| function | `_fejl` | `(ud, standard=…)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L193) |
+| function | `_status_sync` | `(kind, rod, uid)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L198) |
+| function | `_diff_sync` | `(kind, rod, uid, path, mode)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L208) |
+| function | `_stage_sync` | `(kind, rod, uid, paths, alle)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L237) |
+| function | `_unstage_sync` | `(kind, rod, uid, paths, alle)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L243) |
+| function | `_commit_sync` | `(kind, rod, uid, besked)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L258) |
+| function | `_log_sync` | `(kind, rod, uid, grænse)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L281) |
+| function | `_push_sync` | `(kind, rod, uid)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L293) |
+| function | `_worktrees_sync` | `(kind, rod, uid)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L317) |
+| class | `_PathsBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L330) |
+| class | `_CommitBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L337) |
+| class | `_PushBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L343) |
+| function | `git_panel_status` | `(kind=…, root=…)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L349) |
+| function | `git_panel_diff` | `(kind=…, root=…, path=…, mode=…)` | Diff for én fil (`path`) eller samlet (uden `path`). | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L355) |
+| function | `_paths_eller_alle` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L370) |
+| function | `git_panel_stage` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L379) |
+| function | `git_panel_unstage` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L386) |
+| function | `git_panel_commit` | `(body)` | Commit KUN det staged, med serverens attribution-trailere. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L393) |
+| function | `git_panel_log` | `(kind=…, root=…, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L403) |
+| function | `git_panel_push` | `(body)` | Push den aktuelle branch (sætter upstream til origin første gang). | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L409) |
+| function | `git_panel_worktrees` | `(kind=…, root=…)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L419) |
+
+## `apps/api/jarvis_api/routes/github.py`
+_Direct Desk adapter for existing GitHub PR/CI tool handlers._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `CreatePrBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/github.py#L14) |
+| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/github.py#L23) |
+| function | `_result` | `(result)` | — | [src](../../../apps/api/jarvis_api/routes/github.py#L32) |
+| function | `github_prs` | `(repo)` | — | [src](../../../apps/api/jarvis_api/routes/github.py#L39) |
+| function | `github_ci` | `(repo, pull_number=…, commit_sha=…)` | — | [src](../../../apps/api/jarvis_api/routes/github.py#L46) |
+| function | `github_create_pr` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/github.py#L54) |
 
 ## `apps/api/jarvis_api/routes/health.py`
 
@@ -528,102 +546,4 @@ _JarvisX workspace + identity/mind route group._
 _Mission Control routes — aggregator._
 
 _(no top-level classes or functions)_
-
-## `apps/api/jarvis_api/routes/mission_control_agents.py`
-_Mission Control routes: agenter, watcher/agent-lineage, council/swarm-config og -runtime_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `mc_agents` | `(limit=…)` | Return live and persistent agent runtime state for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L14) |
-| function | `mc_agent_detail` | `(agent_id)` | Return full detail-surface for one agent; 404 hvis agenten ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L20) |
-| function | `mc_agent_messages` | `(agent_id)` | Return agentens beskeder og deres antal; 404 hvis agenten ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L29) |
-| function | `mc_agent_runs` | `(agent_id)` | Return agentens runs; 404 hvis agenten ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L42) |
-| function | `mc_agent_tool_calls` | `(agent_id)` | Return agentens tool-calls og deres antal; 404 hvis agenten ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L54) |
-| function | `mc_watcher_lineage` | `()` | Return persistent watcher history — agents with kind=persistent-watcher. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L67) |
-| function | `mc_agent_lineage` | `()` | Return full agent spawn lineage — parent→child chains with outcomes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L101) |
-| function | `mc_get_council_model_config` | `()` | Return persisted per-role model overrides. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L161) |
-| function | `mc_set_council_model_config` | `(payload)` | Persist per-role model overrides. payload: {role_models: [{role, provider, model}]} | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L175) |
-| function | `mc_get_council_activation_config` | `()` | Return council activation sensitivity config. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L195) |
-| function | `mc_set_council_activation_config` | `(payload)` | Persist council activation sensitivity config. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L211) |
-| function | `mc_council` | `(limit=…)` | Return roster and council sessions for Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L227) |
-| function | `mc_council_detail` | `(council_id)` | Return full detail-surface for én council-session; 404 hvis den ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L233) |
-| function | `mc_council_messages` | `(council_id)` | Return beskederne i én council-session; 404 hvis den ikke findes. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L242) |
-| function | `mc_spawn_agent` | `(payload)` | Spawn en ny agent-task ud fra payload (role, goal, tools, budget, provider/model osv.). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L254) |
-| function | `mc_execute_agent` | `(agent_id, payload=…)` | Kør agentens task nu (valgfrit thread_id og execution_mode fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L296) |
-| function | `_kraev_ejer` | `()` | Ejer-gate for de ruter der GRIBER IND i en agent. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L306) |
-| function | `mc_message_agent` | `(agent_id, payload=…)` | Send en besked til agenten (content/role/kind); auto-eksekverer som standard. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L326) |
-| function | `mc_peer_message_agent` | `(agent_id, payload=…)` | Send en peer-besked fra denne agent til en anden agent (to_agent_id fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L341) |
-| function | `mc_schedule_agent` | `(agent_id, payload=…)` | Planlæg agentens task (schedule_kind, delay_seconds, schedule_expr, activate). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L353) |
-| function | `mc_run_due_agents` | `(payload=…)` | Kør de agent-schedules der er forfaldne nu (op til limit, default 10). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L366) |
-| function | `mc_cancel_agent` | `(agent_id, payload=…)` | Annullér agenten (valgfri note fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L373) |
-| function | `mc_suspend_agent` | `(agent_id, payload=…)` | Suspendér agenten (valgfri note fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L381) |
-| function | `mc_resume_agent` | `(agent_id)` | Genoptag en suspenderet agent. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L389) |
-| function | `mc_expire_agent` | `(agent_id, payload=…)` | Lad agenten udløbe (valgfri reason fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L396) |
-| function | `mc_promote_agent_result` | `(agent_id, payload=…)` | Promovér agentens resultat (valgfri note fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L404) |
-| function | `mc_spawn_council` | `(payload)` | Opret en ny council-session runtime (topic, roles, owner_agent_id, member_models). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L411) |
-| function | `mc_spawn_swarm` | `(payload)` | Opret en ny swarm-session runtime (topic, roles, owner_agent_id, member_models). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L422) |
-| function | `mc_message_council` | `(council_id, payload=…)` | Post en besked til en council-session (content/kind/role fra payload). | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L433) |
-| function | `mc_run_council_round` | `(council_id)` | Kør én runde i den angivne council-session. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L445) |
-| function | `mc_run_swarm_round` | `(council_id)` | Kør én runde i den angivne swarm-session. | [src](../../../apps/api/jarvis_api/routes/mission_control_agents.py#L451) |
-
-## `apps/api/jarvis_api/routes/mission_control_common.py`
-_Shared foundation for Mission Control routes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_mc_facade` | `(name)` | Resolve ``name`` gennem aggregator-modulet ``mission_control`` hvis muligt. | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L16) |
-| function | `_get_cached_mc_payload` | `(cache_key, ttl_seconds)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L64) |
-| function | `_store_cached_mc_payload` | `(cache_key, ttl_seconds, payload)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L73) |
-| function | `_get_or_build_cached_mc_payload` | `(cache_key, ttl_seconds, builder)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L82) |
-| function | `_build_attention_budget_snapshot_uncached` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L102) |
-| function | `_mc_runtime_inspection_bundle_uncached` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L146) |
-| function | `_mc_runtime_inspection_bundle` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L157) |
-| function | `_mc_runtime` | `()` | Cached ``/mc/runtime`` payload (facade delt af mc_runtime-ruten samt af | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L166) |
-| function | `_mc_runtime_uncached` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L178) |
-| function | `_latest_item` | `(items)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L351) |
-| function | `_with_private_lane_source_discipline` | `(item)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L355) |
-| function | `_private_lane_surface_summary` | `(item)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L373) |
-| function | `_path_state` | `(path)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L387) |
-| function | `_mc_key_is_secret` | `(key)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L413) |
-| function | `_redact_mc_secrets` | `(value)` | Return an MC-safe copy with configured secrets masked, not exposed. | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L424) |
-| function | `_visible_execution_surface` | `(settings)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L441) |
-| function | `_main_agent_selection_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L487) |
-| function | `_maybe_configure_live_main_agent_target` | `(*, provider, model, auth_profile)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L498) |
-| function | `_available_openai_profiles` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L551) |
-| function | `_visible_run_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L569) |
-| function | `_visible_work_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L583) |
-| function | `_capability_invocation_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L591) |
-| function | `_private_inner_note_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L608) |
-| function | `_private_growth_note_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L616) |
-| function | `_private_self_model_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L630) |
-| function | `_private_reflective_selection_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L638) |
-| function | `_private_development_state_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L652) |
-| function | `_private_state_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L660) |
-| function | `_protected_inner_voice_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L668) |
-| function | `_current_protected_inner_voice` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L676) |
-| function | `_select_current_protected_inner_voice` | `(voices)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L682) |
-| function | `_protected_inner_voice_priority` | `(voice, *, freshness_floor)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L711) |
-| function | `_parse_runtime_iso_datetime` | `(value)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L737) |
-| function | `_private_inner_interplay_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L751) |
-| function | `_private_initiative_tension_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L762) |
-| function | `_private_relation_state_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L780) |
-| function | `_private_operational_preference_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L791) |
-| function | `_operational_preference_alignment_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L801) |
-| function | `_private_temporal_curiosity_state_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L811) |
-| function | `_private_temporal_promotion_signal_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L819) |
-| function | `_private_promotion_decision_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L830) |
-| function | `_private_retained_memory_record_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L839) |
-| function | `_private_retained_memory_projection_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L857) |
-| function | `_recent_visible_run_events` | `(limit=…, scan_limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L884) |
-| function | `_recent_capability_invocation_events` | `(limit=…, scan_limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L890) |
-| function | `_jarvis_identity_summary` | `(visible_identity)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L900) |
-| function | `_jarvis_state_signal` | `(protected_voice, initiative_tension, private_state)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L911) |
-| function | `_jarvis_retained_summary` | `(retained_projection, retained_record)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L935) |
-| function | `_jarvis_development_summary` | `(self_model, development_state, development_focuses=…, reflective_critics=…, self_model_signals=…, goal_signals=…, reflection_signals=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L971) |
-| function | `_jarvis_continuity_summary` | `(relation_state, visible_session, promotion_signal, world_model_signals=…, runtime_awareness_signals=…, runtime_work=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1032) |
-| function | `_jarvis_heartbeat_summary` | `(heartbeat)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1084) |
-| function | `_runtime_work_surface` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1133) |
-| function | `_jarvis_emergent_summary` | `(emergent_signals)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1200) |
-| function | `_jarvis_emergent_summary` | `(emergent_signals)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1216) |
-| function | `_preview_text` | `(value, *, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_common.py#L1232) |
 

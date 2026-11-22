@@ -103,6 +103,14 @@ def test_status_paa_rent_repo(klient) -> None:
     assert d["dirty"] == 0 and d["files"] == []
 
 
+def test_status_udleder_github_repo_fra_origin(klient, repo) -> None:
+    _git(repo, "remote", "add", "origin", "git@github.com:owner/project.git")
+
+    d = klient.get(f"{P}/status").json()
+
+    assert d["repo"] == "owner/project"
+
+
 def test_status_ser_aendret_og_ny_fil(klient, repo) -> None:
     (repo / "f.txt").write_text("hej\nmere\n")
     (repo / "ny fil.txt").write_text("x\n")

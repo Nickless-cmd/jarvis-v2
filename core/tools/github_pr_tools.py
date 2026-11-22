@@ -103,6 +103,15 @@ def execute_github_ci_status(args: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def execute_github_list_prs(args: dict[str, Any]) -> dict[str, Any]:
+    """List PRs through the same per-user connector used by the tool catalog."""
+    from core.services.github_connector import list_prs
+
+    repo = str(args.get("repo") or "").strip()
+    state = str(args.get("state") or "open").strip() or "open"
+    return list_prs(_user_id(args), repo, state=state)
+
+
 GITHUB_PR_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10420/19051 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10423/19068 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 10420/19051 functions/methods documented (54%). The list 
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 765 | 1076 | 71% |
+| `apps.api.jarvis_api.routes` | 766 | 1091 | 70% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -26,14 +26,14 @@ Generated from source. 10420/19051 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 920 | 1637 | 56% |
-| `core.services` | 6990 | 12945 | 53% |
+| `core.services` | 6991 | 12946 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 150 | 232 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 29 | 45 | 64% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 646 | 1238 | 52% |
+| `core.tools` | 647 | 1239 | 52% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
@@ -43,7 +43,7 @@ Generated from source. 10420/19051 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2673)
+## Undocumented public functions (2679)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L236)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -110,11 +110,14 @@ Generated from source. 10420/19051 functions/methods documented (54%). The list 
 - `apps/api/jarvis_api/routes/flade_deferred_turn.py` :: `flade_deferred_tool_turn` (L153)
 - `apps/api/jarvis_api/routes/geo.py` :: `geo_reverse` (L27)
 - `apps/api/jarvis_api/routes/geo.py` :: `geo_search` (L40)
-- `apps/api/jarvis_api/routes/git_panel.py` :: `git_panel_log` (L390)
-- `apps/api/jarvis_api/routes/git_panel.py` :: `git_panel_stage` (L366)
-- `apps/api/jarvis_api/routes/git_panel.py` :: `git_panel_status` (L336)
-- `apps/api/jarvis_api/routes/git_panel.py` :: `git_panel_unstage` (L373)
-- `apps/api/jarvis_api/routes/git_panel.py` :: `git_panel_worktrees` (L406)
+- `apps/api/jarvis_api/routes/git_panel.py` :: `git_panel_log` (L403)
+- `apps/api/jarvis_api/routes/git_panel.py` :: `git_panel_stage` (L379)
+- `apps/api/jarvis_api/routes/git_panel.py` :: `git_panel_status` (L349)
+- `apps/api/jarvis_api/routes/git_panel.py` :: `git_panel_unstage` (L386)
+- `apps/api/jarvis_api/routes/git_panel.py` :: `git_panel_worktrees` (L419)
+- `apps/api/jarvis_api/routes/github.py` :: `github_ci` (L46)
+- `apps/api/jarvis_api/routes/github.py` :: `github_create_pr` (L54)
+- `apps/api/jarvis_api/routes/github.py` :: `github_prs` (L39)
 - `apps/api/jarvis_api/routes/health.py` :: `health` (L10)
 - `apps/api/jarvis_api/routes/interlanguage_blind.py` :: `confusion` (L240)
 - `apps/api/jarvis_api/routes/interlanguage_blind.py` :: `finish_session` (L232)
@@ -168,6 +171,9 @@ Generated from source. 10420/19051 functions/methods documented (54%). The list 
 - `apps/api/jarvis_api/routes/sensory.py` :: `search_memories` (L44)
 - `apps/api/jarvis_api/routes/sensory.py` :: `summary` (L54)
 - `apps/api/jarvis_api/routes/system_health.py` :: `system_health` (L19)
+- `apps/api/jarvis_api/routes/tool_hooks.py` :: `get_tool_hook_log` (L125)
+- `apps/api/jarvis_api/routes/tool_hooks.py` :: `get_tool_hooks` (L113)
+- `apps/api/jarvis_api/routes/tool_hooks.py` :: `reload_tool_hooks` (L119)
 - `apps/api/jarvis_api/routes/tool_router.py` :: `get_state` (L25)
 - `apps/api/jarvis_api/routes/totp.py` :: `totp_status` (L62)
 - `apps/api/jarvis_api/routes/transcribe.py` :: `transcribe` (L22)
@@ -2290,9 +2296,9 @@ Generated from source. 10420/19051 functions/methods documented (54%). The list 
 - `core/services/tool_result_store.py` :: `summarize_result` (L26)
 - `core/services/tool_router_runtime.py` :: `start_tool_router_runtime` (L73)
 - `core/services/tool_router_runtime.py` :: `stop_tool_router_runtime` (L85)
-- `core/services/tool_shell_hooks.py` :: `ShellHook.after_tool` (L184)
-- `core/services/tool_shell_hooks.py` :: `ShellHook.before_tool` (L166)
-- `core/services/tool_shell_hooks.py` :: `ShellHook.rammer` (L97)
+- `core/services/tool_shell_hooks.py` :: `ShellHook.after_tool` (L204)
+- `core/services/tool_shell_hooks.py` :: `ShellHook.before_tool` (L186)
+- `core/services/tool_shell_hooks.py` :: `ShellHook.rammer` (L113)
 - `core/services/tool_tagger.py` :: `get_pinned_set` (L75)
 - `core/services/tool_tagger.py` :: `invalidate_cache` (L80)
 - `core/services/trading/grid_bot.py` :: `FeeTracker.deduct` (L50)

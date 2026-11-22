@@ -50,6 +50,7 @@ _GitHub PR creation and CI status tools via the per-user connector._
 | function | `_user_id` | `(args)` | — | [src](../../../core/tools/github_pr_tools.py#L7) |
 | function | `execute_github_create_pr` | `(args)` | — | [src](../../../core/tools/github_pr_tools.py#L15) |
 | function | `execute_github_ci_status` | `(args)` | — | [src](../../../core/tools/github_pr_tools.py#L39) |
+| function | `execute_github_list_prs` | `(args)` | List PRs through the same per-user connector used by the tool catalog. | [src](../../../core/tools/github_pr_tools.py#L106) |
 
 ## `core/tools/github_tools.py`
 _Git introspection tools — operates on the Jarvis v2 repo._

@@ -30,6 +30,42 @@ export const CI_NAVN: Record<CiStatus['state'], string> = {
   pending: 'CI kører', success: 'CI grøn', failure: 'CI fejlet', none: 'Ingen CI-kørsel', ukendt: 'CI-status ukendt',
 }
 
+export interface PullRequestStatus {
+  number: number
+  title: string
+  state: string
+  url?: string
+  ci?: CiStatus
+}
+
+export async function hentAabnePrs(config: ApiConfig, repo: string): Promise<PullRequestStatus[]> {
+  if (!repo) return []
+  const response = await apiFetch<{ prs?: PullRequestStatus[] }>(
+    config, `/api/github/prs?repo=${encodeURIComponent(repo)}`,
+  )
+  const prs = Array.isArray(response.prs) ? response.prs : []
+  return Promise.all(prs.map(async pr => {
+    try {
+      const ci = await apiFetch<Partial<CiStatus>>(
+        config, `/api/github/ci?repo=${encodeURIComponent(repo)}&pull_number=${pr.number}`,
+      )
+      const state = String(ci.state ?? '')
+      return {
+        ...pr,
+        ci: {
+          ok: ci.ok !== false,
+          state: (['pending', 'success', 'failure', 'none'] as const).find(x => x === state) ?? 'ukendt',
+          checks: Array.isArray(ci.checks) ? ci.checks : [],
+          url: ci.url,
+          error: ci.error,
+        },
+      }
+    } catch {
+      return { ...pr, ci: { ok: false, state: 'ukendt' as const, checks: [], error: 'CI-status utilgængelig' } }
+    }
+  }))
+}
+
 /** Serveren melder fejl som `{status:'error', detail}` — `detail` løftes op i fejlen. */
 export async function opretPr(
   config: ApiConfig, m: Maal, titel: string,

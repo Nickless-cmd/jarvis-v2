@@ -9,7 +9,7 @@ import {
   type GitCommitPost, type GitFil, type GitStatusPanel, type GitWorktree, type Maal,
 } from '../../lib/gitPanel'
 import { BranchVaelger } from '../code/BranchVaelger'
-import { CI_NAVN, hentCiStatus, opretPr, type CiStatus } from '../../lib/gitPr'
+import { CI_NAVN, hentAabnePrs, hentCiStatus, opretPr, type CiStatus, type PullRequestStatus } from '../../lib/gitPr'
 import '../../styles/kode-flader.css'
 
 type Sektion = 'staged' | 'aendret' | 'nye' | 'konflikt'
@@ -48,6 +48,8 @@ export function GitPanel({
   const [prUrl, setPrUrl] = useState('')
   const [ci, setCi] = useState<CiStatus | null>(null)
   const [ciFejl, setCiFejl] = useState('')
+  const [prs, setPrs] = useState<PullRequestStatus[]>([])
+  const [prFejl, setPrFejl] = useState('')
 
   const opdater = useCallback(async () => {
     try {
@@ -55,12 +57,17 @@ export function GitPanel({
       setStatus(s)
       setFejl(s.ok ? '' : (s.error || 'Kunne ikke læse git-status'))
       if (!s.ok) return
-      const [l, w] = await Promise.all([
+      const [l, w, openPrResult] = await Promise.all([
         hentGitLog(config, maal, 15).catch(() => null),
         hentGitWorktrees(config, maal).catch(() => null),
+        hentAabnePrs(config, s.repo)
+          .then(rows => ({ rows, error: '' }))
+          .catch(e => ({ rows: [] as PullRequestStatus[], error: fejlTekst(e, 'Kunne ikke hente åbne pull requests') })),
       ])
       if (l?.ok) setLog(l.commits)
       if (w?.ok) setTrær(w.worktrees)
+      setPrs(openPrResult.rows)
+      setPrFejl(openPrResult.error)
     } catch (e) {
       setFejl(fejlTekst(e, 'Kunne ikke læse git-status'))
     }
@@ -271,6 +278,23 @@ export function GitPanel({
           {ciFejl && <span className="gitpanel-hint">CI: {ciFejl}</span>}
           {prUrl && <a href={prUrl} target="_blank" rel="noreferrer">Åbn PR</a>}
         </div>
+      )}
+      {status.ok && status.repo && (
+        <section className="gitpanel-sektion gitpanel-prs">
+          <h4>Åbne pull requests <span className="gitpanel-antal">{prs.length}</span></h4>
+          {prs.length === 0 ? <div className="gitpanel-tom">Ingen åbne pull requests.</div> : (
+            <ul className="gitpanel-log">
+              {prs.map(openPr => (
+                <li key={openPr.number}>
+                  <GitPullRequest size={11} />{' '}
+                  {openPr.url ? <a href={openPr.url} target="_blank" rel="noreferrer">#{openPr.number} {openPr.title}</a> : `#${openPr.number} ${openPr.title}`}
+                  {openPr.ci && <span className={`ci-${openPr.ci.state}`}> · {CI_NAVN[openPr.ci.state]}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+          {prFejl && <div className="gitpanel-fejl" role="alert">{prFejl}</div>}
+        </section>
       )}
       {fejl && <div className="gitpanel-fejl" role="alert">{fejl}</div>}
       {info && !fejl && <div className="gitpanel-info" role="status">{info}</div>}

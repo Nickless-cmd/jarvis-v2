@@ -59,6 +59,8 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 CONFIG_STI = pathlib.Path.home() / ".jarvis-v2" / "config" / "tool_hooks.json"
+LOG_STI = pathlib.Path.home() / ".jarvis-v2" / "logs" / "tool_hooks.jsonl"
+LOG_ROTATION_BYTES = 10 * 1024 * 1024
 
 # Et hook-kald er ikke et sted hvor man skal kunne hente en nøgle.
 _ENV_HVIDLISTE = ("PATH", "HOME", "LANG", "LC_ALL", "TZ", "TMPDIR")
@@ -69,6 +71,20 @@ _load_lock = RLock()
 _loaded = False
 _hooks: list["ShellHook"] = []
 _last_error = ""
+
+
+def rotate_log_if_needed() -> bool:
+    """Rotér hook-loggen før næste hook-skrivning; behold én generation."""
+    try:
+        if not LOG_STI.is_file() or LOG_STI.stat().st_size < LOG_ROTATION_BYTES:
+            return False
+        rotated = LOG_STI.with_name(f"{LOG_STI.name}.1")
+        rotated.unlink(missing_ok=True)
+        LOG_STI.replace(rotated)
+        return True
+    except OSError as exc:
+        logger.warning("tool_hooks: logrotation fejlede: %s", exc)
+        return False
 
 
 @dataclass
@@ -109,6 +125,10 @@ class ShellHook:
               arguments: dict[str, Any]) -> HookResultat:
         if not kommando.strip():
             return HookResultat(exit_kode=0, blokerer=False)
+
+        # Hooken kan være den proces der skriver JSONL-filen. Størrelsestjekket
+        # sker derfor lige før processtart og kræver hverken tråd eller timer.
+        rotate_log_if_needed()
 
         payload = json.dumps(
             {"tool": tool_name, "phase": fase, "arguments": arguments},
@@ -195,6 +215,9 @@ class ShellHook:
                 "status": str((result or {}).get("status") or ""),
                 "bytes": len(json.dumps(result or {}, default=str)),
             }
+            confinement = (result or {}).get("confinement")
+            if isinstance(confinement, dict):
+                samlet["__result__"]["confinement"] = dict(confinement)
         except Exception:  # et ubeskriveligt resultat må ikke stoppe observatøren
             samlet["__result__"] = {"status": "?"}
         res = self._koer(self.after, fase="after", tool_name=tool_name,
@@ -306,7 +329,7 @@ def status() -> dict[str, Any]:
         "antal": len(_hooks),
         "hooks": [
             {"name": h.name, "match": h.match.pattern, "before": bool(h.before),
-             "after": bool(h.after), "timeout_s": h.timeout_s}
+             "after": bool(h.after), "timeout_s": h.timeout_s, "active": True}
             for h in _hooks
         ],
         "fejl": _last_error,
@@ -327,5 +350,6 @@ def _nulstil_for_test() -> None:
 
 
 __all__ = [
-    "CONFIG_STI", "HookResultat", "ShellHook", "ensure_loaded", "status",
+    "CONFIG_STI", "LOG_STI", "LOG_ROTATION_BYTES", "HookResultat", "ShellHook",
+    "ensure_loaded", "rotate_log_if_needed", "status",
 ]

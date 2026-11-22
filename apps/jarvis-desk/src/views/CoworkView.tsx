@@ -25,6 +25,7 @@ import { JarvisSection } from '../components/settings/JarvisSection'
 import { AppsSection } from '../components/settings/AppsSection'
 import { McpSection } from '../components/settings/McpSection'
 import { WorkbenchSection } from '../components/settings/WorkbenchSection'
+import { HooksSection } from '../components/settings/HooksSection'
 import { TotpSetup } from '../components/settings/TotpSetup'
 import { PluginsPanel } from '../components/settings/PluginsPanel'
 import { ConnectionSection } from '../components/settings/ConnectionSection'
@@ -163,6 +164,7 @@ export function CoworkView({
 
       case 'system': return isOwner ? (
         <CategoryPage title="Systemstatus" description="Teknisk tilstand og avanceret indsigt i Jarvis' drift." focusSection={zone} wide>
+          <CategorySection id="toolHooks" title="Tool-hooks og sandbox"><HooksSection config={config} /></CategorySection>
           <CategorySection id="central" title="Central"><CentralBadge config={config} isOwner={isOwner} /></CategorySection>
           <CategorySection id="jarvisMind" title="Jarvis Mind"><JarvisMind config={config} /></CategorySection>
           <CategorySection id="matrixKarakterer" title="Matrix-karakterer" description="Hvem der kører, hvor tit — og hvad de senest faktisk gjorde.">

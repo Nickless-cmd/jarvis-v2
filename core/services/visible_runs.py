@@ -499,6 +499,59 @@ from core.services.visible_turn_blocks import (  # noqa: E402,F401
 )
 
 
+def _stilhed_siden_aktivitet(run_id: str, age_s: float) -> float:
+    """Sekunder siden runnet sidst rørte sig — eller alderen, hvis vi intet ved.
+
+    Venteløkkens heartbeat skriver `last_activity_at` hvert 10. sekund, så en
+    tur der venter på et menneske er målbart LEVENDE, uanset hvor gammel den er.
+    Det er samme regel `run_event_log.last_activity_at` fik 17/10-2026 for
+    `stream_sentinel`: mål STILHED, ikke alder.
+
+    Ulaesbar eller manglende tid falder tilbage på alderen — det er det
+    konservative svar, for det bevarer zombie-værnet.
+    """
+    try:
+        kontrol = _get_visible_run_control(run_id)
+        raa = str(kontrol.get("last_activity_at") or "")
+        if not raa:
+            return age_s
+        from datetime import UTC as _UTC, datetime as _dt
+
+        sidst = _dt.fromisoformat(raa.replace("Z", "+00:00"))
+        if sidst.tzinfo is None:
+            sidst = sidst.replace(tzinfo=_UTC)
+        return (_dt.now(_UTC) - sidst).total_seconds()
+    except Exception:  # ulaesbar tid: alderen er det konservative svar
+        return age_s
+
+
+def _stuck_run_dom(
+    *,
+    age_s: float,
+    stilhed_s: float,
+    still_alive: bool,
+    relay_open: bool,
+    levende_ude: bool,
+) -> tuple[bool, str]:
+    """Skal den aktive kørsel ryddes? ``(bool, grund)``.
+
+    Udskilt 22/11-2026, fordi beslutningen var inline i en 7.000-linjers
+    generator og derfor ikke kunne testes — og netop derfor kunne den dræbe en
+    tur der sad og ventede pænt på et menneske i over ti minutter, uden at
+    nogen prøve fangede det.
+
+    ``hung_too_long`` kræver STILHED, ikke alder: siden
+    `approval_wait.DEFAULT_APPROVAL_WINDOW_S` følger kortets levetid (3600s)
+    kan en lovlig ventetid sagtens overstige ti minutter. Et virkelig dødt run
+    holder også op med at røre sig, så stilheden fanger det stadig.
+    """
+    if (not still_alive) and age_s > 300 and not relay_open and not levende_ude:
+        return True, "no_controller"
+    if stilhed_s > 600 and not relay_open and not levende_ude:
+        return True, "hung_too_long"
+    return False, ""
+
+
 def _lever_i_anden_proces(run_id: str, session_id: str) -> bool:
     """Kører DETTE run stadig — set fra en proces der ikke ejer det? (27/10-2026)
 
@@ -883,16 +936,15 @@ def start_visible_run(
             # lokalt og gyldigt signal).
             levende_ude = (not still_alive) and _lever_i_anden_proces(
                 stale_run_id, str(normalized_session_id or ""))
-            should_clear_dead = ((not still_alive) and age_s > 300
-                                 and not relay_open and not levende_ude)
-            should_clear_hung = (age_s > 600 and not relay_open
-                                 and not levende_ude)            # 10 min
-            if should_clear_dead or should_clear_hung:
+            _stilhed_s = _stilhed_siden_aktivitet(stale_run_id, age_s)
+            _skal_rydde, _rydde_grund = _stuck_run_dom(
+                age_s=age_s, stilhed_s=_stilhed_s, still_alive=still_alive,
+                relay_open=relay_open, levende_ude=levende_ude)
+            if _skal_rydde:
                 logger.warning(
                     "visible_runs: clearing stuck active_run %s "
-                    "(age=%.0fs, in_memory=%s, reason=%s)",
-                    stale_run_id, age_s, still_alive,
-                    "no_controller" if should_clear_dead else "hung_too_long",
+                    "(age=%.0fs, stilhed=%.0fs, in_memory=%s, reason=%s)",
+                    stale_run_id, age_s, _stilhed_s, still_alive, _rydde_grund,
                 )
                 # If the controller IS in memory, try to also cancel it so
                 # any background work stops cleanly instead of zombie-ing.

@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/git_actions.py`
+_Rolle-aware git-eksekvering for code mode._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_git_container` | `(repo, *a, timeout=…)` | — | [src](../../../core/services/git_actions.py#L24) |
+| function | `_human_attribution` | `()` | — | [src](../../../core/services/git_actions.py#L28) |
+| function | `_commit_container` | `(repo, message)` | — | [src](../../../core/services/git_actions.py#L39) |
+| function | `commit_all_container` | `(repo, message)` | — | [src](../../../core/services/git_actions.py#L47) |
+| function | `_agent_attribution` | `()` | Jarvis' egen attribution: actor=jarvis, origin=interactive. | [src](../../../core/services/git_actions.py#L63) |
+| function | `_uddrag` | `(blob, graense=…)` | Behold HALEN af en fejlbesked: aarsagen staar sidst, ikke foerst. | [src](../../../core/services/git_actions.py#L83) |
+| function | `commit_paths_as_jarvis` | `(repo, message, paths=…)` | Commit uden shell — argv hele vejen, beskeden gennem en temp-fil. | [src](../../../core/services/git_actions.py#L103) |
+| function | `_operator_exec` | `(name, args)` | — | [src](../../../core/services/git_actions.py#L197) |
+| function | `_ws_git` | `(root, uid, gitargs, timeout=…)` | Kør `git -C <root> <gitargs>` på brugerens bro. Returnér (rc, stdout, stderr). | [src](../../../core/services/git_actions.py#L202) |
+| function | `_ws_attributed_commit` | `(root, uid, message, *, timeout=…)` | — | [src](../../../core/services/git_actions.py#L212) |
+| function | `commit_all_workstation` | `(root, uid, message)` | — | [src](../../../core/services/git_actions.py#L242) |
+| function | `commit_all` | `(target, container_repo, uid, message)` | — | [src](../../../core/services/git_actions.py#L260) |
+| function | `parse_owner_repo` | `(remote_url)` | — | [src](../../../core/services/git_actions.py#L272) |
+| function | `_ws_git_raw` | `(root, uid, cmd, timeout=…)` | Kør vilkårlig kommando i `root` på brugerens bro (til gh). | [src](../../../core/services/git_actions.py#L283) |
+| function | `create_pr` | `(target, container_repo, uid, title, body)` | Commit → branch hvis på default → push → PR (API, ellers gh-fallback). | [src](../../../core/services/git_actions.py#L293) |
+| function | `_create_pr_gh` | `(ws, root, uid, base, branch, title, body)` | — | [src](../../../core/services/git_actions.py#L333) |
+| function | `_split_gh` | `(args)` | — | [src](../../../core/services/git_actions.py#L347) |
+
 ## `core/services/git_workspace_actions.py`
 _Git-handlinger for code-mode's workspace-vaelgere._
 
@@ -610,13 +633,4 @@ _Hugging Face-connector — søg modeller/datasets via Hub API._
 | function | `_get` | `(path, params=…)` | — | [src](../../../core/services/hf_connector.py#L52) |
 | function | `search_models` | `(query, *, limit=…)` | — | [src](../../../core/services/hf_connector.py#L67) |
 | function | `model_info` | `(model_id)` | — | [src](../../../core/services/hf_connector.py#L85) |
-
-## `core/services/hollow_promise_census.py`
-_Optælling af tomme løfter — så Centralen kan SE Jarvis' værste mønster._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_since` | `(hours)` | ISO-UTC-grænse. DB'en gemmer `2026-09-05T16:20:19.213749+00:00`, så en | [src](../../../core/services/hollow_promise_census.py#L71) |
-| function | `census` | `(hours=…)` | Den ægte rate pr. model + hvor meget værnet fangede. Self-safe. | [src](../../../core/services/hollow_promise_census.py#L79) |
-| function | `_guard_counts` | `(grænse)` | Hvad værnet selv greb, fra dets egne events. Self-safe. | [src](../../../core/services/hollow_promise_census.py#L129) |
 

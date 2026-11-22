@@ -432,6 +432,35 @@ def resolve_pending_approval(approval_id: str, *, approved: bool,
     except Exception:
         logger.debug("kunne ikke persistere godkendelse", exc_info=True)
 
+    # ── Resultatet skal have en LÆSER (22/11-2026) ──────────────────────
+    #
+    # Målt: 41 af 4.028 kort blev afgjort EFTER deres tur var slut, og 40 af
+    # dem kørte kommandoen færdig — op til 38 minutter senere. Resultatet blev
+    # skrevet ovenfor, så Bjørn SÅ det; men den tur der bad om lov var væk, og
+    # derfor var der ingen der læste svaret og sagde hvad det betød. Han fik
+    # rådata uden en stemme på.
+    #
+    # `start_opfølgning` afgør selv om turen er BEVISELIGT slut, om sessionen
+    # er fri, og om kæden skal stoppe — og den kaster aldrig. Et kort der er
+    # afgjort mens turen lever, får sit resultat gennem `wait_for_approval` og
+    # skal ikke have en ekstra tur oveni.
+    if chat_persisted:
+        try:
+            from core.services.approval_followup import start_opfølgning
+
+            start_opfølgning(
+                approval_id=approval_id,
+                tool_name=str(pending.get("tool_name") or ""),
+                session_id=session_id,
+                oprindeligt_run_id=str(pending.get("run_id") or ""),
+                force_user_id=str(pending.get("owner_user_id") or "") or None,
+            )
+        except Exception:
+            logger.warning(
+                "resolve_pending_approval: opfoelgning fejlede for %s",
+                approval_id, exc_info=True,
+            )
+
     return {
         "status": result.get("status", "ok"),
         "tool": pending["tool_name"],

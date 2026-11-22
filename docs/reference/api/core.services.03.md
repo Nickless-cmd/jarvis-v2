@@ -77,6 +77,21 @@ _Fejeren for udløbne godkendelser — den kalder `expire_stale()`._
 | function | `_subscriber_loop` | `(*, subscriber)` | — | [src](../../../core/services/approval_feedback_subscriber.py#L49) |
 | function | `build_approval_feedback_subscriber_surface` | `()` | Mission Control-surface: hvad svarede brugeren, og lytter abonnenten? | [src](../../../core/services/approval_feedback_subscriber.py#L98) |
 
+## `core/services/approval_followup.py`
+_En tur der læser et godkendelses-resultat der kom efter turen var slut._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_markoer_noegle` | `(approval_id)` | — | [src](../../../core/services/approval_followup.py#L55) |
+| function | `_run_markoer_noegle` | `(run_id)` | — | [src](../../../core/services/approval_followup.py#L59) |
+| function | `_laes` | `(noegle)` | Læs en markør — ``None`` når den ikke findes eller er ulaesbar. | [src](../../../core/services/approval_followup.py#L63) |
+| function | `_skriv` | `(noegle, vaerdi)` | Skriv en markør. ``False`` betyder at den IKKE står på disken. | [src](../../../core/services/approval_followup.py#L75) |
+| function | `_er_utloebet` | `(markoer)` | Er markøren ældre end `MARKOER_LEVETID_S`? Ulaesbar tid = ikke udløbet. | [src](../../../core/services/approval_followup.py#L87) |
+| function | `er_opfølgningstur` | `(run_id)` | Blev DETTE run startet af os som en opfølgning? | [src](../../../core/services/approval_followup.py#L101) |
+| function | `_allerede_fulgt_op` | `(approval_id)` | — | [src](../../../core/services/approval_followup.py#L112) |
+| function | `_besked` | `(tool_name)` | Det opfølgningsturen læser. Kort, ærligt og handlingsanvisende. | [src](../../../core/services/approval_followup.py#L121) |
+| function | `start_opfølgning` | `(*, approval_id, tool_name, session_id, oprindeligt_run_id, force_user_id=…)` | Start én tur der læser et sent godkendt resultat. Kaster aldrig. | [src](../../../core/services/approval_followup.py#L131) |
+
 ## `core/services/approval_outbox.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -606,24 +621,4 @@ _Dagligt budget for selvvalgte handlinger + tælling af stilheden (blok E, 4/9).
 | function | `build_weekly_summary` | `()` | Ugens stilhed i én linje — "" når han ikke har tiet nævneværdigt. | [src](../../../core/services/autonomy_budget.py#L142) |
 | function | `run_weekly_review` | `(*, force=…, now=…)` | Ugentligt: læg stilheds-resuméet i den proaktive kø og nulstil tælleren. | [src](../../../core/services/autonomy_budget.py#L161) |
 | function | `build_autonomy_budget_surface` | `()` | — | [src](../../../core/services/autonomy_budget.py#L190) |
-
-## `core/services/autonomy_pressure_signal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_autonomy_pressure_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L60) |
-| function | `refresh_runtime_autonomy_pressure_signal_statuses` | `()` | Mark signals as stale based on multiple criteria. | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L83) |
-| function | `retire_autonomy_pressure_signal` | `(signal_id, *, reason=…)` | Explicitly retire/close an autonomy pressure signal. | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L143) |
-| function | `build_runtime_autonomy_pressure_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L170) |
-| function | `_extract_autonomy_pressure_candidates` | `()` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L213) |
-| function | `_persist_autonomy_pressure_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L549) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L613) |
-| function | `_candidate` | `(*, pressure_type, pressure_state, weight, confidence, title, summary, rationale, source_anchor, evidence_summary, support_summary, support_count, session_count, status_reason)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L645) |
-| function | `_source_anchor` | `(surface, *, fallback)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L684) |
-| function | `_question_continuity_support` | `(*, relation, meaning, witness, chronicle, attachment, loyalty)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L693) |
-| function | `_initiative_loop_question_support` | `(*, open_loops, initiative, regulation, awareness, witness, chronicle, attachment, loyalty)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L734) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L826) |
-| function | `_find_support_value` | `(support_summary, key, default)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L835) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L843) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/autonomy_pressure_signal_tracking.py#L855) |
 

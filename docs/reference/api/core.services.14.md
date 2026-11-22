@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/explore_claim_check.py`
+_Tjek explore-agentens påstande mod virkeligheden._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_rens_hale` | `(tekst)` | Fjern citationstegn i halen — men aldrig en parentes der HOERER til. | [src](../../../core/services/explore_claim_check.py#L172) |
+| function | `_laesninger` | `(indhold)` | Hver rimelig laesning af en paastand, STAERKESTE foerst. | [src](../../../core/services/explore_claim_check.py#L191) |
+| function | `_kort` | `(kerne)` | Den svageste rimelige laesning af et citat. | [src](../../../core/services/explore_claim_check.py#L222) |
+| function | `_citat_i` | `(tekst)` | Citatet hvis der ER et — ellers hele teksten. | [src](../../../core/services/explore_claim_check.py#L234) |
+| function | `_bro_tavs` | `(ud)` | Har broen tiet saa mange gange I TRAEK at det ikke nytter at spoerge? | [src](../../../core/services/explore_claim_check.py#L280) |
+| function | `_rod` | `()` | — | [src](../../../core/services/explore_claim_check.py#L291) |
+| function | `_findes` | `(sti, rod)` | — | [src](../../../core/services/explore_claim_check.py#L299) |
+| function | `_naermeste_traef` | `(linjer, nr, kandidater)` | (afstand, kerne) for det træf der ligger tættest på `nr`, eller None. | [src](../../../core/services/explore_claim_check.py#L316) |
+| function | `_bogfoer_traef` | `(ud, fejl, *, sti, nr, kerne, afstand)` | Et træf tæller som belæg; ligger det for langt væk, er det en fejl. | [src](../../../core/services/explore_claim_check.py#L330) |
+| function | `tjek_paastande` | `(svar, *, rod=…, findes_fn=…, linje_fn=…)` | Slå svarets efterprøvelige påstande op. Kaster aldrig. | [src](../../../core/services/explore_claim_check.py#L341) |
+
 ## `core/services/fabricated_tool_result_gate.py`
 _Fabrikerede tool-resultater — den ene løgn der ikke kan bortforklares._
 
@@ -494,27 +510,4 @@ _Ghost Networks — spor af mønstre der holdt op med at være aktive._
 | function | `format_ghost_for_prompt` | `()` | — | [src](../../../core/services/ghost_networks.py#L175) |
 | function | `reset_ghost_networks` | `()` | — | [src](../../../core/services/ghost_networks.py#L180) |
 | function | `build_ghost_networks_surface` | `()` | — | [src](../../../core/services/ghost_networks.py#L184) |
-
-## `core/services/git_actions.py`
-_Rolle-aware git-eksekvering for code mode._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_git_container` | `(repo, *a, timeout=…)` | — | [src](../../../core/services/git_actions.py#L24) |
-| function | `_human_attribution` | `()` | — | [src](../../../core/services/git_actions.py#L28) |
-| function | `_commit_container` | `(repo, message)` | — | [src](../../../core/services/git_actions.py#L39) |
-| function | `commit_all_container` | `(repo, message)` | — | [src](../../../core/services/git_actions.py#L47) |
-| function | `_agent_attribution` | `()` | Jarvis' egen attribution: actor=jarvis, origin=interactive. | [src](../../../core/services/git_actions.py#L63) |
-| function | `_uddrag` | `(blob, graense=…)` | Behold HALEN af en fejlbesked: aarsagen staar sidst, ikke foerst. | [src](../../../core/services/git_actions.py#L83) |
-| function | `commit_paths_as_jarvis` | `(repo, message, paths=…)` | Commit uden shell — argv hele vejen, beskeden gennem en temp-fil. | [src](../../../core/services/git_actions.py#L103) |
-| function | `_operator_exec` | `(name, args)` | — | [src](../../../core/services/git_actions.py#L197) |
-| function | `_ws_git` | `(root, uid, gitargs, timeout=…)` | Kør `git -C <root> <gitargs>` på brugerens bro. Returnér (rc, stdout, stderr). | [src](../../../core/services/git_actions.py#L202) |
-| function | `_ws_attributed_commit` | `(root, uid, message, *, timeout=…)` | — | [src](../../../core/services/git_actions.py#L212) |
-| function | `commit_all_workstation` | `(root, uid, message)` | — | [src](../../../core/services/git_actions.py#L242) |
-| function | `commit_all` | `(target, container_repo, uid, message)` | — | [src](../../../core/services/git_actions.py#L260) |
-| function | `parse_owner_repo` | `(remote_url)` | — | [src](../../../core/services/git_actions.py#L272) |
-| function | `_ws_git_raw` | `(root, uid, cmd, timeout=…)` | Kør vilkårlig kommando i `root` på brugerens bro (til gh). | [src](../../../core/services/git_actions.py#L283) |
-| function | `create_pr` | `(target, container_repo, uid, title, body)` | Commit → branch hvis på default → push → PR (API, ellers gh-fallback). | [src](../../../core/services/git_actions.py#L293) |
-| function | `_create_pr_gh` | `(ws, root, uid, base, branch, title, body)` | — | [src](../../../core/services/git_actions.py#L333) |
-| function | `_split_gh` | `(args)` | — | [src](../../../core/services/git_actions.py#L347) |
 

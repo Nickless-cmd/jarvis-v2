@@ -1,5 +1,19 @@
 
 # ── Kortet hører til en EJER, ikke til det vindue der er åbent (20/9-2026) ───
+def _ts(minutter_siden: int) -> str:
+    """Et tidsstempel i NÆRHEDEN af nu.
+
+    Testen brugte fastlåste september-datoer, og så blev den tavst til en
+    prøve af noget andet: 11/11-2026 fik `pending_for_owner` en
+    udløbs-filtrering (et kort ældre end sin TTL er ikke «ventende»), og de
+    to måneder gamle kort faldt derfor ud — `None` i stedet for det nyeste.
+    Koden var rigtig; testen målte bare ikke længere det den påstod.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    return (datetime.now(UTC) - timedelta(minutes=minutter_siden)).isoformat()
+
+
 def test_pending_for_owner_finder_kort_paa_tvaers_af_samtaler(monkeypatch):
     """Session-udgaven lukkede kun det halve hul.
 
@@ -13,11 +27,11 @@ def test_pending_for_owner_finder_kort_paa_tvaers_af_samtaler(monkeypatch):
     # Kortene bor paa disken (24/9-2026); skriv dem hvor koden laeser dem.
     for _aid, _kort in {
         "a1": {"tool_name": "bash", "session_id": "s1", "owner_user_id": "bjorn",
-               "created_at": "2026-09-20T18:39:54Z"},
+               "created_at": _ts(3)},
         "a2": {"tool_name": "bash", "session_id": "s2", "owner_user_id": "bjorn",
-               "created_at": "2026-09-20T18:41:23Z"},
+               "created_at": _ts(1)},
         "a3": {"tool_name": "bash", "session_id": "s3", "owner_user_id": "en-anden",
-               "created_at": "2026-09-20T18:42:00Z"},
+               "created_at": _ts(1)},
     }.items():
         vr.saet_godkendelse(_aid, _kort)
     kort = ar.pending_for_owner("bjorn")
@@ -31,7 +45,7 @@ def test_pending_for_owner_ser_ikke_en_andens_kort(monkeypatch):
 
     vr.saet_godkendelse("a3", {"tool_name": "bash", "session_id": "s3",
                                "owner_user_id": "en-anden",
-                               "created_at": "2026-09-20T18:42:00Z"})
+                               "created_at": _ts(1)})
     assert ar.pending_for_owner("bjorn") is None
     assert ar.pending_for_owner("") is None
 

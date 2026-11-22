@@ -366,6 +366,25 @@ def _noter_i_flugt(navn: str, t: threading.Thread) -> None:
         _i_flugt[navn] = t
 
 
+def _rapporter_sen_succes(navn: str) -> None:
+    """En koersel der blev faerdig EFTER kalderen opgav, er stadig en succes.
+
+    Maalt 22/11-2026: sampleren laa paa vippen — 75,0 s og lige igennem, eller
+    76 s og sprunget over. Naar `ferdig.wait()` gav op, blev `box["r"]` laest
+    ALDRIG, saa `report_background_recovered` blev aldrig kaldt og posten
+    kunne ikke lukke sig selv. En sen succes forsvandt i tavshed — og det er
+    praecis den vej der lod posterne ophobe sig.
+    """
+    try:
+        from core.services.background_attention import report_background_recovered
+
+        report_background_recovered(
+            source_kind="cadence-producer", source_id=navn,
+        )
+    except Exception:
+        logger.debug("sen succes kunne ikke lukke posten", exc_info=True)
+
+
 def _run_producer_bounded(spec, *, trigger: str, last_visible_at: str, timeout_s: float):
     """Kør en producer i sin EGEN persistente worker-tråd med en hård timeout.
 
@@ -381,6 +400,10 @@ def _run_producer_bounded(spec, *, trigger: str, last_visible_at: str, timeout_s
     """
     box: dict[str, object] = {}
     ferdig = threading.Event()
+    #: Sat af kalderen naar den opgiver at vente. Workeren laeser den EFTER et
+    #: vellykket run_fn-kald, saa en sen succes bliver rapporteret i stedet for
+    #: at forsvinde (22/11-2026).
+    opgivet = threading.Event()
 
     def _target() -> None:
         # Tag hvilken producer der kører NU, så cheap-lane-kald i run_fn (samme tråd) kan
@@ -392,6 +415,8 @@ def _run_producer_bounded(spec, *, trigger: str, last_visible_at: str, timeout_s
             pass
         try:
             box["r"] = spec.run_fn(trigger=trigger, last_visible_at=last_visible_at)
+            if opgivet.is_set():
+                _rapporter_sen_succes(spec.name)
         except BaseException as exc:  # noqa: BLE001 — videregiv til kalderen
             box["e"] = exc
         finally:
@@ -413,7 +438,9 @@ def _run_producer_bounded(spec, *, trigger: str, last_visible_at: str, timeout_s
         )
     if not ferdig.wait(timeout_s):
         # Jobbet kører videre i workeren. `stadig_i_flugt` afviser at starte en
-        # ny, indtil det er færdigt.
+        # ny, indtil det er færdigt. `opgivet` fortæller workeren at dens
+        # resultat ikke bliver læst — så skal den selv rapportere succesen.
+        opgivet.set()
         _noter_i_flugt(spec.name, worker._traad)
         raise TimeoutError(f"producer '{spec.name}' overskred {timeout_s:.0f}s — sprunget over")
     if "e" in box:

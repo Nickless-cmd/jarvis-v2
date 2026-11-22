@@ -582,6 +582,45 @@ def test_registret_vokser_ikke_naar_traaden_er_doed(isolated_runtime, monkeypatc
 # Worker-genbrug: DB-forbindelsen fødes ÉN gang, ikke pr. kørsel (18/10-2026)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Sen succes (22/11-2026)
+# ---------------------------------------------------------------------------
+#
+# Naar `ferdig.wait()` gav op, blev resultatet i `box["r"]` laest ALDRIG — saa
+# en koersel der blev faerdig efter 76 s var en succes der forsvandt i tavshed,
+# og `report_background_recovered` blev aldrig kaldt. Det er praecis den vej
+# der lod posterne ophobe sig.
+
+
+def test_sen_succes_rapporteres_naar_kalderen_har_opgivet(isolated_runtime, monkeypatch):
+    import time as _t
+    kaldt = []
+    monkeypatch.setattr(cadence_mod, "_rapporter_sen_succes",
+                        lambda navn: kaldt.append(navn))
+
+    def run_fn(*, trigger: str, last_visible_at: str = ""):
+        _t.sleep(0.25)
+        return {"ran": True}
+
+    spec = ProducerSpec(name="sen_succes_probe", cooldown_minutes=0,
+                        visible_grace_minutes=0, run_fn=run_fn, priority=5)
+    try:
+        cadence_mod._run_producer_bounded(
+            spec, trigger="test", last_visible_at="", timeout_s=0.05)
+    except TimeoutError:
+        pass
+    else:
+        raise AssertionError("timeout blev ikke rejst")
+
+    # Workeren bliver faerdig bagefter — den skal selv melde succesen.
+    for _ in range(80):
+        if kaldt:
+            break
+        _t.sleep(0.05)
+    assert kaldt == ["sen_succes_probe"], \
+        "en sen succes forsvandt i tavshed — posten kan ikke lukke sig selv"
+
+
 def test_workeren_genbruges_saa_db_forbindelsen_ikke_foedes_pr_koersel(isolated_runtime):
     """Kernen i fixet: samme tråd → samme thread-lokale SQLite-forbindelse.
 

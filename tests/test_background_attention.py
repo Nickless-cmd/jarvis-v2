@@ -94,6 +94,9 @@ def test_invalid_autonomy_mode_fails_closed(monkeypatch):
 
 def test_recovery_closes_an_open_post(monkeypatch):
     lukket = []
+    # Soeskende-generationer hoerer i deres EGEN test: her maa den ikke laese
+    # den levende base (22/11-2026).
+    monkeypatch.setattr(attention, "_luk_resterende", lambda **kwargs: 0)
     monkeypatch.setattr(attention, "_owner_user_id", lambda: "bjorn")
     monkeypatch.setattr(
         attention, "_nyeste_inbox",
@@ -125,6 +128,7 @@ def test_recovery_closes_an_open_post(monkeypatch):
 def test_recovery_leaves_a_done_post_alone(monkeypatch):
     """Bjørns egen afgørelse må ikke overskrives af en rutine."""
     monkeypatch.setattr(attention, "_owner_user_id", lambda: "bjorn")
+    monkeypatch.setattr(attention, "_luk_resterende", lambda **kwargs: 0)
     monkeypatch.setattr(
         attention, "_nyeste_inbox",
         lambda **kwargs: {
@@ -164,6 +168,8 @@ def test_recovery_closes_the_NEWEST_generation(monkeypatch):
     advarsel — kunne derfor ikke lukke sig selv (målt 12/11-2026, post
     262358). Vi skal lukke generation 2 og efterlade generation 1 urørt."""
     lukket = []
+    # Soeskende-generationer hoerer i deres EGEN test (22/11-2026).
+    monkeypatch.setattr(attention, "_luk_resterende", lambda **kwargs: 0)
     monkeypatch.setattr(attention, "_owner_user_id", lambda: "bjorn")
     monkeypatch.setattr(
         attention, "_nyeste_inbox",
@@ -190,6 +196,64 @@ def test_recovery_closes_the_NEWEST_generation(monkeypatch):
     assert lukket[0]["kilde_id"] == (
         "background-cadence-producer-baggrundsjob_vagt-20261112141015"
     )
+
+
+def test_recovery_lukker_alle_generationer_for_kilden(monkeypatch):
+    """Maalt 22/11-2026: 52 fejl mod 7 succeser efterlod 45 foraeldreloese
+    aabne poster for EN kilde — de var samtidig de eneste aabne high-poster i
+    hele indbakken. Aarsagen var at kun den NYESTE generation blev lukket."""
+    lukkede = []
+    monkeypatch.setattr(attention, "_owner_user_id", lambda: "bjorn")
+    monkeypatch.setattr(attention, "_nyeste_inbox", lambda **kwargs: {
+        "status": "aaben",
+        "kilde_id": "background-cadence-producer-x-20261122230000",
+    })
+    monkeypatch.setattr("core.runtime.db_inbox.liste", lambda **kwargs: [
+        {"kilde_id": "background-cadence-producer-x-20261122230000"},
+        {"kilde_id": "background-cadence-producer-x-20261121230000"},
+        {"kilde_id": "background-cadence-producer-x"},
+        {"kilde_id": "background-cadence-producer-ANDEN"},
+    ])
+    monkeypatch.setattr(
+        "core.runtime.db_inbox.meld_kilde_faerdig",
+        lambda **kwargs: lukkede.append(kwargs["kilde_id"]) or {
+            "status": "ok", "ny_status": "afsluttet_af_kilde"},
+    )
+
+    res = attention.report_background_recovered(
+        source_kind="cadence-producer", source_id="x")
+
+    assert res["ogsaa_lukket"] == 3
+    assert "background-cadence-producer-ANDEN" not in lukkede, \
+        "en ANDEN kildes post blev lukket"
+    assert len(lukkede) == 4  # den nyeste + de tre soeskende-generationer
+
+
+def test_recovery_lukker_aabne_soeskende_naar_den_nyeste_er_lukket(monkeypatch):
+    """Maalt 22/11-2026: den nyeste post var `afsluttet_af_kilde`, mens 45
+    ældre stod `aaben`. Selvhelbredelsen returnerede «allerede-lukket» og lod
+    dem staa — den kiggede kun paa den nyeste."""
+    lukkede = []
+    monkeypatch.setattr(attention, "_owner_user_id", lambda: "bjorn")
+    monkeypatch.setattr(attention, "_nyeste_inbox", lambda **kwargs: {
+        "status": "afsluttet_af_kilde",
+        "kilde_id": "background-cadence-producer-y-20261122230000",
+    })
+    monkeypatch.setattr("core.runtime.db_inbox.liste", lambda **kwargs: [
+        {"kilde_id": "background-cadence-producer-y-20261121013934"},
+        {"kilde_id": "background-cadence-producer-y-20261122023446"},
+    ])
+    monkeypatch.setattr(
+        "core.runtime.db_inbox.meld_kilde_faerdig",
+        lambda **kwargs: lukkede.append(kwargs["kilde_id"]) or {
+            "status": "ok", "ny_status": "afsluttet_af_kilde"},
+    )
+
+    res = attention.report_background_recovered(
+        source_kind="cadence-producer", source_id="y")
+
+    assert res["inbox"] == "allerede-lukket"
+    assert res["ogsaa_lukket"] == 2
 
 
 def test_recovery_without_owner_does_not_guess(monkeypatch):

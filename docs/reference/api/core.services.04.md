@@ -89,9 +89,10 @@ _One durable exit path for findings from unattended runtime work._
 | function | `_write_inbox` | `(**kwargs)` | — | [src](../../../core/services/background_attention.py#L52) |
 | function | `_existing_inbox` | `(*, owner, inbox_id)` | — | [src](../../../core/services/background_attention.py#L58) |
 | function | `_nyeste_inbox` | `(*, owner, inbox_id)` | Nyeste post for kilden — ogsaa en der er gemt med generation-suffiks. | [src](../../../core/services/background_attention.py#L67) |
-| function | `_write_side_task` | `(**kwargs)` | — | [src](../../../core/services/background_attention.py#L77) |
-| function | `report_background_outcome` | `(*, source_kind, source_id, status, summary, severity=…, run_id=…, session_id=…, evidence_ref=…, suggested_next_step=…, requires_attention=…, create_side_task=…, autonomy_mode=…, safe_to_continue=…, max_minutes=…, max_tool_calls=…)` | Project one background outcome without granting it extra authority. | [src](../../../core/services/background_attention.py#L83) |
-| function | `report_background_recovered` | `(*, source_kind, source_id)` | Kilden melder sig frisk igen — luk dens EGEN post, hvis den står åben. | [src](../../../core/services/background_attention.py#L207) |
+| function | `_luk_resterende` | `(*, owner, basis_id)` | Luk ALLE aabne poster for kilden — ikke kun den nyeste generation. | [src](../../../core/services/background_attention.py#L77) |
+| function | `_write_side_task` | `(**kwargs)` | — | [src](../../../core/services/background_attention.py#L108) |
+| function | `report_background_outcome` | `(*, source_kind, source_id, status, summary, severity=…, run_id=…, session_id=…, evidence_ref=…, suggested_next_step=…, requires_attention=…, create_side_task=…, autonomy_mode=…, safe_to_continue=…, max_minutes=…, max_tool_calls=…)` | Project one background outcome without granting it extra authority. | [src](../../../core/services/background_attention.py#L114) |
+| function | `report_background_recovered` | `(*, source_kind, source_id)` | Kilden melder sig frisk igen — luk dens EGEN post, hvis den står åben. | [src](../../../core/services/background_attention.py#L238) |
 
 ## `core/services/background_job_watch.py`
 _Færdige baggrunds-shells — set, ikke gættet._

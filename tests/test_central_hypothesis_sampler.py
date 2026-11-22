@@ -923,6 +923,56 @@ def test_et_aggregat_kan_ikke_have_en_median():
         assert ok2 is True, (estimator, m2)
 
 
+# ── Batch-graense (22/11-2026) ──────────────────────────────────────────────
+#
+# Loekken testede FOER alle aktive hypoteser hvert 30. minut. Maalt i drift:
+# 598 aktive gav 75,0 s — praecis paa cadence-loftet — saa produceren skiftede
+# mellem «naaede lige igennem» og «overskred og blev sprunget over», og hver
+# overskridelse skrev en ny HIGH-post i indbakken.
+
+
+def test_batch_graensen_binder_arbejdet_pr_tik(monkeypatch):
+    monkeypatch.setattr(smp, "_cursor", "")
+    active = [(f"h{i:04d}", {}, None) for i in range(400)]
+    foerste = smp._batch(list(active))
+    assert len(foerste) == smp._MAX_PER_TICK
+    andet = smp._batch(list(active))
+    assert len(andet) == smp._MAX_PER_TICK
+    # Cursoren flyttede sig: andet tik starter hvor det foerste slap.
+    assert andet[0][0] > foerste[-1][0]
+
+
+def test_batch_roterer_gennem_alle_over_flere_tik(monkeypatch):
+    monkeypatch.setattr(smp, "_cursor", "")
+    active = [(f"h{i:04d}", {}, None) for i in range(400)]
+    sete = set()
+    for _ in range(6):
+        sete |= {h for h, _, _ in smp._batch(list(active))}
+    assert sete == {h for h, _, _ in active}, "en hypotese blev aldrig testet"
+
+
+def test_batch_under_graensen_tester_alt_og_nulstiller_cursoren(monkeypatch):
+    monkeypatch.setattr(smp, "_cursor", "h0050")
+    active = [(f"h{i}", {}, None) for i in range(10)]
+    assert len(smp._batch(list(active))) == 10
+    assert smp._cursor == ""
+
+
+def test_tikken_rapporterer_de_udskudte(isolated_runtime, monkeypatch):
+    """En graense der skjuler sit eget fravalg er samme fejlklasse som en tavs
+    fejl: de udskudte hypoteser skal staa i svaret."""
+    gen.ensure_schema()
+    monkeypatch.setattr(smp, "_MAX_PER_TICK", 2)
+    monkeypatch.setattr(smp, "_cursor", "")
+    for i in range(3):
+        gen.register_governed_hypothesis(gen.formulate_correlation_hypothesis(
+            {"parent_family": f"fam{i}", "child_family": "somatic",
+             "count": 4, "cursor": 10}))
+    res = smp.run_hypothesis_sampler_tick()
+    assert res["status"] == "ok"
+    assert res["deferred"] == 1
+
+
 def test_aggregate_window_kan_ikke_kraeve_fem_samples():
     """Et pooled vindue er ÉT bevis — uanset hvor mange runs det summerer.
 

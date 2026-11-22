@@ -74,6 +74,37 @@ def _nyeste_inbox(*, owner: str, inbox_id: str) -> dict[str, Any] | None:
         return None
 
 
+def _luk_resterende(*, owner: str, basis_id: str) -> int:
+    """Luk ALLE aabne poster for kilden — ikke kun den nyeste generation.
+
+    Maalt 22/11-2026: hver fejl skabte en ny generation (`<id>-<generation>`),
+    men `report_background_recovered` lukkede kun den nyeste. 52 fejl mod 7
+    succeser efterlod 45 foraeldreloese aabne poster for EN kilde — de var
+    samtidig de eneste aabne high-poster i hele indbakken.
+
+    En tilstand har ÉT svar, ikke 45 generationer. Returnerer antal lukkede.
+    """
+    from core.runtime import db_inbox
+    from core.runtime.db_inbox import meld_kilde_faerdig
+
+    try:
+        poster = db_inbox.liste(bruger_id=owner, kun_aabne=True, maks=2000)
+    except Exception:  # en liste der fejler må ikke vælte selvhelbredelsen
+        return 0
+    lukkede = 0
+    for post in poster:
+        kid = str(post.get("kilde_id") or "")
+        if not kid or (kid != basis_id and not kid.startswith(basis_id + "-")):
+            continue
+        try:
+            if str(meld_kilde_faerdig(bruger_id=owner, kilde_id=kid, exit_kode=0)
+                   .get("status") or "") == "ok":
+                lukkede += 1
+        except Exception:  # én post der ikke kan lukkes må ikke stoppe resten
+            continue
+    return lukkede
+
+
 def _write_side_task(**kwargs: Any) -> dict[str, Any]:
     from core.services.side_tasks import flag
 
@@ -230,6 +261,7 @@ def report_background_recovered(*, source_kind: str, source_id: str) -> dict[str
     if not owner:
         return {"status": "partial", "inbox": "no-owner"}
     inbox_id = f"background-{kind_n}-{id_n}"[:220]
+    basis_id = inbox_id  # uden generation — bruges til at finde soeskende
     # Det praecise opslag finder kun den FOERSTE generation. En gentaget
     # haendelse gemmes som `<id>-<generation>`, saa vi slaar den NYESTE op —
     # den er den eneste der beskriver tilstanden lige nu (12/11-2026).
@@ -244,17 +276,28 @@ def report_background_recovered(*, source_kind: str, source_id: str) -> dict[str
     # Bjørns egen afgørelse, `afsluttet_af_kilde` er allerede lukket, og en
     # `udloebet` post skal ikke genåbnes af en rutine der kørte.
     if havde != "aaben":
-        return {"status": "ok", "inbox": "allerede-lukket", "havde": havde}
+        # MEN ældre generationer kan staa aabne mens den NYESTE er lukket — og
+        # de beskriver den SAMME tilstand (maalt 22/11-2026: den nyeste var
+        # `afsluttet_af_kilde`, mens 45 ældre stod `aaben`). Uden dette greb
+        # returnerede selvhelbredelsen «allerede-lukket» og lod dem staa.
+        ogsaa = _luk_resterende(owner=owner, basis_id=basis_id)
+        return {"status": "ok", "inbox": "allerede-lukket", "havde": havde,
+                "ogsaa_lukket": ogsaa}
     try:
         from core.runtime.db_inbox import meld_kilde_faerdig
 
         lukket = meld_kilde_faerdig(bruger_id=owner, kilde_id=inbox_id, exit_kode=0)
     except Exception:  # en lukning der fejler må ikke vælte produceren
         return {"status": "error", "inbox": "lukning-fejlede"}
+    # RESTEN (22/11-2026): hver fejl skabte en ny generation, men kun den nyeste
+    # blev lukket — 45 foraeldreloese poster for EN kilde. `basis_id` er id'et
+    # UDEN generation, saa soeskende-generationer kan findes.
+    ogsaa_lukket = _luk_resterende(owner=owner, basis_id=basis_id)
     return {
         "status": "ok",
         "inbox": str(lukket.get("status") or "error"),
         "ny_status": str(lukket.get("ny_status") or ""),
+        "ogsaa_lukket": ogsaa_lukket,
     }
 
 

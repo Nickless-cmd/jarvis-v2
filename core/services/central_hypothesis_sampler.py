@@ -588,6 +588,46 @@ def evaluator_provenance() -> dict[str, int]:
     return ud
 
 
+#: Batch-graense pr. tik (22/11-2026).
+#:
+#: Loecken testede FOER alle aktive hypoteser hvert 30. minut. Maalt i drift:
+#: 598 aktive gav 75,0 s — praecis paa cadence-loftet — saa produceren skiftede
+#: mellem «naaede lige igennem» og «overskred og blev sprunget over». Tiden
+#: vokser lineart med antallet, og antallet voksede: 335 nye aktive paa eet
+#: doegn i to bursts (146 kl. 14:50, 122 kl. 16:07).
+#:
+#: En batch binder tik-tiden uanset hvor mange hypoteser der findes. Den
+#: roterende cursor nedenfor sikrer at alle stadig bliver testet — blot over
+#: flere tik. 150 giver ~7 s isoleret og ~19 s under fuld runtime-belastning.
+_MAX_PER_TICK = 150
+
+#: Sidste hyp_id i forrige batch. In-memory med vilje: sampleren koerer i EN
+#: persistent worker-traad, og efter en genstart er det rigtigt at starte forfra.
+_cursor = ""
+
+
+def _batch(active: list[tuple]) -> list[tuple]:
+    """Rotér gennem de aktive hypoteser — højst `_MAX_PER_TICK` pr. tik."""
+    global _cursor
+    if len(active) <= _MAX_PER_TICK:
+        _cursor = ""
+        return active
+    active.sort(key=lambda t: str(t[0]))
+    start = 0
+    if _cursor:
+        for i, row in enumerate(active):
+            if str(row[0]) > _cursor:
+                start = i
+                break
+    valgte = active[start:start + _MAX_PER_TICK]
+    if len(valgte) < _MAX_PER_TICK:
+        # Wrap-around: halen efterfoelges af hovedet, saa en cursor der staar
+        # sent ikke efterlader en naesten tom batch.
+        valgte += active[:(_MAX_PER_TICK - len(valgte))]
+    _cursor = str(valgte[-1][0])
+    return valgte
+
+
 def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
                                 last_visible_at: str = "") -> dict[str, object]:
     """Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded
@@ -620,7 +660,9 @@ def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
         ]
     except Exception:
         active = []
-    for hyp_id, prov, contract in active:
+    batch = _batch(active)
+    deferred = len(active) - len(batch)
+    for hyp_id, prov, contract in batch:
         name, why, _kilde = evaluator_for(prov, contract)
         if name is None:
             # Strukturel gæld: ingen evaluator kan teste denne hypotese — heller ikke selv om
@@ -658,12 +700,13 @@ def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
                        meta={"tested": tested, "supported": supported,
                              "contradicted": contradicted,
                              "unevaluable": sum(len(v) for v in unevaluable.values()),
-                             "no_data": len(no_data)})
+                             "no_data": len(no_data), "deferred": deferred})
     except Exception:
         pass
     return {"status": "ok", "tested": tested, "supported": supported,
             "contradicted": contradicted,
-            "unevaluable": unevaluable, "no_data": no_data}
+            "unevaluable": unevaluable, "no_data": no_data,
+            "deferred": deferred}
 
 
 def register_hypothesis_sampler_producer() -> None:

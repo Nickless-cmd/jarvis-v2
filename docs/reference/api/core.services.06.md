@@ -214,8 +214,9 @@ _core/services/central_hypothesis_sampler.py_
 | function | `_parse_contract` | `(raw)` | Læs `test_contract_json`. Ulaeselig → None med en loglinje (aldrig tavst). | [src](../../../core/services/central_hypothesis_sampler.py#L519) |
 | function | `list_unevaluable_active` | `()` | Aktive hypoteser der ALDRIG kan testes med den nuværende evaluator-registry. | [src](../../../core/services/central_hypothesis_sampler.py#L531) |
 | function | `evaluator_provenance` | `()` | Hvor mange aktive hypoteser er koblet på via KONTRAKT vs. via LEGACY-broen? | [src](../../../core/services/central_hypothesis_sampler.py#L561) |
-| function | `run_hypothesis_sampler_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded | [src](../../../core/services/central_hypothesis_sampler.py#L591) |
-| function | `register_hypothesis_sampler_producer` | `()` | Registrér samleren som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_hypothesis_sampler.py#L669) |
+| function | `_batch` | `(active)` | Rotér gennem de aktive hypoteser — højst `_MAX_PER_TICK` pr. tik. | [src](../../../core/services/central_hypothesis_sampler.py#L609) |
+| function | `run_hypothesis_sampler_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded | [src](../../../core/services/central_hypothesis_sampler.py#L631) |
+| function | `register_hypothesis_sampler_producer` | `()` | Registrér samleren som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_hypothesis_sampler.py#L712) |
 
 ## `core/services/central_initiative_ladder.py`
 _central_initiative_ladder — den gradvise, gatede initiativ-stige (rådets #3)._

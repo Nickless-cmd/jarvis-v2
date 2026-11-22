@@ -6,7 +6,8 @@ from collections import deque
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
 
 from core.services import tool_shell_hooks
 
@@ -131,3 +132,64 @@ def get_tool_hook_log(limit: int = Query(default=100, ge=1, le=1000)) -> dict[st
         "invalid_lines": invalid,
         "log": _log_metadata(),
     }
+
+
+@router.get("/config")
+def get_tool_hook_config() -> dict[str, Any]:
+    """Det rå dokument redigeringen arbejder på — med kommandoerne."""
+    _kraev_ejer()
+    return tool_shell_hooks.read_config()
+
+
+def _kraev_ejer() -> str:
+    """En hook-regel er en shell-kommando på hvert tool-kald — kun ejeren rører den."""
+    from core.identity.workspace_context import current_user_id
+
+    user_id = str(current_user_id() or "").strip()
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Ikke logget ind")
+    from apps.api.jarvis_api.routes.account import _current_role
+
+    if _current_role(user_id) != "owner":
+        raise HTTPException(status_code=403, detail="owner_required")
+    return user_id
+
+
+class HookRule(BaseModel):
+    name: str
+    match: str
+    before: str = ""
+    after: str = ""
+    timeout_s: float = 5.0
+    cwd: str = ""
+
+
+class HooksConfigBody(BaseModel):
+    enabled: bool = True
+    hooks: list[HookRule] = []
+    approved: bool = False
+
+
+@router.put("")
+def put_tool_hooks(body: HooksConfigBody) -> dict[str, Any]:
+    """Erstat hook-konfigurationen. Validering sker før filen røres."""
+    _kraev_ejer()
+    if not body.approved:
+        # Reglerne bestemmer hvad der kører shell på HVERT model-initieret
+        # tool-kald. Et gem uden en bevidst bekræftelse ville være en ændring
+        # af eksekveringsfladen gemt bag et enkelt klik.
+        raise HTTPException(status_code=409, detail="explicit_approval_required")
+
+    resultat = tool_shell_hooks.save_config(body.model_dump(exclude={"approved"}))
+    if not resultat.get("ok"):
+        # 422: input var forstået, men ugyldigt — brugeren skal se ALLE fejl
+        raise HTTPException(status_code=422, detail={"fejl": resultat.get("fejl") or []})
+    return {**resultat, "log": _log_metadata()}
+
+
+@router.post("/validate")
+def validate_tool_hooks(body: HooksConfigBody) -> dict[str, Any]:
+    """Tør kørsel: svarer hvad der ville fejle, uden at skrive noget."""
+    _kraev_ejer()
+    fejl = tool_shell_hooks.validate_config(body.model_dump(exclude={"approved"}))
+    return {"ok": not fejl, "fejl": fejl}

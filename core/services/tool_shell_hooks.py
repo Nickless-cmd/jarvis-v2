@@ -268,6 +268,135 @@ def _parse(raw: Any) -> tuple[bool, list[ShellHook], str]:
     return enabled, hooks, fejl
 
 
+def read_config() -> dict[str, Any]:
+    """Det rå config-dokument, som redigeringsfladen skal have det.
+
+    ``status()`` svarer bevidst kun ``before: true/false`` — det er nok til at
+    VISE at en regel findes, men ikke til at redigere den. Uden kommandoerne
+    ville et gem skrive tomme strenge tilbage og tavst afvæbne hooken, så
+    redigeringen læser filen selv. Findes filen ikke, svarer den den ærlige
+    tomme tilstand: mekanismen slukket, ingen regler.
+    """
+    if not CONFIG_STI.is_file():
+        return {"enabled": False, "hooks": [], "findes": False}
+    try:
+        raw = json.loads(CONFIG_STI.read_text(encoding="utf-8"))
+    except Exception as exc:  # en korrupt config skal vises som fejl, ikke give 500 i fladen
+        return {"enabled": False, "hooks": [], "findes": True,
+                "fejl": f"config kunne ikke læses: {exc}"}
+    hooks = raw.get("hooks") if isinstance(raw, dict) else None
+    return {
+        "enabled": bool(isinstance(raw, dict) and raw.get("enabled") is True),
+        "hooks": hooks if isinstance(hooks, list) else [],
+        "findes": True,
+    }
+
+
+def validate_config(raw: Any) -> list[str]:
+    """Alle fejl i et config-dokument, ikke kun den første.
+
+    ``_parse`` samler kun den sidste fejl, fordi den kun skal vide om noget
+    kunne indlæses. En redigeringsflade skal vise brugeren ALT hvad der er
+    galt på én gang — ellers retter man ét felt, gemmer, og møder den næste
+    fejl. Derfor denne funktion, som deler reglerne med ``_parse``.
+    """
+    if not isinstance(raw, dict):
+        return ["config skal være et JSON-objekt"]
+    fejl: list[str] = []
+    if "enabled" in raw and not isinstance(raw["enabled"], bool):
+        fejl.append("'enabled' skal være true eller false")
+    hooks = raw.get("hooks")
+    if hooks is None:
+        hooks = []
+    if not isinstance(hooks, list):
+        return fejl + ["'hooks' skal være en liste"]
+    navne: set[str] = set()
+    for i, item in enumerate(hooks):
+        hvor = f"hook #{i + 1}"
+        if not isinstance(item, dict):
+            fejl.append(f"{hvor} er ikke et objekt")
+            continue
+        navn = str(item.get("name") or "").strip()
+        if not navn:
+            fejl.append(f"{hvor} mangler navn")
+        elif navn in navne:
+            fejl.append(f"{hvor}: navnet '{navn}' er brugt to gange")
+        else:
+            navne.add(navn)
+            hvor = f"hook '{navn}'"
+        moenster = str(item.get("match") or "").strip()
+        if not moenster:
+            fejl.append(f"{hvor} mangler 'match'")
+        else:
+            try:
+                re.compile(moenster)
+            except re.error as exc:
+                fejl.append(f"{hvor} har ugyldigt regex: {exc}")
+        before = str(item.get("before") or "")
+        after = str(item.get("after") or "")
+        if not before and not after:
+            fejl.append(f"{hvor} har hverken 'before' eller 'after' — den ville intet gøre")
+        timeout = item.get("timeout_s")
+        if timeout is not None:
+            try:
+                float(timeout)
+            except (TypeError, ValueError):
+                fejl.append(f"{hvor}: 'timeout_s' skal være et tal")
+    return fejl
+
+
+def save_config(raw: Any) -> dict[str, Any]:
+    """Validér, tag backup og skriv config atomisk. Rører intet ved ugyldig input.
+
+    Rækkefølgen er hele pointen: en ugyldig config må ikke kunne overskrive en
+    gyldig. Derfor valideres der FØR filen åbnes, og der skrives via tmp+replace
+    så en afbrudt skrivning ikke efterlader en halv fil — en halv config er
+    værre end ingen, fordi ``_parse`` så afviser alt og mekanismen dør tavst.
+    """
+    fejl = validate_config(raw)
+    if fejl:
+        return {"ok": False, "fejl": fejl, "skrevet": False}
+
+    dokument = {
+        "enabled": bool(raw.get("enabled") is True),
+        "hooks": [
+            {
+                "name": str(item.get("name")).strip(),
+                "match": str(item.get("match")),
+                "before": str(item.get("before") or ""),
+                "after": str(item.get("after") or ""),
+                "timeout_s": float(item.get("timeout_s") or _STANDARD_TIMEOUT_S),
+                **({"cwd": str(item["cwd"])} if item.get("cwd") else {}),
+            }
+            for item in (raw.get("hooks") or [])
+        ],
+    }
+
+    CONFIG_STI.parent.mkdir(parents=True, exist_ok=True)
+    backup = ""
+    if CONFIG_STI.is_file():
+        stamp = __import__("datetime").datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup_path = CONFIG_STI.with_name(f"{CONFIG_STI.name}.bak-{stamp}")
+        try:
+            backup_path.write_text(CONFIG_STI.read_text(encoding="utf-8"), encoding="utf-8")
+            backup = str(backup_path)
+        except OSError as exc:  # uden backup må vi ikke overskrive den gyldige config
+            return {"ok": False, "fejl": [f"kunne ikke tage backup: {exc}"], "skrevet": False}
+
+    tmp = CONFIG_STI.with_suffix(".json.tmp")
+    try:
+        tmp.write_text(json.dumps(dokument, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        tmp.chmod(0o600)
+        tmp.replace(CONFIG_STI)
+    except OSError as exc:
+        tmp.unlink(missing_ok=True)
+        return {"ok": False, "fejl": [f"kunne ikke skrive config: {exc}"], "skrevet": False}
+
+    ensure_loaded(tving=True)
+    return {"ok": True, "fejl": [], "skrevet": True, "backup": backup,
+            **status()}
+
+
 def ensure_loaded(*, tving: bool = False) -> bool:
     """Læs config én gang pr. proces. Returnerer True hvis hooks er aktive.
 
@@ -351,5 +480,6 @@ def _nulstil_for_test() -> None:
 
 __all__ = [
     "CONFIG_STI", "LOG_STI", "LOG_ROTATION_BYTES", "HookResultat", "ShellHook",
-    "ensure_loaded", "rotate_log_if_needed", "status",
+    "ensure_loaded", "read_config", "rotate_log_if_needed", "save_config",
+    "status", "validate_config",
 ]

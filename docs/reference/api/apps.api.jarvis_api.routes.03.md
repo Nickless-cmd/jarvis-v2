@@ -577,15 +577,21 @@ _Owner-facing read/reload surface for configured shell hooks and their JSONL log
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_log_metadata` | `()` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L16) |
-| function | `_timestamp` | `(entry)` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L32) |
-| function | `_confinement` | `(entry)` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L45) |
-| function | `_normalise_entry` | `(entry)` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L57) |
-| function | `_coverage` | `(entries)` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L74) |
-| function | `_read_entries` | `()` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L90) |
-| function | `get_tool_hooks` | `()` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L113) |
-| function | `reload_tool_hooks` | `()` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L119) |
-| function | `get_tool_hook_log` | `(limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L125) |
+| function | `_log_metadata` | `()` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L17) |
+| function | `_timestamp` | `(entry)` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L33) |
+| function | `_confinement` | `(entry)` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L46) |
+| function | `_normalise_entry` | `(entry)` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L58) |
+| function | `_coverage` | `(entries)` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L75) |
+| function | `_read_entries` | `()` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L91) |
+| function | `get_tool_hooks` | `()` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L114) |
+| function | `reload_tool_hooks` | `()` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L120) |
+| function | `get_tool_hook_log` | `(limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L126) |
+| function | `get_tool_hook_config` | `()` | Det rå dokument redigeringen arbejder på — med kommandoerne. | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L138) |
+| function | `_kraev_ejer` | `()` | En hook-regel er en shell-kommando på hvert tool-kald — kun ejeren rører den. | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L144) |
+| class | `HookRule` | `` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L158) |
+| class | `HooksConfigBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L167) |
+| function | `put_tool_hooks` | `(body)` | Erstat hook-konfigurationen. Validering sker før filen røres. | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L174) |
+| function | `validate_tool_hooks` | `(body)` | Tør kørsel: svarer hvad der ville fejle, uden at skrive noget. | [src](../../../apps/api/jarvis_api/routes/tool_hooks.py#L191) |
 
 ## `apps/api/jarvis_api/routes/tool_router.py`
 _MC observability for tool_router._

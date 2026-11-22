@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10423/19068 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10430/19075 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 10423/19068 functions/methods documented (54%). The list 
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 766 | 1091 | 70% |
+| `apps.api.jarvis_api.routes` | 770 | 1095 | 70% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -26,7 +26,7 @@ Generated from source. 10423/19068 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 920 | 1637 | 56% |
-| `core.services` | 6991 | 12946 | 54% |
+| `core.services` | 6994 | 12949 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 150 | 232 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -171,9 +171,9 @@ Generated from source. 10423/19068 functions/methods documented (54%). The list 
 - `apps/api/jarvis_api/routes/sensory.py` :: `search_memories` (L44)
 - `apps/api/jarvis_api/routes/sensory.py` :: `summary` (L54)
 - `apps/api/jarvis_api/routes/system_health.py` :: `system_health` (L19)
-- `apps/api/jarvis_api/routes/tool_hooks.py` :: `get_tool_hook_log` (L125)
-- `apps/api/jarvis_api/routes/tool_hooks.py` :: `get_tool_hooks` (L113)
-- `apps/api/jarvis_api/routes/tool_hooks.py` :: `reload_tool_hooks` (L119)
+- `apps/api/jarvis_api/routes/tool_hooks.py` :: `get_tool_hook_log` (L126)
+- `apps/api/jarvis_api/routes/tool_hooks.py` :: `get_tool_hooks` (L114)
+- `apps/api/jarvis_api/routes/tool_hooks.py` :: `reload_tool_hooks` (L120)
 - `apps/api/jarvis_api/routes/tool_router.py` :: `get_state` (L25)
 - `apps/api/jarvis_api/routes/totp.py` :: `totp_status` (L62)
 - `apps/api/jarvis_api/routes/transcribe.py` :: `transcribe` (L22)

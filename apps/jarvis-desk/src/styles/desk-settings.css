@@ -122,3 +122,28 @@
     flex-direction: column;
   }
 }
+
+/* ── tool-hooks: redigering af regler ─────────────────────────────────────
+   Reglerne bestemmer hvad der kører shell på hvert tool-kald. Derfor er
+   editoren en tydeligt afgrænset flade, ikke en række løse felter midt i
+   visningen: en grænse man kan se, er en grænse man kan respektere. */
+.hooks-knapper { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.hooks-editor {
+  margin: 14px 0; padding: 14px 16px;
+  border: 1px solid var(--error-fg); border-radius: var(--radius-md); background: var(--bg-2);
+}
+.hooks-flag { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 14px; }
+.hooks-regel {
+  margin: 12px 0; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg-3);
+}
+.hooks-regel legend { padding: 0 6px; color: var(--fg-2); font-size: 13px; }
+.hooks-regel > label { display: block; margin-bottom: 10px; font-size: 13px; color: var(--fg-2); }
+.hooks-regel > label > :is(input, textarea) { display: block; width: 100%; margin-top: 4px; }
+.hooks-regel textarea { font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; }
+.hooks-table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 13px; }
+.hooks-table th, .hooks-table td {
+  padding: 7px 9px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top;
+}
+.hooks-table th { color: var(--fg-2); font-weight: 550; }
+.hooks-table code { font-size: 12px; word-break: break-all; }

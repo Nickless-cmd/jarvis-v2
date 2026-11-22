@@ -555,9 +555,12 @@ _Brugerdefinerbare tool-hooks som shell-kommandoer._
 | method | `ShellHook.before_tool` | `(self, tool_name, arguments)` | — | [src](../../../core/services/tool_shell_hooks.py#L186) |
 | method | `ShellHook.after_tool` | `(self, tool_name, arguments, result)` | — | [src](../../../core/services/tool_shell_hooks.py#L204) |
 | function | `_parse` | `(raw)` | Config-dokument → (enabled, hooks, fejl). Kaster aldrig. | [src](../../../core/services/tool_shell_hooks.py#L234) |
-| function | `ensure_loaded` | `(*, tving=…)` | Læs config én gang pr. proces. Returnerer True hvis hooks er aktive. | [src](../../../core/services/tool_shell_hooks.py#L271) |
-| function | `status` | `()` | Hvad er indlæst, og hvorfor ikke? Måling i stedet for formodning. | [src](../../../core/services/tool_shell_hooks.py#L320) |
-| function | `_nulstil_for_test` | `()` | Kun til tests: glem hvad der er indlæst, så en fixture kan styre det. | [src](../../../core/services/tool_shell_hooks.py#L339) |
+| function | `read_config` | `()` | Det rå config-dokument, som redigeringsfladen skal have det. | [src](../../../core/services/tool_shell_hooks.py#L271) |
+| function | `validate_config` | `(raw)` | Alle fejl i et config-dokument, ikke kun den første. | [src](../../../core/services/tool_shell_hooks.py#L295) |
+| function | `save_config` | `(raw)` | Validér, tag backup og skriv config atomisk. Rører intet ved ugyldig input. | [src](../../../core/services/tool_shell_hooks.py#L348) |
+| function | `ensure_loaded` | `(*, tving=…)` | Læs config én gang pr. proces. Returnerer True hvis hooks er aktive. | [src](../../../core/services/tool_shell_hooks.py#L400) |
+| function | `status` | `()` | Hvad er indlæst, og hvorfor ikke? Måling i stedet for formodning. | [src](../../../core/services/tool_shell_hooks.py#L449) |
+| function | `_nulstil_for_test` | `()` | Kun til tests: glem hvad der er indlæst, så en fixture kan styre det. | [src](../../../core/services/tool_shell_hooks.py#L468) |
 
 ## `core/services/tool_tagger.py`
 _Tool tag taxonomy._

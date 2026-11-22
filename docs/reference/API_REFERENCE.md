@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-11-22 from app.routes (live) — 719 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-22 from app.routes (live) — 722 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -156,8 +156,11 @@
 | GET | `/api/todos` | dict | jarvisx_sessions |
 | POST | `/api/todos/status` | dict | jarvisx_sessions |
 | GET | `/api/tool-hooks` | dict | tool_hooks |
+| PUT | `/api/tool-hooks` | dict | tool_hooks |
+| GET | `/api/tool-hooks/config` | dict | tool_hooks |
 | GET | `/api/tool-hooks/log` | dict | tool_hooks |
 | POST | `/api/tool-hooks/reload` | dict | tool_hooks |
+| POST | `/api/tool-hooks/validate` | dict | tool_hooks |
 | GET | `/api/tool-result/{result_id}` | dict | jarvisx_sessions |
 | GET | `/api/tools/inventory` | dict | jarvisx_sessions |
 | GET | `/api/trading/state` | dict | jarvisx_processes |

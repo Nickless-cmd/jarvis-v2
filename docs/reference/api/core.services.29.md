@@ -337,6 +337,24 @@ _Leksikalsk vaerktoejs-opslag: saerkende ord slaar semantisk lighed._
 | function | `byg_korpus_fra_definitioner` | `(definitioner, *, dansk=…)` | Korpus ud fra ``get_tool_definitions()``-formen (baade rå og indpakket). | [src](../../../core/services/tool_lexical_match.py#L179) |
 | function | `hyppige_ord_hos_brugeren` | `(beskeder, *, graense=…)` | Ord brugeren siger HELE TIDEN — spaerret uanset hvor saerkende de er | [src](../../../core/services/tool_lexical_match.py#L206) |
 
+## `core/services/tool_lifecycle_hooks.py`
+_Opt-in interception around model-initiated tool execution._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `HookDecision` | `` | — | [src](../../../core/services/tool_lifecycle_hooks.py#L18) |
+| method | `HookDecision.block` | `(cls, reason)` | — | [src](../../../core/services/tool_lifecycle_hooks.py#L23) |
+| class | `ToolLifecycleHook` | `` | — | [src](../../../core/services/tool_lifecycle_hooks.py#L27) |
+| method | `ToolLifecycleHook.before_tool` | `(self, tool_name, arguments)` | — | [src](../../../core/services/tool_lifecycle_hooks.py#L28) |
+| method | `ToolLifecycleHook.after_tool` | `(self, tool_name, arguments, result)` | — | [src](../../../core/services/tool_lifecycle_hooks.py#L32) |
+| function | `register_hook` | `(hook)` | — | [src](../../../core/services/tool_lifecycle_hooks.py#L42) |
+| function | `unregister_hook` | `(hook)` | — | [src](../../../core/services/tool_lifecycle_hooks.py#L48) |
+| function | `clear_hooks` | `()` | — | [src](../../../core/services/tool_lifecycle_hooks.py#L54) |
+| function | `set_enabled` | `(enabled)` | — | [src](../../../core/services/tool_lifecycle_hooks.py#L59) |
+| function | `is_enabled` | `()` | — | [src](../../../core/services/tool_lifecycle_hooks.py#L65) |
+| function | `_snapshot` | `()` | — | [src](../../../core/services/tool_lifecycle_hooks.py#L70) |
+| function | `execute_with_hooks` | `(tool_name, arguments, execute)` | Run ``execute`` between registered before/after callbacks. | [src](../../../core/services/tool_lifecycle_hooks.py#L75) |
+
 ## `core/services/tool_observer.py`
 _Tools-cluster query-helpers (Phase 1) oven på tool_call-observe i execute_tool._
 
@@ -567,14 +585,4 @@ _End-of-turn changelog — auto-summarize what this turn changed._
 | function | `build_turn_changelog` | `(*, run_id=…, started_at=…, repo_root=…)` | — | [src](../../../core/services/turn_changelog.py#L67) |
 | function | `previous_turn_changelog_section` | `(session_id)` | Look at the most recent visible run for this session and surface the | [src](../../../core/services/turn_changelog.py#L80) |
 | function | `format_changelog` | `(changelog)` | Render a compact human-readable summary, or None if empty. | [src](../../../core/services/turn_changelog.py#L129) |
-
-## `core/services/turn_tail_timing.py`
-_Hvor bliver sekunderne af EFTER svaret er skrevet færdigt?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `start` | `(run_id)` | — | [src](../../../core/services/turn_tail_timing.py#L42) |
-| function | `mark` | `(run_id, navn)` | Notér at ét led er færdigt. Gratis hvis `start` aldrig blev kaldt. | [src](../../../core/services/turn_tail_timing.py#L57) |
-| function | `slut` | `(run_id)` | Afslut målingen. Returnerer halens længde i sekunder (0 hvis ukendt). | [src](../../../core/services/turn_tail_timing.py#L67) |
-| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/turn_tail_timing.py#L87) |
 

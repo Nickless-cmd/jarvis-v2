@@ -30,11 +30,11 @@ def _attribution(**overrides: str) -> CommitAttribution:
 
 
 def test_initial_actor_registry_is_exact() -> None:
-    assert set(ACTOR_REGISTRY) == {"bjorn", "jarvis", "codex", "opus"}
+    assert set(ACTOR_REGISTRY) == {"bjorn", "jarvis", "codex", "opus", "claude"}
     assert ACTOR_REGISTRY["bjorn"].actor_type == "human"
     assert all(
         ACTOR_REGISTRY[name].actor_type == "agent"
-        for name in ("jarvis", "codex", "opus")
+        for name in ("jarvis", "codex", "opus", "claude")
     )
 
 

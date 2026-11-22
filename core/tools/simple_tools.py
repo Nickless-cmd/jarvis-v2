@@ -765,6 +765,13 @@ def _canonicalize_workspace_target(target: Path) -> tuple[Path, str | None]:
 # (og get_tool_definitions nedenfor) er uændret. Ingen dobbelt-sandhed:
 # de enkelte *_TOOL_DEFINITIONS-fragmenter samles ét sted.
 from core.tools.simple_tools_definitions import TOOL_DEFINITIONS  # noqa: E402,F401
+from core.tools.github_pr_tools import (  # noqa: E402
+    GITHUB_PR_TOOL_DEFINITIONS,
+    GITHUB_PR_TOOL_HANDLERS,
+)
+
+# Samles her, ikke i den fredede simple_tools_definitions.py.
+TOOL_DEFINITIONS.extend(GITHUB_PR_TOOL_DEFINITIONS)
 
 
 # ── Permission classification ──────────────────────────────────────────
@@ -1152,34 +1159,16 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     session + status/error → debugging af "fejl ude af huset": når en bruger melder en fejl
     ser vi PRÆCIST hvilket operator-/chat-tool i hvilken session der fejlede. Self-safe.
     Konsolidering 20→1 = Phase 2 (på forbrugs/overlap-trace-dataen)."""
-    # ── Skema-kontrakt (Fase 3, K2) ────────────────────────────────────────
-    # Maaler FOER afsendelsen, fordi det er det eneste sted et ufuldstaendigt
-    # kald kan stoppes foer det goer noget. Skyggen afgoer intet; kun naar
-    # haandhaevelsen er slaaet til afvises HAARDE brud (manglende paakraevet
-    # felt) — aldrig bloede (enum/type), hvor skemaet selv kan vaere for
-    # snaevert. Se `tool_contract_shadow` for maalingen der viste begge.
-    try:
-        from core.services import tool_contract_shadow as _tcs
-        _brud = _tcs.observe(name, arguments)
-        _haarde = [b for b in _brud if b.haard]
-        if _haarde and _tcs.haandhaever():
-            from core.tools.tool_schema_contract import afvisning
-            _afvist = afvisning(name, _haarde)
-            if not er_internt_kald():
-                from core.tools.tool_call_observation import observe_tool_call
-                observe_tool_call(name, arguments, _afvist)
-            return _afvist
-    except Exception:
-        pass  # en maaling maa aldrig kunne vaelte kaldet den maaler
+    # Udskilt efter Boy Scout-reglen: filen er over 2.000 linjer. Gatewayen
+    # ejer schema-preflight, lifecycle-hooks og den ydre observation.
+    from core.tools.tool_execution_gateway import execute_tool_call
 
-    result = _execute_tool_impl(name, arguments)
-    # Observationen er udskilt til `tool_call_observation` (Boy Scout, 2.141
-    # linjer). Den aendrer aldrig udfaldet og kaster aldrig. Systemets EGNE kald
-    # (job-pollen) observeres ikke — de er panelets puls, ikke model-kald.
-    if not er_internt_kald():
-        from core.tools.tool_call_observation import observe_tool_call
-        observe_tool_call(name, arguments, result)
-    return result
+    return execute_tool_call(
+        name,
+        arguments,
+        execute=lambda: _execute_tool_impl(name, arguments),
+        internal=er_internt_kald(),
+    )
 
 
 def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
@@ -1514,28 +1503,20 @@ def execute_tool_force(
     ``core.tools.owner_approval``.
     """
     from core.tools.owner_approval import ejer_godkendt_kald
+    from core.tools.tool_execution_gateway import execute_force_tool_call
 
-    if owner_approved:
-        with ejer_godkendt_kald():
-            result = _execute_tool_force_impl(name, arguments)
-    else:
-        result = _execute_tool_force_impl(name, arguments)
+    def _execute() -> dict[str, Any]:
+        if owner_approved:
+            with ejer_godkendt_kald():
+                return _execute_tool_force_impl(name, arguments)
+        return _execute_tool_force_impl(name, arguments)
 
-    # 24/10-2026: force-vejen sprang observationen over — `observe_tool_call`
-    # laa KUN i `execute_tool`. MAALT: render_mermaid blev kaldt kl. 22:41 og
-    # `tool_usage` stod stille paa call_count=9 / last_used_at=17:54. Synlige
-    # og autonome koersler gaar gennem HER (`simple_tool_executor`, force=True),
-    # saa deres forbrug var usynligt for Centralen — praecis den sloejfe
-    # `tool_usage` findes for at lukke (mest-brugt foerst, doede sidst).
-    # Samme vagt som den normale vej: systemets EGNE kald (job-pollen) er
-    # panelets puls, ikke model-kald, og skal ikke taelles.
-    try:
-        if not er_internt_kald():
-            from core.tools.tool_call_observation import observe_tool_call
-            observe_tool_call(name, arguments, result)
-    except Exception:
-        pass  # en maaling maa aldrig kunne vaelte kaldet den maaler
-    return result
+    return execute_force_tool_call(
+        name,
+        arguments,
+        execute=_execute,
+        internal=er_internt_kald(),
+    )
 
 
 # Emotional gate actions that may STOP a tool call. Everything else
@@ -1926,6 +1907,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "read_self_docs": _exec_read_self_docs,
     "github_list_issues": _exec_github_list_issues,
     "github_list_prs": _exec_github_list_prs,
+    **GITHUB_PR_TOOL_HANDLERS,
     "gmail_search": _exec_gmail_search,
     "gmail_list": _exec_gmail_list,
     "gmail_modify": _exec_gmail_modify,

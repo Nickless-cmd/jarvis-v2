@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/turn_tail_timing.py`
+_Hvor bliver sekunderne af EFTER svaret er skrevet færdigt?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `start` | `(run_id)` | — | [src](../../../core/services/turn_tail_timing.py#L42) |
+| function | `mark` | `(run_id, navn)` | Notér at ét led er færdigt. Gratis hvis `start` aldrig blev kaldt. | [src](../../../core/services/turn_tail_timing.py#L57) |
+| function | `slut` | `(run_id)` | Afslut målingen. Returnerer halens længde i sekunder (0 hvis ukendt). | [src](../../../core/services/turn_tail_timing.py#L67) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/turn_tail_timing.py#L87) |
+
 ## `core/services/turn_trace.py`
 _core/services/turn_trace.py_
 
@@ -613,15 +623,4 @@ _Bounded visible prompt for a member's own chat session._
 |---|---|---|---|---|
 | function | `_iso_dt` | `(value)` | ISO-tidsstempel fra chat_messages → aware datetime. None = ukendt. | [src](../../../core/services/visible_member_prompt.py#L18) |
 | function | `build_member_prompt` | `(*, user_id, session_id, user_message=…)` | — | [src](../../../core/services/visible_member_prompt.py#L30) |
-
-## `core/services/visible_memory_grounding.py`
-_Bounded, current-source grounding for explicit memory questions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `needs_memory_grounding` | `(message)` | Return true only when the user is clearly invoking remembered context. | [src](../../../core/services/visible_memory_grounding.py#L47) |
-| function | `_search_current_workspace` | `(query, *, limit)` | — | [src](../../../core/services/visible_memory_grounding.py#L57) |
-| function | `_bounded_search` | `(query, *, limit, timeout_s, search_fn)` | Run the potentially embedding-backed lookup without stalling chat. | [src](../../../core/services/visible_memory_grounding.py#L63) |
-| function | `_clip` | `(value, limit)` | — | [src](../../../core/services/visible_memory_grounding.py#L91) |
-| function | `ground_memory_question` | `(message, *, limit=…, timeout_s=…, search_fn=…)` | Append bounded current-workspace evidence to an explicit memory query. | [src](../../../core/services/visible_memory_grounding.py#L96) |
 

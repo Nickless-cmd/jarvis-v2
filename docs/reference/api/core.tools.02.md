@@ -42,6 +42,15 @@ _Native geolocation-tools til Jarvis — geocode, reverse-geocode, routing,_
 | function | `exec_google_weather` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L964) |
 | function | `exec_google_air_quality` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L968) |
 
+## `core/tools/github_pr_tools.py`
+_GitHub PR creation and CI status tools via the per-user connector._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_user_id` | `(args)` | — | [src](../../../core/tools/github_pr_tools.py#L7) |
+| function | `execute_github_create_pr` | `(args)` | — | [src](../../../core/tools/github_pr_tools.py#L15) |
+| function | `execute_github_ci_status` | `(args)` | — | [src](../../../core/tools/github_pr_tools.py#L39) |
+
 ## `core/tools/github_tools.py`
 _Git introspection tools — operates on the Jarvis v2 repo._
 
@@ -589,25 +598,4 @@ _Plan revision tool — revise_plan._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_exec_revise_plan` | `(args)` | Tool handler for revise_plan. | [src](../../../core/tools/plan_revise_tool.py#L27) |
-
-## `core/tools/pollinations_tools.py`
-_Pollinations.ai tools — free, no-auth image + video generation._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_api_key` | `()` | Read pollinations API key from runtime.json (never hardcoded). | [src](../../../core/tools/pollinations_tools.py#L83) |
-| function | `_auth_headers` | `()` | — | [src](../../../core/tools/pollinations_tools.py#L95) |
-| function | `_generated_dir` | `()` | — | [src](../../../core/tools/pollinations_tools.py#L103) |
-| function | `_video_dir` | `()` | — | [src](../../../core/tools/pollinations_tools.py#L108) |
-| function | `_clamp` | `(value, lo, hi)` | — | [src](../../../core/tools/pollinations_tools.py#L113) |
-| function | `_safe_filename` | `(prompt, gen_id, ext)` | — | [src](../../../core/tools/pollinations_tools.py#L117) |
-| function | `_write_sidecar` | `(image_path, metadata)` | — | [src](../../../core/tools/pollinations_tools.py#L126) |
-| function | `generate_image` | `(*, prompt, model=…, width=…, height=…, seed=…, nologo=…, enhance=…, save_dir=…)` | Fetch an image from Pollinations and save to disk. Returns result dict. | [src](../../../core/tools/pollinations_tools.py#L135) |
-| function | `_exec_pollinations_image` | `(args)` | — | [src](../../../core/tools/pollinations_tools.py#L248) |
-| function | `generate_video` | `(*, prompt, model=…, duration=…, aspect_ratio=…, audio=…, image_url=…, save_dir=…)` | Generate a video via pollinations.ai. Requires pollinations_api_key | [src](../../../core/tools/pollinations_tools.py#L331) |
-| function | `_hent_video` | `(*, url, model, prompt, save_dir=…)` | Hent, gem og beskriv en video. Faelles for generering og redigering. | [src](../../../core/tools/pollinations_tools.py#L373) |
-| function | `_registrer_video` | `(result, args, *, hvad=…)` | Goer videoen synlig: registrér den, og laeg den paa turen. | [src](../../../core/tools/pollinations_tools.py#L458) |
-| function | `edit_video` | `(*, prompt, video_url, model=…, duration=…, aspect_ratio=…, audio=…)` | Lav en NY video ud fra en eksisterende + en instruktion. | [src](../../../core/tools/pollinations_tools.py#L506) |
-| function | `_exec_pollinations_video_edit` | `(args)` | — | [src](../../../core/tools/pollinations_tools.py#L571) |
-| function | `_exec_pollinations_video` | `(args)` | — | [src](../../../core/tools/pollinations_tools.py#L595) |
 

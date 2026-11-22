@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18974 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18989 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -60,10 +60,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18974 functions/
 - [`core.services.26`](core.services.26.md) — `self_narrative_continuity_signal_tracking` … `session_wakeup`
 - [`core.services.27`](core.services.27.md) — `settlement_shadow` … `somatic_runtime_body`
 - [`core.services.28`](core.services.28.md) — `source_confidence_gate` … `text_resonance`
-- [`core.services.29`](core.services.29.md) — `theater_audit` … `turn_tail_timing`
-- [`core.services.30`](core.services.30.md) — `turn_trace` … `visible_memory_grounding`
-- [`core.services.31`](core.services.31.md) — `visible_model` … `visible_text_scrub`
-- [`core.services.32`](core.services.32.md) — `visible_thinking_trace` … `world_model_signal_tracking`
+- [`core.services.29`](core.services.29.md) — `theater_audit` … `turn_changelog`
+- [`core.services.30`](core.services.30.md) — `turn_tail_timing` … `visible_member_prompt`
+- [`core.services.31`](core.services.31.md) — `visible_memory_grounding` … `visible_terminal_policy`
+- [`core.services.32`](core.services.32.md) — `visible_text_scrub` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`
@@ -73,9 +73,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18974 functions/
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
 - [`core.tools.01`](core.tools.01.md) — `__init__` … `gate_override_tools`
-- [`core.tools.02`](core.tools.02.md) — `geolocation_tools` … `pollinations_tools`
-- [`core.tools.03`](core.tools.03.md) — `process_supervisor_tools` … `stripe_tools`
-- [`core.tools.04`](core.tools.04.md) — `surface_tools` … `world_model_tools`
+- [`core.tools.02`](core.tools.02.md) — `geolocation_tools` … `plan_revise_tool`
+- [`core.tools.03`](core.tools.03.md) — `pollinations_tools` … `streaming_subprocess`
+- [`core.tools.04`](core.tools.04.md) — `stripe_tools` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

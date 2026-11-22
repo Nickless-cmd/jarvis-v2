@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/pollinations_tools.py`
+_Pollinations.ai tools — free, no-auth image + video generation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_api_key` | `()` | Read pollinations API key from runtime.json (never hardcoded). | [src](../../../core/tools/pollinations_tools.py#L83) |
+| function | `_auth_headers` | `()` | — | [src](../../../core/tools/pollinations_tools.py#L95) |
+| function | `_generated_dir` | `()` | — | [src](../../../core/tools/pollinations_tools.py#L103) |
+| function | `_video_dir` | `()` | — | [src](../../../core/tools/pollinations_tools.py#L108) |
+| function | `_clamp` | `(value, lo, hi)` | — | [src](../../../core/tools/pollinations_tools.py#L113) |
+| function | `_safe_filename` | `(prompt, gen_id, ext)` | — | [src](../../../core/tools/pollinations_tools.py#L117) |
+| function | `_write_sidecar` | `(image_path, metadata)` | — | [src](../../../core/tools/pollinations_tools.py#L126) |
+| function | `generate_image` | `(*, prompt, model=…, width=…, height=…, seed=…, nologo=…, enhance=…, save_dir=…)` | Fetch an image from Pollinations and save to disk. Returns result dict. | [src](../../../core/tools/pollinations_tools.py#L135) |
+| function | `_exec_pollinations_image` | `(args)` | — | [src](../../../core/tools/pollinations_tools.py#L248) |
+| function | `generate_video` | `(*, prompt, model=…, duration=…, aspect_ratio=…, audio=…, image_url=…, save_dir=…)` | Generate a video via pollinations.ai. Requires pollinations_api_key | [src](../../../core/tools/pollinations_tools.py#L331) |
+| function | `_hent_video` | `(*, url, model, prompt, save_dir=…)` | Hent, gem og beskriv en video. Faelles for generering og redigering. | [src](../../../core/tools/pollinations_tools.py#L373) |
+| function | `_registrer_video` | `(result, args, *, hvad=…)` | Goer videoen synlig: registrér den, og laeg den paa turen. | [src](../../../core/tools/pollinations_tools.py#L458) |
+| function | `edit_video` | `(*, prompt, video_url, model=…, duration=…, aspect_ratio=…, audio=…)` | Lav en NY video ud fra en eksisterende + en instruktion. | [src](../../../core/tools/pollinations_tools.py#L506) |
+| function | `_exec_pollinations_video_edit` | `(args)` | — | [src](../../../core/tools/pollinations_tools.py#L571) |
+| function | `_exec_pollinations_video` | `(args)` | — | [src](../../../core/tools/pollinations_tools.py#L595) |
+
 ## `core/tools/process_supervisor_tools.py`
 _Tool wrappers for the process supervisor._
 
@@ -203,19 +224,19 @@ _Simple, general-purpose tools for Jarvis visible lane._
 |---|---|---|---|---|
 | function | `canonical_identity_file_path` | `(name)` | Den ENE fil `name` bor i — samme opslag som prompten bruger til at LÆSE. | [src](../../../core/tools/simple_tools.py#L708) |
 | function | `_canonicalize_workspace_target` | `(target)` | If target's basename is a canonical workspace file, force it to the | [src](../../../core/tools/simple_tools.py#L750) |
-| function | `_emit_security_check` | `(hit, *, target)` | Self-safe audit-emit: et deny/destructive bæres nu med sit nummererede | [src](../../../core/tools/simple_tools.py#L892) |
-| function | `_uden_for_quotes` | `(command)` | Fjern quotede strenge, så en ``>`` inde i en streng ikke tælles som redirect. | [src](../../../core/tools/simple_tools.py#L924) |
-| function | `_har_skrivende_redirect` | `(command)` | ``>`` eller ``>>`` uden for quotes gør kommandoen muterende. | [src](../../../core/tools/simple_tools.py#L933) |
-| function | `_segment_er_laesende` | `(segment)` | Er ÉT pipe-segment en ren læsning? Fail-closed ved tvivl. | [src](../../../core/tools/simple_tools.py#L949) |
-| function | `classify_command` | `(command)` | Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L968) |
-| function | `classify_file_write` | `(path)` | Classify a file write: 'auto', 'approval', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L1124) |
-| function | `execute_tool` | `(name, arguments)` | Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1). | [src](../../../core/tools/simple_tools.py#L1146) |
-| function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L1185) |
-| function | `execute_tool_force` | `(name, arguments, *, owner_approved=…)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1502) |
-| function | `_execute_tool_force_impl` | `(name, arguments)` | — | [src](../../../core/tools/simple_tools.py#L1552) |
-| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1677) |
-| function | `_med_samtykke` | `(navn, fn)` | — | [src](../../../core/tools/simple_tools.py#L2429) |
-| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2523) |
+| function | `_emit_security_check` | `(hit, *, target)` | Self-safe audit-emit: et deny/destructive bæres nu med sit nummererede | [src](../../../core/tools/simple_tools.py#L899) |
+| function | `_uden_for_quotes` | `(command)` | Fjern quotede strenge, så en ``>`` inde i en streng ikke tælles som redirect. | [src](../../../core/tools/simple_tools.py#L931) |
+| function | `_har_skrivende_redirect` | `(command)` | ``>`` eller ``>>`` uden for quotes gør kommandoen muterende. | [src](../../../core/tools/simple_tools.py#L940) |
+| function | `_segment_er_laesende` | `(segment)` | Er ÉT pipe-segment en ren læsning? Fail-closed ved tvivl. | [src](../../../core/tools/simple_tools.py#L956) |
+| function | `classify_command` | `(command)` | Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L975) |
+| function | `classify_file_write` | `(path)` | Classify a file write: 'auto', 'approval', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L1131) |
+| function | `execute_tool` | `(name, arguments)` | Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1). | [src](../../../core/tools/simple_tools.py#L1153) |
+| function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L1174) |
+| function | `execute_tool_force` | `(name, arguments, *, owner_approved=…)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1491) |
+| function | `_execute_tool_force_impl` | `(name, arguments)` | — | [src](../../../core/tools/simple_tools.py#L1533) |
+| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1658) |
+| function | `_med_samtykke` | `(navn, fn)` | — | [src](../../../core/tools/simple_tools.py#L2411) |
+| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2505) |
 
 ## `core/tools/simple_tools_agent_spawn.py`
 _spawn_agent_task som modelvendt vaerktoej._
@@ -607,18 +628,4 @@ _One-shot subprocess execution with best-effort incremental output._
 |---|---|---|---|---|
 | class | `StreamingProcessResult` | `` | — | [src](../../../core/tools/streaming_subprocess.py#L19) |
 | function | `run_streaming` | `(argv, *, cwd, timeout_s, on_output)` | — | [src](../../../core/tools/streaming_subprocess.py#L28) |
-
-## `core/tools/stripe_tools.py`
-_Stripe integration tools — balance, transactions, and Issuing virtual cards._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_stripe_unavailable_response` | `()` | — | [src](../../../core/tools/stripe_tools.py#L33) |
-| function | `_load_stripe_key` | `()` | Load the Stripe secret key from runtime config. | [src](../../../core/tools/stripe_tools.py#L47) |
-| function | `_init_stripe` | `()` | Initialise the Stripe SDK with the stored key. Returns mode label. | [src](../../../core/tools/stripe_tools.py#L60) |
-| function | `_to_dict` | `(obj)` | Convert a Stripe object to a plain dict safely. | [src](../../../core/tools/stripe_tools.py#L72) |
-| function | `_exec_stripe_balance` | `(_args)` | Get the Stripe account balance. | [src](../../../core/tools/stripe_tools.py#L86) |
-| function | `_exec_stripe_transactions` | `(args)` | — | [src](../../../core/tools/stripe_tools.py#L118) |
-| function | `_exec_stripe_payouts` | `(args)` | — | [src](../../../core/tools/stripe_tools.py#L150) |
-| function | `_exec_stripe_create_issuing_card` | `(args)` | — | [src](../../../core/tools/stripe_tools.py#L181) |
 

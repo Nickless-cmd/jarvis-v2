@@ -89,6 +89,10 @@ ACTOR_REGISTRY: dict[str, ActorRule] = {
     "jarvis": ActorRule("agent", frozenset({"autonomous", "interactive"})),
     "codex": ActorRule("agent", frozenset({"interactive", "delegated"})),
     "opus": ActorRule("agent", frozenset({"interactive", "delegated"})),
+    # 22/11-2026: claude-cli er en fast delegationsrute (Task/agent_task_facade)
+    # og skriver commits som denne aktør. Uden den måtte agenten enten springe
+    # hooken over eller skrive en anden agents navn — begge er værre.
+    "claude": ActorRule("agent", frozenset({"interactive", "delegated"})),
 }
 
 

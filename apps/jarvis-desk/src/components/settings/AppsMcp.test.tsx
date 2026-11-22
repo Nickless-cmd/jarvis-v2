@@ -8,6 +8,8 @@ const removeMcpServer = vi.fn().mockResolvedValue(undefined)
 const getMcpTrust = vi.fn(async () => ({ servere: [], pins: {} }))
 const allowMcpServer = vi.fn(async () => undefined)
 const revokeMcpServer = vi.fn(async () => undefined)
+const getMcpCatalog = vi.fn().mockResolvedValue([])
+const installMcpCatalogEntry = vi.fn().mockResolvedValue(undefined)
 vi.mock('../../lib/coworkApi', () => ({
   getAccountApps: (...a: unknown[]) => getAccountApps(...a),
   getAccountMcp: (...a: unknown[]) => getAccountMcp(...a),
@@ -18,6 +20,9 @@ vi.mock('../../lib/coworkApi', () => ({
   getMcpTrust: () => getMcpTrust(),
   allowMcpServer: () => allowMcpServer(),
   revokeMcpServer: () => revokeMcpServer(),
+  // Markedspladsen (22/11-2026) hentes sammen med de to andre.
+  getMcpCatalog: () => getMcpCatalog(),
+  installMcpCatalogEntry: (...a: unknown[]) => installMcpCatalogEntry(...a),
 }))
 
 import { AppsSection } from './AppsSection'
@@ -41,7 +46,11 @@ describe('AppsSection', () => {
 })
 
 describe('McpSection', () => {
-  beforeEach(() => { getAccountMcp.mockReset(); addMcpServer.mockClear() })
+  beforeEach(() => {
+    getAccountMcp.mockReset()
+    addMcpServer.mockClear()
+    installMcpCatalogEntry.mockClear()
+  })
   it('tilføjer en MCP-server', async () => {
     getAccountMcp.mockResolvedValue([])
     render(<McpSection config={cfg} />)
@@ -50,5 +59,31 @@ describe('McpSection', () => {
     fireEvent.change(screen.getByPlaceholderText(/url/i), { target: { value: 'https://x' } })
     fireEvent.click(screen.getByRole('button', { name: /tilføj/i }))
     await waitFor(() => expect(addMcpServer).toHaveBeenCalledWith(cfg, 'CF', 'https://x'))
+  })
+
+  it('viser markedspladsen og installerer med ét klik', async () => {
+    getAccountMcp.mockResolvedValue([])
+    getMcpCatalog.mockResolvedValue([
+      { id: 'git', name: 'Git', description: 'Læs historik', transport: 'stdio',
+        tools: ['git_status', 'git_log'], source_url: 'https://x', installed: false },
+    ])
+    render(<McpSection config={cfg} />)
+    await screen.findByText('Git')
+    expect(screen.getByText(/læs historik/i)).toBeTruthy()
+    expect(screen.getByText(/2 værktøjer/i)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /^installer$/i }))
+    await waitFor(() => expect(installMcpCatalogEntry).toHaveBeenCalledWith(cfg, 'git'))
+  })
+
+  it('kan ikke installere en server der allerede er installeret', async () => {
+    getAccountMcp.mockResolvedValue([])
+    getMcpCatalog.mockResolvedValue([
+      { id: 'git', name: 'Git', description: 'Læs historik', transport: 'stdio',
+        tools: [], installed: true },
+    ])
+    render(<McpSection config={cfg} />)
+    const knap = await screen.findByRole('button', { name: /installeret/i })
+    expect((knap as HTMLButtonElement).disabled).toBe(true)
+    expect(installMcpCatalogEntry).not.toHaveBeenCalled()
   })
 })

@@ -3726,6 +3726,22 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   color: var(--fg-1); font-size: 12.5px; padding: 5px 8px; }
 .mcp-add button { background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--radius-sm);
   color: var(--fg-1); font-size: 12.5px; padding: 5px 12px; cursor: pointer; }
+/* MCP-markedspladsen: et kort per kurateret server. Kortet skal vise HVAD
+   serveren gør og hvor mange værktøjer den giver, ellers er «Installer» et
+   valg uden grundlag. */
+.mcp-katalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin-top: 4px; }
+.mcp-katalog-kort { background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius-md);
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.mcp-katalog-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.mcp-katalog-top .mcp-name { min-width: 0; font-weight: 600; }
+.mcp-katalog-transport { font-size: 10.5px; color: var(--fg-3); text-transform: uppercase; letter-spacing: .04em; }
+.mcp-katalog-tekst { margin: 0; font-size: 12px; color: var(--fg-2); line-height: 1.45; }
+.mcp-katalog-vaerktoejer { font-size: 11px; color: var(--fg-3); }
+.mcp-katalog-bund { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
+.mcp-katalog-bund button { background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  color: var(--fg-1); font-size: 12px; padding: 4px 11px; cursor: pointer; }
+.mcp-katalog-bund button:disabled { opacity: .55; cursor: default; }
+.mcp-katalog-kilde { font-size: 11.5px; color: var(--fg-3); }
 .badge { padding: 1px 8px; border-radius: var(--radius-md); font-size: 11px; margin-left: 4px; }
 .badge-ok { background: #1d3a24; color: #6ee7a0; }
 .badge-warn { background: #3a2a1d; color: #e7b96e; }

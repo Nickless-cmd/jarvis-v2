@@ -319,6 +319,34 @@ export async function revokeMcpServer(config: ApiConfig, navn: string): Promise<
   await apiFetch(config, `/account/mcp/${encodeURIComponent(navn)}/revoke`, { method: 'POST' })
 }
 
+/** MCP-markedspladsen (22/11-2026): et kurateret katalog med ét-kliks-installation.
+ *
+ *  ``installed`` regnes af serveren ud fra den registrerede transport — ikke af
+ *  klienten. Derfor kan knappen sige «installeret» uden at klienten selv har
+ *  gættet på et navn.
+ *
+ *  Installation registrerer serveren. Den godkender den IKKE: ``allow`` er
+ *  fortsat en separat, eksplicit beslutning, og ruten nægter at gøre det for os.
+ */
+export type McpCatalogEntry = {
+  id: string
+  name: string
+  description: string
+  transport: string
+  tools: string[]
+  source_url?: string
+  installed: boolean
+}
+export async function getMcpCatalog(config: ApiConfig): Promise<McpCatalogEntry[]> {
+  const d = await apiFetch<{ servers: McpCatalogEntry[] }>(config, '/account/mcp/catalog')
+  return d.servers ?? []
+}
+export async function installMcpCatalogEntry(config: ApiConfig, catalogId: string): Promise<void> {
+  await apiFetch(config, `/account/mcp/catalog/${encodeURIComponent(catalogId)}/install`, {
+    method: 'POST',
+  })
+}
+
 /** Workbench: operator-kanal, checkpoints og runtime-kontakter. */
 export type OperatorChannel = { open: boolean; udloeber_om_s?: number }
 export async function getOperatorChannel(

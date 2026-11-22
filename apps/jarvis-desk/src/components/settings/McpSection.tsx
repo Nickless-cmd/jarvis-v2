@@ -7,9 +7,12 @@ import {
   addMcpServer,
   allowMcpServer,
   getAccountMcp,
+  getMcpCatalog,
   getMcpTrust,
+  installMcpCatalogEntry,
   removeMcpServer,
   revokeMcpServer,
+  type McpCatalogEntry,
 } from '../../lib/coworkApi'
 
 /** MCP-sektion (owner-only).
@@ -22,8 +25,18 @@ import {
  */
 export function McpSection({ config }: { config: ApiConfig | undefined }) {
   const resource = useSettingsResource(config, async cfg => {
-    const [servers, trust] = await Promise.all([getAccountMcp(cfg), getMcpTrust(cfg)])
-    return { servers, trust: Object.fromEntries((trust.servere ?? []).map(row => [row.navn, row])) }
+    const [servers, trust, katalog] = await Promise.all([
+      getAccountMcp(cfg),
+      getMcpTrust(cfg),
+      // Kataloget er en KATALOG-fejl hvis den ikke kan hentes; den må ikke
+      // vælte listen over installerede servere. Et tomt katalog er ærligt.
+      getMcpCatalog(cfg).catch((): McpCatalogEntry[] => []),
+    ])
+    return {
+      servers,
+      trust: Object.fromEntries((trust.servere ?? []).map(row => [row.navn, row])),
+      katalog,
+    }
   })
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
@@ -40,7 +53,7 @@ export function McpSection({ config }: { config: ApiConfig | undefined }) {
     finally { setTravl('') }
   }
   if (!resource.data) return <SettingsState status={resource.status} label="MCP-servere og godkendelser" onRetry={resource.retry} />
-  const { servers, trust } = resource.data
+  const { servers, trust, katalog } = resource.data
 
   return (
     <div className="settings-section mcp-section">
@@ -91,6 +104,46 @@ export function McpSection({ config }: { config: ApiConfig | undefined }) {
             </div>
           )
         })}
+      </div>
+
+      <h3>Markedsplads</h3>
+      <p className="settings-hint">
+        Kuraterede servere med ét klik. Installation registrerer serveren — den
+        godkender den ikke. Godkendelsen er stadig din, og står i listen ovenfor.
+      </p>
+      {katalog.length === 0 && (
+        <div className="cowork-empty">Kataloget kunne ikke hentes.</div>
+      )}
+      <div className="mcp-katalog">
+        {katalog.map((k) => (
+          <div key={k.id} className="mcp-katalog-kort">
+            <div className="mcp-katalog-top">
+              <span className="mcp-name">{k.name}</span>
+              <span className="mcp-katalog-transport">{k.transport}</span>
+            </div>
+            <p className="mcp-katalog-tekst">{k.description}</p>
+            {k.tools.length > 0 && (
+              <span className="mcp-katalog-vaerktoejer">
+                {k.tools.length} værktøjer · {k.tools.slice(0, 3).join(', ')}
+                {k.tools.length > 3 ? ' …' : ''}
+              </span>
+            )}
+            <div className="mcp-katalog-bund">
+              <button
+                type="button"
+                disabled={!!travl || k.installed}
+                onClick={() => config && void change(`kat-${k.id}`, () => installMcpCatalogEntry(config, k.id))}
+              >
+                {k.installed ? 'Installeret' : 'Installer'}
+              </button>
+              {k.source_url && (
+                <a className="mcp-katalog-kilde" href={k.source_url} target="_blank" rel="noreferrer">
+                  Kilde
+                </a>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )

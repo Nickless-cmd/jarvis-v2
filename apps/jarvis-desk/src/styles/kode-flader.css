@@ -1,0 +1,27 @@
+/* Code-mode flader: agent-panel, usages-panel og PR/CI i git-panelet.
+   Kun tokens fra tokens.css. Genbruger .artifact-panel/-head/-body fra app.css. */
+.agentpanel-liste, .usages-liste { list-style: none; margin: 0; padding: 0; }
+.agentpanel-raekke { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; background: transparent; color: var(--fg-1); border: 0; border-bottom: 1px solid var(--line); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.agentpanel-raekke:hover, .agentpanel-raekke.active { background: var(--bg-2); }
+.agentpanel-id { font-family: ui-monospace, monospace; color: var(--fg-3); }
+.agentpanel-rolle { font-weight: 600; }
+.agentpanel-maal { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-2); }
+.agentpanel-status { padding: 0 6px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 11px; }
+.agentpanel-status.queued { color: var(--fg-3); }
+.agentpanel-status.active { color: var(--ok); }
+.agentpanel-status.done { color: var(--fg-2); }
+.agentpanel-status.failed { color: var(--warn-fg); }
+.agentpanel-detalje { border-top: 1px solid var(--line); padding: 8px 10px; overflow: auto; }
+.usages-kilde { display: flex; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.usages-kilde button, .usages-hit { font: inherit; font-size: 12px; background: transparent; color: var(--fg-1); cursor: pointer; }
+.usages-kilde button { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 2px 8px; }
+.usages-kilde button.active { background: var(--bg-2); }
+.usages-hit { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); padding: 5px 10px; }
+.usages-hit:hover { background: var(--bg-2); }
+.usages-sti { font-family: ui-monospace, monospace; color: var(--fg-2); }
+.usages-snippet { display: block; color: var(--fg-3); font-family: ui-monospace, monospace; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.usages-meta { color: var(--fg-3); font-size: 11px; padding: 6px 10px; }
+.gitpanel-pr a { color: var(--fg-1); }
+.gitpanel-ci { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.gitpanel-ci .ci-success { color: var(--ok); }
+.gitpanel-ci .ci-failure { color: var(--warn-fg); }

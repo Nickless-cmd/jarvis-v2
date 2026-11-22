@@ -170,6 +170,24 @@ def _drain_ready_queue() -> int:
     return started
 
 
+def resume_after_restart() -> list[dict[str, Any]]:
+    """Resume durable contract work once during runtime startup.
+
+    Parked work is claimed through ``resume_decided``; running work is only
+    reclaimed after its lease expired. Both paths already use atomic DB claims,
+    so the API and runtime processes may safely execute this sweep concurrently.
+    """
+    from core.runtime.db_agent_lease import reconcile_expired_leases
+    from core.services.agent_parking import resume_decided
+
+    resumed = resume_decided(_start_execution)
+    recovered = reconcile_expired_leases()
+    for item in recovered:
+        if item.get("action") == "retry":
+            _start_execution(item["agent_id"])
+    return recovered + [{"action": "resumed_after_approval", **item} for item in resumed]
+
+
 def _signal_feed() -> None:
     """Meld nye/aendrede agentreferencer til Desk. Best effort: supervisor-tikket gensender (G)."""
     try:

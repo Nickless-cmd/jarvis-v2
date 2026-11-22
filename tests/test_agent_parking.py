@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import inspect
+import socket
 import threading
 from datetime import UTC, datetime, timedelta
 
@@ -170,6 +172,103 @@ def test_a_decision_made_before_a_restart_still_resumes_via_the_supervisor(pk):
     assert any(d.get("action") == "resumed_after_approval" for d in done)
     pk.go()
     assert pk.assignment(out) == "completed" and pk.executed_ == [("c1", {"command": MUTERENDE})]
+
+
+def test_runtime_restart_resumes_a_decided_parked_agent_but_not_a_live_lease(pk):
+    """Startup-sweepet skal bruge de eksisterende checkpoint- og lease-claims.
+
+    Fjerner man sweepet, bliver den parkerede agent staaende ``waiting``. Hvis
+    sweepet omvendt er for bredt, bliver den levende lease startet en ekstra
+    gang. Begge fejl er observerbare her uden at teste en mock.
+    """
+    from core.runtime import db_agent_approvals as approvals
+    from core.runtime import db_agent_capacity as capacity
+    from core.runtime import db_agent_lease as lease
+    from core.runtime.db_agent_runtime import create_agent_registry_entry, update_agent_registry_entry
+    from core.services.agent_contract_service import resume_after_restart
+    from core.services.agent_parking import set_assignment_status, take_resume
+    from core.services.agent_runtime_spawn import recover_crashed_agents
+
+    def queued_assignment(agent_id):
+        create_agent_registry_entry(agent_id=agent_id, role="researcher", goal="g")
+        pk.c_.bind_agent_owner(agent_id=agent_id, owner_user_id=O, owner_session_id=S)
+        acc = pk.c_.accept_assignment(
+            agent_id=agent_id, owner_user_id=O, origin_session_id=S, goal="g",
+            parent_agent_id="jarvis", parent_run_id="pr",
+        )
+        assert capacity.mark_ready(assignment_id=acc["assignment_id"])
+        return acc
+
+    def active_assignment(agent_id):
+        acc = queued_assignment(agent_id)
+        assert capacity.claim_worker_slot(assignment_id=acc["assignment_id"])
+        return acc
+
+    parked = active_assignment("parked-after-restart")
+    ap = approvals.request(
+        owner_user_id=O, origin_session_id=S, assignment_id=parked["assignment_id"],
+        run_id=parked["run_id"], tool_name="bash", arguments={"command": MUTERENDE},
+    )
+    approvals.save_checkpoint(
+        assignment_id=parked["assignment_id"], run_id=parked["run_id"],
+        approval_id=ap["approval_id"], payload={"checkpoint_marker": "durable"},
+    )
+    assert set_assignment_status(
+        assignment_id=parked["assignment_id"], status="waiting", only_from=("active",),
+    )
+    pk.c_._conn().execute(
+        "UPDATE agent_runs SET status='waiting_for_approval' WHERE run_id=?", (parked["run_id"],),
+    )
+    pk.c_._conn().commit()
+    update_agent_registry_entry(parked["agent_id"], status="waiting_for_approval")
+    approvals.decide(
+        approval_id=ap["approval_id"], decision="approve", actor_user_id=O,
+        actor_kind="human", digest=ap["args_digest"],
+    )
+
+    live = active_assignment("live-lease-after-restart")
+    lease.acquire(assignment_id=live["assignment_id"], holder="levende-worker")
+    update_agent_registry_entry(live["agent_id"], status="active")
+    conn = pk.c_._conn()
+    conn.execute(
+        "UPDATE agent_registry SET runtime_owner=? WHERE agent_id=?",
+        (f"{socket.gethostname()}:999999:123", live["agent_id"]),
+    )
+    conn.commit()
+
+    never_started = queued_assignment("never-started-before-restart")
+    recovered = resume_after_restart()
+    recover_crashed_agents()  # naeste eksisterende hook i den virkelige lifespan
+
+    assert recovered == [{
+        "action": "resumed_after_approval",
+        "agent_id": parked["agent_id"],
+        "approval_id": ap["approval_id"],
+        "approval_status": "approved",
+    }]
+    assert len(pk.started_) == 1
+    assert pk.assignment(live) == "active"
+    assert pk.assignment(never_started) == "queued"
+    live_lease = pk.c_._conn().execute(
+        "SELECT holder, state FROM agent_leases WHERE assignment_id=?",
+        (live["assignment_id"],),
+    ).fetchone()
+    assert tuple(live_lease) == ("levende-worker", "held")
+    assert take_resume(parked["agent_id"]) == {
+        "checkpoint_marker": "durable", "approval_id": ap["approval_id"],
+    }
+    old_run = pk.c_._conn().execute(
+        "SELECT status FROM agent_runs WHERE run_id=?", (parked["run_id"],),
+    ).fetchone()
+    assert old_run["status"] == "resumed"
+
+
+def test_runtime_lifespan_calls_agent_restart_recovery() -> None:
+    """Adfaerdstesten ovenfor beviser sweepet; denne vagt beviser ledningen."""
+    import apps.api.jarvis_api.app as runtime_app
+
+    source = inspect.getsource(runtime_app.create_app)
+    assert "resume_after_restart()" in source
 
 
 def test_two_concurrent_resumers_start_the_child_once(pk):

@@ -211,3 +211,31 @@ def test_gaten_har_lov_at_laese_actions(workflow: dict, gate_script: str) -> Non
         f"workflowet må ikke læse actions (permissions={tilladelser}). "
         "Gaten ville få 403 og afvise alle releases."
     )
+
+
+def test_ingen_daad_git_normalisering(gate_script: str) -> None:
+    """Gate-jobbet har ingen checkout — så `git rev-parse` kan ikke virke.
+
+    MÅLT 22/11-2026: scriptet kørte
+    `FULL="$(git rev-parse "$SHA" 2>/dev/null || echo "$SHA")"`, men
+    jobbet har kun ét step og henter intet repo. Kommandoen fejlede
+    derfor HVER gang og faldt tilbage til den rå værdi. Normaliseringen
+    var død kode der så ud som et værn — den kunne aldrig gøre noget.
+
+    I stedet kræves formen: 40 hex-tegn. Testen værner begge sider —
+    at den døde kode ikke kommer tilbage, og at kravet faktisk findes.
+    """
+    # Maal KODEN, ikke kommentarerne: scriptet forklarer i en kommentar
+    # hvorfor `git rev-parse` blev fjernet, og en vagt der greps i hele
+    # teksten ville fejle paa sin egen begrundelse.
+    kode = "\n".join(
+        r for r in gate_script.split("\n") if not r.lstrip().startswith("#")
+    )
+    assert "git rev-parse" not in kode, (
+        "git rev-parse er tilbage i gate-scriptets kode, men jobbet har ingen "
+        "checkout — den kan ikke virke og falder tavst tilbage"
+    )
+    assert "${#FULL}" in kode and "-ne 40" in kode, (
+        "gate-scriptet kræver ikke en fuld 40-tegns SHA — så kan opslaget "
+        "ske på en kort SHA og svare tomt"
+    )

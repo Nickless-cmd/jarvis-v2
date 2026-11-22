@@ -183,8 +183,26 @@ jobs:
           # ville gaten stå og vente 40 minutter på en kørsel den aldrig så,
           # og derefter fejle på timeout. `github.sha` ER fuld, men vi
           # normaliserer alligevel, så et kort input ikke kan gøre den blind.
-          FULL="$(git rev-parse "$SHA" 2>/dev/null || echo "$SHA")"
+          # Gate-jobbet har ingen `actions/checkout`, så der er INTET git-repo
+          # her: en `git rev-parse` ville fejle hver gang og falde tilbage til
+          # den rå værdi. Målt 22/11-2026 — den normalisering var død kode der
+          # så ud som et værn. I stedet kræver vi formen: 40 hex-tegn. Er
+          # `github.sha` ikke det, fejler vi højt frem for at slå et forkert
+          # opslag op og vente 40 minutter på et tomt svar.
+          #
+          # Tagget er lightweight (`git cat-file -t` → `commit`), så
+          # `github.sha` ER commit-SHA'en ved et tag-push.
+          FULL="$SHA"
           echo "Fuld SHA: $FULL"
+          case "$FULL" in
+            *[!0-9a-f]*|"")
+              echo "SHA er ikke fuld hex: '$FULL' — kan ikke slaa ci op."
+              exit 1 ;;
+          esac
+          if [ "${#FULL}" -ne 40 ]; then
+            echo "SHA har ${#FULL} tegn, ikke 40: '$FULL' — API'et kraever fuld SHA."
+            exit 1
+          fi
 
           # Python, ikke jq: jq er ikke installeret i alle miljøer vi kører
           # gaten fra (målt 22/11-2026: mangler i runtime-containeren), og en

@@ -925,6 +925,14 @@ def _incomplete_kode(text: str) -> tuple[str, str]:
 # declined — derfor et vindue og ikke en soegning i hele teksten.
 _DECLINE_VINDUE = 250
 
+#: 22/11-2026: agentens STRUKTURELLE leverance-erklæring. «DÆKNING: ingen» betyder at
+#: agenten selv siger at den ikke leverede noget. Den læses på HELE teksten og ikke i
+#: vinduet ovenfor: linjen står pr. definition i SLUTNINGEN af svaret, så et vindue på
+#: 250 tegn ville aldrig se den. `leveret` rammes ikke — det er den positive erklæring,
+#: og et ord vi ikke kender må aldrig blive en dom.
+_DECLARED_NOTHING_RE = re.compile(
+    r"(?mi)^[\s>*_-]*(?:dækning|daekning|coverage)[\s*_:-]*(?:ingen|none|intet)\b")
+
 # Erklaeringen skal naevne OPGAVEN. Det er det ord der giver praecision:
 # «jeg kunne ikke loese det med vaerktoej X, men fandt en anden vej» rammes
 # ikke, og det er netop den saetning en for bred markoer ville oede.
@@ -998,6 +1006,14 @@ def decline_error(*, text: str) -> tuple[str, str]:
     leverancen: intet arbejde gaar tabt, kun signalet bliver forkaert. Det er
     den bevidste afvejning, ikke en forglemmelse.
     """
+    # 22/11-2026: den STRUKTURELLE vej foerst. `_AGENT_COVERAGE_RULE` beder nu hver
+    # agent afslutte med én `DÆKNING:`-linje, og «DÆKNING: ingen» er agentens eget
+    # udsagn om at den ikke leverede noget. Det er et FAST format, ikke en ordliste:
+    # formen kan ikke omgås ved at vælge et andet verbum — og det var præcis hvad der
+    # skete. «Ingen af mine værktøjer kan afvikle …» slap gennem alle mønstre, fordi
+    # den ikke brugte ordet «køre», heller ikke efter fire mønstre blev tilføjet.
+    if _DECLARED_NOTHING_RE.search(str(text or "")):
+        return "AGENT_DECLINED", "capability"
     hoved = str(text or "").strip()[:_DECLINE_VINDUE]
     if not hoved:
         return "", ""

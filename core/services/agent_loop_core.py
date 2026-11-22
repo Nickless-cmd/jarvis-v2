@@ -1079,6 +1079,23 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
         stop_reason = stop_reason or (
             f"{unanswered_total} {unanswered_ord or 'spørgsmål uden dækning'}")
 
+    # 22/11-2026: den FEMTE indgang — og den foerste der ikke er runtime-maalt. De fire
+    # andre (must_write, loefte, kontrakt, nummererede spoergsmaal) kan alle ramme forbi
+    # en LAESE-agent paa en opgave uden tal: der er intet at maale paa, saa markeringen
+    # blev aldrig skrevet og `decline_error` aldrig spurgt. Maalt paa
+    # `run-3d7235b3553245c5`: agenten skrev «Ingen af mine vaerktoejer kan afvikle
+    # `systemctl status …`» og blev meldt `completed` med tom fejlkode.
+    #
+    # Erklaeringen er STRUKTUREL — et fast format agenten selv udfylder
+    # (`_AGENT_COVERAGE_RULE`) — ikke en soegning i dens prosa. Den maales paa den
+    # ENDELIGE tekst, efter den afsluttende svar-runde, saa et svar der retter op
+    # ikke bliver doemt paa teksten foer det. `set()` er «erklaerede at den ikke
+    # besvarede noget»; `None` er «skrev ingen linje» og doemmer intet.
+    if _declared_coverage(final_text) == set():
+        incomplete = True
+        stop_reason = (stop_reason
+                       or "agenten erklærede selv at den ikke leverede noget")
+
     return _outcome(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0,
                     None, incomplete=incomplete, unanswered=unanswered_total,
                     unanswered_ord=unanswered_ord, stop_reason=stop_reason)

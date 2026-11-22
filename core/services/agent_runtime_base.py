@@ -690,13 +690,23 @@ _AGENT_VERIFY_RULE = (
 # counted as an answer. Every patch to the regex looked right and failed on the next
 # phrasing. The only source that cannot be fooled by formatting is the agent itself:
 # it knows what it reached. So we ask it to say so in one machine-readable line.
+# 22/11-2026: reglen var BETINGET — «IF the task asks NUMBERED questions» — og det
+# gjorde den til teater for enhver opgave uden tal. Maalt over 1951 runs: NUL havde en
+# DÆKNING-linje, saa kontrakten kunne aldrig laeses, uanset hvor mange gange parseren
+# blev forbedret. Konsekvensen blev maalt paa `run-3d7235b3553245c5` (22/11): agenten
+# skrev «Ingen af mine vaerktoejer kan afvikle `systemctl status …`» og blev meldt
+# `completed`. Linjen er nu UBETINGET, fordi den er det eneste strukturelle signal der
+# findes for en laese-agent paa en opgave uden tal.
 _AGENT_COVERAGE_RULE = (
-    "IF the task asks NUMBERED questions (1), 2), 3) …), end your answer with ONE "
-    "line stating which ones you actually answered:\n"
+    "ALWAYS end your answer with ONE line stating what you actually delivered.\n"
+    "IF the task asks NUMBERED questions (1), 2), 3) …), list the numbers you truly "
+    "answered:\n"
     "DÆKNING: 1,2\n"
-    "List only the numbers you truly answered — a question you could not verify is "
-    "NOT answered. An honest 'DÆKNING: 1' plus the reason for the rest is worth more "
-    "than a claim you cannot back. Write 'DÆKNING: ingen' if you answered none."
+    "A question you could not verify is NOT answered. An honest 'DÆKNING: 1' plus the "
+    "reason for the rest is worth more than a claim you cannot back.\n"
+    "IF the task asks NO numbered questions, write 'DÆKNING: leveret' when you "
+    "delivered what was asked, or 'DÆKNING: ingen' when you delivered nothing — "
+    "for example because the task required a tool you do not have."
 )
 
 # For task/reporting roles — the structured result shape (matches result_contract).

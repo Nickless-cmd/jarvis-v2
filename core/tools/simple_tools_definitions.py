@@ -2066,6 +2066,27 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "decline_initiative",
+            "description": "Decline a pending initiative of your own because its premise is gone or it cannot be verified. A reason is mandatory: a declined post must never look like an action, an expiry, or an unexplained disappearance.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "initiative_id": {
+                        "type": "string",
+                        "description": "The initiative_id of the pending post (from list_initiatives)",
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Why it is not being acted on — the premise that is gone, or what cannot be verified",
+                    },
+                },
+                "required": ["initiative_id", "reason"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "push_initiative",
             "description": "Add a task or goal to your initiative queue for autonomous heartbeat execution. The heartbeat scheduler will pick it up and act on it within the next tick cycle.",
             "parameters": {

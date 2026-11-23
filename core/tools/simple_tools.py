@@ -1805,6 +1805,7 @@ from core.tools.document_create_tools import (  # noqa: E402
 from core.tools.simple_tools_native import (  # noqa: E402,F401
     _exec_list_initiatives,
     _exec_push_initiative,
+    _exec_decline_initiative,
     _exec_wonder_verdict,
     _exec_read_model_config,
     _exec_read_mood,
@@ -2015,6 +2016,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "wolfram_query": _exec_wolfram_query,
     "list_initiatives": _exec_list_initiatives,
     "push_initiative": _exec_push_initiative,
+    "decline_initiative": _exec_decline_initiative,
     "wonder_verdict": _exec_wonder_verdict,
     "read_model_config": _exec_read_model_config,
     "read_mood": _exec_read_mood,

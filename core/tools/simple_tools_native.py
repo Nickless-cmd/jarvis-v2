@@ -142,6 +142,46 @@ def _exec_push_initiative(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+def _exec_decline_initiative(args: dict[str, Any]) -> dict[str, Any]:
+    """Afvis en pending initiativ-post med en grund — Jarvis' egen disposition.
+
+    MAALT 23/11-2026: `initiatives_prompt_section` bad modellen afvise en post
+    med `decline_initiative(id, reason=...)`, men funktionen fandtes kun som
+    service-kald. Der var intet værktøj med det navn, så instruktionen pegede
+    på noget der ikke kunne kaldes, og posten blev liggende. Denne funktion er
+    indgangen der gør prompt-linjen sand.
+    """
+    initiative_id = str(args.get("initiative_id") or "").strip()
+    reason = str(args.get("reason") or "").strip()
+    if not initiative_id:
+        return {"status": "error", "error": "initiative_id is required"}
+    if not reason:
+        return {
+            "status": "error",
+            "error": "reason is required — en afvisning uden grund kan ikke efterproeves",
+        }
+    try:
+        from core.services.initiative_queue import decline_initiative
+        ok = decline_initiative(initiative_id, reason=reason)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+    if not ok:
+        # `decline_initiative` svarer False for en tom grund (fangede vi ovenfor)
+        # OG for en post der ikke er pending. Kun den anden vej kan nå hertil, og
+        # den skal siges hoejt frem for at ligne en succes.
+        return {
+            "status": "error",
+            "error": "posten findes ikke eller er ikke laengere pending",
+            "initiative_id": initiative_id,
+        }
+    return {
+        "status": "ok",
+        "initiative_id": initiative_id,
+        "reason": reason,
+        "text": f"Initiative declined: {initiative_id} — {reason}",
+    }
+
+
 def _exec_wonder_verdict(args: dict[str, Any]) -> dict[str, Any]:
     """Gem vurderingen af en undren — trin 2's eneste varige spor."""
     record_id = str(args.get("record_id") or "").strip()
@@ -2752,6 +2792,7 @@ __all__ = [
     "_operator_user_id",
     "_exec_list_initiatives",
     "_exec_push_initiative",
+    "_exec_decline_initiative",
     "_exec_read_model_config",
     "_exec_read_mood",
     "_exec_adjust_mood",

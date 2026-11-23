@@ -12,9 +12,11 @@ commitment: "from now on, when Y happens, do Z." This service:
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from core.eventbus.bus import event_bus
@@ -31,6 +33,42 @@ from core.runtime.db_decisions import (
 )
 
 logger = logging.getLogger(__name__)
+
+#: Spor til drift. MAALT 24/11-2026: journalen indeholdt NUL linjer fra
+#: `jarvis-runtime` over 15 minutter — tjenesten skriver ikke der, saa
+#: `logger.info` fra denne proces kan ikke laeses bagefter. Uden et spor kan
+#: «gaten afviste» kun maales i en test, aldrig i den koerende proces.
+#: Samme moenster som `cache_telemetry`: én jsonl-linje pr. valg.
+_GATE_SPOR = Path.home() / ".jarvis-v2" / "logs" / "relevans_gate.jsonl"
+
+
+def _spor_gate(
+    basis: str,
+    valgt: int,
+    ialt: int,
+    ctx: str,
+    ord_: list[str] | None = None,
+) -> None:
+    """Skriv ét spor pr. valg. Self-safe — maa aldrig vaelte prompt-stien."""
+    try:
+        _GATE_SPOR.parent.mkdir(parents=True, exist_ok=True)
+        with _GATE_SPOR.open("a", encoding="utf-8") as fh:
+            fh.write(
+                json.dumps(
+                    {
+                        "at": datetime.now(UTC).isoformat(),
+                        "basis": basis,
+                        "valgt": int(valgt),
+                        "ialt": int(ialt),
+                        "ctx": str(ctx or "")[:160],
+                        "ord": list(ord_ or [])[:8],
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
+    except Exception as exc:
+        logger.debug("relevans-gate: kunne ikke skrive spor: %s", exc)
 
 
 def _normalize_directive(value: str) -> str:
@@ -605,12 +643,7 @@ def select_relevant_decisions(
 
     if not har_kontekst:
         if _gav_kontekst:
-            # Spor til drift: uden dette kan «gaten afviste» kun maales i en
-            # test, aldrig i den koerende proces — prompt-linjen gemmes ikke.
-            logger.info(
-                "relevans-gate: basis=no-signal valgt=0/%d ctx=%r",
-                len(alle), str(context_text or "")[:80],
-            )
+            _spor_gate("no-signal", 0, len(alle), context_text)
             return []
         valgte = sorted(alle, key=lambda d: -int(d.get("priority") or 0))[:max_items]
         for d in valgte:
@@ -623,10 +656,7 @@ def select_relevant_decisions(
                 "tool_hit": [],
                 "dir_hit": [],
             }
-        logger.info(
-            "relevans-gate: basis=priority-fallback valgt=%d/%d (ingen kontekst givet)",
-            len(valgte), len(alle),
-        )
+        _spor_gate("priority-fallback", len(valgte), len(alle), "")
         return valgte
 
     freq = _ord_frekvens(alle)
@@ -674,10 +704,7 @@ def select_relevant_decisions(
             break
     for d in valgte:
         d["_selection_basis"] = "relevance"
-    logger.info(
-        "relevans-gate: basis=relevance valgt=%d/%d ctx_ord=%s",
-        len(valgte), len(alle), sorted(_kontekst_ord)[:6],
-    )
+    _spor_gate("relevance", len(valgte), len(alle), context_text, sorted(_kontekst_ord))
     return valgte
 
 

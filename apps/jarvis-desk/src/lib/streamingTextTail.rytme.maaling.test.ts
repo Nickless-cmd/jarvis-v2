@@ -215,8 +215,16 @@ describe.skipIf(!KOERT)('rytme: Snappy / Normal under identiske betingelser', ()
         return [v, { duration: p.duration, colorDelay: p.colorDelay, off: p.timeOffsetBetweenParts, k: p.opacityKeyframes, cp: p.controlPoints.join(',') }]
       })))
       console.info('[RYTME-MÅLING]', JSON.stringify(ud, null, 1))
-      // Snappy = GPT's `c`: 220 + 99 + 2x30. Normal er den laengere skabelon.
-      expect(ud.Snappy.order2.landingMs).toBe(379)
+      // Sweep-graensen er variantens EGNE tal, ikke et hardkodet et.
+      //
+      // Den stod som 379 — udledt af 220 + 99 + 2x30 — og blev foraeldet i
+      // det ojeblik `colorDelay` gik fra 99 til 40 (23/11-2026, Bjoern:
+      // «ikke 5 ord, 2 max 3»). MAALT: 320. Et tal der kan udledes skal
+      // udledes, ellers holder testen liv i en foraeldet konstant og
+      // blokerer en release den ikke har noget at sige om.
+      const snappy = STREAMING_TEXT_VARIANTS.Snappy
+      const forventetLanding = snappy.duration + snappy.colorDelay + 2 * snappy.timeOffsetBetweenParts
+      expect(ud.Snappy.order2.landingMs).toBe(forventetLanding)
       expect(ud.Normal.order2.landingMs).toBeGreaterThan(ud.Snappy.order2.landingMs)
     } finally { await b.luk() }
   }, 60_000)

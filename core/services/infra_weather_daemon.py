@@ -32,7 +32,13 @@ _last_computed_ts: float = 0.0
 #: `Path.cwd()`. Ingen af dem så `/tmp`, som er en tmpfs på 16 GB. Følgen var
 #: ikke en pytest-fejl men en systemfejl: sampleren tog 148 s med 3 s CPU-tid,
 #: codex-agenten døde med CLI_BACKEND_FAILED, og 36 tests fejlede med Errno 28.
-_DISK_PATHS = ("/", "/media/projects", "/tmp")
+#:
+#: `/dev/shm` kom med 23/11-2026 af samme grund, blot et andet sted: den er en
+#: tmpfs på 16 GB som ingen af de to andre målere ser. Python multiprocessing
+#: og PyTorch-dataloadere allokerer shared memory der, og et læk efterlader
+#: INTET spor i `du` — segmenterne er ikke filer man kan se. Fuld tmpfs giver
+#: `Errno 28` i det øjeblik en allokering rammer loftet.
+_DISK_PATHS = ("/", "/media/projects", "/tmp", "/dev/shm")
 _DISK_WARN_PCT = 85.0
 _DISK_CRITICAL_PCT = 95.0
 
@@ -42,6 +48,11 @@ _DISK_CRITICAL_PCT = 95.0
 #: — for sent at nå at reagere. Ved 75 % er der ~4 GB tilbage.
 _DISK_TAERSKLER: dict[str, tuple[float, float]] = {
     "/tmp": (75.0, 90.0),
+    # Samme begrundelse som `/tmp`: 16 GB der fyldes af allokeringer frem for
+    # filer. Forskellen er at shared memory ikke kan ryddes op i — den frigives
+    # først når den ejende proces dør — så advarslen ved 75 % ER den
+    # reaktionstid man har til at finde processen før `Errno 28`.
+    "/dev/shm": (75.0, 90.0),
 }
 
 #: Rangorden for disk-niveau. En lille tmpfs der er kritisk må ikke tabes til

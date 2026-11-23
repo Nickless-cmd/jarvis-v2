@@ -137,3 +137,53 @@ def test_alarmen_baerer_hvilken_sti_der_er_kritisk(monkeypatch):
     kind, payload = set_payloads[0]
     assert kind == "infra_weather.critical"
     assert payload.get("disk_worst_path") == "/tmp"
+
+
+# ─── /dev/shm-observatøren (23/11-2026) ────────────────────────────────
+#
+# Samme blinde vinkel som `/tmp`, et andet sted: en tmpfs på 16 GB som
+# `infra_sense` (df -x tmpfs) og `embodied_state` (Path.cwd()) begge springer
+# over. Forskellen er at shared memory ikke kan ryddes op i — segmenterne
+# frigives først når den ejende proces dør — så et læk kan ikke opdages ved at
+# kigge på filer. Disse tests vogter at stien både MÅLES og NAVNGIVES.
+
+
+def test_dev_shm_er_med_i_de_maalte_stier():
+    """Uden stien i listen er der ingen observatør — kun en tom flade."""
+    import core.services.infra_weather_daemon as iw
+
+    assert "/dev/shm" in iw._DISK_PATHS
+
+
+def test_dev_shm_har_strengere_taerskel_end_de_store_diske(monkeypatch):
+    """80 % er «clear» for `/` men «under pres» for `/dev/shm`."""
+    import core.services.infra_weather_daemon as iw
+
+    _falsk_disk(
+        monkeypatch,
+        {"/": 80.0, "/media/projects": 80.0, "/tmp": 10.0, "/dev/shm": 80.0},
+    )
+    d = iw._disk_pressure()
+    assert d["per_path"]["/"]["level"] == "clear"
+    assert d["per_path"]["/dev/shm"]["level"] == "under-pressure"
+    assert d["per_path"]["/dev/shm"]["warn_pct"] == 75.0
+    assert d["per_path"]["/dev/shm"]["critical_pct"] == 90.0
+
+
+def test_fuld_dev_shm_navngives_i_reasons(monkeypatch):
+    """En kritisk `/dev/shm` skal stå VED NAVN, ikke som «disk=92%»."""
+    import core.services.infra_weather_daemon as iw
+
+    _falsk_disk(
+        monkeypatch,
+        {"/": 30.0, "/media/projects": 30.0, "/tmp": 10.0, "/dev/shm": 92.0},
+    )
+    monkeypatch.setattr(iw, "_system_load", lambda: {})
+    monkeypatch.setattr(iw, "_network_latency", lambda: {})
+    monkeypatch.setattr(iw, "_api_cost_today", lambda: 0.0)
+    monkeypatch.setattr(iw, "_process_health", lambda: {})
+    r = iw._compose_report()
+    assert r["label"] == "critical"
+    assert r["disk"]["worst_path"] == "/dev/shm"
+    assert any("/dev/shm" in x for x in r["reasons"]), r["reasons"]
+

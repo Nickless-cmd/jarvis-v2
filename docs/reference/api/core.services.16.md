@@ -437,20 +437,20 @@ _Infra Weather Daemon — "The atmosphere of my system"._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_psutil` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L56) |
-| function | `_system_load` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L64) |
-| function | `_disk_pressure` | `()` | Mål hver sti og afgør niveau — ikke kun den højeste procent. | [src](../../../core/services/infra_weather_daemon.py#L79) |
-| function | `_network_latency` | `()` | Lightweight network health check. | [src](../../../core/services/infra_weather_daemon.py#L132) |
-| function | `_api_cost_today` | `()` | Sum of TODAY's API costs. | [src](../../../core/services/infra_weather_daemon.py#L175) |
-| function | `_process_health` | `()` | Check some expected child processes / threads are alive. | [src](../../../core/services/infra_weather_daemon.py#L202) |
-| function | `_weather_label` | `(load, disk_pct, cost)` | Return (label, emoji) — ☀️ clear, 🌧 under pressure, ⛈ critical. | [src](../../../core/services/infra_weather_daemon.py#L221) |
-| function | `_compose_report` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L245) |
-| function | `_maybe_emit_critical` | `(report)` | Send ÉN alarm pr. cooldown-vindue — på tværs af processer og genstarter. | [src](../../../core/services/infra_weather_daemon.py#L291) |
-| function | `get_weather` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L347) |
-| function | `tick` | `(_seconds=…)` | Dæmonens eget slag — og det ENESTE sted der alarmerer. | [src](../../../core/services/infra_weather_daemon.py#L356) |
-| function | `build_infra_weather_surface` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L369) |
-| function | `_surface_summary` | `(r)` | — | [src](../../../core/services/infra_weather_daemon.py#L385) |
-| function | `build_infra_weather_prompt_section` | `()` | Silent when clear. Speaks when pressure or critical. | [src](../../../core/services/infra_weather_daemon.py#L394) |
+| function | `_psutil` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L67) |
+| function | `_system_load` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L75) |
+| function | `_disk_pressure` | `()` | Mål hver sti og afgør niveau — ikke kun den højeste procent. | [src](../../../core/services/infra_weather_daemon.py#L90) |
+| function | `_network_latency` | `()` | Lightweight network health check. | [src](../../../core/services/infra_weather_daemon.py#L143) |
+| function | `_api_cost_today` | `()` | Sum of TODAY's API costs. | [src](../../../core/services/infra_weather_daemon.py#L186) |
+| function | `_process_health` | `()` | Check some expected child processes / threads are alive. | [src](../../../core/services/infra_weather_daemon.py#L213) |
+| function | `_weather_label` | `(load, disk_pct, cost)` | Return (label, emoji) — ☀️ clear, 🌧 under pressure, ⛈ critical. | [src](../../../core/services/infra_weather_daemon.py#L232) |
+| function | `_compose_report` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L256) |
+| function | `_maybe_emit_critical` | `(report)` | Send ÉN alarm pr. cooldown-vindue — på tværs af processer og genstarter. | [src](../../../core/services/infra_weather_daemon.py#L302) |
+| function | `get_weather` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L358) |
+| function | `tick` | `(_seconds=…)` | Dæmonens eget slag — og det ENESTE sted der alarmerer. | [src](../../../core/services/infra_weather_daemon.py#L367) |
+| function | `build_infra_weather_surface` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L380) |
+| function | `_surface_summary` | `(r)` | — | [src](../../../core/services/infra_weather_daemon.py#L396) |
+| function | `build_infra_weather_prompt_section` | `()` | Silent when clear. Speaks when pressure or critical. | [src](../../../core/services/infra_weather_daemon.py#L405) |
 
 ## `core/services/inheritance_seed.py`
 _Inheritance seed — writes near-thoughts before version transition or shutdown._

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10453/19099 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10454/19100 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10453/19099 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 921 | 1638 | 56% |
-| `core.services` | 7013 | 12969 | 54% |
+| `core.services` | 7014 | 12970 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 151 | 233 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1313,7 +1313,7 @@ Generated from source. 10453/19099 functions/methods documented (54%). The list 
 - `core/services/flow_state_detection.py` :: `build_flow_state_surface` (L37)
 - `core/services/flow_state_detection.py` :: `get_flow_state` (L33)
 - `core/services/flow_state_detection.py` :: `update_flow_detection` (L11)
-- `core/services/forgetting_curve.py` :: `build_forgetting_curve_surface` (L368)
+- `core/services/forgetting_curve.py` :: `build_forgetting_curve_surface` (L408)
 - `core/services/forgetting_engine.py` :: `is_fredet_path` (L64)
 - `core/services/forgetting_engine.py` :: `is_fredet_table` (L68)
 - `core/services/gate_execution.py` :: `check_command` (L295)

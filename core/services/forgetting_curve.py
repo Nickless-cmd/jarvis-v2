@@ -365,6 +365,46 @@ def get_faded_memories() -> list[dict[str, object]]:
     ]
 
 
+def carried_integrity() -> dict[str, object]:
+    """Hvor meget af det baarne er stadig intakt — laest af laengslen.
+
+    HVORFOR HER (23/11-2026). `_derive_longing_awareness` taeller i dag
+    `carried_threads` som et ANTAL: eet baerende spor er eet baerende spor,
+    uanset om det er nyt eller ved at falme. Det goer laengslen blind for sin
+    egen forudsaetning — den kan ikke maerke at det den laenges efter er ved at
+    glide ud af sindet. Kurven ER den maaling; den blev bare aldrig laest af
+    nogen foelsesmaessig forbruger (kun heartbeat-overfladen og MC).
+
+    Retningen er med vilje den MODSATTE af «glemsel foeder frygt»: falder
+    integriteten, falder grundlaget for laengslen. Det er den eneste kobling
+    koden kan baere uden at opfinde en foelsesmekanik.
+
+    Svarer `integrity` i 0..1 (1 = alt baaret er friskt) plus de raa tal, saa
+    forbrugeren kan se HVAD den byggede paa. Tom kurve = 1.0: intet sporet er
+    ikke det samme som intet tilbage — en manglende maaling maa ikke laeses som
+    glemsel.
+    """
+    reg = _load()
+    if not reg:
+        return {
+            "integrity": 1.0,
+            "tracked": 0,
+            "faded": 0,
+            "mean_decay": 0.0,
+            "source": "empty-registry",
+        }
+    decay_scores = [float(p.get("decay_score") or 0.0) for p in reg.values()]
+    faded = sum(1 for d in decay_scores if d >= 0.9)
+    mean_decay = sum(decay_scores) / len(decay_scores)
+    return {
+        "integrity": max(0.0, min(1.0, 1.0 - mean_decay)),
+        "tracked": len(decay_scores),
+        "faded": faded,
+        "mean_decay": round(mean_decay, 4),
+        "source": "forgetting-curve",
+    }
+
+
 def build_forgetting_curve_surface() -> dict[str, object]:
     reg = _load()
     active = get_active_memories()

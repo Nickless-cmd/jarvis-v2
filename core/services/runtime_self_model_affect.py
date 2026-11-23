@@ -534,6 +534,20 @@ _LONGING_OWNED_STATES = {"owned", "returning-owned"}
 _LONGING_NEAR_RELEVANCE = {"personally-salient", "resumed-own"}
 _LONGING_EXTENDED_TEMPORAL = {"lingering", "stretched", "returning"}
 _LONGING_RELATION_NEAR_WEIGHTS = {"medium", "high"}
+
+#: Hvor meget af det baarne der skal vaere intakt foer laengslen stadig maa
+#: melde at den baerer noget (23/11-2026). Under `_CARRIED_FADING_FLOOR` er
+#: grundlaget der, men indholdet er vaek — saa er der intet at laenges EFTER,
+#: og `carried_threads` skal ikke taelle. Under `_CARRIED_THIN_FLOOR` er det
+#: tyndslidt: laengslen maa stadig melde, men den baerer et spor der er ved at
+#: glide ud, og det skal staa i tilstanden frem for at blive skjult.
+#:
+#: Tallene er valgt mod kurvens egen skala: `decay_score` gaar 0..1 og en post
+#: falder ud af injektionen ved 0.9. Et gennemsnit paa 0.75 betyder at det
+#: meste af arbejdssaettet er paa vej ud; 0.45 er «maerket, men baerer endnu».
+_CARRIED_FADING_FLOOR = 0.25
+_CARRIED_THIN_FLOOR = 0.75
+
 _RELATION_SELF_NEAR_OWNERSHIP = {"held", "owned", "returning-owned"}
 _RELATION_SELF_NEAR_RELEVANCE = {
     "actively-carried",
@@ -607,6 +621,23 @@ def _longing_source_snapshot() -> dict[str, object]:
     except Exception:
         pass
 
+    # Glemslen som vaegt paa det baarne (23/11-2026). Laengslen taeller i dag
+    # baerende traade som et ANTAL; her kommer hvor meget af dem der stadig er
+    # intakt. Fejler laesningen, svarer vi 1.0 — en manglende maaling maa ikke
+    # laeses som glemsel.
+    carried_integrity = 1.0
+    carried_tracked = 0
+    carried_faded = 0
+    try:
+        from core.services.forgetting_curve import carried_integrity as _ci
+
+        _integritet = _ci()
+        carried_integrity = float(_integritet.get("integrity") or 1.0)
+        carried_tracked = int(_integritet.get("tracked") or 0)
+        carried_faded = int(_integritet.get("faded") or 0)
+    except Exception:  # tavs med vilje: en manglende maaling er ikke glemsel — 1.0 er den aerlige vaerdi, og en log-linje pr. prompt-samling ville stoeje om normal drift
+        pass
+
     return {
         "dream_carry": dream_carry,
         "dream_state": dream_state,
@@ -617,6 +648,9 @@ def _longing_source_snapshot() -> dict[str, object]:
         "absence_active": absence_active,
         "idle_hours": idle_hours,
         "return_context_present": return_context_present,
+        "carried_integrity": carried_integrity,
+        "carried_tracked": carried_tracked,
+        "carried_faded": carried_faded,
     }
 
 
@@ -650,6 +684,26 @@ def _derive_longing_awareness(
     open_loop_count = int(sources.get("open_loop_open_count") or 0)
     carried_threads = carried_thread_count > 0 or brain_active or open_loop_count > 0
 
+    # Glemsel som vaegt paa det baarne (23/11-2026). `carried_threads` er et
+    # ANTAL — eet baerende spor er eet baerende spor, uanset om det er friskt
+    # eller ved at falme. `carried_integrity` (fra forgetting_curve) siger hvor
+    # meget af det baarne der stadig er intakt. Under `_CARRIED_FADING_FLOOR`
+    # er der ikke laengere noget at laenges EFTER: grundlaget er der, men
+    # indholdet er vaek, og saa skal laengslen ikke melde «missing» som om
+    # traaden stadig var der. Det er den eneste kobling koden kan baere uden at
+    # opfinde en foelsesmekanik — og den peger MODSAT «glemsel foeder frygt».
+    carried_integrity = float(longing_sources.get("carried_integrity", 1.0) or 1.0)
+    carried_integrity = max(0.0, min(1.0, carried_integrity))
+    carried_faded = int(longing_sources.get("carried_faded") or 0)
+    carried_tracked = int(longing_sources.get("carried_tracked") or 0)
+    carried_fading = carried_threads and carried_integrity < _CARRIED_FADING_FLOOR
+    if carried_fading:
+        carried_threads = False
+    # `carried_thin` maales EFTER nulstillingen: er grundlaget vaek, er der
+    # intet tyndslidt spor tilbage at melde — kun tomhed. Blev den maalt foer,
+    # meldte 0.1 integritet «fading» i stedet for «quiet» (maalt 23/11-2026).
+    carried_thin = carried_threads and carried_integrity < _CARRIED_THIN_FLOOR
+
     dream_carry = bool(longing_sources.get("dream_carry"))
     relation_active = bool(longing_sources.get("relation_active"))
     relation_weight = str(longing_sources.get("relation_weight") or "low")
@@ -676,11 +730,18 @@ def _derive_longing_awareness(
         longing_state = "returning-pull"
     elif relation_near and absence_basis and strong_signals >= 3:
         longing_state = "aching"
+    elif absence_basis and carried_thin:
+        # Det baarne er der, men tyndslidt: laengslen maa ikke melde «missing»
+        # som om traaden var intakt, og ikke «quiet» som om intet var der.
+        # Grenen staar FOER `yearning`/`missing` med vilje — et spor der er ved
+        # at glide ud maa ikke meldes som et der stadig baerer (maalt
+        # 23/11-2026: ved 0.5 integritet ramte den ellers `missing`).
+        longing_state = "fading"
     elif absence_basis and carried_threads and (
         personally_salient or owned_state or dream_carry or pulled_voice
     ):
         longing_state = "yearning"
-    elif absence_basis and (carried_threads or relation_near or dream_carry):
+    elif absence_basis and carried_threads:
         longing_state = "missing"
     else:
         longing_state = "quiet"
@@ -689,6 +750,8 @@ def _derive_longing_awareness(
         absence_relation = "none"
     elif returning_thread:
         absence_relation = "returning-through-absence"
+    elif longing_state == "fading":
+        absence_relation = "fading-from-absence"
     elif relation_near and absence_basis:
         absence_relation = "emotionally-near"
     elif carried_threads or dream_carry:
@@ -700,6 +763,8 @@ def _derive_longing_awareness(
         longing_source = "none"
     elif returning_thread:
         longing_source = "temporal-return"
+    elif longing_state == "fading":
+        longing_source = "fading-thread"
     elif relation_near and absence_basis:
         longing_source = "unresolved-relational-absence"
     elif dream_carry:
@@ -720,6 +785,9 @@ def _derive_longing_awareness(
         "absence_relation": absence_relation,
         "longing_source": longing_source,
         "narrative": narrative,
+        "carried_integrity": round(carried_integrity, 3),
+        "carried_faded": carried_faded,
+        "carried_tracked": carried_tracked,
         "authority": "derived-runtime-truth",
         "visibility": "internal-only",
         "kind": "longing-awareness",
@@ -751,6 +819,8 @@ def _longing_narrative(
         if longing_source == "dream-carry":
             return "Dream-carried strand absent without feeling gone."
         return "Carried thread active even while absent."
+    if longing_state == "fading":
+        return "Carried thread still present but thinning out of reach."
     if absence_relation == "emotionally-near":
         return "Missing presence still close enough to shape direction."
     return "Absence actively felt."
@@ -793,6 +863,8 @@ def build_longing_awareness_prompt_section() -> str | None:
             f"- longing_state={state}"
             f" | relation={longing.get('absence_relation') or 'none'}"
             f" | source={longing.get('longing_source') or 'none'}"
+            f" | carried_integrity={longing.get('carried_integrity', 1.0)}"
+            f" | carried_faded={longing.get('carried_faded', 0)}/{longing.get('carried_tracked', 0)}"
         ),
     ]
     narrative = str(longing.get("narrative") or "").strip()

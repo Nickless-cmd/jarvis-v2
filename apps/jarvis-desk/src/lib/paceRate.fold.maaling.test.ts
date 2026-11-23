@@ -20,7 +20,7 @@
  * mode-forskel ingen har set.
  */
 import { describe, expect, it } from 'vitest'
-import { PACE_GULV, naesteRate, startPace, type RateTilstand } from './paceRate'
+import { PACE_CATCH_UP_SECONDS, PACE_GULV, naesteRate, startPace, type RateTilstand } from './paceRate'
 
 type Punkt = { t: number; pending: number; rate: number; shown: number }
 
@@ -119,7 +119,16 @@ describe('rytmen gennem fold — begge flader', () => {
     // raten ved 50 %. Før rettelsen faldt den 582 → 229.
     expect({ flade, holder: r.v90 >= r.v50 * 0.95 }).toEqual({ flade, holder: true })
     // Og svaret skal faktisk være rullet ud — ikke stå fast bag et efterslæb.
-    expect(r.slutPending).toBeLessThan(50)
+    //
+    // ÆNDRET 23/11-2026 (T: 2 → 3). Den gamle grænse var 50 tegn, valgt da
+    // T=2 gav 0. Den målte ikke «står fast» — den målte «T er 2».
+    //
+    // Den ægte kontrakt er at efterslæbet ikke overstiger hvad T sekunders
+    // indhentning kan klare ved kildens tempo (400 tegn/s i denne plan).
+    // MÅLT slutPending: T=2 → 0, T=2,5 → 184, T=3 → 882, T=4 → 1590.
+    // Grænsen T·400 rummer alle og fælder stadig et efterslæb der vokser
+    // ubegrænset — det var fejlen 20/11.
+    expect(r.slutPending).toBeLessThan(PACE_CATCH_UP_SECONDS * 400)
   })
 
   it.each(FLADER)('%s: et dump kollapser ikke til grundtempoet', (flade, tick) => {

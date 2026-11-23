@@ -119,12 +119,83 @@ export const PACE_KILDE_EMA = 0.02
  *  20/11-2026: T bruges nu ÉN gang pr. indhentning, ikke som en løbende nedre
  *  grænse. Kurven er derfor lineær i stedet for asymptotisk, og tiderne
  *  ovenfor er en ØVRE grænse — målt blev 3000 tegn 2,13 s mod de 8,58 s
- *  tabellen lover for den gamle regel. */
-export const PACE_CATCH_UP_SECONDS = 2
+ *  tabellen lover for den gamle regel.
+ *
+ *  23/11-2026 — T hævet fra 2 til 3. Bjørn: «Roligt er klart den mest
+ *  flydende.. men det teksten der løber stærkt over skærmen», og derefter
+ *  «pace catch up.. for det er i virkeligheden der problemet ligger».
+ *
+ *  Det er den rigtige knap, og jeg havde først peget på den forkerte
+ *  (`MAX_CHARS`). Loftet på 28 tegn pr. tick gælder kun HOP; ved jævn
+ *  ankomst er loftet `max(MAX_CHARS, delta)`, altså intet loft. Alt hvad
+ *  brugeren ser af hastighed kommer derfor fra `behov = pending / T`.
+ *
+ *  MÅLT med den ÆGTE `naesteRate` gennem den ægte tick-løkke
+ *  (`paceRate.indhentning.maaling.test.ts`). 240 tegn jævnt + 600 tegn dump:
+ *
+ *    T     varighed   tegn/frame snit   maks   frames>10   ujævnhed
+ *    2       4,36 s        6,4           9       0/132      2,25x
+ *    3       5,35 s        5,2           6       0/162      1,56x
+ *    4       5,94 s        4,7           5       0/180      1,23x
+ *    6       5,94 s        4,7           5       0/180      1,35x
+ *
+ *  «Løber stærkt over skærmen» er ikke tegn pr. sekund — det er TEGN PR.
+ *  FRAME. Et spring på 9 tegn i ét 33 ms-tick læses som at teksten hopper;
+ *  5 gør ikke. Det er den samme kurve, bare med mindre skridt.
+ *
+ *  T=4 er knækpunktet for UJÆVNHED alene — men det er ikke hele prisen.
+ *
+ *  MÅLT med den ægte fold-måling (`paceRate.fold.maaling.test.ts`, 14 s,
+ *  kilden leverer 400 tegn/s): efterslæbet der står TILBAGE da målingen
+ *  sluttede —
+ *
+ *    T=2:     0 tegn (svaret var rullet færdigt)
+ *    T=3:   882 tegn
+ *    T=4:  1590 tegn
+ *
+ *  Efterslæbet er dobbelt straf: det indhentes også langsommere, fordi
+ *  `behov = pending / T` falder når T stiger. 1590 tegn ved T=4 betyder at
+ *  teksten fortsætter ~4 s efter serveren er færdig — det er mærkbart, og
+ *  det er ikke det Bjørn klagede over.
+ *
+ *  Derfor T=3 og ikke 4: 1,56x ujævnhed mod 2,25x er den store gevinst
+ *  (6 tegn/frame mod 9), og efterslæbet er det halve af T=4's.
+ *  T=6 giver INTET mere i varighed og bliver mere ujævn (1,35x), fordi
+ *  `MIN_CHARS`-gulvet på 5 tegn begynder at binde og lander skridtene ujævnt.
+ *
+ *  PRISEN, målt på et langt svar (dump-fasens tid):
+ *
+ *    dump      T=2      T=3      T=4
+ *     600     2,38 s   3,37 s   3,96 s
+ *    1500     2,44 s   3,37 s   4,36 s
+ *    3000     3,66 s   3,76 s   4,42 s
+ *
+ *  Prisen er langt mindre end den gamle tabel antyder, og grunden er
+ *  oplysende: ved store dumps binder `MAX_CHARS` (28 tegn/tick = 848
+ *  tegn/s), så T=2 KAN ikke løbe fra alligevel. Den rammer loftet og bliver
+ *  klippet — og det er præcis derfor den føles hakkende. Ved 3000 tegn
+ *  koster T=4 derfor kun 0,76 s mere.
+ *
+ *  Kontrakterne fra 20/10 holder stadig: 100 tegn ruller 2,08 s (>1,9 s,
+ *  fordi `PACE_GULV` 48 binder før indhentningen gør), og 2000 tegn i ét hug
+ *  tager ~3,8 s (<9 s). */
+export const PACE_CATCH_UP_SECONDS = 3
 
 /** Sikkerhedsloft. Højt nok til at 2000 tegn indhentes på ~3 s (667 tegn/s)
  *  og lavt nok til at et absurd target stadig fordeles over tid. */
 export const PACE_LOFT = 4000
+
+/** Et hop større end dette kan ikke fordeles jævnt: selv ved sikkerhedsloftet
+ *  (4000 tegn/s) tager det over 2 sekunder.
+ *
+ *  Grænsen er bevidst UAFHÆNGIG af `PACE_CATCH_UP_SECONDS`. Den handler om
+ *  efterslæbets STØRRELSE, ikke om hvor hurtigt vi indhenter.
+ *
+ *  MÅLT 23/11-2026: den var `behov >= PACE_LOFT`, og da `behov = pending / T`
+ *  blev den i praksis `pending >= 4000·T`. Ved T=4 sprang et 10.000-tegns dump
+ *  derfor ikke længere, og opstarten tøvede med 5 tegn i første tick mod
+ *  20/10-kontraktens 28. Værdien her er præcis den grænse T=2 gav, frosset. */
+const HOP_SPRING_GRAENSE = PACE_LOFT * 2
 
 /** Halveringstid for tilbagefaldet mod målet, i sekunder.
  *
@@ -282,7 +353,15 @@ export function naesteRate({
   //    glidningen bremsede tidligere præcis det spring den skulle muliggøre
   //    (målt 20/11-2026: 7 tegn i første tick mod kontraktens 28).
   const behov = pending / PACE_CATCH_UP_SECONDS
-  if (behov > indh) indh = indh + (behov - indh) * PACE_INDHENTNING_GLIDNING
+  if (spring) {
+    // Et HOP har ingen jævn ankomst at glatte — glidningen bremsede tidligere
+    // præcis det spring den skulle muliggøre. MÅLT 23/11-2026: med glidningen
+    // nåede raten kun 625 af de 848 tegn/s loftet kræver, og første tick gav
+    // 21 tegn mod kontraktens 28.
+    indh = Math.max(indh, behov)
+  } else if (behov > indh) {
+    indh = indh + (behov - indh) * PACE_INDHENTNING_GLIDNING
+  }
 
   // 3. Ratens mål: kildens tempo, eller indhentningstempoet.
   const maalRate = Math.min(PACE_LOFT, Math.max(PACE_GULV, kilde, indh))
@@ -297,7 +376,7 @@ export function naesteRate({
   //    muliggøre — 7 tegn i første tick mod kontraktens 28. Grænsen er
   //    `PACE_LOFT`, for under den kan efterslæbet stadig rulles ud over tid
   //    (2000 tegn skal tage ~3 s, ikke 2,4 s — målt begge veje).
-  const springTilLoft = spring && behov >= PACE_LOFT
+  const springTilLoft = spring && pending >= HOP_SPRING_GRAENSE
   let rate = forrigeRate
   if (springTilLoft) {
     rate = maalRate

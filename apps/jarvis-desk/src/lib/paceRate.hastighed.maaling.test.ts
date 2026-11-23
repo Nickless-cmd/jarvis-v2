@@ -111,7 +111,13 @@ describe('pacerens faktiske hastighed', () => {
     // Målingen skal kunne skelne de tre — ellers måler den ingenting.
     expect(dump.tegnPrSekund).toBeGreaterThan(jaevn.tegnPrSekund)
     expect(jaevn.tegnPrSekund).toBeGreaterThan(langsom.tegnPrSekund)
-    // Og den skal have rørt loftet, ellers er scenariet ikke det værste tilfælde.
-    expect(dump.hojesteStep).toBe(MAX_CHARS)
+    // Og den skal accelerere markant, ellers er scenariet ikke det værste.
+    //
+    // ÆNDRET 23/11-2026 (T: 2 → 3): kravet var `toBe(MAX_CHARS)` = præcis 28.
+    // Ved T=3 er det ikke loftet der binder, men indhentningsbehovet:
+    // `pending / 3` giver 667 tegn/s = 22 tegn/tick. Det er stadig 1,7x den
+    // jævne strøm, så scenariet ER det værste — men det rammer ikke loftet.
+    // Kravet er derfor «klart over jævn og tæt på loftet», ikke «præcis 28».
+    expect(dump.hojesteStep).toBeGreaterThan(MAX_CHARS * 0.7)
   })
 })

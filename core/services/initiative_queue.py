@@ -909,30 +909,48 @@ def initiatives_prompt_section() -> str | None:
 
     items = sorted(items, key=lambda i: _PRIO_RANK.get(str(i.get("priority") or "medium"), 1))
     lines: list[str] = []
+    long_term_seen = False
+    impulse_seen = False
     for it in items[:_MAX_IN_PROMPT]:
         focus = str(it.get("focus") or "").strip()
         if not focus:
             continue
         suffix = ""
+        if str(it.get("initiative_type") or "initiative") == "long_term_intention":
+            long_term_seen = True
+            suffix = "  [livsprojekt — en retning, ikke en opgave]"
+        else:
+            impulse_seen = True
         first = str(it.get("first_seeded_at") or "").strip()
         last = str(it.get("detected_at") or "").strip()
-        try:
-            if first and last:
-                f_dt = datetime.fromisoformat(first.replace("Z", "+00:00"))
-                l_dt = datetime.fromisoformat(last.replace("Z", "+00:00"))
-                if (l_dt - f_dt) >= timedelta(days=_RECURRING_AFTER_DAYS):
-                    suffix = f"  [du har vendt tilbage til denne siden {f_dt.date().isoformat()}]"
-        except Exception:
-            suffix = ""
+        f_dt = _parse_iso(first) if first else None
+        l_dt = _parse_iso(last) if last else None
+        if f_dt and l_dt and (l_dt - f_dt) >= timedelta(days=_RECURRING_AFTER_DAYS):
+            suffix += f"  [du har vendt tilbage til denne siden {f_dt.date().isoformat()}]"
         lines.append(f"  • {focus}{suffix}")
 
     if not lines:
         return None
+    tail = ""
+    if impulse_seen:
+        tail += (
+            "\n\nPasser en post ikke — fordi præmissen er væk, eller fordi den ikke kan "
+            "efterprøves — så afvis den med `decline_initiative(id, reason=...)` og skriv "
+            "grunden. Det er et gyldigt udfald, ikke en fiasko: en post der bliver liggende "
+            "uden grund vender tilbage som en ny."
+        )
+    if long_term_seen:
+        tail += (
+            "\n\nEt livsprojekt er noget andet: en retning der ikke kan køres færdigt "
+            "og lukkes som en task. Bærer du den ikke videre, så læg den fra dig med "
+            "`abandon_initiative(id, reason=...)` og skriv grunden — det sætter samme "
+            "terminale status som dommeren selv ville sætte, men med din egen "
+            "begrundelse i stedet for en generisk. `decline_initiative` hører ikke her: "
+            "den stempler posten som forkert, og et livsprojekt der ikke blev løftet er "
+            "ikke det samme som et der ikke duede."
+        )
     return (
         "Noget du selv har villet tage op (du vælger om det passer ind her):\n"
         + "\n".join(lines)
-        + "\n\nPasser en post ikke — fordi præmissen er væk, eller fordi den ikke kan "
-        "efterprøves — så afvis den med `decline_initiative(id, reason=...)` og skriv "
-        "grunden. Det er et gyldigt udfald, ikke en fiasko: en post der bliver liggende "
-        "uden grund vender tilbage som en ny."
+        + tail
     )

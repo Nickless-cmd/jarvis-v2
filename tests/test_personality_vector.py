@@ -316,19 +316,57 @@ def test_uden_session_bevaar_previewet_og_gaetter_ikke(isolated_runtime):
     assert _hent_rigtigt_svar("   ", preview) == preview
 
 
-def test_besked_der_ikke_matcher_hovedet_bevaar_previewet(isolated_runtime):
-    """En FREMMED besked i sessionen må ikke erstatte previewet.
+def test_preview_som_udklip_midt_i_beskeden_opgraderes(isolated_runtime):
+    """Målt 23/11-2026: 230 af 368 previews matcher kun MIDT i beskeden.
 
-    Beviset for at hente er indholds-match: previewet minus '…' skal være
-    et ægte præfiks af den fundne besked. Ellers beholdes previewet.
+    Previewet er arbejdets tekst — her klippet ud af beskedens midte — og
+    den ægte besked skal VINDE, selvom den ikke starter med previewet.
+    Præfiks-vagten alene fejlede i 86 % af runs og fodrede 17 «slutter
+    midt i ordet»-poster i vektoren.
     """
     from core.services.personality_vector import _hent_rigtigt_svar
 
-    session = "chat-test-preview-fremmed"
+    session = "chat-test-preview-udklip"
+    aegte = (
+        "Du vil se den igen — så jeg kører et par kald først, mens du ser "
+        "på farven. Alt står rigtigt: PWA'en serverer index-DWKJX0cL.js fra "
+        "0.6.409, main er identisk med fjernen, og keyframen læser --accent "
+        "ved både 0 % og 70 %, så ordene får farven hele vejen. Teksten her "
+        "er skrevet på den kode der ligger live — ikke en jeg håber på."
+    )
+    _indsaet_besked(session, "assistant", aegte)
+
+    preview = (
+        "Alt står rigtigt: PWA'en serverer index-DWKJX0cL.js fra 0.6.409, "
+        "main er identisk med fjernen, og keyframen læser …"
+    )
+
+    assert _hent_rigtigt_svar(session, preview) == aegte
+
+
+def test_preview_der_intet_matcher_bliver_en_pladsholder(isolated_runtime):
+    """Målt 23/11-2026: 86 af 368 previews matcher slet ingen besked.
+
+    Det klippede preview var kilden til 17 «slutter midt i ordet»-poster.
+    Det må ALDRIG vende tilbage som svar — dommeren får pladsholderen,
+    der eksplicit siger at der er intet at bedømme.
+    """
+    from core.services.personality_vector import (
+        _SVAR_IKKE_BEVIST,
+        _hent_rigtigt_svar,
+    )
+
+    session = "chat-test-preview-pladsholder"
     _indsaet_besked(session, "assistant", "Et helt andet svar om noget andet.")
     preview = "Vejret bliver klart og køligt i aften — knap tre timers dags…"
 
-    assert _hent_rigtigt_svar(session, preview) == preview
+    assert _hent_rigtigt_svar(session, preview) == _SVAR_IKKE_BEVIST
+
+
+def test_dommerens_prompt_genkender_pladsholderen():
+    """Pladsholderen er en MÅLING, ikke et svar — prompten må aldrig give
+    dommeren lov til at citere den eller skrive en afbrudt-post ud fra den."""
+    assert "SVARET KAN IKKE BEVISES" in _prompt()
 
 
 def test_stilistisk_ellipsis_loeser_sig_selv(isolated_runtime):

@@ -107,6 +107,10 @@ Mulige felter:
   eller emoji, er svaret IKKE afbrudt — uanset hvordan hovedet ser ud.
   Målt 20/11-2026: 255 af 342 poster nogensinde var denne fejl, og de var
   alle sammen målefejl. Citér aldrig et sted fra hovedet som bevis.
+  Står Svar-feltet som «[SVARET KAN IKKE BEVISES: …]», er der ingen ægte
+  slutning at bedømme: skriv ingen afbrudt-post ud fra den, citer intet fra
+  den, og skriv intet andet ud fra den — pladsholderen er en måling, ikke
+  et svar.
 - retire_mistakes: ["post der er BEVIST forkert"]
   En post må FJERNES, men kun når denne kørsel beviser at den er forkert.
   Skriv posten ordret som den står i vektoren. To tilfælde tæller:
@@ -134,6 +138,17 @@ Regler:
 
 
 _BEVIS_LOFT = 400
+
+# 23/11-2026: når previewet kan bevises hverken som præfiks eller udklip af en
+# ægte besked, får dommeren denne pladsholder — ALDRIG det klippede preview.
+# Målt: 86 af 368 primær-runs over tre døgn havde et preview der intet
+# matcher, og det klippede preview var kilden til 17 af 20 «slutter midt i
+# ordet»-poster i vektoren. Det er en måling, ikke et gæt.
+_SVAR_IKKE_BEVIST = (
+    "[SVARET KAN IKKE BEVISES: run-previewet matcher ingen besked i sessionen. "
+    "Det er et udklip af arbejdet, ikke svaret — ingen afbrydelses-dom kan "
+    "bygges på det.]"
+)
 
 
 def _bevis_vindue(tekst: object, *, loft: int = _BEVIS_LOFT) -> str:
@@ -192,9 +207,19 @@ def _hent_rigtigt_svar(session_id: str | None, assistant_response: str) -> str:
     væk ved kaldet til `update_personality_vector_async`. Derfor trædes
     session_id igennem her, og den ægte besked læses med husets læser
     (`recent_chat_session_messages` — sessions-læserne er de ENESTE der
-    dekrypterer). Kan opslaget ikke BEVISes (ingen session, ingen
-    assistent-besked, ciffertekst, hoved matcher ikke), beholdes previewet
-    og det logges — det gættes ikke.
+    dekrypterer). Kan opslaget ikke BEVISes, gættes det ikke.
+
+    Målt 23/11-2026 (368 primær-runs over tre døgn): previewet var præfiks
+    af den ægte besked i 52 af 368, indeholdt MIDT i beskeden i 230, og
+    matchede slet ingen besked i 86. Præfiks-vagten alene fejlede altså i
+    86 % af runs — og dommeren fik det klippede preview, læste
+    preview-signaturen ('…' til sidst) som afbrydelse og skrev posterne
+    «slutter midt i ordet 'm…'», «'Jeg h…'», «'f'» videre. 17 af 20
+    poster i vektoren var denne fejl den dag.
+
+    Tre grene nu: (1) præfiks-match, (2) udklips-match — previewets hoved
+    findes som udklip i en besked (230 af 368), (3) intet kan bevises →
+    pladsholderen (`_SVAR_IKKE_BEVIST`), aldrig det klippede preview.
     """
     tekst = str(assistant_response or "")
     if not tekst.endswith("…"):
@@ -212,18 +237,35 @@ def _hent_rigtigt_svar(session_id: str | None, assistant_response: str) -> str:
         # for at gætte, og lad resten af vektor-opdateringen leve.
         logger.debug("personality_vector: preview-opslag fejlede", exc_info=True)
         return tekst
-    indhold = ""
+    kandidater: list[str] = []
     for besked in reversed(beskeder):  # kronologisk liste → nyeste først herfra
         if str(besked.get("role") or "") == "assistant":
-            indhold = str(besked.get("content") or "")
-            break
+            kandidater.append(str(besked.get("content") or ""))
+
     hoved = tekst[:-1]  # previewet er ægte tekst + ét dekorativt '…'
-    if not indhold or indhold.startswith("enc:") or not indhold.startswith(hoved):
-        logger.debug(
-            "personality_vector: sidste assistent-besked matcher previewet ikke — beholder previewet"
-        )
-        return tekst
-    return indhold if len(indhold) > len(tekst) else tekst
+
+    # Gren 1 — præfiks: den ægte besked starter med previewets hoved.
+    for kandidat in kandidater:
+        if kandidat and not kandidat.startswith("enc:") and kandidat.startswith(hoved):
+            return kandidat if len(kandidat) > len(tekst) else tekst
+
+    # Gren 2 — udklip (målt 23/11-2026: 230 af 368): previewet er arbejdets
+    # tekst og findes MIDT i den ægte besked, ikke som præfiks. Sonden er
+    # 120 tegn — den længste prøve der stadig ramte (199 af 368 ved 120 mod
+    # 230 af 368 ved 80; 80 tegn risikerer at ramme en ældre besked).
+    sonde = hoved.strip()[:120]
+    if sonde:
+        for kandidat in kandidater:
+            if len(kandidat) > len(tekst) and not kandidat.startswith("enc:") and sonde in kandidat:
+                return kandidat
+
+    # Gren 3 — intet kan bevises (målt 23/11-2026: 86 af 368). Det klippede
+    # preview er preview-signaturen, ikke et bevis på afbrydelse — det er
+    # præcis hvad der fodret fossilerne. Dommeren får pladsholderen i stedet.
+    logger.info(
+        "personality_vector: preview matcher hverken præfiks eller udklip af en besked — pladsholder i stedet for klippet preview"
+    )
+    return _SVAR_IKKE_BEVIST
 
 
 def update_personality_vector_from_run(

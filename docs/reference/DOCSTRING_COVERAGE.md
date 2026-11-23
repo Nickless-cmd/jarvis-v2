@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10461/19109 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10466/19114 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10461/19109 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 923 | 1640 | 56% |
-| `core.services` | 7017 | 12973 | 54% |
+| `core.services` | 7022 | 12978 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -930,7 +930,7 @@ Generated from source. 10461/19109 functions/methods documented (54%). The list 
 - `core/services/behavioral_decisions.py` :: `delete_decision` (L317)
 - `core/services/behavioral_decisions.py` :: `get_decision` (L327)
 - `core/services/behavioral_decisions.py` :: `get_decision_with_reviews` (L331)
-- `core/services/behavioral_decisions.py` :: `get_stats` (L385)
+- `core/services/behavioral_decisions.py` :: `get_stats` (L680)
 - `core/services/behavioral_decisions.py` :: `list_active_decisions` (L358)
 - `core/services/behavioral_decisions.py` :: `list_all_decisions` (L362)
 - `core/services/behavioral_decisions.py` :: `review_decision` (L145)

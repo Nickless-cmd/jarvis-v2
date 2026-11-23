@@ -203,12 +203,21 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f" | resumed_loops={loop_summary.get('resumed_count') or 0}"
             ),
             "- Heartbeat may only propose or act within runtime-approved scope.",
-            _heartbeat_living_context_line(),
+            _heartbeat_living_context_line(context),
         ] if _line
     )
 
-def _heartbeat_living_context_line() -> str:
-    """Add living heartbeat cycle phase + user mood + intermittence + trust-autonomy to heartbeat prompt."""
+def _heartbeat_living_context_line(context: dict[str, object] | None = None) -> str:
+    """Add living heartbeat cycle phase + user mood + intermittence + trust-autonomy to heartbeat prompt.
+
+    23/11-2026: tager nu `context` som valgfri parameter. Relevans-gaten for
+    beslutninger skal bruge turens besked og vaerktoejer, og den laeste dem
+    tidligere fra en modul-global (`_ctx`) der kun blev sat i `prompt_contract`.
+    Den kobling var tavs: blev `prompt_contract` ikke importeret foerst, fandtes
+    attributten ikke, og gaten faldt tilbage til priority uden at sige det.
+    Konteksten kommer nu fra den kalder der HAR den.
+    """
+    _tur_ctx = context or {}
     parts = []
     try:
         from core.services.living_heartbeat_cycle import (
@@ -256,7 +265,36 @@ def _heartbeat_living_context_line() -> str:
         # kort nok (130-179 tegn) til at fem kan staa i samme budget som tre
         # fyldte foer (477 tegn mod 1102). De to ekstra pladser gaar til de
         # naeste i prioritets-raekkefoelgen — ikke til nye, lange direktiver.
-        decisions_line = format_active_decisions_for_heartbeat(max_items=5)
+        #
+        # 23/11-2026: prioritets-raekkefoelgen er erstattet af en RELEVANS-gate.
+        # Maalt: med 138 aktive beslutninger vandt de fem hoejeste prioriteter
+        # altid, uanset turen — beslutningen om forventning-og-modbevisning
+        # (priority 90) laa nr. 5 og blev aldrig injiceret. Nu scores alle mod
+        # turens kontekst, og gaten kan returnere FAERRE end fem eller ingen.
+        #
+        # HVAD ER «TURENS KONTEKST» I ET HEARTBEAT? Maalt 23/11-2026: der findes
+        # ingen `user_message` her — heartbeat er en autonom cyklus. De signaler
+        # der FAKTISK er til stede er `tool_intent` (hvad jeg sidst gjorde og
+        # hvad der venter) og `loop_runtime` (hvilke loops der er aktive). Det er
+        # dem gaten scorer mod. Uden dem falder den aabent tilbage til priority.
+        _ctx = _tur_ctx
+        _kontekst_dele: list[str] = []
+        _ti = _ctx.get("tool_intent") or {}
+        if isinstance(_ti, dict):
+            for _k in ("last_action", "last_action_outcome", "followup_hint", "intent"):
+                _v = _ti.get(_k)
+                if _v:
+                    _kontekst_dele.append(str(_v))
+        _lr = _ctx.get("loop_runtime") or {}
+        if isinstance(_lr, dict):
+            for _k in ("current_status", "active_loops", "resumed_loops"):
+                _v = _lr.get(_k)
+                if _v:
+                    _kontekst_dele.append(str(_v))
+        decisions_line = format_active_decisions_for_heartbeat(
+            max_items=5,
+            context_text=" ".join(_kontekst_dele),
+        )
         if decisions_line:
             parts.append(f"active_decisions: {decisions_line}")
     except Exception:

@@ -363,9 +363,304 @@ def list_all_decisions(*, limit: int = 100) -> list[dict[str, Any]]:
     return _db_list(status="all", limit=limit)
 
 
-def format_active_decisions_for_heartbeat(*, max_items: int = 3) -> str:
-    """Compact line of top active commitments for heartbeat injection."""
-    decisions = _db_list(status="active", limit=max_items)
+# ── Relevans-gaten (23/11-2026) ─────────────────────────────────────────────
+#
+# HVORFOR (maalt 23/11-2026). Udvaelgelsen var `_db_list(status="active",
+# limit=max_items)` = `ORDER BY priority DESC, updated_at DESC`. Med 138 aktive
+# beslutninger og 5 pladser betoed det at de FEM HOEJESTE prioriteter altid vandt,
+# uanset hvad turen handlede om. Maalt: beslutningen om forventning-og-modbevisning
+# (priority 90) laa nr. 5 og blev ALDRIG injiceret, mens en med priority 94 gjorde.
+# Det er en talraekkefoelge, ikke en vurdering — og den kan ikke afvise noget.
+#
+# Forskellen fra `decision_gate` er med vilje: den gate BLOKERER (og gav maalt 20
+# falske blokeringer paa citater). Denne gate RANGERER. En forkert vurdering koster
+# en daarlig raekkefoelge, ikke en blokeret handling — derfor maa den gerne vaere
+# grov, men den maa ikke vaere tavs.
+#
+# Signalet er ord-overlap mellem beslutningens EGEN tekst (directive + trigger_cue)
+# og turens kontekst. Det er ikke semantik; det er et billigt, forklarligt signal.
+# Derfor baerer hver vurdering ogsaa HVORFOR den fik sin score, saa valget kan
+# efterproeves frem for at skulle troes.
+
+# Ord der ikke baerer betydning paa tvaers af beslutninger og ture.
+#
+# 23/11-2026: foerste version havde kun pronominer og konjunktioner. Maalt gav det
+# falske hit: en HILSEN («hej Bjorn hvordan gaar det») vakte fire beslutninger,
+# fordi «hvordan» staar i 4 af 138 beslutninger og derfor fik HOEJ IDF — sjaelden
+# og betydningsloes paa samme tid. IDF kan ikke skelne de to; kun en liste kan.
+# Derfor er spoergeord, hoeflighedsfraser og tidsvendinger ekskluderet her.
+_RELEVANS_STOPORD = frozenset({
+    # pronominer, konjunktioner, praepositioner
+    "jeg", "det", "der", "som", "og", "at", "en", "et", "den", "de", "til",
+    "for", "med", "fra", "skal", "kan", "ikke", "naar", "hvad", "hvor",
+    "min", "mit", "mine", "sig", "sin", "sine", "har", "have", "var", "blev",
+    "bliver", "vaere", "vaeret", "ogsaa", "kun", "men", "eller", "saa", "hvis",
+    "denne", "dette", "disse", "man", "selv", "op", "ud", "ind", "ned",
+    "the", "and", "with", "that", "this", "not", "are", "was", "have",
+    # spoergeord og meta-ord — de beskriver samtalen, ikke sagen
+    "hvordan", "hvorfor", "hvornaar", "hvilken", "hvilket", "hvilke",
+    "gerne", "lige", "godt", "sadan", "vaere", "bliver", "siger", "sige",
+    "synes", "tror", "ved", "kender", "handler", "gaelder", "drejer",
+    # hoeflighed og hilsner
+    "hej", "tak", "mojn", "godmorgen", "godaften", "velkommen",
+    # tidsvendinger uden fagligt indhold
+    "idag", "igaar", "imorgen", "aften", "morgen", "natten", "ugen",
+    "maaned", "aaret", "timen", "gang", "igen", "stadig", "allerede",
+})
+
+
+def _relevans_ord(tekst: str) -> set[str]:
+    """Betydningsbaerende ord i en tekst — lowercase, >=4 tegn, uden stopord.
+
+    23/11-2026 (maalt): foerste version splittede paa bindestreg, saa
+    «prompt-sektionen» blev til «prompt» + «sektionen» og ALDRIG matchede den
+    samme sammensatte form i en beslutning. Sammensatte ord bevares derfor som
+    ét token, og delene tilfoejes OGSAA — saa baade «prompt-sektionen» og
+    «sektionen» kan ramme.
+    """
+    tekst = str(tekst or "").lower()
+    ord_: set[str] = set()
+    for token in re.findall(r"[a-zæøå0-9_-]{4,}", tekst):
+        if token in _RELEVANS_STOPORD:
+            continue
+        ord_.add(token)
+        # Bindestreg og understregning: tilfoej delene, saa en sammensat form
+        # ogsaa matcher naar modparten skriver den ene halvdel.
+        if "-" in token or "_" in token:
+            for del_ in re.split(r"[-_]", token):
+                if len(del_) >= 4 and del_ not in _RELEVANS_STOPORD:
+                    ord_.add(del_)
+    return ord_
+
+
+def _ord_frekvens(beslutninger: list[dict[str, Any]]) -> dict[str, int]:
+    """Hvor mange beslutninger indeholder hvert ord?
+
+    HVORFOR (maalt 23/11-2026). Foerste version vaegtede alle ord lige. Maalt gav
+    det falske hit: «hvordan» og «faktisk» bandt beslutninger til en hilsen, fordi
+    de staar i 11-14 af de 138 beslutninger. Et ord der staar i en tiendedel af
+    alle beslutninger kan ikke skelne noget — det er baggrund, ikke signal.
+    """
+    freq: dict[str, int] = {}
+    for d in beslutninger:
+        tekst = f"{d.get('directive') or ''} {d.get('trigger_cue') or ''}"
+        for o in _relevans_ord(tekst):
+            freq[o] = freq.get(o, 0) + 1
+    return freq
+
+
+def _idf(ord_: str, freq: dict[str, int], antal: int) -> float:
+    """Invers dokument-frekvens: sjældne ord vejer tungt, hyppige vejer næsten intet.
+
+    23/11-2026 (maalt): uden et gulv giver en lille population NUL signal. Med
+    kun én beslutning i tabellen bliver IDF for hvert ord log(2/2) = 0, saa
+    scoren blev 0 for ALT — ogsaa et perfekt match. Gulvet paa 1.0 betyder at et
+    ord altid vejer mindst som et almindeligt ord, uanset populationens stoerrelse.
+    Det er den rigtige retning: en lille tabel maa ikke goere gaten tandloes.
+    """
+    import math
+
+    n = freq.get(ord_, 0)
+    if not antal:
+        return 1.0
+    return max(1.0, math.log((antal + 1) / (n + 1)))
+
+
+def score_decision_relevance(
+    decision: dict[str, Any],
+    *,
+    context_text: str = "",
+    context_tools: tuple[str, ...] = (),
+    ord_frekvens: dict[str, int] | None = None,
+    antal_beslutninger: int = 0,
+) -> dict[str, Any]:
+    """Hvor relevant er denne beslutning for den aktuelle tur — og hvorfor?
+
+    Returnerer ALTID en forklaring. En score paa 0 er et gyldigt svar og skal
+    kunne skelnes fra «ikke vurderet» — derfor baerer returen baade `score` og
+    `hvorfor`.
+    """
+    directive = str(decision.get("directive") or "")
+    cue = str(decision.get("trigger_cue") or "")
+
+    # Beslutningens egne ord. `trigger_cue` vejer tungere: den beskriver netop
+    # den situation beslutningen gaelder for, mens directive beskriver handlingen.
+    dir_ord = _relevans_ord(directive)
+    cue_ord = _relevans_ord(cue)
+
+    tur_ord = _relevans_ord(context_text)
+    vaerktoej_ord: set[str] = set()
+    for t in context_tools:
+        vaerktoej_ord |= _relevans_ord(str(t).replace("_", " "))
+
+    dir_hit = dir_ord & tur_ord
+    cue_hit = cue_ord & tur_ord
+    tool_hit = (dir_ord | cue_ord) & vaerktoej_ord
+
+    freq = ord_frekvens or {}
+    n = antal_beslutninger or 0
+
+    def _vaegt(ord_: str) -> float:
+        return _idf(ord_, freq, n) if freq else 1.0
+
+    # Vaegtning: trigger_cue er det staerkeste signal (den beskriver situationen),
+    # vaerktoejsnavne det naeststaerkeste (de er konkrete handlinger), directive det
+    # svageste (den beskriver forpligtelsen, ikke situationen). Hvert hit vejes
+    # desuden med sin IDF, saa et sjældent ord slår et almindeligt.
+    score = (
+        3 * sum(_vaegt(o) for o in cue_hit)
+        + 2 * sum(_vaegt(o) for o in tool_hit)
+        + 1 * sum(_vaegt(o) for o in dir_hit)
+    )
+
+    # Normalér mod beslutningens stoerrelse, saa en lang beslutning ikke vinder
+    # blot fordi den har flere ord at ramme med. Uden dette vandt de laengste
+    # direktiver systematisk — samme fejl som priority-loftet, bare med tekst.
+    maal = max(1, len(cue_ord) + len(dir_ord))
+    normaliseret = score / maal
+
+    if cue_hit:
+        hvorfor = f"trigger matcher turen: {', '.join(sorted(cue_hit)[:4])}"
+    elif tool_hit:
+        hvorfor = f"vaerktoej matcher: {', '.join(sorted(tool_hit)[:4])}"
+    elif dir_hit:
+        hvorfor = f"direktiv matcher turen: {', '.join(sorted(dir_hit)[:4])}"
+    else:
+        hvorfor = "ingen overlap med turen"
+
+    return {
+        "score": round(normaliseret, 4),
+        "raa_score": round(score, 4),
+        "hvorfor": hvorfor,
+        "cue_hit": sorted(cue_hit),
+        "tool_hit": sorted(tool_hit),
+        "dir_hit": sorted(dir_hit),
+    }
+
+
+#: Under denne normaliserede score er en beslutning IKKE relevant for turen.
+#: Uden en saadan graense er gaten bare et nyt loft: den ville altid fylde alle
+#: pladser, ogsaa naar intet passede.
+#:
+#: HVOR MEGET BETYDER DEN? Maalt 23/11-2026 over 138 beslutninger x 12 ture
+#: (1.656 vurderinger): gulvet stoppede PRAECIS ÉN vurdering som to-ord-reglen
+#: nedenfor ellers ville slippe igennem, og to-ord-reglen afviste 1.642. Gulvet er
+#: altsaa den sekundaere vagt, ikke den baerende — den bliver staaende, fordi den
+#: ene sag er en ægte falsk positiv, men kommentaren maa ikke paastaa mere end
+#: maalingen. Ægte match ligger maalt paa 0,09-0,89, ikke i det smalle baand en
+#: tidligere version af denne kommentar angav.
+_RELEVANS_GULV = 0.06
+
+#: Et ENKELT ord maa kun baere en beslutning alene hvis det er saa sjaeldent at
+#: det identificerer sagen. Maalt 23/11-2026 over 138 beslutninger: et ord i 1
+#: beslutning har IDF 4,24, i 2 har 3,84, i 3 har 3,55, i 4 har 3,33. Taersklen
+#: 3,4 betyder derfor «ordet staar i hoejst TRE beslutninger» — ellers kraeves der
+#: to uafhaengige ord. (En tidligere kommentar her sagde 3,8 og «hoejst to»; det
+#: var den foerste vaerdi jeg maalte mig frem til, ikke den der staar i koden.)
+_ENKELTORD_IDF = 3.4
+
+
+def select_relevant_decisions(
+    *,
+    max_items: int = 5,
+    context_text: str = "",
+    context_tools: tuple[str, ...] = (),
+) -> list[dict[str, Any]]:
+    """Vælg de mest relevante aktive beslutninger for den aktuelle tur.
+
+    Uden kontekst falder den tilbage til priority-raekkefoelgen — men den falder
+    tilbage AABENT: `_selection_basis` siger hvilken vej der blev brugt, saa en
+    tom kontekst ikke kan forveksles med en vurdering.
+
+    Med kontekst kan den returnere FAERRE end `max_items` — eller slet ingen.
+    Det er med vilje: en gate der altid fylder alle pladser kan ikke afvise noget,
+    og saa er den ikke en gate.
+    """
+    alle = _db_list(status="active", limit=None)
+    if not alle:
+        return []
+
+    har_kontekst = bool(_relevans_ord(context_text)) or bool(context_tools)
+
+    if not har_kontekst:
+        valgte = sorted(alle, key=lambda d: -int(d.get("priority") or 0))[:max_items]
+        for d in valgte:
+            d["_selection_basis"] = "priority-fallback-no-context"
+            d["_relevans"] = {
+                "score": 0.0,
+                "raa_score": 0.0,
+                "hvorfor": "ingen tur-kontekst — priority-raekkefoelge",
+                "cue_hit": [],
+                "tool_hit": [],
+                "dir_hit": [],
+            }
+        return valgte
+
+    freq = _ord_frekvens(alle)
+    antal = len(alle)
+
+    scored: list[dict[str, Any]] = []
+    for d in alle:
+        vurdering = score_decision_relevance(
+            d,
+            context_text=context_text,
+            context_tools=context_tools,
+            ord_frekvens=freq,
+            antal_beslutninger=antal,
+        )
+        scored.append({**d, "_relevans": vurdering})
+
+    # Relevans foerst; priority KUN som tie-breaker mellem lige relevante.
+    scored.sort(
+        key=lambda d: (
+            -float(d["_relevans"]["score"]),
+            -int(d.get("priority") or 0),
+        )
+    )
+
+    # Den negative gren: under gulvet er beslutningen ikke relevant, uanset
+    # priority. Det er dét der goer gaten til en gate frem for et loft.
+    #
+    # 23/11-2026 (maalt): foerste version slap ALT igennem der ramte ét ord.
+    # Maalt vandt 11 af 138 beslutninger paa ordet «tilstand» alene, og 8 paa
+    # «fejl» alene — et ordopslag, ikke en vurdering. Derfor kraeves nu mindst
+    # TO uafhaengige ord, medmindre det ene ord er saa sjaeldent at det i sig
+    # selv identificerer sagen (IDF over `_ENKELTORD_IDF`).
+    valgte: list[dict[str, Any]] = []
+    for d in scored:
+        v = d["_relevans"]
+        if float(v["score"]) < _RELEVANS_GULV:
+            continue
+        unikke = set(v["cue_hit"]) | set(v["tool_hit"]) | set(v["dir_hit"])
+        if len(unikke) < 2:
+            eneste = next(iter(unikke), "")
+            if not eneste or _idf(eneste, freq, antal) < _ENKELTORD_IDF:
+                continue
+        valgte.append(d)
+        if len(valgte) >= max_items:
+            break
+    for d in valgte:
+        d["_selection_basis"] = "relevance"
+    return valgte
+
+
+def format_active_decisions_for_heartbeat(
+    *,
+    max_items: int = 3,
+    context_text: str = "",
+    context_tools: tuple[str, ...] = (),
+) -> str:
+    """Compact line of the most RELEVANT active commitments for this turn.
+
+    Erstatter priority-loftet (23/11-2026). Se `select_relevant_decisions` for
+    hvorfor. Signaturen er bagudkompatibel: uden kontekst opfoerer den sig som
+    foer, men melder det i `_selection_basis`.
+    """
+    decisions = select_relevant_decisions(
+        max_items=max_items,
+        context_text=context_text,
+        context_tools=context_tools,
+    )
     if not decisions:
         return ""
     parts: list[str] = []

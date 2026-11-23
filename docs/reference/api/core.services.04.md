@@ -214,8 +214,13 @@ _Behavioral decisions — closing the reflection→behavior loop._
 | function | `get_decision_with_reviews` | `(decision_id, *, review_limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L331) |
 | function | `list_active_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L358) |
 | function | `list_all_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L362) |
-| function | `format_active_decisions_for_heartbeat` | `(*, max_items=…)` | Compact line of top active commitments for heartbeat injection. | [src](../../../core/services/behavioral_decisions.py#L366) |
-| function | `get_stats` | `()` | — | [src](../../../core/services/behavioral_decisions.py#L385) |
+| function | `_relevans_ord` | `(tekst)` | Betydningsbaerende ord i en tekst — lowercase, >=4 tegn, uden stopord. | [src](../../../core/services/behavioral_decisions.py#L412) |
+| function | `_ord_frekvens` | `(beslutninger)` | Hvor mange beslutninger indeholder hvert ord? | [src](../../../core/services/behavioral_decisions.py#L436) |
+| function | `_idf` | `(ord_, freq, antal)` | Invers dokument-frekvens: sjældne ord vejer tungt, hyppige vejer næsten intet. | [src](../../../core/services/behavioral_decisions.py#L452) |
+| function | `score_decision_relevance` | `(decision, *, context_text=…, context_tools=…, ord_frekvens=…, antal_beslutninger=…)` | Hvor relevant er denne beslutning for den aktuelle tur — og hvorfor? | [src](../../../core/services/behavioral_decisions.py#L469) |
+| function | `select_relevant_decisions` | `(*, max_items=…, context_text=…, context_tools=…)` | Vælg de mest relevante aktive beslutninger for den aktuelle tur. | [src](../../../core/services/behavioral_decisions.py#L563) |
+| function | `format_active_decisions_for_heartbeat` | `(*, max_items=…, context_text=…, context_tools=…)` | Compact line of the most RELEVANT active commitments for this turn. | [src](../../../core/services/behavioral_decisions.py#L647) |
+| function | `get_stats` | `()` | — | [src](../../../core/services/behavioral_decisions.py#L680) |
 
 ## `core/services/besked_run_kobling.py`
 _Hvilket run skrev denne besked? — så klienten ikke skal gætte ud fra prosa._

@@ -281,15 +281,45 @@ def test_ord_alene_maa_ikke_aabne_for_falske_positive():
     assert _detect_conflict("Brug ALDRIG bash til filredigering", "jeg laver kaffe", {}) is None
 
 
-def test_heartbeat_viser_mindst_fem_beslutninger():
-    """3 pladser var for faa efter konsolideringen 135 → 12: hver beslutning er
-    nu 130-179 tegn, saa fem kan staa i samme budget som tre fyldte foer."""
-    import inspect
+def test_heartbeat_beder_om_fem_og_sender_turens_kontekst(monkeypatch):
+    """Testen maaler KALDET — ikke kildekodens form.
 
-    from core.services.prompt_sections import heartbeat_sections
+    3 pladser var for faa efter konsolideringen 135 → 12: hver beslutning er nu
+    130-179 tegn, saa fem kan staa i samme budget som tre fyldte foer.
 
-    src = inspect.getsource(heartbeat_sections)
-    assert "format_active_decisions_for_heartbeat(max_items=5)" in src
+    23/11-2026: den tidligere version grep'ede efter den ordrette streng
+    «format_active_decisions_for_heartbeat(max_items=5)». Da kaldet ogsaa begyndte
+    at sende turens kontekst med, forsvandt den form — og testen blev roed uden at
+    noget var galt med koden. En tekst-grep kan heller ikke skelne «kaldes med fem»
+    fra «kaldes med fem OG en TOM kontekst», og netop den tomme kontekst er den
+    fejl der goer gaten tandloes: den falder saa tilbage til priority. Derfor
+    fanges argumenterne i stedet for at laeses i kilden.
+    """
+    from core.services import behavioral_decisions as bd
+    from core.services.prompt_sections import heartbeat_sections as hs
+
+    kaldt: dict[str, object] = {}
+
+    def _fang(**kwargs: object) -> str:
+        kaldt.update(kwargs)
+        return ""
+
+    monkeypatch.setattr(bd, "format_active_decisions_for_heartbeat", _fang)
+    hs._heartbeat_living_context_line(
+        {
+            "tool_intent": {
+                "last_action": "verify_file_contains",
+                "last_action_outcome": "success",
+                "followup_hint": "verificer testen",
+            }
+        }
+    )
+
+    assert kaldt.get("max_items") == 5, "fem pladser er loftet efter konsolideringen"
+    assert kaldt.get("context_text"), (
+        "gaten skal have turens kontekst — uden den falder den tilbage til "
+        "priority, og saa er den ikke en gate"
+    )
 
 
 # ── 5/11-2026: citat er ikke brud ───────────────────────────────────────────

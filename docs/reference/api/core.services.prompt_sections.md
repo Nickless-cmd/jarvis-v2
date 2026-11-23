@@ -354,13 +354,14 @@ _Runtime self-report + self-model prompt sections._
 | function | `_self_model_signal_tracking_section` | `()` | Bridge to self_model_signal_tracking prompt section in visible chat. | [src](../../../core/services/prompt_sections/runtime_self_report.py#L15) |
 | function | `_runtime_resource_signal_section` | `()` | Bridge to runtime_resource_signal in visible support sections. | [src](../../../core/services/prompt_sections/runtime_self_report.py#L32) |
 | function | `_runtime_self_report_instruction` | `(*, user_message, runtime_self_report_context)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L48) |
-| function | `_self_deception_guard_lines` | `(*, question_gate=…, autonomy_pressure=…, open_loops=…)` | Build self-deception guard constraint lines for the visible prompt. | [src](../../../core/services/prompt_sections/runtime_self_report.py#L174) |
-| function | `_visible_self_knowledge_lines` | `()` | Build compact self-knowledge lines for the visible self-report section. | [src](../../../core/services/prompt_sections/runtime_self_report.py#L216) |
-| function | `_runtime_self_report_query_profile` | `(user_message)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L267) |
-| function | `_runtime_self_report_routing_lines` | `(*, query_profile, open_loop_count, current_runtime_state)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L333) |
-| function | `_merge_runtime_self_report_state` | `(*, regulation_state, regulation_pressure, private_tone, private_pressure)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L376) |
-| function | `_runtime_awareness_prompt_surface` | `(*, limit)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L390) |
-| function | `_should_include_self_report` | `(text)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L412) |
+| function | `_self_deception_guard_lines` | `(*, question_gate=…, autonomy_pressure=…, open_loops=…)` | Build self-deception guard constraint lines for the visible prompt. | [src](../../../core/services/prompt_sections/runtime_self_report.py#L175) |
+| function | `_visible_core_state_lines` | `()` | De aktive kernetilstande — lagt FOERST i sektionen. | [src](../../../core/services/prompt_sections/runtime_self_report.py#L217) |
+| function | `_visible_self_knowledge_lines` | `()` | Build compact self-knowledge lines for the visible self-report section. | [src](../../../core/services/prompt_sections/runtime_self_report.py#L258) |
+| function | `_runtime_self_report_query_profile` | `(user_message)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L309) |
+| function | `_runtime_self_report_routing_lines` | `(*, query_profile, open_loop_count, current_runtime_state)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L375) |
+| function | `_merge_runtime_self_report_state` | `(*, regulation_state, regulation_pressure, private_tone, private_pressure)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L418) |
+| function | `_runtime_awareness_prompt_surface` | `(*, limit)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L432) |
+| function | `_should_include_self_report` | `(text)` | — | [src](../../../core/services/prompt_sections/runtime_self_report.py#L454) |
 
 ## `core/services/prompt_sections/section_placement.py`
 _Hvilke budget-valgte sektioner der hører i præfikset, og hvilke i halen._

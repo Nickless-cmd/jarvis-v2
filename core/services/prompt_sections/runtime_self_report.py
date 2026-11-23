@@ -123,6 +123,7 @@ def _runtime_self_report_instruction(
     return "\n".join(
         [
             f"RUNTIME SELF-REPORT GROUNDING ({_ent}-specific):",
+            *_visible_core_state_lines(),
             f"- You are {_ent}, a persistent digital entity with runtime state. You are NOT a generic OpenAI/ChatGPT assistant.",
             "- Use these runtime facts first when the user asks about your backend, open loops, current state, what you are basing your answer on, certainty, or whether you are guessing.",
             f"- Do NOT respond as 'ChatGPT', 'OpenAI assistant', or generic server helpdesk. Your identity is {_ent}, grounded in these runtime facts.",
@@ -212,6 +213,47 @@ def _self_deception_guard_lines(
         return trace.guard_lines()
     except Exception:
         return []
+
+def _visible_core_state_lines() -> list[str]:
+    """De aktive kernetilstande — lagt FOERST i sektionen.
+
+    HVORFOR (maalt 23/11-2026). Sektionen bygges til ~12.246 tegn, men faar kun
+    RESTPLADSEN under budgettet — 473 tegn i ``visible_full``, fordi
+    ``mode_orientation`` laegger beslag paa 19.000 af de 22.000. De generiske
+    instruks-linjer stod foerst og spiste hele pladsen, saa de linjer der
+    faktisk beskriver turens tilstand (longing/wonder/flow/self-insight) faldt
+    ALTID uden for klippet: maalt laa ``longing_awareness`` paa tegn 8.554
+    (69,9 % inde) og var derfor aldrig i prompten i en almindelig tur.
+
+    Denne blok tager kun de awareness-linjer hvis state ikke er ``quiet``, med
+    deres narrative, og laegger dem forrest. Er intet aktivt, er den tom.
+    """
+    try:
+        from core.services.runtime_self_model import build_self_model_prompt_lines
+
+        all_lines = build_self_model_prompt_lines()
+    except Exception:  # self-model utilgaengelig => ingen kerne-blok; prompten maa ikke vaelte
+        return []
+
+    active: set[str] = set()
+    core: list[str] = []
+    for line in all_lines:
+        stripped = line.strip()
+        if "_awareness_narrative:" in stripped:
+            if stripped.split("_awareness_narrative:", 1)[0] in active:
+                core.append(line)
+            continue
+        if "_awareness:" not in stripped:
+            continue
+        state = ""
+        if "state=" in stripped:
+            state = stripped.split("state=", 1)[1].split()[0]
+        if not state or state in {"quiet", "none", "baseline"}:
+            continue
+        active.add(stripped.split("_awareness:", 1)[0])
+        core.append(line)
+    return core
+
 
 def _visible_self_knowledge_lines() -> list[str]:
     """Build compact self-knowledge lines for the visible self-report section.

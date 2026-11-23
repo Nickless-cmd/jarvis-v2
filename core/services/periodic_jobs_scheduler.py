@@ -136,7 +136,7 @@ def check_and_enqueue_due_periodic_jobs() -> dict[str, Any]:
     now = datetime.now(UTC)
 
     try:
-        from core.services.jobs_engine import all_jobs, enqueue_job
+        from core.services.jobs_engine import _TERMINAL_STATUSES, all_jobs, enqueue_job
     except Exception as exc:
         logger.debug("periodic_jobs_scheduler: jobs_engine import failed: %s", exc)
         try:
@@ -188,7 +188,16 @@ def check_and_enqueue_due_periodic_jobs() -> dict[str, Any]:
             existing = last_times.get(jt)
             if existing is None or ts > existing:
                 last_times[jt] = ts
-            if str(item.get("status") or "") in {"completed", "failed", "cancelled", "lost"}:
+            # MAALT 23/11-2026: her stod en LOKAL kopi af listen
+            # ({"completed","failed","cancelled","lost"}) — og den manglede netop
+            # `ok` og `error`, som er dem jobs_engine faktisk skriver. 1999 af
+            # 2000 poster i koeen havde status `ok`, saa registeret kunne kun
+            # nogensinde indeholde det ene job der tilfaeldigt var `completed`.
+            # Otte af ni lange kadencer (inkl. quarterly_arc 91 dage og
+            # annual_arc 365 dage) blev derfor ALDRIG skrevet — praecis den fejl
+            # registeret skulle loese. Brug den autoritative liste i stedet for
+            # en kopi der driver.
+            if str(item.get("status") or "") in _TERMINAL_STATUSES:
                 prev = terminal_times.get(jt)
                 if prev is None or ts > prev:
                     terminal_times[jt] = ts

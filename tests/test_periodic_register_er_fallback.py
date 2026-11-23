@@ -97,6 +97,40 @@ def test_lang_kadence_skrives_til_registeret() -> None:
     assert "goal_reporter" in p.read_text(encoding="utf-8")
 
 
+def test_ok_status_taeller_som_terminal() -> None:
+    """MAALT 23/11-2026 — fejlen der gjorde registeret naesten tomt.
+
+    Scheduleren havde sin EGEN kopi af de terminale statusser:
+    `{"completed", "failed", "cancelled", "lost"}`. Men `jobs_engine` skriver
+    `ok` naar et job lykkes, og `_TERMINAL_STATUSES` i jobs_engine har netop
+    `ok` og `error` med. Maalt i den levende koe: 1999 af 2000 poster havde
+    status `ok` — saa registeret kunne kun indeholde det ene job der
+    tilfaeldigt var `completed`.
+
+    Konsekvensen var at otte af ni lange kadencer (quarterly_arc 91 dage,
+    annual_arc 365 dage, monthly_arc 28 dage, ...) ALDRIG blev skrevet — og
+    dermed blev koert igen hver gang deres post trimmedes ud af vinduet.
+    Praecis den fejl registeret skulle loese.
+
+    Fixturen her bruger `status="ok"`, fordi det er hvad producenten faktisk
+    skriver. Den tidligere fixture brugte `"completed"` — en status der
+    naesten ikke forekommer i virkeligheden — og derfor var testene groenne
+    mens registeret i drift var tomt.
+    """
+    p = _register()
+    if p.exists():
+        p.unlink()
+    # quarterly_arc har 91 dages kadence og koerte for 2 timer siden.
+    _koer([_job("quarterly_arc", hours_ago=2, status="ok")])
+    assert p.exists(), (
+        "et job med status 'ok' er faerdigt — det skal skrives til registeret. "
+        "Gor det ikke, er den lokale terminal-liste kommet tilbage uden 'ok'."
+    )
+    assert "quarterly_arc" in p.read_text(encoding="utf-8"), (
+        "quarterly_arc (91 dage) blev ikke registreret trods status 'ok'"
+    )
+
+
 def test_registeret_kan_baere_en_kadence_koen_har_glemt() -> None:
     """Det oprindelige formaal: jobbet er trimmet ud af koen, men registeret
     husker det — og en forfaldent kadence skal stadig fyres."""

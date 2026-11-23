@@ -13,6 +13,8 @@ Testene maaler tre ting, og den tredje er den vigtigste:
 """
 from __future__ import annotations
 
+import json
+
 import pytest
 
 
@@ -239,3 +241,81 @@ def test_strukturelt_token_er_ikke_et_fagsignal(fake_beslutninger) -> None:
 
     valgte = bd.select_relevant_decisions(max_items=5, context_text="active 2")
     assert valgte == [], "et strukturelt token maa ikke baere en beslutning alene"
+
+
+def test_sporet_baerer_hvilke_beslutninger_der_blev_valgt(fake_beslutninger, tmp_path, monkeypatch) -> None:
+    """«valgt=4» er ikke efterproveligt — sporet skal baere HVILKE fire.
+
+    Maalt 24/11-2026: foerste version af spoeret gemte kun antallet. En linje som
+    `basis=relevance, valgt=4` kunne ikke afgoere om de fire var de rigtige, eller
+    hvorfor de vandt. Uden id og score er spoeret et tælleapparat, ikke et bevis.
+    """
+    from core.services import behavioral_decisions as bd
+
+    spor = tmp_path / "relevans_gate.jsonl"
+    monkeypatch.setattr(bd, "_GATE_SPOR", spor)
+
+    fake_beslutninger([
+        _beslutning("dec_prompt", "Verificer at prompt-sektionen ikke klippes", priority=50,
+                    cue="Naar prompt-sektionen klippes"),
+        _beslutning("dec_irrelevant", "Ryd op i gamle logfiler", priority=90),
+    ])
+
+    valgte = bd.select_relevant_decisions(max_items=5, context_text="prompt-sektionen klippes igen")
+    assert valgte, "beslutningen burde vaere valgt"
+
+    linjer = [json.loads(ln) for ln in spor.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    assert linjer, "sporet skal skrive en linje"
+    post = linjer[-1]
+    assert post["basis"] == "relevance"
+    assert post["valgte"], "sporet skal navngive de valgte beslutninger"
+    ids = [v["id"] for v in post["valgte"]]
+    assert "dec_prompt" in ids, f"den valgte beslutning mangler i spoeret: {ids}"
+    assert all("score" in v and "hvorfor" in v for v in post["valgte"])
+
+
+def test_telemetri_fejl_skrives_til_egen_fil(fake_beslutninger, tmp_path, monkeypatch) -> None:
+    """En tavs telemetri-fejl maa ikke vaere uskelnelig fra «gaten blev ikke kaldt».
+
+    Maalt 23/11-2026: fejlgrenen skrev til `logger.debug`, men `jarvis-runtime`
+    skrev nul INFO-linjer til journalen overhovedet. En fejlende filskrivning
+    forsvandt dermed sporloest. Nu skrives fejlen til sin egen fil, hvis
+    eksistens ER svaret paa spoergsmaalet.
+    """
+    from core.services import behavioral_decisions as bd
+
+    fejlfil = tmp_path / "relevans_gate_fejl.jsonl"
+    # En sti der ikke kan aabnes som fil: en mappe.
+    umulig = tmp_path / "er_en_mappe"
+    umulig.mkdir()
+    monkeypatch.setattr(bd, "_GATE_SPOR", umulig)
+    monkeypatch.setattr(bd, "_GATE_SPOR_FEJL", fejlfil)
+
+    fake_beslutninger([_beslutning("dec_a", "Verificer prompt-sektionen", priority=50)])
+
+    bd.select_relevant_decisions(max_items=5, context_text="prompt-sektionen klippes")
+
+    assert fejlfil.exists(), "en fejlet telemetri-skrivning skal efterlade et spor"
+    post = json.loads(fejlfil.read_text(encoding="utf-8").splitlines()[-1])
+    assert post["fejl"], "fejlposten skal navngive fejlen"
+
+
+def test_priority_fallback_er_synlig_i_prompt_teksten(fake_beslutninger) -> None:
+    """Fallback maa ikke ligne en relevansvurdering i den tekst modellen laeser.
+
+    `_selection_basis` blev sat paa dict'en, men naaede aldrig prompt-linjen.
+    Modellen kunne derfor ikke se forskel paa «valgt fordi den passede til turen»
+    og «valgt fordi den var hoejest prioriteret».
+    """
+    from core.services import behavioral_decisions as bd
+
+    fake_beslutninger([_beslutning("dec_hoej", "Hoej prioritet uden kontekst", priority=94)])
+
+    linje = bd.format_active_decisions_for_heartbeat(max_items=5, context_text="")
+    assert "priority" in linje.lower(), f"fallback skal meldes i teksten: {linje[:120]}"
+
+    med_kontekst = bd.format_active_decisions_for_heartbeat(
+        max_items=5, context_text="prompt-sektionen klippes"
+    )
+    if med_kontekst:
+        assert "valgt paa priority" not in med_kontekst, "en relevansvurdering maa ikke meldes som fallback"

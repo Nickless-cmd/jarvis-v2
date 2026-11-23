@@ -40,6 +40,10 @@ logger = logging.getLogger(__name__)
 #: «gaten afviste» kun maales i en test, aldrig i den koerende proces.
 #: Samme moenster som `cache_telemetry`: én jsonl-linje pr. valg.
 _GATE_SPOR = Path.home() / ".jarvis-v2" / "logs" / "relevans_gate.jsonl"
+#: Skrives KUN naar spor-filen ikke kunne skrives. Filens eksistens er svaret paa
+#: «fejlede telemetrien?» — et spoer der ikke kan skrives, maa ikke forsvinde i en
+#: logger der (maalt 23/11-2026) ikke skriver til journalen overhovedet.
+_GATE_SPOR_FEJL = Path.home() / ".jarvis-v2" / "logs" / "relevans_gate_fejl.jsonl"
 
 
 def _spor_gate(
@@ -48,27 +52,58 @@ def _spor_gate(
     ialt: int,
     ctx: str,
     ord_: list[str] | None = None,
+    valgte: list[dict[str, Any]] | None = None,
 ) -> None:
-    """Skriv ét spor pr. valg. Self-safe — maa aldrig vaelte prompt-stien."""
+    """Skriv ét spor pr. valg. Self-safe — maa aldrig vaelte prompt-stien.
+
+    24/11-2026: sporet bar kun ANTALLET valgte, ikke hvilke. «basis=relevance,
+    valgt=4» kunne derfor ikke efterproeves — man vidste at fire blev valgt, men
+    ikke hvilke eller hvorfor de vandt. Nu baerer hver post id, score og den
+    korte begrundelse pr. valgt beslutning, saa et valg kan revideres bagefter.
+
+    Fejlhåndteringen skriver til `_GATE_SPOR_FEJL`, ikke til `logger.debug`:
+    den logger blev maalt usynlig i `jarvis-runtime`s journal (nul INFO-linjer
+    overhovedet), saa en tavs telemetri-fejl kunne ikke skelnes fra «gaten blev
+    ikke kaldt». En fil der findes eller ikke findes kan skelnes.
+    """
     try:
         _GATE_SPOR.parent.mkdir(parents=True, exist_ok=True)
+        post: dict[str, Any] = {
+            "at": datetime.now(UTC).isoformat(),
+            "basis": basis,
+            "valgt": int(valgt),
+            "ialt": int(ialt),
+            "ctx": str(ctx or "")[:160],
+            "ord": list(ord_ or [])[:8],
+        }
+        if valgte:
+            post["valgte"] = [
+                {
+                    "id": str(d.get("decision_id") or ""),
+                    "score": float((d.get("_relevans") or {}).get("score") or 0.0),
+                    "hvorfor": str((d.get("_relevans") or {}).get("hvorfor") or "")[:120],
+                }
+                for d in valgte[:8]
+            ]
         with _GATE_SPOR.open("a", encoding="utf-8") as fh:
-            fh.write(
-                json.dumps(
-                    {
-                        "at": datetime.now(UTC).isoformat(),
-                        "basis": basis,
-                        "valgt": int(valgt),
-                        "ialt": int(ialt),
-                        "ctx": str(ctx or "")[:160],
-                        "ord": list(ord_ or [])[:8],
-                    },
-                    ensure_ascii=False,
-                )
-                + "\n"
-            )
+            fh.write(json.dumps(post, ensure_ascii=False) + "\n")
     except Exception as exc:
-        logger.debug("relevans-gate: kunne ikke skrive spor: %s", exc)
+        try:
+            _GATE_SPOR_FEJL.parent.mkdir(parents=True, exist_ok=True)
+            with _GATE_SPOR_FEJL.open("a", encoding="utf-8") as fh:
+                fh.write(
+                    json.dumps(
+                        {
+                            "at": datetime.now(UTC).isoformat(),
+                            "basis": basis,
+                            "fejl": f"{type(exc).__name__}: {exc}"[:300],
+                        },
+                        ensure_ascii=False,
+                    )
+                    + "\n"
+                )
+        except Exception:  # sidste udvej: kan fejlfilen ikke skrives, er der intet sted at melde det
+            pass
 
 
 def _normalize_directive(value: str) -> str:
@@ -656,7 +691,7 @@ def select_relevant_decisions(
                 "tool_hit": [],
                 "dir_hit": [],
             }
-        _spor_gate("priority-fallback", len(valgte), len(alle), "")
+        _spor_gate("priority-fallback", len(valgte), len(alle), "", valgte=valgte)
         return valgte
 
     freq = _ord_frekvens(alle)
@@ -704,7 +739,14 @@ def select_relevant_decisions(
             break
     for d in valgte:
         d["_selection_basis"] = "relevance"
-    _spor_gate("relevance", len(valgte), len(alle), context_text, sorted(_kontekst_ord))
+    _spor_gate(
+        "relevance",
+        len(valgte),
+        len(alle),
+        context_text,
+        sorted(_kontekst_ord),
+        valgte=valgte,
+    )
     return valgte
 
 
@@ -738,6 +780,14 @@ def format_active_decisions_for_heartbeat(
         if adherence is not None:
             chunk += f" [adherence={adherence:.2f}]"
         parts.append(chunk)
+    # 24/11-2026: `_selection_basis` blev sat paa dict'en men naaede ALDRIG den
+    # tekst modellen laeser — saa en priority-fallback kunne ikke skelnes fra en
+    # relevansvurdering i prompten. Den staar nu som praefiks, fordi forskellen
+    # er semantisk: «valgt fordi den var hoejest prioriteret» er ikke det samme
+    # som «valgt fordi den passede til turen».
+    basis = str(decisions[0].get("_selection_basis") or "")
+    if basis == "priority-fallback-no-context":
+        return f"[valgt paa priority — ingen tur-kontekst at vurdere relevans mod] " + " | ".join(parts)
     return " | ".join(parts)
 
 

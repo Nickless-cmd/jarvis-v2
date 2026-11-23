@@ -200,28 +200,28 @@ _Behavioral decisions — closing the reflection→behavior loop._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_spor_gate` | `(basis, valgt, ialt, ctx, ord_=…)` | Skriv ét spor pr. valg. Self-safe — maa aldrig vaelte prompt-stien. | [src](../../../core/services/behavioral_decisions.py#L45) |
-| function | `_normalize_directive` | `(value)` | — | [src](../../../core/services/behavioral_decisions.py#L74) |
-| function | `_commit_observe` | `(outcome, decision_id)` | Commit-cluster instrument: decision_create → central observe (best-effort). | [src](../../../core/services/behavioral_decisions.py#L78) |
-| function | `_recently_revoked` | `(normalized)` | En revokeret beslutning med samme direktiv, revokeret for nylig. | [src](../../../core/services/behavioral_decisions.py#L100) |
-| function | `_dedup_result` | `(existing, reason, source_type)` | Returnér den række der allerede dækker direktivet — uden at oprette. | [src](../../../core/services/behavioral_decisions.py#L111) |
-| function | `create_decision` | `(*, directive, rationale=…, trigger_cue=…, priority=…, source_record_id=…, source_type=…, created_by=…)` | — | [src](../../../core/services/behavioral_decisions.py#L135) |
-| function | `review_decision` | `(*, decision_id, verdict, note=…, evidence=…)` | — | [src](../../../core/services/behavioral_decisions.py#L183) |
-| function | `update_decision` | `(decision_id, *, directive=…, rationale=…, trigger_cue=…, trigger_name=…, priority=…, status=…, revoked_reason=…, revoked_evidence=…)` | Update a decision's mutable fields (None = unchanged, "" = cleared). | [src](../../../core/services/behavioral_decisions.py#L233) |
-| function | `change_status` | `(decision_id, new_status, *, reason=…, evidence=…)` | — | [src](../../../core/services/behavioral_decisions.py#L287) |
-| function | `revoke_decision` | `(decision_id, *, reason=…, evidence=…)` | Træk en beslutning tilbage — MED sin grund. | [src](../../../core/services/behavioral_decisions.py#L315) |
-| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/services/behavioral_decisions.py#L355) |
-| function | `get_decision` | `(decision_id)` | — | [src](../../../core/services/behavioral_decisions.py#L365) |
-| function | `get_decision_with_reviews` | `(decision_id, *, review_limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L369) |
-| function | `list_active_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L396) |
-| function | `list_all_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L400) |
-| function | `_relevans_ord` | `(tekst)` | Betydningsbaerende ord i en tekst — lowercase, >=4 tegn, uden stopord. | [src](../../../core/services/behavioral_decisions.py#L462) |
-| function | `_ord_frekvens` | `(beslutninger)` | Hvor mange beslutninger indeholder hvert ord? | [src](../../../core/services/behavioral_decisions.py#L486) |
-| function | `_idf` | `(ord_, freq, antal)` | Invers dokument-frekvens: sjældne ord vejer tungt, hyppige vejer næsten intet. | [src](../../../core/services/behavioral_decisions.py#L502) |
-| function | `score_decision_relevance` | `(decision, *, context_text=…, context_tools=…, ord_frekvens=…, antal_beslutninger=…)` | Hvor relevant er denne beslutning for den aktuelle tur — og hvorfor? | [src](../../../core/services/behavioral_decisions.py#L519) |
-| function | `select_relevant_decisions` | `(*, max_items=…, context_text=…, context_tools=…)` | Vælg de mest relevante aktive beslutninger for den aktuelle tur. | [src](../../../core/services/behavioral_decisions.py#L613) |
-| function | `format_active_decisions_for_heartbeat` | `(*, max_items=…, context_text=…, context_tools=…)` | Compact line of the most RELEVANT active commitments for this turn. | [src](../../../core/services/behavioral_decisions.py#L711) |
-| function | `get_stats` | `()` | — | [src](../../../core/services/behavioral_decisions.py#L744) |
+| function | `_spor_gate` | `(basis, valgt, ialt, ctx, ord_=…, valgte=…)` | Skriv ét spor pr. valg. Self-safe — maa aldrig vaelte prompt-stien. | [src](../../../core/services/behavioral_decisions.py#L49) |
+| function | `_normalize_directive` | `(value)` | — | [src](../../../core/services/behavioral_decisions.py#L109) |
+| function | `_commit_observe` | `(outcome, decision_id)` | Commit-cluster instrument: decision_create → central observe (best-effort). | [src](../../../core/services/behavioral_decisions.py#L113) |
+| function | `_recently_revoked` | `(normalized)` | En revokeret beslutning med samme direktiv, revokeret for nylig. | [src](../../../core/services/behavioral_decisions.py#L135) |
+| function | `_dedup_result` | `(existing, reason, source_type)` | Returnér den række der allerede dækker direktivet — uden at oprette. | [src](../../../core/services/behavioral_decisions.py#L146) |
+| function | `create_decision` | `(*, directive, rationale=…, trigger_cue=…, priority=…, source_record_id=…, source_type=…, created_by=…)` | — | [src](../../../core/services/behavioral_decisions.py#L170) |
+| function | `review_decision` | `(*, decision_id, verdict, note=…, evidence=…)` | — | [src](../../../core/services/behavioral_decisions.py#L218) |
+| function | `update_decision` | `(decision_id, *, directive=…, rationale=…, trigger_cue=…, trigger_name=…, priority=…, status=…, revoked_reason=…, revoked_evidence=…)` | Update a decision's mutable fields (None = unchanged, "" = cleared). | [src](../../../core/services/behavioral_decisions.py#L268) |
+| function | `change_status` | `(decision_id, new_status, *, reason=…, evidence=…)` | — | [src](../../../core/services/behavioral_decisions.py#L322) |
+| function | `revoke_decision` | `(decision_id, *, reason=…, evidence=…)` | Træk en beslutning tilbage — MED sin grund. | [src](../../../core/services/behavioral_decisions.py#L350) |
+| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/services/behavioral_decisions.py#L390) |
+| function | `get_decision` | `(decision_id)` | — | [src](../../../core/services/behavioral_decisions.py#L400) |
+| function | `get_decision_with_reviews` | `(decision_id, *, review_limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L404) |
+| function | `list_active_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L431) |
+| function | `list_all_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L435) |
+| function | `_relevans_ord` | `(tekst)` | Betydningsbaerende ord i en tekst — lowercase, >=4 tegn, uden stopord. | [src](../../../core/services/behavioral_decisions.py#L497) |
+| function | `_ord_frekvens` | `(beslutninger)` | Hvor mange beslutninger indeholder hvert ord? | [src](../../../core/services/behavioral_decisions.py#L521) |
+| function | `_idf` | `(ord_, freq, antal)` | Invers dokument-frekvens: sjældne ord vejer tungt, hyppige vejer næsten intet. | [src](../../../core/services/behavioral_decisions.py#L537) |
+| function | `score_decision_relevance` | `(decision, *, context_text=…, context_tools=…, ord_frekvens=…, antal_beslutninger=…)` | Hvor relevant er denne beslutning for den aktuelle tur — og hvorfor? | [src](../../../core/services/behavioral_decisions.py#L554) |
+| function | `select_relevant_decisions` | `(*, max_items=…, context_text=…, context_tools=…)` | Vælg de mest relevante aktive beslutninger for den aktuelle tur. | [src](../../../core/services/behavioral_decisions.py#L648) |
+| function | `format_active_decisions_for_heartbeat` | `(*, max_items=…, context_text=…, context_tools=…)` | Compact line of the most RELEVANT active commitments for this turn. | [src](../../../core/services/behavioral_decisions.py#L753) |
+| function | `get_stats` | `()` | — | [src](../../../core/services/behavioral_decisions.py#L794) |
 
 ## `core/services/besked_run_kobling.py`
 _Hvilket run skrev denne besked? — så klienten ikke skal gætte ud fra prosa._

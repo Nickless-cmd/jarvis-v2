@@ -176,6 +176,7 @@ def check_and_enqueue_due_periodic_jobs() -> dict[str, Any]:
     # Byg pending-set + last-time map i én pass
     pending_types: set[str] = set()
     last_times: dict[str, datetime] = {}
+    terminal_times: dict[str, datetime] = {}
     for item in all_items:
         jt = item.get("job_type")
         if not jt:
@@ -187,6 +188,85 @@ def check_and_enqueue_due_periodic_jobs() -> dict[str, Any]:
             existing = last_times.get(jt)
             if existing is None or ts > existing:
                 last_times[jt] = ts
+            if str(item.get("status") or "") in {"completed", "failed", "cancelled", "lost"}:
+                prev = terminal_times.get(jt)
+                if prev is None or ts > prev:
+                    terminal_times[jt] = ts
+
+    # 22/11-2026: kadence-hukommelsen boede UDELUKKENDE i job-køen, som trimmes
+    # til 2000 terminale poster (jobs_engine._KEEP_TERMINAL). wakeup_dispatch
+    # fylder ~1526 af dem i døgnet, så vinduet er ~27 timer. Målt 22/11:
+    # goal_reporter (kadence 7 døgn) skrev 15., 16., 18., 19., 20. og 21/11 med
+    # ~27,2 t mellemrum — og vagten nedenfor (8 døgn) kunne ALDRIG fyre, fordi
+    # den læste samme forkortede vindue. Registeret her overlever trimning.
+    import json as _json  # lokal import: holder ændringen i ét sammenhængende stykke
+
+    def _durable_path():
+        from core.runtime.workspace_paths import shared_dir
+        return shared_dir() / "runtime" / "periodic_last_run.json"
+
+    durable_path = _durable_path()
+
+    def _load_durable() -> dict[str, datetime]:
+        try:
+            with durable_path.open("r", encoding="utf-8") as f:
+                raw = _json.load(f)
+        except (FileNotFoundError, ValueError, OSError) as exc:  # foerste koersel eller korrupt fil — tomt register er den aerlige tilstand
+            logger.debug("periodic_jobs_scheduler: register kunne ikke laeses: %s", exc)
+            return {}
+        out: dict[str, datetime] = {}
+        if isinstance(raw, dict):
+            for key, value in raw.items():
+                try:
+                    out[str(key)] = datetime.fromisoformat(str(value))
+                except ValueError:  # en enkelt daarlig raekke maa ikke kaste hele registeret ud
+                    continue
+        return out
+
+    def _save_durable(data: dict[str, datetime]) -> None:
+        try:
+            durable_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = durable_path.with_suffix(".json.tmp")
+            tmp.write_text(
+                _json.dumps({k: v.isoformat() for k, v in data.items()}, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            tmp.replace(durable_path)
+        except OSError as exc:  # en fejlet skrivning maa ikke vaere tavs — saa forsvinder kadencen uden spor
+            logger.warning("periodic_jobs_scheduler: kunne ikke skrive sidst-koert: %s", exc)
+
+    # Registeret er en FALLBACK, ikke en autoritativ kilde. Det maa kun bruges
+    # naar job-koen ikke selv kan svare — ellers overskriver det friskere data
+    # fra koen, og to kald i samme proces bliver raekkefoelgeafhaengige
+    # (maalt 23/11-2026: en `chronicle_refresh` der koerte for 2 timer siden
+    # blev skrevet til registeret, hvorefter et 48 timer gammelt job i naeste
+    # kald blev sprunget over).
+    #
+    # Derfor: kun kadencer LAENGERE end trimningsvinduet (~27 timer ved 2000
+    # terminale poster) har et reelt behov. Kortere kadence kan koen altid
+    # selv svare paa, og de skal hverken laeses eller skrives her.
+    _DUREBAR_MIN_KADENCE = timedelta(hours=27)
+
+    def _har_reelt_behov(jt: str) -> bool:
+        kadence = _SCHEDULE.get(jt)
+        return kadence is not None and kadence > _DUREBAR_MIN_KADENCE
+
+    durable = _load_durable()
+    merged = dict(durable)
+    for jt, ts in terminal_times.items():
+        if _har_reelt_behov(jt) and (jt not in merged or ts > merged[jt]):
+            merged[jt] = ts
+    if merged != durable:
+        _save_durable(merged)
+    for jt, ts in merged.items():
+        if not _har_reelt_behov(jt):
+            continue
+        # Kun naar koen SLET IKKE har en observation for typen. Har koen en
+        # post — ogsaa en gammel — er den den sande kilde: den er jobbets
+        # faktiske historik, mens registeret er en erindring om det.
+        if jt in last_times:
+            continue
+        last_times[jt] = ts
 
     _report_goal_reporter_liveness(last_run=last_times.get("goal_reporter"), now=now)
 

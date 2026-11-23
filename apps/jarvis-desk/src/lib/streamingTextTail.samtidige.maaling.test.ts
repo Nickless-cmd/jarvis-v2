@@ -55,7 +55,6 @@ function pacerSkema(total: number, ankomst: (frame: number) => number | null): {
   return ud
 }
 
-const JAEVN = '0% { color: var(--accent); } 100% { color: var(--fg-1); }'
 
 type Konfig = { navn: string; keyframes?: string; vars?: string }
 

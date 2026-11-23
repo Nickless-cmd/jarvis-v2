@@ -230,6 +230,14 @@ def _ser_klippet_ud(tekst: str) -> bool:
 # 119: 162). Signaturen er derfor kun '…' til sidst — sikkerheden ligger i
 # startswith-vagten: en ægte besked der stylistisk slutter med '…' matcher
 # sit eget hoved og returneres uændret.
+#
+# ⚠️ OVENSTÅENDE ER 20/11-REGLEN OG DEN VAR FOR SMAL (målt 23/11-2026):
+# 6.903 af 26.295 previews (26 %) slutter UDEN '…', og 3.467 af dem slutter
+# uden afsluttende tegnsætning — altså midt i et ord. De slap urørt igennem,
+# og tre poster i vektoren citerer dem ordret («…med ordet 'en'», «…med
+# 'fil'»). Signaturen er derfor '…' ELLER et råt snit ved et af
+# `_KLIP_LOFTER` — se `_ser_klippet_ud` ovenfor. Loftet 139 er undersøgt og
+# bevidst UDELADT: alle 16 previews på den længde er hele svar.
 
 
 def _hent_rigtigt_svar(session_id: str | None, assistant_response: str) -> str:

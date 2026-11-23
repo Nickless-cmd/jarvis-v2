@@ -418,6 +418,8 @@ def mark_acted(
             runtime_db.update_runtime_initiative(
                 initiative_id,
                 status="pending",
+                disposition="acted",
+                disposition_reason="",
                 last_action_at=now,
                 acted_at=now,
                 next_attempt_at=reassess_at,
@@ -439,6 +441,8 @@ def mark_acted(
         runtime_db.update_runtime_initiative(
             initiative_id,
             status="acted",
+            disposition="acted",
+            disposition_reason="",
             acted_at=now,
             next_attempt_at="",
             blocked_reason="",
@@ -454,6 +458,46 @@ def mark_acted(
             },
         )
         return True
+
+
+def decline_initiative(initiative_id: str, *, reason: str) -> bool:
+    """Close a pending initiative because Jarvis chose not to act on it.
+
+    This is Jarvis' own disposition, not the owner's consent decision handled
+    by ``reject_initiative``. A reason is mandatory so a terminal decline can
+    never look like an action, an expiry, or an unexplained disappearance.
+    """
+    normalized_reason = str(reason or "").strip()
+    if not normalized_reason:
+        return False
+    now = datetime.now(UTC).isoformat()
+    with _QUEUE_LOCK:
+        existing = runtime_db.get_runtime_initiative(initiative_id)
+        if not existing or str(existing.get("status") or "") != "pending":
+            return False
+        updated = runtime_db.update_runtime_initiative(
+            initiative_id,
+            status="declined",
+            disposition="declined",
+            disposition_reason=normalized_reason[:300],
+            next_attempt_at="",
+            blocked_reason="",
+            acted_at="",
+            action_summary="",
+            updated_at=now,
+        )
+    if not updated:
+        return False
+    event_bus.publish(
+        "heartbeat.initiative_declined",
+        {
+            "initiative_id": initiative_id,
+            "focus": str(existing.get("focus") or "")[:100],
+            "reason": normalized_reason[:120],
+            "disposition": "declined",
+        },
+    )
+    return True
 
 
 def close_acted_without_outcome(*, limit: int = 5000) -> dict[str, object]:
@@ -621,6 +665,7 @@ def get_initiative_queue_state() -> dict[str, object]:
         all_items = runtime_db.list_runtime_initiatives(limit=_MAX_QUEUE_SIZE + 40)
         pending = [i for i in all_items if i["status"] == "pending"]
         acted = [i for i in all_items if i["status"] == "acted"]
+        declined = [i for i in all_items if i["status"] == "declined"]
         expired = [i for i in all_items if i["status"] == "expired"]
         long_term = [
             i for i in all_items
@@ -635,11 +680,13 @@ def get_initiative_queue_state() -> dict[str, object]:
         "queue_size": len(all_items),
         "pending_count": len(pending),
         "acted_count": len(acted),
+        "declined_count": len(declined),
         "expired_count": len(expired),
         "approved_count": len(approved),
         "rejected_count": len(rejected),
         "pending": pending,
         "recent_acted": acted[:3],
+        "recent_declined": declined[:3],
         "recent_approved": approved[:3],
         "recent_rejected": rejected[:3],
         "life_projects": long_term[:_MAX_ACTIVE_LONG_TERM_INTENTIONS],
@@ -884,4 +931,8 @@ def initiatives_prompt_section() -> str | None:
     return (
         "Noget du selv har villet tage op (du vælger om det passer ind her):\n"
         + "\n".join(lines)
+        + "\n\nPasser en post ikke — fordi præmissen er væk, eller fordi den ikke kan "
+        "efterprøves — så afvis den med `decline_initiative(id, reason=...)` og skriv "
+        "grunden. Det er et gyldigt udfald, ikke en fiasko: en post der bliver liggende "
+        "uden grund vender tilbage som en ny."
     )

@@ -10385,7 +10385,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "cheap_lane_admission_state": {
@@ -35083,7 +35083,7 @@
       ]
     },
     "runtime_initiatives": {
-      "digest": "fa:5e:9e:eb:88:d6:bf:a8:77:58:84:41:61:47:43:72:c5:e8:92:36:19:59:57:ff:1c:19:52:13:64:79:ba:3c",
+      "digest": "4a:3b:63:e4:e3:a6:cf:4d:a7:e0:22:ef:45:eb:c6:0a:f4:3a:dd:91:70:8b:cc:59:16:bd:a7:cb:31:1f:d5:50",
       "schema": {
         "columns": [
           {
@@ -35131,6 +35131,22 @@
             "type": "TEXT",
             "nullable": false,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "disposition",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "disposition_reason",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },

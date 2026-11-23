@@ -115,6 +115,49 @@ def test_carried_integrity_reads_decay_scores(monkeypatch) -> None:
     assert abs(out["integrity"] - (1.0 - 1.45 / 3)) < 1e-6
 
 
+def test_carried_integrity_ignores_telemetry_sources(monkeypatch) -> None:
+    """Soma-telemetri og state-snapshots maa ikke veje i laengslens grundlag.
+
+    Maalt 23/11-2026: kurven sporer cpu/load/svartid og raa tilstandssnapshots,
+    og de udgjorde flertallet af posterne. Et globalt gennemsnit gjorde derfor
+    «CPU-temperaturen er faldet til ro» til «det jeg laenges efter er vaek».
+    """
+    from core.services import forgetting_curve
+
+    monkeypatch.setattr(
+        forgetting_curve,
+        "_load",
+        lambda: {
+            "soma1": {"decay_score": 0.99, "source": "somatic-daemon:heartbeat"},
+            "snap1": {"decay_score": 0.99, "source": "state-snapshot:private-x"},
+            "tick1": {"decay_score": 0.99, "source": "signal_pressure_accumulator.tick"},
+            "surp1": {"decay_score": 0.99, "source": "surprise-daemon:heartbeat"},
+            "carried1": {"decay_score": 0.0, "source": "inner-voice-daemon:cadence"},
+        },
+    )
+    out = forgetting_curve.carried_integrity()
+    assert out["tracked"] == 1, "kun den baerende post maa taelle"
+    assert out["tracked_all"] == 5, "totalen skal stadig kunne ses"
+    assert out["faded"] == 0
+    assert out["integrity"] == 1.0
+
+
+def test_carried_integrity_no_carried_entries_is_not_forgetting(monkeypatch) -> None:
+    """Kurve fuld af KUN telemetri = intet at maale, ikke alt tabt."""
+    from core.services import forgetting_curve
+
+    monkeypatch.setattr(
+        forgetting_curve,
+        "_load",
+        lambda: {"s1": {"decay_score": 0.99, "source": "somatic-daemon:heartbeat"}},
+    )
+    out = forgetting_curve.carried_integrity()
+    assert out["integrity"] == 1.0
+    assert out["source"] == "no-carried-entries"
+    assert out["tracked"] == 0
+    assert out["tracked_all"] == 1
+
+
 def test_longing_state_is_logged_when_it_changes(caplog) -> None:
     """Tilstanden skal kunne ses i journalen — og kun ved SKIFT.
 

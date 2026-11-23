@@ -365,6 +365,27 @@ def get_faded_memories() -> list[dict[str, object]]:
     ]
 
 
+#: Kilder der IKKE baerer indhold om mig selv eller relationen, men som kurven
+#: alligevel sporer: soma-telemetri (cpu/load/svartid), raa state-snapshots,
+#: tryk-accumulatorens tick og reaktionsafvigelse. Maalt 23/11-2026 udgjorde de
+#: flertallet af de 500 poster, og 111 af 115 falmede poster kom herfra — saa et
+#: globalt gennemsnit over HELE kurven maalte henfald af CPU-temperatur, ikke af
+#: det laengslen laenges efter. Eksklusion frem for inklusion: en ny daemon der
+#: baerer indhold skal taelle med uden at nogen opdaterer en liste.
+_CARRIED_EXCLUDED_SOURCES = (
+    "somatic-daemon",
+    "state-snapshot:",
+    "signal_pressure_accumulator",
+    "surprise-daemon",
+)
+
+
+def _is_carried(payload: dict[str, object]) -> bool:
+    """Baerer denne post indhold om mig/relationen — eller er den telemetri?"""
+    source = str(payload.get("source") or "")
+    return not any(source.startswith(prefix) for prefix in _CARRIED_EXCLUDED_SOURCES)
+
+
 def carried_integrity() -> dict[str, object]:
     """Hvor meget af det baarne er stadig intakt — laest af laengslen.
 
@@ -376,29 +397,53 @@ def carried_integrity() -> dict[str, object]:
     nogen foelsesmaessig forbruger (kun heartbeat-overfladen og MC).
 
     Retningen er med vilje den MODSATTE af «glemsel foeder frygt»: falder
-    integriteten, falder grundlaget for laengslen. Det er den eneste kobling
-    koden kan baere uden at opfinde en foelsesmekanik.
+    integriteten, falder grundlaget for laengslen. Det er EN designbeslutning,
+    ikke en noedvendig konsekvens af hukommelsens natur — den modsatte retning
+    (tab af relationelle erindringer OEger et bevarende signal) er lige saa
+    gyldig og ikke bygget her.
+
+    KUN BAERENDE POSTER (rettet 23/11-2026, maalt). Foerste udgave tog et
+    globalt gennemsnit over HELE kurven. Det var semantisk forkert: kurven
+    sporer ogsaa soma-telemetri og state-snapshots, og 111 af 115 falmede
+    poster kom fra dem. Maalingen sagde altsaa «CPU-temperaturen er faldet til
+    ro», ikke «det jeg laenges efter er ved at glide ud». Nu taelles kun poster
+    der baerer indhold om mig selv eller relationen.
 
     Svarer `integrity` i 0..1 (1 = alt baaret er friskt) plus de raa tal, saa
-    forbrugeren kan se HVAD den byggede paa. Tom kurve = 1.0: intet sporet er
-    ikke det samme som intet tilbage — en manglende maaling maa ikke laeses som
-    glemsel.
+    forbrugeren kan se HVAD den byggede paa — `tracked` er de baerende,
+    `tracked_all` hele kurven. Tom kurve = 1.0: intet sporet er ikke det samme
+    som intet tilbage — en manglende maaling maa ikke laeses som glemsel.
     """
     reg = _load()
     if not reg:
         return {
             "integrity": 1.0,
             "tracked": 0,
+            "tracked_all": 0,
             "faded": 0,
             "mean_decay": 0.0,
             "source": "empty-registry",
         }
-    decay_scores = [float(p.get("decay_score") or 0.0) for p in reg.values()]
+    carried = [p for p in reg.values() if _is_carried(p)]
+    decay_scores = [float(p.get("decay_score") or 0.0) for p in carried]
+    if not decay_scores:
+        # Kurven har poster, men ingen af dem baerer indhold. Det er den SAMME
+        # situation som en tom kurve: intet at maale er ikke det samme som alt
+        # tabt — og en manglende maaling maa ikke laeses som glemsel.
+        return {
+            "integrity": 1.0,
+            "tracked": 0,
+            "tracked_all": len(reg),
+            "faded": 0,
+            "mean_decay": 0.0,
+            "source": "no-carried-entries",
+        }
     faded = sum(1 for d in decay_scores if d >= 0.9)
     mean_decay = sum(decay_scores) / len(decay_scores)
     return {
         "integrity": max(0.0, min(1.0, 1.0 - mean_decay)),
         "tracked": len(decay_scores),
+        "tracked_all": len(reg),
         "faded": faded,
         "mean_decay": round(mean_decay, 4),
         "source": "forgetting-curve",

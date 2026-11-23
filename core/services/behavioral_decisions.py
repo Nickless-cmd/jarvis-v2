@@ -406,6 +406,18 @@ _RELEVANS_STOPORD = frozenset({
     # tidsvendinger uden fagligt indhold
     "idag", "igaar", "imorgen", "aften", "morgen", "natten", "ugen",
     "maaned", "aaret", "timen", "gang", "igen", "stadig", "allerede",
+    # Maskinelle tilstandstokens (24/11-2026, maalt i heartbeat-stien).
+    # Heartbeat scorer IKKE mod en brugerbesked men mod `tool_intent` og
+    # `loop_runtime` — korte, maskinelle strenge som «idle active 2». Maalt:
+    # «active» staar i 1 af 138 beslutninger og fik derfor IDF 4,24, hvilket
+    # lod den passere enkeltords-reglen. Resultatet var at de SAMME to
+    # beslutninger (`active_dreams`, `bgActive`) blev valgt paa hver eneste
+    # kontekst — en falsk forbindelse paa et strukturelt token. Det er samme
+    # fejlklasse som «hvordan» i en hilsen: sjaelden OG betydningsloes.
+    # `success` er BEHOLDT: den rammer beslutningen der netop handler om
+    # `applied`/`ok`/`success`-felter, saa dér er ordet et ægte signal.
+    "active", "idle", "executed", "completed", "none", "standby",
+    "dispatched", "noop", "true", "false",
 })
 
 
@@ -580,9 +592,20 @@ def select_relevant_decisions(
     if not alle:
         return []
 
-    har_kontekst = bool(_relevans_ord(context_text)) or bool(context_tools)
+    _kontekst_ord = _relevans_ord(context_text)
+    har_kontekst = bool(_kontekst_ord) or bool(context_tools)
+    # 24/11-2026 (maalt): «ingen kontekst givet» og «kontekst givet, men uden
+    # fagsignal» er TO FORSKELLIGE SVAR og blev blandet sammen. Heartbeat sender
+    # `tool_intent`/`loop_runtime` som «idle active 2» — efter stopord-filteret
+    # staar der intet tilbage, og den gamle gren faldt dermed tilbage til
+    # priority og fyldte fem pladser. Maalt: de SAMME fem hver gang. Det er
+    # praecis den adfaerd gaten skulle afskaffe. Er der sendt kontekst, er
+    # resultatet «intet relevant» — ikke «ingen vurdering».
+    _gav_kontekst = bool(str(context_text or "").strip()) or bool(context_tools)
 
     if not har_kontekst:
+        if _gav_kontekst:
+            return []
         valgte = sorted(alle, key=lambda d: -int(d.get("priority") or 0))[:max_items]
         for d in valgte:
             d["_selection_basis"] = "priority-fallback-no-context"

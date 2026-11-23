@@ -181,3 +181,61 @@ def test_hver_vurdering_baerer_sin_begrundelse(fake_beslutninger) -> None:
     assert v["hvorfor"], "en vurdering uden begrundelse kan ikke efterproeves"
     assert v["score"] > 0
     assert v["cue_hit"] or v["dir_hit"] or v["tool_hit"]
+
+
+def test_maskinel_kontekst_uden_fagsignal_afvises(fake_beslutninger) -> None:
+    """«Ingen kontekst» og «kontekst uden fagsignal» er TO forskellige svar.
+
+    Heartbeat scorer ikke mod en brugerbesked, men mod `tool_intent` og
+    `loop_runtime` — korte, maskinelle strenge som «idle active 2». Efter
+    stopord-filteret staar der intet tilbage. Den gamle gren faldt dermed tilbage
+    til priority og fyldte fem pladser — maalt de SAMME fem hver tick, hvilket er
+    praecis den adfaerd gaten skulle afskaffe.
+    """
+    from core.services import behavioral_decisions as bd
+
+    fake_beslutninger([
+        _beslutning(
+            "dec_hoej",
+            "Undgaa at skrive til produktion uden backup",
+            priority=94,
+            cue="Naar jeg overvejer en destruktiv kommando",
+        ),
+        _beslutning(
+            "dec_ny",
+            "Skriv regressionstesten foer fixet",
+            priority=50,
+            cue="Naar en fejl er rettet",
+        ),
+    ])
+
+    uden = bd.select_relevant_decisions(max_items=5)
+    assert len(uden) == 2
+    assert uden[0]["_selection_basis"] == "priority-fallback-no-context"
+
+    med = bd.select_relevant_decisions(max_items=5, context_text="idle active 2")
+    assert med == [], "maskinel stoej uden fagsignal maa ikke fylde pladser via priority"
+
+
+def test_strukturelt_token_er_ikke_et_fagsignal(fake_beslutninger) -> None:
+    """«active» er et strukturelt token, ikke en sag.
+
+    Maalt 24/11-2026 i heartbeat-stien: `active` stod i 1 af 138 beslutninger og
+    fik derfor IDF 4,24 — nok til at passere enkeltords-reglen. Resultatet var at
+    de samme to beslutninger (`active_dreams`, `bgActive`) blev valgt paa hver
+    eneste kontekst. Samme fejlklasse som «hvordan» i en hilsen: sjaelden OG
+    betydningsloes.
+    """
+    from core.services import behavioral_decisions as bd
+
+    fake_beslutninger([
+        _beslutning(
+            "dec_dream",
+            "Vaelg aldrig et dream_id uden at tjekke active_dreams",
+            priority=80,
+        ),
+        _beslutning("dec_irrelevant", "Ryd op i gamle logfiler", priority=40),
+    ])
+
+    valgte = bd.select_relevant_decisions(max_items=5, context_text="active 2")
+    assert valgte == [], "et strukturelt token maa ikke baere en beslutning alene"

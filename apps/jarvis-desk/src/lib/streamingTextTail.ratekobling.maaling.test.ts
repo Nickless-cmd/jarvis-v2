@@ -76,7 +76,7 @@ async function maalVedFade(
   )
 }
 
-describe('ord-animationen arver pacerens tempo', () => {
+describe.skipIf(process.env.RUN_BROWSER_LAYOUT_MEASUREMENT !== '1')('ord-animationen arver pacerens tempo', () => {
   it('forkorter den FAKTISKE animation naar --pace-fade-ms saettes', async () => {
     const b = await aabnBaenk({ theme: 'dark' })
     try {

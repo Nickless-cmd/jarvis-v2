@@ -25,10 +25,13 @@ import { ChatFlowPresentation } from './ChatFlowPresentation'
 import type { StreamStatus } from '../../lib/streamReducer'
 import type { ActiveChatFlowMode } from '../../lib/chatFlowApi'
 import { usePacingWorkLine } from '../../lib/usePacingWorkLine'
+import { fadeMsForRate, delayMsForFade } from '../../lib/paceFade'
 
 function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarted, arbejdeEfterSvar, beskedId, config,
-  rundeEtiketter, tankeResumeer, raekker, elapsedMs, tokens, varighedSekunder, runId, onPaced, workingStep }: {
+  rundeEtiketter, tankeResumeer, raekker, elapsedMs, tokens, varighedSekunder, runId, onPaced, workingStep, rateUd }: {
   workingStep?: string | null
+  /** Pacerens øjeblikkelige rate skrives her hvert frame — se `paceFade.ts`. */
+  rateUd?: { current: number }
   blocks: ContentBlock[]
   density: 'compact' | 'full'
   streaming: boolean
@@ -70,8 +73,9 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
     // `streamPacing.ts`: forskellen mellem de to lag er kurven, ikke træet.
     paceAllText: streaming && jaevn,
     runId: runId ?? beskedId ?? null,
+    rateRef: rateUd,
   })
-  const codePaced = usePacedBlocks(blocks, streaming && !jaevn)
+  const codePaced = usePacedBlocks(blocks, streaming && !jaevn, rateUd)
   const paced = jaevn ? chatPaced : codePaced
   // ── Hvornår er pacingen FÆRDIG? (målt 20/10-2026) ────────────────────────
   //
@@ -227,6 +231,40 @@ function MessageRowImpl({
   // (maalt tidligere i dette repo).
   const raekker = useRaekkevisning()
   const blocks = denseBlocks(rawBlocks)
+  // ── Ord-animationen følger pacerens tempo (23/11-2026) ──────────────────
+  //
+  // Bjørn: «ord for ord animationen køre så hurtigt det næsten virker
+  // klumperne». Et FAST fade-tal kan ikke være rigtigt samtidig med at
+  // paceren skifter tempo: ved 48 tegn/s ankommer et ord hver ~125 ms, ved
+  // 600 hver ~10 ms — og så er der 12 ord i accent samtidigt med en fast
+  // fade på 120 ms.
+  //
+  // Ratten skrives derfor på DOM'en i en frame-løkke, ikke i React-state:
+  // den ændrer sig næsten hvert frame, og et state ville re-rendre rækken 60
+  // gange i sekundet (samme grund som `vaerdiLager.ts` findes). CSS arver
+  // variablen ned til hvert ord; se `paceFade.ts`.
+  const paceRef = useRef(0)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!streaming) return
+    let raf = 0
+    let sidstFade = -1
+    const tick = () => {
+      const el = wrapRef.current
+      const rate = paceRef.current
+      if (el && rate > 0) {
+        const fade = Math.round(fadeMsForRate(rate))
+        if (fade !== sidstFade) {
+          sidstFade = fade
+          el.style.setProperty('--pace-fade-ms', `${fade}ms`)
+          el.style.setProperty('--pace-delay-ms', `${Math.round(delayMsForFade(fade))}ms`)
+        }
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [streaming])
   if (role === 'user') {
     const text = blocks.map((b) => (b.type === 'text' ? b.text : '')).join('')
     const images = blocks.filter((b): b is Extract<ContentBlock, { type: 'image' }> => b.type === 'image')
@@ -283,7 +321,7 @@ function MessageRowImpl({
   // slutteksten til BlocksRenderer, så et kort dér missede alle redigeringer.
   const redigerede = !streaming ? redigeredeFiler(blocks) : []
   return (
-    <div className="msg-jarvis-wrap">
+    <div className="msg-jarvis-wrap" ref={wrapRef}>
       <article className="msg-jarvis">
         <div className="jarvis-body">
           {/* Per-besked-hegn: en render-throw i ÉN besked (fx en degenereret
@@ -306,7 +344,7 @@ function MessageRowImpl({
               : <CodeAssistantTranscript blocks={blocks} density={density} streaming={streaming} onPaced={onAnswerPaced}
                   finalAnswerStarted={finalAnswerStarted} arbejdeEfterSvar={arbejdeEfterSvar} beskedId={beskedId} config={config}
                   rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} raekker={raekker}
-                  runId={runId} workingStep={workingStep}
+                  runId={runId} workingStep={workingStep} rateUd={paceRef}
                   elapsedMs={elapsedMs} tokens={tokens} varighedSekunder={varighedSekunder} />}
             {/* 25/10-2026 (Bjørn): «Åbn visible_runs.py» stod under hvert svar i
                 chat mode. Detektionen er rigtig — artifacts.ts regel 3 bygger

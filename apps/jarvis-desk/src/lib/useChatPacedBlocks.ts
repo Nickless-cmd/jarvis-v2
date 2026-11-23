@@ -35,6 +35,12 @@ export interface ChatPacingOptions {
   /** Pace også levende synteser før serveren kender slutsvarsgrænsen. */
   paceAllText?: boolean
   runId?: string | null
+  /** Får pacerens øjeblikkelige rate skrevet ind hvert frame.
+   *
+   *  En ref og ikke en returværdi: raten ændrer sig næsten hvert frame, og et
+   *  React-state ville re-rendre rækken 60 gange i sekundet. Kalderen læser
+   *  den i sin egen frame-løkke og skriver den på DOM'en — se `paceFade.ts`. */
+  rateRef?: { current: number }
 }
 
 interface Cursor {
@@ -238,6 +244,7 @@ export function useChatPacedBlocks(
     const rate = svar.rate
     a.rate = rate
     paceTilstand.current = svar.tilstand
+    if (options.rateRef) options.rateRef.current = rate
     // Bevar brøkdelen mellem frames. `ceil` eller et minimum pr. frame gør
     // ellers 48 tegn/s til mindst 60 tegn/s på en 60 Hz-skærm og endnu mere
     // på hurtigere paneler. Kreditten giver samme rolige tempo uanset fps.

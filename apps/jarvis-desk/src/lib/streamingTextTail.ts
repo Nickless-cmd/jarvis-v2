@@ -198,8 +198,15 @@ export function rehypeStreamingTextTail(options: { variant?: StreamingTextVarian
                     style: [
                       `--streaming-tail-order:${order.get(part) ?? 0}`,
                       `--streaming-tail-duration:${parameters.duration}ms`,
-                      `--streaming-tail-color-duration:${parameters.colorDuration}ms`,
-                      `--streaming-tail-color-delay:${parameters.colorDelay}ms`,
+                      // Farve-varigheden kan sættes af containeren via
+                      // `--pace-fade-ms` (se `paceFade.ts`). Paceren skifter
+                      // tempo gennem ét svar, og et FAST tal hober ordene op
+                      // ved høj rate: målt 23/11-2026 var der 11 ord i accent
+                      // samtidigt ved 220 ms. Uden variablen falder den
+                      // tilbage til variantens eget tal, så adfærden er
+                      // uændret for enhver flade der ikke sætter den.
+                      `--streaming-tail-color-duration:var(--pace-fade-ms, ${parameters.colorDuration}ms)`,
+                      `--streaming-tail-color-delay:var(--pace-delay-ms, ${parameters.colorDelay}ms)`,
                       `--streaming-tail-part-offset:${parameters.timeOffsetBetweenParts}ms`,
                       `--streaming-tail-opacity-start:${parameters.opacityKeyframes[0] ?? 0}`,
                       `--streaming-tail-opacity-early:${parameters.opacityKeyframes[1] ?? 0.18}`,

@@ -124,8 +124,13 @@ describe('ordhalens variant', () => {
       const p = STREAMING_TEXT_VARIANTS[variant]
       const stil = stilFor(variant)
       expect(stil).toContain(`--streaming-tail-duration:${p.duration}ms`)
-      expect(stil).toContain(`--streaming-tail-color-duration:${p.colorDuration}ms`)
-      expect(stil).toContain(`--streaming-tail-color-delay:${p.colorDelay}ms`)
+      // Farve-varigheden er en VARIABEL-REFERENCE med variantens tal som
+      // fallback (23/11-2026). Paceren skifter tempo gennem ét svar, og et
+      // fast tal hober ordene op ved høj rate — se `paceFade.ts`. Uden nogen
+      // der sætter `--pace-fade-ms` er adfærden præcis variantens eget tal,
+      // så testen kræver begge dele: variablen OG fallback'en.
+      expect(stil).toContain(`--streaming-tail-color-duration:var(--pace-fade-ms, ${p.colorDuration}ms)`)
+      expect(stil).toContain(`--streaming-tail-color-delay:var(--pace-delay-ms, ${p.colorDelay}ms)`)
       expect(stil).toContain(`--streaming-tail-part-offset:${p.timeOffsetBetweenParts}ms`)
     },
   )

@@ -89,7 +89,17 @@ const HOP_ANDEL = 0.5
  * Kurven er UÆNDRET: 33 ms-tick, 5–28 tegn pr. tick. Det er hastigheden Bjørn
  * kender; kun dump-vejene er fjernet.
  */
-export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBlock[] {
+export function usePacedBlocks(
+  blocks: ContentBlock[],
+  live: boolean,
+  /** Får pacerens øjeblikkelige rate skrevet ind hvert tick.
+   *
+   *  En ref og ikke en returværdi: raten ændrer sig næsten hvert frame, og et
+   *  React-state ville re-rendre hele rækken 60 gange i sekundet. Kalderen
+   *  læser den i sin egen frame-løkke og skriver den på DOM'en — se
+   *  `paceFade.ts` for hvorfor ord-animationen skal følge den. */
+  rateUd?: { current: number },
+): ContentBlock[] {
   const textIndices = blocks.flatMap((block, index) => (block?.type === 'text' ? [index] : []))
   // Serveren kan dele ét markdown-svar over flere content blocks. Én samlet
   // målstreng giver ét ur og én læsekurve hen over samtlige tekstblokke.
@@ -192,6 +202,7 @@ export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBl
         })
         rateRef.current = paceSvar.rate
         paceTilstand.current = paceSvar.tilstand
+        if (rateUd) rateUd.current = paceSvar.rate
 
         // Ratens tidsrum er ét tick. Gulvet på MIN_CHARS bevarer den rolige
         // kadence på korte svar.

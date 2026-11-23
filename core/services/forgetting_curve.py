@@ -377,6 +377,18 @@ _CARRIED_EXCLUDED_SOURCES = (
     "state-snapshot:",
     "signal_pressure_accumulator",
     "surprise-daemon",
+    # Maalt 23/11-2026: efter det foerste filter var 294 af 369 "baerende"
+    # poster stadig daemon-telemetri — tankestroem, nysgerrighed, refleksion.
+    # De beskriver en TILSTAND, ikke et INDHOLD, og deres henfald er derfor
+    # ikke glemsel af noget man kan laenges efter. Filteret er udvidet med de
+    # kilder der faktisk dominerede populationen, ikke med en principiel liste.
+    "thought-stream-daemon",
+    "curiosity-daemon",
+    "reflection-cycle-daemon",
+    "meta-reflection-daemon",
+    "creative-drift-daemon",
+    "aesthetic-taste-daemon",
+    "code-aesthetic-daemon",
 )
 
 

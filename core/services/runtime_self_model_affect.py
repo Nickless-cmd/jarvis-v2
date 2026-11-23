@@ -721,10 +721,10 @@ def _derive_longing_awareness(
     # gennemsnit over noget andet. Nu maales henfaldet paa de SAMME brain-poster
     # som traadene kommer fra (salience 0..1, gennemsnit 0,906 maalt).
     # Eet data­saet, een betydning.
-    carried_integrity = float(mineness.get("carried_salience_integrity", 1.0) or 1.0)
+    carried_integrity = float(mineness.get("carried_decay_integrity", 1.0) or 1.0)
     carried_integrity = max(0.0, min(1.0, carried_integrity))
-    carried_faded = int(mineness.get("carried_salience_faded") or 0)
-    carried_tracked = int(mineness.get("carried_salience_tracked") or 0)
+    carried_faded = int(mineness.get("carried_decay_faded") or 0)
+    carried_tracked = int(mineness.get("carried_decay_tracked") or 0)
     carried_fading = carried_threads and carried_integrity < _CARRIED_FADING_FLOOR
     if carried_fading:
         carried_threads = False

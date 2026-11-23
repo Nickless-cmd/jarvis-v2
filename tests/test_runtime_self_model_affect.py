@@ -28,9 +28,9 @@ def test_longing_fading_when_carried_thread_thins_out() -> None:
     ls["carried_faded"] = 12
     # Kilden er flyttet (23/11-2026): henfaldet maales paa de brain-poster som
     # `carried_thread_count` selv taelles fra, saa tallet hoerer i `mineness`.
-    mn["carried_salience_integrity"] = 0.5
-    mn["carried_salience_tracked"] = 40
-    mn["carried_salience_faded"] = 12
+    mn["carried_decay_integrity"] = 0.5
+    mn["carried_decay_tracked"] = 40
+    mn["carried_decay_faded"] = 12
     longing = _derive_longing_awareness(
         temporal_feel=tf,
         mineness=mn,
@@ -56,7 +56,7 @@ def test_longing_quiet_when_carried_content_is_gone() -> None:
         open_loop_count=1,
         absence_active=True,
     )
-    mn["carried_salience_integrity"] = 0.1
+    mn["carried_decay_integrity"] = 0.1
     longing = _derive_longing_awareness(
         temporal_feel=tf,
         mineness=mn,
@@ -79,7 +79,7 @@ def test_longing_unchanged_when_carried_content_is_intact() -> None:
         open_loop_count=1,
         absence_active=True,
     )
-    mn["carried_salience_integrity"] = 1.0
+    mn["carried_decay_integrity"] = 1.0
     longing = _derive_longing_awareness(
         temporal_feel=tf,
         mineness=mn,
@@ -182,9 +182,9 @@ def test_longing_state_is_logged_when_it_changes(caplog) -> None:
         "ownership_state": "ambient",
         "self_relevance": "merely-present",
         "carried_thread_count": 1,
-        "carried_salience_integrity": 0.496,
-        "carried_salience_faded": 117,
-        "carried_salience_tracked": 500,
+        "carried_decay_integrity": 0.496,
+        "carried_decay_faded": 117,
+        "carried_decay_tracked": 500,
     }
     ss = {"stream_state": "baseline", "voice_mode": ""}
     iv = {"inner_voice_created": False, "mode": ""}
@@ -213,8 +213,8 @@ def test_longing_state_is_logged_when_it_changes(caplog) -> None:
 
     # Nyt skift skal igen give en linje.
     intact = dict(mn)
-    intact["carried_salience_integrity"] = 0.95
-    intact["carried_salience_faded"] = 12
+    intact["carried_decay_integrity"] = 0.95
+    intact["carried_decay_faded"] = 12
     with caplog.at_level(logging.INFO, logger="core.services.runtime_self_model_affect"):
         rsm._derive_longing_awareness(
             temporal_feel=tf, mineness=intact, support_stream=ss, inner_voice=iv,

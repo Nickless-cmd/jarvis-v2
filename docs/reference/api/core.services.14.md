@@ -301,10 +301,10 @@ _Forgetting Curve — det jeg bliver ved at se, bliver. Resten falmer._
 | function | `apply_decay_tick` | `(decay_increment=…)` | Apply one decay tick to all registered memories. | [src](../../../core/services/forgetting_curve.py#L315) |
 | function | `get_active_memories` | `()` | Return memories with decay < 0.9 (still active). | [src](../../../core/services/forgetting_curve.py#L350) |
 | function | `get_faded_memories` | `()` | Return memories with decay >= 0.9 (faded but archived). | [src](../../../core/services/forgetting_curve.py#L359) |
-| function | `_is_carried` | `(payload)` | Baerer denne post indhold om mig/relationen — eller er den telemetri? | [src](../../../core/services/forgetting_curve.py#L383) |
-| function | `carried_integrity` | `()` | Hvor meget af det baarne er stadig intakt — laest af laengslen. | [src](../../../core/services/forgetting_curve.py#L389) |
-| function | `build_forgetting_curve_surface` | `()` | — | [src](../../../core/services/forgetting_curve.py#L453) |
-| function | `tick` | `(_seconds=…)` | Hjerteslags-krog: se hvad der ER i sind nu, og lad resten falme. | [src](../../../core/services/forgetting_curve.py#L475) |
+| function | `_is_carried` | `(payload)` | Baerer denne post indhold om mig/relationen — eller er den telemetri? | [src](../../../core/services/forgetting_curve.py#L395) |
+| function | `carried_integrity` | `()` | Hvor meget af det baarne er stadig intakt — laest af laengslen. | [src](../../../core/services/forgetting_curve.py#L401) |
+| function | `build_forgetting_curve_surface` | `()` | — | [src](../../../core/services/forgetting_curve.py#L465) |
+| function | `tick` | `(_seconds=…)` | Hjerteslags-krog: se hvad der ER i sind nu, og lad resten falme. | [src](../../../core/services/forgetting_curve.py#L487) |
 
 ## `core/services/forgetting_engine.py`
 _Forgetting engine — Lag 11 deletion logic._

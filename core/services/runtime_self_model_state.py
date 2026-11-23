@@ -536,9 +536,6 @@ def _mineness_source_snapshot() -> dict[str, object]:
     brain_record_count = 0
     brain_top_focus = ""
     brain_continuity_summary = ""
-    brain_salience_integrity = 1.0
-    brain_salience_tracked = 0
-    brain_salience_faded = 0
     try:
         from core.services.session_distillation import (
             build_private_brain_context,
@@ -554,19 +551,25 @@ def _mineness_source_snapshot() -> dict[str, object]:
     except Exception:
         pass
 
-    # Henfaldet paa det baarne — laest som SQL-aggregat over HELE den aktive
-    # population (23/11-2026). `build_private_brain_context` er bundet til 6
-    # nyeste poster af prompt-oekonomi, og deres gennemsnit er naesten per
-    # definition 1.0; et saadant tal ville goere laengslens kobling tautologisk.
-    # Egen try/except: en manglende maaling maa ikke koste brain-konteksten.
+    # Henfaldet paa det baarne (23/11-2026, anden rettelse samme aften).
+    # Foerste forsoeg laeste `private_brain_salience_stats()`, men det tal er et
+    # GENNEMSNIT over 72.297 poster hvoraf 60.090 staar paa praecis 1.0 — det
+    # bliver 0.985 uanset hvor meget der er faldet, og kan derfor aldrig give
+    # `fading`. Forgetting-kurven maaler derimod henfald pr. post, og efter at
+    # daemon-telemetrien er filtreret vaek ligger den paa 0.531 over 111 reelt
+    # relationelle poster. Egen try/except: en manglende maaling maa ikke koste
+    # brain-konteksten, og falder tilbage paa 1.0 — ikke 0.
+    carried_decay_integrity = 1.0
+    carried_decay_tracked = 0
+    carried_decay_faded = 0
     try:
-        from core.runtime.db_private_brain import private_brain_salience_stats
+        from core.services.forgetting_curve import carried_integrity as _ci
 
-        _stats = private_brain_salience_stats()
-        brain_salience_integrity = float(_stats.get("integrity") or 1.0)
-        brain_salience_tracked = int(_stats.get("tracked") or 0)
-        brain_salience_faded = int(_stats.get("faded") or 0)
-    except Exception:  # en manglende salience-maaling maa ikke koste brain-konteksten
+        _integritet = _ci()
+        carried_decay_integrity = float(_integritet.get("integrity") or 1.0)
+        carried_decay_tracked = int(_integritet.get("tracked") or 0)
+        carried_decay_faded = int(_integritet.get("faded") or 0)
+    except Exception:  # en manglende henfaldsmaaling maa ikke laeses som glemsel
         pass
 
     open_loop_open_count = 0
@@ -588,9 +591,9 @@ def _mineness_source_snapshot() -> dict[str, object]:
         "brain_record_count": brain_record_count,
         "brain_top_focus": brain_top_focus,
         "brain_continuity_summary": brain_continuity_summary,
-        "brain_salience_integrity": brain_salience_integrity,
-        "brain_salience_tracked": brain_salience_tracked,
-        "brain_salience_faded": brain_salience_faded,
+        "carried_decay_integrity": carried_decay_integrity,
+        "carried_decay_tracked": carried_decay_tracked,
+        "carried_decay_faded": carried_decay_faded,
         "open_loop_open_count": open_loop_open_count,
         "open_loop_signal": open_loop_signal,
     }
@@ -694,9 +697,9 @@ def _derive_mineness_ownership(
         # `carried_thread_count` taelles fra, saa de to tal beskriver SAMME
         # popula­tion. Laengslen laeser dem her; den skal ikke hente et
         # gennemsnit fra forgetting-kurven, hvis poster primaert er telemetri.
-        "carried_salience_integrity": float(sources.get("brain_salience_integrity") or 1.0),
-        "carried_salience_tracked": int(sources.get("brain_salience_tracked") or 0),
-        "carried_salience_faded": int(sources.get("brain_salience_faded") or 0),
+        "carried_decay_integrity": float(sources.get("carried_decay_integrity") or 1.0),
+        "carried_decay_tracked": int(sources.get("carried_decay_tracked") or 0),
+        "carried_decay_faded": int(sources.get("carried_decay_faded") or 0),
         "return_ownership": return_ownership,
         "narrative": narrative,
         "authority": "derived-runtime-truth",

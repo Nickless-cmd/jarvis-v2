@@ -1313,7 +1313,7 @@ Generated from source. 10460/19108 functions/methods documented (54%). The list 
 - `core/services/flow_state_detection.py` :: `build_flow_state_surface` (L37)
 - `core/services/flow_state_detection.py` :: `get_flow_state` (L33)
 - `core/services/flow_state_detection.py` :: `update_flow_detection` (L11)
-- `core/services/forgetting_curve.py` :: `build_forgetting_curve_surface` (L453)
+- `core/services/forgetting_curve.py` :: `build_forgetting_curve_surface` (L465)
 - `core/services/forgetting_engine.py` :: `is_fredet_path` (L64)
 - `core/services/forgetting_engine.py` :: `is_fredet_table` (L68)
 - `core/services/gate_execution.py` :: `check_command` (L295)

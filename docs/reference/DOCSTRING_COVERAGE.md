@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10450/19096 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10451/19097 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10450/19096 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 921 | 1638 | 56% |
-| `core.services` | 7012 | 12968 | 54% |
+| `core.services` | 7013 | 12969 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 151 | 233 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -629,11 +629,11 @@ Generated from source. 10450/19096 functions/methods documented (54%). The list 
 - `core/runtime/db_runtime_hooks.py` :: `get_runtime_hook_dispatch` (L84)
 - `core/runtime/db_runtime_hooks.py` :: `list_runtime_hook_dispatches` (L115)
 - `core/runtime/db_runtime_hooks.py` :: `record_runtime_hook_dispatch` (L36)
-- `core/runtime/db_runtime_initiatives.py` :: `create_runtime_initiative` (L113)
-- `core/runtime/db_runtime_initiatives.py` :: `find_pending_runtime_initiative_by_focus` (L228)
-- `core/runtime/db_runtime_initiatives.py` :: `get_runtime_initiative` (L188)
-- `core/runtime/db_runtime_initiatives.py` :: `list_runtime_initiatives` (L281)
-- `core/runtime/db_runtime_initiatives.py` :: `update_runtime_initiative` (L341)
+- `core/runtime/db_runtime_initiatives.py` :: `create_runtime_initiative` (L119)
+- `core/runtime/db_runtime_initiatives.py` :: `find_pending_runtime_initiative_by_focus` (L236)
+- `core/runtime/db_runtime_initiatives.py` :: `get_runtime_initiative` (L194)
+- `core/runtime/db_runtime_initiatives.py` :: `list_runtime_initiatives` (L291)
+- `core/runtime/db_runtime_initiatives.py` :: `update_runtime_initiative` (L353)
 - `core/runtime/db_runtime_open_loop_threads.py` :: `get_runtime_thread` (L171)
 - `core/runtime/db_runtime_open_loop_threads.py` :: `list_runtime_threads` (L192)
 - `core/runtime/db_runtime_signals.py` :: `ensure_runtime_signals_tables` (L17)
@@ -1381,8 +1381,8 @@ Generated from source. 10450/19096 functions/methods documented (54%). The list 
 - `core/services/inbox_importance.py` :: `normalize_importance` (L11)
 - `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L380)
 - `core/services/infra_weather_daemon.py` :: `get_weather` (L358)
-- `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L743)
-- `core/services/initiative_queue.py` :: `list_active_long_term_intentions` (L728)
+- `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L790)
+- `core/services/initiative_queue.py` :: `list_active_long_term_intentions` (L775)
 - `core/services/inner_dialectic_engine.py` :: `build_inner_dialectic_prompt_section` (L42)
 - `core/services/inner_dialectic_engine.py` :: `build_inner_dialectic_surface` (L35)
 - `core/services/inner_dialectic_engine.py` :: `run_inner_dialectic` (L13)

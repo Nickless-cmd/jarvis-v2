@@ -286,4 +286,13 @@ def record(
             navn, float(d["confidence"]), evidence=evidens
         )
     resultat["skrevet"] = skrevet
+    # Én linje pr. kørsel, ogsaa naar intet blev skrevet. Uden den kan en
+    # vellykket maaling ikke skelnes fra en der aldrig blev kaldt: `recorded`
+    # er False naar vaerdien er uaendret, saa sporet er tavst i det tilfaelde.
+    logger.info(
+        "desk_pacing: maalt=%d skrevet=%d ok=%s",
+        sum(1 for d in (resultat.get("domaener") or {}).values() if d.get("measured")),
+        sum(1 for u in skrevet.values() if u.get("recorded")),
+        resultat.get("ok"),
+    )
     return resultat

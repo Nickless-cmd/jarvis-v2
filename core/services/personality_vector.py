@@ -184,6 +184,45 @@ def _bevis_vindue(tekst: object, *, loft: int = _BEVIS_LOFT) -> str:
     )
 
 
+# 23/11-2026: `visible_runs.py` skriver `text_preview=text[:140]` — et RÅT
+# snit, uden ordgrænse og uden markering. Målt over 26.295 ikke-tomme
+# previews: 6.903 (26 %) slutter UDEN '…', og 3.467 af dem (≥100 tegn)
+# slutter uden afsluttende tegnsætning — dvs. midt i et ord eller midt i en
+# sætning. Værnet nedenfor så kun på '…', så de gik URØRTE igennem og
+# dommeren læste klippet som en afbrydelse. Tre poster i vektoren beviser
+# det med citater uden ellipse: «det slutter med ordet 'en'», «…med 'fil'»,
+# «…med 'Det var det ene krav'».
+#
+# Signaturen kan ikke være «mangler punktum»: 2.043 previews ≥100 tegn
+# slutter med tegnsætning, og mange af de øvrige slutter med en EMOJI
+# (👍 🤖 🌙 😊) — de er HELE svar. Signaturen er derfor klip-LOFTET: en
+# længde der kun opstår fordi nogen har skåret i teksten.
+_KLIP_LOFTER = frozenset({119, 120, 140, 191, 304, 319, 320, 487, 491, 495, 499, 503})
+
+# Tegn der beviser at teksten slutter af sig selv.
+_SLUTTER_RENT = frozenset(".!?:…»)\"'’”*`")
+
+
+def _ser_klippet_ud(tekst: str) -> bool:
+    """Er dette preview et KLIP fra systemet — ikke et svar der stoppede?
+
+    To kilder, begge målt: (1) det dekorative '…' som run-previewet sætter
+    på, og (2) et råt byte-snit ved et af de lofter `text_preview` bruger.
+    En tekst der slutter med tegnsætning eller emoji er HEL, uanset længde.
+    """
+    if not tekst:
+        return False
+    if tekst.endswith("…"):
+        return True
+    if len(tekst) not in _KLIP_LOFTER:
+        return False
+    sidste = tekst[-1]
+    if sidste in _SLUTTER_RENT:
+        return False
+    # Emoji og symbolblokke (👍 U+1F44D, ☀ U+2600, ✓ U+2713) slutter rent.
+    return not (ord(sidste) >= 0x2000)
+
+
 # Runnets `text_preview`-loft er målt til 320 tegn i den levende base — men
 # byte-klip giver svingende tegnlængder (319, 120 og 119 er også set), så
 # signaturen kan ikke være én længde. Målt 20/11 over 26.295 ikke-tomme
@@ -222,7 +261,7 @@ def _hent_rigtigt_svar(session_id: str | None, assistant_response: str) -> str:
     pladsholderen (`_SVAR_IKKE_BEVIST`), aldrig det klippede preview.
     """
     tekst = str(assistant_response or "")
-    if not tekst.endswith("…"):
+    if not _ser_klippet_ud(tekst):
         return tekst
     session = str(session_id or "").strip()
     if not session:
@@ -242,7 +281,9 @@ def _hent_rigtigt_svar(session_id: str | None, assistant_response: str) -> str:
         if str(besked.get("role") or "") == "assistant":
             kandidater.append(str(besked.get("content") or ""))
 
-    hoved = tekst[:-1]  # previewet er ægte tekst + ét dekorativt '…'
+    # '…' er dekorativt og hører ikke til teksten. Et RÅT byte-snit (140,
+    # 191, 304, 487–503 tegn) har intet '…' — der ER hele previewet hovedet.
+    hoved = tekst[:-1] if tekst.endswith("…") else tekst
 
     # Gren 1 — præfiks: den ægte besked starter med previewets hoved.
     for kandidat in kandidater:

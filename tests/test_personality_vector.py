@@ -369,6 +369,81 @@ def test_dommerens_prompt_genkender_pladsholderen():
     assert "SVARET KAN IKKE BEVISES" in _prompt()
 
 
+# ── Det RÅ snit: `text_preview = text[:140]` uden '…' (målt 23/11-2026) ────
+#
+# Værnet ovenfor kiggede kun på det dekorative '…'. Men 6.903 af 26.295
+# previews (26 %) slutter UDEN '…', og 3.467 af dem slutter uden afsluttende
+# tegnsætning — altså midt i et ord eller midt i en sætning. Tre poster i
+# vektoren citerer dem ordret: «det slutter med ordet 'en'», «…med 'fil'»,
+# «…med 'Det var det ene krav'». Ingen af dem har en ellipse at gribe i.
+#
+# Signaturen kan ikke være «mangler punktum»: 2.043 previews ≥100 tegn
+# slutter med tegnsætning, og mange af de øvrige slutter med en EMOJI
+# (👍 🤖 🌙 😊) — de er HELE svar. Derfor: klip-LOFTET, og kun når teksten
+# ikke slutter rent af sig selv.
+
+
+def test_ser_klippet_ud_kender_loftet_men_ikke_emoji():
+    """Vagten skal ramme det rå snit — og IKKE et helt svar der slutter med emoji."""
+    from core.services.personality_vector import _ser_klippet_ud
+
+    # Råt snit ved et målt loft, der stopper midt i et ord.
+    assert _ser_klippet_ud("x" * 139 + "e")
+    # Samme længde, men slutter af sig selv med emoji → HEL.
+    assert not _ser_klippet_ud("x" * 138 + "e" + "👍")
+    # Kort tekst er aldrig et klip, uanset hvad den slutter med.
+    assert not _ser_klippet_ud("Kort svar uden punktum")
+    # Det dekorative '…' er stadig en signatur.
+    assert _ser_klippet_ud("Kort svar…")
+
+
+def test_raat_snit_uden_ellipse_opgraderes(isolated_runtime):
+    """140-tegns-snittet uden '…' skal også opgraderes til den ægte besked."""
+    from core.services.personality_vector import _hent_rigtigt_svar, _ser_klippet_ud
+
+    session = "chat-test-raat-snit"
+    aegte = (
+        "Jeg har målt hele kæden: vagten fyrede aldrig, fordi den kun kiggede "
+        "på det dekorative '…' og ikke på det rå snit ved 140 tegn. Nu henter "
+        "den den ægte besked i stedet, så dommeren får en slutning der findes "
+        "i virkeligheden og ikke et snit midt i et ord."
+    )
+    _indsaet_besked(session, "assistant", aegte)
+
+    preview = aegte[:140]
+    assert len(preview) == 140
+    assert not preview.endswith("…"), "testen skal ramme det rå snit, ikke ellipsen"
+    assert _ser_klippet_ud(preview)
+    assert _hent_rigtigt_svar(session, preview) == aegte
+
+
+def test_raat_snit_uden_match_bliver_pladsholder(isolated_runtime):
+    """Kan det rå snit ikke bevises, må dommeren ikke se det som et svar."""
+    from core.services.personality_vector import _SVAR_IKKE_BEVIST, _hent_rigtigt_svar
+
+    session = "chat-test-raat-snit-uden-match"
+    _indsaet_besked(session, "assistant", "Et helt andet svar om noget andet.")
+
+    preview = (
+        "Fem patches er reelt landet, men jeg mangler stadig at se om den "
+        "lovede verifikation faktisk kører på den kode der ligger live nu, "
+        "og om den kode er den samme som den jeg har i arbejdstræet her"
+    )[:140]
+    assert len(preview) == 140
+    assert _hent_rigtigt_svar(session, preview) == _SVAR_IKKE_BEVIST
+
+
+def test_helt_svar_ved_loftet_med_emoji_gaar_urort_igennem(isolated_runtime):
+    """Et HELT svar på præcis 140 tegn der slutter med emoji må ikke røres."""
+    from core.services.personality_vector import _hent_rigtigt_svar, _ser_klippet_ud
+
+    krop = "Ord-animationen kører nu med 30 ms forskydning pr. ord og 220 ms i alt."
+    helt = krop + " " * (139 - len(krop)) + "👍"
+    assert len(helt) == 140, "testen skal ramme klip-loftet for at måle noget"
+    assert not _ser_klippet_ud(helt)
+    assert _hent_rigtigt_svar("chat-uden-opslag", helt) == helt
+
+
 def test_stilistisk_ellipsis_loeser_sig_selv(isolated_runtime):
     """En ægte besked der stylistisk slutter med '…' må ikke mistænkeliggøres.
 

@@ -6,6 +6,11 @@ export type StreamingTextVariant = 'Neutral' | 'Disabled' | 'Normal' | 'Snappy'
 export interface StreamingTextParameters {
   colorDelay: number
   duration: number
+  /** Farvens egen varighed (23/11-2026). Adskilt fra `duration` fordi opacity
+   *  skal tone ordet blødt frem over hele `duration`, mens farven skal glide
+   *  hurtigere for at undgå at flere ord står accent-farvede samtidigt.
+   *  Målingen bag tallene står i `styles/chat-reading.css`. */
+  colorDuration: number
   timeOffsetBetweenParts: number
   opacityKeyframes: readonly number[]
   controlPoints: readonly [number, number, number, number]
@@ -19,6 +24,7 @@ export const STREAMING_TEXT_VARIANTS: Record<StreamingTextVariant, StreamingText
   Neutral: {
     colorDelay: 360,
     duration: 800,
+    colorDuration: 800,
     timeOffsetBetweenParts: 60,
     opacityKeyframes: [0, 0.18, 0.72, 1],
     controlPoints: [0.25, 0.1, 0.25, 1],
@@ -26,6 +32,7 @@ export const STREAMING_TEXT_VARIANTS: Record<StreamingTextVariant, StreamingText
   Disabled: {
     colorDelay: 0,
     duration: 0,
+    colorDuration: 0,
     timeOffsetBetweenParts: 0,
     opacityKeyframes: [1, 1, 1, 1],
     controlPoints: [0, 0, 1, 1],
@@ -33,13 +40,19 @@ export const STREAMING_TEXT_VARIANTS: Record<StreamingTextVariant, StreamingText
   Normal: {
     colorDelay: 315,
     duration: 700,
+    colorDuration: 700,
     timeOffsetBetweenParts: 35,
     opacityKeyframes: [0, 0.18, 0.72, 1],
     controlPoints: [0.25, 0.1, 0.25, 1],
   },
   Snappy: {
-    colorDelay: 99,
+    colorDelay: 40,
     duration: 220,
+    // 23/11-2026: farven 220 → 120 ms og delay 99 → 40 ms, med jævn glidning.
+    // Målt i Chromium: median samtidige accent-ord faldt fra 6 til 3. Kun
+    // Snappy er ændret — det er den variant desk bruger (`STANDARD_VARIANT`),
+    // og de øvrige tal er GPT's egne.
+    colorDuration: 120,
     timeOffsetBetweenParts: 30,
     opacityKeyframes: [0, 0.18, 0.72, 1],
     controlPoints: [0.25, 0.1, 0.25, 1],
@@ -185,6 +198,7 @@ export function rehypeStreamingTextTail(options: { variant?: StreamingTextVarian
                     style: [
                       `--streaming-tail-order:${order.get(part) ?? 0}`,
                       `--streaming-tail-duration:${parameters.duration}ms`,
+                      `--streaming-tail-color-duration:${parameters.colorDuration}ms`,
                       `--streaming-tail-color-delay:${parameters.colorDelay}ms`,
                       `--streaming-tail-part-offset:${parameters.timeOffsetBetweenParts}ms`,
                       `--streaming-tail-opacity-start:${parameters.opacityKeyframes[0] ?? 0}`,

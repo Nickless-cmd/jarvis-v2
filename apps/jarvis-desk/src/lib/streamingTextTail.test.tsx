@@ -124,6 +124,7 @@ describe('ordhalens variant', () => {
       const p = STREAMING_TEXT_VARIANTS[variant]
       const stil = stilFor(variant)
       expect(stil).toContain(`--streaming-tail-duration:${p.duration}ms`)
+      expect(stil).toContain(`--streaming-tail-color-duration:${p.colorDuration}ms`)
       expect(stil).toContain(`--streaming-tail-color-delay:${p.colorDelay}ms`)
       expect(stil).toContain(`--streaming-tail-part-offset:${p.timeOffsetBetweenParts}ms`)
     },
@@ -136,13 +137,23 @@ describe('ordhalens variant', () => {
     expect(new Set(varigheder).size).toBe(4)
   })
 
-  it('Snappy er baseline og bærer GPT-appens egne tal', () => {
+  it('Snappy er baseline — varighed og offset er GPT-appens, farven er ændret', () => {
     expect(STANDARD_VARIANT).toBe('Snappy')
-    // Laest ud af /opt/codex-desktop/resources/app.asar, DILStreamingText: `c`.
+    // Varighed og offset er laest ud af /opt/codex-desktop/resources/app.asar,
+    // DILStreamingText: `c`. Farve-tallene er IKKE GPT's længere: 23/11-2026
+    // bad Bjørn om en blødere og kortere farveovergang («ikke 5 ord, 2 max 3»),
+    // og målingen ligger i styles/chat-reading.css. Testen siger derfor kun at
+    // de to første tal er uændrede — ellers ville den påstå noget usandt.
     expect(STREAMING_TEXT_VARIANTS.Snappy).toMatchObject({
       duration: 220,
-      colorDelay: 99,
       timeOffsetBetweenParts: 30,
     })
+    expect(STREAMING_TEXT_VARIANTS.Snappy.colorDelay).toBe(40)
+    expect(STREAMING_TEXT_VARIANTS.Snappy.colorDuration).toBe(120)
+    // Farven maa ikke vaere laengere end ordets samlede ankomst: saa ville
+    // ordet stadig glide naar det naeste lander.
+    expect(STREAMING_TEXT_VARIANTS.Snappy.colorDuration).toBeLessThan(
+      STREAMING_TEXT_VARIANTS.Snappy.duration,
+    )
   })
 })

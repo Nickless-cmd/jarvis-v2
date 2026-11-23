@@ -17,7 +17,27 @@
  * compositing-egenskaber animeres: opacity, color og transform. */
 .streaming-word-tail {
   --streaming-tail-duration: 220ms;
-  --streaming-tail-color-delay: 99ms;
+  /* Farven har sin EGEN varighed (23/11-2026, Bjørn: «ord for ord animationen
+   * køre så hurtigt det næsten virker klumperne … ikke 5 ord, 2 max 3»).
+   *
+   * MÅLT i Chromium 23/11-2026 på den ægte MarkdownRenderer, pacing ~40 tegn
+   * hver 100 ms. Talt som «ord hvis farve ikke er slutfarven, pr. frame»:
+   *
+   *   220 ms + delay 99   median 6 ord   maks 11
+   *   220 ms + delay 0    median 4        maks 9
+   *   160 ms + delay 0    median 3        maks 7
+   *   120 ms + delay 40   median 3        maks 8
+   *    90 ms + delay 0    median 2        maks 5
+   *
+   * Antallet styres af hvor længe ordet er i en ikke-slutfarve — altsaa
+   * VARIGHEDEN, ikke kurvens form. (Derfor maaler 70 % accent-hold og jaevn
+   * glidning samme antal: de varer lige laenge.) Opacity-animationen skal
+   * blive paa 220 ms, ellers popper ordet ind i stedet for at tone frem —
+   * derfor er de to varigheder splittet.
+   *
+   * 120 ms er 7 frames: stadig en glidning, ikke et hop. */
+  --streaming-tail-color-duration: 120ms;
+  --streaming-tail-color-delay: 40ms;
   --streaming-tail-part-offset: 30ms;
   --streaming-tail-easing: cubic-bezier(0.25, 0.1, 0.25, 1);
   /* Slutfarven er den arvede brodtekst-farve, ikke en graa. GPT's variant
@@ -28,7 +48,8 @@
   animation:
     streaming-word-opacity var(--streaming-tail-duration) var(--streaming-tail-easing)
       calc(var(--streaming-tail-order, 0) * var(--streaming-tail-part-offset)) both,
-    streaming-word-color var(--streaming-tail-duration) var(--streaming-tail-easing)
+    streaming-word-color var(--streaming-tail-color-duration, var(--streaming-tail-duration))
+      var(--streaming-tail-easing)
       calc(var(--streaming-tail-color-delay) + var(--streaming-tail-order, 0) * var(--streaming-tail-part-offset)) both;
 }
 
@@ -60,9 +81,19 @@
  * i SAMME farve goer ankomsten markant uden at roere slutfarven, som stadig
  * er brodtekstens `--fg-1`. Gloeden doer efter 55 % af varigheden, saa ordet
  * staar rent naar naeste ord lander. */
+/* JÆVN GLIDNING (23/11-2026, Bjørn: «ord for ord animationen køre så hurtigt
+ * det næsten virker klumperne»).
+ *
+ * MÅLT i Chromium på den ægte komponent: den tidligere kurve holdt accent-
+ * farven i 70 % af varigheden og brugte de sidste 30 % på overgangen. Ved
+ * 220 ms var det 154 ms hold og 66 ms overgang — fire frames. Farven stod
+ * STILLE i 50 af 54 samplede frames og sprang 101/765 i én frame. Det er et
+ * hop, ikke en glidning, og det er det Bjørn ser som «klumper».
+ *
+ * Nu glider farven jævnt gennem hele varigheden. Med 120 ms er det syv
+ * frames — samme blødhed som før, men uden at ordet hænger i accent. */
 @keyframes streaming-word-color {
   0% { color: var(--accent); }
-  70% { color: var(--accent); }
   100% { color: var(--fg-1); }
 }
 

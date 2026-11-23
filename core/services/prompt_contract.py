@@ -2166,7 +2166,17 @@ def _build_visible_chat_prompt_assembly_impl(
         # selv har rejst maa ikke tabe en pladskamp til en diagnostik-linje —
         # den er en impuls han skal kunne tale om, ikke baggrundsstoej.
         from core.services.initiative_queue import initiatives_prompt_section
-        _tail_add("own initiatives", initiatives_prompt_section())
+        _initiativ_tekst = initiatives_prompt_section()
+        _tail_add("own initiatives", _initiativ_tekst)
+        # Én linje pr. build — OGSÅ når køen er tom. Målt 23/11-2026: posten
+        # init-9f35375313 blev taget af proactivity_bridge 16 minutter efter den
+        # blev født, og der fandtes INTET spor af om sektionen nogensinde var
+        # injiceret: `derived_inputs` lever kun i PromptAssembly-objektet og
+        # persisteres ingen steder. Uden denne linje kan «injiceret med indhold»
+        # ikke skelnes fra «aldrig kaldt» — samme tavshed som desk_pacing havde.
+        import logging as _init_logging
+        _init_logging.getLogger(__name__).info(
+            "initiativ-sektion: tegn=%d", len(_initiativ_tekst or ""))
     except Exception as _e:
         _sec_err("own initiatives", _e)
     try:

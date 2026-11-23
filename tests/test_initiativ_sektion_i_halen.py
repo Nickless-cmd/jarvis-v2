@@ -80,3 +80,69 @@ def test_tom_koe_bygger_ingen_sektion(isolated_runtime) -> None:
     assert "own initiatives" not in " ".join(derived), (
         "sektionen blev bygget paa en tom koe — den skal returnere None"
     )
+
+
+# ── Spor i drift (24/11-2026) ──────────────────────────────────────────────
+# MAALT 23/11-2026: posten init-9f35375313 blev taget af proactivity_bridge 16
+# minutter efter den blev foedt — og der fandtes INTET spor af om sektionen
+# nogensinde var injiceret. `derived_inputs` lever kun i PromptAssembly-objektet.
+# Testene her vogter den ene linje der goer forskellen: én pr. build, ogsaa naar
+# koen er tom, saa «kaldt og tom» kan skelnes fra «aldrig kaldt».
+#
+# De fejler begge to paa kode uden log-linjen — der er ingen records at finde.
+
+
+def _initiativ_linjer(caplog) -> list[str]:
+    return [
+        r.getMessage() for r in caplog.records
+        if "initiativ-sektion" in r.getMessage()
+    ]
+
+
+def test_loglinje_ved_tom_koe(isolated_runtime, caplog) -> None:
+    """Ogsaa en tom koe skal efterlade et spor — ellers er tavshed tvetydig."""
+    import logging
+
+    from core.services import initiative_queue
+
+    assert initiative_queue.get_pending_initiatives() == []
+
+    with caplog.at_level(logging.INFO, logger="core.services.prompt_contract"):
+        _derived()
+
+    linjer = _initiativ_linjer(caplog)
+    assert linjer, (
+        "ingen log-linje ved tom koe — en build uden indhold kan ikke skelnes "
+        "fra en sektion der aldrig blev kaldt"
+    )
+    assert any("tegn=0" in ln for ln in linjer), (
+        f"log-linjen rapporterer ikke en tom sektion korrekt: {linjer}"
+    )
+
+
+def test_loglinje_ved_indhold(isolated_runtime, caplog) -> None:
+    """Med en pending post skal linjen baere sektionens faktiske laengde."""
+    import logging
+
+    from core.services import initiative_queue
+
+    iid = initiative_queue.push_initiative(
+        focus="Spor-post: skal logges naar sektionen injiceres",
+        source="jarvis-tool",
+        priority="high",
+    )
+    assert iid, "posten blev ikke oprettet — testen ville maale en tom koe"
+
+    with caplog.at_level(logging.INFO, logger="core.services.prompt_contract"):
+        _derived()
+
+    linjer = _initiativ_linjer(caplog)
+    assert linjer, "ingen log-linje naar sektionen blev injiceret med indhold"
+
+    tegn = [
+        int(ln.split("tegn=")[1].split()[0])
+        for ln in linjer if "tegn=" in ln
+    ]
+    assert tegn and max(tegn) > 0, (
+        f"sektionen blev injiceret, men log-linjen siger tegn=0: {linjer}"
+    )

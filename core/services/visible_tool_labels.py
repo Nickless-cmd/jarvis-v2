@@ -54,6 +54,7 @@ _TOOL_LABELS: dict[str, str] = {
     "push_initiative": "Registrerer initiativ",
     "list_initiatives": "Lister initiativer",
     "decline_initiative": "Afviser initiativ",
+    "abandon_initiative": "Lægger livsprojekt fra sig",
     "schedule_task": "Planlægger opgave",
     "list_scheduled_tasks": "Lister planlagte opgaver",
     "cancel_task": "Annullerer opgave",

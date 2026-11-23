@@ -182,6 +182,86 @@ def _exec_decline_initiative(args: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _exec_abandon_initiative(args: dict[str, Any]) -> dict[str, Any]:
+    """Læg et livsprojekt fra dig — samme terminale tilstand som decay-dommeren.
+
+    MAALT 23/11-2026: `abandon_long_term_intention` fandtes i
+    `initiative_queue.py` og blev kaldt af mobil-fladen gennem
+    `/mc/life-projects/{id}/abandon`, men havde ingen definition, ingen handler
+    og ingen oppost i mappingen. Jarvis kunne derfor ikke lukke sit eget
+    livsprojekt i samtalen — kun gennem et Python-kald uden for fladen. Samme
+    fejlform som `decline_initiative` indtil samme dag: skrivevejen fandtes,
+    indgangen manglede.
+
+    Forskellen paa de to indgange er udfaldet, ikke grunden: `decline` saetter
+    `declined` (praemissen er vaek), `abandon` saetter `expired` med
+    `abandoned_at` — praecis den tilstand decay-dommeren selv saetter, men med
+    en grund der er sand i stedet for dommerens «aldrig loeftet».
+    """
+    initiative_id = str(args.get("initiative_id") or "").strip()
+    reason = str(args.get("reason") or "").strip()
+    if not initiative_id:
+        return {"status": "error", "error": "initiative_id is required"}
+    if not reason:
+        return {
+            "status": "error",
+            "error": "reason is required — en lukning uden grund kan ikke efterproeves",
+        }
+    try:
+        from core.runtime import db as runtime_db
+
+        existing = runtime_db.get_runtime_initiative(initiative_id)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+    if not existing:
+        return {
+            "status": "error",
+            "error": "posten findes ikke",
+            "initiative_id": initiative_id,
+        }
+    if str(existing.get("initiative_type") or "") != "long_term_intention":
+        return {
+            "status": "error",
+            "error": (
+                "posten er ikke et livsprojekt — brug decline_initiative "
+                "for en almindelig initiativ-post"
+            ),
+            "initiative_id": initiative_id,
+        }
+    # `abandon_long_term_intention` tjekker IKKE status: den saetter `expired`
+    # igen paa en post der allerede ER expired og svarer med en raekke, som om
+    # noget skete. En lukning af noget allerede lukket er ikke en handling.
+    foer_status = str(existing.get("status") or "")
+    if foer_status != "pending":
+        return {
+            "status": "error",
+            "error": f"posten er ikke laengere pending (status={foer_status})",
+            "initiative_id": initiative_id,
+        }
+    try:
+        from core.services.life_projects import abandon_life_project
+
+        result = abandon_life_project(initiative_id, note=reason)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+    item = dict(result.get("life_project") or {})
+    if result.get("status") != "ok" or str(item.get("status") or "") != "expired":
+        return {
+            "status": "error",
+            "error": (
+                "lukningen blev ikke gemt — posten staar ikke som expired "
+                f"({result.get('error') or item.get('status') or 'ukendt'})"
+            ),
+            "initiative_id": initiative_id,
+        }
+    return {
+        "status": "ok",
+        "initiative_id": initiative_id,
+        "reason": reason,
+        "text": f"Life project laid down: {initiative_id} — {reason}",
+    }
+
+
 def _exec_wonder_verdict(args: dict[str, Any]) -> dict[str, Any]:
     """Gem vurderingen af en undren — trin 2's eneste varige spor."""
     record_id = str(args.get("record_id") or "").strip()
@@ -2793,6 +2873,7 @@ __all__ = [
     "_exec_list_initiatives",
     "_exec_push_initiative",
     "_exec_decline_initiative",
+    "_exec_abandon_initiative",
     "_exec_read_model_config",
     "_exec_read_mood",
     "_exec_adjust_mood",

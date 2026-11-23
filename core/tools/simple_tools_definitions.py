@@ -2087,6 +2087,27 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "abandon_initiative",
+            "description": "Lay down one of your own life projects (a long-term intention) without deleting its record. Sets status to expired with the reason you give — the same terminal state the decay judge would set, but now, and with a true reason instead of its 'never lifted'. Use it when a life-long direction is not something that can be run to completion and closed like a task. A reason is mandatory.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "initiative_id": {
+                        "type": "string",
+                        "description": "The initiative_id of the pending life project (from list_initiatives)",
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Why it is being laid down — a reason that can be checked afterwards",
+                    },
+                },
+                "required": ["initiative_id", "reason"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "push_initiative",
             "description": "Add a task or goal to your initiative queue for autonomous heartbeat execution. The heartbeat scheduler will pick it up and act on it within the next tick cycle.",
             "parameters": {

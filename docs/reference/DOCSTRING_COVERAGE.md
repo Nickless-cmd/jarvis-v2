@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10456/19102 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10457/19105 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -38,12 +38,12 @@ Generated from source. 10456/19102 functions/methods documented (54%). The list 
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 10 | 11 | 90% |
-| `scripts` | 349 | 699 | 49% |
+| `scripts` | 350 | 702 | 49% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2680)
+## Undocumented public functions (2681)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L236)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2606,6 +2606,7 @@ Generated from source. 10456/19102 functions/methods documented (54%). The list 
 - `scripts/maal_ventende_i_prompten.py` :: `main` (L252)
 - `scripts/maal_visuelle_svar.py` :: `i_alt` (L72)
 - `scripts/maal_visuelle_svar.py` :: `main` (L86)
+- `scripts/measure_premise_gate_backwards.py` :: `main` (L108)
 - `scripts/measure_prompt_payload.py` :: `main` (L80)
 - `scripts/measure_turn_latency.py` :: `probe` (L134)
 - `scripts/measure_turn_latency.py` :: `watch` (L101)

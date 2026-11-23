@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/vaert_boot_vagt.py`
+_Boot-vagt paa pve i9: klassificér hver boot som REN eller CUT._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Boot` | `` | — | [src](../../../scripts/vaert_boot_vagt.py#L70) |
+| method | `Boot.udfald` | `(self)` | — | [src](../../../scripts/vaert_boot_vagt.py#L79) |
+| method | `Boot.varighed_s` | `(self)` | Sekunder mellem start og slut. Korte boots er i sig selv et signal. | [src](../../../scripts/vaert_boot_vagt.py#L87) |
+| function | `parse_boot_liste` | `(tekst)` | `journalctl --list-boots` → Boot-objekter. Header og tomme linjer springes over. | [src](../../../scripts/vaert_boot_vagt.py#L101) |
+| function | `klassificer` | `(haler)` | Journal-halen for ÉN boot → True hvis REN nedlukning, False hvis CUT. | [src](../../../scripts/vaert_boot_vagt.py#L125) |
+| function | `_ssh` | `(host, kommando, timeout=…)` | — | [src](../../../scripts/vaert_boot_vagt.py#L134) |
+| function | `maal` | `(host, antal=…)` | Hent boot-liste og klassificér de nyeste `antal` boots. | [src](../../../scripts/vaert_boot_vagt.py#L146) |
+| function | `nye_siden` | `(boots, kendte)` | Boots der ikke er rapporteret foer. Boot-id er noeglen — idx flytter sig. | [src](../../../scripts/vaert_boot_vagt.py#L164) |
+| function | `indlaes_state` | `(sti)` | — | [src](../../../scripts/vaert_boot_vagt.py#L169) |
+| function | `gem_state` | `(sti, kendte)` | — | [src](../../../scripts/vaert_boot_vagt.py#L180) |
+| function | `rapport` | `(boots, nye)` | — | [src](../../../scripts/vaert_boot_vagt.py#L190) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/vaert_boot_vagt.py#L219) |
+
 ## `scripts/validate_commit_attribution.py`
 _Validate commit attribution for commit-msg and pre-push hooks._
 

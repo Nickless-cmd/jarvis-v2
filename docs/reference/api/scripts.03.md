@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/minimal_mode_baseline.py`
+_Minimal-mode-basislinje — hvad kan modellen UDEN Jarvis' stillads?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kald` | `(beskeder, *, timeout=…)` | — | [src](../../../scripts/minimal_mode_baseline.py#L153) |
+| function | `_koer` | `(cmd, cwd, timeout=…)` | — | [src](../../../scripts/minimal_mode_baseline.py#L173) |
+| function | `_udfoer_vaerktoej` | `(navn, args, mappe)` | — | [src](../../../scripts/minimal_mode_baseline.py#L184) |
+| function | `koer_opgave` | `(navn, spec, *, maks_runder)` | — | [src](../../../scripts/minimal_mode_baseline.py#L206) |
+| function | `main` | `()` | — | [src](../../../scripts/minimal_mode_baseline.py#L248) |
+
 ## `scripts/mint_jarvisx_token.py`
 _Mint a JarvisX bearer token for a user._
 
@@ -429,22 +440,4 @@ _Flyt USER.md «## Durable Preferences» ind i «## Lært» (lærings-sløjfe, b
 | function | `_user_md_path` | `(workspace)` | — | [src](../../../scripts/user_md_learned_migration.py#L40) |
 | function | `migrate` | `(*, workspace, apply)` | — | [src](../../../scripts/user_md_learned_migration.py#L48) |
 | function | `main` | `()` | — | [src](../../../scripts/user_md_learned_migration.py#L118) |
-
-## `scripts/vaert_boot_vagt.py`
-_Boot-vagt paa pve i9: klassificér hver boot som REN eller CUT._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Boot` | `` | — | [src](../../../scripts/vaert_boot_vagt.py#L70) |
-| method | `Boot.udfald` | `(self)` | — | [src](../../../scripts/vaert_boot_vagt.py#L79) |
-| method | `Boot.varighed_s` | `(self)` | Sekunder mellem start og slut. Korte boots er i sig selv et signal. | [src](../../../scripts/vaert_boot_vagt.py#L87) |
-| function | `parse_boot_liste` | `(tekst)` | `journalctl --list-boots` → Boot-objekter. Header og tomme linjer springes over. | [src](../../../scripts/vaert_boot_vagt.py#L101) |
-| function | `klassificer` | `(haler)` | Journal-halen for ÉN boot → True hvis REN nedlukning, False hvis CUT. | [src](../../../scripts/vaert_boot_vagt.py#L125) |
-| function | `_ssh` | `(host, kommando, timeout=…)` | — | [src](../../../scripts/vaert_boot_vagt.py#L134) |
-| function | `maal` | `(host, antal=…)` | Hent boot-liste og klassificér de nyeste `antal` boots. | [src](../../../scripts/vaert_boot_vagt.py#L146) |
-| function | `nye_siden` | `(boots, kendte)` | Boots der ikke er rapporteret foer. Boot-id er noeglen — idx flytter sig. | [src](../../../scripts/vaert_boot_vagt.py#L164) |
-| function | `indlaes_state` | `(sti)` | — | [src](../../../scripts/vaert_boot_vagt.py#L169) |
-| function | `gem_state` | `(sti, kendte)` | — | [src](../../../scripts/vaert_boot_vagt.py#L180) |
-| function | `rapport` | `(boots, nye)` | — | [src](../../../scripts/vaert_boot_vagt.py#L190) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/vaert_boot_vagt.py#L219) |
 

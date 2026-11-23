@@ -301,6 +301,15 @@ _Hvor ofte svarer Jarvis VISUELT? — nulpunkt og dagsserie._
 | function | `i_alt` | `(c)` | — | [src](../../../scripts/maal_visuelle_svar.py#L72) |
 | function | `main` | `()` | — | [src](../../../scripts/maal_visuelle_svar.py#L86) |
 
+## `scripts/measure_premise_gate_backwards.py`
+_Bagudrettet maaling: ville en praemis-gate have fanget aftenens tre fejl?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_git` | `(*args)` | — | [src](../../../scripts/measure_premise_gate_backwards.py#L80) |
+| function | `maal_commit` | `(sha, label)` | Koer praemis-reglen mod én commit og svar om den ville have fyret. | [src](../../../scripts/measure_premise_gate_backwards.py#L86) |
+| function | `main` | `()` | — | [src](../../../scripts/measure_premise_gate_backwards.py#L108) |
+
 ## `scripts/measure_prompt_payload.py`
 _Measure where Jarvis's visible-chat prompt tokens come from._
 
@@ -432,15 +441,4 @@ _Flyt seks moduler fra `shared/runtime/*.json` til `state_store`._
 | function | `_har_indhold` | `(data)` | Tom liste/dict tæller ikke som indhold — så må den gerne overskrives. | [src](../../../scripts/migrer_shared_runtime_til_state_store.py#L56) |
 | function | `flyt` | `(navn, *, toerloeb)` | Returnér (status, forklaring) for ét modul. | [src](../../../scripts/migrer_shared_runtime_til_state_store.py#L65) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/migrer_shared_runtime_til_state_store.py#L94) |
-
-## `scripts/minimal_mode_baseline.py`
-_Minimal-mode-basislinje — hvad kan modellen UDEN Jarvis' stillads?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kald` | `(beskeder, *, timeout=…)` | — | [src](../../../scripts/minimal_mode_baseline.py#L153) |
-| function | `_koer` | `(cmd, cwd, timeout=…)` | — | [src](../../../scripts/minimal_mode_baseline.py#L173) |
-| function | `_udfoer_vaerktoej` | `(navn, args, mappe)` | — | [src](../../../scripts/minimal_mode_baseline.py#L184) |
-| function | `koer_opgave` | `(navn, spec, *, maks_runder)` | — | [src](../../../scripts/minimal_mode_baseline.py#L206) |
-| function | `main` | `()` | — | [src](../../../scripts/minimal_mode_baseline.py#L248) |
 

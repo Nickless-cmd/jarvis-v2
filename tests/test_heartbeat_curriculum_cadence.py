@@ -168,6 +168,14 @@ def test_desk_kadencen_kalder_record_uden_manuelt_kald(tmp_path, monkeypatch):
     monkeypatch.setattr(cad, "_spawn", lambda fn: fn())  # synkront i testen
     kald: list[int] = []
     monkeypatch.setattr(drc, "record", lambda **kw: kald.append(1) or {"measured": True, "ok": True})
+    # 23/11-2026: de to målere deler ÉN vitest-kørsel. Uden denne patch kører
+    # `_maal_desk` den ægte suite her (~140 s) — og testen måler ingenting.
+    koersler: list[int] = []
+    monkeypatch.setattr(
+        drc,
+        "koer_suiten",
+        lambda **kw: koersler.append(1) or (0, "      Tests  9 passed (9)\n", None),
+    )
     # 23/11-2026: kadencen kalder NU ogsaa pacing-maalingen (underdomaenerne).
     # Uden denne patch koerer den aegte vitest-suite i testen (~45 s) og timer ud.
     from core.services import desk_pacing_capability as dpc
@@ -187,6 +195,9 @@ def test_desk_kadencen_kalder_record_uden_manuelt_kald(tmp_path, monkeypatch):
         now=t0 + timedelta(seconds=cad.DESK_MEASUREMENT_INTERVAL_SECONDS + 1)
     )
     assert kald == [1, 1]
+    assert koersler == [1, 1], (
+        "hver kadence-kørsel skal dele ÉN vitest-kørsel mellem de to målere"
+    )
 
 
 def test_hjerteslaget_kalder_desk_kadencen():

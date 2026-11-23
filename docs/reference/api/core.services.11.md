@@ -501,18 +501,19 @@ _Pacing- og rytme-domænerne — fra skøn til måling._
 |---|---|---|---|---|
 | function | `_json_runner` | `(timeout_s)` | Kør målefilerne med BÅDE text- og JSON-reporter. | [src](../../../core/services/desk_pacing_capability.py#L112) |
 | function | `parse_maalinger` | `(data)` | Aggreger vitest-JSON til ét resultat pr. domæne. Ren funktion. | [src](../../../core/services/desk_pacing_capability.py#L150) |
-| function | `measure` | `(*, runner=…, timeout_s=…)` | Kør målingen. Skriver intet. | [src](../../../core/services/desk_pacing_capability.py#L220) |
-| function | `record` | `(*, runner=…, timeout_s=…)` | Mål og skriv hvert domæne ind. Ét kald = op til fire målte sandheder. | [src](../../../core/services/desk_pacing_capability.py#L258) |
+| function | `measure` | `(*, runner=…, timeout_s=…, koersel=…)` | Kør målingen. Skriver intet. | [src](../../../core/services/desk_pacing_capability.py#L220) |
+| function | `record` | `(*, runner=…, timeout_s=…, koersel=…)` | Mål og skriv hvert domæne ind. Ét kald = op til fire målte sandheder. | [src](../../../core/services/desk_pacing_capability.py#L266) |
 
 ## `core/services/desk_render_capability.py`
 _Desk render capabilities — fra gæt til måling._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_standard_runner` | `(timeout_s)` | Kør browser-målingerne. Returnerer (exit-kode, samlet output). | [src](../../../core/services/desk_render_capability.py#L78) |
-| function | `parse_vitest` | `(output)` | Læs vitest-opsummeringen. Ren funktion — testbar uden browser. | [src](../../../core/services/desk_render_capability.py#L92) |
-| function | `measure` | `(*, runner=…, timeout_s=…)` | Kør målingen og returnér en MÅLT confidence. Skriver intet. | [src](../../../core/services/desk_render_capability.py#L141) |
-| function | `record` | `(*, runner=…, timeout_s=…)` | Mål og skriv resultatet ind i domænet. Ét kald = én målt sandhed. | [src](../../../core/services/desk_render_capability.py#L218) |
+| function | `_standard_runner` | `(timeout_s)` | Kør browser-målingerne. Returnerer (exit-kode, samlet output). | [src](../../../core/services/desk_render_capability.py#L80) |
+| function | `koer_suiten` | `(timeout_s=…)` | Kør HELE desk-suiten ÉN gang og returnér (exit-kode, text, JSON). | [src](../../../core/services/desk_render_capability.py#L94) |
+| function | `parse_vitest` | `(output)` | Læs vitest-opsummeringen. Ren funktion — testbar uden browser. | [src](../../../core/services/desk_render_capability.py#L151) |
+| function | `measure` | `(*, runner=…, timeout_s=…, koersel=…)` | Kør målingen og returnér en MÅLT confidence. Skriver intet. | [src](../../../core/services/desk_render_capability.py#L200) |
+| function | `record` | `(*, runner=…, timeout_s=…, koersel=…)` | Mål og skriv resultatet ind i domænet. Ét kald = én målt sandhed. | [src](../../../core/services/desk_render_capability.py#L285) |
 
 ## `core/services/desktop_notifications.py`
 _Per-bruger in-memory kø af proaktive desktop-notifikationer. Desktop poller_

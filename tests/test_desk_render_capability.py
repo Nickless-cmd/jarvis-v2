@@ -206,3 +206,51 @@ def test_maalt_tal_fjerner_domaenet_fra_planen(isolated_runtime):
         "domænet står stadig som svaghed efter en grøn måling — "
         "så skrev record() til en nøgle planen ikke læser"
     )
+
+
+# --- 6. den delte kørsel ------------------------------------------------
+#
+# MÅLT 23/11-2026: de to målere kørte hver sin vitest — 140 s for hele suiten
+# og 44 s for målefilerne, hver 6. time. Hele suiten viste sig at give de
+# samme fire underdomæne-tal som den isolerede kørsel (11/11, 20/20, 20/20,
+# 17/17) og havde rytme-testen grøn. Delingen er derfor en halvering af
+# arbejdet uden en ændret måling — men den skal bevises, ikke antages.
+
+
+def test_koersel_bruges_uden_at_koere_vitest():
+    """En færdig kørsel må ikke udløse en ny vitest-kørsel."""
+    kaldt: list[int] = []
+
+    def _runner(_t: int):
+        kaldt.append(1)
+        return 1, "skal ikke bruges"
+
+    r = drc.measure(runner=_runner, koersel=(0, GROEN, None))
+    assert r["measured"] is True
+    assert (r["passed"], r["failed"]) == (9, 0)
+    assert kaldt == [], "koerslen blev ignoreret og vitest kørt igen"
+
+
+def test_samme_koersel_baerer_flade_og_underdomaener():
+    """Text giver den samlede flade, JSON de fire underdomæner — én kørsel.
+
+    Uden denne kontrol ville «delt kørsel» være en påstand: hver måler skulle
+    læse sin egen halvdel af det samme svar.
+    """
+    import core.services.desk_pacing_capability as dpc
+
+    data = {
+        "testResults": [
+            {
+                "name": "/x/apps/jarvis-desk/src/lib/paceRate.maaling.test.ts",
+                "status": "passed",
+                "assertionResults": [{"status": "passed"}, {"status": "passed"}],
+            }
+        ]
+    }
+    koersel = (0, "      Tests  9 passed (9)\n", data)
+    flade = drc.measure(koersel=koersel)
+    under = dpc.measure(koersel=koersel)
+    assert flade["measured"] is True and flade["passed"] == 9
+    assert under["domaener"]["chat mode ord-rytme pacing"]["measured"] is True
+    assert under["domaener"]["chat mode ord-rytme pacing"]["confidence"] == 0.85

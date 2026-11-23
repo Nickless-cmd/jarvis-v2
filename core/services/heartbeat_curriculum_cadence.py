@@ -153,10 +153,31 @@ def _skriv_desk_stempel(nu: datetime) -> None:
 
 
 def _maal_desk() -> None:
-    try:
-        from core.services import desk_render_capability
+    from core.services import desk_pacing_capability, desk_render_capability
 
-        result = desk_render_capability.record()
+    # ÉN vitest-kørsel bærer begge målere (23/11-2026). Text-reporteren giver
+    # den samlede flade, JSON-reporteren de fire underdomæner.
+    #
+    # MÅLT samme dag på hele suiten (481 filer, 140 s): 3685 passed / 0 failed,
+    # rytme-testen GRØN, og alle fire domæner 11/11, 20/20, 20/20, 17/17 —
+    # identisk med den isolerede målekørsel, 44 s kortere. Den tidligere
+    # adskillelse byggede på ÉN rød rytme-test (530 ms mod en grænse på 100 ms),
+    # som viste sig at være støj fra en samtidig vitest-kørsel — ikke en
+    # strukturel belastningsfølsomhed.
+    #
+    # Fejler fælleskørslen, falder hver måler tilbage til sin egen kørsel: en
+    # fejl må ikke koste begge målinger i seks timer.
+    koersel: tuple[int, str, dict | None] | None = None
+    try:
+        koersel = desk_render_capability.koer_suiten()
+    except Exception:  # noqa: BLE001 — fælleskørslen er en optimering, ikke et krav
+        logger.warning(
+            "desk measurement: fælleskørslen fejlede — målerne kører hver for sig",
+            exc_info=True,
+        )
+
+    try:
+        result = desk_render_capability.record(koersel=koersel)
         logger.info(
             "desk measurement: measured=%s ok=%s",
             result.get("measured"),
@@ -165,16 +186,8 @@ def _maal_desk() -> None:
     except Exception:
         logger.warning("desk measurement failed", exc_info=True)
 
-    # Pacing-maalingen (23/11-2026) er en SEPARAT koersel med vilje: den samlede
-    # flade maales paa hele suiten (481 filer), mens underdomaenerne maales paa
-    # maalefilerne alene. Maalt 23/11 fejlede rytme-testen i den fulde suite
-    # (530 ms mod en graense paa 100) og bestod isoleret — belastning, ikke evne.
-    # De to maalinger deler derfor ikke koersel, og en fejl i den ene maa ikke
-    # forhindre den anden.
     try:
-        from core.services import desk_pacing_capability
-
-        pacing = desk_pacing_capability.record()
+        pacing = desk_pacing_capability.record(koersel=koersel)
         skrevet = [
             navn
             for navn, u in (pacing.get("skrevet") or {}).items()

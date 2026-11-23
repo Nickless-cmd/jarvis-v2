@@ -221,17 +221,25 @@ def measure(
     *,
     runner: Callable[[int], tuple[int, dict[str, Any] | None, str]] | None = None,
     timeout_s: int = 300,
+    koersel: tuple[int, str, dict[str, Any] | None] | None = None,
 ) -> dict[str, Any]:
-    """Kør målingen. Skriver intet."""
+    """Kør målingen. Skriver intet.
+
+    ``koersel`` er en FÆRDIG kørsel ``(exit-kode, text, JSON)`` fra
+    ``desk_render_capability.koer_suiten``. Er den givet, køres vitest ikke
+    igen: den samlede flade og de fire underdomæner læses fra samme kørsel.
+    """
     if not DESK_DIR.is_dir():
         return {
             "ok": False,
             "reason": f"desk-mappen findes ikke: {DESK_DIR}",
             "domaener": {},
         }
-    run = runner or _json_runner
     try:
-        code, data, tail = run(timeout_s)
+        if koersel is not None:
+            code, data, tail = int(koersel[0]), koersel[2], str(koersel[1])[-800:]
+        else:
+            code, data, tail = (runner or _json_runner)(timeout_s)
     except subprocess.TimeoutExpired:  # timeout er en maalt tilstand, ikke en fejl der skal kastes
         return {
             "ok": False,
@@ -259,11 +267,12 @@ def record(
     *,
     runner: Callable[[int], tuple[int, dict[str, Any] | None, str]] | None = None,
     timeout_s: int = 300,
+    koersel: tuple[int, str, dict[str, Any] | None] | None = None,
 ) -> dict[str, Any]:
     """Mål og skriv hvert domæne ind. Ét kald = op til fire målte sandheder."""
     from core.services.capability_measurement import set_domain_confidence
 
-    resultat = measure(runner=runner, timeout_s=timeout_s)
+    resultat = measure(runner=runner, timeout_s=timeout_s, koersel=koersel)
     skrevet: dict[str, Any] = {}
     for navn, d in (resultat.get("domaener") or {}).items():
         if not d.get("measured"):

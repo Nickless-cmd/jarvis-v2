@@ -449,8 +449,8 @@ _Fast kadence for curriculum-materialisering — uden om action-vaelgeren._
 | function | `_laes_desk_stempel` | `()` | — | [src](../../../core/services/heartbeat_curriculum_cadence.py#L135) |
 | function | `_skriv_desk_stempel` | `(nu)` | — | [src](../../../core/services/heartbeat_curriculum_cadence.py#L147) |
 | function | `_maal_desk` | `()` | — | [src](../../../core/services/heartbeat_curriculum_cadence.py#L155) |
-| function | `_spawn` | `(fn)` | Baggrundstraad: maalingen tager ~9 s og maa ikke blokere hjerteslaget. | [src](../../../core/services/heartbeat_curriculum_cadence.py#L195) |
-| function | `tick_desk_measurement_cadence` | `(*, now=…)` | Kør `desk_render_capability.record()` hvis der er gået | [src](../../../core/services/heartbeat_curriculum_cadence.py#L200) |
+| function | `_spawn` | `(fn)` | Baggrundstraad: maalingen tager ~9 s og maa ikke blokere hjerteslaget. | [src](../../../core/services/heartbeat_curriculum_cadence.py#L208) |
+| function | `tick_desk_measurement_cadence` | `(*, now=…)` | Kør `desk_render_capability.record()` hvis der er gået | [src](../../../core/services/heartbeat_curriculum_cadence.py#L213) |
 
 ## `core/services/heartbeat_daemon_ticks.py`
 _Jarvis' indre daemoner — ét tik, uanset om han har travlt._

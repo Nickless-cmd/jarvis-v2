@@ -40,8 +40,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
@@ -81,12 +83,69 @@ def _standard_runner(timeout_s: int) -> tuple[int, str]:
     proc = subprocess.run(  # noqa: S603 — fast argv, ingen shell
         ["npx", "vitest", "run"],
         cwd=str(DESK_DIR),
-        env={**__import__("os").environ, **env},
+        env={**os.environ, **env},
         capture_output=True,
         text=True,
         timeout=timeout_s,
     )
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
+
+
+def koer_suiten(
+    timeout_s: int = 300,
+) -> tuple[int, str, dict[str, Any] | None]:
+    """Kør HELE desk-suiten ÉN gang og returnér (exit-kode, text, JSON).
+
+    Text-reporteren er `parse_vitest`s grundlag — den samlede flade.
+    JSON-reporteren er `desk_pacing_capability`s grundlag — de fire
+    underdomæner. Én kørsel dækker begge målere, så kadencen ikke betaler for
+    to vitest-kørsler i samme baggrundstråd.
+
+    ## Hvorfor det er forsvarligt
+
+    MÅLT 23/11-2026 på hele suiten (481 filer, 140 s): 3685 passed / 0 failed,
+    og de fire pacing-domæner fik 11/11, 20/20, 20/20 og 17/17 — identisk med
+    den isolerede målekørsel. `streamingTextTail.rytme.maaling.test.ts` var
+    GRØN inde i suiten. Den ene røde kørsel der tidligere begrundede en
+    adskillelse (530 ms mod en grænse på 100 ms) var støj fra en samtidig
+    vitest-kørsel, ikke en strukturel belastningsfølsomhed.
+
+    Kaster `subprocess.TimeoutExpired` hvis kørslen ikke bliver færdig; en
+    JSON-fil der ikke kan læses giver `None` for data, så pacing-måleren
+    melder «ingen JSON-rapport» i stedet for at skrive et tal.
+    """
+    with tempfile.NamedTemporaryFile(
+        suffix=".json", prefix="desk_suite_", delete=False
+    ) as fh:
+        ud_sti = fh.name
+    try:
+        proc = subprocess.run(  # noqa: S603 — fast argv, ingen shell
+            [
+                "npx", "vitest", "run",
+                "--reporter=default",
+                "--reporter=json",
+                f"--outputFile={ud_sti}",
+            ],
+            cwd=str(DESK_DIR),
+            env={**os.environ, "RUN_BROWSER_LAYOUT_MEASUREMENT": "1"},
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+        )
+        tekst = (proc.stdout or "") + (proc.stderr or "")
+        data: dict[str, Any] | None = None
+        try:
+            data = json.loads(Path(ud_sti).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            logger.warning(
+                "desk_render_capability: JSON-rapporten kunne ikke laeses: %s", exc
+            )
+        return proc.returncode, tekst, data
+    finally:
+        try:
+            os.unlink(ud_sti)
+        except OSError:  # temp-filen kan allerede vaere vaek; oprydning maa ikke kaste
+            pass
 
 
 def parse_vitest(output: str) -> dict[str, Any]:
@@ -142,9 +201,14 @@ def measure(
     *,
     runner: Callable[[int], tuple[int, str]] | None = None,
     timeout_s: int = 300,
+    koersel: tuple[int, str, dict[str, Any] | None] | None = None,
 ) -> dict[str, Any]:
-    """Kør målingen og returnér en MÅLT confidence. Skriver intet."""
-    run = runner or _standard_runner
+    """Kør målingen og returnér en MÅLT confidence. Skriver intet.
+
+    ``koersel`` er en FÆRDIG kørsel ``(exit-kode, text, JSON)`` fra
+    :func:`koer_suiten`. Er den givet, køres vitest ikke igen — den samlede
+    flade og underdomænerne læses fra samme kørsel.
+    """
     if not DESK_DIR.is_dir():
         return {
             "ok": False,
@@ -153,7 +217,10 @@ def measure(
             "domain": DOMAIN,
         }
     try:
-        code, output = run(timeout_s)
+        if koersel is not None:
+            code, output = int(koersel[0]), str(koersel[1])
+        else:
+            code, output = (runner or _standard_runner)(timeout_s)
     except subprocess.TimeoutExpired:  # tidsudloeb ER svaret: intet maalt, ikke en fejl
         return {
             "ok": False,
@@ -219,9 +286,10 @@ def record(
     *,
     runner: Callable[[int], tuple[int, str]] | None = None,
     timeout_s: int = 300,
+    koersel: tuple[int, str, dict[str, Any] | None] | None = None,
 ) -> dict[str, Any]:
     """Mål og skriv resultatet ind i domænet. Ét kald = én målt sandhed."""
-    result = measure(runner=runner, timeout_s=timeout_s)
+    result = measure(runner=runner, timeout_s=timeout_s, koersel=koersel)
     if not result.get("measured"):
         return result  # intet målt -> intet skrevet. Tavshed er ikke 0.32.
     evidence = (

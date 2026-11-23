@@ -187,3 +187,29 @@ def test_json_rapporten_kan_laeses_selv_naar_den_mangler():
 
     r = dpc.measure(runner=ingen_json)
     assert all(not d["measured"] for d in r["domaener"].values())
+
+
+def test_koersel_bruges_uden_at_koere_vitest():
+    """Den delte kørsel må ikke udløse endnu en vitest-kørsel her.
+
+    MÅLT 23/11-2026: hele suiten giver de samme fire tal som den isolerede
+    målekørsel (11/11, 20/20, 20/20, 17/17), så underdomænerne kan læses fra
+    samme svar som den samlede flade — 44 s sparet pr. kadence-kørsel.
+    """
+    kaldt: list[int] = []
+
+    def _runner(_t: int):
+        kaldt.append(1)
+        return 1, None, "skal ikke bruges"
+
+    r = dpc.measure(
+        runner=_runner,
+        koersel=(
+            0,
+            "noget output",
+            _rapport(_fil("paceRate.maaling.test.ts", "passed")),
+        ),
+    )
+    assert r["ok"] is True
+    assert r["domaener"]["chat mode ord-rytme pacing"]["measured"] is True
+    assert kaldt == [], "koerslen blev ignoreret og vitest kørt igen"

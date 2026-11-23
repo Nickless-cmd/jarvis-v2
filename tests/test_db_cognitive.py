@@ -83,3 +83,35 @@ def test_cognitive_seed_write_and_status(isolated_runtime):
     assert m.list_cognitive_seeds(status="planted") == []
     activated = m.list_cognitive_seeds(status="activated")
     assert [r["seed_id"] for r in activated] == ["seed-1"]
+
+
+def test_personality_vector_list_and_latest_agree_on_fields(isolated_runtime):
+    """De to læsere skal give SAMME nøglesæt — ikke bare hver sit.
+
+    Maalt 23/11-2026: `list_cognitive_personality_vectors` havde sin egen kopi af
+    row-mappingen og manglede `learned_preferences`, `recurring_mistakes` og
+    `strengths_discovered`. En læser der brugte list-varianten saa en tom liste
+    og konkluderede «alt er rent», mens den nyeste vektor havde 16 poster.
+    Testen maaler nøglesæt-LIGHED, ikke at et bestemt felt findes — en ny kolonne
+    skal komme med i BEGGE læsere uden at nogen opdaterer en liste.
+    """
+    m = _fresh_module()
+    m.upsert_cognitive_personality_vector(
+        learned_preferences='["a"]',
+        recurring_mistakes='["b"]',
+        strengths_discovered='["c"]',
+        current_bearing="test",
+    )
+
+    latest = m.get_latest_cognitive_personality_vector()
+    listed = m.list_cognitive_personality_vectors(limit=1)
+
+    assert latest is not None
+    assert len(listed) == 1
+    assert set(listed[0]) == set(latest), (
+        "list og get_latest maa ikke divergere i felter: "
+        f"kun i latest={set(latest) - set(listed[0])}, "
+        f"kun i list={set(listed[0]) - set(latest)}"
+    )
+    # Og vaerdierne skal vaere de samme — ikke bare noeglerne.
+    assert listed[0] == latest

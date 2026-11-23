@@ -175,15 +175,16 @@ def upsert_cognitive_personality_vector(
     return {"vector_id": vector_id, "version": new_version, "updated_at": now}
 
 
-def get_latest_cognitive_personality_vector() -> dict[str, object] | None:
-    """Return the highest-version personality-vector row as a dict, or None if none exist."""
-    with connect() as conn:
-        _ensure_cognitive_personality_vector_table(conn)
-        row = conn.execute(
-            "SELECT * FROM cognitive_personality_vectors ORDER BY version DESC LIMIT 1"
-        ).fetchone()
-    if row is None:
-        return None
+def _personality_vector_from_row(row: sqlite3.Row) -> dict[str, object]:
+    """Én row-mapper for BEGGE læsere.
+
+    HVORFOR (23/11-2026, maalt). `list_cognitive_personality_vectors` havde sin
+    egen kopi af mappingen og var drevet fra `get_latest`: den udelod
+    `learned_preferences`, `recurring_mistakes` og `strengths_discovered`. En
+    læser der brugte list-varianten saa en tom liste og konkluderede «alt er
+    rent», mens den nyeste vektor beviseligt havde 16 poster. To kopier af samme
+    mapping divergerer uden at nogen skriver det — derfor én funktion.
+    """
     return {
         "vector_id": row["vector_id"],
         "version": int(row["version"]),
@@ -198,6 +199,18 @@ def get_latest_cognitive_personality_vector() -> dict[str, object] | None:
     }
 
 
+def get_latest_cognitive_personality_vector() -> dict[str, object] | None:
+    """Return the highest-version personality-vector row as a dict, or None if none exist."""
+    with connect() as conn:
+        _ensure_cognitive_personality_vector_table(conn)
+        row = conn.execute(
+            "SELECT * FROM cognitive_personality_vectors ORDER BY version DESC LIMIT 1"
+        ).fetchone()
+    if row is None:
+        return None
+    return _personality_vector_from_row(row)
+
+
 def list_cognitive_personality_vectors(*, limit: int = 20) -> list[dict[str, object]]:
     """Return up to `limit` personality-vector rows (newest version first) as dicts."""
     with connect() as conn:
@@ -206,18 +219,7 @@ def list_cognitive_personality_vectors(*, limit: int = 20) -> list[dict[str, obj
             "SELECT * FROM cognitive_personality_vectors ORDER BY version DESC LIMIT ?",
             (limit,),
         ).fetchall()
-    return [
-        {
-            "vector_id": r["vector_id"],
-            "version": int(r["version"]),
-            "confidence_by_domain": r["confidence_by_domain"],
-            "communication_style": r["communication_style"],
-            "current_bearing": r["current_bearing"],
-            "emotional_baseline": r["emotional_baseline"],
-            "updated_at": r["updated_at"],
-        }
-        for r in rows
-    ]
+    return [_personality_vector_from_row(r) for r in rows]
 
 
 def _ensure_cognitive_taste_profile_table(conn: sqlite3.Connection) -> None:

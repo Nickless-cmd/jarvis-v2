@@ -605,6 +605,12 @@ def select_relevant_decisions(
 
     if not har_kontekst:
         if _gav_kontekst:
+            # Spor til drift: uden dette kan «gaten afviste» kun maales i en
+            # test, aldrig i den koerende proces — prompt-linjen gemmes ikke.
+            logger.info(
+                "relevans-gate: basis=no-signal valgt=0/%d ctx=%r",
+                len(alle), str(context_text or "")[:80],
+            )
             return []
         valgte = sorted(alle, key=lambda d: -int(d.get("priority") or 0))[:max_items]
         for d in valgte:
@@ -617,6 +623,10 @@ def select_relevant_decisions(
                 "tool_hit": [],
                 "dir_hit": [],
             }
+        logger.info(
+            "relevans-gate: basis=priority-fallback valgt=%d/%d (ingen kontekst givet)",
+            len(valgte), len(alle),
+        )
         return valgte
 
     freq = _ord_frekvens(alle)
@@ -664,6 +674,10 @@ def select_relevant_decisions(
             break
     for d in valgte:
         d["_selection_basis"] = "relevance"
+    logger.info(
+        "relevans-gate: basis=relevance valgt=%d/%d ctx_ord=%s",
+        len(valgte), len(alle), sorted(_kontekst_ord)[:6],
+    )
     return valgte
 
 

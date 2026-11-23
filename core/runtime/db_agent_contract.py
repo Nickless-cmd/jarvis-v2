@@ -27,7 +27,14 @@ LEGACY_UNSCOPED = "legacy_unscoped"
 CONTRACT_VERSION = "agent-contract-v1"
 
 ASSIGNMENT_OPEN = frozenset({"queued", "active", "waiting"})
-ASSIGNMENT_TERMINAL = frozenset({"completed", "failed", "cancelled", "timed_out"})
+# 23/11-2026: `declined` ER terminal. Et barn der selv melder «jeg kunne ikke
+# levere» har leveret sit svar — det er afsluttet, ikke aabent — men det er
+# ikke `completed`. Maalt foer fixet: run-261e8bddae6c424f bar
+# `status=declined`/`AGENT_DECLINED`, mens ASSIGNMENTET stod `completed`:
+# signalet doede praecis paa det lag foraelderen laeser. Uden denne linje kan
+# `commit_terminal_outcome(status="declined")` slet ikke kaldes — den afvises
+# med INVALID_TRANSITION, og den eneste vej tilbage er at lyve om udfaldet.
+ASSIGNMENT_TERMINAL = frozenset({"completed", "failed", "cancelled", "timed_out", "declined"})
 RESULT_TYPE = "agent_result"
 DELIVERY_STATES = ("accepted", "delivered", "claimed_by_model_step", "acknowledged")
 
@@ -544,6 +551,10 @@ def get_assignment(*, assignment_id: str, owner_user_id: str) -> dict[str, Any] 
 # slutresultat (§6), og saettes derfor ikke her.
 _SETTLING = {"completed": "completed", "failed": "failed",
              "cancelled": "cancelled", "expired": "timed_out",
+             # 23/11-2026: et run der erklaerede at det ikke kunne levere er
+             # ikke `completed`. Se `settle_agent_status`, hvor `target`
+             # overstyres naar runnets egen kode er `AGENT_DECLINED`.
+             "declined": "declined",
              # en persistent agent gaar til `scheduled` naar en aktivering er faerdig (G, §12.1)
              "scheduled": "completed"}
 _ERROR_PHASE = {"failed": "model", "cancelled": "recovery", "expired": "budget",
@@ -551,9 +562,12 @@ _ERROR_PHASE = {"failed": "model", "cancelled": "recovery", "expired": "budget",
                 # `expired` hertil), men manglede som noegle — saa et opslag paa den
                 # terminale status gav ("", "") i stedet for en fase. Maalt: en
                 # QUEUE_DEADLINE-raekke stod med en tom etikette.
-                "timed_out": "budget"}
+                "timed_out": "budget",
+                # 23/11-2026: samme hull, ny status. `declined` er nu terminal,
+                # saa et opslag paa den maa ikke give en tom fase.
+                "declined": "capability"}
 _ERROR_CODE = {"failed": "AGENT_FAILED", "cancelled": "CANCELLED", "expired": "TIMED_OUT",
-               "timed_out": "TIMED_OUT"}
+               "timed_out": "TIMED_OUT", "declined": "AGENT_DECLINED"}
 
 #: Koder der beskriver at ASSIGNMENTET blev lukket — ikke hvorfor det fejlede.
 #: `RUN_ORPHANED` skrives af `close_orphan_runs` naar assignmentet var terminalt foer
@@ -1143,6 +1157,31 @@ def settle_agent_status(*, agent_id: str, registry_status: str) -> dict[str, Any
         full=full, registry_status=registry_status,
         run_error_code=_run_kode, run_error_phase=_run_fase,
         last_error=str(agent["last_error"] or ""))
+    # 23/11-2026: et run der SELV meldte at det ikke kunne levere maa ikke lukke
+    # sit assignment som `completed`.
+    #
+    # To huller, ikke ét. (a) `target` kom udelukkende fra
+    # `_SETTLING[registry_status]`, og registry-status er `completed` fordi
+    # agenten svarede — saa barnets egen dom naaede aldrig udfaldet. (b) Værre:
+    # kontrakt-vejen spurgte ALDRIG `decline_error`. Den blev kun kaldt i
+    # `agent_runtime_spawn`, og DEN vej lukker ikke assignments — saa paa den vej
+    # der faktisk afgoer udfaldet fandtes detektoren slet ikke.
+    #
+    # Maalt foer fixet: 20 af 165 runs over 7 dage erklaerede selv nul leverance
+    # og stod alligevel `completed` med tom fejlkode. Skarpest
+    # `run-261e8bddae6c424f`: runnet bar `status=declined`/`AGENT_DECLINED`,
+    # assignmentet stod `completed`.
+    #
+    # Placeringen er bevidst: kun naar der IKKE findes en observeret aarsag.
+    # Hierarkiet fra `partial_delivery_error` bevares — markering, runnets egen
+    # kode og infrastruktur er RUNTIME-maalte fakta og vejer tungere end barnets
+    # egen fortolkning.
+    if not _error_code:
+        _decl_kode, _decl_fase = decline_error(text=full)
+        if _decl_kode:
+            _error_code, _error_phase = _decl_kode, _decl_fase
+    if _error_code == "AGENT_DECLINED":
+        target = "declined"
     owner = conn.execute("SELECT owner_user_id FROM agent_assignments WHERE assignment_id=?",
                          (a["assignment_id"],)).fetchone()["owner_user_id"]
     # Resultatfilen faerdiggoeres FOER den terminale DB-transaktion (§9).

@@ -96,7 +96,11 @@ def resume_decided(start) -> list[dict[str, str]]:
     for row in appr.decided_parked():
         st = conn.execute("SELECT status FROM agent_assignments WHERE assignment_id=?",
                           (row["assignment_id"],)).fetchone()
-        if st is None or st["status"] in ("completed", "failed", "cancelled", "timed_out"):
+        if st is None or st["status"] in ("completed", "failed", "cancelled", "timed_out",
+                                          # 23/11-2026: `declined` er terminal — ellers
+                                          # blev et parkeret checkpoint holdt i live for
+                                          # et assignment der for laengst var afgjort.
+                                          "declined"):
             conn.execute("UPDATE agent_checkpoints SET status='discarded' WHERE assignment_id=? AND status='parked'",
                          (row["assignment_id"],))
             # Run-raekken maa ikke blive staaende i waiting_for_approval naar assignmentet

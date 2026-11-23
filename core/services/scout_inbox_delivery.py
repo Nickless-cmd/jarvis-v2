@@ -18,7 +18,12 @@ def record_scout_completion(surface: dict[str, object]) -> bool:
             or str(surface.get("tool_policy") or "") not in _SCOUT_POLICIES):
         return False
     status = str(surface.get("status") or "")
-    if status not in {"completed", "failed", "blocked", "expired"}:
+    # 23/11-2026: `declined` ER en afsluttet leverance og skal i indbakken.
+    # Uden den faldt et barn der svarede «jeg kunne ikke levere» ud af denne
+    # funktion og efterlod INTET — hverken svar eller grund. Det er praecis den
+    # pris `decline_error` blev bygget for at undgaa: status maa ikke koste
+    # leverancen.
+    if status not in {"completed", "failed", "blocked", "expired", "declined"}:
         return False
     context = surface.get("context") or {}
     if not isinstance(context, dict):
@@ -35,7 +40,12 @@ def record_scout_completion(surface: dict[str, object]) -> bool:
     goal = " ".join(str(surface.get("goal") or "").split())[:180]
     summary = " ".join(str(run.get("output_summary") or surface.get("last_error")
                            or "").split())[:450]
-    label = "Scout færdig" if status == "completed" else "Scout fejlede"
+    # 23/11-2026: `declined` er hverken «færdig» eller «fejlede» — barnet
+    # svarede, men erklærede at det ikke kunne levere. Etiketten skal sige det,
+    # ellers laeser modtageren et fejlsignal hvor der ligger et svar.
+    label = ("Scout færdig" if status == "completed"
+             else "Scout kunne ikke levere" if status == "declined"
+             else "Scout fejlede")
     # 27/10-2026: her stod «Hent hele svaret med get_agent(agent_id=…)» — men der
     # findes intet `get_agent`-vaerktoej (grep over core/ og apps/ gav nul). Pekeren
     # var doed, og `output_sti` blev aldrig sat, saa posten havde ingen vej til

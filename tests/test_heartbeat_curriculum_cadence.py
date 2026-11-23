@@ -168,6 +168,11 @@ def test_desk_kadencen_kalder_record_uden_manuelt_kald(tmp_path, monkeypatch):
     monkeypatch.setattr(cad, "_spawn", lambda fn: fn())  # synkront i testen
     kald: list[int] = []
     monkeypatch.setattr(drc, "record", lambda **kw: kald.append(1) or {"measured": True, "ok": True})
+    # 23/11-2026: kadencen kalder NU ogsaa pacing-maalingen (underdomaenerne).
+    # Uden denne patch koerer den aegte vitest-suite i testen (~45 s) og timer ud.
+    from core.services import desk_pacing_capability as dpc
+
+    monkeypatch.setattr(dpc, "record", lambda **kw: {"ok": True, "skrevet": {}})
 
     t0 = datetime(2026, 11, 20, 4, 0, tzinfo=UTC)
     assert cad.tick_desk_measurement_cadence(now=t0) == {"started": True, "at": t0.isoformat(timespec="seconds")}

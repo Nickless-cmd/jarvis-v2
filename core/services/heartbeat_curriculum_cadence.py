@@ -164,6 +164,30 @@ def _maal_desk() -> None:
         )
     except Exception:
         logger.warning("desk measurement failed", exc_info=True)
+
+    # Pacing-maalingen (23/11-2026) er en SEPARAT koersel med vilje: den samlede
+    # flade maales paa hele suiten (481 filer), mens underdomaenerne maales paa
+    # maalefilerne alene. Maalt 23/11 fejlede rytme-testen i den fulde suite
+    # (530 ms mod en graense paa 100) og bestod isoleret — belastning, ikke evne.
+    # De to maalinger deler derfor ikke koersel, og en fejl i den ene maa ikke
+    # forhindre den anden.
+    try:
+        from core.services import desk_pacing_capability
+
+        pacing = desk_pacing_capability.record()
+        skrevet = [
+            navn
+            for navn, u in (pacing.get("skrevet") or {}).items()
+            if u.get("recorded")
+        ]
+        logger.info(
+            "desk pacing measurement: ok=%s domaener=%d skrevet=%s",
+            pacing.get("ok"),
+            len(pacing.get("domaener") or {}),
+            skrevet,
+        )
+    except Exception:
+        logger.warning("desk pacing measurement failed", exc_info=True)
     finally:
         _desk_lock.release()
 

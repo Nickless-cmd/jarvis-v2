@@ -494,6 +494,16 @@ _Desire daemon — emergent appetites based on Jarvis' actual experiences._
 | function | `_build_raw_appetite_label` | `(spawning_type)` | Byg label udelukkende fra rå intensiteter — ingen LLM. | [src](../../../core/services/desire_daemon.py#L242) |
 | function | `_generate_appetite_label` | `(signal_text, appetite_type)` | — | [src](../../../core/services/desire_daemon.py#L260) |
 
+## `core/services/desk_pacing_capability.py`
+_Pacing- og rytme-domænerne — fra skøn til måling._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_json_runner` | `(timeout_s)` | Kør målefilerne med BÅDE text- og JSON-reporter. | [src](../../../core/services/desk_pacing_capability.py#L112) |
+| function | `parse_maalinger` | `(data)` | Aggreger vitest-JSON til ét resultat pr. domæne. Ren funktion. | [src](../../../core/services/desk_pacing_capability.py#L150) |
+| function | `measure` | `(*, runner=…, timeout_s=…)` | Kør målingen. Skriver intet. | [src](../../../core/services/desk_pacing_capability.py#L220) |
+| function | `record` | `(*, runner=…, timeout_s=…)` | Mål og skriv hvert domæne ind. Ét kald = op til fire målte sandheder. | [src](../../../core/services/desk_pacing_capability.py#L258) |
+
 ## `core/services/desk_render_capability.py`
 _Desk render capabilities — fra gæt til måling._
 
@@ -556,15 +566,4 @@ _Desperation Awareness — self-noticing safety signal._
 | function | `_quote` | `(text)` | — | [src](../../../core/services/development_focus_tracking.py#L528) |
 | function | `_slug` | `(value)` | — | [src](../../../core/services/development_focus_tracking.py#L535) |
 | function | `_now_iso` | `()` | — | [src](../../../core/services/development_focus_tracking.py#L540) |
-
-## `core/services/development_narrative_daemon.py`
-_Development narrative daemon — daily LLM narrative about how Jarvis has changed._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_development_narrative_daemon` | `()` | Generate a daily development narrative if cadence allows. | [src](../../../core/services/development_narrative_daemon.py#L16) |
-| function | `_generate_narrative` | `()` | — | [src](../../../core/services/development_narrative_daemon.py#L33) |
-| function | `_store_narrative` | `(narrative)` | — | [src](../../../core/services/development_narrative_daemon.py#L71) |
-| function | `get_latest_development_narrative` | `()` | — | [src](../../../core/services/development_narrative_daemon.py#L100) |
-| function | `build_development_narrative_surface` | `()` | — | [src](../../../core/services/development_narrative_daemon.py#L104) |
 

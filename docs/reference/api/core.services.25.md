@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/runtime_guard.py`
+_Vagt: rejs `jarvis-runtime` når den er død._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nu` | `()` | — | [src](../../../core/services/runtime_guard.py#L97) |
+| function | `probe_health` | `(port=…, timeout=…)` | Svarer runtime'ens `/health`? Netværksfejl betyder NEJ, ikke «ved det ikke». | [src](../../../core/services/runtime_guard.py#L101) |
+| function | `systemd_tilstand` | `(service=…)` | `active`, `inactive`, `activating`, `deactivating` eller `unknown`. | [src](../../../core/services/runtime_guard.py#L117) |
+| function | `beslut` | `(aktiv, sund)` | Ren beslutningsfunktion — ingen I/O, så den kan testes uden systemd. | [src](../../../core/services/runtime_guard.py#L135) |
+| function | `_laes_state` | `()` | — | [src](../../../core/services/runtime_guard.py#L161) |
+| function | `_skriv_state` | `(state)` | — | [src](../../../core/services/runtime_guard.py#L168) |
+| function | `_log` | `(linje)` | Skriv ALTID en linje — også ved «alt er fint». | [src](../../../core/services/runtime_guard.py#L178) |
+| function | `_varsl` | `(besked, titel, *, state, noegle)` | Send til Bjørns telefon — men ikke oftere end cooldown tillader. | [src](../../../core/services/runtime_guard.py#L192) |
+| function | `_rejs` | `(handling, service=…)` | Kør systemctl. `sudo -n` fordi oneshot-servicen ikke må hænge på en prompt. | [src](../../../core/services/runtime_guard.py#L219) |
+| function | `tjek_og_rejs` | `(*, tør_handle=…)` | Én kørsel af vagten. Returnerer hvad den så og hvad den gjorde. | [src](../../../core/services/runtime_guard.py#L235) |
+| function | `main` | `()` | Entry point for oneshot-servicen. Exit 0 uanset — en vagt må ikke crashe. | [src](../../../core/services/runtime_guard.py#L357) |
+
 ## `core/services/runtime_hook_runtime.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -699,17 +716,4 @@ _Rig selv-model-distiller (#4, b + 2 guards) — genopliver validerings-ROLLEN._
 | function | `distill_self_model` | `(*, trigger=…)` | Distillér en rig selv-model + anti-flatten-guard + skriv (kun hvis ikke tyndere). Self-safe. | [src](../../../core/services/self_model_distiller.py#L129) |
 | function | `run_self_model_distill_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-indgang (GUARD 2: langsom rytme). Self-safe. | [src](../../../core/services/self_model_distiller.py#L197) |
 | function | `register_self_model_distiller_producer` | `()` | Registrér distilleren som DAGLIG cadence-producer (GUARD 2). Identitet er stabil. | [src](../../../core/services/self_model_distiller.py#L202) |
-
-## `core/services/self_model_history.py`
-_Selv-modellens oejebliksbilleder, versioneret saa de kan SAMMENLIGNES._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/self_model_history.py#L46) |
-| function | `content_hash` | `(felter)` | Deterministisk hash over INDHOLDET alene. | [src](../../../core/services/self_model_history.py#L73) |
-| function | `_row` | `(r)` | — | [src](../../../core/services/self_model_history.py#L79) |
-| function | `record_self_model_snapshot` | `(*, identity_focus, preferred_work_mode, recurring_tension, growth_direction, confidence, source=…, source_run_id=…, model_epoch_id=…, producer_trigger=…, created_at=…)` | Skriv ét billede og kaed det til det forrige. | [src](../../../core/services/self_model_history.py#L94) |
-| function | `list_self_model_snapshots` | `(*, limit=…, before=…, after=…)` | Nyeste foerst. `before`/`after` afgraenser paa tidsstempel. | [src](../../../core/services/self_model_history.py#L151) |
-| function | `compare_self_model_snapshots` | `(older_id, newer_id)` | Hvad aendrede sig mellem to billeder? | [src](../../../core/services/self_model_history.py#L169) |
-| function | `build_self_model_history_surface` | `(*, limit=…)` | Fladen: de seneste billeder, og hvad der skiftede mellem de to nyeste. | [src](../../../core/services/self_model_history.py#L202) |
 

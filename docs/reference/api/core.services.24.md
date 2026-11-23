@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/retry_admissibility.py`
+_Et ukendt udfald maa aldrig gentages automatisk — Fase 3, K7._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Dom` | `` | — | [src](../../../core/services/retry_admissibility.py#L43) |
+| function | `_er_beviseligt_uskadeligt` | `(tool_name)` | Kun `read_only` — og kun naar den er ERKLAERET, ikke gaettet. | [src](../../../core/services/retry_admissibility.py#L49) |
+| function | `may_auto_retry` | `(tool_name, arguments)` | Maa dette kald gentages AUTOMATISK — uden at et menneske ser paa det? | [src](../../../core/services/retry_admissibility.py#L59) |
+| function | `advar_hvis_gentagelse` | `(tool_name, arguments)` | Sig hoejt at dette kald gentager noget med ukendt udfald. | [src](../../../core/services/retry_admissibility.py#L86) |
+
 ## `core/services/retry_runtime.py`
 _`RetryRuntime` — genforsøg som en BEGRÆNSET beslutning, ikke en refleks._
 
@@ -643,21 +653,4 @@ _Cognitive conductor — Jarvis' bounded mental state assembler._
 | function | `list_flows` | `(*, status=…, task_id=…, limit=…)` | — | [src](../../../core/services/runtime_flows.py#L48) |
 | function | `update_flow` | `(flow_id, *, status=…, current_step=…, step_state=…, plan=…, next_action=…, last_error=…, attempt_count=…)` | — | [src](../../../core/services/runtime_flows.py#L68) |
 | function | `_decode_flow` | `(flow)` | — | [src](../../../core/services/runtime_flows.py#L103) |
-
-## `core/services/runtime_guard.py`
-_Vagt: rejs `jarvis-runtime` når den er død._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_nu` | `()` | — | [src](../../../core/services/runtime_guard.py#L97) |
-| function | `probe_health` | `(port=…, timeout=…)` | Svarer runtime'ens `/health`? Netværksfejl betyder NEJ, ikke «ved det ikke». | [src](../../../core/services/runtime_guard.py#L101) |
-| function | `systemd_tilstand` | `(service=…)` | `active`, `inactive`, `activating`, `deactivating` eller `unknown`. | [src](../../../core/services/runtime_guard.py#L117) |
-| function | `beslut` | `(aktiv, sund)` | Ren beslutningsfunktion — ingen I/O, så den kan testes uden systemd. | [src](../../../core/services/runtime_guard.py#L135) |
-| function | `_laes_state` | `()` | — | [src](../../../core/services/runtime_guard.py#L161) |
-| function | `_skriv_state` | `(state)` | — | [src](../../../core/services/runtime_guard.py#L168) |
-| function | `_log` | `(linje)` | Skriv ALTID en linje — også ved «alt er fint». | [src](../../../core/services/runtime_guard.py#L178) |
-| function | `_varsl` | `(besked, titel, *, state, noegle)` | Send til Bjørns telefon — men ikke oftere end cooldown tillader. | [src](../../../core/services/runtime_guard.py#L192) |
-| function | `_rejs` | `(handling, service=…)` | Kør systemctl. `sudo -n` fordi oneshot-servicen ikke må hænge på en prompt. | [src](../../../core/services/runtime_guard.py#L219) |
-| function | `tjek_og_rejs` | `(*, tør_handle=…)` | Én kørsel af vagten. Returnerer hvad den så og hvad den gjorde. | [src](../../../core/services/runtime_guard.py#L235) |
-| function | `main` | `()` | Entry point for oneshot-servicen. Exit 0 uanset — en vagt må ikke crashe. | [src](../../../core/services/runtime_guard.py#L357) |
 

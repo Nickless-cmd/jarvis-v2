@@ -172,3 +172,44 @@ def test_sporet_foelger_husets_state_mappe(
     monkeypatch.setattr(state_store, "_STATE_DIR", Path(str(tmp_path)))
     assert cm._ledger_path().parent == Path(str(tmp_path))
 
+
+
+# ─── fjern_domaene (23/11-2026) ────────────────────────────────────────
+
+
+def test_fjernelse_kraever_bevis(isolated_runtime) -> None:
+    """At fjerne en selvmodel-noegle er en mutation — den maa ikke vaere en loes paastand."""
+    svar = cm.fjern_domaene("opfundet-navn", evidence="")
+    assert svar["removed"] is False
+    assert "bevis" in svar["reason"]
+
+
+def test_fjernelse_af_ukendt_domaene_er_en_no_op(isolated_runtime) -> None:
+    svar = cm.fjern_domaene("findes-slet-ikke-xyz", evidence="testbevis")
+    assert svar["removed"] is False
+    assert "findes ikke" in svar["reason"]
+
+
+def test_fjernelse_fjerner_noeglen_og_skriver_correction(isolated_runtime) -> None:
+    """Et fjernet navn maa ikke kunne genopstaa som «maalt»."""
+    import json as _json
+
+    from core.runtime.db_cognitive import (
+        get_latest_cognitive_personality_vector,
+        upsert_cognitive_personality_vector,
+    )
+
+    upsert_cognitive_personality_vector(
+        confidence_by_domain=_json.dumps({"spogelses-domæne": 0.4})
+    )
+    svar = cm.fjern_domaene("spogelses-domæne", evidence="nul referencer i repoet")
+    assert svar["removed"] is True
+    assert svar["before"] == 0.4
+
+    efter = _json.loads(
+        str(get_latest_cognitive_personality_vector().get("confidence_by_domain") or "{}")
+    )
+    assert "spogelses-domæne" not in efter, "noeglen skal vaere vaek"
+    assert "spogelses-domæne" not in cm.maalte_vaerdier(), (
+        "en correction er ikke en maaling — navnet maa ikke staa som maalt"
+    )

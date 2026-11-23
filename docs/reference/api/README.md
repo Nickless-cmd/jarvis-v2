@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 19090 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 19095 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -42,28 +42,28 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 19090 functions/
 - [`core.services.08`](core.services.08.md) — `central_trinity` … `chronicle_consolidation_brief_tracking`
 - [`core.services.09`](core.services.09.md) — `chronicle_consolidation_proposal_tracking` … `consent_registry`
 - [`core.services.10`](core.services.10.md) — `consolidation_judge_daemon` … `curiosity_hypothesis_debt`
-- [`core.services.11`](core.services.11.md) — `current_pull` … `development_narrative_daemon`
-- [`core.services.12`](core.services.12.md) — `development_ritual` … `effective_policy`
-- [`core.services.13`](core.services.13.md) — `efterladt_run_vagt` … `experiential_runtime_context`
-- [`core.services.14`](core.services.14.md) — `experiment_runner` … `gate_truth`
-- [`core.services.15`](core.services.15.md) — `gate_verdict_ledger` … `heartbeat_scheduler`
-- [`core.services.16`](core.services.16.md) — `hentede_vaerktoejer` … `internal_cadence_core`
-- [`core.services.17`](core.services.17.md) — `internal_cadence_inner_life` … `longing_signal_daemon`
-- [`core.services.18`](core.services.18.md) — `loop_runtime` … `meta_reflection_daemon`
-- [`core.services.19`](core.services.19.md) — `metabolism_state_signal_tracking` … `oauth_store`
-- [`core.services.20`](core.services.20.md) — `offline_recomposition_engine` … `plugin_ruleset_store`
-- [`core.services.21`](core.services.21.md) — `policy_abstraction` … `prompt_evolution`
-- [`core.services.22`](core.services.22.md) — `prompt_evolution_runtime` … `reasoning_prefilter`
-- [`core.services.23`](core.services.23.md) — `reasoning_store` … `retry_admissibility`
-- [`core.services.24`](core.services.24.md) — `retry_runtime` … `runtime_guard`
-- [`core.services.25`](core.services.25.md) — `runtime_hook_runtime` … `self_model_history`
-- [`core.services.26`](core.services.26.md) — `self_model_predictive` … `session_tool_pin`
-- [`core.services.27`](core.services.27.md) — `session_tool_scope` … `smith_confrontation`
-- [`core.services.28`](core.services.28.md) — `smith_noise_veto` … `temporal_rhythm`
-- [`core.services.29`](core.services.29.md) — `temporal_self_continuity` … `tool_usage_store`
-- [`core.services.30`](core.services.30.md) — `tool_world_change` … `visible_followup_adapters`
-- [`core.services.31`](core.services.31.md) — `visible_followup_events` … `visible_runs_watchdog`
-- [`core.services.32`](core.services.32.md) — `visible_self_state_summary` … `world_model_signal_tracking`
+- [`core.services.11`](core.services.11.md) — `current_pull` … `development_focus_tracking`
+- [`core.services.12`](core.services.12.md) — `development_narrative_daemon` … `edit_checkpoint`
+- [`core.services.13`](core.services.13.md) — `effective_policy` … `experiential_memory`
+- [`core.services.14`](core.services.14.md) — `experiential_runtime_context` … `gate_skill`
+- [`core.services.15`](core.services.15.md) — `gate_truth` … `heartbeat_runtime_providers`
+- [`core.services.16`](core.services.16.md) — `heartbeat_scheduler` … `internal_cadence_central_wiring`
+- [`core.services.17`](core.services.17.md) — `internal_cadence_core` … `long_horizon_goals`
+- [`core.services.18`](core.services.18.md) — `longing_signal_daemon` … `meta_learning_retrospective`
+- [`core.services.19`](core.services.19.md) — `meta_reflection_daemon` … `oauth_flow`
+- [`core.services.20`](core.services.20.md) — `oauth_store` … `plugin_ruleset`
+- [`core.services.21`](core.services.21.md) — `plugin_ruleset_store` … `prompt_dynamic_tail_layout`
+- [`core.services.22`](core.services.22.md) — `prompt_evolution` … `reasoning_interceptor`
+- [`core.services.23`](core.services.23.md) — `reasoning_prefilter` … `retention_coverage`
+- [`core.services.24`](core.services.24.md) — `retry_admissibility` … `runtime_flows`
+- [`core.services.25`](core.services.25.md) — `runtime_guard` … `self_model_distiller`
+- [`core.services.26`](core.services.26.md) — `self_model_history` … `session_titling`
+- [`core.services.27`](core.services.27.md) — `session_tool_pin` … `skill_security_scanner`
+- [`core.services.28`](core.services.28.md) — `smith_confrontation` … `temporal_recurrence_signal_tracking`
+- [`core.services.29`](core.services.29.md) — `temporal_rhythm` … `tool_tagger`
+- [`core.services.30`](core.services.30.md) — `tool_usage_store` … `visible_followup`
+- [`core.services.31`](core.services.31.md) — `visible_followup_adapters` … `visible_runs_sse_v2`
+- [`core.services.32`](core.services.32.md) — `visible_runs_watchdog` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

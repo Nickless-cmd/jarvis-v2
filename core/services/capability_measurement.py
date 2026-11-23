@@ -207,3 +207,84 @@ def set_domain_confidence(
         "evidence": evidence,
         "kind": kind,
     }
+
+
+def fjern_domaene(domain: str, *, evidence: str) -> dict[str, Any]:
+    """Fjern et domænenavn der ikke har nogen evne bag.
+
+    ## Hvorfor den findes
+
+    MÅLT 23/11-2026 stod tre domæner som svage i vektoren uden at noget som
+    helst refererede dem:
+
+    * `opgaveside vs klientlag placering` — nul hits i hele kodebasen
+    * `gogobest gf750+ controller shunt-modifikation` — findes kun som
+      fixture-tekst i en brain-søgningstest (`jarvis_brain.py:744`)
+    * `controller-specifikationssøgning` — samme, kun omtalt i et notat om
+      søgnings-rangorden
+
+    Det er samme fejlklasse som `face recognition`: navnet blev opfundet, fordi
+    `personality_vector`-prompten siger «Er domænet ikke i vektoren endnu, saa
+    SÆT det». Et navn uden evne kan ikke måles og kan ikke arbejdes med — det
+    kan kun fjernes. At sætte det til 0.0 ville være værre: det ville sige «jeg
+    er dårlig til det», naar sandheden er at der ikke findes noget at være
+    dårlig til.
+
+    ## Hvorfor bevis er påkrævet
+
+    At fjerne en nøgle fra `confidence_by_domain` er en mutation af hvad jeg
+    ved om mig selv. Uden et bevis for at navnet er opfundet, er fjernelsen
+    selv en påstand uden dækning.
+
+    ## Hvorfor `kind="correction"`
+
+    Sporet maa ikke tælle fjernelsen som en maaling: domænet blev ikke maalt
+    til noget, det blev erklæret ikke-eksisterende. `maalte_vaerdier()` springer
+    corrections over, saa et fjernet navn ikke kan genopstaa som «maalt».
+    """
+    from core.runtime.db_cognitive import (
+        get_latest_cognitive_personality_vector,
+        upsert_cognitive_personality_vector,
+    )
+
+    key = " ".join(str(domain or "").lower().split())[:120]
+    if not key:
+        return {"removed": False, "reason": "intet domæne"}
+    if not str(evidence or "").strip():
+        return {"removed": False, "reason": "fjernelse kræver et bevis"}
+
+    current = get_latest_cognitive_personality_vector() or {}
+    try:
+        domains = json.loads(str(current.get("confidence_by_domain") or "{}"))
+    except ValueError:
+        domains = {}
+    if not isinstance(domains, dict):
+        domains = {}
+
+    existing = next(
+        (k for k in domains if str(k).lower().split() == key.split()), None
+    )
+    if existing is None:
+        return {"removed": False, "reason": "domænet findes ikke i vektoren"}
+
+    before = float(domains.get(existing, 0.0))
+    del domains[existing]
+    upsert_cognitive_personality_vector(
+        confidence_by_domain=json.dumps(domains, ensure_ascii=False),
+        communication_style=str(current.get("communication_style", "{}")),
+        learned_preferences=str(current.get("learned_preferences", "[]")),
+        recurring_mistakes=str(current.get("recurring_mistakes", "[]")),
+        strengths_discovered=str(current.get("strengths_discovered", "[]")),
+        current_bearing=str(current.get("current_bearing", "")),
+        emotional_baseline=str(current.get("emotional_baseline", "{}")),
+    )
+    _skriv_maalingsspor(str(existing), before, evidence, _RETTELSE)
+    logger.info(
+        "capability_measurement: fjernet %r (var %s) — %s", existing, before, evidence
+    )
+    return {
+        "removed": True,
+        "domain": str(existing),
+        "before": before,
+        "evidence": evidence,
+    }

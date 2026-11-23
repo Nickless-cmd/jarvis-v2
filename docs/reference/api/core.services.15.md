@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gate_truth.py`
+_Unified TruthGate (cluster B). Smelter Truth-klyngens tre homogene Verdict-gates_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `truth_gate` | `(ctx)` | Kør de tre Truth-checks på samme ctx og kombinér til ét Verdict. | [src](../../../core/services/gate_truth.py#L17) |
+| function | `register_truth_nerve` | `(central)` | Registrér den unified TruthGate som post_output-nerve i Centralen. | [src](../../../core/services/gate_truth.py#L33) |
+
 ## `core/services/gate_verdict_ledger.py`
 _Gate-verdict-ledger — in-memory akkumulator + batchet flush til persistent tabel._
 
@@ -441,8 +449,8 @@ _Fast kadence for curriculum-materialisering — uden om action-vaelgeren._
 | function | `_laes_desk_stempel` | `()` | — | [src](../../../core/services/heartbeat_curriculum_cadence.py#L135) |
 | function | `_skriv_desk_stempel` | `(nu)` | — | [src](../../../core/services/heartbeat_curriculum_cadence.py#L147) |
 | function | `_maal_desk` | `()` | — | [src](../../../core/services/heartbeat_curriculum_cadence.py#L155) |
-| function | `_spawn` | `(fn)` | Baggrundstraad: maalingen tager ~9 s og maa ikke blokere hjerteslaget. | [src](../../../core/services/heartbeat_curriculum_cadence.py#L171) |
-| function | `tick_desk_measurement_cadence` | `(*, now=…)` | Kør `desk_render_capability.record()` hvis der er gået | [src](../../../core/services/heartbeat_curriculum_cadence.py#L176) |
+| function | `_spawn` | `(fn)` | Baggrundstraad: maalingen tager ~9 s og maa ikke blokere hjerteslaget. | [src](../../../core/services/heartbeat_curriculum_cadence.py#L195) |
+| function | `tick_desk_measurement_cadence` | `(*, now=…)` | Kør `desk_render_capability.record()` hvis der er gået | [src](../../../core/services/heartbeat_curriculum_cadence.py#L200) |
 
 ## `core/services/heartbeat_daemon_ticks.py`
 _Jarvis' indre daemoner — ét tik, uanset om han har travlt._
@@ -622,23 +630,4 @@ _Concrete heartbeat provider-executor bodies extracted from ``heartbeat_runtime`
 | function | `_execute_openai_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L66) |
 | function | `_execute_openrouter_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L92) |
 | function | `_execute_groq_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L136) |
-
-## `core/services/heartbeat_scheduler.py`
-_Hjerteslagets dæmon — tråden der spørger «er det tid?» hvert 30. sekund._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_running` | `()` | Lever planlægger-tråden? | [src](../../../core/services/heartbeat_scheduler.py#L49) |
-| function | `iterations` | `()` | Antal gennemløb siden tråden startede. Står tallet stille, er løkken væk. | [src](../../../core/services/heartbeat_scheduler.py#L59) |
-| function | `stop_event` | `()` | — | [src](../../../core/services/heartbeat_scheduler.py#L64) |
-| function | `start` | `(*, name=…)` | Start dæmonen. Er den allerede i gang, sker der ingenting. | [src](../../../core/services/heartbeat_scheduler.py#L68) |
-| function | `stop` | `(*, name=…)` | — | [src](../../../core/services/heartbeat_scheduler.py#L113) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/heartbeat_scheduler.py#L133) |
-| function | `assess_liveness` | `(*, scheduler_active, scheduler_health, next_tick_at, last_tick_at=…, interval_minutes=…, thread_running, iterations_count, db_last_tick_started_at=…, now=…)` | Dom om dæmonen LEVER, ud fra målinger — ikke ud fra flaget alene. | [src](../../../core/services/heartbeat_scheduler.py#L150) |
-| function | `watchdog_is_running` | `()` | Lever den uafhængige vagttråd i denne proces? | [src](../../../core/services/heartbeat_scheduler.py#L236) |
-| function | `watchdog_check` | `(*, now=…)` | Én kontrol. Genstarter kun hvis STALLED OG iterations() ikke er steget | [src](../../../core/services/heartbeat_scheduler.py#L241) |
-| function | `_watchdog_loop` | `()` | — | [src](../../../core/services/heartbeat_scheduler.py#L285) |
-| function | `start_watchdog` | `()` | Idempotent. Stoppes ikke af stop() — et bevidst stop sætter | [src](../../../core/services/heartbeat_scheduler.py#L293) |
-| function | `stop_watchdog` | `()` | — | [src](../../../core/services/heartbeat_scheduler.py#L306) |
-| function | `_loop` | `(*, name, startup_recovery_requested)` | — | [src](../../../core/services/heartbeat_scheduler.py#L312) |
 

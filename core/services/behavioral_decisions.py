@@ -73,8 +73,12 @@ def _spor_gate(
             "basis": basis,
             "valgt": int(valgt),
             "ialt": int(ialt),
-            "ctx": str(ctx or "")[:160],
-            "ord": list(ord_ or [])[:8],
+            # 400 tegn, ikke 160 (24/11-2026): den foerste driftslinje kunne
+            # ikke genskabes, fordi den afskrevne kontekst var klippet midt i en
+            # sti — og dermed manglede de ord der afgjorde valget. Et spor der
+            # ikke kan reproducere sit eget valg er ikke et spor.
+            "ctx": str(ctx or "")[:400],
+            "ord": list(ord_ or [])[:12],
         }
         if valgte:
             post["valgte"] = [
@@ -504,6 +508,15 @@ def _relevans_ord(tekst: str) -> set[str]:
     «sektionen» kan ramme.
     """
     tekst = str(tekst or "").lower()
+    # 24/11-2026 (maalt i DRIFT, ikke i en test): en filsti er ikke et signal.
+    # Heartbeats `last_action` baerer stier, og den foerste produktionslinje
+    # (21:17:39) valgte 5 af 137 paa ord fra
+    # `/tmp/pytest-of-bs/pytest-419/test_approved_sudo_exec_become0/workspaces/default/to`
+    # — 9 af 15 tokens kom fra stien alene («pytest-of-bs», «become0»,
+    # «workspaces», «default»). Det er samme fejlklasse som «active»: et token
+    # der ikke baerer en sag. Stier fjernes derfor FOER tokenisering; et ord som
+    # «chmod» uden for en sti bliver tilbage, fordi det KAN vaere en sag.
+    tekst = re.sub(r"/\S*", " ", tekst)
     ord_: set[str] = set()
     for token in re.findall(r"[a-zæøå0-9_-]{4,}", tekst):
         if token in _RELEVANS_STOPORD:

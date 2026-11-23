@@ -319,3 +319,59 @@ def test_priority_fallback_er_synlig_i_prompt_teksten(fake_beslutninger) -> None
     )
     if med_kontekst:
         assert "valgt paa priority" not in med_kontekst, "en relevansvurdering maa ikke meldes som fallback"
+
+
+def test_en_filsti_er_ikke_et_fagsignal(fake_beslutninger) -> None:
+    """Stier i konteksten maa ikke baere et valg — maalt i DRIFT, ikke i en test.
+
+    Den foerste produktionslinje (21:17:39) valgte 5 af 137 paa ord fra
+    `/tmp/pytest-of-bs/pytest-419/test_approved_sudo_exec_become0/workspaces/default/to`:
+    9 af 15 tokens kom fra stien alene. Det er samme fejlklasse som «active» —
+    et token der ikke baerer en sag, men som IDF'en alligevel giver vaegt fordi
+    det er sjaeldent i beslutningspopulationen.
+
+    Konteksten her er ordret den streng der stod i `relevans_gate.jsonl`.
+    """
+    from core.services.behavioral_decisions import _relevans_ord
+
+    drift_ctx = (
+        "sudo-exec-completed Approved bounded sudo exec blev udført for sudo "
+        "chmod 600 /tmp/pytest-of-bs/pytest-419/test_approved_sudo_exec_become0/"
+        "workspaces/default/to"
+    )
+    ord_ = _relevans_ord(drift_ctx)
+
+    for stoej in ("pytest-of-bs", "become0", "workspaces", "default", "pytest-419"):
+        assert stoej not in ord_, f"«{stoej}» er en del af en sti, ikke et signal: {sorted(ord_)}"
+
+    # Ord uden for stien skal stadig vaere der — ellers fjerner vi signal med stoej.
+    assert "chmod" in ord_ and "sudo" in ord_, f"aegte ord forsvandt: {sorted(ord_)}"
+
+
+def test_en_beslutning_kan_ikke_vinde_paa_en_sti(fake_beslutninger) -> None:
+    """Negativ gren paa stoej: en beslutning hvis ENESTE overlap er en stidel vinder ikke."""
+    from core.services import behavioral_decisions as bd
+
+    fake_beslutninger(
+        [
+            _beslutning(
+                "dec_sti",
+                "Koer pytest-of-bs i workspaces/default",
+                priority=99,
+                cue="Naar pytest-of-bs bliver oprettet",
+            ),
+            _beslutning(
+                "dec_rigtig",
+                "Verificer exec_command mod dens allowlist foer den koeres",
+                priority=60,
+                cue="Naar exec_command bliver koert",
+            ),
+        ]
+    )
+
+    valgte = bd.select_relevant_decisions(
+        max_items=5,
+        context_text="sudo chmod 600 /tmp/pytest-of-bs/pytest-419/workspaces/default/to",
+    )
+    ids = [d["decision_id"] for d in valgte]
+    assert "dec_sti" not in ids, f"en sti maatte ikke baere et valg: {ids}"

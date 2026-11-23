@@ -143,13 +143,21 @@ describe.skipIf(!KOERT)('pacer/animations-samspil', () => {
         while (performance.now() - foer < ms + 200) { serie.push(op('ord6')); await new Promise((r) => requestAnimationFrame(r)) }
         return { op6Foer, serie, textFoer, textEfter: document.getElementById('krop')!.textContent, spans: document.querySelectorAll('#krop span').length }
       }, HALE_AFVIKLING_MS)
-      const ev = (await page.evaluate(() => (window as any).__ev)) as { type: string; navn: string; ord: string; farve: string }[]
+      const ev = (await page.evaluate(() => (window as any).__ev)) as { type: string; navn: string; ord: string; farve: string; opacity: number }[]
       // Første frame efter slut: ordet findes stadig og har ikke sprunget til 1.
       expect(r.serie[0]!).toBeGreaterThanOrEqual(0)
       expect(r.serie[0]!).toBeLessThanOrEqual(1)
       expect(r.serie[0]! - r.op6Foer).toBeLessThan(0.45) // ingen pop (uden afvikling: 0.67 → 1.0)
       for (let i = 1; i < r.serie.length; i++) if (r.serie[i]! >= 0 && r.serie[i - 1]! >= 0) expect(r.serie[i]!).toBeGreaterThanOrEqual(r.serie[i - 1]! - 1e-6)
-      expect(ev.filter((e) => e.type === 'cancel' && e.ord === 'ord6')).toEqual([])
+      // MÅLT 23/11-2026: et `cancel` fyrer OGSÅ når et FÆRDIGT ord ryddes op
+      // (browseren afregistrerer animationen på elementet når ordet forlader
+      // halen). Det er ikke en afbrydelse — opacity er 1 og farven er allerede
+      // slutfarven. Det testen skal værne om er at animationen ikke bliver
+      // klippet MIDT I, så det er kriteriet: en cancel der rammer undervejs.
+      const afbrudt = ev.filter(
+        (e) => e.type === 'cancel' && e.ord === 'ord6' && (e.opacity < 0.999 || e.farve !== fg),
+      )
+      expect(afbrudt).toEqual([])
       expect(ev.filter((e) => e.type === 'end' && e.navn === 'color' && e.ord === 'ord6').length).toBe(1)
       expect(ev.find((e) => e.type === 'end' && e.navn === 'color' && e.ord === 'ord6')!.farve).toBe(fg)
       // Teksten er HELE tiden den samme (intet holdt tilbage), og til sidst er wrapperne væk.

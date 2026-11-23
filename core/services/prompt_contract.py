@@ -2150,8 +2150,23 @@ def _build_visible_chat_prompt_assembly_impl(
         # egne impulser mens han talte med Bjørn. Bjørne-drømme-initiativet blev
         # rejst 130 gange på fire måneder uden nogensinde at blive til en samtale.
         # Se initiatives_prompt_section() for hele rod-årsagen.
+        #
+        # TAIL-ANCHORED (23/11-2026) — og grunden er IKKE cachen.
+        # `_awareness_add` lyder som «præfikset», men awareness-laget flushes ind
+        # i `_dyn_tail` (se `_dyn_tail.extend(_awareness_buffer)`), altså EFTER
+        # `DYNAMIC_TAIL_SENTINEL` — samme hale som `_tail_add` skriver til.
+        # Maalt 23/11-2026 i en bygget prompt: sektionen laa paa tegn 11.479 med
+        # `_awareness_add` og 12.078 med `_tail_add`; begge efter sentinel (7.166).
+        # Flytningen er derfor cache-neutral, og en test der sammenligner
+        # praefiks-hashes kan ikke se forskellen.
+        #
+        # Den reelle forskel er BUDGETTET: awareness-laget har et loft paa
+        # `_AWARENESS_BUDGET` (6.000 tegn) og alt undtagen pinnet identitet kan
+        # evictes, mens `_tail_add` ingen budget-konkurrence har. En post han
+        # selv har rejst maa ikke tabe en pladskamp til en diagnostik-linje —
+        # den er en impuls han skal kunne tale om, ikke baggrundsstoej.
         from core.services.initiative_queue import initiatives_prompt_section
-        _awareness_add(34, "own initiatives", initiatives_prompt_section())
+        _tail_add("own initiatives", initiatives_prompt_section())
     except Exception as _e:
         _sec_err("own initiatives", _e)
     try:

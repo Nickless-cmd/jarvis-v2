@@ -58,9 +58,10 @@ def _exec_list_initiatives(_args: dict[str, Any]) -> dict[str, Any]:
 
     pending = state.get("pending", [])
     recent_acted = state.get("recent_acted", [])
+    recent_declined = state.get("recent_declined", [])
     life_projects = state.get("life_projects", [])
     lines = [
-        f"Queue: {state.get('pending_count', 0)} pending / {state.get('acted_count', 0)} acted / {state.get('expired_count', 0)} expired",
+        f"Queue: {state.get('pending_count', 0)} pending / {state.get('acted_count', 0)} acted / {state.get('declined_count', 0)} declined / {state.get('expired_count', 0)} expired",
         f"Capacity: {state.get('pending_count', 0)}/{state.get('max_queue_size', 8)}",
         "",
     ]
@@ -82,6 +83,14 @@ def _exec_list_initiatives(_args: dict[str, Any]) -> dict[str, Any]:
             summary = item.get("action_summary", "")
             lines.append(f"- {focus}" + (f" → {summary}" if summary else ""))
 
+    if recent_declined:
+        lines.append("")
+        lines.append("### Recently Declined by Jarvis")
+        for item in recent_declined:
+            focus = item.get("focus", "?")
+            reason = item.get("disposition_reason", "")
+            lines.append(f"- {focus}" + (f" → not acted: {reason}" if reason else " → not acted"))
+
     if life_projects:
         lines.append("")
         lines.append("### Life Projects")
@@ -96,6 +105,7 @@ def _exec_list_initiatives(_args: dict[str, Any]) -> dict[str, Any]:
         "status": "ok",
         "pending_count": state.get("pending_count", 0),
         "acted_count": state.get("acted_count", 0),
+        "declined_count": state.get("declined_count", 0),
         "pending": pending,
         "life_projects": life_projects,
         "text": "\n".join(lines).strip(),

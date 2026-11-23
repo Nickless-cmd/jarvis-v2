@@ -405,7 +405,11 @@ def mc_initiatives(limit: int = 20) -> dict:
     from core.services.initiative_queue import get_initiative_queue_state
     state = get_initiative_queue_state()
     # Honour the limit on the full item list
-    all_items = (state.get("pending") or []) + (state.get("recent_acted") or [])
+    all_items = (
+        (state.get("pending") or [])
+        + (state.get("recent_acted") or [])
+        + (state.get("recent_declined") or [])
+    )
     return {
         **state,
         "items": all_items[: max(int(limit), 1)],

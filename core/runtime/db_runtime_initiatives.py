@@ -36,6 +36,8 @@ def _ensure_runtime_initiatives_table(conn: sqlite3.Connection) -> None:
             last_action_at TEXT NOT NULL DEFAULT '',
             abandoned_at TEXT NOT NULL DEFAULT '',
             action_summary TEXT NOT NULL DEFAULT '',
+            disposition TEXT NOT NULL DEFAULT '',
+            disposition_reason TEXT NOT NULL DEFAULT '',
             outcome TEXT NOT NULL DEFAULT '',
             outcome_note TEXT NOT NULL DEFAULT '',
             user_approved_at TEXT NOT NULL DEFAULT '',
@@ -67,6 +69,8 @@ def _ensure_runtime_initiatives_table(conn: sqlite3.Connection) -> None:
         "ALTER TABLE runtime_initiatives ADD COLUMN first_seeded_at TEXT NOT NULL DEFAULT ''",
         "ALTER TABLE runtime_initiatives ADD COLUMN last_action_at TEXT NOT NULL DEFAULT ''",
         "ALTER TABLE runtime_initiatives ADD COLUMN abandoned_at TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE runtime_initiatives ADD COLUMN disposition TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE runtime_initiatives ADD COLUMN disposition_reason TEXT NOT NULL DEFAULT ''",
         # SESSION-BINDING (14/10-2026). Et initiativ er det tredje urs
         # indgang: heartbeat plukker en række herfra og starter et run. Uden
         # kolonnen tabes samtalen undervejs — scheduled → initiativ →
@@ -102,6 +106,8 @@ def _runtime_initiative_from_row(row: sqlite3.Row) -> dict[str, object]:
         "last_action_at": d.get("last_action_at", ""),
         "abandoned_at": d.get("abandoned_at", ""),
         "action_summary": d.get("action_summary", ""),
+        "disposition": d.get("disposition", ""),
+        "disposition_reason": d.get("disposition_reason", ""),
         "outcome": d.get("outcome", ""),
         "outcome_note": d.get("outcome_note", ""),
         "user_approved_at": d.get("user_approved_at", ""),
@@ -209,6 +215,8 @@ def get_runtime_initiative(initiative_id: str) -> dict[str, object] | None:
                 last_action_at,
                 abandoned_at,
                 action_summary,
+                disposition,
+                disposition_reason,
                 outcome,
                 outcome_note,
                 user_approved_at,
@@ -261,6 +269,8 @@ def find_pending_runtime_initiative_by_focus(
                 last_action_at,
                 abandoned_at,
                 action_summary,
+                disposition,
+                disposition_reason,
                 outcome,
                 outcome_note,
                 user_approved_at,
@@ -323,6 +333,8 @@ def list_runtime_initiatives(
                 last_action_at,
                 abandoned_at,
                 action_summary,
+                disposition,
+                disposition_reason,
                 outcome,
                 outcome_note,
                 user_approved_at,
@@ -355,6 +367,8 @@ def update_runtime_initiative(
     last_action_at: str | None = None,
     abandoned_at: str | None = None,
     action_summary: str | None = None,
+    disposition: str | None = None,
+    disposition_reason: str | None = None,
     # MÅLT 7/11-2026: `endorse_long_term_intention` kaldte med `user_approved_at`
     # og `outcome_note` — men ingen af dem fandtes her. Hvert eneste forsoeg paa
     # at godkende et livsprojekt kastede derfor TypeError, og `user_approved_at`
@@ -381,6 +395,8 @@ def update_runtime_initiative(
         "last_action_at": last_action_at,
         "abandoned_at": abandoned_at,
         "action_summary": action_summary,
+        "disposition": disposition,
+        "disposition_reason": disposition_reason,
         "user_approved_at": user_approved_at,
         "outcome_note": outcome_note,
     }

@@ -8,6 +8,8 @@ Re-exported via ``core.services.runtime_self_model`` for backward compatibility.
 
 from __future__ import annotations
 
+import logging
+
 from core.services.runtime_self_model_state import (
     _derive_support_stream_awareness,
     _experiential_runtime_context_surface,
@@ -26,6 +28,37 @@ def _facade():
     import core.services.runtime_self_model as _m
 
     return _m
+
+
+logger = logging.getLogger(__name__)
+
+#: Sidste longing-tilstand der blev skrevet til loggen, i PROCES-hukommelse.
+#: Uden den ville hver udledning skrive en linje (funktionen kaldes fra boundary,
+#: identity, builder og prompt i samme tick). Skift-baseret logning goer
+#: `fading` efterproevbar i journalen uden at spamme; ved genstart skrives
+#: foerste tilstand én gang, saa en tom log betyder «aldrig kaldt».
+_last_logged_longing_state = ""
+
+
+def _observe_longing_state(
+    state: str,
+    *,
+    carried_integrity: float,
+    carried_faded: int,
+    carried_tracked: int,
+) -> None:
+    """Log longing-tilstanden NAAR den skifter — ikke ved hvert kald."""
+    global _last_logged_longing_state
+    if state == _last_logged_longing_state:
+        return
+    _last_logged_longing_state = state
+    logger.info(
+        "longing: state=%s carried_integrity=%.3f faded=%d/%d",
+        state,
+        carried_integrity,
+        carried_faded,
+        carried_tracked,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -778,6 +811,13 @@ def _derive_longing_awareness(
         longing_state=longing_state,
         absence_relation=absence_relation,
         longing_source=longing_source,
+    )
+
+    _observe_longing_state(
+        longing_state,
+        carried_integrity=carried_integrity,
+        carried_faded=carried_faded,
+        carried_tracked=carried_tracked,
     )
 
     return {

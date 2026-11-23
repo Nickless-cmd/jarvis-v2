@@ -113,3 +113,66 @@ def test_carried_integrity_reads_decay_scores(monkeypatch) -> None:
     assert out["tracked"] == 3
     assert out["faded"] == 1
     assert abs(out["integrity"] - (1.0 - 1.45 / 3)) < 1e-6
+
+
+def test_longing_state_is_logged_when_it_changes(caplog) -> None:
+    """Tilstanden skal kunne ses i journalen — og kun ved SKIFT.
+
+    Uden dette findes mekanikken kun som et internt felt ingen kan efterproeve:
+    «fading» blev beregnet korrekt, men skrevet til ingen log. Testen maaler baade
+    at skiftet logges OG at gentagne kald med samme tilstand tier.
+    """
+    import logging
+
+    import core.services.runtime_self_model as rsm
+    from core.services import runtime_self_model_affect as aff
+
+    aff._last_logged_longing_state = ""
+
+    tf = {"temporal_state": "immediate", "return_signal": False}
+    mn = {
+        "ownership_state": "ambient",
+        "self_relevance": "merely-present",
+        "carried_thread_count": 1,
+    }
+    ss = {"stream_state": "baseline", "voice_mode": ""}
+    iv = {"inner_voice_created": False, "mode": ""}
+
+    faded = {
+        "absence_active": True,
+        "idle_hours": 4.0,
+        "carried_threads": 1,
+        "carried_integrity": 0.496,
+        "carried_faded": 117,
+        "carried_tracked": 500,
+    }
+
+    with caplog.at_level(logging.INFO, logger="core.services.runtime_self_model_affect"):
+        rsm._derive_longing_awareness(
+            temporal_feel=tf, mineness=mn, support_stream=ss, inner_voice=iv,
+            sources={}, longing_sources=faded,
+        )
+        first = [r for r in caplog.records if "state=fading" in r.getMessage()]
+        assert len(first) == 1, "skiftet til fading skal logges praecis én gang"
+
+        # Samme tilstand igen: ingen ny linje.
+        rsm._derive_longing_awareness(
+            temporal_feel=tf, mineness=mn, support_stream=ss, inner_voice=iv,
+            sources={}, longing_sources=faded,
+        )
+        again = [r for r in caplog.records if "state=fading" in r.getMessage()]
+        assert len(again) == 1, "gentaget kald med samme tilstand maa ikke logge"
+
+    # Nyt skift skal igen give en linje.
+    intact = dict(faded)
+    intact["carried_integrity"] = 0.95
+    intact["carried_faded"] = 12
+    with caplog.at_level(logging.INFO, logger="core.services.runtime_self_model_affect"):
+        rsm._derive_longing_awareness(
+            temporal_feel=tf, mineness=mn, support_stream=ss, inner_voice=iv,
+            sources={}, longing_sources=intact,
+        )
+        shifted = [r for r in caplog.records if "state=missing" in r.getMessage()]
+        assert len(shifted) == 1, "et nyt skift skal logges"
+
+    aff._last_logged_longing_state = ""

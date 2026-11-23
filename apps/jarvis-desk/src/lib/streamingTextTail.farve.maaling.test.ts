@@ -28,6 +28,19 @@ const hent = async (page: import('playwright').Page) => ({
   prover: (await page.evaluate(() => (window as any).__prover)) as Prove[],
 })
 
+/** Cancels der faktisk KAPPER en animation midt i.
+ *
+ *  Browseren fyrer også `cancel` når et FÆRDIGT ord ryddes op fra DOM'en —
+ *  og det sker for hvert ord der forlader halen, ikke kun det sidste.
+ *
+ *  MÅLT 23/11-2026 (CI): den gamle vagt krævede nul cancel-events og fejlede
+ *  på ord10, ord11 og ord12, alle med `opacity: 1` og slutfarven. Det er
+ *  oprydning, ikke afbrydelse. Samme fejlform blev rettet i
+ *  `streamingTextTail.rytme.maaling.test.ts`; denne fil havde den også, men
+ *  browser-målingerne er gated og kørte derfor kun i CI. */
+const kappende = (ev: Ev[], fg: string) =>
+  ev.filter((e) => e.type === 'cancel' && (e.opacity < 0.99 || e.farve !== fg))
+
 describe.skipIf(!KOERT)('ordhalens farve — slutter i brødtekstens farve uden spring', () => {
   for (const theme of ['dark', 'light'] as const) {
     it(`${theme}: før/under/efter, ved halens udgang og ved rerender`, async () => {
@@ -78,6 +91,7 @@ describe.skipIf(!KOERT)('ordhalens genstarter og dobbeltanimation', () => {
       const { page } = b
       await installerMaaler(page)
       const N = 14
+      const fg = await page.evaluate(() => getComputedStyle(document.getElementById('krop')!).color)
       await stream(page, N, 150)
       const { ev } = await hent(page)
       for (let n = 1; n <= N; n++) {
@@ -85,7 +99,7 @@ describe.skipIf(!KOERT)('ordhalens genstarter og dobbeltanimation', () => {
         expect(mine.filter((e) => e.type === 'start' && e.navn === 'opacity').length, `ord${n} opacity-starter`).toBe(1)
         expect(mine.filter((e) => e.type === 'start' && e.navn === 'color').length, `ord${n} color-starter`).toBe(1)
       }
-      expect(ev.filter((e) => e.type === 'cancel')).toEqual([])
+      expect(kappende(ev, fg)).toEqual([])
       // Dobbeltanimation CSS+JS: under en kørende animation er ALLE animationer på ordet CSSAnimation.
       await page.evaluate((t) => (window as any).__saetTekst(t), ordTekst(N + 1))
       await page.waitForTimeout(60)
@@ -103,9 +117,10 @@ describe.skipIf(!KOERT)('ordhalens genstarter og dobbeltanimation', () => {
     try {
       const { page } = b
       await installerMaaler(page)
+      const fg = await page.evaluate(() => getComputedStyle(document.getElementById('krop')!).color)
       await stream(page, 12, 40)
       const { ev, prover } = await hent(page)
-      expect(ev.filter((e) => e.type === 'cancel')).toEqual([])
+      expect(kappende(ev, fg)).toEqual([])
       for (let n = 1; n <= 12; n++) {
         const o = prover.filter((p) => p.ord === `ord${n}`).map((p) => p.opacity)
         for (let i = 1; i < o.length; i++) expect(o[i]!, `ord${n} opacity må ikke falde/hoppe tilbage`).toBeGreaterThanOrEqual(o[i - 1]! - 1e-6)

@@ -409,9 +409,10 @@ _Private brain records — Jarvis' EGNE private lag (private-carry-erindringer m
 | function | `update_private_brain_record_status` | `(record_id, *, status, updated_at)` | Lifecycle-overgang (active|settling|fading|released). Non-destruktiv. | [src](../../../core/runtime/db_private_brain.py#L304) |
 | function | `get_private_brain_record` | `(record_id)` | — | [src](../../../core/runtime/db_private_brain.py#L321) |
 | function | `update_private_brain_record_salience` | `(record_id, salience)` | Sæt salience (0.0–1.0) for en private-brain-record. | [src](../../../core/runtime/db_private_brain.py#L341) |
-| function | `get_salient_private_brain_records` | `(threshold=…, limit=…)` | Aktive records med salience >= threshold, salience-sorteret. | [src](../../../core/runtime/db_private_brain.py#L353) |
-| function | `decay_private_brain_records` | `(decay_rate=…, limit=…)` | Reducér salience på gamle aktive records. Returnerer antal opdaterede. | [src](../../../core/runtime/db_private_brain.py#L376) |
-| function | `decay_private_brain_records_by_domain` | `(domain_decay_rates, default_rate=…, limit=…)` | Per-domæne salience-decay på aktive records. Returnerer {domæne: antal}. | [src](../../../core/runtime/db_private_brain.py#L397) |
+| function | `private_brain_salience_stats` | `()` | Henfaldet over HELE den aktive population — ikke over prompt-vinduet. | [src](../../../core/runtime/db_private_brain.py#L353) |
+| function | `get_salient_private_brain_records` | `(threshold=…, limit=…)` | Aktive records med salience >= threshold, salience-sorteret. | [src](../../../core/runtime/db_private_brain.py#L397) |
+| function | `decay_private_brain_records` | `(decay_rate=…, limit=…)` | Reducér salience på gamle aktive records. Returnerer antal opdaterede. | [src](../../../core/runtime/db_private_brain.py#L420) |
+| function | `decay_private_brain_records_by_domain` | `(domain_decay_rates, default_rate=…, limit=…)` | Per-domæne salience-decay på aktive records. Returnerer {domæne: antal}. | [src](../../../core/runtime/db_private_brain.py#L441) |
 
 ## `core/runtime/db_private_notes.py`
 _Persistence for the private/protected inner-layer note tables._

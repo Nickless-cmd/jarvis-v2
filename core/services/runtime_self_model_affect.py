@@ -654,23 +654,12 @@ def _longing_source_snapshot() -> dict[str, object]:
     except Exception:
         pass
 
-    # Glemslen som vaegt paa det baarne (23/11-2026). Laengslen taeller i dag
-    # baerende traade som et ANTAL; her kommer hvor meget af dem der stadig er
-    # intakt. Fejler laesningen, svarer vi 1.0 — en manglende maaling maa ikke
-    # laeses som glemsel.
-    carried_integrity = 1.0
-    carried_tracked = 0
-    carried_faded = 0
-    try:
-        from core.services.forgetting_curve import carried_integrity as _ci
-
-        _integritet = _ci()
-        carried_integrity = float(_integritet.get("integrity") or 1.0)
-        carried_tracked = int(_integritet.get("tracked") or 0)
-        carried_faded = int(_integritet.get("faded") or 0)
-    except Exception:  # tavs med vilje: en manglende maaling er ikke glemsel — 1.0 er den aerlige vaerdi, og en log-linje pr. prompt-samling ville stoeje om normal drift
-        pass
-
+    # Glemslen som vaegt paa det baarne. Beregningen ligger nu i
+    # `_derive_longing_awareness`, hvor den kan laeses fra de SAMME brain-poster
+    # som `carried_threads` taelles fra. Her laa foerste udgave, der hentede et
+    # gennemsnit fra forgetting-kurven — den blev fjernet 23/11-2026, fordi dens
+    # poster primaert er daemon-telemetri og de to tal derfor beskrev to
+    # forskellige populationer (maalt: 294 af 369 poster var tankestroem).
     return {
         "dream_carry": dream_carry,
         "dream_state": dream_state,
@@ -681,9 +670,6 @@ def _longing_source_snapshot() -> dict[str, object]:
         "absence_active": absence_active,
         "idle_hours": idle_hours,
         "return_context_present": return_context_present,
-        "carried_integrity": carried_integrity,
-        "carried_tracked": carried_tracked,
-        "carried_faded": carried_faded,
     }
 
 
@@ -719,16 +705,26 @@ def _derive_longing_awareness(
 
     # Glemsel som vaegt paa det baarne (23/11-2026). `carried_threads` er et
     # ANTAL — eet baerende spor er eet baerende spor, uanset om det er friskt
-    # eller ved at falme. `carried_integrity` (fra forgetting_curve) siger hvor
-    # meget af det baarne der stadig er intakt. Under `_CARRIED_FADING_FLOOR`
-    # er der ikke laengere noget at laenges EFTER: grundlaget er der, men
-    # indholdet er vaek, og saa skal laengslen ikke melde «missing» som om
-    # traaden stadig var der. Det er den eneste kobling koden kan baere uden at
-    # opfinde en foelsesmekanik — og den peger MODSAT «glemsel foeder frygt».
-    carried_integrity = float(longing_sources.get("carried_integrity", 1.0) or 1.0)
+    # eller ved at falme. Integriteten siger hvor meget af det baarne der stadig
+    # er intakt. Under `_CARRIED_FADING_FLOOR` er der ikke laengere noget at
+    # laenges EFTER: grundlaget er der, men indholdet er vaek, og saa skal
+    # laengslen ikke melde «missing» som om traaden stadig var der. Det er den
+    # eneste kobling koden kan baere uden at opfinde en foelsesmekanik — og den
+    # peger MODSAT «glemsel foeder frygt».
+    #
+    # KILDEN BLEV FLYTTET (23/11-2026, maalt). Foerste udgave laeste
+    # `forgetting_curve.carried_integrity()`. Den kurve sporer primaert
+    # daemon-telemetri: 294 af dens 369 «baerende» poster var tankestroem,
+    # nysgerrighed og refleksion, og dens gennemsnit var 0,533. `carried_threads`
+    # taelles fra private brain + open loops + voice, saa de to tal beskrev to
+    # forskellige populationer — jeg meldte «en traad tyndes ud» ud fra et
+    # gennemsnit over noget andet. Nu maales henfaldet paa de SAMME brain-poster
+    # som traadene kommer fra (salience 0..1, gennemsnit 0,906 maalt).
+    # Eet data­saet, een betydning.
+    carried_integrity = float(mineness.get("carried_salience_integrity", 1.0) or 1.0)
     carried_integrity = max(0.0, min(1.0, carried_integrity))
-    carried_faded = int(longing_sources.get("carried_faded") or 0)
-    carried_tracked = int(longing_sources.get("carried_tracked") or 0)
+    carried_faded = int(mineness.get("carried_salience_faded") or 0)
+    carried_tracked = int(mineness.get("carried_salience_tracked") or 0)
     carried_fading = carried_threads and carried_integrity < _CARRIED_FADING_FLOOR
     if carried_fading:
         carried_threads = False

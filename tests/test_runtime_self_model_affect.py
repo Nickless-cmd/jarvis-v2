@@ -26,6 +26,11 @@ def test_longing_fading_when_carried_thread_thins_out() -> None:
     ls["carried_integrity"] = 0.5
     ls["carried_tracked"] = 40
     ls["carried_faded"] = 12
+    # Kilden er flyttet (23/11-2026): henfaldet maales paa de brain-poster som
+    # `carried_thread_count` selv taelles fra, saa tallet hoerer i `mineness`.
+    mn["carried_salience_integrity"] = 0.5
+    mn["carried_salience_tracked"] = 40
+    mn["carried_salience_faded"] = 12
     longing = _derive_longing_awareness(
         temporal_feel=tf,
         mineness=mn,
@@ -51,7 +56,7 @@ def test_longing_quiet_when_carried_content_is_gone() -> None:
         open_loop_count=1,
         absence_active=True,
     )
-    ls["carried_integrity"] = 0.1
+    mn["carried_salience_integrity"] = 0.1
     longing = _derive_longing_awareness(
         temporal_feel=tf,
         mineness=mn,
@@ -74,7 +79,7 @@ def test_longing_unchanged_when_carried_content_is_intact() -> None:
         open_loop_count=1,
         absence_active=True,
     )
-    ls["carried_integrity"] = 1.0
+    mn["carried_salience_integrity"] = 1.0
     longing = _derive_longing_awareness(
         temporal_feel=tf,
         mineness=mn,
@@ -177,6 +182,9 @@ def test_longing_state_is_logged_when_it_changes(caplog) -> None:
         "ownership_state": "ambient",
         "self_relevance": "merely-present",
         "carried_thread_count": 1,
+        "carried_salience_integrity": 0.496,
+        "carried_salience_faded": 117,
+        "carried_salience_tracked": 500,
     }
     ss = {"stream_state": "baseline", "voice_mode": ""}
     iv = {"inner_voice_created": False, "mode": ""}
@@ -185,9 +193,6 @@ def test_longing_state_is_logged_when_it_changes(caplog) -> None:
         "absence_active": True,
         "idle_hours": 4.0,
         "carried_threads": 1,
-        "carried_integrity": 0.496,
-        "carried_faded": 117,
-        "carried_tracked": 500,
     }
 
     with caplog.at_level(logging.INFO, logger="core.services.runtime_self_model_affect"):
@@ -207,13 +212,13 @@ def test_longing_state_is_logged_when_it_changes(caplog) -> None:
         assert len(again) == 1, "gentaget kald med samme tilstand maa ikke logge"
 
     # Nyt skift skal igen give en linje.
-    intact = dict(faded)
-    intact["carried_integrity"] = 0.95
-    intact["carried_faded"] = 12
+    intact = dict(mn)
+    intact["carried_salience_integrity"] = 0.95
+    intact["carried_salience_faded"] = 12
     with caplog.at_level(logging.INFO, logger="core.services.runtime_self_model_affect"):
         rsm._derive_longing_awareness(
-            temporal_feel=tf, mineness=mn, support_stream=ss, inner_voice=iv,
-            sources={}, longing_sources=intact,
+            temporal_feel=tf, mineness=intact, support_stream=ss, inner_voice=iv,
+            sources={}, longing_sources=faded,
         )
         shifted = [r for r in caplog.records if "state=missing" in r.getMessage()]
         assert len(shifted) == 1, "et nyt skift skal logges"

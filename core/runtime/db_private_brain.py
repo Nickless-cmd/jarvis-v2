@@ -350,6 +350,50 @@ def update_private_brain_record_salience(record_id: str, salience: float) -> Non
         conn.commit()
 
 
+def private_brain_salience_stats() -> dict[str, Any]:
+    """Henfaldet over HELE den aktive population — ikke over prompt-vinduet.
+
+    HVORFOR (23/11-2026, maalt). Laengslens integritet skal maales paa de poster
+    der baeres, men `build_private_brain_context` er bundet til 6 poster af
+    prompt-oekonomi — og de 6 er de NYESTE, saa deres gennemsnit er naesten per
+    definition 1.0. Det ville goere koblingen tautologisk («de nyeste er
+    friske»). Aggregatet her laeses i SQL over alle aktive poster, saa tallet
+    beskriver den popula­tion der faktisk baeres over tid.
+
+    En tom eller manglende maaling svarer 1.0: intet sporet er ikke det samme
+    som alt glemt.
+    """
+    try:
+        from core.services.user_scope import scope_uid
+        _uid = scope_uid()
+    except Exception:
+        _uid = ""
+    with connect() as conn:
+        _ensure_private_brain_records_table(conn)
+        if _uid:
+            row = conn.execute(
+                "SELECT COUNT(*), AVG(salience), "
+                "SUM(CASE WHEN salience < 0.5 THEN 1 ELSE 0 END) "
+                "FROM private_brain_records WHERE status = 'active' AND user_id = ?",
+                (_uid,),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT COUNT(*), AVG(salience), "
+                "SUM(CASE WHEN salience < 0.5 THEN 1 ELSE 0 END) "
+                "FROM private_brain_records WHERE status = 'active'",
+            ).fetchone()
+    tracked = int(row[0] or 0) if row else 0
+    avg = float(row[1]) if row and row[1] is not None else 1.0
+    faded = int(row[2] or 0) if row else 0
+    return {
+        "integrity": round(max(0.0, min(1.0, avg)), 4),
+        "tracked": tracked,
+        "faded": faded,
+        "source": "private-brain-salience" if tracked else "empty-population",
+    }
+
+
 def get_salient_private_brain_records(
     threshold: float = 0.3, limit: int = 20
 ) -> list[dict[str, Any]]:

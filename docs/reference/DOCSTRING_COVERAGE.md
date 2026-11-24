@@ -1277,7 +1277,7 @@ Generated from source. 10488/19141 functions/methods documented (54%). The list 
 - `core/services/emergent_signal_tracking.py` :: `build_runtime_emergent_signal_surface` (L185)
 - `core/services/emergent_signal_tracking.py` :: `get_emergent_signal_daemon_state` (L228)
 - `core/services/emotion_tagging.py` :: `build_emotion_tagging_surface` (L90)
-- `core/services/end_of_run_memory_consolidation.py` :: `consolidate_run_memory` (L33)
+- `core/services/end_of_run_memory_consolidation.py` :: `consolidate_run_memory` (L34)
 - `core/services/endpoint_usage_store.py` :: `usage_stats` (L83)
 - `core/services/env_block.py` :: `is_enabled` (L48)
 - `core/services/epistemic_runtime_state.py` :: `build_epistemic_runtime_prompt_section` (L185)

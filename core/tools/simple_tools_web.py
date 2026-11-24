@@ -1951,6 +1951,29 @@ def _exec_analyze_image(args: dict[str, Any]) -> dict[str, Any]:
             "status": "error",
         }
 
+    # HOVEDBOGEN (målt 24/11-2026): dette kald gik til Ollama uden at bogføre.
+    # Prisen er 0 for en lokal vision-model, men cloud-modeller (fx
+    # gemma4:31b-cloud) tæller i Ollamas eget forbrug — og uden rækken kunne
+    # forskellen mellem vores regnskab og deres ikke ses.
+    try:
+        from core.services.ollama_usage import bogfoer_ollama_kald
+
+        _ind = int(result.get("prompt_eval_count") or 0)
+        _ud = int(result.get("eval_count") or 0)
+        _tot = max(0, _ind)
+        _hit = max(0, min(int(result.get("prompt_eval_cached_count") or 0), _tot))
+        bogfoer_ollama_kald(
+            provider="ollama",
+            model=model,
+            input_tokens=_ind,
+            output_tokens=_ud,
+            cache_hit_tokens=_hit,
+            cache_miss_tokens=_tot - _hit,
+            lane="vision",
+        )
+    except Exception as _bog_exc:  # noqa: BLE001
+        logger.warning("analyze_image: kunne ikke bogfoere ollama-kald: %s", _bog_exc)
+
     answer = result.get("message", {}).get("content", "").strip()
     if not answer:
         return {"error": "Vision model returned empty response", "status": "error"}

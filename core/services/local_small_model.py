@@ -119,6 +119,27 @@ def spoerg_et_ord(
             f"{base_url()}/api/chat", krop, {"Content-Type": "application/json"})
         with urllib.request.urlopen(anmodning, timeout=effektiv_timeout) as svar:  # noqa: S310
             data = json.loads(svar.read())
+        # HOVEDBOGEN (målt 24/11-2026): dette kald var usynligt i `costs`. Prisen
+        # er 0 for den lokale model, men token-historikken manglede — og en lane
+        # med nul rækker kan ikke skelnes fra en lane der aldrig kaldes.
+        try:
+            from core.services.ollama_usage import bogfoer_ollama_kald
+
+            _ind = int(data.get("prompt_eval_count") or 0)
+            _ud = int(data.get("eval_count") or 0)
+            _tot = max(0, _ind)
+            _hit = max(0, min(int(data.get("prompt_eval_cached_count") or 0), _tot))
+            bogfoer_ollama_kald(
+                provider="ollama",
+                model=MODEL,
+                input_tokens=_ind,
+                output_tokens=_ud,
+                cache_hit_tokens=_hit,
+                cache_miss_tokens=_tot - _hit,
+                lane="local_small_model",
+            )
+        except Exception as _bog_exc:  # noqa: BLE001
+            logger.warning("local_small_model: kunne ikke bogfoere: %s", _bog_exc)
         tekst = str((data.get("message") or {}).get("content") or "").strip().upper()
         _model_varm = True
     except (urllib.error.URLError, TimeoutError, OSError) as exc:

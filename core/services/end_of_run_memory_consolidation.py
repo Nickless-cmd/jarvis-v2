@@ -7,6 +7,7 @@ those candidates through the governed candidate workflow.
 from __future__ import annotations
 
 import json
+import logging
 from datetime import UTC, datetime
 from hashlib import sha1
 from uuid import uuid4
@@ -284,6 +285,32 @@ def _run_ollama_consolidation_fallback(prompt: str) -> tuple[str, str]:
             )
             with urllib.request.urlopen(req, timeout=90) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
+            # HOVEDBOGEN (målt 24/11-2026): denne fallback kaldte Ollama direkte
+            # uden at bogføre, så kaldet var usynligt i `costs` uanset model.
+            try:
+                from core.services.ollama_usage import bogfoer_ollama_kald
+
+                _ind = int((data or {}).get("prompt_eval_count") or 0)
+                _ud = int((data or {}).get("eval_count") or 0)
+                _tot = max(0, _ind)
+                _hit = max(
+                    0,
+                    min(int((data or {}).get("prompt_eval_cached_count") or 0), _tot),
+                )
+                bogfoer_ollama_kald(
+                    provider="ollama",
+                    model=model_name,
+                    input_tokens=_ind,
+                    output_tokens=_ud,
+                    cache_hit_tokens=_hit,
+                    cache_miss_tokens=_tot - _hit,
+                    lane="memory_consolidation",
+                )
+            except Exception as _bog_exc:  # noqa: BLE001
+                logging.getLogger(__name__).warning(
+                    "memory-consolidation: kunne ikke bogfoere ollama-kald: %s",
+                    _bog_exc,
+                )
             text = str((data or {}).get("response") or "").strip()
             if text:
                 return text, ""

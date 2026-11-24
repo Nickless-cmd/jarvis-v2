@@ -697,3 +697,69 @@ def test_taellere_er_strukturelle_men_tilstande_er_fagord() -> None:
         assert tilstand not in bd._STRUKTURELLE_ORD, (
             f"{tilstand} beskriver turen og maa ikke vaere strukturel"
         )
+
+
+def test_hele_statusvokabularet_er_strukturelt() -> None:
+    """Listen maa ikke vaere en STIKPROEVE — hele statusvokabularet skal med.
+
+    24/11-2026 (maalt): listen startede som ti tokens fra den gamle stopord-blok.
+    Probe paa ren maskin-kontekst (`idle active running completed tool_intent
+    loop_state heartbeat pending failed cancelled expired queued`) efterlod 12
+    af 13 tokens som FAGSIGNALER, og gaten valgte to open-loop-beslutninger paa
+    tokenet `loop` alene. Testen pinner hvert token, saa en fremtidig
+    omskrivning ikke kan skaere listen ned til en stikproeve igen.
+    """
+    from core.services import behavioral_decisions as bd
+
+    statusfamilie = (
+        "running",
+        "pending",
+        "failed",
+        "cancelled",
+        "expired",
+        "queued",
+    )
+    strukturelle = (
+        "tool",
+        "intent",
+        "tool_intent",
+        "loop",
+        "state",
+        "loop_state",
+    )
+    for token in statusfamilie + strukturelle:
+        assert token in bd._STRUKTURELLE_ORD, (
+            f"«{token}» er maskinens egen statusbeskrivelse og skal vaere "
+            "strukturel — ellers naar den gaten som fagsignal"
+        )
+
+
+def test_probe_paa_ren_maskin_kontekst_lækker_ikke() -> None:
+    """Den konkrete probe fra side-opgaven: kun `success` maa staa tilbage.
+
+    `success` er den dokumenterede undtagelse — den rammer beslutningen om
+    `applied`/`ok`/`success`-felter, saa dér er ordet et ægte signal.
+    """
+    from core.services import behavioral_decisions as bd
+
+    probe = (
+        "idle active running completed tool_intent loop_state heartbeat "
+        "pending failed cancelled expired queued success"
+    )
+    ord_ = bd._relevans_ord(probe)
+    lækket = sorted(ord_ - bd._STRUKTURELLE_ORD)
+    assert lækket == ["success"], (
+        "kun `success` maa slippe gennem som fagord — "
+        f"disse laekkede: {lækket}"
+    )
+
+
+def test_success_er_beholdt_som_fagord() -> None:
+    """Undtagelsen maa ikke fjernes i samme aandedrag som listen udvides."""
+    from core.services import behavioral_decisions as bd
+
+    assert "success" not in bd._STRUKTURELLE_ORD, (
+        "`success` skal blive et fagord — beslutningen om applied/ok/success-"
+        "felter rammes praecist af det ord"
+    )
+    assert "success" not in bd._RELEVANS_STOPORD, "`success` maa heller ikke filtreres vaek"

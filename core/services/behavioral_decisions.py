@@ -551,6 +551,23 @@ _STRUKTURELLE_ORD = frozenset({
     "preference", "updates", "memory", "promotions", "chronicle", "drafts",
     # tool_intent — hvilken slags tur det er, ikke hvad sagen er
     "inspect", "working", "tree", "main", "repo",
+    # 24/11-2026 (maalt): listen var en STIKPROEVE — ti tokens fra den gamle
+    # stopord-blok. Resten af statusvokabularet gik gennem filteret som fagord,
+    # og en probe paa ren maskin-kontekst valgte to open-loop-beslutninger paa
+    # tokenet `loop` alene. Maalt foer udvidelsen: `idle active running
+    # completed tool_intent loop_state heartbeat pending failed cancelled
+    # expired queued` efterlod ['cancelled','expired','failed','intent','loop',
+    # 'loop_state','pending','queued','running','state','tool','tool_intent']
+    # — 12 af 13 tokens var fagsignaler.
+    #
+    # Statusfamilien: tilstande en koersel kan staa i. De beskriver HVOR i en
+    # proces noget er, ikke HVAD sagen er — og de staar i `loop_runtime` i
+    # hver tur. En beslutning der kun rammer én af dem baerer intet.
+    "running", "pending", "failed", "cancelled", "expired", "queued",
+    # `tool_intent`/`loop_state` og deres dele. Sammensatte former tilfoejes
+    # baade som helhed og som dele (`_relevans_ord` splitter paa '_'), saa alle
+    # fire varianter skal staa her — ellers lækker halvdelen.
+    "tool", "intent", "tool_intent", "loop", "state", "loop_state",
 })
 
 #: Hvor meget et strukturelt ord vejer i scoren, relativt til sin IDF.

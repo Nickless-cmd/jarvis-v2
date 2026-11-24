@@ -145,3 +145,48 @@ def test_fejlet_kald_bogfoerer_intet(monkeypatch):
 
     assert tekst is None
     assert kald == []
+
+
+# ── Vagten der fanger fejlen testene ovenfor IKKE kunne se ──────────────────
+#
+# Målt 24/11-2026: de tre tests ovenfor var grønne mens bogføringen i drift
+# skrev NUL rækker. Årsagen var en cirkulær import —
+# `from core.services.visible_model_ollama import _cache_split` — der fejlede
+# inde i `_call_ollama_chat`s `except Exception`, som slugte den på debug.
+# Testene kunne ikke se det, fordi pytest allerede havde initialiseret
+# `visible_model_ollama` fuldt; i uvicorn/runtime er rækkefølgen en anden.
+#
+# En patch-test kan pr. konstruktion ikke se en fejlet import i den funktion
+# den patcher. Derfor denne: den læser kildekoden og afviser afhængigheden.
+import ast
+import pathlib
+
+
+def _importer_ikke_visible_model_ollama(funktionsnavn: str, sti: str) -> None:
+    trae = ast.parse(pathlib.Path(sti).read_text(encoding="utf-8"))
+    for node in ast.walk(trae):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == funktionsnavn:
+            for inner in ast.walk(node):
+                if isinstance(inner, ast.ImportFrom) and inner.module:
+                    assert "visible_model_ollama" not in inner.module, (
+                        f"{funktionsnavn} importerer fra visible_model_ollama. "
+                        "Det er cirkulært: modulet er selv i denne fils "
+                        "importkæde, og importen fejler i drift mens den lykkes "
+                        "i pytest. Beregn cache-splittet inline i stedet."
+                    )
+            return
+    raise AssertionError(f"{funktionsnavn} blev ikke fundet i {sti} — er navnet ændret?")
+
+
+def test_enrichment_importerer_ikke_cirkulaert():
+    """`_call_ollama_chat` må ikke hente `_cache_split` fra visible_model_ollama."""
+    _importer_ikke_visible_model_ollama(
+        "_call_ollama_chat", "core/memory/inner_llm_enrichment.py"
+    )
+
+
+def test_scoring_importerer_ikke_cirkulaert():
+    """Samme for den lokale scoring-vej i experiential_memory."""
+    _importer_ikke_visible_model_ollama(
+        "_call_scoring_llm_local", "core/services/experiential_memory.py"
+    )

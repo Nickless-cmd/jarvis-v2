@@ -646,11 +646,20 @@ def _call_ollama_chat(
             # lande her. Uden denne linje så Ollama kald vi ikke kunne se.
             try:
                 from core.services.ollama_usage import bogfoer_ollama_kald
-                from core.services.visible_model_ollama import _cache_split
 
                 _ind = int(data.get("prompt_eval_count") or 0)
                 _ud = int(data.get("eval_count") or 0)
-                _hit, _miss = _cache_split(data, _ind)
+                # Cache-splittet beregnes INLINE med vilje. `_cache_split` bor i
+                # `visible_model_ollama`, som selv er i denne fils importkæde, og
+                # at importere den herfra gav en cirkulær import der fejlede i
+                # drift (målt 24/11-2026, ImportError på
+                # `_OLLAMA_FIRST_BYTE_BUDGET_S`). Fejlen blev slugt af `except`
+                # nedenfor, så bogføringen SÅ ud som om den virkede mens den
+                # skrev nul rækker — og en grøn test kunne ikke se det, fordi
+                # pytest havde modulet fuldt initialiseret. Otte linjer er
+                # billigere end den tavshed.
+                _hit = max(0, min(int(data.get("prompt_eval_cached_count") or 0), max(0, _ind)))
+                _miss = max(0, _ind) - _hit
                 bogfoer_ollama_kald(
                     provider="ollama",
                     model=model,

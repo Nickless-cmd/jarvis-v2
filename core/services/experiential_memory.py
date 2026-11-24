@@ -653,11 +653,14 @@ def _call_scoring_llm_local(target: dict[str, object], prompt: str) -> str:
         # provider=ollama med deepseek-v4.1-flash:cloud, altså den dyreste model vi har.
         try:
             from core.services.ollama_usage import bogfoer_ollama_kald
-            from core.services.visible_model_ollama import _cache_split
 
             _ind = int(result.get("prompt_eval_count") or 0)
             _ud = int(result.get("eval_count") or 0)
-            _hit, _miss = _cache_split(result, _ind)
+            # Inline af samme grund som i `inner_llm_enrichment`: `_cache_split`
+            # importeret fra `visible_model_ollama` gav en cirkulær import der
+            # fejlede i drift og blev slugt (målt 24/11-2026).
+            _hit = max(0, min(int(result.get("prompt_eval_cached_count") or 0), max(0, _ind)))
+            _miss = max(0, _ind) - _hit
             bogfoer_ollama_kald(
                 provider=provider,
                 model=model,

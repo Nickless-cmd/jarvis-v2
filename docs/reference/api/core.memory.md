@@ -32,9 +32,9 @@ _Async LLM enrichment for private memory pipeline layers._
 | function | `_build_inner_llm_body` | `(*, provider, model, system_prompt, user_message)` | Build the openai-compat chat-completion body for inner enrichment. | [src](../../../core/memory/inner_llm_enrichment.py#L491) |
 | function | `_call_remote_chat` | `(*, target, system_prompt, user_message, timeout)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L531) |
 | function | `_call_ollama_chat` | `(*, model, base_url, system_prompt, user_message, timeout)` | — | [src](../../../core/memory/inner_llm_enrichment.py#L609) |
-| function | `_observe_enrichment` | `(*, enriched, reused, failed)` | Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN antal lag | [src](../../../core/memory/inner_llm_enrichment.py#L706) |
-| function | `_enrich_worker` | `(*, run_id, inner_note_payload, growth_note_payload, inner_voice_payload, recent_chat_context)` | Sequentially enrich 3 layers via cheap LLM, updating DB in-place. | [src](../../../core/memory/inner_llm_enrichment.py#L721) |
-| function | `enrich_private_layers_async` | `(*, run_id, inner_note_payload, growth_note_payload, inner_voice_payload, recent_chat_context)` | Fire-and-forget: spawn daemon thread to enrich private layer payloads via LLM. | [src](../../../core/memory/inner_llm_enrichment.py#L840) |
+| function | `_observe_enrichment` | `(*, enriched, reused, failed)` | Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN antal lag | [src](../../../core/memory/inner_llm_enrichment.py#L715) |
+| function | `_enrich_worker` | `(*, run_id, inner_note_payload, growth_note_payload, inner_voice_payload, recent_chat_context)` | Sequentially enrich 3 layers via cheap LLM, updating DB in-place. | [src](../../../core/memory/inner_llm_enrichment.py#L730) |
+| function | `enrich_private_layers_async` | `(*, run_id, inner_note_payload, growth_note_payload, inner_voice_payload, recent_chat_context)` | Fire-and-forget: spawn daemon thread to enrich private layer payloads via LLM. | [src](../../../core/memory/inner_llm_enrichment.py#L849) |
 
 ## `core/memory/memory_md_writer.py`
 _One writer for MEMORY.md-style section files (memory repair 2026-09-04, R7)._

@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/user_md_learned_migration.py`
+_Flyt USER.md «## Durable Preferences» ind i «## Lært» (lærings-sløjfe, blok A)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_user_md_path` | `(workspace)` | — | [src](../../../scripts/user_md_learned_migration.py#L40) |
+| function | `migrate` | `(*, workspace, apply)` | — | [src](../../../scripts/user_md_learned_migration.py#L48) |
+| function | `main` | `()` | — | [src](../../../scripts/user_md_learned_migration.py#L118) |
+
 ## `scripts/vaert_boot_vagt.py`
 _Boot-vagt paa pve i9: klassificér hver boot som REN eller CUT._
 

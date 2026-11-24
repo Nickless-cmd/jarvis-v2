@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10488/19141 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10491/19147 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -38,12 +38,12 @@ Generated from source. 10488/19141 functions/methods documented (54%). The list 
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 12 | 13 | 92% |
-| `scripts` | 350 | 702 | 49% |
+| `scripts` | 353 | 708 | 49% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2680)
+## Undocumented public functions (2681)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L236)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2641,6 +2641,7 @@ Generated from source. 10488/19141 functions/methods documented (54%). The list 
 - `scripts/nudge_well_cleanup.py` :: `clean_broend` (L64)
 - `scripts/nudge_well_cleanup.py` :: `clean_outbound` (L24)
 - `scripts/nudge_well_cleanup.py` :: `main` (L85)
+- `scripts/ollama_daekning.py` :: `main` (L111)
 - `scripts/peer_practice_runner.py` :: `main` (L106)
 - `scripts/perception_mix.py` :: `main` (L72)
 - `scripts/phase5_analyze.py` :: `choice_of` (L58)

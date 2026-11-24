@@ -54,6 +54,18 @@ _Drain the two dead nudge wells (redesign 2026-09-04). Dry-run by default._
 | function | `clean_broend` | `(apply, path=…)` | — | [src](../../../scripts/nudge_well_cleanup.py#L64) |
 | function | `main` | `()` | — | [src](../../../scripts/nudge_well_cleanup.py#L85) |
 
+## `scripts/ollama_daekning.py`
+_Mål hvor stor en del af Ollamas faktiske forbrug der står i ``costs``._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_api_key` | `()` | — | [src](../../../scripts/ollama_daekning.py#L45) |
+| function | `_range_for` | `(hours)` | Ollama accepterer KUN ``24h``, ``7d`` og ``30d`` (målt 24/11-2026). | [src](../../../scripts/ollama_daekning.py#L53) |
+| function | `hent_ollama` | `(hours)` | Ollamas eget forbrug, pr. time. | [src](../../../scripts/ollama_daekning.py#L67) |
+| function | `hent_vores` | `(since)` | Vores ``costs``-rækker for ollama, grupperet på time (UTC). | [src](../../../scripts/ollama_daekning.py#L80) |
+| function | `_pct` | `(a, b)` | — | [src](../../../scripts/ollama_daekning.py#L105) |
+| function | `main` | `()` | — | [src](../../../scripts/ollama_daekning.py#L111) |
+
 ## `scripts/peer_models.py`
 _Peer model adapters for interlanguage validation experiment._
 
@@ -431,13 +443,4 @@ _One-shot bootstrap: generate tool tags via cheap LLM and warm embedding cache._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/tool_router_bootstrap.py#L22) |
-
-## `scripts/user_md_learned_migration.py`
-_Flyt USER.md «## Durable Preferences» ind i «## Lært» (lærings-sløjfe, blok A)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_user_md_path` | `(workspace)` | — | [src](../../../scripts/user_md_learned_migration.py#L40) |
-| function | `migrate` | `(*, workspace, apply)` | — | [src](../../../scripts/user_md_learned_migration.py#L48) |
-| function | `main` | `()` | — | [src](../../../scripts/user_md_learned_migration.py#L118) |
 

@@ -70,6 +70,32 @@ describe('delayMsForFade', () => {
     expect(FADE_GULV_MS - kort).toBeGreaterThan(kort)
   })
 
+  it('foelger faden gennem HELE kurven, ikke kun i dens to ender', () => {
+    // MÅLT 24/11-2026: testen ovenfor er grøn baade med delay-loft 40 og 60,
+    // fordi den kun maaler fadens to yderpunkter (70 og 220). Maetningen sker
+    // imellem dem, og et loft der maetter giver et PLATEAU — som stadig er
+    // ikke-faldende, saa en monotonitets-vagt fanger den ikke.
+    //
+    // Det der faktisk skal maales er hvor stor en del af kurven der FOELGER
+    // faden. Maalt trin for trin (70→220 ms i skridt paa 5):
+    //
+    //   loft 40 → maetter ved fade 125 → 11 stigende, 19 flade skridt
+    //   loft 60 → maetter ved fade 185 → 23 stigende,  7 flade skridt
+    //
+    // Vagten kraever at delayet foelger faden gennem mindst 2/3 af kurven.
+    // Det fanger ethvert loft der maetter inde i det interval faden arbejder i.
+    let stigende = 0
+    let skridt = 0
+    for (let fade = FADE_GULV_MS; fade < FADE_LOFT_MS; fade += 5) {
+      const a = delayMsForFade(fade)
+      const b = delayMsForFade(fade + 5)
+      expect(b).toBeGreaterThanOrEqual(a)
+      if (b > a) stigende += 1
+      skridt += 1
+    }
+    expect(stigende / skridt).toBeGreaterThanOrEqual(2 / 3)
+  })
+
   it('gaar aldrig over loftet', () => {
     expect(delayMsForFade(FADE_LOFT_MS)).toBeLessThanOrEqual(DELAY_LOFT_MS)
     expect(delayMsForFade(10000)).toBeLessThanOrEqual(DELAY_LOFT_MS)

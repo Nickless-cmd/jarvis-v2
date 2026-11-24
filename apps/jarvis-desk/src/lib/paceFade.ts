@@ -47,7 +47,21 @@
  *  `FADE_GULV_MS` alligevel opsluger ved høj rate. */
 export const ORD_LAENGDE_TEGN = 6
 
-/** Korteste fade der stadig læses som en glidning. 4 frames ved 60 Hz. */
+/** Korteste fade der stadig læses som en glidning. 4 frames ved 60 Hz.
+ *
+ *  ⚠️ MÅLT 24/11-2026 — dette tal blev FORSØGT hævet til 130, og det blev
+ *  rullet tilbage med en måling som grund. Et højere gulv gør klumpen VÆRRE,
+ *  ikke bedre: gulvet er ikke det der begrænser antallet af ord i fade, det er
+ *  det der SKABER det, fordi det tvinger faden op over ankomstintervallet.
+ *
+ *  Målt ved 642 tegn/s (topraten i `paceRate.maaling`), hvor ordene ankommer
+ *  hvert 9,3 ms:
+ *
+ *    gulv  70 ms → 7,5 ord i fade
+ *    gulv 130 ms → 13,9 ord i fade
+ *
+ *  Gulvet skal altså holdes så LAVT som det kan læses, ikke hæves. Det ægte
+ *  problem ved høj rate ligger i `DELAY_LOFT_MS`, ikke her. */
 export const FADE_GULV_MS = 70
 
 /** Længste fade. Over dette hober ordene sig op selv ved grundtempoet.
@@ -60,8 +74,18 @@ export const FADE_LOFT_MS = 220
 export const DELAY_ANDEL_AF_FADE = 0.33
 
 /** Delay må ikke overstige dette — det er `Snappy`s eget tal og den øvre
- *  grænse hvor ankomstfarven stadig føles som et blink frem for en pause. */
-export const DELAY_LOFT_MS = 40
+ *  grænse hvor ankomstfarven stadig føles som et blink frem for en pause.
+ *
+ *  ⚠️ MÅLT 24/11-2026: 40 ms var for lavt til at bære sin egen begrundelse.
+ *  Delayet er `min(40, fade × 0,33)`, så det MÆTTER ved fade = 40/0,33 =
+ *  **121 ms** — og holder derefter op med at følge faden. Ved den rolige ende
+ *  (fade 125 ms) blev delay og glidning derfor næsten lige store, hvilket er
+ *  præcis det `delayMsForFade` findes for at forhindre.
+ *
+ *  60 ms flytter mætningen til fade = 182 ms, altså over hele det interval
+ *  faden faktisk arbejder i (70–220 ms). Så følger delayet faden i hele
+ *  kurven, og forholdet 0,33 holder som det blev målt 23/11. */
+export const DELAY_LOFT_MS = 60
 
 /**
  * Farve-animationens varighed i millisekunder for en given pacer-rate.

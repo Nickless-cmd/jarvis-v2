@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 19173 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 19181 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -81,9 +81,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 19173 functions/
 - [`core.undo`](core.undo.md)
 - [`core.util`](core.util.md)
 - [`scripts.01`](scripts.01.md) — `__init__` … `god_file_map`
-- [`scripts.02`](scripts.02.md) — `hollow_verify` … `migrer_shared_runtime_til_state_store`
-- [`scripts.03`](scripts.03.md) — `minimal_mode_baseline` … `tool_router_bootstrap`
-- [`scripts.04`](scripts.04.md) — `user_md_learned_migration` … `verify_vagt_graenser`
+- [`scripts.02`](scripts.02.md) — `hollow_verify` … `migrer_filer_per_bruger`
+- [`scripts.03`](scripts.03.md) — `migrer_shared_runtime_til_state_store` … `tool_result_cleanup`
+- [`scripts.04`](scripts.04.md) — `tool_router_bootstrap` … `verify_vagt_graenser`
 - [`scripts.acceptance`](scripts.acceptance.md)
 - [`scripts.diagnostics`](scripts.diagnostics.md)
 - [`scripts.pipelines`](scripts.pipelines.md)

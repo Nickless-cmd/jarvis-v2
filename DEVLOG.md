@@ -1,4 +1,32 @@
 # Development log
+## 2026-11-24 — Coordination §8: measure through the path the turn actually takes
+
+`scripts/koordinering_maaling.py` (`--hours N`, `--json`, read-only `mode=ro`)
+answers the nine §8 measurements, each tagged with source *and* the function it
+was measured through (decision `dec_9ba465a80a7b`). Path A =
+`push_initiative → find_covering_work → record_decision("coordinated")`; path B =
+`act_on_initiative → claim_initiative → claim_work → decline_initiative`.
+Baseline: `docs/findings/koordinering-maaling-baseline-2026-11-24.{json,txt}`.
+
+Baseline, 24 h to 2026-11-24 22:06Z (this is the *before* side — the coordination
+code went live ~21:56Z, minutes earlier):
+
+- 1: 15 initiatives entered the queue (`runtime_initiatives`); 89 more were turned
+  away at the gate (`heartbeat.initiative_rejected`, shared by several reasons).
+- 2: 0/15 became a `claim_work` task — measured zero, but all pre-deploy.
+- 4: 0 (lower bound: extra acted initiatives with identical `work_fingerprint`).
+- 9: 843 — all from stale `initiative-followup` tasks (`blocked`, standing stock
+  since 2026-11-01), 0 pending/leased initiatives stuck; 1 expired in-window.
+- 3, 7, 8: **cannot be measured yet** — zero `coordination.decision` events exist,
+  so `0` would be indistinguishable from "not instrumented". The tool says so.
+- 5: cannot be measured — "legitimate" is a judgement; no function persists a
+  verdict (upper bound shown: 1 declined, 89 gate rejections).
+- 6: cannot be measured — `costs.run_id` has no link to initiative/task;
+  `claim_work` persists no run id.
+
+Implemented and tested (`tests/test_koordinering_maaling.py`); the baseline was
+run against the live DB. Not verified in operation: 3/7/8 need a post-deploy run.
+
 ## 2026-11-24 — Coordinate on concrete work relations, not on topic words or a clock
 
 **Root cause (measured).** An initiative carried only text. `initiative_queue._gentaget_paastand`

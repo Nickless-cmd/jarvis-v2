@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10509/19173 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10512/19181 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -38,12 +38,12 @@ Generated from source. 10509/19173 functions/methods documented (54%). The list 
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 12 | 13 | 92% |
-| `scripts` | 353 | 708 | 49% |
+| `scripts` | 356 | 716 | 49% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2681)
+## Undocumented public functions (2684)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L236)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2587,6 +2587,9 @@ Generated from source. 10509/19173 functions/methods documented (54%). The list 
 - `scripts/interlanguage_structural_classifier.py` :: `main` (L174)
 - `scripts/jarvis_bare_practice_runner.py` :: `main` (L318)
 - `scripts/konsolider_beslutninger.py` :: `main` (L250)
+- `scripts/koordinering_maaling.py` :: `main` (L383)
+- `scripts/koordinering_maaling.py` :: `mål` (L124)
+- `scripts/koordinering_maaling.py` :: `åbn_readonly` (L81)
 - `scripts/krypter_medlems_chat.py` :: `koer` (L76)
 - `scripts/krypter_medlems_chat.py` :: `main` (L145)
 - `scripts/laering_status.py` :: `main` (L23)

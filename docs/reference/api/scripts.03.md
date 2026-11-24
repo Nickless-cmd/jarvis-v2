@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/migrer_shared_runtime_til_state_store.py`
+_Flyt seks moduler fra `shared/runtime/*.json` til `state_store`._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_gammel_sti` | `(navn)` | — | [src](../../../scripts/migrer_shared_runtime_til_state_store.py#L52) |
+| function | `_har_indhold` | `(data)` | Tom liste/dict tæller ikke som indhold — så må den gerne overskrives. | [src](../../../scripts/migrer_shared_runtime_til_state_store.py#L56) |
+| function | `flyt` | `(navn, *, toerloeb)` | Returnér (status, forklaring) for ét modul. | [src](../../../scripts/migrer_shared_runtime_til_state_store.py#L65) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/migrer_shared_runtime_til_state_store.py#L94) |
+
 ## `scripts/minimal_mode_baseline.py`
 _Minimal-mode-basislinje — hvad kan modellen UDEN Jarvis' stillads?_
 
@@ -436,11 +446,4 @@ _Read-only report for visible tool latency and prompt assembly cache behavior._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/tool_result_cleanup.py#L6) |
-
-## `scripts/tool_router_bootstrap.py`
-_One-shot bootstrap: generate tool tags via cheap LLM and warm embedding cache._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `main` | `()` | — | [src](../../../scripts/tool_router_bootstrap.py#L22) |
 

@@ -203,6 +203,20 @@ _Konsolidér de aktive beslutninger: 135 spredte -> 12 bærende._
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/konsolider_beslutninger.py#L250) |
 
+## `scripts/koordinering_maaling.py`
+_Mål koordineringen (§8) gennem den vej et initiativ faktisk går._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_m` | `(*, værdi=…, kilde, funktion, hvordan, kan_ikke_måles=…, **ekstra)` | Ensartet svar. ``værdi=None`` ⇔ ``kan_ikke_måles`` er sat. | [src](../../../scripts/koordinering_maaling.py#L66) |
+| function | `åbn_readonly` | `(db)` | — | [src](../../../scripts/koordinering_maaling.py#L81) |
+| function | `_iso` | `(dt)` | — | [src](../../../scripts/koordinering_maaling.py#L87) |
+| function | `_beslutninger` | `(conn, since)` | Alle ``coordination.decision`` i vinduet + tidspunktet for det FØRSTE nogensinde. | [src](../../../scripts/koordinering_maaling.py#L91) |
+| function | `_beslutnings_dækning` | `(første, since)` | (grund til at det ikke kan måles | None, vinduet er delvist). | [src](../../../scripts/koordinering_maaling.py#L112) |
+| function | `mål` | `(conn, hours=…, nu=…)` | — | [src](../../../scripts/koordinering_maaling.py#L124) |
+| function | `_tekst` | `(res, hours, since)` | — | [src](../../../scripts/koordinering_maaling.py#L366) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/koordinering_maaling.py#L383) |
+
 ## `scripts/krypter_medlems_chat.py`
 _Krypter de medlems-chatbeskeder der allerede ligger i klartekst (task 3.3)._
 
@@ -431,14 +445,4 @@ _Flyt de gamle fælles filer ind i ejerens egen mappe._
 | function | `_hash` | `(p)` | — | [src](../../../scripts/migrer_filer_per_bruger.py#L42) |
 | function | `find_ejer` | `()` | Ejerens workspace-navn. Tom streng når det ikke kan afgøres. | [src](../../../scripts/migrer_filer_per_bruger.py#L50) |
 | function | `migrer` | `(*, udfoer, ejer_ws=…)` | — | [src](../../../scripts/migrer_filer_per_bruger.py#L62) |
-
-## `scripts/migrer_shared_runtime_til_state_store.py`
-_Flyt seks moduler fra `shared/runtime/*.json` til `state_store`._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_gammel_sti` | `(navn)` | — | [src](../../../scripts/migrer_shared_runtime_til_state_store.py#L52) |
-| function | `_har_indhold` | `(data)` | Tom liste/dict tæller ikke som indhold — så må den gerne overskrives. | [src](../../../scripts/migrer_shared_runtime_til_state_store.py#L56) |
-| function | `flyt` | `(navn, *, toerloeb)` | Returnér (status, forklaring) for ét modul. | [src](../../../scripts/migrer_shared_runtime_til_state_store.py#L65) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/migrer_shared_runtime_til_state_store.py#L94) |
 

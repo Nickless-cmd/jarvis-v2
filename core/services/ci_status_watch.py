@@ -309,8 +309,25 @@ def abonner(sha: str, *, note: str = "", workflow: str = "") -> dict[str, Any]:
 
 def _hent_sha_runs(sha: str) -> list[dict[str, Any]]:
     """Alle kørsler for én SHA. ET kald — derfor kan abonnementet køre oftere
-    end det brede scan uden at brænde rate-limit-budgettet."""
-    return _hent_url(f"{_API}?head_sha={sha}&per_page=20")
+    end det brede scan uden at brænde rate-limit-budgettet.
+
+    MÅLT 24/11-2026: GitHubs `head_sha`-filter matcher KUN den fulde
+    40-tegns SHA. En forkortet SHA gav 0 kørsler — og 0 blev læst som
+    «intet_run», altså et falsk svar der fjernede abonnementet som om det var
+    afgjort. `abonner` accepterer fra 7 tegn, så vejen var åben: den der
+    abonnerede med en kort SHA fik et svar der lød som et udfald.
+    Korte SHA'er slås derfor op i den brede liste og matches på præfiks.
+    Grænse: ligger SHA'en længere tilbage end de hentede kørsler, findes den
+    ikke her — men et abonnement udløber efter 30 min, så i praksis er den ny.
+    """
+    ren = str(sha or "").strip().lower()
+    if len(ren) >= 40:
+        return _hent_url(f"{_API}?head_sha={ren}&per_page=20")
+    brede = _hent_url(f"{_API}?per_page=40")
+    return [
+        r for r in brede
+        if str(r.get("head_sha") or "").lower().startswith(ren)
+    ]
 
 
 def _afgoer(runs: list[dict[str, Any]], workflow: str) -> tuple[str, list[dict[str, Any]]]:

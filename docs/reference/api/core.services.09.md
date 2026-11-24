@@ -117,13 +117,13 @@ _CI-status — set, ikke gættet._
 | function | `_gem_abonnementer` | `(post)` | — | [src](../../../core/services/ci_status_watch.py#L280) |
 | function | `abonner` | `(sha, *, note=…, workflow=…)` | Vent paa at kørslen for `sha` bliver afgjort — grøn ELLER rød. | [src](../../../core/services/ci_status_watch.py#L287) |
 | function | `_hent_sha_runs` | `(sha)` | Alle kørsler for én SHA. ET kald — derfor kan abonnementet køre oftere | [src](../../../core/services/ci_status_watch.py#L310) |
-| function | `_afgoer` | `(runs, workflow)` | ('venter'|'groen'|'roed'|'afbrudt'|'intet_run', de afgørende kørsler). | [src](../../../core/services/ci_status_watch.py#L316) |
-| function | `scan_abonnementer` | `()` | De abonnementer der er afgjort NU — og fjern dem fra listen. | [src](../../../core/services/ci_status_watch.py#L342) |
-| function | `_beskriv_svar` | `(a)` | Én linje pr. abonnement — udfaldet FØRST, for det er hele ærindet. | [src](../../../core/services/ci_status_watch.py#L404) |
-| function | `_lever_abonnementer` | `(afgjorte)` | Skriv de afgjorte abonnementer i indbakken. Kaster ikke. | [src](../../../core/services/ci_status_watch.py#L423) |
-| function | `_beskriv` | `(run)` | — | [src](../../../core/services/ci_status_watch.py#L456) |
-| function | `_sekunder_siden` | `(sidste)` | Sekunder siden forrige tjek — eller None når stemplet mangler eller er | [src](../../../core/services/ci_status_watch.py#L466) |
-| function | `tik` | `()` | Tjek CI og indfri afgjorte abonnementer. | [src](../../../core/services/ci_status_watch.py#L478) |
+| function | `_afgoer` | `(runs, workflow)` | ('venter'|'groen'|'roed'|'afbrudt'|'intet_run', de afgørende kørsler). | [src](../../../core/services/ci_status_watch.py#L333) |
+| function | `scan_abonnementer` | `()` | De abonnementer der er afgjort NU — og fjern dem fra listen. | [src](../../../core/services/ci_status_watch.py#L359) |
+| function | `_beskriv_svar` | `(a)` | Én linje pr. abonnement — udfaldet FØRST, for det er hele ærindet. | [src](../../../core/services/ci_status_watch.py#L421) |
+| function | `_lever_abonnementer` | `(afgjorte)` | Skriv de afgjorte abonnementer i indbakken. Kaster ikke. | [src](../../../core/services/ci_status_watch.py#L440) |
+| function | `_beskriv` | `(run)` | — | [src](../../../core/services/ci_status_watch.py#L473) |
+| function | `_sekunder_siden` | `(sidste)` | Sekunder siden forrige tjek — eller None når stemplet mangler eller er | [src](../../../core/services/ci_status_watch.py#L483) |
+| function | `tik` | `()` | Tjek CI og indfri afgjorte abonnementer. | [src](../../../core/services/ci_status_watch.py#L495) |
 
 ## `core/services/citation_markorer.py`
 _Citation-markører — kontrolsyntaks der aldrig må nå skærmen._

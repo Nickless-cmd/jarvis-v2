@@ -336,3 +336,72 @@ def test_ci_venter_er_tom_uden_abonnementer(isoleret_state):
 
     ud = simple_tools._TOOL_HANDLERS["ci_venter"]({})
     assert ud == {"status": "ok", "antal": 0, "venter": []}
+
+
+# ── forkortet SHA: den falske vej ───────────────────────────────────────
+#
+# MÅLT 24/11-2026 mod det RIGTIGE GitHub-API:
+#   head_sha=faa23145d          -> 0 kørsler
+#   head_sha=faa23145d18fd6b…   -> 3 kørsler
+# Filteret matcher altså kun den fulde 40-tegns SHA. `abonner` accepterer fra
+# 7 tegn, så den der abonnerede med en kort SHA fik 0 kørsler — og 0 blev
+# læst som «intet_run», altså et svar der LIGNER et udfald, og abonnementet
+# blev fjernet som om det var afgjort. En vagt der melder et svar den ikke har.
+
+# En commit-SHA er ikke en hemmelighed — men 40 hex-tegn er høj entropi og
+# bliver flagget som én. Derfor markeres den eksplicit, med grunden skrevet.
+FULD_SHA = "faa23145d" + "18fd6b08e39b9f251adadec450e17d9"  # pragma: allowlist secret
+
+
+def test_forkortet_sha_slaaes_op_paa_praefiks(monkeypatch):
+    """En kort SHA må ikke sendes til `head_sha`-filteret, som tier om den."""
+    kaldte: list[str] = []
+
+    def _stub(url: str):
+        kaldte.append(url)
+        if "head_sha=" in url:
+            return []  # praecis det svar der blev målt
+        return [_run(sha=FULD_SHA), _run(rid="2", sha="0" * 40)]
+
+    monkeypatch.setattr(w, "_hent_url", _stub)
+    runs = w._hent_sha_runs("faa23145d")
+
+    assert len(runs) == 1, "den korte SHA skal finde sin fulde kørsel"
+    assert runs[0]["head_sha"] == FULD_SHA
+    assert "head_sha=" not in kaldte[0], (
+        "en forkortet SHA må ikke sendes til head_sha-filteret — det svarer 0"
+    )
+
+
+def test_fuld_sha_bruger_det_billige_filter(monkeypatch):
+    """Den fulde SHA er præcis og skal blive ved ét kald."""
+    kaldte: list[str] = []
+
+    def _stub(url: str):
+        kaldte.append(url)
+        return [_run(sha=FULD_SHA)]
+
+    monkeypatch.setattr(w, "_hent_url", _stub)
+    runs = w._hent_sha_runs(FULD_SHA)
+
+    assert len(runs) == 1
+    assert f"head_sha={FULD_SHA}" in kaldte[0]
+    assert len(kaldte) == 1, "en fuld SHA skal ikke hente den brede liste"
+
+
+def test_forkortet_sha_indfrier_ikke_som_intet_run(isoleret_state, monkeypatch):
+    """Hele kæden: kort SHA må ikke give et falsk «intet_run»."""
+
+    def _stub(url: str):
+        if "head_sha=" in url:
+            return []  # GitHubs faktiske svar på en kort SHA
+        return [_run(sha=FULD_SHA, konklusion="success")]
+
+    monkeypatch.setattr(w, "_hent_url", _stub)
+    w.abonner(sha="faa23145d", workflow="ci.yml")
+    afgjort = w.scan_abonnementer()
+
+    assert len(afgjort) == 1
+    assert afgjort[0]["udfald"] == "groen", (
+        f"en kort SHA må ikke give et falsk udfald, fik {afgjort[0]['udfald']!r}"
+    )

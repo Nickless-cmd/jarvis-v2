@@ -149,10 +149,13 @@ function Pre({ children }: { children?: React.ReactNode }) {
  *  gange (ord2: 3 opacity- og 3 color-starter). Nu pakker transformen alle
  *  afsluttede ord ind, så hvert ord har en stabil nøgle og en stabil node.
  *
- *  Derfor fryser komponenten sin klasse og sin rækkefølge ved første render:
- *  når ordet senere forlader «de sidste tre», må dets animation ikke kappes.
- *  Når farve-animationen (den længste) er færdig, slipper ordet klassen — og
- *  slutværdierne er identiske med almindelig tekst, så der er intet spring.
+ *  Derfor fryser komponenten sin RÆKKEFØLGE og sine varigheder ved første
+ *  render: et ord der vokser («o» → «or») skal ikke starte animationen forfra.
+ *
+ *  Klassen derimod slippes i samme øjeblik ordet forlader «de sidste tre» —
+ *  se kommentaren ved `!erHale` nedenfor. At lade animationen køre færdigt
+ *  ude i baggrunden hobede ordene sig op til en farveblok, fordi halen er tre
+ *  ord men animationen varer ~160 ms (målt 23/11-2026).
  */
 type StreamingWordProps = React.HTMLAttributes<HTMLSpanElement> & {
   node?: unknown
@@ -184,7 +187,21 @@ function StreamingWord({ node: _node, ...props }: StreamingWordProps) {
   if (!erHale && !frossen.className?.includes('streaming-word-tail')) {
     return <span {...props} />
   }
-  if (faerdig) return <span className="streaming-word-settled">{props.children}</span>
+  // Ordet er ude af halen. Farve-animationen må ikke køre videre her.
+  //
+  // MÅLT 23/11-2026 (Bjørn: «farven i ord for ord animationen er næsten en hel
+  // linje af gang i den nuværende version»): halen er tre ord, men animationen
+  // varer `color-duration + delay` ≈ 160 ms, og ved 400 tegn/s forlader 76 ord
+  // i sekundet halen. Hvert forladt ord blev derfor hængende i accentfarve
+  // 160 ms endnu — op til 6 ord på den ægte flade, 12 i regnestykket ved fuld
+  // rate. Det er farveblokken Bjørn ser vandre.
+  //
+  // Slutfarven er brødtekstens egen `--fg-1`, så ordet lander dér hvor
+  // animationen ville have endt. Prisen er et farvespring på de ord der
+  // forlader halen tidligt; ved høj rate sker det inden for ét tick.
+  if (!erHale || faerdig) {
+    return <span {...props} className="streaming-word-settled">{props.children}</span>
+  }
   return (
     <span
       {...props}

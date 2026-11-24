@@ -112,7 +112,7 @@ describe.skipIf(!KOERT)('ordhalens genstarter og dobbeltanimation', () => {
     } finally { await b.luk() }
   }, 60_000)
 
-  it('et ord der forlader «de sidste tre» midt i sin animation kappes ikke (hurtig streaming, 40 ms/ord)', async () => {
+  it('et ord der forlader «de sidste tre» standser sin farve-animation (hurtig streaming, 40 ms/ord)', async () => {
     const b = await aabnBaenk({ theme: 'dark' })
     try {
       const { page } = b
@@ -120,13 +120,38 @@ describe.skipIf(!KOERT)('ordhalens genstarter og dobbeltanimation', () => {
       const fg = await page.evaluate(() => getComputedStyle(document.getElementById('krop')!).color)
       await stream(page, 12, 40)
       const { ev, prover } = await hent(page)
-      expect(kappende(ev, fg)).toEqual([])
+
+      // BJØRN 23/11-2026: «farven i ord for ord animationen er næsten en hel
+      // linje af gang i den nuværende version». Kravet er nu det MODSATTE af
+      // den gamle kontrakt her: farve-animationen SKAL standses når ordet
+      // forlader halen, ikke køre færdigt i baggrunden.
+      //
+      // MÅLT i Chromium 23/11-2026, 40 ms/ord: før kørte alle 12 animationer
+      // færdigt (maks 12 accent-ord samtidigt); efter standses de ni der
+      // forlader halen, og der er aldrig mere end halens tre i farve.
+      const colorEv = [...ev.filter((e) => e.navn === 'color')].sort((a, b2) => a.t - b2.t)
+      const aktiv = new Set<string>()
+      let maksAktiv = 0
+      for (const e of colorEv) {
+        if (e.type === 'start') aktiv.add(e.ord)
+        else aktiv.delete(e.ord)
+        maksAktiv = Math.max(maksAktiv, aktiv.size)
+      }
+      expect(maksAktiv, 'ord med kørende farve-animation samtidigt').toBeLessThanOrEqual(3)
+
+      // Et ord der forlades må ikke blive hængende i accent: det lander i
+      // brødtekstens farve, som er hvor animationen ville have endt.
+      for (let n = 1; n <= 12; n++) {
+        const sidste = prover.filter((p) => p.ord === `ord${n}`).pop()
+        if (sidste) expect(sidste.color, `ord${n} slutfarve`).toBe(fg)
+      }
+
+      // Opacity-animationen er fuld efter 15 % af 220 ms = 33 ms, altså før
+      // ordet forlader halen — så den må aldrig hoppe tilbage.
       for (let n = 1; n <= 12; n++) {
         const o = prover.filter((p) => p.ord === `ord${n}`).map((p) => p.opacity)
         for (let i = 1; i < o.length; i++) expect(o[i]!, `ord${n} opacity må ikke falde/hoppe tilbage`).toBeGreaterThanOrEqual(o[i - 1]! - 1e-6)
       }
-      // Hvert ord når en afslutning på sin color-animation (ingen afbrudt hale).
-      expect(ev.filter((e) => e.type === 'end' && e.navn === 'color').length).toBe(12)
     } finally { await b.luk() }
   }, 60_000)
 })

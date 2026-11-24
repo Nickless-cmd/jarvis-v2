@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/util/lexical.py`
+_Fælles leksikalsk mekanisme: hvad er et fagord, og hvad er maskinstatus._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `relevans_ord` | `(tekst)` | Betydningsbærende ord i en tekst — lowercase, >=4 tegn, uden stopord. | [src](../../../core/util/lexical.py#L143) |
+| function | `ord_frekvens` | `(poster)` | Hvor mange poster indeholder hvert ord? | [src](../../../core/util/lexical.py#L176) |
+
 ## `core/util/timezone.py`
 _Central Copenhagen timezone utilities — én sandhedskilde for dansk tid._
 

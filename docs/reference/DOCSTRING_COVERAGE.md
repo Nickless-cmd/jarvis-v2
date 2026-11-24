@@ -26,7 +26,7 @@ Generated from source. 10470/19117 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 924 | 1641 | 56% |
-| `core.services` | 7025 | 12980 | 54% |
+| `core.services` | 7023 | 12978 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -37,7 +37,7 @@ Generated from source. 10470/19117 functions/methods documented (54%). The list 
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
-| `core.util` | 10 | 11 | 90% |
+| `core.util` | 12 | 13 | 92% |
 | `scripts` | 350 | 702 | 49% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
@@ -925,15 +925,15 @@ Generated from source. 10470/19117 functions/methods documented (54%). The list 
 - `core/services/background_resume.py` :: `tracked` (L85)
 - `core/services/bash_sandbox.py` :: `Enforcement.as_dict` (L383)
 - `core/services/bash_sandbox.py` :: `set_enabled` (L223)
-- `core/services/behavioral_decisions.py` :: `change_status` (L339)
-- `core/services/behavioral_decisions.py` :: `create_decision` (L187)
-- `core/services/behavioral_decisions.py` :: `delete_decision` (L407)
-- `core/services/behavioral_decisions.py` :: `get_decision` (L417)
-- `core/services/behavioral_decisions.py` :: `get_decision_with_reviews` (L421)
-- `core/services/behavioral_decisions.py` :: `get_stats` (L993)
-- `core/services/behavioral_decisions.py` :: `list_active_decisions` (L448)
-- `core/services/behavioral_decisions.py` :: `list_all_decisions` (L452)
-- `core/services/behavioral_decisions.py` :: `review_decision` (L235)
+- `core/services/behavioral_decisions.py` :: `change_status` (L347)
+- `core/services/behavioral_decisions.py` :: `create_decision` (L195)
+- `core/services/behavioral_decisions.py` :: `delete_decision` (L415)
+- `core/services/behavioral_decisions.py` :: `get_decision` (L425)
+- `core/services/behavioral_decisions.py` :: `get_decision_with_reviews` (L429)
+- `core/services/behavioral_decisions.py` :: `get_stats` (L855)
+- `core/services/behavioral_decisions.py` :: `list_active_decisions` (L456)
+- `core/services/behavioral_decisions.py` :: `list_all_decisions` (L460)
+- `core/services/behavioral_decisions.py` :: `review_decision` (L243)
 - `core/services/body_memory.py` :: `build_body_memory_surface` (L142)
 - `core/services/body_memory.py` :: `describe_body_memory` (L124)
 - `core/services/body_memory.py` :: `format_body_for_prompt` (L133)

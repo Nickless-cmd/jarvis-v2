@@ -33,6 +33,14 @@ from core.runtime.db_decisions import (
     update_decision as _db_update_decision,
 )
 
+from core.util.lexical import (
+    RELEVANS_STOPORD as _RELEVANS_STOPORD,
+    STRUKTURELLE_ORD as _STRUKTURELLE_ORD,
+    STRUKTUREL_VAEGT as _STRUKTUREL_VAEGT,
+    ord_frekvens as _ord_frekvens,
+    relevans_ord as _relevans_ord,
+)
+
 logger = logging.getLogger(__name__)
 
 #: Spor til drift. MAALT 24/11-2026: journalen indeholdt NUL linjer fra
@@ -472,164 +480,18 @@ def list_all_decisions(*, limit: int = 100) -> list[dict[str, Any]]:
 # Derfor baerer hver vurdering ogsaa HVORFOR den fik sin score, saa valget kan
 # efterproeves frem for at skulle troes.
 
-# Ord der ikke baerer betydning paa tvaers af beslutninger og ture.
+# ── Den faelles leksikalske mekanisme ───────────────────────────────────────
 #
-# 23/11-2026: foerste version havde kun pronominer og konjunktioner. Maalt gav det
-# falske hit: en HILSEN («hej Bjorn hvordan gaar det») vakte fire beslutninger,
-# fordi «hvordan» staar i 4 af 138 beslutninger og derfor fik HOEJ IDF — sjaelden
-# og betydningsloes paa samme tid. IDF kan ikke skelne de to; kun en liste kan.
-# Derfor er spoergeord, hoeflighedsfraser og tidsvendinger ekskluderet her.
-_RELEVANS_STOPORD = frozenset({
-    # pronominer, konjunktioner, praepositioner
-    "jeg", "det", "der", "som", "og", "at", "en", "et", "den", "de", "til",
-    "for", "med", "fra", "skal", "kan", "ikke", "naar", "hvad", "hvor",
-    "min", "mit", "mine", "sig", "sin", "sine", "har", "have", "var", "blev",
-    "bliver", "vaere", "vaeret", "ogsaa", "kun", "men", "eller", "saa", "hvis",
-    "denne", "dette", "disse", "man", "selv", "op", "ud", "ind", "ned",
-    "the", "and", "with", "that", "this", "not", "are", "was", "have",
-    # spoergeord og meta-ord — de beskriver samtalen, ikke sagen
-    "hvordan", "hvorfor", "hvornaar", "hvilken", "hvilket", "hvilke",
-    "gerne", "lige", "godt", "sadan", "vaere", "bliver", "siger", "sige",
-    "synes", "tror", "ved", "kender", "handler", "gaelder", "drejer",
-    # hoeflighed og hilsner
-    "hej", "tak", "mojn", "godmorgen", "godaften", "velkommen",
-    # tidsvendinger uden fagligt indhold
-    "idag", "igaar", "imorgen", "aften", "morgen", "natten", "ugen",
-    "maaned", "aaret", "timen", "gang", "igen", "stadig", "allerede",
-    # Maskinelle tilstandstokens (24/11-2026, maalt i heartbeat-stien).
-    # Heartbeat scorer IKKE mod en brugerbesked men mod `tool_intent` og
-    # `loop_runtime` — korte, maskinelle strenge som «idle active 2». Maalt:
-    # «active» staar i 1 af 138 beslutninger og fik derfor IDF 4,24, hvilket
-    # lod den passere enkeltords-reglen. Resultatet var at de SAMME to
-    # beslutninger (`active_dreams`, `bgActive`) blev valgt paa hver eneste
-    # kontekst — en falsk forbindelse paa et strukturelt token. Det er samme
-    # fejlklasse som «hvordan» i en hilsen: sjaelden OG betydningsloes.
-    # `success` er BEHOLDT: den rammer beslutningen der netop handler om
-    # `applied`/`ok`/`success`-felter, saa dér er ordet et ægte signal.
-    "active", "idle", "executed", "completed", "none", "standby",
-    "dispatched", "noop", "true", "false",
-})
-
-
-#: Maskinens EGEN statusbeskrivelse — ord der staar i hver eneste heartbeat-tur.
-#:
-#: HVORFOR (maalt i DRIFT 24/11-2026). Gaten valgte de SAMME fem beslutninger i
-#: 16 heartbeat-ticks over 95 minutter, mens kontekstens tal aendrede sig
-#: (1578 -> 1560 foreslaaede). Aarsagen var maalbar: de fem vandt paa `file`,
-#: `main`, `memory`, `signal` — tokens der staar i statuslinjerne hver gang.
-#: `dec_f1047a72079f` ramte UDELUKKENDE `file` + `memory` og scorede 4,31.
-#:
-#: Listen er ikke gaettet: den er udledt af de literaler der GENERERER
-#: statuslinjerne (`heartbeat_runtime.py:2390-2520`) — «scheduled heartbeat
-#: interval is currently due», «recent governed file writes exist for continuity
-#: review», «private signal pressure is …» — plus de workflow-labels
-#: (`Preference Updates`, `Memory Promotions`, `Chronicle Drafts`) og
-#: `tool_intent`-beskrivelsen (`inspect-working-tree main`). Alle er maalt
-#: tilstede i den levende kontekst. Et token herfra kan sagtens vaere en SAG i en
-#: anden tur; derfor fjernes de ikke (som `_RELEVANS_STOPORD` goer), de vejes
-#: lavere og kan ikke baere beviset alene.
-#:
-#: IKKE paa listen: `success` (rammer beslutningen om applied/ok/success-felter),
-#: loop-titlenes fagord (`kørende`, `proces`, `prompten`, `relevans`) — de staar
-#: ogsaa i alle 16 kontekster, men fordi loop-titlerne ikke aendrede sig, ikke
-#: fordi de er maskinstatus — og TILSTANDSBESKRIVELSERNE (`signal`, `pressure`,
-#: `high`, `initiative`, `tension`, `feel`). Skellet er maalt: foerste version
-#: havde dem med, og saa fejlede en eksisterende test med rette — «private signal
-#: pressure is high» er INFORMATION om turen, ikke en taeller. En beslutning om
-#: signal-pres ER relevant naar presset er hoejt. Det er taellerne
-#: («has 1560 proposed items») og identiteten («main», «inspect-working-tree»)
-#: der ikke baerer en sag.
-_STRUKTURELLE_ORD = frozenset({
-    # heartbeat_runtime.py:2402-2516 — statuslinjernes taeller-vokabular
-    "manual", "trigger", "requested", "mission", "control",
-    "scheduled", "heartbeat", "interval", "currently",
-    "capabilities", "still", "require", "approval",
-    "proposed", "items", "approved", "awaiting", "apply",
-    "recent", "governed", "file", "writes", "exist", "continuity", "review",
-    "contract", "available", "context", "latest", "visible", "preview", "carry",
-    # workflow-labels der taeller op i hver tur
-    "preference", "updates", "memory", "promotions", "chronicle", "drafts",
-    # tool_intent — hvilken slags tur det er, ikke hvad sagen er
-    "inspect", "working", "tree", "main", "repo",
-    # 24/11-2026 (maalt): listen var en STIKPROEVE — ti tokens fra den gamle
-    # stopord-blok. Resten af statusvokabularet gik gennem filteret som fagord,
-    # og en probe paa ren maskin-kontekst valgte to open-loop-beslutninger paa
-    # tokenet `loop` alene. Maalt foer udvidelsen: `idle active running
-    # completed tool_intent loop_state heartbeat pending failed cancelled
-    # expired queued` efterlod ['cancelled','expired','failed','intent','loop',
-    # 'loop_state','pending','queued','running','state','tool','tool_intent']
-    # — 12 af 13 tokens var fagsignaler.
-    #
-    # Statusfamilien: tilstande en koersel kan staa i. De beskriver HVOR i en
-    # proces noget er, ikke HVAD sagen er — og de staar i `loop_runtime` i
-    # hver tur. En beslutning der kun rammer én af dem baerer intet.
-    "running", "pending", "failed", "cancelled", "expired", "queued",
-    # `tool_intent`/`loop_state` og deres dele. Sammensatte former tilfoejes
-    # baade som helhed og som dele (`_relevans_ord` splitter paa '_'), saa alle
-    # fire varianter skal staa her — ellers lækker halvdelen.
-    "tool", "intent", "tool_intent", "loop", "state", "loop_state",
-})
-
-#: Hvor meget et strukturelt ord vejer i scoren, relativt til sin IDF.
-#:
-#: 0,35 er maalt, ikke valgt: ved 0,5 faldt `dec_f1047a72079f` (file+memory) ud
-#: af de fem, og ved 0,35 stod rangordenen stabilt derefter. Faktoren kan ikke
-#: ALENE goere en ren strukturel match harmloes — den scorer 0,647 selv ved 0,15,
-#: altsaa stadig over gulvet 0,32; foerst ved ~0,07 ville den falde under, og det
-#: er fjernelse, ikke vaegtning. Derfor er det BEVISKRAVET nedenfor den baerende
-#: regel, og denne faktor kun den sekundaere.
-_STRUKTUREL_VAEGT = 0.35
-
-
-def _relevans_ord(tekst: str) -> set[str]:
-    """Betydningsbaerende ord i en tekst — lowercase, >=4 tegn, uden stopord.
-
-    23/11-2026 (maalt): foerste version splittede paa bindestreg, saa
-    «prompt-sektionen» blev til «prompt» + «sektionen» og ALDRIG matchede den
-    samme sammensatte form i en beslutning. Sammensatte ord bevares derfor som
-    ét token, og delene tilfoejes OGSAA — saa baade «prompt-sektionen» og
-    «sektionen» kan ramme.
-    """
-    tekst = str(tekst or "").lower()
-    # 24/11-2026 (maalt i DRIFT, ikke i en test): en filsti er ikke et signal.
-    # Heartbeats `last_action` baerer stier, og den foerste produktionslinje
-    # (21:17:39) valgte 5 af 137 paa ord fra
-    # `/tmp/pytest-of-bs/pytest-419/test_approved_sudo_exec_become0/workspaces/default/to`
-    # — 9 af 15 tokens kom fra stien alene («pytest-of-bs», «become0»,
-    # «workspaces», «default»). Det er samme fejlklasse som «active»: et token
-    # der ikke baerer en sag. Stier fjernes derfor FOER tokenisering; et ord som
-    # «chmod» uden for en sti bliver tilbage, fordi det KAN vaere en sag.
-    tekst = re.sub(r"/\S*", " ", tekst)
-    ord_: set[str] = set()
-    for token in re.findall(r"[a-zæøå0-9_-]{4,}", tekst):
-        if token in _RELEVANS_STOPORD:
-            continue
-        ord_.add(token)
-        # Bindestreg og understregning: tilfoej delene, saa en sammensat form
-        # ogsaa matcher naar modparten skriver den ene halvdel.
-        if "-" in token or "_" in token:
-            for del_ in re.split(r"[-_]", token):
-                if len(del_) >= 4 and del_ not in _RELEVANS_STOPORD:
-                    ord_.add(del_)
-    return ord_
-
-
-def _ord_frekvens(beslutninger: list[dict[str, Any]]) -> dict[str, int]:
-    """Hvor mange beslutninger indeholder hvert ord?
-
-    HVORFOR (maalt 23/11-2026). Foerste version vaegtede alle ord lige. Maalt gav
-    det falske hit: «hvordan» og «faktisk» bandt beslutninger til en hilsen, fordi
-    de staar i 11-14 af de 138 beslutninger. Et ord der staar i en tiendedel af
-    alle beslutninger kan ikke skelne noget — det er baggrund, ikke signal.
-    """
-    freq: dict[str, int] = {}
-    for d in beslutninger:
-        tekst = f"{d.get('directive') or ''} {d.get('trigger_cue') or ''}"
-        for o in _relevans_ord(tekst):
-            freq[o] = freq.get(o, 0) + 1
-    return freq
-
-
+# Stopordene, de strukturelle ord, vaegten og tokeniseringen boede her indtil
+# 24/11-2026. De er flyttet til `core/util/lexical.py`, fordi de samme to
+# begreber blev genopfundet i tolv andre moduler — hver gang med en liste der
+# naesten lignede de andres. `_RELEVANS_STOPORD` (ord der FJERNES) og
+# `_STRUKTURELLE_ORD` (ord der VAEGTES LA VERE, fordi de staar i hver tur) er
+# ikke to lister men to niveauer af samme skel, og det skel ejes nu ét sted.
+#
+# Navnene nedenfor er bevaret som aliaser, saa denne fils kaldere og dens tests
+# ikke skal aendres: det er stadig HER gaten definerer hvad den mener, det er
+# bare ikke her listen vedligeholdes.
 def _idf(ord_: str, freq: dict[str, int], antal: int) -> float:
     """Invers dokument-frekvens: sjældne ord vejer tungt, hyppige vejer næsten intet.
 

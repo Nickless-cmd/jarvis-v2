@@ -20,8 +20,37 @@ def protect_preview(text: str | None, member: str | None) -> str | None:
     return chat_crypto.krypter(text, member) if text and member else text
 
 
+#: Staar i stedet for chiffertekst naar et preview ikke kan bevises laesbart.
+#: Siger EKSPLICIT at svaret ikke kan bevises — en dommer eller prompt maa
+#: ikke tro at base64 er svaret, og heller ikke at svaret var tomt.
+PLADSHOLDER_KRYPTERET = "[krypteret svar — indholdet kan ikke bevises her]"
+
+
+def laesbaar_preview(
+    text_preview: str | None,
+    session_id: str | None = None,
+    user_id: str | None = None,
+) -> str | None:
+    """Preview som en dommer/prompt/LLM trygt kan laese. ALDRIG chiffertekst.
+
+    Klartekst (og tom) returneres uaendret. `enc:`-tekst dekrypteres med
+    medlemmet udledt af `user_id` (foerst) eller `session_id`; kan noeglen ikke
+    bevises, eller dekrypteringen fejler, returneres `PLADSHOLDER_KRYPTERET`.
+    """
+    if not text_preview or not chat_crypto.er_krypteret(text_preview):
+        return text_preview
+    member = None
+    if user_id:
+        member = chat_crypto.medlem_for_raekke(user_id=str(user_id))
+    if not member and session_id:
+        member = chat_crypto.medlem_for_session(str(session_id))
+    if member:
+        klar = chat_crypto.dekrypter(text_preview, member)
+        if not chat_crypto.er_krypteret(klar):
+            return klar
+    return PLADSHOLDER_KRYPTERET
+
+
 def reveal_preview(text: str | None, user_id: str | None) -> str | None:
-    if not text or not chat_crypto.er_krypteret(text) or not user_id:
-        return text
-    member = chat_crypto.medlem_for_raekke(user_id=user_id)
-    return chat_crypto.dekrypter(text, member) if member else text
+    """Som `laesbaar_preview` med kun `user_id` — aldrig chiffertekst ud."""
+    return laesbaar_preview(text, user_id=user_id)

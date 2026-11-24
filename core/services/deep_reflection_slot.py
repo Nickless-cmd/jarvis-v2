@@ -94,7 +94,9 @@ def _chronicle_summary() -> list[str]:
             # sidste 24t), men mekanismen var ladt — foerste medlems-koersel i
             # vinduet ville fode base64 til modellen. Chiffertekst er ikke et
             # svar; den springes over, den dekrypteres ikke her.
-            if preview and not chat_crypto.er_krypteret(preview):
+            from core.services.visible_preview_crypto import PLADSHOLDER_KRYPTERET
+            if (preview and not chat_crypto.er_krypteret(preview)
+                    and preview != PLADSHOLDER_KRYPTERET):
                 out.append(f"· {preview[:140]}")
     except Exception:
         pass

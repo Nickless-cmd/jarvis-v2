@@ -358,11 +358,11 @@ _Run-closure gate — fang tomme replies og unstaged changes efter agentic runs.
 | function | `_try_auto_commit` | `(touched_paths, *, run_id, session_id, focus)` | Commit filer rørt under et autonomt run. Return short-hash eller None. | [src](../../../core/services/run_closure_gate.py#L426) |
 | function | `_registrer_i_indbakken` | `(*, kildetype, kilde_id, beskrivelse, run_id=…, session_id=…, kilde_ejer=…)` | Læg gatens besked i INDBAKKEN i stedet for at sende den til Discord. | [src](../../../core/services/run_closure_gate.py#L570) |
 | function | `_on_run_completed` | `(payload)` | Handle a runtime.autonomous_run_completed event. | [src](../../../core/services/run_closure_gate.py#L623) |
-| function | `_on_run_started` | `(payload)` | Handle runtime.autonomous_run_started — snapshot git state. | [src](../../../core/services/run_closure_gate.py#L979) |
-| function | `_on_tool_used` | `(payload)` | Track tool calls so we can detect silent runs. | [src](../../../core/services/run_closure_gate.py#L994) |
-| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/run_closure_gate.py#L1010) |
-| function | `start_run_closure_gate` | `()` | Start the eventbus subscriber thread. Safe to call multiple times. | [src](../../../core/services/run_closure_gate.py#L1038) |
-| function | `stop_run_closure_gate` | `()` | — | [src](../../../core/services/run_closure_gate.py#L1063) |
+| function | `_on_run_started` | `(payload)` | Handle runtime.autonomous_run_started — snapshot git state. | [src](../../../core/services/run_closure_gate.py#L982) |
+| function | `_on_tool_used` | `(payload)` | Track tool calls so we can detect silent runs. | [src](../../../core/services/run_closure_gate.py#L997) |
+| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/run_closure_gate.py#L1013) |
+| function | `start_run_closure_gate` | `()` | Start the eventbus subscriber thread. Safe to call multiple times. | [src](../../../core/services/run_closure_gate.py#L1041) |
+| function | `stop_run_closure_gate` | `()` | — | [src](../../../core/services/run_closure_gate.py#L1066) |
 
 ## `core/services/run_event_log.py`
 _In-memory, append-only, offset-indekseret event-log PR. RUN._

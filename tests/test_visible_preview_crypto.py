@@ -19,7 +19,8 @@ def test_preview_round_trip_for_member(monkeypatch):
     stored = protect_preview("private preview", "member-id")
     assert stored.startswith("enc:v1:")
     assert reveal_preview(stored, "member-id") == "private preview"
-    assert reveal_preview(stored, None) == stored
+    assert reveal_preview(stored, None) != stored
+    assert not stored[:20] in (reveal_preview(stored, None) or "")
 
 
 def test_authenticated_member_without_key_cannot_write_preview(monkeypatch):

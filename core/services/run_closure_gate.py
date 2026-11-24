@@ -816,7 +816,10 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
                 "SELECT text_preview, status, error FROM visible_runs WHERE run_id = ?",
                 (run_id,),
             ).fetchone()
-        output = (row[0] if row else "") or ""
+        # Chiffertekst (medlems-koersel) maa aldrig videre til referat/indbakke:
+        # ingen noegle sendes med, saa det bliver pladsholderen.
+        from core.services.visible_preview_crypto import laesbaar_preview
+        output = (laesbaar_preview(row[0] if row else "") or "")
         _run_status = (row[1] if row else "") or ""
         _run_error = (row[2] if row else "") or ""
         _output_laest = True

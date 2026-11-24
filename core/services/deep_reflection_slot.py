@@ -24,6 +24,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+from core.services import chat_crypto
 from core.services.identity_composer import identity_prompt_prefix
 from core.runtime.workspace_paths import shared_dir
 
@@ -85,7 +86,15 @@ def _chronicle_summary() -> list[str]:
             if dt < cutoff:
                 continue
             preview = str(r.get("text_preview") or "").strip()
-            if preview:
+            # 24/11-2026: `recent_visible_runs` dekrypterer KUN naar `user_id`
+            # sendes med — `reveal_preview` returnerer ellers teksten uaendret.
+            # Denne daemon laeser alle brugeres runs UDEN user_id, saa en
+            # medlems-koersel leverede `enc:...` (chiffertekst) direkte ind i
+            # refleksions-prompten. Maalt 24/11: vinduet var rent (0 enc:-raekker
+            # sidste 24t), men mekanismen var ladt — foerste medlems-koersel i
+            # vinduet ville fode base64 til modellen. Chiffertekst er ikke et
+            # svar; den springes over, den dekrypteres ikke her.
+            if preview and not chat_crypto.er_krypteret(preview):
                 out.append(f"· {preview[:140]}")
     except Exception:
         pass

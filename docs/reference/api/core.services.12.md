@@ -316,8 +316,10 @@ _Kvote for de to dispatch-CLI'er — målt, aldrig gættet._
 | function | `_find_key` | `(node, key)` | Event-strukturen er pakket ind; vi leder efter nøglen, ikke efter en sti. | [src](../../../core/services/dispatch_quota.py#L361) |
 | function | `_load_codex_quota` | `()` | — | [src](../../../core/services/dispatch_quota.py#L379) |
 | function | `codex_quota` | `()` | 5-timers (300 min) og ugentlig (10080 min) kvote for Codex. | [src](../../../core/services/dispatch_quota.py#L481) |
-| function | `_window` | `(reading)` | — | [src](../../../core/services/dispatch_quota.py#L488) |
-| function | `quota_preflight` | `(backend)` | Skal denne dispatch startes? Svar FØR worktreet oprettes. | [src](../../../core/services/dispatch_quota.py#L500) |
+| function | `_windows` | `(reading)` | (label, pct, resets_at) for BEGGE vinduer — det korteste først. | [src](../../../core/services/dispatch_quota.py#L488) |
+| function | `_format_windows` | `(windows, *, peak_label, peak_pct, peak_reset)` | Én linje der nævner begge vinduer, med det højeste som det bærende. | [src](../../../core/services/dispatch_quota.py#L512) |
+| function | `quota_preflight` | `(backend)` | Skal denne dispatch startes? Svar FØR worktreet oprettes. | [src](../../../core/services/dispatch_quota.py#L529) |
+| function | `quota_advisory` | `(backend)` | Kvoten til VISNING ved en bestilling — uanset om den blokerer. | [src](../../../core/services/dispatch_quota.py#L589) |
 
 ## `core/services/dispatch_status.py`
 _Typed dispatch-status enum for the dispatch-redesign._

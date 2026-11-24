@@ -485,16 +485,45 @@ def codex_quota() -> QuotaReading:
 
 # ── Preflight ──────────────────────────────────────────────────────────────
 
-def _window(reading: QuotaReading) -> tuple[float, str]:
+def _windows(reading: QuotaReading) -> list[tuple[str, float, str]]:
+    """(label, pct, resets_at) for BEGGE vinduer — det korteste først.
+
+    Den ugentlige kvote har ligget i målingen hele tiden (`seven_day_pct` /
+    `secondary_pct`), men blev før 24/11-2026 aldrig vist: en dispatch kunne
+    ramme det ugentlige loft midt i et 5-timers-vindue der så friskt ud, og
+    begrundelsen ville sige «20 % brugt» mens sandheden var «100 % brugt».
+    Målt 24/11-2026: codex' `secondary_pct` blev læst og kasseret.
+    """
     if reading.backend == "claude":
-        return (
-            float(reading.get("five_hour_pct") or 0.0),
-            str(reading.get("five_hour_resets_at") or ""),
-        )
-    return (
-        float(reading.get("primary_pct") or 0.0),
-        str(reading.get("primary_resets_at") or ""),
-    )
+        return [
+            ("5-timers-kvoten", float(reading.get("five_hour_pct") or 0.0),
+             str(reading.get("five_hour_resets_at") or "")),
+            ("den ugentlige kvote", float(reading.get("seven_day_pct") or 0.0),
+             str(reading.get("seven_day_resets_at") or "")),
+        ]
+    return [
+        ("Codex' 5-timers-vindue", float(reading.get("primary_pct") or 0.0),
+         str(reading.get("primary_resets_at") or "")),
+        ("Codex' ugentlige vindue", float(reading.get("secondary_pct") or 0.0),
+         str(reading.get("secondary_resets_at") or "")),
+    ]
+
+
+def _format_windows(windows: list[tuple[str, float, str]], *, peak_label: str,
+                    peak_pct: float, peak_reset: str) -> str:
+    """Én linje der nævner begge vinduer, med det højeste som det bærende.
+
+    Den bevarer den gamle form («N % af <vindue> er brugt — reset …») for det
+    vindue der afgør sagen, så eksisterende læsere og tests ser det samme,
+    og tilføjer det andet vindue bagefter i stedet for at erstatte det.
+    """
+    head = f"{peak_pct:.0f} % af {peak_label} er brugt — reset {peak_reset or 'ukendt'}"
+    andre = [
+        f"{pct:.0f} % af {label} (reset {reset or 'ukendt'})"
+        for label, pct, reset in windows
+        if (label, pct, reset) != (peak_label, peak_pct, peak_reset)
+    ]
+    return head + (" · " + " · ".join(andre) if andre else "")
 
 
 def quota_preflight(backend: str) -> dict[str, Any]:
@@ -503,6 +532,11 @@ def quota_preflight(backend: str) -> dict[str, Any]:
     `severity`: ok · warn · block · unknown. `unknown` betyder at kvoten ikke
     kunne måles — og der fortsættes, fordi en målefejl ikke er et bevis for
     at kvoten er opbrugt.
+
+    Siden 24/11-2026 afgør det HØJESTE af de to vinduer, og begge oplyses.
+    Før blev kun 5-timers set; et ugentligt loft på 100 % slap igennem som
+    «ok» og dræbte dispatchen sekunder efter worktreet var oprettet — samme
+    spild som blokeringen findes for at undgå.
     """
     reading = claude_quota() if backend == "claude" else codex_quota()
     if not reading.ok:
@@ -520,22 +554,62 @@ def quota_preflight(backend: str) -> dict[str, Any]:
             "pct": None, "resets_at": "", "reading": reading,
         }
 
-    pct, resets_at = _window(reading)
-    label = "5-timers-kvoten" if backend == "claude" else "Codex' 5-timers-vindue"
-    if pct >= BLOCK_PCT:
+    windows = _windows(reading)
+    peak_label, peak_pct, peak_reset = max(windows, key=lambda w: w[1])
+    reason = _format_windows(
+        windows, peak_label=peak_label, peak_pct=peak_pct, peak_reset=peak_reset
+    )
+    # En måling fra en fil der ikke er rørt i flere timer ser frisk ud uden
+    # denne linje. Codex' kvote læses fra en rollout-fil, og 24/11-2026 var
+    # den nyeste otte dage gammel — «0 % brugt» var ikke en måling af nu.
+    if reading.stale_hours >= 0:
+        reason += f" [måling {reading.stale_hours:.1f} t gammel]"
+
+    severity = "ok"
+    if peak_pct >= BLOCK_PCT:
+        severity = "block"
+    elif peak_pct >= WARN_PCT:
+        severity = "warn"
+
+    return {
+        "allow": severity != "block",
+        "severity": severity,
+        "reason": reason,
+        "pct": peak_pct,
+        "resets_at": peak_reset,
+        "windows": [
+            {"label": label, "pct": pct, "resets_at": reset}
+            for label, pct, reset in windows
+        ],
+        "stale_hours": reading.stale_hours,
+        "reading": reading,
+    }
+
+
+def quota_advisory(backend: str) -> dict[str, Any]:
+    """Kvoten til VISNING ved en bestilling — uanset om den blokerer.
+
+    `quota_preflight` svarer «må jeg starte?» og er tavs når svaret er ja.
+    Denne svarer «hvordan ser det ud?», så bestillingen kan bære begge
+    vinduer med sig. Uden den er den ugentlige kvote kun synlig i det
+    øjeblik den allerede har stoppet arbejdet — altså for sent til at
+    vælge en anden rute.
+    """
+    reading = claude_quota() if backend == "claude" else codex_quota()
+    if not reading.ok:
         return {
-            "allow": False, "severity": "block",
-            "reason": f"{pct:.0f} % af {label} er brugt — reset {resets_at or 'ukendt'}",
-            "pct": pct, "resets_at": resets_at, "reading": reading,
-        }
-    if pct >= WARN_PCT:
-        return {
-            "allow": True, "severity": "warn",
-            "reason": f"{pct:.0f} % af {label} er brugt — reset {resets_at or 'ukendt'}",
-            "pct": pct, "resets_at": resets_at, "reading": reading,
+            "measured": False,
+            "backend": backend,
+            "reason": reading.error,
+            "stale_hours": reading.stale_hours,
         }
     return {
-        "allow": True, "severity": "ok",
-        "reason": f"{pct:.0f} % af {label} er brugt — reset {resets_at or 'ukendt'}",
-        "pct": pct, "resets_at": resets_at, "reading": reading,
+        "measured": True,
+        "backend": backend,
+        "windows": [
+            {"label": label, "pct": pct, "resets_at": reset}
+            for label, pct, reset in _windows(reading)
+        ],
+        "stale_hours": reading.stale_hours,
+        "observed_at": reading.observed_at,
     }

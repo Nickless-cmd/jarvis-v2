@@ -434,7 +434,7 @@ def dispatch_agent(
     view = _accept_view({"agent_id": agent_id, "assignment_id": a["assignment_id"],
                          "run_id": run["run_id"] if run else "", "status": a["status"]})
     view["route"] = {"route_source": route["route_source"], "provider": route["provider"],
-                     "model": route["model"]}
+                     "model": route["model"], "quota": route.get("quota") or {}}
     view["context"] = fork.plan_view(plan)
     if worktree is not None:
         view["worktree"] = {"worktree_id": worktree["worktree_id"], "branch": worktree["branch"],

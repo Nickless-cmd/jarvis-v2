@@ -123,7 +123,7 @@ def ensure_activation(agent_id: str, *, execution_mode: str = "solo-task") -> di
         return {"status": "refused", "code": "ROUTE_PERSIST", "detail": type(exc).__name__, "reasons": []}
     return {"status": "created", "assignment_id": acc["assignment_id"], "run_id": acc["run_id"],
             "route": {"route_source": route["route_source"], "provider": route["provider"],
-                      "model": route["model"]}}
+                      "model": route["model"], "quota": route.get("quota") or {}}}
 
 
 def _use_route(agent_id: str, route: dict[str, Any]) -> None:

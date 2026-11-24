@@ -391,9 +391,20 @@ def decide_route(*, owner_user_id: str, requested_model: str = "", hard: bool = 
     if not chain:
         raise ModelUnavailable("ingen tilladt og egnet model", rejected)
     head = chain[0]
+    # Kvoten foelger med bestillingen, ikke kun naar den blokerer. Uden den
+    # er den ugentlige kvote foerst synlig i det oejeblik den har stoppet
+    # arbejdet — og saa er det for sent at vaelge en anden rute.
+    _quota: dict[str, Any] = {}
+    if head["provider"] in {"claude-cli", "codex-cli"}:
+        from core.services.dispatch_quota import quota_advisory
+
+        _quota = quota_advisory(
+            "claude" if head["provider"] == "claude-cli" else "codex"
+        )
     return {"contract": "agent-route-v1", "route_source": head["route_source"],
             "provider": head["provider"], "model": head["model"], "candidates": chain,
             "rejected": _capped(rejected), "rejected_total": len(rejected), "owner_user_id": owner, "hard": bool(hard),
             "requested_model": requested, "role": role, "fitness_ukendt": fitness_ukendt,
             "decided_at": datetime.now(UTC).isoformat(),
+            "quota": _quota,
             **_estimate_cost(head["provider"], head["model"], budget_tokens)}

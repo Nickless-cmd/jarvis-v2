@@ -424,19 +424,19 @@ _Deep Reflection Slot — real think-time, not tick-to-tick alert._
 | function | `_load` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L45) |
 | function | `_save` | `(data)` | — | [src](../../../core/services/deep_reflection_slot.py#L61) |
 | function | `_chronicle_summary` | `()` | Pull last-24h visible runs + inner thought fragments. | [src](../../../core/services/deep_reflection_slot.py#L75) |
-| function | `_active_dreams` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L121) |
-| function | `_shadow_patterns` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L134) |
-| function | `_signal_surfaces` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L147) |
-| function | `_compose_prompt` | `(chronicle, dreams, shadow, signals)` | — | [src](../../../core/services/deep_reflection_slot.py#L194) |
-| function | `_fallback_content` | `(chronicle, dreams, shadow, signals)` | Structural fallback if LLM is unavailable. | [src](../../../core/services/deep_reflection_slot.py#L222) |
-| function | `_write_reflection_md` | `(reflection_id, text, sources)` | — | [src](../../../core/services/deep_reflection_slot.py#L246) |
-| function | `run_reflection` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L269) |
-| function | `_should_run_now` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L337) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/deep_reflection_slot.py#L366) |
-| function | `list_recent` | `(*, limit=…)` | — | [src](../../../core/services/deep_reflection_slot.py#L373) |
-| function | `build_deep_reflection_surface` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L377) |
-| function | `_surface_summary` | `(latest, all_items)` | — | [src](../../../core/services/deep_reflection_slot.py#L393) |
-| function | `build_deep_reflection_prompt_section` | `()` | Surface newly completed deep reflection for 12h. | [src](../../../core/services/deep_reflection_slot.py#L402) |
+| function | `_active_dreams` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L123) |
+| function | `_shadow_patterns` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L136) |
+| function | `_signal_surfaces` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L149) |
+| function | `_compose_prompt` | `(chronicle, dreams, shadow, signals)` | — | [src](../../../core/services/deep_reflection_slot.py#L196) |
+| function | `_fallback_content` | `(chronicle, dreams, shadow, signals)` | Structural fallback if LLM is unavailable. | [src](../../../core/services/deep_reflection_slot.py#L224) |
+| function | `_write_reflection_md` | `(reflection_id, text, sources)` | — | [src](../../../core/services/deep_reflection_slot.py#L248) |
+| function | `run_reflection` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L271) |
+| function | `_should_run_now` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L339) |
+| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/deep_reflection_slot.py#L368) |
+| function | `list_recent` | `(*, limit=…)` | — | [src](../../../core/services/deep_reflection_slot.py#L375) |
+| function | `build_deep_reflection_surface` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L379) |
+| function | `_surface_summary` | `(latest, all_items)` | — | [src](../../../core/services/deep_reflection_slot.py#L395) |
+| function | `build_deep_reflection_prompt_section` | `()` | Surface newly completed deep reflection for 12h. | [src](../../../core/services/deep_reflection_slot.py#L404) |
 
 ## `core/services/deepseek_modelnavne.py`
 _Hvad DeepSeeks modeller HEDDER — ét sted._

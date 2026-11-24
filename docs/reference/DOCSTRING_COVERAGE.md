@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10468/19116 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10470/19117 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10468/19116 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 924 | 1641 | 56% |
-| `core.services` | 7023 | 12979 | 54% |
+| `core.services` | 7025 | 12980 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 10468/19116 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2681)
+## Undocumented public functions (2680)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L236)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1199,10 +1199,10 @@ Generated from source. 10468/19116 functions/methods documented (54%). The list 
 - `core/services/decision_signals.py` :: `reset_context` (L358)
 - `core/services/decision_triggers/backend_unresolved.py` :: `backend_unresolved_3_calls` (L67)
 - `core/services/decision_triggers/loop_nudge.py` :: `loop_nudge_5_rounds` (L27)
-- `core/services/deep_reflection_slot.py` :: `build_deep_reflection_surface` (L377)
-- `core/services/deep_reflection_slot.py` :: `list_recent` (L373)
-- `core/services/deep_reflection_slot.py` :: `run_reflection` (L269)
-- `core/services/deep_reflection_slot.py` :: `tick` (L366)
+- `core/services/deep_reflection_slot.py` :: `build_deep_reflection_surface` (L379)
+- `core/services/deep_reflection_slot.py` :: `list_recent` (L375)
+- `core/services/deep_reflection_slot.py` :: `run_reflection` (L271)
+- `core/services/deep_reflection_slot.py` :: `tick` (L368)
 - `core/services/delegation_advisor.py` :: `advise` (L46)
 - `core/services/desire_daemon.py` :: `build_desire_surface` (L141)
 - `core/services/desktop_notifications.py` :: `drain` (L30)
@@ -1921,7 +1921,7 @@ Generated from source. 10468/19116 functions/methods documented (54%). The list 
 - `core/services/run_autonomy_context.py` :: `reset_user_present` (L136)
 - `core/services/run_autonomy_context.py` :: `set_autonomous_budget` (L81)
 - `core/services/run_autonomy_context.py` :: `set_run_identity` (L176)
-- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L1063)
+- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L1066)
 - `core/services/run_event_log.py` :: `active_run_for_session` (L370)
 - `core/services/run_event_log.py` :: `append` (L239)
 - `core/services/run_event_log.py` :: `create` (L102)
@@ -2358,7 +2358,6 @@ Generated from source. 10468/19116 functions/methods documented (54%). The list 
 - `core/services/visible_outcome_text.py` :: `preview_text` (L5)
 - `core/services/visible_preview_crypto.py` :: `member_for_run` (L7)
 - `core/services/visible_preview_crypto.py` :: `protect_preview` (L19)
-- `core/services/visible_preview_crypto.py` :: `reveal_preview` (L23)
 - `core/services/visible_run_interruption.py` :: `classify_visible_run_interruption` (L17)
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.error` (L61)
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.set_error` (L93)

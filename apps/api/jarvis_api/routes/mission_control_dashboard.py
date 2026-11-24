@@ -115,6 +115,9 @@ def mc_run_detail(run_id: str, event_limit: int = 60) -> dict:
             ).fetchone()
             if r is not None:
                 run = dict(r)
+                from core.services.visible_preview_crypto import laesbaar_preview
+                run["text_preview"] = laesbaar_preview(run.get("text_preview"))
+                run["error"] = laesbaar_preview(run.get("error"))
             # Hændelser hvis run_id optræder i payloaden (LIKE-probe — run_id er unikt nok).
             rows = conn.execute(
                 """

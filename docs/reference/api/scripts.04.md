@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/tool_router_bootstrap.py`
+_One-shot bootstrap: generate tool tags via cheap LLM and warm embedding cache._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/tool_router_bootstrap.py#L22) |
+
 ## `scripts/user_md_learned_migration.py`
 _Flyt USER.md «## Durable Preferences» ind i «## Lært» (lærings-sløjfe, blok A)._
 

@@ -1,0 +1,52 @@
+Koordinering §8 — vindue 24 t (fra 2026-11-23T22:06:10Z)
+
+1_initiativer_pr_doegn: 15
+    kilde:    runtime_initiatives (detected_at i vinduet) + events heartbeat.initiative_rejected
+    funktion: push_initiative() (Vej A) — rækken skrives når alle porte er passeret
+    hvordan:  tæller rækker i runtime_initiatives = initiativer der KOM IND i køen. Dem push_initiative() afviser ved porten persisteres ikke som række; deres antal står separat i 'afvist_ved_porten' (event heartbeat.initiative_rejected, som flere afvisningsgrunde deler — inkl. coordinated).
+
+2_andel_selvstaendige_runs: 0.0
+    kilde:    runtime_tasks.origin_ref = '<tick>|<initiative_id>' (origin='heartbeat:initiative')
+    funktion: claim_work() (Vej B) — create_task() skrives kun når claimed=True
+    hvordan:  0 af 15 initiativer har en task skabt af claim_work(). Tasks fra hook:heartbeat.initiative_pushed er en ANDEN vej og tælles ikke.
+
+3_andel_overlap_eksisterende_arbejde: KAN IKKE MÅLES
+    kilde:    events coordination.decision
+    funktion: record_decision() kaldt fra push_initiative() (Vej A) og claim_work() (Vej B)
+    hvordan:  eneste persisterede spor af Vej A's 'coordinated'
+    kan ikke måles: ingen coordination.decision-events findes i databasen overhovedet — record_decision() har ikke kørt i drift endnu, så 0 ville være en løgn (kan ikke skelnes fra 'ikke instrumenteret')
+
+4_reelle_dubletter: 0
+    kilde:    runtime_initiatives (status='acted') i vinduet
+    funktion: work_fingerprint() — den samme funktion claim_work() låser på
+    hvordan:  tæller ekstra acted-initiativer med IDENTISK fingeraftryk. Det er en NEDRE GRÆNSE for 'samme konkrete handling udført flere gange', ikke en dom: uden fingeraftryk (work_fingerprint='') findes ingen identitet, og runtime_tasks fra før koordineringen har ingen fingeraftryk at sammenligne.
+
+5_legitime_fejlagtigt_afvist: KAN IKKE MÅLES
+    kilde:    runtime_initiatives.disposition_reason (declined) + events coordination.decision
+    funktion: decline_initiative() (Vej B) / record_decision() (Vej A)
+    hvordan:  kun en øvre grænse kan aflæses: antal afvisninger — se 'øvre_grænse'. Et facit kræver manuel gennemgang af stikprøve.
+    kan ikke måles: 'legitim' er en dom og ingen funktion persisterer et facit. Hverken decline_initiative() eller record_decision() gemmer om afvisningen var rigtig — kun at den skete og hvorfor.
+
+6_tokens_omkostning_dobbeltarbejde: KAN IKKE MÅLES
+    kilde:    costs / agent_runs (cost_usd, input_tokens, output_tokens)
+    funktion: claim_work() → runtime_tasks.create_task() — persisterer ikke run_id
+    hvordan:  læst i tabel costs; funktion claim_work()/decline_initiative() persisterer ikke koblingen. Kræver at task/initiativ-id skrives på costs eller run.
+    kan ikke måles: costs.run_id peger på visible_runs/agent_runs, ikke på initiativ eller runtime_tasks; claim_work() gemmer intet run_id. Der er intet led fra et initiativ til de tokens det kostede, og ingen markering af hvad der var dobbelt.
+
+7_knyttet_til_eksisterende_arbejde: KAN IKKE MÅLES
+    kilde:    events coordination.decision
+    funktion: record_decision() kaldt fra push_initiative() (Vej A) og claim_work() (Vej B)
+    hvordan:  eneste persisterede spor af Vej A's 'coordinated'
+    kan ikke måles: ingen coordination.decision-events findes i databasen overhovedet — record_decision() har ikke kørt i drift endnu, så 0 ville være en løgn (kan ikke skelnes fra 'ikke instrumenteret')
+
+8_parallelle_konflikter: KAN IKKE MÅLES
+    kilde:    events coordination.decision (reason='tabt-klaim-race')
+    funktion: claim_work() — IntegrityError-grenen på uq_runtime_tasks_work_active
+    hvordan:  løbet efterlades kun som beslutningsevent; ingen tabel registrerer det
+    kan ikke måles: ingen coordination.decision-events findes i databasen overhovedet — record_decision() har ikke kørt i drift endnu, så 0 ville være en løgn (kan ikke skelnes fra 'ikke instrumenteret')
+
+9_tabt_eller_siddet_fast: 843
+    kilde:    runtime_initiatives (pending/claimed) + runtime_tasks (kind='initiative-followup')
+    funktion: get_pending_initiatives()/claim_initiative() (Vej B) — lease i next_attempt_at; claim_work() — task-status
+    hvordan:  summen af pending-initiativer ældre end 6 t, claimede med udløbet lease, og initiative-followup-tasks i blocked/queued/running der ikke er rørt i 6 t. 'Fastsiddet' er en tærskel jeg har valgt; tasks er et stående lager (ikke vinduesbegrænset).
+

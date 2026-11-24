@@ -113,10 +113,16 @@ describe.skipIf(!KOERT)('pacer/animations-samspil', () => {
         })
         expect(b.fejl).toEqual([])
         expect(m.tekstFejl).toEqual([])
-        // Ét ord = én start (ingen genstart), og alle landede (ingen afbrudt hale).
+        // Ét ord = én start (ingen genstart).
         const brugt = new Set(starter.map((e) => e.nokkel))
         expect(starter.length).toBe(brugt.size)
-        expect(slutter.length).toBe(starter.length)
+        // «Alle landede» er ikke længere kontrakten: farve-animationen standses
+        // i det øjeblik ordet forlader halen (23/11-2026, se MarkdownRenderer),
+        // så kun de ord der stadig er i halen når animationen er færdig når en
+        // `end` — resten kappes med vilje. Her værnes kun om at der ikke kommer
+        // flere afslutninger end der er ord. At de kappede lander i
+        // brødtekstens farve måles i `farve.maaling.test.ts`.
+        expect(slutter.length).toBeLessThanOrEqual(brugt.size)
         // Hold-back: ordet må højst vente sin egen forskydning (2 × offset) + to frames
         // på at STARTE. Et enkelt nyt ord skal starte inden for et par frames.
         const offset = STREAMING_TEXT_VARIANTS.Snappy.timeOffsetBetweenParts

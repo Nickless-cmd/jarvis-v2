@@ -646,6 +646,29 @@ def _call_scoring_llm_local(target: dict[str, object], prompt: str) -> str:
         )
         with urllib_request.urlopen(req, timeout=timeout) as resp:
             result = json.loads(resp.read())
+        # HOVEDBOGEN. Denne vej er død kode pr. 24/11-2026 — `score_memories_by_relevance`
+        # kalder `_call_scoring_llm` (cheap-poolen, der bogfører i `daemon`-lanen), og
+        # intet kald når hertil. Bogføringen står alligevel, fordi en vækket lokal vej
+        # ellers ville være endnu en tavs udgang: `local`-lanen resolver til
+        # provider=ollama med deepseek-v4.1-flash:cloud, altså den dyreste model vi har.
+        try:
+            from core.services.ollama_usage import bogfoer_ollama_kald
+            from core.services.visible_model_ollama import _cache_split
+
+            _ind = int(result.get("prompt_eval_count") or 0)
+            _ud = int(result.get("eval_count") or 0)
+            _hit, _miss = _cache_split(result, _ind)
+            bogfoer_ollama_kald(
+                provider=provider,
+                model=model,
+                input_tokens=_ind,
+                output_tokens=_ud,
+                cache_hit_tokens=_hit,
+                cache_miss_tokens=_miss,
+                lane="memory_scoring",
+            )
+        except Exception:
+            logger.debug("experiential_memory: kunne ikke bogfoere", exc_info=True)
         return str(result.get("message", {}).get("content", ""))
     return ""
 

@@ -638,6 +638,33 @@ def _call_ollama_chat(
         )
         with urllib_request.urlopen(req, timeout=timeout) as resp:
             data = json.loads(resp.read().decode("utf-8"))
+            # HOVEDBOGEN — ikke kun shadow-observeren nedenfor. `observe` skriver til
+            # en in-memory ring-buffer på 100 samples pr. nerve; den forsvinder ved
+            # genstart og efterlader ingen række i `costs`. Målt 24/11-2026 var dette
+            # den ene af to ollama-veje uden regnskab: `_enrich_worker` kalder
+            # `_call_cheap_llm` tre gange pr. afsluttet tur, og hvert af de kald kan
+            # lande her. Uden denne linje så Ollama kald vi ikke kunne se.
+            try:
+                from core.services.ollama_usage import bogfoer_ollama_kald
+                from core.services.visible_model_ollama import _cache_split
+
+                _ind = int(data.get("prompt_eval_count") or 0)
+                _ud = int(data.get("eval_count") or 0)
+                _hit, _miss = _cache_split(data, _ind)
+                bogfoer_ollama_kald(
+                    provider="ollama",
+                    model=model,
+                    input_tokens=_ind,
+                    output_tokens=_ud,
+                    cache_hit_tokens=_hit,
+                    cache_miss_tokens=_miss,
+                    lane="inner_enrichment",
+                )
+            except Exception:
+                logger.debug(
+                    "inner-llm-enrichment: kunne ikke bogfoere ollama-kald",
+                    exc_info=True,
+                )
             # SAMLET EGRESS: direkte ollama-kald udenom cost-ledger → rapportér (shadow).
             try:
                 from core.services.central_llm_egress import observe as _egress_observe

@@ -561,8 +561,15 @@ def run_task_cli(*, agent: dict[str, Any], prompt: str, run_id: str,
     cmd = _command(provider, executable, model, root, _prompt(prompt, writes=writes),
                    policy=policy, output_path=output_path)
     started = time.monotonic()
+    # (24/11-2026) `stdin=DEVNULL` er ikke kosmetik. Uden den arver CLI'en
+    # runtime-processens stdin, som ikke er en TTY. `codex exec` læser da
+    # videre fra stdin og hænger til tidsloftet — målt: 25 s hæng og
+    # «Reading additional input from stdin...» på stderr, mens den samme
+    # kommando med `< /dev/null` svarede med det samme. Prompten gives som
+    # argv, så CLI'en har intet at læse på stdin.
     proc = subprocess.Popen(
-        cmd, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        cmd, cwd=root, stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, start_new_session=True, env=_claude_spawn_env(provider),
     )
     stdout = stderr = ""

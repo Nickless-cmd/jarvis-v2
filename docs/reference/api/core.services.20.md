@@ -560,11 +560,14 @@ _Personality Vector — cumulative personality that grows over time._
 | function | `_deterministic_update` | `(outcome_status, current)` | Fallback: small deterministic adjustments without LLM. | [src](../../../core/services/personality_vector.py#L519) |
 | function | `_merge_vector` | `(current, updates)` | Deep merge updates into current vector. | [src](../../../core/services/personality_vector.py#L648) |
 | function | `retire_self_model_signals` | `(signal_ids, *, reason)` | Træk self_model_signals tilbage (status `retired`) — modstykke til `retire_mistakes`. | [src](../../../core/services/personality_vector.py#L754) |
-| function | `_baseline_changed` | `(old, new_baseline)` | Fix 5 helper: return True if emotional_baseline values differ by > 0.001. | [src](../../../core/services/personality_vector.py#L797) |
-| function | `_safe_json_field` | `(value, default)` | — | [src](../../../core/services/personality_vector.py#L811) |
-| function | `_resolve_local_llm_target` | `()` | — | [src](../../../core/services/personality_vector.py#L824) |
-| function | `_call_llm` | `(target, system_prompt, user_prompt)` | Minimal LLM call via provider router target. | [src](../../../core/services/personality_vector.py#L835) |
-| function | `_parse_json_response` | `(text)` | — | [src](../../../core/services/personality_vector.py#L901) |
+| function | `_retire_vector_post` | `(*, field, instruction, post, bevis)` | Fælles kerne for `retire_mistake` / `retire_strength` (deterministisk, ingen LLM). | [src](../../../core/services/personality_vector.py#L797) |
+| function | `retire_mistake` | `(post, bevis)` | Træk én post i `recurring_mistakes` tilbage — kun ordret match, kun med bevis. | [src](../../../core/services/personality_vector.py#L847) |
+| function | `retire_strength` | `(post, bevis)` | Som `retire_mistake`, men for `strengths_discovered`. | [src](../../../core/services/personality_vector.py#L858) |
+| function | `_baseline_changed` | `(old, new_baseline)` | Fix 5 helper: return True if emotional_baseline values differ by > 0.001. | [src](../../../core/services/personality_vector.py#L865) |
+| function | `_safe_json_field` | `(value, default)` | — | [src](../../../core/services/personality_vector.py#L879) |
+| function | `_resolve_local_llm_target` | `()` | — | [src](../../../core/services/personality_vector.py#L892) |
+| function | `_call_llm` | `(target, system_prompt, user_prompt)` | Minimal LLM call via provider router target. | [src](../../../core/services/personality_vector.py#L903) |
+| function | `_parse_json_response` | `(text)` | — | [src](../../../core/services/personality_vector.py#L969) |
 
 ## `core/services/pfsense_syslog.py`
 _core/services/pfsense_syslog.py_

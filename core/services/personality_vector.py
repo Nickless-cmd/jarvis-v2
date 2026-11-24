@@ -839,8 +839,8 @@ def _retire_vector_post(*, field: str, instruction: str, post: str, bevis: str) 
     try:
         from core.services.cognitive_state_assembly import invalidate_cognitive_state_cache
         invalidate_cognitive_state_cache()
-    except Exception:
-        pass
+    except Exception as exc:  # cachen maa ikke kunne blokere en pension der ER skrevet
+        logger.warning("personality_vector: cache-invalidering fejlede efter pension: %s", exc)
     return {**payload, "vector": result}
 
 

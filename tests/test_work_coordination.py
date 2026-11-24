@@ -327,3 +327,31 @@ def test_koordination_efterlader_begrundet_event(isolated_runtime, monkeypatch):
     beslutninger = [p for k, p in set_ if k == "coordination.decision"]
     assert [p["decision"] for p in beslutninger] == ["accepted", "coordinated"]
     assert beslutninger[1]["reason"] and beslutninger[1]["covering"]["ref"]
+
+
+# ── Ejer-isolation i _eksplicit_relation ─────────────────────────────────────
+# Målt 24/11-2026: task-grenen læste kun (task_id, status) og sprang ejer-
+# tjekket over, mens assignment-grenen lige nedenfor brugte _bruger_matcher.
+# Konsekvens: bruger A kunne afgøre om bruger B's task fandtes og var aktiv —
+# ved at se om hans eget initiativ blev afvist som «dækket».
+
+
+def test_fremmed_task_maa_ikke_daekke_mit_initiativ(isolated_runtime):
+    """B's private task må ikke «dække» A's initiativ, men B's eget skal."""
+    from core.services import runtime_tasks
+
+    t = runtime_tasks.create_task(
+        kind="work", goal="B's private arbejde", origin="test", owner="u2",
+    )
+    tid = str(t["task_id"])
+    tekst = f"Tjek {tid} for status"
+
+    # Kontrol: samme bruger SKAL dækkes. Fejler den, rammer testen ikke grenen
+    # og kan derfor ikke bevise noget om lækagen.
+    egen = wc.find_covering_work(tekst, user_id="u2")
+    assert egen is not None, "kontrollen fejlede: egen task dækkede ikke — grenen rammes ikke"
+    assert egen["ref"] == tid
+
+    # Lækagen: u1 må ikke få dækning af u2's task.
+    fremmed = wc.find_covering_work(tekst, user_id="u1")
+    assert fremmed is None, f"LÆKAGE: u1 fik dækning af u2's task: {fremmed}"

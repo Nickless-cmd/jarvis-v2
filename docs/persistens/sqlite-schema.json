@@ -10385,7 +10385,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "cheap_lane_admission_state": {
@@ -43676,7 +43676,7 @@
       "created_at_formats": []
     },
     "runtime_tasks": {
-      "digest": "3e:4c:47:56:f8:0f:61:0b:db:d1:c1:5b:f4:20:9a:d3:1b:25:8e:c5:d7:99:ce:ec:44:da:b7:84:bc:ee:ab:a8",
+      "digest": "47:32:6a:8c:28:fd:b4:12:a5:c2:dd:61:19:07:f2:f2:ea:42:42:6c:5d:85:51:2b:6f:3a:6d:21:0b:13:0e:ae",
       "schema": {
         "columns": [
           {
@@ -43830,6 +43830,14 @@
             "default": null,
             "pk": 0,
             "hidden": 0
+          },
+          {
+            "name": "work_fingerprint",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
           }
         ],
         "indexes": [
@@ -43909,6 +43917,25 @@
               }
             ],
             "sql": null
+          },
+          {
+            "name": "uq_runtime_tasks_work_active",
+            "unique": true,
+            "origin": "c",
+            "partial": true,
+            "parts": [
+              {
+                "column": "work_fingerprint",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE UNIQUE INDEX uq_runtime_tasks_work_active ON runtime_tasks(work_fingerprint) WHERE work_fingerprint != '' AND status IN ('queued', 'running')"
           }
         ]
       },

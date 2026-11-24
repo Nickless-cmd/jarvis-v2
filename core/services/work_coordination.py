@@ -24,12 +24,15 @@ afvisning er tavs.
 from __future__ import annotations
 
 import hashlib
+import logging
 import math
 import re
 import sqlite3
 import unicodedata
 from datetime import UTC, datetime, timedelta
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_SCOPE = "system"
 
@@ -163,10 +166,14 @@ def _eksplicit_relation(tekst: str, user_id: str | None) -> dict[str, Any] | Non
         with connect() as conn:
             for i in ider:
                 if i.startswith("task-"):
+                    # Ejer-tjek som assignment-grenen nedenfor: et privat task-id
+                    # må ikke kunne «dække» en anden brugers initiativ — ellers kan
+                    # bruger A afgøre om bruger B's task findes og er aktiv.
                     r = conn.execute(
-                        "SELECT task_id, status FROM runtime_tasks WHERE task_id=?", (i,)
+                        "SELECT task_id, status, owner FROM runtime_tasks WHERE task_id=?",
+                        (i,),
                     ).fetchone()
-                    if r and r[1] in ("queued", "running"):
+                    if r and r[1] in ("queued", "running") and _bruger_matcher(scope, r[2]):
                         return _ref("task", r[0], r[1], why="eksplicit-relation")
                 if i.startswith("asg-"):
                     r = conn.execute(
@@ -311,8 +318,8 @@ def record_decision(
             "decision": decision, "reason": reason, "subject": str(subject)[:120],
             "covering": covering or {}, "scope": _scope(user_id),
         })
-    except Exception:  # observabilitet, ikke kontrol
-        pass
+    except Exception:  # observabilitet, ikke kontrol — men aldrig uden spor
+        logger.warning("coordination.decision kunne ikke publiceres", exc_info=True)
 
 
 def claim_work(
@@ -337,7 +344,11 @@ def claim_work(
     fp = work_fingerprint(tekst, user_id=user_id)
     try:
         task = runtime_tasks.create_task(
-            kind=kind, goal=tekst[:200], origin=origin, scope=tekst[:200],
+            # `goal` er den kilde `_kilde_opgaver` matcher historiske rækker på.
+            # Trunkerer man den, forsvinder ankre efter 200 tegn ud af rækken mens
+            # fingeraftrykket stadig er beregnet på hele teksten — så rækken dækker
+            # mere arbejde end den kan genskabe. `scope` er kun visning/søgning.
+            kind=kind, goal=tekst, origin=origin, scope=tekst[:200],
             priority=priority, origin_ref=origin_ref, owner=owner, work_fingerprint=fp,
         )
     except sqlite3.IntegrityError:

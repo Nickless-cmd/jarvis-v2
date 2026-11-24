@@ -532,21 +532,21 @@ _Personality Vector — cumulative personality that grows over time._
 | function | `_record_decay_timestamp` | `()` | Record that decay was just applied. | [src](../../../core/services/personality_vector.py#L73) |
 | function | `_build_update_prompt` | `()` | — | [src](../../../core/services/personality_vector.py#L81) |
 | function | `_bevis_vindue` | `(tekst, *, loft=…)` | Bevis-vinduet dommeren ser — med HALEN med, og med klippet navngivet. | [src](../../../core/services/personality_vector.py#L154) |
-| function | `_ser_klippet_ud` | `(tekst)` | Er dette preview et KLIP fra systemet — ikke et svar der stoppede? | [src](../../../core/services/personality_vector.py#L206) |
-| function | `_hent_rigtigt_svar` | `(session_id, assistant_response)` | Preview-kortet (runnets tekst + dekorativ '…') er IKKE svaret. | [src](../../../core/services/personality_vector.py#L243) |
-| function | `update_personality_vector_from_run` | `(*, run_id, session_id=…, user_message, assistant_response, outcome_status)` | Update the personality vector based on a visible run. | [src](../../../core/services/personality_vector.py#L320) |
-| function | `update_personality_vector_async` | `(*, run_id, session_id=…, user_message, assistant_response, outcome_status)` | Fire-and-forget async wrapper. | [src](../../../core/services/personality_vector.py#L406) |
-| function | `tick_personality_drift` | `(*, outcome_signal=…)` | Heartbeat-triggered passive drift af personality_vector. | [src](../../../core/services/personality_vector.py#L429) |
-| function | `_safe_update` | `(**kwargs)` | — | [src](../../../core/services/personality_vector.py#L461) |
-| function | `build_personality_vector_surface` | `()` | MC surface for personality vector. | [src](../../../core/services/personality_vector.py#L468) |
-| function | `_deterministic_update` | `(outcome_status, current)` | Fallback: small deterministic adjustments without LLM. | [src](../../../core/services/personality_vector.py#L489) |
-| function | `_merge_vector` | `(current, updates)` | Deep merge updates into current vector. | [src](../../../core/services/personality_vector.py#L618) |
-| function | `retire_self_model_signals` | `(signal_ids, *, reason)` | Træk self_model_signals tilbage (status `retired`) — modstykke til `retire_mistakes`. | [src](../../../core/services/personality_vector.py#L724) |
-| function | `_baseline_changed` | `(old, new_baseline)` | Fix 5 helper: return True if emotional_baseline values differ by > 0.001. | [src](../../../core/services/personality_vector.py#L767) |
-| function | `_safe_json_field` | `(value, default)` | — | [src](../../../core/services/personality_vector.py#L781) |
-| function | `_resolve_local_llm_target` | `()` | — | [src](../../../core/services/personality_vector.py#L794) |
-| function | `_call_llm` | `(target, system_prompt, user_prompt)` | Minimal LLM call via provider router target. | [src](../../../core/services/personality_vector.py#L805) |
-| function | `_parse_json_response` | `(text)` | — | [src](../../../core/services/personality_vector.py#L871) |
+| function | `_ser_klippet_ud` | `(tekst)` | Er dette preview et KLIP fra systemet — ikke et svar der stoppede? | [src](../../../core/services/personality_vector.py#L212) |
+| function | `_hent_rigtigt_svar` | `(session_id, assistant_response)` | Preview-kortet (runnets tekst + dekorativ '…') er IKKE svaret. | [src](../../../core/services/personality_vector.py#L249) |
+| function | `update_personality_vector_from_run` | `(*, run_id, session_id=…, user_message, assistant_response, outcome_status)` | Update the personality vector based on a visible run. | [src](../../../core/services/personality_vector.py#L350) |
+| function | `update_personality_vector_async` | `(*, run_id, session_id=…, user_message, assistant_response, outcome_status)` | Fire-and-forget async wrapper. | [src](../../../core/services/personality_vector.py#L436) |
+| function | `tick_personality_drift` | `(*, outcome_signal=…)` | Heartbeat-triggered passive drift af personality_vector. | [src](../../../core/services/personality_vector.py#L459) |
+| function | `_safe_update` | `(**kwargs)` | — | [src](../../../core/services/personality_vector.py#L491) |
+| function | `build_personality_vector_surface` | `()` | MC surface for personality vector. | [src](../../../core/services/personality_vector.py#L498) |
+| function | `_deterministic_update` | `(outcome_status, current)` | Fallback: small deterministic adjustments without LLM. | [src](../../../core/services/personality_vector.py#L519) |
+| function | `_merge_vector` | `(current, updates)` | Deep merge updates into current vector. | [src](../../../core/services/personality_vector.py#L648) |
+| function | `retire_self_model_signals` | `(signal_ids, *, reason)` | Træk self_model_signals tilbage (status `retired`) — modstykke til `retire_mistakes`. | [src](../../../core/services/personality_vector.py#L754) |
+| function | `_baseline_changed` | `(old, new_baseline)` | Fix 5 helper: return True if emotional_baseline values differ by > 0.001. | [src](../../../core/services/personality_vector.py#L797) |
+| function | `_safe_json_field` | `(value, default)` | — | [src](../../../core/services/personality_vector.py#L811) |
+| function | `_resolve_local_llm_target` | `()` | — | [src](../../../core/services/personality_vector.py#L824) |
+| function | `_call_llm` | `(target, system_prompt, user_prompt)` | Minimal LLM call via provider router target. | [src](../../../core/services/personality_vector.py#L835) |
+| function | `_parse_json_response` | `(text)` | — | [src](../../../core/services/personality_vector.py#L901) |
 
 ## `core/services/pfsense_syslog.py`
 _core/services/pfsense_syslog.py_

@@ -397,6 +397,29 @@ def test_ser_klippet_ud_kender_loftet_men_ikke_emoji():
     assert _ser_klippet_ud("Kort svar…")
 
 
+def test_kliploftet_indeholder_ikke_chifferlaengder():
+    """Loftet må kun komme fra klartekst (målt 24/11-2026).
+
+    170 af 187 `enc:`-previews i `visible_runs` ligger i 483–519 tegn. I
+    klartekst findes der nul rækker på 491/495/499 og én hver på 487/503 —
+    og begge dem slutter rent. De fem værdier var base64-længder på
+    krypterede previews, ikke klip, og de gjorde chiffertekst til «bevis»
+    for en afbrydelse.
+    """
+    from core.services.personality_vector import _KLIP_LOFTER
+
+    assert not (_KLIP_LOFTER & {487, 491, 495, 499, 503})
+
+
+def test_krypteret_preview_bliver_aldrig_chiffertekst_for_dommeren(isolated_runtime):
+    """Uden dekrypterbar nøgle skal dommeren have pladsholderen — ikke base64."""
+    from core.services.personality_vector import _SVAR_IKKE_BEVIST, _hent_rigtigt_svar
+
+    chiffer = "enc:v1:" + "QWxsZSBkaW5lIGJlc2tlZGVyIGVy" * 8
+    assert _hent_rigtigt_svar("chat-ukendt-session", chiffer) == _SVAR_IKKE_BEVIST
+    assert _hent_rigtigt_svar(None, chiffer) == _SVAR_IKKE_BEVIST
+
+
 def test_raat_snit_uden_ellipse_opgraderes(isolated_runtime):
     """140-tegns-snittet uden '…' skal også opgraderes til den ægte besked."""
     from core.services.personality_vector import _hent_rigtigt_svar, _ser_klippet_ud

@@ -197,7 +197,13 @@ def _bevis_vindue(tekst: object, *, loft: int = _BEVIS_LOFT) -> str:
 # slutter med tegnsætning, og mange af de øvrige slutter med en EMOJI
 # (👍 🤖 🌙 😊) — de er HELE svar. Signaturen er derfor klip-LOFTET: en
 # længde der kun opstår fordi nogen har skåret i teksten.
-_KLIP_LOFTER = frozenset({119, 120, 140, 191, 304, 319, 320, 487, 491, 495, 499, 503})
+# ⚠️ 487/491/495/499/503 STOD HER og er FJERNET (målt 24/11-2026): de var
+# ikke klip. Fordelingen af `enc:`-previews i den levende base klumper i
+# 483–519 tegn (170 af 187), og i klartekst findes der NUL rækker på 491,
+# 495 og 499 samt ÉN på 487 og ÉN på 503 — og begge dem slutter rent. De
+# fem værdier var altså base64-længder på krypterede previews, der blev
+# talt med som «målte klip». Et loft må kun komme fra klartekst.
+_KLIP_LOFTER = frozenset({119, 120, 140, 191, 304, 319, 320})
 
 # Tegn der beviser at teksten slutter af sig selv.
 _SLUTTER_RENT = frozenset(".!?:…»)\"'’”*`")
@@ -269,9 +275,33 @@ def _hent_rigtigt_svar(session_id: str | None, assistant_response: str) -> str:
     pladsholderen (`_SVAR_IKKE_BEVIST`), aldrig det klippede preview.
     """
     tekst = str(assistant_response or "")
+    session = str(session_id or "").strip()
+
+    # Chiffertekst er ikke et svar (målt 24/11-2026: 187 `enc:`-previews i
+    # `visible_runs`). `protect_preview` krypterer medlems-kørslers preview
+    # med vilje — men dommeren læste det RÅT. 27 af dem faldt uden for
+    # klip-loftet og gik igennem som «den ægte slutning», og resten blev
+    # pladsholdere af en årsag der blev fejltolket som et klip. Dekrypter med
+    # sessionens medlem; kan det ikke bevises, er svaret ikke bevist.
+    if tekst.startswith("enc:"):  # = chat_crypto._PRAEFIKS
+        try:
+            from core.services import chat_crypto
+
+            medlem = chat_crypto.medlem_for_session(session) if session else None
+            klartekst = chat_crypto.dekrypter(tekst, medlem) if medlem else tekst
+        except Exception:
+            # Fejler krypteringslaget, må chiffertekst ikke passere som svar.
+            logger.warning("personality_vector: krypteringslaget fejlede", exc_info=True)
+            return _SVAR_IKKE_BEVIST
+        if not klartekst or klartekst.startswith("enc:"):
+            logger.info(
+                "personality_vector: krypteret preview uden dekrypterbar nøgle — pladsholder i stedet for chiffertekst"
+            )
+            return _SVAR_IKKE_BEVIST
+        tekst = klartekst
+
     if not _ser_klippet_ud(tekst):
         return tekst
-    session = str(session_id or "").strip()
     if not session:
         logger.debug("personality_vector: preview uden session_id — beholder previewet")
         return tekst

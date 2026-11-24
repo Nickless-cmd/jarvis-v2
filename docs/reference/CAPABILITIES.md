@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-11-24 — 542 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-24 — 544 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -50,6 +50,8 @@
 | `check_password_breach` | native | no |
 | `check_surprises` | native | no |
 | `checkpoint` | native | no |
+| `ci_vent_paa` | native | no |
+| `ci_venter` | native | no |
 | `classify_clarification` | native | no |
 | `clear_flag` | native | no |
 | `close_agent` | native | no |

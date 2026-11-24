@@ -252,13 +252,13 @@ _Compact tool catalog for system prompt._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_short_desc` | `(tool_def)` | — | [src](../../../core/services/tool_catalog.py#L152) |
-| function | `_registry_hash` | `()` | — | [src](../../../core/services/tool_catalog.py#L166) |
-| function | `_render_catalog_text` | `()` | Return cached catalog text; rebuild only if tool registry changed. | [src](../../../core/services/tool_catalog.py#L181) |
-| function | `build_catalog_text` | `()` | Return the cache-late catalog, or empty when V3 moved it cache-first. | [src](../../../core/services/tool_catalog.py#L223) |
-| function | `stable_catalog_text` | `()` | Return the catalog only for a V3-warmed, scope-specific prefix. | [src](../../../core/services/tool_catalog.py#L232) |
-| function | `catalog_token_estimate` | `()` | Rough char/4 token estimate of the current catalog. | [src](../../../core/services/tool_catalog.py#L241) |
-| function | `invalidate_cache` | `()` | Force next call to rebuild. Useful in tests. | [src](../../../core/services/tool_catalog.py#L246) |
+| function | `_short_desc` | `(tool_def)` | — | [src](../../../core/services/tool_catalog.py#L155) |
+| function | `_registry_hash` | `()` | — | [src](../../../core/services/tool_catalog.py#L169) |
+| function | `_render_catalog_text` | `()` | Return cached catalog text; rebuild only if tool registry changed. | [src](../../../core/services/tool_catalog.py#L184) |
+| function | `build_catalog_text` | `()` | Return the cache-late catalog, or empty when V3 moved it cache-first. | [src](../../../core/services/tool_catalog.py#L226) |
+| function | `stable_catalog_text` | `()` | Return the catalog only for a V3-warmed, scope-specific prefix. | [src](../../../core/services/tool_catalog.py#L235) |
+| function | `catalog_token_estimate` | `()` | Rough char/4 token estimate of the current catalog. | [src](../../../core/services/tool_catalog.py#L244) |
+| function | `invalidate_cache` | `()` | Force next call to rebuild. Useful in tests. | [src](../../../core/services/tool_catalog.py#L249) |
 
 ## `core/services/tool_chip_payload.py`
 _Bygger data-payloaden for et tool-kald til jarvis-desk-chip'en (spec 2026-06-15)._

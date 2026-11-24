@@ -101,6 +101,16 @@
       "beskrivelse": "Live killswitch for samtale-reglerne i chat mode — {\"enabled\": bool} laeses ved hver prompt-build, saa reglerne kan slaaes fra uden genstart.",
       "registreret": "2026-10-22"
     },
+    "ci_abonnement_sidste_tjek": {
+      "ejer": "core/services/ci_status_watch.py",
+      "beskrivelse": "Tidsstempel for sidste abonnements-tjek. Eget stempel, fordi abonnementerne spoerger hvert 150 s x N mens det brede scan spoerger hvert 240 s — to kadence i én fil ville tvinge den ene til den andens.",
+      "registreret": "2026-11-24"
+    },
+    "ci_abonnementer": {
+      "ejer": "core/services/ci_status_watch.py",
+      "beskrivelse": "Ventende CI-abonnementer: {sha: {oprettet, note, workflow}}. Skrevet af `abonner()` og ryddet af `scan_abonnementer()` naar koerslen er afgjort eller abonnementet er udloebet (30 min).",
+      "registreret": "2026-11-24"
+    },
     "ci_watch_grundlinje": {
       "ejer": "core/services/ci_status_watch.py",
       "beskrivelse": "CI-status paa main — set, ikke gaettet. Grundlinje + sete koersler + throttle.",
@@ -170,6 +180,11 @@
       "ejer": "core/services/file_watch_daemon.py",
       "beskrivelse": "File Watch Daemon — proprioception: \"I feel when my own files change\".",
       "registreret": "2026-09-25"
+    },
+    "flade_paamindelse": {
+      "ejer": "core/services/visible_runs.py (skriver) + core/services/prompt_contract.py (laeser)",
+      "beskrivelse": "Én linje naar forrige svar bar en sammenligningstabel uden en jarvis-ui-flade. Skrives ved svar-finaliseringen og læses i den per-turn-dynamiske prompt-hale. Tom streng = intet at minde om. Feedback, ikke censur: den retter intet svar.",
+      "dato": "2026-11-05"
     },
     "forgetting_curve": {
       "ejer": "core/services/forgetting_curve.py",
@@ -316,6 +331,11 @@
       "beskrivelse": "UDFYLD: core/services/world_model_signal_tracking.py har ingen docstring",
       "registreret": "2026-09-20"
     },
+    "runtime_world_model_predictions_uafgoerlige_arkiv": {
+      "ejer": "core/services/counterfactual_predictions.py",
+      "beskrivelse": "Arkiv for uafgoerlige forudsigelser flyttet ud af ledgeren (loft 1000). Slaas op via find_archived_prediction(prediction_id), saa provenance bevares efter flytningen.",
+      "registreret": "2026-11-04"
+    },
     "selective_consolidation_last_tick": {
       "ejer": "core/services/selective_consolidation_daemon.py",
       "beskrivelse": "Throttle-tilstand: hvornaar selective consolidation sidst koerte. Persisteret 5/10-2026 — foer laa kadencen kun i en module-global, saa hver genstart udloeste en ny 50%-sletning af dagens hukommelse.",
@@ -390,16 +410,6 @@
       "ejer": "core/services/user_hensyn.py",
       "beskrivelse": "Bruger-hensyn — handlingsrelevante hensyn med VARIG og SITUATIONEL levetid.",
       "registreret": "2026-10-25"
-    },
-    "runtime_world_model_predictions_uafgoerlige_arkiv": {
-      "ejer": "core/services/counterfactual_predictions.py",
-      "beskrivelse": "Arkiv for uafgoerlige forudsigelser flyttet ud af ledgeren (loft 1000). Slaas op via find_archived_prediction(prediction_id), saa provenance bevares efter flytningen.",
-      "registreret": "2026-11-04"
-    },
-    "flade_paamindelse": {
-      "ejer": "core/services/visible_runs.py (skriver) + core/services/prompt_contract.py (laeser)",
-      "beskrivelse": "Én linje naar forrige svar bar en sammenligningstabel uden en jarvis-ui-flade. Skrives ved svar-finaliseringen og læses i den per-turn-dynamiske prompt-hale. Tom streng = intet at minde om. Feedback, ikke censur: den retter intet svar.",
-      "dato": "2026-11-05"
     }
   }
 }

@@ -357,27 +357,27 @@ _Proveniens og bogføring for indbakken._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_spor` | `(kind, payload)` | Publicér til eventbussen. Kaster aldrig — se `inbox_gate._spor`. | [src](../../../core/services/inbox_state.py#L69) |
-| function | `kan_dispatch` | `(kildetype)` | Må denne kildetype starte et run når intet kører? Rent opslag. | [src](../../../core/services/inbox_state.py#L165) |
-| function | `_autentificeret_bruger_matcher` | `(bruger_id)` | Er den autentificerede principal netop `bruger_id`? | [src](../../../core/services/inbox_state.py#L170) |
-| function | `_ejer_workspace` | `()` | Ejerens workspace-navn — `workspace_context`'s EGEN standard. | [src](../../../core/services/inbox_state.py#L209) |
-| function | `_ejer_id` | `()` | Ejerens rigtige bruger-id, med workspace-navnet som sidste udvej. | [src](../../../core/services/inbox_state.py#L224) |
-| function | `_advar_om_ubundet_fald` | `(rolle)` | Sig ÉN gang at læsningen kørte uden bundet bruger. | [src](../../../core/services/inbox_state.py#L248) |
-| function | `bruger_for_workspace` | `(navn)` | Oversæt et workspace-NAVN til et bruger-id. Tom streng når det ikke går. | [src](../../../core/services/inbox_state.py#L267) |
-| function | `normaliser_indbakke_bruger` | `(bruger_id)` | Opløs en kendt identitet til den indbakke personen faktisk læses i. | [src](../../../core/services/inbox_state.py#L300) |
-| function | `laese_bruger` | `()` | HVIS indbakke skal læses? Tom streng når det ikke kan afgøres. | [src](../../../core/services/inbox_state.py#L343) |
-| function | `verificeret_jarvis_run` | `(oprettende_run_id, bruger_id)` | Er dette Jarvis' EGET arbejde, i et run der kører nu, for denne bruger? | [src](../../../core/services/inbox_state.py#L433) |
-| function | `_levende_run_for_bruger` | `(run_id, bruger_id)` | Står dette run i den DELTE journal som levende — for denne bruger? | [src](../../../core/services/inbox_state.py#L471) |
-| function | `_kilde_ejer_kan_loefte` | `(kildetype, kilde_ejer)` | Må KILDENS egen ejer sætte etiketten til `jarvis`? | [src](../../../core/services/inbox_state.py#L499) |
-| function | `registrer_kilde` | `(*, bruger_id, kildetype, kilde_id, oprettende_run_id=…, paastaaet_ejer=…, kilde_ejer=…, beskrivelse=…, output_sti=…, output_bytes=…, expires_at=…, afsluttet_ved_registrering=…, bloker=…, session_id=…, importance=…)` | Registrér en kilde i indbakken. Idempotent per (bruger, kildetype, kilde_id). | [src](../../../core/services/inbox_state.py#L514) |
-| function | `flag_fra_bruger` | `(*, bruger_id, titel, beskrivelse=…, bloker=…)` | Et menneske flagger noget. Den FJERDE skriver. | [src](../../../core/services/inbox_state.py#L712) |
-| function | `_luk_kilden` | `(post)` | Kør kildens egen kvitterings-mekanisme, hvis den har én. | [src](../../../core/services/inbox_state.py#L790) |
-| function | `_find_i_kilderne` | `(bruger_id, post_id)` | (kildetype, beskrivelse) for et id visningen VISER men tabellen ikke har. | [src](../../../core/services/inbox_state.py#L855) |
-| function | `_hent_eller_optag` | `(bruger_id, post_id)` | Postens række — og opret den hvis KILDEN findes men rækken ikke gør. | [src](../../../core/services/inbox_state.py#L906) |
-| function | `_afgoer_sideopgave` | `(bruger_id, post_id, *, decision, reason=…, bevis=…)` | Route en sideopgave til dens eget lager; skriv aldrig inbox_items. | [src](../../../core/services/inbox_state.py#L935) |
-| function | `done` | `(bruger_id, post_id, bevis=…)` | Kvittér en ALLEREDE UDFØRT opgave. Typet svar, aldrig prosa. | [src](../../../core/services/inbox_state.py#L965) |
-| function | `drop` | `(bruger_id, post_id, reason)` | Afvis en åben post med begrundelse. | [src](../../../core/services/inbox_state.py#L1002) |
-| function | `afslut_efter_run` | `(bruger_id, post_id, *, udfald, run_id=…, error=…)` | Afregn en post automatisk når det run den vækkede er terminalt. | [src](../../../core/services/inbox_state.py#L1032) |
-| function | `afregn_doede_vaekninger` | `(bruger_id=…, *, mindste_alder_s=…)` | Afregn vækninger hvis run døde med processen (12/11-2026). | [src](../../../core/services/inbox_state.py#L1132) |
+| function | `kan_dispatch` | `(kildetype)` | Må denne kildetype starte et run når intet kører? Rent opslag. | [src](../../../core/services/inbox_state.py#L173) |
+| function | `_autentificeret_bruger_matcher` | `(bruger_id)` | Er den autentificerede principal netop `bruger_id`? | [src](../../../core/services/inbox_state.py#L178) |
+| function | `_ejer_workspace` | `()` | Ejerens workspace-navn — `workspace_context`'s EGEN standard. | [src](../../../core/services/inbox_state.py#L217) |
+| function | `_ejer_id` | `()` | Ejerens rigtige bruger-id, med workspace-navnet som sidste udvej. | [src](../../../core/services/inbox_state.py#L232) |
+| function | `_advar_om_ubundet_fald` | `(rolle)` | Sig ÉN gang at læsningen kørte uden bundet bruger. | [src](../../../core/services/inbox_state.py#L256) |
+| function | `bruger_for_workspace` | `(navn)` | Oversæt et workspace-NAVN til et bruger-id. Tom streng når det ikke går. | [src](../../../core/services/inbox_state.py#L275) |
+| function | `normaliser_indbakke_bruger` | `(bruger_id)` | Opløs en kendt identitet til den indbakke personen faktisk læses i. | [src](../../../core/services/inbox_state.py#L308) |
+| function | `laese_bruger` | `()` | HVIS indbakke skal læses? Tom streng når det ikke kan afgøres. | [src](../../../core/services/inbox_state.py#L351) |
+| function | `verificeret_jarvis_run` | `(oprettende_run_id, bruger_id)` | Er dette Jarvis' EGET arbejde, i et run der kører nu, for denne bruger? | [src](../../../core/services/inbox_state.py#L441) |
+| function | `_levende_run_for_bruger` | `(run_id, bruger_id)` | Står dette run i den DELTE journal som levende — for denne bruger? | [src](../../../core/services/inbox_state.py#L479) |
+| function | `_kilde_ejer_kan_loefte` | `(kildetype, kilde_ejer)` | Må KILDENS egen ejer sætte etiketten til `jarvis`? | [src](../../../core/services/inbox_state.py#L507) |
+| function | `registrer_kilde` | `(*, bruger_id, kildetype, kilde_id, oprettende_run_id=…, paastaaet_ejer=…, kilde_ejer=…, beskrivelse=…, output_sti=…, output_bytes=…, expires_at=…, afsluttet_ved_registrering=…, bloker=…, session_id=…, importance=…)` | Registrér en kilde i indbakken. Idempotent per (bruger, kildetype, kilde_id). | [src](../../../core/services/inbox_state.py#L522) |
+| function | `flag_fra_bruger` | `(*, bruger_id, titel, beskrivelse=…, bloker=…)` | Et menneske flagger noget. Den FJERDE skriver. | [src](../../../core/services/inbox_state.py#L720) |
+| function | `_luk_kilden` | `(post)` | Kør kildens egen kvitterings-mekanisme, hvis den har én. | [src](../../../core/services/inbox_state.py#L798) |
+| function | `_find_i_kilderne` | `(bruger_id, post_id)` | (kildetype, beskrivelse) for et id visningen VISER men tabellen ikke har. | [src](../../../core/services/inbox_state.py#L863) |
+| function | `_hent_eller_optag` | `(bruger_id, post_id)` | Postens række — og opret den hvis KILDEN findes men rækken ikke gør. | [src](../../../core/services/inbox_state.py#L914) |
+| function | `_afgoer_sideopgave` | `(bruger_id, post_id, *, decision, reason=…, bevis=…)` | Route en sideopgave til dens eget lager; skriv aldrig inbox_items. | [src](../../../core/services/inbox_state.py#L943) |
+| function | `done` | `(bruger_id, post_id, bevis=…)` | Kvittér en ALLEREDE UDFØRT opgave. Typet svar, aldrig prosa. | [src](../../../core/services/inbox_state.py#L973) |
+| function | `drop` | `(bruger_id, post_id, reason)` | Afvis en åben post med begrundelse. | [src](../../../core/services/inbox_state.py#L1010) |
+| function | `afslut_efter_run` | `(bruger_id, post_id, *, udfald, run_id=…, error=…)` | Afregn en post automatisk når det run den vækkede er terminalt. | [src](../../../core/services/inbox_state.py#L1040) |
+| function | `afregn_doede_vaekninger` | `(bruger_id=…, *, mindste_alder_s=…)` | Afregn vækninger hvis run døde med processen (12/11-2026). | [src](../../../core/services/inbox_state.py#L1140) |
 
 ## `core/services/inbox_view.py`
 _Indbakken som LÆSEFLADE. Otte sektioner, én linje per post, aldrig payload._

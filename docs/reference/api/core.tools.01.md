@@ -204,6 +204,14 @@ _`central_query` — Jarvis' direkte adgang til Den Intelligente Central (pull o
 | function | `_nerve_klass` | `(nerve)` | NerveSpec.klass for en nerve (til sikker toggle). Defaulter SECURITY-SIKKERT: | [src](../../../core/tools/central_query_tool.py#L85) |
 | function | `central_query` | `(args)` | Eneste indgang. Returnerer ALTID en envelope (status ok/error). Kaster aldrig. | [src](../../../core/tools/central_query_tool.py#L103) |
 
+## `core/tools/ci_subscribe_tools.py`
+_CI-abonnement — «sig til når DENNE kørsel er afgjort»._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_ci_vent_paa` | `(args)` | — | [src](../../../core/tools/ci_subscribe_tools.py#L30) |
+| function | `_exec_ci_venter` | `(args)` | — | [src](../../../core/tools/ci_subscribe_tools.py#L58) |
+
 ## `core/tools/code_navigation_tools.py`
 _Symbol find / find usages._
 
@@ -531,12 +539,4 @@ _Fuzzy tekst-match til fil-redigering — porteret fra jarvis-code._
 | function | `_reapply_indent` | `(new_text, indent)` | Re-apply `indent` as a leading prefix on every non-blank line of | [src](../../../core/tools/fuzzy_edit.py#L109) |
 | function | `_difflib_fuzzy_find` | `(content, old_text, threshold=…)` | Best-matching line-window in content vs. old_text, by | [src](../../../core/tools/fuzzy_edit.py#L126) |
 | function | `resolve_edit` | `(content, old_text, new_text, replace_all=…)` | Loes et redigerings-oenske mod filens FAKTISKE indhold. | [src](../../../core/tools/fuzzy_edit.py#L159) |
-
-## `core/tools/gate_override_tools.py`
-_Gate-override-værktøj — Jarvis' eksplicitte svar på en gate der tog fejl._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_override_gate` | `(args)` | — | [src](../../../core/tools/gate_override_tools.py#L15) |
-| function | `_exec_gate_override_status` | `(_args)` | — | [src](../../../core/tools/gate_override_tools.py#L30) |
 

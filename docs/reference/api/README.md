@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 19123 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 19133 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -72,10 +72,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 19123 functions/
 - [`core.services.visible_runs_sections`](core.services.visible_runs_sections.md)
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
-- [`core.tools.01`](core.tools.01.md) — `__init__` … `gate_override_tools`
-- [`core.tools.02`](core.tools.02.md) — `geolocation_tools` … `phone_tools`
-- [`core.tools.03`](core.tools.03.md) — `plan_revise_tool` … `state_flag_tools`
-- [`core.tools.04`](core.tools.04.md) — `streaming_subprocess` … `world_model_tools`
+- [`core.tools.01`](core.tools.01.md) — `__init__` … `fuzzy_edit`
+- [`core.tools.02`](core.tools.02.md) — `gate_override_tools` … `phone_adb`
+- [`core.tools.03`](core.tools.03.md) — `phone_tools` … `staged_edits_tools`
+- [`core.tools.04`](core.tools.04.md) — `state_flag_tools` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

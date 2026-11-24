@@ -127,6 +127,7 @@ from core.tools.repo_recall_tool import REPO_RECALL_TOOL_DEFINITIONS
 from core.tools.goals_tools import (GOAL_TOOL_DEFINITIONS)
 from core.tools.decisions_tools import (DECISION_TOOL_DEFINITIONS)
 from core.tools.personality_retire_tools import (PERSONALITY_RETIRE_TOOL_DEFINITIONS)
+from core.tools.ci_subscribe_tools import (CI_SUBSCRIBE_TOOL_DEFINITIONS)
 from core.tools.project_progress_tools import PROJECT_PROGRESS_TOOL_DEFINITIONS
 from core.tools.thread_lifecycle_tools import THREAD_LIFECYCLE_TOOL_DEFINITIONS
 from core.tools.composites_tools import (COMPOSITE_TOOL_DEFINITIONS)
@@ -3687,6 +3688,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *GOAL_TOOL_DEFINITIONS,
     *DECISION_TOOL_DEFINITIONS,
     *PERSONALITY_RETIRE_TOOL_DEFINITIONS,
+    *CI_SUBSCRIBE_TOOL_DEFINITIONS,
     *PROJECT_PROGRESS_TOOL_DEFINITIONS,
     *THREAD_LIFECYCLE_TOOL_DEFINITIONS,
     *COMPOSITE_TOOL_DEFINITIONS,

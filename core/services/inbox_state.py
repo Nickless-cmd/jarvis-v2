@@ -159,6 +159,14 @@ KAN_DISPATCHES_KILDETYPER: Final[frozenset[str]] = frozenset({
     # nægte en mutation i et kørende run), og er moden i det øjeblik den
     # skrives — det er kildens egen anmodning.
     "vaekning",
+    # `ci_svar` (24/11-2026): det svar nogen VENTER paa. `ci_alarm` er for det
+    # der gik galt; dette er for «den kørsel jeg ventede paa er afgjort» — og
+    # den kan være grøn. Den SKAL kunne vække, for alternativet blev maalt:
+    # jeg pollede `gh run list` i haanden to gange samme dag, 7-14 forsøg pr.
+    # gang, for at se noget systemet allerede kunne se. Abonnementet er Jarvis'
+    # egen forventning (som `wakeup`), ikke en husets begivenhed — og det
+    # baerer derfor heller ikke `kraever_handling`.
+    "ci_svar",
 })
 
 

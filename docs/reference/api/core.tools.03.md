@@ -2,6 +2,38 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/phone_tools.py`
+_Telefon-vaerktoejer — Jarvis' organer paa Bjoerns telefon._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_phone_call` | `(*, tool, args, user_id, timeout_s=…)` | Send et kald til telefonen. Kaster ``RuntimeError`` med en LAESELIG grund. | [src](../../../core/tools/phone_tools.py#L47) |
+| function | `phone_photo_async` | `(*, user_id, kamera=…, gem_sti=…, timeout_s=…)` | Tag et billede. **Kraever at appen er i forgrunden** — kameraet kan ikke | [src](../../../core/tools/phone_tools.py#L112) |
+| function | `phone_location_async` | `(*, user_id, noejagtighed=…, timeout_s=…)` | Hvor telefonen er. Virker ogsaa i baggrunden. | [src](../../../core/tools/phone_tools.py#L126) |
+| function | `phone_record_audio_async` | `(*, user_id, sekunder=…, timeout_s=…)` | Optag lyd fra mikrofonen. Virker ogsaa i baggrunden. | [src](../../../core/tools/phone_tools.py#L139) |
+| function | `phone_speak_async` | `(*, user_id, tekst, sprog=…, timeout_s=…)` | Sig noget hoejt gennem telefonens hoejttaler. | [src](../../../core/tools/phone_tools.py#L160) |
+| function | `phone_bubble_async` | `(*, user_id, tekst, timeout_s=…)` | Vis noget i den flydende boble oven paa andre apps. | [src](../../../core/tools/phone_tools.py#L173) |
+| function | `phone_read_file_async` | `(*, user_id, sti, timeout_s=…)` | Laes en fil i appens eget omraade paa telefonen. | [src](../../../core/tools/phone_tools.py#L187) |
+| function | `phone_write_file_async` | `(*, user_id, sti, indhold, timeout_s=…)` | Skriv en fil i appens eget omraade paa telefonen. | [src](../../../core/tools/phone_tools.py#L198) |
+| function | `phone_list_files_async` | `(*, user_id, sti=…, timeout_s=…)` | Hvad ligger der i appens omraade. | [src](../../../core/tools/phone_tools.py#L210) |
+| function | `phone_share_async` | `(*, user_id, tekst=…, sti=…, timeout_s=…)` | Send noget videre til en anden app via delings-arket. | [src](../../../core/tools/phone_tools.py#L221) |
+| function | `phone_clipboard_read_async` | `(*, user_id, timeout_s=…)` | Hvad der ligger i telefonens udklipsholder. | [src](../../../core/tools/phone_tools.py#L237) |
+| function | `phone_clipboard_write_async` | `(*, user_id, tekst, timeout_s=…)` | Laeg noget i telefonens udklipsholder. | [src](../../../core/tools/phone_tools.py#L247) |
+| function | `_f` | `(navn, beskrivelse, properties, required)` | — | [src](../../../core/tools/phone_tools.py#L268) |
+| function | `_bruger` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L332) |
+| function | `_koer` | `(coro_fn, *, tool_name, timeout_s)` | — | [src](../../../core/tools/phone_tools.py#L337) |
+| function | `_exec_phone_photo` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L342) |
+| function | `_exec_phone_location` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L350) |
+| function | `_exec_phone_record_audio` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L357) |
+| function | `_exec_phone_speak` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L365) |
+| function | `_exec_phone_bubble` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L373) |
+| function | `_exec_phone_read_file` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L379) |
+| function | `_exec_phone_write_file` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L385) |
+| function | `_exec_phone_list_files` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L393) |
+| function | `_exec_phone_share` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L399) |
+| function | `_exec_phone_clipboard_read` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L407) |
+| function | `_exec_phone_clipboard_write` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L413) |
+
 ## `core/tools/plan_revise_tool.py`
 _Plan revision tool — revise_plan._
 
@@ -229,21 +261,21 @@ _Simple, general-purpose tools for Jarvis visible lane._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `canonical_identity_file_path` | `(name)` | Den ENE fil `name` bor i — samme opslag som prompten bruger til at LÆSE. | [src](../../../core/tools/simple_tools.py#L712) |
-| function | `_canonicalize_workspace_target` | `(target)` | If target's basename is a canonical workspace file, force it to the | [src](../../../core/tools/simple_tools.py#L754) |
-| function | `_emit_security_check` | `(hit, *, target)` | Self-safe audit-emit: et deny/destructive bæres nu med sit nummererede | [src](../../../core/tools/simple_tools.py#L903) |
-| function | `_uden_for_quotes` | `(command)` | Fjern quotede strenge, så en ``>`` inde i en streng ikke tælles som redirect. | [src](../../../core/tools/simple_tools.py#L935) |
-| function | `_har_skrivende_redirect` | `(command)` | ``>`` eller ``>>`` uden for quotes gør kommandoen muterende. | [src](../../../core/tools/simple_tools.py#L944) |
-| function | `_segment_er_laesende` | `(segment)` | Er ÉT pipe-segment en ren læsning? Fail-closed ved tvivl. | [src](../../../core/tools/simple_tools.py#L960) |
-| function | `classify_command` | `(command)` | Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L979) |
-| function | `classify_file_write` | `(path)` | Classify a file write: 'auto', 'approval', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L1135) |
-| function | `execute_tool` | `(name, arguments)` | Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1). | [src](../../../core/tools/simple_tools.py#L1157) |
-| function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L1178) |
-| function | `execute_tool_force` | `(name, arguments, *, owner_approved=…)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1495) |
-| function | `_execute_tool_force_impl` | `(name, arguments)` | — | [src](../../../core/tools/simple_tools.py#L1537) |
-| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1662) |
-| function | `_med_samtykke` | `(navn, fn)` | — | [src](../../../core/tools/simple_tools.py#L2421) |
-| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2515) |
+| function | `canonical_identity_file_path` | `(name)` | Den ENE fil `name` bor i — samme opslag som prompten bruger til at LÆSE. | [src](../../../core/tools/simple_tools.py#L716) |
+| function | `_canonicalize_workspace_target` | `(target)` | If target's basename is a canonical workspace file, force it to the | [src](../../../core/tools/simple_tools.py#L758) |
+| function | `_emit_security_check` | `(hit, *, target)` | Self-safe audit-emit: et deny/destructive bæres nu med sit nummererede | [src](../../../core/tools/simple_tools.py#L907) |
+| function | `_uden_for_quotes` | `(command)` | Fjern quotede strenge, så en ``>`` inde i en streng ikke tælles som redirect. | [src](../../../core/tools/simple_tools.py#L939) |
+| function | `_har_skrivende_redirect` | `(command)` | ``>`` eller ``>>`` uden for quotes gør kommandoen muterende. | [src](../../../core/tools/simple_tools.py#L948) |
+| function | `_segment_er_laesende` | `(segment)` | Er ÉT pipe-segment en ren læsning? Fail-closed ved tvivl. | [src](../../../core/tools/simple_tools.py#L964) |
+| function | `classify_command` | `(command)` | Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L983) |
+| function | `classify_file_write` | `(path)` | Classify a file write: 'auto', 'approval', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L1139) |
+| function | `execute_tool` | `(name, arguments)` | Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1). | [src](../../../core/tools/simple_tools.py#L1161) |
+| function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L1182) |
+| function | `execute_tool_force` | `(name, arguments, *, owner_approved=…)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1499) |
+| function | `_execute_tool_force_impl` | `(name, arguments)` | — | [src](../../../core/tools/simple_tools.py#L1541) |
+| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1666) |
+| function | `_med_samtykke` | `(navn, fn)` | — | [src](../../../core/tools/simple_tools.py#L2427) |
+| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2521) |
 
 ## `core/tools/simple_tools_agent_spawn.py`
 _spawn_agent_task som modelvendt vaerktoej._
@@ -258,9 +290,9 @@ _Tool definitions catalog for Jarvis' visible-lane tools._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3816) |
-| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3833) |
-| function | `_tilfoej_runde_etiket` | `(defs, navne)` | Giv de navngivne vaerktoejer `runde_etiket`, hvis de ikke har det. | [src](../../../core/tools/simple_tools_definitions.py#L3860) |
+| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3818) |
+| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3835) |
+| function | `_tilfoej_runde_etiket` | `(defs, navne)` | Giv de navngivne vaerktoejer `runde_etiket`, hvis de ikke har det. | [src](../../../core/tools/simple_tools_definitions.py#L3862) |
 
 ## `core/tools/simple_tools_enforcement.py`
 _Commit-enforcement (repo-state attachment) for Jarvis' tool results._
@@ -618,15 +650,4 @@ _Tool registry entries for staged edits._
 | function | `_exec_list_staged_edits` | `(args)` | — | [src](../../../core/tools/staged_edits_tools.py#L71) |
 | function | `_exec_commit_staged_edits` | `(args)` | — | [src](../../../core/tools/staged_edits_tools.py#L78) |
 | function | `_exec_discard_staged_edits` | `(args)` | — | [src](../../../core/tools/staged_edits_tools.py#L86) |
-
-## `core/tools/state_flag_tools.py`
-_State-flag tools (leak-kandidat #1, 2026-07-10)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_uid` | `()` | — | [src](../../../core/tools/state_flag_tools.py#L16) |
-| function | `_exec_set_flag` | `(args)` | — | [src](../../../core/tools/state_flag_tools.py#L24) |
-| function | `_exec_get_flag` | `(args)` | — | [src](../../../core/tools/state_flag_tools.py#L41) |
-| function | `_exec_clear_flag` | `(args)` | — | [src](../../../core/tools/state_flag_tools.py#L52) |
-| function | `_exec_list_flags` | `(_args)` | — | [src](../../../core/tools/state_flag_tools.py#L63) |
 

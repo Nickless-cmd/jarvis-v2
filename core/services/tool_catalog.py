@@ -125,6 +125,9 @@ _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
         "restart_self", "read_self_state", "read_self_docs",
         "schedule_self_wakeup", "list_self_wakeups", "cancel_self_wakeup",
         "schedule_task", "schedule_recurring",
+        # 24/11-2026: samme familie som `schedule_self_wakeup` — jeg booker en
+        # vækning på en betingelse (CI-kørslen er afgjort) i stedet for at polle.
+        "ci_vent_paa", "ci_venter",
     ]),
     ("Operator (din egen maskine/desktop)", [
         # Aabn kanalen, saa gaar `bash` derover af sig selv — i stedet for at

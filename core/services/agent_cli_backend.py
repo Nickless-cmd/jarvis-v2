@@ -228,8 +228,30 @@ def _cli_tools_for_policy(policy: str) -> str:
     ``HELLO-FROM-BASH-42`` med ``permission_decision: accept`` — ``--restricted``
     fjerner Bash KUN naar ``--tools`` ikke naevner det.
 
-    Laesende ruter faar den fortsat ikke: en researcher eller critic skal
-    undersoege, ikke mutere, og shell er den brede vej til begge.
+    ## Shell: ALLE ruter faar den (rettet 24/11-2026)
+
+    Indtil 24/11-2026 fik kun ``worktree-write`` Bash; alle laesende ruter fik
+    ``Read,Glob,Grep``. Begrundelsen var at «en researcher skal undersoege,
+    ikke mutere». Den holdt ikke, og asymmetrien var maalbar: ``codex-cli``
+    faar ``--sandbox read-only``, som ER shell uden mutation — den kan koere
+    ``rg``, ``sqlite3`` og ``python3 -c`` men ikke skrive. En codex-researcher
+    kunne derfor maale, mens en claude-researcher med samme rolle ikke kunne
+    taelte én raekke i databasen. Rute-valget blev dermed et skjult
+    funktionsvalg: samme subagent_type gav vidt forskellige evner.
+
+    Maalt 24/11-2026 mod CLI: ``--tools Read,Glob,Grep,Bash`` +
+    ``--permission-mode plan`` koerer ``echo HELLO-FROM-BASH-42`` og skrev
+    IKKE den fil den blev bedt om at skrive. Shell virker altsaa i plan mode.
+
+    ⚠️ VAERNETS STYRKE ER IKKE DEN SAMME. Codex' read-only er handhaevet af
+    kernen — der KAN ikke skrives. Claudes plan mode er en instruks: maalt var
+    ``permission_denials`` TOM, fordi agenten selv afstod foer den forsoegte.
+    Det er en svagere garanti, og den skal staa her saa ingen laeser plan mode
+    som en sandbox. For en laesende rute er ``_working_root`` desuden
+    hovedrepoet, ikke et worktree — en agent der trodser instruksen skriver
+    altsaa i det levende trae. Det er prisen for at give den shell, og den er
+    bevidst valgt: en agent der ikke kan maale leverer «faerdig» uden at have
+    maalt noget (se de tre maalte tilfaelde nedenfor).
 
     Ukendt eller tom policy giver laeseadgang, ikke nul: en CLI der starter
     uden værktøjer kan ikke engang laese den fil den blev bedt om at vurdere,
@@ -243,7 +265,9 @@ def _cli_tools_for_policy(policy: str) -> str:
     # none, read-only-runtime, read-only-workstation, can-spawn og ukendt:
     # alle er laesende set fra CLI'ens side. `none` er ikke nul her — se
     # docstringen: nul værktøjer gør agenten blind, ikke sikker.
-    return "Read,Glob,Grep"
+    # (24/11-2026) `Bash` er med ogsaa her; skriveforbuddet baeres af
+    # `--permission-mode plan` i `_command`, ikke af en manglende værktøjsliste.
+    return "Read,Glob,Grep,Bash"
 
 
 def _command(provider: str, executable: str, model: str, root: str, prompt: str,
@@ -287,6 +311,21 @@ def _command(provider: str, executable: str, model: str, root: str, prompt: str,
                 # en fremtidig oprydning må ikke læse denne linje som om
                 # `--tools` kan undvære `Bash`. Det kan den ikke.
                 "--allowedTools", "Bash"]
+    else:
+        # (24/11-2026) Laesende ruter faar ogsaa Bash (se
+        # `_cli_tools_for_policy`), men UDEN `acceptEdits` og uden
+        # `--allowedTools Bash`. Skriveforbuddet baeres i stedet af `plan`,
+        # som er den eneste af CLI'ens seks permission-modes der beskriver
+        # "undersoeg, rediger ikke".
+        #
+        # Maalt 24/11-2026: `echo HELLO-FROM-BASH-42` kørte, og den bad om at
+        # skrive /tmp/claude_plan_test.txt — filen fandtes ikke bagefter.
+        # `permission_denials` var TOM, saa agenten afstod selv; den blev ikke
+        # stoppet af en sandbox. Det er svagere end codex' `--sandbox
+        # read-only`, og det er en bevidst afvejning: alternativet var en agent
+        # der slet ikke kunne maale (asg-dc669ecaebd54825: «wt_bash findes
+        # ikke her»; asg-f32b7d7f86a940fc: nul testkald).
+        cmd += ["--permission-mode", "plan"]
     if selected and selected != "default":
         cmd += ["--model", selected]
     return cmd

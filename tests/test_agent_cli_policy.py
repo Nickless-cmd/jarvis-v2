@@ -85,35 +85,76 @@ def test_ingen_cli_policy_goer_agenten_blind(policy):
     assert _cli_tools(policy), f"policy {policy!r} gav nul værktøjer"
 
 
-def test_skrivende_rute_har_shell_og_laesende_har_ikke():
+def test_alle_ruter_har_shell_og_laesende_er_plan_mode():
     """Shell-fordelingen mellem de to slags ruter — fæstnet, saa den ikke glider.
 
-    Historik, fordi den er dyr: indtil 14/11-2026 gav INGEN policy shell, og
+    Historik, fordi den er dyr. Indtil 14/11-2026 gav INGEN policy shell, og
     denne vagt fæstnede netop det. Prisen var maalt — to agenter afleverede
     kode uden at koere én test, og en tredje skrev 19 filer med typecheck-fejl
     som ingen kunne se. En skrivende agent uden shell kan ikke verificere sit
     eget arbejde.
 
-    Bjoern ophaevede begraensningen 14/11-2026 («giv claude wt_bash»), efter
-    at flagkombinationen var maalt: `--tools …Bash` + `--restricted` koerer
-    kommandoen. `--restricted` fjerner Bash KUN naar `--tools` ikke naevner det.
+    Bjoern ophaevede den begraensning 14/11-2026 («giv claude wt_bash»).
+    Derefter fik kun ``worktree-write`` shell; laesende ruter fik
+    ``Read,Glob,Grep``. Denne vagt fæstnede den halve loesning.
 
-    Laesende ruter faar den fortsat ikke — en researcher eller critic skal
-    undersoege, ikke mutere. Fejler denne test, er fordelingen aendret, og saa
-    skal det besluttes eksplicit frem for at glide.
+    ## Rettet 24/11-2026: laesende ruter faar OGSAA shell
+
+    Asymmetrien var maalbar og skaev: ``codex-cli`` faar ``--sandbox
+    read-only``, som ER shell uden mutation. En codex-researcher kunne derfor
+    tælle rækker i databasen, mens en claude-researcher med samme
+    ``subagent_type`` ikke kunne maale noget — rute-valget blev et skjult
+    funktionsvalg.
+
+    Maalt mod CLI 24/11-2026: ``--tools Read,Glob,Grep,Bash`` +
+    ``--permission-mode plan`` koerer ``echo HELLO-FROM-BASH-42`` og skrev IKKE
+    den fil den blev bedt om. ``permission_denials`` var tom — agenten afstod
+    selv, den blev ikke stoppet af en sandbox.
+
+    ⚠️ Vagtens vigtigste pointe er derfor FORSKELLEN i værnets styrke:
+    claudes skriveforbud i plan mode er en instruks, codex' er håndhævet af
+    kernen. Falder ``--permission-mode plan`` ud af kommandolinjen, bliver en
+    læsende claude-agent derfor reelt skrivende i hovedrepoet — det er den
+    fejl denne test skal fange, ikke en manglende værktøjsliste.
     """
     tabel = set(tools_for_policy("read-only-runtime"))
     assert "bash" in tabel, "tabellen lover ikke laengere shell — opdatér denne vagt"
 
-    assert "Bash" in _cli_tools("worktree-write"), (
-        "den skrivende rute mistede shell — saa kan dens agent ikke koere de "
-        "tests den selv skrev, og dens «faerdig» daekker kun over at den skrev noget"
-    )
-    for policy in ("none", "read-only-runtime", "read-only-workstation", "can-spawn"):
-        assert "Bash" not in _cli_tools(policy), (
-            f"CLI-ruten giver nu shell for laesende policy {policy!r}. Det er en "
-            "ny egenskab ved backenden — afgoer eksplicit om den skal have det."
+    for policy in ("worktree-write", "none", "read-only-runtime",
+                   "read-only-workstation", "can-spawn", ""):
+        assert "Bash" in _cli_tools(policy), (
+            f"CLI-ruten mistede shell for policy {policy!r}. En agent der ikke kan "
+            "maale, leverer «faerdig» uden at have maalt noget."
         )
+
+
+def test_laesende_rute_baerer_skriveforbud_i_plan_mode():
+    """Skriveforbuddet skal ligge i ``--permission-mode plan``, ikke i listen.
+
+    Fjernes flaget, er en læsende claude-agent skrivende i hovedrepoet:
+    ``_working_root`` peger paa ``PROJECT_ROOT`` for alle ikke-skrivende ruter,
+    saa der er intet worktree der kan kastes vaek bagefter.
+    """
+    laes = backend._command(
+        "claude-cli", "/usr/bin/claude", "default", "/tmp", "opgave",
+        policy="read-only-runtime", output_path="/tmp/out.txt",
+    )
+    assert laes[laes.index("--permission-mode") + 1] == "plan", (
+        "læsende claude-rute kører ikke i plan mode — så er dens shell uden "
+        "skriveværn, og den skriver i hovedrepoet"
+    )
+    assert "--allowedTools" not in laes, (
+        "`--allowedTools Bash` giver TILLADELSEN, ikke bare værktøjet — den hører "
+        "kun til den skrivende rute"
+    )
+
+    skriv = backend._command(
+        "claude-cli", "/usr/bin/claude", "default", "/tmp", "opgave",
+        policy="worktree-write", output_path="/tmp/out.txt",
+    )
+    assert skriv[skriv.index("--permission-mode") + 1] == "acceptEdits"
+    assert skriv[skriv.index("--allowedTools") + 1] == "Bash"
+
 
 
 def test_command_sender_policyens_vaerktoejer_til_cli():
@@ -131,7 +172,10 @@ def test_command_sender_policyens_vaerktoejer_til_cli():
         "claude-cli", "/usr/bin/claude", "default", "/tmp", "opgave",
         policy="read-only-runtime", output_path="/tmp/out.txt",
     )
-    assert cmd_ro[cmd_ro.index("--tools") + 1] == "Read,Glob,Grep"
+    # (24/11-2026) Ogsaa læsende ruter faar Bash — skriveforbuddet bæres af
+    # `--permission-mode plan`, ikke af en manglende værktøjsliste. Se
+    # `test_laesende_rute_baerer_skriveforbud_i_plan_mode`.
+    assert cmd_ro[cmd_ro.index("--tools") + 1] == "Read,Glob,Grep,Bash"
 
 
 def test_codex_sandbox_foelger_policy():

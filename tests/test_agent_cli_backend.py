@@ -62,11 +62,18 @@ def test_claude_command_is_restricted_and_writing_routes_have_shell(tmp_path):
     assert cmd[cmd.index("--permission-mode") + 1] == "acceptEdits"
     assert cmd[cmd.index("--model") + 1] == "sonnet"
 
-    # Læsende rute: shell er ikke med. Det er den grænse der faktisk gælder.
+    # Læsende rute: shell er MED (rettet 24/11-2026), men skriveforbuddet bæres
+    # af `--permission-mode plan` i stedet for af en manglende værktøjsliste.
+    # Uden flaget ville ruten være reelt skrivende i hovedrepoet, fordi
+    # `_working_root` peger på PROJECT_ROOT for alle ikke-skrivende ruter.
     læsende = _command("claude-cli", "/bin/claude", "sonnet", str(tmp_path), "vurdér",
                        policy="read-only-runtime", output_path=str(tmp_path / "unused"))
     læsende_tools = læsende[læsende.index("--tools") + 1]
-    assert "Bash" not in læsende_tools
+    assert "Bash" in læsende_tools, (
+        "læsende rute mistede shell — så kan en researcher ikke måle noget, mens "
+        "en codex-researcher med samme rolle kan (--sandbox read-only)"
+    )
+    assert læsende[læsende.index("--permission-mode") + 1] == "plan"
     assert "--allowedTools" not in læsende
 
 

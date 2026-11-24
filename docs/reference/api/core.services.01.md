@@ -460,14 +460,14 @@ _Claude Code og Codex CLI som eksekveringsbackends for ``Task``._
 | function | `_working_root` | `(agent, assignment)` | — | [src](../../../core/services/agent_cli_backend.py#L156) |
 | function | `_prompt` | `(prompt, *, writes)` | — | [src](../../../core/services/agent_cli_backend.py#L174) |
 | function | `_cli_tools_for_policy` | `(policy)` | Oversæt en ``tool_policy`` til claude-CLI'ens ``--tools``-liste. | [src](../../../core/services/agent_cli_backend.py#L191) |
-| function | `_command` | `(provider, executable, model, root, prompt, *, policy, output_path)` | — | [src](../../../core/services/agent_cli_backend.py#L249) |
-| function | `_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L295) |
-| function | `_stop` | `(proc)` | — | [src](../../../core/services/agent_cli_backend.py#L302) |
-| function | `_claude_text` | `(stdout)` | Læs CLI'ens stdout — både `stream-json` (én JSON pr. linje) og `json`. | [src](../../../core/services/agent_cli_backend.py#L313) |
-| function | `_codex_tool_calls` | `(stdout)` | Tæl afsluttede værktøjs-items fra ``codex exec --json``. | [src](../../../core/services/agent_cli_backend.py#L342) |
-| function | `_claude_parse` | `(stdout)` | Normalisér CLI-output til tekst, tokens og værktøjskald. | [src](../../../core/services/agent_cli_backend.py#L371) |
-| function | `_bogfoer_cli_vaerktoejskald` | `(agent, run_id, tool_uses, tool_results)` | Skriv CLI-agentens værktøjskald til ``agent_tool_calls``. Returnerer antallet. | [src](../../../core/services/agent_cli_backend.py#L445) |
-| function | `run_task_cli` | `(*, agent, prompt, run_id, timeout_s=…)` | Koer den valgte CLI én gang og returner agent-runtimens resultatform. | [src](../../../core/services/agent_cli_backend.py#L496) |
+| function | `_command` | `(provider, executable, model, root, prompt, *, policy, output_path)` | — | [src](../../../core/services/agent_cli_backend.py#L273) |
+| function | `_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L334) |
+| function | `_stop` | `(proc)` | — | [src](../../../core/services/agent_cli_backend.py#L341) |
+| function | `_claude_text` | `(stdout)` | Læs CLI'ens stdout — både `stream-json` (én JSON pr. linje) og `json`. | [src](../../../core/services/agent_cli_backend.py#L352) |
+| function | `_codex_tool_calls` | `(stdout)` | Tæl afsluttede værktøjs-items fra ``codex exec --json``. | [src](../../../core/services/agent_cli_backend.py#L381) |
+| function | `_claude_parse` | `(stdout)` | Normalisér CLI-output til tekst, tokens og værktøjskald. | [src](../../../core/services/agent_cli_backend.py#L410) |
+| function | `_bogfoer_cli_vaerktoejskald` | `(agent, run_id, tool_uses, tool_results)` | Skriv CLI-agentens værktøjskald til ``agent_tool_calls``. Returnerer antallet. | [src](../../../core/services/agent_cli_backend.py#L484) |
+| function | `run_task_cli` | `(*, agent, prompt, run_id, timeout_s=…)` | Koer den valgte CLI én gang og returner agent-runtimens resultatform. | [src](../../../core/services/agent_cli_backend.py#L535) |
 
 ## `core/services/agent_contract_bridge.py`
 _Binder spawn_agent_task til agent-contract-v1 (leverance A2)._

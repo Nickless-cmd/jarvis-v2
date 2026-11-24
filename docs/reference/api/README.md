@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 19133 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 19136 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -51,19 +51,19 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 19133 functions/
 - [`core.services.17`](core.services.17.md) — `internal_cadence_central_wiring` … `long_arc_synthesizer`
 - [`core.services.18`](core.services.18.md) — `long_horizon_goals` … `meta_learning_hypotheses`
 - [`core.services.19`](core.services.19.md) — `meta_learning_retrospective` … `nudge_broend`
-- [`core.services.20`](core.services.20.md) — `oauth_flow` … `plan_proposals`
-- [`core.services.21`](core.services.21.md) — `plugin_ruleset` … `prompt_dump`
-- [`core.services.22`](core.services.22.md) — `prompt_dynamic_tail_layout` … `reasoning_escalation`
-- [`core.services.23`](core.services.23.md) — `reasoning_interceptor` … `retention`
-- [`core.services.24`](core.services.24.md) — `retention_coverage` … `runtime_decision_engine`
-- [`core.services.25`](core.services.25.md) — `runtime_flows` … `self_model_blind_spots`
-- [`core.services.26`](core.services.26.md) — `self_model_distiller` … `session_spawn`
-- [`core.services.27`](core.services.27.md) — `session_titling` … `skill_scanner`
-- [`core.services.28`](core.services.28.md) — `skill_security_scanner` … `temporal_narrative`
-- [`core.services.29`](core.services.29.md) — `temporal_recurrence_signal_tracking` … `tool_shell_hooks`
-- [`core.services.30`](core.services.30.md) — `tool_tagger` … `visible_first_pass_text`
-- [`core.services.31`](core.services.31.md) — `visible_followup` … `visible_runs_outcomes`
-- [`core.services.32`](core.services.32.md) — `visible_runs_sse_v2` … `world_model_signal_tracking`
+- [`core.services.20`](core.services.20.md) — `oauth_flow` … `plan_mode`
+- [`core.services.21`](core.services.21.md) — `plan_proposals` … `prompt_contract`
+- [`core.services.22`](core.services.22.md) — `prompt_dump` … `reasoning_detectors`
+- [`core.services.23`](core.services.23.md) — `reasoning_escalation` … `resonance_decay`
+- [`core.services.24`](core.services.24.md) — `retention` … `runtime_cognitive_conductor`
+- [`core.services.25`](core.services.25.md) — `runtime_decision_engine` … `self_history_grounding`
+- [`core.services.26`](core.services.26.md) — `self_model_blind_spots` … `session_prewarm`
+- [`core.services.27`](core.services.27.md) — `session_spawn` … `skill_relevance_surface`
+- [`core.services.28`](core.services.28.md) — `skill_scanner` … `temporal_depth`
+- [`core.services.29`](core.services.29.md) — `temporal_narrative` … `tool_router_runtime`
+- [`core.services.30`](core.services.30.md) — `tool_shell_hooks` … `visible_first_pass_results`
+- [`core.services.31`](core.services.31.md) — `visible_first_pass_text` … `visible_runs_memory`
+- [`core.services.32`](core.services.32.md) — `visible_runs_outcomes` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

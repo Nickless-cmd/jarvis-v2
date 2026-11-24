@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_shell_hooks.py`
+_Brugerdefinerbare tool-hooks som shell-kommandoer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `rotate_log_if_needed` | `()` | Rotér hook-loggen før næste hook-skrivning; behold én generation. | [src](../../../core/services/tool_shell_hooks.py#L76) |
+| class | `HookResultat` | `` | Hvad en enkelt hook-kørsel svarede. Bruges af tests og af status. | [src](../../../core/services/tool_shell_hooks.py#L91) |
+| class | `ShellHook` | `` | Én konfigureret hook. Implements ``ToolLifecycleHook`` strukturelt. | [src](../../../core/services/tool_shell_hooks.py#L102) |
+| method | `ShellHook.rammer` | `(self, tool_name)` | — | [src](../../../core/services/tool_shell_hooks.py#L113) |
+| method | `ShellHook._miljoe` | `(self, *, fase, tool_name)` | — | [src](../../../core/services/tool_shell_hooks.py#L117) |
+| method | `ShellHook._koer` | `(self, kommando, *, fase, tool_name, arguments)` | — | [src](../../../core/services/tool_shell_hooks.py#L124) |
+| method | `ShellHook.before_tool` | `(self, tool_name, arguments)` | — | [src](../../../core/services/tool_shell_hooks.py#L186) |
+| method | `ShellHook.after_tool` | `(self, tool_name, arguments, result)` | — | [src](../../../core/services/tool_shell_hooks.py#L204) |
+| function | `_parse` | `(raw)` | Config-dokument → (enabled, hooks, fejl). Kaster aldrig. | [src](../../../core/services/tool_shell_hooks.py#L234) |
+| function | `read_config` | `()` | Det rå config-dokument, som redigeringsfladen skal have det. | [src](../../../core/services/tool_shell_hooks.py#L271) |
+| function | `validate_config` | `(raw)` | Alle fejl i et config-dokument, ikke kun den første. | [src](../../../core/services/tool_shell_hooks.py#L295) |
+| function | `save_config` | `(raw)` | Validér, tag backup og skriv config atomisk. Rører intet ved ugyldig input. | [src](../../../core/services/tool_shell_hooks.py#L348) |
+| function | `ensure_loaded` | `(*, tving=…)` | Læs config én gang pr. proces. Returnerer True hvis hooks er aktive. | [src](../../../core/services/tool_shell_hooks.py#L400) |
+| function | `status` | `()` | Hvad er indlæst, og hvorfor ikke? Måling i stedet for formodning. | [src](../../../core/services/tool_shell_hooks.py#L449) |
+| function | `_nulstil_for_test` | `()` | Kun til tests: glem hvad der er indlæst, så en fixture kan styre det. | [src](../../../core/services/tool_shell_hooks.py#L468) |
+
 ## `core/services/tool_tagger.py`
 _Tool tag taxonomy._
 
@@ -569,15 +590,4 @@ _Publish first-pass tool outcomes before post-tool prompt assembly._
 | function | `surface_tool_result` | `(sr, status=…)` | Close one measured call immediately before its terminal UI fact. | [src](../../../core/services/visible_first_pass_results.py#L18) |
 | function | `_ejer_kan_svare` | `(run)` | Er der et menneske i den anden ende af DENNE kørsel? | [src](../../../core/services/visible_first_pass_results.py#L42) |
 | function | `publish_first_pass_results` | `(results, *, run, step_counter, out)` | Resolve approvals and publish terminal UI facts; do not persist transcript. | [src](../../../core/services/visible_first_pass_results.py#L72) |
-
-## `core/services/visible_first_pass_text.py`
-_Akkumuleret first-pass-tekst med indbygget degenerations-vagt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `FirstPassText` | `` | Samler first-pass-tekst og siger til når den degenererer. | [src](../../../core/services/visible_first_pass_text.py#L31) |
-| method | `FirstPassText.text` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L39) |
-| method | `FirstPassText.__len__` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L42) |
-| method | `FirstPassText.__bool__` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L45) |
-| method | `FirstPassText.feed` | `(self, delta)` | Tilføj en delta. Returnér (degenereret, årsag). | [src](../../../core/services/visible_first_pass_text.py#L48) |
 

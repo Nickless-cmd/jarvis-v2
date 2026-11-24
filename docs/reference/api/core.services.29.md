@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/temporal_narrative.py`
+_Temporal Narrative — continuous self-history over time._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `NarrativeBeat` | `` | A beat in Jarvis' narrative thread. | [src](../../../core/services/temporal_narrative.py#L24) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/temporal_narrative.py#L36) |
+| function | `add_beat` | `(mood, event)` | Add a beat to the narrative thread. | [src](../../../core/services/temporal_narrative.py#L40) |
+| function | `add_beat_from_affective` | `()` | Add a beat based on current affective state. | [src](../../../core/services/temporal_narrative.py#L66) |
+| function | `summarize_current_self` | `()` | Summarize current self based on narrative thread. | [src](../../../core/services/temporal_narrative.py#L80) |
+| function | `ask_self_question` | `()` | Jarvis asks himself a question based on narrative. | [src](../../../core/services/temporal_narrative.py#L100) |
+| function | `format_narrative_for_prompt` | `()` | Format narrative for prompt injection. | [src](../../../core/services/temporal_narrative.py#L117) |
+| function | `get_thread` | `()` | Get the full narrative thread. | [src](../../../core/services/temporal_narrative.py#L130) |
+| function | `reset_temporal_narrative` | `()` | Reset temporal narrative state (for testing). | [src](../../../core/services/temporal_narrative.py#L143) |
+| function | `build_temporal_narrative_surface` | `()` | Build MC surface for temporal narrative. | [src](../../../core/services/temporal_narrative.py#L150) |
+
 ## `core/services/temporal_recurrence_signal_tracking.py`
 _Temporal-recurrence signal tracking — migrated onto signal_tracking_framework._
 
@@ -580,25 +596,4 @@ _Nightly daemon: refresh always-core ranking, recompute embeddings,_
 | function | `start_tool_router_runtime` | `()` | — | [src](../../../core/services/tool_router_runtime.py#L73) |
 | function | `stop_tool_router_runtime` | `()` | — | [src](../../../core/services/tool_router_runtime.py#L85) |
 | function | `build_tool_router_runtime_surface` | `()` | Mission Control-surface: koerer router-daemonen, og hvad sagde dens sidste kørsel? | [src](../../../core/services/tool_router_runtime.py#L89) |
-
-## `core/services/tool_shell_hooks.py`
-_Brugerdefinerbare tool-hooks som shell-kommandoer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `rotate_log_if_needed` | `()` | Rotér hook-loggen før næste hook-skrivning; behold én generation. | [src](../../../core/services/tool_shell_hooks.py#L76) |
-| class | `HookResultat` | `` | Hvad en enkelt hook-kørsel svarede. Bruges af tests og af status. | [src](../../../core/services/tool_shell_hooks.py#L91) |
-| class | `ShellHook` | `` | Én konfigureret hook. Implements ``ToolLifecycleHook`` strukturelt. | [src](../../../core/services/tool_shell_hooks.py#L102) |
-| method | `ShellHook.rammer` | `(self, tool_name)` | — | [src](../../../core/services/tool_shell_hooks.py#L113) |
-| method | `ShellHook._miljoe` | `(self, *, fase, tool_name)` | — | [src](../../../core/services/tool_shell_hooks.py#L117) |
-| method | `ShellHook._koer` | `(self, kommando, *, fase, tool_name, arguments)` | — | [src](../../../core/services/tool_shell_hooks.py#L124) |
-| method | `ShellHook.before_tool` | `(self, tool_name, arguments)` | — | [src](../../../core/services/tool_shell_hooks.py#L186) |
-| method | `ShellHook.after_tool` | `(self, tool_name, arguments, result)` | — | [src](../../../core/services/tool_shell_hooks.py#L204) |
-| function | `_parse` | `(raw)` | Config-dokument → (enabled, hooks, fejl). Kaster aldrig. | [src](../../../core/services/tool_shell_hooks.py#L234) |
-| function | `read_config` | `()` | Det rå config-dokument, som redigeringsfladen skal have det. | [src](../../../core/services/tool_shell_hooks.py#L271) |
-| function | `validate_config` | `(raw)` | Alle fejl i et config-dokument, ikke kun den første. | [src](../../../core/services/tool_shell_hooks.py#L295) |
-| function | `save_config` | `(raw)` | Validér, tag backup og skriv config atomisk. Rører intet ved ugyldig input. | [src](../../../core/services/tool_shell_hooks.py#L348) |
-| function | `ensure_loaded` | `(*, tving=…)` | Læs config én gang pr. proces. Returnerer True hvis hooks er aktive. | [src](../../../core/services/tool_shell_hooks.py#L400) |
-| function | `status` | `()` | Hvad er indlæst, og hvorfor ikke? Måling i stedet for formodning. | [src](../../../core/services/tool_shell_hooks.py#L449) |
-| function | `_nulstil_for_test` | `()` | Kun til tests: glem hvad der er indlæst, så en fixture kan styre det. | [src](../../../core/services/tool_shell_hooks.py#L468) |
 

@@ -16,8 +16,45 @@ working unchanged.
 from __future__ import annotations
 
 import json
+import logging
 from urllib import error as urllib_error
 from urllib import request as urllib_request
+
+logger = logging.getLogger(__name__)
+
+
+def _bogfoer_ollama_kald(
+    *,
+    provider: str,
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    cache_hit_tokens: int,
+    cache_miss_tokens: int,
+    lane: str = "heartbeat",
+) -> float:
+    """Heartbeat-lanens indgang til den fælles Ollama-bogføring.
+
+    MÅLT 24/11-2026: 1.361 heartbeat-ticks på syv dage stod ALLE med
+    ``cost_usd = 0.0`` — 3,5 mio input-tokens blev brugt og bogført ingen
+    steder, fordi ``_execute_ollama_prompt`` returnerede et hårdkodet nul.
+
+    Selve bogføringen bor nu i :mod:`core.services.ollama_usage`, fordi otte
+    andre filer sender Ollama-kald uden at bogføre dem. Denne wrapper findes
+    kun for at holde heartbeat-lanen som standard uden at hver kalder skal
+    gentage den.
+    """
+    from core.services.ollama_usage import bogfoer_ollama_kald
+
+    return bogfoer_ollama_kald(
+        provider=provider,
+        model=model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cache_hit_tokens=cache_hit_tokens,
+        cache_miss_tokens=cache_miss_tokens,
+        lane=lane,
+    )
 
 
 def _execute_ollama_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, object]:
@@ -54,11 +91,30 @@ def _execute_ollama_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, 
     text = str(data.get("response") or "").strip()
     if not text:
         raise RuntimeError("Heartbeat ollama execution returned no response")
+    prompt_eval = int(data.get("prompt_eval_count") or _hb._estimate_tokens(prompt))
+    eval_count = int(data.get("eval_count") or _hb._estimate_tokens(text))
+    # Ollama sender `prompt_eval_cached_count` i cloud-svaret (målt 10/10-2026:
+    # 7.221-tokens præfiks gav 0 cached koldt og 7.040 på gentagelse). Uden
+    # split'et ville `record_cost` prissætte ALL input som cache-miss — den
+    # dyre side — og heartbeat ville se 3-4x dyrere ud end det er.
+    from core.services.visible_model_ollama import _cache_split
+
+    cache_hit, cache_miss = _cache_split(data, prompt_eval)
+    pris = _bogfoer_ollama_kald(
+        provider=str(target.get("provider") or "ollama"),
+        model=str(target["model"]),
+        input_tokens=prompt_eval,
+        output_tokens=eval_count,
+        cache_hit_tokens=cache_hit,
+        cache_miss_tokens=cache_miss,
+    )
     return {
         "text": text,
-        "input_tokens": int(data.get("prompt_eval_count") or _hb._estimate_tokens(prompt)),
-        "output_tokens": int(data.get("eval_count") or _hb._estimate_tokens(text)),
-        "cost_usd": 0.0,
+        "input_tokens": prompt_eval,
+        "output_tokens": eval_count,
+        "cache_hit_tokens": cache_hit,
+        "cache_miss_tokens": cache_miss,
+        "cost_usd": pris,
         "execution_status": "success",
     }
 

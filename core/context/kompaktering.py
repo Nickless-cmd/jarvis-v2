@@ -47,7 +47,12 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_TIMEOUT_SEK = 45
+# Maalt 24/11-2026: 16 af 61 komprimeringer paa en uge (26 %) faldt til
+# `mekanisk` med `timeout-45s`. Cheap lane svarer i 2-30 s paa ~75.000 tokens,
+# saa 45 s ramte den forkerte part: den mekaniske vej komprimerer 63 % daarligere
+# (75.614 -> 21.880 tokens mod LLM-vejens 13.475). Loftet er haevet til 90 s —
+# stadig under de 150 s opencode selv bruger, saa et haengende kald afbrydes.
+_TIMEOUT_SEK = 90
 
 
 class NotAdvancing(RuntimeError):

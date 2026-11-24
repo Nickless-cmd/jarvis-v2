@@ -117,6 +117,25 @@ def test_for_kort_tekst_spoerger_slet_ikke(monkeypatch):
     assert kaldt == []
 
 
+def test_sekvens_telemetri_spoerger_slet_ikke(monkeypatch):
+    """En Markov-overgang er runtime-telemetri, ikke Jarvis' udvikling.
+
+    Den levende central-hypotese-bro producerer denne skabelon i tusindvis.
+    Modellens korrekte svar er normalt ``none``, saa kaldet skal undgaas.
+    """
+    import core.services.daemon_llm as DL
+    kaldt = []
+    monkeypatch.setattr(DL, "daemon_llm_call",
+                        lambda p, **kw: kaldt.append(1) or '{"domaene":"memory"}')
+    from core.services.dream_domains import domaene_for_tur
+
+    assert domaene_for_tur(
+        "Sekvens-modellen blev overrasket: 'runtime' → 'memory' skete, "
+        "men modellen gav P=0.0003"
+    ) is None
+    assert kaldt == []
+
+
 # ── De to hardkodede broer (fjernet 25/9-2026) ───────────────────────────
 #
 # I `_domain_key_from_*` stod `if "danish-concise-calibration" in text: return

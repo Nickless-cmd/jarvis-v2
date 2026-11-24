@@ -277,3 +277,22 @@ def test_praefiks_strip_smelter_IKKE_korte_forskellige_tekster():
     F.register_memory(memory_key="kort", content_preview="jeg tæller kolonner")
     F.register_memory(memory_key="lang", content_preview="jeg tæller kolonner og værdier i hver række")
     assert len(state_store.load_json("forgetting_curve", {})) == 2
+
+
+def test_memory_faded_publiceres_kun_ved_overgangen_over_0_9(monkeypatch):
+    """Regression: et minde over 0,9 meldte sig ved HVERT tick.
+
+    m_over starter over graensen (skal vaere tavs), m_krydser krydser den i
+    foerste tick (praecis ét publish), og m_under er langt under.
+    """
+    for key, decay in (("m_over", 0.95), ("m_krydser", 0.895), ("m_under", 0.1)):
+        F.register_memory(memory_key=key, content_preview=key, initial_decay=decay)
+    udgivet = []
+    monkeypatch.setattr(
+        F.event_bus, "publish", lambda kind, payload=None, *a, **k: udgivet.append((kind, payload)))
+
+    F.apply_decay_tick()
+    F.apply_decay_tick()
+
+    faded = [p["memory_key"] for k, p in udgivet if k == "cognitive_forgetting.memory_faded"]
+    assert faded == ["m_krydser"]

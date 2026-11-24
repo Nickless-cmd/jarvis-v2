@@ -315,6 +315,7 @@ def reinforce_memory(memory_key: str) -> None:
 def apply_decay_tick(decay_increment: float = 0.01) -> dict[str, object]:
     """Apply one decay tick to all registered memories."""
     faded: list[tuple[str, float]] = []
+    crossed: list[tuple[str, float]] = []
     with state_store.med_laas(_FIL):
         reg = _load()
         for key, entry in list(reg.items()):
@@ -327,13 +328,17 @@ def apply_decay_tick(decay_increment: float = 0.01) -> dict[str, object]:
 
             if new_decay > 0.9:
                 faded.append((key, new_decay))
+                # Kun OVERGANGEN er en nyhed; et minde der allerede var
+                # over graensen skal ikke melde sig ved hvert tick.
+                if old_decay <= 0.9:
+                    crossed.append((key, new_decay))
 
         _save(reg)
         sporet = len(reg)
 
     # Haendelserne UDEN for laasen. En abonnent maa ikke kunne holde den anden
     # proces ude af glemselskurven mens den arbejder paa noget helt andet.
-    for key, decay in faded:
+    for key, decay in crossed:
         event_bus.publish(
             "cognitive_forgetting.memory_faded",
             {"memory_key": key, "decay_score": decay},

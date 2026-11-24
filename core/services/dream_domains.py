@@ -87,6 +87,14 @@ Turen:
 {tekst}"""
 
 
+# `central_hypothesis_generator.formulate_prediction_error_hypothesis` laver
+# denne tekst ud fra en Markov-overgang. Det er telemetri om eventfamilier, ikke
+# indhold om Jarvis' udvikling. Maalt 18.–24/11-2026: 6.891 af 6.996 afgjorte
+# central-hypoteser havde formen, mens 84,8 % af 3.514 dream_domain-svar var det
+# korrekte `none`. Lad derfor ikke modellen genbekraefte det kendte svar.
+_SEKVENS_TELEMETRI_PREFIX = "Sekvens-modellen blev overrasket:"
+
+
 def domaene_for_tur(tekst: str, *, timeout_sekunder: float | None = None) -> str | None:
     """Hvilket staaende domaene roerer turen — eller None.
 
@@ -95,7 +103,7 @@ def domaene_for_tur(tekst: str, *, timeout_sekunder: float | None = None) -> str
     det er bedre end en paa et gaettet omraade.
     """
     rens = str(tekst or "").strip()
-    if len(rens) < 8:
+    if len(rens) < 8 or rens.startswith(_SEKVENS_TELEMETRI_PREFIX):
         return None
     try:
         from core.services.daemon_llm import daemon_llm_call, tegn_for_tokens

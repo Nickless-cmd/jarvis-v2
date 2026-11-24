@@ -1456,7 +1456,7 @@ def chat_session(session_id: str, request: Request, response: Response):
         raise HTTPException(status_code=404, detail="Chat session not found")
 
     # Prewarm-on-return: at åbne en session = intent om at chatte. Varm dens
-    # DeepSeek-prefix nu (throttlet 45s, kun owner→deepseek) så den første besked
+    # DeepSeek-prefix nu (throttlet 20 min pr. session, _COOLDOWN_S, kun owner→deepseek) så den første besked
     # efter en pause rammer cachen i stedet for cold prefill (~32k). Dækker ALLE
     # klienter (desk, code-view, jarvis-code) uden per-klient-wiring. Self-safe,
     # fire-and-forget. Composer-fokus dækker desuden "vend tilbage til åben session".

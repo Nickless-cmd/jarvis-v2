@@ -546,6 +546,64 @@ def test_chat_kaldet_rammer_routerens_host_ikke_embed_hosten(monkeypatch):
     assert "11435" not in ramte["post"], "chat må ALDRIG gå til embed-hosten"
 
 
+def test_chat_kaldet_bogfoerer_ollamas_faktiske_tokens(monkeypatch):
+    """Et betalt cloud-kald må ikke forsvinde, når JSON-svaret er parsebart."""
+    import httpx
+    from core.runtime import provider_router
+    from core.services import jarvis_brain_daemon as dmn
+
+    rows: list[dict] = []
+    monkeypatch.setattr(
+        provider_router,
+        "resolve_provider_router_target",
+        lambda *, lane: {
+            "provider": "ollama",
+            "model": "deepseek-v4.1-flash:cloud",
+            "base_url": "https://ollama.test",
+        },
+    )
+    monkeypatch.setattr(
+        "core.costing.ledger.record_cost", lambda **kw: rows.append(kw)
+    )
+
+    class _Response:
+        status_code = 200
+
+        def __init__(self, data):
+            self._data = data
+
+        def json(self):
+            return self._data
+
+    monkeypatch.setattr(
+        httpx,
+        "get",
+        lambda *_a, **_kw: _Response(
+            {"models": [{"name": "deepseek-v4.1-flash:cloud"}]}
+        ),
+    )
+    monkeypatch.setattr(
+        httpx,
+        "post",
+        lambda *_a, **_kw: _Response(
+            {
+                "message": {"content": '{"ok": true}'},
+                "prompt_eval_count": 1000,
+                "prompt_eval_cached_count": 700,
+                "eval_count": 20,
+            }
+        ),
+    )
+
+    assert dmn._call_local_ollama("sig noget") == {"ok": True}
+    assert len(rows) == 1
+    assert rows[0]["input_tokens"] == 1000
+    assert rows[0]["output_tokens"] == 20
+    assert rows[0]["cache_hit_tokens"] == 700
+    assert rows[0]["cache_miss_tokens"] == 300
+    assert rows[0]["cost_usd"] > 0
+
+
 def test_chat_falder_tilbage_til_embed_hosten_uden_router_base(monkeypatch):
     """Uden base_url fra routeren bevares den gamle vej — ingen regression."""
     import httpx

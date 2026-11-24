@@ -1295,6 +1295,21 @@ def _execute_local_ollama_chat(
             code = "provider-error"
         raise CheapProviderError(provider=provider, code=code, message=err)
     text = str((data.get("message") or {}).get("content") or "").strip()
+    from core.services.ollama_usage import bogfoer_ollama_kald
+    from core.services.visible_model_ollama import _cache_split
+
+    input_tokens = int(data.get("prompt_eval_count") or 0)
+    output_tokens = int(data.get("eval_count") or 0)
+    cache_hit, cache_miss = _cache_split(data, input_tokens)
+    cost_usd = bogfoer_ollama_kald(
+        provider=provider,
+        model=model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cache_hit_tokens=cache_hit,
+        cache_miss_tokens=cache_miss,
+        lane="cheap",
+    )
     # Ollamas tool_calls har `function.arguments` som et OBJEKT (ikke en
     # JSON-streng som OpenAI). _normalisér_tool_calls accepterer begge.
     tool_calls = (data.get("message") or {}).get("tool_calls") or []
@@ -1307,9 +1322,9 @@ def _execute_local_ollama_chat(
         "source": "cheap-provider-runtime",
         "text": text,
         "tool_calls": list(tool_calls) if isinstance(tool_calls, list) else [],
-        "input_tokens": _estimate_tokens(str(message or "")),
-        "output_tokens": _estimate_tokens(text),
-        "cost_usd": 0.0,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cost_usd": cost_usd,
     }
 
 
@@ -1330,6 +1345,21 @@ def _execute_public_safe_local_ollama(*, message: str) -> dict[str, object]:
         provider="ollama",
     )
     text = str((data.get("message") or {}).get("content") or "").strip()
+    from core.services.ollama_usage import bogfoer_ollama_kald
+    from core.services.visible_model_ollama import _cache_split
+
+    input_tokens = int(data.get("prompt_eval_count") or 0)
+    output_tokens = int(data.get("eval_count") or 0)
+    cache_hit, cache_miss = _cache_split(data, input_tokens)
+    cost_usd = bogfoer_ollama_kald(
+        provider="ollama",
+        model=str(target.get("model") or "").strip(),
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cache_hit_tokens=cache_hit,
+        cache_miss_tokens=cache_miss,
+        lane="local",
+    )
     return {
         "lane": "local",
         "provider": "ollama",
@@ -1338,9 +1368,9 @@ def _execute_public_safe_local_ollama(*, message: str) -> dict[str, object]:
         "execution_mode": "public-safe-local-fallback",
         "source": "cheap-provider-runtime",
         "text": text,
-        "input_tokens": _estimate_tokens(message),
-        "output_tokens": _estimate_tokens(text),
-        "cost_usd": 0.0,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cost_usd": cost_usd,
     }
 
 

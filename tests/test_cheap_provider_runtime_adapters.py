@@ -468,6 +468,84 @@ def test_ollama_a2_dispatch_labels_provider(monkeypatch):
     assert r["text"] == "OK"
 
 
+def test_ollama_adapter_bogfoerer_faktiske_tokens(monkeypatch):
+    """Cheap-lanens native Ollama-adapter skal bogføre svarets måling."""
+    import json as _json
+    import core.services.cheap_provider_runtime_adapters as mod
+
+    rows: list[dict] = []
+    monkeypatch.setattr(
+        "core.costing.ledger.record_cost", lambda **kw: rows.append(kw)
+    )
+    _ollama_urlopen_shim(
+        monkeypatch,
+        _json.dumps(
+            {
+                "message": {"content": "OK"},
+                "prompt_eval_count": 700,
+                "prompt_eval_cached_count": 450,
+                "eval_count": 18,
+            }
+        ).encode(),
+    )
+
+    result = mod._execute_local_ollama_chat(
+        model="deepseek-v4.1-flash:cloud",
+        base_url="https://ollama.test",
+        message="hi",
+        provider="ollama",
+    )
+    assert len(rows) == 1
+    assert rows[0]["input_tokens"] == 700
+    assert rows[0]["output_tokens"] == 18
+    assert rows[0]["cache_hit_tokens"] == 450
+    assert rows[0]["cache_miss_tokens"] == 250
+    assert rows[0]["cost_usd"] > 0
+    assert result["cost_usd"] > 0
+
+
+def test_public_safe_ollama_fallback_bogfoerer_faktiske_tokens(monkeypatch):
+    import core.services.cheap_provider_runtime_adapters as mod
+    from core.runtime import provider_router
+
+    rows: list[dict] = []
+    monkeypatch.setattr(
+        provider_router,
+        "resolve_provider_router_target",
+        lambda *, lane: {
+            "active": True,
+            "provider": "ollama",
+            "model": "deepseek-v4.1-flash:cloud",
+            "base_url": "https://ollama.test",
+        },
+    )
+    monkeypatch.setattr(
+        "core.costing.ledger.record_cost", lambda **kw: rows.append(kw)
+    )
+    monkeypatch.setattr(
+        mod._facade(),
+        "_http_json",
+        lambda *_a, **_kw: (
+            {
+                "message": {"content": "OK"},
+                "prompt_eval_count": 600,
+                "prompt_eval_cached_count": 400,
+                "eval_count": 16,
+            },
+            {},
+        ),
+    )
+
+    result = mod._execute_public_safe_local_ollama(message="hi")
+    assert len(rows) == 1
+    assert rows[0]["input_tokens"] == 600
+    assert rows[0]["output_tokens"] == 16
+    assert rows[0]["cache_hit_tokens"] == 400
+    assert rows[0]["cache_miss_tokens"] == 200
+    assert rows[0]["cost_usd"] > 0
+    assert result["cost_usd"] > 0
+
+
 def test_ollama_a2_error_body_raises_not_silent_completion(monkeypatch):
     """Ollama melder subscription/kvote som {"error": ...} med HTTP 200. Det skal
     blive en ægte CheapProviderError (så balanceren cooldown'er), IKKE en tavs

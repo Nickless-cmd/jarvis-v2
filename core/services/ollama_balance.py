@@ -78,7 +78,24 @@ def _post(base_url: str, model: str, timeout: float) -> OllamaReading:
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as response:
-            return OllamaReading(HEALTHY, int(response.status))
+            data = json.loads(response.read().decode("utf-8"))
+            status = int(response.status)
+        from core.services.ollama_usage import bogfoer_ollama_kald
+        from core.services.visible_model_ollama import _cache_split
+
+        input_tokens = int(data.get("prompt_eval_count") or 0)
+        output_tokens = int(data.get("eval_count") or 0)
+        cache_hit, cache_miss = _cache_split(data, input_tokens)
+        bogfoer_ollama_kald(
+            provider="ollama",
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cache_hit_tokens=cache_hit,
+            cache_miss_tokens=cache_miss,
+            lane="ollama_balance_probe",
+        )
+        return OllamaReading(HEALTHY, status)
     except urllib.error.HTTPError as exc:
         try:
             text = exc.read().decode("utf-8", errors="replace")[:BODY_LIMIT]

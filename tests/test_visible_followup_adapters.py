@@ -606,6 +606,55 @@ def test_ollama_serialize_omits_thinking_when_absent():
     assert "thinking" not in asst
 
 
+def test_ollama_followup_bogfoerer_terminal_eventets_tokens(monkeypatch):
+    from core.runtime import provider_router
+
+    rows: list[dict] = []
+    monkeypatch.setattr(provider_router, "load_provider_router_registry", lambda: {})
+    monkeypatch.setattr(
+        provider_router, "_provider_base_url", lambda **_kw: "https://ollama.test"
+    )
+    monkeypatch.setattr(
+        "core.costing.ledger.record_cost", lambda **kw: rows.append(kw)
+    )
+
+    class _Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+        def __iter__(self):
+            return iter(
+                [
+                    b'{"message":{"content":"ok"},"prompt_eval_count":1500,'
+                    b'"prompt_eval_cached_count":1100,"eval_count":40,"done":true}\n'
+                ]
+            )
+
+        def close(self):
+            return None
+
+    monkeypatch.setattr(vf.urllib_request, "urlopen", lambda *_a, **_kw: _Response())
+
+    events = list(
+        vf.stream_visible_followup(
+            provider="ollama",
+            model="deepseek-v4.1-flash:cloud",
+            base_messages=[{"role": "user", "content": "hi"}],
+            exchanges=[],
+        )
+    )
+    assert any(isinstance(event, vf.FollowupDone) for event in events)
+    assert len(rows) == 1
+    assert rows[0]["input_tokens"] == 1500
+    assert rows[0]["output_tokens"] == 40
+    assert rows[0]["cache_hit_tokens"] == 1100
+    assert rows[0]["cache_miss_tokens"] == 400
+    assert rows[0]["cost_usd"] > 0
+
+
 def test_ollama_normalize_repairs_truncated_arguments():
     """REGRESSION (2026-06-23): et tool-kald cuttet midt i stream'en efterlader en AFKORTET
     arguments-STRENG (fx '{\"path\": \"/foo') → ollama afviser HELE followup-body'en med

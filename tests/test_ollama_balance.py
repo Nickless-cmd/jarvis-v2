@@ -118,3 +118,39 @@ def test_probe_classifies_real_http_error(monkeypatch):
     assert ollama_balance._post("http://h", "m", 1) == OllamaReading(
         ollama_balance.BLOCKED, 402, '{"error":"x"}',
     )
+
+
+def test_healthy_probe_bogfoerer_ollamas_faktiske_tokens(monkeypatch):
+    import json
+
+    rows: list[dict] = []
+    monkeypatch.setattr(
+        "core.costing.ledger.record_cost", lambda **kw: rows.append(kw)
+    )
+
+    class _Response:
+        status = 200
+
+        def __enter__(self): return self
+        def __exit__(self, *_a): return False
+        def read(self):
+            return json.dumps({
+                "message": {"content": "p"},
+                "prompt_eval_count": 120,
+                "prompt_eval_cached_count": 100,
+                "eval_count": 1,
+            }).encode()
+
+    monkeypatch.setattr(
+        ollama_balance.urllib.request, "urlopen", lambda *_a, **_kw: _Response()
+    )
+
+    assert ollama_balance._post(
+        "http://h", "deepseek-v4.1-flash:cloud", 1
+    ) == OllamaReading(ollama_balance.HEALTHY, 200)
+    assert len(rows) == 1
+    assert rows[0]["input_tokens"] == 120
+    assert rows[0]["output_tokens"] == 1
+    assert rows[0]["cache_hit_tokens"] == 100
+    assert rows[0]["cache_miss_tokens"] == 20
+    assert rows[0]["cost_usd"] > 0

@@ -9,6 +9,7 @@ CRUD functions themselves (never by init_db), so the cluster is self-contained.
 """
 from __future__ import annotations
 
+import json
 import sqlite3
 
 from core.runtime.db_core import connect, _now_iso
@@ -556,6 +557,31 @@ def get_agent_run(run_id: str) -> dict[str, object] | None:
     return _agent_run_row_to_dict(row)
 
 
+_LATE_TERMINAL_RUN_STATUSES = frozenset({"failed", "cancelled", "timed_out"})
+
+
+def _terminal_outcome_for_run(run_id: str) -> dict[str, object] | None:
+    """Assignmentets terminale udfald for runnet — ellers None (intet assignment,
+    ikke terminalt, eller ulæseligt). Skriver aldrig; fejler aldrig højlydt."""
+    try:
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT a.status AS status, a.outcome_json AS outcome_json "
+                "FROM agent_runs r JOIN agent_assignments a ON a.assignment_id = r.assignment_id "
+                "WHERE r.run_id = ? LIMIT 1", (run_id,)).fetchone()
+        if row is None or not row["outcome_json"]:
+            return None
+        from core.runtime.db_agent_contract import ASSIGNMENT_TERMINAL
+        if row["status"] not in ASSIGNMENT_TERMINAL:
+            return None
+        outcome = json.loads(row["outcome_json"])
+        if str(outcome.get("status") or "") not in _LATE_TERMINAL_RUN_STATUSES:
+            return None
+        return outcome
+    except Exception:
+        return None
+
+
 def update_agent_run(
     run_id: str,
     *,
@@ -586,6 +612,19 @@ def update_agent_run(
     sagde ingenting. Fasen er det spor den naeste mig soeger i — den skal staa
     samme sted som fejlen.
     """
+    # 24/11-2026: assignmentets terminale udfald (= result.json) er den ENE terminale
+    # sandhed. Maalt paa `run-6380f18859a141ab`: annullering lukkede assignmentet og
+    # skrev result.json (cancelled/CANCELLED/recovery) FOER workerens fejlhandler
+    # naaede hertil; dens sene skrivning (failed/CLI_BACKEND_FAILED/execution)
+    # efterlod rækken og artefakten uenige. Et sent terminalt run-write under et
+    # allerede terminalt assignment afledes derfor fra udfaldet; den observerede
+    # aarsag bevares i `failure_reason`.
+    if status in _LATE_TERMINAL_RUN_STATUSES:
+        _udfald = _terminal_outcome_for_run(run_id)
+        if _udfald:
+            status = str(_udfald.get("status") or status)
+            error_code = str(_udfald.get("error_code") or "")
+            error_phase = str(_udfald.get("error_phase") or "")
     fields = ["updated_at = ?"]
     values: list[object] = [_now_iso()]
     for name, value in (

@@ -208,14 +208,16 @@ def test_initiativet_udloeber_efter_loftet_frem_for_at_koere_for_evigt(
         priority="high",
     )
 
-    for _ in range(loft):
+    # Loftet er `attempt_count >= _MAX_ATTEMPTS` (off-by-one rettet 20/11, 4b2827006):
+    # initiativet udløber på forsøg nr. `loft`, så det skal stadig leve efter loft-1.
+    for _ in range(loft - 1):
         initiative_queue.mark_attempted(
             initiative_id, blocked_reason="intet kunne udføres"
         )
 
     state = initiative_queue.get_initiative_queue_state()
     assert any(i["initiative_id"] == initiative_id for i in state["pending"]), (
-        "initiativet udløb for tidligt — det må først ske EFTER loftet"
+        "initiativet udløb for tidligt — det må først ske ved forsøg nr. loftet"
     )
 
     initiative_queue.mark_attempted(

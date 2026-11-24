@@ -471,3 +471,44 @@ def test_ord_i_directive_kan_ikke_baere_beslutningen_alene(fake_beslutninger) ->
     assert "dec_kun_directive" not in ids, (
         f"et ord der kun staar i directive maa ikke baere beslutningen: {ids}"
     )
+
+
+def test_sporet_kan_genskabe_sit_eget_valg(fake_beslutninger, tmp_path, monkeypatch) -> None:
+    """Et spor der ikke kan reproducere sit eget valg er ikke et spor.
+
+    Maalt 24/11-2026 (tredje gang samme fejlform): spoerets `ctx` blev klippet
+    til 160, saa 400 tegn — og begge gange forsvandt praecis de ord der afgjorde
+    valget. `loop_runtime.items[].title` ligger SIDST i heartbeat-konteksten, saa
+    et snit fjernede de aabne loops der bar valget. Resultatet var en driftslinje
+    hvis `hvorfor`-strenge pegede paa ord der ikke fandtes i dens egen `ctx`.
+    """
+    from core.services import behavioral_decisions as bd
+
+    spor = tmp_path / "relevans_gate.jsonl"
+    monkeypatch.setattr(bd, "_GATE_SPOR", spor)
+
+    fake_beslutninger([
+        _beslutning("dec_prompt", "Verificer at prompt-sektionen ikke klippes", priority=50,
+                    cue="Naar prompt-sektionen klippes"),
+        _beslutning("dec_loop", "Folg signalet hele vejen i den koerende proces", priority=40,
+                    cue="Naar jeg skal afgoere om en koerende proces har aendringen inde"),
+    ])
+
+    # Loop-titlen ligger EFTER tegn 400 — praecis som i den aegte heartbeat-kontekst.
+    ctx = ("inspect-working-tree main " + ("udfyldning " * 40)
+           + "Folg signalet hele vejen ind i prompten i den koerende proces")
+    assert len(ctx) > 400, "testen skal bruge en kontekst der er laengere end det gamle snit"
+
+    foerste = bd.select_relevant_decisions(max_items=5, context_text=ctx)
+    post = json.loads(spor.read_text(encoding="utf-8").splitlines()[-1])
+
+    assert post["ctx_len"] == len(ctx), (
+        f"ctx_len skal vaere den fulde laengde ({len(ctx)}), var {post['ctx_len']}"
+    )
+    assert post["ctx"] == ctx, "spoeret maa ikke klippe konteksten"
+
+    # Det afgoerende: valget skal kunne genskabes UDELUKKENDE fra den loggede linje.
+    genskabt = bd.select_relevant_decisions(max_items=5, context_text=post["ctx"])
+    assert [d.get("decision_id") for d in foerste] == [d.get("decision_id") for d in genskabt], (
+        "valget kan ikke genskabes fra spoeret — saa er spoeret ikke et bevis"
+    )

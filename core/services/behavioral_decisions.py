@@ -73,11 +73,14 @@ def _spor_gate(
             "basis": basis,
             "valgt": int(valgt),
             "ialt": int(ialt),
-            # 400 tegn, ikke 160 (24/11-2026): den foerste driftslinje kunne
-            # ikke genskabes, fordi den afskrevne kontekst var klippet midt i en
-            # sti — og dermed manglede de ord der afgjorde valget. Et spor der
-            # ikke kan reproducere sit eget valg er ikke et spor.
-            "ctx": str(ctx or "")[:400],
+            # HELE konteksten, ikke et snit (24/11-2026, tredje gang samme fejl):
+            # foerst 160 tegn, saa 400 — begge gange blev de ord der AFGJORDE
+            # valget skaaret vaek, og sporet kunne ikke reproducere sig selv.
+            # Maalt: `loop_runtime.items[].title` ligger sidst i konteksten, saa
+            # et snit paa 400 fjernede praecis de aabne loops der bar valget.
+            # `ctx_len` goer et snit SYNLIGT hvis en fremtidig graense indfoeres.
+            "ctx": str(ctx or ""),
+            "ctx_len": len(str(ctx or "")),
             "ord": list(ord_ or [])[:12],
         }
         if valgte:

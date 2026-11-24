@@ -183,6 +183,7 @@ def test_ingen_initiative_acted_post_ved_materialisering(isolated_runtime, monke
 
 def test_initiativet_udloeber_efter_loftet_frem_for_at_koere_for_evigt(
     isolated_runtime,
+    monkeypatch,
 ) -> None:
     """KRAVET: efter N forsøg uden udførelse skal initiativet udløbe.
 
@@ -193,6 +194,11 @@ def test_initiativet_udloeber_efter_loftet_frem_for_at_koere_for_evigt(
         "core.services.initiative_queue",
         fromlist=["push_initiative", "mark_attempted", "get_initiative_queue_state"],
     )
+    # Denne test handler om LOFTET, ikke om aktiv-tur-porten. Porten læser
+    # `visible_runs`, så den ville afvise indskydelsen når testen kører ved
+    # siden af rigtige kørsler — det er en anden mekanisme med sine egne tests
+    # i tests/test_initiative_queue_synlig_tur.py.
+    monkeypatch.setattr(initiative_queue, "_aktiv_synlig_tur", lambda: "")
     loft = initiative_queue._MAX_ATTEMPTS
 
     initiative_id = initiative_queue.push_initiative(

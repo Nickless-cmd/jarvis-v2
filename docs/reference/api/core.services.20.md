@@ -57,8 +57,8 @@ _Ollama-lanens tilstand — målt, aldrig gættet._
 | method | `OllamaReading.blocked` | `(self)` | — | [src](../../../core/services/ollama_balance.py#L56) |
 | function | `reset_cache` | `()` | — | [src](../../../core/services/ollama_balance.py#L63) |
 | function | `_post` | `(base_url, model, timeout)` | — | [src](../../../core/services/ollama_balance.py#L68) |
-| function | `probe_ollama` | `(model, *, base_url=…, timeout=…, prober=…, now=…)` | Ægte 1-token-kald, cachet i :data:`CACHE_TTL_SECONDS`. | [src](../../../core/services/ollama_balance.py#L92) |
-| function | `render_reason` | `(reading)` | — | [src](../../../core/services/ollama_balance.py#L110) |
+| function | `probe_ollama` | `(model, *, base_url=…, timeout=…, prober=…, now=…)` | Ægte 1-token-kald, cachet i :data:`CACHE_TTL_SECONDS`. | [src](../../../core/services/ollama_balance.py#L109) |
+| function | `render_reason` | `(reading)` | — | [src](../../../core/services/ollama_balance.py#L127) |
 
 ## `core/services/ollama_kvote_vagt.py`
 _Kvote-vagt: skru ned for Ollama-forbruget FØR pro-planens grænse rammes._
@@ -67,8 +67,8 @@ _Kvote-vagt: skru ned for Ollama-forbruget FØR pro-planens grænse rammes._
 |---|---|---|---|---|
 | function | `_nulstil_cache` | `()` | Kun til tests — ellers ville en måling lække ind i næste test. | [src](../../../core/services/ollama_kvote_vagt.py#L64) |
 | function | `kvote_status` | `(*, force=…, timeout=…)` | Hvor meget af Ollamas månedlige kvote er brugt — og hvad skal vi gøre? | [src](../../../core/services/ollama_kvote_vagt.py#L70) |
-| function | `skal_bremse` | `()` | Skal det ikke-kritiske arbejde skrues ned nu? | [src](../../../core/services/ollama_kvote_vagt.py#L145) |
-| function | `skal_stoppe` | `()` | Er der kun plads til det der holder mig i live? | [src](../../../core/services/ollama_kvote_vagt.py#L154) |
+| function | `skal_bremse` | `()` | Skal det ikke-kritiske arbejde skrues ned nu? | [src](../../../core/services/ollama_kvote_vagt.py#L165) |
+| function | `skal_stoppe` | `()` | Er der kun plads til det der holder mig i live? | [src](../../../core/services/ollama_kvote_vagt.py#L174) |
 
 ## `core/services/ollama_model_names.py`
 _Opløs et bart ollama-modelnavn til det tag ollama faktisk serverer._
@@ -585,7 +585,7 @@ _Personality Vector — cumulative personality that grows over time._
 | function | `_safe_json_field` | `(value, default)` | — | [src](../../../core/services/personality_vector.py#L879) |
 | function | `_resolve_local_llm_target` | `()` | — | [src](../../../core/services/personality_vector.py#L892) |
 | function | `_call_llm` | `(target, system_prompt, user_prompt)` | Minimal LLM call via provider router target. | [src](../../../core/services/personality_vector.py#L903) |
-| function | `_parse_json_response` | `(text)` | — | [src](../../../core/services/personality_vector.py#L969) |
+| function | `_parse_json_response` | `(text)` | — | [src](../../../core/services/personality_vector.py#L984) |
 
 ## `core/services/pfsense_syslog.py`
 _core/services/pfsense_syslog.py_

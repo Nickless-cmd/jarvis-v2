@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10487/19140 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10488/19141 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10487/19140 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 924 | 1641 | 56% |
-| `core.services` | 7040 | 12996 | 54% |
+| `core.services` | 7041 | 12997 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1381,8 +1381,8 @@ Generated from source. 10487/19140 functions/methods documented (54%). The list 
 - `core/services/inbox_importance.py` :: `normalize_importance` (L11)
 - `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L380)
 - `core/services/infra_weather_daemon.py` :: `get_weather` (L358)
-- `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L790)
-- `core/services/initiative_queue.py` :: `list_active_long_term_intentions` (L775)
+- `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L865)
+- `core/services/initiative_queue.py` :: `list_active_long_term_intentions` (L850)
 - `core/services/inner_dialectic_engine.py` :: `build_inner_dialectic_prompt_section` (L42)
 - `core/services/inner_dialectic_engine.py` :: `build_inner_dialectic_surface` (L35)
 - `core/services/inner_dialectic_engine.py` :: `run_inner_dialectic` (L13)
@@ -1403,7 +1403,7 @@ Generated from source. 10487/19140 functions/methods documented (54%). The list 
 - `core/services/irony_daemon.py` :: `tick_irony_daemon` (L20)
 - `core/services/jarvis_brain.py` :: `connect_index` (L387)
 - `core/services/jarvis_brain.py` :: `index_db_path` (L317)
-- `core/services/jarvis_brain_daemon.py` :: `is_theme_consolidation_paused` (L350)
+- `core/services/jarvis_brain_daemon.py` :: `is_theme_consolidation_paused` (L366)
 - `core/services/jarvisx_bridge.py` :: `BridgeConnection.deliver_output` (L283)
 - `core/services/jarvisx_bridge.py` :: `BridgeConnection.register_pending` (L270)
 - `core/services/jarvisx_bridge.py` :: `BridgeRegistry.register` (L422)
@@ -1557,7 +1557,7 @@ Generated from source. 10487/19140 functions/methods documented (54%). The list 
 - `core/services/offline_recomposition_engine.py` :: `build_offline_recomposition_surface` (L42)
 - `core/services/offline_recomposition_engine.py` :: `run_offline_recomposition` (L15)
 - `core/services/ollama_balance.py` :: `OllamaReading.blocked` (L56)
-- `core/services/ollama_balance.py` :: `render_reason` (L110)
+- `core/services/ollama_balance.py` :: `render_reason` (L127)
 - `core/services/ollama_balance.py` :: `reset_cache` (L63)
 - `core/services/ollama_visible_prompt.py` :: `serialize_ollama_visible_prompt` (L14)
 - `core/services/open_loop_closure_proposal_tracking.py` :: `build_runtime_open_loop_closure_proposal_surface` (L85)
@@ -1703,11 +1703,11 @@ Generated from source. 10487/19140 functions/methods documented (54%). The list 
 - `core/services/prompt_mutation_loop.py` :: `list_protected_files` (L470)
 - `core/services/prompt_mutation_loop.py` :: `resolve_mutation` (L359)
 - `core/services/prompt_mutation_loop.py` :: `tick` (L423)
-- `core/services/prompt_relevance_backend.py` :: `bounded_nl_prompt_relevance_smoke` (L556)
-- `core/services/prompt_relevance_backend.py` :: `load_visible_memory_selection_prompt` (L672)
-- `core/services/prompt_relevance_backend.py` :: `load_visible_relevance_prompt` (L658)
-- `core/services/prompt_relevance_backend.py` :: `run_bounded_nl_memory_entry_selection` (L581)
-- `core/services/prompt_relevance_backend.py` :: `run_bounded_nl_prompt_relevance` (L485)
+- `core/services/prompt_relevance_backend.py` :: `bounded_nl_prompt_relevance_smoke` (L571)
+- `core/services/prompt_relevance_backend.py` :: `load_visible_memory_selection_prompt` (L687)
+- `core/services/prompt_relevance_backend.py` :: `load_visible_relevance_prompt` (L673)
+- `core/services/prompt_relevance_backend.py` :: `run_bounded_nl_memory_entry_selection` (L596)
+- `core/services/prompt_relevance_backend.py` :: `run_bounded_nl_prompt_relevance` (L500)
 - `core/services/prompt_section_impact.py` :: `estimate_section_impact` (L35)
 - `core/services/prompt_section_impact.py` :: `observe_answer_impact` (L50)
 - `core/services/prompt_section_impact.py` :: `observe_last_prompt_answer_impact` (L86)
@@ -2340,9 +2340,9 @@ Generated from source. 10487/19140 functions/methods documented (54%). The list 
 - `core/services/visible_first_pass_output.py` :: `FirstPassOutputFilter.flush` (L140)
 - `core/services/visible_first_pass_pump.py` :: `pump_first_pass` (L10)
 - `core/services/visible_first_pass_text.py` :: `FirstPassText.text` (L39)
-- `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1471)
+- `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1495)
 - `core/services/visible_followup_adapters.py` :: `OllamaFollowupAdapter.stream_followup` (L323)
-- `core/services/visible_followup_adapters.py` :: `OpenAICompatFollowupAdapter.stream_followup` (L919)
+- `core/services/visible_followup_adapters.py` :: `OpenAICompatFollowupAdapter.stream_followup` (L943)
 - `core/services/visible_followup_events.py` :: `FollowupAdapter.stream_followup` (L205)
 - `core/services/visible_followup_events.py` :: `er_fejlstatus` (L166)
 - `core/services/visible_followup_results.py` :: `to_followup_results` (L39)

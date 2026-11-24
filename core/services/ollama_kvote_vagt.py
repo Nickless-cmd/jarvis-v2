@@ -89,6 +89,15 @@ def kvote_status(*, force: bool = False, timeout: float = 20.0) -> dict[str, Any
     # 29,9% rapporteret mens det rigtige tal var ~93%).
     reference = kvote_reference(timeout=timeout, range_="30d")
     if not reference:
+        # SYNLIGT FRAVALG (målt 24/11-2026). Vagten fejler ÅBENT med vilje —
+        # men den fejlede også TAVST, og det er en anden sag: uden denne linje
+        # kan man ikke afgøre om et heartbeat-tick gik til Ollama fordi kvoten
+        # var ukendt, eller fordi vagten aldrig blev spurgt. Svaret caches i
+        # CACHE_TTL_S, så et netværksudfald koster ét logkald — ikke ét pr. tick.
+        logger.warning(
+            "ollama-kvote: kunne ikke hentes — kører normalt i %.0fs (fejler åbent)",
+            CACHE_TTL_S,
+        )
         svar: dict[str, Any] = {
             "kendt": False,
             "niveau": "ukendt",
@@ -138,6 +147,17 @@ def kvote_status(*, force: bool = False, timeout: float = 20.0) -> dict[str, Any
         "fra": reference.get("fra"),
         "til": reference.get("til"),
     }
+    # Log kun når der faktisk skal handles. Et normalt tick skriver intet, så
+    # loggen bliver et bevis på bremsen — ikke en støjstrøm man filtrerer væk.
+    if niveau in {"bremse", "stop"}:
+        logger.info(
+            "ollama-kvote: %s — %.1f%% af $%.0f brugt ($%.2f), ikke-kritisk arbejde "
+            "skrues ned til cheap-lanen",
+            niveau,
+            procent,
+            maaned_loft_usd,
+            brugt,
+        )
     _cache = (nu, svar)
     return svar
 

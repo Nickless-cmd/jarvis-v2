@@ -93,6 +93,22 @@ def _er_ikke_et_initiativ(focus: str) -> str:
     if tekst.rstrip().endswith("?"):
         return "spørgsmål"
 
+    # En TILSTAND er ikke en opgave. Målt 24/11-2026 over ugens 133
+    # inner-voice-initiativer: cirka halvdelen var selvbeskrivelser —
+    # «Jeg bliver her lidt uden at presse en plan ud af det», «Jeg mærker en
+    # lingering spænding», «Der er ingen reel næste drift lige nu». De peger
+    # ikke på noget der kan gøres, og hvert af dem blev alligevel til et run
+    # der brugte 40.000-90.000 input-tokens på at konkludere at der ikke var
+    # noget at lave.
+    #
+    # Kilden er prompten selv: INNER_VOICE.md beder modellen om at levere et
+    # `initiative`-felt med mindre den aktivt sætter det til null — så en
+    # beskrivelse af en tilstand bliver til «noget jeg bør gøre».
+    # En ægte indskydelse starter med et verbum (søg, afklar, mål, tjek).
+    lav_start = tekst.lower()
+    if lav_start.startswith(("jeg ", "der er ", "der findes ")):
+        return "tilstandsbeskrivelse"
+
     # Et fragment der starter med en konjunktion er et stykke ræsonnement der er
     # revet ud af sin sammenhæng.
     lav = tekst.lower()
@@ -181,6 +197,51 @@ def _gentaget_paastand(focus: str, *, source: str) -> str:
     return ""
 
 
+# ── Aktiv-tur-port: køen må ikke sende mig på arbejde mens jeg taler ──
+#
+# Målt 24/11-2026: initiativet «Søg Gmail målrettet efter Ollama-usage-mailen»
+# blev dannet 17:59:24 og kørt 18:01:00 — 0 minutter efter en synlig tur, mens
+# den synlige tur besvarede præcis det samme. `_gentaget_paastand` kunne ikke se
+# det: den læser KUN `runtime_initiatives`, altså sin egen kø.
+#
+# To signaler blev prøvet og forkastet samme dag, begge med måling:
+#   * Ord-overlap mod assistent-svar: 10 af 14 afvist — men 6 af dem tilfældige,
+#     fordi «ingen», «står», «plan» og «lidt» står i ethvert svar; og 2 ægte
+#     gentagelser slap igennem. Strammet til kun ord >=6 tegn: 6 af 14, hvoraf
+#     halvdelen stadig var støj.
+#   * FTS (`search_chat_messages`): 0 match af 14, fordi en hel sætning som
+#     forespørgsel kræver at ALLE led matcher.
+#
+# Tiden skiller derimod rent: målt over ugens 133 inner-voice-initiativer ligger
+# 48% inden for 30 minutter efter en synlig tur. Et initiativ der opstår midt i
+# eller lige efter en aktiv samtale er en gentagelse af samtalen — uanset ordlyd.
+_AKTIV_TUR_MINUTTER = 30
+
+
+def _aktiv_synlig_tur() -> str:
+    """Returnér en grund hvis en synlig tur lige har været aktiv. Tom = behold.
+
+    Kaldes kun for ``inner-voice``: et menneske-godkendt forslag må ikke kunne
+    afvises af at Jarvis tilfældigvis talte med nogen.
+    """
+    graense = (datetime.now(UTC) - timedelta(minutes=_AKTIV_TUR_MINUTTER)).isoformat()
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            r = conn.execute(
+                "SELECT COUNT(*) FROM visible_runs"
+                " WHERE started_at >= ? AND run_id NOT LIKE 'autonomous-%'",
+                (graense,),
+            ).fetchone()
+    except Exception:  # db-fejl må ikke blokere en ægte indskydelse — slip igennem
+        return ""
+    antal = int(r[0] or 0) if r else 0
+    if antal > 0:
+        return f"aktiv-synlig-tur ({antal} ture inden for {_AKTIV_TUR_MINUTTER} min)"
+    return ""
+
+
 def push_initiative(
     *,
     focus: str,
@@ -229,6 +290,20 @@ def push_initiative(
         except Exception:  # observabilitet, ikke kontrol — afvisningen gælder uanset
             pass
         return ""
+
+    # Aktiv-tur-porten: den kø-interne dedup kan kun se sin EGEN tabel. Er jeg
+    # midt i eller lige færdig med en synlig samtale, er der ingen næste
+    # handling — kun en gentagelse af arbejde der allerede er betalt for.
+    if source == "inner-voice":
+        _aktiv = _aktiv_synlig_tur()
+        if _aktiv:
+            try:
+                event_bus.publish("heartbeat.initiative_rejected", {
+                    "focus": normalized_focus[:120], "reason": _aktiv, "source": source,
+                })
+            except Exception:  # observabilitet, ikke kontrol — afvisningen gælder uanset
+                pass
+            return ""
 
     normalized_priority = (
         priority.strip().lower() if priority.strip().lower() in {"low", "medium", "high"} else "medium"

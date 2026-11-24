@@ -107,6 +107,27 @@ def test_afgjorte_poster_vaekker_ikke(inbox_db):
     assert ids == ["aaben"]
 
 
+def test_nyligt_lukket_vaekning_er_ikke_kandidat_og_starter_intet_run(
+        inbox_db, monkeypatch):
+    """En lukket dispatchbar post maa ikke genvaelges fra den aktive visning."""
+    from core.services import inbox_idle_waker as w
+
+    _post(id="vaek-lukket", kildetype="vaekning", kraever_handling=False)
+    db_inbox.afgoer(
+        bruger_id="bjorn",
+        kilde_id="vaek-lukket",
+        ny_status=db_inbox.STATUS_DROP,
+        grund="test",
+    )
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    startet = []
+    monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: startet.append(tekst))
+
+    assert w.kandidater("bjorn") == []
+    assert w.vaek_paa_aabne_poster(bruger_id="bjorn")["vaekket"] == 0
+    assert startet == []
+
+
 def test_anden_brugers_poster_vaekker_ikke_mig(inbox_db):
     """Husstanden har flere brugere — en post for en anden må ikke starte mit run."""
     from core.services.inbox_idle_waker import kandidater
@@ -156,6 +177,25 @@ def test_samme_post_vaekker_kun_en_gang(inbox_db, monkeypatch):
 
     assert w.vaek_paa_aabne_poster(bruger_id="bjorn")["vaekket"] == 1
     assert w.vaek_paa_aabne_poster(bruger_id="bjorn")["vaekket"] == 0
+    assert len(startet) == 1
+
+
+def test_to_pollere_kan_hoejst_starte_samme_aabne_post_en_gang(
+        inbox_db, monkeypatch):
+    """Kun polleren der vinder den atomiske vaeknings-claim maa starte runnet."""
+    from core.services import inbox_idle_waker as w
+
+    post = _post(id="min", ejer=db_inbox.EJER_JARVIS, kraever_handling=True)
+    # Begge pollere har allerede laest den samme aabne kandidat. Det simulerer
+    # det stale kandidat-snapshot der findes lige foer den atomiske claim.
+    monkeypatch.setattr(w, "kandidater", lambda bruger_id: [post])
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    startet = []
+    monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: startet.append(tekst))
+
+    w.vaek_paa_aabne_poster(bruger_id="bjorn")
+    w.vaek_paa_aabne_poster(bruger_id="bjorn")
+
     assert len(startet) == 1
 
 

@@ -149,7 +149,7 @@ def kandidater(bruger_id: str) -> list[dict[str, Any]]:
     bruger_id = str(bruger_id or "").strip()
     if not bruger_id:
         return []
-    poster = db_inbox.liste_aktiv(bruger_id=bruger_id)
+    poster = db_inbox.liste(bruger_id=bruger_id, kun_aabne=True)
     vaekninger: dict[str, dict[str, Any]] | None = None
     ud: list[dict[str, Any]] = []
     for p in poster:
@@ -685,10 +685,17 @@ def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
         # Sporet skrives FØR run'et startes: kaster starten, må posten ikke stå
         # som vækket — så prøves den igen i næste runde.
         try:
-            db_inbox.noter_vaekning(
+            claim = db_inbox.noter_vaekning(
                 bruger_id=bruger_id, kilde_id=kilde_id, tur=_VAEKKET_AF)
         except Exception as exc:  # noqa: BLE001
             logger.debug("inbox_idle_waker: kunne ikke notere %s: %s", kilde_id, exc)
+            continue
+        if claim.get("status") != "ok":
+            logger.debug(
+                "inbox_idle_waker: kunne ikke claime %s (%s)",
+                kilde_id,
+                claim.get("status"),
+            )
             continue
         tekst = _dispatch_tekst(post)
         try:

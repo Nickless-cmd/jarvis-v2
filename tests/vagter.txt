@@ -46,3 +46,12 @@ tests/test_commit_with_attribution.py
 tests/test_smoke_test_startup.py
 tests/test_migration_gate.py
 tests/test_bash_sandbox_kan_koere.py
+# Føjet til 24/11-2026: fire vagt-tests der fandtes, var grønne og hurtige
+# (0,33-0,50 s, statiske, ingen DB) — men aldrig kørte i CI.
+# `tests/test_vagtlisten_daekker_ci.py` kræver nu at hver pre-commit-vagt har
+# en test der står HER, så hullet ikke kan åbne sig igen.
+tests/test_memory_status_guard.py
+tests/test_verify_sqlite_schema.py
+tests/test_verify_vaert_evner.py
+tests/test_enforce_test_coverage.py
+tests/test_vagtlisten_daekker_ci.py

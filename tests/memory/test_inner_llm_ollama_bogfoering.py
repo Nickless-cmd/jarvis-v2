@@ -190,3 +190,61 @@ def test_scoring_importerer_ikke_cirkulaert():
     _importer_ikke_visible_model_ollama(
         "_call_scoring_llm_local", "core/services/experiential_memory.py"
     )
+
+
+# Alle kaldesteder der tidligere importerede `_cache_split` fra visible_model_ollama
+# (målt 24/11-2026). Vagten er udvidet fra de to første til alle.
+_ALLE_KALDESTEDER = [
+    ("_call_local_ollama", "core/services/jarvis_brain_daemon.py"),
+    ("_ollama_lane_titel", "core/services/session_titling.py"),
+    ("_execute_ollama_prompt", "core/services/heartbeat_runtime_providers.py"),
+    ("_call_llm", "core/services/personality_vector.py"),
+    ("_call_meta_llm", "core/services/meta_cognition_daemon.py"),
+    ("_call_local_ollama_relevance", "core/services/prompt_relevance_backend.py"),
+    ("_execute_local_ollama_chat", "core/services/cheap_provider_runtime_adapters.py"),
+    ("_execute_public_safe_local_ollama", "core/services/cheap_provider_runtime_adapters.py"),
+    ("_call_recurrence_llm", "core/services/recurrence_loop_daemon.py"),
+    ("_post", "core/services/ollama_balance.py"),
+    ("stream_followup", "core/services/visible_followup_adapters.py"),
+]
+
+
+import pytest
+
+
+@pytest.mark.parametrize("funktion,sti", _ALLE_KALDESTEDER)
+def test_alle_kaldesteder_importerer_ikke_cirkulaert(funktion, sti):
+    _importer_ikke_visible_model_ollama(funktion, sti)
+
+
+def test_ingen_fil_i_core_importerer_cache_split_fra_visible_model_ollama():
+    """Fanger NYE kaldesteder uden for listen ovenfor — hele core/ scannes."""
+    fundet = []
+    for fil in pathlib.Path("core").rglob("*.py"):
+        if fil.name == "visible_model_ollama.py":
+            continue
+        trae = ast.parse(fil.read_text(encoding="utf-8"))
+        for node in ast.walk(trae):
+            if (
+                isinstance(node, ast.ImportFrom)
+                and node.module
+                and node.module.endswith("visible_model_ollama")
+                and any(a.name == "_cache_split" for a in node.names)
+            ):
+                fundet.append(f"{fil}:{node.lineno}")
+    assert not fundet, f"cirkulær _cache_split-import: {fundet}"
+
+
+def test_vagten_kan_fejle(tmp_path):
+    """Negativ afprøvning: en fil med den forbudte import skal AFVISES."""
+    daarlig = tmp_path / "daarlig.py"
+    daarlig.write_text(
+        "def f():\n    from core.services.visible_model_ollama import _cache_split\n"
+    )
+    with pytest.raises(AssertionError, match="cirkulært"):
+        _importer_ikke_visible_model_ollama("f", str(daarlig))
+    god = tmp_path / "god.py"
+    god.write_text("def f():\n    return 1\n")
+    _importer_ikke_visible_model_ollama("f", str(god))
+    with pytest.raises(AssertionError, match="ikke fundet"):
+        _importer_ikke_visible_model_ollama("findes_ikke", str(god))

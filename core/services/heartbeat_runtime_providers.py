@@ -97,9 +97,11 @@ def _execute_ollama_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, 
     # 7.221-tokens præfiks gav 0 cached koldt og 7.040 på gentagelse). Uden
     # split'et ville `record_cost` prissætte ALL input som cache-miss — den
     # dyre side — og heartbeat ville se 3-4x dyrere ud end det er.
-    from core.services.visible_model_ollama import _cache_split
 
-    cache_hit, cache_miss = _cache_split(data, prompt_eval)
+    # Inline (ikke import fra visible_model_ollama: cirkulær, fejler i frisk proces — se adf3296bf).
+    _tot = max(0, int(prompt_eval or 0))
+    cache_hit = max(0, min(int(data.get("prompt_eval_cached_count") or 0), _tot))
+    cache_miss = _tot - cache_hit
     pris = _bogfoer_ollama_kald(
         provider=str(target.get("provider") or "ollama"),
         model=str(target["model"]),

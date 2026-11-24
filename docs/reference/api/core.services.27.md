@@ -40,8 +40,8 @@ _Session titling — giv sessionerne rigtige titler i sidebaren._
 | function | `_samtale_tekst` | `(session_id)` | Et bundet vindue af samtalen, klar til at give modellen. | [src](../../../core/services/session_titling.py#L162) |
 | function | `_rens_titel` | `(raa)` | Gør modellens svar til noget der kan stå i en sidebar. | [src](../../../core/services/session_titling.py#L214) |
 | function | `_ollama_lane_titel` | `(samtale)` | Spørg ollama-lanen (routerens local-lane) om en titel. | [src](../../../core/services/session_titling.py#L233) |
-| function | `generer_titel` | `(samtale)` | Spørg ollama-lanen om en titel, med billig-lanen som reserve. | [src](../../../core/services/session_titling.py#L291) |
-| function | `sweep` | `(*, limit=…)` | Navngiv op til `limit` sessioner med en automatisk eller ubrugelig titel. | [src](../../../core/services/session_titling.py#L325) |
+| function | `generer_titel` | `(samtale)` | Spørg ollama-lanen om en titel, med billig-lanen som reserve. | [src](../../../core/services/session_titling.py#L293) |
+| function | `sweep` | `(*, limit=…)` | Navngiv op til `limit` sessioner med en automatisk eller ubrugelig titel. | [src](../../../core/services/session_titling.py#L327) |
 
 ## `core/services/session_tool_pin.py`
 _Fastlås tool-sættet pr. session, så prompt-præfikset holder (2026-09-05)._

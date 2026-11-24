@@ -634,12 +634,11 @@ class OllamaFollowupAdapter:
             return
 
         from core.services.ollama_usage import bogfoer_ollama_kald
-        from core.services.visible_model_ollama import _cache_split
 
-        cache_hit, cache_miss = _cache_split(
-            {"prompt_eval_cached_count": prompt_eval_cached_count},
-            prompt_eval_count,
-        )
+        # Inline (ikke import fra visible_model_ollama: cirkulær, fejler i frisk proces — se adf3296bf).
+        _tot = max(0, int(prompt_eval_count or 0))
+        cache_hit = max(0, min(int(prompt_eval_cached_count or 0), _tot))
+        cache_miss = _tot - cache_hit
         bogfoer_ollama_kald(
             provider="ollama",
             model=model,

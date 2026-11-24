@@ -1296,11 +1296,13 @@ def _execute_local_ollama_chat(
         raise CheapProviderError(provider=provider, code=code, message=err)
     text = str((data.get("message") or {}).get("content") or "").strip()
     from core.services.ollama_usage import bogfoer_ollama_kald
-    from core.services.visible_model_ollama import _cache_split
 
     input_tokens = int(data.get("prompt_eval_count") or 0)
     output_tokens = int(data.get("eval_count") or 0)
-    cache_hit, cache_miss = _cache_split(data, input_tokens)
+    # Inline (ikke import fra visible_model_ollama: cirkulær, fejler i frisk proces — se adf3296bf).
+    _tot = max(0, int(input_tokens or 0))
+    cache_hit = max(0, min(int(data.get("prompt_eval_cached_count") or 0), _tot))
+    cache_miss = _tot - cache_hit
     cost_usd = bogfoer_ollama_kald(
         provider=provider,
         model=model,
@@ -1346,11 +1348,13 @@ def _execute_public_safe_local_ollama(*, message: str) -> dict[str, object]:
     )
     text = str((data.get("message") or {}).get("content") or "").strip()
     from core.services.ollama_usage import bogfoer_ollama_kald
-    from core.services.visible_model_ollama import _cache_split
 
     input_tokens = int(data.get("prompt_eval_count") or 0)
     output_tokens = int(data.get("eval_count") or 0)
-    cache_hit, cache_miss = _cache_split(data, input_tokens)
+    # Inline (ikke import fra visible_model_ollama: cirkulær, fejler i frisk proces — se adf3296bf).
+    _tot = max(0, int(input_tokens or 0))
+    cache_hit = max(0, min(int(data.get("prompt_eval_cached_count") or 0), _tot))
+    cache_miss = _tot - cache_hit
     cost_usd = bogfoer_ollama_kald(
         provider="ollama",
         model=str(target.get("model") or "").strip(),

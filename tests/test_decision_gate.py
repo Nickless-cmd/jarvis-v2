@@ -368,3 +368,56 @@ def test_citat_af_en_beslutning_er_ikke_et_brud_men_dispatch_er(monkeypatch):
                  "write_file", "edit_file"):
         assert name not in dg._META_TOOLS, name
 
+
+
+def test_foraeldet_handling_diskvalificerer_ikke_hele_konteksten(monkeypatch):
+    """En frossen `last_action` maa ikke koste de friske kilder.
+
+    Maalt i DRIFT 24/11-2026: `tool_intent.last_action_at` stod paa 2026-05-15
+    — seks maaneder — fordi den skrives af `bounded_action_continuity_state`,
+    som kun opdateres ved bounded execution. Kaldestedet sendte den alligevel
+    ind som «turens kontekst», saa gaten scorede mod en situation fra maj og
+    valgte de SAMME fem beslutninger i hver tick.
+
+    Rettelsen er ikke at give op naar én komponent er foraeldet: konteksten
+    bygges af de kilder der FAKTISK er friske (aabne loops, due items,
+    loop-titler, intent-typen), og kun den foraeldede del udelades.
+    """
+    from core.services import behavioral_decisions as bd
+    from core.services.prompt_sections import heartbeat_sections as hs
+
+    kaldt: dict[str, object] = {}
+
+    def _fang(**kwargs: object) -> str:
+        kaldt.update(kwargs)
+        return ""
+
+    monkeypatch.setattr(bd, "format_active_decisions_for_heartbeat", _fang)
+    hs._heartbeat_living_context_line(
+        {
+            "tool_intent": {
+                "last_action_at": "2026-05-15T11:24:57+00:00",
+                "last_action": "sudo-exec-completed",
+                "intent_type": "inspect-working-tree",
+            },
+            "open_loops": ["Preference Updates has 33 approved items awaiting apply"],
+            "due_items": ["scheduled heartbeat interval is currently due"],
+            "loop_runtime": {
+                "items": [{"title": "Open loop: relevans-gaten i behavioral_decisions.py"}]
+            },
+        }
+    )
+
+    ctx = str(kaldt.get("context_text") or "")
+    assert "approved items awaiting apply" in ctx, (
+        "aabne loops er en FRISK kilde og skal med, selv om last_action er foraeldet"
+    )
+    assert "inspect-working-tree" in ctx, "intent-typen bygges live og skal med"
+    assert "relevans-gaten" in ctx, "loop-titlen er fagsprog og skal med"
+    assert "sudo-exec-completed" not in ctx, (
+        "den foraeldede handling skal udelades — den beskriver en situation fra maj"
+    )
+    assert kaldt.get("context_age_seconds") is None, (
+        "naar den foraeldede del er udeladt, er resten frisk — ellers fyrer "
+        "stale-grenen og gaten falder til priority alligevel"
+    )

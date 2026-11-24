@@ -279,11 +279,23 @@ def _heartbeat_living_context_line(context: dict[str, object] | None = None) -> 
         # dem gaten scorer mod. Uden dem falder den aabent tilbage til priority.
         _ctx = _tur_ctx
         _kontekst_dele: list[str] = []
+
+        # 24/11-2026 (maalt i DRIFT): konteksten var 100 % frosset, og det skyldtes
+        # TO fejl oveni hinanden — ikke én:
+        #   1. `last_action_at` stod paa 2026-05-15. Den skrives af
+        #      `bounded_action_continuity_state`, som kun opdateres ved bounded
+        #      execution; en tick der blot dispatcher er ikke en bounded action.
+        #   2. loop-grenen laeste `current_status`/`active_loops`/`resumed_loops`,
+        #      som slet ikke findes i `loop_runtime` (noegler: active, summary,
+        #      items, freshness). Den bidrog derfor med INTET.
+        # Til sammen: hver tick scorede mod en kontekst fra maj, og gaten faldt
+        # tilbage til priority — praecis den adfaerd den skulle afskaffe.
+        #
+        # Rettelsen er ikke at give op naar ÉN komponent er foraeldet. Det er at
+        # bygge konteksten af de kilder der FAKTISK er friske i en heartbeat:
+        # aabne loops, due items, loop-titlerne, intent-typen og en epistemic
+        # tilstand der ikke er "clear". `last_action` bruges kun naar den er ny.
         _ti = _ctx.get("tool_intent") or {}
-        # 24/11-2026 (maalt i DRIFT): konteksten var FROSSET. `last_action_at` stod
-        # paa 2026-05-15 — seks maaneder gammel — men blev sendt ind som «turens
-        # kontekst», saa gaten valgte de samme fem beslutninger i hver tick. Alderen
-        # foelger derfor med, saa gaten kan afvise en kontekst der er historie.
         _kontekst_alder: float | None = None
         if isinstance(_ti, dict):
             _la_at = str(_ti.get("last_action_at") or "").strip()
@@ -297,22 +309,57 @@ def _heartbeat_living_context_line(context: dict[str, object] | None = None) -> 
                     _kontekst_alder = (_dt.now(_tz.utc) - _ts).total_seconds()
                 except Exception:
                     _kontekst_alder = None
-            for _k in (
-                "last_action",
-                "last_action_summary",
-                "last_action_outcome",
-                "followup_hint",
-                "intent",
-            ):
+            if _kontekst_alder is None or _kontekst_alder <= 1800.0:
+                # Intet tidsstempel er ikke bevis for foraeldelse — kun en KENDT
+                # alder over graensen udelukker den del.
+                for _k in (
+                    "last_action",
+                    "last_action_summary",
+                    "last_action_outcome",
+                    "followup_hint",
+                    "intent",
+                ):
+                    _v = _ti.get(_k)
+                    if _v:
+                        _kontekst_dele.append(str(_v))
+            else:
+                # Foraeldet handling beskriver ikke turen. Alderen nulstilles, saa
+                # gaten ikke afviser HELE konteksten paa grund af én gammel del.
+                _kontekst_alder = None
+            # intent_type/intent_target bygges LIVE i tool_intent-surfacet.
+            for _k in ("intent_type", "intent_target"):
                 _v = _ti.get(_k)
                 if _v:
                     _kontekst_dele.append(str(_v))
-        _lr = _ctx.get("loop_runtime") or {}
-        if isinstance(_lr, dict):
-            for _k in ("current_status", "active_loops", "resumed_loops"):
-                _v = _lr.get(_k)
+
+        # Aabne loops og due items — bygget friskt i `_build_heartbeat_context`.
+        # Det er her de aegte fagord staar ("33 approved items awaiting apply",
+        # "capabilities still require approval"), ikke strukturelle tokens.
+        for _k in ("open_loops", "due_items"):
+            for _v in (_ctx.get(_k) or [])[:5]:
                 if _v:
                     _kontekst_dele.append(str(_v))
+
+        # De aabne loop-titler. `items[].title` er fagsprog ("Feltteori-
+        # diskussionen", "laengsels-signalet", "relevans-gaten").
+        _lr = _ctx.get("loop_runtime") or {}
+        if isinstance(_lr, dict):
+            for _it in (_lr.get("items") or [])[:5]:
+                if isinstance(_it, dict):
+                    _t = str(_it.get("title") or "").replace("Open loop: ", "").strip()
+                    if _t:
+                        _kontekst_dele.append(_t)
+
+        # Epistemic tilstand — kun naar den ikke er "clear"/"none", saa den tavse
+        # normalvej ikke fylder konteksten med stoj. `confidence` er udeladt med
+        # vilje: "medium" er et strukturelt token der matcher bredt.
+        _ep = _ctx.get("epistemic_runtime_state") or {}
+        if isinstance(_ep, dict):
+            for _k in ("wrongness_state", "regret_signal"):
+                _v = _ep.get(_k)
+                if _v and str(_v) not in ("clear", "none"):
+                    _kontekst_dele.append(str(_v))
+
         decisions_line = format_active_decisions_for_heartbeat(
             max_items=5,
             context_text=" ".join(_kontekst_dele),

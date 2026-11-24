@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_prewarm.py`
+_Session-aware DeepSeek prefix cache warming (prewarm-on-return)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `session_prewarm_enabled` | `()` | Kill-switch via runtime-state (default True). Self-safe. | [src](../../../core/services/session_prewarm.py#L53) |
+| function | `_should_warm` | `(session_id)` | Throttle pr. session: skip hvis varmet < _COOLDOWN_S siden. | [src](../../../core/services/session_prewarm.py#L63) |
+| function | `_deepseek_key` | `()` | — | [src](../../../core/services/session_prewarm.py#L78) |
+| function | `_post_deepseek` | `(api_key, payload, *, timeout_s=…)` | Minimal POST til deepseek /chat/completions. Returnerer body-dict eller None. | [src](../../../core/services/session_prewarm.py#L87) |
+| function | `warm_session_prefix` | `(session_id, *, provider=…, model=…, user_id=…, role=…, workspace_name=…, tool_scope=…, force=…)` | Varm en sessions [system][historik]-prefix i DeepSeeks disk-cache. | [src](../../../core/services/session_prewarm.py#L106) |
+| function | `warm_session_prefix_async` | `(session_id, **kwargs)` | Fire-and-forget: kør warm_session_prefix i en GENBRUGT daemon-tråd. | [src](../../../core/services/session_prewarm.py#L306) |
+| function | `_worker_loop` | `(task_q)` | Kør opgaver fra egen kø indtil TTL udløber uden nyt arbejde. | [src](../../../core/services/session_prewarm.py#L366) |
+| function | `_dispatch` | `(job)` | Giv opgaven til den ledige worker — eller føds en frisk. | [src](../../../core/services/session_prewarm.py#L393) |
+| function | `_wrap` | `(job, t, q)` | Pak opgaven ind med tilbagelægning til puljen — også når den fejler. | [src](../../../core/services/session_prewarm.py#L424) |
+| function | `_release_worker` | `(t, q)` | Læg tråden tilbage i puljen, så næste kald kan genbruge den. | [src](../../../core/services/session_prewarm.py#L434) |
+| function | `_worker_stats` | `()` | Observability: hvor mange tråde er født vs. genbrugt. Self-safe. | [src](../../../core/services/session_prewarm.py#L440) |
+
 ## `core/services/session_spawn.py`
 _start_session — Jarvis starter selv et run i en session der er Bjørns._
 
@@ -576,21 +593,4 @@ _Skill-fladen nævner et skill — og intet kræver et svar (2/10-2026)._
 | function | `is_unanswered_skill_match` | `(*, primary_matches, called_tool_names, final_text, nudged_already=…, kraev_navn=…)` | True når et stærkt skill-match stod klar og blev hverken brugt eller nævnt. | [src](../../../core/services/skill_gate_guard.py#L60) |
 | function | `build_nudge` | `(primary_matches)` | Beskeden der lægges i turen. Navngiver skillet og giver de to veje. | [src](../../../core/services/skill_gate_guard.py#L104) |
 | function | `samle_kaldte_navne` | `(followup_exchanges, runde_kald)` | De ÆGTE værktøjsnavne turen har kaldt — fra BEGGE kilder, udpakket. | [src](../../../core/services/skill_gate_guard.py#L119) |
-
-## `core/services/skill_relevance_surface.py`
-_Slå skills op FOR ham i stedet for at bede ham huske at slå op._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_enabled` | `()` | Kill-switch. Self-safe: kan config ikke læses, slår vi op. | [src](../../../core/services/skill_relevance_surface.py#L89) |
-| function | `matchede_skills` | `(user_message)` | Navnene paa de skills der matcher denne besked. Tom liste hvis ingen. | [src](../../../core/services/skill_relevance_surface.py#L119) |
-| function | `_navnet_staar_i` | `(skill_navn, besked)` | Staar skillets eget navn i beskeden? | [src](../../../core/services/skill_relevance_surface.py#L144) |
-| function | `_naevner_mekanismen` | `(besked)` | Beder brugeren udtrykkeligt om et skill? Saa er beskeden aldrig smaasnak. | [src](../../../core/services/skill_relevance_surface.py#L162) |
-| function | `skill_flade_event` | `(user_message)` | Det runtimen lagde i prompten, som et event klienterne kan vise. | [src](../../../core/services/skill_relevance_surface.py#L168) |
-| function | `sidst_foreslaaede` | `()` | Hvilke skills blev foreslaaet i den seneste prompt-bygning. | [src](../../../core/services/skill_relevance_surface.py#L214) |
-| function | `_er_selvstartet_tur` | `()` | Startede maskinen sig selv, uden nogen opgave fra ham? | [src](../../../core/services/skill_relevance_surface.py#L236) |
-| function | `_er_autonom_tur` | `()` | Koerer vi en autonom tur lige nu? | [src](../../../core/services/skill_relevance_surface.py#L257) |
-| function | `_traef` | `(besked)` | Selve opslaget. Adskilt saa baade sektionen og memoen bruger samme vej. | [src](../../../core/services/skill_relevance_surface.py#L290) |
-| function | `relevant_skills_section` | `(user_message)` | Prompt-sektion med de skills der matcher turens opgave. "" hvis ingen. | [src](../../../core/services/skill_relevance_surface.py#L313) |
-| function | `build_skill_relevance_surface` | `(user_message=…)` | Observationsflade — hvad opslaget ville sige om denne besked. | [src](../../../core/services/skill_relevance_surface.py#L410) |
 

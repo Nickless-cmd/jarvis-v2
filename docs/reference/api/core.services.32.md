@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_runs_memory.py`
+_Memory/continuity post-processing for visible runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_recent_internal_tool_context` | `(session_id, *, limit=…)` | — | [src](../../../core/services/visible_runs_memory.py#L24) |
+| function | `_attention_fra_aktive_goals` | `()` | Fokus-feltet til kapslen — med forskellen paa «maalt tomt» og «ikke maalt». | [src](../../../core/services/visible_runs_memory.py#L50) |
+| function | `_goals_fra_aktive_maal` | `()` | Goals-sektionen til kapslen — maalt, ikke arvet. | [src](../../../core/services/visible_runs_memory.py#L90) |
+| function | `_open_thread_fra_registry` | `()` | ``open_thread`` til kapslen — fra den LEVENDE traad-registry. | [src](../../../core/services/visible_runs_memory.py#L134) |
+| function | `_relation_fra_turen` | `(run)` | ``last_interaction_type`` til kapslen — fra den FLADE turen kom fra. | [src](../../../core/services/visible_runs_memory.py#L166) |
+| function | `_somatic_fra_sansearkivet` | `()` | Somatic-sektionen til kapslen — fra det der faktisk er sanset. | [src](../../../core/services/visible_runs_memory.py#L184) |
+| function | `_run_memory_postprocess` | `(run, assistant_text)` | — | [src](../../../core/services/visible_runs_memory.py#L223) |
+| function | `_maybe_trigger_continuation` | `(run, assistant_text)` | If Jarvis stopped mid-task, trigger an autonomous-run | [src](../../../core/services/visible_runs_memory.py#L471) |
+| function | `_record_promise_from_run` | `(run, assistant_text)` | Bjørn-gate (16. jun 2026), udkoblet fra continuation (rodårsag 3, | [src](../../../core/services/visible_runs_memory.py#L596) |
+
 ## `core/services/visible_runs_outcomes.py`
 _Persistence + terminal outcome for visible runs (fail/cancel forbliver i main)._
 

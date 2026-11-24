@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_history_grounding.py`
+_Prompten maa ikke forveksle et rygte med en kendsgerning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `QueryProfile` | `` | — | [src](../../../core/services/self_history_grounding.py#L28) |
+| function | `classify_self_history_query` | `(text)` | Hvad spoerges der om? Deterministisk, uden model. | [src](../../../core/services/self_history_grounding.py#L59) |
+| function | `_verdens_fakta` | `(limit=…)` | — | [src](../../../core/services/self_history_grounding.py#L74) |
+| function | `_emner` | `(limit=…)` | — | [src](../../../core/services/self_history_grounding.py#L79) |
+| function | `_selvbilleder` | `(limit=…)` | — | [src](../../../core/services/self_history_grounding.py#L84) |
+| function | `_model_epoke` | `()` | — | [src](../../../core/services/self_history_grounding.py#L89) |
+| function | `build_self_history_grounding_section` | `(text, *, session_id=…)` | Byg blokken — eller `None` naar der ikke spoerges om noget af det. | [src](../../../core/services/self_history_grounding.py#L99) |
+
 ## `core/services/self_model_blind_spots.py`
 _Self-Model Blind Spots — LLM-drevet opdagelse af egne usete fejlmønstre._
 
@@ -749,21 +762,4 @@ _Governed kill-switch for session-persistence boot-reconciler. Default OFF (shad
 |---|---|---|---|---|
 | function | `_read_flag` | `()` | Læs rå flag-værdi fra runtime-state. None = usat. | [src](../../../core/services/session_persistence_flag.py#L18) |
 | function | `session_persistence_enabled` | `()` | True KUN når eksplicit slået til ('on'/'1'/'true'/'yes'). Usat eller | [src](../../../core/services/session_persistence_flag.py#L24) |
-
-## `core/services/session_prewarm.py`
-_Session-aware DeepSeek prefix cache warming (prewarm-on-return)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `session_prewarm_enabled` | `()` | Kill-switch via runtime-state (default True). Self-safe. | [src](../../../core/services/session_prewarm.py#L53) |
-| function | `_should_warm` | `(session_id)` | Throttle pr. session: skip hvis varmet < _COOLDOWN_S siden. | [src](../../../core/services/session_prewarm.py#L63) |
-| function | `_deepseek_key` | `()` | — | [src](../../../core/services/session_prewarm.py#L78) |
-| function | `_post_deepseek` | `(api_key, payload, *, timeout_s=…)` | Minimal POST til deepseek /chat/completions. Returnerer body-dict eller None. | [src](../../../core/services/session_prewarm.py#L87) |
-| function | `warm_session_prefix` | `(session_id, *, provider=…, model=…, user_id=…, role=…, workspace_name=…, tool_scope=…, force=…)` | Varm en sessions [system][historik]-prefix i DeepSeeks disk-cache. | [src](../../../core/services/session_prewarm.py#L106) |
-| function | `warm_session_prefix_async` | `(session_id, **kwargs)` | Fire-and-forget: kør warm_session_prefix i en GENBRUGT daemon-tråd. | [src](../../../core/services/session_prewarm.py#L306) |
-| function | `_worker_loop` | `(task_q)` | Kør opgaver fra egen kø indtil TTL udløber uden nyt arbejde. | [src](../../../core/services/session_prewarm.py#L366) |
-| function | `_dispatch` | `(job)` | Giv opgaven til den ledige worker — eller føds en frisk. | [src](../../../core/services/session_prewarm.py#L393) |
-| function | `_wrap` | `(job, t, q)` | Pak opgaven ind med tilbagelægning til puljen — også når den fejler. | [src](../../../core/services/session_prewarm.py#L424) |
-| function | `_release_worker` | `(t, q)` | Læg tråden tilbage i puljen, så næste kald kan genbruge den. | [src](../../../core/services/session_prewarm.py#L434) |
-| function | `_worker_stats` | `()` | Observability: hvor mange tråde er født vs. genbrugt. Self-safe. | [src](../../../core/services/session_prewarm.py#L440) |
 

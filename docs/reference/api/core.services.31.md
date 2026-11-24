@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_first_pass_results.py`
+_Publish first-pass tool outcomes before post-tool prompt assembly._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `surface_tool_result` | `(sr, status=…)` | Close one measured call immediately before its terminal UI fact. | [src](../../../core/services/visible_first_pass_results.py#L18) |
+| function | `_ejer_kan_svare` | `(run)` | Er der et menneske i den anden ende af DENNE kørsel? | [src](../../../core/services/visible_first_pass_results.py#L42) |
+| function | `publish_first_pass_results` | `(results, *, run, step_counter, out)` | Resolve approvals and publish terminal UI facts; do not persist transcript. | [src](../../../core/services/visible_first_pass_results.py#L72) |
+
 ## `core/services/visible_first_pass_text.py`
 _Akkumuleret first-pass-tekst med indbygget degenerations-vagt._
 
@@ -577,19 +586,4 @@ _Post-run learning signals for a visible run (extracted from visible_runs.py,_
 | function | `er_brugerafbrydelse` | `(fejl)` | True hvis fejlteksten beskriver en afbrydelse frem for en fejl. | [src](../../../core/services/visible_runs_learning_signals.py#L29) |
 | function | `tool_names` | `(collected_native_tool_calls)` | Names of the native tool calls in order (objects or OpenAI-style dicts). | [src](../../../core/services/visible_runs_learning_signals.py#L35) |
 | function | `record_visible_run_learning_signals` | `(*, run_ref, collected_native_tool_calls, outcome_status, outcome_error, followup_text, output_tokens)` | — | [src](../../../core/services/visible_runs_learning_signals.py#L53) |
-
-## `core/services/visible_runs_memory.py`
-_Memory/continuity post-processing for visible runs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_recent_internal_tool_context` | `(session_id, *, limit=…)` | — | [src](../../../core/services/visible_runs_memory.py#L24) |
-| function | `_attention_fra_aktive_goals` | `()` | Fokus-feltet til kapslen — med forskellen paa «maalt tomt» og «ikke maalt». | [src](../../../core/services/visible_runs_memory.py#L50) |
-| function | `_goals_fra_aktive_maal` | `()` | Goals-sektionen til kapslen — maalt, ikke arvet. | [src](../../../core/services/visible_runs_memory.py#L90) |
-| function | `_open_thread_fra_registry` | `()` | ``open_thread`` til kapslen — fra den LEVENDE traad-registry. | [src](../../../core/services/visible_runs_memory.py#L134) |
-| function | `_relation_fra_turen` | `(run)` | ``last_interaction_type`` til kapslen — fra den FLADE turen kom fra. | [src](../../../core/services/visible_runs_memory.py#L166) |
-| function | `_somatic_fra_sansearkivet` | `()` | Somatic-sektionen til kapslen — fra det der faktisk er sanset. | [src](../../../core/services/visible_runs_memory.py#L184) |
-| function | `_run_memory_postprocess` | `(run, assistant_text)` | — | [src](../../../core/services/visible_runs_memory.py#L223) |
-| function | `_maybe_trigger_continuation` | `(run, assistant_text)` | If Jarvis stopped mid-task, trigger an autonomous-run | [src](../../../core/services/visible_runs_memory.py#L471) |
-| function | `_record_promise_from_run` | `(run, assistant_text)` | Bjørn-gate (16. jun 2026), udkoblet fra continuation (rodårsag 3, | [src](../../../core/services/visible_runs_memory.py#L596) |
 

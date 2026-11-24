@@ -60,6 +60,16 @@ _Ollama-lanens tilstand — målt, aldrig gættet._
 | function | `probe_ollama` | `(model, *, base_url=…, timeout=…, prober=…, now=…)` | Ægte 1-token-kald, cachet i :data:`CACHE_TTL_SECONDS`. | [src](../../../core/services/ollama_balance.py#L92) |
 | function | `render_reason` | `(reading)` | — | [src](../../../core/services/ollama_balance.py#L110) |
 
+## `core/services/ollama_kvote_vagt.py`
+_Kvote-vagt: skru ned for Ollama-forbruget FØR pro-planens grænse rammes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nulstil_cache` | `()` | Kun til tests — ellers ville en måling lække ind i næste test. | [src](../../../core/services/ollama_kvote_vagt.py#L64) |
+| function | `kvote_status` | `(*, force=…, timeout=…)` | Hvor meget af Ollamas månedlige kvote er brugt — og hvad skal vi gøre? | [src](../../../core/services/ollama_kvote_vagt.py#L70) |
+| function | `skal_bremse` | `()` | Skal det ikke-kritiske arbejde skrues ned nu? | [src](../../../core/services/ollama_kvote_vagt.py#L145) |
+| function | `skal_stoppe` | `()` | Er der kun plads til det der holder mig i live? | [src](../../../core/services/ollama_kvote_vagt.py#L154) |
+
 ## `core/services/ollama_model_names.py`
 _Opløs et bart ollama-modelnavn til det tag ollama faktisk serverer._
 
@@ -75,7 +85,7 @@ _Ét sted at bogføre et Ollama-kald — så ingen sti kan glemme det._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `bogfoer_ollama_kald` | `(*, provider, model, input_tokens, output_tokens, cache_hit_tokens=…, cache_miss_tokens=…, lane)` | Bogfør ét Ollama-kald i hovedbogen og returnér den beregnede pris. | [src](../../../core/services/ollama_usage.py#L41) |
-| function | `kvote_reference` | `(*, timeout=…)` | Ollamas EGEN forbrugsmåling — det tal der styrer pro-planens 90%-grænse. | [src](../../../core/services/ollama_usage.py#L100) |
+| function | `kvote_reference` | `(*, timeout=…, range_=…)` | Ollamas EGEN forbrugsmåling — det tal der styrer pro-planens 90%-grænse. | [src](../../../core/services/ollama_usage.py#L100) |
 
 ## `core/services/ollama_visible_prompt.py`
 
@@ -604,18 +614,4 @@ _Push-vækning: banker på telefonen når den sover._
 | function | `telefon_er_forbundet` | `(user_id)` | Er der en klient med telefon-værktøjer for brugeren lige nu? | [src](../../../core/services/phone_wake.py#L97) |
 | function | `_send_vaekning` | `(user_id)` | Stille data-push. Ingen title/preview → ingen synlig notifikation. | [src](../../../core/services/phone_wake.py#L125) |
 | function | `vaek_og_vent` | `(user_id, *, vent_s=…)` | Væk telefonen og vent på at broen melder sig. True hvis den kom. | [src](../../../core/services/phone_wake.py#L150) |
-
-## `core/services/plan_mode.py`
-_Server-authoritative Plan mode for the visible code lane._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `set_session_plan_mode` | `(session_id, enabled)` | Persist the mode selected by the code client for the session. | [src](../../../core/services/plan_mode.py#L42) |
-| function | `session_plan_mode` | `(session_id, *, fail_closed=…)` | — | [src](../../../core/services/plan_mode.py#L54) |
-| function | `is_active` | `(session_id=…)` | Current task-local mode, with durable session fallback for recovery. | [src](../../../core/services/plan_mode.py#L69) |
-| function | `stream_context` | `(enabled)` | — | [src](../../../core/services/plan_mode.py#L87) |
-| function | `wrap_stream` | `(stream, *, enabled)` | Carry Plan mode through an async generator and its worker contexts. | [src](../../../core/services/plan_mode.py#L95) |
-| function | `tool_allowed` | `(name, arguments=…, *, session_id=…)` | Fail-closed execution verdict for a tool while Plan mode is active. | [src](../../../core/services/plan_mode.py#L102) |
-| function | `filter_definitions` | `(defs, *, session_id=…)` | — | [src](../../../core/services/plan_mode.py#L124) |
-| function | `prompt_section` | `()` | — | [src](../../../core/services/plan_mode.py#L135) |
 

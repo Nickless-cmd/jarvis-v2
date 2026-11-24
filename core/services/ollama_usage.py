@@ -97,12 +97,19 @@ def bogfoer_ollama_kald(
         return 0.0
 
 
-def kvote_reference(*, timeout: float = 20.0) -> dict[str, Any] | None:
+def kvote_reference(
+    *, timeout: float = 20.0, range_: str = "30d"
+) -> dict[str, Any] | None:
     """Ollamas EGEN forbrugsmåling — det tal der styrer pro-planens 90%-grænse.
 
     Returnerer ``None`` når den ikke kunne hentes, aldrig et gæt. Brugen er at
     holde vores eget regnskab op mod den målestok brugeren faktisk rammer, i
     stedet for at gætte kvote ud fra vores pris-tabel (som overestimerer 1,8x).
+
+    ``range_`` SKAL angives. Uden den svarer Ollama med sin default — **7 dage**
+    (målt 24/11-2026). Det var en ægte fejl i første version: kvote-vagten målte
+    syv dages forbrug mod et månedsloft og rapporterede 29,9% mens det rigtige
+    tal var ~93%. En vagt der måler den forkerte periode bremser aldrig.
     """
     try:
         from core.runtime.secrets import read_runtime_key
@@ -111,7 +118,7 @@ def kvote_reference(*, timeout: float = 20.0) -> dict[str, Any] | None:
         if not noegle:
             return None
         req = urllib.request.Request(
-            USAGE_URL,
+            f"{USAGE_URL}?range={range_}",
             headers={
                 "Authorization": f"Bearer {noegle}",
                 "User-Agent": "jarvis-ollama-usage",

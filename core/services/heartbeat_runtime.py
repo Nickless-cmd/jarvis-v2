@@ -3653,6 +3653,30 @@ def _execute_heartbeat_model(
     # extracted heartbeat_provider_fallback.py.
     try:
         if provider == "ollama":
+            # KVOTE-VAGT (24/11-2026). Ollama mailede «90% of your monthly
+            # limit» kl. 04:05 UTC, og Bjørn kan først toppe op om mandagen.
+            # Målt samme dag: 92,7% af månedsloftet brugt. Uden dette tjek
+            # brænder heartbeat videre til kvoten er HELT brugt — og så stopper
+            # heartbeat, daemonerne og det indre liv brat i stedet for at falme.
+            #
+            # Vagten fejler ÅBENT: kan ollama.com ikke nås, kører vi normalt.
+            # En netværksfejl er ikke et kvote-stop.
+            try:
+                from core.services.ollama_kvote_vagt import skal_bremse
+
+                if skal_bremse():
+                    from core.services.heartbeat_provider_fallback import (
+                        try_heartbeat_cheap_fallback,
+                    )
+
+                    _billig = try_heartbeat_cheap_fallback(prompt)
+                    if _billig:
+                        return _billig
+                    # Ingen billig kandidat: kør Ollama alligevel. At nægte
+                    # ville stoppe det indre liv for at spare penge vi allerede
+                    # har brugt af kvoten.
+            except Exception:
+                logger.debug("heartbeat: kvote-vagt kunne ikke spørges", exc_info=True)
             return _execute_ollama_prompt(prompt=prompt, target=target)
         if provider == "openai":
             return _execute_openai_prompt(prompt=prompt, target=target)

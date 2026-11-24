@@ -27,6 +27,9 @@ import numpy as np
 import yaml
 
 from core.services import brain_vector_cache
+from core.services.brain_file_io import MissingFrontmatterError
+from core.services.brain_file_io import atomic_write as _atomic_write
+from core.services.brain_file_io import parse_frontmatter
 
 logger = logging.getLogger(__name__)
 
@@ -118,39 +121,6 @@ class BrainEntry:
                 "jarvis_brain: ukendt trigger %r paa %s — bevaret som fritekst",
                 self.trigger, self.id,
             )
-
-
-# ---------------------------------------------------------------------------
-# File I/O helpers — frontmatter + atomic write
-# ---------------------------------------------------------------------------
-
-
-def _atomic_write(path: Path, content: str) -> None:
-    """Atomic file write via tmp + rename. Creates parent dirs as needed."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(content, encoding="utf-8")
-    tmp.replace(path)
-
-
-def parse_frontmatter(path: Path) -> tuple[dict, str]:
-    """Parse YAML frontmatter + body from a markdown file.
-
-    Returns (frontmatter_dict, body_string). Raises ValueError if frontmatter
-    is missing or unterminated.
-    """
-    text = path.read_text(encoding="utf-8")
-    if not text.startswith("---\n"):
-        raise ValueError(f"missing frontmatter in {path}")
-    parts = text.split("\n---\n", 1)
-    if len(parts) != 2:
-        raise ValueError(f"unterminated frontmatter in {path}")
-    yaml_text = parts[0][len("---\n"):]
-    body = parts[1]
-    fm = yaml.safe_load(yaml_text) or {}
-    if not isinstance(fm, dict):
-        raise ValueError(f"frontmatter is not a mapping in {path}")
-    return fm, body
 
 
 def _iso(dt: Optional[datetime]) -> Optional[str]:
@@ -1432,6 +1402,7 @@ def rebuild_index_from_files() -> int:
     if not root.exists():
         return 0
     changes = 0
+    missing_frontmatter = 0
     now = datetime.now(timezone.utc)
     conn = connect_index()
     try:
@@ -1460,6 +1431,9 @@ def rebuild_index_from_files() -> int:
                     continue
                 try:
                     fm, _body = parse_frontmatter(md_path)
+                except MissingFrontmatterError:
+                    missing_frontmatter += 1
+                    continue
                 except Exception:
                     # Filen findes men kan ikke parses. Uden et spor ser det ud
                     # som om den ikke var aendret — og indekset beholder en
@@ -1555,6 +1529,12 @@ def rebuild_index_from_files() -> int:
                            WHERE id = ?""",
                         (file_stat.st_mtime_ns, file_stat.st_size, fm["id"]),
                     )
+        if missing_frontmatter:
+            logger.warning(
+                "brain: sprang over %d filer uden frontmatter under reindex; "
+                "indekset er ufuldstaendigt",
+                missing_frontmatter,
+            )
         conn.commit()
     finally:
         conn.close()

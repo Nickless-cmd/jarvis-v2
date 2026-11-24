@@ -488,6 +488,43 @@ def test_rebuild_index_picks_up_manual_file(tmp_path, monkeypatch):
     assert e.title == "Manual"
 
 
+def test_rebuild_index_counts_missing_frontmatter_once_without_traceback(
+    tmp_path, monkeypatch, caplog,
+):
+    """Headerløse filer må være synlige uden én traceback per fil."""
+    from core.services import jarvis_brain
+
+    monkeypatch.setattr(jarvis_brain, "_workspace_root", lambda: tmp_path / "ws")
+    monkeypatch.setattr(jarvis_brain, "_state_root", lambda: tmp_path / "state")
+    fakta_dir = jarvis_brain.brain_dir() / "fakta"
+    fakta_dir.mkdir(parents=True, exist_ok=True)
+    (fakta_dir / "uden-frontmatter-1.md").write_text("# Legacy 1\n", encoding="utf-8")
+    (fakta_dir / "uden-frontmatter-2.md").write_text("# Legacy 2\n", encoding="utf-8")
+
+    eid = jarvis_brain.new_brain_id()
+    (fakta_dir / "gyldig.md").write_text(
+        "---\n"
+        f"id: {eid}\n"
+        "kind: fakta\nvisibility: personal\ndomain: d\n"
+        "title: Gyldig\ncreated_at: 2026-11-24T10:00:00+00:00\n"
+        "updated_at: 2026-11-24T10:00:00+00:00\n"
+        "---\n\nbody\n",
+        encoding="utf-8",
+    )
+
+    with caplog.at_level("WARNING", logger=jarvis_brain.__name__):
+        assert jarvis_brain.rebuild_index_from_files() == 1
+
+    warnings = [
+        record for record in caplog.records
+        if record.name == jarvis_brain.__name__ and record.levelname == "WARNING"
+    ]
+    assert len(warnings) == 1
+    assert "2" in warnings[0].getMessage()
+    assert "frontmatter" in warnings[0].getMessage()
+    assert warnings[0].exc_info is None
+
+
 def test_rebuild_index_opdaterer_fil_uden_updated_at(tmp_path, monkeypatch):
     """11/10-2026: en fil UDEN `updated_at` i frontmatter kunne ikke opdateres.
 

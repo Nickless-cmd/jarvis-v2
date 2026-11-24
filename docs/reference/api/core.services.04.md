@@ -374,6 +374,15 @@ _Kant-udledningen for en ny hjerne-post flyttes ud af værktøjets ventetid._
 | function | `koesaet` | `(entry_id, now=…)` | Læg en post i kø til kant-udledning. `False` = køen er fuld. | [src](../../../core/services/brain_edge_worker.py#L74) |
 | function | `venter` | `()` | Hvor mange poster der står i kø. Til test og til at se hvor langt bagud. | [src](../../../core/services/brain_edge_worker.py#L100) |
 
+## `core/services/brain_file_io.py`
+_Low-level file helpers for Jarvis Brain markdown files._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `MissingFrontmatterError` | `` | Raised when a markdown file does not start with YAML frontmatter. | [src](../../../core/services/brain_file_io.py#L10) |
+| function | `atomic_write` | `(path, content)` | Atomically write ``content`` via a sibling temporary file. | [src](../../../core/services/brain_file_io.py#L14) |
+| function | `parse_frontmatter` | `(path)` | Parse YAML frontmatter and body from a markdown file. | [src](../../../core/services/brain_file_io.py#L22) |
+
 ## `core/services/brain_supersession.py`
 _Modsigelses-detektion — «den nyere vinder»._
 
@@ -588,16 +597,4 @@ _Fælles skrivevej for MÅLTE capability-værdier._
 | function | `maalte_vaerdier` | `()` | Domæne → den senest MÅLTE værdi. Tom når sporet ikke findes. | [src](../../../core/services/capability_measurement.py#L102) |
 | function | `set_domain_confidence` | `(domain, value, *, evidence, kind=…)` | Sæt domænets confidence til en MÅLT værdi. | [src](../../../core/services/capability_measurement.py#L130) |
 | function | `fjern_domaene` | `(domain, *, evidence)` | Fjern et domænenavn der ikke har nogen evne bag. | [src](../../../core/services/capability_measurement.py#L212) |
-
-## `core/services/causal_graph.py`
-_Causal graph query API._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_fetch_event` | `(event_id)` | — | [src](../../../core/services/causal_graph.py#L22) |
-| function | `_fetch_neighbors` | `(event_id, direction, min_confidence)` | Return list of (other_event_id, edge dict) for one hop. | [src](../../../core/services/causal_graph.py#L42) |
-| function | `query_causal_chain` | `(*, event_id, direction=…, max_depth=…, min_confidence=…, offset=…, limit=…)` | BFS through causal_edges from event_id in given direction. | [src](../../../core/services/causal_graph.py#L76) |
-| function | `query_causal_neighbors` | `(*, event_id, direction=…, min_confidence=…)` | Direct neighbors only (depth=1) — convenience wrapper. | [src](../../../core/services/causal_graph.py#L149) |
-| function | `get_immediate_cause` | `(event_id)` | Return single highest-confidence direct parent, or None. | [src](../../../core/services/causal_graph.py#L170) |
-| function | `build_causal_graph_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/causal_graph.py#L179) |
 

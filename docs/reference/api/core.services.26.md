@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_model_distiller.py`
+_Rig selv-model-distiller (#4, b + 2 guards) — genopliver validerings-ROLLEN._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_current_model` | `()` | — | [src](../../../core/services/self_model_distiller.py#L33) |
+| function | `_richness` | `(model)` | Groft richness-mål: hvor meningsfuld/specifik er identiteten. Højere = rigere. | [src](../../../core/services/self_model_distiller.py#L41) |
+| function | `_is_meaningful` | `(model)` | En model er meningsfuld hvis dens identity_focus er en ægte (ikke-generisk) frase. | [src](../../../core/services/self_model_distiller.py#L60) |
+| function | `_fields_specificity` | `(fields)` | — | [src](../../../core/services/self_model_distiller.py#L69) |
+| function | `_gather_inputs` | `()` | Saml Jarvis' egen nylige selv-historie + nuværende model som distillations-grundlag. | [src](../../../core/services/self_model_distiller.py#L80) |
+| function | `_build_prompt` | `(inputs)` | — | [src](../../../core/services/self_model_distiller.py#L101) |
+| function | `_parse` | `(raw)` | Parse det labelede LLM-svar defensivt. Manglende linjer → udeladt (kalder falder tilbage). | [src](../../../core/services/self_model_distiller.py#L114) |
+| function | `distill_self_model` | `(*, trigger=…)` | Distillér en rig selv-model + anti-flatten-guard + skriv (kun hvis ikke tyndere). Self-safe. | [src](../../../core/services/self_model_distiller.py#L129) |
+| function | `run_self_model_distill_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-indgang (GUARD 2: langsom rytme). Self-safe. | [src](../../../core/services/self_model_distiller.py#L197) |
+| function | `register_self_model_distiller_producer` | `()` | Registrér distilleren som DAGLIG cadence-producer (GUARD 2). Identitet er stabil. | [src](../../../core/services/self_model_distiller.py#L202) |
+
 ## `core/services/self_model_history.py`
 _Selv-modellens oejebliksbilleder, versioneret saa de kan SAMMENLIGNES._
 
@@ -744,18 +760,4 @@ _start_session — Jarvis starter selv et run i en session der er Bjørns._
 | function | `antal_sidste_time` | `()` | Hvor mange selv-startede runs ligger i det rullende vindue lige nu. | [src](../../../core/services/session_spawn.py#L44) |
 | function | `start_session` | `(prompt, *, session_id=…, title=…, origin=…)` | Start et autonomt run i en session der tilhører Bjørn. | [src](../../../core/services/session_spawn.py#L50) |
 | function | `_exec_start_session` | `(args)` | — | [src](../../../core/services/session_spawn.py#L141) |
-
-## `core/services/session_titling.py`
-_Session titling — giv sessionerne rigtige titler i sidebaren._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_rens` | `(titel)` | Renset sammenligningsform: små bogstaver, ingen haler, ét mellemrum. | [src](../../../core/services/session_titling.py#L98) |
-| function | `er_ubrugelig_titel` | `(titel)` | Er titlen værdiløs i sidebaren — en pladsholder eller en hilsen? | [src](../../../core/services/session_titling.py#L105) |
-| function | `_kandidater` | `(*, limit=…)` | Seneste auto-navngivne eller ubrugelige sessioner som vi må læse. | [src](../../../core/services/session_titling.py#L119) |
-| function | `_samtale_tekst` | `(session_id)` | Et bundet vindue af samtalen, klar til at give modellen. | [src](../../../core/services/session_titling.py#L162) |
-| function | `_rens_titel` | `(raa)` | Gør modellens svar til noget der kan stå i en sidebar. | [src](../../../core/services/session_titling.py#L214) |
-| function | `_ollama_lane_titel` | `(samtale)` | Spørg ollama-lanen (routerens local-lane) om en titel. | [src](../../../core/services/session_titling.py#L233) |
-| function | `generer_titel` | `(samtale)` | Spørg ollama-lanen om en titel, med billig-lanen som reserve. | [src](../../../core/services/session_titling.py#L276) |
-| function | `sweep` | `(*, limit=…)` | Navngiv op til `limit` sessioner med en automatisk eller ubrugelig titel. | [src](../../../core/services/session_titling.py#L310) |
 

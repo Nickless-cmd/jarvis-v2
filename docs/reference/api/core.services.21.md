@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/plugin_ruleset.py`
+_Plugin-regelsæt — brugerdefinerede kanal-regler der IKKE kan tilsidesættes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_quiet_now` | `(hour, quiet)` | True hvis `hour` er inden for stilletids-vinduet (wrap-around understøttet). | [src](../../../core/services/plugin_ruleset.py#L28) |
+| function | `is_allowed` | `(msg_ctx, ruleset, *, override_active=…)` | Afgør om Jarvis må svare på en indkommende kanal-besked. | [src](../../../core/services/plugin_ruleset.py#L42) |
+
 ## `core/services/plugin_ruleset_store.py`
 _Persistens for plugin-regelsæt (spec §5.3/§5.4, Fase 6 #2)._
 
@@ -700,11 +708,4 @@ _core/services/prompt_dump.py_
 |---|---|---|---|---|
 | function | `is_armed` | `()` | Er dumpet arméret? (sentinel-filen findes) | [src](../../../core/services/prompt_dump.py#L29) |
 | function | `dump_payload` | `(*, provider, model, messages, tools=…, params=…, lane=…, round_index=…)` | Skriv HELE requesten til latest.json; forrige dump → prev.json. | [src](../../../core/services/prompt_dump.py#L37) |
-
-## `core/services/prompt_dynamic_tail_layout.py`
-_Cache-aware ordering for the visible prompt's dynamic tail._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `move_query_memory_to_tail_end` | `(tail)` | Move the contiguous query-selected memory group to the absolute end. | [src](../../../core/services/prompt_dynamic_tail_layout.py#L32) |
 

@@ -725,7 +725,9 @@ _AGENT_COVERAGE_RULE = (
     "reason for the rest is worth more than a claim you cannot back.\n"
     "IF the task asks NO numbered questions, write 'DÆKNING: leveret' when you "
     "delivered what was asked, or 'DÆKNING: ingen' when you delivered nothing — "
-    "for example because the task required a tool you do not have."
+    "for example because the task required a tool you do not have. "
+    "'DÆKNING: ingen' means you delivered NOTHING; never use it to say that the "
+    "task had no numbered questions."
 )
 
 # For task/reporting roles — the structured result shape (matches result_contract).

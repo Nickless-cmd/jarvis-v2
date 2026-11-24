@@ -956,6 +956,36 @@ _DECLINE_VINDUE = 250
 _DECLARED_NOTHING_RE = re.compile(
     r"(?mi)^[\s>*_-]*(?:dækning|daekning|coverage)[\s*_:-]*(?:ingen|none|intet)\b")
 
+#: 24/11-2026: «DÆKNING: ingen» er tvetydig, og den anden betydning vandt i drift.
+#:
+#: MÅLT over 352 `final.txt` i agent-artefakterne: 65 linjer rammer regex'en ovenfor.
+#: 46 skrev den BART (ægte nul-leverance), men **14** skrev
+#: «DÆKNING: ingen (opgaven havde ingen nummererede spørgsmål)» og **2** skrev
+#: «DÆKNING: ingen — … er leveret». De svarer på om der VAR spørgsmål, ikke om de
+#: leverede — og blev alligevel stemplet `declined`/`capability`.
+#:
+#: Kontrakten i `_AGENT_COVERAGE_RULE` siger det stik modsatte: uden nummererede
+#: spørgsmål skal svaret være `DÆKNING: leveret`. Agenten læste altså ordet
+#: «dækning» som «dækning af spørgsmålene» og skrev `ingen` om SPØRGSMÅLENE.
+#: 16 af 65 = hver fjerde dom var forkert. Det gør signalet ubrugeligt, og det er
+#: den dyre retning: `declined` bevarer leverancen, men statistikken tæller
+#: leverancer som afslag.
+#:
+#: Derfor: fortsætter linjen efter `ingen` med en forklaring der OPHÆVER dommen,
+#: dømmer vi ikke her — så falder den tilbage til ordlisten, som før. Ophævelsen
+#: kræver et POSITIVT ord eller en spørgsmåls-metakommentar, ikke blot en parentes:
+#: én ægte nul-leverance bærer også en parentes («spørgsmål 1–3 kun delvist; 4–6
+#: ubesvaret»), og den skal stadig dømmes.
+_DÆKNING_OPHÆVER_RE = re.compile(
+    r"(?i)(?:"
+    # positiv leverance-erklæring i halen af linjen
+    r"\b(?:leveret|leverede|besvaret|implementeret|rettet|skrevet|tilføjet)\b"
+    # metakommentar: labelen passer ikke på opgaven
+    r"|nummererede?\s+sp[øo]rgsm[åa]l"
+    r"|ikke\s+relevant"
+    r"|ikke\s+anvendelig"
+    r")")
+
 # Erklaeringen skal naevne OPGAVEN. Det er det ord der giver praecision:
 # «jeg kunne ikke loese det med vaerktoej X, men fandt en anden vej» rammes
 # ikke, og det er netop den saetning en for bred markoer ville oede.
@@ -1035,8 +1065,15 @@ def decline_error(*, text: str) -> tuple[str, str]:
     # formen kan ikke omgås ved at vælge et andet verbum — og det var præcis hvad der
     # skete. «Ingen af mine værktøjer kan afvikle …» slap gennem alle mønstre, fordi
     # den ikke brugte ordet «køre», heller ikke efter fire mønstre blev tilføjet.
-    if _DECLARED_NOTHING_RE.search(str(text or "")):
-        return "AGENT_DECLINED", "capability"
+    #
+    # 24/11-2026: men formatet er kun fast hvis det bruges rigtigt. Læses resten af
+    # linjen som en ophævelse (`_DÆKNING_OPHÆVER_RE`), er `ingen` ikke en erklæring om
+    # nul leverance — så falder vi videre til ordlisten nedenfor.
+    _linje = _DECLARED_NOTHING_RE.search(str(text or ""))
+    if _linje:
+        _hale = str(text or "")[_linje.end():_linje.end() + 300].split("\n", 1)[0]
+        if not _DÆKNING_OPHÆVER_RE.search(_hale):
+            return "AGENT_DECLINED", "capability"
     hoved = str(text or "").strip()[:_DECLINE_VINDUE]
     if not hoved:
         return "", ""

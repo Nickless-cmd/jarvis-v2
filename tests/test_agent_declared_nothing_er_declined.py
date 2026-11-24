@@ -148,6 +148,46 @@ def test_formen_er_fast_men_store_smaa_bogstaver_og_synonymer_taeller(form):
     assert decline_error(text=f"{FAKTISK}\n{form}") == ("AGENT_DECLINED", "capability")
 
 
+# ── den anden betydning af «ingen» (24/11-2026) ─────────────────────────────
+
+@pytest.mark.parametrize("hale", [
+    " (opgaven havde ingen nummererede spørgsmål)",
+    " (opgaven har ingen nummererede spørgsmål)",
+    " (opgaven stiller ikke nummererede spørgsmål, men beder om en syntese — leveret ovenfor)",
+    " (dette er en kritik/syntese-opgave uden nummererede spørgsmål, så dækningslabel er ikke relevant)",
+    " — rettelser og målrettet verifikation er leveret, men commit blev blokeret",
+    " (den efterspurgte kommando kunne ikke afvikles; leverede i stedet verificeret kontekst)",
+])
+def test_ingen_brugt_om_spoergsmaalene_doemmes_ikke(hale):
+    """MÅLT 24/11-2026 over 352 `final.txt`: 16 af 65 `DÆKNING: ingen` var falske.
+
+    14 skrev «(opgaven havde ingen nummererede spørgsmål)» og 2 skrev at de
+    leverede alligevel. De svarer på om der VAR spørgsmål — ikke om de leverede —
+    og kontrakten siger det modsatte: uden nummererede spørgsmål er svaret
+    `DÆKNING: leveret`. Uden denne gren blev hver fjerde dom forkert, og
+    statistikken talte leverancer som afslag.
+    """
+    assert decline_error(text=f"{FAKTISK}\nDÆKNING: ingen{hale}") == ("", "")
+
+
+def test_den_aegte_nul_leverance_med_parentes_doemmes_stadig():
+    """Grænsen for rettelsen: en parentes alene ophæver ikke dommen.
+
+    `run-7a08fb5841b1417b` skrev «(spørgsmål 1–3 kun delvist; 4–6 ubesvaret)» —
+    det er en ÆGTE nul-leverance med en forklaring, ikke en metakommentar. Havde
+    rettelsen sluppet alt med en parentes igennem, var den blevet usynlig.
+    """
+    assert decline_error(
+        text=f"{FAKTISK}\nDÆKNING: ingen (spørgsmål 1–3 kun delvist; 4–6 ubesvaret)"
+    ) == ("AGENT_DECLINED", "capability")
+
+
+def test_kontrakten_forbyder_ingen_som_svar_paa_spoergsmaal():
+    """Præciseringen skal stå i prompten — ellers skriver agenten den samme tvetydige linje."""
+    prompt = _role_prompt("Du er researcher.")
+    assert "never use it to say that the task had no numbered questions" in prompt
+
+
 def test_den_klippede_markering_baerer_stadig_etiketten():
     """MAALT I DRIFT 22/11-2026 paa `run-6d55df6665f64e79`.
 

@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-11-23 — 540 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-24 — 542 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -360,6 +360,8 @@
 | `restart_overdue_daemons` | native | no |
 | `restart_self` | native | no |
 | `resurface_old_memory` | native | no |
+| `retire_mistake` | native | no |
+| `retire_strength` | native | no |
 | `reverse_geocode` | native | no |
 | `review_agent_work` | native | no |
 | `revise_plan` | native | no |

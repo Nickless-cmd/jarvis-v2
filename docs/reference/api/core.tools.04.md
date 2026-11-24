@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/streaming_subprocess.py`
+_One-shot subprocess execution with best-effort incremental output._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `StreamingProcessResult` | `` | — | [src](../../../core/tools/streaming_subprocess.py#L19) |
+| function | `run_streaming` | `(argv, *, cwd, timeout_s, on_output)` | — | [src](../../../core/tools/streaming_subprocess.py#L28) |
+
 ## `core/tools/stripe_tools.py`
 _Stripe integration tools — balance, transactions, and Issuing virtual cards._
 

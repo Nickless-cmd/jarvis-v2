@@ -543,6 +543,15 @@ _pause_and_ask — structured clarification prompts mid-run._
 |---|---|---|---|---|
 | function | `_exec_pause_and_ask` | `(args)` | — | [src](../../../core/tools/pause_and_ask_tools.py#L28) |
 
+## `core/tools/personality_retire_tools.py`
+_Pensionering af personligheds-poster — den indgang der manglede._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_retire_mistake` | `(args)` | — | [src](../../../core/tools/personality_retire_tools.py#L25) |
+| function | `_exec_retire_strength` | `(args)` | — | [src](../../../core/tools/personality_retire_tools.py#L29) |
+| function | `_retire` | `(args, funktion, navn)` | — | [src](../../../core/tools/personality_retire_tools.py#L33) |
+
 ## `core/tools/phone_adb.py`
 _ADB over Wi-Fi — ægte skal på telefonen, uden om broen._
 
@@ -592,11 +601,4 @@ _Telefon-vaerktoejer — Jarvis' organer paa Bjoerns telefon._
 | function | `_exec_phone_share` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L399) |
 | function | `_exec_phone_clipboard_read` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L407) |
 | function | `_exec_phone_clipboard_write` | `(args)` | — | [src](../../../core/tools/phone_tools.py#L413) |
-
-## `core/tools/plan_revise_tool.py`
-_Plan revision tool — revise_plan._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_revise_plan` | `(args)` | Tool handler for revise_plan. | [src](../../../core/tools/plan_revise_tool.py#L27) |
 

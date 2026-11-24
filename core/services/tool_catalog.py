@@ -117,6 +117,9 @@ _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
         # evnen fandtes, var registreret og pinnet, men inventaret nævnte den ikke.
         "recall", "repo_recall", "search_memory", "recall_memories", "remember_this",
         "read_memory_topic", "write_memory_topic",
+        # 24/11-2026: pensionering fandtes som service-funktion men havde ingen
+        # indgang — en bevisført beslutning kunne ikke føres ud i livet.
+        "retire_mistake", "retire_strength",
     ]),
     ("Selv-styring", [
         "restart_self", "read_self_state", "read_self_docs",

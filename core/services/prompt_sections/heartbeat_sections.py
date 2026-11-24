@@ -280,8 +280,30 @@ def _heartbeat_living_context_line(context: dict[str, object] | None = None) -> 
         _ctx = _tur_ctx
         _kontekst_dele: list[str] = []
         _ti = _ctx.get("tool_intent") or {}
+        # 24/11-2026 (maalt i DRIFT): konteksten var FROSSET. `last_action_at` stod
+        # paa 2026-05-15 — seks maaneder gammel — men blev sendt ind som «turens
+        # kontekst», saa gaten valgte de samme fem beslutninger i hver tick. Alderen
+        # foelger derfor med, saa gaten kan afvise en kontekst der er historie.
+        _kontekst_alder: float | None = None
         if isinstance(_ti, dict):
-            for _k in ("last_action", "last_action_outcome", "followup_hint", "intent"):
+            _la_at = str(_ti.get("last_action_at") or "").strip()
+            if _la_at:
+                try:
+                    from datetime import datetime as _dt, timezone as _tz
+
+                    _ts = _dt.fromisoformat(_la_at)
+                    if _ts.tzinfo is None:
+                        _ts = _ts.replace(tzinfo=_tz.utc)
+                    _kontekst_alder = (_dt.now(_tz.utc) - _ts).total_seconds()
+                except Exception:
+                    _kontekst_alder = None
+            for _k in (
+                "last_action",
+                "last_action_summary",
+                "last_action_outcome",
+                "followup_hint",
+                "intent",
+            ):
                 _v = _ti.get(_k)
                 if _v:
                     _kontekst_dele.append(str(_v))
@@ -294,6 +316,7 @@ def _heartbeat_living_context_line(context: dict[str, object] | None = None) -> 
         decisions_line = format_active_decisions_for_heartbeat(
             max_items=5,
             context_text=" ".join(_kontekst_dele),
+            context_age_seconds=_kontekst_alder,
         )
         if decisions_line:
             parts.append(f"active_decisions: {decisions_line}")

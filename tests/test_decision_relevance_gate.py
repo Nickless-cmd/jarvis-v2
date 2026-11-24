@@ -375,3 +375,99 @@ def test_en_beslutning_kan_ikke_vinde_paa_en_sti(fake_beslutninger) -> None:
     )
     ids = [d["decision_id"] for d in valgte]
     assert "dec_sti" not in ids, f"en sti maatte ikke baere et valg: {ids}"
+
+
+def test_foraeldet_kontekst_er_ikke_en_relevansvurdering(fake_beslutninger) -> None:
+    """En kontekst fra maj maa ikke rangere beslutninger som om den var nutid.
+
+    MAALT I DRIFT 24/11-2026 over 74 ticks: `tool_intent.last_action_at` stod paa
+    2026-05-15 — seks maaneder gammel — men kaldestedet sendte den ind som
+    «turens kontekst». Gaten scorede derfor korrekt paa en situation der ikke
+    laengere fandtes, og valgte de SAMME fem beslutninger med de SAMME scorer i
+    hver tick (10:20, 10:35, 10:54, 11:11 — identiske). Det er praecis den adfaerd
+    gaten skulle afskaffe, blot med en anden aarsag end priority.
+
+    Gaten kan ikke selv vide hvor gammel en streng er — alderen skal FOELGE MED.
+    """
+    from core.services import behavioral_decisions as bd
+
+    fake_beslutninger([
+        _beslutning("dec_hoej", "Hoej prioritet uden relation til turen", priority=94),
+        _beslutning(
+            "dec_relevant",
+            "Verificer at prompt-sektionen ikke klippes",
+            priority=40,
+            cue="Naar prompt-sektionen klippes",
+        ),
+    ])
+
+    seks_maaneder = 15_768_000
+
+    foraeldet = bd.select_relevant_decisions(
+        max_items=5,
+        context_text="prompt-sektionen klippes",
+        context_age_seconds=seks_maaneder,
+    )
+    assert foraeldet, "en foraeldet kontekst falder tilbage — den giver stadig beslutninger"
+    assert all(d["_selection_basis"] == "priority-fallback-stale-context" for d in foraeldet), (
+        "foraeldet kontekst skal meldes som fallback, ikke som relevans"
+    )
+    assert foraeldet[0]["decision_id"] == "dec_hoej", (
+        "en foraeldet kontekst maa ikke rangere — den beskriver ikke turen"
+    )
+
+    linje = bd.format_active_decisions_for_heartbeat(
+        max_items=5,
+        context_text="prompt-sektionen klippes",
+        context_age_seconds=seks_maaneder,
+    )
+    assert "foraeldet" in linje, f"prompten skal melde foraeldelsen: {linje[:160]}"
+    assert "262800 min" in linje, f"alderen skal staa i klartekst: {linje[:160]}"
+
+    frisk = bd.select_relevant_decisions(
+        max_items=5,
+        context_text="prompt-sektionen klippes",
+        context_age_seconds=30,
+    )
+    assert frisk and frisk[0]["decision_id"] == "dec_relevant", (
+        "en frisk kontekst skal stadig vurdere relevans"
+    )
+    assert frisk[0]["_selection_basis"] == "relevance"
+
+
+def test_ord_i_directive_kan_ikke_baere_beslutningen_alene(fake_beslutninger) -> None:
+    """Et ord i det lange `directive` er ikke en situationsbeskrivelse.
+
+    MAALT I DRIFT: `dec_8e5784fcde71` slap igennem med score 0,10 udelukkende
+    fordi «output» stod i dens directive — mens turens «output» var review af en
+    sudo-kommando. `trigger_cue` er beslutningens SITUATION; `directive` er dens
+    handling. Et ord der kun rammer handlingen maa ikke baere beslutningen alene.
+
+    Populationen er med vilje stor nok til at ordet faar IDF over
+    `_ENKELTORD_IDF` — saa den GAMLE regel faktisk ville have sluppet den igennem.
+    Uden det ville testen vaere groen af den forkerte grund.
+    """
+    from core.services import behavioral_decisions as bd
+
+    rows = [
+        _beslutning(
+            "dec_kun_directive",
+            "Undersoeg effekt af formlen i regnearket",
+            priority=99,
+            cue="Naar jeg regner paa tal",
+        )
+    ]
+    for i in range(60):
+        rows.append(_beslutning(f"dec_fyld_{i}", f"Fyldebeslutning {i} om emne{i}x", priority=10))
+
+    fake_beslutninger(rows)
+
+    valgte = bd.select_relevant_decisions(
+        max_items=5,
+        context_text="review af effekt foer mutation",
+    )
+
+    ids = [d["decision_id"] for d in valgte]
+    assert "dec_kun_directive" not in ids, (
+        f"et ord der kun staar i directive maa ikke baere beslutningen: {ids}"
+    )

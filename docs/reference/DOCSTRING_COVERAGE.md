@@ -930,7 +930,7 @@ Generated from source. 10467/19115 functions/methods documented (54%). The list 
 - `core/services/behavioral_decisions.py` :: `delete_decision` (L394)
 - `core/services/behavioral_decisions.py` :: `get_decision` (L404)
 - `core/services/behavioral_decisions.py` :: `get_decision_with_reviews` (L408)
-- `core/services/behavioral_decisions.py` :: `get_stats` (L807)
+- `core/services/behavioral_decisions.py` :: `get_stats` (L881)
 - `core/services/behavioral_decisions.py` :: `list_active_decisions` (L435)
 - `core/services/behavioral_decisions.py` :: `list_all_decisions` (L439)
 - `core/services/behavioral_decisions.py` :: `review_decision` (L222)

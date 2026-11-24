@@ -658,11 +658,28 @@ _RELEVANS_GULV = 0.06
 _ENKELTORD_IDF = 3.4
 
 
+#: Hvor gammel maa «turens kontekst» vaere foer den ikke laengere beskriver turen?
+#:
+#: HVORFOR (maalt i DRIFT 24/11-2026, 74 ticks): `tool_intent.last_action_at` stod
+#: paa 2026-05-15 — seks maaneder gammel — og kaldestedet sendte den alligevel ind
+#: som turens kontekst. Gaten scorede dermed korrekt paa en situation der ikke
+#: laengere fandtes, og valgte de SAMME fem beslutninger med de SAMME scorer i hver
+#: tick (10:20, 10:35, 10:54, 11:11 — identiske). Det er praecis den adfaerd gaten
+#: skulle afskaffe, blot med en anden aarsag end priority: ikke «de fem hoejeste
+#: prioriteter», men «de fem der passede til en kontekst fra maj».
+#:
+#: Graensen er to heartbeat-intervaller (tick hvert 15. minut), altsaa 1800 s: en
+#: kontekst fra denne eller sidste cyklus er stadig turen. Er den aeldre, er den
+#: historie — og gaten maa sige det i stedet for at gaette.
+_KONTEKST_MAX_ALDER_SEK = 1800.0
+
+
 def select_relevant_decisions(
     *,
     max_items: int = 5,
     context_text: str = "",
     context_tools: tuple[str, ...] = (),
+    context_age_seconds: float | None = None,
 ) -> list[dict[str, Any]]:
     """Vælg de mest relevante aktive beslutninger for den aktuelle tur.
 
@@ -677,6 +694,36 @@ def select_relevant_decisions(
     alle = _db_list(status="active", limit=None)
     if not alle:
         return []
+
+    # 24/11-2026 (maalt i DRIFT, 74 ticks): en kontekst der er aeldre end to
+    # tick-intervaller beskriver ikke turen — den er historie. Foer denne gren
+    # fandtes, scorede gaten korrekt paa `last_action_at = 2026-05-15` og valgte
+    # de samme fem beslutninger i hver tick. Den falder tilbage til priority, men
+    # MELDER det, saa en foraeldet kontekst ikke kan forveksles med en vurdering.
+    if context_age_seconds is not None and context_age_seconds > _KONTEKST_MAX_ALDER_SEK:
+        valgte = sorted(alle, key=lambda d: -int(d.get("priority") or 0))[:max_items]
+        for d in valgte:
+            d["_selection_basis"] = "priority-fallback-stale-context"
+            d["_relevans"] = {
+                "score": 0.0,
+                "raa_score": 0.0,
+                "alder_sekunder": int(context_age_seconds),
+                "hvorfor": (
+                    f"konteksten er {int(context_age_seconds)}s gammel "
+                    f"(> {int(_KONTEKST_MAX_ALDER_SEK)}s) — priority-raekkefoelge"
+                ),
+                "cue_hit": [],
+                "tool_hit": [],
+                "dir_hit": [],
+            }
+        _spor_gate(
+            "stale-context",
+            len(valgte),
+            len(alle),
+            f"[alder={int(context_age_seconds)}s] {context_text}",
+            valgte=valgte,
+        )
+        return valgte
 
     _kontekst_ord = _relevans_ord(context_text)
     har_kontekst = bool(_kontekst_ord) or bool(context_tools)
@@ -747,6 +794,15 @@ def select_relevant_decisions(
             eneste = next(iter(unikke), "")
             if not eneste or _idf(eneste, freq, antal) < _ENKELTORD_IDF:
                 continue
+            # 24/11-2026 (maalt i DRIFT): et enkelt ord i det lange `directive` er
+            # ikke en situationsbeskrivelse. `dec_8e5784fcde71` slap igennem med
+            # score 0,10 udelukkende fordi «output» stod i dens directive — mens
+            # turens «output» var review af en sudo-kommando. `trigger_cue` er
+            # beslutningens SITUATION; `directive` er dens handling. Et ord der kun
+            # rammer handlingen maa derfor ikke baere beslutningen alene — saa skal
+            # der mindst to ord til, uanset hvor sjaeldent det ene er.
+            if not (v["cue_hit"] or v["tool_hit"]):
+                continue
         valgte.append(d)
         if len(valgte) >= max_items:
             break
@@ -768,6 +824,7 @@ def format_active_decisions_for_heartbeat(
     max_items: int = 3,
     context_text: str = "",
     context_tools: tuple[str, ...] = (),
+    context_age_seconds: float | None = None,
 ) -> str:
     """Compact line of the most RELEVANT active commitments for this turn.
 
@@ -779,6 +836,7 @@ def format_active_decisions_for_heartbeat(
         max_items=max_items,
         context_text=context_text,
         context_tools=context_tools,
+        context_age_seconds=context_age_seconds,
     )
     if not decisions:
         return ""
@@ -800,7 +858,23 @@ def format_active_decisions_for_heartbeat(
     # som «valgt fordi den passede til turen».
     basis = str(decisions[0].get("_selection_basis") or "")
     if basis == "priority-fallback-no-context":
-        return f"[valgt paa priority — ingen tur-kontekst at vurdere relevans mod] " + " | ".join(parts)
+        return (
+            "[valgt paa priority — ingen tur-kontekst at vurdere relevans mod] "
+            + " | ".join(parts)
+        )
+    # 24/11-2026: en FORÆLDET kontekst er ikke det samme som ingen kontekst.
+    # Maalt i drift: `last_action_at` var seks maaneder gammel, og uden denne
+    # gren saa valget ud som en relevansvurdering af den aktuelle tur.
+    if basis == "priority-fallback-stale-context":
+        try:
+            sek = int((decisions[0].get("_relevans") or {}).get("alder_sekunder") or 0)
+        except (TypeError, ValueError):
+            sek = 0
+        alder = f" ({sek // 60} min gammel)" if sek else ""
+        return (
+            f"[valgt paa priority — tur-konteksten var foraeldet{alder}, "
+            "saa den blev ikke brugt som relevansgrundlag] " + " | ".join(parts)
+        )
     return " | ".join(parts)
 
 

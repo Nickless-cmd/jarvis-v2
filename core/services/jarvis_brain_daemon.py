@@ -198,7 +198,23 @@ def _call_local_ollama(prompt: str) -> dict | None:
                 if resp.status_code != 200:
                     logger.warning("ollama HTTP %s (forsøg %d)", resp.status_code, attempt + 1)
                     return None
-                text = str((resp.json().get("message") or {}).get("content") or "")
+                data = resp.json()
+                text = str((data.get("message") or {}).get("content") or "")
+                from core.services.ollama_usage import bogfoer_ollama_kald
+                from core.services.visible_model_ollama import _cache_split
+
+                input_tokens = int(data.get("prompt_eval_count") or 0)
+                output_tokens = int(data.get("eval_count") or 0)
+                cache_hit, cache_miss = _cache_split(data, input_tokens)
+                bogfoer_ollama_kald(
+                    provider="ollama",
+                    model=model,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    cache_hit_tokens=cache_hit,
+                    cache_miss_tokens=cache_miss,
+                    lane="brain_daemon",
+                )
                 return _parse_json_loose(text)
             except httpx.TimeoutException as exc:
                 last_exc = exc

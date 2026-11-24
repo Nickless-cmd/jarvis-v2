@@ -397,6 +397,9 @@ class OllamaFollowupAdapter:
         reasoning_parts: list[str] = []  # ollama `message.thinking` for thinking-models
         collected_tool_calls: list[dict] = []
         last_exc: BaseException | None = None
+        prompt_eval_count = 0
+        eval_count = 0
+        prompt_eval_cached_count = 0
 
         attempts = 3
         for attempt in range(attempts):
@@ -500,6 +503,11 @@ class OllamaFollowupAdapter:
                         if tc:
                             collected_tool_calls.extend(tc)
                         if event.get("done"):
+                            prompt_eval_count = int(event.get("prompt_eval_count") or 0)
+                            eval_count = int(event.get("eval_count") or 0)
+                            prompt_eval_cached_count = int(
+                                event.get("prompt_eval_cached_count") or 0
+                            )
                             saw_done = True
                             break
                 # Make sure watchdog exits cleanly even on early-break
@@ -625,6 +633,22 @@ class OllamaFollowupAdapter:
             )
             return
 
+        from core.services.ollama_usage import bogfoer_ollama_kald
+        from core.services.visible_model_ollama import _cache_split
+
+        cache_hit, cache_miss = _cache_split(
+            {"prompt_eval_cached_count": prompt_eval_cached_count},
+            prompt_eval_count,
+        )
+        bogfoer_ollama_kald(
+            provider="ollama",
+            model=model,
+            input_tokens=prompt_eval_count,
+            output_tokens=eval_count,
+            cache_hit_tokens=cache_hit,
+            cache_miss_tokens=cache_miss,
+            lane="agentic_round",
+        )
         if collected_tool_calls:
             yield FollowupToolCalls(tool_calls=collected_tool_calls)
         yield FollowupDone(

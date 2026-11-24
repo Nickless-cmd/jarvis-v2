@@ -36,3 +36,42 @@ def test_load_visible_relevance_member_enc(isolated_runtime, tmp_path, monkeypat
     workspace_crypto.write_text_for_path(ws / "VISIBLE_RELEVANCE.md", "mikkels regler")
     assert (ws / "VISIBLE_RELEVANCE.md.enc").exists()
     assert load_visible_relevance_prompt(workspace_dir=ws) == "mikkels regler"
+def test_ollama_relevance_bogfoerer_faktiske_tokens(monkeypatch):
+    import json
+    from core.services import prompt_relevance_backend as mod
+
+    rows: list[dict] = []
+    monkeypatch.setattr(
+        mod,
+        "_resolve_relevance_target",
+        lambda: {
+            "provider": "ollama",
+            "model": "glm-5.3-flash:cloud",
+            "base_url": "https://ollama.test",
+        },
+    )
+    monkeypatch.setattr(
+        "core.costing.ledger.record_cost", lambda **kw: rows.append(kw)
+    )
+
+    class _Response:
+        def __enter__(self): return self
+        def __exit__(self, *_a): return False
+        def read(self):
+            return json.dumps({
+                "response": '{"memory_relevant":true}',
+                "prompt_eval_count": 650,
+                "prompt_eval_cached_count": 400,
+                "eval_count": 22,
+            }).encode()
+
+    monkeypatch.setattr(mod.urllib_request, "urlopen", lambda *_a, **_kw: _Response())
+
+    result = mod._call_local_ollama_relevance(prompt="prompt")
+    assert result.success is True
+    assert len(rows) == 1
+    assert rows[0]["input_tokens"] == 650
+    assert rows[0]["output_tokens"] == 22
+    assert rows[0]["cache_hit_tokens"] == 400
+    assert rows[0]["cache_miss_tokens"] == 250
+    assert rows[0]["cost_usd"] > 0

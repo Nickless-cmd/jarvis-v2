@@ -950,6 +950,21 @@ def _call_llm(target: dict, system_prompt: str, user_prompt: str) -> str:
         req = urllib_request.Request(url, data=payload, headers={"Content-Type": "application/json"})
         with urllib_request.urlopen(req, timeout=30) as resp:
             result = json.loads(resp.read())
+        from core.services.ollama_usage import bogfoer_ollama_kald
+        from core.services.visible_model_ollama import _cache_split
+
+        input_tokens = int(result.get("prompt_eval_count") or 0)
+        output_tokens = int(result.get("eval_count") or 0)
+        cache_hit, cache_miss = _cache_split(result, input_tokens)
+        bogfoer_ollama_kald(
+            provider=provider,
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cache_hit_tokens=cache_hit,
+            cache_miss_tokens=cache_miss,
+            lane="personality_vector",
+        )
         besked = result.get("message", {}) or {}
         indhold = str(besked.get("content", "") or "")
         if not indhold:

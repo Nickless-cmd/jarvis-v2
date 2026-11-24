@@ -228,6 +228,48 @@ def test_taenkningen_er_slaaet_FRA_og_budgettet_raekker():
     )
 
 
+def test_ollama_personligheds_kald_bogfoerer_faktiske_tokens(monkeypatch):
+    import json
+    from core.services import personality_vector as mod
+
+    rows: list[dict] = []
+    monkeypatch.setattr(
+        "core.costing.ledger.record_cost", lambda **kw: rows.append(kw)
+    )
+
+    class _Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+        def read(self):
+            return json.dumps(
+                {
+                    "message": {"content": '{"current_bearing":"rolig"}'},
+                    "prompt_eval_count": 1200,
+                    "prompt_eval_cached_count": 900,
+                    "eval_count": 30,
+                }
+            ).encode()
+
+    monkeypatch.setattr(mod.urllib_request, "urlopen", lambda *_a, **_kw: _Response())
+    target = {
+        "provider": "ollama",
+        "model": "deepseek-v4.1-flash:cloud",
+        "base_url": "https://ollama.test",
+    }
+
+    assert mod._call_llm(target, "system", "user") == '{"current_bearing":"rolig"}'
+    assert len(rows) == 1
+    assert rows[0]["input_tokens"] == 1200
+    assert rows[0]["output_tokens"] == 30
+    assert rows[0]["cache_hit_tokens"] == 900
+    assert rows[0]["cache_miss_tokens"] == 300
+    assert rows[0]["cost_usd"] > 0
+
+
 def test_et_tomt_svar_logges_frem_for_at_tie(monkeypatch, caplog):
     """En tom `content` er ikke «intet at sige» — den er et afkortet svar.
 

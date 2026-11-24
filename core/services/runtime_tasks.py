@@ -28,6 +28,7 @@ def create_task(
     session_id: str = "",
     origin_ref: str = "",
     owner: str = "",
+    work_fingerprint: str = "",
 ) -> dict[str, object]:
     now = datetime.now(UTC).isoformat()
     requested_priority = (
@@ -54,6 +55,7 @@ def create_task(
         session_id=str(session_id or "").strip(),
         origin_ref=str(origin_ref or "").strip(),
         owner=str(owner or "").strip(),
+        work_fingerprint=str(work_fingerprint or "").strip(),
         created_at=now,
         updated_at=now,
     )

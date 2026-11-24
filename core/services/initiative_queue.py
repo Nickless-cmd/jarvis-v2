@@ -106,8 +106,14 @@ def _er_ikke_et_initiativ(focus: str) -> str:
     # beskrivelse af en tilstand bliver til «noget jeg bør gøre».
     # En ægte indskydelse starter med et verbum (søg, afklar, mål, tjek).
     lav_start = tekst.lower()
+    # Men sætningsstarten er kun et INDICIE, ikke en regel: en refleksion der
+    # peger på noget konkret («Jeg vil tjekke initiative_queue.py») er en
+    # handlingshensigt. Findes der anker + handling, er det ikke en tilstand.
     if lav_start.startswith(("jeg ", "der er ", "der findes ")):
-        return "tilstandsbeskrivelse"
+        from core.services.work_coordination import has_independent_work_signal
+
+        if not has_independent_work_signal(tekst):
+            return "tilstandsbeskrivelse"
 
     # Et fragment der starter med en konjunktion er et stykke ræsonnement der er
     # revet ud af sin sammenhæng.
@@ -191,6 +197,12 @@ def _gentaget_paastand(focus: str, *, source: str) -> str:
             ts = _parse_iso(str(post.get("detected_at") or ""))
             if not ts or ts < graense:
                 continue
+            # Samme emne er ikke samme arbejde: to initiativer med hver sin
+            # konkrete handling på samme anker bevares begge (koordinering).
+            from core.services.work_coordination import er_forskellig_handling
+
+            if er_forskellig_handling(focus, str(post.get("focus") or "")):
+                continue
             faelles = _faelles_emneord(nye, _kerneord(str(post.get("focus") or "")))
             if len(faelles) >= _GENTAGELSE_MIN_FAELLES:
                 return f"gentaget-paastand ({', '.join(sorted(faelles)[:3])})"
@@ -249,6 +261,7 @@ def push_initiative(
     source_id: str = "",
     priority: str = "medium",
     session_id: str = "",
+    user_id: str | None = None,
 ) -> str:
     """Push a new initiative to the queue. Returns the initiative_id.
 
@@ -260,6 +273,14 @@ def push_initiative(
     """
     now = datetime.now(UTC)
     initiative_id = f"init-{uuid4().hex[:10]}"
+    if user_id is None:
+        try:
+            from core.identity.workspace_context import current_user_id
+
+            user_id = current_user_id() or None
+        except Exception:
+            user_id = None
+    _bruger = user_id
     normalized_focus = focus[:200].strip()
     if not normalized_focus:
         normalized_focus = "Follow up on unspecified initiative"
@@ -295,7 +316,31 @@ def push_initiative(
     # midt i eller lige færdig med en synlig samtale, er der ingen næste
     # handling — kun en gentagelse af arbejde der allerede er betalt for.
     if source == "inner-voice":
-        _aktiv = _aktiv_synlig_tur()
+        # KOORDINERING FØR UNDERTRYKKELSE: dækkes handlingen allerede af en
+        # opgave, en agent eller en synlig samtale (konkrete relationer, samme
+        # bruger) → koordinér med den. Ellers er aktivitet ikke konflikt.
+        from core.services.work_coordination import (
+            find_covering_work, has_independent_work_signal, record_decision,
+        )
+
+        _dæk = find_covering_work(normalized_focus, user_id=_bruger)
+        if _dæk:
+            _aarsag = (
+                f"dækket-af-eksisterende-arbejde ({_dæk['kind']} {_dæk['ref']}"
+                f" {_dæk['state']}: {_dæk['why']})"
+            )
+            record_decision(decision="coordinated", reason=_aarsag,
+                            subject=normalized_focus, covering=_dæk, user_id=_bruger)
+            try:
+                event_bus.publish("heartbeat.initiative_rejected", {
+                    "focus": normalized_focus[:120], "reason": _aarsag, "source": source,
+                })
+            except Exception:  # observabilitet, ikke kontrol — koordineringen gælder uanset (og record_decision har logget den)
+                pass
+            return ""
+        # Tidsporten er en NØDBREMSE for initiativer vi ikke kan dømme (intet
+        # anker/ingen handling). Et konkret, uafhængigt initiativ passerer.
+        _aktiv = "" if has_independent_work_signal(normalized_focus) else _aktiv_synlig_tur()
         if _aktiv:
             try:
                 event_bus.publish("heartbeat.initiative_rejected", {
@@ -337,6 +382,12 @@ def push_initiative(
             normalized_focus,
             initiative_type="initiative",
         )
+        if not existing:
+            from core.services.work_coordination import find_pending_initiative_same_work
+
+            _samme = find_pending_initiative_same_work(normalized_focus, user_id=_bruger)
+            if _samme:
+                existing = runtime_db.get_runtime_initiative(_samme)
         if existing:
             existing_id = str(existing.get("initiative_id") or "")
             existing_priority = str(existing.get("priority") or "medium")
@@ -369,6 +420,8 @@ def push_initiative(
             next_attempt_at=now.isoformat(),
             updated_at=now.isoformat(),
             session_id=bind_session(session_id),
+            scheduled_for_user_id=_bruger or None,
+            initiated_by=f"user:{_bruger}" if _bruger else "jarvis-self",
         )
         _trim_pending(now)
         queue_size = len(
@@ -533,6 +586,33 @@ def mark_acted(
             },
         )
         return True
+
+
+_CLAIM_LEASE_MINUTES = 15
+
+
+def claim_initiative(initiative_id: str, *, holder: str) -> bool:
+    """Atomisk accept: kun ÉN worker vinder et ventende, forfaldent initiativ.
+
+    Compare-and-set i selve databasen (ikke `_QUEUE_LOCK`, som kun er en
+    tråd-lås og ikke holder mellem processer): `next_attempt_at` rykkes frem som
+    lease, og kun rækken der faktisk ændres (rowcount == 1) ejer det. Dør
+    holderen, udløber leasen af sig selv og initiativet kan overtages — ingen
+    manuel oprydning, ingen emne-lås.
+    """
+    from core.runtime.db import connect
+
+    now = datetime.now(UTC)
+    lease = (now + timedelta(minutes=_CLAIM_LEASE_MINUTES)).isoformat()
+    with connect() as conn:
+        cur = conn.execute(
+            "UPDATE runtime_initiatives SET next_attempt_at=?, blocked_reason=?, updated_at=?"
+            " WHERE initiative_id=? AND status='pending'"
+            " AND (next_attempt_at='' OR next_attempt_at<=?)",
+            (lease, f"claimed-by:{holder}"[:120], now.isoformat(), initiative_id, now.isoformat()),
+        )
+        conn.commit()
+        return cur.rowcount == 1
 
 
 def decline_initiative(initiative_id: str, *, reason: str) -> bool:

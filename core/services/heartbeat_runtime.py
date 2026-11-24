@@ -5262,23 +5262,44 @@ def _execute_heartbeat_internal_action(
                 mark_attempted,
             )
 
+            from core.services.initiative_queue import (
+                claim_initiative,
+                decline_initiative,
+            )
+            from core.services.work_coordination import claim_work
+
             pending = get_pending_initiatives()
-            if pending:
-                initiative = pending[0]
+            initiative = None
+            task = None
+            for _kandidat in pending:
+                _kid = str(_kandidat.get("initiative_id") or "")
+                # Atomisk accept: tabte vi løbet, ejer en anden worker den.
+                if _kid and not claim_initiative(_kid, holder=f"heartbeat:{tick_id}"):
+                    continue
+                _fokus = str(_kandidat.get("focus") or "")[:200]
+                _res = claim_work(
+                    tekst=_fokus, owner="heartbeat-runtime", kind="initiative-followup",
+                    origin="heartbeat:initiative", origin_ref=f"{tick_id}|{_kid}",
+                    priority=str(_kandidat.get("priority") or "medium").strip().lower() or "medium",
+                )
+                if not _res["claimed"]:
+                    _dæk = _res["covering"]
+                    decline_initiative(
+                        _kid,
+                        reason=(
+                            f"koordineret: {_dæk.get('why')} "
+                            f"({_dæk.get('kind')} {_dæk.get('ref')} {_dæk.get('state')})"
+                        ),
+                    )
+                    continue
+                initiative, task = _kandidat, _res["task"]
+                break
+            if initiative is not None and task is not None:
                 initiative_id = str(initiative.get("initiative_id") or "")
                 focus = str(initiative.get("focus") or "")[:200]
                 priority = (
                     str(initiative.get("priority") or "medium").strip().lower()
                     or "medium"
-                )
-                task = runtime_tasks.create_task(
-                    kind="initiative-followup",
-                    goal=focus,
-                    origin="heartbeat:initiative",
-                    scope=focus,
-                    priority=priority,
-                    origin_ref=tick_id,
-                    owner="heartbeat-runtime",
                 )
                 flow = runtime_flows.create_flow(
                     task_id=str(task.get("task_id") or ""),
@@ -5347,7 +5368,7 @@ def _execute_heartbeat_internal_action(
                             )
                         runtime_tasks.update_task(
                             str(task.get("task_id") or ""),
-                            status="completed" if ok else "blocked",
+                            status="succeeded" if ok else "blocked",
                             result_summary=(
                                 f"visible_run={visible_run_id or '?'}"
                                 + (f" error={str(error)[:120]}" if error else "")

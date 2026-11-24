@@ -197,7 +197,9 @@ def test_act_on_initiative_materializes_runtime_work(isolated_runtime, monkeypat
     assert task is not None
     assert flow is not None
     assert task["kind"] == "initiative-followup"
-    assert task["origin_ref"] == "heartbeat-tick:test"
+    # origin_ref bærer nu BÅDE tick og initiativ — ellers er relationen
+    # initiativ → opgave tabt, og koordinering kan ikke se hvad opgaven er til.
+    assert task["origin_ref"] == f"heartbeat-tick:test|{initiative_id}"
 
     # ÆNDRET 1/11-2026: testen krævede at initiativet lå i `recent_acted` straks
     # efter materialiseringen — altså at et FORSØG blev bogført som en HANDLING.

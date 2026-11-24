@@ -50,6 +50,27 @@ def _tilfoej_lease_kolonne(conn: sqlite3.Connection) -> None:
         )
 
 
+def _tilfoej_arbejdsfingeraftryk(conn: sqlite3.Connection) -> None:
+    """Arbejdsidentitet + unik-indeks: to workers kan ikke begge eje samme handling.
+
+    Indekset dækker kun `queued`/`running` — en afsluttet eller blokeret række
+    må aldrig låse fremtidigt arbejde. Tom fingeraftryk = ingen identitet, så
+    den vilkårlige opgave er upåvirket.
+    """
+    kolonner = {r[1] for r in conn.execute("PRAGMA table_info(runtime_tasks)")}
+    if "work_fingerprint" not in kolonner:
+        conn.execute(
+            "ALTER TABLE runtime_tasks ADD COLUMN work_fingerprint TEXT NOT NULL DEFAULT ''"
+        )
+    conn.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_runtime_tasks_work_active
+        ON runtime_tasks(work_fingerprint)
+        WHERE work_fingerprint != '' AND status IN ('queued', 'running')
+        """
+    )
+
+
 def lease_expiry_from(now_iso: str, seconds: int = RUNNING_LEASE_SECONDS) -> str:
     from datetime import datetime, timedelta
 
@@ -84,6 +105,7 @@ def ensure_runtime_tasks_tables(conn: sqlite3.Connection) -> None:
         """
     )
     _tilfoej_lease_kolonne(conn)
+    _tilfoej_arbejdsfingeraftryk(conn)
     conn.execute(
         """
         CREATE INDEX IF NOT EXISTS idx_runtime_tasks_status_priority
@@ -138,6 +160,7 @@ def create_runtime_task(
     blocked_reason: str = "",
     result_summary: str = "",
     artifact_ref: str = "",
+    work_fingerprint: str = "",
     created_at: str,
     updated_at: str,
 ) -> dict[str, object]:
@@ -145,6 +168,7 @@ def create_runtime_task(
         conn.execute(
             """
             INSERT INTO runtime_tasks (
+                work_fingerprint,
                 task_id,
                 kind,
                 origin,
@@ -163,9 +187,10 @@ def create_runtime_task(
                 created_at,
                 updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
+                work_fingerprint,
                 task_id,
                 kind,
                 origin,

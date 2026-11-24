@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10494/19149 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10509/19173 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,8 +25,8 @@ Generated from source. 10494/19149 functions/methods documented (54%). The list 
 | `core.identity` | 84 | 175 | 48% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 924 | 1641 | 56% |
-| `core.services` | 7044 | 12999 | 54% |
+| `core.runtime` | 925 | 1642 | 56% |
+| `core.services` | 7058 | 13022 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -641,12 +641,12 @@ Generated from source. 10494/19149 functions/methods documented (54%). The list 
 - `core/runtime/db_runtime_signals.py` :: `recent_runtime_learning_signals` (L221)
 - `core/runtime/db_runtime_signals.py` :: `record_runtime_action_outcome` (L246)
 - `core/runtime/db_runtime_signals.py` :: `record_runtime_learning_signal` (L322)
-- `core/runtime/db_runtime_tasks.py` :: `create_runtime_task` (L124)
-- `core/runtime/db_runtime_tasks.py` :: `ensure_runtime_tasks_tables` (L59)
-- `core/runtime/db_runtime_tasks.py` :: `get_runtime_task` (L195)
-- `core/runtime/db_runtime_tasks.py` :: `lease_expiry_from` (L53)
-- `core/runtime/db_runtime_tasks.py` :: `list_runtime_tasks` (L229)
-- `core/runtime/db_runtime_tasks.py` :: `update_runtime_task` (L276)
+- `core/runtime/db_runtime_tasks.py` :: `create_runtime_task` (L146)
+- `core/runtime/db_runtime_tasks.py` :: `ensure_runtime_tasks_tables` (L80)
+- `core/runtime/db_runtime_tasks.py` :: `get_runtime_task` (L220)
+- `core/runtime/db_runtime_tasks.py` :: `lease_expiry_from` (L74)
+- `core/runtime/db_runtime_tasks.py` :: `list_runtime_tasks` (L254)
+- `core/runtime/db_runtime_tasks.py` :: `update_runtime_task` (L301)
 - `core/runtime/db_scheduled_tasks.py` :: `create_scheduled_task` (L79)
 - `core/runtime/db_scheduled_tasks.py` :: `get_due_scheduled_tasks` (L111)
 - `core/runtime/db_scheduled_tasks.py` :: `get_scheduled_task` (L102)
@@ -1381,8 +1381,8 @@ Generated from source. 10494/19149 functions/methods documented (54%). The list 
 - `core/services/inbox_importance.py` :: `normalize_importance` (L11)
 - `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L380)
 - `core/services/infra_weather_daemon.py` :: `get_weather` (L358)
-- `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L865)
-- `core/services/initiative_queue.py` :: `list_active_long_term_intentions` (L850)
+- `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L945)
+- `core/services/initiative_queue.py` :: `list_active_long_term_intentions` (L930)
 - `core/services/inner_dialectic_engine.py` :: `build_inner_dialectic_prompt_section` (L42)
 - `core/services/inner_dialectic_engine.py` :: `build_inner_dialectic_surface` (L35)
 - `core/services/inner_dialectic_engine.py` :: `run_inner_dialectic` (L13)
@@ -2023,9 +2023,9 @@ Generated from source. 10494/19149 functions/methods documented (54%). The list 
 - `core/services/runtime_surface_cache.py` :: `peek_cached_runtime_surface` (L44)
 - `core/services/runtime_surface_cache.py` :: `runtime_surface_cache` (L21)
 - `core/services/runtime_tasks.py` :: `create_task` (L20)
-- `core/services/runtime_tasks.py` :: `get_task` (L81)
-- `core/services/runtime_tasks.py` :: `list_tasks` (L62)
-- `core/services/runtime_tasks.py` :: `update_task` (L85)
+- `core/services/runtime_tasks.py` :: `get_task` (L83)
+- `core/services/runtime_tasks.py` :: `list_tasks` (L64)
+- `core/services/runtime_tasks.py` :: `update_task` (L87)
 - `core/services/rupture_repair.py` :: `list_repairs` (L540)
 - `core/services/rupture_repair.py` :: `list_ruptures` (L517)
 - `core/services/rupture_repair.py` :: `summarize_ruptures` (L570)

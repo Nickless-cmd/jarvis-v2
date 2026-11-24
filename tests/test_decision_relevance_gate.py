@@ -551,3 +551,76 @@ def test_sporet_logger_hele_ord_saettet(fake_beslutninger, tmp_path, monkeypatch
     assert any(o.startswith("u") for o in post["ord"]), (
         "ord fra slutningen af alfabetet mangler — spoeret er klippet alfabetisk"
     )
+
+
+def test_straffen_for_laengde_er_sublineaer() -> None:
+    """Fire gange saa mange ord maa koste 2x, ikke 4x.
+
+    Maalt 24/11-2026 i DRIFT: med `score / maal` tabte en praecis beslutning til
+    en kort, udelukkende fordi den var laengere at beskrive — `bekraeftet, file,
+    main` (maal 29) slog en 4-ords match (maal 34) med 1,239 mod 0,642, selv om
+    den ramte faerre ord. sqrt(maal) goer straffen sublineaer.
+
+    Testen maaler FORHOLDET mellem to beslutninger med samme raa score, saa den
+    ikke laaser sig til en bestemt population. Under lineaer normalisering er
+    forholdet 4,0; under sqrt er det 2,0.
+    """
+    from core.services import behavioral_decisions as bd
+
+    ctx = "relevans signal"
+    kort = bd.score_decision_relevance(
+        {"directive": "", "trigger_cue": "relevans signal"}, context_text=ctx
+    )
+    lang = bd.score_decision_relevance(
+        {
+            "directive": "chokolade dokument journal kategori periode omfang",
+            "trigger_cue": "relevans signal",
+        },
+        context_text=ctx,
+    )
+
+    assert kort["raa_score"] == lang["raa_score"], (
+        "forudsaetningen er at de to har SAMME raa score — ellers maaler "
+        f"testen ikke normaliseringen (fik {kort['raa_score']} og {lang['raa_score']})"
+    )
+    forhold = kort["score"] / lang["score"]
+    assert 1.9 <= forhold <= 2.1, (
+        f"forventet 2,0 (sqrt-normalisering), fik {forhold:.2f} — "
+        "4,0 betyder at straffen er lineaer igen, og praecise beslutninger taber"
+    )
+
+
+def test_gulvet_afviser_en_svag_match_paa_den_nye_skala(fake_beslutninger) -> None:
+    """Den negative gren skal stadig virke efter skalaen flyttede.
+
+    24/11-2026: normaliseringen blev sqrt(maal), saa scorerne gik fra 0,06-1,7
+    til 0,3-9,3. Gulvet blev maalt frem til 0,32 for at afvise praecis det samme
+    saet — men en flyttet skala kan goere gulvet tandloest uden at nogen test
+    markerer det. Derfor maales der paa den nye skala, med en sag der rammer TO
+    ord og derfor ville slippe gennem to-ord-reglen.
+    """
+    from core.services import behavioral_decisions as bd
+
+    fyld = " ".join(f"fyldord{i}" for i in range(38))
+    svag_directive = f"relevans signal {fyld}"
+    fake_beslutninger([
+        _beslutning("dec_svag", svag_directive),
+        _beslutning("dec_staerk", "noter hvad der blev maalt", cue="relevans signal"),
+    ])
+
+    ctx = "relevans signal"
+    svag = bd.score_decision_relevance(
+        {"directive": svag_directive, "trigger_cue": ""}, context_text=ctx
+    )
+    assert len(svag["dir_hit"]) == 2, (
+        "sagen skal ramme to ord — ellers afviser to-ord-reglen den, og testen "
+        f"maaler ikke gulvet (fik {svag['dir_hit']})"
+    )
+    assert svag["score"] < bd._RELEVANS_GULV, (
+        f"den svage sag skal ligge UNDER gulvet, var {svag['score']}"
+    )
+
+    valgte = bd.select_relevant_decisions(max_items=5, context_text=ctx)
+    assert [d["decision_id"] for d in valgte] == ["dec_staerk"], (
+        "gulvet skal afvise den svage sag og lade den staerke passere"
+    )

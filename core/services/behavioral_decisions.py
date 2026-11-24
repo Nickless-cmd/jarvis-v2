@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -626,8 +627,22 @@ def score_decision_relevance(
     # Normalér mod beslutningens stoerrelse, saa en lang beslutning ikke vinder
     # blot fordi den har flere ord at ramme med. Uden dette vandt de laengste
     # direktiver systematisk — samme fejl som priority-loftet, bare med tekst.
+    #
+    # 24/11-2026 (maalt i DRIFT, 141 beslutninger x heartbeat-konteksten): den
+    # foerste version dividerede med `maal` og straffede dermed PRAECISION.
+    # `bekraeftet, file, main` (3 ramte ord, maal 29) scorede 1,239, mens en
+    # 4-ords match paa `efter, foelg, hele, signal` (maal 34) scorede 0,642 —
+    # den grundige beslutning tabte til den korte, udelukkende fordi den var
+    # laengere at beskrive. Delingen er derfor sqrt(maal): dobbelt saa mange
+    # ord straffes 1,41x i stedet for 2x.
+    #
+    # Maalt paa samme kontekst: raekkefoelgen bliver 5-ord, 4-ord, saa de
+    # svage, og springet ved snittet (nr. 5 -> nr. 6) gaar fra 5,0 % til 12,8 %.
+    # De fem valgte er de SAMME i dag — det er reglen ved fremtidige
+    # populationer der aendrer sig, ikke dagens valg. Det skal siges, fordi
+    # «beviseligt bedre» ellers let laeses som «giver et andet svar nu».
     maal = max(1, len(cue_ord) + len(dir_ord))
-    normaliseret = score / maal
+    normaliseret = score / math.sqrt(maal)
 
     if cue_hit:
         hvorfor = f"trigger matcher turen: {', '.join(sorted(cue_hit)[:4])}"
@@ -655,11 +670,17 @@ def score_decision_relevance(
 #: HVOR MEGET BETYDER DEN? Maalt 23/11-2026 over 138 beslutninger x 12 ture
 #: (1.656 vurderinger): gulvet stoppede PRAECIS ÉN vurdering som to-ord-reglen
 #: nedenfor ellers ville slippe igennem, og to-ord-reglen afviste 1.642. Gulvet er
-#: altsaa den sekundaere vagt, ikke den baerende — den bliver staaende, fordi den
-#: ene sag er en ægte falsk positiv, men kommentaren maa ikke paastaa mere end
-#: maalingen. Ægte match ligger maalt paa 0,09-0,89, ikke i det smalle baand en
-#: tidligere version af denne kommentar angav.
-_RELEVANS_GULV = 0.06
+#: altsaa den sekundaere vagt, ikke den baerende.
+#:
+#: 24/11-2026: normaliseringen blev sqrt(maal), saa SKALAEN flyttede sig — den
+#: gamle graense 0,06 paa len-skalaen ville naesten intet afvise paa den nye
+#: (scorerne ligger nu 0,3-9,3). Graensen er derfor maalt frem igen, ikke
+#: gaettet: paa den levende heartbeat-kontekst (141 beslutninger, 842 tegn)
+#: accepterer 0,32 praecis de SAMME 74 som 0,06 gjorde paa len-skalaen, mens
+#: 0,33 fravælger to (0,31 giver ogsaa 74, men uden margin ned til den sag
+#: gulvet findes for). Den afviste sag er `uden` alene — ét ord, som to-ord-
+#: reglen ogsaa fanger; gulvet er stadig kun den sekundaere vagt.
+_RELEVANS_GULV = 0.32
 
 #: Et ENKELT ord maa kun baere en beslutning alene hvis det er saa sjaeldent at
 #: det identificerer sagen. Maalt 23/11-2026 over 138 beslutninger: et ord i 1

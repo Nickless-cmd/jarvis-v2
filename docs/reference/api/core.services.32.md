@@ -470,6 +470,34 @@ _Pak model-skrevet HTML i et dokument der ikke kan naa noget._
 | function | `run_witness_daemon` | `(*, trigger=…, last_visible_at=…)` | Bounded inner witness daemon — produces witness signals without visible turn. | [src](../../../core/services/witness_signal_tracking.py#L884) |
 | function | `get_witness_daemon_state` | `()` | Return current witness daemon state for MC observability. | [src](../../../core/services/witness_signal_tracking.py#L1000) |
 
+## `core/services/work_coordination.py`
+_Arbejdskoordinering: «er det jeg overvejer allerede dækket af eksisterende arbejde?»_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_normaliser` | `(tekst)` | — | [src](../../../core/services/work_coordination.py#L67) |
+| function | `extract_anchors` | `(tekst)` | Konkrete arbejds-ankre i en tekst: id'er, filer, kode-identifikatorer. | [src](../../../core/services/work_coordination.py#L76) |
+| function | `action_class` | `(tekst)` | Handlingsklasse ud fra FØRSTE genkendte verbum-stamme. '' = ukendt. | [src](../../../core/services/work_coordination.py#L96) |
+| function | `_scope` | `(user_id)` | — | [src](../../../core/services/work_coordination.py#L108) |
+| function | `work_fingerprint` | `(tekst, *, user_id=…)` | Stabilt fingeraftryk. '' når der ikke findes både anker og handling. | [src](../../../core/services/work_coordination.py#L112) |
+| function | `_arbejds_ankre` | `(tekst)` | — | [src](../../../core/services/work_coordination.py#L122) |
+| function | `_samme_arbejde` | `(a_tekst, b_tekst)` | Samme handlingsklasse OG ankrene overlapper væsentligt (≥ halvdelen af det mindste). | [src](../../../core/services/work_coordination.py#L128) |
+| function | `_nu` | `()` | — | [src](../../../core/services/work_coordination.py#L138) |
+| function | `_ts` | `(v)` | — | [src](../../../core/services/work_coordination.py#L142) |
+| function | `_ref` | `(art, ref, tilstand, **ekstra)` | — | [src](../../../core/services/work_coordination.py#L150) |
+| function | `_eksplicit_relation` | `(tekst, user_id)` | Teksten NÆVNER en task/assignment — relationen er givet, ikke gættet. | [src](../../../core/services/work_coordination.py#L154) |
+| function | `_bruger_matcher` | `(scope, raekke_bruger)` | Privat arbejde krydser aldrig brugere. System ser kun referencer, ikke indhold. | [src](../../../core/services/work_coordination.py#L186) |
+| function | `find_covering_work` | `(tekst, *, user_id=…, new_evidence=…)` | Er denne handling allerede dækket? Returnér en reference + årsag, ellers None. | [src](../../../core/services/work_coordination.py#L193) |
+| function | `_kilde_opgaver` | `(conn, tekst, fp, scope, nu, new_evidence)` | — | [src](../../../core/services/work_coordination.py#L225) |
+| function | `_kilde_agenter` | `(conn, tekst, fp, scope, nu, new_evidence)` | — | [src](../../../core/services/work_coordination.py#L250) |
+| function | `_kilde_synlige` | `(conn, tekst, fp, scope, nu, new_evidence)` | — | [src](../../../core/services/work_coordination.py#L264) |
+| function | `_delt_anker_og_handling` | `(tekst, *dele)` | En samtale blander ofte flere handlinger; her kræves kun delt ANKER + samme klasse | [src](../../../core/services/work_coordination.py#L283) |
+| function | `has_independent_work_signal` | `(tekst)` | Har teksten et konkret anker + en handling? Så kan den dømmes mod arbejdsrelationer | [src](../../../core/services/work_coordination.py#L296) |
+| function | `record_decision` | `(*, decision, reason, subject, covering=…, user_id=…)` | Ingen tavse afvisninger: årsagen går i eventbussen (Mission Control læser derfra). | [src](../../../core/services/work_coordination.py#L302) |
+| function | `claim_work` | `(*, tekst, user_id=…, owner, kind=…, origin=…, origin_ref=…, priority=…, new_evidence=…)` | Atomisk reservation. ``{"claimed": True, "task": …}`` eller ``{"claimed": False, "covering": …}``. | [src](../../../core/services/work_coordination.py#L318) |
+| function | `find_pending_initiative_same_work` | `(tekst, *, user_id=…)` | Id på et ventende initiativ med SAMME fingeraftryk og bruger. '' = ingen. | [src](../../../core/services/work_coordination.py#L355) |
+| function | `er_forskellig_handling` | `(ny, gammel, *, user_id=…)` | Begge har identitet og de er FORSKELLIGE → deler kun emne, ikke arbejde. | [src](../../../core/services/work_coordination.py#L377) |
+
 ## `core/services/workspace_crypto.py`
 _Krypteret workspace-fil-I/O (spec §16, Lag 3)._
 

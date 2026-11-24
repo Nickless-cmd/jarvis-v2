@@ -5,6 +5,14 @@ The repository-wide status source remains
 This file records the status of the delivered Jarvis Desk changes requested for
 implementation.
 
+## Initiative coordination across the Central — implemented in worktree, not deployed (2026-11-24)
+
+- `work_coordination` fingerprint (user + action class + concrete anchors) replaces topic-word
+  dedup as the "already covered?" test; atomic claim via unique index on `runtime_tasks` and CAS
+  `claim_initiative`; 30-min visible-turn gate demoted to fallback for unjudgeable initiatives.
+- 28 new tests in `tests/test_work_coordination.py`; 189 targeted initiative/heartbeat/task tests green.
+- Open: Mission Control view of `coordination.decision`, production verification, per-day metrics.
+
 ## Desk: no visual dump at `message_stop` — complete locally (2026-11-20)
 
 - `ChatView` no longer passes `flushFinalAnswer` on `status === 'done'`; the

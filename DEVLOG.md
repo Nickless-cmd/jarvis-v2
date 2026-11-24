@@ -1,4 +1,27 @@
 # Development log
+## 2026-11-24 — Coordinate on concrete work relations, not on topic words or a clock
+
+**Root cause (measured).** An initiative carried only text. `initiative_queue._gentaget_paastand`
+(topic-word overlap, own queue only) was too loose — it merged different actions on one topic —
+and `_aktiv_synlig_tur` (30-minute clock) was too coarse — it treated all activity as conflict
+(48 % of a week's 133 inner-voice initiatives fell inside the window). Neither could answer
+"is this exact action already covered?". Further causes found in the code:
+`heartbeat_runtime` `act_on_initiative` took `pending[0]` with no cross-process claim (`_QUEUE_LOCK`
+is a thread lock), stored `origin_ref=tick_id` (initiative→task relation lost), and its completion
+callback wrote status `completed`, which `runtime_tasks.update_task` silently normalises to `queued`.
+
+**Change.** New `core/services/work_coordination.py`: a work fingerprint = user scope + action class
++ concrete anchors (ids, files, code identifiers). `find_covering_work` checks tasks, agent
+assignments and recent visible runs (same user only; references, never content); finished work is
+covered for 24 h unless `new_evidence=True`. Atomic accept: unique partial index
+`runtime_tasks.work_fingerprint` (queued/running only — never locks a topic, reaper takeover reused)
+and CAS `claim_initiative` (lease in `next_attempt_at`). The 30-min gate is now a fallback only for
+initiatives with no anchor+action; the "Jeg …" state rule no longer rejects a sentence that has
+anchor+action. Every decision publishes `coordination.decision` with a reason.
+
+**Status:** implemented + committed in worktree; not deployed, not verified in production.
+Not done: Mission Control panel for `coordination.decision`; before/after metrics beyond the baseline
+in the commit message; visible-turn → task registration (visible runs are matched by preview text).
 ## 2026-11-20 — `done` is not "the pacer is finished"
 
 Desk Chat Mode dumped the tail of an answer at `message_stop`. `ChatView` passed

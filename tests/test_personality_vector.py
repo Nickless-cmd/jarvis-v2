@@ -1,5 +1,6 @@
 """Test: personality_vector write-guard stripper snake_case maskin-id (Jarvis-spec #2)."""
 from __future__ import annotations
+import pytest
 
 
 def test_human_filter_strips_machine_ids():
@@ -673,3 +674,81 @@ def test_bevis_vinduet_viser_en_hel_slutning():
     assert "VINDUET der klipper" in b, "klippet er ikke navngivet"
     # den ægte slutning skal stå SIDST — det er den dommen skal læse
     assert b.rstrip().endswith("hel og færdig.")
+
+
+# ── Deterministisk indgang: retire_mistake / retire_strength ────────────────
+
+def _fake_db(monkeypatch, mistakes, strengths=None):
+    import json as _j
+    import core.services.personality_vector as pv
+
+    state = {"row": {
+        "recurring_mistakes": _j.dumps(mistakes, ensure_ascii=False),
+        "strengths_discovered": _j.dumps(strengths or [], ensure_ascii=False),
+        "current_bearing": "b",
+    }, "writes": 0}
+
+    def _get():
+        return dict(state["row"])
+
+    def _upsert(**kw):
+        state["row"] = dict(kw)
+        state["writes"] += 1
+        return {"version": state["writes"]}
+
+    monkeypatch.setattr(pv, "get_latest_cognitive_personality_vector", _get)
+    monkeypatch.setattr(pv, "upsert_cognitive_personality_vector", _upsert)
+    monkeypatch.setattr(pv.event_bus, "publish", lambda *a, **k: None)
+    return state
+
+
+def _liste(state, felt="recurring_mistakes"):
+    import json as _j
+    return _j.loads(state["row"][felt])
+
+
+def test_retire_mistake_ordret_match_fjerner_posten(monkeypatch):
+    import core.services.personality_vector as pv
+    state = _fake_db(monkeypatch, ["falsk post", "ægte post"])
+    res = pv.retire_mistake("falsk post", "chat_messages viser at svaret er komplet")
+    assert _liste(state) == ["ægte post"]
+    assert res["bevis"] and res["post"] == "falsk post" and res["retired_at"]
+    assert state["writes"] == 1
+
+
+def test_retire_mistake_ukendt_post_afvises_uden_skrivning(monkeypatch):
+    import pytest
+    import core.services.personality_vector as pv
+    state = _fake_db(monkeypatch, ["falsk post", "ægte post"])
+    with pytest.raises(ValueError, match="findes ikke ordret"):
+        pv.retire_mistake("slet ikke til", "bevis")
+    assert _liste(state) == ["falsk post", "ægte post"]
+    assert state["writes"] == 0
+
+
+@pytest.mark.parametrize("bevis", ["", "   ", None])
+def test_retire_mistake_kraever_bevis(monkeypatch, bevis):
+    import core.services.personality_vector as pv
+    state = _fake_db(monkeypatch, ["falsk post"])
+    with pytest.raises(ValueError, match="bevis"):
+        pv.retire_mistake("falsk post", bevis)
+    assert _liste(state) == ["falsk post"]
+    assert state["writes"] == 0
+
+
+@pytest.mark.parametrize("nær", ["falsk pos", "falsk post.", "Falsk post", " falsk post", "falsk"])
+def test_retire_mistake_naer_match_afvises(monkeypatch, nær):
+    import core.services.personality_vector as pv
+    state = _fake_db(monkeypatch, ["falsk post", "ægte post"])
+    with pytest.raises(ValueError, match="findes ikke ordret"):
+        pv.retire_mistake(nær, "bevis")
+    assert _liste(state) == ["falsk post", "ægte post"]
+    assert state["writes"] == 0
+
+
+def test_retire_strength_roerer_kun_strengths(monkeypatch):
+    import core.services.personality_vector as pv
+    state = _fake_db(monkeypatch, ["m1"], ["s1", "s2"])
+    pv.retire_strength("s1", "bevis")
+    assert _liste(state, "strengths_discovered") == ["s2"]
+    assert _liste(state) == ["m1"]

@@ -794,6 +794,74 @@ def retire_self_model_signals(
     return retired
 
 
+def _retire_vector_post(*, field: str, instruction: str, post: str, bevis: str) -> dict:
+    """Fælles kerne for `retire_mistake` / `retire_strength` (deterministisk, ingen LLM).
+
+    Ordret match verificeres mod den AKTUELLE liste FØR enhver skrivning;
+    selve skrivningen går gennem `_merge_vector` + `upsert_...` som LLM-stien.
+    """
+    name = f"retire_{'mistake' if field == 'recurring_mistakes' else 'strength'}"
+    if not isinstance(post, str) or not post.strip():
+        raise ValueError(f"{name}: post er påkrævet")
+    if not isinstance(bevis, str) or not bevis.strip():
+        raise ValueError(f"{name}: bevis er påkrævet og må ikke være tomt")
+
+    current = get_latest_cognitive_personality_vector() or {}
+    posts = _safe_json_field(current.get(field), [])
+    if post not in posts:  # ordret: ingen strip, ingen case-fold, ingen delmatch
+        raise ValueError(
+            f"{name}: posten findes ikke ordret i {field} — intet er ændret: {post!r}"
+        )
+
+    merged = _merge_vector(current, {instruction: [post]})
+    result = upsert_cognitive_personality_vector(
+        confidence_by_domain=json.dumps(merged.get("confidence_by_domain", {}), ensure_ascii=False),
+        communication_style=json.dumps(merged.get("communication_style", {}), ensure_ascii=False),
+        learned_preferences=json.dumps(merged.get("learned_preferences", []), ensure_ascii=False),
+        recurring_mistakes=json.dumps(merged.get("recurring_mistakes", []), ensure_ascii=False),
+        strengths_discovered=json.dumps(merged.get("strengths_discovered", []), ensure_ascii=False),
+        current_bearing=str(merged.get("current_bearing", "")),
+        emotional_baseline=json.dumps(merged.get("emotional_baseline", {}), ensure_ascii=False),
+    )
+
+    # Sporbarhed: hvilken post, hvilket bevis, hvornår — i log OG eventbus.
+    retired_at = datetime.now(UTC).isoformat()
+    payload = {
+        "field": field,
+        "post": post,
+        "bevis": bevis.strip(),
+        "retired_at": retired_at,
+        "version": result.get("version"),
+        "remaining": len(merged.get(field, [])),
+    }
+    logger.warning("personality_vector: %s %s", name, json.dumps(payload, ensure_ascii=False))
+    event_bus.publish("cognitive_personality.post_retired", payload)
+    try:
+        from core.services.cognitive_state_assembly import invalidate_cognitive_state_cache
+        invalidate_cognitive_state_cache()
+    except Exception:
+        pass
+    return {**payload, "vector": result}
+
+
+def retire_mistake(post: str, bevis: str) -> dict:
+    """Træk én post i `recurring_mistakes` tilbage — kun ordret match, kun med bevis.
+
+    Rejser ValueError (intet skrevet) ved tom/manglende `post` eller `bevis`,
+    eller hvis posten ikke findes ordret i den aktuelle liste.
+    """
+    return _retire_vector_post(
+        field="recurring_mistakes", instruction="retire_mistakes", post=post, bevis=bevis
+    )
+
+
+def retire_strength(post: str, bevis: str) -> dict:
+    """Som `retire_mistake`, men for `strengths_discovered`."""
+    return _retire_vector_post(
+        field="strengths_discovered", instruction="retire_strengths", post=post, bevis=bevis
+    )
+
+
 def _baseline_changed(old: dict[str, object] | None, new_baseline: dict) -> bool:
     """Fix 5 helper: return True if emotional_baseline values differ by > 0.001."""
     if old is None:

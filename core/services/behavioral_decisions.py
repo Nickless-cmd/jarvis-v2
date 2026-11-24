@@ -81,7 +81,16 @@ def _spor_gate(
             # `ctx_len` goer et snit SYNLIGT hvis en fremtidig graense indfoeres.
             "ctx": str(ctx or ""),
             "ctx_len": len(str(ctx or "")),
-            "ord": list(ord_ or [])[:12],
+            # HELE ord-saettet, ikke et snit (24/11-2026, FJERDE gang samme fejl
+            # i denne fil inden for en time): `[:12]` skar 82 ord ned til 12, og
+            # de 12 var de ALFABETISK foerste — saa alt fra e og frem var
+            # usynligt. Maalt: heartbeat-konteksten har 82 ord, sporet viste 12.
+            # Det gjorde netop de ord der afgjorde valget usynlige, og var
+            # aarsagen til at jeg fejlagtigt konkluderede at to kald var
+            # «gaten der afviser», da de i virkeligheden var to forskellige
+            # kontekster. `ord_antal` goer et fremtidigt snit synligt.
+            "ord": sorted(ord_ or []),
+            "ord_antal": len(ord_ or []),
         }
         if valgte:
             post["valgte"] = [

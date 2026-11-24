@@ -512,3 +512,42 @@ def test_sporet_kan_genskabe_sit_eget_valg(fake_beslutninger, tmp_path, monkeypa
     assert [d.get("decision_id") for d in foerste] == [d.get("decision_id") for d in genskabt], (
         "valget kan ikke genskabes fra spoeret — saa er spoeret ikke et bevis"
     )
+
+
+def test_sporet_logger_hele_ord_saettet(fake_beslutninger, tmp_path, monkeypatch) -> None:
+    """`ord` blev klippet til 12 — og de 12 var de alfabetisk foerste.
+
+    24/11-2026 (maalt i DRIFT): heartbeat-konteksten har 82 betydningsbaerende
+    ord, men spoeret skrev `[:12]`. Det var fjerde gang i samme fil inden for en
+    time at et vilkaarligt snit skjulte det afgoerende — og netop det snit fik
+    mig til at laese tre forskellige testkald som «gaten der afviser», fordi de
+    ord der adskilte dem laa uden for snittet.
+    """
+    from core.services import behavioral_decisions as bd
+
+    spor = tmp_path / "relevans_gate.jsonl"
+    monkeypatch.setattr(bd, "_GATE_SPOR", spor)
+
+    fake_beslutninger([
+        _beslutning("dec_prompt", "Verificer at prompt-sektionen ikke klippes", priority=50,
+                    cue="Naar prompt-sektionen klippes"),
+    ])
+
+    # Ordene spaender over hele alfabetet, saa et alfabetisk snit bliver synligt.
+    ctx = " ".join(["aalborg", "betingelse", "chokolade", "dokument", "egentlig",
+                    "formaal", "gaeste", "historik", "indhold", "journal",
+                    "kategori", "loesning", "maaling", "nyhed", "omfang",
+                    "periode", "relevans", "signal", "tilstand", "undersoeg"])
+
+    bd.select_relevant_decisions(max_items=5, context_text=ctx)
+    post = json.loads(spor.read_text(encoding="utf-8").splitlines()[-1])
+
+    fuldt = bd._relevans_ord(ctx)
+    assert post["ord_antal"] == len(fuldt), (
+        f"ord_antal skal vaere det fulde saet ({len(fuldt)}), var {post['ord_antal']}"
+    )
+    assert set(post["ord"]) == fuldt, "spoeret maa ikke klippe ord-saettet"
+    # Vagt mod netop den alfabetiske form: ord fra slutningen af alfabetet skal med.
+    assert any(o.startswith("u") for o in post["ord"]), (
+        "ord fra slutningen af alfabetet mangler — spoeret er klippet alfabetisk"
+    )

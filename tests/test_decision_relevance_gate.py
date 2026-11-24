@@ -624,3 +624,76 @@ def test_gulvet_afviser_en_svag_match_paa_den_nye_skala(fake_beslutninger) -> No
     assert [d["decision_id"] for d in valgte] == ["dec_staerk"], (
         "gulvet skal afvise den svage sag og lade den staerke passere"
     )
+
+
+def test_strukturelle_tokens_kan_ikke_baere_beviset(fake_beslutninger) -> None:
+    """To maskin-tokens er to ord men NUL signaler.
+
+    24/11-2026 (maalt i DRIFT, 16 heartbeat-ticks): `dec_f1047a72079f` ramte
+    UDELUKKENDE `file` + `memory` — fra «recent governed file writes» og
+    «Memory Promotions has 1560 proposed items» — og scorede 4,31, altsaa som en
+    staerk sag. Begge tokens staar i HVER heartbeat-kontekst og kan derfor ikke
+    skelne en tur fra en anden. En vaegt alene kan ikke afvise dem: en ren
+    strukturel match scorer 0,647 selv ved faktor 0,15, altsaa over gulvet 0,32.
+    Vaernet skal derfor sidde i beviskravet.
+    """
+    from core.services import behavioral_decisions as bd
+
+    fake_beslutninger([
+        _beslutning("dec_kun_maskin", "file memory"),
+        _beslutning("dec_fag", "noter hvad der blev maalt", cue="relevans gaten"),
+    ])
+
+    valgte = bd.select_relevant_decisions(
+        max_items=5,
+        context_text="recent governed file writes exist memory promotions relevans gaten",
+    )
+    ids = [d["decision_id"] for d in valgte]
+    assert "dec_kun_maskin" not in ids, (
+        "en sag hvis ENESTE hit er strukturelle tokens maa ikke vaelges — "
+        "ellers er beviskravet et ordopslag"
+    )
+    assert ids == ["dec_fag"]
+
+
+def test_strukturelt_token_vejer_mindre_end_fagord() -> None:
+    """Samme form, samme kontekst — kun ordets klasse afgoer vaegten."""
+    from core.services import behavioral_decisions as bd
+
+    maskin = bd.score_decision_relevance(
+        {"directive": "file", "trigger_cue": ""}, context_text="file"
+    )
+    fag = bd.score_decision_relevance(
+        {"directive": "gaten", "trigger_cue": ""}, context_text="gaten"
+    )
+    # Begge rammer praecis ét ord, saa forskellen i raa_score ER vaegten:
+    # det strukturelle ord bidrager med 1 x _STRUKTUREL_VAEGT, fagordet med 1 x 1.
+    assert maskin["raa_score"] == round(bd._STRUKTUREL_VAEGT, 4), (
+        "det strukturelle ords raa bidrag skal vaere praecis vaegten — "
+        f"fik {maskin['raa_score']}"
+    )
+    assert fag["raa_score"] == 1.0, f"fagordet skal bidrage fuldt — fik {fag['raa_score']}"
+    forhold = fag["score"] / maskin["score"]
+    assert abs(forhold - 1 / bd._STRUKTUREL_VAEGT) < 0.01, (
+        f"forventet forhold {1 / bd._STRUKTUREL_VAEGT:.2f}, fik {forhold:.2f} — "
+        "1,0 betyder at strukturelle tokens ikke laengere vejes lavere"
+    )
+
+
+def test_taellere_er_strukturelle_men_tilstande_er_fagord() -> None:
+    """Skellet er maalt, ikke smag: tællere og identitet vs. tilstandsbeskrivelser.
+
+    24/11-2026: foerste version havde `signal`/`pressure`/`initiative` med, og
+    det fik en eksisterende test til at fejle med rette. «private signal pressure
+    is high» er INFORMATION om turen — en beslutning om signal-pres ER relevant
+    naar presset er hoejt. Det er taellerne («has 1560 proposed items») og
+    identiteten («main», «inspect-working-tree») der ikke baerer en sag.
+    """
+    from core.services import behavioral_decisions as bd
+
+    for taeller in ("file", "memory", "main", "scheduled", "heartbeat", "proposed"):
+        assert taeller in bd._STRUKTURELLE_ORD, f"{taeller} er en taeller/identitet"
+    for tilstand in ("signal", "pressure", "proces", "relevans", "gaten", "prompten"):
+        assert tilstand not in bd._STRUKTURELLE_ORD, (
+            f"{tilstand} beskriver turen og maa ikke vaere strukturel"
+        )

@@ -215,13 +215,13 @@ _Behavioral decisions — closing the reflection→behavior loop._
 | function | `get_decision_with_reviews` | `(decision_id, *, review_limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L421) |
 | function | `list_active_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L448) |
 | function | `list_all_decisions` | `(*, limit=…)` | — | [src](../../../core/services/behavioral_decisions.py#L452) |
-| function | `_relevans_ord` | `(tekst)` | Betydningsbaerende ord i en tekst — lowercase, >=4 tegn, uden stopord. | [src](../../../core/services/behavioral_decisions.py#L514) |
-| function | `_ord_frekvens` | `(beslutninger)` | Hvor mange beslutninger indeholder hvert ord? | [src](../../../core/services/behavioral_decisions.py#L547) |
-| function | `_idf` | `(ord_, freq, antal)` | Invers dokument-frekvens: sjældne ord vejer tungt, hyppige vejer næsten intet. | [src](../../../core/services/behavioral_decisions.py#L563) |
-| function | `score_decision_relevance` | `(decision, *, context_text=…, context_tools=…, ord_frekvens=…, antal_beslutninger=…)` | Hvor relevant er denne beslutning for den aktuelle tur — og hvorfor? | [src](../../../core/services/behavioral_decisions.py#L580) |
-| function | `select_relevant_decisions` | `(*, max_items=…, context_text=…, context_tools=…, context_age_seconds=…)` | Vælg de mest relevante aktive beslutninger for den aktuelle tur. | [src](../../../core/services/behavioral_decisions.py#L710) |
-| function | `format_active_decisions_for_heartbeat` | `(*, max_items=…, context_text=…, context_tools=…, context_age_seconds=…)` | Compact line of the most RELEVANT active commitments for this turn. | [src](../../../core/services/behavioral_decisions.py#L855) |
-| function | `get_stats` | `()` | — | [src](../../../core/services/behavioral_decisions.py#L914) |
+| function | `_relevans_ord` | `(tekst)` | Betydningsbaerende ord i en tekst — lowercase, >=4 tegn, uden stopord. | [src](../../../core/services/behavioral_decisions.py#L567) |
+| function | `_ord_frekvens` | `(beslutninger)` | Hvor mange beslutninger indeholder hvert ord? | [src](../../../core/services/behavioral_decisions.py#L600) |
+| function | `_idf` | `(ord_, freq, antal)` | Invers dokument-frekvens: sjældne ord vejer tungt, hyppige vejer næsten intet. | [src](../../../core/services/behavioral_decisions.py#L616) |
+| function | `score_decision_relevance` | `(decision, *, context_text=…, context_tools=…, ord_frekvens=…, antal_beslutninger=…)` | Hvor relevant er denne beslutning for den aktuelle tur — og hvorfor? | [src](../../../core/services/behavioral_decisions.py#L633) |
+| function | `select_relevant_decisions` | `(*, max_items=…, context_text=…, context_tools=…, context_age_seconds=…)` | Vælg de mest relevante aktive beslutninger for den aktuelle tur. | [src](../../../core/services/behavioral_decisions.py#L766) |
+| function | `format_active_decisions_for_heartbeat` | `(*, max_items=…, context_text=…, context_tools=…, context_age_seconds=…)` | Compact line of the most RELEVANT active commitments for this turn. | [src](../../../core/services/behavioral_decisions.py#L917) |
+| function | `get_stats` | `()` | — | [src](../../../core/services/behavioral_decisions.py#L976) |
 
 ## `core/services/besked_run_kobling.py`
 _Hvilket run skrev denne besked? — så klienten ikke skal gætte ud fra prosa._

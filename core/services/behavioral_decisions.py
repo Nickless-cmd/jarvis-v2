@@ -511,6 +511,59 @@ _RELEVANS_STOPORD = frozenset({
 })
 
 
+#: Maskinens EGEN statusbeskrivelse — ord der staar i hver eneste heartbeat-tur.
+#:
+#: HVORFOR (maalt i DRIFT 24/11-2026). Gaten valgte de SAMME fem beslutninger i
+#: 16 heartbeat-ticks over 95 minutter, mens kontekstens tal aendrede sig
+#: (1578 -> 1560 foreslaaede). Aarsagen var maalbar: de fem vandt paa `file`,
+#: `main`, `memory`, `signal` — tokens der staar i statuslinjerne hver gang.
+#: `dec_f1047a72079f` ramte UDELUKKENDE `file` + `memory` og scorede 4,31.
+#:
+#: Listen er ikke gaettet: den er udledt af de literaler der GENERERER
+#: statuslinjerne (`heartbeat_runtime.py:2390-2520`) — «scheduled heartbeat
+#: interval is currently due», «recent governed file writes exist for continuity
+#: review», «private signal pressure is …» — plus de workflow-labels
+#: (`Preference Updates`, `Memory Promotions`, `Chronicle Drafts`) og
+#: `tool_intent`-beskrivelsen (`inspect-working-tree main`). Alle er maalt
+#: tilstede i den levende kontekst. Et token herfra kan sagtens vaere en SAG i en
+#: anden tur; derfor fjernes de ikke (som `_RELEVANS_STOPORD` goer), de vejes
+#: lavere og kan ikke baere beviset alene.
+#:
+#: IKKE paa listen: `success` (rammer beslutningen om applied/ok/success-felter),
+#: loop-titlenes fagord (`kørende`, `proces`, `prompten`, `relevans`) — de staar
+#: ogsaa i alle 16 kontekster, men fordi loop-titlerne ikke aendrede sig, ikke
+#: fordi de er maskinstatus — og TILSTANDSBESKRIVELSERNE (`signal`, `pressure`,
+#: `high`, `initiative`, `tension`, `feel`). Skellet er maalt: foerste version
+#: havde dem med, og saa fejlede en eksisterende test med rette — «private signal
+#: pressure is high» er INFORMATION om turen, ikke en taeller. En beslutning om
+#: signal-pres ER relevant naar presset er hoejt. Det er taellerne
+#: («has 1560 proposed items») og identiteten («main», «inspect-working-tree»)
+#: der ikke baerer en sag.
+_STRUKTURELLE_ORD = frozenset({
+    # heartbeat_runtime.py:2402-2516 — statuslinjernes taeller-vokabular
+    "manual", "trigger", "requested", "mission", "control",
+    "scheduled", "heartbeat", "interval", "currently",
+    "capabilities", "still", "require", "approval",
+    "proposed", "items", "approved", "awaiting", "apply",
+    "recent", "governed", "file", "writes", "exist", "continuity", "review",
+    "contract", "available", "context", "latest", "visible", "preview", "carry",
+    # workflow-labels der taeller op i hver tur
+    "preference", "updates", "memory", "promotions", "chronicle", "drafts",
+    # tool_intent — hvilken slags tur det er, ikke hvad sagen er
+    "inspect", "working", "tree", "main", "repo",
+})
+
+#: Hvor meget et strukturelt ord vejer i scoren, relativt til sin IDF.
+#:
+#: 0,35 er maalt, ikke valgt: ved 0,5 faldt `dec_f1047a72079f` (file+memory) ud
+#: af de fem, og ved 0,35 stod rangordenen stabilt derefter. Faktoren kan ikke
+#: ALENE goere en ren strukturel match harmloes — den scorer 0,647 selv ved 0,15,
+#: altsaa stadig over gulvet 0,32; foerst ved ~0,07 ville den falde under, og det
+#: er fjernelse, ikke vaegtning. Derfor er det BEVISKRAVET nedenfor den baerende
+#: regel, og denne faktor kun den sekundaere.
+_STRUKTUREL_VAEGT = 0.35
+
+
 def _relevans_ord(tekst: str) -> set[str]:
     """Betydningsbaerende ord i en tekst — lowercase, >=4 tegn, uden stopord.
 
@@ -612,7 +665,10 @@ def score_decision_relevance(
     n = antal_beslutninger or 0
 
     def _vaegt(ord_: str) -> float:
-        return _idf(ord_, freq, n) if freq else 1.0
+        vaegt = _idf(ord_, freq, n) if freq else 1.0
+        # Strukturelle tokens (maskinens egen statusbeskrivelse) vejes lavere end
+        # fagord. Se `_STRUKTURELLE_ORD` for hvorfor og hvordan listen er udledt.
+        return vaegt * _STRUKTUREL_VAEGT if ord_ in _STRUKTURELLE_ORD else vaegt
 
     # Vaegtning: trigger_cue er det staerkeste signal (den beskriver situationen),
     # vaerktoejsnavne det naeststaerkeste (de er konkrete handlinger), directive det
@@ -823,8 +879,14 @@ def select_relevant_decisions(
         if float(v["score"]) < _RELEVANS_GULV:
             continue
         unikke = set(v["cue_hit"]) | set(v["tool_hit"]) | set(v["dir_hit"])
-        if len(unikke) < 2:
-            eneste = next(iter(unikke), "")
+        # 24/11-2026 (maalt i DRIFT): beviskravet taeller kun FAGORD. Et strukturelt
+        # token staar i hver heartbeat-kontekst og kan derfor ikke skelne en sag —
+        # `file` + `memory` er to ord men NUL signaler. Vaegten i scoren (0,35) kan
+        # ikke alene afvise dem: en ren strukturel match scorer 0,647 selv ved 0,15,
+        # altsaa over gulvet. Derfor er det her, i beviskravet, vaernet sidder.
+        fag = unikke - _STRUKTURELLE_ORD
+        if len(fag) < 2:
+            eneste = next(iter(fag), "")
             if not eneste or _idf(eneste, freq, antal) < _ENKELTORD_IDF:
                 continue
             # 24/11-2026 (maalt i DRIFT): et enkelt ord i det lange `directive` er

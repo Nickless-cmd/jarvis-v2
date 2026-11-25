@@ -1,0 +1,1404 @@
+{
+  "calibration": {
+    "passed": true,
+    "tolerance": 1e-09,
+    "worst_absolute_gap_error": 6.661338147750939e-16
+  },
+  "condition_1_no_threshold": {
+    "failing_retentions": [
+      "one_encounter"
+    ],
+    "fired": false,
+    "never_crossed": [
+      {
+        "assignment": "fixed",
+        "peak": 3.0,
+        "retention_condition": "one_encounter",
+        "source": "sunspots"
+      },
+      {
+        "assignment": "roving",
+        "peak": 3.0,
+        "retention_condition": "one_encounter",
+        "source": "sunspots"
+      },
+      {
+        "assignment": "roving",
+        "peak": 3.0,
+        "retention_condition": "short_continuity",
+        "source": "sunspots"
+      },
+      {
+        "assignment": "fixed",
+        "peak": 3.0,
+        "retention_condition": "one_encounter",
+        "source": "co2"
+      },
+      {
+        "assignment": "roving",
+        "peak": 3.0,
+        "retention_condition": "one_encounter",
+        "source": "co2"
+      }
+    ]
+  },
+  "condition_2_threshold_not_near_one_minus_r": {
+    "fired": true,
+    "off": [
+      {
+        "assignment": "roving",
+        "expected_threshold": 0.010000000000000009,
+        "measured_threshold": 0.1,
+        "ratio": 9.999999999999991,
+        "retention_condition": "long_continuity",
+        "source": "sunspots"
+      },
+      {
+        "assignment": "roving",
+        "expected_threshold": 0.09999999999999998,
+        "measured_threshold": 0.4,
+        "ratio": 4.000000000000001,
+        "retention_condition": "short_continuity",
+        "source": "co2"
+      },
+      {
+        "assignment": "roving",
+        "expected_threshold": 0.010000000000000009,
+        "measured_threshold": 0.05,
+        "ratio": 4.999999999999996,
+        "retention_condition": "long_continuity",
+        "source": "co2"
+      }
+    ],
+    "off_retentions": [
+      "long_continuity",
+      "short_continuity"
+    ]
+  },
+  "condition_3_source_matters_at_matched_gap": {
+    "count": 12,
+    "disagreements": [
+      {
+        "assignment": "fixed",
+        "co2_effective": 1.9127895280369833,
+        "difference": 0.9081104129992383,
+        "gap": 0.002,
+        "retention_condition": "cumulative_continuity",
+        "sunspots_effective": 1.004679115037745
+      },
+      {
+        "assignment": "roving",
+        "co2_effective": 2.31426605754157,
+        "difference": 0.4187702573204075,
+        "gap": 0.1,
+        "retention_condition": "short_continuity",
+        "sunspots_effective": 2.7330363148619776
+      },
+      {
+        "assignment": "roving",
+        "co2_effective": 1.8356663212995021,
+        "difference": 0.5446316241421709,
+        "gap": 0.2,
+        "retention_condition": "short_continuity",
+        "sunspots_effective": 2.380297945441673
+      },
+      {
+        "assignment": "roving",
+        "co2_effective": 1.4411630505010875,
+        "difference": 0.48994484299353114,
+        "gap": 0.4,
+        "retention_condition": "short_continuity",
+        "sunspots_effective": 1.9311078934946186
+      },
+      {
+        "assignment": "roving",
+        "co2_effective": 1.150736535840934,
+        "difference": 0.39738757661005963,
+        "gap": 0.8,
+        "retention_condition": "short_continuity",
+        "sunspots_effective": 1.5481241124509937
+      },
+      {
+        "assignment": "roving",
+        "co2_effective": 2.3299371795391184,
+        "difference": 0.45705729155319164,
+        "gap": 0.01,
+        "retention_condition": "long_continuity",
+        "sunspots_effective": 2.78699447109231
+      },
+      {
+        "assignment": "roving",
+        "co2_effective": 1.8543325242468767,
+        "difference": 0.5777133682425177,
+        "gap": 0.02,
+        "retention_condition": "long_continuity",
+        "sunspots_effective": 2.4320458924893944
+      },
+      {
+        "assignment": "roving",
+        "co2_effective": 1.2993025300220584,
+        "difference": 0.46272758482424137,
+        "gap": 0.05,
+        "retention_condition": "long_continuity",
+        "sunspots_effective": 1.7620301148462998
+      },
+      {
+        "assignment": "roving",
+        "co2_effective": 1.0471236407092712,
+        "difference": 0.30534704985746175,
+        "gap": 0.1,
+        "retention_condition": "long_continuity",
+        "sunspots_effective": 1.352470690566733
+      },
+      {
+        "assignment": "roving",
+        "co2_effective": 2.2934695359606483,
+        "difference": 0.7962618331825146,
+        "gap": 0.002,
+        "retention_condition": "cumulative_continuity",
+        "sunspots_effective": 1.4972077027781336
+      },
+      {
+        "assignment": "roving",
+        "co2_effective": 1.6842191558516448,
+        "difference": 0.6238025903401936,
+        "gap": 0.005,
+        "retention_condition": "cumulative_continuity",
+        "sunspots_effective": 1.0604165655114512
+      },
+      {
+        "assignment": "roving",
+        "co2_effective": 1.278870150771809,
+        "difference": 0.27702126386927595,
+        "gap": 0.01,
+        "retention_condition": "cumulative_continuity",
+        "sunspots_effective": 1.001848886902533
+      }
+    ],
+    "fired": true,
+    "per_assignment": {
+      "fixed": {
+        "cells": 40,
+        "count": 1,
+        "disagreements": [
+          {
+            "assignment": "fixed",
+            "co2_effective": 1.9127895280369833,
+            "difference": 0.9081104129992383,
+            "gap": 0.002,
+            "retention_condition": "cumulative_continuity",
+            "sunspots_effective": 1.004679115037745
+          }
+        ],
+        "fired": true
+      },
+      "roving": {
+        "cells": 40,
+        "count": 11,
+        "disagreements": [
+          {
+            "assignment": "roving",
+            "co2_effective": 2.31426605754157,
+            "difference": 0.4187702573204075,
+            "gap": 0.1,
+            "retention_condition": "short_continuity",
+            "sunspots_effective": 2.7330363148619776
+          },
+          {
+            "assignment": "roving",
+            "co2_effective": 1.8356663212995021,
+            "difference": 0.5446316241421709,
+            "gap": 0.2,
+            "retention_condition": "short_continuity",
+            "sunspots_effective": 2.380297945441673
+          },
+          {
+            "assignment": "roving",
+            "co2_effective": 1.4411630505010875,
+            "difference": 0.48994484299353114,
+            "gap": 0.4,
+            "retention_condition": "short_continuity",
+            "sunspots_effective": 1.9311078934946186
+          },
+          {
+            "assignment": "roving",
+            "co2_effective": 1.150736535840934,
+            "difference": 0.39738757661005963,
+            "gap": 0.8,
+            "retention_condition": "short_continuity",
+            "sunspots_effective": 1.5481241124509937
+          },
+          {
+            "assignment": "roving",
+            "co2_effective": 2.3299371795391184,
+            "difference": 0.45705729155319164,
+            "gap": 0.01,
+            "retention_condition": "long_continuity",
+            "sunspots_effective": 2.78699447109231
+          },
+          {
+            "assignment": "roving",
+            "co2_effective": 1.8543325242468767,
+            "difference": 0.5777133682425177,
+            "gap": 0.02,
+            "retention_condition": "long_continuity",
+            "sunspots_effective": 2.4320458924893944
+          },
+          {
+            "assignment": "roving",
+            "co2_effective": 1.2993025300220584,
+            "difference": 0.46272758482424137,
+            "gap": 0.05,
+            "retention_condition": "long_continuity",
+            "sunspots_effective": 1.7620301148462998
+          },
+          {
+            "assignment": "roving",
+            "co2_effective": 1.0471236407092712,
+            "difference": 0.30534704985746175,
+            "gap": 0.1,
+            "retention_condition": "long_continuity",
+            "sunspots_effective": 1.352470690566733
+          },
+          {
+            "assignment": "roving",
+            "co2_effective": 2.2934695359606483,
+            "difference": 0.7962618331825146,
+            "gap": 0.002,
+            "retention_condition": "cumulative_continuity",
+            "sunspots_effective": 1.4972077027781336
+          },
+          {
+            "assignment": "roving",
+            "co2_effective": 1.6842191558516448,
+            "difference": 0.6238025903401936,
+            "gap": 0.005,
+            "retention_condition": "cumulative_continuity",
+            "sunspots_effective": 1.0604165655114512
+          },
+          {
+            "assignment": "roving",
+            "co2_effective": 1.278870150771809,
+            "difference": 0.27702126386927595,
+            "gap": 0.01,
+            "retention_condition": "cumulative_continuity",
+            "sunspots_effective": 1.001848886902533
+          }
+        ],
+        "fired": true
+      }
+    }
+  },
+  "condition_5_assignment_axis": {
+    "count": 20,
+    "differences": [
+      {
+        "difference": 0.31847454524796914,
+        "fixed_effective": 2.5933056556561933,
+        "gap": 0.05,
+        "retention_condition": "short_continuity",
+        "roving_effective": 2.9117802009041625,
+        "source": "sunspots"
+      },
+      {
+        "difference": 0.7743376614475861,
+        "fixed_effective": 1.9586986534143915,
+        "gap": 0.1,
+        "retention_condition": "short_continuity",
+        "roving_effective": 2.7330363148619776,
+        "source": "sunspots"
+      },
+      {
+        "difference": 1.0737559428471464,
+        "fixed_effective": 1.3065420025945267,
+        "gap": 0.2,
+        "retention_condition": "short_continuity",
+        "roving_effective": 2.380297945441673,
+        "source": "sunspots"
+      },
+      {
+        "difference": 0.8938059196525892,
+        "fixed_effective": 1.0373019738420295,
+        "gap": 0.4,
+        "retention_condition": "short_continuity",
+        "roving_effective": 1.9311078934946186,
+        "source": "sunspots"
+      },
+      {
+        "difference": 0.5474529621248663,
+        "fixed_effective": 1.0006711503261274,
+        "gap": 0.8,
+        "retention_condition": "short_continuity",
+        "roving_effective": 1.5481241124509937,
+        "source": "sunspots"
+      },
+      {
+        "difference": 0.34319549243511416,
+        "fixed_effective": 2.593305655656259,
+        "gap": 0.005,
+        "retention_condition": "long_continuity",
+        "roving_effective": 2.936501148091373,
+        "source": "sunspots"
+      },
+      {
+        "difference": 0.8282958176778106,
+        "fixed_effective": 1.9586986534144994,
+        "gap": 0.01,
+        "retention_condition": "long_continuity",
+        "roving_effective": 2.78699447109231,
+        "source": "sunspots"
+      },
+      {
+        "difference": 1.1255038898948053,
+        "fixed_effective": 1.306542002594589,
+        "gap": 0.02,
+        "retention_condition": "long_continuity",
+        "roving_effective": 2.4320458924893944,
+        "source": "sunspots"
+      },
+      {
+        "difference": 0.748463425138681,
+        "fixed_effective": 1.0135666897076188,
+        "gap": 0.05,
+        "retention_condition": "long_continuity",
+        "roving_effective": 1.7620301148462998,
+        "source": "sunspots"
+      },
+      {
+        "difference": 0.35237988658489905,
+        "fixed_effective": 1.000090803981834,
+        "gap": 0.1,
+        "retention_condition": "long_continuity",
+        "roving_effective": 1.352470690566733,
+        "source": "sunspots"
+      },
+      {
+        "difference": 0.49252858774038866,
+        "fixed_effective": 1.004679115037745,
+        "gap": 0.002,
+        "retention_condition": "cumulative_continuity",
+        "roving_effective": 1.4972077027781336,
+        "source": "sunspots"
+      },
+      {
+        "difference": 0.3555674041271717,
+        "fixed_effective": 1.9586986534143984,
+        "gap": 0.1,
+        "retention_condition": "short_continuity",
+        "roving_effective": 2.31426605754157,
+        "source": "co2"
+      },
+      {
+        "difference": 0.5291243187049754,
+        "fixed_effective": 1.3065420025945267,
+        "gap": 0.2,
+        "retention_condition": "short_continuity",
+        "roving_effective": 1.8356663212995021,
+        "source": "co2"
+      },
+      {
+        "difference": 0.403861076659058,
+        "fixed_effective": 1.0373019738420295,
+        "gap": 0.4,
+        "retention_condition": "short_continuity",
+        "roving_effective": 1.4411630505010875,
+        "source": "co2"
+      },
+      {
+        "difference": 0.36335041991608974,
+        "fixed_effective": 1.9665867596230286,
+        "gap": 0.01,
+        "retention_condition": "long_continuity",
+        "roving_effective": 2.3299371795391184,
+        "source": "co2"
+      },
+      {
+        "difference": 0.5427667167803427,
+        "fixed_effective": 1.311565807466534,
+        "gap": 0.02,
+        "retention_condition": "long_continuity",
+        "roving_effective": 1.8543325242468767,
+        "source": "co2"
+      },
+      {
+        "difference": 0.28522371642180944,
+        "fixed_effective": 1.014078813600249,
+        "gap": 0.05,
+        "retention_condition": "long_continuity",
+        "roving_effective": 1.2993025300220584,
+        "source": "co2"
+      },
+      {
+        "difference": 0.38068000792366496,
+        "fixed_effective": 1.9127895280369833,
+        "gap": 0.002,
+        "retention_condition": "cumulative_continuity",
+        "roving_effective": 2.2934695359606483,
+        "source": "co2"
+      },
+      {
+        "difference": 0.5126136907895205,
+        "fixed_effective": 1.1716054650621244,
+        "gap": 0.005,
+        "retention_condition": "cumulative_continuity",
+        "roving_effective": 1.6842191558516448,
+        "source": "co2"
+      },
+      {
+        "difference": 0.26382174695378224,
+        "fixed_effective": 1.0150484038180267,
+        "gap": 0.01,
+        "retention_condition": "cumulative_continuity",
+        "roving_effective": 1.278870150771809,
+        "source": "co2"
+      }
+    ],
+    "inert": false
+  },
+  "conditions_fired": {
+    "1_no_threshold": false,
+    "2_threshold_not_near_one_minus_r": true,
+    "3_source_matters_at_matched_gap": true,
+    "4_control_failed": false,
+    "5_calibration_failed": false
+  },
+  "control": {
+    "checks": [
+      {
+        "assignment": "fixed",
+        "expected_effective_experts": 3.0,
+        "measured_effective_experts": 3.0,
+        "ok": true,
+        "retention_condition": "one_encounter",
+        "source": "sunspots"
+      },
+      {
+        "assignment": "fixed",
+        "expected_effective_experts": 3.0,
+        "measured_effective_experts": 3.0,
+        "ok": true,
+        "retention_condition": "short_continuity",
+        "source": "sunspots"
+      },
+      {
+        "assignment": "fixed",
+        "expected_effective_experts": 3.0,
+        "measured_effective_experts": 3.0,
+        "ok": true,
+        "retention_condition": "long_continuity",
+        "source": "sunspots"
+      },
+      {
+        "assignment": "fixed",
+        "expected_effective_experts": 3.0,
+        "measured_effective_experts": 3.0,
+        "ok": true,
+        "retention_condition": "cumulative_continuity",
+        "source": "sunspots"
+      },
+      {
+        "assignment": "roving",
+        "expected_effective_experts": 3.0,
+        "measured_effective_experts": 3.0,
+        "ok": true,
+        "retention_condition": "one_encounter",
+        "source": "sunspots"
+      },
+      {
+        "assignment": "roving",
+        "expected_effective_experts": 3.0,
+        "measured_effective_experts": 3.0,
+        "ok": true,
+        "retention_condition": "short_continuity",
+        "source": "sunspots"
+      },
+      {
+        "assignment": "roving",
+        "expected_effective_experts": 3.0,
+        "measured_effective_experts": 3.0,
+        "ok": true,
+        "retention_condition": "long_continuity",
+        "source": "sunspots"
+      },
+      {
+        "assignment": "roving",
+        "expected_effective_experts": 3.0,
+        "measured_effective_experts": 3.0,
+        "ok": true,
+        "retention_condition": "cumulative_continuity",
+        "source": "sunspots"
+      },
+      {
+        "assignment": "fixed",
+        "expected_effective_experts": 3.0,
+        "measured_effective_experts": 3.0,
+        "ok": true,
+        "retention_condition": "one_encounter",
+        "source": "co2"
+      },
+      {
+        "assignment": "fixed",
+        "expected_effective_experts": 3.0,
+        "measured_effective_experts": 3.0,
+        "ok": true,
+        "retention_condition": "short_continuity",
+        "source": "co2"
+      },
+      {
+        "assignment": "fixed",
+        "expected_effective_experts": 3.0,
+        "measured_effective_experts": 3.0,
+        "ok": true,
+        "retention_condition": "long_continuity",
+        "source": "co2"
+      },
+      {
+        "assignment": "fixed",
+        "expected_effective_experts": 3.0,
+        "measured_effective_experts": 3.0,
+        "ok": true,
+        "retention_condition": "cumulative_continuity",
+        "source": "co2"
+      },
+      {
+        "assignment": "roving",
+        "expected_effective_experts": 3.0,
+        "measured_effective_experts": 3.0,
+        "ok": true,
+        "retention_condition": "one_encounter",
+        "source": "co2"
+      },
+      {
+        "assignment": "roving",
+        "expected_effective_experts": 3.0,
+        "measured_effective_experts": 3.0,
+        "ok": true,
+        "retention_condition": "short_continuity",
+        "source": "co2"
+      },
+      {
+        "assignment": "roving",
+        "expected_effective_experts": 3.0,
+        "measured_effective_experts": 3.0,
+        "ok": true,
+        "retention_condition": "long_continuity",
+        "source": "co2"
+      },
+      {
+        "assignment": "roving",
+        "expected_effective_experts": 3.0,
+        "measured_effective_experts": 3.0,
+        "ok": true,
+        "retention_condition": "cumulative_continuity",
+        "source": "co2"
+      }
+    ],
+    "passed": true
+  },
+  "method_version": "exp008.directgap.1",
+  "thresholds": {
+    "per_cell": [
+      {
+        "assignment": "fixed",
+        "expected_threshold": 1.0,
+        "measured_threshold": null,
+        "retention": 0.0,
+        "retention_condition": "one_encounter",
+        "series": [
+          {
+            "gap": 0.0,
+            "mean_effective_experts": 3.0
+          },
+          {
+            "gap": 0.002,
+            "mean_effective_experts": 2.999992000029345
+          },
+          {
+            "gap": 0.005,
+            "mean_effective_experts": 2.999950001145832
+          },
+          {
+            "gap": 0.01,
+            "mean_effective_experts": 2.9998000183316815
+          },
+          {
+            "gap": 0.02,
+            "mean_effective_experts": 2.999200293226325
+          },
+          {
+            "gap": 0.05,
+            "mean_effective_experts": 2.9950114322642825
+          },
+          {
+            "gap": 0.1,
+            "mean_effective_experts": 2.9801816762223106
+          },
+          {
+            "gap": 0.2,
+            "mean_effective_experts": 2.922830077476534
+          },
+          {
+            "gap": 0.4,
+            "mean_effective_experts": 2.720956026245254
+          },
+          {
+            "gap": 0.8,
+            "mean_effective_experts": 2.1941226054781384
+          }
+        ],
+        "source": "sunspots"
+      },
+      {
+        "assignment": "fixed",
+        "expected_threshold": 0.09999999999999998,
+        "measured_threshold": 0.2,
+        "retention": 0.9,
+        "retention_condition": "short_continuity",
+        "series": [
+          {
+            "gap": 0.0,
+            "mean_effective_experts": 3.0
+          },
+          {
+            "gap": 0.002,
+            "mean_effective_experts": 2.999200293226325
+          },
+          {
+            "gap": 0.005,
+            "mean_effective_experts": 2.995011432264283
+          },
+          {
+            "gap": 0.01,
+            "mean_effective_experts": 2.9801816762223106
+          },
+          {
+            "gap": 0.02,
+            "mean_effective_experts": 2.922830077476534
+          },
+          {
+            "gap": 0.05,
+            "mean_effective_experts": 2.5933056556561933
+          },
+          {
+            "gap": 0.1,
+            "mean_effective_experts": 1.9586986534143915
+          },
+          {
+            "gap": 0.2,
+            "mean_effective_experts": 1.3065420025945267
+          },
+          {
+            "gap": 0.4,
+            "mean_effective_experts": 1.0373019738420295
+          },
+          {
+            "gap": 0.8,
+            "mean_effective_experts": 1.0006711503261274
+          }
+        ],
+        "source": "sunspots"
+      },
+      {
+        "assignment": "fixed",
+        "expected_threshold": 0.010000000000000009,
+        "measured_threshold": 0.02,
+        "retention": 0.99,
+        "retention_condition": "long_continuity",
+        "series": [
+          {
+            "gap": 0.0,
+            "mean_effective_experts": 3.0
+          },
+          {
+            "gap": 0.002,
+            "mean_effective_experts": 2.922830077476559
+          },
+          {
+            "gap": 0.005,
+            "mean_effective_experts": 2.593305655656259
+          },
+          {
+            "gap": 0.01,
+            "mean_effective_experts": 1.9586986534144994
+          },
+          {
+            "gap": 0.02,
+            "mean_effective_experts": 1.306542002594589
+          },
+          {
+            "gap": 0.05,
+            "mean_effective_experts": 1.0135666897076188
+          },
+          {
+            "gap": 0.1,
+            "mean_effective_experts": 1.000090803981834
+          },
+          {
+            "gap": 0.2,
+            "mean_effective_experts": 1.0000000041223063
+          },
+          {
+            "gap": 0.4,
+            "mean_effective_experts": 1.0
+          },
+          {
+            "gap": 0.8,
+            "mean_effective_experts": 1.0
+          }
+        ],
+        "source": "sunspots"
+      },
+      {
+        "assignment": "fixed",
+        "expected_threshold": 0.0,
+        "measured_threshold": 0.002,
+        "retention": 1.0,
+        "retention_condition": "cumulative_continuity",
+        "series": [
+          {
+            "gap": 0.0,
+            "mean_effective_experts": 3.0
+          },
+          {
+            "gap": 0.002,
+            "mean_effective_experts": 1.004679115037745
+          },
+          {
+            "gap": 0.005,
+            "mean_effective_experts": 1.0000005595403543
+          },
+          {
+            "gap": 0.01,
+            "mean_effective_experts": 1.000000000000191
+          },
+          {
+            "gap": 0.02,
+            "mean_effective_experts": 1.0
+          },
+          {
+            "gap": 0.05,
+            "mean_effective_experts": 1.0
+          },
+          {
+            "gap": 0.1,
+            "mean_effective_experts": 1.0
+          },
+          {
+            "gap": 0.2,
+            "mean_effective_experts": 1.0
+          },
+          {
+            "gap": 0.4,
+            "mean_effective_experts": 1.0
+          },
+          {
+            "gap": 0.8,
+            "mean_effective_experts": 1.0
+          }
+        ],
+        "source": "sunspots"
+      },
+      {
+        "assignment": "roving",
+        "expected_threshold": 1.0,
+        "measured_threshold": null,
+        "retention": 0.0,
+        "retention_condition": "one_encounter",
+        "series": [
+          {
+            "gap": 0.0,
+            "mean_effective_experts": 3.0
+          },
+          {
+            "gap": 0.002,
+            "mean_effective_experts": 2.999992000029345
+          },
+          {
+            "gap": 0.005,
+            "mean_effective_experts": 2.999950001145832
+          },
+          {
+            "gap": 0.01,
+            "mean_effective_experts": 2.9998000183316815
+          },
+          {
+            "gap": 0.02,
+            "mean_effective_experts": 2.999200293226325
+          },
+          {
+            "gap": 0.05,
+            "mean_effective_experts": 2.995011432264282
+          },
+          {
+            "gap": 0.1,
+            "mean_effective_experts": 2.9801816762223106
+          },
+          {
+            "gap": 0.2,
+            "mean_effective_experts": 2.922830077476534
+          },
+          {
+            "gap": 0.4,
+            "mean_effective_experts": 2.7209560262452483
+          },
+          {
+            "gap": 0.8,
+            "mean_effective_experts": 2.1941226054781384
+          }
+        ],
+        "source": "sunspots"
+      },
+      {
+        "assignment": "roving",
+        "expected_threshold": 0.09999999999999998,
+        "measured_threshold": null,
+        "retention": 0.9,
+        "retention_condition": "short_continuity",
+        "series": [
+          {
+            "gap": 0.0,
+            "mean_effective_experts": 3.0
+          },
+          {
+            "gap": 0.002,
+            "mean_effective_experts": 2.9998287023892107
+          },
+          {
+            "gap": 0.005,
+            "mean_effective_experts": 2.99893763894519
+          },
+          {
+            "gap": 0.01,
+            "mean_effective_experts": 2.9958116952050724
+          },
+          {
+            "gap": 0.02,
+            "mean_effective_experts": 2.98381476889737
+          },
+          {
+            "gap": 0.05,
+            "mean_effective_experts": 2.9117802009041625
+          },
+          {
+            "gap": 0.1,
+            "mean_effective_experts": 2.7330363148619776
+          },
+          {
+            "gap": 0.2,
+            "mean_effective_experts": 2.380297945441673
+          },
+          {
+            "gap": 0.4,
+            "mean_effective_experts": 1.9311078934946186
+          },
+          {
+            "gap": 0.8,
+            "mean_effective_experts": 1.5481241124509937
+          }
+        ],
+        "source": "sunspots"
+      },
+      {
+        "assignment": "roving",
+        "expected_threshold": 0.010000000000000009,
+        "measured_threshold": 0.1,
+        "retention": 0.99,
+        "retention_condition": "long_continuity",
+        "series": [
+          {
+            "gap": 0.0,
+            "mean_effective_experts": 3.0
+          },
+          {
+            "gap": 0.002,
+            "mean_effective_experts": 2.9889690997006158
+          },
+          {
+            "gap": 0.005,
+            "mean_effective_experts": 2.936501148091373
+          },
+          {
+            "gap": 0.01,
+            "mean_effective_experts": 2.78699447109231
+          },
+          {
+            "gap": 0.02,
+            "mean_effective_experts": 2.4320458924893944
+          },
+          {
+            "gap": 0.05,
+            "mean_effective_experts": 1.7620301148462998
+          },
+          {
+            "gap": 0.1,
+            "mean_effective_experts": 1.352470690566733
+          },
+          {
+            "gap": 0.2,
+            "mean_effective_experts": 1.0988595578868212
+          },
+          {
+            "gap": 0.4,
+            "mean_effective_experts": 1.012013250256285
+          },
+          {
+            "gap": 0.8,
+            "mean_effective_experts": 1.000427527866521
+          }
+        ],
+        "source": "sunspots"
+      },
+      {
+        "assignment": "roving",
+        "expected_threshold": 0.0,
+        "measured_threshold": 0.002,
+        "retention": 1.0,
+        "retention_condition": "cumulative_continuity",
+        "series": [
+          {
+            "gap": 0.0,
+            "mean_effective_experts": 3.0
+          },
+          {
+            "gap": 0.002,
+            "mean_effective_experts": 1.4972077027781336
+          },
+          {
+            "gap": 0.005,
+            "mean_effective_experts": 1.0604165655114512
+          },
+          {
+            "gap": 0.01,
+            "mean_effective_experts": 1.001848886902533
+          },
+          {
+            "gap": 0.02,
+            "mean_effective_experts": 1.000001792277564
+          },
+          {
+            "gap": 0.05,
+            "mean_effective_experts": 1.000000000000001
+          },
+          {
+            "gap": 0.1,
+            "mean_effective_experts": 1.0
+          },
+          {
+            "gap": 0.2,
+            "mean_effective_experts": 1.0
+          },
+          {
+            "gap": 0.4,
+            "mean_effective_experts": 1.0
+          },
+          {
+            "gap": 0.8,
+            "mean_effective_experts": 1.0
+          }
+        ],
+        "source": "sunspots"
+      },
+      {
+        "assignment": "fixed",
+        "expected_threshold": 1.0,
+        "measured_threshold": null,
+        "retention": 0.0,
+        "retention_condition": "one_encounter",
+        "series": [
+          {
+            "gap": 0.0,
+            "mean_effective_experts": 3.0
+          },
+          {
+            "gap": 0.002,
+            "mean_effective_experts": 2.999992000029345
+          },
+          {
+            "gap": 0.005,
+            "mean_effective_experts": 2.999950001145832
+          },
+          {
+            "gap": 0.01,
+            "mean_effective_experts": 2.999800018331682
+          },
+          {
+            "gap": 0.02,
+            "mean_effective_experts": 2.999200293226325
+          },
+          {
+            "gap": 0.05,
+            "mean_effective_experts": 2.995011432264282
+          },
+          {
+            "gap": 0.1,
+            "mean_effective_experts": 2.9801816762223106
+          },
+          {
+            "gap": 0.2,
+            "mean_effective_experts": 2.922830077476534
+          },
+          {
+            "gap": 0.4,
+            "mean_effective_experts": 2.7209560262452546
+          },
+          {
+            "gap": 0.8,
+            "mean_effective_experts": 2.1941226054781384
+          }
+        ],
+        "source": "co2"
+      },
+      {
+        "assignment": "fixed",
+        "expected_threshold": 0.09999999999999998,
+        "measured_threshold": 0.2,
+        "retention": 0.9,
+        "retention_condition": "short_continuity",
+        "series": [
+          {
+            "gap": 0.0,
+            "mean_effective_experts": 3.0
+          },
+          {
+            "gap": 0.002,
+            "mean_effective_experts": 2.999200293226325
+          },
+          {
+            "gap": 0.005,
+            "mean_effective_experts": 2.9950114322642825
+          },
+          {
+            "gap": 0.01,
+            "mean_effective_experts": 2.9801816762223106
+          },
+          {
+            "gap": 0.02,
+            "mean_effective_experts": 2.922830077476534
+          },
+          {
+            "gap": 0.05,
+            "mean_effective_experts": 2.5933056556561933
+          },
+          {
+            "gap": 0.1,
+            "mean_effective_experts": 1.9586986534143984
+          },
+          {
+            "gap": 0.2,
+            "mean_effective_experts": 1.3065420025945267
+          },
+          {
+            "gap": 0.4,
+            "mean_effective_experts": 1.0373019738420295
+          },
+          {
+            "gap": 0.8,
+            "mean_effective_experts": 1.0006711503261274
+          }
+        ],
+        "source": "co2"
+      },
+      {
+        "assignment": "fixed",
+        "expected_threshold": 0.010000000000000009,
+        "measured_threshold": 0.02,
+        "retention": 0.99,
+        "retention_condition": "long_continuity",
+        "series": [
+          {
+            "gap": 0.0,
+            "mean_effective_experts": 3.0
+          },
+          {
+            "gap": 0.002,
+            "mean_effective_experts": 2.923904999355234
+          },
+          {
+            "gap": 0.005,
+            "mean_effective_experts": 2.5980995675408383
+          },
+          {
+            "gap": 0.01,
+            "mean_effective_experts": 1.9665867596230286
+          },
+          {
+            "gap": 0.02,
+            "mean_effective_experts": 1.311565807466534
+          },
+          {
+            "gap": 0.05,
+            "mean_effective_experts": 1.014078813600249
+          },
+          {
+            "gap": 0.1,
+            "mean_effective_experts": 1.0000978381208525
+          },
+          {
+            "gap": 0.2,
+            "mean_effective_experts": 1.000000004805785
+          },
+          {
+            "gap": 0.4,
+            "mean_effective_experts": 1.0
+          },
+          {
+            "gap": 0.8,
+            "mean_effective_experts": 1.0
+          }
+        ],
+        "source": "co2"
+      },
+      {
+        "assignment": "fixed",
+        "expected_threshold": 0.0,
+        "measured_threshold": 0.005,
+        "retention": 1.0,
+        "retention_condition": "cumulative_continuity",
+        "series": [
+          {
+            "gap": 0.0,
+            "mean_effective_experts": 3.0
+          },
+          {
+            "gap": 0.002,
+            "mean_effective_experts": 1.9127895280369833
+          },
+          {
+            "gap": 0.005,
+            "mean_effective_experts": 1.1716054650621244
+          },
+          {
+            "gap": 0.01,
+            "mean_effective_experts": 1.0150484038180267
+          },
+          {
+            "gap": 0.02,
+            "mean_effective_experts": 1.0001920781091345
+          },
+          {
+            "gap": 0.05,
+            "mean_effective_experts": 1.0000000011800996
+          },
+          {
+            "gap": 0.1,
+            "mean_effective_experts": 1.0
+          },
+          {
+            "gap": 0.2,
+            "mean_effective_experts": 1.0
+          },
+          {
+            "gap": 0.4,
+            "mean_effective_experts": 1.0
+          },
+          {
+            "gap": 0.8,
+            "mean_effective_experts": 1.0
+          }
+        ],
+        "source": "co2"
+      },
+      {
+        "assignment": "roving",
+        "expected_threshold": 1.0,
+        "measured_threshold": null,
+        "retention": 0.0,
+        "retention_condition": "one_encounter",
+        "series": [
+          {
+            "gap": 0.0,
+            "mean_effective_experts": 3.0
+          },
+          {
+            "gap": 0.002,
+            "mean_effective_experts": 2.999992000029345
+          },
+          {
+            "gap": 0.005,
+            "mean_effective_experts": 2.999950001145832
+          },
+          {
+            "gap": 0.01,
+            "mean_effective_experts": 2.999800018331682
+          },
+          {
+            "gap": 0.02,
+            "mean_effective_experts": 2.999200293226325
+          },
+          {
+            "gap": 0.05,
+            "mean_effective_experts": 2.995011432264282
+          },
+          {
+            "gap": 0.1,
+            "mean_effective_experts": 2.9801816762223106
+          },
+          {
+            "gap": 0.2,
+            "mean_effective_experts": 2.922830077476534
+          },
+          {
+            "gap": 0.4,
+            "mean_effective_experts": 2.7209560262452546
+          },
+          {
+            "gap": 0.8,
+            "mean_effective_experts": 2.1941226054781384
+          }
+        ],
+        "source": "co2"
+      },
+      {
+        "assignment": "roving",
+        "expected_threshold": 0.09999999999999998,
+        "measured_threshold": 0.4,
+        "retention": 0.9,
+        "retention_condition": "short_continuity",
+        "series": [
+          {
+            "gap": 0.0,
+            "mean_effective_experts": 3.0
+          },
+          {
+            "gap": 0.002,
+            "mean_effective_experts": 2.999371914658988
+          },
+          {
+            "gap": 0.005,
+            "mean_effective_experts": 2.996127111184276
+          },
+          {
+            "gap": 0.01,
+            "mean_effective_experts": 2.984898519670858
+          },
+          {
+            "gap": 0.02,
+            "mean_effective_experts": 2.943183461871253
+          },
+          {
+            "gap": 0.05,
+            "mean_effective_experts": 2.7217920315438096
+          },
+          {
+            "gap": 0.1,
+            "mean_effective_experts": 2.31426605754157
+          },
+          {
+            "gap": 0.2,
+            "mean_effective_experts": 1.8356663212995021
+          },
+          {
+            "gap": 0.4,
+            "mean_effective_experts": 1.4411630505010875
+          },
+          {
+            "gap": 0.8,
+            "mean_effective_experts": 1.150736535840934
+          }
+        ],
+        "source": "co2"
+      },
+      {
+        "assignment": "roving",
+        "expected_threshold": 0.010000000000000009,
+        "measured_threshold": 0.05,
+        "retention": 0.99,
+        "retention_condition": "long_continuity",
+        "series": [
+          {
+            "gap": 0.0,
+            "mean_effective_experts": 3.0
+          },
+          {
+            "gap": 0.002,
+            "mean_effective_experts": 2.9444902373408555
+          },
+          {
+            "gap": 0.005,
+            "mean_effective_experts": 2.7284245142561936
+          },
+          {
+            "gap": 0.01,
+            "mean_effective_experts": 2.3299371795391184
+          },
+          {
+            "gap": 0.02,
+            "mean_effective_experts": 1.8543325242468767
+          },
+          {
+            "gap": 0.05,
+            "mean_effective_experts": 1.2993025300220584
+          },
+          {
+            "gap": 0.1,
+            "mean_effective_experts": 1.0471236407092712
+          },
+          {
+            "gap": 0.2,
+            "mean_effective_experts": 1.001146529780027
+          },
+          {
+            "gap": 0.4,
+            "mean_effective_experts": 1.0000007477898298
+          },
+          {
+            "gap": 0.8,
+            "mean_effective_experts": 1.000000000000485
+          }
+        ],
+        "source": "co2"
+      },
+      {
+        "assignment": "roving",
+        "expected_threshold": 0.0,
+        "measured_threshold": 0.01,
+        "retention": 1.0,
+        "retention_condition": "cumulative_continuity",
+        "series": [
+          {
+            "gap": 0.0,
+            "mean_effective_experts": 3.0
+          },
+          {
+            "gap": 0.002,
+            "mean_effective_experts": 2.2934695359606483
+          },
+          {
+            "gap": 0.005,
+            "mean_effective_experts": 1.6842191558516448
+          },
+          {
+            "gap": 0.01,
+            "mean_effective_experts": 1.278870150771809
+          },
+          {
+            "gap": 0.02,
+            "mean_effective_experts": 1.0457012051635033
+          },
+          {
+            "gap": 0.05,
+            "mean_effective_experts": 1.000302361536313
+          },
+          {
+            "gap": 0.1,
+            "mean_effective_experts": 1.0000001423661795
+          },
+          {
+            "gap": 0.2,
+            "mean_effective_experts": 1.0000000000000642
+          },
+          {
+            "gap": 0.4,
+            "mean_effective_experts": 1.0
+          },
+          {
+            "gap": 0.8,
+            "mean_effective_experts": 1.0
+          }
+        ],
+        "source": "co2"
+      }
+    ]
+  },
+  "verdict": "falsified"
+}

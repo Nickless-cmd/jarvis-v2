@@ -1146,3 +1146,65 @@ the fall in effective experts as a falsification — the numbers were there and
 they pointed the way the protocol's condition 1 was written to detect. What
 stopped that was checking the independent variable itself, and finding that it
 turned for a reason that had nothing to do with the mechanism.
+
+## 2026-11-25 — Investigation 8: the gap became an input, and a different variable answered
+
+**Status:** completed. Protocol frozen before measurement, including an addendum
+that added the second axis. Run preserved in
+`artifacts/exp_008_direct_gap/run_20261125_v2/`.
+
+### Observation
+
+Investigation 7 could not reach its question: its blend changed the predictions
+and the gap together, so the gap was not monotone in the instrument. Its own
+closing section named the fix — construct the gap directly, so it becomes the
+input. The loss function makes that possible exactly:
+`_normalized_loss(p, y) = |p − y| / (1 + |y|)` inverts to
+`p = y + s · l · (1 + |y|)`, so a prescribed loss is produced, not measured.
+
+### What was done
+
+For each month of both preserved series, `l_best` was measured on the real
+experts, so the difficulty of the month stayed anchored in the observation.
+Three constructed experts then received `l_best`, `l_best + gap/2`,
+`l_best + gap`. The gap is the input by construction — verified after the fact
+at **6.7 · 10⁻¹⁶** calibration error.
+
+The control was an analytic prediction rather than a preserved figure: at
+`gap = 0` the losses are identical, the softmax is uniform, and the effective
+count must be exactly 3. Measured 3.000000000.
+
+### Result
+
+At `fixed` assignment — one expert systematically best every month — the two
+physically unrelated series behave **almost identically**. Median difference in
+effective experts across all 40 matched (retention, gap) pairs: **0.0000**; 39
+of 40 below the 0.25 threshold. The threshold sits near `1 − r` within a factor
+of two: r=0.9 → 0.2 (predicted 0.1), r=0.99 → 0.02 (predicted 0.01).
+
+At `roving` assignment — same gap size, but which expert is best follows the
+real series — they diverge: 11 of 40 pairs differ by more than 0.25.
+
+### What it means
+
+Investigation 6's missing explanation is measured. CO₂'s monotone trend does not
+matter because the gap is small; it matters because the trend makes the same
+expert best nearly every month. That is exactly the `fixed` condition, and under
+`fixed` both sources collapse the same way.
+
+Investigation 7's own open question — *does the collapse depend on the gap, or on
+the stability of the gap over time?* — is answered: **on the stability.** The
+assignment axis changed the outcome in 20 of 80 cells.
+
+The verdict is `falsified` for the hypothesis as written, because the source does
+matter in the `roving` mode. But the falsification locates the mechanism instead
+of defeating it: gap size sets the scale, stability decides whether the scale is
+ever reached.
+
+### Why this entry is worth anything
+
+The first run pooled the two assignment modes when deciding whether condition 3
+fired, and returned a flat `falsified`. That number was true and told me nothing.
+Splitting the condition — which the protocol's addendum had required all along —
+turned the same data into the answer to a question two investigations had left
+open. The correction was to implement the frozen protocol, not to move the goal.

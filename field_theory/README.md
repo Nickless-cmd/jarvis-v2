@@ -43,6 +43,12 @@ not established facts and not a destination built into the software.
   rather than by the source. It is inconclusive: the blend instrument's own
   independent variable is not monotone, so the experiment cannot reach its
   question, and it reports that instead of a falsification.
+- [`research/investigation-008-findings.md`](research/investigation-008-findings.md)
+  makes the gap an input by inverting the loss function, and asks Investigation
+  6's open question directly. With a systematic advantage the two unrelated
+  series collapse identically (median difference 0.0000, threshold near `1 − r`);
+  with a rotating advantage they do not. The missing variable is the gap's
+  **stability**, not its size — which is what CO₂'s trend actually changes.
 - [`experiments/exp_001_perspective/PROTOCOL.md`](experiments/exp_001_perspective/PROTOCOL.md)
   documents the first method before its results.
 - [`experiments/exp_002_discovery/PROTOCOL.md`](experiments/exp_002_discovery/PROTOCOL.md)

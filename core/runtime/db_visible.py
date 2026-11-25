@@ -42,6 +42,19 @@ def ensure_visible_tables(conn: sqlite3.Connection) -> None:
     # sandt: vi ved det ikke for dem.
     if not any(row[1] == "tool_scope" for row in conn.execute("PRAGMA table_info(visible_runs)")):
         conn.execute("ALTER TABLE visible_runs ADD COLUMN tool_scope TEXT NOT NULL DEFAULT ''")
+    # Genoptagelses-kaeden paa rækken (25/11-2026). Tallet fandtes kun i
+    # `in_flight_runs`-journalen, som ryddes — så et forløb med ni kørsler på én
+    # besked kunne ikke måles bagefter, kun rekonstrueres af kodelæsning.
+    # `recovery_attempt` er hvor mange genoptagelser der lå før denne kørsel,
+    # `recovery_task_id` hvilken opgave den fortsatte, og `recovery_wake_kind`
+    # om den blev startet af en agent-vækning frem for af et afbrudt run.
+    for _kol, _def in (
+        ("recovery_attempt", "INTEGER NOT NULL DEFAULT 0"),
+        ("recovery_task_id", "TEXT NOT NULL DEFAULT ''"),
+        ("recovery_wake_kind", "TEXT NOT NULL DEFAULT ''"),
+    ):
+        if not any(row[1] == _kol for row in conn.execute("PRAGMA table_info(visible_runs)")):
+            conn.execute(f"ALTER TABLE visible_runs ADD COLUMN {_kol} {_def}")
     conn.execute(
         # Tidsvinduet. `hollow_promise_census` slaar modellen op med
         # `? BETWEEN r.started_at AND r.finished_at ORDER BY r.started_at DESC
@@ -441,3 +454,51 @@ def visible_session_continuity() -> dict[str, object]:
         "included_run_rows": len(recent_notes) or len(recent_runs),
         "included_capability_rows": len(recent_invocations),
     }
+
+
+def stamp_recovery_chain(
+    run_id: str,
+    *,
+    recovery_attempt: int = 0,
+    recovery_limit: int = 0,
+    recovery_task_id: str = "",
+    wake_kind: str = "",
+    reason: str = "",
+) -> bool:
+    """Skriv genoptagelses-kaeden paa kørslens række, så den kan måles bagefter.
+
+    HVORFOR (25/11-2026): kæden boede kun i `in_flight_runs`-journalen, som
+    `_ryd_afsluttede` rydder. Da Bjørn spurgte hvorfor ni kørsler havde svaret
+    på én besked, kunne journalen ikke vise det — den var tom, og svaret blev en
+    rekonstruktion fra koden i stedet for et tal. En tæller der forsvinder før
+    nogen kan læse den, kan ikke bruges til at bremse noget.
+
+    Skriver via UPDATE, ikke INSERT: rækken findes allerede når segmentet
+    afregnes, og en manglende række må ikke opfindes her (en række uden
+    `finished_at` ville se ud som en kørsel der stadig løb).
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return False
+    try:
+        with connect() as conn:
+            cur = conn.execute(
+                """
+                UPDATE visible_runs
+                   SET recovery_attempt = ?,
+                       recovery_task_id = ?,
+                       recovery_wake_kind = ?
+                 WHERE run_id = ?
+                """,
+                (max(0, int(recovery_attempt or 0)), str(recovery_task_id or ""),
+                 str(wake_kind or ""), rid),
+            )
+            return bool(cur.rowcount)
+    except Exception:
+        # Bevidst ikke tavs: en kaede der ikke kan maales er praecis den tilstand
+        # der gjorde spoergsmaalet ubesvarligt. Men den maa ikke vaelte turen.
+        import logging
+        logging.getLogger(__name__).warning(
+            "kunne ikke stemple genoptagelses-kaeden paa %s (attempt=%s limit=%s grund=%s)",
+            rid[:24], recovery_attempt, recovery_limit, str(reason)[:40], exc_info=True)
+        return False

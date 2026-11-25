@@ -50451,7 +50451,7 @@
       ]
     },
     "visible_runs": {
-      "digest": "50:04:ae:74:2c:9d:b6:58:f4:ad:3e:9c:14:e0:4f:ea:94:a3:cf:31:64:7a:af:7c:2b:d9:86:69:40:6e:83:9c",
+      "digest": "0a:59:08:f1:82:26:3c:6c:3f:bb:77:01:ee:26:66:7b:90:a9:4b:d4:cb:14:d1:6b:f1:52:7f:8d:58:11:d7:43",
       "schema": {
         "columns": [
           {
@@ -50531,6 +50531,30 @@
             "type": "TEXT",
             "nullable": false,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "recovery_attempt",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "recovery_task_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "recovery_wake_kind",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },

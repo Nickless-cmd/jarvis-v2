@@ -80,6 +80,20 @@ def afgoer_segment_udfald(
     grund = str(exit_reason or "")
     if truncated and grund == "completed":
         grund = "completed-truncated"
+    kaede = kaede_nr_eller_loft(session_id)
+    # Kæden skrives på rækken MENS den stadig kan læses. Journalen ryddes, og et
+    # forløb på ni kørsler kunne derfor ikke måles bagefter (25/11-2026).
+    try:
+        from core.runtime.db_visible import stamp_recovery_chain
+        stamp_recovery_chain(
+            run_id,
+            recovery_attempt=kaede,
+            recovery_limit=GENOPTAGELSES_LOFT,
+            reason=grund,
+        )
+    except Exception:
+        logger.warning("kunne ikke stemple genoptagelses-kaeden paa %s", run_id,
+                       exc_info=True)
     return settle_segment_exit(
         run_id=run_id,
         session_id=session_id,
@@ -88,7 +102,7 @@ def afgoer_segment_udfald(
         finish_reason=finish_reason,
         forced_finalize=forced_finalize,
         pending_tool_intent=pending_tool_intent,
-        recovery_attempt=kaede_nr_eller_loft(session_id),
+        recovery_attempt=kaede,
         recovery_limit=GENOPTAGELSES_LOFT,
         summary=grund,
     )

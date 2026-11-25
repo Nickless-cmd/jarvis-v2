@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10513/19183 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10514/19184 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 10513/19183 functions/methods documented (54%). The list 
 | `core.identity` | 84 | 175 | 48% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 925 | 1642 | 56% |
+| `core.runtime` | 926 | 1643 | 56% |
 | `core.services` | 7059 | 13024 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
@@ -677,10 +677,10 @@ Generated from source. 10513/19183 functions/methods documented (54%). The list 
 - `core/runtime/db_view_requests.py` :: `opret` (L48)
 - `core/runtime/db_view_requests.py` :: `vent_paa_svar` (L94)
 - `core/runtime/db_visible.py` :: `ensure_visible_tables` (L16)
-- `core/runtime/db_visible.py` :: `recent_visible_work_notes` (L180)
-- `core/runtime/db_visible.py` :: `recent_visible_work_units` (L228)
-- `core/runtime/db_visible.py` :: `record_visible_work_note` (L270)
-- `core/runtime/db_visible.py` :: `visible_session_continuity` (L384)
+- `core/runtime/db_visible.py` :: `recent_visible_work_notes` (L193)
+- `core/runtime/db_visible.py` :: `recent_visible_work_units` (L241)
+- `core/runtime/db_visible.py` :: `record_visible_work_note` (L283)
+- `core/runtime/db_visible.py` :: `visible_session_continuity` (L397)
 - `core/runtime/db_world_self_truth.py` :: `insert_world_fact` (L126)
 - `core/runtime/db_world_self_truth.py` :: `select_conversation_topics` (L109)
 - `core/runtime/db_world_self_truth.py` :: `select_world_facts` (L185)

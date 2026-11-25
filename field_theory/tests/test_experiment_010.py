@@ -158,14 +158,14 @@ def test_q_et_er_praecis_den_faste_orden_ved_r_et() -> None:
     assert _predicted_threshold(experts, 0.9, spread) == pytest.approx(0.1567, abs=5e-4)
 
 
-def test_duty_cycle_adskillelsen_er_gradvis_ikke_kategorisk() -> None:
-    """Measured on the synthetic generator, which shares no data with either source.
+def test_duty_cycle_og_mean_over_min_er_forskellige_stoerrelser() -> None:
+    """The two statistics are not interchangeable, and one name covered both.
 
-    The preserved run shows fixed at duty 1.000-1.005 and roving up to 1.98. Read
-    alone that looks like equilibrium versus non-equilibrium. It is not: q=1 is
-    exactly the fixed configuration, and it still fluctuates, because the softmax
-    is stochastic even when the rank order is deterministic. The ordering holds;
-    the clean split does not.
+    Investigation 10's first report called ``mean/min`` a duty cycle. It is not:
+    duty is a fraction in [0,1] and measures occupancy; mean/min is >= 1 and
+    measures fluctuation. The decisive case is a count pinned *above* the floor
+    versus one pinned *below* it — both give mean/min 1.000, while duty is 0 and
+    1. A single name hides exactly the distinction the investigation needed.
     """
     import math
 
@@ -175,14 +175,15 @@ def test_duty_cycle_adskillelsen_er_gradvis_ikke_kategorisk() -> None:
     )
 
     experts = ("a", "b", "c")
+    floor = 1.5
 
-    def duty(orders: list[list[str]], retention: float, gap: float) -> float:
+    def measure(orders: list[list[str]], retention: float, gap: float, skip: int = 20) -> tuple[float, float]:
         retained = {expert: 0.0 for expert in experts}
         effective: list[float] = []
-        for order in orders:
+        for index, order in enumerate(orders):
             losses = {
-                expert: gap * index / (len(experts) - 1)
-                for index, expert in enumerate(order)
+                expert: gap * rank / (len(experts) - 1)
+                for rank, expert in enumerate(order)
             }
             minimum = min(retained.values())
             unscaled = {
@@ -191,19 +192,64 @@ def test_duty_cycle_adskillelsen_er_gradvis_ikke_kategorisk() -> None:
             }
             total = sum(unscaled.values())
             weights = {expert: unscaled[expert] / total for expert in experts}
-            effective.append(1.0 / sum(value * value for value in weights.values()))
+            if index >= skip:
+                effective.append(1.0 / sum(value * value for value in weights.values()))
             for expert in experts:
                 retained[expert] = retention * retained[expert] + losses[expert]
-        return sum(effective) / len(effective) / min(effective)
+        duty = sum(1 for value in effective if value < floor) / len(effective)
+        return duty, (sum(effective) / len(effective)) / min(effective)
 
-    fixed_duty = duty(_synthetic_orders(400, experts, 1.0, 20261125), 0.9, 0.35)
-    uniform_duty = duty(_synthetic_orders(400, experts, 0.0, 20261125), 0.9, 0.35)
-
-    # The ordering survives: deterministic drift fluctuates less than uniform.
-    assert fixed_duty < uniform_duty
-    # But the deterministic case is NOT a clean equilibrium.
-    assert fixed_duty > 1.01, (
-        f"q=1 gav duty {fixed_duty:.3f} — hvis dette er 1.000 er mekanismen "
-        "blevet deterministisk, og adskillelsen ER kategorisk. Det ville være "
-        "et andet fund end det målte."
+    # The transient from a zero initialisation is skipped: softmax is
+    # deterministic, so what remains is a fixed point, not a stochastic series.
+    deterministic_duty, deterministic_ratio = measure(
+        _synthetic_orders(400, experts, 1.0, 20261125), 0.9, 0.35
     )
+    uniform_duty, uniform_ratio = measure(
+        _synthetic_orders(400, experts, 0.0, 20261125), 0.9, 0.35
+    )
+
+    # Duty separates the two configurations categorically, not gradually.
+    assert deterministic_duty == pytest.approx(1.0), deterministic_duty
+    assert uniform_duty < 0.2, uniform_duty
+    # And the deterministic case is an exact fixed point once the transient is gone.
+    assert deterministic_ratio == pytest.approx(1.0, abs=1e-3), deterministic_ratio
+    # mean/min points the other way — which is why one name for both was wrong.
+    assert deterministic_ratio < uniform_ratio
+
+
+def test_duty_cycle_kan_ikke_udledes_af_mean_over_min() -> None:
+    """The preserved sources contain both pinned states at mean/min 1.0000.
+
+    Measured 2026-11-25: ``fixed`` at r=0.9 sits above the floor every month
+    (duty 0.0000) and at r=0.99 below it every month (duty 1.0000). Both report
+    ``mean_over_min`` 1.0000. Any reader who took mean/min for the duty cycle
+    would have reported the same number for opposite states.
+    """
+    from feltteori_research.experiment_010_rank_drift import (
+        EXPERT_SETS,
+        THRESHOLD_FRACTION,
+        _evaluate,
+        _orders,
+        _prepare,
+    )
+    from feltteori_research.experiment_005_learning import parse_silso_monthly
+    from feltteori_research.experiment_009_expert_set import _expert_rows_for
+
+    source = Path(__file__).resolve().parents[1] / (
+        "artifacts/exp_005_independent/silso_20261030_e9a732ca9/silso_monthly_total_v2.csv"
+    )
+    experts = EXPERT_SETS["original"]
+    floor = THRESHOLD_FRACTION * len(experts)
+    prepared = _prepare(_expert_rows_for(parse_silso_monthly(source)[0], experts), experts)
+    orders = _orders(prepared, experts, "fixed")
+
+    above = _evaluate(prepared, 0.9, 0.1, orders, experts)
+    below = _evaluate(prepared, 0.99, 0.1, orders, experts)
+
+    assert above["duty_cycle"] == 0.0, above["duty_cycle"]
+    assert below["duty_cycle"] == 1.0, below["duty_cycle"]
+    # Same ratio, opposite states: the two quantities cannot stand in for each other.
+    assert above["mean_over_min"] == pytest.approx(1.0, abs=1e-9)
+    assert below["mean_over_min"] == pytest.approx(1.0, abs=1e-9)
+    assert above["min_effective_experts"] >= floor
+    assert below["max_effective_experts"] < floor

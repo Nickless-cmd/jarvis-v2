@@ -1322,6 +1322,44 @@ which compared across modes without asking whether it meant the same thing in
 each. That is the finding, and it is a criticism of the instrument rather than
 only of the formula.
 
+## 2026-11-25 — Investigation 10, correction: one name covered two statistics
+
+**Status:** correction to the section above. Protocol, run and verdict unchanged;
+the re-measurement is on the preserved sources and the independent generator.
+
+The section above says "the duty cycle" and then, twelve lines later, reports
+`mean/min` under the same name. They are not the same quantity:
+
+- **duty cycle** — fraction of evaluation months below the floor. `[0, 1]`.
+  Measures *occupancy*.
+- **mean/min** — mean effective count over the minimum. `[1, ∞)`.
+  Measures *fluctuation*.
+
+Neither implies the other. On the preserved sunspot series, `fixed`, gap 0.1,
+both states give `mean/min` 1.0000 while their duty cycles are 0.0000 (`r = 0.9`,
+pinned above the floor, mean = min = max = 1.959) and 1.0000 (`r = 0.99`, pinned
+below it, 1.000 throughout). The original report would have given the same
+number for opposite states.
+
+Consequences, measured rather than argued:
+
+- The claim that the split is "a matter of degree, not of kind" is **withdrawn**.
+  It rested on `mean/min`. On the true duty cycle the split is categorical: on
+  the independent generator, `q = 1` gives duty 1.0000 and `q = 0` gives 0.0579.
+- The claim that "the softmax is stochastic even when the rank order is
+  deterministic" is **wrong**. Softmax is deterministic. The 1.022 measured for
+  `q = 1` was the transient from a zero initialisation: with `r = 0.9` the
+  effective memory is ~10 months, so ~2.5 % of a 400-month window is transient,
+  which accounts for the whole discrepancy. Excluding the first 20 months gives
+  `mean/min` 1.0008.
+- `_evaluate` now reports `duty_cycle` and `mean_over_min` as separate fields,
+  and a test fails if either is missing. The old code could not report the true
+  duty at all — it never kept the per-month effective count.
+
+The `fixed` figure of "1.00 on all 16 cells" in the section above is correct, and
+for a reason the `mean/min` table cannot show: those 16 cells crossed the floor,
+so every one of their months is below it by definition of the crossing.
+
 Open: a threshold defined on a steady state — the median effective count, or the
 first month from which the count stays below the floor for `k` consecutive
 months — would make the two modes comparable. It needs its own frozen protocol

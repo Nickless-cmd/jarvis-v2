@@ -66,12 +66,18 @@ def _argument_range(
     experts: tuple[str, ...],
     floor: float,
 ) -> dict[str, float]:
-    """Argument range and the *duty cycle* of collapse over the evaluation window.
+    """Argument range, collapse occupancy and fluctuation over the evaluation window.
 
     The range alone is not enough. A constant wide spread and an intermittent one
     can produce the same *mean* effective expert count while meaning completely
-    different things, so the fraction of rows below the floor is reported next to
-    it: a steady state has a duty cycle near 1, a fluctuating one well below.
+    different things, so two distinct statistics are reported next to it:
+
+    ``duty_cycle`` — fraction of evaluation rows below the floor. In ``[0, 1]``.
+    ``mean_over_min`` — mean effective count divided by the minimum. ``>= 1``.
+
+    They measure different things and neither implies the other: a count pinned
+    above the floor and one pinned below it both give ``mean_over_min`` 1.000,
+    while their duty cycles are 0 and 1. Read them together or not at all.
     """
     span = len(experts) - 1
     retained = {expert: 0.0 for expert in experts}
@@ -98,17 +104,20 @@ def _argument_range(
             expert: retention * retained[expert] + losses[expert] for expert in experts
         }
     ordered = sorted(effective)
+    mean_effective = sum(effective) / len(effective) if effective else 0.0
+    min_effective = ordered[0] if ordered else 0.0
     return {
         "mean_range": sum(ranges) / len(ranges) if ranges else 0.0,
         "max_range": max(ranges) if ranges else 0.0,
-        "mean_effective": sum(effective) / len(effective) if effective else 0.0,
+        "mean_effective": mean_effective,
         "median_effective": ordered[len(ordered) // 2] if ordered else 0.0,
-        "min_effective": ordered[0] if ordered else 0.0,
+        "min_effective": min_effective,
         "duty_cycle": (
             sum(1 for value in effective if value < floor) / len(effective)
             if effective
             else 0.0
         ),
+        "mean_over_min": (mean_effective / min_effective) if min_effective else 0.0,
         "rows": float(len(ranges)),
     }
 

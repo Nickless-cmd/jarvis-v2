@@ -199,11 +199,31 @@ def _evaluate(
     orders: list[list[str]],
     experts: tuple[str, ...],
 ) -> dict[str, object]:
-    """Run the adaptive mechanism with an explicit rank order per row."""
+    """Run the adaptive mechanism with an explicit rank order per row.
+
+    Two different quantities are reported and they are not interchangeable:
+
+    ``duty_cycle`` is the fraction of evaluation months whose effective expert
+    count lies below the floor. It is in ``[0, 1]`` and measures *occupancy*.
+
+    ``mean_over_min`` is the mean effective count divided by the minimum. It is
+    ``>= 1`` and measures *fluctuation*. Exactly 1.000 means the count never
+    moved — but it cannot say whether it sat above the floor throughout (duty 0)
+    or below it throughout (duty 1). Measured 2026-11-25 on the preserved
+    sources: both give ``mean_over_min`` 1.0000 while their duty cycles are
+    0.0000 and 1.0000.
+
+    Investigation 10's first report used one name, "duty cycle", for both. That
+    is the same class of error the investigation is about — an instrument that
+    does not measure what its label says.
+    """
     span = len(experts) - 1
     retained = {expert: 0.0 for expert in experts}
+    floor = THRESHOLD_FRACTION * len(experts)
     effective_sum = 0.0
     effective_min = math.inf
+    effective_max = 0.0
+    below_floor = 0
     error_sum = 0.0
     count = 0
     worst_gap_error = 0.0
@@ -236,6 +256,9 @@ def _evaluate(
             effective = 1.0 / sum(weight * weight for weight in weights.values())
             effective_sum += effective
             effective_min = min(effective_min, effective)
+            effective_max = max(effective_max, effective)
+            if effective < floor:
+                below_floor += 1
             error_sum += abs(prediction - outcome)
             count += 1
             measured_gap = max(losses.values()) - min(losses.values())
@@ -247,11 +270,15 @@ def _evaluate(
 
     if count == 0:
         raise ValueError("no evaluation rows")
+    mean_effective = effective_sum / count
     return {
         "rows": count,
         "mae": error_sum / count,
-        "mean_effective_experts": effective_sum / count,
+        "mean_effective_experts": mean_effective,
         "min_effective_experts": effective_min,
+        "max_effective_experts": effective_max,
+        "duty_cycle": below_floor / count,
+        "mean_over_min": mean_effective / effective_min,
         "max_gap_error": worst_gap_error,
     }
 

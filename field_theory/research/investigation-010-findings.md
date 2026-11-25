@@ -6,6 +6,13 @@ threshold statistic actually measures in each mode. Protocol in
 after the first (faulted) run. Run preserved in
 `artifacts/exp_010_rank_drift/run_20261125_v2/`.
 
+**Corrected 2026-11-25:** the first version of this report used the name "duty
+cycle" for two different statistics — occupancy (a fraction in `[0,1]`) and
+fluctuation (mean-over-min, `>= 1`). They are orthogonal, and the confusion
+reversed one conclusion and invented another. Both are corrected below, and the
+instrument now reports them as separate fields. See "The two statistics are
+orthogonal" and the withdrawal of the "matter of degree" claim.
+
 **Provenance, stated precisely.** Unlike Investigations 5–9, this protocol was
 not committed before the first run: the first run's results were written at
 18:46:52 and the protocol at 18:48:06, and both entered git in the same commit.
@@ -109,11 +116,13 @@ the minimum: a **steady state**. In `roving` the average sits just below the
 floor while individual months fall far lower: an **intermittent** state whose
 mean crosses the floor by duty cycle rather than by equilibrium.
 
-The table above covers the 16 cells per assignment that actually crossed. The
-same separation holds over **every** non-`r=1` cell in the preserved run — 1,322
-`fixed` cells and 1,460 `roving` cells, measured directly from `cells.csv`:
+The table above covers the 16 cells per assignment that actually crossed. Across
+**every** non-`r=1` cell in the preserved run — 1,322 `fixed` cells and 1,460
+`roving` cells, measured directly from `cells.csv` — the quantity reported there
+was `mean/min`, not the duty cycle. It is a different statistic with a different
+range, and the first report of this investigation used one name for both:
 
-| assignment | N | cells | duty cycle (mean/min) | lowest min eff |
+| assignment | N | cells | mean/min | lowest min eff |
 |---|---:|---:|---|---:|
 | fixed | 2 | 330 | 1.000 – 1.003 | 1.000 |
 | fixed | 3 | 744 | 1.000 – 1.004 | 1.396 |
@@ -123,41 +132,69 @@ same separation holds over **every** non-`r=1` cell in the preserved run — 1,3
 | roving | 4 | 278 | 1.000 – 1.980 | 1.037 |
 
 `fixed` never exceeds 1.005 — the mean *is* the minimum, in every cell, at every
-`N`. `roving` reaches 1.98, meaning the mean sits at twice the minimum: the
-system is in collapse part of the time and out of it the rest. The separation is
-therefore not an artefact of the crossing cells; it is a property of the two
-modes.
+`N`. That is not a measurement of equilibrium; it is a consequence of the
+construction. With a constant rank order and no other source of variation, the
+effective count is a fixed point and cannot fluctuate. `roving` reaches 1.98
+because the ranking churns. So this table measures **fluctuation**, and the
+earlier reading of it as "a steady state" imported a conclusion the number
+cannot carry.
 
-**But the separation is a matter of degree, not of kind — measured on an
-independent source.** The two preserved series are the only data in the frozen
-run, so the duty-cycle claim was re-measured on the synthetic rank generator
-(`_synthetic_orders`, seed 20261125, 400 months, three experts), which shares no
-data with either source:
+## The two statistics are orthogonal, and one name hid it
 
-| q | r | gap | mean eff | min eff | duty |
+`mean/min` and the duty cycle answer different questions:
+
+- **duty cycle** — fraction of evaluation months below the floor. In `[0,1]`.
+  Measures *occupancy*: is the system collapsed or not?
+- **mean/min** — mean effective count divided by the minimum. `>= 1`.
+  Measures *fluctuation*: how much does the count move?
+
+Neither implies the other, and the decisive case is two states that both give
+`mean/min` exactly 1.0000. Measured 2026-11-25 on the preserved sunspot series,
+`fixed` assignment, gap 0.1:
+
+| retention | duty cycle | mean/min | mean eff | min eff | max eff |
 |---:|---:|---:|---:|---:|---:|
-| 0.0 | 0.9 | 0.35 | 2.338 | 1.270 | 1.840 |
-| 0.0 | 0.99 | 0.05 | 2.748 | 1.977 | 1.391 |
-| 0.5 | 0.9 | 0.35 | 1.554 | 1.082 | 1.437 |
-| 0.5 | 0.99 | 0.05 | 1.490 | 1.122 | 1.328 |
-| 1.0 | 0.9 | 0.35 | 1.086 | 1.062 | **1.022** |
-| 1.0 | 0.99 | 0.05 | 1.169 | 1.015 | **1.152** |
+| 0.9 | **0.0000** | 1.0000 | 1.959 | 1.959 | 1.959 |
+| 0.99 | **1.0000** | 1.0000 | 1.000 | 1.000 | 1.000 |
 
-`q = 1` is exactly `fixed`, and it does **not** give duty 1.000 here — it gives
-1.022 and 1.152. The mechanism is stochastic through the softmax even when the
-rank order is deterministic, so a settled state still fluctuates. The ordering
-survives (uniform drift has the highest duty, deterministic the lowest, on both
-retentions), but the clean "1.00 versus 0.52" split in the preserved run is
-sharper than the mechanism itself warrants. The honest statement is that `fixed`
-sits *near* equilibrium and `roving` *departs* from it, not that one is an
-equilibrium and the other is not.
+At `r = 0.9` the count is pinned *above* the floor every month. At `r = 0.99` it
+is pinned *below* it every month. The ratio is identical to four decimals; the
+states are opposite. A reader who took `mean/min` for the duty cycle would have
+reported the same number for both — which is precisely the error class this
+investigation is about.
 
-So the two "thresholds" are not the same quantity. `mean_effective_experts <
-0.5·N` measures a settled argument spread in one mode and the duty cycle of a
-fluctuating one in the other. That is why no single formula fits both, and it is
-a criticism of the statistic, not only of the formula — the statistic is
-inherited from Investigations 8 and 9, which compared across modes without
-asking whether it meant the same thing in each.
+## Re-measured on the independent generator
+
+The same correction applies to the synthetic cross-check. The generator shares
+no data with either source (`_synthetic_orders`, seed 20261125, 400 months,
+three experts), and once the two statistics are separated, and the transient
+from a zero initialisation is excluded, the separation is **categorical, not
+gradual**:
+
+| q | duty cycle (true) | mean/min | duty, transient excluded |
+|---:|---:|---:|---:|
+| 1.0 | 0.9850 | 1.0222 | **1.0000** |
+| 0.5 | 0.5350 | 1.4368 | 0.5632 |
+| 0.0 | 0.0550 | 1.8403 | 0.0579 |
+
+`q = 1` is exactly `fixed`: the count sits below the floor in every month once
+the first 20 months are skipped (duty 1.0000, `mean/min` 1.0008). `q = 0` sits
+below the floor in 6 % of months. The first report's claim that "the mechanism
+is stochastic through the softmax" was wrong: softmax is deterministic. What
+produced 1.022 was the **transient** — `retained` starts at zero for every
+expert, so the first months are near-uniform before the fixed point is reached.
+With `r = 0.9` the effective memory is ~10 months, so ~2.5 % of a 400-month
+window is transient, which is the whole of the discrepancy.
+
+The earlier conclusion — that the split is "a matter of degree, not of kind" —
+was therefore built on the wrong statistic and is withdrawn. On the true duty
+cycle the split is categorical. What remains true is the reason the statistics
+were confused: the threshold statistic `mean_effective_experts < 0.5·N` asks
+about occupancy while being computed from a mean, so it measures a settled
+argument spread in one mode and something else again in the other. That is a
+criticism of the statistic, not only of the formula — and it is inherited from
+Investigations 8 and 9, which compared across modes without asking whether the
+statistic meant the same thing in each.
 
 This is measured post-hoc, in `experiments/exp_010_rank_drift/posthoc_range.py`,
 and it carries no verdict. It is a hypothesis for the next investigation, not a
@@ -169,8 +206,9 @@ result of this one.
   to within the grid factor, now on five expert sets and two sources.
 - **Investigation 9's headline is narrowed further.** "The threshold does not
   depend on the experts" is true of `fixed` only, and in `fixed` it could not
-  have been otherwise. Its `roving` numbers (0.01 to 0.8) are duty cycles, not
-  thresholds, and should not be read as a scaling law.
+  have been otherwise. Its `roving` numbers (0.01 to 0.8) are gap thresholds
+  driven by the duty cycle, not values of a duty cycle themselves, and should
+  not be read as a scaling law.
 - **Investigation 6's missing transfer is still explained**, but the explanation
   is now narrower than Investigation 8 proposed: CO₂'s trend makes one expert
   best nearly every month, which puts it close to `fixed` — where the threshold

@@ -1,0 +1,355 @@
+{
+  "aggregate_choice": {
+    "best_by_unconditional_mean": "3.0",
+    "best_by_unconditional_median": "inf",
+    "same": false
+  },
+  "best_moderate": "10.0",
+  "conditions": {
+    "1_aggregate_conflict_is_real": true,
+    "2_moderate_sharpening_improves_conditional_median": true,
+    "3_limit_wins_only_through_hits": true,
+    "4_gain_stable_in_every_year": true,
+    "5_gain_not_carried_by_minority": true,
+    "6_win_rate_below_one_half": true
+  },
+  "conditions_failed": [],
+  "controls": {
+    "identity_holds": true,
+    "identity_worst_residual": 0.0,
+    "leader_equals_argmin": true,
+    "leader_months": 38340,
+    "leader_total": 38340,
+    "limit_reproduces_selection": true,
+    "limit_worst_gap": 0.0
+  },
+  "limit_gain_conditional": -0.08186610202699107,
+  "limit_gain_unconditional": 0.21661649057951649,
+  "limit_per_cell_conditional": {
+    "improved": 14,
+    "worsened": 79
+  },
+  "method_version": "exp015.sharpover.time.1",
+  "moderate_gains": {
+    "10.0": 0.4495812245794186,
+    "2.0": 0.13724471411423833,
+    "3.0": 0.1906695177460409,
+    "5.0": 0.318233931787395
+  },
+  "parameters": {
+    "alphas": [
+      2.0,
+      3.0,
+      5.0,
+      10.0
+    ],
+    "assignments": [
+      "fixed",
+      "roving"
+    ],
+    "expert_sets": [
+      "original",
+      "short_memory",
+      "long_memory",
+      "two_experts",
+      "four_experts"
+    ],
+    "gaps": [
+      0.05,
+      0.2,
+      0.8
+    ],
+    "retentions": [
+      0.9,
+      0.99
+    ]
+  },
+  "per_cell_improved": 64,
+  "per_cell_total": 112,
+  "per_year": [
+    {
+      "median_alpha_1.0": 1.2695253812432337,
+      "median_alpha_10.0": 1.0402263355359898,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2000"
+    },
+    {
+      "median_alpha_1.0": 1.1813916762298042,
+      "median_alpha_10.0": 1.0147858771092424,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2001"
+    },
+    {
+      "median_alpha_1.0": 1.2500826024220286,
+      "median_alpha_10.0": 1.0234019042760356,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2002"
+    },
+    {
+      "median_alpha_1.0": 1.236885465315455,
+      "median_alpha_10.0": 1.0052591713450325,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2003"
+    },
+    {
+      "median_alpha_1.0": 1.2589418350955768,
+      "median_alpha_10.0": 1.0423770571394684,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2004"
+    },
+    {
+      "median_alpha_1.0": 1.2565908563102308,
+      "median_alpha_10.0": 1.011330255881945,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2005"
+    },
+    {
+      "median_alpha_1.0": 1.2867888122865663,
+      "median_alpha_10.0": 1.0199266672044245,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2006"
+    },
+    {
+      "median_alpha_1.0": 1.4387631803764525,
+      "median_alpha_10.0": 1.0829364984520824,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2007"
+    },
+    {
+      "median_alpha_1.0": 1.2637601485642178,
+      "median_alpha_10.0": 1.0039478814019849,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2008"
+    },
+    {
+      "median_alpha_1.0": 1.2044034678366011,
+      "median_alpha_10.0": 1.0000027139432257,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2009"
+    },
+    {
+      "median_alpha_1.0": 1.1140300818554651,
+      "median_alpha_10.0": 1.000016352532375,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2010"
+    },
+    {
+      "median_alpha_1.0": 1.0798569725864222,
+      "median_alpha_10.0": 1.0000294034873507,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2011"
+    },
+    {
+      "median_alpha_1.0": 1.1844733723714658,
+      "median_alpha_10.0": 1.002873138143798,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2012"
+    },
+    {
+      "median_alpha_1.0": 1.1859492923017265,
+      "median_alpha_10.0": 1.0054677864013917,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2013"
+    },
+    {
+      "median_alpha_1.0": 1.1738793293979746,
+      "median_alpha_10.0": 1.0360523746235026,
+      "months": 1404,
+      "sharp_wins": true,
+      "year": "2014"
+    },
+    {
+      "median_alpha_1.0": 1.2102255975609424,
+      "median_alpha_10.0": 1.0002596999923574,
+      "months": 1404,
+      "sharp_wins": true,
+      "year": "2015"
+    },
+    {
+      "median_alpha_1.0": 1.172946839752108,
+      "median_alpha_10.0": 1.0002634156276768,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2016"
+    },
+    {
+      "median_alpha_1.0": 1.2319998436040227,
+      "median_alpha_10.0": 1.0059331143607535,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2017"
+    },
+    {
+      "median_alpha_1.0": 1.315402640054137,
+      "median_alpha_10.0": 1.0325614107667749,
+      "months": 1404,
+      "sharp_wins": true,
+      "year": "2018"
+    },
+    {
+      "median_alpha_1.0": 1.3922495538342836,
+      "median_alpha_10.0": 1.0473186118945739,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2019"
+    },
+    {
+      "median_alpha_1.0": 1.3344245832694122,
+      "median_alpha_10.0": 1.05,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2020"
+    },
+    {
+      "median_alpha_1.0": 1.2224492513355796,
+      "median_alpha_10.0": 1.005048858710931,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2021"
+    },
+    {
+      "median_alpha_1.0": 1.177272659239636,
+      "median_alpha_10.0": 1.0000477220608015,
+      "months": 1404,
+      "sharp_wins": true,
+      "year": "2022"
+    },
+    {
+      "median_alpha_1.0": 1.2250624034728457,
+      "median_alpha_10.0": 1.0006438403374203,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2023"
+    },
+    {
+      "median_alpha_1.0": 1.180187383447235,
+      "median_alpha_10.0": 1.0004607967267634,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2024"
+    },
+    {
+      "median_alpha_1.0": 1.115993301216143,
+      "median_alpha_10.0": 1.0008459084537655,
+      "months": 1440,
+      "sharp_wins": true,
+      "year": "2025"
+    },
+    {
+      "median_alpha_1.0": 1.079275913388535,
+      "median_alpha_10.0": 1.0000003741087906,
+      "months": 900,
+      "sharp_wins": true,
+      "year": "2026"
+    }
+  ],
+  "summary": {
+    "1.0": {
+      "conditional_mean_base": 9.143315139310586,
+      "conditional_mean_sharp": 9.143315139310586,
+      "conditional_median_base": 1.3312388587845523,
+      "conditional_median_sharp": 1.3312388587845523,
+      "conditional_months": 34699,
+      "hit_months": 3497,
+      "hit_share": 0.09155408943344853,
+      "months": 38196,
+      "unconditional_mean": 8.397761336763011,
+      "unconditional_median": 1.2166164905795165
+    },
+    "10.0": {
+      "conditional_mean_base": 12.296626275957784,
+      "conditional_mean_sharp": 11.950138492406241,
+      "conditional_median_base": 1.8546232413860602,
+      "conditional_median_sharp": 1.4050420168066415,
+      "conditional_months": 24988,
+      "hit_months": 13208,
+      "hit_share": 0.3457953712430621,
+      "months": 38196,
+      "unconditional_mean": 8.163631287264488,
+      "unconditional_median": 1.00686196104871
+    },
+    "2.0": {
+      "conditional_mean_base": 9.794151749144218,
+      "conditional_mean_sharp": 9.476243445491583,
+      "conditional_median_base": 1.4341588044715672,
+      "conditional_median_sharp": 1.2969140903573289,
+      "conditional_months": 32131,
+      "hit_months": 6065,
+      "hit_share": 0.158786260341397,
+      "months": 38196,
+      "unconditional_mean": 8.130332447039885,
+      "unconditional_median": 1.1013492724792986
+    },
+    "3.0": {
+      "conditional_mean_base": 10.522597165455212,
+      "conditional_mean_sharp": 10.085865230784398,
+      "conditional_median_base": 1.5415800379890743,
+      "conditional_median_sharp": 1.3509105202430334,
+      "conditional_months": 29673,
+      "hit_months": 8523,
+      "hit_share": 0.22313854853911405,
+      "months": 38196,
+      "unconditional_mean": 8.058458450968418,
+      "unconditional_median": 1.0638976129159432
+    },
+    "5.0": {
+      "conditional_mean_base": 11.374729614093686,
+      "conditional_mean_sharp": 10.944924156666586,
+      "conditional_median_base": 1.6891455748415058,
+      "conditional_median_sharp": 1.3709116430541108,
+      "conditional_months": 27234,
+      "hit_months": 10962,
+      "hit_share": 0.28699340245051835,
+      "months": 38196,
+      "unconditional_mean": 8.090796535835148,
+      "unconditional_median": 1.0316751808255344
+    },
+    "inf": {
+      "conditional_mean_base": 16.108421742640463,
+      "conditional_mean_sharp": 17.885942281141578,
+      "conditional_median_base": 2.0103723681643872,
+      "conditional_median_sharp": 2.0922384701913783,
+      "conditional_months": 16407,
+      "hit_months": 21789,
+      "hit_share": 0.5704524033930255,
+      "months": 38196,
+      "unconditional_mean": 8.253315923308458,
+      "unconditional_median": 1.0
+    }
+  },
+  "verdict": "moderate_sharpening_wins_over_time_limit_does_not",
+  "win_rates": {
+    "2.0": {
+      "months": 38196,
+      "ties": 5791,
+      "win_rate": 0.48238035396376583,
+      "wins": 18425
+    },
+    "3.0": {
+      "months": 38196,
+      "ties": 5791,
+      "win_rate": 0.47732746884490523,
+      "wins": 18232
+    },
+    "inf": {
+      "months": 38196,
+      "ties": 5791,
+      "win_rate": 0.4658864802597131,
+      "wins": 17795
+    }
+  }
+}

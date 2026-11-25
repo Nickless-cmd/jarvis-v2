@@ -1616,3 +1616,44 @@ weight's shape rather than of the weighting itself. Which means the thing is
 fixable in principle — but the fix trades the median against the mean, and the
 oracle it is measured against uses hindsight every month.
 
+## Investigation 15 — the median falls, and that is the trap
+
+The sharpened weight `w^alpha` improved the median while the mean had an
+interior minimum, and both were measured on the pooled set. Pooling hides time,
+so the question became narrower: does the median gain hold inside each calendar
+year?
+
+It does — in all 27 of them. And it is not the mechanism.
+
+A median reaches 1.000 when more than half the months sit at exactly 1.000, and
+a month sits exactly there when the heaviest expert *is* the oracle. Sharpening
+raises that share from 9.2 % to 57.0 %. So the median falls for a reason that
+has nothing to do with the mechanism getting better, and it is fully compatible
+with a mechanism that is worse in every month it does not hit.
+
+Restricting the median to the months the sharpened weight misses separates the
+two. Moderate sharpening survives: 1.4342 becomes 1.2969 at alpha=2, and 1.8546
+becomes 1.4050 at alpha=10. The argmax limit does not survive: 2.0104 becomes
+2.0922. Per cell the limit improves 14 and worsens 79 — while unconditionally it
+looks exactly as good as alpha=2, 92 cells better and 10 worse for both. The
+entire apparent gain of pure selection is its hit rate.
+
+So the honest version is: a moderate sharpening improves the typical month it
+does not win outright, and pure selection does not. That distinction only exists
+if the conditional median is measured, and it is the fifth time in six
+investigations that a number looked like an improvement while measuring its own
+target.
+
+Three things stay uncomfortable. The gain wins fewer than half the months
+(46.6–48.2 %), so it is a magnitude when it moves and not a frequency; the worst
+single month loses by a factor of 2 019. The alpha with the largest median gain,
+10.0, is the least robust across cells — 64 of 112, against 85 of 116 at alpha=2.
+And choosing alpha on the pooled median picks exactly the wrong one if the goal
+is that it holds everywhere.
+
+Sharpening to the limit is also not what its name suggests. Because
+`w = exp(-L*(retained-min))` is monotone decreasing in `retained`,
+`argmax(w) == argmin(retained)` — it is following the leader, picking the expert
+with the smallest accumulated loss. That was checked in all 38 340 months, and
+it is why the limit's conditional loss makes sense: the leader is often right,
+and when it is wrong it is wrong alone.

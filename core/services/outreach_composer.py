@@ -110,7 +110,8 @@ def _last_user_message_context() -> dict[str, Any]:
         if conn is not None:
             conn.close()
     if row:
-        out["preview"] = str(row["user_message_preview"] or "")[:200]
+        from core.services.visible_preview_crypto import laesbaar_preview
+        out["preview"] = str(laesbaar_preview(row["user_message_preview"]) or "")[:200]
         out["hours_since"] = _hours_since(str(row["finished_at"] or ""))
         cap = str(row["capability_id"] or "").lower()
         if "discord" in cap:

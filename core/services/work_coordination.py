@@ -270,6 +270,8 @@ def _kilde_agenter(conn, tekst, fp, scope, nu, new_evidence):
 
 def _kilde_synlige(conn, tekst, fp, scope, nu, new_evidence):
     # 3. Synlige ture (seneste vindue) — brugerens EGET arbejde.
+    from core.services.visible_preview_crypto import PLADSHOLDER_KRYPTERET, laesbaar_preview
+
     graense = (nu - timedelta(minutes=_SYNLIG_VINDUE_MINUTTER)).isoformat()
     for r in conn.execute(
         "SELECT r.run_id, r.user_id, r.text_preview AS svar,"
@@ -280,8 +282,20 @@ def _kilde_synlige(conn, tekst, fp, scope, nu, new_evidence):
     ):
         if not _bruger_matcher(scope, r["user_id"]):
             continue
-        if _samme_arbejde(tekst, f"{r['spoerg'] or ''} {r['svar'] or ''}") or \
-                _delt_anker_og_handling(tekst, r["spoerg"], r["svar"]):
+        # 25/11-2026: for en medlems-koersel er begge felter chiffertekst
+        # (`enc:v1:...`). Denne gren laeste dem RAAT og matchede paa base64, saa
+        # chiffertekst kunne give et falsk «samme arbejde» eller skjule et aegte.
+        # Koordinering er allerede scopet til brugeren, saa vi dekrypterer med
+        # raekkens EGET user_id. Kan noeglen ikke bevises, er svaret ikke bevist:
+        # vi matcher paa tom tekst frem for paa chiffer.
+        svar = laesbaar_preview(r["svar"], user_id=r["user_id"])
+        spoerg = laesbaar_preview(r["spoerg"], user_id=r["user_id"])
+        if svar == PLADSHOLDER_KRYPTERET:
+            svar = ""
+        if spoerg == PLADSHOLDER_KRYPTERET:
+            spoerg = ""
+        if _samme_arbejde(tekst, f"{spoerg or ''} {svar or ''}") or \
+                _delt_anker_og_handling(tekst, spoerg, svar):
             return _ref("visible_run", r["run_id"], "in_progress",
                         why="synlig-samtale-samme-arbejde")
     return None

@@ -134,8 +134,10 @@ def _aktive_koersler(graense: int = 5) -> list[dict[str, str]]:
                 (int(graense),),
             ).fetchall()
         # Tabellen giver KANDIDATER; heartbeatet giver svaret.
+        from core.services.visible_preview_crypto import laesbaar_preview
         return [
-            {"run_id": str(r[0]), "preview": str(r[1] or "")}
+            {"run_id": str(r[0]),
+             "preview": str(laesbaar_preview(r[1]) or "")}
             for r in raekker
             if is_visible_run_alive(str(r[0]))
         ]

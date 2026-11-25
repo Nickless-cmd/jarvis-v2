@@ -147,7 +147,8 @@ def _last_user_topic() -> str:
             conn.close()
     if not row:
         return ""
-    text = str(row["user_message_preview"] or "").strip()
+    from core.services.visible_preview_crypto import laesbaar_preview
+    text = str(laesbaar_preview(row["user_message_preview"]) or "").strip()
     return text[:120]
 
 

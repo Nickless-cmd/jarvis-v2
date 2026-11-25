@@ -491,12 +491,12 @@ _Arbejdskoordinering: «er det jeg overvejer allerede dækket af eksisterende ar
 | function | `_kilde_opgaver` | `(conn, tekst, fp, scope, nu, new_evidence)` | — | [src](../../../core/services/work_coordination.py#L232) |
 | function | `_kilde_agenter` | `(conn, tekst, fp, scope, nu, new_evidence)` | — | [src](../../../core/services/work_coordination.py#L257) |
 | function | `_kilde_synlige` | `(conn, tekst, fp, scope, nu, new_evidence)` | — | [src](../../../core/services/work_coordination.py#L271) |
-| function | `_delt_anker_og_handling` | `(tekst, *dele)` | En samtale blander ofte flere handlinger; her kræves kun delt ANKER + samme klasse | [src](../../../core/services/work_coordination.py#L290) |
-| function | `has_independent_work_signal` | `(tekst)` | Har teksten et konkret anker + en handling? Så kan den dømmes mod arbejdsrelationer | [src](../../../core/services/work_coordination.py#L303) |
-| function | `record_decision` | `(*, decision, reason, subject, covering=…, user_id=…)` | Ingen tavse afvisninger: årsagen går i eventbussen (Mission Control læser derfra). | [src](../../../core/services/work_coordination.py#L309) |
-| function | `claim_work` | `(*, tekst, user_id=…, owner, kind=…, origin=…, origin_ref=…, priority=…, new_evidence=…)` | Atomisk reservation. ``{"claimed": True, "task": …}`` eller ``{"claimed": False, "covering": …}``. | [src](../../../core/services/work_coordination.py#L325) |
-| function | `find_pending_initiative_same_work` | `(tekst, *, user_id=…)` | Id på et ventende initiativ med SAMME fingeraftryk og bruger. '' = ingen. | [src](../../../core/services/work_coordination.py#L366) |
-| function | `er_forskellig_handling` | `(ny, gammel, *, user_id=…)` | Begge har identitet og de er FORSKELLIGE → deler kun emne, ikke arbejde. | [src](../../../core/services/work_coordination.py#L388) |
+| function | `_delt_anker_og_handling` | `(tekst, *dele)` | En samtale blander ofte flere handlinger; her kræves kun delt ANKER + samme klasse | [src](../../../core/services/work_coordination.py#L304) |
+| function | `has_independent_work_signal` | `(tekst)` | Har teksten et konkret anker + en handling? Så kan den dømmes mod arbejdsrelationer | [src](../../../core/services/work_coordination.py#L317) |
+| function | `record_decision` | `(*, decision, reason, subject, covering=…, user_id=…)` | Ingen tavse afvisninger: årsagen går i eventbussen (Mission Control læser derfra). | [src](../../../core/services/work_coordination.py#L323) |
+| function | `claim_work` | `(*, tekst, user_id=…, owner, kind=…, origin=…, origin_ref=…, priority=…, new_evidence=…)` | Atomisk reservation. ``{"claimed": True, "task": …}`` eller ``{"claimed": False, "covering": …}``. | [src](../../../core/services/work_coordination.py#L339) |
+| function | `find_pending_initiative_same_work` | `(tekst, *, user_id=…)` | Id på et ventende initiativ med SAMME fingeraftryk og bruger. '' = ingen. | [src](../../../core/services/work_coordination.py#L380) |
+| function | `er_forskellig_handling` | `(ny, gammel, *, user_id=…)` | Begge har identitet og de er FORSKELLIGE → deler kun emne, ikke arbejde. | [src](../../../core/services/work_coordination.py#L402) |
 
 ## `core/services/workspace_crypto.py`
 _Krypteret workspace-fil-I/O (spec §16, Lag 3)._

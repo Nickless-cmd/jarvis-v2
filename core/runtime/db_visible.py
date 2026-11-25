@@ -182,21 +182,23 @@ def recent_visible_work_notes(limit: int = 5) -> list[dict[str, object]]:
         rows = conn.execute(
             """
             SELECT
-                note_id,
-                work_id,
-                run_id,
-                status,
-                lane,
-                provider,
-                model,
-                user_message_preview,
-                capability_id,
-                work_preview,
-                projection_source,
-                created_at,
-                finished_at
-            FROM visible_work_notes
-            ORDER BY id DESC
+                n.note_id,
+                n.work_id,
+                n.run_id,
+                n.status,
+                n.lane,
+                n.provider,
+                n.model,
+                n.user_message_preview,
+                n.capability_id,
+                n.work_preview,
+                n.projection_source,
+                n.created_at,
+                n.finished_at,
+                r.user_id AS _owner
+            FROM visible_work_notes AS n
+            LEFT JOIN visible_runs AS r ON r.run_id = n.run_id
+            ORDER BY n.id DESC
             LIMIT ?
             """,
             (max(limit, 1),),
@@ -210,9 +212,11 @@ def recent_visible_work_notes(limit: int = 5) -> list[dict[str, object]]:
             "lane": row["lane"],
             "provider": row["provider"],
             "model": row["model"],
-            "user_message_preview": row["user_message_preview"],
+            # Ejeren slås op på rækkens run_id — kalderen er typisk en daemon
+            # uden user_id, og så kan nøglen aldrig bevises.
+            "user_message_preview": reveal_preview(row["user_message_preview"], row["_owner"]),
             "capability_id": row["capability_id"],
-            "work_preview": row["work_preview"],
+            "work_preview": reveal_preview(row["work_preview"], row["_owner"]),
             "projection_source": row["projection_source"],
             "created_at": row["created_at"],
             "finished_at": row["finished_at"],
@@ -226,19 +230,21 @@ def recent_visible_work_units(limit: int = 5) -> list[dict[str, object]]:
         rows = conn.execute(
             """
             SELECT
-                work_id,
-                run_id,
-                status,
-                lane,
-                provider,
-                model,
-                started_at,
-                finished_at,
-                user_message_preview,
-                capability_id,
-                work_preview
-            FROM visible_work_units
-            ORDER BY id DESC
+                u.work_id,
+                u.run_id,
+                u.status,
+                u.lane,
+                u.provider,
+                u.model,
+                u.started_at,
+                u.finished_at,
+                u.user_message_preview,
+                u.capability_id,
+                u.work_preview,
+                r.user_id AS _owner
+            FROM visible_work_units AS u
+            LEFT JOIN visible_runs AS r ON r.run_id = u.run_id
+            ORDER BY u.id DESC
             LIMIT ?
             """,
             (max(limit, 1),),
@@ -253,9 +259,9 @@ def recent_visible_work_units(limit: int = 5) -> list[dict[str, object]]:
             "model": row["model"],
             "started_at": row["started_at"],
             "finished_at": row["finished_at"],
-            "user_message_preview": row["user_message_preview"],
+            "user_message_preview": reveal_preview(row["user_message_preview"], row["_owner"]),
             "capability_id": row["capability_id"],
-            "work_preview": row["work_preview"],
+            "work_preview": reveal_preview(row["work_preview"], row["_owner"]),
         }
         for row in rows
     ]

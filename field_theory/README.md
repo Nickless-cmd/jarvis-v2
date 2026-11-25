@@ -38,6 +38,11 @@ not established facts and not a destination built into the software.
   physically unrelated series (NOAA Mauna Loa CO₂) under the identical
   mechanism. It does not: the transfer is falsified, and the earlier lock-in
   result is narrowed to a joint configuration of rule, expert set and source.
+- [`research/investigation-007-findings.md`](research/investigation-007-findings.md)
+  asks whether the collapse to one expert is governed by the expert loss gap
+  rather than by the source. It is inconclusive: the blend instrument's own
+  independent variable is not monotone, so the experiment cannot reach its
+  question, and it reports that instead of a falsification.
 - [`experiments/exp_001_perspective/PROTOCOL.md`](experiments/exp_001_perspective/PROTOCOL.md)
   documents the first method before its results.
 - [`experiments/exp_002_discovery/PROTOCOL.md`](experiments/exp_002_discovery/PROTOCOL.md)

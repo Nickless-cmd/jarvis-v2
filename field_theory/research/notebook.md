@@ -1083,3 +1083,66 @@ and no stochastic significance claim was made.
   is source-specific before new adaptive rules are tuned on this series.
 - A future controlled intervention may be needed to distinguish consequence-
   caused change from an autonomous transition that happens after the same event.
+
+## 2026-11-25 — Investigation 7: the instrument could not reach its own question
+
+**Status:** completed, inconclusive. Protocol frozen in
+`experiments/exp_007_gradient/PROTOCOL.md` before any measurement; run
+preserved in `artifacts/exp_007_gradient/run_20261125_v4/`.
+
+Investigation 6's Limitation named an untested explanation — that
+`previous_month` is near-optimal by construction on CO₂ — and its Questions
+section asked the discriminating version: is there a source where the experts
+are equally good, and does the mechanism then stay responsive? Investigation 7
+asked whether the collapse to one expert is governed by the **expert loss gap**
+rather than by the source, by grading the disagreement on the two preserved
+series instead of introducing a third.
+
+### The control passed, after one correction
+
+At blend 0 the run reproduced both preserved results to ten decimals. The first
+version of the control compared against the three-decimal figure `1.886` quoted
+in the Investigation 6 findings with a `1e-6` tolerance, and reported an
+instrument fault for a `0.0003` difference that was rounding in the report. The
+control now reads the full-precision values from the preserved result file, and
+three tests fail if the rounded figure is put back.
+
+### The instrument's independent variable is not monotone
+
+Blending each expert toward the mean of the other two makes the predictions
+converge; once they are close, the difference between their losses is dominated
+by noise and the gap turns and grows again. Sunspots run
+2.1019 → 0.2290 → 1.0620, CO₂ 0.0554 → 0.0058 → 0.0275. Both turn at blend 0.7.
+
+The outcome variable shows the same shape, and it shows it in mechanisms that
+have no lock-in to remove: `one_encounter` — retention 0 — falls from 2.91 to
+2.57 on sunspots. A fall that appears where there is nothing to remove is not
+evidence that lock-in eased.
+
+### Verdict
+
+`inconclusive_instrument_cannot_reach_question`. Condition 1 fired, but
+condition 4 fired with it: the gap the condition depends on is itself not
+monotone, so a falsification resting on it does not falsify the hypothesis.
+
+Condition 2 could not fire at all — **zero** matched-gap pairs exist, because
+the two sources' gap ranges do not overlap (sunspots 0.11–2.10, CO₂
+0.003–0.055). An earlier version of the code counted the absence of pairs as a
+failed condition, turning "the instrument cannot reach the question" into a
+finding. Corrected: an unreachable condition carries no verdict.
+
+### What would work
+
+The blend changes the predictions and the gap together, so it cannot hold the
+gap fixed. Two routes avoid that: construct the gap directly by choosing
+predictions whose losses differ by a prescribed amount, or find a source where
+two experts are genuinely comparable for a sustained period. The second is what
+Investigation 6 asked for in the first place.
+
+### Why this entry is worth anything
+
+The experiment produced no answer, and it says so. The alternative was to report
+the fall in effective experts as a falsification — the numbers were there and
+they pointed the way the protocol's condition 1 was written to detect. What
+stopped that was checking the independent variable itself, and finding that it
+turned for a reason that had nothing to do with the mechanism.

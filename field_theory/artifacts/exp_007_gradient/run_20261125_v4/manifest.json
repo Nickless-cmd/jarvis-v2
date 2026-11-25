@@ -1,0 +1,56 @@
+{
+  "computed_at_utc": "2026-11-25T16:50:06.473618+00:00",
+  "method_version": "exp007.gradient.1",
+  "parameters": {
+    "blend_rule": "(1-b)*own + b*mean(other two)",
+    "blend_weights": [
+      0.0,
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9,
+      1.0
+    ],
+    "evaluation_start": "2000-01",
+    "experts": [
+      "previous_month",
+      "trailing_12_mean",
+      "cycle_lag_132"
+    ],
+    "retentions": {
+      "cumulative_continuity": 1.0,
+      "long_continuity": 0.99,
+      "one_encounter": 0.0,
+      "short_continuity": 0.9
+    },
+    "warmup_months": 132
+  },
+  "runtime": {
+    "python": "3.11.14"
+  },
+  "sources": {
+    "co2": {
+      "excluded": {
+        "malformed": 0,
+        "missing": 0
+      },
+      "observations": 823,
+      "path": "artifacts/exp_006_order/noaa_20261030_v2/noaa_co2_mm_mlo.csv",
+      "sha256_colon_hex": "d8:95:fb:5b:4a:59:fb:5e:4c:d9:8e:69:b7:66:7f:e5:be:f5:95:c6:58:1f:63:08:52:b1:2c:b4:1c:07:f6:75"
+    },
+    "sunspots": {
+      "excluded": {
+        "missing": 0,
+        "provisional": 3
+      },
+      "observations": 3330,
+      "path": "artifacts/exp_005_independent/silso_20261030_e9a732ca9/silso_monthly_total_v2.csv",
+      "sha256_colon_hex": "47:49:cc:16:c6:8e:06:73:f5:6e:c8:50:67:4d:05:c4:c8:7c:9d:3c:b8:48:5f:45:35:19:31:b3:82:2f:3f:3e"
+    }
+  }
+}

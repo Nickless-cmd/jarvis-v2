@@ -177,7 +177,6 @@ def test_csv_og_json_indeholder_samme_celler(results: dict, tmp_path: Path) -> N
         ASSIGNMENTS,
         GAPS,
         RETENTIONS,
-        _write_csv,
         run_investigation,
     )
 

@@ -35,8 +35,6 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from feltteori_research.experiment_005_learning import (  # noqa: E402
     LEARNING_RATE,
-    RETENTIONS,
-    _normalized_loss,
     parse_silso_monthly,
 )
 from feltteori_research.experiment_006_order import parse_noaa_monthly  # noqa: E402

@@ -26,7 +26,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from feltteori_research.experiment_005_learning import (
-    EVALUATION_START,
     EXPERTS,
     LEARNING_RATE,
     RETENTIONS,

@@ -1525,3 +1525,54 @@ fault condition among four success conditions, so `all()` could never be true an
 verdict reported "a control failed" while all five were met. Same class as the sign of
 `argmax` in Investigation 11: a name pointing the wrong way, with green tests either
 way.
+
+## 2026-11-25 — Investigation 13: the sign is reliable and useless in advance
+
+Investigation 12 ended with an opening: retention moved the true error in 208 of
+260 pairs, up to 10.77, and no structural measure predicted it. So where does the
+effect have a consistent sign?
+
+I had to retract something first. I wrote that the ensemble never beats the best
+single expert "as the arithmetic of a convex combination requires". That is not
+arithmetic. The correct statement is `|Σ w a| ≤ Σ w |a|` — an upper bound with no
+lower bound — and when the errors point in opposite directions the weighted mean
+can land closer to the outcome than any member. Measured: the ensemble beats the
+oracle in **2 974 of 19 170 months**, and the worst month is 4 494 times worse than
+the best expert. GPT was right and I was wrong, and the wrong version had been
+sitting in a findings file as though it were a fact about arithmetic.
+
+The reason it is nevertheless rare is measurable, which is the honest replacement
+for the argument that failed. Decomposing `(Σ w a)² = Σ w²a² + 2Σ_{i<j} w_iw_ja_ia_j`,
+the cross term is **positive in 59 of 60 cells**, median `cross/diag` +0.285. The
+experts reinforce each other's errors. They almost never cancel. That is a property
+of these data and not of ensembling in general.
+
+The regime exists. `corr(err/oracle, Δerror) = −0.551`, R² 0.304 — and only −0.263
+for the plain error level, so it is not "high error falls back" but specifically
+the distance to the best available choice. The price of weighting rather than
+selecting, and high retention pays a little of it. Split-half confirms it is not
+regression to the mean: 0.358 and 0.208 across halves that share no month, both
+above the same-half 0.249.
+
+Then the part that matters. All of it needs `oracle`, which needs the outcome. The
+best predictor available *before* the outcome is the top weight, R² 0.150. Expert
+disagreement — the obvious proxy for "there is something to gain here" — reaches
+**0.034**, and correlates +0.049 with the quantity it would have to replace. It is
+not a weak version of the regime; it is unrelated to it.
+
+Seventy percent of the variation in the retention effect is not available until the
+outcome is known. And the reason is structural, not a measurement failure: the sign
+is decided by whether concentration happens to favour the better expert, which is a
+property of the outcome. No reorganisation of the structural measures can recover
+it, because the information is not in the structure.
+
+The candidate that failed its hold-out — top-expert stability — flips sign in both
+directions and stays in the result. The variant that survives is carried by three
+cells, which is not evidence.
+
+So the answer to Bjørn's question is: yes, there is a regime, and no, it cannot be
+used. Reporting "retention improves the forecast when the ensemble is far from the
+oracle" as a finding would have been true and useless at the same time. Investigations
+8–13 built an apparatus that describes weight structure precisely, and this is where
+it stops: the forecast error is data, the one structural channel is the distance to
+the best choice, and that distance is not knowable in advance.

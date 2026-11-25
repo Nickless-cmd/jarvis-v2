@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import csv
 import json
-import math
 import platform
 from datetime import datetime, timezone
 from pathlib import Path

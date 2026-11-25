@@ -110,6 +110,87 @@ def _ambiguity_score(message: str) -> tuple[float, list[str]]:
     return min(score, 1.0), reasons[:3]
 
 
+# ── Hvad kan overhovedet være et konflikt-objekt? (25/11-2026) ────────────
+#
+# MAALT 25/11-2026, efter GPT paaviste det: den gamle regel tog de foerste
+# 1-4 ord efter et forbudsverbum og brugte dem som konflikt-noegle. Det gav
+# 42 fyrende targets ud af 50 aktive beslutninger — og de var alle sammen
+# UDTRUKNE NAVNEFRASER, ikke handlinger:
+#
+#   `findes`            (verbum uden objekt)
+#   `et tool`           (artikel + generisk substantiv)
+#   `en blokering`      (tilstand)
+#   `bjorns`            (ejefald)
+#   `x`                 (et bogstav)
+#   `om modellen var for`, `klump dem i en`  (hele bisætninger)
+#
+# Resultatet var at enhver besked der indeholdt ordet «bevis», «en kontrol»
+# eller «x» blev læst som en konflikt med en vilkårlig beslutning. Det er
+# ord-association forvekslet med semantisk konflikt — samme fejlklasse som
+# `_request_risk_evidence` fik rettet 30/9 (se `_marker_er_pres`): et signal
+# skal staa som et SIGNAL, ikke blot som et ord.
+#
+# To kilder til et rigtigt signal, og kun to:
+#
+#   (a) Beslutningen ERKLÆRER sit signal — citerede fraser i `trigger_cue`.
+#       Feltet findes i skemaet netop til dette, og 13 af 50 beslutninger
+#       bruger det allerede (`«naar ikke», `«aldrig», `«nul kaldere»`). At
+#       regex'e direktivets prosa i stedet var at ignorere mekanismen.
+#   (b) Direktivets forbudsform, men KUN naar target er en HANDLING: mindst
+#       to ord, ingen bisætnings-markoer, og ikke aabnet af en artikel,
+#       præposition eller et hjælpeverbum. `slette filer` er en handling.
+#       `et tool` er en navnefrase.
+#
+# En beslutning der hverken erkærer sit signal eller beskriver en handling
+# kan ikke være i konflikt med en brugerbesked. De fleste er regler om MIN
+# adfærd i turen («sæt ikke et tool-kald efter tekstblokken») — de er ikke
+# regler om hvad Bjørn maa bede om, og de skal ikke gate hans beskeder.
+# Artikler og pronominer kan ikke staa NOGEN steder i en handling: gør de,
+# er frasen en sætning («klump dem i en») eller en navnefrase («et tool»).
+_NAVNEORD = frozenset({
+    "et", "en", "den", "det", "de", "denne", "dette", "disse",
+    "jeg", "du", "han", "hun", "vi", "dem", "sig", "sin", "sit", "sine",
+    "min", "mit", "mine", "din", "dit", "dine", "hans", "hendes", "dens",
+    "dets", "deres", "nogen", "noget", "nogle", "man", "selv", "hinanden",
+})
+
+# Praepositioner, hjaelpeverber og negationer maa ikke AABNE frasen — men de
+# maa gerne staa indeni: «pushe uden test» er en handling med et led.
+_AABNINGS_ORDOER = frozenset({
+    "af", "til", "for", "med", "om", "paa", "på", "i", "fra", "ved", "mod",
+    "over", "under", "mellem", "gennem", "uden", "efter", "før", "som",
+    "end", "hvor", "der", "at", "og", "eller", "men", "hvis", "naar", "når",
+    "er", "var", "være", "vaere", "har", "havde", "kan", "kunne", "skal",
+    "skulle", "vil", "ville", "maa", "må", "maatte", "bliver", "blev",
+    "ikke", "aldrig", "ingen", "intet",
+})
+
+# Bisætnings-markoerer: staar en af dem i target, er det en sætning og ikke
+# en handling («om modellen var for», «klump dem i en»).
+_BISAETNINGS_MARKOERER = frozenset({"om", "som", "der", "hvor", "at", "er", "var"})
+
+_QUOTED = re.compile(r"[«\"']([^»\"']{2,40})[»\"']")
+
+
+def _er_handlings_target(target: str) -> bool:
+    """Er ``target`` en handling en beslutning kan forbyde — eller en frase?"""
+    words = target.split()
+    if len(words) < 2 or len(words) > 4:
+        return False
+    if words[0] in _AABNINGS_ORDOER:
+        return False
+    if any(word in _NAVNEORD for word in words):
+        return False
+    if any(word in _BISAETNINGS_MARKOERER for word in words):
+        return False
+    return True
+
+
+def _declared_signals(directive_cue: str) -> list[str]:
+    """Citerede signal-ord i beslutningens egen ``trigger_cue``."""
+    return [q.strip().lower() for q in _QUOTED.findall(directive_cue or "") if q.strip()]
+
+
 def _conflict_with_decisions(message: str) -> list[str]:
     """Check if the request appears to contradict an active behavioral decision."""
     try:
@@ -125,15 +206,29 @@ def _conflict_with_decisions(message: str) -> list[str]:
         directive = str(d.get("directive") or "")
         if not directive:
             continue
-        # Cheap heuristic: if the directive contains a verb of avoidance
-        # ("undgå", "ikke", "stop", "avoid") and the message contains the
-        # noun phrase that follows it, flag it.
+
+        # (a) Beslutningen erkærer sit eget signal i `trigger_cue`.
+        declared = _declared_signals(str(d.get("trigger_cue") or ""))
+        if any(
+            re.search(rf"(?<![\w-]){re.escape(sig)}(?![\w-])", msg_lower)
+            for sig in declared
+        ):
+            flags.append(
+                f"forpligtelse '{directive[:60]}…' kan være i konflikt med dette ask"
+            )
+            if len(flags) >= 2:
+                break
+            continue
+
+        # (b) Direktivets forbudsform — kun naar target er en handling.
         m = re.search(
             r"\b(undgå|undlad|ikke|stop|avoid|don'?t|never)\b\s+(?:at\s+|to\s+)?([a-zæøå]+(?:\s+[a-zæøå]+){0,3})",
             directive.lower(),
         )
         if m:
             target = m.group(2).strip()
+            if not _er_handlings_target(target):
+                continue
             # 27/10-2026: `target in msg_lower` var en SUBSTRING-test, ikke et
             # ord-match. Maalt: forpligtelsen «Er de ikke ens, skriv blokken om»
             # gav target `ens`, og `"ens" in "genstart"` er sandt — saa en

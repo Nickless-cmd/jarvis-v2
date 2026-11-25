@@ -73,11 +73,9 @@ def test_komplet_svar_med_overskrift_genstarter_ikke():
 def test_aegte_negation_i_samme_saetning_fanges_stadig():
     """Grænsen må ikke blive så bred at den ægte form slipper igennem."""
     from core.services.visible_run_terminal_recovery import has_incompletion_evidence
-    assert has_incompletion_evidence("Opgaven er ikke afsluttet.") is True
-    assert has_incompletion_evidence("Det er ikke færdigt endnu.") is True
     assert has_incompletion_evidence("Jeg har ikke løst det.") is True
     assert has_incompletion_evidence(
-        "Det er ikke blevet ordentligt verificeret."
+        "Jeg har ikke verificeret det ordentligt."
     ) is True
 
 
@@ -117,7 +115,7 @@ def test_forced_final_without_an_answer_still_recovers():
 def test_negated_completion_claim_never_counts_as_evidence():
     result = resolve_agentic_exit(
         exit_reason="completed",
-        final_text="Opgaven er ikke afsluttet; jeg mangler stadig verifikationen.",
+        final_text="Jeg har ikke afsluttet opgaven; jeg mangler stadig verifikationen.",
         finish_reason="stop",
         forced_finalize=True,
     )

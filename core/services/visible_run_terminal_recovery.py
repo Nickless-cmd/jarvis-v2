@@ -30,12 +30,16 @@ from core.services.visible_terminal_policy import (
 #: Samme fejlklasse som `_CONTINUING_ACTION_RE` nedenfor blev rettet for
 #: 26/10-2026: en vagt der læser tekst på tværs af sætninger svarer om noget
 #: andet end det den måler. Reglen er derfor den samme i begge: `[^.!?\n]`.
-#: En ægte uafsluttethed («det er ikke færdigt endnu») står i samme sætning.
+#: Førsteperson + hjælpeverbum gør «jeg er ikke færdig» til et signal, men
+#: afviser objekter og rapportetiketter som «det jeg ikke har løst». Match ved
+#: sætningsstart gør det samtidig muligt at afvise markdown-overskrifter.
 _NEGATED_COMPLETION_RE = re.compile(
+    r"(?:^|[.!?][ \t]+)(?![ \t]*#{1,6}\s)[^.!?\n]{0,80}?"
+    r"\b(?:jeg|vi)\s+(?:er|var|har|havde|blev|bliver)\b[^.!?\n]{0,32}?"
     r"\b(?:ikke|ej|aldrig|not|never)\b[^.!?\n]{0,32}"
-    r"\b(?:færdig(?:t)?|afsluttet|fuldført|implementeret|rettet|løst|verificeret|"
+    r"\b(?:færdig(?:t|e)?|afsluttet|fuldført|implementeret|rettet|løst|verificeret|"
     r"completed|finished|done|fixed|implemented|verified)\b",
-    re.IGNORECASE,
+    re.IGNORECASE | re.MULTILINE,
 )
 
 

@@ -1,0 +1,10 @@
+{
+  "cells": 132,
+  "method_version": "exp011.fourmeasures.1",
+  "sources": [
+    "sunspots",
+    "co2",
+    "synthetic"
+  ],
+  "verdict": "frozen_definition_was_a_grab_bag_axis_survives"
+}

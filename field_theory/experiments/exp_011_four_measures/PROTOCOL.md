@@ -143,3 +143,46 @@ where it exists but excluded from every condition, as in Investigation 10.
 Two-expert sets — floor `0.5·2 = 1.0` is the minimum attainable effective count,
 so collapse is approached but never reached and `O` is identically zero. Such a
 cell is reported as unreachable, not as a measurement of zero occupancy.
+
+## Amendment — after the first run, before any report
+
+The first run (`artifacts/exp_011_four_measures/run_20261125_v1/`) completed with
+all three controls passing. Two things came out of it, and both are recorded here
+rather than quietly fixed.
+
+**(a) Condition 1 was too narrow to test the claim it was written to test.** The
+identity `O = P/(P+R)` was asserted only on cells where `K = K'`. That held
+exactly — the worst residual over the 7 qualifying cells was 1.1e-16 — but 125 of
+132 cells were excluded, because a finite window almost never starts and ends in
+the same state. The correct test is the general form derived above,
+`P/(P+R) = O·K'/(O·K' + (1−O)·K)`, which applies to every cell. The narrow form
+is reported as measured; the general form is added as a diagnostic. The condition
+itself is **not** loosened — it fired on nothing because the algebra is right,
+and that stands.
+
+**(b) The fourth measure was itself a grab-bag, which is the error this
+investigation exists to name.** Condition 3 fired: no pair of cells shared an
+occupancy within 0.05 while differing in `identity_stability` by 0.30. But the
+reason is a defect in the definition, not an absence of information:
+
+- `identity_stability = 1 − switches/(T−1)` divides by the window length, so the
+  same underlying churn produces a smaller number as `T` grows. On a 318-month
+  window, ~51 switches give 0.839 — which reads as "stable" although the
+  dominant expert changed hands 51 times.
+- It also says nothing about *how* the dominance is distributed. One expert
+  holding 72.6% of the window and three experts sharing it evenly can produce the
+  same switch count.
+
+Two supplementary measures are therefore reported alongside it, not in place of
+it: `dominance_share` (the fraction of the window held by the single most
+dominant expert) and `switches_per_month` (the transition rate). Condition 6
+applies condition 3's pair test to `dominance_share`.
+
+**What is not changed: conditions 1–5.** Condition 3 fired on the frozen
+definition and the results file reports it as fired. Condition 6 is an addition
+that asks whether the *reason* for that firing was the definition.
+
+The precedent is Investigation 10's, one step further on: there, "duty cycle"
+named two different quantities. Here, "identity stability" names at least three —
+transition frequency, dominance concentration, and dominance diversity — and only
+the first was written into the frozen protocol.

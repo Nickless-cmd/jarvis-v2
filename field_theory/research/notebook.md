@@ -1364,3 +1364,44 @@ Open: a threshold defined on a steady state — the median effective count, or t
 first month from which the count stays below the floor for `k` consecutive
 months — would make the two modes comparable. It needs its own frozen protocol
 and must not be fitted to this run.
+
+## 2026-11-25 — Investigation 11: four measures, and two of them were one
+
+Investigation 10 ended with its own instrument as the open problem. One number
+cannot say whether a system sits below the floor constantly or oscillates through
+it, so four were proposed: occupancy, persistence, recovery, identity stability.
+
+The protocol was committed alone (`2d9cc7d3c`) before the module existed — the
+claim Investigation 10 could not make. It also carried a prediction it was built
+to break: the first three are not independent. From `O·T = K·P` and
+`(1−O)·T = K'·R` follows `P/(P+R) = O·K'/(O·K' + (1−O)·K)`, and since collapse
+and healthy runs alternate, `K = K'` reduces it to `O = P/(P+R)` exactly.
+
+**It held.** Measured residual 1.1e-16, on 7 cells in the narrow form and 31 in
+the general one. Three measures, two degrees of freedom.
+
+The fourth measure was the real question, and the first answer was no. Condition 3
+fired: no pair of cells shared an occupancy within 0.05 while differing in
+identity stability by 0.30. But the reason was a defect in my own definition —
+`1 − switches/(T−1)` divides by the window length, so ~51 switches over 318 months
+read as 0.839, "stable", while one expert held 72.6 % of the window.
+
+Measured as dominance share instead, the axis is there:
+
+| | occupancy | share | identity stability | dominants |
+|---|---:|---:|---:|---:|
+| short_memory, roving, CO₂ | 0.838 | 1.000 | 1.000 | 1 |
+| original, q=0, synthetic | 0.855 | 0.525 | 0.950 | 3 |
+
+Same occupancy to 0.017; one expert holds everything in the first, three share it
+in the second. The frozen measure called them nearly identical.
+
+`fixed` is identity stable across all 48 cells: the rank order never changes and
+the dominant expert never changes hands, so dominance follows the rank order and
+not the realised losses. 101 of 132 cells have occupancy 0 or 1, and on every one
+the undefined measure is `None` — the distinction Investigation 10 lost when
+`mean_over_min` read 1.000 for both.
+
+Open: the run-count difference `|K − K'| ≤ 1` is the only freedom the identity
+leaves, so a third measure can only be recovered from `O` and `P` up to a
+boundary term. Whether that term carries information of its own is untested.

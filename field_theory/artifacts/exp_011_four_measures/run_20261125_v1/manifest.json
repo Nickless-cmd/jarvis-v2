@@ -1,0 +1,10 @@
+{
+  "cells": 132,
+  "method_version": "exp011.fourmeasures.1",
+  "sources": [
+    "sunspots",
+    "co2",
+    "synthetic"
+  ],
+  "verdict": "falsified_four_measures_three_degrees_of_freedom"
+}

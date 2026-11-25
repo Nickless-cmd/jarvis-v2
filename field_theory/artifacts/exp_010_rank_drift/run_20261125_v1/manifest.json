@@ -1,0 +1,8 @@
+{
+  "cells": 3201,
+  "grid_points": 55,
+  "method_version": "exp010.rankdrift.1",
+  "synthetic_cells": 12,
+  "threshold_cells": 80,
+  "verdict": "instrument_fault"
+}

@@ -1274,3 +1274,55 @@ worth writing down is *why*: it survives because it never depended on the
 experts. Finding that out required checking the independent variable instead of
 reading the flat result as confirmation, and it retroactively narrows a finding I
 published one commit earlier.
+
+## 2026-11-25 — Investigation 10: the threshold was measuring two different things
+
+**Status:** completed, falsified. The drift formula is exact for deterministic
+drift and does not govern stochastic drift — and the reason is that the
+threshold statistic itself means different things in the two modes.
+
+Investigation 9 said the collapse threshold does not depend on the expert set.
+That was true and it was a tautology: in `fixed` the deltas are pinned to the
+tuple order, so the mean rank positions are always `0, 1/(N−1), …, 1`. The data
+dependence lives in `roving`, where the delta follows the real ranking.
+
+Investigation 10 tested whether the roving threshold is governed by the spread of
+the mean rank positions, `gap ≈ u_crit(1−r)/(LR·(m_max−m_min))`.
+
+In `fixed` the invariant holds on every cell: `Q` = 3.29–3.54 against
+`u_crit` = 3.13/3.18, a ratio of 1.08 — inside the grid factor of 1.15. In
+`roving` it fails by up to seven times.
+
+The first run of this investigation returned `instrument_fault` and was stopped
+by its own controls. It had a spurious `(N−1)` in the formula; the `fixed` cells
+sat at exactly half the prediction, which is what exposed it. Two further
+defects — a control applied outside its scope, and a generator that never
+actually reached `fixed` — are recorded in the protocol amendment.
+
+Part A controlled the drift directly (`q` = probability that a month's order is
+the tuple order). The scaling held: the threshold falls monotonically as the
+drift strengthens, and `q = 1` reproduces the fixed threshold. The
+unreachability claim failed: at `r = 0.99` a uniform ranking collapses at gap
+0.31. A uniform ranking is not driftless in a finite window — sampling alone
+produces a mean-position spread of 0.074 over the 100-month effective window.
+
+The decisive measurement came after the run. The hypothesis that the *range* of
+the accumulated losses is the right variable was tested and rejected (1.03 to
+6.65 times `u_crit`, not constant). The **duty cycle** — the fraction of
+evaluation months below the floor — separates the modes cleanly:
+
+- `fixed`: 1.00 on all 16 cells, and mean effective equals the minimum. A steady
+  state.
+- `roving`: 0.52–1.00, mean just under the floor while individual months fall to
+  1.007. An intermittent state.
+
+So `mean_effective_experts < 0.5·N` measures a settled spread in one mode and a
+duty cycle in the other. The statistic is inherited from Investigations 8 and 9,
+which compared across modes without asking whether it meant the same thing in
+each. That is the finding, and it is a criticism of the instrument rather than
+only of the formula.
+
+Open: a threshold defined on a steady state — the median effective count, or the
+first month from which the count stays below the floor for `k` consecutive
+months — would make the two modes comparable. It needs its own frozen protocol
+and must not be fitted to this run.

@@ -60,6 +60,7 @@ not established facts and not a destination built into the software.
   back, and there the threshold varies by a factor of eight. The two-expert set
   cannot be measured at all: its floor equals the minimum attainable effective
   count.
+- [`research/investigation-010-findings.md`](research/investigation-010-findings.md) tests whether the roving collapse threshold is governed by the spread of the mean rank positions. It is not: the invariant holds to within the grid factor in `fixed` and fails by up to seven times in `roving`, because the threshold statistic measures a steady state in one mode and a duty cycle in the other.
 - [`experiments/exp_001_perspective/PROTOCOL.md`](experiments/exp_001_perspective/PROTOCOL.md)
   documents the first method before its results.
 - [`experiments/exp_002_discovery/PROTOCOL.md`](experiments/exp_002_discovery/PROTOCOL.md)

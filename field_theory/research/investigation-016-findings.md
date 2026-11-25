@@ -129,6 +129,15 @@ Ratio 0.99917 — 0.08 % better, inside the tolerance. The regime is not a
 regime; sharpening neither helps nor hurts when the weight is already on one
 expert.
 
+**This is the one conclusion that depends on the tolerance.** Tested directly
+against the raw ratios, without any margin: H4 survives at every tolerance above
+2·10⁻⁵ — its largest deviation is 1.91·10⁻⁵, fifty-two times below the 10⁻³ that
+was applied, so no reasonable margin changes it. H5 does not survive: 0.99917 is
+strictly below 1.0, so with zero tolerance sharpening *is* better in the
+concentrated regime and H5 is falsified. The difference is 0.08 %, which is why it
+was called meaningless — but "meaningless" is a judgement, and the verdict moves
+with it. Stated so the reader can price it.
+
 ## Deviations from the protocol
 
 Stated plainly, because a frozen protocol that is quietly edited is worth

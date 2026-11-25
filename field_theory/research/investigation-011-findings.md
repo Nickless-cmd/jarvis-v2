@@ -135,6 +135,43 @@ as dominance share.** Measured as a switch count it is a window-length artefact.
 And `identity_stability` is not a defective measure — it measures transition
 frequency, which is a different property, and both must be kept.
 
+## The rank is not the power
+
+All four measures are derived from *who* holds the top rank. None of them carries
+*how much* power the top rank holds, and the difference is not academic: two
+systems with constant weights 34/33/33 and 60/20/20 return identical values on
+every one of them — `occupancy` 0, `dominance_share` 1.000,
+`identity_stability` 1.000, `distinct_dominants` 1 — while their power
+distribution is not comparable at all.
+
+`_measure_series` computed `weights` for every month and discarded them. Two
+continuous series are now carried alongside: `mean_top_weight` (the largest
+weight in an average month) and `mean_top_margin` (the gap between the first and
+second). Measured on the same 132 cells:
+
+| cell | occupancy | share | identity | dominants | top weight | margin | effective |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| sunspots · four_experts · fixed, gap 0.05, r 0.9 | 0.000 | 1.000 | 1.000 | 1 | **0.385** | 0.109 | 3.53 |
+| co2 · four_experts · roving, gap 0.05, r 0.9 | 0.000 | 1.000 | 1.000 | 1 | **0.338** | 0.070 | 3.71 |
+| synthetic · original · q=0.2, gap 0.05, r 0.99 | 0.000 | 1.000 | 1.000 | 1 | **0.655** | 0.401 | — |
+
+The first two rows are the sharp case: **one expert holds the top rank for the
+entire window and never loses it, while carrying 38.5 % of the weight with 3.53
+effective experts.** Stable rank, distributed power. A report built on the four
+rank-based measures alone would describe those cells as fully concentrated, and
+that description would be wrong.
+
+Across all 132 cells `mean_top_weight` runs 0.290 to 1.000 with median 0.919;
+17 cells sit below 0.5 and 67 above 0.9. **896 pairs** share occupancy,
+dominance share and identity stability to within 0.02 while differing in top
+weight by more than 0.05. The axis is not a corner case — it is the majority of
+the grid, invisible to the instrument that was measuring it.
+
+This is the same error one level down from where Investigation 11 started. The
+investigation replaced one grab-bag statistic with four, and the four turned out
+to share a single blind spot: they all read a *ranking* and never a
+*distribution*.
+
 ## Controls and the conditions that did not fire
 
 - **Occupancy equals Investigation 10's `duty_cycle`** on all 132 cells, to

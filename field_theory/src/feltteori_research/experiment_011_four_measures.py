@@ -101,6 +101,8 @@ def _measure_series(
     retained = {expert: 0.0 for expert in experts}
     effective_series: list[float] = []
     dominant_series: list[str] = []
+    top_weight_series: list[float] = []
+    top_margin_series: list[float] = []
 
     for row, order in zip(prepared, orders):
         deltas = {expert: gap * rank / span for rank, expert in enumerate(order)}
@@ -134,6 +136,18 @@ def _measure_series(
             dominant_series.append(
                 min(experts, key=lambda expert: (retained[expert], experts.index(expert)))
             )
+            # ``dominance_share`` and ``identity_stability`` are both derived from
+            # *who* holds the top rank, never from *how much* power the top rank
+            # carries. Two systems with constant weights 34/33/33 and 60/20/20
+            # give identical dominance_share (1.000), identity_stability (1.000)
+            # and distinct_dominants (1) while their power distribution is not
+            # comparable. These two series carry the continuous distribution the
+            # rank-based measures discard.
+            ranked_weights = sorted(weights.values(), reverse=True)
+            top_weight_series.append(ranked_weights[0])
+            top_margin_series.append(
+                ranked_weights[0] - ranked_weights[1] if len(ranked_weights) > 1 else 0.0
+            )
 
         losses = {
             expert: _normalized_loss(predictions[expert], outcome) for expert in experts
@@ -147,6 +161,8 @@ def _measure_series(
     return {
         "effective": effective_series,
         "dominant": dominant_series,
+        "top_weight": top_weight_series,
+        "top_margin": top_margin_series,
         "floor": floor,
         "rows": len(effective_series),
     }
@@ -179,6 +195,8 @@ def _four_measures(series: dict[str, object]) -> dict[str, object]:
     """
     effective = list(series["effective"])  # type: ignore[arg-type]
     dominant = list(series["dominant"])  # type: ignore[arg-type]
+    top_weight = list(series["top_weight"])  # type: ignore[arg-type]
+    top_margin = list(series["top_margin"])  # type: ignore[arg-type]
     floor = float(series["floor"])  # type: ignore[arg-type]
     count = len(effective)
 
@@ -237,6 +255,10 @@ def _four_measures(series: dict[str, object]) -> dict[str, object]:
         "mean_effective_experts": sum(effective) / count,
         "min_effective_experts": min(effective),
         "max_effective_experts": max(effective),
+        "mean_top_weight": sum(top_weight) / count,
+        "mean_top_margin": sum(top_margin) / count,
+        "min_top_weight": min(top_weight),
+        "max_top_weight": max(top_weight),
     }
 
 

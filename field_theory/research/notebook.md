@@ -1418,6 +1418,24 @@ not the realised losses. 101 of 132 cells have occupancy 0 or 1, and on every on
 the undefined measure is `None` — the distinction Investigation 10 lost when
 `mean_over_min` read 1.000 for both.
 
+The rank is not the power. All four measures read *who* holds the top rank; none
+reads *how much* power the top rank holds. Two systems with constant weights
+34/33/33 and 60/20/20 return identical values on every one of them —
+`occupancy` 0, `dominance_share` 1.000, `identity_stability` 1.000,
+`distinct_dominants` 1 — while their power distribution is not comparable.
+
+`_measure_series` computed the weights every month and threw them away. Carried
+alongside as `mean_top_weight` and `mean_top_margin`, the grid shows the blind
+spot is the majority case: **896 pairs** share occupancy, dominance share and
+identity stability to within 0.02 while differing in top weight by more than
+0.05. The sharp cell holds the same expert at rank one for the whole window while
+that expert carries **38.5 %** of the weight with **3.53** effective experts —
+stable rank, distributed power. A report built on the four rank-based measures
+alone would call it fully concentrated, and that would be wrong.
+
+That is the same error one level down from where the investigation started: one
+grab-bag statistic was replaced by four, and the four shared a single blind spot.
+
 Open: the run-count difference `|K − K'| ≤ 1` is the only freedom the identity
 leaves, so a third measure can only be recovered from `O` and `P` up to a
 boundary term. Whether that term carries information of its own is untested.

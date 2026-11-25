@@ -1,0 +1,10 @@
+{
+  "cells": 132,
+  "method_version": "exp011.fourmeasures.1",
+  "sources": [
+    "sunspots",
+    "co2",
+    "synthetic"
+  ],
+  "verdict": "preregistered_identity_criterion_not_met_dominance_axis_independent"
+}

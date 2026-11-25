@@ -32,7 +32,7 @@ import pytest
 
 RUN = (
     Path(__file__).resolve().parents[1]
-    / "artifacts/exp_011_four_measures/run_20261125_v4/results.json"
+    / "artifacts/exp_011_four_measures/run_20261125_v5/results.json"
 )
 
 
@@ -105,14 +105,28 @@ def test_udefineret_maal_er_ikke_nul() -> None:
     from feltteori_research.experiment_011_four_measures import _four_measures
 
     never = _four_measures(
-        {"effective": [3.0, 3.0, 3.0], "dominant": ["a", "a", "a"], "floor": 2.0, "rows": 3}
+        {
+            "effective": [3.0, 3.0, 3.0],
+            "dominant": ["a", "a", "a"],
+            "top_weight": [1.0, 1.0, 1.0],
+            "top_margin": [1.0, 1.0, 1.0],
+            "floor": 2.0,
+            "rows": 3,
+        }
     )
     assert never["occupancy"] == 0.0
     assert never["persistence"] is None
     assert never["recovery"] is not None
 
     always = _four_measures(
-        {"effective": [1.0, 1.0, 1.0], "dominant": ["a", "a", "a"], "floor": 2.0, "rows": 3}
+        {
+            "effective": [1.0, 1.0, 1.0],
+            "dominant": ["a", "a", "a"],
+            "top_weight": [1.0, 1.0, 1.0],
+            "top_margin": [1.0, 1.0, 1.0],
+            "floor": 2.0,
+            "rows": 3,
+        }
     )
     assert always["occupancy"] == 1.0
     assert always["recovery"] is None
@@ -132,6 +146,8 @@ def test_handregnet_eksempel_giver_de_fire_maal() -> None:
         {
             "effective": [3.0, 3.0, 1.0, 1.0, 3.0],
             "dominant": ["a", "a", "a", "a", "a"],
+            "top_weight": [1.0] * 5,
+            "top_margin": [1.0] * 5,
             "floor": 2.0,
             "rows": 5,
         }
@@ -185,10 +201,24 @@ def test_identity_stability_skrumper_med_vinduet_men_share_goer_ikke() -> None:
     short = ["a"] * 10 + ["b"] * 10
     long = short + short
     short_measures = _four_measures(
-        {"effective": [1.0] * len(short), "dominant": short, "floor": 2.0, "rows": len(short)}
+        {
+            "effective": [1.0] * len(short),
+            "dominant": short,
+            "top_weight": [1.0] * len(short),
+            "top_margin": [1.0] * len(short),
+            "floor": 2.0,
+            "rows": len(short),
+        }
     )
     long_measures = _four_measures(
-        {"effective": [1.0] * len(long), "dominant": long, "floor": 2.0, "rows": len(long)}
+        {
+            "effective": [1.0] * len(long),
+            "dominant": long,
+            "top_weight": [1.0] * len(long),
+            "top_margin": [1.0] * len(long),
+            "floor": 2.0,
+            "rows": len(long),
+        }
     )
     assert short_measures["dominance_share"] == pytest.approx(0.5)
     assert long_measures["dominance_share"] == pytest.approx(0.5)
@@ -351,3 +381,60 @@ def test_retention_former_dominansen_uden_at_roere_occupancy(results: dict) -> N
     )
     assert a["occupancy"] == pytest.approx(b["occupancy"], abs=0.05)
     assert abs(a["dominance_share"] - b["dominance_share"]) > 0.20
+
+
+def test_rangordenen_er_ikke_magten() -> None:
+    """The four measures read a ranking, never a distribution.
+
+    Two systems whose weights are constant at 34/33/33 and 60/20/20 return
+    identical values on every rank-based measure, so a report built on them
+    alone cannot tell a shared power structure from a concentrated one. The
+    continuous series must carry what the ranking discards.
+    """
+    from feltteori_research.experiment_011_four_measures import _four_measures
+
+    def series(top: float, margin: float) -> dict[str, object]:
+        return {
+            "effective": [2.0] * 12,
+            "dominant": ["a"] * 12,
+            "top_weight": [top] * 12,
+            "top_margin": [margin] * 12,
+            "floor": 1.5,
+            "rows": 12,
+        }
+
+    spread = _four_measures(series(0.34, 0.01))
+    held = _four_measures(series(0.60, 0.40))
+
+    # Identical on every rank-based measure.
+    assert spread["occupancy"] == held["occupancy"]
+    assert spread["dominance_share"] == held["dominance_share"] == 1.0
+    assert spread["identity_stability"] == held["identity_stability"] == 1.0
+    assert spread["distinct_dominants"] == held["distinct_dominants"] == 1
+
+    # Separated only by the distribution.
+    assert held["mean_top_weight"] - spread["mean_top_weight"] == pytest.approx(0.26)
+    assert held["mean_top_margin"] - spread["mean_top_margin"] == pytest.approx(0.39)
+
+
+def test_stabil_rang_med_delt_magt_findes_i_data(results: dict) -> None:
+    """The blind spot is not hypothetical: it is measured on real cells.
+
+    A cell can hold the same expert at rank one for the whole window and still
+    distribute the weight almost evenly. Any conclusion drawn from dominance
+    share alone would call that cell fully concentrated.
+    """
+    cells = results["cells"]
+    stable_but_split = [
+        cell
+        for cell in cells
+        if cell["distinct_dominants"] == 1 and cell["mean_top_weight"] < 0.5
+    ]
+    assert stable_but_split, "ingen celle har stabil rang med delt magt"
+
+    worst = min(stable_but_split, key=lambda cell: cell["mean_top_weight"])
+    assert worst["dominance_share"] == pytest.approx(1.0)
+    assert worst["identity_stability"] == pytest.approx(1.0)
+    assert worst["mean_top_weight"] < 0.5
+    # The weight is spread while the rank is not.
+    assert worst["mean_effective_experts"] > 3.0

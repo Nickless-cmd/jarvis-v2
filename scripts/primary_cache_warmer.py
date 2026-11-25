@@ -677,6 +677,67 @@ def warm_primary_cache(
 # ---------------------------------------------------------------------------
 
 
+def _bruger_id_for_workspace(workspace_name: str) -> str:
+    """Slå brugerens id op ud fra workspace-navnet.
+
+    `current_user_id()` — som connector-værktøjerne læses igennem — bærer
+    **discord_id**, ikke `user_db`-rækkens interne `user_id`. Målt 25/11-2026:
+    Bjørns række har `user_id=cec46ec0…` men `discord_id=1246415163603816499`,
+    og det er sidstnævnte der står i `visible_runs.user_id`. At sende det
+    forkerte id giver samme tomme kontekst som slet ikke at sætte den.
+    """
+    try:
+        from core.identity.user_db import list_users
+
+        for u in list_users() or []:
+            if str(u.get("workspace") or "") == workspace_name:
+                return str(u.get("discord_id") or u.get("user_id") or "")
+    except Exception as exc:  # noqa: BLE001 — en warmer må ikke vælte af et opslag
+        logger.debug("kunne ikke slå bruger op for %r: %s", workspace_name, exc)
+    return ""
+
+
+def _sæt_warmer_kontekst(workspace_name: str):
+    """Sæt BRUGERKONTEKSTEN for én workspace — ikke kun tool-scopet.
+
+    Værktøjslisten indeholder de forbundne apps' værktøjer, og de læses via
+    `_forbundne_connector_vaerktoejer()` → `current_user_id()`. Uden kontekst
+    er den tom, og listen mister hvert eneste connector-værktøj. Målt
+    25/11-2026: 125 værktøjer i code / 106 i chat uden kontekst, mod 141 / 142
+    med — forskellen er præcis de 16 connector-værktøjer.
+
+    Konsekvensen var dobbelt: varmeren varmede en prefix-variant **ingen tur
+    bruger**, og den skrev samtidig et falsk værktøjsskift til `tools_churn`
+    ved hvert kald (15 linjer og 9 forskellige `tools_sha` på én dag), så
+    diagnose-signalet pegede på den ægte turs liste i stedet for sin egen.
+    """
+    try:
+        from core.identity.workspace_context import set_context
+
+        uid = _bruger_id_for_workspace(workspace_name)
+        if not uid:
+            logger.debug(
+                "ingen discord_id for workspace %r — varmer uden connector-værktøjer",
+                workspace_name,
+            )
+            return None
+        return set_context(workspace_name=workspace_name, user_id=uid)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("kunne ikke sætte brugerkontekst for %r: %s", workspace_name, exc)
+        return None
+
+
+def _nulstil_warmer_kontekst(token) -> None:
+    if token is None:
+        return
+    try:
+        from core.identity.workspace_context import reset_context
+
+        reset_context(token)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _warm_one_workspace(
     workspace_name: str,
     *,
@@ -786,23 +847,27 @@ def main(argv: list[str] | None = None) -> int:
     logger.info("Warmer multi-user run: %d workspaces (%s)",
                 len(workspaces), ", ".join(workspaces))
 
-    # Værktøjssættet er globalt (definitionerne afhænger ikke af workspace),
-    # men det afhænger af SESSIONEN: hver samtale har sin egen låste liste.
-    # Derfor slås den senest aktive samtale op ÉN gang og bruges til alle
-    # workspaces — den er den mest sandsynlige næste tur.
+    # Værktøjssættet afhænger af SESSIONEN (hver samtale har sin egen låste
+    # liste) OG af BRUGEREN (de forbundne apps' værktøjer læses via
+    # `current_user_id()`). Session-opslaget gøres derfor ÉN gang, mens
+    # brugerkonteksten sættes per workspace i loopet nedenfor.
     session_id = _nyeste_session_id()
     logger.info("Varmer med værktøjssættet fra session %s", session_id or "(intet — prunerens fald)")
 
     for ws in workspaces:
-        for _scope in _WARM_SCOPES:
-            try:
-                _warm_one_workspace(
-                    ws, api_key=api_key, base_url=base_url, dry_run=dry_run,
-                    tool_scope=_scope, session_id=session_id,
-                )
-            except Exception as exc:
-                # En enkelt brugers fejl må ikke afbryde de andre.
-                logger.error("[%s/%s] uventet fejl: %s — fortsætter", ws, _scope, exc)
+        _ctx_token = _sæt_warmer_kontekst(ws)
+        try:
+            for _scope in _WARM_SCOPES:
+                try:
+                    _warm_one_workspace(
+                        ws, api_key=api_key, base_url=base_url, dry_run=dry_run,
+                        tool_scope=_scope, session_id=session_id,
+                    )
+                except Exception as exc:
+                    # En enkelt brugers fejl må ikke afbryde de andre.
+                    logger.error("[%s/%s] uventet fejl: %s — fortsætter", ws, _scope, exc)
+        finally:
+            _nulstil_warmer_kontekst(_ctx_token)
 
     if not dry_run:
         _touch_last_run()

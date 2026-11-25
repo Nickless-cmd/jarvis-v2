@@ -239,8 +239,11 @@ _Primary lane cache warmer._
 | function | `_read_key_from_runtime_json` | `()` | Læs deepseek_api_key fra ~/.jarvis-v2/config/runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L573) |
 | function | `_resolve_api_key` | `(*, override=…)` | Resolve DeepSeek API key: override > env > runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L583) |
 | function | `warm_primary_cache` | `(*, api_key=…, base_url=…, system_prompt=…, force=…, workspace_name=…)` | Udfør ét cache-warmer kald og returnér resultat. | [src](../../../scripts/primary_cache_warmer.py#L600) |
-| function | `_warm_one_workspace` | `(workspace_name, *, api_key, base_url, dry_run, tool_scope=…, session_id=…)` | Cache-warm én bestemt workspace i ÉN mode. Logger separat per (workspace, mode). | [src](../../../scripts/primary_cache_warmer.py#L680) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/primary_cache_warmer.py#L761) |
+| function | `_bruger_id_for_workspace` | `(workspace_name)` | Slå brugerens id op ud fra workspace-navnet. | [src](../../../scripts/primary_cache_warmer.py#L680) |
+| function | `_sæt_warmer_kontekst` | `(workspace_name)` | Sæt BRUGERKONTEKSTEN for én workspace — ikke kun tool-scopet. | [src](../../../scripts/primary_cache_warmer.py#L700) |
+| function | `_nulstil_warmer_kontekst` | `(token)` | — | [src](../../../scripts/primary_cache_warmer.py#L730) |
+| function | `_warm_one_workspace` | `(workspace_name, *, api_key, base_url, dry_run, tool_scope=…, session_id=…)` | Cache-warm én bestemt workspace i ÉN mode. Logger separat per (workspace, mode). | [src](../../../scripts/primary_cache_warmer.py#L741) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/primary_cache_warmer.py#L822) |
 
 ## `scripts/prompt_dump_readable.py`
 _Læsbar version af et prompt-dump (30/9-2026)._

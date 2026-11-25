@@ -1576,3 +1576,43 @@ oracle" as a finding would have been true and useless at the same time. Investig
 8–13 built an apparatus that describes weight structure precisely, and this is where
 it stops: the forecast error is data, the one structural channel is the distance to
 the best choice, and that distance is not knowable in advance.
+
+## Investigation 14 — the loss is the diffusion, not the mixing
+
+The sentence "weighting loses 59 % to the best expert" turned out to be three
+claims wearing one number, and none of them survived in that form.
+
+The number is the aggregate. On the same 38 196 months the identical quantity is
+1.173 as a cell-median, 1.217 as a month-median, and 8.398 as a mean. The "59 %"
+was a cell-median on one grid; on months it is 22 %. I predicted the month-median
+would be lower than the cell-median and it is higher — the high-ratio cells carry
+more months than the low-ratio ones, so they pull it up. That prediction is
+falsified and stays in the result.
+
+The loss is allocation, and it is monotone in how much of the weight sits on the
+top expert: 2.285 below `top_weight` 0.50, and 1.002 above 0.99. A nearly
+concentrated weight costs 0.2 %. So the loss is not the act of weighting — it is
+the diffusion of the weight across several experts.
+
+The mechanism is the residual mass. Splitting the weighted sum into the top
+expert's term and the rest, the loss lives in the 74.1 % of months where the
+residual points the same way as the top term (median 1.283); the 25.9 % where it
+points opposite cancel exactly to 1.000. Three months in four, the small mass adds
+to the error instead of cancelling it. That is Investigation 13's cross term
+arriving at the error through a specific channel.
+
+It is not warm-up: the ratio is flat across the window, spread 0.068.
+
+And the sharpened weight `w^alpha` has an interior minimum on the mean at alpha
+about 3 — 8.059, against 8.398 for the learned weight and 8.253 for pure
+selection — while the median falls monotonically toward 1.000. The two aggregates
+disagree about which end is better, and that disagreement is the same phenomenon
+one level down: the median asks what a typical month costs, the mean asks what a
+bad month costs. Selection wins the typical month; a sharpened weight wins the
+tail.
+
+What survives is smaller than what was claimed, and it is a property of the
+weight's shape rather than of the weighting itself. Which means the thing is
+fixable in principle — but the fix trades the median against the mean, and the
+oracle it is measured against uses hindsight every month.
+

@@ -1,0 +1,184 @@
+{
+  "method_version": "exp014.weightpenalty.1",
+  "verdict": "allocation_holds_aggregate_prediction_fell",
+  "conditions": {
+    "1_aggregate_matters": false,
+    "2_monotone_in_concentration": true,
+    "3_residual_amplifies": true,
+    "4_not_warm_up": true,
+    "5_interior_optimum": true
+  },
+  "conditions_failed": [
+    "1_aggregate_matters"
+  ],
+  "controls": {
+    "identity_holds": true,
+    "identity_worst_residual": 0.0,
+    "alpha_converges_to_selection": true,
+    "alpha_worst_gap": 0.0,
+    "error_read_from_real_predictions": true
+  },
+  "aggregate": {
+    "cells": 120,
+    "months": 38196,
+    "cell_median": 1.173154611110908,
+    "month_median": 1.2166164905795163,
+    "month_mean": 8.397761336763011,
+    "month_p90": 6.156019145719608,
+    "month_p99": 52.33582667339905
+  },
+  "concentration": [
+    {
+      "low": 0.0,
+      "high": 0.5,
+      "months": 3767,
+      "median_ratio": 2.2849232809089632
+    },
+    {
+      "low": 0.5,
+      "high": 0.8,
+      "months": 8755,
+      "median_ratio": 1.6960993795399708
+    },
+    {
+      "low": 0.8,
+      "high": 0.95,
+      "months": 5061,
+      "median_ratio": 1.3702642891637355
+    },
+    {
+      "low": 0.95,
+      "high": 0.99,
+      "months": 2733,
+      "median_ratio": 1.089213771681618
+    },
+    {
+      "low": 0.99,
+      "high": 1.01,
+      "months": 17880,
+      "median_ratio": 1.0015916170195622
+    }
+  ],
+  "residual": {
+    "same_sign_months": 28290,
+    "opposite_sign_months": 9906,
+    "same_sign_share": 0.7406534715677034,
+    "same_sign_median": 1.2833008771718823,
+    "opposite_sign_median": 1.0
+  },
+  "warm_up": [
+    {
+      "low": 0.0,
+      "high": 0.1,
+      "months": 3840,
+      "median_ratio": 1.2192537239036847,
+      "median_top_weight": 0.9755317610538585
+    },
+    {
+      "low": 0.1,
+      "high": 0.25,
+      "months": 5760,
+      "median_ratio": 1.262221273841365,
+      "median_top_weight": 0.9753273705277006
+    },
+    {
+      "low": 0.25,
+      "high": 0.5,
+      "months": 9540,
+      "median_ratio": 1.2017368626236302,
+      "median_top_weight": 0.9728118216930601
+    },
+    {
+      "low": 0.5,
+      "high": 0.75,
+      "months": 9432,
+      "median_ratio": 1.2309351210083717,
+      "median_top_weight": 0.9796110794742596
+    },
+    {
+      "low": 0.75,
+      "high": 1.01,
+      "months": 9624,
+      "median_ratio": 1.19456215354287,
+      "median_top_weight": 0.9820137900379085
+    }
+  ],
+  "warm_up_spread": 0.06765912029849486,
+  "alpha_curve": [
+    {
+      "alpha": 1.0,
+      "mean_ratio": 8.397761336763011,
+      "median_ratio": 1.2166164905795165
+    },
+    {
+      "alpha": 1.5,
+      "mean_ratio": 8.244916296542202,
+      "median_ratio": 1.1548712755545703
+    },
+    {
+      "alpha": 2.0,
+      "mean_ratio": 8.130332447039885,
+      "median_ratio": 1.1013492724792986
+    },
+    {
+      "alpha": 3.0,
+      "mean_ratio": 8.058458450968418,
+      "median_ratio": 1.0638976129159432
+    },
+    {
+      "alpha": 5.0,
+      "mean_ratio": 8.090796535835148,
+      "median_ratio": 1.0316751808255344
+    },
+    {
+      "alpha": 10.0,
+      "mean_ratio": 8.163631287264488,
+      "median_ratio": 1.00686196104871
+    },
+    {
+      "alpha": 50.0,
+      "mean_ratio": 8.243887993486815,
+      "median_ratio": 1.0000000000296438
+    }
+  ],
+  "selection_mean_ratio": 8.253315923308458,
+  "best_alpha": 3.0,
+  "interior_gain": 0.1948574723400398,
+  "thresholds": {
+    "monotone_tolerance": 0.02,
+    "same_sign_excess": 0.1,
+    "flat_spread": 0.15,
+    "interior_gain": 0.005
+  },
+  "parameters": {
+    "gaps": [
+      0.05,
+      0.2,
+      0.8
+    ],
+    "retentions": [
+      0.9,
+      0.99
+    ],
+    "assignments": [
+      "fixed",
+      "roving"
+    ],
+    "expert_sets": [
+      "original",
+      "short_memory",
+      "long_memory",
+      "two_experts",
+      "four_experts"
+    ],
+    "alphas": [
+      1.0,
+      1.5,
+      2.0,
+      3.0,
+      5.0,
+      10.0,
+      50.0
+    ]
+  }
+}

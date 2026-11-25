@@ -21,6 +21,33 @@ from core.services.chat_sessions import recent_chat_tool_messages
 _CONTINUATION_DELAY_SECONDS = 5.0
 
 
+def _arvet_opgave(run_id: str) -> str:
+    """Opgavens id fra posten der fortsættes — ikke samtalens nyeste.
+
+    En continuation fortsætter ÉN kørsel, og posten for den bærer allerede
+    opgavens id: `stempl_genoptagelse` skriver `task_id or run_id`, saa et led
+    der selv er en fortsaettelse peger tilbage paa den oprindelige opgave.
+
+    Uden id'et faldt `stempl_aktiv_kaede` tilbage til `aktiv_kaede`, der læser
+    samtalens NYESTE post. Saa laante en anden opgave i samme samtale sit
+    kaedenummer ud, og en frisk post med `recovery_attempt: 0` nulstillede
+    loftet midt i en kaede — samme fejlklasse som de ni ture 30/9-2026: et tal
+    der ser maalt ud, men maaler en anden raekke.
+
+    Tomt svar = posten findes ikke. Saa gaetter vi ikke; den gamle vej bruges.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return ""
+    try:
+        from core.services.in_flight_runs import get_record
+
+        post = get_record(rid)
+    except Exception:
+        return ""
+    return str((post or {}).get("task_id") or "").strip()
+
+
 def _recent_internal_tool_context(session_id: str | None, *, limit: int = 6) -> str:
     if not session_id:
         return ""
@@ -575,6 +602,13 @@ def _maybe_trigger_continuation(run: "_vr.VisibleRun", assistant_text: str) -> N
                         return
                     _vr.start_autonomous_run(continuation_message, session_id=run.session_id,
                                              origin="continuation",
+                                             # OPGAVENS ID MED (25/11-2026). Uden det
+                                             # stemplede leddet sin kaede fra samtalens
+                                             # NYESTE post i stedet for fra den koersel
+                                             # det fortsaetter — saa laante en anden
+                                             # opgave sit nummer ud, eller en frisk post
+                                             # nulstillede loftet midt i kaeden.
+                                             task_id=_arvet_opgave(run.run_id),
                                              # TILLADELSEN FØLGER SAMTALEN (12/11-2026).
                                              # En continuation er en fortsættelse af en tur
                                              # hvis niveau brugeren allerede har sat — den må

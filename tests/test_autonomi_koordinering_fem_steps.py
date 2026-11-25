@@ -187,11 +187,15 @@ def test_genoptagelses_vaekning_binder_sin_samtale(monkeypatch):
 
     fanget: dict = {}
 
-    def _fake_schedule(**kw):
+    def _fake_gateway(**kw):
         fanget.update(kw)
-        return {"status": "ok", "wakeup": {"wakeup_id": "w1"}}
+        return {"status": "queued", "kilde_id": "k1"}
 
-    monkeypatch.setattr("core.services.self_wakeup.schedule_self_wakeup", _fake_schedule)
+    # Vækningen gaar gennem indbakken (12/11-2026), ikke direkte til
+    # `schedule_self_wakeup`. Det er DEN vej samtalen skal bindes paa.
+    monkeypatch.setattr(
+        "core.services.wake_gateway.anmod_om_vaekning", _fake_gateway
+    )
 
     impulse = {
         "payload": {
@@ -467,6 +471,14 @@ def test_genoptagelsen_baerer_opgavens_id(monkeypatch):
 
     monkeypatch.setattr("core.services.self_wakeup.schedule_self_wakeup", _fake_schedule)
 
+    def _fake_gateway(**kw):
+        fanget.update(kw)
+        return {"status": "queued", "kilde_id": "k1"}
+
+    monkeypatch.setattr(
+        "core.services.wake_gateway.anmod_om_vaekning", _fake_gateway
+    )
+
     le._action_schedule_self_wakeup({"payload": {
         "run_id": "visible-x", "prompt": "p", "delay_seconds": 30,
         "reason": f"living-executive:{le._GENOPTAG_NOEGLE}",
@@ -489,6 +501,14 @@ def test_en_paamindelse_baerer_ikke_et_opgave_id(monkeypatch):
         return {"status": "ok", "wakeup": {"wakeup_id": "w1"}}
 
     monkeypatch.setattr("core.services.self_wakeup.schedule_self_wakeup", _fake_schedule)
+
+    def _fake_gateway(**kw):
+        fanget.update(kw)
+        return {"status": "queued", "kilde_id": "k1"}
+
+    monkeypatch.setattr(
+        "core.services.wake_gateway.anmod_om_vaekning", _fake_gateway
+    )
 
     le._action_schedule_self_wakeup({"payload": {
         "run_id": "visible-x", "prompt": "p", "delay_seconds": 30,
@@ -523,3 +543,48 @@ def test_hele_kaeden_baerer_task_id():
         assert "task_id" in inspect.signature(funktion).parameters, (
             f"{funktion.__module__}.{funktion.__name__} mangler task_id"
         )
+
+
+def test_naodvejen_baerer_samme_binding_naar_indbakken_fejler(monkeypatch):
+    """Fejler indbakken, skal nødvejen bære PRÆCIS samme binding.
+
+    Indbakken blev den primære vej 12/11-2026, men `schedule_self_wakeup` er
+    stadig nødvejen når gatewayen fejler. Bærer den ikke samtalen og opgaven
+    videre, er bindingen kun halv — og fejlen ville først vise sig den dag
+    indbakken er nede, hvor ingen kigger.
+    """
+    from core.services import in_flight_runs as ifr
+    from core.services import living_executive as le
+
+    monkeypatch.setattr(le, "_session_for_run", lambda rid: "chat-abc")
+    monkeypatch.setattr(le, "_genoptag_loft_naaet", lambda: None)
+    monkeypatch.setattr(le, "_noter_genoptagelse", lambda: None)
+    monkeypatch.setattr(
+        ifr, "get_record",
+        lambda rid: {"task_id": "opg-A", "session_id": "chat-abc"},
+    )
+
+    def _braek_gateway(**kw):
+        raise RuntimeError("indbakken svarer ikke")
+
+    monkeypatch.setattr(
+        "core.services.wake_gateway.anmod_om_vaekning", _braek_gateway
+    )
+
+    fanget: dict = {}
+
+    def _fake_schedule(**kw):
+        fanget.update(kw)
+        return {"status": "ok", "wakeup": {"wakeup_id": "w1"}}
+
+    monkeypatch.setattr(
+        "core.services.self_wakeup.schedule_self_wakeup", _fake_schedule
+    )
+
+    le._action_schedule_self_wakeup({"payload": {
+        "run_id": "visible-x", "prompt": "p", "delay_seconds": 30,
+        "reason": f"living-executive:{le._GENOPTAG_NOEGLE}",
+    }})
+
+    assert fanget.get("session_id") == "chat-abc", "nødvejen mistede samtalen"
+    assert fanget.get("task_id") == "opg-A", "nødvejen mistede opgaven"

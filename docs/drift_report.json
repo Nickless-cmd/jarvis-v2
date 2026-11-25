@@ -1,6 +1,22 @@
 {
-  "generated_at": "2026-11-25T10:47:01.146675+00:00",
-  "hard": [],
+  "generated_at": "2026-11-25T12:19:36.358479+00:00",
+  "hard": [
+    {
+      "generator": "api_docs_gen",
+      "kind": "stale",
+      "path": "docs/reference/api/core.services.32.md"
+    },
+    {
+      "generator": "api_docs_gen",
+      "kind": "stale",
+      "path": "docs/reference/api/README.md"
+    },
+    {
+      "generator": "api_docs_gen",
+      "kind": "stale",
+      "path": "docs/reference/DOCSTRING_COVERAGE.md"
+    }
+  ],
   "soft": [
     {
       "kind": "requirement_missing",
@@ -200,7 +216,7 @@
     }
   ],
   "counts": {
-    "hard": 0,
+    "hard": 3,
     "soft": 49
   }
 }

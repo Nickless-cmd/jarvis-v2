@@ -105,6 +105,7 @@ _MEMBER_GOOGLE = frozenset({
     "calendar_list_events", "calendar_create_event",
     "list_events", "create_event",
     "gmail_search", "gmail_list", "gmail_get", "gmail_modify", "gmail_send",
+    "gmail_filter_list", "gmail_filter_create", "gmail_filter_delete",
     "drive_search", "drive_download",
     "docs_read", "docs_append",
     "sheets_read", "sheets_write",

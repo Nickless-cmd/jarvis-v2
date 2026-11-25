@@ -116,16 +116,21 @@ _Gmail-connector — API-klient + tool-handlers (vertical: search + list)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_token` | `(user_id)` | — | [src](../../../core/services/gmail_connector.py#L144) |
-| function | `_headers` | `(token)` | — | [src](../../../core/services/gmail_connector.py#L151) |
-| function | `_clamp` | `(n, lo, hi, default)` | — | [src](../../../core/services/gmail_connector.py#L155) |
-| function | `_fetch_messages` | `(user_id, query, max_results)` | Fælles kerne for search/list: hent id-liste → berig med headers/snippet. | [src](../../../core/services/gmail_connector.py#L163) |
-| function | `search` | `(user_id, query, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L208) |
-| function | `list_inbox` | `(user_id, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L214) |
-| function | `_extract_body` | `(payload)` | Fold payload-træet ud og returnér (ren_tekst, html). | [src](../../../core/services/gmail_connector.py#L218) |
-| function | `get_message` | `(user_id, message_id)` | Hent ÉN mail med fuld brødtekst (format=full). | [src](../../../core/services/gmail_connector.py#L251) |
-| function | `modify_messages` | `(user_id, message_ids, *, action=…, dry_run=…)` | Flyt/arkivér/fortryd på EKSPLICITTE message-id'er. | [src](../../../core/services/gmail_connector.py#L314) |
-| function | `send_message` | `(user_id, to, subject, body)` | Send en mail på brugerens vegne. KRÆVER approval-flow før den eksponeres som tool. | [src](../../../core/services/gmail_connector.py#L375) |
+| function | `_token` | `(user_id)` | — | [src](../../../core/services/gmail_connector.py#L226) |
+| function | `_headers` | `(token)` | — | [src](../../../core/services/gmail_connector.py#L233) |
+| function | `_clamp` | `(n, lo, hi, default)` | — | [src](../../../core/services/gmail_connector.py#L237) |
+| function | `_fetch_messages` | `(user_id, query, max_results)` | Fælles kerne for search/list: hent id-liste → berig med headers/snippet. | [src](../../../core/services/gmail_connector.py#L245) |
+| function | `search` | `(user_id, query, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L290) |
+| function | `list_inbox` | `(user_id, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L296) |
+| function | `_extract_body` | `(payload)` | Fold payload-træet ud og returnér (ren_tekst, html). | [src](../../../core/services/gmail_connector.py#L300) |
+| function | `get_message` | `(user_id, message_id)` | Hent ÉN mail med fuld brødtekst (format=full). | [src](../../../core/services/gmail_connector.py#L333) |
+| function | `modify_messages` | `(user_id, message_ids, *, action=…, dry_run=…)` | Flyt/arkivér/fortryd på EKSPLICITTE message-id'er. | [src](../../../core/services/gmail_connector.py#L396) |
+| function | `_filter_fejl` | `(r)` | Fælles HTTP-fejlmapping for filter-endpoints. | [src](../../../core/services/gmail_connector.py#L479) |
+| function | `list_filters` | `(user_id)` | List alle filtre på brugerens konto. | [src](../../../core/services/gmail_connector.py#L489) |
+| function | `_kriterie_sat` | `(v)` | Er dette kriterie reelt sat? Booleaner tæller kun når de er sande. | [src](../../../core/services/gmail_connector.py#L522) |
+| function | `create_filter` | `(user_id, criteria, action, *, dry_run=…)` | Opret et varigt filter. `dry_run` er default — et kald ændrer intet. | [src](../../../core/services/gmail_connector.py#L534) |
+| function | `delete_filter` | `(user_id, filter_id, *, dry_run=…)` | Slet et filter. Påvirker kun fremtidige mails — ikke dem det alt har flyttet. | [src](../../../core/services/gmail_connector.py#L599) |
+| function | `send_message` | `(user_id, to, subject, body)` | Send en mail på brugerens vegne. KRÆVER approval-flow før den eksponeres som tool. | [src](../../../core/services/gmail_connector.py#L629) |
 
 ## `core/services/goal_reporter.py`
 _Goal reporter — fører systemets egne målinger tilbage til målet der bad om dem._

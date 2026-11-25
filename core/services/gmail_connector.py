@@ -138,6 +138,88 @@ GMAIL_CONNECTOR_TOOL_DEFINITIONS: list[dict] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "gmail_filter_list",
+            "description": (
+                "List de filtre der findes på brugerens EGEN Gmail-konto. Et filter "
+                "er en varig regel: den rammer både eksisterende og fremtidige mails "
+                "fra samme afsender. Brug denne FØR du opretter et nyt, så du ikke "
+                "laver dubletter af en regel der allerede findes."
+            ),
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "gmail_filter_create",
+            "description": (
+                "Opret et VARIGT filter på brugerens EGEN Gmail-konto. Bruges når en "
+                "afsender bliver ved med at sende uønsket mail: et filter rammer dem "
+                "der kommer i morgen, hvor gmail_modify kun flytter dem der allerede "
+                "er kommet. Angiv mindst ét kriterium (fx from) og en handling "
+                "(arkivér = removeLabelIds ['INBOX'], eller tilføj en label). "
+                "dry_run er sand som standard og opretter intet — kald igen med "
+                "dry_run=false for at udføre. Videresendelse kan IKKE sættes: en "
+                "forward-regel kan lække hele postkassen, så den kræver en bevidst "
+                "udvidelse af værktøjet."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "criteria": {
+                        "type": "object",
+                        "description": (
+                            "Hvad filteret matcher. Felter: from, to, subject, query "
+                            "(Gmail-søgesyntaks), negatedQuery, hasAttachment, "
+                            "excludeChats, size, sizeComparison. Mindst ét påkrævet."
+                        ),
+                    },
+                    "action": {
+                        "type": "object",
+                        "description": (
+                            "Hvad der sker med matchende mails. Felter: addLabelIds "
+                            "(liste af label-id'er, fx ['STARRED']) og removeLabelIds "
+                            "(fx ['INBOX'] for at arkivere)."
+                        ),
+                    },
+                    "dry_run": {
+                        "type": "boolean",
+                        "description": "Sand = vis kun hvad der ville blive oprettet (standard). Falsk = opret.",
+                    },
+                },
+                "required": ["criteria", "action"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "gmail_filter_delete",
+            "description": (
+                "Slet et filter på brugerens EGEN Gmail-konto via dets id (fra "
+                "gmail_filter_list). Sletningen påvirker kun FREMTIDIGE mails — "
+                "mails filteret allerede har flyttet bliver hvor de er. dry_run er "
+                "sand som standard; kald igen med dry_run=false for at slette."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "filter_id": {
+                        "type": "string",
+                        "description": "Filterets id (fra gmail_filter_list)",
+                    },
+                    "dry_run": {
+                        "type": "boolean",
+                        "description": "Sand = vis kun hvad der ville ske (standard). Falsk = slet.",
+                    },
+                },
+                "required": ["filter_id"],
+            },
+        },
+    },
 ]
 
 
@@ -368,6 +450,178 @@ def modify_messages(
         if r.status_code not in (200, 204):
             return {"status": "error", "error": f"gmail_http_{r.status_code}"}
         return {"status": "ok", "dry_run": False, "action": action, "modified": len(ids)}
+    except Exception as e:  # noqa: BLE001
+        return {"status": "error", "error": f"gmail_request_failed: {e}"}
+
+
+# ── Filtre: den VARIGE oprydning ──────────────────────────────────────────
+#
+# `modify_messages` flytter mails der ALLEREDE er kommet. Et filter rammer dem
+# der kommer i morgen. Uden den er oprydning et evigt arbejde: målt 8/11-2026
+# sendte myawardwallet.com tre mails samme dag under tre forskellige
+# afsendernavne fra samme domæne — hver især uskyldig, tilsammen spam.
+#
+# `action.forward` er BEVIDST ikke eksponeret. En videresendelsesregel sender
+# hver matchende mail til en ekstern adresse, og det er den ene handling i hele
+# Gmail-API'et der kan lække en komplet postkasse varigt — også efter at
+# passwordet er skiftet. Skal den bruges, kræver det en bevidst udvidelse med
+# sin egen godkendelse, ikke et argument i et almindeligt værktøjskald.
+
+_KRITERIE_FELTER = {
+    "from", "to", "subject", "query", "negatedQuery",
+    "hasAttachment", "excludeChats", "size", "sizeComparison",
+}
+_AKTION_FELTER = {"addLabelIds", "removeLabelIds"}
+
+_FILTERS = f"{_API}/settings/filters"
+
+
+def _filter_fejl(r) -> dict | None:
+    """Fælles HTTP-fejlmapping for filter-endpoints."""
+    if r.status_code == 401:
+        return {"status": "error", "error": "gmail_not_connected"}
+    if r.status_code == 403:
+        return {"status": "error", "error": "gmail_scope_missing",
+                "hint": "tokenet mangler gmail.settings.basic — forbind Gmail igen"}
+    return None
+
+
+def list_filters(user_id: str) -> dict:
+    """List alle filtre på brugerens konto."""
+    token = _token(user_id)
+    if not token:
+        return {"status": "error", "error": "gmail_not_connected"}
+    try:
+        import httpx
+        r = httpx.get(_FILTERS, headers=_headers(token), timeout=20)
+        fejl = _filter_fejl(r)
+        if fejl:
+            return fejl
+        # Gmail svarer 204 No Content naar kontoen ingen filtre har — maalt
+        # 25/11-2026 mod Michelles konto. Det er et gyldigt «tom liste», ikke
+        # en fejl; uden denne gren blev en ren konto rapporteret som gmail_http_204.
+        if r.status_code == 204:
+            return {"status": "ok", "filters": [], "count": 0}
+        if r.status_code != 200:
+            return {"status": "error", "error": f"gmail_http_{r.status_code}"}
+        filtre = r.json().get("filter") or []
+        out = []
+        for f in filtre:
+            if not isinstance(f, dict):
+                continue
+            out.append({
+                "id": f.get("id", ""),
+                "criteria": f.get("criteria") or {},
+                "action": f.get("action") or {},
+            })
+        return {"status": "ok", "filters": out, "count": len(out)}
+    except Exception as e:  # noqa: BLE001
+        return {"status": "error", "error": f"gmail_request_failed: {e}"}
+
+
+def _kriterie_sat(v) -> bool:
+    """Er dette kriterie reelt sat? Booleaner tæller kun når de er sande.
+
+    `hasAttachment: true` er et fuldgyldigt filter alene — men et felt der
+    bare er `False` betyder «ikke angivet» i Gmail's semantik, ikke «matcher
+    mails uden vedhæftelse».
+    """
+    if isinstance(v, bool):
+        return v
+    return bool(str(v).strip())
+
+
+def create_filter(
+    user_id: str,
+    criteria: dict,
+    action: dict,
+    *,
+    dry_run: bool = True,
+) -> dict:
+    """Opret et varigt filter. `dry_run` er default — et kald ændrer intet.
+
+    Kriterier og handling valideres FØR noget sendes: et ukendt felt afvises
+    frem for at blive ignoreret, fordi Gmail ellers opretter et filter der
+    matcher bredere end kalderen troede.
+    """
+    token = _token(user_id)
+    if not token:
+        return {"status": "error", "error": "gmail_not_connected"}
+
+    if not isinstance(criteria, dict) or not criteria:
+        return {"status": "error", "error": "criteria_required",
+                "gyldige": sorted(_KRITERIE_FELTER)}
+    ukendte = sorted(set(criteria) - _KRITERIE_FELTER)
+    if ukendte:
+        return {"status": "error", "error": f"ukendte_kriterier: {', '.join(ukendte)}",
+                "gyldige": sorted(_KRITERIE_FELTER)}
+    if not any(_kriterie_sat(v) for v in criteria.values()):
+        return {"status": "error", "error": "criteria_tomt",
+                "hint": "mindst ét kriterium skal have en værdi"}
+
+    if not isinstance(action, dict) or not action:
+        return {"status": "error", "error": "action_required",
+                "gyldige": sorted(_AKTION_FELTER)}
+    if "forward" in action:
+        return {"status": "error", "error": "forward_ikke_tilladt",
+                "hint": ("en videresendelsesregel kan lække hele postkassen og "
+                         "kræver en bevidst udvidelse af værktøjet")}
+    ukendte_a = sorted(set(action) - _AKTION_FELTER)
+    if ukendte_a:
+        return {"status": "error", "error": f"ukendte_action_felter: {', '.join(ukendte_a)}",
+                "gyldige": sorted(_AKTION_FELTER)}
+
+    body = {"criteria": criteria, "action": action}
+    if dry_run:
+        return {
+            "status": "ok",
+            "dry_run": True,
+            "would_create": body,
+            "note": "Intet oprettet. Kald igen med dry_run=false for at udføre.",
+        }
+    try:
+        import httpx
+        r = httpx.post(_FILTERS, headers=_headers(token), json=body, timeout=30)
+        fejl = _filter_fejl(r)
+        if fejl:
+            return fejl
+        if r.status_code not in (200, 201):
+            return {"status": "error", "error": f"gmail_http_{r.status_code}"}
+        data = r.json() if r.content else {}
+        return {"status": "ok", "dry_run": False,
+                "id": data.get("id", ""),
+                "criteria": data.get("criteria") or criteria,
+                "action": data.get("action") or action}
+    except Exception as e:  # noqa: BLE001
+        return {"status": "error", "error": f"gmail_request_failed: {e}"}
+
+
+def delete_filter(user_id: str, filter_id: str, *, dry_run: bool = True) -> dict:
+    """Slet et filter. Påvirker kun fremtidige mails — ikke dem det alt har flyttet."""
+    token = _token(user_id)
+    if not token:
+        return {"status": "error", "error": "gmail_not_connected"}
+    fid = (filter_id or "").strip()
+    if not fid:
+        return {"status": "error", "error": "filter_id_required"}
+    if dry_run:
+        return {
+            "status": "ok",
+            "dry_run": True,
+            "would_delete": fid,
+            "note": "Intet slettet. Kald igen med dry_run=false for at udføre.",
+        }
+    try:
+        import httpx
+        r = httpx.delete(f"{_FILTERS}/{fid}", headers=_headers(token), timeout=20)
+        fejl = _filter_fejl(r)
+        if fejl:
+            return fejl
+        if r.status_code == 404:
+            return {"status": "error", "error": "filter_not_found", "filter_id": fid}
+        if r.status_code not in (200, 204):
+            return {"status": "error", "error": f"gmail_http_{r.status_code}"}
+        return {"status": "ok", "dry_run": False, "deleted": fid}
     except Exception as e:  # noqa: BLE001
         return {"status": "error", "error": f"gmail_request_failed: {e}"}
 

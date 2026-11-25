@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10514/19184 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10522/19192 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,14 +26,14 @@ Generated from source. 10514/19184 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 926 | 1643 | 56% |
-| `core.services` | 7059 | 13024 | 54% |
+| `core.services` | 7064 | 13029 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 29 | 45 | 64% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 649 | 1246 | 52% |
+| `core.tools` | 652 | 1249 | 52% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
@@ -1124,7 +1124,7 @@ Generated from source. 10514/19184 functions/methods documented (54%). The list 
 - `core/services/conflict_resolution.py` :: `ConflictTrace.to_dict` (L40)
 - `core/services/conflict_resolution.py` :: `QuietInitiative.to_dict` (L73)
 - `core/services/conflict_resolution.py` :: `build_conflict_resolution_surface` (L615)
-- `core/services/connectors.py` :: `set_enabled` (L207)
+- `core/services/connectors.py` :: `set_enabled` (L208)
 - `core/services/consent_registry.py` :: `build_consent_registry_surface` (L143)
 - `core/services/consent_registry.py` :: `get_active_consents` (L112)
 - `core/services/consolidation_judge_daemon.py` :: `now_date_str` (L423)
@@ -1332,8 +1332,8 @@ Generated from source. 10514/19184 functions/methods documented (54%). The list 
 - `core/services/git_actions.py` :: `commit_all_container` (L47)
 - `core/services/git_actions.py` :: `commit_all_workstation` (L242)
 - `core/services/git_actions.py` :: `parse_owner_repo` (L272)
-- `core/services/gmail_connector.py` :: `list_inbox` (L214)
-- `core/services/gmail_connector.py` :: `search` (L208)
+- `core/services/gmail_connector.py` :: `list_inbox` (L296)
+- `core/services/gmail_connector.py` :: `search` (L290)
 - `core/services/goal_signal_tracking.py` :: `build_runtime_goal_signal_surface` (L101)
 - `core/services/goal_signal_tracking.py` :: `refresh_runtime_goal_signal_statuses` (L64)
 - `core/services/goal_signal_tracking.py` :: `track_runtime_goal_signals_for_visible_turn` (L23)

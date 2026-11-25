@@ -2620,6 +2620,38 @@ def _exec_gmail_modify(args: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def _exec_gmail_filter_list(args: dict[str, Any]) -> dict[str, Any]:
+    """List filtre på brugerens EGEN Gmail-konto."""
+    from core.services.gmail_connector import list_filters
+    uid = _operator_user_id(args)
+    return list_filters(uid)
+
+
+def _exec_gmail_filter_create(args: dict[str, Any]) -> dict[str, Any]:
+    """Opret et varigt filter. dry_run er sand som standard."""
+    from core.services.gmail_connector import create_filter
+    uid = _operator_user_id(args)
+    criteria = args.get("criteria")
+    action = args.get("action")
+    return create_filter(
+        uid,
+        criteria if isinstance(criteria, dict) else {},
+        action if isinstance(action, dict) else {},
+        dry_run=bool(args.get("dry_run", True)),
+    )
+
+
+def _exec_gmail_filter_delete(args: dict[str, Any]) -> dict[str, Any]:
+    """Slet et filter. dry_run er sand som standard."""
+    from core.services.gmail_connector import delete_filter
+    uid = _operator_user_id(args)
+    return delete_filter(
+        uid,
+        str(args.get("filter_id") or ""),
+        dry_run=bool(args.get("dry_run", True)),
+    )
+
+
 def _exec_gmail_send(args: dict[str, Any]) -> dict[str, Any]:
     """Send mail på brugerens vegne — bag approval-kort (som operator-tools)."""
     uid = _operator_user_id(args)
@@ -2936,6 +2968,9 @@ __all__ = [
     "_exec_gmail_search",
     "_exec_gmail_list",
     "_exec_gmail_modify",
+    "_exec_gmail_filter_list",
+    "_exec_gmail_filter_create",
+    "_exec_gmail_filter_delete",
     "_exec_gmail_send",
     "_exec_calendar_list_events",
     "_exec_drive_search",

@@ -74,9 +74,10 @@ _CATALOG: list[dict] = [
     {
         "id": "gmail", "name": "Gmail", "kind": "oauth", "provider": "google",
         # Vaerktoejer denne connector laaser op. Se docstringen oeverst.
-        "tools": ["gmail_list", "gmail_search", "gmail_send", "gmail_modify"],
+        "tools": ["gmail_list", "gmail_search", "gmail_send", "gmail_modify",
+                  "gmail_filter_list", "gmail_filter_create", "gmail_filter_delete"],
         "category": "Google", "icon": "mail", "status": "available",
-        "desc": "Læs, søg, send og ryd op i mails",
+        "desc": "Læs, søg, send, ryd op og sæt varige filtre",
         "scopes": ["gmail.readonly", "gmail.send", "gmail.settings.basic", "gmail.modify"],
         "oauth_scopes": [
             "https://www.googleapis.com/auth/gmail.readonly",

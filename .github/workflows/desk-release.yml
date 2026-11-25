@@ -61,6 +61,14 @@ jobs:
     name: build-${{ matrix.platform }}
     needs: prepare
     runs-on: ${{ matrix.os }}
+    # Målt 25/11-2026: `build-mac` stod 70+ minutter på trinnet «Gem artefakter
+    # til publicering» (`actions/upload-artifact@v4`) efter at selve pakningen
+    # var `success`. Uden et loft venter GitHub i op til 6 timer på en hængt
+    # runner, og hele releasen står `in_progress` imens — så et grønt build
+    # bliver til en uafsluttet release uden at nogen fejl vises. Historikken
+    # siger 4-8 minutter for HELE jobbet, så 30 er rigeligt og fanger kun
+    # hænget, ikke en langsom maskine.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:

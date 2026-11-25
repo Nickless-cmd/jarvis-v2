@@ -59,6 +59,37 @@ def kaede_nr_eller_loft(session_id: str) -> int:
         return GENOPTAGELSES_LOFT
 
 
+def _journalens_kaede(run_id: str) -> tuple[str, str]:
+    """Hvilken OPGAVE koerslen fortsatte, og hvad der vaekkede den.
+
+    Journalen er den eneste kilde til de to svar: `stage_wake` skriver
+    `wake_kind` paa posten, og et led der har arvet en opgave staar med et
+    `task_id` der afviger fra sit eget `run_id`. Uden opslaget blev
+    `recovery_task_id` og `recovery_wake_kind` aldrig fodret — to kolonner der
+    saa ud som om de maalte noget, men stod tomme i alle 28.456 raekker
+    (maalt 25/11-2026).
+
+    Et `task_id` der ER koerslens eget id beviser ingen kaede, saa det
+    rapporteres som tomt: kolonnen skal betyde «denne koersel fortsatte en
+    anden opgave», ikke «der findes en post».
+
+    Kan posten ikke laeses, gives tomme strenge — en gaettet kaede er vaerre
+    end ingen, fordi den ville se ud som en maalt sammenhaeng.
+    """
+    try:
+        from core.services.in_flight_runs import get_record
+        post = get_record(run_id) or {}
+    except Exception:
+        logger.warning(
+            "kunne ikke laese journalposten for %s — kaeden stemples uden "
+            "opgave og vaekningsart", str(run_id or "")[:24], exc_info=True)
+        return "", ""
+    opgave = str(post.get("task_id") or "").strip()
+    if opgave == str(run_id or "").strip():
+        opgave = ""
+    return opgave, str(post.get("wake_kind") or "").strip()
+
+
 def afgoer_segment_udfald(
     *,
     run_id: str,
@@ -83,12 +114,15 @@ def afgoer_segment_udfald(
     kaede = kaede_nr_eller_loft(session_id)
     # Kæden skrives på rækken MENS den stadig kan læses. Journalen ryddes, og et
     # forløb på ni kørsler kunne derfor ikke måles bagefter (25/11-2026).
+    opgave, vaekning = _journalens_kaede(run_id)
     try:
         from core.runtime.db_visible import stamp_recovery_chain
         stamp_recovery_chain(
             run_id,
             recovery_attempt=kaede,
             recovery_limit=GENOPTAGELSES_LOFT,
+            recovery_task_id=opgave,
+            wake_kind=vaekning,
             reason=grund,
         )
     except Exception:

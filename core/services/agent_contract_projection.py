@@ -133,13 +133,17 @@ def _all(sql: str, args: list[Any] | tuple[Any, ...] = ()) -> list[dict[str, Any
     return [{k: r[k] for k in r.keys()} for r in _conn().execute(sql, list(args)).fetchall()]
 
 
-def _outcome(raw: str) -> dict[str, Any]:
+def _json_object(raw: str, field: str) -> dict[str, Any]:
     try:
         v = json.loads(raw or "{}")
         return v if isinstance(v, dict) else {}
     except ValueError:
-        logger.warning("ulaeselig outcome_json paa et assignment")
+        logger.warning("ulaeselig %s i agentprojektionen", field)
         return {}
+
+
+def _outcome(raw: str) -> dict[str, Any]:
+    return _json_object(raw, "outcome_json")
 
 
 # --- raekker -----------------------------------------------------------------------------------
@@ -188,7 +192,9 @@ def _leases(owner: str) -> dict[str, dict[str, Any]]:
 
 
 def _routes(owner: str) -> dict[str, dict[str, Any]]:
-    rows = _all("SELECT assignment_id, attempt, route_source, provider, model FROM agent_route_decisions "
+    rows = _all("SELECT assignment_id, attempt, route_source, provider, model, "
+                "CASE WHEN json_valid(decision_json) THEN json_extract(decision_json, '$.quota') "
+                "ELSE '{}' END AS quota FROM agent_route_decisions "
                 "WHERE owner_user_id = ? ORDER BY attempt", [owner])
     return {r["assignment_id"]: r for r in rows}        # seneste forsoeg vinder (sorteret stigende)
 
@@ -281,7 +287,8 @@ def _row(g: dict[str, Any], *, facts: dict, leases: dict, routes: dict, outbox: 
                                (g.get("terminal_at") or "") if terminal else "", now),
         "updated_at": g.get("updated_at") or "", "heartbeat": hb,
         "tokens": f.get("tokens", 0), "cost_usd": round(f["cost"], 6) if f.get("used") else None,
-        "route": ({"route_source": r["route_source"], "provider": r["provider"], "model": r["model"]}
+        "route": ({"route_source": r["route_source"], "provider": r["provider"], "model": r["model"],
+                   "quota": _json_object(r["quota"], "decision_json.quota")}
                   if r else None),
         "last_message": ({"direction": m["direction"], "kind": m["kind"], "at": m["created_at"],
                           "text": safe_text(m["content"])} if m else None),

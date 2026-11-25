@@ -5,6 +5,9 @@
 /* ── Inspector ─────────────────────────────────────────────────────────── */
 .ac-section .ac-attention { color: var(--error-fg); }
 .ac-hint { color: var(--fg-3); font-size: 12px; }
+.ac-route-quota dd { display: grid; gap: 3px; }
+.ac-route-quota-status { color: var(--fg-2); }
+.ac-route-quota-window { color: var(--fg-3); font-size: 12px; }
 .ac-approval { margin-top: 8px; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg-3);
   overflow-wrap: anywhere; }
 .ac-approval code { font-family: var(--font-mono); font-size: 12px; }

@@ -34,6 +34,42 @@ describe('AgentInspector — kontrakt-visning', () => {
     expect(within(facts).getByText('agent-kid')).toBeInTheDocument()          // agenttræet: børn
   })
 
+  it('viser målegrundlag, observation og begge dispatch-kvotevinduer', async () => {
+    vi.mocked(kontrakt.getKontraktAgent).mockResolvedValue(med({
+      route: {
+        route_source: 'agent_pool', provider: 'claude-cli', model: 'sonnet',
+        quota: {
+          measured: true, backend: 'claude', observed_at: '2026-11-25T22:04:35+00:00',
+          windows: [
+            { label: '5-timers-kvoten', pct: 0, resets_at: '2026-11-26T00:30:00+00:00' },
+            { label: 'den ugentlige kvote', pct: 4, resets_at: '2026-11-30T01:00:00+00:00' },
+          ],
+        },
+      },
+    }))
+
+    render(<AgentInspector config={config} agent={ref} canMessage />)
+    const facts = await screen.findByTestId('ac-status')
+    expect(facts.querySelector('.ac-route-quota-status')).toHaveTextContent(/MÅLT · observeret 25\.11/)
+    expect(within(facts).getByText(/5-timers-kvoten/)).toHaveTextContent('0 %')
+    expect(within(facts).getByText(/den ugentlige kvote/)).toHaveTextContent('4 %')
+    expect(within(facts).getAllByText(/nulstilles/)).toHaveLength(2)
+  })
+
+  it('mærker en ikke-målt dispatch-kvote som gættet', async () => {
+    vi.mocked(kontrakt.getKontraktAgent).mockResolvedValue(med({
+      route: {
+        route_source: 'agent_pool', provider: 'codex-cli', model: 'codex',
+        quota: { measured: false, backend: 'codex', reason: 'ingen frisk kvotemåling' },
+      },
+    }))
+
+    render(<AgentInspector config={config} agent={ref} canMessage />)
+    await screen.findByText('GÆTTET')
+    expect(screen.getByTestId('ac-status').querySelector('.ac-route-quota-status'))
+      .toHaveTextContent('GÆTTET · ingen frisk kvotemåling')
+  })
+
   it('en ventende approval vises med sikker visning og henviser til «Venter på dig»', async () => {
     render(<AgentInspector config={config} agent={ref} canMessage />)
     await screen.findByTestId('ac-status')

@@ -179,7 +179,8 @@ def test_detail_carries_route_cost_heartbeat_artifacts_approvals_without_raw_arg
                          tool_name="bash", arguments={"command": "rm -rf build", "_runtime_x": 1}, run_id=acc["run_id"])
     d = pj.proj_.agent_detail(A, "a1")
     ag = d["agent"]
-    assert ag["route"] == {"route_source": "agent_pool", "provider": "copilot-premium", "model": "claude-sonnet-5"}
+    assert ag["route"] == {"route_source": "agent_pool", "provider": "copilot-premium",
+                           "model": "claude-sonnet-5", "quota": {}}
     assert (ag["tokens"], ag["cost_usd"], ag["heartbeat"]["state"]) == (120, 0.0123, "ok")
     assert d["children"] == ["kid"] and ag["children"] == 1
     assert [(a["name"], a["size"]) for a in d["artifacts"]] == [("final.txt", len("fuldt svar"))]
@@ -188,6 +189,28 @@ def test_detail_carries_route_cost_heartbeat_artifacts_approvals_without_raw_arg
     blob = json.dumps(d)
     assert "arguments_json" not in blob and "_runtime_x" not in blob and "agent-artifacts" not in blob
     assert d["assignments"][0]["routes"][0]["route_source"] == "agent_pool"
+
+
+def test_detail_projects_the_measured_dispatch_quota_with_both_windows(pj):
+    """Kvoten skal overleve fra den gemte route-beslutning til AgentInspector-projektionen."""
+    acc = pj.agent("a1")
+    quota = {
+        "measured": True,
+        "backend": "claude",
+        "windows": [
+            {"label": "5-timers-kvoten", "pct": 0.0, "resets_at": "2026-11-25T00:30:00+00:00"},
+            {"label": "den ugentlige kvote", "pct": 4.0, "resets_at": "2026-11-30T01:00:00+00:00"},
+        ],
+        "observed_at": "2026-11-25T22:04:35+00:00",
+    }
+    from core.runtime import db_agent_route
+    db_agent_route.record_decision(
+        assignment_id=acc["assignment_id"], agent_id="a1", owner_user_id=A,
+        decision={"route_source": "agent_pool", "provider": "claude-cli", "model": "sonnet", "quota": quota},
+        attempt=1,
+    )
+
+    assert pj.proj_.agent_detail(A, "a1")["agent"]["route"]["quota"] == quota
 
 
 def test_cost_is_unknown_not_zero_when_no_run_reported_usage(pj):

@@ -223,7 +223,15 @@ def _live_payloads(rt):
     rt.c_.commit_terminal_outcome(assignment_id=kid["assignment_id"], status="failed", summary="gik galt",
                                   error_code="AGENT_FAILED", error_phase="model")
     db_agent_route.record_decision(assignment_id=acc["assignment_id"], agent_id="agent-a", owner_user_id=A,
-                                   decision={"route_source": "agent_pool", "provider": "p", "model": "m"}, attempt=1)
+                                   decision={"route_source": "agent_pool", "provider": "p", "model": "m",
+                                             "quota": {"measured": True, "backend": "claude",
+                                                       "observed_at": "2026-11-25T22:04:35+00:00",
+                                                       "windows": [
+                                                           {"label": "5-timers-kvoten", "pct": 0.0,
+                                                            "resets_at": "2026-11-26T00:30:00+00:00"},
+                                                           {"label": "den ugentlige kvote", "pct": 4.0,
+                                                            "resets_at": "2026-11-30T01:00:00+00:00"},
+                                                       ]}}, attempt=1)
     import core.runtime.db_agent_lease as lease
     lease.acquire(assignment_id=acc["assignment_id"], holder="w1")
     create_agent_message(message_id="m1", thread_id="t", agent_id="agent-a", direction="agent->jarvis",

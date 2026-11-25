@@ -41,6 +41,8 @@ export function AgentContractSection({
   onChanged: () => void | Promise<void>
 }) {
   const a = detail.agent
+  const quota = a.route?.quota
+  const harQuota = quota && typeof quota.measured === 'boolean'
   const [busy, setBusy] = useState(false)
   const [draft, setDraft] = useState('')
   const [followup, setFollowup] = useState('')
@@ -101,6 +103,23 @@ export function AgentContractSection({
             <dd>{a.cost_usd === null ? 'ikke meldt' : a.cost_usd.toLocaleString('da-DK', { style: 'currency', currency: 'USD', maximumFractionDigits: 4 })}</dd>
           </div>
           {a.route && <div><dt>Rute</dt><dd>{a.route.route_source} · {a.route.provider}/{a.route.model}</dd></div>}
+          {harQuota && (
+            <div className="ac-route-quota">
+              <dt>Dispatch-kvote</dt>
+              <dd>
+                <div className="ac-route-quota-status">
+                  <strong>{quota.measured ? 'MÅLT' : 'GÆTTET'}</strong>
+                  {quota.observed_at && ` · observeret ${tid(quota.observed_at)}`}
+                  {!quota.measured && quota.reason && ` · ${quota.reason}`}
+                </div>
+                {quota.windows?.map((window) => (
+                  <div className="ac-route-quota-window" key={`${window.label}/${window.resets_at}`}>
+                    {window.label} · {window.pct.toLocaleString('da-DK')} % · nulstilles {tid(window.resets_at)}
+                  </div>
+                ))}
+              </dd>
+            </div>
+          )}
           {a.parent_agent_id && <div><dt>Forælder</dt><dd className="inspector-mono">{a.parent_agent_id}</dd></div>}
           {detail.children.length > 0 && (
             <div><dt>Børn</dt><dd className="inspector-mono">{detail.children.join(', ')}</dd></div>

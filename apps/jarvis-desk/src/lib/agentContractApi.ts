@@ -21,7 +21,16 @@ export type Bucket =
   | 'done' | 'failed' | 'timed_out' | 'cancelled' | 'unknown'
 
 export interface ContractError { phase: string; code: string; reason: string }
-export interface ContractRoute { route_source: string; provider: string; model: string }
+export interface DispatchQuotaWindow { label: string; pct: number; resets_at: string }
+export interface DispatchQuota {
+  measured: boolean
+  backend: string
+  windows?: DispatchQuotaWindow[]
+  observed_at?: string
+  reason?: string
+  stale_hours?: number
+}
+export interface ContractRoute { route_source: string; provider: string; model: string; quota: DispatchQuota | Record<string, never> }
 export interface Heartbeat { at: string; state: 'ok' | 'expired' }
 
 export interface ContractAgentRow {

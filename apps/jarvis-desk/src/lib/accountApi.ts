@@ -1,18 +1,4 @@
-import { apiFetch, type ApiConfig } from './api'
-
-export interface QuotaItem {
-  kind: string
-  used: number
-  limit: number | null
-  remaining: number | null
-  warn: boolean
-}
-export interface QuotaOverview { tier: string; items: QuotaItem[] }
-
-/** Self-scope kvote-/forbrugs-overblik (tier + brug pr. type). */
-export async function getQuota(config: ApiConfig): Promise<QuotaOverview> {
-  return apiFetch<QuotaOverview>(config, '/api/account/quota')
-}
+import type { ApiConfig } from './api'
 
 /**
  * GDPR-eksport som ZIP — hentet som binær og gemt direkte.

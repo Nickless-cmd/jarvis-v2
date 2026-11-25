@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10512/19181 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10512/19182 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10512/19181 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 925 | 1642 | 56% |
-| `core.services` | 7058 | 13022 | 54% |
+| `core.services` | 7058 | 13023 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -759,9 +759,9 @@ Generated from source. 10512/19181 functions/methods documented (54%). The list 
 - `core/services/agent_cli_backend.py` :: `is_cli_provider` (L85)
 - `core/services/agent_cli_backend.py` :: `resolve_executable` (L89)
 - `core/services/agent_contract_bridge.py` :: `resolve_owner_and_session` (L18)
-- `core/services/agent_contract_projection.py` :: `close` (L614)
-- `core/services/agent_contract_projection.py` :: `followup` (L589)
-- `core/services/agent_contract_projection.py` :: `mark_read` (L505)
+- `core/services/agent_contract_projection.py` :: `close` (L621)
+- `core/services/agent_contract_projection.py` :: `followup` (L596)
+- `core/services/agent_contract_projection.py` :: `mark_read` (L512)
 - `core/services/agent_contract_service.py` :: `list_approvals` (L964)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L790)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L788)

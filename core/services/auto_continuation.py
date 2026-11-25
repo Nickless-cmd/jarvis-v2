@@ -1,4 +1,4 @@
-"""Fortsæt automatisk når et synligt run-segment sluttede før opgaven.
+"""Kæde-tallet for genoptagelser — og registeret over løkkens udfald.
 
 ## Hvorfor
 
@@ -41,9 +41,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-#: Hvor mange gange en tur må fortsætte sig selv i træk.
-MAKS_KAEDE = 3
-
 #: De udfald der betyder «løb tør», og ikke «nogen greb ind».
 OPBRUGT = "budget-opbrugt"
 
@@ -58,59 +55,12 @@ OPBRUGT = "budget-opbrugt"
 IKKE_BOGFOERT = "ikke-bogfoert"
 
 
-@dataclass(frozen=True)
 class Beslutning:
     """Svaret, med grunden. Grunden er ikke pynt — den skal i loggen, så en
     fortsættelse der udebliver kan forklares uden at læse koden."""
 
     fortsaet: bool
     grund: str
-
-
-def beslut(
-    *,
-    exit_reason: str,
-    slaaet_til: bool,
-    autonom: bool,
-    kaede_nr: int,
-    bruger_skrev_imens: bool,
-    maks_kaede: int = MAKS_KAEDE,
-) -> Beslutning:
-    """Skal denne tur fortsætte af sig selv?
-
-    `kaede_nr` er hvor mange auto-fortsættelser der allerede er sket i træk
-    (0 = dette er en tur brugeren selv startede).
-    """
-    if not slaaet_til:
-        return Beslutning(False, "slaaet fra")
-    if autonom:
-        return Beslutning(False, "autonomt run")
-    from core.services.visible_terminal_policy import is_recoverable_exit_reason
-    if not is_recoverable_exit_reason(exit_reason):
-        return Beslutning(False, f"udfald={exit_reason or 'ukendt'}")
-    if bruger_skrev_imens:
-        return Beslutning(False, "brugeren har selv skrevet videre")
-    try:
-        nr = int(kaede_nr)
-        maks = int(maks_kaede)
-    except Exception:
-        return Beslutning(False, "ugyldigt kaede-tal")
-    if nr >= maks:
-        return Beslutning(False, f"kaede-loft naaet ({nr}/{maks})")
-    return Beslutning(True, f"recovery, fortsaettelse {nr + 1}/{maks}")
-
-
-def fortsaettelses_besked(
-    kaede_nr: int, maks_kaede: int = MAKS_KAEDE, *, reason: str = OPBRUGT,
-) -> str:
-    """Teksten Jarvis får. Den siger hvor han er, og at han skal sige til når
-    han er faerdig — ellers ved han ikke at der er en graense."""
-    return (
-        f"⏭️ Dit forrige run-segment sluttede før opgaven var færdig ({reason}). "
-        f"Dette er automatisk fortsættelse {kaede_nr}/{maks_kaede}. "
-        "Fortsæt præcis hvor du slap. Er arbejdet færdigt, så sig det kort i "
-        "stedet for at kalde flere værktøjer."
-    )
 
 
 # ── Bogholderi ───────────────────────────────────────────────────────────────
@@ -243,14 +193,3 @@ def noter_brugerbesked(session_id: str) -> None:
         _SIDSTE_BRUGER[sid] = time.monotonic()
 
 
-def bruger_skrev_efter(session_id: str, tidspunkt: float) -> bool:
-    """Har brugeren skrevet efter `tidspunkt`? Så har han taget over, og en
-    auto-fortsættelse ville tale i munden på ham."""
-    with _laas:
-        t = _SIDSTE_BRUGER.get((session_id or "").strip())
-    if t is None:
-        return False
-    try:
-        return float(t) > float(tidspunkt)
-    except Exception:
-        return False

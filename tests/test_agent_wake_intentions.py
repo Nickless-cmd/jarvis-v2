@@ -25,8 +25,12 @@ def test_wake_message_names_condition_and_is_system_marked():
 def test_stage_wake_is_idempotent_on_task_id():
     first = aw.stage_wake(task_id="t1", session_id="s", owner_user_id="u", message="m")
     again = aw.stage_wake(task_id="t1", session_id="s", owner_user_id="u", message="m")
-    assert first == {"task_id": "t1", "merged": False, "created": True}
-    assert again == {"task_id": "t1", "merged": False, "created": False}
+    # Returen bærer også `chain` (kædenummeret, 25/11-2026). Testen værner om
+    # idempotensen, ikke om at dict'en har præcis tre nøgler.
+    assert first["task_id"] == "t1" and first["merged"] is False
+    assert first["created"] is True
+    assert again["task_id"] == "t1" and again["merged"] is False
+    assert again["created"] is False
     assert len([r for r in ifr._load().values() if r.get("wake_kind")]) == 1
 
 

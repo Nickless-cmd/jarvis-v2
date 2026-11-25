@@ -20,6 +20,13 @@ from core.services import in_flight_runs as ifr
 logger = logging.getLogger(__name__)
 
 WAKE_KIND = "agent_wait"
+
+#: Hvor mange agent-vækninger én samtale må starte i træk uden at brugeren har
+#: skrevet. Målt 25/11-2026: ni synlige ture på én besked, fordi hver ny
+#: ventekontrakt skrev sin egen post med `recovery_attempt: 0` — loftet på 2
+#: bandt kun inden for ÉN post. `recovery_limit` er per post; dette er per
+#: samtale, og det er den grænse der manglede.
+MAKS_VAEKNINGER_PR_SESSION = 3
 _FRAME = "[SYSTEM — agentvækning, ikke en besked fra brugeren]\n"
 
 
@@ -50,6 +57,25 @@ def stage_wake(*, task_id: str, session_id: str, owner_user_id: str, message: st
                     and str(rec.get("kind") or "visible") == "visible"):
                 return {"task_id": str(rec.get("task_id") or key), "merged": True,
                         "created": False}
+        # Kæden arves fra samtalen. Uden dette startede hver ny kontrakt paa 0,
+        # og `recovery_limit` kunne aldrig naas paa tvaers af vaekninger.
+        # Vi TÆLLER vækningerne i stedet for at læse `aktiv_kaede_nr`: den tager
+        # den nyeste post, og to poster skrevet i samme sekund gør rækkefølgen
+        # vilkårlig — målt 25/11-2026, hvor kæden frøs på 2 og loftet aldrig
+        # blev nået. Et antal kan ikke afhænge af et tidsstempel.
+        kaede = sum(
+            1 for rec in records.values()
+            if str(rec.get("session_id") or "") == session_id
+            and str(rec.get("kind") or "visible") == "visible"
+            and str(rec.get("wake_kind") or "") == wake_kind
+        )
+        if kaede >= MAKS_VAEKNINGER_PR_SESSION:
+            logger.warning(
+                "agent-vækning afvist: samtalen har allerede %d vækninger i kæden "
+                "(loft %d) — assignment %s lægges i inboxen i stedet",
+                kaede, MAKS_VAEKNINGER_PR_SESSION, task_id)
+            return {"task_id": task_id, "merged": False, "created": False,
+                    "suppressed": True, "chain": kaede}
         now = ifr._iso()
         records[task_id] = {
             "task_id": task_id, "run_id": task_id, "session_id": session_id,
@@ -68,12 +94,14 @@ def stage_wake(*, task_id: str, session_id: str, owner_user_id: str, message: st
             # efter claim men før arbejdet faktisk starter. Med limit=1 blev et
             # udløbet lease permanent uclaimbart, netop den fejl leasen skal
             # forhindre.
-            "recovery_generation": 0, "recovery_attempt": 0, "recovery_limit": 2,
+            "recovery_generation": 0, "recovery_attempt": kaede + 1,
+            "recovery_limit": max(2, MAKS_VAEKNINGER_PR_SESSION),
             "recovery_owner": "", "recovery_lease_until": "", "next_attempt_at": "",
             "notice_pending": False, "final_synthesis_pending": False,
             "recovery_deferrals": 0,
         }
-        return {"task_id": task_id, "merged": False, "created": True}
+        return {"task_id": task_id, "merged": False, "created": True,
+                "chain": kaede + 1}
     out = ifr._mutate(change)
     try:
         from core.services.visible_run_recovery_dispatcher import signal_recovery_dispatcher

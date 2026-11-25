@@ -190,8 +190,23 @@ _MEMBER_CHAT = (_MEMBER_CHAT_WEB | _MEMBER_CHAT_UTIL | _MEMBER_CHAT_MEM
 # Maalt før ændringen: `allowed_tools(role='partner', mode='chat')` indeholdt
 # IKKE `home_assistant`. Michelle kunne altsaa ikke naa huset gennem
 # permission-laget, uanset hvad tool-scoping-listen sagde.
-_PARTNER_CHAT_EXTRA = frozenset({"home_assistant"})
-_PARTNER_CODE_EXTRA = frozenset({"home_assistant"})
+# Søgning i EGNE samtaler (25/11-2026). Bjørn: «sørg for hendes partner tool box
+# kan loaded tools til at søge i egene sessioner». Det er ikke en ophævelse af
+# grænsen kommentaren ovenfor værner — den grænse er at ingen læser ANDRES
+# samtaler, og den står uændret: begge værktøjer scope-filtererer på
+# `privacy_scoped_user_id()`/`_user_scope_clause`, så de kan per konstruktion
+# kun returnere den kaldendes egne sessioner. Før dette kunne Michelle ikke søge
+# i sin egen historik — og fordi hendes beskeder er krypterede, kunne hun heller
+# ikke finde dem på anden vis (målt: 0 hit på «opskrift» i hendes egen session).
+#
+# De ligger i partner-tillægget og ikke i `_MEMBER_HVERDAG`, fordi medlemssættet
+# også dækker eksterne brugere; husstanden er den snævrere kreds.
+_PARTNER_CHAT_EXTRA = frozenset({
+    "home_assistant", "search_sessions", "search_chat_history",
+})
+_PARTNER_CODE_EXTRA = frozenset({
+    "home_assistant", "search_sessions", "search_chat_history",
+})
 _PARTNER_BY_MODE: dict[str, frozenset[str]] = {
     "chat": _PARTNER_CHAT_EXTRA,
     "code": _PARTNER_CODE_EXTRA,

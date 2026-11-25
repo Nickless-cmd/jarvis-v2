@@ -168,11 +168,12 @@ def rebuild_fts() -> dict[str, int]:
     return out
 
 
-def to_match_query(query: str, *, max_terms: int = 8) -> str:
-    """Turn free text into a tolerant FTS5 MATCH expression.
+def _query_terms(query: str, *, max_terms: int = 8) -> list[str]:
+    """De enkelte søgeord bag `to_match_query`, uden FTS-syntaks.
 
-    Tokens (≥ 2 chars) become quoted prefix terms joined with OR, so
-    "pfsense nøgle" → '"pfsense"* OR "nøgle"*'. Returns "" when no usable token.
+    Bruges når teksten skal matches i hukommelsen i stedet for af FTS5 — se
+    `_search_encrypted_for_owner`. Tokeniseringen er den SAMME, så en søgning
+    giver samme ord uanset hvilken af de to veje der svarer.
     """
     terms: list[str] = []
     seen: set[str] = set()
@@ -181,10 +182,19 @@ def to_match_query(query: str, *, max_terms: int = 8) -> str:
         if len(t) < 2 or t in seen:
             continue
         seen.add(t)
-        terms.append(f'"{t}"*')
+        terms.append(t)
         if len(terms) >= max_terms:
             break
-    return " OR ".join(terms)
+    return terms
+
+
+def to_match_query(query: str, *, max_terms: int = 8) -> str:
+    """Turn free text into a tolerant FTS5 MATCH expression.
+
+    Tokens (≥ 2 chars) become quoted prefix terms joined with OR, so
+    "pfsense nøgle" → '"pfsense"* OR "nøgle"*'. Returns "" when no usable token.
+    """
+    return " OR ".join(f'"{t}"*' for t in _query_terms(query, max_terms=max_terms))
 
 
 def _bm25_to_score(rank: float) -> float:
@@ -307,6 +317,93 @@ def search_session_summaries(query: str, *, limit: int = 8) -> list[dict[str, An
     ]
 
 
+def _search_encrypted_for_owner(
+    conn: sqlite3.Connection,
+    *,
+    query: str,
+    limit: int,
+    session_id: str | None,
+    role: str | None,
+    principals: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    """Søg i den kaldendes EGNE krypterede beskeder ved at dekryptere i hukommelsen.
+
+    Målt 25/11-2026: `chat_messages_fts` er en external-content-tabel over
+    `chat_messages.content`, og for et medlem står der ``enc:v1:<base64>`` i den
+    kolonne. FTS indekserer altså base64 som om det var ord. Michelles session
+    gav **0 hit** på «opskrift», «laks» og «kartoffel», mens alle tre ord stod i
+    hendes egne beskeder. Fejlen var usynlig fordi `search_session_summaries`
+    ligger i klartekst og derfor svarede rigtigt — det så ud som om søgningen
+    virkede, indtil nogen søgte efter noget de selv havde skrevet.
+
+    Dekrypteringen sker KUN for rækker i sessioner den kaldende selv ejer, og
+    kun for rækker der beviseligt er krypterede. Klartekst på disk er stadig
+    forbudt: teksten findes kun i dette kalds hukommelse og forlader den ikke.
+
+    Loftet på 5000 rækker er en prisgrænse, ikke en sikkerhedsgrænse — målt koster
+    dekryptering 0,23 ms pr. række, så 5000 er ~1,2 s i værste fald. En bruger
+    med mere end 5000 krypterede beskeder søger derfor i sine nyeste.
+    """
+    terms = _query_terms(query)
+    if not terms or not principals:
+        return []
+    from core.services import chat_crypto
+
+    marks = ",".join("?" for _ in principals)
+    sql = (
+        "SELECT m.id, m.message_id, m.session_id, m.role, m.content, m.created_at "
+        "FROM chat_messages m "
+        "WHERE m.encrypted = 1 "
+        "  AND m.session_id IN (SELECT own.session_id FROM chat_messages own "
+        f"                      WHERE own.user_id IN ({marks}))"
+    )
+    params: list[Any] = [*principals]
+    if session_id:
+        sql += " AND m.session_id = ?"
+        params.append(session_id)
+    if role:
+        sql += " AND m.role = ?"
+        params.append(role)
+    sql += " ORDER BY m.id DESC LIMIT 5000"
+    try:
+        rows = conn.execute(sql, params).fetchall()
+    except sqlite3.OperationalError as exc:
+        logger.debug("db_fts: encrypted chat search failed: %s", exc)
+        return []
+
+    hits: list[dict[str, Any]] = []
+    medlem_per_session: dict[str, str | None] = {}
+    for r in rows:
+        sid = str(r[2] or "")
+        if sid not in medlem_per_session:
+            # Én nøgleopslag pr. session, ikke pr. besked — målt til at være
+            # forskellen mellem brugbar og ubrugelig på en lang historik.
+            medlem_per_session[sid] = chat_crypto.medlem_for_session(sid, conn=conn)
+        medlem = medlem_per_session[sid]
+        if not medlem or medlem not in principals:
+            # Sessionen tilhører en ANDEN bruger — fx en delt session hvor begge
+            # har skrevet. Uden denne spærring ville den kaldendes principal
+            # åbne sessionen gennem EXISTS-subqueryen, og `medlem_for_session`
+            # derefter levere den ANDENS nøgle: altså dekryptere en andens
+            # private beskeder for den forkerte læser. Det er præcis den grænse
+            # `chat_crypto` værner, så den håndhæves her og ikke i kalderen.
+            continue
+        tekst = chat_crypto.dekrypter(r[4] or "", medlem)
+        if not tekst or chat_crypto.er_krypteret(tekst):
+            continue
+        low = tekst.lower()
+        matched = sum(1 for t in terms if t in low)
+        if not matched:
+            continue
+        hits.append({
+            "id": r[0], "message_id": r[1], "session_id": r[2], "role": r[3],
+            "content": tekst, "created_at": r[5],
+            "score": matched / len(terms),
+        })
+    hits.sort(key=lambda h: h["score"], reverse=True)
+    return hits[: max(int(limit), 1)]
+
+
 def search_chat_messages(
     query: str, *, limit: int = 8, session_id: str | None = None, role: str | None = None,
 ) -> list[dict[str, Any]]:
@@ -339,6 +436,7 @@ def search_chat_messages(
     if role:
         sql += " AND m.role = ?"
         params.append(role)
+    principals: tuple[str, ...] = ()
     try:
         with connect() as conn:
             if "chat_messages_fts" not in ensure_fts_tables(conn):
@@ -395,11 +493,21 @@ def search_chat_messages(
             else:
                 quarantine_hashes = set()
             rows = conn.execute(sql, params).fetchall()
+            # FTS kan ikke se gennem `enc:v1:`-ciffertekst. Supplér derfor med en
+            # dekrypteret søgning i den kaldendes EGNE rækker, så en medlems egen
+            # historik er søgbar — se `_search_encrypted_for_owner`.
+            krypterede = (
+                _search_encrypted_for_owner(
+                    conn, query=query, limit=limit, session_id=session_id,
+                    role=role, principals=principals,
+                )
+                if uid else []
+            )
     except sqlite3.OperationalError as exc:
         logger.debug("db_fts: chat search failed: %s", exc)
         return []
     import hashlib
-    return [
+    hits = [
         {
             "id": r[0], "message_id": r[1], "session_id": r[2], "role": r[3],
             "content": r[4], "created_at": r[5], "score": _bm25_to_score(r[6]),
@@ -407,3 +515,9 @@ def search_chat_messages(
         for r in rows
         if hashlib.sha256(str(r[2]).encode("utf-8")).hexdigest() not in quarantine_hashes
     ]
+    if krypterede:
+        sete = {h["message_id"] for h in hits}
+        hits.extend(h for h in krypterede if h["message_id"] not in sete)
+        hits.sort(key=lambda h: h["score"], reverse=True)
+        hits = hits[: int(limit)]
+    return hits

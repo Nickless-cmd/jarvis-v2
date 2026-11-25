@@ -464,3 +464,96 @@ class _Ctx:
 
     def __exit__(self, *a):
         return False
+
+
+# ── Krypterede medlems-beskeder (25/11-2026) ────────────────────────────────
+#
+# `chat_messages_fts` er en external-content-tabel over `chat_messages.content`,
+# så for et medlem indekserer den `enc:v1:<base64>` som om det var ord. Målt:
+# Michelles egen session gav 0 hit på «opskrift» og «kroket», mens begge ord stod
+# i hendes egne beskeder. Fejlen var usynlig fordi `search_session_summaries`
+# ligger i klartekst og svarede rigtigt — det så ud som om søgningen virkede,
+# indtil nogen søgte efter noget de selv havde skrevet.
+
+_MEDLEM = "1313522677369143429"
+_EJER = "1246415163603816499"
+
+
+def _krypteret_db(monkeypatch) -> sqlite3.Connection:
+    from core.services import chat_crypto, keyring_store
+
+    # Kun nøglen og sessionens ejer mockes — de kommer ellers fra keyring og
+    # registret. Kryptering, FTS, scope og spærring er den ægte kode.
+    monkeypatch.setattr(keyring_store, "get_user_key", lambda uid: b"k" * 32)
+    monkeypatch.setattr(
+        chat_crypto, "medlem_for_session",
+        lambda sid, conn=None: _MEDLEM if sid == "chat-m" else None,
+    )
+    monkeypatch.setattr(db_fts, "_equivalent_principals", lambda conn, uid: (uid,))
+
+    c = sqlite3.connect(":memory:")
+    c.row_factory = sqlite3.Row
+    c.execute(
+        "CREATE TABLE chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "message_id TEXT NOT NULL UNIQUE, session_id TEXT NOT NULL, role TEXT NOT NULL, "
+        "content TEXT NOT NULL, user_id TEXT NOT NULL DEFAULT '', "
+        "workspace_name TEXT NOT NULL DEFAULT '', reasoning_content TEXT NOT NULL DEFAULT '', "
+        "created_at TEXT NOT NULL, encrypted INTEGER NOT NULL DEFAULT 0)"
+    )
+    c.execute("CREATE TABLE chat_sessions (session_id TEXT, title TEXT)")
+
+    c.execute(
+        "INSERT INTO chat_messages (message_id, session_id, role, content, user_id, "
+        "workspace_name, created_at, encrypted) VALUES (?,?,?,?,?,?,?,?)",
+        ("m-krypt", "chat-m", "assistant",
+         chat_crypto.krypter("Kroketterne skal have kartoffelmos og hakket kylling.", _MEDLEM),
+         _MEDLEM, "michelle", "2026-11-25T11:54:00", 1),
+    )
+    c.execute(
+        "INSERT INTO chat_messages (message_id, session_id, role, content, user_id, "
+        "workspace_name, created_at, encrypted) VALUES (?,?,?,?,?,?,?,?)",
+        ("b-aaben", "chat-b", "assistant", "Vi byggede kroket-soegningen i dag.",
+         _EJER, "bjorn", "2026-11-25T12:00:00", 0),
+    )
+
+    monkeypatch.setattr(db_fts, "connect", lambda: _Ctx(c))
+    db_fts.reset_fts_ready_cache()
+    db_fts.ensure_fts_tables(c)
+    return c
+
+
+def test_krypteret_medlemsbesked_kan_findes_af_ejeren(monkeypatch) -> None:
+    from core.identity.workspace_context import reset_context, set_context
+
+    _krypteret_db(monkeypatch)
+    token = set_context(workspace_name="michelle", user_id=_MEDLEM, role="partner")
+    try:
+        hits = db_fts.search_chat_messages("kroket")
+    finally:
+        reset_context(token)
+
+    ids = [h["message_id"] for h in hits]
+    assert "m-krypt" in ids, (
+        "medlemmets EGEN krypterede besked blev ikke fundet — søgningen læser "
+        f"stadig ciffertekst som om det var ord (hit: {ids})"
+    )
+    tekst = next(h["content"] for h in hits if h["message_id"] == "m-krypt")
+    assert "kartoffelmos" in tekst, "beskeden blev returneret som ciffertekst"
+    assert not tekst.startswith("enc:v1:")
+
+
+def test_krypteret_medlemsbesked_laekker_ikke_til_ejeren(monkeypatch) -> None:
+    from core.identity.workspace_context import reset_context, set_context
+
+    _krypteret_db(monkeypatch)
+    token = set_context(workspace_name="bjorn", user_id=_EJER, role="owner")
+    try:
+        hits = db_fts.search_chat_messages("kroket")
+    finally:
+        reset_context(token)
+
+    ids = [h["message_id"] for h in hits]
+    assert "b-aaben" in ids, "ejerens egen klartekst-besked forsvandt"
+    assert "m-krypt" not in ids, (
+        "ejeren fik adgang til medlemmets private, krypterede besked"
+    )

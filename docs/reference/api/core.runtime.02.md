@@ -216,11 +216,13 @@ _FTS5 full-text search over session summaries and chat messages._
 | function | `_base_table_exists` | `(conn, table)` | — | [src](../../../core/runtime/db_fts.py#L83) |
 | function | `ensure_fts_tables` | `(conn, *, force=…)` | Create the FTS tables + sync triggers for every base table that exists. | [src](../../../core/runtime/db_fts.py#L90) |
 | function | `rebuild_fts` | `()` | Rebuild every FTS table from its base table. Returns row counts. | [src](../../../core/runtime/db_fts.py#L156) |
-| function | `to_match_query` | `(query, *, max_terms=…)` | Turn free text into a tolerant FTS5 MATCH expression. | [src](../../../core/runtime/db_fts.py#L171) |
-| function | `_bm25_to_score` | `(rank)` | FTS5 bm25() returns lower-is-better negative numbers; map to (0, 1]. | [src](../../../core/runtime/db_fts.py#L190) |
-| function | `_equivalent_principals` | `(_conn, canonical_uid)` | Return stored principals that resolve to the current canonical user. | [src](../../../core/runtime/db_fts.py#L198) |
-| function | `search_session_summaries` | `(query, *, limit=…)` | Keyword search over session_summaries FOR THIS USER. | [src](../../../core/runtime/db_fts.py#L216) |
-| function | `search_chat_messages` | `(query, *, limit=…, session_id=…, role=…)` | Keyword search over chat_messages FOR THIS USER. Each hit: id, message_id, | [src](../../../core/runtime/db_fts.py#L310) |
+| function | `_query_terms` | `(query, *, max_terms=…)` | De enkelte søgeord bag `to_match_query`, uden FTS-syntaks. | [src](../../../core/runtime/db_fts.py#L171) |
+| function | `to_match_query` | `(query, *, max_terms=…)` | Turn free text into a tolerant FTS5 MATCH expression. | [src](../../../core/runtime/db_fts.py#L191) |
+| function | `_bm25_to_score` | `(rank)` | FTS5 bm25() returns lower-is-better negative numbers; map to (0, 1]. | [src](../../../core/runtime/db_fts.py#L200) |
+| function | `_equivalent_principals` | `(_conn, canonical_uid)` | Return stored principals that resolve to the current canonical user. | [src](../../../core/runtime/db_fts.py#L208) |
+| function | `search_session_summaries` | `(query, *, limit=…)` | Keyword search over session_summaries FOR THIS USER. | [src](../../../core/runtime/db_fts.py#L226) |
+| function | `_search_encrypted_for_owner` | `(conn, *, query, limit, session_id, role, principals)` | Søg i den kaldendes EGNE krypterede beskeder ved at dekryptere i hukommelsen. | [src](../../../core/runtime/db_fts.py#L320) |
+| function | `search_chat_messages` | `(query, *, limit=…, session_id=…, role=…)` | Keyword search over chat_messages FOR THIS USER. Each hit: id, message_id, | [src](../../../core/runtime/db_fts.py#L407) |
 
 ## `core/runtime/db_gate_verdicts.py`
 _Gate-verdict-ledger — PERSISTENT optælling af hvert governet gate-udfald._

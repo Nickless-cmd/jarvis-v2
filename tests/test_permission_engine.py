@@ -59,16 +59,28 @@ def test_partner_has_husadgang_member_does_not() -> None:
 
 
 def test_partner_otherwise_member_rights() -> None:
-    # Husadgang er det ENESTE tillæg. Alt andet skal partner dele med member —
-    # ellers er rollen blevet en skjult owner. Testen fejler hvis nogen lægger
-    # mere i _PARTNER_CHAT_EXTRA uden at tage stilling til member-sættet.
+    # Partner deler rettigheder med member bortset fra en EKSPLICIT liste af
+    # husstands-tillæg. Listen står navngivet her, så en tilføjelse til
+    # `_PARTNER_*_EXTRA` ikke kan snige sig ind: testen fejler, og man må skrive
+    # værktøjet her OG tage stilling til om member-sættet også skal have det.
+    #
+    # 25/11-2026: `search_sessions` og `search_chat_history` kom til, fordi
+    # Bjørn bad om at husstanden kan søge i EGNE samtaler. De er BEVIDST ikke
+    # lagt i member-sættet: member dækker også eksterne brugere, og den
+    # udvidelse er en anden beslutning end husstandens. Sikkerheden er uændret
+    # i begge tilfælde, fordi begge værktøjer scope-filtererer på den kaldendes
+    # eget id — de kan per konstruktion ikke returnere en andens sessioner.
     from core.services.permission_engine import allowed_tools
 
+    tillæg = {"home_assistant", "search_sessions", "search_chat_history"}
     for mode in ("chat", "code"):
         partner = allowed_tools(role="partner", mode=mode)
         member = allowed_tools(role="member", mode=mode)
-        assert partner - member == {"home_assistant"}, mode
+        assert partner - member == tillæg, mode
         assert not (member - partner), mode
+        # Ekstern bruger må stadig ikke søge i samtale-historik.
+        assert "search_sessions" not in member, mode
+        assert "search_chat_history" not in member, mode
 
 
 # ── Member CODE ─────────────────────────────────────────────────────────────

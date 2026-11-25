@@ -100,6 +100,113 @@ def _user_scope_clause(user_id: str) -> tuple[str, list[Any]]:
     return clause, [str(user_id or "")]
 
 
+def _krypterede_traef(
+    conn: Any,
+    *,
+    query: str,
+    channel: str,
+    since: str | None,
+    until: str | None,
+    limit: int,
+    user_id: str,
+) -> list[dict[str, Any]]:
+    """Søg i den kaldendes EGNE krypterede beskeder ved at dekryptere i hukommelsen.
+
+    Målt 25/11-2026: `chat_messages.content` er ``enc:v1:<base64>`` for medlemmer
+    (se `core/services/chat_crypto.py`). Både `content LIKE ?` og embedding af
+    `content` arbejdede derfor på ciffertekst — Michelle fik nul hit på «opskrift»
+    selv om ordet stod i hendes egen samtale. Rækkerne er allerede scope-filtreret
+    til den kaldende gennem `_user_scope_clause`, så dekrypteringen rører ikke
+    andres data, og klarteksten findes kun i dette kalds hukommelse.
+    """
+    from core.services import chat_crypto
+
+    needle = str(query or "").strip().lower()
+    if not needle:
+        return []
+
+    channel_clause, channel_params = _channel_title_filter(channel)
+    user_clause, user_params = _user_scope_clause(user_id)
+    date_clauses: list[str] = []
+    date_params: list[str] = []
+    if since:
+        date_clauses.append("AND m.created_at >= ?")
+        date_params.append(since)
+    if until:
+        date_clauses.append("AND m.created_at <= ?")
+        date_params.append(until)
+
+    sql = f"""
+        SELECT m.message_id, m.role, m.content, m.created_at, m.session_id,
+               s.title AS session_title
+        FROM chat_messages m
+        LEFT JOIN chat_sessions s ON s.session_id = m.session_id
+        WHERE m.encrypted = 1
+          AND m.role IN ('user', 'assistant')
+          {user_clause}
+          {channel_clause}
+          {' '.join(date_clauses)}
+        ORDER BY m.id DESC
+        LIMIT 5000
+    """
+    params: list[Any] = user_params + channel_params + date_params
+    rows = conn.execute(sql, params).fetchall()
+
+    ud: list[dict[str, Any]] = []
+    medlem_per_session: dict[str, str | None] = {}
+    for row in rows:
+        sid = str(row["session_id"] or "")
+        if sid not in medlem_per_session:
+            # Én nøgleopslag pr. session, ikke pr. besked.
+            medlem_per_session[sid] = chat_crypto.medlem_for_session(sid, conn=conn)
+        medlem = medlem_per_session[sid]
+        if not medlem or medlem != str(user_id or ""):
+            # Samme spærring som i `db_fts._search_encrypted_for_owner`: en delt
+            # session må ikke give den ene part den andens nøgle.
+            continue
+        tekst = chat_crypto.dekrypter(row["content"] or "", medlem)
+        if chat_crypto.er_krypteret(tekst) or needle not in tekst.lower():
+            continue
+        ud.append({
+            "message_id": row["message_id"], "role": row["role"],
+            "content": tekst, "created_at": row["created_at"],
+            "session_id": row["session_id"],
+            "session_title": row["session_title"],
+        })
+        if len(ud) >= limit:
+            break
+    return ud
+
+
+def _dekrypter_raekker(rows: list[Any], user_id: str) -> list[Any]:
+    """Klartekst for den kaldende — se `_krypterede_traef` for hvorfor det er nødvendigt.
+
+    Uden dette blev cifferteksten både embeddet (semantisk søgning på base64) og
+    returneret til brugeren som om det var svaret.
+    """
+    from core.services import chat_crypto
+
+    if not rows:
+        return rows
+    if not any(chat_crypto.er_krypteret(r["content"]) for r in rows):
+        return rows
+    medlem_per_session: dict[str, str | None] = {}
+    ud: list[Any] = []
+    for row in rows:
+        sid = str(row["session_id"] or "")
+        if sid not in medlem_per_session:
+            medlem_per_session[sid] = chat_crypto.medlem_for_session(sid)
+        medlem = medlem_per_session[sid]
+        if not medlem or medlem != str(user_id or ""):
+            # Kun den kaldendes EGEN nøgle — se `_krypterede_traef`.
+            ud.append(row)
+            continue
+        kopi = dict(row)
+        kopi["content"] = chat_crypto.dekrypter(row["content"] or "", medlem)
+        ud.append(kopi)
+    return ud
+
+
 def _keyword_search(
     query: str,
     *,
@@ -137,8 +244,19 @@ def _keyword_search(
 
     with connect() as conn:
         rows = conn.execute(sql, params).fetchall()
+        # LIKE ser ikke gennem `enc:v1:`-ciffertekst — supplér for ejeren selv.
+        krypterede = _krypterede_traef(
+            conn, query=query, channel=channel, since=since, until=until,
+            limit=limit, user_id=user_id,
+        )
 
-    return [_row_to_result(row, match_type="keyword") for row in rows]
+    ud = [_row_to_result(row, match_type="keyword") for row in rows]
+    sete = {r["message_id"] for r in ud}
+    ud.extend(
+        _row_to_result(r, match_type="keyword")
+        for r in krypterede if r["message_id"] not in sete
+    )
+    return ud[:limit]
 
 
 def _embed_query(text: str) -> list[float] | None:
@@ -218,6 +336,9 @@ def _semantic_search(
 
     with connect() as conn:
         rows = conn.execute(sql, params).fetchall()
+
+    # Ciffertekst giver meningsløse embeddings — se `_dekrypter_raekker`.
+    rows = _dekrypter_raekker(rows, user_id)
 
     if not rows:
         return []

@@ -249,12 +249,14 @@ _search_sessions tool — cross-channel session search with keyword and semantic
 | function | `_channel_title_filter` | `(channel)` | — | [src](../../../core/tools/session_search.py#L60) |
 | function | `_row_to_result` | `(row, *, match_type)` | — | [src](../../../core/tools/session_search.py#L69) |
 | function | `_user_scope_clause` | `(user_id)` | Privatlivs-guard (multi-user northstar): begræns søgningen til sessions der | [src](../../../core/tools/session_search.py#L86) |
-| function | `_keyword_search` | `(query, *, channel, since, until, limit, user_id=…)` | — | [src](../../../core/tools/session_search.py#L103) |
-| function | `_embed_query` | `(text)` | Embed text via Ollama. Returns None if unavailable. | [src](../../../core/tools/session_search.py#L144) |
-| function | `_cosine_similarity` | `(a, b)` | — | [src](../../../core/tools/session_search.py#L171) |
-| function | `_semantic_search` | `(query, *, channel, since, until, limit, user_id=…)` | — | [src](../../../core/tools/session_search.py#L181) |
-| function | `_merge_results` | `(keyword_results, semantic_results, limit)` | — | [src](../../../core/tools/session_search.py#L238) |
-| function | `exec_search_sessions` | `(args)` | — | [src](../../../core/tools/session_search.py#L262) |
+| function | `_krypterede_traef` | `(conn, *, query, channel, since, until, limit, user_id)` | Søg i den kaldendes EGNE krypterede beskeder ved at dekryptere i hukommelsen. | [src](../../../core/tools/session_search.py#L103) |
+| function | `_dekrypter_raekker` | `(rows, user_id)` | Klartekst for den kaldende — se `_krypterede_traef` for hvorfor det er nødvendigt. | [src](../../../core/tools/session_search.py#L181) |
+| function | `_keyword_search` | `(query, *, channel, since, until, limit, user_id=…)` | — | [src](../../../core/tools/session_search.py#L210) |
+| function | `_embed_query` | `(text)` | Embed text via Ollama. Returns None if unavailable. | [src](../../../core/tools/session_search.py#L262) |
+| function | `_cosine_similarity` | `(a, b)` | — | [src](../../../core/tools/session_search.py#L289) |
+| function | `_semantic_search` | `(query, *, channel, since, until, limit, user_id=…)` | — | [src](../../../core/tools/session_search.py#L299) |
+| function | `_merge_results` | `(keyword_results, semantic_results, limit)` | — | [src](../../../core/tools/session_search.py#L359) |
+| function | `exec_search_sessions` | `(args)` | — | [src](../../../core/tools/session_search.py#L383) |
 
 ## `core/tools/simple_tools.py`
 _Simple, general-purpose tools for Jarvis visible lane._

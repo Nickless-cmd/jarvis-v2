@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10524/19195 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10528/19199 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 10524/19195 functions/methods documented (54%). The list 
 | `core.identity` | 84 | 175 | 48% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 926 | 1643 | 56% |
+| `core.runtime` | 928 | 1645 | 56% |
 | `core.services` | 7064 | 13029 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
@@ -33,7 +33,7 @@ Generated from source. 10524/19195 functions/methods documented (54%). The list 
 | `core.services.visible_runs_sections` | 29 | 45 | 64% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 652 | 1249 | 52% |
+| `core.tools` | 654 | 1251 | 52% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 10 | 37 | 27% |
 | `core.undo` | 2 | 18 | 11% |
@@ -2484,7 +2484,7 @@ Generated from source. 10524/19195 functions/methods documented (54%). The list 
 - `core/tools/operator_tools.py` :: `operator_scheduled_list_async` (L1244)
 - `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1229)
 - `core/tools/security_predicates.py` :: `all_predicates` (L169)
-- `core/tools/session_search.py` :: `exec_search_sessions` (L262)
+- `core/tools/session_search.py` :: `exec_search_sessions` (L383)
 - `core/tools/streaming_subprocess.py` :: `run_streaming` (L28)
 - `core/tools/tool_definition_v2.py` :: `ToolDefinitionV2.annonceret_uden_executor` (L86)
 - `core/tools/tool_definition_v2.py` :: `all_definitions` (L226)

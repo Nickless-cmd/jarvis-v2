@@ -1,7 +1,17 @@
 # Experiment 010 protocol — is the roving threshold predicted by the rank drift?
 
-**Frozen:** 2026-11-25, before any measurement in this experiment was computed.
-This file is committed before the run.
+**Frozen:** 2026-11-25, before the final run (`run_20261125_v2`) was computed.
+
+**Provenance, stated precisely.** This file was *not* committed before the first
+run. Measured from the filesystem: `run_20261125_v1/results.json` was written at
+18:46:52 and this protocol at 18:48:06, and both entered git in the same commit
+(`702e40439`). The earlier investigations could claim "committed before the run"
+and have it checked against git; this one cannot, and saying so is the only
+honest option. What *can* be checked is narrower: the falsification conditions
+below were written before `run_20261125_v2`, and the amendment records what the
+first run changed and what it did not. The conditions themselves were not
+loosened after seeing a result — condition 2 was left standing and was allowed
+to fire.
 
 ## Where this question comes from
 
@@ -100,7 +110,8 @@ same bracket. This experiment uses a geometric grid with ratio **1.15** from
    uniform control and must be unreachable; `p = 1.0` is `fixed` and must
    reproduce the fixed threshold.
 
-   *Clarified before the run and before any measurement was computed.* The first
+   *Clarified before the final run, after the first run's controls had stopped
+   it.* The first
    wording of this condition named `p = 0.5` as "larger still" than `p = 0.4`,
    which contradicts the derivation above: `p = 0.5` is closer to uniform than
    `p = 0.4`, so its drift is weaker and its threshold must be **larger**. The

@@ -1,10 +1,17 @@
 # Investigation 10: the roving threshold is not a function of the rank drift alone
 
 **Status:** completed, **falsified** — and the falsification identifies what the
-threshold statistic actually measures in each mode. Protocol frozen in
+threshold statistic actually measures in each mode. Protocol in
 `experiments/exp_010_rank_drift/PROTOCOL.md`, including the amendment written
 after the first (faulted) run. Run preserved in
 `artifacts/exp_010_rank_drift/run_20261125_v2/`.
+
+**Provenance, stated precisely.** Unlike Investigations 5–9, this protocol was
+not committed before the first run: the first run's results were written at
+18:46:52 and the protocol at 18:48:06, and both entered git in the same commit.
+The falsification conditions were frozen before the *final* run, and condition 2
+was left standing and allowed to fire. The claim "committed before the run" is
+not available here and is not made.
 
 ## What was asked
 
@@ -101,6 +108,49 @@ In `fixed` every single evaluation month is below the floor, and the mean equals
 the minimum: a **steady state**. In `roving` the average sits just below the
 floor while individual months fall far lower: an **intermittent** state whose
 mean crosses the floor by duty cycle rather than by equilibrium.
+
+The table above covers the 16 cells per assignment that actually crossed. The
+same separation holds over **every** non-`r=1` cell in the preserved run — 1,322
+`fixed` cells and 1,460 `roving` cells, measured directly from `cells.csv`:
+
+| assignment | N | cells | duty cycle (mean/min) | lowest min eff |
+|---|---:|---:|---|---:|
+| fixed | 2 | 330 | 1.000 – 1.003 | 1.000 |
+| fixed | 3 | 744 | 1.000 – 1.004 | 1.396 |
+| fixed | 4 | 248 | 1.000 – 1.005 | 1.853 |
+| roving | 2 | 330 | 1.000 – 1.548 | 1.000 |
+| roving | 3 | 852 | 1.000 – 1.895 | 1.000 |
+| roving | 4 | 278 | 1.000 – 1.980 | 1.037 |
+
+`fixed` never exceeds 1.005 — the mean *is* the minimum, in every cell, at every
+`N`. `roving` reaches 1.98, meaning the mean sits at twice the minimum: the
+system is in collapse part of the time and out of it the rest. The separation is
+therefore not an artefact of the crossing cells; it is a property of the two
+modes.
+
+**But the separation is a matter of degree, not of kind — measured on an
+independent source.** The two preserved series are the only data in the frozen
+run, so the duty-cycle claim was re-measured on the synthetic rank generator
+(`_synthetic_orders`, seed 20261125, 400 months, three experts), which shares no
+data with either source:
+
+| q | r | gap | mean eff | min eff | duty |
+|---:|---:|---:|---:|---:|---:|
+| 0.0 | 0.9 | 0.35 | 2.338 | 1.270 | 1.840 |
+| 0.0 | 0.99 | 0.05 | 2.748 | 1.977 | 1.391 |
+| 0.5 | 0.9 | 0.35 | 1.554 | 1.082 | 1.437 |
+| 0.5 | 0.99 | 0.05 | 1.490 | 1.122 | 1.328 |
+| 1.0 | 0.9 | 0.35 | 1.086 | 1.062 | **1.022** |
+| 1.0 | 0.99 | 0.05 | 1.169 | 1.015 | **1.152** |
+
+`q = 1` is exactly `fixed`, and it does **not** give duty 1.000 here — it gives
+1.022 and 1.152. The mechanism is stochastic through the softmax even when the
+rank order is deterministic, so a settled state still fluctuates. The ordering
+survives (uniform drift has the highest duty, deterministic the lowest, on both
+retentions), but the clean "1.00 versus 0.52" split in the preserved run is
+sharper than the mechanism itself warrants. The honest statement is that `fixed`
+sits *near* equilibrium and `roving` *departs* from it, not that one is an
+equilibrium and the other is not.
 
 So the two "thresholds" are not the same quantity. `mean_effective_experts <
 0.5·N` measures a settled argument spread in one mode and the duty cycle of a

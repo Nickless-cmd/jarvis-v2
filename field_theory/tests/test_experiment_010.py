@@ -156,3 +156,54 @@ def test_q_et_er_praecis_den_faste_orden_ved_r_et() -> None:
     spread = max(positions.values()) - min(positions.values())
     assert spread == pytest.approx(1.0)
     assert _predicted_threshold(experts, 0.9, spread) == pytest.approx(0.1567, abs=5e-4)
+
+
+def test_duty_cycle_adskillelsen_er_gradvis_ikke_kategorisk() -> None:
+    """Measured on the synthetic generator, which shares no data with either source.
+
+    The preserved run shows fixed at duty 1.000-1.005 and roving up to 1.98. Read
+    alone that looks like equilibrium versus non-equilibrium. It is not: q=1 is
+    exactly the fixed configuration, and it still fluctuates, because the softmax
+    is stochastic even when the rank order is deterministic. The ordering holds;
+    the clean split does not.
+    """
+    import math
+
+    from feltteori_research.experiment_010_rank_drift import (
+        LEARNING_RATE,
+        _synthetic_orders,
+    )
+
+    experts = ("a", "b", "c")
+
+    def duty(orders: list[list[str]], retention: float, gap: float) -> float:
+        retained = {expert: 0.0 for expert in experts}
+        effective: list[float] = []
+        for order in orders:
+            losses = {
+                expert: gap * index / (len(experts) - 1)
+                for index, expert in enumerate(order)
+            }
+            minimum = min(retained.values())
+            unscaled = {
+                expert: math.exp(-LEARNING_RATE * (retained[expert] - minimum))
+                for expert in experts
+            }
+            total = sum(unscaled.values())
+            weights = {expert: unscaled[expert] / total for expert in experts}
+            effective.append(1.0 / sum(value * value for value in weights.values()))
+            for expert in experts:
+                retained[expert] = retention * retained[expert] + losses[expert]
+        return sum(effective) / len(effective) / min(effective)
+
+    fixed_duty = duty(_synthetic_orders(400, experts, 1.0, 20261125), 0.9, 0.35)
+    uniform_duty = duty(_synthetic_orders(400, experts, 0.0, 20261125), 0.9, 0.35)
+
+    # The ordering survives: deterministic drift fluctuates less than uniform.
+    assert fixed_duty < uniform_duty
+    # But the deterministic case is NOT a clean equilibrium.
+    assert fixed_duty > 1.01, (
+        f"q=1 gav duty {fixed_duty:.3f} — hvis dette er 1.000 er mekanismen "
+        "blevet deterministisk, og adskillelsen ER kategorisk. Det ville være "
+        "et andet fund end det målte."
+    )

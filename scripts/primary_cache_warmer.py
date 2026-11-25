@@ -677,6 +677,31 @@ def warm_primary_cache(
 # ---------------------------------------------------------------------------
 
 
+def _brugere_pr_workspace() -> dict[str, str] | None:
+    """Map workspace-navn → bruger-id. `None` betyder «ved det ikke».
+
+    Forskellen er hele pointen: en workspace der **bevist** ikke har en bruger
+    må ikke varmes, men hvis opslaget selv fejler (DB nede, tom brugerliste i
+    et testmiljø) må det ikke slukke varmeren — så falder vi tilbage til den
+    gamle adfærd og varmer alle. Kun det sikre svar bruges til at springe over.
+    """
+    try:
+        from core.identity.user_db import list_users
+
+        brugere: dict[str, str] = {}
+        for u in list_users() or []:
+            ws = str(u.get("workspace") or "")
+            if ws:
+                brugere[ws] = str(u.get("discord_id") or u.get("user_id") or "")
+        if not brugere:
+            logger.warning("brugeropslaget gav ingen workspaces — varmer alle (gammel adfærd)")
+            return None
+        return brugere
+    except Exception as exc:  # noqa: BLE001 — en warmer må ikke vælte af et opslag
+        logger.warning("kunne ikke læse brugere: %s — varmer alle workspaces", exc)
+        return None
+
+
 def _bruger_id_for_workspace(workspace_name: str) -> str:
     """Slå brugerens id op ud fra workspace-navnet.
 
@@ -697,7 +722,7 @@ def _bruger_id_for_workspace(workspace_name: str) -> str:
     return ""
 
 
-def _sæt_warmer_kontekst(workspace_name: str):
+def _sæt_warmer_kontekst(workspace_name: str, *, user_id: str | None = None):
     """Sæt BRUGERKONTEKSTEN for én workspace — ikke kun tool-scopet.
 
     Værktøjslisten indeholder de forbundne apps' værktøjer, og de læses via
@@ -714,7 +739,7 @@ def _sæt_warmer_kontekst(workspace_name: str):
     try:
         from core.identity.workspace_context import set_context
 
-        uid = _bruger_id_for_workspace(workspace_name)
+        uid = user_id if user_id is not None else _bruger_id_for_workspace(workspace_name)
         if not uid:
             logger.debug(
                 "ingen discord_id for workspace %r — varmer uden connector-værktøjer",
@@ -854,8 +879,18 @@ def main(argv: list[str] | None = None) -> int:
     session_id = _nyeste_session_id()
     logger.info("Varmer med værktøjssættet fra session %s", session_id or "(intet — prunerens fald)")
 
+    _brugere = _brugere_pr_workspace()
     for ws in workspaces:
-        _ctx_token = _sæt_warmer_kontekst(ws)
+        # Uden en bruger bag workspacet er der ingen tur der kan ramme
+        # prefix-varianten, og hvert kald skriver et falsk værktøjsskift til
+        # `tools_churn` (se `_sæt_warmer_kontekst`). Målt 25/11-2026: 11 mapper
+        # blev varmet, hvoraf 7 var forældreløse — 14 af 22 kald per kørsel
+        # gik til en variant ingen samtale bruger.
+        _uid = None if _brugere is None else (_brugere.get(ws) or "")
+        if _uid == "":
+            logger.info("Springer %r over: ingen bruger knyttet til workspacet", ws)
+            continue
+        _ctx_token = _sæt_warmer_kontekst(ws, user_id=_uid)
         try:
             for _scope in _WARM_SCOPES:
                 try:

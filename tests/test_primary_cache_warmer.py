@@ -506,6 +506,50 @@ def test_den_tomme_scope_varmes_ikke():
     assert "chat" in w._WARM_SCOPES
 
 
+def test_foraeldroese_workspaces_varmes_ikke(_fake_home, _fake_env, monkeypatch):
+    """En workspace uden bruger må ikke varmes.
+
+    Målt 25/11-2026: 11 mapper blev varmet, hvoraf 7 var forældreløse
+    (``Bjorn``, ``Bjørn``, ``freelance``, ``public``, ``superteam``,
+    ``toku-agent``, ``toku-job``). De har alle SOUL.md og USER.md, så
+    discovery-heuristikken alene fanger dem ikke — og 14 af 22 kald per
+    kørsel gik til en prefix-variant ingen samtale kan ramme.
+    """
+    import scripts.primary_cache_warmer as w
+
+    monkeypatch.setattr(w, "_fetch_system_prompt", lambda *a, **kw: "prompt")
+    monkeypatch.setattr(w, "_discover_active_workspaces", lambda: ["bjorn", "foraeldroes"])
+    monkeypatch.setattr(w, "_brugere_pr_workspace", lambda: {"bjorn": "uid-bjorn"})
+    varmet: list[str] = []
+    monkeypatch.setattr(w, "_warm_one_workspace", lambda navn, **kw: varmet.append(navn))
+    monkeypatch.setattr(w, "_touch_last_run", lambda: None)
+
+    assert w.main(["--dry-run"]) == 0
+    assert set(varmet) == {"bjorn"}, f"forældreløs workspace blev varmet: {varmet}"
+
+
+def test_fejlende_brugeropslag_slukker_ikke_varmeren(_fake_home, _fake_env, monkeypatch):
+    """Kan brugerlisten ikke læses, skal varmeren køre som før — ikke springe alt over.
+
+    Forskellen mellem «ingen bruger» og «ved det ikke» er hele pointen: det
+    første er grund til at springe over, det andet er en fejl der ikke må
+    slukke en baggrundsjob. Målt undervejs: uden denne gren sprang varmeren
+    alle workspaces over i et miljø hvor brugeropslaget fejlede, og skrev
+    derfor ingen log overhovedet.
+    """
+    import scripts.primary_cache_warmer as w
+
+    monkeypatch.setattr(w, "_fetch_system_prompt", lambda *a, **kw: "prompt")
+    monkeypatch.setattr(w, "_discover_active_workspaces", lambda: ["bjorn", "lotte"])
+    monkeypatch.setattr(w, "_brugere_pr_workspace", lambda: None)
+    varmet: list[str] = []
+    monkeypatch.setattr(w, "_warm_one_workspace", lambda navn, **kw: varmet.append(navn))
+    monkeypatch.setattr(w, "_touch_last_run", lambda: None)
+
+    assert w.main(["--dry-run"]) == 0
+    assert set(varmet) == {"bjorn", "lotte"}, "et fejlende opslag må ikke slukke varmeren"
+
+
 def test_varmer_prefixet_er_den_besked_turen_faktisk_sender():
     """Vagten måler mod det der SENDES, ikke mod en funktion.
 

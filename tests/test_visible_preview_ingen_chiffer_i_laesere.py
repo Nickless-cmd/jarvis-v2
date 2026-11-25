@@ -175,3 +175,82 @@ def test_restart_self_visning_er_ikke_chiffer(monkeypatch):
     ud = rst._aktive_koersler(5)
     assert ud and ud[0]["preview"] == PLADSHOLDER_KRYPTERET
     assert "enc:" not in str(ud)
+
+
+# --- relation_dynamics: profilen beskrev et blandet publikum som én relation ---
+#
+# Målt 25/11-2026: `_recent_runs()` kaldte `recent_visible_runs(limit=500)` UDEN
+# `user_id`. Den returnerede derfor hele basen, hvoraf 30 rækker var medlems-
+# kørsler hvis preview kommer tilbage som `PLADSHOLDER_KRYPTERET`. Pladsholderen
+# er ~55 tegn og blev (a) talt med i længdestatistikken som et kort svar og
+# (b) valgt som «nyeste kørsel» i stemnings-udledningen. Profilen sagde altså
+# noget om ejerens relation ud fra medlemmernes kørsler — uden at nogen havde
+# læst et ord af deres indhold.
+
+
+def test_relation_dynamics_henter_kun_ejerens_koersler(monkeypatch):
+    import core.runtime.db as db_mod
+    from core.services import relation_dynamics as rd
+
+    kaldt: dict = {}
+
+    def _fake_recent(limit: int = 5, *, user_id=None, **kw):
+        kaldt["user_id"] = user_id
+        return []
+
+    monkeypatch.setattr(db_mod, "recent_visible_runs", _fake_recent)
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.owner_user_id", lambda: "u-ejer")
+    rd._recent_runs()
+    assert kaldt["user_id"] == "u-ejer", (
+        "relation_dynamics hentede kørsler uden user_id — så tælles andre "
+        f"brugeres kørsler med i ejerens relationsprofil (fik: {kaldt['user_id']!r})"
+    )
+
+
+def test_stemning_udledes_ikke_af_pladsholder():
+    from datetime import UTC, datetime, timedelta
+
+    from core.services.relation_dynamics import _vibe_from_recent
+
+    nu = datetime.now(UTC)
+    runs = [
+        # Nyeste kørsel er en medlems-kørsel: indholdet kan ikke læses.
+        {"text_preview": PLADSHOLDER_KRYPTERET, "_parsed_at": nu},
+        # Ejerens egen, fem minutter ældre — den er den faktiske stemme.
+        {"text_preview": "det var dejligt, tak for hjælpen", "_parsed_at": nu - timedelta(minutes=5)},
+    ]
+    assert _vibe_from_recent(runs) == "warm", (
+        "stemningen blev udledt af den nyeste kørsel uanset om dens svar kunne "
+        "læses — en pladsholder er ikke en stemme"
+    )
+
+
+def test_stemning_er_ukendt_naar_intet_kan_laeses():
+    from datetime import UTC, datetime
+
+    from core.services.relation_dynamics import _vibe_from_recent
+
+    nu = datetime.now(UTC)
+    runs = [{"text_preview": PLADSHOLDER_KRYPTERET, "_parsed_at": nu}]
+    assert _vibe_from_recent(runs) is None, (
+        "en pladsholder på 55 tegn blev klassificeret som «engaged» — den er "
+        "hverken kort eller lang, den er ukendt"
+    )
+
+
+def test_laengdestatistik_springer_pladsholder_over():
+    from core.services.relation_dynamics import _message_length_stats
+
+    svar = "x" * 200
+    runs = [
+        {"text_preview": svar},
+        {"text_preview": PLADSHOLDER_KRYPTERET},
+        {"text_preview": PLADSHOLDER_KRYPTERET},
+    ]
+    stats = _message_length_stats(runs)
+    assert stats["avg_preview_length"] == 200.0, (
+        "pladsholdere blev talt med som korte svar og trak gennemsnittet ned "
+        f"(fik {stats['avg_preview_length']})"
+    )
+

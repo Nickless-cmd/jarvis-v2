@@ -61,9 +61,18 @@ def _save(data: dict[str, Any]) -> None:
 
 
 def _recent_runs(days: int = 14, limit: int = 500) -> list[dict[str, Any]]:
+    """Kørsler for den relation profilen beskriver — ikke alle brugeres.
+
+    Uden `user_id` returnerer `recent_visible_runs` HELE basen. Målt
+    25/11-2026: 500 kørsler hvoraf 30 var medlems-rækker, hvis preview er
+    krypteret og derfor kommer tilbage som `PLADSHOLDER_KRYPTERET`. De blev
+    talt med i længdestatistikken og i stemnings-udledningen, så profilen
+    beskrev et blandet publikum som om det var én relation.
+    """
     try:
         from core.runtime.db import recent_visible_runs
-        runs = recent_visible_runs(limit=limit) or []
+        from core.identity.owner_resolver import owner_user_id
+        runs = recent_visible_runs(limit=limit, user_id=owner_user_id()) or []
     except Exception:
         return []
     cutoff = datetime.now(UTC) - timedelta(days=days)
@@ -130,9 +139,15 @@ def _topic_patterns(runs: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _message_length_stats(runs: list[dict[str, Any]]) -> dict[str, Any]:
+    from core.services.visible_preview_crypto import er_laesbar
+
     lengths: list[int] = []
     for r in runs:
         t = str(r.get("text_preview") or "")
+        # En pladsholder er ~55 tegn og ville trække gennemsnittet ned som om
+        # den var et kort svar. Den er hverken kort eller lang — den er ukendt.
+        if not er_laesbar(t):
+            continue
         lengths.append(len(t))
     if not lengths:
         return {}
@@ -189,10 +204,20 @@ def _warmth_from_sources() -> float | None:
 
 
 def _vibe_from_recent(runs: list[dict[str, Any]]) -> str | None:
+    from core.services.visible_preview_crypto import er_laesbar
+
     if not runs:
         return None
-    # Look at most recent run
-    latest = max(runs, key=lambda r: r["_parsed_at"])
+    # Nyeste kørsel hvis svar faktisk kan læses — en pladsholder eller et tomt
+    # preview er ikke en stemme, og må ikke blive til «engaged» blot fordi
+    # pladsholderen er over 40 tegn.
+    laesbare = [
+        r for r in runs
+        if er_laesbar(r.get("text_preview"))
+    ]
+    if not laesbare:
+        return None
+    latest = max(laesbare, key=lambda r: r["_parsed_at"])
     text = str(latest.get("text_preview") or "").lower()
     if not text:
         return None

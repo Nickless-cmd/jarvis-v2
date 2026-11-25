@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10529/19200 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10530/19200 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10529/19200 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 928 | 1645 | 56% |
-| `core.services` | 7064 | 13029 | 54% |
+| `core.services` | 7065 | 13029 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1772,9 +1772,9 @@ Generated from source. 10529/19200 functions/methods documented (54%). The list 
 - `core/services/relation_continuity_signal_tracking.py` :: `build_runtime_relation_continuity_signal_surface` (L68)
 - `core/services/relation_continuity_signal_tracking.py` :: `refresh_runtime_relation_continuity_signal_statuses` (L64)
 - `core/services/relation_continuity_signal_tracking.py` :: `track_runtime_relation_continuity_signals_for_visible_turn` (L38)
-- `core/services/relation_dynamics.py` :: `build_relation_dynamics_surface` (L246)
-- `core/services/relation_dynamics.py` :: `get_relation_dynamics` (L225)
-- `core/services/relation_dynamics.py` :: `tick` (L238)
+- `core/services/relation_dynamics.py` :: `build_relation_dynamics_surface` (L271)
+- `core/services/relation_dynamics.py` :: `get_relation_dynamics` (L250)
+- `core/services/relation_dynamics.py` :: `tick` (L263)
 - `core/services/relation_state_signal_tracking.py` :: `build_runtime_relation_state_signal_surface` (L76)
 - `core/services/relation_state_signal_tracking.py` :: `refresh_runtime_relation_state_signal_statuses` (L72)
 - `core/services/relation_state_signal_tracking.py` :: `track_runtime_relation_state_signals_for_visible_turn` (L38)

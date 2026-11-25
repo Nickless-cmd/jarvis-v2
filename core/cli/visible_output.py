@@ -319,6 +319,9 @@ def normalize_active_run(active_run: dict | None) -> dict | None:
 def normalize_last_outcome(last_outcome: dict | None) -> dict | None:
     if not last_outcome:
         return None
+    # CLI'en er en bredt laest flade; previewet maa ikke komme ud som chiffer.
+    from core.services.visible_preview_crypto import laesbaar_preview
+
     return {
         "run_id": last_outcome.get("run_id"),
         "lane": last_outcome.get("lane"),
@@ -327,7 +330,11 @@ def normalize_last_outcome(last_outcome: dict | None) -> dict | None:
         "status": last_outcome.get("status"),
         "finished_at": last_outcome.get("finished_at"),
         "error": last_outcome.get("error"),
-        "text_preview": last_outcome.get("text_preview"),
+        "text_preview": laesbaar_preview(
+            last_outcome.get("text_preview"),
+            session_id=last_outcome.get("session_id"),
+            user_id=last_outcome.get("user_id"),
+        ),
     }
 
 

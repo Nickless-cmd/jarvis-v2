@@ -569,6 +569,20 @@ def _available_openai_profiles() -> list[dict[str, str]]:
 def _visible_run_surface() -> dict:
     active = get_active_visible_run()
     last_outcome = get_last_visible_run_outcome()
+    if last_outcome:
+        # Previewet maa ikke forlade API'et som chiffertekst. `last_outcome`
+        # sendes raat videre til MC-fladen, og den laeses af baade UI og
+        # dommere — samme regel som `svar_for_run` bruger paa DB-vejen.
+        from core.services.visible_preview_crypto import laesbaar_preview
+
+        last_outcome = {
+            **last_outcome,
+            "text_preview": laesbaar_preview(
+                last_outcome.get("text_preview"),
+                session_id=last_outcome.get("session_id"),
+                user_id=last_outcome.get("user_id"),
+            ),
+        }
     return {
         "active": bool(active),
         "active_run": active,

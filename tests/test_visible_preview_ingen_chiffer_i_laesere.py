@@ -254,3 +254,81 @@ def test_laengdestatistik_springer_pladsholder_over():
         f"(fik {stats['avg_preview_length']})"
     )
 
+
+
+# ---------------------------------------------------------------------------
+# De tre flader der læser `last_outcome` direkte (25/11-2026)
+#
+# `svar_for_run` blev rettet først, men `last_outcome`-dict'en forlader
+# processen ad tre andre veje: MC-surfacen, work-surfacen og CLI'ens
+# normalisering. Alle tre gav `text_preview` videre råt. Testen her injicerer
+# chiffer i den friske outcome og kræver at fladen værner den — både når
+# nøglen kan bevises (klartekst) og når den ikke kan (pladsholder).
+# ---------------------------------------------------------------------------
+
+
+def _saet_frisk_outcome(monkeypatch, preview: str, user_id: str = "") -> None:
+    """Læg en outcome i den friske hukommelse — uden en aktiv run i vejen."""
+    from core.services import visible_runs as vr
+
+    monkeypatch.setattr(vr, "get_active_visible_run", lambda: None)
+    monkeypatch.setattr(
+        vr,
+        "_LAST_VISIBLE_RUN_OUTCOME",
+        {
+            "run_id": "r-vagt",
+            "lane": "visible",
+            "provider": "p",
+            "model": "m",
+            "status": "completed",
+            "finished_at": "2026-11-25T17:00:00+00:00",
+            "text_preview": preview,
+            "user_id": user_id,
+            "session_id": "",
+        },
+        raising=False,
+    )
+
+
+def test_mc_surface_vaerner_frisk_outcome(monkeypatch):
+    from apps.api.jarvis_api.routes.mission_control_common import _visible_run_surface
+
+    _saet_frisk_outcome(monkeypatch, CHIFFER)
+    svar = _visible_run_surface()["last_outcome"]["text_preview"]
+    assert svar == PLADSHOLDER_KRYPTERET, (
+        f"MC-surfacen gav chiffertekst videre til en bredt læst flade: {svar[:40]!r}"
+    )
+
+
+def test_work_surface_vaerner_frisk_outcome(monkeypatch):
+    from core.services.visible_work_surfaces import get_visible_work
+
+    _saet_frisk_outcome(monkeypatch, CHIFFER)
+    svar = get_visible_work()["current_user_message_preview"]
+    assert svar == PLADSHOLDER_KRYPTERET, (
+        f"work-surfacen gav chiffertekst videre: {svar[:40]!r}"
+    )
+
+
+def test_cli_normalisering_vaerner_frisk_outcome(monkeypatch):
+    from core.cli.visible_output import normalize_last_outcome
+    from core.services import visible_runs as vr
+
+    _saet_frisk_outcome(monkeypatch, CHIFFER)
+    svar = normalize_last_outcome(vr._LAST_VISIBLE_RUN_OUTCOME)["text_preview"]
+    assert svar == PLADSHOLDER_KRYPTERET, (
+        f"CLI-normaliseringen gav chiffertekst videre: {svar[:40]!r}"
+    )
+
+
+def test_de_tre_flader_lader_klartekst_passere(monkeypatch):
+    """Værnet må ikke koste visningen: klartekst skal ud uændret."""
+    from apps.api.jarvis_api.routes.mission_control_common import _visible_run_surface
+    from core.cli.visible_output import normalize_last_outcome
+    from core.services import visible_runs as vr
+    from core.services.visible_work_surfaces import get_visible_work
+
+    _saet_frisk_outcome(monkeypatch, KLAR)
+    assert _visible_run_surface()["last_outcome"]["text_preview"] == KLAR
+    assert get_visible_work()["current_user_message_preview"] == KLAR
+    assert normalize_last_outcome(vr._LAST_VISIBLE_RUN_OUTCOME)["text_preview"] == KLAR

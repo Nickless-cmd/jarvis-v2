@@ -218,10 +218,10 @@ _Visible-work-flader: skrivebeskyttede projektioner af hvad den synlige lane lav
 |---|---|---|---|---|
 | function | `_vr` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L15) |
 | function | `get_visible_work` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L21) |
-| function | `get_visible_work_surface` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L53) |
-| function | `get_visible_selected_work_surface` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L80) |
-| function | `get_visible_selected_work_item` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L111) |
-| function | `get_visible_selected_work_note` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L163) |
+| function | `get_visible_work_surface` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L61) |
+| function | `get_visible_selected_work_surface` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L88) |
+| function | `get_visible_selected_work_item` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L119) |
+| function | `get_visible_selected_work_note` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L171) |
 
 ## `core/services/vision_backend.py`
 _Hvilke øjne bruger han? — valg af vision-model (2026-09-05)._

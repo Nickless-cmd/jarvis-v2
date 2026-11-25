@@ -101,10 +101,10 @@ _(no top-level classes or functions)_
 | function | `normalize_visible_capability_continuity` | `(visible_capability_continuity)` | — | [src](../../../core/cli/visible_output.py#L288) |
 | function | `normalize_active_run` | `(active_run)` | — | [src](../../../core/cli/visible_output.py#L306) |
 | function | `normalize_last_outcome` | `(last_outcome)` | — | [src](../../../core/cli/visible_output.py#L319) |
-| function | `normalize_capability_invocation` | `(last_invocation)` | — | [src](../../../core/cli/visible_output.py#L334) |
-| function | `normalize_persisted_capability_invocations` | `(items)` | — | [src](../../../core/cli/visible_output.py#L351) |
-| function | `normalize_approval_requests` | `(items)` | — | [src](../../../core/cli/visible_output.py#L374) |
-| function | `normalize_approval` | `(approval)` | — | [src](../../../core/cli/visible_output.py#L398) |
-| function | `normalize_visible_capability_use` | `(last_capability_use)` | — | [src](../../../core/cli/visible_output.py#L409) |
-| function | `normalize_persisted_recent_runs` | `(items)` | — | [src](../../../core/cli/visible_output.py#L427) |
+| function | `normalize_capability_invocation` | `(last_invocation)` | — | [src](../../../core/cli/visible_output.py#L341) |
+| function | `normalize_persisted_capability_invocations` | `(items)` | — | [src](../../../core/cli/visible_output.py#L358) |
+| function | `normalize_approval_requests` | `(items)` | — | [src](../../../core/cli/visible_output.py#L381) |
+| function | `normalize_approval` | `(approval)` | — | [src](../../../core/cli/visible_output.py#L405) |
+| function | `normalize_visible_capability_use` | `(last_capability_use)` | — | [src](../../../core/cli/visible_output.py#L416) |
+| function | `normalize_persisted_recent_runs` | `(items)` | — | [src](../../../core/cli/visible_output.py#L434) |
 

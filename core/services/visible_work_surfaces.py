@@ -37,6 +37,10 @@ def get_visible_work() -> dict[str, object]:
 
     last_outcome = _vr().get_last_visible_run_outcome() or {}
     last_capability_use = _vr().get_last_visible_capability_use() or {}
+    # Previewet gaar gennem samme vaern som DB-vejen: fladen her er bredt
+    # laest (CLI, MC, work-surfaces), og chiffertekst er ikke et svar.
+    from core.services.visible_preview_crypto import laesbaar_preview
+
     return {
         "active": False,
         "run_id": last_outcome.get("run_id"),
@@ -45,7 +49,11 @@ def get_visible_work() -> dict[str, object]:
         "provider": last_outcome.get("provider"),
         "model": last_outcome.get("model"),
         "started_at": None,
-        "current_user_message_preview": last_outcome.get("text_preview"),
+        "current_user_message_preview": laesbaar_preview(
+            last_outcome.get("text_preview"),
+            session_id=last_outcome.get("session_id"),
+            user_id=last_outcome.get("user_id"),
+        ),
         "capability_id": last_capability_use.get("capability_id"),
     }
 

@@ -1,5 +1,14 @@
 # Investigation 17 — what retention costs when the world changes
 
+> **Correction (Investigation 18, 2026-11-25).** The delays reported here are measured from the
+> first **evaluated** month, not from the shift. The shift sits at `swap_at = len(rows)//2`,
+> which is **1893-04** inside the development period; evaluation starts **2000-01**, 1281 months
+> later, where `0.99^1281 = 2.6e-6` and the heaviest weight already sits on the structurally best
+> expert at retention 0.9 and 0.99. Placed at the evaluation midpoint (2013-04) the same shift
+> gives delays **2 / 24 / 150** months and excess loss **13.9 / 55.0 / 395.2**. The numbers below
+> are real; the name "adaptation delay" is not.
+
+
 Investigations 8–16 all measured the mechanism inside a **stationary** world: the
 gap was fixed, the retention was fixed, and whichever expert happened to be best
 stayed best. Every conclusion — that the error is data, that retention reaches

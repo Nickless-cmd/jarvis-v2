@@ -1750,3 +1750,54 @@ enough.
 
 All of this is measured with the outcome in hand. Whether a shift can be noticed
 *before* it arrives is a different question, and it is the next one.
+
+## Investigation 18 — noticing that the world changed, before it tells you
+
+The previous experiment ended with a question: can a shift be noticed *before*
+the outcome arrives? The first thing to establish is that most ways of looking
+cannot work at all. The shift is an exchange of prediction series between expert
+names — a **permutation of the columns**. So every statistic symmetric in the
+names is invariant: the spread of the predictions, their dispersion, the entropy
+of the weights, all of it. Measured across every month and every cell, the
+difference between the shifted and unshifted world is **exactly 0.0**. You cannot
+notice a change of ownership by watching how much your experts disagree, because
+the disagreement is the same either way.
+
+What can work is a fingerprint of the shape of each name's stream. The first one
+I registered — jaggedness, autocorrelation, repeated values — failed its own
+control. It could not identify a name against itself in 34 of 40 cells. The
+control existed precisely so that I would not report "detection is impossible"
+when the truth was "my features were too weak", and it earned its place.
+
+The repair was to fingerprint what an expert *is*: its lag structure. Correlating
+each name's predictions against the observation series at lags 1 through 132
+separates `previous_month` (lag-1 correlation 1.000) from `trailing_12_mean`
+(0.870) from `cycle_lag_132` (0.510, and 1.000 at lag 132). This reads only the
+past — mutating every outcome at and after a probe month moves nothing, residual
+0.0 — so it is genuinely a detector and not a hindsight measurement.
+
+On CO2 it works. Ten months after the shift, with a 24-month window, it recovers
+which name carries which series with accuracy 1.000, and it raises no false alarm
+on the unshifted control. Against 150 months of adaptation cost, that is a real
+answer: the world can be noticed before the bill is paid.
+
+Then the same measurement turns on itself. Accuracy and control-identity are the
+*same number* in every cell — 0.768 and 0.764, 0.746 and 0.745, 0.877 and 0.876.
+The detector is not sensing change. It is identifying the present mapping, and
+reporting a difference from the one it remembers. Which means a detector that is
+77 % right will cry "shift" 23 % of the time on a world that never moved, and it
+has no way to tell the two cases apart, because the outcome that would separate
+them is the one thing it does not have.
+
+It fails on sunspots, and the failure is legible: 12 of 20 cells rejected, the
+rest at chance. The sunspot cycle is about eleven years, and lag 132 is almost
+exactly one full period, so every expert correlates with the outcome the same way
+and the signatures collapse onto each other. A periodic world hides a change of
+ownership; a trending one exposes it.
+
+So the honest sentence is narrower than "we can detect regime shifts". We can
+recognise a world we have already seen, in ten months, with a known error rate —
+and the error rate is the detection rate wearing the other coat. *Tallet der
+ligner et svar, er som regel et andet tal med et velkendt navn.* It held one more
+time, at the last layer: the number that looked like a detection was the
+false-alarm rate with a different name.

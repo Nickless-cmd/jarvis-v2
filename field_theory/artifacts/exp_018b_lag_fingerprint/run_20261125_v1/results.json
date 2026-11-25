@@ -1,0 +1,720 @@
+{
+  "cells": [
+    {
+      "evaluation_months": 318,
+      "expert_set": "original",
+      "experts": [
+        "previous_month",
+        "trailing_12_mean",
+        "cycle_lag_132"
+      ],
+      "permutation": {
+        "cycle_lag_132": "previous_month",
+        "previous_month": "trailing_12_mean",
+        "trailing_12_mean": "cycle_lag_132"
+      },
+      "source": "sunspots",
+      "swap_date": "2013-04",
+      "swap_position": 159,
+      "windows": {
+        "120": {
+          "accuracy": 0.0,
+          "control_identity_rate": 0.15723270440251572,
+          "detection_delay": 159,
+          "held_out_median_distance": 2.6420462552164294,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 159,
+          "reference_is_stable": false,
+          "true_match_median_distance": 2.597186862172143
+        },
+        "24": {
+          "accuracy": 0.20588235294117646,
+          "control_identity_rate": 0.25157232704402516,
+          "detection_delay": 150,
+          "held_out_median_distance": 4.631108527638934,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 159,
+          "reference_is_stable": true,
+          "true_match_median_distance": 3.314482034196382
+        },
+        "36": {
+          "accuracy": 0.11290322580645161,
+          "control_identity_rate": 0.1509433962264151,
+          "detection_delay": 159,
+          "held_out_median_distance": 4.322365031794971,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 159,
+          "reference_is_stable": false,
+          "true_match_median_distance": 2.45466995492663
+        },
+        "60": {
+          "accuracy": 0.06,
+          "control_identity_rate": 0.2893081761006289,
+          "detection_delay": 155,
+          "held_out_median_distance": 4.437959595761897,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 159,
+          "reference_is_stable": false,
+          "true_match_median_distance": 3.1389054691149747
+        }
+      }
+    },
+    {
+      "evaluation_months": 318,
+      "expert_set": "short_memory",
+      "experts": [
+        "trailing_3_mean",
+        "trailing_6_mean",
+        "seasonal_naive_12"
+      ],
+      "permutation": {
+        "seasonal_naive_12": "trailing_3_mean",
+        "trailing_3_mean": "trailing_6_mean",
+        "trailing_6_mean": "seasonal_naive_12"
+      },
+      "source": "sunspots",
+      "swap_date": "2013-04",
+      "swap_position": 159,
+      "windows": {
+        "120": {
+          "accuracy": 0.0,
+          "control_identity_rate": 0.6037735849056604,
+          "detection_delay": 159,
+          "held_out_median_distance": 4.431911024493836,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 159,
+          "reference_is_stable": true,
+          "true_match_median_distance": 4.313381859645276
+        },
+        "24": {
+          "accuracy": 0.08088235294117647,
+          "control_identity_rate": 0.0880503144654088,
+          "detection_delay": 159,
+          "held_out_median_distance": 6.707707197585973,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 159,
+          "reference_is_stable": true,
+          "true_match_median_distance": 6.423012206968613
+        },
+        "36": {
+          "accuracy": 0.04032258064516129,
+          "control_identity_rate": 0.06289308176100629,
+          "detection_delay": 159,
+          "held_out_median_distance": 14.198207645345935,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 159,
+          "reference_is_stable": false,
+          "true_match_median_distance": 12.860428216880088
+        },
+        "60": {
+          "accuracy": 0.12,
+          "control_identity_rate": 0.16981132075471697,
+          "detection_delay": 155,
+          "held_out_median_distance": 4.481952944447534,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 159,
+          "reference_is_stable": false,
+          "true_match_median_distance": 3.4802983275344412
+        }
+      }
+    },
+    {
+      "evaluation_months": 318,
+      "expert_set": "long_memory",
+      "experts": [
+        "trailing_24_mean",
+        "cycle_lag_66",
+        "cycle_lag_132"
+      ],
+      "permutation": {
+        "cycle_lag_132": "trailing_24_mean",
+        "cycle_lag_66": "cycle_lag_132",
+        "trailing_24_mean": "cycle_lag_66"
+      },
+      "source": "sunspots",
+      "swap_date": "2013-04",
+      "swap_position": 159,
+      "windows": {
+        "120": {
+          "accuracy": 0.0,
+          "control_identity_rate": 0.660377358490566,
+          "detection_delay": 159,
+          "held_out_median_distance": 3.4040615764593394,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 159,
+          "reference_is_stable": true,
+          "true_match_median_distance": 1.8267061200775827
+        },
+        "24": {
+          "accuracy": 0.125,
+          "control_identity_rate": 0.16981132075471697,
+          "detection_delay": 159,
+          "held_out_median_distance": 3.039482046342255,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 159,
+          "reference_is_stable": false,
+          "true_match_median_distance": 3.039482046342255
+        },
+        "36": {
+          "accuracy": 0.2661290322580645,
+          "control_identity_rate": 0.41509433962264153,
+          "detection_delay": 159,
+          "held_out_median_distance": 2.8907864906885203,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 159,
+          "reference_is_stable": false,
+          "true_match_median_distance": 1.5989812878336311
+        },
+        "60": {
+          "accuracy": 0.21,
+          "control_identity_rate": 0.4528301886792453,
+          "detection_delay": 159,
+          "held_out_median_distance": 3.6869956148854364,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 159,
+          "reference_is_stable": true,
+          "true_match_median_distance": 1.2247397578874404
+        }
+      }
+    },
+    {
+      "evaluation_months": 318,
+      "expert_set": "two_experts",
+      "experts": [
+        "previous_month",
+        "trailing_12_mean"
+      ],
+      "permutation": {
+        "previous_month": "trailing_12_mean",
+        "trailing_12_mean": "previous_month"
+      },
+      "source": "sunspots",
+      "swap_date": "2013-04",
+      "swap_position": 159,
+      "windows": {
+        "120": {
+          "accuracy": 0.0,
+          "control_identity_rate": 0.10062893081761007,
+          "detection_delay": 159,
+          "held_out_median_distance": 11.032273894644561,
+          "held_out_total": 2,
+          "held_out_wrong": 2,
+          "post_shift_months": 159,
+          "reference_is_stable": false,
+          "true_match_median_distance": 9.45910206784516
+        },
+        "24": {
+          "accuracy": 0.18382352941176472,
+          "control_identity_rate": 0.18867924528301888,
+          "detection_delay": 140,
+          "held_out_median_distance": 17.03731594481981,
+          "held_out_total": 2,
+          "held_out_wrong": 2,
+          "post_shift_months": 159,
+          "reference_is_stable": true,
+          "true_match_median_distance": 15.524706732748882
+        },
+        "36": {
+          "accuracy": 0.0,
+          "control_identity_rate": 0.0,
+          "detection_delay": 159,
+          "held_out_median_distance": 763.3526614723612,
+          "held_out_total": 2,
+          "held_out_wrong": 2,
+          "post_shift_months": 159,
+          "reference_is_stable": false,
+          "true_match_median_distance": 762.346616746984
+        },
+        "60": {
+          "accuracy": 0.02,
+          "control_identity_rate": 0.14465408805031446,
+          "detection_delay": 159,
+          "held_out_median_distance": 98.53499588218291,
+          "held_out_total": 2,
+          "held_out_wrong": 2,
+          "post_shift_months": 159,
+          "reference_is_stable": true,
+          "true_match_median_distance": 97.3301833867928
+        }
+      }
+    },
+    {
+      "evaluation_months": 318,
+      "expert_set": "four_experts",
+      "experts": [
+        "previous_month",
+        "trailing_3_mean",
+        "trailing_12_mean",
+        "cycle_lag_132"
+      ],
+      "permutation": {
+        "cycle_lag_132": "previous_month",
+        "previous_month": "trailing_3_mean",
+        "trailing_12_mean": "cycle_lag_132",
+        "trailing_3_mean": "trailing_12_mean"
+      },
+      "source": "sunspots",
+      "swap_date": "2013-04",
+      "swap_position": 159,
+      "windows": {
+        "120": {
+          "accuracy": 0.0,
+          "control_identity_rate": 0.07547169811320754,
+          "detection_delay": 159,
+          "held_out_median_distance": 2.7804069695885523,
+          "held_out_total": 4,
+          "held_out_wrong": 4,
+          "post_shift_months": 159,
+          "reference_is_stable": false,
+          "true_match_median_distance": 2.6955876787029247
+        },
+        "24": {
+          "accuracy": 0.0661764705882353,
+          "control_identity_rate": 0.10062893081761007,
+          "detection_delay": 158,
+          "held_out_median_distance": 4.1518811963220665,
+          "held_out_total": 4,
+          "held_out_wrong": 4,
+          "post_shift_months": 159,
+          "reference_is_stable": true,
+          "true_match_median_distance": 3.6790522866071953
+        },
+        "36": {
+          "accuracy": 0.04032258064516129,
+          "control_identity_rate": 0.05660377358490566,
+          "detection_delay": 159,
+          "held_out_median_distance": 4.709350475106461,
+          "held_out_total": 4,
+          "held_out_wrong": 4,
+          "post_shift_months": 159,
+          "reference_is_stable": false,
+          "true_match_median_distance": 3.679939774352893
+        },
+        "60": {
+          "accuracy": 0.01,
+          "control_identity_rate": 0.06289308176100629,
+          "detection_delay": 158,
+          "held_out_median_distance": 3.5074456785630175,
+          "held_out_total": 4,
+          "held_out_wrong": 4,
+          "post_shift_months": 159,
+          "reference_is_stable": false,
+          "true_match_median_distance": 2.786396447411893
+        }
+      }
+    },
+    {
+      "evaluation_months": 321,
+      "expert_set": "original",
+      "experts": [
+        "previous_month",
+        "trailing_12_mean",
+        "cycle_lag_132"
+      ],
+      "permutation": {
+        "cycle_lag_132": "previous_month",
+        "previous_month": "trailing_12_mean",
+        "trailing_12_mean": "cycle_lag_132"
+      },
+      "source": "co2",
+      "swap_date": "2013-05",
+      "swap_position": 160,
+      "windows": {
+        "120": {
+          "accuracy": 1.0,
+          "control_identity_rate": 1.0,
+          "detection_delay": 119,
+          "held_out_median_distance": 3.97711142259545,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 2.0089799571313973
+        },
+        "24": {
+          "accuracy": 0.7681159420289855,
+          "control_identity_rate": 0.7639751552795031,
+          "detection_delay": 160,
+          "held_out_median_distance": 4.129181467851115,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 1.6205141944726584
+        },
+        "36": {
+          "accuracy": 0.7301587301587301,
+          "control_identity_rate": 0.7577639751552795,
+          "detection_delay": 161,
+          "held_out_median_distance": 4.288043779922442,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 1.9730080152861487
+        },
+        "60": {
+          "accuracy": 0.9117647058823529,
+          "control_identity_rate": 0.9440993788819876,
+          "detection_delay": 59,
+          "held_out_median_distance": 3.91528545110219,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 2.012440423273045
+        }
+      }
+    },
+    {
+      "evaluation_months": 321,
+      "expert_set": "short_memory",
+      "experts": [
+        "trailing_3_mean",
+        "trailing_6_mean",
+        "seasonal_naive_12"
+      ],
+      "permutation": {
+        "seasonal_naive_12": "trailing_3_mean",
+        "trailing_3_mean": "trailing_6_mean",
+        "trailing_6_mean": "seasonal_naive_12"
+      },
+      "source": "co2",
+      "swap_date": "2013-05",
+      "swap_position": 160,
+      "windows": {
+        "120": {
+          "accuracy": 1.0,
+          "control_identity_rate": 1.0,
+          "detection_delay": 69,
+          "held_out_median_distance": 3.233403606193564,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 1.884606822947455
+        },
+        "24": {
+          "accuracy": 1.0,
+          "control_identity_rate": 1.0,
+          "detection_delay": 10,
+          "held_out_median_distance": 3.7090683106220292,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 1.6081955626705744
+        },
+        "36": {
+          "accuracy": 1.0,
+          "control_identity_rate": 1.0,
+          "detection_delay": 18,
+          "held_out_median_distance": 3.6987123181078903,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 2.3868773228378437
+        },
+        "60": {
+          "accuracy": 1.0,
+          "control_identity_rate": 1.0,
+          "detection_delay": 30,
+          "held_out_median_distance": 3.137965856043946,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 2.190395983190336
+        }
+      }
+    },
+    {
+      "evaluation_months": 321,
+      "expert_set": "long_memory",
+      "experts": [
+        "trailing_24_mean",
+        "cycle_lag_66",
+        "cycle_lag_132"
+      ],
+      "permutation": {
+        "cycle_lag_132": "trailing_24_mean",
+        "cycle_lag_66": "cycle_lag_132",
+        "trailing_24_mean": "cycle_lag_66"
+      },
+      "source": "co2",
+      "swap_date": "2013-05",
+      "swap_position": 160,
+      "windows": {
+        "120": {
+          "accuracy": 1.0,
+          "control_identity_rate": 1.0,
+          "detection_delay": 110,
+          "held_out_median_distance": 2.5010996580068405,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 1.6495520581006136
+        },
+        "24": {
+          "accuracy": 0.7681159420289855,
+          "control_identity_rate": 0.7888198757763976,
+          "detection_delay": 154,
+          "held_out_median_distance": 2.97143649118105,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 2.6036949299459424
+        },
+        "36": {
+          "accuracy": 0.8015873015873016,
+          "control_identity_rate": 0.84472049689441,
+          "detection_delay": 161,
+          "held_out_median_distance": 2.358090689281045,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 2.2708503223295855
+        },
+        "60": {
+          "accuracy": 0.9803921568627451,
+          "control_identity_rate": 0.9875776397515528,
+          "detection_delay": 53,
+          "held_out_median_distance": 2.535247592085511,
+          "held_out_total": 3,
+          "held_out_wrong": 3,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 1.9953459338211075
+        }
+      }
+    },
+    {
+      "evaluation_months": 321,
+      "expert_set": "two_experts",
+      "experts": [
+        "previous_month",
+        "trailing_12_mean"
+      ],
+      "permutation": {
+        "previous_month": "trailing_12_mean",
+        "trailing_12_mean": "previous_month"
+      },
+      "source": "co2",
+      "swap_date": "2013-05",
+      "swap_position": 160,
+      "windows": {
+        "120": {
+          "accuracy": 0.9285714285714286,
+          "control_identity_rate": 0.9813664596273292,
+          "detection_delay": 105,
+          "held_out_median_distance": 8.82701250796698,
+          "held_out_total": 2,
+          "held_out_wrong": 2,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 7.538970625230005
+        },
+        "24": {
+          "accuracy": 0.7463768115942029,
+          "control_identity_rate": 0.7453416149068323,
+          "detection_delay": 161,
+          "held_out_median_distance": 5.79706026155209,
+          "held_out_total": 2,
+          "held_out_wrong": 2,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 3.660157278624951
+        },
+        "36": {
+          "accuracy": 0.626984126984127,
+          "control_identity_rate": 0.6459627329192547,
+          "detection_delay": 161,
+          "held_out_median_distance": 7.149686943954926,
+          "held_out_total": 2,
+          "held_out_wrong": 2,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 5.398505327309923
+        },
+        "60": {
+          "accuracy": 0.0392156862745098,
+          "control_identity_rate": 0.09316770186335403,
+          "detection_delay": 161,
+          "held_out_median_distance": 57.00776727020498,
+          "held_out_total": 2,
+          "held_out_wrong": 2,
+          "post_shift_months": 161,
+          "reference_is_stable": false,
+          "true_match_median_distance": 55.96926365179997
+        }
+      }
+    },
+    {
+      "evaluation_months": 321,
+      "expert_set": "four_experts",
+      "experts": [
+        "previous_month",
+        "trailing_3_mean",
+        "trailing_12_mean",
+        "cycle_lag_132"
+      ],
+      "permutation": {
+        "cycle_lag_132": "previous_month",
+        "previous_month": "trailing_3_mean",
+        "trailing_12_mean": "cycle_lag_132",
+        "trailing_3_mean": "trailing_12_mean"
+      },
+      "source": "co2",
+      "swap_date": "2013-05",
+      "swap_position": 160,
+      "windows": {
+        "120": {
+          "accuracy": 1.0,
+          "control_identity_rate": 1.0,
+          "detection_delay": 119,
+          "held_out_median_distance": 3.1147640979055176,
+          "held_out_total": 4,
+          "held_out_wrong": 4,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 1.8383622665807429
+        },
+        "24": {
+          "accuracy": 0.8768115942028986,
+          "control_identity_rate": 0.8757763975155279,
+          "detection_delay": 88,
+          "held_out_median_distance": 3.060889635312541,
+          "held_out_total": 4,
+          "held_out_wrong": 4,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 1.622784066535247
+        },
+        "36": {
+          "accuracy": 0.8095238095238095,
+          "control_identity_rate": 0.8385093167701864,
+          "detection_delay": 161,
+          "held_out_median_distance": 3.254658794331598,
+          "held_out_total": 4,
+          "held_out_wrong": 4,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 2.127053781288767
+        },
+        "60": {
+          "accuracy": 0.9117647058823529,
+          "control_identity_rate": 0.9440993788819876,
+          "detection_delay": 59,
+          "held_out_median_distance": 3.117810626901846,
+          "held_out_total": 4,
+          "held_out_wrong": 4,
+          "post_shift_months": 161,
+          "reference_is_stable": true,
+          "true_match_median_distance": 2.0167150100381224
+        }
+      }
+    }
+  ],
+  "conditions": {
+    "2_recognition_works": false,
+    "3_frontier_is_monotone": false,
+    "4_control_returns_identity": false,
+    "5_held_out_distance_separates": true
+  },
+  "conditions_failed": [
+    "2_recognition_works",
+    "3_frontier_is_monotone",
+    "4_control_returns_identity"
+  ],
+  "controls": {
+    "no_look_ahead": true,
+    "no_look_ahead_worst": 0.0,
+    "reference_is_stable": false
+  },
+  "excluded": {
+    "co2": {
+      "malformed": 0,
+      "missing": 0
+    },
+    "sunspots": {
+      "missing": 0,
+      "provisional": 3
+    }
+  },
+  "exploratory": true,
+  "method_version": "exp_018b_lag_fingerprint/1",
+  "parameters": {
+    "assignment": "roving",
+    "gap": 0.2,
+    "lags": [
+      1,
+      2,
+      3,
+      6,
+      12,
+      24,
+      66,
+      132
+    ],
+    "retention": 0.5,
+    "stable_share": 0.9,
+    "windows": [
+      24,
+      36,
+      60,
+      120
+    ]
+  },
+  "verdict": "control_failed:reference_unstable",
+  "why_exploratory": "written after the registered shape fingerprint failed its own C4; the lag features were chosen on principle (an expert is defined by its lag structure) but the timing makes the evidence weaker",
+  "windows": {
+    "120": {
+      "accuracy_median": 0.4642857142857143,
+      "cells": 10.0,
+      "control_identity_median": 0.8208719090589476,
+      "delay_median": 139.0,
+      "held_out_distance_median": 3.3187325913264516,
+      "true_distance_median": 2.3030834096517703
+    },
+    "24": {
+      "accuracy_median": 0.47612958226768964,
+      "cells": 10.0,
+      "control_identity_median": 0.49845697097542874,
+      "delay_median": 156.0,
+      "held_out_distance_median": 4.14053133208659,
+      "true_distance_median": 3.1769820402693183
+    },
+    "36": {
+      "accuracy_median": 0.44655657962109574,
+      "cells": 10.0,
+      "control_identity_median": 0.5305285362709481,
+      "delay_median": 159.0,
+      "held_out_distance_median": 4.3052044058587065,
+      "true_distance_median": 2.420773638882237
+    },
+    "60": {
+      "accuracy_median": 0.16499999999999998,
+      "cells": 10.0,
+      "control_identity_median": 0.37106918238993714,
+      "delay_median": 155.0,
+      "held_out_distance_median": 3.8011405329938133,
+      "true_distance_median": 2.4883962153011145
+    }
+  }
+}

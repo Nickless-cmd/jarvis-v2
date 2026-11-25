@@ -1477,3 +1477,51 @@ be a rearrangement of one already in the table — `duty_cycle` for occupancy,
 `mean_over_min` for constancy, and now the run count for `O·T/P`. A quantity
 derivable from the others is not a measurement of them; it is the same
 measurement wearing a second name.
+
+## 2026-11-25 — Investigation 12: retention reaches the forecast, and the forecast is not structure
+
+Investigation 11 could not predict the forecast error from any structural measure,
+yet retention moved the error in 208 of 260 pairs. Following the path instead of the
+correlation settles it: the ensemble error is `|Σ_e w_e·a_e|` with
+`a_e = real_e − outcome`, identity residual 0.0, and since the rank order does not
+depend on retention and `a` is data, the weight vector is the only channel.
+
+The error is not mostly structure. Over 120 observations the source explains
+η² = 0.798 of the total error variation, the expert set 0.114, and retention
+**0.002**; the best single expert's error explains **93.4 %** of the level and the
+top weight **2.6 %**. Within each expert set separately the oracle explains
+86–99.8 %, the structure 0.1–13 %. No structural measure can predict the error
+because the error is not in the structure — that is a property of the problem, not
+a defect in the measures.
+
+The one path retention takes is concentration. `corr(Δ top weight, Δ error)` is
+−0.414 (R² 0.171) and survives dropping the most reactive set (−0.382, R² 0.146).
+A concentrated weight is closer to choosing the best expert than to averaging
+disagreeing ones: median `error/oracle` falls from 1.432 to 1.367, and concentration
+tracks that ratio at R² 0.214. It is the price of weighting rather than selecting,
+and retention pays a little of it.
+
+But the effect has no reliable sign — median −0.005, mean −0.690, the error falls in
+34 of 60 pairs. The mean is carried by a handful of large cases; the median is half
+a percent of the error level. Reporting −0.69 as "retention improves the forecast"
+would be the error this whole sequence has been about.
+
+What does *not* happen is the interesting part. The alignment between weight and
+error direction, `corr(w_e, |a_e|)` per month, is −0.42 in `fixed` and −0.55 in
+`roving`, and higher retention makes it worse in both. Its change explains 0.000 of
+the change in error. Retention does not make the ensemble smarter about which
+expert is right; it makes it less willing to average.
+
+The corollary: to predict whether a weighted ensemble forecasts well, measure the
+disagreement among its members and the error of its best member — not the shape of
+its weights.
+
+Two faults in my own controls are recorded rather than smoothed over. A
+monotonicity control demanded exactly zero groups where the true error was monotone;
+with three gap points a random ordering is monotone one time in six, and the measured
+share was 0.10 — below chance, which is the point, but the zero-demanding form failed
+for the wrong reason. And condition 1 was written as `1_identity_does_not_hold`, a
+fault condition among four success conditions, so `all()` could never be true and the
+verdict reported "a control failed" while all five were met. Same class as the sign of
+`argmax` in Investigation 11: a name pointing the wrong way, with green tests either
+way.

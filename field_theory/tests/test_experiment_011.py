@@ -438,3 +438,126 @@ def test_stabil_rang_med_delt_magt_findes_i_data(results: dict) -> None:
     assert worst["mean_top_weight"] < 0.5
     # The weight is spread while the rank is not.
     assert worst["mean_effective_experts"] > 3.0
+
+
+def _retention_pairs(cells: list[dict]) -> list[tuple[dict, dict]]:
+    """Cells that differ in retention alone — same source, set, assignment, gap."""
+    groups: dict[tuple, dict[float, dict]] = {}
+    for cell in cells:
+        key = (cell["source"], cell["expert_set"], cell["assignment"], cell["gap"])
+        groups.setdefault(key, {})[cell["retention"]] = cell
+    return [
+        (by_retention[0.9], by_retention[0.99])
+        for by_retention in groups.values()
+        if 0.9 in by_retention and 0.99 in by_retention
+    ]
+
+
+def test_retention_former_magten_mere_end_rangen(results: dict) -> None:
+    """The answer is conditional, and both halves must stay pinned.
+
+    Across all pairs that differ in retention alone, the distribution moves and
+    the rank order largely does not: median change 0.220 against 0.000. The
+    reverse case — rank moves while the distribution stands still — does not
+    occur anywhere in the grid.
+    """
+    pairs = _retention_pairs(results["cells"])
+    assert len(pairs) == 66, f"forventede 66 par, fandt {len(pairs)}"
+
+    def delta(a: dict, b: dict, field: str) -> float:
+        return float(b[field]) - float(a[field])
+
+    share_moves = [abs(delta(a, b, "dominance_share")) for a, b in pairs]
+    weight_moves = [abs(delta(a, b, "mean_top_weight")) for a, b in pairs]
+
+    median = lambda values: sorted(values)[len(values) // 2]  # noqa: E731
+    assert median(share_moves) < 0.05
+    assert median(weight_moves) > 0.20
+
+    rank_still_power_moves = sum(
+        1
+        for a, b in pairs
+        if abs(delta(a, b, "dominance_share")) < 0.05
+        and abs(delta(a, b, "mean_top_weight")) > 0.10
+    )
+    power_still_rank_moves = sum(
+        1
+        for a, b in pairs
+        if abs(delta(a, b, "mean_top_weight")) < 0.05
+        and abs(delta(a, b, "dominance_share")) > 0.10
+    )
+    assert rank_still_power_moves >= 30
+    assert power_still_rank_moves == 0, (
+        "magten stod stille mens rangen flyttede — asymmetrien holder ikke"
+    )
+
+
+def test_asymmetrien_vender_naar_intet_kollapser(results: dict) -> None:
+    """Without collapse the rank order moves most; with collapse the power does.
+
+    This is what makes the answer conditional rather than a ranking of the two
+    measures. On the four pairs where occupancy is 0.000 in both cells — so the
+    comparison is free of collapse — the rank order moves by 0.32 to 0.47 while
+    the top weight moves by only 0.08 to 0.22.
+    """
+    pairs = _retention_pairs(results["cells"])
+    clean = [
+        (a, b)
+        for a, b in pairs
+        if float(a["occupancy"]) == 0.0 and float(b["occupancy"]) == 0.0
+    ]
+    assert len(clean) == 4, f"forventede 4 kollapsfri par, fandt {len(clean)}"
+
+    for a, b in clean:
+        d_share = float(b["dominance_share"]) - float(a["dominance_share"])
+        d_weight = float(b["mean_top_weight"]) - float(a["mean_top_weight"])
+        # The rank order moves more than the distribution in every one of them.
+        assert d_share > 0.30, (a["expert_set"], a["gap"], d_share)
+        assert d_weight < d_share, (a["expert_set"], a["gap"], d_weight, d_share)
+        # And the effective count falls: the same rank now carries more weight.
+        assert float(b["mean_effective_experts"]) < float(a["mean_effective_experts"])
+
+
+def test_retention_bevaeger_rang_og_magt_forskelligt_i_mekanikken() -> None:
+    """The conditional, measured by calling the mechanism rather than reading a run.
+
+    The two data tests above pin what the preserved artefact says. This one pins
+    the code: if ``mean_top_weight`` ever becomes a copy of ``dominance_share``,
+    the two deltas become equal and the assertion fails. Measured on SILSO with
+    the short-memory set under ``roving`` at gap 0.05, where nothing collapses at
+    either retention — so the difference is retention alone.
+    """
+    from feltteori_research.experiment_011_four_measures import (
+        _measure_series,
+        _four_measures,
+    )
+    from feltteori_research.experiment_010_rank_drift import (
+        _prepare,
+        _orders,
+        _expert_rows_for,
+        EXPERT_SETS,
+    )
+    from feltteori_research.experiment_005_learning import parse_silso_monthly
+
+    source = Path(__file__).resolve().parents[1] / (
+        "artifacts/exp_005_independent/silso_20261030_e9a732ca9/silso_monthly_total_v2.csv"
+    )
+    experts = EXPERT_SETS["short_memory"]
+    prepared = _prepare(_expert_rows_for(parse_silso_monthly(source)[0], experts), experts)
+    orders = _orders(prepared, experts, "roving")
+
+    short_series = _measure_series(prepared, 0.9, 0.05, orders, experts)
+    long_series = _measure_series(prepared, 0.99, 0.05, orders, experts)
+    short = _four_measures(short_series)
+    long = _four_measures(long_series)
+
+    # Nothing collapses at this gap, at either retention: the lowest effective
+    # count stays above the floor, so occupancy is zero in both cells.
+    assert min(short_series["effective"]) > short_series["floor"]
+    assert min(long_series["effective"]) > long_series["floor"]
+    # The rank order moves more than the distribution here — the uncontested regime.
+    d_share = long["dominance_share"] - short["dominance_share"]
+    d_weight = long["mean_top_weight"] - short["mean_top_weight"]
+    assert d_share > 0.30, d_share
+    assert d_weight > 0.10, d_weight
+    assert d_weight < d_share, (d_weight, d_share)

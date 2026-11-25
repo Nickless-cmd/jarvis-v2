@@ -172,6 +172,79 @@ investigation replaced one grab-bag statistic with four, and the four turned out
 to share a single blind spot: they all read a *ranking* and never a
 *distribution*.
 
+## Does retention shape the rank order or the distribution of power?
+
+**Post-hoc, on the preserved `run_20261125_v5`.** This section was not
+preregistered; it asks the question the two continuous measures made askable, and
+it is reported as a diagnostic rather than as a condition of the investigation.
+
+The grid holds **66 pairs** that differ in retention alone — same source, same
+expert set, same assignment, same `gap` — so any difference between the two cells
+is attributable to retention and nothing else. For each pair, the change in the
+rank-based measures and the change in the power-based measures:
+
+| | median change |
+|---|---:|
+| dominance share (rank) | **0.000** |
+| top weight (power) | **0.220** |
+| top margin (power) | **0.364** |
+
+Pearson correlation between the two changes across the 66 pairs: **0.042** —
+practically none. They are not two readings of the same effect.
+
+**35 pairs** move the distribution while the rank order stays put
+(`|Δshare| < 0.05` and `|Δtopw| > 0.10`). **Zero pairs** do the reverse. That
+asymmetry is the first half of the answer.
+
+But 28 of those 35 were already saturated — dominance share at 0.99 or above in
+the `r = 0.9` cell, so it could not rise. Those prove nothing. The **7 genuine
+cases** are the ones that carry the result:
+
+| cell | dominance share | top weight | dominants |
+|---|---|---|---:|
+| co2 · short_memory · roving, gap 0.2 | 0.620 → 0.626 | **0.521 → 0.899** | 2 → 2 |
+| sunspots · long_memory · roving, gap 0.05 | **0.579 → 0.557** | **0.439 → 0.688** | 2 → 2 |
+| synthetic · original · q=0.4, gap 0.05 | 0.953 → 1.000 | **0.414 → 0.894** | 2 → 1 |
+
+In the second row the two measures move in **opposite directions**: the same
+expert holds rank one for a smaller share of the window while carrying half again
+as much weight in an average month. A report that read only the rank would say
+retention made dominance *less* stable; a report that read only the power would
+say it made it *more* concentrated. Both would be true statements about different
+properties.
+
+**The asymmetry reverses when nothing collapses.** Four pairs hold occupancy at
+0.000 in both cells, so the comparison is free of collapse entirely:
+
+| cell | occupancy | dominance share | top weight | effective |
+|---|---|---:|---:|---:|
+| sunspots · short_memory · roving, gap 0.05 | 0.000 → 0.000 | **0.670 → 0.994** | 0.394 → 0.581 | 2.88 → 1.96 |
+| sunspots · four_experts · roving, gap 0.05 | 0.000 → 0.000 | **0.610 → 0.925** | 0.290 → 0.513 | 3.91 → 2.46 |
+| synthetic · original · q=0.0, gap 0.05 | 0.000 → 0.000 | **0.453 → 0.921** | 0.367 → 0.449 | 2.97 → 2.78 |
+| synthetic · original · q=0.2, gap 0.05 | 0.000 → 0.000 | **0.629 → 1.000** | 0.380 → 0.655 | 2.95 → 1.99 |
+
+Here the rank order moves by **+0.32 to +0.47** while the power moves by only
+**+0.08 to +0.22**. The direction is the opposite of the collapsed cases: without
+collapse, retention reshapes *who* wins; with collapse, the winner is already
+decided and retention only decides *how much* it wins by.
+
+So the answer is neither "rank" nor "power" but a conditional:
+
+> **Retention sets the rank order while the rank order is still contested, and
+> sets the weight carried by that rank once it is no longer contested.**
+
+Collapse is the transition between the two regimes. Once a single expert holds
+rank one across the window, dominance share is pinned at its ceiling and the only
+remaining degree of freedom is the distribution — which is exactly why the 28
+saturated pairs show a large `Δtopw` with a zero `Δshare`. The power measure is
+not a better version of the rank measure; it is the measure that keeps working
+after the rank measure runs out of room.
+
+That also explains the retention result reported above without contradicting it.
+The five pairs cited there (`dShare > 0.20` at unchanged occupancy) are all in the
+uncontested regime, where retention does move the rank order — the two sections
+agree, and the conditional is what reconciles them.
+
 ## Controls and the conditions that did not fire
 
 - **Occupancy equals Investigation 10's `duty_cycle`** on all 132 cells, to

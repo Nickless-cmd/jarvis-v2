@@ -1436,6 +1436,23 @@ alone would call it fully concentrated, and that would be wrong.
 That is the same error one level down from where the investigation started: one
 grab-bag statistic was replaced by four, and the four shared a single blind spot.
 
+**Does retention shape the rank order or the power distribution?** The grid holds
+66 pairs that differ in retention alone, so any difference is attributable to it.
+Median change in dominance share **0.000**, in top weight **0.220**; Pearson
+correlation between the two changes **0.042**. 35 pairs move the distribution
+while the rank order stands still, and **zero pairs do the reverse**. But 28 of
+those 35 were already saturated at 0.99 — only 7 prove anything.
+
+The answer is conditional, and it reverses with collapse. On the four pairs where
+occupancy is 0.000 in both cells — free of collapse entirely — the rank order
+moves by **+0.32 to +0.47** while the top weight moves by only **+0.08 to
++0.22**. Without collapse, retention reshapes *who* wins. With collapse the winner
+is already decided, and retention only decides *how much* it wins by: dominance
+share is pinned at its ceiling and the distribution is the remaining degree of
+freedom. That is why the 28 saturated pairs show a large `Δtopw` with a zero
+`Δshare`, and why the power measure is not a better rank measure but the one that
+keeps working after the rank measure runs out of room.
+
 Open: the run-count difference `|K − K'| ≤ 1` is the only freedom the identity
 leaves, so a third measure can only be recovered from `O` and `P` up to a
 boundary term. Whether that term carries information of its own is untested.

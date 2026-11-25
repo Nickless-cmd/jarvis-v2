@@ -197,13 +197,24 @@ distance to the true match:
 | 120 | 3.40 | 1.88 | 1.81 |
 
 The separation grows with the window. A nearest-neighbour rule always returns an
-answer, so the failure mode is a confident wrong answer — but the distance is
-available, and it is a usable self-doubt signal.
+answer, so the failure mode is a confident wrong answer. Whether the distance can
+be used to *know* that is a separate question, and Investigation 19 answered it.
+
+> **Retracted by Investigation 19.** This section originally closed by calling the
+> distance "a usable self-doubt signal". That claim rested on the table above,
+> which compares two constructed conditions — the reference with and without the
+> true name — that the operator never chooses between, and whose per-cell sample
+> is three experts. Investigation 19 measured the ordinary condition month by
+> month: the calibration is real (pooled AUC 0.857), but only a quarter of it
+> survives within a cell (0.591), and the ordinary distance is **0.43** of the
+> held-out distance. The table therefore describes a condition the system never
+> enters. See `research/investigation-019-findings.md`.
 
 This is the closest the data can come to the limit stated in the protocol: the
 detector recognises a world it has **already seen**. It does not discover a new
 one. Under a genuinely novel regime the correct reference is absent, the nearest
-neighbour is wrong, and only the distance says so.
+neighbour is wrong, and the distance is the only quantity that says so — though
+Investigation 19 shows it says so weakly and inconsistently.
 
 ---
 

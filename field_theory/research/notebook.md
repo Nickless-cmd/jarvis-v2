@@ -1801,3 +1801,45 @@ and the error rate is the detection rate wearing the other coat. *Tallet der
 ligner et svar, er som regel et andet tal med et velkendt navn.* It held one more
 time, at the last layer: the number that looked like a detection was the
 false-alarm rate with a different name.
+
+---
+
+## Investigation 19 — the distance knows the world, not the moment
+
+The previous investigation ended on a sentence I had not measured: that the
+distance is a usable self-doubt signal. It came from a table where the sample was
+three experts, and where the comparison was between two conditions nobody
+operates in — the reference with the right answer present, and with it deleted.
+
+Measured properly, in the ordinary condition, month by month, the calibration is
+real. Error rate across distance quartiles runs 0.083, 0.097, 0.471, 0.793. A
+large distance really does mean a likely wrong answer, and the shape is a floor
+and a knee rather than a line — nothing happens below about 1.7, and then
+everything does.
+
+And then the part that costs the claim most of its weight. Subtract each cell's own
+mean distance and measure again: 0.857 becomes 0.591. Of the 0.357 above chance,
+0.091 survives. **Three quarters of the power is the identity of the cell, not the
+month.** So the honest sentence is that the detector can tell you which worlds it
+is bad in, and can barely tell you which moment it is wrong about.
+
+Abstention was supposed to be the payoff — answer only when the distance is small.
+It failed, in two ways worth keeping apart. Seven of 27 cells could not pass by
+construction, because a development half with no error sets the bar at certainty.
+Among the cells where it could help, it still did not hold. But where it worked, it
+worked sharply: CO2 at window 24 reaches precision 1.000 against a baseline of
+0.754, answering 22 % of the months. That is the same lesson Investigation 16 gave
+about alpha. A rule chosen before the outcome does not automatically transfer.
+
+And the held-out table: ordinary distance 1.609, held-out 3.709, ratio 0.434. It
+describes a condition the system never enters. I retracted the sentence in
+Investigation 18 where it stands, with a pointer here, because a wrong claim left
+in place is worse than one that was never made.
+
+One more number, about my own measuring rather than about the detector. The first
+reproducibility check between two runs reported five differences. They were all
+`nan`, and `nan != nan` is true. A nan-aware comparison found zero differences
+across 51 866 values.
+
+*Tallet der ligner et svar, er som regel et andet tal med et velkendt navn.* This
+time the number that looked like a discrepancy was a comparison with a name.

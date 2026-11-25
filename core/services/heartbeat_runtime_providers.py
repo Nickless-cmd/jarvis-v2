@@ -117,6 +117,7 @@ def _execute_ollama_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, 
         "cache_hit_tokens": cache_hit,
         "cache_miss_tokens": cache_miss,
         "cost_usd": pris,
+        "cost_recorded": True,
         "execution_status": "success",
     }
 

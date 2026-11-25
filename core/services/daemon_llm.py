@@ -256,19 +256,20 @@ def quality_daemon_llm_call(
                 # _execute_openai_compatible_chat returnerer allerede opsummerede
                 # output_tokens (= usage.completion_tokens, som for DeepSeek INKLUDERER
                 # reasoning-tokens) — vi lægger derfor ikke reasoning oveni igen.
-                try:
-                    from core.costing.ledger import record_cost
-                    record_cost(
-                        lane="inner_enrichment", provider=provider, model=model,
-                        input_tokens=int(result.get("input_tokens") or 0),
-                        output_tokens=int(result.get("output_tokens") or 0),
-                        cost_usd=float(result.get("cost_usd") or 0.0),
-                        cache_hit_tokens=int(result.get("cache_hit_tokens") or 0),
-                        cache_miss_tokens=int(result.get("cache_miss_tokens") or 0),
-                        reasoning_tokens=int(result.get("reasoning_tokens") or 0),
-                    )
-                except Exception:
-                    pass
+                if not bool(result.get("cost_recorded")):
+                    try:
+                        from core.costing.ledger import record_cost
+                        record_cost(
+                            lane="inner_enrichment", provider=provider, model=model,
+                            input_tokens=int(result.get("input_tokens") or 0),
+                            output_tokens=int(result.get("output_tokens") or 0),
+                            cost_usd=float(result.get("cost_usd") or 0.0),
+                            cache_hit_tokens=int(result.get("cache_hit_tokens") or 0),
+                            cache_miss_tokens=int(result.get("cache_miss_tokens") or 0),
+                            reasoning_tokens=int(result.get("reasoning_tokens") or 0),
+                        )
+                    except Exception:
+                        pass
                 try:
                     from core.runtime.db import daemon_output_log_insert
                     daemon_output_log_insert(
@@ -489,9 +490,9 @@ def _daemon_llm_call_impl(
     # var usynlige i hovedbogen — Ollama fakturerede dem, men vi kunne
     # hverken se hvad de kostede eller hvem der kaldte. record_cost beregner
     # selv prisen fra pris-tabellen når cost_usd mangler, så vi behøver ikke
-    # kende taksten her. Uden rækken er "vi har styr på alle kald" en
-    # påstand, ikke en egenskab.
-    if text:
+    # kende taksten her. Provider-stier der allerede ejer bogføringen markerer
+    # resultatet og må ikke få en ekstra daemon-række.
+    if text and not bool(result.get("cost_recorded")):
         try:
             from core.costing.ledger import record_cost
 

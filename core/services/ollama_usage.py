@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 USAGE_URL = "https://ollama.com/api/usage"
 
 
-def bogfoer_ollama_kald(
+def bogfoer_ollama_kald_status(
     *,
     provider: str,
     model: str,
@@ -47,12 +47,21 @@ def bogfoer_ollama_kald(
     cache_hit_tokens: int = 0,
     cache_miss_tokens: int = 0,
     lane: str,
-) -> float:
-    """Bogfør ét Ollama-kald i hovedbogen og returnér den beregnede pris.
+) -> tuple[float, bool]:
+    """Bogfør ét Ollama-kald og sig BÅDE prisen og om rækken blev skrevet.
+
+    Returnerer ``(pris, skrevet)``. Den ene returværdi er ikke nok: en pris på
+    ``0.0`` er både svaret for en ukendt model OG svaret når bogføringen fejlede.
+    Adapteren sætter ``cost_recorded`` på resultatet, og de ydre lag springer
+    deres egen bogføring over når flaget er sat — så et flag der lyver om
+    succesen fjerner rækken HELT i stedet for at gøre den dobbelt. Målt
+    25/11-2026: ``record_cost`` kan fejle på en låst database, og
+    ``compute_cost_usd`` kan kaste på en ukendt model; begge blev tidligere
+    slugt her, hvorefter det ydre lag skrev den række der ellers var tabt.
 
     Fejler aldrig højt: en fejl i regnskabet må ikke vælte det arbejde der
-    betalte for kaldet. Men den forsvinder heller ikke — den logges, og et nul
-    kan ses i den lane der kaldte.
+    betalte for kaldet. Men den forsvinder heller ikke — den logges, og
+    ``skrevet=False`` giver det ydre lag chancen igen.
     """
     try:
         from core.costing.ledger import record_cost
@@ -85,7 +94,7 @@ def bogfoer_ollama_kald(
             cost_usd=pris,
             run_id=run_id,
         )
-        return pris
+        return pris, True
     except Exception:
         logger.debug(
             "ollama-usage: kunne ikke bogfoere %s/%s (lane=%s)",
@@ -94,7 +103,33 @@ def bogfoer_ollama_kald(
             lane,
             exc_info=True,
         )
-        return 0.0
+        return 0.0, False
+
+
+def bogfoer_ollama_kald(
+    *,
+    provider: str,
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    cache_hit_tokens: int = 0,
+    cache_miss_tokens: int = 0,
+    lane: str,
+) -> float:
+    """Bogfør ét Ollama-kald og returnér prisen — den gamle, ene kontrakt.
+
+    Beholdt for de kaldesteder der kun skal bruge beløbet. Skal kalderen også
+    vide om rækken faktisk blev skrevet, brug da ``bogfoer_ollama_kald_status``.
+    """
+    return bogfoer_ollama_kald_status(
+        provider=provider,
+        model=model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cache_hit_tokens=cache_hit_tokens,
+        cache_miss_tokens=cache_miss_tokens,
+        lane=lane,
+    )[0]
 
 
 def kvote_reference(

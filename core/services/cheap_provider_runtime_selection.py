@@ -937,17 +937,20 @@ def execute_cheap_lane_via_pool(
     )
     # 2026-06-09: extract cache hit/miss from result if provider surfaced them
     # (DeepSeek does via prompt_cache_hit_tokens/prompt_cache_miss_tokens).
-    record_cost(
-        lane=lane,
-        provider=provider,
-        model=model,
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cost_usd=float(result.get("cost_usd") or 0.0),
-        cache_hit_tokens=_cache_hit,
-        cache_miss_tokens=_cache_miss,
-        reasoning_tokens=int(result.get("reasoning_tokens") or 0),
-    )
+    cost_recorded = bool(result.get("cost_recorded"))
+    if not cost_recorded:
+        record_cost(
+            lane=lane,
+            provider=provider,
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_usd=float(result.get("cost_usd") or 0.0),
+            cache_hit_tokens=_cache_hit,
+            cache_miss_tokens=_cache_miss,
+            reasoning_tokens=int(result.get("reasoning_tokens") or 0),
+        )
+        cost_recorded = True
     # Observe-only: mål nyhed af DENNE producers output (attribution via cadence-thread-local
     # ellers task_kind) → grundlag for saliens-gating af indre liv. Ren tekst-lighed, self-safe.
     try:
@@ -977,6 +980,7 @@ def execute_cheap_lane_via_pool(
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
         "cost_usd": float(result.get("cost_usd") or 0.0),
+        "cost_recorded": cost_recorded,
     }
 
 

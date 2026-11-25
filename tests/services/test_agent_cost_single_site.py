@@ -56,6 +56,7 @@ def test_primary_direct_logs_once_lane_agent():
     assert calls[0]["provider"] == "ollamafreeapi"
     assert calls[0]["input_tokens"] == 100
     assert calls[0]["output_tokens"] == 50
+    assert result["cost_recorded"] is True
 
 
 def test_pool_fallback_logs_once_not_twice():
@@ -123,7 +124,8 @@ def test_daemon_default_lane_cheap():
     ), patch.object(
         selection, "_record_provider_success", lambda **kw: None,
     ), cost_patch:
-        selection.execute_cheap_lane_via_pool(message="daemon job")
+        result = selection.execute_cheap_lane_via_pool(message="daemon job")
 
     assert len(calls) == 1, f"expected exactly one record_cost, got {len(calls)}"
     assert calls[0]["lane"] == "cheap"
+    assert result["cost_recorded"] is True

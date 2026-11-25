@@ -9,9 +9,9 @@ _Concrete heartbeat provider-executor bodies extracted from ``heartbeat_runtime`
 |---|---|---|---|---|
 | function | `_bogfoer_ollama_kald` | `(*, provider, model, input_tokens, output_tokens, cache_hit_tokens, cache_miss_tokens, lane=…)` | Heartbeat-lanens indgang til den fælles Ollama-bogføring. | [src](../../../core/services/heartbeat_runtime_providers.py#L26) |
 | function | `_execute_ollama_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L60) |
-| function | `_execute_openai_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L124) |
-| function | `_execute_openrouter_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L150) |
-| function | `_execute_groq_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L194) |
+| function | `_execute_openai_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L125) |
+| function | `_execute_openrouter_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L151) |
+| function | `_execute_groq_prompt` | `(*, prompt, target)` | — | [src](../../../core/services/heartbeat_runtime_providers.py#L195) |
 
 ## `core/services/heartbeat_scheduler.py`
 _Hjerteslagets dæmon — tråden der spørger «er det tid?» hvert 30. sekund._

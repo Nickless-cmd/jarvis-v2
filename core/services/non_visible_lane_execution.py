@@ -349,32 +349,34 @@ def execute_with_role_or_fallback(
 
     output_tokens = int(result.get("output_tokens") or _estimate_tokens(result.get("text") or ""))
     input_tokens = int(result.get("input_tokens") or _estimate_tokens(_prompt_for_estimate))
-    # A4b: the primary-direct path is the ONLY execution site with no
-    # downstream record_cost (the pool fallback logs its own row). Log the
-    # costs ledger row HERE so this path is no longer a hole, attributed to
-    # the caller's lane. record_cost is the accounting chokepoint (auto-prices
-    # deepseek, fires the egress observer). try/except — never break the call.
-    try:
-        from core.costing.ledger import record_cost
-        record_cost(
-            lane=lane,
-            provider=primary_provider,
-            model=primary_model,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            cost_usd=float(result.get("cost_usd") or 0.0),
-            cache_hit_tokens=int(
-                result.get("cache_hit_tokens")
-                or result.get("prompt_cache_hit_tokens") or 0
-            ),
-            cache_miss_tokens=int(
-                result.get("cache_miss_tokens")
-                or result.get("prompt_cache_miss_tokens") or 0
-            ),
-            reasoning_tokens=int(result.get("reasoning_tokens") or 0),
-        )
-    except Exception:
-        pass
+    # A4b: generic adapters (bl.a. DeepSeek) har intet downstream record_cost,
+    # så bogfør dem her med kalderens lane. Native Ollama ejer allerede sin
+    # bogføring og markerer resultatet; den må ikke få endnu en række her.
+    # try/except — regnskab må aldrig bryde provider-kaldet.
+    cost_recorded = bool(result.get("cost_recorded"))
+    if not cost_recorded:
+        try:
+            from core.costing.ledger import record_cost
+            record_cost(
+                lane=lane,
+                provider=primary_provider,
+                model=primary_model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cost_usd=float(result.get("cost_usd") or 0.0),
+                cache_hit_tokens=int(
+                    result.get("cache_hit_tokens")
+                    or result.get("prompt_cache_hit_tokens") or 0
+                ),
+                cache_miss_tokens=int(
+                    result.get("cache_miss_tokens")
+                    or result.get("prompt_cache_miss_tokens") or 0
+                ),
+                reasoning_tokens=int(result.get("reasoning_tokens") or 0),
+            )
+            cost_recorded = True
+        except Exception:
+            pass
     return {
         "lane": "cheap",
         "provider": primary_provider,
@@ -389,6 +391,7 @@ def execute_with_role_or_fallback(
         "input_tokens": int(result.get("input_tokens") or _estimate_tokens(_prompt_for_estimate)),
         "output_tokens": output_tokens,
         "cost_usd": float(result.get("cost_usd") or 0.0),
+        "cost_recorded": cost_recorded,
     }
 
 

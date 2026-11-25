@@ -84,8 +84,9 @@ _Ét sted at bogføre et Ollama-kald — så ingen sti kan glemme det._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `bogfoer_ollama_kald` | `(*, provider, model, input_tokens, output_tokens, cache_hit_tokens=…, cache_miss_tokens=…, lane)` | Bogfør ét Ollama-kald i hovedbogen og returnér den beregnede pris. | [src](../../../core/services/ollama_usage.py#L41) |
-| function | `kvote_reference` | `(*, timeout=…, range_=…)` | Ollamas EGEN forbrugsmåling — det tal der styrer pro-planens 90%-grænse. | [src](../../../core/services/ollama_usage.py#L100) |
+| function | `bogfoer_ollama_kald_status` | `(*, provider, model, input_tokens, output_tokens, cache_hit_tokens=…, cache_miss_tokens=…, lane)` | Bogfør ét Ollama-kald og sig BÅDE prisen og om rækken blev skrevet. | [src](../../../core/services/ollama_usage.py#L41) |
+| function | `bogfoer_ollama_kald` | `(*, provider, model, input_tokens, output_tokens, cache_hit_tokens=…, cache_miss_tokens=…, lane)` | Bogfør ét Ollama-kald og returnér prisen — den gamle, ene kontrakt. | [src](../../../core/services/ollama_usage.py#L109) |
+| function | `kvote_reference` | `(*, timeout=…, range_=…)` | Ollamas EGEN forbrugsmåling — det tal der styrer pro-planens 90%-grænse. | [src](../../../core/services/ollama_usage.py#L135) |
 
 ## `core/services/ollama_visible_prompt.py`
 

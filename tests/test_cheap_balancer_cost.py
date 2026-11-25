@@ -43,6 +43,7 @@ def test_call_balanced_logs_costs_row(clb, monkeypatch):
     assert captured["output_tokens"] == 50
     assert captured["cache_hit_tokens"] == 30
     assert captured["cache_miss_tokens"] == 70
+    assert res["cost_recorded"] is True
 
 
 def test_call_balanced_survives_record_cost_error(clb, monkeypatch):

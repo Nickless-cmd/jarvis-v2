@@ -939,19 +939,22 @@ def call_balanced(
             # ── WS2: log costs-række (balanceren var før usynlig for ledgeren) ──
             # record_cost egress-observer selv + beregner cost_usd fra pris-tabel
             # når provider ikke returnerer pris (DeepSeek). Aldrig-vælt daemon-kald.
-            try:
-                from core.costing.ledger import record_cost
-                record_cost(
-                    lane="cheap-balanced", provider=slot.provider, model=slot.model,
-                    input_tokens=int(result.get("input_tokens") or 0),
-                    output_tokens=int(result.get("output_tokens") or 0),
-                    cost_usd=float(result.get("cost_usd") or 0.0),
-                    cache_hit_tokens=int(result.get("cache_hit_tokens") or result.get("prompt_cache_hit_tokens") or 0),
-                    cache_miss_tokens=int(result.get("cache_miss_tokens") or result.get("prompt_cache_miss_tokens") or 0),
-                    reasoning_tokens=int(result.get("reasoning_tokens") or 0),
-                )
-            except Exception:
-                pass
+            cost_recorded = bool(result.get("cost_recorded"))
+            if not cost_recorded:
+                try:
+                    from core.costing.ledger import record_cost
+                    record_cost(
+                        lane="cheap-balanced", provider=slot.provider, model=slot.model,
+                        input_tokens=int(result.get("input_tokens") or 0),
+                        output_tokens=int(result.get("output_tokens") or 0),
+                        cost_usd=float(result.get("cost_usd") or 0.0),
+                        cache_hit_tokens=int(result.get("cache_hit_tokens") or result.get("prompt_cache_hit_tokens") or 0),
+                        cache_miss_tokens=int(result.get("cache_miss_tokens") or result.get("prompt_cache_miss_tokens") or 0),
+                        reasoning_tokens=int(result.get("reasoning_tokens") or 0),
+                    )
+                    cost_recorded = True
+                except Exception:
+                    pass
             return {
                 "status": "ok",
                 "lane": "cheap-balanced",
@@ -959,7 +962,10 @@ def call_balanced(
                 "model": slot.model,
                 "attempts": attempts,
                 "text": str(result.get("text") or ""),
+                "input_tokens": result.get("input_tokens"),
                 "output_tokens": result.get("output_tokens"),
+                "cost_usd": result.get("cost_usd"),
+                "cost_recorded": cost_recorded,
             }
         except CheapProviderError as exc:
             last_error = exc

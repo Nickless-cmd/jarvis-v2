@@ -68,6 +68,7 @@ def test_ollama_kald_bogfoeres_med_en_rigtig_pris() -> None:
     assert rad["output_tokens"] == 900
     assert rad["cost_usd"] > 0, "prisen blev ikke beregnet — hullet er ikke lukket"
     assert ud["cost_usd"] == rad["cost_usd"], "tick-tabellen skal se samme pris"
+    assert ud["cost_recorded"] is True, "ydre lag skal kunne undgå dobbelt-bogføring"
 
 
 def test_cache_split_goer_prisen_rigtig_og_ikke_den_dyre_side() -> None:

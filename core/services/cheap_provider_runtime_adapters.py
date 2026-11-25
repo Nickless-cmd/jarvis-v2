@@ -1295,7 +1295,7 @@ def _execute_local_ollama_chat(
             code = "provider-error"
         raise CheapProviderError(provider=provider, code=code, message=err)
     text = str((data.get("message") or {}).get("content") or "").strip()
-    from core.services.ollama_usage import bogfoer_ollama_kald
+    from core.services.ollama_usage import bogfoer_ollama_kald_status
 
     input_tokens = int(data.get("prompt_eval_count") or 0)
     output_tokens = int(data.get("eval_count") or 0)
@@ -1303,7 +1303,7 @@ def _execute_local_ollama_chat(
     _tot = max(0, int(input_tokens or 0))
     cache_hit = max(0, min(int(data.get("prompt_eval_cached_count") or 0), _tot))
     cache_miss = _tot - cache_hit
-    cost_usd = bogfoer_ollama_kald(
+    cost_usd, _bogfoert = bogfoer_ollama_kald_status(
         provider=provider,
         model=model,
         input_tokens=input_tokens,
@@ -1327,6 +1327,7 @@ def _execute_local_ollama_chat(
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
         "cost_usd": cost_usd,
+        "cost_recorded": _bogfoert,
     }
 
 
@@ -1347,7 +1348,7 @@ def _execute_public_safe_local_ollama(*, message: str) -> dict[str, object]:
         provider="ollama",
     )
     text = str((data.get("message") or {}).get("content") or "").strip()
-    from core.services.ollama_usage import bogfoer_ollama_kald
+    from core.services.ollama_usage import bogfoer_ollama_kald_status
 
     input_tokens = int(data.get("prompt_eval_count") or 0)
     output_tokens = int(data.get("eval_count") or 0)
@@ -1355,7 +1356,7 @@ def _execute_public_safe_local_ollama(*, message: str) -> dict[str, object]:
     _tot = max(0, int(input_tokens or 0))
     cache_hit = max(0, min(int(data.get("prompt_eval_cached_count") or 0), _tot))
     cache_miss = _tot - cache_hit
-    cost_usd = bogfoer_ollama_kald(
+    cost_usd, _bogfoert = bogfoer_ollama_kald_status(
         provider="ollama",
         model=str(target.get("model") or "").strip(),
         input_tokens=input_tokens,
@@ -1375,6 +1376,7 @@ def _execute_public_safe_local_ollama(*, message: str) -> dict[str, object]:
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
         "cost_usd": cost_usd,
+        "cost_recorded": _bogfoert,
     }
 
 

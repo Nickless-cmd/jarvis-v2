@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10512/19182 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10513/19183 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10512/19182 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 925 | 1642 | 56% |
-| `core.services` | 7058 | 13023 | 54% |
+| `core.services` | 7059 | 13024 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1065,7 +1065,7 @@ Generated from source. 10512/19182 functions/methods documented (54%). The list 
 - `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L99)
 - `core/services/cheap_provider_runtime_selection.py` :: `cheap_lane_status_surface` (L88)
 - `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L739)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L1103)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L1107)
 - `core/services/cheap_provider_runtime_selection.py` :: `provider_runtime_defaults` (L62)
 - `core/services/cheap_provider_runtime_selection.py` :: `record_cheap_provider_invocation` (L66)
 - `core/services/cheap_provider_runtime_selection.py` :: `smoke_cheap_lane` (L180)
@@ -1534,10 +1534,10 @@ Generated from source. 10512/19182 functions/methods documented (54%). The list 
 - `core/services/nerve_registry.py` :: `is_registered` (L313)
 - `core/services/nerve_registry.py` :: `loader` (L704)
 - `core/services/non_visible_lane_execution.py` :: `cheap_lane_execution_truth` (L36)
-- `core/services/non_visible_lane_execution.py` :: `coding_lane_execution_truth` (L416)
-- `core/services/non_visible_lane_execution.py` :: `execute_coding_lane` (L447)
-- `core/services/non_visible_lane_execution.py` :: `fetch_github_copilot_models` (L1331)
-- `core/services/non_visible_lane_execution.py` :: `local_lane_execution_truth` (L395)
+- `core/services/non_visible_lane_execution.py` :: `coding_lane_execution_truth` (L419)
+- `core/services/non_visible_lane_execution.py` :: `execute_coding_lane` (L450)
+- `core/services/non_visible_lane_execution.py` :: `fetch_github_copilot_models` (L1334)
+- `core/services/non_visible_lane_execution.py` :: `local_lane_execution_truth` (L398)
 - `core/services/notes_connector.py` :: `add_note` (L84)
 - `core/services/notes_connector.py` :: `delete_note` (L114)
 - `core/services/notes_connector.py` :: `list_notes` (L96)

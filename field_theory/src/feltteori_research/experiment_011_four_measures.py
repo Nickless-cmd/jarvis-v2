@@ -125,9 +125,14 @@ def _measure_series(
             effective_series.append(
                 1.0 / sum(weight * weight for weight in weights.values())
             )
-            # Highest accumulated loss wins; tuple order breaks ties.
+            # The weight is exp(-LR * (retained - min)), so the expert that
+            # governs the month is the one with the LOWEST accumulated loss.
+            # Taking the maximum here measures the least influential expert
+            # instead — measured 2026-11-25 on the SILSO source: argmax(retained)
+            # agreed with argmax(weight) in 1 of 3198 months, argmin in 3198.
+            # Tuple order breaks ties.
             dominant_series.append(
-                max(experts, key=lambda expert: (retained[expert], -experts.index(expert)))
+                min(experts, key=lambda expert: (retained[expert], experts.index(expert)))
             )
 
         losses = {

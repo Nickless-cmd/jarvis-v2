@@ -1386,15 +1386,22 @@ identity stability by 0.30. But the reason was a defect in my own definition —
 `1 − switches/(T−1)` divides by the window length, so ~51 switches over 318 months
 read as 0.839, "stable", while one expert held 72.6 % of the window.
 
-Measured as dominance share instead, the axis is there:
+Measured as dominance share instead, the axis is there — and the first version of
+this table was wrong, because the sign of `d_t` was inverted. The protocol said
+`argmax` of accumulated loss, but the weight is `exp(−LR·(S−min S))`, so the
+governing expert is the `argmin`. Over 3198 months `argmax` matched in 1 and
+`argmin` in 3198; 42 of 132 cells changed share. The corrected pair comes from one
+source, one expert set and one assignment:
 
 | | occupancy | share | identity stability | dominants |
 |---|---:|---:|---:|---:|
-| short_memory, roving, CO₂ | 0.838 | 1.000 | 1.000 | 1 |
-| original, q=0, synthetic | 0.855 | 0.525 | 0.950 | 3 |
+| synthetic, q=0, gap 0.8, r 0.9 | 0.396 | 0.453 | 0.738 | 3 |
+| synthetic, q=0, gap 0.2, r 0.99 | 0.393 | 0.921 | 0.937 | 3 |
 
-Same occupancy to 0.017; one expert holds everything in the first, three share it
-in the second. The frozen measure called them nearly identical.
+Same occupancy to 0.003; three experts share the window in the first, one holds
+most of it in the second. The frozen measure orders them the other way round,
+which is the point: transition frequency and concentration are different
+properties and neither replaces the other.
 
 `fixed` is identity stable across all 48 cells: the rank order never changes and
 the dominant expert never changes hands, so dominance follows the rank order and

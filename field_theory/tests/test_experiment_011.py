@@ -25,6 +25,7 @@ The experiment's value rests on four properties that can each be lost silently:
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import pytest
@@ -196,3 +197,61 @@ def test_ingen_udefineret_maal_rapporteret_som_nul(results: dict) -> None:
     """Condition 5 must not fire: undefined stays undefined."""
     assert results["condition_5_undefined"]["fired"] is False
     assert results["condition_5_undefined"]["offenders"] == []
+
+
+def test_den_dominante_ekspert_er_den_mest_vaegtede() -> None:
+    """The sign of ``d_t``: the dominant expert must be the one with the largest weight.
+
+    The frozen protocol said ``argmax_e S_t(e)`` — the largest accumulated loss.
+    But the weight is ``exp(-LR * (S_t - min S_t))``, so the expert that governs
+    the month is the one with the SMALLEST accumulated loss. Measured on SILSO
+    over 3198 months: argmax matched the governing expert in 1 month, argmin in
+    3198. Every other test in this file passed while the sign was inverted,
+    because they all read the same wrong series.
+    """
+    from feltteori_research.experiment_011_four_measures import _measure_series
+    from feltteori_research.experiment_010_rank_drift import (
+        _prepare,
+        _orders,
+        _expert_rows_for,
+        EXPERT_SETS,
+    )
+    from feltteori_research.experiment_005_learning import (
+        _normalized_loss,
+        parse_silso_monthly,
+    )
+
+    source = Path(__file__).resolve().parents[1] / (
+        "artifacts/exp_005_independent/silso_20261030_e9a732ca9/silso_monthly_total_v2.csv"
+    )
+    experts = EXPERT_SETS["original"]
+    prepared = _prepare(_expert_rows_for(parse_silso_monthly(source)[0], experts), experts)
+    orders = _orders(prepared, experts, "roving")
+    series = _measure_series(prepared, 0.9, 0.1, orders, experts)
+
+    # Replay the accumulation and check the recorded dominant against the weights.
+    retained = {expert: 0.0 for expert in experts}
+    span = len(experts) - 1
+    mismatches = 0
+    checked = 0
+    for row, order in zip(prepared, orders):
+        deltas = {expert: 0.1 * rank / span for rank, expert in enumerate(order)}
+        minimum = min(retained.values())
+        unscaled = {e: math.exp(-1.0 * (retained[e] - minimum)) for e in experts}
+        governing = max(experts, key=lambda e: unscaled[e])
+        if row["period"] == "evaluation":
+            checked += 1
+            if series["dominant"][checked - 1] != governing:
+                mismatches += 1
+        l_best = float(row["l_best"])
+        scale = float(row["scale"])
+        outcome = float(row["outcome"])
+        signs = row["sign"]
+        predictions = {
+            e: outcome + signs[e] * (l_best + deltas[e]) * scale for e in experts
+        }
+        losses = {e: _normalized_loss(predictions[e], outcome) for e in experts}
+        retained = {e: 0.9 * retained[e] + losses[e] for e in experts}
+
+    assert checked > 100
+    assert mismatches == 0, f"{mismatches} af {checked} maaneder pegede paa den forkerte ekspert"

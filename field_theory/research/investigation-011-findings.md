@@ -72,18 +72,41 @@ Two supplementary measures separate what it merged — `dominance_share` (fracti
 of the window held by the single most dominant expert) and `switches_per_month`.
 Condition 6 applies the same pair test to `dominance_share`. **It did not fire.**
 
+⚠️ **The first version of this section was wrong, and the error was in the
+instrument.** The frozen protocol defined the dominant expert as
+`argmax_e S_t(e)` — the largest accumulated loss — but the mechanism weights
+experts by `exp(−LR·(S_t − min S_t))`, so the expert that governs the month is the
+one with the *smallest* accumulated loss. Measured on SILSO/`original`/`roving`
+over 3198 months: `argmax` matched the actual governing expert in **1** month,
+`argmin` in **3198**. The sign was inverted.
+
+`occupancy`, `persistence` and `recovery` are computed from the weights and were
+unaffected — 0 of 132 cells changed occupancy. But `dominance_share` changed in
+**42 of 132** cells and `distinct_dominants` in **27**. The pair below is the
+corrected one, and it is stronger than the original because both cells now come
+from the same source, the same expert set and the same assignment:
+
 | | occupancy | dominance share | identity stability | distinct dominants |
 |---|---:|---:|---:|---:|
-| short_memory, roving, CO₂ | 0.838 | **1.000** | 1.000 | 1 |
-| original, q=0, synthetic | 0.855 | **0.525** | 0.950 | 3 |
+| synthetic, q=0, gap 0.8, r 0.9 | 0.396 | **0.453** | 0.738 | 3 |
+| synthetic, q=0, gap 0.2, r 0.99 | 0.393 | **0.921** | 0.937 | 3 |
 
-Same occupancy to within **0.017**. One system is held by a single expert for the
-whole window; the other splits it three ways. `identity_stability` reads them as
-0.950 and 1.000 — nearly the same — which is exactly backwards.
+Same occupancy to within **0.003**. One system is held by a single expert for
+most of the window; the other splits it three ways. `identity_stability` reads
+them as 0.738 and 0.937 — the opposite ordering from `dominance_share`, which is
+the point: the two measures are not substitutes.
+
+The original pair (`short_memory · roving · CO₂` at 1.000 against
+`original · q=0 · synthetic` at 0.525) reversed under the correction: those two
+cells read 0.557 and 0.921. The direction of the first report was an artefact of
+the sign, and it also mixed sources and expert sets — an objection that the
+corrected pair does not have.
 
 So the answer to the question the investigation was built on: **the fourth
 measure does carry an axis the first three do not, but only when it is measured
 as dominance share.** Measured as a switch count it is a window-length artefact.
+And `identity_stability` is not a defective measure — it measures transition
+frequency, which is a different property, and both must be kept.
 
 ## Controls and the conditions that did not fire
 

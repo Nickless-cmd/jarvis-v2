@@ -35,9 +35,13 @@ month `t` and floor `c = 0.5·N`:
   number of such blocks. **Recovery** `R = (Σ healthy run lengths)/K'` — the
   mean time diversity lasts once it returns. Undefined when `K' = 0`.
 - **Identity stability** `I = |{t = 2..T : d_t = d_{t−1}}| / (T−1)`, where
-  `d_t = argmax_e S_t(e)` is the expert with the largest accumulated loss at
-  month `t`. Ties are broken by the tuple order so the measure is deterministic.
-  In `[0, 1]`. Also reported: `D` = the number of distinct dominant experts.
+  `d_t = argmin_e S_t(e)` is the expert with the **smallest** accumulated loss at
+  month `t` — the one whose weight `exp(−LR·(S_t − min S_t))` is largest, i.e. the
+  expert that governs the month. Ties are broken by the tuple order so the measure
+  is deterministic. In `[0, 1]`. Also reported: `D` = the number of distinct
+  dominant experts.
+  ⚠️ **Corrected in Amendment 2.** The frozen text said `argmax`; that names the
+  least influential expert. See the amendment for the measurement.
 
 `I` is deliberately **not** a concentration measure. `O` already measures how
 often the system is collapsed; `I` measures whether the *identity* of the
@@ -186,3 +190,55 @@ The precedent is Investigation 10's, one step further on: there, "duty cycle"
 named two different quantities. Here, "identity stability" names at least three —
 transition frequency, dominance concentration, and dominance diversity — and only
 the first was written into the frozen protocol.
+
+## Amendment 2 — the sign of `d_t` was wrong (2026-11-25, after run v2)
+
+**The frozen definition of `d_t` is incorrect and the implementation followed it.**
+The protocol defines `d_t = argmax_e S_t(e)`, "the expert with the largest
+accumulated loss". But the mechanism builds its weights as
+
+    w_e ∝ exp(−LR · (S_t(e) − min S_t))
+
+so the expert that actually governs month `t` is the one with the **smallest**
+accumulated loss. `argmax` names the least influential expert.
+
+Measured on the SILSO source, `original` expert set, `roving`, 3198 evaluation
+months: `argmax(S)` agreed with `argmax(w)` in **1** month; `argmin(S)` agreed in
+**3198**. The sign was inverted, not merely imprecise.
+
+**What this changes.** `occupancy`, `persistence` and `recovery` are unaffected —
+they are computed from the weights, not from `d_t`. Measured: 0 of 132 cells
+changed occupancy. But `identity_stability`, `distinct_dominants` and
+`dominance_share` all read `d_t`:
+
+- `dominance_share` changed in **42 of 132** cells
+- `distinct_dominants` changed in **27 of 132** cells
+- the largest shift was 0.443 (sunspots · long_memory · roving: 1.000 → 0.557)
+
+**The headline pair reversed.** Run v2 reported `short_memory · roving · CO₂` at
+share 1.000 against `original · q=0 · synthetic` at 0.525. With the corrected
+sign those two read 0.557 and 0.921 — the synthetic cell is the concentrated one.
+The direction of the finding was an artefact of the sign.
+
+**Condition 6 still does not fire, and now on stronger ground.** The best pair is
+two cells from the *same* source, *same* expert set and *same* assignment
+(`synthetic · original · q=0.0`), differing only in `gap` and `retention`:
+
+| cell | occupancy | dominance share | identity stability |
+|---|---:|---:|---:|
+| gap 0.8, r 0.9 | 0.396 | 0.453 | 0.738 |
+| gap 0.2, r 0.99 | 0.393 | **0.921** | 0.937 |
+
+Occupancy differs by 0.3 pp; dominance share by 46.9 pp. The original pair mixed
+sources and expert sets, which was a legitimate objection to it. The corrected
+pair does not.
+
+**Condition 3 also still fires**, on the same two cells: identity stability 0.738
+against 0.937 at near-identical occupancy. So both measures are independent axes,
+and neither replaces the other — the frozen `I` measures transition frequency,
+`dominance_share` measures concentration, and they disagree in sign here.
+
+**The verdict string is unchanged** (`frozen_definition_was_a_grab_bag_axis_survives`)
+because no condition changed its fired/not-fired state. That is a fact about the
+conditions' coarseness, not evidence that the sign did not matter: 42 cells moved
+by up to 0.443 underneath an unchanged verdict.

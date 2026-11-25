@@ -26,12 +26,12 @@ from core.services.visible_terminal_policy import (
 # ── Taelleren og dens fejl-retning ──────────────────────────────────────────
 
 def test_taelleren_laeses_normalt(monkeypatch):
-    monkeypatch.setattr("core.services.auto_continuation.kaede_nr", lambda sid: 2)
+    monkeypatch.setattr("core.services.auto_continuation.kaede_nr", lambda sid, rid="": 2)
     assert vrse.kaede_nr_eller_loft("s1") == 2
 
 
 def test_et_fejlende_opslag_giver_LOFTET_ikke_nul(monkeypatch, caplog):
-    def sprang(_sid):
+    def sprang(_sid, _rid=""):
         raise OSError("journalen kunne ikke laeses")
     monkeypatch.setattr("core.services.auto_continuation.kaede_nr", sprang)
     with caplog.at_level(logging.WARNING):
@@ -43,7 +43,7 @@ def test_et_fejlende_opslag_giver_LOFTET_ikke_nul(monkeypatch, caplog):
 
 
 def test_et_negativt_tal_bliver_ikke_negativt(monkeypatch):
-    monkeypatch.setattr("core.services.auto_continuation.kaede_nr", lambda sid: -5)
+    monkeypatch.setattr("core.services.auto_continuation.kaede_nr", lambda sid, rid="": -5)
     assert vrse.kaede_nr_eller_loft("s1") == 0
 
 
@@ -56,7 +56,7 @@ def test_fallbacken_naar_loftet_saa_politikken_stopper(monkeypatch):
     monkeypatch.setattr(vrse, "settle_segment_exit",
                         lambda **kw: fanget.update(kw) or "udfald")
     monkeypatch.setattr("core.services.auto_continuation.kaede_nr",
-                        lambda sid: (_ for _ in ()).throw(OSError("nede")))
+                        lambda sid, rid="": (_ for _ in ()).throw(OSError("nede")))
     vrse.afgoer_segment_udfald(
         run_id="r1", session_id="s1", exit_reason="completed",
         forced_finalize=True)
@@ -95,7 +95,7 @@ def test_alle_felter_naar_frem_til_afregningen(monkeypatch):
     fanget: dict = {}
     monkeypatch.setattr(vrse, "settle_segment_exit",
                         lambda **kw: fanget.update(kw) or "udfald")
-    monkeypatch.setattr("core.services.auto_continuation.kaede_nr", lambda sid: 1)
+    monkeypatch.setattr("core.services.auto_continuation.kaede_nr", lambda sid, rid="": 1)
     vrse.afgoer_segment_udfald(
         run_id="r7", session_id="s7", exit_reason="completed",
         final_text="svaret", finish_reason="length",
@@ -125,7 +125,7 @@ def _stempling_fanget(monkeypatch, post: dict | None):
     monkeypatch.setattr(db_visible, "stamp_recovery_chain",
                         lambda rid, **kw: fanget.update({"run_id": rid, **kw}) or True)
     monkeypatch.setattr(vrse, "settle_segment_exit", lambda **kw: "udfald")
-    monkeypatch.setattr("core.services.auto_continuation.kaede_nr", lambda sid: 1)
+    monkeypatch.setattr("core.services.auto_continuation.kaede_nr", lambda sid, rid="": 1)
     return fanget
 
 
@@ -169,7 +169,7 @@ def test_ulaeselig_journal_giver_tomme_felter_ikke_gaet(monkeypatch, caplog):
     monkeypatch.setattr(db_visible, "stamp_recovery_chain",
                         lambda rid, **kw: fanget.update(kw) or True)
     monkeypatch.setattr(vrse, "settle_segment_exit", lambda **kw: "udfald")
-    monkeypatch.setattr("core.services.auto_continuation.kaede_nr", lambda sid: 1)
+    monkeypatch.setattr("core.services.auto_continuation.kaede_nr", lambda sid, rid="": 1)
     with caplog.at_level(logging.WARNING):
         vrse.afgoer_segment_udfald(
             run_id="r9", session_id="s9", exit_reason="completed")

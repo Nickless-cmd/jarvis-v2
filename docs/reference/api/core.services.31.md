@@ -438,9 +438,9 @@ _Afgoer hvad et agentisk segment blev til, og goer det durabelt._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `kaede_nr_eller_loft` | `(session_id)` | Hvor langt er genoptagelses-kaeden naaet for denne samtale? | [src](../../../core/services/visible_run_segment_exit.py#L46) |
-| function | `_journalens_kaede` | `(run_id)` | Hvilken OPGAVE koerslen fortsatte, og hvad der vaekkede den. | [src](../../../core/services/visible_run_segment_exit.py#L62) |
-| function | `afgoer_segment_udfald` | `(*, run_id, session_id, exit_reason, final_text=…, finish_reason=…, forced_finalize=…, pending_tool_intent=…, truncated=…)` | Skriv segmentets ophoer durabelt og giv dommen tilbage. | [src](../../../core/services/visible_run_segment_exit.py#L93) |
+| function | `kaede_nr_eller_loft` | `(session_id, run_id=…)` | Hvor langt er genoptagelses-kaeden naaet for denne koersel? | [src](../../../core/services/visible_run_segment_exit.py#L46) |
+| function | `_journalens_kaede` | `(run_id)` | Hvilken OPGAVE koerslen fortsatte, og hvad der vaekkede den. | [src](../../../core/services/visible_run_segment_exit.py#L66) |
+| function | `afgoer_segment_udfald` | `(*, run_id, session_id, exit_reason, final_text=…, finish_reason=…, forced_finalize=…, pending_tool_intent=…, truncated=…)` | Skriv segmentets ophoer durabelt og giv dommen tilbage. | [src](../../../core/services/visible_run_segment_exit.py#L97) |
 
 ## `core/services/visible_run_segment_settlement.py`
 _Ét sted hvor et unormalt segment-ophør bliver durabelt — før noget lukkes._

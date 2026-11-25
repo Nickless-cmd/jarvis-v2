@@ -175,3 +175,68 @@ def test_et_koerende_run_ryddes_ikke(_isoleret_lager):
     _isoleret_lager["lever"]["status"] = "recovering"
     _start("ny", "s1")
     assert "lever" in _isoleret_lager
+
+
+# ── Kaeden laeses fra KOERSLENS post, ikke samtalens nyeste ──────────────────
+#
+# 25/11-2026: `afgoer_segment_udfald` HAVDE run_id i haanden men kastede den
+# vaek og slog op paa samtalens nyeste post. Skrev en anden post sig i samme
+# samtale mens koerslen loeb — fx en agent-vaekning, der journalfoerer sig med
+# `recovery_attempt: 0` — blev den laest i stedet, og loftet var nulstillet
+# midt i en kaede. Samme fejlklasse som de ni ture: et tal der ser maalt ud,
+# men maaler en anden raekke.
+
+def _post(lager, rid, sid, attempt, started):
+    lager[rid] = {
+        "run_id": rid, "task_id": rid, "session_id": sid, "kind": "visible",
+        "status": "running", "started_at": started, "recovery_attempt": attempt,
+    }
+
+
+def test_kaeden_laeses_fra_koerslens_egen_post(_isoleret_lager):
+    _post(_isoleret_lager, "r2", "s1", 2, "2026-11-25T10:00:00+00:00")
+    # En NYERE post i samme samtale, skrevet af en vaekning: forsoeg 0.
+    _post(_isoleret_lager, "vaek", "s1", 0, "2026-11-25T10:05:00+00:00")
+
+    assert ac.kaede_nr("s1", "r2") == 2, "koerslens eget tal skal vinde"
+    # Den gamle adfaerd er stadig synlig uden run_id — den er ikke rettet, den
+    # er blot ikke laengere den vej afregningen bruger.
+    assert ac.kaede_nr("s1") == 0
+
+
+def test_en_vaekning_midt_i_kaeden_nulstiller_ikke_loftet(_isoleret_lager):
+    """Den aegte fejl: et led i kaeden skal ikke kunne reddes af en nabo-post."""
+    from core.services.visible_terminal_policy import TerminalState, classify_terminal
+
+    _post(_isoleret_lager, "r3", "s1", 3, "2026-11-25T10:00:00+00:00")
+    _post(_isoleret_lager, "vaek", "s1", 0, "2026-11-25T10:05:00+00:00")
+
+    kaede = ac.kaede_nr("s1", "r3")
+    assert kaede == 3
+    # Og loftet fyrer dermed: forsoeg 3 mod graensen 3 er terminalt.
+    from core.services.visible_terminal_policy import TerminalEvidence
+    dom = classify_terminal(TerminalEvidence(
+        exit_reason="completed",
+        forced_finalize=True,
+        incompletion_evidence=True,
+        recovery_attempt=kaede,
+        recovery_limit=3,
+    ))
+    assert dom.state is TerminalState.FAILED_TERMINAL
+
+
+def test_manglende_post_falder_tilbage_til_samtalen(_isoleret_lager):
+    """En ryddet post er en afsluttet koersel — saa er samtalens tal det bedste."""
+    _post(_isoleret_lager, "gammel", "s1", 1, "2026-11-25T09:00:00+00:00")
+    assert ac.kaede_nr("s1", "findes-ikke") == 1
+
+
+def test_et_kastende_opslag_giver_LOFTET_ikke_nul(_isoleret_lager, monkeypatch):
+    """Nul betyder «foerste forsoeg». Et opslag der fejler maa ikke give et tal
+    der lader kaeden loebe for evigt."""
+    from core.services import visible_run_segment_exit as vrse
+
+    def sprang(_rid):
+        raise OSError("journalen kunne ikke laeses")
+    monkeypatch.setattr(ifr, "get_record", sprang)
+    assert vrse.kaede_nr_eller_loft("s1", "r2") == vrse.GENOPTAGELSES_LOFT

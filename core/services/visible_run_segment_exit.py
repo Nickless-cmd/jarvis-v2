@@ -43,14 +43,18 @@ logger = logging.getLogger(__name__)
 GENOPTAGELSES_LOFT = 3
 
 
-def kaede_nr_eller_loft(session_id: str) -> int:
-    """Hvor langt er genoptagelses-kaeden naaet for denne samtale?
+def kaede_nr_eller_loft(session_id: str, run_id: str = "") -> int:
+    """Hvor langt er genoptagelses-kaeden naaet for denne koersel?
+
+    `run_id` gives videre, saa tallet laeses fra koerslens EGEN journalpost.
+    Uden den slog vi op paa samtalens nyeste post, og en post skrevet midt i
+    kaeden nulstillede loftet (25/11-2026).
 
     Kan den ikke laeses, gives loftet tilbage — se modulets docstring.
     """
     try:
         from core.services.auto_continuation import kaede_nr
-        return max(0, int(kaede_nr(session_id)))
+        return max(0, int(kaede_nr(session_id, run_id)))
     except Exception:
         logger.warning(
             "kunne ikke laese genoptagelses-kaeden for session %s — segmentet "
@@ -111,7 +115,7 @@ def afgoer_segment_udfald(
     grund = str(exit_reason or "")
     if truncated and grund == "completed":
         grund = "completed-truncated"
-    kaede = kaede_nr_eller_loft(session_id)
+    kaede = kaede_nr_eller_loft(session_id, run_id)
     # Kæden skrives på rækken MENS den stadig kan læses. Journalen ryddes, og et
     # forløb på ni kørsler kunne derfor ikke måles bagefter (25/11-2026).
     opgave, vaekning = _journalens_kaede(run_id)

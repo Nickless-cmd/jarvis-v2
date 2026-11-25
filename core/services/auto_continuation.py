@@ -150,7 +150,7 @@ def hent_udfald(run_id: str, session_id: str = "") -> str:
         return IKKE_BOGFOERT
 
 
-def kaede_nr(session_id: str) -> int:
+def kaede_nr(session_id: str, run_id: str = "") -> int:
     """Hvor mange gange er DENNE samtale allerede genoptaget?
 
     Tallet laa foer i en modul-dict her, skrevet af `saet_kaede`. Den funktion
@@ -165,11 +165,30 @@ def kaede_nr(session_id: str) -> int:
     kommentaren lovede et loft paa tre. Derfor er den doede skriver fjernet
     frem for at faa en kalder — tallet bor ét sted nu, i journalen, som ogsaa er
     der `claim_due_recovery` taeller op.
+
+    HVORFOR `run_id` (25/11-2026): uden den slog vi op paa samtalens NYESTE
+    post, ikke paa den koersel der afregnes. Skriver en anden post sig i samme
+    samtale mens koerslen loeber — fx en agent-vaekning, der journalfoerer sig
+    med `recovery_attempt: 0` — blev den laest i stedet, og loftet var nulstillet
+    midt i en kaede. Det er samme fejlklasse som de ni ture: et tal der ser
+    maalt ud, men maaler en anden raekke. Posten for `run_id` baerer sin EGEN
+    kaede, og den er autoritativ naar den findes.
     """
     sid = (session_id or "").strip()
+    rid = (run_id or "").strip()
+    from core.services.in_flight_runs import aktiv_kaede_nr, get_record
+    if rid:
+        try:
+            post = get_record(rid)
+        except Exception:
+            # Et fejlende opslag maa ikke give nul: nul betyder «foerste
+            # forsoeg», og saa kan loftet aldrig fyre. Kaster videre til
+            # `kaede_nr_eller_loft`, der svarer med LOFTET.
+            raise
+        if post is not None:
+            return max(0, int(post.get("recovery_attempt") or 0))
     if not sid:
         return 0
-    from core.services.in_flight_runs import aktiv_kaede_nr
     return aktiv_kaede_nr(sid)
 
 

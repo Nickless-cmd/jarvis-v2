@@ -1705,3 +1705,48 @@ month-set name held a different set than its name said.
 
 The pattern that keeps repeating: the number that looks like an answer is
 usually a different number with a familiar name.
+
+## Investigation 17 — what retention costs when the world changes
+
+Sixteen investigations measured a mechanism in a world that does not change.
+This one changes one thing: the best expert stops being the best, permanently,
+half-way through the window.
+
+The shift is not a constructed outcome. It is an exchange of prediction series
+between expert names — before the shift `e_i` carries `s_i`, after it `s_(i+1)`.
+Every number stays a real forecast from `_predict`, the outcome is never touched,
+and the control is the same accumulation without the swap. It is also the first
+experiment here whose protocol was committed before any measurement existed.
+
+The most valuable result is not a hypothesis. It is a control that killed my own
+premise. The protocol said retention 0 must cost exactly nothing, "because a
+mechanism that forgets everything cannot carry a stale world forward." With
+`retained ← 0·retained + loss`, `retained` is rebuilt from the previous month's
+loss every step: the weight for month t is built from month t−1's loss. Retention
+0 does not forget everything. It remembers exactly one month, and it carries a
+median excess loss of 0.242 for it. The control that pins this down recomputes
+the constructed loss and lands at residual 0.0, so the leak is the mechanism and
+not a bug.
+
+The same control exposed something that had been true since Investigation 10 and
+never stated in one place: `retained` is updated from `predictions`, not from
+`real`. The weight moves on the imposed gap while the error is scored on the real
+forecasts. The mechanism learns from one thing and is judged on another.
+
+What held: the adaptation delay grows with retention, 6.0 → 8.5 → 126.0 months,
+and lands within a factor 1.52 of the half-life `ln(0.5)/ln(r)`. I expected that
+formula to fail; it did not, and the residual gap has a reason — the weight must
+move past the half-way point while the rank order is rebuilt each month, so
+memory and new evidence compete for longer than pure decay predicts.
+
+Two hypotheses failed, and the failures are worth more than the confirmations.
+Four experts accumulate less than a quarter of two experts' excess loss (8.09 vs
+33.19) but take twice as long to recover (23.5 vs 11.0 months): more experts
+soften the peak and smear the tail. And a **large** regime shift costs *less*
+than a small one — median 8.09 against 60.69 — because a big change is an
+unambiguous signal that moves the weight quickly, while a small one keeps the old
+world looking almost right. The dangerous world is the one that changes just
+enough.
+
+All of this is measured with the outcome in hand. Whether a shift can be noticed
+*before* it arrives is a different question, and it is the next one.

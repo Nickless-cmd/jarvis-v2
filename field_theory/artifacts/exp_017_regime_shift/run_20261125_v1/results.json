@@ -1,0 +1,89 @@
+{
+  "cells": 180,
+  "conditions": {
+    "1_cost_monotone_in_retention": false,
+    "2_delay_grows_with_retention": true,
+    "3_delay_predictable_from_retention": true,
+    "4_diversity_shortens_recovery": false,
+    "5_contrast_drives_cost": false
+  },
+  "conditions_failed": [
+    "1_cost_monotone_in_retention",
+    "4_diversity_shortens_recovery",
+    "5_contrast_drives_cost"
+  ],
+  "contrast_split": {
+    "cut": 3.140854297693922,
+    "high_median": 8.08902285248128,
+    "high_n": 54,
+    "low_median": 60.68719405827196,
+    "low_n": 126
+  },
+  "controls": {
+    "errors_read_from_real_predictions": true,
+    "identity_holds": true,
+    "identity_worst_residual": 0.0,
+    "no_swap_is_fixed_point": true,
+    "permutation_worst_residual": 0.0,
+    "retention_zero_is_inert": false,
+    "retention_zero_worst_excess": 7348.785012425516,
+    "swap_is_permutation": true
+  },
+  "delay_medians": {
+    "0.0": 6.0,
+    "0.9": 8.5,
+    "0.99": 126.0
+  },
+  "diversity": {
+    "four_experts_excess": 8.08902285248128,
+    "four_experts_recovery": 23.5,
+    "two_experts_excess": 33.19001527055364,
+    "two_experts_recovery": 11.0
+  },
+  "h3_median_ratio": 1.5212428762187922,
+  "half_lives": {
+    "0.0": 0.0,
+    "0.9": 6.578813478960585,
+    "0.99": 68.96756393652842
+  },
+  "method_version": "exp_017_regime_shift/1",
+  "parameters": {
+    "assignments": [
+      "fixed",
+      "roving"
+    ],
+    "expert_sets": [
+      "original",
+      "short_memory",
+      "long_memory",
+      "two_experts",
+      "four_experts"
+    ],
+    "gaps": [
+      0.05,
+      0.2,
+      0.8
+    ],
+    "retentions": [
+      0.0,
+      0.9,
+      0.99
+    ]
+  },
+  "retention_medians": {
+    "0.0": 0.2422705930672222,
+    "0.9": 3.399824798547804,
+    "0.99": 164.82889335823603
+  },
+  "sources": {
+    "co2_excluded": {
+      "malformed": 0,
+      "missing": 0
+    },
+    "sunspots_excluded": {
+      "missing": 0,
+      "provisional": 3
+    }
+  },
+  "verdict": "control_failed:retention_zero_leaks"
+}

@@ -245,6 +245,53 @@ The five pairs cited there (`dShare > 0.20` at unchanged occupancy) are all in t
 uncontested regime, where retention does move the rank order — the two sections
 agree, and the conditional is what reconciles them.
 
+## The run count is not an axis — the run shape is
+
+**Post-hoc, on the preserved `run_20261125_v5`.** The identity
+`P/(P+R) = O·K'/(O·K'+(1−O)·K)` carries `K` and `K'` in it, so the obvious next
+question was whether the run count holds information the other measures do not.
+It does not, and the reason is definitional rather than empirical.
+
+`persistence` is *defined* as `below/K`, so `K = O·T/P` is a rearrangement, not a
+regularity. Measured on all 101 cells where persistence is defined: **0
+deviations.** And because collapse and healthy runs alternate inside a single
+sequence, the two counts can never separate by more than one — `K − K'` is −1 (42
+cells), 0 (7) and +1 (83), and **never more**. That difference is exactly the
+window-endpoint term `C₁ + C_T − 1`, so `K'` adds nothing beyond `K` and the two
+endpoints of the window.
+
+Predictively it is equally empty. Regressing `dominance_share` on `O` and `P`
+gives R² = 0.4916; adding `log K` gives 0.5095 — **+0.018** for an entire extra
+variable.
+
+What the identity *did* leave free is the **shape**: how the collapse time is
+partitioned among the runs. `persistence` fixes the mean run length and says
+nothing about whether the collapse arrived as one block or as many. A constructed
+control holding every run-count measure fixed:
+
+| collapse block lengths | occupancy | persistence | recovery | K | K' | longest collapse |
+|---|---:|---:|---:|---:|---:|---:|
+| 10 + 10 + 10 + 10 | 0.250 | 10.0 | 24.0 | 4 | 5 | **10** |
+| 37 + 1 + 1 + 1 | 0.250 | 10.0 | 24.0 | 4 | 5 | **37** |
+
+Every count measure is identical and the longest collapse differs by a factor of
+3.7. The freedom is real in the data too: 27 of 101 cells have
+`longest/persistence > 1.01`, up to 8.49. The sharpest real pair shares source,
+expert set and assignment (`synthetic · original`, `gap 0.8`) — occupancy 0.855
+against 0.852, persistence 18.13 against 18.07, `K = 15` in both — while the
+longest collapse runs **106 against 48**.
+
+So the run count is not an axis; the run shape is. But it is a weak one: adding
+`log(longest/persistence)` on top of `O`, `P` and `log K` moves R² from 0.5095 to
+0.5114. Free, measurable, and nearly uninformative about dominance.
+
+The methodological point is the one worth keeping. Three times now a candidate
+measure has turned out to be a rearrangement of one already in the table —
+`duty_cycle` for occupancy, `mean_over_min` for constancy, and now the run count
+for `O·T/P`. **A quantity derivable from the others is not a measurement of them;
+it is the same measurement wearing a second name.** The shape is what survives
+that test.
+
 ## Controls and the conditions that did not fire
 
 - **Occupancy equals Investigation 10's `duty_cycle`** on all 132 cells, to

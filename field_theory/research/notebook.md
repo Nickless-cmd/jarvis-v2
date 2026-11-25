@@ -1453,6 +1453,27 @@ freedom. That is why the 28 saturated pairs show a large `Δtopw` with a zero
 `Δshare`, and why the power measure is not a better rank measure but the one that
 keeps working after the rank measure runs out of room.
 
-Open: the run-count difference `|K − K'| ≤ 1` is the only freedom the identity
-leaves, so a third measure can only be recovered from `O` and `P` up to a
-boundary term. Whether that term carries information of its own is untested.
+**The run count is not an axis; the run shape is.** The identity carries `K` and
+`K'` in it, so the count looked like a candidate third measure. It is not one:
+`persistence` is *defined* as `below/K`, so `K = O·T/P` is a rearrangement rather
+than a regularity — **0 deviations** across all 101 cells where persistence
+exists. And because collapse and healthy runs alternate inside one sequence, the
+counts cannot separate by more than one: `K − K'` is −1 (42 cells), 0 (7), +1
+(83), never more, and that difference is exactly the window-endpoint term
+`C₁ + C_T − 1`. Regressing `dominance_share` on `O` and `P` gives R² = 0.4916;
+adding `log K` gives 0.5095 — **+0.018** for a whole extra variable.
+
+What the identity did leave free is how the collapse time is *partitioned*. Two
+constructed sequences with identical occupancy 0.250, persistence 10.0, recovery
+24.0, `K = 4` and `K' = 5` differ only in block lengths — 10+10+10+10 against
+37+1+1+1 — and the longest collapse runs **10 against 37**. In the data 27 of 101
+cells have `longest/persistence > 1.01`, up to 8.49, and the sharpest real pair
+(same source, set and assignment, `K = 15` in both) runs 106 against 48. The
+shape is free but weak: adding it on top of `O`, `P` and `log K` moves R² to
+0.5114.
+
+The pattern worth keeping: three times now a candidate measure has turned out to
+be a rearrangement of one already in the table — `duty_cycle` for occupancy,
+`mean_over_min` for constancy, and now the run count for `O·T/P`. A quantity
+derivable from the others is not a measurement of them; it is the same
+measurement wearing a second name.

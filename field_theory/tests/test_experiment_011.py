@@ -561,3 +561,76 @@ def test_retention_bevaeger_rang_og_magt_forskelligt_i_mekanikken() -> None:
     assert d_share > 0.30, d_share
     assert d_weight > 0.10, d_weight
     assert d_weight < d_share, (d_weight, d_share)
+
+
+def test_run_antallet_er_en_omformulering_af_occupancy_og_persistence(results: dict) -> None:
+    """The run count is not a fifth measure — it is ``O·T/P`` rearranged.
+
+    ``persistence`` is *defined* as ``below/K``, so the count follows from
+    occupancy and persistence with no freedom left. If a future edit reports a
+    count that disagrees with the formula, the two no longer describe the same
+    series and one of them is wrong.
+    """
+    checked = 0
+    for cell in results["cells"]:
+        if cell["persistence"] is None:
+            continue
+        implied = cell["occupancy"] * cell["rows"] / cell["persistence"]
+        assert implied == pytest.approx(cell["collapse_runs"], abs=1e-9), cell["source"]
+        checked += 1
+    assert checked == 101, checked
+
+    # Alternating runs cannot separate by more than one, and the difference is
+    # exactly the window-endpoint term. Nothing here is a free parameter.
+    for cell in results["cells"]:
+        gap = cell["collapse_runs"] - cell["healthy_runs"]
+        assert abs(gap) <= 1, (cell["source"], cell["expert_set"], gap)
+
+
+def test_run_formen_er_fri_naar_O_P_og_K_er_faste() -> None:
+    """The shape survives where the count does not: same O, P, R, K, K' — different longest.
+
+    Constructed, not measured: it proves the degree of freedom exists, which is
+    what the report claims. That it also occurs in the data is pinned by the
+    preserved artefact, not by this test.
+    """
+    from feltteori_research.experiment_011_four_measures import _four_measures
+
+    def series(flags: list[bool]) -> dict[str, object]:
+        return {
+            "effective": [1.0 if flag else 9.0 for flag in flags],
+            "dominant": ["a"] * len(flags),
+            "top_weight": [0.5] * len(flags),
+            "top_margin": [0.1] * len(flags),
+            "floor": 2.0,
+            "rows": len(flags),
+        }
+
+    even_flags = ([False] * 10 + [True] * 10) * 4 + [False] * 80
+    skewed_flags = (
+        [False] * 10
+        + [True] * 37
+        + [False] * 10
+        + [True] * 1
+        + [False] * 10
+        + [True] * 1
+        + [False] * 10
+        + [True] * 1
+    )
+    skewed_flags += [False] * (160 - len(skewed_flags))
+
+    even = _four_measures(series(even_flags))
+    skewed = _four_measures(series(skewed_flags))
+
+    # Every run-count measure agrees.
+    for key in ("occupancy", "persistence", "recovery", "collapse_runs", "healthy_runs"):
+        assert even[key] == pytest.approx(skewed[key]), (key, even[key], skewed[key])
+    # The definitional link that makes the count redundant: persistence is
+    # below/K, so K follows from occupancy and persistence with nothing left over.
+    assert even["occupancy"] * 160 / even["persistence"] == pytest.approx(
+        even["collapse_runs"]
+    )
+    # The shape does not.
+    assert even["longest_collapse"] == 10
+    assert skewed["longest_collapse"] == 37
+    assert skewed["longest_collapse"] / skewed["persistence"] > 3.5

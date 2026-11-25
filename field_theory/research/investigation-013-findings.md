@@ -73,9 +73,17 @@ split-half: `ratio` measured on the first half of the evaluation months against
 | `ratio_second` → `d_first` | 0.208 |
 | `ratio_first` → `d_first` (same half) | 0.249 |
 
-Both cross-half values exceed the same-half value. If the effect were mean
-reversion inside one measurement, the opposite would hold. It is a real structural
-link, not an artefact of choosing the extreme cells.
+The split-half test is **not clean, and it was reported as if it were**. Only the
+first direction exceeds the same-half value (0.358 against 0.249); the second is
+lower (0.208). An earlier version of this paragraph said both did, which the table
+directly above contradicts.
+
+What survives is weaker but still informative: under pure mean reversion inside one
+measurement, *both* cross-half correlations should fall below the same-half one,
+because both would share the same noise. One of them does not. That makes pure mean
+reversion unlikely, but it does not rule it out on its own — the asymmetry is a
+hint, not a proof, and the honest reading is that this test alone cannot settle the
+question.
 
 ## But it cannot be known in advance, and that is the answer
 
@@ -90,8 +98,14 @@ question with operational value is what can be known *before* it. Measured again
 | expert disagreement (std of the experts' own predictions) | **0.034** |
 
 The best predictor available before the outcome explains 15 %, against 30 % for
-the ex post measure. **Seventy percent of the variation in the retention effect is
-not available until the outcome is known.**
+the ex post measure. So **85 % of the variation is unexplained by the ex ante
+signals tested here** — three of them, chosen before the run.
+
+That is not the same as *unavailable*, and an earlier version of this paragraph
+said it was. Unexplained variance is variance no tested signal accounts for; it may
+be irreducible, or it may sit in a signal nobody has looked at. The measurement
+supports the weaker claim, and only the weaker claim: none of the ex ante signals
+tested recovers most of the effect.
 
 And the intuitive candidate is the emptiest of all. The disagreement between the
 experts' own predictions — the obvious proxy for "there is something to gain here"

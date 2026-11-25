@@ -51,6 +51,17 @@ ante signal, calibrated on development and applied to test, lands at 1.42091
 against the best fixed alpha's 1.42093 — a ratio of 0.999987. It wins by two
 parts in a hundred thousand. That is a tie, not a win.
 
+There is a detail behind that number worth stating, because it makes the "tie"
+partly definitional. Of the four signals, **one never moved** — `spread` picked
+alpha = 10 in all four splits (10/10/10/10) and is therefore the fixed choice
+wearing an adaptive name. A second, `retained_gap`, moved in only one split
+(10/10/10/5). Only `top_weight` and `effective` vary their choice across the whole
+range, and they vary it in mirror image: 10/10/5/1 against 1/5/10/10.
+
+So the honest reading is narrower than "adaptivity does not help": **one of four
+signals degenerated to the constant, one nearly did, and the two that genuinely
+moved landed within 2·10⁻⁵ of it.**
+
 ## The signal is real but weak — and it is one signal, not two
 
 My registered hypothesis H3 said no ex ante signal would reach a rank
@@ -63,11 +74,17 @@ correlation of 0.20 with the per-month best alpha. **It was falsified:**
 | `spread` of `real` | −0.1170 | no |
 | `retained_gap` | −0.0228 | no |
 
-The two that pass are the **same axis with opposite signs**: a high top weight
-*is* a low effective expert count. Reporting them as two signals would be the
-run-count error again — a quantity derived from another is not a second
-measurement of it. So the honest count is **one** weak ex ante signal, at
-|ρ| ≈ 0.22, which is about 5 % of the variance in which alpha is best.
+The two that pass are **strongly correlated with opposite signs** (ρ = −0.221 and
++0.222), and their alpha choices are exact mirrors of each other: `top_weight`
+picks 10, 10, 5, 1 across the four splits where `effective` picks 1, 5, 10, 10.
+That is why they are counted as **one** signal here — reporting both would be the
+run-count error again.
+
+But "same axis" is an empirical statement about these data, not an algebraic
+identity, and an earlier version of this paragraph overstated it. They are not
+mathematically equivalent: weights 50/25/25 and 50/49/1 both have a top weight of
+0.5 while their effective counts are 2.67 and 2.04. The measured correlation is
+what licenses treating them as one signal; the algebra does not.
 
 ## The room exists — the rule does not find it
 

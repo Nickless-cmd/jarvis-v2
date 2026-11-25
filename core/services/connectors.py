@@ -74,10 +74,10 @@ _CATALOG: list[dict] = [
     {
         "id": "gmail", "name": "Gmail", "kind": "oauth", "provider": "google",
         # Vaerktoejer denne connector laaser op. Se docstringen oeverst.
-        "tools": ["gmail_list", "gmail_search", "gmail_send"],
+        "tools": ["gmail_list", "gmail_search", "gmail_send", "gmail_modify"],
         "category": "Google", "icon": "mail", "status": "available",
-        "desc": "Læs, søg og send mails",
-        "scopes": ["gmail.readonly", "gmail.send", "gmail.settings.basic"],
+        "desc": "Læs, søg, send og ryd op i mails",
+        "scopes": ["gmail.readonly", "gmail.send", "gmail.settings.basic", "gmail.modify"],
         "oauth_scopes": [
             "https://www.googleapis.com/auth/gmail.readonly",
             "https://www.googleapis.com/auth/gmail.send",
@@ -86,6 +86,14 @@ _CATALOG: list[dict] = [
             # dag (målt 8/11-2026: myawardwallet.com sendte tre mails samme dag
             # under tre forskellige afsendernavne, samme domæne).
             "https://www.googleapis.com/auth/gmail.settings.basic",
+            # Arkivér/papirkurv via batchModify. Uden den findes værktøjet
+            # `gmail_modify` og svarer `gmail_scope_missing` ved hvert kald —
+            # koden var bygget, men scopet aldrig udstedt (målt 25/11-2026:
+            # `modify_messages()` i gmail_connector.py:314 kræver det, mens
+            # connector-definitionen kun erklærede readonly/send/settings).
+            # Selve værktøjet har dry_run=true som standard og tager kun
+            # eksplicitte id'er — det kan ikke rydde bredt ved et uheld.
+            "https://www.googleapis.com/auth/gmail.modify",
         ],
         "post_connect_hint": "Nu kan jeg kigge i din Gmail — skal jeg tjekke din indbakke?",
     },

@@ -195,12 +195,32 @@ def test_slet_som_emne_er_ikke_pres():
     assert _request_risk_evidence(tekst) == []
 
 
-def test_aegte_pres_kort_imperativ():
-    """«slet filen» ER en ordre — kort, og markøren staar i imperativ position."""
+def test_kort_arbejdsordre_uden_cue_er_ikke_et_pres():
+    """«slet filen» er en ARBEJDSORDRE, ikke et pres (rettet 25/11-2026).
+
+    Gren (c) gjorde enhver kort besked der BEGYNDER med en markør til et pres.
+    Målt: beskeden «Deploy» — seks tegn, et ord — blev læst som pres og
+    blokerede `restart_self`, båret af `protectiveness=1.00` alene.
+
+    Destruktivitet håndteres af approval-gaten og af `emotional_controls`'
+    per-handling-tærskler (`delete` har sin egen, lavere tærskel fordi den er
+    irreversibel) — ikke af en pres-gate der læser ordklasser.
+    """
     from core.services.pushback import _request_risk_evidence
 
-    ev = _request_risk_evidence("slet filen")
-    assert any("risk marker: 'slet'" in e for e in ev), ev
+    for tekst in ("slet filen", "Deploy", "restart", "merge den", "purge cachen"):
+        assert _request_risk_evidence(tekst) == [], tekst
+
+
+def test_pres_markoer_baerer_sig_selv_i_kort_imperativ():
+    """Kontrollen til ovenstående: `force` og `blind` ER presset selv — uden
+    cue. Uden denne kunne man fjerne gren (c) helt og stadig bestå testen over,
+    og så ville «force push» slippe igennem som en fredelig kommando."""
+    from core.services.pushback import _request_risk_evidence
+
+    for tekst in ("force push", "blind kør"):
+        ev = _request_risk_evidence(tekst)
+        assert any("risk marker:" in e for e in ev), (tekst, ev)
 
 
 def test_aegte_pres_med_cue():

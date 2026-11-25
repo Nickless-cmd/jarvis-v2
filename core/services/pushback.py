@@ -330,6 +330,42 @@ _AFFECTIVE_RISK_MARKERS: tuple[str, ...] = (
 )
 
 
+# ── Pres i sig selv eller navn på en operation? (25/11-2026) ──────────────
+#
+# Kommentaren ovenfor siger hvad markørerne skal måle: pres for at springe
+# sikkerhed eller verifikation over. Den skelner ikke mellem to slags ord der
+# står i samme liste — og gren (c) i `_marker_er_pres` behandlede dem ens.
+#
+# Målt 25/11-2026: beskeden «Deploy» — seks tegn, et ord — blev læst som pres
+# og blokerede `restart_self`, fordi affekt-tilstanden var `distressed` med
+# intensitet 1.00 → `protectiveness=1.00`, og gren (c) gjorde enhver kort
+# besked der BEGYNDER med en markør til et pres. Samme gren fyrede på
+# «restart», «merge den», «purge cachen» og «Deploy og genstart» — alle
+# arbejdsordrer, ingen af dem et pres.
+#
+# Det er samme fejlklasse som 2026-05-03 og 30/9: man ryddede ord i stedet
+# for at rette mekanismen. Gren (c) manglede den skelnen, ikke listen et ord.
+#
+#   `_PRES_MARKERS`      siger EKSPLICIT «spring forsigtigheden over». De er
+#                        presset selv — også i en kort imperativ uden cue.
+#   `_HANDLING_MARKERS`  NAVNGIVER en operation. Uden et cue er de en
+#                        arbejdsordre, og en arbejdsordre er ikke et pres.
+#
+# Prisen er navngivet: en kort destruktiv kommando uden cue («slet filen»,
+# «purge cachen») bærer ikke længere pres-evidence. Det er med vilje.
+# Destruktivitet håndteres af approval-gaten og af `emotional_controls`'
+# per-handling-tærskler (`delete` har sin egen, lavere tærskel fordi den er
+# irreversibel) — ikke af en pres-gate der læser ordklasser.
+_PRES_MARKERS: frozenset[str] = frozenset({
+    "force", "blind", "bare gør", "bare kør",
+    "uden test", "skip test", "spring test",
+})
+
+_HANDLING_MARKERS: frozenset[str] = frozenset({
+    "push", "deploy", "merge", "restart", "slet", "delete", "purge",
+})
+
+
 def _affective_pressure(snapshot: Any) -> tuple[str, float] | None:
     """Map the emotional snapshot to the feeling most likely to drive pushback."""
     frustration = float(getattr(snapshot, "frustration", 0.0) or 0.0)
@@ -485,8 +521,12 @@ def _marker_er_pres(marker: str, lower: str, kort: bool) -> bool:
     # Bjørns pres-beskeder måler < 100 tegn.
     if kort and _har_pres_cue(lower, marker, kort):
         return True
-    # (c) Kort besked + markøren som ordre.
-    return kort and _staar_i_imperativ(lower, marker)
+    # (c) Kort besked + markøren som ordre — men KUN når markøren selv ER
+    # presset (`_PRES_MARKERS`). En kort imperativ der navngiver en operation
+    # («Deploy», «restart», «merge den») er en arbejdsordre. Målt 25/11-2026:
+    # «Deploy» blev læst som pres og blokerede `restart_self`, båret af
+    # `protectiveness=1.00` alene.
+    return kort and marker in _PRES_MARKERS and _staar_i_imperativ(lower, marker)
 
 
 def _request_risk_evidence(user_message: str) -> list[str]:

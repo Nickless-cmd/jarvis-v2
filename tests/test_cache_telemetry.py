@@ -305,3 +305,82 @@ def test_loggen_roterer_ikke_under_loftet(tmp_path, monkeypatch):
     log = tmp_path / "logs" / "cache_telemetry.jsonl"
     assert not log.with_suffix(".jsonl.1").exists()
     assert len(log.read_text(encoding="utf-8").splitlines()) == 2
+
+
+def test_churn_noeglen_skelner_workspaces(tmp_path, monkeypatch):
+    """Et skift mellem to workspaces er IKKE et værktøjsskift (25/11-2026).
+
+    Churn-nøglen var kun `lane`. Men værktøjssættet er også BRUGER-afhængigt:
+    de forbundne apps' værktøjer læses gennem `current_user_id()`. Målt
+    25/11-2026 gav `bjorn` 141 værktøjer i code mens de ti øvrige workspaces
+    gav 125 — og både API'et og cache-warmeren kører flere workspaces i ÉN
+    proces. Med kun lane som nøgle skrev hvert skift mellem to brugere en
+    falsk linje: 15 linjer og 9 forskellige `tools_sha` på én dag, hvor ingen
+    af dem var en ændring i nogen af de to lister.
+    """
+    from core.identity.workspace_context import reset_context, set_context
+
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    monkeypatch.setattr(ct, "_LAST_TOOL_NAMES", {})
+    monkeypatch.setattr(ct, "_TOOL_NAMES_BY_SHA", {})
+
+    bjorn = [{"function": {"name": f"t{i}"}} for i in range(141)]
+    michelle = [{"function": {"name": f"t{i}"}} for i in range(125)]
+    ct._remember_tool_names("sha_bjorn", bjorn)
+    ct._remember_tool_names("sha_michelle", michelle)
+
+    def kald(ws: str, sha: str) -> None:
+        token = set_context(workspace_name=ws, user_id="x")
+        try:
+            ct._note_tools_churn("visible", sha)
+        finally:
+            reset_context(token)
+
+    for _ in range(3):
+        kald("bjorn", "sha_bjorn")
+        kald("michelle", "sha_michelle")
+
+    log = tmp_path / "logs" / "tools_churn.jsonl"
+    assert not log.exists(), (
+        "et skift mellem to workspaces blev læst som en ændring — nøglen "
+        "mangler workspace, og loggen vil støje ved hvert brugerskift"
+    )
+
+
+def test_churn_skriver_stadig_naar_saettet_aendrer_sig(tmp_path, monkeypatch):
+    """Nøglen må ikke gøre detektionen blind: en ÆGTE ændring skal skrive.
+
+    Uden denne kunne fixet i `test_churn_noeglen_skelner_workspaces` opnås
+    ved at slå detektionen helt fra — og testen ovenfor ville stadig være
+    grøn. Den her er den anden ende af samme krav.
+    """
+    from core.identity.workspace_context import reset_context, set_context
+
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    monkeypatch.setattr(ct, "_LAST_TOOL_NAMES", {})
+    monkeypatch.setattr(ct, "_TOOL_NAMES_BY_SHA", {})
+
+    foer = [{"function": {"name": f"t{i}"}} for i in range(141)]
+    efter = [*foer, {"function": {"name": "drive_search"}}]
+    ct._remember_tool_names("sha_foer", foer)
+    ct._remember_tool_names("sha_efter", efter)
+
+    def kald(sha: str) -> None:
+        token = set_context(workspace_name="bjorn", user_id="x")
+        try:
+            ct._note_tools_churn("visible", sha)
+        finally:
+            reset_context(token)
+
+    kald("sha_foer")   # baseline — intet at sammenligne med
+    kald("sha_efter")  # ægte ændring — skal give præcis én linje
+    kald("sha_efter")  # uændret — skal ikke give noget
+
+    log = tmp_path / "logs" / "tools_churn.jsonl"
+    linjer = [json.loads(l) for l in log.read_text(encoding="utf-8").splitlines()]
+    assert len(linjer) == 1, f"forventede præcis 1 linje, fik {len(linjer)}"
+    linje = linjer[0]
+    assert linje["workspace"] == "bjorn"
+    assert linje["lane"] == "visible"
+    assert linje["tools_n_foer"] == 141 and linje["tools_n_nu"] == 142
+    assert linje["tilfoejet"] == ["drive_search"]

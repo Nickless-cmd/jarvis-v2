@@ -226,10 +226,19 @@ def message_signatures(messages: list[dict[str, Any]]) -> tuple[list[str], list[
 #: skal bruge ~15 gange.
 _TOOL_NAMES_BY_SHA: dict[str, list[str]] = {}
 
-#: Sidste sete navneliste PR. LANE. Nødvendigt: `visible` og `visible-call`
-#: kalder begge hertil i samme proces med vidt forskellige sæt (51-82 KB mod
-#: 29 KB), så de skifter på skift. Uden lane-nøglen ville hvert sådant flip
-#: skrive en linje — ~193 støjlinjer for 15 ægte hændelser.
+#: Sidste sete navneliste PR. (LANE, WORKSPACE). To ting skifter i samme
+#: proces og skal ikke blandes sammen:
+#:
+#: 1. `visible` og `visible-call` kalder begge hertil med vidt forskellige
+#:    sæt (51-82 KB mod 29 KB), så de skifter på skift. Uden lane-nøglen
+#:    ville hvert sådant flip skrive en linje — ~193 støjlinjer for 15 ægte
+#:    hændelser.
+#: 2. Værktøjssættet er også BRUGER-afhængigt: de forbundne apps' værktøjer
+#:    læses gennem `current_user_id()`. Målt 25/11-2026 gav `bjorn` 141
+#:    værktøjer i code mens de ti øvrige workspaces gav 125 — og
+#:    cache-warmeren kører dem alle i ÉN proces. Med kun lane som nøgle
+#:    skrev hvert skift mellem to workspaces en falsk churn-linje, og
+#:    loggen så ud som om værktøjssættet flippede 15 gange på en dag.
 _LAST_TOOL_NAMES: dict[str, list[str]] = {}
 
 
@@ -260,14 +269,24 @@ def _remember_tool_names(tools_sha: str, tools: Any) -> None:
 def _note_tools_churn(lane: str, tools_sha: str) -> None:
     """Skriv ÉN linje naar værktøjssættet ændrer sig: hvad kom, hvad gik.
 
-    Self-safe — maa aldrig kaste ind i stream-stien. Foerste kald pr. lane
-    skriver IKKE (der er intet at sammenligne med); det saetter kun baseline.
+    Self-safe — maa aldrig kaste ind i stream-stien. Foerste kald pr.
+    (lane, workspace) skriver IKKE (der er intet at sammenligne med); det
+    saetter kun baseline.
     """
     try:
         names = _TOOL_NAMES_BY_SHA.get(tools_sha)
         if names is None:
             return
-        noegle = str(lane or "-")
+        # Workspace ind i nøglen: to workspaces i samme proces har hvert sit
+        # sæt, og et skift mellem dem er ikke en ændring i nogen af dem.
+        _ws = ""
+        try:
+            from core.identity.workspace_context import current_workspace_name
+
+            _ws = str(current_workspace_name() or "")
+        except Exception:  # self-safe: konteksten er valgfri
+            _ws = ""
+        noegle = f"{lane or '-'}|{_ws}" if _ws else str(lane or "-")
         foer = _LAST_TOOL_NAMES.get(noegle)
         _LAST_TOOL_NAMES[noegle] = names
         if foer is None or foer == names:
@@ -281,7 +300,8 @@ def _note_tools_churn(lane: str, tools_sha: str) -> None:
         line = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "pid": os.getpid(),
-            "lane": noegle,
+            "lane": str(lane or "-"),
+            "workspace": _ws,
             "tools_sha": tools_sha,
             "tools_n_foer": len(foer), "tools_n_nu": len(names),
             "tilfoejet": sorted(nu_s - foer_s),

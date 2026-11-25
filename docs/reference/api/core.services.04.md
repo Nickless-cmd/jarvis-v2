@@ -459,12 +459,12 @@ _Per-request cache-telemetri for den synlige DeepSeek-lane (2026-06-30)._
 | function | `telemetri_spaend` | `(*, sti=…)` | Det tidsrum telemetrien FAKTISK daekker — paa tvaers af alle generationer. | [src](../../../core/services/cache_telemetry.py#L79) |
 | function | `prefix_signature` | `(system_content, tools)` | Beregn (sha-prefix, længde) for det cachebare [system + tools]. | [src](../../../core/services/cache_telemetry.py#L147) |
 | function | `message_signatures` | `(messages)` | Ét fingeraftryk og én laengde pr. besked, i den raekkefoelge de sendes. | [src](../../../core/services/cache_telemetry.py#L173) |
-| function | `_tool_name` | `(tool)` | Navnet ud af en OpenAI-formet tool-definition — tolerant over for formen. | [src](../../../core/services/cache_telemetry.py#L236) |
-| function | `_remember_tool_names` | `(tools_sha, tools)` | Gem navnene bag deres hash, saa `record_visible_cache` kan slaa dem op. | [src](../../../core/services/cache_telemetry.py#L246) |
-| function | `_note_tools_churn` | `(lane, tools_sha)` | Skriv ÉN linje naar værktøjssættet ændrer sig: hvad kom, hvad gik. | [src](../../../core/services/cache_telemetry.py#L260) |
-| function | `component_signatures` | `(messages, tools)` | Fingerprint prompt regions separately, without recording their contents. | [src](../../../core/services/cache_telemetry.py#L302) |
-| function | `record_visible_cache` | `(*, run_id=…, round_index=…, autonomous=…, lane=…, provider=…, model=…, prefix_sha=…, prefix_len=…, cache_hit=…, cache_miss=…, session_id=…, system_sha=…, tools_sha=…, tail_sha=…, system_len=…, tools_len=…, tools_n=…, tail_len=…, system_chunks=…, msg_shas=…, msg_lens=…, msg_count=…)` | Append én telemetri-linje. Self-safe (sluger alt). | [src](../../../core/services/cache_telemetry.py#L339) |
-| function | `build_cache_telemetry_surface` | `(*, tail_bytes=…)` | Mission Control-surface: holder prefix-cachen, og hvornaar brød den sidst? | [src](../../../core/services/cache_telemetry.py#L429) |
+| function | `_tool_name` | `(tool)` | Navnet ud af en OpenAI-formet tool-definition — tolerant over for formen. | [src](../../../core/services/cache_telemetry.py#L245) |
+| function | `_remember_tool_names` | `(tools_sha, tools)` | Gem navnene bag deres hash, saa `record_visible_cache` kan slaa dem op. | [src](../../../core/services/cache_telemetry.py#L255) |
+| function | `_note_tools_churn` | `(lane, tools_sha)` | Skriv ÉN linje naar værktøjssættet ændrer sig: hvad kom, hvad gik. | [src](../../../core/services/cache_telemetry.py#L269) |
+| function | `component_signatures` | `(messages, tools)` | Fingerprint prompt regions separately, without recording their contents. | [src](../../../core/services/cache_telemetry.py#L322) |
+| function | `record_visible_cache` | `(*, run_id=…, round_index=…, autonomous=…, lane=…, provider=…, model=…, prefix_sha=…, prefix_len=…, cache_hit=…, cache_miss=…, session_id=…, system_sha=…, tools_sha=…, tail_sha=…, system_len=…, tools_len=…, tools_n=…, tail_len=…, system_chunks=…, msg_shas=…, msg_lens=…, msg_count=…)` | Append én telemetri-linje. Self-safe (sluger alt). | [src](../../../core/services/cache_telemetry.py#L359) |
+| function | `build_cache_telemetry_surface` | `(*, tail_bytes=…)` | Mission Control-surface: holder prefix-cachen, og hvornaar brød den sidst? | [src](../../../core/services/cache_telemetry.py#L449) |
 
 ## `core/services/cadence_claims.py`
 _Ét krav ad gangen, og en nedkoeling der overlever en genstart._

@@ -39,12 +39,12 @@ _Persistence + terminal outcome for visible runs (fail/cancel forbliver i main).
 | function | `_guarantee_visible_outcome` | `(run)` | LIVSCYKLUS-INVARIANT (Bjørn 29. jun, #1): en completed INTERAKTIV run må ALDRIG | [src](../../../core/services/visible_runs_outcomes.py#L707) |
 | function | `_stemple_afslutning_synkront` | `(run_id, *, status, finished_at, error=…)` | Skriv ``finished_at`` + ``status`` SYNKRONT — luk race-vinduet mod sweepen. | [src](../../../core/services/visible_runs_outcomes.py#L728) |
 | function | `set_last_visible_run_outcome` | `(run, *, status, error=…, text_preview=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L772) |
-| function | `persist_visible_run_start` | `(run)` | Skriv en ``running``-række i ``visible_runs`` i det øjeblik runnet starter. | [src](../../../core/services/visible_runs_outcomes.py#L847) |
-| function | `_sikr_profil_kolonner` | `(conn)` | Doven migration — samme moenster som `kind` paa chat_sessions. | [src](../../../core/services/visible_runs_outcomes.py#L901) |
-| function | `_profil_for_raekken` | `(run)` | (navn, hash, skema-version) for koerslen. Selv-sikker. | [src](../../../core/services/visible_runs_outcomes.py#L922) |
-| function | `stamp_visible_run_interrupted` | `(run_id, *, reason=…)` | Stempl en ``running``-række som ``interrupted`` — kun hvis den stadig kører. | [src](../../../core/services/visible_runs_outcomes.py#L936) |
-| function | `stamp_visible_run_superseded` | `(run_id, *, reason=…)` | Luk en afløst række hvis genoptagelse skete under et andet run_id. | [src](../../../core/services/visible_runs_outcomes.py#L1000) |
-| function | `_persist_visible_run_outcome` | `(run, *, status, finished_at, text_preview=…, error=…, no_model_call=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L1073) |
+| function | `persist_visible_run_start` | `(run)` | Skriv en ``running``-række i ``visible_runs`` i det øjeblik runnet starter. | [src](../../../core/services/visible_runs_outcomes.py#L853) |
+| function | `_sikr_profil_kolonner` | `(conn)` | Doven migration — samme moenster som `kind` paa chat_sessions. | [src](../../../core/services/visible_runs_outcomes.py#L907) |
+| function | `_profil_for_raekken` | `(run)` | (navn, hash, skema-version) for koerslen. Selv-sikker. | [src](../../../core/services/visible_runs_outcomes.py#L928) |
+| function | `stamp_visible_run_interrupted` | `(run_id, *, reason=…)` | Stempl en ``running``-række som ``interrupted`` — kun hvis den stadig kører. | [src](../../../core/services/visible_runs_outcomes.py#L942) |
+| function | `stamp_visible_run_superseded` | `(run_id, *, reason=…)` | Luk en afløst række hvis genoptagelse skete under et andet run_id. | [src](../../../core/services/visible_runs_outcomes.py#L1006) |
+| function | `_persist_visible_run_outcome` | `(run, *, status, finished_at, text_preview=…, error=…, no_model_call=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L1079) |
 
 ## `core/services/visible_runs_sse_v2.py`
 _Translator: legacy SSE-events → Anthropic-style v2-protokol._

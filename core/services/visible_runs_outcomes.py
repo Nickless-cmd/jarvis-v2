@@ -784,6 +784,12 @@ def set_last_visible_run_outcome(
         "model": run.model,
         "status": status,
         "finished_at": finished_at,
+        # Ejeren foelger med ud af processen, saa den friske tekst kan
+        # afproeves mod SAMME noegle-graense som DB-raekken. Uden den kan en
+        # laeser ikke afgoere om teksten er et svar eller chiffertekst —
+        # `svar_for_run` returnerede den foer raat.
+        "user_id": str(getattr(run, "user_id", "") or ""),
+        "session_id": str(getattr(run, "session_id", "") or ""),
     }
     if error:
         outcome["error"] = error

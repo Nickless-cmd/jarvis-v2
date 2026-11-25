@@ -257,6 +257,77 @@ def test_svar_for_run_er_tom_for_ukendt_koersel(isolated_runtime) -> None:
     assert svar_for_run("findes-ikke") == ""
 
 
+def _saet_frisk_outcome(**felter) -> None:
+    """Skriv `_LAST_VISIBLE_RUN_OUTCOME` som `set_last_visible_run_outcome` gør."""
+    from core.services import visible_runs as vr
+
+    vr._LAST_VISIBLE_RUN_OUTCOME = dict(felter)
+
+
+def test_svar_for_run_giver_aldrig_chiffertekst_fra_den_friske_hukommelse(isolated_runtime) -> None:
+    """Den friske in-memory gren er en ANDEN vej til samme svar — og den
+    manglede det vaern DB-grenen har (maalt 25/11-2026).
+
+    `set_last_visible_run_outcome` saetter `_LAST_VISIBLE_RUN_OUTCOME`
+    synkront, og `svar_for_run` laeser den FOER DB-raekken (saa svaret findes
+    i det oejeblik raekken foedes). Returnerede den teksten raat, slap
+    `enc:v1:…` ud til `run_done`-kortet — en bredt laest flade. Det er
+    praecis den fejlklasse `laesbaar_preview` blev skrevet for, og garantien
+    «aldrig chiffertekst ud» gjaldt kun den ene af de to veje.
+    """
+    import base64
+    from datetime import UTC, datetime
+
+    from core.services import visible_runs as vr
+    from core.services.visible_preview_crypto import PLADSHOLDER_KRYPTERET
+    from core.services.visible_runs_sections.run_finalization import svar_for_run
+
+    chiffer = "enc:v1:" + base64.b64encode("hemmeligt medlems-svar".encode()).decode()
+    _saet_frisk_outcome(
+        run_id="r-frisk",
+        status="completed",
+        finished_at=datetime.now(UTC).isoformat(),
+        text_preview=chiffer,
+        user_id="ukendt-uden-noegle",
+        session_id="chat-ukendt",
+    )
+    try:
+        svar = svar_for_run("r-frisk")
+    finally:
+        vr._LAST_VISIBLE_RUN_OUTCOME = None
+
+    assert svar == PLADSHOLDER_KRYPTERET, (
+        f"chiffertekst slap ud af den friske gren: {svar[:60]!r}"
+    )
+
+
+def test_svar_for_run_lader_klartekst_passere_fra_den_friske_hukommelse(isolated_runtime) -> None:
+    """Vaernet maa ikke goere den normale vej langsommere eller tom.
+
+    Klartekst er allerede et svar; `laesbaar_preview` skal vaere en
+    pass-through, ellers ville hver eneste friske kørsel miste sin tekst.
+    """
+    from datetime import UTC, datetime
+
+    from core.services import visible_runs as vr
+    from core.services.visible_runs_sections.run_finalization import svar_for_run
+
+    _saet_frisk_outcome(
+        run_id="r-frisk-klar",
+        status="completed",
+        finished_at=datetime.now(UTC).isoformat(),
+        text_preview="Jeg byggede det, og her er hvad jeg fandt.",
+        user_id="1246415163603816499",
+        session_id="chat-1",
+    )
+    try:
+        svar = svar_for_run("r-frisk-klar")
+    finally:
+        vr._LAST_VISIBLE_RUN_OUTCOME = None
+
+    assert svar == "Jeg byggede det, og her er hvad jeg fandt."
+
+
 def test_run_done_baerer_svaret_ikke_kun_titlen(isolated_runtime, monkeypatch) -> None:
     """Kortet blev foedt med en titel og en TOM tekst, saa fladen kunne sige
     at der var et svar uden at vise det (Bjoern 26/9-2026)."""

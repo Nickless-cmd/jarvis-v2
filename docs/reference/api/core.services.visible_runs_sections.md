@@ -76,9 +76,9 @@ _Hvad der skal ske NÅR et visible run er slut — samlet ét sted._
 | function | `advance_tool_lifecycle` | `(session_id)` | Ryk tool-result cold_floor frem (spec 2026-07-16). Self-safe. | [src](../../../core/services/visible_runs_sections/run_finalization.py#L49) |
 | function | `status_for_run` | `(run_id)` | Koerslens status, eller "" hvis den ikke findes. | [src](../../../core/services/visible_runs_sections/run_finalization.py#L74) |
 | function | `svar_for_run` | `(run_id)` | Kørslens svar — den tekst assistenten skrev — eller "". | [src](../../../core/services/visible_runs_sections/run_finalization.py#L130) |
-| function | `finalize_run` | `(session_id, *, status)` | Kaldes fra run-afslutningens finally — uanset hvordan runnet endte. | [src](../../../core/services/visible_runs_sections/run_finalization.py#L171) |
-| function | `finalize_in_flight` | `(*, run_id, session_id, status, error=…)` | Resolve durable recovery state without erasing resumable work. | [src](../../../core/services/visible_runs_sections/run_finalization.py#L182) |
-| function | `_ejer_og_titel` | `(session_id)` | (ejer, samtale-titel). | [src](../../../core/services/visible_runs_sections/run_finalization.py#L212) |
+| function | `finalize_run` | `(session_id, *, status)` | Kaldes fra run-afslutningens finally — uanset hvordan runnet endte. | [src](../../../core/services/visible_runs_sections/run_finalization.py#L185) |
+| function | `finalize_in_flight` | `(*, run_id, session_id, status, error=…)` | Resolve durable recovery state without erasing resumable work. | [src](../../../core/services/visible_runs_sections/run_finalization.py#L196) |
+| function | `_ejer_og_titel` | `(session_id)` | (ejer, samtale-titel). | [src](../../../core/services/visible_runs_sections/run_finalization.py#L226) |
 
 ## `core/services/visible_runs_sections/stream_observers.py`
 _Stream-observabilitets-nerver — Boy Scout-udtrækning fra visible_runs.py._

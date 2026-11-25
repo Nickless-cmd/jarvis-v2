@@ -159,7 +159,21 @@ def svar_for_run(run_id: str) -> str:
             except Exception:
                 gammel = True
             if not gammel:
-                return str(frisk.get("text_preview") or "")
+                # SAMME vaern som DB-grenen nedenfor — ikke en raa laesning.
+                # Klartekst passerer uaendret; chiffertekst dekrypteres kun
+                # med en beviselig noegle, ellers bliver den pladsholderen.
+                # Maalt 25/11-2026: grenen returnerede `frisk["text_preview"]`
+                # raat, saa garantien «aldrig chiffertekst ud» gjaldt kun den
+                # ene af de to veje til samme svar.
+                from core.services.visible_preview_crypto import laesbaar_preview
+                return str(
+                    laesbaar_preview(
+                        frisk.get("text_preview"),
+                        session_id=frisk.get("session_id"),
+                        user_id=frisk.get("user_id"),
+                    )
+                    or ""
+                )
     from core.runtime.db import connect
     from core.services.visible_preview_crypto import reveal_preview
     with connect() as conn:

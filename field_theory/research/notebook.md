@@ -1208,3 +1208,69 @@ fired, and returned a flat `falsified`. That number was true and told me nothing
 Splitting the condition — which the protocol's addendum had required all along —
 turned the same data into the answer to a question two investigations had left
 open. The correction was to implement the frozen protocol, not to move the goal.
+
+---
+
+## 2026-11-25 — Investigation 9: the threshold does not depend on the experts
+
+**Status:** completed, not falsified. Protocol frozen and committed before any
+measurement. Run preserved in `artifacts/exp_009_expert_set/run_20261125_173937/`.
+
+### Observation
+
+Investigation 8 measured the collapse threshold near `1 − r` on a single expert
+set. I ran five: the original, only-fast, only-slow, two experts, four experts —
+two sources, two assignment modes, four retentions, with the responsiveness floor
+expressed as a fraction of the available experts so the counts are comparable.
+
+The threshold did not move. Not between sources, not between sets, not between
+three and four experts. On a grid with a factor of 1.6 between points — fine
+enough to resolve what the protocol's factor-of-two grid could not — all four
+sets give the same grid point on both sources.
+
+### Interpretation
+
+That is not robustness. With retention `r` the accumulated loss difference
+converges to `gap / (1 − r)`, and the softmax has a fixed learning rate, so the
+mechanism depends on the single quantity `x = learning_rate · gap / (1 − r)`.
+Crossing the 50 % floor happens at a fixed `x`, so the threshold in gap space is
+`(x_threshold / learning_rate) · (1 − r)`. The expert set only changes
+`l_best(t)` and the sign, and neither enters `x`.
+
+Which means part of Investigation 8 was a tautology. In `fixed` assignment the
+expert order is the set's tuple order — constant over time by construction. So
+the gap is constructed, the order is constant, and the agreement between sources
+follows arithmetically. It was reported as evidence that the source does not
+matter. It was evidence that the arithmetic does what arithmetic does.
+
+The part of Investigation 8 that survives as a data result is `roving`, where
+the order is sorted by each month's real loss. There the threshold varies by a
+factor of eight across sets and sources.
+
+### What the instrument could not do
+
+The two-expert set never crosses its floor. With two experts the minimum
+effective count is 1.0, and 50 % of two is also 1.0, so `< 1.0` is unreachable —
+the series approaches 1.0 asymptotically (`1.00000023` at gap 0.8) and never
+passes it. The `not_falsified` verdict must not be read as evidence that two
+experts behave like three. This experiment could not ask that question, and the
+test file pins the distinction so a `None == None` comparison cannot silently
+turn an unmeasurable cell into a vote for the hypothesis.
+
+### A measurement error I caught
+
+My first analytic check returned exactly `0.2000` for every retention and every
+gap. The number was suspiciously constant, which is what made me look: the
+effective-count helper iterated over the dict's **keys** (`0, 1, 2`) instead of
+its values, computing `1 / (0² + 1² + 2²) = 0.2` regardless of input. Had the
+wrong number varied, it would have looked like a result. A quantity that does not
+move when its input moves by a factor of 400 is not a measurement.
+
+### Why this entry is worth anything
+
+The question I was asked — does the threshold survive another expert set — has
+the answer "yes", and that answer is almost worthless on its own. What makes it
+worth writing down is *why*: it survives because it never depended on the
+experts. Finding that out required checking the independent variable instead of
+reading the flat result as confirmation, and it retroactively narrows a finding I
+published one commit earlier.

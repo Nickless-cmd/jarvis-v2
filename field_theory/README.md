@@ -49,6 +49,17 @@ not established facts and not a destination built into the software.
   series collapse identically (median difference 0.0000, threshold near `1 − r`);
   with a rotating advantage they do not. The missing variable is the gap's
   **stability**, not its size — which is what CO₂'s trend actually changes.
+- [`research/investigation-009-findings.md`](research/investigation-009-findings.md)
+  asks whether Investigation 8's threshold survives a different expert set. It
+  does — so completely that the experts never reach it. On a fine grid, four
+  different sets of three or more experts give the *same* threshold on both
+  sources, because in `fixed` assignment the threshold is analytic
+  (`gap ≈ (x_threshold / learning_rate) · (1 − r)`) and the data never enters
+  it. Investigation 8's agreement between sources in that mode was therefore a
+  mathematical necessity, not an empirical finding. Only `roving` puts the data
+  back, and there the threshold varies by a factor of eight. The two-expert set
+  cannot be measured at all: its floor equals the minimum attainable effective
+  count.
 - [`experiments/exp_001_perspective/PROTOCOL.md`](experiments/exp_001_perspective/PROTOCOL.md)
   documents the first method before its results.
 - [`experiments/exp_002_discovery/PROTOCOL.md`](experiments/exp_002_discovery/PROTOCOL.md)

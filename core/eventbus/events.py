@@ -351,6 +351,16 @@ ALLOWED_EVENT_FAMILIES = {
     #    Payload er metadata-only (user_id, vaert, aarsagskode, kind, run_id) —
     #    ALDRIG endpoint-URL, titel eller broedtekst.
     "push",  # push_dispatcher — push.web_sent / push.web_failed / push.web_skipped
+    # ── 25. nov 2026: ELVTE gang. `work_coordination.record_decision` publicerede
+    #    `coordination.decision` ved HVERT koordinerings-valg — og familien stod
+    #    ikke her, saa Event.create kastede, og kaldestedets `except` skrev en
+    #    warning der ikke havde nogen destination. Resultatet var at
+    #    §8-maalevaerktoejet meldte «0 ville vaere en loegn»: der fandtes nul
+    #    events, ikke fordi koordineringen ikke koerte, men fordi hvert eneste
+    #    publish blev afvist foer det naaede writer-koeen.
+    #    IKKE privat: payload er beslutning + aarsag + emne + daekning — telemetri
+    #    om ARBEJDE, ikke om hans indre. Derfor kun her, ikke i de to private lister.
+    "coordination",  # work_coordination.record_decision — coordination.decision
 }
 
 

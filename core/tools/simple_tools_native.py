@@ -1595,7 +1595,9 @@ def _exec_search_chat_history(args: dict[str, Any]) -> dict[str, Any]:
 
     try:
         from core.runtime.db import connect
-        from core.tools.session_search import _user_scope_clause
+        from core.tools.session_search import (
+            _dekrypter_raekker, _krypterede_traef, _user_scope_clause,
+        )
         _user_clause, _user_params = _user_scope_clause(_uid)
         with connect() as conn:
             rows = conn.execute(
@@ -1612,8 +1614,42 @@ def _exec_search_chat_history(args: dict[str, Any]) -> dict[str, Any]:
                 """,
                 (f"%{query}%", *_user_params, limit),
             ).fetchall()
+            # LIKE ser ikke gennem `enc:v1:`-ciffertekst, så et medlems egne
+            # beskeder blev aldrig fundet her — samme fejl som i
+            # `session_search`. Supplér med en dekrypteret søgning.
+            krypterede = _krypterede_traef(
+                conn, query=query, channel="all", since=None, until=None,
+                limit=limit, user_id=_uid,
+            )
 
-        if not rows:
+        # Klartekst for den kaldende; ellers blev cifferteksten vist som svaret.
+        rows = _dekrypter_raekker(rows, _uid)
+
+        samlede = [
+            {
+                "role": row["role"],
+                "content": str(row["content"] or "")[:4000],
+                "created_at": row["created_at"],
+                "session_id": row["session_id"],
+                "session_title": str(row["session_title"] or row["session_id"] or ""),
+            }
+            for row in rows
+        ]
+        sete = {(r["session_id"], str(r["created_at"])) for r in samlede}
+        for k in krypterede:
+            noegle = (k["session_id"], str(k["created_at"]))
+            if noegle in sete:
+                continue
+            sete.add(noegle)
+            samlede.append({
+                "role": k["role"],
+                "content": str(k["content"] or "")[:4000],
+                "created_at": k["created_at"],
+                "session_id": k["session_id"],
+                "session_title": k["session_title"] or k["session_id"] or "",
+            })
+
+        if not samlede:
             # Phase 2 Lag 11: recall-empty telemetry
             try:
                 from core.services.memory_recall_telemetry import emit_recall_empty
@@ -1622,23 +1658,13 @@ def _exec_search_chat_history(args: dict[str, Any]) -> dict[str, Any]:
                 pass
             return {"status": "ok", "count": 0, "text": f"No messages found matching '{query}'", "results": []}
 
-        results = []
-        lines = [f"Found {len(rows)} message(s) matching '{query}':\n"]
-        for row in rows:
-            content = str(row["content"] or "")
-            preview = content[:2000] + ("…" if len(content) > 2000 else "")
-            session_label = str(row["session_title"] or row["session_id"] or "")
-            ts = str(row["created_at"] or "")[:16]
-            lines.append(f"[{ts}] {row['role'].upper()} ({session_label}):\n{preview}\n")
-            results.append({
-                "role": row["role"],
-                "content": content[:4000],
-                "created_at": row["created_at"],
-                "session_id": row["session_id"],
-                "session_title": session_label,
-            })
+        lines = [f"Found {len(samlede)} message(s) matching '{query}':\n"]
+        for r in samlede:
+            preview = r["content"][:2000] + ("…" if len(r["content"]) > 2000 else "")
+            ts = str(r["created_at"] or "")[:16]
+            lines.append(f"[{ts}] {r['role'].upper()} ({r['session_title']}):\n{preview}\n")
 
-        return {"status": "ok", "count": len(rows), "results": results, "text": "\n".join(lines)}
+        return {"status": "ok", "count": len(samlede), "results": samlede, "text": "\n".join(lines)}
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 

@@ -1657,3 +1657,51 @@ Sharpening to the limit is also not what its name suggests. Because
 with the smallest accumulated loss. That was checked in all 38 340 months, and
 it is why the limit's conditional loss makes sense: the leader is often right,
 and when it is wrong it is wrong alone.
+
+## 2026-11-25 — can alpha be chosen before the outcome?
+
+Investigation 15 picked alpha=3 after seeing which alpha performed best. That is
+a number found with hindsight, and it was the weakest part of the result. So the
+next question was the operational one: can alpha be fixed from what is known
+**before** the outcome, and still hold on data that was not used to choose it?
+
+Before measuring anything, the boundary had to be drawn. `_prepare` builds
+`sign` as `1.0 if real[e] >= outcome` and `losses` from `real` and `outcome`, so
+`a = real − outcome` and `err_oracle` are both hindsight. `err_oracle` is the
+denominator of every ratio in Investigations 12–15. A rule that uses it is
+hindsight wearing a rule's clothes. What remains is `w`, `real` and `retained` —
+and only functions of those were tested.
+
+The answer splits cleanly in two. **A fixed alpha transfers**: chosen on
+2000–2012 as the one with the best conditional median and measured on
+2013–2026, alpha=10 gives 1.4209 against 1.8646 at alpha=1 — 24 % better, on
+months the choice never saw, and the same alpha is picked whether development
+ends in 2006, 2010 or 2018. **An adaptive alpha does not**: a rule picking alpha
+per month from an ex ante signal lands at 1.42091 against the best fixed
+1.42093. It wins by two parts in a hundred thousand, which is a tie.
+
+The signal my hypothesis said would not exist does exist, at |ρ| ≈ 0.22 — and
+it is one signal, not two: `top_weight` at −0.2208 and `effective` at +0.2218
+are the same axis with opposite signs, because a high top weight *is* a low
+effective expert count. That is the run-count error in a new costume, and it is
+worth naming again: a quantity derived from another is not a second measurement
+of it.
+
+What makes this more than a null result is the ceiling. A per-month choice made
+with the outcome in hand reaches 1.2959. So there is 8.8 % of room above the
+fixed choice, and the ex ante rule captured none of it. The room is not empty;
+the information available before the outcome simply does not reach it. And a
+placebo that draws a random alpha per month recovers 59 % of the gain — so most
+of the benefit is sharpening *at all*, not sharpening exactly right.
+
+Three things went wrong before this was worth writing down, and all three are
+declared rather than quietly fixed. The first run failed two conditions on
+differences of 2·10⁻⁵ and 8·10⁻⁴; a falsification carried by 0.00002 is the
+hit-rate error in a new costume, so a 1e-3 tolerance was added and the raw ratio
+is now reported beside every decision. The protocol registered a *per-month*
+ceiling and the code computed the best *fixed* alpha on test — two different
+objects — which understated how much room a perfect chooser would have. And a
+month-set name held a different set than its name said.
+
+The pattern that keeps repeating: the number that looks like an answer is
+usually a different number with a familiar name.

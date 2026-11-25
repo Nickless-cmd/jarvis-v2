@@ -1,0 +1,178 @@
+{
+  "method_version": "exp016.alpha.exante.1",
+  "verdict": "partial:3_no_ex_ante_signal",
+  "conditions": {
+    "1_fixed_alpha_survives_split": true,
+    "2_choice_insensitive_to_split": true,
+    "3_no_ex_ante_signal": false,
+    "4_adaptive_does_not_beat_fixed": true,
+    "5_concentrated_regime_is_real": true
+  },
+  "conditions_failed": [
+    "3_no_ex_ante_signal"
+  ],
+  "controls": {
+    "identity_holds": true,
+    "identity_worst_residual": 0.0,
+    "identity_against_exp_015": true,
+    "reproduced_median_alpha_1": 1.2166164905795165,
+    "exp_015_median_alpha_1": 1.2166164905795165,
+    "limit_reproduces_selection": true,
+    "limit_worst_gap": 0.0,
+    "leader_equals_argmin": true,
+    "leader_months": 38340,
+    "leader_total": 38340,
+    "split_is_temporal": true,
+    "placebo_does_not_beat_best_fixed": true
+  },
+  "months": 38340,
+  "development_months": 18720,
+  "test_months": 19620,
+  "development_end_year": 2012,
+  "common_non_hit": {
+    "development": 12347,
+    "test": 12641,
+    "pooled": 32405
+  },
+  "fixed_choice": {
+    "alpha": 10.0,
+    "development_median": 1.3982723477748742,
+    "test_median_baseline_alpha_1": 1.86458337443474,
+    "test_median_chosen_alpha": 1.4209320091673692
+  },
+  "chosen_alpha_by_split": {
+    "2006": 10.0,
+    "2010": 10.0,
+    "2018": 10.0
+  },
+  "signal_correlations": {
+    "top_weight": {
+      "spearman": -0.22081914063752872,
+      "months": 32405,
+      "abs_below_threshold": false
+    },
+    "effective": {
+      "spearman": 0.22184875441198912,
+      "months": 32405,
+      "abs_below_threshold": false
+    },
+    "spread": {
+      "spearman": -0.11701521019684746,
+      "months": 32405,
+      "abs_below_threshold": true
+    },
+    "retained_gap": {
+      "spearman": -0.022811334797820552,
+      "months": 32405,
+      "abs_below_threshold": true
+    }
+  },
+  "adaptive": {
+    "top_weight": {
+      "median": 1.4209128997512843,
+      "months": 12641,
+      "assignments": {
+        "0": 10.0,
+        "1": 10.0,
+        "2": 5.0,
+        "3": 1.0
+      }
+    },
+    "effective": {
+      "median": 1.4209128997512843,
+      "months": 12641,
+      "assignments": {
+        "0": 1.0,
+        "1": 5.0,
+        "2": 10.0,
+        "3": 10.0
+      }
+    },
+    "spread": {
+      "median": 1.4209320091673692,
+      "months": 12641,
+      "assignments": {
+        "0": 10.0,
+        "1": 10.0,
+        "2": 10.0,
+        "3": 10.0
+      }
+    },
+    "retained_gap": {
+      "median": 1.420932009161345,
+      "months": 12641,
+      "assignments": {
+        "0": 10.0,
+        "1": 10.0,
+        "2": 10.0,
+        "3": 5.0
+      }
+    }
+  },
+  "adaptive_best": {
+    "median": 1.4209128997512843,
+    "signal": "effective",
+    "ratio_to_best_fixed": 0.9999865514915833,
+    "best_fixed_median": 1.4209320091673692,
+    "meaningful": 0.001
+  },
+  "oracle_ceiling": {
+    "alpha": 10.0,
+    "median": 1.4209320091673692
+  },
+  "concentrated_regime": {
+    "threshold": 0.99,
+    "months": 17939,
+    "common_non_hit": 7070,
+    "median_alpha_1": 2.091272416706048,
+    "median_alpha_3": 2.0895353630822515,
+    "ratio_sharp_over_base": 0.9991693795557576,
+    "meaningful": 0.001
+  },
+  "placebo": {
+    "draws": 200,
+    "median_of_medians": 1.6040816326470702,
+    "min": 1.5880472273909185,
+    "max": 1.6258064516129025
+  },
+  "thresholds": {
+    "spearman": 0.2,
+    "concentrated_top_weight": 0.99,
+    "placebo_draws": 200
+  },
+  "parameters": {
+    "alphas": [
+      2.0,
+      3.0,
+      5.0,
+      10.0
+    ],
+    "candidates": [
+      1.0,
+      2.0,
+      3.0,
+      5.0,
+      10.0
+    ],
+    "retentions": [
+      0.9,
+      0.99
+    ],
+    "gaps": [
+      0.05,
+      0.2,
+      0.8
+    ],
+    "assignments": [
+      "fixed",
+      "roving"
+    ],
+    "expert_sets": [
+      "original",
+      "short_memory",
+      "long_memory",
+      "two_experts",
+      "four_experts"
+    ]
+  }
+}

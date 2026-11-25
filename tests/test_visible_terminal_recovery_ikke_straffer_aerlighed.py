@@ -30,6 +30,7 @@ def test_aerlig_begraensning_i_markdown_overskrift_er_ikke_uafsluttethed():
         "Jeg samler nu de sidste tal",
         "jeg fortsætter nu med fixet",
         "Jeg er ikke færdig med at undersøge det",
+        "Vi er ikke færdige her.",
     ],
 )
 def test_aegte_foerstepersons_uafsluttethed_fanges(final_text):

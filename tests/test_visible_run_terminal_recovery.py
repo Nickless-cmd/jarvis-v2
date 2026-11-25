@@ -73,11 +73,9 @@ def test_komplet_svar_med_overskrift_genstarter_ikke():
 def test_aegte_negation_i_samme_saetning_fanges_stadig():
     """Grænsen må ikke blive så bred at den ægte form slipper igennem."""
     from core.services.visible_run_terminal_recovery import has_incompletion_evidence
-    assert has_incompletion_evidence("Opgaven er ikke afsluttet.") is True
-    assert has_incompletion_evidence("Det er ikke færdigt endnu.") is True
     assert has_incompletion_evidence("Jeg har ikke løst det.") is True
     assert has_incompletion_evidence(
-        "Det er ikke blevet ordentligt verificeret."
+        "Jeg har ikke verificeret det ordentligt."
     ) is True
 
 

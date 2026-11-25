@@ -49,7 +49,7 @@ _NEGATED_COMPLETION_RE = re.compile(
     r"|\b(?:opgaven|arbejdet|det|den|denne|dette)\s+(?:er|var|blev|bliver)\b)"
     r"[^.!?\n]{0,32}?"
     r"\b(?:ikke|ej|aldrig|not|never)\b[^.!?\n]{0,32}"
-    r"\b(?:færdig(?:t)?|afsluttet|fuldført|implementeret|rettet|løst|verificeret|"
+    r"\b(?:færdig(?:t|e)?|afsluttet|fuldført|implementeret|rettet|løst|verificeret|"
     r"completed|finished|done|fixed|implemented|verified)\b",
     re.IGNORECASE | re.MULTILINE,
 )

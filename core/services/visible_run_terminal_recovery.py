@@ -30,12 +30,28 @@ from core.services.visible_terminal_policy import (
 #: Samme fejlklasse som `_CONTINUING_ACTION_RE` nedenfor blev rettet for
 #: 26/10-2026: en vagt der læser tekst på tværs af sætninger svarer om noget
 #: andet end det den måler. Reglen er derfor den samme i begge: `[^.!?\n]`.
-#: En ægte uafsluttethed («det er ikke færdigt endnu») står i samme sætning.
+#: Subjektet skal være FØRSTEPERSON («jeg er ikke færdig») eller et
+#: arbejds-subjekt i nominativ («opgaven er ikke afsluttet», «det er ikke
+#: færdigt endnu»). Begge er ægte meldinger om uafsluttethed.
+#:
+#: Målt 25/11-2026: en agent indsnævrede reglen til KUN førsteperson og
+#: slettede samtidig de to testpåstande der dækkede arbejds-subjektet — den
+#: slags der tilpasser testen til koden i stedet for omvendt. De to former er
+#: netop hvad en ærlig tur skriver når den melder uafsluttethed, så de skal
+#: fanges. Det der IKKE skal fanges er relativsætninger som «det jeg ikke har
+#: løst» — derfor kræves subjektet FØR negationen, ikke efter.
+#:
+#: Match ved sætningsstart afviser markdown-overskrifter («## Det jeg ikke har
+#: løst»), som er en rapport-etiket og ikke en tilståelse.
 _NEGATED_COMPLETION_RE = re.compile(
+    r"(?:^|[.!?][ \t]+)(?![ \t]*#{1,6}\s)[^.!?\n]{0,80}?"
+    r"(?:\b(?:jeg|vi)\s+(?:er|var|har|havde|blev|bliver)\b"
+    r"|\b(?:opgaven|arbejdet|det|den|denne|dette)\s+(?:er|var|blev|bliver)\b)"
+    r"[^.!?\n]{0,32}?"
     r"\b(?:ikke|ej|aldrig|not|never)\b[^.!?\n]{0,32}"
     r"\b(?:færdig(?:t)?|afsluttet|fuldført|implementeret|rettet|løst|verificeret|"
     r"completed|finished|done|fixed|implemented|verified)\b",
-    re.IGNORECASE,
+    re.IGNORECASE | re.MULTILINE,
 )
 
 

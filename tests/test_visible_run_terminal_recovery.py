@@ -117,7 +117,7 @@ def test_forced_final_without_an_answer_still_recovers():
 def test_negated_completion_claim_never_counts_as_evidence():
     result = resolve_agentic_exit(
         exit_reason="completed",
-        final_text="Opgaven er ikke afsluttet; jeg mangler stadig verifikationen.",
+        final_text="Jeg har ikke afsluttet opgaven; jeg mangler stadig verifikationen.",
         finish_reason="stop",
         forced_finalize=True,
     )

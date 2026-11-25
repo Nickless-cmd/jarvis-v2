@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10511/19181 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10512/19182 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10511/19181 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 926 | 1643 | 56% |
-| `core.services` | 7056 | 13021 | 54% |
+| `core.services` | 7057 | 13022 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -677,10 +677,10 @@ Generated from source. 10511/19181 functions/methods documented (54%). The list 
 - `core/runtime/db_view_requests.py` :: `opret` (L48)
 - `core/runtime/db_view_requests.py` :: `vent_paa_svar` (L94)
 - `core/runtime/db_visible.py` :: `ensure_visible_tables` (L16)
-- `core/runtime/db_visible.py` :: `recent_visible_work_notes` (L193)
-- `core/runtime/db_visible.py` :: `recent_visible_work_units` (L241)
-- `core/runtime/db_visible.py` :: `record_visible_work_note` (L283)
-- `core/runtime/db_visible.py` :: `visible_session_continuity` (L397)
+- `core/runtime/db_visible.py` :: `recent_visible_work_notes` (L206)
+- `core/runtime/db_visible.py` :: `recent_visible_work_units` (L254)
+- `core/runtime/db_visible.py` :: `record_visible_work_note` (L296)
+- `core/runtime/db_visible.py` :: `visible_session_continuity` (L410)
 - `core/runtime/db_world_self_truth.py` :: `insert_world_fact` (L126)
 - `core/runtime/db_world_self_truth.py` :: `select_conversation_topics` (L109)
 - `core/runtime/db_world_self_truth.py` :: `select_world_facts` (L185)
@@ -1080,7 +1080,7 @@ Generated from source. 10511/19181 functions/methods documented (54%). The list 
 - `core/services/chronicle_consolidation_signal_tracking.py` :: `refresh_runtime_chronicle_consolidation_signal_statuses` (L77)
 - `core/services/chronicle_consolidation_signal_tracking.py` :: `track_runtime_chronicle_consolidation_signals_for_visible_turn` (L51)
 - `core/services/chronicle_engine.py` :: `build_chronicle_surface` (L236)
-- `core/services/chronicle_engine.py` :: `project_entry_to_markdown` (L483)
+- `core/services/chronicle_engine.py` :: `project_entry_to_markdown` (L484)
 - `core/services/citation_markorer.py` :: `CitationKontrakt.feed` (L312)
 - `core/services/citation_markorer.py` :: `CitationKontrakt.flush` (L337)
 - `core/services/citation_markorer.py` :: `Kilder.url_for` (L94)
@@ -1237,8 +1237,8 @@ Generated from source. 10511/19181 functions/methods documented (54%). The list 
 - `core/services/dream_articulation.py` :: `build_dream_articulation_from_inputs` (L165)
 - `core/services/dream_articulation.py` :: `build_dream_articulation_surface` (L332)
 - `core/services/dream_carry_over.py` :: `build_dream_carry_over_surface` (L633)
-- `core/services/dream_consolidation_daemon.py` :: `build_dream_consolidation_surface` (L882)
-- `core/services/dream_consolidation_daemon.py` :: `list_recent_dreams` (L878)
+- `core/services/dream_consolidation_daemon.py` :: `build_dream_consolidation_surface` (L884)
+- `core/services/dream_consolidation_daemon.py` :: `list_recent_dreams` (L880)
 - `core/services/dream_distillation_daemon.py` :: `build_dream_distillation_surface` (L168)
 - `core/services/dream_distillation_daemon.py` :: `clear_expired_dream_residue` (L188)
 - `core/services/dream_distillation_daemon.py` :: `get_dream_residue_for_prompt` (L151)
@@ -1772,9 +1772,9 @@ Generated from source. 10511/19181 functions/methods documented (54%). The list 
 - `core/services/relation_continuity_signal_tracking.py` :: `build_runtime_relation_continuity_signal_surface` (L68)
 - `core/services/relation_continuity_signal_tracking.py` :: `refresh_runtime_relation_continuity_signal_statuses` (L64)
 - `core/services/relation_continuity_signal_tracking.py` :: `track_runtime_relation_continuity_signals_for_visible_turn` (L38)
-- `core/services/relation_dynamics.py` :: `build_relation_dynamics_surface` (L244)
-- `core/services/relation_dynamics.py` :: `get_relation_dynamics` (L223)
-- `core/services/relation_dynamics.py` :: `tick` (L236)
+- `core/services/relation_dynamics.py` :: `build_relation_dynamics_surface` (L246)
+- `core/services/relation_dynamics.py` :: `get_relation_dynamics` (L225)
+- `core/services/relation_dynamics.py` :: `tick` (L238)
 - `core/services/relation_state_signal_tracking.py` :: `build_runtime_relation_state_signal_surface` (L76)
 - `core/services/relation_state_signal_tracking.py` :: `refresh_runtime_relation_state_signal_statuses` (L72)
 - `core/services/relation_state_signal_tracking.py` :: `track_runtime_relation_state_signals_for_visible_turn` (L38)
@@ -2327,8 +2327,8 @@ Generated from source. 10511/19181 functions/methods documented (54%). The list 
 - `core/services/user_md_update_proposal_tracking.py` :: `build_runtime_user_md_update_proposal_surface` (L73)
 - `core/services/user_md_update_proposal_tracking.py` :: `refresh_runtime_user_md_update_proposal_statuses` (L42)
 - `core/services/user_md_update_proposal_tracking.py` :: `track_runtime_user_md_update_proposals_for_visible_turn` (L20)
-- `core/services/user_model_daemon.py` :: `build_user_model_surface` (L134)
-- `core/services/user_model_daemon.py` :: `get_user_model_summary` (L130)
+- `core/services/user_model_daemon.py` :: `build_user_model_surface` (L135)
+- `core/services/user_model_daemon.py` :: `get_user_model_summary` (L131)
 - `core/services/user_temperature_runtime.py` :: `stop_user_temperature_runtime` (L101)
 - `core/services/user_theory_of_mind.py` :: `build_user_theory_of_mind_surface` (L124)
 - `core/services/user_understanding_signal_tracking.py` :: `build_runtime_user_understanding_signal_surface` (L79)

@@ -77,11 +77,12 @@ def tick_user_model_daemon(recent_messages: list[str], *, skip_event_gate: bool 
             # Accept runs from user-facing lanes (primary/visible). Historical
             # 'visible' label is now 'primary' in most deployments.
             visible_lanes = {"visible", "primary"}
+            from core.services.visible_preview_crypto import er_laesbar
             messages = [
                 str(r.get("text_preview") or "")
                 for r in runs
                 if str(r.get("lane") or "").lower() in visible_lanes
-                and r.get("text_preview")
+                and er_laesbar(r.get("text_preview"))
             ]
         except Exception:
             pass

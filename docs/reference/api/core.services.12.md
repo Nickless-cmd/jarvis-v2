@@ -481,22 +481,22 @@ _Dream Consolidation — semantic + LLM-driven consolidation during low-activity
 | function | `_fragment_tokens` | `(text)` | Tokens fra ét fragment, uden et evt. afhugget sidste ord. | [src](../../../core/services/dream_consolidation_daemon.py#L157) |
 | function | `_is_idle_enough` | `()` | True hvis systemet er i ro nok til at konsolidere drømme. | [src](../../../core/services/dream_consolidation_daemon.py#L172) |
 | function | `_gather_fragments` | `()` | Collect recent text fragments from multiple sources. | [src](../../../core/services/dream_consolidation_daemon.py#L211) |
-| function | `drop_boilerplate_tokens` | `(token_counter, *, fragment_count, max_doc_frequency=…)` | Fjern ord der staar i for stor en andel af fragmenterne. Ren funktion. | [src](../../../core/services/dream_consolidation_daemon.py#L294) |
-| function | `_find_themes` | `(fragments)` | Cluster fragments by shared keywords into themes. | [src](../../../core/services/dream_consolidation_daemon.py#L311) |
-| function | `_query_fragmented_memories` | `(theme_tokens, theme_texts)` | Find contradictory, low-confidence, or overlapping memories for a theme. | [src](../../../core/services/dream_consolidation_daemon.py#L362) |
-| function | `_write_dream_note` | `(consolidation_id, themes, idle_minutes)` | Write an abstract dream note to dreams/ dir. | [src](../../../core/services/dream_consolidation_daemon.py#L444) |
-| function | `extract_json_object` | `(raw)` | Træk det første JSON-objekt ud af et LLM-svar. Ren funktion, kaster aldrig. | [src](../../../core/services/dream_consolidation_daemon.py#L492) |
-| function | `_llm_synthesize_dream` | `(themes, fragments, consolidation_id)` | Run a quality LLM synthesis pass over theme clusters + fragments. | [src](../../../core/services/dream_consolidation_daemon.py#L529) |
-| function | `_produce_dream_artifacts` | `(synthesis, consolidation_id, themes)` | Pipe LLM synthesis output into dream notes + hypothesis signals + chronicle. | [src](../../../core/services/dream_consolidation_daemon.py#L616) |
-| function | `consolidate_now` | `()` | Run one consolidation pass unconditionally (ignores cooldown). | [src](../../../core/services/dream_consolidation_daemon.py#L779) |
-| function | `tick` | `(_seconds=…)` | Heartbeat hook — consolidate when idle + cooldown allows. | [src](../../../core/services/dream_consolidation_daemon.py#L847) |
-| function | `list_recent_dreams` | `(*, limit=…)` | — | [src](../../../core/services/dream_consolidation_daemon.py#L878) |
-| function | `build_dream_consolidation_surface` | `()` | — | [src](../../../core/services/dream_consolidation_daemon.py#L882) |
-| function | `_surface_summary` | `(data)` | — | [src](../../../core/services/dream_consolidation_daemon.py#L903) |
-| function | `build_dream_consolidation_prompt_section` | `()` | Announce recent dream if fresh (last 6h). | [src](../../../core/services/dream_consolidation_daemon.py#L912) |
-| function | `consolidation_loop` | `(stop_event)` | Kald tick() på egen kadence og LOG udfaldet. | [src](../../../core/services/dream_consolidation_daemon.py#L958) |
-| function | `start_dream_consolidation_daemon` | `()` | Start konsoliderings-tråden. Idempotent. | [src](../../../core/services/dream_consolidation_daemon.py#L979) |
-| function | `stop_dream_consolidation_daemon` | `()` | Stop tråden. Self-safe. | [src](../../../core/services/dream_consolidation_daemon.py#L995) |
+| function | `drop_boilerplate_tokens` | `(token_counter, *, fragment_count, max_doc_frequency=…)` | Fjern ord der staar i for stor en andel af fragmenterne. Ren funktion. | [src](../../../core/services/dream_consolidation_daemon.py#L295) |
+| function | `_find_themes` | `(fragments)` | Cluster fragments by shared keywords into themes. | [src](../../../core/services/dream_consolidation_daemon.py#L312) |
+| function | `_query_fragmented_memories` | `(theme_tokens, theme_texts)` | Find contradictory, low-confidence, or overlapping memories for a theme. | [src](../../../core/services/dream_consolidation_daemon.py#L363) |
+| function | `_write_dream_note` | `(consolidation_id, themes, idle_minutes)` | Write an abstract dream note to dreams/ dir. | [src](../../../core/services/dream_consolidation_daemon.py#L446) |
+| function | `extract_json_object` | `(raw)` | Træk det første JSON-objekt ud af et LLM-svar. Ren funktion, kaster aldrig. | [src](../../../core/services/dream_consolidation_daemon.py#L494) |
+| function | `_llm_synthesize_dream` | `(themes, fragments, consolidation_id)` | Run a quality LLM synthesis pass over theme clusters + fragments. | [src](../../../core/services/dream_consolidation_daemon.py#L531) |
+| function | `_produce_dream_artifacts` | `(synthesis, consolidation_id, themes)` | Pipe LLM synthesis output into dream notes + hypothesis signals + chronicle. | [src](../../../core/services/dream_consolidation_daemon.py#L618) |
+| function | `consolidate_now` | `()` | Run one consolidation pass unconditionally (ignores cooldown). | [src](../../../core/services/dream_consolidation_daemon.py#L781) |
+| function | `tick` | `(_seconds=…)` | Heartbeat hook — consolidate when idle + cooldown allows. | [src](../../../core/services/dream_consolidation_daemon.py#L849) |
+| function | `list_recent_dreams` | `(*, limit=…)` | — | [src](../../../core/services/dream_consolidation_daemon.py#L880) |
+| function | `build_dream_consolidation_surface` | `()` | — | [src](../../../core/services/dream_consolidation_daemon.py#L884) |
+| function | `_surface_summary` | `(data)` | — | [src](../../../core/services/dream_consolidation_daemon.py#L905) |
+| function | `build_dream_consolidation_prompt_section` | `()` | Announce recent dream if fresh (last 6h). | [src](../../../core/services/dream_consolidation_daemon.py#L914) |
+| function | `consolidation_loop` | `(stop_event)` | Kald tick() på egen kadence og LOG udfaldet. | [src](../../../core/services/dream_consolidation_daemon.py#L960) |
+| function | `start_dream_consolidation_daemon` | `()` | Start konsoliderings-tråden. Idempotent. | [src](../../../core/services/dream_consolidation_daemon.py#L981) |
+| function | `stop_dream_consolidation_daemon` | `()` | Stop tråden. Self-safe. | [src](../../../core/services/dream_consolidation_daemon.py#L997) |
 
 ## `core/services/dream_continuum.py`
 _Dream Continuum — dreams that mature and "think" between ticks._

@@ -165,7 +165,8 @@ def recent_visible_runs(
                 finished_at,
                 text_preview,
                 error,
-                capability_id
+                capability_id,
+                user_id
             FROM visible_runs
             WHERE {scope}
             ORDER BY id DESC
@@ -173,6 +174,18 @@ def recent_visible_runs(
             """.format(scope=scope_sql),
             (*scope_params, max(limit, 1)),
         ).fetchall()
+    # 25/11-2026: nøglen er KALDERENS med vilje — ikke rækkens.
+    #
+    # Fristelsen var at hente ejeren fra `user_id`-kolonnen og dekryptere hver
+    # række med sin egen nøgle. Det ville give daemonerne indhold i stedet for
+    # pladsholder — men det ville også sende medlems-indhold i klartekst ind i
+    # drømme-, refleksions- og chronicle-prompts, som er bredt læste flader.
+    # Medlems-indhold må kun læses af den der ejer det. En daemon uden
+    # `user_id` får derfor pladsholderen, og det er den rigtige retning at
+    # fejle i: den kan ikke bevise svaret, så den siger det.
+    #
+    # Konsekvensen er støj, ikke lækage — forbrugerne skal springe
+    # pladsholderen over (`er_laesbar`), ikke citere den.
     return [
         {
             "run_id": row["run_id"],

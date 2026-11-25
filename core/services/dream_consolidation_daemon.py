@@ -225,7 +225,8 @@ def _gather_fragments() -> list[dict[str, Any]]:
             if dt < cutoff:
                 continue
             text = str(r.get("text_preview") or "")
-            if text:
+            from core.services.visible_preview_crypto import er_laesbar
+            if text and er_laesbar(text):
                 fragments.append({"source": "chat", "text": text, "at": ts})
     except Exception:
         pass
@@ -425,7 +426,8 @@ def _query_fragmented_memories(
         from core.runtime.db import recent_visible_runs
         for run in recent_visible_runs(limit=30) or []:
             preview = str(run.get("text_preview") or "").strip()
-            if preview:
+            from core.services.visible_preview_crypto import er_laesbar
+            if preview and er_laesbar(preview):
                 combined = preview.lower()
                 if any(tok.lower() in combined for tok in theme_tokens):
                     _add(preview[:200], "chat", "medium")

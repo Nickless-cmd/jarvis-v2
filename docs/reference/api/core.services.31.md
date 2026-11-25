@@ -330,6 +330,7 @@ _Encrypt durable previews for visible member runs._
 | function | `protect_preview` | `(text, member)` | — | [src](../../../core/services/visible_preview_crypto.py#L19) |
 | function | `laesbaar_preview` | `(text_preview, session_id=…, user_id=…)` | Preview som en dommer/prompt/LLM trygt kan laese. ALDRIG chiffertekst. | [src](../../../core/services/visible_preview_crypto.py#L29) |
 | function | `reveal_preview` | `(text, user_id)` | Som `laesbaar_preview` med kun `user_id` — aldrig chiffertekst ud. | [src](../../../core/services/visible_preview_crypto.py#L54) |
+| function | `er_laesbar` | `(text_preview)` | Er dette preview et SVAR en dommer/prompt maa citere? | [src](../../../core/services/visible_preview_crypto.py#L59) |
 
 ## `core/services/visible_run_abandonment.py`
 _Hvad der sker naar et run doer midt-flugt._

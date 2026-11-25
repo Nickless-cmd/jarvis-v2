@@ -63,7 +63,8 @@ def build_return_context(*, idle_hours: float = 0.0) -> dict[str, object]:
             preview = _trim(
                 last_run.get("text_preview") or last_run.get("user_message_preview") or ""
             )
-            if preview:
+            from core.services.visible_preview_crypto import er_laesbar
+            if preview and er_laesbar(preview):
                 context["last_visible_preview"] = preview
     except Exception:
         pass

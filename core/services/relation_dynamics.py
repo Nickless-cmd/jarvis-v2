@@ -120,7 +120,9 @@ _STOPWORDS = {
 def _topic_patterns(runs: list[dict[str, Any]]) -> dict[str, Any]:
     word_counts: Counter[str] = Counter()
     for r in runs:
-        text = str(r.get("text_preview") or "")[:400].lower()
+        from core.services.visible_preview_crypto import er_laesbar
+        _p = str(r.get("text_preview") or "")
+        text = _p[:400].lower() if er_laesbar(_p) else ""
         words = [w for w in _WORD_RE.findall(text) if len(w) >= 5 and w not in _STOPWORDS]
         word_counts.update(words)
     top = word_counts.most_common(10)

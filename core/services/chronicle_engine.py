@@ -314,7 +314,8 @@ def _build_appraisal(
             run.get("text_preview") or run.get("user_message_preview") or ""
         ).strip()
         status = str(run.get("status") or "unknown").strip()
-        if preview:
+        from core.services.visible_preview_crypto import er_laesbar
+        if preview and er_laesbar(preview):
             recent_events.append({"status": status, "preview": preview[:160]})
 
     previous_narratives = []

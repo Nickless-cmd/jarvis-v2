@@ -577,7 +577,10 @@ def _build_influence_trace(
             _style_signals: list[str] = []
             _last_runs = recent_visible_runs(limit=1)
             if _last_runs:
+                from core.services.visible_preview_crypto import er_laesbar
                 _preview = str(_last_runs[0].get("text_preview") or "")
+                if not er_laesbar(_preview):
+                    _preview = ""
                 _style_signals.append("short" if len(_preview.split()) < 100 else "long")
                 _style_signals.append("code_heavy" if "```" in _preview else "prose_heavy")
                 _dk = sum(1 for w in ["jeg", "er", "og", "det", "at", "en"] if w in _preview.lower())

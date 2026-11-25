@@ -54,3 +54,19 @@ def laesbaar_preview(
 def reveal_preview(text: str | None, user_id: str | None) -> str | None:
     """Som `laesbaar_preview` med kun `user_id` — aldrig chiffertekst ud."""
     return laesbaar_preview(text, user_id=user_id)
+
+
+def er_laesbar(text_preview: str | None) -> bool:
+    """Er dette preview et SVAR en dommer/prompt maa citere?
+
+    Nej for tom tekst, for `PLADSHOLDER_KRYPTERET` og for raa chiffertekst.
+    Reglen bor her og ikke hos den enkelte forbruger: otte steder laeste
+    previewet som om det var svaret, og hver af dem skulle have opdaget det
+    samme. Chiffertekst er ikke et svar, og «kan ikke bevises» er ikke et svar.
+    """
+    tekst = str(text_preview or "").strip()
+    if not tekst:
+        return False
+    if tekst == PLADSHOLDER_KRYPTERET:
+        return False
+    return not chat_crypto.er_krypteret(tekst)

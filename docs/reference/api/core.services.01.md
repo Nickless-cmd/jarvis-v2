@@ -14,9 +14,9 @@ _Bounded absence awareness._
 | function | `_idle_band` | `(idle_hours)` | — | [src](../../../core/services/absence_awareness.py#L26) |
 | function | `_trim` | `(value, *, limit=…)` | — | [src](../../../core/services/absence_awareness.py#L38) |
 | function | `build_return_context` | `(*, idle_hours=…)` | Collect bounded structural context for resuming after absence. | [src](../../../core/services/absence_awareness.py#L45) |
-| function | `build_return_brief` | `(*, idle_hours=…)` | Build a return brief if user has been absent long enough. | [src](../../../core/services/absence_awareness.py#L94) |
-| function | `build_absence_awareness_surface` | `()` | MC surface for absence awareness. | [src](../../../core/services/absence_awareness.py#L130) |
-| function | `_publish_absence_awareness_transition` | `(payload=…)` | Publish a state-transition event. Called from real transition points | [src](../../../core/services/absence_awareness.py#L166) |
+| function | `build_return_brief` | `(*, idle_hours=…)` | Build a return brief if user has been absent long enough. | [src](../../../core/services/absence_awareness.py#L95) |
+| function | `build_absence_awareness_surface` | `()` | MC surface for absence awareness. | [src](../../../core/services/absence_awareness.py#L131) |
+| function | `_publish_absence_awareness_transition` | `(payload=…)` | Publish a state-transition event. Called from real transition points | [src](../../../core/services/absence_awareness.py#L167) |
 
 ## `core/services/absence_daemon.py`
 _Absence daemon — tracks the *quality* of Jarvis' silence between interactions._

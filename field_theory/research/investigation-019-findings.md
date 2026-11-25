@@ -62,10 +62,19 @@ Subtracting each cell's own mean distance and re-measuring:
 | pooled | **0.857** | [0.841, 0.871] |
 | within cell | **0.591** | [0.567, 0.617] |
 
-The interval still excludes 0.5, so the within-cell signal exists — H3 held. But
-of the 0.357 of AUC above chance, only 0.091 survives centring. **About a quarter
-of the measured power is per-month self-doubt; three quarters is the identity of
-the cell.**
+The interval still excludes 0.5, so the within-cell signal exists — H3 held. The
+gap between the two figures is large: 0.357 above chance pooled, 0.091 above
+chance within cell.
+
+**That gap is not a decomposition.** Pooled AUC ranks a correct match in one cell
+against a wrong match in another; within-cell AUC ranks only inside a single
+cell. They are two different ranking problems, and the difference between them
+cannot be split into "this much is cell identity, this much is per-month doubt".
+The arithmetic invites the split — 0.091 of 0.357 is a quarter — but the two
+numbers do not measure parts of one quantity. What can be said is only this: the
+signal is much weaker once the cell is held fixed, so a large part of the pooled
+figure comes from differences *between* cells rather than from variation within
+one.
 
 The honest reading: the detector can tell you *this world is one I am bad at*.
 It can barely tell you *this particular month is one I am getting wrong*.
@@ -171,15 +180,51 @@ entirely per-month: the detector is right on nearly every month, and the few
 errors it makes are exactly the months with a large distance.
 
 So the first reading of H3 — "three quarters of the power is cell identity" — is
-true of the pooled set and misleading about the mechanism. The dilution is not
-that the distance is inherently a property of the cell. It is that **16 defective
-cells are averaged into the measurement**, and in a defective cell the detector
-is wrong for reasons that have nothing to do with the current month.
+misleading about the mechanism, and the word "identity" was doing work it had not
+earned. The dilution is not that the distance is inherently a property of the
+cell. It is that **cells where the fingerprint cannot separate the series are
+averaged into the measurement**, and in such a cell the detector is wrong for
+reasons that have nothing to do with the current month.
+
+How many, and why: **29 of 40 cell-windows fall below the C3 threshold**, and 28
+of those 29 also have a high error rate (0.26 to 1.00). Only one — `co2
+four_experts W=24`, identity 0.876, error 0.101 — matches correctly without being
+able to name the series. So identity rate and error rate are not two independent
+properties of a cell that happen to correlate; they are largely **the same
+property measured twice**. A cell where the fingerprint cannot tell the series
+apart is a cell where the match is wrong, and the two numbers move together
+because they describe one thing: whether the representation separates the experts
+at all.
+
+That makes "defective" the wrong word. Nothing is broken; the representation is
+simply not discriminative for that data. Which is the question Investigation 20
+has to answer, and it is a question about representation, not about damage.
 
 The correct sentence is narrower and more useful: **in a cell where the detector
 can recognise the world, the distance is a genuine per-month self-doubt signal,
 and a strong one.** The pooled figure is what you get when you do not check
 whether the detector works before you ask it how unsure it is.
+
+## The strong figure is discrimination, not calibration
+
+AUC 0.958 says the distance *ranks* right above wrong. It does not say the
+distance converts into a probability of being wrong, and on the strict subset it
+plainly does not:
+
+| quartile | months | error rate |
+|---|---:|---:|
+| 1 | 220 | **0.000** |
+| 2 | 221 | **0.000** |
+| 3 | 220 | **0.000** |
+| 4 | 221 | 0.104 |
+
+Three of four quartiles contain no error at all. The whole of the discrimination
+lives in the top quarter, where the error rate is 0.104. So the honest description
+of the strict result is not "the distance tells you how likely you are to be
+wrong" but **"the distance identifies the top quarter of months, and one month in
+ten of those is wrong."** That is a usable alarm. It is not a calibrated
+probability, and a mechanism that needs a risk number cannot read one off this
+table.
 
 ## What this changes
 

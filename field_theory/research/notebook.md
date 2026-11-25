@@ -1382,9 +1382,11 @@ the general one. Three measures, two degrees of freedom.
 
 The fourth measure was the real question, and the first answer was no. Condition 3
 fired: no pair of cells shared an occupancy within 0.05 while differing in
-identity stability by 0.30. But the reason was a defect in my own definition —
-`1 − switches/(T−1)` divides by the window length, so ~51 switches over 318 months
-read as 0.839, "stable", while one expert held 72.6 % of the window.
+identity stability by 0.30; the best pair reached 0.199. That is a pre-registered
+criterion not observed inside the design — not a dependence demonstrated, and the
+two claims should not be merged. Separately, the definition carries an analytic
+defect: `1 − switches/(T−1)` divides by the window length, so ~51 switches over
+318 months read as 0.839, "stable", while one expert held 72.6 % of the window.
 
 Measured as dominance share instead, the axis is there — and the first version of
 this table was wrong, because the sign of `d_t` was inverted. The protocol said
@@ -1402,6 +1404,13 @@ Same occupancy to 0.003; three experts share the window in the first, one holds
 most of it in the second. The frozen measure orders them the other way round,
 which is the point: transition frequency and concentration are different
 properties and neither replaces the other.
+
+That pair moves `gap` and `retention` together, so on its own it isolates neither.
+Holding `gap` fixed at 0.05 and raising retention 0.9 → 0.99 leaves occupancy at
+0.000 in both cells while dominance share goes **0.453 → 0.921** — five such pairs
+exist in the grid. Retention shapes the dominance structure without moving
+occupancy at all, which is the hypothesis tested with one variable held fixed
+rather than inferred from a pair that moved both.
 
 `fixed` is identity stable across all 48 cells: the rank order never changes and
 the dominant expert never changes hands, so dominance follows the rank order and

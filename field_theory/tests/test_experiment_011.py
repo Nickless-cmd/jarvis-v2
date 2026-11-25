@@ -32,7 +32,7 @@ import pytest
 
 RUN = (
     Path(__file__).resolve().parents[1]
-    / "artifacts/exp_011_four_measures/run_20261125_v2/results.json"
+    / "artifacts/exp_011_four_measures/run_20261125_v4/results.json"
 )
 
 
@@ -149,18 +149,27 @@ def test_handregnet_eksempel_giver_de_fire_maal() -> None:
 def test_dominance_share_skelner_hvor_identitet_ikke_goer(results: dict) -> None:
     """The finding itself: same occupancy, different continuity.
 
-    The frozen measure reads the two cells below as nearly identical (0.950 vs
-    1.000). Dominance share separates them completely (0.525 vs 1.000). If this
-    test fails, the fourth measure has stopped carrying an axis and condition 6
-    must be reported as fired.
+    After the sign correction the pair is stronger than the original: both cells
+    come from the same source, the same expert set and the same assignment, so
+    only ``gap`` and ``retention`` differ. Occupancy matches to 0.003 while
+    dominance share reads 0.453 against 0.921 — the opposite ordering from
+    identity stability, which reads 0.738 against 0.937. If this test fails, the
+    fourth measure has stopped carrying an axis and condition 6 must be reported
+    as fired.
     """
     pair = results["condition_6_dominance_share"]["best_pair"]
     assert pair is not None
     assert pair["occupancy_gap"] <= 0.05
     assert pair["share_gap"] >= 0.30
     a, b = pair["a"], pair["b"]
-    assert max(a["dominance_share"], b["dominance_share"]) == pytest.approx(1.0)
-    assert min(a["dominance_share"], b["dominance_share"]) <= 0.6
+
+    # The corrected pair isolates the cells to one source, expert set and assignment.
+    assert a["source"] == b["source"]
+    assert a["expert_set"] == b["expert_set"]
+    assert a["assignment"] == b["assignment"]
+
+    assert max(a["dominance_share"], b["dominance_share"]) > 0.85
+    assert min(a["dominance_share"], b["dominance_share"]) < 0.55
     # And the frozen measure does NOT separate them by the same margin.
     assert abs(a["identity_stability"] - b["identity_stability"]) < 0.30
 
@@ -255,3 +264,90 @@ def test_den_dominante_ekspert_er_den_mest_vaegtede() -> None:
 
     assert checked > 100
     assert mismatches == 0, f"{mismatches} af {checked} maaneder pegede paa den forkerte ekspert"
+
+
+def test_randleddet_er_en_identitet_ikke_en_konvention() -> None:
+    """``K - K' = C1 + CT - 1`` holds for every binary sequence, endpoints equal or not.
+
+    This guards a correction that was itself wrong. The identity was reported as
+    valid only when the endpoints differ, with 0 otherwise. The unrestricted form
+    has zero violations over all 8190 sequences up to length 12; the restricted
+    variant fails on the all-collapse state, where K=1 and K'=0 so the difference
+    is +1, not 0.
+    """
+    import itertools
+
+    from feltteori_research.experiment_011_four_measures import _runs
+
+    def counts(flags: list[bool]) -> tuple[int, int]:
+        runs = _runs(flags)
+        collapse = sum(1 for value, _ in runs if value)
+        healthy = sum(1 for value, _ in runs if not value)
+        return collapse, healthy
+
+    total = 0
+    for length in range(1, 13):
+        for bits in itertools.product([False, True], repeat=length):
+            total += 1
+            collapse, healthy = counts(list(bits))
+            predicted = (1 if bits[0] else 0) + (1 if bits[-1] else 0) - 1
+            assert collapse - healthy == predicted, (
+                f"{''.join('1' if b else '0' for b in bits)}: "
+                f"K-K'={collapse - healthy} men C1+CT-1={predicted}"
+            )
+    assert total == 8190
+
+    # The restricted variant is wrong precisely here: same state at both ends.
+    collapse, healthy = counts([True] * 5)
+    assert (collapse, healthy) == (1, 0)
+    assert collapse - healthy == 1
+
+
+def test_retention_former_dominansen_uden_at_roere_occupancy(results: dict) -> None:
+    """Retention moves dominance share while occupancy stays put.
+
+    The headline pair changes ``gap`` and ``retention`` together, so it isolates
+    neither. The grid does contain pairs where only retention moves: hold ``gap``
+    fixed and raise retention from 0.9 to 0.99, and occupancy can stay identical
+    while dominance share changes by more than 0.20.
+    """
+    cells = results["cells"]
+    pairs: list[tuple[dict, dict]] = []
+    for a in cells:
+        for b in cells:
+            if a is b:
+                continue
+            if (a["source"], a["expert_set"], a["assignment"], a["gap"]) != (
+                b["source"],
+                b["expert_set"],
+                b["assignment"],
+                b["gap"],
+            ):
+                continue
+            if abs(a["retention"] - 0.9) > 1e-12:
+                continue
+            if abs(b["retention"] - 0.99) > 1e-12:
+                continue
+            if a["dominance_share"] is None or b["dominance_share"] is None:
+                continue
+            pairs.append((a, b))
+
+    assert len(pairs) >= 5, f"kun {len(pairs)} par med fast gap og varierende retention"
+
+    isolating = [
+        (a, b)
+        for a, b in pairs
+        if abs(a["occupancy"] - b["occupancy"]) < 0.05
+        and abs(a["dominance_share"] - b["dominance_share"]) > 0.20
+    ]
+    assert len(isolating) >= 5, (
+        f"kun {len(isolating)} par isolerer retention: "
+        f"{[(a['source'], a['gap'], a['occupancy'], b['occupancy']) for a, b in pairs]}"
+    )
+
+    # Strictest case: occupancy identical to three decimals, one variable moved.
+    a, b = max(
+        isolating, key=lambda p: abs(p[0]["dominance_share"] - p[1]["dominance_share"])
+    )
+    assert a["occupancy"] == pytest.approx(b["occupancy"], abs=0.05)
+    assert abs(a["dominance_share"] - b["dominance_share"]) > 0.20

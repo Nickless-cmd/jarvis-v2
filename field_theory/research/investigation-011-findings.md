@@ -52,14 +52,24 @@ almost never begins and ends in the same state — 125 cells have `K ≠ K'`. Th
 recorded as an amendment: the narrow condition was not loosened, the general form
 was added as the diagnostic that actually exercises the algebra.
 
-## The fourth measure, and why it was a grab-bag
+## The fourth measure: the criterion was not met
 
-Condition 3 fired: no pair of cells shared an occupancy within 0.05 while
-differing in identity stability by 0.30. The best pair found differed by 0.16.
+Condition 3 fired, and the wording matters. It required a pair of cells sharing an
+occupancy within 0.05 while differing in identity stability by **0.30**. The best
+pair found differed by **0.199**. The pre-registered effect size was not observed
+inside this design.
 
-That is not an absence of information. It is a defect in the definition, and it
-is the same error this investigation exists to name — one name covering several
-quantities.
+That is not the same as a demonstrated dependence. What the experiment establishes
+is that the frozen criterion was not met — not that identity stability is a
+function of occupancy. On the 101 usable cells the two orderings actually
+disagree: at occupancy 0.396 the pair reads identity 0.738, and at 0.393 it reads
+0.937. Identity stability carries something occupancy does not.
+
+Separately, and analytically: `identity_stability = 1 − switches/(T−1)` divides by
+the window length, so the same churn shrinks as the window grows. On a 318-month
+window, ~51 switches give **0.839**, which reads as "stable". That is a property
+of the definition, not a result of the experiment — and it is the reason a
+supplementary measure was added, not evidence about the dependence.
 
 `identity_stability = 1 − switches/(T−1)` divides by the window length, so the
 same churn shrinks as the window grows. On a 318-month window, ~51 switches give
@@ -95,6 +105,23 @@ Same occupancy to within **0.003**. One system is held by a single expert for
 most of the window; the other splits it three ways. `identity_stability` reads
 them as 0.738 and 0.937 — the opposite ordering from `dominance_share`, which is
 the point: the two measures are not substitutes.
+
+**One variable, not two.** That pair changes `gap` (0.8 → 0.2) *and* `retention`
+(0.9 → 0.99), so on its own it isolates neither. The grid does contain pairs where
+only retention moves. Holding `gap` fixed and raising retention from 0.9 to 0.99,
+occupancy stays identical while dominance share separates:
+
+| source / set / assignment | gap | occupancy (r 0.9 → 0.99) | dominance share |
+|---|---:|---|---|
+| synthetic · original · q=0 | 0.05 | 0.000 → 0.000 | **0.453 → 0.921** |
+| sunspots · short_memory · roving | 0.05 | 0.000 → 0.000 | **0.670 → 0.994** |
+| sunspots · four_experts · roving | 0.05 | 0.000 → 0.000 | **0.610 → 0.925** |
+
+Five such pairs exist (`dO < 0.05` with `dShare > 0.20`), and in every one of them
+occupancy is unchanged because nothing collapses at that gap. Retention shapes the
+dominance structure without moving occupancy at all. That is the retention
+hypothesis tested with one variable held fixed, rather than inferred from a pair
+that moved both.
 
 The original pair (`short_memory · roving · CO₂` at 1.000 against
 `original · q=0 · synthetic` at 0.525) reversed under the correction: those two

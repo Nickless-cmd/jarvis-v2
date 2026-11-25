@@ -672,7 +672,10 @@ def run_investigation(
     ]:
         verdict = "falsified_four_measures_three_degrees_of_freedom"
     elif conditions["3_identity_is_a_function_of_occupancy"]:
-        verdict = "frozen_definition_was_a_grab_bag_axis_survives"
+        # Neutral label. It names which pre-registered criterion was not met, not
+        # a reading of what that means. "The criterion was not observed inside
+        # this design" and "a dependence was demonstrated" are different claims.
+        verdict = "preregistered_identity_criterion_not_met_dominance_axis_independent"
     else:
         verdict = "not_falsified"
 

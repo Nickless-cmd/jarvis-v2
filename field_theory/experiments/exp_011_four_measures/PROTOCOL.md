@@ -164,10 +164,13 @@ is reported as measured; the general form is added as a diagnostic. The conditio
 itself is **not** loosened — it fired on nothing because the algebra is right,
 and that stands.
 
-**(b) The fourth measure was itself a grab-bag, which is the error this
-investigation exists to name.** Condition 3 fired: no pair of cells shared an
-occupancy within 0.05 while differing in `identity_stability` by 0.30. But the
-reason is a defect in the definition, not an absence of information:
+**(b) The fourth measure's frozen criterion was not met, and the definition has a
+known scaling defect.** Condition 3 fired: no pair of cells shared an occupancy
+within 0.05 while differing in `identity_stability` by 0.30. The best pair reached
+0.199, so the pre-registered effect size was not observed inside this design —
+which is a weaker statement than a demonstrated dependence, and is recorded as
+such. Separately, the definition has a defect that is analytic rather than
+empirical:
 
 - `identity_stability = 1 − switches/(T−1)` divides by the window length, so the
   same underlying churn produces a smaller number as `T` grows. On a 318-month
@@ -238,7 +241,16 @@ against 0.937 at near-identical occupancy. So both measures are independent axes
 and neither replaces the other — the frozen `I` measures transition frequency,
 `dominance_share` measures concentration, and they disagree in sign here.
 
-**The verdict string is unchanged** (`frozen_definition_was_a_grab_bag_axis_survives`)
-because no condition changed its fired/not-fired state. That is a fact about the
-conditions' coarseness, not evidence that the sign did not matter: 42 cells moved
-by up to 0.443 underneath an unchanged verdict.
+**The verdict string changed after this amendment** (was
+`frozen_definition_was_a_grab_bag_axis_survives`, now
+`preregistered_identity_criterion_not_met_dominance_axis_independent`). The
+conditions' fired/not-fired state did not change, so the old string was technically
+consistent — but it was a reading of the result rather than a report of it. "The
+criterion was not observed inside this design" and "a dependence was demonstrated"
+are different claims, and the label should not make the stronger one. The
+underlying fact that motivated the correction stands: 42 of 132 cells moved by up
+to 0.443 underneath an unchanged verdict, which is a statement about how coarse the
+conditions are, not evidence that the sign did not matter.
+
+Run `run_20261125_v4` is the first with the neutral label; `v3` carries the old
+string with identical numbers.

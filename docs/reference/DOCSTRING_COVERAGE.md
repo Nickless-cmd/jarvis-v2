@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10541/19213 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10545/19217 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 10541/19213 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 928 | 1645 | 56% |
-| `core.services` | 7076 | 13042 | 54% |
+| `core.services` | 7080 | 13046 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -2133,9 +2133,9 @@ Generated from source. 10541/19213 functions/methods documented (54%). The list 
 - `core/services/short_ttl_cache.py` :: `ShortTTLCache.get_or_compute` (L32)
 - `core/services/short_ttl_cache.py` :: `ShortTTLCache.invalidate` (L56)
 - `core/services/shutdown_window_daemon.py` :: `build_shutdown_window_surface` (L168)
-- `core/services/side_tasks.py` :: `get` (L764)
-- `core/services/side_tasks.py` :: `list_pending` (L561)
-- `core/services/side_tasks.py` :: `mark_autonomy_exhausted_reported` (L752)
+- `core/services/side_tasks.py` :: `get` (L757)
+- `core/services/side_tasks.py` :: `list_pending` (L554)
+- `core/services/side_tasks.py` :: `mark_autonomy_exhausted_reported` (L745)
 - `core/services/signal_decay_daemon.py` :: `build_signal_decay_surface` (L98)
 - `core/services/signal_decay_daemon.py` :: `get_signal_decay_stats` (L91)
 - `core/services/signal_noise_guard.py` :: `build_bounded_hypothesis_text` (L185)

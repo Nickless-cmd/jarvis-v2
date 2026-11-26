@@ -75,6 +75,24 @@ def _target_session() -> str:
         return ""
 
 
+def _baggrundssilo(task: dict[str, Any]) -> str:
+    """Hvor en side-opgave kører når den ikke må køre i en samtale.
+
+    Bjørn 26/11-2026: «chat mode skal kun kunne vækkes af rutiner eller
+    wakeups.. ikk side opgaver». Reglen siger HVOR arbejdet må køre — ikke at
+    det skal standse. En side-opgave hører derfor til i baggrunden.
+
+    Navnet kommer fra `autonomous_sessions.resolve_autonomous_session`, som
+    ejer formatet `auto-{origin}-{YYYYMMDD}` og opretter sessionen idempotent.
+    Det er den SAMME silo de opgaver bruger der allerede har en `auto-*`-adresse
+    (104 af 677 målt 26/11-2026) — så der findes én definition, ikke to.
+    """
+    from core.services.autonomous_sessions import resolve_autonomous_session
+
+    mode = str(task.get("autonomy_mode") or "inspect")
+    return resolve_autonomous_session(f"side-task-{mode}")
+
+
 def _session_for_task(task: dict[str, Any]) -> str:
     """Hvilken SAMTALE hører denne opgave til?
 
@@ -120,47 +138,50 @@ def _session_for_task(task: dict[str, Any]) -> str:
         is_external=session_is_external_channel,
     ) or ""
     if not valgt:
-        return ""
+        # Ingen adresse overhovedet ⇒ side-opgaven hører til i baggrunden, ikke
+        # i en samtale. Se CHAT-GRÆNSEN nedenfor.
+        return _baggrundssilo(task)
 
-    # EN AUTONOM KOERSEL MA A IKKE LAND I EN SAMTALE DER LEVER (28/10-2026)
+    # CHAT-GRÆNSEN (26/11-2026). Bjørn: «chat mode skal kun kunne vækkes af
+    # rutiner eller wakeups.. ikk side opgaver». Denne dispatcher kalder
+    # `start_autonomous_run` DIREKTE og går derfor uden om `wake_gateway` —
+    # så porten i gatewayen dækker ikke denne vej, og den skal stå her.
     #
-    # Maalt 28/10 kl. 12:05 og 12:17: to opgaver med mode=inspect landede i
-    # `chat-c05e28bb...` — Bjorns igangvaerende samtale — fordi dette var det
-    # ENESTE led der ikke spurgte om nogen talte i den. De tre andre
-    # vae kke-veje (`inbox_idle_waker`, `scheduled_tasks`, `dispatch_due_wakeups`)
-    # spoerger allerede; reglen fandtes, den blev blot ikke brugt her.
+    # MÅLT 26/11-2026: 527 af 677 side-opgaver (78 %) bærer selv en `chat-*`
+    # adresse, fordi de blev flagget inde i en samtale. Adressen er deres egen,
+    # ikke et gæt, så fallback-fjernelsen alene hjælper ikke.
     #
-    # Hvorfor ikke et `kind`-forbud (den oprindelige opgaves forslag): maalt i
-    # `chat_sessions` findes kun to vaerdier — 'chat' (651) og 'code' (55) — og
-    # BEGGE er samtaler Bjorn sidder i (titlerne i kind='code' er «yo»,
-    # «godmorgen j..»). Et kind-forbud ville derfor afvise ALT og goere
-    # dispatchen virkningsloes. Det er samme faelde som «fald mod det der
-    # standser, ikke mod det der fortsaetter» — her: en regel der ser rigtig ud
-    # og slukker funktionen.
-    #
-    # I stedet genbruges de to karantaener der allerede er maalt og begrundet
-    # i `wakeup_dispatcher`: en fersk tur blokerer, og en fersk besked fra
-    # hver rolle blokerer. Posten gaar ikke tabt — den bliver i koeen til en
-    # senere runde (samme kontrakt som `_target_session`'s tomme svar).
-    from core.services.wakeup_dispatcher import (
-        _active_turn_blocks,
-        _bruger_skrev_for_nylig,
-        _jarvis_skrev_for_nylig,
-    )
+    # FØRSTE UDGAVE RETURNEREDE TOM STRENG HER — og det var en fejl: tomt svar
+    # betyder «ingen start», så 78 % af opgaverne ville vente for evigt i køen
+    # uden at nogen nogensinde kørte dem. Det slukker funktionen i stedet for
+    # at flytte den. Reglen handler om HVOR arbejdet kører, ikke om HVORVIDT det
+    # kører: en side-opgave hører til i baggrunden, og `resolve_autonomous_session`
+    # findes netop til det (samme silo som de 104 opgaver der allerede har en
+    # `auto-*`-adresse).
+    if valgt.startswith("chat-"):
+        silo = _baggrundssilo(task)
+        logger.info(
+            "autonomous_side_task: adresse %s er en samtale — opgaven flyttes "
+            "til baggrundssiloen %s (chat mode vækkes kun af rutiner og wakeups)",
+            valgt[:28], silo,
+        )
+        return silo
 
-    grund = _active_turn_blocks(valgt)
-    if grund:
-        logger.info(
-            "autonomous_side_task: session %s er optaget (%s) — opgaven venter",
-            valgt[:28], grund,
-        )
-        return ""
-    if _bruger_skrev_for_nylig(valgt) or _jarvis_skrev_for_nylig(valgt):
-        logger.info(
-            "autonomous_side_task: session %s er i karantaene — opgaven venter",
-            valgt[:28],
-        )
-        return ""
+    # KARANTÆNE-VÆRNENE ER FJERNET (26/11-2026) — ikke glemt, erstattet.
+    #
+    # Indtil i dag stod her to værn fra 28/10-2026: en fersk tur blokerede, og
+    # en fersk besked fra hver rolle blokerede. De fandtes fordi et autonomt run
+    # kunne lande i Bjørns igangværende samtale (`chat-c05e28bb…`, målt 28/10).
+    #
+    # Nu kan det ikke ske: enhver `chat-*`-adresse er omdirigeret til
+    # baggrundssiloen ovenfor. Tilbage er kun `auto-*`-siloer, og der sidder
+    # ingen — så værnene kunne per konstruktion ikke længere udløse. Et værn der
+    # ikke kan udløse er ikke et værn, det er teater, og det var præcis den
+    # fejlform der blev målt 29/10-2026 («hardcoded du skal føle»).
+    #
+    # Det der STADIG værner mod at to runs kolliderer: `_something_running()`
+    # i `dispatch_one` og `reserve_background_start` i `_start`. De er målt i
+    # drift og dækker også siloer.
     return valgt
 
 

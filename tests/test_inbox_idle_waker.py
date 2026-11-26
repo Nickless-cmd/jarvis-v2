@@ -57,11 +57,24 @@ def _post(bruger="bjorn", id="wake-1", **kw) -> dict:
         # sin egen kildeautoritative modenhed og testes i
         # test_wakeup_skip_til_indbak.py; brugte vi den som standard her,
         # gjorde fixturen fremtidige wakeups kunstigt modne.
-        bruger_id=bruger, kildetype=kw.pop("kildetype", "job"), kilde_id=id,
+        #
+        # 26/11-2026: kildetypen var `job`, som INGEN produktionskode skriver
+        # (maalt: nul kaldesteder). Den vej der faktisk vaekker i drift er
+        # gatewayens `vaekning`-post, saa fixturen bruger den. `origin` saettes
+        # til en kilde der ikke er forbudt, fordi en post i en samtale ikke maa
+        # vaekkes af side-opgaver/initiativer — afvisningen testes eksplicit i
+        # `test_side_opgave_vaekker_ikke_en_samtale`.
+        #
+        # Beskrivelsen baerer postens id: en `vaekning`-post KOMMER sin egen
+        # instruktion med (`_dispatch_tekst` returnerer den ordret), saa uden
+        # id'et kunne en test ikke se HVILKEN post der blev koert.
+        bruger_id=bruger, kildetype=kw.pop("kildetype", "vaekning"),
+        kilde_id=id,
         oprettende_run_id="visible-abc",
         verificeret_ejer=kw.pop("ejer", db_inbox.EJER_JARVIS),
         kraever_handling=kw.pop("kraever_handling", True),
-        beskrivelse=kw.pop("beskrivelse", "foelg op"), **kw)
+        beskrivelse=kw.pop("beskrivelse", f"foelg op {id}"),
+        origin=kw.pop("origin", "wakeup_dispatcher"), **kw)
     assert r["status"] == "ok", r
     return r["post"]
 
@@ -271,6 +284,55 @@ def test_nulstil_vaekning_roerer_ikke_paamindelser(inbox_db):
     assert post["sidste_vaekning_tur"] == ""
     assert post["sidste_paamindelse_tur"] == "visible-abc"
     assert post["paamindelser"] == 1
+
+
+def test_side_opgave_vaekker_ikke_en_samtale(inbox_db, monkeypatch):
+    """KERNEN i Bjorns regel, 26/11-2026.
+
+    «chat mode skal kun kunne vaekkes af rutiner eller wakeups.. ikk side
+    opgaver eller inbox eller initeritiver».
+
+    MAALT 26/11-2026 foer reglen, i `inbox_items`: `origin='side_tasks'` havde
+    vaekket en chat-session 7 gange (senest 24/11 kl. 20:47). Rutiner (8) og
+    wakeups (25) er de veje Bjorn selv har bedt om.
+
+    Posten skrives stadig og kan SES i indbakken — den starter bare intet run
+    i samtalen. Det er forskellen mellem «skjult» og «venter».
+    """
+    from core.services import inbox_idle_waker as w
+
+    _post(id="side-opgave", kildetype="vaekning", origin="side_tasks")
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    startet = []
+    monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: startet.append(tekst))
+
+    r = w.vaek_paa_aabne_poster(bruger_id="bjorn")
+
+    assert r["vaekket"] == 0, "en side-opgave maa ikke vaekke en samtale"
+    assert startet == []
+    # Posten findes fortsat — den venter, den er ikke smidt vaek.
+    assert any(p["kilde_id"] == "side-opgave" for p in db_inbox.liste(bruger_id="bjorn"))
+
+
+def test_en_ikke_forbudt_kilde_vaekker_stadig(inbox_db, monkeypatch):
+    """MODPROEVEN: forbudslisten er negativ, saa ukendte kilder maa vaekke.
+
+    Uden denne test ville en liste der forbod ALT bestaa testen ovenfor — og
+    saa var reglen ikke en graense for side-opgaver, men en slukning af hele
+    vaekkeren. Maalt 26/11-2026: en POSITIV tilladelsesliste ramte praecis
+    denne faelde og slukkede `ci_alarm` og `dream` ved et uheld.
+    """
+    from core.services import inbox_idle_waker as w
+
+    _post(id="rutine-post", kildetype="vaekning", origin="scheduled")
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    startet = []
+    monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: startet.append(tekst))
+
+    r = w.vaek_paa_aabne_poster(bruger_id="bjorn")
+
+    assert r["vaekket"] == 1, "en rutine SKAL kunne vaekke samtalen"
+    assert len(startet) == 1
 
 
 def test_ci_alarm_vaekker_uden_at_vaere_gatende(inbox_db, monkeypatch):

@@ -42,6 +42,49 @@ logger = logging.getLogger(__name__)
 
 KILDETYPE = "vaekning"
 
+#: Kilder der IKKE må give en vækning en CHAT-adresse.
+#:
+#: Bjørn 26/11-2026: «chat mode skal kun kunne vækkes af rutiner eller
+#: wakeups.. ikk side opgaver eller inbox eller initeritiver».
+#:
+#: MÅLT 26/11-2026 før reglen, i `inbox_items`: `origin='side_tasks'` havde
+#: vækket en chat-session 7 gange (senest 24/11 kl. 20:47), alle med kilden
+#: `vaek-side-opgave:side-…`. Rutiner (8) og wakeups (25) er de to veje Bjørn
+#: selv har bedt om.
+#:
+#: LISTEN ER EN FORBUDSLISTE, IKKE EN TILLADELSESLISTE — og det er et bevidst
+#: valg. En tilladelsesliste blev prøvet først og ramte for bredt: `ci_alarm`
+#: (driftsalarmen Bjørn selv bad om 15/10-2026, efter han sad i en åben session
+#: og intet hørte da desk-release 0.6.237 fejlede) og `dream` faldt ud, selv om
+#: han ikke havde nævnt dem. Han pegede på TRE kilder; resten skal ikke slukkes
+#: af en gættet udvidelse af hans sætning.
+#:
+#: En ny kilde der ikke står her, må derfor stadig vække samtalen. Skal den
+#: forbydes, skal den NAVNGIVES — det er den ærlige retning: en funktion der
+#: forsvinder fordi nogen glemte at tilføje den til en liste, er værre end en
+#: kilde der må vække indtil nogen siger andet.
+CHAT_FORBUDTE_KILDER: frozenset[str] = frozenset({
+    "side_tasks",        # «ikk side opgaver»
+    "living_executive",  # «initeritiver»
+})
+#: «inbox» staar bevidst IKKE her: indbakken er ikke en KILDE, den er
+#: VÆKKEREN. Den skriver ingen `vaekning`-post med sig selv som `origin`, saa
+#: et forbud mod navnet ville vaere en doed indgang — og en liste med doede
+#: indgange ser staerkere ud end den er. Maalt 26/11-2026: `background_attention`
+#: og `inbox_idle_waker` blev foerst skrevet her som gaet; ingen af dem findes
+#: som kilde-navn i kodebasen, og begge er fjernet igen.
+#:
+#: De oevrige kilder der faktisk kalder gatewayen — `scheduled`, `routine`,
+#: `recurring`, `wakeup_dispatcher`, `baggrundsjob_vagt`, `process_watcher`,
+#: `message_feedback`, `agent_completion`, `proposal`, `nominering`, `approval`
+#: — er ikke naevnt af Bjoern og roeres derfor ikke.
+
+
+def maa_vaekke_chat(kilde: str) -> bool:
+    """Må denne kilde starte et run i en CHAT-samtale?"""
+    return str(kilde or "").strip().lower() not in CHAT_FORBUDTE_KILDER
+
+
 QUEUED = "queued"
 DEDUPED = "deduped"
 REJECTED = "rejected"
@@ -133,6 +176,27 @@ def anmod_om_vaekning(
         if not tekst:
             return _kvittering(REJECTED, "mangler_tekst", kilde=kilde,
                                kilde_id=kilde_id)
+        # CHAT-GRÆNSEN (26/11-2026). En kilde der ikke må vække en samtale får
+        # ingen SAMTALE-adresse: posten skrives stadig, så den kan SES i
+        # indbakken, men uden en `session_id` returnerer
+        # `inbox_idle_waker._maal_session` tom — og så venter posten i stedet
+        # for at starte et run midt i en samtale.
+        #
+        # Kun `chat-*` rammes. En `auto-*`-silo eller en dedikeret
+        # baggrundssession er urørt: reglen handler om hvad der må trænge ind i
+        # en samtale Bjørn sidder i, ikke om baggrundsarbejde.
+        #
+        # Grænsen ligger HER og ikke hos den enkelte kilde, fordi alle kilder
+        # går gennem denne funktion. Satte hver kilde sin egen regel, ville den
+        # næste kilde arve ingen regel — og det er præcis hvad der blev målt:
+        # side-opgaver vækkede samtalen 7 gange, fordi ingen port spurgte.
+        if (session_id and str(session_id).startswith("chat-")
+                and not maa_vaekke_chat(kilde)):
+            logger.info(
+                "wake_gateway: %s må ikke vække en samtale — adresse %s fravalgt",
+                kilde, str(session_id)[:28],
+            )
+            session_id = ""
         # BRUGEREN NORMALISERES (12/11-2026). Kilden kender sin EGEN identitet,
         # og den kan være ældre end den personen læses under: rutinen sender
         # ejerens legacy-id, mens indbakken læses under hans discord-id. Uden

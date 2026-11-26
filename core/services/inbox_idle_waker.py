@@ -323,6 +323,41 @@ def _maal_session(post: dict[str, Any]) -> str:
     ) or ""
 
 
+def _kilde_maa_vaekke_chat(post: dict[str, Any]) -> bool:
+    """Må DENNE post starte et run i en samtale?
+
+    Bjørn 26/11-2026: «chat mode skal kun kunne vækkes af rutiner eller
+    wakeups.. ikk side opgaver eller inbox eller initeritiver».
+
+    Tilladelseslisten ejes af `wake_gateway.CHAT_FORBUDTE_KILDER` — den
+    læses her, ikke kopieres. To lister ville drive fra hinanden, og så blev
+    den ene stille virkningsløs (samme fejl som de fire kopier af «hvor skal
+    dette lande», målt 25/10-2026).
+
+    Kildetyperne:
+      * `wakeup`     — en wakeup-post fra før gatewayen (101 i drift). Tilladt.
+      * `recurring`  — en rutine. `_er_moden` har allerede krævet at den er en
+                       SESSION-rutine, så den er bestilt til en samtale. Tilladt.
+      * `vaekning`   — gateway-posten. Kilden står i `origin`, og den afgør.
+      * alt andet    — tilladt, MEDMINDRE kilden står på forbudslisten. Se
+                       `CHAT_FORBUDTE_KILDER` for hvorfor listen er negativ:
+                       en positiv liste slukkede `ci_alarm` og `dream` ved et
+                       uheld, og dem havde Bjørn ikke nævnt.
+    """
+    from core.services.wake_gateway import maa_vaekke_chat
+
+    kildetype = str(post.get("kildetype") or "")
+    if kildetype in ("wakeup", "recurring"):
+        return True
+    if kildetype == "vaekning":
+        # `origin` falder tilbage til kildenavnet i gatewayen, så en post uden
+        # `origin` er enten ældre end det felt eller skrevet uden om gatewayen.
+        # Tom origin er UKENDT og må derfor ikke forbydes — se listen.
+        return maa_vaekke_chat(str(post.get("origin") or ""))
+    # Kildetyper uden om gatewayen: kun en eksplicit forbudt kilde stoppes.
+    return maa_vaekke_chat(kildetype)
+
+
 def _start_run(
     tekst: str,
     *,
@@ -634,6 +669,26 @@ def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
             logger.info(
                 "inbox_idle_waker: %s/%s har ingen samtale at vække i — venter",
                 post.get("kildetype"), kilde_id)
+            continue
+        # ── CHAT-GRÆNSEN (26/11-2026) ────────────────────────────────────────
+        #
+        # Bjørn: «chat mode skal kun kunne vækkes af rutiner eller wakeups..
+        # ikk side opgaver eller inbox eller initeritiver».
+        #
+        # MÅLT 26/11-2026 før reglen: `origin='side_tasks'` havde vækket en
+        # chat-session 7 gange (senest 24/11 kl. 20:47). Rutiner (8) og wakeups
+        # (25) er de veje Bjørn selv har bedt om.
+        #
+        # Grænsen gælder KUN samtaler. En post hvis adresse er en `auto-*`-silo
+        # eller en dedikeret baggrundssession er urørt — reglen handler om hvad
+        # der må trænge ind i en samtale han sidder i, ikke om baggrundsarbejde.
+        if session_id.startswith("chat-") and not _kilde_maa_vaekke_chat(post):
+            logger.info(
+                "inbox_idle_waker: %s/%s (origin=%r) må ikke vække samtalen "
+                "%s — posten venter",
+                post.get("kildetype"), kilde_id, post.get("origin"),
+                session_id[:28],
+            )
             continue
         # Det første tjek ligger før vi kender postens adresse og kan derfor
         # have undersøgt en anden session.  Genkontrollér den faktiske adresse

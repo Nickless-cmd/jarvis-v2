@@ -63,6 +63,10 @@ def waker(monkeypatch):
 def _anmod(**kw):
     from core.services.wake_gateway import anmod_om_vaekning
 
+    # `test-kilde` staar IKKE paa forbudslisten, saa den maa vaekke samtalen.
+    # Det er med vilje: forbudslisten er negativ (se `CHAT_FORBUDTE_KILDER`),
+    # saa en ukendt kilde ikke bliver slukket ved et uheld. Afvisningen testes
+    # i `test_forbudt_kilde_faar_ingen_samtale`.
     kw.setdefault("kilde", "test-kilde")
     kw.setdefault("sag", "sag-1")
     kw.setdefault("tekst", "gør noget")
@@ -96,6 +100,49 @@ def test_to_kilder_samme_sag_giver_en_vaekning(inbox_db, waker):
     # Næste runde: allerede vækket, ingen ny.
     assert waker.vaek_paa_aabne_poster(bruger_id=BRUGER)["vaekket"] == 0
     assert len(waker.starter) == 1
+
+
+def test_forbudt_kilde_faar_ingen_samtale(inbox_db, waker):
+    """CHAT-GRAENSEN i gatewayen, 26/11-2026.
+
+    Alle vaekningskilder gaar gennem `anmod_om_vaekning`. Foer spurgte ingen af
+    dem om HVEM der maatte give en post en samtale-adresse — adressen blev blot
+    givet videre. Maalt i drift: `origin='side_tasks'` havde vaekket en
+    chat-session 7 gange.
+
+    Posten skrives stadig (den kan ses i indbakken), men uden en samtale-adresse
+    returnerer `_maal_session` tom, og saa venter den i stedet for at starte et
+    run midt i en samtale.
+    """
+    from core.services.wake_gateway import maa_vaekke_chat
+
+    _anmod(kilde="side_tasks", sag="forbudt-1", session_id="chat-bjoern")
+    waker.vaek_paa_aabne_poster(bruger_id=BRUGER)
+
+    assert waker.starter == [], (
+        "en side-opgave fik lov at vaekke en samtale — praecis det Bjorn forbod"
+    )
+    assert maa_vaekke_chat("side_tasks") is False
+    assert maa_vaekke_chat("living_executive") is False
+
+
+def test_en_ikke_forbudt_kilde_beholder_samtalen(inbox_db, waker):
+    """MODPROEVEN: listen er NEGATIV — en ukendt kilde maa stadig vaekke.
+
+    Maalt 26/11-2026: en positiv tilladelsesliste blev proevet foerst og ramte
+    for bredt. `ci_alarm` (driftsalarmen Bjorn bad om 15/10-2026) og `dream`
+    faldt ud, selv om han ikke havde naevnt dem. En liste over det FORBUDTE
+    rammer praecis det han pegede paa.
+    """
+    from core.services.wake_gateway import maa_vaekke_chat
+
+    assert maa_vaekke_chat("scheduled") is True
+    assert maa_vaekke_chat("wakeup_dispatcher") is True
+    assert maa_vaekke_chat("ci_alarm") is True
+    assert maa_vaekke_chat("dream") is True
+    # Ukendt/tom kilde maa ikke forbydes ved et uheld.
+    assert maa_vaekke_chat("") is True
+    assert maa_vaekke_chat("en-ny-kilde") is True
 
 
 def test_waker_bruger_kildens_tekst_og_samtale(inbox_db, waker):

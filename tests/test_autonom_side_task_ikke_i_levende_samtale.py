@@ -4,10 +4,18 @@ MAALT 28/10-2026: to opgaver med mode=inspect landede i `chat-c05e28bb...` —
 Bjorns igangvaerende samtale — fordi `_session_for_task` var det eneste led i
 vae kke-kaeden der ikke spurgte om nogen talte i den.
 
-Testene her værner om TRE ting, fordi den nemme rettelse er den forkerte:
+BJORN 26/11-2026 STRAMMEDE REGLEN: «chat mode skal kun kunne vaekkes af
+rutiner eller wakeups.. ikk side opgaver eller inbox eller initeritiver».
+Foer handlede reglen om HVORNAAR en samtale var rolig nok; nu handler den om
+HVEM der overhovedet maa give en side-opgave en samtale-adresse. Svaret er
+ingen — en side-opgave hoerer til i baggrunden.
 
-1. En optaget samtale afvises (den ægte fejl).
-2. En rolig samtale afvises IKKE — en regel der afviser alt er virkningsløs.
+Testene her værner om tre ting, fordi den nemme rettelse er den forkerte:
+
+1. En `chat-*`-adresse omdirigeres til baggrundssiloen (den aegte regel).
+2. En `auto-*`-adresse roeres IKKE — reglen handler om samtaler, ikke om
+   baggrundsarbejde. Uden denne modproeve ville et `return silo` paa foerste
+   linje bestaa alt nedenfor og flytte ALT arbejde vaek fra sin silo.
 3. Der findes ingen `kind`-vaerdi der kan bruges som filter: `chat_sessions`
    har kun 'chat' og 'code', og begge er samtaler Bjorn sidder i.
 """
@@ -33,52 +41,75 @@ def uden_resolvere(monkeypatch):
     return "chat-levende"
 
 
-def test_en_optaget_samtale_afvises(uden_resolvere, monkeypatch):
-    """Kernen: kører der en fersk tur, starter vi IKKE et konkurrerende run."""
-    from core.services import wakeup_dispatcher as w
+def test_en_chat_adresse_omdirigeres_til_baggrundssiloen(uden_resolvere):
+    """Kernen: en side-opgave maa ikke laane Bjorns samtale.
 
-    monkeypatch.setattr(w, "_active_turn_blocks", lambda sid: "fersk visible-tur")
-    monkeypatch.setattr(w, "_bruger_skrev_for_nylig", lambda sid: False)
-    monkeypatch.setattr(w, "_jarvis_skrev_for_nylig", lambda sid: False)
-
-    assert d._session_for_task({"session_id": uden_resolvere}) == ""
-
-
-def test_en_samtale_hvor_bjoern_lige_skrev_afvises(uden_resolvere, monkeypatch):
-    """Han skrev for 30 sekunder siden — opgaven venter, den forsvinder ikke."""
-    from core.services import wakeup_dispatcher as w
-
-    monkeypatch.setattr(w, "_active_turn_blocks", lambda sid: "")
-    monkeypatch.setattr(w, "_bruger_skrev_for_nylig", lambda sid: True)
-    monkeypatch.setattr(w, "_jarvis_skrev_for_nylig", lambda sid: False)
-
-    assert d._session_for_task({"session_id": uden_resolvere}) == ""
-
-
-def test_en_samtale_hvor_jeg_lige_svarede_afvises(uden_resolvere, monkeypatch):
-    """Symmetrien: jeg har netop svaret, han er ved at laese — ikke forstyrr."""
-    from core.services import wakeup_dispatcher as w
-
-    monkeypatch.setattr(w, "_active_turn_blocks", lambda sid: "")
-    monkeypatch.setattr(w, "_bruger_skrev_for_nylig", lambda sid: False)
-    monkeypatch.setattr(w, "_jarvis_skrev_for_nylig", lambda sid: True)
-
-    assert d._session_for_task({"session_id": uden_resolvere}) == ""
-
-
-def test_en_rolig_samtale_afvises_ikke(uden_resolvere, monkeypatch):
-    """Modproeven: en regel der afviser alt er vaerre end fejlen.
-
-    Uden denne test ville et `return ""` paa første linje bestaa alle tre
-    test ovenfor — og slukke for al autonom dispatch uden at nogen opdagede det.
+    26/11-2026: svaret var foer `""` (opgaven ventede). Det var forkert — tomt
+    svar betyder «ingen start», saa 78 % af opgaverne (527 af 677 maalt) ville
+    vente for evigt. Opgaven skal KOERE, bare ikke i samtalen.
     """
-    from core.services import wakeup_dispatcher as w
+    svar = d._session_for_task({"session_id": uden_resolvere, "autonomy_mode": "inspect"})
 
-    monkeypatch.setattr(w, "_active_turn_blocks", lambda sid: "")
-    monkeypatch.setattr(w, "_bruger_skrev_for_nylig", lambda sid: False)
-    monkeypatch.setattr(w, "_jarvis_skrev_for_nylig", lambda sid: False)
+    assert svar, "en side-opgave maa ikke ende uden en adresse"
+    assert not svar.startswith("chat-"), (
+        "side-opgaven landede i en samtale — praecis det Bjorn forbod"
+    )
+    assert svar.startswith("auto-side-task-"), (
+        f"forventede en baggrundssilo, fik {svar!r}"
+    )
 
-    assert d._session_for_task({"session_id": uden_resolvere}) == uden_resolvere
+
+def test_en_chat_adresse_omdirigeres_uanset_om_samtalen_er_rolig(uden_resolvere):
+    """Ogsaa en HELT rolig samtale maa afvises som adresse.
+
+    Foer var dette modproeven der sikrede at reglen ikke afviste alt. Nu er
+    modproeven en anden: at en `auto-*`-adresse ikke roeres (se nedenfor).
+    Her laases det at rolighed ikke laengere er kriteriet — kilden er.
+    """
+    svar = d._session_for_task({"session_id": uden_resolvere, "autonomy_mode": "inspect"})
+
+    assert not svar.startswith("chat-")
+
+
+def test_en_auto_adresse_er_en_logbog_ikke_en_modtager(uden_resolvere):
+    """Modproeven: reglen maa ikke goere dispatch virkningsloes.
+
+    `pick_wakeup_run_target` afviser allerede `auto-*` som MODTAGER (17/11-2026:
+    «en auto-silo er en logbog, ikke en modtager»), saa svaret bliver en frisk
+    baggrundssilo — ikke den oprindelige.
+
+    Det vigtige her er ikke hvilken silo der vaelges, men at svaret ALDRIG er
+    tomt: tomt svar betyder «ingen start», og saa ville en regel der ser rigtig
+    ud slukke al autonom dispatch. Det var den fejl der blev maalt 26/11-2026,
+    hvor 78 % af side-opgaverne ville vente for evigt.
+    """
+    for adresse in ("auto-work-20261126", "chat-bjoern", ""):
+        svar = d._session_for_task(
+            {"session_id": adresse, "autonomy_mode": "inspect"}
+        )
+        assert svar, f"tomt svar for adresse {adresse!r} — dispatch ville staa stille"
+        assert not svar.startswith("chat-"), (
+            f"adresse {adresse!r} endte i en samtale"
+        )
+
+
+def test_en_ekstern_kanal_giver_stadig_ingen_start(uden_resolvere, monkeypatch):
+    """Discord/Telegram er hverken en samtale eller en silo — de venter.
+
+    Bevaret fra 28/10-2026: `_target_session` springer eksterne kanaler over,
+    og en opgave der kun har en saadan adresse maa ikke gætte en anden.
+    """
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.session_is_external_channel",
+        lambda sid: str(sid).startswith("disc-"),
+    )
+
+    svar = d._session_for_task({"session_id": "disc-origin", "autonomy_mode": "inspect"})
+
+    # Der findes ingen gyldig adresse, saa opgaven flyttes til baggrunden —
+    # den venter ikke laengere, og den laaner ikke en ekstern kanal.
+    assert not svar.startswith("disc-")
+    assert not svar.startswith("chat-")
 
 
 def test_der_findes_ingen_kind_der_kan_bruges_som_filter():

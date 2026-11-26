@@ -302,30 +302,23 @@ def _book_vaekning(record: dict[str, Any], *, nu: datetime | None = None) -> str
             return str(kv.get("kilde_id") or "")
         raise RuntimeError(f"wake_gateway afviste: {kv.get('grund') or 'ukendt'}")
     except Exception as exc:  # noqa: BLE001
-        logger.warning("side-opgaver: gateway fejlede for %s: %s — falder tilbage",
-                       tid, exc)
-    try:
-        from core.services.self_wakeup import schedule_self_wakeup
-        svar = schedule_self_wakeup(
-            delay_seconds=int(sekunder),
-            prompt=(
-                f"Side-opgaven [{tid}] «{titel}» sover ikke laengere — dens tid er "
-                "inde. Tag den op nu, eller udskyd den igen med "
-                "`snooze_side_task`. Er den ikke laengere relevant, saa afvis den "
-                f"med en grund: dismiss_side_task(side_task_id=\"{tid}\", "
-                "decision=\"dismissed\", reason=\"...\")."),
-            reason=f"side-opgave udskudt til {_kort_tid(record.get('not_before'))}",
-            session_id=maal_session or None,
-            task_id=tid,
+        # INGEN FALLBACK TIL `schedule_self_wakeup` (26/11-2026). Den gamle
+        # nødvej bookede en ægte wakeup med opgavens `task_id`, og så blev
+        # posten ført ind gennem `wakeup_dispatcher` — en kilde der MÅ vække
+        # samtalen. En side-opgave kunne dermed snige sig ind ad den vej
+        # reglen ellers lukker, netop når gatewayen fejlede.
+        #
+        # Bjørn: «chat mode skal kun kunne vækkes af rutiner eller wakeups..
+        # ikk side opgaver». En side-opgave ER ikke en wakeup, uanset hvilken
+        # mekanisme der booker den. Fejler gatewayen, venter opgaven i køen
+        # til næste runde — det er den samme retning som resten af filen:
+        # hellere vente end at gætte.
+        logger.warning(
+            "side-opgaver: gateway fejlede for %s: %s — opgaven venter "
+            "(ingen wakeup-fallback: chat må kun vækkes af rutiner og wakeups)",
+            tid, exc,
         )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("side-opgaver: kunne ikke booke vaekning for %s: %s", tid, exc)
         return ""
-    if str(svar.get("status") or "") != "ok":
-        logger.warning("side-opgaver: vaekning for %s blev afvist: %s",
-                       tid, svar.get("error"))
-        return ""
-    return str((svar.get("wakeup") or {}).get("wakeup_id") or "")
 
 
 def _ventende_vaekning_ids() -> set[str] | None:

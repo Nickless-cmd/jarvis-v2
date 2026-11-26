@@ -168,8 +168,14 @@ def _klar_til_start(monkeypatch):
     monkeypatch.setattr(dispatcher, "_something_running", lambda: False)
 
 
-def test_runnet_lander_i_opgavens_egen_samtale(monkeypatch):
-    """Opgaven bærer sin samtale — så vinder den over ejerens aktive samtale."""
+def test_runnet_lander_i_baggrundssiloen_ikke_i_opgavens_samtale(monkeypatch):
+    """26/11-2026: opgavens EGEN samtale er ikke laengere en gyldig adresse.
+
+    Foer vandt `chat-hvor-opgaven-hoerer-til` over ejerens aktive samtale.
+    Bjorn strammede reglen: chat mode maa kun vaekkes af rutiner og wakeups,
+    saa en side-opgave hoerer til i baggrunden uanset hvilken samtale den blev
+    flagget i (527 af 677 baerer selv en `chat-*`-adresse, maalt 26/11-2026).
+    """
     _state(monkeypatch)
     side_tasks.flag(
         title="Undersøg", prompt="Find årsagen", autonomy_mode="inspect",
@@ -185,12 +191,15 @@ def test_runnet_lander_i_opgavens_egen_samtale(monkeypatch):
 
     result = dispatcher.dispatch_one()
 
-    assert result["started"] == 1
-    assert started[0]["session_id"] == "chat-hvor-opgaven-hoerer-til"
+    assert result["started"] == 1, "opgaven skal KOERE, bare ikke i samtalen"
+    assert not started[0]["session_id"].startswith("chat-"), (
+        "side-opgaven landede i en samtale — praecis det Bjorn forbod"
+    )
+    assert started[0]["session_id"].startswith("auto-side-task-")
 
 
-def test_uden_egen_samtale_falder_den_til_sidst_aktive(monkeypatch):
-    """Ingen egen samtale ⇒ samme fallback som de tre andre vække-veje."""
+def test_uden_egen_samtale_gaar_den_til_baggrundssiloen(monkeypatch):
+    """Ingen egen adresse ⇒ baggrunden, ikke ejerens aktive samtale."""
     _state(monkeypatch)
     side_tasks.flag(title="Undersøg", prompt="Find årsagen", autonomy_mode="inspect")
     _klar_til_start(monkeypatch)
@@ -204,11 +213,17 @@ def test_uden_egen_samtale_falder_den_til_sidst_aktive(monkeypatch):
     result = dispatcher.dispatch_one()
 
     assert result["started"] == 1
-    assert started[0]["session_id"] == "chat-senest-aktiv"
+    assert not started[0]["session_id"].startswith("chat-")
+    assert started[0]["session_id"].startswith("auto-side-task-")
 
 
-def test_ingen_samtale_frigiver_claim_og_starter_intet(monkeypatch):
-    """Tom ⇒ INGEN start. Opgaven skal blive i køen, ikke i en silo."""
+def test_ingen_samtale_starter_i_baggrundssiloen(monkeypatch):
+    """Tom adresse ⇒ baggrundssilo. FOER: «ingen start, bliv i koeen».
+
+    Den gamle kontrakt var `no-session` + frigivet claim. Den betoed at en
+    opgave uden en samtale aldrig blev koert — og efter 26/11 ville det ramme
+    78 % af alle side-opgaver. En side-opgave har altid et sted at koere.
+    """
     rows = _state(monkeypatch)
     side_tasks.flag(title="Undersøg", prompt="Find årsagen", autonomy_mode="inspect")
     _klar_til_start(monkeypatch)
@@ -221,17 +236,19 @@ def test_ingen_samtale_frigiver_claim_og_starter_intet(monkeypatch):
 
     result = dispatcher.dispatch_one()
 
-    assert result["started"] == 0
-    assert result["reason"] == "no-session"
-    assert started == []
-    # Leasen må ikke blive hængende på en opgave der aldrig blev startet.
-    assert rows[0]["status"] == "queued"
-    assert not rows[0].get("autonomy_lease_owner")
+    assert result["started"] == 1
+    assert started[0]["session_id"].startswith("auto-side-task-")
+    assert rows[0]["status"] == "running"
 
 
-def test_eksplicit_utilgaengelig_origin_omdirigeres_ikke(monkeypatch):
-    """En kendt origin maa vente; ejerens aktuelle app-session er ikke en fallback."""
-    rows = _state(monkeypatch)
+def test_en_ekstern_kanal_bruges_ikke_som_adresse(monkeypatch):
+    """Discord/Telegram maa hverken vaere adresse eller laanes som fallback.
+
+    Bevaret fra 28/10-2026: `pick_wakeup_run_target` afviser eksterne kanaler.
+    Opgaven lander derfor i baggrunden — den venter ikke og den gaar ikke til
+    en kanal Bjorn ikke sidder i.
+    """
+    _state(monkeypatch)
     side_tasks.flag(
         title="Undersøg", prompt="Find årsagen", autonomy_mode="inspect",
         session_id="disc-origin",
@@ -250,7 +267,7 @@ def test_eksplicit_utilgaengelig_origin_omdirigeres_ikke(monkeypatch):
 
     result = dispatcher.dispatch_one()
 
-    assert result == {"status": "ok", "started": 0, "reason": "no-session"}
-    assert started == []
-    assert rows[0]["status"] == "queued"
-    assert rows[0]["autonomy_last_blocked_reason"] == "ingen samtale at lande i"
+    assert result["started"] == 1
+    assert not started[0]["session_id"].startswith("disc-")
+    assert not started[0]["session_id"].startswith("chat-")
+    assert started[0]["session_id"].startswith("auto-side-task-")

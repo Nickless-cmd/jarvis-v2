@@ -5,29 +5,33 @@ The repository-wide status source remains
 This file records the status of the delivered Jarvis Desk changes requested for
 implementation.
 
-## Desk: turn identity and block semantics decoupled — complete locally (2026-11-26)
+## Desk: pace identity survives the fold — measured end-to-end (2026-11-26)
 
-Two of the seven architectural requirements from the turn-head brief are
-implemented; the remaining five are not started.
+Two of the seven architectural requirements from the turn-head brief are now
+**measured**, not merely unit-tested. The remaining five are not started.
 
-- **Stable pace identity.** New immutable `StreamState.turId` replaces
-  `tur-${turStart}` as the pacing key. Five sites wrote `Date.now()` into
-  `turStart`, two unconditionally, so a follow-up run or reconnect re-paced the
-  answer from the beginning. `confirmedRef` now keys on `turId` too — it keyed
-  on `runId`, which changes on every follow-up run.
-- **Authoritative phase semantics.** `projektion()` reads `block.phase`
-  (server-set: `commentary`/`final_answer`) before falling back to the
-  positional rule. A block with a server phase can no longer be reclassified
-  when a later round arrives. The flat, order-preserving structure is kept as
-  requested; only the dynamic reclassification is removed.
-- **Tests.** 10 `streamReducer.turId.test.ts`, 7 `raekkeModel.semantik.test.ts`.
-  The semantics test was verified against the old code with `git stash`: 4/7
-  fail there, 7/7 pass now. 2202 desk tests green, `tsc --noEmit` clean.
+- **Requirement 1 — pace independent of the head: measured.** The measurement
+  surface mounts the real `ChatFlowPresentation` (`?flade=pace`) and reads the
+  cursor out of the DOM as the longest prefix of the final answer present on the
+  page. Across three fold toggles: 91 → 140 → 191 → 240 characters, 378 after
+  700 ms with no fold. Changing the turn id on purpose drops it to 12 — so the
+  measurement can fail, and the green result is not tautological. The sibling
+  `PaceProbe` is kept as a mechanism check and is documented as *not* proving
+  integration.
+- **Turn id, first frame.** `client_turn_start` set an id but bound no run, so
+  the server's first `message_start` produced a new one exactly when pacing
+  began. Fixed with a third `_bevar` branch; a foreign turn with `origin` still
+  gets its own id. Verified against the old gate: 1 of 12 fails there.
+- **Requirement 2 — head is presentation-only: measured** for server-stamped
+  blocks. `projektion()` reads `block.phase` first; a block without `phase` still
+  falls back to position, which is the remaining limitation.
+- **Not started:** independent round containers in the document flow, coordinated
+  fade/collapse, the synthesis hand-off, the persisted-message takeover, and
+  frame-by-frame verification of those (the harness now measures the pace, not
+  yet the whole lifecycle).
 - **Open.** `follow_start` is client-local and carries only `run_id`, so "new
-  run id = new turn" remains an unproven heuristic for continuation runs. Round
-  containers in the document flow, coordinated fade/collapse, persisted-message
-  handover and frame-by-frame verification in `scripts/maaling.mjs` are not
-  started.
+  run id = new turn" remains an unproven heuristic for continuation runs.
+- **Tests.** 3707 desk tests green, `tsc --noEmit` clean.
 
 
 ## Initiative coordination across the Central — implemented in worktree, not deployed (2026-11-24)

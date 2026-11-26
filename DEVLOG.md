@@ -1,4 +1,50 @@
 # Development log
+## 2026-11-26 (second pass) — The measurement was of a mechanism, not of its integration
+
+GPT verified the two pushed commits against `main` and found three defects. All
+three were real; one was a production bug, not a test gap.
+
+**1. The turn id still changed in the turn's first frame.** `client_turn_start`
+set a `turId` but bound no run: `activeRunId` was still `null`. The server's
+first `message_start` then carried a run id the client did not know, so
+`_sameRun` was false and `_bevar` fell back to false — and the turn got a NEW id
+exactly when pacing began. Identity survived rounds, reconnects and follow-ups,
+but not the one frame where it must be established first. Fixed with a third
+`_bevar` branch: when the client opened the turn (`turId` set, no run bound,
+status working) the identity is preserved; a foreign turn with `origin` still
+turns the branch off. Side effect caught while fixing it: `arbejdeEfterSvar`
+became true on the turn's first frame — there was no locked answer to come
+*after* — which would have unfolded the head at every turn start. The condition
+now requires `state.svarLaast`.
+
+**2. The counter-test could pass on the key change alone.**
+`efterNoegle.vistTegn < start.vistTegn || efterNoegle.key !== start.key`. The
+key change is something the measurement did on purpose, so it can never be
+evidence that the cursor resets; and `start` is the FIRST sample (5 chars), not
+the last before the switch (39), so a fall from 39 to 18 passed unnoticed. Now
+compared against the sample immediately before the switch. Fixing it exposed a
+second error in the same line: `pace[pace.length - 1]` is `efterNoegle` itself,
+because `laesPace` already pushed it — the comparison was `x < x`.
+
+**3. The probe measured a sibling component.** `PaceProbe` called the real
+`useChatPacedBlocks` but returned `null` and sat beside the transcript. It proved
+that an isolated pacer keeps running while another component folds; not that the
+pacer delivering the user's text does. The measurement surface now mounts the
+real `ChatFlowPresentation` (`?flade=pace`) and reads the cursor out of the DOM
+as the longest prefix of the final answer present on the page — independent of
+CSS class names and of how the word animation splits text into spans. A remount
+that reset the pacer would leave the hook's own state correct in the new
+instance; only the rendered text reveals that it started over.
+
+**Measured.** Integration: 91 → 140 → 191 → 240 chars across three fold toggles,
+378 after 700 ms with no fold, and 12 when the turn id was changed on purpose.
+Mechanism: 5 → 15 → 27 → 39, counter-test 18. Both valid.
+
+**Tests.** `streamReducer.turId.test.ts` gained the first-frame case and its
+counter-test (a foreign turn with `origin` still gets a new id). Verified against
+the old gate: 1 of 12 fails there, 12 of 12 pass now. 3707 desk tests green,
+`tsc --noEmit` clean.
+
 ## 2026-11-26 — The turn's identity is not its clock; the block's phase is not its position
 
 **Root cause (measured, two distinct couplings).**

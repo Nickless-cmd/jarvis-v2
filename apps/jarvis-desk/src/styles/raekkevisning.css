@@ -24,6 +24,15 @@
   --rv-tertiary: #a6a59c;
   --rv-h: 24px;      /* rækkens højde — målt: calc(24px + content-font-delta) */
   --rv-enhed: 16px;  /* målt: grundenheden mellem ALT */
+  /* FOLDENS tal — og fadens (Bjørn 26/11-2026: «timingen på faden skal være
+     mere ala hoveds animation»). Folden bruger `--dur-fold` (379 ms, afledt af
+     ord-animationen: 220 + 99 + 2×60), og faden havde sit eget hardcodede
+     160 ms `ease-in`. Målt: runden var væk når folden var 42 % gennemført.
+
+     Variablen bor her, så både `.rv-gruppe-ydre` (folden) og
+     `.rv-arbejdsrunde[data-pacing-skjult]` (faden) læser det SAMME tal. */
+  --fold-varighed: var(--dur-fold);
+  --fold-kurve: var(--ease-fold);
   /* Tre afstande i rækkevisningen bærer en ROLLE og er derfor navngivet
      (29/9-2026). Tallene er UÆNDREDE — det her flytter ikke en pixel, det
      samler bare beslutningen ét sted, som punkt 7 i Codex-speccen beder om.
@@ -258,8 +267,8 @@
   grid-template-rows: 1fr;
   margin-top: 2px;
   transition:
-    grid-template-rows var(--dur-fold) var(--ease-fold),
-    margin-top var(--dur-fold) var(--ease-fold);
+    grid-template-rows var(--fold-varighed) var(--fold-kurve),
+    margin-top var(--fold-varighed) var(--fold-kurve);
 }
 .raekkevisning .rv-gruppe-ydre[data-aaben='false'] {
   grid-template-rows: 0fr;
@@ -363,8 +372,11 @@
   opacity: 0;
   transform: translateY(3px);
   pointer-events: none;
-  transition-duration: 160ms;
-  transition-timing-function: ease-in;
+  /* Faden ARVER foldens varighed og kurve (26/11-2026). Her stod 160 ms
+     `ease-in` mod foldens 379 ms `ease-fold` — runden var væk ved 42 % af
+     foldets rejse, og resten lukkede en tom boks sammen. */
+  transition-duration: var(--fold-varighed);
+  transition-timing-function: var(--fold-kurve);
 }
 @media (prefers-reduced-motion: reduce) {
   .raekkevisning .rv-arbejdsrunde[data-aktiv-runde] { transition: none; transform: none; }

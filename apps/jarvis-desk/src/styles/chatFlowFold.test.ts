@@ -30,7 +30,7 @@ describe('chat mode — foldet glider i stedet for at blinke', () => {
     const r = regel('.chat-flow-gruppe-ydre')
     expect(r).toMatch(/display:\s*grid/)
     expect(r).toMatch(/grid-template-rows:\s*1fr/)
-    expect(r).toMatch(/transition:\s*grid-template-rows\s+var\(--dur-(snap|fast|base|sheet|slow)\)/)
+    expect(r).toMatch(/transition:\s*grid-template-rows\s+var\(--dur-(snap|fast|base|sheet|slow)\)|transition:\s*grid-template-rows\s+var\(--fold-varighed\)/)
   })
 
   it('lukket tilstand er 0fr — det er rækken der animerer, ikke synligheden', () => {

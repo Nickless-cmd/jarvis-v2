@@ -2,6 +2,20 @@
   display: grid;
   gap: 0.65rem;
   min-width: 0;
+  /* FOLDENS tal, ikke fadens (Bjørn 26/11-2026: «timingen på faden skal være
+     mere ala hoveds animation»).
+
+     Folden og faden var to ure der ikke var enige: folden kørte `--dur-sheet`
+     (300 ms) med `--ease-out`, mens faden havde sit EGET hardcodede tal —
+     160 ms `ease-in`. Målt: runden var væk når folden var 53 % gennemført, så
+     der i mere end halvdelen af foldets rejse lukkede en TOM boks sammen. Det
+     er «blinket»: ikke en animation der fejler, men to der ikke er færdige
+     samtidig.
+
+     Nu læser BÅDE fold-reglerne nedenfor og faden denne variabel, så de ikke
+     kan divergere næste gang foldens tal justeres. */
+  --fold-varighed: var(--dur-sheet);
+  --fold-kurve: var(--ease-out);
 }
 
 /* Hovedet er en label over indholdet i chat mode, ikke en selvstændig blok.
@@ -88,8 +102,13 @@
   opacity: 0;
   transform: translateY(3px);
   pointer-events: none;
-  transition-duration: 160ms;
-  transition-timing-function: ease-in;
+  /* Faden ARVER foldens varighed og kurve (26/11-2026). Her stod et eget tal:
+     160 ms `ease-in` mod foldens 300 ms `ease-out`. `ease-in` starter langsomt,
+     så runden HÆNGTE på fuld synlighed mens hovedet allerede farvede af sted —
+     og rev sig så løs til sidst. Runden var væk ved 160 ms af foldens 300, så
+     der i 53 % af rejsen lukkede en TOM boks sammen. Det er blinket. */
+  transition-duration: var(--fold-varighed);
+  transition-timing-function: var(--fold-kurve);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -167,8 +186,8 @@
      samtidig med at den negative margin slipper sit tag i grid-gappet, så
      svaret bevæger sig i ÉN jævn bevægelse i stedet for at rykke først. */
   transition:
-    grid-template-rows var(--dur-sheet) var(--ease-out),
-    margin-top var(--dur-sheet) var(--ease-out);
+    grid-template-rows var(--fold-varighed) var(--fold-kurve),
+    margin-top var(--fold-varighed) var(--fold-kurve);
 }
 
 .chat-flow-gruppe-ydre[data-aaben='false'] { grid-template-rows: 0fr; }
@@ -224,7 +243,7 @@
  * svaret bevæger sig i én jævn bevægelse fra første frame, i stedet for at
  * rykke 10px ned og derefter glide. */
 .chat-flow > .rv-tur ~ .chat-flow-answer {
-  transition: margin-top var(--dur-sheet) var(--ease-out);
+  transition: margin-top var(--fold-varighed) var(--fold-kurve);
 }
 
 .chat-flow > .rv-tur ~ .chat-flow-gruppe-ydre[data-aaben='false'] ~ .chat-flow-answer {
@@ -254,7 +273,7 @@
      `overflow: clip` fjerner indholdet, men ikke gruppens egen `padding-top`
      (0.2rem). Et 3 px-residual er præcis det hop vi er ved at fjerne, så
      luften skal animeres væk sammen med højden. */
-  transition: padding-top var(--dur-sheet) var(--ease-out);
+  transition: padding-top var(--fold-varighed) var(--fold-kurve);
 }
 
 .chat-flow-gruppe-ydre[data-aaben='false'] > .chat-flow-gruppe { padding-top: 0; }

@@ -1,4 +1,50 @@
 # Development log
+## 2026-11-26 (third pass) — The order of a turn is data, not a reconstruction
+
+**Root cause.** `deriveChatFlow` collapsed the turn into two BUCKETS:
+`workBlocks` and `finalBlocks`. The order «Answer A → Round 1 → Answer B» could
+not be expressed — A and B landed in one bucket, the round in the other, and the
+presentation layer had to rebuild the sequence from metadata. That is not a
+rendering defect; the data was collapsed before rendering saw it.
+
+**Fix.** `segmenter: FlowSegment[]` now carries the turn's order: each contiguous
+run of blocks with the same role is one segment, and `id` is `role:index` of the
+segment's FIRST block. Blocks are only ever appended (SSE addresses explicit
+indices, and a replay re-sets the same indices), so the id is stable for the
+whole turn. `workBlocks`/`finalBlocks` are now DERIVED from the segments with
+identical content and order, so every existing reader (`useChatPacedBlocks`,
+`harSlutblok`, `transcriptFilter`, `svarPacing`) keeps its contract unchanged.
+
+The role comes from `block.phase` when the server stamped it; position is only
+the fallback for persisted blocks without a phase. That fallback is the
+documented open limitation: an unstamped text block can still change role when
+`final_answer_start` arrives. Stamped blocks cannot — proven against the old
+classification.
+
+**The three invariants are now tests**, one each in
+`chatFlowModel.segmenter.test.ts` (9 tests): a new block gives no existing
+segment a new id; a new round does not reclassify a shown answer; no segment
+disappears when another grows. Plus the case the buckets could never pass: the
+ordered Answer A → Round 1 → Answer B.
+
+**Three measurement defects, all real.** (a) `__intMaal` read
+`document.body.textContent`, which also sees what the fold has hidden — it now
+reports both `vistTegn` (the pace cursor, `textContent`) and `synligtTegn`
+(what the user sees, `innerText`); they were identical through the whole run,
+so nothing was hidden behind the fold. (b) `__intFold` read `aria-expanded`
+synchronously after `.click()` — before React re-rendered — and returned the OLD
+value; it now waits two frames and returns `skiftede`, and validity requires
+that the head actually changed state at every toggle. (c) `process.exit(0)`
+fired even when `GYLDIG` was false; both measurements now exit on validity.
+Verified by running a copy with validity forced false: the measurement ran
+through, reported `GYLDIG: false`, and exited 1. The first attempt at that
+control was itself invalid — the copy sat in `/tmp` where `playwright` does not
+resolve — so it failed on a module error, not on the condition.
+
+**Measured:** integration 91 → 185 → 240 → 294 → 430 characters across three
+fold toggles, 12 after the deliberate turn-id change; head state flipped
+`false → true → false` at every toggle. 3716 desk tests green, `tsc` clean.
+
 ## 2026-11-26 (second pass) — The measurement was of a mechanism, not of its integration
 
 GPT verified the two pushed commits against `main` and found three defects. All

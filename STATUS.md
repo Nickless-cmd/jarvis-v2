@@ -25,13 +25,27 @@ Two of the seven architectural requirements from the turn-head brief are now
 - **Requirement 2 — head is presentation-only: measured** for server-stamped
   blocks. `projektion()` reads `block.phase` first; a block without `phase` still
   falls back to position, which is the remaining limitation.
-- **Not started:** independent round containers in the document flow, coordinated
-  fade/collapse, the synthesis hand-off, the persisted-message takeover, and
-  frame-by-frame verification of those (the harness now measures the pace, not
-  yet the whole lifecycle).
+- **Requirement 3 — independent round containers: model done, presentation
+  next.** `deriveChatFlow` now emits `segmenter: FlowSegment[]` — the turn's
+  ordered list of answer/round segments — instead of only the two buckets
+  `workBlocks`/`finalBlocks`. The buckets are derived from it with identical
+  content, so existing readers are unchanged. The three invariants are tests
+  (stable id, stable role, independent lifetime), plus the ordering case the
+  buckets could not express. **The presentation layer does not consume
+  `segmenter` yet** — it still reads the buckets, so the visual flow is not flat.
+- **Not started:** coordinated fade/collapse, the synthesis hand-off, the
+  persisted-message takeover, and frame-by-frame verification of the whole
+  lifecycle (the harness measures the pace and the fold, not the round
+  containers).
+- **Measurement validity.** Both `scripts/maaling.mjs` modes now exit non-zero
+  when the measurement is invalid, require the head to actually change state at
+  every toggle, and report visible (`innerText`) and total (`textContent`)
+  characters separately. Verified by forcing validity false: the run completed,
+  reported `GYLDIG: false`, exited 1.
 - **Open.** `follow_start` is client-local and carries only `run_id`, so "new
-  run id = new turn" remains an unproven heuristic for continuation runs.
-- **Tests.** 3707 desk tests green, `tsc --noEmit` clean.
+  run id = new turn" remains an unproven heuristic for continuation runs. A
+  persisted block without `phase` still takes its role from position.
+- **Tests.** 3716 desk tests green, `tsc --noEmit` clean.
 
 
 ## Initiative coordination across the Central — implemented in worktree, not deployed (2026-11-24)

@@ -62,10 +62,36 @@ export type ArbejdsTilstand = 'placeholder' | 'active' | 'history' | 'summary'
  */
 export type HovedTilstand = 'aktiv' | 'formidlet' | 'afbrudt' | 'fejlet'
 
+/**
+ * Én sammenhængende del af turen — en besvarelse eller en runde.
+ *
+ * MÅLT 26/11-2026: `workBlocks` + `finalBlocks` er to BUNKER, ikke en
+ * rækkefølge. Rækkefølgen «Besvarelse A → Runde 1 → Besvarelse B» kan derfor
+ * ikke udtrykkes: A og B lægges i samme bunke, runden i den anden, og
+ * visningen må rekonstruere ordenen af metadata. Det er ikke et
+ * visningsproblem — dataene er kollapset.
+ *
+ * `segmenter` bevarer rækkefølgen. Hver sammenhængende blok af samme rolle er
+ * ét segment, og `id` udledes af segmentets FØRSTE bloks indeks. Så længe
+ * blokke kun appendes (SSE'en adresserer eksplicitte indeks, og et replay
+ * sætter de samme indeks på ny) er id'et stabilt gennem hele turen — det er
+ * forudsætningen for at hovedet kan folde ud uden at rykke rundens forælder.
+ *
+ * De to bunker er AFledt af denne liste, ikke omvendt, så eksisterende
+ * forbrugere og tests beholder deres kontrakt.
+ */
+export type FlowSegment =
+  | { slags: 'besvarelse'; id: string; blokke: ContentBlock[] }
+  | { slags: 'runde'; id: string; blokke: ContentBlock[] }
+
+export type SegmentRolle = FlowSegment['slags']
+
 export interface ChatFlowModel {
   allSynthesis: string[]
   visibleSynthesis: string[]
   calmStatus: string
+  /** Turens rækkefølge som besvarelse/runde-segmenter. Autoritativ. */
+  segmenter: FlowSegment[]
   workBlocks: ContentBlock[]
   finalBlocks: ContentBlock[]
   hasObservableWork: boolean
@@ -172,6 +198,62 @@ function hovedTekst(tilstand: HovedTilstand, harArbejde: boolean): string {
     case 'formidlet':
       return harArbejde ? 'Arbejdet' : 'Tænkte'
   }
+}
+
+/**
+ * Blokkens SEMANTISKE rolle — ikke dens placering.
+ *
+ * Serverens `phase` er autoritativ når den findes (målt 26/11-2026:
+ * `sse_v2_events.py` sætter den, `sseProtocol.ts` bærer den). Placeringen er
+ * kun fallback for persisterede blokke uden fase — og den fallback er den
+ * dokumenterede åbne begrænsning: en umærket tekstblok kan stadig skifte
+ * rolle når `final_answer_start` ankommer. Blokke MED fase kan ikke.
+ */
+function rolleFor(
+  block: ContentBlock,
+  index: number,
+  lastWorkIndex: number,
+  finalAnswerStarted: boolean,
+  terminalFallback: boolean,
+): SegmentRolle {
+  if (isDelivery(block)) return 'besvarelse'
+  if (block.type !== 'text') return 'runde'
+  if (block.phase === 'final_answer') return 'besvarelse'
+  if (block.phase === 'commentary') return 'runde'
+  // Fallback for persisterede blokke uden fase: efter det seneste kald, når
+  // slutsvaret er begyndt (eller turen er terminal), er teksten besvarelsen.
+  const efterKald = lastWorkIndex < 0
+    || (index > lastWorkIndex && (finalAnswerStarted || terminalFallback))
+  return efterKald ? 'besvarelse' : 'runde'
+}
+
+/**
+ * Grupperer blokkene i sammenhængende segmenter, så rækkefølgen bevares.
+ *
+ * `id` er `rolle:indeks` for segmentets FØRSTE blok. Indekset er stabilt
+ * gennem turen fordi blokke kun appendes, og et replay sætter de samme indeks
+ * på ny — derfor kan et segment ikke få et nyt id af at hovedet folder, eller
+ * af at en ny runde ankommer.
+ */
+function byggSegmenter(
+  blokke: readonly ContentBlock[],
+  lastWorkIndex: number,
+  finalAnswerStarted: boolean,
+  terminalFallback: boolean,
+): FlowSegment[] {
+  const ud: FlowSegment[] = []
+  for (let index = 0; index < blokke.length; index += 1) {
+    const block = blokke[index]
+    if (!block) continue
+    const rolle = rolleFor(block, index, lastWorkIndex, finalAnswerStarted, terminalFallback)
+    const sidste = ud[ud.length - 1]
+    if (sidste && sidste.slags === rolle) {
+      sidste.blokke.push(block)
+      continue
+    }
+    ud.push({ slags: rolle, id: `${rolle}:${index}`, blokke: [block] })
+  }
+  return ud
 }
 
 function isDelivery(block: ContentBlock): boolean {
@@ -297,28 +379,17 @@ export function deriveChatFlow(input: ChatFlowInput): ChatFlowModel {
     if (block && ANSWER_BOUNDARY_TYPES.has(block.type)) lastWorkIndex = index
   }
 
-  const workBlocks: ContentBlock[] = []
-  const finalBlocks: ContentBlock[] = []
-  for (let index = 0; index < input.blocks.length; index += 1) {
-    const block = input.blocks[index]
-    if (!block) continue
-    if (isDelivery(block)) {
-      finalBlocks.push(block)
-    } else if (block.type === 'text') {
-      // Efter et værktøj kan tekst være enten en mellemliggende syntese eller
-      // slutsvaret. Placeringen alene kan ikke skelne dem: mens syntesen
-      // streamer, er den midlertidigt også teksten efter det seneste kald.
-      // Serveren sender `final_answer_start` FØR første synlige slutdelta, så
-      // dét signal er grænsen. Et direkte svar uden værktøj kan derimod vises
-      // med det samme.
-      const isFinal = block.phase === 'final_answer'
-        || (block.phase !== 'commentary' && (lastWorkIndex < 0
-          || (index > lastWorkIndex && (input.finalAnswerStarted || terminalFallback))))
-      ;(isFinal ? finalBlocks : workBlocks).push(block)
-    } else {
-      workBlocks.push(block)
-    }
-  }
+  const segmenter = byggSegmenter(input.blocks, lastWorkIndex, input.finalAnswerStarted, terminalFallback)
+  // De to bunker er AFledt af segmenterne — samme indhold og samme rækkefølge
+  // som før, så hver eksisterende læser (pacing, `harSlutblok`,
+  // `transcriptFilter`) er uændret. Forskellen er at rækkefølgen nu FINDES
+  // som data, i stedet for at skulle rekonstrueres af visningen.
+  const workBlocks: ContentBlock[] = segmenter
+    .filter((segment) => segment.slags === 'runde')
+    .flatMap((segment) => segment.blokke)
+  const finalBlocks: ContentBlock[] = segmenter
+    .filter((segment) => segment.slags === 'besvarelse')
+    .flatMap((segment) => segment.blokke)
 
   // `thinking` tæller ikke som observerbart arbejde (målt 14/11-2026): uden
   // denne udelukkelse sagde hovedet «Arbejder» på en tur der kun tænkte — og
@@ -336,6 +407,7 @@ export function deriveChatFlow(input: ChatFlowInput): ChatFlowModel {
     // Runde-metadataen skal blive sammen med arbejdet. `BlocksRenderer`
     // fjerner selve metadata-blokken fra output og bruger dens ids til at
     // placere etiketten og tænke-resuméet ved den rigtige værktøjsrunde.
+    segmenter,
     workBlocks,
     // Leverancen (widgetten) lægges i bunden, så den levende tur og den
     // persisterede besked giver IDENTISK rækkefølge — se `leveranceIBunden`.

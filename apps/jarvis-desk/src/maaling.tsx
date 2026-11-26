@@ -227,13 +227,23 @@ function PaceIntegrationsflade() {
 
     // Cursoren = hvor langt et SAMMENHÆNGENDE præfiks af slutsvaret der står
     // på skærmen. Falder tallet, er svaret pacet forfra.
+    //
+    // TO MÅL, ikke ét (målt 26/11-2026): `textContent` ser ALT i DOM'en —
+    // også det folden har lagt væk med CSS. Det er pacens cursor, og det er
+    // den rigtige måling for «blev svaret pacet forfra?». Men det er IKKE
+    // hvad brugeren ser. `innerText` følger det renderede dokument, så
+    // forskellen mellem de to er præcis det folden skjuler.
     w.__intMaal = () => {
       const alt = normaliser(document.body.textContent ?? '')
+      const synligt = normaliser((document.body as HTMLElement).innerText ?? '')
       let n = 0
       while (n < maal.length && alt.includes(maal.slice(0, n + 1))) n++
+      let s = 0
+      while (s < maal.length && synligt.includes(maal.slice(0, s + 1))) s++
       const hoved = document.querySelector('[aria-expanded]')
       return {
         vistTegn: n,
+        synligtTegn: s,
         targetTegn: maal.length,
         udfoldet: hoved?.getAttribute('aria-expanded') ?? null,
       }
@@ -241,11 +251,19 @@ function PaceIntegrationsflade() {
 
     // Fold-toggle uden at kende klassens navn: hovedet er det element der
     // bærer `aria-expanded`.
-    w.__intFold = () => {
+    //
+    // MÅLT 26/11-2026: den gamle udgave læste attributten SYNKRONT efter
+    // `.click()` — altså før React havde re-rendret — og returnerede den
+    // GAMLE værdi. Scriptet kunne derfor ikke se om hovedet faktisk skiftede
+    // tilstand. Nu ventes to frames, og `skiftede` er et svar vi kan kræve.
+    w.__intFold = async () => {
       const hoved = document.querySelector('[aria-expanded]') as HTMLElement | null
-      if (!hoved) return { klikket: false, udfoldet: null }
+      if (!hoved) return { klikket: false, foer: null, efter: null, skiftede: false }
+      const foer = hoved.getAttribute('aria-expanded')
       hoved.click()
-      return { klikket: true, udfoldet: hoved.getAttribute('aria-expanded') }
+      await new Promise<void>((klar) => requestAnimationFrame(() => requestAnimationFrame(() => klar())))
+      const efter = document.querySelector('[aria-expanded]')?.getAttribute('aria-expanded') ?? null
+      return { klikket: true, foer, efter, skiftede: foer !== efter }
     }
 
     w.__intSkiftTur = (ny: string) => setTurId(ny)

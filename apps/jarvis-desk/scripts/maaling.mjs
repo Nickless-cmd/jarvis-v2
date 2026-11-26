@@ -60,11 +60,16 @@ if (KUN_PACE) {
   )
   const intStart = await laesInt('0 · pacing i gang (ægte ChatFlowPresentation)')
 
+  // Hvert fold skal faktisk have ÆNDRET hovedets tilstand — ellers er
+  // «pacen overlevede foldet» en måling af nul fold.
+  const foldSkiftede = []
   for (let i = 1; i <= 3; i++) {
     const r = await page.evaluate(() => window.__intFold())
+    foldSkiftede.push(r.skiftede === true)
     await page.waitForTimeout(250)
-    await laesInt(`${i} · efter fold-toggle ${i} (udfoldet=${r.udfoldet})`)
+    await laesInt(`${i} · efter fold-toggle ${i} (udfoldet=${r.efter})`)
   }
+  const alleFoldSkiftede = foldSkiftede.every(Boolean)
 
   // Uden fold: beviser at cursoren ikke frøs efter sidste toggle.
   await page.waitForTimeout(700)
@@ -83,11 +88,11 @@ if (KUN_PACE) {
   const sidsteFoerSkift = intPace[intPace.length - 2]
   const modproeveVirkede =
     sidsteFoerSkift != null && efterSkift.vistTegn < sidsteFoerSkift.vistTegn
-  const GYLDIG = pacingVarAktiv && monoton && voksede && modproeveVirkede
+  const GYLDIG = pacingVarAktiv && monoton && voksede && modproeveVirkede && alleFoldSkiftede
 
   writeFileSync(
     `${UD}/pace-integration.json`,
-    JSON.stringify({ intPace, monoton, voksede, pacingVarAktiv, modproeveVirkede }, null, 2),
+    JSON.stringify({ intPace, monoton, voksede, pacingVarAktiv, modproeveVirkede, alleFoldSkiftede }, null, 2),
   )
   console.log(JSON.stringify({
     intPace,
@@ -96,13 +101,15 @@ if (KUN_PACE) {
       cursorMonotonGennemFold: monoton,
       voksedeEfterFold: voksede,
       modproeveVirkede,
+      alleFoldSkiftede,
       GYLDIG,
     },
     fejl,
   }, null, 2))
   await page.screenshot({ path: `${UD}/pace-integration.png`, fullPage: true })
   await browser.close()
-  process.exit(0)
+  // En måling der ikke er gyldig må ikke se ud som en succes i CI.
+  process.exit(GYLDIG ? 0 : 1)
 }
 
 await page.waitForFunction(() => typeof window.__maal === 'function', null, { timeout: 30000 })
@@ -190,6 +197,9 @@ const modproeveVirkede =
   sidsteFoerSkift != null && efterNoegle.vistTegn < sidsteFoerSkift.vistTegn
 
 writeFileSync(`${UD}/pace.json`, JSON.stringify({ pace, noegler: [...noegler], monoton, pacingVarAktiv, modproeveVirkede }, null, 2))
+// Samme kontrakt som integrationsmålingen: en ugyldig måling må ikke se ud
+// som en succes for det der kalder scriptet.
+const FOLD_GYLDIG = pacingVarAktiv && noegler.size === 1 && monoton && modproeveVirkede
 console.log(JSON.stringify({
   pace,
   dom: {
@@ -197,8 +207,9 @@ console.log(JSON.stringify({
     noeglerStabileGennemFold: noegler.size === 1,
     cursorMonoton: monoton,
     modproeveVirkede,
-    GYLDIG: pacingVarAktiv && noegler.size === 1 && monoton && modproeveVirkede,
+    GYLDIG: FOLD_GYLDIG,
   },
 }, null, 2))
 
 await browser.close()
+process.exit(FOLD_GYLDIG ? 0 : 1)

@@ -10,6 +10,22 @@ implementation.
 Two of the seven architectural requirements from the turn-head brief are now
 **measured**, not merely unit-tested. The remaining five are not started.
 
+- **Segment identity is source-derived (2026-11-26, fourth pass).** The id was
+  `role:index` over the list `liveChatBlokke()` returns — which compresses holes
+  via `udenHuller()` and can prepend `skillFlade`, so the index is not the SSE
+  index. `kildeNoegl()` now derives it from `tool_use.id`,
+  `tool_result.tool_use_id`, `attachment_id`, or a content hash plus a per-type
+  occurrence counter for `text`/`thinking`. `plassering` is a separate property
+  from `slags`, so a round outside the head is still work while its container
+  keeps its own lifetime. Verified: 3 of 13 segment tests fail against the old
+  index-based code.
+- **The flat branch is precise, not blind.** `fladtFlow` excludes `progress` and
+  `approval` from triggering it — both belong to a call but can land after the
+  final answer at persistence time (`progress` is collected last in
+  `content_json`; an unmatched `approval` is placed last by `indsaetVedKald`).
+  A real `tool_use` in the tail still triggers the branch. Verified by a
+  counter-test that passes in both versions.
+
 - **Requirement 1 — pace independent of the head: measured.** The measurement
   surface mounts the real `ChatFlowPresentation` (`?flade=pace`) and reads the
   cursor out of the DOM as the longest prefix of the final answer present on the

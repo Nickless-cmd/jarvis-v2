@@ -80,9 +80,20 @@ export type HovedTilstand = 'aktiv' | 'formidlet' | 'afbrudt' | 'fejlet'
  * De to bunker er AFledt af denne liste, ikke omvendt, så eksisterende
  * forbrugere og tests beholder deres kontrakt.
  */
+/**
+ * Hvor segmentet ligger i turen — en SEPARAT egenskab fra dets rolle.
+ *
+ * `slags` siger hvad segmentet ER (arbejde eller besvarelse). `plassering`
+ * siger hvor det ligger henne, og dermed hvor længe det skal blive stående.
+ * De to må ikke blandes sammen: en runde efter slutsvaret er stadig arbejde,
+ * men dens container skal leve til turen slutter — ikke forsvinde i det
+ * øjeblik besvarelsen begynder.
+ */
+export type SegmentPlassering = 'foer' | 'foerste' | 'efter'
+
 export type FlowSegment =
-  | { slags: 'besvarelse'; id: string; blokke: ContentBlock[] }
-  | { slags: 'runde'; id: string; blokke: ContentBlock[] }
+  | { slags: 'besvarelse'; id: string; plassering: SegmentPlassering; blokke: ContentBlock[] }
+  | { slags: 'runde'; id: string; plassering: SegmentPlassering; blokke: ContentBlock[] }
 
 export type SegmentRolle = FlowSegment['slags']
 
@@ -228,12 +239,68 @@ function rolleFor(
 }
 
 /**
+ * Blokkens KILDEIDENTITET — uafhængig af hvor den står i den liste vi fik.
+ *
+ * ## Hvorfor ikke indekset (GPT, 26/11-2026)
+ *
+ * `liveChatBlokke()` kan gøre to ting med listen før den når os:
+ * `udenHuller()` filtrerer `undefined`-huller væk (et run midt i en tur kan
+ * efterlade dem), og `skillFlade` bliver PRÆPENDET foran de eksisterende
+ * blokke. Begge forskubber indekset for alt bagefter. Et segment-id bygget på
+ * indeks ville derfor skifte ved en reconnect der udfylder et hul — og
+ * React ville rive containeren ned og bygge den op igen midt i turen.
+ *
+ * Kilden er derfor blokkens EGNE felter, i den rækkefølge de findes:
+ *
+ * - `tool_use.id` og `tool_result.tool_use_id` — serverens egne id'er.
+ * - `attachment_id` / `tool_use_id` på medie-blokke.
+ * - For `text` og `thinking`, som ikke bærer noget id i protokollen: en
+ *   hash af indholdet PLUS en forekomsttæller. Tælleren gør to identiske
+ *   tekster i samme tur til to forskellige nøgler, og fordi den tælles i
+ *   rækkefølge er den stabil så længe blokke kun appendes.
+ *
+ * Nøglen er ikke garanteret unik på tværs af ture — det behøver den ikke.
+ * Den bruges som React-key inden for én turs segmentliste.
+ */
+function kildeNoegle(block: ContentBlock, forekomst: number): string {
+  switch (block.type) {
+    case 'tool_use':
+      return `tool_use:${block.id}`
+    case 'image':
+    case 'file':
+    case 'video':
+      return `${block.type}:${block.attachment_id || block.tool_use_id || block.filename || block.url || ''}:${forekomst}`
+    case 'text':
+      return `text:${block.phase ?? '-'}:${hash(block.text)}:${forekomst}`
+    case 'thinking':
+      return `thinking:${hash(block.thinking)}:${forekomst}`
+    default:
+      return `${block.type}:${forekomst}`
+  }
+}
+
+/** Liten, stabil streng-hash (FNV-1a 32-bit). Kun til nøgler, ikke krypto. */
+function hash(value: string): string {
+  let h = 0x811c9dc5
+  for (let i = 0; i < value.length; i += 1) {
+    h ^= value.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h.toString(36)
+}
+
+/**
  * Grupperer blokkene i sammenhængende segmenter, så rækkefølgen bevares.
  *
- * `id` er `rolle:indeks` for segmentets FØRSTE blok. Indekset er stabilt
- * gennem turen fordi blokke kun appendes, og et replay sætter de samme indeks
- * på ny — derfor kan et segment ikke få et nyt id af at hovedet folder, eller
- * af at en ny runde ankommer.
+ * `id` kommer fra segmentets FØRSTE bloks KILDEIDENTITET (se `kildeNoegle`),
+ * ikke fra dets position. Det er hele forskellen: en reconnect der udfylder et
+ * hul, eller en `skillFlade` der præpendes, forskubber positionen men rører
+ * ikke kilden — og så beholder containeren sin React-instans.
+ *
+ * `plassering` er en SEPARAT egenskab fra `slags`. En runde er arbejde
+ * (`slags: 'runde'`) uanset hvor den står, men dens container skal blive
+ * synlig indtil turafslutningen — også når den ligger efter slutsvaret. Det er
+ * `plassering` der bærer den levetid, ikke rollen.
  */
 function byggSegmenter(
   blokke: readonly ContentBlock[],
@@ -242,16 +309,33 @@ function byggSegmenter(
   terminalFallback: boolean,
 ): FlowSegment[] {
   const ud: FlowSegment[] = []
+  const sette = new Map<string, number>()
+  let foersteBesvarelse = -1
   for (let index = 0; index < blokke.length; index += 1) {
     const block = blokke[index]
     if (!block) continue
     const rolle = rolleFor(block, index, lastWorkIndex, finalAnswerStarted, terminalFallback)
+    const basis = kildeNoegle(block, 0).replace(/:\d+$/, '')
+    const forekomst = sette.get(basis) ?? 0
+    sette.set(basis, forekomst + 1)
+    const id = kildeNoegle(block, forekomst)
     const sidste = ud[ud.length - 1]
     if (sidste && sidste.slags === rolle) {
+      // Et segment der allerede har en id beholder den. `skillFlade` bliver
+      // præpendet af `liveChatBlokke` og smelter sammen med det første
+      // runde-segment — men den må ikke ARVE segmentets identitet, for så
+      // skifter id'et i det øjeblik skillefladen forsvinder igen.
+      if (sidste.id.startsWith('skill_surface:')) sidste.id = id
       sidste.blokke.push(block)
       continue
     }
-    ud.push({ slags: rolle, id: `${rolle}:${index}`, blokke: [block] })
+    // `foersteBesvarelse` sættes EFTER segmentet er lagt, så det første
+    // besvarelses-segment selv får `'foerste'` — ikke `'efter'`.
+    const plassering: SegmentPlassering = rolle === 'besvarelse'
+      ? (foersteBesvarelse < 0 ? 'foerste' : 'efter')
+      : (foersteBesvarelse < 0 ? 'foer' : 'efter')
+    ud.push({ slags: rolle, id, plassering, blokke: [block] })
+    if (rolle === 'besvarelse' && foersteBesvarelse < 0) foersteBesvarelse = ud.length - 1
   }
   return ud
 }

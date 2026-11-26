@@ -1,4 +1,46 @@
 # Development log
+## 2026-11-26 (fourth pass) — Segment identity comes from the source, not the position
+
+**Root cause (measured).** The segment id was `role:index`, where `index` was the
+block's position in the list `byggSegmenter` received. That list is the output of
+`liveChatBlokke()`, which calls `udenHuller(state.blocks)` and can prepend
+`skillFlade` — so the index is **not** the SSE index. A reconnect that fills a
+hole, or a skill surface that gets prepended, shifts every subsequent id and
+remounts every container. GPT flagged this before the id was used as a React key;
+it was real.
+
+**Fix.** `kildeNoegl(block, occurrence)` derives the id from the block itself:
+`tool_use.id`, `tool_result.tool_use_id`, `attachment_id` where they exist, and
+for `text`/`thinking` — which carry no stable field in the protocol — a hash of
+the content plus a per-type occurrence counter. Position is no longer part of the
+identity. `plassering` (`foer` / `foerste` / `efter`) was added as a **separate**
+property from `slags`, so a round outside the head is still work while its
+container keeps its own lifetime.
+
+**Second defect, found while testing.** When `skillFlade` merged into the first
+round segment, the segment inherited the skill surface's id — so the id changed
+the moment the surface disappeared. The id is now taken from the first block that
+is not a `skill_surface`.
+
+**Third defect, found by the full suite.** `fladtFlow` excluded only `progress`
+from triggering the flat branch. But `indsaetVedKald` places an `approval` **last**
+when its `action` matches no call's `input` — so an unmatched approval landed
+after the final answer and was read as a new round. Every persisted turn with an
+unmatched approval took the flat branch and tore down the measured gates.
+`HALEBLOKKE_UDEN_RUNDE` now covers both `progress` and `approval`: blocks that
+belong to a call but can end up in the tail at persistence time.
+
+**Verification.** 13 segment tests, 7 flat-flow tests, 3725 desk tests green,
+`tsc --noEmit` clean. Counter-tests: 3 of 13 segment tests fail against the old
+index-based code; the approval gate test fails against the old gate while the
+counter-test (a real call in the tail still triggers the flat branch) passes in
+both — the gate is precise, not blind.
+
+**Still open.** The flat branch renders `segmenter` in turn order, but the
+coordinated fade/collapse, the synthesis hand-off and the persisted-message
+takeover are not started. `follow_start` remains client-local and carries only
+`run_id`.
+
 ## 2026-11-26 (third pass) — The order of a turn is data, not a reconstruction
 
 **Root cause.** `deriveChatFlow` collapsed the turn into two BUCKETS:

@@ -279,8 +279,8 @@ export function ChatFlowPresentation({
     : []
   const answerBlocks = [...udenArbejde, ...restoredText, ...model.finalBlocks]
   const answer = samletSvarMarkdown(answerBlocks)
-  const targetSvar = blocks.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
-  const vistSvar = pacedBlocks.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
+  const targetSvar = blocks.flatMap((block) => block && block.type === 'text' ? [block.text] : []).join('')
+  const vistSvar = pacedBlocks.flatMap((block) => block && block.type === 'text' ? [block.text] : []).join('')
   const svarFaerdigPacet = targetSvar.length > 0 && targetSvar === vistSvar
   // Bjørn 29/10-2026: «det bør kun tilføjes naturligt i enden af pacen altså
   // ikk før pacen er slut med en levende forlængning? fade eller sådan noget?»
@@ -566,6 +566,41 @@ export function ChatFlowPresentation({
   // fold, som før.
   const arbejdeAabent = aktiv ? aabenManuelt === true : aaben
 
+  // ── DET FLADE DOKUMENTFLOW (26/11-2026) ────────────────────────────────
+  //
+  // Bjørn: «det vigtigste er at gøre foldet irrelevant for pacens funktion»,
+  // og GPT's tredje krav: «en runde uden for hovedet er stadig arbejde, men
+  // dens container skal forblive synlig indtil turafslutningen».
+  //
+  // Den gamle struktur er TRE containere i fast rækkefølge: hoved, arbejde,
+  // svar. Den kan ikke udtrykke Besvarelse A → Runde 1 → Besvarelse B, fordi
+  // A og B ligger i samme container og runden i en anden. Rækkefølgen findes
+  // nu som data i `model.segmenter`, og her bliver den til DOM i den orden.
+  //
+  // Hver container har sin egen React-key fra segmentets KILDEIDENTITET (se
+  // `kildeNoegl` i chatFlowModel) — ikke fra dets position. En reconnect der
+  // udfylder et hul, eller en `skillFlade` der præpendes, forskubber
+  // positionen men ikke kilden, så containeren beholder sin instans.
+  //
+  // `plassering` bærer LEVETIDEN, ikke rollen: et runde-segment efter
+  // slutsvaret er stadig arbejde, men det bliver stående til turen slutter.
+  // Den flade gren tager KUN over når rækkefølgen faktisk afviger fra den
+  // gamle struktur — altså når et runde-segment med RIGTIGT arbejde ligger
+  // efter en besvarelse.
+  //
+  // `progress` og `approval` tæller ikke: begge er blokke der hører til et
+  // KALD, men som ved persistens kan havne efter slutsvaret. `progress` bliver
+  // samlet sidst i `content_json` (se `ANSWER_BOUNDARY_TYPES`), og en
+  // `approval` der ikke kunne matches til sit kald bliver lagt sidst af
+  // `indsaetVedKald`. Ingen af dem er en ny runde — og uden denne udelukkelse
+  // ville hver persisteret tur med et værktøjskald eller en godkendelse tage
+  // den flade gren og rive de målte gates ned.
+  const HALEBLOKKE_UDEN_RUNDE = new Set<ContentBlock['type']>(['progress', 'approval'])
+  const fladtFlow = model.segmenter.some((s) =>
+    s.slags === 'runde'
+    && s.plassering === 'efter'
+    && s.blokke.some((block) => !HALEBLOKKE_UDEN_RUNDE.has(block.type)))
+
   return (
     // `control` er kun en chat-flade (14/11-2026). `BlocksRenderer` deles med
     // `RaekkeTranskript` (code mode), så uden denne Provider ville slideren
@@ -612,7 +647,7 @@ export function ChatFlowPresentation({
           glider fra `1fr` til `0fr` (grid-rækker kan animeres i både
           Chromium og Safari; `height: auto` ville kræve `interpolate-size`,
           som kun Chromium har). */}
-      {visArbejdsgruppe ? (
+      {visArbejdsgruppe && !fladtFlow ? (
           <div className="chat-flow-gruppe-ydre" data-aaben={aaben ? 'true' : 'false'}
             /* `inert` er den ærlige erklæring om den lukkede fold (18/11-2026):
                indholdet bliver i DOM'en så rækken kan animere, men det er
@@ -720,7 +755,37 @@ export function ChatFlowPresentation({
         </div>
       ) : null}
 
-      {synligeSvar.length > 0 ? (
+      {fladtFlow ? (
+        // Turens rækkefølge som DOM. Hvert segment er sin egen container med
+        // en key fra kilden, så en reconnect eller en præpendering ikke river
+        // den ned. `plassering` bestemmer levetiden: et runde-segment efter
+        // slutsvaret bliver stående til turen slutter.
+        <div className="chat-flow-segmenter" data-segmenter="flat">
+          {model.segmenter.map((segment) => {
+            const erSvar = segment.slags === 'besvarelse'
+            // Leverancen ejes af leverance-blokken nedenfor — også her.
+            const blokke = erSvar
+              ? segment.blokke.filter((block) => !erLeverance(block))
+              : segment.blokke
+            if (blokke.length === 0) return null
+            return (
+              <div
+                key={segment.id}
+                className={erSvar ? 'chat-flow-answer' : 'chat-flow-runde'}
+                data-segment={segment.slags}
+                data-plassering={segment.plassering}
+                data-segment-id={segment.id}
+              >
+                <BlocksRenderer blocks={blokke} density={density} streaming={streaming}
+                  rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
+                  beskedId={beskedId} config={config} />
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
+
+      {!fladtFlow && synligeSvar.length > 0 ? (
         <div className="chat-flow-answer">
           <BlocksRenderer blocks={synligeSvar} density={density} streaming={streaming}
             beskedId={beskedId} config={config} />

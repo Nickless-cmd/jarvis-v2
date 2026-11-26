@@ -150,3 +150,81 @@ describe('INVARIANT 3 — levetiden er uafhængig', () => {
     expect(svar([]).segmenter).toEqual([])
   })
 })
+
+/**
+ * KILDEIDENTITETEN — ikke positionen i den liste vi fik.
+ *
+ * GPT 26/11-2026: `liveChatBlokke()` kan komprimere huller gennem
+ * `udenHuller()` OG præpende `skillFlade` foran de eksisterende blokke. Så er
+ * indeks i den projicerede liste ikke SSE-indekset, og et id bygget på indeks
+ * ville skifte ved en reconnect der udfylder et hul — React ville rive
+ * containeren ned midt i turen.
+ *
+ * Testene her sender listen GENNEM de to forskydninger og kræver at hvert
+ * segments id står stille.
+ */
+describe('segmentidentiteten kommer fra kilden, ikke fra positionen', () => {
+  it('skillFlade PRÆPENDET forskubber positionen men ikke id’erne', () => {
+    const blokke = [
+      kald('k1'),
+      tekst('syntese', 'commentary'),
+      tekst('svaret', 'final_answer'),
+    ]
+    const foer = svar(blokke, { finalAnswerStarted: true })
+    // `liveChatBlokke` lægger skillFlade FORAN alt — indeks 0 bliver en
+    // anden blok, og hvert efterfølgende indeks rykker én op.
+    const skilleflade = { type: 'skill_surface', matches: [], primary: false } as unknown as ContentBlock
+    const efter = svar([skilleflade, ...blokke], { finalAnswerStarted: true })
+
+    // Det nye segment er skillefladen, som smelter sammen med det første
+    // runde-segment. Vi fjerner skillefladen fra blokkene og kræver at
+    // RESTEN har samme id som før — positionen er forskudt, kilden er ikke.
+    const efterUdenSkilleflade = efter.segmenter
+      .map((s) => ({ ...s, blokke: s.blokke.filter((b) => b !== skilleflade) }))
+      .filter((s) => s.blokke.length > 0)
+    expect(efterUdenSkilleflade.map((s) => s.id)).toEqual(foer.segmenter.map((s) => s.id))
+  })
+
+  it('et udfyldt HUL forskubber positionen men ikke id’erne', () => {
+    const blokke = [
+      kald('k1'),
+      tekst('syntese', 'commentary'),
+      tekst('svaret', 'final_answer'),
+    ]
+    const foer = svar(blokke, { finalAnswerStarted: true })
+    // `udenHuller` fjerner `undefined` — her sætter vi et hul IND midt i
+    // listen, præcis som et run midt i en tur kan efterlade det.
+    const medHul = [blokke[0]!, undefined as unknown as ContentBlock, ...blokke.slice(1)]
+    const efter = svar(medHul, { finalAnswerStarted: true })
+
+    expect(efter.segmenter.map((s) => s.id)).toEqual(foer.segmenter.map((s) => s.id))
+  })
+
+  it('to identiske tekster i samme tur får FORSKELLIGE id’er', () => {
+    // Forekomsttælleren er det der gør hash-nøglen brugbar: uden den ville
+    // to ens synteser kollidere og React ville genbruge den forkerte node.
+    const model = svar([
+      tekst(' samme ', 'commentary'),
+      kald('k1'),
+      tekst(' samme ', 'commentary'),
+    ])
+    const idListe = model.segmenter.map((s) => s.id)
+    expect(new Set(idListe).size).toBe(idListe.length)
+  })
+
+  it('PLACERINGEN er en separat egenskab fra rollen', () => {
+    // En runde EFTER slutsvaret er stadig arbejde (`slags: 'runde'`), men dens
+    // container skal leve til turen slutter — det bæres af `plassering`.
+    const model = svar([
+      tekst('svaret', 'final_answer'),
+      kald('k-efter'),
+    ], { finalAnswerStarted: true })
+
+    const runde = model.segmenter.find((s) => s.slags === 'runde')
+    expect(runde).toBeDefined()
+    expect(runde!.plassering).toBe('efter')
+
+    const besvarelse = model.segmenter.find((s) => s.slags === 'besvarelse')
+    expect(besvarelse!.plassering).toBe('foerste')
+  })
+})

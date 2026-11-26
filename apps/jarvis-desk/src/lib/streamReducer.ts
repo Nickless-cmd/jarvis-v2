@@ -357,7 +357,18 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // origin nu tilgængelig og kan slå låsen fra den forrige tur.
       const _selvstaendig = Boolean(event.message.origin)
         || (!!_indkommende && state.selvstaendigRunId === _indkommende)
-      const _bevar = _sameRun || (state.svarLaast && !_selvstaendig)
+      // ── KLIENTEN ÅBNEDE TUREN (26/11-2026) ───────────────────────────────
+      // `client_turn_start` sætter et `turId`, men intet run er bundet endnu
+      // (`activeRunId === null`). Serverens FØRSTE `message_start` bærer så et
+      // run-id vi ikke kender → `_sameRun` er falsk, og uden denne gren blev
+      // `_bevar` falsk og turen fik et NYT id. Målt: identiteten skiftede
+      // mellem `client_turn_start` og turens første frame — altså præcis i det
+      // øjeblik pacen begynder. En fremmed tur (`_selvstaendig`) slår stadig
+      // igennem, så cross-device-ture ikke blandes sammen.
+      const _aabnetAfKlient =
+        state.turId !== null && state.activeRunId === null && state.status === 'working'
+      const _bevar =
+        _sameRun || (state.svarLaast && !_selvstaendig) || (_aabnetAfKlient && !_selvstaendig)
       return {
         ...state,
         status: 'working',
@@ -388,7 +399,15 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         svarLaast: _bevar ? state.svarLaast : false,
         // En ny runde i samme tur ER arbejde — også når svaret er låst. Uden
         // dette foldede hovedet mens runden skrev ind i den foldede liste.
-        arbejdeEfterSvar: _bevar && !_sameRun ? true : (_bevar ? state.arbejdeEfterSvar : false),
+        // `state.svarLaast` er med: efter `client_turn_start` er `_bevar` sand
+        // og `_sameRun` falsk, men der er endnu intet svar at komme EFTER —
+        // uden leddet foldede hovedet ud ved hver turstart.
+        arbejdeEfterSvar:
+          _bevar && !_sameRun && state.svarLaast
+            ? true
+            : _bevar
+              ? state.arbejdeEfterSvar
+              : false,
         // Et ægte nyt run starter uret; en replay af SAMME run beholder det
         // oprindelige starttidspunkt, så tiden ikke springer tilbage.
         // Turens starttid maa ikke rykke naar en runde kommer til: den er

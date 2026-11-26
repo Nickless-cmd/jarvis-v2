@@ -89,7 +89,16 @@ const monoton = underPacing.every((p, i, a) => i === 0 || p.vistTegn >= a[i - 1]
 // GYLDIGHEDSKRAV: målingen tæller kun hvis pacingen faktisk VAR i gang — altså
 // at der blev vist mindre end hele teksten ved start.
 const pacingVarAktiv = start.vistTegn < start.targetTegn
-const modproeveVirkede = efterNoegle.vistTegn < start.vistTegn || efterNoegle.key !== start.key
+// MODPRØVEN SKAL MÅLE NULSTILLINGEN, IKKE NØGLESKIFTET (26/11-2026).
+// Før stod der `efterNoegle.vistTegn < start.vistTegn || efterNoegle.key !==
+// start.key`. Nøgleskiftet er noget MÅLINGEN selv gjorde med vilje — det kan
+// derfor aldrig være bevis på at cursoren nulstilles. Og `start` er den FØRSTE
+// måling (5 tegn), ikke den sidste før skiftet (39), så et fald fra 39 til 18
+// bestod betingelsen uden at blive opdaget. Nu sammenlignes med værdien LIGE
+// FØR skiftet, og nøglen indgår kun som information.
+const sidsteFoerSkift = pace[pace.length - 1]
+const modproeveVirkede =
+  sidsteFoerSkift != null && efterNoegle.vistTegn < sidsteFoerSkift.vistTegn
 
 writeFileSync(`${UD}/pace.json`, JSON.stringify({ pace, noegler: [...noegler], monoton, pacingVarAktiv, modproeveVirkede }, null, 2))
 console.log(JSON.stringify({

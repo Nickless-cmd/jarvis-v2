@@ -53,6 +53,31 @@ describe('turId er turens identitet, ikke dens ur', () => {
     expect(s.turId).toMatch(/^tur-/)
   })
 
+  it('DEN FØRSTE message_start efter client_turn_start må ikke skifte id’et', () => {
+    // MÅLT HUL 26/11-2026: `client_turn_start` sætter et id, men intet run er
+    // bundet (`activeRunId === null`). Turens FØRSTE `message_start` bærer et
+    // run-id klienten ikke kender → `_sameRun` falsk → `_bevar` falsk → NYT
+    // id, præcis i det øjeblik pacen begynder. De øvrige tests her starter fra
+    // en tur der allerede ER i gang og kunne derfor ikke se hullet.
+    const aabnet = streamReducer(initialStreamState(), system('client_turn_start'))
+    expect(aabnet.activeRunId).toBeNull()
+    const foerste = streamReducer(aabnet, msgStart('r1'))
+    expect(foerste.turId).toBe(aabnet.turId)
+    expect(foerste.turStart).toBe(aabnet.turStart)
+    // Uden låst svar er der intet at komme EFTER — hovedet må ikke folde ud.
+    expect(foerste.arbejdeEfterSvar).toBe(false)
+  })
+
+  it('MODPRØVE: en fremmed tur med origin skifter id’et, også når klienten har åbnet en tur', () => {
+    const aabnet = streamReducer(initialStreamState(), system('client_turn_start'))
+    const efter = streamReducer(aabnet, {
+      type: 'message_start',
+      message: { id: 'x1', model: 'test', origin: 'wakeup', usage: { input_tokens: 1, output_tokens: 0 } },
+    } as StreamEvent)
+    expect(efter.turId).toBeTruthy()
+    expect(efter.turId).not.toBe(aabnet.turId)
+  })
+
   it('overlever message_start med NYT run-id — det er en runde, ikke en ny tur', () => {
     const foer = igangvaerendeTur()
     const efter = streamReducer(foer, msgStart('r2'))

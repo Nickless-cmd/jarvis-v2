@@ -198,6 +198,23 @@ def _er_negeret(tail: str, m: re.Match) -> bool:
 # fra Bjørn; et falsk træf starter et autonomt run der svarer i hans navn.
 _SÆTNING_SPLIT_RE = re.compile(r"(?<=[.!?])\s+|\n+")
 
+# 26/11-2026: 3 af de 5 bevarede continuation-træf var falske. Et match i en
+# tidligere sætning må kun overleve, når den afsluttende sætning selv lover en
+# handling; ellers har modellen allerede skrevet videre og lukket svaret.
+_AABEN_SLUTSÆTNING_RE = re.compile(
+    r"(?:\b(?:jeg|vi)\s+(?:skal|vil|må|kan|fortsætter|starter|begynder|"
+    r"tjekker|tester|finder|retter|lukker|afslutter|gør|tager|går)\b"
+    r"|^\s*(?:bagefter|derefter|så)\b[^.!?]{0,80}\b(?:jeg|vi)\b)",
+    re.IGNORECASE,
+)
+
+# «hvor jeg skal kigge» og «at jeg skal finde» beskriver en placering eller
+# erkendelse inde i en bisætning; de er ikke et førstepersonsløfte.
+_BISÆTNING_FØR_JEG_SKAL_RE = re.compile(
+    r"\b(?:at|hvor|hvis|når|som|om|fordi|mens)\b[^.!?;,:]{0,40}$",
+    re.IGNORECASE,
+)
+
 # Negation i samme sætning. Dækker «ikke», «aldrig», «ingen», «uden» og
 # sammentrækninger som «ikk'». Bevidst bred: en falsk negation koster kun
 # ét tabt træf, mens en overset negation koster et autonomt run.
@@ -290,6 +307,28 @@ def _sætning_omkring(tail: str, m: re.Match) -> tuple[str, int]:
         end = s.start()
         break
     return tail[start:end], start
+
+
+def _er_jeg_skal_beskrivelse_eller_afsluttet(tail: str, m: re.Match) -> bool:
+    """True når ``jeg skal`` beskriver noget eller efterfølges af en lukning."""
+    sætning, start = _sætning_omkring(tail, m)
+    før_match = sætning[: max(0, m.start() - start)]
+    sidste_led = re.split(r"[,;]", før_match)[-1]
+    if _BISÆTNING_FØR_JEG_SKAL_RE.search(sidste_led):
+        return True
+
+    næste_sætning = _SÆTNING_SPLIT_RE.search(tail, m.end())
+    if næste_sætning is None:
+        return False
+    hale = tail[næste_sætning.end():].strip()
+    if not hale:
+        return False
+
+    sidste_start = 0
+    for skel in _SÆTNING_SPLIT_RE.finditer(hale):
+        sidste_start = skel.end()
+    slutsætning = hale[sidste_start:].strip()
+    return not _AABEN_SLUTSÆTNING_RE.search(slutsætning)
 
 
 def _er_sætningsblokeret(
@@ -484,6 +523,7 @@ def _detect_intent_core(
         m
         and not _er_negeret(tail, m)
         and not _er_sætningsblokeret(tail, m, registrering=registrering)
+        and not _er_jeg_skal_beskrivelse_eller_afsluttet(tail, m)
         # Lukke-verbum-guard 19/10-2026: «jeg skal lige LUKKE min fejl» er en
         # afslutning, ikke en opgave. Verbet står EFTER matchet («jeg skal
         # lige» + «lukke»), så vi ser på matchet plus dets umiddelbare

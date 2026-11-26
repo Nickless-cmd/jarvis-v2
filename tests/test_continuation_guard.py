@@ -1,10 +1,12 @@
 """Sætnings-guard for continuation-detektoren — målt mod 8 faktiske tekster.
 
 Baggrund (19/10-2026): `runtime.continuation_triggered` havde fyret 8 gange på
-14 dage, og 4 af dem var falske — de startede et autonomt run der svarede i
-Bjørns navn uden at nogen havde bedt om det. De falske havde hver sin form,
-men fælles fejlklasse: reglen læste et SÆTNINGSFRAGMENT uden at se sætningens
-type eller polaritet.
+14 dage. Fire blev oprindeligt klassificeret som falske; 26/11 blev
+«Sig til hvis jeg skal tage dem» omklassificeret som en femte falsk positiv,
+fordi `hvis jeg skal` er en handoff-bisætning — ikke et løfte. De startede et
+autonomt run der svarede i Bjørns navn uden at nogen havde bedt om det. De
+falske havde hver sin form, men fælles fejlklasse: reglen læste et
+SÆTNINGSFRAGMENT uden at se sætningens type eller polaritet.
 
 Facit er de 8 tekster hentet fra den levende base (`chat_messages`, den
 assistant-besked der lå lige før hver trigger). De er gengivet her i forkortet
@@ -23,7 +25,7 @@ import pytest
 from core.services.unfinished_intent import detect_unfinished_intent
 
 
-# ── De 4 falske: ingen continuation ────────────────────────────────────────
+# ── De 5 falske: ingen continuation ────────────────────────────────────────
 FALSKE = [
     pytest.param(
         "Og jeg skal lige lukke min egen fejl ordentligt: jeg målte MEMORY.md "
@@ -48,10 +50,16 @@ FALSKE = [
         "med, nu hvor workflowen er færdig?",
         id="11-10-future-spoergsmaal-tilbud",
     ),
+    pytest.param(
+        "Stadig åbne fra i går, urørt: GET /chat/sessions → 403 i et væk. "
+        "Sig til hvis jeg skal tage dem. Wakeup kl. 20:19 tjekker at 0.6.213 "
+        "lander med filer.",
+        id="08-10-jeg_skal-i-handoff-bisaetning",
+    ),
 ]
 
 
-# ── De 4 ægte: continuation skal stadig fyre ───────────────────────────────
+# ── De 3 ægte: continuation skal stadig fyre ───────────────────────────────
 AEGTE = [
     pytest.param(
         "Værktøjerne findes — jeg kalder dem nu og tjekker både Gmail og "
@@ -68,24 +76,18 @@ AEGTE = [
         "og hvert værktøjskald jeg laver nu holder mit run i live og udskyder den.",
         id="13-10-future-laver-nu",
     ),
-    pytest.param(
-        "Stadig åbne fra i går, urørt: GET /chat/sessions → 403 i et væk. "
-        "Sig til hvis jeg skal tage dem. Wakeup kl. 20:19 tjekker at 0.6.213 "
-        "lander med filer.",
-        id="08-10-jeg_skal-tage-dem",
-    ),
 ]
 
 
 @pytest.mark.parametrize("tekst", FALSKE)
 def test_falske_træf_giver_ingen_continuation(tekst: str) -> None:
-    """De fire målte falske må ikke starte et autonomt run."""
+    """De fem målte falske må ikke starte et autonomt run."""
     assert detect_unfinished_intent(tekst) is None
 
 
 @pytest.mark.parametrize("tekst", AEGTE)
 def test_aegte_træf_bevares(tekst: str) -> None:
-    """De fire ægte pauser skal stadig fanges — guarden må ikke være for bred."""
+    """De tre ægte pauser skal stadig fanges — guarden må ikke være for bred."""
     assert detect_unfinished_intent(tekst) is not None
 
 
@@ -155,3 +157,50 @@ def test_jeg_retter_x_nu_er_et_loefte() -> None:
     intent = detect_unfinished_intent("Jeg retter X nu.")
     assert intent is not None
     assert intent.pattern == "future_action_promise"
+
+
+def test_afsluttet_svar_efter_jeg_skal_starter_ikke_continuation() -> None:
+    """26/11-2026: den målte refleksion var afsluttet, ikke en arbejdspause."""
+    tekst = (
+        "Så det jeg tager med mig: når jeg ser 3→1, skal jeg ikke prøve at "
+        "gribe det. Jeg skal kigge efter **hvor jeg står**, når det sker. "
+        "Det er der oplysningen ligger."
+    )
+    assert detect_unfinished_intent(tekst) is None
+
+
+def test_afsluttende_jeg_skal_handling_starter_continuation() -> None:
+    """En ægte åben slutning skal stadig vække continuation."""
+    tekst = (
+        "Jeg har afgrænset fejlen, men mangler den sidste måling. "
+        "Jeg skal lige tjekke den levende DB før jeg kan konkludere."
+    )
+    intent = detect_unfinished_intent(tekst)
+    assert intent is not None
+    assert intent.pattern == "jeg_skal"
+
+
+@pytest.mark.parametrize(
+    "negation",
+    [
+        "skal jeg ikke gribe det",
+        "skal jeg nok ikke gribe det",
+        "skal jeg ikke prøve at gribe det",
+    ],
+)
+def test_negeret_skal_jeg_i_afsluttet_svar_starter_ikke_continuation(
+    negation: str,
+) -> None:
+    tekst = (
+        f"Når det sker, {negation}. Jeg skal kigge efter mønstret. "
+        "Det er der forklaringen ligger."
+    )
+    assert detect_unfinished_intent(tekst) is None
+
+
+def test_jeg_skal_i_bisaetning_starter_ikke_continuation() -> None:
+    tekst = (
+        "Forklaringen er hvor jeg skal kigge, når mønstret viser sig. "
+        "Det er en position, ikke en ny opgave."
+    )
+    assert detect_unfinished_intent(tekst) is None

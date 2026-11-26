@@ -183,3 +183,42 @@ describe('fladt dokumentflow', () => {
     expect(container.querySelector('[data-segmenter="flat"]')).not.toBeNull()
   })
 })
+
+describe('levetiden — en runde bliver stående til turen slutter', () => {
+  const blokke = [
+    tekst('Svaret.', 'final_answer'),
+    kald('k-efter'),
+  ]
+
+  it('en runde EFTER slutsvaret er LIVE mens turen kører', () => {
+    // GPT's tredje krav: «en runde uden for hovedet er stadig arbejde, men dens
+    // container skal forblive synlig indtil turafslutningen». Levetiden er
+    // data (`data-levetid`), ikke en CSS-tilstand der gættes ud fra status.
+    const { container } = render(
+      <ChatFlowPresentation {...common} blocks={blokke}
+        streaming status="working" finalAnswerStarted />,
+    )
+    const runde = container.querySelector('[data-segment="runde"]')
+    expect(runde).not.toBeNull()
+    expect(runde!.getAttribute('data-levetid')).toBe('live')
+  })
+
+  it('den kollapser FØRST når turen er terminal', () => {
+    const { container } = render(
+      <ChatFlowPresentation {...common} blocks={blokke}
+        streaming={false} status="done" finalAnswerStarted />,
+    )
+    const runde = container.querySelector('[data-segment="runde"]')
+    expect(runde).not.toBeNull()
+    expect(runde!.getAttribute('data-levetid')).toBe('kollapset')
+  })
+
+  it('besvarelsen har ingen kollaps-fase — den er leverancen', () => {
+    const { container } = render(
+      <ChatFlowPresentation {...common} blocks={blokke}
+        streaming={false} status="done" finalAnswerStarted />,
+    )
+    const svar = container.querySelector('[data-segment="besvarelse"]')
+    expect(svar!.getAttribute('data-levetid')).toBe('svar')
+  })
+})

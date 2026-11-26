@@ -768,12 +768,22 @@ export function ChatFlowPresentation({
               ? segment.blokke.filter((block) => !erLeverance(block))
               : segment.blokke
             if (blokke.length === 0) return null
+            // LEVETIDEN som data, ikke som en gættet CSS-tilstand.
+            //
+            // Et runde-segment bliver stående så længe turen kører — også når
+            // det ligger EFTER slutsvaret. Det er GPT's tredje krav: «en runde
+            // uden for hovedet er stadig arbejde, men dens container skal
+            // forblive synlig indtil turafslutningen». Først når turen er
+            // terminal, må den kollapse. Besvarelsen har ingen sådan fase: den
+            // er leverancen og bliver stående.
+            const levetid = erSvar ? 'svar' : (turenKoerer ? 'live' : 'kollapset')
             return (
               <div
                 key={segment.id}
                 className={erSvar ? 'chat-flow-answer' : 'chat-flow-runde'}
                 data-segment={segment.slags}
                 data-plassering={segment.plassering}
+                data-levetid={levetid}
                 data-segment-id={segment.id}
               >
                 <BlocksRenderer blocks={blokke} density={density} streaming={streaming}

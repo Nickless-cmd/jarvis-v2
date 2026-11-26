@@ -1,4 +1,29 @@
 # Development log
+## 2026-11-26 (fifth pass) — The round's lifetime is data, and the flat branch is paced
+
+**What was missing.** The flat branch rendered `segment.blokke` — but `model` is
+built from `pacedBlocks`, so the text was already paced. Verified rather than
+assumed: a probe showed `tool_use:k1` keeps its id while the text grows in, so
+the source key is stable under pacing too.
+
+**Lifetime as data.** Each segment now carries `data-levetid`: `live` while the
+turn runs — including a round that sits AFTER the final answer — and `kollapset`
+only once the turn is terminal. The answer has no collapse phase; it is the
+deliverable. This is GPT's third requirement made measurable instead of guessed
+from `status` in CSS.
+
+**No third clock.** The round container's entry animation and its collapse fade
+both read `--fold-varighed` / `--fold-kurve`. Last time the fade got its own
+hardcoded number and an empty box closed for more than half the fold's journey.
+A third clock would recreate exactly that defect.
+
+**Verification.** 10 flat-flow tests (3 new lifetime tests), 3730 desk tests
+green, `tsc --noEmit` clean.
+
+**Still open.** The coordinated fade/collapse across segments, the synthesis
+hand-off and the persisted-message takeover are not started. `follow_start`
+remains client-local and carries only `run_id`.
+
 ## 2026-11-26 (fourth pass) — Segment identity comes from the source, not the position
 
 **Root cause (measured).** The segment id was `role:index`, where `index` was the

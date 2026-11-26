@@ -19,6 +19,11 @@ Two of the seven architectural requirements from the turn-head brief are now
   from `slags`, so a round outside the head is still work while its container
   keeps its own lifetime. Verified: 3 of 13 segment tests fail against the old
   index-based code.
+- **Lifetime is data, not a CSS guess (2026-11-26, fifth pass).** Each segment
+  carries `data-levetid`: `live` while the turn runs — including a round after
+  the final answer — and `kollapset` only when the turn is terminal. The answer
+  has no collapse phase. Entry and collapse both read `--fold-varighed` /
+  `--fold-kurve`, so there is no third clock. Verified by 3 new tests.
 - **The flat branch is precise, not blind.** `fladtFlow` excludes `progress` and
   `approval` from triggering it — both belong to a call but can land after the
   final answer at persistence time (`progress` is collected last in

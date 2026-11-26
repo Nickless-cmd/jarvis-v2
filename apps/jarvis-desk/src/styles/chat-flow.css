@@ -139,6 +139,47 @@
   min-width: 0;
 }
 
+/* ── DET FLADE DOKUMENTFLOW (26/11-2026) ──────────────────────────────────
+   Segmenterne er turens rækkefølge som DOM: besvarelse og runde i den orden
+   de faktisk skete. Containeren arver `.chat-flow`s gap, så afstanden mellem
+   to segmenter er den samme som mellem de gamle faste containere — ellers
+   ville det flade flow se ud som en anden slags besked.
+
+   Runde-containeren får en indgang der læser FOLDENS tal (se `--fold-varighed`
+   øverst). Det er ikke kosmetik: sidste gang fik faden sit eget hardcodede tal,
+   og så lukkede en tom boks sammen i mere end halvdelen af foldets rejse. Et
+   tredje ur ville genskabe præcis den fejl. */
+.chat-flow-segmenter {
+  display: grid;
+  gap: inherit;
+  min-width: 0;
+}
+
+.chat-flow-runde {
+  min-width: 0;
+  animation: chat-flow-enter var(--fold-varighed) var(--fold-kurve);
+}
+
+/* LEVETIDEN (26/11-2026). `data-levetid` sættes af komponenten, ikke gættet af
+   CSS: et runde-segment er `live` så længe turen kører — også når det ligger
+   efter slutsvaret — og `kollapset` først når turen er terminal. Faden læser
+   foldens tal, så den ikke bliver et tredje ur der ikke er færdigt samtidig
+   med de to andre. */
+.chat-flow-runde[data-levetid='kollapset'] {
+  animation: none;
+  opacity: 0.55;
+  transition: opacity var(--fold-varighed) var(--fold-kurve);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-flow-runde {
+    animation: none;
+  }
+  .chat-flow-runde[data-levetid='kollapset'] {
+    transition: none;
+  }
+}
+
 /* Leverancen (widgetten) ankommer EFTER pacen — Bjørn 29/10-2026: «det bør kun
    tilføjes naturligt i enden af pacen altså ikk før pacen er slut med en
    levende forlængning? fade eller sådan noget?»

@@ -119,11 +119,25 @@ export function udenAktivRun<T extends TransskriptRække>(
     // Nøgle-fri faldback: samme svar, men rækken manglede `run_id`.
     // Rækken kan bære KUN slutsvaret mens den levende tur også bærer
     // arbejdsteksten foran — derfor sammenlignes halen, ikke hele strengen.
+    //
+    // MEN halen ligger ikke altid til sidst (målt 26/11-2026). Siden svaret
+    // blev den blok serveren stempler `final_answer`, står en runde EFTER
+    // svaret som en hale BAG svaret i den levende tekst — mens den persisterede
+    // række kun bærer svaret. Så er rækken et PRÆFIKS af den levende tekst, og
+    // både `endsWith` og `delerSuffix` fejler, fordi de kun ser på haler.
+    // Målt med den ægte funktion: 2 assistent-rækker i stedet for 1 — den
+    // persisterede besked stod synligt ved siden af den levende, hvilket er
+    // det glip hvor de to beskeder smelter sammen.
+    // Præfikset kræver samme længdegulv som suffixet, så et kort svar ikke
+    // kan sluge en længere, anden tekst der tilfældigvis starter ens.
     if (levende && i === sidsteAssistent) {
       const raekke = normaliseretTekst(m.content)
       if (
         raekke.length >= 20 &&
-        (levende === raekke || levende.endsWith(raekke) || delerSuffix(levende, raekke))
+        (levende === raekke
+          || levende.endsWith(raekke)
+          || delerSuffix(levende, raekke)
+          || (raekke.length >= SUFFIX_GULV && levende.startsWith(raekke)))
       ) return false
     }
     return true

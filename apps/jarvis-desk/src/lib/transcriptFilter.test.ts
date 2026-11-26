@@ -87,4 +87,40 @@ describe('udenAktivRun', () => {
     expect(ud).toHaveLength(1)
     expect(ud[0]?.id).toBe('a-old')
   })
+
+  // MAALT 26/11-2026 (Bjorn: «pacen doer og der sker et glip i smeltet af de 2
+  // beskeder»). Siden svaret blev den blok serveren stempler `final_answer`,
+  // ligger en runde EFTER svaret som en hale BAG svaret i den levende tekst —
+  // mens den persisterede raekke kun baerer svaret. Saa er raekken et PRAEFIKS
+  // af den levende tekst, og baade `endsWith` og `delerSuffix` fejler, fordi de
+  // kun ser paa haler. Maalt med den aegte funktion foer rettelsen: 2
+  // assistent-raekker i stedet for 1 — den persisterede besked stod synligt ved
+  // siden af den levende, og de to smeltede sammen med et glip.
+  it('dropper raekken naar en runde EFTER svaret ligger som hale bag det', () => {
+    const svar =
+      'Det endelige svar staar her og er langt nok til at taelle som et rigtigt svar. ' +
+      'Det fortsaetter over flere linjer, praecis som svarene i den virkelige flade, ' +
+      'og slutter med en saetning der kun findes i dette ene svar.'
+    const hale = 'Forslaget ligger klar i komponisten.'
+    const raekker = [
+      { id: 'u1', role: 'user' },
+      { id: 'message-abc', role: 'assistant', content: [{ type: 'text', text: svar }] },
+    ]
+    // Den levende tekst er svaret PLUS den nye rundes tekst — halen ligger bagefter.
+    const ud = udenAktivRun(raekker, 'r1', true, `${svar} ${hale}`)
+    expect(ud.map((m) => m.id)).toEqual(['u1'])
+  })
+
+  // Modproeven: et KORT svar maa ikke sluge en laengere, anden tekst der
+  // tilfaeldigvis starter ens. Praefiks-grenen kraever samme laengdegulv som
+  // suffix-grenen, saa den ikke bliver en tom match.
+  it('lader en kort raekke staa naar den kun deler begyndelsen med den levende tekst', () => {
+    const kort = 'Ja.'
+    const raekker = [
+      { id: 'u1', role: 'user' },
+      { id: 'message-abc', role: 'assistant', content: [{ type: 'text', text: kort }] },
+    ]
+    const ud = udenAktivRun(raekker, 'r1', true, `${kort} Men det er en helt anden og meget laengere tekst.`)
+    expect(ud.map((m) => m.id)).toEqual(['u1', 'message-abc'])
+  })
 })

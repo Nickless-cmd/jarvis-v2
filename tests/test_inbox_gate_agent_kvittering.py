@@ -83,6 +83,16 @@ def test_completed_med_accepted_resultat_blokerer_og_kvittering_aabner(agenter):
     assert _bash()["blokeret"] is False
 
 
+def test_claimet_resultat_er_leveret_til_konteksten_og_blokerer_ikke(agenter):
+    aid = agenter.opret("a1", status="completed")
+
+    claimed = agenter.c_.claim_pending_results(owner_user_id=A, origin_session_id=S)
+
+    assert [row["assignment_id"] for row in claimed] == [aid]
+    assert claimed[0]["delivery_status"] == "claimed_by_model_step"
+    assert _bash()["blokeret"] is False
+
+
 def test_failed_uden_kvittering_blokerer_stadig(agenter):
     agenter.opret("a1", status="failed")
     assert _bash()["blokeret"] is True

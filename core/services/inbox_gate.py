@@ -271,13 +271,13 @@ _AGENT_KVITTERING_LAAST: Final[frozenset[str]] = frozenset({"bash"})
 
 
 def _ukvitterede_fejlede_agenter(bruger_id: str) -> list[str]:
-    """Id'er på ejerens TERMINALE assignments med ubehandlede resultater. Kaster ved DB-fejl.
+    """Id'er på ejerens TERMINALE assignments med endnu ikke leverede resultater. Kaster ved DB-fejl.
 
-    Tilstanden er `agent_result_outbox.delivery_status != 'acknowledged'` — præcis
-    det `list_agents.unprocessed` viser. IKKE `agent_feed_refs.acknowledged_at`
-    (styrer kun feed-kortet). En færdig agent er ikke behandlet før resultatet er
-    kvitteret. Kun terminale assignments tæller: `acknowledge()` afviser åbne, så
-    en gate på dem ville kræve noget intet kan give. Navnet er historisk.
+    Gaten beskytter leveringen til modelkonteksten, ikke brugerens separate
+    kvittering i Desk. Målt 26/11-2026: et resultat i
+    ``claimed_by_model_step`` var atomisk leveret, men blev stadig valgt af
+    ``!= 'acknowledged'`` og blokerede næste ``bash``. Kun terminale assignments
+    tæller. Navnet er historisk.
     """
     from core.runtime.db_agent_contract import ASSIGNMENT_TERMINAL, _conn
     marks = ",".join("?" for _ in ASSIGNMENT_TERMINAL)
@@ -285,7 +285,7 @@ def _ukvitterede_fejlede_agenter(bruger_id: str) -> list[str]:
         "SELECT a.assignment_id FROM agent_assignments a "
         f"WHERE a.owner_user_id=? AND a.status IN ({marks}) AND EXISTS ("
         "SELECT 1 FROM agent_result_outbox o WHERE o.assignment_id=a.assignment_id "
-        "AND o.delivery_status != 'acknowledged') "
+        "AND o.delivery_status IN ('accepted','delivered')) "
         "ORDER BY a.created_at, a.rowid",
         (bruger_id, *sorted(ASSIGNMENT_TERMINAL))).fetchall()
     return [str(r["assignment_id"]) for r in rows]

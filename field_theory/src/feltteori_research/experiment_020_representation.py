@@ -338,6 +338,119 @@ def rep_shared_removed(
     return out
 
 
+def _pc1_direction(
+    real_rows: list[dict[str, float]],
+    experts: tuple[str, ...],
+    indices: list[int],
+) -> list[float]:
+    """Dominant eigenvector of the expert covariance matrix, by power iteration.
+
+    ``span`` is at most four, so the covariance matrix is tiny and 64 iterations is
+    far past convergence. Kept separate from the representation so the loadings can
+    be reported without re-deriving them.
+    """
+    span = len(experts)
+    columns = [[float(real_rows[i][expert]) for i in indices] for expert in experts]
+    count = len(indices)
+    centred = [
+        [value - sum(column) / count for value in column] for column in columns
+    ]
+    covariance = [
+        [
+            sum(centred[i][t] * centred[j][t] for t in range(count)) / count
+            for j in range(span)
+        ]
+        for i in range(span)
+    ]
+    direction = [1.0] * span
+    for _ in range(256):
+        projected = [
+            sum(covariance[i][j] * direction[j] for j in range(span))
+            for i in range(span)
+        ]
+        norm = sum(value * value for value in projected) ** 0.5
+        if norm < 1e-12:
+            break
+        updated = [value / norm for value in projected]
+        # Stop when the direction has settled. The tolerance decides how orthogonal
+        # the residual is to the direction: at 1e-10 the cosine was 4.3e-08, which
+        # is the convergence error showing up as leftover component (measured
+        # 26/11-2026). 1e-14 leaves nothing measurable. A fixed 64 iterations made
+        # this representation 8x slower than B3 for no gain.
+        if max(abs(a - b) for a, b in zip(updated, direction)) < 1e-14:
+            direction = updated
+            break
+        direction = updated
+    return direction
+
+
+def rep_shared_removed_pc1(
+    real_rows: list[dict[str, float]],
+    outcomes: list[float],
+    experts: tuple[str, ...],
+    window: int,
+) -> dict[str, dict[str, float]] | None:
+    """C1 — remove the *estimated* shared component, not the assumed one.
+
+    B3 subtracts the cross-expert mean, which is the shared component only if every
+    expert loads on it equally. This estimates the shared direction from the data —
+    the first principal component of the expert matrix — and projects it out.
+
+    Same purpose as B3, different mechanism. That is what H5's falsification clause
+    asks for: if two independent estimators of "the shared component" lift the same
+    cells, the mechanism is the removal and not B3's arithmetic. If they disagree,
+    the gain belongs to mean subtraction specifically and H5 is falsified.
+
+    ``pc1_loadings`` reports the direction so the run can say whether the estimators
+    were actually different: loadings of ``1/sqrt(k)`` everywhere mean the estimated
+    component *is* the mean and this representation is B3 under another name.
+
+    Added 26/11-2026 as the third route named in H5.
+    """
+    n = len(real_rows)
+    indices = _window_indices(n, window, max(LAGS))
+    if indices is None:
+        return None
+
+    span = len(experts)
+    direction = _pc1_direction(real_rows, experts, indices)
+    columns = [[float(real_rows[i][expert]) for i in indices] for expert in experts]
+    count = len(indices)
+    centred = [
+        [value - sum(column) / count for value in column] for column in columns
+    ]
+
+    out: dict[str, dict[str, float]] = {}
+    for j, expert in enumerate(experts):
+        residual = [
+            centred[j][t]
+            - sum(direction[m] * centred[m][t] for m in range(span)) * direction[j]
+            for t in range(len(indices))
+        ]
+        features: dict[str, float] = {}
+        for lag in LAGS:
+            paired_outcome = [float(outcomes[i - lag]) for i in indices]
+            features[f"lag{lag}"] = _corr(residual, paired_outcome)
+        out[expert] = features
+    return out
+
+
+def pc1_loadings(
+    real_rows: list[dict[str, float]],
+    experts: tuple[str, ...],
+    window: int,
+) -> tuple[float, ...] | None:
+    """The estimated shared direction, for comparing C1 against B3's assumption.
+
+    ``1/sqrt(k)`` in every slot means the estimated component is the mean, and C1 is
+    then B3 under another name rather than an independent route.
+    """
+    indices = _window_indices(len(real_rows), window, max(LAGS))
+    if indices is None:
+        return None
+    return tuple(_pc1_direction(real_rows, experts, indices))
+
+
 def rep_irrelevant(
     real_rows: list[dict[str, float]],
     outcomes: list[float],
@@ -382,11 +495,15 @@ REPRESENTATIONS: dict[str, Representation] = {
     "B3_shared_removed": rep_shared_removed,
     "X1_irrelevant": rep_irrelevant,
     "D12_annual_difference": rep_annual_difference,
+    "C1_shared_removed_pc1": rep_shared_removed_pc1,
 }
 
 #: The five the protocol registers as candidates. X1 is a control, not a candidate.
 #: D12 is a second control, added after the protocol was frozen to falsify the
 #: "both winners are differences, so difference is the mechanism" reading.
+#: C1 is a third control, added to falsify H5: it removes the shared component by a
+#: different estimator, so agreement with B3 means the removal is the mechanism and
+#: disagreement means B3's mean subtraction is.
 CANDIDATES = ("A1_first_difference", "A2_rank", "B1_full_lag", "B2_pairwise", "B3_shared_removed")
 
 

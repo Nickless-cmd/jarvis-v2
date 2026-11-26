@@ -207,3 +207,99 @@ def _corr(left: list[float], right: list[float]) -> float:
     if left_spread == 0.0 or right_spread == 0.0:
         return 0.0
     return numerator / (len(left) * left_spread * right_spread)
+
+
+# ---- C1: the third route that H5's falsification clause names -----------
+
+
+def test_c1_with_uniform_loadings_is_exactly_b3(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Forcing the estimated direction to be uniform must reproduce B3 exactly.
+
+    This is the invariant that makes C1 a *test* of H5 rather than a second opinion:
+    the only thing separating the two representations is where the shared direction
+    comes from. With ``u = 1/sqrt(k)`` the projection is the mean, the two residuals
+    differ by an additive constant, and Pearson is invariant to that. If this test
+    ever fails, C1 has acquired a difference of its own and can no longer be read as
+    "B3 with an estimated component".
+    """
+    import feltteori_research.experiment_020_representation as module
+
+    uniform = [1.0 / (len(EXPERTS) ** 0.5)] * len(EXPERTS)
+    monkeypatch.setattr(module, "_pc1_direction", lambda *args, **kwargs: list(uniform))
+
+    rows = _rows()
+    outcomes = _outcomes()
+    b3 = module.rep_shared_removed(rows, outcomes, EXPERTS, WINDOW)
+    c1 = module.rep_shared_removed_pc1(rows, outcomes, EXPERTS, WINDOW)
+    assert b3 is not None and c1 is not None
+    for expert in EXPERTS:
+        for feature in LAGS:
+            name = f"lag{feature}"
+            assert c1[expert][name] == pytest.approx(b3[expert][name], abs=1e-9), (
+                f"C1 with uniform loadings differs from B3 at {expert}/{name}"
+            )
+
+
+def test_c1_residual_is_orthogonal_to_the_estimated_direction() -> None:
+    """The removal must actually remove: the residual may not project onto PC1.
+
+    The direction comes from a power iteration, so it is an approximation and the
+    orthogonality holds to the convergence tolerance, not exactly. The check is
+    therefore a cosine, not an absolute sum: measuring ``mixed == 0`` absolutely
+    fails on a residual that is orthogonal to within 1e-10 relative (measured
+    26/11-2026: 3.8e-06 absolute on data of order 100).
+    """
+    from feltteori_research.experiment_020_representation import (
+        _pc1_direction,
+        _window_indices,
+    )
+
+    rows = _rows()
+    indices = _window_indices(len(rows), WINDOW, max(LAGS))
+    assert indices is not None
+    direction = _pc1_direction(rows, EXPERTS, indices)
+
+    columns = [[rows[i][expert] for i in indices] for expert in EXPERTS]
+    centred = [
+        [value - sum(column) / len(indices) for value in column] for column in columns
+    ]
+    span = len(EXPERTS)
+    for j in range(span):
+        residual = [
+            centred[j][t]
+            - sum(direction[m] * centred[m][t] for m in range(span)) * direction[j]
+            for t in range(len(indices))
+        ]
+        projected = [
+            sum(direction[m] * centred[m][t] for m in range(span))
+            for t in range(len(indices))
+        ]
+        residual_norm = sum(value * value for value in residual) ** 0.5
+        projected_norm = sum(value * value for value in projected) ** 0.5
+        assert residual_norm > 0.0, "the residual is empty, so the test proves nothing"
+        assert projected_norm > 0.0, "nothing was projected out, so nothing was removed"
+        cosine = sum(a * b for a, b in zip(residual, projected, strict=True)) / (
+            residual_norm * projected_norm
+        )
+        assert abs(cosine) < 1e-8, (
+            f"expert {EXPERTS[j]} still carries the shared component: cos={cosine:.2e}"
+        )
+
+
+def test_c1_is_registered_as_a_control_not_a_candidate() -> None:
+    """C1 tests H5, which was registered after H1-H4. It may not enter H1's contest."""
+    from feltteori_research.experiment_020_representation import CANDIDATES
+
+    assert "C1_shared_removed_pc1" in REPRESENTATIONS
+    assert "C1_shared_removed_pc1" not in CANDIDATES
+
+
+def test_pc1_loadings_are_a_unit_vector() -> None:
+    """A power iteration that did not normalise would silently rescale the removal."""
+    from feltteori_research.experiment_020_representation import pc1_loadings
+
+    loadings = pc1_loadings(_rows(), EXPERTS, WINDOW)
+    assert loadings is not None
+    assert len(loadings) == len(EXPERTS)
+    norm = sum(value * value for value in loadings) ** 0.5
+    assert norm == pytest.approx(1.0, abs=1e-9)

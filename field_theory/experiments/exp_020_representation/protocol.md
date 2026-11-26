@@ -154,6 +154,35 @@ expert-to-expert distance is the constant `sqrt(8×4) = 5.66` in every
 representation, and their C3 measures which sign an expert received rather than a
 structure. H5 must be evaluated on the cells with three or more experts.
 
+### The third route — C1, and what it has to show
+
+H5's falsification clause asks for a representation that removes the cross-expert
+common component by a route other than A1 and B3. **C1 (`rep_shared_removed_pc1`)
+is that route.** B3 subtracts the cross-expert *mean*, which is the shared
+component only if every expert loads on it equally. C1 estimates the shared
+direction from the data — the first principal component of the expert matrix —
+and projects it out. Same purpose, different estimator.
+
+**Registered prediction, written before the run (26/11-2026, before `run_v5`):**
+
+1. **C1 must reach 12 or more of 40.** Below that, H5 is falsified by its own
+   clause: the gain would belong to B3's mean subtraction specifically, not to
+   removing the shared component.
+2. **C1's advantage must grow with the window.** The two estimators are not
+   equally different at every window: measured loadings have spread 0.096–0.188
+   at `w=120` but 0.44–0.69 at `w=24`, against a uniform baseline of
+   `1/sqrt(k)`. At short windows C1 estimates a different component than B3 does;
+   at long windows the estimate converges on the mean and the two routes should
+   agree. If C1 is *flat* across windows, it is not measuring the same thing as
+   B3 and H5's mechanism is not what either of them is doing.
+3. **At `w=120` C1 and B3 should agree cell by cell.** This is the sharpest part
+   of the prediction and the one most likely to fail.
+
+If C1 lands near the baseline's 11, the honest reading is that "remove what the
+series share" is too broad a description — what worked was removing *the mean*,
+and H5 over-generalised from two representations that happened to share an
+arithmetic step.
+
 ## Controls that can void the whole run
 
 - **C0 — reproduction.** The baseline representation R0 must reproduce

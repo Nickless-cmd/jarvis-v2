@@ -177,7 +177,15 @@ export type StreamEvent =
 export type AssistantTextPhase = 'commentary' | 'final_answer'
 
 export type ContentBlock =
-  | { type: 'text'; text: string; phase?: AssistantTextPhase }
+  /**
+   * `blokId` er blokkens UFORANDERLIGE identitet, stemplet af reduceren da
+   * blokken blev født (`${runId}:${indeks}`). Den findes, fordi identiteten
+   * ikke må udledes af noget der ændrer sig: teksten vokser under pacing,
+   * `phase` kan sættes senere, og positionen i den projicerede liste
+   * forskubber sig når huller udfyldes eller en skill-flade præpendes.
+   * Persisterede blokke har den ikke — deres liste er til gengæld frossen.
+   */
+  | { type: 'text'; text: string; phase?: AssistantTextPhase; blokId?: string }
   /**
    * `seconds`: målt varighed. Gemte beskeder har serverens tal; live sætter
    * reduceren den, når næste blok starter. `startet`: klientens ur da blokken
@@ -185,7 +193,7 @@ export type ContentBlock =
    * når runderne grupperes eller svaret bliver færdigt, og så startede uret
    * forfra og «Tænkte i xx s» forsvandt (Bjørn 17/9-2026).
    */
-  | { type: 'thinking'; thinking: string; seconds?: number; startet?: number }
+  | { type: 'thinking'; thinking: string; seconds?: number; startet?: number; blokId?: string }
   | { type: 'skill_surface'; matches: SkillMatchInfo[]; primary: boolean }
   /**
    * Et godkendelses-kort, flettet ind i den TUR det hoerte til (31/10-2026).

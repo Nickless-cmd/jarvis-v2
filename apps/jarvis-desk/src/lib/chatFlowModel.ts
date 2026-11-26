@@ -254,15 +254,27 @@ function rolleFor(
  *
  * - `tool_use.id` og `tool_result.tool_use_id` — serverens egne id'er.
  * - `attachment_id` / `tool_use_id` på medie-blokke.
- * - For `text` og `thinking`, som ikke bærer noget id i protokollen: en
- *   hash af indholdet PLUS en forekomsttæller. Tælleren gør to identiske
- *   tekster i samme tur til to forskellige nøgler, og fordi den tælles i
- *   rækkefølge er den stabil så længe blokke kun appendes.
+ * - For `text` og `thinking`: `blokId`, som reduceren stempler ved blokkens
+ *   fødsel. Den er den eneste kilde der er uforanderlig gennem hele turen —
+ *   teksten vokser under pacing, `phase` kan sættes senere, og positionen
+ *   forskubber sig. Persisterede blokke har intet `blokId`; deres liste er
+ *   til gengæld frossen, så forekomsten pr. type er stabil.
  *
  * Nøglen er ikke garanteret unik på tværs af ture — det behøver den ikke.
  * Den bruges som React-key inden for én turs segmentliste.
  */
 function kildeNoegle(block: ContentBlock, forekomst: number): string {
+  // 1. Den UFORANDERLIGE identitet fra kilden vinder altid (26/11-2026).
+  //
+  //    Før blev nøglen bygget på `hash(block.text)`. Men `model.segmenter`
+  //    bygges fra `pacedBlocks`, hvor teksten VOKSER for hvert frame — så
+  //    React-key'en skiftede under selve pacingen, containeren blev remounted,
+  //    faden startede forfra, og noden var aldrig den samme to frames i træk.
+  //    Målingen af `tool_use:k1` viste kun at ET KALD stod stille; den sagde
+  //    intet om den tekst der voksede. `blokId` stemples ved fødslen og rører
+  //    sig aldrig.
+  if ('blokId' in block && block.blokId) return block.blokId
+  // 2. Naturlig identitet fra protokollen, hvor den findes.
   switch (block.type) {
     case 'tool_use':
       return `tool_use:${block.id}`
@@ -270,23 +282,17 @@ function kildeNoegle(block: ContentBlock, forekomst: number): string {
     case 'file':
     case 'video':
       return `${block.type}:${block.attachment_id || block.tool_use_id || block.filename || block.url || ''}:${forekomst}`
+    // 3. Persisterede blokke uden `blokId`. Deres liste er FROSSEN — den
+    //    bygges én gang fra `content_json` og muteres aldrig — så forekomsten
+    //    pr. type er stabil. Tekst og fase indgår bevidst IKKE: teksten er
+    //    mutable, og `phase` kan sættes senere; en nøgle der læser dem kan
+    //    skifte under brugerens øjne.
     case 'text':
-      return `text:${block.phase ?? '-'}:${hash(block.text)}:${forekomst}`
     case 'thinking':
-      return `thinking:${hash(block.thinking)}:${forekomst}`
+      return `${block.type}:${forekomst}`
     default:
       return `${block.type}:${forekomst}`
   }
-}
-
-/** Liten, stabil streng-hash (FNV-1a 32-bit). Kun til nøgler, ikke krypto. */
-function hash(value: string): string {
-  let h = 0x811c9dc5
-  for (let i = 0; i < value.length; i += 1) {
-    h ^= value.charCodeAt(i)
-    h = Math.imul(h, 0x01000193) >>> 0
-  }
-  return h.toString(36)
 }
 
 /**

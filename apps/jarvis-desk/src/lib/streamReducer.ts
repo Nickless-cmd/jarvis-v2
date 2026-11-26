@@ -435,11 +435,18 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       const cb = event.content_block
       const blocks = (cb.type === 'tool_result' ? state.blocks : lukTanker(state.blocks, nu, event.index)).slice()
       const forrige = state.blocks[event.index]
+      // Blokkens UFORANDERLIGE identitet (26/11-2026). Indekset er unikt for
+      // blokken inden for sit run og genbruges aldrig til en ANDEN blok, så
+      // `${runId}:${indeks}` er stabil gennem deltaer, replay og pacing.
+      // Den kan ikke udledes af teksten (den vokser), af `phase` (kan sættes
+      // senere) eller af positionen i den projicerede liste (huller udfyldes,
+      // og en skill-flade kan præpendes).
+      const blokId = `${state.activeRunId ?? 'r'}:${event.index}`
       if (cb.type === 'text') blocks[event.index] = {
-        type: 'text', text: cb.text ?? '', ...(cb.phase ? { phase: cb.phase } : {}),
+        type: 'text', text: cb.text ?? '', blokId, ...(cb.phase ? { phase: cb.phase } : {}),
       }
       else if (cb.type === 'thinking') blocks[event.index] = {
-        type: 'thinking', thinking: cb.thinking ?? '',
+        type: 'thinking', thinking: cb.thinking ?? '', blokId,
         startet: forrige && forrige.type === 'thinking' && forrige.startet != null ? forrige.startet : nu,
       }
       else if (cb.type === 'tool_use') {

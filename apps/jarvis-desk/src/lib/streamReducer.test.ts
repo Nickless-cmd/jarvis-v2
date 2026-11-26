@@ -29,14 +29,14 @@ describe('streamReducer', () => {
     state = streamReducer(state, { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'Første syntese' } })
     expect(liveBlokke(state).filter((b) => b.type === 'text')).toHaveLength(1)
     expect(liveChatBlokke(state).filter((b) => b.type === 'text'))
-      .toEqual([{ type: 'text', text: 'Første syntese' }])
+      .toMatchObject([{ type: 'text', text: 'Første syntese' }])
     state = streamReducer(state, system('provisional_text_commit', { run_id: 'r1' }))
-    expect(liveBlokke(state).filter((b) => b.type === 'text')).toEqual([{ type: 'text', text: 'Første syntese' }])
+    expect(liveBlokke(state).filter((b) => b.type === 'text')).toMatchObject([{ type: 'text', text: 'Første syntese' }])
     state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'Næste ' }))
     expect(liveBlokke(state).at(-1)).toEqual({ type: 'text', text: 'Næste ' })
     state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'svar' }))
     expect(liveChatBlokke(state).filter((b) => b.type === 'text'))
-      .toEqual([{ type: 'text', text: 'Første syntese' }])
+      .toMatchObject([{ type: 'text', text: 'Første syntese' }])
     state = streamReducer(state, system('final_answer_start', { run_id: 'r1' }))
     state = streamReducer(state, { type: 'content_block_start', index: 2, content_block: { type: 'text', text: '' } })
     state = streamReducer(state, { type: 'content_block_delta', index: 2, delta: { type: 'text_delta', text: 'Næste svar' } })
@@ -84,14 +84,14 @@ describe('streamReducer', () => {
       type: 'content_block_start', index: 0,
       content_block: { type: 'text', text: '', phase: 'commentary' },
     })
-    expect(commentary.blocks[0]).toEqual({ type: 'text', text: '', phase: 'commentary' })
+    expect(commentary.blocks[0]).toMatchObject({ type: 'text', text: '', phase: 'commentary' })
     expect(commentary.finalAnswerStarted).toBe(false)
 
     const answer = streamReducer(commentary, {
       type: 'content_block_start', index: 1,
       content_block: { type: 'text', text: '', phase: 'final_answer' },
     })
-    expect(answer.blocks[1]).toEqual({ type: 'text', text: '', phase: 'final_answer' })
+    expect(answer.blocks[1]).toMatchObject({ type: 'text', text: '', phase: 'final_answer' })
     expect(answer.finalAnswerStarted).toBe(true)
   })
 
@@ -107,13 +107,13 @@ describe('streamReducer', () => {
       delta: { type: 'text_delta', text: 'God idé — jeg undersøger det.' },
     }])
     expect(started.finalAnswerStarted).toBe(false)
-    expect(started.blocks[0]).toEqual({ type: 'text', text: 'God idé — jeg undersøger det.' })
+    expect(started.blocks[0]).toMatchObject({ type: 'text', text: 'God idé — jeg undersøger det.' })
 
     const commentary = streamReducer(started, {
       type: 'system_event', kind: 'text_phase_update',
       payload: { run_id: 'r1', index: 0, phase: 'commentary' },
     })
-    expect(commentary.blocks[0]).toEqual({
+    expect(commentary.blocks[0]).toMatchObject({
       type: 'text', text: 'God idé — jeg undersøger det.', phase: 'commentary',
     })
     expect(commentary.finalAnswerStarted).toBe(false)
@@ -175,7 +175,7 @@ describe('streamReducer', () => {
       { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Hej ' } },
       { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Bjørn' } },
     ])
-    expect(s.blocks[0]).toEqual({ type: 'text', text: 'Hej Bjørn' })
+    expect(s.blocks[0]).toMatchObject({ type: 'text', text: 'Hej Bjørn' })
   })
 
   it('keeps interleaved blocks separate by index', () => {
@@ -186,7 +186,7 @@ describe('streamReducer', () => {
       { type: 'content_block_delta', index: 1, delta: { type: 'thinking_delta', thinking: 'hmm' } },
       { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'B' } },
     ])
-    expect(s.blocks[0]).toEqual({ type: 'text', text: 'AB' })
+    expect(s.blocks[0]).toMatchObject({ type: 'text', text: 'AB' })
     // `startet` er klientens ur (17/9-2026) — indholdet er det testen gælder.
     expect(s.blocks[1]).toMatchObject({ type: 'thinking', thinking: 'hmm' })
   })
@@ -412,7 +412,7 @@ describe('streamReducer — tool_result status (Phase 2)', () => {
       { type: 'content_block_start', index: 0, content_block: { type: 'text', text: 'hej' } },
       { type: 'system_event', kind: 'tool_result', payload: { tool_use_id: 'mangler', status: 'ok' } },
     ] as StreamEvent[])
-    expect(s.blocks[0]).toEqual({ type: 'text', text: 'hej' })
+    expect(s.blocks[0]).toMatchObject({ type: 'text', text: 'hej' })
   })
 })
 
@@ -679,8 +679,8 @@ describe('udgivet fil i den levende strøm (7/10-2026)', () => {
       const raa = 'Se her:\njarvis-ui {"type":"callout","tone":"info","title":"T","body":"B"}'
       const rettet = 'Se her:\n```jarvis-ui\n{"type":"callout","tone":"info","title":"T","body":"B"}\n```'
       const s = streamReducer(medSvar(raa), korrektion(rettet))
-      expect(liveBlokke(s).filter((b) => b.type === 'text')).toEqual([
-        { type: 'text', text: rettet, phase: undefined },
+      expect(liveBlokke(s).filter((b) => b.type === 'text')).toMatchObject([
+        { type: 'text', text: rettet },
       ])
     })
 
@@ -691,8 +691,8 @@ describe('udgivet fil i den levende strøm (7/10-2026)', () => {
       s = streamReducer(s, { type: 'content_block_start', index: 1, content_block: { type: 'text', text: 'rå svar' } })
       s = streamReducer(s, korrektion('rettet svar'))
       const tekster = liveBlokke(s).filter((b) => b.type === 'text')
-      expect(tekster[0]).toEqual({ type: 'text', text: 'commentary', phase: undefined })
-      expect(tekster[1]).toEqual({ type: 'text', text: 'rettet svar', phase: undefined })
+      expect(tekster[0]).toMatchObject({ type: 'text', text: 'commentary' })
+      expect(tekster[1]).toMatchObject({ type: 'text', text: 'rettet svar' })
     })
 
     it('ignorerer tom og ugyldig korrektion', () => {

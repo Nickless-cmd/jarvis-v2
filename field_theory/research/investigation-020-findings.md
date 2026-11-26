@@ -235,3 +235,44 @@ constant `sqrt(8×4) = 5.66` in every representation.
 The detector was never blind. It was looking at the wrong thing — and the thing
 it was looking at was the one component that every series shares, which is the
 one component that cannot tell them apart.
+
+## The third route was built, and it split the claim in two
+
+H5's falsification clause asked for a representation that removes the
+cross-expert common component by a route other than A1 and B3. C1
+(`rep_shared_removed_pc1`) is that route: B3 subtracts the cross-expert *mean*,
+C1 estimates the shared direction from the data as the first principal component
+of the expert matrix and projects it out. Same purpose, different estimator.
+
+Three predictions were written into the protocol **before** `run_v5` started.
+Measured:
+
+| prediction | registered | measured | verdict |
+|---|---|---|---|
+| 1. C1 reaches 12+ | ≥ 12 | **20 of 40** | holds |
+| 2. C1's advantage grows with the window | monotone in `w` | +2, +4, +1, +2 | **fails** |
+| 3. C1 and B3 agree at `w=120` | cell by cell | 8 agree, 2 disagree | **fails** |
+
+**The confound is real. The claim that the routes are interchangeable is not.**
+C1 rescues 20 cells with median accuracy 1.000, and 6 of them are cells neither
+A1 nor B3 rescues (`A1 ∪ B3 = 23`, `A1 ∪ B3 ∪ C1 = 25`). Its overlap with B3 is
+Jaccard 0.708 — *lower* than A1/B3's 0.826 — so it is a more independent route
+than the two H5 was built on. Removing the cross-expert common component is
+something at least three different arithmetics can do.
+
+But prediction 3 fails where it matters most. At `w=120`, the window where the
+loading spread shrinks to 0.096 and C1's estimate was predicted to converge on
+the mean, the two routes disagree on `sunspots/short_memory` (C1 1.000, B3 0.025)
+and `sunspots/two_experts` (C1 1.000, B3 0.195). Those are not marginal
+threshold crossings; they are opposite answers on the same cell.
+
+**So H5 is not falsified by its own clause — C1 reached 12+ — but its
+explanatory claim is weakened.** "Subtract what the series have in common" is too
+broad to be *the* mechanism, because two estimators of that same quantity do not
+agree where they should. What the three working representations share is
+narrower: each removes a component that is constant across experts *within a
+window* — the level, the cross-expert mean, or the leading common direction —
+and which cells a given member rescues depends on the estimator, not only on the
+confound.
+
+That is a smaller claim than H5 made, and it is the one the data supports.

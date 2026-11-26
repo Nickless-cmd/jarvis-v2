@@ -183,6 +183,53 @@ series share" is too broad a description — what worked was removing *the mean*
 and H5 over-generalised from two representations that happened to share an
 arithmetic step.
 
+### Result — `run_v5`, measured 26/11-2026
+
+C1 reaches **20 of 40**, against A1's 21, B3's 21 and the baseline's 11. The
+first prediction holds. The other two do not.
+
+| prediction | registered | measured | verdict |
+|---|---|---|---|
+| 1. C1 reaches 12+ | ≥ 12 | **20** | holds |
+| 2. C1's advantage grows with the window | monotone in `w` | +2, +4, +1, +2 | **fails** |
+| 3. C1 and B3 agree at `w=120` | cell by cell | 8 agree, 2 disagree | **fails** |
+
+**Prediction 2 fails because C1 is not flat either — it is non-monotone.** Per
+window, C1 passes 3, 5, 5, 7 cells at `w = 24, 36, 60, 120`; B3 passes 6, 5, 5,
+5. C1 is *worse* than B3 at the shortest window and *better* at the longest —
+the opposite of what the loading-spread argument predicted. The argument was
+that C1 estimates a different component than B3 at short windows (spread 0.44–0.69)
+and converges on the mean at long ones (spread 0.096–0.188), so C1 should start
+apart and end together. It starts apart and ends apart.
+
+**Prediction 3 fails on the two cells where it matters most.** At `w=120` C1 and
+B3 disagree on `sunspots/short_memory` (C1 1.000, B3 0.025) and
+`sunspots/two_experts` (C1 1.000, B3 0.195). These are not marginal crossings of
+the 0.9 threshold — they are 1.000 against 0.025. Two estimators of the same
+component, at the window where they were predicted to coincide, produce opposite
+answers on the same cell.
+
+**What survives.** C1 is a genuine third route and it works: 20 of 40, median
+accuracy 1.000 on its own passing cells, and it rescues 6 cells that neither A1
+nor B3 rescues (`A1 ∪ B3 = 23`, `A1 ∪ B3 ∪ C1 = 25`). Its overlap with B3 is
+Jaccard 0.708 — lower than A1/B3's 0.826 — so it is a *more* independent route
+than the two H5 was built on.
+
+**What does not survive.** H5's stated mechanism — "subtract what the series have
+in common" — is too broad to be the mechanism, because two estimators of that
+same quantity do not agree where they should. What the three working
+representations share is narrower and now has to be stated as such: each removes
+a component that is *constant across experts within a window* — the level, the
+cross-expert mean, or the leading common direction — and each does so by a
+different arithmetic that lands on different cells. The mechanism is not one
+operation. It is a family of removals of the same confound, and which cells a
+given member rescues depends on the estimator, not only on the confound.
+
+H5 is therefore **not falsified by its own clause** (C1 reached 12+) but its
+explanatory claim is **weakened by predictions 2 and 3**. The honest status is:
+the confound is real and removable by more than two routes; the claim that the
+routes are interchangeable is refuted.
+
 ## Controls that can void the whole run
 
 - **C0 — reproduction.** The baseline representation R0 must reproduce

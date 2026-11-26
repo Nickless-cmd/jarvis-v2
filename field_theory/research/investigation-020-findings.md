@@ -276,3 +276,72 @@ and which cells a given member rescues depends on the estimator, not only on the
 confound.
 
 That is a smaller claim than H5 made, and it is the one the data supports.
+
+## Why C1 and B3 disagree at `w=120` — measured, not argued
+
+Prediction 3 failed on two cells. The natural next question is whether the two
+estimators are describing different mechanisms, or whether the measurement is
+too sharp to tell them apart. Measured 26/11-2026; three findings, and one of
+them contradicts an earlier claim in this investigation.
+
+**1. `two_experts` cannot test H5 at all, and now it is measured why.**
+`feature_stats` z-scores each feature *across the experts*, not across time. With
+two experts every feature therefore collapses to `±1` regardless of the data, and
+`C3` degenerates into "are these eight signs stable?" — not a structural
+property. At `w=120` the two residual streams are perfectly anti-correlated in
+both representations (`corr = −1.000000` for B3 and for C1) and the residuals
+themselves are near-identical (`cos = 0.9968`), yet C3 reads 0.195 against
+1.000. A 0.3 % difference in the residual moves C3 across the whole interval.
+This is the cell class H5's amendment already excluded; the exclusion was right,
+and the mechanism is the cross-expert z-scoring, not the data.
+
+**2. In the remaining cells the disagreement is a threshold, not a gradient.**
+Interpolating the removal direction between the cross-expert mean (`λ=0`, which
+*is* B3) and the estimated PC1 (`λ=1`, which is C1) and measuring C3:
+
+| cell | λ=0 | λ=0.4 | λ=0.8 | λ=1.0 |
+|---|---|---|---|---|
+| `sunspots/short_memory` | 0.025 | 0.755 | 1.000 | 1.000 |
+| `sunspots/two_experts` | 0.195 | 0.987 | 1.000 | 1.000 |
+| `sunspots/original` | 0.201 | 0.755 | 0.535 | 0.182 |
+| `sunspots/long_memory` | 0.642 | 0.786 | 0.132 | 0.069 |
+
+The endpoints are not two competing mechanisms. They are two points on one
+continuum, and C3 jumps between them rather than sliding — at `λ=0.4` more than
+half the removal is still the plain mean, and C3 is already at 0.755–0.987. The
+answer to "why do they disagree" is that the question was posed as a comparison
+of endpoints in a space where the measurement saturates.
+
+**3. The middle beats both endpoints on accuracy — and C3 and accuracy rank
+oppositely.** Mean accuracy over the five sunspots expert sets at `w=120`:
+
+| direction | mean accuracy | sets with C3 ≥ 0.9 |
+|---|---|---|
+| `λ=0` (B3, mean) | 0.030 | 0/5 |
+| `λ=0.3` | 0.535 | 0/5 |
+| `λ=0.5` | **0.795** | 2/5 |
+| `λ=1` (C1, PC1) | 0.400 | 2/5 |
+
+Partial removal beats both full removal and the estimated direction. Across the
+four windows `λ=0.5` has the highest mean accuracy in three of them (`w=36`,
+`w=60`, `w=120`) and is only beaten at `w=24`.
+
+But the last two columns disagree: `λ=0.3` has *higher* accuracy than C1 (0.535
+against 0.400) while passing *fewer* cells (0/5 against 2/5). Investigation 19
+concluded that the identity rate and the error rate are "largely the same
+property measured twice". At `w=120` on these cells they are not: they rank the
+same four directions differently. That is a correction to Investigation 19, not
+a refinement of it.
+
+**What this does not establish.** `λ` was chosen after the measurement, so the
+sweep is exploratory and cannot claim the status H1–H4 have. It is registered as
+H6 in the protocol with the prediction that would falsify it, and the honest
+statement is that the *shape* (a maximum strictly inside the interval, in three
+of four windows) is the finding — not the value 0.5. A window where the shape
+does not appear is `w=24`, where B3 alone is the best of the four.
+
+**What it changes about H5.** H5 said the mechanism is removing the cross-expert
+common component. That survives, and gets a magnitude: *how much* of it is
+removed decides the outcome, and neither full mean subtraction nor full
+projection along the estimated direction sits at the optimum. The disagreement
+between C1 and B3 was never a disagreement about mechanism.

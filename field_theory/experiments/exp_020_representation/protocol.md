@@ -292,3 +292,43 @@ field-theory premise in the one place where it was finally measurable.
   the count is reported alongside the full distribution for that reason.
 - This experiment cannot create a novel regime. It can only ask whether the
   worlds already in the reference are separable.
+
+## Amendment — H6, registered 26/11-2026 after the H1–H5 measurement
+
+H5 was registered after the run but before C1 was tested. H6 is later still: it
+was formulated **after** C1 had been measured and compared to B3, and it exists
+because that comparison produced a question the protocol had not asked.
+
+**H6 — the amount of removal matters, and the optimum is interior.**
+
+B3 removes the full cross-expert mean (`λ=0`) and C1 removes the full component
+along the estimated PC1 direction (`λ=1`), where the removal direction is
+`(1−λ)·u + λ·pc1` normalised. H6 says that neither endpoint is the optimum:
+there is an interior `λ` at which the identity rate and the post-swap accuracy
+are both higher than at either end.
+
+*Falsified* if a sweep over `λ ∈ [0,1]` finds no interior maximum — that is, if
+the best value of each measure is at an endpoint, in every window and every
+expert set. It is also falsified if the interior maximum appears only in the
+window where it was first observed (`w=120`), because then it is a property of
+one window rather than of the mechanism.
+
+**What was measured before registration.** A sweep on `sunspots` at `w=120`
+found mean accuracy over the five expert sets of 0.030 (`λ=0`), 0.535 (`λ=0.3`),
+0.795 (`λ=0.5`) and 0.400 (`λ=1`). The interior value 0.5 had the highest mean
+accuracy in three of four windows and was beaten only at `w=24`. This is why H6
+cannot claim the status of H1–H4 and why its falsification clause is written
+against the *shape* and not against the value 0.5.
+
+**H6 does not claim C3 and accuracy agree.** At `w=120`, `λ=0.3` has higher mean
+accuracy than C1 (0.535 against 0.400) while passing fewer cells above the C3
+threshold (0 of 5 against 2 of 5). Investigation 19 treated the identity rate
+and the error rate as one property measured twice. On these cells they rank the
+same four directions differently, so H6 is registered with both measures
+reported side by side and neither given precedence.
+
+**H6 does not claim `two_experts` supports it.** With two experts the
+cross-expert z-scoring in `feature_stats` reduces every feature to `±1`, so C3
+measures the stability of eight signs. That cell class is excluded from H6 for
+the same reason it is excluded from H5, and the reason is now measured rather
+than assumed.

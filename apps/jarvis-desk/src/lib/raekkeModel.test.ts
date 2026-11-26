@@ -137,14 +137,21 @@ describe('opdel', () => {
     const sluttekst: ContentBlock = {
       type: 'text', text: 'Slutteksten som brugeren skal laese.', phase: 'final_answer',
     }
+    const sentKald = kald('remember_this')
     const blocks = [
       kald('bash'),
       sluttekst,
-      kald('remember_this'),
+      sentKald,
     ]
     const { arbejde, svar } = opdel(blocks, false, true)
-    expect(svar).toEqual([sluttekst])
-    expect(arbejde.map((e) => e.slags)).toEqual(['blok', 'blok'])
+    // Slutteksten bliver stående som svar — det var hele pointen 21/11.
+    expect(svar).toContain(sluttekst)
+    // Kaldet EFTER slutteksten er en runde efter foldet. Siden 26/11-2026
+    // hører den til EFTER folden, ikke inde i den: målt i en headless browser
+    // var den usynlig (gruppe-højde 0) indtil man åbnede hovedet, og Bjørn
+    // kræver at runderne bliver stående synligt til serveren melder done.
+    expect(svar).toContain(sentKald)
+    expect(arbejde.map((e) => e.slags)).toEqual(['blok'])
   })
 
   it('flytter ikke graensen naar svaret IKKE er begyndt', () => {
@@ -251,6 +258,66 @@ describe('opdel', () => {
 
     expect(svar).toEqual([tekst('Her er resultatet.')])
     expect(arbejde.some((e) => e.slags === 'mellemsvar')).toBe(true)
+  })
+
+  it('lader en runde EFTER foldet blive staaende synligt — ikke inde i folden', () => {
+    // MÅLT 26/11-2026 i en headless browser (Playwright, dev-server 5174):
+    // efter foldet var gruppe-hoejden 0 baade FOER og EFTER det sene kald —
+    // 3902 af 3,6 mio. pixels aendrede sig, udelukkende i hovedets label.
+    // Kaldet laa i `arbejde`, som er den gruppe der foldes, saa runden var
+    // usynlig indtil man aabnede hovedet.
+    //
+    // Bjørn: «runderne skal blive staaende synlige efter foldet — og foerst
+    // fade ud naar serveren melder done. Ikke gemmes væk, ikke flyttes.»
+    //
+    // Reglen: et kald efter den foerste `final_answer`-blok hoerer til
+    // EFTER folden. Det er ikke arbejde der skal skjules — det er en runde
+    // brugeren skal kunne se mens den koerer.
+    const svarblok: ContentBlock = {
+      type: 'text', text: 'Fold-låsen er bygget og udgivet.', phase: 'final_answer',
+    }
+    const sentKald = kald('remember_this')
+    const blocks = [kald('bash'), svarblok, sentKald]
+
+    const { arbejde, svar } = opdel(blocks, false, true)
+
+    // Svaret bliver stående.
+    expect(svar).toContain(svarblok)
+    // Det sene kald er IKKE i den foldede gruppe.
+    expect(arbejde.some((e) => e.slags === 'blok' && e.blok === sentKald)).toBe(false)
+    // Det staar i stedet efter svaret, paa sin kronologiske plads.
+    expect(svar).toContain(sentKald)
+    expect(svar.indexOf(sentKald)).toBeGreaterThan(svar.indexOf(svarblok))
+  })
+
+  it('holder runden efter foldet paa sin plads naar der kommer flere', () => {
+    // Samme regel, men maalt som egenskab: rækkefølgen efter foldet skal
+    // bevares nøjagtigt — kald, syntese, kald — saa runden staar hvor den
+    // faktisk skete og ikke samles i bunden.
+    const svarblok: ContentBlock = {
+      type: 'text', text: 'Svaret.', phase: 'final_answer',
+    }
+    const k1 = kald('bash')
+    const syntese = tekst('Runden fandt noget.')
+    const k2 = kald('read_file')
+    const blocks = [svarblok, k1, syntese, k2]
+
+    const { svar } = opdel(blocks, false, true)
+
+    expect(svar).toEqual([svarblok, k1, syntese, k2])
+  })
+
+  it('lader IKKE et kald efter foldet aabne graensen igen', () => {
+    // Modproeven: et sent kald maa ikke traekke grænsen frem, saa svaret
+    // falder tilbage i arbejdet. Det var netop «teleporteringen».
+    const svarblok: ContentBlock = {
+      type: 'text', text: 'Fundet.', phase: 'final_answer',
+    }
+    const foer = [kald('bash'), svarblok]
+    const efter = [...foer, kald('remember_this'), tekst('Kvittering.')]
+
+    expect(opdel(foer, false, true).svar).toContain(svarblok)
+    expect(opdel(efter, false, true).svar).toContain(svarblok)
   })
 
   it('er tom for en tom besked', () => {

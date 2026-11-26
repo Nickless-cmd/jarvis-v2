@@ -165,6 +165,9 @@ export function opdel(blokke: readonly ContentBlock[], underArbejde = false, sva
   // grænse hvor der stadig er tekst efter sig — og bruger den. Så kan en
   // senere blok ikke skubbe noget ind i folden, uanset hvor mange runder der
   // kommer bagefter.
+  // Den FØRSTE blok serveren selv har stemplet `final_answer` — hvor svaret
+  // begyndte. -1 = serveren har ikke sagt det, og klienten gætter ikke.
+  let foersteSvar = -1
   if (svarLaast) {
     // ── Grænsen læses af serverens EGEN klassificering (Bjørn 26/11-2026) ──
     //
@@ -187,14 +190,15 @@ export function opdel(blokke: readonly ContentBlock[], underArbejde = false, sva
     // Serveren har ikke sagt at svaret er begyndt, og klienten gætter ikke.
     // Det er en kendt begrænsning i serverens klassificering, og den løses i
     // serveren — ikke med endnu en heuristik her.
-    let foersteSvar = -1
+    let foersteSvarLokal = -1
     for (let i = 0; i < blokke.length; i++) {
       const b = blokke[i]
       if (b?.type === 'text' && b.phase === 'final_answer') {
-        foersteSvar = i
+        foersteSvarLokal = i
         break
       }
     }
+    foersteSvar = foersteSvarLokal
     if (foersteSvar >= 0) {
       sidsteKald = -1
       for (let i = 0; i < foersteSvar; i++) {
@@ -207,6 +211,26 @@ export function opdel(blokke: readonly ContentBlock[], underArbejde = false, sva
   const svar: ContentBlock[] = []
   let kald = 0
   let sekunder = 0
+
+  // ── Runden EFTER foldet hører til efter foldet (Bjørn 26/11-2026) ────────
+  //
+  // MÅLT 26/11-2026 i en headless browser: efter foldet var gruppe-højden 0
+  // både FØR og EFTER det sene kald — 3902 af 3,6 mio. pixels ændrede sig,
+  // udelukkende i hovedets label. Kaldet lå i `arbejde`, som er den gruppe
+  // der foldes, så runden var usynlig indtil man åbnede hovedet.
+  //
+  // Bjørn: «runderne skal blive stående synlige efter foldet — og først fade
+  // ud når serveren melder done. Ikke gemmes væk, ikke flyttes.»
+  //
+  // `arbejdeEfterSvar` i reduceren råber allerede «her er arbejde efter
+  // svaret», men den styrer kun om folden skal ÅBNE. Klassificeringen her
+  // svarede «det er arbejde» — og så lukkede folden det inde igen.
+  //
+  // Reglen: alt efter den første `final_answer`-blok er EFTER folden. Et
+  // værktøjskald der er arbejde, men står efter svaret, er en ny runde
+  // brugeren skal kunne se — ikke arbejde der skal skjules. Kun når svaret
+  // ikke er begyndt, hører kaldet til i folden.
+  const efterFold = svarLaast && foersteSvar >= 0
 
   for (let i = 0; i < blokke.length; i++) {
     const b = blokke[i]
@@ -223,11 +247,15 @@ export function opdel(blokke: readonly ContentBlock[], underArbejde = false, sva
       // Efter det sidste kald: TEKST er svar. Arbejdsblokke er stadig
       // arbejde — se skillelinjen i hovedkommentaren. Alt andet (fx
       // `tool_use_summary`) falder i svaret, saa intet forsvinder tavst.
-      if (b.type === 'progress') {
+      //
+      // Undtagelsen er runden EFTER foldet: står blokken efter den første
+      // `final_answer`, er den en ny runde brugeren skal se, ikke arbejde
+      // der skal skjules. Se `efterFold` ovenfor.
+      if (b.type === 'progress' && !efterFold) {
         const sidste = arbejde[arbejde.length - 1]
         if (sidste && sidste.slags === 'spor') sidste.trin.push(b)
         else arbejde.push({ slags: 'spor', trin: [b] })
-      } else if (erArbejdsBlok(b)) arbejde.push({ slags: 'blok', blok: b })
+      } else if (erArbejdsBlok(b) && !efterFold) arbejde.push({ slags: 'blok', blok: b })
       else svar.push(b)
       continue
     }

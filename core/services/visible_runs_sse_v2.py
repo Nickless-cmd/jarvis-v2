@@ -384,6 +384,9 @@ async def translate_to_v2(
         "session_id": session_id,
         "origin": origin,
         "has_tool": False,
+        #: Indeks for det sidste værktøjskald der udførte ARBEJDE. Et
+        #: afsluttende kald (`suggest_next_task`) flytter den ikke.
+        "last_real_tool_index": -1,
         # Er fold-signalet sendt? Det maa ikke afhaenge af, om der
         # tilfaeldigt laa tekst i koen (se done-grenen).
         "final_answer_started": False,
@@ -405,6 +408,14 @@ async def translate_to_v2(
     #: blok der er turens svar (se `_promote_last_text_block_to_answer`).
     _text_block_phases: dict[int, str | None] = {}
 
+    #: Værktøjer der AFLUTTER turen frem for at udføre arbejde. Tekst efter
+    #: dem er en hale, ikke svaret — se `_promote_earlier_answer_block`.
+    _afsluttende_vaerktoejer = frozenset({"suggest_next_task", "pause_and_ask"})
+
+    #: Antal tegn sendt pr. tekstblok. Uden det kan `done` ikke afgøre hvilken
+    #: blok der er turens svar — kun hvilken der kom sidst.
+    _text_block_lengths: dict[int, int] = {}
+
     #: Kald hvis linje allerede er født af annonceringen (før kørslen). Uden
     #: den ville resultat-eventet føde en linje MERE om samme kald.
     _annonceret: set[str] = set()
@@ -421,6 +432,7 @@ async def translate_to_v2(
             index=idx, block_type="text", phase=phase,
         ).to_sse_line())
         _text_block_phases[idx] = phase
+        _text_block_lengths[idx] = 0
         if phase is None:
             _unresolved_text_indexes.add(idx)
         _state["text_block_open"] = True
@@ -478,6 +490,63 @@ async def translate_to_v2(
             ).to_sse_line())
         _unresolved_text_indexes.clear()
 
+    async def _promote_earlier_answer_block() -> int | None:
+        """Vælg svarets blok FØR fold-signalet — ikke efter.
+
+        Målt 26/11-2026 over 3.000 persisterede assistent-svar: 52 havde en
+        `final_answer`-blok der var mere end halvandet gang kortere end den
+        tekst der stod før den. I det groveste tilfælde var svaret 36 tegn
+        («Forslaget ligger klar i komponisten.») mens 2.533 tegn med hele
+        besvarelsen lå inde i folden som arbejde.
+
+        Årsagen er ikke folden: `_promote_last_text_block_to_answer` vælger
+        den allersidste tekstblok, og efter et afsluttende kald
+        (`suggest_next_task`, `pause_and_ask`) skriver Jarvis en kort hale.
+        Halen blev svaret, besvarelsen blev arbejde.
+
+        Reglen her: svaret er den LÆNGSTE tekst efter det sidste RIGTIGE
+        værktøjskald. Afsluttende kald tæller ikke som arbejde, så teksten før
+        dem hører med. Halen efter svaret åbnes bagefter som `commentary` og
+        bliver stående synligt uden for foldet — se `_flush_pending_text`.
+
+        Længde er en præsentationsheuristik, ikke semantik: den kan pege på en
+        lang mellemsyntese. Fejlretningen er valgt bevidst — den skjuler aldrig
+        tekst. Alt efter den valgte blok er svar, uanset hvad den bærer.
+        """
+        if not _text_block_lengths:
+            return None
+        # Har serveren allerede stemplet et svar — fx en ren teksttur — rører
+        # vi den ikke. Klienten læser den FØRSTE `final_answer`, så et sent
+        # stemplet ville flytte grænsen bagud efter foldet.
+        if "final_answer" in _text_block_phases.values():
+            return None
+        ventende = sum(len(t) for t in _pending_text)
+        gulv = int(_state.get("last_real_tool_index") or -1)
+        kandidat: int | None = None
+        laengst = ventende
+        for i in sorted(_text_block_lengths):
+            if i <= gulv:
+                continue
+            if _text_block_lengths[i] > laengst:
+                kandidat, laengst = i, _text_block_lengths[i]
+        if kandidat is None:
+            return None
+        _text_block_phases[kandidat] = "final_answer"
+        await queue.put(SystemEvent(
+            kind="text_phase_update",
+            payload={
+                "run_id": str(_state["run_id"] or ""),
+                "index": kandidat,
+                "phase": "final_answer",
+            },
+        ).to_sse_line())
+        _state["final_answer_started"] = True
+        await queue.put(SystemEvent(
+            kind="final_answer_start",
+            payload={"run_id": str(_state["run_id"] or "")},
+        ).to_sse_line())
+        return kandidat
+
     async def _promote_last_text_block_to_answer() -> None:
         """En AFLUTTET tur har altid en slutblok.
 
@@ -502,9 +571,12 @@ async def translate_to_v2(
         """
         if not _text_block_phases:
             return
-        index = max(_text_block_phases)
-        if _text_block_phases.get(index) == "final_answer":
+        # Er der allerede stemplet et svar, er det valgt med vilje — se
+        # `_promote_earlier_answer_block`. Kun naar ingen blok er svar endnu,
+        # er den sidste tekstblok det bedste bud.
+        if "final_answer" in _text_block_phases.values():
             return
+        index = max(_text_block_phases)
         _text_block_phases[index] = "final_answer"
         _state["final_answer_started"] = True
         await queue.put(SystemEvent(
@@ -550,8 +622,10 @@ async def translate_to_v2(
             # før vi lukker den (fx ved et tool-kald der afbryder teksten).
             tail = echo_filter.flush()
             if tail:
+                _blok = int(_state["text_block_index"])
+                _text_block_lengths[_blok] = _text_block_lengths.get(_blok, 0) + len(tail)
                 await queue.put(ContentBlockDelta(
-                    index=int(_state["text_block_index"]),
+                    index=_blok,
                     delta_type="text_delta",
                     content=tail,
                 ).to_sse_line())
@@ -573,14 +647,20 @@ async def translate_to_v2(
             return
         text = "".join(_pending_text)
         _pending_text.clear()
-        if final:
+        # Folden sendes KUN én gang. Er den allerede sendt — fordi
+        # `_promote_earlier_answer_block` valgte en blok der stod på skærmen
+        # før halen — så er den ventende tekst noget der kom EFTER svaret. Den
+        # skal åbnes som `commentary`, så den bliver stående synligt uden for
+        # foldet i stedet for at blive svaret.
+        _fold_allerede = bool(_state["final_answer_started"])
+        if final and not _fold_allerede:
             _state["final_answer_started"] = True
             await queue.put(SystemEvent(
                 kind="final_answer_start",
                 payload={"run_id": str(_state["run_id"] or "")},
             ).to_sse_line())
         await _ensure_text_block_open(
-            phase="final_answer" if final else "commentary",
+            phase="final_answer" if (final and not _fold_allerede) else "commentary",
         )
         # Replay teksten i ~30 små dele — BÅDE slutsvaret og den mellemliggende
         # syntese.
@@ -619,11 +699,14 @@ async def translate_to_v2(
             chunk_size = max(2, min(int(round(_rate * _REPLAY_TICK_S)), max(2, len(text) // 4)))
         else:
             chunk_size = max(16, (len(text) + 29) // 30)
+        _blok = int(_state["text_block_index"])
         for offset in range(0, len(text), chunk_size):
+            _bid = text[offset:offset + chunk_size]
+            _text_block_lengths[_blok] = _text_block_lengths.get(_blok, 0) + len(_bid)
             await queue.put(ContentBlockDelta(
-                index=int(_state["text_block_index"]),
+                index=_blok,
                 delta_type="text_delta",
-                content=text[offset:offset + chunk_size],
+                content=_bid,
             ).to_sse_line())
             if offset + chunk_size < len(text):
                 await asyncio.sleep(0.03)
@@ -668,6 +751,8 @@ async def translate_to_v2(
         await _close_thinking_block_if_open()
         await _close_text_block_if_open()
         idx = _alloc_index()
+        if name not in _afsluttende_vaerktoejer:
+            _state["last_real_tool_index"] = idx
         await queue.put(ContentBlockStart(
             index=idx, block_type="tool_use", tool_id=tool_id, tool_name=name,
         ).to_sse_line())
@@ -713,6 +798,8 @@ async def translate_to_v2(
             await _close_thinking_block_if_open()
             await _close_text_block_if_open()
             idx = _alloc_index()
+            if name not in _afsluttende_vaerktoejer:
+                _state["last_real_tool_index"] = idx
             await queue.put(ContentBlockStart(
                 index=idx, block_type="tool_use", tool_id=tool_id, tool_name=name,
             ).to_sse_line())
@@ -939,8 +1026,10 @@ async def translate_to_v2(
                             # kalder et tool eller afslutter. Den vises stadig
                             # direkte, men må ikke folde hovedet for tidligt.
                             await _ensure_text_block_open(phase=None)
+                            _blok = int(_state["text_block_index"])
+                            _text_block_lengths[_blok] = _text_block_lengths.get(_blok, 0) + len(text)
                             await queue.put(ContentBlockDelta(
-                                index=int(_state["text_block_index"]),
+                                index=_blok,
                                 delta_type="text_delta",
                                 content=text,
                             ).to_sse_line())
@@ -1005,6 +1094,11 @@ async def translate_to_v2(
                     await _resolve_unresolved_text(
                         phase="final_answer" if _completed and not _state["has_tool"] else "commentary",
                     )
+                    # Svar-blokken vælges FØR fold-signalet. Bagefter ville
+                    # grænsen flytte sig mens brugeren ser på den — og det er
+                    # præcis det «blink» der er blevet jagtet på visningen.
+                    if _completed:
+                        await _promote_earlier_answer_block()
                     await _flush_pending_text(final=_completed)
                     # Bjoern 20/10-2026: «en runde linje der hang saa hoved ikk
                     # foldet og da runden forsvandt glippede foldet».

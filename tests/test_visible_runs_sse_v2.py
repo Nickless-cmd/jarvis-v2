@@ -1275,3 +1275,86 @@ async def test_ræsonnement_før_teksten_er_uændret_som_hos_deepseek():
     events = await _koer(_vaerktoej(), _r("tænker"), _d("Svar"), _done())
     assert _tekst_blokke(events) == ["Svar"]
     assert _blok_typer(events).count("thinking") == 1
+
+
+@pytest.mark.asyncio
+async def test_svaret_er_besvarelsen_ikke_halen_efter_suggest_next_task():
+    """Svaret er den LANGE tekst — ikke den korte hale efter et afsluttende kald.
+
+    Målt 26/11-2026 over 3.000 persisterede assistent-svar: 52 havde en
+    `final_answer`-blok der var mere end halvandet gang kortere end teksten
+    før den. Groveste tilfælde: 36 tegn blev svaret («Forslaget ligger klar i
+    komponisten.») mens 2.533 tegn med hele besvarelsen lå inde i folden.
+
+    Mekanikken: `_promote_last_text_block_to_answer` valgte den allersidste
+    tekstblok. Efter et afsluttende kald (`suggest_next_task`) skriver Jarvis
+    en kort hale, og den blev så svaret.
+
+    Kontrakten her: besvarelsen stemples `final_answer` FØR fold-signalet, og
+    halen åbnes som `commentary` — så bliver den stående synligt uden for
+    foldet i stedet for at skubbe besvarelsen ind i det.
+    """
+    besvarelse = "Hele besvarelsen med målinger, tabeller og konklusioner."
+    hale = "Forslaget ligger klar i komponisten."
+
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("working_step", _annoncering())
+        yield _legacy_sse("capability", {
+            "type": "tool_result", "tool": "bash",
+            "capability_id": "call-1", "status": "ok",
+        })
+        yield _legacy_sse("delta", {"run_id": "v1", "delta": besvarelse})
+        # Ny runde → den ventende tekst er en afsluttet syntese (commentary).
+        yield _legacy_sse("working_step", {
+            "run_id": "v1", "action": "thinking", "detail": "Tænker videre · runde 2",
+        })
+        # Afsluttende kald — ikke arbejde.
+        yield _legacy_sse("working_step", _annoncering(
+            tool_id="call-2", navn="suggest_next_task",
+        ))
+        yield _legacy_sse("capability", {
+            "type": "tool_result", "tool": "suggest_next_task",
+            "capability_id": "call-2", "status": "ok",
+        })
+        # Halen efter svaret.
+        yield _legacy_sse("delta", {"run_id": "v1", "delta": hale})
+        yield _legacy_sse("done", {"run_id": "v1", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", session_id="s", ping_interval_s=999.0,
+    )))
+
+    faser: dict[int, str | None] = {}
+    for kind, data in events:
+        if kind == "content_block_start" and data["content_block"]["type"] == "text":
+            faser[data["index"]] = data["content_block"].get("phase")
+    for kind, data in events:
+        if kind == "system_event" and data.get("kind") == "text_phase_update":
+            p = data["payload"]
+            faser[p["index"]] = p["phase"]
+
+    assert list(faser.values()) == ["final_answer", "commentary"], faser
+
+    # Fold-signalet skal komme ÉN gang, og EFTER at besvarelsen er stemplet —
+    # ellers flytter grænsen sig mens brugeren ser på den.
+    stemplet_at = next(
+        i for i, (kind, data) in enumerate(events)
+        if kind == "system_event" and data.get("kind") == "text_phase_update"
+        and data["payload"]["phase"] == "final_answer"
+    )
+    fold_at = [i for i, (kind, data) in enumerate(events)
+               if kind == "system_event" and data.get("kind") == "final_answer_start"]
+    assert len(fold_at) == 1
+    assert stemplet_at < fold_at[0]
+
+    # Halen skal stå i sin EGEN blok EFTER foldet — ikke inde i det. Blok-
+    # indeksene er ikke 0 og 1 (værktøjs- og resultatblokke ligger imellem),
+    # så rækkefølgen læses af tekstblokkenes egne indeks.
+    tekst_blokke = [
+        (i, data["index"]) for i, (kind, data) in enumerate(events)
+        if kind == "content_block_start" and data["content_block"]["type"] == "text"
+    ]
+    assert len(tekst_blokke) == 2, tekst_blokke
+    hale_start = tekst_blokke[1][0]
+    assert hale_start > fold_at[0]
+    assert tekst_blokke[0][1] < tekst_blokke[1][1]

@@ -193,6 +193,10 @@ export interface StreamContextValue {
   /** Turens starttid (ms epoch), sat ved `message_start`. Uret i turhovedet
    *  måler turen — ikke komponentens montering (17/10-2026). */
   turStart: number | null
+  /** Turens logiske identitet — uforanderlig gennem hele turen. Pacing-nøglen
+   *  læses herfra, så et follow-up-run eller en ny `message_start` ikke kan
+   *  nulstille pacens cursor (26/11-2026). */
+  turId: string | null
   /** Turens sluttid (ms epoch), sat ved `message_stop`. Uret fryser her, så
    *  tiden bliver stående i hovedet efter strømmen er forbi (17/10-2026). */
   turSlut: number | null
@@ -758,6 +762,7 @@ export function StreamProvider({
       tankeResumeer: state.tankeResumeer,
       activeRunId: state.activeRunId,
       turStart: state.turStart,
+      turId: state.turId,
       turSlut: state.turSlut,
       finalAnswerStarted: state.finalAnswerStarted,
       svarLaast: state.svarLaast,

@@ -33,6 +33,17 @@ export interface ChatFlowPresentationProps {
   runId?: string | null
   /** Turens starttid (ms epoch) — uret måler turen, ikke komponentens montering. */
   turStart?: number | null
+  /**
+   * TURENS LOGISKE IDENTITET — pacing-nøglen.
+   *
+   * Adskilt fra `turStart` 26/11-2026. `turStart` er TID og kan sættes på ny
+   * af en frame der hører til samme tur; `turId` er IDENTITET og kan ikke.
+   * Så længe nøglen var `tur-${turStart}`, nulstillede enhver sådan frame
+   * pacens cursor — og folden kunne derfor aldrig blive irrelevant for pacen.
+   *
+   * `null` = persisteret tur uden stream-tilstand; så bruges `runId` som før.
+   */
+  turId?: string | null
   /** Turens sluttid (ms epoch) — uret fryser her og bliver stående efter turen. */
   turSlut?: number | null
   /** Turens varighed udledt af transskriptet. Bruges på persisterede ture, hvor
@@ -96,6 +107,7 @@ export function ChatFlowPresentation({
   arbejdeEfterSvar = false,
   runId,
   turStart,
+  turId,
   turSlut,
   varighedSekunder,
   tokens = 0,
@@ -128,12 +140,22 @@ export function ChatFlowPresentation({
     finalAnswerStarted: pacingFinal,
     paceAllText: streaming,
     flush: flushFinalAnswer,
-    // Nøglen er TUREN, ikke runnet (28/10-2026). Cursoren ligger under
+    // Nøglen er TURENS IDENTITET, ikke runnet og ikke tidsstemplet
+    // (28/10-2026, skærpet 26/11-2026). Cursoren ligger under
     // `${nøgle}:chat-text`; gav et follow-up-run en ny nøgle, faldt cursoren
     // til `''` og svaret blev pacet FORFRA — det Bjørn beskrev som «tom skærm,
-    // og så starter slut besked med at pace uden for hoved». Turen har ét
-    // starttidspunkt (sat ved `client_turn_start`), og det overlever runderne.
-    runId: turStart != null ? `tur-${turStart}` : runId,
+    // og så starter slut besked med at pace uden for hoved».
+    //
+    // Før var nøglen `tur-${turStart}`. Det holdt så længe `turStart` var
+    // uforanderlig, men den er TID og blev sat på ny af `follow_start`,
+    // `client_turn_start`, en `origin`-frame og en run-frame med nyt id. Hver
+    // af dem nulstillede pacen midt i turen. `turId` sættes én gang pr. tur
+    // og bevares af alle de frames — så pacen fortsætter uanset hvad der sker
+    // med hovedet, runderne eller tidsstemplet.
+    //
+    // Persisterede ture har ingen stream-tilstand og dermed intet `turId`;
+    // der falder vi tilbage på `runId`, som er stabilt for en gemt besked.
+    runId: turId ?? (turStart != null ? `tur-${turStart}` : runId),
   })
   const model = deriveChatFlow({
     blocks: pacedBlocks,
@@ -154,7 +176,11 @@ export function ChatFlowPresentation({
     arbejdeEfterSvar,
   })
   const confirmedRef = useRef<{ runKey: string; texts: string[] }>({ runKey: '', texts: [] })
-  const runKey = runId ?? '__historical-message__'
+  // Nøglen er TUREN, ikke runnet (26/11-2026). `runId` skifter ved hvert
+  // follow-up-run, så de bekræftede tekster blev nulstillet midt i turen — og
+  // så forsvandt en syntese der allerede stod på skærmen. `turId` er stabil
+  // gennem alle rundens frames; persisterede ture falder tilbage på `runId`.
+  const runKey = turId ?? runId ?? '__historical-message__'
   const priorConfirmed = confirmedRef.current.runKey === runKey ? confirmedRef.current.texts : []
   let confirmedTexts = priorConfirmed
   if (finalAnswerStarted) {

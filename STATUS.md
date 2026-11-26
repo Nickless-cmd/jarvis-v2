@@ -5,6 +5,31 @@ The repository-wide status source remains
 This file records the status of the delivered Jarvis Desk changes requested for
 implementation.
 
+## Desk: turn identity and block semantics decoupled — complete locally (2026-11-26)
+
+Two of the seven architectural requirements from the turn-head brief are
+implemented; the remaining five are not started.
+
+- **Stable pace identity.** New immutable `StreamState.turId` replaces
+  `tur-${turStart}` as the pacing key. Five sites wrote `Date.now()` into
+  `turStart`, two unconditionally, so a follow-up run or reconnect re-paced the
+  answer from the beginning. `confirmedRef` now keys on `turId` too — it keyed
+  on `runId`, which changes on every follow-up run.
+- **Authoritative phase semantics.** `projektion()` reads `block.phase`
+  (server-set: `commentary`/`final_answer`) before falling back to the
+  positional rule. A block with a server phase can no longer be reclassified
+  when a later round arrives. The flat, order-preserving structure is kept as
+  requested; only the dynamic reclassification is removed.
+- **Tests.** 10 `streamReducer.turId.test.ts`, 7 `raekkeModel.semantik.test.ts`.
+  The semantics test was verified against the old code with `git stash`: 4/7
+  fail there, 7/7 pass now. 2202 desk tests green, `tsc --noEmit` clean.
+- **Open.** `follow_start` is client-local and carries only `run_id`, so "new
+  run id = new turn" remains an unproven heuristic for continuation runs. Round
+  containers in the document flow, coordinated fade/collapse, persisted-message
+  handover and frame-by-frame verification in `scripts/maaling.mjs` are not
+  started.
+
+
 ## Initiative coordination across the Central — implemented in worktree, not deployed (2026-11-24)
 
 - `work_coordination` fingerprint (user + action class + concrete anchors) replaces topic-word

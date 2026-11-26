@@ -1,4 +1,54 @@
 # Development log
+## 2026-11-26 — The turn's identity is not its clock; the block's phase is not its position
+
+**Root cause (measured, two distinct couplings).**
+
+1. *Pace identity was time.* The pacing key in `ChatFlowPresentation` was
+   `tur-${turStart}`, and five sites in `streamReducer` wrote
+   `turStart: Date.now()` — two of them (`follow_start`, `client_turn_start`)
+   unconditionally. Any frame that rewrote the key dropped
+   `useChatPacedBlocks`' cursor to `''`, so the answer was re-paced from the
+   beginning mid-turn. This is the "empty screen, then the final answer starts
+   pacing outside the head" symptom.
+
+2. *Block semantics were position.* `projektion()` derived a text block's phase
+   solely from `i > sidsteKald`. When a new round arrived after the answer,
+   `sidsteKald` moved and an already-rendered final answer flipped back into the
+   work group — same block, new phase, new visual row. That is the
+   "blink/hik" Bjørn described.
+
+**Change.** New immutable `StreamState.turId` (`tur-<uuid>`), set once per turn
+and preserved by every frame belonging to the same turn: `message_start` with a
+new run id, `follow_start` of the same run, reconnects, follow-up runs. Only a
+genuine new turn gets a new id. `ChatFlowPresentation` now paces on `turId`
+(`turStart` kept only as fallback for persisted turns), and `confirmedRef` keys
+on `turId` instead of `runId` — the latter changes on every follow-up run, so
+confirmed texts were being reset mid-turn.
+
+`projektion()` now reads `block.phase` first (`sse_v2_events.py` sets
+`commentary`/`final_answer`) and falls back to the positional rule only for
+blocks without `phase` (older persisted turns, providers that omit it). A block
+that has received its phase from the server can no longer be reclassified by a
+later block.
+
+**Measured.** 10 new `streamReducer.turId.test.ts` tests and 7 new
+`raekkeModel.semantik.test.ts` tests. The semantics test was run against the
+old code via `git stash`: 4 of 7 fail there, 7 of 7 pass with the change — the
+test carries weight. 2202 desk tests green, `tsc --noEmit` clean.
+
+**Open, deliberately documented, not claimed solved.** `follow_start` is
+client-local (`CodeView.tsx`), never emitted by the server. "A new run id is a
+new turn" is therefore our own heuristic, not a server contract. It is right in
+the cross-device case (2026-11-16: a passive client merged a new turn into the
+previous message) but unproven when the new run continues the turn the client
+already shows. Distinguishing the two needs a turn id in the `follow_start`
+payload, which does not exist today. The test asserts current behaviour and is
+annotated with what must change, not what to delete.
+
+Not started: independent round containers in the document flow, coordinated
+fade/collapse, the persisted-message handover, and frame-by-frame verification
+in the existing Playwright harness (`apps/jarvis-desk/scripts/maaling.mjs`).
+
 ## 2026-11-24 — Coordination §8: measure through the path the turn actually takes
 
 `scripts/koordinering_maaling.py` (`--hours N`, `--json`, read-only `mode=ro`)

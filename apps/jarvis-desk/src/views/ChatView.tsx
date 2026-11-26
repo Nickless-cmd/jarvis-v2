@@ -1324,7 +1324,7 @@ export function ChatView({
           <>
             {streaming && stream.activeRunId ? <ChatFlowOnboarding runId={stream.activeRunId} streaming model={primaryChatModel} /> : null}
             <MessageRow presentation="chat" chatMode={primaryChatMode} status={stream.status}
-              workingStep={stream.workingStep} runId={stream.activeRunId} turStart={stream.turStart} turSlut={stream.turSlut}
+              workingStep={stream.workingStep} runId={stream.activeRunId} turStart={stream.turStart} turId={stream.turId} turSlut={stream.turSlut}
               onWorkExpanded={() => { if (stream.activeRunId) expandedChatRuns.current.add(stream.activeRunId) }}
               role="assistant" blocks={withoutPauseAsk(liveChatBlokke(stream))} density="compact" streaming={streaming}
               finalAnswerStarted={stream.finalAnswerStarted || stream.svarLaast} arbejdeEfterSvar={stream.arbejdeEfterSvar} rundeEtiketter={stream.rundeEtiketter}
@@ -1340,7 +1340,7 @@ export function ChatView({
             follow-renderen hvis svaret allerede står i transcript'en (server/bro). */}
         {!streaming && bgActive && followState.status === 'working' && (followState.blocks.length > 0 || !!followState.provisionalText) && !followAlreadyInTranscript && (
           <MessageRow presentation="chat" chatMode={followedChatMode} status={followState.status}
-            workingStep={followState.workingStep} runId={followedRunId} turStart={followState.turStart} turSlut={followState.turSlut}
+            workingStep={followState.workingStep} runId={followedRunId} turStart={followState.turStart} turId={followState.turId} turSlut={followState.turSlut}
             role="assistant" blocks={liveChatBlokke(followState)} density="compact" streaming
             finalAnswerStarted={followState.finalAnswerStarted || followState.svarLaast} arbejdeEfterSvar={followState.arbejdeEfterSvar} rundeEtiketter={followState.rundeEtiketter}
             tankeResumeer={followState.tankeResumeer} config={raekkeConfig}

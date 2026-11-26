@@ -142,6 +142,7 @@ function MessageRowImpl({
   workingStep,
   runId,
   turStart,
+  turId,
   turSlut,
   varighedSekunder,
   elapsedMs,
@@ -175,6 +176,9 @@ function MessageRowImpl({
   runId?: string | null
   /** Turens starttid (ms epoch) — uret i turhovedet måler turen. */
   turStart?: number | null
+  /** Turens logiske identitet — pacing-nøglen. Stabil gennem hele turen,
+   *  uanset follow-up-runs, reconnect og nye `message_start`-frames. */
+  turId?: string | null
   /** Turens sluttid (ms epoch) — uret fryser her og bliver stående. */
   turSlut?: number | null
   /** Turens varighed udledt af transskriptet (persisterede ture). */
@@ -335,7 +339,7 @@ function MessageRowImpl({
               ? <ChatFlowPresentation blocks={blocks} mode={chatMode} density={density}
                   streaming={streaming} status={status ?? (streaming ? 'working' : 'done')}
                   finalAnswerStarted={finalAnswerStarted} arbejdeEfterSvar={arbejdeEfterSvar} workingStep={workingStep}
-                  runId={runId} turStart={turStart} turSlut={turSlut} varighedSekunder={varighedSekunder} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
+                  runId={runId} turStart={turStart} turId={turId} turSlut={turSlut} varighedSekunder={varighedSekunder} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
                   tokens={tokens}
                   beskedId={beskedId} config={config} onWorkExpanded={onWorkExpanded}
                   sessionId={sessionId}

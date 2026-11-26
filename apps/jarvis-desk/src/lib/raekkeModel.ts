@@ -444,12 +444,33 @@ export function projektion(blokke: readonly ContentBlock[], underArbejde = false
       // samme objekt, så rendereren kan genbruge DOM-noden i stedet for at
       // bygge en ny. Se `FaseElement` ovenfor.
       //
-      // Betingelsen spejler `opdel`s tre grene. Den sidste halvdel er målt
+      // ── SERVERENS SEMANTIK FØRST (Bjørn 26/11-2026) ────────────────────
+      //
+      // `block.phase` sættes af serveren (`sse_v2_events.py`: 'commentary' |
+      // 'final_answer') og er derfor AUTORITATIV: den siger hvad blokken ER,
+      // ikke hvor den står. Den læses først, og en blok der har fået sin fase
+      // fra serveren kan ALDRIG omklassificeres af en senere blok.
+      //
+      // Det var fejlen: fasen blev udelukkende udledt af positionen efter
+      // sidste `tool_use`. Når en ny runde ankom, flyttede `sidsteKald` sig,
+      // og et allerede vist slutsvar tippede tilbage i arbejdet — midt i
+      // turen, mens pacen rullede. Det er den «dynamiske semantiske
+      // omklassificering» kravet forbyder: samme blok, ny fase, ny visning.
+      //
+      // Positionsreglen bevares som FALLBACK for blokke uden `phase` — ældre
+      // persisterede ture og providers der ikke sender feltet. Den er ikke
+      // længere den primære kilde.
+      //
+      // Fallback'en spejler `opdel`s tre grene. Den sidste halvdel er målt
       // 19/10-2026: `opdel` gør kun en tekst til mellemsvar når der FINDES et
       // kald (`sidsteKald >= 0`). En besked uden værktøjskald er derfor rent
       // svar — også mens turen kører. Uden den halvdel blev en kald-fri tur
       // lagt i arbejdet, hvor den hørte til svaret.
-      const fase: Fase = efterSidsteKald && (!underArbejde || sidsteKald < 0) ? 'svar' : 'arbejde'
+      const fase: Fase = b.phase === 'final_answer'
+        ? 'svar'
+        : b.phase === 'commentary'
+          ? 'arbejde'
+          : (efterSidsteKald && (!underArbejde || sidsteKald < 0) ? 'svar' : 'arbejde')
       elementer.push({ fase, slags: 'blok', blok: b })
       if (fase === 'arbejde') harArbejde = true
       continue

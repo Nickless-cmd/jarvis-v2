@@ -62,6 +62,31 @@ export interface StreamState {
    * levende besked afløses af den persisterede (17/10-2026).
    */
   turStart: number | null
+  /**
+   * TURENS LOGISKE IDENTITET — uforanderlig gennem hele turen.
+   *
+   * ## Hvorfor den er adskilt fra `turStart`
+   *
+   * `turStart` er TID: uret i turhovedet måler turen, og det tal må gerne
+   * være et tidsstempel. Men indtil 26/11-2026 var det OGSÅ pacing-nøglen
+   * (`tur-${turStart}` i `ChatFlowPresentation`), og så blev to livscyklusser
+   * bundet sammen: enhver frame der satte `turStart` på ny skiftede
+   * pacing-nøglen, og `useChatPacedBlocks` nulstillede cursoren. Svaret blev
+   * pacet FORFRA midt i turen.
+   *
+   * MÅLT 26/11-2026: fem steder skrev `turStart: Date.now()`. To af dem
+   * (`follow_start`, `client_turn_start`) gjorde det ubetinget, altså også når
+   * turen var den samme. Det er ikke foldens skyld — folden rører ikke paceren
+   * — men det betyder at folden aldrig kunne blive irrelevant, fordi pacen
+   * allerede var skrøbelig af en anden grund.
+   *
+   * `turId` sættes ÉN gang, når turen begynder, og bevares af hver frame der
+   * hører til samme tur — inklusive `message_start` med nyt run-id,
+   * follow-up-runs og reconnect. Kun en ægte ny tur giver et nyt id.
+   *
+   * Den er ikke et tidsstempel: to ture i samme millisekund må ikke dele id.
+   */
+  turId: string | null
   /** Turens sluttid (ms epoch), sat ved `message_stop`. `null` = turen kører
    *  eller er aldrig startet. Uret i turhovedet fryser på dette tidspunkt, så
    *  den afsluttede besked viser turens samlede tid — ikke et ur der nulstilles
@@ -101,8 +126,23 @@ export interface StreamState {
   skillFlade?: Extract<ContentBlock, { type: 'skill_surface' }>
 }
 
+/**
+ * Et nyt, unikt tur-id.
+ *
+ * Ikke et tidsstempel: to ture i samme millisekund må ikke dele identitet, og
+ * et id der kan gættes ud fra tiden er ikke en identitet. `crypto.randomUUID`
+ * findes i alle miljøer Desk kører i (Chromium, Electron, jsdom ≥ 22); findes
+ * den ikke, falder vi tilbage på tid + tilfældighed — stadig unikt, stadig
+ * ikke et ur.
+ */
+export function nytTurId(): string {
+  const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto
+  if (c && typeof c.randomUUID === 'function') return `tur-${c.randomUUID()}`
+  return `tur-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
 export function initialStreamState(): StreamState {
-  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null, workingStep: null, finalAnswerStarted: false, svarLaast: false, arbejdeEfterSvar: false, turStart: null, turSlut: null, selvstaendigRunId: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0, ttftMs: null, tokPerSek: null } }
+  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null, workingStep: null, finalAnswerStarted: false, svarLaast: false, arbejdeEfterSvar: false, turStart: null, turId: null, turSlut: null, selvstaendigRunId: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0, ttftMs: null, tokPerSek: null } }
 }
 
 /** Estimer output-tokens fra akkumuleret tekst/tænkning i blocks. Bruges
@@ -354,6 +394,11 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         // Turens starttid maa ikke rykke naar en runde kommer til: den er
         // pacing-noeglen OG uret i turhovedet, som maaler TUREN.
         turStart: _bevar ? (state.turStart ?? Date.now()) : Date.now(),
+        // Turens identitet følger TUREN, ikke tidsstemplet. Bevares når
+        // `_bevar` er sand (samme tur, nyt run-id eller replay), og fornyes
+        // kun når dette er en ægte ny tur. Uden dette skiftede pacing-nøglen
+        // når et follow-up-run annoncerede sig, og svaret blev pacet forfra.
+        turId: _bevar ? (state.turId ?? nytTurId()) : nytTurId(),
         // Et ægte nyt run åbner uret igen; en replay beholder den slutning
         // den allerede har, så tiden ikke springer.
         turSlut: _sameRun ? state.turSlut : null,
@@ -539,6 +584,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           provider: state.provider,
           lane: state.lane,
           turStart: Date.now(),
+          turId: nytTurId(),
         }
       }
       if (event.kind === 'client_turn_start') {
@@ -553,6 +599,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           provider: state.provider,
           lane: state.lane,
           turStart: Date.now(),
+          turId: nytTurId(),
         }
       }
       if (event.kind === 'tool_output_delta') {
@@ -738,6 +785,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
             provider: state.provider,
             lane: state.lane,
             turStart: Date.now(),
+            turId: nytTurId(),
           }
         }
         // En run-frame kan være den første frame ved follow/reconnect. Er id'et
@@ -765,6 +813,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
             provider: state.provider,
             lane: state.lane,
             turStart: Date.now(),
+            turId: nytTurId(),
           }
         }
         return { ...state, activeRunId: rp.run_id }

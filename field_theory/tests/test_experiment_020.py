@@ -164,6 +164,39 @@ def test_b3_residuals_sum_to_zero_across_experts() -> None:
         assert abs(total) < 1e-12
 
 
+# ---- D12 is a control, and it is not A1 --------------------------------
+
+
+def test_d12_is_registered_as_a_control_not_a_candidate() -> None:
+    """D12 was added after the protocol was frozen to falsify "difference works".
+
+    It must be measured (so it lives in ``REPRESENTATIONS``) but it may never be
+    counted as a candidate — otherwise a failed control could be read as a winner.
+    """
+    from feltteori_research.experiment_020_representation import CANDIDATES
+
+    assert "D12_annual_difference" in REPRESENTATIONS
+    assert "D12_annual_difference" not in CANDIDATES
+
+
+def test_d12_differences_over_twelve_months_not_one() -> None:
+    """D12 must subtract ``x[t-12]``; subtracting ``x[t-1]`` would make it A1."""
+    from feltteori_research.experiment_020_representation import rep_annual_difference
+
+    rows = _rows()
+    outcomes = _outcomes()
+    fingerprint = rep_annual_difference(rows, outcomes, EXPERTS, WINDOW)
+    assert fingerprint is not None
+    # Recompute the first expert's first-lag feature by hand, with a 12-month lag.
+    n = len(rows)
+    indices = list(range(n - WINDOW, n))
+    delta_prediction = [rows[i][EXPERTS[0]] - rows[i - 12][EXPERTS[0]] for i in indices]
+    lag = LAGS[0]
+    delta_outcome = [outcomes[i - lag] - outcomes[i - lag - 12] for i in indices]
+    expected = _corr(delta_prediction, delta_outcome)
+    assert fingerprint[EXPERTS[0]][f"ylag{lag}"] == pytest.approx(expected)
+
+
 def _corr(left: list[float], right: list[float]) -> float:
     """Pearson correlation, matching the module's own helper."""
     mean_left = statistics.mean(left)

@@ -158,9 +158,59 @@ raises `ValueError` naming the asymmetry.
   for that reason.
 - This experiment cannot create a novel regime. It can only ask whether worlds
   already in the reference are separable.
-- A1 and B3 are both *differences*. The result therefore cannot separate "remove
-  the common component" from "look at change rather than level" — they may be the
-  same insight wearing two names, and this run does not tell them apart.
+- A1 and B3 are both *differences*. **Amended 26/11-2026:** the follow-up below
+  shows they are *not* the same insight, and that "difference" is not the
+  mechanism.
+- The `two_experts` cells (8 of 40) are structurally weak: with two experts,
+  z-scoring across experts makes every feature pair `[+a, −a]`, so the
+  expert-to-expert distance is a constant `sqrt(8 × 4) = 5.66` in **every**
+  representation. C3 there measures which expert got the positive sign, not a
+  structure. Their counts should not be read as evidence of separability.
+
+## Amendment — A1 vs B3, and a third difference that fails
+
+The run above could not separate "remove the shared component" (B3) from "look at
+change rather than level" (A1), because both are differences. Two measurements
+close that question.
+
+**They rescue the same cells, but by different geometry.** A1 and B3 pass 21/40
+each, with a Jaccard overlap of **0.826** (19 shared; 2 unique each way). They do
+not share a single feature name (`dlag*` vs `lag*`), so they cannot be compared
+coordinate-wise. Comparing their expert-to-expert distance matrices instead gives
+no consistent relation: `r = −0.90` (sunspots, original), `+0.16` (sunspots, four
+experts), `+0.93` (co2, original), `+0.66` (co2, four experts). With three to six
+pairs per cell these correlations are statistically thin — they are reported as a
+direction, not a result. The direction is: **same cells, different reason.**
+
+**A third difference does not work at all.** If "difference" were the mechanism,
+any difference should help. `D12 = x_t − x_{t−12}` (annual difference) is a real
+transformation of the same data, and it scores:
+
+| representation | C3 ≥ 0.9 | median C3 | median accuracy |
+|---|---|---|---|
+| R0 baseline | 11/40 | 0.646 | 0.266 |
+| A1 first difference | 21/40 | 1.000 | 0.976 |
+| B3 shared component removed | 21/40 | 0.988 | 0.980 |
+| **D12 annual difference** | **0/40** | **0.037** | **0.010** |
+
+D12 is worse than the baseline, and its median C3 of 0.037 is *below* chance: the
+detector is systematically anti-correct. Differencing at lag 12 destroys the
+information rather than exposing it.
+
+**What this changes.** The common property of A1 and B3 is not that they
+differentiate. It is that each removes the component which is *identical across
+experts* — the level (A1) or the cross-expert mean (B3) — while leaving the
+expert-specific variation intact. D12 removes a component that is not shared
+across experts but is shared across *time*, and it takes the signal with it. So
+the mechanism is narrower and more interesting than "look at change":
+
+> A representation helps when it subtracts what the series have in common and
+> keeps what they do not. Removing variation that is not the confound removes
+> the signal too.
+
+That is a sharper claim than the one H3 was registered against, and it was not
+predicted. It should be registered as its own hypothesis before it is tested
+again.
 
 ## The sentence that follows
 

@@ -165,6 +165,43 @@ def rep_first_difference(
     return out
 
 
+def rep_annual_difference(
+    real_rows: list[dict[str, float]],
+    outcomes: list[float],
+    experts: tuple[str, ...],
+    window: int,
+) -> dict[str, dict[str, float]] | None:
+    """D12 — the same eight lags, taken on the year-over-year change.
+
+    Added 26/11-2026 as a falsification control, after the protocol was frozen.
+    A1 and B3 both passed 21/40 and both are differences, so the run could not say
+    whether "difference" was the mechanism or whether each removed a specific
+    component. D12 is a third difference of the same data. If "difference" is what
+    helps, D12 should help too. Measured: 0/40, median C3 0.037 — below chance.
+    It removes variation that is shared across *time* rather than across *experts*,
+    and it takes the signal with it.
+    """
+    n = len(real_rows)
+    indices = _window_indices(n, window, max(LAGS) + 1)
+    if indices is None:
+        return None
+    out: dict[str, dict[str, float]] = {}
+    for expert in experts:
+        delta_prediction = [
+            float(real_rows[i][expert]) - float(real_rows[i - 12][expert])
+            for i in indices
+        ]
+        features: dict[str, float] = {}
+        for lag in LAGS:
+            delta_outcome = [
+                float(outcomes[i - lag]) - float(outcomes[i - lag - 12])
+                for i in indices
+            ]
+            features[f"ylag{lag}"] = _corr(delta_prediction, delta_outcome)
+        out[expert] = features
+    return out
+
+
 def rep_rank(
     real_rows: list[dict[str, float]],
     outcomes: list[float],
@@ -343,9 +380,12 @@ REPRESENTATIONS: dict[str, Representation] = {
     "B2_pairwise": rep_pairwise,
     "B3_shared_removed": rep_shared_removed,
     "X1_irrelevant": rep_irrelevant,
+    "D12_annual_difference": rep_annual_difference,
 }
 
 #: The five the protocol registers as candidates. X1 is a control, not a candidate.
+#: D12 is a second control, added after the protocol was frozen to falsify the
+#: "both winners are differences, so difference is the mechanism" reading.
 CANDIDATES = ("A1_first_difference", "A2_rank", "B1_full_lag", "B2_pairwise", "B3_shared_removed")
 
 

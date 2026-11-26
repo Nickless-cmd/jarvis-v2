@@ -63,7 +63,7 @@ const TRIN: { navn: string; blokke: ContentBlock[]; finalAnswerStarted: boolean;
 
 function Maaleflade() {
   const [trin, setTrin] = useState(0)
-  const t = TRIN[trin]
+  const t = TRIN[trin] ?? TRIN[0]!
 
   useEffect(() => {
     ;(window as unknown as Record<string, unknown>).__trin = (n: number) => setTrin(n)

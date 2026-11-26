@@ -223,8 +223,12 @@ the mechanism is narrower and more interesting than "look at change":
 > the signal too.
 
 That is a sharper claim than the one H3 was registered against, and it was not
-predicted. It should be registered as its own hypothesis before it is tested
-again.
+predicted. It is now registered as **H5** in
+`experiments/exp_020_representation/protocol.md` (amendment, 26/11-2026), with
+its falsification condition and with the `two_experts` cells excluded from its
+evidence — those 8 of 40 cells cannot test it, because with two experts the
+z-scoring makes every feature `[+a, −a]` and the expert-to-expert distance the
+constant `sqrt(8×4) = 5.66` in every representation.
 
 ## The sentence that follows
 

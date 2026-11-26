@@ -121,6 +121,39 @@ the baseline cells that already passed. *Falsified* if the newly passing cells
 have a materially lower accuracy — that would mean the threshold was crossed
 without the detector improving, i.e. the control was satisfied by accident.
 
+## Amendment — H5, registered 26/11-2026 after the H1–H4 measurement
+
+H1–H4 were registered before any measurement and are reported as such. H5 was
+**not**: it was formulated after the run, because the run could not separate two
+readings of H3 that looked identical in advance. It is registered here, before
+it is tested, so that the next run can falsify it rather than describe it.
+
+**H5 — the mechanism is removal of the cross-expert common component, not
+differencing.** A representation helps when it subtracts the component that is
+*identical across experts* — the level (A1) or the cross-expert mean (B3) — and
+keeps the expert-specific variation. Differencing as such is not the mechanism:
+D12 (`x_t − x_{t−12}`) is a real difference of the same data and scores **2 of
+40**, below the baseline's 11, because it removes a component shared across
+*time* rather than across experts and takes the signal with it.
+
+*Falsified* if a representation that removes a component **not** shared across
+experts reaches 12 or more of 40 — or if a representation that removes the
+cross-expert common component by a different route than A1 and B3 fails to.
+Either outcome breaks the claim that the shared-across-experts component is what
+the mechanism acts on.
+
+**What H5 does not claim.** It does not say A1 and B3 are the same insight. They
+rescue the same cells (Jaccard 0.826, 19 of 21 shared) but their distance
+geometries disagree in sign across cells (r = −0.90, +0.16, +0.93, +0.66), and
+they share no feature name. Same cells, different route — H5 names what the
+routes have in common, not that they are one route.
+
+**Known weakness in the evidence.** The `two_experts` cells (8 of 40) cannot
+test H5: with two experts the z-scoring makes every feature `[+a, −a]`, so the
+expert-to-expert distance is the constant `sqrt(8×4) = 5.66` in every
+representation, and their C3 measures which sign an expert received rather than a
+structure. H5 must be evaluated on the cells with three or more experts.
+
 ## Controls that can void the whole run
 
 - **C0 — reproduction.** The baseline representation R0 must reproduce

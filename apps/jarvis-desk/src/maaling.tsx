@@ -30,6 +30,7 @@ import './styles/raekkevisning.css'
 import './styles/turhoved.css'
 import './styles/chat-flow.css'
 import { RaekkeTranskript } from './components/rich/RaekkeTranskript'
+import { useChatPacedBlocks } from './lib/useChatPacedBlocks'
 import { SettingsProvider } from './contexts/SettingsContext'
 import { RAEKKE_KEY } from './lib/visningsPref'
 import type { ContentBlock } from './lib/sseProtocol'
@@ -60,6 +61,54 @@ const TRIN: { navn: string; blokke: ContentBlock[]; finalAnswerStarted: boolean;
   { navn: '6 · kald EFTER slutbeskeden', blokke: [KALD1, SYN1, KALD2, SYN2, KALD3, SLUT, KALD_EFTER], finalAnswerStarted: true, streaming: true },
   { navn: '7 · done', blokke: [KALD1, SYN1, KALD2, SYN2, KALD3, SLUT, KALD_EFTER], finalAnswerStarted: true, streaming: false },
 ]
+
+/**
+ * PACE-PROBEN — måler det folden IKKE må kunne røre.
+ *
+ * Bjørn 26/11-2026: «fraværet af direkte pace-operationer ved fold-toggle
+ * beviser ikke, at pacen er upåvirket. Indirekte remount, ændrede props,
+ * ændret komponentidentitet og ændret dataprojektion skal måles.»
+ *
+ * Denne komponent kalder den ÆGTE `useChatPacedBlocks` med samme nøgleform
+ * som `ChatFlowPresentation` bruger (`tur-${turId}`). Den eksponerer nøglen og
+ * antallet af viste kodepunkter, så scriptet kan se om cursoren går BAGLÆNS
+ * når folden toggles. Går den baglæns, er svaret pacet forfra.
+ *
+ * `__skiftNoegle(true)` er MODPRØVEN: den skifter nøglen med vilje, så
+ * målingen kan bevise at den kan fejle. En probe der aldrig kan fejle måler
+ * intet.
+ */
+const PROBE_TEKST =
+  'Fold-låsen er bygget. Grænsen læses nu af serverens stempel i stedet for af tekstens placering, og faden arver foldens varighed. ' +
+  'Det jeg ikke har gjort er at se det rendere — og det er præcis hvad denne måling skal afgøre, tegn for tegn, gennem hvert fold.'
+
+function PaceProbe({ turId }: { turId: string }) {
+  const [noegleSkift, setNoegleSkift] = useState(false)
+  // `koersel` bumper nøglen, så cursoren starter TOM og pacingen begynder forfra
+  // på kommando. Uden den er teksten allerede færdig når scriptet måler, og så
+  // beviser en stabil nøgle ingenting — der var intet at afbryde.
+  const [koersel, setKoersel] = useState(0)
+  const paceNoegle = noegleSkift
+    ? `tur-${turId}-MODPROEVE`
+    : `tur-${turId}-k${koersel}`
+  const blokke: ContentBlock[] = [{ type: 'text', text: PROBE_TEKST, phase: 'final_answer' }]
+  const paced = useChatPacedBlocks(blokke, {
+    live: true,
+    finalAnswerStarted: true,
+    runId: paceNoegle,
+  })
+  const vist = (paced[0] && paced[0].type === 'text' ? paced[0].text : '') ?? ''
+  const vistTegn = Array.from(vist).length
+
+  useEffect(() => {
+    const w = window as unknown as Record<string, unknown>
+    w.__pace = () => ({ key: `${paceNoegle}:chat-text`, vistTegn, targetTegn: Array.from(PROBE_TEKST).length })
+    w.__skiftNoegle = (paa: boolean) => setNoegleSkift(paa)
+    w.__startPace = () => setKoersel((n) => n + 1)
+  }, [paceNoegle, vistTegn])
+
+  return null
+}
 
 function Maaleflade() {
   const [trin, setTrin] = useState(0)
@@ -103,6 +152,7 @@ function Maaleflade() {
         TRIN {trin + 1}/{TRIN.length} — {t.navn}
       </div>
       <div className="chat-flow">
+        <PaceProbe turId="maaling-tur-1" />
         <RaekkeTranskript
           blocks={t.blokke}
           streaming={t.streaming}

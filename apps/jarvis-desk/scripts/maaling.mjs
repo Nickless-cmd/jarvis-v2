@@ -45,5 +45,62 @@ if (await hoved.count()) {
 }
 
 writeFileSync(`${UD}/maalinger.json`, JSON.stringify(maalinger, null, 2))
-console.log(JSON.stringify({ fejl, maalinger }, null, 2))
+
+// ── PACE-PROBEN ────────────────────────────────────────────────────────────
+//
+// Bjørn 26/11-2026: «fraværet af direkte pace-operationer ved fold-toggle
+// beviser ikke, at pacen er upåvirket.» Her måles det: cursoren skal vokse
+// MONOTONT gennem hvert fold, og nøglen skal stå stille. Går vistTegn
+// baglæns, er svaret pacet forfra — det er den fejl der er rettet.
+const pace = []
+const laesPace = async (navn) => {
+  const m = await page.evaluate(() => window.__pace())
+  pace.push({ navn, ...m })
+  return m
+}
+
+await page.evaluate(() => window.__trin(5))
+await page.waitForTimeout(300)
+
+// Start pacingen FORFRA, så der faktisk er noget at afbryde. Uden dette er
+// teksten færdig når vi måler, og en stabil nøgle beviser ingenting.
+await page.evaluate(() => window.__startPace())
+await page.waitForTimeout(120)
+const start = await laesPace('0 · pacing i gang')
+
+for (let i = 1; i <= 3; i++) {
+  const h = page.locator('.rv-tur').first()
+  if (await h.count()) {
+    await h.click()
+    await page.waitForTimeout(120)
+    await laesPace(`${i} · efter fold-toggle ${i}`)
+  }
+}
+
+// MODPRØVEN: skift nøglen med vilje. Cursoren SKAL nulstilles — ellers måler
+// proben intet, og så er den grønne konklusion værdiløs.
+await page.evaluate(() => window.__skiftNoegle(true))
+await page.waitForTimeout(300)
+const efterNoegle = await laesPace('MODPRØVE · nøglen skiftet')
+
+const underPacing = pace.slice(0, 4)
+const noegler = new Set(underPacing.map((p) => p.key))
+const monoton = underPacing.every((p, i, a) => i === 0 || p.vistTegn >= a[i - 1].vistTegn)
+// GYLDIGHEDSKRAV: målingen tæller kun hvis pacingen faktisk VAR i gang — altså
+// at der blev vist mindre end hele teksten ved start.
+const pacingVarAktiv = start.vistTegn < start.targetTegn
+const modproeveVirkede = efterNoegle.vistTegn < start.vistTegn || efterNoegle.key !== start.key
+
+writeFileSync(`${UD}/pace.json`, JSON.stringify({ pace, noegler: [...noegler], monoton, pacingVarAktiv, modproeveVirkede }, null, 2))
+console.log(JSON.stringify({
+  pace,
+  dom: {
+    pacingVarAktiv,
+    noeglerStabileGennemFold: noegler.size === 1,
+    cursorMonoton: monoton,
+    modproeveVirkede,
+    GYLDIG: pacingVarAktiv && noegler.size === 1 && monoton && modproeveVirkede,
+  },
+}, null, 2))
+
 await browser.close()

@@ -13,6 +13,22 @@ export interface StreamState {
   provider: string
   lane: string
   blocks: ContentBlock[]
+  /**
+   * BLOKKENS FØDSELSTÆLLER (26/11-2026, GPT's anden gennemgang).
+   *
+   * `blokId` blev først bygget som `${activeRunId}:${indeks}`. Men
+   * `message_start` kan bære et TOMT run-id, og `system_event(kind='run')`
+   * sætter det rigtige bagefter — så en blok der blev født før id'et kendtes,
+   * fik `r:0`, og ved replay af samme blok `run-abc:0`. Samme logiske blok, ny
+   * React-key, remount midt i turen.
+   *
+   * Tælleren er monoton og nulstilles aldrig inden for sessionen, så to blokke
+   * i to ture heller ikke kolliderer. Identiteten afhænger dermed hverken af
+   * run-id, tekst, fase eller position — kun af fødslen. Det er GPT's krav:
+   * «Identiteten må aldrig afhænge af tekstindhold, fase eller aktuel
+   * position».
+   */
+  blokTaeller: number
   provisionalText: string
   provisionalBlockIndex: number | null
   provisionalMissingBlockIndex: number | null
@@ -142,7 +158,7 @@ export function nytTurId(): string {
 }
 
 export function initialStreamState(): StreamState {
-  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null, workingStep: null, finalAnswerStarted: false, svarLaast: false, arbejdeEfterSvar: false, turStart: null, turId: null, turSlut: null, selvstaendigRunId: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0, ttftMs: null, tokPerSek: null } }
+  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], blokTaeller: 0, provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null, workingStep: null, finalAnswerStarted: false, svarLaast: false, arbejdeEfterSvar: false, turStart: null, turId: null, turSlut: null, selvstaendigRunId: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0, ttftMs: null, tokPerSek: null } }
 }
 
 /** Estimer output-tokens fra akkumuleret tekst/tænkning i blocks. Bruges
@@ -435,13 +451,21 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       const cb = event.content_block
       const blocks = (cb.type === 'tool_result' ? state.blocks : lukTanker(state.blocks, nu, event.index)).slice()
       const forrige = state.blocks[event.index]
-      // Blokkens UFORANDERLIGE identitet (26/11-2026). Indekset er unikt for
-      // blokken inden for sit run og genbruges aldrig til en ANDEN blok, så
-      // `${runId}:${indeks}` er stabil gennem deltaer, replay og pacing.
-      // Den kan ikke udledes af teksten (den vokser), af `phase` (kan sættes
-      // senere) eller af positionen i den projicerede liste (huller udfyldes,
-      // og en skill-flade kan præpendes).
-      const blokId = `${state.activeRunId ?? 'r'}:${event.index}`
+      // Blokkens UFORANDERLIGE identitet (26/11-2026, GPT's anden gennemgang).
+      //
+      // FØRST `${activeRunId}:${indeks}` — men run-id'et kan ankomme EFTER
+      // blokken (tomt `message_start`, derefter `system_event(kind='run')`), og
+      // så skiftede identiteten ved replay af SAMME blok: `r:0` → `run-abc:0`.
+      // Samme logiske blok, ny key, remount midt i turen.
+      //
+      // Nu: en blok der ALLEREDE findes beholder sin id. En NY blok får et
+      // løbenummer fra `blokTaeller`, som er monoton og uafhængig af alt andet
+      // end fødslen. Den kan ikke udledes af teksten (den vokser), af `phase`
+      // (kan sættes senere) eller af positionen i den projicerede liste (huller
+      // udfyldes, og en skill-flade kan præpendes).
+      const arvetBlokId = forrige && 'blokId' in forrige && forrige.blokId ? forrige.blokId : null
+      const blokId = arvetBlokId ?? `b${state.blokTaeller}`
+      const blokTaeller = arvetBlokId ? state.blokTaeller : state.blokTaeller + 1
       if (cb.type === 'text') blocks[event.index] = {
         type: 'text', text: cb.text ?? '', blokId, ...(cb.phase ? { phase: cb.phase } : {}),
       }
@@ -560,7 +584,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         return { ...state, blocks }
       }
       return {
-        ...state, blocks,
+        ...state, blocks, blokTaeller,
         finalAnswerStarted: state.finalAnswerStarted
           || (cb.type === 'text' && cb.phase === 'final_answer'),
         svarLaast: state.svarLaast
@@ -694,12 +718,18 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       if (event.kind === 'provisional_text_commit') {
         if (String(event.payload?.run_id ?? '') !== state.activeRunId) return state
         const blocks = state.blocks.slice()
+        // Blokken fødes HER, ikke i `content_block_start` — så den skal have sin
+        // identitet samme sted som den fødes. Uden dette faldt den tilbage til
+        // forekomst-tælleren, som kun er tiltænkt FROSNE persisterede lister.
+        let blokTaeller = state.blokTaeller
         if (state.provisionalMissingBlockIndex != null && state.provisionalText) {
           blocks[state.provisionalMissingBlockIndex] = {
             type: 'text', text: state.provisionalText, phase: 'commentary',
+            blokId: `b${blokTaeller}`,
           }
+          blokTaeller += 1
         }
-        return { ...state, blocks, provisionalText: '', provisionalBlockIndex: null,
+        return { ...state, blocks, blokTaeller, provisionalText: '', provisionalBlockIndex: null,
           provisionalMissingBlockIndex: null,
           usage: { ...state.usage, output: estimateOutputTokens(blocks) } }
       }
@@ -937,13 +967,19 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // stod ellers og pulserede under et færdigt svar.
       const blocks = lukTanker(state.blocks, Date.now()).map((b) =>
         b && b.type === 'tool_use' && (b.status ?? 'running') === 'running' ? { ...b, status: 'done' as const } : b)
+      let blokTaeller = state.blokTaeller
       if (state.provisionalMissingBlockIndex != null && state.provisionalText) {
         blocks[state.provisionalMissingBlockIndex] = {
           type: 'text', text: state.provisionalText,
           phase: state.finalAnswerStarted ? 'final_answer' : 'commentary',
+          // Også denne fødsel stemples. Ellers fik en blok der kom ind via
+          // `message_stop` ingen identitet, og `kildeNoegle` faldt tilbage til
+          // forekomst-tælleren — som skifter når listen forskubbes.
+          blokId: `b${blokTaeller}`,
         }
+        blokTaeller += 1
       }
-      return { ...state, status: 'done', blocks, provisionalText: '',
+      return { ...state, status: 'done', blocks, blokTaeller, provisionalText: '',
         // Turens ur skal stå stille fra nu af — og blive stående i hovedet.
         // (Bjørn 17/10-2026: «ueret skal osse når strømmen er forbi».)
         turSlut: state.turSlut ?? Date.now(),

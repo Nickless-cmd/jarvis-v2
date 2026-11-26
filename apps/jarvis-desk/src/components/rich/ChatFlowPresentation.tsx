@@ -470,7 +470,7 @@ export function ChatFlowPresentation({
   // besvares af samme boolean. Hovedet står gennem hele turen — også mens
   // svaret skrives, hvor tilstanden er `formidlet` og ikke `aktiv`. Blandede
   // man dem, forsvandt hovedet i det vindue (målt 18/11-2026).
-  const turenKoerer = streaming || arbejdeEfterSvar
+  const turenKoerer = streaming || arbejdeEfterSvar || venterPaaPace
   // HOVEDET ER FIRE TILSTANDE, IKKE EN KOMPONENT MED EN FØDSEL OG EN DØD
   // (Bjørn 18/11-2026: «hvornår og hvorfor folder deres hoved? … det sker ofte
   // hovedets fold bliver til et blink»).
@@ -755,50 +755,57 @@ export function ChatFlowPresentation({
         </div>
       ) : null}
 
-      {fladtFlow ? (
-        // Turens rækkefølge som DOM. Hvert segment er sin egen container med
-        // en key fra kilden, så en reconnect eller en præpendering ikke river
-        // den ned. `plassering` bestemmer levetiden: et runde-segment efter
-        // slutsvaret bliver stående til turen slutter.
-        <div className="chat-flow-segmenter" data-segmenter="flat">
-          {model.segmenter.map((segment) => {
-            const erSvar = segment.slags === 'besvarelse'
-            // Leverancen ejes af leverance-blokken nedenfor — også her.
-            const blokke = erSvar
-              ? segment.blokke.filter((block) => !erLeverance(block))
-              : segment.blokke
-            if (blokke.length === 0) return null
-            // LEVETIDEN som data, ikke som en gættet CSS-tilstand.
-            //
-            // Et runde-segment bliver stående så længe turen kører — også når
-            // det ligger EFTER slutsvaret. Det er GPT's tredje krav: «en runde
-            // uden for hovedet er stadig arbejde, men dens container skal
-            // forblive synlig indtil turafslutningen». Først når turen er
-            // terminal, må den kollapse. Besvarelsen har ingen sådan fase: den
-            // er leverancen og bliver stående.
-            const levetid = erSvar ? 'svar' : (turenKoerer ? 'live' : 'kollapset')
-            return (
-              <div
-                key={segment.id}
-                className={erSvar ? 'chat-flow-answer' : 'chat-flow-runde'}
-                data-segment={segment.slags}
-                data-plassering={segment.plassering}
-                data-levetid={levetid}
-                data-segment-id={segment.id}
-              >
-                <BlocksRenderer blocks={blokke} density={density} streaming={streaming}
-                  rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
-                  beskedId={beskedId} config={config} />
-              </div>
-            )
-          })}
-        </div>
-      ) : null}
+      {/* ÉN STABIL DOKUMENTSTRUKTUR (GPT, 26/11-2026): «Brug én stabil
+          dokumentstruktur fra turens begyndelse. Undgå et dynamisk skift mellem
+          gammel og ny renderer.»
 
-      {!fladtFlow && synligeSvar.length > 0 ? (
+          `.chat-flow-answer` findes derfor fra den første frame hvor der ER et
+          svar, og bliver den SAMME node hele turen — også når den flade gren
+          tager over. Før skiftede besvarelsen forælder (fra `.chat-flow` til
+          `.chat-flow-segmenter`), og så remountede selv stabile keys noden.
+          Det er det blink brugeren ser, og det kan ikke måles på attributter:
+          begge mounts har de samme. Kun `isSameNode` fælder det. */}
+      {fladtFlow || synligeSvar.length > 0 ? (
         <div className="chat-flow-answer">
-          <BlocksRenderer blocks={synligeSvar} density={density} streaming={streaming}
-            beskedId={beskedId} config={config} />
+          {fladtFlow ? (
+            // Turens rækkefølge som DOM. Hvert segment er sin egen container
+            // med en key fra kilden, så en reconnect eller en præpendering ikke
+            // river den ned. `plassering` bestemmer levetiden.
+            <div className="chat-flow-segmenter" data-segmenter="flat">
+              {model.segmenter.map((segment) => {
+                const erSvar = segment.slags === 'besvarelse'
+                // Leverancen ejes af leverance-blokken nedenfor — også her.
+                const blokke = erSvar
+                  ? segment.blokke.filter((block) => !erLeverance(block))
+                  : segment.blokke
+                if (blokke.length === 0) return null
+                // LEVETIDEN som data, ikke som en gættet CSS-tilstand.
+                //
+                // Et runde-segment bliver stående så længe turen kører — også
+                // når det ligger EFTER slutsvaret, og mens pacen stadig har
+                // tekst tilbage (`turenKoerer` bærer `venterPaaPace`). Først
+                // når turen er terminal OG pacen drænet, må den kollapse.
+                const levetid = erSvar ? 'svar' : (turenKoerer ? 'live' : 'kollapset')
+                return (
+                  <div
+                    key={segment.id}
+                    className={erSvar ? 'chat-flow-answer' : 'chat-flow-runde'}
+                    data-segment={segment.slags}
+                    data-plassering={segment.plassering}
+                    data-levetid={levetid}
+                    data-segment-id={segment.id}
+                  >
+                    <BlocksRenderer blocks={blokke} density={density} streaming={streaming}
+                      rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
+                      beskedId={beskedId} config={config} />
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <BlocksRenderer blocks={synligeSvar} density={density} streaming={streaming}
+              beskedId={beskedId} config={config} />
+          )}
         </div>
       ) : null}
 

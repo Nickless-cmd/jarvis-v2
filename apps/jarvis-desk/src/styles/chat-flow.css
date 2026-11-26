@@ -157,18 +157,38 @@
 
 .chat-flow-runde {
   min-width: 0;
+  /* Loftet findes for at kollapset kan ANIMERES: man kan ikke interpolere fra
+     `none`, så udgangspunktet skal være et tal. `overflow: visible` betyder at
+     loftet ikke klipper noget synligt — det sætter kun den boks kollapset
+     animerer imod. En runde-container over loftet er ikke målt i produktion;
+     hvis den opstår, er `grid-template-rows: 1fr → 0fr` på en wrapper den
+     rigtige afløser. */
+  max-height: 2400px;
+  overflow: visible;
   animation: chat-flow-enter var(--fold-varighed) var(--fold-kurve);
+  transition:
+    max-height var(--fold-varighed) var(--fold-kurve),
+    opacity var(--fold-varighed) var(--fold-kurve),
+    margin-top var(--fold-varighed) var(--fold-kurve);
 }
 
 /* LEVETIDEN (26/11-2026). `data-levetid` sættes af komponenten, ikke gættet af
    CSS: et runde-segment er `live` så længe turen kører — også når det ligger
-   efter slutsvaret — og `kollapset` først når turen er terminal. Faden læser
-   foldens tal, så den ikke bliver et tredje ur der ikke er færdigt samtidig
-   med de to andre. */
+   efter slutsvaret, og også mens pacen stadig har tekst tilbage — og
+   `kollapset` først når turen er terminal OG pacen er drænet.
+
+   ET KOLLAPS FJERNER PLADS (GPT, 26/11-2026): «kollapset reducerer aktuelt kun
+   opacity til 0.55. Det er ikke et kollaps.» Med `opacity` alene blev
+   indholdet stående i sin fulde højde, så besvarelserne ikke kunne glide
+   sammen — brugeren så arbejde der var «væk» men stadig skubbede. Nu går
+   højden, margenen og synligheden ned samtidig, over foldens ur. */
 .chat-flow-runde[data-levetid='kollapset'] {
   animation: none;
-  opacity: 0.55;
-  transition: opacity var(--fold-varighed) var(--fold-kurve);
+  opacity: 0;
+  max-height: 0;
+  margin-top: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

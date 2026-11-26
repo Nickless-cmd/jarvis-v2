@@ -83,7 +83,12 @@ describe('blokidentiteten kommer fra fødslen, ikke fra indholdet', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('MODPRØVE: en ny tur giver nye id’er — identiteten er ikke global', () => {
+  it('MODPRØVE: identiteten afhænger ikke af run-id — kun af fødslen', () => {
+    // GPT's krav (26/11-2026): «Identiteten må aldrig afhænge af tekstindhold,
+    // fase eller aktuel position.» Run-id'et hører til samme klasse: det kan
+    // ankomme EFTER blokken og skifte under en replay. To ture med forskellige
+    // run-ids giver derfor samme løbenummer — og det er pointen, ikke en fejl.
+    // Unikheden der betyder noget er INDEN FOR turen (testen ovenover).
     let s = streamReducer(initialStreamState(), msgStart('r1'))
     s = streamReducer(s, blokStart(0, 'commentary'))
     const foersteTur = segmentIds(s)
@@ -93,14 +98,17 @@ describe('blokidentiteten kommer fra fødslen, ikke fra indholdet', () => {
     const andenTur = segmentIds(n)
 
     expect(andenTur).toHaveLength(1)
-    expect(andenTur[0]).not.toBe(foersteTur[0])
+    expect(andenTur[0]).toBe(foersteTur[0])
   })
 
   it('blokken bærer sit id — det er ikke udledt i visningen', () => {
     let s = streamReducer(initialStreamState(), msgStart('r7'))
     s = streamReducer(s, blokStart(3, 'final_answer'))
     const blok = s.blocks[3]
-    expect(blok && 'blokId' in blok ? blok.blokId : undefined).toBe('r7:3')
+    const id = blok && 'blokId' in blok ? blok.blokId : undefined
+    // Et LØBENUMMER, ikke `${runId}:${indeks}`. Run-id'et kan ankomme efter
+    // blokken, og indekset forskubbes af huller og skill-flader.
+    expect(id).toMatch(/^b\d+$/)
   })
 })
 

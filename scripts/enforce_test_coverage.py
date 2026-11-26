@@ -164,7 +164,7 @@ KNOWN_MAPPINGS: dict[str, str] = {
     # exercised: adapters via the deepseek thinking-param suite (direct
     # import), streaming via the agent/step envelope suite (monkeypatch seam).
     "core/services/cheap_provider_runtime_adapters.py": "tests/services/test_deepseek_thinking_param.py",
-    "core/services/cheap_provider_runtime_streaming.py": "tests/api/test_agent_step_envelope.py",
+    "core/services/cheap_provider_runtime_streaming.py": "tests/test_cheap_provider_runtime_streaming.py",
     # jarvis-code parity Fase 2 Task 3 (2026-07-14) — split god-file modules
     # (agent_runtime.py → agent_runtime_base/spawn/surfaces/council, commit
     # 7e342891) never got their own tests/test_agent_runtime_<name>.py; general

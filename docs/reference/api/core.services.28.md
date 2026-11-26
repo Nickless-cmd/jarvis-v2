@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/skill_gate_guard.py`
+_Skill-fladen nævner et skill — og intet kræver et svar (2/10-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `skill_gate_guard_enabled` | `()` | Default TRUE (Bjørn bad om det 2/10-2026). Env vinder, så den kan slås | [src](../../../core/services/skill_gate_guard.py#L47) |
+| function | `is_unanswered_skill_match` | `(*, primary_matches, called_tool_names, final_text, nudged_already=…, kraev_navn=…)` | True når et stærkt skill-match stod klar og blev hverken brugt eller nævnt. | [src](../../../core/services/skill_gate_guard.py#L60) |
+| function | `build_nudge` | `(primary_matches)` | Beskeden der lægges i turen. Navngiver skillet og giver de to veje. | [src](../../../core/services/skill_gate_guard.py#L104) |
+| function | `samle_kaldte_navne` | `(followup_exchanges, runde_kald)` | De ÆGTE værktøjsnavne turen har kaldt — fra BEGGE kilder, udpakket. | [src](../../../core/services/skill_gate_guard.py#L119) |
+
 ## `core/services/skill_relevance_surface.py`
 _Slå skills op FOR ham i stedet for at bede ham huske at slå op._
 
@@ -631,14 +641,4 @@ _Temporal Body — sense of age._
 | function | `format_age_for_prompt` | `()` | — | [src](../../../core/services/temporal_body.py#L121) |
 | function | `reset_temporal_body` | `()` | Nulstil tik-tælleren. Rydder OGSÅ disken. | [src](../../../core/services/temporal_body.py#L125) |
 | function | `build_temporal_body_surface` | `()` | — | [src](../../../core/services/temporal_body.py#L136) |
-
-## `core/services/temporal_context.py`
-_Temporal Context — time-based situational awareness._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_temporal_context` | `()` | Build current temporal context in local (CEST/CET) time. | [src](../../../core/services/temporal_context.py#L20) |
-| function | `build_temporal_context_surface` | `()` | — | [src](../../../core/services/temporal_context.py#L44) |
-| function | `_classify_day_phase` | `(hour)` | — | [src](../../../core/services/temporal_context.py#L53) |
-| function | `_emit_temporal_context_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/temporal_context.py#L67) |
 

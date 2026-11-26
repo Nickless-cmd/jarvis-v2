@@ -619,6 +619,23 @@ _A/B: raesonnerer han paa mellem-runderne, eller ikke?_
 | function | `arm_for_run` | `(run_id, *, procent=…)` | "daempet" eller "fuld" — stabilt for et givet run_id, i enhver proces. | [src](../../../core/services/raesonnering_eksperiment.py#L71) |
 | function | `daemp_krop` | `(krop, run_id, *, thinking_mode=…, procent=…)` | Returnerer (krop, blev_daempet) for en FOELGE-runde. | [src](../../../core/services/raesonnering_eksperiment.py#L93) |
 
+## `core/services/raw_provider_capture.py`
+_core/services/raw_provider_capture.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_advarsel_én_gang` | `(exc)` | Sig det ÉN gang hvis capture ikke kan skrive. | [src](../../../core/services/raw_provider_capture.py#L110) |
+| function | `armeret` | `()` | Er capture tændt? Kaldes ÉN gang pr. stream, ikke pr. linje. | [src](../../../core/services/raw_provider_capture.py#L135) |
+| function | `_rediger` | `(tekst)` | — | [src](../../../core/services/raw_provider_capture.py#L143) |
+| function | `_walk` | `(obj, sti=…, dybde=…)` | Yield (nøglesti, typenavn) for hver nøgle i et parset event. | [src](../../../core/services/raw_provider_capture.py#L149) |
+| function | `_roter_hvis_stor` | `()` | — | [src](../../../core/services/raw_provider_capture.py#L168) |
+| function | `noter_linje` | `(*, provider, model, linje, linje_nr)` | Skriv én rå SSE-linje, som udbyderen sendte den. | [src](../../../core/services/raw_provider_capture.py#L177) |
+| function | `noter_event` | `(*, provider, model, event)` | Registrér nøglestierne i et parset event i skema-indekset. | [src](../../../core/services/raw_provider_capture.py#L213) |
+| function | `_skriv_skema` | `()` | Skriv det akkumulerede skema. Kaldes under _lock. | [src](../../../core/services/raw_provider_capture.py#L237) |
+| function | `afslut_kald` | `()` | Flush skemaet ved kald-slut, så en kort stream ikke efterlader det tomt. | [src](../../../core/services/raw_provider_capture.py#L247) |
+| function | `skema_rapport` | `()` | Læs det akkumulerede skema fra disk (til diagnose uden for streamen). | [src](../../../core/services/raw_provider_capture.py#L256) |
+| function | `nulstil` | `()` | Ryd skema og capture. Til brug i tests og ved en ny målerunde. | [src](../../../core/services/raw_provider_capture.py#L268) |
+
 ## `core/services/read_before_write_guard.py`
 _Read-before-write guard — prevents overwrite of existing files without prior read._
 
@@ -646,16 +663,4 @@ _Read-before-write guard — prevents overwrite of existing files without prior 
 | function | `_session_edits_key` | `(session_id)` | — | [src](../../../core/services/read_before_write_guard.py#L660) |
 | function | `record_operator_edit` | `(path, session_id=…, kind=…)` | Record that the operator side mutated this file. kind is 'edit' or 'write'. | [src](../../../core/services/read_before_write_guard.py#L664) |
 | function | `get_session_edit_summary` | `(session_id=…)` | Return the running tally for this session. Empty dict if nothing yet. | [src](../../../core/services/read_before_write_guard.py#L697) |
-
-## `core/services/reasoning_classifier.py`
-_Reasoning classifier — router that picks fast / reasoning / deep tier._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_score_patterns` | `(text, patterns)` | — | [src](../../../core/services/reasoning_classifier.py#L65) |
-| function | `classify_reasoning_tier` | `(message, *, task_hint=…)` | Pick reasoning tier for a user message (or task description). | [src](../../../core/services/reasoning_classifier.py#L75) |
-| function | `reasoning_tier_section` | `(message)` | Format tier verdict as a prompt-awareness section. None for fast tier | [src](../../../core/services/reasoning_classifier.py#L210) |
-| function | `_exec_reasoning_classify` | `(args)` | — | [src](../../../core/services/reasoning_classifier.py#L227) |
-| function | `build_reasoning_classifier_surface` | `()` | — | [src](../../../core/services/reasoning_classifier.py#L275) |
-| function | `_emit_tier_event` | `(tier, score)` | — | [src](../../../core/services/reasoning_classifier.py#L284) |
 

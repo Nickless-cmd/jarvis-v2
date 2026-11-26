@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 19202 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 19213 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -53,17 +53,17 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 19202 functions/
 - [`core.services.19`](core.services.19.md) — `meta_learning_retrospective` … `nudge_broend`
 - [`core.services.20`](core.services.20.md) — `oauth_flow` … `phone_wake`
 - [`core.services.21`](core.services.21.md) — `plan_mode` … `prompt_cache_probe`
-- [`core.services.22`](core.services.22.md) — `prompt_contract` … `reasoning_classifier`
-- [`core.services.23`](core.services.23.md) — `reasoning_detectors` … `research_store`
-- [`core.services.24`](core.services.24.md) — `resonance_decay` … `runtime_browser_body`
-- [`core.services.25`](core.services.25.md) — `runtime_cognitive_conductor` … `self_experiments`
-- [`core.services.26`](core.services.26.md) — `self_history_grounding` … `session_persistence_flag`
-- [`core.services.27`](core.services.27.md) — `session_prewarm` … `skill_gate_guard`
-- [`core.services.28`](core.services.28.md) — `skill_relevance_surface` … `temporal_context`
-- [`core.services.29`](core.services.29.md) — `temporal_depth` … `tool_router`
-- [`core.services.30`](core.services.30.md) — `tool_router_runtime` … `visible_first_pass_pump`
-- [`core.services.31`](core.services.31.md) — `visible_first_pass_results` … `visible_runs_learning_signals`
-- [`core.services.32`](core.services.32.md) — `visible_runs_memory` … `world_model_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `prompt_contract` … `read_before_write_guard`
+- [`core.services.23`](core.services.23.md) — `reasoning_classifier` … `research_router`
+- [`core.services.24`](core.services.24.md) — `research_store` … `runtime_awareness_signal_tracking`
+- [`core.services.25`](core.services.25.md) — `runtime_browser_body` … `self_dream_state_surface`
+- [`core.services.26`](core.services.26.md) — `self_experiments` … `session_permission`
+- [`core.services.27`](core.services.27.md) — `session_persistence_flag` … `skill_engine`
+- [`core.services.28`](core.services.28.md) — `skill_gate_guard` … `temporal_body`
+- [`core.services.29`](core.services.29.md) — `temporal_context` … `tool_round_label`
+- [`core.services.30`](core.services.30.md) — `tool_router` … `visible_first_pass_output`
+- [`core.services.31`](core.services.31.md) — `visible_first_pass_pump` … `visible_runs_error_messaging`
+- [`core.services.32`](core.services.32.md) — `visible_runs_learning_signals` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

@@ -2,6 +2,35 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_experiments.py`
+_Self-Experiments — A/B testing on Jarvis' own behavior._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_default_experiments` | `()` | Create default experiments if none exist. | [src](../../../core/services/self_experiments.py#L40) |
+| function | `record_experiment_observation` | `(*, experiment_id, cohort, success, observed_run_id=…, observation_note=…)` | Record an observation for an experiment. | [src](../../../core/services/self_experiments.py#L59) |
+| function | `_fisher_exact_p` | `(a, b, c, d)` | Exakt to-halet Fisher-test paa en 2x2-tabel. Ren Python, ingen scipy. | [src](../../../core/services/self_experiments.py#L154) |
+| function | `_evaluate_experiment` | `(cohorts)` | Sammenlign kohorter — men kun paa et sample der kan baere konklusionen. | [src](../../../core/services/self_experiments.py#L185) |
+| function | `_sporet_domaener` | `()` | Domaener der har NOGEN linje i maalingssporet — enhver kind. | [src](../../../core/services/self_experiments.py#L281) |
+| function | `_maalte_domaener` | `(noegle)` | Domaener hvis confidence har aendret sig mindst én gang for nylig. | [src](../../../core/services/self_experiments.py#L311) |
+| function | `_mekanisk_maalte` | `(noegle)` | Domaener hvis NUVARENDE confidence staar paa en MAALT vaerdi. | [src](../../../core/services/self_experiments.py#L378) |
+| function | `_eksperiment_forslag` | `(best, result)` | Et laeringsmaal fra et forsøg skal baere SAMPLEt, ikke kun forskellen. | [src](../../../core/services/self_experiments.py#L454) |
+| function | `generate_learning_curriculum` | `()` | 3.8 Curriculum learning — analyze weaknesses, generate learning plan. | [src](../../../core/services/self_experiments.py#L473) |
+| function | `_curriculum_summary` | `(curriculum, kilde_fejl, *, umalte=…)` | En tom plan skal sige HVORFOR den er tom. | [src](../../../core/services/self_experiments.py#L644) |
+| function | `_klip_ord_graense` | `(tekst, loft=…)` | Klip ved ORD-grænse, ikke midt i ordet. | [src](../../../core/services/self_experiments.py#L676) |
+| function | `observe_recent_visible_runs_for_self_experiments` | `(*, limit=…)` | Auto-observe recent visible runs for active self-experiments. | [src](../../../core/services/self_experiments.py#L693) |
+| function | `materialize_learning_curriculum_tasks` | `(*, limit=…, origin=…, owner=…, run_id=…)` | Turn top curriculum focuses into bounded runtime tasks. | [src](../../../core/services/self_experiments.py#L776) |
+| function | `build_self_experiments_surface` | `()` | — | [src](../../../core/services/self_experiments.py#L894) |
+| function | `_parse_result_payload` | `(raw)` | — | [src](../../../core/services/self_experiments.py#L911) |
+| function | `_cohort_for_visible_run` | `(*, experiment, run)` | — | [src](../../../core/services/self_experiments.py#L919) |
+| function | `_success_for_visible_run` | `(*, experiment, run)` | Om runnet lykkedes. `None` = vi kan ikke afgoere det, og maa ikke gaette. | [src](../../../core/services/self_experiments.py#L934) |
+| function | `_build_visible_run_observation_note` | `(*, experiment, run, cohort, success)` | — | [src](../../../core/services/self_experiments.py#L957) |
+| function | `_normaliser_fejltekst` | `(tekst)` | — | [src](../../../core/services/self_experiments.py#L1001) |
+| function | `normaliser_fejl_til_domaene` | `(tekst)` | Map en rå fejlformulering til en stabil kategori-nøgle. | [src](../../../core/services/self_experiments.py#L1008) |
+| function | `_item_domaene` | `(item)` | Domænenøglen for et curriculum-item. Ingen fallback til rå ``focus``: | [src](../../../core/services/self_experiments.py#L1022) |
+| function | `_curriculum_focus_key` | `(value)` | — | [src](../../../core/services/self_experiments.py#L1028) |
+| function | `_curriculum_priority` | `(priority)` | — | [src](../../../core/services/self_experiments.py#L1032) |
+
 ## `core/services/self_history_grounding.py`
 _Prompten maa ikke forveksle et rygte med en kendsgerning._
 
@@ -754,12 +783,4 @@ _Samtalens tilladelses-niveau — én sandhed, på serveren (Bjørn 20/9-2026)._
 | function | `trust_for_session` | `(session_id)` | Skal et run der lander i denne samtale arve fuld adgang? | [src](../../../core/services/session_permission.py#L99) |
 | function | `trust_for_autonomous` | `(session_id)` | Skal et AUTONOMT run arve fuld adgang? (Bjørn 9/11-2026) | [src](../../../core/services/session_permission.py#L122) |
 | function | `arv_permission` | `(ny_session, fra_session)` | Giv en NY samtale samme niveau som den den blev startet fra. | [src](../../../core/services/session_permission.py#L174) |
-
-## `core/services/session_persistence_flag.py`
-_Governed kill-switch for session-persistence boot-reconciler. Default OFF (shadow)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_read_flag` | `()` | Læs rå flag-værdi fra runtime-state. None = usat. | [src](../../../core/services/session_persistence_flag.py#L18) |
-| function | `session_persistence_enabled` | `()` | True KUN når eksplicit slået til ('on'/'1'/'true'/'yes'). Usat eller | [src](../../../core/services/session_persistence_flag.py#L24) |
 

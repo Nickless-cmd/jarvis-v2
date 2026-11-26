@@ -154,6 +154,15 @@ def _iter_openai_compatible_chat_events(
     import time as _stime
     _t_aabnet = _stime.monotonic()
     _har_data = False
+    # Rå provider-capture (26/11-2026): fanger SSE-linjen FØR filteret
+    # `startswith("data: ")` nedenfor, så `event:`-linjer, keepalives og
+    # udbyder-specifikke felter også bliver set. Vi har 26.558 gemte payloads,
+    # men de er NORMALISEREDE — de kan ikke afgøre om udbyderen sendte et felt
+    # vi kaster. Arméres med `touch /tmp/jarvis-raw-provider`. `armeret()`
+    # kaldes ÉN gang her, ikke pr. linje: slukket koster det nul syscalls.
+    from core.services import raw_provider_capture as _rpc
+    _rpc_arm = _rpc.armeret()
+    _rpc_nr = 0
 
     try:
         with httpx.stream(
@@ -188,6 +197,12 @@ def _iter_openai_compatible_chat_events(
             _t_aabnet = _stime.monotonic()
             for line in response.iter_lines():
                 line = (line or "").strip()
+                if _rpc_arm:
+                    _rpc_nr += 1
+                    _rpc.noter_linje(
+                        provider=provider, model=model,
+                        linje=line, linje_nr=_rpc_nr,
+                    )
                 if not line.startswith("data: "):
                     # Keepalive-linjer naaede allerede herned og blev sprunget
                     # over. De skal bare taelles med et ur paa.
@@ -204,11 +219,15 @@ def _iter_openai_compatible_chat_events(
                 _har_data = True
                 data_str = line[6:]
                 if data_str == "[DONE]":
+                    if _rpc_arm:
+                        _rpc.afslut_kald()
                     break
                 try:
                     event = json.loads(data_str)
                 except json.JSONDecodeError:
                     continue
+                if _rpc_arm:
+                    _rpc.noter_event(provider=provider, model=model, event=event)
                 # Usage-only chunks (stream_options=include_usage) have
                 # empty choices but a populated usage block.
                 usage_block = event.get("usage") or {}

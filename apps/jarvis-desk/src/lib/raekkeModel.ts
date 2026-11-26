@@ -147,19 +147,60 @@ export function opdel(blokke: readonly ContentBlock[], underArbejde = false, sva
   // Reglen: naar der ingen tekst er efter det sidste kald, hoerer den tekst der
   // staar FOER det til svaret — kaldet er en efterhaands-handling, ikke en ny
   // runde. Vi gaar tilbage kald for kald indtil graensen har tekst efter sig.
-  if (svarLaast && sidsteKald >= 0) {
-    let graense = sidsteKald
-    while (graense >= 0) {
-      const harTekstEfter = blokke.slice(graense + 1)
-        .some((b) => b?.type === 'text' && b.text.trim() !== '')
-      if (harTekstEfter) break
-      let forrige = -1
-      for (let i = 0; i < graense; i++) {
-        if (blokke[i]?.type === 'tool_use') forrige = i
+  //
+  // ── LÅST (26/11-2026) ────────────────────────────────────────────────────
+  //
+  // MÅLT 26/11-2026 (Bjørn: «blinket sker fordi hoved først folder ved din
+  // sidste syntese og så merger vi syntese og slut besked»): gennemløbet
+  // ovenfor kørte FORFRA ved hver render. Det gjorde graensen til en funktion
+  // af listens NUVÆRENDE længde, ikke af hvad brugeren allerede havde set:
+  // landede der en syntese efter svaret, fandt det nye gennemløb tekst efter
+  // det NYE sidste kald — og graensen rykkede FREM. Slutbeskeden blev dermed
+  // arbejde, mens den stod på skærmen, og den sene syntese blev det eneste
+  // svar. Det er den «teleportering» der har været repareret på visningen
+  // mange gange uden at forsvinde: fejlen sad i klassificeringen.
+  //
+  // Graensen er derfor MONOTON: den maa gaa baglaens, aldrig frem. Vi finder
+  // den baglaens-graense der giver det STØRSTE svar — altså den tidligste
+  // grænse hvor der stadig er tekst efter sig — og bruger den. Så kan en
+  // senere blok ikke skubbe noget ind i folden, uanset hvor mange runder der
+  // kommer bagefter.
+  if (svarLaast) {
+    // ── Grænsen læses af serverens EGEN klassificering (Bjørn 26/11-2026) ──
+    //
+    // «Løft den kun ud, hvis serveren har stemplet den final_answer.»
+    //
+    // Den tidligere regel udledte grænsen af hvor teksten lå i forhold til
+    // kaldene. Det gjorde grænsen til en funktion af listens NUVÆRENDE
+    // længde: landede der en syntese efter svaret, fandt det nye gennemløb
+    // tekst efter det NYE sidste kald, og grænsen rykkede FREM — slutbeskeden
+    // blev arbejde mens den stod på skærmen. Det er den «teleportering» der
+    // har været repareret på visningen mange gange uden at forsvinde.
+    //
+    // Nu er kilden entydig: den FØRSTE tekstblok serveren selv har stemplet
+    // `final_answer` er hvor svaret begyndte. Grænsen lægges ved det sidste
+    // kald FØR den blok, og den kan aldrig flytte sig frem — «den første» er
+    // stabil når listen vokser. Alt derefter er svar, uanset hvilken fase
+    // senere blokke bærer: efter foldet streamer teksten frit.
+    //
+    // Findes der ingen `final_answer`-blok, rører vi slet ikke grænsen.
+    // Serveren har ikke sagt at svaret er begyndt, og klienten gætter ikke.
+    // Det er en kendt begrænsning i serverens klassificering, og den løses i
+    // serveren — ikke med endnu en heuristik her.
+    let foersteSvar = -1
+    for (let i = 0; i < blokke.length; i++) {
+      const b = blokke[i]
+      if (b?.type === 'text' && b.phase === 'final_answer') {
+        foersteSvar = i
+        break
       }
-      graense = forrige
     }
-    sidsteKald = graense
+    if (foersteSvar >= 0) {
+      sidsteKald = -1
+      for (let i = 0; i < foersteSvar; i++) {
+        if (blokke[i]?.type === 'tool_use') sidsteKald = i
+      }
+    }
   }
 
   const arbejde: ArbejdsElement[] = []

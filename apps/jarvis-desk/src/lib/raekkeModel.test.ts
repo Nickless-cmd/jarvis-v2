@@ -130,13 +130,20 @@ describe('opdel', () => {
     // Skillelinjen laa efter det SIDSTE værktøjskald — ogsaa et kald der kom
     // efter svaret var skrevet. Saa faldt slutteksten ned i arbejdet, som
     // ligger inde i folden: tom skærm, og teksten «dumpet» bagefter.
+    // Siden 26/11-2026 bærer testen den fase serveren FAKTISK sender på en
+    // sluttekst: `final_answer` via `text_phase_update` i
+    // `_flush_pending_text(final=True)`. Grænsen læses af den, ikke af hvor
+    // teksten tilfældigvis ligger i forhold til kaldene.
+    const sluttekst: ContentBlock = {
+      type: 'text', text: 'Slutteksten som brugeren skal laese.', phase: 'final_answer',
+    }
     const blocks = [
       kald('bash'),
-      tekst('Slutteksten som brugeren skal laese.'),
+      sluttekst,
       kald('remember_this'),
     ]
     const { arbejde, svar } = opdel(blocks, false, true)
-    expect(svar).toEqual([tekst('Slutteksten som brugeren skal laese.')])
+    expect(svar).toEqual([sluttekst])
     expect(arbejde.map((e) => e.slags)).toEqual(['blok', 'blok'])
   })
 
@@ -144,6 +151,106 @@ describe('opdel', () => {
     // Uden `svarLaast` er et kald efter teksten stadig et led i arbejdet.
     const blocks = [kald('bash'), tekst('Næste runde undersøges nu.'), kald('bash')]
     expect(opdel(blocks, false).svar).toEqual([])
+  })
+
+  it('lader IKKE en sen syntese skubbe det allerede viste svar ind i folden', () => {
+    // MÅLT 26/11-2026 (Bjørn: «blinket sker fordi hoved først folder ved din
+    // sidste syntese og så merger vi syntese og slut besked»).
+    //
+    // `svarLaast` går BAGLÆNS fra sidste kald og stopper ved første grænse
+    // med tekst efter sig. Men den kører forfra ved HVER render, så grænsen
+    // har ingen hukommelse: lander der en syntese efter svaret, finder
+    // gennemløbet nu tekst efter det NYE sidste kald — og grænsen rykker
+    // FREM. Slutbeskeden bliver dermed arbejde, mens brugeren læser den.
+    //
+    // Sekvensen er Bjørns egen: svar A, kald, svar B, kald, svar C.
+    // A var en leverance da den blev skrevet, og serveren stemplede den
+    // `final_answer`. B og C kommer bagefter uden eget stempel — men de
+    // ligger EFTER grænsen, og efter foldet streamer teksten frit.
+    const a: ContentBlock = {
+      type: 'text', text: 'Fund 1: forbindelsen blev afvist af pihole.', phase: 'final_answer',
+    }
+    const b = tekst('Fund 2: reglen stod i den forkerte tabel.')
+    const c = tekst('Det bekræfter konklusionen.')
+    const blocks = [a, kald('bash'), b, kald('bash'), c]
+
+    const { arbejde, svar } = opdel(blocks, false, true)
+
+    // Det viste svar bliver stående — det er hele pointen.
+    expect(svar).toContain(a)
+    expect(svar).toContain(b)
+    // Den sene syntese er stadig svar; den må ikke blive det ENESTE svar.
+    expect(svar).toContain(c)
+    // Kaldene er arbejde uanset hvor grænsen ligger.
+    expect(arbejde.every((e) => e.slags === 'blok')).toBe(true)
+  })
+
+  it('holder graensen laast naar den foerst har tekst efter sig', () => {
+    // Samme sekvens som ovenfor, men maalt som et SPOERGSMAAL: flytter
+    // graensen sig naar listen vokser? Det er den egenskab der fejler —
+    // ikke om teksten tilfaeldigtvis lander rigtigt i én bestemt laengde.
+    const a: ContentBlock = { type: 'text', text: 'Fund 1.', phase: 'final_answer' }
+    const b = tekst('Fund 2.')
+    const foer = [a, kald('bash'), b]
+    const efter = [...foer, kald('bash'), tekst('Det bekræfter konklusionen.')]
+
+    const svarFoer = opdel(foer, false, true).svar
+    const svarEfter = opdel(efter, false, true).svar
+
+    // Alt der var svar foer, skal stadig vaere svar efter. En laast graense
+    // er monoton: den maa gaa baglaens, aldrig frem.
+    for (const blok of svarFoer) expect(svarEfter).toContain(blok)
+  })
+
+  it('bevarer indledende narration som arbejde — fasen afgoer, ikke placeringen', () => {
+    // Bjørn 26/11-2026: «Bevar den eksisterende klassificering før første
+    // foldning. Tekst før første værktøjskald skal ikke automatisk betragtes
+    // som leverance eller narration alene på baggrund af dens placering.»
+    //
+    // Her er narrationslinjen ikke stemplet, og svaret er. Grænsen lægges ved
+    // det sidste kald FØR den stemplede blok — den trækker ikke den
+    // uafklarede tekst med ud.
+    const narration = tekst('Lad mig se på det.')
+    const svarblok: ContentBlock = {
+      type: 'text', text: 'Her er resultatet.', phase: 'final_answer',
+    }
+    const blocks = [narration, kald('read_file'), svarblok]
+
+    const { arbejde, svar } = opdel(blocks, false, true)
+
+    expect(svar).toEqual([svarblok])
+    expect(arbejde.some((e) => e.slags === 'mellemsvar')).toBe(true)
+  })
+
+  it('gaetter ikke naar serveren ikke har stemplet nogen final_answer', () => {
+    // Bjørn 26/11-2026: «Vi accepterer midlertidigt begrænsningen i serverens
+    // eksisterende klassificering. Den semantiske kilde løses separat og må
+    // ikke blokere præsentationsopgaven.»
+    //
+    // Uden et stempel er der ingen kilde. Klienten lader grænsen stå ved det
+    // sidste kald frem for at opfinde en heuristik — også selv om det betyder
+    // at en leverance kan blive klassificeret som arbejde. Det er den kendte
+    // begrænsning, ikke en ny fejl.
+    const blocks = [kald('bash'), tekst('Et svar uden fase.'), kald('remember_this')]
+
+    expect(opdel(blocks, false, true).svar).toEqual([])
+  })
+
+  it('loefter IKKE en blok serveren selv har stemplet commentary', () => {
+    // MÅLT 26/11-2026: låsen hev en tidlig syntese ud af folden, fordi den
+    // kun så på om der var tekst efter grænsen. Men blokken var allerede
+    // mærket `commentary` af serveren — den er en mellemregning, og klienten
+    // må ikke gætte imod en fase den har fået. Kun blokke UDEN fase er
+    // uafklarede og må løftes.
+    const mellemregning: ContentBlock = {
+      type: 'text', text: 'God idé — jeg undersøger det.', phase: 'commentary',
+    }
+    const blocks = [mellemregning, kald('read_file'), tekst('Her er resultatet.')]
+
+    const { arbejde, svar } = opdel(blocks, false, true)
+
+    expect(svar).toEqual([tekst('Her er resultatet.')])
+    expect(arbejde.some((e) => e.slags === 'mellemsvar')).toBe(true)
   })
 
   it('er tom for en tom besked', () => {

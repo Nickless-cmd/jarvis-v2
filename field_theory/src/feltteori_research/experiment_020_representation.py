@@ -177,7 +177,8 @@ def rep_annual_difference(
     A1 and B3 both passed 21/40 and both are differences, so the run could not say
     whether "difference" was the mechanism or whether each removed a specific
     component. D12 is a third difference of the same data. If "difference" is what
-    helps, D12 should help too. Measured: 0/40, median C3 0.037 — below chance.
+    helps, D12 should help too. Measured in run_v4 (26/11-2026): 2/40, median C3
+    0.225 — chance level for a four-expert set, against A1's and B3's 21/40.
     It removes variation that is shared across *time* rather than across *experts*,
     and it takes the signal with it.
     """

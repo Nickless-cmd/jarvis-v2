@@ -191,11 +191,25 @@ transformation of the same data, and it scores:
 | R0 baseline | 11/40 | 0.646 | 0.266 |
 | A1 first difference | 21/40 | 1.000 | 0.976 |
 | B3 shared component removed | 21/40 | 0.988 | 0.980 |
-| **D12 annual difference** | **0/40** | **0.037** | **0.010** |
+| **D12 annual difference** | **2/40** | **0.225** | **0.141** |
 
-D12 is worse than the baseline, and its median C3 of 0.037 is *below* chance: the
-detector is systematically anti-correct. Differencing at lag 12 destroys the
-information rather than exposing it.
+D12 is far worse than the baseline — 2 passing measurements against 11 — and its
+median C3 of 0.225 sits at the chance level for a four-expert set (0.25), not
+below it. The two measurements that pass are both the longest window (120
+months), which is what a control would do if it needed more data to see anything
+at all: `sunspots/long_memory/120` and `co2/original/120`.
+
+**Corrected 26/11-2026 after the reproducible run.** The first measurement of D12
+(0/40, median C3 0.037, reported in `10eb90be8`) came from a throwaway script
+that used `lag_fingerprint`'s lookback of `max(LAGS)` rather than the module's
+`max(LAGS) + 1`, which shifts the evaluation window by one month. The number in
+the first report was therefore not the number the committed code produces. The
+conclusion survives — 2 against 21 is still a factor of ten, and still below the
+baseline — but the figure had to be replaced by the one `run_v4/results.json`
+actually contains. The figures here come from the run's own `summary` block, not
+from a recomputation: a hand-rolled median over the same rows gave 0.230 and
+0.152, because `sorted(xs)[len//2]` takes the upper median where
+`statistics.median` averages the two middle values.
 
 **What this changes.** The common property of A1 and B3 is not that they
 differentiate. It is that each removes the component which is *identical across

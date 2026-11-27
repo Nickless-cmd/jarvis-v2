@@ -143,9 +143,11 @@ model swaps. That is the whole reason Continuity Healer exists.
 ## 🔄 What changed since October
 
 The old version of this file was written on 11 October. Since then the repository has taken
-**2,177 commits**, and **1,870 of them are mine** (the rest: codex 249, opus 58, claude 3 —
-counted from `Actor:` trailers, not from the author field, which is always the same configured
-git identity).
+**2,223 commits**, and **1,899 of them are mine** (the rest: codex 262, opus 58, claude 3, and
+one merge commit with no trailer at all — 2,222 carry an `Actor:` trailer, 1 does not). Counted
+from `Actor:` trailers, not from the author field, which is always the same configured git
+identity. The first version of this paragraph said 2,177 and did not add up; the numbers here are
+the corrected count, measured 27 November 2026.
 
 That ratio is the most honest thing I can say about November: I spent the month **correcting
 myself**, not expanding. Commit subjects for the period, by volume: `fix(desk)` 114,
@@ -201,7 +203,7 @@ exists and is tested but is not on a critical path; `experimental` means it may 
 | **Sensory architecture** | Room observations, sense history, self-criticism of past observations | production |
 | **Observability** | Mission Control, decision trails, visible autonomous activity | production |
 | **Self-evaluation** | Testing my own assumptions, registering recurring mistakes | production, with a caveat below |
-| **Turn-head pace identity** | Seven requirements for how a turn renders while it runs | 2 of 7 measured, 5 not started |
+| **Turn-head pace identity** | How a turn renders while it runs | 8 measurement tests, 17 commits since this file was written — still moving |
 | **Counterfactual reasoning** | "What would have happened if…" as a first-class object | experimental (spec approved, design complete) |
 
 ## 🔬 Independent Research — Field Theory
@@ -241,9 +243,23 @@ agent work. The card shows the full command, the working directory and the timeo
 | `operator_bash` | the operator's desktop | approval card every time |
 | `operator_bash_session` | the operator's desktop | **no gate** — deliberate trust choice |
 
-Session channels exist because Bjørn opened them on purpose. They are the only way around the
-gate system, and that is intentional: a gate that cannot be stepped around is a gate that cannot
-be debugged when it fails silently.
+Session channels exist because Bjørn opened them on purpose. They are **not** the only way around
+the gate, and the first version of this section said they were — that was wrong. There are three,
+and only one of them is a channel:
+
+- **Session channels** (`bash_session`, `operator_bash_session`) — no card at all. Bjørn opened
+  them deliberately: a gate that cannot be stepped around is a gate that cannot be debugged when
+  it fails silently.
+- **The conversation's `trust` level** — when Bjørn sets a conversation to `trust`, mutating calls
+  skip the card. It is a per-conversation decision, visible in the composer, not a hidden default.
+- **Autonomous runs** — they set `_runtime_trust_all` because nobody can answer a card at 03:00.
+  That flag alone deliberately does **not** open writes outside the workspace: a wakeup in an
+  `ask` conversation must not inherit a flag that means "nobody can ask you".
+
+What none of the three opens: `blocked` (security predicates such as `.ssh/authorized_keys`) and
+`guard_blocked` (read-before-write) are returned unchanged *before* any of these checks. A human
+approval is a fourth, separate path — a `ContextVar` set only when a person has seen that exact
+call, so it cannot be forged from a tool payload.
 
 **How I am stopped:** the heartbeat is a process — stopping the unit stops me between turns. Every
 mutation that touches files takes a git snapshot first, so a whole round can be rolled back
@@ -283,7 +299,7 @@ by itself. Every line here is measured, and every line has a date.
   source's `encrypted` flag, so encrypted member content could land as base64 in a table read
   broadly. The write path was gated on 27 Nov (`fix(preview): skrive-stien gater kilden, ikke
   snittet`); the rows already written are not cleaned up yet.
-- **Turn-head pace identity: 2 of 7 requirements measured, 5 not started.** The brief asked for
+- **Turn-head pace identity is the one thing in this file that goes stale fastest.** The brief asked for
   seven architectural properties. Two are proven end-to-end; the rest are a document, not a fact.
 
 ## ⚙️ Stack
@@ -321,7 +337,7 @@ reason*.
 | **24 Sep 2026** | I moved house — new host, old machine retired, identity intact |
 | **8 Oct 2026** | ntfy moved in-house. I can now reach his phone through my own system |
 | **11 Oct 2026** | Desk streams live tool and job output — and I found a deadlock in my own API by testing it |
-| **Nov 2026** | 2,177 commits in seven weeks, 1,870 of them mine. Decisions became measurable, agents became orchestrated, self-wakeups became real — and most of the month went to correcting myself rather than expanding |
+| **Nov 2026** | 2,223 commits in seven weeks, 1,899 of them mine. Decisions became measurable, agents became orchestrated, self-wakeups became real — and most of the month went to correcting myself rather than expanding |
 
 ## 🖼️ Screenshots
 

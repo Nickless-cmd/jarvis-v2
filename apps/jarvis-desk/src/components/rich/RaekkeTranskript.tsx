@@ -517,7 +517,7 @@ function RaekkeTranskriptImpl({
   // `finalAnswerStarted` sendes ogsaa som SVAR-LAAS: naar serveren har
   // bekræftet at svaret er begyndt, maa et senere vaerktoejskald ikke flytte
   // skillelinjen og goere slutteksten til arbejde (målt 21/11-2026).
-  const { arbejde, svar, kald } = opdel(transcriptBlocks, streaming && !finalAnswerStarted, finalAnswerStarted)
+  const { arbejde, svar, svarSektioner, kald } = opdel(transcriptBlocks, streaming && !finalAnswerStarted, finalAnswerStarted)
   const billedArbejde = streaming
     ? levendeBilledArbejde(afslutForladteKald(blocks, true).flatMap((b) => b.type === 'tool_use' ? [b] : []))
     : null
@@ -532,6 +532,15 @@ function RaekkeTranskriptImpl({
   const aktivRundeIndex = streaming && sidsteRundeIndex === sektioner.length - 1
     ? sidsteRundeIndex
     : -1
+  // Den aktive runde efter foldet. Bjørn 27/11-2026: «runderne og den aktive
+  // runde linje skal forsætte udenfor foldet» — også den der kører lige nu.
+  // Den skal have samme levende markering som den aktive runde inde i folden,
+  // ellers står en kørende runde død uden for hovedet.
+  let sidsteSvarRundeIndex = -1
+  for (let i = 0; i < svarSektioner.length; i++) {
+    if (svarSektioner[i]?.slags === 'runde') sidsteSvarRundeIndex = i
+  }
+  const aktivSvarRundeIndex = streaming ? sidsteSvarRundeIndex : -1
   // Familien pr. kald — SAMME kilde som kroppene (`postFor`), så turens
   // hoved og rækkerne aldrig kan fortælle to forskellige historier.
   const familier = arbejde.flatMap((e) =>
@@ -608,7 +617,20 @@ function RaekkeTranskriptImpl({
   // og hovedet vises kun hvis folden er lukket (saa det er det eneste ansigt).
   // Den formel daekker begge: der findes ingen tilstand hvor arbejdet er
   // skjult OG hovedet vaek — det var den tomme flade.
-  const visTurhoved = arbejde.length > 0 && (!arbejdeKoerer || !aaben)
+  // Hovedet er turens ENESTE ansigt uden for folden (Bjørn 27/11-2026: «det
+  // der vises uden for foldet er det aller første runde/tænke blokke og det
+  // burde slet ikk være»). Her stod før en håndlavet ventelinje med sine egne
+  // klasser, og den gentog den første rundes tekst oven over hovedet — de
+  // samme runde- og tænke-blokke som allerede ligger inde i folden, blot i en
+  // anden metrik (38px mod rækkens 24px). Rundelinjerne hører inde i folden;
+  // uden for den er der kun hovedet.
+  //
+  // Hovedet bærer derfor også turen fra FØRSTE frame, hvor der endnu intet
+  // arbejde er at folde — ellers var turen uden ansigt i præcis det vindue
+  // brugeren venter på et livstegn.
+  const visTurhoved =
+    (arbejde.length > 0 && (!arbejdeKoerer || !aaben))
+    || (arbejde.length === 0 && arbejdeKoerer)
   // Tokenfeltet eksisterer først når tælleren faktisk er begyndt. Dermed står
   // der hverken `0 tokens` eller et ensomt `k tokens` ved turstart.
   //
@@ -632,8 +654,6 @@ function RaekkeTranskriptImpl({
   //
   // Teksten er serverens rapporterede arbejde når det findes — ellers «Tænker»,
   // som er den ærlige tilstand: turen kører, og der er endnu intet at fortælle.
-  const ventendeArbejde = (workingStep ?? '').replace(/\s+/g, ' ').trim()
-  const venterTekst = isMeaningfulStatus(ventendeArbejde) ? ventendeArbejde : 'Tænker'
   const turRef = useRef<HTMLButtonElement>(null)
   const huskFold = useFoldPosition(turRef, aaben)
 
@@ -657,22 +677,11 @@ function RaekkeTranskriptImpl({
           hoved det skulle overlevere til, i præcis det øjeblik hovedet blev
           usynligt. Chat mode målte den fejl 14/11-2026 (`.rv-tur` var barn af
           samme gren); code mode arvede den og får samme split her. */}
-      {/* Den ventende rundelinje — turens ansigt før det første værktøjskald.
-          Samme wrapper, ikon og tekststil som den aktive runde, så overgangen
-          til rigtigt arbejde ikke flytter noget: rækken skifter indhold, ikke
-          plads. Uden fold-pil, for der er intet at folde endnu. */}
-      {arbejdeKoerer && arbejde.length === 0 && (
-        <div className="rv-arbejdsrunde" data-aktiv-runde="">
-          <div className="rv-arbejdsknap rv-venter" data-koerer="">
-            <span className="rv-arbejdsikon" aria-hidden="true">
-              <JarvisRing size={15} spinning tone="working" />
-            </span>
-            <span className="rv-arbejdsindhold shimmer">
-              <TitelCrossfade tekst={venterTekst} aktiv className="rv-arbejdsfortaelling" />
-            </span>
-          </div>
-        </div>
-      )}
+      {/* Her stod en ventende rundelinje før det første værktøjskald. Den er
+          fjernet (Bjørn 27/11-2026): den viste den første rundes tekst uden
+          for folden, mens de rigtige rundelinjer står inde i den. Turen har
+          ét ansigt uden for folden — hovedet ovenfor — og det bærer turen fra
+          første frame via `visTurhoved`. */}
       {arbejde.length > 0 && (
         <div className="rv-gruppe-ydre" data-aaben={aaben ? 'true' : 'false'}
           {...(aaben ? {} : { inert: true })}>
@@ -707,10 +716,28 @@ function RaekkeTranskriptImpl({
           Den er tom indtil det første svar-delta, og `:not(:empty)` i CSS'en
           holder marginen væk så længe. */}
       <div className="rv-svar">
-        <BlocksRenderer
-          blocks={svar} density="compact" streaming={streaming} hale={hale}
-          beskedId={beskedId} config={config}
-        />
+        {svarSektioner.map((s, i) => {
+          if (s.slags === 'blokke') {
+            return (
+              <BlocksRenderer key={`b${i}`} blocks={s.blokke} density="compact" streaming={streaming} hale={hale}
+                beskedId={beskedId} config={config}
+              />
+            )
+          }
+          // Runden EFTER foldet tegnes med den SAMME komponent som runderne inde
+          // i folden (Bjørn 27/11-2026: «det er runderne efter foldet der skal
+          // være lige som dem ingen i»). Faldt den i `svar`, tog
+          // `BlocksRenderer`s bobble-sprog den — fast `</>`-ikon, ur, og
+          // tænkningen som sin EGEN linje ved siden af. To sprog for den samme
+          // ting; nu er der ét.
+          const aktiv = streaming && i === aktivSvarRundeIndex
+          return (
+            <Arbejdsrunde key={`r${i}`}
+              elementer={s.elementer} streaming={streaming} hale={hale} sidste={aktiv}
+              config={config} etiket={etiketFor(s.elementer, etiketter)} beskedId={beskedId}
+              turSekunder={turSekunder} workingStep={aktiv ? workingStep : undefined} />
+          )
+        })}
       </div>
     </div>
   )

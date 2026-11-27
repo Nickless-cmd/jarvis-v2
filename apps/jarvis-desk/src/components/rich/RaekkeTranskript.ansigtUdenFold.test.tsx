@@ -1,0 +1,163 @@
+import { describe, it, expect, beforeEach } from 'vitest'
+import { render } from '@testing-library/react'
+import { RaekkeTranskript } from './RaekkeTranskript'
+import { SettingsProvider } from '../../contexts/SettingsContext'
+import { RAEKKE_KEY } from '../../lib/visningsPref'
+import type { ContentBlock } from '../../lib/sseProtocol'
+
+/**
+ * Turens ansigt uden for folden — og hvilket sprog det taler.
+ *
+ * ## To kontrakter, to faser
+ *
+ * Filen hed før `RaekkeTranskript.ventelinje.test.tsx` og beviste en håndlavet
+ * ventelinje: en `.rv-arbejdsrunde` med klassen `.rv-venter`, der stod uden for
+ * folden fra første frame og viste den FØRSTE rundes tekst. Bjørn 27/11-2026
+ * afviste den: «det der vises uden for foldet er det aller første
+ * runde/tænke blokke og det burde slet ikk være».
+ *
+ * **Fase 1 — før svaret begynder:** der er ingen rundelinje uden for folden.
+ * Uden for den er der kun hovedet (`.rv-tur`), som er turens eneste ansigt og
+ * derfor også bærer turen fra første frame.
+ *
+ * **Fase 2 — efter svaret er begyndt:** runderne skal FORTSÆTTE uden for
+ * folden. Bjørn: «runderne og den aktive runde linje skal forsætte udenfor
+ * foldet». De skal tegnes af den SAMME komponent som runderne inde i folden —
+ * `Arbejdsrunde`, altså `.rv-arbejdsrunde`.
+ *
+ * ## Hvorfor fase 2 har sin egen vagt
+ *
+ * Målt på Bjørns to skærmbilleder 27/11-2026: uden for folden faldt runden i
+ * `svar`, som tegnes af `BlocksRenderer` — bobble-sproget. Det gav fast
+ * `</>`-ikon (`.toolgroup`), et ur, og tænkningen som sin EGEN linje
+ * (`.toolgroup.tanke-linje`). Inde i folden gav `Arbejdsrunde` én samlet linje
+ * uden ikon på den færdige runde. To sprog for den samme ting.
+ *
+ * Vagtens ærinde er derfor ikke «ingen rundelinje uden for folden» længere,
+ * men «uden for folden taler runderne rundelinjens sprog, ikke bobble-sproget».
+ */
+
+const kald = (navn: string, id: string, status: 'running' | 'done' = 'done'): ContentBlock => ({
+  type: 'tool_use', id, name: navn,
+  input: { command: navn === 'bash' ? 'git status' : undefined },
+  status,
+  // Resultatet bor PÅ kaldet — `tool_result` er ikke en egen blok i
+  // `ContentBlock`; den foldes ind i `tool_use` før `opdel` ser listen.
+  ...(status === 'done' ? { result: 'ok' } : {}),
+})
+
+const svarTekst = (t: string): ContentBlock => ({ type: 'text', text: t, phase: 'final_answer' })
+
+beforeEach(() => { localStorage.setItem(RAEKKE_KEY, '1') })
+
+function vis(props: {
+  blocks?: ContentBlock[]
+  streaming?: boolean
+  finalAnswerStarted?: boolean
+  arbejdeEfterSvar?: boolean
+  workingStep?: string | null
+}) {
+  return render(
+    <SettingsProvider>
+      <RaekkeTranskript
+        blocks={props.blocks ?? []}
+        streaming={props.streaming ?? true}
+        finalAnswerStarted={props.finalAnswerStarted}
+        arbejdeEfterSvar={props.arbejdeEfterSvar}
+        workingStep={props.workingStep}
+      />
+    </SettingsProvider>,
+  )
+}
+
+/** Rundelinjer der IKKE ligger inde i foldens gruppe — altså dem EFTER foldet. */
+const runderEfterFold = (c: HTMLElement) =>
+  Array.from(c.querySelectorAll('.rv-arbejdsrunde')).filter(
+    (el) => el.closest('.rv-gruppe') === null,
+  )
+
+describe('fase 1 — før svaret begynder', () => {
+  it('hovedet staar der fra forste frame — tur startet, intet arbejde endnu', () => {
+    const { container } = vis({ blocks: [], streaming: true })
+
+    // Turen maa ikke vaere ansigtsloes i det vindue brugeren venter.
+    const hoved = container.querySelector('.rv-tur')
+    expect(hoved).not.toBeNull()
+    expect(hoved!.textContent).toContain('Arbejder')
+  })
+
+  it('viser INGEN rundelinje uden for folden — heller ikke fra forste frame', () => {
+    // Det var her den håndlavede ventelinje stod. Den er væk, og fraværet er
+    // kontrakten: før svaret begynder findes rundelinjerne kun inde i folden.
+    const { container } = vis({ blocks: [], streaming: true })
+
+    expect(container.querySelector('.rv-venter')).toBeNull()
+    expect(runderEfterFold(container)).toHaveLength(0)
+  })
+
+  it('lægger runderne INDE i folden naar arbejdet kommer', () => {
+    const { container } = vis({ blocks: [kald('bash', 'b1')], streaming: true })
+
+    const gruppe = container.querySelector('.rv-gruppe')
+    expect(gruppe).not.toBeNull()
+    expect(gruppe!.querySelector('.rv-arbejdsrunde')).not.toBeNull()
+    // Og intet uden for den, saa længe svaret ikke er begyndt.
+    expect(runderEfterFold(container)).toHaveLength(0)
+  })
+
+  it('serverens arbejdstrin bliver inde i den aktive runde, ikke uden for folden', () => {
+    const { container } = vis({ blocks: [kald('bash', 'b1', 'running')], streaming: true, workingStep: 'Læser app.ts' })
+
+    expect(container.textContent).toContain('Læser app.ts')
+    expect(runderEfterFold(container)).toHaveLength(0)
+  })
+})
+
+describe('fase 2 — runder efter foldet', () => {
+  it('tegner runden som RUNDELINJE, ikke som bobble-kort', () => {
+    // Bjørns to skærmbilleder, oversat til en maaling: inde i folden gav
+    // `Arbejdsrunde` én linje; uden for den tog `BlocksRenderer` over og gav
+    // `</>`-ikon, ur og en løs tænke-linje. Det er forskellen der skal væk.
+    const { container } = vis({
+      blocks: [kald('bash', 'b1'), svarTekst('Svaret.'), kald('remember_this', 'b2')],
+      streaming: true,
+      finalAnswerStarted: true,
+    })
+
+    // Runden efter svaret staar uden for folden — det er kontrakten.
+    expect(runderEfterFold(container)).toHaveLength(1)
+    // Og den taler rundelinjens sprog.
+    expect(container.querySelector('.rv-arbejdsknap')).not.toBeNull()
+    // Bobble-sproget maa IKKE have taget den.
+    expect(container.querySelector('.toolgroup')).toBeNull()
+    expect(container.querySelector('.tanke-linje')).toBeNull()
+  })
+
+  it('bevarer rækkefølgen: tekst, runde, tekst', () => {
+    // Rækkefølgen var hele grunden til at `svarSektioner` findes: en flad
+    // opdeling ville flytte runden eller teksten.
+    const { container } = vis({
+      blocks: [svarTekst('Første del.'), kald('remember_this', 'b1'), svarTekst('Anden del.')],
+      streaming: false,
+      finalAnswerStarted: true,
+    })
+
+    const svar = container.querySelector('.rv-svar')
+    expect(svar).not.toBeNull()
+    const boern = Array.from(svar!.children)
+    // Barn 1: teksten. Barn 2: rundelinjen. Barn 3: teksten igen.
+    expect(boern).toHaveLength(3)
+    expect(boern[1]!.className).toContain('rv-arbejdsrunde')
+    expect(container.textContent).toContain('Første del.')
+    expect(container.textContent).toContain('Anden del.')
+  })
+
+  it('beholder et ansigt naar arbejde kommer EFTER svar-laasen', () => {
+    const { container } = vis({
+      blocks: [], streaming: true, finalAnswerStarted: true, arbejdeEfterSvar: true,
+    })
+
+    expect(container.querySelector('.rv-tur')).not.toBeNull()
+    expect(container.querySelector('.rv-venter')).toBeNull()
+  })
+})

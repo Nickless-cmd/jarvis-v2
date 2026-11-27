@@ -321,7 +321,41 @@ describe('opdel', () => {
   })
 
   it('er tom for en tom besked', () => {
-    expect(opdel([])).toEqual({ arbejde: [], svar: [], kald: 0, sekunder: 0 })
+    expect(opdel([])).toEqual({ arbejde: [], svar: [], svarSektioner: [], kald: 0, sekunder: 0 })
+  })
+
+  it('lader runder efter foldet vaere RUNDER i svarSektioner, ikke loese blokke', () => {
+    // Bjørn 27/11-2026: «runderne uden for hoved bruger ikk samme visning som
+    // dem inden i hoved... det er runderne efter foldet der skal være lige som
+    // dem ingen i».
+    //
+    // Målt på hans to skærmbilleder: uden for folden faldt runden i `svar` som
+    // en flad blok, og `BlocksRenderer`s bobble-sprog tegnede den med fast
+    // `</>`-ikon, ur, og tænkningen som sin EGEN linje. Inde i folden tegnede
+    // `Arbejdsrunde` den som én linje. To sprog for den samme ting.
+    //
+    // `svarSektioner` er svaret delt i rækkefølge, så runden kan tegnes af
+    // den samme komponent begge steder.
+    const svarblok: ContentBlock = { type: 'text', text: 'Svaret.', phase: 'final_answer' }
+    const k1 = kald('bash')
+    const syntese = tekst('Runden fandt noget.')
+    const k2 = kald('read_file')
+    const blocks = [svarblok, k1, syntese, k2]
+
+    const { svarSektioner } = opdel(blocks, false, true)
+
+    // Rækkefølgen bevares: tekst, runde, tekst, runde.
+    expect(svarSektioner.map((s) => s.slags)).toEqual(['blokke', 'runde', 'blokke', 'runde'])
+    // Runden bærer det faktiske kald — det er den `Arbejdsrunde` skal tegne.
+    const foersteRunde = svarSektioner[1]
+    expect(foersteRunde?.slags).toBe('runde')
+    if (foersteRunde?.slags === 'runde') {
+      expect(foersteRunde.elementer).toEqual([{ slags: 'blok', blok: k1 }])
+    }
+    // Modproeven: en ren tekstbesked giver ÉN blokke-sektion og ingen runder.
+    expect(opdel([tekst('Kun tekst.')]).svarSektioner).toEqual([
+      { slags: 'blokke', blokke: [tekst('Kun tekst.')] },
+    ])
   })
 })
 

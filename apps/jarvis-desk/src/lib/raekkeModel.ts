@@ -57,6 +57,15 @@ export interface RaekkeOpdeling {
   arbejde: ArbejdsElement[]
   /** Det der bliver stående: svaret. Tom liste = intet svar endnu. */
   svar: ContentBlock[]
+  /**
+   * Svaret i RÆKKEFØLGE, delt så runder efter foldet kan tegnes som runder.
+   *
+   * `svar` alene er flad: den kan ikke fortælle om en blok var en ny runde
+   * værktøjskald eller et stykke tekst. Uden den forskel faldt runderne efter
+   * foldet i bobble-sproget (se `SvarSektion`). Læses af `RaekkeTranskript`;
+   * `svar` bliver stående uændret til gate-beregningen (`svarBegyndt`).
+   */
+  svarSektioner: SvarSektion[]
   /** Til turens hoved: «Thought for {sekunder}s · {kald} tool calls». */
   kald: number
   sekunder: number
@@ -65,6 +74,30 @@ export interface RaekkeOpdeling {
 export type ArbejdsSektion =
   | { slags: 'syntese'; tekst: string }
   | { slags: 'enkelt'; element: ArbejdsElement }
+  | { slags: 'runde'; elementer: ArbejdsElement[] }
+
+/**
+ * En sektion af SVARET — efter foldet.
+ *
+ * Efter den første `final_answer`-blok kan der komme nye værktøjskald (fx en
+ * hukommelses-skrivning, et `suggest_next_task`). De er arbejde, men de hører
+ * til EFTER svaret: de skal stå synligt og kan ikke gemmes i den fold der
+ * allerede er lukket.
+ *
+ * Bjørn 27/11-2026: «runderne uden for hoved bruger ikk samme visning som dem
+ * inden i hoved... de rigtige er dem inde i foldet». Målt på hans to
+ * skærmbilleder: uden for foldet faldt de i `svar`, som tegnes af
+ * `BlocksRenderer` — bobble-sproget med `ToolGroupCard`s faste `</>`-ikon, ur,
+ * og tænkningen som sin EGEN linje. Inde i folden tegnes de af `Arbejdsrunde`:
+ * ét ikon kun på den aktive runde, tænkningen samlet ind bag chevronen, én
+ * linje pr. runde. To sprog for den samme ting, valgt af ét boolean-flag.
+ *
+ * Sektionen her bærer rækkefølgen: teksten og runderne stod blandet i `svar`,
+ * og en flad opdeling ville flytte dem. `blokke` er alt der ikke er arbejde
+ * (tekst, leverancer), `runde` er en sammenhængende runde værktøjskald.
+ */
+export type SvarSektion =
+  | { slags: 'blokke'; blokke: ContentBlock[] }
   | { slags: 'runde'; elementer: ArbejdsElement[] }
 
 /** Behold hver syntese synlig, og saml de følgende detaljer i én foldbar række. */
@@ -283,7 +316,61 @@ export function opdel(blokke: readonly ContentBlock[], underArbejde = false, sva
     arbejde.push({ slags: 'blok', blok: b })
   }
 
-  return { arbejde, svar, kald, sekunder: Math.round(sekunder) }
+  return {
+    arbejde,
+    svar,
+    svarSektioner: sektionerFraSvar(svar),
+    kald,
+    sekunder: Math.round(sekunder),
+  }
+}
+
+/**
+ * Del svaret i blokke og runder, så rækkefølgen bevares.
+ *
+ * Kun `erArbejdsBlok` afgør hvad der er en runde — den SAMME regel som `opdel`
+ * bruger til at afgøre hvad der er arbejde. Det er med vilje: en blok der er
+ * arbejde inde i folden skal også være en rundelinje uden for den. Ellers
+ * tegnes de to steder af hvert sit sprog, og det er netop den divergens Bjørn
+ * målte 27/11-2026 (ikon, ur og en løs tænke-linje uden for folden mod én
+ * samlet linje inde i den).
+ */
+function sektionerFraSvar(svar: readonly ContentBlock[]): SvarSektion[] {
+  const sektioner: SvarSektion[] = []
+  let blokke: ContentBlock[] = []
+  let elementer: ArbejdsElement[] = []
+
+  const afslutBlokke = () => {
+    if (blokke.length === 0) return
+    sektioner.push({ slags: 'blokke', blokke })
+    blokke = []
+  }
+  const afslutRunde = () => {
+    if (elementer.length === 0) return
+    sektioner.push({ slags: 'runde', elementer })
+    elementer = []
+  }
+
+  for (const b of svar) {
+    if (!erArbejdsBlok(b)) {
+      afslutRunde()
+      blokke.push(b)
+      continue
+    }
+    afslutBlokke()
+    if (b.type === 'progress') {
+      // Fortsætter sporet frem for at starte en ny række — samme greb som i
+      // `opdel`, så en runde med ni progress-blokke bliver én linje.
+      const sidste = elementer[elementer.length - 1]
+      if (sidste && sidste.slags === 'spor') sidste.trin.push(b)
+      else elementer.push({ slags: 'spor', trin: [b] })
+      continue
+    }
+    elementer.push({ slags: 'blok', blok: b })
+  }
+  afslutRunde()
+  afslutBlokke()
+  return sektioner
 }
 
 /**

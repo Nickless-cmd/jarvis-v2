@@ -151,7 +151,19 @@ jobs:
       - name: Install deps
         run: npm ci
       - name: Install browser (Chromium)
-        run: npx playwright install --with-deps chromium
+        run: |
+          # Runner-imaget har en Microsoft apt-kilde der svarer 403
+          # (MAALT 27/11-2026: `packages.microsoft.com/ubuntu/24.04/prod`
+          # -> `403 Forbidden`, «repository is no longer signed»). `--with-deps`
+          # koerer `apt-get update` internt, saa HELE browser-installationen
+          # doer paa en kilde vi ikke bruger — jobbet fejlede med
+          # «Failed to install browsers / exit code 100» uden at en eneste
+          # maaling var koert. Vi fjerner kilden foerst i stedet for at droppe
+          # `--with-deps`, saa de afhaengigheder Playwright faktisk skal have
+          # stadig bliver installeret.
+          sudo grep -rl 'packages.microsoft.com' /etc/apt/sources.list.d/ 2>/dev/null \
+            | sudo xargs -r rm -f
+          npx playwright install --with-deps chromium
       # Hele suiten, ikke en fil-liste.
       #
       # Fil-listen var selv fejlen: den blev skrevet med de to davaerende filer,

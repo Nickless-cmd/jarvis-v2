@@ -374,18 +374,35 @@ function ArbejdsrundeImpl({
   const [overdraget, setOverdraget] = useState(false)
   const aktivSidste = streaming && sidste
   // Har linjen nogensinde stået synlig som aktiv? Kun da findes der et fade at
-  // vente på. En runde der afsløres MENS pacen allerede skriver, monteres
-  // allerede fadet (målt: 38 px usynlig plads i 3 s, og `transitionend` kom aldrig,
-  // fordi intet blev animeret) — dér er overdragelsen øjeblikkelig.
+  // vente på.
+  //
+  // RETTET 27/11-2026 (Bjørn: «den aktive rundelinje er væk i code mode????»).
+  // Her stod `if (!havdeVaeretSynlig.current || udenAnimation) setOverdraget(true)`.
+  // Den gren antog at en runde der monteres MENS pacen skriver, aldrig bliver
+  // synlig — men det er kun sandt hvis den aldrig bliver aktiveret. I code mode
+  // skrives synteser mellem runderne hele turen, så `skjulAktivRunde` er sand
+  // næsten fra første sekund: hver ny runde blev født med `skjult = true`,
+  // `havdeVaeretSynlig` var falsk, og `overdraget` blev sat i samme frame.
+  // `aktivRunde` faldt dermed til falsk fra første frame — ingen `data-aktiv-runde`,
+  // intet ikon, ingen shimmer, intet ur, og trinlisten kollapsede med det samme.
+  // Linjen var der ikke.
+  //
+  // Reglen er nu: en runde der fødes midt i pacing SKAL stå synlig som aktiv.
+  // Fadet kommer når syntesen tager over, og `transitionend` bærer overdragelsen.
+  // Kun `prefers-reduced-motion` — hvor der ikke findes noget fade at vente på —
+  // giver en øjeblikkelig overdragelse.
   const havdeVaeretSynlig = useRef(false)
   // Layout-effekt: den fadede frame må ikke nå at blive malet.
   useLayoutEffect(() => {
     if (!aktivSidste) { setOverdraget(false); havdeVaeretSynlig.current = false; return }
     if (!skjult) { havdeVaeretSynlig.current = true; return }
-    // Uden animation (`prefers-reduced-motion`) findes der intet fade-slut at
-    // vente på — overdragelsen er da også øjeblikkelig.
+    // Uden animation findes der intet fade-slut at vente på.
     const udenAnimation = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    if (!havdeVaeretSynlig.current || udenAnimation) setOverdraget(true)
+    if (udenAnimation) { setOverdraget(true); return }
+    // Linjen er synlig fra sin første malede frame — også når pacen allerede
+    // skriver. Uden dette ville den aldrig få et fade at vente på, og
+    // `transitionend` ville aldrig komme.
+    havdeVaeretSynlig.current = true
   }, [aktivSidste, skjult])
   const aktivRunde = aktivSidste && !overdraget
   const mekanisk = summarizeRound(vaerktoejer)

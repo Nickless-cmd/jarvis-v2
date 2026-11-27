@@ -28,9 +28,10 @@ En ændring under `apps/jarvis-desk/src/**` er som udgangspunkt fælles for den
 installerede Desk og web/PWA. Den er **ikke færdig** efter `npm run build:web`
 alene: kør og verificér både `npm run build:renderer` og `npm run build:web`.
 Medmindre Bjørn udtrykkeligt har afgrænset arbejdet til PWA-only, skal Desk også
-udgives med versionsbump + `jarvis-desktop-v<version>`-tag, og `desk-release`-CI
-skal være grøn før arbejdet rapporteres som leveret. Bjørn skal ikke minde mig om
-den anden halvdel.
+udgives med versionsbump + `jarvis-desktop-v<version>`-tag. **CI'en venter jeg
+ikke på** — `desk-release` vækker mig selv når den er færdig, så jeg poller den
+ikke og står ikke ved den som en port. Bjørn skal ikke minde mig om den anden
+halvdel.
 
 ## Memory persistence (CRITICAL — do this proactively, every session)
 

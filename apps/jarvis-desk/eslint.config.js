@@ -121,6 +121,11 @@ export default tseslint.config(
         document: 'readonly', window: 'readonly', localStorage: 'readonly',
         navigator: 'readonly', getComputedStyle: 'readonly',
         requestAnimationFrame: 'readonly', cancelAnimationFrame: 'readonly',
+        // `Node.DOCUMENT_POSITION_FOLLOWING` i `maal-ekstra-runde.mjs` maaler
+        // om hale-containeren staar EFTER besvarelsen i DOM'en. Uden den her
+        // faldt ci paa praecis én `no-undef` — blokken ovenfor blev skrevet
+        // samme dag og dækkede alt andet, saa fejlen var usynlig i 96-fixet.
+        Node: 'readonly',
       },
     },
   },

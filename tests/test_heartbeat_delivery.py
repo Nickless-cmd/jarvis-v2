@@ -203,3 +203,42 @@ def test_heartbeat_uden_ejerstemplet_session_skriver_intet(
     assert proposal["blocked_reason"] == "missing-webchat-session"
     assert ping["blocked_reason"] == "missing-webchat-session"
     assert sendt_til == []
+
+
+def test_nudge_koe_er_en_leverance_ikke_en_blokering(isolated_runtime, monkeypatch):
+    """MÅLT 27/11-2026: nudge-grenen returnerede `status: "queued"`, men
+    kalderen i `heartbeat_runtime` tjekker `== "sent"` præcist. Et ping der
+    FAKTISK var lagt i nudge-ledgeren blev derfor meldt som «blokeret», og
+    `blocked_reason` er tom netop i den gren — derfor stod der «unknown».
+
+    Over ti dage gav det 143 falske blokeringer. Leverancerne matchede dem
+    1:1 (19/11: 19 blokeret/18 leveret, 25/11: 32/31): intet var tabt, kun
+    regnskabet løj. Testen fælder at status er `sent` når nudge-vejen tager
+    pinget, så en fremtidig ændring af kø-tilstanden ikke gentager det.
+    """
+    _indsæt_ejersession(isolated_runtime, "chat-bjorn", "bjorn", 10)
+    _heartbeat_testvagter(monkeypatch)
+    monkeypatch.setattr(hd, "_recent_ping_history", lambda **_k: [])
+    monkeypatch.setattr(
+        "core.runtime.settings.load_settings",
+        lambda: type("Settings", (), {"nudge_system_enabled": True})(),
+    )
+    monkeypatch.setattr(
+        "core.services.outbound_nudges.push_nudge",
+        lambda **_kw: {"nudge_id": "nudge-1"},
+    )
+
+    svar = hd._deliver_heartbeat_ping_directly(
+        policy={"allow_ping": True, "kill_switch": "enabled", "ping_channel": "webchat"},
+        tick_id="tick-nudge",
+        ping_text="Jeg fandt noget konkret at følge op på i dag.",
+        summary="Et konkret ping",
+    )
+
+    assert svar["status"] == "sent", (
+        "nudge-vejen lagde pinget i ledgeren, men meldte status "
+        f"{svar['status']!r} — kalderen tjekker 'sent' og kalder det en "
+        "blokering. Det gav 143 falske blokeringer over ti dage."
+    )
+    assert svar["blocked_reason"] == ""
+    assert json.loads(svar["artifact"])["delivery_channel"] == "nudge-ledger"

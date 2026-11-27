@@ -53,15 +53,39 @@ const SVAR_B: ContentBlock = {
 /** Hvor meget arbejde runden bærer — styrer containerens højde. */
 type Hoejde = 'lav' | 'hoej'
 
-function rundeBlokke(hoejde: Hoejde): ContentBlock[] {
+/**
+ * Runde-blokke med en RUNDE-PRÆFIKS i id'et.
+ *
+ * `kildeNoegle` bygger segment-id'et på `tool_use.id`, så to runder der
+ * genererer de samme id'er får SAMME React-key. Det er en anden fejl end den
+ * der måles her, og den ville sløre resultatet: React kan ikke skelne børnene,
+ * og så kan man ikke afgøre om en hængende container skyldes den delte ref
+ * eller de kolliderende keys. Præfikset holder dem adskilt.
+ */
+function rundeBlokke(hoejde: Hoejde, runde = 0): ContentBlock[] {
   const antal = hoejde === 'lav' ? 1 : 6
   return Array.from({ length: antal }, (_, i) => ({
     type: 'tool_use' as const,
-    id: `kald-${i}`,
+    id: `r${runde}-kald-${i}`,
     name: 'bash',
     input: { command: `echo trin ${i}` },
   }))
 }
+
+/**
+ * Blok-sættene.
+ *
+ * `to-runder` findes fordi `kollapsRef` er ÉN ref til ALLE runde-containere
+ * (GPT, 27/11-2026). Med ét runde-segment kan den fejl ikke måles — ref'en
+ * peger på den eneste container der findes, og alt ser rigtigt ud. Først med
+ * to selvstændige containere kan man se om hver af dem afmonteres på sit eget
+ * `transitionend`, eller om de deler én fælles tilstand.
+ *
+ * `[runde, besvarelse, runde]` giver præcis to runde-segmenter: `byggSegmenter`
+ * slår kun sammen når `sidste.slags === rolle`, så besvarelsen i midten bryder
+ * sammenlægningen. To `tool_use`-blokke i træk ville smelte til ét segment.
+ */
+type Fase = 'uden' | 'med' | 'to-runder'
 
 interface Tilstand {
   streaming: boolean
@@ -74,14 +98,22 @@ const TERMINAL: Tilstand = { streaming: false, status: 'done', arbejdeEfterSvar:
 
 function Harness() {
   const [t, setT] = useState<Tilstand>(LIVE)
-  const [fase, setFase] = useState<'uden' | 'med'>('uden')
+  const [fase, setFase] = useState<Fase>('uden')
   const [hoejde, setHoejde] = useState<Hoejde>('lav')
 
   // Playwright styrer tilstanden herfra — samme mount, ingen remount.
   ;(window as unknown as Record<string, unknown>).__sætTilstand = (navn: 'live' | 'terminal') =>
     setT(navn === 'live' ? LIVE : TERMINAL)
-  ;(window as unknown as Record<string, unknown>).__sætBlokke = (navn: 'uden-runde' | 'med-runde') =>
-    setFase(navn === 'med-runde' ? 'med' : 'uden')
+  // De gamle navne (`med-runde`/`uden-runde`) oversættes her. Syv kaldesteder
+  // i de øvrige målinger bruger dem, og en omdøbning af fasen må ikke gøre
+  // dem tavst til no-ops: `setFase('med-runde')` ville ellers sætte en
+  // ugyldig værdi, ramme `else`-grenen og give nul runde-containere — hvorefter
+  // målingen ville time ud på `waitForSelector` uden at sige hvorfor.
+  ;(window as unknown as Record<string, unknown>).__sætBlokke = (navn: string) => {
+    const oversat: Fase =
+      navn === 'med-runde' ? 'med' : navn === 'uden-runde' ? 'uden' : (navn as Fase)
+    setFase(oversat)
+  }
   ;(window as unknown as Record<string, unknown>).__sætHoejde = (navn: Hoejde) => setHoejde(navn)
 
   // A → runde → B: runden ligger MELLEM de to besvarelser, så afstanden
@@ -92,7 +124,11 @@ function Harness() {
   // ingen afstand at måle, og referencen bliver `null`. Før gav den kun
   // `[SVAR_A]`, så sammenligningen var tom.
   const blocks: ContentBlock[] =
-    fase === 'med' ? [SVAR_A, ...rundeBlokke(hoejde), SVAR_B] : [SVAR_A, SVAR_B]
+    fase === 'med'
+      ? [SVAR_A, ...rundeBlokke(hoejde), SVAR_B]
+      : fase === 'to-runder'
+        ? [...rundeBlokke(hoejde, 0), SVAR_A, ...rundeBlokke(hoejde, 1)]
+        : [SVAR_A, SVAR_B]
 
   return (
     <div className="transcript" style={{ padding: '24px', maxWidth: '760px' }}>

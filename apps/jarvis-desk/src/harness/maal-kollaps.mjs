@@ -16,6 +16,11 @@ const fejl = []
 page.on('pageerror', (e) => fejl.push(String(e)))
 
 await page.goto(URL, { waitUntil: 'networkidle' })
+
+// Fasen sættes FØR der ventes på containeren: harnessen starter i `uden`, som
+// kun har besvarelser og derfor ingen `.chat-flow-runde`. Ventede man først,
+// ville man vente for evigt — målt 27/11-2026.
+await page.evaluate(() => window.__sætBlokke('med-runde'))
 await page.waitForSelector('.chat-flow-runde', { timeout: 15000 })
 await page.waitForTimeout(600) // lad indgangs-animationen lande
 
@@ -49,6 +54,10 @@ await page.evaluate(() => {
 await page.evaluate(() => (window).__sætTilstand('terminal'))
 await page.waitForTimeout(900) // transitionen skal være færdig (--fold-varighed)
 
+// `maal()` returnerer `null` når containeren er AFMONTERET — og det er nu det
+// forventede udfald, ikke en fejl: fixet fjerner noden når dens egen
+// `transitionend` har fyret (~300 ms), altså før de 900 ms er gået. Før
+// antog målingen at noden stadig stod der, og kastede `TypeError` på `null`.
 const efter = await maal()
 const sammeNode = await page.evaluate(() =>
   (window).__node.isSameNode(document.querySelector('.chat-flow-runde')),
@@ -59,10 +68,14 @@ const pct = (a, b) => (a === 0 ? 0 : Math.round(((b - a) / a) * 1000) / 10)
 console.log('=== FØR (live) ===')
 console.log(JSON.stringify(foer))
 console.log('=== EFTER (terminal) ===')
-console.log(JSON.stringify(efter))
+console.log(efter ? JSON.stringify(efter) : 'afmonteret (noden er væk — forventet)')
 console.log('=== SAMME DOM-NODE? ===', sammeNode)
-console.log('=== HØJDEÆNDRING ===', `${foer.hoejde} → ${efter.hoejde} px (${pct(foer.hoejde, efter.hoejde)} %)`)
-console.log('=== OPACITYÆNDRING ===', `${foer.opacity} → ${efter.opacity}`)
+if (efter) {
+  console.log('=== HØJDEÆNDRING ===', `${foer.hoejde} → ${efter.hoejde} px (${pct(foer.hoejde, efter.hoejde)} %)`)
+  console.log('=== OPACITYÆNDRING ===', `${foer.opacity} → ${efter.opacity}`)
+} else {
+  console.log('=== HØJDEÆNDRING ===', `${foer.hoejde} → 0 px (afmonteret, 100 %)`)
+}
 console.log('=== SIDE-FEJL ===', fejl.length ? fejl.join(' | ') : 'ingen')
 
 await browser.close()

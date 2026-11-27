@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ApiConfig } from '../../lib/api'
 import { deriveChatFlow } from '../../lib/chatFlowModel'
 import type { ContentBlock } from '../../lib/sseProtocol'
@@ -486,11 +486,33 @@ export function ChatFlowPresentation({
   // Uret armes når turen bliver terminal, og RYDDES hvis den genoptages (et nyt
   // run i samme tur): ellers ville en container der lige var på vej ud blive
   // fjernet midt i en tur der stadig kører.
-  const [afmonteret, setAfmonteret] = useState(false)
-  const kollapsRef = useRef<HTMLDivElement | null>(null)
+  // AFMONTERINGEN ER PER CONTAINER, IKKE PER KOMPONENT (GPT, 27/11-2026:
+  // «Han bruger én fælles reference … Når dens transition afsluttes, sættes
+  // den fælles `afmonteret`-tilstand, og alle rundecontainere fjernes.»)
+  //
+  // MÅLT 27/11-2026 i Chromium med to selvstændige runde-containere: begge
+  // forsvandt efter 303 ms — SAMTIDIGT. Det er den fælles boolean. Det ser
+  // rigtigt ud så længe alle transitions starter og slutter i takt, men det er
+  // ikke en garanti: en container der kollapser senere (fx fordi dens indhold
+  // er højere, eller fordi den blev tilføjet midt i forløbet) ville blive
+  // fjernet før dens egen transition var færdig — og dét er præcis det
+  // layout-hop kommentaren ovenfor forbyder.
+  //
+  // Tilstanden er derfor et SÆT af segment-id'er: hver container melder sig
+  // selv færdig, når dens EGEN `transitionend` fyrer.
+  const [afmonterede, setAfmonterede] = useState<ReadonlySet<string>>(() => new Set())
+  const kollapsRefs = useRef(new Map<string, HTMLDivElement>())
+  const markérAfmonteret = useCallback((id: string) => {
+    setAfmonterede((forrige) => {
+      if (forrige.has(id)) return forrige
+      const naeste = new Set(forrige)
+      naeste.add(id)
+      return naeste
+    })
+  }, [])
   useEffect(() => {
     if (turenKoerer) {
-      setAfmonteret(false)
+      setAfmonterede((forrige) => (forrige.size === 0 ? forrige : new Set()))
       return
     }
     // AFMONTERINGEN FØLGER TRANSITIONEN, IKKE ET GÆT (GPT, 27/11-2026:
@@ -502,34 +524,39 @@ export function ChatFlowPresentation({
     // dag nogen justerer tokenet, og fejlen ville være usynlig: noden ville
     // bare forsvinde midt i en transition der stadig kørte.
     //
-    // Nu lyttes på den FAKTISKE `transitionend` fra kollaps-wrapperen. Den
+    // Nu lyttes på den FAKTISKE `transitionend` fra HVER kollaps-wrapper. Den
     // fyrer når browseren er færdig — uanset varighed, kurve og om brugeren
-    // har `prefers-reduced-motion` (hvor transitionen er slået fra og
+    // har `prefers-reduced-motion` (hvor transitionen er slået af og
     // hændelsen derfor aldrig kommer; derfor fallback-uret).
     //
     // FALLBACK: en afbrudt transition (turen genoptages, eller elementet
     // fjernes fra DOM'en af en anden grund) fyrer ingen `transitionend`. Uden
     // et loft ville containeren blive stående for evigt. Loftet er derfor
-    // kun et sikkerhedsnet, ikke uret.
-    const node = kollapsRef.current
-    let færdig = false
-    const afslut = () => {
-      if (færdig) return
-      færdig = true
-      setAfmonteret(true)
+    // kun et sikkerhedsnet, ikke uret — og det er PER container, så én der
+    // hænger ikke trækker de andre med.
+    const lyttere: Array<() => void> = []
+    const lofter: Array<ReturnType<typeof setTimeout>> = []
+    for (const [id, node] of kollapsRefs.current) {
+      let færdig = false
+      const afslut = () => {
+        if (færdig) return
+        færdig = true
+        markérAfmonteret(id)
+      }
+      const påTransition = (e: TransitionEvent) => {
+        // Kun wrapperens EGEN højde-transition — børnenes transitions bobler
+        // op og må ikke afmontere containeren midt i noget andet.
+        if (e.target === node && e.propertyName === 'grid-template-rows') afslut()
+      }
+      node.addEventListener('transitionend', påTransition)
+      lyttere.push(() => node.removeEventListener('transitionend', påTransition))
+      lofter.push(setTimeout(afslut, 1200))
     }
-    const påTransition = (e: TransitionEvent) => {
-      // Kun wrapperens EGEN højde-transition — børnenes transitions bobler op
-      // og må ikke afmontere containeren midt i noget andet.
-      if (e.target === node && e.propertyName === 'grid-template-rows') afslut()
-    }
-    if (node) node.addEventListener('transitionend', påTransition)
-    const loft = setTimeout(afslut, 1200)
     return () => {
-      if (node) node.removeEventListener('transitionend', påTransition)
-      clearTimeout(loft)
+      lyttere.forEach((fjern) => fjern())
+      lofter.forEach((loft) => clearTimeout(loft))
     }
-  }, [turenKoerer])
+  }, [turenKoerer, markérAfmonteret])
   // HOVEDET ER FIRE TILSTANDE, IKKE EN KOMPONENT MED EN FØDSEL OG EN DØD
   // (Bjørn 18/11-2026: «hvornår og hvorfor folder deres hoved? … det sker ofte
   // hovedets fold bliver til et blink»).
@@ -840,11 +867,14 @@ export function ChatFlowPresentation({
                 if (blokke.length === 0) return null
                 // AFMONTERINGEN (Bjørn 27/11-2026): «Containeren skal først
                 // afmonteres efter den afsluttede transition, uden et
-                // efterfølgende layout-hop.» Når `afmonteret` er sand, er
-                // rækken allerede 0fr og gap'et neutraliseret — så at fjerne
-                // noden ændrer ikke layoutet. Det er hele pointen: fjernelsen
-                // må ikke kunne ses.
-                if (!erSvar && afmonteret) return null
+                // efterfølgende layout-hop.» Når segmentets id står i
+                // `afmonterede`, er DENS række allerede 0fr og gap'et
+                // neutraliseret — så at fjerne noden ændrer ikke layoutet. Det
+                // er hele pointen: fjernelsen må ikke kunne ses.
+                //
+                // Sættet er per segment, ikke fælles: en container der
+                // kollapser senere må ikke fjernes fordi en anden blev færdig.
+                if (!erSvar && afmonterede.has(segment.id)) return null
                 // LEVETIDEN som data, ikke som en gættet CSS-tilstand.
                 //
                 // Et runde-segment bliver stående så længe turen kører — også
@@ -856,13 +886,19 @@ export function ChatFlowPresentation({
                   ? 'svar'
                   : turenKoerer
                     ? 'live'
-                    : afmonteret
+                    : afmonterede.has(segment.id)
                       ? 'unmount'
                       : 'kollapset'
                 return (
                   <div
                     key={segment.id}
-                    ref={erSvar ? undefined : kollapsRef}
+                    ref={erSvar ? undefined : (node) => {
+                      // Callback-ref PER segment: den registrerer sig selv i
+                      // kortet, så effekten ovenfor kan lytte på netop denne
+                      // containers transition. `null` betyder afmonteret.
+                      if (node) kollapsRefs.current.set(segment.id, node)
+                      else kollapsRefs.current.delete(segment.id)
+                    }}
                     className={erSvar ? 'chat-flow-answer' : 'chat-flow-runde'}
                     data-segment={segment.slags}
                     data-plassering={segment.plassering}

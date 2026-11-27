@@ -165,3 +165,27 @@ def test_workflow_kontrakten_baerer_struktur_reglen_og_ikke_tegntallet():
         "tegntallet er genindfoert i workflow-kontrakten; det var det der gjorde 97 % af "
         "synteserne flade"
     )
+
+
+def test_commentary_har_en_haard_laengdegraense():
+    """Syntesen maa hoest vaere 350 tegn — og tallet SKAL matche serverens taerskel.
+
+    Bjørn 27/11-2026: «den skal indføres igen og hæves til 350 chars saa foldet
+    ikk sker paa en syntese». De to tal er en sammenhaeng: holder syntesen sig
+    under `_svar_taerskel`, kan den ikke udloese fold-signalet, og foldet kan
+    ikke lande midt i den. Derfor maales BEGGE sider her — en prompt-regel uden
+    det matchende taerskel-tal er netop den divergens der skabte fejlen.
+    """
+    import inspect
+    import core.services.visible_runs_sse_v2 as sse
+
+    # Taersklen er en LOKAL variabel inde i stream-funktionen, ikke et
+    # modulnavn — den laeses derfor fra kilden, ikke ved import.
+    kilde = inspect.getsource(sse)
+    assert "_svar_taerskel = 350" in kilde, (
+        "taersklen i visible_runs_sse_v2.py er ikke 350 — prompten lover 350"
+    )
+    for strength in ("weak", "strong"):
+        text = _output_discipline_instruction(strength=strength)
+        assert "at most 350 characters" in text, f"{strength} mangler laengdegraensen"
+        assert "folds in the middle of it" in text, f"{strength} mangler konsekvensen"

@@ -448,22 +448,22 @@ async def translate_to_v2(
     #:   commentary (mellemsyntese): median 211, p75 305, p90 421 tegn
     #:   final_answer (slutsvar):    median 2181, p25 1089 tegn
     #:
-    #: Ved 600 tegn rammes 82 % af alle slutsvar, mens kun 4 % af
-    #: mellemsynteserne fejlagtigt promoveres. Tærsklen er en
-    #: PRAESENTATIONSHEURISTIK, ikke semantik — samme slags valg som
-    #: `_promote_earlier_answer_block` allerede tager ved `done` (den vælger
-    #: den længste tekst efter sidste rigtige værktøjskald). Forskellen er kun
-    #: TIDSPUNKTET: her gættes der undervejs i stedet for bagefter.
+    #: TAERSKLEN ER 350, IKKE 600 (Bjørn 27/11-2026). Den gamle vaerdi blev
+    #: valgt ud fra et oenske om at ramme 82 % af slutsvarene; den tog ikke
+    #: hoejde for den ANDEN fejl den skabte: naar en syntese selv naaede 600
+    #: tegn, foldede turen MIDT I syntesen. Foldet landede saa paa en
+    #: mellemtekst, og slutbeskeden blev skrevet inde i folden.
     #:
-    #: HVORFOR det er nødvendigt: uden den blev fold-signalet først sendt ved
-    #: `done`, altså EFTER slutsvaret var skrevet. Klienten havde derfor intet
-    #: at folde paa mens svaret strømmede — og fire klient-rettelser af gaten
-    #: flyttede intet, fordi de lyttede paa et signal der kom for sent.
+    #: Reglen er nu en SAMMENHAENG: en syntese maa hoest 350 tegn
+    #: (`output_discipline` beder modellen om det), og foldet maa foerst ske
+    #: over 350. Saa kan en syntese per konstruktion ikke udloese foldet, og
+    #: et fold kan ikke lande midt i en. De to tal SKAL foelges ad — haeves
+    #: den ene uden den anden, aabner fejlen sig igen.
     #:
-    #: 18 % af svarene er under tærsklen og folder derfor stadig først ved
-    #: `done`. Det er acceptabelt: korte svar er hurtige at læse, og fejlen er
-    #: lille. En lavere tærskel ville koste flere falske promoveringer.
-    _svar_taerskel = 600
+    #: Prisen er at flere korte slutsvar foerst folder ved `done`. Det er
+    #: acceptabelt: et kort svar er hurtigt at laese, og fejlen «fold midt i
+    #: en syntese» er den Bjørn faktisk ser.
+    _svar_taerskel = 350
 
     #: Kald hvis linje allerede er født af annonceringen (før kørslen). Uden
     #: den ville resultat-eventet føde en linje MERE om samme kald.

@@ -439,7 +439,7 @@ async def test_fold_signalet_sendes_midt_i_turen_naar_svaret_naar_taersklen():
     gennem `provisional_text_delta`. Del B maa derfor optræde som
     `content_block_delta` og ALDRIG som foreløbig visning.
     """
-    del_a = "A" * 700  # over `_svar_taerskel` (600)
+    del_a = "A" * 700  # over `_svar_taerskel` (350)
     del_b = "B" * 120
 
     async def legacy() -> AsyncIterator[str]:
@@ -1486,12 +1486,12 @@ async def test_taersklen_naas_paa_tvaers_af_working_step_nulstillinger():
     Kæden var: `_pending_text` blev TØMT ved hvert `working_step` (den gren
     stemplede teksten `commentary`). Tærskel-tjekket læste netop den kø, så
     en rigtig besvarelse — der afbrydes af runde-annonceringer hele tiden —
-    nåede ALDRIG 600 sammenhængende tegn. `final_answer_start` blev derfor
+    nåede ALDRIG tærsklen i sammenhængende tegn. `final_answer_start` blev derfor
     aldrig sendt midt i turen, `finalAnswerStarted` forblev falsk i klienten,
     `aaben` forblev sand hele turen — og rundelinjen, som kun vises ved
     `!arbejdeAabent`, forsvandt helt.
 
-    Målt her: 6 bider à 120 tegn = 720 samlet, hver under tærsklen på 600.
+    Målt her: 6 bider à 120 tegn = 720 samlet, hver under tærsklen på 350.
     Den gamle kode gav 0 fold-signaler; den nye skal give præcis 1.
     """
     bid = "x" * 120

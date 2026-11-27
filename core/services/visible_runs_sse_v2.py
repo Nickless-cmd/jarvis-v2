@@ -1121,6 +1121,20 @@ async def translate_to_v2(
                                 not _state["final_answer_started"]
                                 and _state["svar_kandidat_len"] >= _svar_taerskel
                             ):
+                                # SPOR (27/11-2026). Bjørn: «foldet skete først
+                                # efter slutbeskeden». Signalet kan sendes fra
+                                # to veje — tærsklen her og `done` nedenfor — og
+                                # uden et spor kan de to ikke skelnes bagefter:
+                                # `events` gemmer ikke SSE-signalet, og begge
+                                # veje giver samme `final_answer`-blok i basen.
+                                # Linjen siger hvilken vej der fyrede, og ved
+                                # hvilken tekstlaengde.
+                                logger.info(
+                                    "fold-signal: TAERSKEL (%d tegn >= %d, koe=%d)",
+                                    _state["svar_kandidat_len"],
+                                    _svar_taerskel,
+                                    len(_pending_text),
+                                )
                                 if _pending_text:
                                     await _flush_pending_text(final=True)
                                 else:
@@ -1236,6 +1250,11 @@ async def translate_to_v2(
                     # Signatet er ikke en transportdetalje: det er beskeden
                     # «svaret er faerdigt». Det skal ud, uanset koen.
                     if _completed and not _state["final_answer_started"]:
+                        logger.info(
+                            "fold-signal: DONE (taersklen aldrig naaet, %d tegn, has_tool=%s)",
+                            _state["svar_kandidat_len"],
+                            _state["has_tool"],
+                        )
                         _state["final_answer_started"] = True
                         await queue.put(SystemEvent(
                             kind="final_answer_start",

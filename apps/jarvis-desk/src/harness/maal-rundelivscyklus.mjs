@@ -109,15 +109,39 @@ for (const mode of modes) {
     // Tomrum: R1 må ikke stå helt usynlig (opacity<0.01) i en plads over 12px. Overdragelsen sker på
     // fadets slutning, så et par frames (transitionend → React-render) er det mest der tillades;
     // før rettelsen stod linjen usynlig i ~175 frames (≈3 s) indtil næste runde ankom.
+    // Tomrum: R1 må ikke stå helt usynlig (opacity<0.01) i en plads over 12px.
     const tomBoks = B.filter((s) => find(s, 'R1').o < 0.01 && find(s, 'R1').h > 12)
     krav(mode, scen, 'ingen varig usynlig plads-optagende rundelinje (≤4 frames mellem fade-slut og overdragelse)',
       tomBoks.length <= 4, `${tomBoks.length} frames med R1 helt usynlig men h>12px`)
-    const gap = B.map((s) => find(s, 'SYNTESE-B').y - (find(s, 'R1').y + find(s, 'R1').h))
-    // Code mode: den aktive linje afløses AF den afsluttede på samme plads — afstanden er konstant.
-    // Chat mode har ingen aktiv linje på pladsen; dér glider den afsluttede runde ind (kontrolleres af spring-kravet).
-    krav(mode, scen, 'afstand runde→syntese konstant gennem hele overdragelsen (±1.5px)',
-      mode === 'chat' || Math.max(...gap) - Math.min(...gap) <= 1.5,
-      `min ${Math.min(...gap).toFixed(1)} maks ${Math.max(...gap).toFixed(1)}`)
+    if (mode === 'code') {
+      // ── Code mode: linjen kommer EFTER syntesen (Bjørn 27/11-2026) ────────
+      // «den skal komme efter syntesen». Mens en syntese skrives, er
+      // rundelinjen der ikke: den kollapser til nulhøjde og glider ind igen når
+      // syntesen er færdig. FØR stod den hængende som en synlig afsluttet
+      // rundelinje gennem hele syntesen, og kravet var at dens plads var
+      // konstant — det er præcis den adfærd der er væk nu.
+      const hR1 = B.map((s) => find(s, 'R1').h)
+      krav(mode, scen, 'rundelinjen kollapser jævnt til nul mens syntesen skrives (højden falder monotont)',
+        monotonNed(hR1, 0.6) && hR1.at(-1) < 1, `h ${hR1[0]}→${hR1.at(-1)}`)
+      const slutIdx = hR1.findIndex((h) => h < 1)
+      const efterKollaps = slutIdx < 0 ? [] : hR1.slice(slutIdx)
+      krav(mode, scen, 'ingen usynlig plads står tilbage: efter kollaps er højden 0 gennem hele syntesen',
+        efterKollaps.length > 0 && Math.max(...efterKollaps) < 1,
+        `${efterKollaps.length} frames efter kollaps, maks h ${efterKollaps.length ? Math.max(...efterKollaps) : 'n/a'}`)
+    } else {
+      // ── Chat mode er UÆNDRET (Bjørn 27/11-2026) ───────────────────────────
+      // «i chat mode faded den aktive rundelinje ud som den skulle». Dens linje
+      // er `.chat-flow-round`, den ligger UNDER syntesen og gates af paceren —
+      // den er ikke rørt. Dens kontrakt står derfor som før: den afsluttede
+      // runde glider ind, og afstanden til syntesen er konstant.
+      const gap = B.map((s) => find(s, 'SYNTESE-B').y - (find(s, 'R1').y + find(s, 'R1').h))
+      // Chat mode har ingen aktiv linje på pladsen; dér glider den afsluttede
+      // runde ind, og det kontrolleres af spring-kravet ovenfor. Kravet her
+      // gælder derfor kun code mode — som før 27/11-2026.
+      krav(mode, scen, 'afstand runde→syntese konstant gennem hele overdragelsen (±1.5px)',
+        mode === 'chat' || Math.max(...gap) - Math.min(...gap) <= 1.5,
+        `min ${Math.min(...gap).toFixed(1)} maks ${Math.max(...gap).toFixed(1)}`)
+    }
     // Intet enkelt spring over 25 % af rundens plads (linjen + dens marginer) — B glider, den hopper ikke.
     const topBy = B.map((s) => find(s, 'SYNTESE-B').y)
     const rundePlads = Math.max(...B.map((s) => find(s, 'R1').h)) + 16
@@ -136,16 +160,39 @@ for (const mode of modes) {
     await browser.close()
   }
 
-  // ── 1c. Hele turen: A → R1 → B → R2 → C i kronologisk orden ───────────────
+  // ── 1c. Hele turen: kun den ARBEJDENDE rundelinje, og kun mellem synteserne ──
   {
     const { browser, page } = await aabn(mode)
     await page.evaluate(() => window.__trin(1)); await vent(page, 600)
-    for (let n = 2; n <= 6; n++) { await page.evaluate((n) => window.__trin(n), n); await vent(page, 800) }
-    await vent(page, 14000)
-    const s6 = await snap(page)
-    krav(mode, '1c tur', 'under turen: A, R1, B, R2, C i kronologisk orden',
-      synlig(s6).filter((x) => x !== 'r0').join(',') === 'SYNTESE-A,R1,SYNTESE-B,R2,SYNTESE-C', synlig(s6).join(','))
-    krav(mode, '1c tur', 'turhovedet er lukket under turen', s6.hoved?.aaben === 'false')
+    if (mode === 'chat') {
+      for (let n = 2; n <= 6; n++) { await page.evaluate((n) => window.__trin(n), n); await vent(page, 800) }
+      await vent(page, 14000)
+      const s6 = await snap(page)
+      krav(mode, '1c tur', 'under turen: A, R1, B, R2, C i kronologisk orden',
+        synlig(s6).filter((x) => x !== 'r0').join(',') === 'SYNTESE-A,R1,SYNTESE-B,R2,SYNTESE-C', synlig(s6).join(','))
+      krav(mode, '1c tur', 'turhovedet er lukket under turen', s6.hoved?.aaben === 'false')
+    } else {
+      // Code mode har ingen pacer der kan bære gaten, så den måles direkte:
+      // skriver en syntese sig, er rundelinjen der ikke; er syntesen færdig,
+      // står præcis den arbejdende linje der.
+      const runder = (s) => s.items
+        .filter((i) => i.slags === 'runde' && !i.iFold && i.o > 0.02 && i.h > 1)
+        .map((i) => i.id)
+      await page.evaluate(() => window.__trin(2)); await vent(page, 1200)
+      const underA = await snap(page)
+      await page.evaluate(() => window.__trin(3)); await vent(page, 3000)
+      const iMellem = await snap(page)
+      await page.evaluate(() => window.__trin(4)); await vent(page, 3000)
+      const underB = await snap(page)
+      krav(mode, '1c tur', 'mens syntese A skrives: ingen rundelinje er synlig',
+        runder(underA).length === 0, runder(underA).join(',') || 'ingen')
+      krav(mode, '1c tur', 'i mellemrummet efter A: præcis én rundelinje, og det er den arbejdende',
+        runder(iMellem).join(',') === 'R1' && !!find(iMellem, 'R1')?.aktiv,
+        `${runder(iMellem).join(',') || 'ingen'}${find(iMellem, 'R1')?.aktiv ? ' (aktiv)' : ''}`)
+      krav(mode, '1c tur', 'mens syntese B skrives: rundelinjen er væk igen',
+        runder(underB).length === 0, runder(underB).join(',') || 'ingen')
+      krav(mode, '1c tur', 'turhovedet er lukket under turen', underB.hoved?.aaben === 'false')
+    }
     await browser.close()
   }
 

@@ -641,6 +641,26 @@ function RaekkeTranskriptImpl({
   // skillelinjen og goere slutteksten til arbejde (målt 21/11-2026).
   const { arbejde: oprindeligtArbejde, svar, svarSektioner, kald } = opdel(transcriptBlocks, streaming && !effectiveAnswerStarted, effectiveAnswerStarted)
   const svarSamles = !streaming && !(svarRuller ?? false)
+  // ── Skriver en syntese sig lige nu? (målt 27/11-2026) ───────────────────
+  //
+  // Bjørn: «den aktive rundelinje … nu vises den mens syntesen skrives … den
+  // skal komme efter syntesen». Målt i Chromium: i code mode stod R1 med
+  // `h=84, o=1, aktiv` gennem HELE syntese B's pacing (285 → 482 tegn). Den
+  // fadede aldrig. Årsagen er at `skjulAktivRunde` hænger på pacerens
+  // `pacingFaerdig`, og `paceFinalAnswer` er falsk i code mode — så pacingen er
+  // «færdig» i samme frame teksten ankommer, og gaten bliver aldrig sand.
+  //
+  // Signalet her findes i BEGGE modes og kræver ingen pacer: er den nyeste
+  // indholdsblok tekst, er det en syntese der skrives. Er den et værktøjskald,
+  // er vi i mellemrummet mellem to synteser — og det er præcis dér rundelinjen
+  // hører til. `tool_result` og `thinking` springes over: de lander mellem
+  // kaldet og syntesen og må ikke få linjen til at poppe tilbage midt i den.
+  let sisteIndhold: ContentBlock | undefined
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    const b = blocks[i]
+    if (b?.type === 'text' || b?.type === 'tool_use') { sisteIndhold = b; break }
+  }
+  const synteseSkriver = streaming && sisteIndhold?.type === 'text'
   // Text always stays in the answer lane, and so do the late rounds: they keep
   // their chronological place between the syntheses for the whole life of the
   // turn (the transcript owns the order). Only the fold state decides whether
@@ -861,7 +881,16 @@ function RaekkeTranskriptImpl({
           // Foldetilstanden styrer KUN synlighed og animation: efter turen er
           // runden samlet når hovedet er lukket og åben på sin egen plads når
           // det er foldet ud. Pladsen er den samme hele tiden.
-          const samlet = svarSamles && !aaben
+          //
+          // Under turen gælder en anden regel (Bjørn 27/11-2026): der er kun
+          // ÉN rundelinje synlig — den der arbejder — og kun i mellemrummet
+          // mellem synteserne. Skriver en syntese sig, er pladsen kollapset;
+          // den glider ind igen når syntesen er færdig. Runder der allerede er
+          // afsluttet holdes kollapsede indtil turen er slut, hvor de samles i
+          // folden på deres egen plads — ellers ville to linjer poppe ind på
+          // én gang, og «den gamle runde overdrager til den nye» ville blive
+          // et blink i stedet for en overdragelse.
+          const samlet = streaming ? (synteseSkriver || !aktiv) : (svarSamles && !aaben)
           return (
             <div key={`r${i}`} className="rv-sen-runde" data-samles={samlet ? 'true' : 'false'}
               aria-hidden={samlet} {...(samlet ? { inert: true } : {})}>

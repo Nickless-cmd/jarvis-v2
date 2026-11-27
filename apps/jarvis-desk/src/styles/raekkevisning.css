@@ -953,8 +953,29 @@
   opacity: 0;
 }
 .raekkevisning .rv-sen-runde-indhold { min-height: 0; overflow: hidden; }
+/* Indgangen (Bjørn 27/11-2026): «den skal komme efter syntesen». En linje der
+   MOUNTES mens den er synlig får ingen transition — den står færdig i sin
+   første malede frame (målt: R2 dukkede op med h=84/o=1 i ét enkelt frame).
+   Derfor en animation på den synlige tilstand: den starter hver gang
+   attributten skifter tilbage til 'false', altså hver gang en syntese slipper
+   pladsen — og den glider derfor ind i stedet for at stå der. */
+.raekkevisning:not(.chat-flow-work-details) .rv-sen-runde[data-samles='false'] {
+  /* Uden fill-mode: naar animationen er færdig falder værdien tilbage på
+     basisreglen (1fr / opacity 1), så slut-lukningens transition kan løbe
+     uhindret. Med `both` blev den låst og lukningen sprang (målt 27/11-2026:
+     B 84px, maks 44px i ét frame). */
+  animation: rv-rundelinje-ind var(--fold-varighed) var(--fold-kurve);
+}
+@keyframes rv-rundelinje-ind {
+  /* Højde og opacity SKAL følges ad. Målt 27/11-2026: med kun opacity i
+     keyframen stod linjen usynlig i 12 frames mens højden allerede var fuld —
+     den usynlige boks var tilbage, blot i indgangen. */
+  from { opacity: 0; grid-template-rows: 0fr; transform: translateY(-4px); }
+  to { opacity: 1; grid-template-rows: 1fr; transform: none; }
+}
 @media (prefers-reduced-motion: reduce) {
   .raekkevisning .rv-sen-runde { transition: none; }
+  .raekkevisning .rv-sen-runde[data-samles='false'] { animation: none; }
 }
 
 /* Occupy the round line's cell while waiting for the model's first content. */

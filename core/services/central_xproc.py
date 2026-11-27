@@ -16,6 +16,9 @@ Publicerede feeds har TTL → en død proces forsvinder af sig selv fra panelet.
 from __future__ import annotations
 
 import os
+import asyncio
+import contextvars
+import logging
 import threading
 import time
 from typing import Any
@@ -30,6 +33,8 @@ _TTL = 600                             # sek. — runtime-daemons fyrer på kade
 _PUBLISH_EVERY = 2.0                   # throttle: max én skrivning pr. proces pr. 2s
 _FEED_CAP = 80                         # seneste N records publiceres
 
+logger = logging.getLogger(__name__)
+_publish_busy = threading.Lock()
 _last_publish = 0.0
 _publishing = threading.local()  # re-entrancy-guard mod publish→self_diagnose→record→publish-løkke
 
@@ -51,20 +56,42 @@ def maybe_publish() -> None:
     if getattr(_publishing, "active", False):
         return
     global _last_publish
-    try:
-        now = time.monotonic()
-        if now - _last_publish < _PUBLISH_EVERY:
-            return
-        _last_publish = now
-    except Exception:
+    now = time.monotonic()
+    if now - _last_publish < _PUBLISH_EVERY or not _publish_busy.acquire(blocking=False):
         return
+    # Recheck after acquiring: multiple caller threads may race the throttle.
+    if now - _last_publish < _PUBLISH_EVERY:
+        _publish_busy.release()
+        return
+    _last_publish = now
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:  # Non-async callers have no loop; preserve synchronous publication.
+        loop = None
+    if loop is None:
+        _publish_guarded()
+        return
+    try:
+        # SQLite may wait for a writer. Never make presence/chat's event loop
+        # wait with it. One pending publication coalesces a burst, rather than
+        # filling the executor queue while the database is busy.
+        context = contextvars.copy_context()
+        loop.run_in_executor(None, context.run, _publish_guarded)
+    except Exception as exc:
+        _publish_busy.release()
+        logger.debug("central_xproc: could not schedule publication: %s", exc)
+
+
+def _publish_guarded() -> None:
+    """Publish once off the async hot path, retaining the recursion guard."""
     _publishing.active = True
     try:
         _publish_now()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("central_xproc: best-effort publication failed: %s", exc)
     finally:
         _publishing.active = False
+        _publish_busy.release()
 
 
 def _publish_now() -> None:

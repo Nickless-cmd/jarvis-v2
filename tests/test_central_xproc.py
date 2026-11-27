@@ -2,6 +2,8 @@
 var usynlige for owner-feed'et (kun api-processen blev set)."""
 from __future__ import annotations
 
+import pytest
+
 from core.services import central_xproc as xp
 
 
@@ -85,3 +87,46 @@ def test_reentrancy_guard_breaks_publish_recursion(monkeypatch):
     monkeypatch.setattr(xp, "_publish_now", _recursing_publish)
     xp.maybe_publish()
     assert calls["n"] == 1  # guarden stoppede genindtræden
+
+
+@pytest.mark.asyncio
+async def test_async_hot_path_does_not_wait_for_locked_cache_and_coalesces(monkeypatch):
+    import asyncio
+    import contextvars
+    import threading
+    import time
+
+    entered = threading.Event()
+    release = threading.Event()
+    finished = threading.Event()
+    marker = contextvars.ContextVar('publication_test_context', default='missing')
+    calls = []
+
+    def blocked_publication():
+        calls.append(marker.get())
+        entered.set()
+        try:
+            release.wait(timeout=2)
+            xp.maybe_publish()  # A publish's own observations must not recurse.
+        finally:
+            finished.set()
+
+    monkeypatch.setattr(xp, '_publish_now', blocked_publication)
+    xp._last_publish = 0.0
+    token = marker.set('request-context')
+    try:
+        started = time.monotonic()
+        xp.maybe_publish()
+        assert time.monotonic() - started < 0.25
+        assert await asyncio.to_thread(entered.wait, 1)
+        # A later request must not queue more publishers behind the blocked one.
+        xp._last_publish = 0.0
+        xp.maybe_publish()
+        await asyncio.wait_for(asyncio.sleep(0), timeout=0.2)
+        assert calls == ['request-context']
+    finally:
+        marker.reset(token)
+        release.set()
+        assert await asyncio.to_thread(finished.wait, 1)
+        assert xp._publish_busy.acquire(timeout=1)
+        xp._publish_busy.release()

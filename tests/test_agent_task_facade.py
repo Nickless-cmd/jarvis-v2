@@ -432,3 +432,78 @@ def test_guard_text_maales_i_stedet_for_hele_prompten(monkeypatch):
     with pytest.raises(ValueError, match="bash"):
         task.derive(prompt="Kald `bash` og laes filen.", guard_text="Kald `bash` og laes filen.",
                     **base)
+
+
+# ── Koblingen mellem Task og side-opgaver (27/11-2026, Bjørn) ──────────────
+
+
+def _task_kald(**extra):
+    return dict(
+        owner_user_id="bjorn", origin_session_id="s1", parent_run_id="r1",
+        parent_agent_id="jarvis", description="Ret X", prompt="Gør Y",
+        subagent_type="researcher", model="", run_in_background=True, **extra)
+
+
+def test_task_kobler_side_opgaven_ved_accept(monkeypatch):
+    """Opgaven skal kunne findes igen paa assignmentet naar agenten er startet."""
+    from core.services import agent_contract_service as service
+    from core.services import agent_task_facade as task
+    from core.services import side_tasks
+
+    monkeypatch.setattr(task, "_session_scope", lambda owner, session: ("container", ""))
+    koblet: list = []
+    monkeypatch.setattr(
+        side_tasks, "kobl_agent",
+        lambda sid, **kw: koblet.append((sid, kw)) or True)
+    monkeypatch.setattr(service, "dispatch_agent", lambda **kw: {
+        "status": "accepted", "agent_id": "agent-9",
+        "assignment_id": "asg-9", "run_id": "run-9"})
+
+    out = task.execute(**_task_kald(side_task_id="side-9"))
+
+    assert out["status"] == "accepted"
+    assert koblet == [("side-9", {"agent_id": "agent-9",
+                                  "assignment_id": "asg-9", "run_id": "run-9"})], \
+        "koblingen blev ikke sat — opgaven ville staa uden ejer igen"
+
+
+def test_uden_side_task_kaldes_koblingen_ikke(monkeypatch):
+    """En almindelig Task maa ikke roere side-opgave-lageret."""
+    from core.services import agent_contract_service as service
+    from core.services import agent_task_facade as task
+    from core.services import side_tasks
+
+    monkeypatch.setattr(task, "_session_scope", lambda owner, session: ("container", ""))
+    koblet: list = []
+    monkeypatch.setattr(
+        side_tasks, "kobl_agent",
+        lambda sid, **kw: koblet.append((sid, kw)) or True)
+    monkeypatch.setattr(service, "dispatch_agent", lambda **kw: {
+        "status": "accepted", "agent_id": "a", "assignment_id": "asg", "run_id": "r"})
+
+    task.execute(**_task_kald())
+
+    assert koblet == []
+
+
+def test_side_task_id_naar_ikke_videre_til_dispatch(monkeypatch):
+    """Feltet er en kobling, ikke en autoritet: dispatch maa ikke se det.
+
+    `dispatch_agent` har ikke parameteren, saa et laek ville vaere en TypeError
+    ved hver eneste Task med en side-opgave.
+    """
+    from core.services import agent_contract_service as service
+    from core.services import agent_task_facade as task
+
+    monkeypatch.setattr(task, "_session_scope", lambda owner, session: ("container", ""))
+    set_: dict = {}
+
+    def _dispatch(**kw):
+        set_.update(kw)
+        return {"status": "accepted", "agent_id": "a", "assignment_id": "asg", "run_id": "r"}
+
+    monkeypatch.setattr(service, "dispatch_agent", _dispatch)
+
+    task.execute(**_task_kald(side_task_id="side-9"))
+
+    assert "side_task_id" not in set_, "feltet laekkede ind i dispatch"

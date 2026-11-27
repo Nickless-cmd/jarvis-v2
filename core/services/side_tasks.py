@@ -699,6 +699,83 @@ def reconcile_run(side_task_id: str, *, outcome: str, run_id: str = "",
     return str(response.get("status") or "") == "ok"
 
 
+def kobl_agent(side_task_id: str, *, agent_id: str, assignment_id: str,
+               run_id: str = "") -> bool:
+    """Bind an open side task to the agent assignment that works on it.
+
+    ``running``, not ``activated``: activated means a conversation is on the
+    task, running means work is actually in flight — same distinction
+    ``attach_autonomous_session`` makes for born autonomous runs.
+
+    ``assignment_id`` is the key that makes the terminal path able to find the
+    task again. Without it the agent finishes and nothing connects the two
+    (målt 27/11-2026: side-9ab9b39fb8 stod ``pending`` med ``agent_id: None``
+    efter arbejdet var merget, fordi der ikke fandtes nogen kobling).
+    """
+    sid = str(side_task_id or "").strip()
+    aid = str(assignment_id or "").strip()
+    if not sid or not aid:
+        return False
+    with med_laas(_STATE_KEY):
+        items = _load_all()
+        found = next((r for r in items if r.get("side_task_id") == sid), None)
+        if found is None or str(found.get("status") or "") in _TERMINALE:
+            return False
+        if str(found.get("status") or "") not in ACTIVE_STATUSES:
+            apply_transition(found, "running", actor="agent")
+        found["agent_id"] = str(agent_id or "")[:120]
+        found["assignment_id"] = aid[:120]
+        if run_id:
+            found["arbejds_run_id"] = str(run_id)[:160]
+        found["updated_at"] = datetime.now(UTC).isoformat()
+        _save_all(items)
+    return True
+
+
+#: Assignment-udfald → side-task-status. ``completed`` bliver bevidst ``paused``:
+#: agenten melder «færdig», og det er en påstand, ikke et bevis. Lukning kræver
+#: et bevis og er Jarvis' beslutning — ikke barnets egen dom over sit arbejde.
+_AGENT_OUTCOME_STATUS: dict[str, str] = {
+    "completed": "paused",
+    "cancelled": "paused",
+    "failed": "failed",
+    "timed_out": "failed",
+    "declined": "failed",
+}
+
+
+def frigiv_for_assignment(assignment_id: str, *, outcome: str, error: str = "") -> bool:
+    """Release the side task bound to a terminal assignment — without closing it.
+
+    The task returns to the open pool so it resurfaces for a closure that
+    carries proof. An agent that reports success is not evidence that the task
+    is solved; treating its word as one is exactly the silent-success shape
+    this system keeps paying for.
+    """
+    aid = str(assignment_id or "").strip()
+    if not aid:
+        return False
+    current = next((r for r in _load_all()
+                    if str(r.get("assignment_id") or "") == aid), None)
+    if current is None:
+        return False
+    sid = str(current.get("side_task_id") or "")
+    if not sid or str(current.get("status") or "") in _TERMINALE:
+        return False
+    if str(current.get("status") or "") not in ACTIVE_STATUSES:
+        return False
+    udfald = str(outcome or "").strip().lower()
+    target = _AGENT_OUTCOME_STATUS.get(udfald, "paused")
+    reason = (f"Agent-assignment {aid} sluttede som {udfald or 'ukendt'} — opgaven er "
+              "ikke lukket; lukning kræver et bevis")
+    if error:
+        reason += f": {str(error)[:300]}"
+    response = resolve(sid, decision=target, reason=reason,
+                       arbejds_run_id=(str(current.get("arbejds_run_id") or "") or None),
+                       lukket_af="runtime")
+    return str(response.get("status") or "") == "ok"
+
+
 def release_autonomous_claim(side_task_id: str, *, worker_id: str,
                              reason: str = "", retry_minutes: int = 10) -> bool:
     """Release a lease when no run was born; the task stays durable and open."""

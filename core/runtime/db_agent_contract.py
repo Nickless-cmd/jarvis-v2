@@ -473,6 +473,17 @@ def commit_terminal_outcome(
     except Exception:
         logger.warning("kunne ikke rydde approvals for %s", assignment_id, exc_info=True)
     _signal_feed(assignment_id)
+    # Side-opgaven frigives her — EFTER transaktionen, fordi side_tasks tager sin
+    # egen fil-lås og aldrig må kaldes inde i en åben BEGIN IMMEDIATE. Den lukkes
+    # ikke: agentens «færdig» er en påstand, og `completed` kræver et bevis.
+    # Placeringen dækker alle fire terminale veje (settle, deadlines, unknown
+    # outcome, activation-fejl), fordi de alle ender i denne funktion.
+    try:
+        from core.services.side_tasks import frigiv_for_assignment
+        frigiv_for_assignment(assignment_id, outcome=status, error=error_code)
+    except Exception:
+        logger.warning("side-opgaven kunne ikke frigives for %s", assignment_id,
+                       exc_info=True)
     if fired:
         from core.runtime.db_agent_wait import materialize_pending_wakes
         try:

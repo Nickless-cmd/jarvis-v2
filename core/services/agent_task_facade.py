@@ -181,7 +181,8 @@ def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
            parent_agent_id: str, description: str, prompt: str, subagent_type: str,
            model: str, run_in_background: bool, budget_tokens: int = 0,
            team_id: str = "", member_index: int = 0,
-           guard_text: str | None = None) -> dict[str, Any]:
+           guard_text: str | None = None,
+           side_task_id: str = "") -> dict[str, Any]:
     description, prompt = description.strip(), prompt.strip()
     kind = subagent_type.strip().lower()
     if not description or not prompt:
@@ -252,6 +253,11 @@ def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
     if str(team_id or "").strip():
         canonical["team_id"] = str(team_id).strip()
         canonical["member_index"] = int(member_index)
+    # Samme regel for side-opgaven: en gentagen dispatch paa samme post skal
+    # ramme samme raekke i stedet for at starte en ny agent. Kun naar den er
+    # sat — ellers er canonical byte-identisk med foer.
+    if str(side_task_id or "").strip():
+        canonical["side_task_id"] = str(side_task_id).strip()
     idem = "task-" + hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()[:32]
     mandate_id = "mnd-" + hashlib.sha256(idem.encode()).hexdigest()[:16]
     scoped_prompt = prompt
@@ -399,6 +405,9 @@ def execute_team(**fields: Any) -> dict[str, Any]:
 def execute(**fields: Any) -> dict[str, Any]:
     from core.services import agent_contract_service as service
 
+    # Side-opgaven laeses fra bestillingen, ikke fra planen: den er ikke en
+    # autoritet dispatch skal kende, kun en kobling der skal sættes bagefter.
+    side_task_id = str(fields.get("side_task_id") or "").strip()
     try:
         plan = derive(**fields)
     except ValueError as exc:  # facade validation is translated to the contract's stable error shape
@@ -410,6 +419,21 @@ def execute(**fields: Any) -> dict[str, Any]:
         parent_run_id=fields["parent_run_id"], parent_agent_id=fields["parent_agent_id"],
         mandate=mandate, **plan,
     )
+    # Koblingen sættes FØR den tidlige retur, så også baggrundskørsler binder
+    # opgaven. Fejler den, er det en log-linje — ikke en grund til at afvise et
+    # allerede accepteret assignment.
+    if side_task_id and result.get("status") == "accepted":
+        try:
+            from core.services.side_tasks import kobl_agent
+            kobl_agent(
+                side_task_id,
+                agent_id=str(result.get("agent_id") or ""),
+                assignment_id=str(result.get("assignment_id") or ""),
+                run_id=str(result.get("run_id") or ""),
+            )
+        except Exception:
+            logger.warning("side-opgaven %s kunne ikke kobles til assignmentet",
+                           side_task_id, exc_info=True)
     if background or result.get("status") != "accepted":
         return result
     waited = service.wait_agents(

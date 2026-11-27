@@ -98,7 +98,13 @@ AGENT_CONTRACT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                                          "task": {"type": "string",
                                                   "description": "This member's own question. Must be "
                                                                  "unique within the team."}},
-                          "required": ["role", "task"]}}}}},
+                          "required": ["role", "task"]}}}},
+         "side_task_id": {"type": "string",
+                          "description": "Optional. The id of an OPEN side task this agent is "
+                                         "solving. Runtime binds the two: the task goes 'running' "
+                                         "when the assignment is accepted and returns to the open "
+                                         "pool when the agent finishes. The agent does NOT close it "
+                                         "- closing needs evidence and stays with Jarvis."}},
         ["description", "prompt"],
         additional_properties=False),
     _fn("followup_agent",
@@ -307,11 +313,15 @@ def _exec_task(args: dict[str, Any]) -> dict[str, Any]:
         subagent_type=str(args.get("subagent_type") or ""), model=str(args.get("model") or ""),
         run_in_background=bool(args.get("run_in_background", True)),
         budget_tokens=max(0, int(args.get("budget_tokens") or 0)),
+        side_task_id=str(args.get("side_task_id") or ""),
     )
     team = args.get("team")
     if isinstance(team, dict) and team:
         # Et team er en anden bestilling end én agent. Spaerringen paa skriveret ligger i
         # derive_team(), ikke i skemaet — et skema kan ikke haandhaeve noget.
+        # Koblingen til en side-opgave gaelder ÉN opgave; et team er flere, og
+        # en syntese kan ikke vaere «den» loesning paa en enkelt post.
+        fields.pop("side_task_id", None)
         return execute_team(**fields, team=team)
     return execute(**fields)
 

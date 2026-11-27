@@ -83,9 +83,12 @@ def test_definitions_are_wellformed_and_required_fields_exist():
     # ikke en aendring der blot faar et tal til at stemme. `team` kom til 10/11-2026
     # (Leverance 4) — den er den eneste vej til mere end én agent ad gangen, og dens
     # medlemmer kan ikke skrive (spaerringen ligger i derive_team(), ikke i skemaet).
+    # `side_task_id` kom til 27/11-2026: den baerer KOBLINGEN, ikke en autoritet —
+    # den siger hvilken aaben post arbejdet gaelder, saa opgaven kan findes igen
+    # naar agenten er faerdig. Den kan ikke aabne eller lukke noget.
     assert set(by["Task"]["properties"]) == {
         "description", "prompt", "subagent_type", "model", "run_in_background",
-        "budget_tokens", "team"}
+        "budget_tokens", "team", "side_task_id"}
     # Alle autoritetsbaerende valg udledes af runtimen.
     # `budget_tokens` er ikke laengere paa listen: den er nu en legitim, VALGFRI
     # parameter der kun kan SAENKE den maalte default (10/11-2026). De oevrige

@@ -793,3 +793,90 @@ def test_finding_grenen_bevarer_not_before_og_autonomy_mode(lager, monkeypatch):
     post = next(r for r in lager if r["side_task_id"] == svar["side_task_id"])
     assert post["not_before"] is not None
     assert post["autonomy_mode"] == "inspect"
+
+
+# ── Koblingen mellem Task og side-opgaver (27/11-2026, Bjørn) ──────────────
+# Målt 27/11-2026: side-9ab9b39fb8 stod `pending` med `agent_id: None` efter
+# at agentens arbejde var merget. Der fandtes ingen kobling: agenten fik
+# opgavens tekst som fri prompt, og `side_task_id` fulgte ikke med. Opgaven
+# kunne derfor ikke lukkes af nogen — hverken agenten (uden værktøjet) eller
+# jeg (uden at vide hvilken post der var arbejdet på).
+
+
+def _lager(monkeypatch):
+    """Delt in-memory-lager: samme mønster som filens øvrige tests."""
+    state: list = []
+    monkeypatch.setattr(side_tasks, "load_json", lambda _key, _default: list(state))
+    monkeypatch.setattr(
+        side_tasks, "save_json",
+        lambda _key, items: state.__setitem__(slice(None), items),
+    )
+    return state
+
+
+def test_kobl_agent_binder_opgaven_til_assignmentet(monkeypatch):
+    """En opgave der sendes til en agent skal kunne findes igen på assignmentet."""
+    state = _lager(monkeypatch)
+    flag = side_tasks.flag(title="Ret X", prompt="Gør Y", autonomy_mode="none")
+    sid = flag["side_task_id"]
+
+    assert side_tasks.kobl_agent(
+        sid, agent_id="agent-1", assignment_id="asg-1", run_id="run-1") is True
+
+    row = state[0]
+    assert row["status"] == "running", "arbejde er i gang — ikke 'activated'"
+    assert row["assignment_id"] == "asg-1"
+    assert row["agent_id"] == "agent-1"
+    assert row["arbejds_run_id"] == "run-1"
+
+
+def test_kobl_agent_afviser_terminal_opgave(monkeypatch):
+    """En lukket opgave maa ikke genaabnes af en kobling."""
+    state = _lager(monkeypatch)
+    flag = side_tasks.flag(title="Ret X", prompt="Gør Y", autonomy_mode="none")
+    sid = flag["side_task_id"]
+    side_tasks.resolve(sid, decision="completed", bevis="Rettet i 5b1f5a1c4 og verificeret")
+
+    assert side_tasks.kobl_agent(sid, agent_id="a", assignment_id="asg-x") is False
+    assert state[0]["status"] == "completed"
+
+
+def test_frigiv_for_assignment_lukker_ikke_opgaven(monkeypatch):
+    """Agentens «færdig» er en paastand, ikke et bevis: opgaven bliver aaben.
+
+    Dette er hele pointen i koblingen. Havde frigivelsen sat `completed`, ville
+    en agent der melder succes lukke en post som ingen har efterproevet —
+    praecis den tavse succes-form systemet betaler for igen og igen.
+    """
+    state = _lager(monkeypatch)
+    flag = side_tasks.flag(title="Ret X", prompt="Gør Y", autonomy_mode="none")
+    sid = flag["side_task_id"]
+    side_tasks.kobl_agent(sid, agent_id="a", assignment_id="asg-2")
+
+    assert side_tasks.frigiv_for_assignment("asg-2", outcome="completed") is True
+
+    row = state[0]
+    assert row["status"] == "paused", f"blev {row['status']!r} — opgaven maa ikke lukkes"
+    assert row["status"] not in {"completed", "dismissed"}
+    assert "bevis" in str(row.get("state_reason") or "").lower(), \
+        "grunden skal sige at lukning kraever et bevis"
+
+
+def test_frigiv_for_assignment_markerer_fejl_som_fejl(monkeypatch):
+    """Et fejlet assignment er en fejl — ikke en pause."""
+    state = _lager(monkeypatch)
+    flag = side_tasks.flag(title="Ret X", prompt="Gør Y", autonomy_mode="none")
+    sid = flag["side_task_id"]
+    side_tasks.kobl_agent(sid, agent_id="a", assignment_id="asg-3")
+
+    assert side_tasks.frigiv_for_assignment(
+        "asg-3", outcome="timed_out", error="budget exhausted") is True
+
+    assert state[0]["status"] == "failed"
+    assert "budget exhausted" in str(state[0].get("state_reason") or "")
+
+
+def test_frigiv_for_ukendt_assignment_er_no_op(monkeypatch):
+    """Ukendt assignment maa ikke kaste — den kaldes fra en terminal-sti."""
+    _lager(monkeypatch)
+    assert side_tasks.frigiv_for_assignment("asg-findes-ikke", outcome="completed") is False

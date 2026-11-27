@@ -147,6 +147,9 @@ def _mark_text_phases(blocks: list[dict]) -> list[dict]:
     rækkefølge klienten faktisk tegner. Uden det beskrev fasen en rækkefølge
     der ikke findes længere.
     """
+    from core.services.code_answer_boundary import mark_code_answer_start
+
+    mark_code_answer_start(blocks)
     sidste_tekst = max(
         (index for index, block in enumerate(blocks) if block.get("type") == "text"),
         default=-1,

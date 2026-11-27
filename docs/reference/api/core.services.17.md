@@ -2,6 +2,40 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/internal_cadence.py`
+_Internal cadence layer for non-visible inner producers._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ProducerSpec` | `` | — | [src](../../../core/services/internal_cadence.py#L63) |
+| class | `ProducerTickResult` | `` | — | [src](../../../core/services/internal_cadence.py#L73) |
+| function | `register_producer` | `(spec)` | Register a non-visible inner producer with the cadence layer. | [src](../../../core/services/internal_cadence.py#L87) |
+| function | `deregister_producer` | `(name)` | Remove a producer from the cadence layer. | [src](../../../core/services/internal_cadence.py#L92) |
+| function | `_evaluate_producer` | `(spec, *, now, last_visible_at, ran_this_tick, tempo=…)` | Evaluate whether a producer is due. | [src](../../../core/services/internal_cadence.py#L106) |
+| class | `_ProducerWorker` | `` | Én persistent dæmon-tråd pr. producer, med kø og ledigheds-flag. | [src](../../../core/services/internal_cadence.py#L253) |
+| method | `_ProducerWorker.__init__` | `(self, name)` | — | [src](../../../core/services/internal_cadence.py#L258) |
+| method | `_ProducerWorker.busy` | `(self)` | Kører et job lige nu? | [src](../../../core/services/internal_cadence.py#L271) |
+| method | `_ProducerWorker.alive` | `(self)` | — | [src](../../../core/services/internal_cadence.py#L275) |
+| method | `_ProducerWorker.submit` | `(self, job)` | Læg job i køen. False = workeren er optaget af den forrige kørsel. | [src](../../../core/services/internal_cadence.py#L278) |
+| method | `_ProducerWorker._loop` | `(self)` | — | [src](../../../core/services/internal_cadence.py#L287) |
+| method | `_ProducerWorker.stop` | `(self)` | Luk workeren: luk dens DB-forbindelse i dens EGEN tråd, og stop. | [src](../../../core/services/internal_cadence.py#L297) |
+| function | `_luk_denne_traads_forbindelse` | `()` | Kører i worker-tråden: luk den thread-lokale pool-forbindelse. | [src](../../../core/services/internal_cadence.py#L307) |
+| function | `_get_worker` | `(navn)` | — | [src](../../../core/services/internal_cadence.py#L320) |
+| function | `_stop_worker` | `(navn)` | — | [src](../../../core/services/internal_cadence.py#L329) |
+| function | `stadig_i_flugt` | `(navn)` | Kører en tidligere kørsel af producenten stadig? | [src](../../../core/services/internal_cadence.py#L336) |
+| function | `_noter_i_flugt` | `(navn, t)` | — | [src](../../../core/services/internal_cadence.py#L364) |
+| function | `_rapporter_sen_succes` | `(navn)` | En koersel der blev faerdig EFTER kalderen opgav, er stadig en succes. | [src](../../../core/services/internal_cadence.py#L369) |
+| function | `_run_producer_bounded` | `(spec, *, trigger, last_visible_at, timeout_s)` | Kør en producer i sin EGEN persistente worker-tråd med en hård timeout. | [src](../../../core/services/internal_cadence.py#L388) |
+| function | `run_cadence_tick` | `(*, trigger=…, last_visible_at_iso=…)` | Run one cadence tick: evaluate and dispatch all registered producers. | [src](../../../core/services/internal_cadence.py#L456) |
+| function | `get_cadence_state` | `()` | Return current cadence layer state for MC observability. | [src](../../../core/services/internal_cadence.py#L771) |
+| function | `_ensure_producers_registered` | `()` | Register known producers if not already registered. | [src](../../../core/services/internal_cadence.py#L811) |
+| function | `_valider_afhaengigheder` | `()` | Afvis manglende udbydere og cykler HOEJLYDT ved bootstrap. | [src](../../../core/services/internal_cadence.py#L846) |
+| function | `run_cadence_tick_with_bootstrap` | `(*, trigger=…, last_visible_at_iso=…)` | Bootstrap producers and run a cadence tick. | [src](../../../core/services/internal_cadence.py#L890) |
+| function | `_run_injection_refresh_tick` | `()` | Central-styret indre liv: refresh beskidte injektions-enheder i baggrunden (OFF hot-path). | [src](../../../core/services/internal_cadence.py#L913) |
+| function | `_scheduler_loop` | `()` | Background loop: tick cadence every _SCHEDULER_INTERVAL_S seconds. | [src](../../../core/services/internal_cadence.py#L928) |
+| function | `start_cadence_scheduler` | `()` | Spawn the standalone cadence scheduler thread. Idempotent. | [src](../../../core/services/internal_cadence.py#L993) |
+| function | `stop_cadence_scheduler` | `()` | Signal the scheduler thread to exit. Best-effort; daemon dies with process. | [src](../../../core/services/internal_cadence.py#L1008) |
+
 ## `core/services/internal_cadence_central_wiring.py`
 _Central-wiring cadence producers (split from internal_cadence.py)._
 
@@ -632,21 +666,4 @@ _Local-tool broker (Path B — server-owned transcript, client-local execution).
 | function | `resolve` | `(call_id, content, *, is_error=…)` | Called by POST /chat/tool_results. Deliver the client's result to the waiting run. | [src](../../../core/services/local_tool_broker.py#L84) |
 | function | `pending_call_ids` | `(session_id)` | The call_ids currently awaiting a client result for a session (diagnostics). | [src](../../../core/services/local_tool_broker.py#L97) |
 | function | `cancel_session` | `(session_id)` | Fail all pending calls for a session (e.g. client disconnected). Returns count. | [src](../../../core/services/local_tool_broker.py#L104) |
-
-## `core/services/long_arc_synthesizer.py`
-_Long-arc synthesizer — monthly / quarterly / annual narrative integration._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_arcs_dir` | `()` | — | [src](../../../core/services/long_arc_synthesizer.py#L37) |
-| function | `_existing_arcs` | `(period)` | — | [src](../../../core/services/long_arc_synthesizer.py#L43) |
-| function | `_gather_weekly_manifests` | `(weeks_back)` | Read recent WEEKLY_MANIFEST.md files (only one exists; we read its current content). | [src](../../../core/services/long_arc_synthesizer.py#L47) |
-| function | `_gather_crisis_markers` | `(days)` | — | [src](../../../core/services/long_arc_synthesizer.py#L59) |
-| function | `_gather_drift` | `(days)` | — | [src](../../../core/services/long_arc_synthesizer.py#L67) |
-| function | `_gather_closed_goals` | `(days)` | — | [src](../../../core/services/long_arc_synthesizer.py#L75) |
-| function | `_build_synthesis_prompt` | `(*, period, days, weekly, crises, drift, goals)` | — | [src](../../../core/services/long_arc_synthesizer.py#L89) |
-| function | `synthesize_arc` | `(*, period)` | Generate a single arc (monthly/quarterly/annual). Skips if recent one exists. | [src](../../../core/services/long_arc_synthesizer.py#L133) |
-| function | `list_arcs` | `(*, period=…)` | — | [src](../../../core/services/long_arc_synthesizer.py#L208) |
-| function | `_exec_synthesize_arc` | `(args)` | — | [src](../../../core/services/long_arc_synthesizer.py#L228) |
-| function | `_exec_list_arcs` | `(args)` | — | [src](../../../core/services/long_arc_synthesizer.py#L232) |
 

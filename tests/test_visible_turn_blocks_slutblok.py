@@ -104,3 +104,40 @@ def test_uden_tools_er_al_tekst_svaret() -> None:
         {"type": "text", "text": "et rent svar"},
     ])
     assert blocks[0]["phase"] == "final_answer"
+
+
+def test_code_boundary_survives_later_syntheses_and_repeated_marking() -> None:
+    blocks = [
+        {"type": "tool_use", "id": "first"},
+        {"type": "text", "text": "Early synthesis"},
+        {"type": "text", "text": "[[jarvis:answer]]\nShort answer"},
+        {"type": "tool_use", "id": "late-a"},
+        {"type": "text", "text": "Synthesis A"},
+        {"type": "tool_use", "id": "late-b"},
+        {"type": "text", "text": "Synthesis B"},
+    ]
+    _mark_text_phases(blocks)
+    _mark_text_phases(blocks)
+    assert blocks[2]["code_answer_start"] is True
+    assert sum(bool(b.get("code_answer_start")) for b in blocks) == 1
+    # Existing chat phases remain unchanged; the code marker is separate.
+    assert blocks[2]["phase"] == "commentary"
+    assert blocks[-1]["phase"] == "final_answer"
+
+
+def test_code_boundary_preserves_explicit_short_answer() -> None:
+    blocks = _mark_text_phases([
+        {"type": "text", "text": "Short answer", "phase": "final_answer"},
+        {"type": "tool_use", "id": "late"},
+        {"type": "text", "text": "Late synthesis"},
+    ])
+    assert blocks[0]["code_answer_start"] is True
+
+
+def test_plain_multiblock_reply_starts_at_first_paragraph() -> None:
+    blocks = _mark_text_phases([
+        {"type": "text", "text": "First paragraph"},
+        {"type": "text", "text": "Second paragraph"},
+    ])
+    assert blocks[0]["code_answer_start"] is True
+    assert not blocks[1].get("code_answer_start")

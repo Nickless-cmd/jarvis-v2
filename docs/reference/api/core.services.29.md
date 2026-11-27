@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/temporal_body.py`
+_Temporal Body — sense of age._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_taelling` | `()` | Antal tanke-optegnelser. 0 når databasen ikke kan læses. | [src](../../../core/services/temporal_body.py#L52) |
+| function | `_load` | `()` | — | [src](../../../core/services/temporal_body.py#L75) |
+| function | `age_journey` | `(thoughts=…)` | Tæl ét tik. `thoughts` ignoreres nu — tankerne TÆLLES, ikke lægges til. | [src](../../../core/services/temporal_body.py#L85) |
+| function | `get_temporal_body_age` | `()` | — | [src](../../../core/services/temporal_body.py#L104) |
+| function | `describe_temporal_body` | `()` | — | [src](../../../core/services/temporal_body.py#L116) |
+| function | `format_age_for_prompt` | `()` | — | [src](../../../core/services/temporal_body.py#L121) |
+| function | `reset_temporal_body` | `()` | Nulstil tik-tælleren. Rydder OGSÅ disken. | [src](../../../core/services/temporal_body.py#L125) |
+| function | `build_temporal_body_surface` | `()` | — | [src](../../../core/services/temporal_body.py#L136) |
+
 ## `core/services/temporal_context.py`
 _Temporal Context — time-based situational awareness._
 
@@ -564,29 +578,4 @@ _Kortlivet opslag af strukturerede tool-resultater til DIL-binding._
 | function | `_prefixed_tool_text` | `(tool_name, text)` | — | [src](../../../core/services/tool_result_store.py#L383) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tool_result_store.py#L391) |
 | function | `repair_permissions` | `()` | Saet 0600 paa gamle handles der blev skrevet foer O_EXCL-stien fandtes. | [src](../../../core/services/tool_result_store.py#L406) |
-
-## `core/services/tool_round_label.py`
-_Én kort etiket for en afsluttet værktøjs-runde — «Rettede NPE i UserService»._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_model` | `()` | — | [src](../../../core/services/tool_round_label.py#L123) |
-| function | `_base_url` | `()` | — | [src](../../../core/services/tool_round_label.py#L134) |
-| function | `_klip` | `(v, maks)` | Kort, én linje, og aldrig `None` som teksten «None». | [src](../../../core/services/tool_round_label.py#L145) |
-| function | `_navn_og_input` | `(v)` | Navn og argumenter, uanset hvilken form kaldet har. | [src](../../../core/services/tool_round_label.py#L154) |
-| function | `_uden_egen_tekst` | `(raa_input)` | Kaldets input uden de felter hvor Jarvis selv skriver en linje. | [src](../../../core/services/tool_round_label.py#L168) |
-| function | `byg_prompt` | `(vaerktoejer, hensigt=…)` | Det kompakte billede af runden som modellen får. | [src](../../../core/services/tool_round_label.py#L194) |
-| function | `_kald_model` | `(prompt)` | — | [src](../../../core/services/tool_round_label.py#L226) |
-| function | `_klip_haengende` | `(s, blev_klippet)` | Få en klippet etiket til at slutte hvor et led slutter. | [src](../../../core/services/tool_round_label.py#L263) |
-| function | `_ryd` | `(s)` | Én linje, uden instruktion, uden anførselstegn, uden punktum, klippet | [src](../../../core/services/tool_round_label.py#L297) |
-| function | `_opdigtet` | `(tekst, billede)` | Hvilket navn i etiketten står IKKE i kaldene? `""` når alt er dækket. | [src](../../../core/services/tool_round_label.py#L329) |
-| function | `_er_kommandolinje` | `(s)` | Er etiketten bare kommandoen igen? | [src](../../../core/services/tool_round_label.py#L372) |
-| function | `_ikke_datid` | `(tekst)` | Står linjen i nutid eller bydeform? Så beskriver den ikke et afsluttet forløb. | [src](../../../core/services/tool_round_label.py#L412) |
-| function | `_verbum_lyver` | `(tekst, kald)` | Påstår etiketten en ændring i en runde der kun læste? | [src](../../../core/services/tool_round_label.py#L442) |
-| function | `_input_dict` | `(v)` | Kaldets argumenter som dict, uanset om de kom som streng eller objekt. | [src](../../../core/services/tool_round_label.py#L464) |
-| function | `egen_runde_etiket` | `(kald)` | Jarvis' egen linje for runden, hvis han skrev en. Ellers `""`. | [src](../../../core/services/tool_round_label.py#L475) |
-| function | `_har_egen_beskrivelse` | `(kald)` | Er runden ÉT kald der bærer en brugbar `description`? | [src](../../../core/services/tool_round_label.py#L498) |
-| function | `_doem` | `(ud, kald, billede)` | Kør en færdig tekst gennem værnene. `""` = kasseret. | [src](../../../core/services/tool_round_label.py#L514) |
-| function | `etiket` | `(vaerktoejer, hensigt=…, egen=…)` | Én kort etiket for runden, eller `""`. | [src](../../../core/services/tool_round_label.py#L544) |
-| function | `tool_use_ids` | `(vaerktoejer)` | Hvilke kald etiketten dækker. | [src](../../../core/services/tool_round_label.py#L593) |
 

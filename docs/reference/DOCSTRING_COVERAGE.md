@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10545/19217 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10547/19223 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -12,6 +12,7 @@ Generated from source. 10545/19217 functions/methods documented (54%). The list 
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
+| `apps.jarvis-desk.src.harness` | 0 | 0 | 0% |
 | `apps.voice_agent` | 4 | 22 | 18% |
 | `core.auth` | 7 | 52 | 13% |
 | `core.browser` | 14 | 28 | 50% |
@@ -26,7 +27,7 @@ Generated from source. 10545/19217 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 928 | 1645 | 56% |
-| `core.services` | 7080 | 13046 | 54% |
+| `core.services` | 7082 | 13052 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +44,7 @@ Generated from source. 10545/19217 functions/methods documented (54%). The list 
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2684)
+## Undocumented public functions (2687)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L236)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1100,6 +1101,9 @@ Generated from source. 10545/19217 functions/methods documented (54%). The list 
 - `core/services/cluster_family_scheduler.py` :: `stop_event` (L86)
 - `core/services/code_aesthetic_daemon.py` :: `build_code_aesthetic_surface` (L68)
 - `core/services/code_aesthetic_daemon.py` :: `get_latest_aesthetic_reflection` (L64)
+- `core/services/code_answer_boundary.py` :: `AnswerMarkerStream.feed` (L27)
+- `core/services/code_answer_boundary.py` :: `AnswerMarkerStream.flush` (L67)
+- `core/services/code_answer_boundary.py` :: `strip_answer_markers` (L75)
 - `core/services/cognitive_episodes.py` :: `build_cognitive_episode_prompt_section` (L327)
 - `core/services/collective_pulse_daemon.py` :: `build_collective_pulse_surface` (L246)
 - `core/services/collective_pulse_daemon.py` :: `run_pulse` (L192)
@@ -2368,25 +2372,25 @@ Generated from source. 10545/19217 functions/methods documented (54%). The list 
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L683)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L680)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L690)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L7362)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L7387)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7425)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7421)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7358)
-- `core/services/visible_runs.py` :: `register_visible_run` (L7320)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7442)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L7373)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L7365)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L7390)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7428)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7424)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7361)
+- `core/services/visible_runs.py` :: `register_visible_run` (L7323)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7445)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L7376)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
-- `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L772)
+- `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L774)
 - `core/services/visible_runs_sections/approval_wait.py` :: `unregister_live_approval` (L113)
-- `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L108)
-- `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L157)
 - `core/services/visible_stream_gate.py` :: `enter_visible_stream` (L38)
 - `core/services/visible_stream_gate.py` :: `exit_visible_stream` (L44)
 - `core/services/visible_terminal_policy.py` :: `classify_terminal` (L141)
 - `core/services/visible_terminal_policy.py` :: `has_pending_tool_intent` (L52)
 - `core/services/visible_terminal_policy.py` :: `is_recoverable_exit_reason` (L65)
 - `core/services/visible_terminal_policy.py` :: `recovery_notice` (L180)
+- `core/services/visible_tool_echo.py` :: `ToolEchoFilter.feed` (L40)
+- `core/services/visible_tool_echo.py` :: `ToolEchoFilter.flush` (L89)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L102)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L298)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L106)

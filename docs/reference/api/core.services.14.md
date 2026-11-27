@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/experienced_time_daemon.py`
+_Experienced time daemon — tracks subjective felt duration of the current session._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `raw_signal_mode_enabled` | `()` | Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state. | [src](../../../core/services/experienced_time_daemon.py#L25) |
+| function | `_build_raw_felt` | `(*, base_minutes, density_factor)` | Byg felt-strengen udelukkende fra rå metrics — ingen LLM. | [src](../../../core/services/experienced_time_daemon.py#L39) |
+| function | `tick_experienced_time_daemon` | `(event_count, new_signal_count, energy_level)` | Update experienced time state. | [src](../../../core/services/experienced_time_daemon.py#L49) |
+| function | `_label` | `(felt_minutes)` | — | [src](../../../core/services/experienced_time_daemon.py#L96) |
+| function | `_generate_felt_label` | `(*, felt_minutes, event_count, novelty_count, energy_level)` | — | [src](../../../core/services/experienced_time_daemon.py#L108) |
+| function | `reset_experienced_time_daemon` | `()` | Reset session state (for new session or testing). | [src](../../../core/services/experienced_time_daemon.py#L140) |
+| function | `build_experienced_time_surface` | `()` | — | [src](../../../core/services/experienced_time_daemon.py#L149) |
+
 ## `core/services/experiential_memory.py`
 _Experiential Memory — not just facts, but lived experiences with emotion._
 
@@ -542,16 +555,4 @@ _Review-cluster gate — selv-review-vurdering, GRADERET._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `review_gate` | `(ctx)` | ctx: {review} hvor review har risk_level (low/med/high) + score. | [src](../../../core/services/gate_review.py#L23) |
-
-## `core/services/gate_shadow.py`
-_Track 2 — SHADOW-kørsel af de sovende post_output-gates._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_is_enforced` | `(nerve)` | True hvis gaten er graduated til enforce (i _ENFORCED) OG ikke kill-switchet fra. | [src](../../../core/services/gate_shadow.py#L61) |
-| function | `_enforce_verdict` | `(nerve, cluster, klass, verdict)` | Håndhæv en enforced gates ikke-grønne verdict = gør det SYNLIGT som central-incident. | [src](../../../core/services/gate_shadow.py#L72) |
-| function | `POST_OUTPUT_GATES_CLUSTERS` | `()` | (nerve, cluster) i kald-rækkefølge — til test/introspektion. | [src](../../../core/services/gate_shadow.py#L99) |
-| function | `_shadow_enabled` | `()` | True medmindre gate_kernel.shadow er EKSPLICIT slået fra. Fail-open til ON | [src](../../../core/services/gate_shadow.py#L104) |
-| function | `_resolve` | `(mod_path, fn_attr)` | — | [src](../../../core/services/gate_shadow.py#L114) |
-| function | `run_post_output_shadow` | `(ctx)` | Kør de 5 sovende gates i SKYGGE via central().decide. | [src](../../../core/services/gate_shadow.py#L119) |
 

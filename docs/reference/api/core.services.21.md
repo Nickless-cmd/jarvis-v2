@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/phone_wake.py`
+_Push-vækning: banker på telefonen når den sover._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_som_tal` | `(version)` | — | [src](../../../core/services/phone_wake.py#L59) |
+| function | `_husk_version` | `(version)` | Gem den app-version telefonen sidst meldte ved registrering. | [src](../../../core/services/phone_wake.py#L67) |
+| function | `app_forstaar_vaekning` | `()` | Kan den app vi sidst saa haandtere en tavs vaekning? | [src](../../../core/services/phone_wake.py#L79) |
+| function | `telefon_er_forbundet` | `(user_id)` | Er der en klient med telefon-værktøjer for brugeren lige nu? | [src](../../../core/services/phone_wake.py#L97) |
+| function | `_send_vaekning` | `(user_id)` | Stille data-push. Ingen title/preview → ingen synlig notifikation. | [src](../../../core/services/phone_wake.py#L125) |
+| function | `vaek_og_vent` | `(user_id, *, vent_s=…)` | Væk telefonen og vent på at broen melder sig. True hvis den kom. | [src](../../../core/services/phone_wake.py#L150) |
+
 ## `core/services/plan_mode.py`
 _Server-authoritative Plan mode for the visible code lane._
 
@@ -666,17 +678,4 @@ _Small process-local cache for reusing one prompt assembly within a turn._
 | function | `lookup` | `(key, *, now=…)` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L26) |
 | function | `store` | `(key, value, *, now=…)` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L39) |
 | function | `clear` | `()` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L46) |
-
-## `core/services/prompt_cache_probe.py`
-_Prompt-cache-sonde — find hvad der bryder prefix-cachen MELLEM to rigtige ture._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ProbeVerdict` | `` | Resultatet af at sammenligne to beskeds-arrays. | [src](../../../core/services/prompt_cache_probe.py#L47) |
-| method | `ProbeVerdict.as_line` | `(self)` | — | [src](../../../core/services/prompt_cache_probe.py#L61) |
-| function | `flatten` | `(items)` | Fold provider-item-formen ud til (rolle, tekst). | [src](../../../core/services/prompt_cache_probe.py#L73) |
-| function | `compare` | `(prev, cur)` | Find hvor langt det byte-identiske prefix rækker. Ren funktion. | [src](../../../core/services/prompt_cache_probe.py#L97) |
-| function | `_nearby_sections` | `(text, offset)` | De sidste sektions-overskrifter før bruddet — peger på synderen. | [src](../../../core/services/prompt_cache_probe.py#L130) |
-| function | `enabled` | `()` | Sonden er slukket med mindre gate-filen findes. | [src](../../../core/services/prompt_cache_probe.py#L147) |
-| function | `probe` | `(items, *, session_id=…, source=…)` | Skriv turens beskeds-array og sammenlign med forrige tur. | [src](../../../core/services/prompt_cache_probe.py#L155) |
 

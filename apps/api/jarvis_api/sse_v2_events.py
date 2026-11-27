@@ -72,6 +72,8 @@ class ContentBlockStart:
     block_type: str  # "text" | "thinking" | "tool_use"
     tool_id: str | None = None  # kun for tool_use
     tool_name: str | None = None  # kun for tool_use
+    code_answer_protocol: int | None = None
+    code_answer_start: bool = False
     phase: str | None = None  # kun text: "commentary" | "final_answer"
 
     def to_sse_line(self) -> str:
@@ -88,6 +90,10 @@ class ContentBlockStart:
             content_block = {"type": "thinking", "thinking": ""}
         else:
             content_block = {"type": "text", "text": ""}
+            if self.code_answer_protocol is not None:
+                content_block["code_answer_protocol"] = self.code_answer_protocol
+            if self.code_answer_start:
+                content_block["code_answer_start"] = True
             if self.phase in ("commentary", "final_answer"):
                 content_block["phase"] = self.phase
         return _sse_format("content_block_start", {

@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/drive_arbitration_engine.py`
+_Desire/value arbitration as a compact drive system._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `arbitrate_drives` | `(*, user_message=…, context=…)` | — | [src](../../../core/services/drive_arbitration_engine.py#L14) |
+| function | `build_drive_arbitration_surface` | `()` | — | [src](../../../core/services/drive_arbitration_engine.py#L56) |
+| function | `build_drive_arbitration_prompt_section` | `()` | — | [src](../../../core/services/drive_arbitration_engine.py#L69) |
+| function | `_policy_for_top` | `(top)` | — | [src](../../../core/services/drive_arbitration_engine.py#L84) |
+
 ## `core/services/edit_checkpoint.py`
 _Git-checkpoint pr. redigeringsrunde — en dårlig runde kan rulles tilbage samlet._
 
@@ -647,17 +657,4 @@ _Experience substrate — embedding-retrieval learning layer._
 | function | `record_episode` | `(*, session_id, turn_id=…, context_text, context_intent=…, active_loops=…, last_tools=…, session_phase=…, tool_sequence, outcome_signals, user_corrected=…)` | Record a new experience episode: insert to DB + embed to ChromaDB. | [src](../../../core/services/experience_substrate.py#L256) |
 | function | `retrieve_similar_episodes` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…, context_text=…, k=…, min_score=…)` | Retrieve top-K similar experience episodes from ChromaDB. | [src](../../../core/services/experience_substrate.py#L344) |
 | function | `build_experience_substrate_section` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…, user_message=…, k=…)` | Build the _experience_substrate prompt section. | [src](../../../core/services/experience_substrate.py#L431) |
-
-## `core/services/experienced_time_daemon.py`
-_Experienced time daemon — tracks subjective felt duration of the current session._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `raw_signal_mode_enabled` | `()` | Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state. | [src](../../../core/services/experienced_time_daemon.py#L25) |
-| function | `_build_raw_felt` | `(*, base_minutes, density_factor)` | Byg felt-strengen udelukkende fra rå metrics — ingen LLM. | [src](../../../core/services/experienced_time_daemon.py#L39) |
-| function | `tick_experienced_time_daemon` | `(event_count, new_signal_count, energy_level)` | Update experienced time state. | [src](../../../core/services/experienced_time_daemon.py#L49) |
-| function | `_label` | `(felt_minutes)` | — | [src](../../../core/services/experienced_time_daemon.py#L96) |
-| function | `_generate_felt_label` | `(*, felt_minutes, event_count, novelty_count, energy_level)` | — | [src](../../../core/services/experienced_time_daemon.py#L108) |
-| function | `reset_experienced_time_daemon` | `()` | Reset session state (for new session or testing). | [src](../../../core/services/experienced_time_daemon.py#L140) |
-| function | `build_experienced_time_surface` | `()` | — | [src](../../../core/services/experienced_time_daemon.py#L149) |
 

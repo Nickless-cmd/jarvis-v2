@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/nudge_broend.py`
+_Nudge-broend — daemons drop nudges, Jarvis inspects and decides._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/nudge_broend.py#L39) |
+| function | `_save` | `(nudges)` | — | [src](../../../core/services/nudge_broend.py#L52) |
+| function | `_cleanup` | `(nudges)` | Remove oldest non-pending nudges if over max. | [src](../../../core/services/nudge_broend.py#L63) |
+| function | `push` | `(*, source=…, kind=…, message=…, importance=…, raw_payload=…, emne=…)` | Deposit a nudge in the broend. Returns nudge_id. | [src](../../../core/services/nudge_broend.py#L81) |
+| function | `list_pending` | `(limit=…)` | List pending nudges, newest first. | [src](../../../core/services/nudge_broend.py#L134) |
+| function | `_emne_for` | `(source, message)` | Udled en emne-nøgle når kalderen ikke giver en. | [src](../../../core/services/nudge_broend.py#L146) |
+| function | `_parse_ts` | `(value)` | — | [src](../../../core/services/nudge_broend.py#L162) |
+| function | `sidst_naevnt` | `(emne)` | Hvornår emnet sidst blev SAGT. None = aldrig. | [src](../../../core/services/nudge_broend.py#L170) |
+| function | `kadence_tillader` | `(emne, *, nu=…)` | Må emnet nævnes nu? Højst én prik pr. emne pr. dag. | [src](../../../core/services/nudge_broend.py#L190) |
+| function | `mark_venter` | `(nudge_id, *, grund=…)` | Trin 4: flyt en nudge til ``venter`` — ikke kasseret, ikke gentaget. | [src](../../../core/services/nudge_broend.py#L199) |
+| function | `list_ventende` | `(limit=…)` | Nudges der venter på at verden flytter sig. | [src](../../../core/services/nudge_broend.py#L225) |
+| function | `genoptag_ved_skift` | `(skift, *, nu=…)` | Trin 5: genoptag hvilende nudges NÅR et registreret skift er tilgængeligt. | [src](../../../core/services/nudge_broend.py#L232) |
+| function | `trin_for` | `(emne, *, nu=…)` | Hvilket trin er emnet på? 0-3, beregnet af historikken. | [src](../../../core/services/nudge_broend.py#L324) |
+| function | `formuler_for_trin` | `(trin, message, emne=…)` | Formulér beskeden efter trinnet. Grovheden er FORMEN, ikke indholdet. | [src](../../../core/services/nudge_broend.py#L352) |
+| function | `count_pending` | `()` | Return count of pending nudges. | [src](../../../core/services/nudge_broend.py#L368) |
+| function | `get` | `(nudge_id)` | Get a single nudge by ID. | [src](../../../core/services/nudge_broend.py#L374) |
+| function | `mark_sent` | `(nudge_id, *, trin=…)` | Mark a nudge as sent. | [src](../../../core/services/nudge_broend.py#L383) |
+| function | `mark_dismissed` | `(nudge_id, reason=…)` | Mark a single nudge as dismissed. | [src](../../../core/services/nudge_broend.py#L402) |
+| function | `dismiss_all` | `(reason=…)` | Dismiss all pending nudges. Returns count. | [src](../../../core/services/nudge_broend.py#L416) |
+
 ## `core/services/oauth_flow.py`
 _OAuth-flow-helper for plugin-connectors (16. jun 2026)._
 
@@ -603,16 +628,4 @@ _core/services/pfsense_syslog.py_
 | function | `drain_detections` | `()` | Hent + ryd nye detektioner (kaldes af infra_sense-cadence). Self-safe. | [src](../../../core/services/pfsense_syslog.py#L213) |
 | function | `syslog_stats` | `()` | — | [src](../../../core/services/pfsense_syslog.py#L221) |
 | function | `_reset_for_tests` | `()` | — | [src](../../../core/services/pfsense_syslog.py#L226) |
-
-## `core/services/phone_wake.py`
-_Push-vækning: banker på telefonen når den sover._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_som_tal` | `(version)` | — | [src](../../../core/services/phone_wake.py#L59) |
-| function | `_husk_version` | `(version)` | Gem den app-version telefonen sidst meldte ved registrering. | [src](../../../core/services/phone_wake.py#L67) |
-| function | `app_forstaar_vaekning` | `()` | Kan den app vi sidst saa haandtere en tavs vaekning? | [src](../../../core/services/phone_wake.py#L79) |
-| function | `telefon_er_forbundet` | `(user_id)` | Er der en klient med telefon-værktøjer for brugeren lige nu? | [src](../../../core/services/phone_wake.py#L97) |
-| function | `_send_vaekning` | `(user_id)` | Stille data-push. Ingen title/preview → ingen synlig notifikation. | [src](../../../core/services/phone_wake.py#L125) |
-| function | `vaek_og_vent` | `(user_id, *, vent_s=…)` | Væk telefonen og vent på at broen melder sig. True hvis den kom. | [src](../../../core/services/phone_wake.py#L150) |
 

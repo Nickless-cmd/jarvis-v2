@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/heartbeat_runtime_influence.py`
+_``_build_influence_trace`` extracted from ``heartbeat_runtime`` (Boy-Scout)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_build_influence_trace` | `(*, private_brain, liveness, self_knowledge_summary, embodied_state=…, affective_meta_state=…, epistemic_runtime_state=…, loop_runtime=…, prompt_evolution=…, subagent_ecology=…, council_runtime=…, adaptive_planner=…, adaptive_reasoning=…, dream_influence=…, guided_learning=…, adaptive_learning=…, self_system_code_awareness=…, tool_intent=…)` | Build a bounded trace of what cognitive inputs were available to heartbeat. | [src](../../../core/services/heartbeat_runtime_influence.py#L27) |
+
 ## `core/services/heartbeat_runtime_providers.py`
 _Concrete heartbeat provider-executor bodies extracted from ``heartbeat_runtime``._
 
@@ -705,38 +712,4 @@ _Inter-sprog practice engine — internaliseret protokol på tværs af modeller.
 | function | `export_mood_trace_for_period` | `(start, end)` | Eksportér Jarvis' mood-historie over en periode som (timestamp, mood) pairs. | [src](../../../core/services/interlanguage_practice.py#L430) |
 | function | `interpolate_mood_at` | `(trace, target_iso)` | Linear-interpolér mellem nærmeste to mood-samples til target timestamp. | [src](../../../core/services/interlanguage_practice.py#L470) |
 | function | `build_interlanguage_practice_surface` | `()` | Surface for Mission Control — 3 vital signs + dummy state ved ingen data. | [src](../../../core/services/interlanguage_practice.py#L516) |
-
-## `core/services/internal_cadence.py`
-_Internal cadence layer for non-visible inner producers._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ProducerSpec` | `` | — | [src](../../../core/services/internal_cadence.py#L63) |
-| class | `ProducerTickResult` | `` | — | [src](../../../core/services/internal_cadence.py#L73) |
-| function | `register_producer` | `(spec)` | Register a non-visible inner producer with the cadence layer. | [src](../../../core/services/internal_cadence.py#L87) |
-| function | `deregister_producer` | `(name)` | Remove a producer from the cadence layer. | [src](../../../core/services/internal_cadence.py#L92) |
-| function | `_evaluate_producer` | `(spec, *, now, last_visible_at, ran_this_tick, tempo=…)` | Evaluate whether a producer is due. | [src](../../../core/services/internal_cadence.py#L106) |
-| class | `_ProducerWorker` | `` | Én persistent dæmon-tråd pr. producer, med kø og ledigheds-flag. | [src](../../../core/services/internal_cadence.py#L253) |
-| method | `_ProducerWorker.__init__` | `(self, name)` | — | [src](../../../core/services/internal_cadence.py#L258) |
-| method | `_ProducerWorker.busy` | `(self)` | Kører et job lige nu? | [src](../../../core/services/internal_cadence.py#L271) |
-| method | `_ProducerWorker.alive` | `(self)` | — | [src](../../../core/services/internal_cadence.py#L275) |
-| method | `_ProducerWorker.submit` | `(self, job)` | Læg job i køen. False = workeren er optaget af den forrige kørsel. | [src](../../../core/services/internal_cadence.py#L278) |
-| method | `_ProducerWorker._loop` | `(self)` | — | [src](../../../core/services/internal_cadence.py#L287) |
-| method | `_ProducerWorker.stop` | `(self)` | Luk workeren: luk dens DB-forbindelse i dens EGEN tråd, og stop. | [src](../../../core/services/internal_cadence.py#L297) |
-| function | `_luk_denne_traads_forbindelse` | `()` | Kører i worker-tråden: luk den thread-lokale pool-forbindelse. | [src](../../../core/services/internal_cadence.py#L307) |
-| function | `_get_worker` | `(navn)` | — | [src](../../../core/services/internal_cadence.py#L320) |
-| function | `_stop_worker` | `(navn)` | — | [src](../../../core/services/internal_cadence.py#L329) |
-| function | `stadig_i_flugt` | `(navn)` | Kører en tidligere kørsel af producenten stadig? | [src](../../../core/services/internal_cadence.py#L336) |
-| function | `_noter_i_flugt` | `(navn, t)` | — | [src](../../../core/services/internal_cadence.py#L364) |
-| function | `_rapporter_sen_succes` | `(navn)` | En koersel der blev faerdig EFTER kalderen opgav, er stadig en succes. | [src](../../../core/services/internal_cadence.py#L369) |
-| function | `_run_producer_bounded` | `(spec, *, trigger, last_visible_at, timeout_s)` | Kør en producer i sin EGEN persistente worker-tråd med en hård timeout. | [src](../../../core/services/internal_cadence.py#L388) |
-| function | `run_cadence_tick` | `(*, trigger=…, last_visible_at_iso=…)` | Run one cadence tick: evaluate and dispatch all registered producers. | [src](../../../core/services/internal_cadence.py#L456) |
-| function | `get_cadence_state` | `()` | Return current cadence layer state for MC observability. | [src](../../../core/services/internal_cadence.py#L771) |
-| function | `_ensure_producers_registered` | `()` | Register known producers if not already registered. | [src](../../../core/services/internal_cadence.py#L811) |
-| function | `_valider_afhaengigheder` | `()` | Afvis manglende udbydere og cykler HOEJLYDT ved bootstrap. | [src](../../../core/services/internal_cadence.py#L846) |
-| function | `run_cadence_tick_with_bootstrap` | `(*, trigger=…, last_visible_at_iso=…)` | Bootstrap producers and run a cadence tick. | [src](../../../core/services/internal_cadence.py#L890) |
-| function | `_run_injection_refresh_tick` | `()` | Central-styret indre liv: refresh beskidte injektions-enheder i baggrunden (OFF hot-path). | [src](../../../core/services/internal_cadence.py#L913) |
-| function | `_scheduler_loop` | `()` | Background loop: tick cadence every _SCHEDULER_INTERVAL_S seconds. | [src](../../../core/services/internal_cadence.py#L928) |
-| function | `start_cadence_scheduler` | `()` | Spawn the standalone cadence scheduler thread. Idempotent. | [src](../../../core/services/internal_cadence.py#L993) |
-| function | `stop_cadence_scheduler` | `()` | Signal the scheduler thread to exit. Best-effort; daemon dies with process. | [src](../../../core/services/internal_cadence.py#L1008) |
 

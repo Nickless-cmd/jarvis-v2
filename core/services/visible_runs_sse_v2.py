@@ -22,7 +22,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import re
 from typing import Any, AsyncIterator
 
 from apps.api.jarvis_api.sse_v2_events import (
@@ -39,16 +38,6 @@ from apps.api.jarvis_api.sse_v2_events import (
 from core.services.structured_content_flag import structured_content_v2_enabled
 
 logger = logging.getLogger(__name__)
-
-# SSE-format regex til at parse legacy events:
-#   event: <name>
-#   data: <json>
-#   (blank line)
-_SSE_BLOCK_RE = re.compile(
-    r"event:\s*(?P<event>[^\n]+)\n"
-    r"data:\s*(?P<data>[^\n]+)\n\n",
-)
-
 
 # System-event kinds vi proxy'er fra legacy event-types.
 # Hvis et legacy event-name ikke er kendt, wrappes det også som
@@ -69,117 +58,10 @@ _KNOWN_SYSTEM_EVENT_KINDS = {
 }
 
 
-# Echo-mønstre for tool-leak backstop (Del A2 i Phase 2-spec):
-#  - _ECHO_BUILDING: en partiel linje der STADIG kan blive til "[tool]:"
-#    (vi holder den tilbage indtil den enten fuldføres eller diverger).
-#  - _ECHO_FULL: en bekræftet "[tool]:"-præfiks — droppes hvis <tool> er et
-#    kendt registreret toolnavn.
-_ECHO_BUILDING_RE = re.compile(r"^\s*\[[a-z0-9_]*\]?\s*:?\s*$")
-_ECHO_FULL_RE = re.compile(r"^\s*\[([a-z0-9_]+)\]\s*:")
+from core.services.visible_tool_echo import ToolEchoFilter  # compatibility re-export
 
 
-class ToolEchoFilter:
-    """Streaming-backstop mod at modellen ekkoer rå tool-output i sit svar.
-
-    Dropper hele linjer der starter med ``[<kendt_tool>]:`` (fx
-    ``[read_file]: <fil-dump>``) men lader al anden tekst flyde igennem
-    token-for-token (minimal latency — vi holder kun tilbage når en linje
-    ved line-start *kunne* blive til en tool-echo).
-
-    Brug: ``feed(text)`` pr. delta, ``flush()`` ved stream-slut.
-    """
-
-    def __init__(self, tool_names=None) -> None:
-        if tool_names is None:
-            try:
-                from core.tools.simple_tools import _TOOL_HANDLERS
-                tool_names = list(_TOOL_HANDLERS.keys())
-            except Exception:
-                tool_names = []
-        self._names = {str(n).lower() for n in tool_names}
-        self._held = ""             # holdt partiel linje (mulig echo)
-        self._at_line_start = True  # er vi ved starten af en ny linje?
-        self._dropping = False      # dropper vi resten af en bekræftet echo-linje?
-
-    def _is_echo_line(self, line: str) -> bool:
-        m = _ECHO_FULL_RE.match(line)
-        return bool(m and m.group(1).lower() in self._names)
-
-    def feed(self, text: str) -> str:
-        if not text:
-            return ""
-        out: list[str] = []
-        buf = self._held + text
-        self._held = ""
-        while buf:
-            if self._dropping:
-                nl = buf.find("\n")
-                if nl == -1:
-                    buf = ""
-                else:
-                    buf = buf[nl + 1:]
-                    self._dropping = False
-                    self._at_line_start = True
-                continue
-            if not self._at_line_start:
-                nl = buf.find("\n")
-                if nl == -1:
-                    out.append(buf)
-                    buf = ""
-                else:
-                    out.append(buf[:nl + 1])
-                    buf = buf[nl + 1:]
-                    self._at_line_start = True
-                continue
-            # Ved line-start.
-            nl = buf.find("\n")
-            if nl != -1:
-                line = buf[:nl + 1]
-                buf = buf[nl + 1:]
-                if not self._is_echo_line(line):
-                    out.append(line)
-                # echo-linje droppes
-                self._at_line_start = True
-                continue
-            # Partiel linje uden newline endnu.
-            line = buf
-            buf = ""
-            if _ECHO_BUILDING_RE.match(line):
-                self._held = line          # endnu uafklaret — hold tilbage
-            elif self._is_echo_line(line):
-                self._dropping = True      # bekræftet echo, drop resten af linjen
-            else:
-                out.append(line)
-                self._at_line_start = False
-            break
-        return "".join(out)
-
-    def flush(self) -> str:
-        held = self._held
-        self._held = ""
-        if not held:
-            return ""
-        if self._is_echo_line(held):
-            return ""
-        return held
-
-
-def _parse_legacy_sse(chunk: str) -> tuple[str, dict] | None:
-    """Parse en legacy SSE event-blok til (event_name, payload_dict).
-
-    Returnerer None hvis chunk ikke er en fuldstændig event-blok eller
-    payload ikke er valid JSON.
-    """
-    m = _SSE_BLOCK_RE.search(chunk)
-    if not m:
-        return None
-    event_name = m.group("event").strip()
-    data_str = m.group("data")
-    try:
-        payload = json.loads(data_str)
-    except (ValueError, TypeError):
-        return None
-    return event_name, payload
+from core.services.visible_sse_observations import _parse_legacy_sse  # compatibility re-export
 
 
 # D2-leak hang-fix (16. jun 2026): legacy-strømmen kan BLOKERE uden at sende 'done'
@@ -199,137 +81,9 @@ _MAX_IDLE_TICKS = 9          # ~180s total stilhed → kilden er død uanset
 #: `peek_efter_tool_use` giver tom liste for alle andre, så det koster intet.
 
 
-def _live_udgivne_blokke(tool_use_id: str, allerede_sendt: set[str]) -> list[dict[str, Any]]:
-    """Alt turen har UDGIVET og endnu ikke sendt — klar til den levende stream.
-
-    ## Hvorfor navnet ikke længere er «billedblokke» (7/10-2026)
-
-    Funktionen hed `_live_billedblokke` og filtrerede hårdt:
-    `if b.get("type") != "image": continue`. Den gjorde præcis hvad navnet
-    sagde — men en widget er `text/html`, og `_bloktype` giver den typen
-    `file`. Så fladen blev droppet her og nåede aldrig nogen klient; den
-    dukkede først op når tråden blev genindlæst fra `content_json`.
-
-    Samme hul ramte `video` og `publish_file`. Fælles for dem alle: de er
-    udgivelser, ikke billeder, og strømmen skal sende dem alle.
-
-    Noterne kommer fra `published_files` — dem værktøjet lagde fra sig under
-    turen — og læses med `peek`, ikke `take`: den der persisterer svaret
-    bagefter skal stadig kunne finde dem.
-
-    ## Hvorfor der IKKE filtreres på `tool_use_id`
-
-    Første udgave gjorde det, og den virkede i test og ikke i drift. Grunden
-    stod i udsenderen: `visible_runs` har TO steder der sender
-    `capability/tool_result`, og det ene (linje ~4706, den godkendte vej)
-    sender kun `{"type", "tool", "status"}` — **uden `capability_id`**. Så
-    faldt `tool_id` tilbage til selve værktøjsNAVNET, filteret ledte efter en
-    note med `tool_use_id = "openrouter_image"`, og der var ingen. Testen
-    gav eventet et `capability_id` og kunne derfor ikke se det.
-
-    I stedet holdes der styr på hvad der ER sendt. Enhver endnu usendt
-    billed-note går ud ved næste billedværktøjs-resultat. Det virker uanset om
-    udsenderen har et id med, uanset om ét kald producerede flere billeder
-    (`n > 1`), og uanset hvor mange billedkald turen indeholder.
-
-    En LIVE-blok bærer `src` (en data-URL) så klienten kan tegne den med det
-    samme. Er billedet for stort til en data-URL, sendes blokken alligevel med
-    sin `attachment_id`: den er allerede registreret, så
-    `/attachments/image/{id}` virker med det samme, og klienten henter den
-    med token. Bedre et billede der kommer et øjeblik senere end intet.
-    """
-    if not tool_use_id:
-        return []
-    from core.services.published_files import as_blocks, peek_efter_tool_use
-    poster = peek_efter_tool_use(tool_use_id)
-    blokke = []
-    for b in as_blocks(poster):
-        # 7/10-2026: send ALT turen udgav, ikke kun billeder. En widget er
-        # `text/html` → typen `file`, og den blev droppet netop her.
-        noegle = str(b.get("attachment_id") or b.get("url") or b.get("filename") or "")
-        if not noegle or noegle in allerede_sendt:
-            continue
-        allerede_sendt.add(noegle)
-        blokke.append(b)
-    if not blokke:
-        return []
-    from core.services.attachment_service import image_data_url
-    for blok in blokke:
-        # Kun billeder og videoer får en data-URL. En `file` er en REFERENCE:
-        # at lægge et helt HTML-dokument ind i strømmen ville sende fladen som
-        # data i stedet for at lade klienten hente den med sit token.
-        if blok.get("type") not in ("image", "video"):
-            continue
-        aid = str(blok.get("attachment_id") or "")
-        if not aid:
-            continue
-        try:
-            url = image_data_url(aid)
-        except Exception as exc:
-            logger.debug("sse_v2: data-URL for %s fejlede: %s", aid, exc)
-            url = None
-        if url:
-            blok["src"] = url
-    return blokke
-
-
-def _run_still_active(run_id: str) -> bool:
-    """True hvis dette run stadig kører server-side. Fail-safe: antag AKTIVT ved fejl,
-    så vi aldrig afslutter en levende stream for tidligt.
-
-    ROD-FIX (Bjørn 4. aug): FØR tjekkede den KUN den globale active-visible-run-slot
-    (_get_active_visible_run_state). Men ALLE runs er nu detached (server-autoritative),
-    og detached-stien vedligeholder den slot UPÅLIDELIGT (detached_run.py:86-96) → den
-    returnerede False for LEVENDE runs → idle-timeouten (20s uden legacy-event) brød
-    _translation_loop → gen.aclose() rev det stadig-kørende run ned midt i tool-exec →
-    CancelledError/vis_len=0 i ALLE sessioner på tværs af klienter. run_event_log er den
-    PÅLIDELIGE autoritet (detached_run.py:144): is_open = registreret OG ikke done.
-    Frame-friskhed er kun et UI-signal og må aldrig være dødsbevis for et blokerende
-    provider/tool-kald. _MAX_IDLE_TICKS≈180s er sidste hæng-værn; rammes det, bogføres
-    et recovery-udfald. Slot beholdes som fallback for legacy-runs."""
-    try:
-        from core.services import run_event_log as _rel
-        if _rel.is_open(run_id):
-            return True
-    except Exception:
-        return True
-    try:
-        from core.services.visible_runs import _get_active_visible_run_state
-        st = _get_active_visible_run_state() or {}
-        return bool(st.get("active")) and str(st.get("run_id") or "") == str(run_id or "")
-    except Exception:
-        return True
-
-
-def _laes_tempo(run_id: str, output_tokens: int) -> dict[str, float | None]:
-    """TTFT og tok/s for dette run. Tomt dict ved enhver fejl.
-
-    Egen funktion fordi `MessageDelta` bygges to steder (normal afslutning og
-    gendannelse), og en try/except kopieret begge steder ville vaere to
-    definitioner af «hvad goer vi naar maalingen fejler».
-    """
-    try:
-        from core.services import svar_tempo
-        tempo = svar_tempo.afslut(run_id, output_tokens=output_tokens)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("sse_v2: kunne ikke aflaese svar-tempoet: %s", exc)
-        return {}
-    # MÅLT 20/11-2026: tallet gik herfra og KUN i SSE-payloaden. Det blev
-    # tegnet i composeren og forsvandt, så domænet «streaming og perceived
-    # performance» ikke kunne måles over tid — det stod på 42 % som et rent
-    # skøn gennem 1.027 vektorer. Nu gemmes det samme tal samme sted, så der
-    # ikke opstår to definitioner af hvornår det aflæses.
-    try:
-        from core.runtime import db_tempo
-        db_tempo.gem(
-            run_id,
-            ttft_ms=tempo.get("ttft_ms"),
-            tok_per_sek=tempo.get("tok_per_sek"),
-            output_tokens=output_tokens,
-        )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("sse_v2: kunne ikke gemme svar-tempoet: %s", exc)
-    return tempo
+from core.services.visible_sse_observations import (  # compatibility re-exports
+    _live_udgivne_blokke, _run_still_active, _laes_tempo,
+)
 
 
 async def translate_to_v2(
@@ -360,6 +114,9 @@ async def translate_to_v2(
     """
     queue: asyncio.Queue[str | None] = asyncio.Queue()
 
+    from core.services.code_answer_boundary import AnswerMarkerStream
+
+    answer_marker = AnswerMarkerStream()
     echo_filter = ToolEchoFilter()
 
     _state = {
@@ -384,6 +141,9 @@ async def translate_to_v2(
         "session_id": session_id,
         "origin": origin,
         "has_tool": False,
+        "code_answer_started": False,
+        "code_answer_pending": False,
+        "code_answer_active": False,
         #: Indeks for det sidste værktøjskald der udførte ARBEJDE. Et
         #: afsluttende kald (`suggest_next_task`) flytter den ikke.
         "last_real_tool_index": -1,
@@ -395,23 +155,7 @@ async def translate_to_v2(
         # ny tekst DIREKTE i den aabne blok — ellers ville den gaa i
         # `_pending_text` og blive en ny `commentary`-blok midt i svaret.
         "svar_stroemmer": False,
-        # SAMLET tekstlaengde siden det sidste RIGTIGE vaerktoejskald.
-        #
-        # MAALT 27/11-2026 (Bjørn, sjette klage — Codex + Claude, uafhaengigt):
-        # taerskel-tjekket laeste `_pending_text`, men den koe TOEMMES ved
-        # hvert `working_step` (se working_step-grenen). En rigtig besvarelse
-        # afbrydes af runde-annonceringer hele tiden, saa den samlede tekst
-        # naaede ALDRIG 600 i én sammenhaengende koe. `final_answer_start` blev
-        # derfor aldrig sendt midt i turen, `finalAnswerStarted` forblev falsk
-        # i klienten, `aaben` forblev sand — og hovedet foldede aldrig.
-        #
-        # Konsekvensen Bjørn saa: rundelinjen vises KUN ved `!arbejdeAabent`,
-        # saa et permanent aabent hoved skjulte den helt — «den viser ikk
-        # rundelinjerne mere.. den bruger nu den gamle visning».
-        #
-        # Taelleren akkumulerer paa TVAERS af working_step-nulstillingerne og
-        # nulstilles kun af et rigtigt vaerktoejskald: teksten mellem to
-        # saadanne hoerer til ÉN runde, og er derfor enten syntese eller svar.
+        # Legacy chat threshold only; code mode uses the explicit marker.
         "svar_kandidat_len": 0,
     }
 
@@ -439,31 +183,10 @@ async def translate_to_v2(
     #: blok der er turens svar — kun hvilken der kom sidst.
     _text_block_lengths: dict[int, int] = {}
 
-    #: Hvor mange tegn ventende tekst der gør den til en BESVARELSE frem for
-    #: en mellemsyntese — og dermed udløser fold-signalet midt i turen.
-    #:
-    #: MAALT 27/11-2026 paa 6.041 `commentary`-blokke og 400
-    #: `final_answer`-blokke fra `chat_messages.content_json`:
-    #:
-    #:   commentary (mellemsyntese): median 211, p75 305, p90 421 tegn
-    #:   final_answer (slutsvar):    median 2181, p25 1089 tegn
-    #:
-    #: TAERSKLEN ER 350, IKKE 600 (Bjørn 27/11-2026). Den gamle vaerdi blev
-    #: valgt ud fra et oenske om at ramme 82 % af slutsvarene; den tog ikke
-    #: hoejde for den ANDEN fejl den skabte: naar en syntese selv naaede 600
-    #: tegn, foldede turen MIDT I syntesen. Foldet landede saa paa en
-    #: mellemtekst, og slutbeskeden blev skrevet inde i folden.
-    #:
-    #: Reglen er nu en SAMMENHAENG: en syntese maa hoest 350 tegn
-    #: (`output_discipline` beder modellen om det), og foldet maa foerst ske
-    #: over 350. Saa kan en syntese per konstruktion ikke udloese foldet, og
-    #: et fold kan ikke lande midt i en. De to tal SKAL foelges ad — haeves
-    #: den ene uden den anden, aabner fejlen sig igen.
-    #:
-    #: Prisen er at flere korte slutsvar foerst folder ved `done`. Det er
-    #: acceptabelt: et kort svar er hurtigt at laese, og fejlen «fold midt i
-    #: en syntese» er den Bjørn faktisk ser.
-    _svar_taerskel = 350
+    # Legacy chat heuristic. Code-mode consumers require explicit metadata.
+    from core.services.code_answer_boundary import ANSWER_START_CHARS
+
+    _svar_taerskel = ANSWER_START_CHARS
 
     #: Kald hvis linje allerede er født af annonceringen (før kørslen). Uden
     #: den ville resultat-eventet føde en linje MERE om samme kald.
@@ -479,12 +202,65 @@ async def translate_to_v2(
         _state["text_block_index"] = idx
         await queue.put(ContentBlockStart(
             index=idx, block_type="text", phase=phase,
+            code_answer_protocol=1,
+            code_answer_start=bool(_state["code_answer_pending"]),
         ).to_sse_line())
+        _state["code_answer_pending"] = False
         _text_block_phases[idx] = phase
         _text_block_lengths[idx] = 0
         if phase is None:
             _unresolved_text_indexes.add(idx)
         _state["text_block_open"] = True
+
+    async def _emit_model_text(raw_text: str) -> None:
+        text = echo_filter.feed(raw_text)
+        if text:
+            if _state["svar_stroemmer"] or _state["code_answer_active"]:
+                await _ensure_text_block_open(phase="final_answer")
+                _blok = int(_state["text_block_index"])
+                _text_block_lengths[_blok] = _text_block_lengths.get(_blok, 0) + len(text)
+                await queue.put(ContentBlockDelta(
+                    index=_blok,
+                    delta_type="text_delta",
+                    content=text,
+                ).to_sse_line())
+            elif _state["has_tool"]:
+                _pending_text.append(text)
+                _state["svar_kandidat_len"] += len(text)
+                await queue.put(SystemEvent(
+                    kind="provisional_text_delta",
+                    payload={"run_id": str(_state["run_id"] or ""), "delta": text},
+                ).to_sse_line())
+                if (
+                    not _state["final_answer_started"]
+                    and _state["svar_kandidat_len"] >= _svar_taerskel
+                ):
+                    logger.info(
+                        "fold-signal: TAERSKEL (%d tegn >= %d, koe=%d)",
+                        _state["svar_kandidat_len"],
+                        _svar_taerskel,
+                        len(_pending_text),
+                    )
+                    if _pending_text:
+                        await _flush_pending_text(final=True)
+                    else:
+                        _state["final_answer_started"] = True
+                        await queue.put(SystemEvent(
+                            kind="final_answer_start",
+                            payload={"run_id": str(_state["run_id"] or "")},
+                        ).to_sse_line())
+                        await _ensure_text_block_open(phase="final_answer")
+                    _state["svar_stroemmer"] = True
+            else:
+                await _ensure_text_block_open(phase=None)
+                _blok = int(_state["text_block_index"])
+                _text_block_lengths[_blok] = _text_block_lengths.get(_blok, 0) + len(text)
+                await queue.put(ContentBlockDelta(
+                    index=_blok,
+                    delta_type="text_delta",
+                    content=text,
+                ).to_sse_line())
+
 
     async def _emit_message_start_if_needed() -> None:
         if _state["message_started"]:
@@ -793,6 +569,12 @@ async def translate_to_v2(
         if not tool_id or not name or tool_id in _annonceret:
             return
         _annonceret.add(tool_id)
+        for kind, value in answer_marker.flush():
+            await _emit_model_text(value)
+        answer_marker.line_start = True
+        answer_marker.line_prefix = ""
+        answer_marker.fence = ""
+        _state["code_answer_active"] = False
         tool_input = payload.get("arguments")
         await _flush_pending_text()
         await _resolve_unresolved_text(phase="commentary")
@@ -1069,110 +851,32 @@ async def translate_to_v2(
                             content=chunk,
                         ).to_sse_line())
 
+                elif event_name == "answer_start":
+                    await _emit_message_start_if_needed()
+                    if not _state["code_answer_started"]:
+                        await _flush_pending_text()
+                        await _close_text_block_if_open()
+                        _state["code_answer_started"] = True
+                        _state["code_answer_pending"] = True
+                        _state["code_answer_active"] = True
+                        logger.info("code-answer-start: EXPLICIT run=%s", _state["run_id"])
+
                 elif event_name == "delta":
                     await _emit_message_start_if_needed()
                     await _close_thinking_block_if_open()  # tanke færdig → nu svaret
-                    raw_text = str(payload.get("delta") or "")
-                    text = echo_filter.feed(raw_text)
-                    if text:
-                        if _state["svar_stroemmer"]:
-                            # Slutsvaret er allerede promoveret: skriv direkte
-                            # i den aabne blok. Uden denne gren ville teksten
-                            # gaa i `_pending_text` og blive en NY
-                            # `commentary`-blok midt inde i svaret.
-                            await _ensure_text_block_open(phase="final_answer")
-                            _blok = int(_state["text_block_index"])
-                            _text_block_lengths[_blok] = _text_block_lengths.get(_blok, 0) + len(text)
-                            await queue.put(ContentBlockDelta(
-                                index=_blok,
-                                delta_type="text_delta",
-                                content=text,
-                            ).to_sse_line())
-                        elif _state["has_tool"]:
-                            _pending_text.append(text)
-                            _state["svar_kandidat_len"] += len(text)
-                            await queue.put(SystemEvent(
-                                kind="provisional_text_delta",
-                                payload={"run_id": str(_state["run_id"] or ""), "delta": text},
-                            ).to_sse_line())
-                            # FOLD-SIGNALET MIDT I TUREN (Bjørn 27/11-2026,
-                            # sjette klage — maalt sammen med Codex og Claude).
-                            #
-                            # Uden denne blok blev `final_answer_start` foerst
-                            # sendt ved `done` — altsaa EFTER svaret var
-                            # skrevet. Klienten havde intet at folde paa mens
-                            # svaret stroemmede, `aaben` forblev sand hele
-                            # turen, og rundelinjen (som kun vises ved
-                            # `!arbejdeAabent`) forsvandt helt.
-                            #
-                            # TAERSKLEN MAALES PAA `svar_kandidat_len`, ikke
-                            # paa `_pending_text`: koen toemmes ved hvert
-                            # `working_step`, saa en rigtig besvarelse naaede
-                            # aldrig 600 i én sammenhaengende koe. Taelleren
-                            # akkumulerer paa tvaers og nulstilles kun af et
-                            # rigtigt vaerktoejskald.
-                            #
-                            # Signalet sendes OGSAA naar koen er tom: er den
-                            # netop blevet tømt som `commentary` af et
-                            # working_step, ligger der ingen tekst at
-                            # promovere — men taersklen er stadig naaet, og
-                            # resten af svaret skal skrives i `final_answer`.
-                            if (
-                                not _state["final_answer_started"]
-                                and _state["svar_kandidat_len"] >= _svar_taerskel
-                            ):
-                                # SPOR (27/11-2026). Bjørn: «foldet skete først
-                                # efter slutbeskeden». Signalet kan sendes fra
-                                # to veje — tærsklen her og `done` nedenfor — og
-                                # uden et spor kan de to ikke skelnes bagefter:
-                                # `events` gemmer ikke SSE-signalet, og begge
-                                # veje giver samme `final_answer`-blok i basen.
-                                # Linjen siger hvilken vej der fyrede, og ved
-                                # hvilken tekstlaengde.
-                                logger.info(
-                                    "fold-signal: TAERSKEL (%d tegn >= %d, koe=%d)",
-                                    _state["svar_kandidat_len"],
-                                    _svar_taerskel,
-                                    len(_pending_text),
-                                )
-                                if _pending_text:
-                                    await _flush_pending_text(final=True)
-                                else:
-                                    _state["final_answer_started"] = True
-                                    await queue.put(SystemEvent(
-                                        kind="final_answer_start",
-                                        payload={"run_id": str(_state["run_id"] or "")},
-                                    ).to_sse_line())
-                                    await _ensure_text_block_open(phase="final_answer")
-                                _state["svar_stroemmer"] = True
-                        else:
-                            # Første tekst er uafklaret indtil runden enten
-                            # kalder et tool eller afslutter. Den vises stadig
-                            # direkte, men må ikke folde hovedet for tidligt.
-                            await _ensure_text_block_open(phase=None)
-                            _blok = int(_state["text_block_index"])
-                            _text_block_lengths[_blok] = _text_block_lengths.get(_blok, 0) + len(text)
-                            await queue.put(ContentBlockDelta(
-                                index=_blok,
-                                delta_type="text_delta",
-                                content=text,
-                            ).to_sse_line())
+                    for kind, value in answer_marker.feed(str(payload.get("delta") or "")):
+                        if kind == "text":
+                            await _emit_model_text(value)
+                        elif not _state["code_answer_started"]:
+                            await _flush_pending_text()
+                            await _close_text_block_if_open()
+                            _state["code_answer_started"] = True
+                            _state["code_answer_pending"] = True
+                            _state["code_answer_active"] = True
+                            logger.info("code-answer-start: EXPLICIT run=%s", _state["run_id"])
 
                 elif event_name == "working_step" and payload.get("action") == "thinking" and not payload.get("tool_id"):
-                    # En ny modelrunde bekræfter, at forrige tekst var syntese.
-                    #
-                    # MAALT 27/11-2026 (Codex): denne gren TOEMTE koen ved
-                    # hvert working_step. Taerskel-tjekket i delta-grenen
-                    # laeste derfor `_pending_text`, som hele tiden blev
-                    # nulstillet — en rigtig besvarelse naaede ALDRIG 600
-                    # sammenhaengende tegn, `final_answer_start` blev aldrig
-                    # sendt midt i turen, og hovedet foldede aldrig.
-                    #
-                    # Rettelsen ligger IKKE her: taersklen maales nu paa
-                    # `svar_kandidat_len`, som akkumulerer paa tvaers af
-                    # netop denne nulstilling og kun nulstilles af et rigtigt
-                    # vaerktoejskald. Denne gren goer derfor det samme som
-                    # foer — at stemple teksten som `commentary`.
+                    # Round boundary: flush commentary without changing code-answer intent.
                     await _flush_pending_text()
                     await _emit_message_start_if_needed()
                     await queue.put(SystemEvent(kind="working_step", payload=payload).to_sse_line())
@@ -1224,6 +928,8 @@ async def translate_to_v2(
                     await _emit_tool_use(payload)
 
                 elif event_name == "done":
+                    for kind, value in answer_marker.flush():
+                        await _emit_model_text(value)
                     _state["saw_done"] = True
                     await _emit_message_start_if_needed()
                     await _close_thinking_block_if_open()
@@ -1272,6 +978,12 @@ async def translate_to_v2(
                     # fangede præcis det.
                     if _completed:
                         await _promote_last_text_block_to_answer()
+                    if _completed and not _state["code_answer_started"] and _text_block_phases:
+                        code_index = max(_text_block_phases)
+                        logger.info("code-answer-start: TERMINAL_FALLBACK run=%s index=%d", _state["run_id"], code_index)
+                        await queue.put(SystemEvent(kind="code_answer_boundary", payload={
+                            "run_id": str(_state["run_id"] or ""), "index": code_index,
+                        }).to_sse_line())
                     await _close_text_block_if_open()
                     _state["input_tokens"] = int(payload.get("input_tokens") or 0)
                     _state["output_tokens"] = int(payload.get("output_tokens") or 0)

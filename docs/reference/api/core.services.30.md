@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_round_label.py`
+_Én kort etiket for en afsluttet værktøjs-runde — «Rettede NPE i UserService»._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_model` | `()` | — | [src](../../../core/services/tool_round_label.py#L123) |
+| function | `_base_url` | `()` | — | [src](../../../core/services/tool_round_label.py#L134) |
+| function | `_klip` | `(v, maks)` | Kort, én linje, og aldrig `None` som teksten «None». | [src](../../../core/services/tool_round_label.py#L145) |
+| function | `_navn_og_input` | `(v)` | Navn og argumenter, uanset hvilken form kaldet har. | [src](../../../core/services/tool_round_label.py#L154) |
+| function | `_uden_egen_tekst` | `(raa_input)` | Kaldets input uden de felter hvor Jarvis selv skriver en linje. | [src](../../../core/services/tool_round_label.py#L168) |
+| function | `byg_prompt` | `(vaerktoejer, hensigt=…)` | Det kompakte billede af runden som modellen får. | [src](../../../core/services/tool_round_label.py#L194) |
+| function | `_kald_model` | `(prompt)` | — | [src](../../../core/services/tool_round_label.py#L226) |
+| function | `_klip_haengende` | `(s, blev_klippet)` | Få en klippet etiket til at slutte hvor et led slutter. | [src](../../../core/services/tool_round_label.py#L263) |
+| function | `_ryd` | `(s)` | Én linje, uden instruktion, uden anførselstegn, uden punktum, klippet | [src](../../../core/services/tool_round_label.py#L297) |
+| function | `_opdigtet` | `(tekst, billede)` | Hvilket navn i etiketten står IKKE i kaldene? `""` når alt er dækket. | [src](../../../core/services/tool_round_label.py#L329) |
+| function | `_er_kommandolinje` | `(s)` | Er etiketten bare kommandoen igen? | [src](../../../core/services/tool_round_label.py#L372) |
+| function | `_ikke_datid` | `(tekst)` | Står linjen i nutid eller bydeform? Så beskriver den ikke et afsluttet forløb. | [src](../../../core/services/tool_round_label.py#L412) |
+| function | `_verbum_lyver` | `(tekst, kald)` | Påstår etiketten en ændring i en runde der kun læste? | [src](../../../core/services/tool_round_label.py#L442) |
+| function | `_input_dict` | `(v)` | Kaldets argumenter som dict, uanset om de kom som streng eller objekt. | [src](../../../core/services/tool_round_label.py#L464) |
+| function | `egen_runde_etiket` | `(kald)` | Jarvis' egen linje for runden, hvis han skrev en. Ellers `""`. | [src](../../../core/services/tool_round_label.py#L475) |
+| function | `_har_egen_beskrivelse` | `(kald)` | Er runden ÉT kald der bærer en brugbar `description`? | [src](../../../core/services/tool_round_label.py#L498) |
+| function | `_doem` | `(ud, kald, billede)` | Kør en færdig tekst gennem værnene. `""` = kasseret. | [src](../../../core/services/tool_round_label.py#L514) |
+| function | `etiket` | `(vaerktoejer, hensigt=…, egen=…)` | Én kort etiket for runden, eller `""`. | [src](../../../core/services/tool_round_label.py#L544) |
+| function | `tool_use_ids` | `(vaerktoejer)` | Hvilke kald etiketten dækker. | [src](../../../core/services/tool_round_label.py#L593) |
+
 ## `core/services/tool_router.py`
 _Per-turn tool selection._
 
@@ -596,17 +621,4 @@ _Observe chat-response quality without rewriting the user's text._
 | function | `_emoji_heading_signals` | `(prose)` | Mål om overskrifterne bærer emoji — den form Bjørn bad om 25/10-2026. | [src](../../../core/services/visible_chat_quality.py#L45) |
 | function | `analyse_chat_response` | `(text, *, wall_chars=…)` | Return measurable quality signals for a final chat response. | [src](../../../core/services/visible_chat_quality.py#L67) |
 | function | `observe_chat_response` | `(text, **context)` | Emit one metadata-only observation when, and only when, scope is chat. | [src](../../../core/services/visible_chat_quality.py#L117) |
-
-## `core/services/visible_first_pass_output.py`
-_Én synlig grænse for første modelsvar._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `FirstPassOutputFilter` | `` | Filtrér capability-markup, DSML og synlige runtime-markører — i den rækkefølge. | [src](../../../core/services/visible_first_pass_output.py#L50) |
-| method | `FirstPassOutputFilter.__init__` | `(self, kilder=…)` | — | [src](../../../core/services/visible_first_pass_output.py#L53) |
-| method | `FirstPassOutputFilter._dsml` | `(self, text)` | — | [src](../../../core/services/visible_first_pass_output.py#L70) |
-| method | `FirstPassOutputFilter._halv` | `(self, text)` | Fjern den halve DSL-form: navnet og de rå tags — men BEHOLD indholdet. | [src](../../../core/services/visible_first_pass_output.py#L82) |
-| method | `FirstPassOutputFilter.feed` | `(self, text)` | — | [src](../../../core/services/visible_first_pass_output.py#L117) |
-| method | `FirstPassOutputFilter.fundet` | `(self)` | Citation-markører fundet i strømmen. | [src](../../../core/services/visible_first_pass_output.py#L131) |
-| method | `FirstPassOutputFilter.flush` | `(self)` | — | [src](../../../core/services/visible_first_pass_output.py#L140) |
 

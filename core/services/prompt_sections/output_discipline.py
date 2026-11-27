@@ -10,16 +10,12 @@ def _output_discipline_instruction(*, strength: str) -> str:
         "  you will check next. Let the structure follow the content — one point is one sentence,",
         "  three findings are three lines, never one run-on line. Keep it short only when there is",
         "  little to say. The client may fold that workstream under the turn header.",
-        # Bjørn 27/11-2026: «den skal indføres igen og hæves til 350 chars så
-        # foldet ikk sker på en syntese». Grænsen er ikke kosmetik — den er
-        # den ene halvdel af en sammenhæng i `visible_runs_sse_v2.py`, hvor
-        # `_svar_taerskel` er 350. Holder en syntese sig under 350 tegn, kan
-        # den per konstruktion ikke udløse fold-signalet, og foldet kan ikke
-        # lande midt i den. Skriver jeg længere, folder turen midt i min egen
-        # mellemtekst — og så står slutbeskeden inde i folden.
-        "  A commentary block is at most 350 characters. Past that it stops being a synthesis and",
-        "  becomes the answer — and the turn folds in the middle of it. If you have more to say,",
-        "  say it in the final answer instead of in the commentary.",
+        "- Immediately BEFORE your closing answer, put [[jarvis:answer]] on its own line.",
+        "  This is an internal presentation marker, stripped by the runtime. Emit it once,",
+        "  before the first answer word, regardless of answer length. Do not emit it before",
+        "  commentary or while merely planning work. It declares answer start, NOT turn end:",
+        "  tools may still run afterward and their syntheses continue the same answer.",
+        "  Never quote or explain the marker in ordinary output. Keep commentary concise.",
         "- Your terminal, tool-free response completes the current turn. In task/code work, make it",
         "  a self-contained, outcome-led final answer. In chat mode it may instead be a reaction,",
         "  a direct answer, or an open conversational turn; do not force every chat turn into a report.",

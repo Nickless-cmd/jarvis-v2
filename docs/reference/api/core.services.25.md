@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/runtime_awareness_signal_tracking.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_awareness_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L61) |
+| function | `refresh_runtime_awareness_signal_statuses` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L85) |
+| function | `build_runtime_awareness_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L114) |
+| function | `_machine_available_signal` | `(*, heartbeat)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L156) |
+| function | `_extract_runtime_awareness_candidates` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L176) |
+| function | `_visible_runtime_signal` | `(*, readiness)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L221) |
+| function | `_local_lane_signal` | `(*, local_lane)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L286) |
+| function | `_heartbeat_runtime_signal` | `(*, heartbeat, readiness)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L327) |
+| function | `_runtime_task_signal` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L354) |
+| function | `_runtime_flow_signal` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L394) |
+| function | `_runtime_hook_signal` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L434) |
+| function | `_browser_body_signal` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L483) |
+| function | `_layered_memory_signal` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L523) |
+| function | `_persist_runtime_awareness_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L575) |
+| function | `_latest_runtime_awareness_signal` | `(canonical_key)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L654) |
+| function | `_history_item_from_signal` | `(item)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L661) |
+| function | `_machine_state_summary` | `(*, constrained, active, recovered)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L675) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L706) |
+
 ## `core/services/runtime_browser_body.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -729,14 +752,4 @@ _Bounded self-deception guard — deterministic truth-constraint on user-facing 
 | function | `get_last_guard_trace` | `()` | Return the last self-deception guard trace for MC observability. | [src](../../../core/services/self_deception_guard.py#L268) |
 | function | `set_last_guard_trace` | `(trace)` | Store the latest guard trace for MC observability. | [src](../../../core/services/self_deception_guard.py#L275) |
 | function | `build_self_deception_guard_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/self_deception_guard.py#L281) |
-
-## `core/services/self_dream_state_surface.py`
-_Samlet flade for Jarvis' SELV- og DROEMME-tilstand._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `producer_names` | `()` | Navnene i kald-raekkefoelge, paa tvaers af grupperne — til test. | [src](../../../core/services/self_dream_state_surface.py#L78) |
-| function | `group_names` | `()` | — | [src](../../../core/services/self_dream_state_surface.py#L83) |
-| function | `_call` | `(mod_path, fn_attr)` | Kald én producent. En defekt maa ikke skjule de oevrige. | [src](../../../core/services/self_dream_state_surface.py#L87) |
-| function | `build_self_dream_state_surface` | `()` | Kald alle producenter, grupperet. Kaster ALDRIG. | [src](../../../core/services/self_dream_state_surface.py#L101) |
 

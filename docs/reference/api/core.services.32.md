@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_runs_cognitive.py`
+_Per-turn cognitive/candidate tracking-pipeline for visible runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_run_visible_cadence_updates` | `(*, run_id, session_id, user_message, assistant_response, outcome_status, user_mood)` | Run post-turn cadence producers without letting them block finalization. | [src](../../../core/services/visible_runs_cognitive.py#L25) |
+| function | `_legacy_regex_detectors_enabled` | `()` | Er de gamle ordmønster-detektorer stadig tændt? (default: nej) | [src](../../../core/services/visible_runs_cognitive.py#L58) |
+| function | `_track_step_failed` | `()` | En tracker i _track_runtime_candidates fejlede. | [src](../../../core/services/visible_runs_cognitive.py#L73) |
+| function | `_track_runtime_candidates` | `(run, assistant_text)` | — | [src](../../../core/services/visible_runs_cognitive.py#L99) |
+
+## `core/services/visible_runs_error_messaging.py`
+_User-facing error messages for visible runs (Jarvis voice)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `friendly_provider_error_message` | `(exc)` | Return a Jarvis-voice Danish message for a visible-model exception. | [src](../../../core/services/visible_runs_error_messaging.py#L15) |
+
 ## `core/services/visible_runs_learning_signals.py`
 _Post-run learning signals for a visible run (extracted from visible_runs.py,_
 
@@ -41,35 +58,26 @@ _Persistence + terminal outcome for visible runs (fail/cancel forbliver i main).
 | function | `_med_tabt_optakt` | `(tekst, blokke)` | Giv `content` den optakt som blokkene har, men teksten mangler. | [src](../../../core/services/visible_runs_outcomes.py#L214) |
 | function | `_ws` | `(s)` | Samme normalisering som klienternes `assistantNorm`. | [src](../../../core/services/visible_runs_outcomes.py#L271) |
 | function | `_persist_session_assistant_message` | `(run, text, *, reasoning_content=…, blocks=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L277) |
-| function | `run_er_terminal` | `(run_id)` | Er runnet slut? ``None`` = kunne ikke afgoeres. | [src](../../../core/services/visible_runs_outcomes.py#L582) |
-| function | `_append_chat_message_with_retry` | `(*, session_id, role, content, reasoning_content=…, content_json=…, tool_name=…, tool_arguments=…, full_content=…, _backoffs=…)` | H5 persist-retry (spec §11.2 P5): persistering må ALDRIG tabes tavst pga. | [src](../../../core/services/visible_runs_outcomes.py#L623) |
-| function | `_survival_or_fallback` | `()` | OVERLEVELSES-STEMMEN (Bjørn 3. jul): når modellen svigter, lad Jarvis TALE fra | [src](../../../core/services/visible_runs_outcomes.py#L678) |
-| function | `_session_last_role` | `(session_id)` | Sidste persisterede besked-rolle for en session (idempotens for invarianten). | [src](../../../core/services/visible_runs_outcomes.py#L692) |
-| function | `_guarantee_visible_outcome` | `(run)` | LIVSCYKLUS-INVARIANT (Bjørn 29. jun, #1): en completed INTERAKTIV run må ALDRIG | [src](../../../core/services/visible_runs_outcomes.py#L707) |
-| function | `_stemple_afslutning_synkront` | `(run_id, *, status, finished_at, error=…)` | Skriv ``finished_at`` + ``status`` SYNKRONT — luk race-vinduet mod sweepen. | [src](../../../core/services/visible_runs_outcomes.py#L728) |
-| function | `set_last_visible_run_outcome` | `(run, *, status, error=…, text_preview=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L772) |
-| function | `persist_visible_run_start` | `(run)` | Skriv en ``running``-række i ``visible_runs`` i det øjeblik runnet starter. | [src](../../../core/services/visible_runs_outcomes.py#L853) |
-| function | `_sikr_profil_kolonner` | `(conn)` | Doven migration — samme moenster som `kind` paa chat_sessions. | [src](../../../core/services/visible_runs_outcomes.py#L907) |
-| function | `_profil_for_raekken` | `(run)` | (navn, hash, skema-version) for koerslen. Selv-sikker. | [src](../../../core/services/visible_runs_outcomes.py#L928) |
-| function | `stamp_visible_run_interrupted` | `(run_id, *, reason=…)` | Stempl en ``running``-række som ``interrupted`` — kun hvis den stadig kører. | [src](../../../core/services/visible_runs_outcomes.py#L942) |
-| function | `stamp_visible_run_superseded` | `(run_id, *, reason=…)` | Luk en afløst række hvis genoptagelse skete under et andet run_id. | [src](../../../core/services/visible_runs_outcomes.py#L1006) |
-| function | `_persist_visible_run_outcome` | `(run, *, status, finished_at, text_preview=…, error=…, no_model_call=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L1079) |
+| function | `run_er_terminal` | `(run_id)` | Er runnet slut? ``None`` = kunne ikke afgoeres. | [src](../../../core/services/visible_runs_outcomes.py#L584) |
+| function | `_append_chat_message_with_retry` | `(*, session_id, role, content, reasoning_content=…, content_json=…, tool_name=…, tool_arguments=…, full_content=…, _backoffs=…)` | H5 persist-retry (spec §11.2 P5): persistering må ALDRIG tabes tavst pga. | [src](../../../core/services/visible_runs_outcomes.py#L625) |
+| function | `_survival_or_fallback` | `()` | OVERLEVELSES-STEMMEN (Bjørn 3. jul): når modellen svigter, lad Jarvis TALE fra | [src](../../../core/services/visible_runs_outcomes.py#L680) |
+| function | `_session_last_role` | `(session_id)` | Sidste persisterede besked-rolle for en session (idempotens for invarianten). | [src](../../../core/services/visible_runs_outcomes.py#L694) |
+| function | `_guarantee_visible_outcome` | `(run)` | LIVSCYKLUS-INVARIANT (Bjørn 29. jun, #1): en completed INTERAKTIV run må ALDRIG | [src](../../../core/services/visible_runs_outcomes.py#L709) |
+| function | `_stemple_afslutning_synkront` | `(run_id, *, status, finished_at, error=…)` | Skriv ``finished_at`` + ``status`` SYNKRONT — luk race-vinduet mod sweepen. | [src](../../../core/services/visible_runs_outcomes.py#L730) |
+| function | `set_last_visible_run_outcome` | `(run, *, status, error=…, text_preview=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L774) |
+| function | `persist_visible_run_start` | `(run)` | Skriv en ``running``-række i ``visible_runs`` i det øjeblik runnet starter. | [src](../../../core/services/visible_runs_outcomes.py#L855) |
+| function | `_sikr_profil_kolonner` | `(conn)` | Doven migration — samme moenster som `kind` paa chat_sessions. | [src](../../../core/services/visible_runs_outcomes.py#L909) |
+| function | `_profil_for_raekken` | `(run)` | (navn, hash, skema-version) for koerslen. Selv-sikker. | [src](../../../core/services/visible_runs_outcomes.py#L930) |
+| function | `stamp_visible_run_interrupted` | `(run_id, *, reason=…)` | Stempl en ``running``-række som ``interrupted`` — kun hvis den stadig kører. | [src](../../../core/services/visible_runs_outcomes.py#L944) |
+| function | `stamp_visible_run_superseded` | `(run_id, *, reason=…)` | Luk en afløst række hvis genoptagelse skete under et andet run_id. | [src](../../../core/services/visible_runs_outcomes.py#L1008) |
+| function | `_persist_visible_run_outcome` | `(run, *, status, finished_at, text_preview=…, error=…, no_model_call=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L1081) |
 
 ## `core/services/visible_runs_sse_v2.py`
 _Translator: legacy SSE-events → Anthropic-style v2-protokol._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `ToolEchoFilter` | `` | Streaming-backstop mod at modellen ekkoer rå tool-output i sit svar. | [src](../../../core/services/visible_runs_sse_v2.py#L81) |
-| method | `ToolEchoFilter.__init__` | `(self, tool_names=…)` | — | [src](../../../core/services/visible_runs_sse_v2.py#L92) |
-| method | `ToolEchoFilter._is_echo_line` | `(self, line)` | — | [src](../../../core/services/visible_runs_sse_v2.py#L104) |
-| method | `ToolEchoFilter.feed` | `(self, text)` | — | [src](../../../core/services/visible_runs_sse_v2.py#L108) |
-| method | `ToolEchoFilter.flush` | `(self)` | — | [src](../../../core/services/visible_runs_sse_v2.py#L157) |
-| function | `_parse_legacy_sse` | `(chunk)` | Parse en legacy SSE event-blok til (event_name, payload_dict). | [src](../../../core/services/visible_runs_sse_v2.py#L167) |
-| function | `_live_udgivne_blokke` | `(tool_use_id, allerede_sendt)` | Alt turen har UDGIVET og endnu ikke sendt — klar til den levende stream. | [src](../../../core/services/visible_runs_sse_v2.py#L202) |
-| function | `_run_still_active` | `(run_id)` | True hvis dette run stadig kører server-side. Fail-safe: antag AKTIVT ved fejl, | [src](../../../core/services/visible_runs_sse_v2.py#L276) |
-| function | `_laes_tempo` | `(run_id, output_tokens)` | TTFT og tok/s for dette run. Tomt dict ved enhver fejl. | [src](../../../core/services/visible_runs_sse_v2.py#L304) |
-| function | `translate_to_v2` | `(legacy_iter, *, run_id=…, model=…, provider=…, lane=…, session_id=…, origin=…, ping_interval_s=…)` | Konverter legacy SSE-stream til Anthropic-style v2 protokol. | [src](../../../core/services/visible_runs_sse_v2.py#L335) |
+| function | `translate_to_v2` | `(legacy_iter, *, run_id=…, model=…, provider=…, lane=…, session_id=…, origin=…, ping_interval_s=…)` | Konverter legacy SSE-stream til Anthropic-style v2 protokol. | [src](../../../core/services/visible_runs_sse_v2.py#L89) |
 
 ## `core/services/visible_runs_watchdog.py`
 _Agentic-round watchdog — hvornår skal en runde opgives?_
@@ -88,6 +96,16 @@ _Visible-chat self-state summary — let Jarvis answer questions about_
 | function | `_goals_summary` | `()` | — | [src](../../../core/services/visible_self_state_summary.py#L56) |
 | function | `_recent_tick_quality` | `()` | — | [src](../../../core/services/visible_self_state_summary.py#L87) |
 | function | `build_self_state_block` | `()` | Return a short prompt section. Empty string when nothing useful to add. | [src](../../../core/services/visible_self_state_summary.py#L112) |
+
+## `core/services/visible_sse_observations.py`
+_Read-only publication, liveness and tempo projections for SSE._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_live_udgivne_blokke` | `(tool_use_id, allerede_sendt)` | Alt turen har UDGIVET og endnu ikke sendt — klar til den levende stream. | [src](../../../core/services/visible_sse_observations.py#L9) |
+| function | `_run_still_active` | `(run_id)` | True hvis dette run stadig kører server-side. Fail-safe: antag AKTIVT ved fejl, | [src](../../../core/services/visible_sse_observations.py#L83) |
+| function | `_laes_tempo` | `(run_id, output_tokens)` | TTFT og tok/s for dette run. Tomt dict ved enhver fejl. | [src](../../../core/services/visible_sse_observations.py#L113) |
+| function | `_parse_legacy_sse` | `(chunk)` | Parse en legacy SSE event-blok til (event_name, payload_dict). | [src](../../../core/services/visible_sse_observations.py#L147) |
 
 ## `core/services/visible_stream_gate.py`
 _In-process real-time gate: is a VISIBLE turn actively assembling/streaming right now?_
@@ -163,6 +181,17 @@ _Hvor længe tænkte han? — målt ét sted, læst ét sted._
 | function | `take_seconds` | `(run_id)` | Varigheden i sekunder, og RYD posten. None hvis der ikke blev tænkt. | [src](../../../core/services/visible_thinking_trace.py#L66) |
 | function | `peek_seconds` | `(run_id)` | Som take_seconds, men uden at rydde. Til observation/test. | [src](../../../core/services/visible_thinking_trace.py#L90) |
 
+## `core/services/visible_tool_echo.py`
+_Streaming tool-echo backstop, extracted from the v2 translator._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ToolEchoFilter` | `` | Streaming-backstop mod at modellen ekkoer rå tool-output i sit svar. | [src](../../../core/services/visible_tool_echo.py#L13) |
+| method | `ToolEchoFilter.__init__` | `(self, tool_names=…)` | — | [src](../../../core/services/visible_tool_echo.py#L24) |
+| method | `ToolEchoFilter._is_echo_line` | `(self, line)` | — | [src](../../../core/services/visible_tool_echo.py#L36) |
+| method | `ToolEchoFilter.feed` | `(self, text)` | — | [src](../../../core/services/visible_tool_echo.py#L40) |
+| method | `ToolEchoFilter.flush` | `(self)` | — | [src](../../../core/services/visible_tool_echo.py#L89) |
+
 ## `core/services/visible_tool_exec.py`
 _Shared tool-exec pump for the visible run (Boy-Scout extraction, 2026-07-19)._
 
@@ -218,7 +247,7 @@ _Den kanoniske content-blok-array for en assistent-tur (spec §4)._
 | function | `_build_progress_blocks` | `(tool_calls, tool_results)` | Byg det FLADE progress-spor for en tur (spec §5). | [src](../../../core/services/visible_turn_blocks.py#L54) |
 | function | `_tanke_blok` | `(par)` | Én tanke-blok. Halen er nok: klienten viser den foldet ud, og en hel | [src](../../../core/services/visible_turn_blocks.py#L108) |
 | function | `_mark_text_phases` | `(blocks)` | Gem den autoritative chat-lane på hver tekstblok. | [src](../../../core/services/visible_turn_blocks.py#L124) |
-| function | `_build_turn_blocks` | `(*, text, tool_calls, tool_results, interleave=…, text_segments=…, thinking_segments=…, thinking_seconds=…)` | Byg den kanoniske content-blok-array for en assistant-tur (spec §4). | [src](../../../core/services/visible_turn_blocks.py#L163) |
+| function | `_build_turn_blocks` | `(*, text, tool_calls, tool_results, interleave=…, text_segments=…, thinking_segments=…, thinking_seconds=…)` | Byg den kanoniske content-blok-array for en assistant-tur (spec §4). | [src](../../../core/services/visible_turn_blocks.py#L166) |
 
 ## `core/services/visible_work_surfaces.py`
 _Visible-work-flader: skrivebeskyttede projektioner af hvad den synlige lane laver._
@@ -523,87 +552,4 @@ _Krypteret workspace-fil-I/O (spec §16, Lag 3)._
 | function | `_advarsel_hvis_plaintext_for_member` | `(p, member)` | Log et spor naar en KENDT medlemsfil skrives i klartekst. | [src](../../../core/services/workspace_crypto.py#L203) |
 | function | `write_text_for_path` | `(path, content)` | Skriv workspace-fil-tekst sti-nøglet. Mens ENCRYPT_ON_WRITE er FRA skrives | [src](../../../core/services/workspace_crypto.py#L222) |
 | function | `atomic_write_text_for_path` | `(path, content)` | Som `write_text_for_path`, men atomisk (temp-fil + os.replace). | [src](../../../core/services/workspace_crypto.py#L250) |
-
-## `core/services/workspace_trust.py`
-_Trusted-folder gate for code/cowork workspaces._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/workspace_trust.py#L30) |
-| function | `_opløst` | `(sti)` | Stien med symlinks fulgt — tom streng hvis den ikke kan opløses. | [src](../../../core/services/workspace_trust.py#L44) |
-| function | `er_under` | `(sti, rod)` | Ligger `sti` i eller under `rod`? | [src](../../../core/services/workspace_trust.py#L64) |
-| function | `is_trusted` | `(user_id, kind, root)` | True hvis (user_id, kind, root) er betroet — direkte ELLER som undermappe. | [src](../../../core/services/workspace_trust.py#L100) |
-| function | `list_trusted` | `(user_id, kind=…)` | De mapper brugeren har betroet — nyeste foerst. | [src](../../../core/services/workspace_trust.py#L137) |
-| function | `set_trusted` | `(user_id, kind, root, trusted)` | Markér/afmarkér et workspace som betroet. Returnerer den nye trust-tilstand. | [src](../../../core/services/workspace_trust.py#L167) |
-| function | `set_trust_context` | `(*, kind, root, trusted)` | — | [src](../../../core/services/workspace_trust.py#L190) |
-| function | `clear_trust_context` | `()` | — | [src](../../../core/services/workspace_trust.py#L194) |
-| function | `current_trust_context` | `()` | — | [src](../../../core/services/workspace_trust.py#L198) |
-| function | `guard_code_write` | `(tool_name)` | Returnér en fejl-besked hvis ``tool_name`` er en skrive-/exec-handling i et | [src](../../../core/services/workspace_trust.py#L202) |
-
-## `core/services/world_facts.py`
-_Evidence-bounded world facts and their visible prompt representation._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_world_fact` | `(*, canonical_key, statement, status, confidence, source_kind, source_ref=…, observed_at=…, valid_from=…, valid_until=…, contradicts_fact_id=…, supersedes_fact_id=…, evidence_count=…, distinct_source_count=…)` | — | [src](../../../core/services/world_facts.py#L37) |
-| function | `list_world_facts` | `(*, status=…, limit=…)` | — | [src](../../../core/services/world_facts.py#L98) |
-| function | `build_world_fact_prompt_section` | `(*, limit=…, facts=…)` | — | [src](../../../core/services/world_facts.py#L107) |
-
-## `core/services/world_model_auto_extraction.py`
-_World Model Phase 2: auto-extract structured predictions from Jarvis' replies._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_today_iso` | `()` | — | [src](../../../core/services/world_model_auto_extraction.py#L35) |
-| function | `_load_rate_state` | `()` | — | [src](../../../core/services/world_model_auto_extraction.py#L39) |
-| function | `_increment_rate` | `()` | — | [src](../../../core/services/world_model_auto_extraction.py#L48) |
-| function | `_under_rate_limit` | `()` | — | [src](../../../core/services/world_model_auto_extraction.py#L55) |
-| function | `_extract_json` | `(text)` | — | [src](../../../core/services/world_model_auto_extraction.py#L59) |
-| function | `_build_prompt` | `(context_excerpt, matched_phrase)` | — | [src](../../../core/services/world_model_auto_extraction.py#L71) |
-| function | `auto_extract_and_record` | `(*, matched_phrase, context_excerpt, session_id=…)` | Try to extract a structured prediction from a matched phrase. | [src](../../../core/services/world_model_auto_extraction.py#L89) |
-| function | `_emit_world_model_auto_extraction_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/world_model_auto_extraction.py#L172) |
-
-## `core/services/world_model_signal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_observe_world_model` | `(nerve, *, value=…, meta=…)` | EGRESS-FRI binding til Centralen (§24.4): world-model-livscyklus (prediction lavet, | [src](../../../core/services/world_model_signal_tracking.py#L88) |
-| function | `record_runtime_world_model_prediction` | `(*, subject, expectation, horizon=…, confidence=…, evidence=…, source=…, event_kind=…, now=…)` | Record an explicit, falsifiable world-model expectation. | [src](../../../core/services/world_model_signal_tracking.py#L105) |
-| function | `resolve_runtime_world_model_prediction` | `(prediction_id, *, observed, outcome, now=…, resolved_via=…)` | Resolve a prediction with a later observation. | [src](../../../core/services/world_model_signal_tracking.py#L179) |
-| function | `build_runtime_world_model_prediction_surface` | `(*, limit=…)` | — | [src](../../../core/services/world_model_signal_tracking.py#L229) |
-| function | `track_runtime_world_model_signals_for_visible_turn` | `(*, session_id, run_id, user_message)` | — | [src](../../../core/services/world_model_signal_tracking.py#L265) |
-| function | `refresh_runtime_world_model_signal_statuses` | `()` | — | [src](../../../core/services/world_model_signal_tracking.py#L305) |
-| function | `build_runtime_world_model_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/world_model_signal_tracking.py#L334) |
-| function | `_extract_pattern_matches` | `(text, patterns)` | Return list of {matched_phrase, context_excerpt} for each regex hit. | [src](../../../core/services/world_model_signal_tracking.py#L360) |
-| function | `extract_prediction_language` | `(text)` | Find prediction-shape phrases in Jarvis' own response text. | [src](../../../core/services/world_model_signal_tracking.py#L389) |
-| function | `extract_resolution_language` | `(text)` | Find resolution-shape phrases in Jarvis' own response text. | [src](../../../core/services/world_model_signal_tracking.py#L394) |
-| function | `_loop_enabled` | `()` | World-model-loop kill-switch check. | [src](../../../core/services/world_model_signal_tracking.py#L399) |
-| function | `_load_nudges` | `()` | — | [src](../../../core/services/world_model_signal_tracking.py#L407) |
-| function | `_save_nudges` | `(data)` | — | [src](../../../core/services/world_model_signal_tracking.py#L417) |
-| function | `record_prediction_nudge` | `(*, session_id, run_id, matched_phrase, context_excerpt)` | Append a prediction-language nudge to state (FIFO, max 20, 48h TTL). | [src](../../../core/services/world_model_signal_tracking.py#L421) |
-| function | `record_resolution_nudge` | `(*, session_id, run_id, matched_phrase, context_excerpt, candidate_prediction_id=…)` | Append a resolution-language nudge to state (FIFO, max 20, 48h TTL). | [src](../../../core/services/world_model_signal_tracking.py#L448) |
-| function | `_next_weekday` | `(d, target_weekday)` | Next occurrence of given weekday (0=Mon..6=Sun) at end-of-day. | [src](../../../core/services/world_model_signal_tracking.py#L481) |
-| function | `_parse_horizon` | `(horizon, created)` | Return the cutoff datetime when horizon would have elapsed. | [src](../../../core/services/world_model_signal_tracking.py#L489) |
-| function | `_ttl_sweep_open_predictions` | `(*, now=…)` | Scan open predictions; auto-resolve as 'uncertain' if past horizon+grace. | [src](../../../core/services/world_model_signal_tracking.py#L513) |
-| function | `format_world_model_nudges_for_awareness` | `(*, session_id=…)` | Surface up to 1 prediction-nudge + 1 resolution-nudge for the awareness block. | [src](../../../core/services/world_model_signal_tracking.py#L551) |
-| function | `_load_milestones` | `()` | — | [src](../../../core/services/world_model_signal_tracking.py#L599) |
-| function | `_save_milestones` | `(data)` | — | [src](../../../core/services/world_model_signal_tracking.py#L606) |
-| function | `_resolved_predictions_chrono` | `()` | Return resolved predictions in chronological order (oldest first). | [src](../../../core/services/world_model_signal_tracking.py#L610) |
-| function | `_calibration_of` | `(predictions)` | % supported among supported+contradicted; uncertain is excluded. | [src](../../../core/services/world_model_signal_tracking.py#L622) |
-| function | `_has_milestone` | `(kind, value=…)` | Check if a milestone of given kind (+ optional value) has been recorded. | [src](../../../core/services/world_model_signal_tracking.py#L639) |
-| function | `_append_milestone` | `(kind, value, message, now)` | — | [src](../../../core/services/world_model_signal_tracking.py#L650) |
-| function | `_compute_calibration_milestone` | `(*, now=…)` | Compute the latest calibration milestone if any rule fires. | [src](../../../core/services/world_model_signal_tracking.py#L667) |
-| function | `format_world_model_milestone_for_awareness` | `()` | Surface one unrendered milestone per call. Returns '' when nothing. | [src](../../../core/services/world_model_signal_tracking.py#L742) |
-| function | `_load_predictions` | `()` | — | [src](../../../core/services/world_model_signal_tracking.py#L758) |
-| function | `_save_predictions` | `(predictions)` | — | [src](../../../core/services/world_model_signal_tracking.py#L765) |
-| function | `_extract_world_model_candidates` | `(*, user_message, session_id)` | — | [src](../../../core/services/world_model_signal_tracking.py#L769) |
-| function | `_project_context_signal` | `(message, *, session_id)` | — | [src](../../../core/services/world_model_signal_tracking.py#L796) |
-| function | `_workspace_scope_signal` | `(message)` | — | [src](../../../core/services/world_model_signal_tracking.py#L831) |
-| function | `_persist_world_model_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/world_model_signal_tracking.py#L853) |
-| function | `_apply_correction_signals` | `(*, user_message)` | — | [src](../../../core/services/world_model_signal_tracking.py#L926) |
-| function | `_recent_user_message_history` | `(*, limit_sessions, per_session_limit)` | — | [src](../../../core/services/world_model_signal_tracking.py#L970) |
-| function | `_matches_project_context` | `(message)` | — | [src](../../../core/services/world_model_signal_tracking.py#L991) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/world_model_signal_tracking.py#L996) |
-| function | `_rank` | `(ranks, value)` | — | [src](../../../core/services/world_model_signal_tracking.py#L1003) |
-| function | `_quote` | `(text)` | — | [src](../../../core/services/world_model_signal_tracking.py#L1007) |
 

@@ -283,7 +283,9 @@ def _persist_session_assistant_message(
 ) -> None:
     if not run.session_id:
         return
-    normalized = str(text or "").strip()
+    from core.services.code_answer_boundary import strip_answer_markers
+
+    normalized = strip_answer_markers(str(text or "")).strip()
     if not normalized:
         return
     if (getattr(run, "autonomous", False)

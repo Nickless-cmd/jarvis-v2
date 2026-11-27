@@ -1265,6 +1265,10 @@ def _handle_compact_command(run: "VisibleRun") -> str:
         return f"Komprimering mislykkedes: {exc}"
 
 
+from core.services.visible_run_wire import explicit_answer_stream
+
+
+@explicit_answer_stream
 async def _stream_visible_run(
     run: VisibleRun,
     *,
@@ -6984,8 +6988,7 @@ def _bounded_error(error_message: str, limit: int = 160) -> str:
     return normalized[: limit - 1].rstrip() + "…"
 
 
-def _sse(event: str, data: dict) -> str:
-    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+from core.services.visible_run_wire import _sse  # noqa: E402 — compatibility re-export
 
 
 class PresentationInvariantError(RuntimeError):

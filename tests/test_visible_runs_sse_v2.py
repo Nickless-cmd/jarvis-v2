@@ -1530,3 +1530,57 @@ async def test_taersklen_naas_paa_tvaers_af_working_step_nulstillinger():
         f"der skal skrives tekst i en final_answer-blok EFTER signalet; "
         f"tekstblokke i raekkefoelge: {tekst_start}, fold ved {fold_at[0]}"
     )
+
+
+@pytest.mark.asyncio
+async def test_explicit_code_answer_after_long_commentary_before_late_rounds():
+    from core.services.code_answer_boundary import ANSWER_MARKER
+    from core.services.visible_run_wire import explicit_answer_stream
+    from core.services.visible_turn_accumulator import TurnAccumulator
+
+    turn = TurnAccumulator()
+    early = 'Long commentary. ' * 60
+    answer = ANSWER_MARKER + '\nOK'
+
+    @explicit_answer_stream
+    async def legacy():
+        yield _legacy_sse('run', {'run_id': 'code-boundary'})
+        yield _legacy_sse('working_step', {'er_vaerktoej': True, 'status': 'running', 'tool_id': 't1', 'action': 'bash', 'arguments': {}})
+        turn.note_tool()
+        turn.add_tools([{'id': 't1', 'name': 'bash', 'input': {}}], [])
+        turn.note_text()
+        turn.add_text(early)
+        yield _legacy_sse('delta', {'delta': early})
+        yield _legacy_sse('working_step', {'action': 'thinking'})
+        turn.note_tool()
+        turn.close_segment()
+        turn.add_tools([{'id': 't2', 'name': 'bash', 'input': {}}], [])
+        yield _legacy_sse('working_step', {'er_vaerktoej': True, 'status': 'running', 'tool_id': 't2', 'action': 'bash', 'arguments': {}})
+        turn.note_text()
+        for char in answer:
+            turn.add_text(char)
+            yield _legacy_sse('delta', {'delta': char})
+        turn.note_tool()
+        turn.close_segment()
+        turn.add_tools([{'id': 'late', 'name': 'bash', 'input': {}}], [])
+        yield _legacy_sse('working_step', {'er_vaerktoej': True, 'status': 'running', 'tool_id': 'late', 'action': 'bash', 'arguments': {}})
+        turn.note_text()
+        turn.add_text('Late synthesis')
+        yield _legacy_sse('delta', {'delta': 'Late synthesis'})
+        yield _legacy_sse('done', {'status': 'completed'})
+
+    output = await _collect(translate_to_v2(legacy(), run_id='code-boundary', ping_interval_s=999))
+    events = _parse_v2_events(output)
+    starts = [data for kind, data in events if kind == 'content_block_start' and data['content_block']['type'] == 'text']
+    marked = [data for data in starts if data['content_block'].get('code_answer_start')]
+    assert len(marked) == 1
+    assert all(data['content_block']['code_answer_protocol'] == 1 for data in starts)
+    index = marked[0]['index']
+    text = ''.join(data['delta'].get('text', '') for kind, data in events if kind == 'content_block_delta' and data['index'] == index)
+    assert text.strip() == 'OK'
+    assert ANSWER_MARKER not in ''.join(output)
+    saved = turn.build_blocks(early + '\nOK\nLate synthesis')
+    marked_saved = [b for b in saved if b.get('code_answer_start')]
+    assert len(marked_saved) == 1
+    assert marked_saved[0]['text'].strip() == 'OK'
+    assert not any(ANSWER_MARKER in b.get('text', '') for b in saved)

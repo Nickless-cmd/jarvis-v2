@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_dream_state_surface.py`
+_Samlet flade for Jarvis' SELV- og DROEMME-tilstand._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `producer_names` | `()` | Navnene i kald-raekkefoelge, paa tvaers af grupperne — til test. | [src](../../../core/services/self_dream_state_surface.py#L78) |
+| function | `group_names` | `()` | — | [src](../../../core/services/self_dream_state_surface.py#L83) |
+| function | `_call` | `(mod_path, fn_attr)` | Kald én producent. En defekt maa ikke skjule de oevrige. | [src](../../../core/services/self_dream_state_surface.py#L87) |
+| function | `build_self_dream_state_surface` | `()` | Kald alle producenter, grupperet. Kaster ALDRIG. | [src](../../../core/services/self_dream_state_surface.py#L101) |
+
 ## `core/services/self_experiments.py`
 _Self-Experiments — A/B testing on Jarvis' own behavior._
 
@@ -771,16 +781,4 @@ _Fastlås modellen pr. session, så prompt-præfikset holder (2026-10-03)._
 | function | `pin` | `(session_id, provider, model)` | Lås modellen for sessionen. Returnerer det der FAKTISK blev låst. | [src](../../../core/services/session_model_pin.py#L148) |
 | function | `resolve` | `(session_id, provider, model)` | Modellen turen skal bruge, og hvor valget kom fra. | [src](../../../core/services/session_model_pin.py#L164) |
 | function | `release` | `(session_id, *, grund=…)` | Slip låsen — kaldes når den låste model ikke kunne bruges. | [src](../../../core/services/session_model_pin.py#L188) |
-
-## `core/services/session_permission.py`
-_Samtalens tilladelses-niveau — én sandhed, på serveren (Bjørn 20/9-2026)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_sikr_kolonne` | `(conn)` | — | [src](../../../core/services/session_permission.py#L55) |
-| function | `hent_permission` | `(session_id)` | Samtalens niveau; `ask` for en ukendt samtale eller værdi. | [src](../../../core/services/session_permission.py#L64) |
-| function | `saet_permission` | `(session_id, mode)` | — | [src](../../../core/services/session_permission.py#L82) |
-| function | `trust_for_session` | `(session_id)` | Skal et run der lander i denne samtale arve fuld adgang? | [src](../../../core/services/session_permission.py#L99) |
-| function | `trust_for_autonomous` | `(session_id)` | Skal et AUTONOMT run arve fuld adgang? (Bjørn 9/11-2026) | [src](../../../core/services/session_permission.py#L122) |
-| function | `arv_permission` | `(ny_session, fra_session)` | Giv en NY samtale samme niveau som den den blev startet fra. | [src](../../../core/services/session_permission.py#L174) |
 

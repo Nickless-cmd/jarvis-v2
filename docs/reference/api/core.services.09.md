@@ -373,6 +373,18 @@ _Code aesthetic daemon — weekly aesthetic reflection on the codebase._
 | function | `_generate_aesthetic_reflection` | `()` | — | [src](../../../core/services/code_aesthetic_daemon.py#L101) |
 | function | `_store_reflection` | `(reflection, now)` | — | [src](../../../core/services/code_aesthetic_daemon.py#L120) |
 
+## `core/services/code_answer_boundary.py`
+_Explicit code-answer boundary shared by the stream and persistence paths._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `AnswerMarkerStream` | `` | Incremental scanner: (text | answer_start, value), independent of chunks. | [src](../../../core/services/code_answer_boundary.py#L17) |
+| method | `AnswerMarkerStream.__init__` | `(self)` | — | [src](../../../core/services/code_answer_boundary.py#L20) |
+| method | `AnswerMarkerStream.feed` | `(self, text)` | — | [src](../../../core/services/code_answer_boundary.py#L27) |
+| method | `AnswerMarkerStream.flush` | `(self)` | — | [src](../../../core/services/code_answer_boundary.py#L67) |
+| function | `strip_answer_markers` | `(text)` | — | [src](../../../core/services/code_answer_boundary.py#L75) |
+| function | `mark_code_answer_start` | `(blocks)` | Persist the declared boundary, never infer it from answer length. | [src](../../../core/services/code_answer_boundary.py#L80) |
+
 ## `core/services/cognitive_architecture_surface.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -745,19 +757,4 @@ _Connections-cluster — gør forbindelses-LIVSCYKLUSSEN synlig i Den Intelligen
 | function | `note_unauthorized` | `(user_id, session_id, resource, reason, *, role=…, run_id=…)` | UAUTORISERET adgang (tool-deny / identity-spoof / rate-limit) på en forbindelse → | [src](../../../core/services/connections.py#L51) |
 | function | `session_activity` | `(session_id, *, limit=…)` | Forbindelses-debugging pr. session: hvilke tools blev brugt, hvilke FEJLEDE (+ årsag), | [src](../../../core/services/connections.py#L80) |
 | function | `active_summary` | `(*, window=…)` | Read-only: hvem/hvad har været forbundet i den seneste trace (til MC/adaptiv-læring). | [src](../../../core/services/connections.py#L122) |
-
-## `core/services/connectors.py`
-_Connector-registret — hvad brugeren har forbundet, og hvad det laaser op._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_enabled_store` | `()` | — | [src](../../../core/services/connectors.py#L194) |
-| function | `is_enabled` | `(user_id, connector_id)` | Default ON; kun False hvis brugeren eksplicit har slået den fra. | [src](../../../core/services/connectors.py#L199) |
-| function | `set_enabled` | `(user_id, connector_id, enabled)` | — | [src](../../../core/services/connectors.py#L208) |
-| function | `_provider_of` | `(c)` | OAuth-provider for en connector. Google-pakken deler provider='google'. | [src](../../../core/services/connectors.py#L222) |
-| function | `_connected` | `(user_id, c)` | Er DENNE connector brugbar — ikke bare: findes der en token hos udbyderen. | [src](../../../core/services/connectors.py#L227) |
-| function | `oauth_request_for` | `(connector_id)` | Map et connector-id → (oauth_provider, scopes) til /api/oauth/{id}/start. | [src](../../../core/services/connectors.py#L292) |
-| function | `list_for_user` | `(user_id)` | Hele kataloget beriget med per-bruger `connected` + `enabled`. | [src](../../../core/services/connectors.py#L304) |
-| function | `_audit` | `(event, user_id, connector_id)` | — | [src](../../../core/services/connectors.py#L327) |
-| function | `delete_for_user` | `(user_id, connector_id)` | Afbryd & slet: revoke hos provider (best-effort) + lokal token-wipe + ryd flag. | [src](../../../core/services/connectors.py#L335) |
 

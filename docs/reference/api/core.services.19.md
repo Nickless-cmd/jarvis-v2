@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/meta_learning_hypotheses.py`
+_Meta-læring Phase 2: hypothesis registration + sample tracking._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_schema` | `()` | Idempotently create hypothesis + sample tables. | [src](../../../core/services/meta_learning_hypotheses.py#L37) |
+| function | `register_hypothesis` | `(*, memo_id, candidate_idx)` | Promote a memo's hypothesis_candidate at index `candidate_idx` to | [src](../../../core/services/meta_learning_hypotheses.py#L79) |
+| function | `record_hypothesis_sample` | `(*, hypothesis_id, supports, note=…)` | Append a sample. If the hypothesis has reached sample_size_needed, | [src](../../../core/services/meta_learning_hypotheses.py#L124) |
+| function | `list_active_hypotheses` | `(*, limit=…)` | — | [src](../../../core/services/meta_learning_hypotheses.py#L217) |
+| function | `format_active_hypotheses_for_awareness` | `()` | Awareness section showing active hypotheses + progress. | [src](../../../core/services/meta_learning_hypotheses.py#L242) |
+| function | `_safe_publish` | `(family_event, payload)` | — | [src](../../../core/services/meta_learning_hypotheses.py#L259) |
+
 ## `core/services/meta_learning_retrospective.py`
 _Meta-læring retrospective generator — Phase 1 (AGI track #3)._
 
@@ -629,29 +641,4 @@ _Ntfy gateway — send push notifications via ntfy.sh or self-hosted server._
 | function | `_default_title` | `()` | — | [src](../../../core/services/ntfy_gateway.py#L35) |
 | function | `_header_safe` | `(value)` | Goer en tekst sikker som HTTP-header (urllib koder headere som latin-1). | [src](../../../core/services/ntfy_gateway.py#L46) |
 | function | `send_notification` | `(message, title=…, priority=…, tags=…)` | Send a push notification via ntfy. Returns status dict. | [src](../../../core/services/ntfy_gateway.py#L83) |
-
-## `core/services/nudge_broend.py`
-_Nudge-broend — daemons drop nudges, Jarvis inspects and decides._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/nudge_broend.py#L39) |
-| function | `_save` | `(nudges)` | — | [src](../../../core/services/nudge_broend.py#L52) |
-| function | `_cleanup` | `(nudges)` | Remove oldest non-pending nudges if over max. | [src](../../../core/services/nudge_broend.py#L63) |
-| function | `push` | `(*, source=…, kind=…, message=…, importance=…, raw_payload=…, emne=…)` | Deposit a nudge in the broend. Returns nudge_id. | [src](../../../core/services/nudge_broend.py#L81) |
-| function | `list_pending` | `(limit=…)` | List pending nudges, newest first. | [src](../../../core/services/nudge_broend.py#L134) |
-| function | `_emne_for` | `(source, message)` | Udled en emne-nøgle når kalderen ikke giver en. | [src](../../../core/services/nudge_broend.py#L146) |
-| function | `_parse_ts` | `(value)` | — | [src](../../../core/services/nudge_broend.py#L162) |
-| function | `sidst_naevnt` | `(emne)` | Hvornår emnet sidst blev SAGT. None = aldrig. | [src](../../../core/services/nudge_broend.py#L170) |
-| function | `kadence_tillader` | `(emne, *, nu=…)` | Må emnet nævnes nu? Højst én prik pr. emne pr. dag. | [src](../../../core/services/nudge_broend.py#L190) |
-| function | `mark_venter` | `(nudge_id, *, grund=…)` | Trin 4: flyt en nudge til ``venter`` — ikke kasseret, ikke gentaget. | [src](../../../core/services/nudge_broend.py#L199) |
-| function | `list_ventende` | `(limit=…)` | Nudges der venter på at verden flytter sig. | [src](../../../core/services/nudge_broend.py#L225) |
-| function | `genoptag_ved_skift` | `(skift, *, nu=…)` | Trin 5: genoptag hvilende nudges NÅR et registreret skift er tilgængeligt. | [src](../../../core/services/nudge_broend.py#L232) |
-| function | `trin_for` | `(emne, *, nu=…)` | Hvilket trin er emnet på? 0-3, beregnet af historikken. | [src](../../../core/services/nudge_broend.py#L324) |
-| function | `formuler_for_trin` | `(trin, message, emne=…)` | Formulér beskeden efter trinnet. Grovheden er FORMEN, ikke indholdet. | [src](../../../core/services/nudge_broend.py#L352) |
-| function | `count_pending` | `()` | Return count of pending nudges. | [src](../../../core/services/nudge_broend.py#L368) |
-| function | `get` | `(nudge_id)` | Get a single nudge by ID. | [src](../../../core/services/nudge_broend.py#L374) |
-| function | `mark_sent` | `(nudge_id, *, trin=…)` | Mark a nudge as sent. | [src](../../../core/services/nudge_broend.py#L383) |
-| function | `mark_dismissed` | `(nudge_id, reason=…)` | Mark a single nudge as dismissed. | [src](../../../core/services/nudge_broend.py#L402) |
-| function | `dismiss_all` | `(reason=…)` | Dismiss all pending nudges. Returns count. | [src](../../../core/services/nudge_broend.py#L416) |
 

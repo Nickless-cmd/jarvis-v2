@@ -64,9 +64,11 @@ implicitte rækker arvede ikke `1fr`. Målt: `0px 74.8px 74.8px 74.8px 74.8px
 74.8px` — kun 1/6 af højden animerede, resten forsvandt ved afmonteringen med et
 spring på 361 px. Løsningen er én indre wrapper (`.chat-flow-runde-indhold`).
 
-**`.chat-flow-answer` rammer også det nestede svar** inde i den flade gren. En
-simpel klasse-query gav A og B i forkert rækkefølge (negativ afstand). Brug
-`[data-segment="besvarelse"]`.
+**`.chat-flow-answer` rammer også det nestede svar.** Fælden blev målt mens den
+flade gren fandtes: en simpel klasse-query gav A og B i forkert rækkefølge
+(negativ afstand), fordi grenen lagde endnu en `.chat-flow-answer` inde i den
+ydre. Grenen er aflyst 27/11-2026, men reglen gælder stadig — brug
+`[data-segment="besvarelse"]` når rækkefølgen skal måles, ikke en klasse-query.
 
 **`gap: inherit` koster plads selv ved 0 px højde.** `.chat-flow` har
 `gap: 0.65rem`; en kollapset container efterlod 10,4 px tom luft mellem A og B.
@@ -106,10 +108,35 @@ starter forfra, målt: opacity 0,84), og runden tages ud af flowet med
 Målt: reference **0 px** ved begge højder = slutafstanden. Gap'et er
 neutraliseret, ikke skjult.
 
-## Stadig åbent
+## Lukket 27/11-2026 — blinket ved renderer-skiftet
 
-**Blinket ved renderer-skiftet.** Besvarelsens ydre `.chat-flow-answer` består,
-men dens direkte barn skifter fra `<p>` til `.chat-flow-segmenter` når
-`fladtFlow` bliver sand — så hele besvarelsen remountes. Det er kontrakt 1 i
-`ChatFlowPresentation.accept.test.tsx`, som står som `it.fails`. Den bliver rød
-i samme øjeblik nogen fixer strukturen, og skal da vendes til `it`.
+**Problemet:** besvarelsens ydre `.chat-flow-answer` bestod, men dens direkte
+barn skiftede fra `BlocksRenderer`s rod til `.chat-flow-segmenter` når
+`fladtFlow` blev sand — så hele besvarelsen remountede. Det var kontrakt 1 i
+`ChatFlowPresentation.accept.test.tsx`, som stod som `it.fails`.
+
+**Løsningen var ikke en animation.** Bjørn 27/11-2026: «Stop med at kompensere
+for strukturskiftet gennem animationer … hver deres uafhængige visuelle
+livscyklus i én stabil dokumentstruktur.» Grenen er derfor slettet, ikke
+dæmpet. `plassering` bar allerede sondringen (`'foer' | 'foerste' | 'efter'`),
+så der var ingen grund til en boolean der valgte struktur.
+
+Nu har tre containere hver sin livscyklus i én stabil struktur: turhovedet,
+besvarelsen og `[data-runder-efter]`. En hale-runde **tilføjes under**
+besvarelsen; den flytter intet.
+
+**Målt i Chromium** (`maal-ekstra-runde.mjs`, forløbet `[slutsvar]` → `[slutsvar, runde]`):
+
+| Mål | Resultat |
+|---|---|
+| `svarSammeNode` | **true** gennem hele forløbet |
+| `svarBarnSammeNode` | **true** gennem hele forløbet |
+| `gruppeHoejde` mens runden ankommer | **27,98 px uændret** |
+| `haleEfterSvar` | **true** — containeren står efter besvarelsen |
+| hale-højde ved indgang | `0 → 27,1 → 47,7 → 57,0 → 66,6 → 72,0 → 74,3 → 74,4` |
+| `gruppeHarTrin` | **false** — intet dobbelt ejerskab |
+| hale-højde ved terminal | `74,4 → 46,5 → 22,1 → 6,9 → 0`, derefter afmonteret |
+
+Kontrakt 1 er grøn. Kontrakt 1b måler nu **forekomster af indhold** i stedet for
+antal containere — to containere i forskellige livscyklusfaser er ikke en fejl;
+dobbelt ejerskab af samme blok er.

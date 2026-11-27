@@ -5,16 +5,25 @@
  * klippet … det virker som om hovede folder ind og ud … runderne uden for
  * turhoved bliver ikke vist».
  *
- * Forløbet er `[slutsvar]` → `[slutsvar, runde]`, altså den ÆGTE tilføjelse:
- * samme besvarelse, én runde mere. Første version af denne måling skiftede
- * mellem `uden` (to besvarelser) og `ekstra-runde` (én) — så svar-højden
- * ændrede sig af en anden grund end runden, og forskellen blev tilskrevet
- * runden. Det er den slags målefejl der giver et rigtigt tal og en forkert
- * konklusion.
+ * ## Hvad der måles nu
  *
- * Tre ting måles: om runden er SYNLIG (hvor som helst), om strukturen skifter
- * (fold ↔ flad gren), og om besvarelsens DOM-node overlever (`isSameNode` —
- * attributter kan ikke se et remount).
+ * Målingen blev skrevet til den GAMLE binære gren (`fladtFlow`), som er
+ * AFLYST. Den gren valgte mellem to indre strukturer under `.chat-flow-answer`,
+ * og målingen sporede derfor `flad: true/false` som om det var fysik. Det er
+ * den kobling der nu er væk, så en måling af den ville måle noget der ikke
+ * findes.
+ *
+ * Den nye struktur har TRE uafhængige containere, og målingen kræver:
+ *
+ *   1. Besvarelsens node overlever (`isSameNode`) — både `.chat-flow-answer`
+ *      og dens DIREKTE BARN. Det sidste er det afgørende: den gamle gren
+ *      gjorde den ydre node stabil mens barnet skiftede, og så remountede
+ *      besvarelsen alligevel.
+ *   2. Hale-containeren `[data-runder-efter]` findes og står EFTER
+ *      besvarelsen i DOM-rækkefølgen (`compareDocumentPosition`).
+ *   3. Folden viser IKKE rundens blokke — dobbelt ejerskab er den fejl
+ *      KONTRAKT 1b værner mod, nu målt som forekomster af indhold.
+ *   4. Runden glider ind i højde frem for at poppe.
  */
 import { chromium } from 'playwright'
 
@@ -32,7 +41,9 @@ await page.evaluate(() => window.__sætTilstand('live'))
 await page.waitForTimeout(400)
 
 await page.evaluate(() => {
-  window.__svarNode = document.querySelector('.chat-flow-answer')
+  const svar = document.querySelector('.chat-flow-answer')
+  window.__svarNode = svar
+  window.__svarBarn = svar ? svar.firstElementChild : null
 })
 
 const snapshot = () =>
@@ -40,21 +51,32 @@ const snapshot = () =>
     const gruppe = document.querySelector('.chat-flow-gruppe-ydre')
     const indre = document.querySelector('.chat-flow-gruppe')
     const svar = document.querySelector('.chat-flow-answer')
-    const runder = Array.from(document.querySelectorAll('.chat-flow-runde'))
+    const hale = document.querySelector('[data-runder-efter]')
+    const runder = Array.from(document.querySelectorAll('[data-runder-efter] .chat-flow-runde'))
     const hoejde = (el) => (el ? Math.round(el.getBoundingClientRect().height * 100) / 100 : null)
+    // DOM-rækkefølgen: er hale-containeren EFTER besvarelsen? `~`- og
+    // `+`-reglerne i CSS afhænger af det, og en tilfældig ombytning ville
+    // gøre hele strukturen forkert uden at nogen attribut viste det.
+    const efterSvar = svar && hale
+      ? (svar.compareDocumentPosition(hale) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+      : null
     return {
       gruppe: !!gruppe,
       gruppeAaben: gruppe ? gruppe.getAttribute('data-aaben') : null,
       gruppeHoejde: hoejde(gruppe),
-      // Foldens indhold: findes runden som blokke derinde? Det er dér den
-      // vises når den flade gren ikke har overtaget.
-      gruppeTekst: indre ? (indre.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60) : null,
+      // DOBBELT EJERSKAB: står rundens kald OGSÅ i folden?
       gruppeHarTrin: indre ? (indre.textContent || '').includes('trin 0') : false,
-      flad: !!document.querySelector('.chat-flow-segmenter[data-segmenter="flat"]'),
+      hale: !!hale,
+      haleEfterSvar: efterSvar,
+      haleHoejde: hoejde(hale),
       runder: runder.length,
       levetid: runder.map((r) => r.getAttribute('data-levetid')).join(','),
       rundeHoejde: runder.map(hoejde).join(','),
+      // DE TO AFGØRENDE MÅL: overlever noden — og dens direkte barn?
       svarSammeNode: svar ? (window.__svarNode ? svar.isSameNode(window.__svarNode) : 'ingen-ref') : 'intet-svar',
+      svarBarnSammeNode: svar
+        ? (window.__svarBarn ? svar.firstElementChild?.isSameNode(window.__svarBarn) ?? 'intet-barn' : 'ingen-ref')
+        : 'intet-svar',
       svarHoejde: hoejde(svar),
       svarHarSvar: svar ? (svar.textContent || '').includes('Første besvarelse') : false,
     }
@@ -63,7 +85,7 @@ const snapshot = () =>
 console.log('=== FØR: slutsvar alene, pacen kører ===')
 console.log(JSON.stringify(await snapshot(), null, 2))
 
-// NU ANKOMMER DEN EKSTRA RUNDE.
+// NU ANKOMMER DEN EKSTRA RUNDE — EFTER slutsvaret.
 await page.evaluate(() => window.__sætBlokke('ekstra-runde'))
 
 const kurve = []
@@ -76,7 +98,7 @@ for (let i = 0; i < 16; i += 1) {
 console.log('=== 2. RUNDEN ANKOMMER (turen kører stadig) ===')
 for (const k of kurve) console.log(JSON.stringify(k))
 
-// Nu slutter turen — her må den flade gren tage over, og runderne kollapse.
+// Nu slutter turen — her må runden kollapse og til sidst afmonteres.
 await page.evaluate(() => window.__sætTilstand('terminal'))
 
 const slut = []

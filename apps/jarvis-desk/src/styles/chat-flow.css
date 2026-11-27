@@ -149,7 +149,8 @@
    øverst). Det er ikke kosmetik: sidste gang fik faden sit eget hardcodede tal,
    og så lukkede en tom boks sammen i mere end halvdelen af foldets rejse. Et
    tredje ur ville genskabe præcis den fejl. */
-.chat-flow-segmenter {
+.chat-flow-segmenter,
+.chat-flow-runder-efter {
   display: grid;
   gap: inherit;
   min-width: 0;

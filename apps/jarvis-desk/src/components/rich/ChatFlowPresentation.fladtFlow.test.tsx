@@ -1,14 +1,25 @@
 /**
- * DET FLADE DOKUMENTFLOW — rækkefølgen som DOM, ikke som tre faste containere.
+ * DEN STABILE DOKUMENTSTRUKTUR — besvarelsen er ét dokument, hale-runderne
+ * er deres egne containere under den.
  *
- * Bjørn 26/11-2026: «en runde uden for hovedet er stadig arbejde, men dens
- * container skal forblive synlig indtil turafslutningen».
+ * Bjørn 27/11-2026: «Stop med at kompensere for strukturskiftet gennem
+ * animationer. Turhovedet, besvarelsen og runderne uden for hovedet skal have
+ * hver deres uafhængige visuelle livscyklus i én stabil dokumentstruktur.»
  *
- * GPT's tredje krav var at verificere segmentidentiteten FØR den bruges som
- * React-key: `liveChatBlokke()` kan komprimere huller gennem `udenHuller()` og
- * præpende `skillFlade` foran de eksisterende blokke, så indeks i den
- * projicerede liste ikke er SSE-indekset. Testene her sender blokkene gennem
- * begge forskydninger og kræver at containerens `data-segment-id` står stille.
+ * ## Hvad der blev afløst
+ *
+ * Filen hed før `ChatFlowPresentation.fladtFlow.test.tsx` og beviste den
+ * FLADE gren: at `[data-segmenter="flat"]` overtog når et runde-segment lå
+ * efter besvarelsen, og at rækkefølgen «besvarelse → runde → besvarelse» blev
+ * tegnet som tre containere.
+ *
+ * Den gren var selve fejlen. Den skiftede besvarelsens INDRE struktur (fra
+ * `BlocksRenderer`s rod til `.chat-flow-segmenter`), og dermed remountede hele
+ * besvarelsen i det øjeblik runden ankom. Animationerne dækkede over det.
+ *
+ * Nu er der ingen gren: `.chat-flow-answer` er ALTID `BlocksRenderer`, og
+ * hale-runderne er ALTID deres egne containere i `[data-runder-efter]`.
+ * `plassering` — ikke en boolean — bærer hvor længe hver container lever.
  */
 import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
@@ -35,10 +46,8 @@ const segmentIds = (container: HTMLElement): string[] =>
   Array.from(container.querySelectorAll('[data-segment-id]'))
     .map((el) => el.getAttribute('data-segment-id') ?? '')
 
-describe('fladt dokumentflow', () => {
-  it('KERNEN: en runde EFTER slutsvaret får sin egen container', () => {
-    // Den gamle struktur kunne ikke udtrykke dette: besvarelsen og runden lå
-    // i hver sin faste container, og rækkefølgen blev rekonstrueret.
+describe('stabil dokumentstruktur', () => {
+  it('KERNEN: en runde EFTER slutsvaret får sin EGEN container under besvarelsen', () => {
     const { container } = render(
       <ChatFlowPresentation
         {...common}
@@ -53,16 +62,26 @@ describe('fladt dokumentflow', () => {
       />,
     )
 
-    const flow = container.querySelector('[data-segmenter="flat"]')
-    expect(flow).not.toBeNull()
+    // Besvarelsen er ét dokument — uanset hvor mange runder der ligger efter.
+    // Indholdet tjekkes IKKE her: uden frames står paceren på nul tegn i
+    // jsdom, så teksten er tom af en pacing-grund og ikke af en strukturgrund.
+    // Det er `accept.test.tsx` der måler teksten, hvor uret styres manuelt.
+    const svar = container.querySelector('.chat-flow-answer')
+    expect(svar).not.toBeNull()
 
-    // Rækkefølgen i DOM følger turens rækkefølge — ikke rollen.
-    const roller = Array.from(flow!.querySelectorAll('[data-segment]'))
-      .map((el) => el.getAttribute('data-segment'))
-    expect(roller).toEqual(['besvarelse', 'runde', 'besvarelse'])
+    // Runden har sin egen container UNDER den — ikke inde i den.
+    const hale = container.querySelector('[data-runder-efter]')
+    expect(hale).not.toBeNull()
+    expect(svar!.contains(hale)).toBe(false)
+
+    const runde = hale!.querySelector('[data-segment="runde"]')
+    expect(runde).not.toBeNull()
+    expect(runde!.getAttribute('data-plassering')).toBe('efter')
   })
 
-  it('runden efter slutsvaret er stadig ARBEJDE — men dens plassering er «efter»', () => {
+  it('besvarelsen skifter ALDRIG indre struktur — der findes ingen flad gren', () => {
+    // Den gamle gren efterlod `[data-segmenter="flat"]` som besvarelsens
+    // forælder. Den findes ikke længere: besvarelsen har præcis én ejer.
     const { container } = render(
       <ChatFlowPresentation
         {...common}
@@ -72,12 +91,62 @@ describe('fladt dokumentflow', () => {
         finalAnswerStarted
       />,
     )
+    expect(container.querySelector('[data-segmenter="flat"]')).toBeNull()
+    expect(container.querySelector('.chat-flow-answer')).not.toBeNull()
+  })
 
-    const runde = container.querySelector('[data-segment="runde"]')
-    expect(runde).not.toBeNull()
-    // Rollen og placeringen er TO egenskaber: den er arbejde, og den ligger
-    // i halen. Levetiden læses af `plassering`, ikke af rollen.
-    expect(runde!.getAttribute('data-plassering')).toBe('efter')
+  it('en tur UDEN hale-runde har ingen hale-container', () => {
+    const { container } = render(
+      <ChatFlowPresentation
+        {...common}
+        blocks={[kald('k1'), tekst('Svaret.', 'final_answer')]}
+        streaming={false}
+        status="done"
+        finalAnswerStarted
+      />,
+    )
+    expect(container.querySelector('[data-runder-efter]')).toBeNull()
+    expect(container.querySelector('.chat-flow-answer')).not.toBeNull()
+  })
+
+  it('en godkendelse i HALEN er ikke en runde — den hører til et kald', () => {
+    // MÅLT 26/11-2026: `indsaetVedKald` lægger en godkendelse SIDST når dens
+    // `action` ikke matcher noget kalds `input`. Blokken havnede dermed efter
+    // slutsvaret og blev læst som en ny runde. `HALEBLOKKE_UDEN_RUNDE` holder
+    // den ude af hale-containeren, så en persisteret tur med en umatchet
+    // godkendelse ikke får en container der ligner arbejde.
+    const godkendelse = {
+      type: 'approval', approval_id: 'a1', tool: 'bash',
+      action: 'rm -f /tmp/x', status: 'approved', risk: 'destructive',
+    } as unknown as ContentBlock
+
+    const { container } = render(
+      <ChatFlowPresentation
+        {...common}
+        blocks={[kald('k1'), tekst('Svaret.', 'final_answer'), godkendelse]}
+        streaming={false}
+        status="done"
+        finalAnswerStarted
+      />,
+    )
+
+    expect(container.querySelector('[data-runder-efter]')).toBeNull()
+    expect(container.querySelector('.chat-flow-answer')).not.toBeNull()
+  })
+
+  it('MODPRØVE: et RIGTIGT kald i halen får sin container', () => {
+    // Gaten må ikke være blevet blind af udelukkelsen ovenfor. Et værktøjskald
+    // efter slutsvaret ER en ny runde.
+    const { container } = render(
+      <ChatFlowPresentation
+        {...common}
+        blocks={[tekst('Svaret.', 'final_answer'), kald('k-efter')]}
+        streaming
+        status="working"
+        finalAnswerStarted
+      />,
+    )
+    expect(container.querySelector('[data-runder-efter]')).not.toBeNull()
   })
 
   it('containerens id kommer fra kilden — en reconnect der udfylder et hul rører den ikke', () => {
@@ -122,69 +191,9 @@ describe('fladt dokumentflow', () => {
     // Skillefladen tilføjer sit eget id; resten skal stå stille.
     expect(idsEfter.filter((id) => !id.startsWith('skill_surface:'))).toEqual(idsFoer)
   })
-
-  it('en tur uden runde efter svaret beholder den GAMLE struktur', () => {
-    // Den flade gren må ikke tage over for de ture hvor rækkefølgen er
-    // identisk med den gamle — dér bærer den gamle vej fold, pacing og de
-    // målte gates.
-    const { container } = render(
-      <ChatFlowPresentation
-        {...common}
-        blocks={[kald('k1'), tekst('Svaret.', 'final_answer')]}
-        streaming={false}
-        status="done"
-        finalAnswerStarted
-      />,
-    )
-
-    expect(container.querySelector('[data-segmenter="flat"]')).toBeNull()
-    expect(container.querySelector('.chat-flow-answer')).not.toBeNull()
-  })
-
-  it('en godkendelse i HALEN udløser ikke den flade gren — den hører til et kald', () => {
-    // MÅLT 26/11-2026: `indsaetVedKald` lægger en godkendelse SIDST når dens
-    // `action` ikke matcher noget kalds `input`. Blokken havnede dermed efter
-    // slutsvaret og blev læst som en ny runde — men den er arbejde der hører
-    // til et kald, præcis som `progress`. Uden denne udelukkelse tog hver
-    // persisteret tur med en umatchet godkendelse den flade gren og rev de
-    // målte gates ned.
-    const godkendelse = {
-      type: 'approval', approval_id: 'a1', tool: 'bash',
-      action: 'rm -f /tmp/x', status: 'approved', risk: 'destructive',
-    } as unknown as ContentBlock
-
-    const { container } = render(
-      <ChatFlowPresentation
-        {...common}
-        blocks={[kald('k1'), tekst('Svaret.', 'final_answer'), godkendelse]}
-        streaming={false}
-        status="done"
-        finalAnswerStarted
-      />,
-    )
-
-    expect(container.querySelector('[data-segmenter="flat"]')).toBeNull()
-    expect(container.querySelector('.chat-flow-answer')).not.toBeNull()
-  })
-
-  it('MODPRØVE: et RIGTIGT kald i halen udløser stadig den flade gren', () => {
-    // Gaten må ikke være blevet blind af udelukkelsen ovenfor. Et værktøjskald
-    // efter slutsvaret ER en ny runde, og så skal rækkefølgen bæres af data.
-    const { container } = render(
-      <ChatFlowPresentation
-        {...common}
-        blocks={[tekst('Svaret.', 'final_answer'), kald('k-efter')]}
-        streaming
-        status="working"
-        finalAnswerStarted
-      />,
-    )
-
-    expect(container.querySelector('[data-segmenter="flat"]')).not.toBeNull()
-  })
 })
 
-describe('levetiden — en runde bliver stående til turen slutter', () => {
+describe('levetiden — en hale-runde bliver stående til turen slutter', () => {
   const blokke = [
     tekst('Svaret.', 'final_answer'),
     kald('k-efter'),
@@ -193,7 +202,7 @@ describe('levetiden — en runde bliver stående til turen slutter', () => {
   it('en runde EFTER slutsvaret er LIVE mens turen kører', () => {
     // GPT's tredje krav: «en runde uden for hovedet er stadig arbejde, men dens
     // container skal forblive synlig indtil turafslutningen». Levetiden er
-    // data (`data-levetid`), ikke en CSS-tilstand der gættes ud fra status.
+    // data (`data-levetid`), ikke en CSS-tilstand gættet ud fra status.
     const { container } = render(
       <ChatFlowPresentation {...common} blocks={blokke}
         streaming status="working" finalAnswerStarted />,
@@ -218,7 +227,11 @@ describe('levetiden — en runde bliver stående til turen slutter', () => {
       <ChatFlowPresentation {...common} blocks={blokke}
         streaming={false} status="done" finalAnswerStarted />,
     )
-    const svar = container.querySelector('[data-segment="besvarelse"]')
-    expect(svar!.getAttribute('data-levetid')).toBe('svar')
+    // Besvarelsen er nu en almindelig `.chat-flow-answer` uden `data-levetid`:
+    // den kollapser aldrig, fordi den ikke er arbejde. Det ER kontrakten —
+    // før blev den båret af et `data-levetid="svar"` på et segment.
+    const svar = container.querySelector('.chat-flow-answer')
+    expect(svar).not.toBeNull()
+    expect(svar!.getAttribute('data-levetid')).toBeNull()
   })
 })

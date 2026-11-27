@@ -256,8 +256,41 @@ export function ChatFlowPresentation({
   // kan være kompakt.
   const inlineQuestions = retainedWork.filter((block) =>
     block.type === 'tool_use' && block.name === 'pause_and_ask')
+  // ── RUNDER EFTER BESVARELSEN — EGEN CONTAINER, EGEN LIVSCYKLUS ─────────
+  //
+  // Bjørn 27/11-2026: «Turhovedet, besvarelsen og runderne uden for hovedet
+  // skal have hver deres uafhængige visuelle livscyklus i én stabil
+  // dokumentstruktur.»
+  //
+  // Før var dette en BINÆR gren: så snart ét runde-segment lå efter
+  // besvarelsen, skiftede hele besvarelsens indre struktur fra
+  // `BlocksRenderer`s rod til `.chat-flow-segmenter`. Besvarelsen blev dermed
+  // remountet — og det er det blink brugeren ser. Animationerne dækkede over
+  // det i stedet for at fjerne det.
+  //
+  // Nu bærer `plassering` (fra `chatFlowModel`) hele sondringen, og der er
+  // ingen gren: besvarelsen er ALTID `BlocksRenderer` i `.chat-flow-answer`,
+  // og hale-runderne er ALTID deres egne containere under den. En runde der
+  // ankommer efter svaret tilføjes under besvarelsen — den flytter intet.
+  //
+  // `HALEBLOKKE_UDEN_RUNDE` bevares: `progress` samles sidst i `content_json`
+  // ved persistens, og en umatchet `approval` lægges sidst af `indsaetVedKald`.
+  // Ingen af dem er en ny runde, så et segment der KUN består af dem må ikke
+  // blive en synlig container.
+  const HALEBLOKKE_UDEN_RUNDE = new Set<ContentBlock['type']>(['progress', 'approval'])
+  const efterSegmenter = model.segmenter.filter((segment) =>
+    segment.slags === 'runde'
+    && segment.plassering === 'efter'
+    && segment.blokke.some((block) => !HALEBLOKKE_UDEN_RUNDE.has(block.type)))
+  // Blokkene ejes nu af hale-containeren. Folden må ikke også vise dem —
+  // dobbelt ejerskab er præcis det KONTRAKT 1b værner mod. Referencerne er
+  // identiske (`segmenter` og `workBlocks` bygges fra samme liste), så et
+  // sæt på objektidentitet rammer præcist.
+  const efterBlokke = new Set<ContentBlock>(
+    efterSegmenter.flatMap((segment) => segment.blokke))
   const foldWork = retainedWork.filter((block) =>
-    block.type !== 'tool_use' || block.name !== 'pause_and_ask')
+    (block.type !== 'tool_use' || block.name !== 'pause_and_ask')
+    && !efterBlokke.has(block))
   // Bjørn 20/10-2026: «det hurtige svar skal aldrig vises».
   //
   // `confirmedTexts` er den RÅ tekst fra serveren. Da den blev lagt foran
@@ -681,11 +714,11 @@ export function ChatFlowPresentation({
   // `indsaetVedKald`. Ingen af dem er en ny runde — og uden denne udelukkelse
   // ville hver persisteret tur med et værktøjskald eller en godkendelse tage
   // den flade gren og rive de målte gates ned.
-  const HALEBLOKKE_UDEN_RUNDE = new Set<ContentBlock['type']>(['progress', 'approval'])
-  const fladtFlow = model.segmenter.some((s) =>
-    s.slags === 'runde'
-    && s.plassering === 'efter'
-    && s.blokke.some((block) => !HALEBLOKKE_UDEN_RUNDE.has(block.type)))
+  // `fladtFlow` er AFLYST (Bjørn 27/11-2026). Den valgte mellem to
+  // indre strukturer under `.chat-flow-answer`, og det var selve koblingen:
+  // besvarelsen blev remountet i det øjeblik en hale-runde gjorde grenen sand.
+  // Sondringen lever nu som `plassering` i modellen og som `efterSegmenter`
+  // ovenfor — strukturen skifter ikke, kun hvilken container der ejer hvad.
 
   return (
     // `control` er kun en chat-flade (14/11-2026). `BlocksRenderer` deles med
@@ -733,7 +766,7 @@ export function ChatFlowPresentation({
           glider fra `1fr` til `0fr` (grid-rækker kan animeres i både
           Chromium og Safari; `height: auto` ville kræve `interpolate-size`,
           som kun Chromium har). */}
-      {visArbejdsgruppe && !fladtFlow ? (
+      {visArbejdsgruppe ? (
           <div className="chat-flow-gruppe-ydre" data-aaben={aaben ? 'true' : 'false'}
             /* `inert` er den ærlige erklæring om den lukkede fold (18/11-2026):
                indholdet bliver i DOM'en så rækken kan animere, men det er
@@ -841,92 +874,71 @@ export function ChatFlowPresentation({
         </div>
       ) : null}
 
-      {/* ÉN STABIL DOKUMENTSTRUKTUR (GPT, 26/11-2026): «Brug én stabil
-          dokumentstruktur fra turens begyndelse. Undgå et dynamisk skift mellem
-          gammel og ny renderer.»
+      {/* ÉN STABIL DOKUMENTSTRUKTUR — NU UDEN GREN (Bjørn 27/11-2026).
 
-          `.chat-flow-answer` findes derfor fra den første frame hvor der ER et
-          svar, og bliver den SAMME node hele turen — også når den flade gren
-          tager over. Før skiftede besvarelsen forælder (fra `.chat-flow` til
-          `.chat-flow-segmenter`), og så remountede selv stabile keys noden.
-          Det er det blink brugeren ser, og det kan ikke måles på attributter:
-          begge mounts har de samme. Kun `isSameNode` fælder det. */}
-      {fladtFlow || synligeSvar.length > 0 ? (
+          GPT's krav 26/11 var at undgå et dynamisk skift mellem gammel og ny
+          renderer. Det blev løst halvt: `.chat-flow-answer` blev stabil, men
+          dens DIREKTE BARN skiftede mellem `BlocksRenderer`s rod og
+          `.chat-flow-segmenter` — så besvarelsen remountede alligevel.
+
+          Bjørns dom 27/11: «Stop med at kompensere for strukturskiftet gennem
+          animationer … hver deres uafhængige visuelle livscyklus i én stabil
+          dokumentstruktur.» Derfor er grenen væk. Besvarelsen er ALTID denne
+          ene `BlocksRenderer` i denne ene `.chat-flow-answer`, fra første tegn
+          til turen er slut. En hale-runde tilføjes UNDER den — den flytter
+          intet her. */}
+      {synligeSvar.length > 0 ? (
         <div className="chat-flow-answer">
-          {fladtFlow ? (
-            // Turens rækkefølge som DOM. Hvert segment er sin egen container
-            // med en key fra kilden, så en reconnect eller en præpendering ikke
-            // river den ned. `plassering` bestemmer levetiden.
-            <div className="chat-flow-segmenter" data-segmenter="flat">
-              {model.segmenter.map((segment) => {
-                const erSvar = segment.slags === 'besvarelse'
-                // Leverancen ejes af leverance-blokken nedenfor — også her.
-                const blokke = erSvar
-                  ? segment.blokke.filter((block) => !erLeverance(block))
-                  : segment.blokke
-                if (blokke.length === 0) return null
-                // AFMONTERINGEN (Bjørn 27/11-2026): «Containeren skal først
-                // afmonteres efter den afsluttede transition, uden et
-                // efterfølgende layout-hop.» Når segmentets id står i
-                // `afmonterede`, er DENS række allerede 0fr og gap'et
-                // neutraliseret — så at fjerne noden ændrer ikke layoutet. Det
-                // er hele pointen: fjernelsen må ikke kunne ses.
-                //
-                // Sættet er per segment, ikke fælles: en container der
-                // kollapser senere må ikke fjernes fordi en anden blev færdig.
-                if (!erSvar && afmonterede.has(segment.id)) return null
-                // LEVETIDEN som data, ikke som en gættet CSS-tilstand.
-                //
-                // Et runde-segment bliver stående så længe turen kører — også
-                // når det ligger EFTER slutsvaret, og mens pacen stadig har
-                // tekst tilbage (`turenKoerer` bærer `venterPaaPace`). Først
-                // når turen er terminal OG pacen drænet, må den kollapse — og
-                // først når kollapset er færdiganimeret, må den afmonteres.
-                const levetid = erSvar
-                  ? 'svar'
-                  : turenKoerer
-                    ? 'live'
-                    : afmonterede.has(segment.id)
-                      ? 'unmount'
-                      : 'kollapset'
-                return (
-                  <div
-                    key={segment.id}
-                    ref={erSvar ? undefined : (node) => {
-                      // Callback-ref PER segment: den registrerer sig selv i
-                      // kortet, så effekten ovenfor kan lytte på netop denne
-                      // containers transition. `null` betyder afmonteret.
-                      if (node) kollapsRefs.current.set(segment.id, node)
-                      else kollapsRefs.current.delete(segment.id)
-                    }}
-                    className={erSvar ? 'chat-flow-answer' : 'chat-flow-runde'}
-                    data-segment={segment.slags}
-                    data-plassering={segment.plassering}
-                    data-levetid={levetid}
-                    data-segment-id={segment.id}
-                  >
-                    {/* ÉN RÆKKE, IKKE SEKS (målt 27/11-2026 i Chromium).
-                        `grid-template-rows: 1fr` gælder kun den FØRSTE række.
-                        `BlocksRenderer` giver flere søskende — seks
-                        værktøjskald blev seks grid-børn, og de fem implicitte
-                        rækker arvede ikke `1fr`. Målt: `grid-template-rows` var
-                        `0px 74.8px 74.8px 74.8px 74.8px 74.8px` — kun 1/6 af
-                        højden animerede, resten forsvandt først ved
-                        afmonteringen med et spring på 361px. Med én wrapper
-                        findes der præcis én række, og hele højden følger med. */}
-                    <div className="chat-flow-runde-indhold">
-                      <BlocksRenderer blocks={blokke} density={density} streaming={streaming}
-                        rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
-                        beskedId={beskedId} config={config} />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <BlocksRenderer blocks={synligeSvar} density={density} streaming={streaming}
-              beskedId={beskedId} config={config} />
-          )}
+          <BlocksRenderer blocks={synligeSvar} density={density} streaming={streaming}
+            beskedId={beskedId} config={config} />
+        </div>
+      ) : null}
+
+      {/* RUNDER EFTER BESVARELSEN — EGEN LIVSCYKLUS, SAMME STRUKTUR.
+
+          Hver runde er sin egen container med en key fra KILDEN (se
+          `kildeNoegl`), så en reconnect der udfylder et hul eller en
+          præpendering ikke river den ned. `data-levetid` bærer fasen:
+          live → kollapset → unmount, præcis som før — men nu uden at nogen
+          anden container skifter struktur for at gøre plads. */}
+      {efterSegmenter.some((segment) => turenKoerer || !afmonterede.has(segment.id)) ? (
+        <div className="chat-flow-runder-efter" data-runder-efter>
+          {efterSegmenter.map((segment) => {
+            const levetid = turenKoerer
+              ? 'live'
+              : afmonterede.has(segment.id)
+                ? 'unmount'
+                : 'kollapset'
+            if (levetid === 'unmount') return null
+            return (
+              <div
+                key={segment.id}
+                ref={(node) => {
+                  // Callback-ref PER segment: den registrerer sig selv i
+                  // kortet, så effekten ovenfor kan lytte på netop denne
+                  // containers transition. `null` betyder afmonteret.
+                  if (node) kollapsRefs.current.set(segment.id, node)
+                  else kollapsRefs.current.delete(segment.id)
+                }}
+                className="chat-flow-runde"
+                data-segment="runde"
+                data-plassering="efter"
+                data-levetid={levetid}
+                data-segment-id={segment.id}
+              >
+                {/* ÉN RÆKKE, IKKE SEKS (målt 27/11-2026 i Chromium).
+                    `grid-template-rows: 1fr` gælder kun den FØRSTE række.
+                    `BlocksRenderer` giver flere søskende, så seks værktøjskald
+                    blev seks grid-børn og kun 1/6 af højden animerede. Med én
+                    wrapper findes der præcis én række. */}
+                <div className="chat-flow-runde-indhold">
+                  <BlocksRenderer blocks={segment.blokke} density={density} streaming={streaming}
+                    rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
+                    beskedId={beskedId} config={config} />
+                </div>
+              </div>
+            )
+          })}
         </div>
       ) : null}
 

@@ -132,7 +132,10 @@ function Harness() {
           // Bjørns forløb 27/11-2026: slutsvaret er ALLEREDE vist, pacen kører
           // stadig — og så ankommer en ekstra runde EFTER det. Det er den eneste
           // bloksekvens hvor `plassering` bliver `'efter'` for et runde-segment,
-          // og dermed den eneste der kan gøre `fladtFlow` sand MIDT i en tur.
+          // og dermed den eneste der kan give et runde-segment `plassering:
+          // 'efter'` MIDT i en tur — den tilstand hvor den gamle binære gren
+          // skiftede besvarelsens struktur, og hvor den nye tilføjer en
+          // container UNDER den uden at røre noget.
           ? [SVAR_A, ...rundeBlokke(hoejde)]
           // `kun-svar` er den TILSTAND runden ankommer ind i: samme besvarelse,
           // ingen runde. Uden den er der intet at sammenligne med — `uden` har

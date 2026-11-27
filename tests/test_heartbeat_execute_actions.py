@@ -529,6 +529,66 @@ def test_active_chat_gate_blocks_ping_when_user_recently_active(
     ]
 
 
+def test_discord_ping_falder_tilbage_til_ejer_dm_naar_sessionen_er_toem(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    """MÅLT 27/11-2026: `_discord_sessions` fyldes KUN af `on_message` og
+    tømmes ved hver genstart. Heartbeat læste den direkte, så hvert ping
+    faldt til webchat når ingen havde skrevet siden start — 493 gange —
+    selv om ejer-DM'en var fuldt brugbar. Testen fælder at Discord-grenen
+    bruger ejer-DM'en fra fallbacken når dict'en er tom.
+    """
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+    from core.services import discord_config, discord_gateway
+
+    monkeypatch.setattr(
+        heartbeat_runtime, "visible_session_continuity",
+        lambda: {"active": False},
+    )
+    monkeypatch.setattr(
+        heartbeat_runtime, "get_heartbeat_runtime_state", lambda: {},
+    )
+    # Ingen har skrevet på Discord siden genstarten — dict'en er tom.
+    monkeypatch.setattr(discord_gateway, "_discord_sessions", {})
+    monkeypatch.setattr(discord_config, "load_discord_config", lambda: {"enabled": True})
+    monkeypatch.setattr(discord_gateway, "get_discord_status", lambda: {"connected": True})
+    sendt: list[tuple[int, str]] = []
+    monkeypatch.setattr(
+        discord_gateway, "send_discord_message",
+        lambda ch, tekst: sendt.append((ch, tekst)),
+    )
+    monkeypatch.setattr(
+        "core.runtime.settings.load_settings",
+        lambda: type("Settings", (), {"nudge_system_enabled": False})(),
+    )
+
+    result = heartbeat_runtime._validate_heartbeat_decision(
+        decision={
+            "decision_type": "ping",
+            "summary": "Et ping.",
+            "reason": "Noget at sige.",
+            "proposed_action": "",
+            "ping_text": "Jeg fandt noget konkret.",
+            "execute_action": "",
+        },
+        policy={
+            "allow_execute": True,
+            "allow_ping": True,
+            "allow_propose": True,
+            "ping_channel": "discord",
+        },
+        workspace_dir=Path("/tmp/test-workspace"),
+        tick_id="heartbeat-tick:discord-fallback",
+    )
+
+    assert result["ping_result"] == "sent-discord-dm", (
+        "Discord-grenen faldt tilbage til webchat selv om ejer-DM'en findes — "
+        f"resultatet var {result['ping_result']!r}"
+    )
+    assert sendt == [(discord_gateway.OWNER_DM_CHANNEL_ID, "Jeg fandt noget konkret.")]
+
+
 def test_blocked_heartbeat_tick_dispatches_runtime_hooks_from_active_loop(
     isolated_runtime,
     monkeypatch,

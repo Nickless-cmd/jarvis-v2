@@ -1204,10 +1204,12 @@ def side_tasks_prompt_section(session_id: str | None = None) -> str | None:
 def _exec_flag_side_task(args: dict[str, Any]) -> dict[str, Any]:
     from core.services.session_context_resolve import aktiv_session_id, aktivt_run_id
     session_id = str(args.get("session_id") or aktiv_session_id("") or "")
-    # Ét budget til begge grene: finding-grenen tabte det tavst (4/11-2026).
+    # Fælles felter til begge grene (budget + not_before): finding-grenen tabte
+    # dem tavst (4/11 budget, 27/11-2026 not_before).
     budget = {"autonomy_mode": str(args.get("autonomy_mode") or "none"),
               "max_minutes": args.get("max_minutes") or 20,
-              "max_tool_calls": args.get("max_tool_calls") or 12}
+              "max_tool_calls": args.get("max_tool_calls") or 12,
+              "not_before": str(args.get("not_before") or "")}
     if args.get("finding_kind"):
         from core.services.run_finding_accounting import record_finding
         return record_finding(
@@ -1231,7 +1233,6 @@ def _exec_flag_side_task(args: dict[str, Any]) -> dict[str, Any]:
         session_id=session_id,
         finding_key=str(args.get("finding_key") or ""),
         evidence=str(args.get("evidence") or ""),
-        not_before=str(args.get("not_before") or ""),
         **budget,
     )
 

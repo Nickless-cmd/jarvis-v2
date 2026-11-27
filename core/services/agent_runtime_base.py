@@ -783,7 +783,19 @@ _TOOL_POLICY_SETS: dict[str, list[str]] = {
     "none": [],
     "read-only-runtime": list(_READ_ONLY_TOOLS),
     "read-only-workstation": list(_READ_ONLY_WORKSTATION_TOOLS),
-    "can-spawn": [*_READ_ONLY_TOOLS, "spawn_agent_task"],
+    # ``commit_attributed`` (27/11-2026, Bjoern). Executor-rollen bruger denne
+    # politik, og uden vaerktoejet kunne den ikke afslutte sit eget arbejde:
+    # maalt paa `asg-98c300312e7f4175` svarede agenten «hooken kraever en
+    # Approved-By-trailer, og jeg har ikke commit_attributed» og efterlod sine
+    # aendringer staged i worktree'et. Den eneste vej tilbage var `bash
+    # "git commit -m …"` — praecis den shell-vej commit_attributed blev bygget
+    # til at erstatte, fordi backticks og $variabler blev fortolket.
+    #
+    # Det er ikke en udvidelse af agentens magtomraade: den har allerede
+    # ``bash``, og et shell kan committe. Det flytter evnen fra den indirekte
+    # vej til den vej skemaet beskriver — og ``_agent_attribution`` skriver
+    # selv de seks trailere, saa agenten ikke skal opfinde en godkender.
+    "can-spawn": [*_READ_ONLY_TOOLS, "spawn_agent_task", "commit_attributed"],
     # Kodeagent: laesevaerktoejer + skrivning i SIT EGET worktree (sandboxet). Gives kun af
     # dispatch_agent(writes=true) sammen med et reserveret worktree (agent-contract-v1 C5).
     #
@@ -796,7 +808,16 @@ _TOOL_POLICY_SETS: dict[str, list[str]] = {
     # Bjoerns maskine gennem operator-kanalen). En skrivende agent har derfor
     # ``wt_bash`` som sin ENESTE shell-vej - den daekker alt den skal, og den kan
     # ikke forlade sin egen kopi. Det fjerner eskaleringen uden at fjerne en evne.
-    "worktree-write": [*[t for t in _READ_ONLY_TOOLS if t != "bash"], "wt_bash", "wt_write_file"],
+    # ``commit_attributed`` er med her af samme grund som i `can-spawn`
+    # (27/11-2026): en kodeagent der har skrevet og testet i sit eget worktree
+    # skal kunne afslutte arbejdet. Uden den stod den med staged aendringer og
+    # ingen vej til at committe dem — `wt_bash` findes, men den vej er praecis
+    # den shell-vej værktøjet blev bygget til at erstatte.
+    #
+    # Worktree'et er sandkassen, saa commit'en rammer kun agentens egen kopi;
+    # den flytter ikke hovedgrenen. ``_agent_attribution`` skriver trailerne.
+    "worktree-write": [*[t for t in _READ_ONLY_TOOLS if t != "bash"], "wt_bash",
+                       "wt_write_file", "commit_attributed"],
 }
 
 

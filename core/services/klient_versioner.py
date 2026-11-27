@@ -13,7 +13,7 @@ det.
 
 Klienterne sender to hoveder på deres almindelige kald:
 
-    X-Jarvis-Klient:        mobile | desk
+    X-Jarvis-Klient:        mobile | desk | web | cli
     X-Jarvis-Klientversion: 0.2.120 (220)
 
 Serveren skriver den SENESTE pr. klient. Ikke en historik: spørgsmålet er
@@ -37,7 +37,7 @@ NOEGLE = "klient_versioner"
 #: Hvad vi overhovedet tager imod. En header er brugerdata: uden en skranke
 #: kunne hvem som helst skrive en roman ind i runtime-tilstanden.
 _MAKS_LAENGDE = 64
-_KLIENTER = ("mobile", "desk", "cli")
+_KLIENTER = ("mobile", "desk", "web", "cli")
 _TILLADT = re.compile(r"^[A-Za-z0-9 ._()+-]+$")
 
 
@@ -70,6 +70,14 @@ def noter(klient: str, version: str, build: str = "") -> bool:
     v = _rent(version)
     b = _rent(build)
     if not k or not v:
+        # En afvist klient er et signal, ikke en detalje: middlewareen kalder
+        # noteringen i en executor og læser aldrig returværdien, så uden
+        # advarslen her forsvinder afvisningen tavst (målt 27/11-2026: 'web'
+        # blev stille kastet væk af netop denne gren).
+        logger.warning(
+            "afviste klientversion: klient=%r version=%r",
+            str(klient)[:32], str(version)[:32],
+        )
         return False
     try:
         from core.runtime.state_store import load_json, save_json

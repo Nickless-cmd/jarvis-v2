@@ -115,6 +115,44 @@ class TestBuildId:
         assert kv.alle()["mobile"]["foerst_set"] == foerst
 
 
+class TestWebKlienten:
+    """PWA'en (browser + telefon) er en tredje leverance.
+
+    27/11-2026 sendte api.ts 'X-Jarvis-Klient: web' (alt der ikke er Electron),
+    men _KLIENTER kendte kun mobile/desk/cli — noteringen blev tavst afvist i
+    skranken, og den ene af leverancerne kunne aldrig svare på «hvilken udgave
+    kører der i den anden ende». Her holdes den åbning fast.
+    """
+
+    def test_web_kan_noteres(self):
+        assert kv.noter("web", "0.6.437", "720760114") is True
+        post = kv.alle()["web"]
+        assert post["version"] == "0.6.437"
+        assert post["build"] == "720760114"
+
+    def test_web_deler_ikke_post_med_desk(self):
+        kv.noter("desk", "0.6.437", "720760114")
+        foerst = kv.alle()["desk"]["foerst_set"]
+        assert kv.noter("web", "0.6.437", "720760114") is True
+        assert set(kv.alle()) == {"desk", "web"}
+        assert kv.alle()["desk"]["foerst_set"] == foerst, "desk-posten blev rørt"
+
+    def test_afvist_klient_advares_ikke_tavst(self, caplog):
+        """En afvist klient er et signal: middlewareen kalder noter() i en
+        executor og læser aldrig False — advarslen SKAL stå i noter() selv."""
+        import logging
+        with caplog.at_level(logging.WARNING, logger="core.services.klient_versioner"):
+            assert kv.noter("hacker", "1.0") is False
+        assert any("afviste klientversion" in r.message for r in caplog.records)
+
+    def test_api_ts_sender_web_som_fallback(self):
+        """Serverens whitelist og klientens sendte værdi skal matche."""
+        rod = Path(__file__).resolve().parents[1]
+        tekst = (rod / "apps/jarvis-desk/src/lib/api.ts").read_text(encoding="utf-8")
+        assert "jarvisDesk" in tekst, "api.ts kender ikke længere desk-detect"
+        assert "'web'" in tekst, "api.ts sender ikke 'web' som klientværdi længere"
+
+
 class TestMiddlewarenLaeserHovederne:
     def test_navnene_staar_ens_i_server_og_klienter(self):
         """Tre steder skal bruge PRÆCIS samme to navne. En tastefejl ét sted

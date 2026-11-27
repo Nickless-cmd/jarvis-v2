@@ -16,6 +16,12 @@ with sync_playwright() as p:
         })''')
         print(json.dumps({"stage":label,**v},ensure_ascii=False),flush=True)
         return v
+    stage(-1)
+    page.wait_for_selector('.rv-modelventer .jarvis-pulse.is-working')
+    assert page.locator('.rv-tur').count() == 0
+    assert page.locator('.rv-modelventer').inner_text() == ''
+    assert page.locator('.rv-modelventer rect').first.evaluate('(e)=>getComputedStyle(e).animationName') == 'jarvis-puls'
+    print('initial code state: animated Jarvis mark, no flat Working label', flush=True)
     stage(2);page.wait_for_timeout(600)
     page.evaluate("window.answerNode=document.querySelector('.rv-svar-tekst')")
     before=measure('live rounds')

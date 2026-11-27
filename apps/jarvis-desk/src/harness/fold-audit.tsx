@@ -14,7 +14,7 @@ function Harness() {
  const [stage, setStage] = useState(0)
  const [paced, setPaced] = useState(false)
  ;(window as unknown as { __auditStage: (stage: number) => void }).__auditStage = setStage
- const blocks = stage === 0 ? all.slice(0, 2) : stage === 1 ? all.slice(0, 3) : stage === 4
+ const blocks = stage === -1 ? [] : stage === 0 ? all.slice(0, 2) : stage === 1 ? all.slice(0, 3) : stage === 4
    ? all.map((b, i) => b.type === 'text' ? { ...b, phase: i === all.length - 1 ? 'final_answer' as const : 'commentary' as const } : b) : all
  const shared = { blocks, streaming: stage < 3, finalAnswerStarted: stage > 0 && stage < 4, runId: 'audit', beskedId: 'audit', arbejdeEfterSvar: stage === 2 }
  return <SettingsProvider><div style={{ maxWidth: 760, padding: 24 }} data-stage={stage} data-paced={String(paced)}>

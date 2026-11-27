@@ -77,13 +77,25 @@ const runderEfterFold = (c: HTMLElement) =>
   )
 
 describe('fase 1 — før svaret begynder', () => {
-  it('hovedet staar der fra forste frame — tur startet, intet arbejde endnu', () => {
+  it('viser Jarvis’ animerede ikon indtil første modelindhold', () => {
     const { container } = vis({ blocks: [], streaming: true })
 
-    // Turen maa ikke vaere ansigtsloes i det vindue brugeren venter.
-    const hoved = container.querySelector('.rv-tur')
-    expect(hoved).not.toBeNull()
-    expect(hoved!.textContent).toContain('Arbejder')
+    const waiting = container.querySelector('.rv-modelventer')!
+    expect(waiting).toHaveAttribute('role', 'status')
+    expect(waiting).toHaveAttribute('aria-label', 'Jarvis tænker')
+    expect(waiting.querySelector('.jarvis-pulse.is-working')).not.toBeNull()
+    expect(waiting.textContent).toBe('')
+    expect(container.querySelector('.rv-tur')).toBeNull()
+  })
+
+  it('bevarer ikonet gennem tomme startblokke og overleverer ved første modelindhold', () => {
+    const { container, rerender } = vis({ blocks: [{ type: 'text', text: '', code_answer_protocol: 1 }] })
+    expect(container.querySelector('.rv-modelventer .jarvis-pulse.is-working')).not.toBeNull()
+    rerender(<SettingsProvider><RaekkeTranskript streaming blocks={[
+      { type: 'thinking', thinking: 'Undersøger opgaven' }, kald('bash', 'first', 'running'),
+    ]} /></SettingsProvider>)
+    expect(container.querySelector('.rv-modelventer')).toBeNull()
+    expect(container.querySelector('.rv-arbejdsrunde[data-aktiv-runde] .jarvis-pulse.is-working')).not.toBeNull()
   })
 
   it('viser INGEN rundelinje uden for folden — heller ikke fra forste frame', () => {

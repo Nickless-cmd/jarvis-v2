@@ -882,15 +882,19 @@ function RaekkeTranskriptImpl({
           // runden samlet når hovedet er lukket og åben på sin egen plads når
           // det er foldet ud. Pladsen er den samme hele tiden.
           //
-          // Under turen gælder en anden regel (Bjørn 27/11-2026): der er kun
-          // ÉN rundelinje synlig — den der arbejder — og kun i mellemrummet
-          // mellem synteserne. Skriver en syntese sig, er pladsen kollapset;
-          // den glider ind igen når syntesen er færdig. Runder der allerede er
-          // afsluttet holdes kollapsede indtil turen er slut, hvor de samles i
-          // folden på deres egen plads — ellers ville to linjer poppe ind på
-          // én gang, og «den gamle runde overdrager til den nye» ville blive
-          // et blink i stedet for en overdragelse.
-          const samlet = streaming ? (synteseSkriver || !aktiv) : (svarSamles && !aaben)
+          // Under turen gælder en anden regel (Bjørn 27/11-2026): den linje der
+          // ARBEJDER kollapser mens en syntese skriver sig og glider ind igen
+          // når syntesen slipper. Kun den aktive linje — en runde der allerede
+          // er afsluttet bliver STÅENDE på sin plads gennem resten af turen
+          // (Bjørn 27/11-2026: «de efterladte runde linjer … skal jo først
+          // forsvinde når turen er slut»). Først når turen er terminal samles
+          // de, styret af `svarSamles && !aaben`.
+          //
+          // Målt 27/11-2026: med `synteseSkriver || !aktiv` kollapsede hver
+          // runde der ikke var den nyeste, så de efterladte linjer forsvandt
+          // midt i turen — kun ét `false→true`-skift i hele forløbet og intet
+          // tilbage. `!aktiv` er derfor væk.
+          const samlet = streaming ? (aktiv && synteseSkriver) : (svarSamles && !aaben)
           return (
             <div key={`r${i}`} className="rv-sen-runde" data-samles={samlet ? 'true' : 'false'}
               aria-hidden={samlet} {...(samlet ? { inert: true } : {})}>

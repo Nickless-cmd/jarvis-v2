@@ -114,20 +114,47 @@ for (const mode of modes) {
     krav(mode, scen, 'ingen varig usynlig plads-optagende rundelinje (≤4 frames mellem fade-slut og overdragelse)',
       tomBoks.length <= 4, `${tomBoks.length} frames med R1 helt usynlig men h>12px`)
     if (mode === 'code') {
-      // ── Code mode: linjen kommer EFTER syntesen (Bjørn 27/11-2026) ────────
-      // «den skal komme efter syntesen». Mens en syntese skrives, er
-      // rundelinjen der ikke: den kollapser til nulhøjde og glider ind igen når
-      // syntesen er færdig. FØR stod den hængende som en synlig afsluttet
-      // rundelinje gennem hele syntesen, og kravet var at dens plads var
-      // konstant — det er præcis den adfærd der er væk nu.
-      const hR1 = B.map((s) => find(s, 'R1').h)
-      krav(mode, scen, 'rundelinjen kollapser jævnt til nul mens syntesen skrives (højden falder monotont)',
-        monotonNed(hR1, 0.6) && hR1.at(-1) < 1, `h ${hR1[0]}→${hR1.at(-1)}`)
-      const slutIdx = hR1.findIndex((h) => h < 1)
-      const efterKollaps = slutIdx < 0 ? [] : hR1.slice(slutIdx)
-      krav(mode, scen, 'ingen usynlig plads står tilbage: efter kollaps er højden 0 gennem hele syntesen',
-        efterKollaps.length > 0 && Math.max(...efterKollaps) < 1,
-        `${efterKollaps.length} frames efter kollaps, maks h ${efterKollaps.length ? Math.max(...efterKollaps) : 'n/a'}`)
+      // ── Code mode: den AKTIVE linje kommer EFTER syntesen (Bjørn 27/11-2026) ──
+      // «den skal komme efter syntesen»: mens en syntese skrives, kollapser den
+      // linje der ARBEJDER til nulhøjde og glider ind igen når syntesen slipper.
+      // En runde der allerede er afsluttet bliver STÅENDE på sin plads til turen
+      // er slut («de efterladte runde linjer … skal jo først forsvinde når turen
+      // er slut»), så kravet måles på den AKTIVE linje — ikke på R1, der netop
+      // skal blive stående. Målt 27/11-2026: med `synteseSkriver || !aktiv`
+      // forsvandt de efterladte linjer midt i turen (kun ét `false→true`-skift i
+      // hele forløbet og intet tilbage); med kun `aktiv && synteseSkriver` står
+      // R1 på 38px gennem syntese B mens R2 kollapser 84→0px.
+      const seneRunder = (s) => s.items.filter((i) => i.slags === 'runde' && !i.iFold && /^R\d/.test(i.id))
+      // Kontrakten måles DIREKTE på geometrien, ikke gennem `aktiv`-flaget:
+      // flaget forsvinder i samme frame som linjen kollapser, så et krav der
+      // hænger på det ser aldrig kollapsen (målt 27/11-2026: «h 77.5→84» mens
+      // den rå DOM viste 84→0).
+      //
+      // 1) Samtidig: én efterladt linje står synlig MENS den aktive er kollapset.
+      //    Det er præcis Bjørns kontrakt — de efterladte bliver, den arbejdende
+      //    forsvinder mens syntesen skrives.
+      const baadeSynligOgKollapset = B.filter((s) => {
+        const hs = seneRunder(s)
+        return hs.some((i) => i.h > 12 && i.o > 0.02) && hs.some((i) => i.h < 1)
+      })
+      krav(mode, scen, 'en efterladt linje står synlig mens den arbejdende er kollapset',
+        baadeSynligOgKollapset.length > 0,
+        `${baadeSynligOgKollapset.length} frames`)
+      // 2) Ingen frame hvor en linje står usynlig med fuld plads (den tomme boks).
+      const usynligBoks = B.filter((s) => seneRunder(s).some((i) => i.o < 0.01 && i.h > 12))
+      krav(mode, scen, 'ingen linje står usynlig med fuld plads',
+        usynligBoks.length === 0, `${usynligBoks.length} frames`)
+      // 3) Indgangen GLIDER (Bjørn 27/11-2026: «den er der instant»). Hver linje
+      //    der bliver synlig skal have mellemværdier mellem 1px og 85 % af sin
+      //    fulde højde — en linje der popper har ingen.
+      const glider = (id) => {
+        const hs = B.map((s) => find(s, id)?.h ?? null).filter((h) => h !== null)
+        const mx = hs.length ? Math.max(...hs) : 0
+        return mx > 12 && hs.filter((h) => h > 1 && h < mx * 0.85).length >= 3
+      }
+      const poppede = ['R1', 'R2'].filter((id) => B.some((s) => find(s, id)) && !glider(id))
+      krav(mode, scen, 'rundelinjen glider ind (mellemværdier, ikke et hop)',
+        poppede.length === 0, poppede.length ? `poppede: ${poppede.join(',')}` : 'begge glider')
     } else {
       // ── Chat mode er UÆNDRET (Bjørn 27/11-2026) ───────────────────────────
       // «i chat mode faded den aktive rundelinje ud som den skulle». Dens linje

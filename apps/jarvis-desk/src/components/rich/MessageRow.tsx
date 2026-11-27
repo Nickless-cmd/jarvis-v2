@@ -25,6 +25,7 @@ import { ChatFlowPresentation } from './ChatFlowPresentation'
 import type { StreamStatus } from '../../lib/streamReducer'
 import type { ActiveChatFlowMode } from '../../lib/chatFlowApi'
 import { usePacingWorkLine } from '../../lib/usePacingWorkLine'
+import { CODE_FOLD_MS, codeVisibleBlocks, codeAnswerStarted, codeHasLateWork } from '../../lib/codeTurnPresentation'
 import { fadeMsForRate, delayMsForFade } from '../../lib/paceFade'
 
 function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarted, arbejdeEfterSvar, beskedId, config,
@@ -36,7 +37,7 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
   density: 'compact' | 'full'
   streaming: boolean
   finalAnswerStarted: boolean
-  /** Der er kommet arbejde efter svar-låsen — hovedet skal folde ud igen. */
+  /** Der er kommet arbejde efter svar-låsen; runderne vises uden for hovedet. */
   arbejdeEfterSvar?: boolean
   beskedId?: string
   config?: ApiConfig
@@ -77,6 +78,8 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
   })
   const codePaced = usePacedBlocks(blocks, streaming && !jaevn, rateUd)
   const paced = jaevn ? chatPaced : codePaced
+  const visible = codeVisibleBlocks(blocks, paced)
+  const shownAnswerStarted = codeAnswerStarted(visible)
   // ── Hvornår er pacingen FÆRDIG? (målt 20/10-2026) ────────────────────────
   //
   // Code mode holdt før kun den levende række på skærmen mens `status` var
@@ -105,18 +108,23 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
   // Kun mellemsynteser: slutsvaret har sin egen overgang. En 420 ms tærskel
   // gør at korte synteser aldrig får arbejdslinjen til at blinke.
   const skjulAktivRunde = usePacingWorkLine(
-    streaming && !finalAnswerStarted && alleTekst.length > 0 && !pacingFaerdig,
+    streaming && !shownAnswerStarted && alleTekst.length > 0 && !pacingFaerdig,
     runId ?? beskedId ?? null,
   )
+  const hasLateWork = raekker && codeHasLateWork(blocks)
   const onPacedRef = useRef(onPaced)
   onPacedRef.current = onPaced
   useEffect(() => {
     // Kun EFTER strømmen er slut: undervejs indhenter paceren kilden hele
     // tiden, og et signal dér ville melde «færdig» midt i turen.
-    if (!streaming && pacingFaerdig) onPacedRef.current?.()
-  }, [streaming, pacingFaerdig])
+    if (streaming || !pacingFaerdig) return
+    // Keep the live row through the late rounds' exit, then hand over.
+    const timer = window.setTimeout(() => onPacedRef.current?.(),
+      hasLateWork ? CODE_FOLD_MS + 50 : 0)
+    return () => window.clearTimeout(timer)
+  }, [streaming, pacingFaerdig, hasLateWork])
   return raekker
-    ? <RaekkeTranskript blocks={paced} streaming={streaming} finalAnswerStarted={finalAnswerStarted}
+    ? <RaekkeTranskript blocks={visible} streaming={streaming} finalAnswerStarted={shownAnswerStarted}
         svarRuller={svarRuller}
         arbejdeEfterSvar={arbejdeEfterSvar}
         beskedId={beskedId} runId={runId} config={config} rundeEtiketter={rundeEtiketter}

@@ -468,6 +468,8 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       const blokTaeller = arvetBlokId ? state.blokTaeller : state.blokTaeller + 1
       if (cb.type === 'text') blocks[event.index] = {
         type: 'text', text: cb.text ?? '', blokId, ...(cb.phase ? { phase: cb.phase } : {}),
+        ...(cb.code_answer_protocol === 1 ? { code_answer_protocol: 1 } : {}),
+        ...(cb.code_answer_start ? { code_answer_start: true } : {}),
       }
       else if (cb.type === 'thinking') blocks[event.index] = {
         type: 'thinking', thinking: cb.thinking ?? '', blokId,
@@ -738,6 +740,16 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         return rid && rid === state.activeRunId
           ? { ...state, finalAnswerStarted: true }
           : state
+      }
+      if (event.kind === 'code_answer_boundary') {
+        const index = Number(event.payload?.index)
+        const runId = String(event.payload?.run_id ?? '')
+        if ((runId && runId !== state.activeRunId) || !Number.isInteger(index)) return state
+        const current = state.blocks[index]
+        if (current?.type !== 'text') return state
+        const blocks = state.blocks.slice()
+        blocks[index] = { ...current, code_answer_protocol: 1, code_answer_start: true }
+        return { ...state, blocks }
       }
       if (event.kind === 'text_phase_update') {
         const runId = String(event.payload?.run_id ?? '')

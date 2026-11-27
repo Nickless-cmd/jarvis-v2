@@ -26,6 +26,7 @@ import { Sparkles, Sparkle, ChevronDown, Check, X, CircleSlash, Loader2, type Lu
 import { FoldPil, TitelCrossfade, TurHoved } from './TurHoved'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
+import { CODE_FOLD_MS, codeAnswerStarted } from '../../lib/codeTurnPresentation'
 import { opdel, opdelArbejdsrunder, turFortalt, type ArbejdsElement } from '../../lib/raekkeModel'
 import { lookupTool } from '../../lib/toolRegistry'
 import { describeTool, subjectFromInput, summarizeRound, summerDiff } from '../../lib/toolRound'
@@ -530,9 +531,9 @@ function RaekkeTranskriptImpl({
   streaming: boolean
   finalAnswerStarted?: boolean
   /** Ruller svaret stadig? Sand til det sidste tegn er vist — ogsaa efter
-   *  `message_stop`, hvor paceren indhenter resten. Folden lukker først her. */
+   *  `message_stop`, hvor paceren indhenter resten. Sene runder venter her. */
   svarRuller?: boolean
-  /** Der er kommet arbejde efter svar-låsen — hovedet skal folde ud igen. */
+  /** Der er kommet arbejde efter svar-låsen; hovedet forbliver foldet. */
   arbejdeEfterSvar?: boolean
   beskedId?: string
   /** Run'et der skrev beskeden. Sammen med `beskedId` den nøgle folden huskes
@@ -561,7 +562,13 @@ function RaekkeTranskriptImpl({
   // `finalAnswerStarted` sendes ogsaa som SVAR-LAAS: naar serveren har
   // bekræftet at svaret er begyndt, maa et senere vaerktoejskald ikke flytte
   // skillelinjen og goere slutteksten til arbejde (målt 21/11-2026).
-  const { arbejde, svar, svarSektioner, kald } = opdel(transcriptBlocks, streaming && !finalAnswerStarted, finalAnswerStarted)
+  const { arbejde: oprindeligtArbejde, svar, svarSektioner, kald } = opdel(transcriptBlocks, streaming && !finalAnswerStarted, finalAnswerStarted)
+  const svarSamles = !streaming && !(svarRuller ?? false)
+  // Text always stays in the answer lane. Only work rows collapse; their
+  // details remain available behind the head after the turn.
+  const arbejde = svarSamles
+    ? [...oprindeligtArbejde, ...svarSektioner.flatMap((s) => s.slags === 'runde' ? s.elementer : [])]
+    : oprindeligtArbejde
   const billedArbejde = streaming
     ? levendeBilledArbejde(afslutForladteKald(blocks, true).flatMap((b) => b.type === 'tool_use' ? [b] : []))
     : null
@@ -624,7 +631,10 @@ function RaekkeTranskriptImpl({
   // `arbejdeEfterSvar` er daekket: naar et nyt run arbejder efter svaret, er
   // `svarBegyndt` stadig sand — folden bliver lukket, og hovedet bliver
   // turens ansigt. Det var netop fejlen 20/11 at den sprang OP i stedet.
-  const svarBegyndt = finalAnswerStarted || svar.length > 0
+  const explicitProtocol = transcriptBlocks.some((b) => b.type === 'text' && b.code_answer_protocol === 1)
+  const svarBegyndt = finalAnswerStarted || codeAnswerStarted(transcriptBlocks)
+    || (!explicitProtocol && svar.some((b) => b.type === 'text' ? b.text.trim().length > 0
+      : b.type === 'image' || b.type === 'file' || b.type === 'video'))
   const aaben = aabenManuelt ?? (arbejdeKoerer && !svarBegyndt)
   // ── Folden skal GLIDE, ikke blinke (målt 21/11-2026) ────────────────────
   //
@@ -647,11 +657,10 @@ function RaekkeTranskriptImpl({
   // To tal for samme varighed er en kendt pris: CSS kan ikke læse en TS-konstant,
   // og en transition kan ikke vente på en tilstand. Ændres den ene, skal den
   // anden følge med — derfor står udregningen begge steder.
-  const FOLD_MS = 379
   const [indholdVises, setIndholdVises] = useState(aaben)
   useEffect(() => {
     if (aaben) { setIndholdVises(true); return }
-    const t = setTimeout(() => setIndholdVises(false), FOLD_MS)
+    const t = setTimeout(() => setIndholdVises(false), CODE_FOLD_MS)
     return () => clearTimeout(t)
   }, [aaben])
   const turSekunder = streaming ? Math.max(0, Math.floor(elapsedMs / 1000)) : varighedSekunder
@@ -763,9 +772,10 @@ function RaekkeTranskriptImpl({
         {svarSektioner.map((s, i) => {
           if (s.slags === 'blokke') {
             return (
-              <BlocksRenderer key={`b${i}`} blocks={s.blokke} density="compact" streaming={streaming} hale={hale}
-                beskedId={beskedId} config={config}
-              />
+              <div key={`b${i}`} className="rv-svar-tekst">
+                <BlocksRenderer blocks={s.blokke} density="compact" streaming={streaming} hale={hale}
+                  beskedId={beskedId} config={config} />
+              </div>
             )
           }
           // Runden EFTER foldet tegnes med den SAMME komponent som runderne inde
@@ -776,11 +786,16 @@ function RaekkeTranskriptImpl({
           // ting; nu er der ét.
           const aktiv = streaming && i === aktivSvarRundeIndex
           return (
-            <Arbejdsrunde key={`r${i}`}
-              elementer={s.elementer} streaming={streaming} hale={hale} sidste={aktiv}
-              config={config} etiket={etiketFor(s.elementer, etiketter)} beskedId={beskedId}
-              turSekunder={turSekunder} skjult={aktiv && skjulAktivRunde}
-              workingStep={aktiv ? workingStep : undefined} />
+            <div key={`r${i}`} className="rv-sen-runde" data-samles={svarSamles ? 'true' : 'false'}
+              aria-hidden={svarSamles} {...(svarSamles ? { inert: true } : {})}>
+              <div className="rv-sen-runde-indhold">
+                <Arbejdsrunde
+                  elementer={s.elementer} streaming={streaming} hale={hale} sidste={aktiv}
+                  config={config} etiket={etiketFor(s.elementer, etiketter)} beskedId={beskedId}
+                  turSekunder={turSekunder} skjult={aktiv && skjulAktivRunde}
+                  workingStep={aktiv ? workingStep : undefined} />
+              </div>
+            </div>
           )
         })}
       </div>

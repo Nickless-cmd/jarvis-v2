@@ -25,7 +25,7 @@ export interface ContentBlockStartEvent {
   type: 'content_block_start'
   index: number
   content_block:
-    | { type: 'text'; text: string; phase?: AssistantTextPhase }
+    | { type: 'text'; text: string; phase?: AssistantTextPhase; code_answer_protocol?: number; code_answer_start?: boolean }
     | { type: 'thinking'; thinking: string }
     | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
     | { type: 'tool_result'; tool_use_id: string; status: string; content: string; is_error?: boolean }
@@ -185,7 +185,7 @@ export type ContentBlock =
    * forskubber sig når huller udfyldes eller en skill-flade præpendes.
    * Persisterede blokke har den ikke — deres liste er til gengæld frossen.
    */
-  | { type: 'text'; text: string; phase?: AssistantTextPhase; blokId?: string }
+  | { type: 'text'; text: string; phase?: AssistantTextPhase; code_answer_start?: boolean; code_answer_protocol?: number; blokId?: string }
   /**
    * `seconds`: målt varighed. Gemte beskeder har serverens tal; live sætter
    * reduceren den, når næste blok starter. `startet`: klientens ur da blokken

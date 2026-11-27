@@ -938,3 +938,21 @@
   color: var(--fejl-tekst, #d98a7a);
   opacity: 1;
 }
+
+/* Late work leaves its own row; answer text never shares its opacity or
+   height transition. Collapsing the intervening rows joins the prose. */
+.raekkevisning .rv-sen-runde {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition: grid-template-rows var(--fold-varighed) var(--fold-kurve),
+    opacity var(--fold-varighed) var(--fold-kurve);
+}
+.raekkevisning .rv-sen-runde[data-samles='true'] {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+.raekkevisning .rv-sen-runde-indhold { min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .raekkevisning .rv-sen-runde { transition: none; }
+}

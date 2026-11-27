@@ -140,3 +140,16 @@ besvarelsen; den flytter intet.
 Kontrakt 1 er grøn. Kontrakt 1b måler nu **forekomster af indhold** i stedet for
 antal containere — to containere i forskellige livscyklusfaser er ikke en fejl;
 dobbelt ejerskab af samme blok er.
+
+### Code mode: terminal merge and pacing backlog
+
+`fold-audit.html` exercises a final answer followed by two tool rounds and two
+syntheses, stream stop, and the saved-message phase layout. It also exercises
+`MessageRow` with its actual pacing hooks while the server is ahead of the reader.
+
+Start Vite on port 5199, then run `python src/harness/verify-code-fold.py`.
+Requires Python Playwright and Chromium. The probe checks that the answer
+container survives, only work rows fade and collapse, later work waits for the
+text cursor, and saved code-boundary metadata survives legacy phase changes.
+It writes `/tmp/jarvis-fold-fixed.png`; stdout contains geometry measurements.
+This is a component harness, not a captured production SSE replay.

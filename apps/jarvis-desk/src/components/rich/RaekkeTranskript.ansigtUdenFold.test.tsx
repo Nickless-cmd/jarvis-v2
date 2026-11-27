@@ -147,7 +147,8 @@ describe('fase 2 — runder efter foldet', () => {
     const boern = Array.from(svar!.children)
     // Barn 1: teksten. Barn 2: rundelinjen. Barn 3: teksten igen.
     expect(boern).toHaveLength(3)
-    expect(boern[1]!.className).toContain('rv-arbejdsrunde')
+    expect(boern[1]!.querySelector('.rv-arbejdsrunde')).not.toBeNull()
+    expect(boern[1]!.className).toContain('rv-sen-runde')
     expect(container.textContent).toContain('Første del.')
     expect(container.textContent).toContain('Anden del.')
   })
@@ -215,7 +216,8 @@ describe('den fulde sekvens — runde, syntese, fold, slutbesked, runde, syntese
 
     // Slutbesked → rundelinje → syntese. Tre børn, i den rækkefølge.
     expect(boern).toHaveLength(3)
-    expect(boern[1]!.className).toContain('rv-arbejdsrunde')
+    expect(boern[1]!.querySelector('.rv-arbejdsrunde')).not.toBeNull()
+    expect(boern[1]!.className).toContain('rv-sen-runde')
     expect(svar.textContent).toContain('Sådan ser det ud.')
     expect(svar.textContent).toContain('Gemt.')
 

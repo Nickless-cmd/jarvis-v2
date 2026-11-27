@@ -50,7 +50,9 @@ export function foldToolResults(blocks: Array<Record<string, unknown>>): Content
     } else if (b.type === 'text') {
       const phase = b.phase === 'commentary' || b.phase === 'final_answer'
         ? b.phase : undefined
-      out.push({ type: 'text', text: String(b.text ?? ''), ...(phase ? { phase } : {}) })
+      out.push({ type: 'text', text: String(b.text ?? ''), ...(phase ? { phase } : {}),
+        ...(b.code_answer_start === true ? { code_answer_start: true } : {}),
+        ...(b.code_answer_protocol === 1 ? { code_answer_protocol: 1 } : {}) })
     } else if (b.type === 'thinking') {
       // Gemte tanke-blokke hedder `text`, ikke `thinking` (visible_turn_blocks).
       // Kun `thinking` blev læst, så en tanke var ALTID tom efter reload.

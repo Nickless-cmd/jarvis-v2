@@ -159,7 +159,7 @@ function erLeverance(b: ContentBlock): boolean {
  * Del en assistent-besked op. Rækkefølgen bevares nøjagtigt — en syntese
  * skal stå mellem de to kald den faktisk stod imellem.
  */
-export function opdel(blokke: readonly ContentBlock[], underArbejde = false, svarLaast = false): RaekkeOpdeling {
+export function opdel(blokke: readonly ContentBlock[], underArbejde = false, _svarLaast = false): RaekkeOpdeling {
   // Skillelinjen: indekset EFTER det sidste vaerktoejskald. Findes der ingen
   // kald, er hele beskeden svar, og arbejdsomraadet forbliver tomt.
   let sidsteKald = -1
@@ -200,43 +200,21 @@ export function opdel(blokke: readonly ContentBlock[], underArbejde = false, sva
   // kommer bagefter.
   // Den FØRSTE blok serveren selv har stemplet `final_answer` — hvor svaret
   // begyndte. -1 = serveren har ikke sagt det, og klienten gætter ikke.
-  let foersteSvar = -1
-  if (svarLaast) {
-    // ── Grænsen læses af serverens EGEN klassificering (Bjørn 26/11-2026) ──
-    //
-    // «Løft den kun ud, hvis serveren har stemplet den final_answer.»
-    //
-    // Den tidligere regel udledte grænsen af hvor teksten lå i forhold til
-    // kaldene. Det gjorde grænsen til en funktion af listens NUVÆRENDE
-    // længde: landede der en syntese efter svaret, fandt det nye gennemløb
-    // tekst efter det NYE sidste kald, og grænsen rykkede FREM — slutbeskeden
-    // blev arbejde mens den stod på skærmen. Det er den «teleportering» der
-    // har været repareret på visningen mange gange uden at forsvinde.
-    //
-    // Nu er kilden entydig: den FØRSTE tekstblok serveren selv har stemplet
-    // `final_answer` er hvor svaret begyndte. Grænsen lægges ved det sidste
-    // kald FØR den blok, og den kan aldrig flytte sig frem — «den første» er
-    // stabil når listen vokser. Alt derefter er svar, uanset hvilken fase
-    // senere blokke bærer: efter foldet streamer teksten frit.
-    //
-    // Findes der ingen `final_answer`-blok, rører vi slet ikke grænsen.
-    // Serveren har ikke sagt at svaret er begyndt, og klienten gætter ikke.
-    // Det er en kendt begrænsning i serverens klassificering, og den løses i
-    // serveren — ikke med endnu en heuristik her.
-    let foersteSvarLokal = -1
-    for (let i = 0; i < blokke.length; i++) {
-      const b = blokke[i]
-      if (b?.type === 'text' && b.phase === 'final_answer') {
-        foersteSvarLokal = i
-        break
-      }
-    }
-    foersteSvar = foersteSvarLokal
-    if (foersteSvar >= 0) {
-      sidsteKald = -1
-      for (let i = 0; i < foersteSvar; i++) {
-        if (blokke[i]?.type === 'tool_use') sidsteKald = i
-      }
+  // The persisted code boundary survives legacy phase normalisation. Read
+  // block metadata even when the historical row has no transient live lock.
+  let foersteSvar = blokke.findIndex((b) => b?.type === 'text' && b.code_answer_start)
+  const explicitProtocol = blokke.some((b) => b?.type === 'text' && b.code_answer_protocol === 1)
+  if (foersteSvar < 0 && !explicitProtocol) {
+    foersteSvar = blokke.findIndex((b) => b?.type === 'text' && b.phase === 'final_answer')
+  }
+  if (foersteSvar >= 0 && sidsteKald < 0) {
+    // A plain multi-block reply has no work boundary to hide earlier prose.
+    foersteSvar = blokke.findIndex((b) => b?.type === 'text')
+  }
+  if (foersteSvar >= 0) {
+    sidsteKald = -1
+    for (let i = 0; i < foersteSvar; i++) {
+      if (blokke[i]?.type === 'tool_use') sidsteKald = i
     }
   }
 
@@ -263,7 +241,7 @@ export function opdel(blokke: readonly ContentBlock[], underArbejde = false, sva
   // værktøjskald der er arbejde, men står efter svaret, er en ny runde
   // brugeren skal kunne se — ikke arbejde der skal skjules. Kun når svaret
   // ikke er begyndt, hører kaldet til i folden.
-  const efterFold = svarLaast && foersteSvar >= 0
+  const efterFold = foersteSvar >= 0
 
   // ── Grænsen er serverens `final_answer`, ikke `underArbejde` ─────────────
   //
@@ -290,7 +268,7 @@ export function opdel(blokke: readonly ContentBlock[], underArbejde = false, sva
     if (i > graense) {
       // En tekst efter et værktøj er først et slutsvar, når serveren sender
       // final_answer_start. Indtil da kan næste runde stadig følge efter.
-      if (b.type === 'text' && underArbejde && sidsteKald >= 0) {
+      if (b.type === 'text' && underArbejde && foersteSvar < 0 && sidsteKald >= 0) {
         const tekst = b.text.trim()
         if (tekst) arbejde.push({ slags: 'mellemsvar', tekst })
         continue

@@ -94,3 +94,55 @@ describe('Chat mode: sene runder bevarer deres plads', () => {
     expect(ifold).not.toMatch(/R1|R2/)
   })
 })
+
+/**
+ * UDEN `code_answer_protocol` — den anden halvdel af fladen.
+ *
+ * MÅLT 27/11-2026: alle vagter ovenfor bærer `code_answer_protocol: 1`, og det
+ * er præcis den markør der lukkede `foldWork`s ekstra gren. Uden den stod
+ * R1/R2 stadig smeltet sammen i foldens arbejdslog, og deres egen container gik
+ * `live → kollapset → unmount` uden en `'aaben'`-tilstand: udfoldet hoved viste
+ * dem aldrig på deres plads. Bjørn så det i PWA'en som «når jeg trykker foldet
+ * ud så opstår de ikk på der position».
+ */
+describe('Uden code_answer_protocol: samme kontrakt', () => {
+  const t = (id: string): ContentBlock => ({ type: 'tool_use', id, name: 'bash', input: { command: id }, status: 'done', result: 'ok' })
+  // Bemærk: ingen `code_answer_protocol` og ingen `code_answer_start`.
+  const x = (tekst: string, start = false): ContentBlock => ({
+    type: 'text', text: tekst, phase: start ? 'final_answer' : 'commentary',
+  })
+  const TUR_UORDNET: ContentBlock[] = [t('r0'), x('SYNTESE-A', true), t('R1'), x('SYNTESE-B'), t('R2'), x('SYNTESE-C')]
+  const tegn = () => render(
+    <SettingsProvider>
+      <ChatFlowPresentation blocks={TUR_UORDNET} mode="living" density="compact" streaming={false}
+        status="done" finalAnswerStarted runId="uordnet" beskedId="uordnet" />
+    </SettingsProvider>,
+  )
+
+  it('folden indeholder ikke de sene runder — de er ikke kopieret ind', () => {
+    const { container } = tegn()
+    fireEvent.click(container.querySelector('.rv-tur')!)
+    const ifold = container.querySelector('.chat-flow-work-details')?.textContent ?? ''
+    expect(ifold).not.toMatch(/R1|R2/)
+  })
+
+  it('udfoldet hoved ÅBNER hale-runderne i stedet for at lade dem kollapse', () => {
+    const { container } = tegn()
+    const hale = () => Array.from(container.querySelectorAll('[data-plassering="efter"]'))
+    expect(hale().length).toBeGreaterThan(0)
+    expect(hale().every((r) => r.getAttribute('data-levetid') === 'kollapset')).toBe(true)
+    fireEvent.click(container.querySelector('.rv-tur')!)
+    expect(hale().every((r) => r.getAttribute('data-levetid') === 'aaben')).toBe(true)
+  })
+
+  it('de sene runder staar mellem synteserne, ikke samlet i bunden', () => {
+    const { container } = tegn()
+    fireEvent.click(container.querySelector('.rv-tur')!)
+    const syn = raekkefoelge(container)
+    const i = (n: string) => syn.indexOf(n)
+    expect(i('Kørte R1')).toBeGreaterThan(i('SYNTESE-A'))
+    expect(i('Kørte R1')).toBeLessThan(i('SYNTESE-B'))
+    expect(i('Kørte R2')).toBeGreaterThan(i('SYNTESE-B'))
+    expect(i('Kørte R2')).toBeLessThan(i('SYNTESE-C'))
+  })
+})

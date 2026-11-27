@@ -302,11 +302,22 @@ export function ChatFlowPresentation({
   // blev den kopieret ind i foldens arbejdslog ved turens slutning, hvor
   // `opdelArbejdsrunder` smeltede den sammen med de tidlige runder: ved
   // udfoldning dukkede R1/R2 op som ÉN linje øverst, ikke mellem synteserne.
-  // Kun den ældre (uordnede) gren samler stadig de sene runder i folden.
+  //
+  // MÅLT 27/11-2026: rettelsen ramte kun den ordnede gren. Filteret havde en
+  // ekstra gren — `!streaming && !arbejdeEfterSvar && svarFaerdigPacet &&
+  // !explicitProtocol` — som efter turen lukkede ALT igennem naar fladen ikke
+  // bar `code_answer_protocol`. Derfor stod R1/R2 stadig smeltet sammen i
+  // folden i den uordnede gren, mens de samtidig laa i svar-lanen: samme fejl
+  // som side-bfbddc76a8, blot i den anden halvdel af fladen. Vagten i
+  // `rundeLivscyklus.test.tsx` brugte `code_answer_protocol: 1` og kunne
+  // derfor ikke se den.
+  //
+  // `efterBlokke` er nu ubetinget: en blok der ejes af en hale-container maa
+  // aldrig ogsaa ligge i folden. Er der ingen placerings-data (ældre
+  // persisterede ture) er saettet tomt, og alt arbejde bliver i folden som før.
   const foldWork = retainedWork.filter((block) =>
     (block.type !== 'tool_use' || block.name !== 'pause_and_ask')
-    && ((!streaming && !arbejdeEfterSvar && svarFaerdigPacet && !explicitProtocol)
-      || !efterBlokke.has(block)))
+    && !efterBlokke.has(block))
   // Bjørn 20/10-2026: «det hurtige svar skal aldrig vises».
   //
   // `confirmedTexts` er den RÅ tekst fra serveren. Da den blev lagt foran
@@ -563,7 +574,10 @@ export function ChatFlowPresentation({
     })
   }, [])
   useEffect(() => {
-    if (turenKoerer) {
+    // Et ÅBENT hoved ejer kronologien: så må intet i halen afmonteres. Uden
+    // denne gren blev en container der allerede var `unmount`et aldrig
+    // genskabt da folden åbnede — den var væk for altid (målt 27/11-2026).
+    if (turenKoerer || aaben) {
       setAfmonterede((forrige) => (forrige.size === 0 ? forrige : new Set()))
       return
     }
@@ -1003,14 +1017,21 @@ export function ChatFlowPresentation({
           præpendering ikke river den ned. `data-levetid` bærer fasen:
           live → kollapset → unmount, præcis som før — men nu uden at nogen
           anden container skifter struktur for at gøre plads. */}
-      {efterSegmenter.some((segment) => turenKoerer || !afmonterede.has(segment.id)) ? (
+      {efterSegmenter.some((segment) => turenKoerer || aaben || !afmonterede.has(segment.id)) ? (
         <div className="chat-flow-runder-efter" data-runder-efter>
           {efterSegmenter.map((segment) => {
+            // FOLDET UD ÅBNER OGSÅ HALEN (målt 27/11-2026). Denne gren gik
+            // `live → kollapset → unmount` og havde ingen `'aaben'`: når
+            // hovedet blev foldet ud, blev de sene runder stående kollapsede,
+            // så de aldrig «opstod på deres plads». Den ordnede gren havde
+            // tilstanden hele vejen; den uordnede manglede den.
             const levetid = turenKoerer
               ? 'live'
-              : afmonterede.has(segment.id)
-                ? 'unmount'
-                : 'kollapset'
+              : aaben
+                ? 'aaben'
+                : afmonterede.has(segment.id)
+                  ? 'unmount'
+                  : 'kollapset'
             if (levetid === 'unmount') return null
             return (
               <div

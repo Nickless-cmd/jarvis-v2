@@ -670,3 +670,58 @@ def test_lyd_vejen_klipper_ved_graense_ikke_blindt() -> None:
         f"max_len={traef.group(1)} kan ikke bære en dansk sætning; "
         "det var 80 der gav halve ord"
     )
+
+
+def test_mood_origin_skelner_declared_argmax_model(isolated_runtime) -> None:
+    from core.services.sensory_archive import record_visual
+
+    a = record_visual("Et køligt, fladt lys over bordet i stuen.")
+    assert a["metadata"]["mood_origin"] == "argmax"
+    d = record_visual("Et køligt, fladt lys over bordet i stuen.", mood_tone="roligt")
+    assert d["metadata"]["mood_origin"] == "declared"
+    m = record_visual(
+        "Et køligt, fladt lys over bordet i stuen.",
+        mood_tone="roligt",
+        metadata={"mood_origin": "model"},
+    )
+    assert m["metadata"]["mood_origin"] == "model"
+
+
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "Rummet er mørkt og stille. Der er en skarp kontrast i rummet: Her er",
+        "Det skyldes flere faktorer: og her er Her er en beskrivelse af rummet",
+        "Meget langt uden sætningsslut skyldes flere faktorer:",
+    ],
+)
+def test_svar_ender_aldrig_paa_kolon(tekst: str) -> None:
+    from core.services.sensory_archive import _uden_haengende_kolon
+
+    assert not _uden_haengende_kolon(tekst).rstrip().endswith(":")
+    assert not _uden_haengende_kolon(tekst + "  \n").rstrip().endswith(":")
+    assert _uden_haengende_kolon(
+        "Rummet er mørkt. Kontrasten i rummet:"
+    ) == "Rummet er mørkt."
+
+
+def test_kolon_efter_klip_i_stillads(isolated_runtime) -> None:
+    from core.services.sensory_archive import _uden_stillads
+
+    ud, _ = _uden_stillads("Rummet er helt mørkt. Det skyldes flere faktorer:")
+    assert ud == "Rummet er helt mørkt."
+
+
+def test_lyd_under_gulv_markeres_instrument_gulv(isolated_runtime) -> None:
+    from core.services.sensory_archive import record_audio
+
+    lav = record_audio(
+        "En svag summen under rummets øvrige lyde.",
+        metadata={"amplitude_mean": 0.0002},
+    )
+    assert lav["id"]
+    assert lav["metadata"]["instrument_state"] == "instrument_gulv"
+    ok = record_audio(
+        "Samtale i baggrunden i rummet nu.", metadata={"amplitude_mean": 0.02}
+    )
+    assert "instrument_state" not in ok["metadata"]

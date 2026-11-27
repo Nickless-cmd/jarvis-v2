@@ -249,7 +249,28 @@ def klip_ved_saetningsgraense(tekst: str, pos: int) -> str:
     sidste = None
     for traef in _SAETNINGSSLUT.finditer(hale):
         sidste = traef
-    return hale[: sidste.end()].strip() if sidste else ""
+    klippet = hale[: sidste.end()].strip() if sidste else ""
+    return klippet
+
+
+def _uden_haengende_kolon(tekst: str) -> str:
+    """Et svar maa aldrig ende paa kolon: det loefter indhold der ikke kom med.
+
+    MAALT 27/11-2026: «… kontrasten i rummet:» og «… skyldes flere faktorer:».
+    Ryk snittet tilbage til sidste hele saetningsslutning foer kolonet; findes
+    ingen, klip ved naermeste ordgraense og fjern kolonet.
+    """
+    t = (tekst or "").rstrip()
+    if not t.endswith(":"):
+        return tekst
+    t = t.rstrip(": \t\n")
+    sidste = None
+    for traef in _SAETNINGSSLUT.finditer(t):
+        sidste = traef
+    if sidste is not None and sidste.end() > 0:
+        return t[: sidste.end()].strip()
+    # Ingen saetningsslutning: ordgraense — kolonet er allerede fjernet.
+    return t.strip()
 
 
 def _fjern_anmeldelse(tekst: str, traef: re.Match[str]) -> str:
@@ -341,7 +362,32 @@ def _uden_stillads(content: str) -> tuple[str, bool]:
         tekst = _fjern_anmeldelse(tekst, anmeldelse)
         roert = True
 
+    # Aldrig et haengende kolon efter klip/fjernelse.
+    renset = _uden_haengende_kolon(tekst)
+    if renset != tekst:
+        tekst = renset
+        roert = True
+
     return tekst, roert
+
+
+#: Under dette er en lydmaaling instrumentets gulv, ikke en lyd. MAALT
+#: 27/11-2026: 0,0002 tre gange i traek paa tolv doegn, mens nogen sad i sofaen.
+INSTRUMENT_GULV = 0.001
+_AMPLITUDE_NOEGLER = ("amplitude_mean", "audio_amplitude_mean", "amplitude")
+
+
+def _instrument_gate(meta: dict[str, Any]) -> None:
+    """Marker lyd under gulvet som `instrument_state=instrument_gulv`.
+
+    Posten gemmes stadig, men maaltallet maa ikke laeses som «stille i rummet».
+    """
+    for noegle in _AMPLITUDE_NOEGLER:
+        v = meta.get(noegle)
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and v < INSTRUMENT_GULV:
+            meta["instrument_state"] = "instrument_gulv"
+            meta["amplitude_laesbar_som_stilhed"] = False
+            return
 
 
 def _record(
@@ -398,9 +444,18 @@ def _record(
         )
 
     # Auto-extract mood if not provided
+    # mood_origin: hvor etiketten kommer fra. `declared` = kalderen satte den;
+    # `argmax` = noegleords-argmax over teksten (_extract_mood_from_content —
+    # delstrengs-match, uafgjort -> foerste i raekkefoelgen, saa «køligt, fladt
+    # lys» giver «lyst»); `model` = kalderen har selv markeret modellen via
+    # metadata["mood_origin"]; `none` = ingen etiket.
     final_mood = mood_tone
-    if final_mood is None:
+    declared_origin = (metadata or {}).get("mood_origin")
+    if final_mood is not None:
+        mood_origin = declared_origin if declared_origin == "model" else "declared"
+    else:
         final_mood = _extract_mood_from_content(content, modality)
+        mood_origin = "argmax" if final_mood is not None else "none"
 
     # Concept-perception note (Layer 2b memory enrichment) — i METADATA, ikke
     # i indholdet.
@@ -430,6 +485,8 @@ def _record(
         pass
 
     archive_metadata = normalize_metadata({**(metadata or {}), **extra_meta})
+    archive_metadata["mood_origin"] = mood_origin
+    _instrument_gate(archive_metadata)
     # Proveniens for selve svaret. Et ukendt spørgsmål må aldrig udfyldes med
     # en sandsynlig prompt: null er den ærlige historiske sandhed. Det samme
     # gælder frame-identitet for lyd og andre sansninger uden et billede.

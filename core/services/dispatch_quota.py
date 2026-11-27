@@ -62,6 +62,20 @@ HTTP_TIMEOUT_SECONDS = 5.0
 WARN_PCT = 90.0
 BLOCK_PCT = 100.0
 
+# Hvor gammel en måling må være før den ikke længere er et svar.
+#
+# MÅLT 27/11-2026: codex' nyeste rollout-fil var fra 24/11 22:45 — 68 timer
+# gammel — og læseren svarede «0 % brugt, hard_block=False». Preflighten slap
+# en dispatch igennem, CLI'en døde efter 48 sekunder, og worktreet var spildt.
+# `stale_hours` blev beregnet hele tiden, men blev kun SKREVET i begrundelsen;
+# det påvirkede aldrig `severity`. Et gammelt tal blev altså læst som et frisk.
+#
+# Grænsen er 6 timer, ikke 24: codex' 5-timers-vindue kan nå at løbe tør og
+# nulstille inden for et døgn, så en dag-gammel måling kan pege på det stik
+# modsatte af sandheden. Claude måles over HTTP ved hvert kald og rammer
+# aldrig grænsen i praksis — den er her for fils-kilden.
+STALE_LIMIT_HOURS = 6.0
+
 
 def _now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
@@ -564,6 +578,32 @@ def quota_preflight(backend: str) -> dict[str, Any]:
     # den nyeste otte dage gammel — «0 % brugt» var ikke en måling af nu.
     if reading.stale_hours >= 0:
         reason += f" [måling {reading.stale_hours:.1f} t gammel]"
+
+    # Er målingen ældre end friskhedsgrænsen, er den ikke et svar — den er en
+    # erindring. Vi ved ikke om kvoten er brugt op siden, og et gammelt «0 %»
+    # må ikke læses som «der er masser tilbage»: MÅLT 27/11-2026 slap præcis
+    # det en dispatch igennem der døde efter 48 sekunder.
+    #
+    # Den går til `unknown`, ikke `block`: kontrakten er «bloker på viden,
+    # fortsæt på uvidenhed». En gammel fil er uvidenhed, ikke bevis for tørke.
+    if reading.stale_hours >= STALE_LIMIT_HOURS:
+        return {
+            "allow": True,
+            "severity": "unknown",
+            "reason": (
+                f"kvoten er ikke målt i {reading.stale_hours:.1f} t "
+                f"(grænse {STALE_LIMIT_HOURS:.0f} t) — dispatchen fortsætter, "
+                f"men tallet «{reason}» er ikke et svar om nu"
+            ),
+            "pct": None,
+            "resets_at": "",
+            "windows": [
+                {"label": label, "pct": pct, "resets_at": reset}
+                for label, pct, reset in windows
+            ],
+            "stale_hours": reading.stale_hours,
+            "reading": reading,
+        }
 
     severity = "ok"
     if peak_pct >= BLOCK_PCT:

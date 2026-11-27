@@ -97,3 +97,46 @@ def test_stale_maaling_siges_hoejt(monkeypatch):
     r = dispatch_quota.quota_preflight("claude")
 
     assert "191.2 t gammel" in r["reason"]
+
+
+def test_gammel_maaling_er_ikke_et_svar(monkeypatch):
+    """68 timer gammel «0 % brugt» må ikke læses som «der er massen tilbage».
+
+    MÅLT 27/11-2026: codex' nyeste rollout-fil var fra 24/11 22:45. Læseren
+    svarede ok/0 %/hard_block=False, preflighten slap en dispatch igennem, og
+    CLI'en døde efter 48 sekunder med et spildt worktree som resultat.
+    `stale_hours` blev beregnet hele tiden, men påvirkede aldrig `severity`.
+    """
+    reading = dispatch_quota.QuotaReading(
+        ok=True, backend="codex", observed_at="2026-11-24T22:45:00+00:00",
+        values={"primary_pct": 0.0, "primary_resets_at": "",
+                "secondary_pct": 0.0, "secondary_resets_at": ""},
+        stale_hours=68.1,
+    )
+    monkeypatch.setattr(dispatch_quota, "codex_quota", lambda: reading)
+
+    r = dispatch_quota.quota_preflight("codex")
+
+    # Stadig fail-open: uvidenhed blokerer ikke arbejde.
+    assert r["allow"] is True
+    # Men den er ikke længere «ok» — den er uvidenhed.
+    assert r["severity"] == "unknown"
+    assert r["pct"] is None
+    assert "68.1 t" in r["reason"]
+    assert "ikke et svar" in r["reason"]
+
+
+def test_frisk_maaling_er_stadig_ok(monkeypatch):
+    """Grænsen må ikke gøre en frisk måling til uvidenhed."""
+    reading = dispatch_quota.QuotaReading(
+        ok=True, backend="codex", observed_at="2026-11-27T18:00:00+00:00",
+        values={"primary_pct": 12.0, "primary_resets_at": "",
+                "secondary_pct": 4.0, "secondary_resets_at": ""},
+        stale_hours=0.5,
+    )
+    monkeypatch.setattr(dispatch_quota, "codex_quota", lambda: reading)
+
+    r = dispatch_quota.quota_preflight("codex")
+
+    assert r["severity"] == "ok"
+    assert r["pct"] == 12.0

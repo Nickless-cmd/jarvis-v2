@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10560/19239 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10562/19241 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -27,7 +27,7 @@ Generated from source. 10560/19239 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 928 | 1645 | 56% |
-| `core.services` | 7095 | 13068 | 54% |
+| `core.services` | 7097 | 13070 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1232,7 +1232,7 @@ Generated from source. 10560/19239 functions/methods documented (54%). The list 
 - `core/services/diary_synthesis_signal_tracking.py` :: `build_diary_synthesis_signal_surface` (L58)
 - `core/services/diary_synthesis_signal_tracking.py` :: `refresh_diary_synthesis_signal_statuses` (L54)
 - `core/services/diary_synthesis_signal_tracking.py` :: `track_diary_synthesis_signals_for_visible_turn` (L20)
-- `core/services/dispatch_quota.py` :: `QuotaReading.get` (L93)
+- `core/services/dispatch_quota.py` :: `QuotaReading.get` (L107)
 - `core/services/docs_drift_watchdog.py` :: `check_docs_drift` (L49)
 - `core/services/docs_drift_watchdog.py` :: `read_report` (L19)
 - `core/services/dream_adoption_candidate_tracking.py` :: `build_runtime_dream_adoption_candidate_surface` (L85)
@@ -2108,14 +2108,14 @@ Generated from source. 10560/19239 functions/methods documented (54%). The list 
 - `core/services/semantic_indexer.py` :: `start_semantic_indexer` (L34)
 - `core/services/semantic_indexer.py` :: `stop_semantic_indexer` (L62)
 - `core/services/semantic_memory.py` :: `get_stats` (L694)
-- `core/services/sensory_archive.py` :: `count` (L537)
-- `core/services/sensory_archive.py` :: `get` (L533)
-- `core/services/sensory_archive.py` :: `list_recent` (L512)
-- `core/services/sensory_archive.py` :: `record_atmosphere` (L494)
-- `core/services/sensory_archive.py` :: `record_audio` (L485)
-- `core/services/sensory_archive.py` :: `record_mixed` (L503)
-- `core/services/sensory_archive.py` :: `record_visual` (L476)
-- `core/services/sensory_archive.py` :: `search` (L524)
+- `core/services/sensory_archive.py` :: `count` (L594)
+- `core/services/sensory_archive.py` :: `get` (L590)
+- `core/services/sensory_archive.py` :: `list_recent` (L569)
+- `core/services/sensory_archive.py` :: `record_atmosphere` (L551)
+- `core/services/sensory_archive.py` :: `record_audio` (L542)
+- `core/services/sensory_archive.py` :: `record_mixed` (L560)
+- `core/services/sensory_archive.py` :: `record_visual` (L533)
+- `core/services/sensory_archive.py` :: `search` (L581)
 - `core/services/session_continuity.py` :: `build_session_continuity_surface` (L566)
 - `core/services/session_continuity.py` :: `get_latest_morning_thread` (L441)
 - `core/services/session_inbox.py` :: `pending_count` (L402)

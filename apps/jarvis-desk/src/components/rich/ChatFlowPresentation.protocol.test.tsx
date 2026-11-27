@@ -53,7 +53,10 @@ it('keeps answer and both syntheses stable in order while only rounds collapse',
   expect(onPaced).toHaveBeenCalledOnce()
   fireEvent.click(container.querySelector('.rv-tur')!)
   const details = container.querySelector('.chat-flow-work-details')!
-  expect(details.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(2)
+  // Foldet bærer kun arbejdet FØR svaret; de to sene runder står åbne på deres egen
+  // plads mellem synteserne (side-bfbddc76a8) — ikke kopieret ned i folden.
+  expect(details.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(1)
+  expect(ordered.querySelectorAll('[data-levetid="aaben"]')).toHaveLength(2)
   expect(details).not.toHaveTextContent('Det oprindelige svar.')
 })
 

@@ -1,4 +1,68 @@
 # Development log
+## 2026-11-27 — Late rounds keep their place; the active line hands over when its fade ends
+
+**Task.** `side-bfbddc76a8`, Chat Mode and Code Mode. Two remaining defects in the
+turn-head presentation. Existing pacing and the active line's fade are unchanged.
+
+**Problem 1 — root cause (measured before any change).** Both modes *copied*
+the rounds that sit after the final answer into the fold's work list when the turn
+ended (Code: `arbejde = [...oprindeligtArbejde, ...svarSektioner rounds]` in
+`RaekkeTranskript`; Chat: `foldWork` stopped excluding `efterBlokke` once the turn
+was terminal). `opdelArbejdsrunder` then merged them with the early rounds into ONE
+line at the top of the fold, while their own in-place containers stayed collapsed
+(`data-samles` / `data-levetid="kollapset"`) regardless of the head. Unfolding the
+head therefore showed A, B, C with R1/R2 nowhere between them. Browser reading
+before the fix, open head: `r0, A, B, C` (R1/R2 height 0, y of B = y of R1).
+
+**Fix.** The transcript owns the order: a late round has exactly one place, between
+its syntheses, for the whole life of the turn. The fold carries only the work
+*before* the answer. Fold state drives visibility and animation of that same place:
+closed + turn finished → collapsed (inert); open → visible. Chat gets a third
+lifetime value `aaben` next to `live`/`kollapset`. The head text and foldability
+still count the late rounds (`arbejdeTilHoved`).
+
+**Problem 2 — root cause.** In Code Mode the active line fades when the pacer says a
+synthesis is writing (`data-pacing-skjult`), but it kept its full height (84 px) as an
+invisible box under the whole synthesis (measured: 175 frames ≈ 3 s with opacity 0
+and h > 30 px). When the next round arrived the line lost its step list in one frame
+(84 → 38 px) and the text below jumped 46 px. The old 400 ms `setTimeout` that was
+meant to hold the list did not help: the list was already unmounted in the same render.
+A round revealed while the pacer is already writing is mounted pre-faded, so no
+transition ever ran and nothing could hand over.
+
+**Fix.** (a) The step list collapses *with* the fade (same `--dur-fold`), so the height
+is gone when the fade is. (b) The hand-over active → finished happens on the fade's
+`transitionend` — no timer. (c) A line that never was visible (mounted pre-faded) or
+`prefers-reduced-motion` hands over immediately, in a layout effect so no faded frame
+is painted. (d) The held step list is released on the wrapper's `transitionend`, not by
+a timeout (the 400 ms timer is removed). The pacer is only read (`skjult`); nothing is
+written to it and no new timing constant was added.
+
+**Measured in Chromium** (`src/harness/maal-rundelivscyklus.mjs`, real `MessageRow`,
+`?mode=chat|code`; frame-by-frame DOM geometry, opacity, order and pacer characters):
+
+| | before | after |
+|---|---|---|
+| requirements met (both modes) | 55/76 earlier scenario; Code 28/39 later scenario | 94/94 |
+| open head after turn (Chat, Code, persisted, reloaded) | `r0,A,B,C`; R1/R2 h=0 | `r0,A,R1,B,R2,C`, y strictly increasing |
+| R1 invisible but occupying space during B | 175 frames (≈3 s) | ≤ 4 frames (fade end → swap) |
+| distance round → synthesis during hand-over | 84 → 38 px in one frame | constant ±0.1 px |
+| max B shift per frame at hand-over | 46 px (one frame) | 4.6–4.7 px |
+| pacer chars/frame before vs after hand-over | — | 28.0 vs 28.0, monotone, never reset |
+| close head: R1 h/opacity | — | 38→0 / 1→0, monotone; B,C ≤ 25 % of total move per frame |
+
+Opening/closing the head 4× during active pacing: pacer 2201 → 3459 characters,
+monotone. Server stream ended with 3488 of 7470 characters left: pacer monotone to the
+end and no revealed round collapsed while text remained.
+
+**Tests.** `rundeLivscyklus.test.tsx` (5 tests, all fail on the old code, pass now);
+three existing tests updated for the intended change (`protocol`, `rundeTrin`,
+`turhovedArgumenter`). Full desk suite 492 files / 3786 tests green; `tsc -b` clean;
+eslint 0 errors; `npm run build` green.
+
+**Not measured.** Real SSE stream end-to-end (the harness drives blocks directly);
+Safari/PWA; `maal-oplevelse.mjs` and the older harness scripts were not re-run.
+
 ## 2026-11-26 (fifth pass) — The round's lifetime is data, and the flat branch is paced
 
 **What was missing.** The flat branch rendered `segment.blokke` — but `model` is

@@ -226,6 +226,6 @@ describe('TurHoved-argumenter — de to flader sammenlignet', () => {
 
   it('foldbar er ens i form: begge gater på om der ER arbejde', () => {
     expect(chat.get('foldbar')).toBe('foldbar={harArbejde}')
-    expect(code.get('foldbar')).toBe('foldbar={arbejde.length > 0}')
+    expect(code.get('foldbar')).toBe('foldbar={arbejdeTilHoved.length > 0}')
   })
 })

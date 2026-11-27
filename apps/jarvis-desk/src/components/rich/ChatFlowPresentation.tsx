@@ -296,9 +296,16 @@ export function ChatFlowPresentation({
   // sæt på objektidentitet rammer præcist.
   const efterBlokke = new Set<ContentBlock>(
     efterSegmenter.flatMap((segment) => segment.blokke))
+  // RUNDERNES PLACERING (27/11-2026, side-bfbddc76a8). Transkriptet ejer
+  // rækkefølgen: i den ordnede flade ligger en sen runde ALTID i sin egen
+  // container mellem synteserne, og den bliver der — også efter turen. Før
+  // blev den kopieret ind i foldens arbejdslog ved turens slutning, hvor
+  // `opdelArbejdsrunder` smeltede den sammen med de tidlige runder: ved
+  // udfoldning dukkede R1/R2 op som ÉN linje øverst, ikke mellem synteserne.
+  // Kun den ældre (uordnede) gren samler stadig de sene runder i folden.
   const foldWork = retainedWork.filter((block) =>
     (block.type !== 'tool_use' || block.name !== 'pause_and_ask')
-    && ((!streaming && !arbejdeEfterSvar && svarFaerdigPacet)
+    && ((!streaming && !arbejdeEfterSvar && svarFaerdigPacet && !explicitProtocol)
       || !efterBlokke.has(block)))
   // Bjørn 20/10-2026: «det hurtige svar skal aldrig vises».
   //
@@ -968,9 +975,12 @@ export function ChatFlowPresentation({
                   streaming={streaming} hale={turenKoerer} beskedId={beskedId} config={config} />
               </div>
             ) : efterSegmenter.includes(segment) ? (
+              // `live` mens turen kører, `aaben`/`kollapset` bagefter — foldetilstanden
+              // styrer KUN synlighed og animation af den plads runden allerede har.
               <div key={segment.id} className="chat-flow-runde" data-segment="runde" data-plassering="efter"
-                data-levetid={turenKoerer ? 'live' : 'kollapset'} aria-hidden={!turenKoerer}
-                {...(turenKoerer ? {} : { inert: true })}>
+                data-levetid={turenKoerer ? 'live' : aaben ? 'aaben' : 'kollapset'}
+                aria-hidden={!turenKoerer && !aaben}
+                {...(turenKoerer || aaben ? {} : { inert: true })}>
                 <div className="chat-flow-runde-indhold">
                   <BlocksRenderer blocks={segment.blokke} density={density} streaming={streaming}
                     rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} beskedId={beskedId} config={config} />

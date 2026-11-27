@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render } from '@testing-library/react'
+import { createEvent, fireEvent, render } from '@testing-library/react'
 import { RaekkeTranskript } from './RaekkeTranskript'
 import { RAEKKE_KEY } from '../../lib/visningsPref'
 import type { ContentBlock } from '../../lib/sseProtocol'
@@ -72,6 +72,16 @@ describe('Runde-tidslinjen — aktiv runde viser processen', () => {
 
     rerender(<RaekkeTranskript blocks={blocks} streaming={false} />)
     aabnTur(container)
+
+    // Processen er ikke længere åben: listen glider lukket (`1fr → 0fr`) og er skjult
+    // for hjælpemidler; den forlader først DOM'en når glidningen er slut
+    // (`transitionend`, ikke en timer) — ellers sprang højden 84 → 38 px i én frame.
+    const ydre = container.querySelector('.rv-trin-ydre') as HTMLElement
+    expect(ydre.getAttribute('data-aaben')).toBe('false')
+    expect(container.querySelector('.rv-trin')?.getAttribute('aria-hidden')).toBe('true')
+    const slut = createEvent.transitionEnd(ydre)
+    Object.defineProperty(slut, 'propertyName', { value: 'grid-template-rows' })
+    fireEvent(ydre, slut)
 
     // Processen er væk, resultatet står tilbage — uden staffage.
     expect(trin(container)).toHaveLength(0)

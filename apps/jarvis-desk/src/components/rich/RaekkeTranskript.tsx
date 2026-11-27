@@ -21,7 +21,7 @@
  * Prosaen går stadig gennem `BlocksRenderer`, så markdown, kodeblokke og
  * billeder er nøjagtig som i bobblevisningen.
  */
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Sparkles, Sparkle, ChevronDown, Check, X, CircleSlash, Loader2, type LucideIcon } from 'lucide-react'
 import { FoldPil, TitelCrossfade, TurHoved } from './TurHoved'
 import type { ContentBlock } from '../../lib/sseProtocol'
@@ -361,7 +361,33 @@ function ArbejdsrundeImpl({
   // modellen tænker på næste runde, og rækken stod død i et par sekunder.
   // Puls, det samlede tur-ur og ét fælles shimmerfelt bliver derfor på den
   // sidste aktive runde helt til stream-stop.
-  const aktivRunde = streaming && sidste
+  // ── Overdragelsen aktiv → afsluttet sker på fadets AFSLUTNING (27/11-2026) ──
+  //
+  // `skjult` er pacerens signal om at en syntese nu skriver sig. Den aktive
+  // linje fader da ud (`data-pacing-skjult`), men blev stående som en usynlig
+  // boks i fuld højde (målt: 84 px) under hele syntesen — et tomrum mellem
+  // runden og den syntese der er begyndt — og først når næste runde ankom,
+  // sprang den til 38 px og blev synlig igen, så teksten under den rykkede 46 px
+  // i én frame. Nu overtager den AFSLUTTEDE linje pladsen når fadet er færdigt
+  // (`transitionend`, ikke en timer): samme plads, uden spring, og uden at røre
+  // paceren — den læses kun som input (`skjult`), aldrig skrevet til.
+  const [overdraget, setOverdraget] = useState(false)
+  const aktivSidste = streaming && sidste
+  // Har linjen nogensinde stået synlig som aktiv? Kun da findes der et fade at
+  // vente på. En runde der afsløres MENS pacen allerede skriver, monteres
+  // allerede fadet (målt: 38 px usynlig plads i 3 s, og `transitionend` kom aldrig,
+  // fordi intet blev animeret) — dér er overdragelsen øjeblikkelig.
+  const havdeVaeretSynlig = useRef(false)
+  // Layout-effekt: den fadede frame må ikke nå at blive malet.
+  useLayoutEffect(() => {
+    if (!aktivSidste) { setOverdraget(false); havdeVaeretSynlig.current = false; return }
+    if (!skjult) { havdeVaeretSynlig.current = true; return }
+    // Uden animation (`prefers-reduced-motion`) findes der intet fade-slut at
+    // vente på — overdragelsen er da også øjeblikkelig.
+    const udenAnimation = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    if (!havdeVaeretSynlig.current || udenAnimation) setOverdraget(true)
+  }, [aktivSidste, skjult])
+  const aktivRunde = aktivSidste && !overdraget
   const mekanisk = summarizeRound(vaerktoejer)
   // Under udførelse: Jarvis' `description` eller den aktuelle handling.
   // Bagefter: modelens rundeopsummering, ellers en faktuel afslutning.
@@ -387,39 +413,31 @@ function ArbejdsrundeImpl({
   // ── Højden må ikke springe når runden forlades (målt 27/11-2026) ────────
   //
   // `arbejdsTrin(elementer, aktivRunde)` giver en TOM liste i samme frame som
-  // runden holder op med at være aktiv. Målt i Chromium: linjen faldt 74px →
-  // 38px — 36px, som er trinlistens højde — mens resten af huset bevæger sig
-  // over `--dur-fold`. Naboen (slutbeskeden) rykkede derfor 36px op i én
-  // frame, og det så ud som om faden tog den med.
+  // runden holder op med at være aktiv. Målt i Chromium: linjen faldt 84 px →
+  // 38 px i ÉN frame, og teksten under den rykkede 46 px op.
   //
-  // Listen holdes derfor i live i præcis `--dur-fold` efter runden er forladt,
-  // så wrapperen kan kollapse den animeret. Den er `aria-hidden` i det vindue:
-  // den er visuel overgang, ikke indhold man kan læse som en kørende proces.
-  const forladtTrin = useRef<typeof trin>([])
-  const [trinHolder, setTrinHolder] = useState(false)
-  useEffect(() => {
-    if (aktivRunde) {
-      forladtTrin.current = []
-      setTrinHolder(false)
-      return
-    }
-    if (forladtTrin.current.length === 0) return
-    setTrinHolder(true)
-    const t = window.setTimeout(() => { forladtTrin.current = []; setTrinHolder(false) }, 400)
-    return () => window.clearTimeout(t)
-  }, [aktivRunde])
-  if (aktivRunde && trin.length > 0) forladtTrin.current = trin
-  const visteTrin = aktivRunde ? trin : (trinHolder ? forladtTrin.current : [])
+  // Listen bliver derfor MONTERET gennem wrapperens `1fr → 0fr`-glidning og
+  // fjernes først når den glidning er slut (`onTransitionEnd` nedenfor) — ikke
+  // efter en timer. Den er `aria-hidden` uden for den aktive runde: den er
+  // visuel overgang, ikke indhold man kan læse som en kørende proces.
+  const sidsteTrin = trin[trin.length - 1]
   // Overskriften ER det kørende trin når serveren ikke har sin egen
   // arbejdsbeskrivelse (`working_step`). Så må den ikke stå to gange: linjen
   // bærer den — med ring og shimmer — og listen viser historikken op til den.
   // Kun ved `active`: et FEJLET enkelt-kald må ikke forsvinde ind i
   // overskriften, for så ville krydset forsvinde sammen med det.
-  const sidsteTrin = trin[trin.length - 1]
   const overskriftErSidste = Boolean(
     sidsteTrin && sidsteTrin.status === 'active' && sidsteTrin.tekst === beskrivelse,
   )
-  const synligeTrin = overskriftErSidste ? visteTrin.slice(0, -1) : visteTrin
+  const aktiveTrin = overskriftErSidste ? trin.slice(0, -1) : trin
+  const holdtTrin = useRef<typeof trin>([])
+  const [, tegnForfra] = useState(0)
+  if (aktivRunde) holdtTrin.current = aktiveTrin
+  const synligeTrin = aktivRunde ? aktiveTrin : holdtTrin.current
+  // Listen er åben mens runden er aktiv og IKKE er ved at fade: fadet og
+  // listens kollaps bruger samme `--dur-fold`, så højden er væk når fadet er
+  // det — og overdragelsen ændrer ingen højde.
+  const trinAaben = aktivRunde && !skjult && synligeTrin.length > 0
   // Kun det man ikke kan se af sig selv: at noget fejlede eller aldrig fik et
   // svar. Antallet og «Fold ud» stod her før, men pilen viser allerede at
   // rækken kan foldes, og tallet sagde intet om udfaldet (Bjørn 15/11-2026).
@@ -428,7 +446,11 @@ function ArbejdsrundeImpl({
     <div className="rv-arbejdsrunde"
       {...(aktivRunde ? { 'data-aktiv-runde': '', 'data-pacing-skjult': skjult ? '' : undefined } : {})}
       {...(!aktivRunde && trin.some((t) => t.status === 'failed') ? { 'data-fejl': '' } : {})}
-      aria-hidden={aktivRunde && skjult ? true : undefined}>
+      aria-hidden={aktivRunde && skjult ? true : undefined}
+      onTransitionEnd={(e) => {
+        // Fadet er slut → den afsluttede linje overtager pladsen.
+        if (e.target === e.currentTarget && e.propertyName === 'opacity' && aktivSidste && skjult) setOverdraget(true)
+      }}>
       <button type="button" ref={foldRef} className="rv-arbejdsknap" aria-expanded={aaben}
         {...(aktivRunde ? { 'data-koerer': '' } : {})}
         onClick={() => { huskFold(); setAaben((v) => !v) }}>
@@ -478,7 +500,15 @@ function ArbejdsrundeImpl({
           wrapperen animerer `1fr → 0fr`, så højden glider med foldens egen
           varighed. Samme mønster som `.chat-flow-runde`; `align-self: start`
           og `min-height: 0` er ikke kosmetik — se chat-flow.css. */}
-      <div className="rv-trin-ydre" data-aaben={aktivRunde && synligeTrin.length > 0 ? 'true' : 'false'}>
+      <div className="rv-trin-ydre" data-aaben={trinAaben ? 'true' : 'false'}
+        onTransitionEnd={(e) => {
+          // Kollapset er færdigt → listen må forlade DOM'en uden at nogen kan se det.
+          if (e.target === e.currentTarget && e.propertyName === 'grid-template-rows'
+            && !trinAaben && holdtTrin.current.length > 0 && !aktivRunde) {
+            holdtTrin.current = []
+            tegnForfra((n) => n + 1)
+          }
+        }}>
         <div className="rv-trin-indre">
           {synligeTrin.length > 0 && (
             <ol className="rv-trin" aria-label="Arbejdstrin" aria-hidden={aktivRunde ? undefined : true}>
@@ -594,11 +624,20 @@ function RaekkeTranskriptImpl({
   // skillelinjen og goere slutteksten til arbejde (målt 21/11-2026).
   const { arbejde: oprindeligtArbejde, svar, svarSektioner, kald } = opdel(transcriptBlocks, streaming && !effectiveAnswerStarted, effectiveAnswerStarted)
   const svarSamles = !streaming && !(svarRuller ?? false)
-  // Text always stays in the answer lane. Only work rows collapse; their
-  // details remain available behind the head after the turn.
-  const arbejde = svarSamles
-    ? [...oprindeligtArbejde, ...svarSektioner.flatMap((s) => s.slags === 'runde' ? s.elementer : [])]
-    : oprindeligtArbejde
+  // Text always stays in the answer lane, and so do the late rounds: they keep
+  // their chronological place between the syntheses for the whole life of the
+  // turn (the transcript owns the order). Only the fold state decides whether
+  // they are visible — see `senRundeSamles` below.
+  //
+  // MÅLT 27/11-2026 (side-bfbddc76a8): ved turens slutning blev de sene runder
+  // KOPIERET ind i foldens arbejdsliste, hvor `opdelArbejdsrunder` smeltede dem
+  // sammen med de tidlige runder til én linje i bunden af folden — mens deres
+  // egne pladser forblev kollapsede. Udfoldet hoved viste derfor aldrig R1/R2
+  // mellem synteserne. Folden bærer nu kun arbejdet FØR svaret; de sene
+  // runder tælles stadig med til hovedets tekst og foldbarhed (`arbejdeTilHoved`).
+  const arbejde = oprindeligtArbejde
+  const senRunder = svarSektioner.flatMap((s) => s.slags === 'runde' ? s.elementer : [])
+  const arbejdeTilHoved = svarSamles ? [...oprindeligtArbejde, ...senRunder] : oprindeligtArbejde
   const billedArbejde = streaming
     ? levendeBilledArbejde(afslutForladteKald(blocks, true).flatMap((b) => b.type === 'tool_use' ? [b] : []))
     : null
@@ -624,7 +663,7 @@ function RaekkeTranskriptImpl({
   const aktivSvarRundeIndex = streaming ? sidsteSvarRundeIndex : -1
   // Familien pr. kald — SAMME kilde som kroppene (`postFor`), så turens
   // hoved og rækkerne aldrig kan fortælle to forskellige historier.
-  const familier = arbejde.flatMap((e) =>
+  const familier = arbejdeTilHoved.flatMap((e) =>
     e.slags === 'blok' && e.blok.type === 'tool_use' ? [postFor(e.blok.name).familie] : [],
   )
   const etiketter = { ...etiketterFraBlokke(blocks), ...(rundeEtiketter ?? {}) }
@@ -708,8 +747,8 @@ function RaekkeTranskriptImpl({
       : block.type === 'thinking' ? block.thinking.trim().length > 0
         : block.type === 'tool_use')
   const visTurhoved =
-    (arbejde.length > 0 && (svarBegyndt || !arbejdeKoerer || !aaben))
-    || (arbejde.length === 0 && arbejdeKoerer)
+    (arbejdeTilHoved.length > 0 && (svarBegyndt || !arbejdeKoerer || !aaben))
+    || (arbejdeTilHoved.length === 0 && arbejdeKoerer)
   // Tokenfeltet eksisterer først når tælleren faktisk er begyndt. Dermed står
   // der hverken `0 tokens` eller et ensomt `k tokens` ved turstart.
   //
@@ -738,7 +777,7 @@ function RaekkeTranskriptImpl({
           meta={visTokens ? <span className="rv-turMeta">~<RullendeTokens tokens={tokens} /> output</span> : null}
           levende={streaming}
           sekunder={!streaming ? turSekunder : null}
-          foldbar={arbejde.length > 0}
+          foldbar={arbejdeTilHoved.length > 0}
           onToggle={() => { huskFold(); setAabenManuelt(!aaben) }}
         />
       )}
@@ -802,9 +841,13 @@ function RaekkeTranskriptImpl({
           // tænkningen som sin EGEN linje ved siden af. To sprog for den samme
           // ting; nu er der ét.
           const aktiv = streaming && i === aktivSvarRundeIndex
+          // Foldetilstanden styrer KUN synlighed og animation: efter turen er
+          // runden samlet når hovedet er lukket og åben på sin egen plads når
+          // det er foldet ud. Pladsen er den samme hele tiden.
+          const samlet = svarSamles && !aaben
           return (
-            <div key={`r${i}`} className="rv-sen-runde" data-samles={svarSamles ? 'true' : 'false'}
-              aria-hidden={svarSamles} {...(svarSamles ? { inert: true } : {})}>
+            <div key={`r${i}`} className="rv-sen-runde" data-samles={samlet ? 'true' : 'false'}
+              aria-hidden={samlet} {...(samlet ? { inert: true } : {})}>
               <div className="rv-sen-runde-indhold">
                 <Arbejdsrunde
                   elementer={s.elementer} streaming={streaming} hale={hale} sidste={aktiv}

@@ -5,6 +5,28 @@ The repository-wide status source remains
 This file records the status of the delivered Jarvis Desk changes requested for
 implementation.
 
+## Desk: late rounds keep their place, active line hands over on fade end (2026-11-27)
+
+Both defects of `side-bfbddc76a8` are fixed in Chat Mode and Code Mode and
+**measured in Chromium** through the production `MessageRow` (not only unit-tested).
+
+- **Late rounds keep their chronological place.** After the turn, unfolding the head
+  shows `A, R1, B, R2, C` in order (before: R1/R2 were merged into one fold line and
+  their own slots stayed collapsed). Verified live, after the persisted-message
+  switch, and after a reload, in both modes; closing animates fade + collapse
+  monotonically.
+- **Active → finished hand-over without a void.** Code Mode's faded active line no
+  longer holds an invisible 84 px box under the next synthesis (175 frames before,
+  ≤ 4 after) and no longer shifts the text 46 px in one frame; the hand-over runs on
+  `transitionend`. Chat Mode has no active line in that slot — its in-place round
+  glides in without a jump.
+- **Pacer untouched.** Read-only input only; characters/frame 28.0 before and after
+  the hand-over, monotone through open/close and server-stop-with-text-left.
+- **Evidence:** `apps/jarvis-desk/src/harness/maal-rundelivscyklus.mjs` (94/94),
+  `rundeLivscyklus.test.tsx` (5 tests fail on the old code). Desk suite 3786 green,
+  tsc/eslint/build clean.
+- **Open:** real SSE end-to-end, Safari/PWA, re-run of the older harness scripts.
+
 ## Desk: pace identity survives the fold — measured end-to-end (2026-11-26)
 
 Two of the seven architectural requirements from the turn-head brief are now

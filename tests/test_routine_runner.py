@@ -211,3 +211,40 @@ def test_en_sanse_rutine_kan_faktisk_sanse_og_arkivere():
             f"{værktøj} er tilladt men står ikke i rutinens kerne-sæt, så det "
             f"når aldrig modellen (28/10-2026: natrutinen skrev intet i fire døgn)"
         )
+
+
+def test_rutinen_kan_skrive_handle_og_flagge_sit_eget_fund():
+    """Fem navne manglede i den ene af de to mængder — og fejlen er tavs.
+
+    ``_rutine_tools_payload`` krydser ``_RUTINE_KERNE_TOOLS`` med
+    ``allowed_tools_for_origin("routine")``. Et navn der kun står i det ene sæt
+    forsvinder uden en fejl, og kørslen melder ``succeeded`` uden at have gjort
+    arbejdet. Det er samme fælde tre gange: sanseværktøjerne 28/10,
+    ``send_discord_dm`` 13.–18/11 — og 27/11-2026 de her fem.
+
+    Målt 27/11-2026: alle 13 aktive rutiner har ``tools=None``, så de falder
+    tilbage til kerne-listen. Ingen af dem kunne skrive en fil, rette en fil,
+    tænde en lampe, sende en push eller flagge en side-opgave — mens
+    ``routine_runs`` viste ``succeeded`` hver dag.
+
+    Testen fælder BEGGE halvdele for hvert navn: politikken skal tillade det,
+    og skemaet skal faktisk byde det til modellen.
+    """
+    from core.services.routine_runner import _rutine_tools_payload
+    from core.tools.autonomous_tool_policy import allowed_tools_for_origin
+
+    navne = _navne(_rutine_tools_payload(_kontekst(permission_policy={})))
+    politik = allowed_tools_for_origin("routine")
+
+    for værktøj in (
+        "write_file", "edit_file", "home_assistant",
+        "send_push_notification", "flag_side_task",
+    ):
+        assert værktøj in politik, (
+            f"{værktøj} afvises af politikken for origin 'routine' — rutinen "
+            f"kan ikke gøre det arbejde den blev oprettet til"
+        )
+        assert værktøj in navne, (
+            f"{værktøj} er tilladt men står ikke i rutinens kerne-sæt, så det "
+            f"når aldrig modellen (27/11-2026: kørslen melder `succeeded`)"
+        )

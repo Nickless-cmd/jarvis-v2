@@ -144,6 +144,18 @@ ORIGIN_TOOLS: dict[str, frozenset[str]] = {
         # en tilføjelse til `_RUTINE_KERNE_TOOLS` alene bliver filtreret væk.
         "look_around", "mic_listen", "record_sensory_memory",
         "recall_sensory_memories",
+        # Skrive og handle (27/11-2026, Bjørn). Fire navne stod i
+        # `_RUTINE_KERNE_TOOLS` men ikke her — og `_rutine_tools_payload`
+        # krydser de to sæt, så de blev filtreret væk uden en fejl: en rutine
+        # kunne ikke skrive en fil, rette en fil, tænde en lampe eller sende
+        # en push, mens kørslen meldte `succeeded`.
+        #
+        # Det udvider ikke rutinens magtområde. `bash` er allerede givet til
+        # denne origin, og en shell kan skrive filer og kalde HA-API'et; det
+        # her flytter evnen fra den indirekte vej til den vej værktøjsskemaet
+        # beskriver. `send_push_notification` er levering til EJEREN — samme
+        # klasse som `notify_user`, som rutiner allerede har.
+        "write_file", "edit_file", "home_assistant", "send_push_notification",
     }),
     # Drømmen skal sanse og arkivere sit indtryk — ikke tale med verden.
     "dream": frozenset({"look_around", "mic_listen"}),

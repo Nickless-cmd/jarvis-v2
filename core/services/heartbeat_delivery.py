@@ -461,7 +461,17 @@ def _deliver_heartbeat_ping_directly(
                 "ping_text": message_text[:200],
             })
             return {
-                "status": "queued",
+                # KALDEREN TJEKKER `== "sent"` (heartbeat_runtime.py:4493).
+                # Stod der "queued" her, blev et ping der FAKTISK lå i
+                # nudge-ledgeren meldt som «blokeret». Målt 27/11-2026:
+                # 143 blokeringer over ti dage, og 329 af 378 rækker havde
+                # grunden «unknown» — fordi `blocked_reason` er tom netop
+                # her. Leverancerne matcher blokeringerne 1:1 (19/11: 19
+                # blokeret/18 leveret, 25/11: 32/31), så intet gik tabt;
+                # kun regnskabet løj. Kø-tilstanden hører i summary og
+                # artifact, ikke i status — samme regel som direkte-vejen
+                # nedenfor følger («"queued" ER en succes»).
+                "status": "sent",
                 "summary": "Heartbeat ping queued as nudge for Jarvis review.",
                 "action_type": "webchat-heartbeat-ping-nudge",
                 "artifact": json.dumps({

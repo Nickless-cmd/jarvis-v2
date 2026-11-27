@@ -316,3 +316,34 @@ def test_ulaeselig_besked_siger_uvist_ikke_ja(tmp_path: Path) -> None:
     svar = _besked_afveg(str(tmp_path), sendt="hvad som helst", timeout=10)
 
     assert "IKKE verificeret" in svar
+
+
+def _pending_merge(repo: Path) -> None:
+    base = _git(repo, 'branch', '--show-current').stdout.strip()
+    _git(repo, 'checkout', '-qb', 'side')
+    (repo / 'one.py').write_text('one = 2\n')
+    _git(repo, 'add', 'one.py')
+    _git(repo, 'commit', '-qm', 'side change')
+    _git(repo, 'checkout', '-q', base)
+    (repo / 'two.py').write_text('two = 2\n')
+    _git(repo, 'add', 'two.py')
+    _git(repo, 'commit', '-qm', 'base change')
+    _git(repo, 'merge', '--no-ff', '--no-commit', 'side')
+
+
+def test_merge_accepts_the_complete_explicit_path_selection(git_repo: Path) -> None:
+    _pending_merge(git_repo)
+    result = commit_with_attribution(repo=git_repo, message='Merge side', attribution=_attribution(), paths=('one.py',))
+    assert result.returncode == 0, result.stderr
+    assert len(_git(git_repo, 'rev-list', '--parents', '-n1', 'HEAD').stdout.split()) == 3
+    assert 'Actor: codex' in _git(git_repo, 'show', '-s', '--format=%B').stdout
+
+
+def test_merge_rejects_an_incomplete_path_selection(git_repo: Path) -> None:
+    _pending_merge(git_repo)
+    (git_repo / 'two.py').write_text('two = 3\n')
+    _git(git_repo, 'add', 'two.py')
+    result = commit_with_attribution(repo=git_repo, message='Merge side', attribution=_attribution(), paths=('one.py',))
+    assert result.returncode == 2
+    assert 'complete staged index' in result.stderr
+    assert _git(git_repo, 'rev-parse', '-q', '--verify', 'MERGE_HEAD').returncode == 0

@@ -150,6 +150,14 @@ def commit_with_attribution(
     if staging_error:
         return AttributedCommitResult(returncode=2, stderr=staging_error)
 
+    # Git forbids path-limited commits during a merge. Keep the caller's
+    # selection guarantee by requiring the complete index before committing it.
+    merging = _git(root, "rev-parse", "-q", "--verify", "MERGE_HEAD", timeout=min(timeout, 10)).returncode == 0
+    if merging and selected:
+        staged = _git(root, "diff", "--cached", "--name-only", timeout=min(timeout, 15))
+        if staged.returncode != 0 or set(staged.stdout.splitlines()) != set(selected):
+            return AttributedCommitResult(returncode=2, stderr="merge paths must match the complete staged index")
+
     message_path = ""
     try:
         with tempfile.NamedTemporaryFile(
@@ -170,7 +178,7 @@ def commit_with_attribution(
             command.append("--amend")
         if author:
             command.extend(["--author", author])
-        if selected:
+        if selected and not merging:
             command.extend(["--", *selected])
         commit_env = None
         if amend:

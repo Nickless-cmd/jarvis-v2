@@ -226,6 +226,15 @@ _RUTINE_KERNE_TOOLS: frozenset[str] = frozenset({
     "write_file", "edit_file", "note_add", "note_list",
     # Planer
     "goal_list", "todo_add", "todo_list",
+    # Bogføring af egne fund (27/11-2026). `flag_side_task` stod i bund-sættet
+    # og var dermed TILLADT for origin `routine` — men ikke her, og
+    # `_rutine_tools_payload` krydser de to sæt. En rutine kunne derfor per
+    # konstruktion ikke efterlade sig en side-opgave, mens kørslen meldte
+    # `succeeded`. Samme fælde som sanseværktøjerne 28/10 og `send_discord_dm`
+    # 13.–18/11: navnet stod i politikken, men ikke i det sæt modellen ser.
+    # Målt 27/11-2026: alle 13 aktive rutiner har `tools=None`, så de falder
+    # tilbage til netop denne liste.
+    "flag_side_task",
 })
 
 

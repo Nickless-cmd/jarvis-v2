@@ -4266,7 +4266,9 @@ def _validate_heartbeat_decision(
                     ping_text=ping_text_value,
                     summary=decision_summary_value,
                 )
-                if str(direct_result.get("status") or "") == "sent":
+                # Samme regel som fallback-grenen nedenfor: et ping der er
+                # lagt i nudge-ledgeren er leveret, ikke blokeret.
+                if str(direct_result.get("status") or "") in {"sent", "queued"}:
                     return {
                         "tick_id": tick_id,
                         "blocked_reason": "",
@@ -4490,7 +4492,12 @@ def _validate_heartbeat_decision(
                     ping_text=msg,
                     summary=decision_summary_value,
                 )
-                if str(fallback_result.get("status") or "") == "sent":
+                # «queued» ER en leverance: nudge-vejen lægger pinget i
+                # ledgeren og Jarvis ser det i awareness. Blev kun "sent"
+                # accepteret, blev et leveret ping meldt som tabt — målt
+                # 27/11-2026: 143 blokeringer, hvor leverancerne matchede
+                # 1:1. Sættet er bredere end lighed med vilje.
+                if str(fallback_result.get("status") or "") in {"sent", "queued"}:
                     return {
                         "tick_id": tick_id,
                         "blocked_reason": "",
@@ -4509,7 +4516,10 @@ def _validate_heartbeat_decision(
                     "action_status": "blocked",
                     "action_summary": (
                         "No active Discord DM session found, and webchat fallback "
-                        f"was unavailable: {fallback_result.get('blocked_reason') or 'unknown'}."
+                        "was unavailable: "
+                        # Status er den ægte grund når `blocked_reason` er tom —
+                        # «unknown» skjulte at det var en status-konflikt.
+                        f"{fallback_result.get('blocked_reason') or fallback_result.get('status') or 'unknown'}."
                     ),
                     "action_type": "",
                     "action_artifact": "",

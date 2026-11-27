@@ -70,57 +70,57 @@ _Fenced, session-neutral execution of one Routine run._
 | function | `_stale` | `(exc)` | — | [src](../../../core/services/routine_runner.py#L118) |
 | function | `_standard_provider` | `()` | Modellen et rutine-run bruger når rutinen ikke selv peger på én. | [src](../../../core/services/routine_runner.py#L136) |
 | function | `_standard_model` | `()` | Se :func:`_standard_provider` — samme måling, samme grund. | [src](../../../core/services/routine_runner.py#L160) |
-| function | `_rutine_tools_payload` | `(context)` | Værktøjsskemaet denne rutine må byde modellen. Tom = værktøjs-fri. | [src](../../../core/services/routine_runner.py#L232) |
-| function | `_rutine_max_rounds` | `(context)` | Læs et afgrænset rundebudget fra rutinens egen policy. | [src](../../../core/services/routine_runner.py#L262) |
-| function | `_ejer_kontekst` | `(owner_user_id, *, run_id=…)` | Kør blokken som rutinens ejer: workspace, oprindelse og autonomi. | [src](../../../core/services/routine_runner.py#L276) |
-| function | `build_tool_executor` | `(owner_user_id, *, run_id=…)` | Executor for ét rutine-run, scopet til rutinens ejer. | [src](../../../core/services/routine_runner.py#L319) |
-| class | `RoutineRunRepository` | `` | — | [src](../../../core/services/routine_runner.py#L354) |
-| method | `RoutineRunRepository.claim` | `(self, run_id, *, holder, now=…)` | — | [src](../../../core/services/routine_runner.py#L355) |
-| method | `RoutineRunRepository.reclaim` | `(self, run_id, *, expected_generation, holder, now=…)` | — | [src](../../../core/services/routine_runner.py#L361) |
-| method | `RoutineRunRepository.assert_current` | `(self, run_id, *, generation, holder=…)` | — | [src](../../../core/services/routine_runner.py#L373) |
-| method | `RoutineRunRepository.renew` | `(self, run_id, *, generation, holder)` | — | [src](../../../core/services/routine_runner.py#L383) |
-| method | `RoutineRunRepository.get_run` | `(self, run_id, *, decrypt_for=…)` | — | [src](../../../core/services/routine_runner.py#L391) |
-| method | `RoutineRunRepository.next_queued_run` | `(self)` | — | [src](../../../core/services/routine_runner.py#L397) |
-| method | `RoutineRunRepository.record_tool_dispatch_started` | `(self, run_id, *, generation, call, holder=…, now=…)` | — | [src](../../../core/services/routine_runner.py#L401) |
-| method | `RoutineRunRepository.settle_tool_dispatch` | `(self, run_id, *, generation, call, succeeded, holder=…)` | — | [src](../../../core/services/routine_runner.py#L413) |
-| method | `RoutineRunRepository.list_open_tool_effects` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L425) |
-| method | `RoutineRunRepository.transition` | `(self, run_id, *, status, generation, result=…, diagnostic_code=…)` | — | [src](../../../core/services/routine_runner.py#L428) |
-| method | `RoutineRunRepository.complete_success` | `(self, run_id, *, generation, result, delivery_channel)` | — | [src](../../../core/services/routine_runner.py#L440) |
-| method | `RoutineRunRepository.get_failure_count` | `(self, routine_id)` | — | [src](../../../core/services/routine_runner.py#L452) |
-| class | `_FencedRecorder` | `` | — | [src](../../../core/services/routine_runner.py#L456) |
-| method | `_FencedRecorder.__init__` | `(self, recorder)` | — | [src](../../../core/services/routine_runner.py#L457) |
-| method | `_FencedRecorder.append` | `(self, *args, **kwargs)` | — | [src](../../../core/services/routine_runner.py#L460) |
-| method | `_FencedRecorder.list` | `(self, *args, **kwargs)` | — | [src](../../../core/services/routine_runner.py#L468) |
-| class | `_RunSink` | `` | — | [src](../../../core/services/routine_runner.py#L472) |
-| method | `_RunSink.__init__` | `(self, recorder, run_id, generation)` | — | [src](../../../core/services/routine_runner.py#L473) |
-| method | `_RunSink._append` | `(self, kind, payload)` | — | [src](../../../core/services/routine_runner.py#L478) |
-| method | `_RunSink.model_fragment` | `(self, text)` | — | [src](../../../core/services/routine_runner.py#L483) |
-| method | `_RunSink.tool_requested` | `(self, call)` | — | [src](../../../core/services/routine_runner.py#L486) |
-| method | `_RunSink.approval_requested` | `(self, call)` | — | [src](../../../core/services/routine_runner.py#L489) |
-| method | `_RunSink.tool_result` | `(self, result)` | — | [src](../../../core/services/routine_runner.py#L492) |
-| method | `_RunSink.usage` | `(self, usage)` | — | [src](../../../core/services/routine_runner.py#L500) |
-| class | `_LeaseProbe` | `` | — | [src](../../../core/services/routine_runner.py#L508) |
-| method | `_LeaseProbe.__init__` | `(self, repository, claim, holder)` | — | [src](../../../core/services/routine_runner.py#L509) |
-| method | `_LeaseProbe._check` | `(self)` | — | [src](../../../core/services/routine_runner.py#L514) |
-| method | `_LeaseProbe.check_before_effect` | `(self)` | — | [src](../../../core/services/routine_runner.py#L524) |
-| method | `_LeaseProbe.check_between_rounds` | `(self)` | — | [src](../../../core/services/routine_runner.py#L527) |
-| class | `_LeaseKeeper` | `` | Fornyer leasen MENS et værktøjskald kører. | [src](../../../core/services/routine_runner.py#L531) |
-| method | `_LeaseKeeper.__init__` | `(self, repository, run_id, holder)` | — | [src](../../../core/services/routine_runner.py#L551) |
-| method | `_LeaseKeeper._loop` | `(self)` | — | [src](../../../core/services/routine_runner.py#L559) |
-| method | `_LeaseKeeper.__enter__` | `(self)` | — | [src](../../../core/services/routine_runner.py#L579) |
-| method | `_LeaseKeeper.__exit__` | `(self, *exc_info)` | — | [src](../../../core/services/routine_runner.py#L591) |
-| method | `_LeaseKeeper.set_generation` | `(self, generation)` | — | [src](../../../core/services/routine_runner.py#L596) |
-| class | `RoutineRunner` | `` | — | [src](../../../core/services/routine_runner.py#L600) |
-| method | `RoutineRunner.__init__` | `(self, *, driver=…, tool_executor=…, holder=…)` | — | [src](../../../core/services/routine_runner.py#L601) |
-| method | `RoutineRunner.dispatch_tool` | `(self, run_id, *, generation, call, raw_executor=…)` | — | [src](../../../core/services/routine_runner.py#L612) |
-| method | `RoutineRunner._context` | `(self, row, generation)` | — | [src](../../../core/services/routine_runner.py#L637) |
-| method | `RoutineRunner.run_once` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L662) |
-| method | `RoutineRunner.run_next` | `(self)` | — | [src](../../../core/services/routine_runner.py#L819) |
-| method | `RoutineRunner._record_wait` | `(self, run_id, reason)` | Gør ventetiden synlig: en kø-kørsel uden events ser hængt ud. | [src](../../../core/services/routine_runner.py#L829) |
-| method | `RoutineRunner._check_ollama_while_waiting` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L846) |
-| method | `RoutineRunner.cancel` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L872) |
-| method | `RoutineRunner.record_execution_success` | `(self, routine_id)` | — | [src](../../../core/services/routine_runner.py#L875) |
-| method | `RoutineRunner.record_execution_failure` | `(self, routine_id, *, run_id, terminal_diagnostic_code=…)` | — | [src](../../../core/services/routine_runner.py#L878) |
+| function | `_rutine_tools_payload` | `(context)` | Værktøjsskemaet denne rutine må byde modellen. Tom = værktøjs-fri. | [src](../../../core/services/routine_runner.py#L241) |
+| function | `_rutine_max_rounds` | `(context)` | Læs et afgrænset rundebudget fra rutinens egen policy. | [src](../../../core/services/routine_runner.py#L271) |
+| function | `_ejer_kontekst` | `(owner_user_id, *, run_id=…)` | Kør blokken som rutinens ejer: workspace, oprindelse og autonomi. | [src](../../../core/services/routine_runner.py#L285) |
+| function | `build_tool_executor` | `(owner_user_id, *, run_id=…)` | Executor for ét rutine-run, scopet til rutinens ejer. | [src](../../../core/services/routine_runner.py#L328) |
+| class | `RoutineRunRepository` | `` | — | [src](../../../core/services/routine_runner.py#L363) |
+| method | `RoutineRunRepository.claim` | `(self, run_id, *, holder, now=…)` | — | [src](../../../core/services/routine_runner.py#L364) |
+| method | `RoutineRunRepository.reclaim` | `(self, run_id, *, expected_generation, holder, now=…)` | — | [src](../../../core/services/routine_runner.py#L370) |
+| method | `RoutineRunRepository.assert_current` | `(self, run_id, *, generation, holder=…)` | — | [src](../../../core/services/routine_runner.py#L382) |
+| method | `RoutineRunRepository.renew` | `(self, run_id, *, generation, holder)` | — | [src](../../../core/services/routine_runner.py#L392) |
+| method | `RoutineRunRepository.get_run` | `(self, run_id, *, decrypt_for=…)` | — | [src](../../../core/services/routine_runner.py#L400) |
+| method | `RoutineRunRepository.next_queued_run` | `(self)` | — | [src](../../../core/services/routine_runner.py#L406) |
+| method | `RoutineRunRepository.record_tool_dispatch_started` | `(self, run_id, *, generation, call, holder=…, now=…)` | — | [src](../../../core/services/routine_runner.py#L410) |
+| method | `RoutineRunRepository.settle_tool_dispatch` | `(self, run_id, *, generation, call, succeeded, holder=…)` | — | [src](../../../core/services/routine_runner.py#L422) |
+| method | `RoutineRunRepository.list_open_tool_effects` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L434) |
+| method | `RoutineRunRepository.transition` | `(self, run_id, *, status, generation, result=…, diagnostic_code=…)` | — | [src](../../../core/services/routine_runner.py#L437) |
+| method | `RoutineRunRepository.complete_success` | `(self, run_id, *, generation, result, delivery_channel)` | — | [src](../../../core/services/routine_runner.py#L449) |
+| method | `RoutineRunRepository.get_failure_count` | `(self, routine_id)` | — | [src](../../../core/services/routine_runner.py#L461) |
+| class | `_FencedRecorder` | `` | — | [src](../../../core/services/routine_runner.py#L465) |
+| method | `_FencedRecorder.__init__` | `(self, recorder)` | — | [src](../../../core/services/routine_runner.py#L466) |
+| method | `_FencedRecorder.append` | `(self, *args, **kwargs)` | — | [src](../../../core/services/routine_runner.py#L469) |
+| method | `_FencedRecorder.list` | `(self, *args, **kwargs)` | — | [src](../../../core/services/routine_runner.py#L477) |
+| class | `_RunSink` | `` | — | [src](../../../core/services/routine_runner.py#L481) |
+| method | `_RunSink.__init__` | `(self, recorder, run_id, generation)` | — | [src](../../../core/services/routine_runner.py#L482) |
+| method | `_RunSink._append` | `(self, kind, payload)` | — | [src](../../../core/services/routine_runner.py#L487) |
+| method | `_RunSink.model_fragment` | `(self, text)` | — | [src](../../../core/services/routine_runner.py#L492) |
+| method | `_RunSink.tool_requested` | `(self, call)` | — | [src](../../../core/services/routine_runner.py#L495) |
+| method | `_RunSink.approval_requested` | `(self, call)` | — | [src](../../../core/services/routine_runner.py#L498) |
+| method | `_RunSink.tool_result` | `(self, result)` | — | [src](../../../core/services/routine_runner.py#L501) |
+| method | `_RunSink.usage` | `(self, usage)` | — | [src](../../../core/services/routine_runner.py#L509) |
+| class | `_LeaseProbe` | `` | — | [src](../../../core/services/routine_runner.py#L517) |
+| method | `_LeaseProbe.__init__` | `(self, repository, claim, holder)` | — | [src](../../../core/services/routine_runner.py#L518) |
+| method | `_LeaseProbe._check` | `(self)` | — | [src](../../../core/services/routine_runner.py#L523) |
+| method | `_LeaseProbe.check_before_effect` | `(self)` | — | [src](../../../core/services/routine_runner.py#L533) |
+| method | `_LeaseProbe.check_between_rounds` | `(self)` | — | [src](../../../core/services/routine_runner.py#L536) |
+| class | `_LeaseKeeper` | `` | Fornyer leasen MENS et værktøjskald kører. | [src](../../../core/services/routine_runner.py#L540) |
+| method | `_LeaseKeeper.__init__` | `(self, repository, run_id, holder)` | — | [src](../../../core/services/routine_runner.py#L560) |
+| method | `_LeaseKeeper._loop` | `(self)` | — | [src](../../../core/services/routine_runner.py#L568) |
+| method | `_LeaseKeeper.__enter__` | `(self)` | — | [src](../../../core/services/routine_runner.py#L588) |
+| method | `_LeaseKeeper.__exit__` | `(self, *exc_info)` | — | [src](../../../core/services/routine_runner.py#L600) |
+| method | `_LeaseKeeper.set_generation` | `(self, generation)` | — | [src](../../../core/services/routine_runner.py#L605) |
+| class | `RoutineRunner` | `` | — | [src](../../../core/services/routine_runner.py#L609) |
+| method | `RoutineRunner.__init__` | `(self, *, driver=…, tool_executor=…, holder=…)` | — | [src](../../../core/services/routine_runner.py#L610) |
+| method | `RoutineRunner.dispatch_tool` | `(self, run_id, *, generation, call, raw_executor=…)` | — | [src](../../../core/services/routine_runner.py#L621) |
+| method | `RoutineRunner._context` | `(self, row, generation)` | — | [src](../../../core/services/routine_runner.py#L646) |
+| method | `RoutineRunner.run_once` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L671) |
+| method | `RoutineRunner.run_next` | `(self)` | — | [src](../../../core/services/routine_runner.py#L828) |
+| method | `RoutineRunner._record_wait` | `(self, run_id, reason)` | Gør ventetiden synlig: en kø-kørsel uden events ser hængt ud. | [src](../../../core/services/routine_runner.py#L838) |
+| method | `RoutineRunner._check_ollama_while_waiting` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L855) |
+| method | `RoutineRunner.cancel` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L881) |
+| method | `RoutineRunner.record_execution_success` | `(self, routine_id)` | — | [src](../../../core/services/routine_runner.py#L884) |
+| method | `RoutineRunner.record_execution_failure` | `(self, routine_id, *, run_id, terminal_diagnostic_code=…)` | — | [src](../../../core/services/routine_runner.py#L887) |
 
 ## `core/services/routine_runtime.py`
 _Bounded worker and reconciler threads for Routines._

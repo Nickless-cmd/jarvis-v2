@@ -166,6 +166,42 @@ def test_atmosphere_skriver_EEN_post_ikke_to(isolated_runtime, monkeypatch) -> N
     )
 
 
+def test_atmosphere_videresender_vision_prompt_og_frame_hash(
+    isolated_runtime, monkeypatch
+) -> None:
+    """Regression: atmosphere-svaret skal bære spørgsmålet fra visionkaldet."""
+    from core.services import active_sensing_daemon as asd
+    import core.services.sensory_archive as arkiv
+    import core.services.visual_memory as vm
+
+    prompt = "Fokuser udelukkende på STEMMINGEN i rummet."
+    frame_hash = "sha256:samme-frame"
+    monkeypatch.setattr(
+        vm,
+        "look_around_now",
+        lambda **_kw: {
+            "status": "captured",
+            "description": "Rummet føles varmt og åbent.",
+            "question": prompt,
+            "frame_hash": frame_hash,
+        },
+    )
+    metadata: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        arkiv,
+        "record_atmosphere",
+        lambda _content, **kwargs: metadata.append(dict(kwargs["metadata"])) or {"id": "x"},
+    )
+
+    svar = asd._sense_atmosphere({}, datetime.now(UTC))
+
+    assert svar["ok"] is True
+    assert metadata[0].get("question") == prompt, (
+        "active_sensing atmosphere videresendte ikke vision-prompten"
+    )
+    assert metadata[0]["frame_hash"] == frame_hash
+
+
 def test_mixed_skriver_EEN_post_ikke_tre(isolated_runtime, monkeypatch) -> None:
     """Mixed-posten er den fulde sansning; halvdelene må ikke arkivere selv.
 

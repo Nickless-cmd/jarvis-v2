@@ -3,6 +3,50 @@ from __future__ import annotations
 import pytest
 
 
+def test_sansepost_baerer_kendt_spoergsmaal_og_frame_hash(isolated_runtime) -> None:
+    """Arkivet skal bevare den faktiske modelprompt og frame-identitet."""
+    from core.services.sensory_archive import record_visual
+
+    post = record_visual(
+        "Et varmt lys falder hen over bordet og den tomme stol.",
+        metadata={"question": "Hvad er der i rummet?", "frame_hash": "sha256:abc123"},
+    )
+
+    assert post["metadata"]["question"] == "Hvad er der i rummet?"
+    assert post["metadata"]["frame_hash"] == "sha256:abc123"
+
+
+def test_sansepost_uden_kendt_spoergsmaal_gemmer_null(isolated_runtime) -> None:
+    """Ukendt prompt skal være synlig som null, aldrig rekonstrueret tekst."""
+    from core.services.sensory_archive import record_audio
+
+    post = record_audio("En lav summen ligger stabilt under rummets øvrige lyde.")
+
+    assert post["metadata"]["question"] is None, (
+        "et sansekald uden prompt skal gemme question=null"
+    )
+    assert post["metadata"]["frame_hash"] is None
+
+
+def test_gammel_sansepost_uden_spoergsmaalsfelt_laeses_som_ukendt(
+    isolated_runtime,
+) -> None:
+    """Bagudkompatibilitet: fravær er ukendt, ikke et tomt spørgsmål."""
+    from core.runtime.db_sensory import insert_sensory_memory
+    from core.services.sensory_archive import get
+
+    gammel = insert_sensory_memory(
+        modality="visual",
+        content="Morgenlyset tegner en smal stribe hen over gulvet.",
+        metadata={"source": "legacy"},
+    )
+
+    genlaest = get(str(gammel["id"]))
+    assert genlaest is not None
+    assert genlaest["metadata"]["question"] is None
+    assert genlaest["metadata"]["frame_hash"] is None
+
+
 def test_raa_raesonnement_gemmes_ikke_som_indtryk(isolated_runtime) -> None:
     """Målt 18/9: to poster i arkivet var hele reasoning-monologer.
 

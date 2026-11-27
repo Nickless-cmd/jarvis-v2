@@ -24,6 +24,7 @@ Privatlivshensyn:
 from __future__ import annotations
 
 import base64
+import hashlib
 import unicodedata
 import json
 import logging
@@ -41,6 +42,14 @@ _STATE_KEY = "visual_memory.records"
 _MAX_RECORDS = 120           # 4/day × 30 days
 _RETENTION_DAYS = 30
 _MAX_DESC_CHARS = 300
+
+
+def _frame_hash(image_b64: str) -> str:
+    """Stable SHA-256 identity for the decoded image bytes."""
+    frame = base64.b64decode(image_b64, validate=True)
+    return f"sha256:{hashlib.sha256(frame).hexdigest()}"
+
+
 # Hvor langt tilbage prompt-vejen leder efter en mættet beskrivelse. Bevidst
 # endelig: findes ingen i vinduet, er sansningen tavs lige nu, og det er mere
 # ærligt at sige ingenting end at lade et gammelt indtryk stå som «rummet».
@@ -157,9 +166,15 @@ def tick_visual_memory_daemon() -> dict[str, object]:
     # Describe — feed most recent record for change detection
     existing_records = _load_records()
     previous = existing_records[-1] if existing_records else None
+    question = _build_prompt(previous=previous)
+    frame_hash = _frame_hash(image_b64)
     try:
         description = _describe_image(
-            image_b64, model=model, provider=provider, previous=previous
+            image_b64,
+            model=model,
+            provider=provider,
+            prompt=question,
+            previous=previous,
         )
     except Exception as exc:
         logger.warning("visual_memory: vision model call failed: %s", exc)
@@ -189,6 +204,8 @@ def tick_visual_memory_daemon() -> dict[str, object]:
             "model": model,
             "provider": provider,
             "on_demand": False,
+            "question": question,
+            "frame_hash": frame_hash,
         },
     )
 
@@ -336,6 +353,7 @@ def look_around_now(
     # hører til den passive kadence — her fik den værktøjet til at svare
     # «Intet mærkbart ændret.» på et spørgsmål om hvad der var at se.
     prompt_to_use = prompt_override.strip() or _LOOK_PROMPT
+    frame_hash = _frame_hash(image_b64)
     try:
         description = _describe_image(
             image_b64,
@@ -379,6 +397,8 @@ def look_around_now(
                 "on_demand": True,
                 "camera": camera_label,
                 "custom_prompt": bool(prompt_to_use),
+                "question": prompt_to_use,
+                "frame_hash": frame_hash,
             },
         )
 
@@ -394,6 +414,8 @@ def look_around_now(
         "captured_at": now,
         "description": description,
         "camera": camera_label,
+        "question": prompt_to_use,
+        "frame_hash": frame_hash,
     }
 
 

@@ -297,6 +297,8 @@ def _sense_visual(
                 "preview": description[:120],
                 "reason": "visual_captured",
                 "description": description,
+                "question": result.get("question"),
+                "frame_hash": result.get("frame_hash"),
             }
         return {
             "ok": False,
@@ -352,6 +354,8 @@ def _sense_audio(
                         "amplitude_mean": round(amplitude_mean, 4),
                         "amplitude_std": round(amplitude_std, 4),
                         "desire": state.get("last_desire", 0),
+                        "question": None,
+                        "frame_hash": None,
                     },
                 )
                 # Et lyt der endte i `silence` er kvitteringen for at der ikke var
@@ -430,6 +434,8 @@ def _sense_atmosphere(state: dict[str, Any], now: datetime) -> dict[str, Any]:
                     "source": "active_sensing_daemon",
                     "modality": "atmosphere",
                     "desire": state.get("last_desire", 0),
+                    "question": visual.get("question"),
+                    "frame_hash": visual.get("frame_hash"),
                 },
             )
             arkiveret = True
@@ -509,6 +515,8 @@ def _sense_mixed(state: dict[str, Any], now: datetime) -> dict[str, Any]:
                 "audio_status": audio_result.get("reason", ""),
                 "audio_category": audio_result.get("category", ""),
                 "audio_amplitude_mean": audio_result.get("amplitude_mean"),
+                "question": visual_result.get("question"),
+                "frame_hash": visual_result.get("frame_hash"),
             },
         )
     except Exception as exc:

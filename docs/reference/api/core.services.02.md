@@ -597,22 +597,23 @@ _Ambient Sound daemon — Layer 6½: background acoustic context._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `tick_ambient_sound_daemon` | `()` | Sample ambient audio level and classify. Runs 4x/day. | [src](../../../core/services/ambient_sound_daemon.py#L49) |
-| function | `_capture_sample` | `(*, save_wav=…)` | Record 10 seconds of audio, classify, optionally save to temp WAV. | [src](../../../core/services/ambient_sound_daemon.py#L122) |
-| function | `_save_wav` | `(samples)` | Write float32 mono samples to a temp 16-bit PCM WAV. Returns path or None. | [src](../../../core/services/ambient_sound_daemon.py#L181) |
-| function | `_transcribe_sample` | `(wav_path)` | Transcribe a WAV via HF Whisper. Returns empty string on failure. | [src](../../../core/services/ambient_sound_daemon.py#L200) |
-| function | `_ambient_transcribe_enabled` | `()` | — | [src](../../../core/services/ambient_sound_daemon.py#L215) |
-| function | `_classify` | `(mean, std, peak=…)` | Classify amplitude stats into acoustic category. No content analysis. | [src](../../../core/services/ambient_sound_daemon.py#L224) |
-| function | `_store_sample` | `(sample, now)` | — | [src](../../../core/services/ambient_sound_daemon.py#L252) |
-| function | `_archive_sensory` | `(sample, now)` | Mirror every ambient sample into Sansernes Arkiv. Silent on failure. | [src](../../../core/services/ambient_sound_daemon.py#L293) |
-| function | `get_latest_ambient_sound_for_prompt` | `()` | Return a nuanced description of recent ambient sound for prompt injection. | [src](../../../core/services/ambient_sound_daemon.py#L325) |
-| function | `build_ambient_sound_surface` | `()` | — | [src](../../../core/services/ambient_sound_daemon.py#L362) |
-| function | `_interpret_sound` | `(*, category, amplitude_mean, amplitude_std, now)` | Generate a nuanced Danish description from acoustic metadata via LLM. | [src](../../../core/services/ambient_sound_daemon.py#L399) |
-| function | `_experiment_enabled` | `()` | — | [src](../../../core/services/ambient_sound_daemon.py#L457) |
-| function | `count_music_samples_last_hours` | `(hours=…)` | Return (music_count, total_count) for samples in the last `hours` hours. | [src](../../../core/services/ambient_sound_daemon.py#L466) |
-| function | `_select_music_influence_phrase` | `(*, ratio)` | 3-tier rotating phrase based on music-to-total ratio. | [src](../../../core/services/ambient_sound_daemon.py#L503) |
-| function | `get_music_accumulator_for_prompt` | `()` | Return prompt fragment if music threshold met, else empty string. | [src](../../../core/services/ambient_sound_daemon.py#L515) |
-| function | `_state` | `()` | — | [src](../../../core/services/ambient_sound_daemon.py#L538) |
-| function | `_parse_iso` | `(s)` | — | [src](../../../core/services/ambient_sound_daemon.py#L543) |
+| function | `_capture_sample` | `(*, save_wav=…)` | Record 10 seconds of audio, classify, optionally save to temp WAV. | [src](../../../core/services/ambient_sound_daemon.py#L130) |
+| function | `_save_wav` | `(samples)` | Write float32 mono samples to a temp 16-bit PCM WAV. Returns path or None. | [src](../../../core/services/ambient_sound_daemon.py#L189) |
+| function | `_transcribe_sample` | `(wav_path)` | Transcribe a WAV via HF Whisper. Returns empty string on failure. | [src](../../../core/services/ambient_sound_daemon.py#L208) |
+| function | `_ambient_transcribe_enabled` | `()` | — | [src](../../../core/services/ambient_sound_daemon.py#L223) |
+| function | `_classify` | `(mean, std, peak=…)` | Classify amplitude stats into acoustic category. No content analysis. | [src](../../../core/services/ambient_sound_daemon.py#L232) |
+| function | `_store_sample` | `(sample, now)` | — | [src](../../../core/services/ambient_sound_daemon.py#L260) |
+| function | `_archive_sensory` | `(sample, now)` | Mirror every ambient sample into Sansernes Arkiv. Silent on failure. | [src](../../../core/services/ambient_sound_daemon.py#L301) |
+| function | `get_latest_ambient_sound_for_prompt` | `()` | Return a nuanced description of recent ambient sound for prompt injection. | [src](../../../core/services/ambient_sound_daemon.py#L335) |
+| function | `build_ambient_sound_surface` | `()` | — | [src](../../../core/services/ambient_sound_daemon.py#L372) |
+| function | `_sound_question` | `(*, category, amplitude_mean, amplitude_std, now)` | Return the exact rotating prompt used to interpret one audio sample. | [src](../../../core/services/ambient_sound_daemon.py#L409) |
+| function | `_interpret_sound` | `(*, category, amplitude_mean, amplitude_std, now, question=…)` | Generate a nuanced Danish description from acoustic metadata via LLM. | [src](../../../core/services/ambient_sound_daemon.py#L427) |
+| function | `_experiment_enabled` | `()` | — | [src](../../../core/services/ambient_sound_daemon.py#L484) |
+| function | `count_music_samples_last_hours` | `(hours=…)` | Return (music_count, total_count) for samples in the last `hours` hours. | [src](../../../core/services/ambient_sound_daemon.py#L493) |
+| function | `_select_music_influence_phrase` | `(*, ratio)` | 3-tier rotating phrase based on music-to-total ratio. | [src](../../../core/services/ambient_sound_daemon.py#L530) |
+| function | `get_music_accumulator_for_prompt` | `()` | Return prompt fragment if music threshold met, else empty string. | [src](../../../core/services/ambient_sound_daemon.py#L542) |
+| function | `_state` | `()` | — | [src](../../../core/services/ambient_sound_daemon.py#L565) |
+| function | `_parse_iso` | `(s)` | — | [src](../../../core/services/ambient_sound_daemon.py#L570) |
 
 ## `core/services/answer_declaration.py`
 _A conservative veto for answer markers attached to work announcements._

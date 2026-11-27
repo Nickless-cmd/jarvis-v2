@@ -78,11 +78,18 @@ def tick_ambient_sound_daemon() -> dict[str, object]:
             except Exception:
                 pass
 
+    question = _sound_question(
+        category=category,
+        amplitude_mean=amplitude_mean,
+        amplitude_std=amplitude_std,
+        now=now,
+    )
     description = _interpret_sound(
         category=category,
         amplitude_mean=amplitude_mean,
         amplitude_std=amplitude_std,
         now=now,
+        question=question,
     )
 
     sample = {
@@ -92,6 +99,7 @@ def tick_ambient_sound_daemon() -> dict[str, object]:
         "amplitude_std": round(amplitude_std, 4),
         "description": description,
         "transcript": transcript,
+        "question": question,
     }
 
     history = list(state.get("history") or [])
@@ -316,6 +324,8 @@ def _archive_sensory(sample: dict, now: datetime) -> None:
                 "amplitude_std": round(amplitude_std, 4),
                 "transcribed": bool(transcript),
                 "sampled_at": now.isoformat(),
+                "question": sample.get("question"),
+                "frame_hash": None,
             },
         )
     except Exception as exc:
@@ -396,21 +406,38 @@ _SOUND_PROMPTS = [
 ]
 
 
-def _interpret_sound(
+def _sound_question(
     *,
     category: str,
     amplitude_mean: float,
     amplitude_std: float,
     now: datetime,
 ) -> str:
-    """Generate a nuanced Danish description from acoustic metadata via LLM."""
+    """Return the exact rotating prompt used to interpret one audio sample."""
     import time as _time
     prompt_template = _SOUND_PROMPTS[int(_time.time() // 3600) % len(_SOUND_PROMPTS)]
-    prompt = prompt_template.format(
+    return prompt_template.format(
         category=category,
         mean=amplitude_mean,
         std=amplitude_std,
         hour=now.hour,
+    )
+
+
+def _interpret_sound(
+    *,
+    category: str,
+    amplitude_mean: float,
+    amplitude_std: float,
+    now: datetime,
+    question: str | None = None,
+) -> str:
+    """Generate a nuanced Danish description from acoustic metadata via LLM."""
+    prompt = question or _sound_question(
+        category=category,
+        amplitude_mean=amplitude_mean,
+        amplitude_std=amplitude_std,
+        now=now,
     )
     try:
         from core.services.daemon_llm import daemon_llm_call

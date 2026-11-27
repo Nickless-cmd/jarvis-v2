@@ -78,6 +78,24 @@ class TestExecRecordSensoryMemory:
         assert recall["status"] == "ok"
         assert recall["count"] >= 1
 
+    def test_question_and_frame_hash_roundtrip(self):
+        from core.tools.sensory_tools import _exec_record_sensory_memory
+        from core.services.memory_write_queue import process_queue
+        from core.services import sensory_archive
+
+        write = _exec_record_sensory_memory({
+            "modality": "visual",
+            "content": "Et grønt krus står ved siden af tastaturet.",
+            "question": "Hvilken genstand står ved tastaturet?",
+            "frame_hash": "sha256:tool-frame",
+        })
+        assert write["status"] == "ok", write
+        process_queue(batch_size=10)
+
+        post = sensory_archive.list_recent(limit=1)[0]
+        assert post["metadata"]["question"] == "Hvilken genstand står ved tastaturet?"
+        assert post["metadata"]["frame_hash"] == "sha256:tool-frame"
+
     def test_recall_empty(self):
         from core.tools.sensory_tools import _exec_recall_sensory_memories
 
@@ -125,6 +143,8 @@ class TestSourceParameter:
             "beskrivelsen lover `source`, men schemaet tilbyder den ikke — "
             "så kan den aldrig sendes"
         )
+        assert "question" in props
+        assert "frame_hash" in props
 
     def test_top_level_source_naar_metadata(self):
         """Et top-level source skal foldes ind, dér hvor normaliseringen læser."""

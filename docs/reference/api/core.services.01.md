@@ -133,13 +133,13 @@ _Aktiv Sansning — Sansernes Arkiv får autonom sansetrang._
 | function | `_choose_modality` | `(state, now)` | Vælg hvilken sansemodalitet der tilfredsstilles nu. | [src](../../../core/services/active_sensing_daemon.py#L212) |
 | function | `_perform_sensing` | `(modality, state, now)` | Udfør sansningen og skriv til Sansernes Arkiv. | [src](../../../core/services/active_sensing_daemon.py#L255) |
 | function | `_sense_visual` | `(state, now, *, arkiver=…)` | Se rummet på eget initiativ. | [src](../../../core/services/active_sensing_daemon.py#L275) |
-| function | `_sense_audio` | `(state, now, *, arkiver=…)` | Lyt i rummet på eget initiativ — og arkivér indtrykket. | [src](../../../core/services/active_sensing_daemon.py#L311) |
-| function | `_sense_atmosphere` | `(state, now)` | Registrer rummets stemning — kombinerer tilgængelige data. | [src](../../../core/services/active_sensing_daemon.py#L396) |
-| function | `_sense_mixed` | `(state, now)` | Blandet sansning — både se og lyt i samme tur. | [src](../../../core/services/active_sensing_daemon.py#L451) |
-| function | `build_active_sensing_surface` | `()` | Observability surface til Mission Control. | [src](../../../core/services/active_sensing_daemon.py#L528) |
-| function | `_enabled` | `()` | — | [src](../../../core/services/active_sensing_daemon.py#L549) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/active_sensing_daemon.py#L557) |
-| function | `_save_state` | `(state)` | — | [src](../../../core/services/active_sensing_daemon.py#L562) |
+| function | `_sense_audio` | `(state, now, *, arkiver=…)` | Lyt i rummet på eget initiativ — og arkivér indtrykket. | [src](../../../core/services/active_sensing_daemon.py#L313) |
+| function | `_sense_atmosphere` | `(state, now)` | Registrer rummets stemning — kombinerer tilgængelige data. | [src](../../../core/services/active_sensing_daemon.py#L400) |
+| function | `_sense_mixed` | `(state, now)` | Blandet sansning — både se og lyt i samme tur. | [src](../../../core/services/active_sensing_daemon.py#L457) |
+| function | `build_active_sensing_surface` | `()` | Observability surface til Mission Control. | [src](../../../core/services/active_sensing_daemon.py#L536) |
+| function | `_enabled` | `()` | — | [src](../../../core/services/active_sensing_daemon.py#L557) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/active_sensing_daemon.py#L565) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/active_sensing_daemon.py#L570) |
 
 ## `core/services/adaptive_learning_runtime.py`
 

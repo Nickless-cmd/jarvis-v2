@@ -239,8 +239,20 @@ describe.skipIf(!KOERT)('farvebanens form for ét ord', () => {
         // VAGT: farven skal GLIDE, ikke hoppe. Maalt 23/11-2026: 9 skridt og
         // stoerste spring 36 mod 5 skridt og 58 foer. Et hop er faa skridt
         // med et stort spring — praecis det Bjørn kaldte «klumper».
+        //
+        // TÆRSKLEN MÅLER GLIDNING, IKKE FRAME-ANTAL (rettet 27/11-2026).
+        //
+        // `unikke.length` tælles fra `requestAnimationFrame`-samples over 700
+        // ms, så tallet er hvor mange frames maskinen nåede at tegne — ikke en
+        // egenskab ved farvebanen. Målt i CI 27/11: IMPLEMENTERET gav 6 skridt,
+        // KONTROL: gammel gav 5. Tærsklen på 7 lå derfor midt i støjen og
+        // fejlede på en langsommere runner uden at banen var blevet dårligere.
+        //
+        // Det der faktisk skelner glidning fra et hop er SPRINGET: 36 mod 58 i
+        // samme måling. Derfor er springet vagten, og skridt-tallet kun et gulv
+        // der fanger at banen slet ikke blev samplet.
         if (k.navn === 'IMPLEMENTERET') {
-          expect(unikke.length).toBeGreaterThanOrEqual(7)
+          expect(unikke.length).toBeGreaterThanOrEqual(4)
           expect(stoerste).toBeLessThanOrEqual(50)
         }
       } finally {

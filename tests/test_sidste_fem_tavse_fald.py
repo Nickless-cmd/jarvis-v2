@@ -128,15 +128,23 @@ def test_resolve_owner_stoejer_ikke_naar_opslaget_virker(monkeypatch, caplog):
 
 # ── db_private_brain ────────────────────────────────────────────────────────
 
-class _KasterPaaAlter:
-    """Stub-conn: CREATE TABLE/INDEX går igennem, ALTER kaster som SQLite gør
-    når kolonnen allerede findes — eller som en låst DB gør. De to var ens."""
+class _StubConn:
+    """Stub-conn der svarer på `PRAGMA table_info` med et givet skema.
 
-    def __init__(self) -> None:
+    ALTER kaster som SQLite gør når kolonnen allerede findes — eller som en
+    låst DB gør. Efter 27/11-2026 er de to tilstande ikke længere ens: skemaet
+    læses først, så «findes allerede» når slet ikke frem til et ALTER.
+    """
+
+    def __init__(self, kolonner: list[str]) -> None:
+        self.kolonner = kolonner
         self.alter_forsoeg = 0
 
     def execute(self, sql, *_a):
-        if str(sql).strip().upper().startswith("ALTER TABLE"):
+        s = str(sql).strip().upper()
+        if s.startswith("PRAGMA TABLE_INFO"):
+            return [(i, n, "TEXT", 0, None, 0) for i, n in enumerate(self.kolonner)]
+        if s.startswith("ALTER TABLE"):
             self.alter_forsoeg += 1
             raise sqlite3.OperationalError("duplicate column name")
         return self
@@ -145,15 +153,32 @@ class _KasterPaaAlter:
         pass
 
 
-def test_ensure_tabel_logger_begge_kolonne_forsoeg(caplog):
-    conn = _KasterPaaAlter()
+def test_ensure_tabel_roerer_ikke_alter_naar_kolonnerne_findes(caplog):
+    """Støj-vagten. Målt 27/11-2026: det blinde ALTER gav 130 WARNING-linjer på
+    fire minutter, fordi funktionen kaldes fra 11 steder. Støjen skjulte de ægte
+    fejl i journalen. Skemaet læses nu først, så en kolonne der allerede findes
+    hverken forsøges tilføjet eller logges."""
+    conn = _StubConn(["record_id", "salience", "domain"])
     with caplog.at_level(logging.WARNING, logger=dpb.logger.name):
         dpb._ensure_private_brain_records_table(conn)  # må ikke kaste
 
-    assert conn.alter_forsoeg == 2, "begge ALTER-forsøg skal stadig gøres"
-    besked = " ".join(_advarsler(caplog))
-    assert "salience" in besked, "salience-faldet var tavst"
-    assert "domain" in besked, "domain-faldet var tavst"
+    assert conn.alter_forsoeg == 0, "ALTER blev kørt selv om kolonnen findes"
+    assert _advarsler(caplog) == [], "normal drift skrev støj i loggen"
+
+
+def test_ensure_tabel_lader_alter_fejlen_propagere_naar_kolonnen_mangler():
+    """Den ægte garanti: et kolonne-fald må ikke være TAVST.
+
+    Før blev fejlen logget og glemt — og en låst DB gav præcis samme udfald som
+    «kolonnen findes», så de to kunne ikke skelnes. Nu har skema-læsningen
+    afgjort at kolonnen faktisk mangler, og så propagerer fejlen i stedet for at
+    efterlade en tabel uden kolonnen mens alt ser normalt ud.
+    """
+    conn = _StubConn(["record_id"])  # salience og domain mangler
+    with pytest.raises(sqlite3.OperationalError, match="duplicate column"):
+        dpb._ensure_private_brain_records_table(conn)
+
+    assert conn.alter_forsoeg == 1, "det manglende kolonne-forsøg blev sprunget over"
 
 
 # ── tool_scoping ────────────────────────────────────────────────────────────

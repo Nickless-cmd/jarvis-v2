@@ -17,7 +17,7 @@ import sqlite3
 from datetime import UTC, datetime
 from typing import Any
 
-from core.runtime.db_core import connect
+from core.runtime.db_core import connect, _install_ensure_once_cache_for
 
 logger = logging.getLogger(__name__)
 
@@ -47,26 +47,23 @@ def _ensure_private_brain_records_table(conn: sqlite3.Connection) -> None:
         """
     )
     # Idempotente kolonne-tilføjelser for eksisterende tabeller.
-    try:
-        conn.execute("ALTER TABLE private_brain_records ADD COLUMN salience REAL NOT NULL DEFAULT 1.0")
-        conn.commit()
-    except Exception as exc:
-        # Forventet når kolonnen findes. Men en LÅST eller korrupt DB gav samme
-        # tavse udfald — og så mangler kolonnen mens alt ser normalt ud.
-        logger.warning(
-            "db_private_brain: ALTER salience fejlede (forventet hvis kolonnen "
-            "findes): %s: %s",
-            type(exc).__name__, exc,
+    #
+    # Skemaet læses FØRST. SQLite har ingen «ADD COLUMN IF NOT EXISTS», så et
+    # blindt ALTER kaster «duplicate column name» hver gang kolonnen findes.
+    # Målt 27/11-2026: funktionen kaldes fra 11 steder i denne fil, og det gav
+    # 130 WARNING-linjer på fire minutter — støj der skjuler de ægte fejl i
+    # journalen. Værre: en LÅST eller korrupt DB gav præcis samme udfald som
+    # «kolonnen findes», så de to tilstande kunne ikke skelnes.
+    _kolonner = {str(r[1]) for r in conn.execute("PRAGMA table_info(private_brain_records)")}
+    if "salience" not in _kolonner:
+        conn.execute(
+            "ALTER TABLE private_brain_records ADD COLUMN salience REAL NOT NULL DEFAULT 1.0"
         )
-    try:
-        conn.execute("ALTER TABLE private_brain_records ADD COLUMN domain TEXT NOT NULL DEFAULT ''")
-        conn.commit()
-    except Exception as exc:
-        logger.warning(
-            "db_private_brain: ALTER domain fejlede (forventet hvis kolonnen "
-            "findes): %s: %s",
-            type(exc).__name__, exc,
+    if "domain" not in _kolonner:
+        conn.execute(
+            "ALTER TABLE private_brain_records ADD COLUMN domain TEXT NOT NULL DEFAULT ''"
         )
+    conn.commit()
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_private_brain_records_status "
         "ON private_brain_records(status, id DESC)"
@@ -465,3 +462,9 @@ def decay_private_brain_records_by_domain(
             counts[bucket] = counts.get(bucket, 0) + 1
         conn.commit()
     return counts
+
+
+# DDL'en kørte før ved HVERT opslag — funktionen har 11 kaldesteder i denne fil.
+# Cachen kører den én gang pr. database-forbindelse i stedet; samme mønster som
+# db_session_ledger og db_capability_approval bruger.
+_install_ensure_once_cache_for(__name__)

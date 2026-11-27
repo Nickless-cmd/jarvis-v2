@@ -155,6 +155,61 @@ def test_hele_kaeden_ende_til_ende_uden_mock_af_connectors():
     assert "gmail_list" in t and "calendar_list_events" in t
 
 
+def test_connector_vaerktoejssaettet_er_stabilt_i_samme_session(monkeypatch):
+    """Samme principal + samme connector-kilde maa ikke give tool-churn.
+
+    Regression for 25/11-2026, hvor visible-prefixet skiftede midt i en
+    session. Testen holder begge legitime kilder til scoping-resultatet faste:
+    workspace-principalen og connector-snapshot'et. Hvis et senere kald taber
+    ContextVar-bindingen, bliver det dynamiske connector-sæt tomt og den
+    eksplicitte forventning nedenfor fanger faldet.
+    """
+    from core.identity.workspace_context import reset_context, set_context
+    from core.services.run_autonomy_context import reset_user_present, set_user_present
+    from core.tools.tool_scoping import allowed_tool_names
+
+    connector_snapshot = [
+        {
+            "id": "google-drive",
+            "connected": True,
+            "enabled": True,
+            "tools": ["drive_search", "drive_download"],
+        },
+        {
+            "id": "google-slides",
+            "connected": True,
+            "enabled": True,
+            "tools": ["slides_read", "slides_create"],
+        },
+    ]
+    monkeypatch.setattr(
+        "core.services.connectors.list_for_user",
+        lambda user_id: connector_snapshot if user_id == "u-stabil" else [],
+    )
+    token = set_context(
+        workspace_name="bjorn",
+        user_id="u-stabil",
+        user_display_name="Bjoern",
+        session_id="chat-stabil",
+    )
+    presence_token = set_user_present(True)
+    katalog = VAERKTOEJER + ["drive_download", "slides_create"]
+    try:
+        foerste = allowed_tool_names(
+            role="owner", scope="chat", all_names=katalog,
+        )
+        anden = allowed_tool_names(
+            role="owner", scope="chat", all_names=katalog,
+        )
+    finally:
+        reset_user_present(presence_token)
+        reset_context(token)
+
+    forventet = {"drive_search", "drive_download", "slides_read", "slides_create"}
+    assert forventet <= foerste
+    assert anden == foerste
+
+
 # ---------------------------------------------------------------------------
 # «Forbundet» skal betyde BRUGBAR (8/9-2026)
 #

@@ -12,6 +12,8 @@ describe('explicit code protocol supersedes legacy length classification', () =>
     ]
     expect(codeAnswerStarted(work)).toBe(false)
     expect(opdel(work, true, true).svar).toEqual([])
+    // Server stop can precede the reader reaching the declared boundary.
+    expect(opdel(work, false, false).svar).toEqual([])
     const all: ContentBlock[] = [...work,
       { type: 'text', text: '\nOK', phase: 'commentary', code_answer_protocol: 1, code_answer_start: true },
       { type: 'tool_use', id: 'late', name: 'bash', input: {} },

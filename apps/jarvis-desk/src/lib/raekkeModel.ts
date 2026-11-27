@@ -268,7 +268,7 @@ export function opdel(blokke: readonly ContentBlock[], underArbejde = false, _sv
     if (i > graense) {
       // En tekst efter et værktøj er først et slutsvar, når serveren sender
       // final_answer_start. Indtil da kan næste runde stadig følge efter.
-      if (b.type === 'text' && underArbejde && foersteSvar < 0 && sidsteKald >= 0) {
+      if (b.type === 'text' && (underArbejde || explicitProtocol) && foersteSvar < 0 && sidsteKald >= 0) {
         const tekst = b.text.trim()
         if (tekst) arbejde.push({ slags: 'mellemsvar', tekst })
         continue

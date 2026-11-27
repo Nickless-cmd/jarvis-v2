@@ -43,6 +43,7 @@ with sync_playwright() as p:
     stage(3);page.wait_for_timeout(70)
     behind_done=measure('server done, pacing behind')
     assert not behind_done['rounds']
+    assert not behind_done['texts'], 'Unreached commentary must stay in work even after server stop'
     page.wait_for_timeout(4500)
     done=measure('pacing caught up and exit finished')
     assert all(r['height']<1 for r in done['rounds'])

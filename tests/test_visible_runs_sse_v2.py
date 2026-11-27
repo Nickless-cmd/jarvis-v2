@@ -426,6 +426,122 @@ async def test_mellemsyntesen_deles_i_bidder_ikke_et_hug():
 
 
 @pytest.mark.asyncio
+async def test_fold_signalet_sendes_midt_i_turen_naar_svaret_naar_taersklen():
+    """Bjørn 27/11-2026, fjerde klage: «foldet sker stadig ikk før slut beskeden».
+
+    Rod-aarsagen var ikke klientens gate men SERVEREN: `final_answer_start` blev
+    kun sendt ved `done`, altsaa efter svaret var skrevet. Klienten havde derfor
+    intet at folde paa mens svaret stroemmede — og fire klient-rettelser af
+    gaten flyttede intet, fordi de lyttede paa et signal der kom for sent.
+
+    Beviset er ikke at signalet FINDES (det gjorde det ogsaa før), men at
+    teksten EFTER promoveringen skrives direkte i blokken i stedet for at gaa
+    gennem `provisional_text_delta`. Del B maa derfor optræde som
+    `content_block_delta` og ALDRIG som foreløbig visning.
+    """
+    del_a = "A" * 700  # over `_svar_taerskel` (600)
+    del_b = "B" * 120
+
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("working_step", _annoncering())
+        yield _legacy_sse("capability", {
+            "type": "tool_result", "tool": "bash",
+            "capability_id": "call-1", "status": "ok",
+        })
+        yield _legacy_sse("delta", {"run_id": "v1", "delta": del_a})
+        yield _legacy_sse("delta", {"run_id": "v1", "delta": del_b})
+        yield _legacy_sse("done", {"run_id": "v1", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", session_id="s", ping_interval_s=999.0,
+    )))
+    signaler = [
+        i for i, (kind, data) in enumerate(events)
+        if kind == "system_event" and data.get("kind") == "final_answer_start"
+    ]
+    assert len(signaler) == 1, "fold-signalet skal sendes praecis én gang"
+    signal_at = signaler[0]
+
+    foreloebig = "".join(
+        data["payload"]["delta"] for kind, data in events
+        if kind == "system_event" and data.get("kind") == "provisional_text_delta"
+    )
+    bekraeftet = "".join(
+        data["delta"]["text"] for kind, data in events
+        if kind == "content_block_delta" and data["delta"].get("type") == "text_delta"
+    )
+    # Del B blev skrevet EFTER promoveringen og maa ikke have vaeret foreløbig
+    # vist: den gik direkte i den aabne `final_answer`-blok.
+    assert del_b in bekraeftet
+    assert del_b not in foreloebig, (
+        "teksten efter tærsklen gik gennem `_pending_text` — promoveringen "
+        "skete ikke midt i turen"
+    )
+    assert del_a in foreloebig
+
+    # Og signalet skal ligge FOER den sidste tekst, ikke efter den.
+    sidste_tekst_at = max(
+        i for i, (kind, data) in enumerate(events)
+        if kind == "content_block_delta" and data["delta"].get("type") == "text_delta"
+    )
+    assert signal_at < sidste_tekst_at
+
+
+@pytest.mark.asyncio
+async def test_vaerktoejskald_efter_promoveringen_goer_ny_tekst_til_hale():
+    """Promoveringen er en heuristik og kan ramme en lang mellemsyntese.
+
+    Skaerer modellen tilbage og kalder et værktøj, er teksten EFTER kaldet hale
+    — ikke en fortsættelse af svaret. `svar_stroemmer` nulstilles derfor i
+    `_emit_tool_use`, saa den nye tekst gaar gennem `_pending_text` igen og
+    bliver `commentary`. Fold-signalet bliver staaende: klienten har allerede
+    foldet, og det maa ikke fortrydes midt i turen.
+    """
+    del_a = "A" * 700
+    hale = "Hale efter vaerktoejet."
+
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("working_step", _annoncering())
+        yield _legacy_sse("capability", {
+            "type": "tool_result", "tool": "bash",
+            "capability_id": "call-1", "status": "ok",
+        })
+        yield _legacy_sse("delta", {"run_id": "v1", "delta": del_a})
+        yield _legacy_sse("working_step", _annoncering("call-2"))
+        yield _legacy_sse("capability", {
+            "type": "tool_result", "tool": "bash",
+            "capability_id": "call-2", "status": "ok",
+        })
+        yield _legacy_sse("delta", {"run_id": "v1", "delta": hale})
+        yield _legacy_sse("done", {"run_id": "v1", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", session_id="s", ping_interval_s=999.0,
+    )))
+    assert sum(
+        kind == "system_event" and data.get("kind") == "final_answer_start"
+        for kind, data in events
+    ) == 1, "signalet maa ikke sendes igen efter et nyt vaerktoejskald"
+
+    # Halen skal vaere foreløbig vist OG ende som commentary — ikke som svar.
+    foreloebig = "".join(
+        data["payload"]["delta"] for kind, data in events
+        if kind == "system_event" and data.get("kind") == "provisional_text_delta"
+    )
+    assert hale in foreloebig, (
+        "teksten efter det nye vaerktoejskald gik direkte i svar-blokken — "
+        "`svar_stroemmer` blev ikke nulstillet"
+    )
+    text_phases = [
+        data["content_block"]["phase"]
+        for kind, data in events
+        if kind == "content_block_start" and data["content_block"]["type"] == "text"
+    ]
+    assert "commentary" in text_phases
+    assert text_phases.count("final_answer") == 1
+
+
+@pytest.mark.asyncio
 async def test_interrupted_run_never_marks_buffered_text_as_final_answer():
     async def legacy() -> AsyncIterator[str]:
         yield _legacy_sse("working_step", _annoncering())

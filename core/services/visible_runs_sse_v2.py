@@ -390,6 +390,11 @@ async def translate_to_v2(
         # Er fold-signalet sendt? Det maa ikke afhaenge af, om der
         # tilfaeldigt laa tekst i koen (se done-grenen).
         "final_answer_started": False,
+        # Stroemmer slutsvaret allerede? Sat naar tærsklen nedenfor har
+        # promoveret den ventende tekst til `final_answer`. Fra da af skrives
+        # ny tekst DIREKTE i den aabne blok — ellers ville den gaa i
+        # `_pending_text` og blive en ny `commentary`-blok midt i svaret.
+        "svar_stroemmer": False,
     }
 
     # Efter et værktøj kan tekst være både en mellemsyntese og slutsvaret.
@@ -415,6 +420,32 @@ async def translate_to_v2(
     #: Antal tegn sendt pr. tekstblok. Uden det kan `done` ikke afgøre hvilken
     #: blok der er turens svar — kun hvilken der kom sidst.
     _text_block_lengths: dict[int, int] = {}
+
+    #: Hvor mange tegn ventende tekst der gør den til en BESVARELSE frem for
+    #: en mellemsyntese — og dermed udløser fold-signalet midt i turen.
+    #:
+    #: MAALT 27/11-2026 paa 6.041 `commentary`-blokke og 400
+    #: `final_answer`-blokke fra `chat_messages.content_json`:
+    #:
+    #:   commentary (mellemsyntese): median 211, p75 305, p90 421 tegn
+    #:   final_answer (slutsvar):    median 2181, p25 1089 tegn
+    #:
+    #: Ved 600 tegn rammes 82 % af alle slutsvar, mens kun 4 % af
+    #: mellemsynteserne fejlagtigt promoveres. Tærsklen er en
+    #: PRAESENTATIONSHEURISTIK, ikke semantik — samme slags valg som
+    #: `_promote_earlier_answer_block` allerede tager ved `done` (den vælger
+    #: den længste tekst efter sidste rigtige værktøjskald). Forskellen er kun
+    #: TIDSPUNKTET: her gættes der undervejs i stedet for bagefter.
+    #:
+    #: HVORFOR det er nødvendigt: uden den blev fold-signalet først sendt ved
+    #: `done`, altså EFTER slutsvaret var skrevet. Klienten havde derfor intet
+    #: at folde paa mens svaret strømmede — og fire klient-rettelser af gaten
+    #: flyttede intet, fordi de lyttede paa et signal der kom for sent.
+    #:
+    #: 18 % af svarene er under tærsklen og folder derfor stadig først ved
+    #: `done`. Det er acceptabelt: korte svar er hurtige at læse, og fejlen er
+    #: lille. En lavere tærskel ville koste flere falske promoveringer.
+    _svar_taerskel = 600
 
     #: Kald hvis linje allerede er født af annonceringen (før kørslen). Uden
     #: den ville resultat-eventet føde en linje MERE om samme kald.
@@ -748,6 +779,12 @@ async def translate_to_v2(
         await _flush_pending_text()
         await _resolve_unresolved_text(phase="commentary")
         _state["has_tool"] = True
+        # Et nyt værktøjskald beviser at teksten FØR det var en mellemsyntese.
+        # `final_answer_started` bliver staaende (klienten har allerede foldet,
+        # og det maa ikke fortrydes), men teksten EFTER dette kald er hale —
+        # ikke en fortsættelse af svaret — saa den skal igen gennem
+        # `_pending_text` og blive `commentary`.
+        _state["svar_stroemmer"] = False
         await _close_thinking_block_if_open()
         await _close_text_block_if_open()
         idx = _alloc_index()
@@ -1015,12 +1052,46 @@ async def translate_to_v2(
                     raw_text = str(payload.get("delta") or "")
                     text = echo_filter.feed(raw_text)
                     if text:
-                        if _state["has_tool"]:
+                        if _state["svar_stroemmer"]:
+                            # Slutsvaret er allerede promoveret: skriv direkte
+                            # i den aabne blok. Uden denne gren ville teksten
+                            # gaa i `_pending_text` og blive en NY
+                            # `commentary`-blok midt inde i svaret.
+                            await _ensure_text_block_open(phase="final_answer")
+                            _blok = int(_state["text_block_index"])
+                            _text_block_lengths[_blok] = _text_block_lengths.get(_blok, 0) + len(text)
+                            await queue.put(ContentBlockDelta(
+                                index=_blok,
+                                delta_type="text_delta",
+                                content=text,
+                            ).to_sse_line())
+                        elif _state["has_tool"]:
                             _pending_text.append(text)
                             await queue.put(SystemEvent(
                                 kind="provisional_text_delta",
                                 payload={"run_id": str(_state["run_id"] or ""), "delta": text},
                             ).to_sse_line())
+                            # FOLD-SIGNALET MIDT I TUREN (Bjørn 27/11-2026,
+                            # fjerde klage: «foldet sker stadig ikk før slut
+                            # beskeden»).
+                            #
+                            # Uden denne blok blev `final_answer_start` foerst
+                            # sendt ved `done` — altsaa EFTER svaret var
+                            # skrevet. Klienten havde intet at folde paa mens
+                            # svaret stroemmede, og hvert klient-forsoeg
+                            # lyttede derfor paa et signal der kom for sent.
+                            #
+                            # Naar den ventende tekst har naaet tærsklen, er
+                            # den med maalt overvejende sandsynlighed svaret og
+                            # ikke en mellemsyntese. `_flush_pending_text(final=
+                            # True)` aabner den som `final_answer` og sender
+                            # signalet — praecis den samme funktion `done` selv
+                            # bruger, blot tidligere.
+                            if not _state["final_answer_started"]:
+                                ventende = sum(len(t) for t in _pending_text)
+                                if ventende >= _svar_taerskel:
+                                    await _flush_pending_text(final=True)
+                                    _state["svar_stroemmer"] = True
                         else:
                             # Første tekst er uafklaret indtil runden enten
                             # kalder et tool eller afslutter. Den vises stadig

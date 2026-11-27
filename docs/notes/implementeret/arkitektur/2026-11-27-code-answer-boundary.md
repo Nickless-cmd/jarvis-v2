@@ -57,3 +57,17 @@ available in the head. The live-to-saved handover waits for the exit animation.
 Verification: parser chunk-boundary/quotation/fence tests; producer → relay →
 accumulator integration; normalization/reducer/pacing presentation tests; real
 Chromium geometry probe `apps/jarvis-desk/src/harness/verify-code-fold.py`.
+
+
+Production follow-up (2026-11-27): run
+`visible-fab32668ab3d43c3b3af8b026bf60eec` omitted the declaration. Its 1,794-character
+closing answer preceded `suggest_next_task`, and only the 260-character tail
+received the terminal boundary. Inspection of the actual prompt selector found
+that `output_discipline` is supplied but has no section budget, so its marker
+instruction never reaches the assembled prompt. The code-only presentation
+instruction now lives near the start of the mandatory code contract, retained
+in its compact form, and in the V2 current-turn recency anchor. A regression
+passes the real mode orientation through the real budget selector and assembles
+the dynamic tail for V1/V2 and full/compact profiles; chat gets no code marker
+instruction. This fixes instruction delivery; actual model compliance still
+requires observing an explicit declaration on a subsequent production turn.

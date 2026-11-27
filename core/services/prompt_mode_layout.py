@@ -107,9 +107,12 @@ def recency_anchor(*, scope: str) -> str | None:
             "settings naturally without mentioning them."
         )
     if scope == "code":
+        from core.services.prompt_sections.code_mode import CODE_ANSWER_PRESENTATION
+
         return (
             "[CODE MODE — current turn] Continue the requested work through a "
-            "verified result; the cache-first code contract remains in force."
+            "verified result; the cache-first code contract remains in force.\n"
+            + CODE_ANSWER_PRESENTATION
         )
     return None
 

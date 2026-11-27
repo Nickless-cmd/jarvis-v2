@@ -80,3 +80,35 @@ def test_code_contract_function_returns_none_outside_code() -> None:
         assert section(compact=False) is None
     with tool_scope(""):
         assert section(compact=False) is None
+
+
+def test_answer_declaration_reaches_the_selected_code_prompt(monkeypatch) -> None:
+    from core.services.attention_budget import get_attention_budget, select_sections_under_budget
+    from core.services.code_answer_boundary import ANSWER_MARKER
+    from core.services.prompt_sections.output_discipline import _output_discipline_instruction
+
+    # Reproduce the real selector: output_discipline is not a budgeted section.
+    # The protocol must reach the model even when that section is discarded.
+    for layout in ("0", "1"):
+        monkeypatch.setenv("JARVIS_PROMPT_MODE_LAYOUT_V2", layout)
+        for compact, profile in ((False, "visible_full"), (True, "visible_compact")):
+            with tool_scope("code"):
+                orientation = _visible_mode_orientation_instruction(compact=compact)
+                selected, _ = select_sections_under_budget(
+                    budget=get_attention_budget(profile),
+                    sections={"mode_orientation": orientation,
+                              "output_discipline": _output_discipline_instruction(strength="weak")},
+                )
+                tail = build_chat_mode_dynamic_tail("", message="fortsæt", session_id="answer-protocol")
+            prompt = (selected.get("mode_orientation") or "") + tail
+            assert ANSWER_MARKER in prompt
+            assert "first word" in prompt
+            assert "not turn end" in prompt
+            assert "do not postpone" in prompt
+            if layout == "1":
+                assert ANSWER_MARKER in (selected.get("mode_orientation") or "")
+                assert ANSWER_MARKER in tail
+            with tool_scope("chat"):
+                chat = (_visible_mode_orientation_instruction(compact=compact) or "")
+                chat += build_chat_mode_dynamic_tail("", message="hej", session_id="answer-protocol-chat")
+            assert ANSWER_MARKER not in chat

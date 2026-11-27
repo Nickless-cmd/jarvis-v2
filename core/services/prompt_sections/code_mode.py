@@ -7,6 +7,17 @@ must therefore return no text outside the explicit ``code`` tool scope.
 from __future__ import annotations
 
 from core.tools import tool_scoping
+from core.services.code_answer_boundary import ANSWER_MARKER
+
+
+CODE_ANSWER_PRESENTATION = (
+    "[Code answer presentation] Immediately BEFORE the first word of your closing "
+    f"answer, emit {ANSWER_MARKER} on its own line, once per turn. "
+    "Do not mark commentary or plans. This internal marker is stripped by the "
+    "runtime; it declares answer START, not turn end. If tools run afterward, "
+    "their syntheses continue the SAME answer; do not postpone the marker to "
+    "a final short summary after those tools."
+)
 
 
 def base_section(*, compact: bool = False) -> str | None:
@@ -197,6 +208,8 @@ def base_section(*, compact: bool = False) -> str | None:
             lines[7], lines[10], lines[11], lines[12], lines[13], lines[14],
             lines[15], lines[16],
         ]
+    # Presentation must survive both compact selection and attention trimming.
+    lines.insert(2, CODE_ANSWER_PRESENTATION)
     return "\n".join(lines)
 
 

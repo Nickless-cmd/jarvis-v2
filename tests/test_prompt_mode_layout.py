@@ -127,6 +127,7 @@ def test_v2_code_contract_is_cache_first_plan_stays_dynamic(monkeypatch):
     assert "Code mode: arbejdsadfærd" in orientation
     assert "Code mode: arbejdsadfærd" not in tail
     assert "cache-first code contract remains in force" in tail
+    assert "[[jarvis:answer]]" in tail
 
 
 def test_v2_code_keeps_exact_base_and_active_plan(monkeypatch):

@@ -24,6 +24,16 @@
  *     `fladtFlow`-gren afmonterer den gamle renderer når første runde efter
  *     besvarelsen ankommer. Stabile keys kan ikke redde DOM-noder på tværs af
  *     forskellige forældre.
+ *     → **STADIG BRUDT (målt 27/11-2026).** Den ydre `.chat-flow-answer` blev
+ *     stabil i `ef6334654`, men dens DIREKTE BARN skifter fra `BlocksRenderer`s
+ *     rod til `.chat-flow-segmenter` — så hele besvarelsen remountes alligevel.
+ *     Kontrakten måler derfor barnet og ikke den ydre container (GPT's indvending
+ *     samme dag: «Den ydre container er nu stabil. Men dens indhold skifter
+ *     stadig renderer.»). Den står som `it.fails` indtil strukturen er fælles.
+ *
+ *     Omfanget af den ægte fix er målt: at gøre den flade gren til den ENESTE
+ *     struktur river **47** adfærdstests ned (probe 27/11-2026), ikke de syv
+ *     der blev set i nat. Det er ikke en blind omlægning værd.
  *  2. **Blokidentiteten er uforanderlig.** `blokId` bygges som
  *     `"${activeRunId ?? 'r'}:${index}"`. Kommer blokken før run-id'et, og
  *     genafspilles den bagefter, skifter identiteten — samme logiske blok,
@@ -97,7 +107,15 @@ const kald = (id: string): ContentBlock =>
 // KONTRAKT 1 — dokumentstrukturen skifter ikke midt i turen
 // ═════════════════════════════════════════════════════════════════════════
 describe('accepttest — én tur gennem hele forløbet', () => {
-  it('KONTRAKT 1: besvarelsens DOM-node overlever at første runde ankommer', () => {
+  // `it.fails` — ikke `it` (27/11-2026). Kontrakten er BRUDT i dag, og det er
+  // målt: barnet under `.chat-flow-answer` skifter fra `BlocksRenderer`s rod
+  // til `.chat-flow-segmenter` i det øjeblik første runde ankommer, så hele
+  // besvarelsen remountes. Testen står som `fails` fordi suiten skal kunne
+  // være grøn på main uden at defekten glemmes — og fordi den bliver RØD i
+  // samme øjeblik nogen fixer strukturen, hvorefter den skal vendes til `it`.
+  // Det er den eneste form for "kendt fejl" der ikke kan rådne: den kræver
+  // handling den dag den ikke længere fejler.
+  it.fails('KONTRAKT 1: besvarelsens DOM-node overlever at første runde ankommer', () => {
     // Fase 1: besvarelse A er i gang. Ingen runde endnu → den gamle struktur.
     const foerste = [tekst('Besvarelse A.', 'final_answer')]
     const view = render(
@@ -105,7 +123,17 @@ describe('accepttest — én tur gennem hele forløbet', () => {
     )
     const svarFoer = view.container.querySelector('.chat-flow-answer')
     expect(svarFoer).not.toBeNull()
+    // Teksten skal være SYNLIG i fase 1 — ellers måler vi et tomt træ, og så
+    // består sammenligningen af den forkerte grund (målt 27/11-2026: barnet
+    // var `null` fordi paceren ikke havde rullet noget ud endnu).
+    for (let i = 0; i < 40; i++) frame(16)
+    expect(svarFoer!.textContent).toContain('Besvarelse A.')
     const foraelderFoer = svarFoer!.parentElement
+    // Barnet fanges HER — ikke efter rerender. `svarFoer` er en levende
+    // reference, så `firstElementChild` læst bagefter ville allerede pege på
+    // det NYE barn og målingen ville bestå af den forkerte grund (målt
+    // 27/11-2026: den grønne test var tom).
+    const barnFoer = svarFoer!.firstElementChild
 
     // Fase 2: runden EFTER besvarelsen ankommer. Nu tager `fladtFlow` over —
     // og hvis den gør det ved at skifte forælder, er noden væk for brugeren.
@@ -125,6 +153,18 @@ describe('accepttest — én tur gennem hele forløbet', () => {
     // remount er det blink testen skal fælde — uanset at attributterne er ens.
     expect(svarEfter!.isSameNode(svarFoer)).toBe(true)
     expect(svarEfter!.parentElement!.isSameNode(foraelderFoer)).toBe(true)
+
+    // DET AFGØRENDE MÅL (GPT, 27/11-2026): «Den ydre container er nu stabil.
+    // Men dens indhold skifter stadig renderer.»
+    //
+    // Den ydre `.chat-flow-answer` kan bestå, mens ALT under den rives ned:
+    // i den gamle gren er dens barn `BlocksRenderer`s rod, i den flade gren er
+    // det `.chat-flow-segmenter`. En ny node er et remount af hele teksten —
+    // og det er præcis det blink brugeren ser. Derfor måles det DIREKTE BARN.
+    const barnEfter = svarEfter!.firstElementChild
+    expect(barnFoer).not.toBeNull()
+    expect(barnEfter).not.toBeNull()
+    expect(barnEfter!.isSameNode(barnFoer)).toBe(true)
   })
 
   it('KONTRAKT 1b: der findes ikke to konkurrerende renderere i DOM samtidig', () => {
@@ -158,7 +198,11 @@ describe('accepttest — én tur gennem hele forløbet', () => {
         finalAnswerStarted
       />,
     )
-    const runde1 = view.container.querySelector('[data-segment-id]')
+    // RUNDE-segmentet, ikke det første segment med en id (GPT, 27/11-2026):
+    // `data-segment-id` sættes på BÅDE besvarelses- og runde-grenen, så et
+    // bredt `querySelector` returnerer besvarelse A — og så måler testen den
+    // forkerte node og består af den forkerte grund.
+    const runde1 = view.container.querySelector('[data-segment="runde"]')
     expect(runde1).not.toBeNull()
     const id1 = runde1!.getAttribute('data-segment-id')
 

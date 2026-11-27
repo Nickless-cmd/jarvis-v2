@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/experience_substrate.py`
+_Experience substrate — embedding-retrieval learning layer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fastembed_threads` | `()` | Antal ONNX-tråde til embedderen — samme nøgle som `semantic_memory`. | [src](../../../core/services/experience_substrate.py#L44) |
+| function | `_get_chroma_collection` | `()` | Get or create the ChromaDB collection for experience episodes. | [src](../../../core/services/experience_substrate.py#L62) |
+| class | `_FastEmbedEmbedder` | `` | ONNX-baseret embedder — samme model, ingen torch. | [src](../../../core/services/experience_substrate.py#L76) |
+| method | `_FastEmbedEmbedder.__init__` | `(self)` | — | [src](../../../core/services/experience_substrate.py#L89) |
+| method | `_FastEmbedEmbedder.encode` | `(self, text, normalize_embeddings=…)` | Encode én streng eller en liste. | [src](../../../core/services/experience_substrate.py#L107) |
+| class | `_Vec` | `` | Minimal vektor-wrapper med samme `.tolist()` som numpy giver. | [src](../../../core/services/experience_substrate.py#L120) |
+| method | `_Vec.__init__` | `(self, values)` | — | [src](../../../core/services/experience_substrate.py#L123) |
+| method | `_Vec.tolist` | `(self)` | — | [src](../../../core/services/experience_substrate.py#L126) |
+| class | `_HashingEmbedder` | `` | Offline nød-embedder med stabil 384-dimensionel token-hashing. | [src](../../../core/services/experience_substrate.py#L130) |
+| method | `_HashingEmbedder._encode_one` | `(cls, text, *, normalize)` | — | [src](../../../core/services/experience_substrate.py#L141) |
+| method | `_HashingEmbedder.encode` | `(self, text, normalize_embeddings=…)` | — | [src](../../../core/services/experience_substrate.py#L155) |
+| function | `_get_embedder` | `()` | Get or create the embedder (lazy load). | [src](../../../core/services/experience_substrate.py#L163) |
+| function | `warm_embedder` | `()` | Byg embedderen og kør én encode — kaldt fra opstart, ikke fra en tur. | [src](../../../core/services/experience_substrate.py#L199) |
+| function | `build_context_for_embedding` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…)` | Build a structured context string for embedding similarity. | [src](../../../core/services/experience_substrate.py#L231) |
+| function | `record_episode` | `(*, session_id, turn_id=…, context_text, context_intent=…, active_loops=…, last_tools=…, session_phase=…, tool_sequence, outcome_signals, user_corrected=…)` | Record a new experience episode: insert to DB + embed to ChromaDB. | [src](../../../core/services/experience_substrate.py#L256) |
+| function | `retrieve_similar_episodes` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…, context_text=…, k=…, min_score=…)` | Retrieve top-K similar experience episodes from ChromaDB. | [src](../../../core/services/experience_substrate.py#L344) |
+| function | `build_experience_substrate_section` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…, user_message=…, k=…)` | Build the _experience_substrate prompt section. | [src](../../../core/services/experience_substrate.py#L431) |
+
 ## `core/services/experienced_time_daemon.py`
 _Experienced time daemon — tracks subjective felt duration of the current session._
 
@@ -548,11 +571,4 @@ _Proactivity-cluster gate — verifikations-disciplin, GRADERET (R2 blød / R2.5
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `proactivity_gate` | `(ctx)` | ctx: {reasoning_tier}. Returnér ét GRADERET Verdict for verifikations-disciplin. | [src](../../../core/services/gate_proactivity.py#L26) |
-
-## `core/services/gate_review.py`
-_Review-cluster gate — selv-review-vurdering, GRADERET._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `review_gate` | `(ctx)` | ctx: {review} hvor review har risk_level (low/med/high) + score. | [src](../../../core/services/gate_review.py#L23) |
 

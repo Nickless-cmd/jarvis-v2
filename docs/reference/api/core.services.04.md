@@ -2,6 +2,37 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/autonomous_work_daemon.py`
+_Autonomous Work Daemon — Jarvis works on his own when Bjørn is away._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L48) |
+| function | `_load` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L52) |
+| function | `_save` | `(items)` | — | [src](../../../core/services/autonomous_work_daemon.py#L66) |
+| function | `_proposals_last_hour` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L80) |
+| function | `_is_low_activity` | `()` | Low-activity = no visible runs in last _LOW_ACTIVITY_MINUTES. | [src](../../../core/services/autonomous_work_daemon.py#L96) |
+| function | `_pending_initiatives` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L117) |
+| function | `_log_entry` | `(entry)` | — | [src](../../../core/services/autonomous_work_daemon.py#L125) |
+| function | `_file_proposal` | `(*, proposal_type, title, details, rationale)` | Record a work proposal for later execution/approval. | [src](../../../core/services/autonomous_work_daemon.py#L131) |
+| function | `_maybe_propose_memory_consolidate` | `()` | Propose a daily memory consolidation when ~end of day locally. | [src](../../../core/services/autonomous_work_daemon.py#L169) |
+| function | `_maybe_nudge_incubator` | `()` | If incubator is sparse, nudge creative_instinct to generate. | [src](../../../core/services/autonomous_work_daemon.py#L189) |
+| function | `_maybe_propose_research` | `()` | Vælg ét maturing seed der IKKE allerede har et ventende forslag. | [src](../../../core/services/autonomous_work_daemon.py#L213) |
+| function | `_plan_once` | `()` | Run planning passes and return list of created proposal_ids. | [src](../../../core/services/autonomous_work_daemon.py#L251) |
+| function | `_pending_count` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L273) |
+| function | `_forslag_noegle` | `(entry)` | Stabil identitet for et forslag. To forslag med samme nøgle er dubletter. | [src](../../../core/services/autonomous_work_daemon.py#L297) |
+| function | `_grundlag_findes` | `(entry)` | Lever forslagets grundlag stadig? Returnerer (ok, begrundelse). | [src](../../../core/services/autonomous_work_daemon.py#L315) |
+| function | `consume_proposals` | `(*, max_age_days=…)` | Behandl køen: luk det døde med begrundelse, bevar det levende. | [src](../../../core/services/autonomous_work_daemon.py#L369) |
+| function | `_udfoer_memory_consolidate` | `(entry)` | Konsolidér den dag forslaget peger på. Returnerer (status, note). | [src](../../../core/services/autonomous_work_daemon.py#L476) |
+| function | `_udfoer_research` | `(entry)` | Research kan ikke udføres autonomt — sig det med den faktiske grund. | [src](../../../core/services/autonomous_work_daemon.py#L514) |
+| function | `execute_proposals` | `()` | Udfør de forslag hvis grundlag OG policy tillader det nu. | [src](../../../core/services/autonomous_work_daemon.py#L528) |
+| function | `tick` | `(_seconds=…)` | Plan work proposals during low activity. | [src](../../../core/services/autonomous_work_daemon.py#L587) |
+| function | `list_proposals` | `(*, status=…, limit=…)` | — | [src](../../../core/services/autonomous_work_daemon.py#L645) |
+| function | `resolve_proposal` | `(proposal_id, *, outcome, note=…)` | Close a proposal. outcome in {'approved', 'rejected', 'completed'}. | [src](../../../core/services/autonomous_work_daemon.py#L652) |
+| function | `build_autonomous_work_surface` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L681) |
+| function | `_surface_summary` | `(pending, all_items)` | Summarise the queue — og sig naar den ikke bliver forbruget. | [src](../../../core/services/autonomous_work_daemon.py#L714) |
+| function | `build_autonomous_work_prompt_section` | `()` | Sig hvad der venter — med type, dato og hvad der blokerer. | [src](../../../core/services/autonomous_work_daemon.py#L773) |
+
 ## `core/services/autonomy_budget.py`
 _Dagligt budget for selvvalgte handlinger + tælling af stilheden (blok E, 4/9)._
 
@@ -584,15 +615,4 @@ _Ugentlig digest over kandidat-review-køen — så køen ikke hober op i tavshe
 | function | `_dedupe_candidates` | `(candidates)` | — | [src](../../../core/services/candidate_tracking.py#L1254) |
 | function | `_quote` | `(message, *, limit=…)` | — | [src](../../../core/services/candidate_tracking.py#L1266) |
 | function | `_now_iso` | `()` | — | [src](../../../core/services/candidate_tracking.py#L1273) |
-
-## `core/services/capability_measurement.py`
-_Fælles skrivevej for MÅLTE capability-værdier._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ledger_path` | `()` | Stien afgøres ved KALDSTID, ikke ved import. | [src](../../../core/services/capability_measurement.py#L52) |
-| function | `_skriv_maalingsspor` | `(domain, value, evidence, kind)` | Én linje pr. hændelse. Uden sporet er «målt» et ord uden indhold. | [src](../../../core/services/capability_measurement.py#L73) |
-| function | `maalte_vaerdier` | `()` | Domæne → den senest MÅLTE værdi. Tom når sporet ikke findes. | [src](../../../core/services/capability_measurement.py#L102) |
-| function | `set_domain_confidence` | `(domain, value, *, evidence, kind=…)` | Sæt domænets confidence til en MÅLT værdi. | [src](../../../core/services/capability_measurement.py#L130) |
-| function | `fjern_domaene` | `(domain, *, evidence)` | Fjern et domænenavn der ikke har nogen evne bag. | [src](../../../core/services/capability_measurement.py#L212) |
 

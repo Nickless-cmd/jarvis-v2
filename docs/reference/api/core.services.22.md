@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prompt_assembly_turn_cache.py`
+_Small process-local cache for reusing one prompt assembly within a turn._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `CacheLookup` | `` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L20) |
+| function | `lookup` | `(key, *, now=…)` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L26) |
+| function | `store` | `(key, value, *, now=…)` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L39) |
+| function | `clear` | `()` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L46) |
+
 ## `core/services/prompt_cache_probe.py`
 _Prompt-cache-sonde — find hvad der bryder prefix-cachen MELLEM to rigtige ture._
 
@@ -631,21 +641,4 @@ _A/B: raesonnerer han paa mellem-runderne, eller ikke?_
 | function | `_procent` | `()` | — | [src](../../../core/services/raesonnering_eksperiment.py#L59) |
 | function | `arm_for_run` | `(run_id, *, procent=…)` | "daempet" eller "fuld" — stabilt for et givet run_id, i enhver proces. | [src](../../../core/services/raesonnering_eksperiment.py#L71) |
 | function | `daemp_krop` | `(krop, run_id, *, thinking_mode=…, procent=…)` | Returnerer (krop, blev_daempet) for en FOELGE-runde. | [src](../../../core/services/raesonnering_eksperiment.py#L93) |
-
-## `core/services/raw_provider_capture.py`
-_core/services/raw_provider_capture.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_advarsel_én_gang` | `(exc)` | Sig det ÉN gang hvis capture ikke kan skrive. | [src](../../../core/services/raw_provider_capture.py#L110) |
-| function | `armeret` | `()` | Er capture tændt? Kaldes ÉN gang pr. stream, ikke pr. linje. | [src](../../../core/services/raw_provider_capture.py#L135) |
-| function | `_rediger` | `(tekst)` | — | [src](../../../core/services/raw_provider_capture.py#L143) |
-| function | `_walk` | `(obj, sti=…, dybde=…)` | Yield (nøglesti, typenavn) for hver nøgle i et parset event. | [src](../../../core/services/raw_provider_capture.py#L149) |
-| function | `_roter_hvis_stor` | `()` | — | [src](../../../core/services/raw_provider_capture.py#L168) |
-| function | `noter_linje` | `(*, provider, model, linje, linje_nr)` | Skriv én rå SSE-linje, som udbyderen sendte den. | [src](../../../core/services/raw_provider_capture.py#L177) |
-| function | `noter_event` | `(*, provider, model, event)` | Registrér nøglestierne i et parset event i skema-indekset. | [src](../../../core/services/raw_provider_capture.py#L213) |
-| function | `_skriv_skema` | `()` | Skriv det akkumulerede skema. Kaldes under _lock. | [src](../../../core/services/raw_provider_capture.py#L237) |
-| function | `afslut_kald` | `()` | Flush skemaet ved kald-slut, så en kort stream ikke efterlader det tomt. | [src](../../../core/services/raw_provider_capture.py#L247) |
-| function | `skema_rapport` | `()` | Læs det akkumulerede skema fra disk (til diagnose uden for streamen). | [src](../../../core/services/raw_provider_capture.py#L256) |
-| function | `nulstil` | `()` | Ryd skema og capture. Til brug i tests og ved en ny målerunde. | [src](../../../core/services/raw_provider_capture.py#L268) |
 

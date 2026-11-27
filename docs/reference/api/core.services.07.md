@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_output_conservation.py`
+_Output-conservation-invariant (Bjørn 4. jul — "spøgelset")._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `observe_conservation` | `(*, layer, produced_chars, emitted_chars, provider=…, model=…, run_id=…, path=…, tolerance=…)` | Registrér et conservation-tjek for ét lag. Returnér gap'et (produced-emitted, | [src](../../../core/services/central_output_conservation.py#L27) |
+| function | `build_output_conservation_surface` | `()` | Mission Control — read-only meta-projektion (kartograf-dækning). | [src](../../../core/services/central_output_conservation.py#L69) |
+
 ## `core/services/central_persephone.py`
 _Persephone — længsel efter ægte kontakt._
 
@@ -585,19 +593,4 @@ _Samlet flade for værktøjs-infrastrukturen — de 12 lag der ellers er usynlig
 |---|---|---|---|---|
 | function | `producer_names` | `()` | Navnene i kald-rækkefølge — til test og introspektion. | [src](../../../core/services/central_tool_infra_surface.py#L41) |
 | function | `build_tool_infra_surface` | `()` | Kald alle 12 producenter og returnér deres egne signaler. Kaster ALDRIG. | [src](../../../core/services/central_tool_infra_surface.py#L46) |
-
-## `core/services/central_trace.py`
-_Trace-sink for Centralen (§3.2/§7). En trådsikker, volumen-tolerant ring-buffer_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `TraceRecord` | `` | — | [src](../../../core/services/central_trace.py#L17) |
-| class | `TraceSink` | `` | — | [src](../../../core/services/central_trace.py#L30) |
-| method | `TraceSink.__init__` | `(self, maxlen=…)` | — | [src](../../../core/services/central_trace.py#L31) |
-| method | `TraceSink.record` | `(self, rec)` | — | [src](../../../core/services/central_trace.py#L38) |
-| method | `TraceSink.subscribe` | `(self)` | — | [src](../../../core/services/central_trace.py#L70) |
-| method | `TraceSink.unsubscribe` | `(self, q)` | — | [src](../../../core/services/central_trace.py#L76) |
-| method | `TraceSink.records_for_run` | `(self, run_id)` | — | [src](../../../core/services/central_trace.py#L84) |
-| method | `TraceSink.recent` | `(self, limit=…)` | — | [src](../../../core/services/central_trace.py#L88) |
-| function | `sink` | `()` | — | [src](../../../core/services/central_trace.py#L96) |
 

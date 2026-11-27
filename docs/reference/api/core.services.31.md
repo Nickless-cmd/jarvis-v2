@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_chat_quality.py`
+_Observe chat-response quality without rewriting the user's text._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_hierarchy_signals` | `(prose, paragraphs)` | Mål om et langt svar har hierarki — ikke om det er pænt. | [src](../../../core/services/visible_chat_quality.py#L31) |
+| function | `_emoji_heading_signals` | `(prose)` | Mål om overskrifterne bærer emoji — den form Bjørn bad om 25/10-2026. | [src](../../../core/services/visible_chat_quality.py#L45) |
+| function | `analyse_chat_response` | `(text, *, wall_chars=…)` | Return measurable quality signals for a final chat response. | [src](../../../core/services/visible_chat_quality.py#L67) |
+| function | `observe_chat_response` | `(text, **context)` | Emit one metadata-only observation when, and only when, scope is chat. | [src](../../../core/services/visible_chat_quality.py#L117) |
+
 ## `core/services/visible_first_pass_output.py`
 _Én synlig grænse for første modelsvar._
 
@@ -49,20 +59,20 @@ _Provider-neutral agentic follow-up dispatcher._
 |---|---|---|---|---|
 | function | `supported_followup_providers` | `()` | Provider ids with a working follow-up adapter. | [src](../../../core/services/visible_followup.py#L121) |
 | function | `stream_visible_followup` | `(*, provider, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…, temperature=…, top_p=…, tool_choice=…, run_id=…, session_id=…, autonomous=…, trailing_messages=…)` | Dispatch to the provider's follow-up adapter; yield FollowupEvents. | [src](../../../core/services/visible_followup.py#L131) |
-| function | `synthesize_nonthinking_rescue` | `(*, provider, model, base_messages, exchanges)` | Sidste-udvejs synteseturn der OMGÅR DeepSeek #1453 (tom completion efter | [src](../../../core/services/visible_followup.py#L217) |
-| function | `synthesize_final_answer` | `(*, provider, model, base_messages, exchanges, on_delta=…)` | HARNESS-FINALIZE lag 2b (Bjørn 4. jul, provider-AGNOSTISK): ét tool-FRIT | [src](../../../core/services/visible_followup.py#L301) |
-| function | `synthesize_continuation` | `(*, provider, model, base_messages, exchanges, partial_text, continuation_instruction=…)` | CUT-OFF-FORTSÆTTELSE (2026-08-20): når provideren lukkede streamen med | [src](../../../core/services/visible_followup.py#L396) |
-| function | `agentic_round_retry_enabled` | `()` | Er rund-niveau stream-retry (Fase 1) slået til? Default False. | [src](../../../core/services/visible_followup.py#L501) |
-| function | `provider_failover_enabled` | `()` | Er visible-lane provider-failover (Fase 3, spec §11.2) slået til? Default False. | [src](../../../core/services/visible_followup.py#L545) |
-| function | `pick_failover_target` | `(current_provider, current_model)` | Vælg en kendt-pålidelig fallback-provider for RESTEN af denne tur (S6/§11.2). | [src](../../../core/services/visible_followup.py#L564) |
-| function | `inject_fault` | `(shape, *, partial_deltas=…, drop_as_exception=…, http_status=…, fire_once=…, fail_times=…, recover_text=…)` | Registrér en fejl-injektion for NÆSTE ``stream_visible_followup``-kald. | [src](../../../core/services/visible_followup.py#L628) |
-| function | `clear_faults` | `()` | Fjern enhver aktiv injektion. Idempotent. TEST-ONLY. | [src](../../../core/services/visible_followup.py#L674) |
-| class | `fault_injection` | `` | Context-manager der registrerer en injektion + RYDDER den ved exit | [src](../../../core/services/visible_followup.py#L681) |
-| method | `fault_injection.__init__` | `(self, shape, **kwargs)` | — | [src](../../../core/services/visible_followup.py#L691) |
-| method | `fault_injection.__enter__` | `(self)` | — | [src](../../../core/services/visible_followup.py#L695) |
-| method | `fault_injection.__exit__` | `(self, *_exc)` | — | [src](../../../core/services/visible_followup.py#L699) |
-| function | `_maybe_inject_fault` | `(round_index)` | Prod-no-op hook: returnér en event-iterator hvis en injektion er aktiv, | [src](../../../core/services/visible_followup.py#L704) |
-| function | `_yield_injected_fault` | `(fault, round_index)` | Generér event-strømmen for en given injektion (test-only). | [src](../../../core/services/visible_followup.py#L737) |
+| function | `synthesize_nonthinking_rescue` | `(*, provider, model, base_messages, exchanges)` | Sidste-udvejs synteseturn der OMGÅR DeepSeek #1453 (tom completion efter | [src](../../../core/services/visible_followup.py#L222) |
+| function | `synthesize_final_answer` | `(*, provider, model, base_messages, exchanges, on_delta=…)` | HARNESS-FINALIZE lag 2b (Bjørn 4. jul, provider-AGNOSTISK): ét tool-FRIT | [src](../../../core/services/visible_followup.py#L306) |
+| function | `synthesize_continuation` | `(*, provider, model, base_messages, exchanges, partial_text, continuation_instruction=…)` | CUT-OFF-FORTSÆTTELSE (2026-08-20): når provideren lukkede streamen med | [src](../../../core/services/visible_followup.py#L401) |
+| function | `agentic_round_retry_enabled` | `()` | Er rund-niveau stream-retry (Fase 1) slået til? Default False. | [src](../../../core/services/visible_followup.py#L506) |
+| function | `provider_failover_enabled` | `()` | Er visible-lane provider-failover (Fase 3, spec §11.2) slået til? Default False. | [src](../../../core/services/visible_followup.py#L550) |
+| function | `pick_failover_target` | `(current_provider, current_model)` | Vælg en kendt-pålidelig fallback-provider for RESTEN af denne tur (S6/§11.2). | [src](../../../core/services/visible_followup.py#L569) |
+| function | `inject_fault` | `(shape, *, partial_deltas=…, drop_as_exception=…, http_status=…, fire_once=…, fail_times=…, recover_text=…)` | Registrér en fejl-injektion for NÆSTE ``stream_visible_followup``-kald. | [src](../../../core/services/visible_followup.py#L633) |
+| function | `clear_faults` | `()` | Fjern enhver aktiv injektion. Idempotent. TEST-ONLY. | [src](../../../core/services/visible_followup.py#L679) |
+| class | `fault_injection` | `` | Context-manager der registrerer en injektion + RYDDER den ved exit | [src](../../../core/services/visible_followup.py#L686) |
+| method | `fault_injection.__init__` | `(self, shape, **kwargs)` | — | [src](../../../core/services/visible_followup.py#L696) |
+| method | `fault_injection.__enter__` | `(self)` | — | [src](../../../core/services/visible_followup.py#L700) |
+| method | `fault_injection.__exit__` | `(self, *_exc)` | — | [src](../../../core/services/visible_followup.py#L704) |
+| function | `_maybe_inject_fault` | `(round_index)` | Prod-no-op hook: returnér en event-iterator hvis en injektion er aktiv, | [src](../../../core/services/visible_followup.py#L709) |
+| function | `_yield_injected_fault` | `(fault, round_index)` | Generér event-strømmen for en given injektion (test-only). | [src](../../../core/services/visible_followup.py#L742) |
 
 ## `core/services/visible_followup_adapters.py`
 _Per-provider follow-up adapters (split from ``visible_followup.py``)._
@@ -513,8 +523,8 @@ _Legacy visible-run SSE encoding, extracted from visible_runs.py._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_run_wire.py#L11) |
-| function | `explicit_answer_stream` | `(function)` | Turn the model's marker into one boundary event for every channel. | [src](../../../core/services/visible_run_wire.py#L15) |
+| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_run_wire.py#L14) |
+| function | `explicit_answer_stream` | `(function)` | Turn the model's marker into one boundary event for every channel. | [src](../../../core/services/visible_run_wire.py#L18) |
 
 ## `core/services/visible_runs.py`
 
@@ -571,22 +581,4 @@ _Pending tool-approval resolution for visible runs._
 |---|---|---|---|---|
 | function | `_er_udloebet` | `(pending)` | Er godkendelsen for gammel til at maatte bruges? Returnerer grunden. | [src](../../../core/services/visible_runs_approvals.py#L34) |
 | function | `resolve_pending_approval` | `(approval_id, *, approved, answered_by=…)` | Resolve a pending tool approval. | [src](../../../core/services/visible_runs_approvals.py#L64) |
-
-## `core/services/visible_runs_capabilities.py`
-_Workspace-capability planning + execution for visible runs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_extract_capability_plan` | `(text)` | — | [src](../../../core/services/visible_runs_capabilities.py#L35) |
-| function | `_execute_visible_capability_entries` | `(run, *, all_capabilities)` | — | [src](../../../core/services/visible_runs_capabilities.py#L135) |
-| function | `_planned_visible_capability_steps` | `(run, *, all_capabilities, step_offset)` | — | [src](../../../core/services/visible_runs_capabilities.py#L336) |
-| function | `_visible_capability_step_description` | `(*, capability_id, target_path, command_text)` | — | [src](../../../core/services/visible_runs_capabilities.py#L376) |
-| function | `_is_known_workspace_capability` | `(capability_id)` | — | [src](../../../core/services/visible_runs_capabilities.py#L397) |
-| function | `_resolve_visible_capability_target_path` | `(*, capability_id, capability_arguments, user_message)` | — | [src](../../../core/services/visible_runs_capabilities.py#L406) |
-| function | `_extract_external_target_path_from_user_message` | `(user_message)` | — | [src](../../../core/services/visible_runs_capabilities.py#L432) |
-| function | `_resolve_visible_capability_command_text` | `(*, capability_id, capability_arguments, user_message)` | — | [src](../../../core/services/visible_runs_capabilities.py#L441) |
-| function | `_merge_argument_sources` | `(*sources)` | — | [src](../../../core/services/visible_runs_capabilities.py#L467) |
-| function | `_extract_exec_command_from_user_message` | `(user_message)` | — | [src](../../../core/services/visible_runs_capabilities.py#L478) |
-| function | `_capability_visible_text` | `(*, capability_id, invocation)` | — | [src](../../../core/services/visible_runs_capabilities.py#L496) |
-| function | `_workspace_search_visible_text` | `(*, capability_id, execution_mode, result)` | — | [src](../../../core/services/visible_runs_capabilities.py#L518) |
 

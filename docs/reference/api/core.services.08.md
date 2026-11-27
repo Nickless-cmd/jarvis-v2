@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_trace.py`
+_Trace-sink for Centralen (§3.2/§7). En trådsikker, volumen-tolerant ring-buffer_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `TraceRecord` | `` | — | [src](../../../core/services/central_trace.py#L17) |
+| class | `TraceSink` | `` | — | [src](../../../core/services/central_trace.py#L30) |
+| method | `TraceSink.__init__` | `(self, maxlen=…)` | — | [src](../../../core/services/central_trace.py#L31) |
+| method | `TraceSink.record` | `(self, rec)` | — | [src](../../../core/services/central_trace.py#L38) |
+| method | `TraceSink.subscribe` | `(self)` | — | [src](../../../core/services/central_trace.py#L70) |
+| method | `TraceSink.unsubscribe` | `(self, q)` | — | [src](../../../core/services/central_trace.py#L76) |
+| method | `TraceSink.records_for_run` | `(self, run_id)` | — | [src](../../../core/services/central_trace.py#L84) |
+| method | `TraceSink.recent` | `(self, limit=…)` | — | [src](../../../core/services/central_trace.py#L88) |
+| function | `sink` | `()` | — | [src](../../../core/services/central_trace.py#L96) |
+
 ## `core/services/central_trainman.py`
 _Trainman — drømme → narrative erindringer._
 
@@ -636,12 +651,4 @@ _Et barn maa ikke laane foraeldrens autoritet — Fase 5._
 |---|---|---|---|---|
 | function | `uden_foraeldrens_vaerktoejsscope` | `()` | Koer barnet uden foraeldrens INTERAKTIVE vaerktoejsscope. | [src](../../../core/services/child_authority.py#L41) |
 | function | `uden_foraeldrens_godkendelse` | `()` | Koer barnets arbejde UDEN foraeldrens ejer-godkendelse. | [src](../../../core/services/child_authority.py#L79) |
-
-## `core/services/child_failure_signal.py`
-_Et barn der doer, skal kunne SES — Fase 5._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `note_child_ended` | `(agent_id, *, status, role=…, provider=…, model=…, error=…, parent_run_id=…)` | Sig hoejt at et barn endte uden at levere. Kaster ALDRIG. | [src](../../../core/services/child_failure_signal.py#L43) |
-| function | `note_from_registry` | `(agent)` | Bekvem indgang naar man allerede har registry-raekken. | [src](../../../core/services/child_failure_signal.py#L92) |
 

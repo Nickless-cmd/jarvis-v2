@@ -93,3 +93,25 @@ chat activity and late-round renderer are preserved. Fold and fade share code's
 `apps/jarvis-desk/src/harness/verify-chat-fold.py` checks stable text nodes,
 intermediate round heights/opacities, final zero-height collapse, expanded round
 lines, and server completion ahead of the reader's pacing cursor.
+
+
+Premature declaration follow-up: a production opening “Nu skal jeg måle, ikke
+bygge” carried the explicit marker before investigative rounds. The wire and
+canonical persistence now share a chunk-independent declaration guard. It only
+vetoes a small set of explicit Danish/English first-person work announcements;
+it does not infer an answer from prose or guarantee semantic classification.
+Rejected prose stays visible as work, and a later corrective marker can declare
+the actual answer. The code follow-up prompt repeats that instruction, including
+a negative example. Missing valid declarations retain the terminal fallback.
+Tools after a valid answer remain supported.
+
+Code mode now passes the stable turn identity through both manual and autonomous
+rows. Pacing and manual fold state reset at the first render of a new turn;
+run-id binding and follow-ups retain the current turn's state. A persisted row
+can still recover a manual preference through its run-id alias. Protocol-aware
+rows ignore the legacy answer flag until marked answer text is displayed.
+The active round remains identifiable while synthesis text paces, and receives
+the same delayed fade signal inside and outside the fold, including after
+answer start. Regression tests cover both sides, turn switching, and corrected
+declarations at every input chunk boundary. Chromium verifies that only work
+collapses and answer/synthesis nodes survive when the server outruns pacing.

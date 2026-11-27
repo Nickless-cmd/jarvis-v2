@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/raw_provider_capture.py`
+_core/services/raw_provider_capture.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_advarsel_én_gang` | `(exc)` | Sig det ÉN gang hvis capture ikke kan skrive. | [src](../../../core/services/raw_provider_capture.py#L110) |
+| function | `armeret` | `()` | Er capture tændt? Kaldes ÉN gang pr. stream, ikke pr. linje. | [src](../../../core/services/raw_provider_capture.py#L135) |
+| function | `_rediger` | `(tekst)` | — | [src](../../../core/services/raw_provider_capture.py#L143) |
+| function | `_walk` | `(obj, sti=…, dybde=…)` | Yield (nøglesti, typenavn) for hver nøgle i et parset event. | [src](../../../core/services/raw_provider_capture.py#L149) |
+| function | `_roter_hvis_stor` | `()` | — | [src](../../../core/services/raw_provider_capture.py#L168) |
+| function | `noter_linje` | `(*, provider, model, linje, linje_nr)` | Skriv én rå SSE-linje, som udbyderen sendte den. | [src](../../../core/services/raw_provider_capture.py#L177) |
+| function | `noter_event` | `(*, provider, model, event)` | Registrér nøglestierne i et parset event i skema-indekset. | [src](../../../core/services/raw_provider_capture.py#L213) |
+| function | `_skriv_skema` | `()` | Skriv det akkumulerede skema. Kaldes under _lock. | [src](../../../core/services/raw_provider_capture.py#L237) |
+| function | `afslut_kald` | `()` | Flush skemaet ved kald-slut, så en kort stream ikke efterlader det tomt. | [src](../../../core/services/raw_provider_capture.py#L247) |
+| function | `skema_rapport` | `()` | Læs det akkumulerede skema fra disk (til diagnose uden for streamen). | [src](../../../core/services/raw_provider_capture.py#L256) |
+| function | `nulstil` | `()` | Ryd skema og capture. Til brug i tests og ved en ny målerunde. | [src](../../../core/services/raw_provider_capture.py#L268) |
+
 ## `core/services/read_before_write_guard.py`
 _Read-before-write guard — prevents overwrite of existing files without prior read._
 
@@ -739,12 +756,4 @@ _Request-scoped research instructions consumed by prompt assembly surfaces._
 | class | `_PromptResearch` | `` | — | [src](../../../core/services/research_prompt_context.py#L13) |
 | function | `research_context` | `(policy, *, skill_instructions=…, evidence=…, clarification=…)` | — | [src](../../../core/services/research_prompt_context.py#L24) |
 | function | `research_prompt_section` | `()` | — | [src](../../../core/services/research_prompt_context.py#L43) |
-
-## `core/services/research_quality.py`
-_Deterministic, inspectable quality gates for research synthesis._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ResearchQualityResult` | `` | — | [src](../../../core/services/research_quality.py#L13) |
-| function | `evaluate_research_report` | `(report, sources, requested_facets, *, contradictions=…, requires_freshness=…, tool_calls=…, max_tool_calls=…)` | — | [src](../../../core/services/research_quality.py#L19) |
 

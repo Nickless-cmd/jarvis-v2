@@ -62,3 +62,24 @@ def test_followup_400_body_reaches_error(monkeypatch):
     failed = [e for e in events if isinstance(e, vf.FollowupFailed)]
     assert failed, "forventede en FollowupFailed"
     assert "thought_signature" in failed[0].error
+
+
+def test_code_followup_reminds_model_to_correct_a_work_marker(monkeypatch):
+    from core.services import visible_followup as module
+    from core.tools.tool_scoping import tool_scope
+    captured = []
+    class Adapter:
+        def stream_followup(self, **kwargs):
+            captured.append(kwargs)
+            return iter(())
+    monkeypatch.setitem(module._ADAPTERS, 'test', Adapter())
+    original = [{'role': 'system', 'content': 'Existing instruction'}]
+    with tool_scope('code'):
+        list(module.stream_visible_followup(provider='test', model='m', base_messages=[], exchanges=[], trailing_messages=original))
+    tail = captured[0]['trailing_messages']
+    assert len(original) == 1 and tail[0] == original[0]
+    assert 'Nu skal jeg måle' in tail[-1]['content']
+    assert 'correct it' in tail[-1]['content']
+    with tool_scope('chat'):
+        list(module.stream_visible_followup(provider='test', model='m', base_messages=[], exchanges=[], trailing_messages=original))
+    assert captured[1]['trailing_messages'] == original

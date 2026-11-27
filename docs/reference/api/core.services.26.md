@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_deception_guard.py`
+_Bounded self-deception guard — deterministic truth-constraint on user-facing stance._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `GuardConstraint` | `` | A single guard constraint to be injected into user-facing contract. | [src](../../../core/services/self_deception_guard.py#L34) |
+| class | `DeceptionGuardTrace` | `` | Observable trace of self-deception guard evaluation. | [src](../../../core/services/self_deception_guard.py#L43) |
+| method | `DeceptionGuardTrace.has_blocks` | `(self)` | — | [src](../../../core/services/self_deception_guard.py#L54) |
+| method | `DeceptionGuardTrace.has_reframes` | `(self)` | — | [src](../../../core/services/self_deception_guard.py#L60) |
+| method | `DeceptionGuardTrace.guard_lines` | `(self)` | Return prompt-injectable guard constraint lines. | [src](../../../core/services/self_deception_guard.py#L65) |
+| method | `DeceptionGuardTrace.to_dict` | `(self)` | — | [src](../../../core/services/self_deception_guard.py#L69) |
+| function | `evaluate_self_deception_guard` | `(*, question_gate=…, autonomy_pressure=…, capability_truth=…, conflict_trace=…, quiet_initiative=…, open_loops=…)` | Evaluate self-deception guard against current runtime truth. | [src](../../../core/services/self_deception_guard.py#L95) |
+| function | `get_last_guard_trace` | `()` | Return the last self-deception guard trace for MC observability. | [src](../../../core/services/self_deception_guard.py#L268) |
+| function | `set_last_guard_trace` | `(trace)` | Store the latest guard trace for MC observability. | [src](../../../core/services/self_deception_guard.py#L275) |
+| function | `build_self_deception_guard_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/self_deception_guard.py#L281) |
+
 ## `core/services/self_dream_state_surface.py`
 _Samlet flade for Jarvis' SELV- og DROEMME-tilstand._
 
@@ -765,20 +781,4 @@ _Session-milepæle (kapitler) til navigations-rail'en — som Claude Code's mark
 | function | `_llm_segment` | `(turns)` | Bed den billige lane segmentere samtalen i kapitler. Returnerer milepæle eller None. | [src](../../../core/services/session_milestones.py#L59) |
 | function | `_generate` | `(turns)` | — | [src](../../../core/services/session_milestones.py#L104) |
 | function | `get_session_milestones` | `(session_id)` | Milepæle for rail'en: [{anchor_id, title}]. Cached pr. session+turn-antal; regenereres | [src](../../../core/services/session_milestones.py#L110) |
-
-## `core/services/session_model_pin.py`
-_Fastlås modellen pr. session, så prompt-præfikset holder (2026-10-03)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `pin_enabled` | `()` | Er låsen slået til? Fail-safe: enhver fejl → til (den nye adfærd). | [src](../../../core/services/session_model_pin.py#L60) |
-| function | `_key` | `(session_id)` | — | [src](../../../core/services/session_model_pin.py#L71) |
-| function | `_compact_epoch` | `(session_id)` | Compaction-markøren. Skifter den, er historikken skrevet om og cachen | [src](../../../core/services/session_model_pin.py#L75) |
-| function | `_state_get` | `(session_id)` | — | [src](../../../core/services/session_model_pin.py#L88) |
-| function | `_state_set` | `(session_id, payload)` | — | [src](../../../core/services/session_model_pin.py#L99) |
-| function | `get_pinned` | `(session_id)` | Det låste (udbyder, model) — ``None`` når intet er låst, eller når | [src](../../../core/services/session_model_pin.py#L107) |
-| function | `choice_for_conversation` | `(session_id)` | Modellen brugeren har valgt i en SAMTALE — til autonome runs der lander i den. | [src](../../../core/services/session_model_pin.py#L123) |
-| function | `pin` | `(session_id, provider, model)` | Lås modellen for sessionen. Returnerer det der FAKTISK blev låst. | [src](../../../core/services/session_model_pin.py#L148) |
-| function | `resolve` | `(session_id, provider, model)` | Modellen turen skal bruge, og hvor valget kom fra. | [src](../../../core/services/session_model_pin.py#L164) |
-| function | `release` | `(session_id, *, grund=…)` | Slip låsen — kaldes når den låste model ikke kunne bruges. | [src](../../../core/services/session_model_pin.py#L188) |
 

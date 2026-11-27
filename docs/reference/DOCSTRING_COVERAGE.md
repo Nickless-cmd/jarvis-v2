@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10551/19227 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10555/19234 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -27,7 +27,7 @@ Generated from source. 10551/19227 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 928 | 1645 | 56% |
-| `core.services` | 7086 | 13056 | 54% |
+| `core.services` | 7090 | 13063 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1101,9 +1101,9 @@ Generated from source. 10551/19227 functions/methods documented (54%). The list 
 - `core/services/cluster_family_scheduler.py` :: `stop_event` (L86)
 - `core/services/code_aesthetic_daemon.py` :: `build_code_aesthetic_surface` (L68)
 - `core/services/code_aesthetic_daemon.py` :: `get_latest_aesthetic_reflection` (L64)
-- `core/services/code_answer_boundary.py` :: `AnswerMarkerStream.feed` (L27)
-- `core/services/code_answer_boundary.py` :: `AnswerMarkerStream.flush` (L67)
-- `core/services/code_answer_boundary.py` :: `strip_answer_markers` (L75)
+- `core/services/code_answer_boundary.py` :: `AnswerMarkerStream.feed` (L28)
+- `core/services/code_answer_boundary.py` :: `AnswerMarkerStream.flush` (L68)
+- `core/services/code_answer_boundary.py` :: `strip_answer_markers` (L76)
 - `core/services/cognitive_episodes.py` :: `build_cognitive_episode_prompt_section` (L327)
 - `core/services/collective_pulse_daemon.py` :: `build_collective_pulse_surface` (L246)
 - `core/services/collective_pulse_daemon.py` :: `run_pulse` (L192)

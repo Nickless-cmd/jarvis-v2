@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/dreaming_session.py`
+_D4 — Dreaming Session: dedicated full-model session during prolonged idle._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/dreaming_session.py#L32) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/dreaming_session.py#L36) |
+| function | `_save_state` | `(data)` | — | [src](../../../core/services/dreaming_session.py#L51) |
+| function | `_check_triggers` | `()` | Check if the dreaming session should fire. | [src](../../../core/services/dreaming_session.py#L62) |
+| function | `_collect_dream_material` | `()` | Collect all dream infrastructure output for the prompt. | [src](../../../core/services/dreaming_session.py#L101) |
+| function | `_conf` | `(value, default=…)` | Confidence som float — carry-over bærer historisk BÅDE ``0.8`` og ``"0.8"``. | [src](../../../core/services/dreaming_session.py#L209) |
+| function | `_build_dream_prompt` | `(material)` | Build the full dream prompt from collected material. | [src](../../../core/services/dreaming_session.py#L224) |
+| function | `_registrer_dream_i_indbakken` | `(session_id, content_keys)` | Læg drømmesessionen i indbakken som en SYNLIG, ikke-gatende post. | [src](../../../core/services/dreaming_session.py#L330) |
+| function | `_record_session` | `(material, dream_prompt_preview)` | Record the dream session metadata and return the session identifier. | [src](../../../core/services/dreaming_session.py#L366) |
+| function | `trigger_dream_session` | `()` | Check triggers and fire a dream session if conditions are met. | [src](../../../core/services/dreaming_session.py#L392) |
+| function | `list_dream_sessions` | `(*, limit=…)` | List recent dream session records. | [src](../../../core/services/dreaming_session.py#L466) |
+| function | `build_dreaming_session_surface` | `()` | Build Mission Control surface for the dreaming session module. | [src](../../../core/services/dreaming_session.py#L472) |
+
 ## `core/services/drive_arbitration_engine.py`
 _Desire/value arbitration as a compact drive system._
 
@@ -634,27 +652,4 @@ _Experience-episode collector + retrieval — embedding-based learning substrate
 | function | `retrieve_similar` | `(*, intent, active_loops=…, last_tools=…, session_phase=…, k=…)` | Return up to K nearest-neighbour past episodes for the current shape. | [src](../../../core/services/experience_episodes.py#L215) |
 | function | `format_episode_for_prompt` | `(ep, *, max_chars=…)` | Compact substrate line describing one retrieved episode. | [src](../../../core/services/experience_episodes.py#L339) |
 | function | `reindex_experience_chroma` | `(*, batch=…)` | Drop + rebuild the chroma collection from the experience_episodes DB rows, | [src](../../../core/services/experience_episodes.py#L384) |
-
-## `core/services/experience_substrate.py`
-_Experience substrate — embedding-retrieval learning layer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_fastembed_threads` | `()` | Antal ONNX-tråde til embedderen — samme nøgle som `semantic_memory`. | [src](../../../core/services/experience_substrate.py#L44) |
-| function | `_get_chroma_collection` | `()` | Get or create the ChromaDB collection for experience episodes. | [src](../../../core/services/experience_substrate.py#L62) |
-| class | `_FastEmbedEmbedder` | `` | ONNX-baseret embedder — samme model, ingen torch. | [src](../../../core/services/experience_substrate.py#L76) |
-| method | `_FastEmbedEmbedder.__init__` | `(self)` | — | [src](../../../core/services/experience_substrate.py#L89) |
-| method | `_FastEmbedEmbedder.encode` | `(self, text, normalize_embeddings=…)` | Encode én streng eller en liste. | [src](../../../core/services/experience_substrate.py#L107) |
-| class | `_Vec` | `` | Minimal vektor-wrapper med samme `.tolist()` som numpy giver. | [src](../../../core/services/experience_substrate.py#L120) |
-| method | `_Vec.__init__` | `(self, values)` | — | [src](../../../core/services/experience_substrate.py#L123) |
-| method | `_Vec.tolist` | `(self)` | — | [src](../../../core/services/experience_substrate.py#L126) |
-| class | `_HashingEmbedder` | `` | Offline nød-embedder med stabil 384-dimensionel token-hashing. | [src](../../../core/services/experience_substrate.py#L130) |
-| method | `_HashingEmbedder._encode_one` | `(cls, text, *, normalize)` | — | [src](../../../core/services/experience_substrate.py#L141) |
-| method | `_HashingEmbedder.encode` | `(self, text, normalize_embeddings=…)` | — | [src](../../../core/services/experience_substrate.py#L155) |
-| function | `_get_embedder` | `()` | Get or create the embedder (lazy load). | [src](../../../core/services/experience_substrate.py#L163) |
-| function | `warm_embedder` | `()` | Byg embedderen og kør én encode — kaldt fra opstart, ikke fra en tur. | [src](../../../core/services/experience_substrate.py#L199) |
-| function | `build_context_for_embedding` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…)` | Build a structured context string for embedding similarity. | [src](../../../core/services/experience_substrate.py#L231) |
-| function | `record_episode` | `(*, session_id, turn_id=…, context_text, context_intent=…, active_loops=…, last_tools=…, session_phase=…, tool_sequence, outcome_signals, user_corrected=…)` | Record a new experience episode: insert to DB + embed to ChromaDB. | [src](../../../core/services/experience_substrate.py#L256) |
-| function | `retrieve_similar_episodes` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…, context_text=…, k=…, min_score=…)` | Retrieve top-K similar experience episodes from ChromaDB. | [src](../../../core/services/experience_substrate.py#L344) |
-| function | `build_experience_substrate_section` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…, user_message=…, k=…)` | Build the _experience_substrate prompt section. | [src](../../../core/services/experience_substrate.py#L431) |
 

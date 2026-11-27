@@ -614,6 +614,20 @@ _Ambient Sound daemon — Layer 6½: background acoustic context._
 | function | `_state` | `()` | — | [src](../../../core/services/ambient_sound_daemon.py#L538) |
 | function | `_parse_iso` | `(s)` | — | [src](../../../core/services/ambient_sound_daemon.py#L543) |
 
+## `core/services/answer_declaration.py`
+_A conservative veto for answer markers attached to work announcements._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `declaration_intent` | `(text, *, final=…)` | Return work/answer/pending; only explicit work openings are vetoed. | [src](../../../core/services/answer_declaration.py#L26) |
+| class | `AnswerDeclarationStream` | `` | Validate before emitting a boundary, independently of delta chunking. | [src](../../../core/services/answer_declaration.py#L39) |
+| method | `AnswerDeclarationStream.__init__` | `(self)` | — | [src](../../../core/services/answer_declaration.py#L42) |
+| method | `AnswerDeclarationStream._resolve` | `(self, *, final=…)` | — | [src](../../../core/services/answer_declaration.py#L48) |
+| method | `AnswerDeclarationStream._consume` | `(self, parts)` | — | [src](../../../core/services/answer_declaration.py#L63) |
+| method | `AnswerDeclarationStream.feed` | `(self, text)` | Pass ordinary text through; inspect only the opening after a marker. | [src](../../../core/services/answer_declaration.py#L78) |
+| method | `AnswerDeclarationStream.flush` | `(self)` | Release an incomplete candidate at a round or stream boundary. | [src](../../../core/services/answer_declaration.py#L82) |
+| method | `AnswerDeclarationStream.reset_round` | `(self)` | Reset lexical line/fence state, retaining the accepted turn boundary. | [src](../../../core/services/answer_declaration.py#L86) |
+
 ## `core/services/anthropic_identity.py`
 _Build Jarvis identity prefix from a workspace directory._
 
@@ -653,24 +667,4 @@ _Translate between Anthropic Messages API format and Ollama /api/chat format._
 | function | `_stringify_tool_result_content` | `(content)` | Anthropic tool_result content can be string or list of blocks. | [src](../../../core/services/anthropic_translator.py#L168) |
 | function | `drive_emitter_from_ollama_chunks` | `(emitter, chunks)` | Drive an AnthropicSSEEmitter from a stream of Ollama chat chunks. | [src](../../../core/services/anthropic_translator.py#L193) |
 | function | `build_non_streaming_response` | `(*, message_id, model, text, tool_calls)` | Build the final Anthropic Messages response (non-streaming). | [src](../../../core/services/anthropic_translator.py#L240) |
-
-## `core/services/anticipatory_action_daemon.py`
-_Anticipatory Action Daemon — predict + pre-act._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/anticipatory_action_daemon.py#L39) |
-| function | `_load` | `()` | — | [src](../../../core/services/anticipatory_action_daemon.py#L43) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/anticipatory_action_daemon.py#L60) |
-| function | `_should_recompute` | `(data, now)` | — | [src](../../../core/services/anticipatory_action_daemon.py#L72) |
-| function | `_gather_contact_hours` | `()` | Collect contact hours from recent visible runs. | [src](../../../core/services/anticipatory_action_daemon.py#L83) |
-| function | `_compute_peak_hours` | `(hour_counts)` | — | [src](../../../core/services/anticipatory_action_daemon.py#L104) |
-| function | `recompute_patterns` | `()` | Rebuild pattern signature from recent data. | [src](../../../core/services/anticipatory_action_daemon.py#L129) |
-| function | `_local_now` | `()` | — | [src](../../../core/services/anticipatory_action_daemon.py#L141) |
-| function | `_minutes_until_hour` | `(now_local, target_hour)` | Returns minutes until next occurrence of target_hour (always in [0, 1440)). | [src](../../../core/services/anticipatory_action_daemon.py#L146) |
-| function | `_maybe_emit_anticipation` | `(peaks)` | Emit signals for peaks coming up within the anticipation window. | [src](../../../core/services/anticipatory_action_daemon.py#L156) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/anticipatory_action_daemon.py#L184) |
-| function | `build_anticipatory_action_surface` | `()` | — | [src](../../../core/services/anticipatory_action_daemon.py#L196) |
-| function | `_surface_summary` | `(peaks, upcoming)` | — | [src](../../../core/services/anticipatory_action_daemon.py#L223) |
-| function | `build_anticipatory_action_prompt_section` | `()` | Surface imminent anticipated contact. | [src](../../../core/services/anticipatory_action_daemon.py#L235) |
 

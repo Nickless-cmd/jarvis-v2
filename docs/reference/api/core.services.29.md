@@ -2,6 +2,40 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/temperament_tendency_signal_tracking.py`
+_Temperament-tendency signal tracking — migrated onto signal_tracking_framework._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_temperament_tendency_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L39) |
+| function | `refresh_runtime_temperament_tendency_signal_statuses` | `()` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L65) |
+| function | `build_runtime_temperament_tendency_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L69) |
+| function | `_extract_temperament_tendency_candidates` | `(*, run_id)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L73) |
+| function | `_build_candidate` | `(*, focus, meaning_signal, relation_continuity, regulation, private_state, executive_contradiction, temporal_promotion)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L102) |
+| function | `_latest_relation_continuity` | `(*, run_id, focus_key)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L224) |
+| function | `_latest_regulation` | `(*, run_id, focus_key)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L236) |
+| function | `_latest_private_state` | `(*, run_id, focus_key)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L248) |
+| function | `_latest_executive_contradiction` | `(*, run_id, focus_key)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L260) |
+| function | `_latest_temporal_promotion` | `(*, run_id, focus_key)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L272) |
+| function | `_derive_temperament_type` | `(*, meaning_weight, continuity_state, continuity_watchfulness, regulation_state, regulation_watchfulness, contradiction_pressure, promotion_pull, state_tone)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L284) |
+| function | `_derive_temperament_balance` | `(*, temperament_type, regulation_state, contradiction_pressure, promotion_pull)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L306) |
+| function | `_derive_temperament_weight` | `(*, meaning_weight, continuity_weight, contradiction_pressure)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L326) |
+| function | `_derive_status` | `(*, meaning_status, continuity_status, regulation_status)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L339) |
+| function | `_grounding_mode` | `(*, has_regulation, has_private_state, has_contradiction, has_promotion)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L345) |
+| function | `_temperament_summary` | `(*, focus, temperament_type, temperament_balance, temperament_weight)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L364) |
+| function | `_focus_key` | `(item)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L377) |
+| function | `_value` | `(*values, default=…)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L385) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L393) |
+| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L404) |
+| function | `_anchor` | `(item)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L416) |
+| function | `_with_runtime_view` | `(item, signal)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L428) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L445) |
+| function | `_temperament_tendency_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L488) |
+| function | `_canonical_segment` | `(value, *, index)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L508) |
+| function | `_grounding_mode_from_support_summary` | `(value)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L515) |
+| function | `_weight_from_support_summary` | `(value, *, canonical_key)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L523) |
+| function | `_balance_from_support_summary` | `(value)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L534) |
+
 ## `core/services/temporal_body.py`
 _Temporal Body — sense of age._
 
@@ -556,26 +590,4 @@ _Kortlivet opslag af strukturerede tool-resultater til DIL-binding._
 |---|---|---|---|---|
 | function | `registrer` | `(run_id, tool_use_id, resultat)` | — | [src](../../../core/services/tool_result_binding_store.py#L19) |
 | function | `hent` | `(run_id, tool_use_id)` | — | [src](../../../core/services/tool_result_binding_store.py#L31) |
-
-## `core/services/tool_result_store.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `summarize_result` | `(content, max_length=…)` | — | [src](../../../core/services/tool_result_store.py#L26) |
-| function | `save_tool_result` | `(tool_name, arguments, result_content, *, created_at=…)` | — | [src](../../../core/services/tool_result_store.py#L33) |
-| function | `get_tool_result` | `(result_id, *, user_id=…)` | Hent en gemt handle. | [src](../../../core/services/tool_result_store.py#L95) |
-| function | `cleanup_old_results` | `(max_age_days=…)` | — | [src](../../../core/services/tool_result_store.py#L157) |
-| function | `build_tool_result_reference` | `(result_id, *, tool_name, summary)` | — | [src](../../../core/services/tool_result_store.py#L184) |
-| function | `parse_tool_result_reference` | `(content)` | — | [src](../../../core/services/tool_result_store.py#L196) |
-| function | `_hoved_og_hale` | `(tekst, budget)` | Behold begyndelsen OG slutningen, og sig hvor meget der er udeladt. | [src](../../../core/services/tool_result_store.py#L236) |
-| function | `render_tool_result_for_prompt` | `(content, *, expand, max_chars=…, stub=…)` | — | [src](../../../core/services/tool_result_store.py#L253) |
-| function | `_redact` | `(tekst)` | Maskér hemmeligheder i METADATA. Kaster aldrig. | [src](../../../core/services/tool_result_store.py#L303) |
-| function | `_redigeret` | `(args)` | Argumenterne som de skal LIGGE PAA DISKEN. | [src](../../../core/services/tool_result_store.py#L312) |
-| function | `_digest` | `(text)` | sha256 over indholdet. Handlen kan dermed VERIFICERES, ikke kun slås op. | [src](../../../core/services/tool_result_store.py#L335) |
-| function | `_sikr_privat_rod` | `()` | Roden er 0700 — kun ejeren. Værktøjsresultater indeholder alt hvad et | [src](../../../core/services/tool_result_store.py#L340) |
-| class | `UnsafeResultId` | `` | `result_id` peger uden for storen — eller kunne gøre det. | [src](../../../core/services/tool_result_store.py#L356) |
-| function | `_result_path` | `(result_id)` | Stien til ét resultat. Afviser alt der kan pege ud af roden. | [src](../../../core/services/tool_result_store.py#L360) |
-| function | `_prefixed_tool_text` | `(tool_name, text)` | — | [src](../../../core/services/tool_result_store.py#L383) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tool_result_store.py#L391) |
-| function | `repair_permissions` | `()` | Saet 0600 paa gamle handles der blev skrevet foer O_EXCL-stien fandtes. | [src](../../../core/services/tool_result_store.py#L406) |
 

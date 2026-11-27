@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_runs_capabilities.py`
+_Workspace-capability planning + execution for visible runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_extract_capability_plan` | `(text)` | — | [src](../../../core/services/visible_runs_capabilities.py#L35) |
+| function | `_execute_visible_capability_entries` | `(run, *, all_capabilities)` | — | [src](../../../core/services/visible_runs_capabilities.py#L135) |
+| function | `_planned_visible_capability_steps` | `(run, *, all_capabilities, step_offset)` | — | [src](../../../core/services/visible_runs_capabilities.py#L336) |
+| function | `_visible_capability_step_description` | `(*, capability_id, target_path, command_text)` | — | [src](../../../core/services/visible_runs_capabilities.py#L376) |
+| function | `_is_known_workspace_capability` | `(capability_id)` | — | [src](../../../core/services/visible_runs_capabilities.py#L397) |
+| function | `_resolve_visible_capability_target_path` | `(*, capability_id, capability_arguments, user_message)` | — | [src](../../../core/services/visible_runs_capabilities.py#L406) |
+| function | `_extract_external_target_path_from_user_message` | `(user_message)` | — | [src](../../../core/services/visible_runs_capabilities.py#L432) |
+| function | `_resolve_visible_capability_command_text` | `(*, capability_id, capability_arguments, user_message)` | — | [src](../../../core/services/visible_runs_capabilities.py#L441) |
+| function | `_merge_argument_sources` | `(*sources)` | — | [src](../../../core/services/visible_runs_capabilities.py#L467) |
+| function | `_extract_exec_command_from_user_message` | `(user_message)` | — | [src](../../../core/services/visible_runs_capabilities.py#L478) |
+| function | `_capability_visible_text` | `(*, capability_id, invocation)` | — | [src](../../../core/services/visible_runs_capabilities.py#L496) |
+| function | `_workspace_search_visible_text` | `(*, capability_id, execution_mode, result)` | — | [src](../../../core/services/visible_runs_capabilities.py#L518) |
+
 ## `core/services/visible_runs_cognitive.py`
 _Per-turn cognitive/candidate tracking-pipeline for visible runs._
 
@@ -537,19 +555,4 @@ _Arbejdskoordinering: «er det jeg overvejer allerede dækket af eksisterende ar
 | function | `claim_work` | `(*, tekst, user_id=…, owner, kind=…, origin=…, origin_ref=…, priority=…, new_evidence=…)` | Atomisk reservation. ``{"claimed": True, "task": …}`` eller ``{"claimed": False, "covering": …}``. | [src](../../../core/services/work_coordination.py#L339) |
 | function | `find_pending_initiative_same_work` | `(tekst, *, user_id=…)` | Id på et ventende initiativ med SAMME fingeraftryk og bruger. '' = ingen. | [src](../../../core/services/work_coordination.py#L380) |
 | function | `er_forskellig_handling` | `(ny, gammel, *, user_id=…)` | Begge har identitet og de er FORSKELLIGE → deler kun emne, ikke arbejde. | [src](../../../core/services/work_coordination.py#L402) |
-
-## `core/services/workspace_crypto.py`
-_Krypteret workspace-fil-I/O (spec §16, Lag 3)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `encrypt_on_write` | `()` | True hvis non-owner skrivninger faktisk skal krypteres (sti-nøglet path). | [src](../../../core/services/workspace_crypto.py#L37) |
-| function | `should_encrypt` | `(user_id)` | True hvis denne brugers data skal krypteres (alle undtagen owner, §16.2). | [src](../../../core/services/workspace_crypto.py#L50) |
-| function | `write_workspace_file` | `(path, content, user_id)` | Skriv en workspace-fil. Non-owner → krypteret (.enc); owner → plaintext. | [src](../../../core/services/workspace_crypto.py#L75) |
-| function | `read_workspace_file` | `(path, user_id)` | Læs en workspace-fil. Prøver krypteret (.enc) først for non-owner, ellers | [src](../../../core/services/workspace_crypto.py#L107) |
-| function | `member_user_id_for_path` | `(path)` | Udled discord_id for filens NON-owner ejer ud fra `workspaces/<navn>/…`. | [src](../../../core/services/workspace_crypto.py#L129) |
-| function | `read_text_for_path` | `(path, *, encoding=…)` | Læs workspace-fil-tekst sti-nøglet. Returnerer None hvis hverken plaintext | [src](../../../core/services/workspace_crypto.py#L185) |
-| function | `_advarsel_hvis_plaintext_for_member` | `(p, member)` | Log et spor naar en KENDT medlemsfil skrives i klartekst. | [src](../../../core/services/workspace_crypto.py#L203) |
-| function | `write_text_for_path` | `(path, content)` | Skriv workspace-fil-tekst sti-nøglet. Mens ENCRYPT_ON_WRITE er FRA skrives | [src](../../../core/services/workspace_crypto.py#L222) |
-| function | `atomic_write_text_for_path` | `(path, content)` | Som `write_text_for_path`, men atomisk (temp-fil + os.replace). | [src](../../../core/services/workspace_crypto.py#L250) |
 

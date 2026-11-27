@@ -177,6 +177,11 @@ def stream_visible_followup(
             http_status=None,
         )
         return
+    from core.tools.tool_scoping import current_tool_scope
+    if current_tool_scope() == "code":
+        from core.services.prompt_sections.code_mode import CODE_ANSWER_PRESENTATION
+        trailing_messages = [*(trailing_messages or []),
+                             {"role": "system", "content": CODE_ANSWER_PRESENTATION}]
     # thinking_mode: ollama (think=False / reasoning_effort) OG openai-compat
     # (DeepSeek: thinking enabled/disabled + reasoning_effort som request-params).
     # Før nåede den kun ollama → DeepSeek-følgerunder, #1453-rescue og syntese

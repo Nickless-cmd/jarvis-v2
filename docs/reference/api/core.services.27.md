@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_model_pin.py`
+_Fastlås modellen pr. session, så prompt-præfikset holder (2026-10-03)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `pin_enabled` | `()` | Er låsen slået til? Fail-safe: enhver fejl → til (den nye adfærd). | [src](../../../core/services/session_model_pin.py#L60) |
+| function | `_key` | `(session_id)` | — | [src](../../../core/services/session_model_pin.py#L71) |
+| function | `_compact_epoch` | `(session_id)` | Compaction-markøren. Skifter den, er historikken skrevet om og cachen | [src](../../../core/services/session_model_pin.py#L75) |
+| function | `_state_get` | `(session_id)` | — | [src](../../../core/services/session_model_pin.py#L88) |
+| function | `_state_set` | `(session_id, payload)` | — | [src](../../../core/services/session_model_pin.py#L99) |
+| function | `get_pinned` | `(session_id)` | Det låste (udbyder, model) — ``None`` når intet er låst, eller når | [src](../../../core/services/session_model_pin.py#L107) |
+| function | `choice_for_conversation` | `(session_id)` | Modellen brugeren har valgt i en SAMTALE — til autonome runs der lander i den. | [src](../../../core/services/session_model_pin.py#L123) |
+| function | `pin` | `(session_id, provider, model)` | Lås modellen for sessionen. Returnerer det der FAKTISK blev låst. | [src](../../../core/services/session_model_pin.py#L148) |
+| function | `resolve` | `(session_id, provider, model)` | Modellen turen skal bruge, og hvor valget kom fra. | [src](../../../core/services/session_model_pin.py#L164) |
+| function | `release` | `(session_id, *, grund=…)` | Slip låsen — kaldes når den låste model ikke kunne bruges. | [src](../../../core/services/session_model_pin.py#L188) |
+
 ## `core/services/session_permission.py`
 _Samtalens tilladelses-niveau — én sandhed, på serveren (Bjørn 20/9-2026)._
 
@@ -555,20 +571,4 @@ _Owner-approved allowlist governing jarvis-code skill auto-surfacing (Fase 3)._
 | function | `approve_skill` | `(name, *, role)` | Owner-only. Validates against installed skills (skill_engine.skill_exists). | [src](../../../core/services/skill_autosurface.py#L68) |
 | function | `revoke_skill` | `(name, *, role)` | Owner-only. Removes `name` from the allowlist if present. | [src](../../../core/services/skill_autosurface.py#L91) |
 | function | `filter_to_approved` | `(names)` | Narrow `names` to the owner-approved allowlist, gated by the master flag. | [src](../../../core/services/skill_autosurface.py#L106) |
-
-## `core/services/skill_contract_registry.py`
-_Skill Contract Registry — formal contracts for capabilities._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SkillSpec` | `` | Immutable skill identity. | [src](../../../core/services/skill_contract_registry.py#L23) |
-| class | `SkillPermissionSpec` | `` | Required scopes for a skill to run. | [src](../../../core/services/skill_contract_registry.py#L32) |
-| class | `SkillManifest` | `` | Bundle of spec + permissions + schemas. | [src](../../../core/services/skill_contract_registry.py#L40) |
-| function | `register_skill` | `(manifest)` | Register a skill manifest. Overwrites prior entry with same name. | [src](../../../core/services/skill_contract_registry.py#L54) |
-| function | `get_manifest` | `(name)` | — | [src](../../../core/services/skill_contract_registry.py#L59) |
-| function | `list_manifests` | `()` | — | [src](../../../core/services/skill_contract_registry.py#L63) |
-| function | `check_permissions` | `(name, granted_scopes)` | Evaluate whether granted scopes satisfy a skill's required scopes. | [src](../../../core/services/skill_contract_registry.py#L67) |
-| function | `_auto_register_known_skills` | `()` | Seed registry with contracts for well-known built-in capabilities. | [src](../../../core/services/skill_contract_registry.py#L93) |
-| function | `build_skill_contract_registry_surface` | `()` | Mission Control surface. | [src](../../../core/services/skill_contract_registry.py#L194) |
-| function | `_emit_skill_contract_registry_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/skill_contract_registry.py#L226) |
 

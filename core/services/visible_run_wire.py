@@ -6,6 +6,9 @@ than duplicating marker stripping in individual channel consumers.
 from __future__ import annotations
 
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _sse(event: str, data: dict) -> str:
@@ -19,13 +22,21 @@ def explicit_answer_stream(function):
     consumers receive only clean prose and the explicit event. No length test.
     """
     from functools import wraps
-    from core.services.code_answer_boundary import AnswerMarkerStream, strip_answer_markers
+    from core.services.code_answer_boundary import strip_answer_markers
+    from core.services.answer_declaration import AnswerDeclarationStream
 
     @wraps(function)
     async def wrapped(*args, **kwargs):
-        scanner = AnswerMarkerStream()
+        scanner = AnswerDeclarationStream()
         source = function(*args, **kwargs)
         run_id = str(getattr(args[0], "run_id", "") if args else "")
+        def encode(parts, payload):
+            for kind, value in parts:
+                if kind == "answer_start":
+                    yield _sse("answer_start", {"type": "answer_start", "run_id": run_id})
+                else:
+                    yield _sse("delta", {**payload, "delta": value})
+
         try:
             async for chunk in source:
                 lines = chunk.splitlines()
@@ -34,15 +45,15 @@ def explicit_answer_stream(function):
                 if event == "delta":
                     payload = json.loads(raw)
                     run_id = str(payload.get("run_id") or run_id)
-                    for kind, value in scanner.feed(str(payload.get("delta") or "")):
-                        if kind == "answer_start":
-                            yield _sse("answer_start", {"type": "answer_start", "run_id": run_id})
-                        else:
-                            yield _sse("delta", {**payload, "delta": value})
+                    before = scanner.rejected
+                    for part in encode(scanner.feed(str(payload.get("delta") or "")), payload):
+                        yield part
+                    if scanner.rejected > before:
+                        logger.info("answer-declaration-rejected: work_opening run=%s", run_id)
                     continue
                 if event == "done":
-                    for kind, value in scanner.flush():
-                        yield _sse("delta", {"type": "delta", "run_id": run_id, "delta": value})
+                    for part in encode(scanner.flush(), {"type": "delta", "run_id": run_id}):
+                        yield part
                     payload = json.loads(raw)
                     for key in ("text", "content", "response"):
                         if isinstance(payload.get(key), str):
@@ -55,11 +66,9 @@ def explicit_answer_stream(function):
                 if event == "working_step":
                     payload = json.loads(raw)
                     if payload.get("action") == "thinking" and not payload.get("tool_id"):
-                        for kind, value in scanner.flush():
-                            yield _sse("delta", {"type": "delta", "run_id": run_id, "delta": value})
-                        scanner.line_start = True
-                        scanner.line_prefix = ""
-                        scanner.fence = ""
+                        for part in encode(scanner.flush(), {"type": "delta", "run_id": run_id}):
+                            yield part
+                        scanner.reset_round()
                 yield chunk
         finally:
             await source.aclose()

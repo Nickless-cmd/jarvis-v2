@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/desktop_notifications.py`
+_Per-bruger in-memory kø af proaktive desktop-notifikationer. Desktop poller_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `reset` | `()` | — | [src](../../../core/services/desktop_notifications.py#L15) |
+| function | `enqueue` | `(user_id, item)` | — | [src](../../../core/services/desktop_notifications.py#L20) |
+| function | `drain` | `(user_id)` | — | [src](../../../core/services/desktop_notifications.py#L30) |
+| function | `prune` | `()` | — | [src](../../../core/services/desktop_notifications.py#L37) |
+
 ## `core/services/desperation_awareness.py`
 _Desperation Awareness — self-noticing safety signal._
 
@@ -735,22 +745,4 @@ _Drømme-sessionerne skal blive til læring._
 | function | `gem` | `(a)` | Skriv lektien. Returnerer udfaldet fra ``upsert_lesson`` ('' ved fejl). | [src](../../../core/services/dream_session_lessons.py#L154) |
 | function | `_allerede_hoestet` | `(a)` | Er dette afsnit hoestet fra den SAMME note foer? | [src](../../../core/services/dream_session_lessons.py#L178) |
 | function | `koer_hoest` | `(*, mappe=…, antal=…)` | Læs de nyeste drømme-noter og gem det der er lektier. | [src](../../../core/services/dream_session_lessons.py#L199) |
-
-## `core/services/dreaming_session.py`
-_D4 — Dreaming Session: dedicated full-model session during prolonged idle._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/dreaming_session.py#L32) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/dreaming_session.py#L36) |
-| function | `_save_state` | `(data)` | — | [src](../../../core/services/dreaming_session.py#L51) |
-| function | `_check_triggers` | `()` | Check if the dreaming session should fire. | [src](../../../core/services/dreaming_session.py#L62) |
-| function | `_collect_dream_material` | `()` | Collect all dream infrastructure output for the prompt. | [src](../../../core/services/dreaming_session.py#L101) |
-| function | `_conf` | `(value, default=…)` | Confidence som float — carry-over bærer historisk BÅDE ``0.8`` og ``"0.8"``. | [src](../../../core/services/dreaming_session.py#L209) |
-| function | `_build_dream_prompt` | `(material)` | Build the full dream prompt from collected material. | [src](../../../core/services/dreaming_session.py#L224) |
-| function | `_registrer_dream_i_indbakken` | `(session_id, content_keys)` | Læg drømmesessionen i indbakken som en SYNLIG, ikke-gatende post. | [src](../../../core/services/dreaming_session.py#L330) |
-| function | `_record_session` | `(material, dream_prompt_preview)` | Record the dream session metadata and return the session identifier. | [src](../../../core/services/dreaming_session.py#L366) |
-| function | `trigger_dream_session` | `()` | Check triggers and fire a dream session if conditions are met. | [src](../../../core/services/dreaming_session.py#L392) |
-| function | `list_dream_sessions` | `(*, limit=…)` | List recent dream session records. | [src](../../../core/services/dreaming_session.py#L466) |
-| function | `build_dreaming_session_surface` | `()` | Build Mission Control surface for the dreaming session module. | [src](../../../core/services/dreaming_session.py#L472) |
 

@@ -16,7 +16,11 @@ CODE_ANSWER_PRESENTATION = (
     "Do not mark commentary or plans. This internal marker is stripped by the "
     "runtime; it declares answer START, not turn end. If tools run afterward, "
     "their syntheses continue the SAME answer; do not postpone the marker to "
-    "a final short summary after those tools."
+    "a final short summary after those tools. "
+    "An opening acknowledgement, plan, or promise to inspect is WORK, not the closing answer. "
+    "Example: 'Nu skal jeg måle, ikke bygge. Jeg tjekker processen.' has NO marker. "
+    "After the checks, 'Koblingen virker; her er de målte resultater.' begins the closing answer. "
+    "If you mistakenly put a marker on work narration, correct it by marking the actual closing answer."
 )
 
 

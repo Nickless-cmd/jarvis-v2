@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/pfsense_syslog.py`
+_core/services/pfsense_syslog.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_self_ips` | `()` | — | [src](../../../core/services/pfsense_syslog.py#L46) |
+| function | `_parse_filterlog` | `(line)` | Tolerant parser af pfSense filterlog-CSV. Returnerer {action, src, dst, dport}. | [src](../../../core/services/pfsense_syslog.py#L74) |
+| function | `_is_internal_src` | `(src)` | Er kilde-IP'en PRIVAT (RFC1918 = husets egne maskiner)? Ægte port-scan/brute-force kommer | [src](../../../core/services/pfsense_syslog.py#L103) |
+| function | `_is_noise_dst` | `(dst)` | Multicast/broadcast er normal netværks-støj (mDNS/SSDP/LLMNR/DHCP), IKKE angreb. | [src](../../../core/services/pfsense_syslog.py#L133) |
+| function | `_ingest` | `(rec, now)` | — | [src](../../../core/services/pfsense_syslog.py#L147) |
+| function | `_listen` | `()` | — | [src](../../../core/services/pfsense_syslog.py#L183) |
+| function | `start_syslog_listener` | `()` | Start UDP-lytteren i en daemon-tråd (idempotent). Kun i runtime-processen. | [src](../../../core/services/pfsense_syslog.py#L204) |
+| function | `drain_detections` | `()` | Hent + ryd nye detektioner (kaldes af infra_sense-cadence). Self-safe. | [src](../../../core/services/pfsense_syslog.py#L213) |
+| function | `syslog_stats` | `()` | — | [src](../../../core/services/pfsense_syslog.py#L221) |
+| function | `_reset_for_tests` | `()` | — | [src](../../../core/services/pfsense_syslog.py#L226) |
+
 ## `core/services/phone_wake.py`
 _Push-vækning: banker på telefonen når den sover._
 
@@ -668,14 +684,4 @@ _Telemetri for den synlige prompts assembly: hvad fylder, og hvad koster cache._
 | function | `hale_tegn` | `(assembled_text)` | Tegn i den DO-NOT-CACHE-hale som forbrugeren flytter ud af praefikset. | [src](../../../core/services/prompt_assembly_telemetri.py#L105) |
 | function | `rangordn` | `(parts)` | (navn, tegn) pr. ikke-tomt stykke, stoerste foerst. Navnet er stykkets eget. | [src](../../../core/services/prompt_assembly_telemetri.py#L125) |
 | function | `rapporter_assembly` | `(parts, *, assembled_text, compact, session_id, assembly_ms)` | Udsend event + journal-linjer + aflevér sektionerne til impact-telemetrien. | [src](../../../core/services/prompt_assembly_telemetri.py#L133) |
-
-## `core/services/prompt_assembly_turn_cache.py`
-_Small process-local cache for reusing one prompt assembly within a turn._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `CacheLookup` | `` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L20) |
-| function | `lookup` | `(key, *, now=…)` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L26) |
-| function | `store` | `(key, value, *, now=…)` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L39) |
-| function | `clear` | `()` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L46) |
 

@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/research_quality.py`
+_Deterministic, inspectable quality gates for research synthesis._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ResearchQualityResult` | `` | — | [src](../../../core/services/research_quality.py#L13) |
+| function | `evaluate_research_report` | `(report, sources, requested_facets, *, contradictions=…, requires_freshness=…, tool_calls=…, max_tool_calls=…)` | — | [src](../../../core/services/research_quality.py#L19) |
+
 ## `core/services/research_router.py`
 _Conservative and explainable inline/orchestrated research routing._
 
@@ -610,12 +618,4 @@ _Beskeder der hoerer EFTER historikken i en agentisk tur._
 | function | `_persist_learning_signals` | `(outcome)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L132) |
 | function | `_completion_outcome_label` | `(status)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L157) |
 | function | `_consecutive_repetition_count` | `(items)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L168) |
-
-## `core/services/runtime_action_registry.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `RuntimeActionSpec` | `` | — | [src](../../../core/services/runtime_action_registry.py#L12) |
-| function | `list_runtime_action_specs` | `()` | — | [src](../../../core/services/runtime_action_registry.py#L109) |
-| function | `get_runtime_action_spec` | `(action_id)` | — | [src](../../../core/services/runtime_action_registry.py#L113) |
 

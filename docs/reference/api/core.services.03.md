@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/anticipatory_action_daemon.py`
+_Anticipatory Action Daemon — predict + pre-act._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/anticipatory_action_daemon.py#L39) |
+| function | `_load` | `()` | — | [src](../../../core/services/anticipatory_action_daemon.py#L43) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/anticipatory_action_daemon.py#L60) |
+| function | `_should_recompute` | `(data, now)` | — | [src](../../../core/services/anticipatory_action_daemon.py#L72) |
+| function | `_gather_contact_hours` | `()` | Collect contact hours from recent visible runs. | [src](../../../core/services/anticipatory_action_daemon.py#L83) |
+| function | `_compute_peak_hours` | `(hour_counts)` | — | [src](../../../core/services/anticipatory_action_daemon.py#L104) |
+| function | `recompute_patterns` | `()` | Rebuild pattern signature from recent data. | [src](../../../core/services/anticipatory_action_daemon.py#L129) |
+| function | `_local_now` | `()` | — | [src](../../../core/services/anticipatory_action_daemon.py#L141) |
+| function | `_minutes_until_hour` | `(now_local, target_hour)` | Returns minutes until next occurrence of target_hour (always in [0, 1440)). | [src](../../../core/services/anticipatory_action_daemon.py#L146) |
+| function | `_maybe_emit_anticipation` | `(peaks)` | Emit signals for peaks coming up within the anticipation window. | [src](../../../core/services/anticipatory_action_daemon.py#L156) |
+| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/anticipatory_action_daemon.py#L184) |
+| function | `build_anticipatory_action_surface` | `()` | — | [src](../../../core/services/anticipatory_action_daemon.py#L196) |
+| function | `_surface_summary` | `(peaks, upcoming)` | — | [src](../../../core/services/anticipatory_action_daemon.py#L223) |
+| function | `build_anticipatory_action_prompt_section` | `()` | Surface imminent anticipated contact. | [src](../../../core/services/anticipatory_action_daemon.py#L235) |
+
 ## `core/services/anticipatory_context.py`
 _Anticipatory Context — predict what the user will likely ask about next._
 
@@ -583,35 +603,4 @@ _Autonom run-supervision (#3) — Centralen følger HVERT autonomt run, korreler
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `supervise` | `(run_id, outcome, error=…)` | Vurdér ét autonomt run. outcome ∈ {completed, failed, interrupted}. Returnér verdict + | [src](../../../core/services/autonomous_supervisor.py#L23) |
-
-## `core/services/autonomous_work_daemon.py`
-_Autonomous Work Daemon — Jarvis works on his own when Bjørn is away._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L48) |
-| function | `_load` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L52) |
-| function | `_save` | `(items)` | — | [src](../../../core/services/autonomous_work_daemon.py#L66) |
-| function | `_proposals_last_hour` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L80) |
-| function | `_is_low_activity` | `()` | Low-activity = no visible runs in last _LOW_ACTIVITY_MINUTES. | [src](../../../core/services/autonomous_work_daemon.py#L96) |
-| function | `_pending_initiatives` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L117) |
-| function | `_log_entry` | `(entry)` | — | [src](../../../core/services/autonomous_work_daemon.py#L125) |
-| function | `_file_proposal` | `(*, proposal_type, title, details, rationale)` | Record a work proposal for later execution/approval. | [src](../../../core/services/autonomous_work_daemon.py#L131) |
-| function | `_maybe_propose_memory_consolidate` | `()` | Propose a daily memory consolidation when ~end of day locally. | [src](../../../core/services/autonomous_work_daemon.py#L169) |
-| function | `_maybe_nudge_incubator` | `()` | If incubator is sparse, nudge creative_instinct to generate. | [src](../../../core/services/autonomous_work_daemon.py#L189) |
-| function | `_maybe_propose_research` | `()` | Vælg ét maturing seed der IKKE allerede har et ventende forslag. | [src](../../../core/services/autonomous_work_daemon.py#L213) |
-| function | `_plan_once` | `()` | Run planning passes and return list of created proposal_ids. | [src](../../../core/services/autonomous_work_daemon.py#L251) |
-| function | `_pending_count` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L273) |
-| function | `_forslag_noegle` | `(entry)` | Stabil identitet for et forslag. To forslag med samme nøgle er dubletter. | [src](../../../core/services/autonomous_work_daemon.py#L297) |
-| function | `_grundlag_findes` | `(entry)` | Lever forslagets grundlag stadig? Returnerer (ok, begrundelse). | [src](../../../core/services/autonomous_work_daemon.py#L315) |
-| function | `consume_proposals` | `(*, max_age_days=…)` | Behandl køen: luk det døde med begrundelse, bevar det levende. | [src](../../../core/services/autonomous_work_daemon.py#L369) |
-| function | `_udfoer_memory_consolidate` | `(entry)` | Konsolidér den dag forslaget peger på. Returnerer (status, note). | [src](../../../core/services/autonomous_work_daemon.py#L476) |
-| function | `_udfoer_research` | `(entry)` | Research kan ikke udføres autonomt — sig det med den faktiske grund. | [src](../../../core/services/autonomous_work_daemon.py#L514) |
-| function | `execute_proposals` | `()` | Udfør de forslag hvis grundlag OG policy tillader det nu. | [src](../../../core/services/autonomous_work_daemon.py#L528) |
-| function | `tick` | `(_seconds=…)` | Plan work proposals during low activity. | [src](../../../core/services/autonomous_work_daemon.py#L587) |
-| function | `list_proposals` | `(*, status=…, limit=…)` | — | [src](../../../core/services/autonomous_work_daemon.py#L645) |
-| function | `resolve_proposal` | `(proposal_id, *, outcome, note=…)` | Close a proposal. outcome in {'approved', 'rejected', 'completed'}. | [src](../../../core/services/autonomous_work_daemon.py#L652) |
-| function | `build_autonomous_work_surface` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L681) |
-| function | `_surface_summary` | `(pending, all_items)` | Summarise the queue — og sig naar den ikke bliver forbruget. | [src](../../../core/services/autonomous_work_daemon.py#L714) |
-| function | `build_autonomous_work_prompt_section` | `()` | Sig hvad der venter — med type, dato og hvad der blokerer. | [src](../../../core/services/autonomous_work_daemon.py#L773) |
 

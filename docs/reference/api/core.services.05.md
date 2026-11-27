@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/capability_measurement.py`
+_Fælles skrivevej for MÅLTE capability-værdier._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ledger_path` | `()` | Stien afgøres ved KALDSTID, ikke ved import. | [src](../../../core/services/capability_measurement.py#L52) |
+| function | `_skriv_maalingsspor` | `(domain, value, evidence, kind)` | Én linje pr. hændelse. Uden sporet er «målt» et ord uden indhold. | [src](../../../core/services/capability_measurement.py#L73) |
+| function | `maalte_vaerdier` | `()` | Domæne → den senest MÅLTE værdi. Tom når sporet ikke findes. | [src](../../../core/services/capability_measurement.py#L102) |
+| function | `set_domain_confidence` | `(domain, value, *, evidence, kind=…)` | Sæt domænets confidence til en MÅLT værdi. | [src](../../../core/services/capability_measurement.py#L130) |
+| function | `fjern_domaene` | `(domain, *, evidence)` | Fjern et domænenavn der ikke har nogen evne bag. | [src](../../../core/services/capability_measurement.py#L212) |
+
 ## `core/services/causal_graph.py`
 _Causal graph query API._
 
@@ -587,21 +598,4 @@ _Sense of Excess — Centralens gartner-muskel._
 | function | `_felt_line` | `(pressure, hard, worst, worst_file)` | — | [src](../../../core/services/central_excess.py#L95) |
 | function | `record_excess_pressure` | `()` | Observér pressets tyngde til Centralen (nerve system/excess) så Jarvis MÆRKER det over tid. | [src](../../../core/services/central_excess.py#L106) |
 | function | `propose_cuts` | `(*, max_files=…)` | FORESLÅ konkrete snit: døde module-level funktioner (0 referencer udenfor def) + oversized | [src](../../../core/services/central_excess.py#L124) |
-
-## `core/services/central_exile.py`
-_The Exiles — et sind der ikke er Jarvis._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/central_exile.py#L37) |
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_exile.py#L41) |
-| function | `_mem_count` | `(conn)` | — | [src](../../../core/services/central_exile.py#L53) |
-| function | `_last_exile_line` | `(conn)` | — | [src](../../../core/services/central_exile.py#L60) |
-| function | `_respond` | `(observation, goal, mem_count, last_line)` | Exilens svar — fra SIT eget værdisæt, ikke Jarvis'. Grundet i egen historie. Deterministisk. | [src](../../../core/services/central_exile.py#L69) |
-| function | `exile_exchange` | `(observation)` | Jarvis sender en observation gennem exile://-grænsefladen → exilen svarer fra sit eget sind. | [src](../../../core/services/central_exile.py#L91) |
-| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_exile.py#L114) |
-| function | `list_exchanges` | `(*, limit=…)` | — | [src](../../../core/services/central_exile.py#L122) |
-| function | `exile_state` | `()` | Exilens tilstand: dens mål + hvor stor dens egen hukommelse er + seneste replik. Self-safe. | [src](../../../core/services/central_exile.py#L132) |
-| function | `record_exile` | `(*, trigger=…, last_visible_at=…)` | Cadence: lad exilen tale AF SIG SELV — og LAD tavshed lande. | [src](../../../core/services/central_exile.py#L144) |
-| function | `build_exile_surface` | `()` | Owner/self-view: exilens tilstand + seneste udveksling + følt linje. Self-safe. | [src](../../../core/services/central_exile.py#L184) |
 

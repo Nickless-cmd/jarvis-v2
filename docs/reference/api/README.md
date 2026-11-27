@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 19227 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 19234 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -34,38 +34,38 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 19227 functions/
 - [`core.runtime.03`](core.runtime.03.md) — `db_runtime_relational_signals` … `work_ref`
 - [`core.runtime.04`](core.runtime.04.md) — `workspace_paths` … `ws_auth`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agent_outcomes_log`
-- [`core.services.02`](core.services.02.md) — `agent_parking` … `anticipatory_action_daemon`
-- [`core.services.03`](core.services.03.md) — `anticipatory_context` … `autonomous_work_daemon`
-- [`core.services.04`](core.services.04.md) — `autonomy_budget` … `capability_measurement`
-- [`core.services.05`](core.services.05.md) — `causal_graph` … `central_exile`
-- [`core.services.06`](core.services.06.md) — `central_existence_feel` … `central_output_conservation`
-- [`core.services.07`](core.services.07.md) — `central_persephone` … `central_trace`
-- [`core.services.08`](core.services.08.md) — `central_trainman` … `child_failure_signal`
-- [`core.services.09`](core.services.09.md) — `chronicle_consolidation_brief_tracking` … `connections`
-- [`core.services.10`](core.services.10.md) — `connectors` … `curiosity_consolidation`
-- [`core.services.11`](core.services.11.md) — `curiosity_daemon` … `desktop_notifications`
-- [`core.services.12`](core.services.12.md) — `desperation_awareness` … `dreaming_session`
-- [`core.services.13`](core.services.13.md) — `drive_arbitration_engine` … `experience_substrate`
-- [`core.services.14`](core.services.14.md) — `experienced_time_daemon` … `gate_review`
-- [`core.services.15`](core.services.15.md) — `gate_shadow` … `heartbeat_runtime_helpers`
-- [`core.services.16`](core.services.16.md) — `heartbeat_runtime_influence` … `interlanguage_practice`
-- [`core.services.17`](core.services.17.md) — `internal_cadence` … `local_tool_broker`
-- [`core.services.18`](core.services.18.md) — `long_arc_synthesizer` … `meta_learning_aggregator`
-- [`core.services.19`](core.services.19.md) — `meta_learning_hypotheses` … `ntfy_gateway`
-- [`core.services.20`](core.services.20.md) — `nudge_broend` … `pfsense_syslog`
-- [`core.services.21`](core.services.21.md) — `phone_wake` … `prompt_assembly_turn_cache`
-- [`core.services.22`](core.services.22.md) — `prompt_cache_probe` … `raw_provider_capture`
-- [`core.services.23`](core.services.23.md) — `read_before_write_guard` … `research_quality`
-- [`core.services.24`](core.services.24.md) — `research_router` … `runtime_action_registry`
-- [`core.services.25`](core.services.25.md) — `runtime_awareness_signal_tracking` … `self_deception_guard`
-- [`core.services.26`](core.services.26.md) — `self_dream_state_surface` … `session_model_pin`
-- [`core.services.27`](core.services.27.md) — `session_permission` … `skill_contract_registry`
-- [`core.services.28`](core.services.28.md) — `skill_engine` … `temperament_tendency_signal_tracking`
-- [`core.services.29`](core.services.29.md) — `temporal_body` … `tool_result_store`
-- [`core.services.30`](core.services.30.md) — `tool_round_label` … `visible_chat_quality`
-- [`core.services.31`](core.services.31.md) — `visible_first_pass_output` … `visible_runs_capabilities`
-- [`core.services.32`](core.services.32.md) — `visible_runs_cognitive` … `workspace_crypto`
-- [`core.services.33`](core.services.33.md) — `workspace_trust` … `world_model_signal_tracking`
+- [`core.services.02`](core.services.02.md) — `agent_parking` … `anthropic_translator`
+- [`core.services.03`](core.services.03.md) — `anticipatory_action_daemon` … `autonomous_supervisor`
+- [`core.services.04`](core.services.04.md) — `autonomous_work_daemon` … `candidate_tracking`
+- [`core.services.05`](core.services.05.md) — `capability_measurement` … `central_excess`
+- [`core.services.06`](core.services.06.md) — `central_exile` … `central_oracle`
+- [`core.services.07`](core.services.07.md) — `central_output_conservation` … `central_tool_infra_surface`
+- [`core.services.08`](core.services.08.md) — `central_trace` … `child_authority`
+- [`core.services.09`](core.services.09.md) — `child_failure_signal` … `conflict_resolution`
+- [`core.services.10`](core.services.10.md) — `connections` … `curiosity_budget`
+- [`core.services.11`](core.services.11.md) — `curiosity_consolidation` … `desk_render_capability`
+- [`core.services.12`](core.services.12.md) — `desktop_notifications` … `dream_session_lessons`
+- [`core.services.13`](core.services.13.md) — `dreaming_session` … `experience_episodes`
+- [`core.services.14`](core.services.14.md) — `experience_substrate` … `gate_proactivity`
+- [`core.services.15`](core.services.15.md) — `gate_review` … `heartbeat_runtime`
+- [`core.services.16`](core.services.16.md) — `heartbeat_runtime_helpers` … `inner_voice_shadow`
+- [`core.services.17`](core.services.17.md) — `interlanguage_practice` … `local_small_model`
+- [`core.services.18`](core.services.18.md) — `local_tool_broker` … `meta_cognition_daemon`
+- [`core.services.19`](core.services.19.md) — `meta_learning_aggregator` … `notifikations_valg`
+- [`core.services.20`](core.services.20.md) — `ntfy_gateway` … `personality_vector`
+- [`core.services.21`](core.services.21.md) — `pfsense_syslog` … `prompt_assembly_telemetri`
+- [`core.services.22`](core.services.22.md) — `prompt_assembly_turn_cache` … `raesonnering_eksperiment`
+- [`core.services.23`](core.services.23.md) — `raw_provider_capture` … `research_prompt_context`
+- [`core.services.24`](core.services.24.md) — `research_quality` … `runtime_action_outcome_tracking`
+- [`core.services.25`](core.services.25.md) — `runtime_action_registry` … `self_critique_runtime`
+- [`core.services.26`](core.services.26.md) — `self_deception_guard` … `session_milestones`
+- [`core.services.27`](core.services.27.md) — `session_model_pin` … `skill_autosurface`
+- [`core.services.28`](core.services.28.md) — `skill_contract_registry` … `telemetry_gate`
+- [`core.services.29`](core.services.29.md) — `temperament_tendency_signal_tracking` … `tool_result_binding_store`
+- [`core.services.30`](core.services.30.md) — `tool_result_store` … `visible_chat_pragmatics`
+- [`core.services.31`](core.services.31.md) — `visible_chat_quality` … `visible_runs_approvals`
+- [`core.services.32`](core.services.32.md) — `visible_runs_capabilities` … `work_coordination`
+- [`core.services.33`](core.services.33.md) — `workspace_crypto` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

@@ -17,7 +17,8 @@ ANSWER_START_CHARS = 350
 class AnswerMarkerStream:
     """Incremental scanner: (text | answer_start, value), independent of chunks."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, deduplicate: bool = True) -> None:
+        self.deduplicate = deduplicate
         self.pending = ""
         self.line_prefix = ""
         self.line_start = True
@@ -37,7 +38,7 @@ class AnswerMarkerStream:
                             literal.clear()
                         self.pending = ""
                         self.line_start = False
-                        if not self.started:
+                        if not self.started or not self.deduplicate:
                             self.started = True
                             out.append(("answer_start", ""))
                     continue
@@ -83,6 +84,8 @@ def mark_code_answer_start(blocks: list[dict]) -> None:
     On older/marker-free output, terminal fallback is the final text block.
     Legacy chat phases remain independent and are assigned by the caller.
     """
+    from core.services.answer_declaration import AnswerDeclarationStream
+
     texts = [b for b in blocks if b.get("type") == "text"]
     if not texts or any(b.get("code_answer_protocol") == 1 for b in texts):
         return
@@ -92,7 +95,7 @@ def mark_code_answer_start(blocks: list[dict]) -> None:
         if block.get("type") != "text":
             result.append(block)
             continue
-        scanner = AnswerMarkerStream()
+        scanner = AnswerDeclarationStream()
         parts = scanner.feed(str(block.get("text") or "")) + scanner.flush()
         current = {**block, "text": "", "code_answer_protocol": 1}
         for kind, value in parts:

@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_result_store.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `summarize_result` | `(content, max_length=…)` | — | [src](../../../core/services/tool_result_store.py#L26) |
+| function | `save_tool_result` | `(tool_name, arguments, result_content, *, created_at=…)` | — | [src](../../../core/services/tool_result_store.py#L33) |
+| function | `get_tool_result` | `(result_id, *, user_id=…)` | Hent en gemt handle. | [src](../../../core/services/tool_result_store.py#L95) |
+| function | `cleanup_old_results` | `(max_age_days=…)` | — | [src](../../../core/services/tool_result_store.py#L157) |
+| function | `build_tool_result_reference` | `(result_id, *, tool_name, summary)` | — | [src](../../../core/services/tool_result_store.py#L184) |
+| function | `parse_tool_result_reference` | `(content)` | — | [src](../../../core/services/tool_result_store.py#L196) |
+| function | `_hoved_og_hale` | `(tekst, budget)` | Behold begyndelsen OG slutningen, og sig hvor meget der er udeladt. | [src](../../../core/services/tool_result_store.py#L236) |
+| function | `render_tool_result_for_prompt` | `(content, *, expand, max_chars=…, stub=…)` | — | [src](../../../core/services/tool_result_store.py#L253) |
+| function | `_redact` | `(tekst)` | Maskér hemmeligheder i METADATA. Kaster aldrig. | [src](../../../core/services/tool_result_store.py#L303) |
+| function | `_redigeret` | `(args)` | Argumenterne som de skal LIGGE PAA DISKEN. | [src](../../../core/services/tool_result_store.py#L312) |
+| function | `_digest` | `(text)` | sha256 over indholdet. Handlen kan dermed VERIFICERES, ikke kun slås op. | [src](../../../core/services/tool_result_store.py#L335) |
+| function | `_sikr_privat_rod` | `()` | Roden er 0700 — kun ejeren. Værktøjsresultater indeholder alt hvad et | [src](../../../core/services/tool_result_store.py#L340) |
+| class | `UnsafeResultId` | `` | `result_id` peger uden for storen — eller kunne gøre det. | [src](../../../core/services/tool_result_store.py#L356) |
+| function | `_result_path` | `(result_id)` | Stien til ét resultat. Afviser alt der kan pege ud af roden. | [src](../../../core/services/tool_result_store.py#L360) |
+| function | `_prefixed_tool_text` | `(tool_name, text)` | — | [src](../../../core/services/tool_result_store.py#L383) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tool_result_store.py#L391) |
+| function | `repair_permissions` | `()` | Saet 0600 paa gamle handles der blev skrevet foer O_EXCL-stien fandtes. | [src](../../../core/services/tool_result_store.py#L406) |
+
 ## `core/services/tool_round_label.py`
 _Én kort etiket for en afsluttet værktøjs-runde — «Rettede NPE i UserService»._
 
@@ -611,14 +633,4 @@ _Pragmatic conversation boundaries for the visible chat-only lane._
 | function | `_chat_style_contract` | `(message, session_id)` | Build a short, per-user/current-turn style contract for the cache tail. | [src](../../../core/services/visible_chat_pragmatics.py#L65) |
 | function | `build_chat_mode_dynamic_tail` | `(tail, *, message, session_id)` | Append the active mode's large contract after the cache boundary. | [src](../../../core/services/visible_chat_pragmatics.py#L136) |
 | function | `apply_chat_mode_conversation_contract` | `(instruction)` | Append the hierarchy only when the effective runtime scope is ``chat``. | [src](../../../core/services/visible_chat_pragmatics.py#L179) |
-
-## `core/services/visible_chat_quality.py`
-_Observe chat-response quality without rewriting the user's text._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_hierarchy_signals` | `(prose, paragraphs)` | Mål om et langt svar har hierarki — ikke om det er pænt. | [src](../../../core/services/visible_chat_quality.py#L31) |
-| function | `_emoji_heading_signals` | `(prose)` | Mål om overskrifterne bærer emoji — den form Bjørn bad om 25/10-2026. | [src](../../../core/services/visible_chat_quality.py#L45) |
-| function | `analyse_chat_response` | `(text, *, wall_chars=…)` | Return measurable quality signals for a final chat response. | [src](../../../core/services/visible_chat_quality.py#L67) |
-| function | `observe_chat_response` | `(text, **context)` | Emit one metadata-only observation when, and only when, scope is chat. | [src](../../../core/services/visible_chat_quality.py#L117) |
 

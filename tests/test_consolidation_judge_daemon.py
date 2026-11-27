@@ -278,3 +278,89 @@ def test_stale_goal_titel_bruger_den_faktiske_taerskel():
     assert f"{ase._GOAL_STALE_DAYS}+ dage" in titel, (
         f"titlen lyver om tærsklen: {titel!r} (faktisk {ase._GOAL_STALE_DAYS})"
     )
+
+
+# --- 27/11-2026: den natlige dom blev ALDRIG gemt ---------------------------
+#
+# Kaldet i `_record_judgment_session` stod med `write_density_note`s skema
+# (`kind`/`title`/`what_happened`/`what_it_meant`/`mood`/`visibility`) mod
+# `insert_private_brain_record`, som tager
+# `record_type`/`focus`/`summary`/`detail`/`confidence`/`domain`.
+#
+# Syv parametre fandtes ikke, saa hvert kald kastede TypeError — og fejlen blev
+# fanget og logget som advarsel. Foerste forekomst i journalen: 10/11-2026.
+# Maalt 27/11: NUL poster med `record_type='judgment'` i private_brain_records
+# efter 17 dage. Dommen blev skrevet, logget som fejlet, og glemt.
+#
+# Testen binder den AEGTE signatur. Et forkert parameter-navn kaster TypeError
+# her, i stedet for om natten hvor ingen laeser advarslen.
+
+
+def test_den_natlige_dom_skrives_med_funktionens_faktiske_signatur(monkeypatch):
+    """Kaldet skal matche `insert_private_brain_record`s signatur — ikke density-skemaet."""
+    import inspect
+
+    from core.runtime.db import insert_private_brain_record as aegte
+    from core.services import consolidation_judge_daemon as cjd
+
+    kaldt: list[dict] = []
+
+    def _fang(**kwargs):
+        aegte_sig.bind(**kwargs)  # forkert navn => TypeError, ikke tavshed
+        kaldt.append(kwargs)
+        return {"record_id": kwargs.get("record_id", "")}
+
+    aegte_sig = inspect.signature(aegte)
+    monkeypatch.setattr(cjd, "insert_private_brain_record", _fang)
+
+    cjd._record_judgment_session(
+        [
+            {
+                "item_title": "Test-dom",
+                "verdict": "accept",
+                "choice": "gem",
+                "rationale": "verifikation",
+                "action": "observation",
+            }
+        ],
+        {"decision_adherence": {"score": 80.0}, "tick_quality": {"avg_score": 66.9}},
+    )
+
+    assert len(kaldt) == 1, "dommen blev ikke skrevet til private brain"
+    k = kaldt[0]
+    assert k["record_type"] == "judgment"
+    assert "Natlig revision" in k["focus"]
+    assert "1 stillingtagen" in k["summary"]
+    assert k["detail"], "den fulde dom mangler i detail"
+    assert k["domain"] == "self"
+
+
+def test_dom_kaldet_bruger_ingen_parametre_uden_for_signaturen():
+    """Vagt for KLASSEN: ingen `kind=`/`what_happened=` mod private_brain.
+
+    Den statiske del fanger det ogsaa hvis nogen genindfoerer et forkert navn
+    i en gren testen ovenfor ikke rammer.
+    """
+    import ast
+    from pathlib import Path
+
+    from core.runtime.db import insert_private_brain_record as aegte
+    import inspect
+
+    gyldige = set(inspect.signature(aegte).parameters)
+    trae = ast.parse(
+        Path("core/services/consolidation_judge_daemon.py").read_text(encoding="utf-8")
+    )
+
+    fejl: list[str] = []
+    for node in ast.walk(trae):
+        if not isinstance(node, ast.Call):
+            continue
+        navn = getattr(node.func, "id", None)
+        if navn != "insert_private_brain_record":
+            continue
+        for kw in node.keywords:
+            if kw.arg and kw.arg not in gyldige:
+                fejl.append(f"linje {node.lineno}: ukendt parameter `{kw.arg}=`")
+
+    assert not fejl, "kald til insert_private_brain_record med ukendte parametre:\n" + "\n".join(fejl)

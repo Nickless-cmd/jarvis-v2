@@ -398,15 +398,34 @@ def _record_judgment_session(judgments: list[dict[str, Any]], evidence: dict[str
 
     record_text = "\n".join(lines)
 
+    # Kaldet her stod med `write_density_note`s skema (`title`/`what_happened`/
+    # `what_it_meant`) mod `insert_private_brain_record`, som tager
+    # `record_type`/`focus`/`summary`/`detail`. Syv parametre fandtes ikke, saa
+    # hver natlig revision fejlede med «unexpected keyword argument 'kind'» og
+    # blev aldrig gemt — maalt 27/11-2026: foerste forekomst 10/11, altsaa 17
+    # dage uden en enkelt gemt dom. Fejlen var tavs fordi den blev fanget og
+    # logget som advarsel. `mood` og `visibility` har ingen kolonne; meningen
+    # med dem er foldet ind i `summary`, og private_brain ER per definition
+    # privat.
+    handling = judgments[0].get("action", "observation") if judgments else "ingen"
     try:
         insert_private_brain_record(
-            kind="judgment",
-            title=f"Natlig revision {now_date_str()}",
-            what_happened=record_text,
-            what_it_meant=f"Dom over {len(judgments)} stillingtagen",
-            what_changed=judgments[0].get("action", "observation") if judgments else "ingen",
-            mood="solemn",
-            visibility="personal",
+            record_id=f"pb-judg-{uuid4().hex[:12]}",
+            record_type="judgment",
+            layer="private_brain",
+            session_id="heartbeat",
+            run_id=f"consolidation-judge-{uuid4().hex[:12]}",
+            focus=f"Natlig revision {now_date_str()}",
+            summary=(
+                f"Dom over {len(judgments)} stillingtagen — handling: {handling}. "
+                f"Adherence {adherence.get('score', '?')}%, "
+                f"tick-kvalitet {tick_q.get('avg_score', '?')}/100."
+            ),
+            detail=record_text,
+            source_signals="consolidation-judge-daemon:nightly",
+            confidence="medium",
+            created_at=datetime.now(UTC).isoformat(),
+            domain="self",
         )
     except Exception as e:
         logger.warning("consolidation_judge: brain record failed: %s", e)

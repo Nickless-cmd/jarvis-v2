@@ -31,8 +31,8 @@ _Consolidation Judge Daemon — nightly reckoning, not observation._
 | function | `_enforce_reject` | `(j)` | Handle rejected items — typically revoke or pause. | [src](../../../core/services/consolidation_judge_daemon.py#L302) |
 | function | `_enforce_accept` | `(j)` | Handle accepted items — typically recommit or flag. | [src](../../../core/services/consolidation_judge_daemon.py#L359) |
 | function | `_record_judgment_session` | `(judgments, evidence)` | Write the full judgment session as a private brain record. | [src](../../../core/services/consolidation_judge_daemon.py#L380) |
-| function | `build_consolidation_judge_surface` | `()` | Build surface data for prompt injection. | [src](../../../core/services/consolidation_judge_daemon.py#L415) |
-| function | `now_date_str` | `()` | — | [src](../../../core/services/consolidation_judge_daemon.py#L423) |
+| function | `build_consolidation_judge_surface` | `()` | Build surface data for prompt injection. | [src](../../../core/services/consolidation_judge_daemon.py#L434) |
+| function | `now_date_str` | `()` | — | [src](../../../core/services/consolidation_judge_daemon.py#L442) |
 
 ## `core/services/consolidation_target_signal_tracking.py`
 _Consolidation-target signal tracking — migrated onto signal_tracking_framework._

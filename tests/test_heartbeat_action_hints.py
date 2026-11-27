@@ -136,16 +136,88 @@ class TestPeriodenGate:
 
 class TestSamletListe:
     def test_tom_naar_intet_er_forfaldent(self):
-        with patch.object(hints, "chronicle_hint", return_value=None):
+        with patch.object(hints, "chronicle_hint", return_value=None), \
+             patch.object(hints, "open_loop_hint", return_value=None):
             assert hints.inner_life_hints() == []
 
     def test_indeholder_aktive_vink(self):
-        with patch.object(hints, "chronicle_hint", return_value="- vink"):
+        with patch.object(hints, "chronicle_hint", return_value="- vink"), \
+             patch.object(hints, "open_loop_hint", return_value=None):
             assert hints.inner_life_hints() == ["- vink"]
 
     def test_en_fejlende_vink_vaelter_ikke_de_andre(self):
-        with patch.object(hints, "chronicle_hint", side_effect=RuntimeError("boom")):
+        with patch.object(hints, "chronicle_hint", side_effect=RuntimeError("boom")), \
+             patch.object(hints, "open_loop_hint", return_value=None):
             assert hints.inner_life_hints() == []
+
+    def test_en_fejlende_opdagelsesvink_vaelter_ikke_kronikken(self):
+        with patch.object(hints, "chronicle_hint", return_value="- kronik"), \
+             patch.object(hints, "open_loop_hint", side_effect=RuntimeError("boom")):
+            assert hints.inner_life_hints() == ["- kronik"]
+
+
+class TestOpdagelsesVinket:
+    """`act_on_initiative` faldt 35 -> 5 om dagen fordi initiativ-køen blev tømt.
+
+    Opdagelse var tilladt hele tiden, men havde intet vink — samme fejlklasse som
+    filens oprindelige problem. De åbne loops hober sig op (~20 nye i døgnet mod
+    3-7 fulgt op på), så det er den ressource vinket peger på.
+    """
+
+    def _hint(self, rows):
+        with patch(
+            "core.runtime.db_runtime_executive_signals.list_runtime_open_loop_signals",
+            return_value=rows,
+        ):
+            return hints.open_loop_hint()
+
+    @staticmethod
+    def _loop(days_ago: float, title: str = "Open loop: noget uafsluttet") -> dict:
+        return {"title": title, "created_at": _iso(days_ago), "status": "open"}
+
+    def test_tom_ko_giver_intet_vink(self):
+        assert self._hint([]) is None
+
+    def test_under_taersklen_tier_vi(self):
+        """103 åbne er en ophobning; 3 er en normal kø — vi må ikke støje om den."""
+        rows = [self._loop(5) for _ in range(3)]
+        assert self._hint(rows) is None
+
+    def test_ophobning_men_ung_ko_tier_vi(self):
+        """Mange loops der alle er fra i dag er ikke en ophobning endnu."""
+        rows = [self._loop(0.2) for _ in range(40)]
+        assert self._hint(rows) is None
+
+    def test_ophobning_med_gammel_post_giver_vink(self):
+        rows = [self._loop(0.1) for _ in range(20)] + [self._loop(6)]
+        vink = self._hint(rows)
+        assert vink is not None
+        assert "21 åbne loops" in vink
+        assert "6.0 døgn" in vink
+
+    def test_vinket_naevner_det_aeldste_loop_ved_navn(self):
+        """Et generisk «følg et loop op» er netop den vage hensigt vi vil væk fra."""
+        rows = [self._loop(0.1)] * 20 + [self._loop(4, "Open loop: mangler svar om X")]
+        vink = self._hint(rows)
+        assert "mangler svar om X" in vink
+
+    def test_vinket_peger_paa_follow_open_loop(self):
+        rows = [self._loop(5)] * 20
+        assert "follow_open_loop" in self._hint(rows)
+
+    def test_ulaeseligt_tidspunkt_taeller_ikke_som_gammelt(self):
+        """Kan alderen ikke beregnes, må vi ikke gætte at posten er forfalden."""
+        rows = [{"title": "x", "created_at": "ikke en dato"}] * 20
+        assert self._hint(rows) is None
+
+    def test_laesefejl_giver_none_i_stedet_for_at_kaste(self):
+        with patch(
+            "core.runtime.db_runtime_executive_signals.list_runtime_open_loop_signals",
+            side_effect=RuntimeError("db"),
+        ):
+            assert hints.open_loop_backlog() is None
+            assert hints.open_loop_hint() is None
+
 
 
 class TestKobletPaaBeslutningsPrompten:

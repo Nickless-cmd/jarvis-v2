@@ -470,6 +470,8 @@ _Hvornår er en indre-livs-handling det rigtige valg? Vink til heartbeat-beslutn
 | function | `chronicle_period_covered` | `()` | True når seneste kronik-post allerede dækker indeværende ISO-uge. | [src](../../../core/services/heartbeat_action_hints.py#L61) |
 | function | `chronicle_hint` | `()` | Vink om at skrive kronik — kun når handlingen FAKTISK ville skrive noget. | [src](../../../core/services/heartbeat_action_hints.py#L83) |
 | function | `inner_life_hints` | `()` | Alle aktive vink for indre-livs-handlinger. Tom liste når intet er forfaldent. | [src](../../../core/services/heartbeat_action_hints.py#L111) |
+| function | `open_loop_backlog` | `()` | Antal åbne loops og den ældste post. ``None`` når lageret ikke kan læses. | [src](../../../core/services/heartbeat_action_hints.py#L156) |
+| function | `open_loop_hint` | `()` | Vink om at følge et åbent loop op — kun når der er en reel ophobning. | [src](../../../core/services/heartbeat_action_hints.py#L178) |
 
 ## `core/services/heartbeat_curriculum_cadence.py`
 _Fast kadence for curriculum-materialisering — uden om action-vaelgeren._

@@ -330,6 +330,25 @@
   font-size: 12.5px; line-height: 1.5;
   color: var(--rv-tertiary);
 }
+/* Kollaps-wrapperen om trinlisten (27/11-2026). Målt i Chromium: da runden
+   holdt op med at være aktiv, faldt den 74px → 38px i ÉN frame — 36px, som er
+   trinlistens højde — mens resten af huset bevæger sig over `--dur-fold`.
+   Naboen rykkede derfor 36px op, og det så ud som om faden tog slutbeskeden
+   med. `1fr → 0fr` interpolerer mod den FAKTISKE højde, så plads og synlighed
+   følges ad. `align-self: start` forhindrer at elementet strækkes som
+   grid-item; `min-height: 0` på barnet lader `0fr` klemme rækken til nul. */
+.raekkevisning .rv-trin-ydre {
+  display: grid;
+  align-self: start;
+  grid-template-rows: 1fr;
+  min-width: 0;
+  transition: grid-template-rows var(--dur-fold) var(--ease-fold);
+}
+.raekkevisning .rv-trin-ydre[data-aaben='false'] { grid-template-rows: 0fr; }
+.raekkevisning .rv-trin-indre { min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .raekkevisning .rv-trin-ydre { transition: none; }
+}
 .raekkevisning .rv-trinRaekke {
   display: flex; align-items: baseline; gap: 7px; min-width: 0;
 }

@@ -383,6 +383,32 @@ function ArbejdsrundeImpl({
   // Trinnene udledes af rundens egne `tool_use`-blokke (`lib/rundeTrin.ts`),
   // så et trin kun kan stå der hvis serveren faktisk sendte kaldet.
   const trin = arbejdsTrin(elementer, aktivRunde)
+  // ── Højden må ikke springe når runden forlades (målt 27/11-2026) ────────
+  //
+  // `arbejdsTrin(elementer, aktivRunde)` giver en TOM liste i samme frame som
+  // runden holder op med at være aktiv. Målt i Chromium: linjen faldt 74px →
+  // 38px — 36px, som er trinlistens højde — mens resten af huset bevæger sig
+  // over `--dur-fold`. Naboen (slutbeskeden) rykkede derfor 36px op i én
+  // frame, og det så ud som om faden tog den med.
+  //
+  // Listen holdes derfor i live i præcis `--dur-fold` efter runden er forladt,
+  // så wrapperen kan kollapse den animeret. Den er `aria-hidden` i det vindue:
+  // den er visuel overgang, ikke indhold man kan læse som en kørende proces.
+  const forladtTrin = useRef<typeof trin>([])
+  const [trinHolder, setTrinHolder] = useState(false)
+  useEffect(() => {
+    if (aktivRunde) {
+      forladtTrin.current = []
+      setTrinHolder(false)
+      return
+    }
+    if (forladtTrin.current.length === 0) return
+    setTrinHolder(true)
+    const t = window.setTimeout(() => { forladtTrin.current = []; setTrinHolder(false) }, 400)
+    return () => window.clearTimeout(t)
+  }, [aktivRunde])
+  if (aktivRunde && trin.length > 0) forladtTrin.current = trin
+  const visteTrin = aktivRunde ? trin : (trinHolder ? forladtTrin.current : [])
   // Overskriften ER det kørende trin når serveren ikke har sin egen
   // arbejdsbeskrivelse (`working_step`). Så må den ikke stå to gange: linjen
   // bærer den — med ring og shimmer — og listen viser historikken op til den.
@@ -392,7 +418,7 @@ function ArbejdsrundeImpl({
   const overskriftErSidste = Boolean(
     sidsteTrin && sidsteTrin.status === 'active' && sidsteTrin.tekst === beskrivelse,
   )
-  const synligeTrin = overskriftErSidste ? trin.slice(0, -1) : trin
+  const synligeTrin = overskriftErSidste ? visteTrin.slice(0, -1) : visteTrin
   // Kun det man ikke kan se af sig selv: at noget fejlede eller aldrig fik et
   // svar. Antallet og «Fold ud» stod her før, men pilen viser allerede at
   // rækken kan foldes, og tallet sagde intet om udfaldet (Bjørn 15/11-2026).
@@ -437,17 +463,35 @@ function ArbejdsrundeImpl({
           læser, ikke en affordance. Hver række er nøglet på kaldets id, så en
           statusændring opdaterer glyffen i stedet for at genopbygge listen
           (kravet om at indholdet ikke hopper, Bjørn 15/11-2026). */}
-      {aktivRunde && synligeTrin.length > 0 && (
-        <ol className="rv-trin" aria-label="Arbejdstrin">
-          {synligeTrin.map((t) => (
-            <li key={t.id} className="rv-trinRaekke" data-status={t.status}>
-              <span className="rv-trinGlyf" aria-hidden="true"><TrinGlyf status={t.status} /></span>
-              <span className="rv-trinTekst">{t.tekst}</span>
-              {t.note ? <span className="rv-trinNote">{t.note}</span> : null}
-            </li>
-          ))}
-        </ol>
-      )}
+      {/* Niveau 1: den aktive rundes proces. Ligger UDEN for knappen, så
+          trinnene ikke er klikbare som en del af folden — de er indhold man
+          læser, ikke en affordance. Hver række er nøglet på kaldets id, så en
+          statusændring opdaterer glyffen i stedet for at genopbygge listen
+          (kravet om at indholdet ikke hopper, Bjørn 15/11-2026).
+
+          WRAPPEREN ER NY (27/11-2026). Målt i Chromium: da runden holdt op med
+          at være aktiv, faldt den fra 74px til 38px — 36px, som er præcis
+          trinlistens højde — i ÉN frame, mens resten af huset bevæger sig over
+          `--dur-fold`. Naboen (slutbeskeden) rykkede derfor 36px op, og det så
+          ud som om faden tog den med. Nu bliver listen stående i DOM'en og
+          wrapperen animerer `1fr → 0fr`, så højden glider med foldens egen
+          varighed. Samme mønster som `.chat-flow-runde`; `align-self: start`
+          og `min-height: 0` er ikke kosmetik — se chat-flow.css. */}
+      <div className="rv-trin-ydre" data-aaben={aktivRunde && synligeTrin.length > 0 ? 'true' : 'false'}>
+        <div className="rv-trin-indre">
+          {synligeTrin.length > 0 && (
+            <ol className="rv-trin" aria-label="Arbejdstrin" aria-hidden={aktivRunde ? undefined : true}>
+              {synligeTrin.map((t) => (
+                <li key={t.id} className="rv-trinRaekke" data-status={t.status}>
+                  <span className="rv-trinGlyf" aria-hidden="true"><TrinGlyf status={t.status} /></span>
+                  <span className="rv-trinTekst">{t.tekst}</span>
+                  {t.note ? <span className="rv-trinNote">{t.note}</span> : null}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      </div>
       <Arbejdsdetaljer elementer={elementer} aaben={aaben} streaming={streaming} hale={hale} config={config} beskedId={beskedId} />
     </div>
   )
@@ -735,7 +779,8 @@ function RaekkeTranskriptImpl({
             <Arbejdsrunde key={`r${i}`}
               elementer={s.elementer} streaming={streaming} hale={hale} sidste={aktiv}
               config={config} etiket={etiketFor(s.elementer, etiketter)} beskedId={beskedId}
-              turSekunder={turSekunder} workingStep={aktiv ? workingStep : undefined} />
+              turSekunder={turSekunder} skjult={aktiv && skjulAktivRunde}
+              workingStep={aktiv ? workingStep : undefined} />
           )
         })}
       </div>

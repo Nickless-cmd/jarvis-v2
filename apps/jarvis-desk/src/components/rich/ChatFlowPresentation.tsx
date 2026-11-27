@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ApiConfig } from '../../lib/api'
 import { deriveChatFlow } from '../../lib/chatFlowModel'
 import type { ContentBlock } from '../../lib/sseProtocol'
@@ -471,6 +471,33 @@ export function ChatFlowPresentation({
   // svaret skrives, hvor tilstanden er `formidlet` og ikke `aktiv`. Blandede
   // man dem, forsvandt hovedet i det vindue (målt 18/11-2026).
   const turenKoerer = streaming || arbejdeEfterSvar || venterPaaPace
+
+  // LIVSCYKLUSSEN: live → kollapset → unmount (Bjørn 27/11-2026).
+  //
+  // «Containeren skal først afmonteres efter den afsluttede transition, uden et
+  // efterfølgende layout-hop.»
+  //
+  // `kollapset` er ikke en slutning, men et OVERGANGSTRIN: rækken går til 0fr
+  // og gap'et neutraliseres over `--fold-varighed` (300ms). Først når det ur er
+  // gået, må noden fjernes — på det tidspunkt optager den nul plads, så
+  // fjernelsen ændrer ikke layoutet. Sætter man `display: none` mens
+  // transitionen kører, er der intet at animere, og så hopper det.
+  //
+  // Uret armes når turen bliver terminal, og RYDDES hvis den genoptages (et nyt
+  // run i samme tur): ellers ville en container der lige var på vej ud blive
+  // fjernet midt i en tur der stadig kører.
+  const [afmonteret, setAfmonteret] = useState(false)
+  useEffect(() => {
+    if (turenKoerer) {
+      setAfmonteret(false)
+      return
+    }
+    // 300ms er `--dur-sheet`, som `--fold-varighed` peger på. Tallet står her
+    // fordi et ur ikke kan læse en CSS-variabel; ændres tokenet, skal det
+    // følge med — derfor ligger begge tal samme sted i `tokens.css`.
+    const t = setTimeout(() => setAfmonteret(true), 300)
+    return () => clearTimeout(t)
+  }, [turenKoerer])
   // HOVEDET ER FIRE TILSTANDE, IKKE EN KOMPONENT MED EN FØDSEL OG EN DØD
   // (Bjørn 18/11-2026: «hvornår og hvorfor folder deres hoved? … det sker ofte
   // hovedets fold bliver til et blink»).
@@ -779,13 +806,27 @@ export function ChatFlowPresentation({
                   ? segment.blokke.filter((block) => !erLeverance(block))
                   : segment.blokke
                 if (blokke.length === 0) return null
+                // AFMONTERINGEN (Bjørn 27/11-2026): «Containeren skal først
+                // afmonteres efter den afsluttede transition, uden et
+                // efterfølgende layout-hop.» Når `afmonteret` er sand, er
+                // rækken allerede 0fr og gap'et neutraliseret — så at fjerne
+                // noden ændrer ikke layoutet. Det er hele pointen: fjernelsen
+                // må ikke kunne ses.
+                if (!erSvar && afmonteret) return null
                 // LEVETIDEN som data, ikke som en gættet CSS-tilstand.
                 //
                 // Et runde-segment bliver stående så længe turen kører — også
                 // når det ligger EFTER slutsvaret, og mens pacen stadig har
                 // tekst tilbage (`turenKoerer` bærer `venterPaaPace`). Først
-                // når turen er terminal OG pacen drænet, må den kollapse.
-                const levetid = erSvar ? 'svar' : (turenKoerer ? 'live' : 'kollapset')
+                // når turen er terminal OG pacen drænet, må den kollapse — og
+                // først når kollapset er færdiganimeret, må den afmonteres.
+                const levetid = erSvar
+                  ? 'svar'
+                  : turenKoerer
+                    ? 'live'
+                    : afmonteret
+                      ? 'unmount'
+                      : 'kollapset'
                 return (
                   <div
                     key={segment.id}
@@ -795,9 +836,20 @@ export function ChatFlowPresentation({
                     data-levetid={levetid}
                     data-segment-id={segment.id}
                   >
-                    <BlocksRenderer blocks={blokke} density={density} streaming={streaming}
-                      rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
-                      beskedId={beskedId} config={config} />
+                    {/* ÉN RÆKKE, IKKE SEKS (målt 27/11-2026 i Chromium).
+                        `grid-template-rows: 1fr` gælder kun den FØRSTE række.
+                        `BlocksRenderer` giver flere søskende — seks
+                        værktøjskald blev seks grid-børn, og de fem implicitte
+                        rækker arvede ikke `1fr`. Målt: `grid-template-rows` var
+                        `0px 74.8px 74.8px 74.8px 74.8px 74.8px` — kun 1/6 af
+                        højden animerede, resten forsvandt først ved
+                        afmonteringen med et spring på 361px. Med én wrapper
+                        findes der præcis én række, og hele højden følger med. */}
+                    <div className="chat-flow-runde-indhold">
+                      <BlocksRenderer blocks={blokke} density={density} streaming={streaming}
+                        rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
+                        beskedId={beskedId} config={config} />
+                    </div>
                   </div>
                 )
               })}

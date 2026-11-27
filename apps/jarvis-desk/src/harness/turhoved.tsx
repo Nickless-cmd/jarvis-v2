@@ -1,9 +1,9 @@
 /**
  * BROWSER-HARNESS — den ÆGTE komponent, målt med rigtig layout-motor.
  *
- * jsdom har ingen layout-motor, så `max-height`-transitionen i
- * `chat-flow.css` kan ikke måles der. En statisk læsning af CSS-filen beviser
- * kun at egenskaben STÅR i filen, ikke at containeren mister sin højde.
+ * jsdom har ingen layout-motor, så kollapset kan ikke måles der. En statisk
+ * læsning af CSS-filen beviser kun at egenskaben STÅR i filen, ikke at
+ * containeren mister sin højde eller at besvarelserne glider sammen.
  *
  * Denne harness monterer `ChatFlowPresentation` uændret (samme komponent,
  * samme CSS-importer) og lader Playwright skifte turen fra live til terminal
@@ -11,6 +11,17 @@
  *
  * Køres med `npx vite --port 5199` og åbnes på
  * `http://localhost:5199/src/harness/turhoved.html`.
+ *
+ * ## Hvad den kan (Bjørn 27/11-2026)
+ *
+ * «Udvid browsermålingen til at følge den faktiske afstand mellem besvarelse A
+ * og B, med rundecontaineren imellem. Mål flere forskellige containerhøjder,
+ * og kræv at både synlighed og den samlede optagede plads reduceres
+ * kontinuerligt.»
+ *
+ * Derfor kan `__sætHoejde` vælge hvor meget arbejde runden bærer, så kollapset
+ * måles ved både en lav og en høj container — `1fr → 0fr` skal virke ens for
+ * begge, hvor `max-height`-loftet ikke gjorde.
  */
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -28,18 +39,29 @@ const config: ApiConfig = {
   authToken: 'harness', // noqa: literal-credential — dummy, intet kald går gennem den
 }
 
-/** Kun besvarelse — ingen runde. `fladtFlow` er FALSK i denne form. */
-const UDEN_RUNDE: ContentBlock[] = [
-  { type: 'text', text: 'Første besvarelse, som skal blive stående gennem hele forløbet.', phase: 'final_answer' },
-]
+const SVAR_A: ContentBlock = {
+  type: 'text',
+  text: 'Første besvarelse, som skal blive stående gennem hele forløbet.',
+  phase: 'final_answer',
+}
+const SVAR_B: ContentBlock = {
+  type: 'text',
+  text: 'Anden besvarelse, som skal glide op mod den første.',
+  phase: 'final_answer',
+}
 
-/** Besvarelse + værktøjskald: nu findes en runde EFTER svaret, så `fladtFlow` bliver SAND. */
-const MED_RUNDE: ContentBlock[] = [
-  ...UDEN_RUNDE,
-  // Ingen `tool_result`-blok: typen findes ikke i `ContentBlock` — resultatet
-  // hænger på selve `tool_use`. Runden opstår af kaldet alene.
-  { type: 'tool_use', id: 'kald-1', name: 'bash', input: { command: 'echo hej' } },
-]
+/** Hvor meget arbejde runden bærer — styrer containerens højde. */
+type Hoejde = 'lav' | 'hoej'
+
+function rundeBlokke(hoejde: Hoejde): ContentBlock[] {
+  const antal = hoejde === 'lav' ? 1 : 6
+  return Array.from({ length: antal }, (_, i) => ({
+    type: 'tool_use' as const,
+    id: `kald-${i}`,
+    name: 'bash',
+    input: { command: `echo trin ${i}` },
+  }))
+}
 
 interface Tilstand {
   streaming: boolean
@@ -52,15 +74,20 @@ const TERMINAL: Tilstand = { streaming: false, status: 'done', arbejdeEfterSvar:
 
 function Harness() {
   const [t, setT] = useState<Tilstand>(LIVE)
-  const [medRunde, setMedRunde] = useState(false)
+  const [fase, setFase] = useState<'uden' | 'med'>('uden')
+  const [hoejde, setHoejde] = useState<Hoejde>('lav')
 
   // Playwright styrer tilstanden herfra — samme mount, ingen remount.
   ;(window as unknown as Record<string, unknown>).__sætTilstand = (navn: 'live' | 'terminal') =>
     setT(navn === 'live' ? LIVE : TERMINAL)
   ;(window as unknown as Record<string, unknown>).__sætBlokke = (navn: 'uden-runde' | 'med-runde') =>
-    setMedRunde(navn === 'med-runde')
+    setFase(navn === 'med-runde' ? 'med' : 'uden')
+  ;(window as unknown as Record<string, unknown>).__sætHoejde = (navn: Hoejde) => setHoejde(navn)
 
-  const blocks = medRunde ? MED_RUNDE : UDEN_RUNDE
+  // A → runde → B: runden ligger MELLEM de to besvarelser, så afstanden
+  // mellem dem er det brugeren ser når containeren kollapser.
+  const blocks: ContentBlock[] =
+    fase === 'med' ? [SVAR_A, ...rundeBlokke(hoejde), SVAR_B] : [SVAR_A]
 
   return (
     <div className="transcript" style={{ padding: '24px', maxWidth: '760px' }}>

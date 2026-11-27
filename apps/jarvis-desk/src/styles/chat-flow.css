@@ -155,21 +155,55 @@
   min-width: 0;
 }
 
+/* RUNDE-CONTAINEREN ER EN GRID-WRAPPER (Bjørn 27/11-2026).
+ *
+ * Den animerer `grid-template-rows: 1fr → 0fr` — samme mønster som
+ * `.chat-flow-gruppe-ydre` længere nede, af samme grund.
+ *
+ * ## Hvorfor ikke `max-height` (målt 27/11-2026 i Chromium)
+ *
+ * Loftet var 2400px mens containerens faktiske højde var 74px — 32 gange for
+ * højt. De første to tredjedele af transitionen foregik derfor i intervallet
+ * 2400 → 74px, hvor INTET synligt ændrede sig, og resten klappede sammen i to
+ * spring på 30 og 21px. Målt kurve: ved 198ms var opacity 0,07 (teksten
+ * praktisk talt væk) mens højden stadig var 74,4px. Brugeren så et HUL: teksten
+ * forsvandt, en tom boks stod tilbage, og så klappede den sammen.
+ *
+ * `1fr → 0fr` interpolerer mod den FAKTISKE højde, så synlighed og plads
+ * følges ad hele vejen — uanset om containeren er 40 eller 400px høj.
+ *
+ * ## `align-self: start` er ikke kosmetik
+ *
+ * Uden den STRÆKKES elementet som grid-item, og en negativ margin giver det
+ * MERE plads i rækken i stedet for mindre. Målt 18/11-2026 på gruppe-ydre:
+ * med `align-self: auto` blev den lukkede gruppe 16,78px høj — næsten præcis
+ * summen af dens egne negative margins.
+ *
+ * ## Barnet skal have `min-height: 0`
+ *
+ * Et grid-barns automatiske minimum er dets indholdshøjde, så `0fr` ville
+ * ellers ikke kunne klemme rækken til nul. */
 .chat-flow-runde {
+  display: grid;
+  align-self: start;
+  grid-template-rows: 1fr;
   min-width: 0;
-  /* Loftet findes for at kollapset kan ANIMERES: man kan ikke interpolere fra
-     `none`, så udgangspunktet skal være et tal. `overflow: visible` betyder at
-     loftet ikke klipper noget synligt — det sætter kun den boks kollapset
-     animerer imod. En runde-container over loftet er ikke målt i produktion;
-     hvis den opstår, er `grid-template-rows: 1fr → 0fr` på en wrapper den
-     rigtige afløser. */
-  max-height: 2400px;
-  overflow: visible;
   animation: chat-flow-enter var(--fold-varighed) var(--fold-kurve);
   transition:
-    max-height var(--fold-varighed) var(--fold-kurve),
+    grid-template-rows var(--fold-varighed) var(--fold-kurve),
     opacity var(--fold-varighed) var(--fold-kurve),
-    margin-top var(--fold-varighed) var(--fold-kurve);
+    margin-bottom var(--fold-varighed) var(--fold-kurve);
+}
+
+.chat-flow-runde > * {
+  min-height: 0;
+}
+
+/* Indholdet er ÉN række — se kommentaren i komponenten. Wrapperen findes kun
+   for at grid'en har præcis ét barn at animere; den må ikke selv skabe luft. */
+.chat-flow-runde-indhold {
+  min-height: 0;
+  min-width: 0;
 }
 
 /* LEVETIDEN (26/11-2026). `data-levetid` sættes af komponenten, ikke gættet af
@@ -182,13 +216,40 @@
    indholdet stående i sin fulde højde, så besvarelserne ikke kunne glide
    sammen — brugeren så arbejde der var «væk» men stadig skubbede. Nu går
    højden, margenen og synligheden ned samtidig, over foldens ur. */
+/* GAP'ET SKAL OGSÅ VÆK (Bjørn 27/11-2026): «.chat-flow-segmenter bruger
+ * gap: inherit. En container med 0 px højde kan derfor stadig optage indirekte
+ * plads.»
+ *
+ * Målt: `.chat-flow` har `gap: 0.65rem` og `.chat-flow-segmenter` arver den.
+ * En kollapset runde-container efterlod derfor sit gap i flowet — 10,4px tom
+ * luft mellem besvarelse A og B, selv om containeren var 0px høj. Besvarelserne
+ * kunne ikke glide sammen, fordi der stadig stod et usynligt mellemrum imellem
+ * dem.
+ *
+ * Løsningen er den samme som gruppe-ydre bruger: en negativ `margin-bottom` på
+ * præcis gap-værdien neutraliserer det ekstra grid-gap. Fordi den animerer
+ * sammen med rækken, forsvinder pladsen i ÉN jævn bevægelse i stedet for at
+ * rykke først. `0.65rem` = 10.4px ved 16px rod; regnet i rem så den følger
+ * brugerens skriftstørrelse. */
 .chat-flow-runde[data-levetid='kollapset'] {
   animation: none;
   opacity: 0;
-  max-height: 0;
-  margin-top: 0;
-  overflow: hidden;
+  grid-template-rows: 0fr;
+  margin-bottom: -0.65rem;
   pointer-events: none;
+}
+
+/* FØRST HER MÅ NODEN AFMONTERES (Bjørn 27/11-2026): «Containeren skal først
+ * afmonteres efter den afsluttede transition, uden et efterfølgende
+ * layout-hop.»
+ *
+ * `unmount` sættes af komponenten EFTER `--fold-varighed` er gået — ikke ved
+ * `kollapset`. På det tidspunkt er rækken allerede 0fr og gap'et neutraliseret,
+ * så noden optager nul plads. Fjernes den, ændrer layoutet sig derfor ikke:
+ * intet hop. Sættes den derimod til `display: none` mens transitionen kører,
+ * ville der ikke være noget at animere — og det er præcis det hop vi undgår. */
+.chat-flow-runde[data-levetid='unmount'] {
+  display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

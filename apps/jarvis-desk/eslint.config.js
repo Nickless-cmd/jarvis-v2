@@ -99,6 +99,32 @@ export default tseslint.config(
     rules: { '@typescript-eslint/no-this-alias': 'off' },
   },
   {
+    // Browser-harnessen (`src/harness/`) er Playwright-scripts: de koerer i
+    // Node, men naesten al deres kode ligger inde i `page.evaluate`-callbacks
+    // og eksekveres i Chromium. De er derfor hverken Node- eller app-kode.
+    //
+    // MAALT 27/11-2026: uden denne blok faldt ci med 96 `no-undef`-fejl paa
+    // `window`, `document`, `performance`, `console` og
+    // `requestAnimationFrame` — alle i de fire `.mjs`-filer. Fejlen stod i
+    // hver eneste commit fra `720760114` til `8901c22d7`, mens jeg lokalt
+    // koerte `tsc` og `vitest`, som begge springer lint over. Blokken er
+    // valgt frem for et ignore, saa maalingerne stadig bliver laest igennem.
+    files: ['src/harness/**/*.mjs'],
+    languageOptions: {
+      sourceType: 'module',
+      globals: {
+        process: 'readonly', console: 'readonly', URL: 'readonly',
+        Buffer: 'readonly', __dirname: 'readonly', __filename: 'readonly',
+        setTimeout: 'readonly', clearTimeout: 'readonly',
+        setInterval: 'readonly', clearInterval: 'readonly',
+        fetch: 'readonly', performance: 'readonly',
+        document: 'readonly', window: 'readonly', localStorage: 'readonly',
+        navigator: 'readonly', getComputedStyle: 'readonly',
+        requestAnimationFrame: 'readonly', cancelAnimationFrame: 'readonly',
+      },
+    },
+  },
+  {
     // Standalone Node-scripts (fx `scripts/syntest.mjs`) koerer uden for
     // bundleren, men refererer ogsaa browser-globaler inde i `page.evaluate`-
     // callbacks, fordi koden eksekveres i den side der testes.

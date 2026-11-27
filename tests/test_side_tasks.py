@@ -769,3 +769,27 @@ def test_update_er_i_chat_og_code_scope():
     from core.tools import tool_scoping as ts
     assert "update_side_task" in ts.CHAT_MODE_TOOLS_BASE
     assert "update_side_task" in ts.CODE_MODE_OWNER_EXTRA
+
+
+def test_finding_grenen_bevarer_not_before_og_autonomy_mode(lager, monkeypatch):
+    """27/11-2026: finding-grenen tabte not_before tavst (blev et autonomt run)."""
+    from core.services import run_finding_accounting as rfa
+    ledger: list = []
+    monkeypatch.setattr(rfa, "load_json", lambda _k, _d: list(ledger))
+    monkeypatch.setattr(rfa, "save_json",
+                        lambda _k, items: ledger.__setitem__(slice(None), items))
+    monkeypatch.setattr("core.services.session_context_resolve.aktivt_run_id",
+                        lambda _d="": "run-test")
+    monkeypatch.setattr("core.services.session_context_resolve.aktiv_session_id",
+                        lambda _d="": "chat-test")
+    fremtid = (datetime.now(UTC) + timedelta(hours=2)).isoformat()
+    svar = side_tasks._exec_flag_side_task({
+        "finding_kind": "other", "disposition": "side_task",
+        "path": "core/x.py", "behavior": "paamindelse", "evidence": "maalt",
+        "title": "Paamind", "prompt": "Goer det senere",
+        "not_before": fremtid, "autonomy_mode": "inspect",
+    })
+    assert svar["status"] == "ok", svar
+    post = next(r for r in lager if r["side_task_id"] == svar["side_task_id"])
+    assert post["not_before"] is not None
+    assert post["autonomy_mode"] == "inspect"

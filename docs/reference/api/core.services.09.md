@@ -90,15 +90,15 @@ _Chronicle Engine — Jarvis' narrative autobiography that grows over time._
 | function | `_render_template_narrative` | `(appraisal)` | Render a deterministic fallback narrative from a structured appraisal. | [src](../../../core/services/chronicle_engine.py#L380) |
 | function | `_render_narrative_prompt` | `(appraisal)` | Render an LLM narrative prompt from a structured ChronicleAppraisal. | [src](../../../core/services/chronicle_engine.py#L401) |
 | function | `_collect_topics` | `(recent_runs)` | — | [src](../../../core/services/chronicle_engine.py#L449) |
-| function | `_sanitize_narrative` | `(text)` | — | [src](../../../core/services/chronicle_engine.py#L469) |
-| function | `project_entry_to_markdown` | `(entry)` | — | [src](../../../core/services/chronicle_engine.py#L484) |
-| function | `_chronicle_markdown_path` | `()` | — | [src](../../../core/services/chronicle_engine.py#L515) |
-| function | `_rotate_chronicle_if_needed` | `(chronicle_path)` | — | [src](../../../core/services/chronicle_engine.py#L519) |
-| function | `_coerce_text_list` | `(value)` | — | [src](../../../core/services/chronicle_engine.py#L546) |
-| function | `_emit_degraded_event` | `(*, period, reason)` | — | [src](../../../core/services/chronicle_engine.py#L561) |
-| function | `_extract_key_events` | `(recent_runs)` | — | [src](../../../core/services/chronicle_engine.py#L571) |
-| function | `_extract_lessons` | `(recent_runs)` | — | [src](../../../core/services/chronicle_engine.py#L581) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/chronicle_engine.py#L592) |
+| function | `_sanitize_narrative` | `(text)` | — | [src](../../../core/services/chronicle_engine.py#L475) |
+| function | `project_entry_to_markdown` | `(entry)` | — | [src](../../../core/services/chronicle_engine.py#L490) |
+| function | `_chronicle_markdown_path` | `()` | — | [src](../../../core/services/chronicle_engine.py#L521) |
+| function | `_rotate_chronicle_if_needed` | `(chronicle_path)` | — | [src](../../../core/services/chronicle_engine.py#L525) |
+| function | `_coerce_text_list` | `(value)` | — | [src](../../../core/services/chronicle_engine.py#L552) |
+| function | `_emit_degraded_event` | `(*, period, reason)` | — | [src](../../../core/services/chronicle_engine.py#L567) |
+| function | `_extract_key_events` | `(recent_runs)` | — | [src](../../../core/services/chronicle_engine.py#L577) |
+| function | `_extract_lessons` | `(recent_runs)` | — | [src](../../../core/services/chronicle_engine.py#L591) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/chronicle_engine.py#L602) |
 
 ## `core/services/ci_status_watch.py`
 _CI-status — set, ikke gættet._

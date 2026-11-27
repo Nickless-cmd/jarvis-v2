@@ -465,20 +465,20 @@ _Creative Instinct — spontaneous idea-seeds written to INCUBATOR.md._
 | function | `_save` | `(data)` | — | [src](../../../core/services/creative_instinct_daemon.py#L63) |
 | function | `_hours_since` | `(iso_str)` | — | [src](../../../core/services/creative_instinct_daemon.py#L75) |
 | function | `_recent_chat_topics` | `(limit=…)` | — | [src](../../../core/services/creative_instinct_daemon.py#L87) |
-| function | `_recent_dream_hypotheses` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L101) |
-| function | `_recent_avoidances` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L111) |
-| function | `_current_mood_label` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L119) |
-| function | `_compose_spark` | `(source_phrases, mood)` | Combine two source phrases into a spark. | [src](../../../core/services/creative_instinct_daemon.py#L129) |
-| function | `_short_phrase` | `(text)` | — | [src](../../../core/services/creative_instinct_daemon.py#L150) |
-| function | `_generate_seeds` | `(*, max_new)` | — | [src](../../../core/services/creative_instinct_daemon.py#L157) |
-| function | `_write_incubator_md` | `(seeds)` | Overwrite INCUBATOR.md with current active seed list. | [src](../../../core/services/creative_instinct_daemon.py#L194) |
-| function | `_age_seeds` | `(seeds)` | Mature or wither seeds based on age. Returns True if any changed. | [src](../../../core/services/creative_instinct_daemon.py#L224) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/creative_instinct_daemon.py#L242) |
-| function | `list_seeds` | `(*, status=…)` | — | [src](../../../core/services/creative_instinct_daemon.py#L273) |
-| function | `mark_seed` | `(seed_id, *, status, adoption_reference=…)` | — | [src](../../../core/services/creative_instinct_daemon.py#L280) |
-| function | `build_creative_instinct_surface` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L305) |
-| function | `_surface_summary` | `(active, adopted, withered)` | — | [src](../../../core/services/creative_instinct_daemon.py#L335) |
-| function | `build_creative_instinct_prompt_section` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L352) |
+| function | `_recent_dream_hypotheses` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L105) |
+| function | `_recent_avoidances` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L115) |
+| function | `_current_mood_label` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L123) |
+| function | `_compose_spark` | `(source_phrases, mood)` | Combine two source phrases into a spark. | [src](../../../core/services/creative_instinct_daemon.py#L133) |
+| function | `_short_phrase` | `(text)` | — | [src](../../../core/services/creative_instinct_daemon.py#L154) |
+| function | `_generate_seeds` | `(*, max_new)` | — | [src](../../../core/services/creative_instinct_daemon.py#L161) |
+| function | `_write_incubator_md` | `(seeds)` | Overwrite INCUBATOR.md with current active seed list. | [src](../../../core/services/creative_instinct_daemon.py#L198) |
+| function | `_age_seeds` | `(seeds)` | Mature or wither seeds based on age. Returns True if any changed. | [src](../../../core/services/creative_instinct_daemon.py#L228) |
+| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/creative_instinct_daemon.py#L246) |
+| function | `list_seeds` | `(*, status=…)` | — | [src](../../../core/services/creative_instinct_daemon.py#L277) |
+| function | `mark_seed` | `(seed_id, *, status, adoption_reference=…)` | — | [src](../../../core/services/creative_instinct_daemon.py#L284) |
+| function | `build_creative_instinct_surface` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L309) |
+| function | `_surface_summary` | `(active, adopted, withered)` | — | [src](../../../core/services/creative_instinct_daemon.py#L339) |
+| function | `build_creative_instinct_prompt_section` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L356) |
 
 ## `core/services/creative_journal_runtime.py`
 

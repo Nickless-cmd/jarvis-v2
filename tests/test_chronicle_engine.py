@@ -48,3 +48,36 @@ def test_chronicle_guard_error_is_safe(monkeypatch) -> None:
 def test_chronicle_empty_returns_empty(monkeypatch) -> None:
     monkeypatch.setattr(chronicle_engine, "list_cognitive_chronicle_entries", lambda limit=5: [])
     assert chronicle_engine.get_chronicle_context_for_prompt(n=1) == ""
+
+
+# ── Pladsholderen maa ikke citeres som et svar (27/11-2026) ────────────────
+# `recent_visible_runs` giver daemonerne `PLADSHOLDER_KRYPTERET` i stedet for
+# chiffertekst, naar raekken tilhoerer et medlem. Kontrakten er at forbrugeren
+# springer den over (`er_laesbar`) — ikke at den citerer den. Maalt 27/11:
+# pladsholderen blev tokeniseret til emne-ord som «krypteret» og «bevises» og
+# foert ind i chroniclen som om det var noget brugeren havde talt om.
+
+def test_collect_topics_springer_pladsholderen_over() -> None:
+    from core.services.visible_preview_crypto import PLADSHOLDER_KRYPTERET
+
+    runs = [{"text_preview": PLADSHOLDER_KRYPTERET}]
+    assert chronicle_engine._collect_topics(runs) == []
+
+
+def test_collect_topics_laeser_klartekst_som_foer() -> None:
+    runs = [{"text_preview": "vi byggede en ny scheduler til heartbeat"}]
+    topics = chronicle_engine._collect_topics(runs)
+    assert "scheduler" in topics
+
+
+def test_extract_key_events_springer_pladsholderen_over() -> None:
+    from core.services.visible_preview_crypto import PLADSHOLDER_KRYPTERET
+
+    runs = [{"status": "completed", "text_preview": PLADSHOLDER_KRYPTERET}]
+    assert chronicle_engine._extract_key_events(runs) == []
+
+
+def test_extract_key_events_bevarer_klartekst() -> None:
+    runs = [{"status": "completed", "text_preview": "fixet landede paa main"}]
+    events = chronicle_engine._extract_key_events(runs)
+    assert events == ["completed: fixet landede paa main"]

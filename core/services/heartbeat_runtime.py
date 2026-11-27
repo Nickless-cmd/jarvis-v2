@@ -2425,7 +2425,11 @@ def _build_heartbeat_context(
         )
     if continuity.get("active"):
         latest_preview = str(continuity.get("latest_text_preview") or "").strip()
-        if latest_preview:
+        from core.services.visible_preview_crypto import er_laesbar
+
+        # Pladsholderen er ikke en «continuity preview» — den er et svar der
+        # ikke kan bevises, og den må ikke citeres som om den var indhold.
+        if latest_preview and er_laesbar(latest_preview):
             open_loops.append(
                 f"latest visible continuity preview: {latest_preview[:140]}"
             )
@@ -2433,7 +2437,10 @@ def _build_heartbeat_context(
         status = str(item.get("status") or "unknown")
         if status in {"failed", "cancelled"}:
             preview = str(item.get("error") or item.get("text_preview") or "").strip()
-            open_loops.append(f"recent visible run {status}: {preview[:140]}")
+            from core.services.visible_preview_crypto import er_laesbar
+
+            if preview and er_laesbar(preview):
+                open_loops.append(f"recent visible run {status}: {preview[:140]}")
 
     recent_events = []
     for event in event_bus.recent(limit=12):
@@ -5167,6 +5174,13 @@ def _execute_heartbeat_internal_action(
             target_run.get("text_preview") or target_run.get("error") or ""
         ).strip()
         status = str(target_run.get("status") or "")
+        from core.services.visible_preview_crypto import er_laesbar
+
+        # Pladsholderen er ikke et spor at følge. Uden dette led matchede
+        # `follow_open_loop` på ordene i «[krypteret svar — indholdet kan ikke
+        # bevises her]» og behandlede en ikke-beviselig tekst som et åbent spor.
+        if preview and not er_laesbar(preview):
+            preview = ""
         if not preview and not status:
             return {
                 "status": "blocked",
@@ -5255,6 +5269,12 @@ def _execute_heartbeat_internal_action(
             or latest_run.get("text_preview")
             or ""
         ).strip()
+        from core.services.visible_preview_crypto import er_laesbar
+
+        # En pladsholder kan ikke verificeres — den ER svaret «kan ikke bevises».
+        # Uden dette led blev den behandlet som en påstand der kunne efterprøves.
+        if preview and not er_laesbar(preview):
+            preview = ""
         if not preview:
             return {
                 "status": "blocked",
@@ -7262,9 +7282,15 @@ def _emit_schedule_transitions(state: dict[str, object]) -> None:
 
 
 def _heartbeat_runtime_bias_from_recent_work(*, kind: str) -> bool:
+    from core.services.visible_preview_crypto import er_laesbar
+
     recent_runs = recent_visible_runs(limit=4)
+    # Pladsholderen indeholder ordene «krypteret» og «bevises» — de må ikke
+    # blive til et token-match der bøjer bias mod en tilfældig retning.
     joined = " ".join(
-        str(item.get("text_preview") or item.get("error") or "") for item in recent_runs
+        str(item.get("text_preview") or item.get("error") or "")
+        for item in recent_runs
+        if er_laesbar(item.get("text_preview") or item.get("error") or "")
     ).lower()
     if kind == "repo":
         return any(

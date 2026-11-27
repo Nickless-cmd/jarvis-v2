@@ -447,13 +447,19 @@ def _render_narrative_prompt(appraisal: ChronicleAppraisal) -> str:
 
 
 def _collect_topics(recent_runs: list) -> list[str]:
+    from core.services.visible_preview_crypto import er_laesbar
+
     topics: list[str] = []
     seen: set[str] = set()
     for run in recent_runs[:10]:
         preview = str(
             run.get("text_preview") or run.get("user_message_preview") or ""
         )[:100]
-        if not preview:
+        # En pladsholder er ikke et emne. Uden dette led blev
+        # «[krypteret svar — indholdet kan ikke bevises her]» tokeniseret til
+        # emne-ord som «krypteret» og «bevises» og ført ind i chroniclen som
+        # om det var noget brugeren havde talt om.
+        if not preview or not er_laesbar(preview):
             continue
         for word in preview.lower().split():
             normalized = "".join(ch for ch in word if ch.isalnum() or ch in "-_").strip("-_")
@@ -569,11 +575,15 @@ def _emit_degraded_event(*, period: str, reason: str) -> None:
 
 
 def _extract_key_events(recent_runs: list) -> list[str]:
+    from core.services.visible_preview_crypto import er_laesbar
+
     events = []
     for run in recent_runs[:5]:
         preview = str(run.get("text_preview") or run.get("user_message_preview") or "")[:80]
         status = str(run.get("status", ""))
-        if preview:
+        # Pladsholderen må ikke blive en «begivenhed» i chroniclen — den siger
+        # kun at svaret ikke kan bevises, ikke hvad der skete.
+        if preview and er_laesbar(preview):
             events.append(f"{status}: {preview}")
     return events[:5]
 

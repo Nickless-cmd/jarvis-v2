@@ -87,11 +87,15 @@ def _hours_since(iso_str: str | None) -> float:
 def _recent_chat_topics(limit: int = 5) -> list[str]:
     try:
         from core.runtime.db import recent_visible_runs
+        from core.services.visible_preview_crypto import er_laesbar
+
         runs = recent_visible_runs(limit=limit) or []
         topics: list[str] = []
         for r in runs:
             preview = str(r.get("text_preview") or "")[:120]
-            if preview:
+            # Pladsholderen er ikke et samtale-emne. Uden dette led blev den
+            # ført ind i den kreative impuls som «hvad vi talte om».
+            if preview and er_laesbar(preview):
                 topics.append(preview)
         return topics
     except Exception:

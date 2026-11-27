@@ -70,3 +70,15 @@ def er_laesbar(text_preview: str | None) -> bool:
     if tekst == PLADSHOLDER_KRYPTERET:
         return False
     return not chat_crypto.er_krypteret(tekst)
+
+
+def preview_til_skrivning(kilde: str | None, snit) -> str | None:
+    """Skrive-stiens vagt: er KILDEN chiffertekst, skrives pladsholderen.
+
+    `snit` er en callable der laver selve previewet af klartekst. Et snit af
+    `enc:v1:...` er stadig chiffertekst, og laese-stiens vaern (`er_laesbar`)
+    kommer for sent for det der allerede ligger i databasen.
+    """
+    if kilde and chat_crypto.er_krypteret(str(kilde).strip()):
+        return PLADSHOLDER_KRYPTERET
+    return snit(kilde) if kilde else kilde

@@ -361,6 +361,7 @@ _Encrypt durable previews for visible member runs._
 | function | `laesbaar_preview` | `(text_preview, session_id=…, user_id=…)` | Preview som en dommer/prompt/LLM trygt kan laese. ALDRIG chiffertekst. | [src](../../../core/services/visible_preview_crypto.py#L29) |
 | function | `reveal_preview` | `(text, user_id)` | Som `laesbaar_preview` med kun `user_id` — aldrig chiffertekst ud. | [src](../../../core/services/visible_preview_crypto.py#L54) |
 | function | `er_laesbar` | `(text_preview)` | Er dette preview et SVAR en dommer/prompt maa citere? | [src](../../../core/services/visible_preview_crypto.py#L59) |
+| function | `preview_til_skrivning` | `(kilde, snit)` | Skrive-stiens vagt: er KILDEN chiffertekst, skrives pladsholderen. | [src](../../../core/services/visible_preview_crypto.py#L75) |
 
 ## `core/services/visible_run_abandonment.py`
 _Hvad der sker naar et run doer midt-flugt._
@@ -562,17 +563,17 @@ _Legacy visible-run SSE encoding, extracted from visible_runs.py._
 | function | `_parse_tc_args` | `(tc)` | Extract arguments dict from a tool call (handles both string and dict forms). | [src](../../../core/services/visible_runs.py#L7071) |
 | function | `_maybe_fallback_for_autonomous` | `(run, exc)` | Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen? | [src](../../../core/services/visible_runs.py#L7083) |
 | function | `_complete_visible_run_from_fallback` | `(run, fallback)` | Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev | [src](../../../core/services/visible_runs.py#L7127) |
-| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L7196) |
-| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L7270) |
-| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L7323) |
-| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7361) |
-| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7365) |
-| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7376) |
-| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L7390) |
-| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L7424) |
-| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L7428) |
-| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L7445) |
-| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7495) |
+| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L7197) |
+| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L7271) |
+| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L7324) |
+| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7362) |
+| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7366) |
+| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7377) |
+| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L7391) |
+| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L7425) |
+| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L7429) |
+| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L7446) |
+| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7496) |
 
 ## `core/services/visible_runs_approvals.py`
 _Pending tool-approval resolution for visible runs._

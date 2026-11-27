@@ -778,6 +778,8 @@ def set_last_visible_run_outcome(
     error: str | None = None,
     text_preview: str | None = None,
 ) -> None:
+    from core.services.visible_preview_crypto import preview_til_skrivning
+    text_preview = preview_til_skrivning(text_preview, lambda t: t)
     finished_at = datetime.now(UTC).isoformat()
     outcome = {
         "run_id": run.run_id,
@@ -1093,8 +1095,11 @@ def _persist_visible_run_outcome(
     capability_id = controller.last_capability_id if controller else shared.get("capability_id")
     user_message_preview = controller.user_message_preview if controller else shared.get("current_user_message_preview")
     bounded_error = _vr._bounded_error(error) if error else None
+    from core.services.visible_preview_crypto import (
+        member_for_run, preview_til_skrivning, protect_preview,
+    )
+    text_preview = preview_til_skrivning(text_preview, lambda t: t)
     work_preview = text_preview or bounded_error
-    from core.services.visible_preview_crypto import member_for_run, protect_preview
     member = member_for_run(run)
     stored_user_preview = protect_preview(user_message_preview, member)
     stored_work_preview = protect_preview(work_preview, member)

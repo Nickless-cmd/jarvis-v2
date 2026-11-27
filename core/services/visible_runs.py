@@ -5475,7 +5475,7 @@ async def _stream_visible_run(
                 set_last_visible_run_outcome(
                     run,
                     status=_outcome_state.status,
-                    text_preview=followup_text[:140],
+                    text_preview=_vpc.preview_til_skrivning(followup_text, lambda t: t[:140]),
                     error=_outcome_state.error,
                 )
                 if _outcome_state.status == "completed":
@@ -6518,7 +6518,7 @@ async def _stream_visible_run(
                     run,
                     status=_outcome_state.status,
                     error=_outcome_state.error,
-                    text_preview=_preview_text(visible_output_text),
+                    text_preview=_vpc.preview_til_skrivning(visible_output_text, _preview_text),
                 )
                 # Harness Part 1 (earned model-trust): record this run's outcome. Degeneration =
                 # a loop-spin flag OR a failed/interrupted/cancelled terminal status (which covers
@@ -7160,7 +7160,8 @@ def _complete_visible_run_from_fallback(
     )
     _persist_session_assistant_message(run, text)
     set_last_visible_run_outcome(
-        run, status="completed", text_preview=text[:140],
+        run, status="completed",
+        text_preview=_vpc.preview_til_skrivning(text, lambda t: t[:140]),
     )
     _set_orb_phase("idle")
     yield _sse("trace", _visible_trace_payload(run))
@@ -7811,6 +7812,7 @@ from core.services.visible_runs_cognitive import (  # noqa: E402
     _track_runtime_candidates,
     _track_step_failed,
 )
+from core.services import visible_preview_crypto as _vpc  # noqa: E402
 from core.services.visible_runs_outcomes import (  # noqa: E402
     _append_chat_message_with_retry,
     _guarantee_visible_outcome,

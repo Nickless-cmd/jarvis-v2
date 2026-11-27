@@ -312,6 +312,53 @@ describe('levetiden — en hale-runde bliver stående til turen slutter', () => 
     expect(gruppe!.getAttribute('data-aaben')).toBe('true')
   })
 
+  it('REGRESSION: `arbejdeEfterSvar` alene må IKKE holde hovedet åbent', () => {
+    // MÅLT 27/11-2026 — fjerde klage fra Bjørn: «foldet skete stadig ikk før
+    // slut beskeden».
+    //
+    // Årsagen var min egen undtagelse: `arbejdeEfterSvar && !haleEjerArbejdet`.
+    // `arbejdeEfterSvar` bliver sand ved det FØRSTE `run_frame` efter
+    // `svarLaast` — altså i det øjeblik slutsvaret begynder, længe før nogen
+    // hale-container findes. Undtagelsen var derfor sand gennem HELE
+    // slutsvaret og holdt hovedet åbent. Beskyttelsen VAR fejlen.
+    //
+    // Scenariet er præcis Bjørns: en besvarelse findes, `arbejdeEfterSvar` er
+    // sat (et nyt run har annonceret sig), men der er endnu ingen
+    // hale-container. Hovedet SKAL lukke — besvarelsen er begyndt.
+    const { container } = render(
+      <ChatFlowPresentation
+        {...common}
+        blocks={[kald('k1'), tekst('Slutsvaret skrives.', 'final_answer')]}
+        streaming
+        status="working"
+        finalAnswerStarted
+        arbejdeEfterSvar
+      />,
+    )
+    const gruppe = container.querySelector('.chat-flow-gruppe-ydre')
+    expect(gruppe).not.toBeNull()
+    expect(gruppe!.getAttribute('data-aaben')).toBe('false')
+  })
+
+  it('MODPRØVE: uden besvarelse holdes hovedet åbent — ellers er arbejdet usynligt', () => {
+    // Den anden side af samme gate. Findes der ingen besvarelse, ligger
+    // runde-arbejdet i folden, og et lukket hoved ville skjule det alle
+    // steder. Det er det tilfælde `svarLaast.test.tsx` værner.
+    const { container } = render(
+      <ChatFlowPresentation
+        {...common}
+        blocks={[kald('k1')]}
+        streaming
+        status="working"
+        finalAnswerStarted
+        arbejdeEfterSvar
+      />,
+    )
+    const gruppe = container.querySelector('.chat-flow-gruppe-ydre')
+    expect(gruppe).not.toBeNull()
+    expect(gruppe!.getAttribute('data-aaben')).toBe('true')
+  })
+
   it('besvarelsen har ingen kollaps-fase — den er leverancen', () => {
     const { container } = render(
       <ChatFlowPresentation {...common} blocks={blokke}

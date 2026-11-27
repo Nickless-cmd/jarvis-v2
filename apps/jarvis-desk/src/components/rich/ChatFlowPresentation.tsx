@@ -701,7 +701,6 @@ export function ChatFlowPresentation({
   // MEN kun når hale-containeren FAKTISK ejer arbejdet. Findes der ingen
   // besvarelse at lægge runden under, bliver dens segment `'foer'` og ligger
   // i folden — og så ville et lukket hoved gøre arbejdet usynligt alle steder.
-  // Derfor: folden lukker først når `[data-runder-efter]` findes.
   const haleEjerArbejdet = arbejdeEfterSvar && efterSegmenter.length > 0
   // FOLDEN LUKKER NÅR SLUTSVARET BEGYNDER (Bjørn 27/11-2026: «foldet skete
   // stadig ikk før slut beskeden»).
@@ -710,11 +709,32 @@ export function ChatFlowPresentation({
   // forrige gate (`streaming && !haleEjerArbejdet`) holdt derfor hovedet åbent
   // indtil `message_stop`, altså til efter svaret. Folden kom baglæns.
   //
-  // Undtagelsen er den ene situation hvor et lukket hoved ville gøre arbejdet
-  // usynligt ALLE steder: arbejde efter svaret uden en hale-container at lægge
-  // det i (der findes ingen besvarelse, så segmentet bliver `'foer'` og ligger
-  // i folden). Se `svarLaast.test.tsx`, der værner præcis det tilfælde.
-  const aaben = aabenManuelt ?? (streaming && (!finalAnswerStarted || (arbejdeEfterSvar && !haleEjerArbejdet)))
+  // UNDTAGELSEN VAR SELV FEJLEN (målt 27/11-2026). Den lød
+  // `arbejdeEfterSvar && !haleEjerArbejdet`, men `arbejdeEfterSvar` bliver
+  // sand allerede ved det FØRSTE `run_frame` efter `svarLaast` — altså i det
+  // øjeblik slutsvaret begynder, længe før nogen hale-container findes. Så
+  // undtagelsen var sand gennem hele slutsvaret og holdt hovedet åbent: den
+  // «beskyttelse» jeg byggede, var den mekanisme der blokerede folden.
+  //
+  // Den ægte betingelse er ikke flaget, men om der findes arbejde der reelt
+  // ikke kan vises andre steder. To tilfælde:
+  //
+  //  1. Der findes INGEN besvarelse. Så ligger runde-arbejdet i folden, og et
+  //     lukket hoved ville gøre det usynligt alle steder (`svarLaast.test.tsx`
+  //     værner præcis dette: `blocks=[summary]` uden besvarelse).
+  //  2. Der findes arbejde EFTER besvarelsen som hverken er lagt i
+  //     hale-containeren eller vist i besvarelsen.
+  //
+  // Arbejde FØR besvarelsen hører i folden og er synligt via rundelinjen — det
+  // er ikke en grund til at holde hovedet åbent.
+  const harBesvarelse = model.segmenter.some((segment) => segment.slags === 'besvarelse')
+  const arbejdeUdenContainer = arbejdeEfterSvar
+    && !haleEjerArbejdet
+    && (!harBesvarelse || model.segmenter.some((segment) =>
+      segment.slags === 'runde'
+      && segment.plassering === 'efter'
+      && segment.blokke.some((block) => block.type !== 'text' && block.type !== 'thinking')))
+  const aaben = aabenManuelt ?? (streaming && (!finalAnswerStarted || arbejdeUdenContainer))
   // Arbejdsdetaljerne under rundelinjen. Mens der arbejdes er de foldet
   // sammen som udgangspunkt — den levende linje er nok — men Bjørn kan folde
   // dem ud UNDER streaming (17/10-2026: «runde linjen under streaming bør

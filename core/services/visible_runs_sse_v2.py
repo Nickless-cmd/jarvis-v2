@@ -395,6 +395,24 @@ async def translate_to_v2(
         # ny tekst DIREKTE i den aabne blok — ellers ville den gaa i
         # `_pending_text` og blive en ny `commentary`-blok midt i svaret.
         "svar_stroemmer": False,
+        # SAMLET tekstlaengde siden det sidste RIGTIGE vaerktoejskald.
+        #
+        # MAALT 27/11-2026 (Bjørn, sjette klage — Codex + Claude, uafhaengigt):
+        # taerskel-tjekket laeste `_pending_text`, men den koe TOEMMES ved
+        # hvert `working_step` (se working_step-grenen). En rigtig besvarelse
+        # afbrydes af runde-annonceringer hele tiden, saa den samlede tekst
+        # naaede ALDRIG 600 i én sammenhaengende koe. `final_answer_start` blev
+        # derfor aldrig sendt midt i turen, `finalAnswerStarted` forblev falsk
+        # i klienten, `aaben` forblev sand — og hovedet foldede aldrig.
+        #
+        # Konsekvensen Bjørn saa: rundelinjen vises KUN ved `!arbejdeAabent`,
+        # saa et permanent aabent hoved skjulte den helt — «den viser ikk
+        # rundelinjerne mere.. den bruger nu den gamle visning».
+        #
+        # Taelleren akkumulerer paa TVAERS af working_step-nulstillingerne og
+        # nulstilles kun af et rigtigt vaerktoejskald: teksten mellem to
+        # saadanne hoerer til ÉN runde, og er derfor enten syntese eller svar.
+        "svar_kandidat_len": 0,
     }
 
     # Efter et værktøj kan tekst være både en mellemsyntese og slutsvaret.
@@ -785,6 +803,11 @@ async def translate_to_v2(
         # ikke en fortsættelse af svaret — saa den skal igen gennem
         # `_pending_text` og blive `commentary`.
         _state["svar_stroemmer"] = False
+        # Taelleren hoerer til teksten MELLEM to vaerktoejskald. Et nyt kald
+        # afslutter den periode, saa naeste tekst skal maales forfra — ellers
+        # ville en lang tur akkumulere sig til 600 over mange runder og
+        # promovere en mellemsyntese til svar.
+        _state["svar_kandidat_len"] = 0
         await _close_thinking_block_if_open()
         await _close_text_block_if_open()
         idx = _alloc_index()
@@ -1067,31 +1090,47 @@ async def translate_to_v2(
                             ).to_sse_line())
                         elif _state["has_tool"]:
                             _pending_text.append(text)
+                            _state["svar_kandidat_len"] += len(text)
                             await queue.put(SystemEvent(
                                 kind="provisional_text_delta",
                                 payload={"run_id": str(_state["run_id"] or ""), "delta": text},
                             ).to_sse_line())
                             # FOLD-SIGNALET MIDT I TUREN (Bjørn 27/11-2026,
-                            # fjerde klage: «foldet sker stadig ikk før slut
-                            # beskeden»).
+                            # sjette klage — maalt sammen med Codex og Claude).
                             #
                             # Uden denne blok blev `final_answer_start` foerst
                             # sendt ved `done` — altsaa EFTER svaret var
                             # skrevet. Klienten havde intet at folde paa mens
-                            # svaret stroemmede, og hvert klient-forsoeg
-                            # lyttede derfor paa et signal der kom for sent.
+                            # svaret stroemmede, `aaben` forblev sand hele
+                            # turen, og rundelinjen (som kun vises ved
+                            # `!arbejdeAabent`) forsvandt helt.
                             #
-                            # Naar den ventende tekst har naaet tærsklen, er
-                            # den med maalt overvejende sandsynlighed svaret og
-                            # ikke en mellemsyntese. `_flush_pending_text(final=
-                            # True)` aabner den som `final_answer` og sender
-                            # signalet — praecis den samme funktion `done` selv
-                            # bruger, blot tidligere.
-                            if not _state["final_answer_started"]:
-                                ventende = sum(len(t) for t in _pending_text)
-                                if ventende >= _svar_taerskel:
+                            # TAERSKLEN MAALES PAA `svar_kandidat_len`, ikke
+                            # paa `_pending_text`: koen toemmes ved hvert
+                            # `working_step`, saa en rigtig besvarelse naaede
+                            # aldrig 600 i én sammenhaengende koe. Taelleren
+                            # akkumulerer paa tvaers og nulstilles kun af et
+                            # rigtigt vaerktoejskald.
+                            #
+                            # Signalet sendes OGSAA naar koen er tom: er den
+                            # netop blevet tømt som `commentary` af et
+                            # working_step, ligger der ingen tekst at
+                            # promovere — men taersklen er stadig naaet, og
+                            # resten af svaret skal skrives i `final_answer`.
+                            if (
+                                not _state["final_answer_started"]
+                                and _state["svar_kandidat_len"] >= _svar_taerskel
+                            ):
+                                if _pending_text:
                                     await _flush_pending_text(final=True)
-                                    _state["svar_stroemmer"] = True
+                                else:
+                                    _state["final_answer_started"] = True
+                                    await queue.put(SystemEvent(
+                                        kind="final_answer_start",
+                                        payload={"run_id": str(_state["run_id"] or "")},
+                                    ).to_sse_line())
+                                    await _ensure_text_block_open(phase="final_answer")
+                                _state["svar_stroemmer"] = True
                         else:
                             # Første tekst er uafklaret indtil runden enten
                             # kalder et tool eller afslutter. Den vises stadig
@@ -1107,6 +1146,19 @@ async def translate_to_v2(
 
                 elif event_name == "working_step" and payload.get("action") == "thinking" and not payload.get("tool_id"):
                     # En ny modelrunde bekræfter, at forrige tekst var syntese.
+                    #
+                    # MAALT 27/11-2026 (Codex): denne gren TOEMTE koen ved
+                    # hvert working_step. Taerskel-tjekket i delta-grenen
+                    # laeste derfor `_pending_text`, som hele tiden blev
+                    # nulstillet — en rigtig besvarelse naaede ALDRIG 600
+                    # sammenhaengende tegn, `final_answer_start` blev aldrig
+                    # sendt midt i turen, og hovedet foldede aldrig.
+                    #
+                    # Rettelsen ligger IKKE her: taersklen maales nu paa
+                    # `svar_kandidat_len`, som akkumulerer paa tvaers af
+                    # netop denne nulstilling og kun nulstilles af et rigtigt
+                    # vaerktoejskald. Denne gren goer derfor det samme som
+                    # foer — at stemple teksten som `commentary`.
                     await _flush_pending_text()
                     await _emit_message_start_if_needed()
                     await queue.put(SystemEvent(kind="working_step", payload=payload).to_sse_line())

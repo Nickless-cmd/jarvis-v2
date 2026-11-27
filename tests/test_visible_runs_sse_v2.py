@@ -1474,3 +1474,59 @@ async def test_svaret_er_besvarelsen_ikke_halen_efter_suggest_next_task():
     hale_start = tekst_blokke[1][0]
     assert hale_start > fold_at[0]
     assert tekst_blokke[0][1] < tekst_blokke[1][1]
+
+
+@pytest.mark.asyncio
+async def test_taersklen_naas_paa_tvaers_af_working_step_nulstillinger():
+    """Fold-signalet skal lyde selv om teksten kommer i bider under tærsklen.
+
+    Bjørn 27/11-2026, sjette klage: «Noget er gået galt.. den viser ikk
+    rundelinjerne mere.. den bruger nu den gamle visning».
+
+    Kæden var: `_pending_text` blev TØMT ved hvert `working_step` (den gren
+    stemplede teksten `commentary`). Tærskel-tjekket læste netop den kø, så
+    en rigtig besvarelse — der afbrydes af runde-annonceringer hele tiden —
+    nåede ALDRIG 600 sammenhængende tegn. `final_answer_start` blev derfor
+    aldrig sendt midt i turen, `finalAnswerStarted` forblev falsk i klienten,
+    `aaben` forblev sand hele turen — og rundelinjen, som kun vises ved
+    `!arbejdeAabent`, forsvandt helt.
+
+    Målt her: 6 bider à 120 tegn = 720 samlet, hver under tærsklen på 600.
+    Den gamle kode gav 0 fold-signaler; den nye skal give præcis 1.
+    """
+    bid = "x" * 120
+
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("working_step", _annoncering())
+        yield _legacy_sse("delta", {"type": "delta", "run_id": "v1", "delta": "Start."})
+        for i in range(6):
+            yield _legacy_sse("delta", {"type": "delta", "run_id": "v1", "delta": bid})
+            yield _legacy_sse(
+                "working_step",
+                {"type": "working_step", "run_id": "v1", "action": "thinking", "step": i + 2},
+            )
+        yield _legacy_sse("done", {"type": "done", "run_id": "v1", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(
+        translate_to_v2(legacy(), session_id="s", ping_interval_s=999.0)
+    ))
+    fold_at = [
+        i for i, (kind, data) in enumerate(events)
+        if kind == "system_event" and data.get("kind") == "final_answer_start"
+    ]
+    assert len(fold_at) == 1, (
+        f"fold-signalet skal lyde naar 720 tegn er naaet paa tvaers af "
+        f"working_step-nulstillingerne; fik {len(fold_at)}"
+    )
+
+    # Og signalet skal komme MENS turen løber — ikke ved `done`. Derfor skal
+    # der være tekst efter det, i en blok der er åbnet som `final_answer`.
+    tekst_start = [
+        (i, data["content_block"].get("phase")) for i, (kind, data) in enumerate(events)
+        if kind == "content_block_start" and data["content_block"]["type"] == "text"
+    ]
+    efter_fold = [p for i, p in tekst_start if i > fold_at[0]]
+    assert "final_answer" in efter_fold, (
+        f"der skal skrives tekst i en final_answer-blok EFTER signalet; "
+        f"tekstblokke i raekkefoelge: {tekst_start}, fold ved {fold_at[0]}"
+    )

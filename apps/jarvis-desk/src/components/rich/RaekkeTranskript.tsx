@@ -708,7 +708,7 @@ function RaekkeTranskriptImpl({
       : block.type === 'thinking' ? block.thinking.trim().length > 0
         : block.type === 'tool_use')
   const visTurhoved =
-    (arbejde.length > 0 && (!arbejdeKoerer || !aaben))
+    (arbejde.length > 0 && (svarBegyndt || !arbejdeKoerer || !aaben))
     || (arbejde.length === 0 && arbejdeKoerer)
   // Tokenfeltet eksisterer først når tælleren faktisk er begyndt. Dermed står
   // der hverken `0 tokens` eller et ensomt `k tokens` ved turstart.

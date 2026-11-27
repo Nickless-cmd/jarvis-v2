@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, fireEvent } from '@testing-library/react'
 import { RaekkeTranskript } from './RaekkeTranskript'
 import { SettingsProvider } from '../../contexts/SettingsContext'
 import { RAEKKE_KEY } from '../../lib/visningsPref'
@@ -259,5 +259,7 @@ describe('den fulde sekvens — runde, syntese, fold, slutbesked, runde, syntese
   rerender(<SettingsProvider><RaekkeTranskript streaming blocks={[work, kald('bash', 'checked'),
     { type: 'text', text: 'Resultatet er klart.', code_answer_protocol: 1, code_answer_start: true },
   ]} /></SettingsProvider>)
+  expect(container.querySelector('.rv-tur')).toBeVisible()
+  fireEvent.click(container.querySelector('.rv-tur')!)
   expect(container.querySelector('.rv-tur')).toBeVisible()
  })

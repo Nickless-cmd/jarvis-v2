@@ -80,6 +80,29 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
     # ovenfor. En member maa ikke laese serverens kode, og `publish_file` ville
     # give dem den samme fil gennem et download-link i stedet.
     "git_log", "git_diff", "git_status", "git_branch", "git_blame",
+    # Commit-skrivning (27/11-2026). Samme fejlform som `git_status` 27/10 og
+    # `suggest_next_task` 16/11: værktøjet stod i kataloget og i INGEN
+    # scope-liste, så porten fjernede det — og `load_more_tools` svarede
+    # «tools not found» om et værktøj der findes.
+    #
+    # Målt i `tool_hooks.jsonl`: `names=["commit_attributed"]` gav status=error
+    # (104 bytes) i alle tre synlige runs, mens samme navn virkede i et autonomt
+    # run med tomt scope. Målt i `tool_router_decisions` for det ene run: navnet
+    # stod hverken i `selected_names` (97), `always_core_names` (70) eller
+    # `embedding_picks` (27) — så det var heller ikke annonceret. To lukkede
+    # døre, ikke én: `load_more_tools` var annonceret, men porten afviste det
+    # navn den skulle hente.
+    #
+    # Konsekvensen var ikke kosmetisk: den eneste vej til at committe blev
+    # `bash "git commit -m …"` — præcis den shell-vej værktøjet blev bygget
+    # til at erstatte, fordi backticks og `$variabler` blev fortolket.
+    #
+    # Rettelsen rører KUN porten, ikke det annoncerede array: `TIER_1_ALWAYS_ON`
+    # er urørt, så prompt-prefixet og dets cache er uændret.
+    #
+    # Owner-only med vilje: en commit skriver i husets historik, og en
+    # husstandsmedlem må ikke committe i Bjørns navn.
+    "commit_attributed",
     "publish_file",
     # Dokument-laesning (27/10-2026, Bjoern). `pdf_read` kan laese en
     # VILKAARLIG sti eller URL — samme fil-adgang som `read_file`. Den hoerer
@@ -473,6 +496,16 @@ CODE_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
     # de to er samme beslutning (forslag vs. spørgsmål) og skal kunne vælges
     # i samme mode, ellers tvinger porten mig til at gætte.
     "suggest_next_task", "pause_and_ask",
+    # ── Commit-vejen uden shell (maalt 27/11-2026) ─────────────────────────
+    #
+    # `commit_attributed` stod i kataloget og i INGEN scope-liste. Porten
+    # fjernede den, og `load_more_tools` svarede «tools not found» — saa den
+    # eneste farbare vej blev `bash "git commit -m …"`, som er praecis den
+    # shell-fortolkning værktøjet findes for at undgaa (16/10-2026: ord for-
+    # svandt ud af beskeden fordi backticks blev udfoert).
+    #
+    # Den hoerer her og ikke i BASE: en commit skriver i husets historik.
+    "commit_attributed",
 })
 
 # Local-exec-ONLY tools: har INGEN server-side executor og kan KUN køre klient-lokalt

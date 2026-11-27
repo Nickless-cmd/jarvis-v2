@@ -494,3 +494,39 @@ class TestHusadgangOgKodeIntelligensScoping:
             for scope in ("chat", "code"):
                 allow = self._scope(monkeypatch, role, scope)
                 assert "home_assistant" not in allow, (role, scope)
+
+
+def test_commit_attributed_kan_hentes_i_code_scope():
+    """`commit_attributed` skal kunne hentes i code mode — ikke kun findes i kataloget.
+
+    Målt 27/11-2026: værktøjet stod i kataloget og i INGEN scope-liste. Porten
+    fjernede det, og `load_more_tools` svarede «tools not found» om et værktøj
+    der findes. Målt i `tool_hooks.jsonl`: `names=["commit_attributed"]` gav
+    status=error (104 bytes) i alle tre synlige runs, mens samme navn virkede i
+    et autonomt run med tomt scope.
+
+    Konsekvensen var ikke kosmetisk: den eneste farbare vej blev
+    `bash "git commit -m …"` — præcis den shell-fortolkning værktøjet blev
+    bygget til at fjerne (16/10-2026: ord forsvandt ud af beskeden fordi
+    backticks blev udført).
+
+    Testen måler den ÆGTE sti — `load_more_tools` inde i et code-scope — ikke
+    kun at navnet står i en liste. En liste kan indeholde navnet mens porten
+    stadig afviser det.
+    """
+    from core.tools.load_more_tools import _tool_load_more_tools
+    from core.tools.tool_scoping import tool_scope
+
+    with tool_scope("code"):
+        svar = _tool_load_more_tools({"names": ["commit_attributed"]})
+
+    assert svar.get("status") == "ok", svar
+    assert "commit_attributed" in (svar.get("added") or [])
+
+
+def test_commit_attributed_er_owner_only():
+    """En husstandsmedlem må ikke committe i Bjørns navn."""
+    names = ["commit_attributed"]
+    assert allowed_tool_names(role="owner", scope="code", all_names=names) == set(names)
+    assert not allowed_tool_names(role="member", scope="code", all_names=names)
+    assert not allowed_tool_names(role="guest", scope="code", all_names=names)

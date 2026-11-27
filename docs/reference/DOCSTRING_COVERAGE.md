@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 10558/19237 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 10560/19239 functions/methods documented (54%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -27,7 +27,7 @@ Generated from source. 10558/19237 functions/methods documented (54%). The list 
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 928 | 1645 | 56% |
-| `core.services` | 7093 | 13066 | 54% |
+| `core.services` | 7095 | 13068 | 54% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 152 | 234 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -660,10 +660,10 @@ Generated from source. 10558/19237 functions/methods documented (54%). The list 
 - `core/runtime/db_self_repair.py` :: `insert_self_repair_attempt` (L257)
 - `core/runtime/db_self_repair.py` :: `list_recent_self_repair_attempts` (L305)
 - `core/runtime/db_self_repair.py` :: `list_self_repair_patterns` (L183)
-- `core/runtime/db_sensory.py` :: `count_sensory_memories` (L212)
-- `core/runtime/db_sensory.py` :: `get_sensory_memory` (L226)
+- `core/runtime/db_sensory.py` :: `count_sensory_memories` (L218)
+- `core/runtime/db_sensory.py` :: `get_sensory_memory` (L232)
 - `core/runtime/db_sensory.py` :: `insert_sensory_memory` (L104)
-- `core/runtime/db_sensory.py` :: `list_sensory_memories` (L154)
+- `core/runtime/db_sensory.py` :: `list_sensory_memories` (L160)
 - `core/runtime/db_users.py` :: `get_google_link` (L123)
 - `core/runtime/db_users.py` :: `get_user_row` (L194)
 - `core/runtime/db_users.py` :: `get_user_row_by_email_hash` (L201)
@@ -856,7 +856,7 @@ Generated from source. 10558/19237 functions/methods documented (54%). The list 
 - `core/services/agentic_working_conclusions.py` :: `latest_for_session` (L55)
 - `core/services/agentic_working_conclusions.py` :: `update_working_conclusion` (L27)
 - `core/services/agentic_working_conclusions.py` :: `working_conclusion_prompt_section` (L73)
-- `core/services/ambient_sound_daemon.py` :: `build_ambient_sound_surface` (L362)
+- `core/services/ambient_sound_daemon.py` :: `build_ambient_sound_surface` (L372)
 - `core/services/anthropic_identity.py` :: `invalidate_cache` (L62)
 - `core/services/anthropic_sse_emitter.py` :: `AnthropicSSEEmitter.begin_message` (L38)
 - `core/services/anthropic_sse_emitter.py` :: `AnthropicSSEEmitter.end_message` (L137)
@@ -2108,14 +2108,14 @@ Generated from source. 10558/19237 functions/methods documented (54%). The list 
 - `core/services/semantic_indexer.py` :: `start_semantic_indexer` (L34)
 - `core/services/semantic_indexer.py` :: `stop_semantic_indexer` (L62)
 - `core/services/semantic_memory.py` :: `get_stats` (L694)
-- `core/services/sensory_archive.py` :: `count` (L522)
-- `core/services/sensory_archive.py` :: `get` (L518)
-- `core/services/sensory_archive.py` :: `list_recent` (L497)
-- `core/services/sensory_archive.py` :: `record_atmosphere` (L479)
-- `core/services/sensory_archive.py` :: `record_audio` (L470)
-- `core/services/sensory_archive.py` :: `record_mixed` (L488)
-- `core/services/sensory_archive.py` :: `record_visual` (L461)
-- `core/services/sensory_archive.py` :: `search` (L509)
+- `core/services/sensory_archive.py` :: `count` (L537)
+- `core/services/sensory_archive.py` :: `get` (L533)
+- `core/services/sensory_archive.py` :: `list_recent` (L512)
+- `core/services/sensory_archive.py` :: `record_atmosphere` (L494)
+- `core/services/sensory_archive.py` :: `record_audio` (L485)
+- `core/services/sensory_archive.py` :: `record_mixed` (L503)
+- `core/services/sensory_archive.py` :: `record_visual` (L476)
+- `core/services/sensory_archive.py` :: `search` (L524)
 - `core/services/session_continuity.py` :: `build_session_continuity_surface` (L566)
 - `core/services/session_continuity.py` :: `get_latest_morning_thread` (L441)
 - `core/services/session_inbox.py` :: `pending_count` (L402)

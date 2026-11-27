@@ -631,20 +631,20 @@ _Sansernes Arkiv — service layer for sensory memories._
 | function | `_uden_wrapper` | `(tekst)` | Teksten uden `active_sensing`s maskinelle lag — til VURDERING, ikke gem. | [src](../../../core/services/sensory_archive.py#L301) |
 | function | `_uden_stillads` | `(content)` | Fjern stillads foran et indtryk. Returnerer `(tekst, var_stillads)`. | [src](../../../core/services/sensory_archive.py#L306) |
 | function | `_record` | `(modality, content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L347) |
-| function | `record_visual` | `(content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L461) |
-| function | `record_audio` | `(content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L470) |
-| function | `record_atmosphere` | `(content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L479) |
-| function | `record_mixed` | `(content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L488) |
-| function | `list_recent` | `(*, modality=…, limit=…, offset=…, since=…)` | — | [src](../../../core/services/sensory_archive.py#L497) |
-| function | `search` | `(query, *, modality=…, limit=…)` | — | [src](../../../core/services/sensory_archive.py#L509) |
-| function | `get` | `(memory_id)` | — | [src](../../../core/services/sensory_archive.py#L518) |
-| function | `count` | `(*, modality=…)` | — | [src](../../../core/services/sensory_archive.py#L522) |
-| function | `er_kvittering` | `(content)` | Er dette kvitteringen for at der blev sanset — ikke et indtryk? | [src](../../../core/services/sensory_archive.py#L563) |
-| function | `_kvittering_mode` | `()` | Hvornår en kvittering er en sansning: skip | always. | [src](../../../core/services/sensory_archive.py#L580) |
-| function | `skal_arkiveres` | `(content)` | Skal denne tekst arkiveres som en sansning? | [src](../../../core/services/sensory_archive.py#L593) |
-| function | `er_maettet` | `(content)` | Er det her et indtryk, eller bare kvitteringen for at der blev sanset? | [src](../../../core/services/sensory_archive.py#L606) |
-| function | `seneste_maettede` | `(*, modality=…, kig=…)` | Nyeste post der faktisk beskriver noget — ellers None. | [src](../../../core/services/sensory_archive.py#L615) |
-| function | `summarize_for_context` | `(limit=…)` | Return a compact summary usable as surface/context injection. | [src](../../../core/services/sensory_archive.py#L631) |
+| function | `record_visual` | `(content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L476) |
+| function | `record_audio` | `(content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L485) |
+| function | `record_atmosphere` | `(content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L494) |
+| function | `record_mixed` | `(content, *, mood_tone=…, metadata=…)` | — | [src](../../../core/services/sensory_archive.py#L503) |
+| function | `list_recent` | `(*, modality=…, limit=…, offset=…, since=…)` | — | [src](../../../core/services/sensory_archive.py#L512) |
+| function | `search` | `(query, *, modality=…, limit=…)` | — | [src](../../../core/services/sensory_archive.py#L524) |
+| function | `get` | `(memory_id)` | — | [src](../../../core/services/sensory_archive.py#L533) |
+| function | `count` | `(*, modality=…)` | — | [src](../../../core/services/sensory_archive.py#L537) |
+| function | `er_kvittering` | `(content)` | Er dette kvitteringen for at der blev sanset — ikke et indtryk? | [src](../../../core/services/sensory_archive.py#L578) |
+| function | `_kvittering_mode` | `()` | Hvornår en kvittering er en sansning: skip | always. | [src](../../../core/services/sensory_archive.py#L595) |
+| function | `skal_arkiveres` | `(content)` | Skal denne tekst arkiveres som en sansning? | [src](../../../core/services/sensory_archive.py#L608) |
+| function | `er_maettet` | `(content)` | Er det her et indtryk, eller bare kvitteringen for at der blev sanset? | [src](../../../core/services/sensory_archive.py#L621) |
+| function | `seneste_maettede` | `(*, modality=…, kig=…)` | Nyeste post der faktisk beskriver noget — ellers None. | [src](../../../core/services/sensory_archive.py#L630) |
+| function | `summarize_for_context` | `(limit=…)` | Return a compact summary usable as surface/context injection. | [src](../../../core/services/sensory_archive.py#L646) |
 
 ## `core/services/sensory_perception_bridge.py`
 _Sensory perception bridge._

@@ -359,6 +359,32 @@ def test_look_around_arkiverer_som_foer_uden_flaget(monkeypatch):
     assert arkiveret == ["Rummet føles stille."]
 
 
+def test_look_around_arkiverer_den_faktiske_prompt_og_frame_hash(monkeypatch):
+    """Svar om samme frame skal kunne kobles til både frame og spørgsmål."""
+    import base64
+    import hashlib
+
+    b64 = _moerkt_men_levende_frame()
+    _stub_kaeden(monkeypatch, b64)
+    metadata: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        VM,
+        "_archive_sensory",
+        lambda _description, **kwargs: (
+            metadata.append(dict(kwargs["metadata"])) or True
+        ),
+    )
+
+    prompt = "Hvilke genstande står nærmest kameraet?"
+    ud = VM.look_around_now(prompt_override=prompt)
+
+    forventet_hash = "sha256:" + hashlib.sha256(base64.b64decode(b64)).hexdigest()
+    assert metadata[0]["question"] == prompt, "vision-prompten nåede ikke arkivet"
+    assert metadata[0]["frame_hash"] == forventet_hash
+    assert ud["question"] == prompt
+    assert ud["frame_hash"] == forventet_hash
+
+
 # ---------------------------------------------------------------------------
 # Sansnings-vejen tvinger CONFIG-modellen (5/10-2026)
 #

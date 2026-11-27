@@ -429,6 +429,21 @@ def _record(
     except Exception:
         pass
 
+    archive_metadata = normalize_metadata({**(metadata or {}), **extra_meta})
+    # Proveniens for selve svaret. Et ukendt spørgsmål må aldrig udfyldes med
+    # en sandsynlig prompt: null er den ærlige historiske sandhed. Det samme
+    # gælder frame-identitet for lyd og andre sansninger uden et billede.
+    question = archive_metadata.get("question")
+    archive_metadata["question"] = (
+        question.strip() if isinstance(question, str) and question.strip() else None
+    )
+    frame_hash = archive_metadata.get("frame_hash")
+    archive_metadata["frame_hash"] = (
+        frame_hash.strip()
+        if isinstance(frame_hash, str) and frame_hash.strip()
+        else None
+    )
+
     record = insert_sensory_memory(
         modality=modality,
         content=final_content,
@@ -436,7 +451,7 @@ def _record(
         # Kilden er fri tekst fra kalderen, og når kalderen er en rutine, opdigtes
         # et nyt navn hver nat — målt 28/9-2026: 69 navne for ni kilder. Her er
         # det ene punkt alle skrivninger går igennem, så her foldes navnet.
-        metadata=normalize_metadata({**(metadata or {}), **extra_meta}),
+        metadata=archive_metadata,
     )
     try:
         event_bus.publish(

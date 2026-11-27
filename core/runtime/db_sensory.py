@@ -141,6 +141,12 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, object]:
         metadata = _json.loads(row["metadata_json"] or "{}")
     except Exception:
         metadata = {}
+    if not isinstance(metadata, dict):
+        metadata = {}
+    # Gamle rækker mangler felterne. Projektionen gør fraværet eksplicit som
+    # ukendt uden at omskrive eller rekonstruere historiske data.
+    metadata.setdefault("question", None)
+    metadata.setdefault("frame_hash", None)
     return {
         "id": row["id"],
         "timestamp": row["timestamp"],

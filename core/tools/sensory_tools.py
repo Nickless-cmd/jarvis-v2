@@ -43,6 +43,10 @@ def _exec_record_sensory_memory(args: dict[str, Any]) -> dict[str, Any]:
     source = args.get("source")
     if source:
         metadata = {**metadata, "source": source}
+    for provenance_field in ("question", "frame_hash"):
+        value = args.get(provenance_field)
+        if value is not None:
+            metadata = {**metadata, provenance_field: value}
 
     # Egress-fri Central-observation (§24.4): Jarvis fanger et SANSE-indtryk. Kun
     # modalitet-label + længde — ALDRIG selve indholdet/sansningen. Self-safe.
@@ -170,6 +174,18 @@ SENSORY_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                             "'mic_listen', 'natrutine', 'dybdesession'. "
                             "Normalised to a canonical set; unknown names "
                             "become 'ukendt' with the raw value in 'source_raw'."
+                        ),
+                    },
+                    "question": {
+                        "type": "string",
+                        "description": (
+                            "Exact prompt sent to the model, if known. Omit when unknown."
+                        ),
+                    },
+                    "frame_hash": {
+                        "type": "string",
+                        "description": (
+                            "Stable identity of the sensed image/frame, if available."
                         ),
                     },
                 },

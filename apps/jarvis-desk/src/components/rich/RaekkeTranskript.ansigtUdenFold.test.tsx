@@ -161,3 +161,70 @@ describe('fase 2 — runder efter foldet', () => {
     expect(container.querySelector('.rv-venter')).toBeNull()
   })
 })
+
+describe('den fulde sekvens — runde, syntese, fold, slutbesked, runde, syntese', () => {
+  /**
+   * Bjørns sekvens, ordret (27/11-2026). Den er ikke en abstraktion; hvert led
+   * har sin egen ejer, og fejlen der blev målt den dag sad i overgangen mellem
+   * led 2 og 3: syntesen der lå i folden blev teleporteret ud i det øjeblik
+   * foldet skete, fordi `underArbejde` faldt til falsk.
+   *
+   * Model-testen (`raekkeModel.sekvens.test.ts`) beviser klassificeringen.
+   * Denne beviser at komponenten TEGNER den samme fordeling — ellers kan de to
+   * drive fra hinanden uden at nogen af testene ser det.
+   */
+  const syntese = (t: string): ContentBlock => ({ type: 'text', text: t })
+
+  it('tegner syntesen FOER foldet inde i folden — den flytter sig ikke naar foldet sker', () => {
+    const blokke = [
+      kald('bash', 'b1'),
+      syntese('Lad mig se på filen.'),
+      svarTekst('Sådan ser det ud.'),
+      kald('remember_this', 'b2'),
+      syntese('Gemt.'),
+    ]
+    const { container } = vis({ blocks: blokke, streaming: false, finalAnswerStarted: true })
+
+    // Folden er LUKKET her (turen er slut), så dens indhold er ikke monteret —
+    // `.rv-gruppe` er med vilje tom. At kræve teksten dér ville måle foldens
+    // animations-tilstand, ikke ejerskabet. Ejerskabet er allerede bevist i
+    // `raekkeModel.sekvens.test.ts`; her bevises den anden halvdel: at den
+    // ikke OGSÅ står i svaret.
+    const svar = container.querySelector('.rv-svar')
+    expect(svar).not.toBeNull()
+    expect(svar!.textContent).not.toContain('Lad mig se på filen.')
+
+    // Folden findes og er lukket — det er den beholder syntesen hører til.
+    const ydre = container.querySelector('.rv-gruppe-ydre')
+    expect(ydre).not.toBeNull()
+    expect(ydre!.getAttribute('data-aaben')).toBe('false')
+  })
+
+  it('tegner runden EFTER foldet som rundelinje og syntesen bagefter den', () => {
+    const blokke = [
+      kald('bash', 'b1'),
+      syntese('Lad mig se på filen.'),
+      svarTekst('Sådan ser det ud.'),
+      kald('remember_this', 'b2'),
+      syntese('Gemt.'),
+    ]
+    const { container } = vis({ blocks: blokke, streaming: false, finalAnswerStarted: true })
+
+    const svar = container.querySelector('.rv-svar')!
+    const boern = Array.from(svar.children)
+
+    // Slutbesked → rundelinje → syntese. Tre børn, i den rækkefølge.
+    expect(boern).toHaveLength(3)
+    expect(boern[1]!.className).toContain('rv-arbejdsrunde')
+    expect(svar.textContent).toContain('Sådan ser det ud.')
+    expect(svar.textContent).toContain('Gemt.')
+
+    // Syntesen staar EFTER rundelinjen, ikke foer den.
+    const rundeIdx = boern.findIndex((b) => b.className.includes('rv-arbejdsrunde'))
+    const synteseIdx = boern.findIndex((b) => b.textContent?.includes('Gemt.'))
+    expect(synteseIdx).toBeGreaterThan(rundeIdx)
+
+    // Og bobble-sproget har ikke taget nogen af dem.
+    expect(container.querySelector('.toolgroup')).toBeNull()
+  })
+})

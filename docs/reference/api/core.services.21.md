@@ -543,10 +543,11 @@ _Process watcher — push-notification primitive for Jarvis._
 | function | `set_watch_enabled` | `(watch_id, enabled)` | — | [src](../../../core/services/process_watcher.py#L239) |
 | function | `_eval_condition` | `(cond, runtime_state)` | Evaluate a single condition. Returns (matched, reason). | [src](../../../core/services/process_watcher.py#L252) |
 | function | `_fire_action` | `(watch, reason)` | Execute the watch's on_match action. Errors are logged, not raised. | [src](../../../core/services/process_watcher.py#L436) |
-| function | `_evaluate_watches_once` | `()` | One pass: evaluate every enabled watch; fire matched ones. | [src](../../../core/services/process_watcher.py#L524) |
-| function | `_watcher_loop` | `()` | — | [src](../../../core/services/process_watcher.py#L594) |
-| function | `start_watcher_daemon` | `()` | Start the daemon if not already running. Called once at jarvis-api boot. | [src](../../../core/services/process_watcher.py#L611) |
-| function | `stop_watcher_daemon` | `()` | Signal the daemon to exit. For tests / shutdown hooks. | [src](../../../core/services/process_watcher.py#L623) |
+| function | `_targets_are_inactive_log_processes` | `(watch, process_statuses)` | True when a log-only watch has no live supervised target left. | [src](../../../core/services/process_watcher.py#L524) |
+| function | `_evaluate_watches_once` | `()` | One pass: evaluate every enabled watch; fire matched ones. | [src](../../../core/services/process_watcher.py#L542) |
+| function | `_watcher_loop` | `()` | — | [src](../../../core/services/process_watcher.py#L635) |
+| function | `start_watcher_daemon` | `()` | Start the daemon if not already running. Called once at jarvis-api boot. | [src](../../../core/services/process_watcher.py#L652) |
+| function | `stop_watcher_daemon` | `()` | Signal the daemon to exit. For tests / shutdown hooks. | [src](../../../core/services/process_watcher.py#L664) |
 
 ## `core/services/producer_novelty.py`
 _core/services/producer_novelty.py_

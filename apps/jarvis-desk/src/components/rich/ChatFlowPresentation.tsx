@@ -487,16 +487,48 @@ export function ChatFlowPresentation({
   // run i samme tur): ellers ville en container der lige var på vej ud blive
   // fjernet midt i en tur der stadig kører.
   const [afmonteret, setAfmonteret] = useState(false)
+  const kollapsRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     if (turenKoerer) {
       setAfmonteret(false)
       return
     }
-    // 300ms er `--dur-sheet`, som `--fold-varighed` peger på. Tallet står her
-    // fordi et ur ikke kan læse en CSS-variabel; ændres tokenet, skal det
-    // følge med — derfor ligger begge tal samme sted i `tokens.css`.
-    const t = setTimeout(() => setAfmonteret(true), 300)
-    return () => clearTimeout(t)
+    // AFMONTERINGEN FØLGER TRANSITIONEN, IKKE ET GÆT (GPT, 27/11-2026:
+    // «Afmonteringens ur er hardcodet … CSS og JavaScript har stadig hver
+    // deres ur.»)
+    //
+    // Før stod der `setTimeout(…, 300)` — et JS-tal der SPEJLEDE
+    // `--dur-sheet`. To ure der beskriver den samme varighed divergerer den
+    // dag nogen justerer tokenet, og fejlen ville være usynlig: noden ville
+    // bare forsvinde midt i en transition der stadig kørte.
+    //
+    // Nu lyttes på den FAKTISKE `transitionend` fra kollaps-wrapperen. Den
+    // fyrer når browseren er færdig — uanset varighed, kurve og om brugeren
+    // har `prefers-reduced-motion` (hvor transitionen er slået fra og
+    // hændelsen derfor aldrig kommer; derfor fallback-uret).
+    //
+    // FALLBACK: en afbrudt transition (turen genoptages, eller elementet
+    // fjernes fra DOM'en af en anden grund) fyrer ingen `transitionend`. Uden
+    // et loft ville containeren blive stående for evigt. Loftet er derfor
+    // kun et sikkerhedsnet, ikke uret.
+    const node = kollapsRef.current
+    let færdig = false
+    const afslut = () => {
+      if (færdig) return
+      færdig = true
+      setAfmonteret(true)
+    }
+    const påTransition = (e: TransitionEvent) => {
+      // Kun wrapperens EGEN højde-transition — børnenes transitions bobler op
+      // og må ikke afmontere containeren midt i noget andet.
+      if (e.target === node && e.propertyName === 'grid-template-rows') afslut()
+    }
+    if (node) node.addEventListener('transitionend', påTransition)
+    const loft = setTimeout(afslut, 1200)
+    return () => {
+      if (node) node.removeEventListener('transitionend', påTransition)
+      clearTimeout(loft)
+    }
   }, [turenKoerer])
   // HOVEDET ER FIRE TILSTANDE, IKKE EN KOMPONENT MED EN FØDSEL OG EN DØD
   // (Bjørn 18/11-2026: «hvornår og hvorfor folder deres hoved? … det sker ofte
@@ -830,6 +862,7 @@ export function ChatFlowPresentation({
                 return (
                   <div
                     key={segment.id}
+                    ref={erSvar ? undefined : kollapsRef}
                     className={erSvar ? 'chat-flow-answer' : 'chat-flow-runde'}
                     data-segment={segment.slags}
                     data-plassering={segment.plassering}

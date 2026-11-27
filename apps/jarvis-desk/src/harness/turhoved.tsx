@@ -86,8 +86,13 @@ function Harness() {
 
   // A → runde → B: runden ligger MELLEM de to besvarelser, så afstanden
   // mellem dem er det brugeren ser når containeren kollapser.
+  //
+  // `uden` er REFERENCEN (GPT, 27/11-2026: «Referencemålingen for gap'et er
+  // stadig cirkulær»). Den skal have BEGGE besvarelser — ellers findes der
+  // ingen afstand at måle, og referencen bliver `null`. Før gav den kun
+  // `[SVAR_A]`, så sammenligningen var tom.
   const blocks: ContentBlock[] =
-    fase === 'med' ? [SVAR_A, ...rundeBlokke(hoejde), SVAR_B] : [SVAR_A]
+    fase === 'med' ? [SVAR_A, ...rundeBlokke(hoejde), SVAR_B] : [SVAR_A, SVAR_B]
 
   return (
     <div className="transcript" style={{ padding: '24px', maxWidth: '760px' }}>

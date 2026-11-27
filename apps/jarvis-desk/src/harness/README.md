@@ -72,6 +72,40 @@ simpel klasse-query gav A og B i forkert rækkefølge (negativ afstand). Brug
 `gap: 0.65rem`; en kollapset container efterlod 10,4 px tom luft mellem A og B.
 Neutraliseres med `margin-bottom: -0.65rem` der animerer sammen med rækken.
 
+## Afmonteringen følger transitionen, ikke et gæt
+
+GPT 27/11-2026: «Afmonteringens ur er hardcodet … CSS og JavaScript har stadig
+hver deres ur.» Det var rigtigt — der stod `setTimeout(…, 300)`, et JS-tal der
+spejlede `--dur-sheet`. To ure der beskriver samme varighed divergerer den dag
+nogen justerer tokenet, og fejlen ville være usynlig.
+
+Nu lytter komponenten på den **faktiske** `transitionend` fra
+kollaps-wrapperen. Målt i Chromium:
+
+| Tilstand | Afmonteret efter |
+|---|---|
+| Normal | **336 ms** (transitionens 300 ms + en frame) |
+| `prefers-reduced-motion` | **1215 ms** (loftet — `transitionend` fyrer aldrig) |
+
+Loftet på 1200 ms er kun et sikkerhedsnet for afbrudte transitions. Uden det
+ville containeren hænge for evigt når transitionen er slået fra.
+
+## Referencen måles uafhængigt
+
+GPT 27/11-2026: «Referencemålingen for gap'et er stadig cirkulær … han
+sammenligner i praksis sluttilstanden med sig selv.» Det var rigtigt: referencen
+blev målt på en allerede afmonteret runde.
+
+En `uden-runde`-blokliste duer heller ikke — to `final_answer`-tekstblokke i
+træk smelter sammen til ÉT segment (målt: 0 besvarelser). Referencen måles
+derfor i et **rent gennemløb efter** forløbet: runden sættes ind, indgangen
+ventes ud (900 ms — ellers samples kurven oven i en `chat-flow-enter` der
+starter forfra, målt: opacity 0,84), og runden tages ud af flowet med
+`display: none`. Det er definitionen på «optager nul plads».
+
+Målt: reference **0 px** ved begge højder = slutafstanden. Gap'et er
+neutraliseret, ikke skjult.
+
 ## Stadig åbent
 
 **Blinket ved renderer-skiftet.** Besvarelsens ydre `.chat-flow-answer` består,

@@ -62,20 +62,15 @@ const maalAfstand = () =>
 
 /** Kør hele forløbet for én containerhøjde og returnér kurven. */
 async function maalForloeb(hoejde) {
-  // Nulstil til live uden runde, så hvert forløb starter samme sted.
+  // Nulstil til live MED runde, så selve forløbet starter samme sted.
   await page.evaluate(() => {
     window.__sætTilstand('live')
-    window.__sætBlokke('uden-runde')
+    window.__sætBlokke('med-runde')
   })
-  await page.waitForTimeout(250)
   await page.evaluate((h) => window.__sætHoejde(h), hoejde)
-  await page.evaluate(() => window.__sætBlokke('med-runde'))
   await page.waitForSelector('.chat-flow-runde', { timeout: 15000 })
   await page.waitForTimeout(700) // indgangs-animationen skal lande
 
-  // REFERENCEN: afstanden mellem A og B naar runden er HELT væk. Den maales
-  // ved at fjerne runden igen EFTER forloebet — se nedenfor. Her maales blot
-  // starttilstanden med runden til stede.
   const start = await maalAfstand()
   if (!start) return { fejl: 'kunne ikke finde to besvarelser' }
 
@@ -129,12 +124,37 @@ async function maalForloeb(hoejde) {
   // skal slutafstanden vaere IDENTISK med denne.
   await page.evaluate(() => window.__sætBlokke('med-runde'))
   await page.waitForTimeout(200)
+    // REFERENCEN — målt i et RENT gennemløb EFTER forløbet.
+  //
+  // GPT 27/11-2026: «Referencemålingen for gap'et er stadig cirkulær … han
+  // sammenligner i praksis sluttilstanden med sig selv.»
+  //
+  // To ting var galt: referencen blev målt på en allerede afmonteret runde, og
+  // da jeg flyttede den ind i forløbet, startede `chat-flow-enter`-animationen
+  // forfra (målt: opacity 0,84 midt i indgangen), så kurven blev samplet oven i
+  // en indgang der ikke hører til forløbet.
+  //
+  // Nu måles den separat: runden sættes ind, indgangen ventes ud, og runden
+  // tages ud af flowet (`display: none`) — det er definitionen på «optager nul
+  // plads», og det er den tilstand kollapset skal ende i.
+  await page.evaluate(() => {
+    window.__sætTilstand('live')
+    window.__sætBlokke('med-runde')
+  })
+  await page.waitForSelector('.chat-flow-runde', { timeout: 15000 })
+  await page.waitForTimeout(900) // indgangen skal være færdig før vi måler
   const udenRunde = await page.evaluate(() => {
+    const runde = document.querySelector('.chat-flow-runde')
+    if (!runde) return null
+    const foer = runde.style.display
+    runde.style.display = 'none'
     const svar = Array.from(document.querySelectorAll('[data-segment="besvarelse"]'))
-    if (svar.length < 2) return null
-    const a = svar[0].getBoundingClientRect()
-    const b = svar[1].getBoundingClientRect()
-    return { afstand: Math.round((b.top - a.bottom) * 100) / 100 }
+    const afst =
+      svar.length >= 2
+        ? Math.round((svar[1].getBoundingClientRect().top - svar[0].getBoundingClientRect().bottom) * 100) / 100
+        : null
+    runde.style.display = foer
+    return afst === null ? null : { afstand: afst }
   })
 
   return { hoejde, start, kurve, slut, afmonteret, udenRunde }

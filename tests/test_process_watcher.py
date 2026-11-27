@@ -53,6 +53,35 @@ def test_process_died_not_in_registry_fires_once(monkeypatch):
     assert pw._eval_condition(cond, rs)[0] is False    # forbliver væk → ingen spam
 
 
+def test_log_watch_is_disabled_when_supervised_process_is_gone(monkeypatch):
+    """En historisk log kan ikke gøre en død procesvagt levende."""
+    from core.services import process_watcher as pw
+
+    watch = pw.Watch(
+        watch_id="watch-dead-log",
+        label="grid-bot log",
+        conditions=[{
+            "kind": "log_pattern",
+            "process_name": "grid-bot",
+            "regex": "trade",
+        }],
+        on_match="self_wakeup",
+    )
+    saved: dict[str, pw.Watch] = {}
+    monkeypatch.setattr(pw, "_load_all", lambda: {watch.watch_id: watch})
+    monkeypatch.setattr(pw, "_save_all", lambda watches: saved.update(watches))
+    _patch_procs(monkeypatch, [{
+        "name": "grid-bot",
+        "status": "lost",
+        "exit_code": None,
+        "stopped_at": "2026-09-16T16:21:20Z",
+    }])
+
+    pw._evaluate_watches_once()
+
+    assert saved[watch.watch_id].enabled is False
+
+
 def test_watcher_loop_error_notes_daemon_health(monkeypatch):
     import core.services.process_watcher as pw
     monkeypatch.setattr(pw, "_evaluate_watches_once",

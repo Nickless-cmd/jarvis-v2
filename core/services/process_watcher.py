@@ -521,6 +521,24 @@ def _fire_action(watch: Watch, reason: str) -> None:
 # ── Daemon loop ───────────────────────────────────────────────────
 
 
+def _targets_are_inactive_log_processes(
+    watch: Watch,
+    process_statuses: dict[str, str],
+) -> bool:
+    """True when a log-only watch has no live supervised target left."""
+    if not watch.conditions or any(c.get("kind") != "log_pattern" for c in watch.conditions):
+        return False
+    names = {
+        str(c.get("process_name") or "").strip()
+        for c in watch.conditions
+    }
+    names.discard("")
+    return bool(names) and all(
+        process_statuses.get(name) in {None, "exited", "lost"}
+        for name in names
+    )
+
+
 def _evaluate_watches_once() -> None:
     """One pass: evaluate every enabled watch; fire matched ones."""
     with _LOCK:
@@ -530,9 +548,32 @@ def _evaluate_watches_once() -> None:
 
     now = time.time()
     dirty = False
+    process_statuses: dict[str, str] | None = None
+    try:
+        from core.services.process_supervisor import list_processes
+        process_statuses = {
+            str(proc.get("name") or ""): str(proc.get("status") or "")
+            for proc in list_processes(include_stopped=True).get("processes", []) or []
+        }
+    except Exception as exc:
+        logger.warning("process_watcher: process reconciliation failed: %s", exc)
 
     for watch_id, watch in list(watches.items()):
         if not watch.enabled:
+            continue
+
+        # A log-only watch cannot produce new output after every supervised
+        # target has stopped. process_died watches deliberately stay enabled:
+        # observing that transition is their purpose.
+        if process_statuses is not None and _targets_are_inactive_log_processes(
+            watch, process_statuses,
+        ):
+            watch.enabled = False
+            dirty = True
+            logger.info(
+                "process_watcher: disabled stale log watch '%s'; target process is inactive",
+                watch.label,
+            )
             continue
 
         # Cooldown check

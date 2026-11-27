@@ -188,11 +188,34 @@
   align-self: start;
   grid-template-rows: 1fr;
   min-width: 0;
-  animation: chat-flow-enter var(--fold-varighed) var(--fold-kurve);
+  /* INDGANGEN GLIDER, DEN POPPER IKKE (Bjørn 27/11-2026: «den extra runde
+     efter slut beskeden … bliver revet væk i samme sekund»).
+     `chat-flow-enter` animerede kun opacity 0,72 → 1 og 4 px translateY:
+     HØJDEN sprang fra 0 til fuld i én frame. Målt i Chromium stod
+     runde-containeren på 74,39 px allerede i første frame, så den «kom til»
+     i stedet for at glide ind — og når den samtidig erstattede den gamle
+     gruppe, blev hele overgangen et hak. Denne keyframe animerer højden,
+     margenen og opaciteten sammen, så rækken vokser ind over foldens ur. */
+  animation: chat-flow-runde-ind var(--fold-varighed) var(--fold-kurve);
   transition:
     grid-template-rows var(--fold-varighed) var(--fold-kurve),
     opacity var(--fold-varighed) var(--fold-kurve),
     margin-bottom var(--fold-varighed) var(--fold-kurve);
+}
+
+@keyframes chat-flow-runde-ind {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    /* Samme gap-neutralisering som `kollapset` bruger, så rækken ikke
+       efterlader 10,4 px luft mens den vokser. */
+    margin-bottom: -0.65rem;
+  }
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    margin-bottom: 0;
+  }
 }
 
 .chat-flow-runde > * {

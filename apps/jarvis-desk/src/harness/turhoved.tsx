@@ -85,7 +85,7 @@ function rundeBlokke(hoejde: Hoejde, runde = 0): ContentBlock[] {
  * slår kun sammen når `sidste.slags === rolle`, så besvarelsen i midten bryder
  * sammenlægningen. To `tool_use`-blokke i træk ville smelte til ét segment.
  */
-type Fase = 'uden' | 'med' | 'to-runder'
+type Fase = 'uden' | 'med' | 'to-runder' | 'ekstra-runde' | 'kun-svar'
 
 interface Tilstand {
   streaming: boolean
@@ -128,7 +128,20 @@ function Harness() {
       ? [SVAR_A, ...rundeBlokke(hoejde), SVAR_B]
       : fase === 'to-runder'
         ? [...rundeBlokke(hoejde, 0), SVAR_A, ...rundeBlokke(hoejde, 1)]
-        : [SVAR_A, SVAR_B]
+        : fase === 'ekstra-runde'
+          // Bjørns forløb 27/11-2026: slutsvaret er ALLEREDE vist, pacen kører
+          // stadig — og så ankommer en ekstra runde EFTER det. Det er den eneste
+          // bloksekvens hvor `plassering` bliver `'efter'` for et runde-segment,
+          // og dermed den eneste der kan gøre `fladtFlow` sand MIDT i en tur.
+          ? [SVAR_A, ...rundeBlokke(hoejde)]
+          // `kun-svar` er den TILSTAND runden ankommer ind i: samme besvarelse,
+          // ingen runde. Uden den er der intet at sammenligne med — `uden` har
+          // to besvarelser, så svar-højden ændrer sig af en anden grund end
+          // runden, og målingen ville tilskrive runden en forskel der ikke er
+          // dens.
+          : fase === 'kun-svar'
+            ? [SVAR_A]
+            : [SVAR_A, SVAR_B]
 
   return (
     <div className="transcript" style={{ padding: '24px', maxWidth: '760px' }}>

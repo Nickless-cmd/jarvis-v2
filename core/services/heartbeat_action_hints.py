@@ -121,4 +121,83 @@ def inner_life_hints() -> list[str]:
             hints.append(h)
     except Exception:
         logger.debug("heartbeat_action_hints: chronicle_hint fejlede", exc_info=True)
+    try:
+        h = open_loop_hint()
+        if h:
+            hints.append(h)
+    except Exception:
+        logger.debug("heartbeat_action_hints: open_loop_hint fejlede", exc_info=True)
     return hints
+
+
+# ── Opdagelse: den handling der blev tilladt men ikke valgt ────────────────────
+#
+# Målt 27/11-2026. `act_on_initiative` faldt fra 35 til 5 om dagen mellem 17/11
+# og 27/11, mens `refresh_memory_context` og `decay_forgotten_signals` steg.
+# Årsagen var ikke en blokering: `execution_status` er `success` på stort set
+# hvert eneste kald, så den emotionelle risiko-gate fyrer ikke i praksis. Det er
+# heller ikke promptens fase-vægt — `living_heartbeat_cycle.initiative_bias`
+# læses af NUL filer uden for sin egen modul, altså død vægt.
+#
+# Den ægte årsag er input: initiativ-køen blev tømt (5.792 af 6.016 poster er
+# `expired`, nul `pending` tilbage), så der var intet at handle på. Samtidig
+# hober de åbne loops sig op — ~20 nye i døgnet mod 3-7 fulgt op på, 103 åbne
+# poster og stigende.
+#
+# De tre «Prefer»-vink i beslutnings-prompten peger alle på REAKTIVT arbejde
+# (tråden handler om kode, hukommelsen føles forældet). Ingen af dem peger på at
+# gå ud og finde noget. Det er samme fejlklasse som filens oprindelige problem:
+# handlingen var tilladt hele tiden, men aldrig motiveret.
+
+_OPEN_LOOP_MIN_BACKLOG = 15
+_OPEN_LOOP_MIN_AGE_HOURS = 24
+
+
+def open_loop_backlog() -> dict[str, object] | None:
+    """Antal åbne loops og den ældste post. ``None`` når lageret ikke kan læses.
+
+    Self-safe: en fejlende læsning må aldrig kunne vælte beslutnings-prompten.
+    """
+    try:
+        from core.runtime.db_runtime_executive_signals import (
+            list_runtime_open_loop_signals,
+        )
+
+        rows = list_runtime_open_loop_signals(status="open", limit=200)
+    except Exception:
+        logger.debug("heartbeat_action_hints: open-loop-læsning fejlede", exc_info=True)
+        return None
+    if not rows:
+        return {"count": 0, "oldest": None, "oldest_hours": 0.0}
+    oldest = rows[-1]  # lageret returnerer nyeste-først
+    at = _parse_iso(oldest.get("created_at"))
+    hours = 0.0 if at is None else (datetime.now(UTC) - at).total_seconds() / 3600.0
+    return {"count": len(rows), "oldest": oldest, "oldest_hours": hours}
+
+
+def open_loop_hint() -> str | None:
+    """Vink om at følge et åbent loop op — kun når der er en reel ophobning.
+
+    `follow_open_loop` har ingen gate der nægter: den skaber altid en task. Derfor
+    kan vinket ikke spejle en gate som chronicle-vinket gør; gaten er i stedet om
+    der FAKTISK hober sig noget op. Under tærsklen tier vi, så vinket ikke bliver
+    en generisk opfordring hver tick — og når det fyrer, nævner det det ældste
+    loop ved navn, så næste skridt er konkret i stedet for en hensigt.
+    """
+    backlog = open_loop_backlog()
+    if backlog is None:
+        return None
+    count = int(backlog.get("count") or 0)
+    if count < _OPEN_LOOP_MIN_BACKLOG:
+        return None
+    hours = float(backlog.get("oldest_hours") or 0.0)
+    if hours < _OPEN_LOOP_MIN_AGE_HOURS:
+        return None
+    oldest = backlog.get("oldest") or {}
+    title = str(oldest.get("title") or "").strip() or "et uafsluttet spor"
+    return (
+        f"- Der ligger {count} åbne loops, og det ældste har ventet i "
+        f"{hours / 24.0:.1f} døgn: «{title[:140]}». Vælg follow_open_loop med det "
+        f"loop når der ikke er noget mere presserende — opdagelse er ikke en pause "
+        f"fra arbejdet, den er hvordan du finder det næste."
+    )

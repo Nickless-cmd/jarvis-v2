@@ -35,7 +35,7 @@ import { isMeaningfulStatus } from '../../lib/chatFlowModel'
 import { diffFraResultat, diffStat } from '../../lib/diffStat'
 import { postFor, kropFor } from './raekkeKroppe'
 import { erUnderagent } from '../../lib/agentKald'
-import { BlocksRenderer, afslutForladteKald, etiketterFraBlokke } from './BlocksRenderer'
+import { BlocksRenderer, afslutForladteKald, etiketterFraBlokke, resumeerFraBlokke } from './BlocksRenderer'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { useFoldPosition } from './useFoldPosition'
 import { useFoldHukommelse } from '../../lib/foldHukommelse'
@@ -504,6 +504,33 @@ const Arbejdsrunde = memo(ArbejdsrundeImpl, (a, b) =>
   && a.skjult === b.skjult && a.workingStep === b.workingStep
   && a.config === b.config && a.beskedId === b.beskedId && a.etiket === b.etiket
   && sammeArbejdsElementer(a.elementer, b.elementer))
+
+/** Shared round-line view inside a turn's work fold. */
+export function Arbejdsforloeb({ blocks, streaming, config, beskedId, rundeEtiketter = {} }: {
+  blocks: ContentBlock[]; streaming: boolean; config?: ApiConfig; beskedId?: string
+  rundeEtiketter?: Record<string, string>
+}) {
+  const labels = { ...etiketterFraBlokke(blocks), ...rundeEtiketter }
+  const thoughts = resumeerFraBlokke(blocks)
+  const usedThoughts = new Set<string>()
+  const work = blocks.flatMap((b): ContentBlock[] => {
+    if (b.type === 'tool_use_summary') return []
+    if (b.type === 'text') return [{ ...b, phase: 'commentary', code_answer_protocol: 1, code_answer_start: false }]
+    const thought = b.type === 'tool_use' ? thoughts[b.id] : undefined
+    if (!thought || usedThoughts.has(thought)) return [b]
+    usedThoughts.add(thought)
+    return [{ type: 'thinking', thinking: thought }, b]
+  })
+  const sections = opdelArbejdsrunder(opdel(work, true).arbejde)
+  return <>{sections.map((section, index) => {
+    if (section.slags === 'syntese') return <Syntese key={`s${index}`} tekst={section.tekst} streaming={streaming} />
+    if (section.slags === 'enkelt') return <Element key={`e${index}`} e={section.element}
+      streaming={streaming} config={config} beskedId={beskedId} />
+    return <Arbejdsrunde key={noegleForRunde(section.elementer) ?? index}
+      elementer={section.elementer} streaming={streaming} sidste={index === sections.length - 1}
+      config={config} beskedId={beskedId} etiket={etiketFor(section.elementer, labels)} />
+  })}</>
+}
 
 function etiketFor(elementer: ArbejdsElement[], etiketter: Record<string, string>): string | undefined {
   for (let i = elementer.length - 1; i >= 0; i--) {

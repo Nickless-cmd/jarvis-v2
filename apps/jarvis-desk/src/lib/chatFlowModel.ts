@@ -317,10 +317,14 @@ function byggSegmenter(
   const ud: FlowSegment[] = []
   const sette = new Map<string, number>()
   let foersteBesvarelse = -1
+  const explicitProtocol = blokke.some((b) => b?.type === 'text' && b.code_answer_protocol === 1)
+  const answerIndex = blokke.findIndex((b) => b?.type === 'text' && b.code_answer_start)
   for (let index = 0; index < blokke.length; index += 1) {
     const block = blokke[index]
     if (!block) continue
-    const rolle = rolleFor(block, index, lastWorkIndex, finalAnswerStarted, terminalFallback)
+    const rolle = explicitProtocol && block.type === 'text'
+      ? (answerIndex >= 0 && index >= answerIndex ? 'besvarelse' : 'runde')
+      : rolleFor(block, index, lastWorkIndex, finalAnswerStarted, terminalFallback)
     const basis = kildeNoegle(block, 0).replace(/:\d+$/, '')
     const forekomst = sette.get(basis) ?? 0
     sette.set(basis, forekomst + 1)

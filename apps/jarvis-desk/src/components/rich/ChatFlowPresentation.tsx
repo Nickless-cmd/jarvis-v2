@@ -8,6 +8,8 @@ import { useFoldHukommelse } from '../../lib/foldHukommelse'
 import { useTurSekunder } from '../../lib/turTid'
 import { usePacingWorkLine } from '../../lib/usePacingWorkLine'
 import '../../styles/chat-flow.css'
+import { Arbejdsforloeb } from './RaekkeTranskript'
+import { CODE_FOLD_MS, codeVisibleBlocks, codeAnswerStarted } from '../../lib/codeTurnPresentation'
 import { BlocksRenderer } from './BlocksRenderer'
 import { JarvisRing } from '../shell/JarvisRing'
 import { SynteseLinje } from './LabelSkift'
@@ -135,7 +137,7 @@ export function ChatFlowPresentation({
   // providerens store bidder, mens autonome follow-runs så fine ud. Samme
   // cursor følger nu teksten gennem syntese → slutsvar → message_stop.
   const pacingFinal = finalAnswerStarted || (paceFinalAnswer && status === 'done')
-  const pacedBlocks = useChatPacedBlocks(blocks, {
+  const paced = useChatPacedBlocks(blocks, {
     live: streaming || paceFinalAnswer,
     finalAnswerStarted: pacingFinal,
     paceAllText: streaming,
@@ -157,12 +159,18 @@ export function ChatFlowPresentation({
     // der falder vi tilbage på `runId`, som er stabilt for en gemt besked.
     runId: turId ?? (turStart != null ? `tur-${turStart}` : runId),
   })
+  const explicitProtocol = blocks.some((b) => b?.type === 'text' && b.code_answer_protocol === 1)
+  const pacedBlocks = explicitProtocol ? codeVisibleBlocks(blocks, paced) : paced
+  const targetSvar = blocks.flatMap((block) => block && block.type === 'text' ? [block.text] : []).join('')
+  const vistSvar = pacedBlocks.flatMap((block) => block && block.type === 'text' ? [block.text] : []).join('')
+  const svarFaerdigPacet = targetSvar.length > 0 && targetSvar === vistSvar
+  const shownAnswerStarted = explicitProtocol ? codeAnswerStarted(pacedBlocks) : finalAnswerStarted
   const model = deriveChatFlow({
     blocks: pacedBlocks,
     workingStep,
     rundeEtiketter,
     tankeResumeer,
-    finalAnswerStarted,
+    finalAnswerStarted: shownAnswerStarted,
     status,
     arbejdeEfterSvar,
   })
@@ -290,7 +298,8 @@ export function ChatFlowPresentation({
     efterSegmenter.flatMap((segment) => segment.blokke))
   const foldWork = retainedWork.filter((block) =>
     (block.type !== 'tool_use' || block.name !== 'pause_and_ask')
-    && !efterBlokke.has(block))
+    && ((!streaming && !arbejdeEfterSvar && svarFaerdigPacet)
+      || !efterBlokke.has(block)))
   // Bjørn 20/10-2026: «det hurtige svar skal aldrig vises».
   //
   // `confirmedTexts` er den RÅ tekst fra serveren. Da den blev lagt foran
@@ -312,9 +321,7 @@ export function ChatFlowPresentation({
     : []
   const answerBlocks = [...udenArbejde, ...restoredText, ...model.finalBlocks]
   const answer = samletSvarMarkdown(answerBlocks)
-  const targetSvar = blocks.flatMap((block) => block && block.type === 'text' ? [block.text] : []).join('')
-  const vistSvar = pacedBlocks.flatMap((block) => block && block.type === 'text' ? [block.text] : []).join('')
-  const svarFaerdigPacet = targetSvar.length > 0 && targetSvar === vistSvar
+
   // Bjørn 29/10-2026: «det bør kun tilføjes naturligt i enden af pacen altså
   // ikk før pacen er slut med en levende forlængning? fade eller sådan noget?»
   //
@@ -340,9 +347,14 @@ export function ChatFlowPresentation({
   // den eneste ejer, så svar-lanen må aldrig bære den.
   const synligeSvar = answer.filter((block) => !erLeverance(block))
   const ventendeLeverancer = venterPaaPace ? answer.filter(erLeverance) : []
+  const onAnswerPacedRef = useRef(onAnswerPaced)
+  onAnswerPacedRef.current = onAnswerPaced
   useEffect(() => {
-    if (paceFinalAnswer && svarFaerdigPacet) onAnswerPaced?.()
-  }, [onAnswerPaced, paceFinalAnswer, svarFaerdigPacet])
+    if (!paceFinalAnswer || !svarFaerdigPacet || streaming || arbejdeEfterSvar) return
+    if (!efterSegmenter.length) { onAnswerPacedRef.current?.(); return }
+    const timer = window.setTimeout(() => onAnswerPacedRef.current?.(), CODE_FOLD_MS + 50)
+    return () => window.clearTimeout(timer)
+  }, [paceFinalAnswer, svarFaerdigPacet, streaming, arbejdeEfterSvar, efterSegmenter.length])
   // «Aktiv» er arbejdsfasen: Jarvis kører og har ikke begyndt at svare endnu.
   // Uden for den er turen enten afsluttet eller svaret er begyndt — og så
   // klapper hovedet sammen og arbejdet lægger sig som detaljer.
@@ -396,7 +408,7 @@ export function ChatFlowPresentation({
     // blokke, blev HELE den modtagne tekst tegnet i folden i første frame
     // (målt: 290 tegn) og faldt så til 2 i næste: et dump i folden efterfulgt
     // af en nulstilling. Rå tekst må aldrig komme uden om paceren.
-    if (!finalAnswerStarted) return null
+    if (explicitProtocol || !finalAnswerStarted) return null
     for (let i = targetModel.workBlocks.length - 1; i >= 0; i--) {
       const blok = targetModel.workBlocks[i]
       if (blok && blok.type === 'text' && blok.text.trim()) {
@@ -503,7 +515,7 @@ export function ChatFlowPresentation({
   // besvares af samme boolean. Hovedet står gennem hele turen — også mens
   // svaret skrives, hvor tilstanden er `formidlet` og ikke `aktiv`. Blandede
   // man dem, forsvandt hovedet i det vindue (målt 18/11-2026).
-  const turenKoerer = streaming || arbejdeEfterSvar || venterPaaPace
+  const turenKoerer = streaming || arbejdeEfterSvar || (paceFinalAnswer && !svarFaerdigPacet)
 
   // LIVSCYKLUSSEN: live → kollapset → unmount (Bjørn 27/11-2026).
   //
@@ -734,13 +746,18 @@ export function ChatFlowPresentation({
       segment.slags === 'runde'
       && segment.plassering === 'efter'
       && segment.blokke.some((block) => block.type !== 'text' && block.type !== 'thinking')))
-  const aaben = aabenManuelt ?? (streaming && (!finalAnswerStarted || arbejdeUdenContainer))
+  const aaben = aabenManuelt ?? ((streaming || (explicitProtocol && !svarFaerdigPacet))
+    && (!shownAnswerStarted || (!explicitProtocol && arbejdeUdenContainer)))
   // Arbejdsdetaljerne under rundelinjen. Mens der arbejdes er de foldet
   // sammen som udgangspunkt — den levende linje er nok — men Bjørn kan folde
   // dem ud UNDER streaming (17/10-2026: «runde linjen under streaming bør
   // have > i ende og kunne foldes ud»). Efter turen følger de turhovedets
   // fold, som før.
   const arbejdeAabent = aktiv ? aabenManuelt === true : aaben
+  // Once revealed, retain the details through the outer fold's transition.
+  const detailsRunRef = useRef<string | null>(null)
+  if (arbejdeAabent) detailsRunRef.current = runKey
+  const detailsMounted = arbejdeAabent || !turenKoerer || detailsRunRef.current === runKey
 
   // ── DET FLADE DOKUMENTFLOW (26/11-2026) ────────────────────────────────
   //
@@ -911,13 +928,10 @@ export function ChatFlowPresentation({
                 Prisen i de to første tilfælde holdes nede af rammen: den
                 lukkede gruppe er `display: none`, så browseren springer layout
                 og maling af undertræet over. */}
-            {foldWork.length > 0 && (arbejdeAabent || !turenKoerer) ? (
-              <div className="chat-flow-work-details">
-                <BlocksRenderer blocks={foldWork} density={density} streaming={streaming}
-                  rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
-                  visTankeResumeer
-                  samletTanke
-                  beskedId={beskedId} config={config} />
+            {foldWork.length > 0 && detailsMounted ? (
+              <div className="chat-flow-work-details raekkevisning">
+                <Arbejdsforloeb blocks={foldWork} streaming={streaming}
+                  rundeEtiketter={rundeEtiketter} beskedId={beskedId} config={config} />
               </div>
             ) : null}
             </div>
@@ -944,6 +958,26 @@ export function ChatFlowPresentation({
           ene `BlocksRenderer` i denne ene `.chat-flow-answer`, fra første tegn
           til turen er slut. En hale-runde tilføjes UNDER den — den flytter
           intet her. */}
+      {explicitProtocol ? (
+        <div className="chat-flow-answer chat-flow-answer--ordered">
+          {model.segmenter.filter((segment) => segment.slags === 'besvarelse' || segment.plassering === 'efter')
+            .map((segment) => segment.slags === 'besvarelse' ? (
+              <div key={segment.id} className="chat-flow-answer-text">
+                <BlocksRenderer blocks={segment.blokke.filter((b) => !erLeverance(b))} density={density}
+                  streaming={streaming} hale={turenKoerer} beskedId={beskedId} config={config} />
+              </div>
+            ) : efterSegmenter.includes(segment) ? (
+              <div key={segment.id} className="chat-flow-runde" data-segment="runde" data-plassering="efter"
+                data-levetid={turenKoerer ? 'live' : 'kollapset'} aria-hidden={!turenKoerer}
+                {...(turenKoerer ? {} : { inert: true })}>
+                <div className="chat-flow-runde-indhold">
+                  <BlocksRenderer blocks={segment.blokke} density={density} streaming={streaming}
+                    rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} beskedId={beskedId} config={config} />
+                </div>
+              </div>
+            ) : null)}
+        </div>
+      ) : <>
       {synligeSvar.length > 0 ? (
         <div className="chat-flow-answer">
           <BlocksRenderer blocks={synligeSvar} density={density} streaming={streaming}
@@ -998,6 +1032,8 @@ export function ChatFlowPresentation({
           })}
         </div>
       ) : null}
+
+      </>}
 
       {/* Leverancen (widgetten) ankommer EFTER pacen — ikke midt i den.
           Bjørn 29/10-2026: «det bør kun tilføjes naturligt i enden af pacen».

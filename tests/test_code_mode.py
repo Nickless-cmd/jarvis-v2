@@ -111,4 +111,6 @@ def test_answer_declaration_reaches_the_selected_code_prompt(monkeypatch) -> Non
             with tool_scope("chat"):
                 chat = (_visible_mode_orientation_instruction(compact=compact) or "")
                 chat += build_chat_mode_dynamic_tail("", message="hej", session_id="answer-protocol-chat")
-            assert ANSWER_MARKER not in chat
+            assert "[Code answer presentation]" not in chat
+            if layout == "1":
+                assert ANSWER_MARKER in chat

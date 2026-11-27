@@ -189,3 +189,14 @@ def test_code_filters_only_conversational_visible_rules(monkeypatch):
     assert filter_visible_rules(text, scope="chat") == text
     monkeypatch.setenv("JARVIS_PROMPT_MODE_LAYOUT_V2", "0")
     assert filter_visible_rules(text, scope="code") == text
+
+
+def test_chat_answer_boundary_is_in_the_current_turn_prompt(monkeypatch):
+    monkeypatch.setenv("JARVIS_PROMPT_MODE_LAYOUT_V2", "1")
+    with patch("core.tools.tool_scoping.current_tool_scope", return_value="chat"):
+        tail = build_chat_mode_dynamic_tail("existing", message="hej", session_id="answer-chat")
+    assert "[[jarvis:answer]]" in tail
+    assert "before the first word" in tail
+    assert "not turn end" in tail
+    assert "short conversational reply" in tail
+    assert "[Code answer presentation]" not in tail

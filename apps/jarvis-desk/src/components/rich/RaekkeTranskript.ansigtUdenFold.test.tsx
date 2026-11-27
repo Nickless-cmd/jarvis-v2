@@ -98,6 +98,15 @@ describe('fase 1 — før svaret begynder', () => {
     expect(container.querySelector('.rv-arbejdsrunde[data-aktiv-runde] .jarvis-pulse.is-working')).not.toBeNull()
   })
 
+  it('ignores an early legacy answer flag while protocol text is still commentary', () => {
+    const { container } = vis({ streaming: true, finalAnswerStarted: true, blocks: [
+      kald('bash', 'working', 'running'),
+      { type: 'text', text: 'Nu undersøger jeg processen.', phase: 'final_answer', code_answer_protocol: 1 },
+    ] })
+    expect(container.querySelector('.rv-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
+    expect(container.querySelector('.rv-tur')).toBeNull()
+  })
+
   it('viser INGEN rundelinje uden for folden — heller ikke fra forste frame', () => {
     // Det var her den håndlavede ventelinje stod. Den er væk, og fraværet er
     // kontrakten: før svaret begynder findes rundelinjerne kun inde i folden.

@@ -43,7 +43,7 @@
  * besked brugeren foldede i, gennem en hel arbejdsdag. `MAKS_POSTER` holder den
  * flad ved at kaste den ældst rørte post ud — samme form som en LRU.
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 /** Hvor mange beskeder vi husker folden for. Rigeligt for en session. */
 export const MAKS_POSTER = 200
@@ -90,24 +90,27 @@ export function foldHukommelseStoerrelse(): number {
  */
 export function useFoldHukommelse(
   noegle: string | undefined,
+  turId?: string | null,
 ): readonly [boolean | null, (vaerdi: boolean) => void] {
-  const [manuelt, setManuelt] = useState<boolean | null>(
-    () => (noegle ? laesFold(noegle) ?? null : null),
-  )
-  // Nøglen kan skifte uden remount: den levende række får `activeRunId`, og når
-  // den persisteres, står det samme id i `run_id`. Skifter nøglen til noget
-  // ANDET, hører tilstanden til en anden besked og skal nulstilles.
-  const noegleRef = useRef(noegle)
+  const key = turId ?? noegle
+  const read = () => key ? laesFold(key) ?? null : null
+  const [stored, setStored] = useState(() => ({ key, value: read() }))
+  // A different turn owns a different state from its first render. Waiting
+  // for an effect exposes the previous turn's manual fold for one frame.
+  let current = stored
+  if (stored.key !== key) {
+    current = { key, value: read() }
+    setStored(current)
+  }
+  const manuelt = current.value
+  // Retain the live turn's preference when the saved row later uses run_id.
   useEffect(() => {
-    if (noegleRef.current === noegle) return
-    noegleRef.current = noegle
-    setManuelt(noegle ? laesFold(noegle) ?? null : null)
-  }, [noegle])
-
+    if (noegle && manuelt !== null) skrivFold(noegle, manuelt)
+  }, [noegle, manuelt])
   const saet = useCallback((vaerdi: boolean) => {
-    setManuelt(vaerdi)
-    if (noegle) skrivFold(noegle, vaerdi)
-  }, [noegle])
-
+    setStored({ key, value: vaerdi })
+    if (key) skrivFold(key, vaerdi)
+    if (noegle && noegle !== key) skrivFold(noegle, vaerdi)
+  }, [key, noegle])
   return [manuelt, saet] as const
 }

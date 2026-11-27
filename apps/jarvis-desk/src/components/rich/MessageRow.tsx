@@ -29,7 +29,7 @@ import { CODE_FOLD_MS, codeVisibleBlocks, codeAnswerStarted, codeHasLateWork } f
 import { fadeMsForRate, delayMsForFade } from '../../lib/paceFade'
 
 function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarted, arbejdeEfterSvar, beskedId, config,
-  rundeEtiketter, tankeResumeer, raekker, elapsedMs, tokens, varighedSekunder, runId, onPaced, workingStep, rateUd }: {
+  rundeEtiketter, tankeResumeer, raekker, elapsedMs, tokens, varighedSekunder, runId, turId, onPaced, workingStep, rateUd }: {
   workingStep?: string | null
   /** Pacerens øjeblikkelige rate skrives her hvert frame — se `paceFade.ts`. */
   rateUd?: { current: number }
@@ -49,6 +49,7 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
   varighedSekunder?: number | null
   /** Kørslens id — pacing-cursoren nøgles på det, så to beskeder ikke deler ur. */
   runId?: string | null
+  turId?: string | null
   /** Kaldes når pacingen har indhentet hele teksten (se `pacingFaerdig`). */
   onPaced?: () => void
 }) {
@@ -73,7 +74,7 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
     // Også arbejdets narration paces — samme kurve som Chat Mode. Se
     // `streamPacing.ts`: forskellen mellem de to lag er kurven, ikke træet.
     paceAllText: streaming && jaevn,
-    runId: runId ?? beskedId ?? null,
+    runId: turId ?? runId ?? beskedId ?? null,
     rateRef: rateUd,
   })
   const codePaced = usePacedBlocks(blocks, streaming && !jaevn, rateUd)
@@ -105,11 +106,11 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
   // `message_stop` hvor paceren indhenter resten. Falsk for en persisteret
   // besked (alt er vist fra start) og for en tur uden tekst.
   const svarRuller = streaming || (alleTekst.length > 0 && !pacingFaerdig)
-  // Kun mellemsynteser: slutsvaret har sin egen overgang. En 420 ms tærskel
+  // Arbejdslinjen viger også for synteser efter svarstart. En 420 ms tærskel
   // gør at korte synteser aldrig får arbejdslinjen til at blinke.
   const skjulAktivRunde = usePacingWorkLine(
-    streaming && !shownAnswerStarted && alleTekst.length > 0 && !pacingFaerdig,
-    runId ?? beskedId ?? null,
+    streaming && alleTekst.length > 0 && !pacingFaerdig,
+    turId ?? runId ?? beskedId ?? null,
   )
   const hasLateWork = raekker && codeHasLateWork(blocks)
   const onPacedRef = useRef(onPaced)
@@ -127,7 +128,7 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
     ? <RaekkeTranskript blocks={visible} streaming={streaming} finalAnswerStarted={shownAnswerStarted}
         svarRuller={svarRuller}
         arbejdeEfterSvar={arbejdeEfterSvar}
-        beskedId={beskedId} runId={runId} config={config} rundeEtiketter={rundeEtiketter}
+        beskedId={beskedId} runId={runId} turId={turId} config={config} rundeEtiketter={rundeEtiketter}
         elapsedMs={elapsedMs} tokens={tokens} varighedSekunder={varighedSekunder}
         skjulAktivRunde={skjulAktivRunde} workingStep={workingStep} />
     : <BlocksRenderer blocks={paced} density={density} streaming={streaming} hale={svarRuller}
@@ -353,7 +354,7 @@ function MessageRowImpl({
                   sessionId={sessionId}
                   paceFinalAnswer={paceFinalAnswer} flushFinalAnswer={flushFinalAnswer}
                   onAnswerPaced={onAnswerPaced} />
-              : <CodeAssistantTranscript blocks={blocks} density={density} streaming={streaming} onPaced={onAnswerPaced}
+              : <CodeAssistantTranscript key={turId ?? runId ?? beskedId} turId={turId} blocks={blocks} density={density} streaming={streaming} onPaced={onAnswerPaced}
                   finalAnswerStarted={finalAnswerStarted} arbejdeEfterSvar={arbejdeEfterSvar} beskedId={beskedId} config={config}
                   rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} raekker={raekker}
                   runId={runId} workingStep={workingStep} rateUd={paceRef}

@@ -548,7 +548,7 @@ function noegleForRunde(elementer: ArbejdsElement[]): string | undefined {
 }
 
 function RaekkeTranskriptImpl({
-  blocks, streaming, finalAnswerStarted = false, svarRuller, arbejdeEfterSvar = false, beskedId, runId, config, rundeEtiketter,
+  blocks, streaming, finalAnswerStarted = false, svarRuller, arbejdeEfterSvar = false, beskedId, runId, turId, config, rundeEtiketter,
   elapsedMs = 0, tokens = 0, varighedSekunder = null,
   skjulAktivRunde = false, workingStep,
 }: {
@@ -566,6 +566,7 @@ function RaekkeTranskriptImpl({
   /** Run'et der skrev beskeden. Sammen med `beskedId` den nøgle folden huskes
    *  på, så den overlever overgangen live → persisteret besked. */
   runId?: string | null
+  turId?: string | null
   config?: ApiConfig
   rundeEtiketter?: Record<string, string>
   elapsedMs?: number
@@ -580,16 +581,18 @@ function RaekkeTranskriptImpl({
   const transcriptBlocks = inlineQuestions.length > 0
     ? blocks.filter((blok) => !(blok.type === 'tool_use' && blok.name === 'pause_and_ask'))
     : blocks
+  const declaredProtocol = transcriptBlocks.some((b) => b.type === 'text' && b.code_answer_protocol === 1)
+  const effectiveAnswerStarted = declaredProtocol ? codeAnswerStarted(transcriptBlocks) : finalAnswerStarted
   // Kald uden svar bærer `status: 'running'` videre fra `foldToolResults`, og
   // `arbejdsTrin` gør dem til «afbrudt» når runden ikke længere er aktiv.
   // `afslutForladteKald` må IKKE bruges her: den stempler et kald som «done» så
   // snart der kommer tekst efter det, fordi den læser tekst som «svaret er
   // begyndt». For en rundelinje er det forkert — kaldet kan stadig køre, og
   // «Læser app.ts» blev til «Læste app.ts» (målt 15/11-2026).
-  // `finalAnswerStarted` sendes ogsaa som SVAR-LAAS: naar serveren har
+  // `effectiveAnswerStarted` sendes ogsaa som SVAR-LAAS: naar serveren har
   // bekræftet at svaret er begyndt, maa et senere vaerktoejskald ikke flytte
   // skillelinjen og goere slutteksten til arbejde (målt 21/11-2026).
-  const { arbejde: oprindeligtArbejde, svar, svarSektioner, kald } = opdel(transcriptBlocks, streaming && !finalAnswerStarted, finalAnswerStarted)
+  const { arbejde: oprindeligtArbejde, svar, svarSektioner, kald } = opdel(transcriptBlocks, streaming && !effectiveAnswerStarted, effectiveAnswerStarted)
   const svarSamles = !streaming && !(svarRuller ?? false)
   // Text always stays in the answer lane. Only work rows collapse; their
   // details remain available behind the head after the turn.
@@ -607,7 +610,7 @@ function RaekkeTranskriptImpl({
   for (let i = 0; i < sektioner.length; i++) {
     if (sektioner[i]?.slags === 'runde') sidsteRundeIndex = i
   }
-  const aktivRundeIndex = streaming && sidsteRundeIndex === sektioner.length - 1
+  const aktivRundeIndex = streaming
     ? sidsteRundeIndex
     : -1
   // Den aktive runde efter foldet. Bjørn 27/11-2026: «runderne og den aktive
@@ -632,8 +635,8 @@ function RaekkeTranskriptImpl({
   // og overgangen live → persisteret ER et remount. `runId` er den fælles
   // nøgle: den levende række har `activeRunId`, den persisterede besked bærer
   // samme id i `run_id`. Uden nøgle opfører den sig som før (rent lokal state).
-  const [aabenManuelt, setAabenManuelt] = useFoldHukommelse(runId ?? beskedId)
-  const svarRullerAktiv = svarRuller ?? (streaming && (!finalAnswerStarted || arbejdeEfterSvar))
+  const [aabenManuelt, setAabenManuelt] = useFoldHukommelse(runId ?? beskedId, turId)
+  const svarRullerAktiv = svarRuller ?? (streaming && (!effectiveAnswerStarted || arbejdeEfterSvar))
   const arbejdeKoerer = arbejdeEfterSvar || svarRullerAktiv
   // Ordhalen skal leve mens TEKSTEN ruller — ikke mens SSE-socket'en er aaben.
   // MÅLT 20/11-2026 (Bjørn: «Kan det passe farven forsvinder fra ord
@@ -658,8 +661,8 @@ function RaekkeTranskriptImpl({
   // `arbejdeEfterSvar` er daekket: naar et nyt run arbejder efter svaret, er
   // `svarBegyndt` stadig sand — folden bliver lukket, og hovedet bliver
   // turens ansigt. Det var netop fejlen 20/11 at den sprang OP i stedet.
-  const explicitProtocol = transcriptBlocks.some((b) => b.type === 'text' && b.code_answer_protocol === 1)
-  const svarBegyndt = finalAnswerStarted || codeAnswerStarted(transcriptBlocks)
+  const explicitProtocol = declaredProtocol
+  const svarBegyndt = effectiveAnswerStarted || codeAnswerStarted(transcriptBlocks)
     || (!explicitProtocol && svar.some((b) => b.type === 'text' ? b.text.trim().length > 0
       : b.type === 'image' || b.type === 'file' || b.type === 'video'))
   const aaben = aabenManuelt ?? (arbejdeKoerer && !svarBegyndt)
@@ -699,7 +702,7 @@ function RaekkeTranskriptImpl({
   // skjult OG hovedet vaek — det var den tomme flade.
   // Before the first model content, the animated mark carries liveness.
   // It is not a work round and must not duplicate the first real round.
-  const venterPaaModel = streaming && !finalAnswerStarted && !arbejdeEfterSvar
+  const venterPaaModel = streaming && !effectiveAnswerStarted && !arbejdeEfterSvar
     && !transcriptBlocks.some((block) =>
     block.type === 'text' ? block.text.trim().length > 0
       : block.type === 'thinking' ? block.thinking.trim().length > 0

@@ -5,6 +5,7 @@ beskyttet. Bruger den ægte `chat_crypto.er_krypteret`, ikke en regex.
 """
 from __future__ import annotations
 
+import logging
 from types import SimpleNamespace
 
 from core.services import chat_crypto, visible_runs as vr
@@ -26,6 +27,37 @@ def test_krypteret_kilde_giver_pladsholder_ikke_chiffer():
 
 def test_klartekst_snittes_uaendret():
     assert preview_til_skrivning("hej " * 100, lambda t: t[:140]) == ("hej " * 100)[:140]
+
+
+def test_substitution_logges_uden_kildeindhold(caplog):
+    """Grenen aendrer hvad der gemmes — den skal efterlade sig et spor.
+
+    Maalt 27/11-2026: grenen fyrede 26 gange uden ét journal-traef, fordi den
+    tav. Testen maaler ved KALD (ikke ved at grepe filen).
+    """
+    with caplog.at_level(logging.INFO, logger="core.services.visible_preview_crypto"):
+        ud = preview_til_skrivning(CHIFFER, lambda t: t[:140])
+    assert ud == PLADSHOLDER_KRYPTERET
+    linjer = [
+        r.getMessage()
+        for r in caplog.records
+        if r.name == "core.services.visible_preview_crypto"
+    ]
+    assert len(linjer) == 1, linjer
+    assert "pladsholder" in linjer[0]
+    assert str(len(CHIFFER)) in linjer[0]
+    # kilde-indhold eller chiffer maa ALDRIG i loggen
+    assert "enc:v1:" not in linjer[0]
+    assert "QUJDREVGR0hJ" not in linjer[0]
+
+
+def test_klartekst_logger_intet(caplog):
+    """Vagten maa ikke stoje paa hver skrivning — kun naar den griber ind."""
+    with caplog.at_level(logging.DEBUG, logger="core.services.visible_preview_crypto"):
+        preview_til_skrivning("hej " * 100, lambda t: t[:140])
+    assert not [
+        r for r in caplog.records if r.name == "core.services.visible_preview_crypto"
+    ]
 
 
 def test_set_last_visible_run_outcome_gemmer_ikke_chiffer(monkeypatch):

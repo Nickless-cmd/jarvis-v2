@@ -1,7 +1,11 @@
 """Encrypt durable previews for visible member runs."""
 from __future__ import annotations
 
+import logging
+
 from core.services import chat_crypto
+
+logger = logging.getLogger(__name__)
 
 
 def member_for_run(run) -> str | None:
@@ -80,5 +84,13 @@ def preview_til_skrivning(kilde: str | None, snit) -> str | None:
     kommer for sent for det der allerede ligger i databasen.
     """
     if kilde and chat_crypto.er_krypteret(str(kilde).strip()):
+        # Substitutionen aendrer hvad der gemmes, saa den skal kunne ses udefra.
+        # Maalt 27/11-2026: grenen fyrede 26 gange uden et eneste journal-spor,
+        # og «0 traef i journalen» blev laest som «grenen fyrede ikke».
+        # Kun at det skete og kildens laengde — ALDRIG indhold eller chiffer.
+        logger.info(
+            "preview gate: krypteret kilde erstattet med pladsholder (kilde-længde=%d)",
+            len(str(kilde)),
+        )
         return PLADSHOLDER_KRYPTERET
     return snit(kilde) if kilde else kilde

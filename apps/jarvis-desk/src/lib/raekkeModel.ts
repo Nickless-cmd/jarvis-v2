@@ -265,11 +265,29 @@ export function opdel(blokke: readonly ContentBlock[], underArbejde = false, sva
   // ikke er begyndt, hører kaldet til i folden.
   const efterFold = svarLaast && foersteSvar >= 0
 
+  // ── Grænsen er serverens `final_answer`, ikke `underArbejde` ─────────────
+  //
+  // MÅLT 27/11-2026 på Bjørns sekvens `runde → syntese → fold → slutbesked →
+  // runde → syntese`: mellemsyntesen der lå FØR foldet blev teleporteret UD af
+  // folden i det øjeblik foldet skete. Den lå i arbejdet mens turen kørte, og
+  // stod så pludselig i svaret — fordi `underArbejde` falder til falsk når
+  // `finalAnswerStarted` bliver sand, så det samme gennemløb klassificerede
+  // blokken efter en anden regel end den den var VIST under.
+  //
+  // Det er samme fejlklasse som «teleporteringen» beskrevet ovenfor, men den
+  // ramte en anden blok: ikke slutbeskeden, men syntesen før den. Kuren er den
+  // samme — grænsen må ikke være en funktion af et flag der skifter midt i
+  // turen. Er svaret stemplet, hører alt FØR den første `final_answer` til
+  // arbejdet, uanset om foldet allerede er sket.
+  //
+  // Uden et `final_answer`-stempel er grænsen som før: det sidste kald.
+  const graense = foersteSvar >= 0 ? foersteSvar - 1 : sidsteKald
+
   for (let i = 0; i < blokke.length; i++) {
     const b = blokke[i]
     if (!b) continue
 
-    if (i > sidsteKald) {
+    if (i > graense) {
       // En tekst efter et værktøj er først et slutsvar, når serveren sender
       // final_answer_start. Indtil da kan næste runde stadig følge efter.
       if (b.type === 'text' && underArbejde && sidsteKald >= 0) {

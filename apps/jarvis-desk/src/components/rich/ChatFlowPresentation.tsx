@@ -677,7 +677,29 @@ export function ChatFlowPresentation({
   // svar-låsen: ellers lukkede gruppen i samme øjeblik slutsvaret begyndte, og
   // både rundelinje og ur forsvandt midt i turen (målt: `data-aaben=false`).
   const arbejdeKoerer = streaming || arbejdeEfterSvar
-  const aaben = aabenManuelt ?? arbejdeKoerer
+  // FOLDEN LUKKER FØR DEN EKSTRA RUNDE (Bjørn 27/11-2026): «du skal folde
+  // hoved før du køre den extra runde».
+  //
+  // `aaben` fulgte `arbejdeKoerer`, og `arbejdeKoerer` er også sand i
+  // follow-up-vinduet. Så i det øjeblik den ekstra runde ankom, blev `aaben`
+  // sand og hovedet foldede UD igen — og foldede først sammen da HELE turen
+  // sluttede. Målt: brugeren skulle folde hovedet manuelt sammen for at se
+  // den ekstra runde og slutbeskeden.
+  //
+  // Folden hører til den FØRSTE del af turen: den lukker når slutsvaret er
+  // skrevet. Arbejde der ankommer EFTER svaret er ikke en genåbning af
+  // hovedet — det har sin egen container under besvarelsen
+  // (`[data-runder-efter]`), med sin egen levetid.
+  //
+  // `arbejdeKoerer` er UÆNDRET: uret og «kører»-markøren skal stadig vise at
+  // der arbejdes. Det er kun foldens tilstand der ikke må følge den.
+  //
+  // MEN kun når hale-containeren FAKTISK ejer arbejdet. Findes der ingen
+  // besvarelse at lægge runden under, bliver dens segment `'foer'` og ligger
+  // i folden — og så ville et lukket hoved gøre arbejdet usynligt alle steder.
+  // Derfor: folden lukker først når `[data-runder-efter]` findes.
+  const haleEjerArbejdet = arbejdeEfterSvar && efterSegmenter.length > 0
+  const aaben = aabenManuelt ?? (streaming && !haleEjerArbejdet)
   // Arbejdsdetaljerne under rundelinjen. Mens der arbejdes er de foldet
   // sammen som udgangspunkt — den levende linje er nok — men Bjørn kan folde
   // dem ud UNDER streaming (17/10-2026: «runde linjen under streaming bør

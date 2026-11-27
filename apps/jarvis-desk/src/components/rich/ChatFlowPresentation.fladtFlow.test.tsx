@@ -222,6 +222,51 @@ describe('levetiden — en hale-runde bliver stående til turen slutter', () => 
     expect(runde!.getAttribute('data-levetid')).toBe('kollapset')
   })
 
+  it('FOLDEN: hovedet åbner sig IKKE når den ekstra runde ankommer', () => {
+    // Bjørn 27/11-2026: «du skal folde hoved før du køre den extra runde».
+    //
+    // MÅLT FØR RETTELSEN: `aaben` fulgte `arbejdeKoerer`, og den er også sand
+    // i follow-up-vinduet. Så i det øjeblik runden ankom, blev `aaben` sand og
+    // hovedet foldede UD igen — og foldede først sammen da HELE turen
+    // sluttede. Brugeren måtte folde hovedet manuelt sammen for at se den
+    // ekstra runde og slutbeskeden.
+    //
+    // Kontrakten: folden hører til den FØRSTE del af turen. Arbejde der
+    // ankommer EFTER svaret genåbner ikke hovedet — det har sin egen container.
+    const efter = render(
+      <ChatFlowPresentation
+        {...common}
+        blocks={[kald('k1'), tekst('Svaret.', 'final_answer'), kald('k-efter')]}
+        streaming
+        status="working"
+        finalAnswerStarted
+        arbejdeEfterSvar
+      />,
+    )
+    const gruppe = efter.container.querySelector('.chat-flow-gruppe-ydre')
+    expect(gruppe).not.toBeNull()
+    expect(gruppe!.getAttribute('data-aaben')).toBe('false')
+    // Og runden ER synlig — den ligger bare i sin egen container.
+    expect(efter.container.querySelector('[data-runder-efter]')).not.toBeNull()
+  })
+
+  it('MODPRØVE: under selve arbejdet ER hovedet åbent', () => {
+    // Gaten må ikke være blevet blind: uden `arbejdeEfterSvar` er turen i sin
+    // arbejdsfase, og så skal folden følge den.
+    const { container } = render(
+      <ChatFlowPresentation
+        {...common}
+        blocks={[kald('k1'), tekst('Arbejder…', 'commentary')]}
+        streaming
+        status="working"
+        finalAnswerStarted={false}
+      />,
+    )
+    const gruppe = container.querySelector('.chat-flow-gruppe-ydre')
+    expect(gruppe).not.toBeNull()
+    expect(gruppe!.getAttribute('data-aaben')).toBe('true')
+  })
+
   it('besvarelsen har ingen kollaps-fase — den er leverancen', () => {
     const { container } = render(
       <ChatFlowPresentation {...common} blocks={blokke}

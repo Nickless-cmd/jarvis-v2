@@ -804,6 +804,7 @@ export function ChatFlowPresentation({
     <div className="chat-flow" data-chat-flow-mode={mode}>
       {visTurhoved ? (
           <TurHoved
+          skjult={!shownAnswerStarted && aaben && (streaming || (explicitProtocol && !svarFaerdigPacet))}
             aaben={aaben}
             foldbar={harArbejde}
             koerer={arbejdeKoerer}

@@ -118,3 +118,6 @@
   position: relative;
   color: var(--fg-3, #8f98a3);
 }
+
+/* Both presentations keep the head invisible until the fold starts. */
+.rv-tur[hidden] { display: none !important; }

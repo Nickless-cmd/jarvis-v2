@@ -17,12 +17,15 @@ it('folds at the first paced answer word even when server completion arrives fir
   const { container, rerender } = render(<ChatFlowPresentation {...props} />)
   const fold = container.querySelector('.chat-flow-gruppe-ydre')!
   expect(fold).toHaveAttribute('data-aaben', 'true')
+  expect(container.querySelector('.rv-tur')).not.toBeVisible()
   expect(container.querySelectorAll('[data-plassering="efter"]')).toHaveLength(0)
   rerender(<ChatFlowPresentation {...props} streaming={false} status="done" paceFinalAnswer />)
   expect(fold).toHaveAttribute('data-aaben', 'true')
+  expect(container.querySelector('.rv-tur')).not.toBeVisible()
   shown = [blocks[0]!, blocks[1]!, { ...blocks[2], text: 'D' } as ContentBlock]
   rerender(<ChatFlowPresentation {...props} streaming={false} status="done" paceFinalAnswer />)
   expect(fold).toHaveAttribute('data-aaben', 'false')
+  expect(container.querySelector('.rv-tur')).toBeVisible()
   expect(container.querySelector('.chat-flow-answer')).toHaveTextContent('D')
 })
 

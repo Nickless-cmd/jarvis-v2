@@ -251,3 +251,13 @@ describe('den fulde sekvens — runde, syntese, fold, slutbesked, runde, syntese
     expect(container.querySelector('.toolgroup')).toBeNull()
   })
 })
+
+ it('keeps the head invisible until the answer folds the work', () => {
+  const work = { type: 'text' as const, text: 'Jeg undersøger opgaven.', code_answer_protocol: 1 as const }
+  const { container, rerender } = vis({ blocks: [work], streaming: true })
+  expect(container.querySelector('.rv-tur:not([hidden])')).toBeNull()
+  rerender(<SettingsProvider><RaekkeTranskript streaming blocks={[work, kald('bash', 'checked'),
+    { type: 'text', text: 'Resultatet er klart.', code_answer_protocol: 1, code_answer_start: true },
+  ]} /></SettingsProvider>)
+  expect(container.querySelector('.rv-tur')).toBeVisible()
+ })

@@ -155,14 +155,17 @@ export interface TurHovedProps {
    *  uret, og fold-pilen skjules, så den ikke lover et indhold der ikke er der
    *  (Bjørn 17/10-2026: hovedet skal stå der også på ture uden værktøjskald). */
   foldbar?: boolean
+  /** Hovedet overtager først ansigtet, når arbejdet foldes ind. */
+  skjult?: boolean
   knapRef?: Ref<HTMLButtonElement>
 }
 
 export function TurHoved({
   tekst, aaben, onToggle, koerer = false, sekunder = null, meta,
-  levende = false, foldbar = true, knapRef,
+  levende = false, foldbar = true, knapRef, skjult = false,
 }: TurHovedProps) {
   const tilstand = {
+    hidden: skjult,
     ...(koerer ? { 'data-koerer': '' } : {}),
     ...(levende ? { 'data-levende': '' } : {}),
   }

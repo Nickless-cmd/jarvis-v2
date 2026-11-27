@@ -730,6 +730,7 @@ function RaekkeTranskriptImpl({
       ) : null}
       {visTurhoved && !venterPaaModel && (
         <TurHoved
+          skjult={!svarBegyndt && aaben && arbejdeKoerer}
           knapRef={turRef}
           aaben={aaben}
           koerer={arbejdeKoerer}

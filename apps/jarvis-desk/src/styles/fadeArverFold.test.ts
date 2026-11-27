@@ -31,8 +31,8 @@ const code = udenKommentarer(readFileSync(join(__dirname, 'raekkevisning.css'), 
 describe('faden arver foldens varighed og kurve', () => {
   it('chat mode: variablen er defineret på containeren med foldens værdi', () => {
     const r = regel(chat, '.chat-flow')
-    expect(r).toMatch(/--fold-varighed:\s*var\(--dur-sheet\)/)
-    expect(r).toMatch(/--fold-kurve:\s*var\(--ease-out\)/)
+    expect(r).toMatch(/--fold-varighed:\s*var\(--dur-fold\)/)
+    expect(r).toMatch(/--fold-kurve:\s*var\(--ease-fold\)/)
   })
 
   it('code mode: variablen er defineret på containeren med foldens værdi', () => {

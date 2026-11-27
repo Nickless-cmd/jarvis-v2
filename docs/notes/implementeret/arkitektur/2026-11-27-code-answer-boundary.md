@@ -44,8 +44,8 @@ The explicit declaration keeps streaming and presentation intent separate.
 
 Old rows are not rewritten. A new client reading old blocks without protocol
 metadata retains the legacy phase/position fallback. Old clients ignore the
-additional fields. Chat rendering and runtime governance are not redefined by
-the code protocol.
+additional fields. Runtime governance is independent of the presentation protocol.
+Chat now consumes the same additive boundary as described below.
 
 Code presentation projects the pacing cursor before revealing later work.
 The head folds at the first displayed answer word, independently of the pacing
@@ -71,3 +71,25 @@ passes the real mode orientation through the real budget selector and assembles
 the dynamic tail for V1/V2 and full/compact profiles; chat gets no code marker
 instruction. This fixes instruction delivery; actual model compliance still
 requires observing an explicit declaration on a subsequent production turn.
+
+
+Chat-mode follow-up: the V2 current-turn prompt now requests the same marker,
+including for a short conversational reply, without changing its conversational
+voice. `chatFlowModel` treats marked answer text and all later text as the answer,
+even when a later synthesis still carries legacy `phase=commentary`. Its live
+projection follows the pacing cursor, and the fold closes on the first displayed
+answer word. Answer sections retain their source identities and document order
+with late work between them; only work wrappers collapse after server AND pacing
+completion. The live-row handover waits through that exit. Late work remains
+available inside the head. Saved messages without protocol metadata retain the
+legacy presentation path.
+
+The expanded chat fold uses the shared `Arbejdsforloeb` round-line renderer from
+code mode instead of the former `BlocksRenderer` tool-card chronology. Persisted
+round labels and thought summaries are retained behind the round chevrons.
+Details that have been revealed stay mounted during manual closing. The external
+chat activity and late-round renderer are preserved. Fold and fade share code's
+`--dur-fold` and `--ease-fold` tokens. Chromium audit:
+`apps/jarvis-desk/src/harness/verify-chat-fold.py` checks stable text nodes,
+intermediate round heights/opacities, final zero-height collapse, expanded round
+lines, and server completion ahead of the reader's pacing cursor.

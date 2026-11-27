@@ -507,6 +507,9 @@ describe('ChatFlowPresentation', () => {
     const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
     expect(within(gruppe).getByText('Jeg fandt årsagen og går videre.')).toBeInTheDocument()
     expect(within(gruppe).getByText('Læste konfigurationen')).toBeInTheDocument()
+    // The thought belongs behind its round's chevron.
+    expect(gruppe.querySelector('.rv-arbejdsrunde')).not.toBeNull()
+    fireEvent.click(within(gruppe).getByRole('button', { name: 'Læste konfigurationen' }))
     expect(within(gruppe).getByText('Mistænkte en gammel indstilling')).toBeInTheDocument()
 
     const svar = document.querySelector('.chat-flow-answer') as HTMLElement

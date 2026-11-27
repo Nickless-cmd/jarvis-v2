@@ -108,7 +108,9 @@ describe('ChatView integration', () => {
       )
       expect(await screen.findByText('Sikkert svar')).toBeInTheDocument()
       expect(container.querySelector('[data-chat-flow-mode="living"]')).toBeInTheDocument()
-      expect(container.querySelector('.raekkevisning')).not.toBeInTheDocument()
+      // Chat keeps its own turn renderer; its work fold shares round-line styling.
+      expect(container.querySelector('.raekkevisning:not(.chat-flow-work-details)')).not.toBeInTheDocument()
+      expect(container.querySelector('.chat-flow-work-details .rv-arbejdsrunde')).toBeInTheDocument()
     } finally {
       writeRaekkevisning(false)
     }

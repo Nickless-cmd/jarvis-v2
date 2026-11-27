@@ -101,10 +101,17 @@ def recency_anchor(*, scope: str) -> str | None:
     if not mode_layout_v2_enabled():
         return None
     if scope == "chat":
+        from core.services.code_answer_boundary import ANSWER_MARKER
+
         return (
             "[CHAT MODE — current turn] Read the user's intent and emotional "
             "temperature in this turn; apply the chat hierarchy and current style "
-            "settings naturally without mentioning them."
+            "settings naturally without mentioning them.\n"
+            f"[Answer presentation] Emit {ANSWER_MARKER} on its own line immediately "
+            "before the first word of your answer, never before work commentary. "
+            "This internal marker is stripped by the runtime. It marks answer start, "
+            "not turn end; later tools and syntheses continue the same answer. "
+            "A short conversational reply is also an answer; keep your natural voice."
         )
     if scope == "code":
         from core.services.prompt_sections.code_mode import CODE_ANSWER_PRESENTATION

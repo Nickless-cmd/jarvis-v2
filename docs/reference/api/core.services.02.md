@@ -112,9 +112,9 @@ _Agent runtime — shared foundation (imports, constants, role templates, helper
 | function | `_bogfoer_vaerktoejskald` | `(agent, run_id, tc, tool_out)` | BOGFOER KALDET (db + per-agent transcript). `agent_tool_calls` havde foer NUL kaldere: | [src](../../../core/services/agent_runtime_base.py#L513) |
 | function | `_loop_result` | `(o, *, scout, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L551) |
 | function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L744) |
-| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L803) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L943) |
-| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L947) |
+| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L824) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L964) |
+| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L968) |
 
 ## `core/services/agent_runtime_council.py`
 _Agent runtime — council & swarm collective rounds._

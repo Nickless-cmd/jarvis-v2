@@ -191,3 +191,52 @@ def test_wrote_something_cacher_et_ja(monkeypatch):
     assert io.wrote_something() is True
     assert io.wrote_something() is True
     assert len(maalinger) == 1, "et ja er endeligt og maa caches"
+
+
+# ── Commit-vejen for executor-agenter (27/11-2026, Bjoern) ────────────────
+#
+# Maalt paa `asg-98c300312e7f4175`: agenten skrev kode, koerte testene, beviste
+# mutationen — og kunne ikke afslutte. Den svarede «hooken kraever en
+# Approved-By-trailer, og jeg har ikke commit_attributed» og efterlod sine
+# aendringer staged i worktree'et.
+#
+# Fejlen var ikke agentens. `commit_attributed` stod i kataloget og i
+# owner-scope-listen, men i INGEN af de politik-saet en agent faktisk faar —
+# saa den blev filtreret vaek uden en fejl. Samme fejlform som `grep`/`glob`
+# ovenfor: et navn der aldrig naar modellen.
+
+def test_executor_politikkerne_har_commit_attributed():
+    """En agent der har skrevet skal kunne committe — uden om shell-vejen.
+
+    `bash "git commit -m …"` fortolker backticks og $variabler, og det var
+    praecis den fejl `commit_attributed` blev bygget til at fjerne. Uden
+    vaerktoejet i politikken tvinges agenten tilbage paa den vej.
+    """
+    from core.services.agent_runtime_base import AGENT_ROLE_TEMPLATES, tools_for_policy
+
+    executor = AGENT_ROLE_TEMPLATES["executor"]["default_tool_policy"]
+    assert "commit_attributed" in tools_for_policy(executor), (
+        f"executor-rollens politik {executor!r} mangler commit_attributed — "
+        "agenten kan ikke afslutte sit eget arbejde"
+    )
+    assert "commit_attributed" in tools_for_policy("worktree-write"), (
+        "kodeagentens worktree-politik mangler commit_attributed — den staar "
+        "tilbage med staged aendringer den ikke kan committe"
+    )
+
+
+def test_laesende_roller_faar_ikke_commit_attributed():
+    """At give executor commit-ret er ikke at give alle agenter det.
+
+    Researcher, critic og planner undersoeger og rapporterer; de skriver ikke.
+    Sivet skal vaere smalt, ellers bliver en laesende agent en skrivende ved
+    et uheld — og det er samme klasse som `commit_attributed` i owner-strippet
+    blev afgraenset for.
+    """
+    from core.services.agent_runtime_base import AGENT_ROLE_TEMPLATES, tools_for_policy
+
+    for rolle in ("researcher", "critic", "planner"):
+        politik = AGENT_ROLE_TEMPLATES[rolle]["default_tool_policy"]
+        assert "commit_attributed" not in tools_for_policy(politik), (
+            f"{rolle} bruger {politik!r} og skal ikke kunne committe"
+        )

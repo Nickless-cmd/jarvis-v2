@@ -74,6 +74,38 @@ _stream_state: dict[str, dict] = {}
 _stream_lock = threading.Lock()
 
 
+#: Bjørns Discord-DM-kanal. Verificeret live 27/11-2026: en besked fra
+#: hans discord-id 1246415163603816499 ankom i netop denne kanal
+#: (`discord on_message: … (owner=True) in channel 1474048593219555461`).
+#: Der findes INGEN tabel der binder en session til en kanal — målt
+#: 27/11-2026: nul tabeller har en udfyldt `channel_id`-kolonne, så
+#: `_resolve_channel_for_session`'s DB-gren rammer altid undtagelsen.
+#: Kanalen kendes derfor kun som denne konstant eller fra
+#: `_discord_sessions`, som fyldes af `on_message` og tømmes ved genstart.
+OWNER_DM_CHANNEL_ID = 1474048593219555461
+
+
+def resolve_owner_dm_channel() -> int | None:
+    """Ejerens DM-kanal uden at kræve et session_id.
+
+    `_discord_sessions` er den eneste kilde til faktiske channel_ids, men
+    den fyldes kun når en besked ankommer og tømmes ved hver genstart.
+    Er den tom, findes kanalen stadig — den er blot ikke set siden start.
+    Heartbeat læste kun dict'en og sendte derfor hvert ping til webchat,
+    selv når ejer-DM'en var fuldt brugbar (målt 27/11-2026: 493 gange).
+
+    Returnerer None hvis Discord ikke er konfigureret.
+    """
+    try:
+        from core.services.discord_config import load_discord_config
+        if not load_discord_config():
+            return None
+    except Exception as exc:
+        logger.debug("resolve_owner_dm_channel: config-opslag fejlede: %s", exc)
+        return None
+    return OWNER_DM_CHANNEL_ID
+
+
 def get_discord_channel_for_session(session_id: str) -> int | None:
     """Lookup which Discord channel (if any) ejer denne session.
 
@@ -116,7 +148,7 @@ def get_discord_channel_for_session(session_id: str) -> int | None:
                 # Bjørn er eneste Discord-bruger der får DM med Jarvis
                 # i den nuværende deployment.
                 # Cache i in-memory dict så næste opslag er hurtigt.
-                owner_dm = 1474048593219555461
+                owner_dm = OWNER_DM_CHANNEL_ID
                 with _discord_sessions_lock:
                     _discord_sessions[sid] = owner_dm
                 return owner_dm
@@ -1675,8 +1707,10 @@ def _resolve_channel_for_session(session_id: str) -> str | None:
             return str(row[0])
     except Exception:
         pass
-    # Fallback to owner DM — Bjørn's channel from MEMORY.md
-    return "1474048593219555461"
+    # Fallback til ejer-DM'en. `chat_sessions` har ingen `channel_id`-kolonne
+    # (målt 27/11-2026), så DB-grenen ovenfor rammer altid undtagelsen — denne
+    # linje er i praksis den eneste vej igennem.
+    return str(OWNER_DM_CHANNEL_ID)
 
 
 def start_discord_gateway() -> None:

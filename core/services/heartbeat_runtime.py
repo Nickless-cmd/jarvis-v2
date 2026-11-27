@@ -4363,6 +4363,7 @@ def _validate_heartbeat_decision(
                     _discord_sessions,
                     _discord_sessions_lock,
                     get_discord_status,
+                    resolve_owner_dm_channel,
                     send_discord_message,
                 )
 
@@ -4404,6 +4405,15 @@ def _validate_heartbeat_decision(
                 # described — Mikkel's per-user DM session is also
                 # a "Discord DM" semantically.
                 sent_ch_id: int | None = None
+
+                # Kandidat-kanaler: de in-memory sessioner først, derefter
+                # ejer-DM'en som fallback. `_discord_sessions` fyldes KUN af
+                # `on_message` og tømmes ved hver genstart — så en tom dict
+                # betyder «ingen har skrevet siden start», ikke «kanalen er
+                # væk». Heartbeat læste kun dict'en og sendte derfor hvert
+                # ping til webchat selv når ejer-DM'en var fuldt brugbar
+                # (målt 27/11-2026: 493 gange).
+                kandidater: list[int] = []
                 with _discord_sessions_lock:
                     sessions_snapshot = dict(_discord_sessions)
                 for session_id, ch_id in sessions_snapshot.items():
@@ -4423,6 +4433,18 @@ def _validate_heartbeat_decision(
                             session_id, title,
                         )
                         continue
+                    kandidater.append(int(ch_id))
+
+                if not kandidater:
+                    db_ch = resolve_owner_dm_channel()
+                    if db_ch is not None:
+                        kandidater.append(int(db_ch))
+                        logger.info(
+                            "heartbeat: ingen aktiv Discord-session — "
+                            "bruger ejer-DM fra DB-fallback (%s)", db_ch,
+                        )
+
+                for ch_id in kandidater:
                     # Route through nudge ledger instead of direct send
                     # (2026-05-13). Fixes spejlsal-bug: previously sent the
                     # ping straight to Discord DM, user's reply landed in

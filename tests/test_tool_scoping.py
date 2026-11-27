@@ -524,6 +524,52 @@ def test_commit_attributed_kan_hentes_i_code_scope():
     assert "commit_attributed" in (svar.get("added") or [])
 
 
+def test_load_more_tools_skelner_scope_filter_fra_manglende_vaerktoej():
+    """Et katalogfund må ikke sende fejlsøgningen tilbage til kataloget."""
+    from core.tools.load_more_tools import _tool_load_more_tools
+    from core.tools.tool_scoping import tool_scope
+
+    with tool_scope("chat"):
+        svar = _tool_load_more_tools({"names": ["commit_attributed"]})
+
+    fejl = svar.get("error", "").lower()
+    assert svar.get("status") == "error"
+    assert "scope 'chat'" in fejl
+    assert "scope filter" in fejl
+    assert "not found" not in fejl
+
+
+def test_load_more_tools_navngiver_autonomi_policy_filter(monkeypatch):
+    """Policy-afvisning skal pege på policyen, ikke på kataloget."""
+    from core.tools import autonomous_tool_policy
+    from core.tools.load_more_tools import _tool_load_more_tools
+
+    monkeypatch.setattr(
+        autonomous_tool_policy,
+        "is_allowed",
+        lambda navn: navn != "read_file",
+    )
+
+    svar = _tool_load_more_tools({"names": ["read_file"]})
+
+    fejl = svar.get("error", "").lower()
+    assert svar.get("status") == "error"
+    assert "autonomi-policy" in fejl
+    assert "not found" not in fejl
+
+
+def test_load_more_tools_bevarer_not_found_for_ukendt_navn():
+    from core.tools.load_more_tools import _tool_load_more_tools
+
+    navn = "findes_bestemt_ikke_i_tool_kataloget"
+    svar = _tool_load_more_tools({"names": [navn]})
+
+    assert svar == {
+        "status": "error",
+        "error": f"tools not found: ['{navn}']. Use names from the TOOL CATALOG.",
+    }
+
+
 def test_commit_attributed_er_owner_only():
     """En husstandsmedlem må ikke committe i Bjørns navn."""
     names = ["commit_attributed"]

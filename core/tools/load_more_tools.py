@@ -22,17 +22,20 @@ def _tool_load_more_tools(arguments: dict) -> dict:
     names = list(arguments.get("names") or [])
     query = (arguments.get("query") or "").strip()
 
-    all_by_name = {
+    catalog_by_name = {
         _tool_name(d): d
         for d in (TOOL_DEFINITIONS or [])
         if _tool_name(d)
     }
     from core.tools.tool_scoping import RETIRED_AGENT_CREATION_TOOLS
-    all_by_name = {name: definition for name, definition in all_by_name.items()
+    retired_filtered = set(catalog_by_name) & RETIRED_AGENT_CREATION_TOOLS
+    all_by_name = {name: definition for name, definition in catalog_by_name.items()
                    if name not in RETIRED_AGENT_CREATION_TOOLS}
     from core.tools.autonomous_tool_policy import is_allowed as _autonomous_allowed
+    autonomy_allowed = {name for name in all_by_name if _autonomous_allowed(name)}
+    autonomy_filtered = set(all_by_name) - autonomy_allowed
     all_by_name = {name: definition for name, definition in all_by_name.items()
-                   if _autonomous_allowed(name)}
+                   if name in autonomy_allowed}
 
     # ── Scope-porten (maalt 16/11-2026) ────────────────────────────────────
     #
@@ -51,6 +54,8 @@ def _tool_load_more_tools(arguments: dict) -> dict:
     # Fail-open paa tomt scope: legacy-vejen ("" = ubegraenset) skal vaere
     # byte-identisk med foer. Kan rollen eller scopet ikke laeses, filtreres
     # der ikke — en hentning maa ikke doe af en manglende ContextVar.
+    _scope = ""
+    scope_filtered: set[str] = set()
     try:
         from core.identity.workspace_context import current_role as _current_role
         from core.tools.tool_scoping import (
@@ -62,6 +67,7 @@ def _tool_load_more_tools(arguments: dict) -> dict:
             _tilladte = _allowed_tool_names(
                 role=_current_role(), scope=_scope, all_names=list(all_by_name),
             )
+            scope_filtered = set(all_by_name) - _tilladte
             all_by_name = {
                 name: definition
                 for name, definition in all_by_name.items()
@@ -87,9 +93,37 @@ def _tool_load_more_tools(arguments: dict) -> dict:
             resolved = []
 
     if not resolved and unknown:
+        # Katalogfund og adgangsafslag skal holdes adskilt, ellers sender en
+        # sand "not found"-besked fejlsøgningen hen til et katalog hvor navnet
+        # allerede står. De gemte mellemresultater peger samtidig på den port,
+        # der faktisk fjernede værktøjet, uden at genberegne policyen bagefter.
+        autonomy_denied = [n for n in unknown if n in autonomy_filtered]
+        scope_denied = [n for n in unknown if n in scope_filtered]
+        retired_denied = [n for n in unknown if n in retired_filtered]
+        not_found = [n for n in unknown if n not in catalog_by_name]
+        fejl: list[str] = []
+        if autonomy_denied:
+            fejl.append(
+                "tools found but not permitted by autonomi-policy: "
+                f"{autonomy_denied}"
+            )
+        if scope_denied:
+            fejl.append(
+                f"tools found but not permitted in scope '{_scope}' "
+                f"(scope filter): {scope_denied}"
+            )
+        if retired_denied:
+            fejl.append(
+                "tools found but not permitted by retired-tool filter: "
+                f"{retired_denied}"
+            )
+        if not_found:
+            fejl.append(
+                f"tools not found: {not_found}. Use names from the TOOL CATALOG."
+            )
         return {
             "status": "error",
-            "error": f"tools not found: {unknown}. Use names from the TOOL CATALOG.",
+            "error": ". ".join(fejl),
         }
 
     if not resolved:

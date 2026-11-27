@@ -671,11 +671,15 @@ export function ChatFlowPresentation({
   // række har `activeRunId`, og den persisterede besked bærer samme id i
   // `run_id`. Uden nøgle opfører den sig som før (rent lokal state).
   const [aabenManuelt, setAabenManuelt] = useFoldHukommelse(runId ?? beskedId)
-  // Låsen beskyttede SVARET, men med «gem turhoved til det foldes» (14/11-2026)
-  // er der ikke længere noget hoved at folde under streamen — rundelinjen ER
-  // turens ansigt indtil turen slutter. Folden skal derfor følge TUREN, ikke
-  // svar-låsen: ellers lukkede gruppen i samme øjeblik slutsvaret begyndte, og
-  // både rundelinje og ur forsvandt midt i turen (målt: `data-aaben=false`).
+  // Låsen beskyttede SVARET, og 14/11-2026 blev folden bundet til TUREN fordi
+  // hovedet dengang ikke fandtes under streamen: lukkede gruppen ved slutsvaret,
+  // forsvandt både rundelinje og ur (målt: `data-aaben=false`).
+  //
+  // Den begrundelse er væk 18/11-2026, hvor hovedet findes hele turen — og
+  // Bjørn 27/11-2026 kræver det modsatte: «foldet skete stadig ikk før slut
+  // beskeden». Folden hører til svarets BEGYNDELSE, ikke turens afslutning.
+  // Rundelinjen forsvinder ikke med den: den vises netop når folden er lukket
+  // (se `!arbejdeAabent`-grenen nedenfor).
   const arbejdeKoerer = streaming || arbejdeEfterSvar
   // FOLDEN LUKKER FØR DEN EKSTRA RUNDE (Bjørn 27/11-2026): «du skal folde
   // hoved før du køre den extra runde».
@@ -699,7 +703,18 @@ export function ChatFlowPresentation({
   // i folden — og så ville et lukket hoved gøre arbejdet usynligt alle steder.
   // Derfor: folden lukker først når `[data-runder-efter]` findes.
   const haleEjerArbejdet = arbejdeEfterSvar && efterSegmenter.length > 0
-  const aaben = aabenManuelt ?? (streaming && !haleEjerArbejdet)
+  // FOLDEN LUKKER NÅR SLUTSVARET BEGYNDER (Bjørn 27/11-2026: «foldet skete
+  // stadig ikk før slut beskeden»).
+  //
+  // `streaming` er sand gennem HELE turen — også mens slutsvaret skrives. Den
+  // forrige gate (`streaming && !haleEjerArbejdet`) holdt derfor hovedet åbent
+  // indtil `message_stop`, altså til efter svaret. Folden kom baglæns.
+  //
+  // Undtagelsen er den ene situation hvor et lukket hoved ville gøre arbejdet
+  // usynligt ALLE steder: arbejde efter svaret uden en hale-container at lægge
+  // det i (der findes ingen besvarelse, så segmentet bliver `'foer'` og ligger
+  // i folden). Se `svarLaast.test.tsx`, der værner præcis det tilfælde.
+  const aaben = aabenManuelt ?? (streaming && (!finalAnswerStarted || (arbejdeEfterSvar && !haleEjerArbejdet)))
   // Arbejdsdetaljerne under rundelinjen. Mens der arbejdes er de foldet
   // sammen som udgangspunkt — den levende linje er nok — men Bjørn kan folde
   // dem ud UNDER streaming (17/10-2026: «runde linjen under streaming bør

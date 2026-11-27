@@ -79,6 +79,51 @@ describe('stabil dokumentstruktur', () => {
     expect(runde!.getAttribute('data-plassering')).toBe('efter')
   })
 
+  it('FOLDEN: hovedet er ÅBENT mens arbejdet løber', () => {
+    const { container } = render(
+      <ChatFlowPresentation
+        {...common}
+        blocks={[kald('k-1'), tekst('Arbejder…', 'commentary')]}
+        streaming
+        status="working"
+        finalAnswerStarted={false}
+      />,
+    )
+
+    expect(container.querySelector('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
+  })
+
+  it('FOLDEN: hovedet LUKKER når slutsvaret begynder — ikke når turen slutter', () => {
+    // Bjørn 27/11-2026: «foldet skete stadig ikk før slut beskeden». `streaming`
+    // er sand gennem hele turen, også mens slutsvaret skrives, så en gate på
+    // `streaming` alene holdt hovedet åbent indtil `message_stop`.
+    //
+    // Testen er sin egen modprøve: de to renderinger nedenfor er identiske
+    // bortset fra `finalAnswerStarted`. Med den gamle gate ville BEGGE give
+    // `data-aaben="true"` — så forskellen her er det der beviser rettelsen.
+    const foer = render(
+      <ChatFlowPresentation
+        {...common}
+        blocks={[kald('k-1'), tekst('Arbejder…', 'commentary')]}
+        streaming
+        status="working"
+        finalAnswerStarted={false}
+      />,
+    )
+    expect(foer.container.querySelector('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
+
+    const efter = render(
+      <ChatFlowPresentation
+        {...common}
+        blocks={[kald('k-1'), tekst('Slutbeskeden.', 'final_answer')]}
+        streaming
+        status="working"
+        finalAnswerStarted
+      />,
+    )
+    expect(efter.container.querySelector('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'false')
+  })
+
   it('besvarelsen skifter ALDRIG indre struktur — der findes ingen flad gren', () => {
     // Den gamle gren efterlod `[data-segmenter="flat"]` som besvarelsens
     // forælder. Den findes ikke længere: besvarelsen har præcis én ejer.

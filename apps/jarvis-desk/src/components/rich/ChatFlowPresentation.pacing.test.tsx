@@ -218,12 +218,18 @@ describe('ChatFlowPresentation — aktiv rundelinje under pacing', () => {
     )
     frame()
     // VENDT 18/11-2026: hovedet STÅR hele turen (det er ordet der skifter,
-    // ikke elementet der ankommer). Gruppen er stadig ÅBEN, fordi rundelinjen
-    // er turens ansigt indtil turen er slut — samme én-gate-form som code
-    // mode: gaten følger turen, ikke pacen.
+    // ikke elementet der ankommer).
+    //
+    // VENDT IGEN 27/11-2026 (Bjørn: «foldet skete stadig ikk før slut
+    // beskeden»): gruppen LUKKER når slutsvaret begynder, ikke når turen
+    // slutter. Den 18/11-begrundelse («rundelinjen er turens ansigt indtil
+    // turen er slut, så gruppen skal være åben») holder ikke: rundelinjen
+    // vises netop i den LUKKEDE fold (`!arbejdeAabent`-grenen), så den
+    // forsvinder ikke med folden. Kravet nedenfor er derfor uændret — det er
+    // kun foldens tilstand der følger svaret i stedet for turen.
     expect(view.container.querySelector('.rv-tur')).not.toBeNull()
     const ydre = view.container.querySelector('.chat-flow-gruppe-ydre') as HTMLElement
-    expect(ydre).toHaveAttribute('data-aaben', 'true')
+    expect(ydre).toHaveAttribute('data-aaben', 'false')
     // Rundelinjen ER monteret her — det er hele pointen i den nye regel:
     // slutsvaret er begyndt, men turen løber, så rundelinjen bærer den.
     expect(view.container.querySelector('[data-testid="chat-flow-activity"]')).not.toBeNull()

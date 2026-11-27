@@ -697,17 +697,13 @@ function RaekkeTranskriptImpl({
   // og hovedet vises kun hvis folden er lukket (saa det er det eneste ansigt).
   // Den formel daekker begge: der findes ingen tilstand hvor arbejdet er
   // skjult OG hovedet vaek — det var den tomme flade.
-  // Hovedet er turens ENESTE ansigt uden for folden (Bjørn 27/11-2026: «det
-  // der vises uden for foldet er det aller første runde/tænke blokke og det
-  // burde slet ikk være»). Her stod før en håndlavet ventelinje med sine egne
-  // klasser, og den gentog den første rundes tekst oven over hovedet — de
-  // samme runde- og tænke-blokke som allerede ligger inde i folden, blot i en
-  // anden metrik (38px mod rækkens 24px). Rundelinjerne hører inde i folden;
-  // uden for den er der kun hovedet.
-  //
-  // Hovedet bærer derfor også turen fra FØRSTE frame, hvor der endnu intet
-  // arbejde er at folde — ellers var turen uden ansigt i præcis det vindue
-  // brugeren venter på et livstegn.
+  // Before the first model content, the animated mark carries liveness.
+  // It is not a work round and must not duplicate the first real round.
+  const venterPaaModel = streaming && !finalAnswerStarted && !arbejdeEfterSvar
+    && !transcriptBlocks.some((block) =>
+    block.type === 'text' ? block.text.trim().length > 0
+      : block.type === 'thinking' ? block.thinking.trim().length > 0
+        : block.type === 'tool_use')
   const visTurhoved =
     (arbejde.length > 0 && (!arbejdeKoerer || !aaben))
     || (arbejde.length === 0 && arbejdeKoerer)
@@ -719,27 +715,17 @@ function RaekkeTranskriptImpl({
   // falsk. Bandt vi tallet til streamen, ville resultatet mangle sit eget
   // resultat i den fase det ejer. Samme regel som chat mode.
   const visTokens = Number.isFinite(tokens) && tokens > 0
-  // ── Rundelinjen findes fra turstart (Bjørn 16/11-2026) ──────────────────
-  //
-  // «den aktive rundelinje skal være synlig fra starten for det er den der
-  // bærer livet... sådan er det os i chat mode».
-  //
-  // Målt: `senesteRunde` kræver mindst ét `tool_use`-element, og `visTurhoved`
-  // kræver `arbejde.length > 0`. Fra turen starter til det første værktøjskald
-  // lander, var code mode derfor HELT tom — turen havde intet ansigt, hverken
-  // ring eller ord, i præcis det vindue hvor brugeren venter på et livstegn.
-  // Chat mode har haft en placeholder hele tiden (`rundeTekst` falder tilbage
-  // på `model.hovedTekst`); det er den samme form her, med code-modens egne
-  // klasser så den ventende linje og den rigtige runde står på samme plads.
-  //
-  // Teksten er serverens rapporterede arbejde når det findes — ellers «Tænker»,
-  // som er den ærlige tilstand: turen kører, og der er endnu intet at fortælle.
   const turRef = useRef<HTMLButtonElement>(null)
   const huskFold = useFoldPosition(turRef, aaben)
 
   return (
     <div className="raekkevisning">
-      {visTurhoved && (
+      {venterPaaModel ? (
+        <div className="rv-modelventer" role="status" aria-label="Jarvis tænker">
+          <JarvisRing size={15} spinning tone="working" />
+        </div>
+      ) : null}
+      {visTurhoved && !venterPaaModel && (
         <TurHoved
           knapRef={turRef}
           aaben={aaben}
@@ -762,7 +748,7 @@ function RaekkeTranskriptImpl({
           for folden, mens de rigtige rundelinjer står inde i den. Turen har
           ét ansigt uden for folden — hovedet ovenfor — og det bærer turen fra
           første frame via `visTurhoved`. */}
-      {arbejde.length > 0 && (
+      {arbejde.length > 0 && !venterPaaModel && (
         <div className="rv-gruppe-ydre" data-aaben={aaben ? 'true' : 'false'}
           {...(aaben ? {} : { inert: true })}>
           <div className="rv-gruppe" aria-hidden={!aaben}>

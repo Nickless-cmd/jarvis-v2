@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prompt_assembly_telemetri.py`
+_Telemetri for den synlige prompts assembly: hvad fylder, og hvad koster cache._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_opaque_key_hash` | `(key)` | — | [src](../../../core/services/prompt_assembly_telemetri.py#L36) |
+| function | `rapporter_cache_lookup` | `(*, key, outcome, cache_age_ms, lookup_ms, build_ms, caller_phase)` | Publish one privacy-safe cache decision for every wrapper call. | [src](../../../core/services/prompt_assembly_telemetri.py#L42) |
+| function | `_rapporter_cache_lookup` | `(*, key, outcome, cache_age_ms, lookup_ms, build_ms, caller_phase)` | — | [src](../../../core/services/prompt_assembly_telemetri.py#L65) |
+| function | `label_of` | `(text)` | Stykkets navn, udledt af dets FOERSTE LINJE — som ikke kan komme ud af | [src](../../../core/services/prompt_assembly_telemetri.py#L97) |
+| function | `hale_tegn` | `(assembled_text)` | Tegn i den DO-NOT-CACHE-hale som forbrugeren flytter ud af praefikset. | [src](../../../core/services/prompt_assembly_telemetri.py#L105) |
+| function | `rangordn` | `(parts)` | (navn, tegn) pr. ikke-tomt stykke, stoerste foerst. Navnet er stykkets eget. | [src](../../../core/services/prompt_assembly_telemetri.py#L125) |
+| function | `rapporter_assembly` | `(parts, *, assembled_text, compact, session_id, assembly_ms)` | Udsend event + journal-linjer + aflevér sektionerne til impact-telemetrien. | [src](../../../core/services/prompt_assembly_telemetri.py#L133) |
+
 ## `core/services/prompt_assembly_turn_cache.py`
 _Small process-local cache for reusing one prompt assembly within a turn._
 
@@ -632,13 +645,4 @@ _R2.5-håndhævelse — en blok der ikke kan ignoreres._
 | function | `_aaben_blok` | `(nu)` | Den åbne blok, eller None. Løfter den hvis den er udløbet eller besvaret. | [src](../../../core/services/r2_5_haandhaevelse.py#L168) |
 | function | `afvis_mutation` | `(navn, argumenter=…, *, run_id=…, session_id=…, nu=…)` | Afvisningsteksten hvis værktøjet ikke må køre nu, ellers None. | [src](../../../core/services/r2_5_haandhaevelse.py#L200) |
 | function | `_rapporter_gentagelse` | `(navn, antal, *, run_id, session_id)` | Han prøver igen uden at kigge: gør det synligt (dedup = eskalerende tæller). | [src](../../../core/services/r2_5_haandhaevelse.py#L266) |
-
-## `core/services/raesonnering_eksperiment.py`
-_A/B: raesonnerer han paa mellem-runderne, eller ikke?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_procent` | `()` | — | [src](../../../core/services/raesonnering_eksperiment.py#L59) |
-| function | `arm_for_run` | `(run_id, *, procent=…)` | "daempet" eller "fuld" — stabilt for et givet run_id, i enhver proces. | [src](../../../core/services/raesonnering_eksperiment.py#L71) |
-| function | `daemp_krop` | `(krop, run_id, *, thinking_mode=…, procent=…)` | Returnerer (krop, blev_daempet) for en FOELGE-runde. | [src](../../../core/services/raesonnering_eksperiment.py#L93) |
 

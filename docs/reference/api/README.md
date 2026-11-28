@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 19242 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 19245 functions/methods, 54% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -52,20 +52,20 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 19242 functions/
 - [`core.services.17`](core.services.17.md) — `interlanguage_practice` … `local_small_model`
 - [`core.services.18`](core.services.18.md) — `local_tool_broker` … `meta_cognition_daemon`
 - [`core.services.19`](core.services.19.md) — `meta_learning_aggregator` … `notifikations_valg`
-- [`core.services.20`](core.services.20.md) — `ntfy_gateway` … `personality_vector`
-- [`core.services.21`](core.services.21.md) — `pfsense_syslog` … `prompt_assembly_telemetri`
-- [`core.services.22`](core.services.22.md) — `prompt_assembly_turn_cache` … `raesonnering_eksperiment`
-- [`core.services.23`](core.services.23.md) — `raw_provider_capture` … `research_prompt_context`
-- [`core.services.24`](core.services.24.md) — `research_quality` … `runtime_action_outcome_tracking`
-- [`core.services.25`](core.services.25.md) — `runtime_action_registry` … `self_critique_runtime`
-- [`core.services.26`](core.services.26.md) — `self_deception_guard` … `session_milestones`
-- [`core.services.27`](core.services.27.md) — `session_model_pin` … `skill_autosurface`
-- [`core.services.28`](core.services.28.md) — `skill_contract_registry` … `telemetry_gate`
-- [`core.services.29`](core.services.29.md) — `temperament_tendency_signal_tracking` … `tool_result_binding_store`
-- [`core.services.30`](core.services.30.md) — `tool_result_store` … `visible_chat_pragmatics`
-- [`core.services.31`](core.services.31.md) — `visible_chat_quality` … `visible_runs_approvals`
-- [`core.services.32`](core.services.32.md) — `visible_runs_capabilities` … `work_coordination`
-- [`core.services.33`](core.services.33.md) — `workspace_crypto` … `world_model_signal_tracking`
+- [`core.services.20`](core.services.20.md) — `ntfy_gateway` … `personality_drift`
+- [`core.services.21`](core.services.21.md) — `personality_vector` … `prompt_assembly_runtime`
+- [`core.services.22`](core.services.22.md) — `prompt_assembly_telemetri` … `r2_5_haandhaevelse`
+- [`core.services.23`](core.services.23.md) — `raesonnering_eksperiment` … `research_orchestrator`
+- [`core.services.24`](core.services.24.md) — `research_prompt_context` … `runtime_action_executor`
+- [`core.services.25`](core.services.25.md) — `runtime_action_outcome_tracking` … `self_compassion`
+- [`core.services.26`](core.services.26.md) — `self_critique_runtime` … `session_inbox`
+- [`core.services.27`](core.services.27.md) — `session_milestones` … `simple_tool_executor`
+- [`core.services.28`](core.services.28.md) — `skill_autosurface` … `telegram_gateway`
+- [`core.services.29`](core.services.29.md) — `telemetry_gate` … `tool_result_aging`
+- [`core.services.30`](core.services.30.md) — `tool_result_binding_store` … `visible_autonomous_run`
+- [`core.services.31`](core.services.31.md) — `visible_chat_pragmatics` … `visible_runs`
+- [`core.services.32`](core.services.32.md) — `visible_runs_approvals` … `witness_signal_tracking`
+- [`core.services.33`](core.services.33.md) — `work_coordination` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

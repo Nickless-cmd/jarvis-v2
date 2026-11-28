@@ -2,6 +2,35 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/personality_vector.py`
+_Personality Vector — cumulative personality that grows over time._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_should_apply_decay` | `()` | Return True if enough time has passed since the last decay application. | [src](../../../core/services/personality_vector.py#L34) |
+| function | `_get_evolved_baseline` | `()` | Compute long-term baseline targets from accumulated snapshots. | [src](../../../core/services/personality_vector.py#L43) |
+| function | `_record_decay_timestamp` | `()` | Record that decay was just applied. | [src](../../../core/services/personality_vector.py#L73) |
+| function | `_build_update_prompt` | `()` | — | [src](../../../core/services/personality_vector.py#L81) |
+| function | `_bevis_vindue` | `(tekst, *, loft=…)` | Bevis-vinduet dommeren ser — med HALEN med, og med klippet navngivet. | [src](../../../core/services/personality_vector.py#L154) |
+| function | `_ser_klippet_ud` | `(tekst)` | Er dette preview et KLIP fra systemet — ikke et svar der stoppede? | [src](../../../core/services/personality_vector.py#L212) |
+| function | `_hent_rigtigt_svar` | `(session_id, assistant_response)` | Preview-kortet (runnets tekst + dekorativ '…') er IKKE svaret. | [src](../../../core/services/personality_vector.py#L249) |
+| function | `update_personality_vector_from_run` | `(*, run_id, session_id=…, user_message, assistant_response, outcome_status)` | Update the personality vector based on a visible run. | [src](../../../core/services/personality_vector.py#L350) |
+| function | `update_personality_vector_async` | `(*, run_id, session_id=…, user_message, assistant_response, outcome_status)` | Fire-and-forget async wrapper. | [src](../../../core/services/personality_vector.py#L436) |
+| function | `tick_personality_drift` | `(*, outcome_signal=…)` | Heartbeat-triggered passive drift af personality_vector. | [src](../../../core/services/personality_vector.py#L459) |
+| function | `_safe_update` | `(**kwargs)` | — | [src](../../../core/services/personality_vector.py#L491) |
+| function | `build_personality_vector_surface` | `()` | MC surface for personality vector. | [src](../../../core/services/personality_vector.py#L498) |
+| function | `_deterministic_update` | `(outcome_status, current)` | Fallback: small deterministic adjustments without LLM. | [src](../../../core/services/personality_vector.py#L519) |
+| function | `_merge_vector` | `(current, updates)` | Deep merge updates into current vector. | [src](../../../core/services/personality_vector.py#L648) |
+| function | `retire_self_model_signals` | `(signal_ids, *, reason)` | Træk self_model_signals tilbage (status `retired`) — modstykke til `retire_mistakes`. | [src](../../../core/services/personality_vector.py#L754) |
+| function | `_retire_vector_post` | `(*, field, instruction, post, bevis)` | Fælles kerne for `retire_mistake` / `retire_strength` (deterministisk, ingen LLM). | [src](../../../core/services/personality_vector.py#L797) |
+| function | `retire_mistake` | `(post, bevis)` | Træk én post i `recurring_mistakes` tilbage — kun ordret match, kun med bevis. | [src](../../../core/services/personality_vector.py#L847) |
+| function | `retire_strength` | `(post, bevis)` | Som `retire_mistake`, men for `strengths_discovered`. | [src](../../../core/services/personality_vector.py#L858) |
+| function | `_baseline_changed` | `(old, new_baseline)` | Fix 5 helper: return True if emotional_baseline values differ by > 0.001. | [src](../../../core/services/personality_vector.py#L865) |
+| function | `_safe_json_field` | `(value, default)` | — | [src](../../../core/services/personality_vector.py#L879) |
+| function | `_resolve_local_llm_target` | `()` | — | [src](../../../core/services/personality_vector.py#L892) |
+| function | `_call_llm` | `(target, system_prompt, user_prompt)` | Minimal LLM call via provider router target. | [src](../../../core/services/personality_vector.py#L903) |
+| function | `_parse_json_response` | `(text)` | — | [src](../../../core/services/personality_vector.py#L986) |
+
 ## `core/services/pfsense_syslog.py`
 _core/services/pfsense_syslog.py_
 
@@ -672,17 +701,4 @@ _Turn-cache orchestration for visible prompt assembly._
 | function | `_query_latest_user_msg_id` | `(session_id)` | — | [src](../../../core/services/prompt_assembly_runtime.py#L15) |
 | function | `latest_user_msg_id` | `(session_id)` | — | [src](../../../core/services/prompt_assembly_runtime.py#L26) |
 | function | `build_with_turn_cache` | `(*, builder, latest_message_id, provider, model, user_message, session_id, name, runtime_self_report_context, caller_phase)` | — | [src](../../../core/services/prompt_assembly_runtime.py#L36) |
-
-## `core/services/prompt_assembly_telemetri.py`
-_Telemetri for den synlige prompts assembly: hvad fylder, og hvad koster cache._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_opaque_key_hash` | `(key)` | — | [src](../../../core/services/prompt_assembly_telemetri.py#L36) |
-| function | `rapporter_cache_lookup` | `(*, key, outcome, cache_age_ms, lookup_ms, build_ms, caller_phase)` | Publish one privacy-safe cache decision for every wrapper call. | [src](../../../core/services/prompt_assembly_telemetri.py#L42) |
-| function | `_rapporter_cache_lookup` | `(*, key, outcome, cache_age_ms, lookup_ms, build_ms, caller_phase)` | — | [src](../../../core/services/prompt_assembly_telemetri.py#L65) |
-| function | `label_of` | `(text)` | Stykkets navn, udledt af dets FOERSTE LINJE — som ikke kan komme ud af | [src](../../../core/services/prompt_assembly_telemetri.py#L97) |
-| function | `hale_tegn` | `(assembled_text)` | Tegn i den DO-NOT-CACHE-hale som forbrugeren flytter ud af praefikset. | [src](../../../core/services/prompt_assembly_telemetri.py#L105) |
-| function | `rangordn` | `(parts)` | (navn, tegn) pr. ikke-tomt stykke, stoerste foerst. Navnet er stykkets eget. | [src](../../../core/services/prompt_assembly_telemetri.py#L125) |
-| function | `rapporter_assembly` | `(parts, *, assembled_text, compact, session_id, assembly_ms)` | Udsend event + journal-linjer + aflevér sektionerne til impact-telemetrien. | [src](../../../core/services/prompt_assembly_telemetri.py#L133) |
 

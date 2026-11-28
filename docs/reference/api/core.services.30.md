@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_result_binding_store.py`
+_Kortlivet opslag af strukturerede tool-resultater til DIL-binding._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `registrer` | `(run_id, tool_use_id, resultat)` | — | [src](../../../core/services/tool_result_binding_store.py#L19) |
+| function | `hent` | `(run_id, tool_use_id)` | — | [src](../../../core/services/tool_result_binding_store.py#L31) |
+
 ## `core/services/tool_result_store.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -624,13 +632,4 @@ _Autonome (heartbeat-startede) synlige runs: starter og observation._
 | function | `_observe_autonomous_run` | `(*, run, session_id, outcome, frames=…, error=…)` | #10 (Phase A): gør autonome runs (dream/idle/proaktiv) synlige som ENHED i Den | [src](../../../core/services/visible_autonomous_run.py#L83) |
 | function | `_session_ejer_tilladt` | `(session_id, force_user_id=…)` | False kun naar sessionens STEMPLEDE ejer er en anden end runets ejer. | [src](../../../core/services/visible_autonomous_run.py#L141) |
 | function | `start_autonomous_run` | `(message, session_id=…, follow=…, origin=…, task_id=…, max_tool_calls=…, max_seconds=…, tool_scope=…, force_user_id=…, permission_session=…, started_callback=…, completion_callback=…)` | Trigger an autonomous (heartbeat-initiated) visible run in a background thread. | [src](../../../core/services/visible_autonomous_run.py#L190) |
-
-## `core/services/visible_chat_pragmatics.py`
-_Pragmatic conversation boundaries for the visible chat-only lane._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_chat_style_contract` | `(message, session_id)` | Build a short, per-user/current-turn style contract for the cache tail. | [src](../../../core/services/visible_chat_pragmatics.py#L65) |
-| function | `build_chat_mode_dynamic_tail` | `(tail, *, message, session_id)` | Append the active mode's large contract after the cache boundary. | [src](../../../core/services/visible_chat_pragmatics.py#L136) |
-| function | `apply_chat_mode_conversation_contract` | `(instruction)` | Append the hierarchy only when the effective runtime scope is ``chat``. | [src](../../../core/services/visible_chat_pragmatics.py#L179) |
 

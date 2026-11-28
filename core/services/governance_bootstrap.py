@@ -212,6 +212,21 @@ def ensure_default_job_handlers() -> list[str]:
             logger.warning("governance_bootstrap: daemon_health_alert fejlede: %s", exc)
             return {"status": "error", "error": str(exc)}
 
+    def _oauth_expiry_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        """Varsl naar et OAuth refresh-token er taet paa at udloeber.
+
+        28/11-2026: `refresh_token_expires_in` blev gemt i hvert token men laest
+        af ingen. Google-forbindelsen doede efter 7 doegn og tog 14.724 fejllinjer
+        med sig, foer nogen saa det. Access-tokenet fornyer sig selv; refresh-
+        tokenet kan kun brugeren forny — derfor skal det siges i tide.
+        """
+        try:
+            from core.services.oauth_expiry_watch import varsle_om_udloeb
+            return {"status": "ok", "kind": "oauth_expiry_watch", "result": varsle_om_udloeb()}
+        except Exception as exc:
+            logger.warning("governance_bootstrap: oauth_expiry_watch fejlede: %s", exc)
+            return {"status": "error", "error": str(exc)}
+
     def _auto_improvement_handler(payload: dict[str, Any]) -> dict[str, Any]:
         """Daily auto-improvement proposals via plan_proposals."""
         try:
@@ -373,6 +388,7 @@ def ensure_default_job_handlers() -> list[str]:
         "personality_snapshot": _personality_snapshot_handler,
         "provider_health_check": _provider_health_handler,
         "daemon_health_alert": _daemon_health_alert_handler,
+        "oauth_expiry_watch": _oauth_expiry_handler,
         "auto_improvement_proposals": _auto_improvement_handler,
         "agent_observation_decay": _agent_observation_decay_handler,
         "wakeup_dispatch": _wakeup_dispatch_handler,

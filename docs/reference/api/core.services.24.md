@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/research_prompt_context.py`
+_Request-scoped research instructions consumed by prompt assembly surfaces._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `_PromptResearch` | `` | — | [src](../../../core/services/research_prompt_context.py#L13) |
+| function | `research_context` | `(policy, *, skill_instructions=…, evidence=…, clarification=…)` | — | [src](../../../core/services/research_prompt_context.py#L24) |
+| function | `research_prompt_section` | `()` | — | [src](../../../core/services/research_prompt_context.py#L43) |
+
 ## `core/services/research_quality.py`
 _Deterministic, inspectable quality gates for research synthesis._
 
@@ -605,17 +614,4 @@ _Beskeder der hoerer EFTER historikken i en agentisk tur._
 | function | `_repo_operation_from_focus` | `(focus)` | — | [src](../../../core/services/runtime_action_executor.py#L591) |
 | function | `_repo_command_for_operation` | `(operation)` | — | [src](../../../core/services/runtime_action_executor.py#L604) |
 | function | `_build_internal_work_note` | `(*, current_mode, emphasis)` | — | [src](../../../core/services/runtime_action_executor.py#L626) |
-
-## `core/services/runtime_action_outcome_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_runtime_action_outcome` | `(*, action_id, mode, reason, score, payload, result, run_id=…, session_id=…)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L13) |
-| function | `build_runtime_action_outcome_surface` | `(*, limit=…)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L58) |
-| function | `recent_runtime_action_outcomes` | `(*, limit=…)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L82) |
-| function | `_persist_runtime_action_outcome` | `(outcome)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L91) |
-| function | `_persist_action_weight` | `(outcome)` | Skrive-vejen: udfaldet flytter vaegten (UPDATE, ikke INSERT). | [src](../../../core/services/runtime_action_outcome_tracking.py#L112) |
-| function | `_persist_learning_signals` | `(outcome)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L132) |
-| function | `_completion_outcome_label` | `(status)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L157) |
-| function | `_consecutive_repetition_count` | `(items)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L168) |
 

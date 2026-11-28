@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/raesonnering_eksperiment.py`
+_A/B: raesonnerer han paa mellem-runderne, eller ikke?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_procent` | `()` | — | [src](../../../core/services/raesonnering_eksperiment.py#L59) |
+| function | `arm_for_run` | `(run_id, *, procent=…)` | "daempet" eller "fuld" — stabilt for et givet run_id, i enhver proces. | [src](../../../core/services/raesonnering_eksperiment.py#L71) |
+| function | `daemp_krop` | `(krop, run_id, *, thinking_mode=…, procent=…)` | Returnerer (krop, blev_daempet) for en FOELGE-runde. | [src](../../../core/services/raesonnering_eksperiment.py#L93) |
+
 ## `core/services/raw_provider_capture.py`
 _core/services/raw_provider_capture.py_
 
@@ -747,13 +756,4 @@ _Adaptive research coordinator around the existing visible and agent runtimes._
 | method | `ResearchRecoverableError.__init__` | `(self, run_id, reason, evidence_count=…)` | — | [src](../../../core/services/research_orchestrator.py#L979) |
 | function | `resume_research_run` | `(run_id, *, visible_run_id, worker_factory=…)` | Tag et afbrudt research-run op igen — kun de UAFSLUTTEDE spor. | [src](../../../core/services/research_orchestrator.py#L986) |
 | function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L1061) |
-
-## `core/services/research_prompt_context.py`
-_Request-scoped research instructions consumed by prompt assembly surfaces._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `_PromptResearch` | `` | — | [src](../../../core/services/research_prompt_context.py#L13) |
-| function | `research_context` | `(policy, *, skill_instructions=…, evidence=…, clarification=…)` | — | [src](../../../core/services/research_prompt_context.py#L24) |
-| function | `research_prompt_section` | `()` | — | [src](../../../core/services/research_prompt_context.py#L43) |
 

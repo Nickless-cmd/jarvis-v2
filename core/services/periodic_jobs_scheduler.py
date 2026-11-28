@@ -44,6 +44,12 @@ _SCHEDULE: dict[str, timedelta] = {
     # saa en forsinket daemon opdages inden for en time, mens værktøjets egen
     # 2-timers cooldown stadig forhindrer gentagne alarmer.
     "daemon_health_alert": timedelta(hours=1),
+    # 28/11-2026: Google-forbindelsen doede 25/11 og gav 14.724 fejllinjer over
+    # knap tre doegn, foer nogen opdagede det. `refresh_token_expires_in` laa i
+    # tokenet hele tiden (604798 s = 7,0 doegn, Googles loft i «Testing»), men
+    # NUL steder i core/ eller apps/ laeste det. Dagligt er nok: levetiden er
+    # syv doegn, og varslen gaar ved fem — to doegn til at handle.
+    "oauth_expiry_watch": timedelta(hours=24),
     "auto_improvement_proposals": timedelta(hours=24),  # daily check + propose
     "agent_observation_decay": timedelta(hours=24),  # daily stale-marking
     # Sikkerhedsnet: vækninger fyres primært af `wakeup_ticker` (5 s-tråd, 12/11-2026).

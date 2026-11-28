@@ -58,6 +58,26 @@ _QUEUE_LOCK = threading.Lock()
 
 _IKKE_ET_FORSLAG_PREFIX = ("or ", "eller ", "men ", "and ", "så måske ", "maybe ")
 
+#: Sætningsåbninger der beskriver en TILSTAND frem for en opgave. De går alle
+#: gennem det samme anker-værn (`has_independent_work_signal`): har teksten et
+#: konkret anker + et handlingsverbum, slipper den igennem uanset åbningen.
+#:
+#: Målt 28/11-2026 over alle 5088 inner-voice-initiativer: den oprindelige
+#: tupel på tre (`jeg `, `der er `, `der findes `) lod 4040 slippe, og ca. 220
+#: af dem var rene tilstandsbeskrivelser af formen «<substantiv> er …». De otte
+#: tilføjede åbninger rammer 361 af de 4040 — og NUL af dem har anker+handling,
+#: altså tabes intet ægte arbejde. Top-åbninger i de 4040: `opmærksomheden er`
+#: 80, `min opmærksomhed` 42, `initiativet er` 41, `ingen klar` 30,
+#: `blokeringen er` 26.
+#:
+#: `det ` er den bredeste og samtidig den sikreste: ankeret fanger de konkrete
+#: («Det her bør måles i visible_runs» → `kode:visible_runs` + `measure`).
+_TILSTANDS_PREFIX = (
+    "jeg ", "der er ", "der findes ",
+    "det ", "ingen ", "intet ", "min ", "vores ",
+    "opmærksomheden ", "blokeringen ", "initiativet ",
+)
+
 #: Serialiseret tomhed. Målt 3/11-2026: den indre stemme svarede med JSON
 #: `"initiative": null`, og `str(initiative)` gjorde det til den fire tegn lange
 #: streng "null" — som er sand, ikke tom, og derfor gik gennem både sanitizeren
@@ -109,7 +129,7 @@ def _er_ikke_et_initiativ(focus: str) -> str:
     # Men sætningsstarten er kun et INDICIE, ikke en regel: en refleksion der
     # peger på noget konkret («Jeg vil tjekke initiative_queue.py») er en
     # handlingshensigt. Findes der anker + handling, er det ikke en tilstand.
-    if lav_start.startswith(("jeg ", "der er ", "der findes ")):
+    if lav_start.startswith(_TILSTANDS_PREFIX):
         from core.services.work_coordination import has_independent_work_signal
 
         if not has_independent_work_signal(tekst):

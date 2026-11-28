@@ -552,32 +552,32 @@ _Persistent initiative queue — bridges inner voice thoughts to heartbeat actio
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_er_ikke_et_initiativ` | `(focus)` | Returnér en grund hvis dette ikke er et forslag. Tom streng = behold. | [src](../../../core/services/initiative_queue.py#L69) |
-| function | `_kerneord` | `(tekst)` | Indholdsord i en fokus-tekst — til emne-sammenligning, ikke til visning. | [src](../../../core/services/initiative_queue.py#L158) |
-| function | `_faelles_emneord` | `(nye, gamle)` | Ord der bærer samme emne — også når det ene er en sammensætning. | [src](../../../core/services/initiative_queue.py#L166) |
-| function | `_gentaget_paastand` | `(focus, *, source)` | Returnér en grund hvis samme emne allerede ligger i køen. Tom = behold. | [src](../../../core/services/initiative_queue.py#L181) |
-| function | `_aktiv_synlig_tur` | `()` | Returnér en grund hvis en synlig tur lige har været aktiv. Tom = behold. | [src](../../../core/services/initiative_queue.py#L233) |
-| function | `push_initiative` | `(*, focus, source=…, source_id=…, priority=…, session_id=…, user_id=…)` | Push a new initiative to the queue. Returns the initiative_id. | [src](../../../core/services/initiative_queue.py#L257) |
-| function | `seed_long_term_intention` | `(*, title, why, source=…, source_id=…, priority=…)` | Create or refresh a long-term intention owned by Jarvis. | [src](../../../core/services/initiative_queue.py#L448) |
-| function | `get_pending_initiatives` | `()` | Return all pending (non-expired, non-acted) initiatives. | [src](../../../core/services/initiative_queue.py#L514) |
-| function | `mark_acted` | `(initiative_id, *, action_summary=…)` | Mark an initiative as acted upon. Returns True if found. | [src](../../../core/services/initiative_queue.py#L531) |
-| function | `claim_initiative` | `(initiative_id, *, holder)` | Atomisk accept: kun ÉN worker vinder et ventende, forfaldent initiativ. | [src](../../../core/services/initiative_queue.py#L594) |
-| function | `decline_initiative` | `(initiative_id, *, reason)` | Close a pending initiative because Jarvis chose not to act on it. | [src](../../../core/services/initiative_queue.py#L618) |
-| function | `close_acted_without_outcome` | `(*, limit=…)` | Luk `acted`-poster der aldrig fik et outcome. | [src](../../../core/services/initiative_queue.py#L658) |
-| function | `mark_attempted` | `(initiative_id, *, blocked_reason=…, retry_delay_minutes=…, action_summary=…)` | Record a bounded attempt and schedule a retry if still pending. | [src](../../../core/services/initiative_queue.py#L716) |
-| function | `approve_initiative` | `(initiative_id, *, note=…)` | Mark an initiative as user-approved. Returns the updated record or None if not found. | [src](../../../core/services/initiative_queue.py#L783) |
-| function | `reject_initiative` | `(initiative_id, *, note=…)` | Mark an initiative as user-rejected and expire it. Returns updated record or None. | [src](../../../core/services/initiative_queue.py#L799) |
-| function | `get_initiative_queue_state` | `()` | Return full queue state for MC observability. | [src](../../../core/services/initiative_queue.py#L815) |
-| function | `_expire_stale` | `(now)` | Expire initiatives older than _EXPIRE_MINUTES. Must hold _QUEUE_LOCK. | [src](../../../core/services/initiative_queue.py#L856) |
-| function | `_trim_pending` | `(now)` | — | [src](../../../core/services/initiative_queue.py#L878) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/initiative_queue.py#L898) |
-| function | `_initiative_due` | `(initiative, now)` | — | [src](../../../core/services/initiative_queue.py#L908) |
-| function | `_initiative_sort_key` | `(initiative)` | — | [src](../../../core/services/initiative_queue.py#L918) |
-| function | `list_active_long_term_intentions` | `(*, limit=…)` | — | [src](../../../core/services/initiative_queue.py#L930) |
-| function | `abandon_long_term_intention` | `(initiative_id, *, note=…)` | — | [src](../../../core/services/initiative_queue.py#L945) |
-| function | `endorse_long_term_intention` | `(initiative_id, *, note=…)` | Bjørn siger «det er i orden» til et livsprojekt. | [src](../../../core/services/initiative_queue.py#L971) |
-| function | `_find_active_long_term_intention_by_title` | `(title)` | — | [src](../../../core/services/initiative_queue.py#L1016) |
-| function | `initiatives_prompt_section` | `()` | Awareness-sektion: de impulser han SELV har rejst, men aldrig fik sagt. | [src](../../../core/services/initiative_queue.py#L1039) |
+| function | `_er_ikke_et_initiativ` | `(focus)` | Returnér en grund hvis dette ikke er et forslag. Tom streng = behold. | [src](../../../core/services/initiative_queue.py#L89) |
+| function | `_kerneord` | `(tekst)` | Indholdsord i en fokus-tekst — til emne-sammenligning, ikke til visning. | [src](../../../core/services/initiative_queue.py#L178) |
+| function | `_faelles_emneord` | `(nye, gamle)` | Ord der bærer samme emne — også når det ene er en sammensætning. | [src](../../../core/services/initiative_queue.py#L186) |
+| function | `_gentaget_paastand` | `(focus, *, source)` | Returnér en grund hvis samme emne allerede ligger i køen. Tom = behold. | [src](../../../core/services/initiative_queue.py#L201) |
+| function | `_aktiv_synlig_tur` | `()` | Returnér en grund hvis en synlig tur lige har været aktiv. Tom = behold. | [src](../../../core/services/initiative_queue.py#L253) |
+| function | `push_initiative` | `(*, focus, source=…, source_id=…, priority=…, session_id=…, user_id=…)` | Push a new initiative to the queue. Returns the initiative_id. | [src](../../../core/services/initiative_queue.py#L277) |
+| function | `seed_long_term_intention` | `(*, title, why, source=…, source_id=…, priority=…)` | Create or refresh a long-term intention owned by Jarvis. | [src](../../../core/services/initiative_queue.py#L468) |
+| function | `get_pending_initiatives` | `()` | Return all pending (non-expired, non-acted) initiatives. | [src](../../../core/services/initiative_queue.py#L534) |
+| function | `mark_acted` | `(initiative_id, *, action_summary=…)` | Mark an initiative as acted upon. Returns True if found. | [src](../../../core/services/initiative_queue.py#L551) |
+| function | `claim_initiative` | `(initiative_id, *, holder)` | Atomisk accept: kun ÉN worker vinder et ventende, forfaldent initiativ. | [src](../../../core/services/initiative_queue.py#L614) |
+| function | `decline_initiative` | `(initiative_id, *, reason)` | Close a pending initiative because Jarvis chose not to act on it. | [src](../../../core/services/initiative_queue.py#L638) |
+| function | `close_acted_without_outcome` | `(*, limit=…)` | Luk `acted`-poster der aldrig fik et outcome. | [src](../../../core/services/initiative_queue.py#L678) |
+| function | `mark_attempted` | `(initiative_id, *, blocked_reason=…, retry_delay_minutes=…, action_summary=…)` | Record a bounded attempt and schedule a retry if still pending. | [src](../../../core/services/initiative_queue.py#L736) |
+| function | `approve_initiative` | `(initiative_id, *, note=…)` | Mark an initiative as user-approved. Returns the updated record or None if not found. | [src](../../../core/services/initiative_queue.py#L803) |
+| function | `reject_initiative` | `(initiative_id, *, note=…)` | Mark an initiative as user-rejected and expire it. Returns updated record or None. | [src](../../../core/services/initiative_queue.py#L819) |
+| function | `get_initiative_queue_state` | `()` | Return full queue state for MC observability. | [src](../../../core/services/initiative_queue.py#L835) |
+| function | `_expire_stale` | `(now)` | Expire initiatives older than _EXPIRE_MINUTES. Must hold _QUEUE_LOCK. | [src](../../../core/services/initiative_queue.py#L876) |
+| function | `_trim_pending` | `(now)` | — | [src](../../../core/services/initiative_queue.py#L898) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/initiative_queue.py#L918) |
+| function | `_initiative_due` | `(initiative, now)` | — | [src](../../../core/services/initiative_queue.py#L928) |
+| function | `_initiative_sort_key` | `(initiative)` | — | [src](../../../core/services/initiative_queue.py#L938) |
+| function | `list_active_long_term_intentions` | `(*, limit=…)` | — | [src](../../../core/services/initiative_queue.py#L950) |
+| function | `abandon_long_term_intention` | `(initiative_id, *, note=…)` | — | [src](../../../core/services/initiative_queue.py#L965) |
+| function | `endorse_long_term_intention` | `(initiative_id, *, note=…)` | Bjørn siger «det er i orden» til et livsprojekt. | [src](../../../core/services/initiative_queue.py#L991) |
+| function | `_find_active_long_term_intention_by_title` | `(title)` | — | [src](../../../core/services/initiative_queue.py#L1036) |
+| function | `initiatives_prompt_section` | `()` | Awareness-sektion: de impulser han SELV har rejst, men aldrig fik sagt. | [src](../../../core/services/initiative_queue.py#L1059) |
 
 ## `core/services/inner_dialectic_engine.py`
 _Compact inner critic / ally / synthesizer dialectic._

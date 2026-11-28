@@ -242,3 +242,54 @@ def test_afvisning_returnerer_tom_id_uden_at_kaste(monkeypatch):
     assert any(k == "heartbeat.initiative_rejected" for k, _p in hændelser), (
         "afvisningen skal være synlig i eventbussen — vi taber ikke noget i tavshed"
     )
+
+
+# ── Præfiks-værnets dækning ────────────────────────────────────────────────
+# Målt 28/11-2026 med den ÆGTE funktion over alle 5088 inner-voice-poster:
+# den oprindelige tupel på tre (`jeg `, `der er `, `der findes `) lod 4040
+# slippe, hvoraf 361 var rene tilstandsbeskrivelser af formen «<substantiv>
+# er …». De otte tilføjede åbninger fanger dem, og NUL poster med anker +
+# handlingsverbum tabes (33 beskyttede før, 33 efter).
+from core.services.initiative_queue import _er_ikke_et_initiativ  # noqa: F811
+
+
+def test_praefiks_fanger_tilstande_der_aabner_med_substantiv():
+    tilstande = [
+        "Det pressede fokus gør det svært at finde et rent næste skridt, så jeg bliver bare i det",
+        "Ingen tydelig næste træk udover at blive stående i ruinen",
+        "Intet næste skridt trækker sig tydeligt frem",
+        "Min opmærksomhed er indsnævret, og initiativet er i genopbygning",
+        "Opmærksomheden er indsnævret, og jeg kredser om at genetablere kontinuitet",
+        "Blokeringen er at processere hvorfor cuttet skete, men der er ingen klar næste handling",
+        "Initiativet er tomt, og jeg bærer en tung kognitiv last uden et klart næste træk",
+        "Jeg bliver her lidt uden at presse en plan ud af det",
+    ]
+    for tekst in tilstande:
+        assert _er_ikke_et_initiativ(tekst) == "tilstandsbeskrivelse", tekst
+
+
+def test_anker_slaar_praefiks():
+    """Anker + handlingsverbum slår åbningen — også for de nye præfikser."""
+    aegte = [
+        "Det her bør måles i visible_runs",
+        "Mål om preview-gaten fyrer i visible_runs siden 27/11",
+        "Min opgave er at tjekke core/services/initiative_queue.py",
+    ]
+    for tekst in aegte:
+        assert _er_ikke_et_initiativ(tekst) == "", tekst
+
+
+def test_imperativ_uden_objekt_er_en_aaben_klasse():
+    """Dokumenterer en ÅBEN fejlklasse — ikke ønsket adfærd.
+
+    «Fortsæt med at klargøre og søge efter en løsning» slipper igennem, fordi
+    den åbner med et imperativ og præfiksværnet derfor aldrig ser den. Målt
+    28/11-2026: 51 poster åbner med `fortsæt `, og 50 af dem bærer konkret
+    indhold (minimax, adb, pfsense, incidents, build) som anker-funktionen
+    IKKE genkender. At gøre `fortsæt ` til et præfiks ville derfor tabe rigtigt
+    arbejde. Klassen kræver sit eget værn — en opfordring uden objekt — ikke
+    et præfiks. Se side-opgave rejst samme dag.
+    """
+    assert _er_ikke_et_initiativ(
+        "Fortsæt med at klargøre og søge efter en løsning"
+    ) == ""

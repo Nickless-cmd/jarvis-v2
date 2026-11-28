@@ -132,7 +132,7 @@ def test_en_dagbog_uden_frontmatter_blev_sprunget_over_foer_rettelsen(hjerne, ca
     _dagbog(hjerne)
     with caplog.at_level("WARNING"):
         assert jarvis_brain.rebuild_index_from_files() == 0
-    assert "kunne ikke parses" in caplog.text
+    assert "uden frontmatter" in caplog.text
 
 
 def test_dagbogen_er_kun_synlig_med_ejerens_loft(hjerne):

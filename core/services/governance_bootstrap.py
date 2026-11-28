@@ -197,6 +197,21 @@ def ensure_default_job_handlers() -> list[str]:
         except Exception as exc:
             return {"status": "error", "error": str(exc)}
 
+    def _daemon_health_alert_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        """Vagt for inaktive daemons — den durable indbakke, ikke kun ntfy.
+
+        28/11-2026: værktøjet fandtes men var kaldt nul gange; `daemon_alerts.json`
+        var urørt siden 17/5-2026. Handleren her giver den den kadence den aldrig
+        fik, saa en daemon der holder op med at koere bliver synlig af sig selv.
+        """
+        try:
+            from core.tools.daemon_alert_tools import _exec_daemon_health_alert
+            result = _exec_daemon_health_alert({"notify": True, "channels": ["ntfy"]})
+            return {"status": "ok", "kind": "daemon_health_alert", "result": result}
+        except Exception as exc:
+            logger.warning("governance_bootstrap: daemon_health_alert fejlede: %s", exc)
+            return {"status": "error", "error": str(exc)}
+
     def _auto_improvement_handler(payload: dict[str, Any]) -> dict[str, Any]:
         """Daily auto-improvement proposals via plan_proposals."""
         try:
@@ -357,6 +372,7 @@ def ensure_default_job_handlers() -> list[str]:
         "goal_synthesis": _goal_synthesis_handler,
         "personality_snapshot": _personality_snapshot_handler,
         "provider_health_check": _provider_health_handler,
+        "daemon_health_alert": _daemon_health_alert_handler,
         "auto_improvement_proposals": _auto_improvement_handler,
         "agent_observation_decay": _agent_observation_decay_handler,
         "wakeup_dispatch": _wakeup_dispatch_handler,

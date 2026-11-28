@@ -35,6 +35,15 @@ _SCHEDULE: dict[str, timedelta] = {
     "goal_synthesis": timedelta(days=7),
     "personality_snapshot": timedelta(hours=4),  # 6x/day for stable baseline
     "provider_health_check": timedelta(minutes=5),  # 12x/hour proactive ping
+    # 28/11-2026: `daemon_health_alert` fandtes som værktøj med durable inbox-
+    # skrivning, 2-timers cooldown og side-task-oprettelse — men NUL kald i
+    # baade tool_hooks.jsonl og tools_churn.jsonl, og intet heartbeat-, cadence-
+    # eller scheduler-modul refererede den. `daemon_alerts.json` var derfor
+    # urørt siden 17/5-2026. Det er samme fejlklasse som docstringen ovenfor
+    # advarer om: mekanismen var bygget, men ingen gik ind i den. Timen er valgt
+    # saa en forsinket daemon opdages inden for en time, mens værktøjets egen
+    # 2-timers cooldown stadig forhindrer gentagne alarmer.
+    "daemon_health_alert": timedelta(hours=1),
     "auto_improvement_proposals": timedelta(hours=24),  # daily check + propose
     "agent_observation_decay": timedelta(hours=24),  # daily stale-marking
     # Sikkerhedsnet: vækninger fyres primært af `wakeup_ticker` (5 s-tråd, 12/11-2026).

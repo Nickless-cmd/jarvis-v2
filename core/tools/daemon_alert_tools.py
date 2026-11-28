@@ -35,6 +35,45 @@ def _hours_since(iso_str: str) -> float | None:
         return None
 
 
+_BOOT_GRACE_CADENCES = 2.0  # grace after boot, in multiples of the daemon's own cadence
+
+
+def _process_start_time() -> datetime | None:
+    """Actual start time of this process (psutil create_time), tz-aware UTC."""
+    try:
+        import os
+
+        import psutil
+
+        return datetime.fromtimestamp(psutil.Process(os.getpid()).create_time(), UTC)
+    except Exception:
+        return None  # unknown boot -> no suppression (fail towards alerting)
+
+
+def _parse_dt(iso_str: Any) -> datetime | None:
+    if not iso_str:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(iso_str))
+    except (ValueError, TypeError):
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+
+
+def _in_boot_grace(
+    last_run_at: Any, cadence_min: int, boot: datetime | None, now: datetime,
+) -> bool:
+    """True if the daemon's last run predates this process AND we are still
+    within 2x cadence after boot. Tied to last_run_at vs boot, not a fixed
+    window: a daemon that ran after boot, or any daemon past its grace, alerts."""
+    if boot is None:
+        return False
+    last_run = _parse_dt(last_run_at)
+    if last_run is None or last_run >= boot:
+        return False
+    return (now - boot).total_seconds() < _BOOT_GRACE_CADENCES * cadence_min * 60
+
+
 def _exec_daemon_health_alert(args: dict[str, Any]) -> dict[str, Any]:
     threshold_multiplier = float(args.get("threshold_multiplier") or _DEFAULT_THRESHOLD)
     notify = bool(args["notify"]) if "notify" in args else True
@@ -61,6 +100,7 @@ def _exec_daemon_health_alert(args: dict[str, Any]) -> dict[str, Any]:
     now = datetime.now(UTC)
     now_iso = now.isoformat()
 
+    boot = _process_start_time()
     overdue = []
     for d in daemons:
         if not d.get("enabled"):
@@ -68,6 +108,8 @@ def _exec_daemon_health_alert(args: dict[str, Any]) -> dict[str, Any]:
         cadence_min = int(d.get("effective_cadence_minutes") or 0)
         if cadence_min <= 0:
             continue
+        if _in_boot_grace(d.get("last_run_at"), cadence_min, boot, now):
+            continue  # last ran before this process started; daemons don't run while down
         hours_since = d.get("hours_since_last_run")
         if hours_since is None:
             continue  # never run — not an alert condition (daemon may not have fired yet)

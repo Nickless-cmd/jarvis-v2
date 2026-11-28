@@ -483,12 +483,22 @@ def test_maal_og_fokus_giver_stadig_et_HOEJERE_trin():
     assert baaret == "carried-candidate"
 
 
-def test_uden_vidne_og_uden_alt_andet_er_der_INGEN_kandidat():
-    """Loesningen er ikke «alt taeller». Noget skal have bevidnet den."""
+def test_uden_vidne_og_uden_alt_andet_er_kandidaten_svag_men_reel():
+    """En aktiv baerende hypotese er selv et svagt signal — men ikke mere.
+
+    Rettet 28/11-2026 (Bjoerns bestilling: «ret droemme-tragten saa droemme naar
+    selvmodellen»). Foer gav en hypotese uden vidne, fokus eller maal `""`:
+    maalt samme dag gav 12 aktive hypoteser 0 kandidater, fordi alle grene
+    kraevede en EKSTERN signal i SAMME emne. Nu er den `tentative-candidate`.
+
+    Et `stale` vidne loefter den ikke — det bevidner ingenting laengere, saa
+    den bliver ved det svage trin. Trappet loeftes kun af et levende vidne
+    (se test_maal_og_fokus_giver_stadig_et_HOEJERE_trin).
+    """
     assert _build_candidate_type(item={"signal_type": "post_run_hypothesis"},
-                                 snapshot={}) == ""
+                                 snapshot={}) == "tentative-candidate"
     assert _build_candidate_type(item={"signal_type": "post_run_hypothesis"},
-                                 snapshot={"witness": {"status": "stale"}}) == ""
+                                 snapshot={"witness": {"status": "stale"}}) == "tentative-candidate"
 
 
 def test_en_ukendt_hypotese_type_baerer_ingenting():

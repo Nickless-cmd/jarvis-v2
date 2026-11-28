@@ -462,20 +462,69 @@ def test_diagnosen_peger_paa_den_port_der_lukker():
 
 
 def test_tre_af_fire_regler_kraever_en_kandidattype_der_ikke_produceres():
-    """`_build_proposal_type` har fire regler. Tre kræver `strong-candidate`
-    eller `carried-candidate`; målt på CT105 er ALLE kandidater
-    `tentative-candidate`, så kun regel tre kan fyre."""
+    """`_build_proposal_type` har fire regler. Maalt 25/9-2026 kraevede tre af
+    dem `strong-candidate` eller `carried-candidate`, mens ALLE kandidater var
+    `tentative-candidate` — saa kun regel tre (fokus) kunne fyre.
+
+    Rettet 28/11-2026: self-model-reglen accepterer nu ogsaa `tentative-candidate`,
+    ligesom fokus-reglen altid har gjort. Confidence falder automatisk til `low`
+    for tentative+self-model via `_build_influence_confidence`, saa porten er
+    aabnet uden at forslaget udgiver sig for at vaere staerkt.
+
+    `nudge-direction` kraever stadig en staerkere kandidat OG et aktivt maal —
+    det er en anden port, og den er ikke aabnet her.
+    """
     from core.services.dream_influence_proposal_tracking import _build_proposal_type
 
     kun_tentativ = {"candidate_type": "tentative-candidate"}
 
-    # De tre uopnåelige: selv med feltet til stede giver de intet.
-    assert _build_proposal_type(item=kun_tentativ, snapshot={"self_model": {"x": 1}}) == ""
+    # Aabnet: en tentativ kandidat med en self-model-signal i samme emne.
+    assert _build_proposal_type(
+        item=kun_tentativ, snapshot={"self_model": {"x": 1}}) == "nudge-self-model"
+
+    # Stadig lukket: retning kraever carried/strong — en tentativ slipper ikke.
     assert _build_proposal_type(item=kun_tentativ, snapshot={"goal": {"x": 1}}) == ""
 
-    # Den ene der kan: kræver `focus` på kandidatens EGEN domænenøgle.
+    # Den der altid har kunnet: fokus.
     assert _build_proposal_type(
         item=kun_tentativ, snapshot={"focus": {"x": 1}}) == "nudge-focus"
+
+    # Uden nogen snapshot-del giver ingen af reglerne noget.
+    assert _build_proposal_type(item=kun_tentativ, snapshot={}) == ""
+
+
+def test_domaenenoeglen_afviser_preview_fragmenter():
+    """En domaenenoegele skal vaere en emne-slug — ikke et klippet uddrag.
+
+    Maalt 28/11-2026: self-model- og fokus-signaler skriver klippede saetninger
+    i sidste kolon-segment ('self-model:strength:Malte paa serveren hvilken
+    bund'). Kaldt et domaene gav det 365 falske noegler for 367 signaler, hvor
+    de faa aegte druknede. Et preview har mellemrum; en slug har ikke.
+    """
+    from core.services.dream_influence_proposal_tracking import (
+        _domain_key,
+        _focus_domain_key,
+        _self_model_domain_key,
+    )
+
+    # Aegte emne-noegler bevares.
+    assert _domain_key(
+        "dream-adoption-candidate:tentative:danish-concise-calibration"
+    ) == "danish-concise-calibration"
+    assert _self_model_domain_key(
+        "self-model:limitation:danish-concise-calibration"
+    ) == "danish-concise-calibration"
+
+    # Klippede saetninger afvises — de er previews, ikke domaener.
+    assert _self_model_domain_key(
+        "self-model:strength:Malte paa serveren hvilken bund"
+    ) == ""
+    assert _focus_domain_key(
+        "focus:bearing:Vil maale om droemmene faktisk n"
+    ) == ""
+
+    # Tomme og for korte noegler afvises som foer.
+    assert _domain_key("for-faa:segmenter") == ""
 
 
 def test_domaenenoeglen_er_sidste_segment_paa_BEGGE_sider():

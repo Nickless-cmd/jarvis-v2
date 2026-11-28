@@ -360,6 +360,14 @@ def _build_candidate_type(*, item: dict[str, object], snapshot: dict[str, object
     Vidnet er ikke et lavt krav. `_build_adoption_confidence` gav i forvejen
     `medium` paa et vidne alene — begrebet fandtes, stien derhen gjorde ikke.
     Og det er stadig KUN en kandidat: adoptionen er et trin mere.
+
+    Rettet 28/11-2026 (Bjoerns bestilling: «ret droemme-tragten saa droemme naar
+    selvmodellen»): den sidste gren kraevede et vidne, og uden vidne, fokus
+    eller maal faldt hypotesen til `""`. Maalt samme dag gav 12 aktive
+    hypoteser 0 kandidater — alle tre grene ovenfor kraever en EKSTERN signal i
+    SAMME emne, og en droemme-hypotese har sjaeldent en. En aktiv baerende
+    hypotese er nu selv nok til `tentative`: det er hvad ordet betyder, og det
+    er stadig kun en kandidat — ikke en adoption, ikke en writeback.
     """
     hypothesis_type = str(item.get("hypothesis_type") or item.get("signal_type") or "")
     witness_status = str((snapshot.get("witness") or {}).get("status") or "")
@@ -378,7 +386,9 @@ def _build_candidate_type(*, item: dict[str, object], snapshot: dict[str, object
     # Uden maal eller fokus i samme domaene: et vidne raekker til en kandidat.
     if witness_status in {"fresh", "carried"}:
         return "tentative-candidate"
-    return ""
+    # En aktiv baerende hypotese er selv et svagt signal. Uden denne gren
+    # standsede hver droemme-hypotese uden ekstern signal her.
+    return "tentative-candidate"
 
 
 def _build_candidate_status(*, candidate_type: str, hypothesis_status: str, cadence_state: str) -> str:

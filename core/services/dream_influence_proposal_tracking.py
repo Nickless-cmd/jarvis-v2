@@ -410,7 +410,7 @@ def _build_proposal_type(*, item: dict[str, object], snapshot: dict[str, object]
         or item.get("hypothesis_type")
         or ""
     )
-    if candidate_type == "strong-candidate" and snapshot.get("self_model"):
+    if candidate_type in {"strong-candidate", "carried-candidate", "tentative-candidate"} and snapshot.get("self_model"):
         return "nudge-self-model"
     if candidate_type in {"strong-candidate", "carried-candidate"} and snapshot.get("goal"):
         return "nudge-direction"
@@ -418,6 +418,15 @@ def _build_proposal_type(*, item: dict[str, object], snapshot: dict[str, object]
         return "nudge-focus"
     if hypothesis_type == "tension-hypothesis" and snapshot.get("world_model"):
         return "nudge-world-view"
+    # Rettet 28/11-2026 (Bjoerns bestilling): en droemme-hypotese uden en
+    # self-model-signal i samme emne peger STADIG paa selvmodellen — den
+    # antyder et emne der endnu ikke findes der. Forslaget er forankret i
+    # hypotesen (droemmens eget signal), ikke i en ekstern self-model-linje.
+    # Det er kun tentative, saa `_build_influence_confidence` giver `low`, og
+    # `_proposal_reason` siger eksplicit at det ikke er en writeback.
+    # Fokus og world-view ovenfor vejer tungere og vinder naar de findes.
+    if candidate_type == "tentative-candidate" and hypothesis_type:
+        return "nudge-self-model"
     return ""
 
 
@@ -506,29 +515,55 @@ def _influence_confidence_from_summary(summary: str) -> str:
     return "low"
 
 
+def _emne_noegle(noegle: str) -> str:
+    """En domaenenoegele skal vaere en emne-slug, ikke et tekst-uddrag.
+
+    Maalt 28/11-2026 i den levende DB: de fem udtraek-funktioner nedenfor tog
+    sidste kolon-segment af ENHVER canonical_key og kaldte det et domaene. Men
+    kilderne skriver vidt forskellige ting i det segment:
+
+        self-model:strength:Malte paa serveren hvilken bund  <- klippet saetning
+        focus:bearing:Vil maale om droemmene faktisk n       <- klippet saetning
+        dream-adoption-candidate:tentative-candidate:danish-concise-calibration
+
+    Resultatet var 365 «domaener» for 367 self-model-signaler — naesten alle
+    unikke — hvor de faa aegte noegler (`danish-concise-calibration`) druknede.
+    En slug har ingen mellemrum; et preview-fragment har altid. Det er den
+    forskel der goer joinet aerligt: en kandidat kan nu kun moede en
+    self-model-signal der faktisk deler dens emne.
+
+    `self_model_signal_tracking` har sin EGEN udgave af samme funktionsnavn
+    (kun limitation/improving). Det er de to kopier der gled fra hinanden.
+    """
+    text = str(noegle or "").strip()
+    if not text or " " in text:
+        return ""
+    return text
+
+
 def _focus_domain_key(canonical_key: str) -> str:
     parts = canonical_key.split(":")
-    return parts[-1] if len(parts) >= 3 else ""
+    return _emne_noegle(parts[-1]) if len(parts) >= 3 else ""
 
 
 def _goal_domain_key(canonical_key: str) -> str:
     parts = canonical_key.split(":")
-    return parts[-1] if len(parts) >= 2 else ""
+    return _emne_noegle(parts[-1]) if len(parts) >= 2 else ""
 
 
 def _self_model_domain_key(canonical_key: str) -> str:
     parts = canonical_key.split(":")
-    return parts[-1] if len(parts) >= 3 else ""
+    return _emne_noegle(parts[-1]) if len(parts) >= 3 else ""
 
 
 def _world_model_domain_key(canonical_key: str) -> str:
     parts = canonical_key.split(":")
-    return parts[-1] if len(parts) >= 3 else ""
+    return _emne_noegle(parts[-1]) if len(parts) >= 3 else ""
 
 
 def _domain_key(canonical_key: str) -> str:
     parts = canonical_key.split(":")
-    return parts[-1] if len(parts) >= 3 else ""
+    return _emne_noegle(parts[-1]) if len(parts) >= 3 else ""
 
 
 def _domain_title(domain_key: str) -> str:

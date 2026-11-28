@@ -6,6 +6,10 @@ Før kastede begge en ValueError, og opstartsloggen fik en traceback pr. fil.
 """
 from __future__ import annotations
 
+import os
+import stat
+import threading
+
 import pytest
 
 from core.services.brain_file_io import (
@@ -62,3 +66,49 @@ def test_atomisk_skrivning_opretter_mapper_og_indhold(tmp_path) -> None:
 
     assert p.read_text(encoding="utf-8") == "indhold"
     assert not (tmp_path / "dyb" / "mappe" / "fil.md.tmp").exists()
+
+
+def test_skrivningen_fsyncer_baade_fil_og_mappe(tmp_path, monkeypatch) -> None:
+    """Uden fsync på mappen er rename ikke holdbar — målt 28/11-2026: to
+    entries stod på 0 byte efter et nedbrud, mens indekset meldte 928."""
+    ramte: list[bool] = []
+    aegte = os.fsync
+
+    def _fang(fd: int) -> None:
+        ramte.append(stat.S_ISDIR(os.fstat(fd).st_mode))
+        aegte(fd)
+
+    monkeypatch.setattr(os, "fsync", _fang)
+
+    atomic_write(tmp_path / "fil.md", "indhold")
+
+    assert ramte.count(True) == 1, f"mappen blev ikke fsynket: {ramte}"
+    assert ramte.count(False) == 1, f"filen blev ikke fsynket: {ramte}"
+
+
+def test_samtidige_skrivninger_til_samme_sti_kaster_ikke(tmp_path) -> None:
+    """Det faste ``path + ".tmp"``-navn er i sig selv en race: målt 275
+    FileNotFoundError ud af 300 runder med to tråde, fordi den ene tråds
+    rename stjæler den andens temp-fil."""
+    p = tmp_path / "delt.md"
+    fejl: list[BaseException] = []
+
+    def _skriv(tekst: str) -> None:
+        try:
+            for _ in range(40):
+                atomic_write(p, tekst)
+        except BaseException as exc:  # noqa: BLE001 — fejlen rapporteres nedenfor
+            fejl.append(exc)
+
+    traade = [
+        threading.Thread(target=_skriv, args=(tekst,))
+        for tekst in ("a" * 200, "b" * 200)
+    ]
+    for traad in traade:
+        traad.start()
+    for traad in traade:
+        traad.join()
+
+    assert not fejl, f"skrivning kastede under samtidighed: {fejl!r}"
+    assert p.read_text(encoding="utf-8") in {"a" * 200, "b" * 200}
+    assert not list(tmp_path.glob("*.tmp")), "temp-fil efterladt på disken"

@@ -408,9 +408,10 @@ _Low-level file helpers for Jarvis Brain markdown files._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `MissingFrontmatterError` | `` | Raised when a markdown file does not start with YAML frontmatter. | [src](../../../core/services/brain_file_io.py#L10) |
-| function | `atomic_write` | `(path, content)` | Atomically write ``content`` via a sibling temporary file. | [src](../../../core/services/brain_file_io.py#L14) |
-| function | `parse_frontmatter` | `(path)` | Parse YAML frontmatter and body from a markdown file. | [src](../../../core/services/brain_file_io.py#L22) |
+| class | `MissingFrontmatterError` | `` | Raised when a markdown file does not start with YAML frontmatter. | [src](../../../core/services/brain_file_io.py#L12) |
+| function | `_fsync_directory` | `(directory)` | fsync ``directory`` so the rename itself survives a crash. | [src](../../../core/services/brain_file_io.py#L16) |
+| function | `atomic_write` | `(path, content)` | Atomically and durably write ``content`` via a unique sibling temp file. | [src](../../../core/services/brain_file_io.py#L32) |
+| function | `parse_frontmatter` | `(path)` | Parse YAML frontmatter and body from a markdown file. | [src](../../../core/services/brain_file_io.py#L57) |
 
 ## `core/services/brain_supersession.py`
 _Modsigelses-detektion — «den nyere vinder»._

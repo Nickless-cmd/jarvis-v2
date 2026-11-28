@@ -374,9 +374,12 @@ _Daemon health alert — detects inactive/crashed daemons and sends notification
 | function | `_load_alert_state` | `()` | — | [src](../../../core/tools/daemon_alert_tools.py#L14) |
 | function | `_save_alert_state` | `(data)` | — | [src](../../../core/tools/daemon_alert_tools.py#L21) |
 | function | `_hours_since` | `(iso_str)` | — | [src](../../../core/tools/daemon_alert_tools.py#L26) |
-| function | `_exec_daemon_health_alert` | `(args)` | — | [src](../../../core/tools/daemon_alert_tools.py#L38) |
-| function | `_exec_daemon_alert_status` | `(args)` | Show when each daemon was last alerted. | [src](../../../core/tools/daemon_alert_tools.py#L162) |
-| function | `_exec_restart_overdue_daemons` | `(args)` | Restart daemons that have been overdue for more than threshold_minutes. | [src](../../../core/tools/daemon_alert_tools.py#L177) |
+| function | `_process_start_time` | `()` | Actual start time of this process (psutil create_time), tz-aware UTC. | [src](../../../core/tools/daemon_alert_tools.py#L41) |
+| function | `_parse_dt` | `(iso_str)` | — | [src](../../../core/tools/daemon_alert_tools.py#L53) |
+| function | `_in_boot_grace` | `(last_run_at, cadence_min, boot, now)` | True if the daemon's last run predates this process AND we are still | [src](../../../core/tools/daemon_alert_tools.py#L63) |
+| function | `_exec_daemon_health_alert` | `(args)` | — | [src](../../../core/tools/daemon_alert_tools.py#L77) |
+| function | `_exec_daemon_alert_status` | `(args)` | Show when each daemon was last alerted. | [src](../../../core/tools/daemon_alert_tools.py#L204) |
+| function | `_exec_restart_overdue_daemons` | `(args)` | Restart daemons that have been overdue for more than threshold_minutes. | [src](../../../core/tools/daemon_alert_tools.py#L219) |
 
 ## `core/tools/db_query_tool.py`
 _`db_query` — laeseadgang til Jarvis' database, med skemaet i fejlen._
